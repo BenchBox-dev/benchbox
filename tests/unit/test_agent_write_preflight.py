@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import os
 import shlex
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -648,39 +650,62 @@ def test_agent_identity_lists_match_the_instruction_audit() -> None:
     assert audit.SIGNING_SERVICE_EMAILS <= audit.AGENT_EMAILS
 
 
-@pytest.mark.skipif(
-    sys.platform == "win32", reason="requires POSIX symlinks and ps; ownership is not enforced on Windows"
+posix_ownership_only = pytest.mark.skipif(
+    sys.platform == "win32", reason="session ownership is explicitly not enforced on Windows"
 )
-def test_preflight_claims_ownership_through_uv_when_python3_is_not_on_path(tmp_path: Path) -> None:
-    import shutil
-    import sys
 
+
+@pytest.fixture
+def live_harness():
+    proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(120)"])
+    yield proc
+    proc.kill()
+    proc.wait()
+
+
+def _session_env(
+    path: str, primary: Path, harness_pid: int, session: str | None = None, **extra: str
+) -> dict[str, str]:
+    env = {
+        **{k: v for k, v in os.environ.items() if not k.endswith("SESSION_ID")},
+        **HUMAN_IDENTITY,
+        "PATH": path,
+        "BENCHBOX_AGENT_PRIMARY_CLONE": str(primary),
+        "BENCHBOX_ALLOW_MAIN_CLONE_WRITE": "1",
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "BENCHBOX_HARNESS_PID": str(harness_pid),
+        **extra,
+    }
+    if session is not None:
+        env["PI_SESSION_ID"] = session
+    return env
+
+
+def _linked_for_ownership(tmp_path: Path, slug: str) -> tuple[Path, Path]:
     primary = _init_clone(tmp_path / "BenchBox primary")
-    linked = primary.parent / ".tmp-preflight-uv-only"
-    subprocess.run(
-        ["git", "worktree", "add", "-q", "-b", "fix/preflight-uv-only", str(linked), "HEAD"],
-        cwd=primary,
-        check=True,
+    linked = primary.parent / f".tmp-{slug}"
+    subprocess.run(["git", "worktree", "add", "-q", "-b", f"fix/{slug}", str(linked), "HEAD"], cwd=primary, check=True)
+    return primary, linked
+
+
+def _recorded_owner(linked: Path) -> str | None:
+    result = subprocess.run(
+        ["git", "config", "--worktree", "--get", "benchbox.worktree.owner"],
+        cwd=linked,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
     )
+    return result.stdout.strip() or None
+
+
+@posix_ownership_only
+def test_preflight_claims_ownership_through_uv_when_python3_is_not_on_path(tmp_path: Path, live_harness) -> None:
+    primary, linked = _linked_for_ownership(tmp_path, "uv-only")
     tools = tmp_path / "tools"
     tools.mkdir()
-    for name in (
-        "sh",
-        "bash",
-        "git",
-        "realpath",
-        "dirname",
-        "awk",
-        "sed",
-        "wc",
-        "tr",
-        "head",
-        "cat",
-        "ps",
-        "uname",
-        "sort",
-        "grep",
-    ):
+    for name in ("sh", "bash", "git", "realpath", "dirname", "awk", "sed", "wc", "tr", "head", "cat", "ps", "uname"):
         found = shutil.which(name)
         if found:
             (tools / name).symlink_to(found)
@@ -693,74 +718,92 @@ def test_preflight_claims_ownership_through_uv_when_python3_is_not_on_path(tmp_p
     fake_uv.chmod(0o755)
     assert shutil.which("python3", path=str(tools)) is None
 
-    try:
-        result = _run_script(
-            SCRIPT.resolve(),
-            cwd=linked,
-            env={
-                **{k: v for k, v in os.environ.items() if not k.endswith("SESSION_ID")},
-                **HUMAN_IDENTITY,
-                "PATH": str(tools),
-                "PI_SESSION_ID": "uv-only-session",
-                "BENCHBOX_AGENT_PRIMARY_CLONE": str(primary),
-                "GIT_CONFIG_NOSYSTEM": "1",
-            },
-        )
-        owner = subprocess.run(
-            ["git", "config", "--worktree", "--get", "benchbox.worktree.owner-session"],
-            cwd=linked,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            check=False,
-        ).stdout.strip()
-    finally:
-        subprocess.run(["git", "worktree", "remove", "--force", str(linked)], cwd=primary, check=True)
-        subprocess.run(["git", "branch", "-D", "fix/preflight-uv-only"], cwd=primary, check=True)
+    result = _run_script(
+        SCRIPT.resolve(),
+        cwd=linked,
+        env=_session_env(str(tools), primary, live_harness.pid, "uv-only-session"),
+    )
 
     assert result.returncode == 0, result.stderr
-    assert owner == "uv-only-session"
+    assert json.loads(_recorded_owner(linked))["session"] == "uv-only-session"
     assert record.read_text(encoding="utf-8").startswith("run --no-project -- python")
 
 
-@pytest.mark.skipif(sys.platform == "win32", reason="session ownership is explicitly not enforced on Windows")
-def test_preflight_refuses_second_live_session_even_with_main_clone_override(tmp_path: Path) -> None:
-    primary = _init_clone(tmp_path / "BenchBox primary")
-    linked = primary.parent / ".tmp-preflight-two-sessions"
-    subprocess.run(
-        ["git", "worktree", "add", "-q", "-b", "fix/preflight-two-sessions", str(linked), "HEAD"],
-        cwd=primary,
-        check=True,
-    )
+@posix_ownership_only
+def test_preflight_refuses_live_foreign_session_and_takeover_replaces_it(tmp_path: Path, live_harness) -> None:
+    primary, linked = _linked_for_ownership(tmp_path, "two-sessions")
 
-    def run(session: str, **extra: str) -> subprocess.CompletedProcess[str]:
-        return _run_script(
-            SCRIPT.resolve(),
-            cwd=linked,
-            env={
-                **{k: v for k, v in os.environ.items() if not k.endswith("SESSION_ID")},
-                **HUMAN_IDENTITY,
-                "PI_SESSION_ID": session,
-                "BENCHBOX_AGENT_PRIMARY_CLONE": str(primary),
-                "BENCHBOX_ALLOW_MAIN_CLONE_WRITE": "1",
-                "GIT_CONFIG_NOSYSTEM": "1",
-                **extra,
-            },
-        )
+    def preflight(session: str, **extra: str) -> subprocess.CompletedProcess[str]:
+        env = _session_env(os.environ["PATH"], primary, live_harness.pid, session, **extra)
+        return _run_script(SCRIPT.resolve(), cwd=linked, env=env)
 
-    try:
-        first = run("session-one")
-        second = run("session-two")
-        renewed = run("session-one")
-        taken = run("session-two", BENCHBOX_WORKTREE_TAKEOVER="1")
-        previous_owner_now = run("session-one")
-    finally:
-        subprocess.run(["git", "worktree", "remove", "--force", str(linked)], cwd=primary, check=True)
-        subprocess.run(["git", "branch", "-D", "fix/preflight-two-sessions"], cwd=primary, check=True)
+    first = preflight("session-one")
+    second = preflight("session-two")
+    renewed = preflight("session-one")
+    taken = preflight("session-two", BENCHBOX_WORKTREE_TAKEOVER="1")
+    previous_owner_now = preflight("session-one")
 
     assert first.returncode == 0, first.stderr
     assert second.returncode == 1
     assert "worktree ownership check failed" in second.stderr
+    assert "session-one" in second.stderr
     assert renewed.returncode == 0, renewed.stderr
     assert taken.returncode == 0, taken.stderr
     assert previous_owner_now.returncode == 1
+    assert json.loads(_recorded_owner(linked))["session"] == "session-two"
+
+
+@posix_ownership_only
+def test_session_release_target_honours_force(tmp_path: Path, live_harness) -> None:
+    primary, linked = _linked_for_ownership(tmp_path, "session-release")
+    lifecycle = REPO_ROOT / "scripts" / "worktree_lifecycle.sh"
+
+    def preflight(session: str) -> subprocess.CompletedProcess[str]:
+        return _run_script(
+            SCRIPT.resolve(), cwd=linked, env=_session_env(os.environ["PATH"], primary, live_harness.pid, session)
+        )
+
+    def release(session: str, **extra: str) -> subprocess.CompletedProcess[str]:
+        env = _session_env(os.environ["PATH"], primary, live_harness.pid, session, WORKTREE_PATH=str(linked), **extra)
+        return run_posix_shell(
+            f"sh {shlex.quote(lifecycle.as_posix())} session-release",
+            cwd=linked,
+            env=env,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+
+    assert preflight("session-one").returncode == 0
+    refused = release("session-two")
+    still_owned = _recorded_owner(linked)
+    forced = release("session-two", BENCHBOX_WORKTREE_TAKEOVER="1")
+    after_force = _recorded_owner(linked)
+    assert preflight("session-one").returncode == 0
+    by_owner = release("session-one")
+
+    assert refused.returncode != 0
+    assert still_owned is not None and json.loads(still_owned)["session"] == "session-one"
+    assert forced.returncode == 0, forced.stderr
+    assert after_force is None
+    assert by_owner.returncode == 0, by_owner.stderr
+    assert _recorded_owner(linked) is None
+
+
+@posix_ownership_only
+def test_preflight_without_a_session_id_does_not_need_python_or_uv(tmp_path: Path, live_harness) -> None:
+    primary, linked = _linked_for_ownership(tmp_path, "human-no-runner")
+    tools = tmp_path / "tools"
+    tools.mkdir()
+    for name in ("sh", "bash", "git", "realpath", "dirname", "awk", "sed", "wc", "tr", "head", "cat", "uname"):
+        found = shutil.which(name)
+        if found:
+            (tools / name).symlink_to(found)
+    assert shutil.which("python3", path=str(tools)) is None
+    assert shutil.which("uv", path=str(tools)) is None
+
+    result = _run_script(SCRIPT.resolve(), cwd=linked, env=_session_env(str(tools), primary, live_harness.pid))
+
+    assert result.returncode == 0, result.stderr
+    assert _recorded_owner(linked) is None

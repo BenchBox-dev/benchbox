@@ -197,7 +197,8 @@ EOF
   fi
 done
 
-if [ "$ephemeral" != "yes" ] && ! [ "$git_dir_abs" -ef "$common_abs" ]; then
+session_id=${PI_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CLAUDE_SESSION_ID:-${CODEX_SESSION_ID:-${AGENT_SESSION_ID:-}}}}}
+if [ -n "$session_id" ] && [ "$ephemeral" != "yes" ] && ! [ "$git_dir_abs" -ef "$common_abs" ]; then
   claim_args=
   [ "${BENCHBOX_WORKTREE_TAKEOVER:-}" = "1" ] && claim_args=--takeover
   if command -v python3 >/dev/null 2>&1; then

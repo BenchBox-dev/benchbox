@@ -108,26 +108,44 @@ def _ps_field(pid: int, field: str) -> Optional[str]:
     return value if res.returncode == 0 and value else None
 
 
+def _proc_start(proc_root: Path, pid: int) -> Optional[str]:
+    try:
+        stat = (proc_root / str(pid) / "stat").read_text(encoding="utf-8")
+        boot_id = (proc_root / "sys" / "kernel" / "random" / "boot_id").read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    fields = stat.rpartition(")")[2].split()
+    if len(fields) < 20 or not fields[19].isdigit():
+        return None
+    return f"{boot_id}:{fields[19]}"
+
+
 def process_start(pid: int) -> Optional[str]:
-    return _ps_field(pid, "lstart")
+    return _proc_start(Path("/proc"), pid) or _ps_field(pid, "lstart")
+
+
+HARNESS_PID_ENV = "BENCHBOX_HARNESS_PID"
 
 
 def harness_pid() -> Optional[int]:
+    declared = os.environ.get(HARNESS_PID_ENV, "").strip()
+    if declared:
+        if declared.isdigit() and int(declared) > 1 and process_start(int(declared)) is not None:
+            return int(declared)
+        return None
     pid = os.getppid()
-    outermost: Optional[int] = None
     while pid > 1:
         comm = _ps_field(pid, "comm")
         if comm is None:
-            break
-        outermost = pid
+            return None
         name = Path(comm).name.lower().lstrip("-")
         if name not in WRAPPER_COMMANDS and not name.startswith("python"):
-            return pid
+            return pid if process_start(pid) is not None else None
         parent = _ps_field(pid, "ppid")
         if not parent or not parent.isdigit():
-            break
+            return None
         pid = int(parent)
-    return outermost
+    return None
 
 
 def _pid_may_exist(pid: int) -> bool:
@@ -151,9 +169,35 @@ def _owner_alive(pid_text: Optional[str], start: Optional[str]) -> bool:
     return _pid_may_exist(pid)
 
 
+def _read_owner(worktree_path: Path) -> Optional[dict[str, Any]]:
+    raw = _get_worktree_config("owner", worktree_path)
+    if raw is None:
+        return None
+    try:
+        record = json.loads(raw)
+        if (
+            isinstance(record, dict)
+            and isinstance(record.get("session"), str)
+            and record["session"]
+            and isinstance(record.get("pid"), int)
+            and isinstance(record.get("start"), str)
+        ):
+            return record
+    except ValueError:
+        pass
+    print(
+        "warning: ignoring malformed worktree ownership record; treating the worktree as unowned.",
+        file=sys.stderr,
+    )
+    return None
+
+
+def _write_owner(worktree_path: Path, record: dict[str, Any]) -> None:
+    _set_worktree_config("owner", json.dumps(record, sort_keys=True), worktree_path)
+
+
 def _clear_owner(worktree_path: Path) -> None:
-    for key in ("owner-session", "owner-pid", "owner-pid-start", "owner-claimed-at"):
-        _run_git(["config", "--worktree", "--unset", f"{CONFIG_PREFIX}.{key}"], worktree_path)
+    _run_git(["config", "--worktree", "--unset", f"{CONFIG_PREFIX}.owner"], worktree_path)
 
 
 def _guard_supported() -> bool:
@@ -194,24 +238,18 @@ def _claim_locked(worktree_path: Path, takeover: bool) -> str:
     if ext_check.stdout.strip() != "true":
         _run_git(["config", "extensions.worktreeConfig", "true"], worktree_path)
 
-    owner = _get_worktree_config("owner-session", worktree_path)
-    if owner and owner != session and not takeover:
-        if _owner_alive(
-            _get_worktree_config("owner-pid", worktree_path),
-            _get_worktree_config("owner-pid-start", worktree_path),
-        ):
+    record = _read_owner(worktree_path)
+    if record is not None:
+        alive = _owner_alive(str(record["pid"]), record["start"])
+        if record["session"] != session and alive and not takeover:
             raise MetadataError(
-                f"Worktree {worktree_path} is owned by live session {owner} "
-                f"(pid {_get_worktree_config('owner-pid', worktree_path)}); this session is {session}.\n"
+                f"Worktree {worktree_path} is owned by live session {record['session']} "
+                f"(pid {record['pid']}); this session is {session}.\n"
                 "Create your own worktree (make worktree-create), or, if the other session is gone, "
                 "take it over with BENCHBOX_WORKTREE_TAKEOVER=1 make agent-write-preflight."
             )
-
-    if owner == session and _owner_alive(
-        _get_worktree_config("owner-pid", worktree_path),
-        _get_worktree_config("owner-pid-start", worktree_path),
-    ):
-        return "renewed"
+        if record["session"] == session and alive:
+            return "renewed"
 
     pid = harness_pid()
     start = process_start(pid) if pid is not None else None
@@ -222,13 +260,18 @@ def _claim_locked(worktree_path: Path, takeover: bool) -> str:
             file=sys.stderr,
         )
         return "unverifiable"
-    _set_worktree_config("owner-session", session, worktree_path)
-    _set_worktree_config("owner-pid", str(pid), worktree_path)
-    _set_worktree_config("owner-pid-start", start, worktree_path)
-    _set_worktree_config("owner-claimed-at", datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), worktree_path)
-    if not owner:
+    _write_owner(
+        worktree_path,
+        {
+            "session": session,
+            "pid": pid,
+            "start": start,
+            "claimed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        },
+    )
+    if record is None:
         return "claimed"
-    return "renewed" if owner == session else "taken-over"
+    return "renewed" if record["session"] == session else "taken-over"
 
 
 def release_session_claim(worktree_path: Path, force: bool = False) -> str:
@@ -239,13 +282,13 @@ def release_session_claim(worktree_path: Path, force: bool = False) -> str:
 
 
 def _release_locked(worktree_path: Path, force: bool) -> str:
-    owner = _get_worktree_config("owner-session", worktree_path)
-    if not owner:
+    record = _read_owner(worktree_path)
+    if record is None:
         return "unowned"
     session = current_session_id()
-    if owner != session and not force:
+    if record["session"] != session and not force:
         raise MetadataError(
-            f"Worktree {worktree_path} is owned by session {owner}; only the owner can release it. "
+            f"Worktree {worktree_path} is owned by session {record['session']}; only the owner can release it. "
             "Pass --force (BENCHBOX_WORKTREE_TAKEOVER=1 for make) to override."
         )
     _clear_owner(worktree_path)

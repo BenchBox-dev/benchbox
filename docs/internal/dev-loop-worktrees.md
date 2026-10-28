@@ -86,7 +86,9 @@ start time of the harness process, in `--worktree` Git config. A second session 
 the recorded process is alive; a dead pid or a pid with a different start time counts as stale and
 is replaced. No wall-clock age is used. Runs without any session variable (humans) skip the guard.
 On Windows, or when `ps` cannot identify a long-lived harness process, the guard prints a warning
-and records nothing rather than recording a claim that would go stale immediately.
+and records nothing rather than recording a claim that would go stale immediately. A harness that
+runs every command in a throwaway shell can declare its own long-lived pid with
+`BENCHBOX_HARNESS_PID`; an invalid or dead value also records nothing.
 
 ```bash
 make worktree-session-release WORKTREE_PATH="$WORKTREE_PATH"
