@@ -319,8 +319,10 @@ disputes stay data. Each keyed disputed finding needs an explicit disposition:
   defect not fixed is invalid.
 
 The response template shows concedes as null, correct for an undisputed defect;
-a disputed defect left null is invalid, as is a missing disposition or a claim
-matching no shown reply. Invalid attempts are retried. A maintain or fixed
+a disputed defect left null is malformed, as is a missing disposition or a claim
+matching no shown reply. A malformed disposition invalidates only a verdict that
+would ship, and that attempt is retried. On any other verdict the defect is kept
+open, the problem is published as the defect's evidence, and the decision stands. A maintain or fixed
 disposition whose citation does not verify is not invalid: the defect stays open
 and the disposition is published with the evidence gap. A demoted withdrawal or
 fix is judged exactly as a maintain, so its concedes and claim cannot invalidate
