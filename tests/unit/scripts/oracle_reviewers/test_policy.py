@@ -154,6 +154,17 @@ def test_missing_exempt_paths_defaults_to_empty() -> None:
     assert parse_policy(raw).classifier.exempt_paths == ()
 
 
+def test_evidence_exempt_paths_parsed_and_defaults_to_empty() -> None:
+    raw = _raw()
+    policy = parse_policy(raw)
+    assert "README*.md" in policy.evidence.exempt_paths
+    raw.pop("evidence", None)
+    assert parse_policy(raw).evidence.exempt_paths == ()
+    raw["evidence"] = {"exempt_paths": "not-a-list"}
+    with pytest.raises(PolicyError, match="evidence exempt_paths must be a string list"):
+        parse_policy(raw)
+
+
 @pytest.mark.parametrize("effort", ["off", "minimal", "low", "medium", "high", "xhigh", "max", "auto", ""])
 def test_known_effort_levels_are_accepted(effort: str) -> None:
     raw = _raw()

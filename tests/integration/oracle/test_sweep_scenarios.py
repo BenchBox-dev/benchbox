@@ -12,7 +12,7 @@ VERDICT = "oracle-verdict.yml"
 
 
 def _failed_run(harness: Harness, pr: int, head: str, event: str, minutes: int, step: str) -> dict:
-    run = harness.github.add_run(VERDICT, event=event, pr=pr, head_sha=head, created_at=ago(minutes))
+    run = harness.github.add_run(VERDICT, event=event, pr=pr, head_sha=head, title_head=head, created_at=ago(minutes))
     harness.github.complete_run(run, "failure", (step,))
     return run
 
@@ -67,7 +67,9 @@ def test_a_same_head_pending_state_past_its_backoff_is_dispatched(harness: Harne
 def test_a_due_same_head_state_is_not_dispatched_over_a_run_in_flight(harness: Harness) -> None:
     head, run = _pending_review(harness, 63, "feat/busy")
     harness.github.age(run, 180)
-    harness.github.add_run(VERDICT, event="workflow_dispatch", pr=63, head_sha=head, created_at=ago(10))
+    harness.github.add_run(
+        VERDICT, event="workflow_dispatch", pr=63, head_sha=head, title_head=head, created_at=ago(10)
+    )
     before = list(harness.github.dispatches)
 
     sweep = harness.sweep()

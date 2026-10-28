@@ -133,3 +133,10 @@ classifier:
     - results-data/bundles/*.override.json
     - _project/joinorder/*.json
     - "*_specs.yaml"
+evidence:
+  exempt_paths:
+    - "README*.md"
+    - "**/README*.md"
+    - "CHANGELOG*.md"
+    - "**/CHANGELOG*.md"
+    - "docs/*.md"

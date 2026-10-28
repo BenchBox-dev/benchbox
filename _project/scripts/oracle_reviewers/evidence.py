@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import fnmatch
 import json
 import os
 import re
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -26,6 +27,8 @@ _ARCHIVE_READ = re.compile(
     rf"(?P<container>.+?\.(?:{ARCHIVE_EXTENSIONS}))(?::(?P<member>.*))?\Z", re.IGNORECASE | re.DOTALL
 )
 BINARY_ARCHIVE_ENTRY = "[Cannot read binary archive entry"
+BINARY_PROBE_BYTES = 8000
+FONT_EXTENSIONS = frozenset({".eot", ".otf", ".ttf", ".woff", ".woff2"})
 _TRACE_PATHS = 5
 _TRACE_PATH_WIDTH = 80
 _TRACE_LIMIT = 700
@@ -350,6 +353,34 @@ class Gap:
     files: tuple[str, ...]
 
 
+def is_binary_candidate(path: str) -> bool:
+    return os.path.splitext(path)[1].lower() in FONT_EXTENSIONS
+
+
+def has_nul_head(workspace: Path, path: str) -> bool:
+    root = os.path.realpath(workspace)
+    target = os.path.realpath(os.path.join(root, path))
+    if not target.startswith(root + os.sep) or not os.path.isfile(target):
+        return False
+    try:
+        with open(target, "rb") as handle:
+            return b"\0" in handle.read(BINARY_PROBE_BYTES)
+    except OSError:
+        return False
+
+
+def _segments_match(path: tuple[str, ...], pattern: tuple[str, ...]) -> bool:
+    if not pattern:
+        return not path
+    if pattern[0] == "**":
+        return any(_segments_match(path[skip:], pattern[1:]) for skip in range(len(path) + 1))
+    return bool(path) and fnmatch.fnmatchcase(path[0], pattern[0]) and _segments_match(path[1:], pattern[1:])
+
+
+def glob_match(path: str, pattern: str) -> bool:
+    return _segments_match(tuple(path.split("/")), tuple(pattern.split("/")))
+
+
 def check(
     verdict: Verdict,
     *,
@@ -359,10 +390,31 @@ def check(
     workspace: Path,
     required: Iterable[str],
     run: Trace,
+    binary_files: Iterable[str] = (),
+    exempt_paths: Iterable[str] = (),
+    is_protected: Callable[[str], bool] | None = None,
 ) -> Gap | None:
     if brief_mode == INLINE or not ships:
         return None
-    needed = sorted(set(required))
+    if is_protected is None:
+        from _project.scripts.inert_paths import is_machine_read_doc
+        from _project.scripts.soundness_paths import is_soundness_path
+
+        def is_protected(path: str) -> bool:
+            return is_soundness_path(path) or is_machine_read_doc(path)
+
+    hinted = {relative(p, workspace) for p in binary_files}
+    detected_binary = {path for path in hinted if is_binary_candidate(path) and has_nul_head(workspace, path)}
+    patterns = tuple(exempt_paths)
+
+    def _is_exempt(path: str) -> bool:
+        norm = relative(path, workspace)
+        if is_protected(norm) or is_protected(_normalize(path, workspace)):
+            return False
+        return norm in detected_binary or any(glob_match(norm, pattern) for pattern in patterns)
+
+    required_paths = set(required)
+    needed = sorted(path for path in required_paths if not _is_exempt(path))
     if harness in TRACED:
         if not run.reads and not run.greps:
             return Gap("the verdict would ship but its trace shows no successful file read", tuple(needed))

@@ -618,14 +618,21 @@ def live_commit_statuses(run: Runner, repo_full: str, head: str) -> dict[str, st
     return statuses
 
 
-def visible_required_failure_reasons(run: Runner, repo_full: str, branch: str, head: str) -> list[str]:
+def visible_required_failure_reasons(
+    run: Runner, repo_full: str, branch: str, head: str, waiting: frozenset[str] = frozenset()
+) -> list[str]:
     required = ruleset_required_contexts(run, repo_full, branch)
     evaluations = check_suites.evaluate(live_check_runs(run, repo_full, head), required, check_suites.NON_BLOCKING)
     statuses = live_commit_statuses(run, repo_full, head)
     reasons: list[str] = []
     for name in required:
         suites = evaluations[name].suites
-        if suites and suites[0].completed and suites[0].conclusion not in check_suites.NON_BLOCKING:
+        if (
+            name not in waiting
+            and suites
+            and suites[0].completed
+            and suites[0].conclusion not in check_suites.NON_BLOCKING
+        ):
             reasons.append(
                 f"required check {name!r} completed with conclusion {suites[0].conclusion!r} "
                 f"on {head[:9]}; pending checks do not block arming"

@@ -34,13 +34,17 @@ VERDICT = {
 }
 
 
-def _workspace(tmp_path: Path) -> tuple[Path, str]:
+def _workspace(tmp_path: Path, files: dict[str, bytes] | None = None) -> tuple[Path, str]:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     (workspace / "a.txt").write_text("a\n", encoding="utf-8")
+    for name, data in (files or {}).items():
+        target = workspace / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
     for args in (
         ("init", "-q"),
-        ("add", "a.txt"),
+        ("add", "-A"),
         ("-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "-m", "init"),
     ):
         subprocess.run(["git", "-C", str(workspace), *args], check=True)
@@ -87,10 +91,16 @@ def _review(
     brief_mode: str = "inline",
     required: tuple[str, ...] = (),
     rules: dict | None = None,
+    exempt_paths: tuple[str, ...] = (),
+    binary_files: tuple[str, ...] = (),
+    protected_files: tuple[str, ...] | None = None,
 ):
     plan = {
         "brief_mode": brief_mode,
         "evidence_files": list(required),
+        "evidence_exempt_paths": list(exempt_paths),
+        "binary_files": list(binary_files),
+        **({} if protected_files is None else {"evidence_protected_files": list(protected_files)}),
         "max_defects": 10,
         "protocol": rules or {},
         "omp_sha256": omp_pin.sha256_of(Path(os.environ[omp_pin.BINARY_ENV]))
@@ -1045,3 +1055,104 @@ def test_a_capture_crash_keeps_the_completed_verdict(
     assert outcome.verdict is not None
     assert outcome.verdict["decision"] == "SHIP"
     assert outcome.capture is None
+
+
+@skip_on_windows
+def test_binary_file_and_readme_no_longer_make_attempt_absent(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _workspace(tmp_path, {"dist/x.woff2": b"PK\x03\x04\x00\x00"})
+    _omp_says(tmp_path, monkeypatch, decision="SHIP", reads=("a.txt",), files_examined=[])
+    outcome = _review(
+        policy,
+        tmp_path,
+        workspace,
+        head,
+        brief_mode="file-list",
+        required=("dist/x.woff2", "pkg/README.md"),
+        binary_files=("dist/x.woff2",),
+        exempt_paths=("README*.md", "**/README*.md"),
+        protected_files=(),
+    )
+    assert outcome.missing is None
+    assert outcome.verdict is not None
+
+
+@skip_on_windows
+def test_source_file_with_exemptions_still_requires_read(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _workspace(tmp_path, {"dist/x.woff2": b"PK\x03\x04\x00\x00"})
+    _omp_says(tmp_path, monkeypatch, decision="SHIP", reads=(), files_examined=[])
+    outcome = _review(
+        policy,
+        tmp_path,
+        workspace,
+        head,
+        brief_mode="file-list",
+        required=("dist/x.woff2", "pkg/README.md", "a.txt"),
+        binary_files=("dist/x.woff2",),
+        exempt_paths=("README*.md", "**/README*.md"),
+    )
+    assert outcome.missing is not None
+    assert outcome.missing.kind == absence.INCOMPLETE
+
+
+@skip_on_windows
+def test_soundness_path_prose_file_still_requires_read_in_runner(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _workspace(tmp_path)
+    _omp_says(tmp_path, monkeypatch, decision="SHIP", reads=(), files_examined=[])
+    soundness_doc = ".github/PULL_REQUEST_TEMPLATE.md"
+    outcome = _review(
+        policy,
+        tmp_path,
+        workspace,
+        head,
+        brief_mode="file-list",
+        required=(soundness_doc,),
+        exempt_paths=("*.md", "README*"),
+    )
+    assert outcome.missing is not None
+    assert outcome.missing.kind == absence.INCOMPLETE
+    assert soundness_doc in outcome.missing.detail or "no successful file read" in outcome.missing.detail
+
+
+@skip_on_windows
+@pytest.mark.parametrize(("protected_files", "exempt"), [(("docs/guide.md",), False), ((), True)])
+def test_the_plan_protected_list_decides_which_prose_stays_required(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, protected_files: tuple[str, ...], exempt: bool
+) -> None:
+    workspace, head = _workspace(tmp_path)
+    _omp_says(tmp_path, monkeypatch, decision="SHIP", reads=("a.txt",), files_examined=[])
+    outcome = _review(
+        policy,
+        tmp_path,
+        workspace,
+        head,
+        brief_mode="file-list",
+        required=("docs/guide.md",),
+        exempt_paths=("docs/*.md",),
+        protected_files=protected_files,
+    )
+    assert (outcome.missing is None) is exempt
+
+
+@skip_on_windows
+def test_a_plan_without_a_protected_list_fails_closed(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _workspace(tmp_path)
+    _omp_says(tmp_path, monkeypatch, decision="SHIP", reads=(), files_examined=[])
+    outcome = _review(
+        policy,
+        tmp_path,
+        workspace,
+        head,
+        brief_mode="file-list",
+        required=("docs/guide.md",),
+        exempt_paths=("docs/*.md",),
+    )
+    assert outcome.missing is not None
+    assert outcome.missing.kind == absence.INCOMPLETE

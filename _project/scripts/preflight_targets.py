@@ -15,11 +15,14 @@ SMOKE_TESTS_ROOT = "tests/integration/platforms/"
 CONFTEST_SUBTREE_LIMIT = 200
 PATCH_CALLEE = re.compile(r"(^|\.)patch(\.|$)")
 ORACLE_SCENARIO_TESTS = (
+    "tests/integration/oracle/test_cloud_review_reachability_scenario.py",
     "tests/integration/oracle/test_followup_scenarios.py",
     "tests/integration/oracle/test_local_review_scenario.py",
+    "tests/integration/oracle/test_omp_pin_scenarios.py",
     "tests/integration/oracle/test_pr_arm_scenario.py",
     "tests/integration/oracle/test_review_scenarios.py",
     "tests/integration/oracle/test_sweep_listing_scenarios.py",
+    "tests/integration/oracle/test_sweep_liveness_scenarios.py",
     "tests/integration/oracle/test_sweep_scenarios.py",
 )
 SOURCE_GUARD_TESTS: dict[str, tuple[str, ...]] = {

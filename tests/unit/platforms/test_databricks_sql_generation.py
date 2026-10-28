@@ -287,7 +287,11 @@ class TestDatabricksHudiSupport:
     def test_metadata_reports_hudi_format(self):
         adapter = _make_hudi_adapter()
         connection = MagicMock()
-        info = adapter.get_platform_info(connection)
+        with (
+            patch.object(type(adapter), "_detect_databricks_region", return_value=None),
+            patch.object(type(adapter), "_warehouse_id_from_http_path", return_value=None),
+        ):
+            info = adapter.get_platform_info(connection)
         configuration = info["configuration"]
         assert configuration["table_format"] == "hudi"
         assert configuration["hudi_primary_key"] == "l_orderkey"

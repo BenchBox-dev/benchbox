@@ -206,7 +206,11 @@ def rerun_arguments(run: Mapping[str, Any], jobs: Sequence[Mapping[str, Any]], r
     conclusion = run.get("conclusion")
     run_id = str(run.get("id"))
     if status != "completed":
-        raise RerunError(f"CI is still running on {str(run.get('head_sha'))[:9]} (run {run_id}); wait for it")
+        raise RerunError(
+            f"CI run {run_id} on {str(run.get('head_sha'))[:9]} is still running; GitHub re-runs failed jobs only "
+            "after a run completes. Retry make pr-rerun once run "
+            f"{run_id} completes; a placeholder core or results-data failure re-runs on its own at that point"
+        )
     if conclusion == "success":
         return None
     if conclusion == "cancelled" or any(job.get("conclusion") == "cancelled" for job in jobs):
