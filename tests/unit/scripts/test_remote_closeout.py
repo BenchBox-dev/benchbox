@@ -521,6 +521,18 @@ def test_refuses_a_would_block_duration_verdict_unless_the_baseline_changes(
     assert "scripts/build_fast_duration_baseline.py" in err
 
 
+def test_refuses_an_omp_pin_bump_without_owner_evidence(
+    world: World, ready_pr: FakeGitHub, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        remote_closeout.pr_arm.pr_arm_omp_bump,
+        "bump_refusals",
+        lambda *_a: ["omp pin bump to 9.9.9 has no owner evidence"],
+    )
+    assert "omp pin bump to 9.9.9 has no owner evidence" in _refusal(world, ready_pr, capsys)
+    assert ready_pr.arms() == []
+
+
 def test_refuses_until_the_fast_duration_verdict_exists(
     world: World, ready_pr: FakeGitHub, capsys: pytest.CaptureFixture[str]
 ) -> None:

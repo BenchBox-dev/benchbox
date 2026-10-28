@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import os
 import platform
 import re
@@ -73,6 +74,15 @@ def parse_pin(data: Any) -> Pin:
             raise PinError(f"the omp pin for {name} needs a lowercase hex sha256")
         builds[name] = Build(url, digest)
     return Pin(version, builds)
+
+
+def pin_digest(pin: Pin) -> str:
+    canonical = {
+        "version": pin.version,
+        "builds": {name: {"url": build.url, "sha256": build.sha256} for name, build in sorted(pin.builds.items())},
+    }
+    payload = json.dumps(canonical, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 def pin_from_text(text: str) -> Pin:

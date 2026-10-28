@@ -1,0 +1,95 @@
+{
+  "build": {
+    "id": "20261027-180828-e996e1c",
+    "product": "omp",
+    "version": "18.13.2",
+    "channel": "stable",
+    "commit": "e996e1c7ac476f60e02b8ed9764cf30fa8c00a8e",
+    "created_at": "2026-10-27T18:08:28Z",
+    "published_at": "2026-10-27T18:10:18Z",
+    "files": [
+      {
+        "name": "omp-darwin-arm64",
+        "platform": "macos",
+        "arch": "arm64",
+        "kind": "archive",
+        "size": 217260176,
+        "sha256": "38c3645283ceba06f66462830ae15f27270cc7f84575e40a4c6bd68452a63d0f",
+        "url": "/d/omp/20261027-180828-e996e1c/omp-darwin-arm64"
+      },
+      {
+        "name": "omp-darwin-x64",
+        "platform": "macos",
+        "arch": "x86_64",
+        "kind": "archive",
+        "size": 229073360,
+        "sha256": "a5b85a584f29c9abf4da8d2b3f9e4763645d55d2bdd6ff1f2d3b45500892f069",
+        "url": "/d/omp/20261027-180828-e996e1c/omp-darwin-x64"
+      },
+      {
+        "name": "omp-linux-arm64",
+        "platform": "linux",
+        "arch": "arm64",
+        "kind": "archive",
+        "size": 238275576,
+        "sha256": "5a5f3d468a4e77b5570b516a96506046c168ec64922eda1dc4fc8db727d208d3",
+        "url": "/d/omp/20261027-180828-e996e1c/omp-linux-arm64"
+      },
+      {
+        "name": "omp-linux-musl-arm64",
+        "platform": "linux-musl",
+        "arch": "arm64",
+        "kind": "archive",
+        "size": 230628456,
+        "sha256": "b9c9ea5ab8472e09a89991ca516fd687971057323e55a7c6723c1f0b5e0d610d",
+        "url": "/d/omp/20261027-180828-e996e1c/omp-linux-musl-arm64"
+      },
+      {
+        "name": "omp-linux-musl-x64",
+        "platform": "linux-musl",
+        "arch": "x86_64",
+        "kind": "archive",
+        "size": 233792936,
+        "sha256": "8cf8d71b28d29691fb921bbb4531e823e91139434497b8cea34bf5dc2372a701",
+        "url": "/d/omp/20261027-180828-e996e1c/omp-linux-musl-x64"
+      },
+      {
+        "name": "omp-linux-x64",
+        "platform": "linux",
+        "arch": "x86_64",
+        "kind": "archive",
+        "size": 277039280,
+        "sha256": "dc499ea63082181a4734e5a197d61f04394e7cc0191ef7ba192d110abca0d6c4",
+        "url": "/d/omp/20261027-180828-e996e1c/omp-linux-x64"
+      },
+      {
+        "name": "omp-windows-arm64.exe",
+        "platform": "windows",
+        "arch": "arm64",
+        "kind": "archive",
+        "size": 227526144,
+        "sha256": "a8ea090f7daa17743fa029e76c4b646e1ee6b6376eb009fc69a22dde04027809",
+        "url": "/d/omp/20261027-180828-e996e1c/omp-windows-arm64.exe"
+      },
+      {
+        "name": "omp-windows-x64.exe",
+        "platform": "windows",
+        "arch": "x86_64",
+        "kind": "archive",
+        "size": 244882944,
+        "sha256": "95c45f53fff419ae4aff5cf07e6af38f297fc7e754947bcb85d9d2253fcae17a",
+        "url": "/d/omp/20261027-180828-e996e1c/omp-windows-x64.exe"
+      }
+    ]
+  },
+  "file": {
+    "name": "omp-darwin-arm64",
+    "platform": "macos",
+    "arch": "arm64",
+    "kind": "archive",
+    "size": 217260176,
+    "sha256": "38c3645283ceba06f66462830ae15f27270cc7f84575e40a4c6bd68452a63d0f",
+    "url": "/d/omp/20261027-180828-e996e1c/omp-darwin-arm64"
+  },
+  "download": "https://download.example.invalid/redacted-presigned-url"
+}

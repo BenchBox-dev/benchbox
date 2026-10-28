@@ -106,6 +106,9 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
         ".github/workflows/nightly.yml",
         ".github/workflows/new-example.yml",
         "scripts/pr_arm.py",
+        "scripts/pr_arm_omp_bump.py",
+        "scripts/pr_landing.py",
+        "scripts/remote_closeout.py",
         "_project/decisions/single-repo-migration.md",
     ],
 )

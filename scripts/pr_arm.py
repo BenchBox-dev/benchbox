@@ -14,6 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ci_text_edit_verdict
+import pr_arm_omp_bump
 import pr_landing
 
 CLI_DESCRIPTION = "Arm a pull request for its exact head after a live check that nothing holds it."
@@ -298,6 +299,7 @@ def arm(
     suites: Callable[[Runner, str, str, str], list[str]] = suite_refusals,
     duration: Callable[[Runner, str, int, str], list[str]] = duration_verdict_refusals,
     visible: Callable[[Runner, str, str, str], list[str]] = visible_refusals,
+    bump: Callable[[Runner, str, int, str], list[str]] = pr_arm_omp_bump.bump_refusals,
 ) -> int:
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
         print(f"pr-arm: refusing: --repo must be owner/name, got {repo!r}", file=sys.stderr)
@@ -331,6 +333,7 @@ def arm(
             hidden_failures=[
                 *suites(run, repo, BASE_BRANCH, local_head),
                 *(duration(run, repo, int(view["number"]), local_head) if view.get("headRefOid") == local_head else []),
+                *(bump(run, repo, int(view["number"]), local_head) if view.get("headRefOid") == local_head else []),
                 *visible(run, repo, BASE_BRANCH, local_head),
             ],
         )

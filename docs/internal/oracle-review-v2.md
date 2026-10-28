@@ -896,9 +896,10 @@ which unit tests cannot check alone. A change to `commands.py`, `verdict.py`,
 `evidence.py`, `runner.py`, the reviewer policy or the attempt loop must also:
 
 - keep `tests/fixtures/oracle_reviewers/omp_multi_turn_review.jsonl` a real
-  recording. When OMP output changes, re-record with `omp --print --mode json`
-  on a review that writes text, calls `read` and `grep`, then answers; replace
-  machine paths and check for credentials. Never hand-edit it to fit the code.
+  recording of a review the harness already ran. When OMP output changes,
+  replace it with the stream of a CI or local review run that already happened,
+  with machine paths replaced and credentials checked for. Never run a model
+  to record it, and never hand-edit it to fit the code.
 - be smoke-tested before merge by running `runner.review` on a file-list brief
   with the reviewer and model CI will select and the committed
   `.github/oracle-omp-config.yml` (written into a scratch `HOME` with
@@ -913,6 +914,56 @@ which unit tests cannot check alone. A change to `commands.py`, `verdict.py`,
   Linux build or the secret `OMP_AGENT_CONFIG`; only an observed CI run does.
 - be self-reviewed across every module at that boundary and its tests, not a
   subset.
+
+### Bumping the omp pin
+
+A pin bump changes only the `omp:` section of `.github/oracle-reviewers.yml`
+(and captured fixtures); it never widens the version to a range, and the gateway
+host picks the new build up from the same pin. The compatibility suite, not the
+oracle, carries its behavioural evidence: the oracle reviewing the bump runs the
+previous build and reads only the YAML. The pre-merge model smoke above does not
+apply to a bump, and no model is run to re-record a fixture.
+
+`omp-pin-bump.yml` runs daily and on demand from `develop`. It asks the build
+host (`/api/products/omp/latest/<target>?channel=stable`) for the newest stable
+build of each pinned platform, ignores it unless it is newer than the pin,
+downloads every platform build twice over TLS, and requires both downloads and
+the checksum the host publishes to agree. It then runs
+`make omp-candidate-check` on the linux-x64 runner against that candidate.
+Only a suite that passes on that runner, with every other platform's build
+hashed against the pin though not executed (the report stays `partial`), opens
+a `chore/omp-pin-<version>` pull request whose body
+carries the suite output, the per-platform hashes, the `--version` transcript
+and the `--help` difference from the previous build. A red candidate opens
+nothing: the old pin stands and the run fails with the suite output in its
+summary. `make omp-bump-prepare` runs the same preparation locally.
+
+The owner runs `make omp-candidate-check VERSION=<version>` on the Mac
+(darwin-arm64) from the bump's branch and posts the `Omp candidate check:` line
+it prints as a comment. The repository's arming helpers (`make pr-arm`,
+`make pr-arm-remote` and the enqueue step of `pr_landing`) refuse a pull request
+that changes the pin until an unedited comment from the owner names the pull
+request's version, its pinned `darwin-arm64` SHA-256, the digest of the whole
+`omp:` section (every platform's URL and SHA-256) and the pull request's current
+head commit. The check prints the line (ending `result=releasable`: the suite
+passed on that host and every other platform's build hashed to the pin, though
+the report itself stays `partial`) only from a clean worktree, naming `HEAD`,
+so a later push invalidates the evidence and the owner reruns the check on the
+new head. They also refuse one that
+changes anything besides the pin section and the captured `*.jsonl` fixture
+streams. The same decision is enforced server-side: the required `oracle-gate`
+(run from `develop`'s copy, so the bump cannot weaken it) holds a pull request
+that changes the `omp:` section, reading the base and head policy through the
+contents API, until that evidence is present, so enabling auto-merge by hand
+cannot bypass it. A pull request whose file list the API returns incomplete is
+held whenever the pin changes, evidence or not. The helpers keep the early refusal for fast feedback; both
+share `oracle_reviewers/omp_bump_gate.py`. A comment carrying the
+`Omp candidate check: ` prefix retriggers the gate like a stand-in attestation.
+
+Builds are not mirrored. If the build host stops serving a pinned build, the
+previous pin cannot be reinstalled and a revert to it cannot install the old
+build; the risk is accepted, so keep a bump's predecessor in the local cache
+(`~/.cache/benchbox/omp`) until the bump has proved itself.
 
 ## Mutation testing
 

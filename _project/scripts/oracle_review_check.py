@@ -198,9 +198,13 @@ def decide(
     comments: Iterable[dict[str, Any]] = (),
     *,
     reviews: Iterable[dict[str, Any]] = (),
+    bump_refusals: Iterable[str] = (),
 ) -> tuple[int, str]:
     if not paths(files):
         return PASS, "oracle-review: only exempt paths changed"
+    refused = list(bump_refusals)
+    if refused:
+        return WAITING, f"oracle-review: omp pin bump refused: {'; '.join(refused)}"
 
     base_time = _parse_time(base_date) if base_date else None
     verdicts = _verdict_statuses(statuses, base_time)
@@ -418,6 +422,52 @@ def fetch_statuses(token: str, repo: str, head_sha: str) -> list[dict[str, Any]]
     ]
 
 
+def fetch_text(token: str, repo: str, path: str, ref: str) -> str:
+    url = f"{API_ROOT}/repos/{repo}/contents/{path}?ref={urllib.parse.quote(ref, safe='')}"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github.raw",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "benchbox-oracle-review-check",
+    }
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=30) as response:
+            return response.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        raise CheckError(f"GitHub returned HTTP {exc.code} for {url}") from exc
+    except (urllib.error.URLError, TimeoutError, UnicodeDecodeError) as exc:
+        raise CheckError(f"GitHub request to {url} failed: {exc}") from exc
+
+
+def fetch_bump_refusals(
+    token: str,
+    repo: str,
+    pull: dict[str, Any],
+    files: list[str],
+    listed_files: int,
+    comments: list[dict[str, Any]],
+) -> list[str]:
+    from oracle_reviewers import omp_bump_gate
+
+    complete = listed_files >= pull["changed_files"]
+    if omp_bump_gate.POLICY_PATH not in files and complete:
+        return []
+    head_repo = ((pull["head"].get("repo") or {}).get("full_name")) or repo
+    try:
+        base_text = fetch_text(token, repo, omp_bump_gate.POLICY_PATH, pull["base"]["ref"])
+        head_text = fetch_text(token, head_repo, omp_bump_gate.POLICY_PATH, pull["head"]["sha"])
+        return omp_bump_gate.refusals(
+            [*files, omp_bump_gate.POLICY_PATH],
+            base_text,
+            head_text,
+            comments,
+            pull["head"]["sha"],
+            complete,
+        )
+    except omp_bump_gate.BumpEvidenceError as exc:
+        return [f"omp pin bump evidence could not be verified: {exc}"]
+
+
 def fetch_comments(token: str, repo: str, pr: int) -> list[dict[str, Any]]:
     return [
         {
@@ -514,7 +564,10 @@ def main(argv: list[str] | None = None) -> int:
         reviews = fetch_reviews(token, args.repo, args.pr)
         annotate_receipt(token, reviews, head_sha, base_date)
 
-        status, message = decide(head_sha, files, statuses, threads, matcher, base_date, comments, reviews=reviews)
+        bump = fetch_bump_refusals(token, args.repo, pull, files, len(items), comments)
+        status, message = decide(
+            head_sha, files, statuses, threads, matcher, base_date, comments, reviews=reviews, bump_refusals=bump
+        )
     except (CheckError, KeyError, ValueError) as exc:
         print(f"oracle-review: error: {exc}", file=sys.stderr)
         return ERROR

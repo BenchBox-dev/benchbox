@@ -1,0 +1,125 @@
+name: Omp pin bump
+
+on:
+  schedule:
+    - cron: "23 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: omp-pin-bump
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    name: Prepare an omp pin bump
+    if: github.repository == 'BenchBox-dev/BenchBox'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    outputs:
+      state: ${{ steps.prepare.outputs.state }}
+      version: ${{ steps.prepare.outputs.version }}
+
+    steps:
+      - name: Checkout develop
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: develop
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Check the latest stable omp build against the pin
+        id: prepare
+        env:
+          OUT_DIR: ${{ runner.temp }}/omp-bump
+        run: >-
+          uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 --
+          python -m _project.scripts.oracle_reviewers.omp_bump prepare
+          --policy .github/oracle-reviewers.yml --out-dir "$OUT_DIR"
+
+      - name: Report the candidate
+        if: always() && steps.prepare.outputs.state != ''
+        env:
+          OUT_DIR: ${{ runner.temp }}/omp-bump
+          STATE: ${{ steps.prepare.outputs.state }}
+          VERSION: ${{ steps.prepare.outputs.version }}
+        run: |
+          {
+            echo "## omp ${VERSION}: ${STATE}"
+            echo
+            echo '```'
+            cat "$OUT_DIR/detail.txt"
+            echo '```'
+            if [ -f "$OUT_DIR/pr-body.md" ]; then
+              cat "$OUT_DIR/pr-body.md"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Hand the prepared bump to the pull request job
+        if: steps.prepare.outputs.state == 'ready'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: omp-bump
+          path: |
+            ${{ runner.temp }}/omp-bump/policy.yml
+            ${{ runner.temp }}/omp-bump/pr-body.md
+          if-no-files-found: error
+
+  open-pr:
+    name: Open the omp pin bump pull request
+    needs: bump
+    if: github.repository == 'BenchBox-dev/BenchBox' && needs.bump.outputs.state == 'ready'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout develop
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: develop
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Fetch the prepared bump
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: omp-bump
+          path: ${{ runner.temp }}/omp-bump
+
+      - name: Open the bump pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OUT_DIR: ${{ runner.temp }}/omp-bump
+          VERSION: ${{ needs.bump.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][A-Za-z0-9._-]+)?$ ]]; then
+            echo "refusing a version that is not a release number: ${VERSION}" >&2
+            exit 1
+          fi
+          BRANCH="chore/omp-pin-${VERSION}"
+          if [ -n "$(gh pr list --head "$BRANCH" --state all --json number -q '.[].number')" ]; then
+            echo "A pull request for ${BRANCH} already exists; nothing to open."
+            exit 0
+          fi
+          git config user.name "benchbox-bot"
+          git config user.email "bot@benchbox.dev"
+          git checkout -b "$BRANCH"
+          cp "$OUT_DIR/policy.yml" .github/oracle-reviewers.yml
+          git add .github/oracle-reviewers.yml
+          git commit -m "chore(oracle): pin omp ${VERSION}"
+          AUTH="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${AUTH}" push origin "$BRANCH"
+          gh pr create --title "chore(oracle): pin omp ${VERSION}" \
+            --body-file "$OUT_DIR/pr-body.md" --base develop --head "$BRANCH"
