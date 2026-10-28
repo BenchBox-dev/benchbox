@@ -3,7 +3,7 @@
     "Each listed job has a recorded disposition (covered by, ported to, or dropped because) in the dlv2-70 parity table.",
     "Every job marked for porting is ported or has its own item in dlv2-70's needs."
   ],
-  "context": "Found in the 2026-10-09 tracker review. Related: cross-surface-mutation-sensitivity-not-enforced-20261009, nightly-v2-throughput-uat-port-20261009, ruleset-drift-check-home-20261009.",
+  "context": "2026-10-28 done: every nightly.yml and cross-platform-validation.yml job has a recorded keep/port/drop disposition with trigger, failure semantics and timeout in docs/internal/nightly-t3.md (PR #3627, merged as ac41876bc). Ported: security, cross-engine, integration smoke, integration (core, table-formats), parity, sqlglot-generator, QuestDB mirror. Kept: green-unmerged sweep as green-unmerged-sweep.yml. Dropped with reasons: slow-tier observation, DuckDB preview, PySpark (owner decision 2026-10-27), plus jobs covered by other lanes. Post-merge dispatch 40626103333: all seven new domains passed.",
   "description": "dlv2-70 requires job-level parity for each deleted workflow, but only liveness, Windows unit tests, throughput-uat and ruleset drift have port items. These nightly.yml jobs have no nightly-v2 equivalent and no item: duckdb-preview, slow-tier-observation (the only place the full cross-surface mutation-sensitivity tests run), sqlglot-generator, pyspark-tests, check-test-patterns, integration-smoke (including the Windows leg), integration-table-formats, postgres-integration, test-package, security, parity, green-unmerged-sweep, and the Windows Python 3.11 test leg. website-audit is deleted by site-split-50.\n\nFor each job, record either the nightly-v2 (or ci.yml/trunk.yml) job that now covers it, a port, or a dated reason to drop it.",
   "sessions": [
     {
@@ -21,6 +21,14 @@
       "generation": "c10ce095f4ce473896014f8afcbb62a4",
       "op": "take",
       "op_id": "94e4aea5cbe34f918d85a8df60a828d9",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-28T04:09:09Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "74f69a4b43d24a83ad242f1d0a2b083c",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
