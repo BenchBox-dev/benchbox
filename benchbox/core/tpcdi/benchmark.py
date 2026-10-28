@@ -306,12 +306,6 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
 
                 return build_clickhouse_metric_query(query_id, params)
 
-            if query_id == "AQ6":
-                query_params = self.query_manager._generate_default_params(query_id)
-                if params:
-                    query_params.update(params)
-                return variant_sql.format(**query_params)
-
             if (
                 platform in ("bigquery", "clickhouse", "databricks", "snowflake")
                 and query_id == "EQ7"
