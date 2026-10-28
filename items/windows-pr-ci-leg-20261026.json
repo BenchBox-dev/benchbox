@@ -4,7 +4,7 @@
     "The windows-tests job is shown selecting the changed test files of its own PR",
     "Residual risk recorded: medium-only tests are not covered; the nightly remains the backstop"
   ],
-  "context": "2026-10-27 PR #3548 head a4299a353: both oracle findings (D1 keep PR-reached develop-changed tests; D2 empty required target file fails with ::error::) fixed, threads replied and resolved, windows-tests job passed. Blockers external: (1) oracle-verdict pending - every reviewer attempt invalid: \"prior defect concedes must be a boolean\" (oracle dispute handling, the High on protocol.py from #3566 review); (2) develop red - trunk run 40510131953 at #3581 (bff274b59): tests/unit/core/test_translation_source_dialects.py::test_no_benchmark_bypasses_translation_without_an_allowlisted_reason timed out at 60s (medium shard 3, 1 failed 3538 passed); pr-arm refuses until develop is green or make trunk-revert PR=3581 is decided by the owner. Not armed.",
+  "context": "Done: PR 3548 merged (3aa5ca8ea). Its final head 0d07f1b63 ran CI run 40557344030 to success, including windows-tests (windows-latest, py3.12), which selected 12 test files (the PR's changed files plus coverage-selected tests). Residual risk: tests marked medium only are not run on the Windows PR leg; the nightly Windows tier remains the backstop.\n\n2026-10-27 PR #3548 head a4299a353: both oracle findings (D1 keep PR-reached develop-changed tests; D2 empty required target file fails with ::error::) fixed, threads replied and resolved, windows-tests job passed. Blockers external: (1) oracle-verdict pending - every reviewer attempt invalid: \"prior defect concedes must be a boolean\" (oracle dispute handling, the High on protocol.py from #3566 review); (2) develop red - trunk run 40510131953 at #3581 (bff274b59): tests/unit/core/test_translation_source_dialects.py::test_no_benchmark_bypasses_translation_without_an_allowlisted_reason timed out at 60s (medium shard 3, 1 failed 3538 passed); pr-arm refuses until develop is green or make trunk-revert PR=3581 is decided by the owner. Not armed.",
   "description": "PR #3548 (branch ci/windows-pr-leg, head 535ebdfd0, auto-merge armed) adds a windows-tests PR job running coverage-selected tests plus changed test files on windows-latest py3.12, gated through the required core check. It also completes #3543 (conftest ignores test_local_review.py on Windows; guard tests pass USERPROFILE/HOMEDRIVE/HOMEPATH). Its first run caught 4 real Windows failures plus a collection error. Guardrails (all items): primary clone read-only; work only in a linked worktree from origin/develop (make worktree-create + make agent-write-preflight); never git add -A or git stash; identity Joe Harris, no agent attribution; never bypass hooks by any route; no code comments/docstrings (make comment-policy-check clean); encoding=\"utf-8\" on file/subprocess text I/O; uv run -- for Python; no CHANGELOG entries; never weaken or delete tests or gates; TEST LOCK: never set BENCHBOX_SKIP_TEST_LOCK or BENCHBOX_TEST_LOCK_DIR, never run make test-unlock, xdist only under the shared lock; for make pr-open put ~/.cache/omp-18.12.1/bin first on PATH; make pr-preflight once, make pr-open, make pr-arm; never post oracle comments or rerun the oracle; commit/PR text for a reader who never saw this session (no item ids or plan labels).",
   "sessions": [
     {
@@ -22,6 +22,14 @@
       "op": "update",
       "op_id": "42b5bfaadcd940c692b4000b37f20c9e",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-28T18:21:27Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8b17be6025f54a2ca59f0f118aa8941e",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
 }
