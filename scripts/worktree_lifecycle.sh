@@ -5,7 +5,7 @@ script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
 operation=${1:-}
 
 usage() {
-  echo "Usage: $0 create|remove|release|finish" >&2
+  echo "Usage: $0 create|remove|release|session-release|finish" >&2
   exit 1
 }
 
@@ -267,6 +267,19 @@ release_worktree() {
   $py_runner "$script_dir/worktree_lifecycle_metadata.py" release --worktree-path "$target"
 }
 
+session_release_worktree() {
+  worktree_input=${WORKTREE_PATH:-.}
+  target=$(canonical_path "$worktree_input")
+  [ -d "$target" ] || die "Refusing: worktree directory does not exist: $target"
+
+  force_args=""
+  if [ "${BENCHBOX_WORKTREE_TAKEOVER:-}" = "1" ]; then
+    force_args="--force"
+  fi
+
+  python3 "$script_dir/worktree_lifecycle_metadata.py" session-release --worktree-path "$target" $force_args
+}
+
 finish_worktree() {
   worktree_input=${WORKTREE_PATH:-}
   [ -n "$worktree_input" ] || die "Usage: make worktree-finish WORKTREE_PATH=<path> EXPECTED_HEAD_OID=<oid>"
@@ -303,6 +316,7 @@ case "$operation" in
   create) create_worktree ;;
   remove) remove_worktree ;;
   release) release_worktree ;;
+  session-release) session_release_worktree ;;
   finish) finish_worktree ;;
   *) usage ;;
 esac

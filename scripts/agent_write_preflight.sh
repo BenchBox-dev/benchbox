@@ -197,6 +197,15 @@ EOF
   fi
 done
 
+if [ "$ephemeral" != "yes" ] && [ "$allow_main" != "1" ]; then
+  claim_args=
+  [ "${BENCHBOX_WORKTREE_TAKEOVER:-}" = "1" ] && claim_args=--takeover
+  python3 "$(dirname "$0")/worktree_lifecycle_metadata.py" claim --worktree-path "$top_abs" $claim_args || {
+    echo "Refusing BenchBox write preflight: worktree ownership check failed." >&2
+    exit 1
+  }
+fi
+
 if [ "$ephemeral" = "yes" ]; then
   printf 'BenchBox write preflight OK (ephemeral clone): %s\n' "$top_abs"
 else
