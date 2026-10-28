@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "Each of the 17 entries is fixed or has a recorded reason to stay; a sampled live check of edit links runs periodically or the exclusion is accepted in writing."
+  ],
+  "description": "The nightly published-documentation crawl accepts 17 failures listed in inventory/known-broken-links.json (662,876 links checked on 2026-10-27). It also excludes the generated edit links (about 1,700 distinct GitHub URLs) because they trip GitHub's rate limit; their derivation has unit tests but the live targets are not crawled.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-28T01:09:33Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9caf4912897c47509e2579a5ac7b22b7",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    }
+  ]
+}
