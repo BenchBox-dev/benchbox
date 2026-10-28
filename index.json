@@ -16951,10 +16951,15 @@
       "title": "Refresh oracle-gate when a pull request is armed, so resolving oracle threads before make pr-arm does not leave a stale gate failure until the sweep"
     },
     "oracle-review-body-length-cap-20261022": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-29T03:44:02Z",
+        "generation": "99a2ee390ab6433a84e8d81894014849",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Cap the oracle review body so an oversized result cannot lose the review"
     },
     "oracle-review-cancel-race-20261016": {
