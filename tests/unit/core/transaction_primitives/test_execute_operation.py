@@ -530,25 +530,29 @@ def sqlite_staged(tmp_path: Path):
 
 
 @pytest.mark.parametrize(
-    "operation_id",
+    ("operation_id", "expected_first_value"),
     [
-        "transaction_commit_small",
-        "transaction_commit_medium",
-        "transaction_commit_large",
-        "transaction_rollback_medium",
-        "transaction_savepoint_deep_nesting",
-        "transaction_isolation_serializable",
-        "transaction_truncate_in_transaction",
-        "transaction_with_cte",
+        ("transaction_commit_small", 9100001),
+        ("transaction_commit_medium", 100),
+        ("transaction_commit_large", 1000),
+        ("transaction_rollback_medium", 0),
+        ("transaction_savepoint_deep_nesting", 4),
+        ("transaction_isolation_serializable", 2),
+        ("transaction_truncate_in_transaction", 1),
+        ("transaction_with_cte", 10),
     ],
 )
-def test_sqlite_runs_multi_statement_operations_repeatably(sqlite_staged, operation_id: str) -> None:
+def test_sqlite_runs_multi_statement_operations_repeatably(
+    sqlite_staged, operation_id: str, expected_first_value: int
+) -> None:
     bench, conn = sqlite_staged
     for _ in range(2):
         result = bench.execute_operation(operation_id, conn, platform_key="sqlite", platform_name="sqlite")
         assert result.status is None, result.error
         assert result.success
         assert result.cleanup_success
+        assert result.validation_results[0]["sample"][0][0] == expected_first_value
+    assert conn.execute("SELECT COUNT(*) FROM txn_orders WHERE o_orderkey >= 9000000").fetchone() == (0,)
 
 
 @pytest.mark.parametrize(
