@@ -991,7 +991,8 @@ e4401a0ed it found 422 bundles with queries, 64 of them in subdirectories.
 
 ### Wheel consistency
 
-The 58 bundles ran on SQLGlot fork 30.24.0.17; later reruns use 30.25.0.1 and earlier
+56 of the 58 bundles ran on SQLGlot fork 30.24.0.17; the two SQLite Read Primitives bundles
+were rerun on 30.25.0.2 (see the section below). Later reruns use 30.25.0.1 or newer and earlier
 valid bundles are kept. The #3587 comparison translated 72,483 queries across both
 wheels and changed 9 outputs, all with a DuckDB target, none of which is a target of
 these bundles.
@@ -1100,15 +1101,15 @@ captures pinned one parameter seed and are not compared with the bundle row coun
 | coffeeshop | 0.01 | 11 | 0 | 0 | 0 | 0 | 0 |
 | coffeeshop | 0.1 | 11 | 0 | 0 | 0 | 0 | 0 |
 | coffeeshop | 1 | 11 | 0 | 0 | 0 | 0 | 0 |
-| read_primitives | 0.01 | 88 | 0 | 16 | 10 | 38 | 0 |
-| read_primitives | 0.1 | 83 | 0 | 21 | 10 | 38 | 0 |
+| read_primitives | 0.01 | 92 | 0 | 16 | 6 | 38 | 0 |
+| read_primitives | 0.1 | 85 | 0 | 21 | 8 | 38 | 0 |
 | tpch | 0.01 | 21 | 0 | 1 | 0 | 0 | 0 |
 | tpch | 0.1 | 22 | 0 | 0 | 0 | 0 | 0 |
 | tpch | 1 | 21 | 0 | 0 | 1 | 0 | 0 |
 | tpch_skew | 0.01 | 19 | 0 | 3 | 0 | 0 | 0 |
 | tpch_skew | 0.1 | 19 | 0 | 2 | 1 | 0 | 0 |
 | tpch_skew | 1 | 19 | 0 | 2 | 1 | 0 | 0 |
-| **total (12 cells)** | | **352** | **0** | **53** | **31** | **76** | **0** |
+| **total (12 cells)** | | **358** | **0** | **53** | **25** | **76** | **0** |
 
 Counts reconcile to the 58 bundles: 26 ClickHouse Local, 20 DataFusion, 12 SQLite.
 
@@ -1131,7 +1132,9 @@ Real defects found (the bundles hold wrong values or rows for these queries):
   DataFusion ClickBench Q6 returns 17 where DuckDB and SQLite return 18 (loader null
   marker); DataFusion `pivot_basic` returns 2,100 rows against 2.
 - SQLite Read Primitives `pivot_basic` (PIVOT dropped), `unpivot_basic` (UNPIVOT dropped)
-  and `orderby_all_desc` (ascending) succeed with wrong results in both bundles.
+  and `orderby_all_desc` (no ordering) succeeded with wrong results in the original two
+  bundles. They were replaced on fork 30.25.0.2 (see the section below); the SQLite table
+  above holds the replacement counts.
 
 Accepted as engine semantics or ties:
 
@@ -1155,4 +1158,56 @@ DuckDB reference; SQLite TPC-H Q11 and TPC-H skew Q9 and Q11 differ by one row o
 
 Cells to rerun after the engine fixes merge: ClickHouse Local Coffeeshop (3) and TPC-DI (3),
 ClickHouse Local Read Primitives (2) and any ClickHouse cell using `map_access`; DataFusion
-TPC-DI (3), ClickBench SF1 and Read Primitives (2); SQLite Read Primitives (2).
+TPC-DI (3), ClickBench SF1 and Read Primitives (2).
+
+### SQLite Read Primitives replacement on fork 30.25.0.2 (2026-10-28)
+
+The two SQLite Read Primitives bundles of this set (`5d5687fd` at SF0.01 and `82ce61a4` at SF0.1,
+both on fork 30.24.0.17) held wrong results marked SUCCESS: `pivot_basic` returned 2,100 and
+22,576 rows against DuckDB's 2 (the generator wrote the query without its PIVOT),
+`unpivot_basic` returned 100 rows of literal column names against 200 (UNPIVOT dropped) and
+`orderby_all_desc` ran without its ordering (the Netezza source reads `ORDER BY ALL DESC` as a
+column named `ALL`, which SQLite received as the constant `"ALL"`). DataFusion `pivot_basic` had the
+same cause. Fork BenchBox-dev/benchbox-sqlglot#78 (release 30.25.0.2, adopted in BenchBox#3649)
+lowers a single-aggregate PIVOT to conditional aggregation and a plain-column UNPIVOT to a
+`UNION ALL`, expands `ORDER BY ALL` to ordinal keys with the query's direction, and raises an
+unsupported error for any other pivot so the query is recorded as a failure.
+
+Replacements, run through the project CLI exactly as the earlier SQLite reruns (`benchbox run
+--platform sqlite --benchmark read_primitives --scale <sf> --phases generate,load,power --tuning
+notuning --result-source internal --non-interactive`, wheel 30.25.0.2, same host, the
+read-primitives tables loaded in the shared SQLite database already present) and staged with the
+same empty-salt anonymization (database pseudonym `database_5d7b725135a6` is unchanged):
+
+| scale | replaced bundle | replacement bundle |
+|---|---|---|
+| 0.01 | `5d5687fd` | `fc04d558` |
+| 0.1 | `82ce61a4` | `8edf1667` |
+
+The replaced bundles are removed from `results-data/bundles`, the ledger seed and the corpus
+inventory; their ids stay in this note as the superseded history. The run reused the loaded SQLite
+database, so the replacement bundles record `data_loading` and `schema_creation` phases of 0 ms
+and carry no `data_generation_hash`; query results and per-query timings come from the same
+tables. Both pass `scripts/validate_submission.py --require-manifest --trust-internal-source
+--allow-partial-validation` with zero errors and the corpus validation is unchanged.
+
+Capture comparison against DuckDB (capture run on 30.25.0.2, `compare.py` row comparison, values within
+1e-6 relative):
+
+| query | DuckDB rows | SQLite before (SF0.01 / SF0.1) | SQLite after (SF0.01 / SF0.1) |
+|---|---|---|---|
+| `pivot_basic` | 2 | 2,100 / 22,576 (wrong) | 2 / 2 (pass) |
+| `unpivot_basic` | 200 | 100 / 100 (wrong) | 200 / 200 (pass) |
+| `orderby_all_desc` | 100 | 100 unordered (wrong) | 100 / 100 (pass) |
+| `orderby_all_simple` | 25 | 25 unordered | 25 / 25 (pass) |
+
+DataFusion `pivot_basic` on 30.25.0.2 returns 2 rows at both scales and matches DuckDB
+(the DataFusion bundles still hold the earlier result and are not replaced here).
+
+Per-cell adjudication after the rerun (passed / unproven / bundle-failed / discrepancy):
+SF0.01 92 / 16 / 38 / 6 (was 88 / 16 / 38 / 10), SF0.1 85 / 21 / 38 / 8 (was 83 / 21 / 38 / 10).
+The only other status change is `topn_aggregate_2columns`, which moves between passed and
+discrepancy at the two scales: it ties at the LIMIT cutoff and its SQL is byte-identical on both
+wheels. The 14,060-translation comparison of 30.25.0.1 and 30.25.0.2 over 370 shipped queries and
+38 targets changed eight outputs, all `pivot_basic`, `unpivot_basic`, `orderby_all_simple` and
+`orderby_all_desc` on SQLite and DataFusion.

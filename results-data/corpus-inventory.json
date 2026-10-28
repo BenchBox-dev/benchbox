@@ -1,6 +1,6 @@
 {
   "schema_version": "2.3",
-  "generated_at": "2026-10-28T02:37:24.060495+00:00",
+  "generated_at": "2026-10-28T13:36:02.336711+00:00",
   "bundles": [
     {
       "file": "amplab_sf01_bigquery_sql_20260920_000055_35490af7.json",
@@ -2761,18 +2761,18 @@
       "bundle_sha256": "f3b851859ce36cd4caed15d863fafde5c9cb38e1d50ff74f39a5bbd508d3ee2d"
     },
     {
-      "file": "read_primitives_sf001_sqlite_sql_20261026_114753_5d5687fd.json",
+      "file": "read_primitives_sf001_sqlite_sql_20261028_092829_fc04d558.json",
       "benchmark": "read_primitives",
       "benchmark_name": "Read Primitives",
       "platform": "SQLite",
       "platform_version": "3.53.1",
       "scale_factor": 0.01,
       "phase": "power",
-      "timestamp": "2026-10-26T11:47:53.599077",
+      "timestamp": "2026-10-28T09:28:29.178066",
       "query_count": 456,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "65c924e0c1fa49c5121c6a89478c8ada128afac9ff9aca5cee72b79c5eafc6c2"
+      "bundle_sha256": "726e1ac04a75d94e1508dd9eae5199b94e65e8a844468f92fbae5ed9f3b05d69"
     },
     {
       "file": "read_primitives_sf01_sqlite_sql_20260826_115513_688f04bb.json",
@@ -2789,18 +2789,18 @@
       "bundle_sha256": "dba5cdddd75907b67f43d3823c241c716b680047d7a45be457e8cb60934b9e10"
     },
     {
-      "file": "read_primitives_sf01_sqlite_sql_20261026_125726_82ce61a4.json",
+      "file": "read_primitives_sf01_sqlite_sql_20261028_092953_8edf1667.json",
       "benchmark": "read_primitives",
       "benchmark_name": "Read Primitives",
       "platform": "SQLite",
       "platform_version": "3.53.1",
       "scale_factor": 0.1,
       "phase": "power",
-      "timestamp": "2026-10-26T12:57:25.642542",
-      "query_count": 152,
+      "timestamp": "2026-10-28T09:29:52.273331",
+      "query_count": 456,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "802558a6cae1fd17fa8798a98d721b00f632151154be2e72a9af389dc2226f06"
+      "bundle_sha256": "deda5ef33b51ba850425895fec5ab58acd1ddb8697ce7e30c21808f1293bf2a5"
     },
     {
       "file": "read_primitives_sf001_snowflake_sql_20261001_103832_16df8896.json",
