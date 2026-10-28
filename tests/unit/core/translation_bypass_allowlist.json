@@ -373,6 +373,23 @@
         "asof_join_basic",
         "json_aggregates",
         "struct_access"
+      ],
+      "sqlite": [
+        "groupby_all_complex",
+        "groupby_all_simple",
+        "intrinsic_to_date",
+        "json_aggregates",
+        "max_by_complex",
+        "max_by_simple",
+        "max_by_with_ties",
+        "min_by_complex",
+        "min_by_simple",
+        "min_by_with_ties",
+        "olap_cube_analysis",
+        "statistical_correlation",
+        "statistical_percentiles",
+        "timeseries_trend_analysis",
+        "window_moving_frame"
       ]
     }
   },
