@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Reproduce the difference on chDB or ClickHouse Server and name the root cause location (fork translation, a BenchBox variant, or ClickHouse setting).",
+    "Fix so a missing key yields NULL on ClickHouse (e.g. an adapter/variant using a presence check) with an execution-based test against DuckDB, or record why no exact equivalent exists and make the query fail loudly or be excluded.",
+    "Affected published bundles are identified by id and flagged; replacement reruns are scheduled in the rerun item."
+  ],
+  "description": "Adjudication (2026-10-28) found the read_primitives map_access query on ClickHouse returns 0 for a missing map key where DuckDB returns NULL, so a missing key becomes a plausible value. The owner decided to treat this as a defect (not accepted engine semantics). Published ClickHouse read_primitives bundles that ran map_access are being flagged under defective-variant-or-loader-wrong-result by the flagging PR.",
+  "links": [
+    "benchbox/sql_compat",
+    "results-data/CORPUS_NOTES.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729",
+      "at": "2026-10-28T11:52:07Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "75a3a6404a454cd18c3b2714ef8b858b",
+      "session_id": "dcc6105a05964c618dfd87771db72de4"
+    }
+  ]
+}
