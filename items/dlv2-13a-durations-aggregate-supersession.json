@@ -5,6 +5,7 @@
     "Quarantine ownership/expiry enforcement and the fast-baseline refresh workflow keep working",
     "Existing duration tests still pass; no gate is weakened without this recorded decision"
   ],
+  "context": "2026-10-28 done: PR #3625 merged as 64a1fd460. Per-test 0.5 s path removed (duration_policy loaders, duration_exempt marker, empty test_durations.json fixture); aggregate fast-duration gate documented in docs/internal/nightly-t3.md; ledger and ADR record the supersession via PR #3623.",
   "description": "dlv2-13 was closed with a 0.5 s per-test budget, but tests/fixtures/test_durations.json is an empty bootstrap file (\"tests\": {}) so tests/duration_policy.py and tests/conftest.py enforce nothing per test, and nightly writes a different artifact. Owner decision 2026-10-27: supersede the per-test requirement with the calibrated aggregate fast-duration gate (fast-baseline refresh and verify-fast-duration verdict). Guardrails: primary clone /Users/joe/Developer/BenchBox is read-only; work only in a linked worktree from origin/develop (make worktree-create + make agent-write-preflight); never git add -A; identity Joe Harris, no agent attribution; no code comments/docstrings (make comment-policy-check clean); encoding=\"utf-8\"; uv run -- for Python; never bypass hooks; never set BENCHBOX_SKIP_TEST_LOCK or BENCHBOX_TEST_LOCK_DIR; make pr-open needs PATH=\"$HOME/.cache/omp-18.12.1/bin:$PATH\" while installed omp differs from the CI pin.",
   "sessions": [
     {
@@ -22,6 +23,14 @@
       "generation": "d47c2e6cf96c44908f1fec866c485040",
       "op": "take",
       "op_id": "be4692d1e7664ed2b0174be805113651",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-28T03:37:28Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "98b00414aaa74599bdc42f995f850d61",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
