@@ -43,6 +43,8 @@ def worktree(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def live_process():
+    if sys.platform == "win32":
+        pytest.skip("session ownership is explicitly not enforced on Windows")
     proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
     yield proc
     proc.kill()
