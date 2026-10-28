@@ -180,6 +180,15 @@
       "op": "update",
       "op_id": "87319418998543cf945afce272c35c20",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-28T17:22:23Z",
+      "client": "omp-coding-agent",
+      "generation": "7e4d9b541ee048f0a4e07ae93792dc98",
+      "op": "finish",
+      "op_id": "cdf72fd23663468d9b8ff733097c4610",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
 }
