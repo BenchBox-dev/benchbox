@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Affected bundles identified; sidecar annotation via annotate_execution_class.py",
+    "New runs record container class for Docker-hosted engines",
+    "Validator/pipeline parity, tests, labels with host OS",
+    "Cohort-floor before/after in PR body; site notes",
+    "Oracle SHIP, CI green, merged"
+  ],
+  "description": "Follow-up to #3618 (owner: yes). Server engines (Doris, StarRocks, CedarDB, ClickHouse Server, other container-only engines) run in Docker on a Mac are driven from a native macOS client and record native. Extend detection/annotation so these are classified container with host OS in the label; existing identities unchanged unless annotated.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729",
+      "at": "2026-10-28T02:23:47Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1e92dbd33787422fb98f48782505e0d8",
+      "session_id": "dcc6105a05964c618dfd87771db72de4"
+    }
+  ]
+}
