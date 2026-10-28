@@ -17,6 +17,7 @@ import urllib.request
 import uuid
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -54,6 +55,7 @@ PLACEHOLDER = re.compile(r"<.*>")
 REMOTE_SLUG = re.compile(r"github\.com[:/]([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?/?$")
 DEFAULT_REPOSITORY = "BenchBox-dev/BenchBox"
 CACHE_SCHEMA = 1
+CAPTURE_DIR = "captures"
 LOCK_WAIT_SECONDS = 3600.0
 LOCK_POLL_SECONDS = 1.0
 REACHABILITY_SECONDS = 10
@@ -483,6 +485,20 @@ def _store(path: Path, result: dict[str, Any], secrets: tuple[str, ...]) -> None
     os.replace(scratch, path)
 
 
+def _keep_captures(source: Path, head: str, secrets: tuple[str, ...]) -> None:
+    files = sorted(source.glob("capture-*.json")) if source.is_dir() else []
+    if not files:
+        return
+    target = state_dir() / CAPTURE_DIR / f"{datetime.now(UTC).strftime('%Y%m%dT%H%M%S%fZ')}-{head[:12]}"
+    target.mkdir(parents=True, exist_ok=True)
+    for path in files:
+        try:
+            redaction_check.sanitize(path, secrets)
+        except redaction_check.Unredactable:
+            continue
+        shutil.copyfile(path, target / path.name)
+
+
 def _stage_workspace(root: Path, head: str, workspace: Path) -> None:
     _git(root, "clone", "--quiet", "--no-checkout", "--shared", str(root), str(workspace))
     _git(workspace, "checkout", "--quiet", "--detach", head)
@@ -654,6 +670,7 @@ def _fresh_review(
                 redaction_check.sanitize(path, ())
             except redaction_check.Unredactable as exc:
                 raise Unavailable(str(exc)) from exc
+        _keep_captures(work / "attempts" / cli.CAPTURE_DIR, plan["head_sha"], reporter.secrets)
         return _result(plan, classification, work)
 
 

@@ -61,6 +61,7 @@ PLAN_FILE = "plan.json"
 CLASSIFICATION_FILE = "classification.json"
 DIFF_FILE = "diff.patch"
 DIFF_NOT_STAGED_DETAIL = "the full pull request diff could not be staged in the workspace"
+CAPTURE_DIR = "captures"
 LEAK_DETAIL = "the reviewer's exit could not be confirmed clean"
 
 
@@ -938,6 +939,18 @@ def command_review(args: argparse.Namespace) -> int:
         diagnostic=outcome.diagnostic,
     )
     _write_json(Path(args.out_dir) / attempt_files.artifact_name(args.slot), artifact)
+    if outcome.capture is not None:
+        _write_json(
+            Path(args.out_dir) / CAPTURE_DIR / f"capture-{args.slot}.json",
+            {
+                "run_id": os.environ["GITHUB_RUN_ID"],
+                "pr": plan["pr"],
+                "head_sha": plan["head_sha"],
+                "slot": args.slot,
+                "absence": artifact["absence"],
+                **outcome.capture,
+            },
+        )
     state = "verdict" if outcome.missing is None else f"absent ({outcome.missing.kind}: {outcome.missing.detail})"
     _summary(f"slot {args.slot}: {reviewer.name} {state}")
     return 0

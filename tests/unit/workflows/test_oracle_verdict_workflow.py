@@ -61,6 +61,7 @@ STEP_ORDER = [
     "Post the findings review",
     "Upload the retry state",
     *[f"Upload attempt {slot}" for slot in range(1, POLICY.max_attempts + 1)],
+    "Upload the captured reviewer event streams",
     DISPATCH_STEP,
 ]
 LOOP_STEP = "Run the attempt loop"
@@ -581,6 +582,17 @@ def test_the_attempt_loop_and_redaction_steps_have_the_ids_the_uploads_read() ->
     assert _step(LOOP_STEP)["id"] == "loop"
     assert _step(REDACT_STEP)["id"] == "redact"
     assert _step("Validate this run's attempts and decide")["id"] == "finalize"
+
+
+def test_the_capture_upload_waits_for_the_redaction_step_and_keeps_its_name_and_retention() -> None:
+    upload = _step("Upload the captured reviewer event streams")
+    assert upload["with"]["name"] == "oracle-verdict-capture"
+    assert upload["with"]["path"] == "${{ runner.temp }}/oracle-attempts/captures/"
+    assert upload["with"]["retention-days"] == 30
+    assert _names().index(upload["name"]) > _names().index(REDACT_STEP)
+    assert upload["if"].startswith("${{ always()")
+    assert "steps.redact.outcome == 'success'" in upload["if"]
+    assert "steps.loop.outputs.attempts >= 1" in upload["if"]
 
 
 def test_the_post_steps_mint_the_app_token_and_tolerate_missing_secrets() -> None:

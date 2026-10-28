@@ -347,6 +347,15 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: Upload the captured reviewer event streams
+        if: ${{ always() && steps.redact.outcome == 'success' && steps.loop.outputs.attempts >= 1 }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: oracle-verdict-capture
+          path: ${{ runner.temp }}/oracle-attempts/captures/
+          if-no-files-found: ignore
+          retention-days: 30
+
       - name: Dispatch the gate for the reviewed head
         if: steps.plan.outputs.post == 'true' && env.HAS_APP == 'true' && steps.guard.outputs.skip != 'true'
         env:
