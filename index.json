@@ -9156,15 +9156,10 @@
       "title": "Make explorer/results.duckdb build byte-identical from identical bundle inputs"
     },
     "docs-mig-followup-guards-fix-stale-compat-targets-20261028": {
-      "claim": {
-        "expires_at": "2026-10-29T12:37:34Z",
-        "generation": "be1733698f144170b03ae3c843dc95ad",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Check docs/operations/guards-fix.md for targets removed with the compat generators"
     },
     "docs-mig-followup-published-links-inventory-and-edit-links-20261028": {
