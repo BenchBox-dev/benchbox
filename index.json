@@ -16360,10 +16360,15 @@
       "title": "Stop the oracle evidence check making attempts absent on binary and prose files"
     },
     "oracle-evidence-retry-feedback-and-required-reads-20261027": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-29T17:04:25Z",
+        "generation": "919cd6aee899410a9c45d52a39138b08",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Name the required reads in file-list briefs and retry an evidence-incomplete attempt with the missing files instead of escalating"
     },
     "oracle-external-review-findings-20261026": {
