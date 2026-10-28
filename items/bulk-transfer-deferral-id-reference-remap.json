@@ -1,4 +1,5 @@
 {
+  "context": "\n\nTracked in the todo-db tracker as bulk-transfer-deferral-id-remap (copied 2026-10-28).",
   "description": "PR #1544 excluded deferrals from the reassignable-PK allowlist because deferrals.id is referenced by value from places SQLite does not police: defer_work, promote_deferral and dismiss_deferral write it into events.detail as deferral_id, and promote_deferral embeds it in the promoted item's description as 'Promoted from deferral #N'. Reassigning it would not raise, it would silently re-point transferred audit rows at whatever deferral already held that id. Excluding it restores the loud abort, which is safe but leaves the original collision hazard open for deferrals specifically. Closing it needs a consistent remap: rewrite events.detail JSON and the interpolated description text alongside the new ids, in the same transaction.",
   "legacy": {
     "item_meta": {
@@ -30,5 +31,15 @@
         "workspace_fingerprint": null
       }
     ]
-  }
+  },
+  "sessions": [
+    {
+      "actor": "mcp:mcp:joe@joe-mac-mini.local:34ab13de9d46f28431cba0e0",
+      "at": "2026-10-28T19:53:11Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "7bb242c50c684320a6197569a07d5df6",
+      "session_id": "366df14943cf412292e43b2e230cff6f"
+    }
+  ]
 }
