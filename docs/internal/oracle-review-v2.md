@@ -718,12 +718,16 @@ nothing.
   runs counts, as a decisive result or a surfaced hold: the sweep reads the
   status's run, and a pull request that shares the head SHA with another
   ignores the other's statuses and still recovers. A status whose run cannot
-  be read counts as the pull request's own. Without the App the sweep reports the gap
+  be read counts as the pull request's own. A state or status from before the
+  pull request's latest base retarget is ignored, as the gate ignores it, so a
+  fresh review that fails before posting is recovered; a retarget history that
+  cannot be read fails that pull request's lookup. Without the App the sweep reports the gap
   instead of failing. A failure in one PR's lookup, dispatch or surfacing is
   reported, the others continue, then the job fails. If the runs listing fails
   twice or is capped, the sweep degrades: it dispatches only due retries, using
-  a bounded lookup of every non-completed run status for the in-flight check,
-  and says so in the summary. If that lookup also fails it dispatches nothing.
+  a paginated lookup of every non-completed run status for the in-flight check,
+  and says so in the summary. If that lookup fails or returns fewer runs than
+  the reported total, the in-flight state is unknown and it dispatches nothing.
   A degraded sweep lists the last 24 hours of runs to bound each due retry by
   the same two-failure stop, surfaced-failure check and daily dispatch budget as
   a full sweep, and holds the retry when even that listing fails or the

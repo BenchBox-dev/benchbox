@@ -222,3 +222,69 @@ def test_this_pull_requests_own_surfaced_hold_from_a_run_older_than_the_listing_
 
     assert sweep.code == 0, sweep.stderr
     assert _verdict_dispatches(harness) == []
+
+
+def _retarget(harness: Harness, pr: int, minutes: int) -> None:
+    harness.github.timeline[pr].append({"event": "base_ref_changed", "created_at": ago(minutes)})
+
+
+def _aged_app_status(harness: Harness, head: str, state: str, description: str, run: dict, minutes: int) -> None:
+    _app_status(harness, head, state, description, run)
+    harness.github.statuses[head][-1]["created_at"] = ago(minutes)
+    harness.github.statuses[head][-1]["updated_at"] = ago(minutes)
+
+
+def test_a_decisive_status_from_before_a_base_retarget_does_not_suppress_recovery_of_the_fresh_review(
+    harness: Harness,
+) -> None:
+    head = harness.branch("feat/retarget", {"benchbox/core/equivalence/checker.py": "x = 1\n"}, "change")
+    harness.github.open_pull(86, "feat/retarget")
+    published = harness.github.add_run(VERDICT, event="pull_request_target", pr=86, head_sha=head, title_head=head)
+    harness.github.complete_run(published, "success")
+    harness.github.age(published, 180)
+    _aged_app_status(harness, head, "success", "oracle-verdict: SHIP", published, 180)
+    _retarget(harness, 86, 120)
+    _failed_run(harness, 86, head, "pull_request_target", 40, "Run the attempt loop")
+
+    sweep = harness.sweep()
+
+    assert sweep.code == 0, sweep.stderr
+    assert [item["inputs"] for item in _verdict_dispatches(harness)] == [
+        {"pr": "86", "head": head, "reason": "stateless-retry"}
+    ]
+
+
+def test_a_decisive_status_from_after_a_base_retarget_still_suppresses_recovery(harness: Harness) -> None:
+    head = harness.branch("feat/retarget-kept", {"benchbox/core/equivalence/checker.py": "x = 1\n"}, "change")
+    harness.github.open_pull(87, "feat/retarget-kept")
+    _retarget(harness, 87, 180)
+    published = harness.github.add_run(VERDICT, event="pull_request_target", pr=87, head_sha=head, title_head=head)
+    harness.github.complete_run(published, "success")
+    _aged_app_status(harness, head, "success", "oracle-verdict: SHIP", published, 120)
+    _failed_run(harness, 87, head, "pull_request_target", 40, "Run the attempt loop")
+
+    sweep = harness.sweep()
+
+    assert sweep.code == 0, sweep.stderr
+    assert _verdict_dispatches(harness) == []
+
+
+def test_a_surfaced_hold_from_before_a_base_retarget_does_not_suppress_recovery_of_the_fresh_review(
+    harness: Harness,
+) -> None:
+    head = harness.branch("feat/retarget-hold", {"benchbox/core/equivalence/checker.py": "x = 1\n"}, "change")
+    harness.github.open_pull(88, "feat/retarget-hold")
+    old = harness.github.add_run(VERDICT, event="pull_request_target", pr=88, head_sha=head, title_head=head)
+    harness.github.complete_run(old, "success")
+    harness.github.age(old, 200)
+    hold = f"{SWEEP_FAILURE_SURFACE_PREFIX}Run the attempt loop. Rerun with /oracle-review or push a fix"
+    _aged_app_status(harness, head, "pending", hold, old, 180)
+    _retarget(harness, 88, 120)
+    _failed_run(harness, 88, head, "pull_request_target", 40, "Run the attempt loop")
+
+    sweep = harness.sweep()
+
+    assert sweep.code == 0, sweep.stderr
+    assert [item["inputs"] for item in _verdict_dispatches(harness)] == [
+        {"pr": "88", "head": head, "reason": "stateless-retry"}
+    ]

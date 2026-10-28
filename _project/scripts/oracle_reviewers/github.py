@@ -232,7 +232,7 @@ def _targets_develop(run: dict[str, Any], pr: int) -> bool:
     )
 
 
-def _parse_time(value: Any) -> datetime | None:
+def parse_time(value: Any) -> datetime | None:
     try:
         return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
     except ValueError:
@@ -241,7 +241,7 @@ def _parse_time(value: Any) -> datetime | None:
 
 def base_changed_at(repo: str, pr: int) -> datetime | None:
     changes = [
-        _parse_time(event.get("created_at"))
+        parse_time(event.get("created_at"))
         for event in get_paginated(f"repos/{repo}/issues/{pr}/timeline?per_page=100")
         if event.get("event") == "base_ref_changed"
     ]
@@ -265,11 +265,11 @@ def head_pulls(repo: str, run: dict[str, Any]) -> list[HeadPull]:
         raise GitHubError("the run does not name its head branch")
     found: list[HeadPull] = []
     for pull in get_paginated(f"repos/{repo}/pulls?state=all&head={owner}:{quote(branch, safe='/')}&per_page=100"):
-        created_at = _parse_time(pull.get("created_at"))
+        created_at = parse_time(pull.get("created_at"))
         if created_at is None or not isinstance(pull.get("number"), int):
             raise GitHubError("a pull request for the head branch has no readable creation time")
         changes = [
-            _parse_time(event.get("created_at"))
+            parse_time(event.get("created_at"))
             for event in get_paginated(f"repos/{repo}/issues/{pull['number']}/timeline?per_page=100")
             if event.get("event") == "base_ref_changed"
         ]
@@ -287,7 +287,7 @@ def head_pulls(repo: str, run: dict[str, Any]) -> list[HeadPull]:
 
 
 def _pull_request_target_trusted(run: dict[str, Any], pr: int, pulls: Sequence[HeadPull] | None) -> bool:
-    started = _parse_time(run.get("created_at"))
+    started = parse_time(run.get("created_at"))
     if started is None or pulls is None or not _targets_develop(run, pr):
         return False
     open_then = [pull for pull in pulls if pull.created_at <= started]
@@ -370,6 +370,17 @@ class RunListingCapped(GitHubError):
     pass
 
 
+def _complete_runs(query: str) -> list[dict[str, Any]]:
+    pages = json.loads(_gh("--paginate", "--slurp", query))
+    runs = [run for page in pages for run in page.get("workflow_runs", [])]
+    total = pages[0].get("total_count") if pages else 0
+    if not isinstance(total, int):
+        raise RunListingCapped(f"gh api {query} did not report a total run count")
+    if len(runs) < total:
+        raise RunListingCapped(f"gh api {query} returned {len(runs)} of {total} runs; narrow the window")
+    return runs
+
+
 def verdict_runs(repo: str, workflow: str, since: datetime) -> list[dict[str, Any]]:
     created = quote(f">={since.strftime('%Y-%m-%dT%H:%M:%SZ')}", safe="")
     query = f"repos/{repo}/actions/workflows/{workflow}/runs?per_page=100&created={created}"
@@ -378,14 +389,7 @@ def verdict_runs(repo: str, workflow: str, since: datetime) -> list[dict[str, An
         if attempt:
             sleep(RUN_LIST_PAUSE_SECONDS)
         try:
-            pages = json.loads(_gh("--paginate", "--slurp", query))
-            runs = [run for page in pages for run in page.get("workflow_runs", [])]
-            total = pages[0].get("total_count") if pages else 0
-            if not isinstance(total, int):
-                raise RunListingCapped(f"gh api {query} did not report a total run count")
-            if len(runs) < total:
-                raise RunListingCapped(f"gh api {query} returned {len(runs)} of {total} runs; narrow the window")
-            return runs
+            return _complete_runs(query)
         except RunListingCapped:
             raise
         except (GitHubError, json.JSONDecodeError) as exc:
@@ -401,10 +405,10 @@ def in_flight_pulls(repo: str, workflow: str) -> frozenset[int]:
     for status in IN_FLIGHT_STATUSES:
         path = f"repos/{repo}/actions/workflows/{workflow}/runs?status={status}&per_page=100"
         try:
-            listing = get_json(path)
+            runs = _complete_runs(path)
         except json.JSONDecodeError as exc:
             raise GitHubError(f"gh api {path} returned invalid JSON: {exc}") from exc
-        for run in listing.get("workflow_runs", []):
+        for run in runs:
             match = RUN_TITLE_PULL.search(run.get("display_title") or "")
             if match:
                 running.add(int(match.group(1)))
