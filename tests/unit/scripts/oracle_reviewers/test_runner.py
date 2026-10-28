@@ -1175,12 +1175,21 @@ def test_a_reply_without_its_defaulted_fields_still_records_a_verdict(
 
 
 @skip_on_windows
-def test_an_incomplete_reply_without_a_reason_is_an_invalid_absence(
+def test_an_incomplete_reply_without_a_reason_reports_the_default_incomplete_reason(
     policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     workspace, head = _workspace(tmp_path)
     reply = {key: value for key, value in VERDICT.items() if key != "incomplete_reason"}
     reply["status"] = "incomplete"
+    reply["decision"] = "NONE"
     _fake_omp(tmp_path, monkeypatch, f"print({json.dumps(_envelope(json.dumps(reply)))})")
     outcome = _review(policy, tmp_path, workspace, head)
-    assert outcome.verdict is None and outcome.missing is not None and outcome.missing.kind == "invalid"
+    assert (
+        outcome.verdict is None
+        and outcome.missing is not None
+        and (outcome.missing.kind, outcome.missing.detail)
+        == (
+            "incomplete",
+            "the reviewer reported its review incomplete",
+        )
+    )
