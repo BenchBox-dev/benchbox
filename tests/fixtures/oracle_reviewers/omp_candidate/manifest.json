@@ -66,6 +66,14 @@
         7
       ],
       "source": "captured: client and auth-gateway of the pinned omp 18.12.1 build against the loopback replay chain; the upstream provider body is a hand-built stub, every event after it is build output (read without a selector under an empty overlay, so the build summarises)"
+    },
+    "roster-breach": {
+      "file": "roster_breach.jsonl",
+      "kind": "refusal",
+      "rows": [
+        2
+      ],
+      "source": "captured: client and auth-gateway of the pinned omp 18.12.1 build against the loopback replay chain; the upstream provider turns are hand-built stubs that ask for bash, write and edit, every event after them is build output (each call is refused as an unknown tool)"
     }
   }
 }

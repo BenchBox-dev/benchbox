@@ -13,7 +13,7 @@ from typing import Any
 import yaml
 
 from . import absence, commands, evidence, omp_pin
-from .candidate_chain import AGENTS_TOKEN, CLAUDE_TOKEN, ClientRun
+from .candidate_chain import AGENTS_TOKEN, BREACH_TOOLS, CLAUDE_TOKEN, ClientRun
 from .candidate_env import quiet_env
 from .policy import OMP_THINKING_LEVELS
 from .verdict import omp_terminal_error, parse_output
@@ -26,6 +26,7 @@ UPSTREAM_PATH = "/v1/messages"
 UPSTREAM_MODEL = "claude-sonnet-5-5"
 REVIEW_REQUESTS = 5
 ELISION_FOOTER = "elided; re-read needed ranges"
+FIXTURE_PREFIX = "fixture-"
 _ENUM_LINE = re.compile(r"^\s+(?P<key>\S+) = .* \((?P<options>[^()|]+(?:\|[^()|]+)+)\)\s*$", re.MULTILINE)
 _EXPECTED = re.compile(r"Expected one of: (?P<values>[^\n]+?)\.?$", re.MULTILINE)
 _BUILTIN_TOOLS = re.compile(r"Built-in tools: (?P<tools>[^.\n]+)\.")
@@ -66,7 +67,7 @@ def _check(name: str, rows: Iterable[int], failures: Iterable[str]) -> Check:
 
 
 def covered_rows(checks: Iterable[Check]) -> frozenset[int]:
-    return frozenset(row for check in checks for row in check.rows)
+    return frozenset(row for check in checks if not check.name.startswith(FIXTURE_PREFIX) for row in check.rows)
 
 
 def uncovered_rows(checks: Iterable[Check]) -> tuple[int, ...]:
@@ -185,6 +186,8 @@ def _setting_failures(settings: Mapping[str, Any], schema: Mapping[str, Any], en
             continue
         if entry.get("type") not in _VALUE_TYPES.get(type(value), ()):
             failures.append(f"{path} is a {entry.get('type')} setting in this build, not {type(value).__name__}")
+        elif entry.get("type") == "enum" and path not in enums:
+            failures.append(f"the build lists no accepted values for the enum setting {path}")
         elif path in enums and value not in enums[path]:
             failures.append(f"{path} no longer accepts {value!r}; accepted: {', '.join(enums[path])}")
     return failures
@@ -297,6 +300,25 @@ def walk_failures(stdout: str, *, first: str, then: str) -> list[str]:
     return failures
 
 
+def tool_results(stdout: str) -> list[tuple[str, bool]]:
+    return [
+        (str(event["message"].get("toolName")), event["message"].get("isError") is True)
+        for event in _events(stdout)
+        if event.get("type") == "message_end"
+        and isinstance(event.get("message"), dict)
+        and event["message"].get("role") == "toolResult"
+    ]
+
+
+def refusal_failures(stdout: str) -> list[str]:
+    results = dict(tool_results(stdout))
+    return [
+        f"a {name} call outside the read roster was not refused"
+        for name in BREACH_TOOLS
+        if results.get(name) is not True
+    ]
+
+
 def elision_failures(stdout: str) -> list[str]:
     traced = evidence.trace("omp", stdout)
     failures = [] if traced.elisions else ["the trace records no elided read span"]
@@ -398,6 +420,13 @@ def control_checks(run: ClientRun) -> list[Check]:
     ]
 
 
+def breach_checks(run: ClientRun) -> list[Check]:
+    failures = _run_failures(run, succeeds=True) + refusal_failures(run.stdout)
+    if run.workspace_changed:
+        failures.append("a tool call outside the read roster changed the review workspace")
+    return [_check("live-write-refused", (2,), failures)]
+
+
 def quota_checks(walk: ClientRun, terminal: ClientRun) -> list[Check]:
     chain_target = "openai-codex/gpt-6.1-sol"
     return [
@@ -446,6 +475,7 @@ def live_checks(runs: Mapping[str, ClientRun]) -> list[Check]:
     return [
         *review_checks(runs["review"]),
         *control_checks(runs["control"]),
+        *breach_checks(runs["roster-breach"]),
         *quota_checks(runs["quota-walk"], runs["quota-terminal"]),
         *auth_checks(runs["upstream-auth"], runs["bad-token"]),
     ]
@@ -467,7 +497,9 @@ def fixture_checks(directory: Path) -> list[Check]:
             failures = walk_failures(stdout, first=entry["first"], then=entry["then"])
         elif kind == "elision":
             failures = elision_failures(stdout)
+        elif kind == "refusal":
+            failures = refusal_failures(stdout)
         else:
             failures = [f"unknown fixture kind {kind!r}"]
-        checks.append(_check(f"fixture-{name}", entry["rows"], failures))
+        checks.append(_check(f"{FIXTURE_PREFIX}{name}", entry["rows"], failures))
     return checks

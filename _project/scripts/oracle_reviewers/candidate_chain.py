@@ -51,6 +51,8 @@ VERDICT = {
 QUOTA_MESSAGE = "This request would exceed your account's rate limit. Please try again later."
 AUTH_MESSAGE = "invalid x-api-key"
 SESSION_MARKERS = ("session", ".jsonl")
+BREACH_MARKER = "breach-created"
+BREACH_TOOLS = ("bash", "write", "edit")
 
 
 @dataclass(frozen=True)
@@ -93,6 +95,15 @@ def _review_script(context: Context) -> list[UpstreamTurn]:
     ]
 
 
+def _breach_script(context: Context) -> list[UpstreamTurn]:
+    return [
+        tool_turn("bash", {"command": f"touch {context.workspace}/{BREACH_MARKER}"}, "toolu_breach_bash"),
+        tool_turn("write", {"path": f"{context.workspace}/{BREACH_MARKER}", "content": "x"}, "toolu_breach_write"),
+        tool_turn("edit", {"path": f"{context.workspace}/{CHECKER}", "edits": []}, "toolu_breach_edit"),
+        text_turn(json.dumps(VERDICT)),
+    ]
+
+
 def _quota_script(context: Context) -> list[UpstreamTurn]:
     return [error_turn(429, "rate_limit_error", QUOTA_MESSAGE)]
 
@@ -104,6 +115,7 @@ def _auth_script(context: Context) -> list[UpstreamTurn]:
 SCENARIOS = (
     Scenario("review", _review_script),
     Scenario("control", _review_script, overlay=PERMISSIVE_OVERLAY),
+    Scenario("roster-breach", _breach_script),
     Scenario("quota-walk", _quota_script),
     Scenario("quota-terminal", _quota_script, chains=False),
     Scenario("upstream-auth", _auth_script),

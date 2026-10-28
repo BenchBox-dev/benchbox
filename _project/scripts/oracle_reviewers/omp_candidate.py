@@ -48,15 +48,21 @@ class Report:
     builds: tuple[PlatformBuild, ...]
     transcript: str
     checks: tuple[Check, ...]
+    unverified: tuple[str, ...] = ()
+
+    @property
+    def passed(self) -> bool:
+        return all(build.ok for build in self.builds) and all(check.ok for check in self.checks)
 
     @property
     def ok(self) -> bool:
-        return all(build.ok for build in self.builds) and all(check.ok for check in self.checks)
+        return self.passed and not self.unverified
 
     def to_json(self) -> dict[str, Any]:
         return {
             "version": self.version,
             "ok": self.ok,
+            "unverified_platforms": list(self.unverified),
             "version_transcript": self.transcript,
             "builds": [
                 {"platform": b.target, "url": b.url, "sha256": b.actual, "pinned_sha256": b.expected, "bytes": b.size}
@@ -81,7 +87,9 @@ class Report:
         lines.extend(
             f"  recorded: row {row} {CONTRACT_ROWS[row]}: {reason}" for row, reason in RECORDED_REASONS.items()
         )
-        lines.append("result: " + ("green" if self.ok else "red"))
+        if self.unverified:
+            lines.append(f"  partial: pinned platforms not downloaded or hashed: {', '.join(self.unverified)}")
+        lines.append("result: " + ("green" if self.ok else "partial" if self.passed else "red"))
         return "\n".join(lines)
 
 
@@ -168,7 +176,8 @@ def check_candidate(
             Check("row-coverage", (row,), (f"no probe covers contract row {row}",))
             for row in candidate_checks.uncovered_rows(checks)
         )
-    return Report(pin.version, tuple(builds), transcript, tuple(checks))
+    unverified = tuple(target for target in pin.builds if target not in selected)
+    return Report(pin.version, tuple(builds), transcript, tuple(checks), unverified)
 
 
 def _load_pin(args: argparse.Namespace) -> omp_pin.Pin:

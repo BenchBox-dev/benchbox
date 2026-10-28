@@ -788,7 +788,8 @@ to GitHub.
   replay chain runs the candidate client against the candidate
   `auth-broker serve` and `auth-gateway serve` (scoped client token) with a
   stub upstream, all traffic confined to loopback by a dead egress proxy. The
-  chain proves the tool roster the model is offered, that the overlay keeps URL
+  chain proves the tool roster the model is offered, that bash, write and edit calls
+  outside it are refused and change nothing, that the overlay keeps URL
   reads, project MCP servers, context files and read summaries off (each
   against a canary that a second run under an empty overlay must trigger, so a
   probe that can no longer observe its canary fails), that a 429 walks the
@@ -796,8 +797,10 @@ to GitHub.
   an auth absence and does not walk the chain, that a wrong client token is
   refused before any upstream request, that the stream opens with session event
   version 3, and that the run leaves no session state and no process behind.
-  Each probe lists the contract rows it covers; a row with no probe fails the
-  run unless a reason is recorded. Row 8's provider reset wording cannot be
+  Each probe lists the contract rows it covers; a row that no probe running the
+  candidate covers fails the run unless a reason is recorded, and a replay of a
+  frozen capture never counts. A run limited with `--platform` is `partial`,
+  not green. Row 8's provider reset wording cannot be
   observed offline and stays covered by the calibrated absence tests. The
   fixtures are redacted captures of the pinned build's own output; the upstream
   provider bodies the stub serves are hand-built, and `--capture-dir` rewrites

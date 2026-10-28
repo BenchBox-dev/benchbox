@@ -116,6 +116,9 @@ def _good_runs() -> dict[str, ClientRun]:
             mcp_started=True,
             upstream=(_request(prompt=f"context {AGENTS_TOKEN}"),),
         ),
+        "roster-breach": _run(
+            "roster-breach", _read("roster_breach.jsonl"), upstream=tuple(_request() for _ in range(4))
+        ),
         "quota-walk": _run("quota-walk", _read("quota_walk.jsonl"), 1, upstream=(_request(),)),
         "quota-terminal": _run("quota-terminal", _read("quota_terminal.jsonl"), 1, upstream=(_request(),)),
         "upstream-auth": _run("upstream-auth", _read("upstream_auth.jsonl"), 1, upstream=(_request(),)),
@@ -220,6 +223,11 @@ def test_a_build_without_a_listable_settings_schema_is_red_for_both_configuratio
     checks = _static(tmp_path, lambda data: data.update(config_json={}))
     assert checks["overlay-schema"].failures == ("config list --json gave no settings schema",)
     assert checks["reviewer-config-schema"].failures == ("config list --json gave no settings schema",)
+
+
+def test_an_enum_setting_whose_accepted_values_cannot_be_listed_is_red_not_waved_through(tmp_path: Path) -> None:
+    failures = _static(tmp_path, lambda data: data.update(config_text=""))["overlay-schema"].failures
+    assert "the build lists no accepted values for the enum setting prewalk.auto" in failures
 
 
 def test_a_retry_policy_value_the_build_no_longer_accepts_is_red(tmp_path: Path) -> None:
@@ -360,6 +368,13 @@ def _mutated(name: str, **fields: Any) -> dict[str, ClientRun]:
         ("control", {"mcp_started": False}, "live-probe-sensitivity", "MCP canary is no longer observable"),
         ("control", {"upstream": (_request(),)}, "live-probe-sensitivity", "context-file canary"),
         ("control", {"stdout": _read("quota_terminal.jsonl")}, "live-probe-sensitivity", "read-summary canary"),
+        ("roster-breach", {"workspace_changed": True}, "live-write-refused", "changed the review workspace"),
+        (
+            "roster-breach",
+            {"stdout": _read("roster_breach.jsonl").replace('"isError":true', '"isError":false')},
+            "live-write-refused",
+            "a bash call outside the read roster was not refused",
+        ),
         ("quota-walk", {"exit_code": 0}, "live-quota-fallback-walk", "expected a non-zero code"),
         ("quota-terminal", {"exit_code": 0}, "live-quota-classification", "expected a non-zero code"),
         ("upstream-auth", {"stdout": _read("quota_terminal.jsonl")}, "live-auth-classification", "status is 429"),
@@ -394,6 +409,14 @@ def test_every_contract_row_has_a_probe_or_a_recorded_reason(tmp_path: Path) -> 
     assert candidate_checks.uncovered_rows(checks) == ()
     assert set(candidate_checks.RECORDED_REASONS) <= set(candidate_checks.CONTRACT_ROWS)
     assert candidate_checks.uncovered_rows([]) == tuple(
+        row for row in candidate_checks.CONTRACT_ROWS if row not in candidate_checks.RECORDED_REASONS
+    )
+
+
+def test_a_frozen_capture_alone_never_satisfies_a_contract_row(tmp_path: Path) -> None:
+    replayed = candidate_checks.fixture_checks(FIXTURES)
+    assert candidate_checks.covered_rows(replayed) == frozenset()
+    assert candidate_checks.uncovered_rows(replayed) == tuple(
         row for row in candidate_checks.CONTRACT_ROWS if row not in candidate_checks.RECORDED_REASONS
     )
 
@@ -442,6 +465,20 @@ def test_a_candidate_whose_builds_hash_to_the_pin_and_whose_probes_pass_is_green
     assert report.transcript == "omp/18.12.1"
     assert json.loads(json.dumps(report.to_json()))["ok"] is True
     assert "result: green" in report.render()
+
+
+def test_a_run_limited_to_some_platforms_is_partial_and_never_green(tmp_path: Path) -> None:
+    binary, _ = _fake(tmp_path)
+    report = omp_candidate.check_candidate(
+        _pin_for_host(binary),
+        targets=[omp_pin.current_platform()],
+        fetch=_fetcher(binary),
+        chain_factory=lambda *_: _chain_from(_good_runs()),
+    )
+    assert report.passed and not report.ok
+    assert report.unverified == ("linux-arm64",)
+    assert "result: partial" in report.render()
+    assert report.to_json()["unverified_platforms"] == ["linux-arm64"]
 
 
 def test_a_platform_build_that_does_not_hash_to_the_pin_turns_the_report_red(tmp_path: Path) -> None:
