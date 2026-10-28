@@ -19,7 +19,8 @@ SHARED_SURFACES = frozenset({RULE, SKILL, MCP, EXTRA})
 WHERES = ("cwd", "workspace")
 EXTRA_NAME = "CUSTOM_CONTEXT_CANARY.md"
 RELAXED_FLAGS = ("--no-skills", "--no-rules")
-OVERLAY_NAME = "probe-overlay"
+OVERLAY_PREFIX = "probe-overlay-"
+BOTH_LOCATIONS = frozenset({CONTEXT, EXTRA})
 CONTROL_PREFIX = "probe-control-"
 CONTROL_SETTINGS = {"contextFiles": {"extra": [EXTRA_NAME]}}
 
@@ -37,6 +38,10 @@ class Canary:
     @property
     def group(self) -> str:
         return SHARED_GROUP if self.surface in SHARED_SURFACES else self.slug
+
+    @property
+    def wheres(self) -> tuple[str, ...]:
+        return WHERES if self.surface in BOTH_LOCATIONS else WHERES[:1]
 
     def token(self, where: str) -> str:
         return f"CANARY_{self.slug}_{where}".upper().replace("-", "_")
@@ -89,6 +94,10 @@ PROVIDERS = frozenset(canary.provider for canary in CANARIES)
 
 def control_name(group: str) -> str:
     return f"{CONTROL_PREFIX}{group}"
+
+
+def overlay_name(group: str) -> str:
+    return f"{OVERLAY_PREFIX}{group}"
 
 
 def group_canaries(group: str) -> tuple[Canary, ...]:

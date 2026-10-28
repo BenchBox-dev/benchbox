@@ -131,22 +131,18 @@ def _probe_script(context: Context) -> list[UpstreamTurn]:
     return [text_turn(json.dumps(VERDICT))]
 
 
-PROBES = (
-    *(
-        Scenario(
-            candidate_canaries.control_name(group),
-            _probe_script,
-            overlay=candidate_canaries.control_overlay(),
-            canaries=candidate_canaries.group_canaries(group),
-        )
-        for group in candidate_canaries.GROUPS
-    ),
+PROBES = tuple(
     Scenario(
-        candidate_canaries.OVERLAY_NAME,
+        name(group),
         _probe_script,
-        overlay=candidate_canaries.disabled_overlay(),
-        canaries=candidate_canaries.CANARIES,
-    ),
+        overlay=overlay,
+        canaries=candidate_canaries.group_canaries(group),
+    )
+    for group in candidate_canaries.GROUPS
+    for name, overlay in (
+        (candidate_canaries.control_name, candidate_canaries.control_overlay()),
+        (candidate_canaries.overlay_name, candidate_canaries.disabled_overlay()),
+    )
 )
 SCENARIOS = (*SCENARIOS, *PROBES)
 
@@ -359,6 +355,8 @@ class LoopbackChain:
     def _plant_probes(self, canaries: Sequence[Canary], cwd: Path, markers: Path) -> None:
         for canary in canaries:
             for where, directory in zip(candidate_canaries.WHERES, (cwd, self.workspace), strict=True):
+                if where not in canary.wheres:
+                    continue
                 planted = candidate_canaries.plant(canary, where, directory, markers)
                 if directory == self.workspace:
                     self._planted.append(planted)

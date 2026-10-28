@@ -114,11 +114,16 @@ def _probe_runs() -> dict[str, ClientRun]:
     runs = {}
     for group in candidate_canaries.GROUPS:
         canaries = candidate_canaries.group_canaries(group)
-        prompt = " ".join(item.token("cwd") for item in canaries if item.surface != candidate_canaries.MCP)
-        started = tuple(item.marker("cwd") for item in canaries if item.surface == candidate_canaries.MCP)
-        name = candidate_canaries.control_name(group)
-        runs[name] = _run(name, "", upstream=(_request(prompt=prompt),), started=started)
-    runs[candidate_canaries.OVERLAY_NAME] = _run(candidate_canaries.OVERLAY_NAME, "", upstream=(_request(),))
+        prompt = " ".join(
+            item.token(where) for item in canaries if item.surface != candidate_canaries.MCP for where in item.wheres
+        )
+        started = tuple(
+            item.marker(where) for item in canaries if item.surface == candidate_canaries.MCP for where in item.wheres
+        )
+        control = candidate_canaries.control_name(group)
+        overlay = candidate_canaries.overlay_name(group)
+        runs[control] = _run(control, "", upstream=(_request(prompt=prompt),), started=started)
+        runs[overlay] = _run(overlay, "", upstream=(_request(),))
     return runs
 
 
@@ -661,16 +666,20 @@ def _without(run: ClientRun, canary: candidate_canaries.Canary) -> ClientRun:
 
 
 def _leaking(runs: dict[str, ClientRun], canary: candidate_canaries.Canary, where: str) -> dict[str, ClientRun]:
-    run = runs[candidate_canaries.OVERLAY_NAME]
+    name = candidate_canaries.overlay_name(canary.group)
+    run = runs[name]
     if canary.surface == candidate_canaries.MCP:
         leaked = replace(run, started=(canary.marker(where),))
     else:
         leaked = replace(run, upstream=(_request(prompt=f"context {canary.token(where)}"),))
-    return {**runs, candidate_canaries.OVERLAY_NAME: leaked}
+    return {**runs, name: leaked}
 
 
-@pytest.mark.parametrize("canary", candidate_canaries.CANARIES, ids=_canary_ids)
-@pytest.mark.parametrize("where", candidate_canaries.WHERES)
+@pytest.mark.parametrize(
+    ("canary", "where"),
+    [(item, where) for item in candidate_canaries.CANARIES for where in item.wheres],
+    ids=lambda value: _canary_ids(value) if isinstance(value, candidate_canaries.Canary) else value,
+)
 def test_a_provider_canary_that_reaches_the_model_under_the_overlay_is_red_and_names_the_provider(
     canary: candidate_canaries.Canary, where: str
 ) -> None:
@@ -778,7 +787,7 @@ def test_the_probe_overlays_isolate_the_disabled_providers_from_every_other_guar
 def test_every_planted_canary_carries_its_token_or_its_marker(tmp_path: Path) -> None:
     markers = tmp_path / "markers"
     for canary in candidate_canaries.CANARIES:
-        for where in candidate_canaries.WHERES:
+        for where in canary.wheres:
             text = candidate_canaries.plant(canary, where, tmp_path / where, markers).read_text(encoding="utf-8")
             if canary.surface == candidate_canaries.MCP:
                 assert str(markers / canary.marker(where)) in text, canary
@@ -805,3 +814,40 @@ def test_probe_scenarios_plant_only_their_own_canaries_and_leave_the_workspace_p
     chain._plant_canaries(cwd, markers / "legacy")
     chain._clear_workspace()
     assert candidate_chain._digest(chain.workspace) == before
+
+
+def test_a_canary_the_control_run_sees_in_only_one_location_is_blind() -> None:
+    canary = next(
+        item for item in candidate_canaries.CANARIES if item.provider == "github" and item.surface == "context"
+    )
+    runs = _good_runs()
+    name = candidate_canaries.control_name(canary.group)
+    prompt = candidate_checks._prompt_text(runs[name].upstream).replace(canary.token("workspace"), "")
+    runs[name] = replace(runs[name], upstream=(_request(prompt=prompt),))
+    assert candidate_checks.blind_canaries(runs) == (canary,)
+    assert "github" not in candidate_checks.observed_providers(runs)
+
+
+def test_a_surface_the_build_loads_only_from_the_working_directory_is_planted_only_there() -> None:
+    by_surface = {item.surface: item.wheres for item in candidate_canaries.CANARIES}
+    assert by_surface[candidate_canaries.CONTEXT] == candidate_canaries.WHERES
+    assert by_surface[candidate_canaries.RULE] == ("cwd",)
+
+
+def test_an_overlay_probe_run_that_never_reached_the_model_proves_nothing_and_is_red() -> None:
+    name = candidate_canaries.overlay_name("github-context")
+    runs = _good_runs()
+    runs[name] = replace(runs[name], upstream=())
+    assert _failed(candidate_checks.live_checks(runs)) == {
+        "live-provider-canaries": (f"{name}: no request reached the stub upstream, so the canaries went unobserved",)
+    }
+
+
+def test_a_shadowed_provider_leak_is_caught_because_each_group_has_its_own_overlay_run() -> None:
+    names = {item.name for item in candidate_chain.PROBES}
+    for group in candidate_canaries.GROUPS:
+        assert {candidate_canaries.control_name(group), candidate_canaries.overlay_name(group)} <= names
+    exclusive = [item for item in candidate_chain.PROBES if item.name.startswith(candidate_canaries.OVERLAY_PREFIX)]
+    assert all(
+        len(item.canaries) == 1 or not {c.surface for c in item.canaries} & {"context", "system"} for item in exclusive
+    )

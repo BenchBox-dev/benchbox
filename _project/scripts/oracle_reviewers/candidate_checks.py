@@ -13,7 +13,7 @@ from typing import Any
 import yaml
 
 from . import absence, commands, evidence, omp_pin
-from .candidate_canaries import CANARIES, GROUPS, OVERLAY_NAME, PROVIDERS, WHERES, Canary, control_name
+from .candidate_canaries import CANARIES, GROUPS, PROVIDERS, Canary, control_name, group_canaries, overlay_name
 from .candidate_chain import AGENTS_TOKEN, BREACH_TOOLS, CLAUDE_TOKEN, NATIVE_TOKEN, ClientRun
 from .candidate_env import quiet_env
 from .policy import OMP_THINKING_LEVELS
@@ -431,12 +431,16 @@ def control_checks(run: ClientRun) -> list[Check]:
 
 def _seen(canary: Canary, run: ClientRun) -> tuple[str, ...]:
     prompt = _prompt_text(run.upstream)
-    return tuple(where for where in WHERES if canary.token(where) in prompt or canary.marker(where) in run.started)
+    return tuple(
+        where for where in canary.wheres if canary.token(where) in prompt or canary.marker(where) in run.started
+    )
 
 
 def blind_canaries(runs: Mapping[str, ClientRun]) -> tuple[Canary, ...]:
     return tuple(
-        canary for canary in CANARIES if (run := runs.get(control_name(canary.group))) is None or not _seen(canary, run)
+        canary
+        for canary in CANARIES
+        if (run := runs.get(control_name(canary.group))) is None or len(_seen(canary, run)) != len(canary.wheres)
     )
 
 
@@ -446,19 +450,22 @@ def observed_providers(runs: Mapping[str, ClientRun]) -> frozenset[str]:
 
 def provider_checks(runs: Mapping[str, ClientRun]) -> list[Check]:
     failures = []
-    for name in (*(control_name(group) for group in GROUPS), OVERLAY_NAME):
-        run = runs.get(name)
-        if run is None:
-            failures.append(f"the {name} run did not execute")
-            continue
-        failures.extend(f"{name}: {item}" for item in _run_failures(run, succeeds=True))
-    overlay = runs.get(OVERLAY_NAME)
-    if overlay is not None:
-        failures.extend(
-            f"{canary.provider} reached the model from {canary.path} ({where}) despite disabledProviders"
-            for canary in CANARIES
-            for where in _seen(canary, overlay)
-        )
+    for group in GROUPS:
+        for name in (control_name(group), overlay_name(group)):
+            run = runs.get(name)
+            if run is None:
+                failures.append(f"the {name} run did not execute")
+                continue
+            failures.extend(f"{name}: {item}" for item in _run_failures(run, succeeds=True))
+            if not run.upstream:
+                failures.append(f"{name}: no request reached the stub upstream, so the canaries went unobserved")
+        overlay = runs.get(overlay_name(group))
+        if overlay is not None:
+            failures.extend(
+                f"{canary.provider} reached the model from {canary.path} ({where}) despite disabledProviders"
+                for canary in group_canaries(group)
+                for where in _seen(canary, overlay)
+            )
     return [_check("live-provider-canaries", PROBE_ROWS, failures)]
 
 

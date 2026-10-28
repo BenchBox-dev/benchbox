@@ -855,10 +855,12 @@ to GitHub.
   context providers, so a `disabledProviders` entry is only checked through a
   token file, MCP server or skill that a control run under no `disabledProviders`
   observes and a run under the overlay's `disabledProviders` must not. Each is
-  planted in both the client's working directory and the review workspace, at
-  the path the provider reads (`candidate_canaries.CANARIES`). Context files and
-  system prompts shadow one another (one wins per directory, so each gets its
-  own control run), and `--no-skills`/`--no-rules` plus `mcp.enableProjectConfig`
+  planted at the path the provider reads (`candidate_canaries.CANARIES`), in the
+  client's working directory and, for the context and extra context files, the
+  review workspace too, and the control run must see every copy. Context files
+  and system prompts shadow one another (one wins per directory, so each gets
+  its own control run and its own overlay run, and an overlay run that sends no
+  request proves nothing and is red), and `--no-skills`/`--no-rules` plus `mcp.enableProjectConfig`
   would hide a provider that is still on, so these runs drop those guards. A
   canary the control run cannot see leaves its provider unprobed and the run
   `partial`; one the overlay run sees is red and names the provider. The
