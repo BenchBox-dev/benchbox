@@ -6124,15 +6124,10 @@
       "title": "Add a continuous whole-corpus privacy gate, not just a changed-files scan"
     },
     "corpus-sync-dispatch-20261026": {
-      "claim": {
-        "expires_at": "2026-10-29T16:38:56Z",
-        "generation": "6ab00b0fa2914d27b8a67dbaa6f15ed0",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Dispatch the results-data sync to published-results and verify corpus drift clears"
     },
     "corpus-tpch-shallow-cohort-replacements-20261018": {
