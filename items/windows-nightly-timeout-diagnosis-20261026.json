@@ -4,7 +4,7 @@
     "If it failed or timed out, the failing or hanging test is named from the job log with evidence; a follow-up fix item is created if the cause is ours",
     "If it passed, duration is recorded and the item closes with that evidence; #2964 and #2568 states are reported"
   ],
-  "context": "2026-10-27 post-14:00Z evidence: nightly-v2 run 40511812416 (schedule, 13:24:50Z, head 2492d7a07) t3:windows job failed in 27 min (not a timeout): pytest 4 failed, 33551 passed, 1323 skipped in 1559.72s. All 4 failures are tests/unit/test_module_state_guard.py child-pytest runs erroring at collection: Path.home() raised in benchbox/core/results/database.py:29 because the scrubbed child env lacked USERPROFILE/HOMEDRIVE/HOMEPATH. PR #3548 (merged 2026-10-27T18:26:59Z) adds those variables to the test env (origin/develop test_module_state_guard.py:47) and the Windows PR leg now runs changed test files on PRs. The 2026-10-26 55-min cancellation (run 40339587542) was a stall of unknown test; this class (child pytest without env/timeouts) is the leading candidate but unproven. Next: read the first scheduled nightly-v2 after 18:27Z (expected 2026-10-28 ~13:25Z) for t3:windows: green = confirmed; a new timeout needs the stalled test named from the log.",
+  "context": "2026-10-27 post-14:00Z evidence: nightly-v2 run 40511812416 (schedule, 13:24:50Z, head 2492d7a07) t3:windows job failed in 27 min (not a timeout): pytest 4 failed, 33551 passed, 1323 skipped in 1559.72s. All 4 failures are tests/unit/test_module_state_guard.py child-pytest runs erroring at collection: Path.home() raised in benchbox/core/results/database.py:29 because the scrubbed child env lacked USERPROFILE/HOMEDRIVE/HOMEPATH. PR #3548 (merged 2026-10-27T18:26:59Z) adds those variables to the test env (origin/develop test_module_state_guard.py:47) and the Windows PR leg now runs changed test files on PRs. The 2026-10-26 55-min cancellation (run 40339587542) was a stall of unknown test; this class (child pytest without env/timeouts) is the leading candidate but unproven. Next: read the first scheduled nightly-v2 after 18:27Z (expected 2026-10-28 ~13:25Z) for t3:windows: green = confirmed; a new timeout needs the stalled test named from the log.\n\n2026-10-28 evidence: after PR #3548 (merged 2026-10-27T18:26:59Z) the t3:windows job concluded success in all three nightly-v2 dispatches on develop: 40610847827, 40626103333, 40688697850. Issues #2964 (closed 2026-10-28T02:00:40Z) and #2568 (still open) states read live. The acceptance names the next scheduled run; none has appeared since 40511812416 (10-27 13:24Z), so the item stays open for that run.",
   "description": "The 2026-10-26 nightly t3:windows fast-unit job was cancelled at its 50-minute timeout with tests still running; its log has expired, so hang-vs-slow is unknown. The Windows fast tier measured 19-25 min on earlier nights. Owner decision 2026-10-26: leave the timeout unchanged and diagnose from the next run. Guardrails (all items): primary clone read-only; work only in a linked worktree from origin/develop (make worktree-create + make agent-write-preflight); never git add -A or git stash; identity Joe Harris, no agent attribution; never bypass hooks by any route; no code comments/docstrings (make comment-policy-check clean); encoding=\"utf-8\" on file/subprocess text I/O; uv run -- for Python; no CHANGELOG entries; never weaken or delete tests or gates; TEST LOCK: never set BENCHBOX_SKIP_TEST_LOCK or BENCHBOX_TEST_LOCK_DIR, never run make test-unlock, xdist only under the shared lock; for make pr-open put ~/.cache/omp-18.12.1/bin first on PATH; make pr-preflight once, make pr-open, make pr-arm; never post oracle comments or rerun the oracle; commit/PR text for a reader who never saw this session (no item ids or plan labels).",
   "not_before": "2026-10-27T14:00:00Z",
   "sessions": [
@@ -39,6 +39,14 @@
       "generation": "1028ea1697a34edabcc3c56275c26326",
       "op": "take",
       "op_id": "f5a1c33b24194b6b9b8644a32c89a6ef",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-28T14:06:22Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d453dbe2cfb546169874354cb6a49035",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
