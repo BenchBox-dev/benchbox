@@ -144,6 +144,7 @@ def _resolve_validation_sql(
 
 
 _SINGLE_STATEMENT_SETUP_DIALECTS = frozenset({"sqlite", "databricks"})
+_NO_TRUNCATE_DIALECTS = frozenset({"sqlite"})
 
 
 class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBase["OperationResult"]):
@@ -648,10 +649,11 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
             "ddl_truncate_target": "orders",
         }
 
+        clear_verb = "DELETE FROM" if self._setup_dialect.lower() in _NO_TRUNCATE_DIALECTS else "TRUNCATE TABLE"
         for table_name in reset_map:
             try:
                 quoted = self._quote_identifier(table_name)
-                connection.execute(f"TRUNCATE TABLE {quoted}")
+                connection.execute(f"{clear_verb} {quoted}")
                 self.log_verbose(f"Truncated {table_name}")
             except Exception as e:
                 self.log_verbose(f"Warning: Could not truncate {table_name}: {e}")
@@ -855,7 +857,7 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
             )
 
             cleanup_success, cleanup_warning, cleanup_duration_ms = self._run_operation_cleanup(
-                operation, connection, operation_id
+                operation, connection, operation_id, platform_key=platform_key, platform_fallback_key=fallback_key
             )
 
             return OperationResult(
@@ -971,16 +973,28 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
         return validation_passed, validation_results, validation_duration_ms
 
     def _run_operation_cleanup(
-        self, operation: Any, connection: DatabaseConnection, operation_id: str
+        self,
+        operation: Any,
+        connection: DatabaseConnection,
+        operation_id: str,
+        platform_key: str | None = None,
+        platform_fallback_key: str | None = None,
     ) -> tuple[bool, str | None, float]:
         self.log_verbose(f"Cleaning up operation: {operation_id}")
         cleanup_start = time.perf_counter()
         cleanup_success = True
         cleanup_warning = None
 
-        if operation.cleanup_sql:
+        cleanup_sql = operation.cleanup_sql
+        found_override, override = self._lookup_platform_override(
+            getattr(operation, "cleanup_platform_overrides", None), platform_key, platform_fallback_key
+        )
+        if found_override:
+            cleanup_sql = override
+
+        if cleanup_sql:
             try:
-                cleanup_res = connection.execute(operation.cleanup_sql)
+                cleanup_res = connection.execute(cleanup_sql)
                 if (cleanup_err := failed_platform_error(cleanup_res)) is not None:
                     raise RuntimeError(cleanup_err)
                 self.log_verbose(f"Executed cleanup SQL for {operation_id}")

@@ -59,6 +59,7 @@ class WriteOperation:
     expected_rows_affected: int | None = None
     file_dependencies: list[str] = field(default_factory=list)
     platform_overrides: dict[str, str] = field(default_factory=dict)
+    cleanup_platform_overrides: dict[str, str | None] = field(default_factory=dict)
     requires_setup: bool = True
     aggregate_state: AggregateStateSpec | None = None
 
@@ -226,6 +227,12 @@ def _parse_operation_entry(index: int, entry: object, existing_ids: set[str]) ->
     if not isinstance(platform_overrides, dict):
         raise WritePrimitivesCatalogError(f"Catalog entry '{operation_id}' platform_overrides must be a mapping")
 
+    cleanup_platform_overrides = entry.get("cleanup_platform_overrides", {})
+    if not isinstance(cleanup_platform_overrides, dict):
+        raise WritePrimitivesCatalogError(
+            f"Catalog entry '{operation_id}' cleanup_platform_overrides must be a mapping"
+        )
+
     requires_setup = entry.get("requires_setup", True)
     if not isinstance(requires_setup, bool):
         raise WritePrimitivesCatalogError(f"Catalog entry '{operation_id}' requires_setup must be a boolean")
@@ -240,6 +247,7 @@ def _parse_operation_entry(index: int, entry: object, existing_ids: set[str]) ->
         expected_rows_affected=expected_rows_affected,
         file_dependencies=list(file_dependencies),
         platform_overrides=dict(platform_overrides),
+        cleanup_platform_overrides=dict(cleanup_platform_overrides),
         requires_setup=requires_setup,
         aggregate_state=aggregate_state,
     )
