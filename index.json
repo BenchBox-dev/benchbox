@@ -8642,12 +8642,17 @@
       "title": "Replace PR-loop Make targets with tier targets and update agent instructions in the same change"
     },
     "dlv2-44-precommit-trim": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-29T03:37:06Z",
+        "generation": "8699e939d059494a9d137904341ca7f5",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
+      },
       "needs": [
         "dlv2-16-split-timing-policy"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Trim pre-commit hooks to product and hygiene checks"
     },
     "dlv2-50-release-prep-targets": {
