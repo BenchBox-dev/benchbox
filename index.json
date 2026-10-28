@@ -16682,10 +16682,15 @@
       "title": "Run a local oracle review inside make pr-open and refuse to open a PR with Critical or High findings"
     },
     "oracle-local-review-lock-per-patch-20261027": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-29T17:03:22Z",
+        "generation": "d913e5e8d2e94bfdbdd09889b3bcc20b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Lock local oracle reviews per patch instead of per machine"
     },
     "oracle-map-staged-gate-scale-and-label-vocabulary": {
