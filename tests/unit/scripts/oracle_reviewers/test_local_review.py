@@ -150,6 +150,8 @@ class Env:
         monkeypatch.setenv("HOME", str(self.home))
         monkeypatch.setenv(local.STATE_DIR_ENV, str(tmp_path / "state"))
         monkeypatch.chdir(self.repo)
+        monkeypatch.delenv("http_proxy", raising=False)
+        monkeypatch.delenv("HTTP_PROXY", raising=False)
         monkeypatch.setattr(local, "LOCAL_GATEWAY_URL", gateway.url)
         monkeypatch.setenv(omp_pin.CACHE_ENV, str(tmp_path / "omp-cache"))
         monkeypatch.delenv(omp_pin.BINARY_ENV, raising=False)

@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import importlib
-import io
 import json
 import sys
-import urllib.error
-import urllib.request
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
@@ -261,14 +260,6 @@ def test_a_failed_edit_check_is_recorded_as_edited(monkeypatch: pytest.MonkeyPat
     assert reviews[0]["includes_created_edit"] is True
 
 
-class _Response(io.BytesIO):
-    def __enter__(self) -> _Response:
-        return self
-
-    def __exit__(self, *exc: object) -> None:
-        return None
-
-
 class Network:
     def __init__(self) -> None:
         self.requests: list[dict[str, Any]] = []
@@ -276,23 +267,20 @@ class Network:
         self.graphql: Any = lambda body: {}
         self.error: Exception | None = None
 
-    def urlopen(self, request: urllib.request.Request, timeout: float) -> Any:
-        body = json.loads(request.data.decode("utf-8")) if request.data else None
-        headers = {key.lower(): value for key, value in request.header_items()}
-        self.requests.append({"url": request.full_url, "body": body, "headers": headers, "timeout": timeout})
+    def request(self, token: str, url: str, body: dict[str, Any] | None = None) -> Any:
+        self.requests.append({"url": url, "body": body, "token": token})
         if self.error is not None:
             raise self.error
-        assert request.full_url.startswith(API), request.full_url
-        route = request.full_url[len(API) :]
+        assert url.startswith(API), url
+        route = url[len(API) :]
         if route == "/graphql":
-            payload = self.graphql(body)
-        else:
-            path, _, query = route.partition("?")
-            assert path in self.rest, route
-            payload = self.rest[path]
-            if isinstance(payload, dict) and "pages" in payload:
-                payload = payload["pages"].get(int(query.split("&page=")[1]), [])
-        return _Response(json.dumps(payload).encode("utf-8"))
+            return self.graphql(body)
+        path, _, query = route.partition("?")
+        assert path in self.rest, route
+        payload = self.rest[path]
+        if isinstance(payload, dict) and "pages" in payload:
+            payload = payload["pages"].get(int(query.split("&page=")[1]), [])
+        return payload
 
     def paths(self) -> list[str]:
         return [request["url"][len(API) :] for request in self.requests]
@@ -301,47 +289,117 @@ class Network:
 @pytest.fixture
 def net(monkeypatch: pytest.MonkeyPatch) -> Network:
     fake = Network()
-    monkeypatch.setattr(urllib.request, "urlopen", fake.urlopen)
+    monkeypatch.setattr(gate, "_request", fake.request)
     return fake
 
 
 def _authorized(fake: Network, token: str = "tok") -> None:
     assert fake.requests
     for request in fake.requests:
-        assert request["headers"]["authorization"] == f"Bearer {token}"
+        assert request["token"] == token
 
 
-def test_requests_carry_the_token_and_the_github_api_headers(net: Network) -> None:
-    net.rest["/x"] = {"ok": True}
-    assert gate._request("tok", f"{API}/x") == {"ok": True}
-    request = net.requests[0]
+class _Loopback:
+    def __init__(self) -> None:
+        self.requests: list[dict[str, Any]] = []
+        self.status = 200
+        self.payload: bytes = b"{}"
+        self.root = ""
+        self.stop: Any = lambda: None
+
+
+@pytest.fixture
+def loopback(monkeypatch: pytest.MonkeyPatch) -> Any:
+    state = _Loopback()
+
+    class Handler(BaseHTTPRequestHandler):
+        def _serve(self) -> None:
+            length = int(self.headers.get("Content-Length") or 0)
+            raw = self.rfile.read(length) if length else b""
+            state.requests.append(
+                {
+                    "path": self.path,
+                    "method": self.command,
+                    "headers": {key.lower(): value for key, value in self.headers.items()},
+                    "body": json.loads(raw.decode("utf-8")) if raw else None,
+                }
+            )
+            self.send_response(state.status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(state.payload)))
+            self.end_headers()
+            self.wfile.write(state.payload)
+
+        def do_GET(self) -> None:
+            self._serve()
+
+        def do_POST(self) -> None:
+            self._serve()
+
+        def log_message(self, format: str, *args: Any) -> None:
+            return None
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    state.root = f"http://127.0.0.1:{server.server_address[1]}"
+    monkeypatch.setattr(gate, "API_ROOT", state.root)
+    stopped: list[bool] = []
+
+    def stop() -> None:
+        if not stopped:
+            stopped.append(True)
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=5)
+
+    state.stop = stop
+    try:
+        yield state
+    finally:
+        stop()
+
+
+def test_requests_carry_the_token_and_the_github_api_headers(loopback: Any) -> None:
+    loopback.payload = b'{"ok": true}'
+    assert gate._request("tok", f"{gate.API_ROOT}/x") == {"ok": True}
+    request = loopback.requests[0]
+    assert request["method"] == "GET"
+    assert request["path"] == "/x"
     assert request["headers"]["authorization"] == "Bearer tok"
     assert request["headers"]["accept"] == "application/vnd.github+json"
     assert request["headers"]["x-github-api-version"] == "2022-11-28"
     assert request["headers"]["user-agent"] == "benchbox-oracle-review-check"
     assert "content-type" not in request["headers"]
     assert request["body"] is None
-    assert request["timeout"] == 30
 
 
-def test_a_posted_body_is_sent_as_utf8_json(net: Network) -> None:
-    net.graphql = lambda body: {"echo": body}
-    assert gate._request("tok", f"{API}/graphql", {"q": "é"}) == {"echo": {"q": "é"}}
-    request = net.requests[0]
+def test_a_posted_body_is_sent_as_utf8_json(loopback: Any) -> None:
+    loopback.payload = json.dumps({"echo": "é"}).encode("utf-8")
+    assert gate._request("tok", f"{gate.API_ROOT}/graphql", {"q": "é"}) == {"echo": "é"}
+    request = loopback.requests[0]
+    assert request["method"] == "POST"
     assert request["headers"]["content-type"] == "application/json"
     assert request["body"] == {"q": "é"}
     assert request["headers"]["authorization"] == "Bearer tok"
 
 
-def test_http_and_transport_failures_become_check_errors(net: Network) -> None:
-    for error in (
-        urllib.error.HTTPError(f"{API}/x", 502, "bad", None, None),
-        urllib.error.URLError("down"),
-        TimeoutError("slow"),
-    ):
-        net.error = error
-        with pytest.raises(gate.CheckError):
-            gate._request("tok", f"{API}/x")
+def test_an_http_error_status_becomes_a_check_error_naming_the_status(loopback: Any) -> None:
+    loopback.status = 502
+    with pytest.raises(gate.CheckError, match="HTTP 502"):
+        gate._request("tok", f"{gate.API_ROOT}/x")
+
+
+def test_an_unreachable_server_becomes_a_check_error(loopback: Any) -> None:
+    loopback.stop()
+    with pytest.raises(gate.CheckError, match="failed"):
+        gate._request("tok", f"{loopback.root}/x")
+
+
+def test_a_non_json_response_becomes_a_check_error(loopback: Any) -> None:
+    loopback.payload = b"not json"
+    with pytest.raises(gate.CheckError, match="failed"):
+        gate._request("tok", f"{gate.API_ROOT}/x")
 
 
 def test_pagination_follows_full_pages_and_stops_on_the_first_short_one(net: Network) -> None:
@@ -592,7 +650,7 @@ def test_a_reviewed_pull_request_passes_and_every_call_uses_the_token_and_target
     assert _run(monkeypatch) == gate.PASS
     assert capsys.readouterr().out == f"oracle-review: pass (oracle verdict for {HEAD})\n"
     _authorized(net)
-    assert net.paths() == [
+    assert set(net.paths()) == {
         "/repos/o/r/pulls/7",
         "/repos/o/r/pulls/7/files?per_page=100&page=1",
         f"/repos/o/r/commits/{HEAD}/statuses?per_page=100&page=1",
@@ -600,10 +658,13 @@ def test_a_reviewed_pull_request_passes_and_every_call_uses_the_token_and_target
         "/repos/o/r/issues/7/timeline?per_page=100&page=1",
         "/repos/o/r/issues/7/comments?per_page=100&page=1",
         "/repos/o/r/pulls/7/reviews?per_page=100&page=1",
-        "/graphql",
+    }
+    assert len(net.requests) == 8
+    bodies = [request["body"] for request in net.requests if request["body"] is not None]
+    assert [body["variables"] for body in bodies if "reviewThreads" in body["query"]] == [
+        {"owner": "o", "name": "r", "number": 7, "after": None}
     ]
-    assert net.requests[3]["body"]["variables"] == {"owner": "o", "name": "r", "number": 7, "after": None}
-    assert net.requests[7]["body"]["variables"] == {"id": "N1"}
+    assert [body["variables"] for body in bodies if "reviewThreads" not in body["query"]] == [{"id": "N1"}]
 
 
 def test_only_exempt_paths_stop_before_any_status_is_read(
@@ -687,7 +748,7 @@ def test_a_repository_that_is_not_owner_slash_name_is_an_error(
 def test_a_github_failure_is_reported_on_stderr_as_an_error(
     net: Network, monkeypatch: pytest.MonkeyPatch, capsys: Any
 ) -> None:
-    net.error = urllib.error.HTTPError(f"{API}/x", 500, "boom", None, None)
+    net.error = gate.CheckError("GitHub returned HTTP 500 for /x")
     assert _run(monkeypatch) == gate.ERROR
     captured = capsys.readouterr()
     assert captured.out == ""

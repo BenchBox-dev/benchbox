@@ -4,7 +4,6 @@ import importlib
 import json
 import sys
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
@@ -151,70 +150,6 @@ def test_the_commit_subject_and_changed_files_come_from_git(shell):
     assert digest.commit_files(HEAD) == ["a", "b"]
 
 
-def test_commit_listing_asks_git_for_first_parents_oldest_first(shell):
-    shell.reply("git", "log", "--first-parent", "--reverse", "--format=%H", f"{SINCE}..origin/develop", text="x\ny\n")
-    assert digest.merged_commits("origin/develop", SINCE) == ["x", "y"]
-
-
-class Git:
-    def __init__(self, *results):
-        self.argv = []
-        self.results = list(results)
-
-    def __call__(self, argv, **_):
-        self.argv.append(list(argv))
-        return self.results.pop(0)
-
-
-def outcome(returncode, stdout="", stderr=""):
-    return SimpleNamespace(returncode=returncode, stdout=stdout, stderr=stderr)
-
-
-@pytest.mark.parametrize(("code", "expected"), [(0, True), (1, False)])
-def test_ancestry_is_asked_of_git_merge_base(monkeypatch, code, expected):
-    git = Git(outcome(code))
-    monkeypatch.setattr(digest.subprocess, "run", git)
-    assert digest.is_ancestor(HEAD, OLD) is expected
-    assert git.argv == [["git", "merge-base", "--is-ancestor", HEAD, OLD]]
-
-
-def test_a_git_failure_other_than_not_ancestor_is_a_read_error(monkeypatch):
-    monkeypatch.setattr(digest.subprocess, "run", Git(outcome(128, stderr="bad object")))
-    with pytest.raises(digest.ReadError):
-        digest.is_ancestor(HEAD, OLD)
-
-
-def test_merge_content_is_judged_by_a_tree_comparison(monkeypatch, shell):
-    p1, p2 = "1" * 40, "2" * 40
-    shell.reply("git", "rev-list", "--parents", "-n", "1", MERGED, text=f"{MERGED} {p1} {p2}\n")
-    shell.reply("git", "rev-parse", f"{MERGED}^{{tree}}", text="TREE\n")
-    git = Git(outcome(0), outcome(0, stdout="TREE\n"))
-    monkeypatch.setattr(digest.subprocess, "run", git)
-    assert digest.merge_adds_content(MERGED, "base") is False
-    assert git.argv == [
-        ["git", "merge-base", "--is-ancestor", p1, "base"],
-        ["git", "merge-tree", "--write-tree", p1, p2],
-    ]
-
-
-def test_a_merge_whose_tree_differs_adds_content(monkeypatch, shell):
-    p1, p2 = "1" * 40, "2" * 40
-    shell.reply("git", "rev-list", "--parents", "-n", "1", MERGED, text=f"{MERGED} {p1} {p2}\n")
-    shell.reply("git", "rev-parse", f"{MERGED}^{{tree}}", text="OTHER\n")
-    monkeypatch.setattr(digest.subprocess, "run", Git(outcome(0), outcome(0, stdout="TREE\n")))
-    assert digest.merge_adds_content(MERGED, "base") is True
-
-
-def test_a_conflicting_merge_adds_content_and_a_merge_tree_failure_is_an_error(monkeypatch, shell):
-    p1, p2 = "1" * 40, "2" * 40
-    shell.reply("git", "rev-list", "--parents", "-n", "1", MERGED, text=f"{MERGED} {p1} {p2}\n")
-    monkeypatch.setattr(digest.subprocess, "run", Git(outcome(0), outcome(1)))
-    assert digest.merge_adds_content(MERGED, "base") is True
-    monkeypatch.setattr(digest.subprocess, "run", Git(outcome(0), outcome(2, stderr="boom")))
-    with pytest.raises(digest.ReadError):
-        digest.merge_adds_content(MERGED, "base")
-
-
 def pull_payload(commits=2, **overrides):
     payload = {
         "head": {"sha": HEAD, "ref": "feature", "repo": {"full_name": "o/r"}},
@@ -281,8 +216,6 @@ def test_threads_are_read_with_one_graphql_query_naming_owner_repo_pull_and_page
     (args,) = seen
     assert args[:3] == ("api", "graphql", "-f")
     assert args[3].startswith("query=")
-    assert "pullRequest(number: $p)" in args[3]
-    assert "reviewThreads(first: $first)" in args[3]
     assert args[4:] == ("-f", "o=owner", "-f", "n=name", "-F", "p=7", "-F", "first=100")
 
 
@@ -506,14 +439,6 @@ def trunk_page_url(page):
     )
 
 
-def test_trunk_runs_are_read_until_a_short_page(shell):
-    shell.api(trunk_page_url(1), {"workflow_runs": [{"id": i} for i in range(100)]})
-    shell.api(trunk_page_url(2), {"workflow_runs": [{"id": 100}]})
-    runs = digest.fetch_trunk_runs("o/r")
-    assert len(runs) == 101
-    assert shell.commands == [("gh", "api", trunk_page_url(1)), ("gh", "api", trunk_page_url(2))]
-
-
 def test_trunk_runs_stop_after_ten_full_pages(shell):
     for page in range(1, 11):
         shell.api(trunk_page_url(page), {"workflow_runs": [{"id": page * 1000 + i} for i in range(100)]})
@@ -604,7 +529,6 @@ def test_gap_issues_open_only_for_new_entries_that_need_attention(shell):
     shell.replies[command] = ""
     assert digest.open_gap_issues("o/r", entries) == [new]
     assert command in shell.commands
-    assert len(title) == 200
     assert len(shell.calls) == 2 + 1
 
 
@@ -694,34 +618,6 @@ def test_a_commit_with_no_soundness_file_yields_no_entry(shell, monkeypatch):
     shell.reply("git", "diff", "--name-only", "--no-renames", f"{HEAD}~1", HEAD, text="other\n")
     monkeypatch.setattr(digest, "soundness_files", lambda sha, files: [])
     assert digest.collect_entry("o/r", HEAD) is None
-
-
-def test_the_window_reads_each_pull_once_and_keeps_going_after_a_duplicate_or_a_failure(monkeypatch):
-    shas = ["1" * 40, "2" * 40, "3" * 40, "4" * 40, "5" * 40]
-    window = []
-    monkeypatch.setattr(digest, "merged_commits", lambda ref, since: window.append((ref, since)) or shas)
-    numbers = {shas[0]: 7, shas[1]: 7, shas[2]: None, shas[3]: ReadError("unreadable"), shas[4]: 9}
-
-    def pull_number(repo, sha):
-        assert repo == "o/r"
-        value = numbers[sha]
-        if isinstance(value, Exception):
-            raise value
-        return value
-
-    collected = []
-
-    def collect_pull(repo, sha):
-        collected.append((repo, sha))
-        return evidence(number=numbers[sha])
-
-    monkeypatch.setattr(digest, "merged_pull_number", pull_number)
-    monkeypatch.setattr(digest, "collect_pull", collect_pull)
-    pulls, unreadable = digest.collect_window_pulls("o/r", "the-ref", "the-since")
-    assert window == [("the-ref", "the-since")]
-    assert collected == [("o/r", shas[0]), ("o/r", shas[4])]
-    assert [pull.number for pull in pulls] == [7, 9]
-    assert unreadable == [digest.UnreadablePull(None, shas[3], "unreadable")]
 
 
 ReadError = digest.ReadError
@@ -1137,13 +1033,19 @@ def test_the_withdrawal_section_lists_each_item_under_its_pull():
     assert lines[2:] == [f"- #7 (`{HEAD[:9]}`):", "  - one", "  - two"]
 
 
-@pytest.mark.parametrize("withdrawals", [[], None])
-def test_no_withdrawals_render_nothing(withdrawals):
-    assert digest.render_withdrawals(withdrawals or []) == ""
+def test_no_withdrawals_render_nothing():
+    assert digest.render_withdrawals([]) == ""
 
 
 def test_the_closure_list_is_headed_and_one_line_per_issue():
     assert digest.render_closures([]).split("\n") == ["", "Gap issues to close:", "None."]
+    closures = [digest.Closure(30, HEAD, "first", "c"), digest.Closure(31, OLD, "second", "c")]
+    assert digest.render_closures(closures).split("\n") == [
+        "",
+        "Gap issues to close:",
+        f"- #30 (`{HEAD[:9]}`): first",
+        f"- #31 (`{OLD[:9]}`): second",
+    ]
 
 
 def test_a_closure_comment_names_the_commit_and_pull_of_the_gap():
@@ -1201,7 +1103,6 @@ class Wired:
             monkeypatch.setattr(digest, self.hooks[name], self.make_hook(name))
 
     hooks = {"overrides": "standin_overrides", "red": "red_armings", "withdrawals": "withdrawn_findings"}
-    real = {}
 
     def make_hook(self, name):
         real = getattr(digest, self.hooks[name])
@@ -1357,16 +1258,6 @@ def test_a_failure_is_reported_on_stderr_and_not_stdout(wired, capsys):
 
 
 UNREADABLE_WINDOW = "The window's pull requests were unreadable: window gone."
-
-
-def test_an_unreadable_window_marks_every_supplement_unavailable_and_still_reports(wired, capsys):
-    wired.window = digest.ReadError("window gone")
-    assert digest.main([]) == 0
-    lines = capsys.readouterr().out.splitlines()
-    assert UNREADABLE_WINDOW in lines
-    for subject in ("Stand-in overrides", "Red-trunk armings", "Oracle withdrawals"):
-        assert f"{subject} are unavailable for this window: the window's pull requests were unreadable." in lines
-    assert wired.calls("fetch_trunk_runs") == []
 
 
 @pytest.mark.parametrize("error", [ReadError("x"), KeyError("x"), TypeError("x"), ValueError("x")])

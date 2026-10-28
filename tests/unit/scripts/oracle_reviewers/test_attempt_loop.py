@@ -102,7 +102,7 @@ class Loop:
                 str(self.tmp_path),
             ],
             cwd=REPO_ROOT,
-            env={**os.environ, "PYTHONPATH": str(REPO_ROOT)},
+            env={**os.environ, "PYTHONPATH": str(REPO_ROOT), "MUTANT_UNDER_TEST": ""},
             capture_output=True,
             text=True,
             check=False,
@@ -228,7 +228,7 @@ def _adopting_child(mode: str, *args: str) -> Any:
     result = subprocess.run(
         [sys.executable, "-m", "tests.unit.scripts.oracle_reviewers.loop_process", "adopt", mode, *args],
         cwd=REPO_ROOT,
-        env={**os.environ, "PYTHONPATH": str(REPO_ROOT)},
+        env={**os.environ, "PYTHONPATH": str(REPO_ROOT), "MUTANT_UNDER_TEST": ""},
         capture_output=True,
         text=True,
         check=True,

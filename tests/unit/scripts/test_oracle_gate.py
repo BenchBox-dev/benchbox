@@ -737,6 +737,7 @@ def test_process_exit_gives_waiting_a_code_distinct_from_crashes() -> None:
 
 def test_script_entry_point_exits_through_the_process_mapping() -> None:
     env = {key: value for key, value in os.environ.items() if key not in ("GITHUB_TOKEN", "GH_TOKEN")}
+    env["MUTANT_UNDER_TEST"] = ""
     result = subprocess.run(
         [sys.executable, str(SCRIPT), "--repo", "o/r", "--pr", "7"],
         env=env,
@@ -773,6 +774,7 @@ def test_run_writes_no_result_file_without_the_variable(monkeypatch: pytest.Monk
 def test_a_crash_before_the_exit_leaves_no_result(tmp_path: Path) -> None:
     target = tmp_path / "result"
     env = {key: value for key, value in os.environ.items() if key not in ("GITHUB_TOKEN", "GH_TOKEN")}
+    env["MUTANT_UNDER_TEST"] = ""
     env[oracle_gate.RESULT_FILE_ENV] = str(target)
     result = subprocess.run(
         [sys.executable, str(SCRIPT), "--repo", "o/r", "--pr", "not-a-number"],

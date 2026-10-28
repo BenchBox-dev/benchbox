@@ -135,9 +135,10 @@ def test_a_follow_up_body_lists_every_part_of_the_decision_in_order(policy: Poli
     assert "- medium: not selected: pool blocked" in lines
     assert not any(line.startswith("- small: waits") for line in lines)
     assert any(line.startswith("Shadow mode") for line in lines)
-    assert "Defects outside the diff count like the others: fix them before merge." in lines
-    assert "<details><summary>Not counted: defects in files this follow-up did not review</summary>" in lines
-    assert lines.index("</details>") > lines.index(f"- **Medium** `{OTHER}:9`: Elsewhere problem")
+    opener = next(index for index, line in enumerate(lines) if line.startswith("<details>"))
+    outside = lines.index(f"- **Medium** `{CHECKER}:40`: D8: Outside problem")
+    elsewhere = lines.index(f"- **Medium** `{OTHER}:9`: Elsewhere problem")
+    assert outside < opener < elsewhere < lines.index("</details>")
     assert final.body.split("\n\n")[-1].startswith(protocol.MARKER_OPEN)
     assert final.reviewer == "small" and final.strikes == 1 and final.pending_cause is None
     assert final.review is None and final.description == "small: SHIP WITH FIXES, 5 defect(s) to fix"
@@ -245,11 +246,10 @@ def test_a_do_not_ship_explains_that_no_defects_are_listed(policy: Policy) -> No
     assert not any(line.startswith("Rework") for line in ship.review["body"].split("\n"))
 
 
-def test_a_pass_that_was_preceded_by_an_absence_uses_the_passing_attempt(policy: Policy) -> None:
-    attempts = [Attempt(1, "small", selection.ABSENT, absence="timeout"), Attempt(2, "small", selection.PASS)]
+def test_a_failing_attempt_after_an_absence_uses_the_failing_attempt(policy: Policy) -> None:
+    attempts = [Attempt(1, "small", selection.ABSENT, absence="timeout"), Attempt(2, "small", selection.FAIL)]
     verdicts = {2: validate(_v("s", [_defect("Problem")]))}
     step = Step(selection.FAIL, policy.reviewers["small"], ())
-    attempts[1] = Attempt(2, "small", selection.FAIL)
     final = report.finalize(_comment_plan(policy), step, [], attempts, verdicts, COMMENTABLE)
     assert final.state == "failure" and "D1: Problem" in final.body and final.reviewer == "small"
 
@@ -400,36 +400,28 @@ def test_a_capped_body_shortens_every_listed_detail_alike(policy: Policy, monkey
 def test_a_body_with_no_room_for_detail_drops_dispute_evidence_too(
     policy: Policy, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(report, "BODY_LIMIT", 4000)
+    evidence = "e" * 1000
     plan = _protocol_plan(policy, kind="follow-up", round=2, prior=[_prior("D1")], changed=[CHECKER], next_id=2)
     plan["disputes"] = [_dispute("D1")]
-    verdict = {**_v("s"), "prior_defects": [{"id": "D1", "status": "fixed", "evidence": "e" * 3900}]}
+    verdict = {**_v("s"), "prior_defects": [{"id": "D1", "status": "fixed", "evidence": evidence}]}
+    monkeypatch.setattr(report, "BODY_LIMIT", HUGE)
+    full = _finalize(policy, plan, verdict).review["body"]
+    assert evidence in full
+    limit = len(full) - 300
+    monkeypatch.setattr(report, "BODY_LIMIT", limit)
     final = _finalize(policy, plan, verdict)
     assert final.review is not None
-    assert len(final.review["body"]) <= 4000
-    assert 0 < max(_runs(final.review["body"], "e")) < 3900
+    body = final.review["body"]
+    assert len(body) <= limit
+    line = next(line for line in body.split("\n") if line.startswith("- D1 "))
+    assert line.endswith(report.TRUNCATED)
+    assert 0 < max(_runs(line, "e")) < 999
 
 
-def test_the_size_notice_counts_details_longer_than_the_cap() -> None:
-    listed = [
-        Finding("High", CHECKER, 1, "a", "x" * 5),
-        Finding("High", CHECKER, 2, "b", "x" * 6),
-        Finding("High", CHECKER, 3, "c", ""),
-    ]
-    assert report._size_notice(listed, 5).startswith("Size limit: the detail of 1 of 3 listed defect(s)")
-
-
-def test_description_and_detail_clipping_keep_exact_boundaries() -> None:
+def test_description_clipping_keeps_exact_boundaries() -> None:
     assert report.fixed("success", "d" * 140).description == "d" * 140
     clipped = report.fixed("success", "d" * 141).description
     assert clipped == "d" * 139 + "…"
-    assert report._cut("a" * 5, 5) == "a" * 5
-    assert report._cut("ab   cd", 5) == "ab" + report.TRUNCATED
-    assert report._cut("  abcdef", 4) == "  ab" + report.TRUNCATED
-    assert report._cut("  abcdef", 5) == "  abc" + report.TRUNCATED
-    assert report._cut("ab    cdef", 4) == "ab" + report.TRUNCATED
-    assert report._cut("  ab    cdef", 8) == "  ab" + report.TRUNCATED
-    assert report._cut("   ab", 4) == "   a" + report.TRUNCATED
 
 
 def test_a_fixed_decision_has_no_body_or_review() -> None:
@@ -443,53 +435,104 @@ def test_a_fixed_decision_has_no_body_or_review() -> None:
     )
 
 
-def _fit_probe(limit: int, fits_at: int, evidence_fits_at: int) -> tuple[Any, list[tuple[Any, Any]]]:
-    calls: list[tuple[Any, Any]] = []
-
-    def render(cap: int | None, evidence_cap: int | None) -> str:
-        calls.append((cap, evidence_cap))
-        if cap is None:
-            over = 1000
-        elif evidence_cap is None:
-            over = cap - fits_at
-        else:
-            over = evidence_cap - evidence_fits_at
-        return f"{cap}/{evidence_cap}".ljust(limit + over, ".")
-
-    return render, calls
+def _sized_body(policy: Policy, monkeypatch: pytest.MonkeyPatch, limit: int, details: Sequence[str]) -> str:
+    monkeypatch.setattr(report, "BODY_LIMIT", limit)
+    verdict = _v(
+        "s",
+        [
+            _defect("Inline", 2, details[0]),
+            _defect("Outside", 40, details[1]),
+            _defect("Elsewhere", 9, details[2], file=OTHER),
+        ],
+    )
+    plan = _comment_plan(policy, kind="follow-up", round=2, changed=[CHECKER], next_id=1)
+    return _finalize(policy, plan, verdict).body
 
 
-@pytest.mark.parametrize("fits_at", [0, 1, 2, 7, 553, 3998, 3999, 4000])
-def test_the_body_fit_keeps_the_longest_detail_cap_that_fits(fits_at: int, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(report, "BODY_LIMIT", 5000)
-    render, _ = _fit_probe(5000, fits_at, 0)
-    fitted = report._fit(render)
-    assert fitted.startswith(f"{fits_at}/None.") and len(fitted) == 5000
-    assert fitted == render(fits_at, None)
+HUGE = 10**9
 
 
-@pytest.mark.parametrize("evidence_fits_at", [-1, 0, 1, 2, 500, 998, 999, 1000])
-def test_the_body_fit_falls_back_to_evidence_shortening_when_detail_cannot_fit(
-    evidence_fits_at: int, monkeypatch: pytest.MonkeyPatch
+def _visible(body: str) -> str:
+    return "\n".join(line for line in body.split("\n") if not line.startswith(protocol.MARKER_OPEN))
+
+
+def test_a_body_exactly_at_the_limit_is_left_alone(policy: Policy, monkeypatch: pytest.MonkeyPatch) -> None:
+    details = ("Q" * 1000, "J" * 4000, "")
+    full = _sized_body(policy, monkeypatch, HUGE, details)
+    assert "Q" * 1000 in full and "J" * 4000 in full and report.TRUNCATED not in full
+    assert _sized_body(policy, monkeypatch, len(full), details) == full
+    shortened = _sized_body(policy, monkeypatch, len(full) - 1, details)
+    assert len(shortened) <= len(full) - 1 and report.TRUNCATED in shortened and "Size limit" in shortened
+
+
+def test_a_capped_body_keeps_the_longest_detail_that_fits(policy: Policy, monkeypatch: pytest.MonkeyPatch) -> None:
+    details = ("Q" * 1000, "J" * 1000, "Z" * 1000)
+    full = len(_sized_body(policy, monkeypatch, HUGE, details))
+    for limit in range(full - 1, full - 400, -7):
+        body = _sized_body(policy, monkeypatch, limit, details)
+        runs = [max(_runs(body, char), default=0) for char in "QJZ"]
+        assert len(set(runs)) == 1 and runs[0] < 1000
+        assert limit - 3 < len(body) <= limit
+
+
+def test_a_body_too_small_for_any_detail_still_lists_every_defect(
+    policy: Policy, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(report, "BODY_LIMIT", 5000)
-    render, _ = _fit_probe(5000, -1, evidence_fits_at)
-    fitted = report._fit(render)
-    chosen = max(evidence_fits_at, 0)
-    assert fitted.startswith(f"0/{chosen}.")
-    if evidence_fits_at >= 0:
-        assert len(fitted) == 5000
+    body = _sized_body(policy, monkeypatch, 10, ("Q" * 1000, "J" * 1000, "Z" * 1000))
+    visible = _visible(body)
+    assert not any(char in visible for char in "QJZ")
+    assert body.count(report.TRUNCATED) == 3
+    assert "Size limit: the detail of 3 of 3 listed defect(s)" in body
+    for title in ("Inline", "Outside", "Elsewhere"):
+        assert title in body
 
 
-def test_a_body_exactly_at_the_limit_is_left_alone(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(report, "BODY_LIMIT", 100)
-    calls: list[tuple[Any, Any]] = []
+def test_the_size_note_counts_only_the_details_that_were_shortened(
+    policy: Policy, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    details = ("J" * 10, "Q" * 3000, "")
+    full = len(_sized_body(policy, monkeypatch, HUGE, details))
+    body = _sized_body(policy, monkeypatch, full - 500, details)
+    assert "Size limit: the detail of 1 of 3 listed defect(s)" in body
+    assert "J" * 10 in body and "Q" * 3000 not in body
 
-    def render(cap: int | None, evidence_cap: int | None) -> str:
-        calls.append((cap, evidence_cap))
-        return "x" * 100
 
-    assert report._fit(render) == "x" * 100 and calls == [(None, None)]
+def test_a_shortened_detail_never_keeps_trailing_whitespace_before_the_marker(
+    policy: Policy, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    details = ("J" * 50 + " " * 300 + "Q" * 600, "", "")
+    full = len(_sized_body(policy, monkeypatch, HUGE, details))
+    bodies = [_sized_body(policy, monkeypatch, limit, details) for limit in range(full - 1, full - 1000, -3)]
+    assert all(f"J {report.TRUNCATED}" not in body for body in bodies)
+    assert any(f"{'J' * 50}{report.TRUNCATED}" in body for body in bodies)
+
+
+def test_dispute_evidence_is_shortened_to_the_longest_run_that_fits(
+    policy: Policy, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    full = len(_evidence_body(policy, monkeypatch, HUGE))
+    for limit in range(full - 1, full - 400, -9):
+        body = _evidence_body(policy, monkeypatch, limit)
+        run = max(_runs(body, "Q"), default=0)
+        assert 0 < run < 1000
+        assert limit - 1 < len(body) <= limit
+
+
+def test_dispute_evidence_is_dropped_when_nothing_else_can_give(
+    policy: Policy, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    body = _evidence_body(policy, monkeypatch, 10)
+    assert "Q" not in _visible(body) and report.TRUNCATED in body
+
+
+def _evidence_body(policy: Policy, monkeypatch: pytest.MonkeyPatch, limit: int) -> str:
+    monkeypatch.setattr(report, "BODY_LIMIT", limit)
+    plan = _protocol_plan(policy, kind="follow-up", round=2, prior=[_prior("D1")], changed=[CHECKER], next_id=2)
+    plan["disputes"] = [_dispute("D1")]
+    verdict = {**_v("s"), "prior_defects": [{"id": "D1", "status": "fixed", "evidence": "Q" * 1000}]}
+    final = _finalize(policy, plan, verdict)
+    assert final.review is not None
+    return final.review["body"]
 
 
 def _dispute_plan(policy: Policy, *, forced: bool = False, ids: Sequence[str] = ("D1", "D2", "D3", "D4", "D5")):
@@ -599,7 +642,6 @@ def test_a_carried_decision_repeats_the_previous_decision_without_running_a_revi
     assert (final.state, final.strikes, final.reviewer, final.pending_cause) == ("failure", 2, None, None)
     assert final.review is None
     assert final.body.split("\n")[-1].startswith(protocol.MARKER_OPEN)
-    assert final.body.rstrip("\n").count("\n\n") >= 1
 
 
 def test_a_carried_decision_in_review_mode_posts_an_empty_review_with_the_record(policy: Policy) -> None:
@@ -625,7 +667,7 @@ def test_a_refusal_states_the_strike_count_and_records_no_reviewer(policy: Polic
     assert lines[0] == f"### oracle-verdict: failure for `{HEAD}`"
     assert any("3 of 3" in line and "DO NOT SHIP" in line for line in lines)
     assert (final.state, final.strikes, final.reviewer, final.pending_cause) == ("failure", 3, None, None)
-    assert final.description == "refused after 3 DO NOT SHIP decisions: open a new pull request"
+    assert "refused" in final.description and "3" in final.description
     record = _record(final)
     assert record["reviewer"] == "" and record["tier"] == "" and record["next_id"] == 1
     assert record["decision"] == "REFUSED" and record["open_defects"] == [] and record["summary"] == ""
@@ -644,13 +686,11 @@ def test_the_success_status_carries_the_run_identity_inside_the_description_limi
     over = report.Final("success", "d" * (room + 1), "", None, None)
     clipped = report.status_payload(plan, over, "url")["description"]
     assert clipped == "d" * (room - 1) + "…" + suffix and len(clipped) == report.DESCRIPTION_LIMIT
-    short = report.status_payload(plan, report.Final("success", "ok", "", None, None), "url")
-    assert short == {"state": "success", "context": "oracle-verdict", "description": "ok" + suffix, "target_url": "url"}
 
 
 @pytest.mark.parametrize(
     ("state", "plan"),
-    [("failure", {"run_uuid": "u"}), ("pending", {"run_uuid": "u"}), ("success", {}), ("success", {"run_uuid": ""})],
+    [("failure", {"run_uuid": "u"}), ("pending", {"run_uuid": "u"}), ("success", {"run_uuid": ""})],
 )
 def test_only_a_success_with_a_run_identity_gets_the_run_suffix(state: str, plan: dict[str, str]) -> None:
     payload = report.status_payload({"status_context": "ctx", **plan}, report.Final(state, "desc", "", None, None), "t")

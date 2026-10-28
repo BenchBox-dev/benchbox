@@ -361,6 +361,16 @@ def test_an_octopus_merge_adds_content(repo):
     assert digest.merge_adds_content(head, "main", cwd=repo) is True
 
 
+def test_a_merge_of_unrelated_histories_is_a_read_error_not_added_content(repo):
+    git(repo, "checkout", "-q", "--orphan", "other")
+    git(repo, "commit", "-qm", "other root", "--allow-empty")
+    main, other = git(repo, "rev-parse", "main"), git(repo, "rev-parse", "other")
+    tree = git(repo, "rev-parse", "other^{tree}")
+    merge = git(repo, "commit-tree", tree, "-p", main, "-p", other, "-m", "join")
+    with pytest.raises(digest.ReadError, match="merge-tree"):
+        digest.merge_adds_content(merge, "main", cwd=repo)
+
+
 def test_an_unknown_commit_is_an_error_not_a_non_ancestor(repo):
     with pytest.raises(digest.ReadError):
         digest.is_ancestor("f" * 40, "main", cwd=repo)

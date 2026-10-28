@@ -106,7 +106,6 @@ class FakeGitHub:
         self._pull_reads = 0
         self.runs: list[dict[str, Any]] = []
         self.listings: list[datetime] = []
-        self.committed = datetime.now(UTC) - timedelta(days=1)
         self.comments: list[dict[str, Any]] = []
         self.failing_prs: set[int] = set()
         self.failed: dict[int, list[str]] = {}
@@ -131,8 +130,6 @@ class FakeGitHub:
         monkeypatch.setattr(github, "dispatch", self._dispatch)
         monkeypatch.setattr(github, "verdict_runs", self._verdict_runs)
         monkeypatch.setattr(github, "in_flight_pulls", self._in_flight)
-        monkeypatch.setattr(github, "failed_steps", lambda repo, run_id: list(self.failed.get(run_id, [])))
-        monkeypatch.setattr(github, "commit_statuses", self._statuses)
         monkeypatch.setattr(github, "_gh", self._gh)
         monkeypatch.setattr(github, "review_edit_states", self._edit_states)
         monkeypatch.setattr(github, "post_status", self._post)
@@ -210,8 +207,6 @@ class FakeGitHub:
             self._pull_reads += 1
             if self._pull_reads > self.reread_after_read and self.reread_sha is not None:
                 return {**self.pull, "head": {"sha": self.reread_sha, "repo": {"full_name": REPO}}}
-        if path.startswith(f"repos/{REPO}/commits/"):
-            return {"commit": {"committer": {"date": self.committed.strftime("%Y-%m-%dT%H:%M:%SZ")}}}
         jobs = re.fullmatch(rf"repos/{REPO}/actions/runs/(\d+)/jobs\?filter=latest&per_page=100", path)
         if jobs:
             steps = [{"name": "Check out", "conclusion": "success"}]

@@ -389,10 +389,11 @@ def _scrambled(length: int, seed: str) -> str:
     return text[:length]
 
 
-def test_a_marker_is_compact_sorted_json_compressed_and_unpadded_whatever_the_key_order() -> None:
+def test_a_marker_encodes_the_same_whatever_the_key_order_and_round_trips() -> None:
     record = _marker_record(open_defects=[_open()], summary="checked")
     reordered = dict(reversed(list(record.items())))
-    assert encode_marker(record) == encode_marker(reordered) == _wire(record)
+    assert encode_marker(record) == encode_marker(reordered)
+    assert decode_marker(f"line\n{encode_marker(record)}") == record
 
 
 @pytest.mark.parametrize(
@@ -433,23 +434,25 @@ def test_a_marker_with_a_malformed_field_is_refused(record: dict[str, Any]) -> N
 
 def test_a_marker_with_every_optional_field_decodes() -> None:
     record = _marker_record(patch_map={"0a1b2c3d": "e" * 16}, forced=True, run_uuid="1" * 32)
-    assert decode_marker(f"line\n{_wire(record)}") == record
+    assert decode_marker(f"line\n{encode_marker(record)}") == record
 
 
 def test_a_marker_that_fits_the_limit_exactly_keeps_its_patch_map(monkeypatch: pytest.MonkeyPatch) -> None:
     record = _marker_record(open_defects=[_open()])
     patches = {"0a1b2c3d": "e" * 16}
-    full = _wire({**record, "patch_map": patches})
+    full = encode_marker(record, patches)
+    bare = encode_marker(record)
+    assert decode_marker(f"line\n{full}")["patch_map"] == patches
     monkeypatch.setattr(protocol, "MARKER_LIMIT", len(full))
     assert encode_marker(record, patches) == full
-    monkeypatch.setattr(protocol, "MARKER_LIMIT", len(_wire(record)))
-    assert encode_marker(record, patches) == _wire(record)
+    monkeypatch.setattr(protocol, "MARKER_LIMIT", len(bare))
+    assert encode_marker(record, patches) == bare
 
 
 def test_a_marker_drops_only_the_summary_when_that_is_enough(monkeypatch: pytest.MonkeyPatch) -> None:
     title = _scrambled(200, "title")
     record = _marker_record(open_defects=[_open(title=title)], summary=_scrambled(600, "summary"))
-    monkeypatch.setattr(protocol, "MARKER_LIMIT", len(_wire({**record, "summary": ""})))
+    monkeypatch.setattr(protocol, "MARKER_LIMIT", len(encode_marker({**record, "summary": ""})))
     decoded = decode_marker(encode_marker(record))
     assert decoded["summary"] == "" and decoded["open_defects"][0]["title"] == title
 
@@ -459,17 +462,26 @@ def test_a_marker_trims_titles_and_paths_only_as_far_as_the_limit_needs(monkeypa
     path = "pkg/" + _scrambled(196, "path")
     record = _marker_record(open_defects=[_open(title=title, file=path)], summary=_scrambled(600, "summary"))
     trimmed = {**record, "summary": "", "open_defects": [_open(title=title[:119] + "…", file="…" + path[-119:])]}
-    monkeypatch.setattr(protocol, "MARKER_LIMIT", len(_wire(trimmed)))
+    monkeypatch.setattr(protocol, "MARKER_LIMIT", len(encode_marker(trimmed)))
     assert decode_marker(encode_marker(record)) == trimmed
 
 
 @pytest.mark.parametrize(
-    ("text", "limit", "head", "tail"),
-    [("abcd", 4, "abcd", "abcd"), ("abcde", 4, "abc…", "…cde"), ("ab", 1, "…", "…"), ("ab", 0, "", "")],
+    ("title_length", "path_length"),
+    [(120, 130), (130, 120)],
+    ids=["title-fits", "path-fits"],
 )
-def test_marker_trims_keep_text_that_fits_and_mark_the_cut(text: str, limit: int, head: str, tail: str) -> None:
-    assert protocol._clip_head(text, limit) == head
-    assert protocol._clip_tail(text, limit) == tail
+def test_a_marker_trim_leaves_a_title_or_path_that_fits_its_limit_untouched(
+    monkeypatch: pytest.MonkeyPatch, title_length: int, path_length: int
+) -> None:
+    title = _scrambled(title_length, "title")
+    path = _scrambled(path_length, "path")
+    record = _marker_record(open_defects=[_open(title=title, file=path)], summary=_scrambled(600, "summary"))
+    kept_title = title if title_length == 120 else title[:119] + "…"
+    kept_path = path if path_length == 120 else "…" + path[-119:]
+    trimmed = {**record, "summary": "", "open_defects": [_open(title=kept_title, file=kept_path)]}
+    monkeypatch.setattr(protocol, "MARKER_LIMIT", len(encode_marker(trimmed)))
+    assert decode_marker(encode_marker(record)) == trimmed
 
 
 def _review(record: dict[str, Any], submitted_at: str | None, review_id: int) -> dict[str, Any]:
@@ -563,9 +575,10 @@ def test_marker_lines_are_stripped_and_the_other_lines_kept() -> None:
     assert protocol.strip_marker_lines("") == ""
 
 
-def test_an_empty_claim_normalizes_and_hashes_as_empty() -> None:
-    assert protocol.normalize_claim("") == "" and protocol.canonical_claim("") == ""
-    assert protocol.claim_hash("") == hashlib.sha256(b"").hexdigest()
+def test_an_empty_claim_hashes_like_none_and_claims_differing_in_space_or_case_hash_alike() -> None:
+    assert protocol.claim_hash(None) == protocol.claim_hash("")
+    assert protocol.claim_hash("  Foo \n BAR\t") == protocol.claim_hash("foo bar")
+    assert protocol.claim_hash("foo bar") != protocol.claim_hash("foo baz")
 
 
 def test_unique_defects_keeps_the_first_entry_for_each_id() -> None:
@@ -581,6 +594,8 @@ def test_live_disputes_need_an_open_defect_id_and_a_matching_or_missing_cycle() 
     assert protocol.live_disputes(disputes, latest) == [undated, current]
 
 
-def test_a_summary_clip_keeps_text_that_fits_exactly() -> None:
-    assert protocol._clip("abc", 3) == "abc"
-    assert protocol._clip("abcd", 3) == "ab…"
+def test_a_do_not_ship_summary_that_fits_is_kept_whole_and_a_longer_one_is_cut_with_an_ellipsis() -> None:
+    fits = "z" * DO_NOT_SHIP_SUMMARY
+    assert judge(_verdict("DO_NOT_SHIP", [_defect()], summary=fits), 10).summary == fits
+    cut = judge(_verdict("DO_NOT_SHIP", [_defect()], summary=fits + "z"), 10).summary
+    assert cut == fits[:-1] + "…"

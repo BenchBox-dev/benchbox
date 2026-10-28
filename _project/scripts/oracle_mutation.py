@@ -26,6 +26,8 @@ def stage(root: Path, target: Path, settings: dict[str, Any]) -> None:
     paths = (*settings["paths_to_mutate"], *settings["also_copy"], *ALWAYS_COPIED)
     for name in sorted({Path(path).parts[0] for path in paths}):
         link = target / name
+        if link.is_symlink() and link.readlink() != root / name:
+            link.unlink()
         if not link.is_symlink():
             link.symlink_to(root / name)
 
