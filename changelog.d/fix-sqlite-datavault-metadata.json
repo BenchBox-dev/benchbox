@@ -4,7 +4,7 @@
     {
       "category": "fixed",
       "breaking": false,
-      "text": "Metadata Primitives and Data Vault now run on SQLite. Every Metadata Primitives query has a SQLite form built on sqlite_master and the pragma table functions instead of the missing information_schema, Data Vault query 1 uses the standard INTERVAL form so its date arithmetic translates, and Data Vault tables get hash-key indexes so the suite finishes in about a minute at scale 0.1 instead of exceeding 25 minutes."
+      "text": "Metadata Primitives and Data Vault now run on SQLite. Every Metadata Primitives query has a SQLite form built on sqlite_master and the pragma table functions instead of the missing information_schema, Data Vault query 1 uses the standard INTERVAL form so its date arithmetic translates, and Data Vault tables get hash-key indexes so the suite finishes in about a minute at scale 0.1 instead of exceeding 25 minutes. TPC-Havoc variant 5_v8 is skipped on SQLite with a recorded reason because SQLite cannot decorrelate it (over 300s per execution at scale 0.1); the rest of the benchmark finishes in about four minutes."
     }
   ]
 }

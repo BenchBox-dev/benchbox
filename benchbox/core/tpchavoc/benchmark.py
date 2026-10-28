@@ -32,6 +32,7 @@ from benchbox.sql_compat.rules.execution_filter.postgres_tpchavoc import (
     POSTGRES_DUCKDB_BACKED_TPCHAVOC_SKIPS,
     POSTGRES_TPCHAVOC_SKIPS,
 )
+from benchbox.sql_compat.rules.execution_filter.sqlite_tpchavoc import SQLITE_TPCHAVOC_SKIPS
 
 
 class TPCHavocBenchmark(TPCHBenchmark):
@@ -71,6 +72,8 @@ class TPCHavocBenchmark(TPCHBenchmark):
             return list({**POSTGRES_TPCHAVOC_SKIPS, **POSTGRES_DUCKDB_BACKED_TPCHAVOC_SKIPS})
         if platform == "timescaledb":
             return list(POSTGRES_TPCHAVOC_SKIPS)
+        if platform == "sqlite":
+            return list(SQLITE_TPCHAVOC_SKIPS)
         if platform in CLOUD_TPCHAVOC_SKIPS:
             return list(CLOUD_TPCHAVOC_SKIPS[platform])
         platform = LIST_AGGREGATE_TPCHAVOC_PLATFORM_ALIASES.get(platform, platform)
