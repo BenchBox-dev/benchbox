@@ -4,7 +4,7 @@
     "A claim taken by one agent cannot be finished or released by another agent without takeover",
     "A test covers two agents on one server"
   ],
-  "context": "Found 2026-10-17 during the site-split remediation; the error text is in that session's transcript. The coordinator's workaround was to retry until the shared slot was free. todo-db source: ~/Developer/todo-db (src/todo_db/service.py has the same check at the same lines).",
+  "context": "Found 2026-10-17 during the site-split remediation; the error text is in that session's transcript. The coordinator's workaround was to retry until the shared slot was free. todo-db source: ~/Developer/todo-db (src/todo_db/service.py has the same check at the same lines).\n\nTracked in the todo-db tracker as mcp-shared-worker-claim-slot (copied 2026-10-28).",
   "description": "The tracker allows one live claim per worker (vendored todo_db 0.9.1, todo_db/service.py:933-943 raises E_MULTIPLE_CLAIMS). The MCP server derives the worker identity once per server process when --actor and TODO_DB_ACTOR are unset (todo_db/mcp/server.py:45,75,106). Every subagent of one Claude Code session talks to the same server, so they all act as one worker, `mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c`.\n\nOn 2026-10-17 a site-split agent's take on site-split-50 and site-split-55 failed with E_MULTIPLE_CLAIMS at least 12 times, because unrelated agents in the same session held claims on spark-tuning-discovery-cli, spark-effective-config-preflight-capture, spark-family-session-config-velox-lakesail and tuning-render-layout-postgres-family-20261001. Those agents could finish and release each other's work, so claim ownership did not protect anything either.\n\nGive each agent its own worker identity, for example a per-call agent or session id that becomes part of the worker, or document and enforce one claim per session with a clear recovery hint naming the holder.",
   "sessions": [
     {
@@ -14,6 +14,14 @@
       "op": "create",
       "op_id": "338d883c4327476d9d6dea9c04885876",
       "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:mcp:joe@joe-mac-mini.local:34ab13de9d46f28431cba0e0",
+      "at": "2026-10-28T19:52:36Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "99cd835aa9a942a5b7c2b5a149afc54c",
+      "session_id": "366df14943cf412292e43b2e230cff6f"
     }
   ]
 }
