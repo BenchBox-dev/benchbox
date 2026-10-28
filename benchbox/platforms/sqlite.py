@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 from .base import DriverIsolationCapability, PlatformAdapter
 from .base.connection_wrappers import _make_stream_cursor
 from .base.ddl_helpers import translate_schema_with_tpcds_fk_strip
+from .base.mysql_wire import split_sql_statements
 
 try:
     import sqlite3
@@ -36,6 +37,23 @@ if sqlite3 is not None:
     _SQLITE_VERSION_ERRORS = (sqlite3.Error, AttributeError, IndexError, TypeError)
 else:
     _SQLITE_VERSION_ERRORS = (AttributeError, IndexError, TypeError)
+
+_ScriptConnectionBase: type = sqlite3.Connection if sqlite3 is not None else object
+
+
+class _SQLiteScriptConnection(_ScriptConnectionBase):
+    def execute(self, sql, parameters=()):
+        if parameters or ";" not in sql:
+            return super().execute(sql, parameters)
+        statements = split_sql_statements(sql)
+        if len(statements) <= 1:
+            return super().execute(statements[0] if statements else sql)
+        if self.in_transaction and statements[0].upper().startswith("BEGIN"):
+            self.commit()
+        for statement in statements[:-1]:
+            super().execute(statement)
+        return super().execute(statements[-1])
+
 
 _TPCH_TABLES: frozenset[str] = frozenset(
     {"customer", "lineitem", "nation", "orders", "part", "partsupp", "region", "supplier"}
@@ -350,6 +368,7 @@ class SQLiteAdapter(PlatformAdapter):
             timeout=self.timeout,
             check_same_thread=self.check_same_thread,
             cached_statements=0,
+            factory=_SQLiteScriptConnection,
         )
 
         _register_sqlite_compatibility_functions(conn)

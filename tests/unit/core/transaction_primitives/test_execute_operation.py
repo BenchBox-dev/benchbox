@@ -514,3 +514,48 @@ class TestFailedPlatformPayload:
         result = bench.execute_operation("op1", conn)
 
         assert result.validation_passed is False
+
+
+@pytest.fixture()
+def sqlite_staged(tmp_path: Path):
+    from benchbox.core.transaction_primitives.schema import get_all_staging_tables_sql
+    from benchbox.platforms.sqlite import SQLiteAdapter
+
+    conn = SQLiteAdapter(database_path=":memory:").create_connection()
+    conn.executescript(get_all_staging_tables_sql("sqlite"))
+    bench = TransactionPrimitivesBenchmark(scale_factor=0.01, output_dir=tmp_path)
+    bench.is_setup = lambda connection: True
+    yield bench, conn
+    conn.close()
+
+
+@pytest.mark.parametrize(
+    "operation_id",
+    [
+        "transaction_commit_small",
+        "transaction_commit_medium",
+        "transaction_commit_large",
+        "transaction_rollback_medium",
+        "transaction_savepoint_deep_nesting",
+        "transaction_isolation_serializable",
+        "transaction_truncate_in_transaction",
+        "transaction_with_cte",
+    ],
+)
+def test_sqlite_runs_multi_statement_operations_repeatably(sqlite_staged, operation_id: str) -> None:
+    bench, conn = sqlite_staged
+    for _ in range(2):
+        result = bench.execute_operation(operation_id, conn, platform_key="sqlite", platform_name="sqlite")
+        assert result.status is None, result.error
+        assert result.success
+        assert result.cleanup_success
+
+
+@pytest.mark.parametrize(
+    "operation_id", ["transaction_isolation_read_committed", "transaction_isolation_repeatable_read"]
+)
+def test_sqlite_skips_unsupported_isolation_levels(sqlite_staged, operation_id: str) -> None:
+    bench, conn = sqlite_staged
+    result = bench.execute_operation(operation_id, conn, platform_key="sqlite", platform_name="sqlite")
+    assert result.status == "SKIPPED"
+    assert "SERIALIZABLE" in (result.skip_reason or "")

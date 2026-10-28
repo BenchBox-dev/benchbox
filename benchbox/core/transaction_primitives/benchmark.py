@@ -40,6 +40,9 @@ from benchbox.sql_compat.rules.execution_filter.duckdb_transaction_primitives im
 from benchbox.sql_compat.rules.execution_filter.pg_duckdb_transaction_primitives import (
     PG_DUCKDB_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
 )
+from benchbox.sql_compat.rules.execution_filter.sqlite_transaction_primitives import (
+    SQLITE_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
+)
 from benchbox.sql_compat.rules.execution_filter.timescaledb_transaction_primitives import (
     TIMESCALEDB_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
 )
@@ -440,6 +443,7 @@ class TransactionPrimitivesBenchmark(TransactionalBenchmarkBase["OperationResult
                 "databricks": DATABRICKS_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
                 "duckdb": DUCKDB_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
                 "snowflake": SNOWFLAKE_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
+                "sqlite": SQLITE_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
                 "pg_duckdb": PG_DUCKDB_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
                 "timescaledb": TIMESCALEDB_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
             }

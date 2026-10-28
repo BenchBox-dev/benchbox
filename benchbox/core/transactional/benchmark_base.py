@@ -28,7 +28,12 @@ _UNNEST_SERIES_SELECT_RE = re.compile(
 _SERIES_SELECT_TEMPLATES = {
     "snowflake": "SELECT value::INT AS {alias} FROM TABLE(FLATTEN(ARRAY_GENERATE_RANGE({lo}, {hi} + 1)))",
     "bigquery": "SELECT {alias} FROM UNNEST(GENERATE_ARRAY({lo}, {hi})) AS {alias}",
+    "sqlite": (
+        "WITH RECURSIVE _series({alias}) AS (SELECT {lo} UNION ALL SELECT {alias} + 1 FROM _series WHERE {alias} < {hi}) "
+        "SELECT {alias} FROM _series"
+    ),
 }
+_TYPED_DATE_LITERAL_RE = re.compile(r"\b(?:DATE|TIMESTAMP)\s+(?P<literal>'[^']*')", re.IGNORECASE)
 _SET_THEN_BEGIN_ISOLATION_RE = re.compile(
     r"SET\s+TRANSACTION\s+ISOLATION\s+LEVEL\s+(?P<level>REPEATABLE\s+READ|SERIALIZABLE|READ\s+COMMITTED)\s*;\s*"
     r"BEGIN\s+TRANSACTION\s*;",
@@ -177,9 +182,12 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
         dialect = (platform_key or "").lower()
         template = _SERIES_SELECT_TEMPLATES.get(dialect)
         if template is not None:
-            return _UNNEST_SERIES_SELECT_RE.sub(
+            sql = _UNNEST_SERIES_SELECT_RE.sub(
                 lambda m: template.format(lo=m.group("lo"), hi=m.group("hi"), alias=m.group("alias")), sql
             )
+            if dialect == "sqlite":
+                sql = _TYPED_DATE_LITERAL_RE.sub(r"\g<literal>", sql)
+            return sql
         if dialect not in _POSTGRES_SERIES_DIALECTS:
             return sql
         sql = _UNNEST_GENERATE_SERIES_RE.sub(r"generate_series(\g<args>)", sql)
