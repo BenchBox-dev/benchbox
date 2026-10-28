@@ -176,16 +176,18 @@ def test_excluded_source_roots_are_skipped_and_documented(
 ) -> None:
     assert checker.EXCLUDED_SOURCE_ROOTS
     assert all(root.endswith("/") and reason for root, reason in checker.EXCLUDED_SOURCE_ROOTS.items())
+    root = next(iter(checker.EXCLUDED_SOURCE_ROOTS))
+    live = root.split("/", 1)[0] + "/live/"
     _seed(
         tmp_path,
         monkeypatch,
         {
-            "_project/decisions/old.md": "[gone](missing.md)\n",
-            "_project/notes/live.md": "[gone](missing.md)\n",
+            f"{root}old.md": "[gone](missing.md)\n",
+            f"{live}page.md": "[gone](missing.md)\n",
         },
     )
 
     assert checker.main() == 1
     out = capsys.readouterr().out
-    assert "_project/notes/live.md:1 -> missing.md (missing file)" in out
-    assert "_project/decisions/old.md" not in out
+    assert f"{live}page.md:1 -> missing.md (missing file)" in out
+    assert f"{root}old.md" not in out
