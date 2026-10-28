@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import argparse
 import html
-import os
+import posixpath
 import re
 import subprocess
 import sys
@@ -83,10 +83,10 @@ def tracked_files() -> list[str]:
 def tracked_directories(files: Iterable[str]) -> set[str]:
     directories: set[str] = set()
     for file in files:
-        parent = os.path.dirname(file)
+        parent = posixpath.dirname(file)
         while parent and parent not in directories:
             directories.add(parent)
-            parent = os.path.dirname(parent)
+            parent = posixpath.dirname(parent)
     return directories
 
 
@@ -157,8 +157,8 @@ def extract_links(content: str) -> list[tuple[int, str]]:
 def resolve_target(source_rel: str, core: str) -> str | None:
     if not core:
         return source_rel
-    candidate = os.path.normpath(os.path.join(os.path.dirname(source_rel), unquote(core)))
-    if candidate == ".." or candidate.startswith("../") or os.path.isabs(candidate):
+    candidate = posixpath.normpath(posixpath.join(posixpath.dirname(source_rel), unquote(core)))
+    if candidate == ".." or candidate.startswith("../") or posixpath.isabs(candidate):
         return None
     return candidate
 
