@@ -1,8 +1,12 @@
 {
-  "manifest_version": "1.0",
   "bundle_file": "tpch_sf1_doris_sql_20261007_172956_5e453c54.json",
   "bundle_hash": "2c74ef0a0d5df520b4e3afd0d0fe6b6bb6b4125a453406a6068a09159bb0f73a",
+  "container_host_os": "macOS",
+  "container_runtime": "docker",
+  "execution_class": "container",
+  "execution_class_evidence": "Maintainer attestation: this self-hosted localhost server engine ran in a Docker container on the Mac that drove it. The bundle's own Docker discovery failed, so the bundle neither confirms nor contradicts this.",
+  "funding": "unspecified",
+  "manifest_version": "1.0",
   "result_source": "internal",
-  "submitted_by": "maintainer",
-  "funding": "unspecified"
+  "submitted_by": "maintainer"
 }
