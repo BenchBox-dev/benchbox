@@ -82,3 +82,21 @@ def test_an_unreadable_attempt_artifact_finalizes_pending_for_integrity(harness:
     assert finalize.outputs["state"] == "pending"
     assert harness.github.artifact_json("oracle-verdict-state-43", "state.json")["pending_cause"] == "integrity"
     assert [item["state"] for item in harness.github.oracle_statuses(head)] == ["pending"]
+
+
+def test_a_second_pull_request_at_the_same_head_does_not_strand_the_first(harness: Harness) -> None:
+    head = harness.branch("feat/shared", {CHECKER: FIXED_CHECKER}, "guard None operands")
+    harness.github.open_pull(61, "feat/shared")
+    harness.github.open_pull(62, "feat/shared")
+    harness.script_omp([_ship()])
+    harness.review(61)
+    assert harness.gate(61, head).code == 0
+    harness.script_omp([_ship()])
+    harness.review(62)
+
+    assert len(harness.github.oracle_statuses(head)) == 2
+    first = harness.gate(61, head)
+    second = harness.gate(62, head)
+
+    assert first.code == 0, first.stderr
+    assert second.code == 0, second.stderr

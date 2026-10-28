@@ -785,12 +785,19 @@ def _read_classification(path: Path) -> Classification | None:
         return None
 
 
+def plan_gate_flags(plan: Mapping[str, Any]) -> list[str]:
+    paths = [
+        path for item in plan.get("reviewed_files", []) for path in (item["path"], item.get("previous_path")) if path
+    ]
+    return matching(paths, plan.get("gate_path_list", []))
+
+
 def _classify_plan(plan: dict[str, Any]) -> Classification:
     stats = [
         (item["path"], int(item["additions"]), int(item["deletions"]), item.get("status") or "modified")
         for item in plan.get("reviewed_files", [])
     ]
-    gate_flags = matching([path for path, _, _, _ in stats], plan.get("gate_path_list", []))
+    gate_flags = plan_gate_flags(plan)
     with JevSession() as session:
         return classify_diff(
             session,
