@@ -200,7 +200,15 @@ done
 if [ "$ephemeral" != "yes" ] && [ "$allow_main" != "1" ]; then
   claim_args=
   [ "${BENCHBOX_WORKTREE_TAKEOVER:-}" = "1" ] && claim_args=--takeover
-  python3 "$(dirname "$0")/worktree_lifecycle_metadata.py" claim --worktree-path "$top_abs" $claim_args || {
+  if command -v python3 >/dev/null 2>&1; then
+    set -- python3
+  elif command -v uv >/dev/null 2>&1; then
+    set -- uv run --no-project -- python
+  else
+    echo "Refusing BenchBox write preflight: neither uv nor python3 is on PATH for the ownership check." >&2
+    exit 1
+  fi
+  "$@" "$(dirname "$0")/worktree_lifecycle_metadata.py" claim --worktree-path "$top_abs" $claim_args || {
     echo "Refusing BenchBox write preflight: worktree ownership check failed." >&2
     exit 1
   }

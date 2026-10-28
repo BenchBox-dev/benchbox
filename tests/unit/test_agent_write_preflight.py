@@ -646,3 +646,75 @@ def test_agent_identity_lists_match_the_instruction_audit() -> None:
     assert case_values("author_email") == audit.AGENT_EMAILS
     assert case_values("author_name") == audit.AGENT_NAMES
     assert audit.SIGNING_SERVICE_EMAILS <= audit.AGENT_EMAILS
+
+
+def test_preflight_claims_ownership_through_uv_when_python3_is_not_on_path(tmp_path: Path) -> None:
+    import shutil
+    import sys
+
+    primary = _init_clone(tmp_path / "BenchBox primary")
+    linked = primary.parent / ".tmp-preflight-uv-only"
+    subprocess.run(
+        ["git", "worktree", "add", "-q", "-b", "fix/preflight-uv-only", str(linked), "HEAD"],
+        cwd=primary,
+        check=True,
+    )
+    tools = tmp_path / "tools"
+    tools.mkdir()
+    for name in (
+        "sh",
+        "bash",
+        "git",
+        "realpath",
+        "dirname",
+        "awk",
+        "sed",
+        "wc",
+        "tr",
+        "head",
+        "cat",
+        "ps",
+        "uname",
+        "sort",
+        "grep",
+    ):
+        found = shutil.which(name)
+        if found:
+            (tools / name).symlink_to(found)
+    record = tmp_path / "uv-args"
+    fake_uv = tools / "uv"
+    fake_uv.write_text(
+        f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{record}"\nshift 4\nexec "{sys.executable}" "$@"\n',
+        encoding="utf-8",
+    )
+    fake_uv.chmod(0o755)
+    assert shutil.which("python3", path=str(tools)) is None
+
+    try:
+        result = _run_script(
+            SCRIPT.resolve(),
+            cwd=linked,
+            env={
+                **{k: v for k, v in os.environ.items() if not k.endswith("SESSION_ID")},
+                **HUMAN_IDENTITY,
+                "PATH": str(tools),
+                "PI_SESSION_ID": "uv-only-session",
+                "BENCHBOX_AGENT_PRIMARY_CLONE": str(primary),
+                "GIT_CONFIG_NOSYSTEM": "1",
+            },
+        )
+        owner = subprocess.run(
+            ["git", "config", "--worktree", "--get", "benchbox.worktree.owner-session"],
+            cwd=linked,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        ).stdout.strip()
+    finally:
+        subprocess.run(["git", "worktree", "remove", "--force", str(linked)], cwd=primary, check=True)
+        subprocess.run(["git", "branch", "-D", "fix/preflight-uv-only"], cwd=primary, check=True)
+
+    assert result.returncode == 0, result.stderr
+    assert owner == "uv-only-session"
+    assert record.read_text(encoding="utf-8").startswith("run --no-project -- python")
