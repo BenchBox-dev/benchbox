@@ -418,17 +418,11 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | --- | --- | --- |
 | `corpus-inventory` | product-safety | Corpus inventory integrity |
 | `uv-lock-revision-guard` | tooling | Lockfile hygiene |
-| `uat-loc-table` | tooling | UAT table hygiene |
 | `timing-policy-check` | product-safety | Monotonic-clock policy |
 | `comment-policy` | tooling | Comments, docstrings, parser coverage and whole-tree enforcement |
 | `windows-antipatterns` | tooling | Windows antipattern ratchet (WA004-WA007): `/dev/null`, POSIX-only imports, `env=` without `SYSTEMROOT`, git `text=True` without `encoding=` |
 | `audit-raw` | tooling | Dependency inventory drift against `dependency-audit-raw.md` |
-| `timing-policy-fast-lane` | pure-process | Fast-lane mechanics |
-| `pr-preflight` | pure-process | PR-loop mechanics |
 | `blind-spot-validate` | product-safety | Blind-spot coverage |
-| `explorer-tokens` | product-safety | Explorer token integrity; retired by the owner decision of 2026-10-27, so the row goes when the hook is deleted |
-| `duplicate-code-warn` | tooling | Hygiene |
-| `agent-instructions-check` | tooling | Agent instruction lockstep |
 | `agent-write-preflight` | tooling | Worktree safety |
 | `untracked-handoffs` | tooling | Handoffs stay out of the repository |
 | `agent-git-identity` | tooling | Identity pinning |

@@ -135,7 +135,7 @@ def load(
     for path in paths:
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as exc:
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
             loaded.errors.append(f"{path.name}: unreadable ({exc})")
             continue
         errors = loaded.errors
