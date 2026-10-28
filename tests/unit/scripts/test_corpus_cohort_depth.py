@@ -24,13 +24,20 @@ from _project.scripts.explorer_pipeline.transformer import BundleTransformer
 from benchbox.core.results.status import NON_CLEAN_TRANSLATION_STATUSES, NON_CLEAN_VALIDATION_STATUSES
 from benchbox.core.tuning.modes import MODES
 
-pytestmark = [pytest.mark.unit, pytest.mark.medium]
+try:
+    from tests.unit.scripts.explorer_pipeline.conftest import MINIMAL_BUNDLE, throughput_bundle
 
-_EXPLORER_FIXTURES = pytest.importorskip(
-    "tests.unit.scripts.explorer_pipeline.conftest", reason="Explorer pipeline test fixtures are not in this checkout"
-)
-MINIMAL_BUNDLE = _EXPLORER_FIXTURES.MINIMAL_BUNDLE
-throughput_bundle = _EXPLORER_FIXTURES.throughput_bundle
+    _EXPLORER_FIXTURES_PRESENT = True
+except ImportError:
+    _EXPLORER_FIXTURES_PRESENT = False
+
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.medium,
+    pytest.mark.skipif(
+        not _EXPLORER_FIXTURES_PRESENT, reason="Explorer pipeline test fixtures are not in this checkout (release tree)"
+    ),
+]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 VALIDATOR = REPO_ROOT / "results-data" / "validate_corpus.py"
@@ -96,13 +103,16 @@ def _write_bundle(
 
 
 KNOWN_DEFECTIVE_SHALLOW_COHORTS = {
-    ("coffeeshop", "0.01"): {"duckdb"},
-    ("tpch", "0.01"): {"datafusion", "duckdb"},
-    ("tpch", "0.1"): {"datafusion", "duckdb"},
-    ("tpch", "1.0"): {"duckdb"},
-    ("tpcdi", "0.01"): {"duckdb"},
     ("clickbench", "0.1"): {"bigquery", "snowflake"},
+    ("datavault", "0.01"): {"clickhouse-local^container"},
+    ("datavault", "0.1"): {"clickhouse-local^container"},
+    ("read_primitives", "0.01"): {"datafusion"},
+    ("read_primitives", "0.1"): {"datafusion"},
     ("tpcds_obt", "1.0"): {"datafusion", "duckdb"},
+    ("tpch", "1.0"): {"duckdb"},
+    ("tpchavoc", "0.01"): {"datafusion"},
+    ("tpchavoc", "0.1"): {"datafusion"},
+    ("tpchavoc", "1.0"): {"datafusion"},
 }
 
 
@@ -321,7 +331,7 @@ def test_validator_and_explorer_agree_on_the_tpch_sf01_cohort() -> None:
 
     assert defective > 0
     assert validator.cohort_platforms(bundles) == {("tpch", "0.1"): explorer_identities}
-    assert explorer_identities == {"datafusion", "duckdb"}
+    assert explorer_identities == {"clickhouse-local^container", "datafusion", "duckdb", "sqlite"}
 
 
 def test_requested_engine_without_variant_string_matches_pipeline(tmp_path: Path) -> None:
@@ -1238,6 +1248,9 @@ def _explorer_pipeline_view(path: Path) -> tuple[str, str | None]:
 
 
 def _parity_variants() -> dict[str, dict]:
+    if not _EXPLORER_FIXTURES_PRESENT:
+        return {}
+
     def variant(**changes: object) -> dict:
         import copy
 

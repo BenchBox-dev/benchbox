@@ -474,7 +474,12 @@ class SQLiteAdapter(PlatformAdapter):
                 return None
             dialect_source = data_source or DataSource(source_type="sqlite_handler", tables={})
             dialect = resolve_csv_dialect(dialect_source, table_name or file_path.stem, file_path, benchmark_instance)
-            return DelimitedFileHandler(dialect.delimiter, null_marker=dialect.null_marker, quote=dialect.quote)
+            return DelimitedFileHandler(
+                dialect.delimiter,
+                null_marker=dialect.null_marker,
+                quote=dialect.quote,
+                has_header=dialect.has_header,
+            )
 
         loader = DataLoader(
             adapter=self,

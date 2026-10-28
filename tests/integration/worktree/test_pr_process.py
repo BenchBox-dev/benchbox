@@ -28,7 +28,6 @@ def _load(name: str) -> object:
 landing = _load("pr_landing")
 lv = _load("local_validation")
 bi = _load("batch_integration")
-post_merge = _load("post_merge_signature")
 
 HEAD = "a" * 40
 OTHER = "b" * 40
@@ -184,12 +183,6 @@ def test_missing_check_evidence_never_clean(tmp_path: Path) -> None:
     repo, head = _repo(tmp_path / "r")
     failures = landing.ready_failures(_identity(repo, head), head, _evidence(head, check_runs=[]), repo)
     assert len([f for f in failures if "no check run observed" in f]) == len(landing.REQUIRED_CONTEXTS)
-
-
-def test_substantive_post_merge_regression_clears_innocent_sha(tmp_path: Path) -> None:
-
-    del tmp_path
-    assert post_merge.attribution_action(["tests/unit/foo.py::test_x"], ["other/part.py"]) == "advisory"
 
 
 def test_wrong_pr_branch_never_mutates() -> None:

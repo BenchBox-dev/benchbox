@@ -1474,7 +1474,7 @@ def test_combined_evidence_green_when_all_stages_clean():
         _stage_summary(gate_summary.EXPECTED_RELEASE_GATE_STAGES[2], "2026-07-10T14:00:00"),
     ]
     evidence = gate_summary.build_combined_evidence(
-        stages, ordering_violations=(), generated_at=_dt.datetime(2026, 7, 10, 15)
+        [[stage] for stage in stages], ordering_violations=(), generated_at=_dt.datetime(2026, 7, 10, 15)
     )
     assert evidence.verdict == "green"
     assert evidence.reasons == ()
@@ -1502,7 +1502,7 @@ def test_combined_evidence_red_on_each_hold_condition(overrides: dict, reason_fr
         _stage_summary(gate_summary.EXPECTED_RELEASE_GATE_STAGES[2], "2026-07-10T14:00:00"),
     ]
     evidence = gate_summary.build_combined_evidence(
-        stages, ordering_violations=(), generated_at=_dt.datetime(2026, 7, 10, 15)
+        [[stage] for stage in stages], ordering_violations=(), generated_at=_dt.datetime(2026, 7, 10, 15)
     )
     assert evidence.verdict == "red"
     assert any(reason_fragment in reason for reason in evidence.reasons), evidence.reasons
@@ -1516,7 +1516,7 @@ def test_combined_evidence_red_on_wrong_stage_count_and_ordering_violation():
         _stage_summary(gate_summary.EXPECTED_RELEASE_GATE_STAGES[1], "2026-07-10T12:00:00"),
     ]
     evidence = gate_summary.build_combined_evidence(
-        stages,
+        [[stage] for stage in stages],
         ordering_violations=("stage1 boundary: Docker stack 'x' started early",),
         generated_at=_dt.datetime(2026, 7, 10, 15),
     )
@@ -1534,7 +1534,7 @@ def test_combined_evidence_red_when_stage_names_are_not_the_expected_set():
         _stage_summary(gate_summary.EXPECTED_RELEASE_GATE_STAGES[0], "2026-07-10T14:00:00"),
     ]
     evidence = gate_summary.build_combined_evidence(
-        same_stage_thrice, ordering_violations=(), generated_at=_dt.datetime(2026, 7, 10, 15)
+        [[stage] for stage in same_stage_thrice], ordering_violations=(), generated_at=_dt.datetime(2026, 7, 10, 15)
     )
     assert evidence.verdict == "red"
     assert any("do not match the expected" in reason for reason in evidence.reasons), evidence.reasons
@@ -1545,7 +1545,7 @@ def test_combined_evidence_red_when_stage_names_are_not_the_expected_set():
         _stage_summary(gate_summary.EXPECTED_RELEASE_GATE_STAGES[2], "2026-07-10T14:00:00"),
     ]
     evidence = gate_summary.build_combined_evidence(
-        hollow_substitute, ordering_violations=(), generated_at=_dt.datetime(2026, 7, 10, 15)
+        [[stage] for stage in hollow_substitute], ordering_violations=(), generated_at=_dt.datetime(2026, 7, 10, 15)
     )
     assert evidence.verdict == "red"
     assert any("do not match the expected" in reason for reason in evidence.reasons), evidence.reasons
@@ -1565,7 +1565,7 @@ def test_combined_evidence_red_when_a_stage_has_no_floor_gates():
         _stage_summary(gate_summary.EXPECTED_RELEASE_GATE_STAGES[2], "2026-07-10T14:00:00"),
     ]
     evidence = gate_summary.build_combined_evidence(
-        stages, ordering_violations=(), generated_at=_dt.datetime(2026, 7, 10, 15)
+        [[stage] for stage in stages], ordering_violations=(), generated_at=_dt.datetime(2026, 7, 10, 15)
     )
     assert evidence.verdict == "red"
     assert any("floor gates were not configured" in reason for reason in evidence.reasons), evidence.reasons
@@ -1686,7 +1686,7 @@ def test_combined_evidence_red_when_a_required_cell_was_not_executed(fields: dic
 
     accounting = gate_summary.PhaseAccounting(attempted=5, passed=5, total_defined=6, **fields)
     evidence = gate_summary.build_combined_evidence(
-        _release_gate_stages(accounting=accounting),
+        [[stage] for stage in _release_gate_stages(accounting=accounting)],
         ordering_violations=(),
         generated_at=_dt.datetime(2026, 7, 10, 15),
     )
@@ -1701,7 +1701,7 @@ def test_combined_evidence_allows_cells_the_config_prunes_by_design():
         attempted=5, passed=5, skipped=7, compatibility_pruned=4, registry_pruned=3, total_defined=12
     )
     evidence = gate_summary.build_combined_evidence(
-        _release_gate_stages(accounting=accounting),
+        [[stage] for stage in _release_gate_stages(accounting=accounting)],
         ordering_violations=(),
         generated_at=_dt.datetime(2026, 7, 10, 15),
     )
@@ -1712,7 +1712,7 @@ def test_combined_evidence_red_when_a_stage_attempted_no_cells():
     from tests.uat import gate_summary
 
     evidence = gate_summary.build_combined_evidence(
-        _release_gate_stages(accounting=gate_summary.PhaseAccounting()),
+        [[stage] for stage in _release_gate_stages(accounting=gate_summary.PhaseAccounting())],
         ordering_violations=(),
         generated_at=_dt.datetime(2026, 7, 10, 15),
     )
@@ -1726,7 +1726,7 @@ def test_combined_evidence_binds_every_stage_to_the_admitted_distribution():
     digest = "d" * 64
     stages = [replace(stage, distribution_digest=digest) for stage in _release_gate_stages()]
     evidence = gate_summary.build_combined_evidence(
-        stages,
+        [[stage] for stage in stages],
         ordering_violations=(),
         generated_at=_dt.datetime(2026, 7, 10, 15),
         expected_distribution_digest=digest,
@@ -1743,7 +1743,7 @@ def test_combined_evidence_red_when_a_stage_ran_against_another_distribution(rec
     stages = [replace(stage, distribution_digest=digest) for stage in _release_gate_stages()]
     stages[1] = replace(stages[1], distribution_digest=recorded)
     evidence = gate_summary.build_combined_evidence(
-        stages,
+        [[stage] for stage in stages],
         ordering_violations=(),
         generated_at=_dt.datetime(2026, 7, 10, 15),
         expected_distribution_digest=digest,

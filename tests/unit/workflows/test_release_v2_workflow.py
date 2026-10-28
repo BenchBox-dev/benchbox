@@ -150,27 +150,93 @@ def test_publish_needs_every_gate_job():
     assert set(_jobs()["publish"]["needs"]) == {"admit", "install-matrix", "release-uat"}
 
 
-def test_release_uat_runs_the_admitted_wheel_and_checks_the_combined_gate():
-    uat = _jobs()["release-uat"]
-    run = _step_commands(uat)
+ENV_ACTION = Path(__file__).resolve().parents[3] / ".github" / "actions" / "release-uat-env" / "action.yml"
+UAT_STAGE_JOBS = ("uat-stage1", "uat-stage2", "uat-stage3")
+
+
+def _env_action_commands() -> str:
+    steps = yaml.safe_load(ENV_ACTION.read_text(encoding="utf-8"))["runs"]["steps"]
+    return "\n".join(step.get("run", "") for step in steps)
+
+
+def test_release_uat_environment_installs_the_admitted_wheel_and_records_its_digest():
+    run = _env_action_commands()
     assert 'uv pip install --python .venv/bin/python "$RUNNER_TEMP"/staged/*.whl' in run
-    assert "release-gate-*.yaml" in run
-    assert "site-packages" in run
-    assert "benchbox.checkout" in run
-    gate_check = run.index("make uat-gate-check")
-    assert run.index("make uat-sweep") < gate_check
-    assert "DIST_DIGEST=" in run
     assert 'RELEASE_DIST_DIGEST_FILE=$RUNNER_TEMP/dist-digest.txt" >> "$GITHUB_ENV"' in run
+    assert "benchbox.checkout" in run
 
 
-def test_release_uat_hides_the_checkout_package_before_running_and_always_restores_it():
-    steps = _jobs()["release-uat"]["steps"]
-    names = [s.get("name") for s in steps]
-    assert names.index("Hide the checkout package so UAT imports the admitted wheel") < names.index(
-        "Run the release-gate UAT configs against the admitted distribution"
-    )
-    restore = steps[names.index("Restore the checkout package")]
-    assert restore["if"] == "always()"
+def test_release_uat_stages_run_in_order_and_each_shards_one_stage_config():
+    jobs = _jobs()
+    assert jobs["uat-stage1"]["needs"] == "admit"
+    assert set(jobs["uat-stage2"]["needs"]) == {"admit", "uat-stage1"}
+    assert set(jobs["uat-stage3"]["needs"]) == {"admit", "uat-stage2"}
+    for number, name in enumerate(UAT_STAGE_JOBS, start=1):
+        job = jobs[name]
+        run = _step_commands(job)
+        assert f"release-gate-0{number}-" in "\n".join(
+            str(step.get("env", {}).get("UAT_CONFIG", "")) for step in job["steps"]
+        )
+        assert 'make uat-sweep CONFIG="$UAT_CONFIG" PLATFORMS="$SHARD_PLATFORMS"' in run
+        assert "site-packages" in run
+        assert job["strategy"]["fail-fast"] is False
+        assert job["timeout-minutes"] <= 360
+
+
+def test_release_uat_shards_always_upload_their_evidence():
+    for name in UAT_STAGE_JOBS:
+        steps = _jobs()[name]["steps"]
+        upload = next(s for s in steps if "upload-artifact" in s.get("uses", ""))
+        assert upload["if"] == "always()"
+        assert upload["with"]["name"].startswith("release-uat-${{ inputs.tag || github.ref_name }}-stage")
+        assert "${{ matrix.shard }}" in upload["with"]["name"]
+        sweep = next(s for s in steps if "uat-sweep" in s.get("run", ""))
+        assert sweep["timeout-minutes"] < _jobs()[name]["timeout-minutes"]
+
+
+def test_later_stages_run_after_a_failed_earlier_stage_so_one_run_surfaces_every_failure():
+    for name in ("uat-stage2", "uat-stage3"):
+        assert "!cancelled()" in _jobs()[name]["if"]
+        assert "needs.admit.result == 'success'" in _jobs()[name]["if"]
+
+
+def test_release_uat_gate_checks_every_shard_against_the_admitted_digest():
+    gate = _jobs()["release-uat"]
+    assert set(gate["needs"]) == {"admit", *UAT_STAGE_JOBS}
+    assert "!cancelled()" in gate["if"]
+    run = _step_commands(gate)
+    assert "make uat-gate-check" in run
+    assert "DIST_DIGEST=" in run
+    for number in (1, 2, 3):
+        assert f"-stage{number}-*/run" in run
+    download = next(s for s in gate["steps"] if "download-artifact" in s.get("uses", "") and "pattern" in s["with"])
+    assert download["with"]["pattern"].endswith("-stage*")
+    assert not any("uat-sweep" in step.get("run", "") for step in gate["steps"])
+
+
+def test_release_uat_gate_fails_unless_every_shard_job_succeeded():
+    gate = _jobs()["release-uat"]
+    step = next(s for s in gate["steps"] if s.get("name") == "Require every shard job to have succeeded")
+    assert step["if"] == "always()"
+    for number in (1, 2, 3):
+        assert step["env"][f"STAGE{number}_RESULT"] == f"${{{{ needs.uat-stage{number}.result }}}}"
+    assert '!= "success"' in step["run"]
+    assert 'exit "$status"' in step["run"]
+
+
+def test_release_uat_jobs_use_the_local_environment_action_from_the_admitted_checkout():
+    for name in (*UAT_STAGE_JOBS, "release-uat"):
+        steps = _jobs()[name]["steps"]
+        names = [s.get("uses", "") for s in steps]
+        assert "actions/checkout" in names[0]
+        assert names[1] == "./.github/actions/release-uat-env"
+
+
+def test_release_uat_jobs_always_restore_the_checkout_package():
+    for name in (*UAT_STAGE_JOBS, "release-uat"):
+        steps = _jobs()[name]["steps"]
+        restore = next(s for s in steps if s.get("name") == "Restore the checkout package")
+        assert restore["if"] == "always()"
 
 
 def test_workflow_attests_the_staged_distributions():

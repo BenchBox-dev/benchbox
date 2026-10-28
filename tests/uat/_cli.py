@@ -65,20 +65,29 @@ def _handle_cell(args: argparse.Namespace) -> int:
 def _handle_sweep(args: argparse.Namespace) -> int:
     from tests.uat.orchestrator import run_sweep_from_path
 
-    sweep_kwargs = {"dry_run_override": True if args.dry_run else None}
-    result = run_sweep_from_path(Path(args.config), **sweep_kwargs)
-    print(
-        json.dumps(
-            {
-                "name": result.name,
-                "log_dir": str(result.log_dir),
-                "aborted_phase": result.aborted_phase,
-                "abort_reason": result.abort_reason,
-                "phase_exit_codes": result.phase_exit_codes,
-            },
-            indent=2,
+    platform_shard = [part for part in (args.platforms or "").split(",") if part]
+    try:
+        result = run_sweep_from_path(
+            Path(args.config),
+            dry_run_override=True if args.dry_run else None,
+            platform_shard=platform_shard or None,
         )
-    )
+    except ValueError as exc:
+        print(f"[sweep] ERROR: {exc}", file=sys.stderr)
+        return 2
+    payload = {
+        "name": result.name,
+        "log_dir": str(result.log_dir),
+        "aborted_phase": result.aborted_phase,
+        "abort_reason": result.abort_reason,
+        "phase_exit_codes": result.phase_exit_codes,
+    }
+    if result.plan is not None:
+        payload["planned_cells"] = [f"{c.platform}/{c.benchmark}@{c.scale:g}" for c in result.plan.cells]
+        payload["planned_compatibility_pruned"] = [
+            f"{c.platform}/{c.benchmark}@{c.scale:g}" for c in result.plan.compatibility_pruned
+        ]
+    print(json.dumps(payload, indent=2))
     return result.exit_code()
 
 
@@ -216,87 +225,161 @@ def _stage_summary_path(raw: str) -> Path:
     return path
 
 
+def _stage_file_digest(stage_dir: Path, name: str) -> str | None:
+    mapping = {
+        "cells_jsonl": stage_dir / "cells.jsonl",
+        "accounting_sidecar": stage_dir / "cells.jsonl.accounting.json",
+        "lifecycle_log": stage_dir / "uat_lifecycle.log",
+    }
+    try:
+        return hashlib.sha256(mapping[name].read_bytes()).hexdigest()
+    except OSError:
+        return None
+
+
+def _repeated_directory_violations(stage_paths: list[list[Path]]) -> list[str]:
+    violations: list[str] = []
+    for paths in stage_paths:
+        resolved = [path.parent.resolve() for path in paths]
+        for repeated in sorted({d for d in resolved if resolved.count(d) > 1}):
+            violations.append(f"run directory {repeated} is listed more than once for the same stage")
+    return violations
+
+
+def _artifact_digest_violations(stages: list, stage_paths: list[list[Path]]) -> list[str]:
+    from tests.uat import gate_summary
+
+    reasons: list[str] = []
+    for summaries, paths in zip(stages, stage_paths):
+        for summary, path in zip(summaries, paths):
+            if summary.artifact_digests is None:
+                continue
+            stage_dir = path.parent
+            description = f"stage {summary.config_name!r}"
+            if summary.shard_platforms is not None:
+                description += f" shard [{gate_summary.shard_label(summary)}]"
+            for key, expected in summary.artifact_digests.items():
+                actual = _stage_file_digest(stage_dir, key)
+                if actual != expected:
+                    actual_label = actual if actual is not None else "absent"
+                    expected_label = expected if expected is not None else "absent"
+                    reasons.append(
+                        f"{description} artifact digest mismatch for "
+                        f"{key}: expected {expected_label}, got {actual_label} — "
+                        f"regenerate evidence from {stage_dir}"
+                    )
+    return reasons
+
+
+def _lifecycle_ordering_violations(stages: list, stage_paths: list[list[Path]]) -> list[str] | None:
+    import datetime as _dt
+
+    from tests.uat.phases.report import release_gate_ordering_violations
+
+    violations: list[str] = []
+    lifecycle_texts: list[list[str]] = []
+    for stage_label, paths in zip(("stage2", "stage3"), stage_paths[1:]):
+        texts = []
+        for path in paths:
+            lifecycle = path.parent / "uat_lifecycle.log"
+            if lifecycle.is_file():
+                texts.append(lifecycle.read_text(encoding="utf-8"))
+            else:
+                texts.append("")
+                violations.append(
+                    f"{stage_label}: docker stage missing lifecycle log ({lifecycle}); ordering not verifiable"
+                )
+        lifecycle_texts.append(texts)
+    try:
+        stage1_completed_at = max(_dt.datetime.fromisoformat(s.completed_at) for s in stages[0])
+        stage2_completed_at = max(_dt.datetime.fromisoformat(s.completed_at) for s in stages[1])
+    except (TypeError, ValueError) as exc:
+        print(f"[gate-check] ERROR: unparseable completed_at in stage summaries: {exc}", file=sys.stderr)
+        return None
+    violations.extend(
+        f"stage1 boundary: {violation}"
+        for violation in release_gate_ordering_violations(
+            [text for texts in lifecycle_texts for text in texts], native_stage_completed_at=stage1_completed_at
+        )
+    )
+    violations.extend(
+        f"stage2 boundary: {violation}"
+        for violation in release_gate_ordering_violations(
+            lifecycle_texts[1], native_stage_completed_at=stage2_completed_at
+        )
+    )
+    return violations
+
+
+def _shard_union_reasons(stages: list, stage_paths: list[list[Path]], configs_dir: Path) -> list[str]:
+    from tests.uat import gate_summary
+
+    reasons: list[str] = []
+    for summaries, paths in zip(stages, stage_paths):
+        if len(summaries) < 2 and all(s.shard_platforms is None for s in summaries):
+            continue
+        stage_name = summaries[0].config_name
+        config_path = configs_dir / f"{stage_name}.yaml"
+        if not config_path.is_file():
+            reasons.append(f"stage {stage_name!r} has no config at {config_path}; shard union not verifiable")
+            continue
+        shard_cells: list[gate_summary.ShardCells] = []
+        for summary, path in zip(summaries, paths):
+            try:
+                cells = gate_summary.read_cell_keys(path.parent / gate_summary.CELLS_FILENAME)
+                pruned_path = path.parent / gate_summary.COMPATIBILITY_PRUNED_FILENAME
+                pruned = gate_summary.read_cell_keys(pruned_path) if pruned_path.is_file() else ()
+            except (OSError, ValueError, KeyError, TypeError) as exc:
+                reasons.append(f"stage {stage_name!r} cells unreadable in {path.parent}: {exc}")
+                continue
+            shard_cells.append(
+                gate_summary.ShardCells(
+                    label=gate_summary.shard_label(summary),
+                    platforms=tuple(summary.shard_platforms) if summary.shard_platforms is not None else None,
+                    cells=cells,
+                    pruned=pruned,
+                )
+            )
+        reasons.extend(
+            gate_summary.shard_union_violations(stage_name, shard_cells, gate_summary.load_stage_plan(config_path))
+        )
+    return reasons
+
+
 def _handle_gate_check(args: argparse.Namespace) -> int:
     import datetime as _dt
 
     from tests.uat import gate_summary
-    from tests.uat.phases.report import release_gate_ordering_violations
 
-    stage_paths = [_stage_summary_path(raw) for raw in (args.stage1, args.stage2, args.stage3)]
-    summaries = []
-    for path in stage_paths:
-        if not path.is_file():
-            print(f"[gate-check] ERROR: stage summary not found: {path}", file=sys.stderr)
-            return 2
-        try:
-            summaries.append(gate_summary.read_gate_summary(path))
-        except (ValueError, TypeError) as exc:
-            print(f"[gate-check] ERROR: unreadable stage summary {path}: {exc}", file=sys.stderr)
-            return 2
+    stage_groups = (args.stage1, args.stage2, args.stage3)
+    stage_paths: list[list[Path]] = [[_stage_summary_path(raw) for raw in group] for group in stage_groups]
+    stages: list[list[gate_summary.GateSummary]] = []
+    for paths in stage_paths:
+        summaries = []
+        for path in paths:
+            if not path.is_file():
+                print(f"[gate-check] ERROR: stage summary not found: {path}", file=sys.stderr)
+                return 2
+            try:
+                summaries.append(gate_summary.read_gate_summary(path))
+            except (ValueError, TypeError) as exc:
+                print(f"[gate-check] ERROR: unreadable stage summary {path}: {exc}", file=sys.stderr)
+                return 2
+        stages.append(summaries)
 
-    def _digest_for_stage_file(stage_dir: Path, name: str) -> str | None:
-        mapping = {
-            "cells_jsonl": stage_dir / "cells.jsonl",
-            "accounting_sidecar": stage_dir / "cells.jsonl.accounting.json",
-            "lifecycle_log": stage_dir / "uat_lifecycle.log",
-        }
-        path = mapping[name]
-        try:
-            return hashlib.sha256(path.read_bytes()).hexdigest()
-        except OSError:
-            return None
-
-    digest_reasons: list[str] = []
-    for summary, stage_dir in zip(summaries, [p.parent for p in stage_paths]):
-        if summary.artifact_digests is None:
-            continue
-        for key, expected in summary.artifact_digests.items():
-            actual = _digest_for_stage_file(stage_dir, key)
-            if actual != expected:
-                actual_label = actual if actual is not None else "absent"
-                expected_label = expected if expected is not None else "absent"
-                digest_reasons.append(
-                    f"stage {summary.config_name!r} artifact digest mismatch for "
-                    f"{key}: expected {expected_label}, got {actual_label} — "
-                    f"regenerate evidence from {stage_dir}"
-                )
-
-    ordering_violations: list[str] = []
-    lifecycle_texts = []
-    for stage_label, path in zip(("stage2", "stage3"), stage_paths[1:]):
-        lifecycle = path.parent / "uat_lifecycle.log"
-        if lifecycle.is_file():
-            lifecycle_texts.append(lifecycle.read_text(encoding="utf-8"))
-        else:
-            lifecycle_texts.append("")
-            ordering_violations.append(
-                f"{stage_label}: docker stage missing lifecycle log ({lifecycle}); ordering not verifiable"
-            )
-    try:
-        stage1_completed_at = _dt.datetime.fromisoformat(summaries[0].completed_at)
-        stage2_completed_at = _dt.datetime.fromisoformat(summaries[1].completed_at)
-    except (TypeError, ValueError) as exc:
-        print(f"[gate-check] ERROR: unparseable completed_at in stage summaries: {exc}", file=sys.stderr)
+    shard_violations = _repeated_directory_violations(stage_paths)
+    ordering_violations = _lifecycle_ordering_violations(stages, stage_paths)
+    if ordering_violations is None:
         return 2
-    ordering_violations.extend(
-        f"stage1 boundary: {violation}"
-        for violation in release_gate_ordering_violations(
-            lifecycle_texts, native_stage_completed_at=stage1_completed_at
-        )
-    )
-    ordering_violations.extend(
-        f"stage2 boundary: {violation}"
-        for violation in release_gate_ordering_violations(
-            lifecycle_texts[1:], native_stage_completed_at=stage2_completed_at
-        )
-    )
-    ordering_violations.extend(digest_reasons)
+    ordering_violations.extend(_artifact_digest_violations(stages, stage_paths))
+    shard_violations.extend(_shard_union_reasons(stages, stage_paths, Path(args.configs_dir).expanduser()))
 
     evidence = gate_summary.build_combined_evidence(
-        summaries,
+        stages,
         ordering_violations=ordering_violations,
         generated_at=_dt.datetime.now(),
         expected_distribution_digest=args.expected_distribution_digest,
+        shard_violations=shard_violations,
     )
     output = Path(args.output).expanduser()
     gate_summary.write_combined_evidence(output, evidence)
@@ -563,6 +646,11 @@ def _build_parser() -> argparse.ArgumentParser:
     sweep = subparsers.add_parser("sweep", help="run a multi-phase UAT sweep from YAML")
     sweep.add_argument("--config", required=True)
     sweep.add_argument("--dry-run", action="store_true", help="Override the YAML config and skip workload phases")
+    sweep.add_argument(
+        "--platforms",
+        default=None,
+        help="Comma-separated platform subset of the config's platform set; the run records itself as one shard",
+    )
     _set_handler(sweep, _handle_sweep)
 
     stress = subparsers.add_parser("stress", help="run the canned stress preset")
@@ -580,9 +668,18 @@ def _build_parser() -> argparse.ArgumentParser:
         "gate-check",
         help="aggregate the 3 release-gate stage summaries into committed release evidence",
     )
-    gate_check.add_argument("--stage1", required=True, help="Stage-1 run dir or uat_gate_summary.json path")
-    gate_check.add_argument("--stage2", required=True, help="Stage-2 run dir or uat_gate_summary.json path")
-    gate_check.add_argument("--stage3", required=True, help="Stage-3 run dir or uat_gate_summary.json path")
+    for stage_number in (1, 2, 3):
+        gate_check.add_argument(
+            f"--stage{stage_number}",
+            required=True,
+            nargs="+",
+            help=f"Stage-{stage_number} run dir or uat_gate_summary.json path; repeat the path per shard",
+        )
+    gate_check.add_argument(
+        "--configs-dir",
+        default=str(Path(__file__).resolve().parent / "configs"),
+        help="Directory holding the stage configs used to verify that shard cells cover the stage plan",
+    )
     gate_check.add_argument(
         "--output",
         default=str(Path(__file__).resolve().parents[2] / "_project" / "release-evidence" / "uat-gate-summary.json"),

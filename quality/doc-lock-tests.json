@@ -208,28 +208,6 @@
       "cutover_action": "None."
     },
     {
-      "id": "post-merge-signature-samples",
-      "file": "tests/unit/test_post_merge_signature.py",
-      "tests": [
-        "test_attribution_advisory_when_blamed_sha_misses_failing_test"
-      ],
-      "classification": "governance-stays",
-      "site_reads": [],
-      "reason": "Uses a UAT framework page only as a sample changed path for attribution; no page content is read.",
-      "cutover_action": "None."
-    },
-    {
-      "id": "post-merge-signature-script-samples",
-      "file": "tests/unit/scripts/test_post_merge_signature.py",
-      "tests": [
-        "test_job_level_ids_are_advisory_incidents"
-      ],
-      "classification": "governance-stays",
-      "site_reads": [],
-      "reason": "Uses docs/x.md only as a sample changed path; no page content is read.",
-      "cutover_action": "None."
-    },
-    {
       "id": "stacked-pr-guard-agent-docs",
       "file": "tests/unit/workflows/test_stacked_pr_base_guard.py",
       "tests": [

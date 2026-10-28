@@ -1441,7 +1441,7 @@ def test_two_unreadable_diffs_in_a_row_never_carry(monkeypatch: pytest.MonkeyPat
     unread = _record("", "SHIP", paths=[CHECKER, CAPTURE])
     assert unread["patch_digest"] == f"unread-{OLD_HEAD}"
     assert set(unread["patch_map"].values()) == {"missing"}
-    fake = _fake(_review(unread), changed_files=3001)
+    fake = _fake(_review(unread))
     fake.diff = None
     _, values, plan = _plan(monkeypatch, tmp_path, fake)
     assert values["decision"] == "review" and plan["protocol"]["kind"] == "follow-up"
@@ -1638,7 +1638,8 @@ def test_more_than_a_hundred_reviews_are_all_read(monkeypatch: pytest.MonkeyPatc
 
 def test_an_unreadable_diff_never_carries(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     record = _record(TWO_FILE_DIFF, "SHIP_WITH_FIXES", open_defects=[DEFECT], next_id=2)
-    fake = _fake(_review(record), changed_files=3001)
+    fake = _fake(_review(record))
+    fake.diff = None
     _, values, plan = _plan(monkeypatch, tmp_path, fake)
     assert values["decision"] == "review" and plan["protocol"]["kind"] == "follow-up"
     assert plan["protocol"]["patch_digest"] == f"unread-{HEAD}"

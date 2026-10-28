@@ -42,7 +42,6 @@ tests/unit/scripts/test_batch_integration.py
 tests/unit/scripts/test_blind_spot_tools.py
 tests/unit/scripts/test_branch_prune_merged.py
 tests/unit/scripts/test_browser_fixtures_port.py
-tests/unit/scripts/test_browser_gate_aggregate.py
 tests/unit/scripts/test_build_joinorder_data.py
 tests/unit/scripts/test_check_api_contract_symbols.py
 tests/unit/scripts/test_check_complexity.py
@@ -89,13 +88,10 @@ tests/unit/scripts/test_oracle_review_check.py
 tests/unit/scripts/test_oracle_review_check_omp_bump.py
 tests/unit/scripts/test_path_filter_decision.py
 tests/unit/scripts/test_perf_smoke_baseline.py
-tests/unit/scripts/test_phase2_metrics.py
-tests/unit/scripts/test_post_merge_signature.py
 tests/unit/scripts/test_pr_arm.py
 tests/unit/scripts/test_pr_landing.py
 tests/unit/scripts/test_pr_ready_make.py
 tests/unit/scripts/test_pr_refresh_certification.py
-tests/unit/scripts/test_pr_refresh_replay.py
 tests/unit/scripts/test_pr_review_followups.py
 tests/unit/scripts/test_preflight_targets.py
 tests/unit/scripts/test_pytest_shard_evidence.py
