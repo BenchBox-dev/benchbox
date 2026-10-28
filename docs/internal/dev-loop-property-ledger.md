@@ -211,7 +211,6 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_blind_spot_tools.py` | product-safety |
 | `test_branch_prune_merged.py` | pure-process |
 | `test_browser_fixtures_port.py` | product-safety | Fixture-query port byte-identity; the browser check moved to the site repository by the owner decision of 2026-10-27, so the row goes when the file is deleted |
-| `test_browser_gate_aggregate.py` | product-safety | Browser gate aggregate; moved to the site repository by the owner decision of 2026-10-27, so the row goes when the file is deleted |
 | `test_build_joinorder_data.py` | product-safety |
 | `test_check_api_contract_symbols.py` | product-safety |
 | `test_check_complexity.py` | tooling |
@@ -269,9 +268,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `oracle_reviewers/test_verdict.py` | product-safety |
 | `test_path_filter_decision.py` | tooling |
 | `test_preflight_targets.py` | pure-process |
-| `test_phase2_metrics.py` | pure-process |
 | `test_perf_smoke_baseline.py` | pure-process |
-| `test_post_merge_signature.py` | pure-process |
 | `test_pr_arm.py` | pure-process |
 | `test_pr_ready_make.py` | pure-process |
 | `test_pr_landing.py` | pure-process |
@@ -280,7 +277,6 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_pytest_shard_evidence.py` | product-safety | Real serial and distributed test selection and execution conservation |
 | `test_required_case_evidence.py` | product-safety | A required local-engine case that skips, is deselected, fails or is expected to fail fails the required-case check |
 | `test_pr_refresh_certification.py` | pure-process |
-| `test_pr_refresh_replay.py` | pure-process |
 | `test_pr_review_followups.py` | pure-process |
 | `test_reference_usage_audit.py` | tooling |
 | `test_regenerate_correctness_gate_digests.py` | product-safety | TPC-H gate digests regenerate from qgen default parameters and record a null seed |
@@ -381,10 +377,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `trunk_revert.py` | pure-process | Revert of a merged PR and the red-trunk gate on `make pr-open` |
 | `trunk_red_disarm.py` | pure-process | Disables auto-merge on armed PRs the arm gate would refuse when a develop Trunk run is red |
 | `pr_refresh_certification.py` | pure-process | Refresh mechanics |
-| `pr_refresh_replay.py` | pure-process | Refresh mechanics |
-| `post_merge_signature.py` | pure-process | Post-merge mechanics |
 | `local_validation.py` | pure-process | Shared test-lock mechanics |
-| `phase2_metrics.py` | pure-process | Legacy metrics mechanics |
 | `trunk_duration_trend.py` | tooling | Trunk job p50 comparison, run-timestamp windows, API-call budget and the single trend issue |
 | `bundled_binary_manifest.py` | product-safety | Deterministic hashes of the shipped generator tree |
 | `verify_distribution_binaries.py` | product-safety | Distribution membership, archive safety, and source-bound generator hashes |
