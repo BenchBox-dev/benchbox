@@ -14,6 +14,17 @@ PLATFORMS_ROOT = "benchbox/platforms/"
 SMOKE_TESTS_ROOT = "tests/integration/platforms/"
 CONFTEST_SUBTREE_LIMIT = 200
 PATCH_CALLEE = re.compile(r"(^|\.)patch(\.|$)")
+ORACLE_SCENARIO_TESTS = (
+    "tests/integration/oracle/test_cloud_review_reachability_scenario.py",
+    "tests/integration/oracle/test_followup_scenarios.py",
+    "tests/integration/oracle/test_local_review_scenario.py",
+    "tests/integration/oracle/test_omp_pin_scenarios.py",
+    "tests/integration/oracle/test_pr_arm_scenario.py",
+    "tests/integration/oracle/test_review_scenarios.py",
+    "tests/integration/oracle/test_sweep_listing_scenarios.py",
+    "tests/integration/oracle/test_sweep_liveness_scenarios.py",
+    "tests/integration/oracle/test_sweep_scenarios.py",
+)
 SOURCE_GUARD_TESTS: dict[str, tuple[str, ...]] = {
     "benchbox/": ("tests/system/test_module_size_thresholds.py",),
     "benchbox/cli/": ("tests/uat/test_no_cli_surface_drift.py",),
@@ -24,6 +35,14 @@ SOURCE_GUARD_TESTS: dict[str, tuple[str, ...]] = {
     ),
     "benchbox/platforms/": ("tests/uat/test_connection_registry_drift.py",),
     "benchbox/platforms/base/": ("tests/integration/platforms/test_local_platforms_smoke.py",),
+    "_project/scripts/oracle_reviewers/": ORACLE_SCENARIO_TESTS,
+    "_project/scripts/oracle_review_check.py": ORACLE_SCENARIO_TESTS,
+    "_project/scripts/oracle_gate.py": ORACLE_SCENARIO_TESTS,
+    "_project/scripts/soundness_merge_digest.py": ORACLE_SCENARIO_TESTS,
+    "scripts/pr_arm.py": ORACLE_SCENARIO_TESTS,
+    "tests/integration/oracle/": ORACLE_SCENARIO_TESTS,
+    ".github/workflows/oracle-": ORACLE_SCENARIO_TESTS,
+    ".github/oracle-": ORACLE_SCENARIO_TESTS,
 }
 
 
@@ -212,6 +231,7 @@ def map_tests(repo: Path, paths: list[str]) -> list[str]:
     sources: list[str] = []
     for path in paths:
         if not path.endswith(".py"):
+            selected.update(_guard_tests(path, test_files))
             continue
         pure = PurePosixPath(path)
         if _is_test_file(path):
@@ -226,6 +246,7 @@ def map_tests(repo: Path, paths: list[str]) -> list[str]:
                         helpers.append(path)
             else:
                 helpers.append(path)
+            selected.update(_guard_tests(path, test_files))
         elif path.startswith(SOURCE_ROOTS):
             sources.append(path)
             module = pure.stem

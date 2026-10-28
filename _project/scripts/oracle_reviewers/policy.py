@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+from . import omp_pin
 
 SIZE_BUCKETS = ("trivial", "small", "medium", "large", "huge", "max")
 SEVERITIES = ("Critical", "High", "Medium", "Low")
@@ -102,6 +104,7 @@ class Policy:
     reviewers: Mapping[str, Reviewer]
     buckets: Mapping[str, str]
     classifier: ClassifierRules
+    omp_sha256: Mapping[str, str] = field(default_factory=dict)
 
     def chain(self, bucket: str) -> list[Reviewer]:
         return [self.reviewers[self.buckets[bucket]]]
@@ -172,6 +175,12 @@ def parse_policy(data: Mapping[str, Any]) -> Policy:
     classifier = data.get("classifier") or {}
     retry = data.get("retry") or {}
     protocol = data.get("protocol") or {}
+    omp_sha256: dict[str, str] = {}
+    if "omp" in data:
+        try:
+            omp_sha256 = {name: build.sha256 for name, build in omp_pin.parse_pin(data).builds.items()}
+        except omp_pin.PinError as exc:
+            raise PolicyError(str(exc)) from exc
     policy = Policy(
         mode=data.get("mode", ""),
         status_context=data.get("status_context", ""),
@@ -197,6 +206,7 @@ def parse_policy(data: Mapping[str, Any]) -> Policy:
             data_paths=_str_tuple(classifier.get("data_paths"), "classifier data_paths"),
             exempt_paths=_str_tuple(classifier.get("exempt_paths") or [], "classifier exempt_paths"),
         ),
+        omp_sha256=omp_sha256,
     )
     _require(policy.mode in ("shadow", "enforce"), "mode must be shadow or enforce")
     _require(bool(policy.status_context), "status_context is required")

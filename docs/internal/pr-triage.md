@@ -183,12 +183,13 @@ lookup mechanism before updating the digest.
 
 `.github/workflows/trunk.yml` tests `develop` on pushes (fast lane,
 four-shard medium tier, correctness gate and required-local-cases), and builds
-the verified release distribution artifact. Pending runs are retained with
-`concurrency.queue: max`, so results can lag during merge bursts; a missing
+the verified release distribution artifact. Each commit runs in its own
+concurrency group, in parallel with other commits, so results can arrive out of
+order; a missing
 push event still needs separate recovery. A red develop tip is a trunk
 failure that the PR's own checks did not catch. Revert first: run
 `make trunk-revert PR=<n>` for the culprit and fix it afterwards. While trunk has
-been red for more than 30 minutes, `make pr-open` opens any PR that is not a
+been red for more than 30 minutes (a newer run in progress does not hide that), `make pr-open` opens any PR that is not a
 revert as a draft and says that arming needs the owner's fix-forward
 authorization, because every PR opened on a red tip inherits the breakage. Arming
 stays refused until that authorization exists; see

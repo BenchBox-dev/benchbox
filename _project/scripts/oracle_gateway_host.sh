@@ -4,7 +4,9 @@ umask 077
 
 REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 REPO_SLUG=${REPO_SLUG:-BenchBox-dev/benchbox}
-OMP=${OMP:-$(command -v omp || true)}
+OMP=
+PINNED_VERSION=
+PINNED_SHA=
 BROKER_PORT=${BROKER_PORT:-8765}
 GATEWAY_PORT=${GATEWAY_PORT:-4000}
 GATEWAY_DIR=${GATEWAY_DIR:-$HOME/.omp/oracle-gateway}
@@ -30,8 +32,103 @@ fail() {
   exit 1
 }
 
+file_sha256() {
+  shasum -a 256 "$1" | cut -d' ' -f1
+}
+
+binary_version() {
+  "$1" --version 2>/dev/null | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+([-+][A-Za-z0-9._-]+)?' | head -n 1
+}
+
 require_omp() {
-  [ -n "$OMP" ] && [ -x "$OMP" ] || fail "omp not found; install it or set OMP=/path/to/omp"
+  local develop_dir binary
+  develop_dir=$(mktemp -d)
+  export_develop "$develop_dir" || { rm -rf "$develop_dir"; exit 1; }
+  binary=$(cd "$develop_dir" && uv run --quiet --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- \
+    python -m _project.scripts.oracle_reviewers.cli install-omp --policy .github/oracle-reviewers.yml) \
+    || { rm -rf "$develop_dir"; fail "cannot install the omp build pinned in origin/develop:.github/oracle-reviewers.yml"; }
+  rm -rf "$develop_dir"
+  [ -n "$binary" ] && [ -x "$binary" ] || fail "the pinned omp install gave no executable"
+  OMP=$binary
+  PINNED_SHA=$(file_sha256 "$OMP")
+  PINNED_VERSION=$(binary_version "$OMP")
+  [ -n "$PINNED_VERSION" ] || fail "the pinned omp at $OMP reports no version"
+  "$OMP" auth-gateway serve --help 2>&1 | grep -q -e '--clients' \
+    || fail "the pinned omp $PINNED_VERSION has no auth-gateway serve --clients, which scopes each reviewer client"
+  echo "omp pin: $PINNED_VERSION sha256=$PINNED_SHA"
+}
+
+running_pid() {
+  local pid
+  pid=$(launchctl print "$DOMAIN/$1" 2>/dev/null | sed -n 's/^[[:space:]]*pid = \([0-9][0-9]*\)[[:space:]]*$/\1/p' | head -n 1)
+  [ -n "$pid" ] || fail "$1 is not running"
+  echo "$pid"
+}
+
+etime_seconds() {
+  local value=$1 days=0 first second third hours=0 minutes seconds
+  case $value in
+    *-*) days=${value%%-*}; value=${value#*-} ;;
+  esac
+  IFS=: read -r first second third <<< "$value"
+  if [ -n "$third" ]; then
+    hours=$first minutes=$second seconds=$third
+  else
+    minutes=$first seconds=$second
+  fi
+  echo $(( (10#$days * 24 + 10#$hours) * 3600 + 10#$minutes * 60 + 10#$seconds ))
+}
+
+file_mtime() {
+  stat -c %Y "$1" 2>/dev/null || stat -f %m "$1"
+}
+
+process_predates_file() {
+  local pid=$1 file=$2 etime elapsed mtime
+  etime=$(ps -o etime= -p "$pid" 2>/dev/null | tr -d '[:space:]') || return 0
+  [[ $etime =~ ^([0-9]+-)?([0-9]+:)?[0-9]+:[0-9]+$ ]] || return 0
+  elapsed=$(etime_seconds "$etime") || return 0
+  mtime=$(file_mtime "$file") || return 0
+  [[ $mtime =~ ^[0-9]+$ ]] || return 0
+  [ $(( $(date +%s) - elapsed + 1 )) -lt "$mtime" ]
+}
+
+agent_predates_binary() {
+  local pid
+  pid=$(launchctl print "$DOMAIN/$1" 2>/dev/null | sed -n 's/^[[:space:]]*pid = \([0-9][0-9]*\)[[:space:]]*$/\1/p' | head -n 1) || pid=""
+  [ -n "$pid" ] && process_predates_file "$pid" "$OMP"
+}
+
+check_running_build() {
+  local label=$1 port=$2 pid listener binary sha version
+  pid=$(running_pid "$label") || exit 1
+  listener=$(lsof -nP "-iTCP:$port" -sTCP:LISTEN -t 2>/dev/null | sort -u | paste -sd ' ' -)
+  [ "$listener" = "$pid" ] \
+    || fail "$label is process $pid but port $port is held by '${listener:-nothing}'; see its log in $LOG_DIR"
+  binary=$(ps -o comm= -p "$pid" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+  [ -n "$binary" ] && [ -x "$binary" ] || fail "$label runs '$binary', which is not an executable file"
+  ! process_predates_file "$pid" "$binary" \
+    || fail "$label started before $binary was last written, so it may run an older build; run '$(basename "$0") broker' and '$(basename "$0") gateway'"
+  sha=$(file_sha256 "$binary")
+  version=$(binary_version "$binary")
+  echo "$label: omp $version sha256=$sha"
+  [ "$sha" = "$PINNED_SHA" ] && [ "$version" = "$PINNED_VERSION" ] \
+    || fail "$label runs omp $version sha256=$sha, not the pinned omp $PINNED_VERSION sha256=$PINNED_SHA; run '$(basename "$0") broker' and '$(basename "$0") gateway'"
+}
+
+check_run_file_build() {
+  grep -qxF "$(run_file_exec_line)" "$RUN_FILE" 2>/dev/null \
+    || fail "$RUN_FILE does not exec the pinned build at $OMP with the clients file and bind address this script writes; run '$(basename "$0") gateway'"
+}
+
+run_file_exec_line() {
+  echo "exec \"$OMP\" auth-gateway serve --bind=127.0.0.1:$GATEWAY_PORT --clients=\"$CLIENTS_FILE\""
+}
+
+check_builds() {
+  check_running_build "$BROKER_LABEL" "$BROKER_PORT"
+  check_run_file_build
+  check_running_build "$GATEWAY_LABEL" "$GATEWAY_PORT"
 }
 
 xml_escape() {
@@ -96,7 +193,7 @@ install_agent() {
   staged=$(mktemp)
   render_plist "$label" "$log" "$@" > "$staged"
   plutil -lint "$staged" >/dev/null
-  if [ "$changed" = no ] && agent_loaded "$label" && cmp -s "$staged" "$plist"; then
+  if [ "$changed" = no ] && agent_loaded "$label" && cmp -s "$staged" "$plist" && ! agent_predates_binary "$label"; then
     rm -f "$staged"
     echo "$label: unchanged, left running"
     return 0
@@ -237,7 +334,7 @@ cmd_broker() {
   if [ -n "$missing" ]; then
     echo "log in to each missing provider, then run '$(basename "$0") gateway':"
     for provider in $missing; do
-      echo "  omp auth-broker login $provider"
+      echo "  $OMP auth-broker login $provider"
     done
   fi
 }
@@ -282,7 +379,7 @@ export HOME="$GATEWAY_DIR/home"
 export OMP_AUTH_BROKER_URL="http://127.0.0.1:$BROKER_PORT"
 OMP_AUTH_BROKER_TOKEN=\$(cat "$BROKER_TOKEN_FILE")
 export OMP_AUTH_BROKER_TOKEN
-exec "$OMP" auth-gateway serve --bind=127.0.0.1:$GATEWAY_PORT --clients="$CLIENTS_FILE"
+$(run_file_exec_line)
 EOF
   if cmp -s "$staged" "$RUN_FILE"; then
     rm -f "$staged"
@@ -333,6 +430,7 @@ cmd_check() {
   require_omp
   broker_ok || fail "the broker is not running"
   echo "broker: ok on 127.0.0.1:$BROKER_PORT"
+  check_builds
   local missing url secrets name
   missing=$(missing_logins)
   [ -z "$missing" ] || fail "no broker login for: $(printf '%s\n' "$missing" | paste -sd ' ' -)"

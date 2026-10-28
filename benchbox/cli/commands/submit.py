@@ -23,7 +23,11 @@ from benchbox.cli.submit_service import (
     submit_hosted_bundle,
 )
 from benchbox.core.results.anonymization import (
+    AnonymizationConfig,
+    AnonymizationManager,
     MissingPublicPseudonymSaltError,
+    anonymize_applied_tuning_payload,
+    anonymize_plans_payload,
     require_public_pseudonym_salt,
 )
 from benchbox.core.results.canonical_json import canonical_json_file_bytes, canonical_json_text
@@ -46,7 +50,11 @@ from benchbox.validation.bundle import (
     SUBMISSION_NOTES_MAX_LEN,
     _hash_bytes,
     _hash_file,
+    export_anonymized_errors,
+    find_public_path_leaks,
     format_summary,
+    unanonymized_plans_findings,
+    unanonymized_tuning_findings,
     unsatisfied_override_rules,
     validate_bundles,
 )
@@ -167,12 +175,88 @@ def _build_submission_manifest(
     return manifest
 
 
-def _refuse_missing_public_pseudonym_salt(ctx: click.Context) -> None:
+def _require_public_pseudonym_salt(ctx: click.Context) -> str:
     try:
-        require_public_pseudonym_salt()
+        return require_public_pseudonym_salt()
     except MissingPublicPseudonymSaltError as exc:
         console.print(f"\n[red]❌ Submission refused: {exc}[/red]")
         ctx.exit(1)
+
+
+def _inline_requested_tuning(payload: dict[str, object]) -> dict[str, object] | None:
+    platform = payload.get("platform")
+    tuning = platform.get("tuning") if isinstance(platform, dict) else None
+    requested = tuning.get("requested") if isinstance(tuning, dict) else None
+    return requested if isinstance(requested, dict) else None
+
+
+def _anonymize_bundle_payload(payload: dict[str, object], manager: AnonymizationManager) -> dict[str, object]:
+    working = dict(payload)
+    export = working.pop("export", None)
+    raw_requested = _inline_requested_tuning(working)
+    anonymized = manager.anonymize_result_payload(working)
+    if raw_requested is not None:
+        anonymized["platform"]["tuning"]["requested"] = manager.anonymize_tuning_payload({"requested": raw_requested})[
+            "requested"
+        ]
+    anonymized["export"] = {**(export if isinstance(export, dict) else {}), "anonymized": True}
+    errors = export_anonymized_errors(anonymized)
+    if errors:
+        raise click.ClickException(f"Bundle anonymization failed: {'; '.join(errors)}")
+    findings = [f"private path leak at {leak}" for leak in sorted(set(find_public_path_leaks(anonymized)))]
+    findings += unanonymized_plans_findings(anonymized) + unanonymized_tuning_findings(anonymized)
+    if findings:
+        raise click.ClickException(f"Bundle anonymization failed: {'; '.join(findings)}")
+    return anonymized
+
+
+def _anonymize_companion_file(path: Path, manager: AnonymizationManager) -> dict[str, object]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise click.ClickException(f"Companion file is not valid JSON: {path}: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise click.ClickException(f"Companion file is not a JSON object: {path.name}")
+    if path.name.endswith(".tuning.json"):
+        anonymized = manager.anonymize_tuning_payload(payload)
+    elif path.name.endswith(".applied.json"):
+        anonymized = anonymize_applied_tuning_payload(payload)
+    elif path.name.endswith(".plans.json"):
+        anonymized = anonymize_plans_payload(payload)
+    else:
+        anonymized = manager.anonymize_result_payload(payload)
+    findings = [f"private path leak at {leak}" for leak in sorted(set(find_public_path_leaks(anonymized)))]
+    findings += unanonymized_plans_findings(anonymized) + unanonymized_tuning_findings(anonymized)
+    if findings:
+        raise click.ClickException(f"{path.name}: {'; '.join(findings)}")
+    return anonymized
+
+
+def _stage_submission_bundle(
+    source_path: Path,
+    companions: list[Path],
+    manager: AnonymizationManager,
+    staging_dir: Path,
+) -> tuple[Path, list[Path]]:
+    try:
+        raw_payload = json.loads(source_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise click.ClickException(f"Result file is not valid JSON: {source_path}: {exc}") from exc
+    if not isinstance(raw_payload, dict):
+        raise click.ClickException(f"Result file is not a JSON object: {source_path}")
+
+    staged_source_path = staging_dir / source_path.name
+    anonymized_payload = _anonymize_bundle_payload(raw_payload, manager)
+    staged_source_path.write_text(canonical_json_text(anonymized_payload), encoding="utf-8")
+
+    staged_companions: list[Path] = []
+    for comp in companions:
+        staged_comp = staging_dir / comp.name
+        comp_anonymized = _anonymize_companion_file(comp, manager)
+        staged_comp.write_text(canonical_json_text(comp_anonymized), encoding="utf-8")
+        staged_companions.append(staged_comp)
+
+    return staged_source_path, staged_companions
 
 
 def _refuse_non_submittable_result(ctx: click.Context, result: object, submit_state: SubmitTerminalState) -> None:
@@ -254,6 +338,7 @@ def _dispatch_service_mode(
     submitted_by: str | None,
     funding: str | None = None,
     submission_notes: str | None = None,
+    original_result_file: Path | None = None,
 ) -> None:
     bundle_bytes = _canonical_submission_file_bytes(source_path)
     companion_bytes = {comp.name: _canonical_submission_file_bytes(comp) for comp in companions}
@@ -349,7 +434,7 @@ def _dispatch_service_mode(
 
     try:
         history_path = record_hosted_submission(
-            result_file=source_path,
+            result_file=original_result_file or source_path,
             service_url=service_url,
             manifest=manifest,
             status=upload_result.status,
@@ -643,8 +728,7 @@ def submit(
         ctx.exit(1)
         return
 
-    _refuse_missing_public_pseudonym_salt(ctx)
-
+    salt = _require_public_pseudonym_salt(ctx)
     submit_state = classify_loaded_result(result)
 
     if submit_state is SubmitTerminalState.unofficial:
@@ -666,74 +750,84 @@ def submit(
     companions = [
         p for suffix in COMPANION_SUFFIXES if (p := source_path.with_name(source_path.stem + suffix)).exists()
     ]
+    manager = AnonymizationManager(AnonymizationConfig(machine_id_salt=salt))
 
-    _validate_submission_bundle(ctx, source_path)
-
-    if service_url is not None:
-        _dispatch_service_mode(
-            ctx,
+    with TemporaryDirectory(prefix="benchbox-submit-staging-") as tmpdir:
+        staging_dir = Path(tmpdir)
+        staged_source_path, staged_companions = _stage_submission_bundle(
             source_path=source_path,
             companions=companions,
+            manager=manager,
+            staging_dir=staging_dir,
+        )
+        _validate_submission_bundle(ctx, staged_source_path)
+
+        if service_url is not None:
+            _dispatch_service_mode(
+                ctx,
+                source_path=staged_source_path,
+                companions=staged_companions,
+                result=result,
+                service_url=service_url,
+                visibility=visibility,
+                idempotency_key=idempotency_key,
+                wait=wait,
+                dry_run=dry_run,
+                submitted_by=submitted_by,
+                funding=funding,
+                submission_notes=submission_notes,
+                original_result_file=source_path,
+            )
+            return
+
+        output_path = Path(output_dir)
+        bundle_dir = output_path / "bundle"
+        manifest_path = output_path / f"{source_path.stem}.manifest.json"
+        contributing_path = output_path / "CONTRIBUTING.md"
+
+        if dry_run:
+            _print_submission_summary(
+                bundle_dir=bundle_dir,
+                source_path=staged_source_path,
+                companions=staged_companions,
+                manifest_path=manifest_path,
+                contributing_path=contributing_path,
+                output_path=output_path,
+                result=result,
+                dry_run=True,
+            )
+            return
+
+        bundle_dir.mkdir(parents=True, exist_ok=True)
+
+        packaged_source_path = _write_canonical_submission_file(staged_source_path, bundle_dir / source_path.name)
+        packaged_companions = []
+        for comp in staged_companions:
+            packaged_companions.append(_write_canonical_submission_file(comp, bundle_dir / comp.name))
+
+        manifest = _build_submission_manifest(
+            source_path=packaged_source_path,
+            companions=packaged_companions,
             result=result,
-            service_url=service_url,
-            visibility=visibility,
-            idempotency_key=idempotency_key,
-            wait=wait,
-            dry_run=dry_run,
             submitted_by=submitted_by,
             funding=funding,
             submission_notes=submission_notes,
+            submission_path="PR-based",
         )
-        return
 
-    output_path = Path(output_dir)
-    bundle_dir = output_path / "bundle"
-    manifest_path = output_path / f"{source_path.stem}.manifest.json"
-    contributing_path = output_path / "CONTRIBUTING.md"
+        manifest_path.write_text(canonical_json_text(manifest), encoding="utf-8")
+        contributing_path.write_text(_CONTRIBUTING_TEXT, encoding="utf-8")
 
-    if dry_run:
         _print_submission_summary(
             bundle_dir=bundle_dir,
-            source_path=source_path,
-            companions=companions,
+            source_path=packaged_source_path,
+            companions=packaged_companions,
             manifest_path=manifest_path,
             contributing_path=contributing_path,
             output_path=output_path,
             result=result,
-            dry_run=True,
+            dry_run=False,
         )
-        return
-
-    bundle_dir.mkdir(parents=True, exist_ok=True)
-
-    packaged_source_path = _write_canonical_submission_file(source_path, bundle_dir / source_path.name)
-    packaged_companions = []
-    for comp in companions:
-        packaged_companions.append(_write_canonical_submission_file(comp, bundle_dir / comp.name))
-
-    manifest = _build_submission_manifest(
-        source_path=packaged_source_path,
-        companions=packaged_companions,
-        result=result,
-        submitted_by=submitted_by,
-        funding=funding,
-        submission_notes=submission_notes,
-        submission_path="PR-based",
-    )
-
-    manifest_path.write_text(canonical_json_text(manifest), encoding="utf-8")
-    contributing_path.write_text(_CONTRIBUTING_TEXT, encoding="utf-8")
-
-    _print_submission_summary(
-        bundle_dir=bundle_dir,
-        source_path=source_path,
-        companions=companions,
-        manifest_path=manifest_path,
-        contributing_path=contributing_path,
-        output_path=output_path,
-        result=result,
-        dry_run=False,
-    )
 
 
 __all__ = ["submit"]

@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import json
+import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-from _project.scripts.oracle_reviewers import attempts, cli, protocol, render, report, retry, selection
+from _project.scripts.oracle_reviewers import attempts, cli, omp_pin, protocol, render, report, retry, selection
 from _project.scripts.oracle_reviewers.absence import Absence
 from _project.scripts.oracle_reviewers.classify import Classification
 from _project.scripts.oracle_reviewers.dedup import fingerprint, marker
@@ -59,6 +60,7 @@ def _plan(policy: Policy, buckets: tuple[str, ...] = ("small", "medium")) -> dic
         "brief_max_bytes": policy.brief_max_bytes,
         "evidence_files": [CHECKER],
         "chain": [policy.reviewers[bucket].to_json() for bucket in buckets],
+        "omp_sha256": omp_pin.sha256_of(Path(sys.executable)),
         "buckets": dict(policy.buckets),
         "follow_up_reviewer": None,
         "scope_paths": [CHECKER],
@@ -856,3 +858,56 @@ def test_an_artifact_without_a_provider_loads_as_unknown(policy: Policy, tmp_pat
     del data["absence"]["provider"]
     path.write_text(json.dumps(data), encoding="utf-8")
     assert attempts.load(tmp_path, plan, RUN_ID).attempts[0].provider == ""
+
+
+def test_cli_finalize_after_a_failed_install_posts_a_distinct_pending_status_without_attempts(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan_dir = tmp_path / "plan"
+    plan_dir.mkdir()
+    (plan_dir / "plan.json").write_text(json.dumps(_plan(policy, ("small",))), encoding="utf-8")
+    final_dir = tmp_path / "final"
+    out = _run_cli(
+        monkeypatch,
+        tmp_path,
+        "finalize",
+        "--plan",
+        str(plan_dir / "plan.json"),
+        "--attempts-dir",
+        str(tmp_path / "no-attempts"),
+        "--out-dir",
+        str(final_dir),
+        "--omp-install",
+        "failed",
+    )
+    assert out == {"state": "pending", "comment": "false", "review": "false", "has_state": "true"}
+    status = json.loads((final_dir / "status.json").read_text(encoding="utf-8"))
+    assert status["state"] == "pending"
+    assert status["description"] == "the pinned omp build could not be installed; no reviewer ran"
+    state = json.loads((final_dir / "state" / "state.json").read_text(encoding="utf-8"))
+    assert state["outcome"] == "pending" and state["pending_cause"] == "omp-install"
+    assert not (tmp_path / "no-attempts").exists()
+
+
+def test_cli_finalize_without_the_install_flag_still_decides_from_attempts(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan_dir = tmp_path / "plan"
+    plan_dir.mkdir()
+    (plan_dir / "plan.json").write_text(json.dumps(_plan(policy, ("small",))), encoding="utf-8")
+    attempts_dir = tmp_path / "attempts"
+    attempts_dir.mkdir()
+    out = _run_cli(
+        monkeypatch,
+        tmp_path,
+        "finalize",
+        "--plan",
+        str(plan_dir / "plan.json"),
+        "--attempts-dir",
+        str(attempts_dir),
+        "--out-dir",
+        str(tmp_path / "final"),
+    )
+    status = json.loads((tmp_path / "final" / "status.json").read_text(encoding="utf-8"))
+    assert out["state"] == "pending"
+    assert status["description"] != "the pinned omp build could not be installed; no reviewer ran"

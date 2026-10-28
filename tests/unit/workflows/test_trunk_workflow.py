@@ -24,12 +24,14 @@ def test_runs_after_each_push_to_develop_and_on_demand() -> None:
     assert "pull_request" not in triggers and "merge_group" not in triggers
 
 
-def test_every_push_gets_its_own_queued_run() -> None:
+def test_every_commit_runs_in_parallel_in_its_own_group() -> None:
     concurrency = _workflow()["concurrency"]
-    assert "github.ref" in concurrency["group"], "a manual run on another ref would replace the pending run for develop"
-    assert concurrency["cancel-in-progress"] is False
-    assert concurrency["queue"] == "max", (
-        "without a queue a newer push replaces the pending run, so intermediate commits get no result"
+    assert concurrency["group"] == "trunk-${{ github.sha }}", (
+        "a per-ref group serialises develop pushes behind each other; the group must be the commit"
+    )
+    assert concurrency["cancel-in-progress"] is False, "a re-run of a commit must wait, never cancel a delivered run"
+    assert "queue" not in concurrency, (
+        "a per-commit group needs no queue: the only contender is a re-run of the same commit"
     )
 
 
