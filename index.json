@@ -11223,6 +11223,13 @@
       "status": "open",
       "title": "Make the fast-duration gate robust to a high calibration factor"
     },
+    "fast-lane-budget-doc-copy-stale-until-removal-20261028": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Confirm docs/operations/fast-lane-budget.md in this repository is removed or updated"
+    },
     "fast-lane-ceiling-decouple-contention": {
       "claim": null,
       "needs": [

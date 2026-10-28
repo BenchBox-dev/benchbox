@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "The repository copy is deleted or matches the site copy, with the merge that did it recorded"
+  ],
+  "context": "Site pull request 72 updated the site copy. The freeze check rejected an edit to this repository's copy. The removal is in the open docs-core-removal pull request.",
+  "description": "The site repository copy of the fast-lane budget page now describes the blocking duration gate, but the copy in this repository is frozen as site-owned and still says the gate is report-only with the old thresholds. It stays wrong until the docs-core-removal change removes it, or the site import refreshes it.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-28T11:46:00Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "96e3abc9e10543bbb0044afac561f384",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}
