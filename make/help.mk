@@ -122,7 +122,7 @@ help:
 	@echo "  make cloud-bootstrap  Set up a disposable cloud-session clone: human Git identity, uv sync, hooks, write preflight"
 	@echo "  make cloud-verify [LEVEL=static|tests]  Run the cloud builder checks and print per-step status and seconds"
 	@echo "  make pr-rerun [PR=n] [REPO=owner/repo]  Re-run the failed jobs of the PR head's latest CI run (all jobs if any were cancelled)"
-	@echo "  make pr-preflight    Ruff on changed Python files, then the tests for changed files (serial, no test lock; CI runs the full fast lane)"
+	@echo "  make pr-preflight    Ruff on changed Python files, then the tests for changed files (serial, no test lock; CI runs the full fast lane); adds a Linux container run when the change branches on platform"
 	@echo "  make pr-preflight-fast-tests  Run the full fast lane and content guard locally, as CI does (takes the shared test lock)"
 	@echo "  make make-timings-report [MAKE_TIMINGS_DAYS=30] [MAKE_TIMINGS_SLOWEST=5]  Per-target run count, median, p90 and max from ~/.benchbox/make-timings.jsonl (BENCHBOX_MAKE_TIMINGS=0 disables recording)"
 	@echo "  make pr-open [TITLE=text] [PR_BODY_FILE=path] [READY=1]  Push branch + open PR vs develop over REST; update supplied title/body only when changed (READY=1 also arms it with pr-arm)"

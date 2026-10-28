@@ -13,6 +13,9 @@ TESTS_ROOT = "tests"
 PLATFORMS_ROOT = "benchbox/platforms/"
 SMOKE_TESTS_ROOT = "tests/integration/platforms/"
 CONFTEST_SUBTREE_LIMIT = 200
+PLATFORM_BRANCH = re.compile(
+    r"\bsys\.platform\b|\bos\.name\b|\bplatform\.system\(|\bIS_(?:LINUX|MACOS|DARWIN|WINDOWS|POSIX)\b"
+)
 PATCH_CALLEE = re.compile(r"(^|\.)patch(\.|$)")
 ORACLE_SCENARIO_TESTS = (
     "tests/integration/oracle/test_cloud_review_reachability_scenario.py",
@@ -260,9 +263,26 @@ def map_tests(repo: Path, paths: list[str]) -> list[str]:
     return sorted(selected)
 
 
+def branches_on_platform(repo: Path, paths: list[str]) -> bool:
+    for path in paths:
+        if not path.endswith(".py") or not (path.startswith(SOURCE_ROOTS) or path.split("/", 1)[0] == TESTS_ROOT):
+            continue
+        try:
+            text = (repo / path).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        if PLATFORM_BRANCH.search(text):
+            return True
+    return False
+
+
+def linux_tests(repo: Path, paths: list[str]) -> list[str]:
+    return map_tests(repo, paths) if branches_on_platform(repo, paths) else []
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("kind", choices=("python", "tests"))
+    parser.add_argument("kind", choices=("python", "tests", "linux"))
     parser.add_argument("--base-ref", default="origin/develop")
     parser.add_argument("--repo-root", type=Path, default=Path.cwd())
     args = parser.parse_args(argv)
@@ -271,7 +291,12 @@ def main(argv: list[str] | None = None) -> int:
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, IndexError) as exc:
         print(f"preflight_targets: cannot compute changed paths against {args.base_ref}: {exc}", file=sys.stderr)
         return 2
-    selected = changed_python(args.repo_root, paths) if args.kind == "python" else map_tests(args.repo_root, paths)
+    if args.kind == "python":
+        selected = changed_python(args.repo_root, paths)
+    elif args.kind == "linux":
+        selected = linux_tests(args.repo_root, paths)
+    else:
+        selected = map_tests(args.repo_root, paths)
     for path in selected:
         print(path)
     return 0

@@ -343,3 +343,64 @@ def test_monkeypatch_setattr_target_selects_the_patching_test(repo: Path) -> Non
     _commit_all(repo)
 
     assert "tests/unit/test_patcher.py" in pt.map_tests(repo, pt.changed_paths(repo, "origin/develop"))
+
+
+def test_platform_branching_source_triggers_linux_run_of_mapped_tests(repo: Path) -> None:
+    _write(repo, "benchbox/core/engine.py", "import sys\nIS_LINUX = sys.platform.startswith('linux')\n")
+    _commit_all(repo)
+
+    paths = pt.changed_paths(repo, "origin/develop")
+
+    assert pt.linux_tests(repo, paths) == ["tests/integration/test_engine.py", "tests/unit/core/test_engine.py"]
+
+
+def test_changed_test_with_platform_skip_triggers_linux_run(repo: Path) -> None:
+    _write(
+        repo,
+        "tests/unit/test_unrelated.py",
+        "import sys\nimport pytest\n\n@pytest.mark.skipif(sys.platform == 'win32', reason='posix')\ndef test_a():\n    pass\n",
+    )
+    _commit_all(repo)
+
+    assert pt.linux_tests(repo, pt.changed_paths(repo, "origin/develop")) == ["tests/unit/test_unrelated.py"]
+
+
+@pytest.mark.parametrize(
+    "snippet", ["if os.name == 'nt':\n    pass\n", "x = platform.system()\n", "if IS_WINDOWS:\n    pass\n"]
+)
+def test_other_platform_branch_forms_trigger(repo: Path, snippet: str) -> None:
+    _write(repo, "scripts/tool.py", snippet)
+    _commit_all(repo)
+
+    assert pt.linux_tests(repo, pt.changed_paths(repo, "origin/develop")) == ["tests/unit/test_tool.py"]
+
+
+def test_change_without_platform_branching_does_not_trigger_linux_run(repo: Path) -> None:
+    _write(repo, "benchbox/core/engine.py", "x = 2\n")
+    _write(repo, "tests/unit/test_unrelated.py", "y = 2\n")
+    _write(repo, "docs/guide.md", "sys.platform in prose\n")
+    _commit_all(repo)
+
+    paths = pt.changed_paths(repo, "origin/develop")
+
+    assert pt.map_tests(repo, paths)
+    assert pt.linux_tests(repo, paths) == []
+
+
+def test_untouched_platform_branching_file_does_not_trigger(repo: Path) -> None:
+    _write(repo, "benchbox/platforms/other.py", "import sys\nIS_LINUX = sys.platform == 'linux'\n")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-m", "base")
+    _git(repo, "update-ref", "refs/remotes/origin/develop", "HEAD")
+    _write(repo, "benchbox/core/engine.py", "x = 2\n")
+    _commit_all(repo)
+
+    assert pt.linux_tests(repo, pt.changed_paths(repo, "origin/develop")) == []
+
+
+def test_linux_kind_cli_prints_tests_only_when_triggered(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    _write(repo, "scripts/tool.py", "import sys\nx = sys.platform\n")
+    _commit_all(repo)
+
+    assert pt.main(["linux", "--repo-root", str(repo)]) == 0
+    assert capsys.readouterr().out.split() == ["tests/unit/test_tool.py"]
