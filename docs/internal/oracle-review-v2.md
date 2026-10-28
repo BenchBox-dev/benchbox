@@ -344,7 +344,11 @@ disposition whose citation does not verify is not invalid: the defect stays open
 and the disposition is published with the evidence gap. A demoted withdrawal or
 fix is judged exactly as a maintain, so its concedes and claim cannot invalidate
 it. A keep-open verdict is never discarded or rerolled; only the safe direction
-is taken. A withdrawal without a verified file-and-line citation counts as not
+is taken. A citation may name any path the verdict schema accepts, including
+spaces, `+`, non-ASCII characters and a leading hyphen, but never `..` or an
+absolute path, and its exact path must be in the credited read set. A reply or
+reviewer claim is sanitized to a stable canonical form, so replaying a recorded
+verdict never changes a claim that already matched. A withdrawal without a verified file-and-line citation counts as not
 fixed (the head-commit existence check still runs when citations are marked), as
 does a defect marked fixed on an unchanged patch, so only evidenced dispositions
 leave the open list; withdrawals are reported separately as never defects. Every

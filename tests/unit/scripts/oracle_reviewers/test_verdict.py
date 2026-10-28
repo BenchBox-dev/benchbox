@@ -411,3 +411,18 @@ def test_missing_defaulted_fields_are_filled_and_named_once() -> None:
     assert (normalized["incomplete_reason"], normalized["summary"]) == ("", "")
     assert normalized["prior_defects"] == [{"status": "fixed", "evidence": "x", "id": "D1"}]
     assert normalize_reviewer(_verdict(_finding())) == (_verdict(_finding()), ())
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Dispute: @@owner is incorrect.",
+        "Dispute: [[docs](x)](y) and @@@a is wrong.",
+        "see http://a.b(c) and [x](http://y.z)(w)",
+        "<<!----> -- > and @@x",
+    ],
+)
+def test_sanitize_is_idempotent(text: str) -> None:
+    once = sanitize(text, 5000)
+    assert sanitize(once, 5000) == once
+    assert sanitize(once, len(once)) == once
