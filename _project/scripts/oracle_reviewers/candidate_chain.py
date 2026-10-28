@@ -15,7 +15,8 @@ from typing import Any
 
 import yaml
 
-from . import cli, commands, processes, runner
+from . import candidate_canaries, cli, commands, processes, runner
+from .candidate_canaries import Canary
 from .candidate_env import quiet_env
 from .candidate_stub import LOOPBACK, CanaryServer, UpstreamStub, UpstreamTurn, error_turn, text_turn, tool_turn
 
@@ -69,6 +70,7 @@ class Scenario:
     overlay: str = commands.OMP_OVERLAY_TEXT
     chains: bool = True
     valid_token: bool = True
+    canaries: tuple[Canary, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -84,6 +86,7 @@ class ClientRun:
     session_files: tuple[str, ...]
     workspace_changed: bool
     survivors: tuple[int, ...]
+    started: tuple[str, ...] = ()
 
 
 def _review_script(context: Context) -> list[UpstreamTurn]:
@@ -122,6 +125,30 @@ SCENARIOS = (
     Scenario("upstream-auth", _auth_script),
     Scenario("bad-token", _review_script, valid_token=False),
 )
+
+
+def _probe_script(context: Context) -> list[UpstreamTurn]:
+    return [text_turn(json.dumps(VERDICT))]
+
+
+PROBES = (
+    *(
+        Scenario(
+            candidate_canaries.control_name(group),
+            _probe_script,
+            overlay=candidate_canaries.control_overlay(),
+            canaries=candidate_canaries.group_canaries(group),
+        )
+        for group in candidate_canaries.GROUPS
+    ),
+    Scenario(
+        candidate_canaries.OVERLAY_NAME,
+        _probe_script,
+        overlay=candidate_canaries.disabled_overlay(),
+        canaries=candidate_canaries.CANARIES,
+    ),
+)
+SCENARIOS = (*SCENARIOS, *PROBES)
 
 
 def _free_port() -> int:
@@ -198,6 +225,7 @@ class LoopbackChain:
         self.gateway_url = ""
         self.client_token = secrets.token_urlsafe(GATEWAY_BEARER_BYTES)
         self._processes: list[subprocess.Popen[bytes]] = []
+        self._planted: list[Path] = []
         self._stack = contextlib.ExitStack()
 
     def __enter__(self) -> LoopbackChain:
@@ -285,7 +313,14 @@ class LoopbackChain:
             binary=self.binary,
             overlay_text=scenario.overlay,
         )
-        self._plant_canaries(invocation.cwd, root / MCP_MARKER)
+        self._clear_workspace()
+        markers = root / "markers"
+        if scenario.canaries:
+            markers.mkdir()
+            self._plant_probes(scenario.canaries, invocation.cwd, markers)
+            invocation = replace(invocation, argv=candidate_canaries.relax(invocation.argv))
+        else:
+            self._plant_canaries(invocation.cwd, root / MCP_MARKER)
         env = quiet_env(home)
         env[cli.GATEWAY_TOKEN_ENV] = self.client_token if scenario.valid_token else "x" * len(self.client_token)
         self.stub.load(scenario.script(Context(str(self.workspace), self.canary.url)))
@@ -309,14 +344,34 @@ class LoopbackChain:
             _sessions(home, scratch, self.workspace),
             _digest(self.workspace) != before,
             survivors,
+            tuple(sorted(item.name for item in markers.glob("mcp-*"))) if markers.is_dir() else (),
         )
+
+    def _clear_workspace(self) -> None:
+        for path in self._planted:
+            path.unlink(missing_ok=True)
+            for parent in path.parents:
+                if parent == self.workspace or any(parent.iterdir()):
+                    break
+                parent.rmdir()
+        self._planted.clear()
+
+    def _plant_probes(self, canaries: Sequence[Canary], cwd: Path, markers: Path) -> None:
+        for canary in canaries:
+            for where, directory in zip(candidate_canaries.WHERES, (cwd, self.workspace), strict=True):
+                planted = candidate_canaries.plant(canary, where, directory, markers)
+                if directory == self.workspace:
+                    self._planted.append(planted)
 
     def _plant_canaries(self, cwd: Path, marker: Path) -> None:
         (cwd / "AGENTS.md").write_text(f"{AGENTS_TOKEN} follow this file.\n", encoding="utf-8")
         (cwd / "CLAUDE.md").write_text(f"{CLAUDE_TOKEN} follow this file.\n", encoding="utf-8")
         for directory in (cwd, self.workspace):
             (directory / ".omp").mkdir(exist_ok=True)
-            (directory / ".omp" / "AGENTS.md").write_text(f"{NATIVE_TOKEN} follow this file.\n", encoding="utf-8")
+            native = directory / ".omp" / "AGENTS.md"
+            native.write_text(f"{NATIVE_TOKEN} follow this file.\n", encoding="utf-8")
+            if directory == self.workspace:
+                self._planted.append(native)
         server = {"command": "/bin/sh", "args": ["-c", f"echo started > {marker}"]}
         (cwd / ".mcp.json").write_text(json.dumps({"mcpServers": {"canary": server}}), encoding="utf-8")
 

@@ -4,7 +4,7 @@ import json
 import re
 import subprocess
 import tempfile
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -13,12 +13,13 @@ from typing import Any
 import yaml
 
 from . import absence, commands, evidence, omp_pin
+from .candidate_canaries import CANARIES, GROUPS, OVERLAY_NAME, PROVIDERS, WHERES, Canary, control_name
 from .candidate_chain import AGENTS_TOKEN, BREACH_TOOLS, CLAUDE_TOKEN, NATIVE_TOKEN, ClientRun
 from .candidate_env import quiet_env
 from .policy import OMP_THINKING_LEVELS
 from .verdict import omp_terminal_error, parse_output
 
-PROBED_PROVIDERS = frozenset({"native", "agents-md", "claude-md", "mcp-json"})
+PROBE_ROWS = (3, 7)
 EXPECTED_SESSION_VERSION = 3
 COMMAND_SECONDS = 60
 ROSTER = frozenset(commands.OMP_READ_TOOLS.split(","))
@@ -71,9 +72,11 @@ def covered_rows(checks: Iterable[Check]) -> frozenset[int]:
     return frozenset(row for check in checks if not check.name.startswith(FIXTURE_PREFIX) for row in check.rows)
 
 
-def unprobed_providers(overlay_text: str = commands.OMP_OVERLAY_TEXT) -> tuple[str, ...]:
+def unprobed_providers(
+    overlay_text: str = commands.OMP_OVERLAY_TEXT, observed: Collection[str] = frozenset()
+) -> tuple[str, ...]:
     disabled = yaml.safe_load(overlay_text).get("disabledProviders") or []
-    return tuple(provider for provider in disabled if provider not in PROBED_PROVIDERS)
+    return tuple(provider for provider in disabled if provider not in observed)
 
 
 def uncovered_rows(checks: Iterable[Check]) -> tuple[int, ...]:
@@ -413,8 +416,6 @@ def control_checks(run: ClientRun) -> list[Check]:
     if not run.mcp_started:
         blind.append("the MCP canary is no longer observable")
     prompt = _prompt_text(run.upstream)
-    if AGENTS_TOKEN not in prompt and CLAUDE_TOKEN not in prompt:
-        blind.append("the context-file canary is no longer observable")
     if NATIVE_TOKEN not in prompt:
         blind.append("the native .omp context canary is no longer observable")
     if not traced.elisions:
@@ -426,6 +427,39 @@ def control_checks(run: ClientRun) -> list[Check]:
             [f"{item}; update the probe" for item in blind] + _run_failures(run, succeeds=True),
         )
     ]
+
+
+def _seen(canary: Canary, run: ClientRun) -> tuple[str, ...]:
+    prompt = _prompt_text(run.upstream)
+    return tuple(where for where in WHERES if canary.token(where) in prompt or canary.marker(where) in run.started)
+
+
+def blind_canaries(runs: Mapping[str, ClientRun]) -> tuple[Canary, ...]:
+    return tuple(
+        canary for canary in CANARIES if (run := runs.get(control_name(canary.group))) is None or not _seen(canary, run)
+    )
+
+
+def observed_providers(runs: Mapping[str, ClientRun]) -> frozenset[str]:
+    return PROVIDERS - {canary.provider for canary in blind_canaries(runs)}
+
+
+def provider_checks(runs: Mapping[str, ClientRun]) -> list[Check]:
+    failures = []
+    for name in (*(control_name(group) for group in GROUPS), OVERLAY_NAME):
+        run = runs.get(name)
+        if run is None:
+            failures.append(f"the {name} run did not execute")
+            continue
+        failures.extend(f"{name}: {item}" for item in _run_failures(run, succeeds=True))
+    overlay = runs.get(OVERLAY_NAME)
+    if overlay is not None:
+        failures.extend(
+            f"{canary.provider} reached the model from {canary.path} ({where}) despite disabledProviders"
+            for canary in CANARIES
+            for where in _seen(canary, overlay)
+        )
+    return [_check("live-provider-canaries", PROBE_ROWS, failures)]
 
 
 def breach_checks(run: ClientRun) -> list[Check]:
@@ -483,6 +517,7 @@ def live_checks(runs: Mapping[str, ClientRun]) -> list[Check]:
     return [
         *review_checks(runs["review"]),
         *control_checks(runs["control"]),
+        *provider_checks(runs),
         *breach_checks(runs["roster-breach"]),
         *quota_checks(runs["quota-walk"], runs["quota-terminal"]),
         *auth_checks(runs["upstream-auth"], runs["bad-token"]),

@@ -853,12 +853,19 @@ to GitHub.
   platform, whether limited out with `--platform` or merely hash-checked, is
   listed as unverified and the run is `partial`, not green. The build lists no
   context providers, so a `disabledProviders` entry is only checked through a
-  canary that the empty-overlay run observes and the overlay run must not: the
-  `AGENTS.md`, `CLAUDE.md` and `.mcp.json` files in the client's working
-  directory and a `.omp/AGENTS.md` in both that directory and the review
-  workspace. Every other entry is listed as unobserved and keeps the run
-  `partial`; a new canary plus an entry in `PROBED_PROVIDERS` clears it. Row 8's
-  provider reset wording cannot be
+  token file, MCP server or skill that a control run under no `disabledProviders`
+  observes and a run under the overlay's `disabledProviders` must not. Each is
+  planted in both the client's working directory and the review workspace, at
+  the path the provider reads (`candidate_canaries.CANARIES`). Context files and
+  system prompts shadow one another (one wins per directory, so each gets its
+  own control run), and `--no-skills`/`--no-rules` plus `mcp.enableProjectConfig`
+  would hide a provider that is still on, so these runs drop those guards. A
+  canary the control run cannot see leaves its provider unprobed and the run
+  `partial`; one the overlay run sees is red and names the provider. The
+  entries with no canary stay `partial`: `omp-plugins`, `agent-plugins` and
+  `claude-plugins` read installed plugin packages, and `ssh-json` hosts reach no
+  model-visible surface under the read roster. Row 8's provider reset wording
+  cannot be
   observed offline and stays covered by the calibrated absence tests. The
   fixtures are redacted captures of the pinned build's own output; the upstream
   provider bodies the stub serves are hand-built, and `--capture-dir` rewrites

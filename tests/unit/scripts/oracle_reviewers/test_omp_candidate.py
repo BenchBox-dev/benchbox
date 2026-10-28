@@ -16,6 +16,7 @@ import pytest
 import yaml
 
 from _project.scripts.oracle_reviewers import (
+    candidate_canaries,
     candidate_chain,
     candidate_checks,
     candidate_stub,
@@ -109,6 +110,18 @@ def _run(name: str, stdout: str, exit_code: int | None = 0, **fields: Any) -> Cl
     return ClientRun(**{**base, **fields})
 
 
+def _probe_runs() -> dict[str, ClientRun]:
+    runs = {}
+    for group in candidate_canaries.GROUPS:
+        canaries = candidate_canaries.group_canaries(group)
+        prompt = " ".join(item.token("cwd") for item in canaries if item.surface != candidate_canaries.MCP)
+        started = tuple(item.marker("cwd") for item in canaries if item.surface == candidate_canaries.MCP)
+        name = candidate_canaries.control_name(group)
+        runs[name] = _run(name, "", upstream=(_request(prompt=prompt),), started=started)
+    runs[candidate_canaries.OVERLAY_NAME] = _run(candidate_canaries.OVERLAY_NAME, "", upstream=(_request(),))
+    return runs
+
+
 def _good_runs() -> dict[str, ClientRun]:
     return {
         "review": _run("review", _read("chain_review.jsonl"), upstream=tuple(_request() for _ in range(5))),
@@ -117,7 +130,7 @@ def _good_runs() -> dict[str, ClientRun]:
             _read("elided_read.jsonl"),
             canary_hits=("/canary",),
             mcp_started=True,
-            upstream=(_request(prompt=f"context {AGENTS_TOKEN} {NATIVE_TOKEN}"),),
+            upstream=(_request(prompt=f"context {NATIVE_TOKEN}"),),
         ),
         "roster-breach": _run(
             "roster-breach", _read("roster_breach.jsonl"), upstream=tuple(_request() for _ in range(4))
@@ -126,6 +139,7 @@ def _good_runs() -> dict[str, ClientRun]:
         "quota-terminal": _run("quota-terminal", _read("quota_terminal.jsonl"), 1, upstream=(_request(),)),
         "upstream-auth": _run("upstream-auth", _read("upstream_auth.jsonl"), 1, upstream=(_request(),)),
         "bad-token": _run("bad-token", _read("gateway_rejection.jsonl"), 1),
+        **_probe_runs(),
     }
 
 
@@ -369,7 +383,7 @@ def _mutated(name: str, **fields: Any) -> dict[str, ClientRun]:
         ("review", {"timed_out": True}, "live-review-run", "timed out"),
         ("control", {"canary_hits": ()}, "live-probe-sensitivity", "URL canary is no longer observable"),
         ("control", {"mcp_started": False}, "live-probe-sensitivity", "MCP canary is no longer observable"),
-        ("control", {"upstream": (_request(),)}, "live-probe-sensitivity", "context-file canary"),
+        ("control", {"upstream": (_request(),)}, "live-probe-sensitivity", "native .omp context canary"),
         ("control", {"stdout": _read("quota_terminal.jsonl")}, "live-probe-sensitivity", "read-summary canary"),
         ("roster-breach", {"workspace_changed": True}, "live-write-refused", "changed the review workspace"),
         (
@@ -611,13 +625,13 @@ def test_a_run_with_unobserved_disabled_providers_is_partial_even_with_every_pla
         fetch=_fetcher(binary),
         chain_factory=lambda *_: _chain_from(_good_runs()),
     )
-    probed = candidate_checks.PROBED_PROVIDERS
     disabled = yaml.safe_load(commands.OMP_OVERLAY_TEXT)["disabledProviders"]
     assert report.passed and not report.ok
     assert report.unverified == ()
     assert report.transcript == "omp/18.12.1"
-    assert report.unprobed_providers == tuple(item for item in disabled if item not in probed)
-    assert "cursor" in report.unprobed_providers and "native" not in report.unprobed_providers
+    assert report.unprobed_providers == tuple(item for item in disabled if item not in candidate_canaries.PROVIDERS)
+    assert report.unprobed_providers == ("omp-plugins", "agent-plugins", "claude-plugins", "ssh-json")
+    assert report.blind_canaries == ()
     assert "result: partial" in report.render()
     assert report.to_json()["unprobed_providers"] == list(report.unprobed_providers)
 
@@ -634,3 +648,160 @@ def test_a_control_run_that_cannot_observe_the_native_context_canary_is_blind() 
     runs["control"] = replace(runs["control"], upstream=(_request(prompt=f"context {AGENTS_TOKEN}"),))
     checks = {check.name: check for check in candidate_checks.live_checks(runs)}
     assert any("native .omp context canary" in item for item in checks["live-probe-sensitivity"].failures)
+
+
+def _canary_ids(canary: candidate_canaries.Canary) -> str:
+    return f"{canary.provider}-{canary.surface}"
+
+
+def _without(run: ClientRun, canary: candidate_canaries.Canary) -> ClientRun:
+    prompt = candidate_checks._prompt_text(run.upstream).replace(canary.token("cwd"), "")
+    started = tuple(item for item in run.started if item != canary.marker("cwd"))
+    return replace(run, upstream=(_request(prompt=prompt),), started=started)
+
+
+def _leaking(runs: dict[str, ClientRun], canary: candidate_canaries.Canary, where: str) -> dict[str, ClientRun]:
+    run = runs[candidate_canaries.OVERLAY_NAME]
+    if canary.surface == candidate_canaries.MCP:
+        leaked = replace(run, started=(canary.marker(where),))
+    else:
+        leaked = replace(run, upstream=(_request(prompt=f"context {canary.token(where)}"),))
+    return {**runs, candidate_canaries.OVERLAY_NAME: leaked}
+
+
+@pytest.mark.parametrize("canary", candidate_canaries.CANARIES, ids=_canary_ids)
+@pytest.mark.parametrize("where", candidate_canaries.WHERES)
+def test_a_provider_canary_that_reaches_the_model_under_the_overlay_is_red_and_names_the_provider(
+    canary: candidate_canaries.Canary, where: str
+) -> None:
+    failed = _failed(candidate_checks.live_checks(_leaking(_good_runs(), canary, where)))
+    assert failed == {
+        "live-provider-canaries": (
+            f"{canary.provider} reached the model from {canary.path} ({where}) despite disabledProviders",
+        )
+    }
+
+
+@pytest.mark.parametrize("canary", candidate_canaries.CANARIES, ids=_canary_ids)
+def test_a_canary_the_control_run_does_not_see_leaves_its_provider_unprobed_but_the_checks_green(
+    canary: candidate_canaries.Canary,
+) -> None:
+    runs = _good_runs()
+    name = candidate_canaries.control_name(canary.group)
+    runs[name] = _without(runs[name], canary)
+    assert _failed(candidate_checks.live_checks(runs)) == {}
+    assert candidate_checks.blind_canaries(runs) == (canary,)
+    assert canary.provider not in candidate_checks.observed_providers(runs)
+    assert canary.provider in candidate_checks.unprobed_providers(observed=candidate_checks.observed_providers(runs))
+
+
+def test_a_blind_canary_makes_the_report_partial_and_names_the_canary(tmp_path: Path) -> None:
+    binary, _ = _fake(tmp_path)
+    canary = next(item for item in candidate_canaries.CANARIES if item.provider == "cursor" and item.surface == "rule")
+    runs = _good_runs()
+    name = candidate_canaries.control_name(canary.group)
+    runs[name] = _without(runs[name], canary)
+    report = omp_candidate.check_candidate(
+        _pin_for_host(binary, only_host=True), fetch=_fetcher(binary), chain_factory=lambda *_: _chain_from(runs)
+    )
+    assert report.passed and not report.ok
+    assert report.unprobed_providers == ("omp-plugins", "agent-plugins", "claude-plugins", "cursor", "ssh-json")
+    assert report.blind_canaries == ("cursor (.cursor/rules/canary-cursor.mdc)",)
+    assert "canaries the empty-overlay control run could not observe: cursor (.cursor/rules/canary-cursor.mdc)" in (
+        report.render()
+    )
+    assert "result: partial" in report.render()
+
+
+def test_a_control_run_that_never_executed_leaves_every_provider_it_covers_unprobed() -> None:
+    runs = _good_runs()
+    name = candidate_canaries.control_name("github-context")
+    del runs[name]
+    assert "github" not in candidate_checks.observed_providers(runs)
+    assert _failed(candidate_checks.live_checks(runs)) == {
+        "live-provider-canaries": (f"the {name} run did not execute",)
+    }
+
+
+def test_every_provider_with_a_canary_that_a_live_control_observed_shrinks_the_unprobed_list() -> None:
+    disabled = tuple(yaml.safe_load(commands.OMP_OVERLAY_TEXT)["disabledProviders"])
+    assert candidate_checks.unprobed_providers() == disabled
+    observed = candidate_checks.observed_providers(_good_runs())
+    assert observed == candidate_canaries.PROVIDERS
+    assert candidate_checks.unprobed_providers(observed=observed) == (
+        "omp-plugins",
+        "agent-plugins",
+        "claude-plugins",
+        "ssh-json",
+    )
+    assert candidate_checks.unprobed_providers(observed={"native", "cursor"}) == tuple(
+        item for item in disabled if item not in {"native", "cursor"}
+    )
+
+
+def test_a_probe_run_that_fails_is_red_because_it_cannot_prove_anything() -> None:
+    name = candidate_canaries.control_name("surfaces")
+    runs = _good_runs()
+    runs[name] = replace(runs[name], exit_code=1)
+    assert _failed(candidate_checks.live_checks(runs)) == {
+        "live-provider-canaries": (f"{name}: the client exited 1, expected 0",)
+    }
+
+
+def test_every_provider_with_a_canary_is_one_the_overlay_disables() -> None:
+    disabled = set(yaml.safe_load(commands.OMP_OVERLAY_TEXT)["disabledProviders"])
+    assert disabled >= candidate_canaries.PROVIDERS
+
+
+def test_exclusive_prompt_surfaces_get_one_canary_per_run_and_tokens_never_overlap() -> None:
+    exclusive = {candidate_canaries.CONTEXT, candidate_canaries.SYSTEM}
+    for group in candidate_canaries.GROUPS:
+        members = candidate_canaries.group_canaries(group)
+        assert len(members) == 1 or not any(item.surface in exclusive for item in members), group
+    tokens = [item.token(where) for item in candidate_canaries.CANARIES for where in candidate_canaries.WHERES]
+    assert len(set(tokens)) == len(tokens)
+    assert not any(a != b and a in b for a in tokens for b in tokens)
+
+
+def test_the_probe_overlays_isolate_the_disabled_providers_from_every_other_guard() -> None:
+    control = yaml.safe_load(candidate_canaries.control_overlay())
+    disabled = yaml.safe_load(candidate_canaries.disabled_overlay())
+    production = yaml.safe_load(commands.OMP_OVERLAY_TEXT)
+    assert control == candidate_canaries.CONTROL_SETTINGS and "disabledProviders" not in control
+    assert disabled["disabledProviders"] == production["disabledProviders"]
+    assert disabled["mcp"]["enableProjectConfig"] is True and production["mcp"]["enableProjectConfig"] is False
+    assert disabled["contextFiles"] == control["contextFiles"]
+    argv = ("omp", "--no-skills", "--no-rules", "--no-lsp", "p")
+    assert candidate_canaries.relax(argv) == ("omp", "--no-lsp", "p")
+
+
+def test_every_planted_canary_carries_its_token_or_its_marker(tmp_path: Path) -> None:
+    markers = tmp_path / "markers"
+    for canary in candidate_canaries.CANARIES:
+        for where in candidate_canaries.WHERES:
+            text = candidate_canaries.plant(canary, where, tmp_path / where, markers).read_text(encoding="utf-8")
+            if canary.surface == candidate_canaries.MCP:
+                assert str(markers / canary.marker(where)) in text, canary
+            else:
+                assert canary.token(where) in text, canary
+
+
+def test_probe_scenarios_plant_only_their_own_canaries_and_leave_the_workspace_pristine(tmp_path: Path) -> None:
+    chain = candidate_chain.LoopbackChain(tmp_path / "omp", tmp_path / "chain")
+    chain.workspace.mkdir(parents=True)
+    (chain.workspace / "keep.py").write_text("x = 1\n", encoding="utf-8")
+    before = candidate_chain._digest(chain.workspace)
+    cwd = tmp_path / "cwd"
+    cwd.mkdir()
+    markers = tmp_path / "markers"
+    chain._plant_probes(candidate_canaries.group_canaries("native-context"), cwd, markers)
+    planted = sorted(
+        path.relative_to(chain.workspace).as_posix() for path in chain.workspace.rglob("*") if path.is_file()
+    )
+    assert planted == [".omp/AGENTS.md", "keep.py"]
+    chain._clear_workspace()
+    assert candidate_chain._digest(chain.workspace) == before
+    assert not (chain.workspace / ".omp").exists()
+    chain._plant_canaries(cwd, markers / "legacy")
+    chain._clear_workspace()
+    assert candidate_chain._digest(chain.workspace) == before
