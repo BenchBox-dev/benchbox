@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "The gate verdict does not depend on one run's calibration outlier, or the normalization limits are documented with a worked example."
+  ],
+  "description": "For core PR 3562 the fast-tier verdict was would-block with a normalized summed ratio of 1.156 although the PR's own tests added 0.08s. The run's calibration factor was 1.84, most excess was first-in-worker import cost spread over unrelated tests, and an offline verify of the old head's artifact against a freshly built baseline raised the ratio to 1.196. The baseline was regenerated to lift the refusal, which hides the cause.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-28T01:09:52Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "cdf44b11fb3147af9f7055c8ac900f14",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    }
+  ]
+}

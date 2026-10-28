@@ -11207,6 +11207,13 @@
       "status": "done",
       "title": "Architecture hardening: define fail-open vs fail-closed policy for translation and validation"
     },
+    "fast-duration-gate-calibration-skew-20261028": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Make the fast-duration gate robust to a high calibration factor"
+    },
     "fast-lane-ceiling-decouple-contention": {
       "claim": null,
       "needs": [
