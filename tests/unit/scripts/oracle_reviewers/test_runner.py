@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from _project.scripts.oracle_reviewers import absence, cli, omp_pin, runner
+from _project.scripts.oracle_reviewers import absence, cli, omp_pin, redaction_check, runner
 from _project.scripts.oracle_reviewers.commands import Invocation
 from _project.scripts.oracle_reviewers.policy import Policy
 from _project.scripts.oracle_reviewers.verdict import RESPONSE_PLACEHOLDERS
@@ -1193,3 +1193,35 @@ def test_an_incomplete_reply_without_a_reason_reports_the_default_incomplete_rea
             "the reviewer reported its review incomplete",
         )
     )
+
+
+FIXTURE_EVENTS = Path(__file__).resolve().parents[3] / "fixtures" / "oracle_reviewers" / "omp_multi_turn_review.jsonl"
+DUMMY_GATEWAY_TOKEN = "dummy-gateway-token-for-tests-0123456789ABCDEFGHIJKLMNOP"
+
+
+def _recorded_events(*types: str) -> list[dict[str, object]]:
+    lines = FIXTURE_EVENTS.read_text(encoding="utf-8").splitlines()
+    events = [json.loads(line) for line in lines]
+    return [event for kind in types for event in events if event["type"] == kind][:1]
+
+
+def test_capture_scrubs_an_encoded_credential_used_as_an_argument_key(
+    monkeypatch: pytest.MonkeyPatch, policy: Policy, tmp_path: Path
+) -> None:
+    import base64
+
+    monkeypatch.setenv("OMP_GATEWAY_TOKEN", DUMMY_GATEWAY_TOKEN)
+    encoded = base64.urlsafe_b64encode(DUMMY_GATEWAY_TOKEN.encode()).decode().rstrip("=")
+    assert len(encoded) >= 64
+    (start,) = _recorded_events("tool_execution_start")
+    arguments = start["args"]
+    assert isinstance(arguments, dict)
+    arguments[encoded] = "synthetic"
+    result = runner.RunResult(0, json.dumps(start) + "\n", "", False)
+    captured = runner.capture(replace(policy.reviewers["small"], harness="omp"), result)
+    assert encoded not in json.dumps(captured)
+    path = tmp_path / "capture.json"
+    path.write_text(json.dumps(captured), encoding="utf-8")
+    redaction_check.sanitize(path, ())
+    assert encoded not in path.read_text(encoding="utf-8")
+    assert "path" in captured["events"][0]["args"]

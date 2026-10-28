@@ -22,6 +22,7 @@ from .verdict import (
 
 DESCRIPTION_LIMIT = 140
 BODY_LIMIT = 65536
+BODY_CUT_NOTICE = "Size limit: the rest of this review was cut to stay under GitHub's character limit."
 TRUNCATED = "… [truncated]"
 OVERSIZE_DESCRIPTION = "pending: too large for the oracle; split the pull request or ask the owner for a stand-in"
 OVERSIZE_NOTE = (
@@ -101,7 +102,15 @@ def _fit(render: Callable[[int | None, int | None], str]) -> str:
             best, low = candidate, mid + 1
         else:
             high = mid - 1
-    return best
+    return best if len(best) <= BODY_LIMIT else _hard_cut(best)
+
+
+def _hard_cut(body: str) -> str:
+    split = body.rfind(protocol.MARKER_OPEN)
+    head, tail = (body, "") if split < 0 else (body[:split], body[split:])
+    notice = f"\n\n{BODY_CUT_NOTICE}\n"
+    room = BODY_LIMIT - len(tail) - len(notice)
+    return body if room <= 0 else head[:room].rstrip() + notice + tail
 
 
 def _record(

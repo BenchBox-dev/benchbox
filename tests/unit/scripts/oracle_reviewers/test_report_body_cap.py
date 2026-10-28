@@ -114,3 +114,16 @@ def test_a_duplicate_key_in_the_reviewer_output_is_rejected_not_retried_as_a_str
     text = '{"type": "result", "structured_output": {"decision": "DO_NOT_SHIP", "decision": "SHIP"}}'
     with pytest.raises(verdict.VerdictError, match="duplicate JSON object key"):
         verdict.parse_output(harness, text)
+
+
+def test_the_last_fitting_fallback_still_enforces_the_body_limit() -> None:
+    marker = f"{protocol.MARKER_OPEN} v1 abc -->"
+
+    def render(cap: int | None, evidence_cap: int | None = None) -> str:
+        return "### head\n" + "y" * (GITHUB_LIMIT * 2) + "\n\n" + marker
+
+    body = report._fit(render)
+    assert len(body) <= GITHUB_LIMIT
+    assert body.startswith("### head")
+    assert report.BODY_CUT_NOTICE in body
+    assert body.endswith(marker)
