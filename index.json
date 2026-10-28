@@ -16351,17 +16351,12 @@
       "title": "Credit oracle evidence only for files actually read"
     },
     "oracle-evidence-exempt-binary-prose-20261026": {
-      "claim": {
-        "expires_at": "2026-10-29T17:04:59Z",
-        "generation": "9f53279b4cf242828221c1928ca6a9eb",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
-      },
+      "claim": null,
       "needs": [
         "oracle-dispute-keyed-published-evidence-20261026"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Stop the oracle evidence check making attempts absent on binary and prose files"
     },
     "oracle-evidence-retry-feedback-and-required-reads-20261027": {
