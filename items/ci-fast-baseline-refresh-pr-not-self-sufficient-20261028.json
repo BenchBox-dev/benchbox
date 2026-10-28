@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "A scheduled or dispatched refresh opens a pull request whose CI runs without approval, includes a current docs reference inventory, and receives an oracle verdict without a manual dispatch",
+    "The next refresh pull request merges with no manual intervention or the remaining manual step is documented with its owner"
+  ],
+  "context": "Seen on the manual dispatch that opened the refresh pull request on 2026-10-28: runs sat at action_required, no oracle-verdict run existed, and after approval the test job failed on the inventory mismatch. The baseline directory became an oracle-reviewed soundness path in the blocking duration gate change, so refresh pull requests now also need a verdict. Fix candidates: have the workflow regenerate the inventory in the same commit, open the pull request with a token or app whose events trigger workflows, and dispatch the oracle verdict for it.",
+  "description": "The weekly baseline refresh opens its pull request with the workflow token, so GitHub holds the pull request's workflow runs at action_required and no oracle verdict is triggered until a maintainer approves the runs and dispatches the oracle by hand. After that, the pull request still fails the fast tests: the docs reference inventory (quality/docs-reference-inventory.json) counts occurrences of doc paths inside tests/fixtures/fast_tier_baseline/tests-*.json, so every refresh changes the inventory and test_doc_reference_inventory fails until the inventory is regenerated. The refresh also branches from develop at that moment, so a red develop is inherited.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-28T20:41:15Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9fef79f1bc1c4cc2a87b180f982900af",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}
