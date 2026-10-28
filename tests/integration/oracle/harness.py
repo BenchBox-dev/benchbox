@@ -11,6 +11,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 from _project.scripts.oracle_reviewers import omp_pin
 
 from .fake_github import APP_TOKEN, GH_HOST, JOB_TOKEN, OWNER_TOKEN, FakeGitHub
@@ -24,6 +26,10 @@ TRUSTED_FILES = (POLICY, ".github/workflows/oracle-verdict.yml", ".github/soundn
 GATEWAY_TOKEN = "gwtok-" + "Q7mZ4kLp" * 5
 PINNED_OMP = "18.12.1"
 SHA256_LINE = re.compile(r"sha256: [0-9a-f]{64}")
+URL_LINE = re.compile(r"url: https://\S+")
+INSTALL_STEP = "Install omp"
+WORKFLOW = ".github/workflows/oracle-verdict.yml"
+UNREACHABLE_BUILD = "https://127.0.0.1:9/omp"
 STEP_TIMEOUT = 120
 COMMIT_AGE = timedelta(hours=2)
 
@@ -91,6 +97,8 @@ class Harness:
         for folder in (self.home, self.bin, root / "gh-config"):
             folder.mkdir(parents=True)
         self._install_omp()
+        self.policy_file = root / "oracle-reviewers.yml"
+        self.policy_file.write_text(self._pinned_policy(), encoding="utf-8")
         self._seed()
         self.github = FakeGitHub(SLUG, self.repo).start()
 
@@ -101,11 +109,47 @@ class Harness:
     def close(self) -> None:
         self.github.stop()
 
+    def _pinned_policy(self) -> str:
+        text = (REPO_ROOT / POLICY).read_text(encoding="utf-8")
+        text = SHA256_LINE.sub(f"sha256: {omp_pin.sha256_of(self.bin / 'omp')}", text)
+        return URL_LINE.sub(f"url: {UNREACHABLE_BUILD}", text)
+
+    def swap_omp(self) -> None:
+        binary = self.bin / "omp"
+        binary.write_text(binary.read_text(encoding="utf-8") + "# swapped\n", encoding="utf-8")
+
+    def install_omp_step(self, temp: Path, *, installable: bool) -> Step:
+        steps = yaml.safe_load((REPO_ROOT / WORKFLOW).read_text(encoding="utf-8"))["jobs"]["review"]["steps"]
+        script = next(step["run"] for step in steps if step.get("name") == INSTALL_STEP)
+        trusted = temp / "trusted"
+        (trusted / ".github").mkdir(parents=True, exist_ok=True)
+        (trusted / POLICY).write_text(self.policy_file.read_text(encoding="utf-8"), encoding="utf-8")
+        uv = self.bin / "uv"
+        uv.write_text(
+            f"#!{sys.executable}\nimport os, sys\n"
+            "args = sys.argv[1:]\n"
+            "os.execv(sys.executable, [sys.executable, *args[args.index('--') + 2:]])\n",
+            encoding="utf-8",
+        )
+        uv.chmod(uv.stat().st_mode | stat.S_IXUSR)
+        env_file = temp / "github-env.txt"
+        env_file.write_text("", encoding="utf-8")
+        env = {
+            **self.base_env(temp),
+            "GITHUB_ENV": str(env_file),
+            "PYTHONPATH": str(REPO_ROOT),
+        }
+        if not installable:
+            env[omp_pin.CACHE_ENV] = str(self.root / "omp-cache-empty")
+        step = self.run(INSTALL_STEP, ["bash", "-e", "-c", script], env, cwd=trusted)
+        step.outputs["env"] = env_file.read_text(encoding="utf-8")
+        return step
+
     def _seed(self) -> None:
         self.repo.mkdir()
         git(self.repo, "init", "--quiet", "--initial-branch=develop")
         trusted = {path: (REPO_ROOT / path).read_text(encoding="utf-8") for path in TRUSTED_FILES}
-        trusted[POLICY] = SHA256_LINE.sub(f"sha256: {omp_pin.sha256_of(self.bin / 'omp')}", trusted[POLICY])
+        trusted[POLICY] = self.policy_file.read_text(encoding="utf-8")
         self.write({"README.md": "seed\n", CHECKER: "def checker(a, b):\n    return a == b\n", **trusted}, "seed")
 
     def write(self, files: dict[str, str], message: str) -> str:
@@ -203,6 +247,9 @@ class Harness:
         event_name: str = "pull_request_target",
         action: str = "synchronize",
         classification: tuple[str, str] = ("medium", "standard"),
+        installable: bool = True,
+        swap_after_install: bool = False,
+        inputs: dict[str, str] | None = None,
     ) -> ReviewRun:
         pull = self.github.pulls[pr]
         self.github.refresh(pr)
@@ -213,6 +260,7 @@ class Harness:
             event=event_name,
             pr=pr,
             head_sha=head if trusted else git(self.repo, "rev-parse", "develop"),
+            title_head=head,
             head_branch=pull["head"]["ref"] if trusted else "develop",
             pull_requests=[
                 {"number": pr, "base": {"ref": "develop"}, "head": {"ref": pull["head"]["ref"], "sha": head}}
@@ -227,7 +275,7 @@ class Harness:
         if trusted:
             event["pull_request"] = {"number": pr, "head": {"sha": head}}
         elif event_name == "workflow_dispatch":
-            event = {"inputs": {"pr": str(pr)}}
+            event = {"inputs": {"pr": str(pr), "head": head, **(inputs or {})}}
         (temp / "event.json").write_text(json.dumps(event), encoding="utf-8")
         env = {
             **self.base_env(temp),
@@ -242,12 +290,21 @@ class Harness:
         classification_path = temp / "oracle-classification" / "classification.json"
         plan = self.cli(
             "plan",
-            ["plan", "--policy", POLICY, "--pr", str(pr), "--out", str(plan_dir)],
+            ["plan", "--policy", str(self.policy_file), "--pr", str(pr), "--out", str(plan_dir)],
             {**env, "GH_TOKEN": JOB_TOKEN},
         )
         record.steps["plan"] = plan
         decision, post = plan.outputs.get("decision"), plan.outputs.get("post") == "true"
+        install_state = "installed"
+        omp_env: dict[str, str] = {}
         if decision == "review":
+            install = self.install_omp_step(temp, installable=installable)
+            record.steps["install"] = install
+            install_state = install.outputs.get("state", "installed")
+            omp_env = dict(line.split("=", 1) for line in install.outputs["env"].splitlines())
+            if swap_after_install:
+                self.swap_omp()
+        if decision == "review" and install_state == "installed":
             workspace = temp / "workspace"
             git(self.repo, "clone", "--quiet", "--no-checkout", str(self.repo), str(workspace))
             git(workspace, "checkout", "--quiet", "--detach", plan.outputs["head_sha"])
@@ -267,11 +324,17 @@ class Harness:
                     "--home-root",
                     str(temp),
                 ],
-                {**env, "OMP_GATEWAY_TOKEN": GATEWAY_TOKEN, "ORACLE_GATEWAY_URL": "https://gateway.example.invalid"},
+                {
+                    **env,
+                    **omp_env,
+                    "OMP_GATEWAY_TOKEN": GATEWAY_TOKEN,
+                    "ORACLE_GATEWAY_URL": "https://gateway.example.invalid",
+                },
             )
         if not post:
             self.github.complete_run(run, "success")
             return record
+        finalize_args = ["--omp-install", "failed"] if install_state == "failed" else []
         record.steps["finalize"] = self.cli(
             "finalize",
             [
@@ -284,6 +347,7 @@ class Harness:
                 str(final_dir),
                 "--classification",
                 str(classification_path),
+                *finalize_args,
             ],
             env,
         )
