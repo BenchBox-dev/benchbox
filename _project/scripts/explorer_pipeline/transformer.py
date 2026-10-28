@@ -526,9 +526,16 @@ def _platform_version(bundle: BundleDocument) -> str | None:
     return str(val) if val and val != "unknown" else None
 
 
+_NON_LINUX_CONTAINER_HOSTS = frozenset({"Darwin", "Windows"})
+
+
 def _container_os(bundle: BundleDocument) -> str | None:
+    recorded = getattr(bundle.environment.container, "os", None)
+    if isinstance(recorded, str) and recorded.strip():
+        return recorded.strip().capitalize()
     os_name = bundle.environment.os
-    return os_name.split(maxsplit=1)[0] if isinstance(os_name, str) and os_name.strip() else None
+    family = os_name.split(maxsplit=1)[0] if isinstance(os_name, str) and os_name.strip() else None
+    return "Linux" if family in _NON_LINUX_CONTAINER_HOSTS else family
 
 
 def _variant_info(

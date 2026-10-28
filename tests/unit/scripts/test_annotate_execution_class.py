@@ -78,3 +78,40 @@ def test_a_selected_bundle_without_a_sidecar_stops_the_run(tmp_path: Path) -> No
 
     with pytest.raises(SystemExit, match="no manifest sidecar"):
         annotate(tmp_path, write=True)
+
+
+def _server(directory: Path, name: str, *, deployment: dict, runtime: str = "unknown", container: bool = True) -> Path:
+    environment: dict = {"os": "Darwin 27.0.0", "platform_runtime": {"runtime_type": runtime}}
+    if container:
+        environment["container"] = {"collection_status": "unavailable"}
+    path = directory / f"{name}.json"
+    path.write_text(
+        json.dumps({"platform": {"name": "Apache Doris", "deployment": deployment}, "environment": environment}),
+        "utf-8",
+    )
+    path.with_name(f"{name}.manifest.json").write_text(json.dumps(SIDECAR), "utf-8")
+    return path
+
+
+def test_docker_server_engines_are_attested_only_on_an_explicit_maintainer_flag(tmp_path: Path) -> None:
+    local = {"deployment_type": "self_hosted", "endpoint_class": "localhost_port"}
+    doris = _server(tmp_path, "doris", deployment=local)
+    _server(tmp_path, "lakesail", deployment=local, runtime="local_process")
+    _server(tmp_path, "remote", deployment={"deployment_type": "self_hosted", "endpoint_class": "remote_host"})
+    _server(tmp_path, "undiscovered", deployment=local, container=False)
+    _server(tmp_path, "duckdb", deployment={"deployment_type": "embedded", "endpoint_class": "embedded_process"})
+
+    assert annotate(tmp_path, write=False) == []
+
+    changed = annotate(tmp_path, write=True, attest_docker_servers=True)
+
+    assert [path.name for path in changed] == ["doris.manifest.json"]
+    assert (
+        "Maintainer attestation"
+        in json.loads(doris.with_name("doris.manifest.json").read_text("utf-8"))["execution_class_evidence"]
+    )
+    manifest = json.loads(doris.with_name("doris.manifest.json").read_text("utf-8"))
+    assert manifest["execution_class"] == "container"
+    assert manifest["container_runtime"] == "docker"
+    assert manifest["container_host_os"] == "macOS"
+    assert published_variant_id(json.loads(doris.read_text("utf-8")), "apache-doris", doris) == "apache-doris^container"

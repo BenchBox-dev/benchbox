@@ -90,7 +90,12 @@ def discover_docker_runtime(
             docker_engine_version=docker_engine_version,
         )
 
-    return _available_result(inspect_data, docker_engine_version=docker_engine_version)
+    host_port_matched = bool(request.port) and _ports_include_host_port(
+        str(container_summary.get("Ports") or ""), str(request.port)
+    )
+    return _available_result(
+        inspect_data, docker_engine_version=docker_engine_version, host_port_matched=host_port_matched
+    )
 
 
 def docker_request_from_config(
@@ -149,9 +154,10 @@ def _run_docker_command(runner: DockerCommandRunner, args: Sequence[str]) -> dic
 
 
 def _available_result(
-    inspect_data: Mapping[str, Any], *, docker_engine_version: str | None
+    inspect_data: Mapping[str, Any], *, docker_engine_version: str | None, host_port_matched: bool = False
 ) -> dict[str, dict[str, Any]]:
     container = _container_from_inspect(inspect_data, docker_engine_version=docker_engine_version)
+    container["host_port_matched"] = host_port_matched
     runtime = PlatformRuntimeEnvironment(
         runtime_type="docker_container",
         collection_status="available",

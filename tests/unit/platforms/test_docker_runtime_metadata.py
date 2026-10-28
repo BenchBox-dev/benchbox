@@ -96,6 +96,7 @@ def test_discovers_container_by_host_port_and_image_without_live_docker() -> Non
     assert result["container"]["bind_mounts"][0]["destination"] == "/var/lib/clickhouse"
     assert result["container"]["volumes"][0]["source"] == "clickhouse-data"
     assert result["container"]["state"] == "running"
+    assert result["container"]["host_port_matched"] is True
 
 
 def test_docker_absent_returns_unavailable_metadata_without_failing() -> None:
@@ -163,3 +164,33 @@ def test_request_from_config_includes_known_platform_hints() -> None:
     assert request.container_name == "pg-test"
     assert "postgres" in request.service_names
     assert "postgres" in request.image_names
+
+
+def test_a_container_matched_by_name_but_not_by_port_is_not_marked_as_serving_the_engine_port() -> None:
+    run = _runner(
+        {
+            ("docker", "version", "--format", "{{json .}}"): DockerCommandResult(
+                0, stdout=json.dumps({"Server": {"Version": "26.1.0"}})
+            ),
+            ("docker", "ps", "--format", "{{json .}}"): DockerCommandResult(
+                0,
+                stdout=json.dumps(
+                    {
+                        "ID": "abc123",
+                        "Image": "clickhouse/clickhouse-server",
+                        "Names": "clickhouse",
+                        "Ports": "9000/tcp",
+                    }
+                ),
+            ),
+            ("docker", "inspect", "abc123"): DockerCommandResult(0, stdout=json.dumps([{"Id": "abc123"}])),
+        }
+    )
+
+    result = discover_docker_runtime(
+        DockerRuntimeDiscoveryRequest(platform_name="clickhouse-server", host="localhost", port=8123),
+        runner=run,
+    )
+
+    assert result["platform_runtime"]["collection_status"] == "available"
+    assert result["container"]["host_port_matched"] is False
