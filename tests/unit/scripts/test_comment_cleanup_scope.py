@@ -605,12 +605,19 @@ def test_review_dispositions_preserve_original_verdict_and_rationale() -> None:
 def test_every_tracked_eula_and_notice_file_has_a_notice_entry() -> None:
     policy = scope.load_policy(ROOT / "quality/comment-cleanup-scope.json")
     listed = {entry["path"] for entry in policy["notices"]}
-    tracked = scope.git(ROOT, "ls-files", "-z", "--", "_binaries", "_sources").decode().split("\0")
+    tracked = scope.git(ROOT, "ls-files", "-z").decode().split("\0")
     notice_files = {
-        path for path in tracked if path and Path(path).name in {"EULA.txt", "NOTICE.txt"} and (ROOT / path).exists()
+        path
+        for path in tracked
+        if path
+        and Path(path).name in {"EULA.txt", "NOTICE.txt"}
+        and Path(path).parts[0] != "docs"
+        and (ROOT / path).exists()
     }
-    assert notice_files
-    assert notice_files <= listed
+    assert {path for path in notice_files if path.startswith("benchbox/_binaries/")}
+    assert {path for path in notice_files if path.startswith(("_binaries/", "_sources/"))}
+    missing = sorted(notice_files - listed)
+    assert not missing, f"tracked EULA/NOTICE files without a notice entry: {missing}"
 
 
 def test_committed_payloads_and_edges_validate_at_immutable_head() -> None:
