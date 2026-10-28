@@ -2,7 +2,8 @@
   "acceptance": [
     "Reviewer jobs can resolve the base SHA in the workspace (shown on a canary or develop run)",
     "The workspace-clean check and read-evidence tests still pass",
-    "Merged through the normal PR flow with an oracle success review"
+    "Merged through the normal PR flow with an oracle success review",
+    "Adds or updates the matching scenario in tests/integration/oracle (registered in ORACLE_SCENARIO_TESTS), proven to fail with this item's defect reintroduced; the scenario runs only the fake omp executable and fake servers, never a real omp or model-provider call."
   ],
   "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\nFound by the hollow-review scan in the closing verification of the oracle follow-up batch, 2026-10-09: the reviews flagged for \"unavailable\" wording all read the head and the diff and were not hollow, but all lacked the base commit.\n\n2026-10-09 tracker review: the repository is public, so a credential-free `git fetch --depth=1 origin <base_sha>` works and keeps the checkout read-only and credential-free. The brief already carries the base SHA (_project/scripts/oracle_reviewers/brief.py:100,123). oracle-read-evidence-tightening-20261008 needs this item.",
   "description": "Each reviewer job checks out the PR head with `fetch-depth: 1` (.github/workflows/oracle-verdict.yml, \"Check out the pull request head for reading only\"). Reviewers then report that the base commit was unavailable locally and fall back to the staged diff. This was seen in success reviews on #2825 (01999a976), #2826 (6cd077c3e), #2844 (5e4896cea) and #2848 (934b8e81b) on 2026-10-09. They cannot run `git diff <base>..HEAD`, `git show <base>:<path>` or `git blame` against the base, which limits how well they can judge a change in context. The staged diff covers the patch itself.\n\nInvestigate fetching the base commit as well (for example `fetch-depth: 0` limited to the base SHA, or a second shallow fetch of `base_sha`) without breaking:\n- the runner's workspace-clean integrity check;\n- the read-evidence rules (`git show`, `git diff` and `git blame` already count as reads);\n- the credential-free, read-only checkout.\n\nGuardrails. The checkout stays read-only and credential-free; no PR code runs. Very-high tier (workflow); normal oracle PR flow.",
@@ -51,6 +52,14 @@
       "op": "update",
       "op_id": "8b00d1fe95e348e9a4ef4f14caa0d68c",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:mcp:joe@joe-mac-mini.local:4d1c216a121363560797b702",
+      "at": "2026-10-28T17:18:58Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "a1da8f0b4d8a46c4966007c4f069802b",
+      "session_id": "f2ea81a526d74429861bc01fff72f167"
     }
   ]
 }
