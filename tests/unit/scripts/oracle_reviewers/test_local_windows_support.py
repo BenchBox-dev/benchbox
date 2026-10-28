@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import importlib
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -48,10 +48,17 @@ def _windows_locale_run(real_run: Any) -> Any:
     return run
 
 
-def test_local_imports_without_fcntl(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setitem(sys.modules, "fcntl", None)
-    importlib.reload(local)
-    assert local.EXIT_PROCEED == 0
+def test_local_imports_without_fcntl() -> None:
+    probe = "import sys; sys.modules['fcntl'] = None; import _project.scripts.oracle_reviewers.local"
+    proc = subprocess.run(
+        [sys.executable, "-c", probe],
+        cwd=ROOT,
+        env={**os.environ, "MUTANT_UNDER_TEST": ""},
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert proc.returncode == 0, proc.stderr
 
 
 def test_explicit_collection_skips_without_fcntl() -> None:
@@ -61,7 +68,14 @@ def test_explicit_collection_skips_without_fcntl() -> None:
         + REVIEW_TEST
         + "', '-q', '--no-header', '-p', 'no:cacheprovider', '-o', 'addopts=']))"
     )
-    proc = subprocess.run([sys.executable, "-c", probe], cwd=ROOT, capture_output=True, text=True, timeout=300)
+    proc = subprocess.run(
+        [sys.executable, "-c", probe],
+        cwd=ROOT,
+        env={**os.environ, "MUTANT_UNDER_TEST": ""},
+        capture_output=True,
+        text=True,
+        timeout=300,
+    )
     assert proc.returncode in (0, 5), proc.stdout + proc.stderr
     assert "skipped" in proc.stdout.lower()
     assert "error" not in proc.stdout.lower()

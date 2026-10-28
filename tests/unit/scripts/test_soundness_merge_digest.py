@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import importlib.util
+import importlib
 import os
 import subprocess
 import sys
@@ -14,14 +14,9 @@ pytestmark = [
 ]
 
 ROOT = Path(__file__).resolve().parents[3]
-SCRIPT_PATH = ROOT / "_project/scripts/soundness_merge_digest.py"
-
-sys.path.insert(0, str(SCRIPT_PATH.parent))
-spec = importlib.util.spec_from_file_location("soundness_merge_digest", SCRIPT_PATH)
-assert spec is not None and spec.loader is not None
-digest = importlib.util.module_from_spec(spec)
-sys.modules[spec.name] = digest
-spec.loader.exec_module(digest)
+sys.path.insert(0, str(ROOT / "_project/scripts"))
+sys.modules["oracle_review_check"] = importlib.import_module("_project.scripts.oracle_review_check")
+digest = importlib.import_module("_project.scripts.soundness_merge_digest")
 
 HEAD = "a" * 40
 OLD = "b" * 40
@@ -364,6 +359,16 @@ def test_an_octopus_merge_adds_content(repo):
     head = git(repo, "rev-parse", "HEAD")
     assert len(git(repo, "rev-list", "--parents", "-n1", head).split()) == 4
     assert digest.merge_adds_content(head, "main", cwd=repo) is True
+
+
+def test_a_merge_of_unrelated_histories_is_a_read_error_not_added_content(repo):
+    git(repo, "checkout", "-q", "--orphan", "other")
+    git(repo, "commit", "-qm", "other root", "--allow-empty")
+    main, other = git(repo, "rev-parse", "main"), git(repo, "rev-parse", "other")
+    tree = git(repo, "rev-parse", "other^{tree}")
+    merge = git(repo, "commit-tree", tree, "-p", main, "-p", other, "-m", "join")
+    with pytest.raises(digest.ReadError, match="merge-tree"):
+        digest.merge_adds_content(merge, "main", cwd=repo)
 
 
 def test_an_unknown_commit_is_an_error_not_a_non_ancestor(repo):

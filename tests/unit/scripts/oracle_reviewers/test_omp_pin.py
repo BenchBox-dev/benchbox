@@ -392,7 +392,7 @@ def test_verified_binary_never_falls_back_to_the_path_omp(tmp_path: Path, monkey
 @pytest.mark.parametrize("command", ["select", "scan-disk", "attempts", "finalize"])
 def test_bare_python_cli_imports_without_pyyaml(command: str) -> None:
     root = POLICY_PATH.parents[1]
-    env = {**os.environ, "PYTHONPATH": str(root)}
+    env = {**os.environ, "PYTHONPATH": str(root), "MUTANT_UNDER_TEST": ""}
     probe = subprocess.run(
         [sys.executable, "-S", "-c", "import importlib.util; assert importlib.util.find_spec('yaml') is None"],
         cwd=root,
@@ -427,7 +427,7 @@ def test_bare_python_disk_scan_runs_without_pyyaml(tmp_path: Path) -> None:
             "NONEXISTENT_ORACLE_SMOKE_SECRET",
         ],
         cwd=root,
-        env={**os.environ, "PYTHONPATH": str(root)},
+        env={**os.environ, "PYTHONPATH": str(root), "MUTANT_UNDER_TEST": ""},
         capture_output=True,
         text=True,
     )

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import importlib.util
+import importlib
 import sys
 from pathlib import Path
 from typing import Any
@@ -8,13 +8,9 @@ from typing import Any
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-SCRIPT = REPO_ROOT / "_project/scripts/oracle_review_check.py"
-sys.path.insert(0, str(SCRIPT.parent))
-SPEC = importlib.util.spec_from_file_location("oracle_review_check", SCRIPT)
-assert SPEC and SPEC.loader
-oracle_review_check = importlib.util.module_from_spec(SPEC)
-sys.modules[SPEC.name] = oracle_review_check
-SPEC.loader.exec_module(oracle_review_check)
+sys.path.insert(0, str(REPO_ROOT / "_project/scripts"))
+oracle_review_check = importlib.import_module("_project.scripts.oracle_review_check")
+sys.modules["oracle_review_check"] = oracle_review_check
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -157,16 +153,6 @@ def test_a_success_status_without_a_bound_unedited_receipt_names_the_recovery_no
     assert "a byte-identical rebase is enough" in message
     assert "owner stand-in" in message
     assert "run the verdict" not in message
-
-
-def test_the_exempt_success_marker_matches_the_report_builder() -> None:
-    from _project.scripts.oracle_reviewers import report, retry
-
-    assert oracle_review_check.EXEMPT_SUCCESS_DESCRIPTION == "only exempt paths changed"
-    assert (
-        report.fixed(retry.SUCCESS, "only exempt paths changed").description
-        == oracle_review_check.EXEMPT_SUCCESS_DESCRIPTION
-    )
 
 
 def test_an_exempt_success_verdict_never_satisfies_a_gate_that_requires_a_review() -> None:
@@ -932,10 +918,11 @@ def test_fetch_statuses_reads_the_head_commit_and_keeps_the_creator_type(monkeyp
 
 def _refusal_description() -> str:
     from _project.scripts.oracle_reviewers import report
+    from _project.scripts.oracle_reviewers.policy import load_policy
 
     patches = {"aaaaaaaa": "11111111"}
     plan = {
-        "status_context": "oracle-verdict",
+        "status_context": load_policy(REPO_ROOT / ".github" / "oracle-reviewers.yml").status_context,
         "head_sha": HEAD,
         "mode": "shadow",
         "tier": "very-high",
@@ -983,11 +970,6 @@ def test_a_standin_never_overrides_an_open_oracle_thread_after_a_refusal() -> No
     assert status == oracle_review_check.WAITING and "unresolved oracle review thread" in message
 
 
-def test_new_verdicts_use_the_current_status_context() -> None:
-    assert oracle_review_check.ORACLE_CONTEXT == "oracle-verdict"
-    assert _refusal_description().startswith(oracle_review_check.REFUSED_DESCRIPTION_PREFIX)
-
-
 @pytest.mark.parametrize(
     ("value", "expected"),
     [
@@ -1002,3 +984,8 @@ def test_new_verdicts_use_the_current_status_context() -> None:
 )
 def test_the_api_root_is_overridden_only_by_a_loopback_server(value: str, expected: str) -> None:
     assert oracle_review_check._api_root(value) == expected
+
+
+def test_a_verdict_posted_before_the_base_changed_is_not_a_verdict_for_the_new_base() -> None:
+    status, message = _oracle(statuses=[_verdict("success", created_at=AFTER_HEAD)], base_date=RETARGETED)
+    assert status == oracle_review_check.WAITING and "waiting for the oracle's verdict" in message

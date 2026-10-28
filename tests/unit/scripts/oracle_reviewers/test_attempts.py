@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import json
 import sys
 from datetime import UTC, datetime, timedelta
@@ -16,7 +17,7 @@ from _project.scripts.oracle_reviewers.diff import commentable_lines
 from _project.scripts.oracle_reviewers.policy import Policy
 from _project.scripts.oracle_reviewers.retry import ALL_ABSENT, INTEGRITY, OVERSIZE, UNREPORTED
 from _project.scripts.oracle_reviewers.selection import Attempt, SelectionInput, Step
-from _project.scripts.oracle_reviewers.verdict import Finding, validate
+from _project.scripts.oracle_reviewers.verdict import Finding, VerdictError, validate
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -420,6 +421,41 @@ def test_cli_finalize_fixed_decisions(
     assert out["state"] == state and out["has_state"] == "false" and out["comment"] == "false"
     status = json.loads((tmp_path / "o" / "status.json").read_text(encoding="utf-8"))
     assert status["description"] == ("only exempt paths changed" if decision == "success" else "fork: owner review")
+
+
+def test_a_finalized_exempt_success_never_satisfies_a_gate_whose_rules_require_a_review(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_text(json.dumps({**_plan(policy), "decision": "success", "run_uuid": "1" * 32}), encoding="utf-8")
+    _run_cli(
+        monkeypatch,
+        tmp_path,
+        "finalize",
+        "--plan",
+        str(plan_path),
+        "--attempts-dir",
+        str(tmp_path),
+        "--out-dir",
+        str(tmp_path / "o"),
+    )
+    status = json.loads((tmp_path / "o" / "status.json").read_text(encoding="utf-8"))
+    posted = {
+        **status,
+        "id": 1,
+        "login": f"{policy.bot_login}[bot]",
+        "user_type": "Bot",
+        "created_at": "2026-10-05T12:00:00Z",
+    }
+    monkeypatch.syspath_prepend(str(Path(cli.__file__).resolve().parents[1]))
+    gate = importlib.import_module("_project.scripts.oracle_review_check")
+    rules = gate.path_matcher(2, 2, *gate._review_rules())
+    code, message = gate.decide(HEAD, [CHECKER], [posted], [], rules)
+    assert code == gate.WAITING and "reports only exempt paths changed" in message
+    assert gate.decide(HEAD, ["notes.md"], [posted], [], rules) == (
+        gate.PASS,
+        "oracle-review: only exempt paths changed",
+    )
 
 
 def test_verdict_comes_from_the_terminal_reviewer_slot(policy: Policy, tmp_path: Path) -> None:
@@ -911,3 +947,140 @@ def test_cli_finalize_without_the_install_flag_still_decides_from_attempts(
     status = json.loads((tmp_path / "final" / "status.json").read_text(encoding="utf-8"))
     assert out["state"] == "pending"
     assert status["description"] != "the pinned omp build could not be installed; no reviewer ran"
+
+
+def _tampered(policy: Policy, tmp_path: Path, **over: Any):
+    plan = _plan(policy)
+    _write(tmp_path, 1, "small", verdict=_v("", []))
+    path = tmp_path / attempts.artifact_name(1)
+    path.write_text(json.dumps({**json.loads(path.read_text(encoding="utf-8")), **over}), encoding="utf-8")
+    loaded, step, errors = _decide(policy, plan, tmp_path)
+    return plan, loaded, step, errors
+
+
+@pytest.mark.parametrize(
+    "over",
+    [
+        {"schema": 1},
+        {"pr": 8},
+        {"outcome": "settled"},
+        {"slot": 0},
+        {"slot": 3},
+        {"slot": "1"},
+        {"slot": True},
+    ],
+)
+def test_a_tampered_artifact_is_dropped_and_makes_the_run_pending_for_integrity(
+    policy: Policy, tmp_path: Path, over: dict[str, Any]
+) -> None:
+    plan, loaded, step, errors = _tampered(policy, tmp_path, **over)
+    assert loaded.attempts == [] and loaded.verdicts == {}
+    assert errors and all(isinstance(error, str) for error in errors)
+    final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, {})
+    assert final.state == "pending" and final.pending_cause == INTEGRITY
+
+
+def test_an_artifact_in_the_wrong_file_is_dropped_but_the_rest_still_load(policy: Policy, tmp_path: Path) -> None:
+    plan = _plan(policy)
+    _write(tmp_path, 1, "small", verdict=_v("", []))
+    (tmp_path / attempts.artifact_name(1)).rename(tmp_path / "attempt-1.json.bak")
+    (tmp_path / "attempt-1.json.bak").rename(tmp_path / "attempt-9.json")
+    _write(tmp_path, 2, "medium", missing=Absence("timeout", "slow"))
+    loaded = attempts.load(tmp_path, plan, RUN_ID)
+    assert [attempt.slot for attempt in loaded.attempts] == [2]
+    assert len(loaded.errors) == 2 and all(isinstance(error, str) for error in loaded.errors)
+
+
+def test_the_last_permitted_slot_is_accepted(policy: Policy, tmp_path: Path) -> None:
+    plan = {**_plan(policy), "max_attempts": 1}
+    _write(tmp_path, 1, "small", verdict=_v("", []))
+    loaded = attempts.load(tmp_path, plan, RUN_ID)
+    assert loaded.errors == [] and [attempt.slot for attempt in loaded.attempts] == [1]
+
+
+@pytest.mark.parametrize("content", ["{not json", "[]", "null", json.dumps(sorted(attempts.ARTIFACT_KEYS))])
+def test_an_unreadable_or_malformed_artifact_is_skipped_and_later_ones_still_load(
+    policy: Policy, tmp_path: Path, content: str
+) -> None:
+    plan = _plan(policy)
+    tmp_path.mkdir(exist_ok=True)
+    (tmp_path / attempts.artifact_name(1)).write_text(content, encoding="utf-8")
+    _write(tmp_path, 2, "medium", missing=Absence("timeout", "slow"))
+    loaded, step, errors = _decide(policy, plan, tmp_path)
+    assert [attempt.slot for attempt in loaded.attempts] == [2]
+    assert all(isinstance(error, str) for error in errors) and len(errors) >= 2
+    assert report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, {}).pending_cause == INTEGRITY
+
+
+def test_a_missing_slot_makes_the_run_pending_for_integrity(policy: Policy, tmp_path: Path) -> None:
+    plan = _plan(policy)
+    _write(tmp_path, 2, "medium", missing=Absence("timeout", "slow"))
+    loaded, step, errors = _decide(policy, plan, tmp_path)
+    assert len(errors) >= 1 and all(isinstance(error, str) for error in errors)
+    assert report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, {}).pending_cause == INTEGRITY
+
+
+def test_an_artifact_for_an_absence_carries_no_verdict_and_an_empty_diagnostic_by_default() -> None:
+    artifact = attempts.build_artifact(
+        run_id=RUN_ID,
+        pr=7,
+        head_sha=HEAD,
+        slot=1,
+        reviewer="small",
+        verdict=_v("ignored"),
+        missing=Absence("timeout", "slow"),
+    )
+    assert artifact["verdict"] is None and artifact["diagnostic"] == ""
+    assert artifact["outcome"] == attempts.ABSENT_OUTCOME
+
+
+def test_an_invalid_verdict_publishes_the_validation_reason_as_the_absence_detail(
+    policy: Policy, tmp_path: Path
+) -> None:
+    plan = _plan(policy)
+    bad = _v("", [{"severity": "Severe"}])
+    with pytest.raises(VerdictError) as reason:
+        validate(bad, trusted=True)
+    _write(tmp_path, 1, "small", verdict=bad)
+    attempt = attempts.load(tmp_path, plan, RUN_ID).attempts[0]
+    assert (attempt.slot, attempt.reviewer, attempt.outcome, attempt.absence) == (1, "small", "absent", "invalid")
+    assert attempt.detail == str(reason.value) != ""
+
+
+def test_a_verdict_contradicting_the_plan_is_absent_with_the_contradiction_as_detail(
+    policy: Policy, tmp_path: Path
+) -> None:
+    plan = _plan(policy)
+    contradictory = _v("", [], decision="SHIP_WITH_FIXES")
+    problem = protocol.contradiction(validate(contradictory, trusted=True), plan)
+    assert problem
+    _write(tmp_path, 1, "small", verdict=contradictory)
+    loaded = attempts.load(tmp_path, plan, RUN_ID)
+    attempt = loaded.attempts[0]
+    assert (attempt.slot, attempt.reviewer, attempt.outcome, attempt.absence) == (1, "small", "absent", "invalid")
+    assert attempt.detail == problem and loaded.verdicts == {}
+    assert attempts.decide(SelectionInput.from_plan(plan, NOW), loaded)[1] == []
+
+
+@pytest.mark.parametrize("kind", ["ok", "bogus", None])
+def test_an_absence_record_of_an_unknown_kind_is_treated_as_invalid(policy: Policy, tmp_path: Path, kind: Any) -> None:
+    plan = _plan(policy)
+    _write(tmp_path, 1, "small", verdict=None, missing=Absence("timeout", "slow"))
+    path = tmp_path / attempts.artifact_name(1)
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["absence"]["kind"] = kind
+    path.write_text(json.dumps(data), encoding="utf-8")
+    loaded = attempts.load(tmp_path, plan, RUN_ID)
+    attempt = loaded.attempts[0]
+    assert (attempt.slot, attempt.reviewer, attempt.outcome, attempt.absence) == (1, "small", "absent", "invalid")
+    assert isinstance(attempt.detail, str) and attempt.detail and attempt.reset_at is None
+
+
+def test_an_absence_without_a_detail_loads_with_an_empty_one(policy: Policy, tmp_path: Path) -> None:
+    plan = _plan(policy)
+    _write(tmp_path, 1, "small", missing=Absence("timeout", ""))
+    path = tmp_path / attempts.artifact_name(1)
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["absence"]["detail"] = None
+    path.write_text(json.dumps(data), encoding="utf-8")
+    assert attempts.load(tmp_path, plan, RUN_ID).attempts[0].detail == ""

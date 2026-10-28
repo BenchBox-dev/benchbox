@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import importlib.util
+import importlib
 import json
 import os
 import subprocess
@@ -14,13 +14,9 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPT = REPO_ROOT / "_project/scripts/oracle_gate.py"
 sys.path.insert(0, str(SCRIPT.parent))
-SPEC = importlib.util.spec_from_file_location("oracle_gate", SCRIPT)
-assert SPEC and SPEC.loader
-oracle_gate = importlib.util.module_from_spec(SPEC)
-sys.modules[SPEC.name] = oracle_gate
-SPEC.loader.exec_module(oracle_gate)
-
-oracle_review_check = sys.modules["oracle_review_check"]
+oracle_review_check = importlib.import_module("_project.scripts.oracle_review_check")
+sys.modules["oracle_review_check"] = oracle_review_check
+oracle_gate = importlib.import_module("_project.scripts.oracle_gate")
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -201,7 +197,6 @@ def test_gate_state_maps_pass_to_success_and_everything_else_to_failure() -> Non
 
 
 def test_status_payload_posts_the_gate_context() -> None:
-    assert oracle_gate.GATE_CONTEXT == "oracle-gate"
     payload = oracle_gate.status_payload(oracle_gate.PASS, "oracle-review: pass (oracle verdict for " + HEAD + ")")
     assert payload == {
         "state": "success",
@@ -742,6 +737,7 @@ def test_process_exit_gives_waiting_a_code_distinct_from_crashes() -> None:
 
 def test_script_entry_point_exits_through_the_process_mapping() -> None:
     env = {key: value for key, value in os.environ.items() if key not in ("GITHUB_TOKEN", "GH_TOKEN")}
+    env["MUTANT_UNDER_TEST"] = ""
     result = subprocess.run(
         [sys.executable, str(SCRIPT), "--repo", "o/r", "--pr", "7"],
         env=env,
@@ -778,6 +774,7 @@ def test_run_writes_no_result_file_without_the_variable(monkeypatch: pytest.Monk
 def test_a_crash_before_the_exit_leaves_no_result(tmp_path: Path) -> None:
     target = tmp_path / "result"
     env = {key: value for key, value in os.environ.items() if key not in ("GITHUB_TOKEN", "GH_TOKEN")}
+    env["MUTANT_UNDER_TEST"] = ""
     env[oracle_gate.RESULT_FILE_ENV] = str(target)
     result = subprocess.run(
         [sys.executable, str(SCRIPT), "--repo", "o/r", "--pr", "not-a-number"],

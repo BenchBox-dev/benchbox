@@ -97,3 +97,43 @@ def test_classify_never_leaks_credentials_into_quota_detail() -> None:
     result = classify("omp", 1, stdout="", stderr=stderr, timed_out=False, now=NOW)
     assert result.kind == absence.QUOTA
     assert token not in result.detail
+
+
+KOLKATA = ZoneInfo("Asia/Kolkata")
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("resets 12:30pm (Asia/Kolkata)", datetime(2026, 10, 6, 12, 30, tzinfo=KOLKATA)),
+        ("resets 12:15am (Asia/Kolkata)", datetime(2026, 10, 6, 0, 15, tzinfo=KOLKATA)),
+        ("resets 7:05am (Asia/Kolkata)", datetime(2026, 10, 6, 7, 5, tzinfo=KOLKATA)),
+        ("resets 7:50pm (Asia/Kolkata)", datetime(2026, 10, 5, 19, 50, tzinfo=KOLKATA)),
+        ("Try again at Oct 9th, 2026 12:08 PM.", datetime(2026, 10, 9, 12, 8, tzinfo=UTC)),
+        ("Try again at Oct 9th, 2026 12:08 AM.", datetime(2026, 10, 9, 0, 8, tzinfo=UTC)),
+        ("Try again at Oct 9th, 2026 6:08 AM.", datetime(2026, 10, 9, 6, 8, tzinfo=UTC)),
+    ],
+)
+def test_wall_clock_resets_read_noon_midnight_and_morning_in_the_named_zone(text: str, expected: datetime) -> None:
+    result = parse_reset(text, datetime(2026, 10, 5, 12, 0, 30, 500000, tzinfo=UTC))
+    assert result == expected and (result.second, result.microsecond) == (0, 0)
+
+
+def test_a_wall_clock_reset_at_the_current_minute_is_tomorrow() -> None:
+    now = datetime(2026, 10, 5, 14, 20, tzinfo=UTC)
+    assert parse_reset("resets 7:50pm (Asia/Kolkata)", now) == datetime(2026, 10, 6, 19, 50, tzinfo=KOLKATA)
+
+
+def test_redact_detail_hides_extra_values_and_clips_only_beyond_its_limit() -> None:
+    assert "pw-Zq8Lm3Tr" not in redact_detail("rejected pw-Zq8Lm3Tr here", ["pw-Zq8Lm3Tr"])
+    exact = "a b " * (absence.EXCERPT_LIMIT // 4)
+    assert redact_detail(exact) == exact
+    clipped = redact_detail(exact + "c")
+    assert len(clipped) == absence.EXCERPT_LIMIT and clipped == exact[:-1] + "\u2026"
+
+
+def test_an_unparsed_answer_is_kept_whole_up_to_its_limit() -> None:
+    assert absence.unparsed("not json") == "not json"
+    exact = "a b " * (absence.UNPARSED_LIMIT // 4)
+    assert absence.unparsed(exact) == exact
+    assert absence.unparsed(exact + "c") == "\u2026" + (exact + "c")[-absence.UNPARSED_LIMIT :]
