@@ -1,6 +1,6 @@
 {
   "schema_version": "2.3",
-  "generated_at": "2026-10-28T13:36:02.336711+00:00",
+  "generated_at": "2026-10-28T14:11:29.454294+00:00",
   "bundles": [
     {
       "file": "amplab_sf01_bigquery_sql_20260920_000055_35490af7.json",
@@ -423,18 +423,18 @@
       "bundle_sha256": "592ee35a5b8bfdf68ff83da98564740cd7760108786b5f749d59ff3e439884c9"
     },
     {
-      "file": "clickbench_sf1_datafusion_sql_20261026_113428_726529fb.json",
+      "file": "clickbench_sf1_datafusion_sql_20261028_100525_093d2262.json",
       "benchmark": "clickbench",
       "benchmark_name": "ClickBench",
       "platform": "DataFusion",
       "platform_version": "54.0.0",
       "scale_factor": 1.0,
       "phase": "power",
-      "timestamp": "2026-10-26T11:34:28.590607",
+      "timestamp": "2026-10-28T10:05:25.308063",
       "query_count": 129,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "53e4b0fa68106a44fec590b4f67ce8635a9c9959c00d92bd3c793dd1687b124a"
+      "bundle_sha256": "ea94befaffccdce65178512ebcd4d400d69c371d90c3d764f33e9fc45932dab2"
     },
     {
       "file": "clickbench_sf01_databricks_sql_20261003_220608_70c9438e.json",
@@ -745,18 +745,18 @@
       "bundle_sha256": "07e325cc3790f0f6fb1da77d3ef26f65d8ca6f3063ac2347d09c594b130c1a8a"
     },
     {
-      "file": "coffeeshop_sf001_clickhouse_local_sql_20261026_174031_3580340d.json",
+      "file": "coffeeshop_sf001_clickhouse_local_sql_20261028_140652_2594968f.json",
       "benchmark": "coffeeshop",
       "benchmark_name": "CoffeeShop",
       "platform": "ClickHouse Local",
       "platform_version": "unknown",
       "scale_factor": 0.01,
       "phase": "power",
-      "timestamp": "2026-10-26T17:40:31.951348",
+      "timestamp": "2026-10-28T14:06:52.521587",
       "query_count": 33,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "baee07930a546c09b1718186a37c3b2287a64e68fecf5f25885f6134150206a3"
+      "bundle_sha256": "f1c676f66757ada9f4ac63db1548af21fdecf1eca6d7f31f9e27aa9b096c25f8"
     },
     {
       "file": "coffeeshop_sf01_clickhouse_local_sql_20260826_113300_975cb3a1.json",
@@ -773,18 +773,18 @@
       "bundle_sha256": "a2abd84921f8371922516004d5c15199a9680fb7b5b9da8175cf4bc9cf81a4c4"
     },
     {
-      "file": "coffeeshop_sf01_clickhouse_local_sql_20261026_174222_be08f469.json",
+      "file": "coffeeshop_sf01_clickhouse_local_sql_20261028_140704_da48d384.json",
       "benchmark": "coffeeshop",
       "benchmark_name": "CoffeeShop",
       "platform": "ClickHouse Local",
       "platform_version": "unknown",
       "scale_factor": 0.1,
       "phase": "power",
-      "timestamp": "2026-10-26T17:42:22.442516",
+      "timestamp": "2026-10-28T14:07:04.824477",
       "query_count": 33,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "840cd05306b548536080e83ad74cb56f0f4edc1ca61725929354faa0a311621c"
+      "bundle_sha256": "86e8d8eae9ab947d36cbbf799132ca009e49f095a41319339b1c1d072facd401"
     },
     {
       "file": "coffeeshop_sf1_clickhouse_local_sql_20260826_171552_4ce8154e.json",
@@ -801,18 +801,18 @@
       "bundle_sha256": "04e614c1eda4374d46e94b6eda9729568e75798a15d7b39dd008d659d925788a"
     },
     {
-      "file": "coffeeshop_sf1_clickhouse_local_sql_20261026_174819_260b80d1.json",
+      "file": "coffeeshop_sf1_clickhouse_local_sql_20261028_140731_2888c2d3.json",
       "benchmark": "coffeeshop",
       "benchmark_name": "CoffeeShop",
       "platform": "ClickHouse Local",
       "platform_version": "unknown",
       "scale_factor": 1.0,
       "phase": "power",
-      "timestamp": "2026-10-26T17:48:19.914920",
+      "timestamp": "2026-10-28T14:07:31.855615",
       "query_count": 33,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "66a432ed501fa8a052c359a1f6573388290b600ca48476160d4b1db08984bf85"
+      "bundle_sha256": "02aac3ee34de6899745d8f97a3ab10fff8c9f4e77b883f1098d3410d0fa34b0d"
     },
     {
       "file": "coffeeshop_sf001_datafusion_sql_20260826_112013_bb01b471.json",
@@ -3545,18 +3545,18 @@
       "bundle_sha256": "86adc9601866782434decb140b6880a3bbdd32ef96a7605a8e4f5e29e1fe793b"
     },
     {
-      "file": "tpcdi_sf001_clickhouse_local_sql_20261026_174142_4b0f48c4.json",
+      "file": "tpcdi_sf001_clickhouse_local_sql_20261028_140802_3c9d9330.json",
       "benchmark": "tpcdi",
       "benchmark_name": "TPC-DI",
       "platform": "ClickHouse Local",
       "platform_version": "unknown",
       "scale_factor": 0.01,
       "phase": "power",
-      "timestamp": "2026-10-26T17:41:42.638616",
+      "timestamp": "2026-10-28T14:08:02.339655",
       "query_count": 114,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "b03b80ec6fe8a1689cc82486cf436e7898281c8e1188d37df971a6c985470d7d"
+      "bundle_sha256": "eeca1e7735a26fa202bf0f8141227157a0e90367c2896b77f871346400c5d011"
     },
     {
       "file": "tpcdi_sf01_clickhouse_local_sql_20260826_171153_4d6e3213.json",
@@ -3573,18 +3573,18 @@
       "bundle_sha256": "8baa4788c4a734c79121974cd77be704e9b5ad9d5bf35a17ad2473121acd9608"
     },
     {
-      "file": "tpcdi_sf01_clickhouse_local_sql_20261026_174648_3afba5da.json",
+      "file": "tpcdi_sf01_clickhouse_local_sql_20261028_140831_61e36e9c.json",
       "benchmark": "tpcdi",
       "benchmark_name": "TPC-DI",
       "platform": "ClickHouse Local",
       "platform_version": "unknown",
       "scale_factor": 0.1,
       "phase": "power",
-      "timestamp": "2026-10-26T17:46:48.603542",
+      "timestamp": "2026-10-28T14:08:31.235520",
       "query_count": 114,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "7792bd1b22562553b421cd3e10372143c23d5c271928ccbeedb755c437b2e70b"
+      "bundle_sha256": "dcf70cc74becd1679b3701f4c32b5478fbe3d6055bda70dc42bf3c7e3ee3fda5"
     },
     {
       "file": "tpcdi_sf1_clickhouse_local_sql_20260826_171209_b6f8b467.json",
@@ -3601,18 +3601,18 @@
       "bundle_sha256": "2f4080c8021b701921985a5a6c54fa2cf69bf8328a1cb3661a618ab51c6d72ce"
     },
     {
-      "file": "tpcdi_sf1_clickhouse_local_sql_20261026_175115_b2190761.json",
+      "file": "tpcdi_sf1_clickhouse_local_sql_20261028_140913_30a5c9d1.json",
       "benchmark": "tpcdi",
       "benchmark_name": "TPC-DI",
       "platform": "ClickHouse Local",
       "platform_version": "unknown",
       "scale_factor": 1.0,
       "phase": "power",
-      "timestamp": "2026-10-26T17:51:15.755804",
+      "timestamp": "2026-10-28T14:09:13.755875",
       "query_count": 114,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "1e2311dff9e291604dcfb836a994d10b00a98f2656839ab406959209c54eecfd"
+      "bundle_sha256": "60c7a071cae40452f4ac425c547c9330b2455d23c66a09a53aedffe2d2f0a6ac"
     },
     {
       "file": "tpcdi_sf001_datafusion_sql_20260826_164627_b9971b30.json",
@@ -3629,18 +3629,18 @@
       "bundle_sha256": "64cf3dd658c2aee01c6976276bd32b7d9981bb6c14bdf855386dbdb28f5a1c1e"
     },
     {
-      "file": "tpcdi_sf001_datafusion_sql_20261026_112850_fd444036.json",
+      "file": "tpcdi_sf001_datafusion_sql_20261028_100544_328320ea.json",
       "benchmark": "tpcdi",
       "benchmark_name": "TPC-DI",
       "platform": "DataFusion",
       "platform_version": "54.0.0",
       "scale_factor": 0.01,
       "phase": "power",
-      "timestamp": "2026-10-26T11:28:50.355135",
+      "timestamp": "2026-10-28T10:05:44.021784",
       "query_count": 114,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "c18b44be0a95be2b0e252adaee97a53d4bbe12e63ac7cc1e0f1353f7b598affa"
+      "bundle_sha256": "91c82eeb51bb2b968a372c5862a0df87706fc76ed1ac80584346ada78c9fda5f"
     },
     {
       "file": "tpcdi_sf01_datafusion_sql_20260826_164631_51f0bade.json",
@@ -3657,18 +3657,18 @@
       "bundle_sha256": "6a52536a4506c00802b7bcc8db5fbeecd3666f5d42b1094f64c44bd60d2267ad"
     },
     {
-      "file": "tpcdi_sf01_datafusion_sql_20261026_113337_6d43a62b.json",
+      "file": "tpcdi_sf01_datafusion_sql_20261028_100554_fb67aa79.json",
       "benchmark": "tpcdi",
       "benchmark_name": "TPC-DI",
       "platform": "DataFusion",
       "platform_version": "54.0.0",
       "scale_factor": 0.1,
       "phase": "power",
-      "timestamp": "2026-10-26T11:33:37.985801",
+      "timestamp": "2026-10-28T10:05:54.163328",
       "query_count": 114,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "c1b1a3e5299a81f59e14e8db96370a7ba9319682b777ed48b84dd5ff26359bfa"
+      "bundle_sha256": "a196b089245355bf183d36038dd0ed057dd2e3f361b782ba6746acd37fc5b0e7"
     },
     {
       "file": "tpcdi_sf1_datafusion_sql_20260826_164643_85837db4.json",
@@ -3685,18 +3685,18 @@
       "bundle_sha256": "e76e1eebe037f15dcd47df33a04198961c0f727e771352a5fc45428224990bf2"
     },
     {
-      "file": "tpcdi_sf1_datafusion_sql_20261026_113504_9d41dd46.json",
+      "file": "tpcdi_sf1_datafusion_sql_20261028_100615_ffe633e9.json",
       "benchmark": "tpcdi",
       "benchmark_name": "TPC-DI",
       "platform": "DataFusion",
       "platform_version": "54.0.0",
       "scale_factor": 1.0,
       "phase": "power",
-      "timestamp": "2026-10-26T11:35:04.867440",
+      "timestamp": "2026-10-28T10:06:15.468051",
       "query_count": 114,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "6d2958026593901232bb20e4b73b524dca28d94505b1b0d20882ba83bb42154b"
+      "bundle_sha256": "2c2b4be915212964d008f51e35a813551b991ed1dcdd9c3e48b1e53ac83d373f"
     },
     {
       "file": "tpcdi_sf01_databricks_sql_20261003_201241_01329d67.json",

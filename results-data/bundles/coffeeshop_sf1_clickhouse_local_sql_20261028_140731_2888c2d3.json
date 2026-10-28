@@ -1,10 +1,8 @@
 {
   "benchmark": {
-    "data_generation_hash": "6c2327e588ae42b1c2143d42b84085f7ad57db46061637a9dd2aa3b05063095e",
-    "data_generation_version": 1,
     "id": "coffeeshop",
     "name": "CoffeeShop",
-    "scale_factor": 0.01,
+    "scale_factor": 1.0,
     "test_type": "power"
   },
   "config": {
@@ -44,8 +42,11 @@
     "arch": "aarch64",
     "client_host": {
       "arch": "aarch64",
+      "container_host_os": "macOS",
       "cpu_count": 4,
       "cpu_vendor": "Apple",
+      "execution_class": "container",
+      "execution_class_source": "inferred",
       "memory_gb": 9.846134185791016,
       "os": "Linux 6.18.15",
       "python": "3.12.15"
@@ -56,8 +57,11 @@
       "collection_status": "unavailable",
       "source": "unavailable"
     },
+    "container_host_os": "macOS",
     "cpu_count": 4,
     "cpu_vendor": "Apple",
+    "execution_class": "container",
+    "execution_class_source": "inferred",
     "memory_gb": 9.846134185791016,
     "os": "Linux 6.18.15",
     "platform_runtime": {
@@ -83,9 +87,9 @@
       "load",
       "power"
     ],
-    "timestamp": "2026-10-26T17:40:27.467449",
+    "timestamp": "2026-10-28T14:07:12.752383",
     "translation": {
-      "attempt_count": 102,
+      "attempt_count": 99,
       "failed_count": 0,
       "fallback_count": 0,
       "outcomes": [
@@ -103,20 +107,6 @@
           "translator": "sqlglot_rewrite"
         },
         {
-          "calls": 3,
-          "count": 3,
-          "normalized_source_dialect": "duckdb",
-          "normalized_target_dialect": "clickhouse",
-          "parser_grammar": "duckdb",
-          "scope": "schema_ddl",
-          "source_dialect": "duckdb",
-          "status": "success",
-          "strict_mode": false,
-          "target_dialect": "clickhouse",
-          "translator": "sqlglot",
-          "unique_queries": 3
-        },
-        {
           "calls": 55,
           "count": 55,
           "normalized_source_dialect": "netezza",
@@ -131,19 +121,17 @@
           "unique_queries": 11
         }
       ],
-      "schema_statements_translated": 3,
       "source_dialects": [
         "clickhouse",
-        "duckdb",
         "netezza"
       ],
       "status": "success",
       "strict_mode": false,
-      "success_count": 102,
+      "success_count": 99,
       "target_dialects": [
         "clickhouse"
       ],
-      "total_transpilation_calls": 102,
+      "total_transpilation_calls": 99,
       "translators": [
         "sqlglot",
         "sqlglot_rewrite"
@@ -155,7 +143,7 @@
   "export": {
     "anonymized": true,
     "benchbox_version": "0.5.0rc1",
-    "timestamp": "2026-10-26T17:40:31.972361",
+    "timestamp": "2026-10-28T14:07:31.897207",
     "tool": "benchbox-exporter"
   },
   "normalized_cost": {
@@ -184,18 +172,18 @@
       "status": "SUCCESS"
     },
     "data_loading": {
-      "duration_ms": 1100,
+      "duration_ms": 0,
       "status": "SUCCESS"
     },
     "power_test": {
-      "duration_ms": 1784,
-      "geometric_mean_time": 0.03365004459192278,
+      "duration_ms": 17948,
+      "geometric_mean_time": 0.3816347500469419,
       "power_at_size": 0.0,
       "query_count": 44,
       "status": "COMPLETED"
     },
     "schema_creation": {
-      "duration_ms": 593,
+      "duration_ms": 0,
       "status": "SUCCESS"
     },
     "throughput_test": {
@@ -331,7 +319,7 @@
     {
       "id": "QSA1",
       "iter": 0,
-      "ms": 49.2,
+      "ms": 55.7,
       "rows": 93,
       "run_type": "warmup",
       "status": "SUCCESS",
@@ -340,7 +328,7 @@
     {
       "id": "QSA2",
       "iter": 0,
-      "ms": 337.0,
+      "ms": 181.3,
       "rows": 13,
       "run_type": "warmup",
       "status": "SUCCESS",
@@ -349,7 +337,7 @@
     {
       "id": "QSA3",
       "iter": 0,
-      "ms": 131.6,
+      "ms": 193.6,
       "rows": 12,
       "run_type": "warmup",
       "status": "SUCCESS",
@@ -358,7 +346,7 @@
     {
       "id": "QSA4",
       "iter": 0,
-      "ms": 129.3,
+      "ms": 2445.1,
       "rows": 3,
       "run_type": "warmup",
       "status": "SUCCESS",
@@ -367,7 +355,7 @@
     {
       "id": "QSA5",
       "iter": 0,
-      "ms": 46.0,
+      "ms": 618.3,
       "rows": 20,
       "run_type": "warmup",
       "status": "SUCCESS",
@@ -376,7 +364,7 @@
     {
       "id": "QPR1",
       "iter": 0,
-      "ms": 18.0,
+      "ms": 173.3,
       "rows": 3,
       "run_type": "warmup",
       "status": "SUCCESS",
@@ -385,7 +373,7 @@
     {
       "id": "QPR2",
       "iter": 0,
-      "ms": 10.4,
+      "ms": 133.1,
       "rows": 3,
       "run_type": "warmup",
       "status": "SUCCESS",
@@ -394,7 +382,7 @@
     {
       "id": "QTR1",
       "iter": 0,
-      "ms": 52.3,
+      "ms": 380.8,
       "rows": 8,
       "run_type": "warmup",
       "status": "SUCCESS",
@@ -403,8 +391,8 @@
     {
       "id": "QTM1",
       "iter": 0,
-      "ms": 35.3,
-      "rows": 1,
+      "ms": 457.1,
+      "rows": 4,
       "run_type": "warmup",
       "status": "SUCCESS",
       "stream": 0
@@ -412,7 +400,7 @@
     {
       "id": "QQC1",
       "iter": 0,
-      "ms": 16.9,
+      "ms": 403.5,
       "rows": 1,
       "run_type": "warmup",
       "status": "SUCCESS",
@@ -421,7 +409,7 @@
     {
       "id": "QQC2",
       "iter": 0,
-      "ms": 45.4,
+      "ms": 544.3,
       "rows": 12,
       "run_type": "warmup",
       "status": "SUCCESS",
@@ -430,7 +418,7 @@
     {
       "id": "QSA1",
       "iter": 1,
-      "ms": 9.7,
+      "ms": 45.6,
       "rows": 93,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -439,7 +427,7 @@
     {
       "id": "QSA2",
       "iter": 1,
-      "ms": 47.8,
+      "ms": 229.8,
       "rows": 13,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -448,7 +436,7 @@
     {
       "id": "QSA3",
       "iter": 1,
-      "ms": 12.3,
+      "ms": 330.6,
       "rows": 12,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -457,7 +445,7 @@
     {
       "id": "QSA4",
       "iter": 1,
-      "ms": 40.3,
+      "ms": 978.3,
       "rows": 3,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -466,7 +454,7 @@
     {
       "id": "QSA5",
       "iter": 1,
-      "ms": 29.6,
+      "ms": 625.4,
       "rows": 20,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -475,7 +463,7 @@
     {
       "id": "QPR1",
       "iter": 1,
-      "ms": 17.4,
+      "ms": 138.9,
       "rows": 3,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -484,7 +472,7 @@
     {
       "id": "QPR2",
       "iter": 1,
-      "ms": 10.2,
+      "ms": 108.5,
       "rows": 3,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -493,7 +481,7 @@
     {
       "id": "QTR1",
       "iter": 1,
-      "ms": 12.8,
+      "ms": 254.5,
       "rows": 8,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -502,8 +490,8 @@
     {
       "id": "QTM1",
       "iter": 1,
-      "ms": 18.3,
-      "rows": 1,
+      "ms": 364.7,
+      "rows": 4,
       "run_type": "measurement",
       "status": "SUCCESS",
       "stream": 1
@@ -511,7 +499,7 @@
     {
       "id": "QQC1",
       "iter": 1,
-      "ms": 15.1,
+      "ms": 313.6,
       "rows": 1,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -520,7 +508,7 @@
     {
       "id": "QQC2",
       "iter": 1,
-      "ms": 18.3,
+      "ms": 540.6,
       "rows": 12,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -529,7 +517,7 @@
     {
       "id": "QSA1",
       "iter": 2,
-      "ms": 9.1,
+      "ms": 38.6,
       "rows": 93,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -538,7 +526,7 @@
     {
       "id": "QSA2",
       "iter": 2,
-      "ms": 39.6,
+      "ms": 143.2,
       "rows": 13,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -547,7 +535,7 @@
     {
       "id": "QSA3",
       "iter": 2,
-      "ms": 9.2,
+      "ms": 128.5,
       "rows": 12,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -556,7 +544,7 @@
     {
       "id": "QSA4",
       "iter": 2,
-      "ms": 41.8,
+      "ms": 685.2,
       "rows": 3,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -565,7 +553,7 @@
     {
       "id": "QSA5",
       "iter": 2,
-      "ms": 26.1,
+      "ms": 641.2,
       "rows": 20,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -574,7 +562,7 @@
     {
       "id": "QPR1",
       "iter": 2,
-      "ms": 13.2,
+      "ms": 133.0,
       "rows": 3,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -583,7 +571,7 @@
     {
       "id": "QPR2",
       "iter": 2,
-      "ms": 8.4,
+      "ms": 116.8,
       "rows": 3,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -592,7 +580,7 @@
     {
       "id": "QTR1",
       "iter": 2,
-      "ms": 9.5,
+      "ms": 274.0,
       "rows": 8,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -601,8 +589,8 @@
     {
       "id": "QTM1",
       "iter": 2,
-      "ms": 15.1,
-      "rows": 1,
+      "ms": 346.5,
+      "rows": 4,
       "run_type": "measurement",
       "status": "SUCCESS",
       "stream": 2
@@ -610,7 +598,7 @@
     {
       "id": "QQC1",
       "iter": 2,
-      "ms": 7.8,
+      "ms": 213.4,
       "rows": 1,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -619,7 +607,7 @@
     {
       "id": "QQC2",
       "iter": 2,
-      "ms": 40.3,
+      "ms": 444.4,
       "rows": 12,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -628,7 +616,7 @@
     {
       "id": "QSA1",
       "iter": 3,
-      "ms": 6.4,
+      "ms": 37.7,
       "rows": 93,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -637,7 +625,7 @@
     {
       "id": "QSA2",
       "iter": 3,
-      "ms": 8.3,
+      "ms": 139.4,
       "rows": 13,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -646,7 +634,7 @@
     {
       "id": "QSA3",
       "iter": 3,
-      "ms": 7.5,
+      "ms": 151.3,
       "rows": 12,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -655,7 +643,7 @@
     {
       "id": "QSA4",
       "iter": 3,
-      "ms": 16.1,
+      "ms": 970.0,
       "rows": 3,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -664,7 +652,7 @@
     {
       "id": "QSA5",
       "iter": 3,
-      "ms": 57.1,
+      "ms": 868.6,
       "rows": 20,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -673,7 +661,7 @@
     {
       "id": "QPR1",
       "iter": 3,
-      "ms": 8.6,
+      "ms": 171.9,
       "rows": 3,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -682,7 +670,7 @@
     {
       "id": "QPR2",
       "iter": 3,
-      "ms": 9.0,
+      "ms": 133.7,
       "rows": 3,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -691,7 +679,7 @@
     {
       "id": "QTR1",
       "iter": 3,
-      "ms": 9.9,
+      "ms": 330.3,
       "rows": 8,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -700,8 +688,8 @@
     {
       "id": "QTM1",
       "iter": 3,
-      "ms": 13.9,
-      "rows": 1,
+      "ms": 392.7,
+      "rows": 4,
       "run_type": "measurement",
       "status": "SUCCESS",
       "stream": 3
@@ -709,7 +697,7 @@
     {
       "id": "QQC1",
       "iter": 3,
-      "ms": 5.6,
+      "ms": 389.5,
       "rows": 1,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -718,7 +706,7 @@
     {
       "id": "QQC2",
       "iter": 3,
-      "ms": 14.9,
+      "ms": 525.4,
       "rows": 12,
       "run_type": "measurement",
       "status": "SUCCESS",
@@ -727,17 +715,16 @@
   ],
   "result_schema_version": "2.3",
   "run": {
-    "id": "3580340d",
+    "id": "2888c2d3",
     "iterations": 3,
-    "query_time_ms": 609,
+    "query_time_ms": 11206,
     "streams": 4,
-    "timestamp": "2026-10-26T17:40:31.951348",
-    "total_duration_ms": 3589
+    "timestamp": "2026-10-28T14:07:31.855615",
+    "total_duration_ms": 18206
   },
   "summary": {
     "data": {
-      "load_time_ms": 1100.9,
-      "rows_loaded": 133626
+      "rows_loaded": 13261026
     },
     "queries": {
       "failed": 0,
@@ -745,15 +732,15 @@
       "total": 33
     },
     "timing": {
-      "avg_ms": 18.5,
-      "geometric_mean_ms": 14.8,
-      "max_ms": 57.1,
-      "min_ms": 5.6,
-      "p90_ms": 40.3,
-      "p95_ms": 47.8,
-      "p99_ms": 57.1,
-      "stdev_ms": 13.8,
-      "total_ms": 609.3
+      "avg_ms": 339.6,
+      "geometric_mean_ms": 246.9,
+      "max_ms": 978.3,
+      "min_ms": 37.7,
+      "p90_ms": 685.2,
+      "p95_ms": 970.0,
+      "p99_ms": 978.3,
+      "stdev_ms": 261.8,
+      "total_ms": 11205.7
     },
     "validation": "passed"
   },
@@ -765,7 +752,7 @@
       "rows": 26
     },
     "order_lines": {
-      "rows": 132600
+      "rows": 13260000
     }
   },
   "version": "2.3"

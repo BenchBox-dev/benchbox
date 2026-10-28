@@ -991,11 +991,11 @@ e4401a0ed it found 422 bundles with queries, 64 of them in subdirectories.
 
 ### Wheel consistency
 
-56 of the 58 bundles ran on SQLGlot fork 30.24.0.17; the two SQLite Read Primitives bundles
-were rerun on 30.25.0.2 (see the section below). Later reruns use 30.25.0.1 or newer and earlier
-valid bundles are kept. The #3587 comparison translated 72,483 queries across both
-wheels and changed 9 outputs, all with a DuckDB target, none of which is a target of
-these bundles.
+46 of the 58 bundles ran on SQLGlot fork 30.24.0.17; the two SQLite Read Primitives bundles
+and the ten variant and loader defect cells were rerun on 30.25.0.2 (see the sections below).
+Later reruns use 30.25.0.1 or newer and earlier valid bundles are kept. The #3587 comparison
+translated 72,483 queries across both wheels and changed 9 outputs, all with a DuckDB target,
+none of which is a target of these bundles.
 
 ### Pseudonym salt exception
 
@@ -1156,9 +1156,11 @@ Taxi SF0.01 `top-routes` and `airport-trips`; ClickHouse Local `json_extract_sim
 DuckDB reference; SQLite TPC-H Q11 and TPC-H skew Q9 and Q11 differ by one row of 76 to
 1,048.
 
-Cells to rerun after the engine fixes merge: ClickHouse Local Coffeeshop (3) and TPC-DI (3),
-ClickHouse Local Read Primitives (2) and any ClickHouse cell using `map_access`; DataFusion
-TPC-DI (3), ClickBench SF1 and Read Primitives (2).
+Cells reran after the engine fixes merged: ClickHouse Local Coffeeshop (3) and TPC-DI (3),
+DataFusion TPC-DI (3) and ClickBench SF1 (see the rerun section at the end). ClickHouse Local
+Read Primitives (2) and DataFusion Read Primitives (2) are not rerun; their differences are
+algorithmic or comparator printing, and `map_access` is tracked in
+`clickhouse-map-access-missing-key-returns-zero`.
 
 ### SQLite Read Primitives replacement on fork 30.25.0.2 (2026-10-28)
 
@@ -1211,3 +1213,60 @@ discrepancy at the two scales: it ties at the LIMIT cutoff and its SQL is byte-i
 wheels. The 14,060-translation comparison of 30.25.0.1 and 30.25.0.2 over 370 shipped queries and
 38 targets changed eight outputs, all `pivot_basic`, `unpivot_basic`, `orderby_all_simple` and
 `orderby_all_desc` on SQLite and DataFusion.
+
+### Rerun of the variant and loader defect cells on fork 30.25.0.2 (2026-10-28)
+
+Ten of the 58 bundles ran on fork 30.24.0.17 with a BenchBox variant or loader that has since
+been fixed. They were rerun after the fixes merged (CoffeeShop TM1 on ClickHouse #3644, ClickHouse
+TPC-DI AQ6 variant removed and DataFusion EQ7 DOUBLE cast #3648, DataFusion ClickBench null marker
+#3646, SQLGlot fork 30.25.0.2 #3649), on a worktree rebased onto origin/develop. Each cell ran one
+at a time under `lockf /tmp/benchbox-heavy.lock` through the project CLI (`benchbox run
+--platform <p> --benchmark <b> --scale <sf> --phases generate,load,power --tuning notuning
+--result-source internal --non-interactive`, `BENCHBOX_OUTPUT_DIR=~/Developer/benchmark_runs`),
+with ClickHouse Local in the `benchbox-agent` Linux container (chDB 4.1.6) and DataFusion (54.0.0)
+natively on the Darwin host. The DataFusion ClickBench data directory was removed first so the
+CSV was converted to Parquet again with the corrected loader. Bundles record BenchBox 0.5.0rc1;
+the wheel (30.25.0.2) is recorded by the repository lock, not by the bundles. Staging used the
+same empty-salt anonymization as the rest of the set (see the pseudonym exception above).
+
+| cell | scale | replaced bundle | replacement bundle |
+|---|---|---|---|
+| ClickHouse Local CoffeeShop | 0.01 | `3580340d` | `2594968f` |
+| ClickHouse Local CoffeeShop | 0.1 | `be08f469` | `da48d384` |
+| ClickHouse Local CoffeeShop | 1 | `260b80d1` | `2888c2d3` |
+| ClickHouse Local TPC-DI | 0.01 | `4b0f48c4` | `3c9d9330` |
+| ClickHouse Local TPC-DI | 0.1 | `3afba5da` | `61e36e9c` |
+| ClickHouse Local TPC-DI | 1 | `b2190761` | `30a5c9d1` |
+| DataFusion TPC-DI | 0.01 | `fd444036` | `328320ea` |
+| DataFusion TPC-DI | 0.1 | `6d43a62b` | `fb67aa79` |
+| DataFusion TPC-DI | 1 | `9d41dd46` | `ffe633e9` |
+| DataFusion ClickBench | 1 | `726529fb` | `093d2262` |
+
+The replaced bundles are removed from `results-data/bundles`, the ledger seed and the corpus
+inventory; their ids stay in this note as superseded history. All ten report zero failed
+queries. The ClickHouse Local replacements record the `container` execution class in the bundle
+itself (kernel and Apple CPU vendor, source `inferred`), so `scripts/annotate_execution_class.py`
+adds no sidecar attestation and they rank under `clickhouse-local^container`.
+
+Capture comparison against DuckDB (capture-only run on the new code, `--iterations 1`, key-aligned
+`compare.py`, numeric values within relative 1e-6; the DuckDB captures are the earlier ones on the same
+data):
+
+| cell | scale | passed | failed | unproven | targeted query |
+|---|---|---|---|---|---|
+| ClickHouse Local CoffeeShop | 0.01, 0.1, 1 | 11, 11, 11 | 0 | 0 | TM1 returns 4 day parts with DuckDB's values |
+| ClickHouse Local TPC-DI | 0.01, 0.1, 1 | 35, 36, 36 | 0 | 3, 2, 2 | AQ6 5, 12, 12 rows, values equal |
+| DataFusion TPC-DI | 0.01, 0.1, 1 | 35, 36, 36 | 0 | 3, 2, 2 | EQ7 3 rows, values equal |
+| DataFusion ClickBench | 1 | 27 | 8 | 8 | Q6 returns 18 (was 17) |
+
+The unproven TPC-DI queries are `A3` (SF0.01 only), `VQ6` and `AQ9`, whose DuckDB result is empty or
+all zero; they were not changed by the reruns. The eight DataFusion ClickBench failures are
+nondeterminism, as in the SQLite ClickBench adjudication: Q18 has no ORDER BY, and Q16, Q17, Q19, Q31,
+Q32, Q33 and Q36 tie at the LIMIT 10 cutoff (the rows above the cutoff and the count multisets equal
+DuckDB's). No result changed unexpectedly.
+
+Corpus validation (`results-data/validate_corpus.py`) exits 0 before and after: 480 bundles, 41 ranked
+cohorts at or above the three-identity floor and 10 documented shallow cohorts in both runs. Each of
+the ten bundles passes `scripts/validate_submission.py --require-manifest`, with and without
+`--trust-internal-source --allow-partial-validation`, with zero errors, so none adds to the refusal
+list handed to `flagged-local-bundles-compliance-class-gate-20261025`.
