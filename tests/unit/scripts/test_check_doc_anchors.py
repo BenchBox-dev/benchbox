@@ -11,7 +11,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 def test_slug_punctuation_case_and_entities() -> None:
     assert checker.slugify_heading("TPC-H Specification Coverage") == "tpc-h-specification-coverage"
-    assert checker.slugify_heading("QphH@Size") == "qphhsize"
+    assert checker.slugify_heading("QphH&#64;Size") == "qphhsize"
 
 
 def test_slug_keeps_intra_word_underscores_and_drops_emphasis_delimiters() -> None:
@@ -86,9 +86,11 @@ def test_explicit_anchors_collected() -> None:
 
 
 def test_fenced_and_inline_code_ignored() -> None:
-    content = "```\n# Not A Heading\n```\n\n# Real Heading\n\nUse `#inline-fragment` here.\n"
+    content = (
+        "```\n# Not A Heading\n```\n\n# Real Heading\n\nUse `[gone](missing.md#x)` and [kept](#real-heading) here.\n"
+    )
     assert checker.collect_anchors(content) == {"real-heading"}
-    assert checker.extract_links(content) == []
+    assert [target for _, target in checker.extract_links(content)] == ["#real-heading"]
 
 
 def _seed(tmp_path, monkeypatch: pytest.MonkeyPatch, files: dict[str, str]) -> None:
