@@ -49,7 +49,10 @@ Owner decisions of 2026-10-27:
 - The per-test 0.5 s duration policy of the dev-loop correction program is superseded by the aggregate fast-duration
   gate.
 - The browser check is ported to the site repository (`dlv2-site-browser-check`) and the Explorer-token lint is
-  retired.
+  retired. The `t3:browser` check (Explorer Firefox and WebKit smoke) is now
+  `.github/workflows/nightly-browser.yml` in `BenchBox-dev/benchbox-site` (benchbox-site#73), which runs daily at
+  05:43 UTC and reports failures to a site-local issue labelled `t3:browser`; its dispatch run 40609640737 passed on
+  both browsers. Core `nightly-v2.yml` has no browser job.
 - GizmoSQL stays in the release rehearsal candidate.
 - Deleting the `release` branch and its ruleset is an owner-run step after the dlv2-52 publication; no agent deletes
   them.
