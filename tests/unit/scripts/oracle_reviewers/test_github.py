@@ -849,34 +849,45 @@ def test_verdict_runs_raises_after_the_bounded_retries(monkeypatch: pytest.Monke
     assert pauses == [github.RUN_LIST_PAUSE_SECONDS]
 
 
-def test_in_flight_pulls_reads_only_the_first_page_of_active_runs(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    seen: list[str] = []
+def _listing(*titles: str, total: int | None = None) -> str:
+    runs = [{"display_title": title} for title in titles]
+    return json.dumps([{"total_count": len(runs) if total is None else total, "workflow_runs": runs}])
+
+
+def test_in_flight_pulls_reads_every_page_of_each_active_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[tuple[str, ...]] = []
     pages = {
-        "status=pending": {"workflow_runs": [{"display_title": "oracle-verdict (workflow_dispatch pr=11)"}]},
-        "status=waiting": {"workflow_runs": [{"display_title": "oracle-verdict (workflow_dispatch pr=12)"}]},
-        "status=requested": {"workflow_runs": [{"display_title": "oracle-verdict (workflow_dispatch pr=13)"}]},
-        "status=queued": {"workflow_runs": [{"display_title": "oracle-verdict (workflow_dispatch pr=7)"}]},
-        "status=in_progress": {
-            "workflow_runs": [
-                {"display_title": "oracle-verdict (pull_request_target pr=9)"},
-                {"display_title": "oracle-verdict (schedule pr=sweep)"},
-            ]
-        },
+        "status=pending": _listing("oracle-verdict (workflow_dispatch pr=11)"),
+        "status=waiting": _listing("oracle-verdict (workflow_dispatch pr=12)"),
+        "status=requested": _listing("oracle-verdict (workflow_dispatch pr=13)"),
+        "status=queued": _listing("oracle-verdict (workflow_dispatch pr=7)"),
+        "status=in_progress": _listing(
+            "oracle-verdict (pull_request_target pr=9)", "oracle-verdict (schedule pr=sweep)"
+        ),
     }
 
-    def fake_json(path: str) -> dict[str, Any]:
-        seen.append(path)
-        return next(page for key, page in pages.items() if key in path)
+    def fake_gh(*args: str, accept: str | None = None) -> str:
+        seen.append(args)
+        return next(page for key, page in pages.items() if key in args[-1])
 
-    monkeypatch.setattr(github, "get_json", fake_json)
+    monkeypatch.setattr(github, "_gh", fake_gh)
     assert github.in_flight_pulls(REPO, "oracle-verdict.yml") == frozenset({7, 9, 11, 12, 13})
     assert seen == [
-        f"repos/{REPO}/actions/workflows/oracle-verdict.yml/runs?status={status}&per_page=100"
+        (
+            "--paginate",
+            "--slurp",
+            f"repos/{REPO}/actions/workflows/oracle-verdict.yml/runs?status={status}&per_page=100",
+        )
         for status in ("pending", "waiting", "requested", "queued", "in_progress")
     ]
-    assert "--paginate" not in " ".join(seen)
+
+
+def test_in_flight_pulls_rejects_a_listing_shorter_than_its_reported_total(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        github, "_gh", lambda *args, accept=None: _listing("oracle-verdict (workflow_dispatch pr=11)", total=101)
+    )
+    with pytest.raises(github.RunListingCapped):
+        github.in_flight_pulls(REPO, "oracle-verdict.yml")
 
 
 def test_post_status_posts_with_the_given_token(monkeypatch: pytest.MonkeyPatch) -> None:

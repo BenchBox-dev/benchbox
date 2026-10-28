@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from .harness import CHECKER, Harness
+from .harness import CHECKER, Harness, ago
 from .test_sweep_scenarios import VERDICT, _failed_run, _pending_review
 
 pytestmark = [pytest.mark.integration, pytest.mark.medium]
@@ -89,3 +89,42 @@ def test_a_truncated_listing_with_a_soundness_path_is_held_not_reviewed_blind(ha
     assert "listing is incomplete" in run.plan["decision_reason"]
     assert [item["state"] for item in harness.github.oracle_statuses(run.plan["head_sha"])] == ["pending"]
     assert harness.omp_calls() == 0
+
+
+def _fill_active_page(harness: Harness, first: int, count: int) -> None:
+    for pr in range(first, first + count):
+        harness.github.add_run(
+            VERDICT, event="workflow_dispatch", pr=pr, head_sha="0" * 40, title_head="0" * 40, created_at=ago(10)
+        )
+
+
+def test_a_degraded_sweep_finds_a_busy_pull_request_beyond_the_first_page_of_active_runs(harness: Harness) -> None:
+    head, run = _pending_review(harness, 69, "feat/deep-busy")
+    harness.github.age(run, 180)
+    harness.github.add_run(
+        VERDICT, event="workflow_dispatch", pr=69, head_sha=head, title_head=head, created_at=ago(50)
+    )
+    _fill_active_page(harness, 500, 100)
+    harness.github.fail("GET", LISTING, 502, 2)
+    before = list(harness.github.dispatches)
+
+    sweep = harness.sweep()
+
+    assert sweep.code == 1
+    assert harness.github.dispatches == before
+    assert "retry skipped for #69: a run is still in flight" in sweep.outputs["summary"]
+
+
+def test_a_degraded_sweep_with_an_incomplete_active_run_listing_dispatches_nothing(harness: Harness) -> None:
+    _, run = _pending_review(harness, 70, "feat/capped-busy")
+    harness.github.age(run, 180)
+    _fill_active_page(harness, 500, 5)
+    harness.github.run_listing_cap = 3
+    harness.github.fail("GET", LISTING, 502, 2)
+    before = list(harness.github.dispatches)
+
+    sweep = harness.sweep()
+
+    assert sweep.code == 1
+    assert harness.github.dispatches == before
+    assert "dispatching nothing" in sweep.outputs["summary"]

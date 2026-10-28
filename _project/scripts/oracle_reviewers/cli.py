@@ -21,6 +21,7 @@ from _project.scripts.inert_paths import is_machine_read_doc
 
 from . import (
     attempts as attempt_files,
+    base_change,
     credentials,
     dedup,
     disk_scan,
@@ -1209,11 +1210,12 @@ def _surface_twice_failed(
     status_context: str,
     bot_login: str,
     token: str | None,
+    base_changed_at: datetime | None,
 ) -> None:
     latest = next(run for run in runs if run.status == sweep.COMPLETED and run.conclusion not in sweep.NEUTRAL)
     description = sweep.surface_description(github.failed_steps(repo, latest.id))
     run_url = f"{os.environ.get('GITHUB_SERVER_URL', 'https://github.com')}/{repo}/actions/runs/{latest.id}"
-    app_statuses = _own_statuses(repo, head, status_context, bot_login, number)
+    app_statuses = _own_statuses(repo, head, status_context, bot_login, number, base_changed_at)
     if any(status.get("state") in ("success", "failure", "error") for status in app_statuses):
         _summary(f"retry not dispatched for #{number}: two runs on the current head failed without a result")
         return
@@ -1238,6 +1240,13 @@ def _surface_twice_failed(
     _summary(f"oracle-verdict #{number} {head}: {description}")
 
 
+def _state_after_base_change(repo: str, number: int, base_changed_at: datetime | None) -> retry.State | None:
+    state = github.latest_state(repo, number)
+    if state is None or not base_change.survives(state.updated_at, base_changed_at):
+        return None
+    return state
+
+
 def _retry_reason(
     repo: str,
     pull: Mapping[str, Any],
@@ -1252,7 +1261,8 @@ def _retry_reason(
 ) -> str | None:
     number = pull["number"]
     head = pull["head"]["sha"]
-    state = github.latest_state(repo, number)
+    base_changed_at = github.base_changed_at(repo, number)
+    state = _state_after_base_change(repo, number, base_changed_at)
     relevant = tuple(run for run in runs or () if run.head in (None, head))
 
     def resolved() -> tuple[tuple[sweep.Run, ...], tuple[sweep.Run, ...]]:
@@ -1274,7 +1284,17 @@ def _retry_reason(
                 return None
             _, head_runs = resolved()
             return _bounded_retry(
-                repo, number, head, head_runs, state.updated_at, rules, now, status_context, bot_login, token
+                repo,
+                number,
+                head,
+                head_runs,
+                state.updated_at,
+                rules,
+                now,
+                status_context,
+                bot_login,
+                token,
+                base_changed_at,
             )
         if state.outcome != retry.PENDING or state.pending_cause != retry.ALL_ABSENT:
             return None
@@ -1292,7 +1312,17 @@ def _retry_reason(
                 return "the owner reset its backoff"
         if due:
             return _bounded_retry(
-                repo, number, head, head_runs, state.updated_at, rules, now, status_context, bot_login, token
+                repo,
+                number,
+                head,
+                head_runs,
+                state.updated_at,
+                rules,
+                now,
+                status_context,
+                bot_login,
+                token,
+                base_changed_at,
             )
         return None
     if not full:
@@ -1306,18 +1336,25 @@ def _retry_reason(
         return None
     if any(
         status.get("state") in ("success", "failure", "error")
-        for status in _own_statuses(repo, head, status_context, bot_login, number)
+        for status in _own_statuses(repo, head, status_context, bot_login, number, base_changed_at)
     ):
         _summary(f"retry not dispatched for #{number}: the head already has a decisive oracle-verdict status")
         return None
-    reason = _bounded_retry(repo, number, head, head_runs, None, rules, now, status_context, bot_login, token)
+    reason = _bounded_retry(
+        repo, number, head, head_runs, None, rules, now, status_context, bot_login, token, base_changed_at
+    )
     return STATELESS_FAILURE if reason is not None else None
 
 
-def _own_statuses(repo: str, head: str, status_context: str, bot_login: str, number: int) -> list[dict[str, Any]]:
+def _own_statuses(
+    repo: str, head: str, status_context: str, bot_login: str, number: int, base_changed_at: datetime | None
+) -> list[dict[str, Any]]:
     found = []
     for status in github.commit_statuses(repo, head):
         if status.get("context") != status_context or not github.is_app_status(status, bot_login):
+            continue
+        created = github.parse_time(status.get("created_at"))
+        if created is None or not base_change.survives(created, base_changed_at):
             continue
         match = _STATUS_RUN_URL.search(str(status.get("target_url") or ""))
         owner = github.run_pull(repo, int(match.group(1))) if match is not None else None
@@ -1326,8 +1363,10 @@ def _own_statuses(repo: str, head: str, status_context: str, bot_login: str, num
     return found
 
 
-def _already_surfaced(repo: str, head: str, status_context: str, bot_login: str, number: int) -> bool:
-    mine = _own_statuses(repo, head, status_context, bot_login, number)
+def _already_surfaced(
+    repo: str, head: str, status_context: str, bot_login: str, number: int, base_changed_at: datetime | None
+) -> bool:
+    mine = _own_statuses(repo, head, status_context, bot_login, number, base_changed_at)
     if not mine:
         return False
     newest = max(mine, key=lambda status: status.get("updated_at") or status.get("created_at") or "")
@@ -1347,9 +1386,10 @@ def _bounded_retry(
     status_context: str,
     bot_login: str,
     token: str | None,
+    base_changed_at: datetime | None,
 ) -> str | None:
     failures = sweep.stateless_failures(head_runs, since)
-    if _already_surfaced(repo, head, status_context, bot_login, number):
+    if _already_surfaced(repo, head, status_context, bot_login, number, base_changed_at):
         _summary(f"retry not dispatched for #{number}: the failure is already surfaced as pending")
         return None
     if failures > 1:
@@ -1361,6 +1401,7 @@ def _bounded_retry(
             status_context=status_context,
             bot_login=bot_login,
             token=token,
+            base_changed_at=base_changed_at,
         )
         return None
     if sweep.recent_dispatches(head_runs, now) >= rules.daily_budget:
