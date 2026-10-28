@@ -24,6 +24,7 @@ from .verdict import (
     DO_NOT_SHIP,
     FIXED,
     MAX_CLAIM,
+    MAX_LINE,
     NOT_FIXED,
     SHIP,
     SHIP_WITH_FIXES,
@@ -269,6 +270,15 @@ def _valid_record(record: Any) -> bool:
     )
 
 
+def _clamped(item: dict[str, Any]) -> dict[str, Any]:
+    end = item["end_line"]
+    return {
+        **item,
+        "line": max(min(item["line"], MAX_LINE), 1),
+        "end_line": None if end is None else max(min(end, MAX_LINE), 1),
+    }
+
+
 def decode_marker(body: str) -> dict[str, Any] | None:
     count = body.count(MARKER_OPEN)
     if count == 0:
@@ -284,7 +294,7 @@ def decode_marker(body: str) -> dict[str, Any] | None:
         raise MarkerError(f"a protocol marker cannot be decoded: {exc}") from exc
     if not _valid_record(record):
         raise MarkerError("a protocol marker has an unexpected shape")
-    return record
+    return {**record, "open_defects": [_clamped(item) for item in record["open_defects"]]}
 
 
 def _review_time(value: Any) -> datetime | None:

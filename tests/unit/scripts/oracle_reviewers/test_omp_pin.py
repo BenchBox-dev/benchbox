@@ -432,3 +432,27 @@ def test_bare_python_disk_scan_runs_without_pyyaml(tmp_path: Path) -> None:
         text=True,
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_a_relative_cache_override_yields_an_absolute_binary_path_that_survives_a_cwd_change(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv(omp_pin.CACHE_ENV, ".cache/oracle-omp")
+    pin = _pin(target=omp_pin.current_platform())
+    binary = omp_pin.install(pin, fetch=Fetcher())
+    scratch = tmp_path / "scratch" / "omp-cwd"
+    scratch.mkdir(parents=True)
+    monkeypatch.chdir(scratch)
+    assert binary.is_absolute()
+    assert binary.is_file()
+    assert omp_pin.binary_path(pin, omp_pin.current_platform()).is_absolute()
+    assert omp_pin.cache_root().is_absolute()
+
+
+def test_a_relative_binary_override_is_resolved_against_the_launch_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv(omp_pin.BINARY_ENV, "bin/omp")
+    assert omp_pin.configured_binary() == Path(os.getcwd()) / "bin" / "omp"

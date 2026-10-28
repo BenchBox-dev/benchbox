@@ -95,11 +95,11 @@ def current_platform() -> str:
 
 def cache_root() -> Path:
     override = os.environ.get(CACHE_ENV)
-    return Path(override) if override else Path.home() / ".cache" / "benchbox" / "omp"
+    return Path(os.path.abspath(override)) if override else Path.home() / ".cache" / "benchbox" / "omp"
 
 
 def binary_path(pin: Pin, target: str, root: Path | None = None) -> Path:
-    return (root or cache_root()) / pin.version / target / "omp"
+    return Path(os.path.abspath(root or cache_root())) / pin.version / target / "omp"
 
 
 def sha256_of(path: Path) -> str:
@@ -225,7 +225,7 @@ def install(pin: Pin, target: str | None = None, root: Path | None = None, fetch
 
 def configured_binary() -> Path | None:
     value = os.environ.get(BINARY_ENV, "")
-    return Path(value) if value else None
+    return Path(os.path.abspath(value)) if value else None
 
 
 def required_binary() -> Path:

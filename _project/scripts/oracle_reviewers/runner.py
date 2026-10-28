@@ -161,7 +161,7 @@ def _scrubbed(value: Any) -> Any:
     if isinstance(value, list):
         return [_scrubbed(item) for item in value]
     if isinstance(value, dict):
-        return {key: _scrubbed(item) for key, item in value.items()}
+        return {_scrubbed(credentials.redact(key)): _scrubbed(item) for key, item in value.items()}
     return value
 
 
