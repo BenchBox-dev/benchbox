@@ -1,0 +1,11 @@
+{
+  "bundle_file": "datavault_sf01_clickhouse_local_sql_20261026_174254_ac9b732e.json",
+  "bundle_hash": "299f30b597002a02c910372758902236c00ebbd4cd15f857dcc1faab7b894f38",
+  "container_host_os": "macOS",
+  "execution_class": "container",
+  "execution_class_evidence": "Bundle records a Linux kernel on an Apple CPU vendor: a Linux guest on Apple silicon, not the native macOS host.",
+  "funding": "unspecified",
+  "manifest_version": "1.0",
+  "result_source": "internal",
+  "submitted_by": "maintainer"
+}
