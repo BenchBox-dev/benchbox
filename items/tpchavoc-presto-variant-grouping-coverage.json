@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Every Presto-rendered variant is compared with DuckDB on BenchBox-generated DECIMAL data at a scale where most queries return multiple groups (for example SF0.01 or SF0.1), with every non-PASS result enumerated",
+    "Result recorded as durable evidence in an audit record that passes make audit-sha-check"
+  ],
+  "context": "Evidence: _project/audits/tpchavoc-prestodb-variants-2026-10-26.md, section 'Limits of this evidence'. Interacts with tpchavoc-q15-double-equality-flake (DECIMAL may remove the Q15 flake) and tpchavoc-1v8-qualify-order-by-loss. 1_v7 memory limits mean it needs the raised per-node limit from the TPC-Havoc docs above SF1. Filed from session review 2026-10-27.\n\nMoved from the todo-db tracker on 2026-10-28; the item was filed there by mistake.",
+  "description": "The PrestoDB comparison ran over tpch.tiny, where 80 of the variants return a single row and 30 return two, so wrong grouping or aggregation would often go unnoticed. The reference was DuckDB loaded from the same Presto-generated tables, which use DOUBLE prices, not the DECIMAL schema BenchBox generates. Row-order handling only checks for a top-level ORDER BY in the DuckDB text and does not tell ties from a wrong order.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3577"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:mcp:joe@joe-mac-mini.local:5427f38a811abefa5a292dd6",
+      "at": "2026-10-28T13:46:53Z",
+      "client": "mcp",
+      "op": "create",
+      "op_id": "bbc56f1b85fe4240842b255af1d59d18",
+      "session_id": "8dd2786d2f544912829f10b74985f086"
+    }
+  ]
+}

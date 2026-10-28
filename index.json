@@ -27714,6 +27714,13 @@
       "status": "done",
       "title": "Revalidate postgres dual-table tpchavoc skip"
     },
+    "tpchavoc-presto-variant-grouping-coverage": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Re-run the PrestoDB TPC-Havoc variant comparison on BenchBox-generated DECIMAL data at a scale that exercises grouping"
+    },
     "tpchavoc-q15-double-equality-flake": {
       "claim": null,
       "needs": [],
