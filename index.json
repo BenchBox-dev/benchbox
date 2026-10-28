@@ -5972,15 +5972,10 @@
       "title": "Corpus bundles carry no EOL attribute, so a CRLF checkout breaks byte identity"
     },
     "corpus-container-server-engines-execution-class": {
-      "claim": {
-        "expires_at": "2026-10-29T03:42:46Z",
-        "generation": "3daafc4e64cd4ed2b060223e6b92080d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Classify Docker-hosted server engines on a macOS client as container runs"
     },
     "corpus-datafusion-q15-zero-row-bundles-20261017": {
