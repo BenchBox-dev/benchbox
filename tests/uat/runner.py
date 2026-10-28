@@ -66,7 +66,15 @@ def _failures_are_documented_exclusions(result_path: Path | None) -> bool:
         data = json.loads(result_path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return False
-    return isinstance(data, dict) and documented_exclusions_cover_failures(data)
+    if not isinstance(data, dict) or not documented_exclusions_cover_failures(data):
+        return False
+    return all(
+        str(row.get("status")).upper() == "FAILED"
+        for row in data.get("queries", [])
+        if isinstance(row, dict)
+        and str(row.get("run_type") or "measurement").lower() == "measurement"
+        and str(row.get("status")).upper() not in {"SUCCESS", "SKIPPED"}
+    )
 
 
 def submit_state_is_cell_failure(state: SubmitTerminalState | str) -> bool:
