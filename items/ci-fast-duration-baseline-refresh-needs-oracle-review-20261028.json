@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "The next scheduled baseline refresh pull request gets an oracle verdict and merges (or the stall is documented with the owner of the fix)",
+    "If refresh pull requests cannot be reviewed reliably, a decision records whether to keep the baseline directory as a soundness path"
+  ],
+  "context": "Soundness paths are listed in .github/soundness-paths.txt. The refresh workflow is fast-duration-baseline-refresh.yml and creates a pull request titled to refresh the baseline. The change was added to satisfy review findings that a pull request could otherwise edit the gate and its own baseline unreviewed.",
+  "description": "The blocking duration gate made scripts/build_fast_duration_baseline.py, scripts/fast_tier_calibration.py, tests/duration_policy.py, tests/__init__.py and tests/fixtures/fast_tier_baseline/ oracle-reviewed soundness paths. The scheduled workflow that refreshes the baseline opens a pull request touching that directory, so each refresh now needs an oracle verdict and may stall. This was not exercised before the change merged.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-28T11:45:46Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e099c037b32348949d1873ee90c759c7",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}

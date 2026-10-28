@@ -3031,6 +3031,13 @@
       "status": "done",
       "title": "Commit a fast-tier duration baseline from merged-PR junit and refresh it weekly by reviewed PR"
     },
+    "ci-fast-duration-baseline-refresh-needs-oracle-review-20261028": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Check the scheduled fast-tier baseline refresh still lands now that its paths are soundness paths"
+    },
     "ci-fast-duration-gate-blocking-20261025": {
       "claim": null,
       "needs": [
