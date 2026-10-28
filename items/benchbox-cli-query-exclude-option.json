@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "A documented option excludes named queries from a run, with the same phase coverage as --queries or a clear error where it does not apply",
+    "The TPC-Havoc memory-requirement section uses it instead of the list-everything workaround",
+    "Covered by a test on query selection"
+  ],
+  "context": "The owner chose to document the 1_v7 requirement rather than add a skip or scale gate; this item is only about the missing exclude option. Platform skips exist (TPCHavocBenchmark.get_platform_skip_queries, benchbox/validation/bundle.py TPCHAVOC_DOCUMENTED_SKIPS) but are keyed by platform, not scale or user choice. Filed from session review 2026-10-27.\n\nMoved from the todo-db tracker on 2026-10-28; the item was filed there by mistake.",
+  "description": "BenchBox runs can select queries with --queries (power and standard phases only) but cannot exclude any. The TPC-Havoc documentation therefore tells users who cannot satisfy the 1_v7 memory requirement to list every variant except 1_v7 by hand, which is long for a 22-query, 10-variant benchmark and easy to get wrong.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-site/pull/71"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:mcp:joe@joe-mac-mini.local:5427f38a811abefa5a292dd6",
+      "at": "2026-10-28T13:47:17Z",
+      "client": "mcp",
+      "op": "create",
+      "op_id": "213d1abdd8bf40fe8c7797ad34b41c6b",
+      "session_id": "8dd2786d2f544912829f10b74985f086"
+    }
+  ]
+}

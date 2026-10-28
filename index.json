@@ -1765,6 +1765,13 @@
       "status": "done",
       "title": "Measure required-gate duration versus develop merge interarrival"
     },
+    "benchbox-cli-query-exclude-option": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Add a way to exclude queries from a BenchBox run"
+    },
     "benchbox-embedded-audited-scope-rule-update-20260801": {
       "claim": null,
       "needs": [],
