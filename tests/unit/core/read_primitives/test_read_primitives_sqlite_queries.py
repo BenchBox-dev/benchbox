@@ -27,15 +27,28 @@ def _seed_value(column: dict, row: int):
     return f"{name}_{row % 5}"
 
 
-@pytest.fixture(scope="module")
-def seeded_connection():
+def _build_connection(*, with_adapter_functions: bool) -> sqlite3.Connection:
     connection = sqlite3.connect(":memory:")
-    _register_sqlite_compatibility_functions(connection)
+    if with_adapter_functions:
+        _register_sqlite_compatibility_functions(connection)
     for table_name, table in TABLES.items():
         connection.execute(get_create_table_sql(table_name, "sqlite", False, False))
         placeholders = ", ".join("?" for _ in table["columns"])
         rows = [[_seed_value(column, row) for column in table["columns"]] for row in range(_ROWS_PER_TABLE)]
         connection.executemany(f"INSERT INTO {table_name} VALUES ({placeholders})", rows)
+    return connection
+
+
+@pytest.fixture(scope="module")
+def adapter_connection():
+    connection = _build_connection(with_adapter_functions=True)
+    yield connection
+    connection.close()
+
+
+@pytest.fixture(scope="module")
+def stock_connection():
+    connection = _build_connection(with_adapter_functions=False)
     yield connection
     connection.close()
 
@@ -45,9 +58,11 @@ def _runnable_sqlite_queries() -> dict[str, str]:
 
 
 @pytest.mark.parametrize("query_id", sorted(_runnable_sqlite_queries()))
-def test_non_skipped_catalog_query_executes_on_sqlite(seeded_connection, query_id):
+def test_non_skipped_catalog_query_executes_on_sqlite(adapter_connection, stock_connection, query_id):
     sql = _runnable_sqlite_queries()[query_id]
-    cursor = seeded_connection.execute(sql)
+    has_variant = ReadPrimitivesBenchmark(scale_factor=0.01).query_manager.has_variant(query_id, "sqlite")
+    connection = adapter_connection if has_variant else stock_connection
+    cursor = connection.execute(sql)
     cursor.fetchall()
 
     contract = load_primitives_catalog().queries[query_id].result_contract
