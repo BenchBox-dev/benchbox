@@ -110,7 +110,7 @@ def test_a_rerun_reviews_a_bump_head_only_once_and_reviews_a_moved_head(harness:
     settled = harness.open_bump_pull(BUMP_VERSION, policy)
 
     assert settled.code == 0, settled.stdout + settled.stderr
-    assert "already has a review run" in settled.stdout
+    assert "already has a review" in settled.stdout
     assert len(harness.github.dispatches) == 1
     assert len(harness.github.pulls) == 1
 
@@ -135,3 +135,22 @@ def test_a_closed_bump_pull_request_is_neither_reopened_nor_reviewed(harness: Ha
     assert "closed pull request" in rerun.stdout
     assert harness.github.dispatches == []
     assert len(harness.github.pulls) == 1
+
+
+def test_a_bump_head_that_already_has_a_verdict_status_is_not_re_reviewed_after_its_run_leaves_the_listing(
+    harness: Harness,
+) -> None:
+    policy = _bumped_policy(harness)
+    harness.open_bump_pull(BUMP_VERSION, policy)
+    [pull] = harness.github.pulls.values()
+    head = pull["head"]["sha"]
+    harness.github.dispatches.clear()
+    harness.github.statuses[head].append(
+        {"id": 1, "state": "success", "context": "oracle-verdict", "description": "SHIP", "creator": {"login": "bot"}}
+    )
+
+    rerun = harness.open_bump_pull(BUMP_VERSION, policy)
+
+    assert rerun.code == 0, rerun.stdout + rerun.stderr
+    assert "already has a review" in rerun.stdout
+    assert harness.github.dispatches == []

@@ -130,9 +130,10 @@ jobs:
               -f base=develop -f head="$BRANCH" --jq .number)"
           fi
           HEAD_SHA="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}" --jq .head.sha)"
+          verdicts="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/statuses?per_page=100" --jq '.[] | select(.context == "oracle-verdict") | .id')"
           titles="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/oracle-verdict.yml/runs?per_page=100" --jq '.workflow_runs[].display_title')"
-          if grep -qF "pr=${PR} head=${HEAD_SHA}" <<<"$titles"; then
-            echo "Pull request #${PR} already has a review run for ${HEAD_SHA}."
+          if [ -n "$verdicts" ] || grep -qF "pr=${PR} head=${HEAD_SHA}" <<<"$titles"; then
+            echo "Pull request #${PR} already has a review for ${HEAD_SHA}."
             exit 0
           fi
           gh workflow run oracle-verdict.yml --repo "$GITHUB_REPOSITORY" --ref develop -f pr="$PR" -f head="$HEAD_SHA"

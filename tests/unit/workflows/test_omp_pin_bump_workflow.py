@@ -83,6 +83,8 @@ def test_the_opener_starts_the_review_itself_because_the_job_token_cannot_trigge
     text = opener_steps()["Open the bump pull request"]["run"]
     assert len(re.findall(r"gh workflow run oracle-verdict\.yml", text)) == 1
     assert '--ref develop -f pr="$PR" -f head="$HEAD_SHA"' in text
+    assert '.context == "oracle-verdict"' in text and "--paginate" in text
+    assert text.index("/statuses") < text.index("gh workflow run")
     assert "workflows/oracle-verdict.yml/runs" in text
     assert text.index("workflows/oracle-verdict.yml/runs") < text.index("gh workflow run")
     assert "ORACLE_APP" not in WORKFLOW.read_text(encoding="utf-8")

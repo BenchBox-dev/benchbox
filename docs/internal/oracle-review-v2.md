@@ -1023,8 +1023,9 @@ GitHub does not start `pull_request_target` workflows for a pull request the
 job token opens, and the sweep never bootstraps a pull request with no state or
 prior run, so the bump job starts the review itself. Right after it opens the
 pull request (or finds the `chore/omp-pin-<version>` pull request still open) it
-checks the `oracle-verdict` run titles for the pull request's current head and,
-when none names it, runs `gh workflow run oracle-verdict.yml --ref develop -f
+checks whether the head already carries an `oracle-verdict` commit status or a
+recent `oracle-verdict` run title names it and, when neither does, runs
+`gh workflow run oracle-verdict.yml --ref develop -f
 pr=<number> -f head=<sha>` with the same job token. A token-started
 `workflow_dispatch` is the one event GitHub does not suppress, so the job needs
 only `actions: write` beyond its existing grants and no App credential. A
