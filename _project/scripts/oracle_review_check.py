@@ -163,9 +163,7 @@ def _receipt_backed_success(
     candidates = _receipt_candidates(reviews, head_sha, base_time)
     for status in reversed(verdicts):
         if status["state"] != "success":
-            if status["state"] in DECISIVE_VERDICTS or status["state"] == "error":
-                return False
-            continue
+            return False
         if _strip_run_suffix(status.get("description")) == EXEMPT_SUCCESS_DESCRIPTION:
             continue
         status_uuid = _status_run_uuid(status)

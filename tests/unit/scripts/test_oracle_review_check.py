@@ -870,6 +870,11 @@ def test_an_earlier_success_is_not_reused_across_a_later_failure_and_new_success
     assert _oracle(statuses=statuses)[0] == oracle_review_check.WAITING
 
 
+def test_a_withheld_verdict_between_two_successes_blocks_the_earlier_one() -> None:
+    statuses = [_verdict(), _verdict("pending", created_at=LATER, id=3), _other_pr_success() | {"created_at": LATEST}]
+    assert _oracle(statuses=statuses)[0] == oracle_review_check.WAITING
+
+
 def test_a_success_with_no_matching_receipt_here_still_waits() -> None:
     assert _oracle(statuses=[_other_pr_success()])[0] == oracle_review_check.WAITING
 
