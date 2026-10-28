@@ -691,7 +691,7 @@ nothing.
   concurrency cancel ("Canceling since a higher priority waiting request ...
   exists") or a manual cancel is neither a failure nor a success. A head
   whose latest runs failed or timed out without leaving retry state is
-  re-dispatched, unless the head has a decisive App verdict status; the
+  re-dispatched, unless the head has a decisive App verdict status from one of this pull request's runs; the
   dispatch carries a marker, and a marked retry the plan refuses, or whose
   retry state it cannot read, fails its run so the next sweep counts it. A head
   with a due pending state is bounded the
@@ -702,7 +702,11 @@ nothing.
   step, with an App token minted in the reviewer-free sweep job. An existing
   pending status is left alone, and a head whose newest App status is that
   surfaced failure is not dispatched again once its runs age out of the
-  48-hour listing; without the App the sweep reports the gap
+  48-hour listing. Only a status posted by one of this pull request's own
+  runs counts, as a decisive result or a surfaced hold: the sweep reads the
+  status's run, and a pull request that shares the head SHA with another
+  ignores the other's statuses and still recovers. A status whose run cannot
+  be read counts as the pull request's own. Without the App the sweep reports the gap
   instead of failing. A failure in one PR's lookup, dispatch or surfacing is
   reported, the others continue, then the job fails. If the runs listing fails
   twice or is capped, the sweep degrades: it dispatches only due retries, using
