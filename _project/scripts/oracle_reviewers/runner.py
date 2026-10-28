@@ -6,7 +6,7 @@ import os
 import signal
 import subprocess
 import tempfile
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
@@ -74,6 +74,14 @@ def stage_pull_request_diff(source: Path, workspace: Path) -> Path | None:
     except OSError:
         return None
     return target
+
+
+def _plan_protected(plan: Mapping[str, Any]) -> Callable[[str], bool]:
+    protected = plan.get("evidence_protected_files")
+    if protected is None:
+        return lambda path: True
+    paths = frozenset(protected)
+    return lambda path: path in paths
 
 
 def _digest(path: Path) -> str | None:
@@ -318,6 +326,9 @@ def _judge(
         workspace=workspace,
         required=tuple(plan.get("evidence_files", ())),
         run=run,
+        exempt_paths=tuple(plan.get("evidence_exempt_paths", ())),
+        binary_files=tuple(plan.get("binary_files", ())),
+        is_protected=_plan_protected(plan),
     )
     if gap is not None:
         return ReviewOutcome(None, absence.Absence(absence.INCOMPLETE, gap.reason, unread=gap.files), traced)

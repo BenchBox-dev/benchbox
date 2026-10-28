@@ -94,3 +94,74 @@ def test_depth_gate_counts_reruns_once_and_streaming_separately(mixed_corpus: Pa
     assert cohorts[("tpch", "1.0")] == legacy[("tpch", "1.0")] | {"polars", "polars+streaming"}
     assert {"duckdb", "polars"} <= cohorts[("tpch", "1.0")]
     assert not {"polars-df", "polars-df+streaming"} & cohorts[("tpch", "1.0")]
+
+
+def _container_copy(source: str, bundles: Path, *, attested: bool = True, conflicting: bool = False) -> Path:
+    payload = json.loads((CORPUS / source).read_text(encoding="utf-8"))
+    payload["environment"] = {
+        "os": "Linux 6.18.15",
+        "arch": "aarch64",
+        "cpu_count": 4,
+        "memory_gb": 9.8,
+        "client_host": {"os": "Linux 6.18.15", "arch": "aarch64", "cpu_count": 4, "memory_gb": 9.8},
+    }
+    if conflicting:
+        payload["environment"]["execution_class"] = "native"
+        payload["environment"]["execution_class_source"] = "observed"
+    path = bundles / "container-copy.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    if attested:
+        path.with_name("container-copy.manifest.json").write_text(
+            json.dumps(
+                {
+                    "execution_class": "container",
+                    "container_host_os": "macOS",
+                    "execution_class_evidence": "Linux guest on Apple silicon",
+                }
+            ),
+            encoding="utf-8",
+        )
+    return path
+
+
+def test_container_variant_reaches_every_pipeline_table_with_its_own_label(tmp_path: Path) -> None:
+    bundles = tmp_path / "data" / "bundles"
+    bundles.mkdir(parents=True)
+    for path in CORPUS.glob("tpch_sf1_*"):
+        shutil.copy2(path, bundles / path.name)
+    _container_copy(DUCKDB_LEGACY, bundles)
+
+    ExplorerPipeline().run(data_dir=tmp_path / "data", output_dir=tmp_path / "out")
+    con = duckdb.connect(str(tmp_path / "out" / "results.duckdb"), read_only=True)
+    label = "DuckDB (Linux container on macOS)"
+    tables = {
+        table: con.execute(f"SELECT count(*) FROM {table} WHERE variant_id = 'duckdb^container'").fetchone()[0]
+        for table in ("results", "platform_index_rows", "benchmark_rankings")
+    }
+    labels = {
+        row[0]
+        for row in con.execute("SELECT variant_label FROM results WHERE variant_id = 'duckdb^container'").fetchall()
+    }
+    plain = {row[0] for row in con.execute("SELECT variant_label FROM results WHERE variant_id = 'duckdb'").fetchall()}
+    environment = con.execute(
+        "SELECT e.os, e.cpu_count FROM results r JOIN result_environment e USING (result_id) "
+        "WHERE r.variant_id = 'duckdb^container'"
+    ).fetchall()
+    con.close()
+
+    assert all(count > 0 for count in tables.values()), tables
+    assert labels == {label}
+    assert plain == {"DuckDB"}
+    assert environment == [("Linux 6.18.15", 4)]
+
+
+def test_a_conflicting_execution_class_fails_the_pipeline_instead_of_skipping_the_bundle(tmp_path: Path) -> None:
+    from benchbox.core.results.execution_variant import ExecutionClassError
+
+    bundles = tmp_path / "data" / "bundles"
+    bundles.mkdir(parents=True)
+    shutil.copy2(CORPUS / DUCKDB_LEGACY, bundles / DUCKDB_LEGACY)
+    _container_copy(DUCKDB_LEGACY, bundles, conflicting=True)
+
+    with pytest.raises(ExecutionClassError, match="attests"):
+        ExplorerPipeline().run(data_dir=tmp_path / "data", output_dir=tmp_path / "out")

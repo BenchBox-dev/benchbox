@@ -88,7 +88,10 @@ def test_oauth_environment_with_native_is_allowed(monkeypatch, env_var):
 
 
 def _platform_info(adapter):
-    with patch.object(DatabricksAdapter, "_warehouse_id_from_http_path", return_value=None):
+    with (
+        patch.object(DatabricksAdapter, "_warehouse_id_from_http_path", return_value=None),
+        patch.object(DatabricksAdapter, "_detect_databricks_region", return_value=None),
+    ):
         return adapter.get_platform_info()
 
 

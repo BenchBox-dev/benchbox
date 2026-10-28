@@ -1953,3 +1953,27 @@ def test_a_rebase_onto_changed_files_is_a_new_digest_with_its_own_strike_and_for
     reviewed = [*spent, _record(TWO_FILE_DIFF, "SHIP", tag="moved")]
     allowed = _round(reviewed, "moved", force=True)
     assert allowed.kind == protocol.FOLLOW_UP and allowed.forced is True
+
+
+def test_an_unavailable_diff_never_plans_an_inline_brief(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    _, values, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), SOUNDNESS, diff=None))
+    assert values["decision"] == "review"
+    assert plan["brief_mode"] == "file-list"
+    assert plan["diff_inline"] is None
+
+
+@pytest.mark.parametrize(
+    "header",
+    [
+        f"diff --git a/{CHECKER} b/{CHECKER}",
+        'diff --git "a/benchbox/core/equivalence/ch\\303\\251cker.py" "b/benchbox/core/equivalence/ch\\303\\251cker.py"',
+    ],
+)
+def test_an_opaque_binary_notice_never_plans_an_inline_brief(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, header: str
+) -> None:
+    notice = f"{header}\nindex 111..222 100644\nBinary files a/x.py and b/x.py differ\n"
+    _, values, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), SOUNDNESS, diff=notice))
+    assert values["decision"] == "review"
+    assert plan["brief_mode"] == "file-list"
+    assert plan["diff_inline"] is None

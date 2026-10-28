@@ -30,6 +30,18 @@ def _unit_home(_hermetic_state, tmp_path_factory: pytest.TempPathFactory, monkey
     return home
 
 
+@pytest.fixture(autouse=True)
+def _no_cloud_metadata_probes(monkeypatch: pytest.MonkeyPatch) -> None:
+    from benchbox.platforms import athena
+    from benchbox.platforms.base import client_region
+
+    def imds_unreachable(*args, **kwargs):
+        raise OSError("cloud metadata service is not reachable from unit tests")
+
+    monkeypatch.setattr(client_region, "_imds_open", imds_unreachable)
+    monkeypatch.setattr(athena.AthenaAdapter, "_check_instance_metadata_available", lambda self: False)
+
+
 @pytest.fixture
 def chdb_probe_satisfied(monkeypatch):
     real_find_spec = importlib.util.find_spec

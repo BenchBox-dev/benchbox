@@ -8,6 +8,12 @@
   ],
   "rules": [
     {
+      "id": "oracle-exposure-exemptions",
+      "match": [".github/oracle-reviewers.yml"],
+      "disposition": "governance-stays",
+      "reason": "Trusted oracle exposure policy matches documentation paths without reading site-owned page content or changing review scope."
+    },
+    {
       "id": "lock-tests-docs-directory",
       "match": [
         "tests/unit/docs/*.py"
@@ -246,7 +252,10 @@
         "tests/unit/release/test_ruleset_drift_review_coverage.py",
         "tests/unit/scripts/oracle_reviewers/test_classifier.py",
         "tests/unit/scripts/oracle_reviewers/test_cli_plan.py",
+        "tests/unit/scripts/oracle_reviewers/test_evidence.py",
+        "tests/unit/scripts/oracle_reviewers/test_local_review.py",
         "tests/unit/scripts/oracle_reviewers/test_render.py",
+        "tests/unit/scripts/oracle_reviewers/test_runner.py",
         "tests/unit/scripts/oracle_reviewers/test_rounds.py",
         "tests/unit/scripts/oracle_reviewers/test_verdict.py",
         "tests/unit/scripts/test_blind_spot_tools.py",

@@ -32,7 +32,11 @@ def test_flightdata_benchmark_supports_compressed_generation(tmp_path):
     assert manifest["compression"]["type"] == "zstd"
 
 
-def test_nyctaxi_benchmark_supports_compressed_generation(tmp_path):
+def test_nyctaxi_benchmark_supports_compressed_generation(tmp_path, monkeypatch):
+    def source_unreachable(url, destination, **kwargs):
+        raise OSError("trip data source is not reachable from unit tests")
+
+    monkeypatch.setattr("benchbox.core.nyctaxi.downloader.download_to_file", source_unreachable)
     benchmark = NYCTaxiBenchmark(
         scale_factor=0.01,
         output_dir=tmp_path,
