@@ -26196,6 +26196,13 @@
       "status": "done",
       "title": "Test Suite Reliability ✅ COMPLETED"
     },
+    "test-translation-source-dialects-timeout-20261028": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Stop test_no_benchmark_bypasses_translation_without_an_allowlisted_reason hitting the 60s timeout in CI"
+    },
     "testing-approach-correctness-gates": {
       "claim": null,
       "needs": [],

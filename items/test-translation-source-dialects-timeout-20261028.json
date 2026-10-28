@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "The test runs well inside the timeout on CI hardware, by reducing work or declaring an explicit larger timeout with a reason."
+  ],
+  "description": "tests/unit/core/test_translation_source_dialects.py::test_no_benchmark_bypasses_translation_without_an_allowlisted_reason takes about 39 seconds alone on a local arm64 machine and hit pytest-timeout (60s) on medium-test shard 3 twice for core PR 3545 (CI run 40592135925) before passing on the third attempt. It was added by core PR 3544.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-28T01:09:49Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "8dcf70d661394ac0b510df3d271c6cf3",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    }
+  ]
+}
