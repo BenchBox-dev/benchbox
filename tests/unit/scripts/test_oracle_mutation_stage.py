@@ -6,7 +6,7 @@ import pytest
 
 from _project.scripts import oracle_mutation
 
-pytestmark = pytest.mark.fast
+pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 SETTINGS = {"paths_to_mutate": ["src/pkg"], "also_copy": ["extra/data"]}
 
