@@ -4,7 +4,7 @@
     "Corpus drift check passes after the sync: local drift check clean or the next nightly t3:drift corpus step green (evidence recorded)",
     "Issue #2471 state re-checked live and reported; the issue is not closed by an agent unless its own automation closes it"
   ],
-  "context": "2026-10-27: mirror PR #3568 is MERGED (mergedAt before 12:36Z). Corpus Drift Check scheduled run 40505036381 (2026-10-27T12:36:01Z, head 9f6b5ceab998) concluded success; the previous scheduled run 40330812923 (2026-10-26, head 26642cda0) had failed. Drift cleared from live read.",
+  "context": "2026-10-27: mirror PR #3568 is MERGED (mergedAt before 12:36Z). Corpus Drift Check scheduled run 40505036381 (2026-10-27T12:36:01Z, head 9f6b5ceab998) concluded success; the previous scheduled run 40330812923 (2026-10-26, head 26642cda0) had failed. Drift cleared from live read.\n\n2026-10-28 evidence: sync-results-data-to-published.yml runs on every develop push touching results-data and opens a draft mirror PR into published-results that only the owner merges. Mirrors #3635 (develop@fc654d7c) and #3656 (develop@3087889d) were merged by the session on the owner's instruction (merge commits 399d7de46 and 33e5eeb16); #3629 was closed as superseded. Corpus Drift Check dispatch 40688293263 passed at 12:32Z after #3635. The nightly-v2 t3:drift corpus step stayed red in runs 40626103333 and 40688697850 because later develop commits (#3618, #3630, 3087889dd) opened new mirror PRs; the re-dispatch after #3656 (run 40701680302) is the check that the nightly step is green. #2471 is still OPEN (live read 2026-10-28). Structural finding for the owner: any develop change under results-data keeps t3:drift red until its mirror PR is merged.",
   "description": "Nightly-v2 run 40339587542 (2026-10-26) failed t3:drift on corpus drift only: the published-results branch is 28 paths behind develop (CORPUS_NOTES.md, README.md, SEED_CORPUS_SPEC.md, validate_corpus.py, 24 bundle manifests). The cross-surface baseline and pricing checks pass locally on develop (verified 2026-10-26); the earlier quoted baseline/pricing errors were echoed script text. Owner decision 2026-10-26: dispatch the sync now. Guardrails (all items): primary clone read-only; work only in a linked worktree from origin/develop (make worktree-create + make agent-write-preflight); never git add -A or git stash; identity Joe Harris, no agent attribution; never bypass hooks by any route; no code comments/docstrings (make comment-policy-check clean); encoding=\"utf-8\" on file/subprocess text I/O; uv run -- for Python; no CHANGELOG entries; never weaken or delete tests or gates; TEST LOCK: never set BENCHBOX_SKIP_TEST_LOCK or BENCHBOX_TEST_LOCK_DIR, never run make test-unlock, xdist only under the shared lock; for make pr-open put ~/.cache/omp-18.12.1/bin first on PATH; make pr-preflight once, make pr-open, make pr-arm; never post oracle comments or rerun the oracle; commit/PR text for a reader who never saw this session (no item ids or plan labels).",
   "sessions": [
     {
@@ -56,6 +56,14 @@
       "generation": "dc2ff0352a3140e891081e23d24f3e1c",
       "op": "take",
       "op_id": "c0dcc43cc0f04b769391f809b85e4075",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-28T14:06:01Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "25c8ca8282d74761b5a20a6aa4c1525f",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
