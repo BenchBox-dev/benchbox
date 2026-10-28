@@ -9161,10 +9161,15 @@
       "title": "Extend the site docs contract checker to usage/cli-quick-start.md and --platform values"
     },
     "docs-mig-followup-core-retained-doc-link-gate-20261028": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-29T19:40:25Z",
+        "generation": "2e3d871837de4d75ac14ce89e886ac39",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Decide and implement link checking for the documents that stay in core"
     },
     "docs-mig-followup-explorer-results-duckdb-nondeterminism-20261028": {
