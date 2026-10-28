@@ -26643,6 +26643,13 @@
       "status": "open",
       "title": "Subagents sharing one tracker MCP server share one claim slot, so one agent's claim blocks every other agent's take"
     },
+    "todo-db-not-before-clear-and-field-append-20261028": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Fix todo-db not_before clearing and add an append mode for text fields"
+    },
     "todo-db-runtime-schema3-batch-capability": {
       "claim": null,
       "needs": [

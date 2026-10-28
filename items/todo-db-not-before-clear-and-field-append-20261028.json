@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "update_item with not_before set to an empty string clears the hold and the item is claimable immediately (test or live proof)",
+    "A documented way adds text to context or description without overwriting concurrent edits, or the replace-only behaviour is stated in the tool description"
+  ],
+  "context": "Seen while closing items held until 2026-11-02 after the calendar waits were waived: clearing with an empty string was accepted but the hold stayed. The note-prepend workaround reads then rewrites the whole context field.",
+  "description": "update_item with not_before set to an empty string does not clear a hold, so an item held to a future date cannot be released early; the only workaround is to set not_before a few seconds ahead, wait, then take. update_item also replaces text fields wholesale, so adding a note to context requires reading the field and writing it back. Both cost extra steps and risk overwriting concurrent edits.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-28T11:45:36Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a5138bcc8c4d45cc9796593ae647dcf0",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}
