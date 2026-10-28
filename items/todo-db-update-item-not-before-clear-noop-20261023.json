@@ -1,4 +1,5 @@
 {
+  "context": "\n\nTracked in the todo-db tracker as update-item-not-before-clear (copied 2026-10-28).",
   "description": "The tracker says `not_before=\"\"` clears a hold, and `take` tells callers to use it. Called through the MCP bridge in a coding-agent session on 2026-10-23, `update_item(id, not_before=\"\")` returned `E_STATE operation produced no state change` (and with a context field alongside it changed only the context), so the hold stayed. `not_before=null` was also a no-op. The only way to release the hold was to set a near-future timestamp and wait. Reproduce, then fix in todo-db (argument handling drops empty strings, or the clear path is not wired), add a regression test, and make `take`'s hint accurate.",
   "sessions": [
     {
@@ -8,6 +9,14 @@
       "op": "create",
       "op_id": "14699f245c8f416abad747ee3f8f5696",
       "session_id": "ba4384e41c574086bef30465f20b7231"
+    },
+    {
+      "actor": "mcp:mcp:joe@joe-mac-mini.local:34ab13de9d46f28431cba0e0",
+      "at": "2026-10-28T19:52:55Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "f157abf2c5484e96b98e8d4e68c91a13",
+      "session_id": "366df14943cf412292e43b2e230cff6f"
     }
   ]
 }
