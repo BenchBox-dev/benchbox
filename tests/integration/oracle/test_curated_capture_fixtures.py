@@ -27,7 +27,8 @@ LEAKS = {
     "operator home path": re.compile(r"/Users/[A-Za-z0-9_.-]+|/home/(?!runner)[A-Za-z0-9_.-]+"),
     "foreign host": re.compile(
         r"https?://(?!(?:api\.github\.com|github\.com|avatars\.githubusercontent\.com|help\.github\.com|example\.com"
-        r"|localhost|127\.0\.0\.1)(?::\d+)?\.?(?=[/?#\s\"'\\)<>]|$))[^\s/?#\"'\\)<>]+"
+        r"|localhost|127\.0\.0\.1)(?::\d+)?\.?(?=[/?#\s\"'\\)<>]|$))[^\s/?#\"'\\)<>]+",
+        re.IGNORECASE,
     ),
 }
 
@@ -63,6 +64,8 @@ def test_every_fixture_states_its_source_and_redaction_result_and_none_is_stale(
         "https://github.com.evil.example/x",
         "http://localhost.evil.example",
         "https://github.com@internal.example/x",
+        "HTTPS://internal.example/x",
+        "Https://GITHUB.COM.evil.example/x",
         "https://github.com:secret@internal.example/x",
         "https://example.com-evil.net",
         "http://127.0.0.1.evil.example",
