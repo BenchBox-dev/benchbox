@@ -3,7 +3,7 @@
     "An external link whose fragment does not exist on the target page fails the checker; a unit test covers it",
     "Current docs pass, or each failing anchor is fixed or allowlisted with a reason"
   ],
-  "context": "Found 2026-10-17 while writing the replacement checker for #3096; at the time it checked 125 links with 0 broken, fragments excluded. Related: site-docs-broken-fragments-20261009 covers internal fragments found by the site link gate.",
+  "context": "Found 2026-10-17 while writing the replacement checker for #3096; at the time it checked 125 links with 0 broken, fragments excluded. Related: site-docs-broken-fragments-20261009 covers internal fragments found by the site link gate.\n\n2026-10-28: the core external-link checker this item extends (scripts/check_doc_external_links.py) was deleted by core PR 3545 with the site-owned pages. The item needs rescoping or dropping; see docs-mig-followup-core-retained-doc-link-gate-20261028. The site nightly crawl now checks fragments on published pages.",
   "description": "scripts/check_doc_external_links.py replaced Sphinx linkcheck in the site removal (#3096). It strips the fragment before the request (scripts/check_doc_external_links.py:96: `url.split(\"#\", 1)[0]`), so an external link to a heading that was renamed or removed still passes. Sphinx linkcheck checked anchors by default. The site's nightly lychee job (ADR D15) does not cover this either unless it is configured to check fragments.\n\nFor HTML responses, fetch the page with GET and confirm an element with the fragment's id or name exists; keep an allowlist for pages that build anchors with JavaScript.",
   "sessions": [
     {
@@ -13,6 +13,14 @@
       "op": "create",
       "op_id": "d31ebbc50c5c4946932287fd1ba0b246",
       "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-28T01:10:10Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b797f6fc3a144b9da754795d4eb26a40",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
     }
   ]
 }
