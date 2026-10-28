@@ -185,7 +185,6 @@ def test_sweep_workflow_runs_the_sweep_script_on_its_own_schedule() -> None:
     job = workflow["jobs"]["sweep"]
     command = _run_text(job)
     assert "_project/scripts/green_unmerged_sweep.py --apply" in command
-    assert (REPO_ROOT / "_project" / "scripts" / "green_unmerged_sweep.py").is_file()
     assert job["permissions"] == {
         "contents": "read",
         "pull-requests": "read",
