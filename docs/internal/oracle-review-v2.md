@@ -771,6 +771,50 @@ to GitHub.
   the same cache (`oracle-gateway-host.md`), so a bump reaches the serving half
   when the owner re-runs `broker` and `gateway`; `check` fails while either
   agent runs anything else.
+- **Candidate check.** `make omp-candidate-check VERSION=<v>` checks a candidate
+  build offline against every OMP contract the harness depends on, with no
+  model call. `PIN=<file>` names a file whose `omp:` section pins the candidate
+  (the committed policy by default); `BINARY=<path>` reuses an already
+  downloaded build for this platform. It downloads each pinned platform build,
+  hashes it against the pin, and runs the probes on the build for the platform
+  it runs on, and only after the build hashes to the pin; a build that does not
+  is never executed. Run the target on a linux-x64 machine for linux-x64
+  evidence and on the owner's Mac for darwin-arm64 evidence. The probes are: the `--version` format (exactly one version
+  token, equal to the pin); every flag in the reviewer command is listed by
+  `--help`; enumerated flag values and the tool roster are rejected when invalid
+  and still name the values the reviewer uses; every overlay and reviewer-home
+  setting exists in the build's `config list --json` schema with an accepted
+  type and value; the captured streams in
+  `tests/fixtures/oracle_reviewers/omp_candidate/` replay through
+  `parse_output`, `evidence.trace` and `absence.classify`; and a loopback
+  replay chain runs the candidate client against the candidate
+  `auth-broker serve` and `auth-gateway serve` (scoped client token) with a
+  stub upstream, all traffic confined to loopback by a dead egress proxy. The
+  chain proves the tool roster the model is offered, that bash, write and edit calls
+  outside it are refused and change nothing, that the overlay keeps URL
+  reads, project MCP servers, context files and read summaries off (each
+  against a canary that a second run under an empty overlay must trigger, so a
+  probe that can no longer observe its canary fails), that a 429 walks the
+  fallback chain and ends as a quota absence naming the provider, that a 401 is
+  an auth absence and does not walk the chain, that a wrong client token is
+  refused before any upstream request, that the stream opens with session event
+  version 3, and that the run leaves no session state and no process behind.
+  Each probe lists the contract rows it covers; a row that no probe running the
+  candidate covers fails the run unless a reason is recorded, and a replay of a
+  frozen capture never counts. Only the host build is executed; every other pinned
+  platform, whether limited out with `--platform` or merely hash-checked, is
+  listed as unverified and the run is `partial`, not green. The build lists no
+  context providers, so a `disabledProviders` entry is only checked through a
+  canary that the empty-overlay run observes and the overlay run must not: the
+  `AGENTS.md`, `CLAUDE.md` and `.mcp.json` files in the client's working
+  directory and a `.omp/AGENTS.md` in both that directory and the review
+  workspace. Every other entry is listed as unobserved and keeps the run
+  `partial`; a new canary plus an entry in `PROBED_PROVIDERS` clears it. Row 8's
+  provider reset wording cannot be
+  observed offline and stays covered by the calibrated absence tests. The
+  fixtures are redacted captures of the pinned build's own output; the upstream
+  provider bodies the stub serves are hand-built, and `--capture-dir` rewrites
+  a run's streams into new fixtures. A probe failure never relaxes a contract.
 - **Blocking.** A Critical or High finding, or DO NOT SHIP, makes `pr-open`
   refuse before pushing (exit 1). A `Local oracle override: <reason>` line with
   a non-empty reason in the PR body file (`PR_BODY_FILE`) lets it proceed and

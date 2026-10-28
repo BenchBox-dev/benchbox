@@ -1,0 +1,69 @@
+{
+ "source": "captured from the pinned omp 18.12.1 build: the FLAGS section of --help, config list --json and config list (restricted to the settings the reviewer overlay and reviewer-home configuration use), and the rejection output of invalid flag values",
+ "version": "omp/18.12.1\n",
+ "help": "FLAGS\n      --model=<value>                   Model to use (fuzzy match: \"opus\", \"gpt-5.2\", or \"openai/gpt-5.2\")\n      --smol=<value>                    Smol/fast model for lightweight tasks (or PI_SMOL_MODEL env)\n      --slow=<value>                    Slow/reasoning model for thorough analysis (or PI_SLOW_MODEL env)\n      --plan=<value>                    Plan model for architectural planning (or PI_PLAN_MODEL env)\n      --goal=<value>                    Start fresh in goal mode (interactive only; bypasses autoResume; no positional prompt, startup plan mode, or explicit resume)\n      --prewalk                         Switch from the active model to a fast/cheap model at the first edit/write after the plan's todo list exists (default off; see prewalk.enabled)\n      --no-prewalk                      Disable prewalk, including prewalk.auto, even if prewalk.enabled is set\n      --prewalk-into=<value>            Target model for prewalk (default the \"smol\" role)\n      --plan-yolo                       Force read-only plan mode at start, auto-approve the plan on the model's first resolve call, then switch to --plan-yolo-into to implement it\n      --plan-yolo-into=<value>          Target model for plan-yolo execution (default the \"smol\" role)\n      --provider=<value>                Provider to use (legacy; prefer --model)\n      --api-key=<value>                 API key (defaults to env vars)\n      --system-prompt=<value>           System prompt (default: coding assistant prompt)\n      --system-prompt-template=<value>  Handlebars system prompt template (mutually exclusive with --system-prompt)\n      --append-system-prompt=<value>    Append text or file contents to the system prompt\n      --allow-home                      Allow starting in ~ without auto-switching to a temp dir\n      --profile=<value>                 Use an isolated profile for auth, sessions, settings, and caches\n      --alias=<value>                   Create a shell shortcut for the selected profile and exit\n      --cwd=<value>                     Directory to start in (overrides the launch cwd)\n      --mode=<value>                    Output mode: text (default), json, rpc, or rpc-ui\n      --config=<value>                  Load an extra config.yml-style overlay for this run (repeatable)\n      --add-dir=<value>                 Add a workspace directory beyond the working directory (repeatable)\n  -p, --print                           Non-interactive mode: process prompt and exit\n  -c, --continue                        Continue previous session\n  -r, --resume=<value>                  Resume a session (by ID prefix, path, or picker if omitted)\n      --restore=<value>                 Resume a session as --resume does, then go on with what its last process left unfinished (the interrupted turn and the subagents it was running)\n      --from-claude                     Import a Claude Code session into OMP\n      --from-codex                      Import a Codex session into OMP\n      --session-dir=<value>             Directory for session storage and lookup\n      --no-session                      Don't save session (ephemeral)\n      --models=<value>                  Comma-separated model patterns for Ctrl+P cycling\n      --no-tools                        Disable all built-in tools\n      --no-lsp                          Disable LSP tools, formatting, and diagnostics\n      --no-pty                          Disable PTY-based interactive bash execution\n      --tools=<value>                   Comma-separated list of tools to enable (default: all)\n      --thinking=<value>                Set thinking level: off, minimal, low, medium, high, xhigh, max, auto\n      --service-tier=<value>            OpenAI service tier for this session (none omits service_tier)\n      --hide-thinking                   Hide thinking blocks in TUI output (display only, does not disable model thinking)\n      --advisor                         Enable the advisor runtime (passively reviews each turn and injects notes)\n      --external-thinking               Use a private scratchpad while disabling supported GPT, Claude, and Gemini reasoning (at your own risk: providers have flagged this request shape as abuse)\n      --hook=<value>                    Load a hook/extension file (can be used multiple times)\n  -e, --extension=<value>               Load an extension file (can be used multiple times)\n      --no-extensions                   Disable extension discovery (explicit -e paths still work)\n      --no-skills                       Disable skills discovery and loading\n      --skills=<value>                  Comma-separated glob patterns to filter skills (e.g., git-*,docker)\n      --no-rules                        Disable rules discovery and loading\n      --export=<value>                  Export session file to HTML and exit\n      --no-title                        Disable title auto-generation\n      --no-ui                           With --mode rpc or rpc-ui: run extensions headless (rpc-ui tool UI remains enabled)\n      --print-thoughts                  Include thinking blocks in print mode text output\n      --max-time=<value>                Stop the session after this duration (e.g., 600, 10m, 1h)\n      --auto-approve                    Auto-approve all tool calls (skip approval prompts)\n      --approval-mode=<value>           Override tools.approvalMode for this session (always-ask|write|yolo)\n\n",
+ "config_json": {
+  "advisor.enabled": {
+   "value": false,
+   "type": "boolean",
+   "description": "Pair a second model (assigned to the 'advisor' role) that passively reviews each turn and injects notes."
+  },
+  "contextPromotion.enabled": {
+   "value": false,
+   "type": "boolean",
+   "description": "Promote to the model's contextPromotionTarget on context overflow instead of compacting. Retry fallback switches are controlled by Retry Model Fallback"
+  },
+  "disabledProviders": {
+   "value": [],
+   "type": "array",
+   "description": ""
+  },
+  "fetch.enabled": {
+   "value": true,
+   "type": "boolean",
+   "description": "Allow the read tool to fetch and process URLs"
+  },
+  "mcp.enableProjectConfig": {
+   "value": true,
+   "type": "boolean",
+   "description": "Load .mcp.json/mcp.json from project root"
+  },
+  "modelRoles": {
+   "value": {},
+   "type": "record",
+   "description": ""
+  },
+  "prewalk.auto": {
+   "value": "off",
+   "type": "enum",
+   "description": "Ask the native judge resolved through the 'judge' role whether each new top-level user task front-loads its hard reasoning. Needs a native judge; without one nothing is classified. Independent of Enable Prewalk."
+  },
+  "prewalk.enabled": {
+   "value": false,
+   "type": "boolean",
+   "description": "Start on the active model, then switch to a fast/cheap model (default the 'smol' role) at the first edit/write after the plan nudge's todo list exists \u2014 the strong model plans, commits the todos, and starts the implementation before handing off. Overridable per session with --prewalk / --no-prewalk."
+  },
+  "read.summarize.enabled": {
+   "value": true,
+   "type": "boolean",
+   "description": "Return structural code summaries when read is called without an explicit selector"
+  },
+  "retry.fallbackChains": {
+   "value": {},
+   "type": "record",
+   "description": "JSON object mapping model roles, model selectors (\"provider/model-id\"), or provider wildcards (\"provider/*\") to ordered fallback selectors, e.g. {\"default\":[\"openai/gpt-4o-mini\"],\"google-antigravity/*\":[\"google/*\",\"google-vertex/*\"]}. Model-oriented keys apply whenever that model/provider is active, regardless of role; a \"provider/*\" entry keeps the failing model's id and swaps the provider. An id-prefixed wildcard (\"openrouter/google/*\") re-prefixes the failing model's bare id (google-antigravity/gemini-x -> openrouter/google/gemini-x) and, used as a key, matches only that provider's ids under the prefix. A fallback entry may carry an explicit thinking suffix (\"provider/model:low\", \":high\", \":max\", \":off\"); a bare entry inherits the failing turn's effort, and \"provider/*\" entries always inherit."
+  },
+  "retry.fallbackOn": {
+   "value": "any",
+   "type": "enum",
+   "description": "Which failed requests may switch to a configured fallback model"
+  }
+ },
+ "config_text": "  contextPromotion.enabled = false (boolean)\n  read.summarize.enabled = true (boolean)\n  disabledProviders = [] (array)\n  modelRoles = {} (record)\n  prewalk.enabled = false (boolean)\n  prewalk.auto = off (off|suggest|on)\n  retry.fallbackOn = any (any|usage-limit|except-usage-limit)\n  retry.fallbackChains = {} (record)\n  advisor.enabled = false (boolean)\n  fetch.enabled = true (boolean)\n  mcp.enableProjectConfig = true (boolean)\n",
+ "invalid": {
+  "--mode": "Error: Invalid --mode value: \"no-such-value\". Expected one of: text, json, rpc, rpc-ui, acp.\n",
+  "--approval-mode": "Error: Invalid --approval-mode value: \"no-such-value\". Expected one of: always-ask, write, yolo.\n",
+  "--thinking": "Error: Invalid --thinking value: \"no-such-value\". Expected one of: off, minimal, low, medium, high, xhigh, max, auto.\n",
+  "--tools": "Error: Unknown tool in --tools: no-such-tool.\nBuilt-in tools: read, bash, edit, ast_grep, ast_edit, ask, debug, ida, eval, github, glob, grep, find, lsp, checkpoint, rewind, context_notes, new_context, security_scan, task, wait, todo, web_search, write, memory_edit, retain, recall, reflect, learn, manage_skill. Other registered tools: goal, init_experiment, run_experiment, log_experiment, update_notes.\nRun `omp --help` for available flags.\n"
+ }
+}
