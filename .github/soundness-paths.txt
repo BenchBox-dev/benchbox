@@ -168,3 +168,5 @@ file	scripts/comment_policy_entry.py
 file	.github/workflows/comment-policy-nightly.yml
 file	_project/scripts/soundness_merge_digest.py
 file	.github/workflows/soundness-merge-digest.yml
+file	.gitattributes
+glob	*/.gitattributes

@@ -43,6 +43,7 @@ CLOUD_SESSION_ENV = "BENCHBOX_EPHEMERAL_CLONE"
 CLOUD_STATUS_FILE = "benchbox-cloud-gateway.status"
 STATE_DIR_ENV = "BENCHBOX_LOCAL_ORACLE_DIR"
 SOUNDNESS_MANIFEST = ".github/soundness-paths.txt"
+INERT_MANIFEST = ".github/inert-paths.txt"
 HIDDEN_TEXT = re.compile(
     r"<!--.*?(?:-->|\Z)"
     r"|^[ \t]*(`{3,}+)[^\n]*\n.*?(?:^ {0,3}\1`*[ \t]*$|\Z)"
@@ -244,6 +245,8 @@ def build_plan(
         in_scope,
         full_diff,
         {},
+        predicate,
+        trusted_machine_read(root, base_ref),
     )
     plan["decision_reason"] = reason
     return plan
@@ -274,6 +277,24 @@ def soundness_predicate(manifest: str) -> Any:
         )
 
     return is_soundness
+
+
+def machine_read_predicate(manifest: str) -> Any:
+    from _project.scripts import inert_paths
+
+    with tempfile.TemporaryDirectory() as scratch:
+        path = Path(scratch) / "inert-paths.txt"
+        path.write_text(manifest, encoding="utf-8")
+        try:
+            rules = inert_paths._load_rules(path, inert_paths._VALID_KINDS)
+        except ValueError as exc:
+            raise Unavailable(f"the inert-path manifest is invalid: {exc}") from exc
+    patterns = tuple(rule.pattern for rule in rules if rule.kind == "except")
+    return lambda path: inert_paths.matches_exception(path, patterns)
+
+
+def trusted_machine_read(root: Path, base_ref: str) -> Any:
+    return machine_read_predicate(trusted_text(root, base_ref, INERT_MANIFEST))
 
 
 def trusted_predicate(root: Path, base_ref: str) -> Any:

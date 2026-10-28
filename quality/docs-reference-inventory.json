@@ -246,6 +246,22 @@
    ]
   },
   {
+   "disposition": "governance-stays",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": ".github/oracle-reviewers.yml",
+   "rule": "oracle-exposure-exemptions",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
    "disposition": "wiring-updated",
    "kinds": {
     "extra": 1,
@@ -3286,6 +3302,106 @@
   {
    "disposition": "fixture-data",
    "kinds": {
+    "file": 3,
+    "pattern": 2,
+    "root": 1,
+    "unresolved": 8
+   },
+   "occurrences": 19,
+   "path": "tests/unit/scripts/oracle_reviewers/test_evidence.py",
+   "rule": "test-sample-data",
+   "target_count": 14,
+   "targets": [
+    {
+     "kind": "root",
+     "target": "docs/"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/**/*.md"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/.gitattributes"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/a/b/guide.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/a/conf.yaml"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/agent/overview.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/benchmarks/tpc-h.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/development/result-validation.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/gen.py"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/gitattributes.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/guide.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/guide/page.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/index.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "root": 1,
+    "unresolved": 3
+   },
+   "occurrences": 9,
+   "path": "tests/unit/scripts/oracle_reviewers/test_local_review.py",
+   "rule": "test-sample-data",
+   "target_count": 4,
+   "targets": [
+    {
+     "kind": "root",
+     "target": "docs/"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/agent/overview.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/guide.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/plain.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
     "pattern": 1
    },
    "occurrences": 1,
@@ -3312,6 +3428,27 @@
     {
      "kind": "root",
      "target": "docs/"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1,
+    "unresolved": 1
+   },
+   "occurrences": 5,
+   "path": "tests/unit/scripts/oracle_reviewers/test_runner.py",
+   "rule": "test-sample-data",
+   "target_count": 2,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/guide.md"
     }
    ]
   },
@@ -4400,26 +4537,26 @@
   "dispositions": {
    "contract-replaced": 1,
    "contract-tooling": 6,
-   "fixture-data": 44,
-   "governance-stays": 8,
+   "fixture-data": 47,
+   "governance-stays": 9,
    "historical-record": 113,
    "lock-test": 8,
    "prose-link-pinned": 15,
    "site-pipeline-cutover": 4,
    "wiring-updated": 31
   },
-  "files": 230,
+  "files": 234,
   "kinds": {
    "built-url": 29042,
    "dir": 165,
    "extra": 36,
-   "file": 1398,
+   "file": 1401,
    "generated": 3,
-   "pattern": 323,
-   "root": 197,
-   "unresolved": 2048
+   "pattern": 329,
+   "root": 199,
+   "unresolved": 2071
   },
-  "references": 33212,
+  "references": 33246,
   "unclassified": 0
  }
 }
