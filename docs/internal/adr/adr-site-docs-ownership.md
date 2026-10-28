@@ -61,7 +61,7 @@ or misclassified inputs and incorrect generated boundaries.
 | `docs/README.md` | Core retains only the minimal release/version marker required by core consumers. Site owns the landing prose and tags at its own `docs/README.md`; its version token comes from `manifest.package_version`. The same relative path has different roles, not shared prose ownership. |
 | `docs/publish-*.txt` | Core retains governance records and their core assertions. Site replaces list-driven source filtering with a negative ownership guard that rejects core-only content. |
 | `docs/development/browser-duckdb-schema.sql` | Relocate the core Explorer contract to `_project/design/browser-duckdb-schema.sql` and migrate all consumers before removing the old path. It is not site prose. |
-| Core link-check ignore file | Retired: no process read it and core performs no external link check. The site keeps its own `.lychee.toml`, which already holds every pattern the file held, including the published comparison deep-link exception, so no ignore policy is weakened. |
+| Core link-check ignore file | Retired. Core exported its patterns in the doc-contracts bundle member, but the site never declared or read that field and checks links with its own `.lychee.toml`. At site commit `9a96d308e73c96ac1eae280ce52beae37ceebba7` that file holds every pattern the core file held, including the published comparison deep-link exception, and the site schema accepts bundles without the field. Core performs no external link check. |
 | `docs/operations/local-platform-provisioning.tsv` | Retain in core; user-facing references become pinned GitHub links. |
 
 Core-only operational bindings to published paths must be relocated or changed
