@@ -30435,10 +30435,15 @@
       "title": "Make POSIX shell test helpers fail closed on POSIX CI"
     },
     "windows-pr-ci-leg-20261026": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-29T18:21:31Z",
+        "generation": "150571bbc1b74745b4275222c647ae04",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Land the Windows PR test leg so POSIX-only tests fail before merge"
     },
     "windows-pr-followups-fake-codex-shim": {
