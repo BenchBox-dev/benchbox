@@ -3,6 +3,7 @@
     "update_item with an empty string clears a non-empty optional text field and records an update operation; a test covers it.",
     "A request that changes nothing still returns E_STATE."
   ],
+  "context": "\n\nTracked in the todo-db tracker as update-item-clear-context (copied 2026-10-28).",
   "description": "`update_item` with `context` set to an empty value on an item whose context is non-empty returns `E_STATE` `operation produced no state change`, so the field cannot be cleared. Observed 2026-10-21 on `oracle-local-b6-drop-in-repo-engine` (context set by mistake; restoring it to empty was refused). That item has since been dropped. Seen for `context`; other optional text fields untested.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "op": "create",
       "op_id": "64de212f503341b39cbb0ff18f617524",
       "session_id": "a4962e9a0d58442bae2ec42c3d79c405"
+    },
+    {
+      "actor": "mcp:mcp:joe@joe-mac-mini.local:34ab13de9d46f28431cba0e0",
+      "at": "2026-10-28T19:53:04Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "2bf952a589e84f7f8e13dc5905896db3",
+      "session_id": "366df14943cf412292e43b2e230cff6f"
     }
   ]
 }
