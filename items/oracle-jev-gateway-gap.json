@@ -1,6 +1,7 @@
 {
   "acceptance": [
-    "Slot-1 select classifies a real PR through a live Jev call in CI (or the Jev dependency is replaced), on the pinned omp build."
+    "Slot-1 select classifies a real PR through a live Jev call in CI (or the Jev dependency is replaced), on the pinned omp build.",
+    "Adds or updates the matching scenario in tests/integration/oracle (registered in ORACLE_SCENARIO_TESTS), proven to fail with this item's defect reintroduced; the scenario runs only the fake omp executable and fake servers, never a real omp or model-provider call."
   ],
   "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\n",
   "description": "Root cause: `omp auth-gateway stdio` builds its served catalog from chat models only, so `/v1/systemone` and `/alpha/decisions` answer 404 for every judge model. Reproduced on omp 18.9.1 and 18.12.3; no env var, config key or model id changes it. The 594 judgments in the host judgment cache came from omp's in-process judge role, which still works. Fix in the oracle cutover: `jev.py` now POSTs directly to `https://api.typesafe.ai/v1/systemone` with `TYPESAFE_API_KEY`, which the select-1 job already holds. Verified with a live call returning answers. Remaining upstream issue: the omp gateway should serve judge-kind models.",
@@ -47,6 +48,14 @@
       "op": "update",
       "op_id": "efecca72d6e0420b9bb3b154162af125",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:mcp:joe@joe-mac-mini.local:4d1c216a121363560797b702",
+      "at": "2026-10-28T17:18:17Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "06494b76f53a4f7b84455f32cc42d1f4",
+      "session_id": "f2ea81a526d74429861bc01fff72f167"
     }
   ]
 }
