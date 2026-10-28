@@ -2,7 +2,8 @@
   "acceptance": [
     "Identify why muse skips files it was asked to cover and whether reruns, a file cap or brief ordering is the cause.",
     "Make a retry path that actually reruns the reviewer on the same head (or document the exact trigger).",
-    "Report which reviewers are required and alert when quota or availability leaves none."
+    "Report which reviewers are required and alert when quota or availability leaves none.",
+    "Adds or updates the matching scenario in tests/integration/oracle (registered in ORACLE_SCENARIO_TESTS), proven to fail with this item's defect reintroduced; the scenario runs only the fake omp executable and fake servers, never a real omp or model-provider call."
   ],
   "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\n\n\noracle-response-evidence-secrets-20261021 disables read summarization and preserves bounded useful read traces without reducing required-file evidence. Broad large-diff coverage/capacity acceptance remains here. No closure implied.",
   "description": "On PR #3139 the muse reviewer finished 'incomplete' because it did not examine eight workflow files, and the other reviewers were unavailable (OpenAI quota exhausted, same-family skip, diff over the agy brief cap). The verdict stayed pending and the PR could only merge through a stand-in. A /oracle-review comment started no new run. Large soundness-path diffs will hit this again.",
@@ -51,6 +52,14 @@
       "op": "update",
       "op_id": "6a3068976f3c43b68611872fb22f72cf",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:mcp:joe@joe-mac-mini.local:4d1c216a121363560797b702",
+      "at": "2026-10-28T17:19:03Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "f8bc8dc2d11242158fd7370fc20afd0a",
+      "session_id": "f2ea81a526d74429861bc01fff72f167"
     }
   ]
 }
