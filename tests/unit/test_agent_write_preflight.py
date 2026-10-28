@@ -648,6 +648,9 @@ def test_agent_identity_lists_match_the_instruction_audit() -> None:
     assert audit.SIGNING_SERVICE_EMAILS <= audit.AGENT_EMAILS
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="requires POSIX symlinks and ps; ownership is not enforced on Windows"
+)
 def test_preflight_claims_ownership_through_uv_when_python3_is_not_on_path(tmp_path: Path) -> None:
     import shutil
     import sys
@@ -720,6 +723,7 @@ def test_preflight_claims_ownership_through_uv_when_python3_is_not_on_path(tmp_p
     assert record.read_text(encoding="utf-8").startswith("run --no-project -- python")
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="session ownership is explicitly not enforced on Windows")
 def test_preflight_refuses_second_live_session_even_with_main_clone_override(tmp_path: Path) -> None:
     primary = _init_clone(tmp_path / "BenchBox primary")
     linked = primary.parent / ".tmp-preflight-two-sessions"

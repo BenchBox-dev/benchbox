@@ -85,6 +85,8 @@ by the first set of `PI_SESSION_ID`, `CLAUDE_CODE_SESSION_ID`, `CLAUDE_SESSION_I
 start time of the harness process, in `--worktree` Git config. A second session is refused while
 the recorded process is alive; a dead pid or a pid with a different start time counts as stale and
 is replaced. No wall-clock age is used. Runs without any session variable (humans) skip the guard.
+On Windows, or when `ps` cannot identify a long-lived harness process, the guard prints a warning
+and records nothing rather than recording a claim that would go stale immediately.
 
 ```bash
 make worktree-session-release WORKTREE_PATH="$WORKTREE_PATH"

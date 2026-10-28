@@ -25,6 +25,8 @@ def _git(cwd: Path, *args: str) -> None:
 
 @pytest.fixture
 def worktree(tmp_path: Path) -> Path:
+    if sys.platform == "win32":
+        pytest.skip("session ownership is explicitly not enforced on Windows")
     repo = tmp_path / "repo"
     repo.mkdir()
     _git(repo, "init", "-q")
@@ -200,10 +202,31 @@ def test_live_owner_is_not_replaced_when_process_start_cannot_be_read(worktree, 
     meta.claim_worktree(worktree)
 
     _as_session(monkeypatch, "session-b", 1)
-    monkeypatch.setattr(meta, "process_start", lambda pid: None)
+    real_process_start = meta.process_start
+    monkeypatch.setattr(meta, "process_start", lambda pid: None if pid == live_process.pid else real_process_start(pid))
     with pytest.raises(meta.MetadataError):
         meta.claim_worktree(worktree)
 
     live_process.kill()
     live_process.wait()
     assert meta.claim_worktree(worktree) == "taken-over"
+
+
+def test_claim_without_a_long_lived_harness_warns_and_records_nothing(worktree, monkeypatch, capsys):
+    for name in meta.SESSION_ENV_VARS:
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("PI_SESSION_ID", "session-a")
+    monkeypatch.setattr(meta, "_ps_field", lambda pid, field: None)
+
+    assert meta.claim_worktree(worktree) == "unverifiable"
+    assert "NOT recorded" in capsys.readouterr().err
+    assert meta._get_worktree_config("owner-session", worktree) is None
+
+
+def test_claim_is_reported_unsupported_where_flock_is_missing(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("PI_SESSION_ID", "session-a")
+    monkeypatch.setattr(meta, "fcntl", None)
+
+    assert meta.claim_worktree(tmp_path) == "unsupported"
+    assert meta.release_session_claim(tmp_path) == "unsupported"
+    assert "not enforced" in capsys.readouterr().err

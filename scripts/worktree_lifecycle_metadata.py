@@ -20,10 +20,6 @@ try:
 except ImportError:
     fcntl = None
 
-try:
-    import msvcrt
-except ImportError:
-    msvcrt = None
 
 CLI_DESCRIPTION = (
     "Minimal durable lifecycle metadata for BenchBox disposable worktrees.\n"
@@ -75,6 +71,17 @@ WRAPPER_COMMANDS = {
     "xargs",
     "git",
     "pre-commit",
+    "timeout",
+    "sudo",
+    "nohup",
+    "setsid",
+    "script",
+    "time",
+    "nice",
+    "caffeinate",
+    "direnv",
+    "npm",
+    "npx",
 }
 
 
@@ -105,9 +112,9 @@ def process_start(pid: int) -> Optional[str]:
     return _ps_field(pid, "lstart")
 
 
-def harness_pid() -> int:
+def harness_pid() -> Optional[int]:
     pid = os.getppid()
-    outermost = pid
+    outermost: Optional[int] = None
     while pid > 1:
         comm = _ps_field(pid, "comm")
         if comm is None:
@@ -124,8 +131,6 @@ def harness_pid() -> int:
 
 
 def _pid_may_exist(pid: int) -> bool:
-    if sys.platform == "win32":
-        return True
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
@@ -151,30 +156,31 @@ def _clear_owner(worktree_path: Path) -> None:
         _run_git(["config", "--worktree", "--unset", f"{CONFIG_PREFIX}.{key}"], worktree_path)
 
 
+def _guard_supported() -> bool:
+    if fcntl is not None and sys.platform != "win32":
+        return True
+    print(
+        "warning: worktree session ownership is not enforced on this platform (needs POSIX ps and flock).",
+        file=sys.stderr,
+    )
+    return False
+
+
 @contextlib.contextmanager
 def _worktree_lock(worktree_path: Path) -> Iterator[None]:
     git_dir = _run_git(["rev-parse", "--absolute-git-dir"], worktree_path).stdout.strip()
     if not git_dir:
         raise MetadataError(f"Path is not a valid git worktree: {worktree_path}")
-    if fcntl is None and msvcrt is None:
-        raise MetadataError("No inter-process file locking is available on this platform; cannot claim worktree.")
     with open(Path(git_dir) / "benchbox-owner.lock", "a+b") as lock:
-        if fcntl is not None:
-            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
-        else:
-            lock.seek(0)
-            msvcrt.locking(lock.fileno(), msvcrt.LK_LOCK, 1)
-        try:
-            yield
-        finally:
-            if msvcrt is not None and fcntl is None:
-                lock.seek(0)
-                msvcrt.locking(lock.fileno(), msvcrt.LK_UNLCK, 1)
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        yield
 
 
 def claim_worktree(worktree_path: Path, takeover: bool = False) -> str:
     if current_session_id() is None:
         return "no-session"
+    if not _guard_supported():
+        return "unsupported"
     with _worktree_lock(worktree_path):
         return _claim_locked(worktree_path, takeover)
 
@@ -208,13 +214,17 @@ def _claim_locked(worktree_path: Path, takeover: bool) -> str:
         return "renewed"
 
     pid = harness_pid()
-    start = process_start(pid)
+    start = process_start(pid) if pid is not None else None
+    if pid is None or start is None:
+        print(
+            "warning: could not identify a long-lived harness process (is `ps` available?); "
+            "worktree ownership was NOT recorded and is not enforced for this run.",
+            file=sys.stderr,
+        )
+        return "unverifiable"
     _set_worktree_config("owner-session", session, worktree_path)
     _set_worktree_config("owner-pid", str(pid), worktree_path)
-    if start:
-        _set_worktree_config("owner-pid-start", start, worktree_path)
-    else:
-        _run_git(["config", "--worktree", "--unset", f"{CONFIG_PREFIX}.owner-pid-start"], worktree_path)
+    _set_worktree_config("owner-pid-start", start, worktree_path)
     _set_worktree_config("owner-claimed-at", datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), worktree_path)
     if not owner:
         return "claimed"
@@ -222,6 +232,8 @@ def _claim_locked(worktree_path: Path, takeover: bool) -> str:
 
 
 def release_session_claim(worktree_path: Path, force: bool = False) -> str:
+    if not _guard_supported():
+        return "unsupported"
     with _worktree_lock(worktree_path):
         return _release_locked(worktree_path, force)
 
