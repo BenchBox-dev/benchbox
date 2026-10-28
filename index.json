@@ -16332,15 +16332,10 @@
       "title": "Give two identical reviewer findings distinct defect ids so a follow-up never receives duplicate prior ids"
     },
     "oracle-e2e-scenario-harness-and-mutation-gate-20261027": {
-      "claim": {
-        "expires_at": "2026-10-29T19:18:05Z",
-        "generation": "d408aa64b01b4292a3ca2143899fc312",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
-      },
+      "claim": null,
       "needs": [],
       "priority": "critical",
-      "status": "active",
+      "status": "done",
       "title": "Test the oracle review process end to end with real scenarios, and prove the tests are not vacuous with mutation testing"
     },
     "oracle-evidence-crediting-20261021": {
