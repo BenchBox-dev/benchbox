@@ -16569,12 +16569,17 @@
       "title": "Stop a relocated first hunk from keeping its SHIP when it has no function heading or a repeated heading"
     },
     "oracle-invalid-attempt-jev-recovery-20261027": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-29T17:07:54Z",
+        "generation": "bc9c38b474dc4725938b372c30bb813b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [
         "oracle-concedes-skeleton-boolean-20261027"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Classify each invalid reviewer attempt with Jev as retry, stop or escalate"
     },
     "oracle-jev-gateway-gap": {
