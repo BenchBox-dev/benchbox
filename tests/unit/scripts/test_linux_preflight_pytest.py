@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import os
+import platform
 import subprocess
 from pathlib import Path
 
 import pytest
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.fast,
+    pytest.mark.skipif(os.name == "nt", reason="exercises a bash script"),
+]
 
 SCRIPT = Path(__file__).resolve().parents[3] / "scripts" / "linux_preflight_pytest.sh"
 
@@ -30,7 +35,7 @@ def _fake_container(tmp_path: Path, machines: str) -> str:
     return f"{bin_dir}:/usr/bin:/bin"
 
 
-@pytest.mark.skipif(os.uname().sysname != "Linux", reason="Linux host only")
+@pytest.mark.skipif(platform.system() != "Linux", reason="Linux host only")
 def test_linux_host_reports_tests_already_ran_without_warning(tmp_path: Path) -> None:
     result = _run(tmp_path, path="/usr/bin:/bin")
 
@@ -39,7 +44,7 @@ def test_linux_host_reports_tests_already_ran_without_warning(tmp_path: Path) ->
     assert "already ran on Linux" in result.stdout
 
 
-@pytest.mark.skipif(os.uname().sysname == "Linux", reason="non-Linux hosts only")
+@pytest.mark.skipif(platform.system() == "Linux", reason="non-Linux hosts only")
 def test_missing_container_warns_and_succeeds(tmp_path: Path) -> None:
     result = _run(tmp_path, path="/usr/bin:/bin")
 
@@ -47,7 +52,7 @@ def test_missing_container_warns_and_succeeds(tmp_path: Path) -> None:
     assert "Linux not verified" in result.stderr
 
 
-@pytest.mark.skipif(os.uname().sysname != "Darwin" or os.uname().machine != "arm64", reason="Apple silicon only")
+@pytest.mark.skipif(platform.system() != "Darwin" or platform.machine() != "arm64", reason="Apple silicon only")
 def test_missing_machine_warns_with_setup_steps_and_succeeds(tmp_path: Path) -> None:
     result = _run(tmp_path, path=_fake_container(tmp_path, "other-machine"))
 

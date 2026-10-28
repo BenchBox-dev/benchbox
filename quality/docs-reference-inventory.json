@@ -4214,7 +4214,7 @@
    "kinds": {
     "unresolved": 1
    },
-   "occurrences": 2,
+   "occurrences": 3,
    "path": "tests/unit/scripts/test_preflight_targets.py",
    "rule": "test-sample-data",
    "target_count": 1,
@@ -4507,9 +4507,9 @@
    "generated": 3,
    "pattern": 329,
    "root": 196,
-   "unresolved": 2074
+   "unresolved": 2075
   },
-  "references": 33245,
+  "references": 33246,
   "unclassified": 0
  }
 }
