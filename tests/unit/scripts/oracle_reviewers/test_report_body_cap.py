@@ -66,3 +66,51 @@ def test_a_body_that_fits_is_left_untouched(policy: Policy, tmp_path: Path) -> N
     assert final.review is not None
     assert "Size limit" not in final.review["body"] and report.TRUNCATED not in final.review["body"]
     assert "x" * 400 in final.review["body"]
+
+
+def test_enormous_line_numbers_are_clamped_and_the_finding_is_kept() -> None:
+    from _project.scripts.oracle_reviewers import verdict
+
+    huge = 10**4000
+    found = verdict._finding(
+        {"severity": "High", "file": "a/b.py", "line": huge, "end_line": huge + 5, "title": "t", "detail": "d"}
+    )
+    assert found.line == verdict.MAX_LINE and found.end_line is None
+    ranged = verdict._finding(
+        {"severity": "High", "file": "a/b.py", "line": 3, "end_line": huge, "title": "t", "detail": "d"}
+    )
+    assert (ranged.line, ranged.end_line) == (3, verdict.MAX_LINE)
+
+
+def test_a_review_with_thousand_digit_line_numbers_still_fits_and_lists_every_defect(
+    policy: Policy, tmp_path: Path
+) -> None:
+    findings = [
+        {**finding, "line": 10**3000 + index, "end_line": 10**3000 + index + 7}
+        for index, finding in enumerate(_big(15, outside=5))
+    ]
+    final = _final(policy, tmp_path, _follow_up_plan(policy), _v("S" * 4000, findings))
+    assert final.review is not None
+    body = final.review["body"]
+    assert len(body) <= GITHUB_LIMIT
+    for index in range(15):
+        assert f"Distinct problem number {index}" in body
+    assert protocol.decode_marker(body) == _record(final)
+
+
+@pytest.mark.parametrize("harness", ["text", "omp", "claude"])
+def test_a_number_beyond_the_integer_conversion_limit_is_invalid_reviewer_output(harness: str) -> None:
+    from _project.scripts.oracle_reviewers import verdict
+
+    text = '{"status": "complete", "line": ' + "9" * 5000 + "}"
+    with pytest.raises(verdict.VerdictError, match="not JSON"):
+        verdict.parse_output(harness, text)
+
+
+@pytest.mark.parametrize("harness", ["text", "claude"])
+def test_a_duplicate_key_in_the_reviewer_output_is_rejected_not_retried_as_a_stream(harness: str) -> None:
+    from _project.scripts.oracle_reviewers import verdict
+
+    text = '{"type": "result", "structured_output": {"decision": "DO_NOT_SHIP", "decision": "SHIP"}}'
+    with pytest.raises(verdict.VerdictError, match="duplicate JSON object key"):
+        verdict.parse_output(harness, text)
