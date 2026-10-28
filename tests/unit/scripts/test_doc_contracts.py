@@ -224,9 +224,6 @@ def test_publication_facts_agree_with_the_publish_lists(contracts: dict[str, Any
     publication = contracts["publication"]
     assert set(publication["allowlist"]) <= set(publication["gated_pages"])
     assert {"agent", "internal"} <= set(publication["excluded_roots"])
-    assert all(publication["linkcheck_ignore_patterns"])
-    for pattern in publication["linkcheck_ignore_patterns"]:
-        re.compile(pattern)
 
 
 def test_ownership_facts_match_the_manifest(contracts: dict[str, Any]) -> None:
@@ -268,7 +265,6 @@ def _exporter_inputs(contracts: dict[str, Any]) -> set[str]:
         doc_contracts.OWNERSHIP,
         doc_contracts.PUBLISH_ALLOWLIST,
         doc_contracts.PUBLISH_EXCLUSIONS,
-        doc_contracts.LINKCHECK_IGNORE,
         doc_contracts.SCHEMA_PATH,
         ROOT / "pyproject.toml",
         ROOT / "scripts/doc_contracts.py",

@@ -30,7 +30,6 @@ RUN_SURFACE = ROOT / "quality/mcp-run-surface.json"
 OWNERSHIP = ROOT / "quality/docs-ownership.json"
 PUBLISH_ALLOWLIST = ROOT / "docs/publish-allowlist.txt"
 PUBLISH_EXCLUSIONS = ROOT / "docs/publish-exclusions.txt"
-LINKCHECK_IGNORE = ROOT / "docs/linkcheck_ignore.txt"
 PUBLISH_LIST_ROOTS = ("development", "operations")
 SF1_DOCUMENTED_WITHOUT_GENERATION = ("ai_primitives", "metadata_primitives")
 SUPPORT_STATUSES = ("stable", "beta", "experimental", "repo_only", "deprecated", "document_only")
@@ -521,7 +520,6 @@ def _publication() -> dict[str, Any]:
         "exclusions": sorted(exclusions),
         "excluded_roots": sorted(entry.rstrip("/") for entry in exclusions if entry.endswith("/")),
         "gated_pages": gated,
-        "linkcheck_ignore_patterns": _read_list(LINKCHECK_IGNORE),
     }
 
 

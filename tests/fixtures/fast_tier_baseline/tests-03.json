@@ -7668,10 +7668,6 @@
     "p50_seconds": 0.069992
   },
   {
-    "id": "tests/unit/docs/test_linkcheck_ignore_policy.py::test_compare_deep_link_exception_does_not_mask_other_live_routes[https://benchbox.dev/results/compare]",
-    "p50_seconds": 0.014606
-  },
-  {
     "id": "tests/unit/docs/test_publish_policy.py::test_lists_have_no_duplicates_and_do_not_overlap",
     "p50_seconds": 0.014012
   },

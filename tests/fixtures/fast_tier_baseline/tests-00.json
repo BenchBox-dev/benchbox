@@ -7868,10 +7868,6 @@
     "p50_seconds": 0.104976
   },
   {
-    "id": "tests/unit/docs/test_linkcheck_ignore_policy.py::test_compare_deep_link_exception_matches_published_receipts",
-    "p50_seconds": 0.015073
-  },
-  {
     "id": "tests/unit/docs/test_platform_option_examples.py::test_platformless_examples_name_a_current_option",
     "p50_seconds": 0.02645
   },

@@ -46,7 +46,6 @@ def ownership_repo(tmp_path: Path) -> tuple[Path, dict[str, Any]]:
         "docs/operations/local-platform-provisioning.tsv": "core-only",
         "docs/publish-allowlist.txt": "core-only",
         "docs/publish-exclusions.txt": "core-only",
-        "docs/linkcheck_ignore.txt": "core-only",
         "docs/guides/moved.md": "site-owned",
         file_outputs[0]: "core-generated",
     }

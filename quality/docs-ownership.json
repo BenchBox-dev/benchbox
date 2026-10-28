@@ -234,7 +234,6 @@
     "docs/internal/transactional-benchmark-alignment.md": "core-only",
     "docs/internal/uat-release-campaign.md": "core-only",
     "docs/internal/unified_frame_any_survey.md": "core-only",
-    "docs/linkcheck_ignore.txt": "core-only",
     "docs/operations/ci-local-parity.md": "site-owned",
     "docs/operations/concurrency-proof-matrix.md": "site-owned",
     "docs/operations/fast-lane-budget.md": "site-owned",
@@ -485,14 +484,6 @@
       "core_destination": "docs/",
       "site_destination": null,
       "action": "retain-core-controls-use-site-negative-ownership-guard"
-    },
-    "linkcheck_policy": {
-      "sources": [
-        "docs/linkcheck_ignore.txt"
-      ],
-      "core_destination": null,
-      "site_destination": ".lychee.toml",
-      "action": "migrate-ignore-policy-to-site-lychee"
     },
     "operations_inventory": {
       "sources": [

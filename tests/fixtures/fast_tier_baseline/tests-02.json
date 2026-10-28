@@ -7924,14 +7924,6 @@
     "p50_seconds": 0.015638
   },
   {
-    "id": "tests/unit/docs/test_linkcheck_ignore_policy.py::test_compare_deep_link_exception_does_not_mask_other_live_routes[https://benchbox.dev/results/compare?ids=e3aaa125,not-an-id]",
-    "p50_seconds": 0.01478
-  },
-  {
-    "id": "tests/unit/docs/test_linkcheck_ignore_policy.py::test_compare_deep_link_exception_does_not_mask_other_live_routes[https://benchbox.dev/results/compare?ids=e3aaa125]",
-    "p50_seconds": 0.014404
-  },
-  {
     "id": "tests/unit/docs/test_platform_option_examples.py::test_every_documented_platform_option_is_accepted",
     "p50_seconds": 0.049988
   },

@@ -12,7 +12,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 OWNERS = {"site-owned", "core-only", "core-generated"}
 LANDING_SOURCE = "docs/README.md"
-TRANSITION_KEYS = {"readme_landing", "sql_contract", "publication_controls", "linkcheck_policy", "operations_inventory"}
+TRANSITION_KEYS = {"readme_landing", "sql_contract", "publication_controls", "operations_inventory"}
 GENERATOR_ROOTS = ("scripts", "_project")
 
 
