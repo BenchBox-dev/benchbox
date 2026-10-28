@@ -277,7 +277,12 @@ session_release_worktree() {
     force_args="--force"
   fi
 
-  python3 "$script_dir/worktree_lifecycle_metadata.py" session-release --worktree-path "$target" $force_args
+  py_runner="python3"
+  if command -v uv >/dev/null 2>&1; then
+    py_runner="uv run --no-project -- python"
+  fi
+
+  $py_runner "$script_dir/worktree_lifecycle_metadata.py" session-release --worktree-path "$target" $force_args
 }
 
 finish_worktree() {
