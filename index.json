@@ -9099,18 +9099,13 @@
       "title": "Relocate the Explorer SQL schema contract out of published docs"
     },
     "docs-mig-core-removal": {
-      "claim": {
-        "expires_at": "2026-10-29T00:28:29Z",
-        "generation": "9a27d978c37145d7ab1f73445b01f117",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
-      },
+      "claim": null,
       "needs": [
         "docs-mig-site-import",
         "docs-mig-site-bundle-schema5"
       ],
       "priority": "critical",
-      "status": "active",
+      "status": "done",
       "title": "Remove relocated sources and retire the old bundle members"
     },
     "docs-mig-final-verification": {
