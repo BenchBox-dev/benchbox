@@ -40,7 +40,7 @@ from . import (
 )
 from .absence import ERROR, Absence, published_detail
 from .brief import write_private
-from .classifier import ChangedFile, matching, soundness_scope
+from .classifier import ChangedFile, SoundnessScope, matching, soundness_scope
 from .classify import Classification, classify_diff
 from .diff import binary_files, binary_notice_count, commentable_lines, select_files
 from .evidence import is_binary_candidate
@@ -404,6 +404,14 @@ def command_plan(args: argparse.Namespace) -> int:
         plan["decision_reason"] = "the head moved while the plan read it; its own run reviews it"
         return _finish_plan(out_dir, plan)
     scope = soundness_scope(files, policy.classifier, _soundness_predicate())
+    if not scope.soundness and len(files) < int(pull.get("changed_files") or 0):
+        scope = SoundnessScope(
+            True,
+            (f"the changed-file listing is incomplete: {len(files)} of {pull['changed_files']} files",),
+            tuple(sorted({path for item in files for path in item.paths})),
+            (),
+            (),
+        )
     plan["scope_paths"] = list(scope.paths)
     plan["gate_paths"] = list(scope.gate_paths)
     plan["scope_reasons"] = list(scope.reasons)

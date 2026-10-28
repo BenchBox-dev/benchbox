@@ -202,6 +202,10 @@ machine-read documents in scope (exemptions minus machine-read exceptions). The
 consumers (`oracle_review_check.py`, the reviewer classifier,
 `coverage_test_selection.py`) read the manifest through
 `_project/scripts/inert_paths.py`; soundness and gate paths take precedence.
+The gate machinery, including `oracle-gate.yml` and `oracle_gate.py`, is listed
+in `classifier.gate_paths`, so changing it is always classed as a gate change. When the changed-file listing is shorter
+than the pull's changed-file count (GitHub caps it at 3000), the plan never
+declares the change exempt: it reviews the listed files and notes the gap.
 `.github/path-filters.yml` does not read it: its `code-ci` list hand-maintains
 the machine-read documents routed to code CI.
 
@@ -343,7 +347,12 @@ does a defect marked fixed on an unchanged patch, so only evidenced dispositions
 leave the open list; withdrawals are reported separately as never defects. Every
 disposition and its evidence is published under its finding in the review body;
 if the body would exceed the cap, finding details shrink first and no
-disposition line is dropped.
+disposition line is dropped. A citation is a repository-relative path then
+`:line`, and the path may be hidden (`.github/...`) or extensionless
+(`Makefile`); it verifies only when that exact path was read at the head commit.
+An override note the oracle appends to a disposition's evidence survives the
+artifact replay: replayed evidence may exceed the reviewer's 1000-character cap
+by up to 1000 characters, and the published body still shrinks to its cap.
 
 A thread reply is a keyed dispute only if it is from an owner, member or
 collaborator other than the oracle bot, has a line starting `Dispute:` stating

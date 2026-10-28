@@ -247,3 +247,29 @@ def test_gateway_clients_refuse_a_repeated_client_name(tmp_path: Path) -> None:
     with pytest.raises(SystemExit, match="duplicate gateway client name oracle-local"):
         cli.main([*argv, "--client", "oracle-local=a", "--client", "oracle-local=b"])
     assert not (tmp_path / "clients.json").exists()
+
+
+def _gate_machinery_files() -> list[str]:
+    declared = [
+        line.split("\t", 1)[1]
+        for line in (REPO_ROOT / ".github" / "soundness-paths.txt").read_text(encoding="utf-8").splitlines()
+        if line.startswith("file\t") and "oracle" in line and not line.split("\t", 1)[1].startswith("tests/")
+    ]
+    on_disk = [
+        path.relative_to(REPO_ROOT).as_posix()
+        for pattern in (".github/workflows/oracle-*.yml", "_project/scripts/oracle_gate.py")
+        for path in REPO_ROOT.glob(pattern)
+    ]
+    return sorted({*declared, *on_disk})
+
+
+@pytest.mark.parametrize("path", _gate_machinery_files())
+def test_every_gate_machinery_file_is_classified_as_gate(policy: Policy, path: str) -> None:
+    assert (REPO_ROOT / path).is_file()
+    assert matching([path], policy.classifier.gate_paths) == [path]
+
+
+def test_gate_machinery_discovery_includes_the_gate_workflow_and_entrypoint() -> None:
+    found = _gate_machinery_files()
+    assert ".github/workflows/oracle-gate.yml" in found
+    assert "_project/scripts/oracle_gate.py" in found
