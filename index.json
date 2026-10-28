@@ -9163,10 +9163,15 @@
       "title": "Check docs/operations/guards-fix.md for targets removed with the compat generators"
     },
     "docs-mig-followup-published-links-inventory-and-edit-links-20261028": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-29T13:39:15Z",
+        "generation": "bf440807a1c640219d0204f05f19b01b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Resolve the 17 allowlisted broken published links and verify generated edit links"
     },
     "docs-mig-followup-schema5-generator-regression-guard-20261028": {
