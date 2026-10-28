@@ -6002,15 +6002,10 @@
       "title": "Corpus-drift canary reports community submissions as drift and recommends deleting them"
     },
     "corpus-hardware-aware-ranking-identity": {
-      "claim": {
-        "expires_at": "2026-10-29T02:22:15Z",
-        "generation": "4e54055dabdc4f55878a1f97f208f368",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Make ranking identity hardware/environment aware so container and native runs are distinguishable"
     },
     "corpus-has-no-recency-or-staleness-signal": {
