@@ -81,12 +81,13 @@ in every review:
   gone. Survivors are killed and the run fails closed.
 - C3 no secret in a script: no `run:` block names `secrets.*` or
   `github.token`.
-- C4 disk scan: the exact TypeSafe key and job token, and the job token's
-  basic-auth header form, must not appear under
+- C4 disk scan: the exact TypeSafe key, Tailscale OAuth secret and job token,
+  and their basic-auth header forms, must not appear under
   `$HOME`, `$RUNNER_TEMP`, either checkout, `/tmp`, `/var/tmp`, `/dev/shm`
-  or `${TMPDIR:-/tmp}`, before the reviewer and after the loop. These are
-  declared scratch roots, not all readable files. Nested roots are deduplicated
-  and symlinks are not followed. Values come from the scanning step's environment.
+  or `${TMPDIR:-/tmp}`, before the reviewer, after the tailnet join and after
+  the loop. These are declared scratch roots, not all readable files. Nested
+  roots are deduplicated and symlinks are not followed. Values come from the
+  scanning step's environment.
 - C5 redaction completeness: after the loop, a step holding every secret value
   the job held redacts the attempt and result files and fails if a value
   remains in clear or control-split form. The loop step cannot hold those
@@ -102,7 +103,7 @@ in every review:
 - C9 cancellation: the top-level concurrency expression and
   `cancel-in-progress` are unchanged; a cancelled run posts nothing.
 - C10 the App token is minted last: the only step that references
-  `ORACLE_APP_PRIVATE_KEY` runs after the loop, the second disk scan and C5.
+  `ORACLE_APP_PRIVATE_KEY` runs after the loop, the last disk scan and C5.
 
 The union of the permissions the old jobs held means every trusted step in the
 job now holds posting and dispatch authority. The model never receives the job

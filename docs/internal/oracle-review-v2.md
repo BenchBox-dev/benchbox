@@ -31,7 +31,7 @@ absent, pending or failed oracle decision does not pass on its own.
    - `ORACLE_APP_ID`, `ORACLE_APP_PRIVATE_KEY`: only the `review` job's `Mint
      the App token` step, after the attempt loop and the redaction check.
    - `TYPESAFE_API_KEY`: only the classify step (TypeSafe's Jev model classifies
-     the change), the two disk scans and the redaction step.
+     the change), the three disk scans and the redaction step.
    - `ORACLE_GATEWAY_TOKEN`, `ORACLE_GATEWAY_URL`: the reviewer's client token
      for the credential gateway and the gateway's HTTPS URL, held by the attempt
      loop and the redaction step. No provider key, broker URL, broker token or
@@ -175,7 +175,7 @@ one-time inspection:
 | C7 token scope | Job permissions are exactly `actions: write`, `contents: read`, `pull-requests: read`; no `id-token`, and the isolation step fails if `ACTIONS_ID_TOKEN_REQUEST_TOKEN` is present. `github.token` appears only in the `env:` of steps before or after the loop; both checkouts use `persist-credentials: false`. |
 | C8 timeout budget | `timeout-minutes` is `max_attempts` times the longest reviewer `timeout_minutes` plus setup, under 360; the harness timeout fires first and becomes an absence. A workflow test recomputes it from the policy. |
 | C9 cancellation | `cancel-in-progress` is true only for `pull_request_target`; comment, dispatch and sweep runs wait behind a run in flight, one waiting run per concurrency group, and a newer waiting run replaces the older one, which GitHub cancels. Posting steps keep the default success condition, so a cancelled run posts nothing. |
-| C10 App mint last | `ORACLE_APP_PRIVATE_KEY` is referenced by the review job's posting mint, after the loop, second disk scan and redaction check, and by the sweep job's failure-status mint; the sweep job runs no reviewer, so its mint cannot leak to one. |
+| C10 App mint last | `ORACLE_APP_PRIVATE_KEY` is referenced by the review job's posting mint, after the loop, last disk scan and redaction check, and by the sweep job's failure-status mint; the sweep job runs no reviewer, so its mint cannot leak to one. |
 
 Redaction is accident hygiene, not a control: it matches literal and
 control-split values, so an encoding defeats it. The loop environment holds the
