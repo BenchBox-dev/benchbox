@@ -261,6 +261,17 @@ def test_repo_changelog_has_no_untagged_released_section_on_this_branch():
     assert ok, f"CHANGELOG.md claims untagged version(s): {untagged}"
 
 
+@pytest.mark.parametrize("branch", ["develop", "chore/release-prep-0.3.1", None])
+@pytest.mark.parametrize(("project_version", "expected"), [("0.3.1", []), ("0.3.2", ["0.3.1"])])
+def test_tag_claims_exempt_only_the_prepared_project_version(tmp_path, monkeypatch, branch, project_version, expected):
+    (tmp_path / "CHANGELOG.md").write_text(FIXTURE_CHANGELOG, encoding="utf-8")
+    (tmp_path / "pyproject.toml").write_text(f'[project]\nversion = "{project_version}"\n', encoding="utf-8")
+    monkeypatch.setattr(gce, "existing_tags", lambda _source: {"v0.3.0", "v0.2.1"})
+    monkeypatch.setattr(gce, "_current_branch", lambda _source: branch)
+
+    assert gce.check_tag_claims(tmp_path) == (not expected, expected)
+
+
 def test_current_branch_falls_back_to_github_head_ref(tmp_path, monkeypatch):
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     subprocess.run(
