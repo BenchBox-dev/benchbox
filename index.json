@@ -27672,6 +27672,13 @@
       "status": "done",
       "title": "Sample TPC-Havoc variant equivalence on a fourth SQL engine (ClickHouse)"
     },
+    "tpchavoc-live-cloud-variant-verification": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Run TPC-Havoc 1_v7 and the Presto-family rewrites on live Amazon Athena and Google BigQuery"
+    },
     "tpchavoc-multi-cardinality-equivalence-and-bundle-check": {
       "claim": null,
       "needs": [],
