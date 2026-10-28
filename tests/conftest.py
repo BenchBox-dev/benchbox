@@ -68,6 +68,8 @@ pytest_plugins = [
     "tests.fixtures.utility_fixtures",
     "tests.utilities.leak_detector",
     "tests.utilities.module_state_guard",
+    "tests.utilities.network_guard_plugin",
+    "tests.utilities.process_state_guard",
 ]
 
 

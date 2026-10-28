@@ -410,6 +410,11 @@ def test_main_posts_nothing_when_the_pull_request_cannot_be_fetched(monkeypatch:
         raise oracle_gate.CheckError("down")
 
     monkeypatch.setattr(oracle_gate, "fetch_pull", down)
+
+    def head_unavailable(token: str, repo: str, pr: int) -> str:
+        raise oracle_gate.CheckError("graphql down")
+
+    monkeypatch.setattr(oracle_gate, "fetch_head_oid", head_unavailable)
     posts = _record_posts(monkeypatch)
     assert oracle_gate.main(["--repo", "o/r", "--pr", "7"]) == oracle_gate.ERROR
     assert posts == []
@@ -418,6 +423,11 @@ def test_main_posts_nothing_when_the_pull_request_cannot_be_fetched(monkeypatch:
 def test_main_posts_nothing_when_the_pull_request_has_no_head(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("GITHUB_TOKEN", "token")
     monkeypatch.setattr(oracle_gate, "fetch_pull", lambda repo, pr, token: {"base": {"ref": "develop"}})
+
+    def head_unavailable(token: str, repo: str, pr: int) -> str:
+        raise oracle_gate.CheckError("graphql down")
+
+    monkeypatch.setattr(oracle_gate, "fetch_head_oid", head_unavailable)
     posts = _record_posts(monkeypatch)
     assert oracle_gate.main(["--repo", "o/r", "--pr", "7"]) == oracle_gate.ERROR
     assert posts == []

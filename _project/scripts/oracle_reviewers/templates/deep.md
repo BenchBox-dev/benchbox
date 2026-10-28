@@ -17,6 +17,21 @@ Rules:
 - Look for defects that would make a benchmark result, an expected answer, a validation verdict or a
   published number wrong or unverifiable, weaken a review or merge gate, or open a security hole.
   Ignore style.
+- Test quality is in scope when it can make a defect ship unnoticed. A changed or new test that fakes an
+  external effect by patching standard-library or third-party internals (for example urllib, socket, ssl,
+  subprocess, time, requests or an SDK client method) instead of a boundary the code under test owns (an
+  injectable URL, source, runner or function in our own module, or a real loopback server) is a defect:
+  a refactor of the code under test silently bypasses the fake and the test reaches the real network. A unit
+  or medium test that reaches a non-loopback host, or that opts out of the network guard with
+  allow_network without a reason, is also a defect. These rules apply to tests the change adds or
+  modifies, and to an untouched existing test only when the change under review bypasses its fake so that it
+  no longer verifies anything or reaches the real network.
+- Test hygiene is also a defect when a changed or new test leaves process-global state behind in the shared
+  test process: child-subreaper status (become_subreaper), waitpid(-1) or reaping children it does not own,
+  signal handlers, the working directory, environment changes made outside monkeypatch, the umask or resource
+  limits. Such code must run in a subprocess or be restored before the test ends. This too applies to tests the change adds or
+  modifies, and to an untouched existing test only when the change under review makes it leave such state
+  behind.
 
 Work in passes, in this order:
 1. Changed files. Read every changed file fully; read the highest FILE PRIORITY scores first, and skip no file.
