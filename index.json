@@ -17222,10 +17222,15 @@
       "title": "Bound sweep re-dispatch for heads with retry state and make the sweep and plan apply one retry budget"
     },
     "oracle-sweep-runs-listing-resilience-20261027": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-29T03:33:02Z",
+        "generation": "47ffac403769463292caf33b5044a1b9",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Keep the oracle sweep running when the verdict runs listing fails, without double-dispatching or hiding the failure"
     },
     "oracle-sweep-schedule-drops-most-runs-20261022": {
