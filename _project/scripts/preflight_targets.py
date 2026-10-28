@@ -21,6 +21,7 @@ ORACLE_SCENARIO_TESTS = (
     "tests/integration/oracle/test_omp_pin_scenarios.py",
     "tests/integration/oracle/test_pr_arm_scenario.py",
     "tests/integration/oracle/test_review_scenarios.py",
+    "tests/integration/oracle/test_runner_isolation_scenarios.py",
     "tests/integration/oracle/test_sweep_listing_scenarios.py",
     "tests/integration/oracle/test_sweep_liveness_scenarios.py",
     "tests/integration/oracle/test_sweep_scenarios.py",

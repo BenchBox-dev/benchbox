@@ -37,7 +37,8 @@ absent, pending or failed oracle decision does not pass on its own.
      loop and the redaction step. No provider key, broker URL, broker token or
      owner OMP config is stored for the reviewer; its model roles and fallback
      chains are committed in `.github/oracle-omp-config.yml`.
-   - `TS_OAUTH_CLIENT_ID`, `TS_AUDIENCE`: the tailnet join.
+   - `TS_OAUTH_CI_CLIENT_ID`, `TS_OAUTH_CI_SECRET`: the tailnet join (a
+     Tailscale OAuth client with Auth Keys write, tag `tag:oracle-ci`).
 4. Keep provider credentials, `CLAUDE_CODE_OAUTH_TOKEN` included, out of
    repository secrets: same-repository PR workflows can read those.
 
@@ -71,13 +72,14 @@ boundary. Do not enable OMP's `secrets.enabled`: it restores real values into
 URLs and output.
 
 The `review` job joins the tailnet once, before the attempt loop, through
-`tailscale/github-action` with GitHub's OIDC token (`id-token: write`), so no
-long-lived Tailscale secret is stored. The step runs only when
-`TS_OAUTH_CLIENT_ID` and `TS_AUDIENCE` are set. A failed join does not end the
+`tailscale/github-action` with the OAuth client secret pair, tagged
+`tag:oracle-ci`; the secret is referenced only by that step and the scans and
+redaction. The job holds no `id-token: write`. The step runs only when
+`TS_OAUTH_CI_CLIENT_ID` and `TS_OAUTH_CI_SECRET` are set. A failed join does not end the
 review; the attempt is absent.
 
 [`oracle-gateway-host.md`](oracle-gateway-host.md) covers building, checking,
-rotating and moving the gateway host, and the Tailscale OIDC credential and
+rotating and moving the gateway host, and the Tailscale OAuth client and
 tailnet policy the job needs.
 
 Without `ORACLE_APP_ID`, the job logs the result and succeeds.
@@ -160,24 +162,27 @@ assumes the runner grants no `PR_SET_PTRACER` access and the harness neither
 runs privilege-escalation tools nor changes UID or capabilities; it is no
 sandbox against arbitrary execution with the runner's sudo access. Parent step
 environments stay readable, so the loop environment holds only its gateway
-values (plus the accepted OIDC request token). Every control is permanent, not a
+values. Every control is permanent, not a
 one-time inspection:
 
 | Control | Enforced by |
 |---|---|
 | C2 total exit | After each reviewer exit, `runner.execute` lists the harness process group and, on Linux, every orphan the loop adopts as child subreaper. Survivors are killed and the run fails closed: slot absent, loop stops, job fails, nothing posts. |
 | C3 no secret in a script | The workflow test fails if any `run:` block names `secrets.*` or `github.token`; secrets reach steps only via `env:` or `with:`. |
-| C4 disk scan | Before the reviewer and after the last exit, `cli.py scan-disk` searches `$HOME`, `$RUNNER_TEMP`, both checkouts, `/tmp`, `/var/tmp`, `/dev/shm` and `${TMPDIR:-/tmp}` for the exact TypeSafe key and job token, deduplicating nested roots and following no file or directory symlinks. It covers the declared readable scratch roots, not every readable file. Values come from the step's own `env:`. A hit fails the job. |
-| C5 redaction completeness | After finalize, `cli.py redact-check` runs in a step holding every secret the job held (gateway token, TypeSafe key, gateway URL, Tailscale client ID and audience, OIDC request token, job token), redacts attempt, verdict, diagnostic, absence and result text across control-character splits, and fails if a value remains. The loop step cannot hold these: a same-user child can read its parent's environment. |
+| C4 disk scan | Before the reviewer, after the tailnet join and after the last exit, `cli.py scan-disk` searches `$HOME`, `$RUNNER_TEMP`, both checkouts, `/tmp`, `/var/tmp`, `/dev/shm` and `${TMPDIR:-/tmp}` for the exact TypeSafe key, Tailscale OAuth secret and job token, deduplicating nested roots and following no file or directory symlinks. It covers the declared readable scratch roots, not every readable file. Values come from the step's own `env:`. A hit fails the job. |
+| C5 redaction completeness | After finalize, `cli.py redact-check` runs in a step holding every secret the job held (gateway token, TypeSafe key, gateway URL, Tailscale OAuth client ID and secret, job token), redacts attempt, verdict, diagnostic, absence and result text across control-character splits, and fails if a value remains. The loop step cannot hold these: a same-user child can read its parent's environment. |
 | C6 fresh `HOME` | Each attempt gets a new `mkdtemp` directory; the previous one is deleted first and the checkout reset. |
-| C7 token scope | Job permissions are exactly `actions: write`, `contents: read`, `pull-requests: read`, `id-token: write`. `github.token` appears only in the `env:` of steps before or after the loop; both checkouts use `persist-credentials: false`. |
+| C7 token scope | Job permissions are exactly `actions: write`, `contents: read`, `pull-requests: read`; no `id-token`, and the isolation step fails if `ACTIONS_ID_TOKEN_REQUEST_TOKEN` is present. `github.token` appears only in the `env:` of steps before or after the loop; both checkouts use `persist-credentials: false`. |
 | C8 timeout budget | `timeout-minutes` is `max_attempts` times the longest reviewer `timeout_minutes` plus setup, under 360; the harness timeout fires first and becomes an absence. A workflow test recomputes it from the policy. |
 | C9 cancellation | `cancel-in-progress` is true only for `pull_request_target`; comment, dispatch and sweep runs wait behind a run in flight, one waiting run per concurrency group, and a newer waiting run replaces the older one, which GitHub cancels. Posting steps keep the default success condition, so a cancelled run posts nothing. |
 | C10 App mint last | `ORACLE_APP_PRIVATE_KEY` is referenced by the review job's posting mint, after the loop, second disk scan and redaction check, and by the sweep job's failure-status mint; the sweep job runs no reviewer, so its mint cannot leak to one. |
 
-The OIDC request token shares the gateway token's terms in the loop environment:
-GitHub documents it as valid only while the job runs, and it is redacted. The
-gateway URL is sensitive and redacted too.
+Redaction is accident hygiene, not a control: it matches literal and
+control-split values, so an encoding defeats it. The loop environment holds the
+gateway token and URL, which a same-user reviewer can read and encode-leak. The
+owner accepted that with compensating controls: the `tag:oracle-ci` ACL
+(gateway port only, tailnet-only reachability), model scope, per-client quota
+and revocation. The OAuth client secret is never in the loop environment.
 
 If any of C2 to C10 cannot pass on GitHub-hosted runners, the fallback is the
 same `review` job without posting steps, plus a separate `post` job that holds
@@ -590,7 +595,7 @@ run stays pending. A hollow answer never passes.
   gateway proxy variables only while a cloud local review has set one in-process.
   `credentials.py` `NAMES` lists that token, the broker and provider variables
   (which the loop does not receive), the runner-held values (gateway URL,
-  Tailscale client ID and audience, OIDC request token) and legacy extras, so a
+  Tailscale OAuth client ID and secret, the OIDC request token) and legacy extras, so a
   local run still holding
   them is redacted too. Values of eight or more characters are removed by exact
   match before and after every sanitising transform and before truncation,

@@ -91,9 +91,8 @@ jobs:
       actions: write
       contents: read
       pull-requests: read
-      id-token: write
     env:
-      HAS_TAILNET: ${{ secrets.TS_OAUTH_CLIENT_ID != '' && secrets.TS_AUDIENCE != '' }}
+      HAS_TAILNET: ${{ secrets.TS_OAUTH_CI_CLIENT_ID != '' && secrets.TS_OAUTH_CI_SECRET != '' }}
       HAS_APP: ${{ secrets.ORACLE_APP_ID != '' }}
       REPO: ${{ github.repository }}
     steps:
@@ -163,11 +162,12 @@ jobs:
         working-directory: trusted
         env:
           TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+          TS_OAUTH_CI_SECRET: ${{ secrets.TS_OAUTH_CI_SECRET }}
           JOB_TOKEN: ${{ github.token }}
         run: >-
           python3 -m _project.scripts.oracle_reviewers.cli scan-disk --root "$HOME" --root "$RUNNER_TEMP" --root "$GITHUB_WORKSPACE/trusted" --root "$GITHUB_WORKSPACE/workspace"
           --root /tmp --root /var/tmp --root /dev/shm --root "${TMPDIR:-/tmp}"
-          --env TYPESAFE_API_KEY --env JOB_TOKEN
+          --env TYPESAFE_API_KEY --env TS_OAUTH_CI_SECRET --env JOB_TOKEN
 
       - name: Install omp
         id: omp
@@ -188,9 +188,21 @@ jobs:
         continue-on-error: true
         uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd
         with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          audience: ${{ secrets.TS_AUDIENCE }}
+          oauth-client-id: ${{ secrets.TS_OAUTH_CI_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_CI_SECRET }}
           tags: tag:oracle-ci
+
+      - name: Scan the disk for secret values after the tailnet join
+        if: steps.plan.outputs.decision == 'review'
+        working-directory: trusted
+        env:
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+          TS_OAUTH_CI_SECRET: ${{ secrets.TS_OAUTH_CI_SECRET }}
+          JOB_TOKEN: ${{ github.token }}
+        run: >-
+          python3 -m _project.scripts.oracle_reviewers.cli scan-disk --root "$HOME" --root "$RUNNER_TEMP" --root "$GITHUB_WORKSPACE/trusted" --root "$GITHUB_WORKSPACE/workspace"
+          --root /tmp --root /var/tmp --root /dev/shm --root "${TMPDIR:-/tmp}"
+          --env TYPESAFE_API_KEY --env TS_OAUTH_CI_SECRET --env JOB_TOKEN
 
       - name: Verify Linux process isolation
         if: steps.plan.outputs.decision == 'review'
@@ -214,11 +226,12 @@ jobs:
         working-directory: trusted
         env:
           TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+          TS_OAUTH_CI_SECRET: ${{ secrets.TS_OAUTH_CI_SECRET }}
           JOB_TOKEN: ${{ github.token }}
         run: >-
           python3 -m _project.scripts.oracle_reviewers.cli scan-disk --root "$HOME" --root "$RUNNER_TEMP" --root "$GITHUB_WORKSPACE/trusted" --root "$GITHUB_WORKSPACE/workspace"
           --root /tmp --root /var/tmp --root /dev/shm --root "${TMPDIR:-/tmp}"
-          --env TYPESAFE_API_KEY --env JOB_TOKEN
+          --env TYPESAFE_API_KEY --env TS_OAUTH_CI_SECRET --env JOB_TOKEN
 
       - name: Validate this run's attempts and decide
         id: finalize
@@ -239,8 +252,8 @@ jobs:
           OMP_GATEWAY_TOKEN: ${{ secrets.ORACLE_GATEWAY_TOKEN }}
           TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
           ORACLE_GATEWAY_URL: ${{ secrets.ORACLE_GATEWAY_URL }}
-          TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          TS_AUDIENCE: ${{ secrets.TS_AUDIENCE }}
+          TS_OAUTH_CI_CLIENT_ID: ${{ secrets.TS_OAUTH_CI_CLIENT_ID }}
+          TS_OAUTH_CI_SECRET: ${{ secrets.TS_OAUTH_CI_SECRET }}
           JOB_TOKEN: ${{ github.token }}
         run: >-
           python3 -m _project.scripts.oracle_reviewers.cli redact-check --path "$RUNNER_TEMP/oracle-attempts" --path "$RUNNER_TEMP/oracle-final"

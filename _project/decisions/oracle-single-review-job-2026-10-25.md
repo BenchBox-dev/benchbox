@@ -94,7 +94,7 @@ in every review:
 - C6 fresh `HOME` per attempt, deleted before the next attempt, and a reset
   checkout.
 - C7 token scope: permissions are exactly `actions: write`, `contents: read`,
-  `pull-requests: read` and `id-token: write`; `github.token` is absent from
+  `pull-requests: read`; `github.token` is absent from
   the loop step; both checkouts use `persist-credentials: false`.
 - C8 timeout budget: `timeout-minutes` is `max_attempts` times the largest
   reviewer timeout plus a setup allowance, under 360; the harness timeout fires
@@ -110,13 +110,38 @@ token, so the blast radius grows only for bugs in trusted code.
 
 ### Redaction decisions
 
-- `ORACLE_GATEWAY_URL` is sensitive. Together with `TS_OAUTH_CLIENT_ID`,
-  `TS_AUDIENCE` and `ACTIONS_ID_TOKEN_REQUEST_TOKEN` it joins the names in
-  `credentials.py`, so every sanitising step removes its value.
-- The OIDC request token is accepted within the reviewer's read reach, as the
-  gateway token already is. This relies on GitHub's documented rule that the
-  token is valid only while the job runs, and its value is redacted. It was not
-  probed.
+- `ORACLE_GATEWAY_URL` is sensitive. Together with `TS_OAUTH_CI_CLIENT_ID`,
+  `TS_OAUTH_CI_SECRET` and `ACTIONS_ID_TOKEN_REQUEST_TOKEN` it joins the names
+  in `credentials.py`, so every sanitising step removes its value.
+- Redaction is accident hygiene, not a control. It matches the literal value
+  and control-split forms only, so any encoding defeats it. A same-user
+  reviewer can read a sibling step's `/proc/<pid>/environ`: Yama
+  `ptrace_scope` 1 blocks `/proc/<pid>/mem` but the environment needs only read
+  access to a same-user process.
+
+### Correction, 2026-10-28
+
+The earlier acceptance of the OIDC request token in the reviewer's read reach is
+withdrawn. Its premise, that redaction protects the value, was false. The
+request token is also the same value as the runner's runtime token, so a leak
+grants Actions service access for the job's lifetime.
+
+- The job no longer holds `id-token: write`; its permissions are exactly
+  `actions: write`, `contents: read` and `pull-requests: read`.
+- The tailnet join authenticates with the OAuth client secret pair
+  `TS_OAUTH_CI_CLIENT_ID` and `TS_OAUTH_CI_SECRET` (Auth Keys write, tag
+  `tag:oracle-ci`) in the join step only. The secret never appears in the
+  attempt loop's environment.
+- A disk scan covering `TS_OAUTH_CI_SECRET` runs after the join and before the
+  isolation step; both other scans and the redaction step cover it too.
+- The isolation step fails closed when `ACTIONS_ID_TOKEN_REQUEST_TOKEN` is
+  present in its environment.
+
+Accepted residual: the reviewer can read `OMP_GATEWAY_TOKEN` and the gateway
+URL from its own environment and can encode-leak them, which redaction does not
+stop. The owner accepted this with compensating controls: the `tag:oracle-ci`
+ACL (gateway port only, tailnet-only reachability), the model scope of the
+gateway client, its per-client quota and revocation.
 
 ### The dropped canary
 

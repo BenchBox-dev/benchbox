@@ -48,6 +48,7 @@ STEP_ORDER = [
     "Scan the disk for secret values before the reviewer runs",
     "Install omp",
     "Join the tailnet to reach the credential gateway",
+    "Scan the disk for secret values after the tailnet join",
     "Verify Linux process isolation",
     "Run the attempt loop",
     "Scan the disk for secret values after the reviewer exits",
@@ -71,14 +72,17 @@ REDACTION_ENV = {
     "OMP_GATEWAY_TOKEN": "${{ secrets.ORACLE_GATEWAY_TOKEN }}",
     "TYPESAFE_API_KEY": "${{ secrets.TYPESAFE_API_KEY }}",
     "ORACLE_GATEWAY_URL": "${{ secrets.ORACLE_GATEWAY_URL }}",
-    "TS_OAUTH_CLIENT_ID": "${{ secrets.TS_OAUTH_CLIENT_ID }}",
-    "TS_AUDIENCE": "${{ secrets.TS_AUDIENCE }}",
+    "TS_OAUTH_CI_CLIENT_ID": "${{ secrets.TS_OAUTH_CI_CLIENT_ID }}",
+    "TS_OAUTH_CI_SECRET": "${{ secrets.TS_OAUTH_CI_SECRET }}",
     "JOB_TOKEN": "${{ github.token }}",
 }
 SCAN_STEPS = (
     "Scan the disk for secret values before the reviewer runs",
     "Scan the disk for secret values after the reviewer exits",
 )
+JOIN_STEP = "Join the tailnet to reach the credential gateway"
+JOIN_SCAN_STEP = "Scan the disk for secret values after the tailnet join"
+ISOLATION_STEP = "Verify Linux process isolation"
 
 
 def _text_of_workflow() -> str:
@@ -169,7 +173,6 @@ def test_workflow_permissions_are_empty_and_the_review_job_holds_exactly_the_uni
         "actions": "write",
         "contents": "read",
         "pull-requests": "read",
-        "id-token": "write",
     }
     assert _jobs()["sweep"]["permissions"] == {"actions": "write", "contents": "read", "pull-requests": "read"}
     assert _review()["environment"] == "oracle"
@@ -203,8 +206,38 @@ def test_the_tailnet_is_joined_once_before_the_attempt_loop() -> None:
     join = joins[0]
     assert names.index(join["name"]) < names.index(LOOP_STEP)
     assert join["with"]["tags"] == "tag:oracle-ci"
-    assert "oauth-secret" not in join["with"] and "authkey" not in join["with"]
+    assert join["with"] == {
+        "oauth-client-id": "${{ secrets.TS_OAUTH_CI_CLIENT_ID }}",
+        "oauth-secret": "${{ secrets.TS_OAUTH_CI_SECRET }}",
+        "tags": "tag:oracle-ci",
+    }
     assert "env.HAS_TAILNET == 'true'" in join["if"]
+    assert (
+        _review()["env"]["HAS_TAILNET"]
+        == "${{ secrets.TS_OAUTH_CI_CLIENT_ID != '' && secrets.TS_OAUTH_CI_SECRET != '' }}"
+    )
+
+
+def test_the_review_job_holds_no_oidc_token_and_names_no_federated_credential() -> None:
+    text = _text_of_workflow()
+    assert "id-token" not in text
+    assert "TS_AUDIENCE" not in text
+    assert "audience" not in text
+    assert re.search(r"\bTS_OAUTH_CLIENT_ID\b", text) is None
+    assert "id-token" not in _review()["permissions"]
+
+
+def test_a_disk_scan_covering_the_oauth_secret_runs_after_the_join_and_before_isolation() -> None:
+    names = _names()
+    assert names.index(JOIN_STEP) < names.index(JOIN_SCAN_STEP) < names.index(ISOLATION_STEP) < names.index(LOOP_STEP)
+    step = _step(JOIN_SCAN_STEP)
+    assert step["if"] == "steps.plan.outputs.decision == 'review'"
+    assert "continue-on-error" not in step
+    assert "--env TS_OAUTH_CI_SECRET" in step["run"]
+
+
+def test_the_isolation_step_checks_the_request_token_through_the_module() -> None:
+    assert _step(ISOLATION_STEP)["run"] == "python3 -m _project.scripts.oracle_reviewers.isolation"
 
 
 def test_the_loop_holds_only_what_the_reviewer_holds_and_the_reviewer_home() -> None:
@@ -286,6 +319,7 @@ def test_only_the_scans_the_classifier_and_the_redaction_step_hold_the_judgment_
     assert set(_steps_referencing("TYPESAFE_API_KEY")) == {
         "Classify the change and select the reviewer for attempt 1",
         *SCAN_STEPS,
+        JOIN_SCAN_STEP,
         REDACT_STEP,
     }
     names = _names()
@@ -332,8 +366,8 @@ def test_every_secret_is_referenced_only_where_it_is_needed() -> None:
     allowed = {
         "ORACLE_GATEWAY_TOKEN": {LOOP_STEP, REDACT_STEP},
         "ORACLE_GATEWAY_URL": {LOOP_STEP, REDACT_STEP},
-        "TS_OAUTH_CLIENT_ID": {"Join the tailnet to reach the credential gateway", REDACT_STEP},
-        "TS_AUDIENCE": {"Join the tailnet to reach the credential gateway", REDACT_STEP},
+        "TS_OAUTH_CI_CLIENT_ID": {JOIN_STEP, REDACT_STEP},
+        "TS_OAUTH_CI_SECRET": {JOIN_STEP, JOIN_SCAN_STEP, *SCAN_STEPS, REDACT_STEP},
         "ORACLE_APP_ID": {"Mint the App token"},
     }
     for secret, steps in allowed.items():
@@ -362,16 +396,17 @@ def test_the_disk_scans_bracket_the_reviewer_and_cover_the_declared_scratch_root
     assert names.index(before["name"]) < names.index("Install omp") < names.index(LOOP_STEP)
     assert names.index(after["name"]) > names.index(LOOP_STEP)
     assert names.index(before["name"]) > names.index("Classify the change and select the reviewer for attempt 1")
-    for step in (before, after):
+    for step in (before, after, _step(JOIN_SCAN_STEP)):
         assert step["env"] == {
             "TYPESAFE_API_KEY": "${{ secrets.TYPESAFE_API_KEY }}",
+            "TS_OAUTH_CI_SECRET": "${{ secrets.TS_OAUTH_CI_SECRET }}",
             "JOB_TOKEN": "${{ github.token }}",
         }
         for root in ('"$HOME"', '"$RUNNER_TEMP"', '"$GITHUB_WORKSPACE/trusted"', '"$GITHUB_WORKSPACE/workspace"'):
             assert f"--root {root}" in step["run"], (step["name"], root)
         for root in ("/tmp", "/var/tmp", "/dev/shm", '"${TMPDIR:-/tmp}"'):
             assert f"--root {root}" in step["run"]
-        assert "--env TYPESAFE_API_KEY --env JOB_TOKEN" in step["run"]
+        assert "--env TYPESAFE_API_KEY --env TS_OAUTH_CI_SECRET --env JOB_TOKEN" in step["run"]
         assert "continue-on-error" not in step
 
 
@@ -457,7 +492,7 @@ TOLERATED_FAILURES = (
     "Classify the change and select the reviewer for attempt 1",
     "Join the tailnet to reach the credential gateway",
 )
-FAIL_CLOSED_STEPS = (*SCAN_STEPS, LOOP_STEP, REDACT_STEP, "Validate this run's attempts and decide")
+FAIL_CLOSED_STEPS = (*SCAN_STEPS, JOIN_SCAN_STEP, LOOP_STEP, REDACT_STEP, "Validate this run's attempts and decide")
 
 
 def test_setup_failures_become_absences_instead_of_ending_the_review() -> None:

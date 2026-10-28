@@ -5,9 +5,12 @@ import sys
 from pathlib import Path
 
 SYS_PTRACE = 1 << 19
+REQUEST_TOKEN_ENV = "ACTIONS_ID_TOKEN_REQUEST_TOKEN"
 
 
 def require_isolation(proc: Path = Path("/proc")) -> None:
+    if REQUEST_TOKEN_ENV in os.environ:
+        raise ValueError(f"{REQUEST_TOKEN_ENV} must not be present: the job must not hold id-token: write")
     if not sys.platform.startswith("linux"):
         raise ValueError("reviewer isolation requires Linux")
     if int((proc / "sys/kernel/yama/ptrace_scope").read_text(encoding="utf-8").strip()) not in (1, 2, 3):
