@@ -1056,7 +1056,8 @@ pr-preflight:
 	git fetch origin develop --quiet; \
 	PY_LIST=$$(mktemp); \
 	TEST_LIST=$$(mktemp); \
-	trap 'rm -f "$$PY_LIST" "$$TEST_LIST"' EXIT; \
+	LINUX_LIST=$$(mktemp); \
+	trap 'rm -f "$$PY_LIST" "$$TEST_LIST" "$$LINUX_LIST"' EXIT; \
 	uv run -- python _project/scripts/preflight_targets.py python --base-ref origin/develop > "$$PY_LIST"; \
 	uv run -- python _project/scripts/preflight_targets.py tests --base-ref origin/develop > "$$TEST_LIST"; \
 	if [ -s "$$PY_LIST" ]; then \
@@ -1074,6 +1075,13 @@ pr-preflight:
 	STATUS=0; \
 	env $$(env | sed -n 's/^\(GIT_[A-Za-z0-9_]*\)=.*/-u \1/p') uv run -- python -m pytest -q -n 0 --tb=short --ff $$(cat "$$TEST_LIST") || STATUS=$$?; \
 	if [ "$$STATUS" -eq 5 ]; then echo "Mapped tests are all deselected by the default markers."; STATUS=0; fi; \
+	if [ "$$STATUS" -eq 0 ]; then \
+		uv run -- python _project/scripts/preflight_targets.py linux --base-ref origin/develop > "$$LINUX_LIST"; \
+		if [ -s "$$LINUX_LIST" ]; then \
+			echo "==> Linux run (change touches platform-branching code or platform skips)"; \
+			bash scripts/linux_preflight_pytest.sh "$$LINUX_LIST" || STATUS=$$?; \
+		fi; \
+	fi; \
 	exit "$$STATUS"
 
 .PHONY: pr-preflight-fast-tests
