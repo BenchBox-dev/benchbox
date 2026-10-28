@@ -1,7 +1,8 @@
 {
   "acceptance": [
-    "A core gate checks relative links and anchors among tracked core documents, or the decision not to is recorded in the ledger with its reason. doc-external-links-fragments-20261017 is rescoped or dropped. linkcheck_ignore.txt is kept with a named consumer or removed."
+    "Core's anchor checker (docs-anchor-check-20261026) also fails on a relative link whose target path is not tracked, shown with seeded missing-file and missing-anchor cases and unit tests; the current tree passes with each excluded root named and justified. Property ledger row 'Links in published pages resolve (retired)' names the check and records that core does no external link checking and why. docs/linkcheck_ignore.txt, its lock test and the linkcheck_ignore_patterns bundle field are removed in site-first order. doc-external-links-fragments-20261017 is dropped in core."
   ],
+  "context": "Review 2026-10-28: VALID but narrowed. Baseline: 0 broken relative links in docs/ and README.md; 25 missing-file links and 3 dead anchors across all tracked Markdown (14 in _project, tests/README.md, benchbox/core/cost/README.md, examples/*). linkcheck_ignore consumer is not real: the site never reads linkcheck_ignore_patterns (.lychee.toml is a hand copy). Depends on core PR 3571 (docs-anchor-check) merging; removal of the bundle field needs site schema relaxed first (additionalProperties false).",
   "description": "Core deleted scripts/check_doc_relative_links.py and scripts/check_doc_external_links.py with the site-owned pages. The property ledger row for 'Links in published pages resolve (retired)' states that Markdown links among the pages that remain in core (docs/internal, docs/agent, docs/design, docs/platforms, docs/reference, README) have no core gate. Related open item doc-external-links-fragments-20261017 asks for fragment checking in the core external-link checker, which no longer exists, so it needs rescoping. Also check whether docs/linkcheck_ignore.txt and the linkcheck-ignore-policy lock test in quality/doc-lock-tests.json still have a consumer.",
   "sessions": [
     {
@@ -10,6 +11,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "0f967092959b4eeb88eef5096dc2a343",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-28T12:37:06Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "229c1c019fb747e1bceb92c7b7fedfa3",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
     }
   ]
