@@ -2,7 +2,8 @@
   "acceptance": [
     "A test with a few hundred changed soundness files shows the posted Tier line names at most a fixed number of paths and says how many more",
     "The review body for that plan is under a stated size",
-    "Merged through the normal PR flow with an oracle success review"
+    "Merged through the normal PR flow with an oracle success review",
+    "Adds or updates the matching scenario in tests/integration/oracle (registered in ORACLE_SCENARIO_TESTS), proven to fail with this item's defect reintroduced; the scenario runs only the fake omp executable and fake servers, never a real omp or model-provider call."
   ],
   "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\nObserved 2026-10-09 on oversize canary #2847 (oracle-verdict run 37989093375).\n\n2026-10-09 tracker review: corrected which list is long. It is the logic-path reason (classifier.py:84,94), not each soundness file. Evidence: #2847 review 5475225810 was 128,906 characters.",
   "description": "The `Tier: <tier> (<reasons>)` line in every oracle review joins `tier_reasons` (report.py:99). The logic-path reason, \"changes comparison, validation or result logic: \", lists every matching logic file (classifier.py:84,94). It is not the soundness files that are listed. On oversize canary #2847 (640 files, closed unmerged) the posted review 5475225810 was 128,906 characters, almost all of it this line. GitHub accepted it, but a body that size buries the decision, the note and the reviewer list, and it risks hitting GitHub's body limits on a larger PR.\n\nRequired change: cap the file list in the tier reason (for example, the first few paths and \"and N more\"), keeping the reason text, with a test on a many-file plan. Cap it where the reason is built (classifier.py:88 for the gate reason and :94 for the logic reason) or where it is joined (report.py:99). The plan JSON may keep the full list. Check that the status description, already cut to 140 characters, is unaffected.\n\nGuardrails. No change to how the tier is chosen. Very-high tier (reviewer package); normal oracle PR flow.",
@@ -50,6 +51,14 @@
       "op": "update",
       "op_id": "84ca398ac14945db9f48fb6136fbd6ea",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:mcp:joe@joe-mac-mini.local:4d1c216a121363560797b702",
+      "at": "2026-10-28T17:19:18Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "f1095b186bb54c26a095d918d6506000",
+      "session_id": "f2ea81a526d74429861bc01fff72f167"
     }
   ]
 }
