@@ -1084,3 +1084,15 @@ def test_an_absence_without_a_detail_loads_with_an_empty_one(policy: Policy, tmp
     data["absence"]["detail"] = None
     path.write_text(json.dumps(data), encoding="utf-8")
     assert attempts.load(tmp_path, plan, RUN_ID).attempts[0].detail == ""
+
+
+def test_an_artifact_that_is_not_utf8_is_reported_unreadable_and_finalizes_pending(
+    policy: Policy, tmp_path: Path
+) -> None:
+    plan = _plan(policy)
+    (tmp_path / "attempt-1.json").write_bytes(b"\xff\xfe\x00 not utf-8")
+    loaded, step, errors = _decide(policy, plan, tmp_path)
+    assert len(errors) == 1 and errors[0].startswith("attempt-1.json: unreadable")
+    final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, {})
+    assert final.state == "pending"
+    assert final.pending_cause == INTEGRITY
