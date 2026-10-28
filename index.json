@@ -8707,12 +8707,17 @@
       "title": "Rehearse the new release path on TestPyPI, then hand the next PyPI release to the owner"
     },
     "dlv2-52a-testpypi-rehearsal": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-29T14:00:38Z",
+        "generation": "7d778e2dad0343e3b1198e61af7e7d1f",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cbd63a5667398431c51c92e1"
+      },
       "needs": [
         "dlv2-51-release-yml-v2"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Rehearse release-v2 on TestPyPI (rc tag, hash and install verification)"
     },
     "dlv2-53-retire-legacy-release-path": {
