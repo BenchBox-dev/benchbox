@@ -6,6 +6,7 @@
 
 import datetime
 import importlib
+import re
 import shutil
 import tempfile
 import time
@@ -425,6 +426,25 @@ class TransactionPrimitivesBenchmark(TransactionalBenchmarkBase["OperationResult
             staging_heading="Transaction Primitives Staging Tables",
             get_staging_tables_sql=get_all_staging_tables_sql,
         )
+
+    _SQLITE_SERIES_RE = re.compile(
+        r"SELECT\s+unnest\(\s*generate_series\(\s*(?P<lo>[^,()]+?)\s*,\s*(?P<hi>[^,()]+?)\s*\)\s*\)\s+AS\s+(?P<alias>\w+)",
+        re.IGNORECASE,
+    )
+    _SQLITE_TYPED_DATE_RE = re.compile(r"\b(?:DATE|TIMESTAMP)\s+(?P<literal>'[^']*')", re.IGNORECASE)
+
+    def _rewrite_transactional_sql_for_platform(self, sql: str, platform_key: Optional[str]) -> str:
+        if (platform_key or "").lower() != "sqlite":
+            return super()._rewrite_transactional_sql_for_platform(sql, platform_key)
+        sql = self._SQLITE_SERIES_RE.sub(
+            lambda m: (
+                f"WITH RECURSIVE _series({m['alias']}) AS (SELECT {m['lo']} UNION ALL "
+                f"SELECT {m['alias']} + 1 FROM _series WHERE {m['alias']} < {m['hi']}) "
+                f"SELECT {m['alias']} FROM _series"
+            ),
+            sql,
+        )
+        return self._SQLITE_TYPED_DATE_RE.sub(r"\g<literal>", sql)
 
     def execute_operation(
         self,
