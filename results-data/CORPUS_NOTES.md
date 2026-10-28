@@ -34,15 +34,15 @@ at four ranked platforms, above the floor.
 
 ClickHouse `map_access` (Read Primitives) returns 0 for a missing map key
 where DuckDB returns NULL. The ClickHouse Local Read Primitives SF0.01 and
-SF0.1 bundles (`3465d4f3`, `c1aeca88`) ran it successfully, but the query is
-`ORDER BY ps_suppkey LIMIT 10` over one row per supplier, so its recorded row
-count is 10 on ClickHouse Local and DuckDB alike and a wrong map value cannot
-change it; bundles record rows, status and timing only, not values. Neither
-bundle is flagged: a whole-bundle flag would unrank every query for one whose
-recorded result is unaffected, and both Read Primitives cohorts are already
-unranked. The wrong value is a defect in the ClickHouse query, recorded here;
-any future bundle that records result values for `map_access` must not be read
-as correct on ClickHouse.
+SF0.1 bundles (`9f79ff77`, `3f5c94e9`) ran it successfully with 10 rows, the
+same count as DuckDB, so the bundle records nothing that shows the wrong value.
+Both now carry `known_defects: ["defective-variant-or-loader-wrong-result"]`
+in their `.manifest.json` sidecars, so their timings are not ranked while the
+query is wrong (tracked in `clickhouse-map-access-missing-key-returns-zero`).
+This leaves DataFusion as the only ranked Read Primitives identity at SF0.01
+and SF0.1, and the `DOCUMENTED_SHALLOW_COHORTS` entries for both change from
+ClickHouse Local and DataFusion to DataFusion alone. The bundle JSON is
+unchanged. Unflag the sidecars when the query is corrected and rerun.
 
 ## Fork 30.24.0.17 published-impact audit (2026-10-26)
 
@@ -962,8 +962,8 @@ and TPC-DI SF0.01 to >=3 comparison identities, restoring their platform floors.
 Three cohort groups become newly shallow in `DOCUMENTED_SHALLOW_COHORTS`
 (`results-data/validate_corpus.py`):
 - `datavault` SF0.01 and SF0.1 (`clickhouse-local^container` only, 1 identity);
-- `read_primitives` SF0.01 and SF0.1 (`clickhouse-local^container` and DataFusion,
-  2 identities);
+- `read_primitives` SF0.01 and SF0.1 (DataFusion only, 1 rankable identity, as the ClickHouse
+  Local bundles are excluded from ranking for the `map_access` defect described above);
 - `tpchavoc` SF0.01, SF0.1, and SF1.0 (DataFusion only, 1 rankable identity, as ClickHouse
   Local remains excluded from ranking via `defective-tpchavoc-variant-divergence`).
 
