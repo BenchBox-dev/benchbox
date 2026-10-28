@@ -79,6 +79,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `docker-integration.yml` | product-safety | Container integration coverage |
 | `extension-smoke.yml` | product-safety | Extension smoke coverage |
 | `gitignore-lint.yml` | tooling | Hygiene; standalone, not part of the ci.yml units |
+| `green-unmerged-sweep.yml` | tooling | Daily sweep that upserts the green-but-unmerged PR digest issue; never enables auto-merge |
 | `lint.yml` | tooling | Lint gate |
 | `mirror-ci-images.yml` | product-safety | Seeds digest-pinned images in GHCR only when absent; scheduled CI checks mirrors by digest without routine Docker Hub reads |
 | `nightly.yml` | product-safety | Scheduled validation; nightly T3 replaces most domains, including the DuckDB and CedarDB throughput UAT; Windows legs and workflow liveness are non-blocking; ruleset drift runs as advisory |
