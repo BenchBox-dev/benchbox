@@ -7,6 +7,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+from benchbox.core.results.query_status import documented_exclusions_cover_failures
 from benchbox.core.results.submit_classification import (
     SubmitTerminalState,
     classify_result_path,
@@ -56,6 +57,16 @@ def last_nonempty_output_line(log_text: str) -> str | None:
 
 def classify_for_submit(result_json: Path | str | None) -> SubmitTerminalState:
     return classify_result_path(result_json)
+
+
+def _failures_are_documented_exclusions(result_path: Path | None) -> bool:
+    if result_path is None:
+        return False
+    try:
+        data = json.loads(result_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    return isinstance(data, dict) and documented_exclusions_cover_failures(data)
 
 
 def submit_state_is_cell_failure(state: SubmitTerminalState | str) -> bool:
@@ -372,6 +383,13 @@ def run_cell(
     if status == "passed" and submit_state_is_cell_failure(submit_state):
         status = "failed"
         exit_code = exit_code or 1
+    elif (
+        status == "failed"
+        and submit_state is SubmitTerminalState.query_failure
+        and _failures_are_documented_exclusions(result_path)
+    ):
+        status = "passed"
+        exit_code = 0
     throughput_check: str | None = None
     if official and streams is not None:
         if result_path is not None and result_path.exists():

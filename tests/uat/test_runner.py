@@ -850,3 +850,56 @@ def test_run_cell_official_fails_when_result_json_has_another_scale_factor(tmp_p
 
     assert result.status == "failed"
     assert "scale factor" in (result.throughput_check or "")
+
+
+def _write_obt_clickhouse_result(path: Path, failed_ids: list[str], driver_version: str = "4.1.6") -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    rows = [{"id": qid, "status": "ERROR", "ms": 1} for qid in failed_ids] + [
+        {"id": "1", "status": "SUCCESS", "ms": 1},
+        {"id": "2", "status": "SUCCESS", "ms": 1},
+    ]
+    payload = {
+        "version": "2.1",
+        "run": {
+            "id": "uat-test",
+            "timestamp": "2026-01-01T00:00:00",
+            "total_duration_ms": 1,
+            "query_time_ms": 1,
+            "iterations": 1,
+            "streams": 1,
+        },
+        "benchmark": {"id": "tpcds_obt", "name": "TPC-DS OBT", "scale_factor": 1.0, "test_type": "power"},
+        "platform": {"name": "ClickHouse Local"},
+        "execution": {"driver_version_actual": driver_version},
+        "summary": {
+            "queries": {"total": len(rows), "passed": 2, "failed": len(failed_ids)},
+            "validation": {"status": "failed"},
+        },
+        "queries": rows,
+        "phases": {},
+    }
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    ("failed_ids", "driver_version", "expected_status"),
+    [
+        (["41", "44"], "4.1.6", "passed"),
+        (["44"], "4.1.6", "passed"),
+        (["41", "44", "7"], "4.1.6", "failed"),
+        (["41", "44"], "4.2.0", "failed"),
+    ],
+)
+def test_run_cell_honours_documented_clickhouse_obt_exclusions(
+    tmp_path: Path, failed_ids: list[str], driver_version: str, expected_status: str
+):
+    result_path = tmp_path / "benchmark_runs" / "results" / "obt.json"
+    _write_obt_clickhouse_result(result_path, failed_ids, driver_version)
+    fake_argv = [sys.executable, "-c", f"print({str(result_path)!r}); raise SystemExit(1)"]
+
+    with patch.object(runner, "benchbox_run_argv", return_value=fake_argv):
+        result = runner.run_cell("clickhouse-local", "tpcds_obt", 1.0, timeout_s=10, log_dir=tmp_path)
+
+    assert result.status == expected_status
+    assert result.submit_terminal_state == "query_failure"
+    assert (result.exit_code == 0) == (expected_status == "passed")
