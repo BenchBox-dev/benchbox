@@ -9125,6 +9125,13 @@
       "status": "open",
       "title": "Extend the site docs contract checker to usage/cli-quick-start.md and --platform values"
     },
+    "docs-mig-followup-core-retained-doc-link-gate-20261028": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Decide and implement link checking for the documents that stay in core"
+    },
     "docs-mig-followup-explorer-results-duckdb-nondeterminism-20261028": {
       "claim": null,
       "needs": [],
