@@ -9109,13 +9109,18 @@
       "title": "Remove relocated sources and retire the old bundle members"
     },
     "docs-mig-final-verification": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-29T00:28:40Z",
+        "generation": "5d43f0bd08e14140ae7568c6d33087b2",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
+      },
       "needs": [
         "docs-mig-core-removal",
         "docs-mig-site-cleanup"
       ],
       "priority": "critical",
-      "status": "open",
+      "status": "active",
       "title": "Verify production migration and release source ownership freeze"
     },
     "docs-mig-history-filter": {
