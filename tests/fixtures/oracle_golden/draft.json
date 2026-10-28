@@ -34,7 +34,7 @@
     "max_attempts": 5,
     "max_defects": 10,
     "mode": "enforce",
-    "omp_sha256": "5396c0dca8bfef39b7fff3cf9403a7abd9ad6092b8784586b257012f3abcdecf",
+    "omp_sha256": "<volatile>",
     "open_findings": {},
     "pool_blocked_until": {},
     "pr": 82,

@@ -23,7 +23,7 @@ RUN_REF = re.compile(r"\[run \d+\]")
 MARKER = re.compile(r"<!-- oracle-protocol: v1 [A-Za-z0-9_-]+ -->")
 FENCE = re.compile(r"(?<![0-9a-f])[0-9a-f]{16}-(BEGIN|END) ")
 RUN_UUID = re.compile(r'\\"run_uuid\\": \\"\d+\\"')
-VOLATILE_KEYS = frozenset({"run_id", "run_uuid", "created_at", "duration", "duration_seconds", "elapsed"})
+VOLATILE_KEYS = frozenset({"run_id", "run_uuid", "created_at", "omp_sha256"})
 
 
 def _attempts(run: ReviewRun) -> list[Any]:
