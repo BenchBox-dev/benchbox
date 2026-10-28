@@ -2,7 +2,8 @@
   "acceptance": [
     "An oracle verdict on a PR containing undecodable files names each such file and marks its content as unreviewed, rather than reviewing replacement characters silently.",
     "A unit test covers the labeling with a non-UTF-8 diff fixture.",
-    "Existing verdict behavior on fully decodable diffs is unchanged."
+    "Existing verdict behavior on fully decodable diffs is unchanged.",
+    "Adds or updates the matching scenario in tests/integration/oracle (registered in ORACLE_SCENARIO_TESTS), proven to fail with this item's defect reintroduced; the scenario runs only the fake omp executable and fake servers, never a real omp or model-provider call."
   ],
   "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\nFound 2026-10-19 while unblocking PR 3168 (docs-mig-tpc-adjacent-eulas): the canonical TPC EULA files are Windows-1252 and must stay byte-identical. docs-mig-oracle-diff-decode (PR 3170) stops the oracle-verdict crash by decoding with replacement characters, which means the oracle will review U+FFFD mojibake in place of the real bytes without saying so. A verdict that silently passes over unreadable content overstates what was reviewed. Follow-up to docs-mig-oracle-diff-decode; implement after that item merges.\n\noracle-response-evidence-secrets-20261021 adds no blanket binary exemption. Binary/unreviewable content labels remain owned by this item; actual pinned-harness binary notice/result-shape evidence is recorded by oracle-response-live-verification-20261021 when available. No closure implied.",
   "description": "After the oracle diff-decode fix, the oracle reviews U+FFFD replacement characters wherever a PR diff contains non-UTF-8 bytes (for example the canonical TPC EULA files), with no record that those bytes were never actually reviewed. Detect undecodable spans during diff fetch and surface the affected paths in the verdict as explicitly unreviewed, so approval scope is honest. Byte-identity of such files must continue to be enforced by dedicated drift tests, not by the oracle.",
@@ -49,6 +50,14 @@
       "op": "update",
       "op_id": "74bcad10920a4b44aea12b5c2d6bf8e3",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:mcp:joe@joe-mac-mini.local:4d1c216a121363560797b702",
+      "at": "2026-10-28T17:19:22Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "6abc6f1027284d30b07ac033b24b5497",
+      "session_id": "f2ea81a526d74429861bc01fff72f167"
     }
   ]
 }
