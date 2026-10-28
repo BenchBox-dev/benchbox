@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "docs:check fails when cli-quick-start.md uses a CLI flag or --platform value that doc-contracts.json does not list; a seeded-drift test proves it."
+  ],
+  "description": "The documentation contract checks in BenchBox-dev/benchbox-site do not cover docs/usage/cli-quick-start.md or the values given to --platform in documentation examples, so a stale command or platform name there passes docs:check. Noted during the site-contract-checks work and left open.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-28T01:09:17Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9e80fcab94d14750b712fba163e518e4",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    }
+  ]
+}
