@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import itertools
 import os
 import shutil
 import tempfile
@@ -14,6 +15,7 @@ from tests.utilities import network_guard
 _GUARDED_MARKERS = {"unit", "medium"}
 _UNIT_ROOT = Path(__file__).resolve().parents[1] / "unit"
 _state: dict[str, object] = {}
+_log_numbers = itertools.count()
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -76,8 +78,8 @@ def _under_unit_tree(node: pytest.Item) -> bool:
 
 
 @pytest.fixture
-def network_guard_log(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    return tmp_path_factory.mktemp("network_guard") / "violations.log"
+def network_guard_log() -> Path:
+    return Path(str(_state["dir"])) / f"violations-{next(_log_numbers)}.log"
 
 
 @pytest.fixture
