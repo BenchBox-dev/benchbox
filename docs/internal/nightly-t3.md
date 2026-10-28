@@ -13,7 +13,7 @@ red domain does not hide the others, and each domain uploads its own artifacts.
 
 | Label | Job | What it checks |
 |-------|-----|----------------|
-| `t3:docker` | `docker` | PostgreSQL, ClickHouse, and Trino live suites against the compose stacks in `docker/`. Each stack pulls its digest-pinned image from the matching `ghcr.io/benchbox-dev/` mirror (`postgres`, `clickhouse`, `trino`) populated by the `mirror-images` job. |
+| `t3:docker` | `docker` | PostgreSQL (18 and 17 legs), ClickHouse, and Trino live suites against the compose stacks in `docker/`. Each stack pulls its digest-pinned image from the matching `ghcr.io/benchbox-dev/` mirror (`postgres`, `clickhouse`, `trino`) populated by the `mirror-images` job; the PostgreSQL 17 leg pulls the digest seeded by `mirror-postgres17`. Every leg fails when its run has no passing tests. |
 | `t3:cloud` | `cloud` | Credentialed live plan-capture tests for Snowflake, BigQuery, Redshift, and MotherDuck. Off by default. |
 | `t3:perf` | `perf` | DuckDB TPC-H SF=0.01 power phase compared with the committed baseline; fails on a regression above 10%. |
 | `t3:matrix` | `matrix` | Wheel build and install smoke on Python 3.11 to 3.14 across Ubuntu, macOS, and Windows, plus one bundled `dbgen` and one `dsdgen` run per runner. |
@@ -67,7 +67,7 @@ limit). Measured runtimes were not recorded in the legacy files.
 | Nightly Validation `check-test-patterns` | schedule, dispatch | `scripts/check_patch_safety.py` | Red job | default | **Drop**: `ci.yml` runs the same script on every pull request. |
 | Nightly Validation `scheduled-workflow-liveness` | schedule, dispatch | Every scheduled workflow has a recent scheduled run | Red job | 10 | **Drop**, already ported as `t3:liveness`. |
 | Nightly Validation `ruleset-drift` | schedule, dispatch | Live rulesets against the runbook | `continue-on-error` | 5 | **Drop**, already ported as `t3:ruleset-drift`. |
-| Nightly Validation `postgres-integration` | schedule, dispatch | PostgreSQL live suite against the digest-pinned PostgreSQL 17 mirror | Red job; refuses a run with no passing tests | 15 | **Drop**, already ported: `t3:docker` runs the same live suite and applies the same no-passing-tests refusal. |
+| Nightly Validation `postgres-integration` | schedule, dispatch | PostgreSQL live suite against the digest-pinned PostgreSQL 17 mirror | Red job; refuses a run with no passing tests | 15 | **Drop**, already ported: the `postgres17` leg of `t3:docker` runs the same live suite against the same digest and keeps the no-passing-tests refusal. |
 | Nightly Validation `mirror-postgres17` | schedule, dispatch | Seeds the PostgreSQL 17 GHCR mirror | Red job | n/a | **Port** to `t3:mirror-postgres17`: `ci.yml` and `t3:sql-execution-gate-obt` pull the mirrored digest and nothing else seeds it. |
 | Nightly Validation `cloud-live-plan-capture` | schedule, dispatch | Credentialed plan-capture tests for Snowflake, BigQuery, Redshift and MotherDuck | Red job | 15 | **Drop**, already ported as the opt-in `t3:cloud`. |
 | Nightly Validation `mirror-questdb` | schedule, dispatch | Seeds the QuestDB GHCR mirror | Red job | n/a | **Port** to `t3:mirror-questdb`: `ci.yml` pulls the mirrored digest and nothing else seeds it. |

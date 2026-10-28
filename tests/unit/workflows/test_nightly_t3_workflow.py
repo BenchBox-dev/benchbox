@@ -122,9 +122,23 @@ def test_every_domain_has_a_job() -> None:
 def test_docker_covers_all_three_services() -> None:
     docker = _load()["jobs"]["docker"]
     services = {entry["service"] for entry in docker["strategy"]["matrix"]["include"]}
-    assert services == {"postgres", "clickhouse", "trino"}
-    assert set(_mirrored_images(_load()["jobs"]["mirror-images"])) >= services
+    assert services == {"postgres", "postgres17", "clickhouse", "trino"}
+    assert set(_mirrored_images(_load()["jobs"]["mirror-images"])) >= services - {"postgres17"}
     assert docker["strategy"]["fail-fast"] is False
+
+
+def test_docker_runs_the_postgresql_live_suite_on_17_and_18_with_the_no_pass_refusal() -> None:
+    docker = _load()["jobs"]["docker"]
+    legs = {entry["service"]: entry for entry in docker["strategy"]["matrix"]["include"]}
+    assert legs["postgres"]["tests"] == legs["postgres17"]["tests"]
+    assert legs["postgres"]["marker"] == legs["postgres17"]["marker"] == "live_postgresql"
+    assert legs["postgres17"]["postgres_image"] == _POSTGRES_17_GHCR_IMAGE
+    select = next(step for step in _steps(docker) if step.get("name") == "Select the leg's PostgreSQL image")
+    assert select["env"] == {"LEG_POSTGRES_IMAGE": "${{ matrix.postgres_image }}"}
+    assert "GITHUB_ENV" in select["run"]
+    names = [step.get("name") for step in _steps(docker)]
+    assert names.index(select["name"]) < names.index("Bring up compose stack")
+    assert "produced no passing tests" in _run_text(docker)
 
 
 def test_docker_attempts_pulls_after_mirror_failure() -> None:
@@ -132,7 +146,7 @@ def test_docker_attempts_pulls_after_mirror_failure() -> None:
     docker = jobs["docker"]
     assert str(docker["if"]).replace(" ", "") == "${{!cancelled()}}"
     needs = docker["needs"]
-    assert "mirror-images" in ([needs] if isinstance(needs, str) else needs)
+    assert {"mirror-images", "mirror-postgres17"} <= set([needs] if isinstance(needs, str) else needs)
     login = next(step for step in _steps(docker) if "docker login ghcr.io" in str(step.get("run", "")))
     assert "if" not in login
     assert "mirror-images" in jobs["report"]["needs"]
