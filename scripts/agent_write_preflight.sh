@@ -197,7 +197,7 @@ EOF
   fi
 done
 
-if [ "$ephemeral" != "yes" ] && [ "$allow_main" != "1" ]; then
+if [ "$ephemeral" != "yes" ] && ! [ "$git_dir_abs" -ef "$common_abs" ]; then
   claim_args=
   [ "${BENCHBOX_WORKTREE_TAKEOVER:-}" = "1" ] && claim_args=--takeover
   if command -v python3 >/dev/null 2>&1; then

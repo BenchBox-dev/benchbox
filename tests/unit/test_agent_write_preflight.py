@@ -718,3 +718,45 @@ def test_preflight_claims_ownership_through_uv_when_python3_is_not_on_path(tmp_p
     assert result.returncode == 0, result.stderr
     assert owner == "uv-only-session"
     assert record.read_text(encoding="utf-8").startswith("run --no-project -- python")
+
+
+def test_preflight_refuses_second_live_session_even_with_main_clone_override(tmp_path: Path) -> None:
+    primary = _init_clone(tmp_path / "BenchBox primary")
+    linked = primary.parent / ".tmp-preflight-two-sessions"
+    subprocess.run(
+        ["git", "worktree", "add", "-q", "-b", "fix/preflight-two-sessions", str(linked), "HEAD"],
+        cwd=primary,
+        check=True,
+    )
+
+    def run(session: str, **extra: str) -> subprocess.CompletedProcess[str]:
+        return _run_script(
+            SCRIPT.resolve(),
+            cwd=linked,
+            env={
+                **{k: v for k, v in os.environ.items() if not k.endswith("SESSION_ID")},
+                **HUMAN_IDENTITY,
+                "PI_SESSION_ID": session,
+                "BENCHBOX_AGENT_PRIMARY_CLONE": str(primary),
+                "BENCHBOX_ALLOW_MAIN_CLONE_WRITE": "1",
+                "GIT_CONFIG_NOSYSTEM": "1",
+                **extra,
+            },
+        )
+
+    try:
+        first = run("session-one")
+        second = run("session-two")
+        renewed = run("session-one")
+        taken = run("session-two", BENCHBOX_WORKTREE_TAKEOVER="1")
+        previous_owner_now = run("session-one")
+    finally:
+        subprocess.run(["git", "worktree", "remove", "--force", str(linked)], cwd=primary, check=True)
+        subprocess.run(["git", "branch", "-D", "fix/preflight-two-sessions"], cwd=primary, check=True)
+
+    assert first.returncode == 0, first.stderr
+    assert second.returncode == 1
+    assert "worktree ownership check failed" in second.stderr
+    assert renewed.returncode == 0, renewed.stderr
+    assert taken.returncode == 0, taken.stderr
+    assert previous_owner_now.returncode == 1
