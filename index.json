@@ -17146,12 +17146,17 @@
       "title": "Return the existing verdict for a same-head /oracle-review with no open dispute"
     },
     "oracle-scope-path-canonical-20261026": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-29T03:33:31Z",
+        "generation": "51316d13997d4d66b6d10991e029da83",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [
         "oracle-dispute-keyed-published-evidence-20261026"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Match oracle finding paths to changed files canonically when judging scope"
     },
     "oracle-self-attested-file-list-reviewers-20261008": {
