@@ -99,6 +99,15 @@
       "op": "release",
       "op_id": "72f149aa647f45a39f73d0dcf9ef1b81",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-28T23:32:37Z",
+      "client": "omp-coding-agent",
+      "generation": "bb06b7de5c1c42a3adc1efef59ceabae",
+      "op": "take",
+      "op_id": "7437bdffca3a438f9012722c2db173b8",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
 }
