@@ -8760,10 +8760,15 @@
       "title": "Delete the release branch and the release-canary and no-auto-merge labels once their code is gone"
     },
     "dlv2-80a-github-cleanup-queue-era": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-29T03:37:15Z",
+        "generation": "3144108946974430a367c4d861b617f6",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Delete queue-era branches, develop-red labels and unused todo-db secrets"
     },
     "dlv2-81-config-cleanup": {
