@@ -2,7 +2,8 @@
   "acceptance": [
     "Shadow data on muse file-list SHIPs is compared with other reviewers' results",
     "A decision: require a traced second reviewer, add a muse trace, set muse reads_files: false, or accept the risk with its documented reason",
-    "_project/decisions/oracle-review-protocol-2026-10-08.md records the outcome"
+    "_project/decisions/oracle-review-protocol-2026-10-08.md records the outcome",
+    "Adds or updates the matching scenario in tests/integration/oracle (registered in ORACLE_SCENARIO_TESTS), proven to fail with this item's defect reintroduced; the scenario runs only the fake omp executable and fake servers, never a real omp or model-provider call."
   ],
   "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\nShadow data so far (checked 2026-10-09): since #2760 merged (2026-10-08 18:30 UTC) muse ran in 7 oracle-verdict runs (the workflow was named oracle-review-shadow until #2843) and returned a verdict in all 7: once as the first reviewer (37866366206, #2792) and six times as the second (37844575540, 37844862581, 37847792715, 37861958813, 37863646848, 37879106749). Whether any of those were file-list briefs, and whether muse's files_examined matched the files it was asked to read, is not yet checked.\n\n2026-10-09 tracker review: agy removed from the title and description; it is owned by oracle-agy-reviewer-calibration-20261008. Added the cheap option of setting muse reads_files: false. Muse is also the subject of oracle-muse-invalid-verdict-output-20261009, and which reviewers are eligible depends on oracle-author-family-labels-never-applied-20261009, which should be decided first.",
   "description": "muse (read_only: hard, reads_files: true) can take file-list briefs, but leaves no read trace, so only its own files_examined list and the citation check apply. muse is early in the low-medium and medium-high chains. The decision record leaves open whether a muse SHIP on a file-list brief needs a second reviewer.\n\nOptions:\n- require a traced second reviewer for a muse SHIP on a file-list brief;\n- add a muse read trace;\n- accept the risk with a documented reason;\n- cheap option: set muse `reads_files: false` in .github/oracle-reviewers.yml until muse leaves a read trace. Then muse only takes inline briefs. Cost: more pending results when codex is out of quota, because muse can no longer be the reviewer for file-list briefs. See oracle-muse-invalid-verdict-output-20261009 for muse's other reliability problem.\n\nagy is covered by oracle-agy-reviewer-calibration-20261008.",
@@ -62,6 +63,14 @@
       "op": "update",
       "op_id": "80cd3b92f68f4dc4be6b93e8264a07bd",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:mcp:joe@joe-mac-mini.local:4d1c216a121363560797b702",
+      "at": "2026-10-28T17:19:10Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "68b645486e1b428d864a6401ff08df00",
+      "session_id": "f2ea81a526d74429861bc01fff72f167"
     }
   ]
 }
