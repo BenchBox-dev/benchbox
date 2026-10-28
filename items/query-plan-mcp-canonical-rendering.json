@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "MCP tree output for a real exported DuckDB Q1 plan contains its actual operator hierarchy and lineitem scan, not a single generic Node.",
+    "MCP summary operator, join and scan counts match a traversal of canonical logical operators, exclude metadata/property dictionaries, and handle absent estimates without fabrication.",
+    "Regression tests use canonical exported/rehydrated plans and verify semantic output for scan, join and aggregate shapes; JSON output retains the canonical plan structure."
+  ],
+  "context": "Reproduced on 2026-10-28 by passing the actual persisted Q1 plan to the MCP render helpers: tree was \"├── Node\"; summary reported operator_count=47, join_count=0, scan_count=0. This rendering defect is independent of the separate MCP companion lookup defect. No fix applied.",
+  "description": "MCP tree and summary helpers expect a type/children native-style tree, not the persisted QueryPlanDAG envelope with logical_root and operator_type. Passing a real exported Q1 plan renders only Node; the summary counts arbitrary dictionaries as operators and reports zero scans. Existing tests use simplified HashJoin/SeqScan fixtures, so they validate a different schema. Extend existing canonical visualization/model traversal rather than retaining parallel incompatible walkers.",
+  "links": [
+    "benchbox/mcp/tools/analytics.py:251-265",
+    "benchbox/mcp/tools/analytics.py:402-455",
+    "benchbox/core/query_plans/visualization.py",
+    "tests/unit/mcp/test_mcp_results_and_analytics.py:1172-1201"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bb7fd2d6b114a6501df93f97",
+      "at": "2026-10-28T12:03:29Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f35219e2c9e04ca9b8a39c077761eece",
+      "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
+    }
+  ]
+}

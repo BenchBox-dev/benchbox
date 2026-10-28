@@ -19936,6 +19936,13 @@
       "status": "done",
       "title": "Query Plan Documentation & Testing"
     },
+    "query-plan-mcp-canonical-rendering": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Render and summarize canonical query-plan models in MCP analytics"
+    },
     "query-plan-mcp-qualified-bundle-lookup": {
       "claim": null,
       "needs": [],
