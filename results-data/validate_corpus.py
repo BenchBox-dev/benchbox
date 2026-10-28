@@ -648,7 +648,7 @@ def _cohort_key(payload: dict) -> CohortKey:
 _VARIANT_PLATFORM_SUFFIX_RE = re.compile(r"[-_]trust[-_](?:ci|community|local|unknown)", re.IGNORECASE)
 
 
-def _variant_aware_identity(payload: dict, platform_name: str) -> str:
+def _variant_aware_identity(payload: dict, platform_name: str, bundle: pathlib.Path | None = None) -> str:
     try:
         from benchbox.core.results.execution_variant import published_variant_id
     except ModuleNotFoundError as exc:
@@ -658,7 +658,7 @@ def _variant_aware_identity(payload: dict, platform_name: str) -> str:
         ) from exc
 
     base = _VARIANT_PLATFORM_SUFFIX_RE.sub("", platform_name).strip().lower().replace(" ", "-")
-    return published_variant_id(payload, base)
+    return published_variant_id(payload, base, bundle)
 
 
 def _comparison_identity(bundle: pathlib.Path, payload: dict) -> str:
@@ -680,7 +680,7 @@ def _comparison_identity(bundle: pathlib.Path, payload: dict) -> str:
                     if candidate and str(candidate) != "unknown":
                         version = candidate
                         break
-        identity = _variant_aware_identity(payload, str(platform))
+        identity = _variant_aware_identity(payload, str(platform), bundle)
     except Exception as exc:
         raise CorpusReadError(f"ERROR reading platform identity from {bundle}: {exc}") from exc
     if version and str(version) != "unknown":
@@ -735,6 +735,17 @@ def _stats_from_dates(dates: list[_dt.date], *, as_of: _dt.date) -> RecencyStats
     )
 
 
+def _declares_execution_class(payload: dict, bundle: pathlib.Path) -> bool:
+    environment = _mapping(payload.get("environment"))
+    if "execution_class" in environment or "execution_class" in _mapping(environment.get("client_host")):
+        return True
+    try:
+        sidecar = json.loads((bundle.parent / f"{bundle.stem}.manifest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    return isinstance(sidecar, dict) and "execution_class" in sidecar
+
+
 def cohort_platforms(bundles: list[pathlib.Path]) -> dict[CohortKey, set[str]]:
     cohorts: collections.defaultdict[CohortKey, set[str]] = collections.defaultdict(set)
     for bundle in bundles:
@@ -747,6 +758,8 @@ def cohort_platforms(bundles: list[pathlib.Path]) -> dict[CohortKey, set[str]]:
                 f"stream_results={recorded_count}"
             )
         identities = cohorts[_cohort_key(payload)]
+        if _declares_execution_class(payload, bundle):
+            _comparison_identity(bundle, payload)
         if bundle_rankable(payload, bundle):
             identities.add(_comparison_identity(bundle, payload))
     return dict(cohorts)
