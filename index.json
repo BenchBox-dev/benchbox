@@ -16767,17 +16767,12 @@
       "title": "Run the oracle gateway host from the pinned omp build instead of whatever omp is on the Mac's PATH"
     },
     "oracle-omp-pin-hardening-20261027": {
-      "claim": {
-        "expires_at": "2026-10-29T11:56:44Z",
-        "generation": "c3cabf6fc4b84311b2b11ae9c4201376",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
-      },
+      "claim": null,
       "needs": [
         "oracle-omp-pin-single-source-20261026"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Harden the pinned omp install: verify the hash at use, validate build names, and fail the install step instead of burning retries"
     },
     "oracle-omp-pin-single-source-20261026": {
