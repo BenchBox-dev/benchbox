@@ -189,12 +189,18 @@ Gates, in order:
    distributions.
 2. The install matrix installs the staged wheel on Python 3.11 to 3.14 across
    Linux, macOS, and Windows.
-3. Release UAT runs the `release-gate-*.yaml` configs against the staged wheel
-   with the checkout package hidden, then runs `make uat-gate-check` with the
-   digest of the staged distributions. The gate is red when any stage skipped a
-   cell the config does not prune by design, lost cells to early-stop pruning,
-   could not reach or start a required platform, attempted no cells, or recorded
-   another digest.
+3. Release UAT runs each `release-gate-*.yaml` config against the staged wheel
+   with the checkout package hidden. A hosted job stops at six hours and the
+   full sweep needs more, so each stage is split into parallel shard jobs
+   (`uat-stage1`, `uat-stage2`, `uat-stage3`, one `--platforms` subset per
+   matrix entry) and the stages are chained with `needs`. Every shard uploads
+   its run directory. The `release-uat` gate job then downloads all shards and
+   runs `make uat-gate-check` over them with the digest of the staged
+   distributions. The gate is red when any shard skipped a cell the config does
+   not prune by design, lost cells to early-stop pruning, could not reach or
+   start a required platform, attempted no cells, or recorded another digest or
+   source commit, or when the union of a stage's shard cells is not exactly the
+   stage's planned cell set.
 4. The publish job waits for environment approval, re-checks the hosted tag
    object and peeled commit against the admission receipt
    (`scripts/release_tag_recheck.py`), stages only the verified files, attests

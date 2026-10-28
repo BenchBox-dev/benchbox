@@ -32,6 +32,7 @@ class SweepResult:
     phase_exit_codes: dict[str, int]
     preflight: Any = None
     execute_outcome: Any = None
+    plan: Any = None
 
     def exit_code(self) -> int:
         if self.aborted_phase is not None:
@@ -240,6 +241,7 @@ def run_sweep(
     *,
     log_dir_override: Path | None = None,
     databases_root: Path | None = None,
+    shard_platforms: tuple[str, ...] | None = None,
 ) -> SweepResult:
     now = _dt.datetime.now()
     log_dir = log_dir_override or exec_phase.reserve_default_log_dir(config, now=now)
@@ -263,6 +265,7 @@ def run_sweep(
             container_engine=container_engine,
             source_info=source_info,
             phase_holder=phase_holder,
+            shard_platforms=shard_platforms,
         )
     finally:
         _restore_sweep_sigterm_shim(sigterm_prev)
@@ -296,6 +299,7 @@ def _run_sweep_phases(
     container_engine: str | None,
     source_info: RunSourceInfo,
     phase_holder: list[str | None],
+    shard_platforms: tuple[str, ...] | None = None,
 ) -> SweepResult:
     phase_exit_codes: dict[str, int] = {}
     aborted_phase: str | None = None
@@ -540,7 +544,7 @@ def _run_sweep_phases(
                 cells,
                 output_path=tsv_path,
                 rungs=list(config.scales.requested_rungs),
-                cross_scale_floor=config.report.cross_scale_coverage_min_pairs,
+                cross_scale_floor=None if shard_platforms else config.report.cross_scale_coverage_min_pairs,
                 validator_status_by_path=validator_status_by_path,
                 compatibility_pruned_count=report_compat_pruned_count,
                 early_stop_pruned_count=len(getattr(execute_outcome, "pruned", ())),
@@ -567,6 +571,7 @@ def _run_sweep_phases(
         execute_outcome=execute_outcome,
         report_summary=report_summary,
         validate_result=validate_result,
+        shard_platforms=shard_platforms,
     )
 
     return SweepResult(
@@ -577,6 +582,7 @@ def _run_sweep_phases(
         phase_exit_codes=phase_exit_codes,
         preflight=preflight_result,
         execute_outcome=execute_outcome,
+        plan=enumerate_phase.enumerate_cells_with_pruning(config) if config.dry_run else None,
     )
 
 
@@ -743,7 +749,13 @@ def _write_gate_summary_artifact(
     execute_outcome: Any,
     report_summary: Any,
     validate_result: Any,
+    shard_platforms: tuple[str, ...] | None = None,
 ) -> None:
+    cross_scale_floor = report_summary.cross_scale_floor if report_summary is not None else None
+    cross_scale_floor_breached = report_summary.cross_scale_floor_breached if report_summary is not None else None
+    if shard_platforms and report_summary is not None:
+        cross_scale_floor = config.report.cross_scale_coverage_min_pairs
+        cross_scale_floor_breached = None
     summary = gate_summary.GateSummary(
         config_name=config.name,
         source_commit_sha=source_info.commit_sha,
@@ -762,8 +774,9 @@ def _write_gate_summary_artifact(
         validator_clean_rate_floor=(validate_result.floor if validate_result is not None else None),
         validator_floor_breached=(validate_result.floor_breached if validate_result is not None else None),
         cross_scale_clean_pairs=(report_summary.cross_scale_clean_pairs if report_summary is not None else None),
-        cross_scale_floor=(report_summary.cross_scale_floor if report_summary is not None else None),
-        cross_scale_floor_breached=(report_summary.cross_scale_floor_breached if report_summary is not None else None),
+        cross_scale_floor=cross_scale_floor,
+        cross_scale_floor_breached=cross_scale_floor_breached,
+        shard_platforms=sorted(shard_platforms) if shard_platforms else None,
         artifact_digests=_collect_artifact_digests(log_dir),
         distribution_digest=_distribution_digest(),
         verdict=gate_summary.derive_verdict(
@@ -806,13 +819,28 @@ def _write_compatibility_pruned_jsonl(path: Path, cells: Iterable[Any]) -> None:
     report_phase.atomic_write_text(path, "".join(lines))
 
 
+def shard_config(config: UATConfig, platforms: tuple[str, ...]) -> UATConfig:
+    planned_platforms = enumerate_phase.resolved_platforms(config)
+    unknown = [platform for platform in platforms if platform not in planned_platforms]
+    if unknown:
+        raise ValueError(
+            f"platforms {unknown} are not in the platform set of config {config.name!r}: {planned_platforms}"
+        )
+    return replace(config, platforms=replace(config.platforms, groups=(), include=platforms))
+
+
 def run_sweep_from_path(
     config_path: Path,
     *,
     stress_overrides: dict[str, str | float | None] | None = None,
     dry_run_override: bool | None = None,
+    platform_shard: Iterable[str] | None = None,
 ) -> SweepResult:
     config = load_config(config_path)
+    shard_platforms: tuple[str, ...] | None = None
+    if platform_shard:
+        shard_platforms = tuple(dict.fromkeys(platform_shard))
+        config = shard_config(config, shard_platforms)
     if stress_overrides:
         platform = stress_overrides.get("platform")
         benchmark = stress_overrides.get("benchmark")
@@ -825,4 +853,4 @@ def run_sweep_from_path(
             config = replace(config, scales=replace(config.scales, override=float(scale)))
     if dry_run_override is not None:
         config = replace(config, dry_run=dry_run_override)
-    return run_sweep(config)
+    return run_sweep(config, shard_platforms=shard_platforms)

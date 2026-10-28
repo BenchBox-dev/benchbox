@@ -105,8 +105,8 @@ completion remain useful campaign-quality signals, but missing, red, stale,
 non-ancestor, or dirty evidence does not fail `validate-base`. Producing the
 three-stage evidence is not a release-cut precondition.
 
-Running the optional campaign (run stage 2 after stage 1 completes, and stage 3
-after stage 2 completes):
+Running the optional campaign locally (run stage 2 after stage 1 completes, and
+stage 3 after stage 2 completes):
 
 ```bash
 make uat-sweep CONFIG=tests/uat/configs/release-gate-01-native-dataframe.yaml
@@ -114,6 +114,43 @@ make uat-sweep CONFIG=tests/uat/configs/release-gate-02-docker-nonoltp.yaml
 make uat-sweep CONFIG=tests/uat/configs/release-gate-03-docker-oltp.yaml
 make uat-gate-check STAGE1=<run-dir> STAGE2=<run-dir> STAGE3=<run-dir>
 ```
+
+### Release UAT in `release-v2`
+
+The hosted release UAT is blocking for `publish`. One GitHub-hosted job stops at
+six hours and stage 1 alone needs more than that, so `release-v2.yml` splits each
+stage into shard jobs that run in parallel:
+
+- `uat-stage1`, `uat-stage2`, and `uat-stage3` each run one matrix entry per
+  platform group. A shard runs `make uat-sweep CONFIG=<stage config>
+  PLATFORMS=<a,b>`, which narrows the config's platform set without changing
+  its scales, per-cell timeout, validators, or floors.
+- Stage 2 needs stage 1 and stage 3 needs stage 2, so no Docker stack starts
+  before the previous stage has fully finished. Later stages still run after an
+  earlier stage fails so one run reports every failure.
+- Each shard uploads its run directory as `release-uat-<tag>-stage<N>-<shard>`.
+- The `release-uat` job downloads every shard and runs `make uat-gate-check`
+  with several run directories per stage. It is red unless the union of a
+  stage's shard cells equals the stage's planned cells (nothing missing, nothing
+  duplicated, nothing outside the plan), every shard is green with the same
+  source commit and the admitted distribution digest, the cross-scale floor is
+  met by the summed clean pairs of the stage's shards, and the Docker start
+  ordering holds against the latest shard completion of the previous stage.
+
+The shard assignment is the `matrix.include` list of each `uat-stage` job.
+`tests/uat/test_release_gate_shards.py` fails when a config's platform set and
+its shards drift apart, so add a new platform to a shard in the same change that
+adds it to a config group. Size a shard from measured per-platform time and keep
+it well under six hours; the SQLite shard is the longest. To see what a shard
+plans without running it:
+
+```bash
+make uat-sweep CONFIG=tests/uat/configs/release-gate-01-native-dataframe.yaml PLATFORMS=sqlite DRY_RUN=1
+```
+
+Locally, `make uat-gate-check STAGE1="<dir> <dir>" ...` accepts the shard run
+directories of a stage, and a single unsharded run directory per stage still
+works.
 
 Review the campaign report. It is historical evidence, not a release input.
 See `docs/internal/uat-release-campaign.md` for campaign
