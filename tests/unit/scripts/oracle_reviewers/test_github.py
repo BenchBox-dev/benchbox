@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -907,17 +908,31 @@ def test_post_status_posts_with_the_given_token(monkeypatch: pytest.MonkeyPatch)
     assert env["GH_TOKEN"] == "app-token" and environment.get("GH_TOKEN") != "app-token"
 
 
-def _recording_run(
-    monkeypatch: pytest.MonkeyPatch, returncode: int = 0, stdout: str = ""
-) -> list[tuple[list[str], dict[str, str]]]:
-    calls: list[tuple[list[str], dict[str, str]]] = []
+class _Calls:
+    def __init__(self, log: Path) -> None:
+        self.log = log
 
-    def fake_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
-        calls.append((argv, kwargs["env"]))
-        return subprocess.CompletedProcess(argv, returncode, stdout, "refused" if returncode else "")
+    def __getitem__(self, index: int) -> tuple[list[str], dict[str, str]]:
+        record = json.loads(self.log.read_text(encoding="utf-8").splitlines()[index])
+        return record["argv"], {"GH_TOKEN": record["token"]}
 
-    monkeypatch.setattr(github.subprocess, "run", fake_run)
-    return calls
+
+def _recording_run(monkeypatch: pytest.MonkeyPatch, returncode: int = 0, stdout: str = "") -> _Calls:
+    folder = Path(tempfile.mkdtemp(prefix="gh-shim-"))
+    log = folder / "calls.jsonl"
+    shim = folder / "gh"
+    shim.write_text(
+        f"#!{sys.executable}\n"
+        "import json, os, sys\n"
+        f"open({str(log)!r}, 'a').write(json.dumps({{'argv': ['gh', *sys.argv[1:]], 'token': os.environ.get('GH_TOKEN')}}) + '\\n')\n"
+        f"sys.stdout.write({stdout!r})\n"
+        f"sys.stderr.write({'refused' if returncode else ''!r})\n"
+        f"sys.exit({returncode})\n",
+        encoding="utf-8",
+    )
+    shim.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{folder}{os.pathsep}{os.environ['PATH']}")
+    return _Calls(log)
 
 
 def test_post_file_posts_the_payload_file_with_the_given_token(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

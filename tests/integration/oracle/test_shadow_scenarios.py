@@ -58,8 +58,8 @@ def test_a_shadow_that_disagrees_with_the_posted_status_is_recorded_not_hidden(h
     result = _result(run)
     assert result["equal"] is False
     assert sorted(result["differences"]) == ["final/status.json", "publish"]
-    assert result["differences"]["final/status.json"]["shadow"]["state"] == "failure"
-    assert result["differences"]["final/status.json"]["posted"]["state"] == "success"
+    assert json.loads(result["differences"]["final/status.json"]["shadow"])["state"] == "failure"
+    assert json.loads(result["differences"]["final/status.json"]["posted"])["state"] == "success"
     assert "differ from the posted outputs in final/status.json, publish" in run.step_summary()
 
 
@@ -74,6 +74,7 @@ def test_a_shadow_that_planned_something_else_is_recorded(harness: Harness) -> N
     run = harness.review(43, before_compare=tamper)
 
     assert list(_result(run)["differences"]) == ["plan"]
+    assert list(_result(run)["differences"]["plan"]) == ["max_attempts"]
 
 
 def test_a_plan_that_posts_nothing_is_still_compared(harness: Harness) -> None:

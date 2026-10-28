@@ -386,6 +386,14 @@ def _posted_intents(env: Environment, plan: Mapping[str, Any], outcomes: Mapping
     ]
 
 
+CLIP_CHARACTERS = 2000
+
+
+def _clip(value: Any) -> str:
+    text = json.dumps(value, sort_keys=True, default=str)
+    return text if len(text) <= CLIP_CHARACTERS else text[:CLIP_CHARACTERS] + "..."
+
+
 def _without(plan: Mapping[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in plan.items() if key not in PLAN_VOLATILE}
 
@@ -394,8 +402,13 @@ def _plan_difference(real: Layout, shadow: Layout) -> tuple[dict[str, Any], Any]
     real_plan, shadow_plan = _read_if(real.plan_file), _read_if(shadow.plan_file)
     if shadow_plan is None:
         return {"plan": {"shadow": None, "posted": "unavailable" if real_plan is None else "present"}}, None
-    if real_plan is None or _without(real_plan) != _without(shadow_plan):
-        return {"plan": {"shadow": _without(shadow_plan), "posted": real_plan and _without(real_plan)}}, real_plan
+    if real_plan is None:
+        return {"plan": {"posted": None, "shadow": "present"}}, None
+    ours, theirs = _without(shadow_plan), _without(real_plan)
+    if ours != theirs:
+        keys = sorted(key for key in {*ours, *theirs} if ours.get(key) != theirs.get(key))
+        differing = {key: {"shadow": _clip(ours.get(key)), "posted": _clip(theirs.get(key))} for key in keys}
+        return {"plan": differing}, real_plan
     return {}, real_plan
 
 
@@ -404,7 +417,7 @@ def _final_differences(real: Layout, shadow: Layout) -> dict[str, Any]:
     for name in FINAL_FILES:
         theirs, ours = _read_if(real.final / name), _read_if(shadow.final / name)
         if theirs != ours:
-            found[f"final/{name}"] = {"shadow": ours, "posted": theirs}
+            found[f"final/{name}"] = {"shadow": _clip(ours), "posted": _clip(theirs)}
     return found
 
 
@@ -419,7 +432,7 @@ def _differences(env: Environment, outcomes: Mapping[str, str], skip: bool) -> d
         publish_with(env, shadow, sink, guarded=False, skip=skip)
     expected = [] if skip or not env.has_app else _posted_intents(env, real_plan, outcomes)
     if sink.intents != expected:
-        found["publish"] = {"shadow": sink.intents, "posted": expected}
+        found["publish"] = {"shadow": _clip(sink.intents), "posted": _clip(expected)}
     return found
 
 

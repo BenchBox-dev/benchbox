@@ -72,12 +72,12 @@ STEP_ORDER = [
     "Post the commit status",
     "Post the findings comment",
     "Post the findings review",
-    "Compare the driver outputs with the posted outputs",
-    "Upload the shadow comparison",
     "Upload the retry state",
     *[f"Upload attempt {slot}" for slot in range(1, POLICY.max_attempts + 1)],
     "Upload the captured reviewer event streams",
     DISPATCH_STEP,
+    "Compare the driver outputs with the posted outputs",
+    "Upload the shadow comparison",
 ]
 SHADOW_PLAN_STEP = "Shadow the driver plan"
 SHADOW_FINALIZE_STEP = "Shadow the driver finalize"
@@ -449,7 +449,7 @@ def test_the_shadow_steps_never_post_never_fail_the_job_and_hold_only_what_the_p
     assert names.index("Plan the review") + 1 == names.index(SHADOW_PLAN_STEP)
     assert names.index(REDACT_STEP) + 1 == names.index(SHADOW_FINALIZE_STEP)
     assert names.index(SHADOW_FINALIZE_STEP) < names.index("Mint the App token")
-    assert names.index("Post the findings review") < names.index(SHADOW_COMPARE_STEP)
+    assert names.index(DISPATCH_STEP) < names.index(SHADOW_COMPARE_STEP)
     assert names.index(SHADOW_COMPARE_STEP) + 1 == names.index("Upload the shadow comparison")
 
 
@@ -857,7 +857,7 @@ def test_only_sweep_and_review_hold_actions_write() -> None:
 
 def test_the_gate_is_dispatched_last_and_only_after_the_review_is_posted() -> None:
     names = _names()
-    assert names[-1] == DISPATCH_STEP
+    assert names[-3:] == [DISPATCH_STEP, SHADOW_COMPARE_STEP, "Upload the shadow comparison"]
     for name in ("Post the findings review", "Post the commit status", "Post the findings comment"):
         assert names.index(DISPATCH_STEP) > names.index(name)
     step = _step(DISPATCH_STEP)

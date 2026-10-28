@@ -195,8 +195,10 @@ the App key and reads the uploaded artifacts.
 
 ### Review driver
 
-`cli.py drive <phase>` is the one entrypoint that orchestrates a review; the
-workflow only calls it. Each phase is its own step and holds only the secrets
+`cli.py drive <phase>` is the one entrypoint that orchestrates a review. Until
+the workflow is cut over to it, the live review still runs the existing
+per-command steps and the driver runs only as a non-posting shadow beside
+them. After the cutover each phase is its own step and holds only the secrets
 that phase uses, so the attempt loop never sees the classifier key, the App
 token or the App private key.
 
