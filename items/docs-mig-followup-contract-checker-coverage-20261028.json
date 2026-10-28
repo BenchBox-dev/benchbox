@@ -1,7 +1,8 @@
 {
   "acceptance": [
-    "docs:check fails when cli-quick-start.md uses a CLI flag or --platform value that doc-contracts.json does not list; a seeded-drift test proves it."
+    "npm run docs:check fails when a bash example in usage/cli-quick-start.md uses an option not in cli.commands, a value outside that option's exported choices, or a --platform value that resolves to no key in platforms.entries (after manifest aliases and the base:mode base); seeded-drift tests prove each failure, an alias control passes, and the real current bundle reports 0 violations."
   ],
+  "context": "Review 2026-10-28: VALID but narrower. No core/schema change needed: doc-contracts.json already exports platforms.entries (53), platform_manifest.aliases, per-option choices. options.ts already checks --platform where --platform-option is present. Site-only change in docs-contracts/checks/commands.ts, lib/types.ts, test/fixture.ts, test/checks.test.ts. Run block mode against the real bundle before merge: a false positive stops deploys.",
   "description": "The documentation contract checks in BenchBox-dev/benchbox-site do not cover docs/usage/cli-quick-start.md or the values given to --platform in documentation examples, so a stale command or platform name there passes docs:check. Noted during the site-contract-checks work and left open.",
   "sessions": [
     {
@@ -10,6 +11,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "9e80fcab94d14750b712fba163e518e4",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-28T12:36:57Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d5703148f98b493382285976b273d175",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
     }
   ]
