@@ -469,6 +469,13 @@
       "status": "done",
       "title": "The instruction-budget guard did not stop a PR that landed develop 88 bytes over, blocking every commit repo-wide"
     },
+    "agent-test-policy-documentation": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Write down how agents may run tests: through make targets, one at a time, and what -n 0 skips"
+    },
     "agent-write-preflight-blocks-ephemeral-clones": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "The owner's rule is stated in the agent-facing documentation that agents load, including that direct pytest -n 0 does not take the lock and what to do instead",
+    "Delegation guidance says subagents must not run tests themselves unless told to, and that parallel agents never run tests at the same time",
+    "Any check that enforces it is covered by a test; otherwise the document says it is a convention"
+  ],
+  "context": "Evidence: docs/internal/dev-loop-worktrees.md 'Test lock'; tests/conftest.py; pytest.ini default -n auto. No command in the session set BENCHBOX_SKIP_TEST_LOCK or BENCHBOX_TEST_LOCK_DIR. Whether to make direct pytest -n 0 refuse while the lock is held is a separate design question for the owner. Filed from session review 2026-10-27.\n\nMoved from the todo-db tracker on 2026-10-28; the item was filed there by mistake.",
+  "description": "No repository document tells agents whether a direct pytest -n 0 is allowed or whether tests must go through make pr-preflight, or whether several agents may run tests at once. tests/conftest.py (_should_acquire_test_lock) skips ~/.benchbox/test.lock whenever pytest runs with -n 0 or BENCHBOX_SKIP_TEST_LOCK is set, and make pr-preflight itself runs mapped tests with -n 0 'so it never waits on the lock' (docs/internal/dev-loop-worktrees.md, 'Test lock'). In one session several worktrees ran direct pytest -n 0 at the same time while another session held the lock, and the owner had to ask whether the lock was bypassed. The owner's rule is: tests go only through make targets, serially, with no concurrent agents running tests.",
+  "sessions": [
+    {
+      "actor": "mcp:mcp:joe@joe-mac-mini.local:5427f38a811abefa5a292dd6",
+      "at": "2026-10-28T13:47:13Z",
+      "client": "mcp",
+      "op": "create",
+      "op_id": "b0c9b6d823fb4541995121d20713037e",
+      "session_id": "8dd2786d2f544912829f10b74985f086"
+    }
+  ]
+}
