@@ -15,7 +15,9 @@
       "from_item": "oracle-e2e-scenario-harness-and-mutation-gate-20261027",
       "id": 1,
       "reason": "Found by mutation triage; the mutation PR is test-only. Fix: catch UnicodeDecodeError as unreadable, with a failing-before test.",
-      "resolution": "open",
+      "resolution": "dismissed",
+      "resolved_at": "2026-10-28T11:10:36Z",
+      "resolved_reason": "Fixed by PR #3632 (merge ab8bd219e, trunk run 40632434278 green): attempts.load treats an undecodable artifact as unreadable, with a unit test and a harness scenario.",
       "summary": "attempts.load: a non-UTF-8 attempt artifact raises UnicodeDecodeError and crashes finalize instead of being reported unreadable"
     }
   ],
@@ -89,6 +91,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "c7f34aa23f2d48c69d6a8dcbee9b7d2e",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-28T11:10:36Z",
+      "client": "omp-coding-agent",
+      "op": "dismiss",
+      "op_id": "5f4b9818138348ea95e67cdb5041f24c",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
