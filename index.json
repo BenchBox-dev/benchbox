@@ -15677,10 +15677,15 @@
       "title": "Port the throughput-uat jobs (DuckDB and CedarDB cells, floor history, commit status) from nightly.yml to nightly-v2"
     },
     "nightly-v2-unported-jobs-decision-20261009": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-29T04:09:06Z",
+        "generation": "c10ce095f4ce473896014f8afcbb62a4",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Record port-or-drop for every nightly.yml job that has no nightly-v2 equivalent"
     },
     "nightly-v2-windows-unit-leg-20261009": {
