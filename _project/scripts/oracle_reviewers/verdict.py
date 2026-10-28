@@ -78,7 +78,7 @@ SECRET_PATTERNS: tuple[re.Pattern[str], ...] = (
 )
 _MARKDOWN_LINK = re.compile(r"!?\[([^\]]*)\]\([^)]*\)")
 _URL = re.compile(r"(?i)\b(?:https?|ftp|file|data|javascript):[^\s<>()]+|\bwww\.[^\s<>()]+")
-_MENTION = re.compile(r"(?<![A-Za-z0-9_`])@(?=[A-Za-z0-9])")
+_MENTION = re.compile(r"(?<![A-Za-z0-9_`])@+(?=[A-Za-z0-9])")
 _CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 _COMMENT_OPEN = re.compile(r"<\s*!\s*-\s*-")
 _COMMENT_CLOSE = re.compile(r"-\s*-\s*>")
@@ -164,6 +164,15 @@ def display_path(path: str) -> str:
 
 def sanitize(text: str, limit: int, extra: Iterable[str] = ()) -> str:
     known = tuple(extra)
+    for _ in range(len(text) + _SANITIZE_PASSES):
+        cleaned = _sanitize_pass(text, limit, known)
+        if cleaned == text:
+            break
+        text = cleaned
+    return text
+
+
+def _sanitize_pass(text: str, limit: int, known: tuple[str, ...]) -> str:
     cleaned = _CONTROL.sub("", credentials.redact(text, known))
     for pattern in SECRET_PATTERNS:
         cleaned = pattern.sub(REDACTED, cleaned)
@@ -320,7 +329,7 @@ def shape_fingerprint(data: Any, credentials: Iterable[str] = ()) -> str:
     return text if len(text) <= 512 else text[:509] + "..."
 
 
-def _valid_path(path: str) -> bool:
+def valid_path(path: str) -> bool:
     parts = path.split("/")
     return (
         0 < len(path) <= MAX_PATH
@@ -348,7 +357,7 @@ def _finding(data: Any) -> Finding:
     severity, path, line, title, detail = (data[key] for key in ("severity", "file", "line", "title", "detail"))
     end_line = data.get("end_line")
     _require(isinstance(severity, str) and severity in SEVERITIES, f"severity must be one of {SEVERITIES}")
-    _require(isinstance(path, str) and _valid_path(path), "file must be a repository-relative path")
+    _require(isinstance(path, str) and valid_path(path), "file must be a repository-relative path")
     _require(_is_line(line), "line must be a positive integer")
     _require(end_line is None or (_is_line(end_line) and end_line >= line), "end_line must be an integer >= line")
     _require(isinstance(title, str) and title.strip() != "", "title must be a non-empty string")

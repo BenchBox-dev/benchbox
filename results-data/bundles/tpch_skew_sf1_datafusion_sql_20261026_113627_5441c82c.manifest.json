@@ -1,0 +1,8 @@
+{
+  "bundle_file": "tpch_skew_sf1_datafusion_sql_20261026_113627_5441c82c.json",
+  "bundle_hash": "f273095684d07dece89a87433cdfb9b4bb6e10d80357b9aab2b446bcd3b43d3b",
+  "funding": "unspecified",
+  "manifest_version": "1.0",
+  "result_source": "internal",
+  "submitted_by": "maintainer"
+}

@@ -177,3 +177,67 @@ def test_dispute_round_publishes_the_override_note_after_a_maximum_length_mainta
     harness.review(55)
 
     assert "does not restate one of its rebuttal replies" in harness.github.reviews[55][-1]["body"]
+
+
+@pytest.mark.parametrize("note", ["notes/a+b.md", "notes/with space.md", "notes/naïve.md", "notes/-hidden.md"])
+@pytest.mark.parametrize("status", ["withdrawn", "fixed"])
+def test_dispute_round_accepts_a_citation_to_any_valid_filename(harness: Harness, status: str, note: str) -> None:
+    _first_round(harness, 56)
+    harness.github.reply(56, 0, REBUTTAL, {**ACCOUNTS[OWNER_TOKEN]}, "OWNER")
+    prior = {
+        "status": status,
+        "evidence": f"{note}:1 records that callers intern every value, so identity equals equality.",
+        "claim": REBUTTAL,
+        "concedes": True,
+    }
+    harness.script_omp(
+        [
+            {
+                "decision": "SHIP",
+                "summary": "The dispute holds.",
+                "files_examined": [CHECKER, note],
+                "reads": [note],
+                "priors": {"D1": prior},
+            }
+        ]
+    )
+
+    head = harness.push("feat/checker", {note: "interned: true\n"}, "record interning")
+    run = harness.review(56)
+
+    assert [item["absence"] for item in run.attempts()][:1] == [None], run.attempts()[0]["absence"]
+    assert [item["state"] for item in harness.github.oracle_statuses(head)] == ["success"]
+
+
+@pytest.mark.parametrize(
+    "rebuttal", ["Dispute: @@owner is incorrect.", "Dispute: [[notes](x)](y) @@owner [link](https://a.b(c)) is wrong."]
+)
+def test_dispute_round_replays_a_withdrawal_whose_rebuttal_needs_repeated_sanitizing(
+    harness: Harness, rebuttal: str
+) -> None:
+    _first_round(harness, 57)
+    harness.github.reply(57, 0, rebuttal, {**ACCOUNTS[OWNER_TOKEN]}, "OWNER")
+    harness.script_omp(
+        [
+            {
+                "decision": "SHIP",
+                "summary": "The dispute holds; D1 is withdrawn.",
+                "files_examined": [CHECKER],
+                "priors": {
+                    "D1": {
+                        "status": "withdrawn",
+                        "evidence": f"{CHECKER}:2 compares interned values, so identity equals equality here.",
+                        "claim": rebuttal,
+                        "concedes": True,
+                    }
+                },
+            }
+        ]
+    )
+
+    head = harness.push("feat/checker", {"README.md": "seed\n\nCallers intern every value.\n"}, "explain interning")
+    run = harness.review(57)
+
+    assert [item["absence"] for item in run.attempts()][:1] == [None], run.attempts()[0]["absence"]
+    assert [item["state"] for item in harness.github.oracle_statuses(head)] == ["success"]
+    assert run.attempts()[0]["outcome"] == "verdict"

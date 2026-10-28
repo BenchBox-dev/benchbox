@@ -1,0 +1,8 @@
+{
+  "bundle_file": "tpch_sf01_sqlite_sql_20261026_155723_93a0b6f9.json",
+  "bundle_hash": "567fe63b00b350c066b6700f3f94eaa5518c9850f2b8cb95dac3caac160c838f",
+  "funding": "unspecified",
+  "manifest_version": "1.0",
+  "result_source": "internal",
+  "submitted_by": "maintainer"
+}

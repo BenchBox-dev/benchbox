@@ -27,6 +27,15 @@ def test_bigquery_compares_flag_columns_to_boolean_literals():
     assert "`BatchID` = 1" in translated
 
 
+def test_spark_tests_flag_columns_with_is_boolean():
+    translated = _bench().translate_query_text(
+        "SELECT * FROM DimCustomer WHERE IsCurrent = 1 AND TT_IS_SELL = 0 AND BatchID = 1", "spark"
+    )
+    assert "`IsCurrent` IS TRUE" in translated
+    assert "`TT_IS_SELL` IS FALSE" in translated
+    assert "`BatchID` = 1" in translated
+
+
 def test_databricks_tests_flag_columns_with_is_boolean():
     translated = _bench().translate_query_text(
         "SELECT * FROM DimCustomer WHERE IsCurrent = 1 AND TT_IS_SELL = 0 AND BatchID = 1", "databricks"

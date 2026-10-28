@@ -257,7 +257,11 @@ def _gate_machinery_files() -> list[str]:
     ]
     on_disk = [
         path.relative_to(REPO_ROOT).as_posix()
-        for pattern in (".github/workflows/oracle-*.yml", "_project/scripts/oracle_gate.py")
+        for pattern in (
+            ".github/workflows/oracle-*.yml",
+            ".github/workflows/omp-pin-bump.yml",
+            "_project/scripts/oracle_gate.py",
+        )
         for path in REPO_ROOT.glob(pattern)
     ]
     return sorted({*declared, *on_disk})
@@ -273,3 +277,4 @@ def test_gate_machinery_discovery_includes_the_gate_workflow_and_entrypoint() ->
     found = _gate_machinery_files()
     assert ".github/workflows/oracle-gate.yml" in found
     assert "_project/scripts/oracle_gate.py" in found
+    assert ".github/workflows/omp-pin-bump.yml" in found

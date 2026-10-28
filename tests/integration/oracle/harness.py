@@ -25,6 +25,7 @@ SLUG = "BenchBox-dev/BenchBox"
 CHECKER = "benchbox/core/equivalence/checker.py"
 RECORDED_STREAM = REPO_ROOT / "tests" / "fixtures" / "oracle_reviewers" / "omp_multi_turn_review.jsonl"
 POLICY = ".github/oracle-reviewers.yml"
+PINNED_OMP = omp_pin.pin_from_text((REPO_ROOT / POLICY).read_text(encoding="utf-8")).version
 TRUSTED_FILES = (
     POLICY,
     ".github/workflows/oracle-verdict.yml",
@@ -34,10 +35,11 @@ TRUSTED_FILES = (
 GATEWAY_TOKEN = "gwtok-" + "Q7mZ4kLp" * 5
 HELD_SECRET = "oauth-secret-" + "W3xT9vNb" * 4
 JEV_KEY = "jevk-" + "T5nB8wXc" * 4
-PINNED_OMP = "18.12.1"
 SHA256_LINE = re.compile(r"sha256: [0-9a-f]{64}")
 URL_LINE = re.compile(r"url: https://\S+")
 INSTALL_STEP = "Install omp"
+BUMP_WORKFLOW = ".github/workflows/omp-pin-bump.yml"
+BUMP_STEP = "Open the bump pull request"
 WORKFLOW = ".github/workflows/oracle-verdict.yml"
 UNREACHABLE_BUILD = "https://127.0.0.1:9/omp"
 STEP_TIMEOUT = 120
@@ -269,6 +271,26 @@ class Harness:
             argv, cwd=cwd, env=env, capture_output=True, text=True, timeout=STEP_TIMEOUT, input=stdin, check=False
         )
         return Step(name, result.returncode, result.stdout, result.stderr, outputs(output) if output else {})
+
+    def open_bump_pull(self, version: str, policy: str) -> Step:
+        workflow = yaml.safe_load((REPO_ROOT / BUMP_WORKFLOW).read_text(encoding="utf-8"))
+        steps = workflow["jobs"]["open-pr"]["steps"]
+        script = next(step["run"] for step in steps if step.get("name") == BUMP_STEP)
+        checkout = self.root / "bump-checkout"
+        if not checkout.exists():
+            git(self.root, "clone", "--quiet", str(self.repo), str(checkout))
+        out_dir = self.root / "omp-bump"
+        out_dir.mkdir(exist_ok=True)
+        (out_dir / "policy.yml").write_text(policy, encoding="utf-8")
+        (out_dir / "pr-body.md").write_text(f"Bump omp to {version}.\n", encoding="utf-8")
+        env = {
+            **self.base_env(),
+            "GH_TOKEN": JOB_TOKEN,
+            "GH_ENTERPRISE_TOKEN": JOB_TOKEN,
+            "OUT_DIR": str(out_dir),
+            "VERSION": version,
+        }
+        return self.run("bump", ["bash", "-e", "-c", script], env, cwd=checkout)
 
     def cli(self, name: str, args: list[str], env: dict[str, str]) -> Step:
         return self.run(name, [sys.executable, "-m", "_project.scripts.oracle_reviewers.cli", *args], env)

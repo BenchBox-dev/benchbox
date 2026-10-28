@@ -8,7 +8,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from .verdict import FIXED, NOT_FIXED, WITHDRAWN, Finding, Verdict, display_path, sanitize
+from .verdict import FIXED, MAX_PATH, NOT_FIXED, WITHDRAWN, Finding, Verdict, display_path, sanitize, valid_path
 
 INLINE = "inline"
 _LINE_SUFFIX = re.compile(r":\d+(?:-\d+)?$")
@@ -34,9 +34,10 @@ _TRACE_PATH_WIDTH = 80
 _TRACE_LIMIT = 700
 OMP_NO_MATCHES = "No matches found"
 CITATION_PREFIX = "Citation not found in the head commit"
-_CITED_PATH = r"(?:\./)?\.?[A-Za-z0-9_](?:[A-Za-z0-9_./-]*[A-Za-z0-9_])?"
-_WITHDRAWAL_CITATION = re.compile(rf"(?<![A-Za-z0-9_./-])(?P<path>{_CITED_PATH}):(?P<line>\d+)")
-_REPRO_CITATION = re.compile(rf"(?i)\brepro\s*:\s*(?P<path>{_CITED_PATH})")
+_LINE_CITATION = re.compile(r":(?P<line>\d+)")
+_REPRO_CITATION = re.compile(r"(?i)\brepro\s*:[^\S\n]*")
+_CITATION_OPENERS = frozenset("([{<\"'`,;=*>|")
+_CITATION_CLOSERS = frozenset(",;:)]}>\"'`!?")
 UNVERIFIED_WITHDRAWAL = (
     "the withdrawal names no examined head-commit file and line that refutes it, so it counts as not fixed"
 )
@@ -285,13 +286,45 @@ def _citation_error(finding: Finding, workspace: Path) -> str | None:
     return None
 
 
+def _cited_path(candidate: str) -> str | None:
+    cited = candidate.removeprefix("./")
+    return cited if valid_path(cited) else None
+
+
+def _line_citations(evidence: str) -> Iterable[tuple[str, int]]:
+    for match in _LINE_CITATION.finditer(evidence or ""):
+        start = evidence.rfind("\n", 0, match.start()) + 1
+        head = evidence[max(start, match.start() - MAX_PATH - 2) : match.start()]
+        for index, char in enumerate(head):
+            if index and not (head[index - 1].isspace() or head[index - 1] in _CITATION_OPENERS):
+                continue
+            cited = _cited_path(head[index:])
+            if cited is not None:
+                yield cited, int(match.group("line"))
+
+
+def _path_ends(following: str) -> bool:
+    char = following[0]
+    return (
+        char.isspace() or char in _CITATION_CLOSERS or (char == "." and (len(following) == 1 or following[1].isspace()))
+    )
+
+
+def _repro_citations(evidence: str) -> Iterable[str]:
+    for match in _REPRO_CITATION.finditer(evidence or ""):
+        rest = evidence[match.end() :].split("\n", 1)[0][:MAX_PATH]
+        for end in range(1, len(rest) + 1):
+            following = rest[end : end + 2]
+            if following and not _path_ends(following):
+                continue
+            cited = _cited_path(rest[:end])
+            if cited is not None:
+                yield cited
+
+
 def _withdrawal_verified(evidence: str, workspace: Path, read: frozenset[str]) -> bool:
-    for match in _WITHDRAWAL_CITATION.finditer(evidence or ""):
-        line = int(match.group("line"))
-        if line < 1:
-            continue
-        cited = match.group("path").removeprefix("./")
-        if cited not in read:
+    for cited, line in _line_citations(evidence):
+        if line < 1 or cited not in read:
             continue
         count = _line_count(workspace, cited)
         if count is not None and line <= count:
@@ -300,13 +333,12 @@ def _withdrawal_verified(evidence: str, workspace: Path, read: frozenset[str]) -
 
 
 def withdrawal_cited(evidence_text: str | None) -> bool:
-    return _WITHDRAWAL_CITATION.search(evidence_text or "") is not None
+    return next(iter(_line_citations(evidence_text or "")), None) is not None
 
 
 def _repro_verified(evidence: str, workspace: Path, read: frozenset[str]) -> bool:
     root = os.path.realpath(workspace)
-    for match in _REPRO_CITATION.finditer(evidence or ""):
-        cited = match.group("path").removeprefix("./")
+    for cited in _repro_citations(evidence):
         if cited not in read:
             continue
         target = os.path.realpath(os.path.join(root, cited))

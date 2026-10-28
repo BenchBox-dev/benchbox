@@ -66,6 +66,7 @@ BOOLEAN_FLAG_STYLES = {
     "postgresql": "is",
     "datafusion": "is",
     "databricks": "is",
+    "spark": "is",
     "bigquery": "equals",
 }
 
