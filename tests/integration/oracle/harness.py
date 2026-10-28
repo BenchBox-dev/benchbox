@@ -372,7 +372,10 @@ class Harness:
         env = {**self.base_env(temp), "GH_TOKEN": JOB_TOKEN, "GITHUB_RUN_ID": "1", "GITHUB_EVENT_NAME": "schedule"}
         if surface:
             env["SURFACE_TOKEN"] = APP_TOKEN
-        step = self.cli("sweep", ["sweep", "--policy", POLICY], env)
+        args = (
+            ["drive", "--policy", POLICY, "sweep"] if self.default_mode == "driver" else ["sweep", "--policy", POLICY]
+        )
+        step = self.cli("sweep", args, env)
         summary = Path(env["GITHUB_STEP_SUMMARY"])
         step.outputs["summary"] = summary.read_text(encoding="utf-8") if summary.is_file() else ""
         return step

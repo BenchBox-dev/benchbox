@@ -907,6 +907,81 @@ def test_post_status_posts_with_the_given_token(monkeypatch: pytest.MonkeyPatch)
     assert env["GH_TOKEN"] == "app-token" and environment.get("GH_TOKEN") != "app-token"
 
 
+def _recording_run(
+    monkeypatch: pytest.MonkeyPatch, returncode: int = 0, stdout: str = ""
+) -> list[tuple[list[str], dict[str, str]]]:
+    calls: list[tuple[list[str], dict[str, str]]] = []
+
+    def fake_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append((argv, kwargs["env"]))
+        return subprocess.CompletedProcess(argv, returncode, stdout, "refused" if returncode else "")
+
+    monkeypatch.setattr(github.subprocess, "run", fake_run)
+    return calls
+
+
+def test_post_file_posts_the_payload_file_with_the_given_token(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    calls = _recording_run(monkeypatch)
+    payload = tmp_path / "review.json"
+
+    github.post_file(f"repos/{REPO}/pulls/7/reviews", payload, "app-token")
+
+    argv, env = calls[0]
+    assert argv == ["gh", "api", "--method", "POST", f"repos/{REPO}/pulls/7/reviews", "--input", str(payload)]
+    assert env["GH_TOKEN"] == "app-token"
+
+
+def test_post_file_names_the_path_and_the_refusal_without_the_token(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _recording_run(monkeypatch, returncode=1)
+    with pytest.raises(github.GitHubError, match=r"could not post to repos/.*/issues/7/comments: refused") as caught:
+        github.post_file(f"repos/{REPO}/issues/7/comments", tmp_path / "x.json", "app-token")
+    assert "app-token" not in str(caught.value)
+
+
+def test_pull_base_ref_reads_the_base_with_the_given_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = _recording_run(monkeypatch, stdout="develop\n")
+
+    assert github.pull_base_ref(REPO, 7, "app-token") == "develop"
+
+    argv, env = calls[0]
+    assert argv == ["gh", "api", f"repos/{REPO}/pulls/7", "--jq", ".base.ref"] and env["GH_TOKEN"] == "app-token"
+
+
+def test_dispatch_gate_runs_the_gate_workflow_from_develop_with_the_given_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = _recording_run(monkeypatch)
+
+    github.dispatch_gate(REPO, 7, SHA, "job-token")
+
+    argv, env = calls[0]
+    assert argv == [
+        "gh",
+        "workflow",
+        "run",
+        "oracle-gate.yml",
+        "--repo",
+        REPO,
+        "--ref",
+        "develop",
+        "-f",
+        "pr=7",
+        "-f",
+        f"head_sha={SHA}",
+    ]
+    assert env["GH_TOKEN"] == "job-token"
+
+
+def test_dispatch_gate_and_base_read_raise_on_refusal(monkeypatch: pytest.MonkeyPatch) -> None:
+    _recording_run(monkeypatch, returncode=1)
+    with pytest.raises(github.GitHubError, match="could not dispatch the gate for #7"):
+        github.dispatch_gate(REPO, 7, SHA, "job-token")
+    with pytest.raises(github.GitHubError, match="could not read the base of #7"):
+        github.pull_base_ref(REPO, 7, "app-token")
+
+
 def _page(runs: int, total: int | None) -> dict[str, Any]:
     page: dict[str, Any] = {"workflow_runs": [{"id": index} for index in range(runs)]}
     if total is not None:
