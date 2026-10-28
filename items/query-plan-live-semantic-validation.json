@@ -1,0 +1,29 @@
+{
+  "acceptance": [
+    "Capture versioned real EXPLAIN outputs for the seven listed parser families using existing supported local/service test routes; add captured fixtures alongside synthetic fixtures and update provenance only for engines actually exercised.",
+    "For each family, validate at least scan/filter, join and aggregate shapes, plus a branching/compound shape where supported; assert table/operator/child semantics and round-trip fingerprint integrity, not only non-empty output.",
+    "Live CI selection distinguishes actual executions from credential-based skips and records engine/version evidence; unavailable credentials or infrastructure remain an explicit incomplete validation outcome.",
+    "Preserve deterministic no-credential fixture coverage and keep live-cloud execution behind explicit authorization; do not provision paid services merely to close this item."
+  ],
+  "context": "Assessment on 2026-10-28 ran 1176 focused tests successfully but no external live services. This item tracks missing real-engine semantic assurance, not an asserted failure of all listed parsers. Prior completed validation items explicitly allowed hooks/bookkeeping without provisioning engines. Full validation requires authorized access; do not mark synthetic fixtures live-validated from unit-test success.",
+  "description": "Plan parser coverage is broad but much of it is synthetic or mocked. PROVENANCE.md still marks Presto/Trino, ClickHouse, Spark, Databend, QuestDB, Doris and SingleStore as not live-validated. Existing optional live hooks generally exercise SELECT 1 and assert a root and stable fingerprint, which does not establish join, aggregate or branching semantics. Earlier completed items added provenance and hooks; extend those patterns with actual versioned engine output and semantic checks rather than treating their closure as live-validation evidence.",
+  "links": [
+    "tests/fixtures/query_plans/PROVENANCE.md",
+    "tests/integration/test_plan_capture_synthetic_parsers_live.py",
+    "tests/integration/test_misc_plan_capture_live.py",
+    ".github/workflows/nightly.yml:486-542",
+    "tests/unit/query_plans/test_cross_engine_conformance.py",
+    "todo:query-plan-capture-parser-live-validation",
+    "todo:query-plan-capture-misc-parser-live-validation"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bb7fd2d6b114a6501df93f97",
+      "at": "2026-10-28T12:03:37Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "8c1192b9912542b8bf0fe887118f9eed",
+      "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
+    }
+  ]
+}

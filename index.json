@@ -19943,6 +19943,13 @@
       "status": "done",
       "title": "Query Plan Documentation & Testing"
     },
+    "query-plan-live-semantic-validation": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Validate synthetic plan parsers against realistic live-engine plans"
+    },
     "query-plan-mcp-canonical-rendering": {
       "claim": null,
       "needs": [],
