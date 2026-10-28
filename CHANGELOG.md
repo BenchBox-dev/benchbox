@@ -7,10 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-
-- `make pr-preflight` also runs the changed-file tests in the Linux agent container when a change touches platform-branching code or tests with platform skips, and warns "Linux not verified" with setup steps when the container is unavailable. The agent image now includes `gh` and `tzdata`.
-
 ## [0.5.0rc1] - 2026-10-20
 
 ### Before you upgrade
