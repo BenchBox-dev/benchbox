@@ -242,7 +242,6 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         from benchbox.sql_compat.registry import REGISTRY
         from benchbox.sql_compat.rules.query_source.tpcdi_variants import (
             BIGQUERY_EQ7_SQL,
-            CLICKHOUSE_AQ6_SQL,
             CLICKHOUSE_AQ7_SQL,
             CLICKHOUSE_AQ8_SQL,
             CLICKHOUSE_AQ10_SQL,
@@ -267,7 +266,6 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
                 "EQ7": SNOWFLAKE_EQ7_SQL,
             },
             "clickhouse": {
-                "AQ6": CLICKHOUSE_AQ6_SQL,
                 "AQ7": CLICKHOUSE_AQ7_SQL,
                 "AQ8": CLICKHOUSE_AQ8_SQL,
                 "AQ10": CLICKHOUSE_AQ10_SQL,

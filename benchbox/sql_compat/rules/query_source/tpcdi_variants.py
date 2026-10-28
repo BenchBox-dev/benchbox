@@ -82,50 +82,6 @@ CLICKHOUSE_AQ7_SQL = _clickhouse_metric_query("AQ7")
 CLICKHOUSE_AQ8_SQL = _clickhouse_metric_query("AQ8")
 CLICKHOUSE_AQ10_SQL = _clickhouse_metric_query("AQ10")
 
-CLICKHOUSE_AQ6_SQL = """\
-SELECT
-    'Industry Sector Performance Analysis' as analysis_name,
-    comp.Industry,
-    COUNT(DISTINCT comp.SK_CompanyID) as companies_in_sector,
-    COUNT(DISTINCT s.SK_SecurityID) as securities_in_sector,
-    COUNT(t.TradeID) as total_sector_trades,
-    SUM(t.Quantity * t.TradePrice) as total_sector_value,
-    AVG(t.TradePrice) as avg_sector_price,
-    SUM(t.Quantity) as total_sector_volume,
-    AVG(comp.MarketCap) as avg_market_cap,
-    AVG(mh.PERatio) as avg_sector_pe_ratio,
-    AVG(mh.Yield) as avg_sector_yield,
-    AVG(mh.ClosePrice) as avg_closing_price,
-    stddevPop(mh.ClosePrice) as price_volatility,
-    COUNT(CASE WHEN comp.SPrating IN ('AAA', 'AA+', 'AA', 'AA-', 'A+', 'A', 'A-') THEN 1 END) as investment_grade_companies,
-    COUNT(CASE WHEN comp.SPrating IN ('BBB+', 'BBB', 'BBB-', 'BB+', 'BB', 'BB-', 'B+', 'B', 'B-', 'CCC') THEN 1 END) as speculative_grade_companies,
-    toFloat64(SUM(t.Quantity * t.TradePrice)) / toFloat64(grand_totals.grand_total_value) * 100 as sector_market_share_pct
-FROM DimCompany comp
-JOIN DimSecurity s ON comp.SK_CompanyID = s.SK_CompanyID
-LEFT JOIN FactTrade t ON s.SK_SecurityID = t.SK_SecurityID
-LEFT JOIN FactMarketHistory mh ON s.SK_SecurityID = mh.SK_SecurityID
-LEFT JOIN DimDate d ON t.SK_CreateDateID = d.SK_DateID
-CROSS JOIN (
-    SELECT SUM(t2.Quantity * t2.TradePrice) AS grand_total_value
-    FROM FactTrade t2
-    JOIN DimSecurity s2 ON t2.SK_SecurityID = s2.SK_SecurityID
-    JOIN DimCompany comp2 ON s2.SK_CompanyID = comp2.SK_CompanyID
-    LEFT JOIN DimDate d2 ON t2.SK_CreateDateID = d2.SK_DateID
-    WHERE comp2.IsCurrent = 1
-      AND s2.IsCurrent = 1
-      AND d2.CalendarYearID >= {start_year}
-      AND d2.CalendarYearID <= {end_year}
-      AND t2.Status = 'Completed'
-) grand_totals
-WHERE comp.IsCurrent = 1
-  AND s.IsCurrent = 1
-  AND (d.CalendarYearID >= {start_year} AND d.CalendarYearID <= {end_year})
-  AND t.Status = 'Completed'
-GROUP BY comp.Industry, grand_totals.grand_total_value
-HAVING COUNT(t.TradeID) > {min_trades}
-ORDER BY total_sector_value DESC, avg_sector_pe_ratio ASC
-LIMIT {limit_rows};"""
-
 STARROCKS_EQ7_SQL = """\
 SELECT
     'ETL Data Quality Score Calculation' AS validation_name,
@@ -313,7 +269,9 @@ WHERE ABS(position_discrepancy) > 0
 ORDER BY ABS(position_discrepancy) DESC
 LIMIT 100;"""
 
-DATAFUSION_EQ7_SQL = STARROCKS_EQ7_SQL.replace("IsCurrent = 1", "IsCurrent IS TRUE")
+DATAFUSION_EQ7_SQL = STARROCKS_EQ7_SQL.replace("IsCurrent = 1", "IsCurrent IS TRUE").replace(
+    "/ COUNT(*) * 100", "/ CAST(COUNT(*) AS DOUBLE) * 100"
+)
 
 DORIS_EQ7_SQL = STARROCKS_EQ7_SQL
 CLICKHOUSE_EQ7_SQL = STARROCKS_EQ7_SQL
@@ -370,24 +328,6 @@ REGISTRY.register(
     "datafusion",
     benchmark=_B,
     query_id="EQ7",
-)
-
-REGISTRY.register(
-    CompatibilityDecision(
-        rule_id="query_source.clickhouse.tpcdi.aq6_cross_join_variant",
-        action=CompatAction.SELECT_VARIANT,
-        support_level=SupportLevel.REWRITTEN,
-        failure_mode=FailureMode.UNSUPPORTED_FEATURE,
-        payload=SelectVariantPayload(
-            variant_key="clickhouse",
-            variant_sql=CLICKHOUSE_AQ6_SQL,
-        ),
-        reason="ClickHouse does not support nested window aggregate SUM(SUM()) OVER (); replace with CROSS JOIN grand total",
-    ),
-    _P,
-    "clickhouse",
-    benchmark=_B,
-    query_id="AQ6",
 )
 
 for _query_id, _variant_sql, _description in (
