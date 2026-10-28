@@ -20021,10 +20021,15 @@
       "title": "Render and summarize canonical query-plan models in MCP analytics"
     },
     "query-plan-mcp-qualified-bundle-lookup": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-29T22:31:20Z",
+        "generation": "6fba49b1faf449c89133f552fcd99be4",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bb7fd2d6b114a6501df93f97"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Load exported query plans through the MCP analytics interface"
     },
     "query-plan-parser-framework": {
