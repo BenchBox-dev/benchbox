@@ -11,161 +11,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Before you upgrade
 
-- **BREAKING: Tuning validation fails on tuning the platform does not apply.**
-  Earlier releases accepted these files and ran without the tuning. Run
-  `benchbox tuning validate --platform <platform>` on your saved tuning files
-  first; each error names the tuning type and why it is not applied. Unique
-  and check constraints fail everywhere, because no benchmark schema carries
-  them, and files that leave them out no longer request them. Layout tuning
-  fails on BigQuery, Redshift, Trino, Azure Synapse and other platforms that
-  only preview it. Redshift sorting needs `sorted_ingestion_mode` set to `auto`
-  or `force`. Databricks and Fabric Warehouse reject partitioning. Primary and
-  foreign keys fail where the adapter removes them, including Athena.
-- **BREAKING: Some option spellings are deprecated and stop working in 0.6.0.**
-  Each logs one warning per run. Use `--platform name:mode` instead of
-  `deployment_mode`, `mode`, `sail_mode` and similar options. Use
-  `compute_resource` and `compute_size` instead of vendor names such as
-  `warehouse`, `engine_name`, `workgroup` and `cluster_id`. Use
-  `--execution-engine streaming` instead of `--polars-streaming`. Saved
-  configurations and credential profiles keep working until then.
-- **BREAKING: A selector and an option that disagree now fail.** For example,
-  `--platform firebolt:core --platform-option deployment_mode=cloud` stops
-  before any work. A compute value that disagrees with the same value spelled
-  another way stops the run too. Pass one spelling.
-- **Throughput and Power results are not comparable with 0.4.2.** Throughput
-  streams are numbered 1 to S instead of 0 to S-1, and TPC-H power iterations
-  all use stream 00. Throughput now honors `--queries` and `validation_mode`,
-  and a run limited to a query subset reports no Throughput@Size. A saved
-  `stream_timeout_seconds` now applies to throughput runs; remove it from your
-  config file to keep each benchmark's default.
-- **ClickHouse tuned results are not comparable with earlier ones.** Tuned
-  runs are about 2x faster on TPC-H joins, the TPC-H template no longer
-  partitions `LINEITEM` and `ORDERS`, and tuned loads wait for background
-  merges. Tuning maintenance on ClickHouse, Redshift, Databricks and Snowflake
-  runs after each table loads; ClickHouse `OPTIMIZE` needs
-  `--platform-option optimize_after_load=true`.
-- **Spark, LakeSail and Velox results are not comparable with earlier ones.**
-  Untuned runs use engine defaults for adaptive execution and shuffle, and
-  per-query times no longer include clearing the session cache. A tuning
-  file's `spark` map applies on Velox and is ignored on LakeSail.
-- **Cached databases are rebuilt once in some cases.** DuckDB `auto` runs no
-  longer request CHECK constraints, and nested tuning settings change the
-  generated database name. Drop the old databases.
-- **TPC-H maintenance only runs on adapters that support refresh.** DuckDB,
-  SQLite, PostgreSQL and its derivatives, Snowflake and SingleStore apply the
-  update sets; other adapters skip the phase. Refresh functions in Power and
-  Throughput need `tpch_refresh_functions=true`.
-- **Several options that were ignored now take effect.** DuckDB `threads` and
-  `temp_directory`, SQLite `database_path`, `database_name` and `timeout`, and
-  a `--platform-option` value equal to its default now apply, overriding a
-  saved credential profile. Remove an option you do not want applied.
-- **Dask and Polars engine changes.** Dask `use_distributed=false` with
-  `scheduler_address` fails; use `--execution-engine distributed`. Polars
-  `--tuning auto` no longer switches to streaming on small hosts, and
-  `write_primitives` on `polars-df` refuses a non-default engine.
-- **Comparisons refuse mixed variants.** `benchbox compare` and MCP
-  `compare_results` refuse results whose deployment, execution engine or
-  gateway differ unless you pass `--allow-heterogeneous-comparison`.
-- **Result bundles use additive schema 2.3.** Readers must accept it. Older
-  bundles remain readable.
-- **BenchBox bundles its own SQLGlot, and some translated SQL changed.**
-  Installing BenchBox no longer installs public `sqlglot`, and expression
-  objects from a separate `sqlglot` install cannot be passed to BenchBox. Rerun
-  earlier results for these queries: `STDDEV` and `VARIANCE` on MySQL, Doris,
-  StarRocks and SingleStore now use the sample form (TPC-DI AQ5, AQ6 and AQ9,
-  read_primitives `statistical_variance_stddev`); `array_sort` and
-  `array_distinct` on DuckDB; `approx_quantile_groupby` on BigQuery; and
-  `pivot_basic` on StarRocks, which used to lose its PIVOT clause. ClickBench
-  on SQLite (Q19, Q43) and on DataFusion, Netezza, ANSI, standard, Vertica and
-  Greenplum targets now uses different SQL, so earlier results there are not
-  comparable.
-- **SingleStore has no `cloud` mode.** Use `--platform singlestore` for Helios
-  and self-managed clusters. `databend:self-hosted` now connects over HTTP on
-  port 8000 by default.
+- **BREAKING: Tuning validation fails on tuning the platform does not apply.** Earlier releases accepted these files and ran without the tuning. Run `benchbox tuning validate --platform <platform>` on your saved tuning files first; each error names the tuning type and why it is not applied. Unique and check constraints fail everywhere, because no benchmark schema carries them, and files that leave them out no longer request them. Layout tuning fails on BigQuery, Redshift, Trino, Azure Synapse and other platforms that only preview it. Redshift sorting needs `sorted_ingestion_mode` set to `auto` or `force`. Databricks and Fabric Warehouse reject partitioning. Primary and foreign keys fail where the adapter removes them, including Athena. A tuning YAML with an unknown key now fails to load, naming the key and the nearest valid one.
+- **BREAKING: Some option spellings are deprecated and stop working in 0.6.0.** Each logs one warning per run. Use `--platform name:mode` instead of `deployment_mode`, `mode`, `sail_mode` and similar options. Use `compute_resource` and `compute_size` instead of vendor names such as `warehouse`, `engine_name`, `workgroup` and `cluster_id`. Use `--execution-engine streaming` instead of `--polars-streaming`. Saved configurations and credential profiles keep working until then.
+- **BREAKING: A selector and an option that disagree now fail.** For example, `--platform firebolt:core --platform-option deployment_mode=cloud` stops before any work. A compute value that disagrees with the same value spelled another way stops the run too. Pass one spelling.
+- **BREAKING: the ParadeDB platform now requires `pg_search`, not `pg_analytics`.** The supported image is `paradedb/paradedb:0.26.2-pg18`; servers that only carry `pg_analytics` fail at connection time.
+- **Throughput and Power results are not comparable with 0.4.2.** Throughput streams are numbered 1 to S instead of 0 to S-1, and TPC-H power iterations all use stream 00. Throughput now honors `--queries` and `validation_mode`, and a run limited to a query subset reports no Throughput@Size. A saved `stream_timeout_seconds` now applies to throughput runs; remove it from your config file to keep each benchmark's default.
+- **ClickHouse, Spark, LakeSail and Velox results are not comparable with earlier ones.** Tuned ClickHouse runs are about 2x faster on TPC-H joins, the TPC-H template no longer partitions `LINEITEM` and `ORDERS`, and tuned loads wait for background merges. Tuning maintenance on ClickHouse, Redshift, Databricks and Snowflake runs after each table loads; ClickHouse `OPTIMIZE` needs `--platform-option optimize_after_load=true`. Untuned Spark-family runs use engine defaults for adaptive execution and shuffle, and per-query times no longer include clearing the session cache.
+- **Cached databases are rebuilt once in some cases, and TPC-H maintenance is limited.** DuckDB `auto` runs no longer request CHECK constraints, and nested tuning settings change the generated database name. Drop the old databases. TPC-H maintenance only runs on adapters that support refresh: DuckDB, SQLite, PostgreSQL and its derivatives, Snowflake and SingleStore apply the update sets; other adapters skip the phase. Refresh functions in Power and Throughput need `tpch_refresh_functions=true`.
+- **Several options that were ignored now take effect.** DuckDB `threads` and `temp_directory`, SQLite `database_path`, `database_name` and `timeout`, and a `--platform-option` value equal to its default now apply, overriding a saved credential profile. Remove an option you do not want applied. Dask `use_distributed=false` with `scheduler_address` fails; use `--execution-engine distributed`. Polars `--tuning auto` no longer switches to streaming on small hosts. `write_primitives` on `polars-df` refuses a non-default engine.
+- **Comparisons refuse mixed variants, and result bundles use schema 2.3.** `benchbox compare` and MCP `compare_results` refuse results whose deployment, execution engine or gateway differ unless you pass `--allow-heterogeneous-comparison`. Readers must accept additive schema 2.3; older bundles remain readable.
+- **BenchBox bundles its own SQLGlot, and some translated SQL changed.** Installing BenchBox no longer installs public `sqlglot`, and expression objects from a separate `sqlglot` install cannot be passed to BenchBox. Rerun earlier results for these queries: `STDDEV` and `VARIANCE` on MySQL, Doris, StarRocks and SingleStore now use the sample form (TPC-DI AQ5, AQ6 and AQ9, read_primitives `statistical_variance_stddev`); `array_sort` and `array_distinct` on DuckDB; `approx_quantile_groupby` on BigQuery; and `pivot_basic` on StarRocks, which used to lose its PIVOT clause. ClickBench on SQLite (Q19, Q43) and on DataFusion, Netezza, ANSI, standard, Vertica and Greenplum targets now uses different SQL, so earlier results there are not comparable.
+- **Other translated-SQL, schema and generated-data changes make earlier results incomparable.** SQLite, ClickHouse, Spark, Databricks, QuestDB, DataFusion, PostgreSQL, Trino, Presto, Athena and SingleStore now receive different SQL for many queries (exact division, date and interval handling, NULL ordering, per-platform runtime dialects, safe-division and decimal rewrites), and ClickHouse and StarRocks rewrites moved into the runtime. TPC-DS OBT is version 0.2 with a wider table, queries 14, 23 and 24 run as parts `a`/`b`, and DataFrame OBT query ids are `obt_*`. `vector_search` stores 4-byte floats. NYCTaxi and TSBS DevOps parameters are derived from the instance seed and query id. SQLite loads NULLs for empty nullable fields and honors quoted fields. Rerun earlier results on these platforms.
+- **SingleStore has no `cloud` mode.** Use `--platform singlestore` for Helios and self-managed clusters. `databend:self-hosted` now connects over HTTP on port 8000 by default.
 
 ### Added
 
-- **Execution engines.** `--execution-engine` and the MCP `execution_engine`
-  parameter choose how a query runs, checked against what the platform
-  declares. Polars supports `default`, `in-memory` and `streaming`, Dask
-  `threaded` and `distributed`, and pg-duckdb `duckdb` and `postgres`. Results
-  record the requested, applied and observed engine.
-- **Deployment selectors everywhere.** `--platform firebolt:cloud`,
-  `pg-duckdb:motherduck`, `influxdb:core`, `ducklake:postgres_catalog`,
-  `velox:remote`, `lakesail:distributed` and `timescaledb:cloud` work end to
-  end, in MCP, and in Python as `DatabaseConfig(type="timescaledb:cloud")`.
-  Results record the selected deployment, and variants rank separately.
-- **Compute resource and size.** Platforms share `compute_resource` and
-  `compute_size` options in place of vendor names. Results record them, and
-  public bundles drop the resource name.
-- **Subscale results are ranked.** TPC-H and TPC-DS runs below scale factor 1
-  record Power@Size marked unofficial and rank in their own "Subscale ·
-  Unofficial" cohort. `benchbox submit` and `benchbox publish` still refuse
-  them.
-- **TPC-H row counts at scale factors 0.01 and 0.1.** Every query is checked
-  against exact counts, so DataFrame runs no longer report UNCERTAIN there.
-- **TPC-H refresh functions and QphH@Size.** Power can include RF1 and RF2,
-  Throughput can run a concurrent refresh stream, and `benchbox metrics qphh`
-  prints QphH@Size when both results carry refresh evidence.
-- **More tuning on PostgreSQL.** Tuned runs apply date and hash partitioning,
-  and index and cluster tuned columns after each load.
-- **Clearer tuning evidence.** Tuned results list requests the platform ignored
-  in `platform.tuning.applied.dropped`. DataFrame tuned profiles and curated
-  ClickHouse templates ship, `benchbox tuning platforms` lists Spark with its
-  own capabilities, and `benchbox tuning validate` accepts SQL tuning files.
-- **Session and engine details in results.** Spark, LakeSail and Velox runs
-  record the live session configuration and warn when a setting did not take
-  effect. DuckDB, SQLite and DataFusion results record the engine version.
+- **Execution engines.** `--execution-engine` and the MCP `execution_engine` parameter choose how a query runs, checked against what the platform declares. Polars supports `default`, `in-memory` and `streaming`, Dask `threaded` and `distributed`, and pg-duckdb `duckdb` and `postgres`. Results record the requested, applied and observed engine.
+- **Deployment selectors everywhere.** `--platform firebolt:cloud`, `pg-duckdb:motherduck`, `influxdb:core`, `ducklake:postgres_catalog`, `velox:remote`, `lakesail:distributed` and `timescaledb:cloud` work end to end, in MCP, and in Python as `DatabaseConfig(type="timescaledb:cloud")`. Results record the selected deployment, and variants rank separately.
+- **Compute resource and size.** Platforms share `compute_resource` and `compute_size` options in place of vendor names. Results record them, and public bundles drop the resource name.
+- **New platform: experimental GizmoSQL.** Runs TPC-H and TPC-DS on a GizmoSQL Core 1.37+ server through the official `adbc-driver-gizmosql` driver (install with the `gizmosql` extra). Tables load client-side as Arrow batches, TLS is verified by default, credentials are redacted, and a populated table is reused only when its row count matches the source files.
+- **Subscale results are ranked.** TPC-H and TPC-DS runs below scale factor 1 record Power@Size marked unofficial and rank in their own "Subscale · Unofficial" cohort. `benchbox submit` and `benchbox publish` still refuse them.
+- **TPC-H row counts and refresh functions.** Every TPC-H query is checked against exact counts at scale factors 0.01 and 0.1, so DataFrame runs no longer report UNCERTAIN there. Power can include RF1 and RF2, Throughput can run a concurrent refresh stream, and `benchbox metrics qphh` prints QphH@Size when both results carry refresh evidence.
+- **More tuning.** PostgreSQL tuned runs apply date and hash partitioning and index and cluster tuned columns after each load. CedarDB applies hash partitioning, Citus applies distribution, reference and columnar placement, and ParadeDB and pg_mooncake apply clustering and sorting, each verified against the catalog, with TPC-H profiles under `examples/tunings/`. `benchbox tuning platforms` lists Spark with its own capabilities, and `benchbox tuning validate` accepts SQL tuning files.
+- **Clearer tuning and session evidence.** Tuned results list requests the platform ignored in `platform.tuning.applied.dropped`. Spark, LakeSail and Velox runs record the live session configuration and warn when a setting did not take effect. DuckDB, SQLite and DataFusion results record the engine version.
+- **Containers and gateways.** A server engine that runs in a Docker container on a macOS or Windows client is recorded and ranked as a container run, for example `Apache Doris (Linux container on macOS)`. The Databricks adapter accepts the `gateway` setting (`native`, `espresso` or `custom`) with personal access tokens only. `benchbox run --platform snowflake --gateway espresso|greybeam|custom` routes connections through `gateway_host` and related options, rejecting insecure TLS without `BENCHBOX_ALLOW_INSECURE_GATEWAY=1`. Greybeam runs fail before any work when they would load data inline or run maintenance.
+- **Result handling.** Result readers accept schema 2.4 (new optional per-query `request_count`, `result_bytes` and `platform_timing` and run-level timing fields; producers still write 2.3). TPC-H and TPC-DS bundles record a power-stream policy marker, and `benchbox compare` warns when data-generation identity or the policy differs.
+- **Disk-space check.** Benchmark runs check free space on the output volume before writing data and fail when less than 5% is free; `BENCHBOX_MIN_FREE_DISK_PERCENT` changes the threshold and `make disk-check` runs the check by hand.
+- **SQL translation runtime and tooling.** `benchbox.utils.dialect_utils` gains `apply_rewrite` and `translate_ddl`, which apply named rewrites and translate DDL with the bundled SQLGlot runtime. `make sql-execution-gate` executes every shipped TPC-H and TPC-DS query on SQLite, DuckDB, DataFusion and PostgreSQL and compares rows with DuckDB and the TPC reference counts. `make doc-contracts` and `scripts/export_docs_data.py` export deterministic JSON for site-owned documentation.
 
 ### Changed
 
-- **`--tuning tuned` fallback messages** name what each platform applies, such
-  as "OLAP session pack" for ClickHouse.
-- **Publishing fails closed.** `benchbox publish` verifies the anonymized files
-  before copying them, and submission validation rejects unreadable plan,
-  tuning and applied-tuning companion files.
-- **Legacy throughput APIs are deprecated.** `run_throughput_test` and
-  `run_official_benchmark` warn and run the same drivers as `benchbox run`.
-  They need `adapter=` and at least 2 streams. `TPCDSOfficialBenchmark` now
-  uses the scale factor you configure.
+- **`--tuning tuned` fallback messages** name what each platform applies, such as "OLAP session pack" for ClickHouse.
+- **Publishing fails closed.** `benchbox publish` verifies the anonymized files before copying them, and submission validation rejects unreadable plan, tuning and applied-tuning companion files. `benchbox submit` pseudonymizes bundles before validating them. A gateway-routed result is never official, and TPC results are labelled as derived results rather than certified.
+- **Legacy throughput APIs are deprecated.** `run_throughput_test` and `run_official_benchmark` warn and run the same drivers as `benchbox run`. They need `adapter=` and at least 2 streams. `TPCDSOfficialBenchmark` now uses the scale factor you configure.
+- **Adapter DDL and SQL rewriting moved into the bundled SQLGlot runtime.** ClickHouse, StarRocks, Doris, Databend, Firebolt, DuckDB, SQLite, BigQuery, Snowflake, Redshift, Databricks, Spark, Velox, LakeSail, Synapse, Fabric Warehouse, SingleStore, Trino, Presto, Athena, PostgreSQL, DuckLake, QuestDB and pg_mooncake build `CREATE TABLE` through `translate_ddl`, and the per-adapter text rewriters, regex fix-ups and AST rewriters for division, TPC-Havoc, Spark and DataFusion queries are removed in favour of named runtime rewrites. Statements differ in spelling (identifier quoting, type names) but not in meaning, and several adapters now translate more benchmarks (TSBS, Data Vault, NYC Taxi, Flight Data, Write and Metadata Primitives) for every target. `translate_sql_query` no longer takes `pre_processors` and `post_processors` and translates every statement of a multi-statement input.
+- **The bundled SQLGlot runtime moves from 30.24.0.1 to 30.25.0.1.** The upgrades add the `netezza`, `greenplum`, `vertica`, `datafusion` and `questdb` dialects and the rewrite registry, and change SQLite division and date offsets, Spark and Databricks `DATE_TRUNC`, and DuckDB lambda syntax. Published results for affected queries, mostly on SQLite, were computed with different SQL.
+- **Faster startup and checks.** Importing BenchBox without translating SQL no longer loads the SQLGlot runtime, `benchbox run` registers only the requested platform's adapter, and TPC-DS query generation stages one template per `dsqgen` call. `ResultValidator.validate_results_exact` skips tolerant comparison for exactly equal results.
+- **`benchbox.mcp.create_server()` no longer changes process-wide state.** It does not turn on quiet output, configure the benchbox logger, install a tracer provider or accept `log_level`; `run_server()` and `benchbox-mcp` apply that configuration at startup.
+- **TPC-DS OBT returns the TPC-DS result.** The catalog serves 90 of 99 queries from a static catalog, verified against TPC-DS at SF0.01 and SF1 by `make tpcds-obt-equivalence`. The published corpus adds TPC-DS OBT SF1 bundles for DuckDB, DataFusion and ClickHouse Local.
+- **`pyproject.toml` requires uv 0.13.4 or newer.** Older uv releases fail with a clear error instead of running with root certificates that trust the compromised eMudhra emSign CAs.
 
 ### Fixed
 
-- **Tuning.** Tuned PostgreSQL runs no longer stop on the tuned-run marker.
-  Tuned SQLite TPC-DS runs load without foreign keys. A tuning file that sets
-  only some constraint types no longer requests the rest. Primary-key tuning
-  on ClickHouse and chDB reaches `applied_verified`. Spark's `tuned` session
-  settings now apply once and survive the defaults.
-- **Dry runs.** `--dry-run --tuning tuned` shows the tuning DDL without the
-  platform driver and notes tuning the platform skips. TSBS DevOps previews its
-  queries, and saved credentials no longer appear in preview files.
-- **Data and runs.** `--force datagen` and `--force all` regenerate data and
-  recreate the database. Load-only runs exit 0 after a successful load. Sorted
-  ingestion no longer runs unsafe rewrites on Athena, Azure Synapse and
-  Redshift. Generated database names stay stable when nested tuning keys
-  are reordered.
-- **Platform options.** Alias platform names such as `sqlite3` and `pg_duckdb`
-  accept their options. Options now reach EMR Serverless, Dataproc, Synapse
-  Spark, Fabric, PySpark and Snowpark Connect, and Redshift accepts
-  `workgroup_name` and `cluster_identifier`. A saved credential profile no
-  longer blocks command-line compute settings.
-- **Platforms.** Athena Spark starts a session, and `athena-spark` accepts its
-  documented options. `benchbox run --platform quanton` builds its
-  configuration. InfluxDB accepts `mode` and `deployment_mode`. Databricks
-  `compute_resource` sets the warehouse HTTP path.
-- **Results and reports.** `benchbox report rankings` lists imported runs.
-  `benchbox compare` and `benchbox report` no longer mix deployments.
-  Anonymized bundles drop the compute resource name. The MCP server no longer
-  reconfigures Python's root logger. PostgreSQL-family baseline runs no longer
-  issue planner session settings, which belong to tuned runs only, so baseline
-  results pass the public privacy validation. ClickBench translation raises an
-  error instead of returning untranslated ClickHouse SQL.
+- **Tuning.** Tuned PostgreSQL runs no longer stop on the tuned-run marker. Tuned SQLite TPC-DS runs load without foreign keys. A tuning file that sets only some constraint types no longer requests the rest. Primary-key tuning on ClickHouse and chDB reaches `applied_verified`. Spark's `tuned` session settings now apply once and survive the defaults. Databricks `z_order` runs `OPTIMIZE ... ZORDER BY` after each load. PostgreSQL-family post-load `CLUSTER` no longer fails inside a transaction. Tuned runs on Athena, Synapse, Fabric Warehouse and BigQuery no longer abort or lose the marker. The tuning wizard reads the selected platform's template, and tuning receipts count only rendered, applied tuning.
+- **Dry runs, data and runs.** `--dry-run --tuning tuned` shows the tuning DDL without the platform driver and notes tuning the platform skips. TSBS DevOps previews its queries, and saved credentials no longer appear in preview files. `--force datagen` and `--force all` regenerate data and recreate the database. Load-only runs exit 0 after a successful load. Sorted ingestion no longer runs unsafe rewrites on Athena, Azure Synapse and Redshift. Generated database names stay stable when nested tuning keys are reordered. TPC-H and TPC-DS data generation no longer hang when the filesystem cannot flush. Reused SQLite TPC-H and JoinOrder databases restore missing helper indexes.
+- **Platform options and platforms.** Alias platform names such as `sqlite3` and `pg_duckdb` accept their options. Options now reach EMR Serverless, Dataproc, Synapse Spark, Fabric, PySpark and Snowpark Connect, and Redshift accepts `workgroup_name` and `cluster_identifier`. A saved credential profile no longer blocks command-line compute settings. Athena Spark starts a session, and `athena-spark` accepts its documented options. `benchbox run --platform quanton` builds its configuration. InfluxDB accepts `mode` and `deployment_mode`. Databricks `compute_resource` sets the warehouse HTTP path. Spark-family `CREATE TABLE` writes `USING` before `PARTITIONED BY`. Trino and Presto schema creation on the Hive connector works. The Velox Docker image builds again.
+- **Results and reports.** `benchbox report rankings` lists imported runs. `benchbox compare` and `benchbox report` no longer mix deployments. Anonymized bundles drop the compute resource name. The MCP server no longer reconfigures Python's root logger. PostgreSQL-family baseline runs no longer issue planner session settings, so baseline results pass the public privacy validation. ClickBench translation raises an error instead of returning untranslated ClickHouse SQL, and an unknown platform or dialect raises `UnknownSqlDialectError`. Gateway-routed Snowflake runs keep execution statistics. Eighteen ranked results-corpus bundles built on superseded SQL translations carry a known-defect id and drop out of rankings.
+- **Secrets and destructive resets.** A `DatabaseConfig` no longer shows secrets when printed, formatted or logged. A validation mismatch or `--force-recreate` on Snowflake no longer targets the whole database, and server-side platforms refuse to drop a database holding tables that do not belong to the requesting benchmark.
+- **Query and loader correctness.** TPC-DI `EQ3`, `EQ6` and `EQ8` use exact arithmetic and count the right rows, TPC-DS OBT Q95 is accepted by ClickHouse, and SQLite and ClickHouse fold literal arithmetic in `BETWEEN` bounds exactly, SQLite and QuestDB read unpadded date literals, and the SQLite loader reads quoted fields and loads NULL for empty nullable fields, so TPC-DS and ClickBench results produced before this fix on such data should be rerun. `EnhancedSCDType2Processor.process_scd_changes` writes its changes to the database. TPC-Havoc `1_v7` translates for PostgreSQL, DataFusion and SQLite.
+- **Release and CI tooling.** Several CI and merge-gate workflows were hardened: image mirroring retries rate-limited registries, text-edit CI verdicts report required checks, the comment-policy check scans changed files and a nightly workflow scans the whole tree, medium test shards balance by module, and the arm gate names the first red Trunk culprit.
+
+### Security
+
+- BenchBox now requires `certifi` 2026.10.19 or newer. Older releases of the CA bundle that `requests` uses still trust the compromised eMudhra emSign certificate authorities, so an attacker on the network path could impersonate a cloud endpoint and capture the tokens that `requests`-based adapters send, such as the Fabric and Synapse Spark adapters. Upgrading BenchBox now upgrades `certifi` as well. See the [Python advisory](https://discuss.python.org/t/information-for-python-users-regarding-emudhra-emsign-ca-certificate-security-incident/109576).
+- Databricks SQL connections (which carry a personal access token), hosted result submission (which carries a bearer token), and the stdlib downloads for expected results, flight data, NYC taxi data and the Redshift public-IP lookup now verify TLS against the `certifi` bundle instead of the interpreter's system store. Set `REQUESTS_CA_BUNDLE` or `SSL_CERT_FILE` to a PEM file to trust a corporate CA instead.
+- The `bigquery`, `cloud`, `cloud-spark`, `cloud-spark-gcp`, `cloud-spark-databricks`, `lakesail`, `velox` and `all` extras now require `grpcio` 1.84.1 or newer, because older releases verify TLS against their own bundled root list, which still trusts the compromised eMudhra emSign roots. The locked `filelock` moves to 4.2.4 to clear CVE-2026-112940, CVE-2026-112913 and CVE-2026-112907.
+- Releases publish with `pypa/gh-action-pypi-publish` 1.14.3 and hash-pinned pip 26.2.2, and the `benchbox-agent`, Velox and LakeSail images install Python packages with uv 0.13.5 instead of pip; rebuild existing images to pick up the change.
 
 ### Documentation
 
-- **Tuning platform support.** A new reference page lists, for every platform,
-  the shipped templates and the tuning types applied at execution.
-- **Corrected `--platform-option` examples** use keys the CLI accepts.
+- **Documentation.** A new reference page lists, for every platform, the shipped templates and the tuning types applied at execution. `--platform-option` examples use keys the CLI accepts, and error messages and shipped READMEs link to published documentation pages.
 
 ## [0.4.2] - 2026-10-05
 

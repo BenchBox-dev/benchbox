@@ -1,4 +1,0 @@
-{
-  "schema": 1,
-  "internal": "CI fast-tier jobs upload a per-test junit artifact; no shipped behavior changes."
-}

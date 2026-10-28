@@ -1,4 +1,0 @@
-{
-  "schema": 1,
-  "internal": "Release check that fails when the bundled SQLGlot runtime matches a published security advisory; no user-facing behavior."
-}
