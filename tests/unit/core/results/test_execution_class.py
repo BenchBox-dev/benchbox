@@ -349,3 +349,45 @@ def test_reloading_a_result_preserves_the_recorded_class_instead_of_restamping()
     assert profile["execution_class"] == "container"
     assert profile["container_runtime"] == "docker"
     assert "execution_class" not in _extract_system_profile({"os": "Darwin 25.0.0"})
+
+
+_DOCKER_RUNTIME = {"runtime_type": "docker_container", "collection_status": "available", "source": "observed"}
+
+
+@pytest.mark.parametrize(
+    ("client_os", "runtime", "expected"),
+    [
+        ("Darwin 25.0.0", _DOCKER_RUNTIME, ("container", "docker", "macOS", "observed")),
+        ("Windows 11", _DOCKER_RUNTIME, ("container", "docker", "Windows", "observed")),
+        ("Linux 6.8.0", _DOCKER_RUNTIME, (None, None, None, None)),
+        ("Darwin 25.0.0", {**_DOCKER_RUNTIME, "collection_status": "unavailable"}, (None, None, None, None)),
+        ("Darwin 25.0.0", {"runtime_type": "local_process"}, (None, None, None, None)),
+    ],
+)
+def test_a_discovered_docker_engine_on_a_vm_backed_host_is_a_container_run(client_os, runtime, expected) -> None:
+    payload = build_environment_payload(
+        system_profile={"os_type": client_os.split()[0], "os_release": client_os.split()[1], "cpu_count": 10},
+        execution_environment={"platform_runtime": runtime},
+    )
+
+    assert (
+        payload.get("execution_class"),
+        payload.get("container_runtime"),
+        payload.get("container_host_os"),
+        payload.get("execution_class_source"),
+    ) == expected
+    assert payload.get("client_host", {}).get("execution_class") == expected[0]
+
+
+def test_a_discovered_docker_engine_overrides_an_observed_native_client_class() -> None:
+    payload = build_environment_payload(
+        system_profile={
+            "os_type": "Darwin",
+            "os_release": "25.0.0",
+            "execution_class": "native",
+            "execution_class_source": "observed",
+        },
+        execution_environment={"platform_runtime": _DOCKER_RUNTIME},
+    )
+
+    assert read_execution_class({"environment": payload}) == "container"

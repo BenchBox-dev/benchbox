@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "A server engine that BenchBox finds running in a Docker container on a macOS or Windows client is now recorded and ranked as a container run, labelled for example `Apache Doris (Linux container on macOS)`; existing results keep their identity unless annotated."
+    }
+  ]
+}

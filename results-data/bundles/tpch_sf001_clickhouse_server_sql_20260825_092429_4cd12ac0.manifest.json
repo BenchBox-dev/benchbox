@@ -1,11 +1,15 @@
 {
   "bundle_file": "tpch_sf001_clickhouse_server_sql_20260825_092429_4cd12ac0.json",
   "bundle_hash": "25275a04d7aaeddfaa2d9c725e106c8ecd3c3e813ddfa0a4db41e87044286a22",
+  "container_host_os": "macOS",
+  "container_runtime": "docker",
+  "execution_class": "container",
+  "execution_class_evidence": "Bundle records a self-hosted localhost server engine driven from a macOS client whose Docker runtime discovery found no container: the engine ran in a Docker container on the Mac, not on the macOS host.",
   "funding": "unspecified",
-  "manifest_version": "1.0",
-  "result_source": "internal",
-  "submitted_by": "maintainer",
   "known_defects": [
     "defective-macdbgen-addresses"
-  ]
+  ],
+  "manifest_version": "1.0",
+  "result_source": "internal",
+  "submitted_by": "maintainer"
 }

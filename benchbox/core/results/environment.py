@@ -287,6 +287,28 @@ class PlatformStorageMetadata:
         return _compact(asdict(self))
 
 
+_VM_BACKED_DOCKER_HOSTS = {"Darwin": "macOS", "Windows": "Windows"}
+
+
+def _docker_hosted_execution_class(
+    platform_runtime: Mapping[str, Any], client_host: Mapping[str, Any]
+) -> dict[str, str]:
+    host_family = str(client_host.get("os") or "").split(maxsplit=1)[0] if client_host.get("os") else ""
+    if (
+        platform_runtime.get("runtime_type") != "docker_container"
+        or platform_runtime.get("collection_status") != "available"
+        or host_family not in _VM_BACKED_DOCKER_HOSTS
+        or client_host.get("execution_class") == "container"
+    ):
+        return {}
+    return {
+        "execution_class": "container",
+        "container_runtime": "docker",
+        "container_host_os": _VM_BACKED_DOCKER_HOSTS[host_family],
+        "execution_class_source": "observed",
+    }
+
+
 def build_environment_payload(
     *,
     system_profile: Any | None,
@@ -299,6 +321,7 @@ def build_environment_payload(
     platform_runtime = _metadata_dict(explicit.get("platform_runtime")) or PlatformRuntimeEnvironment().to_dict()
     container = _metadata_dict(explicit.get("container"))
     client_link = _metadata_dict(explicit.get("client_link"))
+    client_host = {**client_host, **_docker_hosted_execution_class(platform_runtime, client_host)}
 
     payload: dict[str, Any] = dict(client_host)
     if client_host:

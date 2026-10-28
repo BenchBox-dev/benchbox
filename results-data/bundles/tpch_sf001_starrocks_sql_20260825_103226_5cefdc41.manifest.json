@@ -1,11 +1,15 @@
 {
   "bundle_file": "tpch_sf001_starrocks_sql_20260825_103226_5cefdc41.json",
   "bundle_hash": "88eb5edd3059dffe4b1c9bb2b26698e18acd807ec8146243b42689e27eab9d2e",
+  "container_host_os": "macOS",
+  "container_runtime": "docker",
+  "execution_class": "container",
+  "execution_class_evidence": "Bundle records a self-hosted localhost server engine driven from a macOS client whose Docker runtime discovery found no container: the engine ran in a Docker container on the Mac, not on the macOS host.",
   "funding": "unspecified",
-  "manifest_version": "1.0",
-  "result_source": "internal",
-  "submitted_by": "maintainer",
   "known_defects": [
     "defective-macdbgen-addresses"
-  ]
+  ],
+  "manifest_version": "1.0",
+  "result_source": "internal",
+  "submitted_by": "maintainer"
 }

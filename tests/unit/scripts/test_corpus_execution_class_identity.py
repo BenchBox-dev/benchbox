@@ -186,3 +186,16 @@ def test_native_linux_runner_bundles_keep_their_plain_identity() -> None:
         assert "^" not in transformer.to_manifest_entry(path).variant_id
 
     assert runners
+
+
+def test_a_docker_server_engine_on_a_mac_is_labelled_a_linux_container_on_macOS(tmp_path: Path) -> None:
+    payload = _bundle(NATIVE_ENVIRONMENT)
+    payload["platform"] = {"name": "Apache Doris", "version": "4.0"}
+    path = _write(tmp_path, "doris.json", payload, {**SIDECAR, "container_runtime": "docker"})
+
+    entry = BundleTransformer().to_manifest_entry(path)
+
+    assert entry.variant_id == "apache-doris^container"
+    assert entry.variant_label == "Apache Doris (Linux container on macOS)"
+    validator_ids, explorer_ids = _identities(tmp_path)
+    assert validator_ids == explorer_ids == {"apache-doris^container"}
