@@ -136,6 +136,17 @@ jobs:
           uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python -m _project.scripts.oracle_reviewers.cli plan --policy .github/oracle-reviewers.yml
           --pr "$PR_NUMBER" --out "$RUNNER_TEMP/oracle-plan"
 
+      - name: Shadow the driver plan
+        id: shadow_plan
+        continue-on-error: true
+        working-directory: trusted
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
+        run: >-
+          uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python -m _project.scripts.oracle_reviewers.cli drive
+          --policy .github/oracle-reviewers.yml prepare --shadow
+
       - name: Check out the pull request head for reading only
         if: steps.plan.outputs.decision == 'review'
         continue-on-error: true
@@ -351,6 +362,21 @@ jobs:
           python3 -m _project.scripts.oracle_reviewers.cli redact-check --path "$RUNNER_TEMP/oracle-attempts" --path "$RUNNER_TEMP/oracle-final"
           --env JOB_TOKEN --summary-file "$RUNNER_TEMP/oracle-attempts/summary.json" --summary-file "$RUNNER_TEMP/oracle-final/summary.json"
 
+      - name: Shadow the driver finalize
+        id: shadow_finalize
+        if: steps.plan.outputs.post == 'true' && steps.shadow_plan.outcome == 'success'
+        continue-on-error: true
+        working-directory: trusted
+        env:
+          OMP_INSTALL_STATE: ${{ steps.omp.outputs.state }}
+          OMP_GATEWAY_TOKEN: ${{ secrets.ORACLE_GATEWAY_TOKEN }}
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+          ORACLE_GATEWAY_URL: ${{ secrets.ORACLE_GATEWAY_URL }}
+          TS_OAUTH_CI_CLIENT_ID: ${{ secrets.TS_OAUTH_CI_CLIENT_ID }}
+          TS_OAUTH_CI_SECRET: ${{ secrets.TS_OAUTH_CI_SECRET }}
+          JOB_TOKEN: ${{ github.token }}
+        run: python3 -m _project.scripts.oracle_reviewers.cli drive finalize --shadow
+
       - name: Log the result when the App is not configured
         if: steps.plan.outputs.post == 'true' && env.HAS_APP != 'true'
         env:
@@ -395,6 +421,7 @@ jobs:
         run: gh api --method POST "repos/$REPO/statuses/$HEAD_SHA" --input "$RUNNER_TEMP/oracle-final/status.json"
 
       - name: Post the findings comment
+        id: comment
         if: steps.plan.outputs.post == 'true' && env.HAS_APP == 'true' && steps.guard.outputs.skip != 'true' && steps.finalize.outputs.comment == 'true'
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
@@ -402,11 +429,38 @@ jobs:
         run: gh api --method POST "repos/$REPO/issues/$PR_NUMBER/comments" --input "$RUNNER_TEMP/oracle-final/comment.json"
 
       - name: Post the findings review
+        id: review
         if: steps.plan.outputs.post == 'true' && env.HAS_APP == 'true' && steps.guard.outputs.skip != 'true' && steps.finalize.outputs.review == 'true'
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
           PR_NUMBER: ${{ steps.plan.outputs.pr }}
         run: gh api --method POST "repos/$REPO/pulls/$PR_NUMBER/reviews" --input "$RUNNER_TEMP/oracle-final/review.json"
+
+      - name: Compare the driver outputs with the posted outputs
+        id: shadow_compare
+        if: always() && steps.plan.outputs.post == 'true'
+        continue-on-error: true
+        working-directory: trusted
+        env:
+          GUARD_SKIP: ${{ steps.guard.outputs.skip }}
+          GUARD_OUTCOME: ${{ steps.guard.outcome }}
+          POSTED_STATUS: ${{ steps.status.outcome }}
+          POSTED_COMMENT: ${{ steps.comment.outcome }}
+          POSTED_REVIEW: ${{ steps.review.outcome }}
+          POSTED_GATE: ${{ steps.dispatch.outcome }}
+        run: python3 -m _project.scripts.oracle_reviewers.cli drive compare
+
+      - name: Upload the shadow comparison
+        if: always() && steps.plan.outputs.post == 'true'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          overwrite: true
+          name: oracle-verdict-shadow-${{ steps.plan.outputs.pr }}
+          path: |
+            ${{ runner.temp }}/oracle-shadow/result.json
+            ${{ runner.temp }}/oracle-shadow/final/
+          if-no-files-found: ignore
+          retention-days: 30
 
       - name: Upload the retry state
         if: steps.status.outcome == 'success' && steps.finalize.outputs.has_state == 'true'
@@ -473,6 +527,7 @@ jobs:
           retention-days: 30
 
       - name: Dispatch the gate for the reviewed head
+        id: dispatch
         if: steps.plan.outputs.post == 'true' && env.HAS_APP == 'true' && steps.guard.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}

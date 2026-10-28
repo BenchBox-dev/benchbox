@@ -1,0 +1,274 @@
+{
+  "attempts": [],
+  "final": {
+    "attempt/state.json": null,
+    "comment.json": null,
+    "review.json": null,
+    "state/state.json": {
+      "head_sha": "<sha0>",
+      "outcome": "pending",
+      "pending_cause": "omp-install",
+      "pool_blocked_until": {},
+      "pr": 85,
+      "retries": [],
+      "strikes": 0,
+      "updated_at": "<time>"
+    },
+    "status.json": {
+      "context": "oracle-verdict",
+      "description": "the pinned omp build could not be installed; no reviewer ran",
+      "state": "pending",
+      "target_url": "https://github.localhost/BenchBox-dev/BenchBox/actions/runs/<run>"
+    }
+  },
+  "plan": {
+    "base_ref": "develop",
+    "base_sha": "<sha1>",
+    "binary_files": [],
+    "bot_login": "benchbox-oracle",
+    "brief_max_bytes": 100000,
+    "brief_mode": "inline",
+    "buckets": {
+      "huge": "huge",
+      "large": "large",
+      "max": "max",
+      "medium": "medium",
+      "small": "small",
+      "trivial": "trivial"
+    },
+    "chain": [
+      {
+        "disabled_reason": "",
+        "effort": "",
+        "enabled": true,
+        "family": "codex",
+        "harness": "omp",
+        "model": "@smol",
+        "name": "trivial",
+        "pool": "codex",
+        "read_only": "hard",
+        "reads_files": true,
+        "role": "review",
+        "timeout_minutes": 15
+      },
+      {
+        "disabled_reason": "",
+        "effort": "",
+        "enabled": true,
+        "family": "codex",
+        "harness": "omp",
+        "model": "@smol",
+        "name": "small",
+        "pool": "codex",
+        "read_only": "hard",
+        "reads_files": true,
+        "role": "review",
+        "timeout_minutes": 20
+      },
+      {
+        "disabled_reason": "",
+        "effort": "",
+        "enabled": true,
+        "family": "claude",
+        "harness": "omp",
+        "model": "@default",
+        "name": "medium",
+        "pool": "claude",
+        "read_only": "hard",
+        "reads_files": true,
+        "role": "review",
+        "timeout_minutes": 25
+      },
+      {
+        "disabled_reason": "",
+        "effort": "",
+        "enabled": true,
+        "family": "claude",
+        "harness": "omp",
+        "model": "@review",
+        "name": "large",
+        "pool": "claude",
+        "read_only": "hard",
+        "reads_files": true,
+        "role": "review",
+        "timeout_minutes": 30
+      },
+      {
+        "disabled_reason": "",
+        "effort": "",
+        "enabled": true,
+        "family": "claude",
+        "harness": "omp",
+        "model": "@plan",
+        "name": "huge",
+        "pool": "claude",
+        "read_only": "hard",
+        "reads_files": true,
+        "role": "review",
+        "timeout_minutes": 40
+      },
+      {
+        "disabled_reason": "",
+        "effort": "",
+        "enabled": true,
+        "family": "claude",
+        "harness": "omp",
+        "model": "@slow",
+        "name": "max",
+        "pool": "claude",
+        "read_only": "hard",
+        "reads_files": true,
+        "role": "review",
+        "timeout_minutes": 45
+      }
+    ],
+    "created_at": "<volatile>",
+    "decision": "review",
+    "decision_reason": "first review of this pull request; pull request event",
+    "diff_inline": "diff --git a/benchbox/core/equivalence/checker.py b/benchbox/core/equivalence/checker.py\nindex 42d0b45..1f0a49c 100644\n--- a/benchbox/core/equivalence/checker.py\n+++ b/benchbox/core/equivalence/checker.py\n@@ -1,2 +1,4 @@\n def checker(a, b):\n+    if a is None or b is None:\n+        return False\n     return a == b\n",
+    "disputes": [],
+    "evidence_exempt_paths": [
+      "README*.md",
+      "**/README*.md",
+      "CHANGELOG*.md",
+      "**/CHANGELOG*.md",
+      "docs/*.md"
+    ],
+    "evidence_files": [
+      "benchbox/core/equivalence/checker.py"
+    ],
+    "evidence_protected_files": [
+      "benchbox/core/equivalence/checker.py"
+    ],
+    "findings_delivery": "review",
+    "follow_up_reviewer": null,
+    "gate_path_list": [
+      ".github/oracle-reviewers.yml",
+      ".github/oracle-omp-config.yml",
+      "_project/scripts/oracle_gateway_host.sh",
+      ".github/soundness-paths.txt",
+      ".github/workflows/oracle-review.yml",
+      ".github/workflows/oracle-verdict.yml",
+      ".github/workflows/soundness-merge-digest.yml",
+      "_project/scripts/oracle_review_check.py",
+      "_project/scripts/oracle_reviewers/*",
+      "_project/scripts/soundness_paths.py",
+      "_project/scripts/inert_paths.py",
+      ".github/inert-paths.txt",
+      "_project/inert-doc-readers.json",
+      "_project/scripts/soundness_merge_digest.py",
+      "_project/scripts/check_soundness_review.py",
+      "_project/scripts/ruleset_review_enforcement.py",
+      "scripts/ruleset_drift_check.py"
+    ],
+    "gate_paths": [],
+    "head_sha": "<sha0>",
+    "manual": false,
+    "max_attempts": 5,
+    "max_defects": 10,
+    "mode": "enforce",
+    "omp_sha256": "5396c0dca8bfef39b7fff3cf9403a7abd9ad6092b8784586b257012f3abcdecf",
+    "open_findings": {},
+    "pool_blocked_until": {},
+    "pr": 85,
+    "previous_state": null,
+    "protocol": {
+      "base_ref": "develop",
+      "changed": null,
+      "cycle": 1,
+      "forced": false,
+      "kind": "first",
+      "max_do_not_ship": 3,
+      "next_id": 1,
+      "patch_digest": "721ec4ecb31e7211ab9f04edfe290ebd",
+      "patch_map": {
+        "5b21f32d": "76119d103787b015"
+      },
+      "previous": null,
+      "prior": [],
+      "reason": "first review of this pull request",
+      "round": 1,
+      "seen": [],
+      "strikes": 0,
+      "struck_digests": []
+    },
+    "repo": "BenchBox-dev/BenchBox",
+    "restart_summary": null,
+    "reviewed_files": [
+      {
+        "additions": 2,
+        "deletions": 0,
+        "path": "benchbox/core/equivalence/checker.py",
+        "previous_path": null,
+        "status": "modified"
+      }
+    ],
+    "reviewed_head": null,
+    "run_id": "<volatile>",
+    "run_uuid": "<volatile>",
+    "schema": 1,
+    "scope": "full",
+    "scope_paths": [
+      "benchbox/core/equivalence/checker.py"
+    ],
+    "scope_reasons": [
+      "changes comparison, validation or result logic: benchbox/core/equivalence/checker.py"
+    ],
+    "status_context": "oracle-verdict",
+    "unchanged_files": [],
+    "untracked_files": []
+  },
+  "posted": {
+    "artifacts": [
+      "oracle-verdict-state-85"
+    ],
+    "comments": [],
+    "dispatches": [
+      {
+        "inputs": {
+          "head_sha": "<sha0>",
+          "pr": "85"
+        },
+        "ref": "develop",
+        "workflow": "oracle-gate.yml"
+      }
+    ],
+    "reviews": [],
+    "statuses": [
+      {
+        "context": "oracle-verdict",
+        "creator": "benchbox-oracle[bot]",
+        "description": "the pinned omp build could not be installed; no reviewer ran",
+        "state": "pending",
+        "target_url": "https://github.localhost/BenchBox-dev/BenchBox/actions/runs/<run>"
+      }
+    ],
+    "threads": []
+  },
+  "prompts": [],
+  "steps": {
+    "finalize": {
+      "code": 0,
+      "outputs": {
+        "comment": "false",
+        "has_state": "true",
+        "review": "false",
+        "state": "pending"
+      }
+    },
+    "plan": {
+      "code": 0,
+      "outputs": {
+        "decision": "review",
+        "head_sha": "<sha0>",
+        "post": "true",
+        "pr": "85"
+      }
+    },
+    "publish": {
+      "code": 0,
+      "skip": "false"
+    }
+  },
+  "summary": "oracle-verdict plan for #85: review (first review of this pull request; pull request event)\nredaction check: 0 file(s) rewritten, no secret value remains\noracle-verdict #85 <sha0>: pending: the pinned omp build could not be installed; no reviewer ran\n"
+}

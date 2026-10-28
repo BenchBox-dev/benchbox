@@ -193,6 +193,44 @@ If any of C2 to C10 cannot pass on GitHub-hosted runners, the fallback is the
 same `review` job without posting steps, plus a separate `post` job that holds
 the App key and reads the uploaded artifacts.
 
+### Review driver
+
+`cli.py drive <phase>` is the one entrypoint that orchestrates a review; the
+workflow only calls it. Each phase is its own step and holds only the secrets
+that phase uses, so the attempt loop never sees the classifier key, the App
+token or the App private key.
+
+| Phase | Does | Secrets it holds |
+|---|---|---|
+| `prepare` | Plans the review, then classifies the change for attempt 1 (a classification failure leaves the attempts pending, it does not fail the step). | job token, TypeSafe key |
+| `harness` | Installs the pinned omp build from the policy and records its version; a failed install leaves the attempts absent. | none |
+| `scan` | Searches the declared scratch roots for the exact TypeSafe key, Tailscale OAuth secret and job token. Runs before the reviewer, after the tailnet join and after the last exit. | TypeSafe key, OAuth secret, job token |
+| `isolation` | Verifies the Linux process isolation prerequisite; fails closed. | none |
+| `attempts` | Runs attempts until the chain stops or an invalid attempt needs a recovery judgment. | gateway token and URL |
+| `recover` | Asks the judgment service how to recover the last invalid attempt. | TypeSafe key |
+| `finalize` | Counts the attempts, validates and decides, writes the status, comment, review and retry state, then redacts every secret value from the results. | every secret the job holds |
+| `publish` | Runs the guard, posts the status, comment and review, hands the retry state to the upload steps, and dispatches the gate. | App token, job token |
+| `sweep` | Dispatches due retries. | job token, App token |
+
+Phases pass state through files under `$RUNNER_TEMP` (`oracle-plan`,
+`oracle-classification`, `oracle-attempts`, `oracle-final`) and report through
+step outputs, so `recover` and `attempts` alternate in fixed workflow steps
+because a judgment key cannot share an environment with the reviewer.
+
+The environment adapter supplies what differs by execution environment: the
+PR context, the scan roots and secret names, the isolation capability, the
+harness install, and the result sink (`GitHubSink` posts; `RecordingSink`
+records what would be posted). The CI adapter is `CiEnvironment`.
+
+While the driver is proven against live runs it also runs as a shadow after
+the existing steps. `drive prepare --shadow` re-plans into `oracle-shadow`,
+`drive finalize --shadow` re-finalizes the same attempts there, and
+`drive compare` records what `publish` would post through a `RecordingSink` and
+compares the plan, the final files and the posting intents with what the
+posting steps did. The result is in the step summary and in the
+`oracle-verdict-shadow-<pr>` artifact (`result.json`). Shadow steps never post
+and never fail the job.
+
 ## Inert-path manifest
 
 `.github/inert-paths.txt` is the source of truth for code-driven review and

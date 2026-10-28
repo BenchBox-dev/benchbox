@@ -43,6 +43,7 @@ STEP_ORDER = [
     "Check out the trusted develop copy",
     "Install uv",
     "Plan the review",
+    "Shadow the driver plan",
     "Check out the pull request head for reading only",
     "Classify the change and select the reviewer for attempt 1",
     "Scan the disk for secret values before the reviewer runs",
@@ -63,6 +64,7 @@ STEP_ORDER = [
     "Scan the disk for secret values after the reviewer exits",
     "Validate this run's attempts and decide",
     "Redact every secret value held by the job from the results",
+    "Shadow the driver finalize",
     "Log the result when the App is not configured",
     "Mint the App token",
     "Skip a result this head already has",
@@ -70,11 +72,16 @@ STEP_ORDER = [
     "Post the commit status",
     "Post the findings comment",
     "Post the findings review",
+    "Compare the driver outputs with the posted outputs",
+    "Upload the shadow comparison",
     "Upload the retry state",
     *[f"Upload attempt {slot}" for slot in range(1, POLICY.max_attempts + 1)],
     "Upload the captured reviewer event streams",
     DISPATCH_STEP,
 ]
+SHADOW_PLAN_STEP = "Shadow the driver plan"
+SHADOW_FINALIZE_STEP = "Shadow the driver finalize"
+SHADOW_COMPARE_STEP = "Compare the driver outputs with the posted outputs"
 LOOP_STEP = "Run the attempt loop"
 RECOVER_STEPS = tuple(f"Classify the invalid attempt after attempt {after}" for after in range(1, POLICY.max_attempts))
 LOOP_STEPS = (
@@ -339,6 +346,7 @@ def test_only_the_scans_the_classifier_the_recovery_and_the_redaction_step_hold_
         JOIN_SCAN_STEP,
         FINALIZE_STEP,
         REDACT_STEP,
+        SHADOW_FINALIZE_STEP,
     }
     for name in _steps_referencing("TYPESAFE_API_KEY"):
         assert name not in LOOP_STEPS
@@ -403,16 +411,64 @@ def test_the_sweep_mints_an_app_token_for_failure_statuses_in_the_oracle_environ
 
 def test_every_secret_is_referenced_only_where_it_is_needed() -> None:
     allowed = {
-        "ORACLE_GATEWAY_TOKEN": {*LOOP_STEPS, FINALIZE_STEP, REDACT_STEP},
-        "ORACLE_GATEWAY_URL": {*LOOP_STEPS, FINALIZE_STEP, REDACT_STEP},
-        "TS_OAUTH_CI_CLIENT_ID": {JOIN_STEP, FINALIZE_STEP, REDACT_STEP},
-        "TS_OAUTH_CI_SECRET": {JOIN_STEP, JOIN_SCAN_STEP, *SCAN_STEPS, FINALIZE_STEP, REDACT_STEP},
+        "ORACLE_GATEWAY_TOKEN": {*LOOP_STEPS, FINALIZE_STEP, REDACT_STEP, SHADOW_FINALIZE_STEP},
+        "ORACLE_GATEWAY_URL": {*LOOP_STEPS, FINALIZE_STEP, REDACT_STEP, SHADOW_FINALIZE_STEP},
+        "TS_OAUTH_CI_CLIENT_ID": {JOIN_STEP, FINALIZE_STEP, REDACT_STEP, SHADOW_FINALIZE_STEP},
+        "TS_OAUTH_CI_SECRET": {
+            JOIN_STEP,
+            JOIN_SCAN_STEP,
+            *SCAN_STEPS,
+            FINALIZE_STEP,
+            REDACT_STEP,
+            SHADOW_FINALIZE_STEP,
+        },
         "ORACLE_APP_ID": {"Mint the App token"},
     }
     for secret, steps in allowed.items():
         assert set(_steps_referencing(secret)) == steps, secret
     declared = set().union(*(_secrets(step) for step in _steps()))
     assert declared == {*allowed, "TYPESAFE_API_KEY", "ORACLE_APP_PRIVATE_KEY"}
+
+
+def test_the_shadow_steps_never_post_never_fail_the_job_and_hold_only_what_the_posting_path_holds() -> None:
+    names = _names()
+    for name in (SHADOW_PLAN_STEP, SHADOW_FINALIZE_STEP, SHADOW_COMPARE_STEP):
+        step = _step(name)
+        assert step["continue-on-error"] is True
+        assert "gh " not in step["run"] and "ORACLE_APP" not in _text(step)
+        assert "drive" in step["run"]
+    assert _step(SHADOW_PLAN_STEP)["env"] == {
+        "GH_TOKEN": "${{ github.token }}",
+        "PR_NUMBER": "${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}",
+    }
+    assert _step(SHADOW_FINALIZE_STEP)["env"] == {
+        **REDACTION_ENV,
+        "OMP_INSTALL_STATE": "${{ steps.omp.outputs.state }}",
+    }
+    assert not _secrets(_step(SHADOW_COMPARE_STEP)) and "github.token" not in _text(_step(SHADOW_COMPARE_STEP))
+    assert names.index("Plan the review") + 1 == names.index(SHADOW_PLAN_STEP)
+    assert names.index(REDACT_STEP) + 1 == names.index(SHADOW_FINALIZE_STEP)
+    assert names.index(SHADOW_FINALIZE_STEP) < names.index("Mint the App token")
+    assert names.index("Post the findings review") < names.index(SHADOW_COMPARE_STEP)
+    assert names.index(SHADOW_COMPARE_STEP) + 1 == names.index("Upload the shadow comparison")
+
+
+def test_the_shadow_comparison_names_the_outcome_of_every_posting_step_and_the_guard() -> None:
+    assert _step(SHADOW_COMPARE_STEP)["env"] == {
+        "GUARD_SKIP": "${{ steps.guard.outputs.skip }}",
+        "GUARD_OUTCOME": "${{ steps.guard.outcome }}",
+        "POSTED_STATUS": "${{ steps.status.outcome }}",
+        "POSTED_COMMENT": "${{ steps.comment.outcome }}",
+        "POSTED_REVIEW": "${{ steps.review.outcome }}",
+        "POSTED_GATE": "${{ steps.dispatch.outcome }}",
+    }
+    for name, ident in (
+        ("Post the commit status", "status"),
+        ("Post the findings comment", "comment"),
+        ("Post the findings review", "review"),
+        (DISPATCH_STEP, "dispatch"),
+    ):
+        assert _step(name)["id"] == ident
 
 
 def test_the_redaction_step_holds_every_secret_value_the_job_held() -> None:

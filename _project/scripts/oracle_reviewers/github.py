@@ -494,6 +494,62 @@ def post_status(repo: str, head_sha: str, payload: Mapping[str, Any], token: str
         raise GitHubError(f"could not post a status on {head_sha}: {result.stderr.strip()[:500]}")
 
 
+def _token_env(token: str) -> dict[str, str]:
+    env = dict(os.environ)
+    env["GH_TOKEN"] = token
+    return env
+
+
+def post_file(path: str, payload: Path, token: str) -> None:
+    result = subprocess.run(
+        ["gh", "api", "--method", "POST", path, "--input", str(payload)],
+        capture_output=True,
+        text=True,
+        check=False,
+        env=_token_env(token),
+    )
+    if result.returncode != 0:
+        raise GitHubError(f"could not post to {path}: {result.stderr.strip()[:500]}")
+
+
+def pull_base_ref(repo: str, pr: int, token: str) -> str:
+    result = subprocess.run(
+        ["gh", "api", f"repos/{repo}/pulls/{pr}", "--jq", ".base.ref"],
+        capture_output=True,
+        text=True,
+        check=False,
+        env=_token_env(token),
+    )
+    if result.returncode != 0:
+        raise GitHubError(f"could not read the base of #{pr}: {result.stderr.strip()[:500]}")
+    return result.stdout.strip()
+
+
+def dispatch_gate(repo: str, pr: int, head: str, token: str) -> None:
+    result = subprocess.run(
+        [
+            "gh",
+            "workflow",
+            "run",
+            "oracle-gate.yml",
+            "--repo",
+            repo,
+            "--ref",
+            "develop",
+            "-f",
+            f"pr={pr}",
+            "-f",
+            f"head_sha={head}",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+        env=_token_env(token),
+    )
+    if result.returncode != 0:
+        raise GitHubError(f"could not dispatch the gate for #{pr}: {result.stderr.strip()[:500]}")
+
+
 def backoff_reset_at(repo: str, pr: int, head_sha: str) -> datetime | None:
     return reset.reset_moment(get_paginated(f"repos/{repo}/issues/{pr}/comments?per_page=100"), head_sha)
 
