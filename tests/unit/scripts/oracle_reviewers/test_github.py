@@ -613,16 +613,14 @@ def _state_sources(
             return {"status": "ahead"}
         raise AssertionError(f"unexpected request {path}")
 
-    def fake_run(argv: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
-        name = argv[argv.index("-n") + 1]
+    def fake_download(repo: str, run_id: str, name: str, directory: str) -> None:
         downloaded.append(name)
         state = State(7, "a" * 40, "failure", datetime(2026, 10, 5, tzinfo=UTC), strikes=1)
-        (Path(argv[argv.index("-D") + 1]) / github.STATE_FILE).write_text(json.dumps(state.to_json()), "utf-8")
-        return subprocess.CompletedProcess(argv, 0, "", "")
+        (Path(directory) / github.STATE_FILE).write_text(json.dumps(state.to_json()), "utf-8")
 
     monkeypatch.setattr(github, "get_json", get_json)
     monkeypatch.setattr(github, "get_paginated", lambda path: [])
-    monkeypatch.setattr(github.subprocess, "run", fake_run)
+    monkeypatch.setattr(github, "download_state_artifact", fake_download)
     return downloaded
 
 

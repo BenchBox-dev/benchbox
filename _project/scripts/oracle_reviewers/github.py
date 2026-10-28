@@ -319,6 +319,17 @@ def trusted_run(
     return is_on_develop(repo, head_sha)
 
 
+def download_state_artifact(repo: str, run_id: str, name: str, directory: str) -> None:
+    result = subprocess.run(
+        ["gh", "run", "download", run_id, "-n", name, "-D", directory, "-R", repo],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise GitHubError(f"could not download {name} from run {run_id}: {result.stderr.strip()[:500]}")
+
+
 def latest_state(repo: str, pr: int) -> State | None:
     names = (state_artifact_name(pr), attempt_state_artifact_name(pr))
     return _latest_state(repo, pr, names, WORKFLOW_PATH)
@@ -344,14 +355,7 @@ def _latest_state(repo: str, pr: int, names: Sequence[str], workflow_path: str) 
         if not trusted_run(run, repo, pr, pulls=pulls, workflow_path=workflow_path):
             continue
         with tempfile.TemporaryDirectory() as directory:
-            result = subprocess.run(
-                ["gh", "run", "download", run_id, "-n", name, "-D", directory, "-R", repo],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if result.returncode != 0:
-                raise GitHubError(f"could not download {name} from run {run_id}: {result.stderr.strip()[:500]}")
+            download_state_artifact(repo, run_id, name, directory)
             return State.from_json(json.loads((Path(directory) / STATE_FILE).read_text(encoding="utf-8")))
     return None
 
