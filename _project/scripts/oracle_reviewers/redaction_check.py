@@ -5,7 +5,7 @@ from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import Any
 
-from . import credentials
+from . import credentials, protocol
 
 
 class Unredactable(Exception):
@@ -63,9 +63,26 @@ def redact(value: Any, extra: tuple[str, ...]) -> Any:
     return value
 
 
+def _flat(payload: Any) -> Iterator[str]:
+    pending = [payload]
+    while pending:
+        value = pending.pop()
+        if isinstance(value, str):
+            yield value
+        elif isinstance(value, list):
+            pending.extend(value)
+        elif isinstance(value, dict):
+            for key, item in value.items():
+                yield str(key)
+                pending.append(item)
+
+
 def _strings(value: Any) -> Iterator[str]:
     if isinstance(value, str):
         yield value
+        payload = protocol.marker_payload(value)
+        if payload is not None:
+            yield from _flat(payload)
     elif isinstance(value, list):
         yield _joined(value)
         for item in value:

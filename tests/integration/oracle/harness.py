@@ -32,6 +32,7 @@ TRUSTED_FILES = (
     ".github/inert-paths.txt",
 )
 GATEWAY_TOKEN = "gwtok-" + "Q7mZ4kLp" * 5
+HELD_SECRET = "oauth-secret-" + "W3xT9vNb" * 4
 JEV_KEY = "jevk-" + "T5nB8wXc" * 4
 PINNED_OMP = "18.12.1"
 SHA256_LINE = re.compile(r"sha256: [0-9a-f]{64}")
@@ -82,6 +83,7 @@ class ReviewRun:
     run: dict[str, Any]
     temp: Path
     steps: dict[str, Step] = field(default_factory=dict)
+    loop_summary: str = ""
 
     @property
     def plan(self) -> dict[str, Any]:
@@ -91,6 +93,10 @@ class ReviewRun:
     def attempts(self) -> list[dict[str, Any]]:
         folder = self.temp / "oracle-attempts"
         return [json.loads(path.read_text(encoding="utf-8")) for path in sorted(folder.glob("attempt-*.json"))]
+
+    def step_summary(self) -> str:
+        path = self.temp / "summary.md"
+        return path.read_text(encoding="utf-8") if path.is_file() else ""
 
     def captures(self) -> list[dict[str, Any]]:
         folder = self.temp / "oracle-attempts" / "captures"
@@ -270,6 +276,41 @@ class Harness:
     def gh(self, name: str, args: list[str], env: dict[str, str], token: str) -> Step:
         return self.run(name, ["gh", *args], {**env, "GH_TOKEN": token, "GH_ENTERPRISE_TOKEN": token})
 
+    def _step_runs(self, name: str, record: ReviewRun) -> bool:
+        steps = yaml.safe_load((REPO_ROOT / WORKFLOW).read_text(encoding="utf-8"))["jobs"]["review"]["steps"]
+        condition = str(next(step for step in steps if step.get("name") == name).get("if", "success()"))
+
+        def out(step: str, key: str) -> str:
+            found = record.steps.get(step)
+            return found.outputs.get(key, "") if found is not None else ""
+
+        def outcome(step: str) -> str:
+            found = record.steps.get(step)
+            return "skipped" if found is None else ("success" if found.code == 0 else "failure")
+
+        clauses = [clause.strip() for clause in condition.split("&&")]
+        if "always()" not in clauses and any(step.code != 0 for step in record.steps.values()):
+            return False
+        return all(self._clause_holds(clause, out, outcome) for clause in clauses)
+
+    @staticmethod
+    def _clause_holds(clause: str, out: Callable[[str, str], str], outcome: Callable[[str], str]) -> bool:
+        if clause == "always()":
+            return True
+        match = re.fullmatch(r"steps\.(\w+)\.(?:outputs\.(\w+)|(outcome)) (==|!=) '(\w*)'", clause)
+        if match is None:
+            raise AssertionError(f"unsupported workflow condition clause: {clause}")
+        step, key, _, operator, expected = match.groups()
+        actual = out(step, key) if key else outcome(step)
+        return (actual == expected) if operator == "==" else (actual != expected)
+
+    def _record_attempt(self, record: ReviewRun, run: dict[str, Any], pr: int) -> None:
+        if not self._step_runs("Record the retry attempt", record):
+            return
+        attempt = record.temp / "oracle-final" / "attempt" / "state.json"
+        if attempt.is_file():
+            self.github.upload_artifact(run, f"oracle-verdict-state-attempt-{pr}", {"state.json": attempt.read_bytes()})
+
     def review(
         self,
         pr: int,
@@ -282,6 +323,7 @@ class Harness:
         inputs: dict[str, str] | None = None,
         tamper_attempts: Callable[[Path], None] | None = None,
         plan_env: dict[str, str] | None = None,
+        before_guard: Callable[[], None] | None = None,
     ) -> ReviewRun:
         pull = self.github.pulls[pr]
         self.github.refresh(pr)
@@ -383,6 +425,7 @@ class Harness:
         if not post:
             self.github.complete_run(run, "success")
             return record
+        record.loop_summary = record.step_summary()
         finalize_args = ["--omp-install", "failed"] if install_state == "failed" else []
         record.steps["finalize"] = self.cli(
             "finalize",
@@ -396,19 +439,36 @@ class Harness:
                 str(final_dir),
                 "--classification",
                 str(classification_path),
+                "--env",
+                "JOB_TOKEN",
                 *finalize_args,
             ],
-            env,
+            {**env, "JOB_TOKEN": JOB_TOKEN, "OMP_GATEWAY_TOKEN": GATEWAY_TOKEN, "TS_OAUTH_CI_SECRET": HELD_SECRET},
         )
         record.steps["redact"] = self.cli(
             "redact",
-            ["redact-check", "--path", str(attempts_dir), "--path", str(final_dir), "--env", "JOB_TOKEN"],
-            {**env, "JOB_TOKEN": JOB_TOKEN, "OMP_GATEWAY_TOKEN": GATEWAY_TOKEN},
+            [
+                "redact-check",
+                "--path",
+                str(attempts_dir),
+                "--path",
+                str(final_dir),
+                "--env",
+                "JOB_TOKEN",
+                "--summary-file",
+                str(attempts_dir / "summary.json"),
+                "--summary-file",
+                str(final_dir / "summary.json"),
+            ],
+            {**env, "JOB_TOKEN": JOB_TOKEN, "OMP_GATEWAY_TOKEN": GATEWAY_TOKEN, "TS_OAUTH_CI_SECRET": HELD_SECRET},
         )
+        if before_guard is not None:
+            before_guard()
         guard = self.cli("guard", ["guard", "--plan", str(plan_dir / "plan.json")], {**env, "GH_TOKEN": APP_TOKEN})
         record.steps["guard"] = guard
         finalized = record.steps["finalize"].outputs
-        if guard.outputs.get("skip") != "true":
+        self._record_attempt(record, run, pr)
+        if guard.code == 0 and guard.outputs.get("skip") != "true":
             head_sha = plan.outputs["head_sha"]
             status = self.gh(
                 "status",

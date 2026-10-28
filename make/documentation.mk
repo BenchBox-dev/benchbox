@@ -6,6 +6,9 @@ docs-validate:
 	@echo ""
 	@echo "Checking example file syntax..."
 	@uv run -- python scripts/check_example_syntax.py
+	@echo ""
+	@echo "Checking Markdown heading anchors..."
+	@uv run -- python scripts/check_doc_anchors.py
 
 prompt-quickstarts-check:
 	@uv run -- python scripts/generate_landing_quickstarts.py

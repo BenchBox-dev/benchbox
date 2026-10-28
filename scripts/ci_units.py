@@ -25,6 +25,8 @@ CLI_DESCRIPTION = (
     "* A path that matches no unit belongs to ``core`` (fail closed).\n"
     "* A path matching ``all-units`` runs every unit.\n"
     "* An empty change set runs every unit (fail closed).\n"
+    "* A changed Markdown file, or a deleted or renamed path of any kind, also\n"
+    "  runs ``docs``, whose link check can fail on the missing target.\n"
     "\n"
     "The script is stdlib-only so the classifier job needs no dependency sync.\n"
 )
@@ -56,8 +58,11 @@ def load_unit_rules(path: Path) -> dict[str, list[str]]:
     return rules
 
 
-def classify_units(changed_paths: Iterable[str], rules: dict[str, list[str]]) -> dict[str, object]:
+def classify_units(
+    changed_paths: Iterable[str], rules: dict[str, list[str]], removed_paths: Iterable[str] = ()
+) -> dict[str, object]:
     paths = [normalize_path(p) for p in changed_paths if normalize_path(p)]
+    removed = {normalize_path(p) for p in removed_paths}
     unit_paths: dict[str, list[str]] = {unit: [] for unit in UNITS}
     unowned: list[str] = []
     all_units_paths = [p for p in paths if matches_any(p, rules[ALL_UNITS_KEY])]
@@ -67,6 +72,8 @@ def classify_units(changed_paths: Iterable[str], rules: dict[str, list[str]]) ->
         if not owners:
             unowned.append(path)
             owners = ["core"]
+        if (path.endswith(".md") or path in removed) and "docs" not in owners:
+            owners.append("docs")
         for unit in owners:
             unit_paths[unit].append(path)
 
@@ -87,6 +94,17 @@ def git_changed_paths(base_ref: str) -> list[str]:
         ["git", "diff", "--name-only", "--no-renames", "--diff-filter=ACDMRT", f"{base_ref}...HEAD"],
         check=True,
         text=True,
+        stdout=subprocess.PIPE,
+    )
+    return [normalize_path(line) for line in result.stdout.splitlines() if normalize_path(line)]
+
+
+def git_removed_paths(base_ref: str) -> list[str]:
+    result = subprocess.run(
+        ["git", "diff", "--name-only", "--no-renames", "--diff-filter=D", f"{base_ref}...HEAD"],
+        check=True,
+        text=True,
+        encoding="utf-8",
         stdout=subprocess.PIPE,
     )
     return [normalize_path(line) for line in result.stdout.splitlines() if normalize_path(line)]
@@ -128,18 +146,20 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     rules = load_unit_rules(args.rules)
+    removed: list[str] = []
     if args.changed_file:
         paths = [normalize_path(line) for line in args.changed_file.read_text(encoding="utf-8").splitlines()]
     elif args.base_ref:
         try:
             paths = git_changed_paths(args.base_ref)
+            removed = git_removed_paths(args.base_ref)
         except (subprocess.CalledProcessError, OSError) as exc:
             print(f"ci_units: diff failed ({exc}); running every unit", file=sys.stderr)
             paths = []
     else:
         paths = []
 
-    decision = classify_units(paths, rules)
+    decision = classify_units(paths, rules, removed)
     if args.json_out:
         args.json_out.write_text(json.dumps(decision, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     if args.github_output:

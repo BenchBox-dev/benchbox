@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from ci_units import UNITS, classify_units, load_unit_rules, write_github_output
+from ci_units import UNITS, classify_units, git_removed_paths, load_unit_rules, write_github_output
 from path_filter_decision import classify_paths, load_rules
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -75,6 +75,50 @@ def test_unowned_path_fails_closed_to_core(rules: dict[str, list[str]]) -> None:
     decision = classify_units(["brand-new-top-level/thing.bin"], rules)
     assert decision["units"]["core"] is True
     assert decision["unowned_paths"] == ["brand-new-top-level/thing.bin"]
+
+
+@pytest.mark.parametrize(
+    ("path", "kept"),
+    [
+        ("brand-new-top-level/guide.md", {"core", "docs"}),
+        (".claude/skills/todo/SKILL.md", {"tooling", "docs"}),
+        ("benchbox/core/tpchavoc/README.md", {"core", "docs"}),
+    ],
+)
+def test_any_markdown_change_also_runs_the_docs_unit_without_losing_its_owner(
+    path: str, kept: set[str], rules: dict[str, list[str]]
+) -> None:
+    decision = classify_units([path], rules)
+    assert kept <= needed([path], rules)
+    assert decision["code_tests_needed"] is True
+
+
+def test_removed_paths_of_any_kind_also_run_the_docs_unit(rules: dict[str, list[str]]) -> None:
+    path = "benchbox/core/removed_module.py"
+    assert "docs" not in needed([path], rules)
+    decision = classify_units([path], rules, [path])
+    assert decision["units"]["docs"] is True
+    assert decision["units"]["core"] is True
+
+
+def test_git_removed_paths_lists_only_deleted_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=tmp_path, check=True, capture_output=True, encoding="utf-8")
+
+    git("init", "-q", "-b", "main")
+    git("config", "user.email", "t@example.com")
+    git("config", "user.name", "t")
+    (tmp_path / "gone.py").write_text("x = 1\n", encoding="utf-8")
+    (tmp_path / "kept.py").write_text("x = 1\n", encoding="utf-8")
+    git("add", ".")
+    git("commit", "-q", "-m", "base")
+    (tmp_path / "gone.py").unlink()
+    (tmp_path / "kept.py").write_text("x = 2\n", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-q", "-m", "change")
+    monkeypatch.chdir(tmp_path)
+
+    assert git_removed_paths("HEAD~1") == ["gone.py"]
 
 
 def test_empty_change_set_runs_every_unit(rules: dict[str, list[str]]) -> None:

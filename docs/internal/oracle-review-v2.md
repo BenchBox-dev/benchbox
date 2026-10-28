@@ -175,7 +175,7 @@ one-time inspection:
 | C2 total exit | After each reviewer exit, `runner.execute` lists the harness process group and, on Linux, every orphan the loop adopts as child subreaper. Survivors are killed and the run fails closed: slot absent, loop stops, job fails, nothing posts. |
 | C3 no secret in a script | The workflow test fails if any `run:` block names `secrets.*` or `github.token`; secrets reach steps only via `env:` or `with:`. |
 | C4 disk scan | Before the reviewer, after the tailnet join and after the last exit, `cli.py scan-disk` searches `$HOME`, `$RUNNER_TEMP`, both checkouts, `/tmp`, `/var/tmp`, `/dev/shm` and `${TMPDIR:-/tmp}` for the exact TypeSafe key, Tailscale OAuth secret and job token, deduplicating nested roots and following no file or directory symlinks. It covers the declared readable scratch roots, not every readable file. Values come from the step's own `env:`. A hit fails the job. |
-| C5 redaction completeness | After finalize, `cli.py redact-check` runs in a step holding every secret the job held (gateway token, TypeSafe key, gateway URL, Tailscale OAuth client ID and secret, job token), redacts attempt, verdict, diagnostic, absence and result text across control-character splits, and fails if a value remains. The loop step cannot hold these: a same-user child can read its parent's environment. |
+| C5 redaction completeness | The finalize step and the later `cli.py redact-check` step hold every secret the job held (gateway token, TypeSafe key, gateway URL, Tailscale OAuth client ID and secret, job token). Finalize redacts the protocol record before it encodes the marker. `redact-check` redacts attempt, verdict, diagnostic, absence and result text across control-character splits, decodes the trailing protocol marker of each text, and fails if a value remains in the text or in a decoded marker. Finalize and the loop defer their step-summary lines to files that `redact-check` writes to the step summary only after it succeeds. The loop step cannot hold these: a same-user child can read its parent's environment. |
 | C6 fresh `HOME` | Each attempt gets a new `mkdtemp` directory; the previous one is deleted first and the checkout reset. |
 | C7 token scope | Job permissions are exactly `actions: write`, `contents: read`, `pull-requests: read`; no `id-token`, and the isolation step fails if `ACTIONS_ID_TOKEN_REQUEST_TOKEN` is present. `github.token` appears only in the `env:` of steps before or after the loop; both checkouts use `persist-credentials: false`. |
 | C8 timeout budget | `timeout-minutes` is `max_attempts` times the longest reviewer `timeout_minutes` plus setup, under 360; the harness timeout fires first and becomes an absence. A workflow test recomputes it from the policy. |
@@ -375,7 +375,8 @@ tries three times about two seconds apart; if every try fails, or an App review
 was edited, the guard step fails and nothing is posted: the head keeps its latest
 status and a later run decides it. A run that skips posting, or whose status post
 failed, uploads no retry state and adds no strike. A manual run still uploads
-an attempt state before posting: it carries the current head, the run's time and
+an attempt state before posting, even when the App token or the guard step
+failed, as long as the redaction check passed: it carries the current head, the run's time and
 the consumed retry (with the `unpublished` pending cause when the head had no
 state of its own), so a failed post can neither skip the daily budget nor the
 backoff. The sweep never re-dispatches an `unpublished` state; a manual
@@ -690,7 +691,7 @@ nothing.
   concurrency cancel ("Canceling since a higher priority waiting request ...
   exists") or a manual cancel is neither a failure nor a success. A head
   whose latest runs failed or timed out without leaving retry state is
-  re-dispatched, unless the head has a decisive App verdict status; the
+  re-dispatched, unless the head has a decisive App verdict status from one of this pull request's runs; the
   dispatch carries a marker, and a marked retry the plan refuses, or whose
   retry state it cannot read, fails its run so the next sweep counts it. A head
   with a due pending state is bounded the
@@ -701,7 +702,11 @@ nothing.
   step, with an App token minted in the reviewer-free sweep job. An existing
   pending status is left alone, and a head whose newest App status is that
   surfaced failure is not dispatched again once its runs age out of the
-  48-hour listing; without the App the sweep reports the gap
+  48-hour listing. Only a status posted by one of this pull request's own
+  runs counts, as a decisive result or a surfaced hold: the sweep reads the
+  status's run, and a pull request that shares the head SHA with another
+  ignores the other's statuses and still recovers. A status whose run cannot
+  be read counts as the pull request's own. Without the App the sweep reports the gap
   instead of failing. A failure in one PR's lookup, dispatch or surfacing is
   reported, the others continue, then the job fails. If the runs listing fails
   twice or is capped, the sweep degrades: it dispatches only due retries, using
@@ -728,7 +733,9 @@ reviewer never reported, is not rerun on that head; push a new one. Comment,
 dispatch and scheduled reruns share a daily budget (`retry.daily_budget`), with
 backoff starting at one hour and doubling. A new head inherits the budget spent
 on a decisive earlier head, so a push does not restore it; only an earlier head
-that ended pending leaves it unspent. The plan counts the retries recorded in the
+that ended pending leaves it unspent, and the state the new head's run records
+carries none of that pending head's retries, so its backoff starts at one hour.
+The plan counts the retries recorded in the
 state and the sweep counts the dispatches recorded in the run titles, and both
 apply the owner reset the same way: it ignores the backoff and the budget once.
 Retry state is the `oracle-verdict-state-<number>` artifact of this workflow's
@@ -846,12 +853,23 @@ to GitHub.
   platform, whether limited out with `--platform` or merely hash-checked, is
   listed as unverified and the run is `partial`, not green. The build lists no
   context providers, so a `disabledProviders` entry is only checked through a
-  canary that the empty-overlay run observes and the overlay run must not: the
-  `AGENTS.md`, `CLAUDE.md` and `.mcp.json` files in the client's working
-  directory and a `.omp/AGENTS.md` in both that directory and the review
-  workspace. Every other entry is listed as unobserved and keeps the run
-  `partial`; a new canary plus an entry in `PROBED_PROVIDERS` clears it. Row 8's
-  provider reset wording cannot be
+  token file, MCP server or skill that a control run under no `disabledProviders`
+  observes and a run under the overlay's `disabledProviders` must not. Each is
+  planted at the path the provider reads (`candidate_canaries.CANARIES`), in the
+  client's working directory and the review workspace; the overlay run must see
+  neither copy. The control run must see the working-directory copy, and the
+  workspace copy too for the context and extra context files, the only
+  surfaces the build loads from `--add-dir`. Context files
+  and system prompts shadow one another (one wins per directory, so each gets
+  its own control run and its own overlay run, and an overlay run that sends no
+  request proves nothing and is red), and `--no-skills`/`--no-rules` plus `mcp.enableProjectConfig`
+  would hide a provider that is still on, so these runs drop those guards. A
+  canary the control run cannot see leaves its provider unprobed and the run
+  `partial` and withholds the `releasable` evidence line; one the overlay run sees is red and names the provider. The
+  entries with no canary stay `partial`: `omp-plugins`, `agent-plugins` and
+  `claude-plugins` read installed plugin packages, and `ssh-json` hosts reach no
+  model-visible surface under the read roster. Row 8's provider reset wording
+  cannot be
   observed offline and stays covered by the calibrated absence tests. The
   fixtures are redacted captures of the pinned build's own output; the upstream
   provider bodies the stub serves are hand-built, and `--capture-dir` rewrites
