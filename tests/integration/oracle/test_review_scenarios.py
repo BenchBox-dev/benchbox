@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -62,3 +63,22 @@ def test_attempt_capture_keeps_the_redacted_event_stream(harness: Harness) -> No
     assert tool_results and all(item.startswith("[tool output withheld: ") for item in tool_results)
     uploaded = [item["name"] for item in harness.github.artifacts if item["workflow_run"]["id"] == run.run["id"]]
     assert "oracle-verdict-capture" in uploaded
+
+
+@pytest.mark.parametrize("damage", [b"{not json", b"\xff\xfe\x00 not utf-8"], ids=["corrupt-json", "non-utf8"])
+def test_an_unreadable_attempt_artifact_finalizes_pending_for_integrity(harness: Harness, damage: bytes) -> None:
+    head = harness.branch("feat/checker", {CHECKER: FIXED_CHECKER}, "guard None operands")
+    harness.github.open_pull(43, "feat/checker")
+    harness.script_omp([_ship()])
+
+    def damage_artifact(attempts_dir: Path) -> None:
+        for path in attempts_dir.glob("attempt-*.json"):
+            path.write_bytes(damage)
+
+    run = harness.review(43, tamper_attempts=damage_artifact)
+
+    finalize = run.steps["finalize"]
+    assert finalize.code == 0, finalize.stderr
+    assert finalize.outputs["state"] == "pending"
+    assert harness.github.artifact_json("oracle-verdict-state-43", "state.json")["pending_cause"] == "integrity"
+    assert [item["state"] for item in harness.github.oracle_statuses(head)] == ["pending"]

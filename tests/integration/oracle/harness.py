@@ -6,6 +6,7 @@ import re
 import stat
 import subprocess
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -255,6 +256,7 @@ class Harness:
         installable: bool = True,
         swap_after_install: bool = False,
         inputs: dict[str, str] | None = None,
+        tamper_attempts: Callable[[Path], None] | None = None,
     ) -> ReviewRun:
         pull = self.github.pulls[pr]
         self.github.refresh(pr)
@@ -336,6 +338,8 @@ class Harness:
                     "ORACLE_GATEWAY_URL": "https://gateway.example.invalid",
                 },
             )
+        if tamper_attempts is not None:
+            tamper_attempts(attempts_dir)
         if not post:
             self.github.complete_run(run, "success")
             return record
