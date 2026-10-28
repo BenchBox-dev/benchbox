@@ -856,6 +856,16 @@ to GitHub.
   fixtures are redacted captures of the pinned build's own output; the upstream
   provider bodies the stub serves are hand-built, and `--capture-dir` rewrites
   a run's streams into new fixtures. A probe failure never relaxes a contract.
+  Every fixture under `tests/fixtures/oracle_reviewers/` is listed in
+  `provenance.json` with its origin (`ci-run`, `local-review`, `live-jev`,
+  `captured`, `derived` or `hand-built`), its source, the CI run id or local
+  review time where one exists, and its redaction result.
+  `captures/ci_attempt.json` and `captures/local_review.json` are
+  `oracle-verdict-capture` artifacts from one CI run and one local review,
+  passed through `redact-check` before they were kept.
+  `tests/integration/oracle/test_curated_capture_fixtures.py` fails when a
+  fixture is unlisted, a listing is stale, or a fixture carries a credential, a
+  tailnet name, a foreign host or an operator home path.
 - **Blocking.** A Critical or High finding, or DO NOT SHIP, makes `pr-open`
   refuse before pushing (exit 1). A `Local oracle override: <reason>` line with
   a non-empty reason in the PR body file (`PR_BODY_FILE`) lets it proceed and

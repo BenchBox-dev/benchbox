@@ -20,6 +20,7 @@ PATCH_CALLEE = re.compile(r"(^|\.)patch(\.|$)")
 ORACLE_SCENARIO_TESTS = (
     "tests/integration/oracle/test_carry_scenarios.py",
     "tests/integration/oracle/test_cloud_review_reachability_scenario.py",
+    "tests/integration/oracle/test_curated_capture_fixtures.py",
     "tests/integration/oracle/test_evidence_scenarios.py",
     "tests/integration/oracle/test_followup_scenarios.py",
     "tests/integration/oracle/test_invalid_recovery_scenarios.py",
