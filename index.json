@@ -3173,15 +3173,10 @@
       "title": "medium-collect spends about 108 s collecting because it starts with a cold assertion-rewrite cache"
     },
     "ci-oracle-reviewer-availability-and-head-race": {
-      "claim": {
-        "expires_at": "2026-10-29T17:06:38Z",
-        "generation": "255575dc4f8b48e584107de785de2d6b",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Oracle reviewers error/absent and review dispatches race PR snapshots"
     },
     "ci-pipeline-for-docker-based-integration-tests": {
