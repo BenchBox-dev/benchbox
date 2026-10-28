@@ -404,7 +404,7 @@ def command_plan(args: argparse.Namespace) -> int:
         plan["decision_reason"] = "the head moved while the plan read it; its own run reviews it"
         return _finish_plan(out_dir, plan)
     scope = soundness_scope(files, policy.classifier, _soundness_predicate())
-    if not scope.soundness and len(files) < int(pull.get("changed_files") or 0):
+    if len(files) < int(pull.get("changed_files") or 0):
         plan["decision"] = HOLD
         plan["decision_reason"] = (
             f"the changed-file listing is incomplete ({len(files)} of {pull['changed_files']} files): owner review"

@@ -208,9 +208,9 @@ the machine-read documents routed to code CI.
 The gate machinery, including `oracle-gate.yml` and `oracle_gate.py`, is listed
 in `classifier.gate_paths`, so changing it is always classed as a gate change.
 When the changed-file listing is shorter than the pull's changed-file count
-(GitHub caps it at 3000) and every listed path is exempt, the plan holds the
-head pending for owner review with that reason instead of declaring the change
-exempt: the unlisted files are unknown.
+(GitHub caps it at 3000), the plan holds the head pending for owner review with
+that reason: it neither declares the change exempt nor reviews a partial view,
+because the unlisted files are unknown.
 
 Add an `except` line to keep a document in review scope; remove it to return the
 document to inert. Every `except` line must match a tracked path
