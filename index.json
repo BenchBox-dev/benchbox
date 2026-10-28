@@ -17227,10 +17227,15 @@
       "title": "stage_pull_request_diff silently drops the full diff when the target exists and writes it non-atomically"
     },
     "oracle-stale-pool-block-from-fallback-quota-20261027": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-29T17:03:59Z",
+        "generation": "a090ec5a98dc48d892de11cc69fecf11",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [],
       "priority": "critical",
-      "status": "open",
+      "status": "active",
       "title": "Stop one fallback provider's quota reset from blocking a reviewer pool on a PR for days"
     },
     "oracle-standin-arming-digest-20261021": {
