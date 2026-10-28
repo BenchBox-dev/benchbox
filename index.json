@@ -30024,6 +30024,13 @@
       "status": "open",
       "title": "Land the WA004-WA007 Windows antipattern rules in the existing checker"
     },
+    "windows-antipatterns-check-scans-worktree-venv-20261028": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Skip gitignored virtual environments in make windows-antipatterns-check"
+    },
     "windows-auto-merge-soundness-executable-mode-check": {
       "claim": null,
       "needs": [],
