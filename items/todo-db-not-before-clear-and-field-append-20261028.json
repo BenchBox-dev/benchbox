@@ -3,7 +3,7 @@
     "update_item with not_before set to an empty string clears the hold and the item is claimable immediately (test or live proof)",
     "A documented way adds text to context or description without overwriting concurrent edits, or the replace-only behaviour is stated in the tool description"
   ],
-  "context": "Seen while closing items held until 2026-11-02 after the calendar waits were waived: clearing with an empty string was accepted but the hold stayed. The note-prepend workaround reads then rewrites the whole context field.",
+  "context": "Seen while closing items held until 2026-11-02 after the calendar waits were waived: clearing with an empty string was accepted but the hold stayed. The note-prepend workaround reads then rewrites the whole context field.\n\nTracked in the todo-db tracker as update-item-not-before-clear (copied 2026-10-28).",
   "description": "update_item with not_before set to an empty string does not clear a hold, so an item held to a future date cannot be released early; the only workaround is to set not_before a few seconds ahead, wait, then take. update_item also replaces text fields wholesale, so adding a note to context requires reading the field and writing it back. Both cost extra steps and risk overwriting concurrent edits.",
   "sessions": [
     {
@@ -13,6 +13,14 @@
       "op": "create",
       "op_id": "a5138bcc8c4d45cc9796593ae647dcf0",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:mcp:joe@joe-mac-mini.local:34ab13de9d46f28431cba0e0",
+      "at": "2026-10-28T19:52:58Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "b3cd982c72e549c48621a2a2f562da68",
+      "session_id": "366df14943cf412292e43b2e230cff6f"
     }
   ]
 }
