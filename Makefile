@@ -496,6 +496,10 @@ audit-sha-check:
 windows-antipatterns-check:
 	uv run -- python scripts/check_windows_antipatterns.py
 
+.PHONY: site-linked-paths-check
+site-linked-paths-check:
+	uv run -- python scripts/check_site_linked_paths.py $(if $(INVENTORY_FILE),--inventory-file "$(INVENTORY_FILE)",)
+
 .PHONY: comment-policy-check
 comment-policy-check:
 	uv run -- python scripts/run_comment_policy.py && uv run -- python scripts/check_comment_cleanup_scope.py --check-drift $(if $(BASE_REF),--base "$(BASE_REF)",)
