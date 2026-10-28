@@ -1,7 +1,8 @@
 {
   "acceptance": [
     "A decision on credential concurrency is recorded, or the groups are restored",
-    "The stand-in window behaviour on pending reviews is decided and documented"
+    "The stand-in window behaviour on pending reviews is decided and documented",
+    "Adds or updates the matching scenario in tests/integration/oracle (registered in ORACLE_SCENARIO_TESTS), proven to fail with this item's defect reintroduced; the scenario runs only the fake omp executable and fake servers, never a real omp or model-provider call."
   ],
   "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\nPart (1) is done in #2798 (merged 2026-10-09, 7b639aba1): the runner hashes the staged diff before and after a review and records the reviewer as invalid when it changed, with a test. Parts (2), credential concurrency, and (3), the stand-in window on pending reviews, remain open.\n\n2026-10-09 tracker review: removed the finished part 1 and its criterion; the remaining two parts are renumbered 1 and 2 in the description. The title now names the two open decisions.",
   "description": "Two Low findings deferred on #2769: (1) Removing the per-credential concurrency groups lets runs for different pull requests use one reviewer credential at the same time. Decide whether to accept that or restore the groups. (2) The stand-in window ignores later pending or integrity-withheld oracle reviews. Decide whether a later pending oracle review voids a stand-in, and document the behaviour.\n\nThe former part 1 (the staged diff hidden from the integrity check) is done in #2798 (_project/scripts/oracle_reviewers/runner.py:114,131; tests/unit/scripts/oracle_reviewers/test_runner.py:216-243).",
@@ -56,6 +57,14 @@
       "op": "update",
       "op_id": "f07516a607ec4a6cab84728dd55d5d08",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:mcp:joe@joe-mac-mini.local:4d1c216a121363560797b702",
+      "at": "2026-10-28T17:19:06Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "cba0ac100f7e4d8abcb11e82d3685f01",
+      "session_id": "f2ea81a526d74429861bc01fff72f167"
     }
   ]
 }
