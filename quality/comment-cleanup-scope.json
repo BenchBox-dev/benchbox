@@ -1962,9 +1962,6 @@
           "path": "scripts/pr_refresh_certification.py"
         },
         {
-          "path": "scripts/pr_refresh_replay.py"
-        },
-        {
           "path": "scripts/queue_certification.py"
         }
       ]

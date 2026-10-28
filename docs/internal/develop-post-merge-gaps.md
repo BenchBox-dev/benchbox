@@ -171,10 +171,9 @@ requires a push-produced artifact and rejects dispatch as a substitute.
 
 ## Retired tooling
 
-`scripts/detect_develop_post_merge_gaps.py`, `scripts/sweep_coverage.py`, and
-`scripts/post_merge_signature.py` were written for the retired workflow and
-have no workflow caller now. They remain in the tree until a follow-up removes
-them together with their tests.
+`scripts/detect_develop_post_merge_gaps.py` and `scripts/sweep_coverage.py`
+were written for the retired workflow and have no workflow caller now. They
+remain in the tree until a follow-up removes them together with their tests.
 
 ## What we deliberately did not do
 

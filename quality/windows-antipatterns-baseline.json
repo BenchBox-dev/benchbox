@@ -54,9 +54,6 @@
     "scripts/path_filter_decision.py": {
       "WA007": 3
     },
-    "scripts/post_merge_signature.py": {
-      "WA007": 2
-    },
     "scripts/pr_landing.py": {
       "WA007": 1
     },
@@ -505,9 +502,6 @@
     },
     "tests/unit/scripts/test_path_filter_decision.py": {
       "WA007": 1
-    },
-    "tests/unit/scripts/test_post_merge_signature.py": {
-      "WA007": 3
     },
     "tests/unit/scripts/test_pr_landing.py": {
       "WA007": 24
