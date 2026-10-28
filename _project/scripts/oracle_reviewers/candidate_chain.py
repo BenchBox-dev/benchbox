@@ -355,8 +355,6 @@ class LoopbackChain:
     def _plant_probes(self, canaries: Sequence[Canary], cwd: Path, markers: Path) -> None:
         for canary in canaries:
             for where, directory in zip(candidate_canaries.WHERES, (cwd, self.workspace), strict=True):
-                if where not in canary.wheres:
-                    continue
                 planted = candidate_canaries.plant(canary, where, directory, markers)
                 if directory == self.workspace:
                     self._planted.append(planted)

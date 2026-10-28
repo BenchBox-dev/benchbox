@@ -856,8 +856,10 @@ to GitHub.
   token file, MCP server or skill that a control run under no `disabledProviders`
   observes and a run under the overlay's `disabledProviders` must not. Each is
   planted at the path the provider reads (`candidate_canaries.CANARIES`), in the
-  client's working directory and, for the context and extra context files, the
-  review workspace too, and the control run must see every copy. Context files
+  client's working directory and the review workspace; the overlay run must see
+  neither copy. The control run must see the working-directory copy, and the
+  workspace copy too for the context and extra context files, the only
+  surfaces the build loads from `--add-dir`. Context files
   and system prompts shadow one another (one wins per directory, so each gets
   its own control run and its own overlay run, and an overlay run that sends no
   request proves nothing and is red), and `--no-skills`/`--no-rules` plus `mcp.enableProjectConfig`

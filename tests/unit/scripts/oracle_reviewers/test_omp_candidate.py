@@ -115,10 +115,10 @@ def _probe_runs() -> dict[str, ClientRun]:
     for group in candidate_canaries.GROUPS:
         canaries = candidate_canaries.group_canaries(group)
         prompt = " ".join(
-            item.token(where) for item in canaries if item.surface != candidate_canaries.MCP for where in item.wheres
+            item.token(where) for item in canaries if item.surface != candidate_canaries.MCP for where in item.required
         )
         started = tuple(
-            item.marker(where) for item in canaries if item.surface == candidate_canaries.MCP for where in item.wheres
+            item.marker(where) for item in canaries if item.surface == candidate_canaries.MCP for where in item.required
         )
         control = candidate_canaries.control_name(group)
         overlay = candidate_canaries.overlay_name(group)
@@ -677,7 +677,7 @@ def _leaking(runs: dict[str, ClientRun], canary: candidate_canaries.Canary, wher
 
 @pytest.mark.parametrize(
     ("canary", "where"),
-    [(item, where) for item in candidate_canaries.CANARIES for where in item.wheres],
+    [(item, where) for item in candidate_canaries.CANARIES for where in candidate_canaries.WHERES],
     ids=lambda value: _canary_ids(value) if isinstance(value, candidate_canaries.Canary) else value,
 )
 def test_a_provider_canary_that_reaches_the_model_under_the_overlay_is_red_and_names_the_provider(
@@ -787,7 +787,7 @@ def test_the_probe_overlays_isolate_the_disabled_providers_from_every_other_guar
 def test_every_planted_canary_carries_its_token_or_its_marker(tmp_path: Path) -> None:
     markers = tmp_path / "markers"
     for canary in candidate_canaries.CANARIES:
-        for where in canary.wheres:
+        for where in candidate_canaries.WHERES:
             text = candidate_canaries.plant(canary, where, tmp_path / where, markers).read_text(encoding="utf-8")
             if canary.surface == candidate_canaries.MCP:
                 assert str(markers / canary.marker(where)) in text, canary
@@ -828,8 +828,8 @@ def test_a_canary_the_control_run_sees_in_only_one_location_is_blind() -> None:
     assert "github" not in candidate_checks.observed_providers(runs)
 
 
-def test_a_surface_the_build_loads_only_from_the_working_directory_is_planted_only_there() -> None:
-    by_surface = {item.surface: item.wheres for item in candidate_canaries.CANARIES}
+def test_a_surface_the_build_loads_only_from_the_working_directory_is_required_only_there() -> None:
+    by_surface = {item.surface: item.required for item in candidate_canaries.CANARIES}
     assert by_surface[candidate_canaries.CONTEXT] == candidate_canaries.WHERES
     assert by_surface[candidate_canaries.RULE] == ("cwd",)
 
@@ -851,3 +851,14 @@ def test_a_shadowed_provider_leak_is_caught_because_each_group_has_its_own_overl
     assert all(
         len(item.canaries) == 1 or not {c.surface for c in item.canaries} & {"context", "system"} for item in exclusive
     )
+
+
+def test_a_workspace_copy_of_a_working_directory_surface_is_checked_but_not_required_in_the_control_run() -> None:
+    canary = next(item for item in candidate_canaries.CANARIES if item.provider == "cursor" and item.surface == "rule")
+    assert candidate_checks.blind_canaries(_good_runs()) == ()
+    failed = _failed(candidate_checks.live_checks(_leaking(_good_runs(), canary, "workspace")))
+    assert failed == {
+        "live-provider-canaries": (
+            "cursor reached the model from .cursor/rules/canary-cursor.mdc (workspace) despite disabledProviders",
+        )
+    }

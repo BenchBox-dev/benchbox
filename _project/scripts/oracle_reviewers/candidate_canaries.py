@@ -40,7 +40,7 @@ class Canary:
         return SHARED_GROUP if self.surface in SHARED_SURFACES else self.slug
 
     @property
-    def wheres(self) -> tuple[str, ...]:
+    def required(self) -> tuple[str, ...]:
         return WHERES if self.surface in BOTH_LOCATIONS else WHERES[:1]
 
     def token(self, where: str) -> str:

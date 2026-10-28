@@ -13,7 +13,7 @@ from typing import Any
 import yaml
 
 from . import absence, commands, evidence, omp_pin
-from .candidate_canaries import CANARIES, GROUPS, PROVIDERS, Canary, control_name, group_canaries, overlay_name
+from .candidate_canaries import CANARIES, GROUPS, PROVIDERS, WHERES, Canary, control_name, group_canaries, overlay_name
 from .candidate_chain import AGENTS_TOKEN, BREACH_TOOLS, CLAUDE_TOKEN, NATIVE_TOKEN, ClientRun
 from .candidate_env import quiet_env
 from .policy import OMP_THINKING_LEVELS
@@ -431,16 +431,14 @@ def control_checks(run: ClientRun) -> list[Check]:
 
 def _seen(canary: Canary, run: ClientRun) -> tuple[str, ...]:
     prompt = _prompt_text(run.upstream)
-    return tuple(
-        where for where in canary.wheres if canary.token(where) in prompt or canary.marker(where) in run.started
-    )
+    return tuple(where for where in WHERES if canary.token(where) in prompt or canary.marker(where) in run.started)
 
 
 def blind_canaries(runs: Mapping[str, ClientRun]) -> tuple[Canary, ...]:
     return tuple(
         canary
         for canary in CANARIES
-        if (run := runs.get(control_name(canary.group))) is None or len(_seen(canary, run)) != len(canary.wheres)
+        if (run := runs.get(control_name(canary.group))) is None or not set(canary.required) <= set(_seen(canary, run))
     )
 
 
