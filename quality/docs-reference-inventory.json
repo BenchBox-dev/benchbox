@@ -3302,10 +3302,10 @@
   {
    "disposition": "fixture-data",
    "kinds": {
-    "file": 4,
+    "file": 3,
     "pattern": 2,
     "root": 1,
-    "unresolved": 7
+    "unresolved": 8
    },
    "occurrences": 19,
    "path": "tests/unit/scripts/oracle_reviewers/test_evidence.py",
@@ -3337,8 +3337,8 @@
      "target": "docs/a/conf.yaml"
     },
     {
-     "kind": "file",
-     "target": "docs/benchmarks/sf1-calibrated-sizes.md"
+     "kind": "unresolved",
+     "target": "docs/agent/overview.md"
     },
     {
      "kind": "file",
@@ -3373,27 +3373,21 @@
   {
    "disposition": "fixture-data",
    "kinds": {
-    "dir": 1,
-    "file": 1,
     "root": 1,
-    "unresolved": 2
+    "unresolved": 3
    },
-   "occurrences": 11,
+   "occurrences": 9,
    "path": "tests/unit/scripts/oracle_reviewers/test_local_review.py",
    "rule": "test-sample-data",
-   "target_count": 5,
+   "target_count": 4,
    "targets": [
     {
      "kind": "root",
      "target": "docs/"
     },
     {
-     "kind": "dir",
-     "target": "docs/benchmarks/"
-    },
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/sf1-calibrated-sizes.md"
+     "kind": "unresolved",
+     "target": "docs/agent/overview.md"
     },
     {
      "kind": "unresolved",
@@ -4554,15 +4548,15 @@
   "files": 234,
   "kinds": {
    "built-url": 29042,
-   "dir": 167,
+   "dir": 165,
    "extra": 36,
-   "file": 1406,
+   "file": 1401,
    "generated": 3,
    "pattern": 329,
    "root": 199,
-   "unresolved": 2066
+   "unresolved": 2071
   },
-  "references": 33248,
+  "references": 33246,
   "unclassified": 0
  }
 }
