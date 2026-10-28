@@ -19936,6 +19936,13 @@
       "status": "done",
       "title": "Query Plan Core Infrastructure (Models & Storage)"
     },
+    "query-plan-dataframe-contract-parity": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Close DataFrame query-plan capture and fingerprint integration gaps"
+    },
     "query-plan-documentation-testing": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,30 @@
+{
+  "acceptance": [
+    "DataFusion and Spark-compatible DataFrame engines with native plans capture and persist semantically structured plans where a compatible parser exists; resolve PySpark registry naming and LakeSail/Databricks callable-path gaps.",
+    "Supported DataFrame plans survive export/load and are usable by common display/comparison consumers; top-level fingerprints and optional normalized fingerprints are propagated when a canonical DAG exists.",
+    "Polars raw plans remain inspectable with explicit raw-only capability semantics unless a real structured parser is implemented; unsupported eager engines report unsupported rather than a fabricated plan.",
+    "Behavioral tests execute representative supported DataFrame queries and check result/plan identity, timing isolation, fingerprints and round trips; docs reflect the actual engine-specific contract."
+  ],
+  "context": "Static source assessment on 2026-10-28; the SQL smoke does not establish DataFrame runtime correctness. Scope is native-capability integration and truthful parity, not adding an optimizer to Pandas/Dask/cuDF. Keep capture failure accounting separate in query-plan-dataframe-error-accounting.",
+  "description": "DataFrame capture uses a separate raw QueryPlan wrapper and optional registry promotion, not the SQL result contract. DataFusion can promote to QueryPlanDAG, while Polars remains raw and PySpark uses platform=pyspark although its parser is registered as spark. The shared dispatch does not recognize LakeSail; Databricks callable queries bypass inherited SQL capture. The mixin attaches query_plan/capture_time but not top-level plan_fingerprint fields. Define a capability-specific contract and complete supported lazy-engine routes without inventing fake optimizer plans for eager Pandas-family engines.",
+  "links": [
+    "benchbox/core/dataframe/profiling.py:360-456",
+    "benchbox/platforms/dataframe/benchmark_mixin.py:1123-1187",
+    "benchbox/core/query_plans/parsers/registry.py",
+    "benchbox/platforms/databricks/dataframe_adapter.py",
+    "benchbox/platforms/dataframe/lakesail_df.py",
+    "tests/unit/core/dataframe/test_benchmark_suite_plan_capture.py",
+    "todo:qpc-06-cross-platform-capture-wiring",
+    "todo:wire-plan-capture-for-dataframe-execution-path-in-benchbox-c"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bb7fd2d6b114a6501df93f97",
+      "at": "2026-10-28T12:03:41Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "93eefa06787243aaa7b2a0297e66e05d",
+      "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
+    }
+  ]
+}
