@@ -407,7 +407,6 @@ python unified_runner.py --platform databricks --help
 - **New users:** Start with [getting_started/](getting_started/) examples
 - **Learn patterns:** See [PATTERNS.md](PATTERNS.md) for common workflows
 - **Find examples:** Browse [INDEX.md](INDEX.md) by goal/platform/benchmark
-- **Advanced usage:** See [UNIFIED_RUNNER_GUIDE.md](UNIFIED_RUNNER_GUIDE.md) (comprehensive guide)
 - **Feature examples:** Explore [features/](features/) for specific capabilities
 
 ---

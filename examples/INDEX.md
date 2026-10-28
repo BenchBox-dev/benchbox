@@ -13,9 +13,9 @@ This index helps you discover examples organized by your goal, experience level,
 | **Test specific queries only** | [`getting_started/intermediate/duckdb_tpch_query_subset.py`](getting_started/intermediate/duckdb_tpch_query_subset.py) | 3 min | ⭐⭐ Medium |
 | **Benchmark a cloud database** | [`getting_started/cloud/databricks_tpch_power.py`](getting_started/cloud/databricks_tpch_power.py) | 5 min | ⭐⭐ Medium |
 | **Use Jupyter notebooks** | [`notebooks/databricks_benchmarking.ipynb`](notebooks/databricks_benchmarking.ipynb) | 10 min | ⭐⭐ Medium |
-| **Compare platforms** | See [Multi-Platform Comparison](#by-use-case) | 30 min | ⭐⭐⭐ Advanced |
-| **Set up CI/CD testing** | See [CI/CD Examples](#by-use-case) | 15 min | ⭐⭐⭐ Advanced |
-| **Create custom benchmark** | See [Custom Benchmarks](#by-use-case) | 60 min | ⭐⭐⭐ Advanced |
+| **Compare platforms** | See [Multi-Platform Comparison](#-by-use-case) | 30 min | ⭐⭐⭐ Advanced |
+| **Set up CI/CD testing** | See [CI/CD Examples](#-by-use-case) | 15 min | ⭐⭐⭐ Advanced |
+| **Create custom benchmark** | See [Custom Benchmarks](#-by-use-case) | 60 min | ⭐⭐⭐ Advanced |
 
 ---
 

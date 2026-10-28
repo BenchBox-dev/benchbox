@@ -192,6 +192,20 @@ Existing registrations created by the retired workflow are not automatically
 reset or removed by this workflow. Review and remove them separately,
 preserving dirty, locked, divergent, or ambiguous worktrees.
 
+## Markdown link and anchor checks
+
+`make docs-validate` checks inline links between tracked Markdown files.
+A relative link, with or without a fragment, must name a tracked file or
+directory, and a fragment into a tracked Markdown file must match one of its
+heading slugs or explicit anchors, including for same-file links. Run
+`uv run -- python scripts/check_doc_anchors.py` to run it without the other
+documentation checks. Failures name the source `file:line` and the target.
+
+The check skips external URLs, server-absolute paths, and code. Sources under
+the roots listed in `EXCLUDED_SOURCE_ROOTS` in the script are archival or
+generated and are not checked; each entry carries its reason. Site-owned
+documentation is checked by the site repository's own build.
+
 ## Test lock
 
 Parallel pytest runs serialize on the shared flock in `tests/conftest.py`.

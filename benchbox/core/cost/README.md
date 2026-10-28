@@ -907,4 +907,4 @@ Potential improvements for future versions:
 - [Pricing Tables](./pricing_data.yaml) - Platform pricing data
 - [Calculator Implementation](./calculator.py) - Cost calculation logic
 - [Integration Layer](./integration.py) - Result integration
-- [Test Suite](../../tests/unit/core/cost/) - Comprehensive tests
+- [Test Suite](../../../tests/unit/core/cost/) - Comprehensive tests
