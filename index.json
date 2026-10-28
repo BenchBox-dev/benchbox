@@ -19743,7 +19743,10 @@
     },
     "query-plan-capture-contract-doc-alignment": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "query-plan-dataframe-contract-parity",
+        "query-plan-mcp-canonical-rendering"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Align query-plan help and documentation with effective capture contracts"

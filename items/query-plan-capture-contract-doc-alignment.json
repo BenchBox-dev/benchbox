@@ -1,12 +1,12 @@
 {
   "acceptance": [
-    "The effective default for --capture-plans is reconciled against prior recorded decisions and documented consistently in CLI help, Python API docs and feature docs; any change that adds execution cost is an explicit design decision.",
-    "An executable CLI check distinguishes omitted analyze flag, explicit --analyze-plans and --no-analyze-plans using actual per-operator timing presence; all three agree with the published contract.",
-    "Documentation distinguishes capture opt-in, deferred-phase eligibility and actual adapter/parser capability; it distinguishes normalized logical fingerprints from full physical-plan equivalence.",
-    "Documentation accurately describes SQL versus DataFrame result fields and the limits of post-measurement EXPLAIN, including bespoke mid-run mutations; remove the unsupported DuckDB estimate-leak exception."
+    "CLI help for --capture-plans and --analyze-plans/--no-analyze-plans, feature docs, CLI reference and Python API docs all state: estimated EXPLAIN by default; --analyze-plans opts into post-measurement ANALYZE where the engine supports it.",
+    "An executable test drives the real run CLI for omitted flag, --analyze-plans and --no-analyze-plans on DuckDB and asserts per-operator timing presence matches the documented contract.",
+    "Docs distinguish capture opt-in, deferred-phase eligibility and actual adapter/parser capability, and say a matching fingerprint means matching normalized logical structure, not identical physical plans; remove the unsupported DuckDB estimate exception.",
+    "Docs describe the SQL vs DataFrame result fields as implemented after DataFrame parity and the limits of post-measurement EXPLAIN for bespoke mid-run mutations; make docs-check/compat checks pass and add a changelog.d fragment."
   ],
-  "context": "Observed 2026-10-28: TPC-H DuckDB Q1/Q6 capture succeeded both with --no-analyze-plans and with no analyze flag. The default bundle had timing=null and cardinality=null on physical operators, matching the false adapter default rather than CLI help. Existing phase tests exercise explicit true/false, not the documented CLI default. Intended logical-hash and post-measurement limitations are not requests to redesign capture.",
-  "description": "CLI help and query-plan-analysis.md promise ANALYZE capture by default, but PlatformAdapter defaults analyze_plans to false and a real CLI run without either analyze flag captured estimated plans with null operator timing. Other contract drift includes treating phase eligibility as support, a documented DuckDB estimate-fingerprint exception not supported by the structural signature, and generic result-field claims that do not hold for raw DataFrame wrappers. Reconcile prior decisions before choosing the default: completed qpc-04 explicitly chose estimated plans, while later completed items/documentation describe ANALYZE defaults. Do not silently enable query re-execution merely to match prose.",
+  "context": "Guardrails: no runtime default change (that would add re-execution cost and contradict qpc-04). Docs under docs/ must keep publish-allowlist rules. Help text change is user-facing: changelog fragment required.\n\nVerification rubric: (1) focused regression test fails before the change and passes after; (2) uv run -- python -m pytest -n 0 on the touched plan test modules passes; (3) make comment-policy-check and ruff/typecheck on touched files pass; (4) a runtime smoke on the real surface described in acceptance is recorded in the PR body.",
+  "description": "CLI help and query-plan-analysis.md promise ANALYZE capture by default, but PlatformAdapter defaults analyze_plans to false and a real CLI run without either analyze flag captured estimated plans with null operator timing. Decision (recorded during review): keep the estimated default. qpc-04 (#1016, 2026-07-06) is the latest code decision and deliberately chose estimated EXPLAIN with an ANALYZE opt-in notice; the doc prose claiming ANALYZE default dates from 2026-06-24 (#887) and was never reconciled. So fix help/docs, not code. Other contract drift to fix: phase eligibility described as capability, a DuckDB estimate-fingerprint exception the structural signature does not support, and generic result-field claims that do not hold for DataFrame results (update after DataFrame parity lands).",
   "links": [
     "benchbox/platforms/base/adapter.py:121-137",
     "benchbox/cli/commands/run.py:2570-2590",
@@ -26,6 +26,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "6375849be487434e87e7404986a1590d",
+      "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bb7fd2d6b114a6501df93f97",
+      "at": "2026-10-28T22:31:01Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b915e027e08f46588e8a8ec9eec3cc5e",
       "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
     }
   ]
