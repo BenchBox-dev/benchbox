@@ -9203,15 +9203,10 @@
       "title": "Rehearse a deploy rollback to a retained receipt now that production serves schema 5"
     },
     "docs-mig-followup-site-dead-link-precheck-for-core-deletions-20261028": {
-      "claim": {
-        "expires_at": "2026-10-29T15:28:35Z",
-        "generation": "76438b6787fc4eb6b1075d93f547db04",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Catch a core file deletion that breaks a site documentation link before it merges"
     },
     "docs-mig-history-filter": {
