@@ -1,4 +1,0 @@
-{
-  "schema": 1,
-  "internal": "The published site-inputs bundle is now schema 4 (schema 3 members plus docs-data and doc-contracts.json); the exact3 profile stays selectable for rollback."
-}

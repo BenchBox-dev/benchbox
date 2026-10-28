@@ -1,0 +1,132 @@
+{
+  "fixtures": {
+    "captures/ci_attempt.json": {
+      "captured_at": "2026-10-28T16:40:14Z",
+      "head_sha": "7b6950f2cf4629eb5363f3bb1d23912f0593329a",
+      "origin": "ci-run",
+      "pr": 3662,
+      "redaction": "redact-check over the file: 0 files rewritten, no secret value remains; pattern scan finds no token, gateway host or URL, or operator home path (CI paths under /home/runner are the public hosted runner layout)",
+      "run_id": "40728242477",
+      "source": "oracle-verdict workflow, pull_request_target, artifact oracle-verdict-capture"
+    },
+    "captures/local_review.json": {
+      "head_sha": "984726542618d7de3db1ac1486871195d82d9b2b",
+      "local_review_at": "2026-10-28T17:03:57Z",
+      "origin": "local-review",
+      "pr": null,
+      "redaction": "redact-check over the file: 0 files rewritten, no secret value remains; pattern scan finds no token, gateway host or URL, or operator home path",
+      "source": "capture kept by the cli local-review command under the local state captures folder"
+    },
+    "check_runs_full_ci_in_progress.json": {
+      "captured_at": "2026-10-27T14:44:06Z",
+      "head_sha": "04264ac0997dac9148179707efc32c82d1499626",
+      "origin": "ci-run",
+      "redaction": "no token, gateway host or operator home path; the only hosts are public GitHub avatar and help URLs",
+      "run_id": "40523183498",
+      "source": "check runs of the full CI workflow while it was in progress, as returned by the GitHub check-runs API"
+    },
+    "dispute_3407.json": {
+      "origin": "hand-built",
+      "redaction": "pattern scan finds no token, gateway host or URL, or operator home path; no credential-shaped value present",
+      "source": "minimal dispute replay for the dispute-id defect; paths and names are synthetic"
+    },
+    "dispute_3465.json": {
+      "origin": "hand-built",
+      "redaction": "pattern scan finds no token, gateway host or URL, or operator home path; no credential-shaped value present",
+      "source": "minimal dispute replay for the dispute-disposition defect; paths and names are synthetic"
+    },
+    "jev_recovery_answers.json": {
+      "captured_at": "2026-10-28",
+      "origin": "live-jev",
+      "redaction": "pattern scan finds no token, gateway host or URL, or operator home path; no credential-shaped value present",
+      "source": "answers captured from TypeSafe jev-1.14.0 on 2026-10-28 through the recovery question"
+    },
+    "omp_candidate/build_api_latest.json": {
+      "captured_at": "2026-10-27",
+      "origin": "captured",
+      "redaction": "the presigned download URL is replaced by the reserved download.example.invalid host; pattern scan finds no token, gateway host or operator home path",
+      "source": "response of the omp build listing API for the latest stable build (omp 18.13.2, build 20261027-180828-e996e1c, published 2026-10-27T18:10:18Z); public release metadata with the presigned download URL replaced by a reserved example.invalid host"
+    },
+    "omp_candidate/chain_review.jsonl": {
+      "origin": "captured",
+      "redaction": "pattern scan finds no token, gateway host or URL, or operator home path; no credential-shaped value present",
+      "source": "captured from the pinned omp 18.12.1 build against the loopback replay chain; upstream provider bodies are hand-built stubs, every later event is build output"
+    },
+    "omp_candidate/elided_read.jsonl": {
+      "origin": "captured",
+      "redaction": "pattern scan finds no token, gateway host or URL, or operator home path; no credential-shaped value present",
+      "source": "captured from the pinned omp 18.12.1 build against the loopback replay chain; upstream provider bodies are hand-built stubs, every later event is build output"
+    },
+    "omp_candidate/gateway_rejection.jsonl": {
+      "origin": "captured",
+      "redaction": "pattern scan finds no token, gateway host or URL, or operator home path; no credential-shaped value present",
+      "source": "captured from the pinned omp 18.12.1 build against the loopback replay chain; upstream provider bodies are hand-built stubs, every later event is build output"
+    },
+    "omp_candidate/manifest.json": {
+      "origin": "hand-built",
+      "redaction": "pattern scan finds no token, gateway host or URL, or operator home path; no credential-shaped value present",
+      "source": "index of the candidate streams with per-stream origin text"
+    },
+    "omp_candidate/quota_terminal.jsonl": {
+      "origin": "captured",
+      "redaction": "pattern scan finds no token, gateway host or URL, or operator home path; no credential-shaped value present",
+      "source": "captured from the pinned omp 18.12.1 build against the loopback replay chain; upstream provider bodies are hand-built stubs, every later event is build output"
+    },
+    "omp_candidate/quota_walk.jsonl": {
+      "origin": "captured",
+      "redaction": "pattern scan finds no token, gateway host or URL, or operator home path; no credential-shaped value present",
+      "source": "captured from the pinned omp 18.12.1 build against the loopback replay chain; upstream provider bodies are hand-built stubs, every later event is build output"
+    },
+    "omp_candidate/roster_breach.jsonl": {
+      "origin": "captured",
+      "redaction": "pattern scan finds no token, gateway host or URL, or operator home path; no credential-shaped value present",
+      "source": "captured from the pinned omp 18.12.1 build against the loopback replay chain; upstream provider bodies are hand-built stubs, every later event is build output"
+    },
+    "omp_candidate/static_outputs.json": {
+      "origin": "captured",
+      "redaction": "pattern scan finds no token, gateway host or URL, or operator home path; no credential-shaped value present",
+      "source": "help, version, config and invalid-input output of the pinned omp build"
+    },
+    "omp_candidate/upstream_auth.jsonl": {
+      "origin": "captured",
+      "redaction": "pattern scan finds no token, gateway host or URL, or operator home path; no credential-shaped value present",
+      "source": "captured from the pinned omp 18.12.1 build against the loopback replay chain; upstream provider bodies are hand-built stubs, every later event is build output"
+    },
+    "omp_multi_turn_review.jsonl": {
+      "origin": "captured",
+      "redaction": "pattern scan finds no token, gateway host or URL, or operator home path; no credential-shaped value present",
+      "source": "event stream of a real review run of the pinned build"
+    },
+    "pr2769_history.json": {
+      "origin": "derived",
+      "redaction": "pattern scan finds no token, gateway host or URL, or operator home path; no credential-shaped value present",
+      "source": "round and defect history of PR 2769 reduced to the fields the round logic reads; no single run id"
+    },
+    "pr3222_replay.json": {
+      "origin": "derived",
+      "redaction": "pattern scan finds no token, gateway host or URL, or operator home path; no credential-shaped value present",
+      "source": "round history of PR 3222 reduced to the fields the round logic reads; no single run id"
+    },
+    "pr3237_missing_text_fields.json": {
+      "origin": "derived",
+      "redaction": "pattern scan finds no token, gateway host or URL, or operator home path; no credential-shaped value present",
+      "source": "reviewer answers from PR 3237 whose text fields were missing; no single run id"
+    },
+    "pr3585_attempt-1.json": {
+      "head_sha": "cac6c9cfcaab940db75a6ce7d10eea03c1cae38e",
+      "origin": "ci-run",
+      "pr": 3585,
+      "redaction": "pattern scan finds no token, gateway host or URL, or operator home path; no credential-shaped value present",
+      "run_id": "40515355448",
+      "source": "attempt record of the oracle-verdict run for PR 3585"
+    },
+    "pr3585_attempt-2.json": {
+      "head_sha": "cac6c9cfcaab940db75a6ce7d10eea03c1cae38e",
+      "origin": "ci-run",
+      "pr": 3585,
+      "redaction": "pattern scan finds no token, gateway host or URL, or operator home path; no credential-shaped value present",
+      "run_id": "40515355448",
+      "source": "attempt record of the oracle-verdict run for PR 3585"
+    }
+  }
+}

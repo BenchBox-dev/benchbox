@@ -1033,3 +1033,41 @@ def test_a_session_cannot_inject_a_reviewer_proxy_through_its_environment(monkey
     with gateway_proxy("http://127.0.0.1:1055"):
         assert omp_env()["HTTPS_PROXY"] == "http://127.0.0.1:1055"
     assert not {"HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY"} & set(omp_env())
+
+
+def test_a_renamed_gate_file_still_flags_the_gate_through_its_old_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, Any] = {}
+
+    class Session:
+        def __enter__(self) -> Session:
+            return self
+
+        def __exit__(self, *exc: object) -> None:
+            return None
+
+    def classify(_session: object, **kwargs: Any) -> Classification:
+        seen.update(kwargs)
+        return _classification("small")
+
+    monkeypatch.setattr(cli, "JevSession", Session)
+    monkeypatch.setattr(cli, "classify_diff", classify)
+    plan = {
+        "repo": "o/r",
+        "pr": 1,
+        "base_sha": "b",
+        "head_sha": "h",
+        "gate_path_list": [".github/workflows/oracle-verdict.yml"],
+        "reviewed_files": [
+            {
+                "path": ".github/workflows/renamed-review.yml",
+                "previous_path": ".github/workflows/oracle-verdict.yml",
+                "additions": 0,
+                "deletions": 0,
+                "status": "renamed",
+            }
+        ],
+    }
+
+    cli._classify_plan(plan)
+
+    assert seen["gate_flags"] == [".github/workflows/oracle-verdict.yml"]

@@ -31,13 +31,15 @@ absent, pending or failed oracle decision does not pass on its own.
    - `ORACLE_APP_ID`, `ORACLE_APP_PRIVATE_KEY`: only the `review` job's `Mint
      the App token` step, after the attempt loop and the redaction check.
    - `TYPESAFE_API_KEY`: only the classify step (TypeSafe's Jev model classifies
-     the change), the two disk scans and the redaction step.
+     the change), the recovery steps between loop steps (Jev classifies an
+     invalid attempt), the three disk scans and the redaction step.
    - `ORACLE_GATEWAY_TOKEN`, `ORACLE_GATEWAY_URL`: the reviewer's client token
      for the credential gateway and the gateway's HTTPS URL, held by the attempt
      loop and the redaction step. No provider key, broker URL, broker token or
      owner OMP config is stored for the reviewer; its model roles and fallback
      chains are committed in `.github/oracle-omp-config.yml`.
-   - `TS_OAUTH_CLIENT_ID`, `TS_AUDIENCE`: the tailnet join.
+   - `TS_OAUTH_CI_CLIENT_ID`, `TS_OAUTH_CI_SECRET`: the tailnet join (a
+     Tailscale OAuth client with Auth Keys write, tag `tag:oracle-ci`).
 4. Keep provider credentials, `CLAUDE_CODE_OAUTH_TOKEN` included, out of
    repository secrets: same-repository PR workflows can read those.
 
@@ -71,13 +73,14 @@ boundary. Do not enable OMP's `secrets.enabled`: it restores real values into
 URLs and output.
 
 The `review` job joins the tailnet once, before the attempt loop, through
-`tailscale/github-action` with GitHub's OIDC token (`id-token: write`), so no
-long-lived Tailscale secret is stored. The step runs only when
-`TS_OAUTH_CLIENT_ID` and `TS_AUDIENCE` are set. A failed join does not end the
+`tailscale/github-action` with the OAuth client secret pair, tagged
+`tag:oracle-ci`; the secret is referenced only by that step and the scans and
+redaction. The job holds no `id-token: write`. The step runs only when
+`TS_OAUTH_CI_CLIENT_ID` and `TS_OAUTH_CI_SECRET` are set. A failed join does not end the
 review; the attempt is absent.
 
 [`oracle-gateway-host.md`](oracle-gateway-host.md) covers building, checking,
-rotating and moving the gateway host, and the Tailscale OIDC credential and
+rotating and moving the gateway host, and the Tailscale OAuth client and
 tailnet policy the job needs.
 
 Without `ORACLE_APP_ID`, the job logs the result and succeeds.
@@ -115,7 +118,11 @@ a manual dispatch, a `pull_request_target` event other than a plain edit, and a
    select the reviewer, reset the checkout, create a fresh scratch `HOME` with
    its OMP home, run the reviewer, confirm nothing was left behind, delete the
    `HOME`, and write the slot's result file: an artifact with run ID, head SHA,
-   reviewer, and a validated verdict or an absence. A crash or timeout still
+   reviewer, and a validated verdict or an absence, plus the `recovery` record
+   once an invalid attempt is classified. The loop stops after an invalid attempt
+   until a keyed `recover` step records it, then resumes (a recover and a resume
+   step follow the first loop step for each slot that can still be followed). A
+   crash or timeout still
    leaves an absence. OMP runs on a detached, credential-free head checkout: an
    empty working directory, the checkout as a read-only workspace, tools
    `read,grep,glob`, `--no-skills`, `--no-rules`, and a trusted overlay. The
@@ -160,24 +167,27 @@ assumes the runner grants no `PR_SET_PTRACER` access and the harness neither
 runs privilege-escalation tools nor changes UID or capabilities; it is no
 sandbox against arbitrary execution with the runner's sudo access. Parent step
 environments stay readable, so the loop environment holds only its gateway
-values (plus the accepted OIDC request token). Every control is permanent, not a
+values. Every control is permanent, not a
 one-time inspection:
 
 | Control | Enforced by |
 |---|---|
 | C2 total exit | After each reviewer exit, `runner.execute` lists the harness process group and, on Linux, every orphan the loop adopts as child subreaper. Survivors are killed and the run fails closed: slot absent, loop stops, job fails, nothing posts. |
 | C3 no secret in a script | The workflow test fails if any `run:` block names `secrets.*` or `github.token`; secrets reach steps only via `env:` or `with:`. |
-| C4 disk scan | Before the reviewer and after the last exit, `cli.py scan-disk` searches `$HOME`, `$RUNNER_TEMP`, both checkouts, `/tmp`, `/var/tmp`, `/dev/shm` and `${TMPDIR:-/tmp}` for the exact TypeSafe key and job token, deduplicating nested roots and following no file or directory symlinks. It covers the declared readable scratch roots, not every readable file. Values come from the step's own `env:`. A hit fails the job. |
-| C5 redaction completeness | After finalize, `cli.py redact-check` runs in a step holding every secret the job held (gateway token, TypeSafe key, gateway URL, Tailscale client ID and audience, OIDC request token, job token), redacts attempt, verdict, diagnostic, absence and result text across control-character splits, and fails if a value remains. The loop step cannot hold these: a same-user child can read its parent's environment. |
+| C4 disk scan | Before the reviewer, after the tailnet join and after the last exit, `cli.py scan-disk` searches `$HOME`, `$RUNNER_TEMP`, both checkouts, `/tmp`, `/var/tmp`, `/dev/shm` and `${TMPDIR:-/tmp}` for the exact TypeSafe key, Tailscale OAuth secret and job token, deduplicating nested roots and following no file or directory symlinks. It covers the declared readable scratch roots, not every readable file. Values come from the step's own `env:`. A hit fails the job. |
+| C5 redaction completeness | The finalize step and the later `cli.py redact-check` step hold every secret the job held (gateway token, TypeSafe key, gateway URL, Tailscale OAuth client ID and secret, job token). Finalize redacts the protocol record before it encodes the marker. `redact-check` redacts attempt, verdict, diagnostic, absence and result text across control-character splits, decodes the trailing protocol marker of each text, and fails if a value remains in the text or in a decoded marker. Finalize and the loop defer their step-summary lines to files that `redact-check` writes to the step summary only after it succeeds. The loop step cannot hold these: a same-user child can read its parent's environment. |
 | C6 fresh `HOME` | Each attempt gets a new `mkdtemp` directory; the previous one is deleted first and the checkout reset. |
-| C7 token scope | Job permissions are exactly `actions: write`, `contents: read`, `pull-requests: read`, `id-token: write`. `github.token` appears only in the `env:` of steps before or after the loop; both checkouts use `persist-credentials: false`. |
+| C7 token scope | Job permissions are exactly `actions: write`, `contents: read`, `pull-requests: read`; no `id-token`, and the isolation step fails if `ACTIONS_ID_TOKEN_REQUEST_TOKEN` is present. `github.token` appears only in the `env:` of steps before or after the loop; both checkouts use `persist-credentials: false`. |
 | C8 timeout budget | `timeout-minutes` is `max_attempts` times the longest reviewer `timeout_minutes` plus setup, under 360; the harness timeout fires first and becomes an absence. A workflow test recomputes it from the policy. |
 | C9 cancellation | `cancel-in-progress` is true only for `pull_request_target`; comment, dispatch and sweep runs wait behind a run in flight, one waiting run per concurrency group, and a newer waiting run replaces the older one, which GitHub cancels. Posting steps keep the default success condition, so a cancelled run posts nothing. |
-| C10 App mint last | `ORACLE_APP_PRIVATE_KEY` is referenced by the review job's posting mint, after the loop, second disk scan and redaction check, and by the sweep job's failure-status mint; the sweep job runs no reviewer, so its mint cannot leak to one. |
+| C10 App mint last | `ORACLE_APP_PRIVATE_KEY` is referenced by the review job's posting mint, after the loop, last disk scan and redaction check, and by the sweep job's failure-status mint; the sweep job runs no reviewer, so its mint cannot leak to one. |
 
-The OIDC request token shares the gateway token's terms in the loop environment:
-GitHub documents it as valid only while the job runs, and it is redacted. The
-gateway URL is sensitive and redacted too.
+Redaction is accident hygiene, not a control: it matches literal and
+control-split values, so an encoding defeats it. The loop environment holds the
+gateway token and URL, which a same-user reviewer can read and encode-leak. The
+owner accepted that with compensating controls: the `tag:oracle-ci` ACL
+(gateway port only, tailnet-only reachability), model scope, per-client quota
+and revocation. The OAuth client secret is never in the loop environment.
 
 If any of C2 to C10 cannot pass on GitHub-hosted runners, the fallback is the
 same `review` job without posting steps, plus a separate `post` job that holds
@@ -194,6 +204,13 @@ consumers (`oracle_review_check.py`, the reviewer classifier,
 `_project/scripts/inert_paths.py`; soundness and gate paths take precedence.
 `.github/path-filters.yml` does not read it: its `code-ci` list hand-maintains
 the machine-read documents routed to code CI.
+
+The gate machinery, including `oracle-gate.yml` and `oracle_gate.py`, is listed
+in `classifier.gate_paths`, so changing it is always classed as a gate change.
+When the changed-file listing is shorter than the pull's changed-file count
+(GitHub caps it at 3000), the plan holds the head pending for owner review with
+that reason: it neither declares the change exempt nor reviews a partial view,
+because the unlisted files are unknown.
 
 Add an `except` line to keep a document in review scope; remove it to return the
 document to inert. Every `except` line must match a tracked path
@@ -319,8 +336,10 @@ disputes stay data. Each keyed disputed finding needs an explicit disposition:
   defect not fixed is invalid.
 
 The response template shows concedes as null, correct for an undisputed defect;
-a disputed defect left null is invalid, as is a missing disposition or a claim
-matching no shown reply. Invalid attempts are retried. A maintain or fixed
+a disputed defect left null is malformed, as is a missing disposition or a claim
+matching no shown reply. A malformed disposition invalidates only a verdict that
+would ship, and that attempt is classified by Jev (see Rounds). On any other verdict the defect is kept
+open, the problem is published as the defect's evidence, and the decision stands. A maintain or fixed
 disposition whose citation does not verify is not invalid: the defect stays open
 and the disposition is published with the evidence gap. A demoted withdrawal or
 fix is judged exactly as a maintain, so its concedes and claim cannot invalidate
@@ -331,7 +350,12 @@ does a defect marked fixed on an unchanged patch, so only evidenced dispositions
 leave the open list; withdrawals are reported separately as never defects. Every
 disposition and its evidence is published under its finding in the review body;
 if the body would exceed the cap, finding details shrink first and no
-disposition line is dropped.
+disposition line is dropped. A citation is a repository-relative path then
+`:line`, and the path may be hidden (`.github/...`) or extensionless
+(`Makefile`); it verifies only when that exact path was read at the head commit.
+An override note the oracle appends to a disposition's evidence survives the
+artifact replay: replayed evidence may exceed the reviewer's 1000-character cap
+by up to 1000 characters, and the published body still shrinks to its cap.
 
 A thread reply is a keyed dispute only if it is from an owner, member or
 collaborator other than the oracle bot, has a line starting `Dispute:` stating
@@ -362,7 +386,13 @@ the head already has a marker, so two runs cannot both post for one head. It
 tries three times about two seconds apart; if every try fails, or an App review
 was edited, the guard step fails and nothing is posted: the head keeps its latest
 status and a later run decides it. A run that skips posting, or whose status post
-failed, uploads no retry state and adds no strike.
+failed, uploads no retry state and adds no strike. A manual run still uploads
+an attempt state before posting, even when the App token or the guard step
+failed, as long as the redaction check passed: it carries the current head, the run's time and
+the consumed retry (with the `unpublished` pending cause when the head had no
+state of its own), so a failed post can neither skip the daily budget nor the
+backoff. The sweep never re-dispatches an `unpublished` state; a manual
+`/oracle-review` retries it within the usual backoff and budget.
 
 `post` drops any finding matching an open review thread from this App by file
 and normalized title, unless the new one is more severe. Each new thread carries
@@ -382,9 +412,28 @@ bucket's reviewer (for a follow-up, the previous reviewer if it belongs to a
 larger bucket), then takes larger buckets' reviewers in size order, skipping any
 whose harness, model and effort match one already in the chain: `trivial` and
 `small` share `@smol`, so a run never spends slots on both. A reviewer absent as
-`invalid`, `incomplete`, `empty` or `error` runs once more before the chain
-advances, so at most two attempts per reviewer and `max_attempts` per run. Never
-retried: a decision; `quota`, `auth` or `timeout` absences; a reviewer job that
+`incomplete`, `empty` or `error` runs once more before the chain advances, so at
+most two attempts per reviewer and `max_attempts` per run. An `invalid` attempt
+(a reply that fails validation or the dispute contract) is not retried by a fixed
+rule: after it, Jev (TypeSafe `jev-1.14.0`, the session that classifies the
+change) answers one choice question as `retry`, `stop` or `escalate`. Its state
+holds only the redacted validation message, the reply's keys-and-types
+fingerprint, the reviewer tier and model role, the attempt number for that
+reviewer and the earlier invalid messages of the run; never raw reply text, diffs
+or secrets. `retry` runs the same reviewer again, at most twice per reviewer (a
+retry beyond that becomes `escalate`); `escalate` moves to the next reviewer;
+`stop` ends the run pending with "stopped: the process is blocked (<message>)"
+and posts nothing that passes. When Jev is unavailable, no key is set (a local
+review without one), the answer is not one of the three labels, or its
+confidence is below 0.60, the run retries the same reviewer once and then stops;
+it never escalates without a Jev answer. The answer, its probability and
+confidence, or the fallback reason, are stored on the attempt artifact
+(`recovery`), so replay reproduces the choice and rejects an attempt that
+contradicts it. The Jev call counts against no reviewer slot. In CI the loop
+holds no judgment key, so it stops after an invalid attempt, a keyed step
+(`recover`) records the recovery, and the loop resumes; locally one process does
+both. A recovery never makes a decision pass. Never retried: a decision; `quota`,
+`auth` or `timeout` absences; a reviewer job that
 did not finish (`ensure-attempt` records it with the fixed `JOB_FAILURE_DETAIL`
 detail); a reviewer selection would skip (disabled, out of quota, or unable to
 take the brief). Selection and artifact replay share this rule, so a third
@@ -394,11 +443,13 @@ reviewer that answers ends the run like any decision.
 
 An OMP event stream ending with no final assistant text (for example after a
 tool call) is absent as `empty`, detail "the reviewer ended without a final
-answer". Prose or malformed-JSON final text, and OMP output that is not an event
-stream, is `invalid`. Both are retried alike.
+answer", and is retried. Prose or malformed-JSON final text, and OMP output that
+is not an event stream, is `invalid` and goes to Jev.
 
 The review body lists every absent attempt under "Reviewers not available" as `-
-<reviewer> (attempt <slot>): absent (<kind>): <detail>`. The detail is the
+<reviewer> (attempt <slot>): absent (<kind>): <detail>`, followed for an invalid
+attempt by `; recovery: <choice> (Jev, probability, confidence)` or
+`; recovery: <choice> (fallback, <reason>)`. The detail is the
 attempt artifact's, credentials redacted, whitespace collapsed, at most 160
 characters, and omitted when absent. Raw reviewer responses are never published
 there.
@@ -590,7 +641,7 @@ run stays pending. A hollow answer never passes.
   gateway proxy variables only while a cloud local review has set one in-process.
   `credentials.py` `NAMES` lists that token, the broker and provider variables
   (which the loop does not receive), the runner-held values (gateway URL,
-  Tailscale client ID and audience, OIDC request token) and legacy extras, so a
+  Tailscale OAuth client ID and secret, the OIDC request token) and legacy extras, so a
   local run still holding
   them is redacted too. Values of eight or more characters are removed by exact
   match before and after every sanitising transform and before truncation,
@@ -645,13 +696,14 @@ nothing.
   Each run is tied to a head by the `head=<sha>` its title records, never by
   commit dates, which an author controls; a run with no recorded head (a
   comment run, a dispatch without `head`) belongs to no head, so it counts as
-  neither a failure nor a success. A cancelled run is a failure only when its
+  neither a failure nor a success, and never settles an earlier timeout on the
+  current head. A cancelled run is a failure only when its
   job hit `timeout-minutes`, which GitHub reports as a cancelled job whose
   check-run annotation reads "has exceeded the maximum execution time"; a
   concurrency cancel ("Canceling since a higher priority waiting request ...
   exists") or a manual cancel is neither a failure nor a success. A head
   whose latest runs failed or timed out without leaving retry state is
-  re-dispatched, unless the head has a decisive App verdict status; the
+  re-dispatched, unless the head has a decisive App verdict status from one of this pull request's runs; the
   dispatch carries a marker, and a marked retry the plan refuses, or whose
   retry state it cannot read, fails its run so the next sweep counts it. A head
   with a due pending state is bounded the
@@ -662,14 +714,22 @@ nothing.
   step, with an App token minted in the reviewer-free sweep job. An existing
   pending status is left alone, and a head whose newest App status is that
   surfaced failure is not dispatched again once its runs age out of the
-  48-hour listing; without the App the sweep reports the gap
+  48-hour listing. Only a status posted by one of this pull request's own
+  runs counts, as a decisive result or a surfaced hold: the sweep reads the
+  status's run, and a pull request that shares the head SHA with another
+  ignores the other's statuses and still recovers. A status whose run cannot
+  be read counts as the pull request's own. Without the App the sweep reports the gap
   instead of failing. A failure in one PR's lookup, dispatch or surfacing is
   reported, the others continue, then the job fails. If the runs listing fails
   twice or is capped, the sweep degrades: it dispatches only due retries, using
   a bounded lookup of every non-completed run status for the in-flight check,
   and says so in the summary. If that lookup also fails it dispatches nothing.
-  A degraded sweep exits 1 after dispatching what it safely can. Daily budget,
-  backoff and attempt limits are unchanged.
+  A degraded sweep lists the last 24 hours of runs to bound each due retry by
+  the same two-failure stop, surfaced-failure check and daily dispatch budget as
+  a full sweep, and holds the retry when even that listing fails or the
+  due state is older than it. A degraded
+  sweep exits 1 after dispatching what it safely can. Daily budget, backoff and
+  attempt limits are unchanged.
 - `make oracle-backoff-reset PR=<number> HEAD=<sha> REASON='<why>'` lets the
   owner clear one PR head's backoff and retry window once. It needs a prior
   `Owner instruction` comment from an attester naming the head, as for a
@@ -685,7 +745,9 @@ reviewer never reported, is not rerun on that head; push a new one. Comment,
 dispatch and scheduled reruns share a daily budget (`retry.daily_budget`), with
 backoff starting at one hour and doubling. A new head inherits the budget spent
 on a decisive earlier head, so a push does not restore it; only an earlier head
-that ended pending leaves it unspent. The plan counts the retries recorded in the
+that ended pending leaves it unspent, and the state the new head's run records
+carries none of that pending head's retries, so its backoff starts at one hour.
+The plan counts the retries recorded in the
 state and the sweep counts the dispatches recorded in the run titles, and both
 apply the owner reset the same way: it ignores the backoff and the budget once.
 Retry state is the `oracle-verdict-state-<number>` artifact of this workflow's
@@ -769,6 +831,71 @@ to GitHub.
   the same cache (`oracle-gateway-host.md`), so a bump reaches the serving half
   when the owner re-runs `broker` and `gateway`; `check` fails while either
   agent runs anything else.
+- **Candidate check.** `make omp-candidate-check VERSION=<v>` checks a candidate
+  build offline against every OMP contract the harness depends on, with no
+  model call. `PIN=<file>` names a file whose `omp:` section pins the candidate
+  (the committed policy by default); `BINARY=<path>` reuses an already
+  downloaded build for this platform. It downloads each pinned platform build,
+  hashes it against the pin, and runs the probes on the build for the platform
+  it runs on, and only after the build hashes to the pin; a build that does not
+  is never executed. Run the target on a linux-x64 machine for linux-x64
+  evidence and on the owner's Mac for darwin-arm64 evidence. The probes are: the `--version` format (exactly one version
+  token, equal to the pin); every flag in the reviewer command is listed by
+  `--help`; enumerated flag values and the tool roster are rejected when invalid
+  and still name the values the reviewer uses; every overlay and reviewer-home
+  setting exists in the build's `config list --json` schema with an accepted
+  type and value; the captured streams in
+  `tests/fixtures/oracle_reviewers/omp_candidate/` replay through
+  `parse_output`, `evidence.trace` and `absence.classify`; and a loopback
+  replay chain runs the candidate client against the candidate
+  `auth-broker serve` and `auth-gateway serve` (scoped client token) with a
+  stub upstream, all traffic confined to loopback by a dead egress proxy. The
+  chain proves the tool roster the model is offered, that bash, write and edit calls
+  outside it are refused and change nothing, that the overlay keeps URL
+  reads, project MCP servers, context files and read summaries off (each
+  against a canary that a second run under an empty overlay must trigger, so a
+  probe that can no longer observe its canary fails), that a 429 walks the
+  fallback chain and ends as a quota absence naming the provider, that a 401 is
+  an auth absence and does not walk the chain, that a wrong client token is
+  refused before any upstream request, that the stream opens with session event
+  version 3, and that the run leaves no session state and no process behind.
+  Each probe lists the contract rows it covers; a row that no probe running the
+  candidate covers fails the run unless a reason is recorded, and a replay of a
+  frozen capture never counts. Only the host build is executed; every other pinned
+  platform, whether limited out with `--platform` or merely hash-checked, is
+  listed as unverified and the run is `partial`, not green. The build lists no
+  context providers, so a `disabledProviders` entry is only checked through a
+  token file, MCP server or skill that a control run under no `disabledProviders`
+  observes and a run under the overlay's `disabledProviders` must not. Each is
+  planted at the path the provider reads (`candidate_canaries.CANARIES`), in the
+  client's working directory and the review workspace; the overlay run must see
+  neither copy. The control run must see the working-directory copy, and the
+  workspace copy too for the context and extra context files, the only
+  surfaces the build loads from `--add-dir`. Context files
+  and system prompts shadow one another (one wins per directory, so each gets
+  its own control run and its own overlay run, and an overlay run that sends no
+  request proves nothing and is red), and `--no-skills`/`--no-rules` plus `mcp.enableProjectConfig`
+  would hide a provider that is still on, so these runs drop those guards. A
+  canary the control run cannot see leaves its provider unprobed and the run
+  `partial` and withholds the `releasable` evidence line; one the overlay run sees is red and names the provider. The
+  entries with no canary stay `partial`: `omp-plugins`, `agent-plugins` and
+  `claude-plugins` read installed plugin packages, and `ssh-json` hosts reach no
+  model-visible surface under the read roster. Row 8's provider reset wording
+  cannot be
+  observed offline and stays covered by the calibrated absence tests. The
+  fixtures are redacted captures of the pinned build's own output; the upstream
+  provider bodies the stub serves are hand-built, and `--capture-dir` rewrites
+  a run's streams into new fixtures. A probe failure never relaxes a contract.
+  Every fixture under `tests/fixtures/oracle_reviewers/` is listed in
+  `provenance.json` with its origin (`ci-run`, `local-review`, `live-jev`,
+  `captured`, `derived` or `hand-built`), its source, the CI run id or local
+  review time where one exists, and its redaction result.
+  `captures/ci_attempt.json` and `captures/local_review.json` are
+  `oracle-verdict-capture` artifacts from one CI run and one local review,
+  passed through `redact-check` before they were kept.
+  `tests/integration/oracle/test_curated_capture_fixtures.py` fails when a
+  fixture is unlisted, a listing is stale, or a fixture carries a credential, a
+  tailnet name, a foreign host or an operator home path.
 - **Blocking.** A Critical or High finding, or DO NOT SHIP, makes `pr-open`
   refuse before pushing (exit 1). A `Local oracle override: <reason>` line with
   a non-empty reason in the PR body file (`PR_BODY_FILE`) lets it proceed and
@@ -850,9 +977,10 @@ which unit tests cannot check alone. A change to `commands.py`, `verdict.py`,
 `evidence.py`, `runner.py`, the reviewer policy or the attempt loop must also:
 
 - keep `tests/fixtures/oracle_reviewers/omp_multi_turn_review.jsonl` a real
-  recording. When OMP output changes, re-record with `omp --print --mode json`
-  on a review that writes text, calls `read` and `grep`, then answers; replace
-  machine paths and check for credentials. Never hand-edit it to fit the code.
+  recording of a review the harness already ran. When OMP output changes,
+  replace it with the stream of a CI or local review run that already happened,
+  with machine paths replaced and credentials checked for. Never run a model
+  to record it, and never hand-edit it to fit the code.
 - be smoke-tested before merge by running `runner.review` on a file-list brief
   with the reviewer and model CI will select and the committed
   `.github/oracle-omp-config.yml` (written into a scratch `HOME` with
@@ -867,6 +995,56 @@ which unit tests cannot check alone. A change to `commands.py`, `verdict.py`,
   Linux build or the secret `OMP_AGENT_CONFIG`; only an observed CI run does.
 - be self-reviewed across every module at that boundary and its tests, not a
   subset.
+
+### Bumping the omp pin
+
+A pin bump changes only the `omp:` section of `.github/oracle-reviewers.yml`
+(and captured fixtures); it never widens the version to a range, and the gateway
+host picks the new build up from the same pin. The compatibility suite, not the
+oracle, carries its behavioural evidence: the oracle reviewing the bump runs the
+previous build and reads only the YAML. The pre-merge model smoke above does not
+apply to a bump, and no model is run to re-record a fixture.
+
+`omp-pin-bump.yml` runs daily and on demand from `develop`. It asks the build
+host (`/api/products/omp/latest/<target>?channel=stable`) for the newest stable
+build of each pinned platform, ignores it unless it is newer than the pin,
+downloads every platform build twice over TLS, and requires both downloads and
+the checksum the host publishes to agree. It then runs
+`make omp-candidate-check` on the linux-x64 runner against that candidate.
+Only a suite that passes on that runner, with every other platform's build
+hashed against the pin though not executed (the report stays `partial`), opens
+a `chore/omp-pin-<version>` pull request whose body
+carries the suite output, the per-platform hashes, the `--version` transcript
+and the `--help` difference from the previous build. A red candidate opens
+nothing: the old pin stands and the run fails with the suite output in its
+summary. `make omp-bump-prepare` runs the same preparation locally.
+
+The owner runs `make omp-candidate-check VERSION=<version>` on the Mac
+(darwin-arm64) from the bump's branch and posts the `Omp candidate check:` line
+it prints as a comment. The repository's arming helpers (`make pr-arm`,
+`make pr-arm-remote` and the enqueue step of `pr_landing`) refuse a pull request
+that changes the pin until an unedited comment from the owner names the pull
+request's version, its pinned `darwin-arm64` SHA-256, the digest of the whole
+`omp:` section (every platform's URL and SHA-256) and the pull request's current
+head commit. The check prints the line (ending `result=releasable`: the suite
+passed on that host and every other platform's build hashed to the pin, though
+the report itself stays `partial`) only from a clean worktree, naming `HEAD`,
+so a later push invalidates the evidence and the owner reruns the check on the
+new head. They also refuse one that
+changes anything besides the pin section and the captured `*.jsonl` fixture
+streams. The same decision is enforced server-side: the required `oracle-gate`
+(run from `develop`'s copy, so the bump cannot weaken it) holds a pull request
+that changes the `omp:` section, reading the base and head policy through the
+contents API, until that evidence is present, so enabling auto-merge by hand
+cannot bypass it. A pull request whose file list the API returns incomplete is
+held whenever the pin changes, evidence or not. The helpers keep the early refusal for fast feedback; both
+share `oracle_reviewers/omp_bump_gate.py`. A comment carrying the
+`Omp candidate check: ` prefix retriggers the gate like a stand-in attestation.
+
+Builds are not mirrored. If the build host stops serving a pinned build, the
+previous pin cannot be reinstalled and a revert to it cannot install the old
+build; the risk is accepted, so keep a bump's predecessor in the local cache
+(`~/.cache/benchbox/omp`) until the bump has proved itself.
 
 ## Mutation testing
 

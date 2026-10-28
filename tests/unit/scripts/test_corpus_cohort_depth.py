@@ -96,11 +96,11 @@ def _write_bundle(
 
 
 KNOWN_DEFECTIVE_SHALLOW_COHORTS = {
-    ("coffeeshop", "0.01"): {"clickhouse-local", "duckdb"},
+    ("coffeeshop", "0.01"): {"duckdb"},
     ("tpch", "0.01"): {"datafusion", "duckdb"},
     ("tpch", "0.1"): {"datafusion", "duckdb"},
     ("tpch", "1.0"): {"duckdb"},
-    ("tpcdi", "0.01"): {"clickhouse-local", "duckdb"},
+    ("tpcdi", "0.01"): {"duckdb"},
     ("clickbench", "0.1"): {"bigquery", "snowflake"},
     ("tpcds_obt", "1.0"): {"datafusion", "duckdb"},
 }

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import os
 import platform
 import re
@@ -75,6 +76,15 @@ def parse_pin(data: Any) -> Pin:
     return Pin(version, builds)
 
 
+def pin_digest(pin: Pin) -> str:
+    canonical = {
+        "version": pin.version,
+        "builds": {name: {"url": build.url, "sha256": build.sha256} for name, build in sorted(pin.builds.items())},
+    }
+    payload = json.dumps(canonical, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 def pin_from_text(text: str) -> Pin:
     import yaml
 
@@ -95,11 +105,11 @@ def current_platform() -> str:
 
 def cache_root() -> Path:
     override = os.environ.get(CACHE_ENV)
-    return Path(override) if override else Path.home() / ".cache" / "benchbox" / "omp"
+    return Path(os.path.abspath(override)) if override else Path.home() / ".cache" / "benchbox" / "omp"
 
 
 def binary_path(pin: Pin, target: str, root: Path | None = None) -> Path:
-    return (root or cache_root()) / pin.version / target / "omp"
+    return Path(os.path.abspath(root or cache_root())) / pin.version / target / "omp"
 
 
 def sha256_of(path: Path) -> str:
@@ -225,7 +235,7 @@ def install(pin: Pin, target: str | None = None, root: Path | None = None, fetch
 
 def configured_binary() -> Path | None:
     value = os.environ.get(BINARY_ENV, "")
-    return Path(value) if value else None
+    return Path(os.path.abspath(value)) if value else None
 
 
 def required_binary() -> Path:

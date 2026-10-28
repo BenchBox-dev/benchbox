@@ -30,24 +30,6 @@
       "cutover_action": "None."
     },
     {
-      "id": "linkcheck-ignore-policy",
-      "file": "tests/unit/docs/test_linkcheck_ignore_policy.py",
-      "tests": [
-        "test_compare_deep_link_exception_matches_published_receipts",
-        "test_compare_deep_link_exception_does_not_mask_other_live_routes"
-      ],
-      "classification": "contract-field",
-      "contract_fields": [
-        "/publication/linkcheck_ignore_patterns",
-        "/ownership/transitions/linkcheck_policy"
-      ],
-      "site_reads": [
-        "docs/linkcheck_ignore.txt"
-      ],
-      "reason": "Core tests the ignore patterns in retained docs/linkcheck_ignore.txt; the site link checker applies the exported patterns against its own .lychee.toml.",
-      "cutover_action": "Retained in core against the retained ignore file."
-    },
-    {
       "id": "publication-architecture-internal-authority",
       "file": "tests/unit/docs/test_publication_architecture.py",
       "tests": [
@@ -223,28 +205,6 @@
       ],
       "site_reads": [],
       "reason": "Release workflow and docs/internal release guide assertions; the pages read are core-retained.",
-      "cutover_action": "None."
-    },
-    {
-      "id": "post-merge-signature-samples",
-      "file": "tests/unit/test_post_merge_signature.py",
-      "tests": [
-        "test_attribution_advisory_when_blamed_sha_misses_failing_test"
-      ],
-      "classification": "governance-stays",
-      "site_reads": [],
-      "reason": "Uses a UAT framework page only as a sample changed path for attribution; no page content is read.",
-      "cutover_action": "None."
-    },
-    {
-      "id": "post-merge-signature-script-samples",
-      "file": "tests/unit/scripts/test_post_merge_signature.py",
-      "tests": [
-        "test_job_level_ids_are_advisory_incidents"
-      ],
-      "classification": "governance-stays",
-      "site_reads": [],
-      "reason": "Uses docs/x.md only as a sample changed path; no page content is read.",
       "cutover_action": "None."
     },
     {

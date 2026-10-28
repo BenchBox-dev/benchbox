@@ -1,5 +1,49 @@
 # Corpus Generation Notes - 2026-04-03
 
+## Results from variant and loader bugs (2026-10-28)
+
+Seven ranked bundles recorded wrong values because of BenchBox's own
+hand-written query variants or data loader, not an engine. Each now carries
+`known_defects: ["defective-variant-or-loader-wrong-result"]` in its
+`.manifest.json` sidecar, which the explorer pipeline turns into
+`ranking_exclusion_reason=known_defective_data`. The bundle JSON is unchanged;
+four sidecars already existed (the three CoffeeShop bundles and the DataFusion
+ClickBench bundle) and the three TPC-DI ones were created with
+`result_source: internal`. Replacing them means fixing the variant or loader,
+then rerunning the cells and ingesting the new bundles; those fixes and reruns
+follow in separate changes. Each short id resolves to exactly one bundle.
+
+- ClickHouse Local CoffeeShop SF0.01, SF0.1, SF1 `370b71e2`, `975cb3a1`,
+  `4ce8154e`: the hand-written TM1 variant records 1 row at every scale against
+  4 on DuckDB (decimal division truncates in the ClickHouse variant).
+- ClickHouse Local TPC-DI SF0.01, SF0.1, SF1 `01f31a9c`, `4d6e3213`,
+  `b6f8b467`: the hand-written AQ6 variant uses `stddevPop` and a denominator
+  that omits the join fan-out, and the AQ3 commission ratio of 0.0999
+  truncates to 0. The recorded AQ6 and AQ3 row counts (5 or 12, and 50) match
+  DuckDB, so the defect is in the values, which the bundle does not record.
+- DataFusion ClickBench SF1 `8014d1c9`: the loader treated empty strings as
+  NULL and ignored the `__NULL__` marker, so 750,021 empty `SearchPhrase`
+  values became NULL and Q6 (`COUNT(DISTINCT SearchPhrase)`) returned 17
+  against 18 on DuckDB.
+
+Flagging these leaves the ClickHouse Local CoffeeShop and TPC-DI SF0.01
+cohorts with only DuckDB ranked, so the `DOCUMENTED_SHALLOW_COHORTS` entries
+for both change from DuckDB and ClickHouse Local to DuckDB alone. The
+CoffeeShop and TPC-DI SF0.1 and SF1 cohorts and the ClickBench SF1 cohort stay
+at four ranked platforms, above the floor.
+
+ClickHouse `map_access` (Read Primitives) returns 0 for a missing map key
+where DuckDB returns NULL. The ClickHouse Local Read Primitives SF0.01 and
+SF0.1 bundles (`3465d4f3`, `c1aeca88`) ran it successfully, but the query is
+`ORDER BY ps_suppkey LIMIT 10` over one row per supplier, so its recorded row
+count is 10 on ClickHouse Local and DuckDB alike and a wrong map value cannot
+change it; bundles record rows, status and timing only, not values. Neither
+bundle is flagged: a whole-bundle flag would unrank every query for one whose
+recorded result is unaffected, and both Read Primitives cohorts are already
+unranked. The wrong value is a defect in the ClickHouse query, recorded here;
+any future bundle that records result values for `map_access` must not be read
+as correct on ClickHouse.
+
 ## Fork 30.24.0.17 published-impact audit (2026-10-26)
 
 - Spark and Databricks (fork #73): `DATE_TRUNC('DAY', x)` was written

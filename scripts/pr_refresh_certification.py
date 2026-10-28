@@ -98,7 +98,6 @@ SELF_CHANGE_PATHS = (
     "scripts/pr_refresh_certification.py",
     "scripts/path_filter_decision.py",
     "scripts/ruleset_drift_check.py",
-    "_project/scripts/browser_gate_aggregate.py",
     ".github/path-filters.yml",
 )
 WORKFLOW_PREFIX = ".github/workflows/"

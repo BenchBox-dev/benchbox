@@ -17,7 +17,9 @@ MAX_REASON = 1000
 MAX_TITLE = 200
 MAX_DETAIL = 4000
 MAX_EVIDENCE = 1000
+MAX_REPLAYED_EVIDENCE = MAX_EVIDENCE + 1000
 MAX_PATH = 400
+MAX_LINE = 10_000_000
 MAX_EXAMINED = 2000
 
 COMPLETE = "complete"
@@ -37,7 +39,8 @@ FINDING_KEYS = ("severity", "file", "line", "end_line", "title", "detail")
 OPTIONAL_FINDING_KEYS = frozenset({"end_line"})
 PRIOR_KEYS = ("id", "status", "evidence")
 PRIOR_OPTIONAL_KEYS = ("claim", "concedes", "demoted")
-DEMOTED_STATUSES = ("withdrawal", "fixed")
+DEMOTED_DISPOSITION = "disposition"
+DEMOTED_STATUSES = ("withdrawal", "fixed", DEMOTED_DISPOSITION)
 MAX_CLAIM = 8000
 VERDICT_KEYS = ("status", "incomplete_reason", "decision", "summary", "files_examined", "defects", "prior_defects")
 RESPONSE_PLACEHOLDERS = {
@@ -351,6 +354,9 @@ def _finding(data: Any) -> Finding:
     _require(isinstance(title, str) and title.strip() != "", "title must be a non-empty string")
     _require(isinstance(detail, str), "detail must be a string")
     span_end = end_line if end_line is not None and end_line > line else None
+    line = min(line, MAX_LINE)
+    span_end = None if span_end is None else min(span_end, MAX_LINE)
+    span_end = None if span_end == line else span_end
     return Finding(severity, path, line, sanitize(title, MAX_TITLE), sanitize(detail, MAX_DETAIL), span_end)
 
 
@@ -378,7 +384,7 @@ def _prior(data: Any, *, trusted: bool = False) -> PriorDefect:
     return PriorDefect(
         identifier,
         data["status"],
-        sanitize(data["evidence"], MAX_EVIDENCE),
+        sanitize(data["evidence"], MAX_REPLAYED_EVIDENCE if trusted else MAX_EVIDENCE),
         sanitize(claim, MAX_CLAIM),
         concedes,
         demoted,
@@ -443,7 +449,7 @@ def _stream_result(text: str) -> Any:
     for line in reversed(text.splitlines()):
         try:
             event = json.loads(line)
-        except json.JSONDecodeError:
+        except ValueError:
             continue
         if isinstance(event, dict) and event.get("type") == "result":
             return event
@@ -455,7 +461,7 @@ def extract_omp_text(stdout: str) -> str:
     for line in stdout.splitlines():
         try:
             event = json.loads(line)
-        except json.JSONDecodeError:
+        except ValueError:
             continue
         if not isinstance(event, dict) or event.get("type") != "message_end":
             continue
@@ -488,7 +494,7 @@ def omp_terminal_error(stdout: str) -> TerminalError | None:
     for line in stdout.splitlines():
         try:
             event = json.loads(line)
-        except json.JSONDecodeError:
+        except ValueError:
             continue
         if not isinstance(event, dict) or event.get("type") != "message_end":
             continue
@@ -513,7 +519,7 @@ def omp_stream_without_answer(stdout: str) -> bool:
     for line in stdout.splitlines():
         try:
             event = json.loads(line)
-        except json.JSONDecodeError:
+        except ValueError:
             continue
         if isinstance(event, dict):
             return True
@@ -526,10 +532,12 @@ def parse_output(harness: str, text: str) -> Any:
     stripped = _strip_fence(text)
     try:
         payload = json.loads(stripped, object_pairs_hook=_unique_object)
-    except json.JSONDecodeError as exc:
+    except VerdictError:
+        raise
+    except ValueError as exc:
         payload = _stream_result(text) if harness == "claude" else None
         if payload is None:
-            raise VerdictError(f"the reviewer output is not JSON: {exc.msg}") from exc
+            raise VerdictError(f"the reviewer output is not JSON: {getattr(exc, 'msg', 'invalid number')}") from exc
     if harness == "claude":
         _require(isinstance(payload, dict), "the claude result envelope must be an object")
         _require(payload.get("is_error") is not True, "the claude result envelope reports an error")

@@ -34,8 +34,9 @@ _TRACE_PATH_WIDTH = 80
 _TRACE_LIMIT = 700
 OMP_NO_MATCHES = "No matches found"
 CITATION_PREFIX = "Citation not found in the head commit"
-_WITHDRAWAL_CITATION = re.compile(r"(?P<path>[A-Za-z0-9_][A-Za-z0-9_./-]*\.[A-Za-z0-9]+):(?P<line>\d+)")
-_REPRO_CITATION = re.compile(r"(?i)\brepro\s*:\s*(?P<path>[A-Za-z0-9_][A-Za-z0-9_./-]*\.[A-Za-z0-9]+)")
+_CITED_PATH = r"(?:\./)?\.?[A-Za-z0-9_](?:[A-Za-z0-9_./-]*[A-Za-z0-9_])?"
+_WITHDRAWAL_CITATION = re.compile(rf"(?<![A-Za-z0-9_./-])(?P<path>{_CITED_PATH}):(?P<line>\d+)")
+_REPRO_CITATION = re.compile(rf"(?i)\brepro\s*:\s*(?P<path>{_CITED_PATH})")
 UNVERIFIED_WITHDRAWAL = (
     "the withdrawal names no examined head-commit file and line that refutes it, so it counts as not fixed"
 )

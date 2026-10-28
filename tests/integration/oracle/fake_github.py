@@ -26,6 +26,8 @@ ACCOUNTS = {
 }
 GH_HOST = "github.localhost"
 API_HOST = f"api.{GH_HOST}"
+COMMENT_PAGE = 50
+COMMENT_PAGE_AFTER = 100
 WORKFLOWS = {"oracle-verdict.yml": 7001, "oracle-gate.yml": 7002, "ci.yml": 7003}
 
 
@@ -74,6 +76,7 @@ class FakeGitHub:
         self.lock = threading.RLock()
         self.ids = itertools.count(1000)
         self.pulls: dict[int, dict[str, Any]] = {}
+        self.reported_changed_files: dict[int, int] = {}
         self.reviews: dict[int, list[dict[str, Any]]] = defaultdict(list)
         self.statuses: dict[str, list[dict[str, Any]]] = defaultdict(list)
         self.comments: dict[int, list[dict[str, Any]]] = defaultdict(list)
@@ -143,7 +146,7 @@ class FakeGitHub:
         pull = self.pulls[number]
         pull["head"]["sha"] = self.git("rev-parse", pull["head"]["ref"]).strip()
         pull["base"]["sha"] = self.git("rev-parse", pull["base"]["ref"]).strip()
-        pull["changed_files"] = len(self.files(number))
+        pull["changed_files"] = self.reported_changed_files.get(number, len(self.files(number)))
 
     def files(self, number: int) -> list[dict[str, Any]]:
         pull = self.pulls[number]
@@ -152,7 +155,10 @@ class FakeGitHub:
         counts = {}
         for line in self.git("diff", "--numstat", "-M", merge_base, head).splitlines():
             added, deleted, path = line.split("\t", 2)
-            counts[path.split(" => ")[-1].rstrip("}")] = (int(added), int(deleted))
+            counts[path.split(" => ")[-1].rstrip("}")] = (
+                int(added) if added != "-" else 0,
+                int(deleted) if deleted != "-" else 0,
+            )
         items = []
         for line in self.git("diff", "--name-status", "-M", merge_base, head).splitlines():
             parts = line.split("\t")
@@ -392,6 +398,7 @@ class FakeGitHub:
                 lambda request, match: self._page(self.timeline[int(match[1])], request),
             ),
             ("GET", r"/compare/([^.]+)\.\.\.(.+)", lambda request, match: (200, self.compare(match[1], match[2]), {})),
+            ("GET", r"/contents/(.+)", self._contents),
             ("GET", r"/git/trees/([0-9a-f]{40})", lambda request, match: (200, self.tree(match[1]), {})),
             ("GET", r"/commits/([0-9a-f]{40})", self._commit),
             ("GET", r"/commits/([0-9a-f]{40})/statuses", self._status_list),
@@ -413,6 +420,10 @@ class FakeGitHub:
             ("GET", r"/actions/artifacts/(\d+)/zip", self._artifact_zip),
             ("GET", "/rules/branches/([^/]+)", lambda request, match: (200, self.rulesets, {})),
         ]
+
+    def _contents(self, request: Request, match: re.Match[str]) -> Response:
+        data = self.git_bytes("show", f"{request.query['ref']}:{match[1]}")
+        return 200, data, {"Content-Type": "text/plain; charset=utf-8"}
 
     def _pull(self, request: Request, match: re.Match[str]) -> Response:
         number = int(match[1])
@@ -609,6 +620,8 @@ class FakeGitHub:
         query = payload.get("query", "")
         variables = payload.get("variables") or {}
         reviews = {item["node_id"]: item for items in self.reviews.values() for item in items}
+        if "PullRequestReviewThread" in query:
+            return self._thread_comments(variables)
         if "nodes(ids" in query:
             ids = variables.get("ids") or []
             nodes = [self._edit_state(reviews[node_id], node_id) for node_id in ids if node_id in reviews]
@@ -642,9 +655,9 @@ class FakeGitHub:
                                 "includesCreatedEdit": False,
                                 "body": item["body"],
                             }
-                            for item in thread["comments"]
+                            for item in thread["comments"][:COMMENT_PAGE]
                         ],
-                        "pageInfo": {"hasNextPage": False, "endCursor": None},
+                        "pageInfo": self._comment_page(thread, 0, COMMENT_PAGE),
                     },
                 }
                 for thread in self.threads[number]
@@ -656,6 +669,28 @@ class FakeGitHub:
             }
             return {"data": {"repository": {"pullRequest": {"reviewThreads": connection}}}}
         return {"data": {"repository": {"pullRequest": self.graphql_pull(pull)}}}
+
+    def _comment_page(self, thread: dict[str, Any], start: int, size: int) -> dict[str, Any]:
+        end = start + size
+        more = len(thread["comments"]) > end
+        return {"hasNextPage": more, "endCursor": str(end) if more else None}
+
+    def _thread_comments(self, variables: dict[str, Any]) -> dict[str, Any]:
+        thread = next(item for items in self.threads.values() for item in items if item["id"] == variables["thread"])
+        start = int(variables["after"])
+        nodes = [
+            {
+                "author": {
+                    "__typename": item["author"]["type"],
+                    "login": item["author"]["login"].removesuffix("[bot]"),
+                },
+                "authorAssociation": item["association"],
+                "body": item["body"],
+            }
+            for item in thread["comments"][start : start + COMMENT_PAGE_AFTER]
+        ]
+        page = self._comment_page(thread, start, COMMENT_PAGE_AFTER)
+        return {"data": {"node": {"comments": {"pageInfo": page, "nodes": nodes}}}}
 
     def _edit_state(self, review: dict[str, Any], node_id: str) -> dict[str, Any]:
         return {"id": node_id, "lastEditedAt": review["last_edited_at"], "includesCreatedEdit": review["edited"]}

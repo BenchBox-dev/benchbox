@@ -33,9 +33,9 @@ ORDER BY revenue DESC;"""
 CLICKHOUSE_TM1_SQL = """\
 SELECT
     CASE
-        WHEN toHour(toDateTime(ol.order_time)) BETWEEN 5 AND 10 THEN 'Morning'
-        WHEN toHour(toDateTime(ol.order_time)) BETWEEN 11 AND 14 THEN 'Midday'
-        WHEN toHour(toDateTime(ol.order_time)) BETWEEN 15 AND 17 THEN 'Afternoon'
+        WHEN toHour(toDateTime(concat('2000-01-01 ', ol.order_time))) BETWEEN 5 AND 10 THEN 'Morning'
+        WHEN toHour(toDateTime(concat('2000-01-01 ', ol.order_time))) BETWEEN 11 AND 14 THEN 'Midday'
+        WHEN toHour(toDateTime(concat('2000-01-01 ', ol.order_time))) BETWEEN 15 AND 17 THEN 'Afternoon'
         ELSE 'Evening'
     END AS day_part,
     COUNT(DISTINCT ol.order_id) AS orders,
@@ -76,7 +76,7 @@ REGISTRY.register(
             variant_key="clickhouse",
             variant_sql=CLICKHOUSE_TM1_SQL,
         ),
-        reason="ClickHouse toHour() requires DateTime; EXTRACT(HOUR FROM TIME) fails on TIME columns",
+        reason="ClickHouse stores TIME as String; toDateTime() of a bare time is NULL, so prefix a date before toHour(); the date is well after the epoch because pre-epoch DateTime values clamp on servers with a timezone east of UTC",
     ),
     _P,
     "clickhouse",

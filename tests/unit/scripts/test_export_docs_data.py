@@ -132,6 +132,18 @@ class TestQueriesMatchCatalog:
         assert queries["bucket_size"] == sources._BUCKET_SIZE
 
 
+class TestTsbsSingleRecord:
+    def test_single_query_record_sql_matches_bulk_export(self):
+        bulk = exporter.export_queries({"tsbs_devops"})["benchmarks"][0]
+        query_ids = [record["id"] for record in bulk["queries"]]
+        groups = sources._grouping("tsbs_devops", query_ids) or {}
+
+        assert len(query_ids) == 18
+        for record in bulk["queries"]:
+            single = exporter._query_record(sources, "tsbs_devops", bulk["display_name"], record["id"], groups)
+            assert single["sql"] == record["sql"], record["id"]
+
+
 class TestTpcdsNotes:
     def test_notes_export_for_flagged_queries(self):
         from benchbox.core.tpcds.c_tools import SUBSCALE_TEMPLATE_OVERRIDES

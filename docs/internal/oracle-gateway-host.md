@@ -39,11 +39,11 @@ These settings outlive any one machine. Redo them only if they are lost.
 - **Tailscale DNS settings:** MagicDNS and HTTPS Certificates are on, which
   `tailscale serve --https` needs. The first `tailscale serve` on a tailnet may
   print a link to enable Serve; open it.
-- **Tailscale OIDC credential** for the review job: `auth_keys` write scope,
-  tag `tag:oracle-ci`, subject
-  `repo:BenchBox-dev@319264189/benchbox@1135770337:environment:oracle` (the
-  name-only subject is rejected with a 403). Its client ID and audience are the
-  `TS_OAUTH_CLIENT_ID` and `TS_AUDIENCE` environment secrets.
+- **Tailscale OAuth client** for the review job: Auth Keys write scope, tag
+  `tag:oracle-ci`. Its client ID and secret are the `TS_OAUTH_CI_CLIENT_ID` and
+  `TS_OAUTH_CI_SECRET` environment secrets of the `oracle` environment. The
+  job holds no OIDC token. Revoke or rotate the client in the Tailscale admin
+  console, Settings, OAuth clients.
 - **Tailscale auth key for cloud builders:** a reusable, ephemeral,
   pre-approved key that tags nodes `tag:oracle-cloud`. It is the `TS_AUTHKEY`
   variable of the cloud builder environments. Cloud sessions join in
@@ -249,7 +249,7 @@ three values by name only: `ORACLE_CLOUD_GATEWAY_TOKEN` (the contents of
   console, Settings, Keys, revoke the auth key behind `TS_AUTHKEY`, generate a
   new reusable, ephemeral, pre-approved key tagged `tag:oracle-cloud`, and set
   it as `TS_AUTHKEY` in each cloud environment. Revoking it does not affect
-  the OIDC credential used by `oracle-ci`, nor the gateway tokens. Nodes
+  the OAuth client used by `oracle-ci`, nor the gateway tokens. Nodes
   already joined stay until their session ends; remove them in the Machines
   page to cut them off immediately.
 - **Check:** `check` lists `oracle-cloud` with the other clients, with the

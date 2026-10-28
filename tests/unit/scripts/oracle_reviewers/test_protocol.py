@@ -21,7 +21,7 @@ from _project.scripts.oracle_reviewers.protocol import (
     judge,
     judge_planned,
 )
-from _project.scripts.oracle_reviewers.verdict import validate
+from _project.scripts.oracle_reviewers.verdict import MAX_LINE, validate
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -599,3 +599,13 @@ def test_a_do_not_ship_summary_that_fits_is_kept_whole_and_a_longer_one_is_cut_w
     assert judge(_verdict("DO_NOT_SHIP", [_defect()], summary=fits), 10).summary == fits
     cut = judge(_verdict("DO_NOT_SHIP", [_defect()], summary=fits + "z"), 10).summary
     assert cut == fits[:-1] + "…"
+
+
+def test_a_stored_marker_clamps_pre_bound_finding_coordinates() -> None:
+    huge = 10**4000
+    record = _marker_record(open_defects=[_open(line=huge, end_line=huge + 5), _open("D2", line=7)])
+    decoded = decode_marker(f"line\n{encode_marker(record)}")
+    assert decoded is not None
+    first, second = decoded["open_defects"]
+    assert first["line"] == first["end_line"] == MAX_LINE
+    assert (second["line"], second["end_line"]) == (7, None)

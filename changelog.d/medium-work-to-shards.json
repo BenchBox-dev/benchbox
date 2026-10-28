@@ -1,4 +1,0 @@
-{
-  "schema": 1,
-  "internal": "Pull-request CI moves the release-tree changed-test check and the coverage-selected medium tests out of the required code-test job into the medium-test shard jobs, shortening the code-test critical path."
-}

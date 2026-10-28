@@ -124,19 +124,6 @@ def _receipt_candidates(
     ]
 
 
-def _latest_receipt(
-    reviews: Iterable[dict[str, Any]], head_sha: str, base_time: datetime | None
-) -> dict[str, Any] | None:
-    candidates = _receipt_candidates(reviews, head_sha, base_time)
-    return max(
-        candidates, key=lambda review: (_parse_time(review["submitted_at"]), review.get("id") or 0), default=None
-    )
-
-
-def _receipt(reviews: Iterable[dict[str, Any]], head_sha: str, base_time: datetime | None) -> dict[str, Any] | None:
-    return _latest_receipt(reviews, head_sha, base_time)
-
-
 def _status_run_uuid(status: dict[str, Any]) -> str | None:
     match = _RUN_SUFFIX.search(status.get("description") or "")
     return match.group("run") if match else None
@@ -170,6 +157,25 @@ def _receipt_agrees(receipt: dict[str, Any], head_sha: str, status_uuid: str | N
     return receipt_uuid is not None and receipt_uuid == status_uuid
 
 
+def _receipt_backed_success(
+    verdicts: list[dict[str, Any]], reviews: Iterable[dict[str, Any]], head_sha: str, base_time: datetime | None
+) -> bool:
+    candidates = _receipt_candidates(reviews, head_sha, base_time)
+    for status in reversed(verdicts):
+        if status["state"] != "success":
+            return False
+        if _strip_run_suffix(status.get("description")) == EXEMPT_SUCCESS_DESCRIPTION:
+            continue
+        status_uuid = _status_run_uuid(status)
+        own = [
+            receipt for receipt in candidates if status_uuid is not None and _receipt_run_uuid(receipt) == status_uuid
+        ]
+        latest = max(own, key=lambda review: (_parse_time(review["submitted_at"]), review.get("id") or 0), default=None)
+        if latest is not None:
+            return _receipt_agrees(latest, head_sha, status_uuid)
+    return False
+
+
 def _verdict_statuses(statuses: Iterable[dict[str, Any]], base_time: datetime | None) -> list[dict[str, Any]]:
     return sorted(
         (
@@ -198,9 +204,13 @@ def decide(
     comments: Iterable[dict[str, Any]] = (),
     *,
     reviews: Iterable[dict[str, Any]] = (),
+    bump_refusals: Iterable[str] = (),
 ) -> tuple[int, str]:
     if not paths(files):
         return PASS, "oracle-review: only exempt paths changed"
+    refused = list(bump_refusals)
+    if refused:
+        return WAITING, f"oracle-review: omp pin bump refused: {'; '.join(refused)}"
 
     base_time = _parse_time(base_date) if base_date else None
     verdicts = _verdict_statuses(statuses, base_time)
@@ -247,9 +257,7 @@ def decide(
                     "rebase is enough), or have the owner stand-in post an attestation"
                 )
         else:
-            receipt = _receipt(reviews, head_sha, base_time)
-            status_uuid = _status_run_uuid(latest)
-            if receipt is not None and _receipt_agrees(receipt, head_sha, status_uuid):
+            if _receipt_backed_success(verdicts, reviews, head_sha, base_time):
                 return PASS, f"oracle-review: pass (oracle verdict for {head_sha})"
             if standin is None:
                 return WAITING, (
@@ -388,9 +396,11 @@ def fetch_review_edit(token: str, node_id: str) -> tuple[str | None, bool]:
 
 def annotate_receipt(token: str, reviews: list[dict[str, Any]], head_sha: str, base_date: str | None = None) -> None:
     base_time = _parse_time(base_date) if base_date else None
-    receipt = _latest_receipt(reviews, head_sha, base_time)
-    if receipt is None:
-        return
+    for receipt in _receipt_candidates(reviews, head_sha, base_time):
+        _annotate_one(token, receipt)
+
+
+def _annotate_one(token: str, receipt: dict[str, Any]) -> None:
     if not receipt.get("node_id"):
         receipt["last_edited_at"] = ""
         receipt["includes_created_edit"] = True
@@ -416,6 +426,52 @@ def fetch_statuses(token: str, repo: str, head_sha: str) -> list[dict[str, Any]]
         }
         for item in _paginate(token, f"/repos/{repo}/commits/{head_sha}/statuses")
     ]
+
+
+def fetch_text(token: str, repo: str, path: str, ref: str) -> str:
+    url = f"{API_ROOT}/repos/{repo}/contents/{path}?ref={urllib.parse.quote(ref, safe='')}"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github.raw",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "benchbox-oracle-review-check",
+    }
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=30) as response:
+            return response.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        raise CheckError(f"GitHub returned HTTP {exc.code} for {url}") from exc
+    except (urllib.error.URLError, TimeoutError, UnicodeDecodeError) as exc:
+        raise CheckError(f"GitHub request to {url} failed: {exc}") from exc
+
+
+def fetch_bump_refusals(
+    token: str,
+    repo: str,
+    pull: dict[str, Any],
+    files: list[str],
+    listed_files: int,
+    comments: list[dict[str, Any]],
+) -> list[str]:
+    from oracle_reviewers import omp_bump_gate
+
+    complete = listed_files >= pull["changed_files"]
+    if omp_bump_gate.POLICY_PATH not in files and complete:
+        return []
+    head_repo = ((pull["head"].get("repo") or {}).get("full_name")) or repo
+    try:
+        base_text = fetch_text(token, repo, omp_bump_gate.POLICY_PATH, pull["base"]["ref"])
+        head_text = fetch_text(token, head_repo, omp_bump_gate.POLICY_PATH, pull["head"]["sha"])
+        return omp_bump_gate.refusals(
+            [*files, omp_bump_gate.POLICY_PATH],
+            base_text,
+            head_text,
+            comments,
+            pull["head"]["sha"],
+            complete,
+        )
+    except omp_bump_gate.BumpEvidenceError as exc:
+        return [f"omp pin bump evidence could not be verified: {exc}"]
 
 
 def fetch_comments(token: str, repo: str, pr: int) -> list[dict[str, Any]]:
@@ -514,7 +570,10 @@ def main(argv: list[str] | None = None) -> int:
         reviews = fetch_reviews(token, args.repo, args.pr)
         annotate_receipt(token, reviews, head_sha, base_date)
 
-        status, message = decide(head_sha, files, statuses, threads, matcher, base_date, comments, reviews=reviews)
+        bump = fetch_bump_refusals(token, args.repo, pull, files, len(items), comments)
+        status, message = decide(
+            head_sha, files, statuses, threads, matcher, base_date, comments, reviews=reviews, bump_refusals=bump
+        )
     except (CheckError, KeyError, ValueError) as exc:
         print(f"oracle-review: error: {exc}", file=sys.stderr)
         return ERROR

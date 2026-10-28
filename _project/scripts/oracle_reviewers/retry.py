@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -18,7 +18,9 @@ UNREPORTED = "unreported"
 OVERSIZE = "oversize"
 MARKER_LIMIT = "marker-limit"
 OMP_INSTALL = "omp-install"
-PENDING_CAUSES = (ALL_ABSENT, INTEGRITY, UNREPORTED, OVERSIZE, MARKER_LIMIT, OMP_INSTALL)
+UNPUBLISHED = "unpublished"
+MANUAL_ONLY_CAUSES = (OMP_INSTALL, UNPUBLISHED)
+PENDING_CAUSES = (ALL_ABSENT, INTEGRITY, UNREPORTED, OVERSIZE, MARKER_LIMIT, OMP_INSTALL, UNPUBLISHED)
 WINDOW = timedelta(hours=24)
 
 
@@ -80,6 +82,12 @@ def recent_retries(state: State | None, now: datetime) -> tuple[datetime, ...]:
     return tuple(moment for moment in state.retries if now - moment < WINDOW)
 
 
+def inherited_retries(previous: State | None, head_sha: str, now: datetime) -> tuple[datetime, ...]:
+    if previous is not None and previous.head_sha != head_sha and previous.outcome not in DECISIVE:
+        return ()
+    return recent_retries(previous, now)
+
+
 def reset_applies(previous: State | None, head_sha: str, reset_at: datetime | None) -> bool:
     return (
         reset_at is not None
@@ -105,7 +113,7 @@ def decide_rerun(
     if same_head and previous is not None and previous.outcome in DECISIVE and not new_diff and not manual:
         return RerunDecision(False, f"head {head_sha} already has a {previous.outcome} result")
     if same_head and previous is not None and previous.outcome == PENDING and not new_diff:
-        if previous.pending_cause != ALL_ABSENT and not (manual and previous.pending_cause == OMP_INSTALL):
+        if previous.pending_cause != ALL_ABSENT and not (manual and previous.pending_cause in MANUAL_ONLY_CAUSES):
             cause = previous.pending_cause or "unknown"
             return RerunDecision(
                 False, f"the last run on head {head_sha} was pending for {cause}, not absent reviewers"
@@ -114,8 +122,7 @@ def decide_rerun(
         return RerunDecision(True, "pull request event")
     if reset_applies(previous, head_sha, reset_at):
         return RerunDecision(True, "retry backoff reset by the owner")
-    inherits_budget = previous is None or same_head or previous.outcome in DECISIVE
-    retries = recent_retries(previous, now) if inherits_budget else ()
+    retries = inherited_retries(previous, head_sha, now)
     if len(retries) >= rules.daily_budget:
         return RerunDecision(False, f"the daily retry budget of {rules.daily_budget} is used")
     if same_head and previous is not None:
@@ -140,16 +147,23 @@ def next_state(
     pending_cause: str | None = None,
     strikes: int | None = None,
 ) -> State:
-    retries = recent_retries(previous, now) + ((now,) if manual else ())
+    retries = inherited_retries(previous, head_sha, now) + ((now,) if manual else ())
     cause = pending_cause if outcome == PENDING else None
     kept = max(strikes or 0, previous.strikes if previous else 0)
     return State(pr, head_sha, outcome, now, retries, dict(pool_blocked_until), cause, kept)
 
 
+def attempt_state(*, previous: State | None, pr: int, head_sha: str, published: State) -> State:
+    strikes = previous.strikes if previous is not None else 0
+    if previous is not None and previous.head_sha == head_sha:
+        return replace(previous, retries=published.retries, updated_at=published.updated_at)
+    return State(pr, head_sha, PENDING, published.updated_at, published.retries, {}, UNPUBLISHED, strikes)
+
+
 def due_for_retry(
     state: State, current_head: str, now: datetime, rules: RetryRules, reset_at: datetime | None = None
 ) -> bool:
-    if state.outcome != PENDING or state.head_sha != current_head or state.pending_cause == OMP_INSTALL:
+    if state.outcome != PENDING or state.head_sha != current_head or state.pending_cause in MANUAL_ONLY_CAUSES:
         return False
     return decide_rerun(
         manual=True, new_diff=False, head_sha=current_head, previous=state, now=now, rules=rules, reset_at=reset_at

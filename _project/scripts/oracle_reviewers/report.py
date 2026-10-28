@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from . import absence, credentials, dedup, protocol, selection
+from . import absence, credentials, dedup, protocol, recovery, redaction_check, selection
 from .retry import ALL_ABSENT, FAILURE, INTEGRITY, MARKER_LIMIT, OMP_INSTALL, OVERSIZE, PENDING, SUCCESS, UNREPORTED
 from .selection import Attempt, Step
 from .verdict import (
@@ -22,6 +22,7 @@ from .verdict import (
 
 DESCRIPTION_LIMIT = 140
 BODY_LIMIT = 65536
+BODY_CUT_NOTICE = "Size limit: the rest of this review was cut to stay under GitHub's character limit."
 TRUNCATED = "… [truncated]"
 OVERSIZE_DESCRIPTION = "pending: too large for the oracle; split the pull request or ask the owner for a stand-in"
 OVERSIZE_NOTE = (
@@ -101,7 +102,15 @@ def _fit(render: Callable[[int | None, int | None], str]) -> str:
             best, low = candidate, mid + 1
         else:
             high = mid - 1
-    return best
+    return best if len(best) <= BODY_LIMIT else _hard_cut(best)
+
+
+def _hard_cut(body: str) -> str:
+    split = body.rfind(protocol.MARKER_OPEN)
+    head, tail = (body, "") if split < 0 else (body[:split], body[split:])
+    notice = f"\n\n{BODY_CUT_NOTICE}\n"
+    room = BODY_LIMIT - len(tail) - len(notice)
+    return body if room <= 0 else head[:room].rstrip() + notice + tail
 
 
 def _record(
@@ -115,6 +124,7 @@ def _record(
     strikes_after: int,
     summary: str = "",
     carried: bool = False,
+    secrets: tuple[str, ...] = (),
 ) -> str:
     rules = plan["protocol"]
     record = {
@@ -137,7 +147,7 @@ def _record(
     }
     if plan.get("run_uuid"):
         record["run_uuid"] = plan["run_uuid"]
-    return protocol.encode_marker(record, rules.get("patch_map"))
+    return protocol.encode_marker(redaction_check.redact(record, secrets), rules.get("patch_map"))
 
 
 def _strike_line(plan: Mapping[str, Any], strikes: int) -> list[str]:
@@ -170,6 +180,15 @@ def _reviewer_line(plan: Mapping[str, Any], name: str | None) -> list[str]:
     return [f"Reviewer: {name} (role {spec['role']}, {spec['harness']} {spec['model']}{effort}).", ""]
 
 
+def _recovery_text(attempt: Attempt) -> str:
+    held = attempt.recovery
+    if held is None:
+        return ""
+    if held.source == recovery.JEV:
+        return f"recovery: {held.choice} (Jev, probability {held.probability:.2f}, confidence {held.confidence:.2f})"
+    return f"recovery: {held.choice} (fallback, {held.reason})"
+
+
 def _absences(attempts: list[Attempt], step: Step) -> list[str]:
     known = credentials.known()
     lines = []
@@ -180,6 +199,7 @@ def _absences(attempts: list[Attempt], step: Step) -> list[str]:
         lines.append(
             f"- {attempt.reviewer} (attempt {attempt.slot}): absent ({attempt.absence})"
             + (f": {detail}" if detail else "")
+            + (f"; {_recovery_text(attempt)}" if attempt.recovery is not None else "")
         )
     attempted = {attempt.reviewer for attempt in attempts}
     lines += [f"- {reason}" for reason in step.reasons if reason.split(":", 1)[0] not in attempted]
@@ -235,6 +255,7 @@ def _marked(
     ids: Mapping[Finding, str],
     next_id: int,
     strikes: int,
+    secrets: tuple[str, ...],
 ) -> str | None:
     open_defects = [*judgement.carried, *(protocol.defect_entry(ids[item], item) for item in judgement.defects)]
     try:
@@ -247,6 +268,7 @@ def _marked(
             next_id=next_id + len(judgement.defects),
             strikes_after=strikes,
             summary=judgement.summary,
+            secrets=secrets,
         )
     except protocol.MarkerError:
         return None
@@ -322,6 +344,7 @@ def finalize(
     verdicts: Mapping[int, Verdict],
     commentable: Mapping[str, frozenset[int]],
     workspace: Path | str | None = None,
+    secrets: tuple[str, ...] = (),
 ) -> Final:
     if errors:
         body = "\n".join(
@@ -358,7 +381,7 @@ def finalize(
         and rules.get("patch_digest") not in rules.get("struck_digests", ())
     ):
         strikes += 1
-    marker = _marked(plan, judgement, reviewer or "", ids, next_id, strikes) if judgement and rules else None
+    marker = _marked(plan, judgement, reviewer or "", ids, next_id, strikes, secrets) if judgement and rules else None
     unrecorded = bool(judgement and rules and marker is None)
     if unrecorded:
         ids, markers = {}, {}

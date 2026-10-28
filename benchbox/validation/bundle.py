@@ -130,6 +130,7 @@ KNOWN_DEFECT_IDS = frozenset(
         "defective-superseded-sql-translation",
         "defective-tpcds-obt-parameters",
         "defective-tpchavoc-variant-divergence",
+        "defective-variant-or-loader-wrong-result",
         "defective-windows-dsdgen-scale",
     }
 )

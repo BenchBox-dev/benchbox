@@ -13,17 +13,29 @@ TESTS_ROOT = "tests"
 PLATFORMS_ROOT = "benchbox/platforms/"
 SMOKE_TESTS_ROOT = "tests/integration/platforms/"
 CONFTEST_SUBTREE_LIMIT = 200
+PLATFORM_BRANCH = re.compile(
+    r"\bsys\.platform\b|\bos\.name\b|\bplatform\.system\(|\bIS_(?:LINUX|MACOS|DARWIN|WINDOWS|POSIX)\b"
+)
 PATCH_CALLEE = re.compile(r"(^|\.)patch(\.|$)")
 ORACLE_SCENARIO_TESTS = (
+    "tests/integration/oracle/test_carry_scenarios.py",
     "tests/integration/oracle/test_cloud_review_reachability_scenario.py",
+    "tests/integration/oracle/test_curated_capture_fixtures.py",
+    "tests/integration/oracle/test_evidence_scenarios.py",
     "tests/integration/oracle/test_followup_scenarios.py",
+    "tests/integration/oracle/test_invalid_recovery_scenarios.py",
+    "tests/integration/oracle/test_local_concurrency_scenarios.py",
     "tests/integration/oracle/test_local_review_scenario.py",
     "tests/integration/oracle/test_omp_pin_scenarios.py",
     "tests/integration/oracle/test_pr_arm_scenario.py",
+    "tests/integration/oracle/test_quota_scenarios.py",
+    "tests/integration/oracle/test_redaction_scenarios.py",
     "tests/integration/oracle/test_review_scenarios.py",
+    "tests/integration/oracle/test_runner_isolation_scenarios.py",
     "tests/integration/oracle/test_sweep_listing_scenarios.py",
     "tests/integration/oracle/test_sweep_liveness_scenarios.py",
     "tests/integration/oracle/test_sweep_scenarios.py",
+    "tests/integration/oracle/test_trust_scenarios.py",
 )
 SOURCE_GUARD_TESTS: dict[str, tuple[str, ...]] = {
     "benchbox/": ("tests/system/test_module_size_thresholds.py",),
@@ -40,6 +52,7 @@ SOURCE_GUARD_TESTS: dict[str, tuple[str, ...]] = {
     "_project/scripts/oracle_gate.py": ORACLE_SCENARIO_TESTS,
     "_project/scripts/soundness_merge_digest.py": ORACLE_SCENARIO_TESTS,
     "scripts/pr_arm.py": ORACLE_SCENARIO_TESTS,
+    "scripts/pr_arm_omp_bump.py": ORACLE_SCENARIO_TESTS,
     "tests/integration/oracle/": ORACLE_SCENARIO_TESTS,
     ".github/workflows/oracle-": ORACLE_SCENARIO_TESTS,
     ".github/oracle-": ORACLE_SCENARIO_TESTS,
@@ -260,9 +273,26 @@ def map_tests(repo: Path, paths: list[str]) -> list[str]:
     return sorted(selected)
 
 
+def branches_on_platform(repo: Path, paths: list[str]) -> bool:
+    for path in paths:
+        if not path.endswith(".py") or not (path.startswith(SOURCE_ROOTS) or path.split("/", 1)[0] == TESTS_ROOT):
+            continue
+        try:
+            text = (repo / path).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        if PLATFORM_BRANCH.search(text):
+            return True
+    return False
+
+
+def linux_tests(repo: Path, paths: list[str]) -> list[str]:
+    return map_tests(repo, paths) if branches_on_platform(repo, paths) else []
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("kind", choices=("python", "tests"))
+    parser.add_argument("kind", choices=("python", "tests", "linux"))
     parser.add_argument("--base-ref", default="origin/develop")
     parser.add_argument("--repo-root", type=Path, default=Path.cwd())
     args = parser.parse_args(argv)
@@ -271,7 +301,12 @@ def main(argv: list[str] | None = None) -> int:
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, IndexError) as exc:
         print(f"preflight_targets: cannot compute changed paths against {args.base_ref}: {exc}", file=sys.stderr)
         return 2
-    selected = changed_python(args.repo_root, paths) if args.kind == "python" else map_tests(args.repo_root, paths)
+    if args.kind == "python":
+        selected = changed_python(args.repo_root, paths)
+    elif args.kind == "linux":
+        selected = linux_tests(args.repo_root, paths)
+    else:
+        selected = map_tests(args.repo_root, paths)
     for path in selected:
         print(path)
     return 0

@@ -15,6 +15,7 @@ from _project.scripts.oracle_reviewers.classify import Classification
 from _project.scripts.oracle_reviewers.dedup import fingerprint, marker
 from _project.scripts.oracle_reviewers.diff import commentable_lines
 from _project.scripts.oracle_reviewers.policy import Policy
+from _project.scripts.oracle_reviewers.recovery import ESCALATE, JEV, RETRY, Recovery
 from _project.scripts.oracle_reviewers.retry import ALL_ABSENT, INTEGRITY, OVERSIZE, UNREPORTED
 from _project.scripts.oracle_reviewers.selection import Attempt, SelectionInput, Step
 from _project.scripts.oracle_reviewers.verdict import Finding, VerdictError, validate
@@ -33,6 +34,8 @@ RUN_ID = "4242"
 OUTSIDE_NOTE = "Defects outside the diff count like the others: fix them before merge."
 HEAD = "a" * 40
 NOW = datetime(2026, 10, 5, 12, 0, tzinfo=UTC)
+JEV_RETRY = Recovery(RETRY, JEV, RETRY, 0.9, 0.8)
+JEV_ESCALATE = Recovery(ESCALATE, JEV, ESCALATE, 0.9, 0.8)
 DIFF = """diff --git a/benchbox/core/equivalence/checker.py b/benchbox/core/equivalence/checker.py
 --- a/benchbox/core/equivalence/checker.py
 +++ b/benchbox/core/equivalence/checker.py
@@ -136,10 +139,18 @@ def _write(
     *,
     verdict: dict | None = None,
     missing: Absence | None = None,
+    recovered: Recovery | None = None,
     **over: Any,
 ) -> None:
     artifact = attempts.build_artifact(
-        run_id=RUN_ID, pr=7, head_sha=HEAD, slot=slot, reviewer=reviewer, verdict=verdict, missing=missing
+        run_id=RUN_ID,
+        pr=7,
+        head_sha=HEAD,
+        slot=slot,
+        reviewer=reviewer,
+        verdict=verdict,
+        missing=missing,
+        recovered=recovered,
     )
     artifact.update(over)
     directory.mkdir(parents=True, exist_ok=True)
@@ -230,6 +241,10 @@ def test_invalid_verdict_counts_as_absent(policy: Policy, tmp_path: Path) -> Non
     loaded, step, errors = _decide(policy, plan, tmp_path)
     assert errors == []
     assert loaded.attempts[0].absence == "invalid"
+    assert step.kind == selection.PENDING and step.reviewer is None
+    _write(tmp_path, 1, "small", verdict=_v("", [{"severity": "Severe"}]), recovered=JEV_RETRY)
+    loaded, step, errors = _decide(policy, plan, tmp_path)
+    assert errors == []
     assert step.reviewer is not None and step.reviewer.name == "small"
 
 
@@ -711,7 +726,10 @@ def test_a_held_plan_finalizes_to_a_pending_status_with_no_decision_or_marker(
     assert out == {"state": "pending", "comment": "false", "review": "false", "has_state": "false"}
     status = json.loads((tmp_path / "o" / "status.json").read_text(encoding="utf-8"))
     assert status["state"] == "pending" and status["description"] == reason
-    assert sorted(path.name for path in (tmp_path / "o").iterdir()) == ["status.json"]
+    assert sorted(path.name for path in (tmp_path / "o").iterdir()) == [
+        "status.json",
+        "summary.json",
+    ]
 
 
 def test_a_long_status_description_is_cut_to_the_status_limit(policy: Policy, tmp_path: Path) -> None:
@@ -804,8 +822,8 @@ def test_selection_starts_at_the_chosen_reviewer_and_escalates_to_other_models(
 def test_two_invalid_answers_hand_the_run_to_the_next_reviewer(policy: Policy, tmp_path: Path) -> None:
     plan = _plan(policy, ("trivial", "small", "medium", "large"))
     chosen = cli._selection(plan, _classification("small"))
-    _write(tmp_path, 1, "small", missing=Absence("invalid", "each finding must have the keys"))
-    _write(tmp_path, 2, "small", missing=Absence("invalid", "the reviewer output is not JSON"))
+    _write(tmp_path, 1, "small", missing=Absence("invalid", "each finding must have the keys"), recovered=JEV_RETRY)
+    _write(tmp_path, 2, "small", missing=Absence("invalid", "the reviewer output is not JSON"), recovered=JEV_ESCALATE)
     step, errors = attempts.decide(chosen, attempts.load(tmp_path, plan, RUN_ID))
     assert errors == []
     assert step.kind == selection.REVIEW and step.reviewer is not None and step.reviewer.name == "medium"
@@ -844,11 +862,20 @@ def test_a_malformed_jev_answer_leaves_the_slot_pending(
 
 def test_the_review_body_gives_each_absent_attempt_its_slot_and_reason(policy: Policy, tmp_path: Path) -> None:
     plan = _plan(policy)
-    _write(tmp_path, 1, "small", missing=Absence("invalid", "the reviewer output is not JSON: Expecting value"))
+    _write(
+        tmp_path,
+        1,
+        "small",
+        missing=Absence("invalid", "the reviewer output is not JSON: Expecting value"),
+        recovered=JEV_RETRY,
+    )
     _write(tmp_path, 2, "small", missing=Absence("empty", "the reviewer ended without a final answer"))
     loaded, step, errors = _decide(policy, plan, tmp_path)
     final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, {})
-    assert "- small (attempt 1): absent (invalid): the reviewer output is not JSON: Expecting value" in final.body
+    assert (
+        "- small (attempt 1): absent (invalid): the reviewer output is not JSON: Expecting value;"
+        " recovery: retry (Jev, probability 0.90, confidence 0.80)" in final.body
+    )
     assert "- small (attempt 2): absent (empty): the reviewer ended without a final answer" in final.body
 
 
@@ -856,14 +883,14 @@ def test_a_published_absence_detail_is_redacted_and_bounded(policy: Policy, tmp_
     plan = _plan(policy)
     secret = "sk-" + "a1B2c3D4" * 6
     detail = f"bad token {secret}\nand more " + "x " * 200
-    _write(tmp_path, 1, "small", missing=Absence("invalid", detail))
+    _write(tmp_path, 1, "small", missing=Absence("invalid", detail), recovered=JEV_RETRY)
     _write(tmp_path, 2, "small", missing=Absence("empty", "no answer"))
     loaded, step, errors = _decide(policy, plan, tmp_path)
     final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, {})
     line = next(row for row in final.body.splitlines() if row.startswith("- small (attempt 1)"))
     assert secret not in final.body and "[redacted]" in line
-    assert "\n" not in line and line.endswith("\u2026")
-    assert len(line.partition("absent (invalid): ")[2]) <= 160
+    assert "\n" not in line and line.partition(";")[0].endswith("\u2026")
+    assert len(line.partition("absent (invalid): ")[2].partition(";")[0]) <= 160
 
 
 def test_identical_findings_are_listed_once_and_stored_with_unique_ids(policy: Policy, tmp_path: Path) -> None:
@@ -922,7 +949,43 @@ def test_cli_finalize_after_a_failed_install_posts_a_distinct_pending_status_wit
     assert status["description"] == "the pinned omp build could not be installed; no reviewer ran"
     state = json.loads((final_dir / "state" / "state.json").read_text(encoding="utf-8"))
     assert state["outcome"] == "pending" and state["pending_cause"] == "omp-install"
+    assert not (final_dir / "attempt").exists()
     assert not (tmp_path / "no-attempts").exists()
+
+
+def test_a_manual_rerun_after_an_install_failure_keeps_the_head_non_retryable_until_the_status_posts(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan = _plan(policy, ("small",))
+    plan["manual"] = True
+    plan["previous_state"] = {
+        "pr": plan["pr"],
+        "head_sha": plan["head_sha"],
+        "outcome": "pending",
+        "updated_at": NOW.isoformat(),
+        "retries": [],
+        "pending_cause": "omp-install",
+        "strikes": 0,
+    }
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_text(json.dumps(plan), encoding="utf-8")
+    final_dir = tmp_path / "final"
+    _run_cli(
+        monkeypatch,
+        tmp_path,
+        "finalize",
+        "--plan",
+        str(plan_path),
+        "--attempts-dir",
+        str(tmp_path / "no-attempts"),
+        "--out-dir",
+        str(final_dir),
+        "--omp-install",
+        "failed",
+    )
+    attempt = retry.State.from_json(json.loads((final_dir / "attempt" / "state.json").read_text(encoding="utf-8")))
+    assert attempt.outcome == "pending" and attempt.pending_cause == "omp-install" and len(attempt.retries) == 1
+    assert not retry.due_for_retry(attempt, plan["head_sha"], NOW + timedelta(days=2), policy.retry)
 
 
 def test_cli_finalize_without_the_install_flag_still_decides_from_attempts(
@@ -1096,3 +1159,94 @@ def test_an_artifact_that_is_not_utf8_is_reported_unreadable_and_finalizes_pendi
     final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, {})
     assert final.state == "pending"
     assert final.pending_cause == INTEGRITY
+
+
+def _unpublished_manual_run(
+    policy: Policy,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    previous: retry.State | None,
+    at: datetime,
+    name: str,
+) -> retry.State:
+    plan = _plan(policy, ("small",))
+    plan["manual"] = True
+    plan["previous_state"] = previous.to_json() if previous is not None else None
+    plan_path = tmp_path / f"{name}-plan.json"
+    plan_path.write_text(json.dumps(plan), encoding="utf-8")
+    final_dir = tmp_path / name
+    monkeypatch.setattr(cli, "_now", lambda: at)
+    _run_cli(
+        monkeypatch,
+        tmp_path,
+        "finalize",
+        "--plan",
+        str(plan_path),
+        "--attempts-dir",
+        str(tmp_path / "no-attempts"),
+        "--out-dir",
+        str(final_dir),
+        "--omp-install",
+        "failed",
+    )
+    return retry.State.from_json(json.loads((final_dir / "attempt" / "state.json").read_text(encoding="utf-8")))
+
+
+def _rerun_allowed(policy: Policy, plan_head: str, previous: retry.State, now: datetime) -> bool:
+    return retry.decide_rerun(
+        manual=True, new_diff=False, head_sha=plan_head, previous=previous, now=now, rules=policy.retry
+    ).allowed
+
+
+def test_manual_runs_whose_status_never_posted_exhaust_the_daily_budget_without_prior_state(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    head = _plan(policy, ("small",))["head_sha"]
+    start = datetime(2026, 10, 5, 0, 0, tzinfo=UTC)
+    state: retry.State | None = None
+    for index in range(policy.retry.daily_budget):
+        at = start + timedelta(hours=index * 3)
+        state = _unpublished_manual_run(policy, tmp_path, monkeypatch, state, at, f"run{index}")
+        assert state.head_sha == head and state.updated_at == at
+    assert state is not None and len(state.retries) == policy.retry.daily_budget
+    assert not _rerun_allowed(policy, head, state, start + timedelta(hours=20))
+
+
+def test_unpublished_manual_runs_on_a_new_head_keep_their_budget_instead_of_dropping_it_with_the_old_head(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    head = _plan(policy, ("small",))["head_sha"]
+    start = datetime(2026, 10, 5, 0, 0, tzinfo=UTC)
+    state: retry.State | None = retry.State(
+        7, "e" * 40, "pending", start - timedelta(hours=1), (), pending_cause="all-absent"
+    )
+    for index in range(policy.retry.daily_budget):
+        state = _unpublished_manual_run(
+            policy, tmp_path, monkeypatch, state, start + timedelta(hours=index * 3), f"b{index}"
+        )
+        assert state.head_sha == head
+    assert state is not None
+    assert not _rerun_allowed(policy, head, state, start + timedelta(hours=20))
+
+
+def test_an_unpublished_manual_run_pushes_the_backoff_out_from_its_own_time(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    head = _plan(policy, ("small",))["head_sha"]
+    midnight = datetime(2026, 10, 5, 0, 0, tzinfo=UTC)
+    previous = retry.State(7, head, "pending", midnight, (midnight,), pending_cause="all-absent")
+    ten = midnight + timedelta(hours=10)
+    attempted = _unpublished_manual_run(policy, tmp_path, monkeypatch, previous, ten, "late")
+    assert attempted.updated_at == ten
+    assert not _rerun_allowed(policy, head, attempted, ten + timedelta(minutes=1))
+    assert _rerun_allowed(policy, head, attempted, ten + timedelta(hours=4))
+
+
+def test_an_unpublished_run_state_is_never_retried_by_the_sweep(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    head = _plan(policy, ("small",))["head_sha"]
+    at = datetime(2026, 10, 5, 0, 0, tzinfo=UTC)
+    attempted = _unpublished_manual_run(policy, tmp_path, monkeypatch, None, at, "solo")
+    assert attempted.pending_cause == retry.UNPUBLISHED
+    assert not retry.due_for_retry(attempted, head, at + timedelta(days=2), policy.retry)

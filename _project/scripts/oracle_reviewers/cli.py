@@ -29,6 +29,7 @@ from . import (
     omp_pin,
     processes,
     protocol,
+    recovery,
     redaction_check,
     report,
     reset,
@@ -37,7 +38,7 @@ from . import (
     selection,
     sweep,
 )
-from .absence import ERROR, Absence
+from .absence import ERROR, Absence, published_detail
 from .brief import write_private
 from .classifier import ChangedFile, matching, soundness_scope
 from .classify import Classification, classify_diff
@@ -65,6 +66,7 @@ CLASSIFICATION_FILE = "classification.json"
 DIFF_FILE = "diff.patch"
 DIFF_NOT_STAGED_DETAIL = "the full pull request diff could not be staged in the workspace"
 CAPTURE_DIR = "captures"
+SUMMARY_FILE = "summary.json"
 LEAK_DETAIL = "the reviewer's exit could not be confirmed clean"
 
 
@@ -114,6 +116,20 @@ def _summary(text: str) -> None:
         with open(target, "a", encoding="utf-8") as handle:
             handle.write(text + "\n")
     print(text)
+
+
+def _defer_summary(directory: Path, text: str) -> None:
+    path = directory / SUMMARY_FILE
+    lines = _read_json(path)["lines"] if path.is_file() else []
+    held = credentials.redact(text)
+    _write_json(path, {"lines": [*lines, held]})
+    print(held)
+
+
+def _emit_summary(path: Path) -> None:
+    if path.is_file():
+        for line in _read_json(path)["lines"]:
+            _summary(line)
 
 
 def _write_json(path: Path, data: Any) -> None:
@@ -403,6 +419,12 @@ def command_plan(args: argparse.Namespace) -> int:
         plan["decision_reason"] = "the head moved while the plan read it; its own run reviews it"
         return _finish_plan(out_dir, plan)
     scope = soundness_scope(files, policy.classifier, _soundness_predicate())
+    if len(files) < int(pull.get("changed_files") or 0):
+        plan["decision"] = HOLD
+        plan["decision_reason"] = (
+            f"the changed-file listing is incomplete ({len(files)} of {pull['changed_files']} files): owner review"
+        )
+        return _finish_plan(out_dir, plan)
     plan["scope_paths"] = list(scope.paths)
     plan["gate_paths"] = list(scope.gate_paths)
     plan["scope_reasons"] = list(scope.reasons)
@@ -784,12 +806,19 @@ def _read_classification(path: Path) -> Classification | None:
         return None
 
 
+def plan_gate_flags(plan: Mapping[str, Any]) -> list[str]:
+    paths = [
+        path for item in plan.get("reviewed_files", []) for path in (item["path"], item.get("previous_path")) if path
+    ]
+    return matching(paths, plan.get("gate_path_list", []))
+
+
 def _classify_plan(plan: dict[str, Any]) -> Classification:
     stats = [
         (item["path"], int(item["additions"]), int(item["deletions"]), item.get("status") or "modified")
         for item in plan.get("reviewed_files", [])
     ]
-    gate_flags = matching([path for path, _, _, _ in stats], plan.get("gate_path_list", []))
+    gate_flags = plan_gate_flags(plan)
     with JevSession() as session:
         return classify_diff(
             session,
@@ -836,7 +865,7 @@ def command_select(args: argparse.Namespace) -> int:
         classification = read
     chosen, line = _choose_reviewer(plan, loaded, classification, args.slot)
     _output({"reviewer": chosen.name if chosen else "", "harness": chosen.harness if chosen else ""})
-    _summary(line)
+    _defer_summary(Path(args.attempts_dir), line)
     return 0
 
 
@@ -984,7 +1013,7 @@ def command_review(args: argparse.Namespace) -> int:
             },
         )
     state = "verdict" if outcome.missing is None else f"absent ({outcome.missing.kind}: {outcome.missing.detail})"
-    _summary(f"slot {args.slot}: {reviewer.name} {state}")
+    _defer_summary(Path(args.out_dir), f"slot {args.slot}: {reviewer.name} {state}")
     return 0
 
 
@@ -1010,6 +1039,20 @@ def command_ensure_attempt(args: argparse.Namespace) -> int:
     return 0
 
 
+def _write_states(out_dir: Path, *, strikes: int | None = None, **fields: Any) -> None:
+    published = retry.next_state(strikes=strikes, **fields)
+    if fields["manual"]:
+        attempted = retry.attempt_state(
+            previous=fields["previous"], pr=fields["pr"], head_sha=fields["head_sha"], published=published
+        )
+        _write_json(out_dir / "attempt" / github.STATE_FILE, attempted.to_json())
+    _write_json(out_dir / "state" / github.STATE_FILE, published.to_json())
+
+
+def _held(args: argparse.Namespace) -> tuple[str, ...]:
+    return tuple(value for value in (os.environ.get(name, "") for name in getattr(args, "env", ())) if value)
+
+
 def command_finalize(args: argparse.Namespace) -> int:
     plan = _read_json(Path(args.plan))
     out_dir = Path(args.out_dir)
@@ -1028,7 +1071,8 @@ def command_finalize(args: argparse.Namespace) -> int:
     elif plan["decision"] == REVIEW and getattr(args, "omp_install", OMP_INSTALLED) == OMP_INSTALL_FAILED:
         previous = retry.State.from_json(plan["previous_state"]) if plan.get("previous_state") else None
         final = report.omp_install_failed()
-        state = retry.next_state(
+        _write_states(
+            out_dir,
             previous=previous,
             pr=plan["pr"],
             head_sha=plan["head_sha"],
@@ -1038,11 +1082,11 @@ def command_finalize(args: argparse.Namespace) -> int:
             pool_blocked_until=_carried_blocks(previous, plan["head_sha"], now, False),
             pending_cause=final.pending_cause,
         )
-        _write_json(out_dir / "state" / github.STATE_FILE, state.to_json())
     elif plan["decision"] in (CARRY, REFUSED):
         previous = retry.State.from_json(plan["previous_state"]) if plan.get("previous_state") else None
         final = report.carried(plan) if plan["decision"] == CARRY else report.refused(plan)
-        state = retry.next_state(
+        _write_states(
+            out_dir,
             previous=previous,
             pr=plan["pr"],
             head_sha=plan["head_sha"],
@@ -1052,7 +1096,6 @@ def command_finalize(args: argparse.Namespace) -> int:
             pool_blocked_until=_carried_blocks(previous, plan["head_sha"], now, False),
             strikes=final.strikes,
         )
-        _write_json(out_dir / "state" / github.STATE_FILE, state.to_json())
     else:
         classification = _read_classification(Path(args.classification)) if args.classification else None
         selection_input = _selection(plan, classification)
@@ -1061,9 +1104,19 @@ def command_finalize(args: argparse.Namespace) -> int:
         step, errors = attempt_files.decide(selection_input, loaded)
         diff_path = Path(args.plan).parent / DIFF_FILE
         commentable = commentable_lines(diff_path.read_bytes().decode("utf-8")) if diff_path.is_file() else {}
-        final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, commentable, workspace=ws)
+        final = report.finalize(
+            plan,
+            step,
+            errors,
+            loaded.attempts,
+            loaded.verdicts,
+            commentable,
+            workspace=ws,
+            secrets=credentials.known(_held(args)),
+        )
         previous = plan.get("previous_state")
-        state = retry.next_state(
+        _write_states(
+            out_dir,
             previous=retry.State.from_json(previous) if previous else None,
             pr=plan["pr"],
             head_sha=plan["head_sha"],
@@ -1074,7 +1127,6 @@ def command_finalize(args: argparse.Namespace) -> int:
             pending_cause=final.pending_cause,
             strikes=final.strikes,
         )
-        _write_json(out_dir / "state" / github.STATE_FILE, state.to_json())
     _write_json(out_dir / "status.json", report.status_payload(plan, final, run_url))
     if final.body and (plan["findings_delivery"] == "comment" or final.review is None):
         _write_json(out_dir / "comment.json", {"body": final.body})
@@ -1088,9 +1140,9 @@ def command_finalize(args: argparse.Namespace) -> int:
             "has_state": "true" if (out_dir / "state" / github.STATE_FILE).is_file() else "false",
         }
     )
-    _summary(f"oracle-verdict #{plan['pr']} {plan['head_sha']}: {final.state}: {final.description}")
+    _defer_summary(out_dir, f"oracle-verdict #{plan['pr']} {plan['head_sha']}: {final.state}: {final.description}")
     if final.body:
-        _summary(final.body)
+        _defer_summary(out_dir, final.body)
     return 0
 
 
@@ -1144,6 +1196,7 @@ def command_guard(args: argparse.Namespace) -> int:
     return 0
 
 
+_STATUS_RUN_URL = re.compile(r"/actions/runs/(\d+)(?:/|$)")
 STATELESS_FAILURE = "its last run failed without a result"
 
 
@@ -1160,11 +1213,7 @@ def _surface_twice_failed(
     latest = next(run for run in runs if run.status == sweep.COMPLETED and run.conclusion not in sweep.NEUTRAL)
     description = sweep.surface_description(github.failed_steps(repo, latest.id))
     run_url = f"{os.environ.get('GITHUB_SERVER_URL', 'https://github.com')}/{repo}/actions/runs/{latest.id}"
-    app_statuses = [
-        status
-        for status in github.commit_statuses(repo, head)
-        if status.get("context") == status_context and github.is_app_status(status, bot_login)
-    ]
+    app_statuses = _own_statuses(repo, head, status_context, bot_login, number)
     if any(status.get("state") in ("success", "failure", "error") for status in app_statuses):
         _summary(f"retry not dispatched for #{number}: two runs on the current head failed without a result")
         return
@@ -1192,7 +1241,7 @@ def _surface_twice_failed(
 def _retry_reason(
     repo: str,
     pull: Mapping[str, Any],
-    runs: tuple[sweep.Run, ...],
+    runs: tuple[sweep.Run, ...] | None,
     rules: RetryRules,
     now: datetime,
     status_context: str,
@@ -1204,7 +1253,7 @@ def _retry_reason(
     number = pull["number"]
     head = pull["head"]["sha"]
     state = github.latest_state(repo, number)
-    relevant = tuple(run for run in runs if run.head in (None, head))
+    relevant = tuple(run for run in runs or () if run.head in (None, head))
 
     def resolved() -> tuple[tuple[sweep.Run, ...], tuple[sweep.Run, ...]]:
         found = sweep.with_timeouts(relevant, lambda run: github.run_timed_out(repo, run))
@@ -1213,7 +1262,20 @@ def _retry_reason(
     if state is not None and state.head_sha == head:
         due = retry.due_for_retry(state, head, now, rules)
         if not full:
-            return "its retry is due" if due else None
+            if not due:
+                return None
+            if runs is None:
+                _summary(f"retry not dispatched for #{number}: the run history needed to bound it could not be listed")
+                return None
+            if state.updated_at < now - sweep.DISPATCH_WINDOW:
+                _summary(
+                    f"retry not dispatched for #{number}: its failures since the state may predate the degraded listing"
+                )
+                return None
+            _, head_runs = resolved()
+            return _bounded_retry(
+                repo, number, head, head_runs, state.updated_at, rules, now, status_context, bot_login, token
+            )
         if state.outcome != retry.PENDING or state.pending_cause != retry.ALL_ABSENT:
             return None
         reset_at = github.backoff_reset_at(repo, number, head)
@@ -1244,8 +1306,7 @@ def _retry_reason(
         return None
     if any(
         status.get("state") in ("success", "failure", "error")
-        for status in github.commit_statuses(repo, head)
-        if status.get("context") == status_context and github.is_app_status(status, bot_login)
+        for status in _own_statuses(repo, head, status_context, bot_login, number)
     ):
         _summary(f"retry not dispatched for #{number}: the head already has a decisive oracle-verdict status")
         return None
@@ -1253,12 +1314,20 @@ def _retry_reason(
     return STATELESS_FAILURE if reason is not None else None
 
 
-def _already_surfaced(repo: str, head: str, status_context: str, bot_login: str) -> bool:
-    mine = [
-        status
-        for status in github.commit_statuses(repo, head)
-        if status.get("context") == status_context and github.is_app_status(status, bot_login)
-    ]
+def _own_statuses(repo: str, head: str, status_context: str, bot_login: str, number: int) -> list[dict[str, Any]]:
+    found = []
+    for status in github.commit_statuses(repo, head):
+        if status.get("context") != status_context or not github.is_app_status(status, bot_login):
+            continue
+        match = _STATUS_RUN_URL.search(str(status.get("target_url") or ""))
+        owner = github.run_pull(repo, int(match.group(1))) if match is not None else None
+        if owner is None or owner == number:
+            found.append(status)
+    return found
+
+
+def _already_surfaced(repo: str, head: str, status_context: str, bot_login: str, number: int) -> bool:
+    mine = _own_statuses(repo, head, status_context, bot_login, number)
     if not mine:
         return False
     newest = max(mine, key=lambda status: status.get("updated_at") or status.get("created_at") or "")
@@ -1280,7 +1349,7 @@ def _bounded_retry(
     token: str | None,
 ) -> str | None:
     failures = sweep.stateless_failures(head_runs, since)
-    if _already_surfaced(repo, head, status_context, bot_login):
+    if _already_surfaced(repo, head, status_context, bot_login, number):
         _summary(f"retry not dispatched for #{number}: the failure is already surfaced as pending")
         return None
     if failures > 1:
@@ -1314,8 +1383,12 @@ def command_sweep(args: argparse.Namespace) -> int:
             f"and skips stateless retries: {exc}"
         )
         runs = None
+        try:
+            recent = sweep.parse_runs(github.verdict_runs(repo, WORKFLOW_FILE, now - sweep.DISPATCH_WINDOW))
+        except github.GitHubError:
+            recent = None
     else:
-        runs = sweep.parse_runs(listing)
+        runs = recent = sweep.parse_runs(listing)
     busy: frozenset[int] | None
     if runs is not None:
         busy = sweep.in_flight(runs, now)
@@ -1343,7 +1416,7 @@ def command_sweep(args: argparse.Namespace) -> int:
             reason = _retry_reason(
                 repo,
                 pull,
-                runs.get(number, ()) if runs is not None else (),
+                recent.get(number, ()) if recent is not None else None,
                 policy.retry,
                 now,
                 policy.status_context,
@@ -1469,13 +1542,69 @@ def _run_slot(args: argparse.Namespace, plan: Mapping[str, Any], slot: int, revi
     except processes.HarnessLeakError as exc:
         leaked = True
         detail = LEAK_DETAIL
-        _summary(f"slot {slot}: {reviewer.name} failed closed: {credentials.redact(str(exc))}")
+        _defer_summary(out_dir, f"slot {slot}: {reviewer.name} failed closed: {exc}")
     except (Exception, SystemExit) as exc:
-        _summary(f"slot {slot}: {reviewer.name} crashed: {credentials.redact(f'{type(exc).__name__}: {exc}')}")
+        _defer_summary(out_dir, f"slot {slot}: {reviewer.name} crashed: {type(exc).__name__}: {exc}")
     finally:
         shutil.rmtree(home, ignore_errors=True)
     _ensure_attempt(plan, out_dir, slot, reviewer.name, detail)
     return leaked
+
+
+def _recovery_target(plan: Mapping[str, Any], loaded: attempt_files.LoadedAttempts) -> selection.Attempt | None:
+    if loaded.errors or not loaded.attempts or len(loaded.attempts) >= int(plan["max_attempts"]):
+        return None
+    last = loaded.attempts[-1]
+    return last if selection.needs_recovery(last) and last.recovery is None else None
+
+
+def _invalid_state(
+    plan: Mapping[str, Any], loaded: attempt_files.LoadedAttempts, target: selection.Attempt, shape: str
+) -> tuple[dict[str, Any], int]:
+    reviewer = _chain_reviewer(plan, target.reviewer)
+    known = credentials.known()
+    counts: dict[str, int] = {}
+    earlier: list[tuple[str, int, str]] = []
+    for attempt in loaded.attempts[:-1]:
+        counts[attempt.reviewer] = counts.get(attempt.reviewer, 0) + 1
+        if selection.needs_recovery(attempt):
+            earlier.append((attempt.reviewer, counts[attempt.reviewer], published_detail(attempt.detail, known)))
+    number = counts.get(target.reviewer, 0) + 1
+    state = recovery.request_state(
+        tier=reviewer.name,
+        harness=reviewer.harness,
+        role=reviewer.role,
+        model=reviewer.model,
+        effort=reviewer.effort,
+        number=number,
+        limit=selection.MAX_ATTEMPTS_PER_REVIEWER,
+        message=published_detail(target.detail, known),
+        shape=shape,
+        earlier=earlier,
+    )
+    return state, number
+
+
+def command_recover(args: argparse.Namespace) -> int:
+    plan = _read_json(Path(args.plan))
+    out_dir = Path(args.attempts_dir)
+    loaded = attempt_files.load(out_dir, plan, os.environ["GITHUB_RUN_ID"], workspace=Path(args.workspace))
+    target = _recovery_target(plan, loaded)
+    if target is None:
+        return 0
+    path = out_dir / attempt_files.artifact_name(target.slot)
+    artifact = _read_json(path)
+    state, number = _invalid_state(plan, loaded, target, recovery.shape_of(artifact))
+    recorded = recovery.classify(JevSession(), state, number, selection.MAX_ATTEMPTS_PER_REVIEWER)
+    artifact["recovery"] = recorded.to_json()
+    _write_json(path, artifact)
+    _summary(f"slot {target.slot}: {target.reviewer} invalid, recovery {recorded.choice} ({recorded.source})")
+    return 0
+
+
+def command_count_attempts(args: argparse.Namespace) -> int:
+    _output({"attempts": str(len(list(Path(args.attempts_dir).glob("attempt-*.json"))))})
+    return 0
 
 
 def command_attempts(args: argparse.Namespace) -> int:
@@ -1484,24 +1613,29 @@ def command_attempts(args: argparse.Namespace) -> int:
     workspace = Path(args.workspace)
     out_dir.mkdir(parents=True, exist_ok=True)
     classification = _read_classification(Path(args.classification))
-    ran = 0
+    ran = len(attempt_files.load(out_dir, plan, os.environ["GITHUB_RUN_ID"], workspace=workspace).attempts)
     adopting = processes.become_subreaper()
     try:
         if processes.IS_LINUX and not adopting:
             _summary("oracle-verdict: error: the loop could not become a child subreaper")
             return 1
-        for slot in range(1, int(plan["max_attempts"]) + 1):
+        for slot in range(ran + 1, int(plan["max_attempts"]) + 1):
             if classification is None:
                 _summary(f"slot {slot}: pending (classification unreadable)")
                 break
             loaded = attempt_files.load(out_dir, plan, os.environ["GITHUB_RUN_ID"], workspace=workspace)
             chosen, line = _choose_reviewer(plan, loaded, classification, slot)
-            _summary(line)
+            _defer_summary(out_dir, line)
             if chosen is None:
                 break
             ran = slot
             if _run_slot(args, plan, slot, chosen):
                 return 1
+            loaded = attempt_files.load(out_dir, plan, os.environ["GITHUB_RUN_ID"], workspace=workspace)
+            if _recovery_target(plan, loaded) is not None:
+                if not getattr(args, "recover_inline", False):
+                    break
+                command_recover(args)
     finally:
         processes.release_subreaper()
         _output({"attempts": str(ran)})
@@ -1518,7 +1652,7 @@ def command_scan_disk(args: argparse.Namespace) -> int:
 
 
 def command_redact_check(args: argparse.Namespace) -> int:
-    extra = tuple(value for value in (os.environ.get(name, "") for name in args.env) if value)
+    extra = _held(args)
     redacted = 0
     for path in redaction_check.json_files([Path(item) for item in args.path]):
         try:
@@ -1527,6 +1661,8 @@ def command_redact_check(args: argparse.Namespace) -> int:
             print(f"oracle-verdict: error: {exc}", file=sys.stderr)
             return 1
     _summary(f"redaction check: {redacted} file(s) rewritten, no secret value remains")
+    for item in getattr(args, "summary_file", ()):
+        _emit_summary(Path(item))
     return 0
 
 
@@ -1660,6 +1796,7 @@ def _parser() -> argparse.ArgumentParser:
     finalize.add_argument("--classification")
     finalize.add_argument("--workspace")
     finalize.add_argument("--omp-install", choices=(OMP_INSTALLED, OMP_INSTALL_FAILED), default=OMP_INSTALLED)
+    finalize.add_argument("--env", action="append", default=[])
     finalize.set_defaults(handler=command_finalize)
     guard = commands.add_parser("guard")
     guard.add_argument("--plan", required=True)
@@ -1684,6 +1821,14 @@ def _parser() -> argparse.ArgumentParser:
     attempts.add_argument("--workspace", required=True)
     attempts.add_argument("--home-root")
     attempts.set_defaults(handler=command_attempts)
+    recover = commands.add_parser("recover")
+    recover.add_argument("--plan", required=True)
+    recover.add_argument("--attempts-dir", required=True)
+    recover.add_argument("--workspace", required=True)
+    recover.set_defaults(handler=command_recover)
+    counted = commands.add_parser("count-attempts")
+    counted.add_argument("--attempts-dir", required=True)
+    counted.set_defaults(handler=command_count_attempts)
     scan = commands.add_parser("scan-disk")
     scan.add_argument("--root", action="append", required=True)
     scan.add_argument("--env", action="append", required=True)
@@ -1691,6 +1836,7 @@ def _parser() -> argparse.ArgumentParser:
     redaction = commands.add_parser("redact-check")
     redaction.add_argument("--path", action="append", required=True)
     redaction.add_argument("--env", action="append", default=[])
+    redaction.add_argument("--summary-file", action="append", default=[])
     redaction.set_defaults(handler=command_redact_check)
     clients = commands.add_parser("gateway-clients")
     clients.add_argument("--token-file", required=True)

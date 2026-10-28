@@ -377,14 +377,13 @@
     }
   },
   "tpcdi": {
-    "reason": "Hand-written per-platform variants (derived-table wraps for sibling subquery aliases on ClickHouse/StarRocks/BigQuery/Doris; nested window-aggregate replacement; DataFusion/Postgres specifics). Kept verbatim per G1.",
+    "reason": "Hand-written per-platform variants (derived-table wraps for sibling subquery aliases on ClickHouse/StarRocks/BigQuery/Doris; DataFusion/Postgres specifics). Kept verbatim per G1.",
     "dialects": {
       "bigquery": [
         "EQ7"
       ],
       "clickhouse": [
         "AQ10",
-        "AQ6",
         "AQ7",
         "AQ8",
         "EQ7"

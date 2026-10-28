@@ -49,9 +49,10 @@ Haiku and Luna xhigh found.
   keeps a Claude model.
 - `trivial` and `small` move to a new `codex` pool, so a Codex quota absence
   skips only them and the Claude reviewers above still run.
-- In the same change, a run moves up the chain after a reviewer's two
-  unusable answers, so an invalid answer from the small tier reaches `medium`
-  (Sonnet, high) and `large` (Opus) instead of ending the run.
+- In the same change, a run moved up the chain after a reviewer's two unusable
+  answers, so an invalid answer from the small tier reached `medium` (Sonnet,
+  high) and `large` (Opus) instead of ending the run. The amendment below
+  replaces this rule: Jev now decides each invalid attempt's recovery.
 
 ## Rejected options
 
@@ -86,3 +87,43 @@ the `large` reviewer, in follow-ups too.
 Revisit the choice if Luna xhigh's usable rate in CI falls below 95%, if a
 wrong SHIP from the small tier is found after merge, or if a new small model is
 tested on the same cases with better results.
+
+## Amendment: Jev decides how an invalid attempt recovers
+
+Date: 2026-10-28 (owner instruction 2026-10-27)
+Status: Decided. Supersedes the escalation rule in the Decision section above.
+
+A fixed rule, retry once and then move up the chain, cannot tell a weak model's
+formatting slip from a failure of the review process itself: when the process is
+at fault, every reviewer fails the same way and escalation spends the large,
+huge and max tiers for nothing. The owner instruction was: "Use Jev to classify
+the error as retry (same model), stop (process blocked), or escalate (move up to
+the next tier)."
+
+- After each invalid attempt (a reply that fails validation or the dispute
+  contract) Jev answers one choice question: `retry` runs the same reviewer
+  again, at most twice per reviewer, and a retry beyond that is `escalate`;
+  `escalate` moves to the next reviewer; `stop` ends the run pending and posts
+  nothing that passes.
+- Jev sees only the redacted validation message, the reply's keys-and-types
+  fingerprint, the reviewer tier and model role, the attempt number for that
+  reviewer and the earlier invalid messages of the run.
+- When Jev is unavailable or unkeyed, answers outside the three labels, or is
+  below the 0.60 confidence bar, the run retries the same reviewer once and then
+  stops. It never escalates without a Jev answer.
+- The answer, its probability and confidence are recorded on the attempt
+  artifact; replay reproduces the choice.
+- Other absences (`incomplete`, `empty`, `error`) keep the earlier rule: one
+  retry, then the chain advances.
+
+The model choice itself (Luna for `trivial` and `small`, the `codex` pool, the
+risk accepted in Consequences) is unchanged.
+
+Evidence before shipping: Jev answered the question on the recorded cases. A
+contract failure of the kind that stalled a run ("disputed finding D1 has no
+concedes boolean") was `stop` on every attempt count tried (attempt 1 on the
+small tier at 0.80 probability, later attempts and later tiers at 0.93 to 1.00).
+Format failures of the Haiku and Luna kind (a new defect shaped like a prior
+entry, extra keys on a prior entry, extra top-level keys, prose instead of JSON,
+malformed JSON, truncated JSON) were `retry` at 0.83 to 0.99 on the first attempt
+and `escalate` at 0.64 to 0.93 on the second.

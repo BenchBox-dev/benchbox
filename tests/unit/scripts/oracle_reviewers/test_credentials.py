@@ -124,7 +124,7 @@ def test_validator_error_snippets_never_echo_a_credential(monkeypatch: pytest.Mo
 
 
 @pytest.mark.parametrize(
-    "name", ["ORACLE_GATEWAY_URL", "TS_OAUTH_CLIENT_ID", "TS_AUDIENCE", "ACTIONS_ID_TOKEN_REQUEST_TOKEN"]
+    "name", ["ORACLE_GATEWAY_URL", "TS_OAUTH_CI_CLIENT_ID", "TS_OAUTH_CI_SECRET", "ACTIONS_ID_TOKEN_REQUEST_TOKEN"]
 )
 def test_the_runner_held_values_are_named_and_redacted(name: str, monkeypatch: pytest.MonkeyPatch) -> None:
     assert name in credentials.NAMES

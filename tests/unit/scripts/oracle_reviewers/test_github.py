@@ -613,16 +613,14 @@ def _state_sources(
             return {"status": "ahead"}
         raise AssertionError(f"unexpected request {path}")
 
-    def fake_run(argv: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
-        name = argv[argv.index("-n") + 1]
+    def fake_download(repo: str, run_id: str, name: str, directory: str) -> None:
         downloaded.append(name)
         state = State(7, "a" * 40, "failure", datetime(2026, 10, 5, tzinfo=UTC), strikes=1)
-        (Path(argv[argv.index("-D") + 1]) / github.STATE_FILE).write_text(json.dumps(state.to_json()), "utf-8")
-        return subprocess.CompletedProcess(argv, 0, "", "")
+        (Path(directory) / github.STATE_FILE).write_text(json.dumps(state.to_json()), "utf-8")
 
     monkeypatch.setattr(github, "get_json", get_json)
     monkeypatch.setattr(github, "get_paginated", lambda path: [])
-    monkeypatch.setattr(github.subprocess, "run", fake_run)
+    monkeypatch.setattr(github, "download_state_artifact", fake_download)
     return downloaded
 
 
@@ -636,6 +634,25 @@ def test_latest_state_downloads_matching_verdict_artifact(monkeypatch: pytest.Mo
     state = github.latest_state(REPO, 7)
     assert state is not None and state.strikes == 1
     assert downloaded == [name]
+
+
+def test_latest_state_falls_back_to_the_attempt_state_when_publishing_failed(monkeypatch: pytest.MonkeyPatch) -> None:
+    attempt = github.attempt_state_artifact_name(7)
+    downloaded = _state_sources(monkeypatch, {attempt: [_artifact(1)]}, {"1": _run(path=github.WORKFLOW_PATH)})
+    assert github.latest_state(REPO, 7) is not None
+    assert downloaded == [attempt]
+
+
+def test_latest_state_prefers_the_published_state_over_a_same_second_attempt(monkeypatch: pytest.MonkeyPatch) -> None:
+    published = github.state_artifact_name(7)
+    attempt = github.attempt_state_artifact_name(7)
+    downloaded = _state_sources(
+        monkeypatch,
+        {attempt: [_artifact(1)], published: [_artifact(1)]},
+        {"1": _run(path=github.WORKFLOW_PATH)},
+    )
+    assert github.latest_state(REPO, 7) is not None
+    assert downloaded == [published]
 
 
 def test_latest_state_ignores_artifacts_from_another_workflow(monkeypatch: pytest.MonkeyPatch) -> None:

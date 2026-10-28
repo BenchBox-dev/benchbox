@@ -13,6 +13,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 
 def _proc(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, scope: str = "1") -> Path:
+    monkeypatch.delenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", raising=False)
     monkeypatch.setattr(isolation.sys, "platform", "linux")
     monkeypatch.setattr(isolation.os, "getuid", lambda: 1001)
     (tmp_path / "sys/kernel/yama").mkdir(parents=True)
@@ -49,6 +50,20 @@ def test_isolation_rejects_ptrace_capability(tmp_path, monkeypatch, field) -> No
         isolation.require_isolation(root)
 
 
+def test_isolation_rejects_a_present_id_token_request_token(tmp_path, monkeypatch) -> None:
+    root = _proc(tmp_path, monkeypatch)
+    monkeypatch.setenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "x")
+    with pytest.raises(ValueError, match="ACTIONS_ID_TOKEN_REQUEST_TOKEN"):
+        isolation.require_isolation(root)
+    assert isolation.main() == 1
+
+
+def test_isolation_accepts_an_absent_id_token_request_token(tmp_path, monkeypatch) -> None:
+    root = _proc(tmp_path, monkeypatch)
+    monkeypatch.delenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", raising=False)
+    isolation.require_isolation(root)
+
+
 def test_isolation_rejects_root(tmp_path, monkeypatch) -> None:
     root = _proc(tmp_path, monkeypatch)
     status = root / "self/status"
@@ -59,6 +74,8 @@ def test_isolation_rejects_root(tmp_path, monkeypatch) -> None:
 
 @pytest.mark.skipif(sys.platform != "linux", reason="the permanent runner prerequisite is Linux-only")
 def test_live_linux_prerequisite_and_sibling_memory_denial() -> None:
+    if not Path("/proc/sys/kernel/yama/ptrace_scope").exists() and not os.environ.get("GITHUB_ACTIONS"):
+        pytest.skip("this kernel has no Yama LSM (no /proc/sys/kernel/yama/ptrace_scope); CI runners provide it")
     isolation.require_isolation()
     with subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"]) as sibling:
         try:

@@ -28,7 +28,6 @@ def _load(name: str) -> object:
 landing = _load("pr_landing")
 lv = _load("local_validation")
 bi = _load("batch_integration")
-post_merge = _load("post_merge_signature")
 
 HEAD = "a" * 40
 OTHER = "b" * 40
@@ -186,12 +185,6 @@ def test_missing_check_evidence_never_clean(tmp_path: Path) -> None:
     assert len([f for f in failures if "no check run observed" in f]) == len(landing.REQUIRED_CONTEXTS)
 
 
-def test_substantive_post_merge_regression_clears_innocent_sha(tmp_path: Path) -> None:
-
-    del tmp_path
-    assert post_merge.attribution_action(["tests/unit/foo.py::test_x"], ["other/part.py"]) == "advisory"
-
-
 def test_wrong_pr_branch_never_mutates() -> None:
     run = FakeRun([(0, [{"number": 7, "headRefName": "feat/other", "headRefOid": HEAD}])])
     with pytest.raises(landing.WrongPR):
@@ -202,7 +195,7 @@ def test_wrong_pr_branch_never_mutates() -> None:
 def test_all_green_control_arms_exactly_once(tmp_path: Path) -> None:
 
     repo, head = _repo(tmp_path / "r")
-    run = FakeRun([(0, "")])
+    run = FakeRun([(0, ""), (0, "")])
     assert landing.ready_failures(_identity(repo, head), head, _evidence(head), repo) == []
     assert landing.enqueue_pr(run, "o/r", 1, head, head)["enqueued"] is True
-    assert len(run.calls) == 1
+    assert [call[:3] for call in run.calls] == [["gh", "api", "--paginate"], ["gh", "pr", "merge"]]

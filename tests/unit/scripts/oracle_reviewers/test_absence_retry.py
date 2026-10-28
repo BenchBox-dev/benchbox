@@ -10,6 +10,7 @@ import pytest
 
 from _project.scripts.oracle_reviewers import attempts, cli
 from _project.scripts.oracle_reviewers.absence import Absence
+from _project.scripts.oracle_reviewers.recovery import JEV, RETRY, Recovery
 from _project.scripts.oracle_reviewers.selection import (
     ABSENT,
     FAIL,
@@ -22,11 +23,17 @@ from _project.scripts.oracle_reviewers.selection import (
     next_step,
 )
 
-from .test_selection import RETRYABLE, _input, _reviewer
+from .test_selection import _input, _reviewer
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 NOW = datetime(2026, 10, 5, 12, 0, tzinfo=UTC)
+RETRYABLE = ("incomplete", "empty", "error")
+RETRY_RECOVERY = Recovery(RETRY, JEV, RETRY, 0.9, 0.8)
+
+
+def _invalid(slot: int, reviewer: str, detail: str = "") -> Attempt:
+    return Attempt(slot, reviewer, ABSENT, "invalid", detail, recovery=RETRY_RECOVERY)
 
 
 def _chosen(selection: SelectionInput, history: list[Attempt]) -> str:
@@ -55,21 +62,21 @@ def test_job_failure_marker_is_not_retried() -> None:
 
 def test_second_attempt_infrastructure_failure_ends_the_retry() -> None:
     chain = [_reviewer("r1"), _reviewer("r2")]
-    history = [Attempt(1, "r1", ABSENT, "invalid"), Attempt(2, "r1", ABSENT, "timeout")]
+    history = [_invalid(1, "r1"), Attempt(2, "r1", ABSENT, "timeout")]
     assert _chosen(_input(chain), history) == "r2"
 
 
 def test_terminal_verdicts_are_never_retried() -> None:
     chain = [_reviewer("r1")]
     assert next_step(_input(chain), [Attempt(1, "r1", PASS)]).kind == PASS
-    assert next_step(_input(chain), [Attempt(1, "r1", ABSENT, "invalid"), Attempt(2, "r1", FAIL)]).kind == FAIL
+    assert next_step(_input(chain), [_invalid(1, "r1"), Attempt(2, "r1", FAIL)]).kind == FAIL
 
 
 def test_two_reviewer_chain_retries_first_before_advancing() -> None:
     selection = _input([_reviewer("r1"), _reviewer("r2")])
     history = [Attempt(1, "r1", ABSENT, "incomplete")]
     assert _chosen(selection, history) == "r1"
-    history.append(Attempt(2, "r1", ABSENT, "invalid"))
+    history.append(_invalid(2, "r1"))
     assert _chosen(selection, history) == "r2"
     history.append(Attempt(3, "r2", ABSENT, "empty"))
     assert _chosen(selection, history) == "r2"
@@ -81,14 +88,14 @@ def test_two_reviewer_chain_retries_first_before_advancing() -> None:
 
 def test_overall_cap_one_blocks_the_retry() -> None:
     selection = _input([_reviewer("r1")], max_attempts=1)
-    step = next_step(selection, [Attempt(1, "r1", ABSENT, "invalid")])
+    step = next_step(selection, [_invalid(1, "r1")])
     assert step.kind == PENDING
     assert step.reasons == ("r1: skipped: no attempt slot left in this run",)
 
 
 def test_cap_stops_a_chain_mid_retry() -> None:
     selection = _input([_reviewer("r1"), _reviewer("r2")], max_attempts=2)
-    history = [Attempt(1, "r1", ABSENT, "invalid"), Attempt(2, "r1", ABSENT, "invalid")]
+    history = [_invalid(1, "r1"), _invalid(2, "r1")]
     assert next_step(selection, history).kind == PENDING
 
 
@@ -101,16 +108,16 @@ def test_cap_stops_a_chain_mid_retry() -> None:
 )
 def test_ineligible_reviewer_is_not_retried(overrides: dict[str, Any]) -> None:
     selection = _input([_reviewer("r1", **overrides)], brief_mode="file-list")
-    assert _chosen(selection, [Attempt(1, "r1", ABSENT, "invalid")]) == PENDING
+    assert _chosen(selection, [_invalid(1, "r1")]) == PENDING
 
 
 def test_oversize_brief_blocks_the_retry() -> None:
-    assert _chosen(_input([_reviewer("r1")], brief_mode="oversize"), [Attempt(1, "r1", ABSENT, "invalid")]) == PENDING
+    assert _chosen(_input([_reviewer("r1")], brief_mode="oversize"), [_invalid(1, "r1")]) == PENDING
 
 
 def test_pool_quota_in_the_run_blocks_the_retry() -> None:
     chain = [_reviewer("r1", pool="shared"), _reviewer("r2", pool="shared")]
-    history = [Attempt(1, "r1", ABSENT, "invalid"), Attempt(2, "r2", ABSENT, "quota")]
+    history = [_invalid(1, "r1"), Attempt(2, "r2", ABSENT, "quota")]
     assert next_step(_input(chain), history).kind == PENDING
 
 
@@ -126,6 +133,7 @@ def _plan(chain: list[Any], max_attempts: int = 5) -> dict[str, Any]:
 
 def _write(directory: Path, slot: int, reviewer: str, plan: dict[str, Any], kind: str, detail: str = "") -> None:
     artifact = attempts.build_artifact(
+        recovered=RETRY_RECOVERY if kind == "invalid" else None,
         run_id="9",
         pr=plan["pr"],
         head_sha=plan["head_sha"],

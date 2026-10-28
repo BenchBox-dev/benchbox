@@ -145,11 +145,19 @@ do first).
    the ruleset is relaxed.
 3. Capture the full ruleset before any change:
    `gh api repos/BenchBox-dev/benchbox/rulesets/15611785 > /tmp/ruleset-15611785-before.json`.
-4. Remove exactly one required context, the failing one, and nothing else. Do not
-   touch bypass actors, enforcement, or the `oracle-gate` binding.
+4. Remove exactly one required context, the failing one, and nothing else. Never
+   touch bypass actors or enforcement. When a non-oracle check is broken, leave
+   the `oracle-gate` binding untouched. If `oracle-gate` itself is the broken
+   context (a broken checker or workflow on `develop` that fails all PRs
+   including its repair), the owner may remove `oracle-gate` for exactly that
+   one merge, but only after the owner has personally read the full diff of the
+   named head and posted a pull request comment naming that head SHA and stating
+   the diff was reviewed. `oracle-gate` is the only required review, so without
+   that comment it stays bound; an agent never substitutes for it.
 5. Merge the named pull request at the named head.
 6. Restore the context immediately, whether the merge succeeded or failed,
-   before retrying, starting other work, or recording notes.
+   before retrying, starting other work, or recording notes. If `oracle-gate`
+   was removed, restore it bound to integration 5201041 (`benchbox-oracle` App).
 7. Read back and compare with the capture, using a token that can see
    `bypass_actors`:
    `gh auth token | uv run -- python scripts/ruleset_drift_check.py --token-stdin --compare-capture /tmp/ruleset-15611785-before.json`.
@@ -248,8 +256,11 @@ when any of these holds:
   and the legacy `oracle-review-shadow` context are ignored.
 - An account in `STANDIN_ATTESTERS` (`_project/scripts/oracle_review_check.py`)
   posted `Stand-in oracle review: APPROVE <full head SHA>` for the exact head,
-  after any retarget and after the oracle's latest verdict status on that head. The
-  comment is unedited and no oracle thread is unresolved.
+  after any retarget and after the oracle's latest verdict status on that head. Per
+  `docs/agent/merge-authority.md`, an agent posts a stand-in only when the owner
+  names the PR and its head in the current request, with a preceding `Owner instruction`
+  comment naming the PR, head, and covered findings. The comment is unedited and
+  no oracle thread is unresolved.
 
 A plain owner comment does not count. See [soundness drain](soundness-drain.md).
 A stand-in comment makes `oracle-gate` re-evaluate at once. Resolving a review

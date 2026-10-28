@@ -68,7 +68,6 @@ code-ci:
   - "docs/internal/dev-loop-worktrees.md"
   - "docs/publish-allowlist.txt"
   - "docs/publish-exclusions.txt"
-  - "docs/linkcheck_ignore.txt"
   - "tests/uat/CHARTER.md"
   - "CHANGELOG.md"
   - "CONTRIBUTING.md"

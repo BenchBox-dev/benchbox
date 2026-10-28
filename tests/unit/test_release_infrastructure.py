@@ -796,7 +796,6 @@ class TestReleaseInfrastructure:
             "tests/unit/docs/test_architecture_decision_surfaces.py",
             "tests/unit/scripts/test_agent_instruction_audit.py",
             "tests/unit/scripts/test_audit_sha_check.py",
-            "tests/unit/scripts/test_browser_gate_aggregate.py",
             "tests/unit/scripts/test_check_release_curation.py",
             "tests/unit/scripts/test_check_uv_lock_revision.py",
             "tests/unit/scripts/test_ci_lint_environment_boundary.py",
@@ -829,7 +828,7 @@ class TestReleaseInfrastructure:
             "tests/unit/workflows/test_validate_submission_changed_bundles.py",
             "tests/unit/workflows/test_validate_submission_fail_open.py",
         }
-        assert len(v040_missed_paths) == 37
+        assert len(v040_missed_paths) == 36
         assert v040_missed_paths <= curated_paths, (
             "release-cut is missing tests that had to be curated manually in the v0.4.0 release PR: "
             f"{sorted(v040_missed_paths - curated_paths)}"

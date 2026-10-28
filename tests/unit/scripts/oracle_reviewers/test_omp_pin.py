@@ -432,3 +432,44 @@ def test_bare_python_disk_scan_runs_without_pyyaml(tmp_path: Path) -> None:
         text=True,
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_a_relative_cache_override_yields_an_absolute_binary_path_that_survives_a_cwd_change(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv(omp_pin.CACHE_ENV, ".cache/oracle-omp")
+    pin = _pin(target=omp_pin.current_platform())
+    binary = omp_pin.install(pin, fetch=Fetcher())
+    scratch = tmp_path / "scratch" / "omp-cwd"
+    scratch.mkdir(parents=True)
+    monkeypatch.chdir(scratch)
+    assert binary.is_absolute()
+    assert binary.is_file()
+    assert omp_pin.binary_path(pin, omp_pin.current_platform()).is_absolute()
+    assert omp_pin.cache_root().is_absolute()
+
+
+def test_a_relative_binary_override_is_resolved_against_the_launch_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv(omp_pin.BINARY_ENV, "bin/omp")
+    assert omp_pin.configured_binary() == Path(os.getcwd()) / "bin" / "omp"
+
+
+def test_the_pin_digest_binds_the_version_and_every_platform_url_and_hash() -> None:
+    base = omp_pin.Pin(
+        "1.2.3",
+        {"linux-x64": omp_pin.Build("https://a/x", "a" * 64), "darwin-arm64": omp_pin.Build("https://a/d", "b" * 64)},
+    )
+    reordered = omp_pin.Pin("1.2.3", dict(reversed(list(base.builds.items()))))
+    assert omp_pin.pin_digest(base) == omp_pin.pin_digest(reordered)
+    changed = {
+        "version": omp_pin.Pin("1.2.4", base.builds),
+        "linux hash": omp_pin.Pin("1.2.3", {**base.builds, "linux-x64": omp_pin.Build("https://a/x", "c" * 64)}),
+        "linux url": omp_pin.Pin("1.2.3", {**base.builds, "linux-x64": omp_pin.Build("https://evil/x", "a" * 64)}),
+        "dropped": omp_pin.Pin("1.2.3", {"darwin-arm64": base.builds["darwin-arm64"]}),
+    }
+    digests = {omp_pin.pin_digest(pin) for pin in changed.values()} | {omp_pin.pin_digest(base)}
+    assert len(digests) == len(changed) + 1

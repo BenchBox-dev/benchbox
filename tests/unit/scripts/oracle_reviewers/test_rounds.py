@@ -513,6 +513,48 @@ def test_finalize_writes_the_strike_count_into_the_state_artifact(
     assert state["strikes"] == 3 and state["head_sha"] == HEAD
 
 
+def test_finalize_writes_an_attempt_state_that_only_adds_the_consumed_retry(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan = _protocol_plan(policy, strikes=2)
+    plan["manual"] = True
+    plan["previous_state"] = {
+        "pr": plan["pr"],
+        "head_sha": HEAD,
+        "outcome": "pending",
+        "updated_at": "2026-10-08T09:00:00+00:00",
+        "retries": ["2026-10-08T08:00:00+00:00"],
+        "strikes": 2,
+    }
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_text(json.dumps(plan), encoding="utf-8")
+    classification_path = tmp_path / "classification.json"
+    classification = Classification("small", "routine", "standard", 1.0, (), ())
+    classification_path.write_text(json.dumps(classification.to_json()), encoding="utf-8")
+    attempts_dir = tmp_path / "attempts"
+    _write(attempts_dir, 1, "small", verdict=_v("rework", decision="DO_NOT_SHIP"))
+    _run_cli(
+        monkeypatch,
+        tmp_path,
+        "finalize",
+        "--plan",
+        str(plan_path),
+        "--attempts-dir",
+        str(attempts_dir),
+        "--out-dir",
+        str(tmp_path / "o"),
+        "--classification",
+        str(classification_path),
+    )
+    published = json.loads((tmp_path / "o" / "state" / "state.json").read_text(encoding="utf-8"))
+    attempted = json.loads((tmp_path / "o" / "attempt" / "state.json").read_text(encoding="utf-8"))
+    assert published["strikes"] == 3 and attempted["strikes"] == 2
+    assert attempted["retries"] == published["retries"] and len(attempted["retries"]) == 1
+    assert published["outcome"] == "failure" and attempted["outcome"] == "pending"
+    assert attempted["updated_at"] == published["updated_at"]
+    assert attempted["head_sha"] == plan["head_sha"]
+
+
 def _decided(head_sha: str, decision: str = protocol.SHIP_WITH_FIXES, digest: str = "d" * 32) -> dict[str, Any]:
     return {
         "v": 1,

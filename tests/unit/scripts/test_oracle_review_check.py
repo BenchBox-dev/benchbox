@@ -814,7 +814,7 @@ def test_annotate_receipt_marks_a_receipt_without_a_node_id_as_edited() -> None:
     assert _oracle(statuses=[_verdict()], reviews=reviews)[0] == 1
 
 
-def test_annotate_checks_the_same_latest_receipt_the_gate_decides_on(
+def test_annotate_checks_every_receipt_the_gate_may_decide_on(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def _normalized(body: str, submitted_at: str, node_id: str) -> dict[str, Any]:
@@ -839,8 +839,55 @@ def test_annotate_checks_the_same_latest_receipt_the_gate_decides_on(
     monkeypatch.setattr(oracle_review_check, "fetch_review_edit", edit)
     reviews = [earlier, later]
     oracle_review_check.annotate_receipt("t", reviews, HEAD)
-    assert seen == ["node_new"]
+    assert sorted(seen) == ["node_new", "node_old"]
     assert _oracle(statuses=[_verdict()], reviews=reviews)[0] == 0
+
+
+OTHER_RUN_UUID = "2" * 32
+
+
+def _other_pr_success() -> dict[str, Any]:
+    return _verdict(
+        created_at=LATER,
+        id=2,
+        description=f"large: success [run {OTHER_RUN_UUID}]",
+    )
+
+
+def test_a_newer_success_for_another_pull_request_does_not_strand_this_one() -> None:
+    own = _verdict()
+    assert _oracle(statuses=[own])[0] == oracle_review_check.PASS
+    assert _oracle(statuses=[own, _other_pr_success()])[0] == oracle_review_check.PASS
+
+
+def test_a_newer_success_with_no_receipt_here_does_not_hide_a_failure_after_it() -> None:
+    failure = _verdict("failure", created_at=LATEST, id=3)
+    assert _oracle(statuses=[_verdict(), _other_pr_success(), failure])[0] == oracle_review_check.WAITING
+
+
+def test_an_earlier_success_is_not_reused_across_a_later_failure_and_new_success() -> None:
+    statuses = [_verdict(), _verdict("failure", created_at=LATER, id=3), _other_pr_success()]
+    assert _oracle(statuses=statuses)[0] == oracle_review_check.WAITING
+
+
+def test_an_edited_receipt_for_the_newest_run_here_is_not_bypassed_by_an_older_run() -> None:
+    older = _verdict(created_at=BEFORE_HEAD, id=1)
+    newer_run = "3" * 32
+    newest = _verdict(created_at=LATER, id=2, description=f"large: success [run {newer_run}]")
+    edited = _receipt_review(
+        body=_marked_body(newer_run), submitted_at=LATEST, last_edited_at=LATEST, includes_created_edit=True
+    )
+    reviews = [_receipt_review(submitted_at=BEFORE_HEAD), edited]
+    assert _oracle(statuses=[older, newest], reviews=reviews)[0] == oracle_review_check.WAITING
+
+
+def test_a_withheld_verdict_between_two_successes_blocks_the_earlier_one() -> None:
+    statuses = [_verdict(), _verdict("pending", created_at=LATER, id=3), _other_pr_success() | {"created_at": LATEST}]
+    assert _oracle(statuses=statuses)[0] == oracle_review_check.WAITING
+
+
+def test_a_success_with_no_matching_receipt_here_still_waits() -> None:
+    assert _oracle(statuses=[_other_pr_success()])[0] == oracle_review_check.WAITING
 
 
 def test_annotate_receipt_marks_an_unreadable_edit_check_as_edited(monkeypatch: pytest.MonkeyPatch) -> None:

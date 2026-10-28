@@ -1,0 +1,11 @@
+{
+  "bundle_file": "tpcdi_sf01_clickhouse_local_sql_20260826_171153_4d6e3213.json",
+  "bundle_hash": "8baa4788c4a734c79121974cd77be704e9b5ad9d5bf35a17ad2473121acd9608",
+  "funding": "unspecified",
+  "manifest_version": "1.0",
+  "result_source": "internal",
+  "submitted_by": "maintainer",
+  "known_defects": [
+    "defective-variant-or-loader-wrong-result"
+  ]
+}

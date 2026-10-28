@@ -19,14 +19,18 @@ from .evidence import withdrawal_cited
 from .policy import SEVERITIES
 from .verdict import (
     COMPLETE,
+    DEMOTED_DISPOSITION,
+    DEMOTED_STATUSES,
     DO_NOT_SHIP,
     FIXED,
     MAX_CLAIM,
+    MAX_LINE,
     NOT_FIXED,
     SHIP,
     SHIP_WITH_FIXES,
     WITHDRAWN,
     Finding,
+    PriorDefect,
     Verdict,
     sanitize,
 )
@@ -49,6 +53,7 @@ MARKER_LIMIT = 4096
 MARKER_TRIMS = ((120, 120), (80, 80), (50, 60), (32, 40), (24, 24))
 MARKER_OPEN = "<!-- oracle-protocol:"
 _MARKER = re.compile(r"<!-- oracle-protocol: v1 (?P<data>[A-Za-z0-9_-]+) -->\s*\Z")
+MARKER_INFLATE_LIMIT = 64 << 20
 DEFECT_ID = re.compile(r"D([1-9][0-9]{0,3})")
 NOT_COUNTED_LIMIT = 5
 PATCH_HEX = 16
@@ -266,6 +271,15 @@ def _valid_record(record: Any) -> bool:
     )
 
 
+def _clamped(item: dict[str, Any]) -> dict[str, Any]:
+    end = item["end_line"]
+    return {
+        **item,
+        "line": max(min(item["line"], MAX_LINE), 1),
+        "end_line": None if end is None else max(min(end, MAX_LINE), 1),
+    }
+
+
 def decode_marker(body: str) -> dict[str, Any] | None:
     count = body.count(MARKER_OPEN)
     if count == 0:
@@ -281,7 +295,20 @@ def decode_marker(body: str) -> dict[str, Any] | None:
         raise MarkerError(f"a protocol marker cannot be decoded: {exc}") from exc
     if not _valid_record(record):
         raise MarkerError("a protocol marker has an unexpected shape")
-    return record
+    return {**record, "open_defects": [_clamped(item) for item in record["open_defects"]]}
+
+
+def marker_payload(text: str) -> Any:
+    match = _MARKER.search(text)
+    if match is None:
+        return None
+    data = match.group("data")
+    try:
+        inflater = zlib.decompressobj()
+        raw = inflater.decompress(base64.urlsafe_b64decode(data + "=" * (-len(data) % 4)), MARKER_INFLATE_LIMIT)
+        return json.loads(raw) if inflater.eof else None
+    except (binascii.Error, ValueError, zlib.error, RecursionError):
+        return None
 
 
 def _review_time(value: Any) -> datetime | None:
@@ -669,30 +696,64 @@ def bound_disputes(plan: Mapping[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
-def dispute_problem(verdict: Verdict, plan: Mapping[str, Any]) -> str | None:
+def dispute_problems(verdict: Verdict, plan: Mapping[str, Any]) -> dict[str, str]:
     claims = disputed_claims(plan)
     if verdict.status != COMPLETE or not claims:
-        return None
+        return {}
     entries = {item.id: item for item in verdict.prior_defects}
+    problems: dict[str, str] = {}
     for defect_id in sorted(claims):
         entry = entries.get(defect_id)
         if entry is None:
-            return f"disputed finding {defect_id} has no disposition, so the verdict is invalid"
-        if not isinstance(entry.concedes, bool):
-            return f"disputed finding {defect_id} has no concedes boolean, so the verdict is invalid"
-        demoted = entry.demoted in ("withdrawal", "fixed")
+            problems[defect_id] = f"disputed finding {defect_id} has no disposition, so the verdict is invalid"
+            continue
+        demoted = entry.demoted in DEMOTED_STATUSES
+        if not isinstance(entry.concedes, bool) and not demoted:
+            problems[defect_id] = f"disputed finding {defect_id} has no concedes boolean, so the verdict is invalid"
+            continue
         if entry.status == NOT_FIXED and entry.concedes and not demoted:
-            return f"disputed finding {defect_id} concedes the rebuttal yet stays not fixed, so the verdict is invalid"
-        if entry.status == WITHDRAWN and not entry.concedes:
-            return (
+            problems[defect_id] = (
+                f"disputed finding {defect_id} concedes the rebuttal yet stays not fixed, so the verdict is invalid"
+            )
+        elif entry.status == WITHDRAWN and not entry.concedes:
+            problems[defect_id] = (
                 f"disputed finding {defect_id} is withdrawn without conceding the rebuttal, so the verdict is invalid"
             )
-        if entry.status in (NOT_FIXED, WITHDRAWN) and not demoted:
-            if not entry.claim.strip() or all(claim_hash(entry.claim) != known for known in claims[defect_id]):
-                return f"disputed finding {defect_id} does not restate one of its rebuttal replies, so the verdict is invalid"
-        if entry.status == FIXED and not (entry.evidence or "").strip():
-            return f"disputed finding {defect_id} is marked fixed without evidence, so the verdict is invalid"
-    return None
+        elif (
+            entry.status in (NOT_FIXED, WITHDRAWN)
+            and not demoted
+            and (not entry.claim.strip() or all(claim_hash(entry.claim) != known for known in claims[defect_id]))
+        ):
+            problems[defect_id] = (
+                f"disputed finding {defect_id} does not restate one of its rebuttal replies, so the verdict is invalid"
+            )
+        elif entry.status == FIXED and not (entry.evidence or "").strip():
+            problems[defect_id] = (
+                f"disputed finding {defect_id} is marked fixed without evidence, so the verdict is invalid"
+            )
+    return problems
+
+
+def dispute_problem(verdict: Verdict, plan: Mapping[str, Any]) -> str | None:
+    problems = dispute_problems(verdict, plan)
+    return problems[min(problems)] if problems else None
+
+
+def keep_disputes_open(verdict: Verdict, plan: Mapping[str, Any]) -> Verdict:
+    problems = dispute_problems(verdict, plan)
+    if not problems:
+        return verdict
+    entries = {item.id: item for item in verdict.prior_defects}
+    for defect_id, problem in problems.items():
+        note = problem.removesuffix(", so the verdict is invalid") + "; the defect stays open"
+        entry = entries.get(defect_id)
+        if entry is None:
+            entries[defect_id] = PriorDefect(defect_id, NOT_FIXED, note, demoted=DEMOTED_DISPOSITION)
+        else:
+            entries[defect_id] = replace(
+                entry, status=NOT_FIXED, evidence=f"{entry.evidence} {note}".strip(), demoted=DEMOTED_DISPOSITION
+            )
+    return replace(verdict, prior_defects=tuple(entries.values()))
 
 
 def contradiction(
@@ -700,11 +761,11 @@ def contradiction(
     plan: Mapping[str, Any],
     workspace: Path | str | None = None,
 ) -> str | None:
+    if verdict.status != COMPLETE or judge_planned(verdict, plan, workspace=workspace).decision != SHIP:
+        return None
     problem = dispute_problem(verdict, plan)
     if problem is not None:
         return problem
-    if verdict.status != COMPLETE or judge_planned(verdict, plan, workspace=workspace).decision != SHIP:
-        return None
     if verdict.incomplete_reason.strip():
         return "the verdict would ship but reports that the review could not be finished"
     priors = (plan.get("protocol") or {}).get("prior") or ()

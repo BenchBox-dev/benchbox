@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "SQLite now skips the header row when loading CSV data for NYC Taxi and Flight Data, so those benchmarks load instead of failing with `datatype mismatch`."
+    }
+  ]
+}

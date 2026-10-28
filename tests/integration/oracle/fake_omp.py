@@ -4,29 +4,55 @@ import json
 import os
 import re
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
 PLACEHOLDER = re.compile(r"<[a-z_]+>")
 RECORDED_ROOT = "/workspace"
 RECORDED_CWD = "/scratch/omp-cwd"
+RENDEZVOUS_SECONDS = 20
 
 
 def _script(home: Path) -> dict[str, Any]:
     return json.loads((home / "script.json").read_text(encoding="utf-8"))
 
 
-def _next_reply(home: Path, replies: list[dict[str, Any]]) -> dict[str, Any]:
+def _next_reply(home: Path, replies: list[dict[str, Any]], prompt: str) -> tuple[dict[str, Any], int]:
     import fcntl
 
     with open(home / "calls.lock", "a+", encoding="utf-8") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         counter = home / "calls.json"
         calls = json.loads(counter.read_text(encoding="utf-8")) if counter.is_file() else []
-        reply = replies[min(len(calls), len(replies) - 1)]
-        calls.append({"reply": len(calls)})
+        index = len(calls)
+        reply = replies[min(index, len(replies) - 1)]
+        calls.append({"reply": index, "prompt": prompt, "met": None})
         counter.write_text(json.dumps(calls), encoding="utf-8")
-    return reply
+    return reply, index
+
+
+def _record_met(home: Path, index: int, met: bool) -> None:
+    import fcntl
+
+    with open(home / "calls.lock", "a+", encoding="utf-8") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        counter = home / "calls.json"
+        calls = json.loads(counter.read_text(encoding="utf-8"))
+        calls[index]["met"] = met
+        counter.write_text(json.dumps(calls), encoding="utf-8")
+
+
+def _rendezvous(home: Path, index: int, peers: int) -> bool:
+    arrivals = home / "arrivals"
+    arrivals.mkdir(exist_ok=True)
+    (arrivals / str(index)).write_text("", encoding="utf-8")
+    deadline = time.monotonic() + RENDEZVOUS_SECONDS
+    while time.monotonic() < deadline:
+        if len(list(arrivals.iterdir())) >= peers:
+            return True
+        time.sleep(0.05)
+    return False
 
 
 def response_template(prompt: str) -> Any:
@@ -118,11 +144,59 @@ def _answer_message(message: dict[str, Any], text: str) -> dict[str, Any]:
     return {**message, "content": [*content, {"type": "text", "text": text}]}
 
 
-def replay(recorded: list[dict[str, Any]], text: str, workspace: str, cwd: str) -> list[dict[str, Any]]:
+def _extra_reads(events: list[dict[str, Any]], workspace: str, paths: list[str]) -> list[dict[str, Any]]:
+    first = next(
+        index
+        for index, event in enumerate(events)
+        if event["type"] == "message_end"
+        and any(
+            isinstance(block, dict) and block.get("name") == "read" for block in event["message"].get("content", [])
+        )
+    )
+    last = next(
+        index
+        for index, event in enumerate(events)
+        if index > first and event["type"] == "message_end" and event["message"].get("role") == "toolResult"
+    )
+    turn = events[first : last + 1]
+    call = next(block for block in turn[0]["message"]["content"] if block.get("name") == "read")
+    old_id, old_path = call["id"], call["arguments"]["path"]
+    out: list[dict[str, Any]] = []
+    for number, path in enumerate(paths):
+        target = f"{workspace}/{path}"
+        text = Path(target).read_text(encoding="utf-8", errors="replace")
+        clone = json.loads(json.dumps(turn).replace(old_id, f"toolu_extra_{number}").replace(old_path, target))
+        for event in clone:
+            if event["type"] == "tool_execution_end":
+                event["result"]["content"] = [{"type": "text", "text": text}]
+                event["result"]["details"]["meta"]["source"]["value"] = target
+            elif event["type"] in ("message_start", "message_end") and event["message"].get("role") == "toolResult":
+                event["message"]["content"] = [{"type": "text", "text": text}]
+        out.extend(clone)
+    return out
+
+
+def _terminal_error(reply: dict[str, Any]) -> list[dict[str, Any]]:
+    message = {
+        "role": "assistant",
+        "content": [],
+        "stopReason": "error",
+        "errorMessage": reply["message"],
+        "errorStatus": reply["status"],
+        "provider": reply["provider"],
+    }
+    return [{"type": "message_end", "message": message}]
+
+
+def replay(
+    recorded: list[dict[str, Any]], text: str, workspace: str, cwd: str, reads: list[str] | None = None
+) -> list[dict[str, Any]]:
     events = [_rewrite(event, workspace, cwd) for event in recorded]
     final_turn = max(index for index, event in enumerate(events) if event["type"] == "turn_start")
     out = []
     for index, event in enumerate(events):
+        if index == final_turn and reads:
+            out.extend(_extra_reads(events, workspace, reads))
         if index <= final_turn:
             out.append(event)
             continue
@@ -149,16 +223,26 @@ def main(argv: list[str]) -> int:
     workspace = argv[argv.index("--add-dir") + 1]
     cwd = argv[argv.index("--cwd") + 1]
     prompt = argv[-1]
-    reply = _next_reply(home, script["replies"])
+    reply, call = _next_reply(home, script["replies"], prompt)
+    if reply.get("rendezvous"):
+        _record_met(home, call, _rendezvous(home, call, int(reply["rendezvous"])))
     recorded = [
         json.loads(line) for line in Path(script["stream"]).read_text(encoding="utf-8").splitlines() if line.strip()
     ]
+    if reply.get("kind") == "error":
+        for event in _terminal_error(reply):
+            sys.stdout.write(json.dumps(event) + "\n")
+        return 1
     if reply.get("kind") == "truncated":
         events = [_rewrite(event, workspace, cwd) for event in recorded]
         final_turn = max(index for index, event in enumerate(events) if event["type"] == "turn_start")
         events = events[:final_turn]
+    elif reply.get("kind") == "text":
+        events = replay(recorded, reply["text"], workspace, cwd)
     else:
-        events = replay(recorded, json.dumps(fill(response_template(prompt), reply), indent=2), workspace, cwd)
+        events = replay(
+            recorded, json.dumps(fill(response_template(prompt), reply), indent=2), workspace, cwd, reply.get("reads")
+        )
     leak = script.get("leak_env")
     if leak:
         events = [_leaked(event, os.environ.get(leak, "")) for event in events]

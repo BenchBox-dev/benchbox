@@ -17,8 +17,11 @@ from pathlib import Path
 from typing import BinaryIO, cast
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+for _path in (REPO_ROOT, Path(__file__).resolve().parent):
+    if str(_path) not in sys.path:
+        sys.path.insert(0, str(_path))
+
+import pr_arm_omp_bump
 
 from _project.scripts import check_suites
 from _project.scripts.soundness_paths import any_soundness_path
@@ -1385,6 +1388,9 @@ def enqueue_pr(
             raise LandingError("PR review disposition changed before enqueue; readiness is invalid")
         if unresolved_review_threads(run, repo_full, pr_number):
             raise LandingError("PR review threads changed before enqueue; unresolved, non-outdated threads remain")
+    bump_reasons = pr_arm_omp_bump.bump_refusals(run, repo_full, pr_number, expected_head)
+    if bump_reasons:
+        raise LandingError("; ".join(bump_reasons))
     rc, out = run(
         [
             "gh",

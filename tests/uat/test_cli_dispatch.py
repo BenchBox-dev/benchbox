@@ -780,6 +780,7 @@ def test_completeness_gate_digest_provenance(tmp_path: Path):
             "phases": ["execute", "report"],
             "platforms": {"include": ["duckdb"]},
             "benchmarks": {"include": ["tpch"]},
+            "execute": {"extra_args": ["--client-region", "local", "--client-cloud", "unknown"]},
         }
     )
     log_dir = tmp_path / "logs"

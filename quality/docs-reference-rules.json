@@ -32,10 +32,8 @@
         "tests/unit/generators/test_sf1_measurement.py",
         "tests/unit/mcp/test_run_surface_contract.py",
         "tests/unit/platforms/credentials/test_singlestore_credentials.py",
-        "tests/unit/scripts/test_post_merge_signature.py",
         "tests/unit/scripts/test_soundness_paths.py",
         "tests/unit/test_cli_documentation.py",
-        "tests/unit/test_post_merge_signature.py",
         "tests/unit/test_release_infrastructure.py",
         "tests/unit/workflows/test_stacked_pr_base_guard.py",
         "tests/unit/core/tpcds_obt/test_tpcds_obt_model.py",
@@ -128,14 +126,6 @@
       ],
       "disposition": "wiring-updated",
       "reason": "Protected comment-policy registries name docs paths and generator scripts that move or are deleted at cutover; edited with oracle review."
-    },
-    {
-      "id": "inert-doc-readers",
-      "match": [
-        "_project/inert-doc-readers.json"
-      ],
-      "disposition": "wiring-updated",
-      "reason": "Soundness-listed registry of tests and tools that read docs; entries for moved pages are dropped at cutover."
     },
     {
       "id": "ci-path-classification",
@@ -248,6 +238,7 @@
         "tests/fixtures/oracle_reviewers/pr3222_replay.json",
         "tests/fixtures/ruleset-develop-squash-only.json",
         "tests/fixtures/trunk_red_20261024.json",
+        "tests/integration/oracle/test_evidence_scenarios.py",
         "tests/integration/worktree/test_worktree_lifecycle_metadata.py",
         "tests/unit/release/test_ruleset_drift_review_coverage.py",
         "tests/unit/scripts/oracle_reviewers/test_classifier.py",
@@ -270,7 +261,6 @@
         "tests/unit/scripts/test_oracle_gate.py",
         "tests/unit/scripts/test_oracle_review_check.py",
         "tests/unit/scripts/test_pr_landing.py",
-        "tests/unit/scripts/test_pr_refresh_replay.py",
         "tests/unit/scripts/test_pr_review_followups.py",
         "tests/unit/scripts/test_preflight_targets.py",
         "tests/unit/scripts/test_reference_usage_audit.py",

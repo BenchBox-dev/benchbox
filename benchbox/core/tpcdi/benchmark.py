@@ -242,7 +242,6 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         from benchbox.sql_compat.registry import REGISTRY
         from benchbox.sql_compat.rules.query_source.tpcdi_variants import (
             BIGQUERY_EQ7_SQL,
-            CLICKHOUSE_AQ6_SQL,
             CLICKHOUSE_AQ7_SQL,
             CLICKHOUSE_AQ8_SQL,
             CLICKHOUSE_AQ10_SQL,
@@ -267,7 +266,6 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
                 "EQ7": SNOWFLAKE_EQ7_SQL,
             },
             "clickhouse": {
-                "AQ6": CLICKHOUSE_AQ6_SQL,
                 "AQ7": CLICKHOUSE_AQ7_SQL,
                 "AQ8": CLICKHOUSE_AQ8_SQL,
                 "AQ10": CLICKHOUSE_AQ10_SQL,
@@ -307,12 +305,6 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
                 from benchbox.sql_compat.rules.query_source.tpcdi_variants import build_clickhouse_metric_query
 
                 return build_clickhouse_metric_query(query_id, params)
-
-            if query_id == "AQ6":
-                query_params = self.query_manager._generate_default_params(query_id)
-                if params:
-                    query_params.update(params)
-                return variant_sql.format(**query_params)
 
             if (
                 platform in ("bigquery", "clickhouse", "databricks", "snowflake")

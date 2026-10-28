@@ -2,16 +2,16 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from . import absence, protocol, selection
+from . import absence, protocol, recovery, selection
 from .selection import Attempt, SelectionInput, Step
 from .verdict import COMPLETE, SHIP, Verdict, VerdictError, validate
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 ARTIFACT_KEYS = frozenset(
     {
         "schema",
@@ -24,6 +24,7 @@ ARTIFACT_KEYS = frozenset(
         "absence",
         "verdict",
         "diagnostic",
+        "recovery",
     }
 )
 VERDICT_OUTCOME = "verdict"
@@ -44,6 +45,7 @@ def build_artifact(
     verdict: Mapping[str, Any] | None,
     missing: absence.Absence | None,
     diagnostic: str = "",
+    recovered: recovery.Recovery | None = None,
 ) -> dict[str, Any]:
     return {
         "schema": SCHEMA_VERSION,
@@ -64,6 +66,7 @@ def build_artifact(
         },
         "verdict": dict(verdict) if missing is None and verdict is not None else None,
         "diagnostic": diagnostic,
+        "recovery": recovered.to_json() if recovered is not None else None,
     }
 
 
@@ -81,6 +84,28 @@ def _check(condition: bool, errors: list[str], message: str) -> bool:
 
 
 def _attempt(
+    data: Mapping[str, Any],
+    plan: Mapping[str, Any],
+    loaded: LoadedAttempts,
+    workspace: Path | str | None = None,
+) -> Attempt:
+    attempt = _judged(data, plan, loaded, workspace)
+    raw = data["recovery"]
+    if raw is None:
+        return attempt
+    recorded = recovery.Recovery.from_json(raw)
+    if recorded is None:
+        loaded.errors.append(f"{artifact_name(attempt.slot)}: unreadable recovery record")
+        return attempt
+    if not selection.needs_recovery(attempt):
+        loaded.errors.append(
+            f"{artifact_name(attempt.slot)}: a recovery is recorded on an attempt that was not invalid"
+        )
+        return attempt
+    return replace(attempt, recovery=recorded)
+
+
+def _judged(
     data: Mapping[str, Any],
     plan: Mapping[str, Any],
     loaded: LoadedAttempts,
@@ -176,6 +201,11 @@ def replay(selection_input: SelectionInput, attempts: list[Attempt]) -> list[str
         expected = step.reviewer.name if step.kind == selection.REVIEW and step.reviewer else None
         if expected != attempt.reviewer:
             errors.append(f"slot {attempt.slot} ran {attempt.reviewer}, but the policy selects {expected or step.kind}")
+        held = attempt.recovery
+        if held is not None and held.source == recovery.FALLBACK:
+            number = 1 + sum(1 for earlier in attempts[:index] if earlier.reviewer == attempt.reviewer)
+            if held.choice != recovery.fallback_choice(number, selection.MAX_ATTEMPTS_PER_REVIEWER):
+                errors.append(f"slot {attempt.slot} records a fallback recovery that the policy does not give")
     return errors
 
 

@@ -206,6 +206,10 @@ def state_artifact_name(pr: int, prefix: str = STATE_ARTIFACT_PREFIX) -> str:
     return f"{prefix}{pr}"
 
 
+def attempt_state_artifact_name(pr: int, prefix: str = STATE_ARTIFACT_PREFIX) -> str:
+    return f"{prefix}attempt-{pr}"
+
+
 WORKFLOW_PATH = ".github/workflows/oracle-verdict.yml"
 TRUSTED_EVENTS = frozenset({"pull_request_target", "issue_comment", "schedule", "workflow_dispatch"})
 TRUSTED_ASSOCIATIONS = frozenset({"OWNER", "MEMBER", "COLLABORATOR"})
@@ -315,18 +319,31 @@ def trusted_run(
     return is_on_develop(repo, head_sha)
 
 
-def latest_state(repo: str, pr: int) -> State | None:
-    return _latest_state(repo, pr, state_artifact_name(pr), WORKFLOW_PATH)
-
-
-def _latest_state(repo: str, pr: int, name: str, workflow_path: str) -> State | None:
-    listing = get_json(f"repos/{repo}/actions/artifacts?name={name}&per_page=30")
-    candidates = sorted(
-        (item for item in listing.get("artifacts", []) if not item.get("expired")),
-        key=lambda item: item.get("created_at", ""),
-        reverse=True,
+def download_state_artifact(repo: str, run_id: str, name: str, directory: str) -> None:
+    result = subprocess.run(
+        ["gh", "run", "download", run_id, "-n", name, "-D", directory, "-R", repo],
+        capture_output=True,
+        text=True,
+        check=False,
     )
-    for candidate in candidates:
+    if result.returncode != 0:
+        raise GitHubError(f"could not download {name} from run {run_id}: {result.stderr.strip()[:500]}")
+
+
+def latest_state(repo: str, pr: int) -> State | None:
+    names = (state_artifact_name(pr), attempt_state_artifact_name(pr))
+    return _latest_state(repo, pr, names, WORKFLOW_PATH)
+
+
+def _latest_state(repo: str, pr: int, names: Sequence[str], workflow_path: str) -> State | None:
+    pairs = [
+        (name, item)
+        for name in names
+        for item in get_json(f"repos/{repo}/actions/artifacts?name={name}&per_page=30").get("artifacts", [])
+        if not item.get("expired")
+    ]
+    pairs.sort(key=lambda pair: pair[1].get("created_at", ""), reverse=True)
+    for name, candidate in pairs:
         run_id = str(candidate["workflow_run"]["id"])
         run = get_json(f"repos/{repo}/actions/runs/{run_id}")
         pulls: list[HeadPull] | None = None
@@ -338,14 +355,7 @@ def _latest_state(repo: str, pr: int, name: str, workflow_path: str) -> State | 
         if not trusted_run(run, repo, pr, pulls=pulls, workflow_path=workflow_path):
             continue
         with tempfile.TemporaryDirectory() as directory:
-            result = subprocess.run(
-                ["gh", "run", "download", run_id, "-n", name, "-D", directory, "-R", repo],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if result.returncode != 0:
-                raise GitHubError(f"could not download {name} from run {run_id}: {result.stderr.strip()[:500]}")
+            download_state_artifact(repo, run_id, name, directory)
             return State.from_json(json.loads((Path(directory) / STATE_FILE).read_text(encoding="utf-8")))
     return None
 
@@ -402,6 +412,15 @@ def in_flight_pulls(repo: str, workflow: str) -> frozenset[int]:
 
 
 FAILED_STEP_CONCLUSIONS = frozenset({"failure", "timed_out", "cancelled"})
+
+
+def run_pull(repo: str, run_id: int) -> int | None:
+    try:
+        run = get_json(f"repos/{repo}/actions/runs/{run_id}")
+    except (GitHubError, ValueError):
+        return None
+    match = RUN_TITLE_PULL.search(str(run.get("display_title") or "")) if isinstance(run, Mapping) else None
+    return int(match.group(1)) if match else None
 
 
 def failed_steps(repo: str, run_id: int) -> list[str]:

@@ -161,7 +161,7 @@ def _scrubbed(value: Any) -> Any:
     if isinstance(value, list):
         return [_scrubbed(item) for item in value]
     if isinstance(value, dict):
-        return {key: _scrubbed(item) for key, item in value.items()}
+        return {_scrubbed(credentials.redact(key)): _scrubbed(item) for key, item in value.items()}
     return value
 
 
@@ -317,7 +317,9 @@ def _judge(
     )
     problem = protocol.contradiction(verdict, plan, workspace=workspace)
     if problem is not None:
-        return ReviewOutcome(None, absence.Absence(absence.INVALID, problem), traced)
+        shaped = f"shape={shape_fingerprint(verdict.to_json(), _credentials())}\n{traced}"
+        return ReviewOutcome(None, absence.Absence(absence.INVALID, problem), shaped)
+    verdict = protocol.keep_disputes_open(verdict, plan)
     gap = evidence.check(
         verdict,
         ships=protocol.judge_planned(verdict, plan, workspace=workspace).decision == SHIP,

@@ -554,16 +554,14 @@
         "allowlist",
         "exclusions",
         "excluded_roots",
-        "gated_pages",
-        "linkcheck_ignore_patterns"
+        "gated_pages"
       ],
       "properties": {
         "gated_roots": {"$ref": "#/$defs/strings"},
         "allowlist": {"$ref": "#/$defs/sortedStrings"},
         "exclusions": {"$ref": "#/$defs/sortedStrings"},
         "excluded_roots": {"$ref": "#/$defs/sortedStrings"},
-        "gated_pages": {"$ref": "#/$defs/sortedStrings"},
-        "linkcheck_ignore_patterns": {"$ref": "#/$defs/strings"}
+        "gated_pages": {"$ref": "#/$defs/sortedStrings"}
       }
     },
     "ownership": {
@@ -580,7 +578,6 @@
             "readme_landing",
             "sql_contract",
             "publication_controls",
-            "linkcheck_policy",
             "operations_inventory"
           ],
           "additionalProperties": {

@@ -10,7 +10,7 @@ is made on data, not frustration.
 This document defines:
 
 - **What we measure** — 6 concrete metrics with sources and thresholds.
-- **How we measure** — the `scripts/phase2_metrics.py` script.
+- **How we measure** — manually; the former `phase2_metrics.py` script was retired and has no replacement.
 - **When we look** — quarterly review cadence, owner, procedure.
 - **What it triggers** — explicit promotion criteria for the dependent
   Phase 3 design TODOs.
@@ -101,12 +101,9 @@ wastes the largest engineering investment in the project.
    promotion review <date>` opened by
    `.github/workflows/phase3-promotion-review.yml`. If the cron was
    missed, regenerate it manually with `gh workflow run
-   phase3-promotion-review.yml`, or run the script directly:
-
-   ```bash
-   uv run python scripts/phase2_metrics.py --output \
-     _project/handoffs/phase-3-review-$(date +%Y-%m-%d).md
-   ```
+   phase3-promotion-review.yml`. The `phase2_metrics.py` script that once
+   generated the metrics report was retired; gather each metric by hand
+   from its source.
 
 3. In the PR (or the handoff file), for each breached threshold write a
    one-paragraph interpretation: is this a sustained signal or an

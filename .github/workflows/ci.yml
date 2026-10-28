@@ -177,6 +177,9 @@ jobs:
       - name: Fetch base branch
         run: git fetch --no-tags origin "${{ github.base_ref || 'develop' }}:refs/remotes/origin/${{ github.base_ref || 'develop' }}"
 
+      - name: Check paths linked from the published site documentation
+        run: python scripts/check_site_linked_paths.py
+
       - name: Classify changed paths
         id: classify
         run: |
