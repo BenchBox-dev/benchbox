@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import dataclasses
 import json
 import os
@@ -12,12 +13,17 @@ import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Iterator, Optional
 
 try:
     import fcntl
 except ImportError:
     fcntl = None
+
+try:
+    import msvcrt
+except ImportError:
+    msvcrt = None
 
 CLI_DESCRIPTION = (
     "Minimal durable lifecycle metadata for BenchBox disposable worktrees.\n"
@@ -123,6 +129,8 @@ def _owner_alive(pid_text: Optional[str], start: Optional[str]) -> bool:
     pid = int(pid_text)
     if start:
         return process_start(pid) == start
+    if sys.platform == "win32":
+        return True
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
@@ -137,15 +145,31 @@ def _clear_owner(worktree_path: Path) -> None:
         _run_git(["config", "--worktree", "--unset", f"{CONFIG_PREFIX}.{key}"], worktree_path)
 
 
-def claim_worktree(worktree_path: Path, takeover: bool = False) -> str:
-    if current_session_id() is None:
-        return "no-session"
+@contextlib.contextmanager
+def _worktree_lock(worktree_path: Path) -> Iterator[None]:
     git_dir = _run_git(["rev-parse", "--absolute-git-dir"], worktree_path).stdout.strip()
     if not git_dir:
         raise MetadataError(f"Path is not a valid git worktree: {worktree_path}")
-    with open(Path(git_dir) / "benchbox-owner.lock", "a", encoding="utf-8") as lock:
+    if fcntl is None and msvcrt is None:
+        raise MetadataError("No inter-process file locking is available on this platform; cannot claim worktree.")
+    with open(Path(git_dir) / "benchbox-owner.lock", "a+b") as lock:
         if fcntl is not None:
             fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        else:
+            lock.seek(0)
+            msvcrt.locking(lock.fileno(), msvcrt.LK_LOCK, 1)
+        try:
+            yield
+        finally:
+            if msvcrt is not None and fcntl is None:
+                lock.seek(0)
+                msvcrt.locking(lock.fileno(), msvcrt.LK_UNLCK, 1)
+
+
+def claim_worktree(worktree_path: Path, takeover: bool = False) -> str:
+    if current_session_id() is None:
+        return "no-session"
+    with _worktree_lock(worktree_path):
         return _claim_locked(worktree_path, takeover)
 
 
@@ -192,6 +216,11 @@ def _claim_locked(worktree_path: Path, takeover: bool) -> str:
 
 
 def release_session_claim(worktree_path: Path, force: bool = False) -> str:
+    with _worktree_lock(worktree_path):
+        return _release_locked(worktree_path, force)
+
+
+def _release_locked(worktree_path: Path, force: bool) -> str:
     owner = _get_worktree_config("owner-session", worktree_path)
     if not owner:
         return "unowned"

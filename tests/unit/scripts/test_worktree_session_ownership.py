@@ -170,3 +170,26 @@ def test_concurrent_claimants_exactly_one_wins(worktree, live_process, monkeypat
             thread.join(timeout=60)
 
         assert sorted(outcomes) == ["claimed"] + ["refused"] * (racers - 1)
+
+
+def test_release_waits_for_an_in_flight_claim_and_rechecks_the_owner(worktree, live_process, monkeypatch):
+    _as_session(monkeypatch, "session-a", live_process.pid)
+    meta.claim_worktree(worktree)
+    outcome: list[object] = []
+
+    def release() -> None:
+        try:
+            outcome.append(meta.release_session_claim(worktree))
+        except meta.MetadataError as exc:
+            outcome.append(exc)
+
+    with meta._worktree_lock(worktree):
+        thread = threading.Thread(target=release)
+        thread.start()
+        thread.join(timeout=0.5)
+        assert thread.is_alive()
+        meta._set_worktree_config("owner-session", "session-b", worktree)
+
+    thread.join(timeout=30)
+    assert len(outcome) == 1 and isinstance(outcome[0], meta.MetadataError)
+    assert meta._get_worktree_config("owner-session", worktree) == "session-b"
