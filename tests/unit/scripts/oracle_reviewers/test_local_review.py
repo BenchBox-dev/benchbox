@@ -78,7 +78,8 @@ OVERRIDE_BODY = "Summary\n\nLocal oracle override: the finding is a known false 
 GATE_FILE = ".github/oracle-reviewers.yml"
 POLICY_RELATIVE = ".github/oracle-reviewers.yml"
 POLICY_TEXT = POLICY_PATH.read_text(encoding="utf-8")
-FAKE_OMP = "#!/bin/sh\necho omp/18.12.1\n"
+PINNED_VERSION = omp_pin.pin_from_text(POLICY_TEXT).version
+FAKE_OMP = f"#!/bin/sh\necho omp/{PINNED_VERSION}\n"
 FAKE_OMP_SHA = hashlib.sha256(FAKE_OMP.encode()).hexdigest()
 FAKE_OMP_URL = "https://downloads.example.invalid/omp"
 MANIFEST_TEXT = (REPO_ROOT / local.SOUNDNESS_MANIFEST).read_text(encoding="utf-8")
@@ -452,7 +453,7 @@ def test_the_review_runs_the_cached_pinned_binary_while_another_omp_is_first_on_
     decoy.chmod(0o755)
     monkeypatch.setenv("PATH", f"{other}{os.pathsep}{os.environ['PATH']}")
     assert env.run() == local.EXIT_PROCEED
-    expected = tmp_path / "omp-cache" / "18.12.1" / omp_pin.current_platform() / "omp"
+    expected = tmp_path / "omp-cache" / PINNED_VERSION / omp_pin.current_platform() / "omp"
     assert [review["binary"] for review in env.reviews] == [str(expected)]
     assert env.downloads == [FAKE_OMP_URL]
     assert os.environ.get(omp_pin.BINARY_ENV) is None
@@ -478,13 +479,13 @@ def test_a_platform_without_a_pin_refuses_by_name_and_never_falls_back_to_path_o
 def test_a_download_that_does_not_match_the_pinned_checksum_refuses_and_leaves_no_binary(
     env: Env, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    env.omp_content = "#!/bin/sh\necho omp/18.12.1\n# tampered\n"
+    env.omp_content = f"#!/bin/sh\necho omp/{PINNED_VERSION}\n# tampered\n"
     assert env.run() == local.EXIT_UNAVAILABLE
     assert "does not match the pinned sha256" in capsys.readouterr().err
     assert env.reviews == []
     assert list((tmp_path / "omp-cache").rglob("*")) == [
-        tmp_path / "omp-cache" / "18.12.1",
-        tmp_path / "omp-cache" / "18.12.1" / omp_pin.current_platform(),
+        tmp_path / "omp-cache" / PINNED_VERSION,
+        tmp_path / "omp-cache" / PINNED_VERSION / omp_pin.current_platform(),
     ]
 
 

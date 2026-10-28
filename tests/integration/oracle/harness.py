@@ -25,6 +25,7 @@ SLUG = "BenchBox-dev/BenchBox"
 CHECKER = "benchbox/core/equivalence/checker.py"
 RECORDED_STREAM = REPO_ROOT / "tests" / "fixtures" / "oracle_reviewers" / "omp_multi_turn_review.jsonl"
 POLICY = ".github/oracle-reviewers.yml"
+PINNED_OMP = omp_pin.pin_from_text((REPO_ROOT / POLICY).read_text(encoding="utf-8")).version
 TRUSTED_FILES = (
     POLICY,
     ".github/workflows/oracle-verdict.yml",
@@ -34,7 +35,6 @@ TRUSTED_FILES = (
 GATEWAY_TOKEN = "gwtok-" + "Q7mZ4kLp" * 5
 HELD_SECRET = "oauth-secret-" + "W3xT9vNb" * 4
 JEV_KEY = "jevk-" + "T5nB8wXc" * 4
-PINNED_OMP = "18.12.1"
 SHA256_LINE = re.compile(r"sha256: [0-9a-f]{64}")
 URL_LINE = re.compile(r"url: https://\S+")
 INSTALL_STEP = "Install omp"
