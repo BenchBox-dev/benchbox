@@ -1228,6 +1228,11 @@ def _retry_reason(
             if runs is None:
                 _summary(f"retry not dispatched for #{number}: the run history needed to bound it could not be listed")
                 return None
+            if state.updated_at < now - sweep.DISPATCH_WINDOW:
+                _summary(
+                    f"retry not dispatched for #{number}: its failures since the state may predate the degraded listing"
+                )
+                return None
             _, head_runs = resolved()
             return _bounded_retry(
                 repo, number, head, head_runs, state.updated_at, rules, now, status_context, bot_login, token

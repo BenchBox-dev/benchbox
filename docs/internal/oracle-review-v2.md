@@ -676,7 +676,8 @@ nothing.
   and says so in the summary. If that lookup also fails it dispatches nothing.
   A degraded sweep lists the last 24 hours of runs to bound each due retry by
   the same two-failure stop, surfaced-failure check and daily dispatch budget as
-  a full sweep, and holds the retry when even that listing fails. A degraded
+  a full sweep, and holds the retry when even that listing fails or the
+  due state is older than it. A degraded
   sweep exits 1 after dispatching what it safely can. Daily budget, backoff and
   attempt limits are unchanged.
 - `make oracle-backoff-reset PR=<number> HEAD=<sha> REASON='<why>'` lets the

@@ -2080,3 +2080,14 @@ def test_a_degraded_sweep_holds_a_due_retry_when_no_run_history_can_be_listed(
     fake.runs_error = github.GitHubError("gh api failed: Bad Gateway")
     assert _sweep(monkeypatch, tmp_path, fake) == 1
     assert fake.dispatched == []
+
+
+def test_a_degraded_sweep_holds_a_due_state_older_than_the_run_listing_it_can_fall_back_to(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    older = _verdict_run(7, conclusion="failure", event="workflow_dispatch", age=timedelta(hours=30))
+    newer = _verdict_run(7, conclusion="failure", event="workflow_dispatch", age=timedelta(hours=26))
+    fake = _degraded(FakeGitHub(_pull(), SOUNDNESS, _held_state(hours=40)))
+    fake.runs = [newer, older]
+    assert _sweep(monkeypatch, tmp_path, fake) == 1
+    assert fake.dispatched == []
