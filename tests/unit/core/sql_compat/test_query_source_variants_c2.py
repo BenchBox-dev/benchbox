@@ -104,10 +104,9 @@ def test_nyctaxi_clickhouse_has_trip_duration_variant():
 
 def test_tpcdi_variant_rules_registered():
     rules = [(key, entry) for key, entry in REGISTRY.all_rules() if key[0] is Phase.QUERY_SOURCE and key[2] == "tpcdi"]
-    assert len(rules) == 13, f"Expected 13 tpcdi rules, got {len(rules)}: {[e.rule_id for _, e in rules]}"
+    assert len(rules) == 12, f"Expected 12 tpcdi rules, got {len(rules)}: {[e.rule_id for _, e in rules]}"
     rule_ids = {entry.rule_id for _, entry in rules}
     for rule_id in (
-        "query_source.clickhouse.tpcdi.aq6_cross_join_variant",
         "query_source.clickhouse.tpcdi.aq7_variant",
         "query_source.clickhouse.tpcdi.aq8_variant",
         "query_source.clickhouse.tpcdi.aq10_variant",
@@ -127,7 +126,6 @@ def test_tpcdi_variant_rules_registered():
 @pytest.mark.parametrize(
     "platform,query_id,expected_snippet",
     [
-        ("clickhouse", "AQ6", "CROSS JOIN"),
         ("clickhouse", "AQ7", "dateDiff"),
         ("clickhouse", "AQ8", "dateDiff"),
         ("clickhouse", "AQ10", "dateDiff"),
@@ -190,11 +188,75 @@ def test_tpcdi_eq7_sql_has_no_format_placeholders():
     assert "IsCurrent IS TRUE" in DATAFUSION_EQ7_SQL
 
 
-def test_tpcdi_aq6_sql_has_format_placeholders():
-    from benchbox.sql_compat.rules.query_source.tpcdi_variants import CLICKHOUSE_AQ6_SQL
+def test_tpcdi_clickhouse_aq6_has_no_variant_rule():
+    ctx = CompatibilityContext(
+        platform="clickhouse",
+        platform_version=None,
+        benchmark="tpcdi",
+        query_id="AQ6",
+        phase=Phase.QUERY_SOURCE,
+        mode="sql",
+        dialect="clickhouse",
+    )
+    assert REGISTRY.resolve(ctx) is None
 
-    assert "{start_year}" in CLICKHOUSE_AQ6_SQL
-    assert "{end_year}" in CLICKHOUSE_AQ6_SQL
+
+def test_tpcdi_datafusion_eq7_executes_with_fractional_scores():
+    datafusion = pytest.importorskip("datafusion")
+    pa = pytest.importorskip("pyarrow")
+    from benchbox.sql_compat.rules.query_source.tpcdi_variants import DATAFUSION_EQ7_SQL
+
+    rows = 20
+    ids = list(range(1, rows + 1))
+    ctx = datafusion.SessionContext()
+
+    def register(name: str, columns: dict) -> None:
+        lowered = {key.lower(): values for key, values in columns.items()}
+        ctx.register_record_batches(name, [[pa.record_batch(lowered)]])
+
+    register(
+        "DimCustomer",
+        {
+            "CustomerID": ids,
+            "TaxID": [None] + ["t"] * (rows - 1),
+            "Status": ["Active"] * rows,
+            "Gender": ["M"] * rows,
+            "Tier": [2] * rows,
+            "CreditRating": [700] * rows,
+            "NetWorth": [500000] * rows,
+            "IsCurrent": [True] * rows,
+        },
+    )
+    register(
+        "DimAccount",
+        {
+            "AccountID": ids,
+            "SK_CustomerID": ids,
+            "Status": ["Active"] * rows,
+            "TaxStatus": [1] * rows,
+            "IsCurrent": [True] * rows,
+        },
+    )
+    register(
+        "FactTrade",
+        {
+            "TradeID": ids,
+            "SK_CustomerID": ids,
+            "SK_SecurityID": ids,
+            "Status": ["Completed"] * rows,
+            "Type": ["Buy"] * rows,
+            "TradePrice": [10.0] * rows,
+            "Quantity": [5] * rows,
+            "Fee": [1.0] * rows,
+            "Commission": [1.0] * rows,
+        },
+    )
+
+    result = ctx.sql(DATAFUSION_EQ7_SQL).to_pydict()
+    ratings = dict(zip(result["table_name"], result["quality_rating"], strict=True))
+    scores = dict(zip(result["table_name"], result["completeness_score"], strict=True))
+    assert ratings == {"DimCustomer": "EXCELLENT", "DimAccount": "EXCELLENT", "FactTrade": "EXCELLENT"}
+    assert scores["DimCustomer"] == pytest.approx(95.0)
 
 
 @pytest.mark.parametrize(

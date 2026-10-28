@@ -14,15 +14,12 @@ def _bench():
     return TPCDIBenchmark()
 
 
-def test_aq6_clickhouse_avoids_nested_window_aggregate():
+def test_aq6_clickhouse_uses_translated_base_query_semantics():
     q = _bench().get_queries(dialect="clickhouse")["AQ6"]
-    assert "SUM(SUM(" not in q, f"Must not use nested window aggregate in ClickHouse AQ6:\n{q}"
-
-
-def test_aq6_clickhouse_uses_cross_join_total():
-    q = _bench().get_queries(dialect="clickhouse")["AQ6"]
-    assert "grand_totals" in q, f"AQ6 must use CROSS JOIN grand_totals subquery:\n{q}"
-    assert "sector_market_share_pct" in q, f"AQ6 must compute sector_market_share_pct:\n{q}"
+    assert "stddevSamp(mh.ClosePrice)" in q, f"AQ6 must keep sample standard deviation:\n{q}"
+    assert "stddevPop" not in q, f"AQ6 must not use population standard deviation:\n{q}"
+    assert "grand_totals" not in q, f"AQ6 must not use a hand-written grand-total join:\n{q}"
+    assert "OVER ()" in q, f"AQ6 market share must keep the window-aggregate denominator:\n{q}"
 
 
 def test_aq6_base_dialect_retains_window_aggregate():
