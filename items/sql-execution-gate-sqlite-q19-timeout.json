@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Cause of the q19 timeout established (slow runner versus plan regression), with evidence",
+    "The gate no longer fails on it: either the timeout is classified with a reason like q21, the query is made to finish reliably, or the budget is justified",
+    "A rerun of the job passes on an unchanged tree"
+  ],
+  "context": "Logs: run 40590583534 job 122494308893 (step 'Run the executed SQL comparison gate', make sql-execution-gate, Makefile:479) and run 40497564501 job 122167420044 (PR 3547). The same job also lists many datafusion and postgres tpchavoc errors classified as expected. It is path-gated (skipped on most PRs) but ran for a docs-only change, which may be worth a separate look. Filed from session review 2026-10-27.\n\nMoved from the todo-db tracker on 2026-10-28; the item was filed there by mistake.",
+  "description": "The sql-execution-evidence job failed on PR 3577 (head b7ec8a9f4) and PR 3547 with 11 UNEXPLAINED DIFFERENCES, all 'sqlite ... [error] timeout: exceeded 15s': tpch q19 and tpchavoc q19_v1 to q19_v10. SQLite q21 and its variants time out as well but are classified as expected differences; q19 is not. The failing code is outside both PRs (a docs-only PR hit it too), so a runner-speed difference seems the likely cause, but the cause was not confirmed. The job ran 3m26s and fails the required check.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3577",
+    "https://github.com/BenchBox-dev/benchbox/pull/3547"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:mcp:joe@joe-mac-mini.local:5427f38a811abefa5a292dd6",
+      "at": "2026-10-28T13:47:09Z",
+      "client": "mcp",
+      "op": "create",
+      "op_id": "664546870b3f400d8197d303593d22ee",
+      "session_id": "8dd2786d2f544912829f10b74985f086"
+    }
+  ]
+}
