@@ -23481,15 +23481,10 @@
       "title": "Resolve the new high-severity vite advisory failing site CI audit"
     },
     "site-inputs-queue-max-live-verification-20261028": {
-      "claim": {
-        "expires_at": "2026-10-29T18:23:14Z",
-        "generation": "9f90eec2184744d5abe1184fbae95cdc",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Observe site-inputs.yml queue: max with two runs completing out of order"
     },
     "site-landing-cards-from-bundle-20261017": {
