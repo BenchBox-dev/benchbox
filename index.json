@@ -16776,10 +16776,15 @@
       "title": "Harden the pinned omp install: verify the hash at use, validate build names, and fail the install step instead of burning retries"
     },
     "oracle-omp-pin-single-source-20261026": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-29T11:55:55Z",
+        "generation": "276c7f7458154d34a7590011bfd3320d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Pin the reviewer omp build per platform in one file and install it verified for CI, local and cloud reviews"
     },
     "oracle-omp-release-bump-flow-20261027": {
