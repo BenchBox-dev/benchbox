@@ -27609,6 +27609,13 @@
       "status": "done",
       "title": "Write per-engine rewrites for tpchavoc 1_v7 array aggregation"
     },
+    "tpchavoc-1v8-qualify-order-by-loss": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Keep the outer ORDER BY of TPC-Havoc 1_v8 when QUALIFY is eliminated for Presto-family engines"
+    },
     "tpchavoc-2v2-unskip-probe": {
       "claim": null,
       "needs": [],
