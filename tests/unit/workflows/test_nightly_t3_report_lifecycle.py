@@ -37,6 +37,13 @@ DOMAIN_JOBS = [
     "tpcds-obt",
     "sql-execution-gate-obt",
     "durations-refresh",
+    "security",
+    "cross-engine",
+    "integration-smoke",
+    "integration",
+    "parity",
+    "sqlglot-generator",
+    "mirror-questdb",
 ]
 SUPPORT_JOBS = ["mirror-images", "mirror-cedardb", "throughput-signal", "drift-gate"]
 

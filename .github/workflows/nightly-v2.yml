@@ -38,6 +38,14 @@ jobs:
     with:
       images: '["cedardb"]'
 
+  mirror-questdb:
+    uses: ./.github/workflows/mirror-ci-images.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      images: '["questdb"]'
+
   docker:
     name: "t3:docker | ${{ matrix.service }}"
     needs: mirror-images
@@ -1115,6 +1123,302 @@ jobs:
           done
           exit "$failed"
 
+  security:
+    name: "t3:security | pip-audit"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PIP_AUDIT_IGNORE_VULNS: ""
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Run security audit
+        run: |
+          set -o pipefail
+          make security-audit 2>&1 | tee pip-audit.txt
+
+      - name: Upload security artifacts
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: t3-security
+          path: pip-audit.txt
+          if-no-files-found: ignore
+          retention-days: 14
+
+  cross-engine:
+    name: "t3:cross-engine | tpch sf0.01 duckdb x ${{ matrix.comparison }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - comparison: datafusion
+            test-class: TestDuckDBDataFusion
+          - comparison: polars-df
+            test-class: TestDuckDBPolarsDF
+          - comparison: clickhouse-local
+            test-class: TestDuckDBClickHouseLocal
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - name: Compare DuckDB with ${{ matrix.comparison }}
+        id: compare
+        continue-on-error: true
+        env:
+          TEST_CLASS: ${{ matrix.test-class }}
+          REPORT: validation-report-${{ matrix.comparison }}.json
+        run: |
+          uv run -- python -m pytest tests/integration/validation/test_cross_platform.py \
+            -v -m "live_integration" -k "${TEST_CLASS}" --tb=short \
+            --json-report --json-report-file="${REPORT}"
+
+      - name: Write structured diff artifact
+        if: steps.compare.outcome == 'failure'
+        run: |
+          uv run -- python scripts/cross_engine_diff_artifact.py \
+            --report validation-report-${{ matrix.comparison }}.json \
+            --output diff-artifact-${{ matrix.comparison }}.json \
+            --comparison ${{ matrix.comparison }}
+
+      - name: Upload comparison artifacts
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: t3-cross-engine-tpch-${{ matrix.comparison }}
+          path: |
+            validation-report-${{ matrix.comparison }}.json
+            diff-artifact-${{ matrix.comparison }}.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Fail when the engines diverge
+        if: steps.compare.outcome == 'failure'
+        run: |
+          echo "::error::DuckDB and ${{ matrix.comparison }} diverged on TPC-H SF=0.01; see diff-artifact-${{ matrix.comparison }}.json and docs/internal/result-validation-triage.md"
+          exit 1
+
+  integration-smoke:
+    name: "t3:integration-smoke | ${{ matrix.os }} py${{ matrix.python-version }}"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      BENCHBOX_TEST_TIER: t2
+      PYTEST_ADDOPTS: --junitxml=junit-integration-smoke-${{ matrix.os }}.xml
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.12'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Run integration smoke tests
+        if: runner.os != 'Windows'
+        run: make test-integration-smoke
+
+      - name: Run integration smoke tests (Windows)
+        if: runner.os == 'Windows'
+        run: uv run -- python -m pytest tests/integration -m "platform_smoke or (integration and fast)" --tb=short
+
+      - name: Upload integration smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: t3-integration-smoke-${{ matrix.os }}
+          path: junit-integration-smoke-${{ matrix.os }}.xml
+          if-no-files-found: ignore
+          retention-days: 14
+
+  integration:
+    name: "t3:integration | ${{ matrix.suite }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BENCHBOX_TEST_TIER: t2
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: core
+            junit: junit-integration-core.xml
+          - suite: table-formats
+            junit: junit-integration-table-formats.xml
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Run core integration tests
+        if: matrix.suite == 'core'
+        run: uv run -- python -m pytest tests/integration -m "integration and not (slow or stress or resource_heavy or live_integration)" --tb=short --maxfail=5 --timeout=300 --junitxml=${{ matrix.junit }}
+
+      - name: Run table-format integration tests
+        if: matrix.suite == 'table-formats'
+        run: uv run -- python -m pytest tests/integration/core/data_organization/test_presorted_generation.py -m "requires_table_formats" --tb=short --junitxml=${{ matrix.junit }}
+
+      - name: Upload integration artifacts
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: t3-integration-${{ matrix.suite }}
+          path: ${{ matrix.junit }}
+          if-no-files-found: ignore
+          retention-days: 14
+
+  parity:
+    name: "t3:parity | fixtures match Python source"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Verify parity fixtures match Python source
+        run: |
+          set -o pipefail
+          make parity-check 2>&1 | tee parity-check.txt
+
+      - name: Upload parity artifacts
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: t3-parity
+          path: parity-check.txt
+          if-no-files-found: ignore
+          retention-days: 14
+
+  sqlglot-generator:
+    name: "t3:sqlglot-generator | generated translation pilot"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Validate generated-case disposition policy
+        run: >-
+          uv run -- python scripts/check_sqlglot_generator_known_failures.py
+          --policy _project/sqlglot-upstream/generator-policy.json
+
+      - name: Run deterministic generated translation cases
+        id: generator
+        shell: bash
+        env:
+          FAILURE_ARTIFACT: ${{ runner.temp }}/sqlglot-generator-failure.json
+          SUMMARY_ARTIFACT: ${{ runner.temp }}/sqlglot-generator-summary.json
+        run: |
+          set +e
+          uv run -- python _project/sqlglot-upstream/repros/generator.py \
+            --seed "${GITHUB_RUN_ID}" \
+            --source-dialect postgres \
+            --target-dialect duckdb \
+            --cases 1024 \
+            --deadline-seconds 300 \
+            --failure-artifact "${FAILURE_ARTIFACT}" \
+            --summary-artifact "${SUMMARY_ARTIFACT}"
+          status=$?
+          set -e
+
+          if [ "${status}" -eq 1 ]; then
+            uv run -- python _project/sqlglot-upstream/repros/generator.py \
+              --seed "${GITHUB_RUN_ID}" \
+              --source-dialect postgres \
+              --target-dialect duckdb \
+              --failure-artifact "${FAILURE_ARTIFACT}" \
+              --summary-artifact "${SUMMARY_ARTIFACT}" \
+              --validate-advisory-evidence
+            echo "::warning::SQLGlot generated translation case discovered; replay artifact uploaded and the domain stays red."
+            exit "${status}"
+          fi
+          if [ "${status}" -ne 0 ]; then
+            echo "::error::SQLGlot generator infrastructure or contract failure (exit ${status})."
+            exit "${status}"
+          fi
+
+      - name: Upload generated translation evidence
+        if: ${{ !cancelled() && steps.generator.outcome != 'skipped' }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: t3-sqlglot-generator
+          path: |
+            ${{ runner.temp }}/sqlglot-generator-summary.json
+            ${{ runner.temp }}/sqlglot-generator-failure.json
+          if-no-files-found: warn
+          retention-days: 14
+
   report:
     name: Report T3 results
     needs:
@@ -1137,6 +1441,13 @@ jobs:
       - windows
       - tpcds-obt
       - sql-execution-gate-obt
+      - security
+      - cross-engine
+      - integration-smoke
+      - integration
+      - parity
+      - sqlglot-generator
+      - mirror-questdb
       - durations-refresh
     if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest
@@ -1159,7 +1470,7 @@ jobs:
           result_of() {
             printf '%s' "$NEEDS_JSON" | jq -r --arg j "$1" '.[$j].result // "skipped"'
           }
-          for job in docker cloud perf matrix extension install throughput throughput-cedardb drift quarantine liveness ruleset-drift windows tpcds-obt sql-execution-gate-obt durations-refresh; do
+          for job in docker cloud perf matrix extension install throughput throughput-cedardb drift quarantine liveness ruleset-drift windows tpcds-obt sql-execution-gate-obt durations-refresh security cross-engine integration-smoke integration parity sqlglot-generator mirror-questdb; do
             case "$job" in
               durations-refresh) domain=durations ;;
               *) domain="$job" ;;

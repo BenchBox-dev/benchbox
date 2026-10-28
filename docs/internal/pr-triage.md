@@ -65,7 +65,7 @@ a PR's mergeability — both only alert.
   conflicts while waiting on the review that `oracle-gate` requires.
 - **Green-unmerged nightly sweep**
   (`_project/scripts/green_unmerged_sweep.py`,
-  `.github/workflows/nightly.yml`) — alerts only on **true stranding**:
+  `.github/workflows/green-unmerged-sweep.yml`) — alerts only on **true stranding**:
   non-draft, non-soundness, non-hold-label PRs whose required lane is green,
   auto-merge is still off more than 2 hours after the head commit, **and**
   the PR timeline shows prior arm intent that was lost. "Required lane

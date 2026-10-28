@@ -39,6 +39,12 @@ DOMAIN_JOBS = {
     "tpcds-obt": "t3:tpcds-obt",
     "sql-execution-gate-obt": "t3:sql-execution-gate-obt",
     "durations-refresh": "t3:durations",
+    "security": "t3:security",
+    "cross-engine": "t3:cross-engine",
+    "integration-smoke": "t3:integration-smoke",
+    "integration": "t3:integration",
+    "parity": "t3:parity",
+    "sqlglot-generator": "t3:sqlglot-generator",
 }
 
 _PINNED_ACTION = re.compile(r"^[\w.-]+/[\w./-]+@[0-9a-f]{40}$")
@@ -616,7 +622,7 @@ def test_write_permissions_are_scoped_to_reporting_and_image_publication() -> No
     issue_writers = {name for name, job in jobs.items() if (job.get("permissions") or {}).get("issues") == "write"}
     package_writers = {name for name, job in jobs.items() if (job.get("permissions") or {}).get("packages") == "write"}
     assert issue_writers == {"report"}
-    assert package_writers == {"mirror-images", "mirror-cedardb"}
+    assert package_writers == {"mirror-images", "mirror-cedardb", "mirror-questdb"}
     assert jobs["report"]["permissions"] == {"contents": "read", "issues": "write"}
     assert jobs["mirror-images"]["permissions"] == {"contents": "read", "packages": "write"}
     assert jobs["mirror-cedardb"]["permissions"] == {"contents": "read", "packages": "write"}
