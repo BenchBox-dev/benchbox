@@ -15129,17 +15129,12 @@
       "title": "Apply behavioral contract v7 and wire --contract v7"
     },
     "merge-authority-docs-reconcile-20261026": {
-      "claim": {
-        "expires_at": "2026-10-29T12:49:02Z",
-        "generation": "96e94c294d814c789f42fccde742affa",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
-      },
+      "claim": null,
       "needs": [
         "oracle-gate-reject-edited-reviews-20261026"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Reconcile the stand-in and ruleset-relaxation rules across agent docs and correct the relaxation records"
     },
     "merge-queue-01-decision-and-governance-spec": {
