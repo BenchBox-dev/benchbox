@@ -10,7 +10,7 @@ from types import ModuleType
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS_DIR = REPO_ROOT / "scripts"
 
-CLI_DESCRIPTION = "Export the data behind the generated query, compat and tuning pages as deterministic JSON."
+CLI_DESCRIPTION = "Export the data behind the site-rendered query, compat and tuning pages as deterministic JSON."
 SCHEMA_VERSION = 1
 
 _SCRIPT_CACHE: dict[str, ModuleType] = {}
@@ -50,7 +50,7 @@ def _dataframe_renderings(benchmark_id: str, query_id: str) -> list[dict]:
 
 
 def _query_record(
-    gqd: ModuleType, benchmark_id: str, display: str, query_id: str, groups: dict[str, list[str]]
+    sources: ModuleType, benchmark_id: str, display: str, query_id: str, groups: dict[str, list[str]]
 ) -> dict:
     from benchbox.core.query_catalog import (
         REFERENCE_DIALECT,
@@ -63,7 +63,7 @@ def _query_record(
     )
 
     native_key = native_query_key(benchmark_id, query_id)
-    label = gqd._query_label(query_id)
+    label = sources._query_label(query_id)
     name = query_display_name(benchmark_id, query_id)
     if label == query_id and name:
         heading = f"{display} — {name}"
@@ -72,18 +72,18 @@ def _query_record(
 
     render = get_sql_render(benchmark_id, query_id, bulk=True)
     native = get_sql_render(benchmark_id, query_id, dialect=None, bulk=True)
-    sql = _sql_rendering(render, prettify=gqd._prettify_sql) if render is not None else None
+    sql = _sql_rendering(render, prettify=sources._prettify_sql) if render is not None else None
     sql_native = None
     if native is not None and (render is None or native.dialect != render.dialect):
-        sql_native = _sql_rendering(native, prettify=gqd._prettify_sql)
+        sql_native = _sql_rendering(native, prettify=sources._prettify_sql)
 
     displayed_df = get_dataframe_render(benchmark_id, query_id)
-    answer_set = gqd._answer_set_note(benchmark_id, query_id)
-    subscale = gqd._subscale_note(benchmark_id, query_id)
+    answer_set = sources._answer_set_note(benchmark_id, query_id)
+    subscale = sources._subscale_note(benchmark_id, query_id)
 
     return {
         "id": query_id,
-        "slug": gqd._query_slug(query_id),
+        "slug": sources._query_slug(query_id),
         "label": label,
         "display_name": name,
         "heading": heading,
@@ -92,7 +92,7 @@ def _query_record(
         "native_key": native_key,
         "native_key_repr": repr(native_key),
         "source_path": query_source_path(benchmark_id, query_id),
-        "seed_driven": benchmark_id in gqd._SEED_DRIVEN and query_id.isdigit(),
+        "seed_driven": benchmark_id in sources._SEED_DRIVEN and query_id.isdigit(),
         "answer_set_note": answer_set[0] if answer_set else None,
         "subscale_note": subscale[0] if subscale else None,
         "sql": sql,
@@ -107,29 +107,29 @@ def _query_record(
     }
 
 
-def _benchmark_record(gqd: ModuleType, benchmark_id: str, display: str, query_ids: list[str]) -> dict:
+def _benchmark_record(sources: ModuleType, benchmark_id: str, display: str, query_ids: list[str]) -> dict:
     from benchbox.core.benchmark_registry import get_benchmark_default_scale
     from benchbox.core.query_catalog import supports_dialect_translation
 
-    grouping = gqd._grouping(benchmark_id, query_ids)
+    grouping = sources._grouping(benchmark_id, query_ids)
     groups = grouping or {}
-    import_line, class_name = gqd._recipe_class(benchmark_id)
+    import_line, class_name = sources._recipe_class(benchmark_id)
     return {
         "id": benchmark_id,
         "display_name": display,
-        "overview_slug": gqd._overview_slug(benchmark_id),
+        "overview_slug": sources._overview_slug(benchmark_id),
         "query_count": len(query_ids),
-        "tpc_derived": benchmark_id in gqd._TPC_DERIVED,
-        "seed_driven": benchmark_id in gqd._SEED_DRIVEN,
+        "tpc_derived": benchmark_id in sources._TPC_DERIVED,
+        "seed_driven": benchmark_id in sources._SEED_DRIVEN,
         "supports_dialect_translation": supports_dialect_translation(benchmark_id),
         "default_scale": get_benchmark_default_scale(benchmark_id),
         "recipe": {"import_line": import_line, "class_name": class_name},
         "groups": (
-            [{"name": name, "slug": gqd._slugify(name), "query_ids": members} for name, members in groups.items()]
+            [{"name": name, "slug": sources._slugify(name), "query_ids": members} for name, members in groups.items()]
             if grouping is not None
             else None
         ),
-        "queries": [_query_record(gqd, benchmark_id, display, query_id, groups) for query_id in query_ids],
+        "queries": [_query_record(sources, benchmark_id, display, query_id, groups) for query_id in query_ids],
     }
 
 
@@ -137,7 +137,7 @@ def export_queries(benchmarks: set[str] | None = None) -> dict:
     from benchbox.core.benchmark_registry import get_all_benchmarks, get_benchmark_surface
     from benchbox.core.query_catalog import REFERENCE_DIALECT, list_query_ids
 
-    gqd = _script("generate_query_docs")
+    sources = _script("docs_data_sources")
     records = []
     for benchmark_id, meta in sorted(get_all_benchmarks().items()):
         if get_benchmark_surface(benchmark_id) != "public":
@@ -147,14 +147,14 @@ def export_queries(benchmarks: set[str] | None = None) -> dict:
         query_ids = list_query_ids(benchmark_id)
         if not query_ids:
             continue
-        records.append(_benchmark_record(gqd, benchmark_id, meta.get("display_name", benchmark_id), query_ids))
+        records.append(_benchmark_record(sources, benchmark_id, meta.get("display_name", benchmark_id), query_ids))
     return {
         "reference_dialect": REFERENCE_DIALECT,
-        "tpc_notice": gqd._TPC_NOTICE,
-        "group_threshold": gqd._GROUP_THRESHOLD,
-        "bucket_size": gqd._BUCKET_SIZE,
-        "tpcds_parity_notes_url": gqd._TPCDS_PARITY_NOTES_URL,
-        "tpcds_subscale_notes_url": gqd._TPCDS_SUBSCALE_NOTES_URL,
+        "tpc_notice": sources._TPC_NOTICE,
+        "group_threshold": sources._GROUP_THRESHOLD,
+        "bucket_size": sources._BUCKET_SIZE,
+        "tpcds_parity_notes_url": sources._TPCDS_PARITY_NOTES_URL,
+        "tpcds_subscale_notes_url": sources._TPCDS_SUBSCALE_NOTES_URL,
         "benchmarks": records,
     }
 
@@ -164,8 +164,8 @@ def export_compat() -> dict:
     from benchbox.sql_compat.decision import SupportLevel
     from benchbox.sql_compat.registry import REGISTRY
 
-    gcd = _script("generate_compat_docs")
-    gcd._load_all_rules()
+    sources = _script("docs_data_sources")
+    sources._load_all_rules()
     phase_order = [phase.value for phase in Phase]
     entries = []
     for (phase, platform, benchmark, query_id), entry in REGISTRY.all_rules():
@@ -176,7 +176,7 @@ def export_compat() -> dict:
                 "phase": phase.value,
                 "benchmark": benchmark,
                 "query_id": query_id,
-                "scope": gcd._scope_label(benchmark, query_id),
+                "scope": sources._scope_label(benchmark, query_id),
                 "action": decision.action.value,
                 "support_level": decision.support_level.value,
                 "failure_mode": decision.failure_mode.value,
@@ -209,7 +209,7 @@ def export_tuning() -> dict:
     )
     from benchbox.core.tuning.packaged_templates import list_packaged_templates
 
-    gts = _script("generate_tuning_support_matrix")
+    sources = _script("docs_data_sources")
     platforms = []
     for platform in sorted(PLATFORM_TUNING_CAPABILITIES.keys() | SESSION_CONFIG_CAPABILITIES.keys()):
         paths = list_packaged_templates(platform).get(platform, [])
@@ -225,7 +225,7 @@ def export_tuning() -> dict:
                 applied.append(
                     {"type": tuning_type.value, "requires_sorted_ingestion": bool(capability.requires_sorted_ingestion)}
                 )
-        introspector = gts._adapter_has_introspector(platform)
+        introspector = sources._adapter_has_introspector(platform)
         platforms.append(
             {
                 "platform": platform,

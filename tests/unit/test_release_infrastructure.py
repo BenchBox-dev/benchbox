@@ -1266,15 +1266,10 @@ class TestBetaReleaseSurface:
 
     STATUS_DOCS = [
         "README.md",
-        "docs/usage/faq.md",
     ]
 
     INSTALL_DOCS = [
         "README.md",
-        "docs/usage/installation.md",
-        "docs/platforms/platform-selection-guide.md",
-        "docs/platforms/duckdb.md",
-        "docs/usage/faq.md",
     ]
 
     DUCKDB_DEFAULT_PHRASES = [
@@ -1366,17 +1361,6 @@ class TestBetaReleaseSurface:
         experimental_exports = [name for name in public_exports if "experimental" in name.lower()]
         assert not experimental_exports, "benchbox.__all__ must not expose the experimental namespace: " + str(
             experimental_exports
-        )
-
-    def test_experimental_namespace_support_boundary_is_documented(self):
-        exp_init = self.REPO_ROOT / "benchbox" / "experimental" / "__init__.py"
-        assert exp_init.exists(), "benchbox/experimental/__init__.py must exist"
-        contracts = (self.REPO_ROOT / "docs" / "reference" / "public-contracts.md").read_text(encoding="utf-8")
-        row = next((line for line in contracts.splitlines() if "`benchbox.experimental` namespace" in line), "")
-        assert "| `experimental` |" in row
-        assert "outside the supported beta product surface" in row, (
-            "docs/reference/public-contracts.md must document benchbox.experimental as outside "
-            "the supported beta product surface. Do not silently expand the supported product surface."
         )
 
     @pytest.mark.slow

@@ -129,7 +129,7 @@ def test_trunk_run_id_satisfies_the_schema4_certifier_rule() -> None:
     spec.loader.exec_module(site_inputs)
     certified = parent_mod.decide_certified_by(CORE, "", [TRUNK_RUN])
     assert site_inputs.certifier_errors(4, certified) == []
-    assert site_inputs.certifier_errors(5, certified)
+    assert site_inputs.certifier_errors(5, certified) == []
 
 
 def test_dispatch_build_without_trunk_run_is_refused() -> None:

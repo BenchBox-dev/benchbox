@@ -32,7 +32,7 @@ the wrapper, or the TPC-H and TPC-DS query code.
 
 ## Public Contract Check
 
-- [ ] I updated `docs/reference/public-contracts.md`, or this PR does not change
+- [ ] I updated the [public contracts page](https://benchbox.dev/docs/reference/public-contracts.html), or this PR does not change
       public, beta-public, deprecated, generated, experimental, or repo-only
       contract surfaces.
 - [ ] I checked result schema fields, MCP tool parameters, platform support

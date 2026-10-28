@@ -33,7 +33,6 @@ DOMAIN_JOBS = {
     "throughput-cedardb": "t3:throughput-cedardb",
     "drift": "t3:drift",
     "quarantine": "t3:quarantine",
-    "linkcheck": "t3:linkcheck",
     "liveness": "t3:liveness",
     "ruleset-drift": "t3:ruleset-drift",
     "windows": "t3:windows",
@@ -860,7 +859,7 @@ def test_throughput_signal_publishes_the_commit_status_the_retiring_workflow_pub
     assert 'context="nightly/throughput-uat"' in text
     assert "success:success) state=success" in text
     assert "cancelled:*|*:cancelled) state=error" in text
-    assert "throughput-signal" not in _load()["jobs"]["report"]["needs"]
+    assert "throughput-signal" in _load()["jobs"]["report"]["needs"]
 
 
 @pytest.mark.parametrize(

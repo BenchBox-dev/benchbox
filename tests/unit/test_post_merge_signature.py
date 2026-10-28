@@ -452,7 +452,7 @@ def test_attribution_advisory_when_blamed_sha_misses_failing_test() -> None:
     failure_ids = [
         "tests/unit/test_query_generation_preflight.py::test_tpcds_throughput_preflight_detects_generation_failures"
     ]
-    changed = ["benchbox/platforms/ducklake.py", "docs/operations/uat-framework.md"]
+    changed = ["benchbox/platforms/ducklake.py", "docs/operations/local-platform-provisioning.tsv"]
     assert attribution_action(failure_ids, changed) == "advisory"
 
 
@@ -713,7 +713,7 @@ def test_attribution_stays_advisory_when_import_analysis_also_clears_sha(tmp_pat
     )
 
     failure_ids = ["tests/test_query_generation_preflight.py::test_it"]
-    changed = ["docs/operations/uat-framework.md"]
+    changed = ["docs/operations/local-platform-provisioning.tsv"]
 
     assert attribution_action(failure_ids, changed, repo_root=tmp_path) == "advisory"
 

@@ -9,12 +9,8 @@ from collections import Counter
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from check_doc_external_links import published_pages
-
 ROOT = Path(__file__).resolve().parents[1]
 OWNERS = {"site-owned", "core-only", "core-generated"}
-QUERY_ROOT = "docs/benchmarks/queries/"
-QUERY_GENERATOR = "scripts/generate_query_docs.py"
 LANDING_SOURCE = "docs/README.md"
 TRANSITION_KEYS = {"readme_landing", "sql_contract", "publication_controls", "linkcheck_policy", "operations_inventory"}
 GENERATOR_ROOTS = ("scripts", "_project")
@@ -31,7 +27,7 @@ def destination(value: Any) -> None:
         raise ValueError(f"unsafe transition destination: {value!r}")
 
 
-def validate_transitions(root: Path, transitions: Any, tracked: set[str]) -> None:
+def validate_transitions(root: Path, transitions: Any, files: dict[str, str], tracked: set[str]) -> None:
     if not isinstance(transitions, dict):
         raise ValueError("transitions must be an object keyed by transition name")
     missing = sorted(TRANSITION_KEYS - transitions.keys())
@@ -54,18 +50,21 @@ def validate_transitions(root: Path, transitions: Any, tracked: set[str]) -> Non
         destination(record["site_destination"])
         if not isinstance(record["action"], str) or not record["action"]:
             raise ValueError(f"transition {name!r} must name its action")
-        if record["action"] == "relocate-core-contract":
-            dest = record["core_destination"]
-            if dest and dest in tracked:
-                require_source(root, dest, tracked)
-                if any(s in tracked for s in sources):
-                    raise ValueError(f"transition {name!r} destination {dest!r} exists but source is still tracked")
+        for source in sources:
+            retained = files.get(source) == "core-only"
+            if retained != (source in tracked):
+                problem = "is not tracked" if retained else "is still tracked"
+                raise ValueError(
+                    f"transition {name!r} source {source!r} {problem} "
+                    f"but ownership says it is {files.get(source, 'relocated')!r}"
+                )
+        core_destination = record["core_destination"]
+        if core_destination is not None:
+            if core_destination.endswith("/"):
+                if not any(path.startswith(core_destination) for path in tracked):
+                    raise ValueError(f"transition {name!r} destination {core_destination!r} holds no tracked files")
             else:
-                for source in sources:
-                    require_source(root, source, tracked)
-        else:
-            for source in sources:
-                require_source(root, source, tracked)
+                require_source(root, core_destination, tracked)
     landing = transitions["readme_landing"]
     if landing["sources"] != [LANDING_SOURCE]:
         raise ValueError(f"readme_landing sources must be exactly {[LANDING_SOURCE]!r}")
@@ -124,7 +123,7 @@ def require_source(root: Path, path: str, tracked: set[str]) -> None:
         raise ValueError(f"missing, untracked or unsafe source: {path!r}")
 
 
-def generated_outputs(root: Path, generated: Any, files: dict[str, str], tracked: set[str]) -> dict[str, str]:
+def generated_outputs(generated: Any, tracked: set[str]) -> dict[str, str]:
     if not isinstance(generated, list):
         raise ValueError("generated must be an output list")
     outputs: dict[str, str] = {}
@@ -135,27 +134,21 @@ def generated_outputs(root: Path, generated: Any, files: dict[str, str], tracked
         generator = repo_path(record["generator"], GENERATOR_ROOTS)
         if path in outputs:
             raise ValueError(f"duplicate generated output: {path!r}")
-        require_source(root, generator, tracked)
+        if generator in tracked:
+            raise ValueError(f"generator {generator!r} for {path!r} must be absent from the core tree")
         outputs[path] = generator
-    for path in files:
-        for output in outputs:
-            if output.endswith("/") and path.startswith(output):
-                raise ValueError(f"generated output {output!r} contains tracked authored source {path!r}")
+    for output in outputs:
+        leaked = sorted(
+            path for path in tracked if path == output or (output.endswith("/") and path.startswith(output))
+        )
+        if leaked:
+            raise ValueError(f"generated output {output!r} must be absent from the core tree: tracked {leaked[:3]!r}")
     for left in outputs:
         for right in outputs:
             if left != right and left.endswith("/") and right.startswith(left):
                 raise ValueError(f"generated outputs overlap: {left!r} contains {right!r}")
-    if outputs.get(QUERY_ROOT) != QUERY_GENERATOR:
-        raise ValueError(f"generated outputs must map {QUERY_ROOT!r} to {QUERY_GENERATOR!r}")
-    probe = subprocess.run(
-        ["git", "-C", str(root), "check-ignore", "--no-index", QUERY_ROOT + "ownership-probe.md"],
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        check=False,
-    )
-    if probe.returncode != 0:
-        raise ValueError(f"{QUERY_ROOT!r} must be git-ignored in the repository; add it to .gitignore")
+    if not any(output.endswith("/") for output in outputs):
+        raise ValueError("generated outputs must catalogue the relocated generated directory")
     return outputs
 
 
@@ -173,35 +166,21 @@ def validate(root: Path, manifest_path: Path) -> dict[str, int]:
         if not isinstance(owner, str) or owner not in OWNERS:
             raise ValueError(f"unknown owner for {path!r}: {owner!r}")
     tracked = set(git(root, "ls-files", "-z").rstrip("\0").split("\0")) - {""}
-    tracked_docs = {path for path in tracked if path.startswith("docs/")}
-    if set(files) != tracked_docs:
-        raise ValueError(
-            f"tracked docs coverage mismatch: missing={sorted(tracked_docs - files.keys())!r}, "
-            f"stale={sorted(files.keys() - tracked_docs)!r}"
-        )
-    for path in files:
-        require_source(root, path, tracked)
-    outputs = generated_outputs(root, manifest["generated"], files, tracked)
-    validate_transitions(root, manifest["transitions"], tracked)
-    landing_sources = {LANDING_SOURCE}
-    published = {path.relative_to(root).as_posix() for path in published_pages(root / "docs")}
+    outputs = generated_outputs(manifest["generated"], tracked)
+    validate_transitions(root, manifest["transitions"], files, tracked)
     for path, owner in files.items():
-        if path in outputs:
-            expected = "core-generated"
-        elif path in landing_sources or path not in published:
-            expected = "core-only"
-        else:
-            expected = "site-owned"
-        if owner != expected:
-            raise ValueError(f"ownership mismatch for {path!r}: expected {expected!r}, got {owner!r}")
-    publication_projection = {path for path, owner in files.items() if owner != "core-only"} | landing_sources
-    expected_published = published & tracked_docs
-    if publication_projection != expected_published:
+        if path in outputs and owner != "core-generated":
+            raise ValueError(f"ownership mismatch for {path!r}: expected 'core-generated', got {owner!r}")
+        if owner != "core-only" and path in tracked:
+            raise ValueError(f"{owner} path {path!r} must be absent from the core tree")
+        if owner == "core-only":
+            require_source(root, path, tracked)
+    tracked_docs = {path for path in tracked if path.startswith("docs/")}
+    retained = {path for path, owner in files.items() if owner == "core-only"}
+    if retained != tracked_docs:
         raise ValueError(
-            "ownership publication projection differs from the current publication policy: "
-            f"only in ownership={sorted(publication_projection - expected_published)!r}, "
-            f"only in policy={sorted(expected_published - publication_projection)!r}; "
-            "fix the owner of those paths in quality/docs-ownership.json"
+            f"tracked docs coverage mismatch: missing={sorted(tracked_docs - retained)!r}, "
+            f"stale={sorted(retained - tracked_docs)!r}"
         )
     counts = Counter(files.values())
     return {owner: counts[owner] for owner in sorted(OWNERS)}

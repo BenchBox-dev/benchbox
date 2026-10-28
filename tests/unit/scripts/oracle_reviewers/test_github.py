@@ -780,7 +780,9 @@ def test_commit_statuses_lists_paginated_statuses_with_creator_metadata(
 def test_verdict_runs_retries_once_with_a_short_pause(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[tuple[str, ...]] = []
     pauses: list[float] = []
-    payload = [{"workflow_runs": [{"id": 3, "display_title": "oracle-verdict (workflow_dispatch pr=7)"}]}]
+    payload = [
+        {"total_count": 1, "workflow_runs": [{"id": 3, "display_title": "oracle-verdict (workflow_dispatch pr=7)"}]}
+    ]
 
     def fake_gh(*args: str, accept: str | None = None) -> str:
         calls.append(args)
@@ -799,7 +801,7 @@ def test_verdict_runs_retries_once_with_a_short_pause(monkeypatch: pytest.Monkey
 
 
 def test_verdict_runs_retries_a_json_decode_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    replies = iter(["<html>Bad Gateway</html>", json.dumps([{"workflow_runs": [{"id": 3}]}])])
+    replies = iter(["<html>Bad Gateway</html>", json.dumps([{"total_count": 1, "workflow_runs": [{"id": 3}]}])])
     pauses: list[float] = []
     monkeypatch.setattr(github, "_gh", lambda *args, accept=None: next(replies))
     monkeypatch.setattr(github, "sleep", pauses.append)
@@ -877,7 +879,126 @@ def test_post_status_posts_with_the_given_token(monkeypatch: pytest.MonkeyPatch)
     assert env["GH_TOKEN"] == "app-token" and environment.get("GH_TOKEN") != "app-token"
 
 
-def test_committed_at_reads_the_committer_date(monkeypatch: pytest.MonkeyPatch) -> None:
-    payload = {"commit": {"committer": {"date": "2026-10-25T08:30:00Z"}}}
-    monkeypatch.setattr(github, "get_json", lambda path: payload)
-    assert github.committed_at(REPO, SHA) == datetime(2026, 10, 25, 8, 30, tzinfo=UTC)
+def _page(runs: int, total: int | None) -> dict[str, Any]:
+    page: dict[str, Any] = {"workflow_runs": [{"id": index} for index in range(runs)]}
+    if total is not None:
+        page["total_count"] = total
+    return page
+
+
+@pytest.mark.parametrize(("runs", "total"), [(1000, 1972), (2, 3), (0, 1)])
+def test_a_capped_runs_listing_raises_without_retrying(monkeypatch: pytest.MonkeyPatch, runs: int, total: int) -> None:
+    calls: list[tuple[str, ...]] = []
+    monkeypatch.setattr(
+        github, "_gh", lambda *args, accept=None: (calls.append(args), json.dumps([_page(runs, total)]))[1]
+    )
+    monkeypatch.setattr(github, "sleep", lambda seconds: None)
+    with pytest.raises(github.GitHubError, match=f"{runs} of {total} runs"):
+        github.verdict_runs(REPO, "oracle-verdict.yml", datetime(2026, 10, 19, tzinfo=UTC))
+    assert len(calls) == 1
+
+
+def test_a_listing_without_a_total_count_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(github, "_gh", lambda *args, accept=None: json.dumps([_page(1, None)]))
+    monkeypatch.setattr(github, "sleep", lambda seconds: None)
+    with pytest.raises(github.GitHubError, match="total run count"):
+        github.verdict_runs(REPO, "oracle-verdict.yml", datetime(2026, 10, 19, tzinfo=UTC))
+
+
+def test_a_complete_listing_across_pages_is_returned(monkeypatch: pytest.MonkeyPatch) -> None:
+    pages = [
+        {"total_count": 3, "workflow_runs": [{"id": 1}, {"id": 2}]},
+        {"total_count": 3, "workflow_runs": [{"id": 3}]},
+    ]
+    monkeypatch.setattr(github, "_gh", lambda *args, accept=None: json.dumps(pages))
+    assert github.verdict_runs(REPO, "oracle-verdict.yml", datetime(2026, 10, 19, tzinfo=UTC)) == [
+        {"id": 1},
+        {"id": 2},
+        {"id": 3},
+    ]
+
+
+@pytest.mark.parametrize(
+    ("title", "expected"),
+    [
+        (f"oracle-verdict (workflow_dispatch pr=7 head={SHA})", ("7", SHA)),
+        (f"oracle-verdict (pull_request_target pr=9 head={SHA})", ("9", SHA)),
+        ("oracle-verdict (issue_comment pr=7)", ("7", None)),
+        ("oracle-verdict (schedule pr=sweep)", None),
+        ("oracle-verdict (workflow_dispatch pr=7 head=nothex)", None),
+    ],
+)
+def test_run_titles_carry_the_pull_request_and_the_head(title: str, expected: tuple[str, str | None] | None) -> None:
+    match = github.RUN_TITLE_PULL.search(title)
+    assert (match.groups() if match else None) == expected
+
+
+@pytest.mark.parametrize(
+    ("reason", "reason_fields"), [(None, []), ("stateless-retry", ["-f", "reason=stateless-retry"])]
+)
+def test_dispatch_passes_the_pull_request_and_its_head(
+    monkeypatch: pytest.MonkeyPatch, reason: str | None, reason_fields: list[str]
+) -> None:
+    calls: list[list[str]] = []
+    monkeypatch.setattr(
+        github.subprocess,
+        "run",
+        lambda argv, **kwargs: (calls.append(argv), subprocess.CompletedProcess(argv, 0, "", ""))[1],
+    )
+    github.dispatch(REPO, "oracle-verdict.yml", 7, SHA, reason)
+    assert calls == [
+        [
+            "gh",
+            "workflow",
+            "run",
+            "oracle-verdict.yml",
+            "--ref",
+            "develop",
+            "-f",
+            "pr=7",
+            "-f",
+            f"head={SHA}",
+            *reason_fields,
+            "-R",
+            REPO,
+        ]
+    ]
+
+
+def _jobs_and_annotations(
+    monkeypatch: pytest.MonkeyPatch, jobs: list[dict[str, Any]], annotations: dict[int, list[dict[str, Any]]]
+) -> list[str]:
+    seen: list[str] = []
+
+    def fake_json(path: str) -> Any:
+        seen.append(path)
+        if "/annotations" in path:
+            return annotations[int(path.split("/check-runs/")[1].split("/")[0])]
+        return {"jobs": jobs}
+
+    monkeypatch.setattr(github, "get_json", fake_json)
+    return seen
+
+
+TIMEOUT_NOTE = {"annotation_level": "failure", "message": "The job has exceeded the maximum execution time of 5m0s"}
+CONCURRENCY_NOTE = {
+    "annotation_level": "failure",
+    "message": "Canceling since a higher priority waiting request for oracle-verdict-pr-3291 exists",
+}
+CANCELED_NOTE = {"annotation_level": "failure", "message": "The operation was canceled."}
+RUNNER_NOTE = {"annotation_level": "notice", "message": "The ubuntu-latest label will migrate to Ubuntu 26"}
+
+
+def test_a_cancelled_job_with_the_timeout_annotation_is_a_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    jobs = [{"id": 1, "conclusion": "success"}, {"id": 2, "conclusion": "cancelled"}]
+    seen = _jobs_and_annotations(monkeypatch, jobs, {2: [RUNNER_NOTE, TIMEOUT_NOTE]})
+    assert github.run_timed_out(REPO, 40110837085) is True
+    assert not any("/check-runs/1/" in path for path in seen)
+
+
+@pytest.mark.parametrize("notes", [[CONCURRENCY_NOTE], [CONCURRENCY_NOTE, CANCELED_NOTE], [RUNNER_NOTE], []])
+def test_a_concurrency_or_manual_cancel_is_not_a_timeout(
+    monkeypatch: pytest.MonkeyPatch, notes: list[dict[str, Any]]
+) -> None:
+    _jobs_and_annotations(monkeypatch, [{"id": 2, "conclusion": "cancelled"}], {2: notes})
+    assert github.run_timed_out(REPO, 40216941595) is False

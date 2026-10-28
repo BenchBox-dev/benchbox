@@ -501,7 +501,7 @@ class TestPlatformRegistry:
         assert diagnostics["clickhouse"]["support_status"] == "deprecated"
         mock_import.assert_not_called()
 
-    def test_public_docs_platform_and_benchmark_count_markers_match_registries(self):
+    def test_readme_platform_and_benchmark_count_markers_match_registries(self):
         from benchbox.core.benchmark_registry import get_all_benchmarks, list_public_benchmark_ids
 
         summary = PlatformRegistry.get_platform_count_summary()
@@ -521,11 +521,9 @@ class TestPlatformRegistry:
         )
 
         readme = Path("README.md").read_text(encoding="utf-8")
-        comparison_matrix = Path("docs/platforms/comparison-matrix.md").read_text(encoding="utf-8")
 
         assert platform_marker in readme
         assert benchmark_marker in readme
-        assert platform_marker in comparison_matrix
 
     def test_requires_cloud_storage_for_cloud_platforms(self):
 

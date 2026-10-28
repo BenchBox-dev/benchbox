@@ -140,8 +140,9 @@ a manual dispatch, a `pull_request_target` event other than a plain edit, and a
 8. Disk scan (C4); finalize, which re-validates this run's artifacts and replays
    selection; redaction check (C5).
 9. **Post.** Mint the App token, run the guard, post the status and findings,
-   upload the retry state (only if the status posted) and attempt artifacts, and
-   dispatch `oracle-gate`. `findings_delivery` in `.github/oracle-reviewers.yml`
+   upload the retry state (only if the status posted), the attempt artifacts and
+   the captured event streams, and dispatch `oracle-gate`. `findings_delivery` in
+   `.github/oracle-reviewers.yml`
    chooses the findings form:
    - `comment`: one PR comment, so findings never block a merge.
    - `review` (the policy value, required by the oracle signal): one PR review
@@ -179,7 +180,7 @@ one-time inspection:
 | C6 fresh `HOME` | Each attempt gets a new `mkdtemp` directory; the previous one is deleted first and the checkout reset. |
 | C7 token scope | Job permissions are exactly `actions: write`, `contents: read`, `pull-requests: read`, `id-token: write`. `github.token` appears only in the `env:` of steps before or after the loop; both checkouts use `persist-credentials: false`. |
 | C8 timeout budget | `timeout-minutes` is `max_attempts` times the longest reviewer `timeout_minutes` plus setup, under 360; the harness timeout fires first and becomes an absence. A workflow test recomputes it from the policy. |
-| C9 cancellation | `cancel-in-progress` is true only for `pull_request_target`; comment, dispatch and sweep runs queue behind a run in flight. Posting steps keep the default success condition, so a cancelled run posts nothing. |
+| C9 cancellation | `cancel-in-progress` is true only for `pull_request_target`; comment, dispatch and sweep runs wait behind a run in flight, one waiting run per concurrency group, and a newer waiting run replaces the older one, which GitHub cancels. Posting steps keep the default success condition, so a cancelled run posts nothing. |
 | C10 App mint last | `ORACLE_APP_PRIVATE_KEY` is referenced by the review job's posting mint, after the loop, second disk scan and redaction check, and by the sweep job's failure-status mint; the sweep job runs no reviewer, so its mint cannot leak to one. |
 
 The OIDC request token shares the gateway token's terms in the loop environment:
@@ -570,7 +571,9 @@ run stays pending. A hollow answer never passes.
   measurable. It never carries the raw event stream, and OMP stdout is no longer
   excerpted.
 - Credentials: `commands.omp_env()` forwards only the base environment and the
-  gateway client token (`GATEWAY_ENV`, `OMP_GATEWAY_TOKEN`). `credentials.py`
+  gateway client token (`GATEWAY_ENV`, `OMP_GATEWAY_TOKEN`), plus the loopback
+  gateway proxy variables only while a cloud local review has set one in-process.
+  `credentials.py`
   `NAMES` lists that token, the broker and provider variables the loop no longer
   receives, the runner-held values (gateway URL, Tailscale client ID and
   audience, OIDC request token) and legacy extras, so a local run still holding
@@ -610,31 +613,47 @@ cancels a run in flight, which then posts nothing.
   findings keyed by finding id (see Rounds), and the reviewer checks any claimed
   grammar or documented behaviour.
 - `gh workflow run oracle-verdict.yml --ref develop -f pr=<number>` does the
-  same; other refs are refused.
+  same; other refs are refused. The optional `-f head=<sha>` names the head the
+  dispatch targets: the run title records it, and a run whose pull request has
+  since moved to another head reviews nothing. The sweep always sets it.
 - The sweep retries PRs whose last result on the current head is pending and
   due. It runs on every push to `develop` and hourly; because GitHub starts the
   schedule irregularly, the first push after a head becomes due is the usual
   trigger. The target is a dispatch within 25 minutes of that push, or at the
   next scheduled sweep without one. Push and schedule sweeps share one
-  concurrency group that never cancels a running sweep. It lists seven days of
-  `oracle-verdict` runs, all pages, and skips a PR with a run queued, in
-  progress, waiting, pending or requested, or started in the last two minutes,
-  so it never cancels a retry in flight. It also re-dispatches a head whose
-  latest run failed, timed out or was cancelled without leaving retry state,
-  unless the head has a decisive App verdict status; the dispatch carries a
-  marker the plan verifies against the head's failed runs, so it reviews instead
-  of skipping on backoff. This happens once: when the two latest runs on the
-  head failed without a result (ignoring runs that never reviewed it, such as a
-  skipped plain-comment run), the sweep stops dispatching and posts a pending
-  `oracle-verdict` status naming the failed step, with an App token minted in
-  the reviewer-free sweep job. An existing pending status is left alone; without
-  the App the sweep reports the gap instead of failing. A failure in one PR's
-  lookup, dispatch or surfacing is reported, the others continue, then the job
-  fails. If the week-long runs listing fails twice, the sweep degrades: it
-  dispatches only due retries, using a bounded lookup of every non-completed run
-  status for the in-flight check, and says so in the summary. If that lookup also
-  fails it dispatches nothing. A degraded sweep exits 1 after dispatching what it
-  safely can. Daily budget, backoff and attempt limits are unchanged.
+  concurrency group that never cancels a running sweep. It lists 48 hours of
+  `oracle-verdict` runs, all pages, and fails the listing, so the sweep
+  degrades, when GitHub's result cap leaves fewer runs than its reported total.
+  It skips a PR with a run queued, in progress, waiting, pending or requested,
+  or started in the last two minutes, so it never cancels a retry in flight.
+  Each run is tied to a head by the `head=<sha>` its title records, never by
+  commit dates, which an author controls; a run with no recorded head (a
+  comment run, a dispatch without `head`) belongs to no head, so it counts as
+  neither a failure nor a success. A cancelled run is a failure only when its
+  job hit `timeout-minutes`, which GitHub reports as a cancelled job whose
+  check-run annotation reads "has exceeded the maximum execution time"; a
+  concurrency cancel ("Canceling since a higher priority waiting request ...
+  exists") or a manual cancel is neither a failure nor a success. A head
+  whose latest runs failed or timed out without leaving retry state is
+  re-dispatched, unless the head has a decisive App verdict status; the
+  dispatch carries a marker, and a marked retry the plan refuses, or whose
+  retry state it cannot read, fails its run so the next sweep counts it. A head
+  with a due pending state is bounded the
+  same way: failures after the state was recorded count. This happens once:
+  when two runs on the head failed without a result (ignoring runs that never
+  reviewed it, such as a skipped plain-comment run), the sweep stops
+  dispatching and posts a pending `oracle-verdict` status naming the failed
+  step, with an App token minted in the reviewer-free sweep job. An existing
+  pending status is left alone, and a head whose newest App status is that
+  surfaced failure is not dispatched again once its runs age out of the
+  48-hour listing; without the App the sweep reports the gap
+  instead of failing. A failure in one PR's lookup, dispatch or surfacing is
+  reported, the others continue, then the job fails. If the runs listing fails
+  twice or is capped, the sweep degrades: it dispatches only due retries, using
+  a bounded lookup of every non-completed run status for the in-flight check,
+  and says so in the summary. If that lookup also fails it dispatches nothing.
+  A degraded sweep exits 1 after dispatching what it safely can. Daily budget,
+  backoff and attempt limits are unchanged.
 - `make oracle-backoff-reset PR=<number> HEAD=<sha> REASON='<why>'` lets the
   owner clear one PR head's backoff and retry window once. It needs a prior
   `Owner instruction` comment from an attester naming the head, as for a
@@ -647,11 +666,15 @@ cancels a run in flight, which then posts nothing.
 A same-head rerun needs a previous run where every attempted reviewer was
 absent. A run pending because its artifacts failed validation, or a selected
 reviewer never reported, is not rerun on that head; push a new one. Comment,
-dispatch and scheduled reruns share a per-PR daily budget
-(`retry.daily_budget`), with backoff starting at one hour and doubling. Retry
-state is the `oracle-verdict-state-<number>` artifact of this workflow's latest
-run whose commit is on `develop`; other workflows' and branches' artifacts are
-ignored.
+dispatch and scheduled reruns share a daily budget (`retry.daily_budget`), with
+backoff starting at one hour and doubling. A new head inherits the budget spent
+on a decisive earlier head, so a push does not restore it; only an earlier head
+that ended pending leaves it unspent. The plan counts the retries recorded in the
+state and the sweep counts the dispatches recorded in the run titles, and both
+apply the owner reset the same way: it ignores the backoff and the budget once.
+Retry state is the `oracle-verdict-state-<number>` artifact of this workflow's
+latest run whose commit is on `develop`; other workflows' and branches'
+artifacts are ignored.
 
 A PR whose brief exceeds the size cap even without the diff (its file list alone
 is too long) cannot be reviewed: every reviewer is skipped and the result is
@@ -691,6 +714,10 @@ to GitHub.
   (`ORACLE_CLOUD_GATEWAY_TOKEN` set or `BENCHBOX_EPHEMERAL_CLONE=1`) use the
   `oracle-cloud` client from `ORACLE_GATEWAY_URL` and
   `ORACLE_CLOUD_GATEWAY_TOKEN`, refusing if either is missing.
+  The tailnet is reachable only through the local proxy that `make cloud-gateway`
+  records as `gateway_proxy=` in `<git dir>/benchbox-cloud-gateway.status`: the
+  health check uses it, and the reviewer gets `HTTPS_PROXY`, `HTTP_PROXY` and a
+  loopback-only `NO_PROXY` for the cloud client alone, never for local or CI.
   `write_reviewer_home` accepts `http://` on a loopback host only for local
   review; the CI loop still requires `https://`. Token, key and URL values are
   never printed: every line passes the redaction that covers the stored result.
@@ -702,16 +729,30 @@ to GitHub.
   `cli.py install-omp`, run under isolated `uv` with `pyyaml==6.0.3`; YAML is
   imported only to parse the policy) downloads the platform build into
   `~/.cache/benchbox/omp/<version>/<platform>/omp` (`BENCHBOX_OMP_CACHE`
-  overrides the root), checks the SHA-256 before the file is marked executable,
+  overrides the root; `BENCHBOX_OMP_DOWNLOAD_MIRROR` swaps the pinned URL's origin for a loopback one so tests can serve a build locally, and is refused if it names any other host), checks the SHA-256 before the file is marked executable,
   then checks the binary reports the pinned version. The CI `Install omp` step,
   `scripts/cloud_gateway.sh` and the local review all use it, and the reviewer
   runs the installed binary by its path (`ORACLE_OMP_BINARY`), never the `omp` on
-  `PATH`. A platform with no pin refuses, naming the platform. Like the policy,
+  `PATH`. A platform with no pin refuses, naming the platform. Build keys must be
+  platform names (`[a-z0-9]+-[a-z0-9_]+`); any other key is rejected, because the
+  key becomes a cache path segment. The plan records the pinned SHA-256 for the
+  running platform, and the runner re-hashes the binary named by
+  `ORACLE_OMP_BINARY` against it before every attempt: a swapped or modified
+  binary, or a plan with no hash, is an error absence and the reviewer never
+  starts. The `Install omp` step is not `continue-on-error`. When the install or
+  the version check fails, the step reports `state=failed`, the attempt loop does
+  not run, and `finalize --omp-install failed` posts a `pending` status reading
+  "the pinned omp build could not be installed; no reviewer ran" with the
+  `omp-install` pending cause. The sweep never re-dispatches that state; a
+  manual `/oracle-review` retries it within the usual backoff and budget. Like the policy,
   the pin is read from `origin/develop`, not from the branch or working tree. The
   build host publishes no checksum file, so each SHA-256 was computed from a TLS
   download of the published artifact, the method that established the original
   linux-x64 pin. To bump the build, change the version and every platform's URL
-  and SHA-256 together.
+  and SHA-256 together. The gateway host runs the same `darwin-arm64` build from
+  the same cache (`oracle-gateway-host.md`), so a bump reaches the serving half
+  when the owner re-runs `broker` and `gateway`; `check` fails while either
+  agent runs anything else.
 - **Blocking.** A Critical or High finding, or DO NOT SHIP, makes `pr-open`
   refuse before pushing (exit 1). A `Local oracle override: <reason>` line with
   a non-empty reason in the PR body file (`PR_BODY_FILE`) lets it proceed and
@@ -739,6 +780,10 @@ to GitHub.
   checks scoped to its own process group, atomic cache writes), and CI already
   reviews different PRs concurrently on the same gateway, so a machine-wide lock
   only made one slow review block every other PR without saving quota.
+- **Captures.** Every reviewer attempt that ran also keeps its captured event
+  stream, as described under P4, in a `captures/<time>-<head>` directory of
+  the same cache directory, with the local client token and gateway URL
+  redacted.
 
 ## Calibration
 
@@ -749,8 +794,20 @@ cannot is set `enabled: false` with a `disabled_reason`.
 Capture each reviewer's quota, authentication and outage output from real runs.
 The attempt artifact's `diagnostic` holds one redacted output line of at most
 300 characters or, for an invalid verdict, the last 2,000 characters of the
-final message, both stripped of credentials and long tokens; raw output is never
-uploaded. For OMP only stderr is excerpted, never stdout. A `trace:` line of at
+final message, both stripped of credentials and long tokens. For OMP only
+stderr is excerpted, never stdout. Every attempt whose reviewer ran also writes
+`captures/capture-<slot>.json` beside its result: the OMP JSON event stream
+(one entry per stdout line, without the streaming `*_update` delta events, whose
+fragments could split a secret past redaction; the completed messages carry the
+same content), the terminal error event, a stderr excerpt, the exit code and the
+attempt's absence. Tool output and thinking are withheld (each replaced by its
+length), since the reviewer reads author-controlled content and runs beside the
+gateway token; every known credential value is redacted and every run of 32 or
+more letters, digits, `_` or `-` in an event replaced, so encoded forms of a
+secret are removed too. The redaction check covers it like the attempt
+artifacts, and the `oracle-verdict-capture` artifact keeps it for 30 days so
+real outputs can be curated into the scenario harness fixtures under
+`tests/integration/oracle/`. A `trace:` line of at
 most 700 characters follows every outcome that reached verdict parsing (valid,
 invalid, incomplete or failed evidence); its paths are redacted by known value
 and secret pattern, not the generic long-token filter. Add the messages to the

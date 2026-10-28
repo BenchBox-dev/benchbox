@@ -214,8 +214,12 @@ and a test-package `__init__.py` selects its package and importers, when that
 directory holds at most 200 test modules (a broader one runs the full medium
 shards through the heavy tier); a platform module selects its
 `tests/integration/platforms` smoke test; and `SOURCE_GUARD_TESTS` names the
-drift guards that check a source prefix, such as the module-size guard for any
-`benchbox/` change. Everything else in the medium tier runs after merge in
+tests that guard a source or test-helper prefix, such as the module-size guard
+for any `benchbox/` change and the oracle scenario harness
+(`tests/integration/oracle/`), which runs the oracle code in subprocesses that
+coverage cannot attribute, for any change to the oracle reviewers, the gate,
+`soundness_merge_digest.py`, `scripts/pr_arm.py` or the harness itself.
+Everything else in the medium tier runs after merge in
 `trunk.yml` and on release PRs. The selection cannot see dynamic imports,
 string-built patch targets, tests reaching the changed module through
 attribute access or inheritance more than one hop from a patched module, or

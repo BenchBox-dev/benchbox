@@ -212,6 +212,36 @@ def test_source_guard_tests_exist() -> None:
     assert missing == []
 
 
+@pytest.mark.parametrize(
+    "path",
+    [
+        "_project/scripts/oracle_reviewers/cli.py",
+        "_project/scripts/oracle_reviewers/runner.py",
+        "_project/scripts/oracle_review_check.py",
+        "_project/scripts/oracle_gate.py",
+        "_project/scripts/soundness_merge_digest.py",
+        "scripts/pr_arm.py",
+        "tests/integration/oracle/harness.py",
+        "tests/integration/oracle/fake_github.py",
+        ".github/workflows/oracle-verdict.yml",
+        ".github/workflows/oracle-gate.yml",
+        ".github/oracle-reviewers.yml",
+        ".github/oracle-omp-config.yml",
+    ],
+)
+def test_an_oracle_change_selects_every_scenario_harness_test(path: str) -> None:
+    selected = pt.map_tests(SCRIPT.parents[2], [path])
+
+    assert set(pt.ORACLE_SCENARIO_TESTS) <= set(selected)
+
+
+def test_the_scenario_harness_list_names_every_harness_test_file() -> None:
+    root = SCRIPT.parents[2]
+    found = sorted(path.relative_to(root).as_posix() for path in (root / "tests/integration/oracle").glob("test_*.py"))
+
+    assert list(pt.ORACLE_SCENARIO_TESTS) == found
+
+
 def test_platform_smoke_mapping_needs_the_whole_platform_name(repo: Path) -> None:
     for path in (
         "tests/integration/platforms/test_cloud_spark_smoke.py",

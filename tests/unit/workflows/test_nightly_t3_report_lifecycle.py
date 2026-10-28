@@ -31,14 +31,14 @@ DOMAIN_JOBS = [
     "throughput-cedardb",
     "drift",
     "quarantine",
-    "linkcheck",
     "liveness",
     "ruleset-drift",
     "windows",
     "tpcds-obt",
+    "sql-execution-gate-obt",
     "durations-refresh",
 ]
-SUPPORT_JOBS = ["mirror-images", "mirror-cedardb"]
+SUPPORT_JOBS = ["mirror-images", "mirror-cedardb", "throughput-signal", "drift-gate"]
 
 GH_STUB = (
     f"#!{sys.executable}\n"
@@ -317,6 +317,60 @@ def test_mirror_leg_failure_after_database_leg_failure_comments_on_open_issue(tm
         open_issue=42,
         recorded_comment=_signature_comment("mirror-images"),
     )
+    assert [args[:3] for args in _mutations(calls)] == [["issue", "comment", "42"]]
+
+
+def test_report_needs_every_domain_and_helper_job() -> None:
+    jobs = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))["jobs"]
+    assert set(jobs["report"]["needs"]) == set(jobs) - {"report"}
+    assert set(DOMAIN_JOBS + SUPPORT_JOBS) == set(jobs) - {"report"}
+
+
+def test_report_domain_loop_covers_every_domain_job(tmp_path: Path) -> None:
+    for job in DOMAIN_JOBS:
+        case = tmp_path / job
+        _, calls = _run_report(case, {job: "failure"}, label=f"t3:{'durations' if job == 'durations-refresh' else job}")
+        creates = [args for args in calls if args[:2] == ["issue", "create"]]
+        assert len(creates) == 1, job
+
+
+def test_obt_execution_gate_failure_opens_its_domain_issue(tmp_path: Path) -> None:
+    _, calls = _run_report(tmp_path, {"sql-execution-gate-obt": "failure"}, label="t3:sql-execution-gate-obt")
+    creates = [args for args in calls if args[:2] == ["issue", "create"]]
+    assert len(creates) == 1
+    assert "t3:sql-execution-gate-obt" in creates[0]
+
+
+def test_drift_gate_failure_reports_a_failed_selection_not_a_skip(tmp_path: Path) -> None:
+    result, calls = _run_report(tmp_path, {"drift-gate": "failure", "drift": "skipped"}, label="t3:drift")
+    creates = [args for args in calls if args[:2] == ["issue", "create"]]
+    assert len(creates) == 1
+    body = _body(creates[0])
+    assert "Drift selection (drift-gate) failed" in body
+    assert "<!-- t3-signature: drift-gate -->" in body
+    assert "Drift not selected" not in result.stdout
+
+
+def test_deliberately_skipped_drift_changes_nothing_and_is_logged_as_not_selected(tmp_path: Path) -> None:
+    result, calls = _run_report(
+        tmp_path, {"drift-gate": "success", "drift": "skipped"}, label="t3:drift", open_issue=42
+    )
+    assert _mutations(calls) == []
+    assert "t3:drift: skipped" in result.stdout
+    assert "Drift not selected" in result.stdout
+
+
+def test_throughput_signal_failure_opens_a_throughput_issue_naming_it(tmp_path: Path) -> None:
+    _, calls = _run_report(tmp_path, {"throughput": "success", "throughput-signal": "failure"}, label="t3:throughput")
+    creates = [args for args in calls if args[:2] == ["issue", "create"]]
+    assert len(creates) == 1
+    body = _body(creates[0])
+    assert "nightly/throughput-uat commit status was not published" in body
+    assert "<!-- t3-signature: throughput-signal -->" in body
+
+
+def test_cancelled_helper_leg_never_closes_the_domain_issue(tmp_path: Path) -> None:
+    _, calls = _run_report(tmp_path, {"drift-gate": "cancelled", "drift": "skipped"}, label="t3:drift", open_issue=42)
     assert [args[:3] for args in _mutations(calls)] == [["issue", "comment", "42"]]
 
 

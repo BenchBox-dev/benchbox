@@ -1,7 +1,7 @@
 # UAT release campaign
 
 Maintainer procedure for the three-stage UAT campaign and its report. The UAT
-framework itself is described in `docs/operations/uat-framework.md`.
+framework itself is described in the [UAT framework](https://benchbox.dev/docs/operations/uat-framework.html).
 
 ## Three-stage UAT campaign
 
@@ -9,7 +9,7 @@ A UAT campaign produces a report (a COMPLETED report per config with a commit
 SHA). It runs in three stages, in this order, so that all
 native and dataframe platforms finish before any Docker stack starts — the
 ordering the 2026-05-28/29 evidence violated. First time on a machine: work
-through `docs/operations/uat-local-provisioning.md` "First-run checklist"
+through the [local provisioning](https://benchbox.dev/docs/operations/uat-local-provisioning.html) "First-run checklist"
 before starting stage 1.
 
 Stages (run each to completion before starting the next):

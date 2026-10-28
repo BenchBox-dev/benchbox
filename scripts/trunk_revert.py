@@ -27,6 +27,10 @@ RED_CONCLUSIONS = frozenset({"failure", "timed_out", "startup_failure"})
 RUN_FIELDS = "conclusion,status,createdAt,updatedAt,databaseId,url,headSha"
 RUN_WINDOW = 30
 RUN_WINDOWS = (RUN_WINDOW, 100, 300, 1000)
+_UNDETERMINED = (
+    f"the culprit of the red {TRUNK_WORKFLOW} streak on {BASE_BRANCH} is undetermined while the older run {{url}} "
+    "is still in progress; no commit is named or reverted until it finishes"
+)
 
 Runner = Callable[[list[str]], tuple[int, str]]
 
@@ -36,6 +40,10 @@ class TrunkError(Exception):
 
 
 class NoTrunkRunsError(TrunkError):
+    pass
+
+
+class UndeterminedCulpritError(TrunkError):
     pass
 
 
@@ -111,18 +119,25 @@ def trunk_gate(
     )
 
 
+def _scan_streak(runs: list[dict]) -> tuple[dict | None, bool]:
+    start = None
+    for item in runs:
+        if item.get("status") != "completed":
+            if start is not None:
+                raise UndeterminedCulpritError(_UNDETERMINED.format(url=item["url"]))
+            continue
+        if item.get("conclusion") in RED_CONCLUSIONS:
+            start = item
+        elif item.get("conclusion") == "success":
+            return start, True
+    return start, False
+
+
 def red_streak_start(run: Runner, repo: str) -> dict | None:
     for limit in RUN_WINDOWS:
         runs = trunk_runs(run, repo, limit)
-        start = None
-        for item in runs:
-            if item.get("status") != "completed":
-                continue
-            if item.get("conclusion") in RED_CONCLUSIONS:
-                start = item
-            elif item.get("conclusion") == "success":
-                return start
-        if len(runs) < limit:
+        start, found_green = _scan_streak(runs)
+        if found_green or len(runs) < limit:
             return start
     raise TrunkError(
         f"the red {TRUNK_WORKFLOW} streak on {BASE_BRANCH} reaches back past the newest {RUN_WINDOWS[-1]} runs, "
@@ -410,14 +425,16 @@ def revert(number: int, run: Runner = live_run, repo: str = REPOSITORY) -> int:
         title = view.get("title") or ""
         if not title.strip():
             raise TrunkError(f"PR #{number} has no title")
+        recent = trunk_runs(run, repo)
         failed = next(
             (
                 item
-                for item in trunk_runs(run, repo)
+                for item in recent
                 if item.get("status") == "completed" and item.get("conclusion") in RED_CONCLUSIONS
             ),
             None,
         )
+        _scan_streak(recent)
         if failed is None:
             raise TrunkError(f"no failed {TRUNK_WORKFLOW} run on {BASE_BRANCH} to name in the revert PR")
         branch = f"{REVERT_PREFIX}{number}"

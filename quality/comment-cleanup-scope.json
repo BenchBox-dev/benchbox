@@ -114,9 +114,6 @@
           "path": "docs/internal/comment-cleanup-scope.md"
         },
         {
-          "path": "docs/index.md"
-        },
-        {
           "path": "docs/internal/dev-loop-property-ledger.md"
         }
       ]
@@ -1824,12 +1821,6 @@
       "priority": 30,
       "selectors": [
         {
-          "path": "scripts/generate_compat_docs.py"
-        },
-        {
-          "path": "scripts/generate_query_docs.py"
-        },
-        {
           "path": "scripts/generate_landing_quickstarts.py"
         },
         {
@@ -3044,14 +3035,6 @@
     }
   ],
   "consumer_edges": [
-    {
-      "producer": "benchbox/core/tpcds_obt/dataframe_queries.py",
-      "consumer": "scripts/generate_query_docs.py",
-      "owner": "comment-cleanup-tpcds-obt",
-      "state": "blocked",
-      "blocking_disposition": "Preserve useful nonempty SQL and DataFrame references without asserting equivalence or changing algorithms.",
-      "proof": "_query_page calls query_description, get_sql_render, and get_dataframe_render."
-    },
     {
       "producer": "benchbox/core/amplab/dataframe_queries/queries.py",
       "consumer": "benchbox/core/query_catalog.py",

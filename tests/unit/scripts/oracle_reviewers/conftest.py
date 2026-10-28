@@ -40,3 +40,23 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if Path(__file__).parent in Path(str(item.path)).parents:
             item.add_marker(WINDOWS_SKIP)
+
+
+PR_GET_CHILD_SUBREAPER = 37
+
+
+def _is_subreaper() -> bool:
+    import ctypes
+
+    flag = ctypes.c_int(0)
+    libc = ctypes.CDLL(None, use_errno=True)
+    assert libc.prctl(PR_GET_CHILD_SUBREAPER, ctypes.byref(flag), 0, 0, 0) == 0
+    return bool(flag.value)
+
+
+@pytest.fixture(autouse=True)
+def _worker_is_never_a_subreaper():
+    linux = sys.platform.startswith("linux")
+    assert not linux or not _is_subreaper(), "the pytest worker is already a child subreaper"
+    yield
+    assert not linux or not _is_subreaper(), "a test made the pytest worker a child subreaper"

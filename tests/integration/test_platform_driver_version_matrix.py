@@ -199,5 +199,5 @@ def test_all_registered_adapters_declare_capability():
 
     assert not missing, (
         f"Adapters missing driver_isolation_capability declaration (own or inherited): "
-        f"{', '.join(missing)}. See docs/development/adding-new-platforms.md for guidance."
+        f"{', '.join(missing)}. See https://benchbox.dev/docs/development/adding-new-platforms.html for guidance."
     )

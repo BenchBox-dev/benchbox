@@ -1,11 +1,3 @@
-.PHONY: docs-linkcheck
-docs-linkcheck: query-docs
-	@uv run -- python scripts/check_doc_external_links.py
-
-.PHONY: docs-freeze-check
-docs-freeze-check:
-	@uv run -- python scripts/check_docs_freeze.py --base "$(or $(BASE_REF),origin/develop)"
-
 .PHONY: docs-validate
 docs-validate:
 	@uv run -- python scripts/check_docs_ownership.py
@@ -15,24 +7,14 @@ docs-validate:
 	@echo "Checking example file syntax..."
 	@uv run -- python scripts/check_example_syntax.py
 	@echo ""
-	@echo "Generating per-query template pages (link targets, not committed)..."
-	@uv run -- python scripts/generate_query_docs.py
-	@echo ""
-	@echo "Checking repo-local doc relative links..."
-	@uv run -- python scripts/check_doc_relative_links.py
-	@echo ""
 	@echo "Checking Markdown heading anchors..."
 	@uv run -- python scripts/check_doc_anchors.py
 
 prompt-quickstarts-check:
 	@uv run -- python scripts/generate_landing_quickstarts.py
 
-.PHONY: query-docs
-query-docs:
-	uv run -- python scripts/generate_query_docs.py
-
 .PHONY: docs-generate
-docs-generate: query-docs prompt-quickstarts-check compat-docs-check doc-contracts-check docs-reference-inventory-check
+docs-generate: prompt-quickstarts-check doc-contracts-check docs-reference-inventory-check
 
 API_CONTRACT_VENV ?= $(or $(RUNNER_TEMP),$(TMPDIR),/tmp)/benchbox-api-contract-venv
 
@@ -55,13 +37,8 @@ compile-tpcds-binaries:
 parity-fixtures:
 	uv run python tests/parity/generate_visualization_fixtures.py
 
-.PHONY: compat-docs
-compat-docs:
-	uv run -- python scripts/generate_compat_docs.py
-
-.PHONY: compat-docs-check
-compat-docs-check:
-	uv run -- python scripts/generate_compat_docs.py --check
+.PHONY: compat-inventory-check
+compat-inventory-check:
 	uv run -- python -m benchbox.sql_compat.inventory --output /tmp/benchbox-compat-inventory.jsonl --check-ddl-drift
 
 .PHONY: doc-contracts

@@ -1,7 +1,7 @@
 # Paths under docs/ that are never published on the public site.
 #
-# The site build in BenchBox-dev/benchbox-site reads this file. It lives under
-# docs/ so the site build receives it with the pages it governs.
+# Core exports this policy in doc-contracts.json; the site contract checks
+# enforce it against the pages owned by BenchBox-dev/benchbox-site.
 #
 # A line ending in "/" excludes a whole top-level directory. Any other line
 # excludes one file, given relative to docs/. Prefer moving a maintainer page
@@ -9,7 +9,8 @@
 #
 # Pages under docs/development/ and docs/operations/ are also unpublished unless
 # docs/publish-allowlist.txt lists them; every page there must appear on exactly
-# one of the two lists. tests/unit/docs/test_publish_policy.py checks both lists.
+# one of the two lists. tests/unit/docs/test_publish_policy.py guards the lists
+# against the ownership catalogue; site contract checks guard published pages.
 
 _project/
 agent/

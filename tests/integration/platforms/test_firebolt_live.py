@@ -14,7 +14,7 @@ pytestmark = [
     pytest.mark.live_firebolt,
     pytest.mark.skipif(
         not os.getenv("FIREBOLT_CLIENT_ID"),
-        reason="Requires FIREBOLT_CLIENT_ID environment variable. See docs/testing/live-integration-tests.md for setup.",
+        reason="Requires FIREBOLT_CLIENT_ID environment variable. See https://benchbox.dev/docs/testing/live-integration-tests.html for setup.",
     ),
 ]
 

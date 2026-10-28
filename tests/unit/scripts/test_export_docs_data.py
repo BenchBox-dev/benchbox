@@ -26,9 +26,7 @@ def _load(name: str):
 
 
 exporter = _load("export_docs_data")
-gqd = _load("generate_query_docs")
-gcd = _load("generate_compat_docs")
-gts = _load("generate_tuning_support_matrix")
+sources = _load("docs_data_sources")
 
 
 def _validator() -> Any:
@@ -44,11 +42,6 @@ def _errors(data: dict) -> list[str]:
 @pytest.fixture(scope="module")
 def data() -> dict:
     return exporter.build_docs_data(set(FAST_BENCHMARKS))
-
-
-@pytest.fixture(scope="module")
-def pages() -> dict[str, str]:
-    return gqd.render_all(set(FAST_BENCHMARKS))
 
 
 class TestSchema:
@@ -81,7 +74,7 @@ class TestDeterminism:
             exporter.main(["--check"])
 
 
-class TestQueriesMatchGeneratorInputs:
+class TestQueriesMatchCatalog:
     def test_benchmark_set_and_counts_match_catalog(self, data):
         from benchbox.core.query_catalog import list_query_ids
 
@@ -92,78 +85,27 @@ class TestQueriesMatchGeneratorInputs:
             assert [q["id"] for q in record["queries"]] == ids
             assert record["query_count"] == len(ids)
 
-    @pytest.mark.parametrize("export_first", [False, True])
-    def test_tsbs_sql_matches_generator_regardless_of_render_order(self, monkeypatch, export_first):
+    def test_tsbs_sql_is_stable_across_catalog_resets(self, monkeypatch):
         from benchbox.core import query_catalog
 
-        def reset_catalog():
+        def export():
             for name in ("_benchmark_instance", "_query_dict", "_raw_query_keys"):
                 monkeypatch.setattr(query_catalog, name, cache(getattr(query_catalog, name).__wrapped__))
-
-        def export():
-            reset_catalog()
             return exporter.export_queries({"tsbs_devops"})["benchmarks"][0]["queries"]
 
-        def generate():
-            reset_catalog()
-            return gqd.render_all({"tsbs_devops"})
+        first = export()
+        assert len(first) == 18
+        assert export() == first
 
-        if export_first:
-            records, pages = export(), generate()
-        else:
-            pages, records = generate(), export()
-
-        assert len(records) == 18
-        for record in records:
-            page = pages[f"tsbs_devops/{record['slug']}.md"]
-            sql = page.split("```sql\n", 1)[1].split("\n```", 1)[0]
-            assert record["sql"]["pretty_sql"] == sql, record["id"]
-            again = exporter._query_record(gqd, "tsbs_devops", "TSBS DevOps", record["id"], {})
-            assert again["sql"] == record["sql"]
-        assert export() == records
-
-    def test_every_query_page_prints_the_exported_facts(self, data, pages):
+    def test_exported_query_facts_are_internally_consistent(self, data):
         for benchmark in data["queries"]["benchmarks"]:
             for query in benchmark["queries"]:
-                page = pages[f"{benchmark['id']}/{query['slug']}.md"]
-                assert f"# {query['heading']}\n" in page
-                if query["description"]:
-                    assert query["description"] in page
-                if query["source_path"]:
-                    assert f"[`{query['source_path']}`]" in page
-                else:
-                    assert "## Source" not in page
-                assert (f"print(bench.get_query({query['id']}, " in page) is query["seed_driven"]
-                assert f"[{query['native_key_repr']}]" in page
-                if query["sql"] is None:
-                    assert "could not be rendered as standalone SQL" in page
-                else:
-                    assert query["sql"]["pretty_sql"] in page
-                    if query["reference_dialect_label"]:
-                        assert f"Rendered for **{query['reference_dialect_label']}**" in page
-                if query["dataframe"] is None:
-                    assert "No DataFrame implementation is registered" in page
-                else:
-                    assert query["dataframe"]["source"] in page
+                assert query["heading"].startswith(benchmark["display_name"])
+                assert (query["reference_dialect_label"] is None) or query["sql"] is not None
+                if query["dataframe"] is not None:
                     assert query["dataframe"]["family"] in {r["family"] for r in query["dataframe_renderings"]}
-
-    def test_benchmark_index_matches_grouping_and_notice(self, data, pages):
-        for benchmark in data["queries"]["benchmarks"]:
-            index = pages[f"{benchmark['id']}/index.md"]
-            assert f"# {benchmark['display_name']} Query Templates" in index
-            assert (data["queries"]["tpc_notice"] in index) is benchmark["tpc_derived"]
-            assert f"../../{benchmark['overview_slug']}.md" in index
-            assert f"{benchmark['query_count']} {benchmark['display_name']} queries" in index
             for group in benchmark["groups"] or []:
-                assert f"- [{group['name']}](group-{group['slug']}.md) ({len(group['query_ids'])})" in index
-                assert f"{benchmark['id']}/group-{group['slug']}.md" in pages
-            if benchmark["groups"] is None:
-                assert "| Query | Name |" in index
-
-    def test_top_index_lists_every_exported_benchmark(self, data, pages):
-        for benchmark in data["queries"]["benchmarks"]:
-            row = f"| [{benchmark['display_name']}]({benchmark['id']}/index.md) | {benchmark['query_count']} |"
-            assert row in pages["index.md"]
+                assert group["query_ids"]
 
     def test_dataframe_and_sql_renderings_come_from_core_apis(self, data):
         from benchbox.core.query_catalog import get_dataframe_render, get_sql_render
@@ -176,18 +118,18 @@ class TestQueriesMatchGeneratorInputs:
                 df = get_dataframe_render(benchmark["id"], query["id"])
                 assert (query["dataframe"] or {}).get("source") == (df.source if df else None)
 
-    def test_recipe_inputs_match_generator(self, data):
+    def test_recipe_inputs_match_sources(self, data):
         for benchmark in data["queries"]["benchmarks"]:
-            import_line, class_name = gqd._recipe_class(benchmark["id"])
+            import_line, class_name = sources._recipe_class(benchmark["id"])
             assert benchmark["recipe"] == {"import_line": import_line, "class_name": class_name}
-            assert benchmark["overview_slug"] == gqd._overview_slug(benchmark["id"])
-            assert benchmark["tpc_derived"] == (benchmark["id"] in gqd._TPC_DERIVED)
+            assert benchmark["overview_slug"] == sources._overview_slug(benchmark["id"])
+            assert benchmark["tpc_derived"] == (benchmark["id"] in sources._TPC_DERIVED)
 
-    def test_global_constants_match_generator(self, data):
+    def test_global_constants_match_sources(self, data):
         queries = data["queries"]
-        assert queries["tpc_notice"] == gqd._TPC_NOTICE
-        assert queries["group_threshold"] == gqd._GROUP_THRESHOLD
-        assert queries["bucket_size"] == gqd._BUCKET_SIZE
+        assert queries["tpc_notice"] == sources._TPC_NOTICE
+        assert queries["group_threshold"] == sources._GROUP_THRESHOLD
+        assert queries["bucket_size"] == sources._BUCKET_SIZE
 
 
 class TestTpcdsNotes:
@@ -199,21 +141,39 @@ class TestTpcdsNotes:
         flagged_subscale = next(
             template.removeprefix("query").removesuffix(".tpl") for template in sorted(SUBSCALE_TEMPLATE_OVERRIDES)
         )
-        answer = gqd._answer_set_note("tpcds", flagged_answer)
-        subscale = gqd._subscale_note("tpcds", flagged_subscale)
+        answer = sources._answer_set_note("tpcds", flagged_answer)
+        subscale = sources._subscale_note("tpcds", flagged_subscale)
         assert answer and subscale
 
-        record = exporter._query_record(gqd, "tpcds", "TPC-DS", flagged_answer, {})
+        record = exporter._query_record(sources, "tpcds", "TPC-DS", flagged_answer, {})
         assert record["answer_set_note"] == answer[0]
-        record = exporter._query_record(gqd, "tpcds", "TPC-DS", flagged_subscale, {})
+        record = exporter._query_record(sources, "tpcds", "TPC-DS", flagged_subscale, {})
         assert record["subscale_note"] == subscale[0]
 
 
-class TestCompatMatchesGeneratorInputs:
-    def test_rules_match_registry_rows_and_generated_tables(self, data):
-        gcd._load_all_rules()
-        rows = gcd._rule_rows()
-        rules = data["compat"]["rules"]
+class TestCompatMatchesRegistry:
+    def test_rules_match_registry_rows(self, data):
+        from benchbox.sql_compat.context import Phase
+        from benchbox.sql_compat.registry import REGISTRY
+
+        sources._load_all_rules()
+        phase_order = [phase.value for phase in Phase]
+        expected = sorted(
+            (
+                (
+                    platform,
+                    phase.value,
+                    sources._scope_label(benchmark, query_id),
+                    entry.decision.action.value,
+                    entry.decision.support_level.value,
+                    entry.decision.failure_mode.value,
+                    entry.decision.rule_id,
+                    entry.decision.reason,
+                )
+                for (phase, platform, benchmark, query_id), entry in REGISTRY.all_rules()
+            ),
+            key=lambda r: (r[0], phase_order.index(r[1]) if r[1] in phase_order else len(phase_order), r[2], r[6]),
+        )
         assert [
             (
                 r["platform"],
@@ -225,51 +185,20 @@ class TestCompatMatchesGeneratorInputs:
                 r["rule_id"],
                 r["reason"],
             )
-            for r in rules
-        ] == rows
-        matrix = gcd._render_capability_matrix(rows)
-        skip = gcd._render_skip_reference(rows)
-        for rule in rules:
-            assert (
-                f"| {rule['phase']} | {rule['scope']} | {rule['action']} | {rule['support_level']} | "
-                f"{rule['failure_mode']} | `{rule['rule_id']}` |"
-            ) in matrix
-            if (
-                rule["support_level"]
-                in data["compat"]["will_not_run_levels"] + data["compat"]["runs_with_caveats_levels"]
-            ):
-                reason = rule["reason"].replace("|", "\\|").replace("\n", " ").strip()
-                assert (
-                    f"| {rule['support_level']} | {rule['scope']} | {rule['phase']} | {reason} | `{rule['rule_id']}` |"
-                    in skip
-                )
+            for r in data["compat"]["rules"]
+        ] == expected
 
     def test_scope_fields_round_trip_to_label(self, data):
         for rule in data["compat"]["rules"]:
-            assert rule["scope"] == gcd._scope_label(rule["benchmark"], rule["query_id"])
+            assert rule["scope"] == sources._scope_label(rule["benchmark"], rule["query_id"])
 
-    def test_phase_order_matches_generator(self, data):
-        assert data["compat"]["phase_order"] == gcd._PHASE_ORDER
+    def test_phase_order_matches_phase_enum(self, data):
+        from benchbox.sql_compat.context import Phase
+
+        assert data["compat"]["phase_order"] == [phase.value for phase in Phase]
 
 
-class TestTuningMatchesGeneratorInputs:
-    def test_platform_rows_match_generated_matrix(self, data):
-        text = gts.render()
-        for entry in data["tuning"]["platforms"]:
-            applied = ", ".join(
-                item["type"] + (" (with sorted ingestion)" if item["requires_sorted_ingestion"] else "")
-                for item in entry["applied"]
-            )
-            not_applied = ", ".join(entry["not_applied"])
-            templates = ", ".join(entry["shipped_templates"]) or "none"
-            introspector = {True: "yes", False: "no", None: "no adapter"}[entry["catalog_introspector"]]
-            row = (
-                f"| `{entry['platform']}` | {templates} | {applied or 'none'} | {not_applied or 'none'} | "
-                f"{'applied' if entry['session_config'] else '-'} | {introspector} | "
-                f"{'yes' if entry['can_reach_applied_verified'] else 'no'} |\n"
-            )
-            assert row in text
-
+class TestTuningMatchesRegistry:
     def test_aliases_and_platform_set_match_registry(self, data):
         from benchbox.core.tuning.capability_registry import (
             PLATFORM_ALIASES,
@@ -284,13 +213,7 @@ class TestTuningMatchesGeneratorInputs:
 
 
 class TestFullCatalog:
-    def test_full_export_validates_and_covers_every_generated_page(self):
+    def test_full_export_validates_and_is_deterministic(self):
         full = exporter.build_docs_data()
         assert _errors(full) == []
-        pages = gqd.render_all()
-        exported = {f"{b['id']}/{q['slug']}.md" for b in full["queries"]["benchmarks"] for q in b["queries"]}
-        generated_queries = {
-            rel for rel in pages if rel.count("/") == 1 and not rel.endswith(("/index.md",)) and "/group-" not in rel
-        }
-        assert exported == generated_queries
         assert exporter.render_json(full) == exporter.render_json(exporter.build_docs_data())

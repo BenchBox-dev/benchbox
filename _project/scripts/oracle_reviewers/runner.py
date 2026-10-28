@@ -1,17 +1,18 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import signal
 import subprocess
 import tempfile
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from . import absence, credentials, evidence, omp_pin, processes, protocol
+from . import absence, credentials, evidence, omp_pin, processes, protocol, redaction_check
 from .commands import Invocation, build
 from .policy import Reviewer
 from .verdict import (
@@ -21,10 +22,13 @@ from .verdict import (
     extract_omp_text,
     normalize_reviewer,
     omp_stream_without_answer,
+    omp_terminal_error,
     parse_output,
     shape_fingerprint,
     validate,
 )
+
+CAPTURE_SCHEMA = 1
 
 
 @dataclass(frozen=True)
@@ -40,6 +44,7 @@ class ReviewOutcome:
     verdict: dict[str, Any] | None
     missing: absence.Absence | None
     diagnostic: str
+    capture: dict[str, Any] | None = None
 
 
 def _git(workspace: Path, *args: str) -> str:
@@ -79,6 +84,7 @@ def _digest(path: Path) -> str | None:
 
 
 def execute(invocation: Invocation, timeout_seconds: int) -> RunResult:
+    bystanders = processes.children() if processes.OrphanWatch.active else frozenset()
     with (
         tempfile.TemporaryFile("w+", encoding="utf-8", errors="replace", dir=invocation.cwd) as stdout_file,
         tempfile.TemporaryFile("w+", encoding="utf-8", errors="replace", dir=invocation.cwd) as stderr_file,
@@ -102,7 +108,7 @@ def execute(invocation: Invocation, timeout_seconds: int) -> RunResult:
             os.killpg(process.pid, signal.SIGKILL)
             process.wait()
             timed_out = True
-        survivors = processes.confirm_exit(process.pid)
+        survivors = processes.confirm_exit(process.pid, bystanders)
         stdout_file.seek(0)
         stderr_file.seek(0)
         stdout, stderr = stdout_file.read(), stderr_file.read()
@@ -130,11 +136,88 @@ def _unparsed(harness: str, output: str, fallback: str) -> str:
     return absence.unparsed(text, _credentials()) if text.strip() else fallback
 
 
+def _event(line: str) -> Any:
+    try:
+        return json.loads(line)
+    except ValueError:
+        return line
+
+
+def _streaming(event: Any) -> bool:
+    return isinstance(event, dict) and str(event.get("type", "")).endswith("_update")
+
+
+def _scrubbed(value: Any) -> Any:
+    if isinstance(value, str):
+        return absence.scrub_long_tokens(value)
+    if isinstance(value, list):
+        return [_scrubbed(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _scrubbed(item) for key, item in value.items()}
+    return value
+
+
+def _marker(kind: str, value: Any) -> str:
+    return f"[{kind} withheld: {len(json.dumps(value))} characters]"
+
+
+def _withheld(value: Any) -> Any:
+    if isinstance(value, list):
+        return [_withheld(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+    if value.get("type") == "thinking":
+        return {"type": "thinking", "thinking": _marker("thinking", value.get("thinking", ""))}
+    if value.get("role") == "toolResult" or value.get("type") == "tool_execution_end":
+        return {
+            key: _marker("tool output", item) if key in ("content", "result", "details") else _withheld(item)
+            for key, item in value.items()
+        }
+    return {key: _withheld(item) for key, item in value.items()}
+
+
+def _terminal(stdout: str, secrets: tuple[str, ...]) -> dict[str, Any] | None:
+    error = omp_terminal_error(stdout)
+    if error is None:
+        return None
+    message = absence.redact_detail(error.message, secrets)
+    return {"status": error.status, "provider": error.provider, "message": message}
+
+
+def capture(reviewer: Reviewer, result: RunResult) -> dict[str, Any]:
+    secrets = _credentials()
+    stdout = result.stdout if reviewer.harness == "omp" else ""
+    parsed = [_event(line) for line in stdout.splitlines() if line.strip()]
+    events = [event for event in parsed if not _streaming(event)]
+    return redaction_check.redact(
+        {
+            "schema": CAPTURE_SCHEMA,
+            "reviewer": reviewer.name,
+            "harness": reviewer.harness,
+            "model": reviewer.model,
+            "exit_code": result.exit_code,
+            "timed_out": result.timed_out,
+            "terminal_error": _terminal(stdout, secrets),
+            "stderr_excerpt": absence.excerpt("", result.stderr, secrets),
+            "streaming_events_dropped": len(parsed) - len(events),
+            "events": _scrubbed(redaction_check.redact(_withheld(events), secrets)),
+        },
+        secrets,
+    )
+
+
 def _with_trace(diagnostic: str, harness: str, stdout: str, plan: Mapping[str, Any], workspace: Path) -> str:
     if harness not in evidence.TRACED:
         return diagnostic
     summary = evidence.describe(evidence.trace(harness, stdout), plan.get("evidence_files", ()), workspace)
     return f"{diagnostic} | {summary}" if diagnostic else summary
+
+
+def _captured(reviewer: Reviewer, result: RunResult) -> dict[str, Any] | None:
+    try:
+        return capture(reviewer, result)
+    except Exception:
+        return None
 
 
 def review(
@@ -152,13 +235,27 @@ def review(
     if not prompt:
         return ReviewOutcome(None, absence.Absence(absence.INVALID, "the brief is empty or truncated"), "")
     try:
-        omp_pin.required_binary()
+        omp_pin.verified_binary(str(plan.get("omp_sha256") or ""))
     except omp_pin.PinError as exc:
         return ReviewOutcome(None, absence.Absence(absence.ERROR, str(exc)), "")
     scratch.mkdir(parents=True, exist_ok=True)
     invocation = build(reviewer, workspace, prompt, scratch)
     staged_before = _digest(workspace / STAGED_DIFF_NAME)
     result = execute(invocation, reviewer.timeout_minutes * 60)
+    outcome = _judge(reviewer, invocation, result, workspace=workspace, staged_before=staged_before, now=now, plan=plan)
+    return replace(outcome, capture=_captured(reviewer, result))
+
+
+def _judge(
+    reviewer: Reviewer,
+    invocation: Invocation,
+    result: RunResult,
+    *,
+    workspace: Path,
+    staged_before: str | None,
+    now: datetime,
+    plan: Mapping[str, Any],
+) -> ReviewOutcome:
     output = result.stdout
     if invocation.output_file is not None:
         output = invocation.output_file.read_text(encoding="utf-8") if invocation.output_file.is_file() else ""

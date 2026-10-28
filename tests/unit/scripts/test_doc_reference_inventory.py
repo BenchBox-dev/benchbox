@@ -35,13 +35,13 @@ def targets(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Any:
             "docs/publish-allowlist.txt": "core-only",
             "docs/reference/generated.md": "core-generated",
         },
-        "generated": [{"path": "docs/benchmarks/queries/", "generator": "scripts/generate_query_docs.py"}],
+        "generated": [{"path": "docs/generated/queries/", "generator": "scripts/vanished_docs_gen.py"}],
         "transitions": {"publication_controls": {"sources": ["docs/publish-allowlist.txt"]}},
     }
     path = tmp_path / "ownership.json"
     path.write_text(json.dumps(manifest), encoding="utf-8")
     monkeypatch.setattr(inventory, "OWNERSHIP_PATH", path)
-    return inventory.Targets(["scripts/generate_query_docs.py"])
+    return inventory.Targets(["scripts/vanished_docs_gen.py"])
 
 
 def _kinds(text: str, targets: Any) -> set[tuple[str, str]]:
@@ -66,10 +66,10 @@ def test_transition_sources_become_site_references(targets: Any) -> None:
 
 
 def test_generated_outputs_and_extras(targets: Any) -> None:
-    found = _kinds("docs/benchmarks/queries/tpch/q1.md via scripts/generate_query_docs.py", targets)
+    found = _kinds("docs/generated/queries/tpch/q1.md via scripts/vanished_docs_gen.py", targets)
     assert found == {
-        ("docs/benchmarks/queries/tpch/q1.md", "generated"),
-        ("scripts/generate_query_docs.py", "extra"),
+        ("docs/generated/queries/tpch/q1.md", "generated"),
+        ("scripts/vanished_docs_gen.py", "extra"),
     }
 
 

@@ -9,7 +9,7 @@ from typing import Any
 
 import pytest
 
-from _project.scripts.oracle_reviewers import attempts, cli, selection
+from _project.scripts.oracle_reviewers import attempts, cli, omp_pin, selection
 from _project.scripts.oracle_reviewers.absence import INCOMPLETE, INVALID, Absence
 from _project.scripts.oracle_reviewers.policy import Policy
 from _project.scripts.oracle_reviewers.render import (
@@ -314,6 +314,9 @@ class Run:
         )
         script.chmod(0o755)
         self.monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+        self.monkeypatch.setenv(omp_pin.BINARY_ENV, str(script))
+        self.loop.plan["omp_sha256"] = omp_pin.sha256_of(script)
+        self.loop.plan_path.write_text(json.dumps(self.loop.plan), encoding="utf-8")
 
     def prompt(self, number: int) -> str:
         return (self.state / f"prompt-{number}.txt").read_text(encoding="utf-8")
@@ -327,10 +330,7 @@ class Run:
 
 @pytest.fixture
 def run(tmp_path: Path, policy: Policy, monkeypatch: pytest.MonkeyPatch) -> Run:
-    original = cli._assemble_prompt
-    loop = Loop(tmp_path, policy, monkeypatch, max_attempts=3)
-    monkeypatch.setattr(cli, "_assemble_prompt", original)
-    return Run(loop, tmp_path, monkeypatch, policy)
+    return Run(Loop(tmp_path, policy, monkeypatch, max_attempts=3), tmp_path, monkeypatch, policy)
 
 
 def _all_but(*skipped: str) -> list[str]:

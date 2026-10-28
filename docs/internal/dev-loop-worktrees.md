@@ -200,11 +200,8 @@ to check anchors without running the other documentation checks.
 
 The check recognizes heading slugs and explicit anchors. It skips external
 URLs, server-absolute paths, code, and targets outside tracked Markdown.
-Existing broken links in frozen site-owned sources are recorded in
-`quality/doc-anchor-baseline.json`; they must be fixed in the site repository,
-not by changing frozen core copies. New failures, extra occurrences, and stale
-baseline entries fail CI. Once a recorded failure disappears, run the checker
-with `--write-baseline` to remove it. This option refuses to add failures.
+broken fragment link fails CI. Site-owned documentation is checked by the
+site repository's own build.
 
 ## Test lock
 

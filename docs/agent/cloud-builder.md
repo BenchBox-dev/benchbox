@@ -84,7 +84,19 @@ with `gateway_proxy=...`, or `gateway=unavailable` with the reason, and
 
 Without the three variables, or when Tailscale is missing or the join or check
 fails, bootstrap still succeeds, stops any daemon it started, and records the
-gateway as unavailable. Builders must then do without oracle reviews.
+gateway as unavailable. `make pr-open` then refuses before any push, because
+its local review cannot run: fix the missing variable or Tailscale install and
+run `make cloud-gateway`, or report the blocker. A builder never skips the
+review.
+
+`make pr-open` does the proxy wiring itself. It reads `gateway_proxy=` from the
+status file (accepting only a loopback `http://127.0.0.1:<port>` value), reaches
+the gateway through it for the health check, and gives the reviewer
+`HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY` (loopback only) for that one run.
+The `oracle-local` client and CI never receive proxy variables. It installs
+or reuses the pinned `omp` in the shared cache (`~/.cache/benchbox/omp`, or
+`BENCHBOX_OMP_CACHE`), the same build `make cloud-gateway` verified; the
+`omp-binary` path file is only for manual runs.
 
 Use the gateway per command, never as a session-wide proxy, because the proxy
 reaches only the tailnet and would break GitHub and package access:

@@ -23,6 +23,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 REPO = "BenchBox-dev/BenchBox"
 HEAD = "a" * 40
+OTHER_HEAD = "9" * 40
 BASE = "b" * 40
 DIFF = "diff --git a/x b/x\n"
 MODE = "100644"
@@ -95,13 +96,13 @@ class FakeGitHub:
         self.base_tag = ""
         self.merge_base: str | None = MERGE_BASE
         self.reasons: list[str | None] = []
+        self.heads: list[str] = []
         self.contents: dict[str, str] = {}
         self.reviews: list[dict[str, Any]] | None = []
         self.reread_sha: str | None = None
         self.reread_after_read = 1
         self._pull_reads = 0
         self.runs: list[dict[str, Any]] = []
-        self.committed = datetime.now(UTC) - timedelta(days=1)
         self.comments: list[dict[str, Any]] = []
         self.failing_prs: set[int] = set()
         self.failed: dict[int, list[str]] = {}
@@ -110,6 +111,9 @@ class FakeGitHub:
         self.derive_verdict_statuses = True
         self.posted: list[tuple[int, dict[str, Any]]] = []
         self.runs_error: Exception | None = None
+        self.state_error: Exception | None = None
+        self.timed_out: set[int] = set()
+        self.timeout_lookups: list[int] = []
         self.busy_fallback: set[int] = set()
         self.fallback_error: Exception | None = None
 
@@ -118,18 +122,27 @@ class FakeGitHub:
         monkeypatch.setattr(github, "get_paginated", self._paginated)
         monkeypatch.setattr(github, "get_diff", self._diff)
         monkeypatch.setattr(github, "review_threads", self._threads)
-        monkeypatch.setattr(github, "latest_state", lambda repo, pr: self.state)
+        monkeypatch.setattr(github, "latest_state", self._latest_state)
         monkeypatch.setattr(github, "dispatch", self._dispatch)
         monkeypatch.setattr(github, "verdict_runs", self._verdict_runs)
         monkeypatch.setattr(github, "in_flight_pulls", self._in_flight)
-        monkeypatch.setattr(github, "committed_at", lambda repo, sha: self.committed)
         monkeypatch.setattr(github, "failed_steps", lambda repo, run_id: list(self.failed.get(run_id, [])))
         monkeypatch.setattr(github, "commit_statuses", self._statuses)
         monkeypatch.setattr(github, "review_edit_states", self._edit_states)
         monkeypatch.setattr(github, "post_status", self._post)
+        monkeypatch.setattr(github, "run_timed_out", self._timed_out)
         monkeypatch.setattr(github, "oracle_reviews", self._reviews)
         monkeypatch.setattr(github, "merge_base", lambda repo, base, head: self.merge_base)
         monkeypatch.setattr(github, "tree_blobs", self._tree)
+
+    def _timed_out(self, repo: str, run_id: int) -> bool:
+        self.timeout_lookups.append(run_id)
+        return run_id in self.timed_out
+
+    def _latest_state(self, repo: str, pr: int) -> State | None:
+        if self.state_error is not None:
+            raise self.state_error
+        return self.state
 
     def _post(self, repo: str, head_sha: str, payload: dict[str, Any], token: str) -> None:
         self.posted.append((len(self.posted), {"head_sha": head_sha, **payload, "token": token}))
@@ -144,10 +157,11 @@ class FakeGitHub:
             raise self.fallback_error
         return frozenset(self.busy_fallback)
 
-    def _dispatch(self, repo: str, workflow: str, pr: int, reason: str | None = None) -> None:
+    def _dispatch(self, repo: str, workflow: str, pr: int, head: str, reason: str | None = None) -> None:
         if pr in self.failing_prs:
             raise github.GitHubError(f"could not dispatch {workflow} for #{pr}")
         self.dispatched.append(pr)
+        self.heads.append(head)
         self.reasons.append(reason)
 
     def _reviews(self, repo: str, pr: int) -> list[dict[str, Any]]:
@@ -554,10 +568,11 @@ def _verdict_run(
     conclusion: str | None = "success",
     event: str = "workflow_dispatch",
     age: timedelta = timedelta(hours=1),
+    head: str | None = HEAD,
 ) -> dict[str, Any]:
     return {
         "id": next(_RUN_IDS),
-        "display_title": f"oracle-verdict ({event} pr={pr})",
+        "display_title": f"oracle-verdict ({event} pr={pr}{'' if head is None else f' head={head}'})",
         "event": event,
         "status": status,
         "conclusion": conclusion,
@@ -613,7 +628,7 @@ def test_sweep_reads_every_page_of_runs(monkeypatch: pytest.MonkeyPatch, tmp_pat
 
 
 def test_the_run_listing_follows_every_page(monkeypatch: pytest.MonkeyPatch) -> None:
-    pages = [{"workflow_runs": [{"id": index}]} for index in range(3)]
+    pages = [{"total_count": 3, "workflow_runs": [{"id": index}]} for index in range(3)]
     seen: list[tuple[str, ...]] = []
 
     def fake_gh(*args: str, accept: str | None = None) -> str:
@@ -649,15 +664,7 @@ def test_a_head_whose_run_failed_without_state_is_redispatched_once(
     assert again.dispatched == []
 
 
-def test_a_failure_before_the_head_was_committed_is_not_retried(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    fake = _stateless_fake(_verdict_run(7, conclusion="failure", age=timedelta(days=3)))
-    assert _sweep(monkeypatch, tmp_path, fake) == 0
-    assert fake.dispatched == []
-
-
-@pytest.mark.parametrize("conclusion", ["failure", "timed_out", "cancelled"])
+@pytest.mark.parametrize("conclusion", ["failure", "timed_out"])
 def test_every_unfinished_conclusion_counts_as_a_failure_without_state(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, conclusion: str
 ) -> None:
@@ -977,69 +984,6 @@ def test_an_owner_reset_never_rerolls_a_decisive_head(monkeypatch: pytest.Monkey
     assert "reset" not in plan["decision_reason"]
 
 
-def _marked_dispatch(*runs: dict[str, Any]) -> FakeGitHub:
-    fake = FakeGitHub(_pull(), SOUNDNESS, _backed_off())
-    fake.runs = list(runs)
-    return fake
-
-
-def test_a_marked_stateless_retry_reviews_despite_backoff(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    failed = _verdict_run(7, conclusion="failure", event="workflow_dispatch", age=timedelta(hours=2))
-    fake = _marked_dispatch(failed)
-    code, values, plan = _plan(
-        monkeypatch,
-        tmp_path,
-        fake,
-        event_name="workflow_dispatch",
-        event={"inputs": {"reason": "stateless-retry"}},
-        ref="refs/heads/develop",
-    )
-    assert code == 0
-    assert values["decision"] == "review"
-    assert "failed without a result" in plan["decision_reason"]
-
-
-@pytest.mark.parametrize(
-    "previous_runs",
-    [
-        [],
-        [
-            _verdict_run(7, conclusion="failure", age=timedelta(hours=3)),
-            _verdict_run(7, conclusion="failure", age=timedelta(hours=2)),
-        ],
-    ],
-    ids=["no-failure", "two-failures"],
-)
-def test_a_marked_retry_without_exactly_one_prior_failure_follows_normal_rules(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, previous_runs: list[dict[str, Any]]
-) -> None:
-    fake = _marked_dispatch(*previous_runs)
-    _, values, plan = _plan(
-        monkeypatch,
-        tmp_path,
-        fake,
-        event_name="workflow_dispatch",
-        event={"inputs": {"reason": "stateless-retry"}},
-        ref="refs/heads/develop",
-    )
-    assert values["decision"] == "skip" and "backoff" in plan["decision_reason"]
-
-
-def test_a_marked_retry_never_rerolls_a_decisive_head(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    failed = _verdict_run(7, conclusion="failure", age=timedelta(hours=2))
-    fake = FakeGitHub(_pull(), SOUNDNESS, _decisive_state("failure"))
-    fake.runs = [failed]
-    _, values, plan = _plan(
-        monkeypatch,
-        tmp_path,
-        fake,
-        event_name="workflow_dispatch",
-        event={"inputs": {"reason": "stateless-retry"}},
-        ref="refs/heads/develop",
-    )
-    assert values["decision"] == "skip" and "backoff" in plan["decision_reason"]
-
-
 USER = {"login": "someone", "type": "User"}
 
 
@@ -1095,13 +1039,22 @@ def test_reset_spent_counts_only_runs_that_could_have_used_the_reset() -> None:
     before = _verdict_run(7, conclusion="failure", age=timedelta(hours=2))
     after = _verdict_run(7, conclusion="failure", age=timedelta(minutes=10))
     skipped = _verdict_run(7, conclusion="skipped", age=timedelta(minutes=10))
-    assert not sweep.reset_spent(_parsed(), reset_at)
-    assert not sweep.reset_spent(_parsed(before), reset_at)
-    assert not sweep.reset_spent(_parsed(skipped), reset_at)
-    assert sweep.reset_spent(_parsed(after), reset_at)
-    assert not sweep.reset_spent(_parsed(after), reset_at, exclude=after["id"])
+    cancelled = _verdict_run(7, conclusion="cancelled", age=timedelta(minutes=10))
+    other = _verdict_run(7, conclusion="failure", age=timedelta(minutes=10), head=OTHER_HEAD)
+    unattributed = _verdict_run(7, conclusion="failure", age=timedelta(minutes=10), head=None)
+    assert not sweep.reset_spent(_parsed(), reset_at, HEAD)
+    assert not sweep.reset_spent(_parsed(before), reset_at, HEAD)
+    assert not sweep.reset_spent(_parsed(skipped), reset_at, HEAD)
+    assert not sweep.reset_spent(_parsed(cancelled), reset_at, HEAD)
+    assert not sweep.reset_spent(_parsed(other), reset_at, HEAD)
+    assert sweep.reset_spent(_parsed(unattributed), reset_at, HEAD)
+    assert sweep.reset_spent(_parsed(after), reset_at, HEAD)
+    assert not sweep.reset_spent(_parsed(after), reset_at, HEAD, exclude=after["id"])
     in_flight = _verdict_run(7, status="in_progress", conclusion=None, age=timedelta(minutes=10))
-    assert sweep.reset_spent(_parsed(in_flight), reset_at)
+    assert sweep.reset_spent(_parsed(in_flight), reset_at, HEAD)
+    for waiting in ("queued", "waiting", "pending", "requested"):
+        not_started = _verdict_run(7, status=waiting, conclusion=None, age=timedelta(minutes=10))
+        assert not sweep.reset_spent(_parsed(not_started), reset_at, HEAD)
 
 
 def _degraded(fake: FakeGitHub) -> FakeGitHub:

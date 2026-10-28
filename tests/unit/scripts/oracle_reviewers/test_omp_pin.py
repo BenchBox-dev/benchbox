@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import email
+import email.message
 import hashlib
 import http.server
 import io
@@ -58,6 +59,14 @@ def test_the_committed_policy_pins_every_published_platform_with_https_urls_and_
         lambda data: data["omp"].update(builds={}),
         lambda data: data["omp"]["builds"]["linux-x64"].update(url="http://insecure.example.invalid/omp"),
         lambda data: data["omp"]["builds"]["linux-x64"].update(sha256="ABC"),
+        lambda data: data["omp"]["builds"].update({"../evil-x64": data["omp"]["builds"]["linux-x64"]}),
+        lambda data: data["omp"]["builds"].update({"linux/x64": data["omp"]["builds"]["linux-x64"]}),
+        lambda data: data["omp"]["builds"].update(
+            {"linux-x64\nORACLE_OMP_BINARY=/tmp/x": data["omp"]["builds"]["linux-x64"]}
+        ),
+        lambda data: data["omp"]["builds"].update({"Linux-X64": data["omp"]["builds"]["linux-x64"]}),
+        lambda data: data["omp"]["builds"].update({"linux": data["omp"]["builds"]["linux-x64"]}),
+        lambda data: data["omp"]["builds"].update({7: data["omp"]["builds"]["linux-x64"]}),
     ],
 )
 def test_a_malformed_pin_is_rejected(mutation) -> None:
@@ -142,84 +151,114 @@ def test_install_reports_a_failed_download(tmp_path: Path) -> None:
         omp_pin.install(_pin(), "linux-x64", tmp_path, fetch)
 
 
-def test_the_download_sends_an_explicit_user_agent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    seen: list[urllib.request.Request] = []
+class _Server:
+    def __init__(self, routes: dict[str, tuple[int, dict[str, str], bytes]]) -> None:
+        self.routes = routes
+        self.requests: list[tuple[str, str]] = []
+        owner = self
 
-    def fake_open(
-        request: urllib.request.Request, timeout: float | None = None
-    ) -> contextlib.AbstractContextManager[io.BytesIO]:
-        seen.append(request)
-        return contextlib.closing(io.BytesIO(b"binary-bytes"))
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self) -> None:
+                owner.requests.append((self.path, self.headers.get("User-Agent", "")))
+                status, headers, body = owner.routes.get(self.path, (404, {}, b""))
+                self.send_response(status)
+                for name, value in headers.items():
+                    self.send_header(name, value)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
 
-    monkeypatch.setattr(omp_pin, "_open", fake_open)
+            def log_message(self, *args: object) -> None:
+                return
+
+        self.httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.httpd.daemon_threads = True
+        threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
+
+    @property
+    def origin(self) -> str:
+        return f"http://127.0.0.1:{self.httpd.server_port}"
+
+    def close(self) -> None:
+        self.httpd.shutdown()
+        self.httpd.server_close()
+
+
+@pytest.fixture
+def served(monkeypatch: pytest.MonkeyPatch):
+    servers: list[_Server] = []
+
+    def start(routes: dict[str, tuple[int, dict[str, str], bytes]]) -> _Server:
+        server = _Server(routes)
+        servers.append(server)
+        monkeypatch.setenv(omp_pin.MIRROR_ENV, server.origin)
+        return server
+
+    yield start
+    for server in servers:
+        server.close()
+
+
+def test_the_download_sends_an_explicit_user_agent(tmp_path: Path, served) -> None:
+    server = served({"/omp-linux-x64": (200, {}, b"binary-bytes")})
     destination = tmp_path / "omp"
-    omp_pin.download("https://downloads.example.invalid/omp-linux-x64", destination)
+    omp_pin.download(URL, destination)
     assert destination.read_bytes() == b"binary-bytes"
-    assert len(seen) == 1
-    user_agent = seen[0].get_header("User-agent") or seen[0].get_header("User-Agent")
+    assert [path for path, _ in server.requests] == ["/omp-linux-x64"]
+    user_agent = server.requests[0][1]
     assert user_agent == omp_pin.USER_AGENT
     assert "Python-urllib" not in user_agent
 
 
-class _Redirecting(urllib.request.HTTPSHandler):
-    def __init__(self, location: str) -> None:
-        super().__init__()
-        self.location = location
-        self.opened: list[str] = []
-
-    def https_open(self, req: urllib.request.Request) -> urllib.response.addinfourl:
-        self.opened.append(req.full_url)
-        if len(self.opened) > 1:
-            response = urllib.response.addinfourl(io.BytesIO(b"binary-bytes"), {}, req.full_url, 200)
-            response.msg = "OK"
-            return response
-        headers = email.message_from_string(f"Location: {self.location}\n\n")
-        response = urllib.response.addinfourl(io.BytesIO(b""), headers, req.full_url, 302)
-        response.msg = "Found"
-        return response
-
-
-def test_a_download_refuses_a_redirect_to_plain_http(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    stub = _Redirecting("http://downloads.example.invalid/omp-linux-x64")
-    monkeypatch.setattr(
-        omp_pin,
-        "_open",
-        lambda request, timeout: urllib.request.build_opener(omp_pin.HttpsOnlyRedirectHandler, stub).open(
-            request, timeout=timeout
-        ),
-    )
+def test_a_download_refuses_a_redirect_to_plain_http(tmp_path: Path, served) -> None:
+    target = "http://downloads.example.invalid/omp-linux-x64"
+    server = served({"/omp-linux-x64": (302, {"Location": target}, b"")})
     with pytest.raises(OSError, match="non-https"):
         omp_pin.download(URL, tmp_path / "omp")
-    assert stub.opened == [URL]
+    assert [path for path, _ in server.requests] == ["/omp-linux-x64"]
+    assert not (tmp_path / "omp").exists()
 
 
-def test_a_download_follows_a_redirect_that_stays_on_https(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    stub = _Redirecting("https://mirror.example.invalid/omp-linux-x64")
-    monkeypatch.setattr(
-        omp_pin,
-        "_open",
-        lambda request, timeout: urllib.request.build_opener(omp_pin.HttpsOnlyRedirectHandler, stub).open(
-            request, timeout=timeout
-        ),
-    )
+def test_a_download_follows_a_redirect_that_stays_on_the_permitted_scheme(tmp_path: Path, served) -> None:
+    server = served({})
+    server.routes["/omp-linux-x64"] = (302, {"Location": f"{server.origin}/moved"}, b"")
+    server.routes["/moved"] = (200, {}, b"binary-bytes")
     omp_pin.download(URL, tmp_path / "omp")
     assert (tmp_path / "omp").read_bytes() == b"binary-bytes"
+    assert [path for path, _ in server.requests] == ["/omp-linux-x64", "/moved"]
 
 
-def test_a_slow_download_is_cut_off_by_an_overall_deadline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    clock = {"now": 0.0}
+@pytest.mark.parametrize("target", ["http://127.0.0.1:9/omp", "http://downloads.example.invalid/omp"])
+def test_without_a_mirror_a_redirect_must_stay_on_https(monkeypatch: pytest.MonkeyPatch, target: str) -> None:
+    monkeypatch.delenv(omp_pin.MIRROR_ENV, raising=False)
+    handler = omp_pin.build_opener().handlers
+    redirect = next(item for item in handler if isinstance(item, omp_pin.HttpsOnlyRedirectHandler))
+    request = urllib.request.Request(URL)
+    with pytest.raises(OSError, match="non-https"):
+        redirect.redirect_request(request, io.BytesIO(), 302, "Found", email.message.Message(), target)
+    followed = redirect.redirect_request(
+        request, io.BytesIO(), 302, "Found", email.message.Message(), "https://mirror.example.invalid/omp"
+    )
+    assert followed is not None
+    assert followed.full_url == "https://mirror.example.invalid/omp"
 
-    class Trickle(io.BytesIO):
-        def read1(self, size: int = -1) -> bytes:
-            clock["now"] += omp_pin.DOWNLOAD_SECONDS / 3
-            return b"x"
 
-    monkeypatch.setattr(omp_pin.time, "monotonic", lambda: clock["now"])
-    monkeypatch.setattr(omp_pin, "_open", lambda request, timeout: contextlib.closing(Trickle()))
-    with pytest.raises(OSError, match="exceeded"):
+def test_the_mirror_refuses_a_host_that_is_not_loopback(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(omp_pin.MIRROR_ENV, "https://downloads.example.invalid")
+    with pytest.raises(omp_pin.PinError, match="loopback"):
         omp_pin.download(URL, tmp_path / "omp")
-    with pytest.raises(omp_pin.PinError, match="download failed"):
-        omp_pin.install(_pin(), "linux-x64", tmp_path / "cache", omp_pin.download)
+
+
+def test_a_corrupted_served_download_fails_the_pinned_checksum(tmp_path: Path, served) -> None:
+    served({"/omp-linux-x64": (200, {}, b"#!/bin/sh\necho omp/1.2.3\n# tampered\n")})
+    with pytest.raises(omp_pin.PinError, match="does not match the pinned sha256"):
+        omp_pin.install(_pin(), "linux-x64", tmp_path, omp_pin.download)
+
+
+def test_a_served_download_installs_through_the_real_fetch(tmp_path: Path, served) -> None:
+    served({"/omp-linux-x64": (200, {}, SCRIPT.encode())})
+    binary = omp_pin.install(_pin(), "linux-x64", tmp_path, omp_pin.download)
+    assert binary.read_text(encoding="utf-8") == SCRIPT
 
 
 def test_a_server_trickling_bytes_cannot_outlast_the_deadline(tmp_path: Path) -> None:
@@ -245,6 +284,13 @@ def test_a_server_trickling_bytes_cannot_outlast_the_deadline(tmp_path: Path) ->
     try:
         with pytest.raises(TimeoutError, match="exceeded"):
             omp_pin._stream(request, tmp_path / "omp", deadline_seconds=1.0, read_seconds=5.0)
+        with pytest.raises(omp_pin.PinError, match="download failed"):
+            omp_pin.install(
+                _pin(),
+                "linux-x64",
+                tmp_path / "cache",
+                lambda url, destination: omp_pin._stream(request, destination, deadline_seconds=1.0, read_seconds=5.0),
+            )
     finally:
         server.shutdown()
         server.server_close()
@@ -308,6 +354,39 @@ def test_required_binary_never_falls_back_to_path_omp(tmp_path: Path, monkeypatc
         omp_pin.required_binary()
     monkeypatch.setenv(omp_pin.BINARY_ENV, sys.executable)
     assert omp_pin.required_binary() == Path(sys.executable)
+
+
+def _executable(path: Path, text: str) -> Path:
+    path.write_text(text, encoding="utf-8")
+    path.chmod(0o755)
+    return path
+
+
+def test_verified_binary_accepts_only_the_pinned_bytes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    pinned = _executable(tmp_path / "omp", SCRIPT)
+    digest = hashlib.sha256(SCRIPT.encode()).hexdigest()
+    monkeypatch.setenv(omp_pin.BINARY_ENV, str(pinned))
+    assert omp_pin.verified_binary(digest) == pinned
+    _executable(pinned, SCRIPT + "# swapped\n")
+    with pytest.raises(omp_pin.PinError, match="does not match the pinned sha256"):
+        omp_pin.verified_binary(digest)
+
+
+@pytest.mark.parametrize("expected", ["", "ABC", "0" * 63])
+def test_verified_binary_refuses_when_the_plan_has_no_valid_hash(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, expected: str
+) -> None:
+    monkeypatch.setenv(omp_pin.BINARY_ENV, str(_executable(tmp_path / "omp", SCRIPT)))
+    with pytest.raises(omp_pin.PinError, match="no pinned omp sha256"):
+        omp_pin.verified_binary(expected)
+
+
+def test_verified_binary_never_falls_back_to_the_path_omp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _executable(tmp_path / "omp", SCRIPT)
+    monkeypatch.setenv("PATH", str(tmp_path))
+    monkeypatch.delenv(omp_pin.BINARY_ENV, raising=False)
+    with pytest.raises(omp_pin.PinError, match="pinned omp is not installed"):
+        omp_pin.verified_binary(hashlib.sha256(SCRIPT.encode()).hexdigest())
 
 
 @pytest.mark.parametrize("command", ["select", "scan-disk", "attempts", "finalize"])

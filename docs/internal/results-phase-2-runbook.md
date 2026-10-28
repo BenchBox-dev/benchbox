@@ -261,7 +261,7 @@ corpus-archive branch that contributor PRs target and that mirrors develop's
 Suggested review reply for missing fixes:
 
 ```text
-Thanks for the submission. CI found issues we need fixed before merge. Please address the failing checks, rerun the local validation commands from docs/contributing-results.md, and push an update to this PR.
+Thanks for the submission. CI found issues we need fixed before merge. Please address the failing checks, rerun the local validation commands from the contributing-results guide (https://benchbox.dev/docs/contributing-results.html), and push an update to this PR.
 ```
 
 ## 3. CI Failure Triage
@@ -393,7 +393,7 @@ A submission PR that adds files outside the allowlist should be redirected to
 | Submission validator | `scripts/validate_submission.py` |
 | Validation workflow | `.github/workflows/validate-submission.yml` |
 | Explorer pipeline | `_project/scripts/explorer_pipeline/` |
-| Contributor guide | `docs/contributing-results.md` |
+| Contributor guide | https://benchbox.dev/docs/contributing-results.html |
 
 ## 9. Verification Commands
 

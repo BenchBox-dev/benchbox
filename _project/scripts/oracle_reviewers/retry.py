@@ -17,7 +17,8 @@ INTEGRITY = "integrity"
 UNREPORTED = "unreported"
 OVERSIZE = "oversize"
 MARKER_LIMIT = "marker-limit"
-PENDING_CAUSES = (ALL_ABSENT, INTEGRITY, UNREPORTED, OVERSIZE, MARKER_LIMIT)
+OMP_INSTALL = "omp-install"
+PENDING_CAUSES = (ALL_ABSENT, INTEGRITY, UNREPORTED, OVERSIZE, MARKER_LIMIT, OMP_INSTALL)
 WINDOW = timedelta(hours=24)
 
 
@@ -99,13 +100,12 @@ def decide_rerun(
     now: datetime,
     rules: RetryRules,
     reset_at: datetime | None = None,
-    stateless_retry: bool = False,
 ) -> RerunDecision:
     same_head = previous is not None and previous.head_sha == head_sha
     if same_head and previous is not None and previous.outcome in DECISIVE and not new_diff and not manual:
         return RerunDecision(False, f"head {head_sha} already has a {previous.outcome} result")
     if same_head and previous is not None and previous.outcome == PENDING and not new_diff:
-        if previous.pending_cause != ALL_ABSENT:
+        if previous.pending_cause != ALL_ABSENT and not (manual and previous.pending_cause == OMP_INSTALL):
             cause = previous.pending_cause or "unknown"
             return RerunDecision(
                 False, f"the last run on head {head_sha} was pending for {cause}, not absent reviewers"
@@ -114,15 +114,14 @@ def decide_rerun(
         return RerunDecision(True, "pull request event")
     if reset_applies(previous, head_sha, reset_at):
         return RerunDecision(True, "retry backoff reset by the owner")
-    retries = recent_retries(previous, now)
+    inherits_budget = previous is None or same_head or previous.outcome in DECISIVE
+    retries = recent_retries(previous, now) if inherits_budget else ()
     if len(retries) >= rules.daily_budget:
         return RerunDecision(False, f"the daily retry budget of {rules.daily_budget} is used")
     if same_head and previous is not None:
         wait = timedelta(minutes=rules.backoff_start_minutes * 2 ** len(retries))
         ready_at = previous.updated_at + wait
         if now < ready_at:
-            if stateless_retry and previous.outcome == PENDING:
-                return RerunDecision(True, "stateless retry of a run that failed without a result")
             return RerunDecision(False, f"backoff: the next retry is allowed after {ready_at.isoformat()}")
         if previous.outcome in DECISIVE:
             return RerunDecision(True, "manual same-head re-review within budget")
@@ -150,7 +149,7 @@ def next_state(
 def due_for_retry(
     state: State, current_head: str, now: datetime, rules: RetryRules, reset_at: datetime | None = None
 ) -> bool:
-    if state.outcome != PENDING or state.head_sha != current_head:
+    if state.outcome != PENDING or state.head_sha != current_head or state.pending_cause == OMP_INSTALL:
         return False
     return decide_rerun(
         manual=True, new_diff=False, head_sha=current_head, previous=state, now=now, rules=rules, reset_at=reset_at

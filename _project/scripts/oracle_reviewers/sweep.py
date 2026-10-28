@@ -1,17 +1,18 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
+from collections.abc import Callable, Iterable, Mapping
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from typing import Any
 
 from .github import RUN_TITLE_PULL, SWEEP_FAILURE_SURFACE_PREFIX
 
 COMPLETED = "completed"
-FAILED = frozenset({"failure", "timed_out", "cancelled"})
-NEUTRAL = frozenset({"skipped"})
-RUN_WINDOW = timedelta(days=7)
+FAILED = frozenset({"failure", "timed_out"})
+NEUTRAL = frozenset({"skipped", "cancelled"})
+NOT_STARTED = frozenset({"queued", "waiting", "pending", "requested"})
+RUN_WINDOW = timedelta(hours=48)
 DISPATCH_GRACE = timedelta(minutes=2)
 DISPATCH_WINDOW = timedelta(hours=24)
 DISPATCH_EVENT = "workflow_dispatch"
@@ -27,6 +28,7 @@ class Run:
     status: str
     conclusion: str | None
     created_at: datetime
+    head: str | None
 
 
 def _run(item: Mapping[str, Any]) -> Run | None:
@@ -41,6 +43,7 @@ def _run(item: Mapping[str, Any]) -> Run | None:
             str(item.get("status", "")),
             item.get("conclusion"),
             datetime.fromisoformat(str(item["created_at"])),
+            match.group(2),
         )
     except (KeyError, TypeError, ValueError):
         return None
@@ -63,10 +66,32 @@ def in_flight(runs_by_pr: Mapping[int, tuple[Run, ...]], now: datetime) -> froze
     )
 
 
-def stateless_failures(runs: Iterable[Run], head_committed_at: datetime) -> int:
+def with_timeouts(
+    runs: Iterable[Run], timed_out: Callable[[int], bool], since: datetime | None = None
+) -> tuple[Run, ...]:
+    resolved: list[Run] = []
+    settled = False
+    for run in runs:
+        if (
+            not settled
+            and run.conclusion == "cancelled"
+            and (since is None or run.created_at >= since)
+            and timed_out(run.id)
+        ):
+            run = replace(run, conclusion="timed_out")
+        settled = settled or run.conclusion == "success"
+        resolved.append(run)
+    return tuple(resolved)
+
+
+def for_head(runs: Iterable[Run], head: str) -> tuple[Run, ...]:
+    return tuple(run for run in runs if run.head == head)
+
+
+def stateless_failures(runs: Iterable[Run], since: datetime | None = None) -> int:
     count = 0
     for run in runs:
-        if run.created_at < head_committed_at:
+        if since is not None and run.created_at < since:
             break
         if run.status != COMPLETED or run.conclusion in NEUTRAL:
             continue
@@ -88,8 +113,15 @@ def surface_description(steps: Iterable[str]) -> str:
     return description
 
 
-def reset_spent(runs: Iterable[Run], reset_at: datetime, exclude: int | None = None) -> bool:
-    return any(run.id != exclude and run.created_at >= reset_at and run.conclusion not in NEUTRAL for run in runs)
+def reset_spent(runs: Iterable[Run], reset_at: datetime, head: str, exclude: int | None = None) -> bool:
+    return any(
+        run.id != exclude
+        and run.created_at >= reset_at
+        and run.head in (None, head)
+        and run.status not in NOT_STARTED
+        and run.conclusion not in NEUTRAL
+        for run in runs
+    )
 
 
 def newest_failed(runs: tuple[Run, ...]) -> bool:

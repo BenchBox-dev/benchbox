@@ -15,7 +15,7 @@ pytestmark = [
     pytest.mark.live_motherduck,
     pytest.mark.skipif(
         not os.getenv("MOTHERDUCK_TOKEN"),
-        reason="Requires MOTHERDUCK_TOKEN environment variable. See docs/testing/live-integration-tests.md for setup.",
+        reason="Requires MOTHERDUCK_TOKEN environment variable. See https://benchbox.dev/docs/testing/live-integration-tests.html for setup.",
     ),
 ]
 

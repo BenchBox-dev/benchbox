@@ -17,6 +17,7 @@ import urllib.request
 import uuid
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,7 @@ import yaml
 from . import attempts as attempt_files, cli, credentials, omp_pin, protocol, redaction_check, selection
 from .classifier import ChangedFile, matching, soundness_scope
 from .classify import Classification
+from .commands import LOOPBACK_PROXY, gateway_proxy
 from .jev import JevError
 from .policy import Policy, load_policy, parse_policy
 from .verdict import DO_NOT_SHIP
@@ -38,6 +40,7 @@ LOCAL_GATEWAY_URL = "http://127.0.0.1:4000"
 LOCAL_TOKEN_PATH = Path(".omp") / "oracle-gateway" / "local-client.token"
 CLOUD_TOKEN_ENV = "ORACLE_CLOUD_GATEWAY_TOKEN"
 CLOUD_SESSION_ENV = "BENCHBOX_EPHEMERAL_CLONE"
+CLOUD_STATUS_FILE = "benchbox-cloud-gateway.status"
 STATE_DIR_ENV = "BENCHBOX_LOCAL_ORACLE_DIR"
 SOUNDNESS_MANIFEST = ".github/soundness-paths.txt"
 HIDDEN_TEXT = re.compile(
@@ -52,6 +55,7 @@ PLACEHOLDER = re.compile(r"<.*>")
 REMOTE_SLUG = re.compile(r"github\.com[:/]([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?/?$")
 DEFAULT_REPOSITORY = "BenchBox-dev/BenchBox"
 CACHE_SCHEMA = 1
+CAPTURE_DIR = "captures"
 LOCK_WAIT_SECONDS = 3600.0
 LOCK_POLL_SECONDS = 1.0
 REACHABILITY_SECONDS = 10
@@ -75,6 +79,7 @@ class Credentials:
     client: str
     url: str
     token: str
+    proxy: str = ""
 
 
 class Reporter:
@@ -329,6 +334,19 @@ def pinned_omp(policy_text: str) -> tuple[str, Path]:
         raise Unavailable(str(exc)) from exc
 
 
+def cloud_gateway_proxy() -> str:
+    try:
+        git_dir = _git(Path.cwd(), "rev-parse", "--absolute-git-dir").strip()
+        lines = (Path(git_dir) / CLOUD_STATUS_FILE).read_text(encoding="utf-8").splitlines()
+    except (Unavailable, OSError, ValueError):
+        return ""
+    for line in lines:
+        name, _, value = line.partition("=")
+        if name == "gateway_proxy" and LOOPBACK_PROXY.fullmatch(value.strip()):
+            return value.strip()
+    return ""
+
+
 def resolve_credentials(environ: Mapping[str, str] | None = None) -> Credentials:
     env = os.environ if environ is None else environ
     if env.get(CLOUD_TOKEN_ENV) or env.get(CLOUD_SESSION_ENV) == "1":
@@ -336,7 +354,7 @@ def resolve_credentials(environ: Mapping[str, str] | None = None) -> Credentials
         token = env.get(CLOUD_TOKEN_ENV, "").strip()
         if not url or not token:
             raise Unavailable(f"the {CLOUD_CLIENT} client needs ORACLE_GATEWAY_URL and {CLOUD_TOKEN_ENV}")
-        return Credentials(CLOUD_CLIENT, url, token)
+        return Credentials(CLOUD_CLIENT, url, token, cloud_gateway_proxy())
     path = Path.home() / LOCAL_TOKEN_PATH
     try:
         token = path.read_text(encoding="utf-8").strip()
@@ -347,10 +365,24 @@ def resolve_credentials(environ: Mapping[str, str] | None = None) -> Credentials
     return Credentials(LOCAL_CLIENT, LOCAL_GATEWAY_URL, token)
 
 
-def reachable(url: str) -> bool:
+class _ForcedProxy(urllib.request.BaseHandler):
+    handler_order = 50
+
+    def __init__(self, proxy: str) -> None:
+        self.proxy = proxy.removeprefix("http://")
+
+    def _route(self, request: urllib.request.Request) -> urllib.request.Request:
+        request.set_proxy(self.proxy, request.type)
+        return request
+
+    http_request = https_request = _route
+
+
+def reachable(url: str, proxy: str = "") -> bool:
     request = urllib.request.Request(f"{url.rstrip('/')}/healthz", method="GET")
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _ForcedProxy(proxy)) if proxy else None
     try:
-        with urllib.request.urlopen(request, timeout=REACHABILITY_SECONDS):
+        with (opener.open if opener else urllib.request.urlopen)(request, timeout=REACHABILITY_SECONDS):
             return True
     except urllib.error.HTTPError:
         return True
@@ -451,6 +483,20 @@ def _store(path: Path, result: dict[str, Any], secrets: tuple[str, ...]) -> None
         scratch.unlink(missing_ok=True)
         return
     os.replace(scratch, path)
+
+
+def _keep_captures(source: Path, head: str, secrets: tuple[str, ...]) -> None:
+    files = sorted(source.glob("capture-*.json")) if source.is_dir() else []
+    if not files:
+        return
+    target = state_dir() / CAPTURE_DIR / f"{datetime.now(UTC).strftime('%Y%m%dT%H%M%S%fZ')}-{head[:12]}"
+    target.mkdir(parents=True, exist_ok=True)
+    for path in files:
+        try:
+            redaction_check.sanitize(path, secrets)
+        except redaction_check.Unredactable:
+            continue
+        shutil.copyfile(path, target / path.name)
 
 
 def _stage_workspace(root: Path, head: str, workspace: Path) -> None:
@@ -600,8 +646,9 @@ def _fresh_review(
 ) -> dict[str, Any]:
     access = resolve_credentials()
     reporter.hide(access.token, access.url)
-    if not reachable(access.url):
-        raise Unavailable(f"the {access.client} gateway is unreachable")
+    if not reachable(access.url, access.proxy):
+        hint = "; run make cloud-gateway" if access.client == CLOUD_CLIENT and not access.proxy else ""
+        raise Unavailable(f"the {access.client} gateway is unreachable{hint}")
     updates = {
         "OMP_GATEWAY_TOKEN": access.token,
         "ORACLE_GATEWAY_URL": access.url,
@@ -609,7 +656,7 @@ def _fresh_review(
         omp_pin.BINARY_ENV: str(omp_binary),
         **({"TYPESAFE_API_KEY": key} if key else {}),
     }
-    with _environment(updates):
+    with _environment(updates), gateway_proxy(access.proxy):
         classification = classify(plan, reporter, bool(key))
         classification_path = plan_dir / cli.CLASSIFICATION_FILE
         cli._write_json(classification_path, classification.to_json())
@@ -623,6 +670,7 @@ def _fresh_review(
                 redaction_check.sanitize(path, ())
             except redaction_check.Unredactable as exc:
                 raise Unavailable(str(exc)) from exc
+        _keep_captures(work / "attempts" / cli.CAPTURE_DIR, plan["head_sha"], reporter.secrets)
         return _result(plan, classification, work)
 
 

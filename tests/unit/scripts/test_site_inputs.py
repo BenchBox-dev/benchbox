@@ -237,7 +237,7 @@ def test_build_refuses_foreign_core_sha(tmp_path: Path) -> None:
             parent_core_sha=None,
             parent_source="local",
             certified_by=None,
-            profile="exact3",
+            profile="schema5",
             cmd="build",
         )
         with pytest.raises(RuntimeError, match="not the bundle core_sha"):
@@ -340,240 +340,33 @@ def test_verify_rejects_accepted_ref_other_than_core_sha(tmp_path: Path) -> None
     assert site_inputs.cmd_verify(out) == 1
 
 
-@pytest.mark.parametrize("corpus_changed", [False, True])
-def test_full_corpus_validation_runs_on_every_build(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corpus_changed: bool
-) -> None:
-    entries, commands = _captured_attestations(tmp_path, monkeypatch, corpus_changed=corpus_changed)
-    assert _command(commands, "results-data/validate_corpus.py") == [
-        "uv",
-        "run",
-        "--",
-        "python",
-        "results-data/validate_corpus.py",
-    ]
-    validation = next(e for e in entries if e["name"] == "corpus_validation")
-    assert validation["result"] == "pass"
-    assert set(validation["inputs"]) == {"corpus", *site_inputs.CORPUS_VALIDATOR_PATHS}
-
-
-def test_failed_full_corpus_validation_fails_the_build(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_run(*cmd: str, cwd: Path = site_inputs.ROOT) -> argparse.Namespace:
-        failed = "results-data/validate_corpus.py" in cmd
-        return argparse.Namespace(returncode=1 if failed else 0, stdout="", stderr="bad bundle" if failed else "")
-
-    monkeypatch.setattr(site_inputs, "run", fake_run)
-    monkeypatch.setattr(site_inputs, "tree_sha", lambda ref, subdir: "tree")
-    bundle = tmp_path / "bundle"
-    _write(bundle / "explorer/results.duckdb", "duckdb-bytes")
-    with pytest.raises(RuntimeError, match="corpus_validation"):
-        site_inputs.build_attestations(tmp_path / "attestations.json", bundle, "core", "parent")
-
-
-def test_verify_rejects_bundle_without_full_corpus_validation(tmp_path: Path) -> None:
-    out = _bundle(tmp_path)
-    kept = [
-        e
-        for e in json.loads((out / "attestations.json").read_text(encoding="utf-8"))
-        if e["name"] != "corpus_validation"
-    ]
-    (out / "attestations.json").write_text(json.dumps(kept) + "\n", encoding="utf-8")
-    assert site_inputs.cmd_verify(out) == 1
-
-
-def test_validator_parity_skips_when_corpus_unchanged(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    entries, commands = _captured_attestations(tmp_path, monkeypatch, corpus_changed=False)
-    parity = next(e for e in entries if e["name"] == "validator_parity")
-    assert parity["result"] == "skip"
-    assert parity["reason"] == "corpus unchanged"
-    assert parity["compared"] == {"base": "parent", "head": "core"}
-    assert not [c for c in commands if "scripts/publication/validator_parity.py" in c]
-
-
-def test_validator_parity_uses_the_mirror_form_when_corpus_changed(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    entries, commands = _captured_attestations(tmp_path, monkeypatch, corpus_changed=True)
-    command = _command(commands, "scripts/publication/validator_parity.py")
-    assert command[command.index("--base-sha") + 1] == "parent"
-    assert command[command.index("--merge-sha") + 1] == "core"
-    assert command[command.index("--head-sha") + 1] == "core"
-    assert "--allow-partial-validation" in command
-    assert "--require-manifest" not in command
-    parity = next(e for e in entries if e["name"] == "validator_parity")
-    assert parity["result"] == "pass"
-    assert parity["compared"] == {"base": "parent", "merge": "core", "head": "core"}
-
-
-@pytest.mark.parametrize("source", [None, "trunk"])
-def test_verify_rejects_unknown_parent_source(tmp_path: Path, source: str | None) -> None:
-    out = _bundle(tmp_path)
-    manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
-    if source is None:
-        del manifest["parent_source"]
-    else:
-        manifest["parent_source"] = source
-    (out / "manifest.json").write_text(json.dumps(manifest) + "\n", encoding="utf-8")
-    assert site_inputs.cmd_verify(out) == 1
-
-
-def _site_inputs_workflow() -> str:
-    return (ROOT / ".github/workflows/site-inputs.yml").read_text(encoding="utf-8")
-
-
-def _site_inputs_parent_script() -> str:
-    return (ROOT / "scripts/site_inputs_parent.py").read_text(encoding="utf-8")
-
-
-def test_parent_candidates_come_only_from_develop_runs() -> None:
-    assert "scripts/site_inputs_parent.py" in _site_inputs_workflow()
-    assert "gh run list --workflow site-inputs.yml" not in _site_inputs_workflow()
-    script = _site_inputs_parent_script()
-    assert "--branch" in script and "develop" in script
-    assert 'TRUNK_BRANCH = "develop"' in script
-    assert "head_branch" in script and "conclusion" in script
-
-
-def test_parent_selection_fails_closed_without_a_bundled_ancestor() -> None:
-    workflow = _site_inputs_workflow()
-    assert "~1" not in workflow
-    script = _site_inputs_parent_script()
-    assert '"dispatch"' in script
-    assert script.count('"bundle"') >= 2
-    assert "dispatch site-inputs.yml with parent_core_sha" in script
-
-
-def test_dispatched_parent_is_resolved_to_a_full_commit_sha() -> None:
-    script = _site_inputs_parent_script()
-    assert "rev-parse" in script
-    assert "--verify" in script
-    assert "--end-of-options" in script
-    assert "^[0-9a-f]{40}$" in script
-    assert "does not name a commit" in script
-
-
-def test_parent_ref_resolves_to_a_full_commit_sha() -> None:
-    head = site_inputs.must_run("git", "-C", str(site_inputs.ROOT), "rev-parse", "HEAD").strip()
-    assert site_inputs.resolve_parent(head, "HEAD") == head
-    assert site_inputs.resolve_parent(head, head[:12]) == head
-
-
-def test_parent_ref_that_names_no_commit_is_rejected() -> None:
-    head = site_inputs.must_run("git", "-C", str(site_inputs.ROOT), "rev-parse", "HEAD").strip()
-    with pytest.raises(RuntimeError, match="rev-parse"):
-        site_inputs.resolve_parent(head, "no-such-ref-for-site-inputs")
-
-
-def _site_inputs_jobs() -> dict:
-    import yaml
-
-    return yaml.safe_load(_site_inputs_workflow())["jobs"]
-
-
-def test_failed_bundle_build_reports_to_one_issue() -> None:
-    report = _site_inputs_jobs()["report-failure"]
-    assert report["needs"] == "build"
-    assert report["if"] == "failure()"
-    assert report["permissions"] == {"issues": "write"}
-    script = report["steps"][0]["run"]
-    assert 'gh issue list --repo "$REPO" --label site-bundle-failed --state open' in script
-    assert 'gh issue comment "$NUMBER"' in script
-    assert "gh issue create" in script
-
-
-def test_bundle_build_job_keeps_read_only_permissions() -> None:
-    import yaml
-
-    workflow = yaml.safe_load(_site_inputs_workflow())
-    assert workflow["permissions"] == {"contents": "read", "actions": "read"}
-    assert "permissions" not in _site_inputs_jobs()["build"]
-
-
-def test_link_targets_cover_inline_reference_and_autolinks() -> None:
-    text = (
-        'See [a](../../examples/a.py) and [b](<../x.sql> "title").\n'
-        "[ref]: ../../pytest.ini\n"
-        "Auto <../../scripts/c.py> and [web](https://example.com) and [top](/docs/x.html) and [frag](#here).\n"
-    )
-    assert site_inputs.link_targets(text) == [
-        "../../examples/a.py",
-        "../x.sql",
-        "../../pytest.ini",
-        "../../scripts/c.py",
-    ]
-
-
-def test_referenced_downloads_keep_tracked_files_outside_docs(tmp_path: Path) -> None:
-    docs = tmp_path / "docs"
-    _write(
-        docs / "guide/page.md",
-        "[t](../../tools/t.tpl#L3) [m](other.md) [n](../../notes.md) [u](../../untracked.py) [d](../../tools)\n",
-    )
-    tracked = ["tools/t.tpl", "notes.md", "docs/guide/other.md"]
-    assert site_inputs.referenced_downloads(docs, tracked) == ["tools/t.tpl"]
-
-
-@pytest.mark.parametrize(
-    ("template", "eula", "other_eula"),
-    [
-        (
-            "_sources/tpc-ds/query_templates/query1.tpl",
-            "_sources/tpc-ds/EULA.txt",
-            "_sources/tpc-h/EULA.txt",
-        ),
-        (
-            "benchbox/_binaries/tpc-h/templates/queries/1.sql",
-            "_sources/tpc-h/EULA.txt",
-            "_sources/tpc-ds/EULA.txt",
-        ),
-    ],
-)
-@pytest.mark.parametrize("eula_tracked", [True, False])
-def test_referenced_downloads_include_matching_tpc_eula_only_when_tracked(
-    tmp_path: Path,
-    template: str,
-    eula: str,
-    other_eula: str,
-    eula_tracked: bool,
-) -> None:
-    docs = tmp_path / "docs"
-    _write(docs / "guide/page.md", f"[template](../../{template})\n")
-    tracked = [template, other_eula, "examples/other.py"]
-    if eula_tracked:
-        tracked.append(eula)
-    expected = sorted([template, eula]) if eula_tracked else [template]
-    assert site_inputs.referenced_downloads(docs, tracked) == expected
-
-
-@pytest.mark.parametrize(
-    ("metadata", "eula"),
-    [
-        ("_sources/tpc-ds/query_templates/templates.lst", "_sources/tpc-ds/EULA.txt"),
-        ("benchbox/_binaries/tpc-h/templates/queries/README", "_sources/tpc-h/EULA.txt"),
-    ],
-)
-def test_referenced_downloads_exclude_tpc_eula_for_non_template_files(
-    tmp_path: Path,
-    metadata: str,
-    eula: str,
-) -> None:
-    docs = tmp_path / "docs"
-    _write(docs / "guide/page.md", f"[metadata](../../{metadata})\n")
-    assert site_inputs.referenced_downloads(docs, [metadata, eula]) == [metadata]
-
-
-def test_build_downloads_copies_each_file_at_its_repo_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    docs = tmp_path / "docs"
-    _write(docs / "page.md", "[ini](../pytest.ini)\n")
-    monkeypatch.setattr(site_inputs, "git_ls_files", lambda: ["pytest.ini"])
-    out = tmp_path / "downloads"
-    assert site_inputs.build_downloads(out, docs) == ["pytest.ini"]
-    assert (out / "pytest.ini").read_bytes() == (site_inputs.ROOT / "pytest.ini").read_bytes()
-
-
 def test_bundle_schema_three_requires_downloads_and_result_bundles() -> None:
     assert "downloads" in site_inputs.REQUIRED_MEMBERS
     assert "explorer/bundles" in site_inputs.REQUIRED_MEMBERS
+
+
+@pytest.mark.parametrize("profile", ["exact3", "schema4", "candidate4"])
+def test_legacy_profile_builds_explain_the_relocated_sources(profile: str, tmp_path: Path) -> None:
+    args = argparse.Namespace(
+        out=str(tmp_path / "out"),
+        core_sha=None,
+        parent_core_sha=None,
+        parent_source="local",
+        certified_by=None,
+        profile=profile,
+        cmd="build",
+    )
+    with pytest.raises(RuntimeError, match="sources moved"):
+        site_inputs.cmd_build(args)
+
+
+def test_default_profile_emits_exactly_eleven_members() -> None:
+    assert site_inputs.DEFAULT_PROFILE == "schema5"
+    assert site_inputs.PROFILE_SCHEMAS["schema5"] == 5
+    assert site_inputs.PROFILE_SCHEMAS["candidate5"] == 5
+    assert len(site_inputs.MEMBERS_BY_SCHEMA[5]) == 11
+    assert "docs-data" in site_inputs.MEMBERS_BY_SCHEMA[5]
+    assert "doc-contracts.json" in site_inputs.MEMBERS_BY_SCHEMA[5]
 
 
 def _fake_explorer_publish(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, bundles: bool) -> Path:
@@ -629,11 +422,12 @@ def test_member_sets_per_schema_are_exact() -> None:
     assert set(site_inputs.MEMBERS_BY_SCHEMA[5]) == (base - {"docs", "downloads"}) | {"docs-data", "doc-contracts.json"}
     assert site_inputs.PROFILE_SCHEMAS["exact3"] == 3
     assert site_inputs.PROFILE_SCHEMAS["schema4"] == 4
+    assert site_inputs.PROFILE_SCHEMAS["schema5"] == 5
     assert site_inputs.PROFILE_SCHEMAS["candidate4"] == 4
     assert site_inputs.PROFILE_SCHEMAS["candidate5"] == 5
 
 
-def test_default_profile_is_the_published_schema4() -> None:
+def test_default_profile_is_the_published_schema5() -> None:
     parser_args = []
 
     def capture(args: argparse.Namespace) -> int:
@@ -646,8 +440,8 @@ def test_default_profile_is_the_published_schema4() -> None:
         site_inputs.main(["build", "--out", "x"])
     finally:
         site_inputs.cmd_build = original
-    assert parser_args[0].profile == "schema4"
-    assert site_inputs.PROFILE_SCHEMAS[parser_args[0].profile] == 4
+    assert parser_args[0].profile == "schema5"
+    assert site_inputs.PROFILE_SCHEMAS[parser_args[0].profile] == 5
     assert parser_args[0].certified_by is None
 
 
@@ -711,13 +505,31 @@ def test_schema4_verify_rejects_a_numeric_certifier_stored_as_a_number(
     assert site_inputs.cmd_verify(out) == 1
 
 
-@pytest.mark.parametrize("certified_by", ["123456", "local"])
-def test_schema5_verify_rejects_publication_certifiers(
+@pytest.mark.parametrize("certified_by", ["local", "", "12a", "-1", "1 ", "\u0663", "latest"])
+def test_schema5_verify_rejects_other_certifiers(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], certified_by: str
 ) -> None:
     out = _candidate(tmp_path, monkeypatch, 5, certified_by=certified_by)
     assert site_inputs.cmd_verify(out) == 1
     assert "certified_by" in capsys.readouterr().out
+
+
+def test_schema5_verify_accepts_a_run_id_certifier(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    out = _candidate(tmp_path, monkeypatch, 5, certified_by="38216829987")
+    assert site_inputs.cmd_verify(out) == 0
+    assert "schema 5" in capsys.readouterr().out
+
+
+def test_schema5_verify_rejects_a_numeric_certifier_stored_as_a_number(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    out = _candidate(tmp_path, monkeypatch, 5)
+    manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    manifest["certified_by"] = 123456
+    _write(out / "manifest.json", json.dumps(manifest) + "\n")
+    assert site_inputs.cmd_verify(out) == 1
 
 
 def test_schema3_verify_ignores_the_certifier(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -750,12 +562,14 @@ def test_certifier_rules_match_the_site_verifier() -> None:
     assert site_inputs.certifier_errors(4, "42") == []
     assert site_inputs.certifier_errors(4, "local")
     assert site_inputs.certifier_errors(5, "candidate") == []
-    assert site_inputs.certifier_errors(5, "42")
+    assert site_inputs.certifier_errors(5, "42") == []
+    assert site_inputs.certifier_errors(5, 42)
+    assert site_inputs.certifier_errors(5, "local")
 
 
 def test_default_certifier_is_never_local_for_schema4() -> None:
     assert site_inputs.default_certifier("exact3") == "local"
-    for profile in ("schema4", "candidate4", "candidate5"):
+    for profile in ("schema4", "schema5", "candidate4", "candidate5"):
         assert (
             site_inputs.certifier_errors(site_inputs.PROFILE_SCHEMAS[profile], site_inputs.default_certifier(profile))
             == []

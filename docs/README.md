@@ -9,10 +9,10 @@ BenchBox helps you run industry benchmarks across analytical databases. The docu
 
 ## Start Here
 
-- [Getting started in 5 minutes](usage/getting-started.md), install, run your first benchmark, and inspect the output.
-- [CLI quick reference](usage/cli-quick-start.md), command overview and the most useful flags.
-- [Choose a platform](platforms/platform-selection-guide.md), requirements and trade-offs for each adapter.
-- [Installation & environment setup](usage/installation.md), uv, pip, extras, and dependency checks.
+- [Getting started in 5 minutes](https://benchbox.dev/docs/usage/getting-started.html), install, run your first benchmark, and inspect the output.
+- [CLI quick reference](https://benchbox.dev/docs/usage/cli-quick-start.html), command overview and the most useful flags.
+- [Choose a platform](https://benchbox.dev/docs/platforms/platform-selection-guide.html), requirements and trade-offs for each adapter.
+- [Installation & environment setup](https://benchbox.dev/docs/usage/installation.html), uv, pip, extras, and dependency checks.
 
 ## Versioning & Releases
 
@@ -26,32 +26,33 @@ Current release: `v0.5.0rc1`. Use `benchbox --version` for a human-readable summ
 
 ## Usage Guides
 
-- [Usage overview](usage/index.md), end-to-end workflows and tips.
-- [Configuration handbook](usage/configuration.md), CLI flags, config files, and validation.
-- [Examples](usage/examples.md), curated snippets for automation.
-- [API reference](reference/api-reference.md), programmatic access points.
+- [Usage overview](https://benchbox.dev/docs/usage/), end-to-end workflows and tips.
+- [Configuration handbook](https://benchbox.dev/docs/usage/configuration.html), CLI flags, config files, and validation.
+- [Examples](https://benchbox.dev/docs/usage/examples.html), curated snippets for automation.
+- [API reference](https://benchbox.dev/docs/reference/api-reference.html), programmatic access points.
 
 ## Benchmark Library
 
-- [Benchmark catalog](benchmarks/index.md), supported suites and feature matrix.
-- [Platform comparison](platforms/comparison-matrix.md), latency, scale, and capability notes.
-- [Data generation and compression](usage/data-generation.md), storage guidance and tuning.
+- [Benchmark catalog](https://benchbox.dev/docs/benchmarks/), supported suites and feature matrix.
+- [Platform comparison](https://benchbox.dev/docs/platforms/comparison-matrix.html), latency, scale, and capability notes.
+- [Data generation and compression](https://benchbox.dev/docs/usage/data-generation.html), storage guidance and tuning.
 
 ## Advanced Topics
 
-- [Power-run and throughput testing](advanced/power-run-concurrent-queries.md).
-- [Optimizer and validation tooling](advanced/optimizer-tests.md).
-- [Performance monitoring and regression alerts](advanced/performance.md).
-- [Custom benchmark authoring](advanced/custom-benchmarks.md).
+- [Power-run and throughput testing](https://benchbox.dev/docs/advanced/power-run-concurrent-queries.html).
+- [Optimizer and validation tooling](https://benchbox.dev/docs/advanced/optimizer-tests.html).
+- [Performance monitoring and regression alerts](https://benchbox.dev/docs/advanced/performance.html).
+- [Custom benchmark authoring](https://benchbox.dev/docs/advanced/custom-benchmarks.html).
 
 ## Design & Contribution
 
-- [Architecture & design notes](design/index.md).
-- [Development workflow](development/development.md) and [platform onboarding guide](development/adding-new-platforms.md).
+- [Architecture & design notes](https://benchbox.dev/docs/design/).
+- [Development workflow](https://benchbox.dev/docs/development/development.html) and [platform onboarding guide](https://benchbox.dev/docs/development/adding-new-platforms.html).
+
 - Check the root `CONTRIBUTING.md` for contribution expectations and coding standards.
 
 ## Need Help?
 
-- [Frequently Asked Questions (FAQ)](usage/faq.md) answers common questions about BenchBox.
-- [Troubleshooting guide](usage/troubleshooting.md) covers common errors and remediation steps.
+- [Frequently Asked Questions (FAQ)](https://benchbox.dev/docs/usage/faq.html) answers common questions about BenchBox.
+- [Troubleshooting guide](https://benchbox.dev/docs/usage/troubleshooting.html) covers common errors and remediation steps.
 - Open issues or discussions on GitHub if you get stuck.

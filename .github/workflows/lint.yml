@@ -62,8 +62,8 @@ jobs:
         if: hashFiles('_project/scripts/check_project_references.py') != ''
         run: uv run -- python _project/scripts/check_project_references.py
 
-      - name: Compatibility docs drift check
-        run: make compat-docs-check
+      - name: Compatibility inventory drift check
+        run: make compat-inventory-check
 
       - name: Platform manifest drift check
         if: hashFiles('_project/scripts/platform_manifest.py') != ''

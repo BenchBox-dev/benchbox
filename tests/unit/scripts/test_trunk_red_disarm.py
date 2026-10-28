@@ -251,6 +251,44 @@ def test_no_trunk_runs_selects_nothing() -> None:
     assert (selected, failed) == ([], None)
 
 
+def _runs_with_an_older_unfinished_run() -> list[dict]:
+    def entry(index: int, status: str, conclusion: str | None, hour: int) -> dict:
+        stamp = f"2026-10-24T{hour:02d}:00:00Z"
+        return {
+            "status": status,
+            "conclusion": conclusion,
+            "createdAt": stamp,
+            "updatedAt": stamp,
+            "databaseId": 500 + index,
+            "url": f"https://github.com/BenchBox-dev/BenchBox/actions/runs/{500 + index}",
+            "headSha": f"{index:040x}",
+        }
+
+    return [
+        entry(3, "completed", "failure", 9),
+        entry(2, "in_progress", None, 8),
+        entry(1, "completed", "success", 7),
+    ]
+
+
+def test_undetermined_culprit_disarms_every_armed_ordinary_pr_without_naming_a_commit(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    run = DisarmRun(
+        _runs_with_an_older_unfinished_run(),
+        armed=[_armed(3385, "fix/thing"), _armed(3386, "fix/revert-3200")],
+    )
+    with pytest.raises(trunk_revert.UndeterminedCulpritError):
+        trunk_red_disarm.select_for_disarm(run, trunk_revert.REPOSITORY)
+    assert trunk_red_disarm.disarm_all(run, trunk_revert.REPOSITORY) == 0
+    assert run.mutations == ["PR_node_3385"]
+    out = capsys.readouterr().out
+    assert "undetermined" in out
+    assert "PR #3385" in out
+    assert "3386" not in out
+    assert "PR #3200" not in out
+
+
 def test_streak_lookup_failure_disarms_nothing_and_fails(capsys: pytest.CaptureFixture[str]) -> None:
     run = DisarmRun(_replayed_runs(), armed=[_armed(3385, "fix/thing")], runs_code=1)
     with pytest.raises(trunk_revert.TrunkError):

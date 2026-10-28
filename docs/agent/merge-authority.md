@@ -84,12 +84,14 @@ the PR and its head in the current request. Post a separate `Owner instruction`
 comment that names the head first, as for a stand-in; the target refuses
 without it, refuses when the head is not the PR's current head, and refuses any
 account that is not an attester. It posts `Oracle backoff reset: <head SHA>`
-and the reason on the PR. The next retry on that head ignores the backoff and
-the daily retry budget once, and only when the head's recorded result is a
-pending reviewer-outage result; a decisive verdict is never re-rolled by a
-reset, and the recorded retries stay counted so no extra budget is granted.
-That run spends the reset whether or not it records a result. To
-withdraw the reset, edit or delete the comment.
+and the reason on the PR. The next retry on that head, whether from the plan or
+the sweep, ignores the backoff and the daily retry budget once, and only when
+the head's recorded result is a pending reviewer-outage result; a decisive
+verdict is never re-rolled by a reset, and the recorded retries stay counted so
+no extra budget is granted. The first later run that started and was not
+skipped or cancelled spends the reset whether or not it records a result; a
+run still waiting in the queue does not. To withdraw the reset, edit or delete
+the comment.
 
 ## Fix-forward authorization
 

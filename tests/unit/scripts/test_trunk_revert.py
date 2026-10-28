@@ -601,6 +601,87 @@ def test_arm_gate_streak_skips_cancelled_and_pending_runs() -> None:
     assert "PR #3200" in message
 
 
+def _older_run_in_progress(status: str = "in_progress") -> list[dict]:
+    runs = _runs(
+        ("completed", "failure", timedelta(minutes=40)),
+        (status, None, timedelta(minutes=50)),
+        ("completed", "success", timedelta(minutes=60)),
+    )
+    for item, sha in zip(runs, (LATER_SHA, FIRST_SHA, None), strict=True):
+        item["headSha"] = sha or "g" * 40
+    return runs
+
+
+@pytest.mark.parametrize("status", ["queued", "in_progress", "waiting", "pending", "requested"])
+def test_red_streak_start_is_undetermined_while_an_older_run_is_unfinished(status: str) -> None:
+    run = ArmRun(_older_run_in_progress(status))
+    with pytest.raises(trunk_revert.UndeterminedCulpritError, match="undetermined"):
+        trunk_revert.red_streak_start(run, trunk_revert.REPOSITORY)
+
+
+def test_red_streak_start_ignores_an_unfinished_run_newer_than_every_red_run() -> None:
+    runs = _streak(None, FIRST_SHA, LATER_SHA)
+    newest = _runs(("in_progress", None, timedelta(minutes=1)))[0]
+    newest["databaseId"], newest["headSha"] = 900, "h" * 40
+    failed = trunk_revert.red_streak_start(ArmRun(runs + [newest]), trunk_revert.REPOSITORY)
+    assert failed is not None
+    assert failed["headSha"] == FIRST_SHA
+
+
+def test_arm_gate_refuses_without_naming_a_commit_while_an_older_run_is_unfinished() -> None:
+    run = ArmRun(
+        _older_run_in_progress(), pulls_by_sha={FIRST_SHA: _merged_pulls(3200), LATER_SHA: _merged_pulls(3220)}
+    )
+    with pytest.raises(trunk_revert.UndeterminedCulpritError):
+        trunk_revert.arm_gate("fix/thing", run=run)
+    assert not any("commits" in " ".join(call) and "pulls" in " ".join(call) for call in run.calls)
+
+
+def test_main_arm_gate_exits_nonzero_without_naming_a_pr_while_an_older_run_is_unfinished(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    run = ArmRun(
+        _older_run_in_progress(), pulls_by_sha={FIRST_SHA: _merged_pulls(3200), LATER_SHA: _merged_pulls(3220)}
+    )
+    assert trunk_revert.main(["arm-gate", "--branch", "fix/thing"], run=run) == 1
+    err = capsys.readouterr().err
+    assert "undetermined" in err
+    assert "PR #3200" not in err
+    assert "PR #3220" not in err
+
+
+def test_status_does_not_name_a_culprit_while_an_older_run_is_unfinished(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    run = ArmRun(
+        _older_run_in_progress(), pulls_by_sha={FIRST_SHA: _merged_pulls(3200), LATER_SHA: _merged_pulls(3220)}
+    )
+    assert trunk_revert.main(["status"], run=run) == 1
+    err = capsys.readouterr().err
+    assert "undetermined" in err
+    assert "3200" not in err
+    assert "3220" not in err
+
+
+def test_gate_does_not_name_a_commit_while_an_older_run_is_unfinished() -> None:
+    message = _gate(_older_run_in_progress())
+    assert message is not None
+    assert "the culprit" in message
+    assert "make trunk-revert PR=<number>" in message
+    assert "3200" not in message
+    assert "3220" not in message
+
+
+def test_revert_refuses_before_mutating_while_an_older_run_is_unfinished(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    run = FakeRun(pr_view=_merged(), runs=_older_run_in_progress())
+    assert trunk_revert.revert(12, run=run) == 1
+    assert "undetermined" in capsys.readouterr().err
+    assert all(call[:1] == ["gh"] for call in run.calls)
+    assert not any(call[:3] == ["gh", "pr", "create"] for call in run.calls)
+
+
 def _long_streak(red: int, *, green_first: bool) -> list[dict]:
     conclusions = (["success"] if green_first else []) + ["failure"] * red
     runs = _runs(*[("completed", c, timedelta(minutes=len(conclusions) - i + 10)) for i, c in enumerate(conclusions)])

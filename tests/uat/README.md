@@ -1,7 +1,7 @@
 # tests/uat — Developer Guide
 
 This is the framework developer's guide. The operator guide is
-`docs/operations/uat-framework.md`; the design contract is
+https://benchbox.dev/docs/operations/uat-framework.html; the design contract is
 `_project/specs/uat-framework.md`.
 
 ## Layout

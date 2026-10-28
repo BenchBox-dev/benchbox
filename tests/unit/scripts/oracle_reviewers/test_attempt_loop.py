@@ -17,7 +17,10 @@ from _project.scripts.oracle_reviewers.commands import OMP_BASE_ENV, Invocation,
 from _project.scripts.oracle_reviewers.policy import Policy, Reviewer
 from _project.scripts.oracle_reviewers.selection import JOB_FAILURE_DETAIL
 
+from .loop_process import Journal
 from .test_attempts import RUN_ID, _classification, _plan
+
+REPO_ROOT = Path(__file__).resolve().parents[4]
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -48,6 +51,9 @@ def _git(path: Path, *args: str) -> str:
 class Loop:
     def __init__(self, tmp_path: Path, policy: Policy, monkeypatch: pytest.MonkeyPatch, max_attempts: int = 2) -> None:
         self.tmp_path = tmp_path
+        self.fakes: list[dict[str, Any]] = []
+        self.output_text = ""
+        self.environ_after: dict[str, str | None] = {}
         self.workspace = tmp_path / "workspace"
         self.workspace.mkdir()
         _git(self.workspace, "init", "--quiet")
@@ -69,11 +75,20 @@ class Loop:
         monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
         monkeypatch.setenv("ORACLE_GATEWAY_URL", GATEWAY_URL)
         monkeypatch.setenv("OMP_GATEWAY_TOKEN", GATEWAY_TOKEN)
-        monkeypatch.setattr(cli, "_assemble_prompt", lambda *args, **kwargs: "review this")
+
+    def fake(self, name: str, **params: Any) -> None:
+        self.fakes.append({"name": name, "params": params})
 
     def run(self) -> int:
-        return cli.main(
+        spec = self.tmp_path / "loop-spec.json"
+        environ_after = self.tmp_path / "environ-after.json"
+        spec.write_text(json.dumps({"fakes": self.fakes, "environ_after": str(environ_after)}), encoding="utf-8")
+        result = subprocess.run(
             [
+                sys.executable,
+                "-m",
+                "tests.unit.scripts.oracle_reviewers.loop_process",
+                str(spec),
                 "attempts",
                 "--plan",
                 str(self.plan_path),
@@ -85,8 +100,20 @@ class Loop:
                 str(self.workspace),
                 "--home-root",
                 str(self.tmp_path),
-            ]
+            ],
+            cwd=REPO_ROOT,
+            env={**os.environ, "PYTHONPATH": str(REPO_ROOT)},
+            capture_output=True,
+            text=True,
+            check=False,
         )
+        self.output_text = result.stdout + result.stderr
+        if environ_after.exists():
+            self.environ_after = json.loads(environ_after.read_text(encoding="utf-8"))
+        return result.returncode
+
+    def journal(self, name: str) -> Journal:
+        return Journal(self.tmp_path / f"{name}.journal")
 
     def artifact(self, slot: int) -> dict[str, Any]:
         return json.loads((self.attempts / attempts.artifact_name(slot)).read_text(encoding="utf-8"))
@@ -101,15 +128,8 @@ def loop(tmp_path: Path, policy: Policy, monkeypatch: pytest.MonkeyPatch) -> Loo
     return Loop(tmp_path, policy, monkeypatch)
 
 
-def _script_invocation(tmp_path: Path, script: str) -> Any:
-    def build(reviewer: Reviewer, workspace: Path, prompt: str, scratch: Path) -> Invocation:
-        return Invocation((sys.executable, "-c", script), tmp_path, None, dict(os.environ))
-
-    return build
-
-
-def _use_script_reviewer(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, script: str) -> None:
-    monkeypatch.setattr(runner, "build", _script_invocation(tmp_path, script))
+def _use_script_reviewer(loop: Loop, monkeypatch: pytest.MonkeyPatch, script: str) -> None:
+    loop.fake("script_reviewer", script=script, cwd=str(loop.tmp_path))
     monkeypatch.setenv(omp_pin.BINARY_ENV, sys.executable)
 
 
@@ -123,39 +143,24 @@ def _gone(pid: int) -> bool:
     return False
 
 
-def test_each_attempt_gets_a_fresh_home_and_the_previous_one_is_deleted(
-    loop: Loop, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    homes: list[Path] = []
-    seen_before: list[bool] = []
-    original_home = os.environ.get("HOME")
-
-    def fake_review(reviewer: Reviewer, **kwargs: Any) -> runner.ReviewOutcome:
-        home = Path(os.environ["HOME"])
-        seen_before.append(any(previous.exists() for previous in homes))
-        assert (home / ".omp" / "agent" / "models.yml").is_file()
-        assert GATEWAY_URL in (home / ".omp" / "agent" / "models.yml").read_text(encoding="utf-8")
-        homes.append(home)
-        return runner.ReviewOutcome(None, Absence(INVALID, "unparseable"), "")
-
-    monkeypatch.setattr(runner, "review", fake_review)
+def test_each_attempt_gets_a_fresh_home_and_the_previous_one_is_deleted(loop: Loop) -> None:
+    journal = loop.journal("reviews")
+    loop.fake("recording_review", journal=str(journal.path), workspace=str(loop.workspace))
     assert loop.run() == 0
+    entries = journal.items()
+    homes = [Path(entry["home"]) for entry in entries]
     assert len(homes) == 2
     assert homes[0] != homes[1]
-    assert seen_before == [False, False]
+    assert [entry["earlier_home_exists"] for entry in entries] == [False, False]
+    assert [entry["models_name_the_gateway"] for entry in entries] == [True, True]
     assert not homes[0].exists() and not homes[1].exists()
-    assert os.environ.get("HOME") == original_home
+    assert loop.environ_after == {"HOME": os.environ.get("HOME"), "TMPDIR": os.environ.get("TMPDIR")}
     assert loop.ran() == "2"
     assert loop.artifact(1)["absence"]["kind"] == INVALID and loop.artifact(2)["absence"]["kind"] == INVALID
 
 
-def test_a_reviewer_that_crashes_still_leaves_a_result_file_for_its_slot(
-    loop: Loop, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    def crash(reviewer: Reviewer, **kwargs: Any) -> runner.ReviewOutcome:
-        raise RuntimeError(f"boom {GATEWAY_TOKEN}")
-
-    monkeypatch.setattr(runner, "review", crash)
+def test_a_reviewer_that_crashes_still_leaves_a_result_file_for_its_slot(loop: Loop) -> None:
+    loop.fake("crashing_review")
     assert loop.run() == 0
     data = loop.artifact(1)
     assert data["outcome"] == "absent"
@@ -166,11 +171,10 @@ def test_a_reviewer_that_crashes_still_leaves_a_result_file_for_its_slot(
 
 
 def test_a_reviewer_that_times_out_still_leaves_a_result_file_for_its_slot(
-    loop: Loop, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    loop: Loop, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _use_script_reviewer(monkeypatch, tmp_path, "import time; time.sleep(60)")
-    original = runner.execute
-    monkeypatch.setattr(runner, "execute", lambda invocation, timeout_seconds: original(invocation, 1))
+    _use_script_reviewer(loop, monkeypatch, "import time; time.sleep(60)")
+    loop.fake("short_timeout", seconds=1)
     assert loop.run() == 0
     data = loop.artifact(1)
     assert data["outcome"] == "absent"
@@ -188,7 +192,7 @@ def test_a_reviewer_that_leaves_a_child_running_fails_the_review_closed_and_the_
         f"open({str(pid_file)!r}, 'w').write(str(child.pid))\n"
         "print('{}')\n"
     )
-    _use_script_reviewer(monkeypatch, tmp_path, script)
+    _use_script_reviewer(loop, monkeypatch, script)
     assert loop.run() == 1
     child = int(pid_file.read_text(encoding="utf-8"))
     assert _gone(child)
@@ -220,6 +224,18 @@ def test_execute_raises_for_a_survivor_and_kills_it(tmp_path: Path) -> None:
     assert _gone(int(pid_file.read_text(encoding="utf-8")))
 
 
+def _adopting_child(mode: str, *args: str) -> Any:
+    result = subprocess.run(
+        [sys.executable, "-m", "tests.unit.scripts.oracle_reviewers.loop_process", "adopt", mode, *args],
+        cwd=REPO_ROOT,
+        env={**os.environ, "PYTHONPATH": str(REPO_ROOT)},
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return json.loads(result.stdout)
+
+
 @pytest.mark.skipif(not sys.platform.startswith("linux"), reason="orphan adoption needs a Linux subreaper")
 def test_a_detached_grandchild_is_found_through_the_subreaper(tmp_path: Path) -> None:
     script = (
@@ -227,35 +243,37 @@ def test_a_detached_grandchild_is_found_through_the_subreaper(tmp_path: Path) ->
         "subprocess.Popen([sys.executable, '-c', 'import os, time; os.setsid(); time.sleep(120)'],"
         " stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n"
     )
-    assert processes.become_subreaper()
-    try:
-        invocation = Invocation((sys.executable, "-c", script), tmp_path, None, dict(os.environ))
-        with pytest.raises(processes.HarnessLeakError) as raised:
-            runner.execute(invocation, 30)
-    finally:
-        processes.release_subreaper()
-    assert raised.value.survivors
-    assert all(_gone(pid) for pid in raised.value.survivors)
+
+    survivors = _adopting_child("detached-grandchild", str(tmp_path), script)
+    assert survivors
+    assert all(_gone(pid) for pid in survivors)
 
 
-def test_the_workspace_is_reset_between_attempts(loop: Loop, monkeypatch: pytest.MonkeyPatch) -> None:
-    staged = loop.workspace / runner.STAGED_DIFF_NAME
-    states: list[bool] = []
+@pytest.mark.skipif(not sys.platform.startswith("linux"), reason="orphan adoption needs a Linux subreaper")
+def test_a_bystander_child_of_the_loop_is_not_a_leaked_reviewer_process(tmp_path: Path) -> None:
+    report = _adopting_child("bystander", str(tmp_path))
+    assert report == {"exit_code": 0, "bystander_alive": True}
 
-    def fake_review(reviewer: Reviewer, **kwargs: Any) -> runner.ReviewOutcome:
-        states.append(staged.exists())
-        staged.write_text("diff", encoding="utf-8")
-        return runner.ReviewOutcome(None, Absence(INVALID, "unparseable"), "")
 
-    monkeypatch.setattr(runner, "review", fake_review)
+@pytest.mark.skipif(not sys.platform.startswith("linux"), reason="orphan adoption needs a Linux subreaper")
+def test_reaping_after_a_leak_leaves_the_loops_other_children_waitable(tmp_path: Path) -> None:
+    report = _adopting_child("reap-after-leak", str(tmp_path))
+    assert report == {"leaked": True, "sibling_waitable": True}
+
+
+def test_the_workspace_is_reset_between_attempts(loop: Loop) -> None:
+    journal = loop.journal("reviews")
+    loop.fake("recording_review", journal=str(journal.path), workspace=str(loop.workspace))
     assert loop.run() == 0
-    assert states == [False, False]
+    assert [entry["staged_diff_present"] for entry in journal.items()] == [False, False]
 
 
-def test_the_loop_stops_when_the_classification_is_unreadable(loop: Loop, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_the_loop_stops_when_the_classification_is_unreadable(loop: Loop) -> None:
     loop.classification.write_text("not json", encoding="utf-8")
-    monkeypatch.setattr(runner, "review", lambda *args, **kwargs: pytest.fail("no reviewer may run"))
+    ran = loop.tmp_path / "reviewer-ran"
+    loop.fake("forbidden_review", marker=str(ran))
     assert loop.run() == 0
+    assert not ran.exists()
     assert loop.ran() == "0"
     assert not loop.attempts.joinpath(attempts.artifact_name(1)).exists()
 
@@ -384,14 +402,10 @@ def test_a_leftover_that_keeps_the_output_open_is_found_without_waiting_for_the_
 
 
 def test_the_loop_fails_closed_when_the_process_list_cannot_be_read(
-    loop: Loop, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    loop: Loop, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _use_script_reviewer(monkeypatch, tmp_path, "print('{}')")
-
-    def unreadable() -> list[processes.Process]:
-        raise processes.HarnessLeakError((), "the process list could not be read")
-
-    monkeypatch.setattr(processes, "snapshot", unreadable)
+    _use_script_reviewer(loop, monkeypatch, "print('{}')")
+    loop.fake("unreadable_snapshot")
     assert loop.run() == 1
     assert loop.artifact(1)["absence"]["detail"] == cli.LEAK_DETAIL
     assert not (loop.attempts / attempts.artifact_name(2)).exists()
@@ -406,31 +420,26 @@ def test_the_process_list_failing_to_start_is_reported_as_a_failed_exit_check(mo
         processes.snapshot()
 
 
-def test_the_loop_fails_closed_on_linux_when_it_cannot_adopt_orphans(
-    loop: Loop, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(processes, "IS_LINUX", True)
-    monkeypatch.setattr(processes, "become_subreaper", lambda: False)
-    monkeypatch.setattr(runner, "review", lambda *args, **kwargs: pytest.fail("no reviewer may run"))
+def test_the_loop_fails_closed_on_linux_when_it_cannot_adopt_orphans(loop: Loop) -> None:
+    ran = loop.tmp_path / "reviewer-ran"
+    loop.fake("cannot_adopt_orphans")
+    loop.fake("forbidden_review", marker=str(ran))
     assert loop.run() == 1
+    assert "could not become a child subreaper" in loop.output_text
+    assert not ran.exists()
     assert not (loop.attempts / attempts.artifact_name(1)).exists()
 
 
-def test_each_attempt_gets_its_own_temporary_directory_inside_its_home(
-    loop: Loop, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    seen: list[tuple[Path, Path]] = []
+def test_each_attempt_gets_its_own_temporary_directory_inside_its_home(loop: Loop) -> None:
+    journal = loop.journal("reviews")
     original = os.environ.get("TMPDIR")
-
-    def fake_review(reviewer: Reviewer, **kwargs: Any) -> runner.ReviewOutcome:
-        seen.append((Path(os.environ["HOME"]), Path(os.environ["TMPDIR"])))
-        return runner.ReviewOutcome(None, Absence(INVALID, "unparseable"), "")
-
-    monkeypatch.setattr(runner, "review", fake_review)
+    loop.fake("recording_review", journal=str(journal.path), workspace=str(loop.workspace))
     assert loop.run() == 0
-    assert all(tmp == home / "tmp" for home, tmp in seen)
-    assert seen[0][1] != seen[1][1]
-    assert os.environ.get("TMPDIR") == original
+    entries = journal.items()
+    assert len(entries) == 2
+    assert all(Path(entry["tmpdir"]) == Path(entry["home"]) / "tmp" for entry in entries)
+    assert entries[0]["tmpdir"] != entries[1]["tmpdir"]
+    assert loop.environ_after["TMPDIR"] == original
 
 
 def test_the_disk_scan_finds_the_job_token_inside_a_basic_auth_header(tmp_path: Path) -> None:

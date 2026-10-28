@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -12,6 +14,7 @@ from workflow_expressions import evaluate, render
 
 from _project.scripts.oracle_reviewers import omp_pin
 from _project.scripts.oracle_reviewers.commands import build
+from _project.scripts.oracle_reviewers.github import RUN_TITLE_PULL
 from _project.scripts.oracle_reviewers.omp_pin import pin_from_text
 from _project.scripts.oracle_reviewers.policy import SIZE_BUCKETS, load_policy
 
@@ -27,7 +30,7 @@ OMP_SHA = re.compile(r"^[0-9a-f]{64}$")
 DISPATCH_STEP = "Dispatch the gate for the reviewed head"
 SETUP_ALLOWANCE_MINUTES = 30
 JOB_TIMEOUT_CEILING_MINUTES = 360
-UNCHANGED_PREFIX_SHA256 = "afca918ff33a3553a202821c8589308cce23b1c0730ac3ff65dc61bfff82a47d"
+UNCHANGED_PREFIX_SHA256 = "0bf8d42d70c7a72d213b971e2e7bb51ea01caea70190e089c43deb3114a7e73e"
 REVIEW_CONDITION = (
     "github.event_name == 'workflow_dispatch' ||"
     " (github.event_name == 'pull_request_target' && (github.event.action != 'edited' || github.event.changes.base)) ||"
@@ -58,6 +61,7 @@ STEP_ORDER = [
     "Post the findings review",
     "Upload the retry state",
     *[f"Upload attempt {slot}" for slot in range(1, POLICY.max_attempts + 1)],
+    "Upload the captured reviewer event streams",
     DISPATCH_STEP,
 ]
 LOOP_STEP = "Run the attempt loop"
@@ -427,14 +431,14 @@ def test_omp_is_installed_once_pinned_and_checked() -> None:
     assert linux["url"] == "https://build.stencil.so/d/omp/20261017-231446-291e055/omp-linux-x64"
     assert linux["sha256"] == "16181401e616d7d895bae31fa97476f1513d4080807d60d3a1a04006191a1bb3"
     assert install["working-directory"] == "trusted"
-    lines = install["run"].splitlines()
     command = (
         "uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- "
         "python -m _project.scripts.oracle_reviewers.cli install-omp --policy .github/oracle-reviewers.yml"
     )
-    assert lines[0] == f"binary=$({command})"
-    assert lines[1] == '"$binary" --version | tee -a "$GITHUB_STEP_SUMMARY"'
-    assert lines[2] == 'echo "ORACLE_OMP_BINARY=$binary" >> "$GITHUB_ENV"'
+    assert f"binary=$({command})" in install["run"]
+    assert 'version=$("$binary" --version)' in install["run"]
+    assert 'echo "$version" | tee -a "$GITHUB_STEP_SUMMARY"' in install["run"]
+    assert 'echo "ORACLE_OMP_BINARY=$binary" >> "$GITHUB_ENV"' in install["run"]
     assert "curl " not in text
     assert "OMP_URL" not in text and "OMP_SHA256" not in text and "OMP_VERSION" not in text
     assert "--dangerously" not in text and "--yolo" not in text
@@ -450,7 +454,6 @@ def test_the_pin_file_keeps_the_linux_build_the_workflow_used_to_install() -> No
 TOLERATED_FAILURES = (
     "Check out the pull request head for reading only",
     "Classify the change and select the reviewer for attempt 1",
-    "Install omp",
     "Join the tailnet to reach the credential gateway",
 )
 FAIL_CLOSED_STEPS = (*SCAN_STEPS, LOOP_STEP, REDACT_STEP, "Validate this run's attempts and decide")
@@ -461,6 +464,76 @@ def test_setup_failures_become_absences_instead_of_ending_the_review() -> None:
         assert _step(name)["continue-on-error"] is True, name
     assert "if" in _step(LOOP_STEP) and "always()" not in _step(LOOP_STEP)["if"]
     assert "cancelled()" not in _step(LOOP_STEP)["if"]
+
+
+def _run_install_step(tmp_path: Path, uv_body: str) -> tuple[subprocess.CompletedProcess[str], str, str]:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    uv = bin_dir / "uv"
+    uv.write_text(f"#!/bin/sh\n{uv_body}\n", encoding="utf-8")
+    uv.chmod(0o755)
+    github_output = tmp_path / "github-output"
+    github_env = tmp_path / "github-env"
+    for path in (github_output, github_env):
+        path.write_text("", encoding="utf-8")
+    result = subprocess.run(
+        ["bash", "-e", "-s"],
+        input=_step("Install omp")["run"],
+        cwd=tmp_path,
+        env={
+            **os.environ,
+            "PATH": f"{bin_dir}:/usr/bin:/bin",
+            "GITHUB_OUTPUT": str(github_output),
+            "GITHUB_ENV": str(github_env),
+            "GITHUB_STEP_SUMMARY": str(tmp_path / "summary"),
+        },
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return result, github_output.read_text(encoding="utf-8"), github_env.read_text(encoding="utf-8")
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the step is a POSIX shell script")
+def test_a_failed_install_reports_its_state_and_exports_no_binary(tmp_path: Path) -> None:
+    body = "echo 'oracle-verdict: error: the omp download failed: HTTPError' >&2\nexit 1"
+    result, output, env = _run_install_step(tmp_path, body)
+    assert result.returncode == 0
+    assert output == "state=failed\n"
+    assert env == ""
+    assert "the omp download failed: HTTPError" in result.stderr
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the step is a POSIX shell script")
+def test_a_binary_that_installs_but_does_not_run_counts_as_a_failed_install(tmp_path: Path) -> None:
+    broken = tmp_path / "omp"
+    broken.write_text("#!/bin/sh\nexit 3\n", encoding="utf-8")
+    broken.chmod(0o755)
+    result, output, env = _run_install_step(tmp_path, f"echo {broken}")
+    assert result.returncode == 0
+    assert output == "state=failed\n"
+    assert env == ""
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the step is a POSIX shell script")
+def test_a_working_install_exports_the_binary_and_reports_installed(tmp_path: Path) -> None:
+    working = tmp_path / "omp"
+    working.write_text("#!/bin/sh\necho 18.12.1\n", encoding="utf-8")
+    working.chmod(0o755)
+    result, output, env = _run_install_step(tmp_path, f"echo {working}")
+    assert result.returncode == 0
+    assert output == "state=installed\n"
+    assert env == f"ORACLE_OMP_BINARY={working}\n"
+
+
+def test_a_failed_install_stops_the_run_before_any_attempt_and_is_reported_to_finalize() -> None:
+    install = _step("Install omp")
+    assert install["id"] == "omp"
+    assert "continue-on-error" not in install
+    assert "steps.omp.outputs.state == 'installed'" in _step(LOOP_STEP)["if"]
+    finalize = _step("Validate this run's attempts and decide")
+    assert finalize["env"]["OMP_INSTALL_STATE"] == "${{ steps.omp.outputs.state }}"
+    assert '--omp-install "${OMP_INSTALL_STATE:-installed}"' in finalize["run"]
 
 
 def test_the_security_checks_and_the_loop_fail_the_job_closed() -> None:
@@ -509,6 +582,17 @@ def test_the_attempt_loop_and_redaction_steps_have_the_ids_the_uploads_read() ->
     assert _step(LOOP_STEP)["id"] == "loop"
     assert _step(REDACT_STEP)["id"] == "redact"
     assert _step("Validate this run's attempts and decide")["id"] == "finalize"
+
+
+def test_the_capture_upload_waits_for_the_redaction_step_and_keeps_its_name_and_retention() -> None:
+    upload = _step("Upload the captured reviewer event streams")
+    assert upload["with"]["name"] == "oracle-verdict-capture"
+    assert upload["with"]["path"] == "${{ runner.temp }}/oracle-attempts/captures/"
+    assert upload["with"]["retention-days"] == 30
+    assert _names().index(upload["name"]) > _names().index(REDACT_STEP)
+    assert upload["if"].startswith("${{ always()")
+    assert "steps.redact.outcome == 'success'" in upload["if"]
+    assert "steps.loop.outputs.attempts >= 1" in upload["if"]
 
 
 def test_the_post_steps_mint_the_app_token_and_tolerate_missing_secrets() -> None:
@@ -684,9 +768,42 @@ def test_a_dispatch_run_queues_in_the_pull_request_group_instead_of_cancelling()
 
 def test_the_dispatch_reason_input_is_optional_and_unset_by_default() -> None:
     inputs = _load()[True]["workflow_dispatch"]["inputs"]
-    assert set(inputs) == {"pr", "reason"}
+    assert set(inputs) == {"pr", "head", "reason"}
     assert inputs["pr"]["required"] is True
+    assert inputs["head"]["required"] is False
     assert inputs["reason"]["required"] is False
+
+
+def _run_title(event_name: str, event: dict[str, Any] | None = None, inputs: dict[str, Any] | None = None) -> str:
+    context = _context(event_name, event, inputs)
+    return re.sub(r"\$\{\{(.*?)\}\}", lambda match: str(evaluate(match.group(1), context) or ""), _load()["run-name"])
+
+
+SHA = "c" * 40
+
+
+@pytest.mark.parametrize(
+    ("event_name", "event", "inputs", "title"),
+    [
+        ("workflow_dispatch", {}, {"pr": "7", "head": SHA}, f"oracle-verdict (workflow_dispatch pr=7 head={SHA})"),
+        ("workflow_dispatch", {}, {"pr": "7"}, "oracle-verdict (workflow_dispatch pr=7)"),
+        (
+            "pull_request_target",
+            {"pull_request": {"number": 9, "head": {"sha": SHA}}},
+            None,
+            f"oracle-verdict (pull_request_target pr=9 head={SHA})",
+        ),
+        ("issue_comment", {"issue": {"number": 10}}, None, "oracle-verdict (issue_comment pr=10)"),
+        ("schedule", {}, None, "oracle-verdict (schedule pr=sweep)"),
+    ],
+)
+def test_the_run_title_records_the_head_the_run_targets(
+    event_name: str, event: dict[str, Any], inputs: dict[str, Any] | None, title: str
+) -> None:
+    rendered = _run_title(event_name, event, inputs)
+    assert rendered == title
+    match = RUN_TITLE_PULL.search(rendered)
+    assert (match is not None) == (event_name != "schedule")
 
 
 def test_pull_request_groups_keep_one_group_per_number() -> None:

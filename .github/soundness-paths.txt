@@ -82,8 +82,9 @@ file	_project/scripts/explorer_publish.py
 file	scripts/generate_corpus_inventory.py
 file	scripts/validate_submission.py
 file	scripts/site_inputs.py
-file	scripts/check_docs_freeze.py
 file	scripts/docs_history_filter.py
+file	scripts/check_docs_ownership.py
+file	quality/docs-ownership.json
 file	make/site-inputs.mk
 file	.github/workflows/validate-submission.yml
 file	.github/workflows/sync-results-data-to-published.yml
@@ -101,6 +102,7 @@ file	.github/oracle-reviewers.yml
 file	.github/oracle-omp-config.yml
 file	_project/scripts/oracle_gateway_host.sh
 prefix	_project/scripts/oracle_reviewers/
+prefix	tests/integration/oracle/
 file	_project/scripts/ruleset_review_enforcement.py
 file	scripts/ruleset_drift_check.py
 file	.github/soundness-paths.txt

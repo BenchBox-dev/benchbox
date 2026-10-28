@@ -93,21 +93,6 @@ def test_engine_name_maps_to_one_class_on_every_platform() -> None:
     assert DEFAULT_EXECUTION_ENGINE not in classes
 
 
-@pytest.mark.parametrize(
-    ("platform", "document"),
-    [
-        ("pg-duckdb", "pg_duckdb.md"),
-        ("dask-df", "dask-dataframe.md"),
-        ("databricks", "databricks.md"),
-        ("velox", "velox.md"),
-    ],
-)
-def test_platform_guides_list_declared_execution_engines(platform: str, document: str) -> None:
-    doc_path = Path(__file__).resolve().parents[3] / "docs" / "platforms" / document
-    contents = doc_path.read_text(encoding="utf-8")
-    assert all(f"`{name}`" in contents for name in supported_execution_engines(platform))
-
-
 def test_option_registry_holds_the_sentinel_platforms() -> None:
     _import_adapter_modules()
     assert _platforms_without_option_specs(REGISTERED_PLATFORM_SENTINELS) == []

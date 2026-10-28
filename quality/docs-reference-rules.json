@@ -4,14 +4,14 @@
     "_project/design/api-public-symbols.json",
     "quality/docs-ownership.json",
     "scripts/check_docs_ownership.py",
-    "scripts/generate_compat_docs.py",
-    "scripts/generate_query_docs.py",
-    "scripts/generate_tuning_support_matrix.py"
+    "scripts/check_public_contract_drift.py"
   ],
   "rules": [
     {
       "id": "lock-tests-docs-directory",
-      "match": ["tests/unit/docs/*.py"],
+      "match": [
+        "tests/unit/docs/*.py"
+      ],
       "disposition": "lock-test",
       "reason": "Lock tests that read site-owned pages; each is mapped in quality/doc-lock-tests.json."
     },
@@ -22,9 +22,7 @@
         "tests/unit/core/test_compute_resource_unification.py",
         "tests/unit/core/test_execution_vocabulary_parity.py",
         "tests/unit/core/test_platform_registry.py",
-        "tests/unit/core/test_platform_support_status_contract.py",
         "tests/unit/cli/test_shipped_docs_urls.py",
-        "tests/unit/core/write_primitives/test_doc_yaml_consistency.py",
         "tests/unit/generators/test_sf1_measurement.py",
         "tests/unit/mcp/test_run_surface_contract.py",
         "tests/unit/platforms/credentials/test_singlestore_credentials.py",
@@ -42,7 +40,10 @@
     },
     {
       "id": "public-contract-guards",
-      "match": ["scripts/check_public_contract_drift.py", ".github/workflows/ci.yml"],
+      "match": [
+        "scripts/check_public_contract_drift.py",
+        ".github/workflows/ci.yml"
+      ],
       "disposition": "contract-replaced",
       "contract_fields": [
         "/benchmarks/registry_summary",
@@ -51,21 +52,7 @@
         "/platforms/count_summary",
         "/result_schema_version"
       ],
-      "reason": "The CLI-inline and script public-contract guards compare registry-derived counts with docs/reference/public-contracts.md; the site check reads these fields instead."
-    },
-    {
-      "id": "platform-manifest-generated-block",
-      "match": ["_project/scripts/platform_manifest.py"],
-      "disposition": "contract-replaced",
-      "contract_fields": ["/platform_manifest/entries", "/platform_manifest/aliases"],
-      "reason": "Generates and checks the platform-manifest block in docs/development/adding-new-platforms.md; the site renders and checks the block from these facts."
-    },
-    {
-      "id": "contract-inputs",
-      "match": ["tests/unit/generators/sf1_size_baseline.json"],
-      "disposition": "contract-tooling",
-      "contract_fields": ["/sf1_calibrated_sizes"],
-      "reason": "Core-owned baseline fixture that feeds the calibrated SF1 sizes contract."
+      "reason": "The CLI-inline and script registry-count guards keep hand-maintained counts out of retained core pages; the site checks these fields instead."
     },
     {
       "id": "contract-export-tooling",
@@ -90,64 +77,57 @@
         "tests/unit/test_version_management.py"
       ],
       "disposition": "governance-stays",
-      "contract_fields": ["/package/release_marker", "/ownership/transitions"],
+      "contract_fields": [
+        "/package/release_marker",
+        "/ownership/transitions"
+      ],
       "reason": "docs/README.md keeps its release marker in core; version substitution stays core-owned and the marker selector is exported."
     },
     {
       "id": "site-input-pipeline",
       "match": [
-        "scripts/check_docs_freeze.py",
-        "tests/unit/scripts/test_docs_freeze.py",
         "scripts/check_docs_ownership.py",
         "scripts/site_inputs.py",
         "tests/unit/scripts/test_docs_ownership.py",
         "tests/unit/scripts/test_site_inputs.py"
       ],
       "disposition": "site-pipeline-cutover",
-      "reason": "Builds or verifies the docs members of the site bundle; replaced by the docs-data and contract exports at cutover."
-    },
-    {
-      "id": "doc-generators",
-      "match": [
-        "scripts/generate_compat_docs.py",
-        "scripts/generate_query_docs.py",
-        "scripts/generate_tuning_support_matrix.py",
-        "tests/unit/test_docs_generate_wiring.py",
-        "tests/unit/test_generate_query_docs.py"
-      ],
-      "disposition": "generator-deleted",
-      "reason": "Python markdown generators deleted once the site renders these pages from exported data."
+      "reason": "Verifies the core-owned docs tree and builds the docs members of the site bundle from retained sources and the ownership manifest."
     },
     {
       "id": "doc-link-and-example-checkers",
       "match": [
-        "scripts/check_doc_external_links.py",
-        "scripts/check_doc_relative_links.py",
-        "scripts/doc_relative_link_baseline.txt",
-        "quality/doc-anchor-baseline.json",
-        "scripts/validate_example_references.py",
-        "tests/unit/scripts/test_check_doc_external_links.py",
-        "tests/unit/scripts/test_check_doc_relative_links.py"
+        "scripts/validate_example_references.py"
       ],
-      "disposition": "site-pipeline-cutover",
-      "reason": "Relative, example and external link checkers over docs/ move to site CI; core keeps only the publish-policy readers."
+      "disposition": "governance-stays",
+      "reason": "Validates file references in the retained docs tree against retained example files; relative and external link checking moved to site CI."
     },
     {
       "id": "publication-policy-readers",
-      "match": ["_project/scripts/agent_instruction_audit.py", "tests/unit/scripts/test_agent_instruction_audit.py"],
+      "match": [
+        "_project/scripts/agent_instruction_audit.py",
+        "tests/unit/scripts/test_agent_instruction_audit.py"
+      ],
       "disposition": "governance-stays",
-      "contract_fields": ["/publication"],
+      "contract_fields": [
+        "/publication"
+      ],
       "reason": "Reads core-retained agent and publication policy pages; publish lists stay in core."
     },
     {
       "id": "comment-policy-registries",
-      "match": ["quality/comment-cleanup-scope.json", "quality/comment-policy.json"],
+      "match": [
+        "quality/comment-cleanup-scope.json",
+        "quality/comment-policy.json"
+      ],
       "disposition": "wiring-updated",
       "reason": "Protected comment-policy registries name docs paths and generator scripts that move or are deleted at cutover; edited with oracle review."
     },
     {
       "id": "inert-doc-readers",
-      "match": ["_project/inert-doc-readers.json"],
+      "match": [
+        "_project/inert-doc-readers.json"
+      ],
       "disposition": "wiring-updated",
       "reason": "Soundness-listed registry of tests and tools that read docs; entries for moved pages are dropped at cutover."
     },
@@ -156,6 +136,7 @@
       "match": [
         ".github/ci-units.yml",
         ".github/inert-paths.txt",
+        ".github/soundness-paths.txt",
         ".github/path-filters.yml",
         ".pre-commit-config.yaml",
         "scripts/canary_impact.py",
@@ -169,10 +150,11 @@
         "tests/unit/test_canary_impact.py",
         "tests/unit/scripts/test_ci_units.py",
         "tests/unit/scripts/test_inert_paths.py",
+        "tests/unit/scripts/test_soundness_paths.py",
         "tests/unit/scripts/test_path_filter_decision.py"
       ],
       "disposition": "wiring-updated",
-      "reason": "Path filters, inert-path rules (including the public-record exceptions) and CI unit selection treat docs/ as a path class; entries for moved pages change at cutover."
+      "reason": "Path filters, inert-path and soundness-path rules (including the public-record exceptions) and CI unit selection treat docs/ as a path class; entries for moved pages change at cutover."
     },
     {
       "id": "agent-and-contributor-prose",
@@ -198,38 +180,23 @@
       "reason": "Prose in core-owned files that links to a site-owned page; relinked to the published URL or a pinned GitHub URL at cutover."
     },
     {
-      "id": "runtime-and-example-links",
-      "match": [
-        "benchbox/cli/commands/submit.py",
-        "benchbox/cli/help.py",
-        "benchbox/core/platform_manifest.py",
-        "benchbox/core/results/anonymization.py",
-        "benchbox/**/*.py",
-        "examples/**/*.py",
-        "examples/**/*.ipynb",
-        "scripts/uat-bring-up/uat_bring_up.py",
-        "tests/integration/platforms/*.py",
-        "tests/integration/test_platform_driver_version_matrix.py",
-        "tests/uat/phases/preflight.py"
-      ],
-      "disposition": "runtime-link-updated",
-      "reason": "Shipped source or examples that print or cite a docs path; changed to the published site URL at cutover."
-    },
-    {
-      "id": "workflow-wiring",
-      "match": [".github/workflows/*"],
-      "disposition": "wiring-updated",
-      "reason": "Workflows that read or name a docs path; the docs-publication jobs change at cutover and the required context name is kept."
-    },
-    {
       "id": "build-and-ignore-wiring",
-      "match": [".gitignore", "Makefile", "make/**", "pyproject.toml", "_project/scripts/platform_scaffold.py", "scripts/new_platform_scaffold.py"],
+      "match": [
+        ".gitignore",
+        "Makefile",
+        "make/**",
+        "pyproject.toml",
+        "_project/scripts/platform_scaffold.py",
+        "scripts/new_platform_scaffold.py"
+      ],
       "disposition": "wiring-updated",
       "reason": "Make targets, ignore rules and scaffolding that build, ignore or generate docs paths; updated when docs leave core."
     },
     {
       "id": "project-tooling",
-      "match": ["_project/scripts/**"],
+      "match": [
+        "_project/scripts/**"
+      ],
       "disposition": "wiring-updated",
       "reason": "Tracked project tooling that names docs paths as inputs, outputs or sample data; reviewed at cutover."
     },
@@ -264,15 +231,15 @@
         "scripts/release_cut_abort.sh",
         "scripts/worktree_lifecycle.sh",
         "tests/fixtures/fast_tier_baseline/tests-00.json",
-   "tests/fixtures/fast_tier_baseline/tests-01.json",
-   "tests/fixtures/fast_tier_baseline/tests-02.json",
-   "tests/fixtures/fast_tier_baseline/tests-03.json",
-   "tests/fixtures/fast_tier_baseline/tests-04.json",
-   "tests/fixtures/fast_tier_baseline/tests-05.json",
-   "tests/fixtures/fast_tier_baseline/tests-06.json",
-   "tests/fixtures/fast_tier_baseline/tests-07.json",
-   "tests/fixtures/medium_shard_durations.json",
-   "tests/fixtures/oracle_reviewers/pr3222_replay.json",
+        "tests/fixtures/fast_tier_baseline/tests-01.json",
+        "tests/fixtures/fast_tier_baseline/tests-02.json",
+        "tests/fixtures/fast_tier_baseline/tests-03.json",
+        "tests/fixtures/fast_tier_baseline/tests-04.json",
+        "tests/fixtures/fast_tier_baseline/tests-05.json",
+        "tests/fixtures/fast_tier_baseline/tests-06.json",
+        "tests/fixtures/fast_tier_baseline/tests-07.json",
+        "tests/fixtures/medium_shard_durations.json",
+        "tests/fixtures/oracle_reviewers/pr3222_replay.json",
         "tests/fixtures/ruleset-develop-squash-only.json",
         "tests/fixtures/trunk_red_20261024.json",
         "tests/integration/worktree/test_worktree_lifecycle_metadata.py",

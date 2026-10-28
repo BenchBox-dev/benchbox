@@ -10,6 +10,7 @@ import sys
 import tempfile
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -18,7 +19,10 @@ from typing import Any
 
 BINARY_ENV = "ORACLE_OMP_BINARY"
 CACHE_ENV = "BENCHBOX_OMP_CACHE"
+MIRROR_ENV = "BENCHBOX_OMP_DOWNLOAD_MIRROR"
+LOOPBACK_HOSTS = frozenset({"127.0.0.1", "::1", "localhost"})
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
+PLATFORM_PATTERN = re.compile(r"[a-z0-9]+-[a-z0-9_]+")
 VERSION_PATTERN = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9._-]+)?")
 CHUNK_BYTES = 1 << 20
 DOWNLOAD_SECONDS = 600
@@ -59,13 +63,15 @@ def parse_pin(data: Any) -> Pin:
         raise PinError("the omp pin lists no platform builds")
     builds: dict[str, Build] = {}
     for name, entry in builds_data.items():
+        if not isinstance(name, str) or PLATFORM_PATTERN.fullmatch(name) is None:
+            raise PinError(f"the omp pin has a build key that is not a platform name: {name!r}")
         url = entry.get("url") if isinstance(entry, Mapping) else None
         digest = entry.get("sha256") if isinstance(entry, Mapping) else None
         if not isinstance(url, str) or not url.startswith("https://"):
             raise PinError(f"the omp pin for {name} needs an https url")
         if not isinstance(digest, str) or SHA256_PATTERN.fullmatch(digest) is None:
             raise PinError(f"the omp pin for {name} needs a lowercase hex sha256")
-        builds[str(name)] = Build(url, digest)
+        builds[name] = Build(url, digest)
     return Pin(version, builds)
 
 
@@ -104,17 +110,38 @@ def sha256_of(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _loopback(url: str) -> bool:
+    parts = urllib.parse.urlsplit(url)
+    return parts.scheme in ("http", "https") and parts.hostname in LOOPBACK_HOSTS
+
+
+def mirror() -> str | None:
+    value = os.environ.get(MIRROR_ENV, "")
+    if not value:
+        return None
+    if not _loopback(value):
+        raise PinError(f"{MIRROR_ENV} must name a loopback http(s) origin")
+    return value.rstrip("/")
+
+
 class HttpsOnlyRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def __init__(self, allow_loopback: bool = False) -> None:
+        super().__init__()
+        self.allow_loopback = allow_loopback
+
     def redirect_request(
         self, req: urllib.request.Request, fp: Any, code: int, msg: str, headers: Any, newurl: str
     ) -> urllib.request.Request | None:
-        if not newurl.lower().startswith("https://"):
+        permitted = newurl.lower().startswith("https://") or (self.allow_loopback and _loopback(newurl))
+        if not permitted:
             raise urllib.error.URLError(f"the omp download redirected to a non-https url ({code})")
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
 def build_opener() -> urllib.request.OpenerDirector:
-    return urllib.request.build_opener(HttpsOnlyRedirectHandler)
+    if mirror() is None:
+        return urllib.request.build_opener(HttpsOnlyRedirectHandler())
+    return urllib.request.build_opener(urllib.request.ProxyHandler({}), HttpsOnlyRedirectHandler(allow_loopback=True))
 
 
 def _open(request: urllib.request.Request, timeout: float) -> Any:
@@ -138,6 +165,10 @@ def _stream(
 def download(url: str, destination: Path) -> None:
     if not url.startswith("https://"):
         raise PinError("omp is downloaded over https only")
+    origin = mirror()
+    if origin is not None:
+        parts = urllib.parse.urlsplit(url)
+        url = origin + urllib.parse.urlunsplit(("", "", parts.path, parts.query, ""))
     _stream(urllib.request.Request(url, headers={"User-Agent": USER_AGENT}), destination)
 
 
@@ -201,6 +232,19 @@ def required_binary() -> Path:
     binary = configured_binary()
     if binary is None or not binary.is_file() or not os.access(binary, os.X_OK):
         raise PinError(f"the pinned omp is not installed; {BINARY_ENV} does not name an executable")
+    return binary
+
+
+def verified_binary(expected_sha256: str) -> Path:
+    binary = required_binary()
+    if SHA256_PATTERN.fullmatch(expected_sha256) is None:
+        raise PinError("the plan carries no pinned omp sha256 for this platform")
+    try:
+        actual = sha256_of(binary)
+    except OSError as exc:
+        raise PinError(f"the omp binary could not be read: {type(exc).__name__}") from exc
+    if actual != expected_sha256:
+        raise PinError(f"the omp binary at {BINARY_ENV} does not match the pinned sha256; refusing to run it")
     return binary
 
 

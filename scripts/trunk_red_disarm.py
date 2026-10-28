@@ -99,6 +99,36 @@ def select_for_disarm(run: Runner, repo: str) -> tuple[list[dict], dict | None]:
     return selected, failed
 
 
+def select_undetermined(run: Runner, repo: str, reason: str) -> list[dict]:
+    return [
+        {
+            "number": item["number"],
+            "branch": item["headRefName"],
+            "node": item["id"],
+            "reason": f"{reason}; disarming fail-closed",
+        }
+        for item in armed_pull_requests(run, repo)
+        if not item["headRefName"].startswith(REVERT_PREFIX)
+    ]
+
+
+def disarm_undetermined(run: Runner, repo: str, reason: str) -> int:
+    selected = select_undetermined(run, repo, reason)
+    failures: list[int] = []
+    for item in selected:
+        try:
+            disable_auto_merge(run, repo, item["number"], item["node"])
+            print(f"disarmed PR #{item['number']} ({item['branch']}): {item['reason']}")
+        except TrunkError as exc:
+            print(f"trunk-red-disarm: PR #{item['number']}: {exc}", file=sys.stderr)
+            failures.append(item["number"])
+    if failures:
+        print(f"trunk-red-disarm: failed to disarm {len(failures)} PR(s): {failures}", file=sys.stderr)
+        return 1
+    print(f"{BASE_BRANCH} is red with an undetermined culprit; disarmed {len(selected)} PR(s)")
+    return 0
+
+
 def read_pr_state(run: Runner, repo: str, number: int) -> dict | None:
     code, out = run(["gh", "pr", "view", str(number), "--repo", repo, "--json", "number,state,autoMergeRequest"])
     if code != 0:
@@ -128,6 +158,12 @@ def disable_auto_merge(run: Runner, repo: str, number: int, node: str) -> None:
 def disarm_all(run: Runner = trunk_revert.live_run, repo: str = REPOSITORY) -> int:
     try:
         selected, failed = select_for_disarm(run, repo)
+    except trunk_revert.UndeterminedCulpritError as exc:
+        try:
+            return disarm_undetermined(run, repo, str(exc))
+        except TrunkError as inner:
+            print(f"trunk-red-disarm: could not list armed PRs ({inner}); disarming nothing", file=sys.stderr)
+            return 1
     except TrunkError as exc:
         print(f"trunk-red-disarm: could not establish the red streak ({exc}); disarming nothing", file=sys.stderr)
         return 1

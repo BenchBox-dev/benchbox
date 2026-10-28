@@ -3,9 +3,7 @@
   "_project/design/api-public-symbols.json",
   "quality/docs-ownership.json",
   "scripts/check_docs_ownership.py",
-  "scripts/generate_compat_docs.py",
-  "scripts/generate_query_docs.py",
-  "scripts/generate_tuning_support_matrix.py"
+  "scripts/check_public_contract_drift.py"
  ],
  "files": [
   {
@@ -137,33 +135,16 @@
    ]
   },
   {
-   "disposition": "prose-link-pinned",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": ".github/PULL_REQUEST_TEMPLATE.md",
-   "rule": "agent-and-contributor-prose",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/reference/public-contracts.md"
-    }
-   ]
-  },
-  {
    "disposition": "wiring-updated",
    "kinds": {
-    "extra": 6,
-    "file": 27,
-    "pattern": 9,
-    "unresolved": 1
+    "extra": 3,
+    "file": 4,
+    "pattern": 8
    },
-   "occurrences": 43,
+   "occurrences": 15,
    "path": ".github/ci-units.yml",
    "rule": "ci-path-classification",
-   "target_count": 43,
+   "target_count": 15,
    "targets": [
     {
      "kind": "extra",
@@ -195,67 +176,11 @@
     },
     {
      "kind": "file",
-     "target": "docs/CLI_REFERENCE.md"
-    },
-    {
-     "kind": "file",
      "target": "docs/README.md"
     },
     {
      "kind": "pattern",
      "target": "docs/agent/**"
-    },
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/sf1-calibrated-sizes.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/support-status.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/tpc-ds-obt-lineage.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/write-primitives-sketch-functions.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/compat/capability-matrix.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/compat/skip-reference.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/development/adding-new-platforms.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/development/adr/adr-one-engine-scoped-surfaces.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/development/adr/adr-public-result-id-permanence.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/development/dependency-audit-raw.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/development/index.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/development/tpcds-dataframe-parity.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/guides/tpc/tpc-di-deployment-guide.md"
     },
     {
      "kind": "pattern",
@@ -266,30 +191,6 @@
      "target": "docs/linkcheck_ignore.txt"
     },
     {
-     "kind": "pattern",
-     "target": "docs/operations/agent-instruction*.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/operations/ci-local-parity.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/comparison-matrix.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/databend.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/singlestore.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/support-status.md"
-    },
-    {
      "kind": "file",
      "target": "docs/publish-allowlist.txt"
     },
@@ -298,65 +199,29 @@
      "target": "docs/publish-exclusions.txt"
     },
     {
-     "kind": "file",
-     "target": "docs/reference/hosted-results-contract.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/mcp.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/public-contracts.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/tuning-platform-support.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/getting-started.md"
-    },
-    {
      "kind": "extra",
      "target": "quality/docs-ownership.json"
     },
     {
      "kind": "extra",
      "target": "scripts/check_docs_ownership.py"
-    },
-    {
-     "kind": "extra",
-     "target": "scripts/generate_compat_docs.py"
-    },
-    {
-     "kind": "extra",
-     "target": "scripts/generate_query_docs.py"
-    },
-    {
-     "kind": "extra",
-     "target": "scripts/generate_tuning_support_matrix.py"
     }
    ]
   },
   {
    "disposition": "wiring-updated",
    "kinds": {
-    "file": 27,
+    "file": 4,
     "pattern": 2
    },
-   "occurrences": 29,
+   "occurrences": 6,
    "path": ".github/inert-paths.txt",
    "rule": "ci-path-classification",
-   "target_count": 29,
+   "target_count": 6,
    "targets": [
     {
      "kind": "pattern",
      "target": "docs/**"
-    },
-    {
-     "kind": "file",
-     "target": "docs/CLI_REFERENCE.md"
     },
     {
      "kind": "file",
@@ -368,75 +233,7 @@
     },
     {
      "kind": "file",
-     "target": "docs/benchmarks/sf1-calibrated-sizes.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/support-status.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/tpc-ds-obt-lineage.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/write-primitives-sketch-functions.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/compat/capability-matrix.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/compat/skip-reference.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/development/adding-new-platforms.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/development/adr/adr-one-engine-scoped-surfaces.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/development/adr/adr-public-result-id-permanence.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/development/index.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/development/tpcds-dataframe-parity.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/guides/tpc/tpc-di-deployment-guide.md"
-    },
-    {
-     "kind": "file",
      "target": "docs/linkcheck_ignore.txt"
-    },
-    {
-     "kind": "file",
-     "target": "docs/operations/ci-local-parity.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/comparison-matrix.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/databend.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/singlestore.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/support-status.md"
     },
     {
      "kind": "file",
@@ -445,26 +242,6 @@
     {
      "kind": "file",
      "target": "docs/publish-exclusions.txt"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/hosted-results-contract.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/mcp.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/public-contracts.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/tuning-platform-support.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/getting-started.md"
     }
    ]
   },
@@ -472,14 +249,13 @@
    "disposition": "wiring-updated",
    "kinds": {
     "extra": 1,
-    "file": 27,
-    "pattern": 12,
-    "unresolved": 1
+    "file": 4,
+    "pattern": 11
    },
-   "occurrences": 41,
+   "occurrences": 16,
    "path": ".github/path-filters.yml",
    "rule": "ci-path-classification",
-   "target_count": 41,
+   "target_count": 16,
    "targets": [
     {
      "kind": "pattern",
@@ -519,67 +295,11 @@
     },
     {
      "kind": "file",
-     "target": "docs/CLI_REFERENCE.md"
-    },
-    {
-     "kind": "file",
      "target": "docs/README.md"
     },
     {
      "kind": "pattern",
      "target": "docs/agent/**"
-    },
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/sf1-calibrated-sizes.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/support-status.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/tpc-ds-obt-lineage.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/write-primitives-sketch-functions.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/compat/capability-matrix.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/compat/skip-reference.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/development/adding-new-platforms.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/development/adr/adr-one-engine-scoped-surfaces.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/development/adr/adr-public-result-id-permanence.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/development/dependency-audit-raw.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/development/index.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/development/tpcds-dataframe-parity.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/guides/tpc/tpc-di-deployment-guide.md"
     },
     {
      "kind": "pattern",
@@ -590,30 +310,6 @@
      "target": "docs/linkcheck_ignore.txt"
     },
     {
-     "kind": "pattern",
-     "target": "docs/operations/agent-instruction*.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/operations/ci-local-parity.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/comparison-matrix.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/databend.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/singlestore.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/support-status.md"
-    },
-    {
      "kind": "file",
      "target": "docs/publish-allowlist.txt"
     },
@@ -622,35 +318,35 @@
      "target": "docs/publish-exclusions.txt"
     },
     {
-     "kind": "file",
-     "target": "docs/reference/hosted-results-contract.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/mcp.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/public-contracts.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/tuning-platform-support.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/getting-started.md"
-    },
-    {
      "kind": "extra",
      "target": "quality/docs-ownership.json"
     }
    ]
   },
   {
+   "disposition": "wiring-updated",
+   "kinds": {
+    "extra": 2
+   },
+   "occurrences": 2,
+   "path": ".github/soundness-paths.txt",
+   "rule": "ci-path-classification",
+   "target_count": 2,
+   "targets": [
+    {
+     "kind": "extra",
+     "target": "quality/docs-ownership.json"
+    },
+    {
+     "kind": "extra",
+     "target": "scripts/check_docs_ownership.py"
+    }
+   ]
+  },
+  {
    "disposition": "contract-replaced",
    "kinds": {
-    "file": 1,
+    "extra": 1,
     "root": 1
    },
    "occurrences": 2,
@@ -663,45 +359,24 @@
      "target": "docs/"
     },
     {
-     "kind": "file",
-     "target": "docs/reference/public-contracts.md"
+     "kind": "extra",
+     "target": "scripts/check_public_contract_drift.py"
     }
    ]
   },
   {
    "disposition": "wiring-updated",
    "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": ".github/workflows/tpcds-official-qualification.yml",
-   "rule": "workflow-wiring",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/development/tpcds-dataframe-parity.md"
-    }
-   ]
-  },
-  {
-   "disposition": "wiring-updated",
-   "kinds": {
-    "generated": 1,
     "unresolved": 2
    },
-   "occurrences": 3,
+   "occurrences": 2,
    "path": ".gitignore",
    "rule": "build-and-ignore-wiring",
-   "target_count": 3,
+   "target_count": 2,
    "targets": [
     {
      "kind": "unresolved",
      "target": "docs/_tags/"
-    },
-    {
-     "kind": "generated",
-     "target": "docs/benchmarks/queries/"
     },
     {
      "kind": "unresolved",
@@ -733,21 +408,13 @@
   {
    "disposition": "prose-link-pinned",
    "kinds": {
-    "file": 3
+    "file": 1
    },
-   "occurrences": 3,
+   "occurrences": 1,
    "path": "AGENTS.md",
    "rule": "agent-and-contributor-prose",
-   "target_count": 3,
+   "target_count": 1,
    "targets": [
-    {
-     "kind": "file",
-     "target": "docs/development/adding-new-platforms.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/operations/uat-framework.md"
-    },
     {
      "kind": "file",
      "target": "docs/publish-allowlist.txt"
@@ -792,7 +459,7 @@
     "extra": 1,
     "file": 1
    },
-   "occurrences": 3,
+   "occurrences": 2,
    "path": "Makefile",
    "rule": "build-and-ignore-wiring",
    "target_count": 2,
@@ -803,7 +470,7 @@
     },
     {
      "kind": "extra",
-     "target": "scripts/generate_tuning_support_matrix.py"
+     "target": "scripts/check_public_contract_drift.py"
     }
    ]
   },
@@ -1453,16 +1120,15 @@
    "disposition": "historical-record",
    "kinds": {
     "built-url": 2,
-    "extra": 1,
     "file": 1,
     "root": 1,
     "unresolved": 1
    },
-   "occurrences": 6,
+   "occurrences": 5,
    "path": "_project/decisions/astro-spike-report.md",
    "rule": "project-records",
-   "target_count": 6,
-   "targets_sha256": "b4bcd3c31bab155be5f163e548d91bc05807754a0fd3538cd76f278dbc7cd44f"
+   "target_count": 5,
+   "targets_sha256": "f36b005a7d193133496bdddee2cf6565e619681f37089f1acdb8d991a34d5a1a"
   },
   {
    "disposition": "historical-record",
@@ -1848,88 +1514,16 @@
   {
    "disposition": "wiring-updated",
    "kinds": {
-    "file": 19
+    "file": 1
    },
-   "occurrences": 19,
+   "occurrences": 1,
    "path": "_project/inert-doc-readers.json",
    "rule": "inert-doc-readers",
-   "target_count": 19,
+   "target_count": 1,
    "targets": [
     {
      "kind": "file",
-     "target": "docs/CLI_REFERENCE.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/sf1-calibrated-sizes.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/support-status.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/tpc-ds-obt-lineage.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/write-primitives-sketch-functions.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/development/adr/adr-one-engine-scoped-surfaces.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/development/adr/adr-public-result-id-permanence.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/development/index.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/guides/tpc/tpc-di-deployment-guide.md"
-    },
-    {
-     "kind": "file",
      "target": "docs/linkcheck_ignore.txt"
-    },
-    {
-     "kind": "file",
-     "target": "docs/operations/ci-local-parity.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/comparison-matrix.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/databend.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/singlestore.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/support-status.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/hosted-results-contract.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/mcp.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/public-contracts.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/getting-started.md"
     }
    ]
   },
@@ -1982,14 +1576,14 @@
    "disposition": "governance-stays",
    "kinds": {
     "dir": 1,
-    "file": 3,
+    "file": 1,
     "pattern": 1,
     "unresolved": 2
    },
-   "occurrences": 8,
+   "occurrences": 6,
    "path": "_project/scripts/agent_instruction_audit.py",
    "rule": "publication-policy-readers",
-   "target_count": 7,
+   "target_count": 5,
    "targets": [
     {
      "kind": "pattern",
@@ -2002,14 +1596,6 @@
     {
      "kind": "unresolved",
      "target": "docs/development/agent-review-protocol.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/development/dependency-compatibility.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/development/development.md"
     },
     {
      "kind": "unresolved",
@@ -2034,38 +1620,6 @@
     {
      "kind": "root",
      "target": "docs/"
-    }
-   ]
-  },
-  {
-   "disposition": "wiring-updated",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "_project/scripts/check_uv_lock_revision.py",
-   "rule": "project-tooling",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/development/development.md"
-    }
-   ]
-  },
-  {
-   "disposition": "wiring-updated",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 2,
-   "path": "_project/scripts/ci_lint_environment_gate.py",
-   "rule": "project-tooling",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/operations/ci-local-parity.md"
     }
    ]
   },
@@ -2169,55 +1723,6 @@
     {
      "kind": "unresolved",
      "target": "docs/status"
-    }
-   ]
-  },
-  {
-   "disposition": "contract-replaced",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "_project/scripts/platform_manifest.py",
-   "rule": "platform-manifest-generated-block",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/development/adding-new-platforms.md"
-    }
-   ]
-  },
-  {
-   "disposition": "wiring-updated",
-   "kinds": {
-    "file": 3,
-    "pattern": 2
-   },
-   "occurrences": 6,
-   "path": "_project/scripts/platform_scaffold.py",
-   "rule": "build-and-ignore-wiring",
-   "target_count": 5,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/development/new-platform-acceptance-checklist.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/comparison-matrix.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/support-status.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/platforms/{cli_name}-dataframe.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/platforms/{cli_name}.md"
     }
    ]
   },
@@ -2459,16 +1964,17 @@
    "disposition": "historical-record",
    "kinds": {
     "dir": 4,
+    "extra": 1,
     "file": 30,
     "pattern": 6,
     "root": 1,
     "unresolved": 62
    },
-   "occurrences": 296,
+   "occurrences": 297,
    "path": "_project/todo-db-export/events.jsonl",
    "rule": "project-records",
-   "target_count": 103,
-   "targets_sha256": "ef506a6070a8874057bcb65009d349509b2fb24c108696c2b6f0367a18a32041"
+   "target_count": 104,
+   "targets_sha256": "0ed45775e05d0798cc344a93da1df09aea70a07331475d74e935f39d4ee0a830"
   },
   {
    "disposition": "historical-record",
@@ -2494,27 +2000,11 @@
     "root": 1,
     "unresolved": 150
    },
-   "occurrences": 2345,
+   "occurrences": 2340,
    "path": "_project/todo-db-export/items.jsonl",
    "rule": "project-records",
    "target_count": 341,
-   "targets_sha256": "a344c1316561a93fae190a53ea60dd211666b3b76d20afb4e0b72fed303b55d5"
-  },
-  {
-   "disposition": "runtime-link-updated",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "benchbox/core/tpcds_obt/lineage.py",
-   "rule": "runtime-and-example-links",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/tpc-ds-obt-lineage.md"
-    }
-   ]
+   "targets_sha256": "b26035520c98644779ef313e2f10c3cc04e8bcd61d4da8ed080693394174d321"
   },
   {
    "disposition": "governance-stays",
@@ -2636,24 +2126,16 @@
   {
    "disposition": "wiring-updated",
    "kinds": {
-    "extra": 3
+    "extra": 1
    },
-   "occurrences": 5,
+   "occurrences": 1,
    "path": "make/documentation.mk",
    "rule": "build-and-ignore-wiring",
-   "target_count": 3,
+   "target_count": 1,
    "targets": [
     {
      "kind": "extra",
      "target": "scripts/check_docs_ownership.py"
-    },
-    {
-     "kind": "extra",
-     "target": "scripts/generate_compat_docs.py"
-    },
-    {
-     "kind": "extra",
-     "target": "scripts/generate_query_docs.py"
     }
    ]
   },
@@ -2666,7 +2148,7 @@
     "root": 1,
     "unresolved": 7
    },
-   "occurrences": 28,
+   "occurrences": 26,
    "path": "make/monolith-baseline.json",
    "rule": "build-and-ignore-wiring",
    "target_count": 12,
@@ -2717,22 +2199,20 @@
     },
     {
      "kind": "extra",
-     "target": "scripts/generate_compat_docs.py"
+     "target": "scripts/check_public_contract_drift.py"
     }
    ]
   },
   {
    "disposition": "wiring-updated",
    "kinds": {
-    "extra": 2,
-    "file": 1,
     "root": 1,
     "unresolved": 2
    },
-   "occurrences": 8,
+   "occurrences": 4,
    "path": "quality/comment-cleanup-scope.json",
    "rule": "comment-policy-registries",
-   "target_count": 6,
+   "target_count": 3,
    "targets": [
     {
      "kind": "root",
@@ -2743,108 +2223,24 @@
      "target": "docs/conf.py"
     },
     {
-     "kind": "file",
-     "target": "docs/index.md"
-    },
-    {
      "kind": "unresolved",
      "target": "docs/selector"
-    },
-    {
-     "kind": "extra",
-     "target": "scripts/generate_compat_docs.py"
-    },
-    {
-     "kind": "extra",
-     "target": "scripts/generate_query_docs.py"
     }
    ]
   },
   {
    "disposition": "wiring-updated",
    "kinds": {
-    "file": 2
+    "file": 1
    },
-   "occurrences": 30,
+   "occurrences": 14,
    "path": "quality/comment-policy.json",
    "rule": "comment-policy-registries",
-   "target_count": 2,
+   "target_count": 1,
    "targets": [
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/amplab.md"
-    },
     {
      "kind": "file",
      "target": "docs/benchmarks/read-primitives.md"
-    }
-   ]
-  },
-  {
-   "disposition": "site-pipeline-cutover",
-   "kinds": {
-    "file": 14
-   },
-   "occurrences": 42,
-   "path": "quality/doc-anchor-baseline.json",
-   "rule": "doc-link-and-example-checkers",
-   "target_count": 14,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/CLI_REFERENCE.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/concepts/glossary.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/guides/dataframe-migration.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/guides/tpc/tpc-ds-official-guide.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/guides/tpc/tpc-h-official-guide.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/dataframe.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/cli/auth.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/cli/index.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/cli/results.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/cli/submit.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/cli/tuning.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/cli/utilities.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/tutorials/dataframe-quickstart.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/troubleshooting.md"
     }
    ]
   },
@@ -2883,73 +2279,14 @@
   {
    "disposition": "site-pipeline-cutover",
    "kinds": {
-    "root": 1
-   },
-   "occurrences": 1,
-   "path": "scripts/check_doc_external_links.py",
-   "rule": "doc-link-and-example-checkers",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "root",
-     "target": "docs/"
-    }
-   ]
-  },
-  {
-   "disposition": "site-pipeline-cutover",
-   "kinds": {
+    "extra": 1,
     "file": 1,
-    "pattern": 1,
     "root": 1
    },
-   "occurrences": 5,
-   "path": "scripts/check_doc_relative_links.py",
-   "rule": "doc-link-and-example-checkers",
-   "target_count": 3,
-   "targets": [
-    {
-     "kind": "root",
-     "target": "docs/"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/**/*.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/contributing-results.md"
-    }
-   ]
-  },
-  {
-   "disposition": "site-pipeline-cutover",
-   "kinds": {
-    "extra": 1
-   },
-   "occurrences": 1,
-   "path": "scripts/check_docs_freeze.py",
-   "rule": "site-input-pipeline",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "extra",
-     "target": "quality/docs-ownership.json"
-    }
-   ]
-  },
-  {
-   "disposition": "site-pipeline-cutover",
-   "kinds": {
-    "extra": 2,
-    "file": 1,
-    "generated": 1,
-    "root": 1
-   },
-   "occurrences": 10,
+   "occurrences": 6,
    "path": "scripts/check_docs_ownership.py",
    "rule": "site-input-pipeline",
-   "target_count": 5,
+   "target_count": 3,
    "targets": [
     {
      "kind": "root",
@@ -2960,32 +2297,8 @@
      "target": "docs/README.md"
     },
     {
-     "kind": "generated",
-     "target": "docs/benchmarks/queries/"
-    },
-    {
      "kind": "extra",
      "target": "quality/docs-ownership.json"
-    },
-    {
-     "kind": "extra",
-     "target": "scripts/generate_query_docs.py"
-    }
-   ]
-  },
-  {
-   "disposition": "contract-replaced",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "scripts/check_public_contract_drift.py",
-   "rule": "public-contract-guards",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/reference/public-contracts.md"
     }
    ]
   },
@@ -3052,12 +2365,13 @@
    "kinds": {
     "extra": 2,
     "file": 3,
+    "pattern": 1,
     "root": 1
    },
-   "occurrences": 6,
+   "occurrences": 7,
    "path": "scripts/doc_contracts.py",
    "rule": "contract-export-tooling",
-   "target_count": 6,
+   "target_count": 7,
    "targets": [
     {
      "kind": "extra",
@@ -3078,6 +2392,10 @@
     {
      "kind": "file",
      "target": "docs/publish-exclusions.txt"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/{root}/"
     },
     {
      "kind": "extra",
@@ -3117,22 +2435,6 @@
    ]
   },
   {
-   "disposition": "site-pipeline-cutover",
-   "kinds": {
-    "root": 1
-   },
-   "occurrences": 1,
-   "path": "scripts/doc_relative_link_baseline.txt",
-   "rule": "doc-link-and-example-checkers",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "root",
-     "target": "docs/"
-    }
-   ]
-  },
-  {
    "disposition": "contract-tooling",
    "kinds": {
     "extra": 1,
@@ -3159,89 +2461,6 @@
     {
      "kind": "extra",
      "target": "quality/docs-ownership.json"
-    }
-   ]
-  },
-  {
-   "disposition": "generator-deleted",
-   "kinds": {
-    "dir": 1,
-    "extra": 1
-   },
-   "occurrences": 4,
-   "path": "scripts/generate_compat_docs.py",
-   "rule": "doc-generators",
-   "target_count": 2,
-   "targets": [
-    {
-     "kind": "dir",
-     "target": "docs/compat/"
-    },
-    {
-     "kind": "extra",
-     "target": "scripts/generate_compat_docs.py"
-    }
-   ]
-  },
-  {
-   "disposition": "generator-deleted",
-   "kinds": {
-    "extra": 1,
-    "generated": 2
-   },
-   "occurrences": 5,
-   "path": "scripts/generate_query_docs.py",
-   "rule": "doc-generators",
-   "target_count": 3,
-   "targets": [
-    {
-     "kind": "generated",
-     "target": "docs/benchmarks/queries"
-    },
-    {
-     "kind": "generated",
-     "target": "docs/benchmarks/queries/"
-    },
-    {
-     "kind": "extra",
-     "target": "scripts/generate_query_docs.py"
-    }
-   ]
-  },
-  {
-   "disposition": "generator-deleted",
-   "kinds": {
-    "extra": 1,
-    "file": 1
-   },
-   "occurrences": 2,
-   "path": "scripts/generate_tuning_support_matrix.py",
-   "rule": "doc-generators",
-   "target_count": 2,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/reference/tuning-platform-support.md"
-    },
-    {
-     "kind": "extra",
-     "target": "scripts/generate_tuning_support_matrix.py"
-    }
-   ]
-  },
-  {
-   "disposition": "wiring-updated",
-   "kinds": {
-    "dir": 1
-   },
-   "occurrences": 2,
-   "path": "scripts/new_platform_scaffold.py",
-   "rule": "build-and-ignore-wiring",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "dir",
-     "target": "docs/platforms/"
     }
    ]
   },
@@ -3312,39 +2531,17 @@
   {
    "disposition": "site-pipeline-cutover",
    "kinds": {
-    "extra": 3,
-    "generated": 1,
-    "root": 1,
-    "unresolved": 5
+    "extra": 1,
+    "unresolved": 2
    },
-   "occurrences": 16,
+   "occurrences": 4,
    "path": "scripts/site_inputs.py",
    "rule": "site-input-pipeline",
-   "target_count": 10,
+   "target_count": 3,
    "targets": [
     {
      "kind": "extra",
      "target": "_project/design/api-public-symbols.json"
-    },
-    {
-     "kind": "root",
-     "target": "docs/"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/./"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/CNAME"
-    },
-    {
-     "kind": "generated",
-     "target": "docs/benchmarks/queries"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/blog/"
     },
     {
      "kind": "unresolved",
@@ -3353,14 +2550,6 @@
     {
      "kind": "unresolved",
      "target": "docs/repo-files.json/explorer/results.duckdb/explorer/contract.json/explorer/fixtures/explorer/parity/explorer/bundles/landing/prompt-catalog.json/api-public-symbols.json/downloads/attestations.json"
-    },
-    {
-     "kind": "extra",
-     "target": "scripts/generate_compat_docs.py"
-    },
-    {
-     "kind": "extra",
-     "target": "scripts/generate_query_docs.py"
     }
    ]
   },
@@ -3381,22 +2570,6 @@
    ]
   },
   {
-   "disposition": "runtime-link-updated",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "scripts/uat-bring-up/uat_bring_up.py",
-   "rule": "runtime-and-example-links",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/operations/uat-local-provisioning.md"
-    }
-   ]
-  },
-  {
    "disposition": "governance-stays",
    "kinds": {
     "root": 1
@@ -3413,7 +2586,7 @@
    ]
   },
   {
-   "disposition": "site-pipeline-cutover",
+   "disposition": "governance-stays",
    "kinds": {
     "root": 1
    },
@@ -3921,70 +3094,6 @@
    ]
   },
   {
-   "disposition": "runtime-link-updated",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "tests/integration/platforms/test_firebolt_live.py",
-   "rule": "runtime-and-example-links",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/testing/live-integration-tests.md"
-    }
-   ]
-  },
-  {
-   "disposition": "runtime-link-updated",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "tests/integration/platforms/test_motherduck_live.py",
-   "rule": "runtime-and-example-links",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/testing/live-integration-tests.md"
-    }
-   ]
-  },
-  {
-   "disposition": "runtime-link-updated",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "tests/integration/platforms/test_starburst_live.py",
-   "rule": "runtime-and-example-links",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/testing/live-integration-tests.md"
-    }
-   ]
-  },
-  {
-   "disposition": "runtime-link-updated",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "tests/integration/test_platform_driver_version_matrix.py",
-   "rule": "runtime-and-example-links",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/development/adding-new-platforms.md"
-    }
-   ]
-  },
-  {
    "disposition": "fixture-data",
    "kinds": {
     "root": 1,
@@ -4008,18 +3117,13 @@
   {
    "disposition": "lock-test",
    "kinds": {
-    "file": 1,
     "unresolved": 1
    },
-   "occurrences": 2,
+   "occurrences": 1,
    "path": "tests/system/test_ci_lint_parity.py",
    "rule": "lock-tests-core",
-   "target_count": 2,
+   "target_count": 1,
    "targets": [
-    {
-     "kind": "file",
-     "target": "docs/operations/ci-local-parity.md"
-    },
     {
      "kind": "unresolved",
      "target": "docs/tooling"
@@ -4027,89 +3131,21 @@
    ]
   },
   {
-   "disposition": "prose-link-pinned",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "tests/uat/CHARTER.md",
-   "rule": "agent-and-contributor-prose",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/operations/uat-framework.md"
-    }
-   ]
-  },
-  {
-   "disposition": "prose-link-pinned",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "tests/uat/README.md",
-   "rule": "agent-and-contributor-prose",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/operations/uat-framework.md"
-    }
-   ]
-  },
-  {
-   "disposition": "prose-link-pinned",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "tests/uat/configs/generated-rerun-shards/README.md",
-   "rule": "agent-and-contributor-prose",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/operations/uat-framework.md"
-    }
-   ]
-  },
-  {
-   "disposition": "runtime-link-updated",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "tests/uat/phases/preflight.py",
-   "rule": "runtime-and-example-links",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/operations/uat-local-provisioning.md"
-    }
-   ]
-  },
-  {
    "disposition": "lock-test",
    "kinds": {
-    "file": 3,
+    "file": 2,
     "pattern": 1,
     "root": 1,
     "unresolved": 3
    },
-   "occurrences": 28,
+   "occurrences": 27,
    "path": "tests/unit/cli/test_shipped_docs_urls.py",
    "rule": "lock-tests-core",
-   "target_count": 8,
+   "target_count": 7,
    "targets": [
     {
      "kind": "root",
      "target": "docs/"
-    },
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/tpc-ds-obt-lineage.md"
     },
     {
      "kind": "unresolved",
@@ -4140,164 +3176,6 @@
   {
    "disposition": "lock-test",
    "kinds": {
-    "file": 6
-   },
-   "occurrences": 6,
-   "path": "tests/unit/core/test_benchmark_api_contract.py",
-   "rule": "lock-tests-core",
-   "target_count": 6,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/support-status.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/design/architecture.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/development/result-integrity-validation.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/cli/utilities.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/public-contracts.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/faq.md"
-    }
-   ]
-  },
-  {
-   "disposition": "lock-test",
-   "kinds": {
-    "dir": 1
-   },
-   "occurrences": 1,
-   "path": "tests/unit/core/test_compute_resource_unification.py",
-   "rule": "lock-tests-core",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "dir",
-     "target": "docs/platforms/"
-    }
-   ]
-  },
-  {
-   "disposition": "lock-test",
-   "kinds": {
-    "dir": 1
-   },
-   "occurrences": 1,
-   "path": "tests/unit/core/test_execution_vocabulary_parity.py",
-   "rule": "lock-tests-core",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "dir",
-     "target": "docs/platforms/"
-    }
-   ]
-  },
-  {
-   "disposition": "lock-test",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "tests/unit/core/test_platform_registry.py",
-   "rule": "lock-tests-core",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/platforms/comparison-matrix.md"
-    }
-   ]
-  },
-  {
-   "disposition": "lock-test",
-   "kinds": {
-    "file": 1,
-    "root": 1
-   },
-   "occurrences": 4,
-   "path": "tests/unit/core/test_platform_support_status_contract.py",
-   "rule": "lock-tests-core",
-   "target_count": 2,
-   "targets": [
-    {
-     "kind": "root",
-     "target": "docs/"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/support-status.md"
-    }
-   ]
-  },
-  {
-   "disposition": "lock-test",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "tests/unit/core/tpcds_obt/test_tpcds_obt_model.py",
-   "rule": "lock-tests-core",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/tpc-ds-obt-lineage.md"
-    }
-   ]
-  },
-  {
-   "disposition": "lock-test",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "tests/unit/core/write_primitives/test_doc_yaml_consistency.py",
-   "rule": "lock-tests-core",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/write-primitives-sketch-functions.md"
-    }
-   ]
-  },
-  {
-   "disposition": "lock-test",
-   "kinds": {
-    "dir": 1,
-    "extra": 1
-   },
-   "occurrences": 2,
-   "path": "tests/unit/docs/test_api_reference_contract.py",
-   "rule": "lock-tests-docs-directory",
-   "target_count": 2,
-   "targets": [
-    {
-     "kind": "extra",
-     "target": "_project/design/api-public-symbols.json"
-    },
-    {
-     "kind": "dir",
-     "target": "docs/reference/python-api/"
-    }
-   ]
-  },
-  {
-   "disposition": "lock-test",
-   "kinds": {
     "file": 1
    },
    "occurrences": 1,
@@ -4314,189 +3192,21 @@
   {
    "disposition": "lock-test",
    "kinds": {
-    "root": 1
-   },
-   "occurrences": 1,
-   "path": "tests/unit/docs/test_platform_option_examples.py",
-   "rule": "lock-tests-docs-directory",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "root",
-     "target": "docs/"
-    }
-   ]
-  },
-  {
-   "disposition": "lock-test",
-   "kinds": {
-    "file": 2
-   },
-   "occurrences": 2,
-   "path": "tests/unit/docs/test_publication_architecture.py",
-   "rule": "lock-tests-docs-directory",
-   "target_count": 2,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/development/adr/adr-public-result-id-permanence.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/hosted-results-contract.md"
-    }
-   ]
-  },
-  {
-   "disposition": "lock-test",
-   "kinds": {
-    "file": 2,
+    "extra": 1,
     "root": 1
    },
    "occurrences": 3,
    "path": "tests/unit/docs/test_publish_policy.py",
    "rule": "lock-tests-docs-directory",
-   "target_count": 3,
+   "target_count": 2,
    "targets": [
     {
      "kind": "root",
      "target": "docs/"
     },
     {
-     "kind": "file",
-     "target": "docs/publish-allowlist.txt"
-    },
-    {
-     "kind": "file",
-     "target": "docs/publish-exclusions.txt"
-    }
-   ]
-  },
-  {
-   "disposition": "lock-test",
-   "kinds": {
-    "file": 3
-   },
-   "occurrences": 3,
-   "path": "tests/unit/docs/test_quickstart_commands_are_real.py",
-   "rule": "lock-tests-docs-directory",
-   "target_count": 3,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/guides/tpc/tpc-di-deployment-guide.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/databend.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/getting-started.md"
-    }
-   ]
-  },
-  {
-   "disposition": "lock-test",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "tests/unit/docs/test_tuning_platform_support_matrix.py",
-   "rule": "lock-tests-docs-directory",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/reference/tuning-platform-support.md"
-    }
-   ]
-  },
-  {
-   "disposition": "lock-test",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "tests/unit/docs/test_write_primitives_sketch_functions_docs.py",
-   "rule": "lock-tests-docs-directory",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/write-primitives-sketch-functions.md"
-    }
-   ]
-  },
-  {
-   "disposition": "contract-tooling",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "tests/unit/generators/sf1_size_baseline.json",
-   "rule": "contract-inputs",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/sf1-calibrated-sizes.md"
-    }
-   ]
-  },
-  {
-   "disposition": "lock-test",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 2,
-   "path": "tests/unit/generators/test_sf1_measurement.py",
-   "rule": "lock-tests-core",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/sf1-calibrated-sizes.md"
-    }
-   ]
-  },
-  {
-   "disposition": "lock-test",
-   "kinds": {
-    "file": 3
-   },
-   "occurrences": 4,
-   "path": "tests/unit/mcp/test_run_surface_contract.py",
-   "rule": "lock-tests-core",
-   "target_count": 3,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/development/adr/adr-one-engine-scoped-surfaces.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/mcp.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/public-contracts.md"
-    }
-   ]
-  },
-  {
-   "disposition": "lock-test",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "tests/unit/platforms/credentials/test_singlestore_credentials.py",
-   "rule": "lock-tests-core",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/platforms/singlestore.md"
+     "kind": "extra",
+     "target": "quality/docs-ownership.json"
     }
    ]
   },
@@ -4629,13 +3339,13 @@
   {
    "disposition": "governance-stays",
    "kinds": {
-    "file": 3,
+    "file": 2,
     "unresolved": 2
    },
-   "occurrences": 7,
+   "occurrences": 6,
    "path": "tests/unit/scripts/test_agent_instruction_audit.py",
    "rule": "publication-policy-readers",
-   "target_count": 5,
+   "target_count": 4,
    "targets": [
     {
      "kind": "unresolved",
@@ -4644,10 +3354,6 @@
     {
      "kind": "file",
      "target": "docs/development/dependency-compatibility.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/development/development.md"
     },
     {
      "kind": "unresolved",
@@ -4716,57 +3422,6 @@
     {
      "kind": "unresolved",
      "target": "docs/a.md"
-    }
-   ]
-  },
-  {
-   "disposition": "site-pipeline-cutover",
-   "kinds": {
-    "file": 1,
-    "root": 1,
-    "unresolved": 2
-   },
-   "occurrences": 6,
-   "path": "tests/unit/scripts/test_check_doc_external_links.py",
-   "rule": "doc-link-and-example-checkers",
-   "target_count": 4,
-   "targets": [
-    {
-     "kind": "root",
-     "target": "docs/"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/a.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/guide/page.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/index.md"
-    }
-   ]
-  },
-  {
-   "disposition": "site-pipeline-cutover",
-   "kinds": {
-    "root": 1,
-    "unresolved": 1
-   },
-   "occurrences": 5,
-   "path": "tests/unit/scripts/test_check_doc_relative_links.py",
-   "rule": "doc-link-and-example-checkers",
-   "target_count": 2,
-   "targets": [
-    {
-     "kind": "root",
-     "target": "docs/"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/example.md"
     }
    ]
   },
@@ -4940,14 +3595,14 @@
   {
    "disposition": "contract-tooling",
    "kinds": {
-    "extra": 3,
+    "extra": 2,
     "file": 1,
     "root": 1
    },
-   "occurrences": 8,
+   "occurrences": 7,
    "path": "tests/unit/scripts/test_doc_contracts.py",
    "rule": "contract-export-tooling",
-   "target_count": 5,
+   "target_count": 4,
    "targets": [
     {
      "kind": "extra",
@@ -4964,10 +3619,6 @@
     {
      "kind": "extra",
      "target": "quality/docs-ownership.json"
-    },
-    {
-     "kind": "extra",
-     "target": "scripts/generate_tuning_support_matrix.py"
     }
    ]
   },
@@ -4975,17 +3626,16 @@
    "disposition": "contract-tooling",
    "kinds": {
     "built-url": 1,
-    "extra": 2,
+    "extra": 1,
     "file": 1,
-    "generated": 2,
     "pattern": 1,
     "root": 1,
-    "unresolved": 6
+    "unresolved": 8
    },
-   "occurrences": 38,
+   "occurrences": 34,
    "path": "tests/unit/scripts/test_doc_reference_inventory.py",
    "rule": "contract-export-tooling",
-   "target_count": 14,
+   "target_count": 13,
    "targets": [
     {
      "kind": "extra",
@@ -5004,12 +3654,12 @@
      "target": "docs/agent/notes.md"
     },
     {
-     "kind": "generated",
-     "target": "docs/benchmarks/queries/"
+     "kind": "unresolved",
+     "target": "docs/generated/queries/"
     },
     {
-     "kind": "generated",
-     "target": "docs/benchmarks/queries/tpch/q1.md"
+     "kind": "unresolved",
+     "target": "docs/generated/queries/tpch/q1.md"
     },
     {
      "kind": "unresolved",
@@ -5038,72 +3688,6 @@
     {
      "kind": "unresolved",
      "target": "docs/reference/generated.md"
-    },
-    {
-     "kind": "extra",
-     "target": "scripts/generate_query_docs.py"
-    }
-   ]
-  },
-  {
-   "disposition": "site-pipeline-cutover",
-   "kinds": {
-    "extra": 3,
-    "generated": 2,
-    "unresolved": 7
-   },
-   "occurrences": 32,
-   "path": "tests/unit/scripts/test_docs_freeze.py",
-   "rule": "site-input-pipeline",
-   "target_count": 12,
-   "targets": [
-    {
-     "kind": "generated",
-     "target": "docs/benchmarks/queries/"
-    },
-    {
-     "kind": "generated",
-     "target": "docs/benchmarks/queries/q1.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/compat/matrix.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/guides/moved.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/guides/new.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/guides/other.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/guides/public.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/internal/new.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/internal/private.md"
-    },
-    {
-     "kind": "extra",
-     "target": "quality/docs-ownership.json"
-    },
-    {
-     "kind": "extra",
-     "target": "scripts/generate_compat_docs.py"
-    },
-    {
-     "kind": "extra",
-     "target": "scripts/generate_query_docs.py"
     }
    ]
   },
@@ -5111,15 +3695,13 @@
    "disposition": "contract-tooling",
    "kinds": {
     "extra": 1,
-    "file": 1,
-    "generated": 2,
     "root": 1,
-    "unresolved": 14
+    "unresolved": 16
    },
-   "occurrences": 44,
+   "occurrences": 43,
    "path": "tests/unit/scripts/test_docs_history_filter.py",
    "rule": "contract-export-tooling",
-   "target_count": 19,
+   "target_count": 18,
    "targets": [
     {
      "kind": "root",
@@ -5142,14 +3724,6 @@
      "target": "docs/b.md"
     },
     {
-     "kind": "generated",
-     "target": "docs/benchmarks/queries/"
-    },
-    {
-     "kind": "generated",
-     "target": "docs/benchmarks/queries/q1.md"
-    },
-    {
      "kind": "unresolved",
      "target": "docs/blog/p.md"
     },
@@ -5160,6 +3734,14 @@
     {
      "kind": "unresolved",
      "target": "docs/c.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/generated/queries/"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/guides/page.md"
     },
     {
      "kind": "unresolved",
@@ -5176,10 +3758,6 @@
     {
      "kind": "unresolved",
      "target": "docs/old.rst"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/duckdb.md"
     },
     {
      "kind": "unresolved",
@@ -5202,17 +3780,15 @@
   {
    "disposition": "site-pipeline-cutover",
    "kinds": {
-    "dir": 1,
-    "extra": 4,
+    "extra": 2,
     "file": 5,
-    "generated": 3,
     "root": 1,
-    "unresolved": 13
+    "unresolved": 9
    },
-   "occurrences": 53,
+   "occurrences": 35,
    "path": "tests/unit/scripts/test_docs_ownership.py",
    "rule": "site-input-pipeline",
-   "target_count": 27,
+   "target_count": 17,
    "targets": [
     {
      "kind": "root",
@@ -5236,55 +3812,7 @@
     },
     {
      "kind": "unresolved",
-     "target": "docs/agent/private.md"
-    },
-    {
-     "kind": "dir",
-     "target": "docs/benchmarks/"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/benchmarks/overview.md"
-    },
-    {
-     "kind": "generated",
-     "target": "docs/benchmarks/queries/"
-    },
-    {
-     "kind": "generated",
-     "target": "docs/benchmarks/queries/authored.md"
-    },
-    {
-     "kind": "generated",
-     "target": "docs/benchmarks/queries/tpch/1.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/compat/capability-matrix.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/development/browser-duckdb-schema.sql"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/development/private.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/development/public.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/guides/README.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/guides/public.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/guides/stale.md"
+     "target": "docs/guides/moved.md"
     },
     {
      "kind": "unresolved",
@@ -5292,7 +3820,23 @@
     },
     {
      "kind": "unresolved",
-     "target": "docs/internal/private.md"
+     "target": "docs/internal/kept.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/linkcheck_ignore.txt"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/operations/empty/"
+    },
+    {
+     "kind": "file",
+     "target": "docs/operations/local-platform-provisioning.tsv"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/operations/missing.tsv"
     },
     {
      "kind": "unresolved",
@@ -5313,28 +3857,20 @@
     {
      "kind": "extra",
      "target": "scripts/check_docs_ownership.py"
-    },
-    {
-     "kind": "extra",
-     "target": "scripts/generate_compat_docs.py"
-    },
-    {
-     "kind": "extra",
-     "target": "scripts/generate_query_docs.py"
     }
    ]
   },
   {
    "disposition": "wiring-updated",
    "kinds": {
-    "file": 7,
+    "file": 4,
     "root": 1,
     "unresolved": 5
    },
-   "occurrences": 27,
+   "occurrences": 21,
    "path": "tests/unit/scripts/test_inert_paths.py",
    "rule": "ci-path-classification",
-   "target_count": 13,
+   "target_count": 10,
    "targets": [
     {
      "kind": "root",
@@ -5350,15 +3886,7 @@
     },
     {
      "kind": "file",
-     "target": "docs/index.md"
-    },
-    {
-     "kind": "file",
      "target": "docs/linkcheck_ignore.txt"
-    },
-    {
-     "kind": "file",
-     "target": "docs/operations/ci-local-parity.md"
     },
     {
      "kind": "file",
@@ -5367,10 +3895,6 @@
     {
      "kind": "file",
      "target": "docs/publish-exclusions.txt"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/public-contracts.md"
     },
     {
      "kind": "unresolved",
@@ -5684,14 +4208,13 @@
   {
    "disposition": "site-pipeline-cutover",
    "kinds": {
-    "built-url": 1,
     "root": 1,
-    "unresolved": 4
+    "unresolved": 3
    },
-   "occurrences": 15,
+   "occurrences": 9,
    "path": "tests/unit/scripts/test_site_inputs.py",
    "rule": "site-input-pipeline",
-   "target_count": 6,
+   "target_count": 4,
    "targets": [
     {
      "kind": "root",
@@ -5707,39 +4230,27 @@
     },
     {
      "kind": "unresolved",
-     "target": "docs/guide/other.md"
-    },
-    {
-     "kind": "unresolved",
      "target": "docs/member.txt/docs"
-    },
-    {
-     "kind": "built-url",
-     "target": "docs/x.html"
     }
    ]
   },
   {
    "disposition": "lock-test",
    "kinds": {
-    "file": 3
+    "extra": 2
    },
-   "occurrences": 3,
+   "occurrences": 2,
    "path": "tests/unit/scripts/test_soundness_paths.py",
    "rule": "lock-tests-core",
-   "target_count": 3,
+   "target_count": 2,
    "targets": [
     {
-     "kind": "file",
-     "target": "docs/development/adr/adr-public-result-id-permanence.md"
+     "kind": "extra",
+     "target": "quality/docs-ownership.json"
     },
     {
-     "kind": "file",
-     "target": "docs/index.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/hosted-results-contract.md"
+     "kind": "extra",
+     "target": "scripts/check_docs_ownership.py"
     }
    ]
   },
@@ -5797,58 +4308,6 @@
    "kinds": {
     "file": 1
    },
-   "occurrences": 1,
-   "path": "tests/unit/test_cli_documentation.py",
-   "rule": "lock-tests-core",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/CLI_REFERENCE.md"
-    }
-   ]
-  },
-  {
-   "disposition": "generator-deleted",
-   "kinds": {
-    "extra": 2
-   },
-   "occurrences": 5,
-   "path": "tests/unit/test_docs_generate_wiring.py",
-   "rule": "doc-generators",
-   "target_count": 2,
-   "targets": [
-    {
-     "kind": "extra",
-     "target": "scripts/generate_compat_docs.py"
-    },
-    {
-     "kind": "extra",
-     "target": "scripts/generate_query_docs.py"
-    }
-   ]
-  },
-  {
-   "disposition": "generator-deleted",
-   "kinds": {
-    "extra": 1
-   },
-   "occurrences": 1,
-   "path": "tests/unit/test_generate_query_docs.py",
-   "rule": "doc-generators",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "extra",
-     "target": "scripts/generate_query_docs.py"
-    }
-   ]
-  },
-  {
-   "disposition": "lock-test",
-   "kinds": {
-    "file": 1
-   },
    "occurrences": 2,
    "path": "tests/unit/test_post_merge_signature.py",
    "rule": "lock-tests-core",
@@ -5856,44 +4315,23 @@
    "targets": [
     {
      "kind": "file",
-     "target": "docs/operations/uat-framework.md"
+     "target": "docs/operations/local-platform-provisioning.tsv"
     }
    ]
   },
   {
    "disposition": "lock-test",
    "kinds": {
-    "file": 5,
     "unresolved": 1
    },
-   "occurrences": 8,
+   "occurrences": 1,
    "path": "tests/unit/test_release_infrastructure.py",
    "rule": "lock-tests-core",
-   "target_count": 6,
+   "target_count": 1,
    "targets": [
     {
      "kind": "unresolved",
      "target": "docs/.github"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/duckdb.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/platform-selection-guide.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/public-contracts.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/faq.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/installation.md"
     }
    ]
   },
@@ -5960,51 +4398,33 @@
      "target": "docs/"
     }
    ]
-  },
-  {
-   "disposition": "lock-test",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "tests/unit/workflows/test_stacked_pr_base_guard.py",
-   "rule": "lock-tests-core",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/development/index.md"
-    }
-   ]
   }
  ],
  "schema": 1,
  "summary": {
   "dispositions": {
-   "contract-replaced": 3,
-   "contract-tooling": 7,
+   "contract-replaced": 1,
+   "contract-tooling": 6,
    "fixture-data": 44,
-   "generator-deleted": 5,
-   "governance-stays": 7,
+   "governance-stays": 8,
    "historical-record": 113,
-   "lock-test": 26,
-   "prose-link-pinned": 19,
-   "runtime-link-updated": 7,
-   "site-pipeline-cutover": 13,
-   "wiring-updated": 35
+   "lock-test": 8,
+   "prose-link-pinned": 15,
+   "site-pipeline-cutover": 4,
+   "wiring-updated": 31
   },
-  "files": 279,
+  "files": 230,
   "kinds": {
-   "built-url": 29043,
-   "dir": 173,
-   "extra": 78,
-   "file": 1624,
-   "generated": 22,
-   "pattern": 327,
-   "root": 224,
-   "unresolved": 2087
+   "built-url": 29042,
+   "dir": 165,
+   "extra": 36,
+   "file": 1398,
+   "generated": 3,
+   "pattern": 323,
+   "root": 202,
+   "unresolved": 2048
   },
-  "references": 33578,
+  "references": 33217,
   "unclassified": 0
  }
 }

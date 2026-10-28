@@ -7,7 +7,7 @@ the gate and its charter discoverable together so `main` is never used as the
 
 - **Design contract (charter):** `_project/specs/uat-framework.md` — lives on
   the `develop` branch.
-- **Operator-facing guide:** `docs/operations/uat-framework.md`.
+- **Operator-facing guide:** https://benchbox.dev/docs/operations/uat-framework.html.
 
 The charter defines UAT's chartered scope: evidence-producing **release-gate
 orchestration** over named artifacts (matrix-summary TSV, validator-clean-rate

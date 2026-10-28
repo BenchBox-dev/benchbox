@@ -55,9 +55,6 @@
   "_sources/tpc-h/PATCHES.md": [
     "tests/unit/scripts/test_comment_cleanup_scope.py"
   ],
-  "docs/CLI_REFERENCE.md": [
-    "tests/unit/test_cli_documentation.py"
-  ],
   "docs/agent/batch-feature-delivery.md": [
     "tests/integration/worktree/test_batch_skill_delivery.py"
   ],
@@ -70,31 +67,6 @@
   ],
   "docs/agent/todo-review.md": [
     "tests/unit/scripts/test_todo_review_own_edit_freshness.py"
-  ],
-  "docs/benchmarks/sf1-calibrated-sizes.md": [
-    "tests/unit/generators/test_sf1_measurement.py"
-  ],
-  "docs/benchmarks/support-status.md": [
-    "tests/unit/core/test_benchmark_api_contract.py"
-  ],
-  "docs/benchmarks/tpc-ds-obt-lineage.md": [
-    "tests/unit/core/tpcds_obt/test_tpcds_obt_model.py"
-  ],
-  "docs/benchmarks/write-primitives-sketch-functions.md": [
-    "tests/unit/core/write_primitives/test_doc_yaml_consistency.py",
-    "tests/unit/docs/test_write_primitives_sketch_functions_docs.py"
-  ],
-  "docs/development/adr/adr-one-engine-scoped-surfaces.md": [
-    "tests/unit/mcp/test_run_surface_contract.py"
-  ],
-  "docs/development/adr/adr-public-result-id-permanence.md": [
-    "tests/unit/docs/test_publication_architecture.py"
-  ],
-  "docs/development/index.md": [
-    "tests/unit/workflows/test_stacked_pr_base_guard.py"
-  ],
-  "docs/guides/tpc/tpc-di-deployment-guide.md": [
-    "tests/unit/docs/test_quickstart_commands_are_real.py"
   ],
   "docs/internal/adr/adr-independent-publication-authorities.md": [
     "tests/unit/docs/test_publication_architecture.py"
@@ -143,36 +115,8 @@
   "docs/linkcheck_ignore.txt": [
     "tests/unit/docs/test_linkcheck_ignore_policy.py"
   ],
-  "docs/operations/ci-local-parity.md": [
-    "tests/system/test_ci_lint_parity.py"
-  ],
-  "docs/platforms/comparison-matrix.md": [
-    "tests/unit/core/test_platform_registry.py"
-  ],
-  "docs/platforms/databend.md": [
-    "tests/unit/docs/test_quickstart_commands_are_real.py"
-  ],
-  "docs/platforms/singlestore.md": [
-    "tests/unit/platforms/credentials/test_singlestore_credentials.py"
-  ],
-  "docs/platforms/support-status.md": [
-    "tests/unit/core/test_platform_support_status_contract.py"
-  ],
-  "docs/reference/hosted-results-contract.md": [
-    "tests/unit/docs/test_publication_architecture.py"
-  ],
-  "docs/reference/mcp.md": [
-    "tests/unit/mcp/test_run_surface_contract.py"
-  ],
-  "docs/reference/public-contracts.md": [
-    "tests/unit/core/test_benchmark_api_contract.py",
-    "tests/unit/mcp/test_run_surface_contract.py"
-  ],
   "docs/reference/threat-model.md": [
     "tests/unit/docs/test_publication_architecture.py"
-  ],
-  "docs/usage/getting-started.md": [
-    "tests/unit/docs/test_quickstart_commands_are_real.py"
   ],
   "tests/README.md": [
     "tests/unit/test_standardized_test_commands.py"
