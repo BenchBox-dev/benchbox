@@ -23,7 +23,7 @@ from _project.scripts.oracle_reviewers import (
     omp_candidate,
     omp_pin,
 )
-from _project.scripts.oracle_reviewers.candidate_chain import AGENTS_TOKEN, ClientRun
+from _project.scripts.oracle_reviewers.candidate_chain import AGENTS_TOKEN, NATIVE_TOKEN, ClientRun
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -116,7 +116,7 @@ def _good_runs() -> dict[str, ClientRun]:
             _read("elided_read.jsonl"),
             canary_hits=("/canary",),
             mcp_started=True,
-            upstream=(_request(prompt=f"context {AGENTS_TOKEN}"),),
+            upstream=(_request(prompt=f"context {AGENTS_TOKEN} {NATIVE_TOKEN}"),),
         ),
         "roster-breach": _run(
             "roster-breach", _read("roster_breach.jsonl"), upstream=tuple(_request() for _ in range(4))
@@ -456,19 +456,6 @@ def _fetcher(binary: Path) -> Callable[[str, Path], None]:
     return fetch
 
 
-def test_a_candidate_whose_only_pinned_build_hashes_and_whose_probes_pass_is_green(tmp_path: Path) -> None:
-    binary, _ = _fake(tmp_path)
-    report = omp_candidate.check_candidate(
-        _pin_for_host(binary, only_host=True),
-        fetch=_fetcher(binary),
-        chain_factory=lambda *_: _chain_from(_good_runs()),
-    )
-    assert report.ok, report.render()
-    assert report.transcript == "omp/18.12.1"
-    assert json.loads(json.dumps(report.to_json()))["ok"] is True
-    assert "result: green" in report.render()
-
-
 def test_a_platform_that_was_only_hash_checked_is_unverified_and_never_green(tmp_path: Path) -> None:
     binary, _ = _fake(tmp_path)
     report = omp_candidate.check_candidate(
@@ -616,13 +603,33 @@ def test_the_reviewer_command_accepts_an_explicit_binary_and_overlay(tmp_path: P
     assert overlay.read_text(encoding="utf-8") == "{}\n"
 
 
-def test_a_disabled_provider_the_build_no_longer_names_is_red(tmp_path: Path) -> None:
+def test_a_run_with_unobserved_disabled_providers_is_partial_even_with_every_platform_probed(tmp_path: Path) -> None:
     binary, _ = _fake(tmp_path)
-    assert candidate_checks.check_disabled_providers(binary).ok
-    renamed = candidate_checks.check_disabled_providers(
-        binary, "disabledProviders:\n  - agents-md\n  - renamed-context-provider\n"
+    report = omp_candidate.check_candidate(
+        _pin_for_host(binary, only_host=True),
+        fetch=_fetcher(binary),
+        chain_factory=lambda *_: _chain_from(_good_runs()),
     )
-    assert renamed.failures == (
-        'the build no longer contains the context provider id "renamed-context-provider"; '
-        "its disabledProviders entry would be ignored",
-    )
+    probed = candidate_checks.PROBED_PROVIDERS
+    disabled = yaml.safe_load(commands.OMP_OVERLAY_TEXT)["disabledProviders"]
+    assert report.passed and not report.ok
+    assert report.unverified == ()
+    assert report.transcript == "omp/18.12.1"
+    assert report.unprobed_providers == tuple(item for item in disabled if item not in probed)
+    assert "cursor" in report.unprobed_providers and "native" not in report.unprobed_providers
+    assert "result: partial" in report.render()
+    assert report.to_json()["unprobed_providers"] == list(report.unprobed_providers)
+
+
+def test_a_native_context_file_that_reaches_the_model_under_the_overlay_is_red() -> None:
+    runs = _good_runs()
+    runs["review"] = replace(runs["review"], upstream=tuple(_request(prompt=NATIVE_TOKEN) for _ in range(5)))
+    failures = {check.name: check.failures for check in candidate_checks.live_checks(runs)}
+    assert any("project context files reached the model" in item for item in failures["live-overlay-behaviour"])
+
+
+def test_a_control_run_that_cannot_observe_the_native_context_canary_is_blind() -> None:
+    runs = _good_runs()
+    runs["control"] = replace(runs["control"], upstream=(_request(prompt=f"context {AGENTS_TOKEN}"),))
+    checks = {check.name: check for check in candidate_checks.live_checks(runs)}
+    assert any("native .omp context canary" in item for item in checks["live-probe-sensitivity"].failures)

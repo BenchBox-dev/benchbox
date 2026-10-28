@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import mmap
 import re
 import subprocess
 import tempfile
@@ -14,11 +13,12 @@ from typing import Any
 import yaml
 
 from . import absence, commands, evidence, omp_pin
-from .candidate_chain import AGENTS_TOKEN, BREACH_TOOLS, CLAUDE_TOKEN, ClientRun
+from .candidate_chain import AGENTS_TOKEN, BREACH_TOOLS, CLAUDE_TOKEN, NATIVE_TOKEN, ClientRun
 from .candidate_env import quiet_env
 from .policy import OMP_THINKING_LEVELS
 from .verdict import omp_terminal_error, parse_output
 
+PROBED_PROVIDERS = frozenset({"native", "agents-md", "claude-md", "mcp-json"})
 EXPECTED_SESSION_VERSION = 3
 COMMAND_SECONDS = 60
 ROSTER = frozenset(commands.OMP_READ_TOOLS.split(","))
@@ -69,6 +69,11 @@ def _check(name: str, rows: Iterable[int], failures: Iterable[str]) -> Check:
 
 def covered_rows(checks: Iterable[Check]) -> frozenset[int]:
     return frozenset(row for check in checks if not check.name.startswith(FIXTURE_PREFIX) for row in check.rows)
+
+
+def unprobed_providers(overlay_text: str = commands.OMP_OVERLAY_TEXT) -> tuple[str, ...]:
+    disabled = yaml.safe_load(overlay_text).get("disabledProviders") or []
+    return tuple(provider for provider in disabled if provider not in PROBED_PROVIDERS)
 
 
 def uncovered_rows(checks: Iterable[Check]) -> tuple[int, ...]:
@@ -201,17 +206,6 @@ def check_overlay_schema(binary: Path, home: Path, overlay_text: str = commands.
     return _check("overlay-schema", (3,), failures)
 
 
-def check_disabled_providers(binary: Path, overlay_text: str = commands.OMP_OVERLAY_TEXT) -> Check:
-    providers = yaml.safe_load(overlay_text).get("disabledProviders") or []
-    with binary.open("rb") as handle, mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ) as image:
-        failures = [
-            f'the build no longer contains the context provider id "{provider}"; its disabledProviders entry would be ignored'
-            for provider in providers
-            if image.find(f'"{provider}"'.encode()) < 0
-        ]
-    return _check("overlay-providers", (3,), failures)
-
-
 def check_reviewer_config_schema(binary: Path, home: Path, config_text: str | None = None) -> Check:
     text = config_text if config_text is not None else REVIEWER_CONFIG.read_text(encoding="utf-8")
     schema, enums, failures = _schema(binary, home)
@@ -226,7 +220,6 @@ def static_checks(binary: Path, home: Path, version: str) -> list[Check]:
         check_flags_listed(binary, home),
         check_flag_values(binary, home),
         check_overlay_schema(binary, home),
-        check_disabled_providers(binary),
         check_reviewer_config_schema(binary, home),
     ]
 
@@ -382,7 +375,7 @@ def review_checks(run: ClientRun) -> list[Check]:
         overlay.append("the read tool fetched a URL despite fetch.enabled false")
     if run.mcp_started:
         overlay.append("a project MCP server started despite mcp.enableProjectConfig false")
-    if AGENTS_TOKEN in _prompt_text(requests) or CLAUDE_TOKEN in _prompt_text(requests):
+    if any(token in _prompt_text(requests) for token in (AGENTS_TOKEN, CLAUDE_TOKEN, NATIVE_TOKEN)):
         overlay.append("project context files reached the model despite disabledProviders")
     if len(requests) != REVIEW_REQUESTS:
         overlay.append(f"the model was called {len(requests)} times, expected {REVIEW_REQUESTS}")
@@ -422,6 +415,8 @@ def control_checks(run: ClientRun) -> list[Check]:
     prompt = _prompt_text(run.upstream)
     if AGENTS_TOKEN not in prompt and CLAUDE_TOKEN not in prompt:
         blind.append("the context-file canary is no longer observable")
+    if NATIVE_TOKEN not in prompt:
+        blind.append("the native .omp context canary is no longer observable")
     if not traced.elisions:
         blind.append("the read-summary canary is no longer observable")
     return [

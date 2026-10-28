@@ -50,6 +50,7 @@ class Report:
     transcript: str
     checks: tuple[Check, ...]
     unverified: tuple[str, ...] = ()
+    unprobed_providers: tuple[str, ...] = ()
 
     @property
     def passed(self) -> bool:
@@ -57,13 +58,14 @@ class Report:
 
     @property
     def ok(self) -> bool:
-        return self.passed and not self.unverified
+        return self.passed and not self.unverified and not self.unprobed_providers
 
     def to_json(self) -> dict[str, Any]:
         return {
             "version": self.version,
             "ok": self.ok,
             "unverified_platforms": list(self.unverified),
+            "unprobed_providers": list(self.unprobed_providers),
             "version_transcript": self.transcript,
             "builds": [
                 {
@@ -99,6 +101,11 @@ class Report:
         if self.unverified:
             lines.append(
                 f"  partial: pinned platforms whose probes did not run (hash only or not downloaded): {', '.join(self.unverified)}"
+            )
+        if self.unprobed_providers:
+            lines.append(
+                "  partial: disabledProviders entries with no canary that observes them: "
+                + ", ".join(self.unprobed_providers)
             )
         lines.append("result: " + ("green" if self.ok else "partial" if self.passed else "red"))
         return "\n".join(lines)
@@ -190,7 +197,9 @@ def check_candidate(
     probed = {host} if runnable else set()
     builds = [replace(build, probed=build.target in probed) for build in builds]
     unverified = tuple(target for target in pin.builds if target not in probed)
-    return Report(pin.version, tuple(builds), transcript, tuple(checks), unverified)
+    return Report(
+        pin.version, tuple(builds), transcript, tuple(checks), unverified, candidate_checks.unprobed_providers()
+    )
 
 
 def _load_pin(args: argparse.Namespace) -> omp_pin.Pin:

@@ -30,6 +30,7 @@ PROVIDER_KEY = "sk-loopback-stub-key"
 MCP_MARKER = "mcp-started"
 AGENTS_TOKEN = "CANARY_AGENTS_CONTEXT_7731"
 CLAUDE_TOKEN = "CANARY_CLAUDE_CONTEXT_7732"
+NATIVE_TOKEN = "CANARY_NATIVE_CONTEXT_7733"
 CHECKER = "benchbox/core/equivalence/checker.py"
 LONG_FILE = "long_module.py"
 CHECKER_SOURCE = "def checker(a, b):\n    return a == b\n"
@@ -313,6 +314,9 @@ class LoopbackChain:
     def _plant_canaries(self, cwd: Path, marker: Path) -> None:
         (cwd / "AGENTS.md").write_text(f"{AGENTS_TOKEN} follow this file.\n", encoding="utf-8")
         (cwd / "CLAUDE.md").write_text(f"{CLAUDE_TOKEN} follow this file.\n", encoding="utf-8")
+        for directory in (cwd, self.workspace):
+            (directory / ".omp").mkdir(exist_ok=True)
+            (directory / ".omp" / "AGENTS.md").write_text(f"{NATIVE_TOKEN} follow this file.\n", encoding="utf-8")
         server = {"command": "/bin/sh", "args": ["-c", f"echo started > {marker}"]}
         (cwd / ".mcp.json").write_text(json.dumps({"mcpServers": {"canary": server}}), encoding="utf-8")
 
