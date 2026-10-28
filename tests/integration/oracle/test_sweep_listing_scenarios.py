@@ -67,14 +67,13 @@ def test_a_failing_listing_and_active_run_lookup_dispatches_nothing_and_fails_th
     assert harness.github.dispatches == before
 
 
-def test_a_truncated_changed_file_listing_of_exempt_paths_is_reviewed_not_exempted(harness: Harness) -> None:
+def test_a_truncated_changed_file_listing_holds_the_head_for_owner_review(harness: Harness) -> None:
     harness.branch("feat/truncated", {"NOTES.md": "A note.\n"}, "add a note")
     harness.github.reported_changed_files[90] = 3001
     harness.github.open_pull(90, "feat/truncated")
-    harness.script_omp([{"decision": "SHIP", "summary": "The listed files are fine.", "files_examined": []}])
 
     run = harness.review(90)
 
-    assert run.plan["decision_reason"] != "only exempt paths changed"
-    assert any("listing is incomplete" in reason for reason in run.plan["scope_reasons"])
-    assert harness.omp_calls() == 1
+    assert run.plan["decision_reason"] == "the changed-file listing is incomplete (1 of 3001 files): owner review"
+    assert [item["state"] for item in harness.github.oracle_statuses(run.plan["head_sha"])] == ["pending"]
+    assert harness.omp_calls() == 0

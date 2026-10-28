@@ -202,12 +202,15 @@ machine-read documents in scope (exemptions minus machine-read exceptions). The
 consumers (`oracle_review_check.py`, the reviewer classifier,
 `coverage_test_selection.py`) read the manifest through
 `_project/scripts/inert_paths.py`; soundness and gate paths take precedence.
-The gate machinery, including `oracle-gate.yml` and `oracle_gate.py`, is listed
-in `classifier.gate_paths`, so changing it is always classed as a gate change. When the changed-file listing is shorter
-than the pull's changed-file count (GitHub caps it at 3000), the plan never
-declares the change exempt: it reviews the listed files and notes the gap.
 `.github/path-filters.yml` does not read it: its `code-ci` list hand-maintains
 the machine-read documents routed to code CI.
+
+The gate machinery, including `oracle-gate.yml` and `oracle_gate.py`, is listed
+in `classifier.gate_paths`, so changing it is always classed as a gate change.
+When the changed-file listing is shorter than the pull's changed-file count
+(GitHub caps it at 3000) and every listed path is exempt, the plan holds the
+head pending for owner review with that reason instead of declaring the change
+exempt: the unlisted files are unknown.
 
 Add an `except` line to keep a document in review scope; remove it to return the
 document to inert. Every `except` line must match a tracked path
