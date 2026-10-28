@@ -16758,12 +16758,17 @@
       "title": "Check a candidate omp build offline against every contract the oracle depends on, with no model quota"
     },
     "oracle-omp-gateway-pinned-build-20261027": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-29T11:56:29Z",
+        "generation": "10c1144decae4e289d0ea97d420c1751",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [
         "oracle-omp-pin-single-source-20261026"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Run the oracle gateway host from the pinned omp build instead of whatever omp is on the Mac's PATH"
     },
     "oracle-omp-pin-hardening-20261027": {
