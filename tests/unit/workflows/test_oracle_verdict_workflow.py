@@ -762,6 +762,8 @@ def test_the_retry_attempt_is_recorded_before_any_post_without_the_strike() -> N
     assert record["with"]["name"] == "oracle-verdict-state-attempt-${{ steps.plan.outputs.pr }}"
     assert record["with"]["name"] != published
     assert "steps.guard.outputs.skip != 'true'" in record["if"]
+    assert "always()" in record["if"]
+    assert "steps.redact.outcome == 'success'" in record["if"]
     assert "HAS_APP" not in record["if"]
     assert record["with"]["overwrite"] is True and record["with"]["if-no-files-found"] == "ignore"
 

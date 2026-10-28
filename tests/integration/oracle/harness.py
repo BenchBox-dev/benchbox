@@ -270,6 +270,41 @@ class Harness:
     def gh(self, name: str, args: list[str], env: dict[str, str], token: str) -> Step:
         return self.run(name, ["gh", *args], {**env, "GH_TOKEN": token, "GH_ENTERPRISE_TOKEN": token})
 
+    def _step_runs(self, name: str, record: ReviewRun) -> bool:
+        steps = yaml.safe_load((REPO_ROOT / WORKFLOW).read_text(encoding="utf-8"))["jobs"]["review"]["steps"]
+        condition = str(next(step for step in steps if step.get("name") == name).get("if", "success()"))
+
+        def out(step: str, key: str) -> str:
+            found = record.steps.get(step)
+            return found.outputs.get(key, "") if found is not None else ""
+
+        def outcome(step: str) -> str:
+            found = record.steps.get(step)
+            return "skipped" if found is None else ("success" if found.code == 0 else "failure")
+
+        clauses = [clause.strip() for clause in condition.split("&&")]
+        if "always()" not in clauses and any(step.code != 0 for step in record.steps.values()):
+            return False
+        return all(self._clause_holds(clause, out, outcome) for clause in clauses)
+
+    @staticmethod
+    def _clause_holds(clause: str, out: Callable[[str, str], str], outcome: Callable[[str], str]) -> bool:
+        if clause == "always()":
+            return True
+        match = re.fullmatch(r"steps\.(\w+)\.(?:outputs\.(\w+)|(outcome)) (==|!=) '(\w*)'", clause)
+        if match is None:
+            raise AssertionError(f"unsupported workflow condition clause: {clause}")
+        step, key, _, operator, expected = match.groups()
+        actual = out(step, key) if key else outcome(step)
+        return (actual == expected) if operator == "==" else (actual != expected)
+
+    def _record_attempt(self, record: ReviewRun, run: dict[str, Any], pr: int) -> None:
+        if not self._step_runs("Record the retry attempt", record):
+            return
+        attempt = record.temp / "oracle-final" / "attempt" / "state.json"
+        if attempt.is_file():
+            self.github.upload_artifact(run, f"oracle-verdict-state-attempt-{pr}", {"state.json": attempt.read_bytes()})
+
     def review(
         self,
         pr: int,
@@ -282,6 +317,7 @@ class Harness:
         inputs: dict[str, str] | None = None,
         tamper_attempts: Callable[[Path], None] | None = None,
         plan_env: dict[str, str] | None = None,
+        before_guard: Callable[[], None] | None = None,
     ) -> ReviewRun:
         pull = self.github.pulls[pr]
         self.github.refresh(pr)
@@ -405,10 +441,13 @@ class Harness:
             ["redact-check", "--path", str(attempts_dir), "--path", str(final_dir), "--env", "JOB_TOKEN"],
             {**env, "JOB_TOKEN": JOB_TOKEN, "OMP_GATEWAY_TOKEN": GATEWAY_TOKEN},
         )
+        if before_guard is not None:
+            before_guard()
         guard = self.cli("guard", ["guard", "--plan", str(plan_dir / "plan.json")], {**env, "GH_TOKEN": APP_TOKEN})
         record.steps["guard"] = guard
         finalized = record.steps["finalize"].outputs
-        if guard.outputs.get("skip") != "true":
+        self._record_attempt(record, run, pr)
+        if guard.code == 0 and guard.outputs.get("skip") != "true":
             head_sha = plan.outputs["head_sha"]
             status = self.gh(
                 "status",

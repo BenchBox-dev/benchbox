@@ -375,7 +375,8 @@ tries three times about two seconds apart; if every try fails, or an App review
 was edited, the guard step fails and nothing is posted: the head keeps its latest
 status and a later run decides it. A run that skips posting, or whose status post
 failed, uploads no retry state and adds no strike. A manual run still uploads
-an attempt state before posting: it carries the current head, the run's time and
+an attempt state before posting, even when the App token or the guard step
+failed, as long as the redaction check passed: it carries the current head, the run's time and
 the consumed retry (with the `unpublished` pending cause when the head had no
 state of its own), so a failed post can neither skip the daily budget nor the
 backoff. The sweep never re-dispatches an `unpublished` state; a manual
@@ -728,7 +729,9 @@ reviewer never reported, is not rerun on that head; push a new one. Comment,
 dispatch and scheduled reruns share a daily budget (`retry.daily_budget`), with
 backoff starting at one hour and doubling. A new head inherits the budget spent
 on a decisive earlier head, so a push does not restore it; only an earlier head
-that ended pending leaves it unspent. The plan counts the retries recorded in the
+that ended pending leaves it unspent, and the state the new head's run records
+carries none of that pending head's retries, so its backoff starts at one hour.
+The plan counts the retries recorded in the
 state and the sweep counts the dispatches recorded in the run titles, and both
 apply the owner reset the same way: it ignores the backoff and the budget once.
 Retry state is the `oracle-verdict-state-<number>` artifact of this workflow's
