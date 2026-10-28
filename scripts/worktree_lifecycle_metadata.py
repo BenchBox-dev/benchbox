@@ -14,6 +14,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
+
 CLI_DESCRIPTION = (
     "Minimal durable lifecycle metadata for BenchBox disposable worktrees.\n"
     "\n"
@@ -133,6 +138,18 @@ def _clear_owner(worktree_path: Path) -> None:
 
 
 def claim_worktree(worktree_path: Path, takeover: bool = False) -> str:
+    if current_session_id() is None:
+        return "no-session"
+    git_dir = _run_git(["rev-parse", "--absolute-git-dir"], worktree_path).stdout.strip()
+    if not git_dir:
+        raise MetadataError(f"Path is not a valid git worktree: {worktree_path}")
+    with open(Path(git_dir) / "benchbox-owner.lock", "a", encoding="utf-8") as lock:
+        if fcntl is not None:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        return _claim_locked(worktree_path, takeover)
+
+
+def _claim_locked(worktree_path: Path, takeover: bool) -> str:
     session = current_session_id()
     if session is None:
         return "no-session"

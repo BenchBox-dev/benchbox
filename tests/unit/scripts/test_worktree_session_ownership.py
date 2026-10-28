@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 import pytest
@@ -140,3 +141,32 @@ def test_liveness_is_independent_of_caller_timezone(worktree, live_process, monk
     _as_session(monkeypatch, "session-b", 1)
     with pytest.raises(meta.MetadataError):
         meta.claim_worktree(worktree)
+
+
+def test_concurrent_claimants_exactly_one_wins(worktree, live_process, monkeypatch):
+    local = threading.local()
+    monkeypatch.setattr(meta, "current_session_id", lambda: local.session)
+    monkeypatch.setattr(meta, "harness_pid", lambda: live_process.pid)
+    racers = 4
+
+    for round_index in range(8):
+        if round_index:
+            _git(worktree, "config", "--worktree", "--unset-all", "benchbox.worktree.owner-session")
+        barrier = threading.Barrier(racers)
+        outcomes: list[str] = []
+
+        def race(n: int) -> None:
+            local.session = f"racer-{n}"
+            barrier.wait()
+            try:
+                outcomes.append(meta.claim_worktree(worktree))
+            except meta.MetadataError:
+                outcomes.append("refused")
+
+        threads = [threading.Thread(target=race, args=(n,)) for n in range(racers)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=60)
+
+        assert sorted(outcomes) == ["claimed"] + ["refused"] * (racers - 1)
