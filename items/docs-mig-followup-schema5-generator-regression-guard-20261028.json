@@ -1,7 +1,8 @@
 {
   "acceptance": [
-    "Snapshot or golden tests of generator output from a fixed docs-data fixture run in site CI and fail on an unreviewed change; the TSBS render stability that the removed test covered is asserted in the exporter test."
+    "A checked-in docs-data fixture that validates against the site's docs-data schema, with checked-in expected output for every file generateDocsPages produces, is compared byte for byte (plus the path set) in ci; expected output is refreshed only with UPDATE_GOLDEN=1; a seeded one-character generator change fails ci naming the file. Core's exporter test asserts that exporting a single TSBS query equals the bulk export."
   ],
+  "context": "Review 2026-10-28: PARTLY VALID. website/tests/docs-generators.test.ts already pins most pages byte for byte; unpinned: benchmarks/queries/index.md, flat/index.md, group-alpha-set.md, a1.md, answer_set_note/subscale_note branches, pandas family, tuning false/empty branches. Core test_export_docs_data.py still exists and already asserts TSBS stability across catalog resets; only the single-record vs bulk assertion was lost. Do not take goldens from the live bundle. Golden dir must not be website/tests/golden/ (golden.test.ts treats subdirs as converter cases). Noticed, not in scope: generated banners still name deleted scripts/generate_*.py.",
   "description": "docs:parity compares the TypeScript generators with the bundle's docs member, which schema 5 no longer carries, so it reports not applicable. The Python generators and the generator-vs-export test in tests/unit/scripts/test_export_docs_data.py are gone. Nothing now fails if a generator change alters the compat, query or tuning-matrix pages for the same docs-data.",
   "sessions": [
     {
@@ -10,6 +11,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "615f8ff735604de18bbee93f8ec8b316",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-28T12:37:00Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "57ec8737eb364c3aad9f4df337df3ced",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
     }
   ]
