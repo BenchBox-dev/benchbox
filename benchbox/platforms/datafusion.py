@@ -1251,7 +1251,7 @@ class DataFusionAdapter(NoConstraintEnforcementMixin, PlatformAdapter):
         else:
             parse_opts = csv.ParseOptions(delimiter=delimiter, quote_char='"', escape_char="\\")
         conv_opts = csv.ConvertOptions(
-            null_values=[""],
+            null_values=[dialect.null_marker if dialect.null_marker is not None else ""],
             strings_can_be_null=True,
             column_types=column_types,
             include_columns=include_columns,
