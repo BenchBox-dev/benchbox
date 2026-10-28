@@ -387,18 +387,13 @@
   {
    "disposition": "wiring-updated",
    "kinds": {
-    "root": 1,
     "unresolved": 1
    },
-   "occurrences": 2,
+   "occurrences": 1,
    "path": ".pre-commit-config.yaml",
    "rule": "ci-path-classification",
-   "target_count": 2,
+   "target_count": 1,
    "targets": [
-    {
-     "kind": "root",
-     "target": "docs/"
-    },
     {
      "kind": "unresolved",
      "target": "docs/development/dependency-audit-raw"
@@ -4416,10 +4411,10 @@
    "file": 1398,
    "generated": 3,
    "pattern": 323,
-   "root": 197,
+   "root": 196,
    "unresolved": 2048
   },
-  "references": 33212,
+  "references": 33211,
   "unclassified": 0
  }
 }
