@@ -4,7 +4,7 @@
     "Next-version release-prep merged and readiness report delivered to owner",
     "After the owner's release: PyPI run URL, hashes match the admitted trunk dist-artifact SHA256SUMS, attestation verifies, t3:install green"
   ],
-  "context": "2026-10-27 audit: still required. release-v2 enforces release-blocking issues itself but not dlv2-22; the green-nightly gate is a tracker rule and must be checked manually before the real PyPI release. Production publication is an owner action.",
+  "context": "2026-10-27 audit: still required. release-v2 enforces release-blocking issues itself but not dlv2-22; the green-nightly gate is a tracker rule and must be checked manually before the real PyPI release. Production publication is an owner action.\n\n2026-10-28: the rehearsal tag is v0.5.0rc2 (see dlv2-52a), so the final make release-prep VERSION=0.5.0 folds [0.5.0rc2] into [0.5.0]. Reproduced on a scratch copy of develop ac41876bc: after make release-prep VERSION=0.5.0, tests/unit/release/test_changelog_tag_guard.py::test_repo_changelog_has_no_untagged_released_section_on_this_branch fails with \"claims untagged version(s): ['0.5.0']\", so the prep PR and the develop trunk run on its merge commit would be red and no commit could be admitted for the v0.5.0 tag. PR #3633 makes check_tag_claims exempt only the pyproject.toml version; the final prep depends on it merging first.",
   "description": "AUDIT 2026-10-27 (owner-adjudicated, advisor-reviewed): the acceptance and context sections supersede this description wherever they differ. Historical text below is kept for reference.\n\nFirst real PyPI release on the new path. The TestPyPI rehearsal moved to dlv2-52a-testpypi-rehearsal (2026-10-17 adversarial review: codex Required + claude F9(3) implemented as a tracker split, not a design note). This item keeps the dlv2-22 gate: a green nightly T3 run is required before a real PyPI release, and no part of this item may be rehearsed around that gate.\n\nAgent (pre-approved): run make release-prep VERSION=0.5.0, merge the release-prep PR, wait for its trunk.yml push run on develop to finish green, then STOP: report readiness (rehearsal evidence from dlv2-52a, candidate commit, hashes) to the owner. EXPECTED STOP: the owner creates the annotated v0.5.0 tag (git tag -a; lightweight tags are refused) and approves the pypi environment deployment. The owner hand-off window must be stated and kept well inside the 90-day artifact retention; GitHub cancels deployments waiting for approval after 30 days (claude NEW-12). After the owner's release, the agent verifies hashes against the admitted SHA256SUMS, attestation with the expected signer workflow, and pypi-latest installability (t3:install), then finishes the item.\n\nAuthority note (claude NEW-3, accepted): agents share the owner account (ADR D4); the v-tag bypass actor and pypi environment (can_admins_bypass true, prevent_self_review false) do not mechanically stop the agent account. The STOP above is enforced by agent discipline, and the publish-time tag re-check in dlv2-51 is the machine control. State this plainly in the readiness report; do not describe the ruleset or environment as a human gate that binds the agent.\n\nGuardrails: never rebuild; never fall back to an older trunk run; no trunk reruns on the tagged commit; every pypi publish needs the owner's approval in this item, every time.",
   "sessions": [
     {
@@ -110,6 +110,14 @@
       "op": "update",
       "op_id": "8b5b9fe8046b494e886e9fd74ef7e49e",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cbd63a5667398431c51c92e1",
+      "at": "2026-10-28T03:33:18Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5966bf1e49f644de9fac3297c921b0a2",
+      "session_id": "dfb93797c41c440a9261d3ab38ceb76e"
     }
   ]
 }
