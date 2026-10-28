@@ -8917,7 +8917,7 @@
       "needs": [],
       "priority": "low",
       "status": "open",
-      "title": "Check #fragment anchors in the core docs external-link checker, as Sphinx linkcheck did"
+      "title": "Check #fragment anchors on external links in the site's nightly external-link step"
     },
     "docker-integration-registry-limit-and-test-selection-20261020": {
       "claim": null,
