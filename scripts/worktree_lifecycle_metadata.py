@@ -123,12 +123,7 @@ def harness_pid() -> int:
     return outermost
 
 
-def _owner_alive(pid_text: Optional[str], start: Optional[str]) -> bool:
-    if not pid_text or not pid_text.isdigit():
-        return False
-    pid = int(pid_text)
-    if start:
-        return process_start(pid) == start
+def _pid_may_exist(pid: int) -> bool:
     if sys.platform == "win32":
         return True
     try:
@@ -138,6 +133,17 @@ def _owner_alive(pid_text: Optional[str], start: Optional[str]) -> bool:
     except PermissionError:
         return True
     return True
+
+
+def _owner_alive(pid_text: Optional[str], start: Optional[str]) -> bool:
+    if not pid_text or not pid_text.isdigit():
+        return False
+    pid = int(pid_text)
+    if start:
+        current = process_start(pid)
+        if current is not None:
+            return current == start
+    return _pid_may_exist(pid)
 
 
 def _clear_owner(worktree_path: Path) -> None:

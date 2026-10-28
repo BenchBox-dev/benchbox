@@ -193,3 +193,17 @@ def test_release_waits_for_an_in_flight_claim_and_rechecks_the_owner(worktree, l
     thread.join(timeout=30)
     assert len(outcome) == 1 and isinstance(outcome[0], meta.MetadataError)
     assert meta._get_worktree_config("owner-session", worktree) == "session-b"
+
+
+def test_live_owner_is_not_replaced_when_process_start_cannot_be_read(worktree, live_process, monkeypatch):
+    _as_session(monkeypatch, "session-a", live_process.pid)
+    meta.claim_worktree(worktree)
+
+    _as_session(monkeypatch, "session-b", 1)
+    monkeypatch.setattr(meta, "process_start", lambda pid: None)
+    with pytest.raises(meta.MetadataError):
+        meta.claim_worktree(worktree)
+
+    live_process.kill()
+    live_process.wait()
+    assert meta.claim_worktree(worktree) == "taken-over"
