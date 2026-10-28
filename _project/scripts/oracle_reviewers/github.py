@@ -414,6 +414,15 @@ def in_flight_pulls(repo: str, workflow: str) -> frozenset[int]:
 FAILED_STEP_CONCLUSIONS = frozenset({"failure", "timed_out", "cancelled"})
 
 
+def run_pull(repo: str, run_id: int) -> int | None:
+    try:
+        run = get_json(f"repos/{repo}/actions/runs/{run_id}")
+    except (GitHubError, ValueError):
+        return None
+    match = RUN_TITLE_PULL.search(str(run.get("display_title") or "")) if isinstance(run, Mapping) else None
+    return int(match.group(1)) if match else None
+
+
 def failed_steps(repo: str, run_id: int) -> list[str]:
     listing = get_json(f"repos/{repo}/actions/runs/{run_id}/jobs?filter=latest&per_page=100")
     return [

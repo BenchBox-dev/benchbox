@@ -96,7 +96,7 @@ Owner decisions of 2026-10-27:
 | Combined-tree validation before merge (retired) | HIGH-RISK | Former merge-group required checks | Required PR checks, then exact-commit trunk validation; composition failures are detected after merge and handled by revert | pass: `tests/unit/scripts/test_ci_unit_result.py::test_untouched_unit_passes_when_all_jobs_skipped`, Trunk run 40599245390 success at `db5cff9be`; refuse: `test_ci_unit_result.py::test_required_job_skipped_is_a_failure`, `test_ci_units.py::test_unowned_path_fails_closed_to_core`, `tests/unit/scripts/test_trunk_red_disarm.py::test_red_streak_selects_armed_ordinary_pr`, `test_trunk_revert.py::test_refuses_missing_run_evidence_before_mutating`; these show the unit contexts failing closed, the red-trunk disarm and the revert helper's refusals, not a composed-tree failure refused before merge or a post-merge revert completing; blocker `composed-tree-evidence`: the retired merge queue is the only guard that refused a composition failure before merge, and the replacement detects it after merge | blocked: composed-tree-evidence |
 | read_primitives cross-surface check | PROCESS-ONLY | `_project/scripts/rp_scoped_check.py` | nightly T3 per-domain suites | waiver: nightly cross-surface consistency check on one benchmark; failure surfaces in nightly, outside merge and release paths | waived |
 | Published compatibility, query and tuning-support pages match the exported facts (retired) | PROCESS-ONLY | `scripts/generate_compat_docs.py`, `scripts/generate_query_docs.py`, `scripts/generate_tuning_support_matrix.py` | The pages are rendered in `BenchBox-dev/benchbox-site` from the exported documentation data. Core keeps `scripts/export_docs_data.py`, whose query set, counts and SQL stability across catalog resets are asserted in `tests/unit/scripts/test_export_docs_data.py`, and the documentation-data schema checked in the site-inputs bundle; `make compat-inventory-check` keeps the DDL drift guard. The `can_reach_applied_verified` derivation stays in `scripts/docs_data_sources.py`, locked by `test_only_introspected_platforms_can_reach_applied_verified` in `tests/unit/docs/test_tuning_platform_support_matrix.py` and registered in `quality/doc-lock-tests.json` | waiver: generated documentation pages retired from core; correctness of the underlying facts stays covered by the exported-data tests | waived |
-| Links in published pages resolve (retired) | PROCESS-ONLY | `scripts/check_doc_relative_links.py`, `scripts/check_doc_external_links.py` | The scanned pages now live in `BenchBox-dev/benchbox-site`, which checks relative links in its documentation build and runs a nightly crawl of the published site with fragment checking. Markdown links among the pages that stay in core have no core gate | waiver: link rot in published pages; checked by the site repository and not a merge, release, identity or soundness property | waived |
+| Links in published pages resolve (retired) | PROCESS-ONLY | `scripts/check_doc_relative_links.py`, `scripts/check_doc_external_links.py` | The scanned pages now live in `BenchBox-dev/benchbox-site`, which checks relative links in its documentation build and runs a nightly crawl of the published site with fragment checking. `scripts/check_doc_anchors.py`, run by `make docs-validate` and the `docs` unit, gates relative links and fragments among the Markdown documents retained in core: a relative link must name a tracked file or directory, and a fragment into tracked Markdown must match a heading slug or explicit anchor. It does not inspect sources under `_project/decisions/`, `_project/specs/`, `_project/audits/` (archival records that describe the tree when they were written) or `_project/todo-db-export/` (generated tracker export); the list is `EXCLUDED_SOURCE_ROOTS` in the script, with a reason per entry. Core performs no external link checking: the retained documents are maintainer-only, an external check needs network, and the 76 external links in `docs/` and `README.md` carry no fragments | waiver: link rot in documents costs a rerun or a degraded page and cannot alone merge an unsound change; the check stays enforced by `make docs-validate` and is covered by `tests/unit/scripts/test_check_doc_anchors.py` | waived |
 | Site-owned documentation is absent from core (replaces the documentation freeze) | PROCESS-ONLY | `scripts/check_docs_freeze.py` | `scripts/check_docs_ownership.py`, run by `make docs-validate`: every tracked document must be core-owned, and every site-owned path and its generator must be absent | waiver: documentation ownership layout hygiene, enforced by `make docs-validate` | waived |
 | Commit identity and attribution | HIGH-RISK | `scripts/check_agent_trailers.sh`, `_project/scripts/agent_instruction_audit.py`, hooks `agent-git-identity` and `agent-attribution-trailers` | Same hooks and `make agent-identity-check`; unchanged | pass: `tests/unit/test_check_agent_trailers.py::test_accepts_human_attribution`, `tests/unit/scripts/test_agent_instruction_audit.py::test_repository_candidate_passes`; refuse: `test_check_agent_trailers.py::test_rejects_agent_attribution`, `test_agent_instruction_audit.py::test_imposed_identity_fails` | proven |
 
@@ -211,7 +211,6 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_blind_spot_tools.py` | product-safety |
 | `test_branch_prune_merged.py` | pure-process |
 | `test_browser_fixtures_port.py` | product-safety | Fixture-query port byte-identity; the browser check moved to the site repository by the owner decision of 2026-10-27, so the row goes when the file is deleted |
-| `test_browser_gate_aggregate.py` | product-safety | Browser gate aggregate; moved to the site repository by the owner decision of 2026-10-27, so the row goes when the file is deleted |
 | `test_build_joinorder_data.py` | product-safety |
 | `test_check_api_contract_symbols.py` | product-safety |
 | `test_check_complexity.py` | tooling |
@@ -269,9 +268,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `oracle_reviewers/test_verdict.py` | product-safety |
 | `test_path_filter_decision.py` | tooling |
 | `test_preflight_targets.py` | pure-process |
-| `test_phase2_metrics.py` | pure-process |
 | `test_perf_smoke_baseline.py` | pure-process |
-| `test_post_merge_signature.py` | pure-process |
 | `test_pr_arm.py` | pure-process |
 | `test_pr_ready_make.py` | pure-process |
 | `test_pr_landing.py` | pure-process |
@@ -280,7 +277,6 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_pytest_shard_evidence.py` | product-safety | Real serial and distributed test selection and execution conservation |
 | `test_required_case_evidence.py` | product-safety | A required local-engine case that skips, is deselected, fails or is expected to fail fails the required-case check |
 | `test_pr_refresh_certification.py` | pure-process |
-| `test_pr_refresh_replay.py` | pure-process |
 | `test_pr_review_followups.py` | pure-process |
 | `test_reference_usage_audit.py` | tooling |
 | `test_regenerate_correctness_gate_digests.py` | product-safety | TPC-H gate digests regenerate from qgen default parameters and record a null seed |
@@ -381,10 +377,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `trunk_revert.py` | pure-process | Revert of a merged PR and the red-trunk gate on `make pr-open` |
 | `trunk_red_disarm.py` | pure-process | Disables auto-merge on armed PRs the arm gate would refuse when a develop Trunk run is red |
 | `pr_refresh_certification.py` | pure-process | Refresh mechanics |
-| `pr_refresh_replay.py` | pure-process | Refresh mechanics |
-| `post_merge_signature.py` | pure-process | Post-merge mechanics |
 | `local_validation.py` | pure-process | Shared test-lock mechanics |
-| `phase2_metrics.py` | pure-process | Legacy metrics mechanics |
 | `trunk_duration_trend.py` | tooling | Trunk job p50 comparison, run-timestamp windows, API-call budget and the single trend issue |
 | `bundled_binary_manifest.py` | product-safety | Deterministic hashes of the shipped generator tree |
 | `verify_distribution_binaries.py` | product-safety | Distribution membership, archive safety, and source-bound generator hashes |

@@ -80,7 +80,8 @@ are required to fire the evaluation by qualitative-only path.
    `docs/development/adr/TEMPLATE-results-data-extraction.md` to
    `docs/development/adr/YYYY-MM-DD-results-data-extraction.md`.
 3. **Measure**: snapshot `results-data/` size, PR volume from the most
-   recent two `phase2_metrics.py` reports, and any qualitative
+   recent two quarterly metrics reports (the former `phase2_metrics.py`
+   script was retired, so gather them by hand), and any qualitative
    evidence cited.
 4. **Score** the decision matrix in the ADR. Cite numbers, not vibes.
 5. **Recommend** one of: (A) stay in monorepo, (B) extract to a new
@@ -104,9 +105,8 @@ are required to fire the evaluation by qualitative-only path.
 
 ## Current State
 
-`scripts/phase2_metrics.py` runs the Q1 + Q2 checks each quarterly
-review and prints `EXTRACTION EVALUATION RECOMMENDED: <reason>` when
-either fires. Qualitative triggers are tracked here in this file under
+The `phase2_metrics.py` script that ran the Q1 + Q2 checks was retired;
+the quarterly review evaluates them by hand. Qualitative triggers are tracked here in this file under
 "Qualitative Trigger Log" (append-only).
 
 ## Qualitative Trigger Log

@@ -994,3 +994,95 @@ def test_a_pull_request_whose_file_list_hits_the_api_cap_is_refused_rather_than_
     gh = FakeGh(changed_files=[f"f{index}.py" for index in range(3000)])
     [reason] = _refusals(gh)
     assert "could not be verified" in reason
+
+
+def _final_line(capsys: pytest.CaptureFixture[str]) -> str:
+    captured = capsys.readouterr()
+    lines = [line for line in captured.out.splitlines() if line.strip()]
+    assert lines
+    return lines[-1]
+
+
+def _outcomes(capsys: pytest.CaptureFixture[str]) -> list[str]:
+    return [line for line in capsys.readouterr().out.splitlines() if ": outcome: " in line]
+
+
+def test_an_armed_pull_request_ends_with_the_armed_outcome_naming_pr_and_head(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    gh = FakeGh(verdict={"verdict": "pass"})
+    assert _arm(gh) == 0
+    final = _final_line(capsys)
+    assert "outcome: armed" in final
+    assert "#7" in final
+    assert HEAD in final
+
+
+def test_a_refused_pull_request_ends_with_the_refused_outcome_and_the_reason(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    gh = FakeGh(verdict={"verdict": "pass"})
+    assert _arm(gh, unpublished=["3 commits not pushed"]) == 2
+    final = _final_line(capsys)
+    assert "outcome: refused" in final
+    assert "3 commits not pushed" in final
+    assert gh.merged() == []
+
+
+def test_a_failing_merge_ends_with_the_refused_outcome_not_armed(capsys: pytest.CaptureFixture[str]) -> None:
+    class MergeFails(FakeGh):
+        def __call__(self, cmd: Sequence[str]) -> tuple[int, str]:
+            if list(cmd)[:3] == ["gh", "pr", "merge"]:
+                self.calls.append(list(cmd))
+                return 1, "merge exploded"
+            return super().__call__(cmd)
+
+    assert _arm(MergeFails(verdict={"verdict": "pass"})) == 1
+    final = _final_line(capsys)
+    assert "outcome: refused" in final
+    assert "merge exploded" in final
+
+
+def test_a_pull_request_waiting_on_a_full_run_ends_with_the_waiting_outcome(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    gh = FakeGh(
+        verdict=None,
+        core=("completed", "failure"),
+        core_url=PLACEHOLDER_URL,
+        ci_runs=[(90, "CI (text edit)", "completed"), (91, "CI", "in_progress")],
+    )
+    assert _arm_live(gh) == 2
+    final = _final_line(capsys)
+    assert "outcome: waiting" in final
+    assert "91" in final
+
+
+def test_a_pending_producing_job_ends_with_the_waiting_outcome(capsys: pytest.CaptureFixture[str]) -> None:
+    assert _arm(FakeGh(verdict=None, core=("in_progress", None))) == 2
+    assert "outcome: waiting" in _final_line(capsys)
+
+
+@pytest.mark.parametrize("repo", ["not-a-repo", "a/b/c"])
+def test_early_refusals_also_end_with_exactly_one_refused_outcome(
+    repo: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert pr_arm.arm("7", None, repo=repo, run=FakeGh()) == 2
+    outcomes = _outcomes(capsys)
+    assert len(outcomes) == 1
+    assert "outcome: refused" in outcomes[0]
+
+
+def test_a_passing_duration_verdict_line_does_not_read_as_an_arming_outcome(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert _arm(FakeGh(verdict={"verdict": "pass"})) == 0
+    out = capsys.readouterr().out
+    duration_lines = [line for line in out.splitlines() if "verify-fast-duration" in line]
+    assert duration_lines
+    assert not any("arming" in line or "armed" in line or "held" in line for line in duration_lines)
+    assert len(_outcomes_from(out)) == 1
+
+
+def _outcomes_from(text: str) -> list[str]:
+    return [line for line in text.splitlines() if ": outcome: " in line]

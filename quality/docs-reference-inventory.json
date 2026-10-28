@@ -1946,17 +1946,6 @@
   {
    "disposition": "historical-record",
    "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "_project/sql-translation-ml/README.md",
-   "rule": "project-records",
-   "target_count": 1,
-   "targets_sha256": "276e9b2a2c06f8507059e87a8488aea3f6c780eba3098964d0b52097af3c15e6"
-  },
-  {
-   "disposition": "historical-record",
-   "kinds": {
     "dir": 4,
     "extra": 1,
     "file": 30,
@@ -2262,13 +2251,18 @@
   {
    "disposition": "wiring-updated",
    "kinds": {
+    "root": 1,
     "unresolved": 1
    },
-   "occurrences": 1,
+   "occurrences": 3,
    "path": "scripts/ci_units.py",
    "rule": "ci-path-classification",
-   "target_count": 1,
+   "target_count": 2,
    "targets": [
+    {
+     "kind": "root",
+     "target": "docs/"
+    },
     {
      "kind": "unresolved",
      "target": "docs/tooling"
@@ -2552,21 +2546,16 @@
   {
    "disposition": "prose-link-pinned",
    "kinds": {
-    "dir": 1,
     "root": 1
    },
-   "occurrences": 3,
+   "occurrences": 1,
    "path": "tests/README.md",
    "rule": "agent-and-contributor-prose",
-   "target_count": 2,
+   "target_count": 1,
    "targets": [
     {
      "kind": "root",
      "target": "docs/"
-    },
-    {
-     "kind": "dir",
-     "target": "docs/development/"
     }
    ]
   },
@@ -3521,7 +3510,7 @@
     "root": 1,
     "unresolved": 4
    },
-   "occurrences": 19,
+   "occurrences": 24,
    "path": "tests/unit/scripts/test_ci_units.py",
    "rule": "ci-path-classification",
    "target_count": 6,
@@ -4105,22 +4094,6 @@
    ]
   },
   {
-   "disposition": "lock-test",
-   "kinds": {
-    "unresolved": 1
-   },
-   "occurrences": 1,
-   "path": "tests/unit/scripts/test_post_merge_signature.py",
-   "rule": "lock-tests-core",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "unresolved",
-     "target": "docs/x.md"
-    }
-   ]
-  },
-  {
    "disposition": "fixture-data",
    "kinds": {
     "root": 1,
@@ -4138,22 +4111,6 @@
     {
      "kind": "unresolved",
      "target": "docs/note.md"
-    }
-   ]
-  },
-  {
-   "disposition": "fixture-data",
-   "kinds": {
-    "root": 1
-   },
-   "occurrences": 1,
-   "path": "tests/unit/scripts/test_pr_refresh_replay.py",
-   "rule": "test-sample-data",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "root",
-     "target": "docs/"
     }
    ]
   },
@@ -4355,22 +4312,6 @@
   {
    "disposition": "lock-test",
    "kinds": {
-    "file": 1
-   },
-   "occurrences": 2,
-   "path": "tests/unit/test_post_merge_signature.py",
-   "rule": "lock-tests-core",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/operations/local-platform-provisioning.tsv"
-    }
-   ]
-  },
-  {
-   "disposition": "lock-test",
-   "kinds": {
     "unresolved": 1
    },
    "occurrences": 1,
@@ -4454,24 +4395,24 @@
   "dispositions": {
    "contract-replaced": 1,
    "contract-tooling": 6,
-   "fixture-data": 48,
+   "fixture-data": 47,
    "governance-stays": 9,
-   "historical-record": 114,
-   "lock-test": 7,
+   "historical-record": 113,
+   "lock-test": 5,
    "prose-link-pinned": 12,
    "site-pipeline-cutover": 4,
    "wiring-updated": 30
   },
-  "files": 231,
+  "files": 227,
   "kinds": {
    "built-url": 29042,
-   "dir": 165,
+   "dir": 163,
    "extra": 35,
-   "file": 1385,
+   "file": 1382,
    "generated": 3,
    "pattern": 329,
-   "root": 197,
-   "unresolved": 2084
+   "root": 203,
+   "unresolved": 2083
   },
   "references": 33240,
   "unclassified": 0

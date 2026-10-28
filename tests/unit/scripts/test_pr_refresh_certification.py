@@ -328,7 +328,7 @@ def test_fallback_self_change() -> None:
     assert result.reasons == [REASON_SELF_CHANGE]
 
 
-@pytest.mark.parametrize("path", ["scripts/ruleset_drift_check.py", "_project/scripts/browser_gate_aggregate.py"])
+@pytest.mark.parametrize("path", ["scripts/ruleset_drift_check.py", ".github/path-filters.yml"])
 def test_fallback_required_context_helper_change(path: str) -> None:
     result = classify(_eligible_request(authored_paths=[path]))
     assert result.decision == DECISION_FULL

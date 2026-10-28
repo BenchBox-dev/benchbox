@@ -708,12 +708,17 @@ class RowBatchProcessor:
         null_columns: Sequence[bool] | None = None,
         null_token: str = "",
         quote: str | None = None,
+        has_header: bool = False,
     ) -> Iterator[tuple[list[tuple], int]]:
         batch_data = []
         row_count = 0
         null_indexes = [i for i, flag in enumerate(null_columns) if flag] if null_columns else []
 
-        for fields in self._iter_records(file_handle, delimiter, quote):
+        records = self._iter_records(file_handle, delimiter, quote)
+        if has_header:
+            next(records, None)
+
+        for fields in records:
             while len(fields) < column_count:
                 fields.append("")
 
@@ -770,10 +775,17 @@ class FileFormatHandler(ABC):
 
 
 class DelimitedFileHandler(FileFormatHandler):
-    def __init__(self, delimiter: str, null_marker: str | None = None, quote: str | None = None):
+    def __init__(
+        self,
+        delimiter: str,
+        null_marker: str | None = None,
+        quote: str | None = None,
+        has_header: bool = False,
+    ):
         self.delimiter_char = delimiter
         self.null_marker = null_marker
         self.quote = quote
+        self.has_header = has_header
 
     def get_delimiter(self) -> str:
         return self.delimiter_char
@@ -809,6 +821,7 @@ class DelimitedFileHandler(FileFormatHandler):
                 null_columns,
                 self.null_marker if self.null_marker is not None else "",
                 self.quote,
+                self.has_header,
             ):
                 connection.executemany(insert_sql, batch_data)
                 total_rows = current_count
