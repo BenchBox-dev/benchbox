@@ -22940,10 +22940,15 @@
       "title": "Harden SCD2 validation naming and document row_hash fingerprint limits"
     },
     "scheduled-run-confirmation-20261026": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-29T16:38:42Z",
+        "generation": "61bff2b319af429c873e1a47fcd4c436",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Confirm the scheduled drift and nightly runs after the 2026-10-26 fixes"
     },
     "schema-evolution-backward-compatibility-management": {
