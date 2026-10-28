@@ -297,6 +297,71 @@ are unchanged platform names and no cohort gains or loses depth from the rename.
 Gateway-routed bundles are excluded from native ranking with
 `ranking_exclusion_reason=gateway_routed` and contribute no identity.
 
+## Execution-class identity
+
+Where a run executed changes its hardware, so a ranking identity also carries the
+execution class: `native` (a host or a cloud VM) or `container` (a Linux container,
+including one on a Mac). A `container` bundle gets a `^container` suffix after the
+engine and gateway suffixes (`clickhouse-local^container`) and its Explorer label reads
+`ClickHouse Local (Linux container on macOS)` (without `on macOS` when the host OS is unknown). A `native` bundle, and every bundle that records
+no class, keeps the plain identity, so no historical identity or cohort count moves.
+
+- New runs record `execution_class` (plus `container_runtime`, `container_host_os` and
+  `execution_class_source`) in `environment` and `environment.client_host`, next to
+  `os`, `cpu_count` and `memory_gb`. Detection reads `/.dockerenv`,
+  `/run/.containerenv`, `KUBERNETES_SERVICE_HOST` and PID 1's cgroup
+  (`execution_class_source: observed`). A Linux kernel on an Apple CPU vendor with no
+  marker is recorded as a `container` on a `macOS` host with source `inferred`. A Linux
+  host with neither is recorded as `native` with source `inferred`, because absence of a
+  marker does not prove bare metal; a non-Linux host is `native` with source `observed`.
+  `BENCHBOX_CONTAINER_HOST_OS` overrides the host OS. Cloud and other VMs are not told
+  apart from bare metal and stay `native`. When Docker runtime discovery finds the engine's
+  container (`platform_runtime.runtime_type: docker_container`, collection `available`, source
+  `observed`, and the container publishing the engine's host port: `container.host_port_matched`) and
+  the client is macOS or Windows, where Docker runs in a Linux VM, the run is recorded as a
+  `container` with runtime `docker`, the client's host OS and source `observed`. On a Linux
+  client Docker shares the host kernel and the class is not changed.
+- A bundle that predates the field can be attested in its `.manifest.json` sidecar with
+  `execution_class`, `execution_class_evidence` (required) and optionally
+  `container_runtime` and `container_host_os`. The sidecar only fills a bundle that
+  records no class or whose recorded class has source `inferred`; a conflicting
+  `observed` class is an error. Bundle JSON is never edited.
+- `validate_corpus.py` and the Explorer pipeline both call
+  `benchbox.core.results.execution_variant.published_variant_id` with the bundle path,
+  so they cannot disagree; `tests/unit/scripts/test_corpus_execution_class_identity.py`
+  holds that parity.
+- Local comparison (`ExecutionVariant`) treats a native run and a container run of the
+  same engine as incomparable.
+
+### Annotating Linux-guest-on-Apple-silicon bundles
+
+The ClickHouse Local reruns of 2026-10-26 record `Linux 6.18.15`, 4 CPUs, 9.8 GB and
+CPU vendor Apple, with no container marker: they ran in a Linux container on a Mac, not
+on the native macOS host. `scripts/annotate_execution_class.py` finds bundles that
+record a Linux OS on an Apple CPU vendor and no execution class and attests the class in
+their manifest sidecars only:
+
+```bash
+uv run -- python scripts/annotate_execution_class.py
+uv run -- python scripts/annotate_execution_class.py --write
+uv run -- python scripts/annotate_execution_class.py --write --attest-docker-servers
+uv run -- python results-data/validate_corpus.py
+```
+
+By default the tool selects bundles that record no class and a Linux OS on an Apple CPU
+vendor. With `--attest-docker-servers` it also selects a self-hosted `localhost_port`
+server engine driven from a Darwin client whose Docker discovery was attempted but failed
+(`platform_runtime.runtime_type: unknown` with a `container` block). That second rule
+records the maintainer's knowledge that the engine ran in Docker on the Mac; the bundles
+themselves only show `docker_not_found`, so the sidecar evidence says so. It covers CedarDB,
+ClickHouse Server and StarRocks (TPC-H SF 0.01, known-defective and unranked) and Apache
+Doris (TPC-H SF 1) and attests `container_runtime: docker`. LakeSail, which also listens on
+localhost, records `local_process` and is not selected.
+
+The first command lists the sidecars it would change; the second writes them. The
+already-published `tpcds_obt_sf1_clickhouse_local_sql_20261026_132451_e8646728` bundle
+has the same environment and carries the attestation; it is unranked, so no cohort moves.
+
 ## Zero-query DataFrame withdrawal (2026-08-24)
 
 Sixty legacy DataFrame bundles were withdrawn because they reported
