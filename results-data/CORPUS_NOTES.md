@@ -997,14 +997,18 @@ Later reruns use 30.25.0.1 or newer and earlier valid bundles are kept. The #358
 translated 72,483 queries across both wheels and changed 9 outputs, all with a DuckDB target,
 none of which is a target of these bundles.
 
-### Pseudonym salt exception
+### Staging path
 
-The 58 bundles were staged with an empty pseudonym salt, so their machine pseudonyms
-(including `database_5d7b725135a6`) are hashes of the empty-salt input, whose hashed
-value is the word `benchbox`. The maintainer salt (`BENCHBOX_MACHINE_ID_SALT`, held as
-a CI secret) was not available to the staging session, so the bundles were not
-re-staged. Exposure is negligible. Bundle JSON is not modified; this note is the
-record of the exception.
+Maintainer-run local bundles do not use the pseudonym salt. The 58 bundles were produced from
+the original run output in `~/Developer/benchmark_runs/results` through the public anonymiser,
+`_project/scripts/results_explorer_corpus_migrate.py` (`AnonymizationManager()` with no salt),
+the same path as the earlier local bundles, with each `.manifest.json` written from the original
+run output (`result_source: internal`, `submitted_by: maintainer`) and `export.anonymized` set to
+`true`. Their machine pseudonyms (including `database_5d7b725135a6`, also present in 23 bundles
+already on develop) are therefore the unsalted public pseudonyms. `scripts/stage_seed_corpus_bundle.py`
+belongs to the CI seed-corpus lane, which holds the salt as the `BENCHBOX_MACHINE_ID_SALT` secret,
+and is not the maintainer path. Re-running the anonymiser on the raw results reproduces all 58
+bundle files byte for byte. Bundle JSON is not modified.
 
 ### Submission validation refusal path
 
@@ -1178,8 +1182,8 @@ unsupported error for any other pivot so the query is recorded as a failure.
 Replacements, run through the project CLI exactly as the earlier SQLite reruns (`benchbox run
 --platform sqlite --benchmark read_primitives --scale <sf> --phases generate,load,power --tuning
 notuning --result-source internal --non-interactive`, wheel 30.25.0.2, same host, the
-read-primitives tables loaded in the shared SQLite database already present) and staged with the
-same empty-salt anonymization (database pseudonym `database_5d7b725135a6` is unchanged):
+read-primitives tables loaded in the shared SQLite database already present) and staged through
+the public anonymiser (see Staging path above; database pseudonym `database_5d7b725135a6` is unchanged):
 
 | scale | replaced bundle | replacement bundle |
 |---|---|---|
@@ -1227,7 +1231,7 @@ with ClickHouse Local in the `benchbox-agent` Linux container (chDB 4.1.6) and D
 natively on the Darwin host. The DataFusion ClickBench data directory was removed first so the
 CSV was converted to Parquet again with the corrected loader. Bundles record BenchBox 0.5.0rc1;
 the wheel (30.25.0.2) is recorded by the repository lock, not by the bundles. Staging used the
-same empty-salt anonymization as the rest of the set (see the pseudonym exception above).
+public anonymiser, as for the rest of the set (see Staging path above).
 
 | cell | scale | replaced bundle | replacement bundle |
 |---|---|---|---|
