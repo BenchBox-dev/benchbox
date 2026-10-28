@@ -922,3 +922,28 @@ def test_run_cell_honours_documented_clickhouse_obt_exclusions(
     assert result.status == expected_status
     assert result.submit_terminal_state == "query_failure"
     assert (result.exit_code == 0) == (expected_status == "passed")
+
+
+def test_run_cell_rejects_documented_exclusion_when_a_warmup_row_failed_row_count_validation(tmp_path: Path):
+    result_path = tmp_path / "benchmark_runs" / "results" / "obt.json"
+    _write_obt_clickhouse_result(result_path, ["41"])
+    payload = json.loads(result_path.read_text(encoding="utf-8"))
+    payload["queries"].append(
+        {
+            "id": "2",
+            "iter": 0,
+            "ms": 1,
+            "rows": 2,
+            "run_type": "warmup",
+            "status": "SUCCESS",
+            "stream": 0,
+            "row_count_validation": {"status": "FAILED", "expected": 3, "actual": 2},
+        }
+    )
+    result_path.write_text(json.dumps(payload), encoding="utf-8")
+    fake_argv = [sys.executable, "-c", f"print({str(result_path)!r}); raise SystemExit(1)"]
+
+    with patch.object(runner, "benchbox_run_argv", return_value=fake_argv):
+        result = runner.run_cell("clickhouse-local", "tpcds_obt", 1.0, timeout_s=10, log_dir=tmp_path)
+
+    assert result.status == "failed"
