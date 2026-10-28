@@ -1,7 +1,7 @@
 # Decision: one-context ruleset relaxation to repair a broken develop base
 
 Date: 2026-10-24
-Status: Decided and in place. Performed by the owner; recorded afterwards from the ruleset history.
+Status: Decided and in place. Performed by an agent after owner approval; recorded afterwards from the ruleset history.
 Related: `docs/agent/emergency-merge.md`, `docs/internal/repo-admin-settings.md`,
 `scripts/ruleset_drift_check.py`, `_project/decisions/native-merge-queue-activation-20260822.md`,
 `_project/decisions/github-org-transfer-benchbox-dev-2026-08-21.md`,
@@ -17,15 +17,16 @@ request, including pull request 3385, which repaired the entry. The check ran
 the broken base checker against the repair, so the repair could not pass
 `tooling` and no pull request could merge.
 
-The failure needed a base repair that no pull request could provide, so the
-owner performed the GitHub-side unblocking action that
-`docs/agent/emergency-merge.md` reserves to the owner.
+The failure needed a base repair that no pull request could provide; an agent
+performed the GitHub-side ruleset relaxation after owner approval, following
+the emergency unblocking procedure that is otherwise reserved to the owner.
 
 ## Ruleset history
 
 Ruleset `develop-squash-only` (id 15611785), from
 `gh api repos/BenchBox-dev/benchbox/rulesets/15611785/history`. All versions
-were written by the owner's user account. Times are 2026-10-24, US Eastern.
+were written by the owner's user account (performed by an agent acting under
+owner approval). Times are 2026-10-24, US Eastern.
 
 | Window | Version removing `tooling` | Time | Version restoring it | Time | Open |
 |---|---|---|---|---|---|
@@ -57,18 +58,18 @@ resolution and the squash-only merge method were not edited.
 
 ## Decision
 
-The owner relaxed the ruleset by removing `tooling` from the required contexts
-for the duration of each window, merged the repair in window 3, and restored the
-context immediately each time.
+An agent, with owner approval, relaxed the ruleset by removing `tooling` from the
+required contexts for the duration of each window, merged the repair in window 3,
+and restored the context immediately each time.
 
 Policy effect. The records cited under Related hold a policy of zero bypass
 actors and no ruleset relaxation. This relaxation is a recorded exception to that
 policy for the three windows above. Those records supersede nothing else and
 otherwise stand: no bypass actor was added and no standing relaxation remains.
-The exception is not a precedent for agents. Agents still never relax a ruleset
-for a base-broken gate; the owner alone does, under
+The exception is not a precedent for agents. Owner decision Q8 of 2026-10-26
+ratifies that ruleset relaxation is owner-only everywhere; agents never relax a
+ruleset for a base-broken gate; the owner alone does, under
 `docs/agent/emergency-merge.md`.
-
 ## Gaps this record exposes
 
 - Two windows were opened before the window that merged. The restore in each

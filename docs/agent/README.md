@@ -33,8 +33,8 @@ requires a human audience that belongs on benchbox.dev. A new
 | `audit-evidence-provenance.md` | SHA-field convention for `_project/audits/` |
 | `handoffs.md` | Where resumable session state goes, and why handoff files are retired |
 | `cloud-builder.md` | How a cloud session builds, verifies, and hands off one change |
-| `merge-authority.md` | Owner holds, stand-in approvals, and stale failed check suites |
-| `emergency-merge.md` | What an agent does when a required gate is broken by the base: reproduce, record evidence, stop; GitHub-side action is the owner's |
+| `merge-authority.md` | Owner holds, stand-in approvals (requires owner-named PR, head SHA, and prior instruction comment), and stale failed check suites; ruleset relaxation is owner-only |
+| `emergency-merge.md` | Base-pinned gate breakage: agents reproduce, record evidence, and stop; stand-in evidence matches `merge-authority.md`; ruleset relaxation is owner-only |
 | `primary-clone-guard.md` | Dirty-primary check, absolute worktree paths for workers, and the lost-edit cause |
 | `remote-closeout.md` | Closing out a PR from the primary clone without a checkout |
 

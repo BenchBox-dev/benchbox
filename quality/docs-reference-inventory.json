@@ -1211,6 +1211,17 @@
   {
    "disposition": "historical-record",
    "kinds": {
+    "unresolved": 3
+   },
+   "occurrences": 4,
+   "path": "_project/decisions/develop-ruleset-relaxation-history-2026-10-26.md",
+   "rule": "project-records",
+   "target_count": 3,
+   "targets_sha256": "67617fc68366d036accea3788625ba989147e9dc1cc8c79cc1bfbbc81e9f2445"
+  },
+  {
+   "disposition": "historical-record",
+   "kinds": {
     "file": 1
    },
    "occurrences": 1,
@@ -4481,13 +4492,13 @@
    "contract-tooling": 6,
    "fixture-data": 47,
    "governance-stays": 9,
-   "historical-record": 113,
+   "historical-record": 114,
    "lock-test": 8,
    "prose-link-pinned": 12,
    "site-pipeline-cutover": 4,
    "wiring-updated": 31
   },
-  "files": 231,
+  "files": 232,
   "kinds": {
    "built-url": 29042,
    "dir": 165,
@@ -4496,9 +4507,9 @@
    "generated": 3,
    "pattern": 329,
    "root": 196,
-   "unresolved": 2070
+   "unresolved": 2074
   },
-  "references": 33241,
+  "references": 33245,
   "unclassified": 0
  }
 }
