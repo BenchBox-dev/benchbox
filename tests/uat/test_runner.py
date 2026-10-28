@@ -853,15 +853,19 @@ def test_run_cell_official_fails_when_result_json_has_another_scale_factor(tmp_p
 
 
 def _write_obt_clickhouse_result(
-    path: Path, failed_ids: list[str], driver_version: str = "4.1.6", failed_status: str = "FAILED"
+    path: Path,
+    failed_ids: list[str],
+    driver_version: str = "4.1.6",
+    failed_status: str = "FAILED",
+    failed_extra: dict | None = None,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    rows = [{"id": qid, "status": failed_status, "ms": 1} for qid in failed_ids] + [
+    rows = [{"id": qid, "status": failed_status, "ms": 1, **(failed_extra or {})} for qid in failed_ids] + [
         {"id": "1", "status": "SUCCESS", "ms": 1},
         {"id": "2", "status": "SUCCESS", "ms": 1},
     ]
     payload = {
-        "version": "2.1",
+        "version": "2.2",
         "run": {
             "id": "uat-test",
             "timestamp": "2026-01-01T00:00:00",
@@ -884,20 +888,32 @@ def _write_obt_clickhouse_result(
 
 
 @pytest.mark.parametrize(
-    ("failed_ids", "driver_version", "failed_status", "expected_status"),
+    ("failed_ids", "driver_version", "failed_status", "failed_extra", "expected_status"),
     [
-        (["41", "44"], "4.1.6", "FAILED", "passed"),
-        (["44"], "4.1.6", "FAILED", "passed"),
-        (["41", "44", "7"], "4.1.6", "FAILED", "failed"),
-        (["41", "44"], "4.2.0", "FAILED", "failed"),
-        (["41", "44"], "4.1.6", "VALIDATION_FAILED", "failed"),
+        (["41", "44"], "4.1.6", "FAILED", None, "passed"),
+        (["44"], "4.1.6", "FAILED", None, "passed"),
+        (["41", "44", "7"], "4.1.6", "FAILED", None, "failed"),
+        (["41", "44"], "4.2.0", "FAILED", None, "failed"),
+        (["41", "44"], "4.1.6", "VALIDATION_FAILED", None, "failed"),
+        (
+            ["41"],
+            "4.1.6",
+            "FAILED",
+            {"rows": 2, "row_count_validation": {"status": "FAILED", "expected": 3, "actual": 2}},
+            "failed",
+        ),
     ],
 )
 def test_run_cell_honours_documented_clickhouse_obt_exclusions(
-    tmp_path: Path, failed_ids: list[str], driver_version: str, failed_status: str, expected_status: str
+    tmp_path: Path,
+    failed_ids: list[str],
+    driver_version: str,
+    failed_status: str,
+    failed_extra: dict | None,
+    expected_status: str,
 ):
     result_path = tmp_path / "benchmark_runs" / "results" / "obt.json"
-    _write_obt_clickhouse_result(result_path, failed_ids, driver_version, failed_status)
+    _write_obt_clickhouse_result(result_path, failed_ids, driver_version, failed_status, failed_extra)
     fake_argv = [sys.executable, "-c", f"print({str(result_path)!r}); raise SystemExit(1)"]
 
     with patch.object(runner, "benchbox_run_argv", return_value=fake_argv):

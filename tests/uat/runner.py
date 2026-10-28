@@ -69,12 +69,19 @@ def _failures_are_documented_exclusions(result_path: Path | None) -> bool:
     if not isinstance(data, dict) or not documented_exclusions_cover_failures(data):
         return False
     return all(
-        str(row.get("status")).upper() == "FAILED"
+        _row_is_execution_failure(row)
         for row in data.get("queries", [])
         if isinstance(row, dict)
         and str(row.get("run_type") or "measurement").lower() == "measurement"
         and str(row.get("status")).upper() not in {"SUCCESS", "SKIPPED"}
     )
+
+
+def _row_is_execution_failure(row: dict) -> bool:
+    if str(row.get("status")).upper() != "FAILED":
+        return False
+    validation = row.get("row_count_validation")
+    return not (isinstance(validation, dict) and str(validation.get("status")).upper() == "FAILED")
 
 
 def submit_state_is_cell_failure(state: SubmitTerminalState | str) -> bool:
