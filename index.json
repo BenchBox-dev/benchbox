@@ -23462,10 +23462,15 @@
       "title": "Sequence the site contract bump after the 2026-11-18 dependency window"
     },
     "site-docs-broken-fragments-20261009": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-29T18:34:14Z",
+        "generation": "09af969cba454f84b0d3595e0fe88e9f",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Fix the 15 broken fragment links that are live on benchbox.dev today"
     },
     "site-explorer-vite-high-advisory-blocks-ci-20261020": {
