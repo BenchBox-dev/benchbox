@@ -44,8 +44,8 @@ WITHDRAWN = {
 }
 
 
-def _check(name: str, harness: Harness, run: ReviewRun, pr: int) -> None:
-    assert_golden(name, run_capture(harness, run, pr, run.plan.get("head_sha", "")), harness)
+def _check(name: str, harness: Harness, run: ReviewRun, pr: int, head: str | None = None) -> None:
+    assert_golden(name, run_capture(harness, run, pr, head or run.plan.get("head_sha", "")), harness)
     if harness.default_mode == STEPS and "shadow-plan" in run.steps:
         result = json.loads((run.temp / "oracle-shadow" / "result.json").read_text(encoding="utf-8"))
         assert result == {"differences": {}, "equal": True}
@@ -140,14 +140,16 @@ def test_golden_carry_that_disagrees_with_the_app_status_holds(harness: Harness)
 
 
 def test_golden_unreadable_edit_state_posts_nothing(harness: Harness) -> None:
-    _reviewed(harness, 76, "feat/unreadable")
+    first = _reviewed(harness, 76, "feat/unreadable")
     harness.write({"README.md": "seed\nunrelated\n"}, "touch readme")
-    _rebase(harness, "feat/unreadable")
+    head = _rebase(harness, "feat/unreadable")
+    assert head != first
     harness.github.fail("POST", r"/graphql", 500, 50)
     posted_before = len(harness.github.reviews[76])
     run = harness.review(76)
     assert len(harness.github.reviews[76]) == posted_before
-    _check("unreadable_edit_state_posts_nothing", harness, run, 76)
+    assert harness.github.oracle_statuses(head) == []
+    _check("unreadable_edit_state_posts_nothing", harness, run, 76, head)
 
 
 def test_golden_fork_pull_request(harness: Harness) -> None:
