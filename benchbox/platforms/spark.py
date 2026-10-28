@@ -155,6 +155,7 @@ def _ensure_compatible_java(java_home_override: str | None = None) -> str | None
 
 class SparkAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutionMixin, PlatformAdapter):
     physical_identifier_case = "lower"
+    _df_caching_supported = False
 
     plan_capture_phase_eligible = True
 
