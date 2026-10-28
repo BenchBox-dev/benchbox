@@ -236,12 +236,17 @@ def register_analytics_tools(
             )
 
 
+def _prefer_measurement(rows: list[dict[str, Any]]) -> dict | None:
+    for row in rows:
+        if row.get("run_type") == "measurement":
+            return row
+    return rows[0] if rows else None
+
+
 def _find_query_execution(data: dict[str, Any], normalized_id: str) -> dict | None:
-    for query_result in data.get("queries", []):
-        qid = query_result.get("id", "")
-        if normalize_query_id(qid) == normalized_id:
-            return query_result
-    return None
+    return _prefer_measurement(
+        [q for q in data.get("queries", []) if normalize_query_id(q.get("id", "")) == normalized_id]
+    )
 
 
 def _resolve_plans_path(file_path: Path) -> Path | None:
@@ -284,15 +289,14 @@ def _variant_test_types(data: dict[str, Any], normalized_id: str, key_stream: st
 def _find_variant_execution(
     data: dict[str, Any], normalized_id: str, key_stream: str, key_test_type: str | None
 ) -> dict | None:
-    for query_result in data.get("queries", []):
-        if normalize_query_id(query_result.get("id", "")) != normalized_id:
-            continue
-        if str(query_result.get("stream", 0)) != key_stream:
-            continue
-        if key_test_type and str(query_result.get("test_type", "")).lower() != key_test_type.lower():
-            continue
-        return query_result
-    return None
+    rows = [
+        q
+        for q in data.get("queries", [])
+        if normalize_query_id(q.get("id", "")) == normalized_id
+        and str(q.get("stream", 0)) == key_stream
+        and (not key_test_type or str(q.get("test_type", "")).lower() == key_test_type.lower())
+    ]
+    return _prefer_measurement(rows)
 
 
 def _select_plan_variant(

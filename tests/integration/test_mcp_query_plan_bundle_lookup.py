@@ -123,3 +123,24 @@ class TestMCPQueryPlanBundleLookup:
 
         assert result["error_code"] == "RESOURCE_NOT_FOUND"
         assert result["details"]["available"]
+
+
+class TestMCPQueryPlanRuntimeSelection:
+    def test_runtime_comes_from_measurement_not_warmup(self, tmp_path):
+        from benchbox.mcp.tools.analytics import _get_query_plan_impl
+
+        bundle = _export(tmp_path, [(0, "power"), (1, "throughput")])
+        data = json.loads(bundle.read_text(encoding="utf-8"))
+        warmups = []
+        for q in data["queries"]:
+            warmup = dict(q, run_type="warmup", ms=9999.0)
+            q["run_type"] = "measurement"
+            warmups.append(warmup)
+        data["queries"] = warmups + data["queries"]
+        bundle.write_text(json.dumps(data), encoding="utf-8")
+
+        bare = _get_query_plan_impl(bundle, str(bundle), "1", "json", stream="0")
+        variant = _get_query_plan_impl(bundle, str(bundle), "1", "json", stream="1", test_type="throughput")
+
+        assert bare["runtime_ms"] == 100.0
+        assert variant["runtime_ms"] == 200.0
