@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -53,6 +54,7 @@ def test_runbook_requires_the_hold_context() -> None:
     assert "- hold" in block.splitlines()
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="the hold step is a POSIX shell script that runs on ubuntu")
 @pytest.mark.parametrize(("held", "expected_code"), [("true", 1), ("false", 0)])
 def test_hold_step_fails_only_while_the_label_is_present(held: str, expected_code: int, tmp_path: Path) -> None:
     script = tmp_path / "hold.sh"
