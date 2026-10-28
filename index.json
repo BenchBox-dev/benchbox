@@ -8546,15 +8546,10 @@
       "title": "Add ci.yml with six always-reporting unit checks and run it in shadow for five working days"
     },
     "dlv2-22-nightly-t3-shadow": {
-      "claim": {
-        "expires_at": "2026-10-29T04:10:32Z",
-        "generation": "5b604e61f8cf4597a08d4478258b34e4",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Add the new T3 nightly workflow with per-domain jobs and validate it with dispatched runs"
     },
     "dlv2-30-drift-settings-add-new-checks": {
