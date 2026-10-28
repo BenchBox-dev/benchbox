@@ -1021,7 +1021,7 @@ tracked by `flagged-local-bundles-compliance-class-gate-20261025`.
 
 Each of the 58 bundles was checked with a capture-only run of the same benchmark, scale
 and SQL on SQLGlot 30.25.0.1 (`--phases generate,load,power --iterations 1`, full result
-rows captured per query, 50,000-row cap, no new bundle written) and compared per query
+rows captured per query, 50,000-row cap, no new bundle written; ClickHouse captures apply the adapter's query rewrite and per-query settings, as the timed run does) and compared per query
 with a DuckDB capture of the same data. A query is `passed` when the row counts are equal,
 rows align on their non-numeric columns, every numeric value is within relative tolerance
 1e-6, and it is also consistent with the bundle's own warm-up row count. A query is
@@ -1033,15 +1033,16 @@ query parameters are unseeded, so both the DuckDB and the ClickHouse Local NYC T
 captures pinned one parameter seed and are not compared with the bundle row counts. SQLite
 `bundle-failed` queries failed in the bundle itself and were not captured.
 
+
 `clickhouse-local`
 
 | benchmark | SF | passed | whitespace-only | unproven | discrepancy | bundle-failed | no capture/reference |
 |---|---|---|---|---|---|---|---|
-| coffeeshop | 0.01 | 8 | 0 | 0 | 3 | 0 | 0 |
-| coffeeshop | 0.1 | 8 | 0 | 0 | 3 | 0 | 0 |
-| coffeeshop | 1 | 8 | 0 | 0 | 3 | 0 | 0 |
-| datavault | 0.01 | 19 | 1 | 1 | 1 | 0 | 0 |
-| datavault | 0.1 | 18 | 2 | 0 | 2 | 0 | 0 |
+| coffeeshop | 0.01 | 10 | 0 | 0 | 1 | 0 | 0 |
+| coffeeshop | 0.1 | 10 | 0 | 0 | 1 | 0 | 0 |
+| coffeeshop | 1 | 10 | 0 | 0 | 1 | 0 | 0 |
+| datavault | 0.01 | 20 | 1 | 1 | 0 | 0 | 0 |
+| datavault | 0.1 | 20 | 2 | 0 | 0 | 0 | 0 |
 | flightdata | 0.01 | 20 | 0 | 0 | 0 | 0 | 0 |
 | flightdata | 0.1 | 19 | 0 | 0 | 1 | 0 | 0 |
 | flightdata | 1 | 20 | 0 | 0 | 0 | 0 | 0 |
@@ -1050,20 +1051,20 @@ captures pinned one parameter seed and are not compared with the bundle row coun
 | nyctaxi | 1 | 25 | 0 | 0 | 0 | 0 | 0 |
 | read_primitives | 0.01 | 101 | 9 | 16 | 20 | 0 | 1 |
 | read_primitives | 0.1 | 94 | 8 | 21 | 23 | 0 | 1 |
-| tpcdi | 0.01 | 29 | 0 | 3 | 6 | 0 | 0 |
-| tpcdi | 0.1 | 29 | 0 | 2 | 7 | 0 | 0 |
-| tpcdi | 1 | 30 | 0 | 2 | 6 | 0 | 0 |
-| tpcds | 1 | 70 | 0 | 14 | 16 | 0 | 3 |
-| tpch | 0.01 | 19 | 1 | 1 | 1 | 0 | 0 |
-| tpch | 0.1 | 18 | 2 | 0 | 2 | 0 | 0 |
-| tpch | 1 | 17 | 3 | 0 | 2 | 0 | 0 |
-| tpch_skew | 0.01 | 16 | 2 | 3 | 1 | 0 | 0 |
-| tpch_skew | 0.1 | 16 | 3 | 2 | 1 | 0 | 0 |
-| tpch_skew | 1 | 16 | 3 | 2 | 1 | 0 | 0 |
-| tpchavoc | 0.01 | 166 | 7 | 8 | 18 | 0 | 0 |
-| tpchavoc | 0.1 | 157 | 16 | 0 | 26 | 0 | 0 |
-| tpchavoc | 1 | 145 | 26 | 0 | 26 | 0 | 2 |
-| **total (26 cells)** | | **1116** | **83** | **75** | **171** | **0** | **7** |
+| tpcdi | 0.01 | 34 | 0 | 3 | 1 | 0 | 0 |
+| tpcdi | 0.1 | 35 | 0 | 2 | 1 | 0 | 0 |
+| tpcdi | 1 | 35 | 0 | 2 | 1 | 0 | 0 |
+| tpcds | 1 | 88 | 0 | 14 | 1 | 0 | 0 |
+| tpch | 0.01 | 20 | 1 | 1 | 0 | 0 | 0 |
+| tpch | 0.1 | 20 | 2 | 0 | 0 | 0 | 0 |
+| tpch | 1 | 19 | 3 | 0 | 0 | 0 | 0 |
+| tpch_skew | 0.01 | 17 | 2 | 3 | 0 | 0 | 0 |
+| tpch_skew | 0.1 | 17 | 3 | 2 | 0 | 0 | 0 |
+| tpch_skew | 1 | 17 | 3 | 2 | 0 | 0 | 0 |
+| tpchavoc | 0.01 | 177 | 7 | 8 | 7 | 0 | 0 |
+| tpchavoc | 0.1 | 177 | 16 | 0 | 6 | 0 | 0 |
+| tpchavoc | 1 | 167 | 26 | 0 | 6 | 0 | 0 |
+| **total (26 cells)** | | **1220** | **83** | **75** | **72** | **0** | **2** |
 
 `datafusion`
 
@@ -1113,43 +1114,45 @@ Counts reconcile to the 58 bundles: 26 ClickHouse Local, 20 DataFusion, 12 SQLit
 
 #### Discrepancy adjudication
 
-Proven causes (evidence: the value or rowcount difference, plus a direct probe where noted):
+An earlier capture of the ClickHouse cells re-ran each query without the adapter's
+`rewrite_query_for_clickhouse` and per-query settings, which produced spurious TPC-H Q6,
+decimal-ratio, TPC-DS and Havoc discrepancies; those were capture artefacts and the tables
+above come from the corrected capture. The DataFusion and SQLite captures already used the
+same rewrite path as the timed run.
 
-- ClickHouse Local TPC-H Q6, every TPC-Havoc `6_v*` variant and Data Vault Q6 return
-  revenue about 38-40% lower than DuckDB. On identical data (the TPC-H SF0.01 answer
-  1193053.2253 is reproduced by DuckDB and by ClickHouse with decimal literals),
-  `l_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01` compares a `Decimal(15, 2)` column with a
-  float expression and drops the boundary discount rows. The affected bundles hold wrong
-  values for these queries.
-- ClickHouse Local decimal ratio queries return values truncated to the decimal scale
-  (Coffeeshop SA1 and SA3 return 4.82 where DuckDB returns 4.8277; TPC-DI AQ3 and AQ4 show
-  the same pattern). TPC-H and Data Vault Q8, TPC-DI AQ2, AQ5, AQ6 and AQ10, TPC-Havoc
-  `1_v4` and `8_v*`, and Flight Data `delay-by-airport` differ from DuckDB by 1e-4 to
-  1e-1 relative in a way consistent with the same cause, which was not probed
-  individually.
-- ClickHouse Local Coffeeshop TM1 returns one `Evening` row (32,679 orders) instead of the four
-  day parts, so `EXTRACT(HOUR FROM order_time)` is not computing the hour.
-- DataFusion TPC-DI EQ7 returns different scores and quality labels than DuckDB (for example
-  DimAccount `POOR` against `GOOD`), consistent with integer division in the score
-  expressions. It appears in all three DataFusion TPC-DI bundles.
-- DataFusion ClickBench Q6 `COUNT(DISTINCT SearchPhrase)` returns 17 where DuckDB and SQLite
-  return 18, consistent with empty strings loaded as NULL.
-- SQLite Read Primitives `pivot_basic` (PIVOT dropped, 2,100 and 22,576 rows against 2),
-  `unpivot_basic` (UNPIVOT dropped, literal column-name strings, 100 rows against 200) and
-  `orderby_all_desc` (ascending against DuckDB descending) succeed in the bundles with wrong
-  results. DataFusion `pivot_basic` also returns 2,100 rows against 2.
-- ClickHouse Local loads strings with leading whitespace trimmed (TPC-H Q2, Q10, Q20 and the
-  corresponding Havoc, skew and Data Vault variants): 83 queries are `whitespace-only`.
+Real defects found (the bundles hold wrong values or rows for these queries):
+
+- ClickHouse Local Coffeeshop TM1 returns one `Evening` row instead of four day parts (TIME
+  stored as a string); TPC-DI AQ6 differs from DuckDB (hand-written variant).
+- ClickHouse Local `map_access` returns 0 for a missing key, and the approximate, struct,
+  array and map Read Primitives shapes differ from DuckDB (20 and 23 queries in the SF0.01
+  and SF0.1 bundles, left unadjudicated individually).
+- DataFusion TPC-DI EQ7 returns wrong scores (Int64 division) in all three bundles;
+  DataFusion ClickBench Q6 returns 17 where DuckDB and SQLite return 18 (loader null
+  marker); DataFusion `pivot_basic` returns 2,100 rows against 2.
+- SQLite Read Primitives `pivot_basic` (PIVOT dropped), `unpivot_basic` (UNPIVOT dropped)
+  and `orderby_all_desc` (ascending) succeed with wrong results in both bundles.
+
+Accepted as engine semantics or ties:
+
 - The 8 SQLite ClickBench discrepancies are nondeterminism: Q18 has no ORDER BY; Q16, Q17,
-  Q19, Q31, Q32, Q33 and Q36 tie at the LIMIT 10 cutoff. The multiset of counts equals
-  DuckDB's in every case and every SQLite row's count matches DuckDB's exact count. The
-  DataFusion ClickBench Q16 to Q19, Q24, Q31 to Q33 and Q36 differences are the same shape (count multisets verified for all except Q24).
-- Remaining ORDER BY ... LIMIT discrepancies (TOPN, window running sum, `orderby_simple`,
-  `any_value`) differ only in the rows tied at the LIMIT cutoff on SQLite and DataFusion
-  and are probable, not proven, ties for ClickHouse Local.
+  Q19, Q31, Q32, Q33 and Q36 tie at the LIMIT 10 cutoff, the count multisets equal DuckDB's
+  and every SQLite row's count matches DuckDB's exact count. DataFusion ClickBench Q16 to
+  Q19, Q24, Q31 to Q33 and Q36 have the same shape (multisets verified except Q24).
+- ClickHouse Local TPC-DS Q78 differs in 3 of 100 rows by float tie rounding.
+- 83 ClickHouse Local queries are `whitespace-only` (loader trims leading or trailing
+  whitespace).
+- Remaining ORDER BY ... LIMIT differences (TOPN, running sum, `orderby_simple`,
+  `any_value`) differ only in rows tied at the LIMIT cutoff.
+- ClickHouse Local TPC-Havoc `2_v8`, `3_v7`, `7_v7`, `9_v7`, `10_v7`, `10_v8` row counts and
+  `13_v1` differ from DuckDB, consistent with the documented
+  `defective-tpchavoc-variant-divergence`.
 
-Left open (not accepted as passed): the remaining ClickHouse Local Read Primitives
-(approximate aggregates, struct, array and map shapes), TPC-DS (Q2, Q20, Q36, Q49, Q59, Q66,
-Q67 and others) and TPC-Havoc `2_v*`, `3_v7`, `7_v7`, `10_v*` discrepancies; ClickHouse Local
-TPC-DS Q1, Q14a and Q75 (and Havoc `5_v7`, `5_v8`) fail on the verification re-execution;
-SQLite TPC-H Q11 and TPC-H skew Q9 and Q11 differ by one row of 76 to 1,048.
+Still open: ClickHouse Local Flight Data `delay-by-airport` SF0.1 (7.9e-4 relative) and NYC
+Taxi SF0.01 `top-routes` and `airport-trips`; ClickHouse Local `json_extract_simple` has no
+DuckDB reference; SQLite TPC-H Q11 and TPC-H skew Q9 and Q11 differ by one row of 76 to
+1,048.
+
+Cells to rerun after the engine fixes merge: ClickHouse Local Coffeeshop (3) and TPC-DI (3),
+ClickHouse Local Read Primitives (2) and any ClickHouse cell using `map_access`; DataFusion
+TPC-DI (3), ClickBench SF1 and Read Primitives (2); SQLite Read Primitives (2).
