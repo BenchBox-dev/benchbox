@@ -285,6 +285,11 @@ from the archive than from an unpacked tree with warm bytecode.
 Decision: keep loading from the archive. Unpacking source or caching bytecode
 would add a writable cache directory, a staleness rule per Python version and a
 second copy of the code that the pinned archive hash no longer covers. The
-runtime is imported lazily instead: `import benchbox`, `benchbox --help` and
-other commands that do not translate SQL no longer load it, which halves their
-CPU time. Commands that translate SQL still pay the one-time compile cost.
+runtime is imported lazily instead: `import benchbox` and `benchbox --help`
+no longer load it, which halved their CPU time on macOS arm64.
+
+Measured scope: macOS arm64 only, covering `benchbox --help` and a fresh
+interpreter that translates one statement. Not measured: Linux, and any CLI
+command that translates SQL end to end. Commands that translate SQL still pay
+the one-time compile cost; its size on those commands and on Linux is unknown,
+and the decision to keep the archive is not re-verified for them.
