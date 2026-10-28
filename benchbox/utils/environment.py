@@ -183,3 +183,58 @@ def _detect_windows_cpu() -> Tuple[str | None, str | None]:
     except Exception:
         pass
     return None, None
+
+
+EXECUTION_CLASS_NATIVE = "native"
+EXECUTION_CLASS_CONTAINER = "container"
+EXECUTION_CLASSES = (EXECUTION_CLASS_NATIVE, EXECUTION_CLASS_CONTAINER)
+CONTAINER_HOST_OS_ENV = "BENCHBOX_CONTAINER_HOST_OS"
+
+_CONTAINER_MARKER_FILES = (("/.dockerenv", "docker"), ("/run/.containerenv", "podman"))
+_CONTAINER_CGROUP_TOKENS = (
+    ("kubepods", "kubernetes"),
+    ("docker", "docker"),
+    ("libpod", "podman"),
+    ("containerd", "containerd"),
+    ("lxc", "lxc"),
+)
+
+
+def _read_text(path: str) -> str:
+    try:
+        with open(path, encoding="utf-8", errors="replace") as handle:
+            return handle.read(65536)
+    except OSError:
+        return ""
+
+
+def _container_runtime() -> str | None:
+    for marker, runtime in _CONTAINER_MARKER_FILES:
+        if os.path.exists(marker):
+            return runtime
+    if os.environ.get("KUBERNETES_SERVICE_HOST"):
+        return "kubernetes"
+    cgroup = _read_text("/proc/1/cgroup").lower()
+    for token, runtime in _CONTAINER_CGROUP_TOKENS:
+        if token in cgroup:
+            return runtime
+    return None
+
+
+def detect_execution_class() -> dict[str, str]:
+    if platform.system() != "Linux":
+        return {"execution_class": EXECUTION_CLASS_NATIVE, "execution_class_source": "observed"}
+    runtime = _container_runtime()
+    apple_guest = detect_cpu_info()[1] == "Apple"
+    if runtime is None and not apple_guest:
+        return {"execution_class": EXECUTION_CLASS_NATIVE, "execution_class_source": "inferred"}
+    detected = {
+        "execution_class": EXECUTION_CLASS_CONTAINER,
+        "execution_class_source": "observed" if runtime else "inferred",
+    }
+    if runtime:
+        detected["container_runtime"] = runtime
+    host_os = os.environ.get(CONTAINER_HOST_OS_ENV, "").strip() or ("macOS" if apple_guest else "")
+    if host_os:
+        detected["container_host_os"] = host_os
+    return detected

@@ -115,6 +115,31 @@ class TestManifestProvenance:
         assert not vr.ok
         assert any("known_defects" in e for e in vr.errors)
 
+    def test_execution_class_attestation_with_evidence_ok(self):
+        assert self._run(
+            {
+                "execution_class": "container",
+                "container_host_os": "macOS",
+                "execution_class_evidence": "Linux kernel on Apple CPU vendor",
+            }
+        ).ok
+
+    def test_execution_class_attestation_requires_evidence(self):
+        vr = self._run({"execution_class": "container"})
+        assert not vr.ok
+        assert any("execution_class_evidence" in e for e in vr.errors)
+
+    @pytest.mark.parametrize(
+        "fields",
+        [
+            {"execution_class": "vm", "execution_class_evidence": "x"},
+            {"execution_class": "container", "execution_class_evidence": "x", "container_runtime": ""},
+            {"execution_class": "native", "execution_class_evidence": "x", "container_host_os": "macOS"},
+        ],
+    )
+    def test_invalid_execution_class_attestation_rejected(self, fields):
+        assert not self._run(fields).ok
+
 
 def _minimal_bundle() -> dict:
     return {
@@ -2984,3 +3009,40 @@ class TestTPCHavocVariantRowCountConsistency:
             "tpchavoc query 16_v6 has successful status 'SUCCESS' but missing or invalid rows" in err
             for err in vr.errors
         )
+
+
+@pytest.mark.parametrize(
+    ("environment", "ok"),
+    [
+        ({"execution_class": "container", "container_runtime": "docker"}, True),
+        ({"client_host": {"execution_class": "native"}}, True),
+        ({"execution_class": "vm"}, False),
+        ({"execution_class": "native", "container_runtime": "docker"}, False),
+        ({"execution_class": "container", "client_host": {"execution_class": "native"}}, False),
+    ],
+)
+def test_bundle_environment_execution_class_is_validated(environment, ok):
+    data = _minimal_bundle()
+    data["environment"] = environment
+    vr = ValidationResult("test")
+    bundle_module._validate_environment_execution_class(data, vr)
+    assert vr.ok is ok
+
+
+@pytest.mark.parametrize(
+    ("environment", "ok"),
+    [
+        ({"os": "Linux"}, True),
+        ({"execution_class": "container"}, True),
+        ({"execution_class": "native", "execution_class_source": "inferred"}, True),
+        ({"execution_class": "native", "execution_class_source": "observed"}, False),
+        ({"client_host": {"execution_class": "native"}}, False),
+    ],
+)
+def test_manifest_class_attestation_must_match_the_recorded_bundle(tmp_path, environment, ok):
+    bundle = tmp_path / "run.json"
+    bundle.write_text(json.dumps({"environment": environment}), encoding="utf-8")
+    vr = ValidationResult("test")
+    manifest = {"execution_class": "container", "execution_class_evidence": "owner attestation"}
+    _validate_manifest_provenance(manifest, bundle, vr)
+    assert vr.ok is ok

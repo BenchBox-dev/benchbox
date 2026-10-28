@@ -43,6 +43,11 @@ except ImportError:
     RESULT_SOURCES = ("internal", "community", "vendor")
 
 try:
+    from benchbox.utils.environment import EXECUTION_CLASSES
+except ImportError:
+    EXECUTION_CLASSES = ("native", "container")
+
+try:
     from benchbox.core.schemas import MIN_THROUGHPUT_STREAMS
 except ImportError:
     MIN_THROUGHPUT_STREAMS = 2
@@ -1358,6 +1363,38 @@ def _validate_translation_section(data: dict, vr: ValidationResult) -> None:
         vr.error(f"execution.translation.status={translation_status!r} is not accepted for public submissions")
 
 
+def _validate_execution_class_fields(block: Any, label: str, vr: ValidationResult) -> None:
+    if not isinstance(block, dict):
+        return
+    execution_class = block.get("execution_class")
+    if execution_class is not None and execution_class not in EXECUTION_CLASSES:
+        vr.error(f"'{label}.execution_class' must be one of {list(EXECUTION_CLASSES)}, got {execution_class!r}")
+    for key in ("container_runtime", "container_host_os"):
+        value = block.get(key)
+        if value is not None and (not isinstance(value, str) or not value.strip()):
+            vr.error(f"'{label}.{key}' must be a non-empty string, got {value!r}")
+    if execution_class == "native" and (block.get("container_runtime") or block.get("container_host_os")):
+        vr.error(f"'{label}' records container details but execution_class is 'native'")
+
+
+def _validate_environment_execution_class(data: dict, vr: ValidationResult) -> None:
+    environment = data.get("environment")
+    if not isinstance(environment, dict):
+        return
+    _validate_execution_class_fields(environment, "environment", vr)
+    _validate_execution_class_fields(environment.get("client_host"), "environment.client_host", vr)
+    top = environment.get("execution_class")
+    nested = (
+        environment.get("client_host", {}).get("execution_class")
+        if isinstance(environment.get("client_host"), dict)
+        else None
+    )
+    if top is not None and nested is not None and top != nested:
+        vr.error(
+            f"'environment.execution_class' {top!r} conflicts with 'environment.client_host.execution_class' {nested!r}"
+        )
+
+
 def _validate_environment_client_link(data: dict, vr: ValidationResult) -> None:
     environment = data.get("environment")
     if environment is None:
@@ -2187,6 +2224,7 @@ def _validate_bundle(
     )
     _validate_translation_section(data, vr)
     _validate_environment_client_link(data, vr)
+    _validate_environment_execution_class(data, vr)
     _validate_tables_block(data, vr)
     _validate_required_tables(data, vr)
     _validate_platform_config_clustering(data, vr)
@@ -2538,6 +2576,23 @@ def export_anonymized_errors(payload: Any) -> list[str]:
     return findings
 
 
+def _validate_manifest_class_matches_bundle(manifest: dict[str, Any], primary_path: Path, vr: ValidationResult) -> None:
+    attested = manifest.get("execution_class")
+    if attested is None or not primary_path.is_file():
+        return
+    try:
+        environment = json.loads(primary_path.read_text(encoding="utf-8")).get("environment")
+    except (OSError, ValueError, AttributeError):
+        return
+    if not isinstance(environment, dict):
+        return
+    host = environment.get("client_host") if isinstance(environment.get("client_host"), dict) else {}
+    recorded = host.get("execution_class") or environment.get("execution_class")
+    source = host.get("execution_class_source") or environment.get("execution_class_source")
+    if recorded is not None and recorded != attested and source != "inferred":
+        vr.error(f"Manifest execution_class {attested!r} conflicts with the bundle's recorded {recorded!r}")
+
+
 def _validate_manifest_provenance(manifest: dict[str, Any], primary_path: Path, vr: ValidationResult) -> None:
     funding = manifest.get("funding")
     if funding is not None and funding not in FUNDING_SOURCES:
@@ -2560,6 +2615,14 @@ def _validate_manifest_provenance(manifest: dict[str, Any], primary_path: Path, 
                 "under a maintainer-controlled results-data/bundles/vendor/ path; a "
                 "community submission cannot self-assert the vendor-supplied label."
             )
+
+    _validate_execution_class_fields(manifest, "manifest", vr)
+    if manifest.get("execution_class") is not None:
+        evidence = manifest.get("execution_class_evidence")
+        if not isinstance(evidence, str) or not evidence.strip():
+            vr.error("Manifest execution_class requires a non-empty execution_class_evidence string")
+
+    _validate_manifest_class_matches_bundle(manifest, primary_path, vr)
 
     known_defects = manifest.get("known_defects")
     if known_defects is not None:

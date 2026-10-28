@@ -14,7 +14,7 @@ except ImportError:
     HAS_PSUTIL = False
 
 from benchbox.core.schemas import SystemProfile
-from benchbox.utils.environment import detect_cpu_info, is_cpu_architecture_token
+from benchbox.utils.environment import detect_cpu_info, detect_execution_class, is_cpu_architecture_token
 
 
 class SystemProfiler:
@@ -72,6 +72,7 @@ class SystemProfiler:
             disk_space_gb=disk_space_gb,
             timestamp=datetime.now(),
             hostname=platform.node(),
+            **detect_execution_class(),
         )
 
     def _get_cpu_model(self) -> str | None:
