@@ -1132,3 +1132,94 @@ def test_an_artifact_that_is_not_utf8_is_reported_unreadable_and_finalizes_pendi
     final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, {})
     assert final.state == "pending"
     assert final.pending_cause == INTEGRITY
+
+
+def _unpublished_manual_run(
+    policy: Policy,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    previous: retry.State | None,
+    at: datetime,
+    name: str,
+) -> retry.State:
+    plan = _plan(policy, ("small",))
+    plan["manual"] = True
+    plan["previous_state"] = previous.to_json() if previous is not None else None
+    plan_path = tmp_path / f"{name}-plan.json"
+    plan_path.write_text(json.dumps(plan), encoding="utf-8")
+    final_dir = tmp_path / name
+    monkeypatch.setattr(cli, "_now", lambda: at)
+    _run_cli(
+        monkeypatch,
+        tmp_path,
+        "finalize",
+        "--plan",
+        str(plan_path),
+        "--attempts-dir",
+        str(tmp_path / "no-attempts"),
+        "--out-dir",
+        str(final_dir),
+        "--omp-install",
+        "failed",
+    )
+    return retry.State.from_json(json.loads((final_dir / "attempt" / "state.json").read_text(encoding="utf-8")))
+
+
+def _rerun_allowed(policy: Policy, plan_head: str, previous: retry.State, now: datetime) -> bool:
+    return retry.decide_rerun(
+        manual=True, new_diff=False, head_sha=plan_head, previous=previous, now=now, rules=policy.retry
+    ).allowed
+
+
+def test_manual_runs_whose_status_never_posted_exhaust_the_daily_budget_without_prior_state(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    head = _plan(policy, ("small",))["head_sha"]
+    start = datetime(2026, 10, 5, 0, 0, tzinfo=UTC)
+    state: retry.State | None = None
+    for index in range(policy.retry.daily_budget):
+        at = start + timedelta(hours=index * 3)
+        state = _unpublished_manual_run(policy, tmp_path, monkeypatch, state, at, f"run{index}")
+        assert state.head_sha == head and state.updated_at == at
+    assert state is not None and len(state.retries) == policy.retry.daily_budget
+    assert not _rerun_allowed(policy, head, state, start + timedelta(hours=20))
+
+
+def test_unpublished_manual_runs_on_a_new_head_keep_their_budget_instead_of_dropping_it_with_the_old_head(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    head = _plan(policy, ("small",))["head_sha"]
+    start = datetime(2026, 10, 5, 0, 0, tzinfo=UTC)
+    state: retry.State | None = retry.State(
+        7, "e" * 40, "pending", start - timedelta(hours=1), (), pending_cause="all-absent"
+    )
+    for index in range(policy.retry.daily_budget):
+        state = _unpublished_manual_run(
+            policy, tmp_path, monkeypatch, state, start + timedelta(hours=index * 3), f"b{index}"
+        )
+        assert state.head_sha == head
+    assert state is not None
+    assert not _rerun_allowed(policy, head, state, start + timedelta(hours=20))
+
+
+def test_an_unpublished_manual_run_pushes_the_backoff_out_from_its_own_time(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    head = _plan(policy, ("small",))["head_sha"]
+    midnight = datetime(2026, 10, 5, 0, 0, tzinfo=UTC)
+    previous = retry.State(7, head, "pending", midnight, (midnight,), pending_cause="all-absent")
+    ten = midnight + timedelta(hours=10)
+    attempted = _unpublished_manual_run(policy, tmp_path, monkeypatch, previous, ten, "late")
+    assert attempted.updated_at == ten
+    assert not _rerun_allowed(policy, head, attempted, ten + timedelta(minutes=1))
+    assert _rerun_allowed(policy, head, attempted, ten + timedelta(hours=4))
+
+
+def test_an_unpublished_run_state_is_never_retried_by_the_sweep(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    head = _plan(policy, ("small",))["head_sha"]
+    at = datetime(2026, 10, 5, 0, 0, tzinfo=UTC)
+    attempted = _unpublished_manual_run(policy, tmp_path, monkeypatch, None, at, "solo")
+    assert attempted.pending_cause == retry.UNPUBLISHED
+    assert not retry.due_for_retry(attempted, head, at + timedelta(days=2), policy.retry)

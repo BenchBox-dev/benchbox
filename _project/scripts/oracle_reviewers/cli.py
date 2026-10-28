@@ -1012,9 +1012,10 @@ def command_ensure_attempt(args: argparse.Namespace) -> int:
 
 def _write_states(out_dir: Path, *, strikes: int | None = None, **fields: Any) -> None:
     published = retry.next_state(strikes=strikes, **fields)
-    previous = fields["previous"]
-    if previous is not None and fields["manual"]:
-        attempted = replace(previous, retries=published.retries)
+    if fields["manual"]:
+        attempted = retry.attempt_state(
+            previous=fields["previous"], pr=fields["pr"], head_sha=fields["head_sha"], published=published
+        )
         _write_json(out_dir / "attempt" / github.STATE_FILE, attempted.to_json())
     _write_json(out_dir / "state" / github.STATE_FILE, published.to_json())
 
@@ -1201,7 +1202,7 @@ def _surface_twice_failed(
 def _retry_reason(
     repo: str,
     pull: Mapping[str, Any],
-    runs: tuple[sweep.Run, ...],
+    runs: tuple[sweep.Run, ...] | None,
     rules: RetryRules,
     now: datetime,
     status_context: str,
@@ -1213,7 +1214,7 @@ def _retry_reason(
     number = pull["number"]
     head = pull["head"]["sha"]
     state = github.latest_state(repo, number)
-    relevant = tuple(run for run in runs if run.head in (None, head))
+    relevant = tuple(run for run in runs or () if run.head in (None, head))
 
     def resolved() -> tuple[tuple[sweep.Run, ...], tuple[sweep.Run, ...]]:
         found = sweep.with_timeouts(relevant, lambda run: github.run_timed_out(repo, run))
@@ -1222,7 +1223,15 @@ def _retry_reason(
     if state is not None and state.head_sha == head:
         due = retry.due_for_retry(state, head, now, rules)
         if not full:
-            return "its retry is due" if due else None
+            if not due:
+                return None
+            if runs is None:
+                _summary(f"retry not dispatched for #{number}: the run history needed to bound it could not be listed")
+                return None
+            _, head_runs = resolved()
+            return _bounded_retry(
+                repo, number, head, head_runs, state.updated_at, rules, now, status_context, bot_login, token
+            )
         if state.outcome != retry.PENDING or state.pending_cause != retry.ALL_ABSENT:
             return None
         reset_at = github.backoff_reset_at(repo, number, head)
@@ -1323,8 +1332,12 @@ def command_sweep(args: argparse.Namespace) -> int:
             f"and skips stateless retries: {exc}"
         )
         runs = None
+        try:
+            recent = sweep.parse_runs(github.verdict_runs(repo, WORKFLOW_FILE, now - sweep.DISPATCH_WINDOW))
+        except github.GitHubError:
+            recent = None
     else:
-        runs = sweep.parse_runs(listing)
+        runs = recent = sweep.parse_runs(listing)
     busy: frozenset[int] | None
     if runs is not None:
         busy = sweep.in_flight(runs, now)
@@ -1352,7 +1365,7 @@ def command_sweep(args: argparse.Namespace) -> int:
             reason = _retry_reason(
                 repo,
                 pull,
-                runs.get(number, ()) if runs is not None else (),
+                recent.get(number, ()) if recent is not None else None,
                 policy.retry,
                 now,
                 policy.status_context,

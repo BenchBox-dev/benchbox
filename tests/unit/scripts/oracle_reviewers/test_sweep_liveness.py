@@ -290,6 +290,7 @@ def test_a_capped_runs_listing_takes_the_degraded_path_and_exits_one(
 ) -> None:
     fake = FakeGitHub(_pull(), SOUNDNESS, _due_state())
     fake.runs_error = github.RunListingCapped("gh api runs returned 1000 of 1972 runs; narrow the window")
+    fake.runs_error_wide_only = True
     assert _sweep(monkeypatch, tmp_path, fake) == 1
     assert fake.dispatched == [7]
     assert "the sweep ran degraded" in capsys.readouterr().err

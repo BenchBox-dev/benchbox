@@ -114,6 +114,7 @@ class FakeGitHub:
         self.derive_verdict_statuses = True
         self.posted: list[tuple[int, dict[str, Any]]] = []
         self.runs_error: Exception | None = None
+        self.runs_error_wide_only = False
         self.state_error: Exception | None = None
         self.timed_out: set[int] = set()
         self.timeout_lookups: list[int] = []
@@ -151,7 +152,8 @@ class FakeGitHub:
         self.posted.append((len(self.posted), {"head_sha": head_sha, **payload, "token": token}))
 
     def _verdict_runs(self, repo: str, workflow: str, since: datetime) -> list[dict[str, Any]]:
-        if self.runs_error is not None:
+        wide = datetime.now(UTC) - since > timedelta(hours=25)
+        if self.runs_error is not None and (wide or not self.runs_error_wide_only):
             raise self.runs_error
         return self._real_verdict_runs(repo, workflow, since)
 
@@ -1092,6 +1094,7 @@ def test_reset_spent_counts_only_runs_that_could_have_used_the_reset() -> None:
 
 def _degraded(fake: FakeGitHub) -> FakeGitHub:
     fake.runs_error = github.GitHubError("gh api failed: Bad Gateway")
+    fake.runs_error_wide_only = True
     return fake
 
 
@@ -2015,3 +2018,65 @@ def test_an_opaque_binary_notice_never_plans_an_inline_brief(
     assert values["decision"] == "review"
     assert plan["brief_mode"] == "file-list"
     assert plan["diff_inline"] is None
+
+
+def test_a_newer_headless_success_does_not_hide_a_timeout_on_the_current_head(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    timeout = _verdict_run(7, conclusion="cancelled", event="pull_request_target", age=timedelta(hours=3))
+    headless = _verdict_run(7, conclusion="success", event="issue_comment", age=timedelta(hours=2), head=None)
+    fake = _stateless_fake(headless, timeout)
+    fake.timed_out = {timeout["id"]}
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.timeout_lookups == [timeout["id"]]
+    assert fake.dispatched == [7] and fake.reasons == ["stateless-retry"]
+
+
+def _held_state(hours: float = 3) -> State:
+    return State(7, HEAD, "pending", datetime.now(UTC) - timedelta(hours=hours), pending_cause="all-absent")
+
+
+def test_a_degraded_sweep_holds_a_due_retry_after_two_failed_runs_on_the_head(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    older = _verdict_run(7, conclusion="failure", event="workflow_dispatch", age=timedelta(hours=2))
+    newer = _verdict_run(7, conclusion="failure", event="workflow_dispatch", age=timedelta(hours=1))
+    fake = _degraded(FakeGitHub(_pull(), SOUNDNESS, _held_state()))
+    fake.runs = [newer, older]
+    fake.failed = {newer["id"]: ["Run the attempt loop"]}
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 1
+    assert fake.dispatched == []
+    assert len(fake.posted) == 1 and "Run the attempt loop" in fake.posted[0][1]["description"]
+
+
+def test_a_degraded_sweep_does_not_redispatch_an_already_surfaced_failure(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    fake = _degraded(FakeGitHub(_pull(), SOUNDNESS, _held_state()))
+    fake.statuses = [
+        {
+            "context": "oracle-verdict",
+            "state": "pending",
+            "description": f"{github.SWEEP_FAILURE_SURFACE_PREFIX}Run the attempt loop. Rerun",
+            "creator": {"login": "benchbox-oracle[bot]", "type": "Bot"},
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+    ]
+    assert _sweep(monkeypatch, tmp_path, fake) == 1
+    assert fake.dispatched == []
+
+
+def test_a_degraded_sweep_honours_the_daily_dispatch_budget(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    fake = _degraded(FakeGitHub(_pull(), SOUNDNESS, _held_state()))
+    fake.runs = [_verdict_run(7, conclusion="cancelled", age=timedelta(minutes=30 + 40 * index)) for index in range(6)]
+    assert _sweep(monkeypatch, tmp_path, fake) == 1
+    assert fake.dispatched == []
+
+
+def test_a_degraded_sweep_holds_a_due_retry_when_no_run_history_can_be_listed(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    fake = FakeGitHub(_pull(), SOUNDNESS, _held_state())
+    fake.runs_error = github.GitHubError("gh api failed: Bad Gateway")
+    assert _sweep(monkeypatch, tmp_path, fake) == 1
+    assert fake.dispatched == []
