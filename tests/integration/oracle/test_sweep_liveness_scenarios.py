@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import pytest
 
-from .harness import Harness, ago
+from _project.scripts.oracle_reviewers.github import SWEEP_FAILURE_SURFACE_PREFIX
+
+from .fake_github import ACCOUNTS, APP_TOKEN, now_text
+from .harness import SLUG, Harness, ago
 from .test_sweep_scenarios import VERDICT, _failed_run, _pending_review
 
 pytestmark = [pytest.mark.integration, pytest.mark.medium]
@@ -148,3 +151,74 @@ def test_a_run_cancelled_by_concurrency_is_not_a_failure(harness: Harness) -> No
     assert sweep.code == 0, sweep.stderr
     assert [item["inputs"].get("reason") for item in _verdict_dispatches(harness)] == ["stateless-retry"]
     assert harness.github.oracle_statuses(head) == []
+
+
+def _shared_head(harness: Harness, first: int, second: int, branch: str) -> str:
+    head = harness.branch(branch, {"benchbox/core/equivalence/checker.py": "x = 1\n"}, "change")
+    harness.github.open_pull(first, branch)
+    harness.github.open_pull(second, branch)
+    return head
+
+
+def _app_status(harness: Harness, head: str, state: str, description: str, run: dict) -> None:
+    harness.github.statuses[head].append(
+        {
+            "id": run["id"] + 5,
+            "state": state,
+            "context": "oracle-verdict",
+            "description": description,
+            "target_url": f"https://github.com/{SLUG}/actions/runs/{run['id']}",
+            "creator": ACCOUNTS[APP_TOKEN],
+            "created_at": now_text(),
+            "updated_at": now_text(),
+        }
+    )
+
+
+def test_another_pull_requests_decisive_status_on_a_shared_head_does_not_suppress_this_pull_requests_recovery(
+    harness: Harness,
+) -> None:
+    head = _shared_head(harness, 81, 82, "feat/shared-status")
+    published = harness.github.add_run(VERDICT, event="pull_request_target", pr=81, head_sha=head, title_head=head)
+    harness.github.complete_run(published, "success")
+    harness.github.age(published, 120)
+    _app_status(harness, head, "success", "oracle-verdict: SHIP", published)
+    _failed_run(harness, 82, head, "pull_request_target", 40, "Run the attempt loop")
+
+    sweep = harness.sweep()
+
+    assert sweep.code == 0, sweep.stderr
+    assert [item["inputs"] for item in _verdict_dispatches(harness)] == [
+        {"pr": "82", "head": head, "reason": "stateless-retry"}
+    ]
+
+
+def test_another_pull_requests_surfaced_hold_on_a_shared_head_does_not_suppress_this_pull_requests_recovery(
+    harness: Harness,
+) -> None:
+    head = _shared_head(harness, 83, 84, "feat/shared-hold")
+    failed = _failed_run(harness, 83, head, "pull_request_target", 90, "Run the attempt loop")
+    hold = f"{SWEEP_FAILURE_SURFACE_PREFIX}Run the attempt loop. Rerun with /oracle-review or push a fix"
+    _app_status(harness, head, "pending", hold, failed)
+    _failed_run(harness, 84, head, "pull_request_target", 40, "Run the attempt loop")
+
+    sweep = harness.sweep()
+
+    assert sweep.code == 0, sweep.stderr
+    assert 84 in [int(item["inputs"]["pr"]) for item in _verdict_dispatches(harness)]
+
+
+def test_this_pull_requests_own_surfaced_hold_from_a_run_older_than_the_listing_still_stops_the_retry(
+    harness: Harness,
+) -> None:
+    head = harness.branch("feat/own-hold", {"benchbox/core/equivalence/checker.py": "x = 1\n"}, "change")
+    harness.github.open_pull(85, "feat/own-hold")
+    old = _failed_run(harness, 85, head, "pull_request_target", 60 * 72, "Run the attempt loop")
+    hold = f"{SWEEP_FAILURE_SURFACE_PREFIX}Run the attempt loop. Rerun with /oracle-review or push a fix"
+    _app_status(harness, head, "pending", hold, old)
+    _failed_run(harness, 85, head, "pull_request_target", 40, "Run the attempt loop")
+
+    sweep = harness.sweep()
+
+    assert sweep.code == 0, sweep.stderr
+    assert _verdict_dispatches(harness) == []

@@ -726,7 +726,10 @@ def test_a_held_plan_finalizes_to_a_pending_status_with_no_decision_or_marker(
     assert out == {"state": "pending", "comment": "false", "review": "false", "has_state": "false"}
     status = json.loads((tmp_path / "o" / "status.json").read_text(encoding="utf-8"))
     assert status["state"] == "pending" and status["description"] == reason
-    assert sorted(path.name for path in (tmp_path / "o").iterdir()) == ["status.json"]
+    assert sorted(path.name for path in (tmp_path / "o").iterdir()) == [
+        "status.json",
+        "summary.json",
+    ]
 
 
 def test_a_long_status_description_is_cut_to_the_status_limit(policy: Policy, tmp_path: Path) -> None:

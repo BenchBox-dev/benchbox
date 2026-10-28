@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from . import absence, credentials, dedup, protocol, recovery, selection
+from . import absence, credentials, dedup, protocol, recovery, redaction_check, selection
 from .retry import ALL_ABSENT, FAILURE, INTEGRITY, MARKER_LIMIT, OMP_INSTALL, OVERSIZE, PENDING, SUCCESS, UNREPORTED
 from .selection import Attempt, Step
 from .verdict import (
@@ -124,6 +124,7 @@ def _record(
     strikes_after: int,
     summary: str = "",
     carried: bool = False,
+    secrets: tuple[str, ...] = (),
 ) -> str:
     rules = plan["protocol"]
     record = {
@@ -146,7 +147,7 @@ def _record(
     }
     if plan.get("run_uuid"):
         record["run_uuid"] = plan["run_uuid"]
-    return protocol.encode_marker(record, rules.get("patch_map"))
+    return protocol.encode_marker(redaction_check.redact(record, secrets), rules.get("patch_map"))
 
 
 def _strike_line(plan: Mapping[str, Any], strikes: int) -> list[str]:
@@ -254,6 +255,7 @@ def _marked(
     ids: Mapping[Finding, str],
     next_id: int,
     strikes: int,
+    secrets: tuple[str, ...],
 ) -> str | None:
     open_defects = [*judgement.carried, *(protocol.defect_entry(ids[item], item) for item in judgement.defects)]
     try:
@@ -266,6 +268,7 @@ def _marked(
             next_id=next_id + len(judgement.defects),
             strikes_after=strikes,
             summary=judgement.summary,
+            secrets=secrets,
         )
     except protocol.MarkerError:
         return None
@@ -341,6 +344,7 @@ def finalize(
     verdicts: Mapping[int, Verdict],
     commentable: Mapping[str, frozenset[int]],
     workspace: Path | str | None = None,
+    secrets: tuple[str, ...] = (),
 ) -> Final:
     if errors:
         body = "\n".join(
@@ -377,7 +381,7 @@ def finalize(
         and rules.get("patch_digest") not in rules.get("struck_digests", ())
     ):
         strikes += 1
-    marker = _marked(plan, judgement, reviewer or "", ids, next_id, strikes) if judgement and rules else None
+    marker = _marked(plan, judgement, reviewer or "", ids, next_id, strikes, secrets) if judgement and rules else None
     unrecorded = bool(judgement and rules and marker is None)
     if unrecorded:
         ids, markers = {}, {}

@@ -251,6 +251,27 @@ def test_a_decisive_earlier_heads_spent_budget_still_refuses_a_manual_rerun_on_a
     assert _decide(policy, spent, manual=False).allowed
 
 
+def test_a_new_head_does_not_inherit_a_pending_earlier_heads_retries_into_its_backoff(policy: Policy) -> None:
+    old = _state("pending", head=OTHER, retries=4)
+    pushed = next_state(
+        previous=old,
+        pr=7,
+        head_sha=HEAD,
+        outcome="pending",
+        manual=False,
+        now=NOW,
+        pool_blocked_until={},
+        pending_cause=ALL_ABSENT,
+    )
+    assert pushed.retries == ()
+    retried = next_state(
+        previous=old, pr=7, head_sha=HEAD, outcome="pending", manual=True, now=NOW, pool_blocked_until={}
+    )
+    assert retried.retries == (NOW,)
+    later = NOW + timedelta(hours=1, minutes=1)
+    assert due_for_retry(pushed, HEAD, later, policy.retry)
+
+
 @pytest.mark.parametrize("outcome", ["success", "failure"])
 def test_a_new_head_carries_the_decisive_earlier_heads_retries_forward(policy: Policy, outcome: str) -> None:
     old = _state(outcome, head=OTHER, retries=3)
