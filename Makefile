@@ -24,7 +24,7 @@ JOINORDER_REFERENCE ?= _project/joinorder/reference_cardinalities.json
 DEVELOPMENT_TREE_ONLY_TARGETS := \
 	correctness-gate-digests-regen ledger-seed-gates ledger-seed-recut tpch-subscale-row-counts-regen \
 	cross-surface-baseline-autodetect \
-	oracle-coverage-map oracle-coverage-map-check oracle-backoff-reset cross-surface-applicability-report \
+	oracle-coverage-map oracle-coverage-map-check oracle-backoff-reset omp-candidate-check cross-surface-applicability-report \
 	joinorder-verify-reference-results complexity-check complexity-report \
 	quality-governance-typecheck uv-lock-revision-check sqlglot-repro-retirement-check audit-deps audit-raw audit-raw-check \
 	audit-sha-check artifact-hygiene agent-instructions-check agent-identity-check security-audit \
@@ -291,6 +291,11 @@ oracle-coverage-map-check:
 oracle-backoff-reset:
 	@test -n "$(PR)" -a -n "$(HEAD)" -a -n "$(REASON)" || { echo "Usage: make oracle-backoff-reset PR=<number> HEAD=<40-character head SHA> REASON='<why>'" >&2; exit 1; }
 	uv run -- python -m _project.scripts.oracle_reviewers.cli reset-backoff --pr "$$PR" --head "$$HEAD" --reason "$$REASON"
+
+.PHONY: omp-candidate-check
+omp-candidate-check:
+	@test -n "$(VERSION)" || { echo "Usage: make omp-candidate-check VERSION=<omp version> [PIN=<file whose omp section names the candidate>] [BINARY=<local omp binary for this platform>]" >&2; exit 1; }
+	uv run -- python -m _project.scripts.oracle_reviewers.omp_candidate check --version "$$VERSION" $${PIN:+--pin "$$PIN"} $${BINARY:+--binary "$$BINARY"}
 
 .PHONY: cross-surface-applicability-report
 cross-surface-applicability-report:

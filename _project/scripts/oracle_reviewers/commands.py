@@ -84,21 +84,30 @@ def omp_env() -> dict[str, str]:
     return env
 
 
-def write_overlay(scratch: Path) -> Path:
+def write_overlay(scratch: Path, text: str = OMP_OVERLAY_TEXT) -> Path:
     overlay = scratch / "omp-review-overlay.yml"
-    overlay.write_text(OMP_OVERLAY_TEXT, encoding="utf-8")
+    overlay.write_text(text, encoding="utf-8")
     return overlay
 
 
-def build_omp(*, selector: str, effort: str, workspace: Path, scratch: Path, prompt: str) -> Invocation:
+def build_omp(
+    *,
+    selector: str,
+    effort: str,
+    workspace: Path,
+    scratch: Path,
+    prompt: str,
+    binary: Path | None = None,
+    overlay_text: str = OMP_OVERLAY_TEXT,
+) -> Invocation:
     if effort and effort not in OMP_THINKING_LEVELS:
         raise ValueError(f"unknown OMP thinking level {effort!r}")
     review_cwd = scratch / "omp-cwd"
     review_cwd.mkdir(parents=True, exist_ok=True)
-    overlay = write_overlay(scratch)
+    overlay = write_overlay(scratch, overlay_text)
     thinking: tuple[str, ...] = ("--thinking", effort) if effort else ()
     argv = (
-        str(omp_pin.required_binary()),
+        str(binary if binary is not None else omp_pin.required_binary()),
         "--cwd",
         str(review_cwd),
         "--add-dir",

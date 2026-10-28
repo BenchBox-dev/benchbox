@@ -1,0 +1,71 @@
+{
+  "streams": {
+    "production-review": {
+      "file": "../omp_multi_turn_review.jsonl",
+      "kind": "review",
+      "rows": [
+        6,
+        7,
+        9
+      ],
+      "source": "captured from a real review run of the pinned build"
+    },
+    "quota-terminal": {
+      "file": "quota_terminal.jsonl",
+      "kind": "terminal",
+      "status": 429,
+      "provider": "anthropic",
+      "classification": "quota",
+      "rows": [
+        6,
+        8,
+        9
+      ],
+      "source": "captured: client and auth-gateway of the pinned omp 18.12.1 build against the loopback replay chain; the upstream provider body is a hand-built stub, every event after it is build output (429 rate_limit_error)"
+    },
+    "quota-walk": {
+      "file": "quota_walk.jsonl",
+      "kind": "walk",
+      "first": "anthropic/claude-sonnet-5-5",
+      "then": "openai-codex/gpt-6.1-sol",
+      "rows": [
+        4,
+        6
+      ],
+      "source": "captured: client and auth-gateway of the pinned omp 18.12.1 build against the loopback replay chain; the upstream provider body is a hand-built stub, every event after it is build output (429 rate_limit_error with the reviewer fallback chain)"
+    },
+    "upstream-auth": {
+      "file": "upstream_auth.jsonl",
+      "kind": "terminal",
+      "status": 401,
+      "provider": "anthropic",
+      "classification": "auth",
+      "rows": [
+        6,
+        8,
+        9
+      ],
+      "source": "captured: client and auth-gateway of the pinned omp 18.12.1 build against the loopback replay chain; the upstream provider body is a hand-built stub, every event after it is build output (401 authentication_error)"
+    },
+    "gateway-rejection": {
+      "file": "gateway_rejection.jsonl",
+      "kind": "terminal",
+      "status": null,
+      "provider": "anthropic",
+      "classification": "error",
+      "rows": [
+        6,
+        12
+      ],
+      "source": "captured: client and auth-gateway of the pinned omp 18.12.1 build against the loopback replay chain; the upstream provider body is a hand-built stub, every event after it is build output (client token the gateway does not know)"
+    },
+    "elided-read": {
+      "file": "elided_read.jsonl",
+      "kind": "elision",
+      "rows": [
+        7
+      ],
+      "source": "captured: client and auth-gateway of the pinned omp 18.12.1 build against the loopback replay chain; the upstream provider body is a hand-built stub, every event after it is build output (read without a selector under an empty overlay, so the build summarises)"
+    }
+  }
+}
