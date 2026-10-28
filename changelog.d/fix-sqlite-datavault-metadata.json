@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Metadata Primitives now runs on SQLite: every catalog query has a SQLite form built on sqlite_master and the pragma table functions instead of the missing information_schema. Data Vault query 1 uses the standard INTERVAL form so its date arithmetic translates for SQLite."
+    }
+  ]
+}

@@ -231,7 +231,7 @@ SELECT
 FROM link_lineitem ll
 JOIN sat_lineitem sl ON ll.hk_lineitem_link = sl.hk_lineitem_link
     AND sl.load_end_dts IS NULL
-WHERE sl.l_shipdate <= DATE '1998-12-01' - INTERVAL ':delta days'
+WHERE sl.l_shipdate <= DATE '1998-12-01' - INTERVAL ':delta' DAY
 GROUP BY sl.l_returnflag, sl.l_linestatus
 ORDER BY sl.l_returnflag, sl.l_linestatus
         """,
