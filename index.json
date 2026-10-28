@@ -27707,6 +27707,13 @@
       "status": "done",
       "title": "Revalidate postgres dual-table tpchavoc skip"
     },
+    "tpchavoc-q15-double-equality-flake": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Stop TPC-H Q15 and its 15_v* variants returning no row on engines that sum DOUBLE in varying order"
+    },
     "tpchavoc-q2-v10-projection-faithfulness": {
       "claim": null,
       "needs": [],

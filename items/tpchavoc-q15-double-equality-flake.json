@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Determine whether Q15 and 15_v* are flaky on PrestoDB with BenchBox-loaded DECIMAL tables, with the result recorded as durable evidence",
+    "If affected, make Q15 and the four variants return exactly one row deterministically on Presto-family engines, or document the limitation with the engine and column type it applies to"
+  ],
+  "context": "Evidence: _project/audits/tpchavoc-prestodb-variants-2026-10-26.md (added by PR 3577), canonical Q15 repeated 20 times. Do not assume the fix is in the variants: the canonical query shows the same behaviour. Created at owner request 2026-10-27.\n\nMoved from the todo-db tracker on 2026-10-28; the item was filed there by mistake.",
+  "description": "Q15 selects the supplier whose total_revenue equals the maximum total_revenue, computed by two independent sums. On PrestoDB 0.298.1 over tpch.tiny, 15_v1, 15_v4, 15_v7 and 15_v10 returned 0 rows against 1 on the first run, and the canonical Q15 returned a row in only 9 of 20 further runs. The cause is inferred, not traced: exact equality between independently summed DOUBLE values whose summation order varies between executions. The tpch connector exposes DOUBLE; BenchBox's own DECIMAL schema was not exercised, so whether BenchBox runs are affected is unknown.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3577"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:mcp:joe@joe-mac-mini.local:5427f38a811abefa5a292dd6",
+      "at": "2026-10-28T13:46:42Z",
+      "client": "mcp",
+      "op": "create",
+      "op_id": "87925444497c4f66bacb810e890e1a78",
+      "session_id": "8dd2786d2f544912829f10b74985f086"
+    }
+  ]
+}
