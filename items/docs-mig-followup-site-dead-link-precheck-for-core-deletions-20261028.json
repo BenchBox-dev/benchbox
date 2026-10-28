@@ -1,7 +1,8 @@
 {
   "acceptance": [
-    "A check on the core PR, or on the site against the candidate core tree, fails when a deleted or renamed core path is linked from a site page; shown against a seeded dead link."
+    "Site ci keeps inventory/core-linked-paths.json (core paths linked by relative link from site docs, with source file:line) current. A core PR check inside an existing required job fails when a listed path is missing from the PR tree and prints the site file:line and the rename ordering. Seeded tests in both repos show this; core stays JS-free and the site stays Python-free."
   ],
+  "context": "Review 2026-10-28: VALID. Failure was in the converter build step (website/src/converter/handlers/links.ts:39-51 against repo-files.json from core scripts/site_inputs.py:106-110), not the build gate. Exposure: 61 relative links, 36 distinct core paths in 8 site docs files. Overlaps core-docs-advisory-site-build-20261017 (docs/-only trigger now stale). Rename deadlock: site must drop or pin the link, core merges, site relinks. Decisions taken: blocking on a missing path; fetch failure of the site inventory warns and passes; ADR D5 edited to match.",
   "description": "A core PR that deletes a file linked from a site-owned page passes core CI and site CI, then fails the site build gate at deploy. Observed on 2026-10-27: after core PR 3545 merged, the site converter rejected development/adr/adr-sqlglot-use-and-non-use.md:218 (link to the deleted scripts/generate_compat_docs.py), and production deploys 40602921344 and 40603742160 failed at the build gate (nothing deployed; fixed in site PR 74). Site CI only builds against bundles that already merged, and core's retired link checker no longer covers site pages.",
   "sessions": [
     {
@@ -10,6 +11,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "e18e814036c64da0aa45a9116260bf11",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-28T12:37:03Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a2434a126a174d82849443ad056c53e8",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
     }
   ]
