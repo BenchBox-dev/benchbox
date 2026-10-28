@@ -316,7 +316,8 @@ no class, keeps the plain identity, so no historical identity or cohort count mo
   marker does not prove bare metal; a non-Linux host is `native` with source `observed`.
   `BENCHBOX_CONTAINER_HOST_OS` overrides the host OS. Cloud and other VMs are not told
   apart from bare metal and stay `native`. When Docker runtime discovery finds the engine's
-  container (`platform_runtime.runtime_type: docker_container`, collection `available`) and
+  container (`platform_runtime.runtime_type: docker_container`, collection `available`, source
+  `observed`, and the container publishing the engine's host port: `container.host_port_matched`) and
   the client is macOS or Windows, where Docker runs in a Linux VM, the run is recorded as a
   `container` with runtime `docker`, the client's host OS and source `observed`. On a Linux
   client Docker shares the host kernel and the class is not changed.

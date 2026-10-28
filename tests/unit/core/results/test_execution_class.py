@@ -351,6 +351,7 @@ def test_reloading_a_result_preserves_the_recorded_class_instead_of_restamping()
     assert "execution_class" not in _extract_system_profile({"os": "Darwin 25.0.0"})
 
 
+_MATCHED = {"collection_status": "available", "host_port_matched": True}
 _DOCKER_RUNTIME = {"runtime_type": "docker_container", "collection_status": "available", "source": "observed"}
 
 
@@ -367,7 +368,7 @@ _DOCKER_RUNTIME = {"runtime_type": "docker_container", "collection_status": "ava
 def test_a_discovered_docker_engine_on_a_vm_backed_host_is_a_container_run(client_os, runtime, expected) -> None:
     payload = build_environment_payload(
         system_profile={"os_type": client_os.split()[0], "os_release": client_os.split()[1], "cpu_count": 10},
-        execution_environment={"platform_runtime": runtime},
+        execution_environment={"platform_runtime": runtime, "container": _MATCHED},
     )
 
     assert (
@@ -387,7 +388,24 @@ def test_a_discovered_docker_engine_overrides_an_observed_native_client_class() 
             "execution_class": "native",
             "execution_class_source": "observed",
         },
-        execution_environment={"platform_runtime": _DOCKER_RUNTIME},
+        execution_environment={"platform_runtime": _DOCKER_RUNTIME, "container": _MATCHED},
     )
 
     assert read_execution_class({"environment": payload}) == "container"
+
+
+@pytest.mark.parametrize(
+    ("runtime", "container"),
+    [
+        (_DOCKER_RUNTIME, {"collection_status": "available", "host_port_matched": False}),
+        (_DOCKER_RUNTIME, {"collection_status": "available"}),
+        ({**_DOCKER_RUNTIME, "source": "requested"}, _MATCHED),
+    ],
+)
+def test_a_container_that_is_not_shown_to_serve_the_engine_port_is_not_a_container_run(runtime, container) -> None:
+    payload = build_environment_payload(
+        system_profile={"os_type": "Darwin", "os_release": "25.0.0"},
+        execution_environment={"platform_runtime": runtime, "container": container},
+    )
+
+    assert payload.get("execution_class") != "container"

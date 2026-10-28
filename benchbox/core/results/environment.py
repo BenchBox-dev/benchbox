@@ -178,6 +178,7 @@ class ContainerEnvironment:
     bind_mounts: list[dict[str, Any]] = field(default_factory=list)
     volumes: list[dict[str, Any]] = field(default_factory=list)
     collection_errors: list[dict[str, Any]] = field(default_factory=list)
+    host_port_matched: bool | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return _compact(asdict(self))
@@ -291,12 +292,14 @@ _VM_BACKED_DOCKER_HOSTS = {"Darwin": "macOS", "Windows": "Windows"}
 
 
 def _docker_hosted_execution_class(
-    platform_runtime: Mapping[str, Any], client_host: Mapping[str, Any]
+    platform_runtime: Mapping[str, Any], container: Mapping[str, Any], client_host: Mapping[str, Any]
 ) -> dict[str, str]:
     host_family = str(client_host.get("os") or "").split(maxsplit=1)[0] if client_host.get("os") else ""
     if (
         platform_runtime.get("runtime_type") != "docker_container"
         or platform_runtime.get("collection_status") != "available"
+        or platform_runtime.get("source") != "observed"
+        or container.get("host_port_matched") is not True
         or host_family not in _VM_BACKED_DOCKER_HOSTS
         or client_host.get("execution_class") == "container"
     ):
@@ -321,7 +324,7 @@ def build_environment_payload(
     platform_runtime = _metadata_dict(explicit.get("platform_runtime")) or PlatformRuntimeEnvironment().to_dict()
     container = _metadata_dict(explicit.get("container"))
     client_link = _metadata_dict(explicit.get("client_link"))
-    client_host = {**client_host, **_docker_hosted_execution_class(platform_runtime, client_host)}
+    client_host = {**client_host, **_docker_hosted_execution_class(platform_runtime, container, client_host)}
 
     payload: dict[str, Any] = dict(client_host)
     if client_host:
