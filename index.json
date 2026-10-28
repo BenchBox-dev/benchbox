@@ -27676,7 +27676,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "blocked",
       "title": "Run TPC-Havoc 1_v7 and the Presto-family rewrites on live Amazon Athena and Google BigQuery"
     },
     "tpchavoc-multi-cardinality-equivalence-and-bundle-check": {
