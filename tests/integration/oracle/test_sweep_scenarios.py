@@ -89,3 +89,24 @@ def test_a_pending_state_for_an_older_head_does_not_dispatch_the_new_head(harnes
 
     assert sweep.code == 0, sweep.stderr
     assert harness.github.dispatches == before
+
+
+def test_a_manual_retry_whose_guard_fails_still_consumes_the_retry(harness: Harness) -> None:
+    head, run = _pending_review(harness, 90, "feat/consumed")
+    harness.github.age(run, 180)
+    posted = len(harness.github.oracle_statuses(head))
+    harness.script_omp([TRUNCATED])
+
+    first = harness.review(
+        90,
+        event_name="workflow_dispatch",
+        before_guard=lambda: harness.github.fail("GET", r"/pulls/90/reviews", 502, 100),
+    )
+    harness.github.failures.clear()
+
+    assert first.steps["plan"].outputs["decision"] == "review"
+    assert first.steps["guard"].code == 2
+    assert len(harness.github.oracle_statuses(head)) == posted
+    harness.script_omp([TRUNCATED])
+    second = harness.review(90, event_name="workflow_dispatch")
+    assert second.steps["plan"].outputs["decision"] == "skip"

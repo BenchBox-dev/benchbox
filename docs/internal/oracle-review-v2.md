@@ -375,7 +375,8 @@ tries three times about two seconds apart; if every try fails, or an App review
 was edited, the guard step fails and nothing is posted: the head keeps its latest
 status and a later run decides it. A run that skips posting, or whose status post
 failed, uploads no retry state and adds no strike. A manual run still uploads
-an attempt state before posting: it carries the current head, the run's time and
+an attempt state before posting, even when the App token or the guard step
+failed, as long as the redaction check passed: it carries the current head, the run's time and
 the consumed retry (with the `unpublished` pending cause when the head had no
 state of its own), so a failed post can neither skip the daily budget nor the
 backoff. The sweep never re-dispatches an `unpublished` state; a manual
@@ -690,7 +691,7 @@ nothing.
   concurrency cancel ("Canceling since a higher priority waiting request ...
   exists") or a manual cancel is neither a failure nor a success. A head
   whose latest runs failed or timed out without leaving retry state is
-  re-dispatched, unless the head has a decisive App verdict status; the
+  re-dispatched, unless the head has a decisive App verdict status from one of this pull request's runs; the
   dispatch carries a marker, and a marked retry the plan refuses, or whose
   retry state it cannot read, fails its run so the next sweep counts it. A head
   with a due pending state is bounded the
@@ -701,7 +702,11 @@ nothing.
   step, with an App token minted in the reviewer-free sweep job. An existing
   pending status is left alone, and a head whose newest App status is that
   surfaced failure is not dispatched again once its runs age out of the
-  48-hour listing; without the App the sweep reports the gap
+  48-hour listing. Only a status posted by one of this pull request's own
+  runs counts, as a decisive result or a surfaced hold: the sweep reads the
+  status's run, and a pull request that shares the head SHA with another
+  ignores the other's statuses and still recovers. A status whose run cannot
+  be read counts as the pull request's own. Without the App the sweep reports the gap
   instead of failing. A failure in one PR's lookup, dispatch or surfacing is
   reported, the others continue, then the job fails. If the runs listing fails
   twice or is capped, the sweep degrades: it dispatches only due retries, using
@@ -728,7 +733,9 @@ reviewer never reported, is not rerun on that head; push a new one. Comment,
 dispatch and scheduled reruns share a daily budget (`retry.daily_budget`), with
 backoff starting at one hour and doubling. A new head inherits the budget spent
 on a decisive earlier head, so a push does not restore it; only an earlier head
-that ended pending leaves it unspent. The plan counts the retries recorded in the
+that ended pending leaves it unspent, and the state the new head's run records
+carries none of that pending head's retries, so its backoff starts at one hour.
+The plan counts the retries recorded in the
 state and the sweep counts the dispatches recorded in the run titles, and both
 apply the owner reset the same way: it ignores the backoff and the budget once.
 Retry state is the `oracle-verdict-state-<number>` artifact of this workflow's

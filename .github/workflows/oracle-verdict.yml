@@ -377,7 +377,7 @@ jobs:
         run: python3 -m _project.scripts.oracle_reviewers.cli guard --plan "$RUNNER_TEMP/oracle-plan/plan.json"
 
       - name: Record the retry attempt
-        if: steps.finalize.outputs.has_state == 'true' && steps.guard.outputs.skip != 'true'
+        if: always() && steps.redact.outcome == 'success' && steps.finalize.outputs.has_state == 'true' && steps.guard.outputs.skip != 'true'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           overwrite: true

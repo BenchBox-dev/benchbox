@@ -1190,6 +1190,7 @@ def command_guard(args: argparse.Namespace) -> int:
     return 0
 
 
+_STATUS_RUN_URL = re.compile(r"/actions/runs/(\d+)(?:/|$)")
 STATELESS_FAILURE = "its last run failed without a result"
 
 
@@ -1206,11 +1207,7 @@ def _surface_twice_failed(
     latest = next(run for run in runs if run.status == sweep.COMPLETED and run.conclusion not in sweep.NEUTRAL)
     description = sweep.surface_description(github.failed_steps(repo, latest.id))
     run_url = f"{os.environ.get('GITHUB_SERVER_URL', 'https://github.com')}/{repo}/actions/runs/{latest.id}"
-    app_statuses = [
-        status
-        for status in github.commit_statuses(repo, head)
-        if status.get("context") == status_context and github.is_app_status(status, bot_login)
-    ]
+    app_statuses = _own_statuses(repo, head, status_context, bot_login, number)
     if any(status.get("state") in ("success", "failure", "error") for status in app_statuses):
         _summary(f"retry not dispatched for #{number}: two runs on the current head failed without a result")
         return
@@ -1303,8 +1300,7 @@ def _retry_reason(
         return None
     if any(
         status.get("state") in ("success", "failure", "error")
-        for status in github.commit_statuses(repo, head)
-        if status.get("context") == status_context and github.is_app_status(status, bot_login)
+        for status in _own_statuses(repo, head, status_context, bot_login, number)
     ):
         _summary(f"retry not dispatched for #{number}: the head already has a decisive oracle-verdict status")
         return None
@@ -1312,12 +1308,20 @@ def _retry_reason(
     return STATELESS_FAILURE if reason is not None else None
 
 
-def _already_surfaced(repo: str, head: str, status_context: str, bot_login: str) -> bool:
-    mine = [
-        status
-        for status in github.commit_statuses(repo, head)
-        if status.get("context") == status_context and github.is_app_status(status, bot_login)
-    ]
+def _own_statuses(repo: str, head: str, status_context: str, bot_login: str, number: int) -> list[dict[str, Any]]:
+    found = []
+    for status in github.commit_statuses(repo, head):
+        if status.get("context") != status_context or not github.is_app_status(status, bot_login):
+            continue
+        match = _STATUS_RUN_URL.search(str(status.get("target_url") or ""))
+        owner = github.run_pull(repo, int(match.group(1))) if match is not None else None
+        if owner is None or owner == number:
+            found.append(status)
+    return found
+
+
+def _already_surfaced(repo: str, head: str, status_context: str, bot_login: str, number: int) -> bool:
+    mine = _own_statuses(repo, head, status_context, bot_login, number)
     if not mine:
         return False
     newest = max(mine, key=lambda status: status.get("updated_at") or status.get("created_at") or "")
@@ -1339,7 +1343,7 @@ def _bounded_retry(
     token: str | None,
 ) -> str | None:
     failures = sweep.stateless_failures(head_runs, since)
-    if _already_surfaced(repo, head, status_context, bot_login):
+    if _already_surfaced(repo, head, status_context, bot_login, number):
         _summary(f"retry not dispatched for #{number}: the failure is already surfaced as pending")
         return None
     if failures > 1:
