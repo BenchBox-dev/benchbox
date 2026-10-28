@@ -8,7 +8,7 @@
     "A search of the harness and tests finds no OMP invocation outside the fake executable and no model-provider network call; Jev calls appear only in Jev-feature tests.",
     "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
   ],
-  "context": "2026-10-27 late: develop broke three times from stale-base merges (#3572+#3594 fixed by #3605; #3572+#3601 fixed by #3610; Linux reaping exposed by #3594 fixed by #3612). Process now: one PR at a time, rebased when develop touched its files, Linux container evidence, trunk run green before the next. Follow-ups in flight: network/process-state test guard (test/unit-network-guard), Loop subprocess isolation (fix/oracle-loop-subprocess-isolation).\n\n2026-10-27: mutation PR #3600 opened (f973fa897). Owner decision: mutation testing is manual only; bar >=90% control modules, >=80% digest/verdict/evidence/render/report; triage in progress on that branch. Harness PR opening from cd85df598.\n\n2026-10-27 OWNER DECISION: no real OMP quota in tests; only Jev usage acceptable; capture real outputs and use them for the harnesses.\n\n2026-10-27: owner instruction, critical.",
+  "context": "2026-10-28 CLOSE-OUT CHECK (left open). MET: harness #3602 (merge 4dcf80d6d749c9d580fff8d7a170562158ddd2e3) with tests/integration/oracle/ and capture path (CI uploads oracle-verdict-capture artifact; 83 such artifacts exist); scenario backfill #3626 (071381c208608a8427979d50adfb25675faaf0f1) and #3643 (dab8c1cfe38d799800a3d1da19a0789e970e9e18, trunk 40707383208): quota, edited review, carry, evidence retry/exempt, local lock/concurrency, invalid recovery, sweep, pr-arm; mutation gate #3600 (438df1a79f3a671275ff29dd3776b54fd01ec14f, merged 2026-10-28T03:33:19Z): make oracle-mutation-test, baseline 80.2% to final 96.2% over 9419 mutants, all 12 modules at or above bar, survivors recorded as equivalent or wording-only in the PR body. REMAINING acceptance: (a) a vacuity audit table (test, problem, action) recorded; #3600's body lists the rewritten tests but not as an audit table covering the existing oracle tests; (b) the fixtures list stating, per fixture, the source run id or local review time and the redaction check result is not recorded (tests/fixtures/oracle_reviewers/omp_candidate/manifest.json has per-stream source text, but the 'captured: ... hand-built stub' fixtures are not tied to a CI run id or local review time, and no redaction result is stated); (c) one CI attempt capture and one local review capture each curated into a fixture with that provenance; (d) the close-out check that every open oracle item's acceptance carries its harness scenario, plus the search confirming no OMP invocation outside the fake executable and no provider network call in tests. Resume: record (a), (b), (d) from the repo and live artifacts, then finish.\n\n2026-10-27 late: develop broke three times from stale-base merges (#3572+#3594 fixed by #3605; #3572+#3601 fixed by #3610; Linux reaping exposed by #3594 fixed by #3612). Process now: one PR at a time, rebased when develop touched its files, Linux container evidence, trunk run green before the next. Follow-ups in flight: network/process-state test guard (test/unit-network-guard), Loop subprocess isolation (fix/oracle-loop-subprocess-isolation).\n\n2026-10-27: mutation PR #3600 opened (f973fa897). Owner decision: mutation testing is manual only; bar >=90% control modules, >=80% digest/verdict/evidence/render/report; triage in progress on that branch. Harness PR opening from cd85df598.\n\n2026-10-27 OWNER DECISION: no real OMP quota in tests; only Jev usage acceptable; capture real outputs and use them for the harnesses.\n\n2026-10-27: owner instruction, critical.",
   "deferrals": [
     {
       "created_at": "2026-10-27T19:07:59Z",
@@ -108,6 +108,14 @@
       "generation": "8a100be7244e4013afd32371b8c4fc2c",
       "op": "take",
       "op_id": "d0daa10bc3554035b01d49f73438179b",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-28T17:09:41Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6833397b7f01446bb2890292eb9914cb",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
