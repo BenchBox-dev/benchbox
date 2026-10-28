@@ -129,3 +129,23 @@ def test_reset_clears_and_repopulates_staging_tables_on_sqlite(sqlite_wp):
     bench.reset(conn)
     assert conn.execute("SELECT COUNT(*) FROM merge_ops_target").fetchone()[0] == populated
     assert conn.execute("SELECT COUNT(*) FROM ddl_truncate_target WHERE o_custkey = -1").fetchone()[0] == 0
+
+
+def test_is_setup_does_not_rescan_source_tables_on_every_call(sqlite_wp):
+    bench, conn = sqlite_wp
+    statements: list[str] = []
+    conn.set_trace_callback(statements.append)
+    for _ in range(3):
+        assert bench.is_setup(conn)
+    conn.set_trace_callback(None)
+    for source in ('"orders"', '"lineitem"'):
+        scans = [sql for sql in statements if "COUNT(*)" in sql.upper() and source in sql]
+        assert len(scans) <= 1
+    assert not any("COUNT(*)" in sql.upper() and "update_ops_orders" in sql for sql in statements)
+
+
+def test_is_setup_detects_emptied_staging_table(sqlite_wp):
+    bench, conn = sqlite_wp
+    assert bench.is_setup(conn)
+    conn.execute("DELETE FROM merge_ops_target")
+    assert not bench.is_setup(conn)

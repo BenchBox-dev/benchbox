@@ -180,6 +180,7 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
         self.tables: dict[str, Path] = {}
 
         self._setup_dialect: str = "standard"
+        self._manifest_verified_connection: Any = None
 
     def _acquire_setup_lock(
         self, connection: DatabaseConnection, timeout_seconds: int = 300, dialect: str = "standard"
@@ -511,6 +512,7 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
 
     def setup(self, connection: DatabaseConnection, force: bool = False, dialect: str = "standard") -> dict[str, Any]:
         self._setup_dialect = dialect
+        self._manifest_verified_connection = None
         self.log_verbose("Setting up Write Primitives benchmark...")
 
         required_tables = ["orders", "lineitem"]
@@ -608,6 +610,7 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
 
     def teardown(self, connection: DatabaseConnection) -> None:
         self.log_verbose("Tearing down Write Primitives benchmark...")
+        self._manifest_verified_connection = None
 
         for table_name in STAGING_TABLES:
             try:
@@ -675,10 +678,15 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
 
             for table_name in required_tables:
                 quoted = self._quote_identifier(table_name)
-                count = fetch_count_probe(connection, f"SELECT COUNT(*) FROM {quoted}")
-                if count <= 0:
+                probe = connection.execute(f"SELECT 1 FROM {quoted} LIMIT 1")
+                if failed_platform_error(probe) is not None or probe.fetchone() is None:
                     return False
-            return self._staging_manifest_matches(connection, ["orders", "lineitem"])
+            if self._manifest_verified_connection is connection:
+                return True
+            if self._staging_manifest_matches(connection, ["orders", "lineitem"]):
+                self._manifest_verified_connection = connection
+                return True
+            return False
         except Exception:
             return False
 
