@@ -4,7 +4,7 @@
     {
       "category": "fixed",
       "breaking": false,
-      "text": "Metadata Primitives now runs on SQLite: every catalog query has a SQLite form built on sqlite_master and the pragma table functions instead of the missing information_schema. Data Vault query 1 uses the standard INTERVAL form so its date arithmetic translates for SQLite."
+      "text": "Metadata Primitives and Data Vault now run on SQLite. Every Metadata Primitives query has a SQLite form built on sqlite_master and the pragma table functions instead of the missing information_schema, Data Vault query 1 uses the standard INTERVAL form so its date arithmetic translates, and Data Vault tables get hash-key indexes so the suite finishes in about a minute at scale 0.1 instead of exceeding 25 minutes."
     }
   ]
 }

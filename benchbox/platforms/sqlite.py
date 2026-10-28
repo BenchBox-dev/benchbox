@@ -512,6 +512,16 @@ class SQLiteAdapter(PlatformAdapter):
                 analyze=True,
                 required=required,
             )
+        if _is_datavault_benchmark(benchmark):
+            required_tables, statements = _datavault_helper_index_set()
+            return self._apply_helper_index_set(
+                benchmark_name="Data Vault",
+                required_tables=required_tables,
+                statements=statements,
+                connection=connection,
+                analyze=True,
+                required=required,
+            )
 
         return 0.0
 
@@ -742,3 +752,33 @@ def _is_joinorder_benchmark(benchmark: Any) -> bool:
     class_name = benchmark.__class__.__name__.lower()
     display_name = str(getattr(benchmark, "_name", "") or getattr(benchmark, "name", "")).lower()
     return "joinorder" in class_name or "join order" in display_name
+
+
+def _is_datavault_benchmark(benchmark: Any) -> bool:
+    benchmark_id = str(getattr(benchmark, "benchmark_id", "") or getattr(benchmark, "id", "")).lower()
+    if benchmark_id in {"datavault", "data-vault", "data_vault"}:
+        return True
+    class_name = benchmark.__class__.__name__.lower()
+    display_name = str(getattr(benchmark, "_name", "") or getattr(benchmark, "name", "")).lower()
+    return "datavault" in class_name or "data vault" in display_name
+
+
+def _datavault_helper_index_set() -> tuple[frozenset[str], tuple[str, ...]]:
+    from benchbox.core.datavault.schema import HUBS, LINKS, SATELLITES
+
+    statements: list[str] = []
+    for table in HUBS:
+        key = table.columns[0].name
+        statements.append(f"CREATE INDEX IF NOT EXISTS idx_bb_dv_{table.name}_{key} ON {table.name} ({key})")
+    for table in LINKS:
+        for column in table.columns:
+            if column.name.startswith("hk_"):
+                statements.append(
+                    f"CREATE INDEX IF NOT EXISTS idx_bb_dv_{table.name}_{column.name} ON {table.name} ({column.name})"
+                )
+    for table in SATELLITES:
+        key = table.columns[0].name
+        statements.append(
+            f"CREATE INDEX IF NOT EXISTS idx_bb_dv_{table.name}_{key} ON {table.name} ({key}, load_end_dts)"
+        )
+    return frozenset(table.name for table in (*HUBS, *LINKS, *SATELLITES)), tuple(statements)
