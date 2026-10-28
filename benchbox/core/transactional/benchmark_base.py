@@ -163,6 +163,9 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
                 self._rollback_connection_after_error(connection)
                 raise RuntimeError(f"Failed to initialize staging tables before executing '{operation_id}': {e}") from e
 
+        if (platform_key or "").lower() == "sqlite":
+            connection.commit()
+
         return operation, platform_key, fallback_key, sql_override
 
     @staticmethod

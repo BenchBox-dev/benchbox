@@ -60,8 +60,6 @@ class _SQLiteScriptConnection(_ScriptConnectionBase):
         statements = _split_sqlite_script(sql)
         if len(statements) <= 1:
             return super().execute(statements[0] if statements else sql)
-        if self.in_transaction and statements[0].upper().startswith("BEGIN"):
-            self.commit()
         for statement in statements[:-1]:
             super().execute(statement)
         return super().execute(statements[-1])

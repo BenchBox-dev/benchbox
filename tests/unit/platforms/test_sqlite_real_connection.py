@@ -235,10 +235,3 @@ class TestSQLiteScriptExecution:
 
         with pytest.raises(Exception, match="nope"):
             connection.execute("INSERT INTO t VALUES (1)")
-
-    def test_explicit_begin_after_pending_implicit_transaction(self, connection):
-        connection.execute("CREATE TABLE t (a INTEGER)")
-        connection.execute("INSERT INTO t VALUES (1)")
-        connection.execute("BEGIN TRANSACTION; INSERT INTO t VALUES (2); ROLLBACK;")
-
-        assert connection.execute("SELECT COUNT(*) FROM t").fetchone() == (1,)
