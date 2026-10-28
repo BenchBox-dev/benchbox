@@ -1514,8 +1514,14 @@ class DataFusionAdapter(NoConstraintEnforcementMixin, PlatformAdapter):
 
             for batch in rows:
                 data = batch.to_pydict()
-                if data and "table_name" in data:
-                    tables.extend([name.lower() for name in data["table_name"]])
+                if not data or "table_name" not in data:
+                    continue
+                schemas = data.get("table_schema") or [None] * len(data["table_name"])
+                tables.extend(
+                    name.lower()
+                    for name, schema in zip(data["table_name"], schemas)
+                    if (schema or "").lower() != "information_schema"
+                )
 
             return tables
         except Exception as e:
