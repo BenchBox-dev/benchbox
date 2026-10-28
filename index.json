@@ -16180,12 +16180,17 @@
       "title": "Make a retarget carry actually publish a review and make strike state follow only successful review posts"
     },
     "oracle-checker-drop-legacy-first-line-20261023": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-29T03:44:20Z",
+        "generation": "b895ec1f6eb747e0856f25054f4e0c0b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [
         "oracle-gate-reject-edited-reviews-20261026"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Stop accepting the old `### oracle-review-shadow:` first line in the required oracle check"
     },
     "oracle-classify-on-gateway-host-20261025": {
