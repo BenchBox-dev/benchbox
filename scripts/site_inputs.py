@@ -10,7 +10,7 @@ import subprocess
 import sys
 import tomllib
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -103,10 +103,16 @@ def package_version() -> str:
         return str(tomllib.load(handle)["project"]["version"])
 
 
-def build_repo_files(out: Path, core_sha: str) -> None:
-    entries = [{"path": p, "kind": "file"} for p in git_ls_files()]
-    dirs = sorted({str(Path(p).parent) for p in git_ls_files() if "/" in p})
+def repo_file_entries() -> list[dict[str, str]]:
+    files = git_ls_files()
+    entries = [{"path": p, "kind": "file"} for p in files]
+    dirs = sorted({ancestor.as_posix() for p in files for ancestor in PurePosixPath(p).parents if ancestor.parts})
     entries += [{"path": d, "kind": "tree"} for d in dirs]
+    return entries
+
+
+def build_repo_files(out: Path, core_sha: str) -> None:
+    entries = repo_file_entries()
     out.write_text(json.dumps({"core_sha": core_sha, "files": entries}, indent=2) + "\n", encoding="utf-8")
 
 
