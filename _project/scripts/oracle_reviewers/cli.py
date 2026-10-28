@@ -29,6 +29,7 @@ from . import (
     omp_pin,
     processes,
     protocol,
+    recovery,
     redaction_check,
     report,
     reset,
@@ -37,7 +38,7 @@ from . import (
     selection,
     sweep,
 )
-from .absence import ERROR, Absence
+from .absence import ERROR, Absence, published_detail
 from .brief import write_private
 from .classifier import ChangedFile, matching, soundness_scope
 from .classify import Classification, classify_diff
@@ -1505,19 +1506,75 @@ def _run_slot(args: argparse.Namespace, plan: Mapping[str, Any], slot: int, revi
     return leaked
 
 
+def _recovery_target(plan: Mapping[str, Any], loaded: attempt_files.LoadedAttempts) -> selection.Attempt | None:
+    if loaded.errors or not loaded.attempts or len(loaded.attempts) >= int(plan["max_attempts"]):
+        return None
+    last = loaded.attempts[-1]
+    return last if selection.needs_recovery(last) and last.recovery is None else None
+
+
+def _invalid_state(
+    plan: Mapping[str, Any], loaded: attempt_files.LoadedAttempts, target: selection.Attempt, shape: str
+) -> tuple[dict[str, Any], int]:
+    reviewer = _chain_reviewer(plan, target.reviewer)
+    known = credentials.known()
+    counts: dict[str, int] = {}
+    earlier: list[tuple[str, int, str]] = []
+    for attempt in loaded.attempts[:-1]:
+        counts[attempt.reviewer] = counts.get(attempt.reviewer, 0) + 1
+        if selection.needs_recovery(attempt):
+            earlier.append((attempt.reviewer, counts[attempt.reviewer], published_detail(attempt.detail, known)))
+    number = counts.get(target.reviewer, 0) + 1
+    state = recovery.request_state(
+        tier=reviewer.name,
+        harness=reviewer.harness,
+        role=reviewer.role,
+        model=reviewer.model,
+        effort=reviewer.effort,
+        number=number,
+        limit=selection.MAX_ATTEMPTS_PER_REVIEWER,
+        message=published_detail(target.detail, known),
+        shape=shape,
+        earlier=earlier,
+    )
+    return state, number
+
+
+def command_recover(args: argparse.Namespace) -> int:
+    plan = _read_json(Path(args.plan))
+    out_dir = Path(args.attempts_dir)
+    loaded = attempt_files.load(out_dir, plan, os.environ["GITHUB_RUN_ID"], workspace=Path(args.workspace))
+    target = _recovery_target(plan, loaded)
+    if target is None:
+        return 0
+    path = out_dir / attempt_files.artifact_name(target.slot)
+    artifact = _read_json(path)
+    state, number = _invalid_state(plan, loaded, target, recovery.shape_of(artifact))
+    recorded = recovery.classify(JevSession(), state, number, selection.MAX_ATTEMPTS_PER_REVIEWER)
+    artifact["recovery"] = recorded.to_json()
+    _write_json(path, artifact)
+    _summary(f"slot {target.slot}: {target.reviewer} invalid, recovery {recorded.choice} ({recorded.source})")
+    return 0
+
+
+def command_count_attempts(args: argparse.Namespace) -> int:
+    _output({"attempts": str(len(list(Path(args.attempts_dir).glob("attempt-*.json"))))})
+    return 0
+
+
 def command_attempts(args: argparse.Namespace) -> int:
     plan = _read_json(Path(args.plan))
     out_dir = Path(args.attempts_dir)
     workspace = Path(args.workspace)
     out_dir.mkdir(parents=True, exist_ok=True)
     classification = _read_classification(Path(args.classification))
-    ran = 0
+    ran = len(attempt_files.load(out_dir, plan, os.environ["GITHUB_RUN_ID"], workspace=workspace).attempts)
     adopting = processes.become_subreaper()
     try:
         if processes.IS_LINUX and not adopting:
             _summary("oracle-verdict: error: the loop could not become a child subreaper")
             return 1
-        for slot in range(1, int(plan["max_attempts"]) + 1):
+        for slot in range(ran + 1, int(plan["max_attempts"]) + 1):
             if classification is None:
                 _summary(f"slot {slot}: pending (classification unreadable)")
                 break
@@ -1529,6 +1586,11 @@ def command_attempts(args: argparse.Namespace) -> int:
             ran = slot
             if _run_slot(args, plan, slot, chosen):
                 return 1
+            loaded = attempt_files.load(out_dir, plan, os.environ["GITHUB_RUN_ID"], workspace=workspace)
+            if _recovery_target(plan, loaded) is not None:
+                if not getattr(args, "recover_inline", False):
+                    break
+                command_recover(args)
     finally:
         processes.release_subreaper()
         _output({"attempts": str(ran)})
@@ -1711,6 +1773,14 @@ def _parser() -> argparse.ArgumentParser:
     attempts.add_argument("--workspace", required=True)
     attempts.add_argument("--home-root")
     attempts.set_defaults(handler=command_attempts)
+    recover = commands.add_parser("recover")
+    recover.add_argument("--plan", required=True)
+    recover.add_argument("--attempts-dir", required=True)
+    recover.add_argument("--workspace", required=True)
+    recover.set_defaults(handler=command_recover)
+    counted = commands.add_parser("count-attempts")
+    counted.add_argument("--attempts-dir", required=True)
+    counted.set_defaults(handler=command_count_attempts)
     scan = commands.add_parser("scan-disk")
     scan.add_argument("--root", action="append", required=True)
     scan.add_argument("--env", action="append", required=True)

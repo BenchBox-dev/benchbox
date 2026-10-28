@@ -51,6 +51,15 @@ STEP_ORDER = [
     "Scan the disk for secret values after the tailnet join",
     "Verify Linux process isolation",
     "Run the attempt loop",
+    *[
+        name
+        for after in range(1, POLICY.max_attempts)
+        for name in (
+            f"Classify the invalid attempt after attempt {after}",
+            f"Resume the attempt loop after attempt {after}",
+        )
+    ],
+    "Count the attempts",
     "Scan the disk for secret values after the reviewer exits",
     "Validate this run's attempts and decide",
     "Redact every secret value held by the job from the results",
@@ -67,6 +76,11 @@ STEP_ORDER = [
     DISPATCH_STEP,
 ]
 LOOP_STEP = "Run the attempt loop"
+RECOVER_STEPS = tuple(f"Classify the invalid attempt after attempt {after}" for after in range(1, POLICY.max_attempts))
+LOOP_STEPS = (
+    LOOP_STEP,
+    *(f"Resume the attempt loop after attempt {after}" for after in range(1, POLICY.max_attempts)),
+)
 REDACT_STEP = "Redact every secret value held by the job from the results"
 REDACTION_ENV = {
     "OMP_GATEWAY_TOKEN": "${{ secrets.ORACLE_GATEWAY_TOKEN }}",
@@ -241,16 +255,17 @@ def test_the_isolation_step_checks_the_request_token_through_the_module() -> Non
 
 
 def test_the_loop_holds_only_what_the_reviewer_holds_and_the_reviewer_home() -> None:
-    step = _step(LOOP_STEP)
-    assert step["env"] == {
-        "OMP_GATEWAY_TOKEN": "${{ secrets.ORACLE_GATEWAY_TOKEN }}",
-        "ORACLE_GATEWAY_URL": "${{ secrets.ORACLE_GATEWAY_URL }}",
-    }
-    assert step["working-directory"] == "trusted"
-    assert "cli attempts" in step["run"]
-    assert "reviewer-home" not in step["run"]
-    assert "github.token" not in _text(step)
-    assert _secrets(step) == {"ORACLE_GATEWAY_TOKEN", "ORACLE_GATEWAY_URL"}
+    for name in LOOP_STEPS:
+        step = _step(name)
+        assert step["env"] == {
+            "OMP_GATEWAY_TOKEN": "${{ secrets.ORACLE_GATEWAY_TOKEN }}",
+            "ORACLE_GATEWAY_URL": "${{ secrets.ORACLE_GATEWAY_URL }}",
+        }, name
+        assert step["working-directory"] == "trusted"
+        assert "cli attempts" in step["run"]
+        assert "reviewer-home" not in step["run"]
+        assert "github.token" not in _text(step)
+        assert _secrets(step) == {"ORACLE_GATEWAY_TOKEN", "ORACLE_GATEWAY_URL"}
     text = _text(_review())
     for gone in (
         "OMP_AGENT_CONFIG",
@@ -315,17 +330,39 @@ def test_classification_is_written_once_before_the_loop_and_read_by_it() -> None
     assert "actions/upload-artifact" not in _text(classify)
 
 
-def test_only_the_scans_the_classifier_and_the_redaction_step_hold_the_judgment_key() -> None:
+def test_only_the_scans_the_classifier_the_recovery_and_the_redaction_step_hold_the_judgment_key() -> None:
     assert set(_steps_referencing("TYPESAFE_API_KEY")) == {
         "Classify the change and select the reviewer for attempt 1",
+        *RECOVER_STEPS,
         *SCAN_STEPS,
         JOIN_SCAN_STEP,
         REDACT_STEP,
     }
-    names = _names()
-    loop = names.index(LOOP_STEP)
     for name in _steps_referencing("TYPESAFE_API_KEY"):
-        assert names.index(name) != loop
+        assert name not in LOOP_STEPS
+
+
+def test_every_recovery_step_runs_between_two_loop_steps_and_holds_only_the_judgment_key() -> None:
+    names = _names()
+    assert len(RECOVER_STEPS) == POLICY.max_attempts - 1
+    for after, name in enumerate(RECOVER_STEPS, start=1):
+        step = _step(name)
+        assert step["env"] == {"TYPESAFE_API_KEY": "${{ secrets.TYPESAFE_API_KEY }}"}
+        assert "cli recover" in step["run"]
+        assert "continue-on-error" not in step
+        assert "always()" not in step["if"]
+        assert names.index(LOOP_STEPS[after - 1]) + 1 == names.index(name)
+        assert names.index(name) + 1 == names.index(LOOP_STEPS[after])
+        assert step["if"] == _step(LOOP_STEPS[after])["if"]
+
+
+def test_the_attempt_count_runs_after_every_loop_step_and_feeds_the_uploads() -> None:
+    names = _names()
+    count = _step("Count the attempts")
+    assert count["id"] == "count"
+    assert "env" not in count
+    assert names.index(count["name"]) == names.index(LOOP_STEPS[-1]) + 1
+    assert "steps.loop" not in _text_of_workflow()
 
 
 def test_the_only_step_referencing_the_app_key_mints_after_the_loop_and_the_redaction() -> None:
@@ -364,8 +401,8 @@ def test_the_sweep_mints_an_app_token_for_failure_statuses_in_the_oracle_environ
 
 def test_every_secret_is_referenced_only_where_it_is_needed() -> None:
     allowed = {
-        "ORACLE_GATEWAY_TOKEN": {LOOP_STEP, REDACT_STEP},
-        "ORACLE_GATEWAY_URL": {LOOP_STEP, REDACT_STEP},
+        "ORACLE_GATEWAY_TOKEN": {*LOOP_STEPS, REDACT_STEP},
+        "ORACLE_GATEWAY_URL": {*LOOP_STEPS, REDACT_STEP},
         "TS_OAUTH_CI_CLIENT_ID": {JOIN_STEP, REDACT_STEP},
         "TS_OAUTH_CI_SECRET": {JOIN_STEP, JOIN_SCAN_STEP, *SCAN_STEPS, REDACT_STEP},
         "ORACLE_APP_ID": {"Mint the App token"},
@@ -394,7 +431,7 @@ def test_the_disk_scans_bracket_the_reviewer_and_cover_the_declared_scratch_root
     names = _names()
     before, after = (_step(name) for name in SCAN_STEPS)
     assert names.index(before["name"]) < names.index("Install omp") < names.index(LOOP_STEP)
-    assert names.index(after["name"]) > names.index(LOOP_STEP)
+    assert names.index(after["name"]) > names.index(LOOP_STEPS[-1])
     assert names.index(before["name"]) > names.index("Classify the change and select the reviewer for attempt 1")
     for step in (before, after, _step(JOIN_SCAN_STEP)):
         assert step["env"] == {
@@ -411,13 +448,12 @@ def test_the_disk_scans_bracket_the_reviewer_and_cover_the_declared_scratch_root
 
 
 def test_the_job_token_is_never_present_while_the_reviewer_runs() -> None:
-    names = _names()
-    loop = names.index(LOOP_STEP)
     holders = [step["name"] for step in _steps() if "github.token" in _text(step)]
-    assert LOOP_STEP not in holders
+    for name in LOOP_STEPS:
+        assert name not in holders
     for name in holders:
         step = _step(name)
-        assert names.index(name) != loop
+        assert name not in LOOP_STEPS
         assert "github.token" in _text(step.get("env", {})), name
         assert "github.token" not in _text({key: value for key, value in step.items() if key != "env"}), name
     assert "github.token" not in _text(_review()["env"])
@@ -492,7 +528,14 @@ TOLERATED_FAILURES = (
     "Classify the change and select the reviewer for attempt 1",
     "Join the tailnet to reach the credential gateway",
 )
-FAIL_CLOSED_STEPS = (*SCAN_STEPS, JOIN_SCAN_STEP, LOOP_STEP, REDACT_STEP, "Validate this run's attempts and decide")
+FAIL_CLOSED_STEPS = (
+    *SCAN_STEPS,
+    JOIN_SCAN_STEP,
+    *LOOP_STEPS,
+    *RECOVER_STEPS,
+    REDACT_STEP,
+    "Validate this run's attempts and decide",
+)
 
 
 def test_setup_failures_become_absences_instead_of_ending_the_review() -> None:
@@ -603,7 +646,7 @@ def test_attempt_and_retry_state_artifacts_keep_their_names_and_retention() -> N
         assert upload["with"]["retention-days"] == 7
         assert names.index(upload["name"]) > names.index(LOOP_STEP)
         assert "steps.redact.outcome == 'success'" in upload["if"]
-        assert f"steps.loop.outputs.attempts >= {slot}" in upload["if"]
+        assert f"steps.count.outputs.attempts >= {slot}" in upload["if"]
         assert upload["if"].startswith("${{ always()")
     state = _step("Upload the retry state")
     assert state["with"]["name"] == "oracle-verdict-state-${{ steps.plan.outputs.pr }}"
@@ -615,7 +658,7 @@ def test_attempt_and_retry_state_artifacts_keep_their_names_and_retention() -> N
 
 
 def test_the_attempt_loop_and_redaction_steps_have_the_ids_the_uploads_read() -> None:
-    assert _step(LOOP_STEP)["id"] == "loop"
+    assert _step("Count the attempts")["id"] == "count"
     assert _step(REDACT_STEP)["id"] == "redact"
     assert _step("Validate this run's attempts and decide")["id"] == "finalize"
 
@@ -628,7 +671,7 @@ def test_the_capture_upload_waits_for_the_redaction_step_and_keeps_its_name_and_
     assert _names().index(upload["name"]) > _names().index(REDACT_STEP)
     assert upload["if"].startswith("${{ always()")
     assert "steps.redact.outcome == 'success'" in upload["if"]
-    assert "steps.loop.outputs.attempts >= 1" in upload["if"]
+    assert "steps.count.outputs.attempts >= 1" in upload["if"]
 
 
 def test_the_post_steps_mint_the_app_token_and_tolerate_missing_secrets() -> None:

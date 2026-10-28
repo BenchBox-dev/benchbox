@@ -1,0 +1,229 @@
+{
+  "provenance": "Answers captured live from TypeSafe jev-1.14.0 on 2026-10-28 through the recovery question; messages and shapes were produced by the real validators. Nothing here is synthetic.",
+  "cases": [
+    {
+      "case": "3453 contract, small attempt 1, no earlier",
+      "message": "disputed finding D1 has no concedes boolean, so the verdict is invalid",
+      "shape": "{\"status\":\"str\",\"incomplete_reason\":\"NoneType\",\"decision\":\"str\",\"summary\":\"str\",\"files_examined\":{\"list_items\":1},\"defects\":{\"list_items\":0},\"prior_defects\":{\"list_items\":1}}",
+      "answer": {
+        "choice": "stop",
+        "probabilities": {
+          "retry": 0.19,
+          "stop": 0.8,
+          "escalate": 0.01
+        },
+        "confidence": 0.7
+      }
+    },
+    {
+      "case": "3453 contract, small attempt 2, one earlier",
+      "message": "disputed finding D1 has no concedes boolean, so the verdict is invalid",
+      "shape": "{\"status\":\"str\",\"incomplete_reason\":\"NoneType\",\"decision\":\"str\",\"summary\":\"str\",\"files_examined\":{\"list_items\":1},\"defects\":{\"list_items\":0},\"prior_defects\":{\"list_items\":1}}",
+      "answer": {
+        "choice": "stop",
+        "probabilities": {
+          "retry": 0.01,
+          "stop": 0.93,
+          "escalate": 0.06
+        },
+        "confidence": 0.89
+      }
+    },
+    {
+      "case": "3453 contract, medium attempt 1, two earlier on small",
+      "message": "disputed finding D1 has no concedes boolean, so the verdict is invalid",
+      "shape": "{\"status\":\"str\",\"incomplete_reason\":\"NoneType\",\"decision\":\"str\",\"summary\":\"str\",\"files_examined\":{\"list_items\":1},\"defects\":{\"list_items\":0},\"prior_defects\":{\"list_items\":1}}",
+      "answer": {
+        "choice": "stop",
+        "probabilities": {
+          "retry": 0.0,
+          "stop": 1.0,
+          "escalate": 0.0
+        },
+        "confidence": 1.0
+      }
+    },
+    {
+      "case": "3453 contract, large attempt 1, four earlier",
+      "message": "disputed finding D1 has no concedes boolean, so the verdict is invalid",
+      "shape": "{\"status\":\"str\",\"incomplete_reason\":\"NoneType\",\"decision\":\"str\",\"summary\":\"str\",\"files_examined\":{\"list_items\":1},\"defects\":{\"list_items\":0},\"prior_defects\":{\"list_items\":1}}",
+      "answer": {
+        "choice": "stop",
+        "probabilities": {
+          "retry": 0.0,
+          "stop": 1.0,
+          "escalate": 0.0
+        },
+        "confidence": 1.0
+      }
+    },
+    {
+      "case": "format: new defect shaped like a prior entry, small attempt 1",
+      "message": "each finding must have the keys ('severity', 'file', 'line', 'end_line', 'title', 'detail'), of which ['end_line'] may be omitted; missing ['detail', 'file', 'line', 'severity', 'title'], unexpected ['evidence', 'fix', 'id']",
+      "shape": "{\"status\":\"str\",\"incomplete_reason\":\"NoneType\",\"decision\":\"str\",\"summary\":\"str\",\"files_examined\":{\"list_items\":1},\"defects\":{\"list_items\":1},\"prior_defects\":{\"list_items\":0}}",
+      "answer": {
+        "choice": "retry",
+        "probabilities": {
+          "retry": 0.99,
+          "stop": 0.0,
+          "escalate": 0.01
+        },
+        "confidence": 0.98
+      }
+    },
+    {
+      "case": "format: new defect shaped like a prior entry, small attempt 2",
+      "message": "each finding must have the keys ('severity', 'file', 'line', 'end_line', 'title', 'detail'), of which ['end_line'] may be omitted; missing ['detail', 'file', 'line', 'severity', 'title'], unexpected ['evidence', 'fix', 'id']",
+      "shape": "{\"status\":\"str\",\"incomplete_reason\":\"NoneType\",\"decision\":\"str\",\"summary\":\"str\",\"files_examined\":{\"list_items\":1},\"defects\":{\"list_items\":1},\"prior_defects\":{\"list_items\":0}}",
+      "answer": {
+        "choice": "escalate",
+        "probabilities": {
+          "retry": 0.01,
+          "stop": 0.06,
+          "escalate": 0.93
+        },
+        "confidence": 0.89
+      }
+    },
+    {
+      "case": "format: extra keys on a prior entry, small attempt 1",
+      "message": "each prior defect must have the keys ('id', 'status', 'evidence') and may add ('claim', 'concedes', 'demoted')",
+      "shape": "{\"status\":\"str\",\"incomplete_reason\":\"NoneType\",\"decision\":\"str\",\"summary\":\"str\",\"files_examined\":{\"list_items\":1},\"defects\":{\"list_items\":0},\"prior_defects\":{\"list_items\":1}}",
+      "answer": {
+        "choice": "retry",
+        "probabilities": {
+          "retry": 0.83,
+          "stop": 0.1,
+          "escalate": 0.07
+        },
+        "confidence": 0.74
+      }
+    },
+    {
+      "case": "format: extra keys on a prior entry, small attempt 2",
+      "message": "each prior defect must have the keys ('id', 'status', 'evidence') and may add ('claim', 'concedes', 'demoted')",
+      "shape": "{\"status\":\"str\",\"incomplete_reason\":\"NoneType\",\"decision\":\"str\",\"summary\":\"str\",\"files_examined\":{\"list_items\":1},\"defects\":{\"list_items\":0},\"prior_defects\":{\"list_items\":1}}",
+      "answer": {
+        "choice": "escalate",
+        "probabilities": {
+          "retry": 0.04,
+          "stop": 0.32,
+          "escalate": 0.64
+        },
+        "confidence": 0.46
+      }
+    },
+    {
+      "case": "format: extra top-level keys, small attempt 1",
+      "message": "the verdict must have exactly the keys ('status', 'incomplete_reason', 'decision', 'summary', 'files_examined', 'defects', 'prior_defects'); missing [], unexpected ['confidence', 'notes']",
+      "shape": "{\"status\":\"str\",\"incomplete_reason\":\"NoneType\",\"decision\":\"str\",\"summary\":\"str\",\"files_examined\":{\"list_items\":1},\"defects\":{\"list_items\":0},\"prior_defects\":{\"list_items\":0},\"notes\":\"str\",\"confidence\":\"float\"}",
+      "answer": {
+        "choice": "retry",
+        "probabilities": {
+          "retry": 0.99,
+          "stop": 0.0,
+          "escalate": 0.01
+        },
+        "confidence": 0.98
+      }
+    },
+    {
+      "case": "format: extra top-level keys, small attempt 2",
+      "message": "the verdict must have exactly the keys ('status', 'incomplete_reason', 'decision', 'summary', 'files_examined', 'defects', 'prior_defects'); missing [], unexpected ['confidence', 'notes']",
+      "shape": "{\"status\":\"str\",\"incomplete_reason\":\"NoneType\",\"decision\":\"str\",\"summary\":\"str\",\"files_examined\":{\"list_items\":1},\"defects\":{\"list_items\":0},\"prior_defects\":{\"list_items\":0},\"notes\":\"str\",\"confidence\":\"float\"}",
+      "answer": {
+        "choice": "escalate",
+        "probabilities": {
+          "retry": 0.01,
+          "stop": 0.09,
+          "escalate": 0.9
+        },
+        "confidence": 0.85
+      }
+    },
+    {
+      "case": "format: prose instead of JSON, small attempt 1",
+      "message": "the reviewer output is not JSON: Expecting value",
+      "shape": "unavailable",
+      "answer": {
+        "choice": "retry",
+        "probabilities": {
+          "retry": 0.98,
+          "stop": 0.01,
+          "escalate": 0.01
+        },
+        "confidence": 0.97
+      }
+    },
+    {
+      "case": "format: prose instead of JSON, small attempt 2",
+      "message": "the reviewer output is not JSON: Expecting value",
+      "shape": "unavailable",
+      "answer": {
+        "choice": "escalate",
+        "probabilities": {
+          "retry": 0.01,
+          "stop": 0.1,
+          "escalate": 0.89
+        },
+        "confidence": 0.83
+      }
+    },
+    {
+      "case": "malformed JSON, small attempt 1",
+      "message": "the reviewer output is not JSON: Expecting ',' delimiter",
+      "shape": "unavailable",
+      "answer": {
+        "choice": "retry",
+        "probabilities": {
+          "retry": 0.99,
+          "stop": 0.0,
+          "escalate": 0.01
+        },
+        "confidence": 0.98
+      }
+    },
+    {
+      "case": "malformed JSON, small attempt 2",
+      "message": "the reviewer output is not JSON: Expecting ',' delimiter",
+      "shape": "unavailable",
+      "answer": {
+        "choice": "escalate",
+        "probabilities": {
+          "retry": 0.01,
+          "stop": 0.14,
+          "escalate": 0.85
+        },
+        "confidence": 0.77
+      }
+    },
+    {
+      "case": "truncated JSON, small attempt 1",
+      "message": "the reviewer output is not JSON: Expecting value",
+      "shape": "unavailable",
+      "answer": {
+        "choice": "retry",
+        "probabilities": {
+          "retry": 0.99,
+          "stop": 0.0,
+          "escalate": 0.01
+        },
+        "confidence": 0.98
+      }
+    },
+    {
+      "case": "truncated JSON, small attempt 2",
+      "message": "the reviewer output is not JSON: Expecting value",
+      "shape": "unavailable",
+      "answer": {
+        "choice": "escalate",
+        "probabilities": {
+          "retry": 0.01,
+          "stop": 0.1,
+          "escalate": 0.89
+        },
+        "confidence": 0.83
+      }
+    }
+  ]
+}

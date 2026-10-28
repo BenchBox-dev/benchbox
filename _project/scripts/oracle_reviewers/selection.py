@@ -5,8 +5,10 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
 
-from .absence import EMPTY, ERROR, INCOMPLETE, INVALID
+from . import credentials
+from .absence import EMPTY, ERROR, INCOMPLETE, INVALID, published_detail
 from .policy import Reviewer
+from .recovery import RETRY, STOP, Recovery
 
 PASS = "pass"
 FAIL = "fail"
@@ -18,7 +20,7 @@ QUOTA_BACKOFF = timedelta(hours=1)
 PRIMARY_BLOCK_CAP = timedelta(hours=24)
 POOL_PROVIDERS = {"claude": "anthropic", "codex": "openai-codex"}
 JOB_FAILURE_DETAIL = "the reviewer job did not finish"
-RETRYABLE_ABSENCES = frozenset({INVALID, INCOMPLETE, EMPTY, ERROR})
+RETRYABLE_ABSENCES = frozenset({INCOMPLETE, EMPTY, ERROR})
 MAX_ATTEMPTS_PER_REVIEWER = 2
 
 
@@ -32,6 +34,7 @@ class Attempt:
     reset_at: datetime | None = None
     provider: str = ""
     unread: tuple[str, ...] = ()
+    recovery: Recovery | None = None
 
 
 @dataclass(frozen=True)
@@ -105,13 +108,22 @@ def active_blocks(blocks: Mapping[str, PoolBlock], now: datetime, *, same_head: 
     }
 
 
+def needs_recovery(attempt: Attempt) -> bool:
+    return attempt.outcome == ABSENT and attempt.absence == INVALID and attempt.detail != JOB_FAILURE_DETAIL
+
+
+def stop_reason(attempt: Attempt) -> str:
+    detail = published_detail(attempt.detail, credentials.known())
+    return f"stopped: the process is blocked ({detail})"
+
+
 def _may_retry(history: Sequence[Attempt]) -> bool:
-    return (
-        len(history) < MAX_ATTEMPTS_PER_REVIEWER
-        and history[-1].outcome == ABSENT
-        and history[-1].absence in RETRYABLE_ABSENCES
-        and history[-1].detail != JOB_FAILURE_DETAIL
-    )
+    last = history[-1]
+    if len(history) >= MAX_ATTEMPTS_PER_REVIEWER or last.outcome != ABSENT or last.detail == JOB_FAILURE_DETAIL:
+        return False
+    if needs_recovery(last):
+        return last.recovery is not None and last.recovery.choice == RETRY
+    return last.absence in RETRYABLE_ABSENCES
 
 
 def retry_unread(attempts: Sequence[Attempt], reviewer: str, slot: int) -> tuple[str, ...]:
@@ -158,6 +170,12 @@ def next_step(selection: SelectionInput, attempts: Sequence[Attempt]) -> Step:
             return Step(FAIL, by_name.get(attempt.reviewer), (f"{attempt.reviewer}: did not clear the change",))
         if attempt.outcome == PASS:
             return Step(PASS, by_name.get(attempt.reviewer), (f"{attempt.reviewer}: cleared the change",))
+    if ordered and needs_recovery(ordered[-1]):
+        last = ordered[-1]
+        if last.recovery is not None and last.recovery.choice == STOP:
+            return Step(PENDING, None, (stop_reason(last),))
+        if last.recovery is None and len(ordered) < selection.max_attempts:
+            return Step(PENDING, None, (f"{last.reviewer}: absent (invalid): the recovery is not recorded",))
     attempted: dict[str, list[Attempt]] = {}
     for attempt in ordered:
         attempted.setdefault(attempt.reviewer, []).append(attempt)

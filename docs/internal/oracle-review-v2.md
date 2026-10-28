@@ -31,7 +31,8 @@ absent, pending or failed oracle decision does not pass on its own.
    - `ORACLE_APP_ID`, `ORACLE_APP_PRIVATE_KEY`: only the `review` job's `Mint
      the App token` step, after the attempt loop and the redaction check.
    - `TYPESAFE_API_KEY`: only the classify step (TypeSafe's Jev model classifies
-     the change), the three disk scans and the redaction step.
+     the change), the recovery steps between loop steps (Jev classifies an
+     invalid attempt), the three disk scans and the redaction step.
    - `ORACLE_GATEWAY_TOKEN`, `ORACLE_GATEWAY_URL`: the reviewer's client token
      for the credential gateway and the gateway's HTTPS URL, held by the attempt
      loop and the redaction step. No provider key, broker URL, broker token or
@@ -117,7 +118,11 @@ a manual dispatch, a `pull_request_target` event other than a plain edit, and a
    select the reviewer, reset the checkout, create a fresh scratch `HOME` with
    its OMP home, run the reviewer, confirm nothing was left behind, delete the
    `HOME`, and write the slot's result file: an artifact with run ID, head SHA,
-   reviewer, and a validated verdict or an absence. A crash or timeout still
+   reviewer, and a validated verdict or an absence, plus the `recovery` record
+   once an invalid attempt is classified. The loop stops after an invalid attempt
+   until a keyed `recover` step records it, then resumes (a recover and a resume
+   step follow the first loop step for each slot that can still be followed). A
+   crash or timeout still
    leaves an absence. OMP runs on a detached, credential-free head checkout: an
    empty working directory, the checkout as a read-only workspace, tools
    `read,grep,glob`, `--no-skills`, `--no-rules`, and a trusted overlay. The
@@ -326,7 +331,7 @@ disputes stay data. Each keyed disputed finding needs an explicit disposition:
 The response template shows concedes as null, correct for an undisputed defect;
 a disputed defect left null is malformed, as is a missing disposition or a claim
 matching no shown reply. A malformed disposition invalidates only a verdict that
-would ship, and that attempt is retried. On any other verdict the defect is kept
+would ship, and that attempt is classified by Jev (see Rounds). On any other verdict the defect is kept
 open, the problem is published as the defect's evidence, and the decision stands. A maintain or fixed
 disposition whose citation does not verify is not invalid: the defect stays open
 and the disposition is published with the evidence gap. A demoted withdrawal or
@@ -394,9 +399,28 @@ bucket's reviewer (for a follow-up, the previous reviewer if it belongs to a
 larger bucket), then takes larger buckets' reviewers in size order, skipping any
 whose harness, model and effort match one already in the chain: `trivial` and
 `small` share `@smol`, so a run never spends slots on both. A reviewer absent as
-`invalid`, `incomplete`, `empty` or `error` runs once more before the chain
-advances, so at most two attempts per reviewer and `max_attempts` per run. Never
-retried: a decision; `quota`, `auth` or `timeout` absences; a reviewer job that
+`incomplete`, `empty` or `error` runs once more before the chain advances, so at
+most two attempts per reviewer and `max_attempts` per run. An `invalid` attempt
+(a reply that fails validation or the dispute contract) is not retried by a fixed
+rule: after it, Jev (TypeSafe `jev-1.14.0`, the session that classifies the
+change) answers one choice question as `retry`, `stop` or `escalate`. Its state
+holds only the redacted validation message, the reply's keys-and-types
+fingerprint, the reviewer tier and model role, the attempt number for that
+reviewer and the earlier invalid messages of the run; never raw reply text, diffs
+or secrets. `retry` runs the same reviewer again, at most twice per reviewer (a
+retry beyond that becomes `escalate`); `escalate` moves to the next reviewer;
+`stop` ends the run pending with "stopped: the process is blocked (<message>)"
+and posts nothing that passes. When Jev is unavailable, no key is set (a local
+review without one), the answer is not one of the three labels, or its
+confidence is below 0.60, the run retries the same reviewer once and then stops;
+it never escalates without a Jev answer. The answer, its probability and
+confidence, or the fallback reason, are stored on the attempt artifact
+(`recovery`), so replay reproduces the choice and rejects an attempt that
+contradicts it. The Jev call counts against no reviewer slot. In CI the loop
+holds no judgment key, so it stops after an invalid attempt, a keyed step
+(`recover`) records the recovery, and the loop resumes; locally one process does
+both. A recovery never makes a decision pass. Never retried: a decision; `quota`,
+`auth` or `timeout` absences; a reviewer job that
 did not finish (`ensure-attempt` records it with the fixed `JOB_FAILURE_DETAIL`
 detail); a reviewer selection would skip (disabled, out of quota, or unable to
 take the brief). Selection and artifact replay share this rule, so a third
@@ -406,11 +430,13 @@ reviewer that answers ends the run like any decision.
 
 An OMP event stream ending with no final assistant text (for example after a
 tool call) is absent as `empty`, detail "the reviewer ended without a final
-answer". Prose or malformed-JSON final text, and OMP output that is not an event
-stream, is `invalid`. Both are retried alike.
+answer", and is retried. Prose or malformed-JSON final text, and OMP output that
+is not an event stream, is `invalid` and goes to Jev.
 
 The review body lists every absent attempt under "Reviewers not available" as `-
-<reviewer> (attempt <slot>): absent (<kind>): <detail>`. The detail is the
+<reviewer> (attempt <slot>): absent (<kind>): <detail>`, followed for an invalid
+attempt by `; recovery: <choice> (Jev, probability, confidence)` or
+`; recovery: <choice> (fallback, <reason>)`. The detail is the
 attempt artifact's, credentials redacted, whitespace collapsed, at most 160
 characters, and omitted when absent. Raw reviewer responses are never published
 there.

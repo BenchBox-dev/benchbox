@@ -19,7 +19,7 @@ def test_real_execute_survives_deleted_cached_tempdir_across_slots(loop: Loop, m
     loop.fake("deleted_tempdir", path=str(cached))
     loop.fake("home_recording_build", journal=str(journal.path))
     monkeypatch.setenv(omp_pin.BINARY_ENV, sys.executable)
-    assert loop.run() == 0
+    assert loop.run_with_recovery() == 0
     homes = journal.items()
     assert len(homes) == 2 and homes[0] != homes[1]
     for slot in (1, 2):
