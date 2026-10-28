@@ -782,7 +782,9 @@ to GitHub.
   `--help`; enumerated flag values and the tool roster are rejected when invalid
   and still name the values the reviewer uses; every overlay and reviewer-home
   setting exists in the build's `config list --json` schema with an accepted
-  type and value; the captured streams in
+  type and value, and every `disabledProviders` id still appears as a quoted
+  literal in the binary (the build lists no providers, so a renamed id fails
+  here, though a common word such as `claude` is only weakly pinned by this); the captured streams in
   `tests/fixtures/oracle_reviewers/omp_candidate/` replay through
   `parse_output`, `evidence.trace` and `absence.classify`; and a loopback
   replay chain runs the candidate client against the candidate
@@ -799,8 +801,9 @@ to GitHub.
   version 3, and that the run leaves no session state and no process behind.
   Each probe lists the contract rows it covers; a row that no probe running the
   candidate covers fails the run unless a reason is recorded, and a replay of a
-  frozen capture never counts. A run limited with `--platform` is `partial`,
-  not green. Row 8's provider reset wording cannot be
+  frozen capture never counts. Only the host build is executed; every other pinned
+  platform, whether limited out with `--platform` or merely hash-checked, is
+  listed as unverified and the run is `partial`, not green. Row 8's provider reset wording cannot be
   observed offline and stays covered by the calibrated absence tests. The
   fixtures are redacted captures of the pinned build's own output; the upstream
   provider bodies the stub serves are hand-built, and `--capture-dir` rewrites

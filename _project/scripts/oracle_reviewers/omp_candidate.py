@@ -8,7 +8,7 @@ import sys
 import tempfile
 from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -36,6 +36,7 @@ class PlatformBuild:
     expected: str
     actual: str
     size: int
+    probed: bool = False
 
     @property
     def ok(self) -> bool:
@@ -65,7 +66,14 @@ class Report:
             "unverified_platforms": list(self.unverified),
             "version_transcript": self.transcript,
             "builds": [
-                {"platform": b.target, "url": b.url, "sha256": b.actual, "pinned_sha256": b.expected, "bytes": b.size}
+                {
+                    "platform": b.target,
+                    "url": b.url,
+                    "sha256": b.actual,
+                    "pinned_sha256": b.expected,
+                    "bytes": b.size,
+                    "probed": b.probed,
+                }
                 for b in self.builds
             ],
             "checks": [
@@ -78,6 +86,7 @@ class Report:
         lines = [f"omp candidate {self.version}"]
         for build in self.builds:
             state = "ok" if build.ok else f"MISMATCH (pinned {build.expected})"
+            state += ", probed" if build.probed else ", hash only"
             lines.append(f"  build {build.target}: sha256={build.actual} bytes={build.size} {state}")
         lines.append(f"  --version: {self.transcript}")
         for check in self.checks:
@@ -88,7 +97,9 @@ class Report:
             f"  recorded: row {row} {CONTRACT_ROWS[row]}: {reason}" for row, reason in RECORDED_REASONS.items()
         )
         if self.unverified:
-            lines.append(f"  partial: pinned platforms not downloaded or hashed: {', '.join(self.unverified)}")
+            lines.append(
+                f"  partial: pinned platforms whose probes did not run (hash only or not downloaded): {', '.join(self.unverified)}"
+            )
         lines.append("result: " + ("green" if self.ok else "partial" if self.passed else "red"))
         return "\n".join(lines)
 
@@ -176,7 +187,9 @@ def check_candidate(
             Check("row-coverage", (row,), (f"no probe covers contract row {row}",))
             for row in candidate_checks.uncovered_rows(checks)
         )
-    unverified = tuple(target for target in pin.builds if target not in selected)
+    probed = {host} if runnable else set()
+    builds = [replace(build, probed=build.target in probed) for build in builds]
+    unverified = tuple(target for target in pin.builds if target not in probed)
     return Report(pin.version, tuple(builds), transcript, tuple(checks), unverified)
 
 

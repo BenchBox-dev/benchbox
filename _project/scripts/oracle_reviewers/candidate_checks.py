@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import mmap
 import re
 import subprocess
 import tempfile
@@ -200,6 +201,17 @@ def check_overlay_schema(binary: Path, home: Path, overlay_text: str = commands.
     return _check("overlay-schema", (3,), failures)
 
 
+def check_disabled_providers(binary: Path, overlay_text: str = commands.OMP_OVERLAY_TEXT) -> Check:
+    providers = yaml.safe_load(overlay_text).get("disabledProviders") or []
+    with binary.open("rb") as handle, mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ) as image:
+        failures = [
+            f'the build no longer contains the context provider id "{provider}"; its disabledProviders entry would be ignored'
+            for provider in providers
+            if image.find(f'"{provider}"'.encode()) < 0
+        ]
+    return _check("overlay-providers", (3,), failures)
+
+
 def check_reviewer_config_schema(binary: Path, home: Path, config_text: str | None = None) -> Check:
     text = config_text if config_text is not None else REVIEWER_CONFIG.read_text(encoding="utf-8")
     schema, enums, failures = _schema(binary, home)
@@ -214,6 +226,7 @@ def static_checks(binary: Path, home: Path, version: str) -> list[Check]:
         check_flags_listed(binary, home),
         check_flag_values(binary, home),
         check_overlay_schema(binary, home),
+        check_disabled_providers(binary),
         check_reviewer_config_schema(binary, home),
     ]
 

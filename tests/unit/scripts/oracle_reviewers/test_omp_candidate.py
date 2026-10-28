@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import yaml
 
 from _project.scripts.oracle_reviewers import (
     candidate_chain,
@@ -61,10 +62,11 @@ def _fake(tmp_path: Path, mutate: Callable[[dict[str, Any]], None] | None = None
     directory.mkdir(exist_ok=True)
     (directory / "static.json").write_text(json.dumps(data), encoding="utf-8")
     binary = directory / "omp"
-    binary.write_text(
-        SCRIPT.format(python=sys.executable, data=str(directory / "static.json"), marker=str(directory / "executed")),
-        encoding="utf-8",
+    providers = yaml.safe_load(commands.OMP_OVERLAY_TEXT)["disabledProviders"]
+    script = SCRIPT.format(
+        python=sys.executable, data=str(directory / "static.json"), marker=str(directory / "executed")
     )
+    binary.write_text(script + "# " + " ".join(f'"{item}"' for item in providers) + "\n", encoding="utf-8")
     binary.chmod(binary.stat().st_mode | stat.S_IXUSR)
     home = tmp_path / "home"
     home.mkdir(exist_ok=True)
@@ -438,11 +440,12 @@ def _chain_from(runs: dict[str, ClientRun]) -> Iterator[Any]:
     yield Replay()
 
 
-def _pin_for_host(binary: Path, **overrides: str) -> omp_pin.Pin:
+def _pin_for_host(binary: Path, *, only_host: bool = False, **overrides: str) -> omp_pin.Pin:
     digest = omp_pin.sha256_of(binary)
     host = omp_pin.Build("https://downloads.example.invalid/omp", overrides.get("host", digest))
     builds = {omp_pin.current_platform(): host}
-    builds["linux-arm64"] = omp_pin.Build("https://downloads.example.invalid/other", overrides.get("other", digest))
+    if not only_host:
+        builds["linux-arm64"] = omp_pin.Build("https://downloads.example.invalid/other", overrides.get("other", digest))
     return omp_pin.Pin(VERSION, builds)
 
 
@@ -453,18 +456,35 @@ def _fetcher(binary: Path) -> Callable[[str, Path], None]:
     return fetch
 
 
-def test_a_candidate_whose_builds_hash_to_the_pin_and_whose_probes_pass_is_green(tmp_path: Path) -> None:
+def test_a_candidate_whose_only_pinned_build_hashes_and_whose_probes_pass_is_green(tmp_path: Path) -> None:
+    binary, _ = _fake(tmp_path)
+    report = omp_candidate.check_candidate(
+        _pin_for_host(binary, only_host=True),
+        fetch=_fetcher(binary),
+        chain_factory=lambda *_: _chain_from(_good_runs()),
+    )
+    assert report.ok, report.render()
+    assert report.transcript == "omp/18.12.1"
+    assert json.loads(json.dumps(report.to_json()))["ok"] is True
+    assert "result: green" in report.render()
+
+
+def test_a_platform_that_was_only_hash_checked_is_unverified_and_never_green(tmp_path: Path) -> None:
     binary, _ = _fake(tmp_path)
     report = omp_candidate.check_candidate(
         _pin_for_host(binary),
         fetch=_fetcher(binary),
         chain_factory=lambda *_: _chain_from(_good_runs()),
     )
-    assert report.ok, report.render()
+    assert report.passed and not report.ok
     assert {build.target for build in report.builds} == {omp_pin.current_platform(), "linux-arm64"}
-    assert report.transcript == "omp/18.12.1"
-    assert json.loads(json.dumps(report.to_json()))["ok"] is True
-    assert "result: green" in report.render()
+    assert report.unverified == ("linux-arm64",)
+    assert {build.target: build.probed for build in report.builds} == {
+        omp_pin.current_platform(): True,
+        "linux-arm64": False,
+    }
+    assert "result: partial" in report.render()
+    assert "linux-arm64: sha256=" in report.render()
 
 
 def test_a_run_limited_to_some_platforms_is_partial_and_never_green(tmp_path: Path) -> None:
@@ -594,3 +614,15 @@ def test_the_reviewer_command_accepts_an_explicit_binary_and_overlay(tmp_path: P
     assert invocation.argv[0] == str(tmp_path / "candidate-omp")
     overlay = Path(invocation.argv[invocation.argv.index("--config") + 1])
     assert overlay.read_text(encoding="utf-8") == "{}\n"
+
+
+def test_a_disabled_provider_the_build_no_longer_names_is_red(tmp_path: Path) -> None:
+    binary, _ = _fake(tmp_path)
+    assert candidate_checks.check_disabled_providers(binary).ok
+    renamed = candidate_checks.check_disabled_providers(
+        binary, "disabledProviders:\n  - agents-md\n  - renamed-context-provider\n"
+    )
+    assert renamed.failures == (
+        'the build no longer contains the context provider id "renamed-context-provider"; '
+        "its disabledProviders entry would be ignored",
+    )
