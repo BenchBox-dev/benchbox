@@ -30424,6 +30424,13 @@
       "status": "done",
       "title": "Commit hooks leave an untracked .build/ directory in every worktree"
     },
+    "worktree-concurrent-session-ownership-guard-20261028": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Stop two agent sessions from editing and committing in the same worktree"
+    },
     "worktree-create-type-prefix-mismatch-20261020": {
       "claim": null,
       "needs": [],

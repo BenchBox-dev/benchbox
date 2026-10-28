@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "agent-write-preflight (or worktree lifecycle metadata) records the owning session and refuses or warns when a second live session writes in the same worktree",
+    "A test shows a second claimant is refused or warned, and the owner can release or transfer the worktree"
+  ],
+  "context": "agent-write-preflight pins identity and location but not an owner. The conflict was found by seeing an unexpected commit appear in the branch log and a second agent process running tests in the same directory. Related guard: worktree lifecycle metadata already exists for each worktree.",
+  "description": "Two sessions worked in the same linked worktrees for pull requests 3548 and 3549 at once. One session committed to the other's branch, ran a baseline rewrite in the worktree while the first was publishing, and a pre-push hook run failed because uncommitted edits from the other session made it modify files and stash-restore conflict. Nothing records or checks which session owns a worktree, so competing edits only show up as odd commits or failed pushes.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-28T11:45:42Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "47a3a4fbdee9495f847bdb0519134c17",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}
