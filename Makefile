@@ -1631,10 +1631,11 @@ uat-docker-cleanup:
 .PHONY: uat-sweep
 uat-sweep:
 	@if [ -z "$(CONFIG)" ]; then \
-		echo "Usage: make uat-sweep CONFIG=<path> [DRY_RUN=1]" >&2; \
+		echo "Usage: make uat-sweep CONFIG=<path> [PLATFORMS=<a,b>] [DRY_RUN=1]" >&2; \
 		exit 2; \
 	fi
 	@uv run --no-sync -- python -m tests.uat._cli sweep --config "$(CONFIG)" \
+		$(if $(PLATFORMS),--platforms "$(PLATFORMS)",) \
 		$(if $(DRY_RUN),--dry-run,)
 
 .PHONY: uat-smoke
@@ -1652,13 +1653,13 @@ uat-stress:
 .PHONY: uat-gate-check
 uat-gate-check:
 	@if [ -z "$(STAGE1)" ] || [ -z "$(STAGE2)" ] || [ -z "$(STAGE3)" ]; then \
-		echo "Usage: make uat-gate-check STAGE1=<run-dir> STAGE2=<run-dir> STAGE3=<run-dir> [OUTPUT=<path>]" >&2; \
+		echo "Usage: make uat-gate-check STAGE1=\"<run-dir> ...\" STAGE2=\"<run-dir> ...\" STAGE3=\"<run-dir> ...\" [OUTPUT=<path>]" >&2; \
 		exit 2; \
 	fi
 	@uv run --no-sync -- python -m tests.uat._cli gate-check \
-		--stage1 "$(STAGE1)" \
-		--stage2 "$(STAGE2)" \
-		--stage3 "$(STAGE3)" \
+		--stage1 $(STAGE1) \
+		--stage2 $(STAGE2) \
+		--stage3 $(STAGE3) \
 		$(if $(OUTPUT),--output "$(OUTPUT)",) \
 		$(if $(DIST_DIGEST),--expected-distribution-digest "$(DIST_DIGEST)",)
 

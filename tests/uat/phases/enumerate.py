@@ -66,6 +66,15 @@ def enumerate_cells(
     return list(enumerate_cells_with_pruning(config, benchmarks=benchmarks).cells)
 
 
+def resolved_platforms(config: UATConfig) -> list[str]:
+    platform_groups_default = ("sql",) if config.platforms.uses_implicit_group_default else ()
+    return resolve_platforms(
+        groups=config.platforms.groups if config.platforms.groups is not None else platform_groups_default,
+        include=config.platforms.include,
+        exclude=config.platforms.exclude,
+    )
+
+
 def enumerate_cells_with_pruning(
     config: UATConfig,
     *,
@@ -73,13 +82,8 @@ def enumerate_cells_with_pruning(
 ) -> EnumerationResult:
     benchmarks = benchmarks if benchmarks is not None else load_benchmarks()
 
-    platform_groups_default = ("sql",) if config.platforms.uses_implicit_group_default else ()
     benchmark_groups_default = ("all",) if config.benchmarks.uses_implicit_group_default else ()
-    platform_list = resolve_platforms(
-        groups=config.platforms.groups if config.platforms.groups is not None else platform_groups_default,
-        include=config.platforms.include,
-        exclude=config.platforms.exclude,
-    )
+    platform_list = resolved_platforms(config)
     benchmark_list = resolve_benchmarks(
         groups=config.benchmarks.groups if config.benchmarks.groups is not None else benchmark_groups_default,
         include=config.benchmarks.include,

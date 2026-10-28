@@ -201,7 +201,7 @@ def test_subcommands_table_covers_all_make_targets():
 
 
 def test_sweep_main_forwards_dry_run_override(monkeypatch, capsys):
-    calls: list[tuple[Path, bool | None]] = []
+    calls: list[tuple[Path, bool | None, list[str] | None]] = []
 
     class StubResult:
         name = "stub"
@@ -209,20 +209,23 @@ def test_sweep_main_forwards_dry_run_override(monkeypatch, capsys):
         aborted_phase = None
         abort_reason = None
         phase_exit_codes = {"execute": 0}
+        plan = None
 
         def exit_code(self):
             return 0
 
-    def fake_run_sweep_from_path(config_path, *, dry_run_override=None, stress_overrides=None):
+    def fake_run_sweep_from_path(config_path, *, dry_run_override=None, stress_overrides=None, platform_shard=None):
         assert stress_overrides is None
-        calls.append((config_path, dry_run_override))
+        calls.append((config_path, dry_run_override, platform_shard))
         return StubResult()
 
     monkeypatch.setattr("tests.uat.orchestrator.run_sweep_from_path", fake_run_sweep_from_path)
-    rc = _cli.main(["sweep", "--config", "tests/uat/configs/uat-2026-05-02.yaml", "--dry-run"])
+    rc = _cli.main(
+        ["sweep", "--config", "tests/uat/configs/uat-2026-05-02.yaml", "--dry-run", "--platforms", "duckdb,sqlite"]
+    )
 
     assert rc == 0
-    assert calls == [(Path("tests/uat/configs/uat-2026-05-02.yaml"), True)]
+    assert calls == [(Path("tests/uat/configs/uat-2026-05-02.yaml"), True, ["duckdb", "sqlite"])]
     assert '"phase_exit_codes"' in capsys.readouterr().out
 
 
