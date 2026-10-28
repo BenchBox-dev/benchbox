@@ -13,6 +13,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 
 def _proc(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, scope: str = "1") -> Path:
+    monkeypatch.delenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", raising=False)
     monkeypatch.setattr(isolation.sys, "platform", "linux")
     monkeypatch.setattr(isolation.os, "getuid", lambda: 1001)
     (tmp_path / "sys/kernel/yama").mkdir(parents=True)
@@ -47,6 +48,20 @@ def test_isolation_rejects_ptrace_capability(tmp_path, monkeypatch, field) -> No
     status.write_text(status.read_text(encoding="utf-8").replace(f"{field}:\t0", f"{field}:\t80000"))
     with pytest.raises(ValueError, match="CAP_SYS_PTRACE"):
         isolation.require_isolation(root)
+
+
+def test_isolation_rejects_a_present_id_token_request_token(tmp_path, monkeypatch) -> None:
+    root = _proc(tmp_path, monkeypatch)
+    monkeypatch.setenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "x")
+    with pytest.raises(ValueError, match="ACTIONS_ID_TOKEN_REQUEST_TOKEN"):
+        isolation.require_isolation(root)
+    assert isolation.main() == 1
+
+
+def test_isolation_accepts_an_absent_id_token_request_token(tmp_path, monkeypatch) -> None:
+    root = _proc(tmp_path, monkeypatch)
+    monkeypatch.delenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", raising=False)
+    isolation.require_isolation(root)
 
 
 def test_isolation_rejects_root(tmp_path, monkeypatch) -> None:

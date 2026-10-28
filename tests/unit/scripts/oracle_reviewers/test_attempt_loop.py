@@ -32,8 +32,8 @@ SECRET_ENV = {
     "OMP_GATEWAY_TOKEN": GATEWAY_TOKEN,
     "TYPESAFE_API_KEY": TYPESAFE_KEY,
     "ORACLE_GATEWAY_URL": GATEWAY_URL,
-    "TS_OAUTH_CLIENT_ID": "kXq7Lm2NpR4tVw9",
-    "TS_AUDIENCE": "api.tailscale.com/kXq7Lm2NpR4tVw9",
+    "TS_OAUTH_CI_CLIENT_ID": "kXq7Lm2NpR4tVw9",
+    "TS_OAUTH_CI_SECRET": "tskey-client-" + "kXq7Lm2NpR4tVw9-Zb3Yc8Wd5Xe",
     "ACTIONS_ID_TOKEN_REQUEST_TOKEN": "eyJhbGciOi" + "Pq7Rs8Tu" * 6,
 }
 
