@@ -9204,7 +9204,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Rehearse a deploy rollback to a retained receipt now that production serves schema 5"
     },
     "docs-mig-followup-site-dead-link-precheck-for-core-deletions-20261028": {
