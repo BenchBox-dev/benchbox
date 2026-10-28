@@ -16332,10 +16332,15 @@
       "title": "Name the required reads in file-list briefs and retry an evidence-incomplete attempt with the missing files instead of escalating"
     },
     "oracle-external-review-findings-20261026": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-29T03:35:35Z",
+        "generation": "91b879f30e344cd7bbf80d44552719bd",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Address oracle-reviewer defects found by the 2026-10-26 external codex reviews of #2807 and #2808"
     },
     "oracle-finding-path-html-escape-drops-finding-20261024": {
