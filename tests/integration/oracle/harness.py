@@ -22,7 +22,12 @@ SLUG = "BenchBox-dev/BenchBox"
 CHECKER = "benchbox/core/equivalence/checker.py"
 RECORDED_STREAM = REPO_ROOT / "tests" / "fixtures" / "oracle_reviewers" / "omp_multi_turn_review.jsonl"
 POLICY = ".github/oracle-reviewers.yml"
-TRUSTED_FILES = (POLICY, ".github/workflows/oracle-verdict.yml", ".github/soundness-paths.txt")
+TRUSTED_FILES = (
+    POLICY,
+    ".github/workflows/oracle-verdict.yml",
+    ".github/soundness-paths.txt",
+    ".github/inert-paths.txt",
+)
 GATEWAY_TOKEN = "gwtok-" + "Q7mZ4kLp" * 5
 PINNED_OMP = "18.12.1"
 SHA256_LINE = re.compile(r"sha256: [0-9a-f]{64}")
