@@ -87,6 +87,7 @@
     "tests/unit/docs/test_publication_architecture.py"
   ],
   "docs/internal/nightly-t3.md": [
+    "tests/unit/workflows/test_nightly_t3_legacy_ports.py",
     "tests/unit/workflows/test_nightly_t3_report_lifecycle.py"
   ],
   "docs/internal/pr-base-branch-policy.md": [

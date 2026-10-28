@@ -1,0 +1,41 @@
+name: Green-unmerged sweep
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "11 6 * * *"
+
+concurrency:
+  group: green-unmerged-sweep
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sweep:
+    name: green-unmerged-sweep
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: write
+      checks: read
+      actions: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Run green-unmerged sweep
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: uv run -- python _project/scripts/green_unmerged_sweep.py --apply
