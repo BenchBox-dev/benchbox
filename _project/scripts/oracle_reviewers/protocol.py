@@ -307,7 +307,7 @@ def marker_payload(text: str) -> Any:
         inflater = zlib.decompressobj()
         raw = inflater.decompress(base64.urlsafe_b64decode(data + "=" * (-len(data) % 4)), MARKER_INFLATE_LIMIT)
         return json.loads(raw) if inflater.eof else None
-    except (binascii.Error, ValueError, zlib.error):
+    except (binascii.Error, ValueError, zlib.error, RecursionError):
         return None
 
 
