@@ -16899,17 +16899,12 @@
       "title": "Oracle read evidence still accepts reads that show none of the head file's content"
     },
     "oracle-redaction-marker-and-summary-20261026": {
-      "claim": {
-        "expires_at": "2026-10-29T19:54:31Z",
-        "generation": "5d86a863c5e04569918968348d21a127",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
-      },
+      "claim": null,
       "needs": [
         "oracle-verdict-oauth-tailnet-join-20261026"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Redact the oracle protocol marker and the job step summary, not only the plain review text"
     },
     "oracle-response-absence-retry-20261021": {
