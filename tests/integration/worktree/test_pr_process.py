@@ -202,7 +202,7 @@ def test_wrong_pr_branch_never_mutates() -> None:
 def test_all_green_control_arms_exactly_once(tmp_path: Path) -> None:
 
     repo, head = _repo(tmp_path / "r")
-    run = FakeRun([(0, "")])
+    run = FakeRun([(0, ""), (0, "")])
     assert landing.ready_failures(_identity(repo, head), head, _evidence(head), repo) == []
     assert landing.enqueue_pr(run, "o/r", 1, head, head)["enqueued"] is True
-    assert len(run.calls) == 1
+    assert [call[:3] for call in run.calls] == [["gh", "api", "--paginate"], ["gh", "pr", "merge"]]
