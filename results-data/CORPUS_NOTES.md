@@ -1016,3 +1016,140 @@ bundles for inconsistent per-variant row counts (the documented
 `--require-manifest --trust-internal-source --allow-partial-validation`, under which
 all 58 pass with zero errors. The internal-source trust path for these classes is
 tracked by `flagged-local-bundles-compliance-class-gate-20261025`.
+
+### Value evidence against DuckDB (wheel 30.25.0.1)
+
+Each of the 58 bundles was checked with a capture-only run of the same benchmark, scale
+and SQL on SQLGlot 30.25.0.1 (`--phases generate,load,power --iterations 1`, full result
+rows captured per query, 50,000-row cap, no new bundle written) and compared per query
+with a DuckDB capture of the same data. A query is `passed` when the row counts are equal,
+rows align on their non-numeric columns, every numeric value is within relative tolerance
+1e-6, and it is also consistent with the bundle's own warm-up row count. A query is
+`unproven` when the DuckDB result is empty or an all-zero/NULL aggregate, or when the
+capture hit the row cap; unproven queries are not counted as passed. `whitespace-only`
+means the rows are equal only after trimming leading or trailing whitespace. TPC-DS row
+counts vary per stream, so only the warm-up stream is comparable with a capture. NYC Taxi
+query parameters are unseeded, so both the DuckDB and the ClickHouse Local NYC Taxi
+captures pinned one parameter seed and are not compared with the bundle row counts. SQLite
+`bundle-failed` queries failed in the bundle itself and were not captured.
+
+`clickhouse-local`
+
+| benchmark | SF | passed | whitespace-only | unproven | discrepancy | bundle-failed | no capture/reference |
+|---|---|---|---|---|---|---|---|
+| coffeeshop | 0.01 | 8 | 0 | 0 | 3 | 0 | 0 |
+| coffeeshop | 0.1 | 8 | 0 | 0 | 3 | 0 | 0 |
+| coffeeshop | 1 | 8 | 0 | 0 | 3 | 0 | 0 |
+| datavault | 0.01 | 19 | 1 | 1 | 1 | 0 | 0 |
+| datavault | 0.1 | 18 | 2 | 0 | 2 | 0 | 0 |
+| flightdata | 0.01 | 20 | 0 | 0 | 0 | 0 | 0 |
+| flightdata | 0.1 | 19 | 0 | 0 | 1 | 0 | 0 |
+| flightdata | 1 | 20 | 0 | 0 | 0 | 0 | 0 |
+| nyctaxi | 0.01 | 23 | 0 | 0 | 2 | 0 | 0 |
+| nyctaxi | 0.1 | 25 | 0 | 0 | 0 | 0 | 0 |
+| nyctaxi | 1 | 25 | 0 | 0 | 0 | 0 | 0 |
+| read_primitives | 0.01 | 101 | 9 | 16 | 20 | 0 | 1 |
+| read_primitives | 0.1 | 94 | 8 | 21 | 23 | 0 | 1 |
+| tpcdi | 0.01 | 29 | 0 | 3 | 6 | 0 | 0 |
+| tpcdi | 0.1 | 29 | 0 | 2 | 7 | 0 | 0 |
+| tpcdi | 1 | 30 | 0 | 2 | 6 | 0 | 0 |
+| tpcds | 1 | 70 | 0 | 14 | 16 | 0 | 3 |
+| tpch | 0.01 | 19 | 1 | 1 | 1 | 0 | 0 |
+| tpch | 0.1 | 18 | 2 | 0 | 2 | 0 | 0 |
+| tpch | 1 | 17 | 3 | 0 | 2 | 0 | 0 |
+| tpch_skew | 0.01 | 16 | 2 | 3 | 1 | 0 | 0 |
+| tpch_skew | 0.1 | 16 | 3 | 2 | 1 | 0 | 0 |
+| tpch_skew | 1 | 16 | 3 | 2 | 1 | 0 | 0 |
+| tpchavoc | 0.01 | 166 | 7 | 8 | 18 | 0 | 0 |
+| tpchavoc | 0.1 | 157 | 16 | 0 | 26 | 0 | 0 |
+| tpchavoc | 1 | 145 | 26 | 0 | 26 | 0 | 2 |
+| **total (26 cells)** | | **1116** | **83** | **75** | **171** | **0** | **7** |
+
+`datafusion`
+
+| benchmark | SF | passed | whitespace-only | unproven | discrepancy | bundle-failed | no capture/reference |
+|---|---|---|---|---|---|---|---|
+| clickbench | 1 | 25 | 0 | 8 | 10 | 0 | 0 |
+| coffeeshop | 0.01 | 11 | 0 | 0 | 0 | 0 | 0 |
+| coffeeshop | 0.1 | 11 | 0 | 0 | 0 | 0 | 0 |
+| coffeeshop | 1 | 11 | 0 | 0 | 0 | 0 | 0 |
+| read_primitives | 0.01 | 112 | 0 | 15 | 11 | 0 | 0 |
+| read_primitives | 0.1 | 102 | 0 | 20 | 16 | 0 | 0 |
+| tpcdi | 0.01 | 34 | 0 | 3 | 1 | 0 | 0 |
+| tpcdi | 0.1 | 35 | 0 | 2 | 1 | 0 | 0 |
+| tpcdi | 1 | 35 | 0 | 2 | 1 | 0 | 0 |
+| tpcds | 1 | 89 | 0 | 14 | 0 | 0 | 0 |
+| tpcds | 10 | 97 | 0 | 5 | 1 | 0 | 0 |
+| tpch | 0.01 | 21 | 0 | 1 | 0 | 0 | 0 |
+| tpch | 0.1 | 22 | 0 | 0 | 0 | 0 | 0 |
+| tpch | 1 | 22 | 0 | 0 | 0 | 0 | 0 |
+| tpch_skew | 0.01 | 19 | 0 | 3 | 0 | 0 | 0 |
+| tpch_skew | 0.1 | 20 | 0 | 2 | 0 | 0 | 0 |
+| tpch_skew | 1 | 20 | 0 | 2 | 0 | 0 | 0 |
+| tpchavoc | 0.01 | 201 | 0 | 8 | 0 | 0 | 0 |
+| tpchavoc | 0.1 | 209 | 0 | 0 | 0 | 0 | 0 |
+| tpchavoc | 1 | 209 | 0 | 0 | 0 | 0 | 0 |
+| **total (20 cells)** | | **1305** | **0** | **85** | **41** | **0** | **0** |
+
+`sqlite`
+
+| benchmark | SF | passed | whitespace-only | unproven | discrepancy | bundle-failed | no capture/reference |
+|---|---|---|---|---|---|---|---|
+| clickbench | 1 | 27 | 0 | 8 | 8 | 0 | 0 |
+| coffeeshop | 0.01 | 11 | 0 | 0 | 0 | 0 | 0 |
+| coffeeshop | 0.1 | 11 | 0 | 0 | 0 | 0 | 0 |
+| coffeeshop | 1 | 11 | 0 | 0 | 0 | 0 | 0 |
+| read_primitives | 0.01 | 88 | 0 | 16 | 10 | 38 | 0 |
+| read_primitives | 0.1 | 83 | 0 | 21 | 10 | 38 | 0 |
+| tpch | 0.01 | 21 | 0 | 1 | 0 | 0 | 0 |
+| tpch | 0.1 | 22 | 0 | 0 | 0 | 0 | 0 |
+| tpch | 1 | 21 | 0 | 0 | 1 | 0 | 0 |
+| tpch_skew | 0.01 | 19 | 0 | 3 | 0 | 0 | 0 |
+| tpch_skew | 0.1 | 19 | 0 | 2 | 1 | 0 | 0 |
+| tpch_skew | 1 | 19 | 0 | 2 | 1 | 0 | 0 |
+| **total (12 cells)** | | **352** | **0** | **53** | **31** | **76** | **0** |
+
+Counts reconcile to the 58 bundles: 26 ClickHouse Local, 20 DataFusion, 12 SQLite.
+
+#### Discrepancy adjudication
+
+Proven causes (evidence: the value or rowcount difference, plus a direct probe where noted):
+
+- ClickHouse Local TPC-H Q6, every TPC-Havoc `6_v*` variant and Data Vault Q6 return
+  revenue about 38-40% lower than DuckDB. On identical data (the TPC-H SF0.01 answer
+  1193053.2253 is reproduced by DuckDB and by ClickHouse with decimal literals),
+  `l_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01` compares a `Decimal(15, 2)` column with a
+  float expression and drops the boundary discount rows. The affected bundles hold wrong
+  values for these queries.
+- ClickHouse Local decimal ratio queries return values truncated to the decimal scale
+  (Coffeeshop SA1 and SA3 return 4.82 where DuckDB returns 4.8277; TPC-DI AQ3 and AQ4 show
+  the same pattern). TPC-H and Data Vault Q8, TPC-DI AQ2, AQ5, AQ6 and AQ10, TPC-Havoc
+  `1_v4` and `8_v*`, and Flight Data `delay-by-airport` differ from DuckDB by 1e-4 to
+  1e-1 relative in a way consistent with the same cause, which was not probed
+  individually.
+- ClickHouse Local Coffeeshop TM1 returns one `Evening` row (32,679 orders) instead of the four
+  day parts, so `EXTRACT(HOUR FROM order_time)` is not computing the hour.
+- DataFusion TPC-DI EQ7 returns different scores and quality labels than DuckDB (for example
+  DimAccount `POOR` against `GOOD`), consistent with integer division in the score
+  expressions. It appears in all three DataFusion TPC-DI bundles.
+- DataFusion ClickBench Q6 `COUNT(DISTINCT SearchPhrase)` returns 17 where DuckDB and SQLite
+  return 18, consistent with empty strings loaded as NULL.
+- SQLite Read Primitives `pivot_basic` (PIVOT dropped, 2,100 and 22,576 rows against 2),
+  `unpivot_basic` (UNPIVOT dropped, literal column-name strings, 100 rows against 200) and
+  `orderby_all_desc` (ascending against DuckDB descending) succeed in the bundles with wrong
+  results. DataFusion `pivot_basic` also returns 2,100 rows against 2.
+- ClickHouse Local loads strings with leading whitespace trimmed (TPC-H Q2, Q10, Q20 and the
+  corresponding Havoc, skew and Data Vault variants): 83 queries are `whitespace-only`.
+- The 8 SQLite ClickBench discrepancies are nondeterminism: Q18 has no ORDER BY; Q16, Q17,
+  Q19, Q31, Q32, Q33 and Q36 tie at the LIMIT 10 cutoff. The multiset of counts equals
+  DuckDB's in every case and every SQLite row's count matches DuckDB's exact count. The
+  DataFusion ClickBench Q16 to Q19, Q24, Q31 to Q33 and Q36 differences are the same shape (count multisets verified for all except Q24).
+- Remaining ORDER BY ... LIMIT discrepancies (TOPN, window running sum, `orderby_simple`,
+  `any_value`) differ only in the rows tied at the LIMIT cutoff on SQLite and DataFusion
+  and are probable, not proven, ties for ClickHouse Local.
+
+Left open (not accepted as passed): the remaining ClickHouse Local Read Primitives
+(approximate aggregates, struct, array and map shapes), TPC-DS (Q2, Q20, Q36, Q49, Q59, Q66,
+Q67 and others) and TPC-Havoc `2_v*`, `3_v7`, `7_v7`, `10_v*` discrepancies; ClickHouse Local
+TPC-DS Q1, Q14a and Q75 (and Havoc `5_v7`, `5_v8`) fail on the verification re-execution;
+SQLite TPC-H Q11 and TPC-H skew Q9 and Q11 differ by one row of 76 to 1,048.
