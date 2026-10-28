@@ -79,7 +79,7 @@ def test_a_failure_recorded_for_another_head_does_not_redispatch_the_current_hea
     assert harness.github.oracle_statuses(head) == []
 
 
-def test_a_capped_runs_listing_fails_the_sweep_and_dispatches_only_the_due_retry(harness: Harness) -> None:
+def test_a_runs_listing_capped_at_every_window_fails_the_sweep_and_holds_the_due_retry(harness: Harness) -> None:
     head, run = _pending_review(harness, 75, "feat/capped")
     harness.github.age(run, 600)
     for minutes in (10, 20, 30):
@@ -89,9 +89,8 @@ def test_a_capped_runs_listing_fails_the_sweep_and_dispatches_only_the_due_retry
     sweep = harness.sweep()
 
     assert sweep.code == 1
-    assert _verdict_dispatches(harness) == [
-        {"workflow": VERDICT, "ref": "develop", "inputs": {"pr": "75", "head": head}}
-    ]
+    assert _verdict_dispatches(harness) == []
+    assert harness.github.oracle_statuses(head)[-1]["state"] == "pending"
 
 
 def test_a_marked_retry_the_plan_refuses_fails_its_run(harness: Harness) -> None:

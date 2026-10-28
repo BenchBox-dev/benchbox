@@ -369,7 +369,12 @@ the head already has a marker, so two runs cannot both post for one head. It
 tries three times about two seconds apart; if every try fails, or an App review
 was edited, the guard step fails and nothing is posted: the head keeps its latest
 status and a later run decides it. A run that skips posting, or whose status post
-failed, uploads no retry state and adds no strike.
+failed, uploads no retry state and adds no strike. A manual run still uploads
+an attempt state before posting: it carries the current head, the run's time and
+the consumed retry (with the `unpublished` pending cause when the head had no
+state of its own), so a failed post can neither skip the daily budget nor the
+backoff. The sweep never re-dispatches an `unpublished` state; a manual
+`/oracle-review` retries it within the usual backoff and budget.
 
 `post` drops any finding matching an open review thread from this App by file
 and normalized title, unless the new one is more severe. Each new thread carries
@@ -652,7 +657,8 @@ nothing.
   Each run is tied to a head by the `head=<sha>` its title records, never by
   commit dates, which an author controls; a run with no recorded head (a
   comment run, a dispatch without `head`) belongs to no head, so it counts as
-  neither a failure nor a success. A cancelled run is a failure only when its
+  neither a failure nor a success, and never settles an earlier timeout on the
+  current head. A cancelled run is a failure only when its
   job hit `timeout-minutes`, which GitHub reports as a cancelled job whose
   check-run annotation reads "has exceeded the maximum execution time"; a
   concurrency cancel ("Canceling since a higher priority waiting request ...
@@ -675,8 +681,12 @@ nothing.
   twice or is capped, the sweep degrades: it dispatches only due retries, using
   a bounded lookup of every non-completed run status for the in-flight check,
   and says so in the summary. If that lookup also fails it dispatches nothing.
-  A degraded sweep exits 1 after dispatching what it safely can. Daily budget,
-  backoff and attempt limits are unchanged.
+  A degraded sweep lists the last 24 hours of runs to bound each due retry by
+  the same two-failure stop, surfaced-failure check and daily dispatch budget as
+  a full sweep, and holds the retry when even that listing fails or the
+  due state is older than it. A degraded
+  sweep exits 1 after dispatching what it safely can. Daily budget, backoff and
+  attempt limits are unchanged.
 - `make oracle-backoff-reset PR=<number> HEAD=<sha> REASON='<why>'` lets the
   owner clear one PR head's backoff and retry window once. It needs a prior
   `Owner instruction` comment from an attester naming the head, as for a

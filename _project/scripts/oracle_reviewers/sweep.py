@@ -70,16 +70,17 @@ def with_timeouts(
     runs: Iterable[Run], timed_out: Callable[[int], bool], since: datetime | None = None
 ) -> tuple[Run, ...]:
     resolved: list[Run] = []
-    settled = False
+    settled: set[str | None] = set()
     for run in runs:
         if (
-            not settled
+            run.head not in settled
             and run.conclusion == "cancelled"
             and (since is None or run.created_at >= since)
             and timed_out(run.id)
         ):
             run = replace(run, conclusion="timed_out")
-        settled = settled or run.conclusion == "success"
+        if run.conclusion == "success":
+            settled.add(run.head)
         resolved.append(run)
     return tuple(resolved)
 
