@@ -34,5 +34,5 @@ def test_staging_repoints_a_link_left_by_another_checkout(tmp_path: Path) -> Non
     target = tmp_path / "stage"
     oracle_mutation.stage(old, target, SETTINGS)
     oracle_mutation.stage(root, target, SETTINGS)
-    assert (target / "src").readlink() == root / "src"
-    assert (target / "tests").readlink() == root / "tests"
+    assert (target / "src").resolve() == (root / "src").resolve()
+    assert (target / "tests").resolve() == (root / "tests").resolve()
