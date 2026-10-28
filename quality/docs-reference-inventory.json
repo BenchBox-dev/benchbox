@@ -3510,7 +3510,7 @@
     "root": 1,
     "unresolved": 4
    },
-   "occurrences": 22,
+   "occurrences": 24,
    "path": "tests/unit/scripts/test_ci_units.py",
    "rule": "ci-path-classification",
    "target_count": 6,
@@ -4459,10 +4459,10 @@
    "file": 1384,
    "generated": 3,
    "pattern": 329,
-   "root": 202,
+   "root": 204,
    "unresolved": 2084
   },
-  "references": 33242,
+  "references": 33244,
   "unclassified": 0
  }
 }
