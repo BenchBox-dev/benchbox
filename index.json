@@ -18288,6 +18288,13 @@
       "status": "dropped",
       "title": "`make pr-open` titles a multi-commit PR with the branch name, which becomes the squash commit subject"
     },
+    "pr-open-omp-pin-guidance": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Tell make pr-open users how to obtain the pinned omp build when the installed one differs"
+    },
     "pr-open-rest-path-20261018": {
       "claim": null,
       "needs": [],

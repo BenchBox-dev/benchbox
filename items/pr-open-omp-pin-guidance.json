@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "The refusal message names the cached pinned binary path (or the command that installs it) for the current platform",
+    "Or make pr-open uses the cached pinned build automatically when it exists, covered by a test"
+  ],
+  "context": "Evidence: _project/scripts/oracle_reviewers/local.py (pinned_omp_version, installed_omp_version, mismatch check around lines 321-347 on develop) and _project/scripts/oracle_reviewers/omp_pin.py (binary_path, install, BENCHBOX_OMP_CACHE). cli.py install-omp must run as a module, because running the file directly fails with 'attempted relative import with no known parent package'. Filed from session review 2026-10-27.\n\nMoved from the todo-db tracker on 2026-10-28; the item was filed there by mistake.",
+  "description": "make pr-open refuses with 'local oracle review is unavailable: omp version mismatch: installed 18.13.1, CI pins 18.12.1; install the pinned build' and a note that a 'Local oracle override:' line does not cover it. The message gives no way to get the pinned build, although the repo's installer already caches a SHA-256-verified build at ~/.cache/benchbox/omp/<version>/<platform>/omp. The workaround is to put that directory first on PATH for the one command; it was found by looking at another session's cache.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3577"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:mcp:joe@joe-mac-mini.local:5427f38a811abefa5a292dd6",
+      "at": "2026-10-28T13:47:05Z",
+      "client": "mcp",
+      "op": "create",
+      "op_id": "d5101f83d8ff462aac570ecf03ccdda0",
+      "session_id": "8dd2786d2f544912829f10b74985f086"
+    }
+  ]
+}
