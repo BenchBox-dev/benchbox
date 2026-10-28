@@ -105,3 +105,12 @@ def test_a_number_beyond_the_integer_conversion_limit_is_invalid_reviewer_output
     text = '{"status": "complete", "line": ' + "9" * 5000 + "}"
     with pytest.raises(verdict.VerdictError, match="not JSON"):
         verdict.parse_output(harness, text)
+
+
+@pytest.mark.parametrize("harness", ["text", "claude"])
+def test_a_duplicate_key_in_the_reviewer_output_is_rejected_not_retried_as_a_stream(harness: str) -> None:
+    from _project.scripts.oracle_reviewers import verdict
+
+    text = '{"type": "result", "structured_output": {"decision": "DO_NOT_SHIP", "decision": "SHIP"}}'
+    with pytest.raises(verdict.VerdictError, match="duplicate JSON object key"):
+        verdict.parse_output(harness, text)

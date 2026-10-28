@@ -530,6 +530,8 @@ def parse_output(harness: str, text: str) -> Any:
     stripped = _strip_fence(text)
     try:
         payload = json.loads(stripped, object_pairs_hook=_unique_object)
+    except VerdictError:
+        raise
     except ValueError as exc:
         payload = _stream_result(text) if harness == "claude" else None
         if payload is None:
