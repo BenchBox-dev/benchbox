@@ -52,7 +52,7 @@ python3 $S --summarize /tmp/tc/*.json
 
 | Engine | Version | Revision / pin |
 |--------|---------|----------------|
-| Wrapper (bundled fork) | 30.25.0.1 | fork `87a34a6cc16f`, upstream `9d2966ed3f8a`, wheel SHA-256 `c8556873...bfb2`, pure Python |
+| Wrapper (bundled fork) | 30.25.0.2 | fork `9f51489a1721`, upstream `9d2966ed3f8a`, wheel SHA-256 `6207c352...8fa2`, pure Python |
 | SQLGlot pure Python | 30.25.0 | PyPI |
 | SQLGlot compiled | 30.25.0 | PyPI `sqlglot[c]`, `sqlglotc` 30.25.0 |
 | Polyglot | polyglot-sql 0.13.4 | PyPI |
