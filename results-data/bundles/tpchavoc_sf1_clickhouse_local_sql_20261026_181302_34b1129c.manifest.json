@@ -1,0 +1,14 @@
+{
+  "bundle_file": "tpchavoc_sf1_clickhouse_local_sql_20261026_181302_34b1129c.json",
+  "bundle_hash": "4cf4e69f6c5643f44e14eded34b15bf49a49c169c4b8f937145eab07773a341b",
+  "container_host_os": "macOS",
+  "execution_class": "container",
+  "execution_class_evidence": "Bundle records a Linux kernel on an Apple CPU vendor: a Linux guest on Apple silicon, not the native macOS host.",
+  "funding": "unspecified",
+  "known_defects": [
+    "defective-tpchavoc-variant-divergence"
+  ],
+  "manifest_version": "1.0",
+  "result_source": "internal",
+  "submitted_by": "maintainer"
+}
