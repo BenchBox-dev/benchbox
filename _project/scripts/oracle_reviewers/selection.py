@@ -5,7 +5,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
 
-from .absence import EMPTY, ERROR, INCOMPLETE, INVALID
+from . import credentials
+from .absence import EMPTY, ERROR, INCOMPLETE, INVALID, published_detail
 from .policy import Reviewer
 from .recovery import RETRY, STOP, Recovery
 
@@ -112,7 +113,7 @@ def needs_recovery(attempt: Attempt) -> bool:
 
 
 def stop_reason(attempt: Attempt) -> str:
-    detail = " ".join(attempt.detail.split())
+    detail = published_detail(attempt.detail, credentials.known())
     return f"stopped: the process is blocked ({detail})"
 
 

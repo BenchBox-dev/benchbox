@@ -350,3 +350,11 @@ def test_the_state_names_the_tier_the_model_role_the_attempt_and_the_earlier_mes
     assert "tier medium, model role @default (omp anthropic/claude-sonnet-5-5, effort high)" in state
     assert "attempt 1 of at most 2" in state
     assert "tier small, attempt 1: first; tier small, attempt 2: second" in state
+
+
+def test_the_stop_reason_is_redacted_and_bounded_like_every_published_detail() -> None:
+    secret = "sk-" + "a1B2c3D4" * 6
+    detail = f"bad token {secret}\n" + "x " * 200
+    reason = _chosen(["r1"], [_invalid(1, "r1", JEV_STOP, detail)])[1][0]
+    assert secret not in reason and "[redacted]" in reason and "\n" not in reason
+    assert len(reason.removeprefix("stopped: the process is blocked (")) <= 162
