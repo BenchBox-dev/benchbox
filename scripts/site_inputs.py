@@ -10,7 +10,7 @@ import subprocess
 import sys
 import tomllib
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -106,7 +106,7 @@ def package_version() -> str:
 def repo_file_entries() -> list[dict[str, str]]:
     files = git_ls_files()
     entries = [{"path": p, "kind": "file"} for p in files]
-    dirs = sorted({str(Path(p).parent) for p in files if "/" in p})
+    dirs = sorted({ancestor.as_posix() for p in files for ancestor in PurePosixPath(p).parents if ancestor.parts})
     entries += [{"path": d, "kind": "tree"} for d in dirs]
     return entries
 
