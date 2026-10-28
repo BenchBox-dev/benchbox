@@ -59,6 +59,14 @@ def test_the_committed_policy_pins_every_published_platform_with_https_urls_and_
         lambda data: data["omp"].update(builds={}),
         lambda data: data["omp"]["builds"]["linux-x64"].update(url="http://insecure.example.invalid/omp"),
         lambda data: data["omp"]["builds"]["linux-x64"].update(sha256="ABC"),
+        lambda data: data["omp"]["builds"].update({"../evil-x64": data["omp"]["builds"]["linux-x64"]}),
+        lambda data: data["omp"]["builds"].update({"linux/x64": data["omp"]["builds"]["linux-x64"]}),
+        lambda data: data["omp"]["builds"].update(
+            {"linux-x64\nORACLE_OMP_BINARY=/tmp/x": data["omp"]["builds"]["linux-x64"]}
+        ),
+        lambda data: data["omp"]["builds"].update({"Linux-X64": data["omp"]["builds"]["linux-x64"]}),
+        lambda data: data["omp"]["builds"].update({"linux": data["omp"]["builds"]["linux-x64"]}),
+        lambda data: data["omp"]["builds"].update({7: data["omp"]["builds"]["linux-x64"]}),
     ],
 )
 def test_a_malformed_pin_is_rejected(mutation) -> None:
@@ -346,6 +354,39 @@ def test_required_binary_never_falls_back_to_path_omp(tmp_path: Path, monkeypatc
         omp_pin.required_binary()
     monkeypatch.setenv(omp_pin.BINARY_ENV, sys.executable)
     assert omp_pin.required_binary() == Path(sys.executable)
+
+
+def _executable(path: Path, text: str) -> Path:
+    path.write_text(text, encoding="utf-8")
+    path.chmod(0o755)
+    return path
+
+
+def test_verified_binary_accepts_only_the_pinned_bytes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    pinned = _executable(tmp_path / "omp", SCRIPT)
+    digest = hashlib.sha256(SCRIPT.encode()).hexdigest()
+    monkeypatch.setenv(omp_pin.BINARY_ENV, str(pinned))
+    assert omp_pin.verified_binary(digest) == pinned
+    _executable(pinned, SCRIPT + "# swapped\n")
+    with pytest.raises(omp_pin.PinError, match="does not match the pinned sha256"):
+        omp_pin.verified_binary(digest)
+
+
+@pytest.mark.parametrize("expected", ["", "ABC", "0" * 63])
+def test_verified_binary_refuses_when_the_plan_has_no_valid_hash(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, expected: str
+) -> None:
+    monkeypatch.setenv(omp_pin.BINARY_ENV, str(_executable(tmp_path / "omp", SCRIPT)))
+    with pytest.raises(omp_pin.PinError, match="no pinned omp sha256"):
+        omp_pin.verified_binary(expected)
+
+
+def test_verified_binary_never_falls_back_to_the_path_omp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _executable(tmp_path / "omp", SCRIPT)
+    monkeypatch.setenv("PATH", str(tmp_path))
+    monkeypatch.delenv(omp_pin.BINARY_ENV, raising=False)
+    with pytest.raises(omp_pin.PinError, match="pinned omp is not installed"):
+        omp_pin.verified_binary(hashlib.sha256(SCRIPT.encode()).hexdigest())
 
 
 @pytest.mark.parametrize("command", ["select", "scan-disk", "attempts", "finalize"])

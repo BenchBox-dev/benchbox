@@ -24,13 +24,42 @@ def _keys(value: Any) -> Iterator[str]:
             yield from _keys(item)
 
 
-def _redact(value: Any, extra: tuple[str, ...]) -> Any:
+def _text(item: Any) -> str | None:
+    if isinstance(item, str):
+        return item
+    if isinstance(item, dict) and isinstance(item.get("text"), str):
+        return item["text"]
+    return None
+
+
+def _joined(items: list[Any]) -> str:
+    return "".join(text for item in items if (text := _text(item)) is not None)
+
+
+def _rejoined(items: list[Any], extra: tuple[str, ...]) -> list[Any]:
+    joined = _joined(items)
+    cleaned = credentials.redact(joined, extra)
+    if cleaned == joined:
+        return items
+    first = True
+    result: list[Any] = []
+    for item in items:
+        if _text(item) is None:
+            result.append(item)
+            continue
+        text = cleaned if first else ""
+        first = False
+        result.append(text if isinstance(item, str) else {**item, "text": text})
+    return result
+
+
+def redact(value: Any, extra: tuple[str, ...]) -> Any:
     if isinstance(value, str):
         return credentials.redact(value, extra)
     if isinstance(value, list):
-        return [_redact(item, extra) for item in value]
+        return [redact(item, extra) for item in _rejoined(value, extra)]
     if isinstance(value, dict):
-        return {key: _redact(item, extra) for key, item in value.items()}
+        return {key: redact(item, extra) for key, item in value.items()}
     return value
 
 
@@ -38,6 +67,7 @@ def _strings(value: Any) -> Iterator[str]:
     if isinstance(value, str):
         yield value
     elif isinstance(value, list):
+        yield _joined(value)
         for item in value:
             yield from _strings(item)
     elif isinstance(value, dict):
@@ -61,7 +91,7 @@ def sanitize(path: Path, extra: tuple[str, ...]) -> bool:
         data = json.loads(original)
     except ValueError as exc:
         raise Unredactable(path) from exc
-    cleaned = _redact(data, extra)
+    cleaned = redact(data, extra)
     text = json.dumps(cleaned, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
     remaining = (*_keys(cleaned), *_strings(cleaned), text)
     if any(credentials.contains(item, extra) for item in remaining):
