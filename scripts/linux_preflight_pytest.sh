@@ -39,6 +39,10 @@ if [ "$#" -ne 1 ] || [ ! -f "$1" ]; then
 fi
 test_list=$1
 
+if [ "$(uname -s)" = "Linux" ]; then
+  echo "Host is Linux; the changed-file tests above already ran on Linux."
+  exit 0
+fi
 if [ "$(uname -s)" != "Darwin" ] || [ "$(uname -m)" != "arm64" ]; then
   unverified "host is $(uname -s)/$(uname -m), not Apple silicon macOS; the Linux container run is unavailable."
 fi

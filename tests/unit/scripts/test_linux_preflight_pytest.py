@@ -30,6 +30,16 @@ def _fake_container(tmp_path: Path, machines: str) -> str:
     return f"{bin_dir}:/usr/bin:/bin"
 
 
+@pytest.mark.skipif(os.uname().sysname != "Linux", reason="Linux host only")
+def test_linux_host_reports_tests_already_ran_without_warning(tmp_path: Path) -> None:
+    result = _run(tmp_path, path="/usr/bin:/bin")
+
+    assert result.returncode == 0
+    assert "Linux not verified" not in result.stderr
+    assert "already ran on Linux" in result.stdout
+
+
+@pytest.mark.skipif(os.uname().sysname == "Linux", reason="non-Linux hosts only")
 def test_missing_container_warns_and_succeeds(tmp_path: Path) -> None:
     result = _run(tmp_path, path="/usr/bin:/bin")
 
