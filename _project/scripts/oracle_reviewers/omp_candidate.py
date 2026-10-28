@@ -77,7 +77,8 @@ class Report:
     def releasable(self) -> bool:
         hashed = {build.target for build in self.builds}
         host_probed = any(build.target == self.host and build.probed for build in self.builds)
-        return self.passed and host_probed and all(target in hashed for target in self.unverified)
+        clear = not self.blind_canaries
+        return self.passed and clear and host_probed and all(target in hashed for target in self.unverified)
 
     def to_json(self) -> dict[str, Any]:
         return {

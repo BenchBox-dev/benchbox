@@ -720,6 +720,8 @@ def test_a_blind_canary_makes_the_report_partial_and_names_the_canary(tmp_path: 
         report.render()
     )
     assert "result: partial" in report.render()
+    assert not report.releasable
+    assert replace(report, head="b" * 40).evidence_line is None
 
 
 def test_a_control_run_that_never_executed_leaves_every_provider_it_covers_unprobed() -> None:

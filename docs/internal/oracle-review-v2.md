@@ -865,7 +865,7 @@ to GitHub.
   request proves nothing and is red), and `--no-skills`/`--no-rules` plus `mcp.enableProjectConfig`
   would hide a provider that is still on, so these runs drop those guards. A
   canary the control run cannot see leaves its provider unprobed and the run
-  `partial`; one the overlay run sees is red and names the provider. The
+  `partial` and withholds the `releasable` evidence line; one the overlay run sees is red and names the provider. The
   entries with no canary stay `partial`: `omp-plugins`, `agent-plugins` and
   `claude-plugins` read installed plugin packages, and `ssh-json` hosts reach no
   model-visible surface under the read roster. Row 8's provider reset wording
