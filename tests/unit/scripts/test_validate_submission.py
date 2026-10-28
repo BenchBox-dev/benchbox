@@ -89,6 +89,9 @@ class TestManifestProvenance:
     def test_superseded_sql_translation_defect_ok(self):
         assert self._run({"known_defects": ["defective-superseded-sql-translation"]}).ok
 
+    def test_variant_or_loader_wrong_result_defect_ok(self):
+        assert self._run({"known_defects": ["defective-variant-or-loader-wrong-result"]}).ok
+
     def test_sqlite_clickbench_row_count_defect_ok(self):
         assert self._run({"known_defects": ["defective-sqlite-clickbench-row-counts"]}).ok
 
