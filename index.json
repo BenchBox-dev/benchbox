@@ -15719,7 +15719,12 @@
       "title": "Record port-or-drop for every nightly.yml job that has no nightly-v2 equivalent"
     },
     "nightly-v2-windows-unit-leg-20261009": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-29T16:40:17Z",
+        "generation": "3584442928d64fd48ed554c8e67c6681",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
+      },
       "needs": [
         "nightly-windows-utf8-reads-20261008",
         "nightly-windows-teardown-and-singles-20261008",
@@ -15729,7 +15734,7 @@
         "agent-write-preflight-quoted-interpreter-20261009"
       ],
       "priority": "medium-high",
-      "status": "blocked",
+      "status": "active",
       "title": "Add a Windows unit-test domain to nightly-v2 so retiring nightly.yml keeps Windows coverage"
     },
     "nightly-windows-mcp-durable-fsync-followup": {
