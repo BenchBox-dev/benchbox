@@ -27,7 +27,7 @@ LEAKS = {
     "operator home path": re.compile(r"/Users/[A-Za-z0-9_.-]+|/home/(?!runner)[A-Za-z0-9_.-]+"),
     "foreign host": re.compile(
         r"https?://(?!(?:api\.github\.com|github\.com|avatars\.githubusercontent\.com|help\.github\.com|example\.com"
-        r"|localhost|127\.0\.0\.1)(?::\d+)?\.?(?=[/?#\s\"'\\)<>]|$))[^\s/?#\"'\\)<>]+",
+        r"|download\.example\.invalid|localhost|127\.0\.0\.1)(?::\d+)?\.?(?=[/?#\s\"'\\)<>]|$))[^\s/?#\"'\\)<>]+",
         re.IGNORECASE,
     ),
 }

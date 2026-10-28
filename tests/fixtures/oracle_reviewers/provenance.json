@@ -41,6 +41,12 @@
       "redaction": "pattern scan finds no token, gateway host or URL, or operator home path; no credential-shaped value present",
       "source": "answers captured from TypeSafe jev-1.14.0 on 2026-10-28 through the recovery question"
     },
+    "omp_candidate/build_api_latest.json": {
+      "captured_at": "2026-10-27",
+      "origin": "captured",
+      "redaction": "the presigned download URL is replaced by the reserved download.example.invalid host; pattern scan finds no token, gateway host or operator home path",
+      "source": "response of the omp build listing API for the latest stable build (omp 18.13.2, build 20261027-180828-e996e1c, published 2026-10-27T18:10:18Z); public release metadata with the presigned download URL replaced by a reserved example.invalid host"
+    },
     "omp_candidate/chain_review.jsonl": {
       "origin": "captured",
       "redaction": "pattern scan finds no token, gateway host or URL, or operator home path; no credential-shaped value present",
