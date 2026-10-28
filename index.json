@@ -27909,10 +27909,15 @@
       "title": "Trino Platform Adapter"
     },
     "trunk-alarm-3511-selfclose-20261026": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-29T14:05:45Z",
+        "generation": "d3ae91d43dac42aeb2d1d6fb5d4e2f32",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Verify the Trunk duration alarm self-closes now the chDB regression is fixed"
     },
     "trunk-arm-gate-blames-newest-red-run-20261022": {
