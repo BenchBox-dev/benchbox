@@ -76,6 +76,7 @@ class FakeGitHub:
         self.lock = threading.RLock()
         self.ids = itertools.count(1000)
         self.pulls: dict[int, dict[str, Any]] = {}
+        self.reported_changed_files: dict[int, int] = {}
         self.reviews: dict[int, list[dict[str, Any]]] = defaultdict(list)
         self.statuses: dict[str, list[dict[str, Any]]] = defaultdict(list)
         self.comments: dict[int, list[dict[str, Any]]] = defaultdict(list)
@@ -145,7 +146,7 @@ class FakeGitHub:
         pull = self.pulls[number]
         pull["head"]["sha"] = self.git("rev-parse", pull["head"]["ref"]).strip()
         pull["base"]["sha"] = self.git("rev-parse", pull["base"]["ref"]).strip()
-        pull["changed_files"] = len(self.files(number))
+        pull["changed_files"] = self.reported_changed_files.get(number, len(self.files(number)))
 
     def files(self, number: int) -> list[dict[str, Any]]:
         pull = self.pulls[number]

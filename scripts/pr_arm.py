@@ -33,6 +33,7 @@ VERDICT_ARTIFACT_PREFIX = "fast-duration-verdict"
 VERDICT_FILE = "fast-duration-verdict.json"
 PROCEEDING_VERDICTS = frozenset({"pass", "neutral", "not-applicable"})
 PRODUCER_CHECK = "core"
+WAITING_MARKERS = ("waiting for full CI run", "has not finished for")
 
 Runner = Callable[[list[str]], tuple[int, str]]
 
@@ -194,7 +195,7 @@ def duration_verdict_refusals(run: Runner, repo: str, number: int, head: str, la
         return [refusal] if refusal else []
     verdict = report.get("verdict")
     if verdict in PROCEEDING_VERDICTS:
-        print(f"{label}: verify-fast-duration verdict for {head[:9]} is {verdict}; arming is not held")
+        print(f"{label}: duration check: verify-fast-duration verdict for {head[:9]} is {verdict}")
         return []
     if verdict != "would-block":
         return [
@@ -203,7 +204,9 @@ def duration_verdict_refusals(run: Runner, repo: str, number: int, head: str, la
             "Fix the cause and re-run the core job with make pr-rerun, or push a new head"
         ]
     if _changes_baseline(run, repo, number):
-        print(f"{label}: verify-fast-duration would block {head[:9]}, but the PR updates {BASELINE_DIRECTORY}")
+        print(
+            f"{label}: duration check: would-block verdict for {head[:9]} is excused because the PR updates {BASELINE_DIRECTORY}"
+        )
         return []
     return [
         f"verify-fast-duration reported would-block for {head[:9]}: normalized summed-time ratio "
@@ -288,6 +291,17 @@ def _current_branch_pr(run: Runner, repo: str) -> str:
     return str(numbers[0])
 
 
+def _outcome(line: str, code: int) -> int:
+    sys.stderr.flush()
+    print(f"pr-arm: outcome: {line}", flush=True)
+    return code
+
+
+def _refused(reason: str, code: int) -> int:
+    print(f"pr-arm: refusing: {reason}", file=sys.stderr)
+    return _outcome(f"refused: {reason}", code)
+
+
 def arm(
     pr: str | None,
     head: str | None,
@@ -302,28 +316,22 @@ def arm(
     bump: Callable[[Runner, str, int, str], list[str]] = pr_arm_omp_bump.bump_refusals,
 ) -> int:
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
-        print(f"pr-arm: refusing: --repo must be owner/name, got {repo!r}", file=sys.stderr)
-        return 2
+        return _refused(f"--repo must be owner/name, got {repo!r}", 2)
     if head is not None and not re.fullmatch(r"[0-9a-f]{40}", head):
-        print(f"pr-arm: refusing: --head must be a full lowercase commit SHA, got {head!r}", file=sys.stderr)
-        return 2
+        return _refused(f"--head must be a full lowercase commit SHA, got {head!r}", 2)
     try:
         code, out = run(["git", "rev-parse", "HEAD"])
         if code != 0:
-            print(f"pr-arm: cannot read local HEAD: {out.strip()}", file=sys.stderr)
-            return 1
+            return _refused(f"cannot read local HEAD: {out.strip()}", 1)
         local_head = out.strip()
         if head is not None and head != local_head:
-            print(f"pr-arm: refusing: requested head {head[:9]} is not local HEAD {local_head[:9]}", file=sys.stderr)
-            return 2
+            return _refused(f"requested head {head[:9]} is not local HEAD {local_head[:9]}", 2)
         if pr is not None and not re.fullmatch(r"[1-9][0-9]*", pr):
-            print(f"pr-arm: refusing: --pr must be a plain PR number, got {pr!r}", file=sys.stderr)
-            return 2
+            return _refused(f"--pr must be a plain PR number, got {pr!r}", 2)
         number = pr or _current_branch_pr(run, repo)
         code, out = run(["gh", "pr", "view", number, "--repo", repo, "--json", VIEW_FIELDS])
         if code != 0:
-            print(f"pr-arm: cannot read the pull request: {out.strip()}", file=sys.stderr)
-            return 1
+            return _refused(f"cannot read the pull request: {out.strip()}", 1)
         view = json.loads(out)
         reasons = refusals(
             view,
@@ -340,7 +348,9 @@ def arm(
         if reasons:
             for reason in reasons:
                 print(f"pr-arm: refusing to arm PR #{view['number']}: {reason}", file=sys.stderr)
-            return 2
+            if all(any(marker in reason for marker in WAITING_MARKERS) for reason in reasons):
+                return _outcome(f"waiting: PR #{view['number']} is not armed yet: {' | '.join(reasons)}", 2)
+            return _outcome(f"refused: PR #{view['number']} was not armed: {' | '.join(reasons)}", 2)
         refresh_oracle_gate(run, repo, int(view["number"]), local_head)
         code, out = run(
             [
@@ -357,10 +367,12 @@ def arm(
             ]
         )
         print(out.strip())
-        return code
+        if code != 0:
+            return _outcome(f"refused: gh pr merge exited {code} for PR #{view['number']}: {out.strip()[:200]}", code)
+        return _outcome(f"armed: PR #{view['number']} at head {local_head}", 0)
     except (pr_landing.LandingError, subprocess.SubprocessError, OSError, ValueError, KeyError, TypeError) as exc:
         print(f"pr-arm: refusing, live state could not be verified: {exc}", file=sys.stderr)
-        return 1
+        return _outcome(f"refused: live state could not be verified: {exc}", 1)
 
 
 def _environment_selection(env: Mapping[str, str]) -> dict[str, str | None]:

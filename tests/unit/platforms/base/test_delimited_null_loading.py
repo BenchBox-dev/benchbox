@@ -184,3 +184,30 @@ class TestSqliteAdapterLoad:
             (2, None, None, "B", None),
         ]
         assert connection.execute("SELECT SUM(price), COUNT(price) FROM facts WHERE id = 2").fetchone() == (None, 0)
+
+
+class TestHeaderRow:
+    @pytest.mark.parametrize(
+        ("quote", "body"),
+        [(None, "zone_id,zone\n1,Newark\n2,Queens\n"), ('"', 'zone_id,zone\n1,"Newark, EWR"\n2,Queens\n')],
+    )
+    def test_header_row_is_not_inserted(self, tmp_path: Path, quote: str | None, body: str) -> None:
+        schema = {
+            "zones": {
+                "columns": [
+                    {"name": "zone_id", "type": "INTEGER", "nullable": False, "primary_key": True},
+                    {"name": "zone", "type": "VARCHAR(20)", "nullable": True},
+                ]
+            }
+        }
+        path = tmp_path / "zones.csv"
+        path.write_text(body, encoding="utf-8")
+        connection = sqlite3.connect(":memory:")
+        connection.execute("CREATE TABLE zones (zone_id INTEGER PRIMARY KEY, zone VARCHAR(20))")
+
+        loaded = DelimitedFileHandler(",", quote=quote, has_header=True).load_table(
+            "zones", path, connection, types.SimpleNamespace(get_schema=lambda: schema), logging.getLogger("test")
+        )
+
+        assert loaded == 2
+        assert connection.execute("SELECT COUNT(*), MIN(zone_id) FROM zones").fetchone() == (2, 1)

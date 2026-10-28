@@ -205,6 +205,13 @@ consumers (`oracle_review_check.py`, the reviewer classifier,
 `.github/path-filters.yml` does not read it: its `code-ci` list hand-maintains
 the machine-read documents routed to code CI.
 
+The gate machinery, including `oracle-gate.yml` and `oracle_gate.py`, is listed
+in `classifier.gate_paths`, so changing it is always classed as a gate change.
+When the changed-file listing is shorter than the pull's changed-file count
+(GitHub caps it at 3000), the plan holds the head pending for owner review with
+that reason: it neither declares the change exempt nor reviews a partial view,
+because the unlisted files are unknown.
+
 Add an `except` line to keep a document in review scope; remove it to return the
 document to inert. Every `except` line must match a tracked path
 (`test_every_exception_matches_a_tracked_path`), which is why the assignment
@@ -343,7 +350,12 @@ does a defect marked fixed on an unchanged patch, so only evidenced dispositions
 leave the open list; withdrawals are reported separately as never defects. Every
 disposition and its evidence is published under its finding in the review body;
 if the body would exceed the cap, finding details shrink first and no
-disposition line is dropped.
+disposition line is dropped. A citation is a repository-relative path then
+`:line`, and the path may be hidden (`.github/...`) or extensionless
+(`Makefile`); it verifies only when that exact path was read at the head commit.
+An override note the oracle appends to a disposition's evidence survives the
+artifact replay: replayed evidence may exceed the reviewer's 1000-character cap
+by up to 1000 characters, and the published body still shrinks to its cap.
 
 A thread reply is a keyed dispute only if it is from an owner, member or
 collaborator other than the oracle bot, has a line starting `Dispute:` stating
@@ -853,12 +865,23 @@ to GitHub.
   platform, whether limited out with `--platform` or merely hash-checked, is
   listed as unverified and the run is `partial`, not green. The build lists no
   context providers, so a `disabledProviders` entry is only checked through a
-  canary that the empty-overlay run observes and the overlay run must not: the
-  `AGENTS.md`, `CLAUDE.md` and `.mcp.json` files in the client's working
-  directory and a `.omp/AGENTS.md` in both that directory and the review
-  workspace. Every other entry is listed as unobserved and keeps the run
-  `partial`; a new canary plus an entry in `PROBED_PROVIDERS` clears it. Row 8's
-  provider reset wording cannot be
+  token file, MCP server or skill that a control run under no `disabledProviders`
+  observes and a run under the overlay's `disabledProviders` must not. Each is
+  planted at the path the provider reads (`candidate_canaries.CANARIES`), in the
+  client's working directory and the review workspace; the overlay run must see
+  neither copy. The control run must see the working-directory copy, and the
+  workspace copy too for the context and extra context files, the only
+  surfaces the build loads from `--add-dir`. Context files
+  and system prompts shadow one another (one wins per directory, so each gets
+  its own control run and its own overlay run, and an overlay run that sends no
+  request proves nothing and is red), and `--no-skills`/`--no-rules` plus `mcp.enableProjectConfig`
+  would hide a provider that is still on, so these runs drop those guards. A
+  canary the control run cannot see leaves its provider unprobed and the run
+  `partial` and withholds the `releasable` evidence line; one the overlay run sees is red and names the provider. The
+  entries with no canary stay `partial`: `omp-plugins`, `agent-plugins` and
+  `claude-plugins` read installed plugin packages, and `ssh-json` hosts reach no
+  model-visible surface under the read roster. Row 8's provider reset wording
+  cannot be
   observed offline and stays covered by the calibrated absence tests. The
   fixtures are redacted captures of the pinned build's own output; the upstream
   provider bodies the stub serves are hand-built, and `--capture-dir` rewrites

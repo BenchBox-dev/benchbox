@@ -7,8 +7,7 @@ metrics #4-#6 in
 ## Format
 
 Append entries under the relevant section. Each entry is a bullet
-block with bold field labels. The script `scripts/phase2_metrics.py`
-parses these by regex.
+block with bold field labels.
 
 Required fields per entry:
 
