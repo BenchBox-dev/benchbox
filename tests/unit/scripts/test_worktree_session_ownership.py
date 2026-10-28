@@ -116,3 +116,27 @@ def test_no_session_identity_skips_guard(worktree, live_process, monkeypatch):
     for name in meta.SESSION_ENV_VARS:
         monkeypatch.delenv(name, raising=False)
     assert meta.claim_worktree(worktree) == "no-session"
+
+
+def test_renewal_from_short_lived_child_keeps_live_anchor(worktree, live_process, monkeypatch):
+    _as_session(monkeypatch, "session-a", live_process.pid)
+    meta.claim_worktree(worktree)
+
+    _as_session(monkeypatch, "session-a", 1)
+    assert meta.claim_worktree(worktree) == "renewed"
+    assert meta._get_worktree_config("owner-pid", worktree) == str(live_process.pid)
+
+    _as_session(monkeypatch, "session-b", 1)
+    with pytest.raises(meta.MetadataError):
+        meta.claim_worktree(worktree)
+
+
+def test_liveness_is_independent_of_caller_timezone(worktree, live_process, monkeypatch):
+    monkeypatch.setenv("TZ", "Pacific/Auckland")
+    _as_session(monkeypatch, "session-a", live_process.pid)
+    meta.claim_worktree(worktree)
+
+    monkeypatch.setenv("TZ", "America/Los_Angeles")
+    _as_session(monkeypatch, "session-b", 1)
+    with pytest.raises(meta.MetadataError):
+        meta.claim_worktree(worktree)

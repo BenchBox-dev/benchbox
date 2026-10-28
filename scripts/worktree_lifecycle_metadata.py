@@ -49,7 +49,22 @@ SESSION_ENV_VARS = (
     "CODEX_SESSION_ID",
     "AGENT_SESSION_ID",
 )
-WRAPPER_COMMANDS = {"sh", "bash", "zsh", "dash", "fish", "make", "gmake", "uv", "env", "python", "python3", "xargs"}
+WRAPPER_COMMANDS = {
+    "sh",
+    "bash",
+    "zsh",
+    "dash",
+    "fish",
+    "make",
+    "gmake",
+    "uv",
+    "env",
+    "python",
+    "python3",
+    "xargs",
+    "git",
+    "pre-commit",
+}
 
 
 def current_session_id() -> Optional[str]:
@@ -67,7 +82,7 @@ def _ps_field(pid: int, field: str) -> Optional[str]:
             capture_output=True,
             text=True,
             check=False,
-            env={**os.environ, "LC_ALL": "C"},
+            env={**os.environ, "LC_ALL": "C", "TZ": "UTC"},
         )
     except OSError:
         return None
@@ -98,9 +113,18 @@ def harness_pid() -> int:
 
 
 def _owner_alive(pid_text: Optional[str], start: Optional[str]) -> bool:
-    if not pid_text or not pid_text.isdigit() or not start:
+    if not pid_text or not pid_text.isdigit():
         return False
-    return process_start(int(pid_text)) == start
+    pid = int(pid_text)
+    if start:
+        return process_start(pid) == start
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
 
 
 def _clear_owner(worktree_path: Path) -> None:
@@ -129,6 +153,12 @@ def claim_worktree(worktree_path: Path, takeover: bool = False) -> str:
                 "Create your own worktree (make worktree-create), or, if the other session is gone, "
                 "take it over with BENCHBOX_WORKTREE_TAKEOVER=1 make agent-write-preflight."
             )
+
+    if owner == session and _owner_alive(
+        _get_worktree_config("owner-pid", worktree_path),
+        _get_worktree_config("owner-pid-start", worktree_path),
+    ):
+        return "renewed"
 
     pid = harness_pid()
     start = process_start(pid)
