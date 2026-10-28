@@ -4,7 +4,7 @@
     "MCP summary operator, join and scan counts match a traversal of canonical logical operators, exclude metadata/property dictionaries, and handle absent estimates without fabrication.",
     "Regression tests use canonical exported/rehydrated plans and verify semantic output for scan, join and aggregate shapes; JSON output retains the canonical plan structure."
   ],
-  "context": "Reproduced on 2026-10-28 by passing the actual persisted Q1 plan to the MCP render helpers: tree was \"├── Node\"; summary reported operator_count=47, join_count=0, scan_count=0. This rendering defect is independent of the separate MCP companion lookup defect. No fix applied.",
+  "context": "Reproduced on 2026-10-28 by passing the actual persisted Q1 plan to the MCP render helpers: tree was \"├── Node\"; summary reported operator_count=47, join_count=0, scan_count=0. Sequenced after the lookup item because both edit benchbox/mcp/tools/analytics.py.\n\nGuardrails: companion plans are always the canonical QueryPlanDAG dict, so cut over cleanly: delete the native type/children walkers and the unit tests that pin that fictional schema rather than keeping both. Reuse QueryPlanDAG.from_dict and the existing canonical visualization (benchbox/core/query_plans/visualization.py) and complexity counters (benchbox/core/query_plans/insights.py compute_complexity_score) rather than writing a new traversal. Report estimates only when the plan carries them.\n\nVerification rubric: (1) focused regression test fails before the change and passes after; (2) uv run -- python -m pytest -n 0 on the touched plan test modules passes; (3) make comment-policy-check and ruff/typecheck on touched files pass; (4) a runtime smoke on the real surface described in acceptance is recorded in the PR body.",
   "description": "MCP tree and summary helpers expect a type/children native-style tree, not the persisted QueryPlanDAG envelope with logical_root and operator_type. Passing a real exported Q1 plan renders only Node; the summary counts arbitrary dictionaries as operators and reports zero scans. Existing tests use simplified HashJoin/SeqScan fixtures, so they validate a different schema. Extend existing canonical visualization/model traversal rather than retaining parallel incompatible walkers.",
   "links": [
     "benchbox/mcp/tools/analytics.py:251-265",
@@ -19,6 +19,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "f35219e2c9e04ca9b8a39c077761eece",
+      "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bb7fd2d6b114a6501df93f97",
+      "at": "2026-10-28T22:30:49Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "cc57a5dda65c4270961d87cce82b67d5",
       "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
     }
   ]
