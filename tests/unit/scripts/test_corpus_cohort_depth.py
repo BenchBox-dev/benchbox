@@ -24,13 +24,20 @@ from _project.scripts.explorer_pipeline.transformer import BundleTransformer
 from benchbox.core.results.status import NON_CLEAN_TRANSLATION_STATUSES, NON_CLEAN_VALIDATION_STATUSES
 from benchbox.core.tuning.modes import MODES
 
-pytestmark = [pytest.mark.unit, pytest.mark.medium]
+try:
+    from tests.unit.scripts.explorer_pipeline.conftest import MINIMAL_BUNDLE, throughput_bundle
 
-_EXPLORER_FIXTURES = pytest.importorskip(
-    "tests.unit.scripts.explorer_pipeline.conftest", reason="Explorer pipeline test fixtures are not in this checkout"
-)
-MINIMAL_BUNDLE = _EXPLORER_FIXTURES.MINIMAL_BUNDLE
-throughput_bundle = _EXPLORER_FIXTURES.throughput_bundle
+    _EXPLORER_FIXTURES_PRESENT = True
+except ImportError:
+    _EXPLORER_FIXTURES_PRESENT = False
+
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.medium,
+    pytest.mark.skipif(
+        not _EXPLORER_FIXTURES_PRESENT, reason="Explorer pipeline test fixtures are not in this checkout (release tree)"
+    ),
+]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 VALIDATOR = REPO_ROOT / "results-data" / "validate_corpus.py"
@@ -1241,6 +1248,9 @@ def _explorer_pipeline_view(path: Path) -> tuple[str, str | None]:
 
 
 def _parity_variants() -> dict[str, dict]:
+    if not _EXPLORER_FIXTURES_PRESENT:
+        return {}
+
     def variant(**changes: object) -> dict:
         import copy
 
