@@ -8492,15 +8492,10 @@
       "title": "Tier tests by measured duration: durations file, T1 0.5 s budget, and a quarantine marker"
     },
     "dlv2-13a-durations-aggregate-supersession": {
-      "claim": {
-        "expires_at": "2026-10-29T03:37:23Z",
-        "generation": "d47c2e6cf96c44908f1fec866c485040",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Supersede the per-test 0.5 s duration policy with the aggregate fast-duration gate"
     },
     "dlv2-14-adapter-offline-inventory": {
