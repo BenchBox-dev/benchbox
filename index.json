@@ -30400,15 +30400,10 @@
       "title": "Windows nightly: 49 of 62 failures are untracked"
     },
     "windows-nightly-timeout-diagnosis-20261026": {
-      "claim": {
-        "expires_at": "2026-10-29T16:39:09Z",
-        "generation": "7ffeb309d5f04957ae141ae19a25d95c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Diagnose the next nightly Windows fast-unit job: hung test or slow runner"
     },
     "windows-no-cli-surface-git-output-utf8-v2": {
