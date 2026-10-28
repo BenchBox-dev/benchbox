@@ -3,7 +3,7 @@
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 import pytest
 
@@ -137,7 +137,7 @@ class TestSQLiteAdapter:
 
         assert connection == mock_connection
         mock_sqlite3.connect.assert_called_once_with(
-            ":memory:", timeout=30.0, check_same_thread=False, cached_statements=0
+            ":memory:", timeout=30.0, check_same_thread=False, cached_statements=0, factory=ANY
         )
 
         expected_pragmas = [
@@ -161,7 +161,7 @@ class TestSQLiteAdapter:
 
         assert connection == mock_connection
         mock_sqlite3.connect.assert_called_once_with(
-            "/tmp/test.db", timeout=30.0, check_same_thread=False, cached_statements=0
+            "/tmp/test.db", timeout=30.0, check_same_thread=False, cached_statements=0, factory=ANY
         )
 
     @patch("benchbox.platforms.sqlite.sqlite3")
@@ -178,6 +178,7 @@ class TestSQLiteAdapter:
             timeout=30.0,
             check_same_thread=False,
             cached_statements=0,
+            factory=ANY,
         )
 
     @patch("benchbox.platforms.sqlite.sqlite3")

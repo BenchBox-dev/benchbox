@@ -218,3 +218,27 @@ def test_reused_joinorder_database_skips_analyze_without_repairs(adapter, connec
     finally:
         connection.set_trace_callback(None)
     assert "ANALYZE" in executed
+
+
+class TestSQLiteScriptExecution:
+    def test_execute_runs_each_statement_and_returns_last_result(self, connection):
+        cursor = connection.execute(
+            "CREATE TABLE t (a INTEGER, b TEXT); INSERT INTO t VALUES (1, 'a;b'); INSERT INTO t VALUES (2, 'c'); "
+            "SELECT COUNT(*) FROM t;"
+        )
+
+        assert cursor.fetchone() == (2,)
+
+    def test_execute_keeps_trigger_body_semicolons_in_one_statement(self, connection):
+        connection.execute("CREATE TABLE t (a INTEGER)")
+        connection.execute("CREATE TRIGGER blocked BEFORE INSERT ON t BEGIN SELECT RAISE(ABORT, 'nope'); END")
+
+        with pytest.raises(Exception, match="nope"):
+            connection.execute("INSERT INTO t VALUES (1)")
+
+    def test_explicit_begin_after_pending_implicit_transaction(self, connection):
+        connection.execute("CREATE TABLE t (a INTEGER)")
+        connection.execute("INSERT INTO t VALUES (1)")
+        connection.execute("BEGIN TRANSACTION; INSERT INTO t VALUES (2); ROLLBACK;")
+
+        assert connection.execute("SELECT COUNT(*) FROM t").fetchone() == (1,)

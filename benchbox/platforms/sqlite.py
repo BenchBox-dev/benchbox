@@ -25,7 +25,6 @@ if TYPE_CHECKING:
 from .base import DriverIsolationCapability, PlatformAdapter
 from .base.connection_wrappers import _make_stream_cursor
 from .base.ddl_helpers import translate_schema_with_tpcds_fk_strip
-from .base.mysql_wire import split_sql_statements
 
 try:
     import sqlite3
@@ -41,11 +40,24 @@ else:
 _ScriptConnectionBase: type = sqlite3.Connection if sqlite3 is not None else object
 
 
+def _split_sqlite_script(sql: str) -> list[str]:
+    statements: list[str] = []
+    start = 0
+    for index, char in enumerate(sql):
+        if char == ";" and sqlite3.complete_statement(sql[start : index + 1]):
+            statements.append(sql[start : index + 1].strip())
+            start = index + 1
+    tail = sql[start:].strip()
+    if tail:
+        statements.append(tail)
+    return [statement for statement in statements if statement.strip("; \t\r\n")]
+
+
 class _SQLiteScriptConnection(_ScriptConnectionBase):
     def execute(self, sql, parameters=()):
         if parameters or ";" not in sql:
             return super().execute(sql, parameters)
-        statements = split_sql_statements(sql)
+        statements = _split_sqlite_script(sql)
         if len(statements) <= 1:
             return super().execute(statements[0] if statements else sql)
         if self.in_transaction and statements[0].upper().startswith("BEGIN"):
