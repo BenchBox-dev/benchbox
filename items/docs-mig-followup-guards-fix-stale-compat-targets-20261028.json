@@ -1,7 +1,8 @@
 {
   "acceptance": [
-    "The page names only targets that exist, in both core and the site copy."
+    "Site docs/operations/guards-fix.md and docs/design/architecture.md name only make targets that exist in core origin/develop; the guards-fix table and its no-regen list match the guards-fix recipe in core's Makefile (adds the pricing-data row, the release-curation guard, replaces compat-docs-check with compat-inventory-check). Core has no copy of the page."
   ],
+  "context": "Review 2026-10-28: VALID. Core copy removed by #3545; stale refs are site-only: guards-fix.md:21,54 and architecture.md:173. Smallest fix is a site docs PR; no new checker (bundle carries no Makefile target list).",
   "description": "docs/operations/guards-fix.md row 21 names 'make compat-docs-check' and 'make compat-docs (scripts/generate_compat_docs.py)'. The script was deleted in core PR 3545, and the core guard that remains is make compat-inventory-check. Not verified against the current Makefile or the site page; other ADR mentions of the script are plain historical text.",
   "sessions": [
     {
@@ -10,6 +11,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "cd46131976614fa99d50558f2eb7d7f6",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-28T12:36:51Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6a463881c11443fab06e631970a5bf49",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
     }
   ]
