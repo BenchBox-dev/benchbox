@@ -271,6 +271,16 @@ jobs:
           GH_TOKEN: ${{ steps.app.outputs.token }}
         run: python3 -m _project.scripts.oracle_reviewers.cli guard --plan "$RUNNER_TEMP/oracle-plan/plan.json"
 
+      - name: Record the retry attempt
+        if: steps.finalize.outputs.has_state == 'true' && steps.guard.outputs.skip != 'true'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          overwrite: true
+          name: oracle-verdict-state-attempt-${{ steps.plan.outputs.pr }}
+          path: ${{ runner.temp }}/oracle-final/attempt/state.json
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Post the commit status
         id: status
         if: steps.plan.outputs.post == 'true' && env.HAS_APP == 'true' && steps.guard.outputs.skip != 'true'
@@ -297,6 +307,7 @@ jobs:
         if: steps.status.outcome == 'success' && steps.finalize.outputs.has_state == 'true'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
+          overwrite: true
           name: oracle-verdict-state-${{ steps.plan.outputs.pr }}
           path: ${{ runner.temp }}/oracle-final/state/state.json
           if-no-files-found: error
