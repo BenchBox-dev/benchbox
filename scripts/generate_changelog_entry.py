@@ -191,8 +191,11 @@ def find_untagged_changelog_versions(
     tags: set[str],
     *,
     current_branch: str | None = None,
+    prepared_version: str | None = None,
 ) -> list[str]:
-    untagged = [v for v in released_versions_in_changelog(changelog_text) if f"v{v}" not in tags]
+    untagged = [
+        v for v in released_versions_in_changelog(changelog_text) if f"v{v}" not in tags and v != prepared_version
+    ]
     if not untagged:
         return []
     branch_match = _RELEASE_BRANCH_RE.match(current_branch) if current_branch else None
@@ -214,9 +217,16 @@ def _current_branch(source: Path) -> str | None:
 def check_tag_claims(source: Path) -> tuple[bool, list[str]]:
     changelog_path = source / "CHANGELOG.md"
     text = changelog_path.read_text(encoding="utf-8")
+    pyproject = source / "pyproject.toml"
+    version_match = _PYPROJECT_VERSION_RE.search(pyproject.read_text(encoding="utf-8")) if pyproject.is_file() else None
     tags = existing_tags(source)
     branch = _current_branch(source)
-    untagged = find_untagged_changelog_versions(text, tags, current_branch=branch)
+    untagged = find_untagged_changelog_versions(
+        text,
+        tags,
+        current_branch=branch,
+        prepared_version=version_match.group("version") if version_match else None,
+    )
     return (not untagged, untagged)
 
 
