@@ -26,8 +26,8 @@ LEAKS = {
     "tailnet host": re.compile(r"\.ts\.net|tailscale", re.IGNORECASE),
     "operator home path": re.compile(r"/Users/[A-Za-z0-9_.-]+|/home/(?!runner)[A-Za-z0-9_.-]+"),
     "foreign host": re.compile(
-        r"https?://(?!api\.github\.com|github\.com|avatars\.githubusercontent\.com|help\.github\.com|example\.com"
-        r"|localhost|127\.0\.0\.1)[A-Za-z0-9._:-]+"
+        r"https?://(?!(?:api\.github\.com|github\.com|avatars\.githubusercontent\.com|help\.github\.com|example\.com"
+        r"|localhost|127\.0\.0\.1)(?![A-Za-z0-9_-]|\.[A-Za-z0-9]))[A-Za-z0-9._:-]+"
     ),
 }
 
@@ -55,6 +55,27 @@ def test_every_fixture_states_its_source_and_redaction_result_and_none_is_stale(
         assert entry["source"].strip() and entry["redaction"].strip(), name
         if entry["origin"] in {"ci-run", "local-review"} and name.startswith("captures/"):
             assert entry.get("run_id") or entry.get("local_review_at"), name
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "https://github.com.evil.example/x",
+        "http://localhost.evil.example",
+        "https://example.com-evil.net",
+        "http://127.0.0.1.evil.example",
+    ],
+)
+def test_a_host_that_only_starts_with_an_allowed_host_is_a_foreign_host(text: str) -> None:
+    assert LEAKS["foreign host"].search(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["https://github.com/x", "https://api.github.com/repos", "http://127.0.0.1:4000/v1", "see https://github.com."],
+)
+def test_an_allowed_host_is_not_a_foreign_host(text: str) -> None:
+    assert not LEAKS["foreign host"].search(text)
 
 
 def test_ci_run_fixtures_name_the_run_that_produced_them() -> None:
