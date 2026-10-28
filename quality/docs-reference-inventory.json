@@ -2970,6 +2970,315 @@
   {
    "disposition": "fixture-data",
    "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/app_missing.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/carry.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/carry_disagrees_with_status_holds.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/dispute_round.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/draft.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/edited_prior_review_holds.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/every_attempt_absent.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/first_review_ships.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/first_review_with_a_defect.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/follow_up_after_a_fix.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/fork.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/guard_gives_up.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/integrity_error.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/omp_install_failure.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1,
+    "unresolved": 1
+   },
+   "occurrences": 2,
+   "path": "tests/fixtures/oracle_golden/oversize_file_list.json",
+   "rule": "test-sample-data",
+   "target_count": 2,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/notes.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/recovery_escalate.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/recovery_fallback.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/recovery_retry.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/recovery_stop.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
     "unresolved": 1
    },
    "occurrences": 3,
@@ -4409,7 +4718,7 @@
   "dispositions": {
    "contract-replaced": 1,
    "contract-tooling": 6,
-   "fixture-data": 47,
+   "fixture-data": 66,
    "governance-stays": 9,
    "historical-record": 112,
    "lock-test": 5,
@@ -4417,18 +4726,18 @@
    "site-pipeline-cutover": 4,
    "wiring-updated": 30
   },
-  "files": 226,
+  "files": 245,
   "kinds": {
    "built-url": 29042,
    "dir": 163,
    "extra": 37,
    "file": 1382,
    "generated": 3,
-   "pattern": 333,
+   "pattern": 352,
    "root": 203,
-   "unresolved": 2082
+   "unresolved": 2083
   },
-  "references": 33245,
+  "references": 33265,
   "unclassified": 0
  }
 }
