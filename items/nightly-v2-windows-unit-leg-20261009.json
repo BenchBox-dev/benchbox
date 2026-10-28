@@ -70,6 +70,15 @@
       "op": "update",
       "op_id": "539463cf421d49deab97df2723bd7343",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-28T14:06:36Z",
+      "client": "omp-coding-agent",
+      "generation": "8b01268a2f7548929a800053c285707c",
+      "op": "release",
+      "op_id": "81f4313d03374fb29d80fa502cff81ac",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
 }
