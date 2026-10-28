@@ -9,8 +9,9 @@ from benchbox.core.platform_manifest import (
     get_platform_manifest_entry,
 )
 
-VARIANT_SEPARATORS = ("~", "+", "@")
+VARIANT_SEPARATORS = ("~", "+", "@", "^")
 NO_GATEWAY = "native"
+NATIVE_EXECUTION_CLASS = "native"
 
 
 class VariantIdError(ValueError):
@@ -19,7 +20,7 @@ class VariantIdError(ValueError):
 
 def _variant_part(label: str, value: str) -> str:
     if not value or any(separator in value for separator in VARIANT_SEPARATORS):
-        raise VariantIdError(f"Variant {label} {value!r} must be non-empty and must not contain '~', '+' or '@'")
+        raise VariantIdError(f"Variant {label} {value!r} must be non-empty and must not contain '~', '+', '@' or '^'")
     return value
 
 
@@ -35,6 +36,7 @@ def append_variant_suffix(
     deployment: str | None = None,
     requested_engine: str | None = DEFAULT_EXECUTION_ENGINE,
     gateway: str | None = None,
+    execution_class: str | None = None,
 ) -> str:
     variant = _variant_part("platform", base)
     default = manifest_default_deployment(platform)
@@ -44,6 +46,8 @@ def append_variant_suffix(
         variant += "+" + _variant_part("execution engine", requested_engine)
     if gateway and gateway != NO_GATEWAY:
         variant += "@" + _variant_part("gateway", gateway)
+    if execution_class and execution_class != NATIVE_EXECUTION_CLASS:
+        variant += "^" + _variant_part("execution class", execution_class)
     return variant
 
 
@@ -52,8 +56,9 @@ def derive_variant_id(
     deployment: str | None = None,
     requested_engine: str | None = DEFAULT_EXECUTION_ENGINE,
     gateway: str | None = None,
+    execution_class: str | None = None,
 ) -> str:
-    return append_variant_suffix(platform, platform, deployment, requested_engine, gateway)
+    return append_variant_suffix(platform, platform, deployment, requested_engine, gateway, execution_class)
 
 
 def resolve_variant_platform_id(candidates: Iterable[str | None], execution_mode: str | None = None) -> str | None:

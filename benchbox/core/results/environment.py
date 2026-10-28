@@ -6,6 +6,7 @@ from typing import Any, Literal, TypeAlias
 from urllib.parse import urlparse
 
 from benchbox.core.results.platform_options import sanitize_platform_options
+from benchbox.utils.environment import detect_execution_class
 
 MetadataSource: TypeAlias = Literal[
     "registered_default",
@@ -91,6 +92,11 @@ class ClientHostEnvironment:
     cpu_vendor: str | None = None
     cpu_identity_provenance: CPUIdentityProvenance | None = None
 
+    execution_class: str | None = None
+    container_runtime: str | None = None
+    container_host_os: str | None = None
+    execution_class_source: str | None = None
+
     @classmethod
     def from_system_profile(cls, system_profile: Any | None) -> ClientHostEnvironment:
         profile = system_profile_snapshot(system_profile)
@@ -111,6 +117,13 @@ class ClientHostEnvironment:
             if not cpu_vendor:
                 cpu_vendor = detected_vendor
 
+        recorded_class = {
+            key: profile.get(key)
+            for key in ("execution_class", "container_runtime", "container_host_os", "execution_class_source")
+            if profile.get(key)
+        }
+        execution = detect_execution_class() if system_profile is None else recorded_class
+
         return cls(
             os=os_name,
             arch=profile.get("architecture") or profile.get("arch"),
@@ -121,6 +134,10 @@ class ClientHostEnvironment:
             cpu_model=cpu_model,
             cpu_vendor=cpu_vendor,
             cpu_identity_provenance=cpu_identity_provenance,
+            execution_class=execution.get("execution_class"),
+            container_runtime=execution.get("container_runtime"),
+            container_host_os=execution.get("container_host_os"),
+            execution_class_source=execution.get("execution_class_source"),
         )
 
     def to_dict(self) -> dict[str, Any]:

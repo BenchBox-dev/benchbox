@@ -73,6 +73,10 @@ class TestSystemInfo:
             "cpu_count": 8,
             "memory_gb": 16.0,
             "os_release": "21.6.0",
+            "execution_class": None,
+            "container_runtime": None,
+            "container_host_os": None,
+            "execution_class_source": None,
         }
 
         assert result == expected
@@ -532,6 +536,10 @@ class TestSystemInfoIntegration:
             "cpu_count",
             "memory_gb",
             "os_release",
+            "execution_class",
+            "container_runtime",
+            "container_host_os",
+            "execution_class_source",
         }
         assert set(system_dict.keys()) == expected_keys
 

@@ -22,7 +22,10 @@ cohorts count platform names, preserving the historical three-platform floor. A 
 that records `platform.variant` counts under that variant string instead of the bare
 platform name, so two execution variants of one platform (for example
 `polars-df+streaming` alongside `polars-df`) are distinct identities while repeated
-runs of one variant do not pad the floor. Bundles in
+runs of one variant do not pad the floor. A bundle that ran in a container (recorded in
+`environment.execution_class` or attested in its manifest sidecar) adds a `^container`
+suffix, so a container run and a native run of one engine are distinct identities; a bundle
+that records no class stays native (see `CORPUS_NOTES.md`, "Execution-class identity"). Bundles in
 the explicitly segregated `duckdb-version-matrix/` corpus count platform plus version;
 repeated runs of one platform/version do not pad that matrix.
 

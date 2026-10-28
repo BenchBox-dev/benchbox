@@ -47,7 +47,11 @@ from benchbox.core.cost.pricing import (
 )
 from benchbox.core.results.anonymization import AnonymizationManager, find_public_path_leaks
 from benchbox.core.results.canonical_json import canonical_json_bytes
-from benchbox.core.results.execution_variant import published_variant_id, read_requested_variant
+from benchbox.core.results.execution_variant import (
+    published_variant_id,
+    read_execution_environment,
+    read_requested_variant,
+)
 from benchbox.core.results.schema_policy import EXPLORER_INPUT_SCHEMA_POLICY, result_schema_version_value
 from benchbox.core.results.status import bundle_failed_query_count, bundle_non_clean_reason, normalize_validation_status
 from benchbox.core.results.subscale_policy import (
@@ -522,10 +526,17 @@ def _platform_version(bundle: BundleDocument) -> str | None:
     return str(val) if val and val != "unknown" else None
 
 
-def _variant_info(bundle: BundleDocument, bundle_data: Mapping[str, Any]) -> tuple[str, str, str, str | None, bool]:
+def _container_os(bundle: BundleDocument) -> str | None:
+    os_name = bundle.environment.os
+    return os_name.split(maxsplit=1)[0] if isinstance(os_name, str) and os_name.strip() else None
+
+
+def _variant_info(
+    bundle: BundleDocument, bundle_data: Mapping[str, Any], bundle_path: Path | None = None
+) -> tuple[str, str, str, str | None, bool]:
     platform = bundle.platform
     platform_name = str(platform.name)
-    variant_id = published_variant_id(bundle_data, _platform_id(platform_name))
+    variant_id = published_variant_id(bundle_data, _platform_id(platform_name), bundle_path)
     requested = read_requested_variant(bundle_data)[1]
     gateway_raw = getattr(platform, "gateway", None)
     gateway = gateway_raw if isinstance(gateway_raw, Mapping) else {}
@@ -538,6 +549,8 @@ def _variant_info(bundle: BundleDocument, bundle_data: Mapping[str, Any]) -> tup
         requested_execution_engine=requested,
         gateway_name=gateway_name,
         gateway_routed=routed,
+        container_os=_container_os(bundle),
+        container_host_os=read_execution_environment(bundle_data, bundle_path).get("container_host_os"),
     )
     return variant_id, label, requested, gateway_name, routed
 
@@ -1531,7 +1544,9 @@ def _to_finite_float_or_none(value: Any) -> float | None:
         return None
 
 
-def _detail_environment(bundle: BundleDocument) -> ExplorerEnvironment:
+def _detail_environment(
+    bundle: BundleDocument, bundle_data: Mapping[str, Any], bundle_path: Path
+) -> ExplorerEnvironment:
     env = bundle.environment
     provided = dict(env.model_extra or {})
     for key in ("os", "arch", "cpu_count", "memory_gb", "python", "cpu_model", "cpu_identity_provenance"):
@@ -1557,6 +1572,7 @@ def _detail_environment(bundle: BundleDocument) -> ExplorerEnvironment:
     provided["link_status"] = _string_or_none(link.collection_status)
     provided["statement_overhead_min_ms"] = _to_finite_float_or_none(overhead.min)
     provided["statement_overhead_median_ms"] = _to_finite_float_or_none(overhead.median)
+    provided.update(read_execution_environment(bundle_data, bundle_path))
     return ExplorerEnvironment(**provided)
 
 
@@ -1628,7 +1644,7 @@ class BundleTransformer:
         )
         override = _override_display(bundle_path)
         test_type = _test_type(bundle)
-        variant = _variant_info(bundle, bundle_data)
+        variant = _variant_info(bundle, bundle_data, bundle_path)
         power_score, power_score_source = _power_score(bundle, bundle_data)
         entry = ManifestEntry(
             result_id=rid,
@@ -1716,7 +1732,7 @@ class BundleTransformer:
         run_date = _utc_run_date_from_timestamp(bundle.run.timestamp)
         total_duration_s = float(bundle.run.total_duration_ms) / 1000.0
 
-        environment = _detail_environment(bundle)
+        environment = _detail_environment(bundle, bundle_data, bundle_path)
 
         stem = bundle_path.stem
         has_plans = bundle_path.with_name(f"{stem}.plans.json").exists()
@@ -1730,7 +1746,7 @@ class BundleTransformer:
         timing_contract = timing_eligibility(display_timings, logical_query_count)
         normalized_cost = _normalized_cost(bundle)
         test_type = _test_type(bundle)
-        variant = _variant_info(bundle, bundle_data)
+        variant = _variant_info(bundle, bundle_data, bundle_path)
         power_score, power_score_source = _power_score(bundle, bundle_data)
         detail = DetailResult(
             result_id=result_id,

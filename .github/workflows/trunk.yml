@@ -17,9 +17,8 @@ on:
         default: ""
 
 concurrency:
-  group: trunk-${{ github.ref }}
+  group: trunk-${{ github.sha }}
   cancel-in-progress: false
-  queue: max
 
 permissions:
   contents: read

@@ -8,7 +8,7 @@ from typing import Any
 
 import psutil
 
-from benchbox.utils.environment import is_cpu_architecture_token
+from benchbox.utils.environment import detect_execution_class, is_cpu_architecture_token
 
 
 @dataclass
@@ -25,6 +25,10 @@ class SystemInfo:
 
     cpu_vendor: str | None = None
     cpu_identity_provenance: str | None = None
+    execution_class: str | None = None
+    container_runtime: str | None = None
+    container_host_os: str | None = None
+    execution_class_source: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -42,6 +46,10 @@ class SystemInfo:
             "available_memory_gb": self.available_memory_gb,
             "python_version": self.python_version,
             "hostname": self.hostname,
+            "execution_class": self.execution_class,
+            "container_runtime": self.container_runtime,
+            "container_host_os": self.container_host_os,
+            "execution_class_source": self.execution_class_source,
         }
 
 
@@ -99,6 +107,7 @@ def get_system_info() -> SystemInfo:
         available_memory_gb=available_memory_gb,
         python_version=platform.python_version(),
         hostname=platform.node(),
+        **detect_execution_class(),
     )
 
 

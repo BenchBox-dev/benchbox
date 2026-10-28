@@ -85,6 +85,8 @@ class FakeGitHub:
         self.check_runs: dict[str, list[dict[str, Any]]] = defaultdict(list)
         self.rulesets: list[dict[str, Any]] = []
         self.dispatches: list[dict[str, Any]] = []
+        self.run_listing_cap: int | None = None
+        self.annotations: dict[int, list[dict[str, Any]]] = {}
         self.auto_merges: list[dict[str, Any]] = []
         self.failures: list[Failure] = []
         self.unhandled: list[str] = []
@@ -168,11 +170,20 @@ class FakeGitHub:
         pull = self.pulls[number]
         return self.git_bytes("diff", "-M", f"{pull['base']['ref']}...{pull['head']['ref']}")
 
-    def add_run(self, workflow: str, *, event: str, pr: int | None, head_sha: str, **fields: Any) -> dict[str, Any]:
+    def add_run(
+        self,
+        workflow: str,
+        *,
+        event: str,
+        pr: int | None,
+        head_sha: str,
+        title_head: str | None = None,
+        **fields: Any,
+    ) -> dict[str, Any]:
         with self.lock:
             run_id = next(self.ids) * 1000
-            suffix = f" head={head_sha}" if pr is not None else ""
-            title = f"{workflow.removesuffix('.yml')} ({event} pr={pr if pr is not None else 'sweep'}{suffix})"
+            recorded = f" head={title_head}" if title_head else ""
+            title = f"{workflow.removesuffix('.yml')} ({event} pr={pr if pr is not None else 'sweep'}{recorded})"
             run = {
                 "id": run_id,
                 "name": workflow.removesuffix(".yml"),
@@ -195,11 +206,21 @@ class FakeGitHub:
             self.runs.append(run)
             return run
 
-    def complete_run(self, run: dict[str, Any], conclusion: str, failed_steps: tuple[str, ...] = ()) -> None:
+    def complete_run(
+        self,
+        run: dict[str, Any],
+        conclusion: str,
+        failed_steps: tuple[str, ...] = (),
+        job_annotation: str | None = None,
+    ) -> None:
         with self.lock:
             run.update({"status": "completed", "conclusion": conclusion, "updated_at": now_text()})
             steps = [{"name": name, "conclusion": "failure"} for name in failed_steps]
-            self.jobs[run["id"]] = {"total_count": 1, "jobs": [{"name": "review", "steps": steps}]}
+            job: dict[str, Any] = {"name": "review", "steps": steps}
+            if job_annotation is not None:
+                job.update({"id": run["id"] + 1, "conclusion": "cancelled"})
+                self.annotations[run["id"] + 1] = [{"annotation_level": "failure", "message": job_annotation}]
+            self.jobs[run["id"]] = {"total_count": 1, "jobs": [job]}
 
     def upload_artifact(self, run: dict[str, Any], name: str, files: dict[str, bytes]) -> None:
         with self.lock:
@@ -313,7 +334,7 @@ class FakeGitHub:
 
         return Handler
 
-    def _page(self, items: list[Any], request: Request, wrap: str | None = None) -> Response:
+    def _page(self, items: list[Any], request: Request, wrap: str | None = None, total: int | None = None) -> Response:
         per_page = int(request.query.get("per_page", 30))
         page = int(request.query.get("page", 1))
         chunk = items[(page - 1) * per_page : page * per_page]
@@ -321,7 +342,7 @@ class FakeGitHub:
         if page * per_page < len(items):
             following = urlencode({**request.query, "page": str(page + 1)})
             headers["Link"] = f'<http://{request.host}{request.path}?{following}>; rel="next"'
-        payload: Any = chunk if wrap is None else {"total_count": len(items), wrap: chunk}
+        payload: Any = chunk if wrap is None else {"total_count": len(items) if total is None else total, wrap: chunk}
         return 200, payload, headers
 
     def respond(self, request: Request) -> Response:
@@ -382,6 +403,11 @@ class FakeGitHub:
             ("POST", r"/actions/workflows/([^/]+)/dispatches", self._dispatch),
             ("GET", r"/actions/runs/(\d+)", lambda request, match: (200, self._run(int(match[1])), {})),
             ("GET", r"/actions/runs/(\d+)/jobs", self._jobs),
+            (
+                "GET",
+                r"/check-runs/(\d+)/annotations",
+                lambda request, match: (200, self.annotations.get(int(match[1]), []), {}),
+            ),
             ("GET", r"/actions/runs/(\d+)/artifacts", self._run_artifacts),
             ("GET", "/actions/artifacts", self._artifacts),
             ("GET", r"/actions/artifacts/(\d+)/zip", self._artifact_zip),
@@ -470,7 +496,10 @@ class FakeGitHub:
             and wanted in (None, run["status"], run["conclusion"])
         ]
         runs.sort(key=lambda run: (run["created_at"], run["id"]), reverse=True)
-        return self._page(runs, request, "workflow_runs")
+        total = len(runs)
+        if self.run_listing_cap is not None:
+            runs = runs[: self.run_listing_cap]
+        return self._page(runs, request, "workflow_runs", total)
 
     def _workflow(self, request: Request, match: re.Match[str]) -> Response:
         name = self._workflow_name(match[1])

@@ -773,6 +773,33 @@ def anonymize_applied_tuning_payload(applied_payload: dict[str, Any]) -> dict[st
     return sanitized
 
 
+def _strip_operator_platform_metadata(node: Any) -> None:
+    if not isinstance(node, dict):
+        return
+    physical_operator = node.get("physical_operator")
+    if isinstance(physical_operator, dict) and physical_operator.get("platform_metadata"):
+        physical_operator["platform_metadata"] = {}
+    for child in node.get("children") or []:
+        _strip_operator_platform_metadata(child)
+
+
+def anonymize_plans_payload(plans_payload: dict[str, Any]) -> dict[str, Any]:
+    sanitized = copy.deepcopy(plans_payload)
+    queries = sanitized.get("queries")
+    if not isinstance(queries, dict):
+        return sanitized
+    for entry in queries.values():
+        if not isinstance(entry, dict):
+            continue
+        plan = entry.get("plan")
+        if not isinstance(plan, dict):
+            continue
+        if plan.get("raw_explain_output") is not None:
+            plan["raw_explain_output"] = None
+        _strip_operator_platform_metadata(plan.get("logical_root"))
+    return sanitized
+
+
 __all__ = [
     "PUBLIC_PSEUDONYM_SALT_ENV",
     "PUBLIC_REDACTED_VALUE",
@@ -780,6 +807,7 @@ __all__ = [
     "AnonymizationManager",
     "MissingPublicPseudonymSaltError",
     "anonymize_applied_tuning_payload",
+    "anonymize_plans_payload",
     "find_public_path_leaks",
     "require_public_pseudonym_salt",
     "resolve_public_pseudonym_salt",

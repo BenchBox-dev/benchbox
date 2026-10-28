@@ -80,14 +80,6 @@ review; the attempt is absent.
 rotating and moving the gateway host, and the Tailscale OIDC credential and
 tailnet policy the job needs.
 
-**Cut-over cleanup (one time).** The pre-gateway secrets
-(`CLAUDE_CODE_OAUTH_TOKEN`, `OPENAI_API_KEY`, `META_API_KEY`,
-`OMP_AUTH_BROKER_URL`, `OMP_AUTH_BROKER_TOKEN`, `OMP_AGENT_CONFIG`) are deleted
-from `oracle`. Rotate those credentials once and remove the rule that still lets
-`tag:oracle-ci` reach the broker on `tcp:8765`; if nothing else reaches the
-broker over the tailnet, stop publishing it (`tailscale serve --https=8765
-off`).
-
 Without `ORACLE_APP_ID`, the job logs the result and succeeds.
 
 ## How a run works
@@ -554,10 +546,34 @@ run stays pending. A hollow answer never passes.
   extension, inside the checkout) credits only the archive; a member path never
   credits a repository file. An error, binary-entry notice, `?q=` or `..`
   member, no match, directory, `;`-joined read including an archive member,
-  sibling or outside path credits nothing. Binary and unreviewable content,
-  out-of-bounds line reads and notice-only reads stay with
-  `oracle-verdict-labels-unreviewed-bytes` and
-  `oracle-read-evidence-tightening-20261008`; no file is exempted.
+  sibling or outside path credits nothing. Out-of-bounds line reads and
+  notice-only reads stay with `oracle-verdict-labels-unreviewed-bytes` and
+  `oracle-read-evidence-tightening-20261008`.
+- The evidence check is an exposure check: it confirms that changed files were
+  exposed to the reviewer, not whole-file or semantic proof of review. Two classes
+  of files are exempt from the per-file read requirement while staying in the
+  reviewed diff and in scope for findings:
+  1. Binary files: a diff `Binary files ... differ` or `GIT binary patch` notice, taken from the
+     plan's diff, only nominates a file. The exemption applies only to font files (`.eot`, `.otf`,
+     `.ttf`, `.woff`, `.woff2`), which the harness cannot read, when the head checkout holds a
+     regular file inside the workspace for them and its first 8000 bytes contain a NUL byte.
+     Archives, images, PDFs and every text or unknown type (sql, csv, json, yaml, md, py, txt,
+     no extension), a `.gitattributes` `-diff` rule and a bare notice never exempt; an archive
+     listing read credits the container. A deleted file has no head content and is never a
+     required read.
+  2. Prose files: matched by the exemption list in `develop`'s trusted `.github/oracle-reviewers.yml`
+     (`evidence.exempt_paths`: `README*.md` and `CHANGELOG*.md` at any depth, and `docs/*.md`).
+  Protected files are never exempt, even when they match the prose list or hold NUL bytes: soundness
+  paths (including every `.gitattributes`), gate, logic and data paths, and machine-read docs. A
+  rename is protected when either its old or new path is. The plan records them in
+  `evidence_protected_files` using the trusted `develop` soundness manifest, inert-path manifest and
+  policy (the local runner reads all three from the base ref), so a branch edit of
+  `.github/soundness-paths.txt` or `.github/inert-paths.txt` cannot widen the exemptions in CI or in
+  the local runner. A plan without that list treats every required file as protected.
+  Exemptions never waive the baseline: a verdict that ships still needs at least one successful read
+  or grep in its trace.
+  A diff with a "Binary files" notice for any non-font path, a notice whose path cannot be parsed
+  (for example a quoted header), or no diff at all is never briefed inline, so the read check applies.
 - Partial reads keep credit: exposure, not whole-file or semantic proof. The
   overlay sets `read.summarize.enabled: false` so a large file's plain read is
   not replaced by a structural summary; the trace records each credited read's
@@ -568,15 +584,14 @@ run stays pending. A hollow answer never passes.
 - Every parsed outcome keeps a bounded, redacted `trace:` line in the attempt
   diagnostic: read, grep and failed-call counts, up to five credited, required
   and missing paths, and elision totals, so elided credited reads stay
-  measurable. It never carries the raw event stream, and OMP stdout is no longer
-  excerpted.
+  measurable. It never carries the raw event stream or excerpts OMP stdout.
 - Credentials: `commands.omp_env()` forwards only the base environment and the
   gateway client token (`GATEWAY_ENV`, `OMP_GATEWAY_TOKEN`), plus the loopback
   gateway proxy variables only while a cloud local review has set one in-process.
-  `credentials.py`
-  `NAMES` lists that token, the broker and provider variables the loop no longer
-  receives, the runner-held values (gateway URL, Tailscale client ID and
-  audience, OIDC request token) and legacy extras, so a local run still holding
+  `credentials.py` `NAMES` lists that token, the broker and provider variables
+  (which the loop does not receive), the runner-held values (gateway URL,
+  Tailscale client ID and audience, OIDC request token) and legacy extras, so a
+  local run still holding
   them is redacted too. Values of eight or more characters are removed by exact
   match before and after every sanitising transform and before truncation,
   across control-character splits and overlaps, in verdict text, absence
@@ -595,11 +610,12 @@ The verdict is the reviewer's final assistant message, from its `message_end`
 event; remarks between tool calls are ignored. A final message that is not
 exactly one JSON verdict is invalid.
 
-The brief no longer forbids commands, but OMP's tools are only `read`, `grep`
-and `glob`, so the reviewer cannot write or run anything. A file-list brief also
-stages the whole PR diff in the checkout. The workflow-level concurrency group
-serializes runs per PR; the `review` job has none of its own, so a new push
-cancels a run in flight, which then posts nothing.
+The brief forbids running commands, tests or builds, and OMP's tools are only
+`read`, `grep` and `glob`, so the reviewer cannot write or run anything. A
+file-list brief also stages the whole PR diff in the checkout. The
+workflow-level concurrency group serializes runs per PR; the `review` job has
+none of its own, so a new push cancels a run in flight, which then posts
+nothing.
 
 ## Commands
 
