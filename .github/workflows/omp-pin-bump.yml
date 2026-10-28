@@ -79,6 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
+      actions: write
       contents: write
       pull-requests: write
 
@@ -109,17 +110,30 @@ jobs:
             exit 1
           fi
           BRANCH="chore/omp-pin-${VERSION}"
-          if [ -n "$(gh pr list --head "$BRANCH" --state all --json number -q '.[].number')" ]; then
-            echo "A pull request for ${BRANCH} already exists; nothing to open."
+          existing="$(gh api "repos/${GITHUB_REPOSITORY}/pulls?state=all&head=${GITHUB_REPOSITORY%%/*}:${BRANCH}&per_page=100")"
+          PR="$(jq -r '[.[] | select(.state == "open")][0].number // empty' <<<"$existing")"
+          if [ -z "$PR" ]; then
+            if [ "$(jq 'length' <<<"$existing")" != 0 ]; then
+              echo "A closed pull request for ${BRANCH} already exists; nothing to open."
+              exit 0
+            fi
+            git config user.name "benchbox-bot"
+            git config user.email "bot@benchbox.dev"
+            git checkout -b "$BRANCH"
+            cp "$OUT_DIR/policy.yml" .github/oracle-reviewers.yml
+            git add .github/oracle-reviewers.yml
+            git commit -m "chore(oracle): pin omp ${VERSION}"
+            AUTH="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')"
+            git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${AUTH}" push origin "$BRANCH"
+            PR="$(gh api --method POST "repos/${GITHUB_REPOSITORY}/pulls" \
+              -f title="chore(oracle): pin omp ${VERSION}" -F body=@"$OUT_DIR/pr-body.md" \
+              -f base=develop -f head="$BRANCH" --jq .number)"
+          fi
+          HEAD_SHA="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}" --jq .head.sha)"
+          verdicts="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/statuses?per_page=100" --jq '.[] | select(.context == "oracle-verdict") | .id')"
+          titles="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/oracle-verdict.yml/runs?per_page=100" --jq '.workflow_runs[].display_title')"
+          if [ -n "$verdicts" ] || grep -qF "pr=${PR} head=${HEAD_SHA}" <<<"$titles"; then
+            echo "Pull request #${PR} already has a review for ${HEAD_SHA}."
             exit 0
           fi
-          git config user.name "benchbox-bot"
-          git config user.email "bot@benchbox.dev"
-          git checkout -b "$BRANCH"
-          cp "$OUT_DIR/policy.yml" .github/oracle-reviewers.yml
-          git add .github/oracle-reviewers.yml
-          git commit -m "chore(oracle): pin omp ${VERSION}"
-          AUTH="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')"
-          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${AUTH}" push origin "$BRANCH"
-          gh pr create --title "chore(oracle): pin omp ${VERSION}" \
-            --body-file "$OUT_DIR/pr-body.md" --base develop --head "$BRANCH"
+          gh workflow run oracle-verdict.yml --repo "$GITHUB_REPOSITORY" --ref develop -f pr="$PR" -f head="$HEAD_SHA"
