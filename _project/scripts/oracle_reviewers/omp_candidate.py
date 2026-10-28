@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from . import candidate_chain, candidate_checks, omp_pin
-from .candidate_chain import SCENARIOS, ClientRun, Scenario
+from .candidate_chain import PROBES, SCENARIOS, ClientRun, Scenario
 from .candidate_checks import CONTRACT_ROWS, RECORDED_REASONS, Check
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -56,6 +56,7 @@ class Report:
     host: str = ""
     pin_digest: str = ""
     head: str = ""
+    blind_canaries: tuple[str, ...] = ()
 
     @property
     def evidence_line(self) -> str | None:
@@ -76,7 +77,8 @@ class Report:
     def releasable(self) -> bool:
         hashed = {build.target for build in self.builds}
         host_probed = any(build.target == self.host and build.probed for build in self.builds)
-        return self.passed and host_probed and all(target in hashed for target in self.unverified)
+        clear = not self.blind_canaries
+        return self.passed and clear and host_probed and all(target in hashed for target in self.unverified)
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -85,6 +87,7 @@ class Report:
             "unverified_platforms": list(self.unverified),
             "unprobed_providers": list(self.unprobed_providers),
             "evidence_line": self.evidence_line,
+            "blind_canaries": list(self.blind_canaries),
             "version_transcript": self.transcript,
             "builds": [
                 {
@@ -126,6 +129,10 @@ class Report:
                 "  partial: disabledProviders entries with no canary that observes them: "
                 + ", ".join(self.unprobed_providers)
             )
+        if self.blind_canaries:
+            lines.append(
+                "  partial: canaries the empty-overlay control run could not observe: " + ", ".join(self.blind_canaries)
+            )
         lines.append("result: " + ("green" if self.ok else "partial" if self.passed else "red"))
         if self.evidence_line is not None:
             lines.append(self.evidence_line)
@@ -149,16 +156,20 @@ def _capture(directory: Path, workdir: Path, run: ClientRun) -> None:
     (directory / f"{run.scenario}.jsonl").write_text(redact_capture(run.stdout, replacements), encoding="utf-8")
 
 
-def _live_checks(chain_factory: ChainFactory, binary: Path, workdir: Path, capture: Path | None) -> list[Check]:
+def _live_checks(
+    chain_factory: ChainFactory, binary: Path, workdir: Path, capture: Path | None
+) -> tuple[list[Check], dict[str, ClientRun]]:
     try:
         with chain_factory(binary, workdir / "chain") as chain:
             runs = {scenario.name: chain.run(scenario) for scenario in SCENARIOS}
     except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
-        return [Check("live-chain", (1, 12), (f"the loopback chain could not run: {exc}",))]
+        return [Check("live-chain", (1, 12), (f"the loopback chain could not run: {exc}",))], {}
     if capture is not None:
+        probes = {scenario.name for scenario in PROBES}
         for run in runs.values():
-            _capture(capture, workdir / "chain", run)
-    return candidate_checks.live_checks(runs)
+            if run.scenario not in probes:
+                _capture(capture, workdir / "chain", run)
+    return candidate_checks.live_checks(runs), runs
 
 
 def check_candidate(
@@ -207,8 +218,10 @@ def check_candidate(
             checks = [Check("static-probes", (1, 2, 3, 4, 11), (f"skipped: {transcript}",))]
         runnable = host_build.ok and all(check.ok for check in checks)
         checks.extend(candidate_checks.fixture_checks(fixtures))
+        live_runs: dict[str, ClientRun] = {}
         if runnable:
-            checks.extend(_live_checks(chain_factory, candidate, root, capture))
+            live, live_runs = _live_checks(chain_factory, candidate, root, capture)
+            checks.extend(live)
         else:
             checks.append(Check("live-chain", (1, 12), ("skipped: the candidate hash or static checks failed",)))
         checks.extend(
@@ -224,9 +237,12 @@ def check_candidate(
         transcript,
         tuple(checks),
         unverified,
-        candidate_checks.unprobed_providers(),
+        candidate_checks.unprobed_providers(observed=candidate_checks.observed_providers(live_runs)),
         host,
         omp_pin.pin_digest(pin),
+        blind_canaries=tuple(canary.label() for canary in candidate_checks.blind_canaries(live_runs))
+        if live_runs
+        else (),
     )
 
 
