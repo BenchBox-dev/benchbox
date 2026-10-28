@@ -5,7 +5,7 @@
 This directory contains the BenchBox test suite. Directories group tests by purpose;
 pytest markers select the execution lanes.
 
-**See also**: [`AGENTS.md`](../AGENTS.md) for the contributor/agent guide, and [`docs/development/`](../docs/development/) for architecture deep-dives.
+**See also**: [`AGENTS.md`](../AGENTS.md) for the contributor/agent guide, and [`docs/internal/`](../docs/internal/) for maintainer notes.
 
 ## Test Structure
 
@@ -743,7 +743,7 @@ service certification or complete SQL compliance.
   blocked. Keep the child assertion-enabled and its explicit optimization guard;
   remove inherited `PYTHONOPTIMIZE` before launching it. Startup and cold imports
   justify its medium tier, rather than treating it as a fast assertion-only test.
-- [Soundness history tests](unit/test_soundness_review_history.py) use real
+- Soundness history tests use real
   fetches and trusted checker subprocesses, which exceed the fast-test budget.
   [Release artifact tests](unit/scripts/test_release_artifact_consumer.py) retain
   their medium marker; consumer tests also import this module. Reassess measured
@@ -1282,7 +1282,7 @@ asserted contracts; they do not certify live platforms or benchmark compliance.
 - [Write catalog fixtures](unit/core/write_primitives/test_catalog_loader.py)
   preserve decimal scale in fractional batch-value casts and dense bounded
   Snowflake row keys so cleanup deletes all generated rows. Bare NUMERIC retains
-  BigQuery's separate semantics. [Empirical sketch claims](unit/core/write_primitives/test_doc_yaml_consistency.py)
+  BigQuery's separate semantics. Empirical sketch claims
   map compact documentation byte-size claims to explicit catalog validation bounds;
   add a mapping when a new verified sketch claim appears.
 - [PySpark sketch fakes](unit/core/write_primitives/test_pyspark_sketch_factories.py)

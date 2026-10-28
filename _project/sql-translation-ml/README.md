@@ -117,7 +117,7 @@ claims are separate. Five finite witnesses never prove universal equivalence.
 ## Prior art and external material
 
 The production decision remains the
-[SQLGlot ADR](../../docs/development/adr/adr-sqlglot-use-and-non-use.md).
+SQLGlot use-and-non-use ADR.
 The baselines call SQLGlot directly and
 `benchbox.utils.dialect_utils.translate_sql_query(..., strict=True)` respectively.
 The wrapper's built-in SQLite fixes are part of that named baseline.
