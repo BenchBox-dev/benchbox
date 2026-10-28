@@ -276,7 +276,7 @@ jobs:
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           overwrite: true
-          name: oracle-verdict-state-${{ steps.plan.outputs.pr }}
+          name: oracle-verdict-state-attempt-${{ steps.plan.outputs.pr }}
           path: ${{ runner.temp }}/oracle-final/attempt/state.json
           if-no-files-found: ignore
           retention-days: 7

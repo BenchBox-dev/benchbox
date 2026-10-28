@@ -680,13 +680,15 @@ def test_the_retry_attempt_is_recorded_before_any_post_without_the_strike() -> N
     for name in ("Post the commit status", "Post the findings comment", "Post the findings review"):
         assert names.index("Record the retry attempt") < names.index(name), name
     assert record["with"]["path"].endswith("oracle-final/attempt/state.json")
-    assert record["with"]["name"] == _step("Upload the retry state")["with"]["name"]
+    published = _step("Upload the retry state")["with"]["name"]
+    assert record["with"]["name"] == "oracle-verdict-state-attempt-${{ steps.plan.outputs.pr }}"
+    assert record["with"]["name"] != published
     assert "steps.guard.outputs.skip != 'true'" in record["if"]
     assert "HAS_APP" not in record["if"]
     assert record["with"]["overwrite"] is True and record["with"]["if-no-files-found"] == "ignore"
 
 
-def test_the_strike_state_replaces_the_attempt_state_and_needs_a_posted_status() -> None:
+def test_the_strike_state_is_published_beside_the_attempt_state_and_needs_a_posted_status() -> None:
     state = _step("Upload the retry state")
     assert "steps.status.outcome == 'success'" in state["if"]
     assert state["with"]["overwrite"] is True

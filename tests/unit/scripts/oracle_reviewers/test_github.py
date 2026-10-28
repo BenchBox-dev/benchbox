@@ -638,6 +638,25 @@ def test_latest_state_downloads_matching_verdict_artifact(monkeypatch: pytest.Mo
     assert downloaded == [name]
 
 
+def test_latest_state_falls_back_to_the_attempt_state_when_publishing_failed(monkeypatch: pytest.MonkeyPatch) -> None:
+    attempt = github.attempt_state_artifact_name(7)
+    downloaded = _state_sources(monkeypatch, {attempt: [_artifact(1)]}, {"1": _run(path=github.WORKFLOW_PATH)})
+    assert github.latest_state(REPO, 7) is not None
+    assert downloaded == [attempt]
+
+
+def test_latest_state_prefers_the_published_state_over_a_same_second_attempt(monkeypatch: pytest.MonkeyPatch) -> None:
+    published = github.state_artifact_name(7)
+    attempt = github.attempt_state_artifact_name(7)
+    downloaded = _state_sources(
+        monkeypatch,
+        {attempt: [_artifact(1)], published: [_artifact(1)]},
+        {"1": _run(path=github.WORKFLOW_PATH)},
+    )
+    assert github.latest_state(REPO, 7) is not None
+    assert downloaded == [published]
+
+
 def test_latest_state_ignores_artifacts_from_another_workflow(monkeypatch: pytest.MonkeyPatch) -> None:
     name = github.state_artifact_name(7, github.STATE_ARTIFACT_PREFIX)
     downloaded = _state_sources(monkeypatch, {name: [_artifact(1)]}, {"1": _run(path=".github/workflows/other.yml")})

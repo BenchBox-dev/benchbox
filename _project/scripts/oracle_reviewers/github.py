@@ -206,6 +206,10 @@ def state_artifact_name(pr: int, prefix: str = STATE_ARTIFACT_PREFIX) -> str:
     return f"{prefix}{pr}"
 
 
+def attempt_state_artifact_name(pr: int, prefix: str = STATE_ARTIFACT_PREFIX) -> str:
+    return f"{prefix}attempt-{pr}"
+
+
 WORKFLOW_PATH = ".github/workflows/oracle-verdict.yml"
 TRUSTED_EVENTS = frozenset({"pull_request_target", "issue_comment", "schedule", "workflow_dispatch"})
 TRUSTED_ASSOCIATIONS = frozenset({"OWNER", "MEMBER", "COLLABORATOR"})
@@ -316,17 +320,19 @@ def trusted_run(
 
 
 def latest_state(repo: str, pr: int) -> State | None:
-    return _latest_state(repo, pr, state_artifact_name(pr), WORKFLOW_PATH)
+    names = (state_artifact_name(pr), attempt_state_artifact_name(pr))
+    return _latest_state(repo, pr, names, WORKFLOW_PATH)
 
 
-def _latest_state(repo: str, pr: int, name: str, workflow_path: str) -> State | None:
-    listing = get_json(f"repos/{repo}/actions/artifacts?name={name}&per_page=30")
-    candidates = sorted(
-        (item for item in listing.get("artifacts", []) if not item.get("expired")),
-        key=lambda item: item.get("created_at", ""),
-        reverse=True,
-    )
-    for candidate in candidates:
+def _latest_state(repo: str, pr: int, names: Sequence[str], workflow_path: str) -> State | None:
+    pairs = [
+        (name, item)
+        for name in names
+        for item in get_json(f"repos/{repo}/actions/artifacts?name={name}&per_page=30").get("artifacts", [])
+        if not item.get("expired")
+    ]
+    pairs.sort(key=lambda pair: pair[1].get("created_at", ""), reverse=True)
+    for name, candidate in pairs:
         run_id = str(candidate["workflow_run"]["id"])
         run = get_json(f"repos/{repo}/actions/runs/{run_id}")
         pulls: list[HeadPull] | None = None
