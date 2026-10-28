@@ -1,0 +1,32 @@
+{
+  "acceptance": [
+    "The effective default for --capture-plans is reconciled against prior recorded decisions and documented consistently in CLI help, Python API docs and feature docs; any change that adds execution cost is an explicit design decision.",
+    "An executable CLI check distinguishes omitted analyze flag, explicit --analyze-plans and --no-analyze-plans using actual per-operator timing presence; all three agree with the published contract.",
+    "Documentation distinguishes capture opt-in, deferred-phase eligibility and actual adapter/parser capability; it distinguishes normalized logical fingerprints from full physical-plan equivalence.",
+    "Documentation accurately describes SQL versus DataFrame result fields and the limits of post-measurement EXPLAIN, including bespoke mid-run mutations; remove the unsupported DuckDB estimate-leak exception."
+  ],
+  "context": "Observed 2026-10-28: TPC-H DuckDB Q1/Q6 capture succeeded both with --no-analyze-plans and with no analyze flag. The default bundle had timing=null and cardinality=null on physical operators, matching the false adapter default rather than CLI help. Existing phase tests exercise explicit true/false, not the documented CLI default. Intended logical-hash and post-measurement limitations are not requests to redesign capture.",
+  "description": "CLI help and query-plan-analysis.md promise ANALYZE capture by default, but PlatformAdapter defaults analyze_plans to false and a real CLI run without either analyze flag captured estimated plans with null operator timing. Other contract drift includes treating phase eligibility as support, a documented DuckDB estimate-fingerprint exception not supported by the structural signature, and generic result-field claims that do not hold for raw DataFrame wrappers. Reconcile prior decisions before choosing the default: completed qpc-04 explicitly chose estimated plans, while later completed items/documentation describe ANALYZE defaults. Do not silently enable query re-execution merely to match prose.",
+  "links": [
+    "benchbox/platforms/base/adapter.py:121-137",
+    "benchbox/cli/commands/run.py:2570-2590",
+    "docs/features/query-plan-analysis.md:50-182",
+    "docs/reference/python-api/platforms/common.md:562-570",
+    "docs/reference/python-api/platforms/common.md:1232-1264",
+    "docs/reference/python-api/core.md:28-31",
+    "benchbox/core/results/query_plan_models.py:230-281",
+    "todo:qpc-04-capture-timeout-and-analyze-default",
+    "todo:duckdb-explain-analyze-default",
+    "todo:query-plan-capture-canonical-isolation"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bb7fd2d6b114a6501df93f97",
+      "at": "2026-10-28T12:03:33Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6375849be487434e87e7404986a1590d",
+      "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
+    }
+  ]
+}

@@ -19699,6 +19699,13 @@
       "status": "done",
       "title": "Implement query plan capture for cloud SaaS platforms: Snowflake, BigQuery, Azure Synapse, Firebolt, Fabric Warehouse, and Lakesail"
     },
+    "query-plan-capture-contract-doc-alignment": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Align query-plan help and documentation with effective capture contracts"
+    },
     "query-plan-capture-cross-engine-conformance": {
       "claim": null,
       "needs": [],
