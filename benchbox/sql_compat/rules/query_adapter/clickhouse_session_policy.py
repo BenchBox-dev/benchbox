@@ -19,7 +19,10 @@ _REASON = (
     "AST-based injection is unsafe for these queries (corrupts Q23 GROUP BY, "
     "inserts aliases inside Q87 EXCEPT/INTERSECT). "
     "Session setting joined_subquery_requires_alias=0 disables the requirement. "
-    "No upstream sqlglot issue tracks this AST limitation, so issue_url is unset."
+    "No upstream sqlglot issue tracks this AST limitation, so issue_url is unset: "
+    "no issue is filed because the minimal reproduction (TPC-DS Q23/Q87, 'AST "
+    "alias injection for ClickHouse joined subqueries corrupts GROUP BY and "
+    "EXCEPT/INTERSECT') is recorded only in the PR #3578 description."
 )
 
 for _qid in ("23a", "23b", "87"):

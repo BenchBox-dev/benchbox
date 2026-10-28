@@ -78,9 +78,9 @@ A5 are recorded in the tracker as done, with the BenchBox PRs in the git history
 
 ## Unfinished research
 
-The comparison and ML research items remain open and are not resumed by this
-record: `sql-transpiler-comparison-evidence`,
+`sql-transpiler-comparison-evidence` was finished (PR #3596). The Polyglot
+research items remain open and are not resumed by this record:
 `polyglot-benchbox-integration-assessment` and
-`polyglot-source-aware-division-spike`. None is claimed complete, and none
-gates the fork. Public publication of any artifact still requires explicit owner
+`polyglot-source-aware-division-spike`. Neither is claimed complete, and
+neither gates the fork. Public publication of any artifact still requires explicit owner
 approval of the concrete artifacts.
