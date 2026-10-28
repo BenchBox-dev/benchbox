@@ -3060,6 +3060,26 @@
   {
    "disposition": "fixture-data",
    "kinds": {
+    "unresolved": 2
+   },
+   "occurrences": 2,
+   "path": "tests/integration/oracle/test_evidence_scenarios.py",
+   "rule": "test-sample-data",
+   "target_count": 2,
+   "targets": [
+    {
+     "kind": "unresolved",
+     "target": "docs/guide.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/notes.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
     "root": 1,
     "unresolved": 1
    },
@@ -4490,7 +4510,7 @@
   "dispositions": {
    "contract-replaced": 1,
    "contract-tooling": 6,
-   "fixture-data": 47,
+   "fixture-data": 48,
    "governance-stays": 9,
    "historical-record": 114,
    "lock-test": 8,
@@ -4498,7 +4518,7 @@
    "site-pipeline-cutover": 4,
    "wiring-updated": 31
   },
-  "files": 232,
+  "files": 233,
   "kinds": {
    "built-url": 29042,
    "dir": 165,
@@ -4507,9 +4527,9 @@
    "generated": 3,
    "pattern": 329,
    "root": 196,
-   "unresolved": 2075
+   "unresolved": 2077
   },
-  "references": 33246,
+  "references": 33248,
   "unclassified": 0
  }
 }
