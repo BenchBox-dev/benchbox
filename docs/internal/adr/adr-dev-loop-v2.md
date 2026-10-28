@@ -221,7 +221,9 @@ reason. The ledger holds the evidence and the open blockers.
 
 Owner decisions of 2026-10-27:
 
-- The per-test 0.5 s duration policy is superseded by the aggregate fast-duration gate.
+- The per-test 0.5 s duration policy is superseded by the aggregate fast-duration gate (the baseline builder, its
+  weekly refresh workflow and the `verify-fast-duration` verdict); the per-test durations file and the
+  `duration_exempt` marker are removed.
 - The browser check is ported to the site repository and the Explorer-token lint is retired.
 - GizmoSQL stays in the release rehearsal candidate.
 - Deleting the `release` branch and its ruleset is an owner-run step after the first publication on the new release

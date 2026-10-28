@@ -46,8 +46,10 @@ required contexts, not units. The earlier six-unit count included `landing`, whi
 
 Owner decisions of 2026-10-27:
 
-- The per-test 0.5 s duration policy of the dev-loop correction program is superseded by the aggregate fast-duration
-  gate.
+- The per-test 0.5 s duration requirement (dlv2-13) is superseded by the aggregate fast-duration gate:
+  `scripts/build_fast_duration_baseline.py`, `fast-duration-baseline-refresh.yml`, the `verify-fast-duration`
+  verdict and `tests/fixtures/fast_tier_baseline`. Evidence is PR #3625 and the "Fast-test duration policy" section
+  of `docs/internal/nightly-t3.md`. `tests/fixtures/test_durations.json` and the `duration_exempt` marker are removed.
 - The browser check is ported to the site repository (`dlv2-site-browser-check`) and the Explorer-token lint is
   retired. The `t3:browser` check (Explorer Firefox and WebKit smoke) is now
   `.github/workflows/nightly-browser.yml` in `BenchBox-dev/benchbox-site` (benchbox-site#73), which runs daily at
