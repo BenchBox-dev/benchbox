@@ -1,11 +1,11 @@
 {
   "acceptance": [
-    "A core PR that changes docs/ gets an advisory check reporting whether the site builds from its bundle",
-    "A deliberately broken docs link in a test PR makes the check fail; the check is not in the required contexts",
+    "A core PR that changes the CLI option or platform registry used by a site docs example gets an advisory check reporting whether the site builds from its bundle",
+    "A deliberately broken docs example in a test PR makes the check fail; the check is not in the required contexts",
     "Core still contains no JS/TS or package.json"
   ],
-  "context": "Found 2026-10-17 at site-split closeout (follow-up list in site-split-99). Must not become a required context; D17 allows no further ruleset change.",
-  "description": "Decision D5 of the site-repo split ADR (docs/internal/adr/adr-site-repo-split.md:25) means a core docs PR that breaks the site build is found only after merge: the site refuses the bundle, keeps the last good site and opens an issue. The ADR names an advisory pre-merge check as a follow-up. No core workflow builds the site before merge; the only reference to benchbox-site in core workflows is the post-merge dispatch in .github/workflows/site-inputs.yml:105-116.\n\nAdd a non-required check on core PRs that touch docs/: build the PR's site-inputs bundle and ask the site repo to build it (for example through a dispatch that reports back as a check), without adding Node to core (ADR D9).",
+  "context": "Found 2026-10-17 at site-split closeout. Must not become a required context; D17 allows no further ruleset change. Rescoped after core PR 3658 covered path deletions.",
+  "description": "Rescoped 2026-10-28. Decision D5 of the site-repo split ADR (docs/internal/adr/adr-site-repo-split.md) means a core change that breaks the site build is found only after merge: the site refuses the bundle, keeps the last good site and opens an issue. Since the site authors the docs, a docs/-only trigger is stale. Core PR check_site_linked_paths (make site-linked-paths-check, in ci-paths) now catches the observed failure, deletion or rename of a core path that a site docs page links to. The residual gap is any other core change that makes the site converter, docs:check (block mode) or a deploy gate fail on the new bundle, for example a renamed CLI option or platform that a docs example uses, or a bundle member change. The ADR names an advisory pre-merge build as a follow-up. No core workflow builds the site before merge; the only reference to benchbox-site in core workflows is the post-merge dispatch in .github/workflows/site-inputs.yml.\n\nAdd a non-required check on core PRs that touch bundle-producing paths (site-inputs inputs: benchbox/ CLI and platform registries, doc contracts, results data, scripts/site_inputs.py): build the PR's site-inputs bundle and ask the site repo to build it (for example a dispatch that reports back as a check), without adding Node to core (ADR D9). Needs a cross-repo token the owner must provision; do not start before that decision.",
   "sessions": [
     {
       "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
@@ -14,6 +14,14 @@
       "op": "create",
       "op_id": "1007f09196e248c6b98e97168312d9c7",
       "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-28T18:19:59Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "0d9dd559879c47efbc81d3fd0e9aaa92",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
     }
   ]
 }
