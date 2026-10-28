@@ -4,7 +4,7 @@
     "Every failing domain is named with its failing job; new failures get a follow-up item or an owner report",
     "The item closes only on that recorded evidence, not on a validator pass"
   ],
-  "context": "The 2026-10-26 nightly already ran at 14:25 UTC (40339587542): t3:drift corpus failed (see corpus-sync-dispatch-20261026), t3:windows timed out (see windows-nightly-timeout-diagnosis-20261026). This item confirms the following scheduled runs.",
+  "context": "The 2026-10-26 nightly already ran at 14:25 UTC (40339587542): t3:drift corpus failed (see corpus-sync-dispatch-20261026), t3:windows timed out (see windows-nightly-timeout-diagnosis-20261026). This item confirms the following scheduled runs.\n\n2026-10-28 evidence: scheduled nightly-v2 runs read live: 40339587542 (10-26 14:25Z) failure (drift corpus, windows stall); 40511812416 (10-27 13:24Z, head 2492d7a07) failure (t3:windows module-state-guard Path.home, fixed by #3548); 40703501280 (10-28, head 65f3a6af5) success on attempt 2 (attempt 1: one macOS arm64 runner-capacity cancellation, no domain failure). Legacy nightly 40494140132 (10-27) success. Corpus Drift Check scheduled 40696429565 (10-28 13:26Z) failed because mirror PRs were unmerged; mirrors #3635 and #3656 then merged and dispatch 40688293263 passed. Every failing domain is named above with its cause; no unreported new failure.",
   "description": "Standing confirmation held until 2026-10-27: the Monday 2026-10-26 scheduled runs (nightly-v2, legacy nightly, release canary) must be read live and compared against the fixes merged on 2026-10-25/26 (#3481 Windows locale, #3482 canary, corpus sync). Guardrails (all items): primary clone read-only; work only in a linked worktree from origin/develop (make worktree-create + make agent-write-preflight); never git add -A or git stash; identity Joe Harris, no agent attribution; never bypass hooks by any route; no code comments/docstrings (make comment-policy-check clean); encoding=\"utf-8\" on file/subprocess text I/O; uv run -- for Python; no CHANGELOG entries; never weaken or delete tests or gates; TEST LOCK: never set BENCHBOX_SKIP_TEST_LOCK or BENCHBOX_TEST_LOCK_DIR, never run make test-unlock, xdist only under the shared lock; for make pr-open put ~/.cache/omp-18.12.1/bin first on PATH; make pr-preflight once, make pr-open, make pr-arm; never post oracle comments or rerun the oracle; commit/PR text for a reader who never saw this session (no item ids or plan labels).",
   "not_before": "2026-10-27T00:00:00Z",
   "sessions": [
@@ -23,6 +23,14 @@
       "generation": "61bff2b319af429c873e1a47fcd4c436",
       "op": "take",
       "op_id": "7cbe1c06b9d34c1f8e60a4d30dd2a9bd",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-28T16:38:48Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f95816f20dc942f88798dd0d73b4d142",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
