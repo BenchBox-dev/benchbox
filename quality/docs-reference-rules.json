@@ -248,6 +248,7 @@
         "tests/fixtures/oracle_reviewers/pr3222_replay.json",
         "tests/fixtures/ruleset-develop-squash-only.json",
         "tests/fixtures/trunk_red_20261024.json",
+        "tests/integration/oracle/test_evidence_scenarios.py",
         "tests/integration/worktree/test_worktree_lifecycle_metadata.py",
         "tests/unit/release/test_ruleset_drift_review_coverage.py",
         "tests/unit/scripts/oracle_reviewers/test_classifier.py",

@@ -26,6 +26,8 @@ ACCOUNTS = {
 }
 GH_HOST = "github.localhost"
 API_HOST = f"api.{GH_HOST}"
+COMMENT_PAGE = 50
+COMMENT_PAGE_AFTER = 100
 WORKFLOWS = {"oracle-verdict.yml": 7001, "oracle-gate.yml": 7002, "ci.yml": 7003}
 
 
@@ -152,7 +154,10 @@ class FakeGitHub:
         counts = {}
         for line in self.git("diff", "--numstat", "-M", merge_base, head).splitlines():
             added, deleted, path = line.split("\t", 2)
-            counts[path.split(" => ")[-1].rstrip("}")] = (int(added), int(deleted))
+            counts[path.split(" => ")[-1].rstrip("}")] = (
+                int(added) if added != "-" else 0,
+                int(deleted) if deleted != "-" else 0,
+            )
         items = []
         for line in self.git("diff", "--name-status", "-M", merge_base, head).splitlines():
             parts = line.split("\t")
@@ -609,6 +614,8 @@ class FakeGitHub:
         query = payload.get("query", "")
         variables = payload.get("variables") or {}
         reviews = {item["node_id"]: item for items in self.reviews.values() for item in items}
+        if "PullRequestReviewThread" in query:
+            return self._thread_comments(variables)
         if "nodes(ids" in query:
             ids = variables.get("ids") or []
             nodes = [self._edit_state(reviews[node_id], node_id) for node_id in ids if node_id in reviews]
@@ -642,9 +649,9 @@ class FakeGitHub:
                                 "includesCreatedEdit": False,
                                 "body": item["body"],
                             }
-                            for item in thread["comments"]
+                            for item in thread["comments"][:COMMENT_PAGE]
                         ],
-                        "pageInfo": {"hasNextPage": False, "endCursor": None},
+                        "pageInfo": self._comment_page(thread, 0, COMMENT_PAGE),
                     },
                 }
                 for thread in self.threads[number]
@@ -656,6 +663,28 @@ class FakeGitHub:
             }
             return {"data": {"repository": {"pullRequest": {"reviewThreads": connection}}}}
         return {"data": {"repository": {"pullRequest": self.graphql_pull(pull)}}}
+
+    def _comment_page(self, thread: dict[str, Any], start: int, size: int) -> dict[str, Any]:
+        end = start + size
+        more = len(thread["comments"]) > end
+        return {"hasNextPage": more, "endCursor": str(end) if more else None}
+
+    def _thread_comments(self, variables: dict[str, Any]) -> dict[str, Any]:
+        thread = next(item for items in self.threads.values() for item in items if item["id"] == variables["thread"])
+        start = int(variables["after"])
+        nodes = [
+            {
+                "author": {
+                    "__typename": item["author"]["type"],
+                    "login": item["author"]["login"].removesuffix("[bot]"),
+                },
+                "authorAssociation": item["association"],
+                "body": item["body"],
+            }
+            for item in thread["comments"][start : start + COMMENT_PAGE_AFTER]
+        ]
+        page = self._comment_page(thread, start, COMMENT_PAGE_AFTER)
+        return {"data": {"node": {"comments": {"pageInfo": page, "nodes": nodes}}}}
 
     def _edit_state(self, review: dict[str, Any], node_id: str) -> dict[str, Any]:
         return {"id": node_id, "lastEditedAt": review["last_edited_at"], "includesCreatedEdit": review["edited"]}

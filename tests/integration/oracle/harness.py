@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import stat
 import subprocess
 import sys
@@ -158,22 +159,25 @@ class Harness:
         trusted[POLICY] = self.policy_file.read_text(encoding="utf-8")
         self.write({"README.md": "seed\n", CHECKER: "def checker(a, b):\n    return a == b\n", **trusted}, "seed")
 
-    def write(self, files: dict[str, str], message: str) -> str:
+    def write(self, files: dict[str, str | bytes], message: str) -> str:
         for relative, text in files.items():
             target = self.repo / relative
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(text, encoding="utf-8")
+            if isinstance(text, bytes):
+                target.write_bytes(text)
+            else:
+                target.write_text(text, encoding="utf-8")
             git(self.repo, "add", relative)
         git(self.repo, "commit", "--quiet", "-m", message)
         return git(self.repo, "rev-parse", "HEAD")
 
-    def branch(self, name: str, files: dict[str, str], message: str, base: str = "develop") -> str:
+    def branch(self, name: str, files: dict[str, str | bytes], message: str, base: str = "develop") -> str:
         git(self.repo, "switch", "--quiet", "-C", name, base)
         sha = self.write(files, message)
         git(self.repo, "switch", "--quiet", "develop")
         return sha
 
-    def push(self, name: str, files: dict[str, str], message: str) -> str:
+    def push(self, name: str, files: dict[str, str | bytes], message: str) -> str:
         git(self.repo, "switch", "--quiet", name)
         sha = self.write(files, message)
         git(self.repo, "switch", "--quiet", "develop")
@@ -196,10 +200,17 @@ class Harness:
         script = {"version": PINNED_OMP, "stream": str(RECORDED_STREAM), "replies": replies, "leak_env": leak_env}
         (self.bin / "script.json").write_text(json.dumps(script), encoding="utf-8")
         (self.bin / "calls.json").unlink(missing_ok=True)
+        shutil.rmtree(self.bin / "arrivals", ignore_errors=True)
+
+    def omp_log(self) -> list[dict[str, Any]]:
+        path = self.bin / "calls.json"
+        return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else []
 
     def omp_calls(self) -> int:
-        path = self.bin / "calls.json"
-        return len(json.loads(path.read_text(encoding="utf-8"))) if path.is_file() else 0
+        return len(self.omp_log())
+
+    def omp_prompts(self) -> list[str]:
+        return [call["prompt"] for call in self.omp_log()]
 
     def base_env(self, temp: Path | None = None) -> dict[str, str]:
         proxy = f"http://127.0.0.1:{self.github.port}"
@@ -257,6 +268,7 @@ class Harness:
         swap_after_install: bool = False,
         inputs: dict[str, str] | None = None,
         tamper_attempts: Callable[[Path], None] | None = None,
+        plan_env: dict[str, str] | None = None,
     ) -> ReviewRun:
         pull = self.github.pulls[pr]
         self.github.refresh(pr)
@@ -298,7 +310,7 @@ class Harness:
         plan = self.cli(
             "plan",
             ["plan", "--policy", str(self.policy_file), "--pr", str(pr), "--out", str(plan_dir)],
-            {**env, "GH_TOKEN": JOB_TOKEN},
+            {**env, "GH_TOKEN": JOB_TOKEN, **(plan_env or {})},
         )
         record.steps["plan"] = plan
         decision, post = plan.outputs.get("decision"), plan.outputs.get("post") == "true"
@@ -478,7 +490,23 @@ class Harness:
         argv = [sys.executable, str(REPO_ROOT / "scripts" / "pr_arm.py"), "--pr", str(pr), "--head", head]
         return self.run("arm", [*argv, "--repo", SLUG], env, cwd=checkout)
 
-    def local_review(self, branch: str) -> Step:
+    def local_review(self, branch: str, body: str | None = None) -> Step:
+        argv, env, checkout = self._local_review_command(branch)
+        if body is not None:
+            body_file = self.root / "pr-body.md"
+            body_file.write_text(body, encoding="utf-8")
+            argv = [*argv, "--body-file", str(body_file)]
+        return self.run("local-review", argv, env, cwd=checkout)
+
+    def start_local_review(self, branch: str) -> subprocess.Popen[str]:
+        argv, env, checkout = self._local_review_command(branch)
+        return subprocess.Popen(argv, cwd=checkout, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+    def finish_local_review(self, process: subprocess.Popen[str]) -> Step:
+        stdout, stderr = process.communicate(timeout=STEP_TIMEOUT)
+        return Step("local-review", process.returncode, stdout, stderr, {})
+
+    def _local_review_command(self, branch: str) -> tuple[list[str], dict[str, str], Path]:
         checkout = self.root / f"local-{branch.replace('/', '-')}"
         if not checkout.exists():
             git(self.root, "clone", "--quiet", str(self.repo), str(checkout))
@@ -492,7 +520,7 @@ class Harness:
             "BENCHBOX_LOCAL_ORACLE_DIR": str(self.local_state),
         }
         argv = [sys.executable, "-m", "_project.scripts.oracle_reviewers.cli", "local-review", "--policy", POLICY]
-        return self.run("local-review", [*argv, "--base-ref", "develop"], env, cwd=checkout)
+        return [*argv, "--base-ref", "develop"], env, checkout
 
     @property
     def local_state(self) -> Path:
