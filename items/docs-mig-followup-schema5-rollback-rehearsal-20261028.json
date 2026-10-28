@@ -2,6 +2,7 @@
   "acceptance": [
     "A rollback to a retained receipt is run on the staging target, probes pass, and the run and receipt are recorded; production is not used for the rehearsal."
   ],
+  "context": "Review 2026-10-28: RECOMMEND DROP, needs owner decision. Claim 'no rollback since cutover' is false: production deploy 40618060649 failed its probe and auto-dispatched rollback run 40620238669 (workflow_dispatch, success, rollback_of 40616997443, probes 39/39, schema 5). No staging target exists: SITE_DEPLOY_TARGET=production, SITE_ORIGIN=https://benchbox.dev, one Pages site; rehearsal mode deploys noindex to the same site, and rollback filters receipts by current target. Rollback tests: deploy/test/rollback.test.ts. A manual rollback is owner-only and hits production. Gap noticed: a rollback does not stick (next core-bundle deploy replaces it 13 minutes later) and the hold step (unset SITE_DEPLOY_TARGET) is undocumented.",
   "description": "The first schema-5 production deploy was Deploy 40606931521; the schema4 and exact3 build profiles fail fast after core removal, so rollback is only the site deploy rollback to a retained receipt (for example Deploy 40598838988 on schema 4, or 40606931521). No rollback has been exercised since the cutover.",
   "sessions": [
     {
@@ -10,6 +11,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "31226386809d4e6fa0e5ef7b3fe53863",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-28T12:37:09Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "53e652aead1d4df7a8f5b98b339a8656",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
     }
   ]
