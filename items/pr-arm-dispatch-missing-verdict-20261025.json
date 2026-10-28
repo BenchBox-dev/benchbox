@@ -1,7 +1,8 @@
 {
   "acceptance": [
     "The 7-day missing-verdict count is recorded before any edit.",
-    "If built: a test shows pr-arm dispatches once for a head with no verdict run and never for a head with one; a live dispatch is observed on a real PR."
+    "If built: a test shows pr-arm dispatches once for a head with no verdict run and never for a head with one; a live dispatch is observed on a real PR.",
+    "Adds or updates the matching scenario in tests/integration/oracle (registered in ORACLE_SCENARIO_TESTS), proven to fail with this item's defect reintroduced; the scenario runs only the fake omp executable and fake servers, never a real omp or model-provider call."
   ],
   "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\n2026-10-26: its premise, the #3485 pr-arm oracle-gate refresh, is removed by retire-oracle-review-workflow-20261021; re-evaluate after that merges (likely drop as moot).\n\nRe-homed from the deferred 'verdict dispatch at pr-arm' step of the 2026-10-25 proposal.",
   "description": "Deferred from the 2026-10-25 oracle proposal (second Advisor review, option d). make pr-arm already refreshes oracle-gate before arming (#3485). When no oracle-verdict run exists for the exact head (none queued, in progress or completed), pr-arm could dispatch `gh workflow run oracle-verdict.yml --ref develop -f pr=<n>` and report it, instead of leaving the author to wait for the hourly sweep.\n\nDecision gate: build only if 7 days of data after oracle-verdict-single-job-20261025 lands show heads with no verdict run within 30 minutes of the push. Record the count first.\n\nGuardrails: dispatch only from develop's ref; never more than one dispatch per head; no change to verdict trust, carry or the gate.",
@@ -45,6 +46,14 @@
       "op": "update",
       "op_id": "878605da50a14d47ae44e6f536edf252",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:mcp:joe@joe-mac-mini.local:4d1c216a121363560797b702",
+      "at": "2026-10-28T17:19:29Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "2d85fd9ea4aa4a5a904077f47148d8d8",
+      "session_id": "f2ea81a526d74429861bc01fff72f167"
     }
   ]
 }
