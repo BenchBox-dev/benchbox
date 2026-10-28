@@ -8950,15 +8950,10 @@
       "title": "Fix wrong install extras, options and stale claims in platform guides"
     },
     "docs-anchor-check-20261026": {
-      "claim": {
-        "expires_at": "2026-10-29T16:25:04Z",
-        "generation": "99f4c8bca6504aaaa0a14391736460f9",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Fail core CI on unresolved Markdown anchors between tracked docs"
     },
     "docs-backend-exception-redaction-followup": {
