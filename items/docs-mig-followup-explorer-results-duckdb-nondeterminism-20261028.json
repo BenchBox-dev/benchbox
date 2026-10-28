@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "Two consecutive builds from one bundle produce an identical results.duckdb, or the deploy digests deliberately exclude it with the reason recorded. Evidence: both builds listed."
+  ],
+  "description": "Two builds of the site from the same certified inputs differ only in results/data/results.duckdb. Found while comparing genuine schema-4 and schema-5 builds during the docs cutover; the difference is schema-independent, so it is a producer defect, not a migration effect. It weakens any digest or byte comparison that covers the Explorer artifact.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-28T01:09:14Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "874b3ca595a0465da076d175988ecdc9",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    }
+  ]
+}

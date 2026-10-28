@@ -9118,6 +9118,13 @@
       "status": "done",
       "title": "Verify production migration and release source ownership freeze"
     },
+    "docs-mig-followup-explorer-results-duckdb-nondeterminism-20261028": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Make explorer/results.duckdb build byte-identical from identical bundle inputs"
+    },
     "docs-mig-history-filter": {
       "claim": null,
       "needs": [
