@@ -2,7 +2,8 @@
   "acceptance": [
     "With the base commit available in the reviewer workspace, a `git diff` counts as a read of a file only with an explicit revision range against the base (for example `git diff <base>..HEAD -- path`), and `git show <base>:path` is not counted as a read of the head file. A bare `git diff -- path` on the clean head checkout and `git show HEAD -- path` do not count.",
     "Count, quiet and file-name-only flags (`grep -l`, `grep -c`, `rg -q`), and zero-length head/tail (`head -n 0`), do not count",
-    "Each excluded form is a test case in tests/unit/scripts/oracle_reviewers/test_evidence.py"
+    "Each excluded form is a test case in tests/unit/scripts/oracle_reviewers/test_evidence.py",
+    "Adds or updates the matching scenario in tests/integration/oracle (registered in ORACLE_SCENARIO_TESTS), proven to fail with this item's defect reintroduced; the scenario runs only the fake omp executable and fake servers, never a real omp or model-provider call."
   ],
   "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\n2026-10-09 tracker review: priority lowered from medium to low. The loopholes are real (a bare `git diff` on a clean head checkout, `grep -l/-c`, `rg -q`), but the hollow reviews observed so far had no reads at all, and the read check now catches those. The former acceptance 3 (Claude Grep and limited Reads) is dropped: the decision record (_project/decisions/oracle-review-protocol-2026-10-08.md:47) already says a Read or Grep naming the file counts, and docs/operations/oracle-review-v2.md:213 repeats it. The item now needs oracle-reviewer-checkout-has-no-base-commit-20261009: base-ref commands cannot work until the reviewer workspace holds the base commit, and the base-ref rules in acceptance 1 depend on it.\n\nOracle response remediation preserves the existing partial-read tripwire. oracle-response-evidence-secrets-20261021 disables source summaries and extends exact documented selectors; it does not implement this item's out-of-bounds/notice-only or legacy command-content tightening. Retained scope remains here; no closure implied.",
   "description": "evidence.reads_file counts any content-reading command with the file as an operand. Several of these print nothing of the head version: `git diff -- path` on the clean head checkout, `git show <base>:path`, `git show HEAD -- path`, `head -n 0`, `grep -l/-c` and `rg -q`. The check is a tripwire for reviewers that read nothing, but a reviewer can satisfy it without seeing the changed code. A Read or Grep naming the file counts by design (decision record, _project/decisions/oracle-review-protocol-2026-10-08.md:47), so that is out of scope. Deferred from #2783 (Medium, and a Low in its review body). The base-ref rules (`git show <base>:path`, ranged `git diff`) need the base commit in the reviewer workspace, which is tracked in oracle-reviewer-checkout-has-no-base-commit-20261009.",
@@ -65,6 +66,14 @@
       "op": "update",
       "op_id": "c487c673cbd9498b89c5a2dfa20cc4f9",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:mcp:joe@joe-mac-mini.local:4d1c216a121363560797b702",
+      "at": "2026-10-28T17:18:44Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "28d61ca398a4449594bf66b7a96c20ef",
+      "session_id": "f2ea81a526d74429861bc01fff72f167"
     }
   ]
 }
