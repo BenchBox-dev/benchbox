@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -883,3 +884,36 @@ def test_exposure_exemption_does_not_bypass_withdrawal_citations(tmp_path: Path)
     marked = mark_citations(verdict, tmp_path)
     assert marked.prior_defects[0].status == "not_fixed"
     assert UNVERIFIED_WITHDRAWAL in marked.prior_defects[0].evidence
+
+
+@pytest.mark.parametrize("name", ["a+b.py", "with space.py", "naïve.py", "-hidden.py", "pkg/x y/z.py"])
+def test_withdrawal_citation_accepts_every_schema_valid_path(tmp_path: Path, name: str) -> None:
+    workspace = tmp_path / "ws"
+    target = workspace / name
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("one\ntwo\n")
+    prior = PriorDefect("D1", "withdrawn", f"see {name}:2 for the refutation", "", True)
+    marked = mark_citations(replace(_verdict(), prior_defects=(prior,)), workspace, read=frozenset({name}))
+    assert marked.prior_defects[0].status == "withdrawn"
+    assert marked.prior_defects[0].demoted is None
+
+
+@pytest.mark.parametrize("cited", ["../b.py:1", "/abs/b.py:1", "x+b.py:1", "b.py:9"])
+def test_withdrawal_citation_still_rejects_escapes_unread_paths_and_missing_lines(tmp_path: Path, cited: str) -> None:
+    workspace = tmp_path / "ws"
+    (workspace / "abs").mkdir(parents=True)
+    (workspace / "b.py").write_text("one\n")
+    prior = PriorDefect("D1", "withdrawn", f"{cited} refutes it", "", True)
+    marked = mark_citations(replace(_verdict(), prior_defects=(prior,)), workspace, read=frozenset({"b.py"}))
+    assert marked.prior_defects[0].status == "not_fixed"
+
+
+def test_repro_citation_accepts_a_path_with_spaces(tmp_path: Path) -> None:
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    (workspace / "with space.py").write_text("one\n")
+    prior = PriorDefect("D1", "fixed", "repro: with space.py fails before", "", True)
+    marked = mark_citations(
+        replace(_verdict(), prior_defects=(prior,)), workspace, disputed=("D1",), read=frozenset({"with space.py"})
+    )
+    assert marked.prior_defects[0].status == "fixed"

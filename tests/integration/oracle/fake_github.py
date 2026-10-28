@@ -120,7 +120,9 @@ class FakeGitHub:
         return self.git_bytes(*args).decode("utf-8")
 
     def git_bytes(self, *args: str) -> bytes:
-        return subprocess.run(["git", "-C", str(self.git_dir), *args], capture_output=True, check=True).stdout
+        return subprocess.run(
+            ["git", "-c", "core.quotepath=false", "-C", str(self.git_dir), *args], capture_output=True, check=True
+        ).stdout
 
     def open_pull(self, number: int, head_ref: str, base_ref: str = "develop", **extra: Any) -> dict[str, Any]:
         with self.lock:
