@@ -1,7 +1,8 @@
 {
   "acceptance": [
     "The 14-day bucket-agreement measurement (or the owner's decision) is recorded before design.",
-    "If built: CI and local classification both come from the host, the runner no longer receives TYPESAFE_API_KEY, and a host outage leaves CI behaviour unchanged (tests and live evidence)."
+    "If built: CI and local classification both come from the host, the runner no longer receives TYPESAFE_API_KEY, and a host outage leaves CI behaviour unchanged (tests and live evidence).",
+    "Adds or updates the matching scenario in tests/integration/oracle (registered in ORACLE_SCENARIO_TESTS), proven to fail with this item's defect reintroduced; the scenario runs only the fake omp executable and fake servers, never a real omp or model-provider call."
   ],
   "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\n2026-10-26: owner decision Q17 chose the TypeSafe key in the Mac keychain and in the Claude cloud environment instead of serving classification from the gateway host; with Q3 (pend without classification) and #8 (block until the review can run), the key must be present wherever make pr-open runs. This item stays deferred.\n\nRe-homed from the deferred 'move classification off the runner' step of the 2026-10-25 proposal (local://oracle-queue/second-review-response.md) so the narrowing is recorded.",
   "description": "Deferred from the 2026-10-25 oracle job-structure proposal. Today select-1 calls TypeSafe directly with TYPESAFE_API_KEY on the runner (_project/scripts/oracle_reviewers/jev.py:31; oracle-jev-gateway-gap), and local reviews without the key fall back to a fixed bucket. Serving classification from the gateway host would remove the key from runners and give local and cloud reviews CI's buckets.\n\nDecision gate: build only if, after oracle-verdict-single-job-20261025 and oracle-local-prepr-review-20261025 land, measurement over 14 days shows that default-classified local reviews choose a different bucket from CI's on at least a quarter of PRs, or the owner decides the runner key exposure matters. Record the measurement first. Upstream blocker: omp auth-gateway does not serve judge-kind models (oracle-jev-gateway-gap); the host service may need its own endpoint.\n\nGuardrails: no change to bucket semantics or policy; fail closed to today's behaviour when the host is unreachable; owner decision before any new host service.",
@@ -45,6 +46,14 @@
       "op": "update",
       "op_id": "93470ae96ad440579add638da807dfeb",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:mcp:joe@joe-mac-mini.local:4d1c216a121363560797b702",
+      "at": "2026-10-28T17:17:50Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "b418bf83da0f4e708d7758ad125b1886",
+      "session_id": "f2ea81a526d74429861bc01fff72f167"
     }
   ]
 }
