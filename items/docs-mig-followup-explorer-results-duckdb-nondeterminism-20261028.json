@@ -2,6 +2,7 @@
   "acceptance": [
     "Two consecutive builds from one bundle produce an identical results.duckdb, or the deploy digests deliberately exclude it with the reason recorded. Evidence: both builds listed."
   ],
+  "context": "Review 2026-10-28: RECOMMEND DROP, needs owner decision. Byte differences are DuckDB storage-block layout (checksums, unused block tails); rebuilds of core's snapshot differ in sha256 even with threads=1 and after COPY FROM DATABASE; all 12 tables compare equal with EXCEPT ALL. Site builds copy the bundle snapshot unchanged (website/tests/site-meta.test.ts:154-158). Deploy gate compares canonical content digests since site PR 15 (deploy/gates/snapshot-digest.ts, deploy/lib/canonical-digest.ts); reason recorded in core _project/decisions/independent-publication-a0-freeze-2026-08-31.md:94-96. No gate needs byte identity.",
   "description": "Two builds of the site from the same certified inputs differ only in results/data/results.duckdb. Found while comparing genuine schema-4 and schema-5 builds during the docs cutover; the difference is schema-independent, so it is a producer defect, not a migration effect. It weakens any digest or byte comparison that covers the Explorer artifact.",
   "sessions": [
     {
@@ -10,6 +11,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "874b3ca595a0465da076d175988ecdc9",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-28T12:37:14Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1aa1c37406bd4367a6093ef63fc4355c",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
     }
   ]
