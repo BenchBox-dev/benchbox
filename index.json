@@ -15701,10 +15701,10 @@
     },
     "nightly-v2-throughput-uat-port-20261009": {
       "claim": {
-        "expires_at": "2026-10-16T11:34:29Z",
-        "generation": "1090a1d9b6d345bd814dfb0de1142777",
-        "renewals": 7,
-        "worker": "mcp:codex-mcp-client:joe@joe-mac-mini.local:122820e0d0649bb1515cedf7"
+        "expires_at": "2026-10-29T14:06:39Z",
+        "generation": "510ed71ec21248ec951606dfb9fca4b7",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
       },
       "needs": [],
       "priority": "medium-high",
