@@ -237,6 +237,8 @@ def main(argv: list[str]) -> int:
         events = [_rewrite(event, workspace, cwd) for event in recorded]
         final_turn = max(index for index, event in enumerate(events) if event["type"] == "turn_start")
         events = events[:final_turn]
+    elif reply.get("kind") == "text":
+        events = replay(recorded, reply["text"], workspace, cwd)
     else:
         events = replay(
             recorded, json.dumps(fill(response_template(prompt), reply), indent=2), workspace, cwd, reply.get("reads")

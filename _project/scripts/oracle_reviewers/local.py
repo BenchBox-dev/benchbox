@@ -537,6 +537,7 @@ def _run_attempts(plan_path: Path, work: Path, classification_path: Path, report
                     workspace=str(work / "workspace"),
                     home_root=str(work / "homes"),
                     allow_loopback_http=True,
+                    recover_inline=True,
                 )
             )
     finally:

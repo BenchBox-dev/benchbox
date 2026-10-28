@@ -317,7 +317,8 @@ def _judge(
     )
     problem = protocol.contradiction(verdict, plan, workspace=workspace)
     if problem is not None:
-        return ReviewOutcome(None, absence.Absence(absence.INVALID, problem), traced)
+        shaped = f"shape={shape_fingerprint(verdict.to_json(), _credentials())}\n{traced}"
+        return ReviewOutcome(None, absence.Absence(absence.INVALID, problem), shaped)
     verdict = protocol.keep_disputes_open(verdict, plan)
     gap = evidence.check(
         verdict,

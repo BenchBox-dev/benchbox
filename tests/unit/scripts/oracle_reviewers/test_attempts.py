@@ -15,6 +15,7 @@ from _project.scripts.oracle_reviewers.classify import Classification
 from _project.scripts.oracle_reviewers.dedup import fingerprint, marker
 from _project.scripts.oracle_reviewers.diff import commentable_lines
 from _project.scripts.oracle_reviewers.policy import Policy
+from _project.scripts.oracle_reviewers.recovery import ESCALATE, JEV, RETRY, Recovery
 from _project.scripts.oracle_reviewers.retry import ALL_ABSENT, INTEGRITY, OVERSIZE, UNREPORTED
 from _project.scripts.oracle_reviewers.selection import Attempt, SelectionInput, Step
 from _project.scripts.oracle_reviewers.verdict import Finding, VerdictError, validate
@@ -33,6 +34,8 @@ RUN_ID = "4242"
 OUTSIDE_NOTE = "Defects outside the diff count like the others: fix them before merge."
 HEAD = "a" * 40
 NOW = datetime(2026, 10, 5, 12, 0, tzinfo=UTC)
+JEV_RETRY = Recovery(RETRY, JEV, RETRY, 0.9, 0.8)
+JEV_ESCALATE = Recovery(ESCALATE, JEV, ESCALATE, 0.9, 0.8)
 DIFF = """diff --git a/benchbox/core/equivalence/checker.py b/benchbox/core/equivalence/checker.py
 --- a/benchbox/core/equivalence/checker.py
 +++ b/benchbox/core/equivalence/checker.py
@@ -136,10 +139,18 @@ def _write(
     *,
     verdict: dict | None = None,
     missing: Absence | None = None,
+    recovered: Recovery | None = None,
     **over: Any,
 ) -> None:
     artifact = attempts.build_artifact(
-        run_id=RUN_ID, pr=7, head_sha=HEAD, slot=slot, reviewer=reviewer, verdict=verdict, missing=missing
+        run_id=RUN_ID,
+        pr=7,
+        head_sha=HEAD,
+        slot=slot,
+        reviewer=reviewer,
+        verdict=verdict,
+        missing=missing,
+        recovered=recovered,
     )
     artifact.update(over)
     directory.mkdir(parents=True, exist_ok=True)
@@ -230,6 +241,10 @@ def test_invalid_verdict_counts_as_absent(policy: Policy, tmp_path: Path) -> Non
     loaded, step, errors = _decide(policy, plan, tmp_path)
     assert errors == []
     assert loaded.attempts[0].absence == "invalid"
+    assert step.kind == selection.PENDING and step.reviewer is None
+    _write(tmp_path, 1, "small", verdict=_v("", [{"severity": "Severe"}]), recovered=JEV_RETRY)
+    loaded, step, errors = _decide(policy, plan, tmp_path)
+    assert errors == []
     assert step.reviewer is not None and step.reviewer.name == "small"
 
 
@@ -804,8 +819,8 @@ def test_selection_starts_at_the_chosen_reviewer_and_escalates_to_other_models(
 def test_two_invalid_answers_hand_the_run_to_the_next_reviewer(policy: Policy, tmp_path: Path) -> None:
     plan = _plan(policy, ("trivial", "small", "medium", "large"))
     chosen = cli._selection(plan, _classification("small"))
-    _write(tmp_path, 1, "small", missing=Absence("invalid", "each finding must have the keys"))
-    _write(tmp_path, 2, "small", missing=Absence("invalid", "the reviewer output is not JSON"))
+    _write(tmp_path, 1, "small", missing=Absence("invalid", "each finding must have the keys"), recovered=JEV_RETRY)
+    _write(tmp_path, 2, "small", missing=Absence("invalid", "the reviewer output is not JSON"), recovered=JEV_ESCALATE)
     step, errors = attempts.decide(chosen, attempts.load(tmp_path, plan, RUN_ID))
     assert errors == []
     assert step.kind == selection.REVIEW and step.reviewer is not None and step.reviewer.name == "medium"
@@ -844,11 +859,20 @@ def test_a_malformed_jev_answer_leaves_the_slot_pending(
 
 def test_the_review_body_gives_each_absent_attempt_its_slot_and_reason(policy: Policy, tmp_path: Path) -> None:
     plan = _plan(policy)
-    _write(tmp_path, 1, "small", missing=Absence("invalid", "the reviewer output is not JSON: Expecting value"))
+    _write(
+        tmp_path,
+        1,
+        "small",
+        missing=Absence("invalid", "the reviewer output is not JSON: Expecting value"),
+        recovered=JEV_RETRY,
+    )
     _write(tmp_path, 2, "small", missing=Absence("empty", "the reviewer ended without a final answer"))
     loaded, step, errors = _decide(policy, plan, tmp_path)
     final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, {})
-    assert "- small (attempt 1): absent (invalid): the reviewer output is not JSON: Expecting value" in final.body
+    assert (
+        "- small (attempt 1): absent (invalid): the reviewer output is not JSON: Expecting value;"
+        " recovery: retry (Jev, probability 0.90, confidence 0.80)" in final.body
+    )
     assert "- small (attempt 2): absent (empty): the reviewer ended without a final answer" in final.body
 
 
@@ -856,14 +880,14 @@ def test_a_published_absence_detail_is_redacted_and_bounded(policy: Policy, tmp_
     plan = _plan(policy)
     secret = "sk-" + "a1B2c3D4" * 6
     detail = f"bad token {secret}\nand more " + "x " * 200
-    _write(tmp_path, 1, "small", missing=Absence("invalid", detail))
+    _write(tmp_path, 1, "small", missing=Absence("invalid", detail), recovered=JEV_RETRY)
     _write(tmp_path, 2, "small", missing=Absence("empty", "no answer"))
     loaded, step, errors = _decide(policy, plan, tmp_path)
     final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, {})
     line = next(row for row in final.body.splitlines() if row.startswith("- small (attempt 1)"))
     assert secret not in final.body and "[redacted]" in line
-    assert "\n" not in line and line.endswith("\u2026")
-    assert len(line.partition("absent (invalid): ")[2]) <= 160
+    assert "\n" not in line and line.partition(";")[0].endswith("\u2026")
+    assert len(line.partition("absent (invalid): ")[2].partition(";")[0]) <= 160
 
 
 def test_identical_findings_are_listed_once_and_stored_with_unique_ids(policy: Policy, tmp_path: Path) -> None:

@@ -79,7 +79,7 @@ class Loop:
     def fake(self, name: str, **params: Any) -> None:
         self.fakes.append({"name": name, "params": params})
 
-    def run(self) -> int:
+    def run(self, *command: str) -> int:
         spec = self.tmp_path / "loop-spec.json"
         environ_after = self.tmp_path / "environ-after.json"
         spec.write_text(json.dumps({"fakes": self.fakes, "environ_after": str(environ_after)}), encoding="utf-8")
@@ -89,20 +89,10 @@ class Loop:
                 "-m",
                 "tests.unit.scripts.oracle_reviewers.loop_process",
                 str(spec),
-                "attempts",
-                "--plan",
-                str(self.plan_path),
-                "--attempts-dir",
-                str(self.attempts),
-                "--classification",
-                str(self.classification),
-                "--workspace",
-                str(self.workspace),
-                "--home-root",
-                str(self.tmp_path),
+                *(command or self.attempts_command()),
             ],
             cwd=REPO_ROOT,
-            env={**os.environ, "PYTHONPATH": str(REPO_ROOT), "MUTANT_UNDER_TEST": ""},
+            env={**os.environ, "PYTHONPATH": str(REPO_ROOT), "MUTANT_UNDER_TEST": "", "TYPESAFE_API_KEY": ""},
             capture_output=True,
             text=True,
             check=False,
@@ -111,6 +101,43 @@ class Loop:
         if environ_after.exists():
             self.environ_after = json.loads(environ_after.read_text(encoding="utf-8"))
         return result.returncode
+
+    def attempts_command(self) -> list[str]:
+        return [
+            "attempts",
+            "--plan",
+            str(self.plan_path),
+            "--attempts-dir",
+            str(self.attempts),
+            "--classification",
+            str(self.classification),
+            "--workspace",
+            str(self.workspace),
+            "--home-root",
+            str(self.tmp_path),
+        ]
+
+    def recover_command(self) -> list[str]:
+        return [
+            "recover",
+            "--plan",
+            str(self.plan_path),
+            "--attempts-dir",
+            str(self.attempts),
+            "--workspace",
+            str(self.workspace),
+        ]
+
+    def run_with_recovery(self) -> int:
+        status = self.run()
+        while status == 0:
+            before = len(list(self.attempts.glob("attempt-*.json")))
+            if self.run(*self.recover_command()) != 0:
+                return 1
+            status = self.run()
+            if len(list(self.attempts.glob("attempt-*.json"))) == before:
+                break
+        return status
 
     def journal(self, name: str) -> Journal:
         return Journal(self.tmp_path / f"{name}.journal")
@@ -146,7 +173,7 @@ def _gone(pid: int) -> bool:
 def test_each_attempt_gets_a_fresh_home_and_the_previous_one_is_deleted(loop: Loop) -> None:
     journal = loop.journal("reviews")
     loop.fake("recording_review", journal=str(journal.path), workspace=str(loop.workspace))
-    assert loop.run() == 0
+    assert loop.run_with_recovery() == 0
     entries = journal.items()
     homes = [Path(entry["home"]) for entry in entries]
     assert len(homes) == 2
@@ -261,10 +288,24 @@ def test_reaping_after_a_leak_leaves_the_loops_other_children_waitable(tmp_path:
     assert report == {"leaked": True, "sibling_waitable": True}
 
 
-def test_the_workspace_is_reset_between_attempts(loop: Loop) -> None:
+def test_the_loop_stops_after_an_invalid_attempt_until_its_recovery_is_recorded(loop: Loop) -> None:
     journal = loop.journal("reviews")
     loop.fake("recording_review", journal=str(journal.path), workspace=str(loop.workspace))
     assert loop.run() == 0
+    assert loop.ran() == "1" and len(journal.items()) == 1
+    assert loop.artifact(1)["recovery"] is None
+    assert loop.run() == 0
+    assert loop.ran() == "1" and len(journal.items()) == 1
+    assert loop.run(*loop.recover_command()) == 0
+    assert loop.artifact(1)["recovery"]["source"] == "fallback"
+    assert loop.run() == 0
+    assert loop.ran() == "2" and len(journal.items()) == 2
+
+
+def test_the_workspace_is_reset_between_attempts(loop: Loop) -> None:
+    journal = loop.journal("reviews")
+    loop.fake("recording_review", journal=str(journal.path), workspace=str(loop.workspace))
+    assert loop.run_with_recovery() == 0
     assert [entry["staged_diff_present"] for entry in journal.items()] == [False, False]
 
 
@@ -434,7 +475,7 @@ def test_each_attempt_gets_its_own_temporary_directory_inside_its_home(loop: Loo
     journal = loop.journal("reviews")
     original = os.environ.get("TMPDIR")
     loop.fake("recording_review", journal=str(journal.path), workspace=str(loop.workspace))
-    assert loop.run() == 0
+    assert loop.run_with_recovery() == 0
     entries = journal.items()
     assert len(entries) == 2
     assert all(Path(entry["tmpdir"]) == Path(entry["home"]) / "tmp" for entry in entries)

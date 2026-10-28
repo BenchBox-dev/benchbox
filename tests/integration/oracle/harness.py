@@ -18,6 +18,7 @@ import yaml
 from _project.scripts.oracle_reviewers import omp_pin
 
 from .fake_github import APP_TOKEN, GH_HOST, JOB_TOKEN, OWNER_TOKEN, FakeGitHub
+from .fake_jev import FakeJev
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SLUG = "BenchBox-dev/BenchBox"
@@ -31,6 +32,7 @@ TRUSTED_FILES = (
     ".github/inert-paths.txt",
 )
 GATEWAY_TOKEN = "gwtok-" + "Q7mZ4kLp" * 5
+JEV_KEY = "jevk-" + "T5nB8wXc" * 4
 PINNED_OMP = "18.12.1"
 SHA256_LINE = re.compile(r"sha256: [0-9a-f]{64}")
 URL_LINE = re.compile(r"url: https://\S+")
@@ -108,6 +110,7 @@ class Harness:
         self.policy_file.write_text(self._pinned_policy(), encoding="utf-8")
         self._seed()
         self.github = FakeGitHub(SLUG, self.repo).start()
+        self.jev = FakeJev().start()
 
     @property
     def omp_cache(self) -> Path:
@@ -115,6 +118,7 @@ class Harness:
 
     def close(self) -> None:
         self.github.stop()
+        self.jev.stop()
 
     def _pinned_policy(self) -> str:
         text = (REPO_ROOT / POLICY).read_text(encoding="utf-8")
@@ -328,28 +332,39 @@ class Harness:
             git(self.repo, "clone", "--quiet", "--no-checkout", str(self.repo), str(workspace))
             git(workspace, "checkout", "--quiet", "--detach", plan.outputs["head_sha"])
             self._classify(record.plan, classification_path, classification)
-            record.steps["attempts"] = self.cli(
+            loop_args = [
                 "attempts",
-                [
-                    "attempts",
-                    "--plan",
-                    str(plan_dir / "plan.json"),
-                    "--attempts-dir",
-                    str(attempts_dir),
-                    "--classification",
-                    str(classification_path),
-                    "--workspace",
-                    str(workspace),
-                    "--home-root",
-                    str(temp),
-                ],
-                {
-                    **env,
-                    **omp_env,
-                    "OMP_GATEWAY_TOKEN": GATEWAY_TOKEN,
-                    "ORACLE_GATEWAY_URL": "https://gateway.example.invalid",
-                },
-            )
+                "--plan",
+                str(plan_dir / "plan.json"),
+                "--attempts-dir",
+                str(attempts_dir),
+                "--classification",
+                str(classification_path),
+                "--workspace",
+                str(workspace),
+                "--home-root",
+                str(temp),
+            ]
+            loop_env = {
+                **env,
+                **omp_env,
+                "OMP_GATEWAY_TOKEN": GATEWAY_TOKEN,
+                "ORACLE_GATEWAY_URL": "https://gateway.example.invalid",
+            }
+            recover_args = [
+                "recover",
+                "--plan",
+                str(plan_dir / "plan.json"),
+                "--attempts-dir",
+                str(attempts_dir),
+                "--workspace",
+                str(workspace),
+            ]
+            recover_env = {**env, "TYPESAFE_API_KEY": JEV_KEY, "TYPESAFE_BASE_URL": self.jev.url}
+            record.steps["attempts"] = self.cli("attempts", loop_args, loop_env)
+            for after in range(1, int(record.plan["max_attempts"])):
+                record.steps[f"recover-{after}"] = self.cli(f"recover-{after}", recover_args, recover_env)
+                record.steps[f"resume-{after}"] = self.cli(f"resume-{after}", loop_args, loop_env)
         if tamper_attempts is not None:
             tamper_attempts(attempts_dir)
         if not post:

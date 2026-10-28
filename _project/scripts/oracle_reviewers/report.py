@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from . import absence, credentials, dedup, protocol, selection
+from . import absence, credentials, dedup, protocol, recovery, selection
 from .retry import ALL_ABSENT, FAILURE, INTEGRITY, MARKER_LIMIT, OMP_INSTALL, OVERSIZE, PENDING, SUCCESS, UNREPORTED
 from .selection import Attempt, Step
 from .verdict import (
@@ -179,6 +179,15 @@ def _reviewer_line(plan: Mapping[str, Any], name: str | None) -> list[str]:
     return [f"Reviewer: {name} (role {spec['role']}, {spec['harness']} {spec['model']}{effort}).", ""]
 
 
+def _recovery_text(attempt: Attempt) -> str:
+    held = attempt.recovery
+    if held is None:
+        return ""
+    if held.source == recovery.JEV:
+        return f"recovery: {held.choice} (Jev, probability {held.probability:.2f}, confidence {held.confidence:.2f})"
+    return f"recovery: {held.choice} (fallback, {held.reason})"
+
+
 def _absences(attempts: list[Attempt], step: Step) -> list[str]:
     known = credentials.known()
     lines = []
@@ -189,6 +198,7 @@ def _absences(attempts: list[Attempt], step: Step) -> list[str]:
         lines.append(
             f"- {attempt.reviewer} (attempt {attempt.slot}): absent ({attempt.absence})"
             + (f": {detail}" if detail else "")
+            + (f"; {_recovery_text(attempt)}" if attempt.recovery is not None else "")
         )
     attempted = {attempt.reviewer for attempt in attempts}
     lines += [f"- {reason}" for reason in step.reasons if reason.split(":", 1)[0] not in attempted]
