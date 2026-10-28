@@ -8,7 +8,7 @@ import pytest
 
 from _project.scripts.oracle_reviewers import cli, evidence, protocol, report
 from _project.scripts.oracle_reviewers.policy import Policy
-from _project.scripts.oracle_reviewers.verdict import validate
+from _project.scripts.oracle_reviewers.verdict import MAX_REPLAYED_EVIDENCE, validate
 
 from .test_attempts import CHECKER
 from .test_rounds import _final, _follow_up, _prior
@@ -248,8 +248,9 @@ def test_a_demoted_flag_survives_storage_truncation(policy: Policy, tmp_path: Pa
     assert marked.prior_defects[0].status == "not_fixed"
     assert marked.prior_defects[0].demoted == "withdrawal"
     reloaded = validate(marked.to_json(), trusted=True)
-    assert len(reloaded.prior_defects[0].evidence) <= 1000
-    assert "counts as not fixed" not in reloaded.prior_defects[0].evidence
+    assert len(reloaded.prior_defects[0].evidence) <= MAX_REPLAYED_EVIDENCE
+    assert "counts as not fixed" in reloaded.prior_defects[0].evidence
+    assert reloaded.prior_defects[0].evidence.endswith(evidence.UNVERIFIED_MAINTAIN)
     assert reloaded.prior_defects[0].demoted == "withdrawal"
     assert protocol.dispute_problem(reloaded, _plan_with_dispute(policy, _dispute())) is None
 

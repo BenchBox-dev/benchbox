@@ -17,6 +17,7 @@ MAX_REASON = 1000
 MAX_TITLE = 200
 MAX_DETAIL = 4000
 MAX_EVIDENCE = 1000
+MAX_REPLAYED_EVIDENCE = MAX_EVIDENCE + 1000
 MAX_PATH = 400
 MAX_LINE = 10_000_000
 MAX_EXAMINED = 2000
@@ -383,7 +384,7 @@ def _prior(data: Any, *, trusted: bool = False) -> PriorDefect:
     return PriorDefect(
         identifier,
         data["status"],
-        sanitize(data["evidence"], MAX_EVIDENCE),
+        sanitize(data["evidence"], MAX_REPLAYED_EVIDENCE if trusted else MAX_EVIDENCE),
         sanitize(claim, MAX_CLAIM),
         concedes,
         demoted,

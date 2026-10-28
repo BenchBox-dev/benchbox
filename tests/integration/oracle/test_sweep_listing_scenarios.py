@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from .harness import Harness
+from .harness import CHECKER, Harness
 from .test_sweep_scenarios import VERDICT, _failed_run, _pending_review
 
 pytestmark = [pytest.mark.integration, pytest.mark.medium]
@@ -65,3 +65,27 @@ def test_a_failing_listing_and_active_run_lookup_dispatches_nothing_and_fails_th
 
     assert sweep.code == 1
     assert harness.github.dispatches == before
+
+
+def test_a_truncated_changed_file_listing_holds_the_head_for_owner_review(harness: Harness) -> None:
+    harness.branch("feat/truncated", {"NOTES.md": "A note.\n"}, "add a note")
+    harness.github.reported_changed_files[90] = 3001
+    harness.github.open_pull(90, "feat/truncated")
+
+    run = harness.review(90)
+
+    assert run.plan["decision_reason"] == "the changed-file listing is incomplete (1 of 3001 files): owner review"
+    assert [item["state"] for item in harness.github.oracle_statuses(run.plan["head_sha"])] == ["pending"]
+    assert harness.omp_calls() == 0
+
+
+def test_a_truncated_listing_with_a_soundness_path_is_held_not_reviewed_blind(harness: Harness) -> None:
+    harness.branch("feat/truncated-code", {CHECKER: "def checker(a, b):\n    return a != b\n"}, "change checker")
+    harness.github.reported_changed_files[91] = 3001
+    harness.github.open_pull(91, "feat/truncated-code")
+
+    run = harness.review(91)
+
+    assert "listing is incomplete" in run.plan["decision_reason"]
+    assert [item["state"] for item in harness.github.oracle_statuses(run.plan["head_sha"])] == ["pending"]
+    assert harness.omp_calls() == 0
