@@ -34,3 +34,85 @@ def test_sanitize_keeps_unrelated_split_text(tmp_path: Path, monkeypatch: pytest
     path.write_text(json.dumps({"content": content}), encoding="utf-8")
     assert redaction_check.sanitize(path, ()) is False
     assert json.loads(path.read_text(encoding="utf-8"))["content"] == content
+
+
+def _marked(title: str) -> str:
+    from _project.scripts.oracle_reviewers import protocol
+
+    record = {
+        "v": protocol.MARKER_VERSION,
+        "cycle": 1,
+        "round": 1,
+        "kind": "first",
+        "decision": "SHIP_WITH_FIXES",
+        "head_sha": "a" * 40,
+        "base_ref": "develop",
+        "reviewer": "medium",
+        "tier": "medium",
+        "strikes_after": 0,
+        "open_defects": [{"id": "D1", "severity": "High", "file": "a.py", "line": 1, "end_line": None, "title": title}],
+        "next_id": 2,
+        "patch_digest": "d",
+        "carried": False,
+        "summary": "",
+    }
+    return "Body\n\n" + protocol.encode_marker(record)
+
+
+def test_sanitize_fails_closed_on_a_secret_inside_an_encoded_marker(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("OMP_GATEWAY_TOKEN", TOKEN)
+    path = tmp_path / "review.json"
+    path.write_text(json.dumps({"body": _marked(f"see {TOKEN}")}), encoding="utf-8")
+    with pytest.raises(redaction_check.Unredactable):
+        redaction_check.sanitize(path, ())
+
+
+def test_sanitize_accepts_a_marker_without_a_secret(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OMP_GATEWAY_TOKEN", TOKEN)
+    path = tmp_path / "review.json"
+    path.write_text(json.dumps({"body": _marked("plain title")}), encoding="utf-8")
+    assert redaction_check.sanitize(path, ()) is False
+
+
+@pytest.mark.parametrize("data", ["AAAA", "eJwDAAAAAAE"])
+def test_sanitize_ignores_marker_shaped_text_no_reader_can_decode(tmp_path: Path, data: str) -> None:
+    path = tmp_path / "review.json"
+    path.write_text(json.dumps({"detail": f"quoted <!-- oracle-protocol: v1 {data} -->"}), encoding="utf-8")
+    assert redaction_check.sanitize(path, ()) is False
+
+
+def test_sanitize_ignores_marker_shaped_text_that_is_not_the_trailing_marker(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("OMP_GATEWAY_TOKEN", TOKEN)
+    quoted = _marked(f"see {TOKEN}").split("\n\n", 1)[1]
+    path = tmp_path / "review.json"
+    path.write_text(json.dumps({"detail": f"{quoted}\nand then more text"}), encoding="utf-8")
+    assert redaction_check.sanitize(path, ()) is False
+
+
+@pytest.mark.parametrize("depth", [2000, 900])
+def test_sanitize_survives_a_deeply_nested_trailing_marker(tmp_path: Path, depth: int) -> None:
+    import base64
+    import zlib
+
+    nested = b"[" * depth + b"]" * depth
+    packed = base64.urlsafe_b64encode(zlib.compress(nested, 9)).decode("ascii").rstrip("=")
+    path = tmp_path / "review.json"
+    path.write_text(json.dumps({"detail": f"<!-- oracle-protocol: v1 {packed} -->"}), encoding="utf-8")
+    assert redaction_check.sanitize(path, ()) is False
+
+
+def test_sanitize_finds_a_secret_in_a_deeply_nested_marker(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import base64
+    import zlib
+
+    monkeypatch.setenv("OMP_GATEWAY_TOKEN", TOKEN)
+    nested = b'{"a":' * 800 + json.dumps(TOKEN).encode() + b"}" * 800
+    packed = base64.urlsafe_b64encode(zlib.compress(nested, 9)).decode("ascii").rstrip("=")
+    path = tmp_path / "review.json"
+    path.write_text(json.dumps({"body": f"<!-- oracle-protocol: v1 {packed} -->"}), encoding="utf-8")
+    with pytest.raises(redaction_check.Unredactable):
+        redaction_check.sanitize(path, ())

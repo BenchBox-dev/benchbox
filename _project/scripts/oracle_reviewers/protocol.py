@@ -53,6 +53,7 @@ MARKER_LIMIT = 4096
 MARKER_TRIMS = ((120, 120), (80, 80), (50, 60), (32, 40), (24, 24))
 MARKER_OPEN = "<!-- oracle-protocol:"
 _MARKER = re.compile(r"<!-- oracle-protocol: v1 (?P<data>[A-Za-z0-9_-]+) -->\s*\Z")
+MARKER_INFLATE_LIMIT = 64 << 20
 DEFECT_ID = re.compile(r"D([1-9][0-9]{0,3})")
 NOT_COUNTED_LIMIT = 5
 PATCH_HEX = 16
@@ -295,6 +296,19 @@ def decode_marker(body: str) -> dict[str, Any] | None:
     if not _valid_record(record):
         raise MarkerError("a protocol marker has an unexpected shape")
     return {**record, "open_defects": [_clamped(item) for item in record["open_defects"]]}
+
+
+def marker_payload(text: str) -> Any:
+    match = _MARKER.search(text)
+    if match is None:
+        return None
+    data = match.group("data")
+    try:
+        inflater = zlib.decompressobj()
+        raw = inflater.decompress(base64.urlsafe_b64decode(data + "=" * (-len(data) % 4)), MARKER_INFLATE_LIMIT)
+        return json.loads(raw) if inflater.eof else None
+    except (binascii.Error, ValueError, zlib.error, RecursionError):
+        return None
 
 
 def _review_time(value: Any) -> datetime | None:

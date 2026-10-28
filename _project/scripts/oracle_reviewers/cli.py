@@ -66,6 +66,7 @@ CLASSIFICATION_FILE = "classification.json"
 DIFF_FILE = "diff.patch"
 DIFF_NOT_STAGED_DETAIL = "the full pull request diff could not be staged in the workspace"
 CAPTURE_DIR = "captures"
+SUMMARY_FILE = "summary.json"
 LEAK_DETAIL = "the reviewer's exit could not be confirmed clean"
 
 
@@ -115,6 +116,20 @@ def _summary(text: str) -> None:
         with open(target, "a", encoding="utf-8") as handle:
             handle.write(text + "\n")
     print(text)
+
+
+def _defer_summary(directory: Path, text: str) -> None:
+    path = directory / SUMMARY_FILE
+    lines = _read_json(path)["lines"] if path.is_file() else []
+    held = credentials.redact(text)
+    _write_json(path, {"lines": [*lines, held]})
+    print(held)
+
+
+def _emit_summary(path: Path) -> None:
+    if path.is_file():
+        for line in _read_json(path)["lines"]:
+            _summary(line)
 
 
 def _write_json(path: Path, data: Any) -> None:
@@ -844,7 +859,7 @@ def command_select(args: argparse.Namespace) -> int:
         classification = read
     chosen, line = _choose_reviewer(plan, loaded, classification, args.slot)
     _output({"reviewer": chosen.name if chosen else "", "harness": chosen.harness if chosen else ""})
-    _summary(line)
+    _defer_summary(Path(args.attempts_dir), line)
     return 0
 
 
@@ -992,7 +1007,7 @@ def command_review(args: argparse.Namespace) -> int:
             },
         )
     state = "verdict" if outcome.missing is None else f"absent ({outcome.missing.kind}: {outcome.missing.detail})"
-    _summary(f"slot {args.slot}: {reviewer.name} {state}")
+    _defer_summary(Path(args.out_dir), f"slot {args.slot}: {reviewer.name} {state}")
     return 0
 
 
@@ -1026,6 +1041,10 @@ def _write_states(out_dir: Path, *, strikes: int | None = None, **fields: Any) -
         )
         _write_json(out_dir / "attempt" / github.STATE_FILE, attempted.to_json())
     _write_json(out_dir / "state" / github.STATE_FILE, published.to_json())
+
+
+def _held(args: argparse.Namespace) -> tuple[str, ...]:
+    return tuple(value for value in (os.environ.get(name, "") for name in getattr(args, "env", ())) if value)
 
 
 def command_finalize(args: argparse.Namespace) -> int:
@@ -1079,7 +1098,16 @@ def command_finalize(args: argparse.Namespace) -> int:
         step, errors = attempt_files.decide(selection_input, loaded)
         diff_path = Path(args.plan).parent / DIFF_FILE
         commentable = commentable_lines(diff_path.read_bytes().decode("utf-8")) if diff_path.is_file() else {}
-        final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, commentable, workspace=ws)
+        final = report.finalize(
+            plan,
+            step,
+            errors,
+            loaded.attempts,
+            loaded.verdicts,
+            commentable,
+            workspace=ws,
+            secrets=credentials.known(_held(args)),
+        )
         previous = plan.get("previous_state")
         _write_states(
             out_dir,
@@ -1106,9 +1134,9 @@ def command_finalize(args: argparse.Namespace) -> int:
             "has_state": "true" if (out_dir / "state" / github.STATE_FILE).is_file() else "false",
         }
     )
-    _summary(f"oracle-verdict #{plan['pr']} {plan['head_sha']}: {final.state}: {final.description}")
+    _defer_summary(out_dir, f"oracle-verdict #{plan['pr']} {plan['head_sha']}: {final.state}: {final.description}")
     if final.body:
-        _summary(final.body)
+        _defer_summary(out_dir, final.body)
     return 0
 
 
@@ -1504,9 +1532,9 @@ def _run_slot(args: argparse.Namespace, plan: Mapping[str, Any], slot: int, revi
     except processes.HarnessLeakError as exc:
         leaked = True
         detail = LEAK_DETAIL
-        _summary(f"slot {slot}: {reviewer.name} failed closed: {credentials.redact(str(exc))}")
+        _defer_summary(out_dir, f"slot {slot}: {reviewer.name} failed closed: {exc}")
     except (Exception, SystemExit) as exc:
-        _summary(f"slot {slot}: {reviewer.name} crashed: {credentials.redact(f'{type(exc).__name__}: {exc}')}")
+        _defer_summary(out_dir, f"slot {slot}: {reviewer.name} crashed: {type(exc).__name__}: {exc}")
     finally:
         shutil.rmtree(home, ignore_errors=True)
     _ensure_attempt(plan, out_dir, slot, reviewer.name, detail)
@@ -1587,7 +1615,7 @@ def command_attempts(args: argparse.Namespace) -> int:
                 break
             loaded = attempt_files.load(out_dir, plan, os.environ["GITHUB_RUN_ID"], workspace=workspace)
             chosen, line = _choose_reviewer(plan, loaded, classification, slot)
-            _summary(line)
+            _defer_summary(out_dir, line)
             if chosen is None:
                 break
             ran = slot
@@ -1614,7 +1642,7 @@ def command_scan_disk(args: argparse.Namespace) -> int:
 
 
 def command_redact_check(args: argparse.Namespace) -> int:
-    extra = tuple(value for value in (os.environ.get(name, "") for name in args.env) if value)
+    extra = _held(args)
     redacted = 0
     for path in redaction_check.json_files([Path(item) for item in args.path]):
         try:
@@ -1623,6 +1651,8 @@ def command_redact_check(args: argparse.Namespace) -> int:
             print(f"oracle-verdict: error: {exc}", file=sys.stderr)
             return 1
     _summary(f"redaction check: {redacted} file(s) rewritten, no secret value remains")
+    for item in getattr(args, "summary_file", ()):
+        _emit_summary(Path(item))
     return 0
 
 
@@ -1756,6 +1786,7 @@ def _parser() -> argparse.ArgumentParser:
     finalize.add_argument("--classification")
     finalize.add_argument("--workspace")
     finalize.add_argument("--omp-install", choices=(OMP_INSTALLED, OMP_INSTALL_FAILED), default=OMP_INSTALLED)
+    finalize.add_argument("--env", action="append", default=[])
     finalize.set_defaults(handler=command_finalize)
     guard = commands.add_parser("guard")
     guard.add_argument("--plan", required=True)
@@ -1795,6 +1826,7 @@ def _parser() -> argparse.ArgumentParser:
     redaction = commands.add_parser("redact-check")
     redaction.add_argument("--path", action="append", required=True)
     redaction.add_argument("--env", action="append", default=[])
+    redaction.add_argument("--summary-file", action="append", default=[])
     redaction.set_defaults(handler=command_redact_check)
     clients = commands.add_parser("gateway-clients")
     clients.add_argument("--token-file", required=True)

@@ -325,10 +325,16 @@ jobs:
         working-directory: trusted
         env:
           OMP_INSTALL_STATE: ${{ steps.omp.outputs.state }}
+          OMP_GATEWAY_TOKEN: ${{ secrets.ORACLE_GATEWAY_TOKEN }}
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+          ORACLE_GATEWAY_URL: ${{ secrets.ORACLE_GATEWAY_URL }}
+          TS_OAUTH_CI_CLIENT_ID: ${{ secrets.TS_OAUTH_CI_CLIENT_ID }}
+          TS_OAUTH_CI_SECRET: ${{ secrets.TS_OAUTH_CI_SECRET }}
+          JOB_TOKEN: ${{ github.token }}
         run: >-
           python3 -m _project.scripts.oracle_reviewers.cli finalize --plan "$RUNNER_TEMP/oracle-plan/plan.json" --attempts-dir "$RUNNER_TEMP/oracle-attempts"
           --out-dir "$RUNNER_TEMP/oracle-final" --classification "$RUNNER_TEMP/oracle-classification/classification.json"
-          --workspace "$GITHUB_WORKSPACE/workspace" --omp-install "${OMP_INSTALL_STATE:-installed}"
+          --workspace "$GITHUB_WORKSPACE/workspace" --omp-install "${OMP_INSTALL_STATE:-installed}" --env JOB_TOKEN
 
       - name: Redact every secret value held by the job from the results
         id: redact
@@ -343,7 +349,7 @@ jobs:
           JOB_TOKEN: ${{ github.token }}
         run: >-
           python3 -m _project.scripts.oracle_reviewers.cli redact-check --path "$RUNNER_TEMP/oracle-attempts" --path "$RUNNER_TEMP/oracle-final"
-          --env JOB_TOKEN
+          --env JOB_TOKEN --summary-file "$RUNNER_TEMP/oracle-attempts/summary.json" --summary-file "$RUNNER_TEMP/oracle-final/summary.json"
 
       - name: Log the result when the App is not configured
         if: steps.plan.outputs.post == 'true' && env.HAS_APP != 'true'
