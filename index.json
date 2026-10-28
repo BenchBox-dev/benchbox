@@ -15705,15 +15705,10 @@
       "title": "Port the scheduled-workflow-liveness check to nightly-v2 before nightly.yml is retired"
     },
     "nightly-v2-throughput-uat-port-20261009": {
-      "claim": {
-        "expires_at": "2026-10-29T16:41:18Z",
-        "generation": "f9e6f7e37d29482c9225311fb8fd7d88",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "Port the throughput-uat jobs (DuckDB and CedarDB cells, floor history, commit status) from nightly.yml to nightly-v2"
     },
     "nightly-v2-unported-jobs-decision-20261009": {
