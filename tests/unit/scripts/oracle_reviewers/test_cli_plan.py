@@ -180,7 +180,9 @@ class FakeGitHub:
         return {node_id: (self.edit_states or {}).get(node_id, (None, False)) for node_id in node_ids}
 
     def _statuses(self, repo: str, sha: str) -> list[dict[str, Any]]:
-        return [*self.statuses, *(self._derived_statuses(sha) if self.derive_verdict_statuses else [])]
+        found = [*self.statuses, *(self._derived_statuses(sha) if self.derive_verdict_statuses else [])]
+        stamp = datetime.now(UTC).isoformat()
+        return [{"created_at": stamp, **status} for status in found]
 
     def _derived_statuses(self, sha: str) -> list[dict[str, Any]]:
         derived = []
