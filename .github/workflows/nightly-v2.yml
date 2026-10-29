@@ -1299,6 +1299,10 @@ jobs:
       - name: Install dependencies
         run: uv sync --group dev
 
+      - name: Sync locked package-only runtime
+        if: matrix.suite == 'core'
+        run: uv sync --project _project/scripts --locked
+
       - name: Run core integration tests
         if: matrix.suite == 'core'
         run: uv run -- python -m pytest tests/integration -m "integration and not (slow or stress or resource_heavy or live_integration)" --tb=short --maxfail=5 --timeout=300 --junitxml=${{ matrix.junit }}
