@@ -1445,7 +1445,7 @@ Local (no approval needed to run; owner G1 2026-10-25 selected the 40 required b
 | OBT (DuckDB, DataFusion, ClickHouse Local) | 3 | `tpcds-obt-rerun-defective-sf1-bundles-20261017` (#3550) | lettered-catalog renderer | none left | 3 replacement bundles, see the OBT section |
 | CH-4 (optional) | 16 | this item | 30.24.0.13; 30.25.0.2 for CoffeeShop and TPC-DI | none specific | all 16 cells rerun (`3465d4f3`, `c1aeca88` were Read Primitives; their replacements use the fixed `JSONExtractRaw` SQL) |
 | DF-4, DF-5, DF-6 (optional) | 18 | this item | 30.24.0.13; 30.25.0.2 for Read Primitives and ClickBench | none specific | all 12 cells rerun |
-| TDI-EQ7 on DuckDB TPC-DI SF0.01/0.1/1 (optional) | 3 (`115bd3b6`, `1769a68f`, `1eb31887`) | this item | current | none | not rerun: no bundle exists |
+| TDI-EQ7 on DuckDB TPC-DI SF0.01/0.1/1 (optional) | 3 (`115bd3b6`, `1769a68f`, `1eb31887`) | this item | current | none | not rerun: no replacement run was made; the existing bundles return 3 rows for EQ7 like every other engine and stay as note-only history |
 | Note-only: CH-5 (11), DS-90 local (12 DuckDB, DataFusion, Spark), DS-58 local (3) | 26 | none | none | none | no rerun; no failure or wrong row observed |
 
 Cloud (rerun needs explicit spend approval, G4; none is requested):
