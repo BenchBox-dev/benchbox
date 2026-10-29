@@ -26908,15 +26908,10 @@
       "title": "G5: cut over to the DB-backed TODO tracker (freeze & delete legacy)"
     },
     "todo-db-git-backend-checkout-timeout-resilience": {
-      "claim": {
-        "expires_at": "2026-10-30T14:32:53Z",
-        "generation": "c9d9c7e940ce48caad5cc767cc051aa9",
-        "renewals": 0,
-        "worker": "joe-todo-db-upgrade"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Handle git checkout timeouts in todo_db git_backend with structured error and retry"
     },
     "todo-db-mcp-shared-worker-claim-20261017": {
