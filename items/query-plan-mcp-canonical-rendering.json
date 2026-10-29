@@ -4,7 +4,7 @@
     "MCP summary operator, join and scan counts match a traversal of canonical logical operators, exclude metadata/property dictionaries, and handle absent estimates without fabrication.",
     "Regression tests use canonical exported/rehydrated plans and verify semantic output for scan, join and aggregate shapes; JSON output retains the canonical plan structure."
   ],
-  "context": "Draft PR #3708 stacked on fix/mcp-query-plan-lookup (#3693), branch fix/mcp-canonical-plan-rendering, head 1ef13f5e2. Resume: after #3693 merges, retarget to develop, rebase --onto origin/develop, mark ready, land, then take and finish.",
+  "context": "Merged via PR #3708 as 158f31803 on develop. CI and oracle review passed on the merged head. Truncated plans surface truncated_at_depth in tree and summary.",
   "description": "MCP tree and summary helpers expect a type/children native-style tree, not the persisted QueryPlanDAG envelope with logical_root and operator_type. Passing a real exported Q1 plan renders only Node; the summary counts arbitrary dictionaries as operators and reports zero scans. Existing tests use simplified HashJoin/SeqScan fixtures, so they validate a different schema. Extend existing canonical visualization/model traversal rather than retaining parallel incompatible walkers.",
   "links": [
     "benchbox/mcp/tools/analytics.py:251-265",
@@ -44,6 +44,14 @@
       "generation": "b807caa9152b41aca9fef0060d7d4229",
       "op": "take",
       "op_id": "c53cb085da1a4141a4dc1ce0a991631a",
+      "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bb7fd2d6b114a6501df93f97",
+      "at": "2026-10-29T16:13:21Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "0fa32ff6dc194da49ff488dacc161607",
       "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
     }
   ]
