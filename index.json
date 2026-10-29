@@ -20074,15 +20074,10 @@
       "title": "Close DataFrame query-plan capture and fingerprint integration gaps"
     },
     "query-plan-dataframe-error-accounting": {
-      "claim": {
-        "expires_at": "2026-10-30T15:41:32Z",
-        "generation": "c8c12a102f2e4644bf4f3f1bd5f5e4a7",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bb7fd2d6b114a6501df93f97"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Report DataFrame plan-capture error wrappers as failures"
     },
     "query-plan-documentation-testing": {
