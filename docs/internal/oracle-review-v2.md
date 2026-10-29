@@ -1119,8 +1119,14 @@ version and compares the attempts of the first 10 reviews (distinct
 ends first, with the attempts of the 7 days before it. Attempt artifacts expire
 after 7 days, so each run first restores the `omp-watch-ledger` artifact
 (retained 90 days), adds the attempts it has not seen and uploads the result;
-the first run backfills from the artifacts still live. No review is run for
-this and no model is called.
+the first run backfills from the artifacts still live. An attempt belongs to the
+window or the baseline by when its run started, because a run reads the pin when
+it checks out `develop`, not when it uploads. Only artifacts of runs of
+`oracle-verdict.yml` in this repository count (on `develop`, or for a pull
+request targeting `develop`), and the ledger is restored only from a scheduled
+or dispatched run of `omp-pin-watch.yml` on `develop`; an artifact with the same
+name from any other run is ignored. No review is run for this and no model is
+called.
 
 Counted attempts are those absent as `invalid`, `empty`, `error` or `timeout`.
 `quota` and `auth` come from the providers, and `incomplete` is the model

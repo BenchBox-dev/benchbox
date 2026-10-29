@@ -90,7 +90,7 @@ def _mutate(stretch: Sequence[Record], kinds: Sequence[str], detail: str = "") -
 
 def test_the_captured_week_before_the_pin_change_sets_the_baseline() -> None:
     mix = omp_watch._mix(BEFORE)
-    assert (mix.attempts, mix.counted) == (1209, 156)
+    assert (mix.attempts, mix.counted) == (1208, 156)
     assert mix.rate == pytest.approx(0.129, abs=0.001)
     assert {kind: mix.kinds[kind] for kind in ("quota", "auth", "incomplete", "invalid", "empty", "error")} == {
         "quota": 10,
@@ -102,11 +102,11 @@ def test_the_captured_week_before_the_pin_change_sets_the_baseline() -> None:
     }
 
 
-def test_the_reviews_observed_after_the_real_pin_change_are_pending_and_clean() -> None:
-    result = omp_watch.assess(CAPTURE, CHANGE, datetime(2026, 10, 29, 12, 50, tzinfo=timezone.utc))
-    assert result.state == omp_watch.PENDING and not result.reasons
-    assert result.reviews == 7 and result.window.attempts == 7 and result.window.counted == 0
-    assert result.baseline.attempts == 1209
+def test_the_reviews_observed_after_the_real_pin_change_are_clean_and_settle_the_watch() -> None:
+    result = omp_watch.assess(CAPTURE, CHANGE, datetime(2026, 10, 29, 13, 30, tzinfo=timezone.utc))
+    assert result.state == omp_watch.CLEAR and not result.reasons
+    assert result.reviews == omp_watch.WINDOW_REVIEWS and result.window.attempts == 10 and result.window.counted == 0
+    assert result.baseline.attempts == 1208
 
 
 @pytest.mark.parametrize(("day", "hour"), [(25, 0), (25, 12), (28, 0), (28, 12), (24, 18)])
@@ -328,30 +328,64 @@ def _attempt(slot: int = 1, **fields: Any) -> dict[str, Any]:
     return payload
 
 
-def _artifact(identifier: int, created: str, run: int = 40900000001, **fields: Any) -> dict[str, Any]:
-    return {"id": identifier, "created_at": created, "expired": False, "workflow_run": {"id": run}, **fields}
+def _artifact(identifier: int, created: str, run: int | None = None, **fields: Any) -> dict[str, Any]:
+    return {
+        "id": identifier,
+        "created_at": created,
+        "expired": False,
+        "workflow_run": {"id": run or identifier},
+        **fields,
+    }
 
 
-def test_an_attempt_artifact_becomes_a_record_with_its_absence_kind_and_a_clipped_detail() -> None:
-    record = omp_watch.parse_attempt(_artifact(7, "2026-10-29T05:00:00Z"), _attempt())
+def _run(run_id: int, **fields: Any) -> dict[str, Any]:
+    run: dict[str, Any] = {
+        "id": run_id,
+        "path": ".github/workflows/oracle-verdict.yml",
+        "event": "issue_comment",
+        "head_branch": "develop",
+        "repository": {"full_name": "O/R"},
+        "run_started_at": "2026-10-29T04:00:00Z",
+        "created_at": "2026-10-29T03:59:00Z",
+        "display_title": f"oracle-verdict (issue_comment pr=3700 head={'a' * 40})",
+        "pull_requests": [],
+    }
+    run.update(fields)
+    return run
+
+
+def test_an_attempt_becomes_a_record_stamped_with_when_its_run_started_and_a_clipped_detail() -> None:
+    record = omp_watch.parse_attempt(_artifact(7, "2026-10-29T05:00:00Z", 11), _attempt(), _run(11))
     assert record is not None
-    assert (record.artifact_id, record.run_id, record.reviewer, record.slot) == (7, 40900000001, "large", 1)
+    assert (record.artifact_id, record.run_id, record.reviewer, record.slot) == (7, 11, "large", 1)
+    assert record.created_at == datetime(2026, 10, 29, 4, 0, tzinfo=timezone.utc)
     assert (record.kind, record.counted) == ("error", True)
     assert len(record.detail) == omp_watch.DETAIL_LIMIT
-    verdict = omp_watch.parse_attempt(_artifact(8, "2026-10-29T05:00:00Z"), _attempt(outcome="verdict", absence=None))
+    verdict = omp_watch.parse_attempt(
+        _artifact(8, "2026-10-29T05:00:00Z", 12), _attempt(outcome="verdict", absence=None), _run(12)
+    )
     assert verdict is not None and verdict.kind == absence.OK and not verdict.counted
 
 
+def test_a_run_started_before_the_change_but_uploaded_after_it_belongs_to_the_old_pin() -> None:
+    run = _run(13, run_started_at="2026-10-29T03:10:00Z")
+    record = omp_watch.parse_attempt(_artifact(9, "2026-10-29T03:25:00Z", 13), _attempt(), run)
+    assert record is not None and record.created_at < MERGED_AT
+    assert omp_watch.assess([record], CHANGE, MERGED_AT + timedelta(hours=1)).window.attempts == 0
+
+
 @pytest.mark.parametrize(
-    ("artifact", "payload"),
+    ("artifact", "payload", "run"),
     [
-        (_artifact(1, "not a time"), _attempt()),
-        ({"id": 1, "created_at": "2026-10-29T05:00:00Z"}, _attempt()),
-        (_artifact(1, "2026-10-29T05:00:00Z"), {"slot": 1}),
+        (_artifact(1, "2026-10-29T05:00:00Z"), _attempt(), _run(1, run_started_at="not a time", created_at="no")),
+        (_artifact(1, "2026-10-29T05:00:00Z"), {"slot": 1}, _run(1)),
+        ({"created_at": "2026-10-29T05:00:00Z"}, _attempt(), _run(1)),
     ],
 )
-def test_an_artifact_that_does_not_parse_is_skipped(artifact: dict[str, Any], payload: dict[str, Any]) -> None:
-    assert omp_watch.parse_attempt(artifact, payload) is None
+def test_an_artifact_that_does_not_parse_is_skipped(
+    artifact: dict[str, Any], payload: dict[str, Any], run: dict[str, Any]
+) -> None:
+    assert omp_watch.parse_attempt(artifact, payload, run) is None
 
 
 def test_the_ledger_round_trips_and_refuses_an_unknown_shape() -> None:
@@ -380,12 +414,30 @@ def _zip(name: str, payload: Any) -> bytes:
 
 
 class _Host:
-    def __init__(self, artifacts: dict[str, list[dict[str, Any]]], payloads: dict[int, dict[str, Any]]) -> None:
+    def __init__(
+        self,
+        artifacts: dict[str, list[dict[str, Any]]],
+        payloads: dict[int, Any],
+        runs: dict[int, dict[str, Any]] | None = None,
+        pulls: dict[int, str] | None = None,
+    ) -> None:
         self.artifacts = artifacts
         self.payloads = payloads
+        self.runs = runs or {}
+        self.pulls = pulls or {}
         self.downloads: list[str] = []
 
     def getter(self, path: str) -> dict[str, Any]:
+        if "/actions/runs/" in path:
+            run_id = int(path.rsplit("/", 1)[1])
+            if self.runs.get(run_id) == {}:
+                raise omp_watch.GitHubError("gone")
+            return self.runs.get(run_id) or _run(run_id)
+        if "/pulls/" in path:
+            number = int(path.rsplit("/", 1)[1])
+            if number not in self.pulls:
+                raise omp_watch.GitHubError("gone")
+            return {"base": {"ref": self.pulls[number]}}
         name = path.split("name=")[1].split("&")[0]
         page = int(path.split("&page=")[1])
         items = self.artifacts.get(name, [])
@@ -397,8 +449,18 @@ class _Host:
         return _zip("attempt-1.json", self.payloads[identifier])
 
 
+def _collect(host: _Host, known: Sequence[int] = ()) -> list[Record]:
+    return omp_watch.collect(
+        "o/r",
+        datetime(2026, 10, 22, tzinfo=timezone.utc),
+        known,
+        reviewers=frozenset({"large"}),
+        getter=host.getter,
+        downloader=host.downloader,
+    )
+
+
 def test_collection_reads_only_live_unseen_artifacts_inside_the_horizon_for_omp_reviewers() -> None:
-    horizon = datetime(2026, 10, 22, tzinfo=timezone.utc)
     items = [
         _artifact(1, "2026-10-29T05:00:00Z"),
         _artifact(2, "2026-10-28T05:00:00Z"),
@@ -414,22 +476,16 @@ def test_collection_reads_only_live_unseen_artifacts_inside_the_horizon_for_omp_
         6: _attempt(),
     }
     host = _Host({"oracle-verdict-attempt-1": items}, payloads)
-    records = omp_watch.collect(
-        "o/r", horizon, [6], reviewers=frozenset({"large"}), getter=host.getter, downloader=host.downloader
-    )
+    records = _collect(host, [6])
     assert sorted(record.artifact_id for record in records) == [1, 4]
     assert sorted(path.split("/")[-2] for path in host.downloads) == ["1", "2", "4"]
 
 
 def test_collection_follows_pages_until_one_reaches_past_the_horizon(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(omp_watch, "ARTIFACT_PAGE", 2)
-    horizon = datetime(2026, 10, 22, tzinfo=timezone.utc)
     items = [_artifact(index, f"2026-10-{28 - index:02d}T05:00:00Z") for index in range(1, 8)]
     host = _Host({"oracle-verdict-attempt-1": items}, {index: _attempt() for index in range(1, 8)})
-    records = omp_watch.collect(
-        "o/r", horizon, [], reviewers=frozenset({"large"}), getter=host.getter, downloader=host.downloader
-    )
-    assert sorted(record.artifact_id for record in records) == [1, 2, 3, 4, 5, 6]
+    assert sorted(record.artifact_id for record in _collect(host)) == [1, 2, 3, 4, 5, 6]
 
 
 def test_an_artifact_that_is_not_an_archive_with_one_json_document_is_refused() -> None:
@@ -437,37 +493,98 @@ def test_an_artifact_that_is_not_an_archive_with_one_json_document_is_refused() 
         omp_watch._unzip(_zip("notes.txt", "x"), ".json")
     with pytest.raises(omp_watch.WatchError):
         omp_watch._unzip(b"not a zip", ".json")
-    host = _Host({"oracle-verdict-attempt-1": [_artifact(1, "2026-10-29T05:00:00Z")]}, {})
-    host.payloads[1] = "{"
     with pytest.raises(omp_watch.WatchError):
-        omp_watch.collect(
-            "o/r",
-            datetime(2026, 10, 22, tzinfo=timezone.utc),
-            [],
-            reviewers=frozenset({"large"}),
-            getter=host.getter,
-            downloader=host.downloader,
-        )
+        _collect(_Host({"oracle-verdict-attempt-1": [_artifact(1, "2026-10-29T05:00:00Z")]}, {1: "{"}))
 
 
-def test_the_ledger_is_restored_from_the_newest_live_artifact_or_starts_empty() -> None:
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"path": ".github/workflows/evil.yml"},
+        {"repository": {"full_name": "someone/else"}},
+        {"event": "pull_request"},
+        {"event": "workflow_dispatch", "head_branch": "feature/forged"},
+        {"event": "push", "head_branch": "feature/forged"},
+    ],
+)
+def test_artifacts_from_a_run_of_another_workflow_repository_event_or_branch_are_never_read(
+    fields: dict[str, Any],
+) -> None:
+    host = _Host(
+        {"oracle-verdict-attempt-1": [_artifact(1, "2026-10-29T05:00:00Z"), _artifact(2, "2026-10-29T05:00:00Z")]},
+        {1: _attempt(), 2: _attempt()},
+        {1: _run(1, **fields)},
+    )
+    assert [record.artifact_id for record in _collect(host)] == [2]
+    assert [path.split("/")[-2] for path in host.downloads] == ["2"]
+
+
+def test_an_artifact_whose_run_cannot_be_read_is_skipped_and_tried_again_on_the_next_watch() -> None:
+    host = _Host({"oracle-verdict-attempt-1": [_artifact(1, "2026-10-29T05:00:00Z")]}, {1: _attempt()}, {1: {}})
+    assert _collect(host) == []
+    assert host.downloads == []
+
+
+@pytest.mark.parametrize(
+    ("listed", "titled", "trusted"),
+    [
+        ([{"base": {"ref": "develop"}}], None, True),
+        ([{"base": {"ref": "develop"}}, {"base": {"ref": "release"}}], None, False),
+        ([{"base": {"ref": "release"}}], None, False),
+        ([], "develop", True),
+        ([], "release", False),
+        ([], None, False),
+    ],
+)
+def test_a_pull_request_target_run_counts_only_when_its_pull_request_targets_develop(
+    listed: list[dict[str, Any]], titled: str | None, trusted: bool
+) -> None:
+    host = _Host({}, {}, pulls={} if titled is None else {3700: titled})
+    title = "oracle-verdict (pull_request_target pr=3700 head=" + "a" * 40 + ")"
+    run = _run(1, event="pull_request_target", head_branch="feature/x", pull_requests=listed, display_title=title)
+    assert omp_watch.produced_by(run, "o/r", omp_watch.ORACLE_WORKFLOW, omp_watch.ORACLE_EVENTS, host.getter) is trusted
+
+
+def test_a_pull_request_target_run_whose_pull_request_cannot_be_read_is_not_trusted() -> None:
+    host = _Host({}, {})
+    title = "oracle-verdict (pull_request_target pr=3700 head=" + "a" * 40 + ")"
+    run = _run(1, event="pull_request_target", head_branch="feature/x", display_title=title)
+    assert not omp_watch.produced_by(run, "o/r", omp_watch.ORACLE_WORKFLOW, omp_watch.ORACLE_EVENTS, host.getter)
+
+
+def test_the_ledger_is_restored_from_the_newest_live_artifact_of_a_trusted_run_or_starts_empty() -> None:
     records = CAPTURE[:3]
     listing = {
         "artifacts": [
-            {"id": 1, "created_at": "2026-10-27T00:00:00Z", "expired": False},
-            {"id": 2, "created_at": "2026-10-28T00:00:00Z", "expired": False},
-            {"id": 3, "created_at": "2026-10-29T00:00:00Z", "expired": True},
+            {"id": 1, "created_at": "2026-10-27T00:00:00Z", "expired": False, "workflow_run": {"id": 1}},
+            {"id": 2, "created_at": "2026-10-28T00:00:00Z", "expired": False, "workflow_run": {"id": 2}},
+            {"id": 3, "created_at": "2026-10-29T00:00:00Z", "expired": True, "workflow_run": {"id": 3}},
+            {"id": 4, "created_at": "2026-10-29T01:00:00Z", "expired": False, "workflow_run": {"id": 4}},
         ]
     }
+    watch = ".github/workflows/omp-pin-watch.yml"
+    runs = {
+        1: _run(1, path=watch, event="schedule"),
+        2: _run(2, path=watch, event="workflow_dispatch"),
+        4: _run(4, path=watch, event="workflow_dispatch", head_branch="feature/forged"),
+    }
+    host = _Host({}, {}, runs)
     asked: list[str] = []
+
+    def getter(path: str) -> dict[str, Any]:
+        return listing if "name=" in path else host.getter(path)
 
     def downloader(path: str) -> bytes:
         asked.append(path)
         return _zip(omp_watch.LEDGER_FILE, omp_watch.dump_ledger(records))
 
-    assert omp_watch.restore_ledger("o/r", lambda _: listing, downloader) == records
+    assert omp_watch.restore_ledger("o/r", getter, downloader) == records
     assert asked == ["repos/o/r/actions/artifacts/2/zip"]
     assert omp_watch.restore_ledger("o/r", lambda _: {"artifacts": []}, downloader) == []
+    forged = {"artifacts": [listing["artifacts"][3]]}
+    assert (
+        omp_watch.restore_ledger("o/r", lambda path: forged if "name=" in path else host.getter(path), downloader) == []
+    )
 
 
 def _evaluate(

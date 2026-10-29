@@ -98,10 +98,10 @@
       "source": "event stream of a real review run of the pinned build"
     },
     "omp_watch/attempts.json": {
-      "captured_at": "2026-10-29T12:50:00Z",
+      "captured_at": "2026-10-29T13:20:00Z",
       "origin": "captured",
       "redaction": "redact-check over the file: 0 files rewritten, no secret value remains; attempt artifacts carry only reviewer tier names, absence kinds and already-redacted detail text clipped to 80 characters",
-      "source": "attempt artifacts of every oracle-verdict run from 2026-10-22T12:48Z to 2026-10-29T12:38Z (1216 attempts of 1071 runs), one row each as run id, completion time, reviewer, slot, outcome, absence kind and clipped detail; the omp 18.13.3 pin merged at 2026-10-29T03:17:50Z"
+      "source": "attempt artifacts of every oracle-verdict run started from 2026-10-22T13:15Z to 2026-10-29T13:06Z (1219 attempts of 1074 runs), one row each as run id, run start time, reviewer, slot, outcome, absence kind and clipped detail; the omp 18.13.3 pin merged at 2026-10-29T03:17:50Z"
     },
     "pr2769_history.json": {
       "origin": "derived",
