@@ -10,7 +10,11 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from _project.scripts.explorer_pipeline.contract import EXPLORER_BUILD_CONTRACT
+from _project.scripts.explorer_pipeline.contract import (
+    EXPLORER_BUILD_CONTRACT,
+    EXPLORER_READ_MODEL_VERSION,
+    SELECTABLE_READ_MODEL_VERSIONS,
+)
 from benchbox.cli.shared import console
 
 EXPLORER_PUBLISH_HELP = "Manage the Results Explorer static build pipeline."
@@ -76,11 +80,19 @@ def explorer_publish() -> None:
     show_default=True,
     help="Visibility label to attach to every result entry.",
 )
+@click.option(
+    "--read-model-version",
+    type=click.Choice([str(version) for version in SELECTABLE_READ_MODEL_VERSIONS]),
+    default=str(EXPLORER_READ_MODEL_VERSION),
+    show_default=True,
+    help="Read model to emit. 18 adds the per-run SQL translator columns.",
+)
 def explorer_build(
     data_dir: Path,
     output_dir: Path,
     trust_label: str,
     visibility: str,
+    read_model_version: str,
 ) -> None:
     from _project.scripts.explorer_pipeline.pipeline import ExplorerPipeline
 
@@ -98,6 +110,7 @@ def explorer_build(
             output_dir=output_dir,
             trust_label=trust_label,
             visibility=visibility,
+            read_model_version=int(read_model_version),
         )
         skipped_note = f" ({stats.skipped} skipped)" if stats.skipped else ""
         console.print(
