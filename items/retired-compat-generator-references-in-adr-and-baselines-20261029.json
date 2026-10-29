@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "git grep -n generate_compat_docs on core origin/develop and site origin/main returns only intentional historical text, quality/docs-ownership.json, and the seeded fixture, each with a reason",
+    "docs/internal/site-deploy.md and the site deploy README agree on how a rollback to pre-removal content works"
+  ],
+  "description": "Found 2026-10-28 at the end of the docs migration follow-ups. (1) Site docs/development/adr/adr-sql-compat-phase-aware-pipeline.md lines 12 and 810 still describe scripts/generate_compat_docs.py as live, while adr-sqlglot-use-and-non-use.md says it was retired. Decide whether ADRs stay historical (add a short superseded-by note at the top) or are edited. (2) Core make/monolith-baseline.json and tests/unit/scripts/test_check_site_linked_paths.py still mention generate_compat_docs.py; the first may be a stale baseline entry, the second is likely the seeded-failure fixture for the new check. Not investigated. (3) Core docs/internal/site-deploy.md lines 44-50 allow rebuilding from a pre-removal core revision, which contradicts the statement that rollback is only the site deploy rollback to a retained receipt; reconcile the two. quality/docs-ownership.json intentionally lists the retired generators and must stay.",
+  "links": [
+    "BenchBox-dev/BenchBox: make/monolith-baseline.json",
+    "BenchBox-dev/BenchBox: docs/internal/site-deploy.md",
+    "BenchBox-dev/benchbox-site: docs/development/adr/adr-sql-compat-phase-aware-pipeline.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-29T12:40:09Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "aacc4a1825e94bc5a3136611b21bb0db",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    }
+  ]
+}

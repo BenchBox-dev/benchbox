@@ -22462,6 +22462,13 @@
       "status": "done",
       "title": "Retire _project/scripts/todo shim and adopt todo-db-mcp server"
     },
+    "retired-compat-generator-references-in-adr-and-baselines-20261029": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Update remaining statements that present the retired compat generator and site-owned rollback facts as current"
+    },
     "review-dependency-upper-bounds-quarterly": {
       "claim": null,
       "needs": [],
