@@ -2,7 +2,7 @@
   "acceptance": [
     "AUDIT TAIL: for ClickHouse `json_extract_simple` and the TPC-Havoc text edits (14_v1, 14_v7, 8_v7, 18_v9) the affected bundles are listed by id from the repository (command and counts recorded, including subdirectory bundles), with a recorded decision per group (G2) and a CORPUS_NOTES entry if note-only. The census must be reproducible: `python3`/jq over `results-data/bundles/**/*.json` and sidecars, not a hand list.",
     "RERUN LIST: a final table of local rerun groups (owner-selected per G1) mapping each to (a) the item that owns it or (b) this item, with the minimum wheel version and the blocking needs; local and cloud lists stay separate.",
-    "EXECUTED RERUNS (local, no approval needed to run): each group's new bundle id, the command used, the SQLGlot wheel recorded in the bundle (execution.translation.runtime) or attested in its manifest sidecar (sql_translator_version), the benchmark version recorded in the bundle, and per-query comparison against a DuckDB run on the same data: row counts equal and, for aggregate queries, values within rel tol 1e-6; queries whose DuckDB result is empty or an all-zero/NULL aggregate are listed as unproven, not counted as passed.",
+    "EXECUTED RERUNS (local, no approval needed to run): each group's new bundle id, the command used, the SQLGlot wheel recorded in the bundle (execution.translation.runtime) or attested in its manifest sidecar (sql_translator_version) or listed as unknown with its evidence reason in the reconciled CORPUS_NOTES wheel table, the benchmark version recorded in the bundle, and per-query comparison against a DuckDB run on the same data: row counts equal and, for aggregate queries, values within rel tol 1e-6; queries whose DuckDB result is empty or an all-zero/NULL aggregate are listed as unproven, not counted as passed. Per owner decision 2026-10-28, a recorded SQL hash is NOT required (out of scope); salt is not required for maintainer bundles (staged via _project/scripts/results_explorer_corpus_migrate.py).",
     "Each new bundle passes `uv run -- python scripts/validate_submission.py --require-manifest <bundle>` or the refusal reason (compliance_class) is recorded and handed to flagged-local-bundles-compliance-class-gate-20261025; none is ingested before G3 approval.",
     "AFTER G3 APPROVAL: replacements ingested; defective predecessors keep/gain their known_defects sidecar entries; CORPUS_NOTES.md updated per group; `python results-data/validate_corpus.py` exits 0 (record output summary, including any change to DOCUMENTED_SHALLOW_COHORTS); explorer ranked identities agree.",
     "Counts reconcile: the item context states final numbers (flagged, rerun, replaced, note-only) against the 419/124/43/20 baseline."
@@ -183,6 +183,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "3fee32f9371244178ab613f3d20e88a3",
+      "session_id": "dcc6105a05964c618dfd87771db72de4"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729",
+      "at": "2026-10-29T02:22:56Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "aced1cd2f43242ef98aa533551a1a226",
       "session_id": "dcc6105a05964c618dfd87771db72de4"
     }
   ]
