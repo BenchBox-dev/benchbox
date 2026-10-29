@@ -141,3 +141,15 @@ def test_translation_runtime_identity_survives_anonymisation(tmp_path: Path) -> 
     runtime = _export(tmp_path, result)["execution"]["translation"]["runtime"]
 
     assert runtime == bundled_sqlglot_runtime_identity()
+
+
+def test_runtime_version_exemption_is_limited_to_the_translation_runtime_path() -> None:
+    payload = {
+        "execution": {"translation": {"runtime": {"version": "30.25.0.2"}}},
+        "platform": {"translation": {"runtime": {"version": "10.1.2.3"}}},
+    }
+
+    anonymized = _anonymize(payload)
+
+    assert anonymized["execution"]["translation"]["runtime"]["version"] == "30.25.0.2"
+    assert anonymized["platform"]["translation"]["runtime"]["version"] == "[REDACTED]"

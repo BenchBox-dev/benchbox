@@ -203,3 +203,15 @@ def test_loader_round_trips_the_translation_runtime() -> None:
     reconstructed = reconstruct_benchmark_results(payload)
 
     assert reconstructed.execution_metadata["translation"]["runtime"] == payload["execution"]["translation"]["runtime"]
+
+
+def test_unavailable_runtime_pin_leaves_the_runtime_unrecorded(monkeypatch: pytest.MonkeyPatch) -> None:
+    import benchbox._vendor as vendor
+
+    monkeypatch.setattr(vendor, "_runtime_pin", {})
+    result = make_benchmark_results(execution_metadata={})
+
+    enriched = _attach_translation_metadata(result, [_translation_outcome()], strict_mode=False)
+
+    assert enriched.execution_metadata["translation"]["status"] == "success"
+    assert "runtime" not in enriched.execution_metadata["translation"]

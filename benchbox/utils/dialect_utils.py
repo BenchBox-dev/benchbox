@@ -126,16 +126,20 @@ def record_sql_translation_outcome(outcome: SqlTranslationOutcome) -> None:
         outcomes.append(outcome)
 
 
-def bundled_sqlglot_runtime_identity() -> dict[str, str]:
-    from benchbox._vendor import _runtime_pin
+def bundled_sqlglot_runtime_identity() -> dict[str, str] | None:
+    try:
+        from benchbox._vendor import _runtime_pin as pin
 
-    return {
-        "distribution": _runtime_pin["distribution"],
-        "version": _runtime_pin["version"],
-        "fork_sha": _runtime_pin["fork_sha"],
-        "upstream_sha": _runtime_pin["upstream_sha"],
-        "wheel_sha256": _runtime_pin["sha256"],
-    }
+        identity = {
+            "distribution": pin["distribution"],
+            "version": pin["version"],
+            "fork_sha": pin["fork_sha"],
+            "upstream_sha": pin["upstream_sha"],
+            "wheel_sha256": pin["sha256"],
+        }
+    except (ImportError, KeyError):
+        return None
+    return identity
 
 
 def summarize_sql_translation_outcomes(
@@ -211,7 +215,6 @@ def summarize_sql_translation_outcomes(
         "translators": sorted({outcome.translator for outcome in outcomes if outcome.translator}),
         "source_dialects": sorted({outcome.source_dialect for outcome in outcomes if outcome.source_dialect}),
         "target_dialects": sorted({outcome.target_dialect for outcome in outcomes if outcome.target_dialect}),
-        "runtime": bundled_sqlglot_runtime_identity(),
         "outcomes": sorted(
             grouped.values(),
             key=lambda item: (
@@ -224,6 +227,9 @@ def summarize_sql_translation_outcomes(
             ),
         ),
     }
+    runtime = bundled_sqlglot_runtime_identity()
+    if runtime is not None:
+        summary["runtime"] = runtime
     if workload_fingerprints:
         summary["unique_queries_translated"] = len(workload_fingerprints)
     if schema_fingerprints:
