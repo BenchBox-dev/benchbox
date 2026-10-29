@@ -4,5 +4,12 @@
   "funding": "unspecified",
   "manifest_version": "1.0",
   "result_source": "internal",
+  "sql_translator_version": {
+    "evidence": "Wheel 30.24.0.17 reconciled in results-data/CORPUS_NOTES.md (Wheel consistency, evidence B): the vendored pin benchbox/_vendor/sqlglot.json at checkout 5e82bcaa3. The run log does not print the wheel.",
+    "fork_sha": "b181afce8e9e9cd78b12ba78151d1cf7dbc9adf7",
+    "upstream_sha": "5d588c0f32d17a08191898638f67ff27bb0a13ff",
+    "version": "30.24.0.17",
+    "wheel_sha256": "f91d099155ca4be92397b8ab2e86ef5e07b4bee0aefcec31859afced9f4fc526"
+  },
   "submitted_by": "maintainer"
 }

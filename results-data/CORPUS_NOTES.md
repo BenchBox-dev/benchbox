@@ -999,6 +999,12 @@ each run was started from, and `uv.lock` has no SQLGlot entry. Per-bundle values
 that pin at the checkout's commit; every run used the editable project install of its worktree, so
 the checkout's `benchbox/_vendor` is what loaded.
 
+These 58 bundles are attested, not recorded: each manifest sidecar carries `sql_translator_version`
+with the wheel's `version`, `fork_sha`, `upstream_sha`, `wheel_sha256` (taken from
+`benchbox/_vendor/sqlglot.json` at the commit that pinned the wheel) and an `evidence` string naming the
+table row below. `scripts/annotate_sql_translator_version.py` writes it from this table and never
+edits bundle JSON.
+
 | id | cell | run timestamp (clock) | checkout commit | wheel | evidence |
 |---|---|---|---|---|---|
 | `95d5bdc8` | DataFusion coffeeshop SF0.01 | 2026-10-26 11:28:37 EDT | `7b8484a4c` | 30.24.0.17 | A |

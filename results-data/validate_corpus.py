@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import collections
 import datetime as _dt
+import functools
 import importlib.util
 import json
 import math
@@ -106,14 +107,27 @@ def _load_repo_module(name: str, relative_path: str):
 SUBSCALE_POLICY = _load_repo_module("_benchbox_subscale_policy", "benchbox/core/results/subscale_policy.py")
 
 
-def _load_export_anonymized_errors():
+@functools.cache
+def _load_bundle_validation():
     try:
-        from benchbox.validation.bundle import export_anonymized_errors
+        import benchbox.validation.bundle as bundle_validation
 
-        return export_anonymized_errors
+        return bundle_validation
     except ImportError:
         pass
-    return _load_repo_module("_benchbox_validation_bundle", "benchbox/validation/bundle.py").export_anonymized_errors
+    return _load_repo_module("_benchbox_validation_bundle", "benchbox/validation/bundle.py")
+
+
+def _load_export_anonymized_errors():
+    return _load_bundle_validation().export_anonymized_errors
+
+
+def _require_translator_version(bundle: pathlib.Path, payload: dict) -> None:
+    bundle_validation = _load_bundle_validation()
+    try:
+        bundle_validation.resolve_translator_version(payload, bundle)
+    except bundle_validation.TranslatorVersionError as exc:
+        raise CorpusReadError(f"ERROR translator version in {bundle}: {exc}") from exc
 
 
 def unanonymized_bundle_errors(bundles: list[pathlib.Path]) -> list[str]:
@@ -760,6 +774,7 @@ def cohort_platforms(bundles: list[pathlib.Path]) -> dict[CohortKey, set[str]]:
                 f"ERROR throughput stream count mismatch in {bundle}: configured={configured_count}, "
                 f"stream_results={recorded_count}"
             )
+        _require_translator_version(bundle, payload)
         identities = cohorts[_cohort_key(payload)]
         if _declares_execution_class(payload, bundle):
             _comparison_identity(bundle, payload)
