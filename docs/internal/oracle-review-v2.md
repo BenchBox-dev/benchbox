@@ -432,11 +432,15 @@ was edited, the guard step fails and nothing is posted: the head keeps its lates
 status and a later run decides it. A run that skips posting, or whose status post
 failed, uploads no retry state and adds no strike. A manual run still uploads
 an attempt state before posting, even when the App token or the guard step
-failed, as long as the redaction check passed: it carries the current head, the run's time and
-the consumed retry (with the `unpublished` pending cause when the head had no
-state of its own), so a failed post can neither skip the daily budget nor the
-backoff. The sweep never re-dispatches an `unpublished` state; a manual
-`/oracle-review` retries it within the usual backoff and budget.
+failed, as long as the redaction check passed: it carries the current head, the
+consumed retry and the run's time as `attempted_at` (with the `unpublished`
+pending cause when the head had no state of its own), so a failed post can
+neither skip the daily budget nor the backoff. `attempted_at` anchors the
+backoff; `updated_at` stays at the first attempt and anchors the window in which
+the sweep counts failed runs, so repeated failed posts still reach the
+failed-twice pending status. The sweep retries an `unpublished` state within the
+usual backoff and budget, or surfaces it once two runs since the first attempt
+failed without a result.
 
 `post` drops any finding matching an open review thread from this App by file
 and normalized title, unless the new one is more severe. Each new thread carries
