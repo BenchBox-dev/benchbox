@@ -7,9 +7,21 @@ from pathlib import Path
 import pytest
 
 from _project.scripts.results_explorer_corpus_migrate import _semantic_signature, migrate
+from benchbox.core.results.anonymization import MissingPublicPseudonymSaltError
 from benchbox.core.results.canonical_json import canonical_json_bytes
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
+
+
+@pytest.fixture(autouse=True)
+def _pseudonym_salt(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("BENCHBOX_MACHINE_ID_SALT", "test-salt")
+
+
+def test_migrate_refuses_without_salt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("BENCHBOX_MACHINE_ID_SALT", raising=False)
+    with pytest.raises(MissingPublicPseudonymSaltError):
+        migrate(bundles_dir=tmp_path, write=False, manifest_path=tmp_path / "migration.json")
 
 
 def _bundle() -> dict[str, object]:

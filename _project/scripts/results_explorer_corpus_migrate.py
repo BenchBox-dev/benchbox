@@ -16,7 +16,11 @@ if str(CHECKOUT_ROOT) not in sys.path:
     sys.path.insert(0, str(CHECKOUT_ROOT))
 
 from _project.scripts.explorer_pipeline.transformer import BundleTransformer
-from benchbox.core.results.anonymization import AnonymizationManager
+from benchbox.core.results.anonymization import (
+    AnonymizationConfig,
+    AnonymizationManager,
+    MissingPublicPseudonymSaltError,
+)
 from benchbox.core.results.canonical_json import canonical_json_bytes
 from benchbox.validation.bundle import discover_bundles
 
@@ -116,7 +120,7 @@ def _semantic_signature(data: dict[str, Any]) -> dict[str, Any]:
 
 
 def migrate(*, bundles_dir: Path, write: bool, manifest_path: Path) -> dict[str, Any]:
-    manager = AnonymizationManager()
+    manager = AnonymizationManager(AnonymizationConfig.from_public_environ(require_salt=True))
     transformer = BundleTransformer()
     entries: list[dict[str, Any]] = []
     pending_writes: list[tuple[Path, bytes]] = []
@@ -233,7 +237,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
     parser.add_argument("--write", action="store_true", help="rewrite bundles and companions atomically")
     args = parser.parse_args(argv)
-    result = migrate(bundles_dir=args.bundles_dir, write=args.write, manifest_path=args.manifest)
+    try:
+        result = migrate(bundles_dir=args.bundles_dir, write=args.write, manifest_path=args.manifest)
+    except MissingPublicPseudonymSaltError as exc:
+        raise SystemExit(str(exc)) from exc
     print(json.dumps({"mode": "write" if args.write else "dry-run", **result["summary"]}, sort_keys=True))
     if not args.write:
         print(json.dumps(result, indent=2, sort_keys=True))
