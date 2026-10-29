@@ -27,6 +27,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
           fetch-depth: 0
+          token: ${{ secrets.CROSS_SURFACE_BASELINE_PR_TOKEN || github.token }}
 
       - name: Set up Python 3.12
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
@@ -171,10 +172,23 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Regenerate the docs reference inventory
+        if: steps.check.outputs.changed == 'true'
+        run: uv run -- python scripts/doc_reference_inventory.py
+
+      - name: Verify the docs reference inventory is current
+        if: steps.check.outputs.changed == 'true'
+        shell: bash
+        run: |
+          if ! uv run -- python scripts/doc_reference_inventory.py --check; then
+            echo "::error::quality/docs-reference-inventory.json is still stale after regeneration; refusing to open a refresh PR that fails test_doc_reference_inventory"
+            exit 1
+          fi
+
       - name: Create refresh PR
         if: steps.check.outputs.changed == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.CROSS_SURFACE_BASELINE_PR_TOKEN || github.token }}
         shell: bash
         run: |
           set -euo pipefail
@@ -182,7 +196,7 @@ jobs:
           git config user.name "benchbox-bot"
           git config user.email "bot@benchbox.dev"
           git checkout -b "$BRANCH"
-          git add tests/fixtures/fast_tier_baseline
+          git add tests/fixtures/fast_tier_baseline quality/docs-reference-inventory.json
           git commit -m "chore(ci): refresh the fast-tier duration baseline (run ${{ github.run_number }})"
           git push origin "$BRANCH"
           BODY_FILE="$(mktemp)"

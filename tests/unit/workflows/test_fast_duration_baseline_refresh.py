@@ -81,7 +81,7 @@ def test_refresh_reports_medium_shard_drift() -> None:
 
 def test_refresh_only_commits_the_baseline() -> None:
     text = all_run_text()
-    assert "git add tests/fixtures/fast_tier_baseline" in text
+    assert "git add tests/fixtures/fast_tier_baseline quality/docs-reference-inventory.json" in text
 
 
 def test_refresh_only_accepts_successful_source_runs() -> None:
@@ -90,3 +90,46 @@ def test_refresh_only_accepts_successful_source_runs() -> None:
 
 def test_medium_drift_only_uses_successful_trunk_runs() -> None:
     assert '.status == "completed" and .conclusion == "success"' in all_run_text()
+
+
+def step_index(name_fragment: str) -> int:
+    for index, step in enumerate(job()["steps"]):
+        if name_fragment in step.get("name", ""):
+            return index
+    raise AssertionError(name_fragment)
+
+
+def step_named(name_fragment: str) -> dict[str, Any]:
+    return job()["steps"][step_index(name_fragment)]
+
+
+def test_inventory_is_regenerated_after_the_shards_and_before_the_commit() -> None:
+    regenerate = step_index("Regenerate the docs reference inventory")
+    assert step_index("Build the refreshed baseline") < regenerate
+    assert step_index("Check for baseline changes") < regenerate
+    assert regenerate < step_index("Create refresh PR")
+    assert step_named("Regenerate the docs reference inventory")["run"].strip() == (
+        "uv run -- python scripts/doc_reference_inventory.py"
+    )
+
+
+def test_stale_inventory_fails_the_refresh_with_a_clear_message() -> None:
+    verify = step_named("Verify the docs reference inventory is current")
+    assert step_index("Regenerate the docs reference inventory") < step_index(
+        "Verify the docs reference inventory is current"
+    )
+    assert step_index("Verify the docs reference inventory is current") < step_index("Create refresh PR")
+    assert "scripts/doc_reference_inventory.py --check" in verify["run"]
+    assert "::error::" in verify["run"]
+    assert "exit 1" in verify["run"]
+
+
+def test_inventory_steps_only_run_when_the_baseline_changed() -> None:
+    for fragment in ("Regenerate the docs reference inventory", "Verify the docs reference inventory is current"):
+        assert step_named(fragment)["if"] == "steps.check.outputs.changed == 'true'"
+
+
+def test_refresh_pr_uses_the_existing_pr_token_so_runs_start_unapproved() -> None:
+    expected = "${{ secrets.CROSS_SURFACE_BASELINE_PR_TOKEN || github.token }}"
+    assert step_named("Checkout code")["with"]["token"] == expected
+    assert step_named("Create refresh PR")["env"]["GH_TOKEN"] == expected
