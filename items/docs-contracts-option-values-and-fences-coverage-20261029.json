@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "docs:check fails on a stale --template value in reference/cli/visualize.md-style examples, shown by a seeded test",
+    "Every non-blog docs page with a bash, shell or console CLI example is covered, with zero violations on the real bundle in block mode, or each excluded page is listed with a reason"
+  ],
+  "description": "Found 2026-10-28 while extending the checker to usage/cli-quick-start.md. The checker (docs-contracts/checks/commands.ts) now validates option names and values with exported choices on two pages plus cli-quick-start.md, but: (1) other pages are not scanned; scanning every page produced 6 false positives (-vv, COMMAND, |) and two placeholders in usage/dry-run.md:417,428; (2) reference/cli/visualize.md uses `--template overview`, which is not among the choices exported for that option, likely real drift; (3) bashBlocks reads only ```bash fences, so shell and console fences are never scanned; (4) values of deployment-mode selectors (base:mode) and positional arguments are not exported by core so they are unchecked.\n\nRoll the checker out page by page: resolve visualize.md first (fix the doc or the exported choices), add placeholder skipping rules that remove the 6 false positives, add shell and console fences, and extend page coverage with the real bundle in block mode before each addition. Items 4 needs a core doc-contracts export change: schema changes land in core first.",
+  "links": [
+    "BenchBox-dev/benchbox-site: docs-contracts/checks/commands.ts",
+    "BenchBox-dev/benchbox-site: docs/reference/cli/visualize.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-29T12:39:55Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "fab4fbd8138c4b498ca2902f9b1794e7",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    }
+  ]
+}
