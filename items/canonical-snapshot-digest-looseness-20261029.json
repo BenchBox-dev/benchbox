@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "The digest either covers column types and view definitions, or deploy/README.md states they are ignored and why, with a test for each rule",
+    "No exclusion in canonical-digest.ts matches a column that does not exist; tests in deploy/test/canonical-digest.test.ts cover each rule"
+  ],
+  "description": "Found 2026-10-28 while reviewing results.duckdb byte differences. The deploy compares snapshots by canonical content digest (deploy/lib/canonical-digest.ts, deploy/gates/snapshot-digest.ts, from site PR 15). It orders rows by every column, rounds floats to 9 significant digits and drops generated_at. Gaps: (1) the generated_at exclusion now matches no column because core stores only read_model_version in the database (core duckdb_builder.py), so it is dead logic or hides a future column; (2) the digest ignores view and index definitions and column types, and float changes beyond 9 significant digits, although an exact EXCEPT ALL comparison of two core builds showed equal rows, row order and full float precision; (3) deploy/README.md does not explain why the digest is a content digest rather than a byte digest or what it ignores.\n\nRemove the dead exclusion or tie it to a real column, decide whether column types and view definitions belong in the digest (a schema change should change the digest), and add a short section to deploy/README.md that states the invariant and what is ignored.",
+  "links": [
+    "BenchBox-dev/benchbox-site: deploy/lib/canonical-digest.ts",
+    "BenchBox-dev/benchbox-site: deploy/gates/snapshot-digest.ts"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-29T12:40:03Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "16818f19939f4502b34e3ac64c5e3b8b",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    }
+  ]
+}
