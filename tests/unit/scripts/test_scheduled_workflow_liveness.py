@@ -220,7 +220,7 @@ def test_report_passes_when_everything_is_alive() -> None:
 @pytest.mark.parametrize("conclusion", ["failure", "cancelled", "timed_out"])
 def test_a_recent_scheduled_run_that_did_not_succeed_is_still_alive(conclusion: str) -> None:
     verdict = liveness.assess(
-        "nightly.yml",
+        "nightly-v2.yml",
         [_run(1, timedelta(hours=2), conclusion=conclusion)],
         window_days=3,
         now=NOW,
@@ -235,7 +235,7 @@ def test_a_recent_scheduled_run_that_did_not_succeed_is_still_alive(conclusion: 
 
 def test_a_stale_successful_run_is_dead_regardless_of_its_conclusion() -> None:
     verdict = liveness.assess(
-        "nightly.yml",
+        "nightly-v2.yml",
         [_run(1, timedelta(days=5), conclusion="success")],
         window_days=3,
         now=NOW,
@@ -363,9 +363,9 @@ def test_registration_preserves_commit_date_when_workflow_request_fails(monkeypa
 
 
 def test_the_nightly_job_runs_the_script_instead_of_an_inline_program() -> None:
-    workflow = yaml.safe_load((ROOT / ".github/workflows/nightly.yml").read_text(encoding="utf-8"))
-    job = next(job for name, job in workflow["jobs"].items() if name == "scheduled-workflow-liveness")
+    workflow = yaml.safe_load((ROOT / ".github/workflows/nightly-v2.yml").read_text(encoding="utf-8"))
+    job = workflow["jobs"]["liveness"]
     run_steps = [step["run"] for step in job["steps"] if "run" in step]
 
-    assert run_steps == ["python3 scripts/scheduled_workflow_liveness.py"]
+    assert run_steps == ["python3 scripts/scheduled_workflow_liveness.py | tee liveness.log"]
     assert job["permissions"] == {"actions": "read", "contents": "read"}

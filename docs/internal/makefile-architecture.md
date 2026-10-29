@@ -46,7 +46,7 @@ The split was designed around repository consumers, not only target size.
 
 | Implementation or consumer | Observed contract | Design consequence |
 |---|---|---|
-| `.github/workflows/ci.yml`, `nightly.yml`, and `lint.yml` | Invoke public targets through GNU Make | Included targets are transparent to them |
+| `.github/workflows/ci.yml`, `nightly-v2.yml`, and `lint.yml` | Invoke public targets through GNU Make | Included targets are transparent to them |
 | `tests/system/test_ci_lint_parity.py` and `tests/unit/scripts/test_ci_lint_environment_boundary.py` | Parse the literal root `ci-lint:` recipe | `ci-lint` stays root-owned with byte-identical command order |
 | `tests/unit/test_standardized_test_commands.py` and `tests/unit/test_linting_consolidation.py` | Search or parse root test, coverage, correctness, marker, lint, and format definitions | Root-owned; moving them requires first migrating these consumers in a separately scoped change |
 | `tests/unit/test_release_infrastructure.py`, `tests/unit/scripts/test_pr_arm.py`, and `tests/unit/scripts/test_soundness_paths.py` | Parse release, PR, auto-merge, worktree lifecycle, package, and UAT gate source text | These operational safety recipes stay root-owned |

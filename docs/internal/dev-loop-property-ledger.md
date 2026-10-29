@@ -124,7 +124,6 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `corpus-drift-check.yml` | product-safety | Corpus drift detection |
 | `corpus-event-bridge.yml` | product-safety | Corpus event integrity |
 | `corpus-reconciler.yml` | product-safety | Corpus reconciliation |
-| `cross-platform-validation.yml` | product-safety | Cross-platform correctness |
 | `cross-surface-baseline-autodetect.yml` | tooling | Baseline maintenance support |
 | `docker-integration.yml` | product-safety | Container integration coverage |
 | `extension-smoke.yml` | product-safety | Extension smoke coverage |
@@ -132,8 +131,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `green-unmerged-sweep.yml` | tooling | Daily sweep that upserts the green-but-unmerged PR digest issue; never enables auto-merge |
 | `lint.yml` | tooling | Lint gate |
 | `mirror-ci-images.yml` | product-safety | Seeds digest-pinned images in GHCR only when absent; scheduled CI checks mirrors by digest without routine Docker Hub reads |
-| `nightly.yml` | product-safety | Scheduled validation; nightly T3 replaces most domains, including the DuckDB and CedarDB throughput UAT; Windows legs and workflow liveness are non-blocking; ruleset drift runs as advisory |
-| `nightly-v2.yml` | product-safety | Nightly T3: platform matrix, docker engines, extension, install, DuckDB and CedarDB throughput UAT with the throughput commit status published through the `t3:throughput` domain, and drift with selection failures reported through `t3:drift`; `t3:sql-execution-gate-obt` is a reported domain. The browser check is owned by the site repository and has no domain here (`docs/internal/nightly-t3.md` lists every domain) |
+| `nightly-v2.yml` | product-safety | Nightly T3: platform matrix, docker engines, extension, install, DuckDB and CedarDB throughput UAT with the throughput commit status published through the `t3:throughput` domain, and drift with selection failures reported through `t3:drift`; `t3:sql-execution-gate-obt`, `t3:parity`, `t3:integration` and `t3:mirror-postgres17` are reported domains. It replaced the retired Nightly Validation and Cross-Platform Validation workflows. The browser check is owned by the site repository and has no domain here (`docs/internal/nightly-t3.md` lists every domain) |
 | `omp-pin-bump.yml` | tooling | Scheduled omp pin bump: a read-only job builds and proves the candidate, and a separate job holding the write token opens the bump pull request, which `oracle-gate` holds until the owner posts the Mac evidence line |
 | `oracle-gate.yml` | product-safety | Required gate from trusted code: result-affecting changes need a success review of the head from the `benchbox-oracle` App, whose Bot identity only the owner controls, or a stand-in approval comment from an attester account posted after the oracle's latest review; that account is also the one local automation uses, so the stand-in records who vouched, not that a human read it. Posted as `oracle-gate` for the head from develop code on trusted triggers; sole writer in-tree, with the required check scoped to the oracle App in the ruleset |
 | `oracle-review.yml` | product-safety | Review-event notification, not a check: a no-op job on review submitted, edited and dismissed whose completion makes `oracle-gate` re-evaluate |
@@ -173,7 +171,6 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_corpus_trust_boundary.py` | product-safety | Corpus trust boundary |
 | `test_docker_integration_workflow.py` | product-safety | Container integration |
 | `test_nightly_t3_workflow.py` | product-safety | Nightly T3 domain coverage |
-| `test_nightly_legacy_test_job.py` | product-safety | Legacy nightly matrix timeout bound and Windows legs |
 | `test_omp_pin_bump_workflow.py` | tooling | The omp pin bump workflow splits a read-only build job from the write-token pull request job and checks out no credentials |
 | `test_oracle_gate_workflow.py` | product-safety | Trusted triggers, develop-only checkout, single per-PR concurrency group, App-only posting and no other workflow posting the gate context |
 | `test_oracle_review_workflow.py` | product-safety | The notification-only shape of the oracle-review workflow: review triggers, empty permissions, one `review-event` job, no checkout, secrets or tools |

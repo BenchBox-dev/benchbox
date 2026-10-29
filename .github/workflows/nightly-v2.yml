@@ -46,9 +46,19 @@ jobs:
     with:
       images: '["questdb"]'
 
+  mirror-postgres17:
+    uses: ./.github/workflows/mirror-ci-images.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      images: '["postgres17"]'
+
   docker:
     name: "t3:docker | ${{ matrix.service }}"
-    needs: mirror-images
+    needs:
+      - mirror-images
+      - mirror-postgres17
     if: ${{ !cancelled() }}
     permissions:
       contents: read
@@ -63,6 +73,11 @@ jobs:
             compose: docker/postgresql/docker-compose.yml
             tests: tests/integration/platforms/test_postgresql_live.py
             marker: live_postgresql
+          - service: postgres17
+            compose: docker/postgresql/docker-compose.yml
+            tests: tests/integration/platforms/test_postgresql_live.py
+            marker: live_postgresql
+            postgres_image: ghcr.io/benchbox-dev/postgres:17@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
           - service: clickhouse
             compose: docker/clickhouse/docker-compose.yml
             tests: tests/integration/platforms/test_clickhouse_live.py
@@ -95,6 +110,12 @@ jobs:
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Select the leg's PostgreSQL image
+        if: ${{ matrix.postgres_image != '' }}
+        env:
+          LEG_POSTGRES_IMAGE: ${{ matrix.postgres_image }}
+        run: echo "POSTGRES_IMAGE=${LEG_POSTGRES_IMAGE}" >> "$GITHUB_ENV"
 
       - name: Bring up compose stack
         run: docker compose -f "${{ matrix.compose }}" up -d --wait
@@ -446,7 +467,15 @@ jobs:
         run: |
           history="$HOME/Developer/benchmark_runs/throughput-baseline-history"
           mkdir -p "$history"
-          for workflow in nightly-v2.yml nightly.yml; do
+          if ! legacy_id=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows" --paginate \
+            --jq '.workflows[] | select(.name == "Nightly Validation" or (.path | endswith("/nightly.yml"))) | .id'); then
+            echo "::warning::could not resolve the retired Nightly Validation workflow; its Throughput@Size baselines are not counted"
+            legacy_id=""
+          fi
+          if [ -z "${legacy_id}" ]; then
+            echo "::warning::no workflow named Nightly Validation is registered; its Throughput@Size baselines are not counted"
+          fi
+          for workflow in nightly-v2.yml ${legacy_id}; do
             if ! run_ids=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow "$workflow" --branch develop --event schedule --limit 30 \
               --json databaseId --jq ".[] | select(.databaseId != ${GITHUB_RUN_ID}) | .databaseId"); then
               echo "::warning::could not list prior ${workflow} runs; their Throughput@Size baselines are not counted"
@@ -951,6 +980,8 @@ jobs:
 
   sql-execution-gate-obt:
     name: "t3:sql-execution-gate-obt | OBT execution gate (SF0.01)"
+    needs: mirror-postgres17
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -1448,6 +1479,7 @@ jobs:
       - parity
       - sqlglot-generator
       - mirror-questdb
+      - mirror-postgres17
       - durations-refresh
     if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest
@@ -1470,7 +1502,7 @@ jobs:
           result_of() {
             printf '%s' "$NEEDS_JSON" | jq -r --arg j "$1" '.[$j].result // "skipped"'
           }
-          for job in docker cloud perf matrix extension install throughput throughput-cedardb drift quarantine liveness ruleset-drift windows tpcds-obt sql-execution-gate-obt durations-refresh security cross-engine integration-smoke integration parity sqlglot-generator mirror-questdb; do
+          for job in docker cloud perf matrix extension install throughput throughput-cedardb drift quarantine liveness ruleset-drift windows tpcds-obt sql-execution-gate-obt durations-refresh security cross-engine integration-smoke integration parity sqlglot-generator mirror-questdb mirror-postgres17; do
             case "$job" in
               durations-refresh) domain=durations ;;
               *) domain="$job" ;;

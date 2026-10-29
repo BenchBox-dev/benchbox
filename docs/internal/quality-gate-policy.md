@@ -13,11 +13,11 @@ and advisory thresholds, and which CI jobs run it. One gate passing does not pro
 
 | Gate | Command and scope | Fails when | Advisory visibility | Ignored or excepted | Reproducible baseline | Required in |
 | --- | --- | --- | --- | --- | --- | --- |
-| Configured Ruff lint | `uv run ruff check .`; tracked Python from the repository root | Any enabled rule fires. C901 only when `CC > 18`. | None; every selected diagnostic fails. | 34 global rule ignores, 5 per-file entries, and 8 discovery exclusions. `_project` is **not** excluded. | 0 diagnostics | Develop PR `guard-ruff`, release lint/test, nightly, and `make ci-lint` |
+| Configured Ruff lint | `uv run ruff check .`; tracked Python from the repository root | Any enabled rule fires. C901 only when `CC > 18`. | None; every selected diagnostic fails. | 34 global rule ignores, 5 per-file entries, and 8 discovery exclusions. `_project` is **not** excluded. | 0 diagnostics | Develop PR `guard-ruff`, release lint/test, and `make ci-lint` |
 | Ruff format | `uv run ruff format --check .`; configured discovery scope | Any formatting diff | None | Same discovery rules as configured Ruff | 0 files | Same workflows as configured Ruff |
 | Test coverage | Fast suite with `--cov=benchbox` in `make ci-test`, `test.yml`, and `ci.yml` | Suite-wide coverage below 70% (`--cov-fail-under=70`); 70 is the blocking CI floor. | `tests/conftest.py` warns below 80%. The 80% threshold is intentionally advisory. | None | Measured on each run | `make ci-test`, `test.yml`, `ci.yml` |
 | Custom complexity policy | `make complexity-check`; isolated Ruff C901 at threshold 1 over `benchbox` | Unexcepted `CC > 18`. Invalid, stale, unowned, drifted, overlong, or expired exception metadata always fails, even with `--no-fail`. Also a missing policy or target, or empty or unparseable measurements. | Every `12 <= CC <= 18` score is printed, including targets of any future hard exception. | 0 current hard exceptions | 7,486 functions with `CC > 1`; 277 advisory; 0 hard; max CC 18 (remeasured 2026-10-17 at `1efc892a`) | Develop PR `guard-complexity-policy` and `make ci-lint` |
-| Repository ty pass | `uv run ty check`; configured `benchbox` and `tests` scope | A configured error rule fires | Warnings are printed without failing | 7 globally ignored rule families | 641 warnings, 0 errors | Develop PR, release lint/test, nightly, and `make ci-lint` |
+| Repository ty pass | `uv run ty check`; configured `benchbox` and `tests` scope | A configured error rule fires | Warnings are printed without failing | 7 globally ignored rule families | 641 warnings, 0 errors | Develop PR, release lint/test, and `make ci-lint` |
 | Quality-governance strict type island | `make quality-governance-typecheck`; only `_project/scripts/check_complexity.py` | Any rule (`ty check --error all`) | None | No architecture or production modules; their existing TODOs own them | 0 diagnostics | Develop PR `guard-quality-governance-typecheck` and `make ci-lint` |
 | Duplicate delta | `make duplicate-check-delta`; AST Type-2 clones in `benchbox` versus PR merge-base | Any increase in duplicated lines | Full changed-group report on failure | 2 excluded path patterns, 6 global function names, 38 path-scoped rules | Merge-base 6,198/282 groups; branch 6,187/281; **-11, passing** | Develop PR `guard-duplicate-delta` and `make ci-lint` |
 | Duplicate absolute | `make duplicate-check`; same AST scanner | More than 8,073 duplicated lines, when run | Report, always | Same duplicate scanner configuration | 6,187 of 8,073 | Local/campaign only; not required CI |
@@ -40,7 +40,7 @@ alone:
    `duplicate-check-delta` define local runs and report-all behavior.
 3. `.github/workflows/ci.yml` defines required develop-PR jobs and steps and the duplicate
    delta base SHA.
-4. `.github/workflows/lint.yml`, `test.yml`, and `nightly.yml` run configured
+4. `.github/workflows/lint.yml` and `test.yml` run configured
    Ruff and ty for releases and compatibility. They do not imply the `_project`
    complexity checker exists on curated release branches.
 5. `_project/scripts/check_complexity.py` measures custom scores in isolation,

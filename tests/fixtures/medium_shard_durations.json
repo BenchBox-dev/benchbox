@@ -44746,7 +44746,7 @@
     "tests/unit/test_release_infrastructure.py::TestReleaseInfrastructure::test_cli_entry_point_works": {
       "p95_seconds": 2.131
     },
-    "tests/unit/test_release_infrastructure.py::TestReleaseInfrastructure::test_fast_suite_runs_on_python_314_per_pr_and_on_python_312_after_merge_and_nightly": {
+    "tests/unit/test_release_infrastructure.py::TestReleaseInfrastructure::test_fast_suite_runs_on_python_314_per_pr_and_on_python_312_after_merge": {
       "p95_seconds": 0.5714
     },
     "tests/unit/test_release_infrastructure.py::TestReleaseInfrastructure::test_github_issue_url_fix": {

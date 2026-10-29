@@ -122,9 +122,23 @@ def test_every_domain_has_a_job() -> None:
 def test_docker_covers_all_three_services() -> None:
     docker = _load()["jobs"]["docker"]
     services = {entry["service"] for entry in docker["strategy"]["matrix"]["include"]}
-    assert services == {"postgres", "clickhouse", "trino"}
-    assert set(_mirrored_images(_load()["jobs"]["mirror-images"])) >= services
+    assert services == {"postgres", "postgres17", "clickhouse", "trino"}
+    assert set(_mirrored_images(_load()["jobs"]["mirror-images"])) >= services - {"postgres17"}
     assert docker["strategy"]["fail-fast"] is False
+
+
+def test_docker_runs_the_postgresql_live_suite_on_17_and_18_with_the_no_pass_refusal() -> None:
+    docker = _load()["jobs"]["docker"]
+    legs = {entry["service"]: entry for entry in docker["strategy"]["matrix"]["include"]}
+    assert legs["postgres"]["tests"] == legs["postgres17"]["tests"]
+    assert legs["postgres"]["marker"] == legs["postgres17"]["marker"] == "live_postgresql"
+    assert legs["postgres17"]["postgres_image"] == _POSTGRES_17_GHCR_IMAGE
+    select = next(step for step in _steps(docker) if step.get("name") == "Select the leg's PostgreSQL image")
+    assert select["env"] == {"LEG_POSTGRES_IMAGE": "${{ matrix.postgres_image }}"}
+    assert "GITHUB_ENV" in select["run"]
+    names = [step.get("name") for step in _steps(docker)]
+    assert names.index(select["name"]) < names.index("Bring up compose stack")
+    assert "produced no passing tests" in _run_text(docker)
 
 
 def test_docker_attempts_pulls_after_mirror_failure() -> None:
@@ -132,7 +146,7 @@ def test_docker_attempts_pulls_after_mirror_failure() -> None:
     docker = jobs["docker"]
     assert str(docker["if"]).replace(" ", "") == "${{!cancelled()}}"
     needs = docker["needs"]
-    assert "mirror-images" in ([needs] if isinstance(needs, str) else needs)
+    assert {"mirror-images", "mirror-postgres17"} <= set([needs] if isinstance(needs, str) else needs)
     login = next(step for step in _steps(docker) if "docker login ghcr.io" in str(step.get("run", "")))
     assert "if" not in login
     assert "mirror-images" in jobs["report"]["needs"]
@@ -622,7 +636,7 @@ def test_write_permissions_are_scoped_to_reporting_and_image_publication() -> No
     issue_writers = {name for name, job in jobs.items() if (job.get("permissions") or {}).get("issues") == "write"}
     package_writers = {name for name, job in jobs.items() if (job.get("permissions") or {}).get("packages") == "write"}
     assert issue_writers == {"report"}
-    assert package_writers == {"mirror-images", "mirror-cedardb", "mirror-questdb"}
+    assert package_writers == {"mirror-images", "mirror-cedardb", "mirror-questdb", "mirror-postgres17"}
     assert jobs["report"]["permissions"] == {"contents": "read", "issues": "write"}
     assert jobs["mirror-images"]["permissions"] == {"contents": "read", "packages": "write"}
     assert jobs["mirror-cedardb"]["permissions"] == {"contents": "read", "packages": "write"}
@@ -753,7 +767,7 @@ def test_windows_domain_timeout_leaves_margin_over_the_measured_run() -> None:
     assert _load()["jobs"]["windows"]["timeout-minutes"] >= measured_run_minutes * 1.25
 
 
-RETIRING_WORKFLOWS = {"nightly.yml", "release-canary.yml", "validate-release-pr.yml"}
+RETIRING_WORKFLOWS = {"release-canary.yml", "validate-release-pr.yml"}
 
 
 def test_a_kept_scheduled_workflow_runs_the_ruleset_drift_check() -> None:
@@ -786,7 +800,8 @@ def test_throughput_domain_runs_the_duckdb_cell_and_reads_history_from_both_nigh
     assert "tests/uat/configs/uat-throughput-duckdb-nightly.yaml" in text
     assert "--platform duckdb --benchmark tpch --scale 1 --streams 3" in text
     assert "--evaluate-floor" in text
-    assert "for workflow in nightly-v2.yml nightly.yml; do" in text
+    assert 'select(.name == "Nightly Validation" or (.path | endswith(' in text
+    assert "for workflow in nightly-v2.yml ${legacy_id}; do" in text
     assert '--workflow "$workflow" --branch develop --event schedule' in text
     assert "throughput-baseline-duckdb-tpch-sf1-*" in text
     uploads = {
@@ -1087,23 +1102,17 @@ def test_mirror_keeps_single_source_images_single_source(tmp_path: Path, image: 
     assert _copy_sources(calls) == [primary] * 3
 
 
-def test_nightly_postgres_integration_pulls_the_authenticated_ghcr_mirror_after_it_is_published() -> None:
-    document = _load(WORKFLOWS_DIR / "nightly.yml")
-    consumer = document["jobs"]["postgres-integration"]
-    service = consumer["services"]["postgres"]
-    assert service["image"] == f"ghcr.io/benchbox-dev/postgres:17@{POSTGRES17_DIGEST}"
-    assert service["credentials"] == {
-        "username": "${{ github.actor }}",
-        "password": "${{ github.token }}",
-    }
-    assert consumer["permissions"]["packages"] == "read"
-    needs = consumer["needs"]
-    mirror = document["jobs"]["mirror-postgres17"]
-    assert "mirror-postgres17" in ([needs] if isinstance(needs, str) else needs)
+def test_postgres17_mirror_is_a_reported_domain_with_package_write() -> None:
+    jobs = _load()["jobs"]
+    mirror = jobs["mirror-postgres17"]
     assert mirror["uses"] == "./.github/workflows/mirror-ci-images.yml"
-    assert mirror["permissions"]["packages"] == "write"
+    assert mirror["permissions"] == {"contents": "read", "packages": "write"}
     assert _mirrored_images(mirror) == ["postgres17"]
-    assert "public.ecr.aws/docker/library/postgres" not in (WORKFLOWS_DIR / "nightly.yml").read_text(encoding="utf-8")
+    assert "mirror-postgres17" in jobs["report"]["needs"]
+    assert "public.ecr.aws/docker/library/postgres" not in WORKFLOW.read_text(encoding="utf-8")
+    gate = jobs["sql-execution-gate-obt"]
+    assert gate["needs"] == "mirror-postgres17"
+    assert gate["if"] == "${{ !cancelled() }}"
 
 
 _POSTGRES_17_GHCR_IMAGE = (
@@ -1132,7 +1141,7 @@ def test_no_workflow_service_uses_a_public_ecr_postgres_image() -> None:
 
 def test_pr_sql_evidence_and_nightly_postgres_share_one_ghcr_digest() -> None:
     ci_job = _load(WORKFLOWS_DIR / "ci.yml")["jobs"]["sql-execution-evidence"]
-    nightly_job = _load(WORKFLOWS_DIR / "nightly.yml")["jobs"]["postgres-integration"]
+    nightly_job = _load()["jobs"]["sql-execution-gate-obt"]
     for job in (ci_job, nightly_job):
         service = job["services"]["postgres"]
         assert service["image"] == _POSTGRES_17_GHCR_IMAGE
@@ -1190,7 +1199,7 @@ def test_mirror_falls_back_to_the_gcr_mirror_when_docker_hub_stays_rate_limited(
 
 
 def test_nightly_seeds_the_questdb_mirror_with_package_write_permission() -> None:
-    mirror = _load(WORKFLOWS_DIR / "nightly.yml")["jobs"]["mirror-questdb"]
+    mirror = _load()["jobs"]["mirror-questdb"]
     assert mirror["uses"] == "./.github/workflows/mirror-ci-images.yml"
     assert mirror["permissions"] == {"contents": "read", "packages": "write"}
     assert _mirrored_images(mirror) == ["questdb"]
