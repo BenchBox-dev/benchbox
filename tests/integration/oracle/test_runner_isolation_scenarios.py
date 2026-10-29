@@ -2,25 +2,18 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Any
 
 import pytest
-import yaml
 
-from .harness import REPO_ROOT, WORKFLOW, Harness, Step
+from .harness import REPO_ROOT, Harness, Step
+from .runs import SCAN_COMMAND, scan_step, step_by_name
 
 pytestmark = [pytest.mark.integration, pytest.mark.medium]
 
 ISOLATION_STEP = "Verify Linux process isolation"
 JOIN_SCAN_STEP = "Scan the disk for secret values after the tailnet join"
 REQUEST_TOKEN = "eyJhbGciOi" + "Pq7Rs8Tu" * 6
-SHARED_SCRATCH_ROOTS = "--root /tmp --root /var/tmp --root /dev/shm"
 OAUTH_SECRET = "tskey-client-" + "kXq7Lm2NpR4tVw9-Zb3Yc8Wd5Xe"
-
-
-def _step(name: str) -> dict[str, Any]:
-    steps = yaml.safe_load((REPO_ROOT / WORKFLOW).read_text(encoding="utf-8"))["jobs"]["review"]["steps"]
-    return next(step for step in steps if step["name"] == name)
 
 
 def _run_step(harness: Harness, name: str, extra: dict[str, str]) -> Step:
@@ -37,7 +30,10 @@ def _run_step(harness: Harness, name: str, extra: dict[str, str]) -> Step:
         **extra,
     }
     (temp / "tmp").mkdir(exist_ok=True)
-    command = _step(name)["run"].replace(SHARED_SCRATCH_ROOTS, "")
+    command = step_by_name(name)["run"]
+    if name == JOIN_SCAN_STEP:
+        assert command == SCAN_COMMAND
+        return scan_step(harness, name, env)
     return harness.run(name, ["bash", "-e", "-c", command], env, cwd=REPO_ROOT)
 
 
