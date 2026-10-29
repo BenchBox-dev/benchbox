@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Each of the two worktrees is removed after confirming nothing unique remains, or its unique commits are on a pushed branch with an open PR",
+    "git worktree list no longer lists a branch whose PR is closed and superseded"
+  ],
+  "description": "Found 2026-10-28. PR 3542 and PR 3571 were superseded by 3664 and 3662 because their branches were checked out in other sessions' worktrees, and those worktrees were left untouched. ../BenchBox.wt-markdown-anchor-check holds the closed 3571 branch. Another worktree holds test/eula-notice-coverage-package-binaries with unpushed commit 176a9e8bb, which is not part of 3664. Owner or the session's owner should inspect each: if the unpushed commit holds work not in develop, move it to a new PR; otherwise remove the worktree with the repository's worktree-finish tooling. Do not delete without checking.",
+  "links": [
+    "BenchBox-dev/BenchBox: scripts/worktree_finish.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-29T12:40:15Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "7053ca5440224f849b6d065ac6b52ef6",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    }
+  ]
+}

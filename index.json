@@ -7,6 +7,13 @@
       "status": "done",
       "title": "A dedicated DTYPE-asserting cross-surface gate cell (compare each loaded column's dtype, not just its values, against the SQL reference)."
     },
+    "abandoned-session-worktrees-for-closed-doc-prs-20261029": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Reconcile two other-session worktrees that still hold branches of closed pull requests"
+    },
     "abfs-scheme-classifies-as-local-and-provider-strings-diverge": {
       "claim": null,
       "needs": [],
