@@ -16811,13 +16811,18 @@
       "title": "Watch the first reviews after an omp pin bump and revert on anomaly"
     },
     "oracle-omp-candidate-compat-suite-20261027": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-30T12:30:10Z",
+        "generation": "b8ff84280cd545d8b8ff2ea08c9bdb16",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [
         "oracle-omp-pin-single-source-20261026",
         "oracle-e2e-scenario-harness-and-mutation-gate-20261027"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Check a candidate omp build offline against every contract the oracle depends on, with no model quota"
     },
     "oracle-omp-gateway-pinned-build-20261027": {
