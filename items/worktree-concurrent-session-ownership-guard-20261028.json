@@ -3,7 +3,7 @@
     "agent-write-preflight (or worktree lifecycle metadata) records the owning session and refuses or warns when a second live session writes in the same worktree",
     "A test shows a second claimant is refused or warned, and the owner can release or transfer the worktree"
   ],
-  "context": "agent-write-preflight pins identity and location but not an owner. The conflict was found by seeing an unexpected commit appear in the branch log and a second agent process running tests in the same directory. Related guard: worktree lifecycle metadata already exists for each worktree.",
+  "context": "Done: PR 3673 merged (2026-10-29 00:22 UTC). agent-write-preflight records a worktree owner (session id plus harness pid and start time), refuses a second live session, replaces a dead owner, and make worktree-session-release or BENCHBOX_WORKTREE_TAKEOVER=1 give it up. The claim is serialized with flock and stored as one record. Known limits: not enforced on Windows (warns and proceeds); non-macOS ps behaviour unverified; a caller re-parented to pid 1 records nothing and is not guarded. BENCHBOX_HARNESS_PID is a new documented override that no harness sets yet.\n\nagent-write-preflight pins identity and location but not an owner. The conflict was found by seeing an unexpected commit appear in the branch log and a second agent process running tests in the same directory. Related guard: worktree lifecycle metadata already exists for each worktree.",
   "description": "Two sessions worked in the same linked worktrees for pull requests 3548 and 3549 at once. One session committed to the other's branch, ran a baseline rewrite in the worktree while the first was publishing, and a pre-push hook run failed because uncommitted edits from the other session made it modify files and stash-restore conflict. Nothing records or checks which session owns a worktree, so competing edits only show up as odd commits or failed pushes.",
   "sessions": [
     {
@@ -12,6 +12,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "47a3a4fbdee9495f847bdb0519134c17",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-29T00:23:20Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f96e2fc830ef455bbed309aa5d18d5aa",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
