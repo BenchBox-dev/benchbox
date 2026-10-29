@@ -11,7 +11,7 @@ import pytest
 
 from _project.scripts.oracle_reviewers import protocol
 
-from .harness import REPO_ROOT, Harness, ReviewRun, Step
+from .harness import PINNED_OMP, REPO_ROOT, Harness, ReviewRun, Step
 
 GOLDEN_DIR = REPO_ROOT / "tests" / "fixtures" / "oracle_golden"
 UPDATE_ENV = "ORACLE_GOLDEN_UPDATE"
@@ -141,6 +141,7 @@ def _scrub_keys(value: Any) -> Any:
 def normalize(value: Any, harness: Harness) -> Any:
     text = json.dumps(_scrub_keys(value), indent=2, sort_keys=True, ensure_ascii=False)
     text = text.replace(str(harness.root), "<root>")
+    text = text.replace(PINNED_OMP, "<omp-version>")
     text = RUN_URL.sub("/actions/runs/<run>", text)
     text = RUN_REF.sub("[run <run>]", text)
     text = MOMENT.sub("<time>", text)
