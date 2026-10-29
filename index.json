@@ -8854,12 +8854,7 @@
       "title": "Delete queue-era branches, develop-red labels and unused todo-db secrets"
     },
     "dlv2-81-config-cleanup": {
-      "claim": {
-        "expires_at": "2026-10-30T18:04:42Z",
-        "generation": "34552cc5b7ed4a5c92f67feb8287880f",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
-      },
+      "claim": null,
       "needs": [
         "dlv2-42-retire-dev-loop-scripts-tests",
         "dlv2-44-precommit-trim",
@@ -8867,7 +8862,7 @@
         "site-split-51-publication-retirement"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Remove obsolete test and CI config files"
     },
     "dlv2-82-makefile-rewrite": {
