@@ -4,7 +4,7 @@
     "MCP retrieval preserves the correct plan identity for multiple stream/phase variants; missing or ambiguous requests have explicit outcomes and never silently select a different query.",
     "A regression test consumes an actual exported bundle rather than a hand-built bare-key companion; existing CLI show-plan and comparison consumers continue to work."
   ],
-  "context": "Reproduced on 2026-10-28: real DuckDB TPC-H SF 0.01, queries 1,6, iterations 1, seed 42, phases generate,load,power. show-plan and compare --include-plans succeeded; direct calls to _get_query_plan_impl returned no_plan for tree, summary and json. Exported companion keys were Q1#0:power and Q6#0:power. The ordinary loader rehydrated plans with verified fingerprint integrity.\n\nGuardrails: do not change the .plans.json format, build_plans_payload, or loader keying; MCP adapts to them. Reuse the loader's plan indexing/lookup (benchbox/core/results/loader.py _index_plan_entries/_lookup_plan_entry or load_result_file) instead of a third lookup convention. A bare ID that maps to several stream/phase variants must not silently pick one: return the variant list or require a qualifier. Keep MCP read-only annotations and error envelope shape.\n\nVerification rubric: (1) focused regression test fails before the change and passes after; (2) uv run -- python -m pytest -n 0 on the touched plan test modules passes; (3) make comment-policy-check and ruff/typecheck on touched files pass; (4) a runtime smoke on the real surface described in acceptance is recorded in the PR body.",
+  "context": "Implementation in PR #3693 (branch fix/mcp-query-plan-lookup, head 1ef5b714a), armed for auto-merge; oracle runtime_ms finding fixed. Resume: verify PR merged, then take and finish. Ambiguous bare IDs return VALIDATION_ERROR with available_variants; optional stream/test_type qualifiers select a variant.\n\nGuardrails: do not change the .plans.json format, build_plans_payload, or loader keying; MCP adapts to them. Reuse the loader's plan indexing. Keep MCP read-only annotations and error envelope shape.",
   "description": "MCP get_query_plan reports no_plan for plans that the CLI can display from the same real result bundle. analytics._get_query_plan_impl directly indexes queries by a normalized bare query ID, while build_plans_payload emits query/stream/phase-qualified keys and can retain prefixed IDs. Reuse the canonical result loader and its identity rules rather than introducing another companion lookup convention. Preserve a defined selection policy when several stream or phase variants exist.",
   "links": [
     "benchbox/mcp/tools/analytics.py:268-308",
@@ -36,6 +36,14 @@
       "generation": "6fba49b1faf449c89133f552fcd99be4",
       "op": "take",
       "op_id": "6f89bc686fd94b7f89b881fa040bc0a8",
+      "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bb7fd2d6b114a6501df93f97",
+      "at": "2026-10-29T00:45:50Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1685bcc472f642e38314effc7b3ca0ec",
       "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
     }
   ]
