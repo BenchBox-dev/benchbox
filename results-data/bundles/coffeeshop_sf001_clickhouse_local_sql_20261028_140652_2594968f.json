@@ -1,0 +1,759 @@
+{
+  "benchmark": {
+    "id": "coffeeshop",
+    "name": "CoffeeShop",
+    "scale_factor": 0.01,
+    "test_type": "power"
+  },
+  "config": {
+    "compression": {
+      "level": null,
+      "type": "zstd"
+    },
+    "execution_engine": "default",
+    "mode": "sql",
+    "phases": [
+      "generate",
+      "load",
+      "power"
+    ],
+    "platform_option_sources": {
+      "force_recreate": "saved_config",
+      "force_upload": "saved_config",
+      "normalize_plan_literals": "saved_config",
+      "optimize_after_load": "saved_config",
+      "show_query_plans": "saved_config",
+      "tuning_source": "saved_config"
+    },
+    "platform_options": {
+      "force_recreate": false,
+      "force_upload": false,
+      "normalize_plan_literals": false,
+      "optimize_after_load": false,
+      "show_query_plans": false,
+      "tuning_source": "baseline"
+    }
+  },
+  "cost": {
+    "model": "actual",
+    "total_usd": 0
+  },
+  "environment": {
+    "arch": "aarch64",
+    "client_host": {
+      "arch": "aarch64",
+      "container_host_os": "macOS",
+      "cpu_count": 4,
+      "cpu_vendor": "Apple",
+      "execution_class": "container",
+      "execution_class_source": "inferred",
+      "memory_gb": 9.846134185791016,
+      "os": "Linux 6.18.15",
+      "python": "3.12.15"
+    },
+    "client_link": {
+      "collection_error_class": "AttributeError",
+      "collection_error_message": "AttributeError: statement overhead probe failed",
+      "collection_status": "unavailable",
+      "source": "unavailable"
+    },
+    "container_host_os": "macOS",
+    "cpu_count": 4,
+    "cpu_vendor": "Apple",
+    "execution_class": "container",
+    "execution_class_source": "inferred",
+    "memory_gb": 9.846134185791016,
+    "os": "Linux 6.18.15",
+    "platform_runtime": {
+      "collection_status": "partial",
+      "runtime_type": "local_process",
+      "source": "inferred"
+    },
+    "python": "3.12.15"
+  },
+  "execution": {
+    "compression": {
+      "type": "zstd"
+    },
+    "driver_package": "chdb",
+    "driver_runtime_strategy": "current-process",
+    "driver_version_actual": "4.1.6",
+    "driver_version_resolved": "4.1.6",
+    "entry_point": "cli",
+    "mode": "sql",
+    "non_interactive": true,
+    "phases": [
+      "generate",
+      "load",
+      "power"
+    ],
+    "timestamp": "2026-10-28T14:06:47.674485",
+    "translation": {
+      "attempt_count": 99,
+      "failed_count": 0,
+      "fallback_count": 0,
+      "outcomes": [
+        {
+          "calls": 44,
+          "count": 44,
+          "normalized_source_dialect": "clickhouse",
+          "normalized_target_dialect": "clickhouse",
+          "parser_grammar": "clickhouse",
+          "scope": "workload_query",
+          "source_dialect": "clickhouse",
+          "status": "success",
+          "strict_mode": false,
+          "target_dialect": "clickhouse",
+          "translator": "sqlglot_rewrite"
+        },
+        {
+          "calls": 55,
+          "count": 55,
+          "normalized_source_dialect": "netezza",
+          "normalized_target_dialect": "clickhouse",
+          "parser_grammar": "netezza",
+          "scope": "workload_query",
+          "source_dialect": "netezza",
+          "status": "success",
+          "strict_mode": false,
+          "target_dialect": "clickhouse",
+          "translator": "sqlglot",
+          "unique_queries": 11
+        }
+      ],
+      "source_dialects": [
+        "clickhouse",
+        "netezza"
+      ],
+      "status": "success",
+      "strict_mode": false,
+      "success_count": 99,
+      "target_dialects": [
+        "clickhouse"
+      ],
+      "total_transpilation_calls": 99,
+      "translators": [
+        "sqlglot",
+        "sqlglot_rewrite"
+      ],
+      "unique_queries_translated": 11
+    },
+    "tuning_mode": "notuning"
+  },
+  "export": {
+    "anonymized": true,
+    "benchbox_version": "0.5.0rc1",
+    "timestamp": "2026-10-28T14:06:52.541059",
+    "tool": "benchbox-exporter"
+  },
+  "normalized_cost": {
+    "billing_unit": "not_applicable",
+    "cost_model_source": "benchbox.core.cost.pricing",
+    "cost_model_version": "2026.09",
+    "cost_scope": "compute_only",
+    "cost_status": "not_applicable_local",
+    "cost_usd": null,
+    "deployment": {
+      "cloud_provider": null,
+      "cloud_region": null,
+      "cluster_size": null,
+      "instance_type": null,
+      "node_count": null,
+      "storage_format": null,
+      "storage_tier": null,
+      "warehouse_size": null
+    },
+    "normalized_cost_usd": "0",
+    "pricing_region": "not_applicable"
+  },
+  "phases": {
+    "data_generation": {
+      "duration_ms": 0,
+      "status": "SUCCESS"
+    },
+    "data_loading": {
+      "duration_ms": 0,
+      "status": "SUCCESS"
+    },
+    "power_test": {
+      "duration_ms": 2652,
+      "geometric_mean_time": 0.023489152546972036,
+      "power_at_size": 0.0,
+      "query_count": 44,
+      "status": "COMPLETED"
+    },
+    "schema_creation": {
+      "duration_ms": 0,
+      "status": "SUCCESS"
+    },
+    "throughput_test": {
+      "status": "NOT_RUN"
+    },
+    "validation": {
+      "duration_ms": 50,
+      "status": "PASSED"
+    }
+  },
+  "platform": {
+    "client_version": "26.1.0",
+    "cloud": {
+      "collection_status": "unavailable",
+      "source": "unavailable"
+    },
+    "compute": {
+      "collection_status": "partial",
+      "result_cache_enabled": false,
+      "source": "requested"
+    },
+    "config": {
+      "connection_mode": "local",
+      "deployment_mode": "local",
+      "driver_package": "chdb",
+      "driver_runtime_strategy": "current-process",
+      "driver_version_actual": "4.1.6",
+      "driver_version_resolved": "4.1.6",
+      "execution_mode": "sql",
+      "mode": "local",
+      "result_cache_enabled": false
+    },
+    "deployment": {
+      "collection_status": "partial",
+      "connection_mode": "local",
+      "deployment_type": "embedded",
+      "endpoint_class": "unknown",
+      "metadata_source": "inferred"
+    },
+    "driver_actual_version": "4.1.6",
+    "driver_package": "chdb",
+    "driver_resolved_version": "4.1.6",
+    "driver_runtime_strategy": "current-process",
+    "execution_engine": {
+      "applied": null,
+      "applied_class": null,
+      "observed": "not_captured",
+      "observed_source": "none",
+      "requested": "default",
+      "resolution": "platform_default"
+    },
+    "name": "ClickHouse Local",
+    "raw_config": {
+      "deployment_mode": "local",
+      "mode": "local",
+      "optimize_after_load": false,
+      "result_cache_enabled": false,
+      "tuning_source": "baseline",
+      "type": "clickhouse-local"
+    },
+    "storage": {
+      "collection_status": "unavailable",
+      "source": "unavailable"
+    },
+    "tuning": {
+      "applied": {
+        "dropped": [],
+        "statements": [
+          {
+            "phase": "session",
+            "statement_redacted": true,
+            "status": "harness_default"
+          },
+          {
+            "phase": "session",
+            "statement_redacted": true,
+            "status": "harness_default"
+          },
+          {
+            "phase": "session",
+            "statement_redacted": true,
+            "status": "harness_default"
+          },
+          {
+            "phase": "session",
+            "statement_redacted": true,
+            "status": "harness_default"
+          },
+          {
+            "phase": "session",
+            "statement_redacted": true,
+            "status": "harness_default"
+          },
+          {
+            "phase": "session",
+            "statement_redacted": true,
+            "status": "harness_default"
+          },
+          {
+            "phase": "session",
+            "statement_redacted": true,
+            "status": "harness_default"
+          },
+          {
+            "phase": "session",
+            "statement_redacted": true,
+            "status": "harness_default"
+          },
+          {
+            "phase": "session",
+            "statement_redacted": true,
+            "status": "harness_default"
+          },
+          {
+            "phase": "session",
+            "statement_redacted": true,
+            "status": "harness_default"
+          }
+        ],
+        "status": "not_applicable"
+      },
+      "source": "auto",
+      "tuning_source": "baseline",
+      "validation_status": "not_applicable"
+    },
+    "variant": "clickhouse-local",
+    "version": "unknown"
+  },
+  "provenance": {
+    "source": "internal"
+  },
+  "queries": [
+    {
+      "id": "QSA1",
+      "iter": 0,
+      "ms": 68.3,
+      "rows": 93,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QSA2",
+      "iter": 0,
+      "ms": 44.8,
+      "rows": 13,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QSA3",
+      "iter": 0,
+      "ms": 23.5,
+      "rows": 12,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QSA4",
+      "iter": 0,
+      "ms": 71.2,
+      "rows": 3,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QSA5",
+      "iter": 0,
+      "ms": 155.9,
+      "rows": 20,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QPR1",
+      "iter": 0,
+      "ms": 16.5,
+      "rows": 3,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QPR2",
+      "iter": 0,
+      "ms": 14.9,
+      "rows": 3,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QTR1",
+      "iter": 0,
+      "ms": 23.5,
+      "rows": 8,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QTM1",
+      "iter": 0,
+      "ms": 37.3,
+      "rows": 4,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QQC1",
+      "iter": 0,
+      "ms": 15.3,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QQC2",
+      "iter": 0,
+      "ms": 78.1,
+      "rows": 12,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QSA1",
+      "iter": 1,
+      "ms": 14.3,
+      "rows": 93,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QSA2",
+      "iter": 1,
+      "ms": 27.8,
+      "rows": 13,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QSA3",
+      "iter": 1,
+      "ms": 12.1,
+      "rows": 12,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QSA4",
+      "iter": 1,
+      "ms": 19.7,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QSA5",
+      "iter": 1,
+      "ms": 38.2,
+      "rows": 20,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QPR1",
+      "iter": 1,
+      "ms": 10.1,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QPR2",
+      "iter": 1,
+      "ms": 7.6,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QTR1",
+      "iter": 1,
+      "ms": 12.0,
+      "rows": 8,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QTM1",
+      "iter": 1,
+      "ms": 24.4,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QQC1",
+      "iter": 1,
+      "ms": 7.7,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QQC2",
+      "iter": 1,
+      "ms": 21.0,
+      "rows": 12,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QSA1",
+      "iter": 2,
+      "ms": 11.0,
+      "rows": 93,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QSA2",
+      "iter": 2,
+      "ms": 11.7,
+      "rows": 13,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QSA3",
+      "iter": 2,
+      "ms": 10.5,
+      "rows": 12,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QSA4",
+      "iter": 2,
+      "ms": 30.1,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QSA5",
+      "iter": 2,
+      "ms": 17.3,
+      "rows": 20,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QPR1",
+      "iter": 2,
+      "ms": 8.1,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QPR2",
+      "iter": 2,
+      "ms": 6.3,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QTR1",
+      "iter": 2,
+      "ms": 9.3,
+      "rows": 8,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QTM1",
+      "iter": 2,
+      "ms": 15.8,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QQC1",
+      "iter": 2,
+      "ms": 5.3,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QQC2",
+      "iter": 2,
+      "ms": 11.8,
+      "rows": 12,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QSA1",
+      "iter": 3,
+      "ms": 9.8,
+      "rows": 93,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QSA2",
+      "iter": 3,
+      "ms": 23.4,
+      "rows": 13,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QSA3",
+      "iter": 3,
+      "ms": 9.0,
+      "rows": 12,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QSA4",
+      "iter": 3,
+      "ms": 25.5,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QSA5",
+      "iter": 3,
+      "ms": 17.3,
+      "rows": 20,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QPR1",
+      "iter": 3,
+      "ms": 9.9,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QPR2",
+      "iter": 3,
+      "ms": 6.5,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QTR1",
+      "iter": 3,
+      "ms": 10.5,
+      "rows": 8,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QTM1",
+      "iter": 3,
+      "ms": 16.6,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QQC1",
+      "iter": 3,
+      "ms": 7.7,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QQC2",
+      "iter": 3,
+      "ms": 15.5,
+      "rows": 12,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    }
+  ],
+  "result_schema_version": "2.3",
+  "run": {
+    "id": "2594968f",
+    "iterations": 3,
+    "query_time_ms": 484,
+    "streams": 4,
+    "timestamp": "2026-10-28T14:06:52.521587",
+    "total_duration_ms": 3936
+  },
+  "summary": {
+    "data": {
+      "rows_loaded": 133626
+    },
+    "queries": {
+      "failed": 0,
+      "passed": 33,
+      "total": 33
+    },
+    "timing": {
+      "avg_ms": 14.7,
+      "geometric_mean_ms": 13.0,
+      "max_ms": 38.2,
+      "min_ms": 5.3,
+      "p90_ms": 25.5,
+      "p95_ms": 30.1,
+      "p99_ms": 38.2,
+      "stdev_ms": 7.8,
+      "total_ms": 484.0
+    },
+    "validation": "passed"
+  },
+  "tables": {
+    "dim_locations": {
+      "rows": 1000
+    },
+    "dim_products": {
+      "rows": 26
+    },
+    "order_lines": {
+      "rows": 132600
+    }
+  },
+  "version": "2.3"
+}
