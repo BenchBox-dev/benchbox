@@ -143,6 +143,7 @@ tests/unit/workflows/test_corpus_trust_boundary.py
 tests/unit/workflows/test_docker_integration_workflow.py
 tests/unit/workflows/test_nightly_t3_workflow.py
 tests/unit/workflows/test_omp_pin_bump_workflow.py
+tests/unit/workflows/test_omp_pin_watch_workflow.py
 tests/unit/workflows/test_oracle_gate_workflow.py
 tests/unit/workflows/test_oracle_verdict_workflow.py
 tests/unit/workflows/test_oracle_review_workflow.py
