@@ -16837,17 +16837,12 @@
       "title": "muse often returns output the oracle cannot parse as a verdict, so it is recorded absent (invalid)"
     },
     "oracle-omp-bump-post-merge-watch-20261027": {
-      "claim": {
-        "expires_at": "2026-10-30T12:34:25Z",
-        "generation": "08dfe22c41c24bdeb515794ff025f971",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
-      },
+      "claim": null,
       "needs": [
         "oracle-omp-release-bump-flow-20261027"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Watch the first reviews after an omp pin bump and revert on anomaly"
     },
     "oracle-omp-candidate-compat-suite-20261027": {
