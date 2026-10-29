@@ -4,7 +4,7 @@
     "MCP retrieval preserves the correct plan identity for multiple stream/phase variants; missing or ambiguous requests have explicit outcomes and never silently select a different query.",
     "A regression test consumes an actual exported bundle rather than a hand-built bare-key companion; existing CLI show-plan and comparison consumers continue to work."
   ],
-  "context": "Implementation in PR #3693 (branch fix/mcp-query-plan-lookup, head 1ef5b714a), armed for auto-merge; oracle runtime_ms finding fixed. Resume: verify PR merged, then take and finish. Ambiguous bare IDs return VALIDATION_ERROR with available_variants; optional stream/test_type qualifiers select a variant.\n\nGuardrails: do not change the .plans.json format, build_plans_payload, or loader keying; MCP adapts to them. Reuse the loader's plan indexing. Keep MCP read-only annotations and error envelope shape.",
+  "context": "Merged via PR #3693 as bc9658533 on develop. CI and oracle review passed on the merged head.",
   "description": "MCP get_query_plan reports no_plan for plans that the CLI can display from the same real result bundle. analytics._get_query_plan_impl directly indexes queries by a normalized bare query ID, while build_plans_payload emits query/stream/phase-qualified keys and can retain prefixed IDs. Reuse the canonical result loader and its identity rules rather than introducing another companion lookup convention. Preserve a defined selection policy when several stream or phase variants exist.",
   "links": [
     "benchbox/mcp/tools/analytics.py:268-308",
@@ -62,6 +62,14 @@
       "generation": "3822dcbbfb1c449db7df4e68629fbee3",
       "op": "take",
       "op_id": "5f86c7a33c5640b4bf3dbc6219a01af4",
+      "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bb7fd2d6b114a6501df93f97",
+      "at": "2026-10-29T14:36:11Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "de11100131f7488e8b5e14614c874a99",
       "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
     }
   ]
