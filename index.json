@@ -26887,15 +26887,10 @@
       "title": "Surface turso auto-provision mint failures instead of silent local fallback"
     },
     "todo-db-context-update-replaces-shared-guardrails-20261023": {
-      "claim": {
-        "expires_at": "2026-10-30T14:33:08Z",
-        "generation": "c542ad29410a45909725a9a5002a9af8",
-        "renewals": 0,
-        "worker": "joe-todo-db-upgrade"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "todo-db update_item replaces the whole context field, so progress notes wipe shared guardrails"
     },
     "todo-db-cutover-findings-sequencing": {
