@@ -38,3 +38,5 @@ def test_postgres_family_platform_skips_unsupported_variants(tmp_path):
     assert set(benchmark.get_platform_skip_queries("timescaledb")) == set(POSTGRES_TPCHAVOC_SKIPS)
     assert "1_v7" not in benchmark.get_platform_skip_queries("postgresql")
     assert benchmark.get_platform_skip_queries("duckdb") == []
+    assert benchmark.get_platform_skip_queries("sqlite") == ["5_v8"]
+    assert benchmark.get_platform_skip_queries("SQLite") == ["5_v8"]

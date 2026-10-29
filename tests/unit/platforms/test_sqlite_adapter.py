@@ -779,3 +779,23 @@ class TestNotuningDatabaseReuse:
             assert any("notuning" in error for error in plain._drift_validation_result.errors)
         finally:
             plain.close_connection(connection)
+
+
+class TestSQLiteDataVaultHelperIndexes:
+    def test_hash_keys_are_indexed_and_the_branch_selects_them(self):
+        from benchbox.core.datavault.benchmark import DataVaultBenchmark
+        from benchbox.platforms.sqlite import SQLiteAdapter, _datavault_helper_index_set
+
+        tables, statements = _datavault_helper_index_set()
+
+        assert {"hub_order", "link_lineitem", "sat_lineitem"} <= tables
+        assert any("ON sat_lineitem (hk_lineitem_link, load_end_dts)" in statement for statement in statements)
+        assert any("ON link_lineitem (hk_order)" in statement for statement in statements)
+        assert any("ON hub_order (hk_order)" in statement for statement in statements)
+
+        adapter = SQLiteAdapter(database_path=":memory:")
+        adapter._apply_helper_index_set = lambda **kwargs: kwargs
+        applied = adapter._apply_benchmark_helper_indexes(DataVaultBenchmark(scale_factor=0.01), object())
+
+        assert applied["benchmark_name"] == "Data Vault"
+        assert applied["statements"] == statements
