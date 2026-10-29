@@ -1,0 +1,28 @@
+{
+  "acceptance": [
+    "A fresh local run (e.g. `benchbox run --platform duckdb --benchmark tpch --scale 0.01` with a translated dialect such as sqlite or datafusion) produces a bundle whose execution.translation.runtime equals benchbox/_vendor/sqlglot.json (version, fork_sha, upstream_sha, wheel_sha256) for the runtime actually imported; command and the extracted keys recorded in the PR body.",
+    "A run where no translation happened records no runtime object or records it consistently with the existing translation summary semantics (decide and test; never a fabricated value).",
+    "validate_submission --require-manifest, results-data/validate_corpus.py and the public-export/benchbox-submit anonymisation keep the fields unchanged and pass leak checks; a test proves submit/export output still contains runtime.version and fork_sha.",
+    "bundle.py rejects a malformed runtime object (wrong types, missing version) with a clear error; an absent object is accepted for old bundles.",
+    "Tests catch regressions: the field equals the imported runtime pin; old bundles without it still load and validate; no schema version change (assert result_schema_version unchanged).",
+    "PR merged via make pr-open (local oracle SHIP, no override) and make pr-arm; changelog fragment added."
+  ],
+  "context": "DECISION GATE: if recording the runtime requires a schema version bump or touches per-query records, STOP and ask the owner (out of scope). If the imported runtime cannot be identified at run time (e.g. a different sqlglot is importable), STOP and report rather than recording the pin file.",
+  "description": "Result bundles record the BenchBox, engine and driver versions but not the bundled SQLGlot runtime that translated the SQL (benchbox/_vendor/sqlglot.json: version, fork_sha, upstream_sha, sha256). All 58 bundles ingested by #3678 record BenchBox 0.5.0rc1 although they ran on two different wheels, so users cannot tell which translation produced a result. Owner decision 2026-10-28: record translator identity only (no per-query SQL hashes).\n\nDESIGN (from read-only research against origin/develop 4ee345105; re-verify before implementing): expose the runtime pin from benchbox._vendor (benchbox/_vendor/__init__.py ~:5 `_runtime_pin`) and add `execution.translation.runtime` = {distribution, version, fork_sha, upstream_sha, wheel_sha256} where the translation summary is built (summarize_sql_translation_outcomes; schema.py ~:923-925 `execution.translation`, filled at runner.py ~:427-439). The loader already passes execution.translation through (loader.py ~:315). Nested additive field: no schema version bump (precedents: data_generation_hash #2304, execution_class #3618; the schema validator is strict only on top-level keys, schema.py ~:196-198). benchbox/validation/bundle.py type-checks the new object when present. Absent means 'not recorded'; never infer it.\n\nGUARDRAILS: no schema version bump; no per-query fields (they require schema 2.5: out of scope by owner decision); avoid key names the anonymiser rewrites (anything ending in file, path, root, dir, prefix, url, host, or named engine: anonymization.py ~:123-158); public export and benchbox submit must keep the fields (they contain no private data) and the leak checks must still pass; published bundle JSON is never modified; record only the runtime actually loaded at run time, never a value read from a file that might differ from the imported module.",
+  "links": [
+    "benchbox/_vendor/sqlglot.json",
+    "benchbox/_vendor/__init__.py",
+    "benchbox/core/results/schema.py",
+    "benchbox/validation/bundle.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729",
+      "at": "2026-10-29T02:17:15Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "4e48aba4c70d4ed782297d83e896e641",
+      "session_id": "dcc6105a05964c618dfd87771db72de4"
+    }
+  ]
+}

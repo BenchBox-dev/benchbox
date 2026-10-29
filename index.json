@@ -2377,6 +2377,13 @@
       "status": "done",
       "title": "Bundle TPC-H/TPC-DS query templates inside package for wheel distribution"
     },
+    "bundle-translator-runtime-identity": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Record the bundled SQLGlot runtime identity in every new result bundle"
+    },
     "burn-down-baselined-broken-doc-links": {
       "claim": null,
       "needs": [],
