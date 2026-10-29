@@ -10,6 +10,7 @@ from typing import Any
 import pytest
 
 from _project.scripts.oracle_reviewers import protocol
+from _project.scripts.oracle_reviewers.policy import load_policy
 
 from .harness import PINNED_OMP, REPO_ROOT, Harness, ReviewRun, Step
 
@@ -109,11 +110,20 @@ def posted(harness: Harness, pr: int, head: str) -> dict[str, Any]:
     }
 
 
+def _plan(harness: Harness, run: ReviewRun) -> dict[str, Any]:
+    plan = dict(run.plan)
+    if "gate_path_list" in plan and plan["gate_path_list"] == list(
+        load_policy(harness.policy_file).classifier.gate_paths
+    ):
+        plan["gate_path_list"] = "<policy gate paths>"
+    return plan
+
+
 def run_capture(harness: Harness, run: ReviewRun, pr: int, head: str) -> dict[str, Any]:
     final = run.temp / "oracle-final"
     return {
         "steps": logical_steps(run),
-        "plan": run.plan,
+        "plan": _plan(harness, run),
         "final": {name: _json(final / name) for name in FINAL_FILES},
         "attempts": _attempts(run),
         "prompts": harness.omp_prompts(),
