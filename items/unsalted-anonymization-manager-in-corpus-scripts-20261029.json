@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Every AnonymizationManager construction in corpus, bundle or snapshot producing code requires the salt or is shown unreachable from public outputs, with a test per changed site that fails without the salt",
+    "git grep -n 'AnonymizationManager(' lists no unsalted construction on a public publication path"
+  ],
+  "description": "Found 2026-10-29 while landing PR 3672, which made _project/scripts/results_explorer_corpus_migrate.py require the salt (AnonymizationConfig.from_public_environ(require_salt=True)) after the oracle showed that an empty-salt public identifier hash is a confirmation oracle for low-entropy identifiers. Two more call sites on origin/develop construct the manager without a salt and have not been examined: _project/scripts/results_explorer_cpu_attestation_backfill.py:100 (`manager = AnonymizationManager()`) and _project/scripts/explorer_pipeline/pipeline.py:564 (`public_anonymizer = AnonymizationManager()`). Also review benchbox/platforms/base/result_capture.py:1492 (from_public_environ() without require_salt) and benchbox/core/results/exporter.py:104.\n\nFor each site decide whether its output can reach the public corpus, a published bundle or the Explorer snapshot. Where it can, require the salt (existing from_public_environ(require_salt=True)) and fail clearly when it is missing; where it cannot, record why in the code through structure or a test, not a comment. Check the pipeline path first: it names a public anonymizer.",
+  "links": [
+    "BenchBox-dev/BenchBox: _project/scripts/results_explorer_cpu_attestation_backfill.py",
+    "BenchBox-dev/BenchBox: _project/scripts/explorer_pipeline/pipeline.py",
+    "BenchBox-dev/BenchBox: benchbox/platforms/base/result_capture.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-29T13:25:32Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "fb28629729264195b59cecb200820764",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    }
+  ]
+}
