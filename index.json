@@ -11007,12 +11007,17 @@
       "title": "Address follow-up findings from ranking-metric code review"
     },
     "explorer-read-model-18-activate": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-30T13:06:01Z",
+        "generation": "2eff69b932eb498a8fb183b76c1861a7",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729"
+      },
       "needs": [
         "site-run-receipt-sql-translator-row"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Switch the Explorer and site-inputs default output to read model 18"
     },
     "explorer-read-model-18-translator-version": {
