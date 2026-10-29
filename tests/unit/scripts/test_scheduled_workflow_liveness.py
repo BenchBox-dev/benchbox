@@ -282,7 +282,7 @@ def _api(monkeypatch: pytest.MonkeyPatch, responses: list) -> tuple[object, list
 def test_the_runs_query_is_bounded_and_filtered_to_scheduled_events(monkeypatch: pytest.MonkeyPatch) -> None:
     api, requested, _ = _api(monkeypatch, [{"workflow_runs": [{"id": 1}]}])
 
-    runs = api.scheduled_runs("nightly-v2.yml", NOW - timedelta(days=4))
+    runs = api.scheduled_runs("nightly.yml", NOW - timedelta(days=4))
 
     assert runs == [{"id": 1}]
     assert "event=schedule" in requested[0]
