@@ -132,9 +132,30 @@ def enumerate_cells_with_pruning(
                     _pruned_rows_for_rule(platform=platform, benchmark=benchmark, requested=requested, rule=rule)
                 )
                 continue
-            filtered = filter_scales_by_registry(benchmark, requested, info=info)
-            dropped = [scale for scale in requested if scale not in filtered]
-            uses_min_scale_fallback = not filtered and config.scales.override is None and info.min_scale is not None
+            scale_rules = {
+                scale: scale_rule
+                for scale in requested
+                if (
+                    scale_rule := compatibility_rule_for(
+                        platform,
+                        benchmark,
+                        info,
+                        include_release_gate_runtime_envelopes=include_release_gate_runtime_envelopes,
+                        scale=scale,
+                    )
+                )
+                is not None
+            }
+            for scale, scale_rule in scale_rules.items():
+                compatibility_pruned.extend(
+                    _pruned_rows_for_rule(platform=platform, benchmark=benchmark, requested=[scale], rule=scale_rule)
+                )
+            remaining = [scale for scale in requested if scale not in scale_rules]
+            filtered = filter_scales_by_registry(benchmark, remaining, info=info)
+            dropped = [scale for scale in remaining if scale not in filtered]
+            uses_min_scale_fallback = (
+                bool(remaining) and not filtered and config.scales.override is None and info.min_scale is not None
+            )
             if uses_min_scale_fallback:
                 filtered = [info.min_scale]
             elif dropped:
