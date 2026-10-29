@@ -568,7 +568,7 @@ def _reconstruct_query_results(
 
         _attach_plan(
             result,
-            _lookup_plan_entry(plan_entries, query_id, q.get("stream", 0), q.get("test_type"), q.get("iter")),
+            _lookup_plan_entry(plan_entries, query_id, q.get("stream", 0), q.get("test_type")),
         )
         results.append(result)
 
@@ -620,7 +620,7 @@ def _index_plan_entries(plans_data: dict[str, Any] | None) -> dict[str, Any]:
 
 
 def _lookup_plan_entry(
-    plan_entries: dict[str, Any], query_id: Any, stream_id: Any, test_type: Any = None, iteration: Any = None
+    plan_entries: dict[str, Any], query_id: Any, stream_id: Any, test_type: Any = None
 ) -> dict[str, Any] | None:
     if query_id is None:
         return None
@@ -628,10 +628,6 @@ def _lookup_plan_entry(
     if entry is None or "plan" in entry:
         return entry
     qualified_stream = f"{stream_id}:{test_type or ''}"
-    if iteration is not None:
-        per_iteration = entry.get(f"{qualified_stream}@{iteration}")
-        if per_iteration is not None:
-            return per_iteration
     qualified = entry.get(qualified_stream)
     if qualified is not None:
         return qualified

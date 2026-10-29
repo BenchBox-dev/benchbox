@@ -128,6 +128,7 @@ _FILE_FIXTURES: dict[str, str] = {
     "trino": "trino_explain_sample.json",
     "starburst": "trino_explain_sample.json",
     "spark": "spark_explain_sample.txt",
+    "pyspark": "spark_explain_sample.txt",
     "databricks": "spark_explain_sample.txt",
     "lakesail": "spark_explain_sample.txt",
     "velox": "velox_explain_extended_sample.txt",

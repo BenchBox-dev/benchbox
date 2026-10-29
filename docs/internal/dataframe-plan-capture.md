@@ -15,8 +15,8 @@
 
 Polars has no parser, so its plan stays raw text: no DAG, no fingerprint and no plan comparison. `benchbox show-plan` prints the stored text and `compare --include-plans` skips it. Strict plan capture raises `PlanCaptureError` with reason `unsupported` on Pandas, Dask and cuDF.
 
-Capture runs after collection and its time is reported in `plan_capture_time_ms`, never in the measured execution time. SDK imports stay lazy: LakeSail and Databricks reuse the PySpark helper and import nothing from their client packages during capture.
+Expression-family engines (Polars, DataFusion, PySpark, LakeSail) capture after the query is collected, so planning work that the engine caches on the frame (Spark analysis and optimization) is paid by the measured collect and not moved into `plan_capture_time_ms`. Capture time is reported in `plan_capture_time_ms` and subtracted from the measured execution time. Strict capture therefore raises after one execution of the query. SDK imports stay lazy: LakeSail and Databricks reuse the PySpark helper and import nothing from their client packages during capture.
 
-When several measurement iterations of one query share a stream, the plans companion keys them `Q1#<stream>:<test_type>@<iteration>`; the loader re-attaches each plan by that key.
+The plans companion keeps one entry per `Q#<stream>:<test_type>`; the loader attaches it to every row of that key, including DataFrame rows whose `test_type` is empty.
 
 The capability table is `PlanCaptureSupport` in `benchbox/core/dataframe/profiling.py`.

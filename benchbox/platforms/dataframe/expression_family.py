@@ -816,6 +816,10 @@ class ExpressionFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, 
             if isinstance(lazy_result, UnifiedLazyFrame):
                 lazy_result = lazy_result.native
 
+            profile_ctx.start_collect()
+            result_df = self.collect(lazy_result) if hasattr(lazy_result, "collect") else lazy_result
+            profile_ctx.end_collect()
+
             if capture_plan:
                 profile_ctx.start_plan_capture()
                 try:
@@ -834,10 +838,6 @@ class ExpressionFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, 
                         ) from e
                 finally:
                     profile_ctx.end_plan_capture()
-
-            profile_ctx.start_collect()
-            result_df = self.collect(lazy_result) if hasattr(lazy_result, "collect") else lazy_result
-            profile_ctx.end_collect()
 
             row_count = self.get_row_count(result_df)
             profile_ctx.set_rows(row_count)

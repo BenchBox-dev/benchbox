@@ -180,3 +180,20 @@ def test_dag_rows_round_trip_through_export_and_load(tmp_path: Path):
     plans = [row for row in loaded.query_results if row.get("query_plan") is not None]
     assert len(plans) == 3
     assert {row["plan_fingerprint"] for row in plans} == {plans[0]["query_plan"].plan_fingerprint}
+
+
+def test_expression_family_captures_plan_after_collect():
+    order: list[str] = []
+
+    class _Frame(FakeSparkFrame):
+        def explain(self, extended: bool = False) -> None:
+            order.append("explain")
+            super().explain(extended)
+
+    adapter = _Adapter("PySpark")
+    original = adapter.collect
+    adapter.collect = lambda df: (order.append("collect"), original(df))[1]
+
+    _run(adapter, lambda: _Frame())
+
+    assert order == ["collect", "explain"]

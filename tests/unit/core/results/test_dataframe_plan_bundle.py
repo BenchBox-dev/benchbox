@@ -63,28 +63,22 @@ def _results():
     )
 
 
-def test_same_stream_iterations_get_distinct_plan_keys():
+def test_same_stream_iterations_share_one_plan_entry():
     payload = build_plans_payload(_results())
 
-    assert sorted(payload["queries"]) == ["Q1#0:@1", "Q1#0:@2"]
-    fingerprints = {entry["fingerprint"] for entry in payload["queries"].values()}
-    assert len(fingerprints) == 2
+    assert list(payload["queries"]) == ["Q1#0:"]
 
 
-def test_loader_reattaches_each_iteration_plan():
+def test_loader_attaches_plan_to_rows_with_empty_test_type():
     payload = build_plans_payload(_results())
     compact = [
-        {"id": "1", "iter": 0, "stream": 0, "run_type": "warmup", "status": "SUCCESS", "ms": 1.0},
         {"id": "1", "iter": 1, "stream": 0, "run_type": "measurement", "status": "SUCCESS", "ms": 1.0},
         {"id": "1", "iter": 2, "stream": 0, "run_type": "measurement", "status": "SUCCESS", "ms": 1.0},
     ]
 
     rows = _reconstruct_query_results(compact, [], payload)
 
-    assert rows[0].get("query_plan") is None
-    assert rows[1]["query_plan"].logical_root.table_name == "a"
-    assert rows[2]["query_plan"].logical_root.table_name == "b"
-    assert rows[1]["plan_fingerprint"] != rows[2]["plan_fingerprint"]
+    assert all(row["query_plan"] is not None and row["plan_fingerprint"] for row in rows)
 
 
 def test_loader_keeps_raw_text_plans_out_of_the_dag_slot():
