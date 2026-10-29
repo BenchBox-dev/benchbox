@@ -30605,10 +30605,15 @@
       "title": "Commit hooks leave an untracked .build/ directory in every worktree"
     },
     "worktree-concurrent-session-ownership-guard-20261028": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-30T00:23:23Z",
+        "generation": "62c2552433334237a1634eafa04adf5e",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Stop two agent sessions from editing and committing in the same worktree"
     },
     "worktree-create-type-prefix-mismatch-20261020": {
