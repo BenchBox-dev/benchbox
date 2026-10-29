@@ -11002,17 +11002,12 @@
       "title": "Address follow-up findings from ranking-metric code review"
     },
     "explorer-read-model-18-activate": {
-      "claim": {
-        "expires_at": "2026-10-30T21:40:24Z",
-        "generation": "6eafa9528e554cbab933a1e57874789d",
-        "renewals": 2,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729"
-      },
+      "claim": null,
       "needs": [
         "site-run-receipt-sql-translator-row"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Switch the Explorer and site-inputs default output to read model 18"
     },
     "explorer-read-model-18-translator-version": {
