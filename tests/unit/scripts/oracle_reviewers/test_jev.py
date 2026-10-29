@@ -8,6 +8,7 @@ from typing import Any
 
 import pytest
 
+from _project.scripts.oracle_reviewers import recovery
 from _project.scripts.oracle_reviewers.jev import JevError, JevSession
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -85,6 +86,36 @@ def test_unreachable_service_raises() -> None:
     session = JevSession(base_url="http://127.0.0.1:9", api_key="k", timeout_seconds=5)
     with session, pytest.raises(JevError, match="unreachable"):
         session.ask({}, {})
+
+
+@pytest.fixture
+def dropping_server() -> Iterator[str]:
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self) -> None:
+            self.rfile.read(int(self.headers["Content-Length"]))
+            self.send_response(200)
+            self.send_header("Content-Length", "100")
+            self.end_headers()
+            self.wfile.write(b"{")
+            self.wfile.flush()
+            self.close_connection = True
+
+        def log_message(self, *args: object) -> None:
+            return None
+
+    httpd = HTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    yield f"http://127.0.0.1:{httpd.server_address[1]}"
+    httpd.shutdown()
+    httpd.server_close()
+
+
+def test_a_dropped_connection_raises_jev_error_and_classifies_as_unavailable(dropping_server: str) -> None:
+    session = JevSession(base_url=dropping_server, api_key="k", timeout_seconds=5)
+    with session, pytest.raises(JevError, match="unreachable.*IncompleteRead"):
+        session.ask({}, {})
+    held = recovery.classify(session, {}, 1, 2)
+    assert (held.source, held.reason) == (recovery.FALLBACK, recovery.UNAVAILABLE)
 
 
 def test_oversize_request_raises_before_sending() -> None:
