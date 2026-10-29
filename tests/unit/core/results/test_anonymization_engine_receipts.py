@@ -121,3 +121,35 @@ def test_identifiers_inside_a_receipt_are_still_redacted() -> None:
     assert native["database"].startswith("database_")
     assert native["host"].startswith("host_")
     assert "SENTINEL" not in json.dumps(native)
+
+
+def test_translation_runtime_identity_survives_anonymisation(tmp_path: Path) -> None:
+    from benchbox.core.runner.runner import _attach_translation_metadata
+    from benchbox.utils.dialect_utils import SqlTranslationOutcome, bundled_sqlglot_runtime_identity
+
+    outcome = SqlTranslationOutcome(
+        source_dialect="duckdb",
+        target_dialect="sqlite",
+        normalized_source_dialect="duckdb",
+        normalized_target_dialect="sqlite",
+        translator="sqlglot",
+        status="success",
+        strict_mode=False,
+    )
+    result = _attach_translation_metadata(make_benchmark_results(execution_metadata={}), [outcome], strict_mode=False)
+
+    runtime = _export(tmp_path, result)["execution"]["translation"]["runtime"]
+
+    assert runtime == bundled_sqlglot_runtime_identity()
+
+
+def test_runtime_version_exemption_is_limited_to_the_translation_runtime_path() -> None:
+    payload = {
+        "execution": {"translation": {"runtime": {"version": "30.25.0.2"}}},
+        "platform": {"translation": {"runtime": {"version": "10.1.2.3"}}},
+    }
+
+    anonymized = _anonymize(payload)
+
+    assert anonymized["execution"]["translation"]["runtime"]["version"] == "30.25.0.2"
+    assert anonymized["platform"]["translation"]["runtime"]["version"] == "[REDACTED]"

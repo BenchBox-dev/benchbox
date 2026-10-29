@@ -1340,6 +1340,9 @@ def _validate_summary_section(
             vr.error(f"summary.validation must be 'passed' for public submissions, got {validation_status!r}")
 
 
+TRANSLATION_RUNTIME_STRING_KEYS = ("distribution", "version", "fork_sha", "upstream_sha", "wheel_sha256")
+
+
 def _normalize_status(value: Any) -> str | None:
     if isinstance(value, dict):
         value = value.get("status")
@@ -1363,6 +1366,19 @@ def _validate_translation_section(data: dict, vr: ValidationResult) -> None:
         vr.error("execution.translation.status is required when execution.translation is present")
     elif translation_status in PUBLIC_NON_CLEAN_TRANSLATION_STATUSES:
         vr.error(f"execution.translation.status={translation_status!r} is not accepted for public submissions")
+
+    if isinstance(translation, dict) and "runtime" in translation:
+        _validate_translation_runtime(translation["runtime"], vr)
+
+
+def _validate_translation_runtime(runtime: Any, vr: ValidationResult) -> None:
+    if not isinstance(runtime, dict):
+        vr.error(f"execution.translation.runtime must be an object, got {type(runtime).__name__}")
+        return
+    for key in TRANSLATION_RUNTIME_STRING_KEYS:
+        value = runtime.get(key)
+        if not isinstance(value, str) or not value.strip():
+            vr.error(f"execution.translation.runtime.{key} must be a non-empty string, got {value!r}")
 
 
 def _validate_execution_class_fields(block: Any, label: str, vr: ValidationResult) -> None:

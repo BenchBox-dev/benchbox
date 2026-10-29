@@ -126,6 +126,22 @@ def record_sql_translation_outcome(outcome: SqlTranslationOutcome) -> None:
         outcomes.append(outcome)
 
 
+def bundled_sqlglot_runtime_identity() -> dict[str, str] | None:
+    try:
+        from benchbox._vendor import _runtime_pin as pin
+
+        identity = {
+            "distribution": pin["distribution"],
+            "version": pin["version"],
+            "fork_sha": pin["fork_sha"],
+            "upstream_sha": pin["upstream_sha"],
+            "wheel_sha256": pin["sha256"],
+        }
+    except (ImportError, KeyError):
+        return None
+    return identity
+
+
 def summarize_sql_translation_outcomes(
     outcomes: Sequence[SqlTranslationOutcome],
     *,
@@ -211,6 +227,9 @@ def summarize_sql_translation_outcomes(
             ),
         ),
     }
+    runtime = bundled_sqlglot_runtime_identity()
+    if runtime is not None:
+        summary["runtime"] = runtime
     if workload_fingerprints:
         summary["unique_queries_translated"] = len(workload_fingerprints)
     if schema_fingerprints:
