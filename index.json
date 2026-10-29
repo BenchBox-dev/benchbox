@@ -17388,7 +17388,7 @@
         "oracle-omp-pin-single-source-20261026"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "Join the tailnet with a step-scoped OAuth secret and drop id-token: write from the oracle verdict job"
     },
     "oracle-verdict-single-job-20261025": {
