@@ -117,7 +117,7 @@ STEP_IDS = {
     "harness": {"state"},
     "finalize": {"state", "comment", "review", "has_state", "attempts"},
     "app": {"token"},
-    "publish": {"skip", "attempt_state", "state_recorded"},
+    "publish": {"skip", "state_recorded"},
 }
 EXPECTED_DRIVE_PHASES = {
     "prepare": 1,
@@ -697,14 +697,38 @@ def test_the_retry_attempt_is_recorded_after_a_successful_finalize_whatever_the_
     record = _step(RECORD_STEP)
     assert names.index(RECORD_STEP) > names.index(PUBLISH_STEP)
     assert (
-        record["if"]
-        == "always() && steps.finalize.outcome == 'success' && steps.publish.outputs.attempt_state == 'true'"
+        record["if"] == "always() && steps.finalize.outcome == 'success' && steps.finalize.outputs.has_state == 'true'"
+        " && steps.publish.outputs.skip != 'true'"
     )
     assert record["with"]["name"] == "oracle-verdict-state-attempt-${{ steps.prepare.outputs.pr }}"
     assert record["with"]["name"] != _step(STATE_STEP)["with"]["name"]
     assert record["with"]["path"].endswith("oracle-final/attempt/state.json")
     assert record["with"]["overwrite"] is True and record["with"]["if-no-files-found"] == "ignore"
     assert "HAS_APP" not in record["if"]
+
+
+@pytest.mark.parametrize(
+    ("finalize_outcome", "has_state", "publish_outputs", "recorded"),
+    [
+        ("success", "true", {}, True),
+        ("success", "true", {"skip": "false"}, True),
+        ("success", "true", {"skip": "true"}, False),
+        ("success", "false", {"skip": "false"}, False),
+        ("failure", "true", {}, False),
+    ],
+)
+def test_the_retry_attempt_is_recorded_unless_the_guard_skipped_or_nothing_was_finalized(
+    finalize_outcome: str, has_state: str, publish_outputs: dict[str, str], recorded: bool
+) -> None:
+    condition = _step(RECORD_STEP)["if"].removeprefix("always() && ")
+    context = {
+        "steps": {
+            "finalize": {"outcome": finalize_outcome, "outputs": {"has_state": has_state}},
+            "publish": {"outputs": publish_outputs},
+        }
+    }
+
+    assert evaluate(condition, context) is recorded
 
 
 def test_the_retry_state_and_the_gate_run_only_after_a_successful_post() -> None:

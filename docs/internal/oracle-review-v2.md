@@ -215,7 +215,7 @@ step per phase invocation; every phase step has its own `timeout-minutes`.
 | `attempts` | Runs attempts until the chain stops or an invalid attempt needs a recovery judgment. | gateway token and URL |
 | `recover` | Asks the judgment service how to recover the last invalid attempt. | TypeSafe key |
 | `finalize` | Counts the attempts, validates and decides, writes the status, comment, review and retry state, then redacts every secret value from the results. | every secret the job holds |
-| `publish` | Runs the guard, posts the status, comment and review, and reports `skip`, `attempt_state` and `state_recorded` so the upload steps record the retry state only after the posts succeeded. With the App configured it fails before the guard when the App token or job token is empty; without the App it logs the result and still records the attempt. | App token, job token |
+| `publish` | Runs the guard, posts the status, comment and review, and reports `skip` and `state_recorded`: the attempt record is uploaded whenever the finalize phase wrote a state and the guard did not report a skip (so a failed mint or a crashed publish still counts the attempt), and the retry state only after the posts succeeded. With the App configured it fails before the guard when the App token or job token is empty; without the App it logs the result and still records the attempt. | App token, job token |
 | `dispatch` | Dispatches `oracle-gate` for the reviewed head when the pull request's base is `develop`; runs after the uploads so a failed upload withholds it. | App token, job token |
 | `sweep` | Dispatches due retries. | job token, App token |
 
@@ -223,7 +223,7 @@ Phases pass state through files under `$RUNNER_TEMP` (`oracle-plan`,
 `oracle-classification`, `oracle-attempts`, `oracle-final`) and report through
 step outputs (`prepare`: `decision`, `post`, `pr`, `head_sha`; `harness`:
 `state`; `finalize`: `state`, `comment`, `review`, `has_state`, `attempts`;
-`publish`: `skip`, `attempt_state`, `state_recorded`), so `recover` and
+`publish`: `skip`, `state_recorded`), so `recover` and
 `attempts` alternate in fixed workflow steps because a judgment key cannot
 share an environment with the reviewer. The `harness` and `prepare` phases run
 under `uv` with `pyyaml` because they read the policy; the others use the

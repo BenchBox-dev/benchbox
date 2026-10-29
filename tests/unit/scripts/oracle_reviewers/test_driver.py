@@ -243,16 +243,16 @@ def test_publish_posts_status_comment_review_and_never_dispatches_the_gate(
         assert code == 0
         assert [item[0] for item in sink.calls] == ["status", "comment", "review"]
         assert sink.calls[0][1:] == (REPO, HEAD)
-        assert "skip=false" in written and "attempt_state=true" in written and "state_recorded=true" in written
+        assert "skip=false" in written and "state_recorded=true" in written
     elif scenario == "skipped":
         assert code == 0 and sink.calls == []
-        assert "skip=true" in written and "attempt_state" not in written
+        assert "skip=true" in written and "state_recorded" not in written
     elif scenario == "guard_failed":
         assert code == 2 and sink.calls == []
-        assert "attempt_state=true" in written and "skip=" not in written
+        assert "skip=" not in written and "state_recorded" not in written
     else:
         assert code == 0 and sink.calls == []
-        assert "attempt_state=true" in written and "skip=" not in written
+        assert written == ""
         assert "is not posted because the App secrets are not set; result success" in capsys.readouterr().out
 
 
@@ -267,7 +267,6 @@ def test_publish_posts_only_the_status_when_no_comment_or_review_was_written(
     assert driver.publish(environment, argparse.Namespace()) == 0
 
     assert [item[0] for item in sink.calls] == ["status"]
-    assert "attempt_state" not in outputs.read_text(encoding="utf-8")
     assert "state_recorded" not in outputs.read_text(encoding="utf-8")
 
 
@@ -288,7 +287,7 @@ def test_a_refused_status_stops_the_phase_before_anything_else_is_posted(
 
     assert sink.calls == []
     written = outputs.read_text(encoding="utf-8")
-    assert "state_recorded" not in written and "attempt_state=true" in written
+    assert "state_recorded" not in written
     assert "the status was refused" in capsys.readouterr().err
 
 
@@ -311,20 +310,8 @@ def test_publish_fails_before_the_guard_and_any_post_when_a_token_is_empty(
 
     assert sink.calls == [] and guarded == []
     written = outputs.read_text(encoding="utf-8")
-    assert "attempt_state=true" in written and "skip=" not in written and "state_recorded" not in written
+    assert "skip=" not in written and "state_recorded" not in written
     assert "is empty" in capsys.readouterr().err
-
-
-def test_publish_with_an_empty_token_and_no_state_file_records_nothing(
-    tmp_path: Path, outputs: Path, sink: RecordingSink
-) -> None:
-    environment = _environment(tmp_path, GH_TOKEN="")
-    _plan(environment.layout)
-    _final(environment.layout.final, state=False)
-
-    assert driver.publish(environment, argparse.Namespace()) == 1
-
-    assert sink.calls == [] and outputs.read_text(encoding="utf-8") == ""
 
 
 @pytest.mark.parametrize(("base", "dispatched"), [("develop", True), ("release", False)])
