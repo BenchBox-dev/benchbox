@@ -2572,10 +2572,9 @@ def _interactive_handle_result(s: types.SimpleNamespace, result: Any, orchestrat
     is_flag=True,
     help=(
         "Capture query execution plans into the result bundle, in an isolated "
-        "post-measurement phase (never inside the timed loop). Plans are captured "
-        "with EXPLAIN ANALYZE by default (actual per-operator timing/cardinality, "
-        "~1x extra query cost outside the measured window); pass --no-analyze-plans "
-        "for estimated plans only (a static EXPLAIN, no re-execution)."
+        "post-measurement phase (never inside the timed loop). By default plans are "
+        "estimated: a static EXPLAIN with no re-execution. Pass --analyze-plans for "
+        "EXPLAIN ANALYZE actual timing/cardinality where the platform supports it."
     ),
 )
 @advanced_option(
@@ -2583,11 +2582,11 @@ def _interactive_handle_result(s: types.SimpleNamespace, result: Any, orchestrat
     "analyze_plans",
     default=None,
     help=(
-        "With --capture-plans, control capture detail: --analyze-plans (default) "
-        "runs EXPLAIN ANALYZE post-measurement for actual timing/cardinality; "
-        "--no-analyze-plans captures the static (estimated) plan with no re-execution. "
-        "The single capture-detail knob. (Write statements are never re-executed "
-        "regardless: DML stays on a non-ANALYZE EXPLAIN.)"
+        "With --capture-plans, control capture detail: --no-analyze-plans (the default "
+        "when omitted) captures the static (estimated) plan with no re-execution; "
+        "--analyze-plans opts into post-measurement EXPLAIN ANALYZE for actual "
+        "timing/cardinality on platforms that support it (DuckDB, MotherDuck, PostgreSQL, "
+        "GizmoSQL). Write statements are never re-executed: DML stays on a non-ANALYZE EXPLAIN."
     ),
 )
 @advanced_option(
