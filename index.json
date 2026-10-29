@@ -26959,15 +26959,10 @@
       "title": "todo-db update_item cannot clear a non-empty text field"
     },
     "todo-db-update-item-not-before-clear-noop-20261023": {
-      "claim": {
-        "expires_at": "2026-10-30T14:33:20Z",
-        "generation": "444f0ee0220d4fac8ea21bba93f945c4",
-        "renewals": 0,
-        "worker": "joe-todo-db-upgrade"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "update_item with not_before set to an empty string does not clear the hold when called through the MCP bridge"
     },
     "todo-dep-graph-unblocking-sweep": {
