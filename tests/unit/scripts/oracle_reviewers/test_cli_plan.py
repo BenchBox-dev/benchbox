@@ -2141,3 +2141,16 @@ def test_the_sweep_holds_an_unpublished_head_inside_its_backoff(
     fake.runs = [failed]
     assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
     assert fake.dispatched == [] and fake.posted == []
+
+
+@pytest.mark.parametrize("state", ["success", "failure"])
+def test_the_sweep_does_not_re_review_an_unpublished_head_that_already_has_a_decisive_status(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, state: str
+) -> None:
+    older = _verdict_run(7, conclusion="failure", event="workflow_dispatch", age=timedelta(hours=4))
+    newer = _verdict_run(7, conclusion="failure", event="workflow_dispatch", age=timedelta(hours=3))
+    fake = FakeGitHub(_pull(), SOUNDNESS, _unpublished_state(first_hours=5, last_hours=3))
+    fake.runs = [newer, older]
+    fake.statuses = [_verdict_status(state)]
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [] and fake.posted == []
