@@ -2094,3 +2094,50 @@ def test_a_degraded_sweep_holds_a_due_state_older_than_the_run_listing_it_can_fa
     fake.runs = [newer, older]
     assert _sweep(monkeypatch, tmp_path, fake) == 1
     assert fake.dispatched == []
+
+
+def _unpublished_state(first_hours: float, last_hours: float) -> State:
+    now = datetime.now(UTC)
+    return State(
+        7,
+        HEAD,
+        "pending",
+        now - timedelta(hours=first_hours),
+        pending_cause="unpublished",
+        attempted_at=now - timedelta(hours=last_hours),
+    )
+
+
+def test_the_sweep_surfaces_an_unpublished_head_after_two_failed_runs_since_its_first_attempt(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    older = _verdict_run(7, conclusion="failure", event="workflow_dispatch", age=timedelta(hours=4))
+    newer = _verdict_run(7, conclusion="failure", event="workflow_dispatch", age=timedelta(hours=3))
+    fake = FakeGitHub(_pull(), SOUNDNESS, _unpublished_state(first_hours=5, last_hours=3))
+    fake.runs = [newer, older]
+    fake.failed = {newer["id"]: ["Post the commit status"]}
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == []
+    assert len(fake.posted) == 1
+    assert fake.posted[0][1]["state"] == "pending"
+    assert "Post the commit status" in fake.posted[0][1]["description"]
+
+
+def test_the_sweep_retries_an_unpublished_head_with_one_failed_run_within_budget(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    failed = _verdict_run(7, conclusion="failure", event="workflow_dispatch", age=timedelta(hours=3))
+    fake = FakeGitHub(_pull(), SOUNDNESS, _unpublished_state(first_hours=5, last_hours=3))
+    fake.runs = [failed]
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [7] and fake.posted == []
+
+
+def test_the_sweep_holds_an_unpublished_head_inside_its_backoff(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    failed = _verdict_run(7, conclusion="failure", event="workflow_dispatch", age=timedelta(minutes=5))
+    fake = FakeGitHub(_pull(), SOUNDNESS, _unpublished_state(first_hours=1, last_hours=0.05))
+    fake.runs = [failed]
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [] and fake.posted == []

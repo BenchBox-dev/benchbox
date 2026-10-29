@@ -1300,7 +1300,7 @@ def _retry_reason(
                 token,
                 base_changed_at,
             )
-        if state.outcome != retry.PENDING or state.pending_cause != retry.ALL_ABSENT:
+        if state.outcome != retry.PENDING or state.pending_cause not in (retry.ALL_ABSENT, retry.UNPUBLISHED):
             return None
         reset_at = github.backoff_reset_at(repo, number, head)
         usable = reset_at is not None and retry.due_for_retry(state, head, now, rules, reset_at)
