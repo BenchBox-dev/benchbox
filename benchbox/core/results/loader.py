@@ -569,6 +569,8 @@ def _reconstruct_query_results(
         _attach_plan(
             result,
             _lookup_plan_entry(plan_entries, query_id, q.get("stream", 0), q.get("test_type")),
+            iteration=q.get("iter"),
+            run_type=q.get("run_type"),
         )
         results.append(result)
 
@@ -589,8 +591,20 @@ def _reconstruct_query_results(
     return results
 
 
-def _attach_plan(result: dict[str, Any], plan_entry: dict[str, Any] | None) -> None:
+def _attach_plan(
+    result: dict[str, Any],
+    plan_entry: dict[str, Any] | None,
+    *,
+    iteration: Any = None,
+    run_type: Any = None,
+) -> None:
     if not plan_entry:
+        return
+    recorded_iteration = plan_entry.get("iteration")
+    if recorded_iteration is not None and iteration is not None and recorded_iteration != iteration:
+        return
+    recorded_run_type = plan_entry.get("run_type")
+    if recorded_run_type and run_type and recorded_run_type != run_type:
         return
 
     plan_dict = plan_entry.get("plan")

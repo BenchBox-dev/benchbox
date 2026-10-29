@@ -156,3 +156,39 @@ def test_failed_query_does_not_attempt_capture(monkeypatch):
 
     assert result["status"] == "FAILED"
     assert adapter.plan_capture_failures == 0
+
+
+def test_phase_active_defers_explain_until_post_measurement(monkeypatch):
+    adapter = _adapter(monkeypatch, FakeSparkFrame())
+    adapter._plan_capture_phase_active = True
+    adapter._phase_recorded_queries = {}
+    adapter._plan_capture_lock = __import__("threading").Lock()
+    adapter._captured_plans = {}
+    calls: list[str] = []
+    real = adapter.capture_spark_dataframe_plan
+    monkeypatch.setattr(adapter, "capture_spark_dataframe_plan", lambda df, qid: (calls.append(qid), real(df, qid))[1])
+
+    row = _execute(adapter)
+
+    assert calls == []
+    assert "query_plan" not in row
+    assert row["_plan_capture_key"] in adapter._phase_recorded_queries
+
+    adapter._plan_capture_phase_active = False
+    adapter._capture_plans_post_measurement(None, dict(adapter._phase_recorded_queries), [row])
+
+    assert len(calls) == 1
+    assert isinstance(row["query_plan"], QueryPlanDAG)
+    assert row["plan_fingerprint"] == row["query_plan"].plan_fingerprint
+    assert row["plan_capture_time_ms"] > 0
+    assert "_plan_capture_key" not in row
+
+
+def test_failed_rows_are_not_recorded_for_deferred_capture(monkeypatch):
+    adapter = _adapter(monkeypatch, FakeSparkFrame())
+    adapter._plan_capture_phase_active = True
+    adapter._phase_recorded_queries = {}
+
+    adapter._merge_dataframe_plan_into_result({"status": "FAILED"}, FakeSparkFrame(), "Q1", 0)
+
+    assert adapter._phase_recorded_queries == {}

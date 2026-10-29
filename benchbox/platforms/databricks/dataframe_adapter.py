@@ -76,6 +76,7 @@ class DatabricksDataFrameAdapter(DatabricksAdapter):
 
         self._spark: SparkSession | None = None
         self._spark_initialized = False
+        self._phase_recorded_frames: dict[str, Any] = {}
 
     @property
     def platform_name(self) -> str:
@@ -223,11 +224,22 @@ class DatabricksDataFrameAdapter(DatabricksAdapter):
                 "execution_mode": "dataframe",
             }
 
-        self._merge_dataframe_plan_into_result(result_dict, result_df, query_id)
+        self._merge_dataframe_plan_into_result(result_dict, result_df, query_id, stream_id)
         return result_dict
 
-    def _merge_dataframe_plan_into_result(self, result: dict[str, Any], dataframe: Any, query_id: str) -> None:
-        if not self.capture_plans:
+    def _merge_dataframe_plan_into_result(
+        self, result: dict[str, Any], dataframe: Any, query_id: str, stream_id: int | None = None
+    ) -> None:
+        if not self.capture_plans or result.get("status") != "SUCCESS":
+            return
+        if getattr(self, "_plan_capture_phase_active", False):
+            from benchbox.platforms.base.result_capture import _plan_capture_key
+
+            capture_key = _plan_capture_key(query_id, f"dataframe:{query_id}:{stream_id}")
+            result["_plan_capture_key"] = capture_key
+            with self._plan_capture_lock:
+                self._phase_recorded_queries.setdefault(capture_key, capture_key)
+                self._phase_recorded_frames.setdefault(capture_key, dataframe)
             return
         query_plan, capture_time_ms = self.capture_spark_dataframe_plan(dataframe, query_id)
         if query_plan:
@@ -237,6 +249,25 @@ class DatabricksDataFrameAdapter(DatabricksAdapter):
                 result["plan_fingerprint_normalized"] = query_plan.normalized_fingerprint
         if capture_time_ms is not None:
             result["plan_capture_time_ms"] = capture_time_ms
+
+    def _capture_recorded_plans(self, connection: Any, queries: dict[str, str]) -> None:
+        from benchbox.platforms.base.execution import _CapturedPlan
+
+        captured = self._ensure_plan_capture_accumulator()
+        for capture_key in queries:
+            if capture_key in captured:
+                continue
+            frame = self._phase_recorded_frames.get(capture_key)
+            if frame is None:
+                continue
+            plan, capture_ms = self.capture_spark_dataframe_plan(frame, capture_key)
+            captured[capture_key] = _CapturedPlan(
+                plan=plan,
+                fingerprint=plan.plan_fingerprint if plan else None,
+                capture_ms=capture_ms,
+                normalized_fingerprint=plan.normalized_fingerprint if plan and self.normalize_plan_literals else None,
+            )
+        self._phase_recorded_frames.clear()
 
     def execute_query(
         self,

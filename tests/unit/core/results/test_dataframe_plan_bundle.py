@@ -69,16 +69,27 @@ def test_same_stream_iterations_share_one_plan_entry():
     assert list(payload["queries"]) == ["Q1#0:"]
 
 
-def test_loader_attaches_plan_to_rows_with_empty_test_type():
+def test_plan_entry_records_the_execution_it_came_from():
+    entry = build_plans_payload(_results())["queries"]["Q1#0:"]
+
+    assert entry["iteration"] == 2
+    assert entry["run_type"] == "measurement"
+
+
+def test_loader_attaches_plan_only_to_the_recorded_execution():
     payload = build_plans_payload(_results())
     compact = [
+        {"id": "1", "iter": 0, "stream": 0, "run_type": "warmup", "status": "SUCCESS", "ms": 1.0},
         {"id": "1", "iter": 1, "stream": 0, "run_type": "measurement", "status": "SUCCESS", "ms": 1.0},
         {"id": "1", "iter": 2, "stream": 0, "run_type": "measurement", "status": "SUCCESS", "ms": 1.0},
     ]
 
     rows = _reconstruct_query_results(compact, [], payload)
 
-    assert all(row["query_plan"] is not None and row["plan_fingerprint"] for row in rows)
+    assert [row.get("query_plan") is not None for row in rows] == [False, False, True]
+    assert rows[2]["query_plan"].logical_root.table_name == "b"
+    assert rows[2]["plan_fingerprint"] == _plan("b").plan_fingerprint
+    assert "plan_capture_time_ms" not in rows[0]
 
 
 def test_loader_keeps_raw_text_plans_out_of_the_dag_slot():

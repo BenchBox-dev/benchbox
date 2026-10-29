@@ -17,6 +17,8 @@ Polars has no parser, so its plan stays raw text: no DAG, no fingerprint and no 
 
 Expression-family engines (Polars, DataFusion, PySpark, LakeSail) capture after the query is collected, so planning work that the engine caches on the frame (Spark analysis and optimization) is paid by the measured collect and not moved into `plan_capture_time_ms`. Capture time is reported in `plan_capture_time_ms` and subtracted from the measured execution time. Strict capture therefore raises after one execution of the query. SDK imports stay lazy: LakeSail and Databricks reuse the PySpark helper and import nothing from their client packages during capture.
 
-The plans companion keeps one entry per `Q#<stream>:<test_type>`; the loader attaches it to every row of that key, including DataFrame rows whose `test_type` is empty.
+The plans companion keeps one entry per `Q#<stream>:<test_type>` and records the `iteration` and `run_type` of the execution it came from; the loader attaches the plan, fingerprint and capture time only to that row, including DataFrame rows whose `test_type` is empty.
+
+Databricks DataFrame mode runs inside the plan-capture phase: while a measured workload is active it only records the result frame per query and stream, and the explain round trips run after measurement, for successful rows only, with the same accounting as SQL capture.
 
 The capability table is `PlanCaptureSupport` in `benchbox/core/dataframe/profiling.py`.
