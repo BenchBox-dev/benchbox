@@ -1109,6 +1109,70 @@ previous pin cannot be reinstalled and a revert to it cannot install the old
 build; the risk is accepted, so keep a bump's predecessor in the local cache
 (`~/.cache/benchbox/omp`) until the bump has proved itself.
 
+### Watching a bump and reverting it
+
+The compatibility suite cannot prove everything, so the first production reviews
+on a new pin are the last check. `omp-pin-watch.yml` runs every three hours and
+on demand from `develop`. It finds the newest commit that changed the pinned
+version and compares the attempts of the first 10 reviews (distinct
+`oracle-verdict` runs) after that commit, or of the first 48 hours, whichever
+ends first, with the attempts of the 7 days before it. Attempt artifacts expire
+after 7 days, so each run first restores the `omp-watch-ledger` artifact
+(retained 90 days), adds the attempts it has not seen and uploads the result;
+the first run backfills from the artifacts still live. No review is run for
+this and no model is called.
+
+Counted attempts are those absent as `invalid`, `empty`, `error` or `timeout`.
+`quota` and `auth` come from the providers, and `incomplete` is the model
+declining or failing the evidence check: the report lists all three beside the
+counted kinds, and a change in them never triggers a revert. The watch asks for
+a revert on either of two conditions:
+
+- the counted rate in the window exceeds twice the counted rate of the previous
+  7 days, with at least two counted attempts in the window so one stray failure
+  after a clean week does not revert a pin;
+- any harness-contract error in the window: an `empty` attempt whose stream
+  ended without a final answer or exited 0 with no output (the event envelope
+  or its text blocks no longer parse), or an `error` attempt whose reviewer
+  could not be started. One such attempt is enough.
+
+A bump that is itself a revert is not watched, so a revert never reverts.
+
+When a condition holds, the job opens `revert/omp-pin-<version>` with only the
+`omp:` section restored to the previous pin, starts the oracle review of its
+head as the bump job does, and reports the numbers in the pull request body
+and the run summary. It never opens a second pull request for a version whose
+revert branch already has one, closed or not. The oracle runs the bumped build
+while it reviews the revert, so an anomaly that breaks the oracle itself needs
+the stand-in path, not another retry.
+
+A revert is a pin change like any other, so the required `oracle-gate` holds
+it until an unedited owner comment carries the evidence line for the pin the
+revert carries: the previous version, its pinned `darwin-arm64` SHA-256, the
+digest of the restored `omp:` section and the revert's head. To satisfy it,
+from a clean worktree of the revert branch on the owner's Mac (an agent run on
+that Mac counts) run:
+
+```bash
+make omp-candidate-check VERSION=<previous version>
+```
+
+and post the `Omp candidate check:` line it prints, ending `result=releasable`,
+as a comment on the revert pull request. A later push needs a new line. The
+check downloads every platform build named by the restored pin. When the
+Mac copy is still in the local cache, `BINARY=~/.cache/benchbox/omp/<previous
+version>/darwin-arm64/omp` runs the probes on it instead of downloading it, but
+the other platforms' builds must still be served and hash to the pin. If the
+build host no longer serves any of them there is no revert: pin the newest
+release that passes the suite instead, through the ordinary bump.
+
+To revert by hand, in a linked worktree run `git revert --no-commit <bump
+commit>`; the bump commit changes only the `omp:` section, so this restores the
+previous pin exactly. Commit, `make pr-open`, and satisfy the evidence line as
+above. The bump job treats a version it already opened a pull request for as
+done, so a reverted release is not bumped again until the build host publishes
+a newer one.
+
 ## Mutation testing
 
 `make oracle-mutation-test` mutates the oracle decision modules (selection,

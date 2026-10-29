@@ -260,6 +260,7 @@ def _gate_machinery_files() -> list[str]:
         for pattern in (
             ".github/workflows/oracle-*.yml",
             ".github/workflows/omp-pin-bump.yml",
+            ".github/workflows/omp-pin-watch.yml",
             "_project/scripts/oracle_gate.py",
         )
         for path in REPO_ROOT.glob(pattern)

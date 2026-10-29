@@ -109,6 +109,7 @@ classifier:
     - .github/workflows/oracle-review.yml
     - .github/workflows/oracle-verdict.yml
     - .github/workflows/omp-pin-bump.yml
+    - .github/workflows/omp-pin-watch.yml
     - .github/workflows/soundness-merge-digest.yml
     - _project/scripts/oracle_gate.py
     - _project/scripts/oracle_review_check.py
