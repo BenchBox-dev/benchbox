@@ -1025,8 +1025,31 @@
         "merge_with_cte_source"
       ],
       "sqlite": [
-        "bulk_load_csv_small_uncompressed",
-        "insert_on_conflict_ignore"
+        "ddl_truncate_table_small",
+        "insert_batch_values_100",
+        "insert_batch_values_1000",
+        "insert_on_conflict_ignore",
+        "merge_computed_values",
+        "merge_conditional_insert",
+        "merge_conditional_update",
+        "merge_date_arithmetic",
+        "merge_deduplication_window_function",
+        "merge_error_handling",
+        "merge_etl_aggregation_pattern",
+        "merge_from_subquery_aggregated",
+        "merge_full_overlap_all_update",
+        "merge_multi_column_update",
+        "merge_no_overlap_all_insert",
+        "merge_overlap_10pct",
+        "merge_overlap_50pct",
+        "merge_overlap_90pct",
+        "merge_returning_clause",
+        "merge_simple_upsert_small",
+        "merge_string_operations",
+        "merge_upsert_with_delete",
+        "merge_with_cte_source",
+        "merge_with_join_condition",
+        "update_date_arithmetic"
       ]
     }
   }

@@ -312,5 +312,5 @@
       "skip": "false"
     }
   },
-  "summary": "oracle-verdict plan for #86: review (first review of this pull request; pull request event)\n18.12.1\nredaction check: 0 file(s) rewritten, no secret value remains\nslot 1: medium\nslot 1: medium verdict\nslot 2: pass\nslot 2: pass\nslot 2: pass\nslot 2: pass\nslot 2: pass\noracle-verdict #86 <sha1>: pending: result withheld: artifacts failed validation\n### oracle-verdict: pending for `<sha1>`\n\nThis result supersedes those for earlier heads; their open review threads still apply.\n\n**Result withheld: the run's artifacts failed validation**\n\nattempt-1.json: names another head\n\n"
+  "summary": "oracle-verdict plan for #86: review (first review of this pull request; pull request event)\n<omp-version>\nredaction check: 0 file(s) rewritten, no secret value remains\nslot 1: medium\nslot 1: medium verdict\nslot 2: pass\nslot 2: pass\nslot 2: pass\nslot 2: pass\nslot 2: pass\noracle-verdict #86 <sha1>: pending: result withheld: artifacts failed validation\n### oracle-verdict: pending for `<sha1>`\n\nThis result supersedes those for earlier heads; their open review threads still apply.\n\n**Result withheld: the run's artifacts failed validation**\n\nattempt-1.json: names another head\n\n"
 }
