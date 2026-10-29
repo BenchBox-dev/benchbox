@@ -9,6 +9,7 @@ import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, Optional, Union
 
 if TYPE_CHECKING:
@@ -47,6 +48,7 @@ from benchbox.sql_compat.rules.execution_filter.postgres_write_primitives import
 )
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.cloud_storage import normalize_output_dir
+from benchbox.utils.dialect_utils import split_sql_statements
 from benchbox.utils.path_utils import get_benchmark_runs_datagen_path
 
 _POSTGRES_OPERATION_SKIP_DIALECTS = frozenset({"postgres", "postgresql"})
@@ -144,6 +146,8 @@ def _resolve_validation_sql(
 
 
 _SINGLE_STATEMENT_SETUP_DIALECTS = frozenset({"sqlite", "databricks"})
+_NO_TRUNCATE_DIALECTS = frozenset({"sqlite"})
+_SUMMED_ROWCOUNT_DIALECTS = frozenset({"sqlite"})
 
 
 class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBase["OperationResult"]):
@@ -179,6 +183,7 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
         self.tables: dict[str, Path] = {}
 
         self._setup_dialect: str = "standard"
+        self._manifest_verified_connection: Any = None
 
     def _acquire_setup_lock(
         self, connection: DatabaseConnection, timeout_seconds: int = 300, dialect: str = "standard"
@@ -510,6 +515,7 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
 
     def setup(self, connection: DatabaseConnection, force: bool = False, dialect: str = "standard") -> dict[str, Any]:
         self._setup_dialect = dialect
+        self._manifest_verified_connection = None
         self.log_verbose("Setting up Write Primitives benchmark...")
 
         required_tables = ["orders", "lineitem"]
@@ -607,6 +613,7 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
 
     def teardown(self, connection: DatabaseConnection) -> None:
         self.log_verbose("Tearing down Write Primitives benchmark...")
+        self._manifest_verified_connection = None
 
         for table_name in STAGING_TABLES:
             try:
@@ -648,10 +655,11 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
             "ddl_truncate_target": "orders",
         }
 
+        clear_verb = "DELETE FROM" if self._setup_dialect.lower() in _NO_TRUNCATE_DIALECTS else "TRUNCATE TABLE"
         for table_name in reset_map:
             try:
                 quoted = self._quote_identifier(table_name)
-                connection.execute(f"TRUNCATE TABLE {quoted}")
+                connection.execute(f"{clear_verb} {quoted}")
                 self.log_verbose(f"Truncated {table_name}")
             except Exception as e:
                 self.log_verbose(f"Warning: Could not truncate {table_name}: {e}")
@@ -673,10 +681,15 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
 
             for table_name in required_tables:
                 quoted = self._quote_identifier(table_name)
-                count = fetch_count_probe(connection, f"SELECT COUNT(*) FROM {quoted}")
-                if count <= 0:
+                probe = connection.execute(f"SELECT 1 FROM {quoted} LIMIT 1")
+                if failed_platform_error(probe) is not None or probe.fetchone() is None:
                     return False
-            return self._staging_manifest_matches(connection, ["orders", "lineitem"])
+            if self._manifest_verified_connection is connection:
+                return True
+            if self._staging_manifest_matches(connection, ["orders", "lineitem"]):
+                self._manifest_verified_connection = connection
+                return True
+            return False
         except Exception:
             return False
 
@@ -842,8 +855,16 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
                 raise RuntimeError(f"No executable SQL resolved for operation '{operation_id}'")
             effective_sql = self._rewrite_transactional_sql_for_platform(effective_sql, platform_key)
             write_sql = self._replace_placeholders(effective_sql)
+            summed_statements = (
+                split_sql_statements(write_sql, "sqlite")
+                if operation.category == "merge" and (platform_key or "").lower() in _SUMMED_ROWCOUNT_DIALECTS
+                else None
+            )
             write_start = time.perf_counter()
-            write_result = connection.execute(write_sql)
+            if summed_statements is not None:
+                write_result = self._execute_summing_rowcounts(connection, summed_statements)
+            else:
+                write_result = connection.execute(write_sql)
             write_duration_ms = (time.perf_counter() - write_start) * 1000
             if (write_error := failed_platform_error(write_result)) is not None:
                 raise RuntimeError(f"Write SQL failed on platform: {write_error}")
@@ -855,7 +876,7 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
             )
 
             cleanup_success, cleanup_warning, cleanup_duration_ms = self._run_operation_cleanup(
-                operation, connection, operation_id
+                operation, connection, operation_id, platform_key=platform_key, platform_fallback_key=fallback_key
             )
 
             return OperationResult(
@@ -893,6 +914,18 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
                 error=error_msg,
                 cleanup_warning="Write operation failed during execution. Run reset() to ensure clean state.",
             )
+
+    @staticmethod
+    def _execute_summing_rowcounts(connection: DatabaseConnection, statements: list[str]) -> SimpleNamespace:
+        total = 0
+        for statement in statements:
+            cursor = connection.execute(statement)
+            if (error := failed_platform_error(cursor)) is not None:
+                return SimpleNamespace(rowcount=-1, platform_result={"status": "FAILED", "error": error})
+            if cursor.description is not None:
+                cursor.fetchall()
+            total += max(cursor.rowcount, 0)
+        return SimpleNamespace(rowcount=total)
 
     def _extract_rows_affected(self, write_result: Any, operation_id: str) -> int:
         rows_affected = getattr(write_result, "rowcount", None)
@@ -971,16 +1004,28 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
         return validation_passed, validation_results, validation_duration_ms
 
     def _run_operation_cleanup(
-        self, operation: Any, connection: DatabaseConnection, operation_id: str
+        self,
+        operation: Any,
+        connection: DatabaseConnection,
+        operation_id: str,
+        platform_key: str | None = None,
+        platform_fallback_key: str | None = None,
     ) -> tuple[bool, str | None, float]:
         self.log_verbose(f"Cleaning up operation: {operation_id}")
         cleanup_start = time.perf_counter()
         cleanup_success = True
         cleanup_warning = None
 
-        if operation.cleanup_sql:
+        cleanup_sql = operation.cleanup_sql
+        found_override, override = self._lookup_platform_override(
+            getattr(operation, "cleanup_platform_overrides", None), platform_key, platform_fallback_key
+        )
+        if found_override:
+            cleanup_sql = override
+
+        if cleanup_sql:
             try:
-                cleanup_res = connection.execute(operation.cleanup_sql)
+                cleanup_res = connection.execute(cleanup_sql)
                 if (cleanup_err := failed_platform_error(cleanup_res)) is not None:
                     raise RuntimeError(cleanup_err)
                 self.log_verbose(f"Executed cleanup SQL for {operation_id}")
