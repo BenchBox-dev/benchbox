@@ -5,7 +5,7 @@
     "Live CI selection distinguishes actual executions from credential-based skips and records engine/version evidence; unavailable credentials or infrastructure remain an explicit incomplete validation outcome.",
     "Preserve deterministic no-credential fixture coverage and keep live-cloud execution behind explicit authorization; do not provision paid services merely to close this item."
   ],
-  "context": "Implementation in PR #3703 (branch test/live-plan-parser-validation, head 186786f6f). All seven families captured live (Spark 4.2.0, ClickHouse 25.8 server, Trino 484, Databend 1.2.881, QuestDB 9.3.5, Doris 4.0.3, SingleStore 8.x dev); parser fixes in six. Not validated: Presto server and Athena (no local runtime), ClickHouse EXPLAIN PIPELINE, Doris EXPLAIN VERBOSE, chdb local mode (library fails to load on macOS); recorded in PROVENANCE.md. pr-arm refused while develop trunk red (#3679). Resume: re-arm when develop green, land, then finish.\n\nGuardrails: local engines and Mocker only; captured fixtures carry engine/version metadata; no live-cloud spend.",
+  "context": "Merged via PR #3703 as 5d2fa1cdb on develop. CI and oracle review passed on the merged head. Presto server and Athena not validated (no local runtime); recorded in PROVENANCE.md. Spark adapter connection defect tracked separately in spark-adapter-create-connection-jdk17-dagscheduler.",
   "description": "Plan parser coverage is broad but much of it is synthetic or mocked. PROVENANCE.md still marks Presto/Trino, ClickHouse, Spark, Databend, QuestDB, Doris and SingleStore as not live-validated. Existing optional live hooks generally exercise SELECT 1 and assert a root and stable fingerprint, which does not establish join, aggregate or branching semantics. Earlier completed items added provenance and hooks; extend those patterns with actual versioned engine output and semantic checks rather than treating their closure as live-validation evidence.",
   "links": [
     "tests/fixtures/query_plans/PROVENANCE.md",
@@ -66,6 +66,14 @@
       "generation": "0b19c600dbb7404bb24028e27d438b88",
       "op": "take",
       "op_id": "9b5ce103a3a34689ac5614987d96f3e1",
+      "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bb7fd2d6b114a6501df93f97",
+      "at": "2026-10-29T15:41:48Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "681852a25a734d149e23aace2c18e350",
       "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
     }
   ]
