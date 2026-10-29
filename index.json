@@ -6121,10 +6121,15 @@
       "title": "Explorer leaderboard shows 15 of 207 results: trust mislabelling, missing query data, and unbacked validation claims"
     },
     "corpus-notes-reconcile-rerun-wheels": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-30T02:23:16Z",
+        "generation": "865702bd9e0e4c3c8e3d0fc4b4a80d7e",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Reconcile which SQLGlot wheel each of the 58 rerun bundles from #3678 ran on"
     },
     "corpus-privacy-whole-corpus-ci-gate-20260803": {
