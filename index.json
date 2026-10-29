@@ -2378,15 +2378,10 @@
       "title": "Bundle TPC-H/TPC-DS query templates inside package for wheel distribution"
     },
     "bundle-translator-runtime-identity": {
-      "claim": {
-        "expires_at": "2026-10-30T03:54:33Z",
-        "generation": "083b21d26ec34fa0b9dd448d660a2da1",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Record the bundled SQLGlot runtime identity in every new result bundle"
     },
     "bundle-translator-version-sidecar-attestation": {
