@@ -468,10 +468,10 @@ jobs:
           history="$HOME/Developer/benchmark_runs/throughput-baseline-history"
           mkdir -p "$history"
           since=$(date -u -d '90 days ago' +%Y-%m-%d)
-          if legacy_ids=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?event=schedule&branch=develop&created=>=${since}&per_page=100" --paginate \
-            --jq '.workflow_runs[] | select(.path | startswith(".github/workflows/nightly.yml")) | .id' \
-            | { grep -vx "${GITHUB_RUN_ID}" || true; } | sort -rn | head -n 30); then
-            echo "::notice::found $(printf '%s' "${legacy_ids}" | grep -c .) retired Nightly Validation scheduled run(s) for Throughput@Size baselines"
+          if listed=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?event=schedule&branch=develop&created=>=${since}&per_page=100" --paginate \
+            --jq '.workflow_runs[] | select(.path | startswith(".github/workflows/nightly.yml")) | .id'); then
+            legacy_ids=$(printf '%s\n' "${listed}" | { grep -vx "${GITHUB_RUN_ID}" || true; } | { grep . || true; } | sort -rn | head -n 30)
+            echo "::notice::found $(printf '%s' "${legacy_ids}" | grep -c . || true) retired Nightly Validation scheduled run(s) for Throughput@Size baselines"
           else
             echo "::warning::could not list retired Nightly Validation runs; their Throughput@Size baselines are not counted"
             legacy_ids=""

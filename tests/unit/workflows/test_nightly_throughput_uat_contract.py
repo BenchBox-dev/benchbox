@@ -284,7 +284,11 @@ def test_baseline_history_is_downloaded_before_the_duckdb_assert() -> None:
     assert "gh run list" in run
     assert 'select(.path | startswith(".github/workflows/nightly.yml"))' in run
     assert "event=schedule&branch=develop&created=>=${since}" in run
+    assert "if listed=$(gh api" in run
+    assert run.index("if listed=$(gh api") < run.index('grep -vx "${GITHUB_RUN_ID}" || true')
     assert 'grep -vx "${GITHUB_RUN_ID}" || true' in run
+    assert "could not list retired Nightly Validation runs" in run
+    assert "grep -c . || true" in run
     assert "head -n 30" in run
     assert "::notice::found" in run
     assert "--workflow nightly-v2.yml" in run
