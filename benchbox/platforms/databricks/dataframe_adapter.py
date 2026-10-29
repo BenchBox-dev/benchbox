@@ -254,11 +254,13 @@ class DatabricksDataFrameAdapter(DatabricksAdapter):
         from benchbox.platforms.base.execution import _CapturedPlan
 
         captured = self._ensure_plan_capture_accumulator()
-        for capture_key in queries:
-            if capture_key in captured:
-                continue
+        sql_queries: dict[str, str] = {}
+        for capture_key, recorded in queries.items():
             frame = self._phase_recorded_frames.get(capture_key)
             if frame is None:
+                sql_queries[capture_key] = recorded
+                continue
+            if capture_key in captured:
                 continue
             plan, capture_ms = self.capture_spark_dataframe_plan(frame, capture_key)
             captured[capture_key] = _CapturedPlan(
@@ -267,7 +269,10 @@ class DatabricksDataFrameAdapter(DatabricksAdapter):
                 capture_ms=capture_ms,
                 normalized_fingerprint=plan.normalized_fingerprint if plan and self.normalize_plan_literals else None,
             )
-        self._phase_recorded_frames.clear()
+        for capture_key in [key for key in queries if key not in sql_queries]:
+            self._phase_recorded_frames.pop(capture_key, None)
+        if sql_queries:
+            super()._capture_recorded_plans(connection, sql_queries)
 
     def execute_query(
         self,

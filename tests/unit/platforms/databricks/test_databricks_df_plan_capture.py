@@ -192,3 +192,42 @@ def test_failed_rows_are_not_recorded_for_deferred_capture(monkeypatch):
     adapter._merge_dataframe_plan_into_result({"status": "FAILED"}, FakeSparkFrame(), "Q1", 0)
 
     assert adapter._phase_recorded_queries == {}
+
+
+def test_mixed_frame_and_sql_keys_are_all_captured(monkeypatch):
+    from benchbox.core.plan_capture_phase import PlanCapturePhaseResult
+
+    adapter = _adapter(monkeypatch, FakeSparkFrame())
+    adapter._plan_capture_phase_active = True
+    adapter._phase_recorded_queries = {}
+    adapter._plan_capture_lock = __import__("threading").Lock()
+    adapter._captured_plans = {}
+
+    row = _execute(adapter)
+    sql_key = "Q2#0123456789abcdef"
+    adapter._phase_recorded_queries[sql_key] = "SELECT 1"
+    assert "query_plan" not in row
+
+    seen: list[dict[str, str]] = []
+
+    def fake_phase(_adapter, pending, **_kwargs):
+        seen.append(dict(pending))
+        result = PlanCapturePhaseResult()
+        for key in pending:
+            result.failed += 1
+            result.per_query_capture_ms[key] = 1.0
+        return result
+
+    monkeypatch.setattr("benchbox.core.plan_capture_phase.run_plan_capture_phase", fake_phase)
+    adapter._plan_capture_phase_active = False
+    sql_row = {"query_id": "Q2", "status": "SUCCESS", "_plan_capture_key": sql_key}
+
+    adapter._capture_plans_post_measurement(None, dict(adapter._phase_recorded_queries), [row, sql_row])
+
+    assert seen == [{sql_key: "SELECT 1"}]
+    assert isinstance(row["query_plan"], QueryPlanDAG)
+    assert len(adapter._captured_plans) == 2
+    assert sql_key in adapter._captured_plans
+    assert adapter._captured_plans[sql_key].plan is None
+    assert sql_row["plan_capture_time_ms"] == 1.0
+    assert adapter._phase_recorded_frames == {}
