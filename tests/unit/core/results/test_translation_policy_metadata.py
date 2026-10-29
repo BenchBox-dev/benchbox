@@ -145,3 +145,61 @@ def test_variant_comparability_survives_reconstruction() -> None:
     assert rebuilt.execution_metadata is not None
     assert rebuilt.execution_metadata["variant_comparability"]["comparable"] is True
     assert build_result_payload(rebuilt)["execution"]["variant_comparability"]["issue_count"] == 0
+
+
+def _vendored_runtime_pin() -> dict:
+    import json
+    from pathlib import Path
+
+    import benchbox
+
+    pin_path = Path(benchbox.__file__).parent / "_vendor" / "sqlglot.json"
+    return json.loads(pin_path.read_text(encoding="utf-8"))
+
+
+def _translation_outcome() -> SqlTranslationOutcome:
+    return SqlTranslationOutcome(
+        source_dialect="duckdb",
+        target_dialect="sqlite",
+        normalized_source_dialect="duckdb",
+        normalized_target_dialect="sqlite",
+        translator="sqlglot",
+        status="success",
+        strict_mode=False,
+    )
+
+
+def test_translation_runtime_equals_the_vendored_runtime_pin() -> None:
+    pin = _vendored_runtime_pin()
+    result = make_benchmark_results(execution_metadata={})
+
+    enriched = _attach_translation_metadata(result, [_translation_outcome()], strict_mode=False)
+    payload = build_result_payload(enriched)
+
+    assert payload["execution"]["translation"]["runtime"] == {
+        "distribution": pin["distribution"],
+        "version": pin["version"],
+        "fork_sha": pin["fork_sha"],
+        "upstream_sha": pin["upstream_sha"],
+        "wheel_sha256": pin["sha256"],
+    }
+    assert payload["result_schema_version"] == build_result_payload(make_benchmark_results())["result_schema_version"]
+
+
+def test_runs_without_translation_outcomes_carry_no_runtime() -> None:
+    result = make_benchmark_results(platform="polars-df", execution_metadata={"mode": "dataframe"})
+
+    enriched = _attach_translation_metadata(result, [], strict_mode=False)
+    payload = build_result_payload(enriched)
+
+    assert "translation" not in payload.get("execution", {})
+
+
+def test_loader_round_trips_the_translation_runtime() -> None:
+    result = make_benchmark_results(execution_metadata={})
+    enriched = _attach_translation_metadata(result, [_translation_outcome()], strict_mode=False)
+    payload = build_result_payload(enriched)
+
+    reconstructed = reconstruct_benchmark_results(payload)
+
+    assert reconstructed.execution_metadata["translation"]["runtime"] == payload["execution"]["translation"]["runtime"]

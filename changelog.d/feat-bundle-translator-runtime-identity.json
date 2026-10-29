@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "New result bundles that translated SQL record the bundled SQLGlot runtime (distribution, version, fork and upstream commits, wheel checksum) under execution.translation.runtime, so a result can be traced to the translation that produced it."
+    }
+  ]
+}

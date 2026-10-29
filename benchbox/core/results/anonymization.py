@@ -157,6 +157,7 @@ def _identifier_prefix_for_key_tail(key_path: tuple[str, ...]) -> str | None:
     return None
 
 
+_TRANSLATION_RUNTIME_VERSION_PATH = ("translation", "runtime", "version")
 _PUBLIC_HASH_WIDTH = 12
 _PUBLIC_HASH_DIGITS = frozenset("0123456789abcdef")
 
@@ -602,6 +603,9 @@ class AnonymizationManager:
             if prefix == "engine" and self._is_declared_engine_in_receipt(value, key_path):
                 return value
             return self._hash_public_identifier(str(value), prefix)
+
+        if isinstance(value, str) and key_path[-3:] == _TRANSLATION_RUNTIME_VERSION_PATH:
+            return value
 
         if isinstance(value, str):
             return self.remove_pii(value)
