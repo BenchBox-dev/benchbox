@@ -8921,15 +8921,10 @@
       "title": "Deferral: TPC-H correctness gate value-digest mismatch on darwin-arm64 (Q2, Q10, Q15)"
     },
     "dlv2-evidence-reconcile": {
-      "claim": {
-        "expires_at": "2026-10-30T18:04:52Z",
-        "generation": "cf9b4838fb4d4b06aea890b8a9fdd710",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Prove the high-risk dev-loop v2 safety properties and record waivers for the rest"
     },
     "dlv2-f0-stabilize-queue-and-open-prs": {
