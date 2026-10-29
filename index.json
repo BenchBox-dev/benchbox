@@ -23587,17 +23587,12 @@
       "title": "Serve /docs/ from the latest release and add canonical tags from /docs/dev/"
     },
     "site-result-formats-translator-runtime-docs": {
-      "claim": {
-        "expires_at": "2026-10-30T12:37:05Z",
-        "generation": "ab1d6db293814ac3bf104041a726562c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729"
-      },
+      "claim": null,
       "needs": [
         "bundle-translator-version-sidecar-attestation"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Site docs: document execution.translation.runtime and the sql_translator_version attestation"
     },
     "site-run-receipt-sql-translator-row": {
