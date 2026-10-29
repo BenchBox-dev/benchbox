@@ -396,6 +396,7 @@ class ResultCaptureMixin:
         self.plan_capture_errors: list[dict[str, Any]] = []
         self._plan_capture_phase_active = False
         self._phase_recorded_queries: dict[str, str] = {}
+        self._phase_recorded_frames: dict[str, Any] = {}
         self._analyze_plans_notice_printed = False
         if not hasattr(self, "_plan_capture_lock"):
             self._plan_capture_lock = threading.Lock()

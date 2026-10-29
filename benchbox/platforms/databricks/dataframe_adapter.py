@@ -76,7 +76,6 @@ class DatabricksDataFrameAdapter(DatabricksAdapter):
 
         self._spark: SparkSession | None = None
         self._spark_initialized = False
-        self._phase_recorded_frames: dict[str, Any] = {}
 
     @property
     def platform_name(self) -> str:

@@ -33,6 +33,7 @@ def _parent_init(self, **config):
     self.plan_capture_errors = []
     self.query_plans_captured = 0
     self.platform_config = {}
+    self._phase_recorded_frames = {}
 
 
 def _adapter(monkeypatch: pytest.MonkeyPatch, frame, **config) -> mod.DatabricksDataFrameAdapter:
@@ -231,3 +232,51 @@ def test_mixed_frame_and_sql_keys_are_all_captured(monkeypatch):
     assert adapter._captured_plans[sql_key].plan is None
     assert sql_row["plan_capture_time_ms"] == 1.0
     assert adapter._phase_recorded_frames == {}
+
+
+def _phase_run(adapter, monkeypatch, *, outstanding: bool, capture_raises: bool = False, dispatch_raises: bool = False):
+    import threading
+
+    adapter.dry_run_mode = False
+    adapter._plan_capture_lock = threading.Lock()
+    adapter._contain_outstanding_throughput_work = lambda _cfg: not outstanding
+
+    def dispatch(_benchmark, _connection, _cfg):
+        row = _execute(adapter)
+        if dispatch_raises:
+            raise RuntimeError("dispatch failed")
+        return [row]
+
+    def capture(_connection, _queries, _results):
+        if capture_raises:
+            raise RuntimeError("strict capture failed")
+
+    adapter._dispatch_queries_by_type = dispatch
+    adapter._capture_plans_post_measurement = capture
+    adapter.plan_capture_phase_eligible = True
+    monkeypatch.setattr(type(adapter), "is_dry_run", property(lambda self: False), raising=False)
+    return adapter._execute_queries_by_type(None, None, {})
+
+
+@pytest.mark.parametrize(
+    "scenario",
+    [
+        {"outstanding": True},
+        {"outstanding": False, "capture_raises": True},
+        {"outstanding": False, "dispatch_raises": True},
+    ],
+)
+def test_recorded_frames_never_leak_into_the_next_run(monkeypatch, scenario):
+    first = _adapter(monkeypatch, FakeSparkFrame("stale"))
+    raising = scenario.get("capture_raises") or scenario.get("dispatch_raises")
+    if raising:
+        with pytest.raises(RuntimeError):
+            _phase_run(first, monkeypatch, **scenario)
+    else:
+        _phase_run(first, monkeypatch, **scenario)
+    assert first._phase_recorded_frames == {}
+
+    stale = FakeSparkFrame("stale")
+    first._phase_recorded_frames = {"Q1#key": stale}
+    _phase_run(first, monkeypatch, outstanding=False)
+    assert stale not in first._phase_recorded_frames.values()
