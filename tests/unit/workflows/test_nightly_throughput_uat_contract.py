@@ -282,9 +282,13 @@ def test_baseline_history_is_downloaded_before_the_duckdb_assert() -> None:
     assert download["env"] == {"GH_TOKEN": "${{ github.token }}"}
     run = download["run"]
     assert "gh run list" in run
-    assert 'select(.name == "Nightly Validation" or (.path | endswith(' in run
-    assert "for workflow in nightly-v2.yml ${legacy_id}; do" in run
-    assert '--workflow "$workflow"' in run
+    assert 'select(.path | startswith(".github/workflows/nightly.yml"))' in run
+    assert "event=schedule&branch=develop&created=>=${since}" in run
+    assert 'grep -vx "${GITHUB_RUN_ID}" || true' in run
+    assert "head -n 30" in run
+    assert "::notice::found" in run
+    assert "--workflow nightly-v2.yml" in run
+    assert "for run_id in ${v2_ids} ${legacy_ids}; do" in run
     assert "--branch develop" in run
     assert "--event schedule" in run
     assert "--event workflow_dispatch" not in run

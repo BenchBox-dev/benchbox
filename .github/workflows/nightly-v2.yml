@@ -467,24 +467,23 @@ jobs:
         run: |
           history="$HOME/Developer/benchmark_runs/throughput-baseline-history"
           mkdir -p "$history"
-          if ! legacy_id=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows" --paginate \
-            --jq '.workflows[] | select(.name == "Nightly Validation" or (.path | endswith("/nightly.yml"))) | .id'); then
-            echo "::warning::could not resolve the retired Nightly Validation workflow; its Throughput@Size baselines are not counted"
-            legacy_id=""
+          since=$(date -u -d '90 days ago' +%Y-%m-%d)
+          if legacy_ids=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?event=schedule&branch=develop&created=>=${since}&per_page=100" --paginate \
+            --jq '.workflow_runs[] | select(.path | startswith(".github/workflows/nightly.yml")) | .id' \
+            | { grep -vx "${GITHUB_RUN_ID}" || true; } | sort -rn | head -n 30); then
+            echo "::notice::found $(printf '%s' "${legacy_ids}" | grep -c .) retired Nightly Validation scheduled run(s) for Throughput@Size baselines"
+          else
+            echo "::warning::could not list retired Nightly Validation runs; their Throughput@Size baselines are not counted"
+            legacy_ids=""
           fi
-          if [ -z "${legacy_id}" ]; then
-            echo "::warning::no workflow named Nightly Validation is registered; its Throughput@Size baselines are not counted"
+          if ! v2_ids=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow nightly-v2.yml --branch develop --event schedule --limit 30 \
+            --json databaseId --jq ".[] | select(.databaseId != ${GITHUB_RUN_ID}) | .databaseId"); then
+            echo "::warning::could not list prior nightly-v2.yml runs; their Throughput@Size baselines are not counted"
+            v2_ids=""
           fi
-          for workflow in nightly-v2.yml ${legacy_id}; do
-            if ! run_ids=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow "$workflow" --branch develop --event schedule --limit 30 \
-              --json databaseId --jq ".[] | select(.databaseId != ${GITHUB_RUN_ID}) | .databaseId"); then
-              echo "::warning::could not list prior ${workflow} runs; their Throughput@Size baselines are not counted"
-              continue
-            fi
-            for run_id in ${run_ids}; do
-              gh run download "${run_id}" --repo "$GITHUB_REPOSITORY" \
-                --pattern 'throughput-baseline-duckdb-tpch-sf1-*' --dir "${history}/${run_id}" 2>/dev/null || true
-            done
+          for run_id in ${v2_ids} ${legacy_ids}; do
+            gh run download "${run_id}" --repo "$GITHUB_REPOSITORY" \
+              --pattern 'throughput-baseline-duckdb-tpch-sf1-*' --dir "${history}/${run_id}" 2>/dev/null || true
           done
           echo "Downloaded $(find "$history" -name 'throughput-baseline-*.json' | wc -l) baseline record(s)"
 
