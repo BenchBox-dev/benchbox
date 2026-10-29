@@ -5,7 +5,7 @@
     "Regression tests distinguish a branching plan from a chain containing the same operator list and verify faithful serialization/reload and fingerprint changes for meaningful topology differences.",
     "Existing simple scan and DML no-double-execution behavior remains intact."
   ],
-  "context": "Static fidelity gap identified on 2026-10-28; reproduce before changing. Do not infer that every SQLite join is a binary logical join tree: SQLite EQP rows carry (id, parent) pairs; nested-loop joins appear as sibling scans under one parent, compound queries as COMPOUND/UNION children. Use those parent ids as the authority for topology.\n\nGuardrails: keep get_query_plan's EXPLAIN QUERY PLAN acquisition (no ANALYZE; DML never executed). If raw text lacks parent ids, extend acquisition to keep them rather than guessing from indentation. Fingerprint changes are expected for affected SQLite plans; do not alter other parsers or FINGERPRINT_VERSION semantics unless the integrity tests require it, and say so in the PR.\n\nVerification rubric: (1) focused regression test fails before the change and passes after; (2) uv run -- python -m pytest -n 0 on the touched plan test modules passes; (3) make comment-policy-check and ruff/typecheck on touched files pass; (4) a runtime smoke on the real surface described in acceptance is recorded in the PR body.",
+  "context": "Implementation in PR #3700 (branch fix/sqlite-plan-topology, head 3193bd185). get_query_plan now emits id|parent|detail rows; parser builds topology from parent ids; multi-root plans get a synthetic Other root; malformed topology raises and is recorded as parse_error. Resume: land PR (pr-arm, oracle), verify merged, then take and finish.\n\nGuardrails: keep EXPLAIN QUERY PLAN acquisition (no ANALYZE; DML never executed). Do not alter other parsers or FINGERPRINT_VERSION.",
   "description": "SQLiteQueryPlanParser._build_operator_tree reverses its operator list and gives each new operator at most the preceding operator as its child. This always builds a chain, which is not evidence that compound/subquery branching from SQLite EXPLAIN QUERY PLAN is represented faithfully. Local capture tests establish plan presence and stability but not arbitrary hierarchy fidelity. Reproduce with real SQLite output, then preserve available parent relationships or explicitly reject unsupported topology rather than returning a misleading normalized tree.",
   "links": [
     "benchbox/core/query_plans/parsers/sqlite.py:126-136",
@@ -37,6 +37,14 @@
       "generation": "eaee9799f3ec40b2a29f2483d18e9263",
       "op": "take",
       "op_id": "e1314504237641dfa0cdad1719efa412",
+      "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bb7fd2d6b114a6501df93f97",
+      "at": "2026-10-29T00:52:01Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c4a4329c57eb4c1f9313e0d00c13f9ee",
       "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
     }
   ]
