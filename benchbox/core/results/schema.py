@@ -1167,48 +1167,78 @@ def _throughput_phase_payload(throughput: Any) -> dict[str, Any]:
     return payload
 
 
+def _capture_identity(qr: dict[str, Any]) -> tuple[str, str, str, str]:
+    return (
+        str(qr.get("query_id", "")),
+        str(qr.get("stream_id", "")),
+        str(qr.get("iteration", "")),
+        str(qr.get("test_type", "")),
+    )
+
+
 def compute_plan_capture_stats(
     query_results: list[dict[str, Any]],
     capture_plans: bool,
     *,
     existing_errors: list[dict[str, Any]] | None = None,
 ) -> tuple[int, int, list[dict[str, Any]]]:
-    ids_with_plan: set[str] = {
-        str(qr.get("query_id", "")) for qr in query_results if isinstance(qr, dict) and qr.get("query_plan") is not None
-    }
+    rows = [qr for qr in query_results if isinstance(qr, dict)]
+    ids_with_plan: set[str] = {str(qr.get("query_id", "")) for qr in rows if qr.get("query_plan") is not None}
     plans_captured = len(ids_with_plan)
 
     if not capture_plans:
         return plans_captured, 0, []
 
-    measurement_success_ids: set[str] = {
-        str(qr.get("query_id", ""))
-        for qr in query_results
-        if isinstance(qr, dict)
-        and str(qr.get("status", "")).upper() == "SUCCESS"
-        and str(qr.get("run_type", "")) == "measurement"
-    }
-    successful_ids: set[str]
-    if measurement_success_ids:
-        successful_ids = measurement_success_ids
-    else:
-        successful_ids = {
-            str(qr.get("query_id", ""))
-            for qr in query_results
-            if isinstance(qr, dict) and str(qr.get("status", "")).upper() == "SUCCESS"
-        }
+    success_rows = [qr for qr in rows if str(qr.get("status", "")).upper() == "SUCCESS"]
+    measurement_rows = [qr for qr in success_rows if str(qr.get("run_type", "")) == "measurement"]
+    candidate_rows = measurement_rows or success_rows
 
-    failed_ids = successful_ids - ids_with_plan
+    failed_rows: dict[tuple[str, str, str, str], dict[str, Any]] = {}
+    for qr in candidate_rows:
+        if qr.get("query_plan") is None:
+            failed_rows.setdefault(_capture_identity(qr), qr)
 
     if existing_errors is not None:
-        failed_ids_str = {str(i) for i in failed_ids}
-        capture_errors: list[dict[str, Any]] = [
-            e for e in existing_errors if str(e.get("query_id", "")) in failed_ids_str
-        ]
+        capture_errors: list[dict[str, Any]] = []
+        for qid in sorted({identity[0] for identity in failed_rows}):
+            matched = [
+                e
+                for e in existing_errors
+                if str(e.get("query_id", "")) == qid and _error_matches_failed_identity(e, failed_rows)
+            ]
+            if not matched:
+                cause = next(
+                    (
+                        row["plan_capture_error"]
+                        for identity, row in failed_rows.items()
+                        if identity[0] == qid and row.get("plan_capture_error")
+                    ),
+                    None,
+                )
+                if cause is not None:
+                    matched = [{"query_id": qid, "error": str(cause)}]
+            capture_errors.extend(matched)
     else:
-        capture_errors = [{"query_id": qid, "error": "Query plan not captured"} for qid in sorted(failed_ids)]
+        capture_errors = [
+            {"query_id": qid, "error": "Query plan not captured"} for qid in sorted({i[0] for i in failed_rows})
+        ]
 
-    return plans_captured, len(failed_ids), capture_errors
+    return plans_captured, len({identity[0] for identity in failed_rows}), capture_errors
+
+
+def _error_matches_failed_identity(
+    error: dict[str, Any], failed_rows: dict[tuple[str, str, str, str], dict[str, Any]]
+) -> bool:
+    qid = str(error.get("query_id", ""))
+    for identity in failed_rows:
+        if identity[0] != qid:
+            continue
+        if "stream_id" in error and str(error["stream_id"]) != identity[1]:
+            continue
+        if "iteration" in error and str(error["iteration"]) != identity[2]:
+            continue
+        return True
+    return False
 
 
 def _resolve_companion_max_depth(result: Any) -> int:
@@ -1261,7 +1291,7 @@ def _build_plan_entry(qr: dict[str, Any], *, max_depth: int = DEFAULT_PLAN_MAX_D
 
 
 def build_plans_payload(result: BenchmarkResults) -> dict[str, Any] | None:
-    if not result.query_plans_captured or result.query_plans_captured == 0:
+    if not result.query_plans_captured and not result.plan_capture_errors:
         return None
 
     rows_by_query_id: dict[str, list[dict[str, Any]]] = {}
@@ -1290,12 +1320,14 @@ def build_plans_payload(result: BenchmarkResults) -> dict[str, Any] | None:
             plans_by_query[key] = _build_plan_entry(qr, max_depth=max_depth)
 
     for error in result.plan_capture_errors or []:
-        errors_list.append(
-            {
-                "query_id": error.get("query_id", "unknown"),
-                "error": error.get("error", "Unknown error"),
-            }
-        )
+        entry = {
+            "query_id": error.get("query_id", "unknown"),
+            "error": error.get("error", "Unknown error"),
+        }
+        for key in ("stream_id", "iteration"):
+            if key in error:
+                entry[key] = error[key]
+        errors_list.append(entry)
 
     if not plans_by_query and not errors_list:
         return None
