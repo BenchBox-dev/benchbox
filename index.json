@@ -16414,7 +16414,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "dropped",
       "title": "Address oracle-reviewer defects found by the 2026-10-26 external codex reviews of #2807 and #2808"
     },
     "oracle-finding-path-html-escape-drops-finding-20261024": {
