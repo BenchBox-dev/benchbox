@@ -24,17 +24,13 @@ class SQLiteQueryPlanParser(QueryPlanParser):
 
         lines = explain_output.strip().split("\n")
 
-        if lines and "QUERY PLAN" in lines[0]:
+        if lines and lines[0].strip() == "QUERY PLAN":
             lines = lines[1:]
 
         if not lines:
             raise ValueError("No plan lines found")
 
-        operators = self._parse_text_operators(lines)
-
-        if not operators:
-            raise ValueError("No operators found in EXPLAIN output")
-
+        operators = self._parse_plan_rows(lines)
         root = self._build_operator_tree(operators)
 
         return QueryPlanDAG(
@@ -46,20 +42,35 @@ class SQLiteQueryPlanParser(QueryPlanParser):
             raw_explain_output=explain_output,
         )
 
-    def _parse_text_operators(self, lines: list[str]) -> list[dict[str, Any]]:
-        operators = []
+    def _parse_plan_rows(self, lines: list[str]) -> list[dict[str, Any]]:
+        operators: list[dict[str, Any]] = []
+        seen: set[int] = set()
 
         for line in lines:
             if not line.strip():
                 continue
 
-            level = 0
-            stripped = line.lstrip("|`- ")
-            indent_chars = line[: len(line) - len(stripped)]
-            level = indent_chars.count("|") + indent_chars.count("`")
+            parts = line.split("|", 2)
+            if len(parts) != 3:
+                raise ValueError(f"Malformed SQLite plan row (expected 'id|parent|detail'): {line!r}")
+            try:
+                node_id, parent_id = int(parts[0]), int(parts[1])
+            except ValueError as exc:
+                raise ValueError(f"Malformed SQLite plan row ids: {line!r}") from exc
 
-            op_dict = self._parse_operator_line(stripped, level)
+            detail = parts[2].strip()
+            if not detail:
+                raise ValueError(f"SQLite plan row has no detail: {line!r}")
+            if node_id <= 0 or node_id in seen:
+                raise ValueError(f"Invalid or duplicate SQLite plan node id {node_id}")
+            if parent_id != 0 and parent_id not in seen:
+                raise ValueError(f"SQLite plan node {node_id} references unknown parent {parent_id}")
+            seen.add(node_id)
+
+            op_dict = self._parse_operator_line(detail, 0)
             if op_dict:
+                op_dict["id"] = node_id
+                op_dict["parent"] = parent_id
                 operators.append(op_dict)
 
         return operators
@@ -127,13 +138,30 @@ class SQLiteQueryPlanParser(QueryPlanParser):
         if not operators:
             raise ValueError("No operators to build tree from")
 
-        logical_operators = []
+        by_parent: dict[int, list[dict[str, Any]]] = {}
+        for op_dict in operators:
+            by_parent.setdefault(op_dict["parent"], []).append(op_dict)
 
-        for op_dict in reversed(operators):
-            logical_op = self._convert_to_logical_operator(op_dict, logical_operators[-1:] if logical_operators else [])
-            logical_operators.append(logical_op)
+        def build(op_dict: dict[str, Any], depth: int) -> LogicalOperator:
+            op_dict["level"] = depth
+            children = [build(child, depth + 1) for child in by_parent.get(op_dict["id"], [])]
+            return self._convert_to_logical_operator(op_dict, children)
 
-        return logical_operators[-1] if logical_operators else self._create_fallback_operator()
+        roots = [build(op_dict, 0) for op_dict in by_parent.get(0, [])]
+        if not roots:
+            raise ValueError("SQLite plan has no root operator")
+        if len(roots) == 1:
+            return roots[0]
+
+        return self._create_logical_operator(
+            operator_type=LogicalOperatorType.OTHER,
+            children=roots,
+            physical_operator=self._create_physical_operator(
+                "OTHER",
+                properties={},
+                platform_metadata={"text": "QUERY PLAN", "level": -1},
+            ),
+        )
 
     def _convert_to_logical_operator(
         self,
