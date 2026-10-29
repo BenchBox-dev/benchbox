@@ -10978,7 +10978,7 @@
       ],
       "priority": "medium-high",
       "status": "open",
-      "title": "Explorer read model 18: carry the SQL translator version and its source for every run"
+      "title": "Explorer: build read model 18 with the SQL translator version behind a selector (default output stays 17)"
     },
     "explorer-read-model-review-followups": {
       "claim": null,
