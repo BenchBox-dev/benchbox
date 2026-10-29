@@ -41,13 +41,9 @@ def _json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
 
 
-def _step(step: Step) -> dict[str, Any]:
-    return {"code": step.code, "outputs": dict(sorted(step.outputs.items()))}
-
-
 PLAN_OUTPUTS = ("decision", "post", "pr", "head_sha")
 FINALIZE_OUTPUTS = ("state", "comment", "review", "has_state")
-SHADOW_PREFIX = "oracle-verdict-shadow"
+ATTEMPT_PREFIX = "oracle-verdict-attempt-"
 
 
 def _picked(step: Step | None, keys: tuple[str, ...]) -> dict[str, Any] | None:
@@ -58,23 +54,15 @@ def _picked(step: Step | None, keys: tuple[str, ...]) -> dict[str, Any] | None:
 
 def logical_steps(run: ReviewRun) -> dict[str, Any]:
     steps = run.steps
-    if "publish" in steps:
-        publish = {"code": steps["publish"].code, "skip": steps["publish"].outputs.get("skip", "")}
-        redact = None
-    else:
-        guard = steps.get("guard")
-        posts = [steps[name].code for name in ("status", "comment", "review") if name in steps]
-        publish = {"code": max([guard.code, *posts]), "skip": guard.outputs.get("skip", "")} if guard else None
-        if guard is None and "finalize" in steps:
-            publish = {"code": 0, "skip": ""}
-        redact = steps.get("redact")
-    finalize = _picked(steps.get("finalize"), FINALIZE_OUTPUTS)
-    if finalize is not None and redact is not None:
-        finalize["code"] = max(finalize["code"], redact.code)
-    return {"plan": _picked(steps.get("plan"), PLAN_OUTPUTS), "finalize": finalize, "publish": publish}
+    publish = steps.get("publish")
+    return {
+        "plan": _picked(steps.get("prepare"), PLAN_OUTPUTS),
+        "finalize": _picked(steps.get("finalize"), FINALIZE_OUTPUTS),
+        "publish": None if publish is None else {"code": publish.code, "skip": publish.outputs.get("skip", "")},
+    }
 
 
-NOT_COMPARED = ("shadow", "classification unavailable")
+NOT_COMPARED = ("disk scan of ",)
 
 
 def _comparable(text: str) -> str:
@@ -106,7 +94,7 @@ def posted(harness: Harness, pr: int, head: str) -> dict[str, Any]:
         ],
         "comments": [item["body"] for item in github.comments.get(pr, [])],
         "dispatches": list(github.dispatches),
-        "artifacts": sorted(item["name"] for item in github.artifacts if not item["name"].startswith(SHADOW_PREFIX)),
+        "artifacts": sorted(item["name"] for item in github.artifacts if not item["name"].startswith(ATTEMPT_PREFIX)),
     }
 
 
