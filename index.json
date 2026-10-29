@@ -19090,12 +19090,7 @@
       "title": "Slim down published-results to corpus-only and mirror UAT-20260502 onto it"
     },
     "published-results-sqlglot-translation-rerun": {
-      "claim": {
-        "expires_at": "2026-10-30T04:31:32Z",
-        "generation": "dc4f19440fb746da8a9712ca013f6029",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729"
-      },
+      "claim": null,
       "needs": [
         "sqlite-clickbench-sf1-row-count-mismatches-20261025",
         "sql-execution-gate-vacuous-empty-results-20261025",
@@ -19104,7 +19099,7 @@
         "bundle-translator-version-sidecar-attestation"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Complete the rerun phase for published results computed with superseded SQL translations (audit and flagging are done)"
     },
     "purge-plaintext-tokens-shell-history-20261023": {
