@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "The Explorer build can emit read model 18 behind an explicit --read-model-version 18 selector. It adds per-run translator_version, translator_fork_sha and translator_version_source (recorded, attested, not_recorded, or not_applicable for dataframe runs) columns to results, filled by the shared translator-version resolver. The default build and the site snapshot inputs still emit read model 17 unchanged."
+    }
+  ]
+}

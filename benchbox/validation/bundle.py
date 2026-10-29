@@ -1387,6 +1387,7 @@ SQL_TRANSLATOR_IDENTITY_KEYS = ("version", "fork_sha", "upstream_sha", "wheel_sh
 TRANSLATOR_VERSION_RECORDED = "recorded"
 TRANSLATOR_VERSION_ATTESTED = "attested"
 TRANSLATOR_VERSION_NOT_RECORDED = "not_recorded"
+TRANSLATOR_VERSION_NOT_APPLICABLE = "not_applicable"
 _TRANSLATOR_VERSION_RE = re.compile(r"\d+(?:\.\d+)*")
 
 
