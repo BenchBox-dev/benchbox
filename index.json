@@ -20088,10 +20088,15 @@
       "title": "Query Plan Documentation & Testing"
     },
     "query-plan-live-semantic-validation": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-30T15:41:43Z",
+        "generation": "0b19c600dbb7404bb24028e27d438b88",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bb7fd2d6b114a6501df93f97"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Validate synthetic plan parsers against realistic live-engine plans"
     },
     "query-plan-mcp-canonical-rendering": {
