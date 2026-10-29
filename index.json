@@ -23579,7 +23579,7 @@
       ],
       "priority": "medium-high",
       "status": "open",
-      "title": "Site: accept read model 18 and show the SQL translator version in the run receipt"
+      "title": "Site: accept read models 17 and 18 and show the SQL translator version in the run receipt"
     },
     "site-runner-pool-decision-20261017": {
       "claim": null,

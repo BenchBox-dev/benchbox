@@ -1,11 +1,11 @@
 {
   "acceptance": [
-    "Site builds and its tests pass against a core snapshot at read model 18; a test or story covers recorded, attested and not_recorded rows.",
-    "The site PR is merged under the site repo's rules; no production deploy is triggered without owner approval (state whether the merge deploys).",
-    "Screenshot or rendered output of the receipt row attached to the PR (not committed)."
+    "Site builds and tests pass against both the current published read-model-17 snapshot and a candidate read-model-18 snapshot produced by the core selector; tests cover recorded, attested, not_recorded and not_applicable rows.",
+    "The site PR is merged under the site repo's rules; whether merge deploys to production is stated, and no production deploy happens without owner approval.",
+    "Rendered output of the receipt row attached to the PR (not committed)."
   ],
-  "context": "DECISION GATE: if the site repo requires readers-first ordering, update needs so this item precedes explorer-read-model-18-translator-version and land a version-tolerant change first. If merging deploys to production, STOP and ask the owner before merging.",
-  "description": "Companion to explorer-read-model-18-translator-version in the site repository BenchBox-dev/benchbox-site (AGENTS.md: the site, Explorer app, landing page and blog live there; change them there by PR). The site pins read model 17 exactly (explorer-build-contract.mjs ~:5, db.ts ~:48). Add acceptance of read model 18 and a 'SQL translator' row in the run receipt (RunReceipt.tsx ~:210-211) showing the version and whether it was recorded by the run or attested afterwards (link or tooltip text explaining 'attested'); show 'not recorded' when absent. Also render variant labels containing '^container' ids correctly if not already done by the #3618 follow-ups (check; do not duplicate).\n\nGUARDRAILS: follow the site repo's own AGENTS/CONTRIBUTING, branch, review and merge rules (read them first; they may differ from core); no production deploy without owner approval; keep the change to the contract version, the query and the receipt row.",
+  "context": "DECISION GATE: if merging deploys to production, STOP and ask the owner before merging.",
+  "description": "Companion to explorer-read-model-18-translator-version in BenchBox-dev/benchbox-site (AGENTS.md: the site and Explorer app live there; change them there by PR). The build-contract check throws on any read-model mismatch (explorer-build-contract.mjs ~:38 and ~:42; pin at ~:5); db.ts ~:206-215 already only warns on newer versions (pin at ~:48). Per the bump procedure (ADR site-repo-split D16), the site must accept BOTH 17 and 18 before core switches its default. Add a 'SQL translator' row in the run receipt (RunReceipt.tsx ~:210-211) showing the version and whether it was recorded by the run or attested afterwards (with explanatory text for 'attested'), 'not recorded' when absent, and nothing or 'not applicable' for DataFrame runs. Check whether '^container' variant ids from #3618/#3630 already render and route correctly; do not duplicate that work.\n\nGUARDRAILS: follow the site repo's own AGENTS/CONTRIBUTING, branch, review and merge rules (read them first); no production deploy without owner approval; keep the change to contract tolerance, the query and the receipt row.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox-site"
   ],
@@ -16,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "104705ecdda345fcaae3573bfc36143a",
+      "session_id": "dcc6105a05964c618dfd87771db72de4"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729",
+      "at": "2026-10-29T02:22:26Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d440fc4880bc4324b55105ff0d3abd0f",
       "session_id": "dcc6105a05964c618dfd87771db72de4"
     }
   ]
