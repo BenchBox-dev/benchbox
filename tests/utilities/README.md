@@ -65,7 +65,7 @@ uv run -- python -m pytest -m "tpch and fast and not slow"
 uv run -- python -m pytest -m "duckdb and unit"
 uv run -- python -m pytest -m "sqlite and integration"
 
-uv run -- python -m pytest -m "olap or advanced_sql"
+uv run -- python -m pytest -m "olap or window_functions"
 ```
 
 ## Execution Strategies

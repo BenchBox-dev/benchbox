@@ -2178,9 +2178,6 @@
           "path": "pytest.ini"
         },
         {
-          "path": "tox.ini"
-        },
-        {
           "path": "uv.lock"
         },
         {

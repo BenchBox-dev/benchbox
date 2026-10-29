@@ -48,7 +48,7 @@ extract). Together:
    `codespell`, `pre-commit` and `pygments` are CLI tools or build-time plugins.
    They are correctly absent from
    `import` lines and were verified live by checking the relevant config
-   surface (`pytest.ini`, `tox.ini`).
+   surface (`pytest.ini`).
 6. **Ongoing check.** `make audit-deps` runs
    `_project/scripts/dependency_audit/check_deps.py` in CI (`.github/workflows/lint.yml`)
    and fails if any declared package has zero import sites and is not in one
@@ -172,7 +172,7 @@ or declaration appears unused.
 | `pytest-xdist` | DEV | (CLI plugin via `pytest`) | 0 | KEEP - `-n auto` baked into `pytest.ini` addopts |
 | `ruff` | DEV | (CLI tool) | 0 | KEEP - `ruff check`/`ruff format`; pinned `==0.16.7` |
 | `ty` | DEV | (CLI tool) | 0 | KEEP - `uv run ty check`; configured under `[tool.ty]` |
-| `tox` | DEV | (CLI tool) | 0 | KEEP - `tox.ini` is present and used |
+| `tox` | DEV | (CLI tool) | 0 | REVIEW - no `tox.ini` remains; no config or CI step invokes it |
 | `mutmut` | DEV | (CLI tool) | 0 | KEEP - `[tool.mutmut]` config block targets specific files |
 | `codespell` | DEV | (CLI tool) | 0 | KEEP - invoked via `pre-commit` and CI |
 | `pre-commit` | DEV | (CLI tool) | 0 | KEEP - invoked by local hooks and content-guard CI |
