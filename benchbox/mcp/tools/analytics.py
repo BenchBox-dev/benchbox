@@ -297,7 +297,14 @@ def _format_plan_response(query_plan: dict, format_lower: str, normalized_id: st
         if format_lower == "summary":
             response["summary"] = _summarize_plan(plan)
         else:
-            response["plan_tree"] = render_plan(plan)
+            tree = render_plan(plan)
+            if plan.truncated_at_depth is not None:
+                tree += (
+                    f"\n\n[plan truncated at depth {plan.truncated_at_depth}: "
+                    "operators at that depth have omitted subtrees; request format='json' for the stored markers]"
+                )
+                response["truncated_at_depth"] = plan.truncated_at_depth
+            response["plan_tree"] = tree
     except (KeyError, TypeError, ValueError, AttributeError) as exc:
         return make_error(
             ErrorCode.VALIDATION_ERROR,

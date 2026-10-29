@@ -1271,3 +1271,27 @@ class TestCanonicalPlanRendering:
         summary = _format_plan_response(plan, "summary", "1", 5.0)["summary"]
 
         assert summary["truncated_at_depth"] == 2
+
+    def test_truncated_tree_is_flagged(self):
+        from benchbox.mcp.tools.analytics import _format_plan_response
+
+        plan = _canonical_plan()
+        plan["logical_root"]["children"][0]["children"][0] = {
+            "operator_type": "Join",
+            "operator_id": "join1",
+            "truncated_at_depth": 2,
+            "children_omitted": 2,
+        }
+
+        response = _format_plan_response(plan, "tree", "1", 5.0)
+
+        assert response["truncated_at_depth"] == 2
+        assert "plan truncated at depth 2" in response["plan_tree"]
+
+    def test_complete_tree_has_no_truncation_marker(self):
+        from benchbox.mcp.tools.analytics import _format_plan_response
+
+        response = _format_plan_response(_canonical_plan(), "tree", "1", 5.0)
+
+        assert "truncated_at_depth" not in response
+        assert "truncated" not in response["plan_tree"]
