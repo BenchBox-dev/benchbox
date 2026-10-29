@@ -16846,18 +16846,13 @@
       "title": "Pin the reviewer omp build per platform in one file and install it verified for CI, local and cloud reviews"
     },
     "oracle-omp-release-bump-flow-20261027": {
-      "claim": {
-        "expires_at": "2026-10-30T12:33:49Z",
-        "generation": "d84e36695a8847068a8c1cad28d292dc",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
-      },
+      "claim": null,
       "needs": [
         "oracle-omp-candidate-compat-suite-20261027",
         "oracle-omp-gateway-pinned-build-20261027"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Open an evidenced omp pin-bump pull request for every omp release"
     },
     "oracle-oversize-pr-pending-loop-20261009": {
