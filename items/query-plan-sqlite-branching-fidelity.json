@@ -5,7 +5,7 @@
     "Regression tests distinguish a branching plan from a chain containing the same operator list and verify faithful serialization/reload and fingerprint changes for meaningful topology differences.",
     "Existing simple scan and DML no-double-execution behavior remains intact."
   ],
-  "context": "Implementation in PR #3700 (branch fix/sqlite-plan-topology, head 3193bd185). get_query_plan now emits id|parent|detail rows; parser builds topology from parent ids; multi-root plans get a synthetic Other root; malformed topology raises and is recorded as parse_error. Resume: land PR (pr-arm, oracle), verify merged, then take and finish.\n\nGuardrails: keep EXPLAIN QUERY PLAN acquisition (no ANALYZE; DML never executed). Do not alter other parsers or FINGERPRINT_VERSION.",
+  "context": "Merged via PR #3700 as 5d098208a on develop. CI and oracle review passed on the merged head.",
   "description": "SQLiteQueryPlanParser._build_operator_tree reverses its operator list and gives each new operator at most the preceding operator as its child. This always builds a chain, which is not evidence that compound/subquery branching from SQLite EXPLAIN QUERY PLAN is represented faithfully. Local capture tests establish plan presence and stability but not arbitrary hierarchy fidelity. Reproduce with real SQLite output, then preserve available parent relationships or explicitly reject unsupported topology rather than returning a misleading normalized tree.",
   "links": [
     "benchbox/core/query_plans/parsers/sqlite.py:126-136",
@@ -63,6 +63,14 @@
       "generation": "951a1306c4af407a92b0117c9d3d992c",
       "op": "take",
       "op_id": "b1ca8d9e54e749078e76339055c46e31",
+      "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bb7fd2d6b114a6501df93f97",
+      "at": "2026-10-29T14:36:22Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f32e11d9fc924e59ba4b60fdcac40a62",
       "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
     }
   ]
