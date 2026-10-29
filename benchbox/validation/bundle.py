@@ -1381,6 +1381,74 @@ def _validate_translation_runtime(runtime: Any, vr: ValidationResult) -> None:
             vr.error(f"execution.translation.runtime.{key} must be a non-empty string, got {value!r}")
 
 
+SQL_TRANSLATOR_VERSION_KEY = "sql_translator_version"
+SQL_TRANSLATOR_ATTESTATION_KEYS = ("version", "fork_sha", "upstream_sha", "wheel_sha256", "evidence")
+SQL_TRANSLATOR_IDENTITY_KEYS = ("version", "fork_sha", "upstream_sha", "wheel_sha256")
+TRANSLATOR_VERSION_RECORDED = "recorded"
+TRANSLATOR_VERSION_ATTESTED = "attested"
+TRANSLATOR_VERSION_NOT_RECORDED = "not_recorded"
+_TRANSLATOR_VERSION_RE = re.compile(r"\d+(?:\.\d+)*")
+
+
+class TranslatorVersionError(Exception):
+    pass
+
+
+def attested_translator_version(manifest: Any) -> dict[str, str] | None:
+    if not isinstance(manifest, dict) or SQL_TRANSLATOR_VERSION_KEY not in manifest:
+        return None
+    block = manifest[SQL_TRANSLATOR_VERSION_KEY]
+    label = f"Manifest {SQL_TRANSLATOR_VERSION_KEY}"
+    if not isinstance(block, dict):
+        raise TranslatorVersionError(f"{label} must be an object, got {type(block).__name__}")
+    unknown = sorted(set(block) - set(SQL_TRANSLATOR_ATTESTATION_KEYS))
+    if unknown:
+        raise TranslatorVersionError(f"{label} has unknown keys {unknown}")
+    for key in SQL_TRANSLATOR_ATTESTATION_KEYS:
+        value = block.get(key)
+        if not isinstance(value, str) or not value.strip():
+            raise TranslatorVersionError(f"{label}.{key} must be a non-empty string, got {value!r}")
+    if not _TRANSLATOR_VERSION_RE.fullmatch(block["version"]):
+        raise TranslatorVersionError(f"{label}.version must be a dotted numeric version, got {block['version']!r}")
+    return {key: block[key] for key in SQL_TRANSLATOR_ATTESTATION_KEYS}
+
+
+def reconcile_translator_version(bundle: Any, attested: dict[str, str] | None) -> dict[str, str]:
+    execution = bundle.get("execution") if isinstance(bundle, dict) else None
+    translation = execution.get("translation") if isinstance(execution, dict) else None
+    if isinstance(translation, dict) and "runtime" in translation:
+        runtime = translation["runtime"]
+        if not isinstance(runtime, dict):
+            raise TranslatorVersionError(
+                f"execution.translation.runtime must be an object, got {type(runtime).__name__}"
+            )
+        recorded = {key: runtime[key] for key in SQL_TRANSLATOR_IDENTITY_KEYS if isinstance(runtime.get(key), str)}
+        if attested is not None:
+            for key, value in recorded.items():
+                if attested[key] != value:
+                    raise TranslatorVersionError(
+                        f"Manifest {SQL_TRANSLATOR_VERSION_KEY}.{key} {attested[key]!r} conflicts with the "
+                        f"bundle's recorded execution.translation.runtime.{key} {value!r}"
+                    )
+        return {"source": TRANSLATOR_VERSION_RECORDED, **recorded}
+    if attested is not None:
+        return {"source": TRANSLATOR_VERSION_ATTESTED, **attested}
+    return {"source": TRANSLATOR_VERSION_NOT_RECORDED}
+
+
+def resolve_translator_version(bundle: Any, bundle_path: Path | None = None) -> dict[str, str]:
+    attested = None
+    if bundle_path is not None:
+        try:
+            manifest = json.loads(
+                bundle_path.with_name(f"{bundle_path.stem}{SUBMISSION_MANIFEST_SUFFIX}").read_text(encoding="utf-8")
+            )
+        except (OSError, ValueError):
+            manifest = None
+        attested = attested_translator_version(manifest)
+    return reconcile_translator_version(bundle, attested)
+
+
 def _validate_execution_class_fields(block: Any, label: str, vr: ValidationResult) -> None:
     if not isinstance(block, dict):
         return
@@ -2611,6 +2679,20 @@ def _validate_manifest_class_matches_bundle(manifest: dict[str, Any], primary_pa
         vr.error(f"Manifest execution_class {attested!r} conflicts with the bundle's recorded {recorded!r}")
 
 
+def _validate_manifest_translator_version(manifest: dict[str, Any], primary_path: Path, vr: ValidationResult) -> None:
+    try:
+        attested = attested_translator_version(manifest)
+        if attested is None or not primary_path.is_file():
+            return
+        try:
+            bundle = json.loads(primary_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return
+        reconcile_translator_version(bundle, attested)
+    except TranslatorVersionError as exc:
+        vr.error(str(exc))
+
+
 def _validate_manifest_provenance(manifest: dict[str, Any], primary_path: Path, vr: ValidationResult) -> None:
     funding = manifest.get("funding")
     if funding is not None and funding not in FUNDING_SOURCES:
@@ -2641,6 +2723,7 @@ def _validate_manifest_provenance(manifest: dict[str, Any], primary_path: Path, 
             vr.error("Manifest execution_class requires a non-empty execution_class_evidence string")
 
     _validate_manifest_class_matches_bundle(manifest, primary_path, vr)
+    _validate_manifest_translator_version(manifest, primary_path, vr)
 
     known_defects = manifest.get("known_defects")
     if known_defects is not None:

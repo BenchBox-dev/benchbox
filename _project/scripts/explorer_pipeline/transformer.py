@@ -67,6 +67,7 @@ from benchbox.validation.bundle import (
     COMPANION_SUFFIXES,
     OVERRIDE_SUFFIX,
     accepted_override_rules,
+    resolve_translator_version,
     throughput_stream_defects,
 )
 
@@ -1652,6 +1653,7 @@ class BundleTransformer:
         override = _override_display(bundle_path)
         test_type = _test_type(bundle)
         variant = _variant_info(bundle, bundle_data, bundle_path)
+        resolve_translator_version(bundle_data, bundle_path)
         power_score, power_score_source = _power_score(bundle, bundle_data)
         entry = ManifestEntry(
             result_id=rid,
@@ -1754,6 +1756,7 @@ class BundleTransformer:
         normalized_cost = _normalized_cost(bundle)
         test_type = _test_type(bundle)
         variant = _variant_info(bundle, bundle_data, bundle_path)
+        resolve_translator_version(bundle_data, bundle_path)
         power_score, power_score_source = _power_score(bundle, bundle_data)
         detail = DetailResult(
             result_id=result_id,
