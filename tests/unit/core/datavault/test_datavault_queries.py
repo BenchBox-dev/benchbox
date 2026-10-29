@@ -144,7 +144,7 @@ class TestParameterSubstitution:
 
     def test_get_query_with_custom_params(self, query_manager):
         query = query_manager.get_query(1, params={"delta": 30})
-        assert "INTERVAL '30 days'" in query
+        assert "INTERVAL 30 DAY" in query
         assert ":delta" not in query
 
     def test_get_parameterized_query_returns_tuple(self, query_manager):
@@ -225,3 +225,12 @@ class TestParameterGenerator:
             params = gen.generate_parameters(2, stream_id=stream)
             region = params.as_dict()["region"]
             assert region in REGIONS, f"Invalid region: {region}"
+
+
+def test_every_query_translates_to_sqlite_without_unsupported_interval() -> None:
+    from benchbox.core.datavault.benchmark import DataVaultBenchmark
+
+    queries = DataVaultBenchmark(scale_factor=0.01).get_queries(dialect="sqlite")
+
+    assert queries
+    assert not [qid for qid, sql in queries.items() if "does not support" in sql or "INTERVAL" in sql.upper()]

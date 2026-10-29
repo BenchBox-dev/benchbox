@@ -132,6 +132,34 @@ class TestSparkAdapter:
             PlatformRegistry._platform_metadata = registry_metadata
             PlatformRegistry._auto_registered = registry_auto_registered
 
+    def test_load_does_not_cache_the_source_dataframe_in_the_jvm_heap(self, mock_pyspark, tmp_path):
+        from pathlib import Path
+        from types import SimpleNamespace
+
+        from benchbox.platforms.spark import SparkAdapter
+
+        adapter = SparkAdapter()
+        spark = MagicMock()
+        parquet_path = Path(tmp_path) / "orders.parquet"
+        parquet_path.write_bytes(b"PAR1")
+        df = MagicMock()
+        df.columns = ["id"]
+        df.write.mode.return_value = df.write
+        spark.read.parquet.return_value = df
+        pre_count, post_count = MagicMock(), MagicMock()
+        pre_count.collect.return_value = [(0,)]
+        post_count.collect.return_value = [(7,)]
+        spark.sql.side_effect = [pre_count, post_count]
+
+        with patch("benchbox.platforms.base.data_loading.DataSourceResolver.resolve") as mock_resolve:
+            mock_resolve.return_value = SimpleNamespace(
+                source_type="benchmark_tables", tables={"orders": [parquet_path]}
+            )
+            stats, _, _ = adapter._load_data_spark(MagicMock(), Path(tmp_path), spark)
+
+        df.cache.assert_not_called()
+        assert stats["orders"] == 7
+
     def test_initialization_success(self, mock_pyspark):
         from benchbox.platforms.spark import SparkAdapter
 

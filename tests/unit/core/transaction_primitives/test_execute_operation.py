@@ -514,3 +514,52 @@ class TestFailedPlatformPayload:
         result = bench.execute_operation("op1", conn)
 
         assert result.validation_passed is False
+
+
+@pytest.fixture()
+def sqlite_staged(tmp_path: Path):
+    from benchbox.core.transaction_primitives.schema import get_all_staging_tables_sql
+    from benchbox.platforms.sqlite import SQLiteAdapter
+
+    conn = SQLiteAdapter(database_path=":memory:").create_connection()
+    conn.executescript(get_all_staging_tables_sql("sqlite"))
+    bench = TransactionPrimitivesBenchmark(scale_factor=0.01, output_dir=tmp_path)
+    bench.is_setup = lambda connection: True
+    yield bench, conn
+    conn.close()
+
+
+@pytest.mark.parametrize(
+    ("operation_id", "expected_first_value"),
+    [
+        ("transaction_commit_small", 9100001),
+        ("transaction_commit_medium", 100),
+        ("transaction_commit_large", 1000),
+        ("transaction_rollback_medium", 0),
+        ("transaction_savepoint_deep_nesting", 4),
+        ("transaction_isolation_serializable", 2),
+        ("transaction_truncate_in_transaction", 1),
+        ("transaction_with_cte", 10),
+    ],
+)
+def test_sqlite_runs_multi_statement_operations_repeatably(
+    sqlite_staged, operation_id: str, expected_first_value: int
+) -> None:
+    bench, conn = sqlite_staged
+    for _ in range(2):
+        result = bench.execute_operation(operation_id, conn, platform_key="sqlite", platform_name="sqlite")
+        assert result.status is None, result.error
+        assert result.success
+        assert result.cleanup_success
+        assert result.validation_results[0]["sample"][0][0] == expected_first_value
+    assert conn.execute("SELECT COUNT(*) FROM txn_orders WHERE o_orderkey >= 9000000").fetchone() == (0,)
+
+
+@pytest.mark.parametrize(
+    "operation_id", ["transaction_isolation_read_committed", "transaction_isolation_repeatable_read"]
+)
+def test_sqlite_skips_unsupported_isolation_levels(sqlite_staged, operation_id: str) -> None:
+    bench, conn = sqlite_staged
+    result = bench.execute_operation(operation_id, conn, platform_key="sqlite", platform_name="sqlite")
+    assert result.status == "SKIPPED"
+    assert "SERIALIZABLE" in (result.skip_reason or "")

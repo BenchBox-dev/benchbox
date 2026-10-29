@@ -1,0 +1,1 @@
+{"schema":1,"internal":"Agent write preflight now refuses a linked worktree held by another live agent session."}

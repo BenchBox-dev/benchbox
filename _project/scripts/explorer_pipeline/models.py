@@ -188,6 +188,9 @@ class ManifestEntry(BaseModel):
     compliance_class: str | None = None
     power_score_source: str | None = None
     basis_availability: BasisAvailability | None = None
+    translator_version: str | None = None
+    translator_fork_sha: str | None = None
+    translator_version_source: str | None = None
 
     @field_serializer("normalized_cost")
     def _serialize_normalized_cost(self, cost: NormalizedCost) -> dict[str, Any]:

@@ -8,7 +8,12 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from _project.scripts.explorer_pipeline.contract import EXPLORER_READ_MODEL_VERSION
+from _project.scripts.explorer_pipeline.contract import (
+    EXPLORER_READ_MODEL_VERSION,
+    EXPLORER_TRANSLATOR_READ_MODEL_VERSION,
+    SELECTABLE_READ_MODEL_VERSIONS,
+    TRANSLATOR_RESULT_COLUMNS,
+)
 from _project.scripts.explorer_pipeline.models import (
     BenchmarkSummary,
     DetailResult,
@@ -251,7 +256,12 @@ class DuckDBSnapshotBuilder:
         meta: dict[str, Any],
         bundle_url_prefix: str,
         output_path: Path,
+        read_model_version: int = EXPLORER_READ_MODEL_VERSION,
     ) -> None:
+        if read_model_version not in SELECTABLE_READ_MODEL_VERSIONS:
+            raise ValueError(
+                f"unsupported read model version {read_model_version}; choose one of {list(SELECTABLE_READ_MODEL_VERSIONS)}"
+            )
         try:
             import duckdb
         except ImportError as exc:
@@ -266,8 +276,8 @@ class DuckDBSnapshotBuilder:
 
         try:
             with duckdb.connect(str(candidate_path)) as con:
-                self._create_schema(con)
-                self._create_metadata(con)
+                self._create_schema(con, read_model_version)
+                self._create_metadata(con, read_model_version)
                 self._populate_supporting_tables(con, entries, details_map)
                 cohort_ranking_reasons = {
                     row.result_id: row.ranking_exclusion_reason
@@ -275,7 +285,7 @@ class DuckDBSnapshotBuilder:
                     for row in summary.platforms
                     if row.ranking_exclusion_reason is not None
                 }
-                self._populate_results(con, entries, details_map, prefix, cohort_ranking_reasons)
+                self._populate_results(con, entries, details_map, prefix, cohort_ranking_reasons, read_model_version)
                 self._populate_result_basis_availability(con, entries, details_map)
                 self._populate_query_display_timings(con, entries, details_map)
                 self._populate_query_executions(con, entries, details_map)
@@ -303,7 +313,7 @@ class DuckDBSnapshotBuilder:
             except FileNotFoundError:
                 pass
 
-    def _create_schema(self, con: Any) -> None:
+    def _create_schema(self, con: Any, read_model_version: int = EXPLORER_READ_MODEL_VERSION) -> None:
         con.execute("""
             CREATE TABLE result_environment (
                 result_id   VARCHAR PRIMARY KEY,
@@ -340,7 +350,8 @@ class DuckDBSnapshotBuilder:
                 varying_pass_queries    VARCHAR
             )
         """)
-        con.execute("""
+        con.execute(
+            """
             CREATE TABLE results (
                 result_id            VARCHAR  PRIMARY KEY,
                 benchmark            VARCHAR  NOT NULL,
@@ -421,9 +432,12 @@ class DuckDBSnapshotBuilder:
                 benchmark_support_status VARCHAR,
                 throughput_at_size   DOUBLE,
                 stream_count         INTEGER,
-                power_score_source   VARCHAR
+                power_score_source   VARCHAR"""
+            + self._translator_ddl(read_model_version)
+            + """
             )
-        """)
+        """
+        )
         con.execute("""
             CREATE VIEW result_detail_metrics AS
             SELECT
@@ -725,14 +739,26 @@ class DuckDBSnapshotBuilder:
             )
         """)
 
-    def _create_metadata(self, con: Any) -> None:
+    @staticmethod
+    def _translator_values(entry: ManifestEntry, read_model_version: int) -> tuple:
+        if read_model_version < EXPLORER_TRANSLATOR_READ_MODEL_VERSION:
+            return ()
+        return (entry.translator_version, entry.translator_fork_sha, entry.translator_version_source)
+
+    @staticmethod
+    def _translator_ddl(read_model_version: int) -> str:
+        if read_model_version < EXPLORER_TRANSLATOR_READ_MODEL_VERSION:
+            return ""
+        return "".join(f",\n                {name:<20} {dtype}" for name, dtype in TRANSLATOR_RESULT_COLUMNS)
+
+    def _create_metadata(self, con: Any, read_model_version: int = EXPLORER_READ_MODEL_VERSION) -> None:
         con.execute("""
             CREATE TABLE IF NOT EXISTS metadata (
                 read_model_version INTEGER NOT NULL
             )
         """)
         con.execute("DELETE FROM metadata")
-        con.execute("INSERT INTO metadata VALUES (?)", [EXPLORER_READ_MODEL_VERSION])
+        con.execute("INSERT INTO metadata VALUES (?)", [read_model_version])
 
     def _populate_environment(
         self,
@@ -808,6 +834,7 @@ class DuckDBSnapshotBuilder:
         details_map: dict[str, DetailResult],
         bundle_url_prefix: str,
         cohort_ranking_reasons: dict[str, str],
+        read_model_version: int = EXPLORER_READ_MODEL_VERSION,
     ) -> None:
         rows: list[tuple] = []
         for entry in entries:
@@ -889,6 +916,7 @@ class DuckDBSnapshotBuilder:
                     entry.throughput_at_size,
                     entry.stream_count,
                     entry.power_score_source,
+                    *self._translator_values(entry, read_model_version),
                 )
             )
         if rows:

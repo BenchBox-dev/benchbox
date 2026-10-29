@@ -110,6 +110,12 @@ def standin_not_before(base_change: Moment | None, verdicts: Iterable[tuple[Mome
     return max(filter(None, (base_change, *decisive)), default=None)
 
 
+def _survives_base_change(moment: datetime, base_time: datetime | None) -> bool:
+    from oracle_reviewers.base_change import survives
+
+    return survives(moment, base_time)
+
+
 def _receipt_candidates(
     reviews: Iterable[dict[str, Any]], head_sha: str, base_time: datetime | None
 ) -> list[dict[str, Any]]:
@@ -120,7 +126,7 @@ def _receipt_candidates(
         and review.get("commit_id") == head_sha
         and review.get("state") not in {"PENDING", "DISMISSED"}
         and review.get("submitted_at")
-        and (base_time is None or _parse_time(review["submitted_at"]) > base_time)
+        and _survives_base_change(_parse_time(review["submitted_at"]), base_time)
     ]
 
 
@@ -184,7 +190,7 @@ def _verdict_statuses(statuses: Iterable[dict[str, Any]], base_time: datetime | 
             if status.get("context") == ORACLE_CONTEXT
             and _is_oracle(status.get("login"), status.get("user_type"))
             and status.get("created_at")
-            and (base_time is None or _parse_time(status["created_at"]) > base_time)
+            and _survives_base_change(_parse_time(status["created_at"]), base_time)
         ),
         key=lambda status: (_parse_time(status["created_at"]), status.get("id") or 0),
     )

@@ -1,0 +1,75 @@
+{
+  "attempts": [],
+  "final": {
+    "attempt/state.json": null,
+    "comment.json": null,
+    "review.json": null,
+    "state/state.json": null,
+    "status.json": null
+  },
+  "plan": {
+    "base_ref": "develop",
+    "base_sha": "<sha0>",
+    "binary_files": [],
+    "bot_login": "benchbox-oracle",
+    "brief_max_bytes": 100000,
+    "brief_mode": "oversize",
+    "chain": [],
+    "created_at": "<volatile>",
+    "decision": "skip",
+    "decision_reason": "the pull request is a draft",
+    "evidence_exempt_paths": [
+      "README*.md",
+      "**/README*.md",
+      "CHANGELOG*.md",
+      "**/CHANGELOG*.md",
+      "docs/*.md"
+    ],
+    "evidence_files": [],
+    "evidence_protected_files": [],
+    "findings_delivery": "review",
+    "gate_paths": [],
+    "head_sha": "<sha1>",
+    "manual": false,
+    "max_attempts": 5,
+    "max_defects": 10,
+    "mode": "enforce",
+    "omp_sha256": "<volatile>",
+    "open_findings": {},
+    "pool_blocked_until": {},
+    "pr": 82,
+    "protocol": null,
+    "repo": "BenchBox-dev/BenchBox",
+    "reviewed_head": null,
+    "run_id": "<volatile>",
+    "run_uuid": "<volatile>",
+    "schema": 1,
+    "scope": "full",
+    "scope_paths": [],
+    "scope_reasons": [],
+    "status_context": "oracle-verdict"
+  },
+  "posted": {
+    "artifacts": [],
+    "comments": [],
+    "dispatches": [],
+    "reviews": [],
+    "statuses": [],
+    "threads": []
+  },
+  "prompts": [],
+  "steps": {
+    "finalize": null,
+    "plan": {
+      "code": 0,
+      "outputs": {
+        "decision": "skip",
+        "head_sha": "<sha1>",
+        "post": "false",
+        "pr": "82"
+      }
+    },
+    "publish": null
+  },
+  "summary": "oracle-verdict plan for #82: skip (the pull request is a draft)\n"
+}

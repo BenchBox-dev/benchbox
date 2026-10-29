@@ -46,7 +46,11 @@ Ordering + aggregation check: after the three runs,
 make uat-gate-check STAGE1=<stage1-run-dir> STAGE2=<stage2-run-dir> STAGE3=<stage3-run-dir>
 ```
 
-reads the three stage summaries, verifies from their machine-recorded
+reads the three stage summaries (a stage may be several shard run directories
+produced with `make uat-sweep ... PLATFORMS=<a,b>`; the gate then requires the
+union of the shard cells to equal the stage's planned cells, one source commit
+and distribution digest across shards, and the cross-scale floor to be met by
+the summed shard pairs), verifies from their machine-recorded
 `completed_at` timestamps that no Docker `action=up` in stages 2/3 preceded
 stage-1 completion (nor stage 3 before stage-2 completion), enforces the
 mechanized campaign-report items below, and writes the combined evidence file

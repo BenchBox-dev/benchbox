@@ -151,6 +151,31 @@ versions, per-engine cell counts, verified improvements and expected
 differences) into its description. Verified improvements are published-result
 impacts and are listed as such.
 
+## Translator identity in result bundles
+
+A result bundle whose run logged SQL translation outcomes records
+`execution.translation.runtime` with the `distribution`, `version`, `fork_sha`,
+`upstream_sha` and `wheel_sha256` (the pin's `sha256`) of the bundled SQLGlot
+runtime, read from `benchbox/_vendor/sqlglot.json`. The field is additive under
+the existing result schema version and the public export and `benchbox submit`
+keep it unchanged; `benchbox.validation.bundle` type-checks it when present.
+Absent means not recorded: old bundles, DataFrame runs and runs without
+translation outcomes carry none, and it is never inferred. SQLGlot also changes
+SQL in paths that log no translation outcomes (read-primitives variant
+contracts, TPC-DS qualification); such runs show no runtime.
+
+Published bundles cannot be edited, so a bundle that predates the field can be
+attested through its manifest sidecar: `sql_translator_version` holds `version`,
+`fork_sha`, `upstream_sha`, `wheel_sha256` and a required `evidence` string, and
+`scripts/annotate_sql_translator_version.py` writes it from the reconciled
+per-bundle wheel table in `results-data/CORPUS_NOTES.md` without touching bundle
+JSON. `resolve_translator_version` in `benchbox.validation.bundle` returns the
+bundle's own runtime as `recorded`, else the sidecar value as `attested`, else
+`not_recorded`. A malformed attestation, or one that disagrees with a recorded
+runtime, is an error in the submission validator, `results-data/validate_corpus.py`
+and the Explorer pipeline. It changes no ranking identity and carries no SQL
+hashes.
+
 ## Fork diff
 
 The gate shows what the new wheel does to the shipped queries; it does not show

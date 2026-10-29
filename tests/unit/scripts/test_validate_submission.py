@@ -853,6 +853,51 @@ class TestValidateBundle:
         assert not vr.ok
         assert any("execution.translation.status='fallback'" in e for e in vr.errors)
 
+    def _translation_bundle(self, runtime):
+        data = _minimal_bundle()
+        translation = {"status": "success", "strict_mode": False}
+        if runtime is not None:
+            translation["runtime"] = runtime
+        data["execution"] = {"translation": translation}
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+        return vr
+
+    def test_translation_without_runtime_is_accepted(self):
+        vr = self._translation_bundle(None)
+        assert vr.ok, vr.errors
+
+    def test_translation_runtime_is_accepted(self):
+        runtime = {
+            "distribution": "benchbox-sqlglot",
+            "version": "30.25.0.2",
+            "fork_sha": "a" * 40,
+            "upstream_sha": "b" * 40,
+            "wheel_sha256": "c" * 64,
+        }
+        vr = self._translation_bundle(runtime)
+        assert vr.ok, vr.errors
+
+    @pytest.mark.parametrize(
+        "runtime, fragment",
+        [
+            ("30.25.0.2", "execution.translation.runtime must be an object"),
+            ({"distribution": "d", "fork_sha": "a", "upstream_sha": "b", "wheel_sha256": "c"}, "runtime.version"),
+            (
+                {"distribution": "d", "version": 30, "fork_sha": "a", "upstream_sha": "b", "wheel_sha256": "c"},
+                "runtime.version",
+            ),
+            (
+                {"distribution": "d", "version": "1", "fork_sha": "", "upstream_sha": "b", "wheel_sha256": "c"},
+                "runtime.fork_sha",
+            ),
+        ],
+    )
+    def test_malformed_translation_runtime_is_rejected(self, runtime, fragment):
+        vr = self._translation_bundle(runtime)
+        assert not vr.ok
+        assert any(fragment in e for e in vr.errors)
+
     def test_all_zero_timings_fails(self):
         data = _minimal_bundle()
         data["queries"] = [
@@ -2005,6 +2050,7 @@ class TestSubmissionDeterministicGates:
             LIST_AGGREGATE_TPCHAVOC_SKIPS,
         )
         from benchbox.sql_compat.rules.execution_filter.postgres_tpchavoc import POSTGRES_TPCHAVOC_SKIPS
+        from benchbox.sql_compat.rules.execution_filter.sqlite_tpchavoc import SQLITE_TPCHAVOC_SKIPS
         from benchbox.validation.bundle import (
             TPCHAVOC_CANONICAL_VARIANTS,
             TPCHAVOC_DOCUMENTED_SKIPS,
@@ -2023,6 +2069,7 @@ class TestSubmissionDeterministicGates:
             "snowflake": frozenset(CLOUD_TPCHAVOC_SKIPS["snowflake"]),
             "databricks": frozenset(CLOUD_TPCHAVOC_SKIPS["databricks"]),
             "bigquery": frozenset(CLOUD_TPCHAVOC_SKIPS["bigquery"]),
+            "sqlite": frozenset(SQLITE_TPCHAVOC_SKIPS),
         } == TPCHAVOC_DOCUMENTED_SKIPS
         assert frozenset(LIST_AGGREGATE_TPCHAVOC_SKIPS) == TPCHAVOC_LIST_AGGREGATE_SKIP_PLATFORMS
         from benchbox.validation.bundle import TPCHAVOC_LIST_AGGREGATE_PLATFORM_ALIASES
@@ -2052,6 +2099,7 @@ class TestSubmissionDeterministicGates:
             "Snowflake",
             "Databricks",
             "BigQuery",
+            "SQLite",
         ):
             assert _tpchavoc_documented_skips(platform) == frozenset(benchmark.get_platform_skip_queries(platform))
 

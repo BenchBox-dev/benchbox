@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "Manifest sidecars can attest the SQLGlot translator version of a published bundle that predates execution.translation.runtime through a sql_translator_version field (version, fork and upstream commits, wheel checksum, evidence). The 58 local rerun bundles now carry it from the reconciled per-bundle wheel record (44 on 30.24.0.17, 14 on 30.25.0.2); the validator, corpus gate and Explorer pipeline read it through one resolver that labels it attested, and a conflict with a recorded runtime fails closed."
+    }
+  ]
+}

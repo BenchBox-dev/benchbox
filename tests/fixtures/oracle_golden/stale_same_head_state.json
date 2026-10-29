@@ -1,0 +1,75 @@
+{
+  "dispatches": [
+    {
+      "inputs": {
+        "head": "<sha0>",
+        "pr": "62"
+      },
+      "ref": "develop",
+      "workflow": "oracle-verdict.yml"
+    }
+  ],
+  "posted": {
+    "artifacts": [
+      "oracle-verdict-capture",
+      "oracle-verdict-state-62"
+    ],
+    "comments": [],
+    "dispatches": [
+      {
+        "inputs": {
+          "head_sha": "<sha0>",
+          "pr": "62"
+        },
+        "ref": "develop",
+        "workflow": "oracle-gate.yml"
+      },
+      {
+        "inputs": {
+          "head": "<sha0>",
+          "pr": "62"
+        },
+        "ref": "develop",
+        "workflow": "oracle-verdict.yml"
+      }
+    ],
+    "reviews": [
+      {
+        "body": "### oracle-verdict: pending for `<sha0>`\n\nThis result supersedes those for earlier heads; their open review threads still apply.\n\n**Reviewers not available**\n\n- medium (attempt 1): absent (invalid): the reviewer output is not JSON: Expecting value; recovery: retry (fallback, unavailable)\n- medium (attempt 2): absent (invalid): the reviewer output is not JSON: Expecting value; recovery: stop (fallback, unavailable)\n- stopped: the process is blocked (the reviewer output is not JSON: Expecting value)\n",
+        "commit_id": "<sha0>",
+        "creator": "benchbox-oracle[bot]"
+      }
+    ],
+    "statuses": [
+      {
+        "context": "oracle-verdict",
+        "creator": "benchbox-oracle[bot]",
+        "description": "pending: stopped: the process is blocked (the reviewer output is not JSON: Expecting value)",
+        "state": "pending",
+        "target_url": "https://github.localhost/BenchBox-dev/BenchBox/actions/runs/<run>"
+      },
+      {
+        "context": "oracle-verdict",
+        "creator": "benchbox-oracle[bot]",
+        "description": "oracle-verdict failed twice without a result at: Run the attempt loop. Rerun with /oracle-review or push a fix",
+        "state": "pending",
+        "target_url": "https://github.localhost/BenchBox-dev/BenchBox/actions/runs/<run>"
+      }
+    ],
+    "threads": []
+  },
+  "sweeps": [
+    {
+      "code": 0,
+      "summary": "retry dispatched for #62: its retry is due\noracle-verdict sweep dispatched 1 retry\n"
+    },
+    {
+      "code": 0,
+      "summary": "oracle-verdict #62 <sha0>: oracle-verdict failed twice without a result at: Run the attempt loop. Rerun with /oracle-review or push a fix\noracle-verdict sweep dispatched 0 retries\n"
+    },
+    {
+      "code": 0,
+      "summary": "retry not dispatched for #62: the failure is already surfaced as pending\noracle-verdict sweep dispatched 0 retries\n"
+    }
+  ]
+}

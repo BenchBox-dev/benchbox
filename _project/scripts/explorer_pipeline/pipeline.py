@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from _project.scripts.explorer_pipeline.contract import EXPLORER_READ_MODEL_VERSION
 from _project.scripts.explorer_pipeline.duckdb_builder import DuckDBSnapshotBuilder
 from _project.scripts.explorer_pipeline.models import (
     BenchmarkSummary,
@@ -546,6 +547,7 @@ class ExplorerPipeline:
         trust_label: str = "maintainer-run",
         visibility: str = "public-curated",
         bundle_url_prefix: str = "/results/data/bundles",
+        read_model_version: int = EXPLORER_READ_MODEL_VERSION,
     ) -> BuildStats:
         bundles_dir = data_dir / "bundles"
         if not bundles_dir.exists():
@@ -732,6 +734,7 @@ class ExplorerPipeline:
                 meta=meta,
                 bundle_url_prefix=bundle_url_prefix,
                 output_path=duckdb_path,
+                read_model_version=read_model_version,
             )
             invariant_errors = check_snapshot(duckdb_path)
             if invariant_errors:

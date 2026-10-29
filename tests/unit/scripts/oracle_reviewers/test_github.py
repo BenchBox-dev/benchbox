@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -849,34 +850,45 @@ def test_verdict_runs_raises_after_the_bounded_retries(monkeypatch: pytest.Monke
     assert pauses == [github.RUN_LIST_PAUSE_SECONDS]
 
 
-def test_in_flight_pulls_reads_only_the_first_page_of_active_runs(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    seen: list[str] = []
+def _listing(*titles: str, total: int | None = None) -> str:
+    runs = [{"display_title": title} for title in titles]
+    return json.dumps([{"total_count": len(runs) if total is None else total, "workflow_runs": runs}])
+
+
+def test_in_flight_pulls_reads_every_page_of_each_active_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[tuple[str, ...]] = []
     pages = {
-        "status=pending": {"workflow_runs": [{"display_title": "oracle-verdict (workflow_dispatch pr=11)"}]},
-        "status=waiting": {"workflow_runs": [{"display_title": "oracle-verdict (workflow_dispatch pr=12)"}]},
-        "status=requested": {"workflow_runs": [{"display_title": "oracle-verdict (workflow_dispatch pr=13)"}]},
-        "status=queued": {"workflow_runs": [{"display_title": "oracle-verdict (workflow_dispatch pr=7)"}]},
-        "status=in_progress": {
-            "workflow_runs": [
-                {"display_title": "oracle-verdict (pull_request_target pr=9)"},
-                {"display_title": "oracle-verdict (schedule pr=sweep)"},
-            ]
-        },
+        "status=pending": _listing("oracle-verdict (workflow_dispatch pr=11)"),
+        "status=waiting": _listing("oracle-verdict (workflow_dispatch pr=12)"),
+        "status=requested": _listing("oracle-verdict (workflow_dispatch pr=13)"),
+        "status=queued": _listing("oracle-verdict (workflow_dispatch pr=7)"),
+        "status=in_progress": _listing(
+            "oracle-verdict (pull_request_target pr=9)", "oracle-verdict (schedule pr=sweep)"
+        ),
     }
 
-    def fake_json(path: str) -> dict[str, Any]:
-        seen.append(path)
-        return next(page for key, page in pages.items() if key in path)
+    def fake_gh(*args: str, accept: str | None = None) -> str:
+        seen.append(args)
+        return next(page for key, page in pages.items() if key in args[-1])
 
-    monkeypatch.setattr(github, "get_json", fake_json)
+    monkeypatch.setattr(github, "_gh", fake_gh)
     assert github.in_flight_pulls(REPO, "oracle-verdict.yml") == frozenset({7, 9, 11, 12, 13})
     assert seen == [
-        f"repos/{REPO}/actions/workflows/oracle-verdict.yml/runs?status={status}&per_page=100"
+        (
+            "--paginate",
+            "--slurp",
+            f"repos/{REPO}/actions/workflows/oracle-verdict.yml/runs?status={status}&per_page=100",
+        )
         for status in ("pending", "waiting", "requested", "queued", "in_progress")
     ]
-    assert "--paginate" not in " ".join(seen)
+
+
+def test_in_flight_pulls_rejects_a_listing_shorter_than_its_reported_total(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        github, "_gh", lambda *args, accept=None: _listing("oracle-verdict (workflow_dispatch pr=11)", total=101)
+    )
+    with pytest.raises(github.RunListingCapped):
+        github.in_flight_pulls(REPO, "oracle-verdict.yml")
 
 
 def test_post_status_posts_with_the_given_token(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -894,6 +906,95 @@ def test_post_status_posts_with_the_given_token(monkeypatch: pytest.MonkeyPatch)
     argv, env = calls[0]
     assert argv[:4] == ["gh", "api", "--method", "POST"] and f"repos/{REPO}/statuses/{SHA}" in argv
     assert env["GH_TOKEN"] == "app-token" and environment.get("GH_TOKEN") != "app-token"
+
+
+class _Calls:
+    def __init__(self, log: Path) -> None:
+        self.log = log
+
+    def __getitem__(self, index: int) -> tuple[list[str], dict[str, str]]:
+        record = json.loads(self.log.read_text(encoding="utf-8").splitlines()[index])
+        return record["argv"], {"GH_TOKEN": record["token"]}
+
+
+def _recording_run(monkeypatch: pytest.MonkeyPatch, returncode: int = 0, stdout: str = "") -> _Calls:
+    folder = Path(tempfile.mkdtemp(prefix="gh-shim-"))
+    log = folder / "calls.jsonl"
+    shim = folder / "gh"
+    shim.write_text(
+        f"#!{sys.executable}\n"
+        "import json, os, sys\n"
+        f"open({str(log)!r}, 'a').write(json.dumps({{'argv': ['gh', *sys.argv[1:]], 'token': os.environ.get('GH_TOKEN')}}) + '\\n')\n"
+        f"sys.stdout.write({stdout!r})\n"
+        f"sys.stderr.write({'refused' if returncode else ''!r})\n"
+        f"sys.exit({returncode})\n",
+        encoding="utf-8",
+    )
+    shim.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{folder}{os.pathsep}{os.environ['PATH']}")
+    return _Calls(log)
+
+
+def test_post_file_posts_the_payload_file_with_the_given_token(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    calls = _recording_run(monkeypatch)
+    payload = tmp_path / "review.json"
+
+    github.post_file(f"repos/{REPO}/pulls/7/reviews", payload, "app-token")
+
+    argv, env = calls[0]
+    assert argv == ["gh", "api", "--method", "POST", f"repos/{REPO}/pulls/7/reviews", "--input", str(payload)]
+    assert env["GH_TOKEN"] == "app-token"
+
+
+def test_post_file_names_the_path_and_the_refusal_without_the_token(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _recording_run(monkeypatch, returncode=1)
+    with pytest.raises(github.GitHubError, match=r"could not post to repos/.*/issues/7/comments: refused") as caught:
+        github.post_file(f"repos/{REPO}/issues/7/comments", tmp_path / "x.json", "app-token")
+    assert "app-token" not in str(caught.value)
+
+
+def test_pull_base_ref_reads_the_base_with_the_given_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = _recording_run(monkeypatch, stdout="develop\n")
+
+    assert github.pull_base_ref(REPO, 7, "app-token") == "develop"
+
+    argv, env = calls[0]
+    assert argv == ["gh", "api", f"repos/{REPO}/pulls/7", "--jq", ".base.ref"] and env["GH_TOKEN"] == "app-token"
+
+
+def test_dispatch_gate_runs_the_gate_workflow_from_develop_with_the_given_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = _recording_run(monkeypatch)
+
+    github.dispatch_gate(REPO, 7, SHA, "job-token")
+
+    argv, env = calls[0]
+    assert argv == [
+        "gh",
+        "workflow",
+        "run",
+        "oracle-gate.yml",
+        "--repo",
+        REPO,
+        "--ref",
+        "develop",
+        "-f",
+        "pr=7",
+        "-f",
+        f"head_sha={SHA}",
+    ]
+    assert env["GH_TOKEN"] == "job-token"
+
+
+def test_dispatch_gate_and_base_read_raise_on_refusal(monkeypatch: pytest.MonkeyPatch) -> None:
+    _recording_run(monkeypatch, returncode=1)
+    with pytest.raises(github.GitHubError, match="could not dispatch the gate for #7"):
+        github.dispatch_gate(REPO, 7, SHA, "job-token")
+    with pytest.raises(github.GitHubError, match="could not read the base of #7"):
+        github.pull_base_ref(REPO, 7, "app-token")
 
 
 def _page(runs: int, total: int | None) -> dict[str, Any]:

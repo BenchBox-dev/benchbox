@@ -18,9 +18,9 @@ operations:
   write_sql: "BEGIN TRANSACTION;\nINSERT INTO txn_orders\nSELECT 9200000 + n, 1, 'O', 1000.0 * n, DATE '1998-01-01', '5-LOW', 'Clerk#000000001', 0, 'tx_medium'\nFROM (SELECT unnest(generate_series(1, 100)) AS n) t;\nCOMMIT;\n"
   validation_queries:
   - id: verify_medium_commit
-    sql: SELECT COUNT(*) as cnt FROM txn_orders WHERE o_orderkey BETWEEN 9200000 AND 9200099
+    sql: SELECT COUNT(*) as cnt FROM txn_orders WHERE o_orderkey BETWEEN 9200001 AND 9200100
     expected_rows: 1
-  cleanup_sql: "DELETE FROM txn_orders WHERE o_orderkey BETWEEN 9200000 AND 9200099\n"
+  cleanup_sql: "DELETE FROM txn_orders WHERE o_orderkey BETWEEN 9200001 AND 9200100\n"
   expected_rows_affected: 100
 - id: transaction_commit_large
   category: overhead
@@ -108,6 +108,8 @@ operations:
     expected_rows: 1
   cleanup_sql: "DELETE FROM txn_orders WHERE o_comment = 'serializable'\n"
   expected_rows_affected: 2
+  platform_overrides:
+    sqlite: "BEGIN TRANSACTION;\nINSERT INTO txn_orders VALUES (9800001, 1, 'O', 1000.0, DATE '1998-01-01', '5-LOW', 'Clerk#000000001', 0, 'serializable');\nINSERT INTO txn_orders VALUES (9800002, 2, 'O', 2000.0, DATE '1998-01-01', '5-LOW', 'Clerk#000000001', 0, 'serializable');\nCOMMIT;\n"
 - id: transaction_mixed_dml_small
   category: multi_statement
   description: Tests mixed INSERT/UPDATE/DELETE within single transaction (small scale)
@@ -203,6 +205,7 @@ operations:
       write_sql: null
     mariadb:
       write_sql: null
+    sqlite: "BEGIN TRANSACTION;\nINSERT INTO txn_orders VALUES (9970001, 1, 'O', 1000.0, DATE '1998-01-01', '5-LOW', 'Clerk#000000001', 0, 'before_truncate');\nDELETE FROM txn_orders;\nINSERT INTO txn_orders VALUES (9970002, 2, 'O', 2000.0, DATE '1998-01-02', '5-LOW', 'Clerk#000000001', 0, 'after_truncate');\nCOMMIT;\n"
 - id: transaction_create_temp_table
   category: advanced
   description: Tests transaction-scoped temporary table creation and usage

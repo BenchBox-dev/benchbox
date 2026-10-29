@@ -77,6 +77,27 @@ their lifecycle.
 Zero deletion authority: No metadata field (including manual release status) authorizes
 automated deletion. Removal remains strictly gated by `make worktree-remove`.
 
+## Session ownership guard
+
+`make agent-write-preflight` claims the linked worktree for the current agent session, identified
+by the first set of `PI_SESSION_ID`, `CLAUDE_CODE_SESSION_ID`, `CLAUDE_SESSION_ID`,
+`CODEX_SESSION_ID`, `AGENT_SESSION_ID`. The claim records the session id plus the pid and process
+start time of the harness process, in `--worktree` Git config. A second session is refused while
+the recorded process is alive; a dead pid or a pid with a different start time counts as stale and
+is replaced. No wall-clock age is used. Runs without any session variable (humans) skip the guard.
+On Windows, or when `ps` cannot identify a long-lived harness process, the guard prints a warning
+and records nothing rather than recording a claim that would go stale immediately. A harness that
+runs every command in a throwaway shell can declare its own long-lived pid with
+`BENCHBOX_HARNESS_PID`; an invalid or dead value also records nothing.
+
+```bash
+make worktree-session-release WORKTREE_PATH="$WORKTREE_PATH"
+BENCHBOX_WORKTREE_TAKEOVER=1 make agent-write-preflight
+```
+
+The first gives up your claim; the second takes over a worktree whose owner is live but abandoned
+(`BENCHBOX_WORKTREE_TAKEOVER=1 make worktree-session-release` clears another session's claim).
+
 ## Batch delivery choice
 
 Use serial mode for independent, cross-repository, review-separated, or

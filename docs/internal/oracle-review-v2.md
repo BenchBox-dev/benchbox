@@ -193,6 +193,46 @@ If any of C2 to C10 cannot pass on GitHub-hosted runners, the fallback is the
 same `review` job without posting steps, plus a separate `post` job that holds
 the App key and reads the uploaded artifacts.
 
+### Review driver
+
+`cli.py drive <phase>` is the one entrypoint that orchestrates a review. Until
+the workflow is cut over to it, the live review still runs the existing
+per-command steps and the driver runs only as a non-posting shadow beside
+them. After the cutover each phase is its own step and holds only the secrets
+that phase uses, so the attempt loop never sees the classifier key, the App
+token or the App private key.
+
+| Phase | Does | Secrets it holds |
+|---|---|---|
+| `prepare` | Plans the review, then classifies the change for attempt 1 (a classification failure leaves the attempts pending, it does not fail the step). | job token, TypeSafe key |
+| `harness` | Installs the pinned omp build from the policy and records its version; a failed install leaves the attempts absent. | none |
+| `scan` | Searches the declared scratch roots for the exact TypeSafe key, Tailscale OAuth secret and job token. Runs before the reviewer, after the tailnet join and after the last exit. | TypeSafe key, OAuth secret, job token |
+| `isolation` | Verifies the Linux process isolation prerequisite; fails closed. | none |
+| `attempts` | Runs attempts until the chain stops or an invalid attempt needs a recovery judgment. | gateway token and URL |
+| `recover` | Asks the judgment service how to recover the last invalid attempt. | TypeSafe key |
+| `finalize` | Counts the attempts, validates and decides, writes the status, comment, review and retry state, then redacts every secret value from the results. | every secret the job holds |
+| `publish` | Runs the guard, posts the status, comment and review, hands the retry state to the upload steps, and dispatches the gate. | App token, job token |
+| `sweep` | Dispatches due retries. | job token, App token |
+
+Phases pass state through files under `$RUNNER_TEMP` (`oracle-plan`,
+`oracle-classification`, `oracle-attempts`, `oracle-final`) and report through
+step outputs, so `recover` and `attempts` alternate in fixed workflow steps
+because a judgment key cannot share an environment with the reviewer.
+
+The environment adapter supplies what differs by execution environment: the
+PR context, the scan roots and secret names, the isolation capability, the
+harness install, and the result sink (`GitHubSink` posts; `RecordingSink`
+records what would be posted). The CI adapter is `CiEnvironment`.
+
+While the driver is proven against live runs it also runs as a shadow after
+the existing steps. `drive prepare --shadow` re-plans into `oracle-shadow`,
+`drive finalize --shadow` re-finalizes the same attempts there, and
+`drive compare` records what `publish` would post through a `RecordingSink` and
+compares the plan, the final files and the posting intents with what the
+posting steps did. The result is in the step summary and in the
+`oracle-verdict-shadow-<pr>` artifact (`result.json`). Shadow steps never post
+and never fail the job.
+
 ## Inert-path manifest
 
 `.github/inert-paths.txt` is the source of truth for code-driven review and
@@ -344,7 +384,11 @@ disposition whose citation does not verify is not invalid: the defect stays open
 and the disposition is published with the evidence gap. A demoted withdrawal or
 fix is judged exactly as a maintain, so its concedes and claim cannot invalidate
 it. A keep-open verdict is never discarded or rerolled; only the safe direction
-is taken. A withdrawal without a verified file-and-line citation counts as not
+is taken. A citation may name any path the verdict schema accepts, including
+spaces, `+`, non-ASCII characters and a leading hyphen, but never `..` or an
+absolute path, and its exact path must be in the credited read set. A reply or
+reviewer claim is sanitized to a stable canonical form, so replaying a recorded
+verdict never changes a claim that already matched. A withdrawal without a verified file-and-line citation counts as not
 fixed (the head-commit existence check still runs when citations are marked), as
 does a defect marked fixed on an unchanged patch, so only evidenced dispositions
 leave the open list; withdrawals are reported separately as never defects. Every
@@ -718,12 +762,16 @@ nothing.
   runs counts, as a decisive result or a surfaced hold: the sweep reads the
   status's run, and a pull request that shares the head SHA with another
   ignores the other's statuses and still recovers. A status whose run cannot
-  be read counts as the pull request's own. Without the App the sweep reports the gap
+  be read counts as the pull request's own. A state or status from before the
+  pull request's latest base retarget is ignored, as the gate ignores it, so a
+  fresh review that fails before posting is recovered; a retarget history that
+  cannot be read fails that pull request's lookup. Without the App the sweep reports the gap
   instead of failing. A failure in one PR's lookup, dispatch or surfacing is
   reported, the others continue, then the job fails. If the runs listing fails
   twice or is capped, the sweep degrades: it dispatches only due retries, using
-  a bounded lookup of every non-completed run status for the in-flight check,
-  and says so in the summary. If that lookup also fails it dispatches nothing.
+  a paginated lookup of every non-completed run status for the in-flight check,
+  and says so in the summary. If that lookup fails or returns fewer runs than
+  the reported total, the in-flight state is unknown and it dispatches nothing.
   A degraded sweep lists the last 24 hours of runs to bound each due retry by
   the same two-failure stop, surfaced-failure check and daily dispatch budget as
   a full sweep, and holds the retry when even that listing fails or the
@@ -1018,6 +1066,21 @@ carries the suite output, the per-platform hashes, the `--version` transcript
 and the `--help` difference from the previous build. A red candidate opens
 nothing: the old pin stands and the run fails with the suite output in its
 summary. `make omp-bump-prepare` runs the same preparation locally.
+
+GitHub does not start `pull_request_target` workflows for a pull request the
+job token opens, and the sweep never bootstraps a pull request with no state or
+prior run, so the bump job starts the review itself. Right after it opens the
+pull request (or finds the `chore/omp-pin-<version>` pull request still open) it
+checks whether the head already carries an `oracle-verdict` commit status or a
+recent `oracle-verdict` run title names it and, when neither does, runs
+`gh workflow run oracle-verdict.yml --ref develop -f
+pr=<number> -f head=<sha>` with the same job token. A token-started
+`workflow_dispatch` is the one event GitHub does not suppress, so the job needs
+only `actions: write` beyond its existing grants and no App credential. A
+rerun of the bump job therefore reviews a head that has none, such as one left
+behind by a failed dispatch, and never starts a second run for a head that has
+one; a closed bump pull request is left alone. The workflow is classified as
+gate machinery, so a change to it is reviewed at the gate tier.
 
 The owner runs `make omp-candidate-check VERSION=<version>` on the Mac
 (darwin-arm64) from the bump's branch and posts the `Omp candidate check:` line

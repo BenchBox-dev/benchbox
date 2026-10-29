@@ -66,7 +66,9 @@ from benchbox.validation.bundle import (
     APPLIED_RECEIPT_MAX_ENTRIES,
     COMPANION_SUFFIXES,
     OVERRIDE_SUFFIX,
+    TRANSLATOR_VERSION_NOT_APPLICABLE,
     accepted_override_rules,
+    resolve_translator_version,
     throughput_stream_defects,
 )
 
@@ -563,6 +565,21 @@ def _variant_info(
 
 
 _EXECUTION_MODES = frozenset({"sql", "dataframe"})
+
+
+def _translator_columns(bundle_data: Any, bundle_path: Path, execution_mode: str | None) -> dict[str, str | None]:
+    resolved = resolve_translator_version(bundle_data, bundle_path)
+    if execution_mode == "dataframe":
+        return {
+            "translator_version": None,
+            "translator_fork_sha": None,
+            "translator_version_source": TRANSLATOR_VERSION_NOT_APPLICABLE,
+        }
+    return {
+        "translator_version": resolved.get("version"),
+        "translator_fork_sha": resolved.get("fork_sha"),
+        "translator_version_source": resolved["source"],
+    }
 
 
 def _execution_mode(bundle: BundleDocument) -> str | None:
@@ -1652,6 +1669,8 @@ class BundleTransformer:
         override = _override_display(bundle_path)
         test_type = _test_type(bundle)
         variant = _variant_info(bundle, bundle_data, bundle_path)
+        execution_mode = _execution_mode(bundle)
+        translator = _translator_columns(bundle_data, bundle_path, execution_mode)
         power_score, power_score_source = _power_score(bundle, bundle_data)
         entry = ManifestEntry(
             result_id=rid,
@@ -1684,7 +1703,7 @@ class BundleTransformer:
             visibility=visibility,
             funding=_funding(bundle),
             platform_version=_platform_version(bundle),
-            execution_mode=_execution_mode(bundle),
+            execution_mode=execution_mode,
             tuning_mode=_tuning_mode(bundle),
             tuning_hash=_tuning_hash(bundle),
             requested_config_hash=_requested_config_hash(bundle),
@@ -1712,6 +1731,7 @@ class BundleTransformer:
             compliance_class=_compliance_class(bundle),
             power_score_source=power_score_source,
             basis_availability=_compute_basis_availability(timings),
+            **translator,
         )
         reason = ranking_exclusion_reason(entry)
         reason = _throughput_stream_exclusion(bundle, bundle_data, test_type, reason)
@@ -1754,6 +1774,7 @@ class BundleTransformer:
         normalized_cost = _normalized_cost(bundle)
         test_type = _test_type(bundle)
         variant = _variant_info(bundle, bundle_data, bundle_path)
+        resolve_translator_version(bundle_data, bundle_path)
         power_score, power_score_source = _power_score(bundle, bundle_data)
         detail = DetailResult(
             result_id=result_id,

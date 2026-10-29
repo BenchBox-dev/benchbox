@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "The published corpus adds 58 replacement local bundles across ClickHouse Local, DataFusion, and SQLite with raw-text DuckDB source dialect translation, resolving superseded SQL translations from prior releases. 44 ran on SQLGlot fork 30.24.0.17 and 14 (SQLite and DataFusion Read Primitives, DataFusion ClickBench and TPC-DI, ClickHouse Local CoffeeShop and TPC-DI) on 30.25.0.2.",
+      "platforms": [
+        "clickhouse-local",
+        "datafusion",
+        "sqlite"
+      ]
+    }
+  ]
+}

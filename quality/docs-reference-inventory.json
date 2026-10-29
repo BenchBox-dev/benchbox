@@ -582,17 +582,6 @@
    "kinds": {
     "unresolved": 1
    },
-   "occurrences": 1,
-   "path": "_project/analysis/known-stranded-commits.txt",
-   "rule": "project-records",
-   "target_count": 1,
-   "targets_sha256": "80f5fb805ec0e8f3e3570013b0458678a1c8c6e9010901215fcd525746c42b26"
-  },
-  {
-   "disposition": "historical-record",
-   "kinds": {
-    "unresolved": 1
-   },
    "occurrences": 2,
    "path": "_project/analysis/phase-3-promotion-metrics.md",
    "rule": "project-records",
@@ -2563,13 +2552,17 @@
    "disposition": "fixture-data",
    "kinds": {
     "file": 1,
-    "pattern": 1
+    "pattern": 2
    },
-   "occurrences": 3,
+   "occurrences": 4,
    "path": "tests/fixtures/fast_tier_baseline/tests-00.json",
    "rule": "test-sample-data",
-   "target_count": 2,
+   "target_count": 3,
    "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/.gitattributes]"
+    },
     {
      "kind": "pattern",
      "target": "docs/reference/threat-model.md]"
@@ -2583,14 +2576,14 @@
   {
    "disposition": "fixture-data",
    "kinds": {
-    "extra": 1,
+    "extra": 2,
     "file": 1,
     "pattern": 6
    },
-   "occurrences": 10,
+   "occurrences": 11,
    "path": "tests/fixtures/fast_tier_baseline/tests-01.json",
    "rule": "test-sample-data",
-   "target_count": 8,
+   "target_count": 9,
    "targets": [
     {
      "kind": "extra",
@@ -2623,6 +2616,10 @@
     {
      "kind": "file",
      "target": "docs/usage/getting-started.md"
+    },
+    {
+     "kind": "extra",
+     "target": "scripts/check_docs_ownership.py"
     }
    ]
   },
@@ -2675,26 +2672,19 @@
   {
    "disposition": "fixture-data",
    "kinds": {
+    "extra": 1,
     "file": 1,
-    "pattern": 7,
+    "pattern": 4,
     "unresolved": 1
    },
-   "occurrences": 11,
+   "occurrences": 9,
    "path": "tests/fixtures/fast_tier_baseline/tests-03.json",
    "rule": "test-sample-data",
-   "target_count": 9,
+   "target_count": 7,
    "targets": [
     {
      "kind": "unresolved",
      "target": "docs//page.md-unsafe"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/benchmarks/queries/q1.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/development/adr/adr-public-result-id-permanence.md]"
     },
     {
      "kind": "pattern",
@@ -2709,16 +2699,16 @@
      "target": "docs/publish-exclusions.txt]"
     },
     {
-     "kind": "pattern",
-     "target": "docs/reference/hosted-results-contract.md]"
-    },
-    {
      "kind": "file",
      "target": "docs/usage/getting-started.md"
     },
     {
      "kind": "pattern",
      "target": "docs/uv.lock]"
+    },
+    {
+     "kind": "extra",
+     "target": "quality/docs-ownership.json"
     }
    ]
   },
@@ -2726,16 +2716,24 @@
    "disposition": "fixture-data",
    "kinds": {
     "file": 1,
-    "pattern": 2
+    "pattern": 4
    },
-   "occurrences": 3,
+   "occurrences": 5,
    "path": "tests/fixtures/fast_tier_baseline/tests-04.json",
    "rule": "test-sample-data",
-   "target_count": 3,
+   "target_count": 5,
    "targets": [
     {
      "kind": "pattern",
      "target": "docs/blog/post.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/internal/adr/adr-duckdb-datasketches-vendoring.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/internal/site-deploy.md]"
     },
     {
      "kind": "pattern",
@@ -2751,17 +2749,21 @@
    "disposition": "fixture-data",
    "kinds": {
     "file": 1,
-    "pattern": 2,
+    "pattern": 3,
     "unresolved": 1
    },
-   "occurrences": 5,
+   "occurrences": 6,
    "path": "tests/fixtures/fast_tier_baseline/tests-05.json",
    "rule": "test-sample-data",
-   "target_count": 4,
+   "target_count": 5,
    "targets": [
     {
      "kind": "unresolved",
      "target": "docs/../outside.md-unsafe"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/a/conf.yaml]"
     },
     {
      "kind": "pattern",
@@ -2818,13 +2820,13 @@
    "disposition": "fixture-data",
    "kinds": {
     "file": 1,
-    "pattern": 4,
+    "pattern": 7,
     "unresolved": 1
    },
-   "occurrences": 6,
+   "occurrences": 9,
    "path": "tests/fixtures/fast_tier_baseline/tests-07.json",
    "rule": "test-sample-data",
-   "target_count": 6,
+   "target_count": 9,
    "targets": [
     {
      "kind": "unresolved",
@@ -2832,7 +2834,19 @@
     },
     {
      "kind": "pattern",
+     "target": "docs/a/b/guide.md]"
+    },
+    {
+     "kind": "pattern",
      "target": "docs/agent/review-protocol.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/gen.py]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/guide.md]"
     },
     {
      "kind": "pattern",
@@ -2950,6 +2964,315 @@
     {
      "kind": "pattern",
      "target": "docs/operations/key.pem]"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/app_missing.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/carry.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/carry_disagrees_with_status_holds.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/dispute_round.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/draft.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/edited_prior_review_holds.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/every_attempt_absent.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/first_review_ships.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/first_review_with_a_defect.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/follow_up_after_a_fix.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/fork.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/guard_gives_up.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/integrity_error.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/omp_install_failure.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1,
+    "unresolved": 1
+   },
+   "occurrences": 2,
+   "path": "tests/fixtures/oracle_golden/oversize_file_list.json",
+   "rule": "test-sample-data",
+   "target_count": 2,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/notes.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/recovery_escalate.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/recovery_fallback.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/recovery_retry.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/oracle_golden/recovery_stop.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/*.md"
     }
    ]
   },
@@ -4395,26 +4718,26 @@
   "dispositions": {
    "contract-replaced": 1,
    "contract-tooling": 6,
-   "fixture-data": 47,
+   "fixture-data": 66,
    "governance-stays": 9,
-   "historical-record": 113,
+   "historical-record": 112,
    "lock-test": 5,
    "prose-link-pinned": 12,
    "site-pipeline-cutover": 4,
    "wiring-updated": 30
   },
-  "files": 227,
+  "files": 245,
   "kinds": {
    "built-url": 29042,
    "dir": 163,
-   "extra": 35,
+   "extra": 37,
    "file": 1382,
    "generated": 3,
-   "pattern": 329,
+   "pattern": 352,
    "root": 203,
    "unresolved": 2083
   },
-  "references": 33240,
+  "references": 33265,
   "unclassified": 0
  }
 }

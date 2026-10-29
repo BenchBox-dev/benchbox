@@ -37,6 +37,34 @@ if sqlite3 is not None:
 else:
     _SQLITE_VERSION_ERRORS = (AttributeError, IndexError, TypeError)
 
+_ScriptConnectionBase: type = sqlite3.Connection if sqlite3 is not None else object
+
+
+def _split_sqlite_script(sql: str) -> list[str]:
+    statements: list[str] = []
+    start = 0
+    for index, char in enumerate(sql):
+        if char == ";" and sqlite3.complete_statement(sql[start : index + 1]):
+            statements.append(sql[start : index + 1].strip())
+            start = index + 1
+    tail = sql[start:].strip()
+    if tail:
+        statements.append(tail)
+    return [statement for statement in statements if statement.strip("; \t\r\n")]
+
+
+class _SQLiteScriptConnection(_ScriptConnectionBase):
+    def execute(self, sql, parameters=()):
+        if parameters or ";" not in sql:
+            return super().execute(sql, parameters)
+        statements = _split_sqlite_script(sql)
+        if len(statements) <= 1:
+            return super().execute(statements[0] if statements else sql)
+        for statement in statements[:-1]:
+            super().execute(statement)
+        return super().execute(statements[-1])
+
+
 _TPCH_TABLES: frozenset[str] = frozenset(
     {"customer", "lineitem", "nation", "orders", "part", "partsupp", "region", "supplier"}
 )
@@ -350,6 +378,7 @@ class SQLiteAdapter(PlatformAdapter):
             timeout=self.timeout,
             check_same_thread=self.check_same_thread,
             cached_statements=0,
+            factory=_SQLiteScriptConnection,
         )
 
         _register_sqlite_compatibility_functions(conn)
@@ -513,6 +542,16 @@ class SQLiteAdapter(PlatformAdapter):
                 benchmark_name="JoinOrder",
                 required_tables=_JOINORDER_TABLES,
                 statements=_JOINORDER_HELPER_INDEXES,
+                connection=connection,
+                analyze=True,
+                required=required,
+            )
+        if _is_datavault_benchmark(benchmark):
+            required_tables, statements = _datavault_helper_index_set()
+            return self._apply_helper_index_set(
+                benchmark_name="Data Vault",
+                required_tables=required_tables,
+                statements=statements,
                 connection=connection,
                 analyze=True,
                 required=required,
@@ -747,3 +786,33 @@ def _is_joinorder_benchmark(benchmark: Any) -> bool:
     class_name = benchmark.__class__.__name__.lower()
     display_name = str(getattr(benchmark, "_name", "") or getattr(benchmark, "name", "")).lower()
     return "joinorder" in class_name or "join order" in display_name
+
+
+def _is_datavault_benchmark(benchmark: Any) -> bool:
+    benchmark_id = str(getattr(benchmark, "benchmark_id", "") or getattr(benchmark, "id", "")).lower()
+    if benchmark_id in {"datavault", "data-vault", "data_vault"}:
+        return True
+    class_name = benchmark.__class__.__name__.lower()
+    display_name = str(getattr(benchmark, "_name", "") or getattr(benchmark, "name", "")).lower()
+    return "datavault" in class_name or "data vault" in display_name
+
+
+def _datavault_helper_index_set() -> tuple[frozenset[str], tuple[str, ...]]:
+    from benchbox.core.datavault.schema import HUBS, LINKS, SATELLITES
+
+    statements: list[str] = []
+    for table in HUBS:
+        key = table.columns[0].name
+        statements.append(f"CREATE INDEX IF NOT EXISTS idx_bb_dv_{table.name}_{key} ON {table.name} ({key})")
+    for table in LINKS:
+        for column in table.columns:
+            if column.name.startswith("hk_"):
+                statements.append(
+                    f"CREATE INDEX IF NOT EXISTS idx_bb_dv_{table.name}_{column.name} ON {table.name} ({column.name})"
+                )
+    for table in SATELLITES:
+        key = table.columns[0].name
+        statements.append(
+            f"CREATE INDEX IF NOT EXISTS idx_bb_dv_{table.name}_{key} ON {table.name} ({key}, load_end_dts)"
+        )
+    return frozenset(table.name for table in (*HUBS, *LINKS, *SATELLITES)), tuple(statements)

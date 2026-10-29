@@ -1,0 +1,112 @@
+{
+  "attempts": [],
+  "final": {
+    "attempt/state.json": null,
+    "comment.json": null,
+    "review.json": null,
+    "state/state.json": null,
+    "status.json": {
+      "context": "oracle-verdict",
+      "description": "fork: owner review",
+      "state": "pending",
+      "target_url": "https://github.localhost/BenchBox-dev/BenchBox/actions/runs/<run>"
+    }
+  },
+  "plan": {
+    "base_ref": "develop",
+    "base_sha": "<sha0>",
+    "binary_files": [],
+    "bot_login": "benchbox-oracle",
+    "brief_max_bytes": 100000,
+    "brief_mode": "oversize",
+    "chain": [],
+    "created_at": "<volatile>",
+    "decision": "fork",
+    "decision_reason": "fork: owner review",
+    "evidence_exempt_paths": [
+      "README*.md",
+      "**/README*.md",
+      "CHANGELOG*.md",
+      "**/CHANGELOG*.md",
+      "docs/*.md"
+    ],
+    "evidence_files": [],
+    "evidence_protected_files": [],
+    "findings_delivery": "review",
+    "gate_paths": [],
+    "head_sha": "<sha1>",
+    "manual": false,
+    "max_attempts": 5,
+    "max_defects": 10,
+    "mode": "enforce",
+    "omp_sha256": "<volatile>",
+    "open_findings": {},
+    "pool_blocked_until": {},
+    "pr": 81,
+    "protocol": null,
+    "repo": "BenchBox-dev/BenchBox",
+    "reviewed_head": null,
+    "run_id": "<volatile>",
+    "run_uuid": "<volatile>",
+    "schema": 1,
+    "scope": "full",
+    "scope_paths": [
+      "benchbox/core/equivalence/checker.py"
+    ],
+    "scope_reasons": [
+      "changes comparison, validation or result logic: benchbox/core/equivalence/checker.py"
+    ],
+    "status_context": "oracle-verdict"
+  },
+  "posted": {
+    "artifacts": [],
+    "comments": [],
+    "dispatches": [
+      {
+        "inputs": {
+          "head_sha": "<sha1>",
+          "pr": "81"
+        },
+        "ref": "develop",
+        "workflow": "oracle-gate.yml"
+      }
+    ],
+    "reviews": [],
+    "statuses": [
+      {
+        "context": "oracle-verdict",
+        "creator": "benchbox-oracle[bot]",
+        "description": "fork: owner review",
+        "state": "pending",
+        "target_url": "https://github.localhost/BenchBox-dev/BenchBox/actions/runs/<run>"
+      }
+    ],
+    "threads": []
+  },
+  "prompts": [],
+  "steps": {
+    "finalize": {
+      "code": 0,
+      "outputs": {
+        "comment": "false",
+        "has_state": "false",
+        "review": "false",
+        "state": "pending"
+      }
+    },
+    "plan": {
+      "code": 0,
+      "outputs": {
+        "decision": "fork",
+        "head_sha": "<sha1>",
+        "post": "true",
+        "pr": "81"
+      }
+    },
+    "publish": {
+      "code": 0,
+      "skip": "false"
+    }
+  },
+  "summary": "oracle-verdict plan for #81: fork (fork: owner review)\nredaction check: 0 file(s) rewritten, no secret value remains\noracle-verdict #81 <sha1>: pending: fork: owner review\n"
+}

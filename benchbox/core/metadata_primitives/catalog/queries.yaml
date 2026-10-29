@@ -10,6 +10,7 @@ queries:
   variants:
     clickhouse: "SELECT\n    name AS schema_name,\n    'default' AS catalog_name\nFROM system.databases\nORDER BY name;\n"
     bigquery: "SELECT\n    schema_name,\n    catalog_name\nFROM INFORMATION_SCHEMA.SCHEMATA\nORDER BY schema_name;\n"
+    sqlite: "SELECT\n    name AS schema_name,\n    name AS catalog_name\nFROM pragma_database_list\nORDER BY schema_name;\n"
 - id: schema_list_tables
   category: schema
   description: List all tables in the current schema
@@ -18,18 +19,21 @@ queries:
     clickhouse: "SELECT\n    name AS table_name,\n    engine AS table_type,\n    database AS table_schema\nFROM system.tables\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA')\nORDER BY name;\n"
     snowflake: "SELECT\n    table_name,\n    table_type,\n    table_schema\nFROM information_schema.tables\nWHERE table_schema NOT IN ('INFORMATION_SCHEMA')\nORDER BY table_name;\n"
     bigquery: "SELECT\n    table_name,\n    table_type,\n    table_schema\nFROM INFORMATION_SCHEMA.TABLES\nORDER BY table_name;\n"
+    sqlite: "WITH sqlite_tables AS (SELECT 'main' AS table_schema, name AS table_name, CASE type WHEN 'view' THEN 'VIEW' ELSE 'BASE TABLE' END AS table_type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%') SELECT table_name, table_type, table_schema FROM sqlite_tables WHERE table_schema NOT IN ('information_schema', 'pg_catalog') ORDER BY table_name;\n"
 - id: schema_list_tables_filtered
   category: schema
   description: List tables matching a pattern
   sql: "SELECT\n    table_name,\n    table_type\nFROM information_schema.tables\nWHERE table_schema NOT IN ('information_schema', 'pg_catalog')\n  AND table_name LIKE '%line%'\nORDER BY table_name;\n"
   variants:
     clickhouse: "SELECT\n    name AS table_name,\n    engine AS table_type\nFROM system.tables\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA')\n  AND name LIKE '%line%'\nORDER BY name;\n"
+    sqlite: "WITH sqlite_tables AS (SELECT 'main' AS table_schema, name AS table_name, CASE type WHEN 'view' THEN 'VIEW' ELSE 'BASE TABLE' END AS table_type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%') SELECT table_name, table_type FROM sqlite_tables WHERE table_schema NOT IN ('information_schema', 'pg_catalog') AND table_name LIKE '%line%' ORDER BY table_name;\n"
 - id: schema_table_count
   category: schema
   description: Count total tables in catalog
   sql: "SELECT COUNT(*) AS table_count\nFROM information_schema.tables\nWHERE table_schema NOT IN ('information_schema', 'pg_catalog');\n"
   variants:
     clickhouse: "SELECT COUNT(*) AS table_count\nFROM system.tables\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA');\n"
+    sqlite: "WITH sqlite_tables AS (SELECT 'main' AS table_schema, name AS table_name, CASE type WHEN 'view' THEN 'VIEW' ELSE 'BASE TABLE' END AS table_type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%') SELECT COUNT(*) AS table_count FROM sqlite_tables WHERE table_schema NOT IN ('information_schema', 'pg_catalog');\n"
 - id: schema_list_views
   category: schema
   description: List all views in the catalog
@@ -40,24 +44,28 @@ queries:
     datafusion: "SELECT\n    table_name AS view_name,\n    table_schema AS view_schema,\n    definition AS view_definition\nFROM information_schema.views\nORDER BY table_name;\n"
     snowflake: "SELECT\n    table_name AS view_name,\n    table_schema AS view_schema,\n    view_definition\nFROM information_schema.views\nORDER BY table_name;\n"
     duckdb: "SELECT\n    view_name,\n    schema_name AS view_schema,\n    sql AS view_definition\nFROM duckdb_views()\nORDER BY view_name;\n"
+    sqlite: "WITH sqlite_views AS (SELECT 'main' AS table_schema, name AS table_name, sql AS view_definition FROM sqlite_master WHERE type = 'view') SELECT table_name AS view_name, table_schema AS view_schema, view_definition FROM sqlite_views ORDER BY table_name;\n"
 - id: schema_object_types
   category: schema
   description: Count objects by type
   sql: "SELECT\n    table_type,\n    COUNT(*) AS object_count\nFROM information_schema.tables\nWHERE table_schema NOT IN ('information_schema', 'pg_catalog')\nGROUP BY table_type\nORDER BY object_count DESC;\n"
   variants:
     clickhouse: "SELECT\n    engine AS table_type,\n    COUNT(*) AS object_count\nFROM system.tables\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA')\nGROUP BY engine\nORDER BY object_count DESC;\n"
+    sqlite: "WITH sqlite_tables AS (SELECT 'main' AS table_schema, name AS table_name, CASE type WHEN 'view' THEN 'VIEW' ELSE 'BASE TABLE' END AS table_type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%') SELECT table_type, COUNT(*) AS object_count FROM sqlite_tables WHERE table_schema NOT IN ('information_schema', 'pg_catalog') GROUP BY table_type ORDER BY object_count DESC;\n"
 - id: schema_search_tables
   category: schema
   description: Search for tables by partial name match
   sql: "SELECT\n    table_schema,\n    table_name,\n    table_type\nFROM information_schema.tables\nWHERE table_name LIKE '%order%'\n   OR table_name LIKE '%customer%'\nORDER BY table_schema, table_name;\n"
   variants:
     clickhouse: "SELECT\n    database AS table_schema,\n    name AS table_name,\n    engine AS table_type\nFROM system.tables\nWHERE name LIKE '%order%'\n   OR name LIKE '%customer%'\nORDER BY database, name;\n"
+    sqlite: "WITH sqlite_tables AS (SELECT 'main' AS table_schema, name AS table_name, CASE type WHEN 'view' THEN 'VIEW' ELSE 'BASE TABLE' END AS table_type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%') SELECT table_schema, table_name, table_type FROM sqlite_tables WHERE table_name LIKE '%order%' OR table_name LIKE '%customer%' ORDER BY table_schema, table_name;\n"
 - id: schema_tables_by_schema
   category: schema
   description: Group tables by schema with counts
   sql: "SELECT\n    table_schema,\n    COUNT(*) AS table_count,\n    SUM(CASE WHEN table_type = 'BASE TABLE' THEN 1 ELSE 0 END) AS base_tables,\n    SUM(CASE WHEN table_type = 'VIEW' THEN 1 ELSE 0 END) AS views\nFROM information_schema.tables\nWHERE table_schema NOT IN ('information_schema', 'pg_catalog')\nGROUP BY table_schema\nORDER BY table_count DESC;\n"
   variants:
     clickhouse: "SELECT\n    database AS table_schema,\n    COUNT(*) AS table_count,\n    countIf(engine != 'View') AS base_tables,\n    countIf(engine = 'View') AS views\nFROM system.tables\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA')\nGROUP BY database\nORDER BY table_count DESC;\n"
+    sqlite: "WITH sqlite_tables AS (SELECT 'main' AS table_schema, name AS table_name, CASE type WHEN 'view' THEN 'VIEW' ELSE 'BASE TABLE' END AS table_type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%') SELECT table_schema, COUNT(*) AS table_count, SUM(CASE WHEN table_type = 'BASE TABLE' THEN 1 ELSE 0 END) AS base_tables, SUM(CASE WHEN table_type = 'VIEW' THEN 1 ELSE 0 END) AS views FROM sqlite_tables WHERE table_schema NOT IN ('information_schema', 'pg_catalog') GROUP BY table_schema ORDER BY table_count DESC;\n"
 - id: schema_recent_tables
   category: schema
   description: List tables with creation timestamps (where available)
@@ -65,42 +73,49 @@ queries:
   variants:
     clickhouse: "SELECT\n    database AS table_schema,\n    name AS table_name,\n    engine AS table_type,\n    metadata_modification_time\nFROM system.tables\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA')\nORDER BY metadata_modification_time DESC\nLIMIT 20;\n"
     snowflake: "SELECT\n    table_schema,\n    table_name,\n    table_type,\n    created\nFROM information_schema.tables\nWHERE table_schema NOT IN ('INFORMATION_SCHEMA')\nORDER BY created DESC\nLIMIT 20;\n"
+    sqlite: "WITH sqlite_tables AS (SELECT 'main' AS table_schema, name AS table_name, CASE type WHEN 'view' THEN 'VIEW' ELSE 'BASE TABLE' END AS table_type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%') SELECT table_schema, table_name, table_type FROM sqlite_tables WHERE table_schema NOT IN ('information_schema', 'pg_catalog') ORDER BY table_name LIMIT 20;\n"
 - id: column_list_all
   category: column
   description: List all columns for all tables
   sql: "SELECT\n    table_schema,\n    table_name,\n    column_name,\n    data_type,\n    ordinal_position\nFROM information_schema.columns\nWHERE table_schema NOT IN ('information_schema', 'pg_catalog')\nORDER BY table_schema, table_name, ordinal_position;\n"
   variants:
     clickhouse: "SELECT\n    database AS table_schema,\n    table AS table_name,\n    name AS column_name,\n    type AS data_type,\n    position AS ordinal_position\nFROM system.columns\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA')\nORDER BY database, table, position;\n"
+    sqlite: "WITH sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT table_schema, table_name, column_name, data_type, ordinal_position FROM sqlite_columns WHERE table_schema NOT IN ('information_schema', 'pg_catalog') ORDER BY table_schema, table_name, ordinal_position;\n"
 - id: column_for_table
   category: column
   description: List columns for a specific table (lineitem)
   sql: "SELECT\n    column_name,\n    data_type,\n    is_nullable,\n    column_default,\n    ordinal_position\nFROM information_schema.columns\nWHERE table_name = 'lineitem'\nORDER BY ordinal_position;\n"
   variants:
     clickhouse: "SELECT\n    name AS column_name,\n    type AS data_type,\n    '' AS is_nullable,\n    default_expression AS column_default,\n    position AS ordinal_position\nFROM system.columns\nWHERE table = 'lineitem'\nORDER BY position;\n"
+    sqlite: "WITH sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT column_name, data_type, is_nullable, column_default, ordinal_position FROM sqlite_columns WHERE table_name = 'lineitem' ORDER BY ordinal_position;\n"
 - id: column_count_by_table
   category: column
   description: Count columns per table
   sql: "SELECT\n    table_schema,\n    table_name,\n    COUNT(*) AS column_count\nFROM information_schema.columns\nWHERE table_schema NOT IN ('information_schema', 'pg_catalog')\nGROUP BY table_schema, table_name\nORDER BY column_count DESC;\n"
   variants:
     clickhouse: "SELECT\n    database AS table_schema,\n    table AS table_name,\n    COUNT(*) AS column_count\nFROM system.columns\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA')\nGROUP BY database, table\nORDER BY column_count DESC;\n"
+    sqlite: "WITH sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT table_schema, table_name, COUNT(*) AS column_count FROM sqlite_columns WHERE table_schema NOT IN ('information_schema', 'pg_catalog') GROUP BY table_schema, table_name ORDER BY column_count DESC;\n"
 - id: column_data_types
   category: column
   description: Distribution of data types across all columns
   sql: "SELECT\n    data_type,\n    COUNT(*) AS column_count\nFROM information_schema.columns\nWHERE table_schema NOT IN ('information_schema', 'pg_catalog')\nGROUP BY data_type\nORDER BY column_count DESC;\n"
   variants:
     clickhouse: "SELECT\n    type AS data_type,\n    COUNT(*) AS column_count\nFROM system.columns\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA')\nGROUP BY type\nORDER BY column_count DESC;\n"
+    sqlite: "WITH sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT data_type, COUNT(*) AS column_count FROM sqlite_columns WHERE table_schema NOT IN ('information_schema', 'pg_catalog') GROUP BY data_type ORDER BY column_count DESC;\n"
 - id: column_nullable_analysis
   category: column
   description: Count nullable vs non-nullable columns
   sql: "SELECT\n    table_name,\n    SUM(CASE WHEN is_nullable = 'YES' THEN 1 ELSE 0 END) AS nullable_count,\n    SUM(CASE WHEN is_nullable = 'NO' THEN 1 ELSE 0 END) AS not_nullable_count\nFROM information_schema.columns\nWHERE table_schema NOT IN ('information_schema', 'pg_catalog')\nGROUP BY table_name\nORDER BY table_name;\n"
   variants:
     clickhouse: "SELECT\n    table AS table_name,\n    0 AS nullable_count,\n    COUNT(*) AS not_nullable_count\nFROM system.columns\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA')\nGROUP BY table\nORDER BY table;\n"
+    sqlite: "WITH sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT table_name, SUM(CASE WHEN is_nullable = 'YES' THEN 1 ELSE 0 END) AS nullable_count, SUM(CASE WHEN is_nullable = 'NO' THEN 1 ELSE 0 END) AS not_nullable_count FROM sqlite_columns WHERE table_schema NOT IN ('information_schema', 'pg_catalog') GROUP BY table_name ORDER BY table_name;\n"
 - id: column_search_by_name
   category: column
   description: Find columns matching a pattern
   sql: "SELECT\n    table_schema,\n    table_name,\n    column_name,\n    data_type\nFROM information_schema.columns\nWHERE column_name LIKE '%price%'\n   OR column_name LIKE '%cost%'\nORDER BY table_name, column_name;\n"
   variants:
     clickhouse: "SELECT\n    database AS table_schema,\n    table AS table_name,\n    name AS column_name,\n    type AS data_type\nFROM system.columns\nWHERE name LIKE '%price%'\n   OR name LIKE '%cost%'\nORDER BY table, name;\n"
+    sqlite: "WITH sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT table_schema, table_name, column_name, data_type FROM sqlite_columns WHERE column_name LIKE '%price%' OR column_name LIKE '%cost%' ORDER BY table_name, column_name;\n"
 - id: column_numeric_columns
   category: column
   description: List all numeric columns
@@ -109,6 +124,7 @@ queries:
     duckdb: "SELECT\n    table_name,\n    column_name,\n    data_type,\n    numeric_precision,\n    numeric_scale\nFROM information_schema.columns\nWHERE table_schema NOT IN ('information_schema', 'pg_catalog')\n  AND data_type IN ('INTEGER', 'BIGINT', 'SMALLINT', 'DECIMAL', 'DOUBLE', 'FLOAT', 'REAL', 'HUGEINT', 'UINTEGER', 'UBIGINT')\nORDER BY table_name, column_name;\n"
     clickhouse: "SELECT\n    table AS table_name,\n    name AS column_name,\n    type AS data_type,\n    0 AS numeric_precision,\n    0 AS numeric_scale\nFROM system.columns\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA')\n  AND (type LIKE 'Int%' OR type LIKE 'UInt%' OR type LIKE 'Float%' OR type LIKE 'Decimal%')\nORDER BY table, name;\n"
     bigquery: "SELECT\n    table_name,\n    column_name,\n    data_type,\n    CAST(NULL AS INT64) AS numeric_precision,\n    CAST(NULL AS INT64) AS numeric_scale\nFROM INFORMATION_SCHEMA.COLUMNS\nWHERE STARTS_WITH(data_type, 'INT64') OR STARTS_WITH(data_type, 'NUMERIC') OR STARTS_WITH(data_type, 'BIGNUMERIC') OR STARTS_WITH(data_type, 'FLOAT64')\nORDER BY table_name, column_name;\n"
+    sqlite: "WITH sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT table_name, column_name, data_type, numeric_precision, numeric_scale FROM sqlite_columns WHERE table_schema NOT IN ('information_schema', 'pg_catalog') AND base_type IN ('integer', 'int', 'bigint', 'smallint', 'tinyint', 'decimal', 'numeric', 'real', 'double', 'double precision', 'float') ORDER BY table_name, column_name;\n"
 - id: column_string_columns
   category: column
   description: List all string/text columns
@@ -117,6 +133,7 @@ queries:
     duckdb: "SELECT\n    table_name,\n    column_name,\n    data_type,\n    character_maximum_length\nFROM information_schema.columns\nWHERE table_schema NOT IN ('information_schema', 'pg_catalog')\n  AND data_type = 'VARCHAR'\nORDER BY table_name, column_name;\n"
     clickhouse: "SELECT\n    table AS table_name,\n    name AS column_name,\n    type AS data_type,\n    0 AS character_maximum_length\nFROM system.columns\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA')\n  AND (type = 'String' OR type LIKE 'FixedString%')\nORDER BY table, name;\n"
     bigquery: "SELECT\n    table_name,\n    column_name,\n    data_type,\n    CAST(NULL AS INT64) AS character_maximum_length\nFROM INFORMATION_SCHEMA.COLUMNS\nWHERE STARTS_WITH(data_type, 'STRING')\nORDER BY table_name, column_name;\n"
+    sqlite: "WITH sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT table_name, column_name, data_type, character_maximum_length FROM sqlite_columns WHERE table_schema NOT IN ('information_schema', 'pg_catalog') AND base_type IN ('character varying', 'varchar', 'text', 'char', 'character', 'clob', 'nvarchar', 'nchar') ORDER BY table_name, column_name;\n"
 - id: stats_row_counts
   category: stats
   description: Estimated row counts per table
@@ -125,6 +142,7 @@ queries:
     clickhouse: "SELECT\n    database AS table_schema,\n    name AS table_name,\n    total_rows AS estimated_rows,\n    total_bytes AS size_bytes\nFROM system.tables\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA')\nORDER BY total_rows DESC;\n"
     snowflake: "SELECT\n    table_schema,\n    table_name,\n    row_count AS estimated_rows,\n    bytes AS size_bytes\nFROM information_schema.tables\nWHERE table_schema NOT IN ('INFORMATION_SCHEMA')\n  AND table_type = 'BASE TABLE'\nORDER BY row_count DESC;\n"
     bigquery: "SELECT\n    dataset_id AS table_schema,\n    table_id AS table_name,\n    row_count AS estimated_rows\nFROM __TABLES__\nORDER BY row_count DESC;\n"
+    sqlite: "WITH sqlite_tables AS (SELECT 'main' AS table_schema, name AS table_name, CASE type WHEN 'view' THEN 'VIEW' ELSE 'BASE TABLE' END AS table_type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%') SELECT table_schema, table_name, table_type FROM sqlite_tables WHERE table_schema NOT IN ('information_schema', 'pg_catalog') AND table_type = 'BASE TABLE' ORDER BY table_name;\n"
 - id: stats_table_sizes
   category: stats
   description: Table storage sizes (where available)
@@ -133,30 +151,35 @@ queries:
     clickhouse: "SELECT\n    database AS table_schema,\n    name AS table_name,\n    total_bytes AS size_bytes,\n    total_rows\nFROM system.tables\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA')\n  AND total_bytes > 0\nORDER BY total_bytes DESC;\n"
     snowflake: "SELECT\n    table_schema,\n    table_name,\n    bytes AS size_bytes,\n    row_count\nFROM information_schema.tables\nWHERE table_schema NOT IN ('INFORMATION_SCHEMA')\n  AND table_type = 'BASE TABLE'\n  AND bytes > 0\nORDER BY bytes DESC;\n"
     duckdb: "SELECT\n    schema_name AS table_schema,\n    table_name,\n    estimated_size AS size_bytes,\n    estimated_size / 1024 / 1024 AS size_mb\nFROM duckdb_tables()\nWHERE schema_name NOT IN ('information_schema', 'pg_catalog')\nORDER BY estimated_size DESC;\n"
+    sqlite: "WITH sqlite_tables AS (SELECT 'main' AS table_schema, name AS table_name, CASE type WHEN 'view' THEN 'VIEW' ELSE 'BASE TABLE' END AS table_type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%') SELECT table_schema, table_name FROM sqlite_tables WHERE table_schema NOT IN ('information_schema', 'pg_catalog') AND table_type = 'BASE TABLE' ORDER BY table_name;\n"
 - id: stats_column_count_summary
   category: stats
   description: Summary statistics about table structures
   sql: "SELECT\n    COUNT(DISTINCT table_name) AS total_tables,\n    COUNT(*) AS total_columns,\n    CAST(COUNT(*) AS FLOAT) / COUNT(DISTINCT table_name) AS avg_columns_per_table\nFROM information_schema.columns\nWHERE table_schema NOT IN ('information_schema', 'pg_catalog');\n"
   variants:
     clickhouse: "SELECT\n    uniq(table) AS total_tables,\n    COUNT(*) AS total_columns,\n    COUNT(*) / uniq(table) AS avg_columns_per_table\nFROM system.columns\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA');\n"
+    sqlite: "WITH sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT COUNT(DISTINCT table_name) AS total_tables, COUNT(*) AS total_columns, CAST(COUNT(*) AS FLOAT) / COUNT(DISTINCT table_name) AS avg_columns_per_table FROM sqlite_columns WHERE table_schema NOT IN ('information_schema', 'pg_catalog');\n"
 - id: stats_schema_summary
   category: stats
   description: Summary of database schema structure
   sql: "SELECT\n    table_schema,\n    COUNT(DISTINCT table_name) AS table_count,\n    COUNT(*) AS total_columns\nFROM information_schema.columns\nWHERE table_schema NOT IN ('information_schema', 'pg_catalog')\nGROUP BY table_schema\nORDER BY table_count DESC;\n"
   variants:
     clickhouse: "SELECT\n    database AS table_schema,\n    uniq(table) AS table_count,\n    COUNT(*) AS total_columns\nFROM system.columns\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA')\nGROUP BY database\nORDER BY table_count DESC;\n"
+    sqlite: "WITH sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT table_schema, COUNT(DISTINCT table_name) AS table_count, COUNT(*) AS total_columns FROM sqlite_columns WHERE table_schema NOT IN ('information_schema', 'pg_catalog') GROUP BY table_schema ORDER BY table_count DESC;\n"
 - id: stats_data_type_summary
   category: stats
   description: Summary of data types used in schema
   sql: "SELECT\n    data_type,\n    COUNT(*) AS usage_count,\n    COUNT(DISTINCT table_name) AS tables_using\nFROM information_schema.columns\nWHERE table_schema NOT IN ('information_schema', 'pg_catalog')\nGROUP BY data_type\nORDER BY usage_count DESC\nLIMIT 20;\n"
   variants:
     clickhouse: "SELECT\n    type AS data_type,\n    COUNT(*) AS usage_count,\n    uniq(table) AS tables_using\nFROM system.columns\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA')\nGROUP BY type\nORDER BY usage_count DESC\nLIMIT 20;\n"
+    sqlite: "WITH sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT data_type, COUNT(*) AS usage_count, COUNT(DISTINCT table_name) AS tables_using FROM sqlite_columns WHERE table_schema NOT IN ('information_schema', 'pg_catalog') GROUP BY data_type ORDER BY usage_count DESC LIMIT 20;\n"
 - id: stats_largest_tables
   category: stats
   description: Find tables with most columns
   sql: "SELECT\n    table_schema,\n    table_name,\n    COUNT(*) AS column_count\nFROM information_schema.columns\nWHERE table_schema NOT IN ('information_schema', 'pg_catalog')\nGROUP BY table_schema, table_name\nORDER BY column_count DESC\nLIMIT 10;\n"
   variants:
     clickhouse: "SELECT\n    database AS table_schema,\n    table AS table_name,\n    COUNT(*) AS column_count\nFROM system.columns\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA')\nGROUP BY database, table\nORDER BY column_count DESC\nLIMIT 10;\n"
+    sqlite: "WITH sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT table_schema, table_name, COUNT(*) AS column_count FROM sqlite_columns WHERE table_schema NOT IN ('information_schema', 'pg_catalog') GROUP BY table_schema, table_name ORDER BY column_count DESC LIMIT 10;\n"
 - id: query_explain_simple
   category: query
   description: EXPLAIN plan for a simple query
@@ -165,6 +188,7 @@ queries:
     snowflake: "SELECT * FROM information_schema.tables LIMIT 10;\n"
     bigquery: "SELECT * FROM INFORMATION_SCHEMA.TABLES LIMIT 10;\n"
     clickhouse: "EXPLAIN SELECT * FROM system.tables LIMIT 10;\n"
+    sqlite: "EXPLAIN QUERY PLAN WITH sqlite_tables AS (SELECT 'main' AS table_schema, name AS table_name, CASE type WHEN 'view' THEN 'VIEW' ELSE 'BASE TABLE' END AS table_type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%') SELECT * FROM sqlite_tables LIMIT 10;\n"
 - id: query_explain_join
   category: query
   description: EXPLAIN plan for a join query
@@ -173,6 +197,7 @@ queries:
     snowflake: "SELECT t.table_name, c.column_name\nFROM information_schema.tables t\nJOIN information_schema.columns c\n  ON t.table_name = c.table_name\n  AND t.table_schema = c.table_schema\nWHERE t.table_schema NOT IN ('INFORMATION_SCHEMA')\nLIMIT 100;\n"
     clickhouse: "EXPLAIN\nSELECT t.name AS table_name, c.name AS column_name\nFROM system.tables t\nJOIN system.columns c ON t.name = c.table AND t.database = c.database\nWHERE t.database NOT IN ('system', 'INFORMATION_SCHEMA')\nLIMIT 100;\n"
     bigquery: "SELECT t.table_name, c.column_name\nFROM INFORMATION_SCHEMA.TABLES t\nJOIN INFORMATION_SCHEMA.COLUMNS c\n  ON t.table_name = c.table_name\n  AND t.table_schema = c.table_schema\nLIMIT 100;\n"
+    sqlite: "EXPLAIN QUERY PLAN WITH sqlite_tables AS (SELECT 'main' AS table_schema, name AS table_name, CASE type WHEN 'view' THEN 'VIEW' ELSE 'BASE TABLE' END AS table_type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%'), sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT t.table_name, c.column_name FROM sqlite_tables t JOIN sqlite_columns c ON t.table_name = c.table_name AND t.table_schema = c.table_schema WHERE t.table_schema NOT IN ('information_schema', 'pg_catalog') LIMIT 100;\n"
 - id: query_explain_aggregate
   category: query
   description: EXPLAIN plan for an aggregate query
@@ -181,6 +206,7 @@ queries:
     snowflake: "SELECT\n    table_schema,\n    COUNT(*) AS table_count,\n    SUM(CASE WHEN table_type = 'BASE TABLE' THEN 1 ELSE 0 END) AS base_tables\nFROM information_schema.tables\nWHERE table_schema NOT IN ('INFORMATION_SCHEMA')\nGROUP BY table_schema;\n"
     clickhouse: "EXPLAIN\nSELECT\n    database AS table_schema,\n    COUNT(*) AS table_count,\n    countIf(engine != 'View') AS base_tables\nFROM system.tables\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA')\nGROUP BY database;\n"
     bigquery: "SELECT\n    table_schema,\n    COUNT(*) AS table_count,\n    COUNTIF(table_type = 'BASE TABLE') AS base_tables\nFROM INFORMATION_SCHEMA.TABLES\nGROUP BY table_schema;\n"
+    sqlite: "EXPLAIN QUERY PLAN WITH sqlite_tables AS (SELECT 'main' AS table_schema, name AS table_name, CASE type WHEN 'view' THEN 'VIEW' ELSE 'BASE TABLE' END AS table_type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%') SELECT table_schema, COUNT(*) AS table_count, SUM(CASE WHEN table_type = 'BASE TABLE' THEN 1 ELSE 0 END) AS base_tables FROM sqlite_tables WHERE table_schema NOT IN ('information_schema', 'pg_catalog') GROUP BY table_schema;\n"
 - id: query_list_constraints
   category: query
   description: List table constraints (where available)
@@ -191,36 +217,42 @@ queries:
   - datafusion
   variants:
     duckdb: "SELECT\n    schema_name AS table_schema,\n    table_name,\n    constraint_text AS constraint_name,\n    constraint_type\nFROM duckdb_constraints()\nWHERE schema_name NOT IN ('information_schema', 'pg_catalog')\nORDER BY table_name, constraint_type;\n"
+    sqlite: "WITH sqlite_constraints AS (SELECT table_name, constraint_name, constraint_type FROM (SELECT m.name AS table_name, 'pk_' || m.name AS constraint_name, 'PRIMARY KEY' AS constraint_type, p.name AS column_name, p.pk AS ordinal_position FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND p.pk > 0) GROUP BY table_name, constraint_name, constraint_type UNION ALL SELECT table_name, constraint_name, constraint_type FROM (SELECT m.name AS table_name, 'fk_' || m.name || '_' || f.id AS constraint_name, 'FOREIGN KEY' AS constraint_type, f.\"from\" AS column_name, f.seq + 1 AS ordinal_position, f.\"table\" AS parent_table FROM sqlite_master m JOIN pragma_foreign_key_list(m.name) f WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%') GROUP BY table_name, constraint_name, constraint_type UNION ALL SELECT table_name, constraint_name, constraint_type FROM (SELECT m.name AS table_name, 'uq_' || m.name || '_' || i.name AS constraint_name, 'UNIQUE' AS constraint_type, ii.name AS column_name, ii.seqno + 1 AS ordinal_position FROM sqlite_master m JOIN pragma_index_list(m.name) i JOIN pragma_index_info(i.name) ii WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND i.\"unique\" = 1 AND i.origin = 'u') GROUP BY table_name, constraint_name, constraint_type) SELECT 'main' AS table_schema, table_name, constraint_name, constraint_type FROM sqlite_constraints ORDER BY table_name, constraint_type\n"
 - id: wide_table_column_list
   category: wide_table
   description: List all columns from wide benchmark tables
   sql: "SELECT\n    table_name,\n    column_name,\n    data_type,\n    ordinal_position\nFROM information_schema.columns\nWHERE table_name LIKE 'benchbox_wide_%'\nORDER BY table_name, ordinal_position;\n"
   variants:
     clickhouse: "SELECT\n    table AS table_name,\n    name AS column_name,\n    type AS data_type,\n    position AS ordinal_position\nFROM system.columns\nWHERE table LIKE 'benchbox_wide_%'\nORDER BY table, position;\n"
+    sqlite: "WITH sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT table_name, column_name, data_type, ordinal_position FROM sqlite_columns WHERE table_name LIKE 'benchbox_wide_%' ORDER BY table_name, ordinal_position;\n"
 - id: wide_table_column_count
   category: wide_table
   description: Count columns in wide benchmark tables
   sql: "SELECT\n    table_name,\n    COUNT(*) AS column_count\nFROM information_schema.columns\nWHERE table_name LIKE 'benchbox_wide_%'\nGROUP BY table_name\nORDER BY column_count DESC;\n"
   variants:
     clickhouse: "SELECT\n    table AS table_name,\n    COUNT(*) AS column_count\nFROM system.columns\nWHERE table LIKE 'benchbox_wide_%'\nGROUP BY table\nORDER BY column_count DESC;\n"
+    sqlite: "WITH sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT table_name, COUNT(*) AS column_count FROM sqlite_columns WHERE table_name LIKE 'benchbox_wide_%' GROUP BY table_name ORDER BY column_count DESC;\n"
 - id: wide_table_type_distribution
   category: wide_table
   description: Analyze data type distribution in wide tables
   sql: "SELECT\n    table_name,\n    data_type,\n    COUNT(*) AS type_count,\n    COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (PARTITION BY table_name) AS percentage\nFROM information_schema.columns\nWHERE table_name LIKE 'benchbox_wide_%'\nGROUP BY table_name, data_type\nORDER BY table_name, type_count DESC;\n"
   variants:
     clickhouse: "SELECT\n    table AS table_name,\n    type AS data_type,\n    COUNT(*) AS type_count\nFROM system.columns\nWHERE table LIKE 'benchbox_wide_%'\nGROUP BY table, type\nORDER BY table, type_count DESC;\n"
+    sqlite: "WITH sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT table_name, data_type, COUNT(*) AS type_count, COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (PARTITION BY table_name) AS percentage FROM sqlite_columns WHERE table_name LIKE 'benchbox_wide_%' GROUP BY table_name, data_type ORDER BY table_name, type_count DESC;\n"
 - id: wide_table_nullable_analysis
   category: wide_table
   description: Analyze nullable columns in wide tables
   sql: "SELECT\n    table_name,\n    SUM(CASE WHEN is_nullable = 'YES' THEN 1 ELSE 0 END) AS nullable_count,\n    SUM(CASE WHEN is_nullable = 'NO' THEN 1 ELSE 0 END) AS not_null_count,\n    COUNT(*) AS total_columns\nFROM information_schema.columns\nWHERE table_name LIKE 'benchbox_wide_%'\nGROUP BY table_name;\n"
   variants:
     clickhouse: "SELECT\n    table AS table_name,\n    0 AS nullable_count,\n    COUNT(*) AS not_null_count,\n    COUNT(*) AS total_columns\nFROM system.columns\nWHERE table LIKE 'benchbox_wide_%'\nGROUP BY table;\n"
+    sqlite: "WITH sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT table_name, SUM(CASE WHEN is_nullable = 'YES' THEN 1 ELSE 0 END) AS nullable_count, SUM(CASE WHEN is_nullable = 'NO' THEN 1 ELSE 0 END) AS not_null_count, COUNT(*) AS total_columns FROM sqlite_columns WHERE table_name LIKE 'benchbox_wide_%' GROUP BY table_name;\n"
 - id: wide_table_column_search
   category: wide_table
   description: Search for specific column patterns in wide tables
   sql: "SELECT\n    table_name,\n    column_name,\n    data_type,\n    ordinal_position\nFROM information_schema.columns\nWHERE table_name LIKE 'benchbox_wide_%'\n  AND (column_name LIKE '%integer%' OR column_name LIKE '%varchar%')\nORDER BY table_name, ordinal_position\nLIMIT 100;\n"
   variants:
     clickhouse: "SELECT\n    table AS table_name,\n    name AS column_name,\n    type AS data_type,\n    position AS ordinal_position\nFROM system.columns\nWHERE table LIKE 'benchbox_wide_%'\n  AND (name LIKE '%integer%' OR name LIKE '%varchar%')\nORDER BY table, position\nLIMIT 100;\n"
+    sqlite: "WITH sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT table_name, column_name, data_type, ordinal_position FROM sqlite_columns WHERE table_name LIKE 'benchbox_wide_%' AND (column_name LIKE '%integer%' OR column_name LIKE '%varchar%') ORDER BY table_name, ordinal_position LIMIT 100;\n"
 - id: view_hierarchy_list
   category: view_hierarchy
   description: List all benchmark views in hierarchy
@@ -230,6 +262,7 @@ queries:
   variants:
     datafusion: "SELECT\n    table_name AS view_name,\n    definition AS view_definition\nFROM information_schema.views\nWHERE table_name LIKE 'benchbox_view_%'\nORDER BY table_name;\n"
     duckdb: "SELECT\n    view_name,\n    sql AS view_definition\nFROM duckdb_views()\nWHERE view_name LIKE 'benchbox_view_%'\nORDER BY view_name;\n"
+    sqlite: "WITH sqlite_views AS (SELECT 'main' AS table_schema, name AS table_name, sql AS view_definition FROM sqlite_master WHERE type = 'view') SELECT table_name AS view_name, view_definition FROM sqlite_views WHERE table_name LIKE 'benchbox_view_%' ORDER BY table_name;\n"
 - id: view_hierarchy_depth_analysis
   category: view_hierarchy
   description: Analyze view naming pattern for depth levels
@@ -238,6 +271,7 @@ queries:
   - clickhouse
   variants:
     duckdb: "SELECT\n    view_name,\n    CASE\n        WHEN view_name LIKE '%_d1' THEN 1\n        WHEN view_name LIKE '%_d2' THEN 2\n        WHEN view_name LIKE '%_d3' THEN 3\n        WHEN view_name LIKE '%_d4' THEN 4\n        WHEN view_name LIKE '%_d5' THEN 5\n        ELSE 0\n    END AS depth_level\nFROM duckdb_views()\nWHERE view_name LIKE 'benchbox_view_%'\nORDER BY depth_level, view_name;\n"
+    sqlite: "WITH sqlite_views AS (SELECT 'main' AS table_schema, name AS table_name, sql AS view_definition FROM sqlite_master WHERE type = 'view') SELECT table_name AS view_name, CASE WHEN table_name LIKE '%_d1' THEN 1 WHEN table_name LIKE '%_d2' THEN 2 WHEN table_name LIKE '%_d3' THEN 3 WHEN table_name LIKE '%_d4' THEN 4 WHEN table_name LIKE '%_d5' THEN 5 ELSE 0 END AS depth_level FROM sqlite_views WHERE table_name LIKE 'benchbox_view_%' ORDER BY depth_level, table_name;\n"
 - id: view_hierarchy_column_introspection
   category: view_hierarchy
   description: List columns exposed by views at each hierarchy level
@@ -246,6 +280,7 @@ queries:
   - clickhouse
   variants:
     duckdb: "SELECT\n    v.view_name,\n    c.column_name,\n    c.data_type\nFROM duckdb_views() v\nJOIN information_schema.columns c\n  ON v.view_name = c.table_name\nWHERE v.view_name LIKE 'benchbox_view_%'\nORDER BY v.view_name, c.ordinal_position;\n"
+    sqlite: "WITH sqlite_views AS (SELECT 'main' AS table_schema, name AS table_name, sql AS view_definition FROM sqlite_master WHERE type = 'view'), sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT v.table_name AS view_name, c.column_name, c.data_type FROM sqlite_views v JOIN sqlite_columns c ON v.table_name = c.table_name AND v.table_schema = c.table_schema WHERE v.table_name LIKE 'benchbox_view_%' ORDER BY v.table_name, c.ordinal_position;\n"
 - id: view_hierarchy_definition_search
   category: view_hierarchy
   description: Search view definitions for source table references
@@ -255,12 +290,14 @@ queries:
   variants:
     datafusion: "SELECT\n    table_name AS view_name,\n    definition AS view_definition,\n    LENGTH(definition) AS definition_length\nFROM information_schema.views\nWHERE table_name LIKE 'benchbox_view_%'\n  AND definition LIKE '%benchbox%'\nORDER BY table_name;\n"
     duckdb: "SELECT\n    view_name,\n    sql AS view_definition,\n    LENGTH(sql) AS definition_length\nFROM duckdb_views()\nWHERE view_name LIKE 'benchbox_view_%'\n  AND sql LIKE '%benchbox%'\nORDER BY view_name;\n"
+    sqlite: "WITH sqlite_views AS (SELECT 'main' AS table_schema, name AS table_name, sql AS view_definition FROM sqlite_master WHERE type = 'view') SELECT table_name AS view_name, view_definition, LENGTH(view_definition) AS definition_length FROM sqlite_views WHERE table_name LIKE 'benchbox_view_%' AND view_definition LIKE '%benchbox%' ORDER BY table_name;\n"
 - id: complex_type_column_list
   category: complex_type
   description: List columns with complex data types
   sql: "SELECT\n    table_name,\n    column_name,\n    data_type\nFROM information_schema.columns\nWHERE table_name LIKE 'benchbox_complex_%'\nORDER BY table_name, ordinal_position;\n"
   variants:
     clickhouse: "SELECT\n    table AS table_name,\n    name AS column_name,\n    type AS data_type\nFROM system.columns\nWHERE table LIKE 'benchbox_complex_%'\nORDER BY table, position;\n"
+    sqlite: "WITH sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT table_name, column_name, data_type FROM sqlite_columns WHERE table_name LIKE 'benchbox_complex_%' ORDER BY table_name, ordinal_position;\n"
 - id: complex_type_array_columns
   category: complex_type
   description: Find all array-type columns
@@ -270,6 +307,7 @@ queries:
     clickhouse: "SELECT\n    table AS table_name,\n    name AS column_name,\n    type AS data_type\nFROM system.columns\nWHERE table LIKE 'benchbox_%'\n  AND type LIKE 'Array%'\nORDER BY table, name;\n"
     snowflake: "SELECT\n    table_name,\n    column_name,\n    data_type\nFROM information_schema.columns\nWHERE table_name LIKE 'benchbox_%'\n  AND data_type = 'ARRAY'\nORDER BY table_name, column_name;\n"
     bigquery: "SELECT\n    table_name,\n    column_name,\n    data_type\nFROM INFORMATION_SCHEMA.COLUMNS\nWHERE table_name LIKE 'benchbox_%'\n  AND data_type LIKE 'ARRAY%'\nORDER BY table_name, column_name;\n"
+    sqlite: "WITH sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT table_name, column_name, data_type FROM sqlite_columns WHERE table_name LIKE 'benchbox_%' AND (data_type LIKE '%[]%' OR data_type LIKE 'ARRAY%') ORDER BY table_name, column_name;\n"
 - id: complex_type_struct_columns
   category: complex_type
   description: Find all struct/object-type columns
@@ -279,6 +317,7 @@ queries:
     clickhouse: "SELECT\n    table AS table_name,\n    name AS column_name,\n    type AS data_type\nFROM system.columns\nWHERE table LIKE 'benchbox_%'\n  AND type LIKE 'Tuple%'\nORDER BY table, name;\n"
     snowflake: "SELECT\n    table_name,\n    column_name,\n    data_type\nFROM information_schema.columns\nWHERE table_name LIKE 'benchbox_%'\n  AND data_type = 'OBJECT'\nORDER BY table_name, column_name;\n"
     bigquery: "SELECT\n    table_name,\n    column_name,\n    data_type\nFROM INFORMATION_SCHEMA.COLUMNS\nWHERE table_name LIKE 'benchbox_%'\n  AND data_type LIKE 'STRUCT%'\nORDER BY table_name, column_name;\n"
+    sqlite: "WITH sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT table_name, column_name, data_type FROM sqlite_columns WHERE table_name LIKE 'benchbox_%' AND (data_type LIKE 'STRUCT%' OR data_type LIKE 'ROW%') ORDER BY table_name, column_name;\n"
 - id: complex_type_map_columns
   category: complex_type
   description: Find all map/object-type columns
@@ -290,48 +329,56 @@ queries:
     duckdb: "SELECT\n    table_name,\n    column_name,\n    data_type\nFROM information_schema.columns\nWHERE table_name LIKE 'benchbox_%'\n  AND data_type LIKE 'MAP%'\nORDER BY table_name, column_name;\n"
     clickhouse: "SELECT\n    table AS table_name,\n    name AS column_name,\n    type AS data_type\nFROM system.columns\nWHERE table LIKE 'benchbox_%'\n  AND type LIKE 'Map%'\nORDER BY table, name;\n"
     databricks: "SELECT\n    table_name,\n    column_name,\n    data_type\nFROM information_schema.columns\nWHERE table_name LIKE 'benchbox_%'\n  AND data_type LIKE 'MAP%'\nORDER BY table_name, column_name;\n"
+    sqlite: "WITH sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT table_name, column_name, data_type FROM sqlite_columns WHERE table_name LIKE 'benchbox_%' AND data_type LIKE 'MAP%' ORDER BY table_name, column_name;\n"
 - id: complex_type_distribution
   category: complex_type
   description: Distribution of complex vs scalar types
   sql: "SELECT\n    table_name,\n    SUM(CASE\n        WHEN data_type LIKE '%[]%' OR data_type LIKE 'ARRAY%'\n             OR data_type LIKE 'STRUCT%' OR data_type LIKE 'MAP%'\n        THEN 1 ELSE 0\n    END) AS complex_columns,\n    SUM(CASE\n        WHEN data_type NOT LIKE '%[]%' AND data_type NOT LIKE 'ARRAY%'\n             AND data_type NOT LIKE 'STRUCT%' AND data_type NOT LIKE 'MAP%'\n        THEN 1 ELSE 0\n    END) AS scalar_columns\nFROM information_schema.columns\nWHERE table_name LIKE 'benchbox_%'\nGROUP BY table_name\nORDER BY table_name;\n"
   variants:
     clickhouse: "SELECT\n    table AS table_name,\n    countIf(type LIKE 'Array%' OR type LIKE 'Tuple%' OR type LIKE 'Map%') AS complex_columns,\n    countIf(type NOT LIKE 'Array%' AND type NOT LIKE 'Tuple%' AND type NOT LIKE 'Map%') AS scalar_columns\nFROM system.columns\nWHERE table LIKE 'benchbox_%'\nGROUP BY table\nORDER BY table;\n"
+    sqlite: "WITH sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT table_name, SUM(CASE WHEN data_type LIKE '%[]%' OR data_type LIKE 'ARRAY%' OR data_type LIKE 'STRUCT%' OR data_type LIKE 'MAP%' THEN 1 ELSE 0 END) AS complex_columns, SUM(CASE WHEN data_type NOT LIKE '%[]%' AND data_type NOT LIKE 'ARRAY%' AND data_type NOT LIKE 'STRUCT%' AND data_type NOT LIKE 'MAP%' THEN 1 ELSE 0 END) AS scalar_columns FROM sqlite_columns WHERE table_name LIKE 'benchbox_%' GROUP BY table_name ORDER BY table_name;\n"
 - id: large_catalog_table_list
   category: large_catalog
   description: List all benchmark catalog tables
   sql: "SELECT\n    table_name,\n    table_type\nFROM information_schema.tables\nWHERE table_name LIKE 'benchbox_catalog_%'\nORDER BY table_name;\n"
   variants:
     clickhouse: "SELECT\n    name AS table_name,\n    engine AS table_type\nFROM system.tables\nWHERE name LIKE 'benchbox_catalog_%'\nORDER BY name;\n"
+    sqlite: "WITH sqlite_tables AS (SELECT 'main' AS table_schema, name AS table_name, CASE type WHEN 'view' THEN 'VIEW' ELSE 'BASE TABLE' END AS table_type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%') SELECT table_name, table_type FROM sqlite_tables WHERE table_name LIKE 'benchbox_catalog_%' ORDER BY table_name;\n"
 - id: large_catalog_table_count
   category: large_catalog
   description: Count benchmark catalog tables
   sql: "SELECT COUNT(*) AS table_count\nFROM information_schema.tables\nWHERE table_name LIKE 'benchbox_catalog_%';\n"
   variants:
     clickhouse: "SELECT COUNT(*) AS table_count\nFROM system.tables\nWHERE name LIKE 'benchbox_catalog_%';\n"
+    sqlite: "WITH sqlite_tables AS (SELECT 'main' AS table_schema, name AS table_name, CASE type WHEN 'view' THEN 'VIEW' ELSE 'BASE TABLE' END AS table_type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%') SELECT COUNT(*) AS table_count FROM sqlite_tables WHERE table_name LIKE 'benchbox_catalog_%';\n"
 - id: large_catalog_column_count
   category: large_catalog
   description: Total columns across all catalog tables
   sql: "SELECT\n    COUNT(*) AS total_columns,\n    COUNT(DISTINCT table_name) AS total_tables,\n    CAST(COUNT(*) AS FLOAT) / NULLIF(COUNT(DISTINCT table_name), 0) AS avg_columns_per_table\nFROM information_schema.columns\nWHERE table_name LIKE 'benchbox_catalog_%';\n"
   variants:
     clickhouse: "SELECT\n    COUNT(*) AS total_columns,\n    uniq(table) AS total_tables,\n    COUNT(*) / nullIf(uniq(table), 0) AS avg_columns_per_table\nFROM system.columns\nWHERE table LIKE 'benchbox_catalog_%';\n"
+    sqlite: "WITH sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT COUNT(*) AS total_columns, COUNT(DISTINCT table_name) AS total_tables, CAST(COUNT(*) AS FLOAT) / NULLIF(COUNT(DISTINCT table_name), 0) AS avg_columns_per_table FROM sqlite_columns WHERE table_name LIKE 'benchbox_catalog_%';\n"
 - id: large_catalog_pattern_search
   category: large_catalog
   description: Search catalog tables by numeric suffix pattern
   sql: "SELECT\n    table_name,\n    table_type\nFROM information_schema.tables\nWHERE table_name LIKE 'benchbox_catalog_00%'\nORDER BY table_name;\n"
   variants:
     clickhouse: "SELECT\n    name AS table_name,\n    engine AS table_type\nFROM system.tables\nWHERE name LIKE 'benchbox_catalog_00%'\nORDER BY name;\n"
+    sqlite: "WITH sqlite_tables AS (SELECT 'main' AS table_schema, name AS table_name, CASE type WHEN 'view' THEN 'VIEW' ELSE 'BASE TABLE' END AS table_type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%') SELECT table_name, table_type FROM sqlite_tables WHERE table_name LIKE 'benchbox_catalog_00%' ORDER BY table_name;\n"
 - id: large_catalog_schema_summary
   category: large_catalog
   description: Summary statistics for large catalog
   sql: "SELECT\n    COUNT(DISTINCT t.table_name) AS table_count,\n    COUNT(c.column_name) AS total_columns,\n    AVG(col_counts.column_count) AS avg_columns\nFROM information_schema.tables t\nLEFT JOIN information_schema.columns c\n  ON t.table_name = c.table_name\n  AND t.table_schema = c.table_schema\nLEFT JOIN (\n    SELECT table_name, COUNT(*) AS column_count\n    FROM information_schema.columns\n    WHERE table_name LIKE 'benchbox_catalog_%'\n    GROUP BY table_name\n) col_counts ON t.table_name = col_counts.table_name\nWHERE t.table_name LIKE 'benchbox_catalog_%';\n"
   variants:
     clickhouse: "SELECT\n    uniq(t.name) AS table_count,\n    COUNT(c.name) AS total_columns,\n    AVG(col_counts.column_count) AS avg_columns\nFROM system.tables t\nLEFT JOIN system.columns c\n  ON t.name = c.table AND t.database = c.database\nLEFT JOIN (\n    SELECT table, COUNT(*) AS column_count\n    FROM system.columns\n    WHERE table LIKE 'benchbox_catalog_%'\n    GROUP BY table\n) col_counts ON t.name = col_counts.table\nWHERE t.name LIKE 'benchbox_catalog_%';\n"
+    sqlite: "WITH sqlite_tables AS (SELECT 'main' AS table_schema, name AS table_name, CASE type WHEN 'view' THEN 'VIEW' ELSE 'BASE TABLE' END AS table_type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%'), sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT COUNT(DISTINCT t.table_name) AS table_count, COUNT(c.column_name) AS total_columns, AVG(col_counts.column_count) AS avg_columns FROM sqlite_tables t LEFT JOIN sqlite_columns c ON t.table_name = c.table_name AND t.table_schema = c.table_schema LEFT JOIN ( SELECT table_name, COUNT(*) AS column_count FROM sqlite_columns WHERE table_name LIKE 'benchbox_catalog_%' GROUP BY table_name ) col_counts ON t.table_name = col_counts.table_name WHERE t.table_name LIKE 'benchbox_catalog_%';\n"
 - id: large_catalog_column_type_analysis
   category: large_catalog
   description: Data type distribution across catalog tables
   sql: "SELECT\n    data_type,\n    COUNT(*) AS column_count,\n    COUNT(DISTINCT table_name) AS tables_with_type\nFROM information_schema.columns\nWHERE table_name LIKE 'benchbox_catalog_%'\nGROUP BY data_type\nORDER BY column_count DESC;\n"
   variants:
     clickhouse: "SELECT\n    type AS data_type,\n    COUNT(*) AS column_count,\n    uniq(table) AS tables_with_type\nFROM system.columns\nWHERE table LIKE 'benchbox_catalog_%'\nGROUP BY type\nORDER BY column_count DESC;\n"
+    sqlite: "WITH sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT data_type, COUNT(*) AS column_count, COUNT(DISTINCT table_name) AS tables_with_type FROM sqlite_columns WHERE table_name LIKE 'benchbox_catalog_%' GROUP BY data_type ORDER BY column_count DESC;\n"
 - id: constraint_fk_list
   category: constraint
   description: List all benchmark foreign key constraints
@@ -343,6 +390,7 @@ queries:
   variants:
     snowflake: "SELECT\n    table_name,\n    constraint_name,\n    constraint_type,\n    '' AS column_name\nFROM information_schema.table_constraints\nWHERE table_name ILIKE 'benchbox_fk_%'\n  AND constraint_type = 'FOREIGN KEY'\nORDER BY table_name, constraint_name;\n"
     duckdb: "SELECT\n    table_name,\n    constraint_text AS constraint_name,\n    constraint_type,\n    '' AS column_name\nFROM duckdb_constraints()\nWHERE table_name LIKE 'benchbox_fk_%'\n  AND constraint_type = 'FOREIGN KEY'\nORDER BY table_name;\n"
+    sqlite: "SELECT table_name, constraint_name, constraint_type, column_name FROM (SELECT m.name AS table_name, 'fk_' || m.name || '_' || f.id AS constraint_name, 'FOREIGN KEY' AS constraint_type, f.\"from\" AS column_name, f.seq + 1 AS ordinal_position, f.\"table\" AS parent_table FROM sqlite_master m JOIN pragma_foreign_key_list(m.name) f WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%') WHERE table_name LIKE 'benchbox_fk_%' ORDER BY table_name, constraint_name;\n"
 - id: constraint_pk_list
   category: constraint
   description: List all benchmark primary key constraints
@@ -354,6 +402,7 @@ queries:
   variants:
     snowflake: "SELECT\n    table_name,\n    constraint_name,\n    '' AS column_name\nFROM information_schema.table_constraints\nWHERE table_name ILIKE 'benchbox_%'\n  AND constraint_type = 'PRIMARY KEY'\nORDER BY table_name, constraint_name;\n"
     duckdb: "SELECT\n    table_name,\n    constraint_text AS constraint_name,\n    '' AS column_name\nFROM duckdb_constraints()\nWHERE table_name LIKE 'benchbox_%'\n  AND constraint_type = 'PRIMARY KEY'\nORDER BY table_name;\n"
+    sqlite: "SELECT table_name, constraint_name, column_name FROM (SELECT m.name AS table_name, 'pk_' || m.name AS constraint_name, 'PRIMARY KEY' AS constraint_type, p.name AS column_name, p.pk AS ordinal_position FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND p.pk > 0) WHERE table_name LIKE 'benchbox_%' ORDER BY table_name, ordinal_position;\n"
 - id: constraint_referential_integrity
   category: constraint
   description: Analyze referential integrity constraints
@@ -366,6 +415,7 @@ queries:
   - datafusion
   variants:
     snowflake: "SELECT\n    tc.table_name AS child_table,\n    rc.unique_constraint_name,\n    ptc.table_name AS parent_table,\n    '' AS fk_column\nFROM information_schema.table_constraints tc\nJOIN information_schema.referential_constraints rc\n  ON tc.constraint_name = rc.constraint_name\n  AND tc.table_schema = rc.constraint_schema\nJOIN information_schema.table_constraints ptc\n  ON rc.unique_constraint_name = ptc.constraint_name\n  AND rc.unique_constraint_schema = ptc.table_schema\nWHERE tc.table_name ILIKE 'benchbox_fk_%'\nORDER BY child_table;\n"
+    sqlite: "SELECT table_name AS child_table, 'pk_' || parent_table AS unique_constraint_name, parent_table, column_name AS fk_column FROM (SELECT m.name AS table_name, 'fk_' || m.name || '_' || f.id AS constraint_name, 'FOREIGN KEY' AS constraint_type, f.\"from\" AS column_name, f.seq + 1 AS ordinal_position, f.\"table\" AS parent_table FROM sqlite_master m JOIN pragma_foreign_key_list(m.name) f WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%') WHERE table_name LIKE 'benchbox_fk_%' ORDER BY child_table;\n"
 - id: constraint_summary
   category: constraint
   description: Summary of constraint types in benchmark tables
@@ -376,6 +426,7 @@ queries:
   - datafusion
   variants:
     duckdb: "SELECT\n    constraint_type,\n    COUNT(*) AS constraint_count,\n    COUNT(DISTINCT table_name) AS tables_with_constraint\nFROM duckdb_constraints()\nWHERE table_name LIKE 'benchbox_%'\nGROUP BY constraint_type\nORDER BY constraint_count DESC;\n"
+    sqlite: "WITH sqlite_constraints AS (SELECT table_name, constraint_name, constraint_type FROM (SELECT m.name AS table_name, 'pk_' || m.name AS constraint_name, 'PRIMARY KEY' AS constraint_type, p.name AS column_name, p.pk AS ordinal_position FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND p.pk > 0) GROUP BY table_name, constraint_name, constraint_type UNION ALL SELECT table_name, constraint_name, constraint_type FROM (SELECT m.name AS table_name, 'fk_' || m.name || '_' || f.id AS constraint_name, 'FOREIGN KEY' AS constraint_type, f.\"from\" AS column_name, f.seq + 1 AS ordinal_position, f.\"table\" AS parent_table FROM sqlite_master m JOIN pragma_foreign_key_list(m.name) f WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%') GROUP BY table_name, constraint_name, constraint_type UNION ALL SELECT table_name, constraint_name, constraint_type FROM (SELECT m.name AS table_name, 'uq_' || m.name || '_' || i.name AS constraint_name, 'UNIQUE' AS constraint_type, ii.name AS column_name, ii.seqno + 1 AS ordinal_position FROM sqlite_master m JOIN pragma_index_list(m.name) i JOIN pragma_index_info(i.name) ii WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND i.\"unique\" = 1 AND i.origin = 'u') GROUP BY table_name, constraint_name, constraint_type) SELECT constraint_type, COUNT(*) AS constraint_count, COUNT(DISTINCT table_name) AS tables_with_constraint FROM sqlite_constraints WHERE table_name LIKE 'benchbox_%' GROUP BY constraint_type ORDER BY constraint_count DESC;\n"
 - id: acl_table_privileges_list
   category: acl
   description: List all table-level privileges in the catalog

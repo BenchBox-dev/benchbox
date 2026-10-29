@@ -52,11 +52,6 @@
       "reason": "Result metadata timestamps and retention/cutoff wall-clock operations."
     },
     {
-      "path_glob": "scripts/cleanup_workflows.py",
-      "symbol": "datetime.now",
-      "reason": "Workflow cleanup retention and age evaluation."
-    },
-    {
       "path_glob": "benchbox/cli/preferences.py",
       "symbol": "datetime.now",
       "line_regex": "datetime\\.now\\(\\)\\s*-\\s*timestamp",
