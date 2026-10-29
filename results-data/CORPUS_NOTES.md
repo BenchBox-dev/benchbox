@@ -906,9 +906,9 @@ known-defective bundles of the same platforms.
 
 Fifty-eight replacement local bundles (`result_source: internal`) replace the
 flagged local bundles computed with superseded SQL translations across ClickHouse
-Local, DataFusion, and SQLite. Every bundle was generated with bundled SQLGlot
-fork 30.24.0.17 and raw-text DuckDB source dialect routing (#3544), under the
-SQLite database helper-index restoration path (#3563).
+Local, DataFusion, and SQLite. Forty-four bundles were generated with bundled SQLGlot fork
+30.24.0.17 and fourteen with fork 30.25.0.2 (see Wheel consistency), all with raw-text DuckDB
+source dialect routing (#3544), under the SQLite database helper-index restoration path (#3563).
 
 Defective predecessors keep their manifest sidecar entries (`defective-superseded-sql-translation`,
 `defective-macdbgen-addresses`, `defective-tpchavoc-variant-divergence`,
@@ -991,9 +991,121 @@ e4401a0ed it found 422 bundles with queries, 64 of them in subdirectories.
 
 ### Wheel consistency
 
-44 of the 58 bundles ran on SQLGlot fork 30.24.0.17; the two SQLite and two DataFusion Read
-Primitives bundles and the ten variant and loader defect cells were rerun on 30.25.0.2 (see the
-sections below).
+Fourteen replacement bundles ran on fork 30.25.0.2 and the other 44 on fork 30.24.0.17. The
+bundles do not record the wheel: the translation record names only the translator (`sqlglot`) and
+the dialects, and the vendored wheel carries no dist-info. The wheel in force is the vendored pin
+`benchbox/_vendor/sqlglot.json` (`version` and `sha256` of the archive beside it) in the checkout
+each run was started from, and `uv.lock` has no SQLGlot entry. Per-bundle values below come from
+that pin at the checkout's commit; every run used the editable project install of its worktree, so
+the checkout's `benchbox/_vendor` is what loaded.
+
+| id | cell | run timestamp (clock) | checkout commit | wheel | evidence |
+|---|---|---|---|---|---|
+| `95d5bdc8` | DataFusion coffeeshop SF0.01 | 2026-10-26 11:28:37 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `e1a0a0b3` | DataFusion tpch_skew SF0.01 | 2026-10-26 11:28:59 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `70d6c9e1` | DataFusion tpchavoc SF0.01 | 2026-10-26 11:29:44 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `001e082b` | DataFusion coffeeshop SF0.1 | 2026-10-26 11:32:01 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `b6e365e8` | DataFusion tpch_skew SF0.1 | 2026-10-26 11:33:43 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `b7c3e0be` | DataFusion tpchavoc SF0.1 | 2026-10-26 11:34:14 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `c6832587` | DataFusion coffeeshop SF1 | 2026-10-26 11:34:47 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `2fce59f7` | DataFusion tpcds SF1 | 2026-10-26 11:35:58 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `5ef63e23` | DataFusion tpch SF1 | 2026-10-26 11:36:13 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `5441c82c` | DataFusion tpch_skew SF1 | 2026-10-26 11:36:27 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `7c126887` | DataFusion tpchavoc SF1 | 2026-10-26 11:38:07 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `9b8837db` | DataFusion tpcds SF10 | 2026-10-26 11:47:39 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `3d030f43` | SQLite coffeeshop SF0.01 | 2026-10-26 11:47:44 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `d19931e6` | SQLite tpch_skew SF0.01 | 2026-10-26 11:49:05 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `5f688a96` | SQLite coffeeshop SF0.1 | 2026-10-26 11:49:34 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `432838b7` | SQLite tpch_skew SF0.1 | 2026-10-26 12:33:34 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `4bfe0dd1` | SQLite clickbench SF1 | 2026-10-26 12:34:37 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `9953f53c` | SQLite coffeeshop SF1 | 2026-10-26 12:39:49 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `8b8f54de` | DataFusion tpch SF0.01 | 2026-10-26 12:39:55 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `113a3ebe` | SQLite tpch SF1 | 2026-10-26 12:42:24 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `1bf2c529` | DataFusion tpch SF0.1 | 2026-10-26 12:42:30 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `dbf8bb59` | SQLite tpch_skew SF1 | 2026-10-26 12:44:53 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `93a0b6f9` | SQLite tpch SF0.1 | 2026-10-26 15:57:23 EDT | `5e82bcaa3` | 30.24.0.17 | B |
+| `14b260b9` | SQLite tpch SF0.01 | 2026-10-26 15:57:39 EDT | `5e82bcaa3` | 30.24.0.17 | B |
+| `3d2fa5e9` | ClickHouse Local datavault SF0.01 | 2026-10-26 17:40:57 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `c1d5ea31` | ClickHouse Local flightdata SF0.01 | 2026-10-26 17:41:11 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `ce89d00e` | ClickHouse Local nyctaxi SF0.01 | 2026-10-26 17:41:17 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `9f79ff77` | ClickHouse Local read_primitives SF0.01 | 2026-10-26 17:41:33 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `71dc6c6c` | ClickHouse Local tpch SF0.01 | 2026-10-26 17:41:47 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `3b4c54c2` | ClickHouse Local tpch_skew SF0.01 | 2026-10-26 17:41:52 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `5de9fab8` | ClickHouse Local tpchavoc SF0.01 | 2026-10-26 17:42:15 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `ac9b732e` | ClickHouse Local datavault SF0.1 | 2026-10-26 17:42:54 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `7ac18c39` | ClickHouse Local flightdata SF0.1 | 2026-10-26 17:44:36 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `46bfd3fb` | ClickHouse Local nyctaxi SF0.1 | 2026-10-26 17:45:47 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `3f5c94e9` | ClickHouse Local read_primitives SF0.1 | 2026-10-26 17:46:37 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `25806a27` | ClickHouse Local tpch SF0.1 | 2026-10-26 17:47:09 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `23306369` | ClickHouse Local tpch_skew SF0.1 | 2026-10-26 17:47:16 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `d542bf14` | ClickHouse Local tpchavoc SF0.1 | 2026-10-26 17:47:55 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `3b8b6f57` | ClickHouse Local flightdata SF1 | 2026-10-26 17:50:01 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `4d422b5f` | ClickHouse Local nyctaxi SF1 | 2026-10-26 17:50:23 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `4b9e5193` | ClickHouse Local tpcds SF1 | 2026-10-26 17:55:29 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `f2bafd17` | ClickHouse Local tpch SF1 | 2026-10-26 17:57:54 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `bb56ec24` | ClickHouse Local tpch_skew SF1 | 2026-10-26 17:58:45 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `34b1129c` | ClickHouse Local tpchavoc SF1 | 2026-10-26 18:13:02 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `fc04d558` | SQLite read_primitives SF0.01 | 2026-10-28 09:28:29 EDT | `be144e04f` | 30.25.0.2 | C |
+| `8edf1667` | SQLite read_primitives SF0.1 | 2026-10-28 09:29:52 EDT | `be144e04f` | 30.25.0.2 | C |
+| `093d2262` | DataFusion clickbench SF1 | 2026-10-28 10:05:25 EDT | `6acbcee6f` | 30.25.0.2 | D |
+| `328320ea` | DataFusion tpcdi SF0.01 | 2026-10-28 10:05:44 EDT | `6acbcee6f` | 30.25.0.2 | D |
+| `fb67aa79` | DataFusion tpcdi SF0.1 | 2026-10-28 10:05:54 EDT | `6acbcee6f` | 30.25.0.2 | D |
+| `ffe633e9` | DataFusion tpcdi SF1 | 2026-10-28 10:06:15 EDT | `6acbcee6f` | 30.25.0.2 | D |
+| `2594968f` | ClickHouse Local coffeeshop SF0.01 | 2026-10-28 14:06:52 UTC | `6acbcee6f` | 30.25.0.2 | D |
+| `da48d384` | ClickHouse Local coffeeshop SF0.1 | 2026-10-28 14:07:04 UTC | `6acbcee6f` | 30.25.0.2 | D |
+| `2888c2d3` | ClickHouse Local coffeeshop SF1 | 2026-10-28 14:07:31 UTC | `6acbcee6f` | 30.25.0.2 | D |
+| `3c9d9330` | ClickHouse Local tpcdi SF0.01 | 2026-10-28 14:08:02 UTC | `6acbcee6f` | 30.25.0.2 | D |
+| `61e36e9c` | ClickHouse Local tpcdi SF0.1 | 2026-10-28 14:08:31 UTC | `6acbcee6f` | 30.25.0.2 | D |
+| `30a5c9d1` | ClickHouse Local tpcdi SF1 | 2026-10-28 14:09:13 UTC | `6acbcee6f` | 30.25.0.2 | D |
+| `ac8474d7` | DataFusion read_primitives SF0.01 | 2026-10-28 15:59:34 EDT | `a6a78db53` | 30.25.0.2 | E |
+| `a45d3e71` | DataFusion read_primitives SF0.1 | 2026-10-28 15:59:41 EDT | `a6a78db53` | 30.25.0.2 | E |
+
+Run timestamps are the bundle's `run.timestamp`. Host runs (DataFusion, SQLite) record the Darwin
+host's local time (EDT, UTC-4). ClickHouse Local runs executed in the `benchbox-agent` Linux
+container and record its UTC clock; the matching host log modification times are 13:40-14:13 EDT on
+2026-10-26 and 10:06-10:09 EDT on 2026-10-28.
+
+Evidence, all read from the local worktrees' git history and files:
+
+- A: worktree `BenchBox.wt-superseded-reruns` at `7b8484a4c` (#3544), the HEAD from 2026-10-26
+  11:08:46 EDT (`git reflog --date=iso`) until the fast-forward at 15:57:05 EDT. The pin at that commit
+  is 30.24.0.17, archive sha256 `f91d0991...4fc526`. The first run log (`/tmp/sgrr/logs`, modification
+  time 11:09:49 EDT) postdates it, as do all runs in this class. The ClickHouse Local runs
+  (`/tmp/sgrr/runq_ch.sh`) ran `uv run --frozen -- benchbox run` in the container with that worktree as
+  the working directory.
+- B: the same worktree after the fast-forward to `5e82bcaa3` at 15:57:05 EDT; the pin is unchanged
+  (30.24.0.17, same sha256). Both SQLite TPC-H runs (15:57:23 and 15:57:39) fall in this window.
+- C: worktree `BenchBox.wt-sqlglot-adopt-2` at `be144e04f` (branch `chore/adopt-sqlglot-30-25-0-2`, the
+  #3649 branch; HEAD unchanged since 08:23:31 EDT on 2026-10-28, clean tree). Its pin is 30.25.0.2 with
+  archive sha256 `6207c352...ec8fa2`, and `shasum -a 256` of the vendored archive equals the pin. The SQLite
+  Read Primitives replacements ran there (`cd BenchBox.wt-sqlglot-adopt-2 && uv run --frozen --
+  benchbox run ...`, recorded in the agent session transcript) at 09:28-09:29 EDT, before the
+  adoption merged as `e071365f6` at 09:28:01 EDT and before `BenchBox.wt-superseded-reruns` was rebased.
+- D: worktree `BenchBox.wt-superseded-reruns` rebased onto `0033859cb` (which contains `e071365f6`) at
+  10:03:08-10:03:18 EDT on 2026-10-28, tip `6acbcee6f`. The pin is 30.25.0.2 and the vendored pin files
+  have a modification time of 10:03:08. The runs (`/tmp/sgrr-rerun/run_cell.sh`, logs modified
+  10:05-10:09 EDT) postdate the rebase. Between the 2026-10-27 22:23 rebase and this one that worktree
+  carried 30.25.0.1, and no bundle was run in that window.
+- E: the same worktree at `a6a78db53` (rebased onto `c8fa62236`, pin 30.25.0.2) at the 15:59 EDT
+  DataFusion Read Primitives runs (`uv run -- benchbox run --platform datafusion ...`, recorded in the
+  agent session transcript).
+
+Limits. The Linux virtualenv `/tmp/bbvenv-linux-sgrr` used by the ClickHouse Local runs no longer
+exists, so its `benchbox._vendor` cannot be inspected; the class A and D values for those 26 bundles
+rest on the worktree pin and the run scripts. No run log prints the wheel. Uncommitted working-tree
+changes at run time are not recorded; none is evidenced. No bundle is attributed to 30.25.0.1, and no
+bundle is `unknown`.
+
+Reproduction:
+
+```
+git show --name-only --diff-filter=A --format= 431cbe4c7 -- 'results-data/bundles/*.json' | grep -v manifest
+jq -r '.run.timestamp' results-data/bundles/<bundle>.json
+git -C <worktree> reflog --date=iso
+git -C <worktree> show <commit>:benchbox/_vendor/sqlglot.json
+shasum -a 256 <worktree>/benchbox/_vendor/*.zip
+```
+
 Later reruns use 30.25.0.1 or newer and earlier valid bundles are kept. The #3587 comparison
 translated 72,483 queries across both wheels and changed 9 outputs, all with a DuckDB target,
 none of which is a target of these bundles.
@@ -1256,7 +1368,7 @@ at a time under `lockf /tmp/benchbox-heavy.lock` through the project CLI (`bench
 with ClickHouse Local in the `benchbox-agent` Linux container (chDB 4.1.6) and DataFusion (54.0.0)
 natively on the Darwin host. The DataFusion ClickBench data directory was removed first so the
 CSV was converted to Parquet again with the corrected loader. Bundles record BenchBox 0.5.0rc1;
-the wheel (30.25.0.2) is recorded by the repository lock, not by the bundles. Staging used the
+the wheel (30.25.0.2) is the vendored pin `benchbox/_vendor/sqlglot.json` (see Wheel consistency). Staging used the
 public anonymiser, as for the rest of the set (see Staging path above).
 
 | cell | scale | replaced bundle | replacement bundle |
