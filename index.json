@@ -26952,15 +26952,10 @@
       "title": "Compat shim cannot route post-extraction verbs; passthrough mints fork DBs"
     },
     "todo-db-update-cannot-clear-field-20261022": {
-      "claim": {
-        "expires_at": "2026-10-30T14:33:41Z",
-        "generation": "d858e9056fc640e1acaae87cc0144370",
-        "renewals": 0,
-        "worker": "joe-todo-db-upgrade"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "todo-db update_item cannot clear a non-empty text field"
     },
     "todo-db-update-item-not-before-clear-noop-20261023": {

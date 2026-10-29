@@ -38,6 +38,15 @@
       "op": "update",
       "op_id": "2794bfb0664e453d950d857be2a4c487",
       "session_id": "167fcfd7c4c74fa4b63606febd08c8d2"
+    },
+    {
+      "actor": "joe-todo-db-upgrade",
+      "at": "2026-10-29T14:33:47Z",
+      "client": "mcp",
+      "generation": "d858e9056fc640e1acaae87cc0144370",
+      "op": "finish",
+      "op_id": "87e062fdff7942fb8f8e11e0b8e0d13a",
+      "session_id": "167fcfd7c4c74fa4b63606febd08c8d2"
     }
   ]
 }
