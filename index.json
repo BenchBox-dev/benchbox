@@ -19086,7 +19086,8 @@
         "sqlite-clickbench-sf1-row-count-mismatches-20261025",
         "sql-execution-gate-vacuous-empty-results-20261025",
         "questdb-unpadded-date-cast-null-20261025",
-        "local-rerun-bundles-fail-submission-validation-20261025"
+        "local-rerun-bundles-fail-submission-validation-20261025",
+        "bundle-translator-version-sidecar-attestation"
       ],
       "priority": "high",
       "status": "open",
