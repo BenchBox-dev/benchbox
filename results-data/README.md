@@ -176,6 +176,20 @@ throwaway salt is enough to check validation, but bundles destined for the
 corpus must use the maintainer salt so pseudonyms stay stable across runs.
 Copying staged files into `results-data/bundles/` needs the owner's approval.
 
+`BENCHBOX_MACHINE_ID_SALT` is required by every path that produces corpus
+bundles:
+
+- public `benchbox submit` packaging, which refuses without it;
+- `scripts/stage_seed_corpus_bundle.py`, which fails without it even with
+  `--internal-manifest`; the CI seed-corpus lane runs it with the
+  `BENCHBOX_MACHINE_ID_SALT` GitHub secret;
+- `_project/scripts/results_explorer_corpus_migrate.py`, which refuses to run
+  without it. Its default `--bundles-dir` is `results-data/bundles/`, and
+  `--write` rewrites bundles, companions and manifests there in place, so use the
+  same maintainer salt as the staging path. It preserves identifiers that are
+  already public hashes, so it does not re-pseudonymise bundles that passed a
+  salted path.
+
 ## Reproducibility
 
 Any bundle in this directory can be re-run locally using the parameters recorded in
