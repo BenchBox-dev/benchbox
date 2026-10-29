@@ -28727,6 +28727,13 @@
       "status": "open",
       "title": "Notuning reuse refusal can miss tuned databases: error misclassification, swallowed probe errors, marker deleted by save"
     },
+    "tuning-page-empty-aliases-sentence-20261029": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Stop the generated tuning page rendering 'Aliases resolve to another platform's entry: .' when a platform has no aliases"
+    },
     "tuning-paradedb-native-layout-20261017": {
       "claim": null,
       "needs": [],

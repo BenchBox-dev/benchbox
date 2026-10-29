@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "A tuning page generated from a docs-data fixture with no aliases has no dangling sentence; the no-aliases golden is updated",
+    "npm test -w website passes"
+  ],
+  "description": "Found 2026-10-28 while adding generator goldens. With an empty alias list, website/src/lib/docs-generators/tuning-matrix.ts renders the sentence \"Aliases resolve to another platform's entry: .\" with nothing after the colon. The checked-in golden (website/tests/docs-generators-golden/no-aliases/) now pins that wording. Omit the sentence when the list is empty (or render an explicit none), then regenerate the golden with UPDATE_GOLDEN=1 and review the diff. Check whether the real bundle ever has an empty alias list; if never, the fix is still cheap and prevents a malformed published page.",
+  "links": [
+    "BenchBox-dev/benchbox-site: website/src/lib/docs-generators/tuning-matrix.ts",
+    "BenchBox-dev/benchbox-site: website/tests/docs-generators-golden/"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-29T12:39:58Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "61abc1460e6a4c0ea734857a3aaee4bd",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    }
+  ]
+}
