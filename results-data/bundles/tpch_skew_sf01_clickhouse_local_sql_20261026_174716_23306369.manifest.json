@@ -1,0 +1,11 @@
+{
+  "bundle_file": "tpch_skew_sf01_clickhouse_local_sql_20261026_174716_23306369.json",
+  "bundle_hash": "31a6a743447777a2aaa77506f343b9f3675e789a16fe37ab5fe299e5eb7186fd",
+  "container_host_os": "macOS",
+  "execution_class": "container",
+  "execution_class_evidence": "Bundle records a Linux kernel on an Apple CPU vendor: a Linux guest on Apple silicon, not the native macOS host.",
+  "funding": "unspecified",
+  "manifest_version": "1.0",
+  "result_source": "internal",
+  "submitted_by": "maintainer"
+}
