@@ -5,7 +5,7 @@
     "Evidence is bound to a recorded develop SHA and the CI units are described as the five real units (core, explorer, results-data, docs, tooling)",
     "No retirement item (42, 44, 53, 70, 80, 81) deletes a predecessor of a still-pending high-risk row"
   ],
-  "context": "2026-10-28 status: ledger and ADR reconciliation merged in PR #3623 (d1b8b8e73) and hook-row removals in PR #3634 (740173fc9); 15 rows proven, 7 waived, 7 blocked on three named blockers (site-deploy-gate-evidence, release-v2-first-run, composed-tree-evidence). PR #3625 (64a1fd460) recorded the per-test duration supersession. Remaining: update the nightly-v2 and retired-workflow rows after PR #3637 merges (that PR removes the legacy rows itself), and clear release-v2-first-run when the rehearsal run exists. Kept open because acceptance 4 (no retirement deletes a predecessor of a pending high-risk row) is checked by the remaining retirement items.",
+  "context": "2026-10-28 status: ledger and ADR reconciliation merged in PR #3623 (d1b8b8e73) and hook-row removals in PR #3634 (740173fc9); 15 rows proven, 7 waived, 7 blocked on three named blockers (site-deploy-gate-evidence, release-v2-first-run, composed-tree-evidence). PR #3625 (64a1fd460) recorded the per-test duration supersession. Remaining: update the nightly-v2 and retired-workflow rows after PR #3637 merges (that PR removes the legacy rows itself), and clear release-v2-first-run when the rehearsal run exists. Kept open because acceptance 4 (no retirement deletes a predecessor of a pending high-risk row) is checked by the remaining retirement items.\n\n2026-10-29: PR #3637 deleted the nightly.yml and cross-platform-validation.yml ledger rows; PR #3676/#3688 removed rows for deleted scripts; the nightly-v2 ledger row was updated in #3637. Remaining for this item: nothing blocks except the release-v2-first-run and site-deploy-gate-evidence and composed-tree-evidence blockers (owner actions or site repo), and the check that dlv2-53, 80, 82, 83 do not delete a predecessor of a pending high-risk row.",
   "description": "Every row of docs/internal/dev-loop-property-ledger.md is still pending and dlv2-f2 closed with acceptance incomplete. Owner decision 2026-10-27: prove high-risk properties (merge safety, release integrity, identity/attribution, soundness holds, oracle gate/required contexts) with positive/negative evidence; waive obsolete process-only properties with a stated reason. Guardrails: primary clone /Users/joe/Developer/BenchBox is read-only; work only in a linked worktree from origin/develop (make worktree-create + make agent-write-preflight); never git add -A; identity Joe Harris, no agent attribution; no code comments/docstrings (make comment-policy-check clean); encoding=\"utf-8\"; uv run -- for Python; never bypass hooks; never set BENCHBOX_SKIP_TEST_LOCK or BENCHBOX_TEST_LOCK_DIR; make pr-open needs PATH=\"$HOME/.cache/omp-18.12.1/bin:$PATH\" while installed omp differs from the CI pin.",
   "sessions": [
     {
@@ -58,6 +58,14 @@
       "generation": "cf9b4838fb4d4b06aea890b8a9fdd710",
       "op": "take",
       "op_id": "d94a37cd77604952b661d8c3c4e4d754",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-29T18:04:57Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6787943b74c542dfb66ca3dc3ad537ad",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
