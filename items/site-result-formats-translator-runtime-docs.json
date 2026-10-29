@@ -3,7 +3,7 @@
     "result-formats.md documents both fields and the three provenance states plus the DataFrame case, consistent with the merged core implementation.",
     "Merged under the site repo's rules; whether merge deploys is stated and no production deploy happens without owner approval."
   ],
-  "context": "DECISION GATE: if merging deploys to production, STOP and ask the owner before merging.",
+  "context": "DECISION GATE: if merging deploys to production, STOP and ask the owner before merging.\n\nGATE HIT: site PR https://github.com/BenchBox-dev/benchbox-site/pull/85 is open with the docs. SITE_DEPLOY_TARGET=production and deploy.yml runs on push to main, so merging deploys benchbox.dev. Not merged. Question for owner: approve merging PR #85 (production deploy follows)? Resume: wait for ci green, then gh pr merge --squash 85 and release claim.",
   "description": "docs/reference/result-formats.md is owned by the site repo (BenchBox-dev/benchbox-site; quality docs-ownership.json in core lists it as site-owned) and does not mention execution.translation at all. Document the new execution.translation.runtime object (fields, when it is present: only when translation ran; absent for DataFrame runs and for paths that change SQL without logging translation outcomes) and the manifest-sidecar sql_translator_version attestation (what recorded vs attested vs not recorded means, evidence string, conflict rule).\n\nGUARDRAILS: site repo rules apply; text verified against the merged core code (cite paths in the PR body); no production deploy without owner approval.",
   "sessions": [
     {
@@ -21,6 +21,14 @@
       "generation": "7cefd10ea15e4cc88536152af668e20b",
       "op": "take",
       "op_id": "a266ff02fe14459db9bb96bc58a84c92",
+      "session_id": "dcc6105a05964c618dfd87771db72de4"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729",
+      "at": "2026-10-29T04:27:06Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "01702b003f644b4aabed4aa5a4ac99c6",
       "session_id": "dcc6105a05964c618dfd87771db72de4"
     }
   ]
