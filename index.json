@@ -11003,9 +11003,9 @@
     },
     "explorer-read-model-18-activate": {
       "claim": {
-        "expires_at": "2026-10-30T13:06:01Z",
-        "generation": "2eff69b932eb498a8fb183b76c1861a7",
-        "renewals": 0,
+        "expires_at": "2026-10-30T21:39:40Z",
+        "generation": "7336677a003342c2aeaf97f8d06cd1a9",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729"
       },
       "needs": [
