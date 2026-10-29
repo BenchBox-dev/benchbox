@@ -339,5 +339,5 @@
       "skip": "false"
     }
   },
-  "summary": "oracle-verdict plan for #104: review (first review of this pull request; pull request event)\n18.12.1\nslot 1: medium invalid, recovery retry (jev)\nredaction check: 0 file(s) rewritten, no secret value remains\nslot 1: medium\nslot 1: medium absent (invalid: the reviewer output is not JSON: Expecting value)\nslot 2: medium\nslot 2: medium verdict\nslot 3: pass\nslot 3: pass\nslot 3: pass\nslot 3: pass\noracle-verdict #104 <sha0>: success: medium: SHIP\n"
+  "summary": "oracle-verdict plan for #104: review (first review of this pull request; pull request event)\n<omp-version>\nslot 1: medium invalid, recovery retry (jev)\nredaction check: 0 file(s) rewritten, no secret value remains\nslot 1: medium\nslot 1: medium absent (invalid: the reviewer output is not JSON: Expecting value)\nslot 2: medium\nslot 2: medium verdict\nslot 3: pass\nslot 3: pass\nslot 3: pass\nslot 3: pass\noracle-verdict #104 <sha0>: success: medium: SHIP\n"
 }

@@ -388,5 +388,5 @@
       "skip": "false"
     }
   },
-  "summary": "oracle-verdict plan for #52: review (the patch changed after SHIP WITH FIXES; pull request event)\n18.12.1\nredaction check: 0 file(s) rewritten, no secret value remains\nslot 1: medium\nslot 1: medium verdict\nslot 2: pass\nslot 2: pass\nslot 2: pass\nslot 2: pass\nslot 2: pass\noracle-verdict #52 <sha0>: success: medium: SHIP\n"
+  "summary": "oracle-verdict plan for #52: review (the patch changed after SHIP WITH FIXES; pull request event)\n<omp-version>\nredaction check: 0 file(s) rewritten, no secret value remains\nslot 1: medium\nslot 1: medium verdict\nslot 2: pass\nslot 2: pass\nslot 2: pass\nslot 2: pass\nslot 2: pass\noracle-verdict #52 <sha0>: success: medium: SHIP\n"
 }
