@@ -10981,17 +10981,12 @@
       "title": "Switch the Explorer and site-inputs default output to read model 18"
     },
     "explorer-read-model-18-translator-version": {
-      "claim": {
-        "expires_at": "2026-10-30T12:25:47Z",
-        "generation": "caaa2c3d863f4b46b542d0fd003fde9f",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729"
-      },
+      "claim": null,
       "needs": [
         "bundle-translator-version-sidecar-attestation"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Explorer: build read model 18 with the SQL translator version behind a selector (default output stays 17)"
     },
     "explorer-read-model-review-followups": {
