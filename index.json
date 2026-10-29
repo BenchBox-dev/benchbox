@@ -20095,12 +20095,17 @@
       "title": "Validate synthetic plan parsers against realistic live-engine plans"
     },
     "query-plan-mcp-canonical-rendering": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-30T16:13:15Z",
+        "generation": "b807caa9152b41aca9fef0060d7d4229",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bb7fd2d6b114a6501df93f97"
+      },
       "needs": [
         "query-plan-mcp-qualified-bundle-lookup"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Render and summarize canonical query-plan models in MCP analytics"
     },
     "query-plan-mcp-qualified-bundle-lookup": {
