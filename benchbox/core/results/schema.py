@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import statistics
+from collections import Counter
 from collections.abc import Mapping
 from dataclasses import asdict, is_dataclass
 from datetime import datetime
@@ -1310,6 +1311,7 @@ def build_plans_payload(result: BenchmarkResults) -> dict[str, Any] | None:
         multi_stream = len(rows) > 1
         stream_ids = [qr.get("stream_id", 0) for qr in rows]
         stream_id_disambiguates = len(set(stream_ids)) == len(stream_ids)
+        qualified_key_counts = Counter(f"{query_id}#{qr.get('stream_id', 0)}:{qr.get('test_type', '')}" for qr in rows)
         for qr in rows:
             if not multi_stream:
                 key = query_id
@@ -1317,6 +1319,8 @@ def build_plans_payload(result: BenchmarkResults) -> dict[str, Any] | None:
                 key = f"{query_id}#{qr.get('stream_id', 0)}"
             else:
                 key = f"{query_id}#{qr.get('stream_id', 0)}:{qr.get('test_type', '')}"
+                if qualified_key_counts[key] > 1 and qr.get("iteration") is not None:
+                    key = f"{key}@{qr['iteration']}"
             plans_by_query[key] = _build_plan_entry(qr, max_depth=max_depth)
 
     for error in result.plan_capture_errors or []:

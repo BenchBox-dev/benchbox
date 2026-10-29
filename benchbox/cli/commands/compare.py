@@ -24,7 +24,6 @@ from benchbox.core.results.exporter import ResultExporter
 from benchbox.core.results.loader import (
     ResultLoadError,
     UnsupportedSchemaError,
-    iter_query_results,
     load_result_file,
 )
 from benchbox.core.results.regression_policy import is_regression
@@ -1299,15 +1298,6 @@ def _check_regression_threshold(
         console.print(f"\n[bold green]✓ No performance regression ({criteria})[/bold green]")
 
 
-def _build_execution_map(results: Any) -> dict[str, Any]:
-    execution_map: dict[str, Any] = {}
-    for execution in iter_query_results(results):
-        query_id = execution.get("query_id")
-        if query_id is not None:
-            execution_map.setdefault(query_id, execution)
-    return execution_map
-
-
 def _compare_plans(
     baseline: Any,
     current: Any,
@@ -1315,6 +1305,7 @@ def _compare_plans(
 ) -> dict[str, Any] | None:
     from benchbox.core.query_plans.comparison import (
         QueryPlanComparator,
+        build_execution_map,
         generate_plan_comparison_summary,
     )
 
@@ -1334,8 +1325,8 @@ def _compare_plans(
     plan_comparisons = []
     comparator = QueryPlanComparator()
 
-    baseline_map = _build_execution_map(baseline)
-    current_map = _build_execution_map(current)
+    baseline_map = build_execution_map(baseline)
+    current_map = build_execution_map(current)
 
     common_queries = set(baseline_map.keys()) & set(current_map.keys())
 

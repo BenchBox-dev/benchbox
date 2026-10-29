@@ -163,6 +163,7 @@ def _create_default_registry() -> ParserRegistry:
     registry.register("athena", "0.0.0", PrestoTrinoQueryPlanParser)
 
     registry.register("spark", "0.0.0", SparkQueryPlanParser)
+    registry.register("pyspark", "0.0.0", SparkQueryPlanParser)
     registry.register("databricks", "0.0.0", SparkQueryPlanParser)
     registry.register("velox", "0.0.0", SparkQueryPlanParser)
 

@@ -945,22 +945,6 @@ class ExpressionFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, 
     def _get_first_row(self, df: DF) -> tuple | None:
         return None
 
-    def _record_dataframe_plan_capture_failure(self, query_id: str, message: str) -> None:
-        if not hasattr(self, "plan_capture_errors"):
-            self.plan_capture_errors: list[dict[str, Any]] = []
-        self.plan_capture_errors.append({"query_id": query_id, "error": message})
-
-        if not getattr(self, "_plan_capture_warning_emitted", False):
-            self._plan_capture_warning_emitted = True
-            logger.warning(
-                "Query plan capture failed for %s on %s: %s (further capture failures this run are logged at debug)",
-                query_id,
-                self.platform_name,
-                message,
-            )
-        else:
-            logger.debug("Query plan capture failed for %s: %s", query_id, message)
-
     def _log_verbose(self, message: str) -> None:
         if self.verbose:
             logger.info(message)

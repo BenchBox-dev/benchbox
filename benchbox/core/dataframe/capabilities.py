@@ -136,6 +136,20 @@ PLATFORM_CAPABILITIES: dict[str, PlatformCapabilities] = {
             "Best for very large scale factors (100+)",
         ],
     ),
+    "lakesail": PlatformCapabilities(
+        platform_name="LakeSail",
+        max_recommended_sf=10000.0,
+        memory_overhead_factor=3.0,
+        execution_model=ExecutionModel.DISTRIBUTED,
+        requires_partitioning=True,
+        recommended_data_format=DataFormat.PARQUET,
+        min_memory_gb=8.0,
+        description="LakeSail Sail engine driven through the PySpark Spark Connect client",
+        notes=[
+            "Executes on a Sail server reached over Spark Connect",
+            "Client-side memory is small; server memory governs capacity",
+        ],
+    ),
     "datafusion": PlatformCapabilities(
         platform_name="DataFusion",
         max_recommended_sf=100.0,

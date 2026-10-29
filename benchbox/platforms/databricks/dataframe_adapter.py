@@ -211,8 +211,6 @@ class DatabricksDataFrameAdapter(DatabricksAdapter):
                 "execution_time_seconds": execution_time,
             }
 
-            return result_dict
-
         except Exception as e:
             execution_time = elapsed_seconds(start_time)
             return {
@@ -224,6 +222,21 @@ class DatabricksDataFrameAdapter(DatabricksAdapter):
                 "error_type": type(e).__name__,
                 "execution_mode": "dataframe",
             }
+
+        self._merge_dataframe_plan_into_result(result_dict, result_df, query_id)
+        return result_dict
+
+    def _merge_dataframe_plan_into_result(self, result: dict[str, Any], dataframe: Any, query_id: str) -> None:
+        if not self.capture_plans:
+            return
+        query_plan, capture_time_ms = self.capture_spark_dataframe_plan(dataframe, query_id)
+        if query_plan:
+            result["query_plan"] = query_plan
+            result["plan_fingerprint"] = query_plan.plan_fingerprint
+            if self.normalize_plan_literals:
+                result["plan_fingerprint_normalized"] = query_plan.normalized_fingerprint
+        if capture_time_ms is not None:
+            result["plan_capture_time_ms"] = capture_time_ms
 
     def execute_query(
         self,
