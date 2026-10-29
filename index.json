@@ -8709,14 +8709,19 @@
       "title": "Retire the post-merge safety-net and process-monitoring workflows"
     },
     "dlv2-42-retire-dev-loop-scripts-tests": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-30T17:40:14Z",
+        "generation": "57cba394a544471b84e0ed4b2558109c",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
+      },
       "needs": [
         "dlv2-f3-flip-window",
         "dlv2-16-split-timing-policy",
         "dlv2-70-retire-scheduled-workflows"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Delete dev-loop scripts and their pure-process tests after their workflows are gone"
     },
     "dlv2-43-makefile-agent-instructions-lockstep": {
