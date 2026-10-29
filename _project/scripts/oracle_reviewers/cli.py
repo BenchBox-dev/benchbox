@@ -1062,7 +1062,7 @@ def command_finalize(args: argparse.Namespace) -> int:
     )
     if plan["run_id"] != os.environ["GITHUB_RUN_ID"]:
         raise SystemExit("oracle-verdict: the plan belongs to another run")
-    now = _now()
+    now = getattr(args, "now", None) or _now()
     if plan["decision"] == SUCCESS:
         final = report.fixed(retry.SUCCESS, "only exempt paths changed")
     elif plan["decision"] == FORK:
@@ -1165,19 +1165,17 @@ def _reread_history(plan: Mapping[str, Any]) -> protocol.History:
     )
 
 
-def command_guard(args: argparse.Namespace) -> int:
-    plan = _read_json(Path(args.plan))
+def guard_decision(plan: Mapping[str, Any]) -> tuple[int, bool]:
     try:
         found = _reread_history(plan)
     except HistoryUnreadable as exc:
         print(f"oracle-verdict: error: {exc}; nothing is posted for head {plan['head_sha']}", file=sys.stderr)
-        return 2
+        return 2, False
     if found.error is not None:
         if plan.get("decision") == HOLD:
-            _output({"skip": "false"})
-            return 0
+            return 0, False
         print(f"oracle-verdict: error: {found.error}; nothing is posted for head {plan['head_sha']}", file=sys.stderr)
-        return 2
+        return 2, False
     latest = found.latest
     rules = plan.get("protocol") or {}
     planned = (int(rules.get("cycle", 0)), int(rules.get("round", 0)))
@@ -1191,10 +1189,16 @@ def command_guard(args: argparse.Namespace) -> int:
         and posted >= planned
         and published
     )
-    _output({"skip": "true" if done else "false"})
     if done:
         _summary(f"oracle-verdict: head {plan['head_sha']} already has a decision; this run posts nothing")
-    return 0
+    return 0, done
+
+
+def command_guard(args: argparse.Namespace) -> int:
+    code, skip = guard_decision(_read_json(Path(args.plan)))
+    if code == 0:
+        _output({"skip": "true" if skip else "false"})
+    return code
 
 
 _STATUS_RUN_URL = re.compile(r"/actions/runs/(\d+)(?:/|$)")
@@ -1894,6 +1898,9 @@ def _parser() -> argparse.ArgumentParser:
     install_omp = commands.add_parser("install-omp")
     install_omp.add_argument("--policy", required=True)
     install_omp.set_defaults(handler=omp_pin.command_install)
+    from . import driver
+
+    driver.register(commands)
     return parser
 
 

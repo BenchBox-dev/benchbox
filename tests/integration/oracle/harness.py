@@ -7,7 +7,6 @@ import shutil
 import stat
 import subprocess
 import sys
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -106,6 +105,9 @@ class ReviewRun:
 
 
 class Harness:
+    default_mode = "steps"
+    default_shadow = False
+
     def __init__(self, root: Path) -> None:
         self.root = root
         self.repo = root / "repo"
@@ -298,55 +300,18 @@ class Harness:
     def gh(self, name: str, args: list[str], env: dict[str, str], token: str) -> Step:
         return self.run(name, ["gh", *args], {**env, "GH_TOKEN": token, "GH_ENTERPRISE_TOKEN": token})
 
-    def _step_runs(self, name: str, record: ReviewRun) -> bool:
-        steps = yaml.safe_load((REPO_ROOT / WORKFLOW).read_text(encoding="utf-8"))["jobs"]["review"]["steps"]
-        condition = str(next(step for step in steps if step.get("name") == name).get("if", "success()"))
-
-        def out(step: str, key: str) -> str:
-            found = record.steps.get(step)
-            return found.outputs.get(key, "") if found is not None else ""
-
-        def outcome(step: str) -> str:
-            found = record.steps.get(step)
-            return "skipped" if found is None else ("success" if found.code == 0 else "failure")
-
-        clauses = [clause.strip() for clause in condition.split("&&")]
-        if "always()" not in clauses and any(step.code != 0 for step in record.steps.values()):
-            return False
-        return all(self._clause_holds(clause, out, outcome) for clause in clauses)
-
-    @staticmethod
-    def _clause_holds(clause: str, out: Callable[[str, str], str], outcome: Callable[[str], str]) -> bool:
-        if clause == "always()":
-            return True
-        match = re.fullmatch(r"steps\.(\w+)\.(?:outputs\.(\w+)|(outcome)) (==|!=) '(\w*)'", clause)
-        if match is None:
-            raise AssertionError(f"unsupported workflow condition clause: {clause}")
-        step, key, _, operator, expected = match.groups()
-        actual = out(step, key) if key else outcome(step)
-        return (actual == expected) if operator == "==" else (actual != expected)
-
-    def _record_attempt(self, record: ReviewRun, run: dict[str, Any], pr: int) -> None:
-        if not self._step_runs("Record the retry attempt", record):
-            return
-        attempt = record.temp / "oracle-final" / "attempt" / "state.json"
-        if attempt.is_file():
-            self.github.upload_artifact(run, f"oracle-verdict-state-attempt-{pr}", {"state.json": attempt.read_bytes()})
-
     def review(
         self,
         pr: int,
         *,
         event_name: str = "pull_request_target",
         action: str = "synchronize",
-        classification: tuple[str, str] = ("medium", "standard"),
-        installable: bool = True,
-        swap_after_install: bool = False,
         inputs: dict[str, str] | None = None,
-        tamper_attempts: Callable[[Path], None] | None = None,
-        plan_env: dict[str, str] | None = None,
-        before_guard: Callable[[], None] | None = None,
+        mode: str | None = None,
+        **options: Any,
     ) -> ReviewRun:
+        from .runs import Options, runner_for
+
         pull = self.github.pulls[pr]
         self.github.refresh(pr)
         head = pull["head"]["sha"]
@@ -380,187 +345,9 @@ class Harness:
             "GITHUB_EVENT_PATH": str(temp / "event.json"),
             "GITHUB_REF": "refs/heads/develop",
         }
-        plan_dir = temp / "oracle-plan"
-        attempts_dir = temp / "oracle-attempts"
-        final_dir = temp / "oracle-final"
-        classification_path = temp / "oracle-classification" / "classification.json"
-        plan = self.cli(
-            "plan",
-            ["plan", "--policy", str(self.policy_file), "--pr", str(pr), "--out", str(plan_dir)],
-            {**env, "GH_TOKEN": JOB_TOKEN, **(plan_env or {})},
-        )
-        record.steps["plan"] = plan
-        decision, post = plan.outputs.get("decision"), plan.outputs.get("post") == "true"
-        install_state = "installed"
-        omp_env: dict[str, str] = {}
-        if decision == "review":
-            install = self.install_omp_step(temp, installable=installable)
-            record.steps["install"] = install
-            install_state = install.outputs.get("state", "installed")
-            omp_env = dict(line.split("=", 1) for line in install.outputs["env"].splitlines())
-            if swap_after_install:
-                self.swap_omp()
-        if decision == "review" and install_state == "installed":
-            workspace = temp / "workspace"
-            git(self.repo, "clone", "--quiet", "--no-checkout", str(self.repo), str(workspace))
-            git(workspace, "checkout", "--quiet", "--detach", plan.outputs["head_sha"])
-            self._classify(record.plan, classification_path, classification)
-            loop_args = [
-                "attempts",
-                "--plan",
-                str(plan_dir / "plan.json"),
-                "--attempts-dir",
-                str(attempts_dir),
-                "--classification",
-                str(classification_path),
-                "--workspace",
-                str(workspace),
-                "--home-root",
-                str(temp),
-            ]
-            loop_env = {
-                **env,
-                **omp_env,
-                "OMP_GATEWAY_TOKEN": GATEWAY_TOKEN,
-                "ORACLE_GATEWAY_URL": "https://gateway.example.invalid",
-            }
-            recover_args = [
-                "recover",
-                "--plan",
-                str(plan_dir / "plan.json"),
-                "--attempts-dir",
-                str(attempts_dir),
-                "--workspace",
-                str(workspace),
-            ]
-            recover_env = {**env, "TYPESAFE_API_KEY": JEV_KEY, "TYPESAFE_BASE_URL": self.jev.url}
-            record.steps["attempts"] = self.cli("attempts", loop_args, loop_env)
-            for after in range(1, int(record.plan["max_attempts"])):
-                if record.steps["attempts" if after == 1 else f"resume-{after - 1}"].code != 0:
-                    break
-                record.steps[f"recover-{after}"] = self.cli(f"recover-{after}", recover_args, recover_env)
-                if record.steps[f"recover-{after}"].code != 0:
-                    break
-                record.steps[f"resume-{after}"] = self.cli(f"resume-{after}", loop_args, loop_env)
-        if tamper_attempts is not None:
-            tamper_attempts(attempts_dir)
-        if not post:
-            self.github.complete_run(run, "success")
-            return record
-        record.loop_summary = record.step_summary()
-        finalize_args = ["--omp-install", "failed"] if install_state == "failed" else []
-        record.steps["finalize"] = self.cli(
-            "finalize",
-            [
-                "finalize",
-                "--plan",
-                str(plan_dir / "plan.json"),
-                "--attempts-dir",
-                str(attempts_dir),
-                "--out-dir",
-                str(final_dir),
-                "--classification",
-                str(classification_path),
-                "--env",
-                "JOB_TOKEN",
-                *finalize_args,
-            ],
-            {**env, "JOB_TOKEN": JOB_TOKEN, "OMP_GATEWAY_TOKEN": GATEWAY_TOKEN, "TS_OAUTH_CI_SECRET": HELD_SECRET},
-        )
-        record.steps["redact"] = self.cli(
-            "redact",
-            [
-                "redact-check",
-                "--path",
-                str(attempts_dir),
-                "--path",
-                str(final_dir),
-                "--env",
-                "JOB_TOKEN",
-                "--summary-file",
-                str(attempts_dir / "summary.json"),
-                "--summary-file",
-                str(final_dir / "summary.json"),
-            ],
-            {**env, "JOB_TOKEN": JOB_TOKEN, "OMP_GATEWAY_TOKEN": GATEWAY_TOKEN, "TS_OAUTH_CI_SECRET": HELD_SECRET},
-        )
-        if before_guard is not None:
-            before_guard()
-        guard = self.cli("guard", ["guard", "--plan", str(plan_dir / "plan.json")], {**env, "GH_TOKEN": APP_TOKEN})
-        record.steps["guard"] = guard
-        finalized = record.steps["finalize"].outputs
-        self._record_attempt(record, run, pr)
-        if guard.code == 0 and guard.outputs.get("skip") != "true":
-            head_sha = plan.outputs["head_sha"]
-            status = self.gh(
-                "status",
-                [
-                    "api",
-                    "--method",
-                    "POST",
-                    f"repos/{SLUG}/statuses/{head_sha}",
-                    "--input",
-                    str(final_dir / "status.json"),
-                ],
-                env,
-                APP_TOKEN,
-            )
-            record.steps["status"] = status
-            if finalized.get("comment") == "true":
-                record.steps["comment"] = self.gh(
-                    "comment",
-                    [
-                        "api",
-                        "--method",
-                        "POST",
-                        f"repos/{SLUG}/issues/{pr}/comments",
-                        "--input",
-                        str(final_dir / "comment.json"),
-                    ],
-                    env,
-                    APP_TOKEN,
-                )
-            if finalized.get("review") == "true":
-                record.steps["review"] = self.gh(
-                    "review",
-                    [
-                        "api",
-                        "--method",
-                        "POST",
-                        f"repos/{SLUG}/pulls/{pr}/reviews",
-                        "--input",
-                        str(final_dir / "review.json"),
-                    ],
-                    env,
-                    APP_TOKEN,
-                )
-            if status.code == 0 and finalized.get("has_state") == "true":
-                state = (final_dir / "state" / "state.json").read_bytes()
-                self.github.upload_artifact(run, f"oracle-verdict-state-{pr}", {"state.json": state})
-            base = self.gh("base", ["api", f"repos/{SLUG}/pulls/{pr}", "--jq", ".base.ref"], env, APP_TOKEN)
-            if base.stdout.strip() == "develop":
-                record.steps["dispatch"] = self.gh(
-                    "dispatch",
-                    [
-                        "workflow",
-                        "run",
-                        "oracle-gate.yml",
-                        "--repo",
-                        SLUG,
-                        "--ref",
-                        "develop",
-                        "-f",
-                        f"pr={pr}",
-                        "-f",
-                        f"head_sha={head_sha}",
-                    ],
-                    env,
-                    JOB_TOKEN,
-                )
-        if record.steps["redact"].code == 0 and (attempts_dir / "captures").is_dir():
-            files = {path.name: path.read_bytes() for path in sorted((attempts_dir / "captures").glob("*.json"))}
-            self.github.upload_artifact(run, "oracle-verdict-capture", files)
-        self.github.complete_run(run, "success")
+        mode = mode or self.default_mode
+        options.setdefault("shadow", self.default_shadow and mode == "steps")
+        runner_for(mode)(self, pr, record, env, Options(**options)).run()
         return record
 
     def _classify(self, plan: dict[str, Any], path: Path, classification: tuple[str, str]) -> None:
@@ -585,7 +372,10 @@ class Harness:
         env = {**self.base_env(temp), "GH_TOKEN": JOB_TOKEN, "GITHUB_RUN_ID": "1", "GITHUB_EVENT_NAME": "schedule"}
         if surface:
             env["SURFACE_TOKEN"] = APP_TOKEN
-        step = self.cli("sweep", ["sweep", "--policy", POLICY], env)
+        args = (
+            ["drive", "--policy", POLICY, "sweep"] if self.default_mode == "driver" else ["sweep", "--policy", POLICY]
+        )
+        step = self.cli("sweep", args, env)
         summary = Path(env["GITHUB_STEP_SUMMARY"])
         step.outputs["summary"] = summary.read_text(encoding="utf-8") if summary.is_file() else ""
         return step
