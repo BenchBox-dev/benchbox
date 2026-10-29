@@ -1236,10 +1236,8 @@ pr-open:
 	if [ -z "$$CL_TITLE" ]; then CL_TITLE=$$(git log --reverse --format=%s origin/develop..HEAD | sed -n 1p); fi; \
 	CL_DIR=$$(mktemp -d); \
 	git diff --name-only --diff-filter=ACDMRT origin/develop...HEAD > "$$CL_DIR/changed.txt"; \
-	uv run -- python scripts/release_flow.py select --base-sha "$$(git rev-parse origin/develop)" --github-output "$$CL_DIR/select.txt" >/dev/null || { rm -rf "$$CL_DIR"; exit 1; }; \
-	CL_IDENTITY=; \
-	if grep -qx 'release-identity-changed=true' "$$CL_DIR/select.txt"; then CL_IDENTITY=--release-identity-changed; fi; \
-	uv run -- python scripts/changelog_fragments.py required --title "$$CL_TITLE" --changed-files-from "$$CL_DIR/changed.txt" $$CL_IDENTITY || { rm -rf "$$CL_DIR"; echo "Refusing to open PR: add a changelog fragment (make changelog-entry) or fix the title." >&2; exit 1; }; \
+	git diff --name-only --diff-filter=A origin/develop...HEAD > "$$CL_DIR/added.txt"; \
+	uv run -- python scripts/changelog_fragments.py required --title "$$CL_TITLE" --changed-files-from "$$CL_DIR/changed.txt" --added-files-from "$$CL_DIR/added.txt" --release-base-sha "$$(git rev-parse origin/develop)" || { rm -rf "$$CL_DIR"; echo "Refusing to open PR: add a changelog fragment (make changelog-entry) or fix the title." >&2; exit 1; }; \
 	rm -rf "$$CL_DIR"; \
 	TRUNK_MODE=$$(uv run -- python scripts/trunk_revert.py gate --branch "$$CURRENT" --repo "$$REPOSITORY"); \
 	DRAFT_FLAG=; \
