@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import io
 import json
+import os
+import subprocess
 import zipfile
 from collections.abc import Sequence
 from dataclasses import replace
@@ -25,7 +27,13 @@ MERGED_AT = datetime(2026, 10, 29, 3, 17, 50, tzinfo=timezone.utc)
 POLICY = POLICY_PATH.read_text(encoding="utf-8")
 PREVIOUS_POLICY = POLICY.replace("18.13.3", "18.12.1")
 CHANGE = PinChange(
-    "ca66bf1", MERGED_AT, "chore(oracle): pin omp 18.13.3 (#3713)", "18.13.3", "18.12.1", PREVIOUS_POLICY
+    "ca66bf1",
+    MERGED_AT,
+    "chore(oracle): pin omp 18.13.3 (#3713)",
+    "joeharris76@gmail.com",
+    "18.13.3",
+    "18.12.1",
+    PREVIOUS_POLICY,
 )
 
 
@@ -283,15 +291,23 @@ def test_a_history_without_a_version_change_or_a_prior_pin_is_not_watched() -> N
 
 
 @pytest.mark.parametrize(
-    "subject", ['Revert "chore(oracle): pin omp 18.13.3" (#3679) (#3707)', "revert(oracle): restore omp 18.12.1"]
+    ("author", "subject", "expected"),
+    [
+        (omp_watch.BOT_AUTHOR_EMAIL, "revert(oracle): restore omp 18.12.1", True),
+        (omp_watch.BOT_AUTHOR_EMAIL, "chore(oracle): pin omp 18.13.4", False),
+        ("joeharris76@gmail.com", "revert(oracle): restore omp 18.12.1", False),
+        ("joeharris76@gmail.com", 'Revert "chore(oracle): pin omp 18.13.3" (#3679) (#3707)', False),
+        ("joeharris76@gmail.com", "chore(oracle): pin omp 18.13.3 (#3713)", False),
+    ],
 )
-def test_a_bump_that_is_itself_a_revert_is_flagged_so_it_is_never_watched(subject: str) -> None:
-    change = omp_watch.latest_pin_change(_history("18.12.1", "18.13.3", subjects=[subject]))
-    assert change is not None and change.is_revert
-
-
-def test_an_ordinary_bump_is_not_a_revert() -> None:
-    assert not CHANGE.is_revert
+def test_only_the_restoring_pull_request_the_watch_opens_is_exempt_from_being_watched(
+    author: str, subject: str, expected: bool
+) -> None:
+    history = _history("18.12.1", "18.13.3")
+    history[0] = replace(history[0], subject=subject, author_email=author)
+    change = omp_watch.latest_pin_change(history)
+    assert change is not None and change.is_revert is expected
+    assert (change.subject, change.author_email) == (subject, author)
 
 
 def test_the_revert_policy_restores_only_the_omp_section() -> None:
@@ -625,7 +641,7 @@ def test_a_clean_window_writes_no_revert(monkeypatch: pytest.MonkeyPatch, tmp_pa
 
 
 def test_a_revert_is_not_watched(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    reverted = replace(CHANGE, subject='Revert "chore(oracle): pin omp 18.13.3"')
+    reverted = replace(CHANGE, subject="revert(oracle): restore omp 18.12.1", author_email=omp_watch.BOT_AUTHOR_EMAIL)
     code, out, published = _evaluate(monkeypatch, tmp_path, [], reverted)
     assert code == 0 and published == {"state": omp_watch.IDLE, "version": ""}
     assert not (out / omp_watch.LEDGER_FILE).exists()
@@ -643,3 +659,74 @@ def test_a_ledger_that_cannot_be_restored_fails_the_run_instead_of_judging_a_par
     monkeypatch.setattr(omp_watch, "_publish", lambda _: None)
     code = omp_watch.main(["evaluate", "--repo", "o/r", "--policy", str(POLICY_PATH), "--out-dir", str(tmp_path)])
     assert code == 1
+
+
+def test_a_flood_of_foreign_ledger_artifacts_cannot_push_the_trusted_ledger_off_the_first_page(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(omp_watch, "ARTIFACT_PAGE", 3)
+    records = CAPTURE[:3]
+    watch = ".github/workflows/omp-pin-watch.yml"
+    artifacts = [
+        {"id": index, "created_at": f"2026-10-29T0{index}:00:00Z", "expired": False, "workflow_run": {"id": index}}
+        for index in range(9, 0, -1)
+    ]
+    runs = {index: _run(index, path=".github/workflows/other.yml") for index in range(1, 9)}
+    runs[1] = _run(1, path=watch, event="schedule")
+    host = _Host({}, {}, runs)
+
+    def getter(path: str) -> dict[str, Any]:
+        if "name=" not in path:
+            return host.getter(path)
+        page = int(path.split("&page=")[1])
+        return {"artifacts": artifacts[(page - 1) * 3 : page * 3]}
+
+    asked: list[str] = []
+
+    def downloader(path: str) -> bytes:
+        asked.append(path)
+        return _zip(omp_watch.LEDGER_FILE, omp_watch.dump_ledger(records))
+
+    assert omp_watch.restore_ledger("o/r", getter, downloader) == records
+    assert asked == ["repos/o/r/actions/artifacts/1/zip"]
+
+
+def test_the_policy_history_carries_each_commit_author_subject_and_the_policy_it_introduced(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    target = tmp_path / ".github" / "oracle-reviewers.yml"
+    target.parent.mkdir()
+    environment = {
+        "GIT_CONFIG_GLOBAL": os.devnull,
+        "GIT_CONFIG_SYSTEM": os.devnull,
+        "GIT_COMMITTER_DATE": "2026-10-29T03:17:50+00:00",
+        "GIT_COMMITTER_NAME": "c",
+        "GIT_COMMITTER_EMAIL": "c@example.com",
+    }
+
+    def run(*args: str, **extra: str) -> None:
+        subprocess.run(
+            ["git", *args],
+            cwd=tmp_path,
+            check=True,
+            capture_output=True,
+            env={**os.environ, **environment, **extra},
+        )
+
+    run("init", "-q")
+    for version, author, subject in (
+        ("18.12.1", "a@example.com", "chore(oracle): pin omp 18.12.1"),
+        ("18.13.3", omp_watch.BOT_AUTHOR_EMAIL, "chore(oracle): pin omp 18.13.3 (#1)"),
+    ):
+        target.write_text(POLICY.replace("18.13.3", version), encoding="utf-8")
+        run("add", ".github/oracle-reviewers.yml")
+        run("commit", "-q", "-m", subject, GIT_AUTHOR_NAME="a", GIT_AUTHOR_EMAIL=author)
+    history = omp_watch.policy_history()
+    assert [(commit.author_email, commit.subject) for commit in history] == [
+        (omp_watch.BOT_AUTHOR_EMAIL, "chore(oracle): pin omp 18.13.3 (#1)"),
+        ("a@example.com", "chore(oracle): pin omp 18.12.1"),
+    ]
+    change = omp_watch.latest_pin_change(history)
+    assert change is not None and (change.version, change.previous_version) == ("18.13.3", "18.12.1")
+    assert change.merged_at == MERGED_AT and not change.is_revert

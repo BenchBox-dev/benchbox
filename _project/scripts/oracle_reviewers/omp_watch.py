@@ -4,7 +4,6 @@ import argparse
 import io
 import json
 import os
-import re
 import subprocess
 import sys
 import time
@@ -59,7 +58,9 @@ ARTIFACT_PAGE = 100
 DOWNLOAD_ATTEMPTS = 3
 DOWNLOAD_WORKERS = 8
 PENDING, CLEAR, REVERT, IDLE = "pending", "clear", "revert", "idle"
-_REVERT_SUBJECT = re.compile(r"^(?:Revert\b|revert\()")
+BOT_AUTHOR_EMAIL = "41898282+github-actions[bot]@users.noreply.github.com"
+REVERT_SUBJECT_PREFIX = "revert(oracle): restore omp "
+LEDGER_PAGES = 10
 
 JsonGetter = Callable[[str], Any]
 BytesGetter = Callable[[str], bytes]
@@ -123,6 +124,7 @@ class PolicyCommit:
     committed_at: datetime
     subject: str
     text: str
+    author_email: str = ""
 
 
 @dataclass(frozen=True)
@@ -130,13 +132,14 @@ class PinChange:
     sha: str
     merged_at: datetime
     subject: str
+    author_email: str
     version: str
     previous_version: str
     previous_text: str
 
     @property
     def is_revert(self) -> bool:
-        return _REVERT_SUBJECT.match(self.subject) is not None
+        return self.author_email == BOT_AUTHOR_EMAIL and self.subject.startswith(REVERT_SUBJECT_PREFIX)
 
 
 @dataclass(frozen=True)
@@ -237,7 +240,9 @@ def latest_pin_change(history: Sequence[PolicyCommit]) -> PinChange | None:
         if current is None or previous is None:
             return None
         if current != previous:
-            return PinChange(newer.sha, _aware(newer.committed_at), newer.subject, current, previous, older.text)
+            return PinChange(
+                newer.sha, _aware(newer.committed_at), newer.subject, newer.author_email, current, previous, older.text
+            )
     return None
 
 
@@ -301,11 +306,12 @@ def revert_policy(current_text: str, change: PinChange) -> str:
 
 
 def policy_history(path: str = POLICY_GIT_PATH, limit: int = HISTORY_LIMIT) -> list[PolicyCommit]:
-    log = _git("log", f"-n{limit}", "--format=%H%x1f%cI%x1f%s", "--", path)
+    log = _git("log", f"-n{limit}", "--format=%H%x1f%cI%x1f%ae%x1f%s", "--", path)
     commits: list[PolicyCommit] = []
     for line in log.splitlines():
-        sha, committed, subject = line.split("\x1f", 2)
-        commits.append(PolicyCommit(sha, datetime.fromisoformat(committed), subject, _git("show", f"{sha}:{path}")))
+        sha, committed, author, subject = line.split("\x1f", 3)
+        text = _git("show", f"{sha}:{path}")
+        commits.append(PolicyCommit(sha, datetime.fromisoformat(committed), subject, text, author))
     return commits
 
 
@@ -389,17 +395,22 @@ def _run_id(artifact: Mapping[str, Any]) -> int:
 
 
 def restore_ledger(repo: str, getter: JsonGetter = get_json, downloader: BytesGetter = _download) -> list[Record]:
-    listing = getter(f"repos/{repo}/actions/artifacts?name={LEDGER_ARTIFACT}&per_page=10")
-    live = sorted(
-        (item for item in listing.get("artifacts", []) if not item.get("expired")),
-        key=lambda item: str(item.get("created_at", "")),
-        reverse=True,
-    )
-    trusted = _trusted_runs(repo, (_run_id(item) for item in live), WATCH_WORKFLOW, WATCH_EVENTS, getter)
-    for artifact in live:
-        if _run_id(artifact) in trusted:
-            blob = downloader(f"repos/{repo}/actions/artifacts/{artifact['id']}/zip")
-            return load_ledger(_unzip(blob, LEDGER_FILE))
+    for page in range(1, LEDGER_PAGES + 1):
+        listing = getter(
+            f"repos/{repo}/actions/artifacts?name={LEDGER_ARTIFACT}&per_page={ARTIFACT_PAGE}&page={page}"
+        ).get("artifacts", [])
+        live = sorted(
+            (item for item in listing if not item.get("expired")),
+            key=lambda item: str(item.get("created_at", "")),
+            reverse=True,
+        )
+        trusted = _trusted_runs(repo, (_run_id(item) for item in live), WATCH_WORKFLOW, WATCH_EVENTS, getter)
+        for artifact in live:
+            if _run_id(artifact) in trusted:
+                blob = downloader(f"repos/{repo}/actions/artifacts/{artifact['id']}/zip")
+                return load_ledger(_unzip(blob, LEDGER_FILE))
+        if len(listing) < ARTIFACT_PAGE:
+            break
     return []
 
 

@@ -1142,7 +1142,11 @@ a revert on either of two conditions:
   or its text blocks no longer parse), or an `error` attempt whose reviewer
   could not be started. One such attempt is enough.
 
-A bump that is itself a revert is not watched, so a revert never reverts.
+The revert the watch itself opened is not watched, so the watch never reverts
+its own revert and cannot swing the pin back to the build it rejected. It is
+recognised by its author, the Actions bot that opened the pull request, and its
+`revert(oracle): restore omp` subject together, never by the subject alone. A
+revert made by hand is an ordinary pin change and is watched like a bump.
 
 When a condition holds, the job opens `revert/omp-pin-<version>` with only the
 `omp:` section restored to the previous pin, starts the oracle review of its
