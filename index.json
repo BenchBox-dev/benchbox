@@ -10971,6 +10971,15 @@
       "status": "done",
       "title": "Address follow-up findings from ranking-metric code review"
     },
+    "explorer-read-model-18-translator-version": {
+      "claim": null,
+      "needs": [
+        "bundle-translator-version-sidecar-attestation"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Explorer read model 18: carry the SQL translator version and its source for every run"
+    },
     "explorer-read-model-review-followups": {
       "claim": null,
       "needs": [],
