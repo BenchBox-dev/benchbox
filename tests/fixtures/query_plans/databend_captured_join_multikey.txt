@@ -1,0 +1,34 @@
+HashJoin
+├── output columns: [o.o_total (#2)]
+├── join type: INNER
+├── build keys: [o.o_cust (#1), o.o_id (#0)]
+├── probe keys: [c.c_id (#3), c.c_id (#3)]
+├── keys is null equal: [false, false]
+├── filters: []
+├── build join filters:
+│   ├── filter id:0, build key:o.o_cust (#1), probe targets:[c.c_id (#3)@scan1], filter type:bloom,inlist,min_max
+│   └── filter id:1, build key:o.o_id (#0), probe targets:[c.c_id (#3)@scan1], filter type:bloom,inlist,min_max
+├── estimated rows: 0.40
+├── TableScan(Build)
+│   ├── table: default.default.orders
+│   ├── scan id: 0
+│   ├── output columns: [o_id (#0), o_cust (#1), o_total (#2)]
+│   ├── read rows: 2
+│   ├── read size: < 1 KiB
+│   ├── partitions total: 1
+│   ├── partitions scanned: 1
+│   ├── pruning stats: [segments: <range pruning: 1 to 1 cost: 1 ms>, blocks: <range pruning: 1 to 1 cost: 1 ms>]
+│   ├── push downs: [filters: [is_true(orders.o_cust (#1) = orders.o_id (#0))], limit: NONE]
+│   └── estimated rows: 0.40
+└── TableScan(Probe)
+    ├── table: default.default.customers
+    ├── scan id: 1
+    ├── output columns: [c_id (#3)]
+    ├── read rows: 1
+    ├── read size: < 1 KiB
+    ├── partitions total: 1
+    ├── partitions scanned: 1
+    ├── pruning stats: [segments: <range pruning: 1 to 1 cost: 1 ms>, blocks: <range pruning: 1 to 1 cost: 1 ms>]
+    ├── push downs: [filters: [], limit: NONE]
+    ├── apply join filters: [#0, #1]
+    └── estimated rows: 1.00

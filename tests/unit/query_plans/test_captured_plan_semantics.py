@@ -296,3 +296,18 @@ class TestSingleStoreCapturedPlans:
         assert len(aggregates) == 2
         assert aggregates[0].children[0].physical_operator.operator_type == "Gather"
         assert _of_type(aggregates[1], LogicalOperatorType.AGGREGATE) == [aggregates[1]]
+
+
+class TestDatabendCompositeJoinKeys:
+    def test_composite_keys_are_paired_into_one_condition_per_key(self):
+        text = (_FIXTURES / "databend_captured_join_multikey.txt").read_text(encoding="utf-8")
+        dag = DatabendQueryPlanParser().parse_explain_output("multikey", text)
+        join = _of_type(dag.logical_root, LogicalOperatorType.JOIN)[0]
+        assert join.join_conditions == ["o.o_cust (#1) = c.c_id (#3)", "o.o_id (#0) = c.c_id (#3)"]
+
+    def test_mismatched_key_counts_yield_no_condition(self):
+        assert DatabendQueryPlanParser._pair_join_keys("[a (#1), b (#2)]", "[c (#3)]") == []
+
+    def test_commas_inside_function_arguments_do_not_split_keys(self):
+        pairs = DatabendQueryPlanParser._pair_join_keys("[concat(a, b) (#1)]", "[c (#3)]")
+        assert pairs == ["concat(a, b) (#1) = c (#3)"]

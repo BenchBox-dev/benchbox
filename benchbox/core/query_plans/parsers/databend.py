@@ -145,10 +145,9 @@ class DatabendQueryPlanParser(QueryPlanParser):
                 kwargs["filter_expressions"] = [pushed_filter.group(1).strip()]
         elif logical_type == LogicalOperatorType.JOIN:
             kwargs["join_type"] = self._classify_join_type(details)
-            build_keys = details.get("build keys", "").strip("[] ")
-            probe_keys = details.get("probe keys", "").strip("[] ")
-            if build_keys and probe_keys:
-                kwargs["join_conditions"] = [f"{build_keys} = {probe_keys}"]
+            conditions = self._pair_join_keys(details.get("build keys", ""), details.get("probe keys", ""))
+            if conditions:
+                kwargs["join_conditions"] = conditions
 
         physical_op = self._create_physical_operator(
             name,
@@ -169,6 +168,36 @@ class DatabendQueryPlanParser(QueryPlanParser):
             if keyword in normalized:
                 return logical_type
         return LogicalOperatorType.OTHER
+
+    @staticmethod
+    def _split_top_level(keys: str) -> list[str]:
+        text = keys.strip()
+        if text.startswith("[") and text.endswith("]"):
+            text = text[1:-1]
+        parts: list[str] = []
+        depth = 0
+        current = ""
+        for char in text:
+            if char in "([":
+                depth += 1
+            elif char in ")]":
+                depth -= 1
+            if char == "," and depth == 0:
+                parts.append(current.strip())
+                current = ""
+            else:
+                current += char
+        if current.strip():
+            parts.append(current.strip())
+        return parts
+
+    @classmethod
+    def _pair_join_keys(cls, build_keys: str, probe_keys: str) -> list[str]:
+        build = cls._split_top_level(build_keys)
+        probe = cls._split_top_level(probe_keys)
+        if not build or len(build) != len(probe):
+            return []
+        return [f"{b} = {p}" for b, p in zip(build, probe, strict=True)]
 
     def _classify_join_type(self, details: dict[str, str]) -> JoinType:
         join_type = details.get("join type") or details.get("join")
