@@ -8820,12 +8820,7 @@
       "title": "Superseded by site-split-40/51/54: Cut benchbox.dev over to site-deploy and retire the publication control plane"
     },
     "dlv2-70-retire-scheduled-workflows": {
-      "claim": {
-        "expires_at": "2026-10-30T14:15:44Z",
-        "generation": "367d9f56d01c4baf970f1425d1db4f1c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
-      },
+      "claim": null,
       "needs": [
         "dlv2-22-nightly-t3-shadow",
         "nightly-v2-liveness-port-20261008",
@@ -8835,7 +8830,7 @@
         "nightly-v2-unported-jobs-decision-20261009"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "Retire the scheduled workflows replaced by the nightly T3 domains"
     },
     "dlv2-80-github-cleanup": {
