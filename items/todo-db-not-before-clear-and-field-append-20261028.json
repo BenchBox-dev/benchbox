@@ -3,7 +3,7 @@
     "update_item with not_before set to an empty string clears the hold and the item is claimable immediately (test or live proof)",
     "A documented way adds text to context or description without overwriting concurrent edits, or the replace-only behaviour is stated in the tool description"
   ],
-  "context": "Seen while closing items held until 2026-11-02 after the calendar waits were waived: clearing with an empty string was accepted but the hold stayed. The note-prepend workaround reads then rewrites the whole context field.\n\nTracked in the todo-db tracker as update-item-not-before-clear (copied 2026-10-28).",
+  "context": "Seen while closing items held until 2026-11-02 after the calendar waits were waived: clearing with an empty string was accepted but the hold stayed. The note-prepend workaround reads then rewrites the whole context field.\n\nTracked in the todo-db tracker as update-item-not-before-clear (copied 2026-10-28).\n\nRESOLVED 2026-10-29: BenchBox runs todo-db 0.11.0 (BenchBox-dev/benchbox#3725, merge a554c997f; release https://github.com/joeharris76/todo-db/releases/tag/v0.11.0). Criterion 1: not_before=\"\" clears the hold and the item is claimable at once (test_empty_not_before_clears_a_hold_over_mcp). Criterion 2: context_append adds text without overwriting concurrent edits, and the update_item description states that text fields are replaced whole (todo-db#52).",
   "description": "update_item with not_before set to an empty string does not clear a hold, so an item held to a future date cannot be released early; the only workaround is to set not_before a few seconds ahead, wait, then take. update_item also replaces text fields wholesale, so adding a note to context requires reading the field and writing it back. Both cost extra steps and risk overwriting concurrent edits.",
   "sessions": [
     {
@@ -29,6 +29,14 @@
       "generation": "057cc443dc314070afdaffaf30c3f770",
       "op": "take",
       "op_id": "127a5471f9ae48679b1fef5f33c30cdf",
+      "session_id": "167fcfd7c4c74fa4b63606febd08c8d2"
+    },
+    {
+      "actor": "joe-todo-db-upgrade",
+      "at": "2026-10-29T14:33:33Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "5fddff3b61b141cdadeead2ca1770c11",
       "session_id": "167fcfd7c4c74fa4b63606febd08c8d2"
     }
   ]
