@@ -855,9 +855,14 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
                 raise RuntimeError(f"No executable SQL resolved for operation '{operation_id}'")
             effective_sql = self._rewrite_transactional_sql_for_platform(effective_sql, platform_key)
             write_sql = self._replace_placeholders(effective_sql)
+            summed_statements = (
+                split_sql_statements(write_sql, "sqlite")
+                if operation.category == "merge" and (platform_key or "").lower() in _SUMMED_ROWCOUNT_DIALECTS
+                else None
+            )
             write_start = time.perf_counter()
-            if operation.category == "merge" and (platform_key or "").lower() in _SUMMED_ROWCOUNT_DIALECTS:
-                write_result = self._execute_summing_rowcounts(connection, write_sql)
+            if summed_statements is not None:
+                write_result = self._execute_summing_rowcounts(connection, summed_statements)
             else:
                 write_result = connection.execute(write_sql)
             write_duration_ms = (time.perf_counter() - write_start) * 1000
@@ -911,9 +916,9 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
             )
 
     @staticmethod
-    def _execute_summing_rowcounts(connection: DatabaseConnection, sql: str) -> SimpleNamespace:
+    def _execute_summing_rowcounts(connection: DatabaseConnection, statements: list[str]) -> SimpleNamespace:
         total = 0
-        for statement in split_sql_statements(sql, "sqlite"):
+        for statement in statements:
             cursor = connection.execute(statement)
             if (error := failed_platform_error(cursor)) is not None:
                 return SimpleNamespace(rowcount=-1, platform_result={"status": "FAILED", "error": error})
