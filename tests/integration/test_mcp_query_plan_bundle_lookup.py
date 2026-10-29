@@ -16,16 +16,20 @@ _QUERIES = {
 }
 
 
-def _capture_rows(variants: list[tuple[int, str]]) -> list[dict]:
+def _capture_rows(
+    variants: list[tuple[int, str]], queries: dict[str, str] | None = None, setup: tuple[str, ...] = ()
+) -> list[dict]:
     from benchbox.platforms.duckdb import DuckDBAdapter
 
     adapter = DuckDBAdapter(capture_plans=True)
     conn = adapter.create_connection()
     rows: list[dict] = []
     try:
+        for statement in setup:
+            conn.execute(statement)
         order = 0
         for stream_id, test_type in variants:
-            for query_id, sql in _QUERIES.items():
+            for query_id, sql in (queries or _QUERIES).items():
                 captured = adapter.execute_query(
                     connection=conn, query=sql, query_id=query_id, validate_row_count=False
                 )
@@ -49,11 +53,11 @@ def _capture_rows(variants: list[tuple[int, str]]) -> list[dict]:
     return rows
 
 
-def _export(output_dir, variants):
+def _export(output_dir, variants, queries=None, setup=()):
     from benchbox.core.results.exporter import ResultExporter
     from tests.fixtures.result_dict_fixtures import make_benchmark_results
 
-    rows = _capture_rows(variants)
+    rows = _capture_rows(variants, queries, setup)
     results = make_benchmark_results(
         benchmark_id="mcp-plan-lookup",
         benchmark_name="mcp-plan-lookup",
@@ -144,3 +148,41 @@ class TestMCPQueryPlanRuntimeSelection:
 
         assert bare["runtime_ms"] == 100.0
         assert variant["runtime_ms"] == 200.0
+
+
+_JOIN_AGG_SETUP = (
+    "CREATE TABLE a AS SELECT i FROM range(10) t(i)",
+    "CREATE TABLE b AS SELECT i FROM range(10) t(i)",
+)
+_JOIN_AGG_QUERY = (
+    "SELECT a.i % 2 AS g, count(*) AS c, sum(b.i) AS s FROM a JOIN b ON a.i = b.i WHERE a.i > 1 GROUP BY 1 ORDER BY 1"
+)
+
+
+class TestMCPCanonicalPlanRendering:
+    def _collect(self, node, out):
+        out.append(node)
+        for child in node.get("children", []):
+            self._collect(child, out)
+        return out
+
+    def test_captured_plan_renders_and_summarizes_canonically(self, tmp_path):
+        from benchbox.mcp.tools.analytics import _get_query_plan_impl
+
+        bundle = _export(tmp_path, [(0, "power")], {"Q1": _JOIN_AGG_QUERY}, _JOIN_AGG_SETUP)
+
+        plan = _get_query_plan_impl(bundle, str(bundle), "1", "json")["plan"]
+        tree = _get_query_plan_impl(bundle, str(bundle), "1", "tree")["plan_tree"]
+        summary = _get_query_plan_impl(bundle, str(bundle), "1", "summary")["summary"]
+
+        nodes = self._collect(plan["logical_root"], [])
+        by_type: dict[str, int] = {}
+        for node in nodes:
+            by_type[node["operator_type"]] = by_type.get(node["operator_type"], 0) + 1
+
+        assert "Node" not in tree
+        assert summary["operator_count"] == len(nodes)
+        assert summary["scan_count"] == by_type.get("Scan", 0) >= 1
+        assert summary["join_count"] == by_type.get("Join", 0) >= 1
+        assert summary["aggregate_count"] == by_type.get("Aggregate", 0) >= 1
+        assert tree.count("Scan") == summary["scan_count"]
