@@ -8,8 +8,9 @@ Include these sections in order:
 1. **Objective and item set** — batch label, every TODO id, and whether the
    next action is the Todo skill's `batch` action or `closeout` action; neither
    is a CLI command.
-2. **Tracker preflight** — call `get_instructions` before any write; state the
-   state remote URL and the state branch.
+2. **Tracker preflight** — call `get_instructions` with `expect_store` set to
+   the project's `owner/repo` before any write; state the state remote URL and
+   the state branch from its "Bound store" section.
 3. **Current state** — live PR states, branch names, required checks, and the
    batch ledger path. Query them while writing the handoff.
 4. **Order and dependencies** — recommended sequence and the reason for each

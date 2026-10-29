@@ -22,35 +22,35 @@
   "catalog": {
     "repository": "https://github.com/joeharris76/skill-sync-skills",
     "canonical_branch": "main",
-    "merge_revision": "5c7ff93e8103ee5a4ac59ea2330625e85250b206",
-    "parent_revision": "dc8c399ff0df08b8271241a3345112238948e868",
+    "merge_revision": "c6249751d12f581093978db5904cf854e1f5d42e",
+    "parent_revision": "3f7edc2ae0c7395155f85488d977c4a75a7c5f69",
     "canonical_path": "skills/todo",
     "pr": {
-      "number": 85,
-      "url": "https://github.com/joeharris76/skill-sync-skills/pull/85",
-      "merge_revision": "5c7ff93e8103ee5a4ac59ea2330625e85250b206"
+      "number": 99,
+      "url": "https://github.com/joeharris76/skill-sync-skills/pull/99",
+      "merge_revision": "c6249751d12f581093978db5904cf854e1f5d42e"
     }
   },
   "artifact": {
-    "filename": "todo_db-0.10.1-py3-none-any.whl",
-    "project_path": "_project/scripts/vendor/todo_db-0.10.1-py3-none-any.whl",
-    "sha256": "3a878a3ac2e7c3b458ed3e71d53d036456ba017eb9ec1adfa030d823cf2c2ffd",
-    "origin": "GitHub release v0.10.1 asset, checked against the release SHA256SUMS",
+    "filename": "todo_db-0.11.0-py3-none-any.whl",
+    "project_path": "_project/scripts/vendor/todo_db-0.11.0-py3-none-any.whl",
+    "sha256": "fc0654d592996ec3d0f96ac30bd3549dcab9b8edc3e8642d94a765f698b6d8cd",
+    "origin": "GitHub release v0.11.0 asset, checked against the release SHA256SUMS",
     "build": {
-      "source_input": "git archive --format=tar v0.10.1 (d85cdf3f43afe7ec9fc2898114bf6e3101742eac)",
+      "source_input": "git archive --format=tar v0.11.0 (afcc66f9a473f7b457201df84d55a5459d383fde)",
       "source_date_epoch": null,
       "command": "uv build --wheel --out-dir <dist> <git-archive-directory>",
       "reproducibility": {
         "independent_builds": 2,
-        "matching_sha256": "3a878a3ac2e7c3b458ed3e71d53d036456ba017eb9ec1adfa030d823cf2c2ffd"
+        "matching_sha256": "fc0654d592996ec3d0f96ac30bd3549dcab9b8edc3e8642d94a765f698b6d8cd"
       },
       "sibling_checkout_used_for_install": false
     }
   },
   "runtime": {
     "project_command": "uv run --project _project/scripts --locked -- todo-db-mcp",
-    "dependency_metadata_version": "0.10.1",
-    "reported_tool_version": "0.10.1",
+    "dependency_metadata_version": "0.11.0",
+    "reported_tool_version": "0.11.0",
     "schema_version": 3,
     "supported_schema_versions": [
       1,
@@ -95,32 +95,32 @@
       "protocol_version": "2024-11-05",
       "server_info": {
         "name": "todo-db",
-        "version": "0.10.1"
+        "version": "0.11.0"
       },
       "result": "pass",
       "state_remote": "local throwaway bare Git remote; no hosted state touched"
     }
   },
   "benchbox_pin": {
-    "before": "67ab679ded13f2ab47151a3bd7d1e41855357202",
-    "after": "5c7ff93e8103ee5a4ac59ea2330625e85250b206",
+    "before": "beddb2f5e3572529257875bf3368422284da996a",
+    "after": "c6249751d12f581093978db5904cf854e1f5d42e",
     "config": "skill-sync.conf",
     "apply": "./tools/skill-sync apply"
   },
   "mirrors": {
     "tracked_target": {
       "root": ".claude/skills/todo",
-      "receipt_revision": "67ab679ded13f2ab47151a3bd7d1e41855357202",
+      "receipt_revision": "c6249751d12f581093978db5904cf854e1f5d42e",
       "files": {
-        "SKILL.md": "14f05c563a721c55435eedf3b0aa5caa30b113a0bfd2f8672aa6c7c069402156",
-        "references/batch.md": "2713346ac33425b11e5f815a8aa7462828295aca7f4b36892baf940dc9d3ed0c",
+        "SKILL.md": "68d77c30705bd59c26ec7045426a1f2fad1eb0674bd05bf8c84674d216a81103",
+        "references/batch.md": "6f0c1f259e72959a64417b72a00d5b7d15c15bfb1447e7e91c05141721add4ea",
         "references/bootstrap.md": "6cd0769170d8c78c0d12c1bca977cf0f2cf382684b38d14055609022b90e4529",
         "references/closeout.md": "e85cdc6caa70c544e88bddc4e454cfd758283c0653ed88b17f7dd64f1014c963",
-        "references/handoff.md": "63c47fc8598cf710ca8326c85c60f3071da42132a2c3b3f0c6e578b6964219fc",
+        "references/handoff.md": "51cf009dd8a9c824c4dd5bc88b6b0616468fc2439e8f2aeb24cf92ad17d597c5",
         "references/ideate.md": "cd849108e7950e6652b42249bb43bdab024005417c651d956ae0eaca9741233f",
         "references/implement.md": "9e73e34da342ff9f6da080a62cd009ecd09a72b9f046b7e5e12eaa6d8c2d9096",
-        "references/prioritize.md": "d8f2d36907f4efc417cefa9a484fe72da693f7f4ebbb4ec4a30307e40dcbb890",
-        "references/queries.md": "e36df4ce20abceac5be7330752a3b587c63bc1d193245eea4b4896f35c809a94",
+        "references/prioritize.md": "8cdf83f81b12777b8c543ec9011b0641614e5ddd16c9c2d1a7009ec6ba38bae2",
+        "references/queries.md": "8c82188300a5e87d5b0106334fc624951b9eb94f11d62beeef781b1f53d0c1ab",
         "references/recovery.md": "446a5a3c3176d04bb916fab7d443327b32319d4f535c44a9cb4c251eb63d1619",
         "references/review.md": "0b49c8ad8038ebc7dd8bf4a7372684478bef8959c01a91cb45e2632abed89741",
         "references/spec.md": "3cc77e191e6b5cd8f28341b346fb19d516582710d9b416844bb2175ebcf30cc8",
@@ -130,17 +130,17 @@
     "agents_target": {
       "root": ".agents/skills/todo",
       "materialized": true,
-      "receipt_revision": "67ab679ded13f2ab47151a3bd7d1e41855357202",
+      "receipt_revision": "c6249751d12f581093978db5904cf854e1f5d42e",
       "files": {
-        "SKILL.md": "14f05c563a721c55435eedf3b0aa5caa30b113a0bfd2f8672aa6c7c069402156",
-        "references/batch.md": "2713346ac33425b11e5f815a8aa7462828295aca7f4b36892baf940dc9d3ed0c",
+        "SKILL.md": "68d77c30705bd59c26ec7045426a1f2fad1eb0674bd05bf8c84674d216a81103",
+        "references/batch.md": "6f0c1f259e72959a64417b72a00d5b7d15c15bfb1447e7e91c05141721add4ea",
         "references/bootstrap.md": "6cd0769170d8c78c0d12c1bca977cf0f2cf382684b38d14055609022b90e4529",
         "references/closeout.md": "e85cdc6caa70c544e88bddc4e454cfd758283c0653ed88b17f7dd64f1014c963",
-        "references/handoff.md": "63c47fc8598cf710ca8326c85c60f3071da42132a2c3b3f0c6e578b6964219fc",
+        "references/handoff.md": "51cf009dd8a9c824c4dd5bc88b6b0616468fc2439e8f2aeb24cf92ad17d597c5",
         "references/ideate.md": "cd849108e7950e6652b42249bb43bdab024005417c651d956ae0eaca9741233f",
         "references/implement.md": "9e73e34da342ff9f6da080a62cd009ecd09a72b9f046b7e5e12eaa6d8c2d9096",
-        "references/prioritize.md": "d8f2d36907f4efc417cefa9a484fe72da693f7f4ebbb4ec4a30307e40dcbb890",
-        "references/queries.md": "e36df4ce20abceac5be7330752a3b587c63bc1d193245eea4b4896f35c809a94",
+        "references/prioritize.md": "8cdf83f81b12777b8c543ec9011b0641614e5ddd16c9c2d1a7009ec6ba38bae2",
+        "references/queries.md": "8c82188300a5e87d5b0106334fc624951b9eb94f11d62beeef781b1f53d0c1ab",
         "references/recovery.md": "446a5a3c3176d04bb916fab7d443327b32319d4f535c44a9cb4c251eb63d1619",
         "references/review.md": "0b49c8ad8038ebc7dd8bf4a7372684478bef8959c01a91cb45e2632abed89741",
         "references/spec.md": "3cc77e191e6b5cd8f28341b346fb19d516582710d9b416844bb2175ebcf30cc8",
@@ -150,7 +150,7 @@
   },
   "verification": {
     "clean_install": "uv sync --project _project/scripts --locked --offline passed",
-    "standalone_metadata": "wheel metadata and entry points identify todo-db 0.10.1",
+    "standalone_metadata": "wheel metadata and entry points identify todo-db 0.11.0",
     "no_sibling_path": "project source and lock paths resolve only under _project/scripts/vendor",
     "batch_delivery_integration": "full JSON-RPC handshake passed with schema 3 and 19 tools",
     "skill_integrity": "make skill-integrity-check passed against the pinned catalog and tracked mirror",

@@ -14,12 +14,12 @@ pytestmark = [pytest.mark.integration, pytest.mark.medium]
 ROOT = Path(__file__).resolve().parents[3]
 
 
-DELIVERY_CATALOG_REV = "5c7ff93e8103ee5a4ac59ea2330625e85250b206"
+DELIVERY_CATALOG_REV = "c6249751d12f581093978db5904cf854e1f5d42e"
 SOURCE_REV = "aaad6c97632f0a36341cb670c9e1a7fe0b3a860b"
-TODO_DB_VERSION = "0.10.1"
+TODO_DB_VERSION = "0.11.0"
 SCRIPTS_PROJECT = ROOT / "_project/scripts"
 WHEEL = SCRIPTS_PROJECT / f"vendor/todo_db-{TODO_DB_VERSION}-py3-none-any.whl"
-WHEEL_SHA256 = "3a878a3ac2e7c3b458ed3e71d53d036456ba017eb9ec1adfa030d823cf2c2ffd"
+WHEEL_SHA256 = "fc0654d592996ec3d0f96ac30bd3549dcab9b8edc3e8642d94a765f698b6d8cd"
 REQUIRED_BATCH_TOOLS = {"register_batch", "prepare", "bind_batch_pr", "abort_batch"}
 
 
@@ -113,6 +113,7 @@ def test_installed_runtime_handshake_exposes_registered_batch_tools(tmp_path: Pa
             "--project",
             str(SCRIPTS_PROJECT),
             "--locked",
+            "--offline",
             "--",
             "todo-db",
             "bootstrap",
@@ -133,6 +134,7 @@ def test_installed_runtime_handshake_exposes_registered_batch_tools(tmp_path: Pa
             "--project",
             str(SCRIPTS_PROJECT),
             "--locked",
+            "--offline",
             "--",
             "todo-db-mcp",
             "--state-remote",

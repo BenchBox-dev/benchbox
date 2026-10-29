@@ -13,8 +13,9 @@ Git, PR service, CI, artifacts, and human decisions remain authoritative.
 1. Read repository instructions, `references/implement.md`,
    `shared-change-framework/SKILL.md`, and `shared-review-protocol/SKILL.md` as
    required for the next action; do not copy their rules into the ledger.
-2. Call `get_instructions`, then `list_items(ready_only=true)` to confirm
-   identity and live state. Fix or report any failure and stop before claiming
+2. Call `get_instructions` with `expect_store` set to the project's
+   `owner/repo`, then `list_items(ready_only=true)` to confirm the bound store,
+   identity, and live state. Fix or report any failure and stop before claiming
    or editing. With multiple linked worktrees, ensure each worktree has its own
    client session or explicit `--repo-root` (one server instance per worktree).
 3. Confirm the exact TODO set, dependencies, integration branch, and existing
