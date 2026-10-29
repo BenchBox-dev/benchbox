@@ -213,16 +213,17 @@ def compatibility_rule_for(
             )
     if include_release_gate_runtime_envelopes:
         envelope_key: tuple = (platform, benchmark)
+        scale_suffix = ""
         runtime_envelope_reason = _RELEASE_GATE_RUNTIME_ENVELOPES.get(envelope_key)
         if runtime_envelope_reason is None and scale is not None:
             envelope_key = (platform, benchmark, float(scale))
+            scale_suffix = f".sf{float(scale):g}"
             runtime_envelope_reason = _RELEASE_GATE_RUNTIME_ENVELOPES.get(envelope_key)
         if runtime_envelope_reason:
             runtime_envelope_evidence = _RELEASE_GATE_RUNTIME_ENVELOPE_EVIDENCE.get(
                 envelope_key,
                 "2026-05-14 enabled-platform UAT release-gate audit; not a runtime compatibility gate",
             )
-            scale_suffix = f".sf{envelope_key[2]:g}" if len(envelope_key) == 3 else ""
             return CompatibilityRule(
                 rule_id=f"uat.compat.{platform}.{benchmark}{scale_suffix}.release_gate_runtime_envelope",
                 status="blocked",
