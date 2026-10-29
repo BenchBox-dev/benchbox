@@ -20,9 +20,11 @@ if str(Path(__file__).resolve().parents[2]) not in sys.path:
 from _project.scripts.explorer_pipeline.contract import (
     EXPLORER_BUILD_CONTRACT_VERSION as _CONTRACT_VERSION,
     EXPLORER_READ_MODEL_VERSION as _READ_MODEL_VERSION,
+    SELECTABLE_READ_MODEL_VERSIONS as _SELECTABLE_READ_MODEL_VERSIONS,
+    TRANSLATOR_RESULT_COLUMNS as _TRANSLATOR_RESULT_COLUMNS,
 )
 
-SUPPORTED_SCHEMA_VERSIONS: tuple[int, ...] = (_READ_MODEL_VERSION,)
+SUPPORTED_SCHEMA_VERSIONS: tuple[int, ...] = _SELECTABLE_READ_MODEL_VERSIONS
 CURRENT_SCHEMA_VERSION: int = _READ_MODEL_VERSION
 CONTRACT_VERSION: str = _CONTRACT_VERSION
 
@@ -400,6 +402,14 @@ TABLE_COLUMNS_V17: dict[str, dict[str, str]] = {
     },
 }
 
+TABLE_COLUMNS_V18: dict[str, dict[str, str]] = {
+    **TABLE_COLUMNS_V17,
+    "results": {
+        **TABLE_COLUMNS_V17["results"],
+        **dict(_TRANSLATOR_RESULT_COLUMNS),
+    },
+}
+
 
 SCHEMA_REGISTRY: dict[int, dict[str, dict[str, str]]] = {
     9: TABLE_COLUMNS_V9,
@@ -411,6 +421,7 @@ SCHEMA_REGISTRY: dict[int, dict[str, dict[str, str]]] = {
     15: TABLE_COLUMNS_V15,
     16: TABLE_COLUMNS_V16,
     17: TABLE_COLUMNS_V17,
+    18: TABLE_COLUMNS_V18,
 }
 
 REQUIRED_INDEXES_V9: list[tuple[str, str, list[str]]] = [

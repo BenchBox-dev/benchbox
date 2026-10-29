@@ -51,7 +51,8 @@ def test_schema_versions_definitions() -> None:
     from _project.scripts.explorer_pipeline.contract import EXPLORER_READ_MODEL_VERSION
 
     assert checker.CURRENT_SCHEMA_VERSION == EXPLORER_READ_MODEL_VERSION
-    assert checker.SUPPORTED_SCHEMA_VERSIONS == (EXPLORER_READ_MODEL_VERSION,)
+    assert checker.SUPPORTED_SCHEMA_VERSIONS == (17, EXPLORER_READ_MODEL_VERSION)
+    assert EXPLORER_READ_MODEL_VERSION == 18
 
     cols = checker.get_table_columns_for_version(17)
     assert "results" in cols

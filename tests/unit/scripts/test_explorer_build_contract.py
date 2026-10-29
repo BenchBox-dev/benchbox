@@ -28,13 +28,13 @@ def test_explorer_build_contract_command_emits_expected_json() -> None:
 
 def test_explorer_build_contract_matches_duckdb_only_output_contract() -> None:
     outputs = EXPLORER_BUILD_CONTRACT["outputs"]
-    current_read_model_version = 17
+    current_read_model_version = 18
 
     assert EXPLORER_BUILD_CONTRACT["version"] == "6"
     assert EXPLORER_BUILD_CONTRACT["read_model_version"] == current_read_model_version
     assert current_read_model_version == EXPLORER_READ_MODEL_VERSION
     assert EXPLORER_BUILD_CONTRACT["read_model_compatibility"] == {
-        "minimum_supported": current_read_model_version,
+        "minimum_supported": 17,
         "newer_policy": "warn-and-continue",
     }
     assert isinstance(EXPLORER_BUILD_CONTRACT["read_model_version"], int)
