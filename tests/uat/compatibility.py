@@ -144,7 +144,23 @@ _PG_FAMILY_RELEASE_GATE_RUNTIME_ENVELOPES = (
     | {("timescaledb", "datavault"): _TIMESCALEDB_DATAVAULT_RUNTIME_ENVELOPE_REASON}
 )
 
+_SQLITE_DATAVAULT_SF1_RUNTIME_ENVELOPE_REASON = (
+    "SQLite DataVault SF1 cannot meet the 1200s release-gate cell contract. With hash-key indexes, a profile of "
+    "the 22 queries at a 40s per-query cap took at least 475s per pass: queries 3, 5, 7, 9, 14, 15 and 18 each hit "
+    "the cap, and 1, 10 and 19 took about 32s. Three iterations exceed 1425s before load time, against the 1200s "
+    "limit; a full run was killed at 27 minutes. Larger mmap and cache settings did not help query 14. SF0.01 and "
+    "SF0.1 stay in the gate."
+)
+
+_SQLITE_TPCHAVOC_SF1_RUNTIME_ENVELOPE_REASON = (
+    "SQLite TPC-Havoc SF1 cannot meet the 1200s release-gate cell contract. SF0.1 already takes about 100s per "
+    "pass over the non-skipped variants (4m21s for the full cell), and the 1200s limit was exceeded at SF1 in "
+    "release-v2 run 40701870861. SF1 scales the same joins roughly tenfold. SF0.01 and SF0.1 stay in the gate."
+)
+
 _RELEASE_GATE_RUNTIME_ENVELOPES = _PG_FAMILY_RELEASE_GATE_RUNTIME_ENVELOPES | {
+    ("sqlite", "datavault", 1.0): _SQLITE_DATAVAULT_SF1_RUNTIME_ENVELOPE_REASON,
+    ("sqlite", "tpchavoc", 1.0): _SQLITE_TPCHAVOC_SF1_RUNTIME_ENVELOPE_REASON,
     ("datafusion", "datavault"): _DATAFUSION_DATAVAULT_RUNTIME_ENVELOPE_REASON,
     ("sqlite", "tpcds"): _SQLITE_TPCDS_RUNTIME_ENVELOPE_REASON,
     ("sqlite", "tpcds_obt"): _SQLITE_TPCDS_OBT_RUNTIME_ENVELOPE_REASON,
@@ -156,6 +172,8 @@ _RELEASE_GATE_RUNTIME_ENVELOPE_EVIDENCE = {
     ("datafusion", "datavault"): "docs/internal/uat-release-campaign.md: DataFusion DataVault (2026-08-25)",
     ("sqlite", "tpcds"): "docs/internal/uat-release-campaign.md: SQLite TPC-DS (2026-08-25)",
     ("sqlite", "tpcds_obt"): "PR #1904; docs/internal/uat-release-campaign.md: SQLite TPC-DS OBT (2026-08-25)",
+    ("sqlite", "datavault", 1.0): "release-v2 run 40701870861 stage 1 (1200s timeout); local SF1 profile 2026-10-29",
+    ("sqlite", "tpchavoc", 1.0): "release-v2 run 40701870861 stage 1 (1200s timeout); local SF0.1 timing 2026-10-29",
 }
 
 
@@ -165,6 +183,7 @@ def compatibility_rule_for(
     info: BenchmarkInfo,
     *,
     include_release_gate_runtime_envelopes: bool = False,
+    scale: float | None = None,
 ) -> CompatibilityRule | None:
     native_reason = _NATIVE_MODEL_BENCHMARK_GATES.get((platform, benchmark))
     if native_reason:
@@ -193,14 +212,19 @@ def compatibility_rule_for(
                 evidence=_DATAFRAME_WRITE_MANAGER_EVIDENCE,
             )
     if include_release_gate_runtime_envelopes:
-        runtime_envelope_reason = _RELEASE_GATE_RUNTIME_ENVELOPES.get((platform, benchmark))
+        envelope_key: tuple = (platform, benchmark)
+        runtime_envelope_reason = _RELEASE_GATE_RUNTIME_ENVELOPES.get(envelope_key)
+        if runtime_envelope_reason is None and scale is not None:
+            envelope_key = (platform, benchmark, float(scale))
+            runtime_envelope_reason = _RELEASE_GATE_RUNTIME_ENVELOPES.get(envelope_key)
         if runtime_envelope_reason:
             runtime_envelope_evidence = _RELEASE_GATE_RUNTIME_ENVELOPE_EVIDENCE.get(
-                (platform, benchmark),
+                envelope_key,
                 "2026-05-14 enabled-platform UAT release-gate audit; not a runtime compatibility gate",
             )
+            scale_suffix = f".sf{envelope_key[2]:g}" if len(envelope_key) == 3 else ""
             return CompatibilityRule(
-                rule_id=f"uat.compat.{platform}.{benchmark}.release_gate_runtime_envelope",
+                rule_id=f"uat.compat.{platform}.{benchmark}{scale_suffix}.release_gate_runtime_envelope",
                 status="blocked",
                 reason=runtime_envelope_reason,
                 evidence=runtime_envelope_evidence,
