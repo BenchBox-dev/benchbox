@@ -1223,7 +1223,7 @@ def compute_plan_capture_stats(
             {"query_id": qid, "error": "Query plan not captured"} for qid in sorted({i[0] for i in failed_rows})
         ]
 
-    return plans_captured, len(failed_rows), capture_errors
+    return plans_captured, len({identity[0] for identity in failed_rows}), capture_errors
 
 
 def _error_matches_failed_identity(

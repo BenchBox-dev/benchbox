@@ -277,3 +277,22 @@ def test_failure_cause_recovered_from_row_when_error_list_empty():
 
     assert failures == 1
     assert errors == [{"query_id": "Q1", "error": "cause"}]
+
+
+def test_sql_failed_explain_shared_by_iterations_counts_once():
+    query_results = [
+        {"query_id": f"Q{q}", "status": "SUCCESS", "run_type": "measurement", "iteration": i, "stream_id": i}
+        | ({} if q == 1 else {"query_plan": {"p": q}})
+        for q in range(1, 23)
+        for i in range(1, 4)
+    ]
+
+    plans_captured, failures, errors = compute_plan_capture_stats(
+        query_results,
+        capture_plans=True,
+        existing_errors=[{"query_id": "Q1", "error": "EXPLAIN failed"}],
+    )
+
+    assert plans_captured == 21
+    assert failures == 1
+    assert errors == [{"query_id": "Q1", "error": "EXPLAIN failed"}]
