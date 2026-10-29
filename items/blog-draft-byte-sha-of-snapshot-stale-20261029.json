@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "The draft no longer cites a byte hash of results.duckdb as an identity check; any digest quoted is snapshot_canonical_sha256 from a named deploy receipt and matches it",
+    "npm run lint:blog passes"
+  ],
+  "description": "Found 2026-10-28. The site blog draft drafts/building-benchbox/drafts/17-*.md (about line 204) cites a byte SHA-256 of the deployed Explorer snapshot. DuckDB file bytes differ on every rebuild of core's snapshot even when the corpus is unchanged (checksums and unused block tails), and the deploy gate compares canonical content digests, not bytes. The cited hash is stale after any core bundle and the sentence misdescribes how identity is checked. Before publication, rewrite the sentence to cite snapshot_canonical_sha256 from a named receipt or describe the content-digest approach, and verify the figure against the receipt.",
+  "links": [
+    "BenchBox-dev/benchbox-site: drafts/building-benchbox/drafts/"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-29T12:40:06Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "d74687142eb347b39422a0de973b8781",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    }
+  ]
+}
