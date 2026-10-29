@@ -23571,6 +23571,15 @@
       "status": "open",
       "title": "Serve /docs/ from the latest release and add canonical tags from /docs/dev/"
     },
+    "site-run-receipt-sql-translator-row": {
+      "claim": null,
+      "needs": [
+        "explorer-read-model-18-translator-version"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Site: accept read model 18 and show the SQL translator version in the run receipt"
+    },
     "site-runner-pool-decision-20261017": {
       "claim": null,
       "needs": [],
