@@ -358,88 +358,64 @@ class DataFrameProfiler:
 
 
 def capture_polars_plan(lazy_frame: Any) -> QueryPlan:
-    try:
-        optimized_plan = lazy_frame.explain(optimized=True)
+    optimized_plan = lazy_frame.explain(optimized=True)
 
-        logical_plan = lazy_frame.explain(optimized=False)
+    logical_plan = lazy_frame.explain(optimized=False)
 
-        hints = _analyze_polars_plan(optimized_plan)
+    hints = _analyze_polars_plan(optimized_plan)
 
-        return QueryPlan(
-            platform="polars",
-            plan_type="optimized",
-            plan_text=optimized_plan,
-            plan_data={
-                "optimized_plan": optimized_plan,
-                "logical_plan": logical_plan,
-            },
-            optimization_hints=hints,
-        )
-    except Exception as e:
-        logger.debug(f"Could not capture Polars plan: {e}")
-        return QueryPlan(
-            platform="polars",
-            plan_type="error",
-            plan_text=f"Could not capture plan: {e}",
-        )
+    return QueryPlan(
+        platform="polars",
+        plan_type="optimized",
+        plan_text=optimized_plan,
+        plan_data={
+            "optimized_plan": optimized_plan,
+            "logical_plan": logical_plan,
+        },
+        optimization_hints=hints,
+    )
 
 
 def capture_datafusion_plan(df: Any) -> QueryPlan:
-    try:
-        if hasattr(df, "logical_plan"):
-            plan = str(df.logical_plan())
-        elif hasattr(df, "explain"):
-            plan = df.explain()
-        else:
-            plan = "Plan capture not available"
+    if hasattr(df, "logical_plan"):
+        plan = str(df.logical_plan())
+    elif hasattr(df, "explain"):
+        plan = df.explain()
+    else:
+        raise TypeError(f"{type(df).__name__} exposes neither logical_plan nor explain")
 
-        hints = _analyze_datafusion_plan(plan)
+    hints = _analyze_datafusion_plan(plan)
 
-        return QueryPlan(
-            platform="datafusion",
-            plan_type="logical",
-            plan_text=plan,
-            optimization_hints=hints,
-        )
-    except Exception as e:
-        logger.debug(f"Could not capture DataFusion plan: {e}")
-        return QueryPlan(
-            platform="datafusion",
-            plan_type="error",
-            plan_text=f"Could not capture plan: {e}",
-        )
+    return QueryPlan(
+        platform="datafusion",
+        plan_type="logical",
+        plan_text=plan,
+        optimization_hints=hints,
+    )
 
 
 def capture_pyspark_plan(df: Any) -> QueryPlan:
-    try:
-        import io
-        import sys
+    import io
+    import sys
 
-        with _pyspark_stdout_lock:
-            old_stdout = sys.stdout
-            sys.stdout = buffer = io.StringIO()
+    with _pyspark_stdout_lock:
+        old_stdout = sys.stdout
+        sys.stdout = buffer = io.StringIO()
 
-            try:
-                df.explain(extended=True)
-                plan = buffer.getvalue()
-            finally:
-                sys.stdout = old_stdout
+        try:
+            df.explain(extended=True)
+            plan = buffer.getvalue()
+        finally:
+            sys.stdout = old_stdout
 
-        hints = _analyze_pyspark_plan(plan)
+    hints = _analyze_pyspark_plan(plan)
 
-        return QueryPlan(
-            platform="pyspark",
-            plan_type="extended",
-            plan_text=plan,
-            optimization_hints=hints,
-        )
-    except Exception as e:
-        logger.debug(f"Could not capture PySpark plan: {e}")
-        return QueryPlan(
-            platform="pyspark",
-            plan_type="error",
-            plan_text=f"Could not capture plan: {e}",
-        )
+    return QueryPlan(
+        platform="pyspark",
+        plan_type="extended",
+        plan_text=plan,
+        optimization_hints=hints,
+    )
 
 
 def capture_query_plan(df: Any, platform: str) -> QueryPlan | None:
