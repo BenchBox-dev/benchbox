@@ -115,7 +115,10 @@ CREATE TABLE IF NOT EXISTS results (
     benchmark_support_status VARCHAR,
     throughput_at_size   DOUBLE,
     stream_count         INTEGER,
-    power_score_source   VARCHAR
+    power_score_source   VARCHAR,
+    translator_version   VARCHAR,
+    translator_fork_sha  VARCHAR,
+    translator_version_source VARCHAR
 );
 
 CREATE TABLE IF NOT EXISTS query_display_timings (
