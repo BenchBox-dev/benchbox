@@ -5,7 +5,7 @@
     "Polars raw plans remain inspectable with explicit raw-only capability semantics unless a real structured parser is implemented; unsupported eager engines report unsupported rather than a fabricated plan.",
     "Behavioral tests execute representative supported DataFrame queries and check result/plan identity, timing isolation, fingerprints and round trips; docs reflect the actual engine-specific contract."
   ],
-  "context": "Static source assessment on 2026-10-28. Scope is native-capability integration and truthful parity, not adding an optimizer to Pandas/Dask/cuDF. Sequenced after error accounting because both edit profiling.py and benchmark_mixin.py.\n\nGuardrails: no live cloud (Databricks) execution; prove the Databricks callable path with a local SparkSession substitute only where the adapter's own code path runs unmodified, otherwise cover it with a behavioral unit test and state the limit. LakeSail requires the pysail package (not installed): wire the route and test with local PySpark-compatible behavior, stating the limit. Adapter SDK imports stay lazy. Plan capture time stays excluded from measured execution time (qpc-09).\n\nVerification rubric: (1) focused regression test fails before the change and passes after; (2) uv run -- python -m pytest -n 0 on the touched plan test modules passes; (3) make comment-policy-check and ruff/typecheck on touched files pass; (4) a runtime smoke on the real surface described in acceptance is recorded in the PR body.",
+  "context": "Draft PR #3711 stacked on fix/dataframe-plan-error-accounting (#3702), branch fix/dataframe-plan-contract-parity, head 97f6d3845. Also fixed iteration-key collapse in plans companion and added LakeSail DataFrame capability entry. Limits: LakeSail tested by dispatch only (pysail absent); Databricks with fake Connect session. Resume: after #3702 merges, retarget/rebase, ready, land, finish.",
   "description": "DataFrame capture uses a separate raw QueryPlan wrapper and optional registry promotion, not the SQL result contract. DataFusion can promote to QueryPlanDAG, while Polars remains raw and PySpark uses platform=pyspark although its parser is registered as spark. The shared dispatch does not recognize LakeSail; Databricks callable queries bypass inherited SQL capture. The mixin attaches query_plan/capture_time but not top-level plan_fingerprint fields. Define a capability-specific contract and complete supported lazy-engine routes without inventing fake optimizer plans for eager Pandas-family engines.",
   "links": [
     "benchbox/core/dataframe/profiling.py:360-456",
@@ -32,6 +32,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "67a2576c877c4c29a94aaa5be52f859a",
+      "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bb7fd2d6b114a6501df93f97",
+      "at": "2026-10-29T02:43:28Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "622bb4090d6f40e2b5db5fa5e4097fb3",
       "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
     }
   ]
