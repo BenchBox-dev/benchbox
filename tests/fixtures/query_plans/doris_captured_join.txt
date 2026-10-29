@@ -1,0 +1,7 @@
+PhysicalResultSink
+--PhysicalProject
+----hashJoin[INNER_JOIN broadcast] hashCondition=((o.o_cust = c.c_id)) otherCondition=()
+------PhysicalProject
+--------PhysicalOlapScan[orders]
+------PhysicalProject
+--------PhysicalOlapScan[customers]

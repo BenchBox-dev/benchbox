@@ -1,0 +1,5 @@
+{
+  "provenance": "captured",
+  "models": "SingleStore singlestoredb-dev image (memsql_version 10.8.1, MySQL wire 5.7.32) EXPLAIN (columnstore tables), captured",
+  "validated_against_live": true
+}

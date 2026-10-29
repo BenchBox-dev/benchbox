@@ -1207,7 +1207,7 @@ def test_manual_runs_whose_status_never_posted_exhaust_the_daily_budget_without_
     for index in range(policy.retry.daily_budget):
         at = start + timedelta(hours=index * 3)
         state = _unpublished_manual_run(policy, tmp_path, monkeypatch, state, at, f"run{index}")
-        assert state.head_sha == head and state.updated_at == at
+        assert state.head_sha == head and state.backoff_from == at
     assert state is not None and len(state.retries) == policy.retry.daily_budget
     assert not _rerun_allowed(policy, head, state, start + timedelta(hours=20))
 
@@ -1237,16 +1237,30 @@ def test_an_unpublished_manual_run_pushes_the_backoff_out_from_its_own_time(
     previous = retry.State(7, head, "pending", midnight, (midnight,), pending_cause="all-absent")
     ten = midnight + timedelta(hours=10)
     attempted = _unpublished_manual_run(policy, tmp_path, monkeypatch, previous, ten, "late")
-    assert attempted.updated_at == ten
+    assert attempted.backoff_from == ten and attempted.updated_at == midnight
     assert not _rerun_allowed(policy, head, attempted, ten + timedelta(minutes=1))
     assert _rerun_allowed(policy, head, attempted, ten + timedelta(hours=4))
 
 
-def test_an_unpublished_run_state_is_never_retried_by_the_sweep(
+def test_an_unpublished_run_state_is_retried_by_the_sweep_only_within_backoff_and_budget(
     policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     head = _plan(policy, ("small",))["head_sha"]
     at = datetime(2026, 10, 5, 0, 0, tzinfo=UTC)
     attempted = _unpublished_manual_run(policy, tmp_path, monkeypatch, None, at, "solo")
     assert attempted.pending_cause == retry.UNPUBLISHED
-    assert not retry.due_for_retry(attempted, head, at + timedelta(days=2), policy.retry)
+    assert not retry.due_for_retry(attempted, head, at + timedelta(minutes=1), policy.retry)
+    assert retry.due_for_retry(attempted, head, at + timedelta(hours=2), policy.retry)
+
+
+def test_repeated_unpublished_runs_keep_the_failure_window_at_the_first_attempt(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    start = datetime(2026, 10, 5, 0, 0, tzinfo=UTC)
+    state: retry.State | None = None
+    for index in range(2):
+        state = _unpublished_manual_run(
+            policy, tmp_path, monkeypatch, state, start + timedelta(hours=index * 3), f"w{index}"
+        )
+    assert state is not None and state.updated_at == start
+    assert state.backoff_from == start + timedelta(hours=3)

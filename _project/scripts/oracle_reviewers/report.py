@@ -6,7 +6,18 @@ from pathlib import Path
 from typing import Any
 
 from . import absence, credentials, dedup, protocol, recovery, redaction_check, selection
-from .retry import ALL_ABSENT, FAILURE, INTEGRITY, MARKER_LIMIT, OMP_INSTALL, OVERSIZE, PENDING, SUCCESS, UNREPORTED
+from .retry import (
+    ALL_ABSENT,
+    FAILURE,
+    INTEGRITY,
+    MARKER_LIMIT,
+    OMP_INSTALL,
+    OVERSIZE,
+    PENDING,
+    STOPPED,
+    SUCCESS,
+    UNREPORTED,
+)
 from .selection import Attempt, Step
 from .verdict import (
     MAX_DETAIL,
@@ -243,6 +254,8 @@ def _settled(plan: Mapping[str, Any], step: Step) -> tuple[Step, str]:
     if step.kind == selection.REVIEW:
         reason = f"{step.reviewer.name if step.reviewer else 'a reviewer'}: selected but did not report"
         return Step(selection.PENDING, None, (*step.reasons, reason)), UNREPORTED
+    if step.kind == selection.PENDING and step.stopped:
+        return step, STOPPED
     if step.kind == selection.PENDING and plan.get("brief_mode") == "oversize":
         return step, OVERSIZE
     return step, ALL_ABSENT

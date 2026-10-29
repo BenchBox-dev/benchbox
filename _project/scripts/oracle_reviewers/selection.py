@@ -64,6 +64,7 @@ class Step:
     kind: str
     reviewer: Reviewer | None = None
     reasons: tuple[str, ...] = ()
+    stopped: bool = False
 
 
 @dataclass(frozen=True)
@@ -173,7 +174,7 @@ def next_step(selection: SelectionInput, attempts: Sequence[Attempt]) -> Step:
     if ordered and needs_recovery(ordered[-1]):
         last = ordered[-1]
         if last.recovery is not None and last.recovery.choice == STOP:
-            return Step(PENDING, None, (stop_reason(last),))
+            return Step(PENDING, None, (stop_reason(last),), stopped=True)
         if last.recovery is None and len(ordered) < selection.max_attempts:
             return Step(PENDING, None, (f"{last.reviewer}: absent (invalid): the recovery is not recorded",))
     attempted: dict[str, list[Attempt]] = {}

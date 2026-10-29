@@ -19,8 +19,19 @@ OVERSIZE = "oversize"
 MARKER_LIMIT = "marker-limit"
 OMP_INSTALL = "omp-install"
 UNPUBLISHED = "unpublished"
-MANUAL_ONLY_CAUSES = (OMP_INSTALL, UNPUBLISHED)
-PENDING_CAUSES = (ALL_ABSENT, INTEGRITY, UNREPORTED, OVERSIZE, MARKER_LIMIT, OMP_INSTALL, UNPUBLISHED)
+STOPPED = "stopped"
+MANUAL_ONLY_CAUSES = (OMP_INSTALL, UNPUBLISHED, STOPPED)
+SWEEP_EXCLUDED_CAUSES = (OMP_INSTALL, STOPPED)
+PENDING_CAUSES = (
+    ALL_ABSENT,
+    INTEGRITY,
+    UNREPORTED,
+    OVERSIZE,
+    MARKER_LIMIT,
+    OMP_INSTALL,
+    UNPUBLISHED,
+    STOPPED,
+)
 WINDOW = timedelta(hours=24)
 
 
@@ -40,9 +51,14 @@ class State:
     pool_blocked_until: Mapping[str, PoolBlock] = field(default_factory=dict)
     pending_cause: str | None = None
     strikes: int = 0
+    attempted_at: datetime | None = None
+
+    @property
+    def backoff_from(self) -> datetime:
+        return self.attempted_at or self.updated_at
 
     def to_json(self) -> dict[str, Any]:
-        return {
+        data: dict[str, Any] = {
             "pr": self.pr,
             "head_sha": self.head_sha,
             "outcome": self.outcome,
@@ -52,6 +68,9 @@ class State:
             "pending_cause": self.pending_cause,
             "strikes": self.strikes,
         }
+        if self.attempted_at is not None:
+            data["attempted_at"] = self.attempted_at.isoformat()
+        return data
 
     @classmethod
     def from_json(cls, data: Mapping[str, Any]) -> State:
@@ -67,6 +86,7 @@ class State:
             },
             pending_cause=data.get("pending_cause"),
             strikes=int(data.get("strikes") or 0),
+            attempted_at=datetime.fromisoformat(data["attempted_at"]) if data.get("attempted_at") else None,
         )
 
 
@@ -127,7 +147,7 @@ def decide_rerun(
         return RerunDecision(False, f"the daily retry budget of {rules.daily_budget} is used")
     if same_head and previous is not None:
         wait = timedelta(minutes=rules.backoff_start_minutes * 2 ** len(retries))
-        ready_at = previous.updated_at + wait
+        ready_at = previous.backoff_from + wait
         if now < ready_at:
             return RerunDecision(False, f"backoff: the next retry is allowed after {ready_at.isoformat()}")
         if previous.outcome in DECISIVE:
@@ -156,14 +176,16 @@ def next_state(
 def attempt_state(*, previous: State | None, pr: int, head_sha: str, published: State) -> State:
     strikes = previous.strikes if previous is not None else 0
     if previous is not None and previous.head_sha == head_sha:
-        return replace(previous, retries=published.retries, updated_at=published.updated_at)
-    return State(pr, head_sha, PENDING, published.updated_at, published.retries, {}, UNPUBLISHED, strikes)
+        return replace(previous, retries=published.retries, attempted_at=published.updated_at)
+    return State(
+        pr, head_sha, PENDING, published.updated_at, published.retries, {}, UNPUBLISHED, strikes, published.updated_at
+    )
 
 
 def due_for_retry(
     state: State, current_head: str, now: datetime, rules: RetryRules, reset_at: datetime | None = None
 ) -> bool:
-    if state.outcome != PENDING or state.head_sha != current_head or state.pending_cause in MANUAL_ONLY_CAUSES:
+    if state.outcome != PENDING or state.head_sha != current_head or state.pending_cause in SWEEP_EXCLUDED_CAUSES:
         return False
     return decide_rerun(
         manual=True, new_diff=False, head_sha=current_head, previous=state, now=now, rules=rules, reset_at=reset_at

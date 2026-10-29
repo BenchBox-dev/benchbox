@@ -455,8 +455,8 @@ def test_release_gate_stage1_prunes_measured_runtime_envelopes():
     for cell in result.cells:
         by_pair.setdefault((cell.platform, cell.benchmark), set()).add(cell.scale)
     eligible = sum(1 for scales in by_pair.values() if set(stage1.scales.rungs).issubset(scales))
-    assert eligible == 138
-    assert stage1.report.cross_scale_coverage_min_pairs == int(0.8 * eligible) == 110
+    assert eligible == 136
+    assert stage1.report.cross_scale_coverage_min_pairs == int(0.8 * eligible) == 108
 
 
 def test_release_gate_cross_scale_floors_are_tuned_and_achievable():
@@ -696,19 +696,48 @@ def test_release_gate_runtime_envelopes_are_enabled_or_unused_by_stages():
     assert stage_cfgs[1].compatibility.release_gate_runtime_envelopes is False
     assert stage_cfgs[2].compatibility.release_gate_runtime_envelopes is False
 
-    applied: set[tuple[str, str]] = set()
+    applied: set[tuple] = set()
     for cfg in stage_cfgs:
         if not cfg.compatibility.release_gate_runtime_envelopes:
             continue
         enumerated = enumerate_cells_with_pruning(cfg)
         applied.update(
             (cell.platform, cell.benchmark)
+            if ".sf" not in cell.rule_id
+            else (cell.platform, cell.benchmark, cell.scale)
             for cell in enumerated.compatibility_pruned
             if "release_gate_runtime_envelope" in cell.rule_id
         )
     unused = _RELEASE_GATE_STAGES_UNUSED_RUNTIME_ENVELOPES
     assert applied.isdisjoint(unused)
     assert set(_RELEASE_GATE_RUNTIME_ENVELOPES) == applied | unused
+
+
+def test_scale_specific_runtime_envelope_prunes_only_that_scale(monkeypatch):
+    from tests.uat import compatibility
+    from tests.uat.phases.enumerate import enumerate_cells_with_pruning
+
+    cfg = config.load_config(_CORPUS_CONFIGS_ROOT / "release-gate-01-native-dataframe.yaml")
+    scale_pruned = {
+        (cell.platform, cell.benchmark, cell.scale)
+        for cell in enumerate_cells_with_pruning(cfg).compatibility_pruned
+        if ".sf" in cell.rule_id
+    }
+    assert scale_pruned == {("sqlite", "datavault", 1.0), ("sqlite", "tpchavoc", 1.0)}
+
+    cells = {(cell.platform, cell.benchmark, cell.scale) for cell in enumerate_cells_with_pruning(cfg).cells}
+    assert scale_pruned.isdisjoint(cells)
+    for benchmark in ("datavault", "tpchavoc"):
+        assert {("sqlite", benchmark, 0.01), ("sqlite", benchmark, 0.1)} <= cells
+
+    unscaled = {
+        (cell.platform, cell.benchmark)
+        for cell in enumerate_cells_with_pruning(cfg).compatibility_pruned
+        if "release_gate_runtime_envelope" in cell.rule_id and ".sf" not in cell.rule_id
+    }
+    assert ("sqlite", "tpcds") in unscaled
+    assert ("sqlite", "tpcds_obt") in unscaled
+    assert ("datafusion", "datavault") in unscaled
 
 
 _RECOGNIZED_CONFIG_HEADERS = ("# TEMPLATE", "# HISTORICAL")

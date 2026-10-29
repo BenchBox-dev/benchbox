@@ -19,6 +19,7 @@ from benchbox.core.dataframe.profiling import (
     _analyze_polars_plan,
     _analyze_pyspark_plan,
     capture_datafusion_plan,
+    capture_polars_plan,
     capture_pyspark_plan,
     capture_query_plan,
     compare_execution_modes,
@@ -156,26 +157,8 @@ class TestCaptureDatafusionPlan:
     def test_neither_method_available(self):
         mock_df = MagicMock(spec=[])
 
-        plan = capture_datafusion_plan(mock_df)
-        assert "not available" in plan.plan_text.lower()
-
-    def test_exception_returns_error_plan(self):
-        mock_df = MagicMock()
-        mock_df.logical_plan.side_effect = RuntimeError("plan failed")
-
-        plan = capture_datafusion_plan(mock_df)
-        assert plan.plan_type == "error"
-        assert "plan failed" in plan.plan_text
-
-
-class TestCapturePysparkPlan:
-    def test_exception_returns_error_plan(self):
-        mock_df = MagicMock()
-        mock_df.explain.side_effect = RuntimeError("spark not initialized")
-
-        plan = capture_pyspark_plan(mock_df)
-        assert plan.plan_type == "error"
-        assert "spark not initialized" in plan.plan_text
+        with pytest.raises(TypeError, match="neither logical_plan nor explain"):
+            capture_datafusion_plan(mock_df)
 
 
 class TestCompareExecutionModesNotes:
@@ -449,3 +432,20 @@ class TestQueryPlanData:
         assert plan.plan_data is not None
         assert plan.plan_data["optimized_plan"] == "opt"
         assert plan.plan_data["logical_plan"] == "log"
+
+
+@pytest.mark.parametrize(
+    ("helper", "attrs"),
+    [
+        (capture_polars_plan, {"explain": RuntimeError("boom")}),
+        (capture_datafusion_plan, {"logical_plan": RuntimeError("boom")}),
+        (capture_pyspark_plan, {"explain": RuntimeError("boom")}),
+    ],
+)
+def test_capture_helpers_propagate_failures(helper, attrs):
+    frame = MagicMock()
+    for name, exc in attrs.items():
+        getattr(frame, name).side_effect = exc
+
+    with pytest.raises(RuntimeError, match="boom"):
+        helper(frame)

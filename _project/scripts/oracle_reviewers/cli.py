@@ -1274,7 +1274,9 @@ def _retry_reason(
         return found, sweep.for_head(found, head)
 
     if state is not None and state.head_sha == head:
-        due = retry.due_for_retry(state, head, now, rules)
+        due = retry.due_for_retry(state, head, now, rules) and not _decided_unpublished(
+            state, repo, head, status_context, bot_login, number, base_changed_at
+        )
         if not full:
             if not due:
                 return None
@@ -1300,10 +1302,14 @@ def _retry_reason(
                 token,
                 base_changed_at,
             )
-        if state.outcome != retry.PENDING or state.pending_cause != retry.ALL_ABSENT:
+        if state.outcome != retry.PENDING or state.pending_cause not in (retry.ALL_ABSENT, retry.UNPUBLISHED):
             return None
         reset_at = github.backoff_reset_at(repo, number, head)
-        usable = reset_at is not None and retry.due_for_retry(state, head, now, rules, reset_at)
+        usable = (
+            reset_at is not None
+            and state.pending_cause == retry.ALL_ABSENT
+            and retry.due_for_retry(state, head, now, rules, reset_at)
+        )
         if not due and not usable:
             return None
         found, head_runs = resolved()
@@ -1338,10 +1344,7 @@ def _retry_reason(
         return None
     if sweep.stateless_failures(head_runs) == 0:
         return None
-    if any(
-        status.get("state") in ("success", "failure", "error")
-        for status in _own_statuses(repo, head, status_context, bot_login, number, base_changed_at)
-    ):
+    if _has_decisive_status(repo, head, status_context, bot_login, number, base_changed_at):
         _summary(f"retry not dispatched for #{number}: the head already has a decisive oracle-verdict status")
         return None
     reason = _bounded_retry(
@@ -1365,6 +1368,32 @@ def _own_statuses(
         if owner is None or owner == number:
             found.append(status)
     return found
+
+
+def _has_decisive_status(
+    repo: str, head: str, status_context: str, bot_login: str, number: int, base_changed_at: datetime | None
+) -> bool:
+    return any(
+        status.get("state") in ("success", "failure", "error")
+        for status in _own_statuses(repo, head, status_context, bot_login, number, base_changed_at)
+    )
+
+
+def _decided_unpublished(
+    state: retry.State,
+    repo: str,
+    head: str,
+    status_context: str,
+    bot_login: str,
+    number: int,
+    base_changed_at: datetime | None,
+) -> bool:
+    if state.pending_cause != retry.UNPUBLISHED:
+        return False
+    if not _has_decisive_status(repo, head, status_context, bot_login, number, base_changed_at):
+        return False
+    _summary(f"retry not dispatched for #{number}: the head already has a decisive oracle-verdict status")
+    return True
 
 
 def _already_surfaced(

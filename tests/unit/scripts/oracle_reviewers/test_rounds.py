@@ -551,7 +551,8 @@ def test_finalize_writes_an_attempt_state_that_only_adds_the_consumed_retry(
     assert published["strikes"] == 3 and attempted["strikes"] == 2
     assert attempted["retries"] == published["retries"] and len(attempted["retries"]) == 1
     assert published["outcome"] == "failure" and attempted["outcome"] == "pending"
-    assert attempted["updated_at"] == published["updated_at"]
+    assert attempted["attempted_at"] == published["updated_at"]
+    assert attempted["updated_at"] == "2026-10-08T09:00:00+00:00"
     assert attempted["head_sha"] == plan["head_sha"]
 
 

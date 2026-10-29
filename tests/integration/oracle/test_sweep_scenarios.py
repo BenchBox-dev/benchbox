@@ -7,7 +7,12 @@ from .harness import CHECKER, SLUG, Harness, ago
 pytestmark = [pytest.mark.integration, pytest.mark.medium]
 
 CHANGED = "def checker(a, b):\n    return bool(a == b)\n"
-TRUNCATED = {"kind": "truncated"}
+UNAVAILABLE = {
+    "kind": "error",
+    "status": 500,
+    "provider": "anthropic",
+    "message": "api_error: 500 Internal Server Error",
+}
 VERDICT = "oracle-verdict.yml"
 
 
@@ -45,7 +50,7 @@ def test_a_failed_run_is_redispatched_once_then_a_second_failure_is_surfaced_as_
 def _pending_review(harness: Harness, pr: int, branch: str) -> tuple[str, dict]:
     head = harness.branch(branch, {CHECKER: CHANGED}, "wrap in bool")
     harness.github.open_pull(pr, branch)
-    harness.script_omp([TRUNCATED])
+    harness.script_omp([UNAVAILABLE])
     run = harness.review(pr)
     assert run.steps["finalize"].outputs["state"] == "pending"
     assert harness.github.artifact_json(f"oracle-verdict-state-{pr}", "state.json")["pending_cause"] == "all-absent"
@@ -95,7 +100,7 @@ def test_a_manual_retry_whose_guard_fails_still_consumes_the_retry(harness: Harn
     head, run = _pending_review(harness, 90, "feat/consumed")
     harness.github.age(run, 180)
     posted = len(harness.github.oracle_statuses(head))
-    harness.script_omp([TRUNCATED])
+    harness.script_omp([UNAVAILABLE])
 
     first = harness.review(
         90,
@@ -107,6 +112,6 @@ def test_a_manual_retry_whose_guard_fails_still_consumes_the_retry(harness: Harn
     assert first.steps["plan"].outputs["decision"] == "review"
     assert first.steps["guard"].code == 2
     assert len(harness.github.oracle_statuses(head)) == posted
-    harness.script_omp([TRUNCATED])
+    harness.script_omp([UNAVAILABLE])
     second = harness.review(90, event_name="workflow_dispatch")
     assert second.steps["plan"].outputs["decision"] == "skip"

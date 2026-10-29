@@ -28,6 +28,7 @@ class DorisQueryPlanParser(QueryPlanParser):
         ("physicalnestedloopjoin", LogicalOperatorType.JOIN),
         ("join", LogicalOperatorType.JOIN),
         ("physicalhashaggregate", LogicalOperatorType.AGGREGATE),
+        ("hashagg", LogicalOperatorType.AGGREGATE),
         ("aggregate", LogicalOperatorType.AGGREGATE),
         ("physicalquicksort", LogicalOperatorType.SORT),
         ("physicaltopn", LogicalOperatorType.SORT),
@@ -50,6 +51,7 @@ class DorisQueryPlanParser(QueryPlanParser):
         ("sink", LogicalOperatorType.OTHER),
     )
 
+    _HASH_CONDITION_RE = re.compile(r"hashCondition=\((\(.*?\))\)(?=\s+otherCondition|\s*$)")
     _LINE_RE = re.compile(r"^(?P<dashes>-*)(?P<content>.*)$")
 
     def __init__(self):
@@ -119,6 +121,9 @@ class DorisQueryPlanParser(QueryPlanParser):
             kwargs["table_name"] = qualifier
         elif logical_type == LogicalOperatorType.JOIN:
             kwargs["join_type"] = self._classify_join_type(qualifier)
+            condition = self._HASH_CONDITION_RE.search(content)
+            if condition:
+                kwargs["join_conditions"] = [condition.group(1)]
 
         physical_op = self._create_physical_operator(
             name,

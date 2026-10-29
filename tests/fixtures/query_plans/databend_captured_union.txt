@@ -1,0 +1,25 @@
+UnionAll
+├── output columns: [o_id (#6)]
+├── estimated rows: 3.24
+├── TableScan
+│   ├── table: default.default.orders
+│   ├── scan id: 0
+│   ├── output columns: [o_id (#0)]
+│   ├── read rows: 3
+│   ├── read size: < 1 KiB
+│   ├── partitions total: 1
+│   ├── partitions scanned: 1
+│   ├── pruning stats: [segments: <range pruning: 1 to 1 cost: 1 ms>, blocks: <range pruning: 1 to 1 cost: 1 ms>]
+│   ├── push downs: [filters: [is_true(orders.o_total (#2) > 100)], limit: NONE]
+│   └── estimated rows: 2.24
+└── TableScan
+    ├── table: default.default.customers
+    ├── scan id: 1
+    ├── output columns: [c_id (#3)]
+    ├── read rows: 2
+    ├── read size: < 1 KiB
+    ├── partitions total: 1
+    ├── partitions scanned: 1
+    ├── pruning stats: [segments: <range pruning: 1 to 1 cost: 1 ms>, blocks: <range pruning: 1 to 1 cost: 1 ms, bloom pruning: 1 to 1 cost: 1 ms>]
+    ├── push downs: [filters: [is_true(customers.c_region (#5) = 'EU')], limit: NONE]
+    └── estimated rows: 1.00

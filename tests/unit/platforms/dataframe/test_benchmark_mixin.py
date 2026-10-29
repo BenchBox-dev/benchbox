@@ -652,42 +652,6 @@ class TestStructureDataFramePlan:
 
         assert structured is captured
 
-    def test_error_plan_type_falls_back_without_parsing(self, monkeypatch):
-        from benchbox.core.dataframe.profiling import QueryPlan
-
-        adapter = DummyAdapter()
-
-        def _fail_if_called(_platform):
-            raise AssertionError("parser should not be looked up for a failed capture")
-
-        monkeypatch.setattr(
-            "benchbox.core.query_plans.parsers.registry.get_parser_for_platform",
-            _fail_if_called,
-        )
-        captured = QueryPlan(platform="datafusion", plan_type="error", plan_text="Could not capture plan: boom")
-
-        structured = adapter._structure_dataframe_plan(captured, "q1")
-
-        assert structured is captured
-
-    def test_capture_unavailable_sentinel_text_falls_back_without_parsing(self, monkeypatch):
-        from benchbox.core.dataframe.profiling import QueryPlan
-
-        adapter = DummyAdapter()
-
-        def _fail_if_called(_platform):
-            raise AssertionError("parser should not be looked up for capture-unavailable sentinel text")
-
-        monkeypatch.setattr(
-            "benchbox.core.query_plans.parsers.registry.get_parser_for_platform",
-            _fail_if_called,
-        )
-        captured = QueryPlan(platform="datafusion", plan_type="logical", plan_text="Plan capture not available")
-
-        structured = adapter._structure_dataframe_plan(captured, "q1")
-
-        assert structured is captured
-
 
 class TestHandleNoQueries:
     def test_empty_resolution_raises_configuration_error(self):

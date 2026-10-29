@@ -33,6 +33,7 @@ from benchbox.core.dataframe.query_resolution import (
 )
 from benchbox.core.dataframe.query_validation import validate_dataframe_query_results
 from benchbox.core.dataframe.schema_utils import get_benchmark_schema_columns
+from benchbox.core.errors import PlanCaptureError
 from benchbox.core.exceptions import ConfigurationError, InsufficientMemoryError
 from benchbox.core.execution_engine import DEFAULT_EXECUTION_ENGINE, ExecutionEngineHook
 from benchbox.core.results import (
@@ -326,6 +327,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
 
         self.plan_capture_errors: list[dict[str, Any]] = []
         self._plan_capture_warning_emitted = False
+        self.strict_plan_capture = bool(getattr(benchmark_config, "strict_plan_capture", False))
 
         options_map = getattr(benchmark_config, "options", {}) or {}
         builder.set_run_config(
@@ -452,6 +454,8 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
             builder.mark_completed()
             return builder.build()
 
+        except PlanCaptureError:
+            raise
         except Exception as e:
             logger.error(f"DataFrame benchmark failed: {e}")
             builder.set_validation_status(
@@ -1122,6 +1126,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
         def _run() -> dict[str, Any]:
             try:
                 if capture_plans and supports_profiled:
+                    errors_before = len(getattr(self, "plan_capture_errors", []))
                     if supports_capture_plan_kw:
                         raw_result, profile = profiled_runner(ctx, query, capture_plan=True)
                     else:
@@ -1133,9 +1138,14 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
                         )
                     if profile.plan_capture_time_ms:
                         raw_result["plan_capture_time_ms"] = profile.plan_capture_time_ms
+                    for record in getattr(self, "plan_capture_errors", [])[errors_before:]:
+                        record.setdefault("stream_id", stream_id)
+                        record.setdefault("iteration", iteration)
                 else:
                     raw_result = self.execute_query(ctx, query)
                     raw_result = dict(raw_result)
+            except PlanCaptureError:
+                raise
             except Exception as e:
                 logger.error(f"Query {query.query_id} failed: {e}")
                 raw_result = {
@@ -1161,10 +1171,6 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
         plan_text = getattr(captured_plan, "plan_text", None)
         platform = getattr(captured_plan, "platform", None) or self.platform_name
         if not plan_text or not platform:
-            return captured_plan
-
-        plan_type = getattr(captured_plan, "plan_type", None)
-        if plan_type == "error" or plan_text.startswith(("Plan capture not available", "Could not capture plan:")):
             return captured_plan
 
         from benchbox.core.query_plans.parsers.registry import get_parser_for_platform

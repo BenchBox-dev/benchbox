@@ -74,37 +74,33 @@ def _design_results_columns() -> list[str]:
     return [line.split()[0] for line in block.splitlines() if line.strip()]
 
 
-def test_default_build_stays_on_read_model_17_without_translator_columns(tmp_path: Path) -> None:
+def test_default_build_emits_read_model_18_with_translator_columns(tmp_path: Path) -> None:
     db = _build(tmp_path, _corpus(tmp_path))
 
     with duckdb.connect(str(db), read_only=True) as con:
-        assert con.execute("SELECT read_model_version FROM metadata").fetchone() == (17,)
-    assert EXPLORER_READ_MODEL_VERSION == 17
-    assert EXPLORER_BUILD_CONTRACT["read_model_version"] == 17
+        assert con.execute("SELECT read_model_version FROM metadata").fetchone() == (18,)
+    assert EXPLORER_READ_MODEL_VERSION == 18
+    assert EXPLORER_BUILD_CONTRACT["read_model_version"] == 18
+    assert EXPLORER_BUILD_CONTRACT["read_model_compatibility"]["minimum_supported"] == 17
     assert _columns(db) == _design_results_columns()
-    assert not set(TRANSLATOR_COLUMNS) & set(_columns(db))
+    assert set(TRANSLATOR_COLUMNS) <= set(_columns(db))
 
 
-def test_selecting_17_explicitly_matches_the_default(tmp_path: Path) -> None:
+def test_selecting_18_explicitly_matches_the_default(tmp_path: Path) -> None:
     data = _corpus(tmp_path)
     default = _columns(_build(tmp_path, data))
-    explicit = _columns(_build(tmp_path, data, read_model_version=17))
+    explicit = _columns(_build(tmp_path, data, read_model_version=18))
 
     assert explicit == default
 
 
-def test_read_model_18_appends_exactly_the_translator_columns(tmp_path: Path) -> None:
-    db = _build(tmp_path, _corpus(tmp_path), read_model_version=18)
+def test_read_model_17_omits_exactly_the_translator_columns(tmp_path: Path) -> None:
+    db = _build(tmp_path, _corpus(tmp_path), read_model_version=17)
 
     with duckdb.connect(str(db), read_only=True) as con:
-        assert con.execute("SELECT read_model_version FROM metadata").fetchone() == (18,)
-        described = con.execute("DESCRIBE results").fetchall()
-    assert [(row[0], row[1]) for row in described[-3:]] == [
-        ("translator_version", "VARCHAR"),
-        ("translator_fork_sha", "VARCHAR"),
-        ("translator_version_source", "VARCHAR"),
-    ]
-    assert [row[0] for row in described[:-3]] == _design_results_columns()
+        assert con.execute("SELECT read_model_version FROM metadata").fetchone() == (17,)
+    assert _columns(db) == _design_results_columns()[:-3]
+    assert not set(TRANSLATOR_COLUMNS) & set(_columns(db))
 
 
 def test_read_model_18_fills_translator_columns_by_source(tmp_path: Path) -> None:
@@ -126,8 +122,8 @@ def test_read_model_18_leaves_every_other_column_unchanged(tmp_path: Path) -> No
     data = _corpus(tmp_path)
     base = tmp_path / "v17"
     new = tmp_path / "v18"
-    ExplorerPipeline().run(data, base)
-    ExplorerPipeline().run(data, new, read_model_version=18)
+    ExplorerPipeline().run(data, base, read_model_version=17)
+    ExplorerPipeline().run(data, new)
     shared = ", ".join(_columns(base / "results.duckdb"))
     query = f"SELECT {shared} FROM results ORDER BY result_id"
 
@@ -149,10 +145,10 @@ def test_the_build_command_selects_the_read_model(tmp_path: Path) -> None:
     default = runner.invoke(explorer_publish, ["build", "--data-dir", str(data), "--output", str(tmp_path / "a")])
     selected = runner.invoke(
         explorer_publish,
-        ["build", "--data-dir", str(data), "--output", str(tmp_path / "b"), "--read-model-version", "18"],
+        ["build", "--data-dir", str(data), "--output", str(tmp_path / "b"), "--read-model-version", "17"],
     )
 
     assert default.exit_code == 0, default.output
     assert selected.exit_code == 0, selected.output
-    assert "translator_version" not in _columns(tmp_path / "a" / "results.duckdb")
-    assert "translator_version" in _columns(tmp_path / "b" / "results.duckdb")
+    assert "translator_version" in _columns(tmp_path / "a" / "results.duckdb")
+    assert "translator_version" not in _columns(tmp_path / "b" / "results.duckdb")

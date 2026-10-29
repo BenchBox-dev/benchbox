@@ -102,6 +102,9 @@ jobs:
       - name: Install dependencies
         run: uv sync --group dev
 
+      - name: Sync locked package-only runtime
+        run: uv sync --project _project/scripts --locked
+
       - name: Download medium collection evidence
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:

@@ -18,6 +18,7 @@ from benchbox.core.dataframe.profiling import (
 )
 from benchbox.core.dataframe.query import DataFrameQuery
 from benchbox.core.dataframe.tuning import DataFrameTuningConfiguration
+from benchbox.core.errors import PlanCaptureError
 from benchbox.platforms.dataframe._result_helpers import (
     build_failure_result_dict,
     build_success_result_dict,
@@ -824,6 +825,13 @@ class ExpressionFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, 
                 except Exception as e:
                     plan_capture_error = str(e)
                     self._record_dataframe_plan_capture_failure(qid, plan_capture_error)
+                    if getattr(self, "strict_plan_capture", False):
+                        raise PlanCaptureError(
+                            reason="capture_error",
+                            platform=self.platform_name,
+                            query_id=str(qid),
+                            details=plan_capture_error,
+                        ) from e
                 finally:
                     profile_ctx.end_plan_capture()
 
@@ -866,6 +874,10 @@ class ExpressionFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, 
 
             return result_dict, profile
 
+        except PlanCaptureError:
+            if memory_tracker is not None:
+                memory_tracker.stop()
+            raise
         except Exception as e:
             if memory_tracker is not None:
                 memory_tracker.stop()

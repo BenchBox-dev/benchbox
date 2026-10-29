@@ -1,0 +1,21 @@
+== Parsed Logical Plan ==
+'Project ['o_id, 'o_total]
++- 'Filter ('o_total > 100)
+   +- 'UnresolvedRelation [orders], [], false
+
+== Analyzed Logical Plan ==
+o_id: bigint, o_total: double
+Project [o_id#28L, o_total#30]
++- Filter (o_total#30 > cast(100 as double))
+   +- SubqueryAlias spark_catalog.default.orders
+      +- Relation spark_catalog.default.orders[o_id#28L,o_cust#29L,o_total#30] parquet
+
+== Optimized Logical Plan ==
+Project [o_id#28L, o_total#30]
++- Filter (isnotnull(o_total#30) AND (o_total#30 > 100.0))
+   +- Relation spark_catalog.default.orders[o_id#28L,o_cust#29L,o_total#30] parquet
+
+== Physical Plan ==
+*(1) Filter (isnotnull(o_total#30) AND (o_total#30 > 100.0))
++- *(1) ColumnarToRow
+   +- FileScan parquet spark_catalog.default.orders[o_id#28L,o_total#30] Batched: true, DataFilters: [isnotnull(o_total#30), (o_total#30 > 100.0)], Format: Parquet, Location: InMemoryFileIndex(1 paths)[file:/tmp/spark-warehouse..., PartitionFilters: [], PushedFilters: [IsNotNull(o_total), GreaterThan(o_total,100.0)], ReadSchema: struct<o_id:bigint,o_total:double>

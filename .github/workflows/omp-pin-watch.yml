@@ -1,0 +1,153 @@
+name: Omp pin watch
+
+on:
+  schedule:
+    - cron: "17 */3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: omp-pin-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    name: Watch the first reviews after an omp pin bump
+    if: github.repository == 'BenchBox-dev/BenchBox'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      state: ${{ steps.evaluate.outputs.state }}
+      version: ${{ steps.evaluate.outputs.version }}
+      previous: ${{ steps.evaluate.outputs.previous }}
+
+    steps:
+      - name: Checkout develop
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: develop
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Compare the first reviews on the pin with the previous week
+        id: evaluate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OUT_DIR: ${{ runner.temp }}/omp-watch
+        run: >-
+          uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 --
+          python -m _project.scripts.oracle_reviewers.omp_watch evaluate
+          --repo "$GITHUB_REPOSITORY" --out-dir "$OUT_DIR"
+
+      - name: Report the watch
+        if: always() && steps.evaluate.outputs.state != ''
+        env:
+          OUT_DIR: ${{ runner.temp }}/omp-watch
+          STATE: ${{ steps.evaluate.outputs.state }}
+        run: |
+          {
+            echo "## omp pin watch: ${STATE}"
+            if [ -f "$OUT_DIR/assessment.txt" ]; then
+              echo
+              echo '```'
+              cat "$OUT_DIR/assessment.txt"
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep the attempt ledger for the next watch
+        if: steps.evaluate.outputs.state != '' && steps.evaluate.outputs.state != 'idle'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: omp-watch-ledger
+          path: ${{ runner.temp }}/omp-watch/ledger.json
+          overwrite: true
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Hand the revert to the pull request job
+        if: steps.evaluate.outputs.state == 'revert'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: omp-revert
+          path: |
+            ${{ runner.temp }}/omp-watch/policy.yml
+            ${{ runner.temp }}/omp-watch/pr-body.md
+          if-no-files-found: error
+
+  open-revert:
+    name: Open the omp pin revert pull request
+    needs: watch
+    if: github.repository == 'BenchBox-dev/BenchBox' && needs.watch.outputs.state == 'revert'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: write
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout develop
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: develop
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Fetch the prepared revert
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: omp-revert
+          path: ${{ runner.temp }}/omp-revert
+
+      - name: Open the revert pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OUT_DIR: ${{ runner.temp }}/omp-revert
+          VERSION: ${{ needs.watch.outputs.version }}
+          PREVIOUS: ${{ needs.watch.outputs.previous }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for value in "$VERSION" "$PREVIOUS"; do
+            if ! [[ "$value" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][A-Za-z0-9._-]+)?$ ]]; then
+              echo "refusing a version that is not a release number: ${value}" >&2
+              exit 1
+            fi
+          done
+          BRANCH="revert/omp-pin-${VERSION}"
+          existing="$(gh api "repos/${GITHUB_REPOSITORY}/pulls?state=all&head=${GITHUB_REPOSITORY%%/*}:${BRANCH}&per_page=100")"
+          PR="$(jq -r '[.[] | select(.state == "open")][0].number // empty' <<<"$existing")"
+          if [ -z "$PR" ]; then
+            if [ "$(jq 'length' <<<"$existing")" != 0 ]; then
+              echo "A closed pull request for ${BRANCH} already exists; nothing to open."
+              exit 0
+            fi
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git checkout -b "$BRANCH"
+            cp "$OUT_DIR/policy.yml" .github/oracle-reviewers.yml
+            git add .github/oracle-reviewers.yml
+            git commit -m "revert(oracle): restore omp ${PREVIOUS}"
+            AUTH="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')"
+            git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${AUTH}" push origin "$BRANCH"
+            PR="$(gh api --method POST "repos/${GITHUB_REPOSITORY}/pulls" \
+              -f title="revert(oracle): restore omp ${PREVIOUS}" -F body=@"$OUT_DIR/pr-body.md" \
+              -f base=develop -f head="$BRANCH" --jq .number)"
+          fi
+          HEAD_SHA="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}" --jq .head.sha)"
+          verdicts="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/statuses?per_page=100" --jq '.[] | select(.context == "oracle-verdict") | .id')"
+          titles="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/oracle-verdict.yml/runs?per_page=100" --jq '.workflow_runs[].display_title')"
+          if [ -n "$verdicts" ] || grep -qF "pr=${PR} head=${HEAD_SHA}" <<<"$titles"; then
+            echo "Pull request #${PR} already has a review for ${HEAD_SHA}."
+            exit 0
+          fi
+          gh workflow run oracle-verdict.yml --repo "$GITHUB_REPOSITORY" --ref develop -f pr="$PR" -f head="$HEAD_SHA"

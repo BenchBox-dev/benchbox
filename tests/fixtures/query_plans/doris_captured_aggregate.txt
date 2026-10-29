@@ -1,0 +1,6 @@
+PhysicalResultSink
+--hashAgg[GLOBAL]
+----PhysicalDistribute[DistributionSpecHash]
+------hashAgg[LOCAL]
+--------PhysicalProject
+----------PhysicalOlapScan[orders]

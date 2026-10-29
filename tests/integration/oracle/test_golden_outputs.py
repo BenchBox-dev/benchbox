@@ -13,7 +13,7 @@ from .runs import DRIVER, STEPS
 from .test_carry_scenarios import _rebase, _reviewed
 from .test_evidence_scenarios import FILLER, LARGE_CHECKER, NOTES
 from .test_followup_scenarios import FIXED, REBUTTAL, _first_round
-from .test_sweep_scenarios import TRUNCATED, VERDICT, _failed_run, _pending_review
+from .test_sweep_scenarios import UNAVAILABLE, VERDICT, _failed_run, _pending_review
 
 pytestmark = [pytest.mark.integration, pytest.mark.medium]
 
@@ -178,7 +178,7 @@ def test_golden_oversize_brief_is_a_file_list(harness: Harness) -> None:
 
 def test_golden_every_attempt_absent(harness: Harness) -> None:
     _open(harness, 84)
-    harness.script_omp([TRUNCATED])
+    harness.script_omp([UNAVAILABLE])
     _check("every_attempt_absent", harness, harness.review(84), 84)
 
 

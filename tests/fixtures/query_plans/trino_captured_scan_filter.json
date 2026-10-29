@@ -1,0 +1,54 @@
+{
+  "0" : {
+    "id" : "6",
+    "name" : "Output",
+    "descriptor" : {
+      "columnNames" : "[o_id, o_total]"
+    },
+    "outputs" : [ {
+      "type" : "bigint",
+      "name" : "o_id"
+    }, {
+      "type" : "double",
+      "name" : "o_total"
+    } ],
+    "details" : [ ],
+    "estimates" : [ {
+      "outputRowCount" : "NaN",
+      "outputSizeInBytes" : "NaN",
+      "cpuCost" : 0.0,
+      "memoryCost" : 0.0,
+      "networkCost" : 0.0
+    } ],
+    "children" : [ {
+      "id" : "1",
+      "name" : "ScanFilter",
+      "descriptor" : {
+        "table" : "memory:default.orders",
+        "filterPredicate" : "(double '100.0' < o_total)"
+      },
+      "outputs" : [ {
+        "type" : "bigint",
+        "name" : "o_id"
+      }, {
+        "type" : "double",
+        "name" : "o_total"
+      } ],
+      "details" : [ "o_total := o_total:double", "o_id := o_id:bigint" ],
+      "estimates" : [ {
+        "outputRowCount" : 3.0,
+        "outputSizeInBytes" : 54.0,
+        "cpuCost" : 54.0,
+        "memoryCost" : 0.0,
+        "networkCost" : 0.0
+      }, {
+        "outputRowCount" : "NaN",
+        "outputSizeInBytes" : "NaN",
+        "cpuCost" : 54.0,
+        "memoryCost" : 0.0,
+        "networkCost" : 0.0
+      } ],
+      "children" : [ ]
+    } ]
+  }
+}

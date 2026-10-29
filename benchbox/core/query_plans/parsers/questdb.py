@@ -50,6 +50,8 @@ class QuestDBQueryPlanParser(QueryPlanParser):
         ("select", LogicalOperatorType.PROJECT),
     )
 
+    _FRAME_SCAN_ROOTS = ("pageframe", "dataframe")
+
     def __init__(self):
         super().__init__("questdb")
 
@@ -117,13 +119,16 @@ class QuestDBQueryPlanParser(QueryPlanParser):
     def _convert_raw(self, raw: dict[str, Any]) -> LogicalOperator:
         content = raw["content"]
         logical_type = self._map_operator_type(content)
-        children = [self._convert_raw(child) for child in raw["children"]]
-
         kwargs: dict[str, Any] = {}
-        if logical_type == LogicalOperatorType.SCAN:
-            table = self._extract_table(content)
-            if table:
-                kwargs["table_name"] = table
+
+        if self._is_frame_scan(raw):
+            children: list[LogicalOperator] = []
+            table = next((t for t in (self._extract_table(c["content"]) for c in raw["children"]) if t), None)
+        else:
+            children = [self._convert_raw(child) for child in raw["children"]]
+            table = self._extract_table(content) if logical_type == LogicalOperatorType.SCAN else None
+        if table:
+            kwargs["table_name"] = table
 
         physical_op = self._create_physical_operator(
             content.split()[0] if content.split() else content,
@@ -135,6 +140,15 @@ class QuestDBQueryPlanParser(QueryPlanParser):
             children=children,
             physical_operator=physical_op,
             **kwargs,
+        )
+
+    @classmethod
+    def _is_frame_scan(cls, raw: dict[str, Any]) -> bool:
+        if not raw["content"].lower().startswith(cls._FRAME_SCAN_ROOTS) or not raw["children"]:
+            return False
+        return all(
+            not child["children"] and cls._map_operator_type(child["content"]) == LogicalOperatorType.SCAN
+            for child in raw["children"]
         )
 
     @classmethod

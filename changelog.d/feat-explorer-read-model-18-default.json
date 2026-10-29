@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "The Explorer build contract, the browser DuckDB schema and the site snapshot inputs now default to read model 18, which adds the per-run translator_version, translator_fork_sha and translator_version_source columns. Read model 17 stays accepted (minimum_supported 17) and remains selectable with --read-model-version 17 for rollback."
+    }
+  ]
+}

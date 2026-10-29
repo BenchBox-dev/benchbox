@@ -38,19 +38,19 @@ class TestFormatSQLiteQueryPlan:
         text = _format_sqlite_query_plan(rows)
         assert text is not None
         assert "QUERY PLAN" in text
-        assert "`--SCAN orders" in text
+        assert "2|0|SCAN orders" in text
 
     def test_multiple_root_nodes(self):
         rows = [(2, 0, 0, "SCAN orders"), (4, 0, 0, "SCAN lineitem")]
         text = _format_sqlite_query_plan(rows)
-        assert "|--SCAN orders" in text
-        assert "`--SCAN lineitem" in text
+        assert "2|0|SCAN orders" in text
+        assert "4|0|SCAN lineitem" in text
 
     def test_parent_child_nesting(self):
         rows = [(2, 0, 0, "SCAN customer"), (4, 2, 0, "SEARCH lineitem USING INDEX")]
         text = _format_sqlite_query_plan(rows)
-        assert "SCAN customer" in text
-        assert "SEARCH lineitem" in text
+        assert "2|0|SCAN customer" in text
+        assert "4|2|SEARCH lineitem USING INDEX" in text
 
     def test_empty_rows_returns_none(self):
         assert _format_sqlite_query_plan([]) is None

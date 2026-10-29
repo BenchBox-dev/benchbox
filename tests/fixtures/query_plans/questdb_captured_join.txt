@@ -1,0 +1,10 @@
+SelectedRecord
+    Hash Join Light
+      condition: c.c_id=o.o_cust
+        PageFrame
+            Row forward scan
+            Frame forward scan on: lpv_orders
+        Hash
+            PageFrame
+                Row forward scan
+                Frame forward scan on: lpv_customers

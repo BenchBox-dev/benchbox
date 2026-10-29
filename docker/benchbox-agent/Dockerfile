@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
         git \
+        jq \
         make \
         pkg-config \
         systemd-sysv \

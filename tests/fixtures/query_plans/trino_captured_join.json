@@ -1,0 +1,141 @@
+{
+  "0" : {
+    "id" : "11",
+    "name" : "Output",
+    "descriptor" : {
+      "columnNames" : "[c_name, o_total]"
+    },
+    "outputs" : [ {
+      "type" : "varchar",
+      "name" : "c_name"
+    }, {
+      "type" : "double",
+      "name" : "o_total"
+    } ],
+    "details" : [ ],
+    "estimates" : [ {
+      "outputRowCount" : "NaN",
+      "outputSizeInBytes" : "NaN",
+      "cpuCost" : 0.0,
+      "memoryCost" : 0.0,
+      "networkCost" : 0.0
+    } ],
+    "children" : [ {
+      "id" : "6",
+      "name" : "InnerJoin",
+      "descriptor" : {
+        "criteria" : "(c_id = o_cust)",
+        "distribution" : "REPLICATED"
+      },
+      "outputs" : [ {
+        "type" : "varchar",
+        "name" : "c_name"
+      }, {
+        "type" : "double",
+        "name" : "o_total"
+      } ],
+      "details" : [ "Distribution: REPLICATED", "dynamicFilterAssignments = {o_cust -> #df_182}" ],
+      "estimates" : [ {
+        "outputRowCount" : "NaN",
+        "outputSizeInBytes" : "NaN",
+        "cpuCost" : "NaN",
+        "memoryCost" : 54.0,
+        "networkCost" : 0.0
+      } ],
+      "children" : [ {
+        "id" : "183",
+        "name" : "ScanFilter",
+        "descriptor" : {
+          "table" : "memory:default.customers",
+          "filterPredicate" : "",
+          "dynamicFilters" : "{c_id = #df_182}"
+        },
+        "outputs" : [ {
+          "type" : "bigint",
+          "name" : "c_id"
+        }, {
+          "type" : "varchar",
+          "name" : "c_name"
+        } ],
+        "details" : [ "c_name := c_name:varchar", "c_id := c_id:bigint" ],
+        "estimates" : [ {
+          "outputRowCount" : 2.0,
+          "outputSizeInBytes" : 128.0,
+          "cpuCost" : 128.0,
+          "memoryCost" : 0.0,
+          "networkCost" : 0.0
+        }, {
+          "outputRowCount" : 2.0,
+          "outputSizeInBytes" : 128.0,
+          "cpuCost" : 128.0,
+          "memoryCost" : 0.0,
+          "networkCost" : 0.0
+        } ],
+        "children" : [ ]
+      }, {
+        "id" : "212",
+        "name" : "LocalExchange",
+        "descriptor" : {
+          "partitioning" : "SINGLE",
+          "isReplicateNullsAndAny" : "",
+          "arguments" : "[]"
+        },
+        "outputs" : [ {
+          "type" : "bigint",
+          "name" : "o_cust"
+        }, {
+          "type" : "double",
+          "name" : "o_total"
+        } ],
+        "details" : [ ],
+        "estimates" : [ {
+          "outputRowCount" : 3.0,
+          "outputSizeInBytes" : 54.0,
+          "cpuCost" : 0.0,
+          "memoryCost" : 0.0,
+          "networkCost" : 0.0
+        } ],
+        "children" : [ {
+          "id" : "165",
+          "name" : "RemoteSource",
+          "descriptor" : {
+            "sourceFragmentIds" : "[1]"
+          },
+          "outputs" : [ {
+            "type" : "bigint",
+            "name" : "o_cust"
+          }, {
+            "type" : "double",
+            "name" : "o_total"
+          } ],
+          "details" : [ ],
+          "estimates" : [ ],
+          "children" : [ ]
+        } ]
+      } ]
+    } ]
+  },
+  "1" : {
+    "id" : "0",
+    "name" : "TableScan",
+    "descriptor" : {
+      "table" : "memory:default.orders"
+    },
+    "outputs" : [ {
+      "type" : "bigint",
+      "name" : "o_cust"
+    }, {
+      "type" : "double",
+      "name" : "o_total"
+    } ],
+    "details" : [ "o_total := o_total:double", "o_cust := o_cust:bigint" ],
+    "estimates" : [ {
+      "outputRowCount" : 3.0,
+      "outputSizeInBytes" : 54.0,
+      "cpuCost" : 54.0,
+      "memoryCost" : 0.0,
+      "networkCost" : 0.0
+    } ],
+    "children" : [ ]
+  }
+}

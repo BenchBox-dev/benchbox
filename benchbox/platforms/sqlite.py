@@ -743,30 +743,10 @@ class SQLiteAdapter(PlatformAdapter):
 def _format_sqlite_query_plan(rows: list) -> str | None:
     if not rows:
         return None
-    node_text: dict[int, str] = {}
-    children: dict[int, list[int]] = {}
-    for row in rows:
-        node_id, parent_id, _unused, detail = int(row[0]), int(row[1]), row[2], str(row[3])
-        node_text[node_id] = detail
-        children.setdefault(parent_id, []).append(node_id)
-
-    roots = children.get(0, [])
-    if not roots:
-        return None
-
     lines = ["QUERY PLAN"]
-
-    def _emit(node_id: int, prefix: str, is_last: bool) -> None:
-        marker = "`--" if is_last else "|--"
-        lines.append(f"{prefix}{marker}{node_text[node_id]}")
-        child_ids = children.get(node_id, [])
-        ext = "   " if is_last else "|  "
-        for i, cid in enumerate(child_ids):
-            _emit(cid, prefix + ext, i == len(child_ids) - 1)
-
-    for i, rid in enumerate(roots):
-        _emit(rid, "", i == len(roots) - 1)
-
+    for row in rows:
+        detail = " ".join(str(row[3]).split())
+        lines.append(f"{int(row[0])}|{int(row[1])}|{detail}")
     return "\n".join(lines)
 
 

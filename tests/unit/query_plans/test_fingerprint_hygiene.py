@@ -112,7 +112,7 @@ def _duckdb_explain(cardinality: int) -> str:
 
 
 def _sqlite_explain() -> str:
-    return "QUERY PLAN\n`--SEARCH orders USING INDEX idx_orders (id=?)"
+    return "QUERY PLAN\n2|0|SEARCH orders USING INDEX idx_orders (id=?)"
 
 
 _FILE_FIXTURES: dict[str, str] = {

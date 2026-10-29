@@ -21,8 +21,20 @@ the product repository.
 
 ## Critical rules
 
-- **Call `get_instructions` first** in a session. It returns the live protocol
-  and, on clients that supply no explicit actor, pins your worker identity.
+- **Call `get_instructions` first** in a session, with `expect_store` set to
+  the project's repository as `owner/repo` (for example
+  `BenchBox-dev/BenchBox`). It returns the live protocol and, on clients that
+  supply no explicit actor, pins your worker identity.
+- **Confirm the bound store before the first write.** From todo-db 0.11.0 the
+  instructions start with a "Bound store" section naming the state remote and
+  branch, and a server bound to another project's tracker answers
+  `expect_store` with a `gate`-kind `E_STATE`. On that refusal, stop and write
+  nothing; tell the operator to restart `todo-db-mcp` with the project's
+  `--config` or from the project directory. The match is a case-insensitive
+  substring of the remote only, so pass the full `owner/repo`, not a short
+  word. Older servers ignore `expect_store` and show no "Bound store"
+  section: on those, check that `list_items` shows this project's work before
+  writing.
 - **Drive through MCP tools, never the shell.** Do not invoke tracker verbs
   through the `todo-db` floor CLI, hand-edit state, or invent a second store.
   Use `Bash` strictly for repo test suites, linters, and builds.
@@ -117,7 +129,7 @@ first page, never skip ahead.
 | `E_NO_PRINCIPAL` | Identity not resolved. | Call `get_instructions`, then retry. |
 | `E_OFFLINE` | Remote unreachable. | Reads may be cached and marked stale; mutations fail — retry when reachable. |
 | `E_UNKNOWN` | Outcome undetermined. | Reconcile with the operation ID in `recovery`; do not re-apply blindly. |
-| `E_STATE` | Malformed state or rejected request. | Read the message; report it if you cannot fix the request. |
+| `E_STATE` | Malformed state or rejected request. As a `gate` from `get_instructions`, the server is bound to another project's store. | Read the message; report it if you cannot fix the request. For the `expect_store` gate, stop and write nothing. |
 | `E_SCHEMA` | State format newer than this package. | Stop; a human upgrades the package. |
 | `E_FINAL_EVIDENCE` | Prepared member lacks current final-tree proof. | Re-take the member, attach exact clean combined-tree evidence, then retry `finish`. |
 
@@ -135,8 +147,12 @@ inferred from `needs`. IDs use `a-z0-9-` (start/end alphanumeric). Titles are
 ladder: an ordinary task closes with `take` + `finish`.
 
 `update_item` amends title/priority/description/needs/sections/`not_before`,
-or moves status between `open` and `blocked`. Closing goes through `finish`;
-dropping a task is a human decision reported to the user.
+or moves status between `open` and `blocked`. Text and list fields are
+replaced whole; an empty value clears one. To add a progress note without
+resending the context, pass `context_append` (todo-db 0.11.0 or later): the
+server adds it to the end of the current context when the write lands, so a
+concurrent note is not lost. Closing goes through `finish`; dropping a task is
+a human decision reported to the user.
 
 Use `not_before` rather than `blocked` when a task is waiting for a known time,
 such as the end of a measurement window. It takes a future RFC 3339 time with

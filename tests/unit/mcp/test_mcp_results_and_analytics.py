@@ -1169,33 +1169,129 @@ class TestAnalyticsHelpers:
         result = sample_stdev_ms([2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0])
         assert abs(result - 2.138) < 0.01
 
-    def test_extract_plan_summary(self):
-        from benchbox.mcp.tools.analytics import _extract_plan_summary
 
-        plan = {
-            "type": "HashJoin",
-            "rows": 1000,
-            "children": [
-                {"type": "SeqScan", "table": "lineitem", "rows": 6000000},
-                {"type": "IndexScan", "table": "orders"},
-            ],
+def _canonical_plan(*, estimated_rows=None, estimated_cost=None) -> dict:
+    from benchbox.core.results.query_plan_models import JoinType, LogicalOperator, LogicalOperatorType, QueryPlanDAG
+
+    def scan(op_id, table):
+        return LogicalOperator(LogicalOperatorType.SCAN, op_id, table_name=table)
+
+    join = LogicalOperator(
+        LogicalOperatorType.JOIN,
+        "join1",
+        children=[scan("scan1", "lineitem"), scan("scan2", "orders")],
+        join_type=JoinType.INNER,
+        join_conditions=["l_orderkey = o_orderkey"],
+    )
+    aggregate = LogicalOperator(
+        LogicalOperatorType.AGGREGATE,
+        "agg1",
+        children=[join],
+        aggregation_functions=["sum(l_quantity)"],
+        group_by_keys=["l_returnflag"],
+    )
+    root = LogicalOperator(LogicalOperatorType.PROJECT, "proj1", children=[aggregate])
+    return QueryPlanDAG(
+        query_id="Q1",
+        platform="duckdb",
+        logical_root=root,
+        estimated_rows=estimated_rows,
+        estimated_cost=estimated_cost,
+    ).to_dict()
+
+
+class TestCanonicalPlanRendering:
+    def test_summary_counts_logical_operators(self):
+        from benchbox.mcp.tools.analytics import _format_plan_response
+
+        response = _format_plan_response(_canonical_plan(), "summary", "1", 5.0)
+
+        assert response["summary"] == {
+            "operator_count": 5,
+            "join_count": 1,
+            "scan_count": 2,
+            "aggregate_count": 1,
+            "filter_count": 0,
+            "sort_count": 0,
+            "max_depth": 3,
+            "estimated_rows": None,
+            "estimated_cost": None,
         }
-        summary = _extract_plan_summary(plan)
-        assert summary["join_count"] == 1
-        assert summary["scan_count"] >= 2
-        assert summary["estimated_rows"] == 1000
 
-    def test_format_plan_tree(self):
-        from benchbox.mcp.tools.analytics import _format_plan_tree
+    def test_summary_reports_estimates_only_when_present(self):
+        from benchbox.mcp.tools.analytics import _format_plan_response
 
-        plan = {
-            "type": "HashJoin",
-            "condition": "l_orderkey = o_orderkey",
-            "children": [
-                {"type": "SeqScan", "table": "lineitem"},
-            ],
+        summary = _format_plan_response(_canonical_plan(estimated_rows=42, estimated_cost=1.5), "summary", "1", 5.0)[
+            "summary"
+        ]
+
+        assert summary["estimated_rows"] == 42
+        assert summary["estimated_cost"] == 1.5
+
+    def test_tree_renders_hierarchy(self):
+        from benchbox.mcp.tools.analytics import _format_plan_response
+
+        tree = _format_plan_response(_canonical_plan(), "tree", "1", 5.0)["plan_tree"]
+
+        assert "Node" not in tree
+        lines = tree.splitlines()
+
+        def depth(marker):
+            line = next(line for line in lines if marker in line)
+            return line.index(marker)
+
+        assert depth("Project") < depth("Aggregate") < depth("Join") < depth("table=lineitem")
+        assert depth("table=lineitem") == depth("table=orders")
+
+    def test_json_returns_plan_unchanged(self):
+        from benchbox.mcp.tools.analytics import _format_plan_response
+
+        plan = _canonical_plan()
+
+        assert _format_plan_response(plan, "json", "1", 5.0)["plan"] is plan
+
+    def test_non_canonical_plan_is_a_validation_error(self):
+        from benchbox.mcp.tools.analytics import _format_plan_response
+
+        result = _format_plan_response({"type": "HashJoin", "children": []}, "tree", "1", 5.0)
+
+        assert result["error_code"] == "VALIDATION_ERROR"
+
+    def test_truncated_plan_is_flagged(self):
+        from benchbox.mcp.tools.analytics import _format_plan_response
+
+        plan = _canonical_plan()
+        plan["logical_root"]["children"][0]["children"][0] = {
+            "operator_type": "Join",
+            "operator_id": "join1",
+            "truncated_at_depth": 2,
+            "children_omitted": 2,
         }
-        tree = _format_plan_tree(plan)
-        assert "HashJoin" in tree
-        assert "SeqScan" in tree
-        assert "lineitem" in tree
+
+        summary = _format_plan_response(plan, "summary", "1", 5.0)["summary"]
+
+        assert summary["truncated_at_depth"] == 2
+
+    def test_truncated_tree_is_flagged(self):
+        from benchbox.mcp.tools.analytics import _format_plan_response
+
+        plan = _canonical_plan()
+        plan["logical_root"]["children"][0]["children"][0] = {
+            "operator_type": "Join",
+            "operator_id": "join1",
+            "truncated_at_depth": 2,
+            "children_omitted": 2,
+        }
+
+        response = _format_plan_response(plan, "tree", "1", 5.0)
+
+        assert response["truncated_at_depth"] == 2
+        assert "plan truncated at depth 2" in response["plan_tree"]
+
+    def test_complete_tree_has_no_truncation_marker(self):
+        from benchbox.mcp.tools.analytics import _format_plan_response
+
+        response = _format_plan_response(_canonical_plan(), "tree", "1", 5.0)
+
+        assert "truncated_at_depth" not in response
+        assert "truncated" not in response["plan_tree"]

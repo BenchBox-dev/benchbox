@@ -1,0 +1,5 @@
+{
+  "provenance": "captured",
+  "models": "Apache Doris 4.0.3 EXPLAIN SHAPE PLAN (OLAP tables), captured",
+  "validated_against_live": true
+}

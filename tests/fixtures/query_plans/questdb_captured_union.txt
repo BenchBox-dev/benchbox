@@ -1,0 +1,13 @@
+Union All
+    SelectedRecord
+        Async JIT Filter workers: 5
+          filter: 100<o_total
+            PageFrame
+                Row forward scan
+                Frame forward scan on: lpv_orders
+    SelectedRecord
+        Async Filter workers: 5
+          filter: c_region='EU'
+            PageFrame
+                Row forward scan
+                Frame forward scan on: lpv_customers

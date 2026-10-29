@@ -5,7 +5,8 @@ Rank open items by topic without changing tracker state. There is no
 
 ## Before you start
 
-1. Call `get_instructions` to confirm the protocol and your identity.
+1. Call `get_instructions` with `expect_store` set to the project's
+   `owner/repo` to confirm the protocol, the bound store, and your identity.
 2. If the tracker is unreachable or reports a schema problem, stop. Do not
    reconstruct the backlog from files or chat history — the state branch is the
    only source.

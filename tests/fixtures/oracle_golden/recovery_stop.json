@@ -39,7 +39,7 @@
     "state/state.json": {
       "head_sha": "<sha0>",
       "outcome": "pending",
-      "pending_cause": "all-absent",
+      "pending_cause": "stopped",
       "pool_blocked_until": {},
       "pr": 103,
       "retries": [],
