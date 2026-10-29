@@ -292,19 +292,13 @@ def publish(env: Environment, args: argparse.Namespace) -> int:
             "::notice::oracle-verdict is not posted because the App secrets are not set; "
             f"result {state} for {plan['head_sha']}"
         )
-        if has_state:
-            cli._output({"attempt_state": "true"})
         return 0
     sink = _credentialed_sink(env)
     if sink is None:
-        if has_state:
-            cli._output({"attempt_state": "true"})
         return 1
     code, skip = cli.guard_decision(plan)
     if code == 0:
         cli._output({"skip": "true" if skip else "false"})
-    if has_state and not skip:
-        cli._output({"attempt_state": "true"})
     if code != 0 or skip:
         return code
     try:

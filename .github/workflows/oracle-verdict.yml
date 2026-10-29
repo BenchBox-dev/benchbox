@@ -312,7 +312,7 @@ jobs:
         run: python3 -m _project.scripts.oracle_reviewers.cli drive publish
 
       - name: Record the retry attempt
-        if: always() && steps.finalize.outcome == 'success' && steps.publish.outputs.attempt_state == 'true'
+        if: always() && steps.finalize.outcome == 'success' && steps.finalize.outputs.has_state == 'true' && steps.publish.outputs.skip != 'true'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           overwrite: true
