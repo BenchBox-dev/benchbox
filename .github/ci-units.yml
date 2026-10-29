@@ -15,7 +15,6 @@ core:
   - "pyproject.toml"
   - "uv.lock"
   - "MANIFEST.in"
-  - "tox.ini"
   - "pytest.ini"
   - "pytest-ci.ini"
   - ".importlinter"

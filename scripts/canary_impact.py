@@ -90,7 +90,6 @@ WHOLE_SUITE_PATHS = frozenset(
         "uv.lock",
         "pytest.ini",
         "pytest-ci.ini",
-        "tox.ini",
         "tests/conftest.py",
         CANARY_WORKFLOW_PATH,
         SELECTOR_REPO_PATH,
@@ -128,7 +127,7 @@ MEDIUM_PRODUCT_ROOTS = (
 )
 MEDIUM_DOC_CODE_SUFFIXES = (".py", ".js", ".css", ".html", ".jinja", ".j2")
 MEDIUM_WHOLE_SUITE_PATHS = frozenset(
-    {"pyproject.toml", "uv.lock", "pytest.ini", "pytest-ci.ini", "tox.ini", CONFTEST_REPO_PATH, SELECTOR_REPO_PATH}
+    {"pyproject.toml", "uv.lock", "pytest.ini", "pytest-ci.ini", CONFTEST_REPO_PATH, SELECTOR_REPO_PATH}
 )
 
 
