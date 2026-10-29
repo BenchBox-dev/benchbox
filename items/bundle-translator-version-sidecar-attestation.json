@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "Dry run lists exactly the bundles the reconciled CORPUS_NOTES table attributes a wheel to; --write annotates only their sidecars; a second --write changes nothing.",
+    "The shared resolver is used by validate_corpus.py and the Explorer pipeline; tests cover recorded, attested, not_recorded, malformed attestation (rejected), and recorded-vs-attested conflict (fails closed in both validator and pipeline).",
+    "`uv run -- python results-data/validate_corpus.py` exits 0 and validator/Explorer parity tests pass; ranked identities and cohort floors are unchanged (before/after output recorded).",
+    "No bundle JSON byte changes (git diff of results-data/bundles/**/*.json limited to *.manifest.json sidecars; verified in the PR body).",
+    "PR merged via make pr-open (oracle SHIP, no override; results soundness path) and make pr-arm; changelog fragment added."
+  ],
+  "context": "DECISION GATE: if attestation would need a new known_defects id, a ranking change or bundle JSON edits, STOP and ask the owner.",
+  "description": "Published bundles cannot be edited (the manifest bundle_hash pins them). Owner decision 2026-10-28: give the 58 rerun bundles from #3678 a translator version through a manifest-sidecar attestation, after the per-bundle wheel record is reconciled. Follow the execution_class precedent from #3618: a sidecar field plus a required evidence string (benchbox/validation/bundle.py ~:2616-2621), written by a script that never edits bundle JSON (scripts/annotate_execution_class.py), read by the validator and the Explorer through one shared function, and labelled as attested rather than recorded.\n\nDESIGN: sidecar field `sql_translator_version` = {version, fork_sha, upstream_sha, wheel_sha256, evidence} (avoid anonymiser-rewritten key names); a resolver returns the bundle's own execution.translation.runtime when present (source 'recorded') else the sidecar value (source 'attested') else none (source 'not_recorded'); a conflict between a recorded runtime and an attestation is an error that fails the corpus gate and the Explorer build (fail closed, as #3618 did after review). Script `scripts/annotate_sql_translator_version.py` with dry run and --write, taking the reconciled per-bundle table as input; idempotent.\n\nGUARDRAILS: bundle JSON never modified; attest only bundles whose wheel the reconciled notes back with primary evidence; no SQL hashes (cannot be reconstructed honestly); no ranking-identity change; no schema version bump.",
+  "links": [
+    "scripts/annotate_execution_class.py",
+    "benchbox/validation/bundle.py",
+    "results-data/validate_corpus.py",
+    "https://github.com/BenchBox-dev/benchbox/pull/3618"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729",
+      "at": "2026-10-29T02:17:21Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "01e6cb17e7f44d5d94a49d6fe391d456",
+      "session_id": "dcc6105a05964c618dfd87771db72de4"
+    }
+  ]
+}

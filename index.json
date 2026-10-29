@@ -2384,6 +2384,16 @@
       "status": "open",
       "title": "Record the bundled SQLGlot runtime identity in every new result bundle"
     },
+    "bundle-translator-version-sidecar-attestation": {
+      "claim": null,
+      "needs": [
+        "bundle-translator-runtime-identity",
+        "corpus-notes-reconcile-rerun-wheels"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Attest the SQLGlot translator version of already-published bundles through their manifest sidecars"
+    },
     "burn-down-baselined-broken-doc-links": {
       "claim": null,
       "needs": [],
