@@ -1,0 +1,8 @@
+{
+  "bundle_file": "tpcds_sf10_datafusion_sql_20261026_114739_9b8837db.json",
+  "bundle_hash": "c1b828294880ee940d7c454c32d3ce481b7e0ace86c04ff2a33b7f0da8ec8ac0",
+  "funding": "unspecified",
+  "manifest_version": "1.0",
+  "result_source": "internal",
+  "submitted_by": "maintainer"
+}

@@ -1,0 +1,11 @@
+{
+  "bundle_file": "nyctaxi_sf1_clickhouse_local_sql_20261026_175023_4d422b5f.json",
+  "bundle_hash": "e62793f69db4851abaa44ca8efa34c6d5b5b4c8a851e2c2ba6dfc006990a57ab",
+  "container_host_os": "macOS",
+  "execution_class": "container",
+  "execution_class_evidence": "Bundle records a Linux kernel on an Apple CPU vendor: a Linux guest on Apple silicon, not the native macOS host.",
+  "funding": "unspecified",
+  "manifest_version": "1.0",
+  "result_source": "internal",
+  "submitted_by": "maintainer"
+}
