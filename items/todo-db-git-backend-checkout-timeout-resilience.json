@@ -3,7 +3,7 @@
     "git_backend.py catches subprocess.TimeoutExpired on all checkout calls and returns a structured error or retry outcome instead of crashing",
     "Unit test verifies timeout handling on checkout"
   ],
-  "context": "Discovered during batch comment cleanup closeout when git checkout FETCH_HEAD or checkout --detach tip timed out under HTTPS fetch burst pressure.\n\nStill present 2026-10-17 in the vendored wheel BenchBox uses (_project/scripts/vendor/todo_db-0.9.1-py3-none-any.whl): todo_db/git_backend.py:398 (`checkout --detach tip` in the mutation path) and :630 (`checkout FETCH_HEAD` in the read path) call _git (lines 189-197, timeout GIT_TIMEOUT_S=60 at line 68) without catching TimeoutExpired, while the fetch calls at 240-242 and 375-378 do. Seen six times in one site-split session on 2026-10-17, each surfacing as a raw tool error rather than E_OFFLINE: take (\"Command '['git', 'checkout', '--quiet', '--detach', '399fdae8...']' timed out after 60 seconds\" at 13:09Z and 'd4a38d3b...' at 21:14Z), update_item ('40489f91...' twice, 21:07Z and 21:09Z), and show_item (checkout FETCH_HEAD, 21:03Z and 21:05Z). Host load was about 5. Each retry succeeded, but the caller could not tell whether a mutation had applied.\n\nTracked in the todo-db tracker as git-backend-checkout-timeout (copied 2026-10-28).",
+  "context": "Discovered during batch comment cleanup closeout when git checkout FETCH_HEAD or checkout --detach tip timed out under HTTPS fetch burst pressure.\n\nStill present 2026-10-17 in the vendored wheel BenchBox uses (_project/scripts/vendor/todo_db-0.9.1-py3-none-any.whl): todo_db/git_backend.py:398 (`checkout --detach tip` in the mutation path) and :630 (`checkout FETCH_HEAD` in the read path) call _git (lines 189-197, timeout GIT_TIMEOUT_S=60 at line 68) without catching TimeoutExpired, while the fetch calls at 240-242 and 375-378 do. Seen six times in one site-split session on 2026-10-17, each surfacing as a raw tool error rather than E_OFFLINE: take (\"Command '['git', 'checkout', '--quiet', '--detach', '399fdae8...']' timed out after 60 seconds\" at 13:09Z and 'd4a38d3b...' at 21:14Z), update_item ('40489f91...' twice, 21:07Z and 21:09Z), and show_item (checkout FETCH_HEAD, 21:03Z and 21:05Z). Host load was about 5. Each retry succeeded, but the caller could not tell whether a mutation had applied.\n\nTracked in the todo-db tracker as git-backend-checkout-timeout (copied 2026-10-28).\n\nRESOLVED 2026-10-29: BenchBox runs todo-db 0.11.0 (BenchBox-dev/benchbox#3725, merge a554c997f; release https://github.com/joeharris76/todo-db/releases/tag/v0.11.0). The cited git checkout calls no longer exist (0.10.0 replaced working-tree checkouts with a bare object store); the same failure remained for local git subcommands. 0.11.0 turns a timeout in any local git command into a coded E_STATE error (E_UNKNOWN with the operation ID once the push has started), never a raw subprocess.TimeoutExpired, and does not rebuild the store. Tests: tests/test_local_git_timeouts.py (todo-db#53).",
   "description": "In todo_db/git_backend.py, git checkout calls (such as _git(['checkout', '--quiet', '--detach', tip], work) and in _fetch_tip_snapshot) do not catch subprocess.TimeoutExpired, unlike fetch calls which return MutationOutcome(code=E_OFFLINE, ...). When git checkout times out on HTTPS or lock contention, an unhandled TimeoutExpired exception crashes the calling process without a structured error, retry, or recovery hint.",
   "sessions": [
     {
@@ -37,6 +37,14 @@
       "generation": "c9d9c7e940ce48caad5cc767cc051aa9",
       "op": "take",
       "op_id": "7bd42f75e3a84199b46f2f2080de60b0",
+      "session_id": "167fcfd7c4c74fa4b63606febd08c8d2"
+    },
+    {
+      "actor": "joe-todo-db-upgrade",
+      "at": "2026-10-29T14:32:59Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "42939678ff174396b83ac9954860d902",
       "session_id": "167fcfd7c4c74fa4b63606febd08c8d2"
     }
   ]
