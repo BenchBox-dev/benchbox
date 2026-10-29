@@ -1,0 +1,14 @@
+{
+  "bundle_file": "read_primitives_sf01_clickhouse_local_sql_20261026_174637_3f5c94e9.json",
+  "bundle_hash": "5c27403d087bf75bcee6977e68a959f98f6df855a2f6447b56a2bc4da19fc4d9",
+  "container_host_os": "macOS",
+  "execution_class": "container",
+  "execution_class_evidence": "Bundle records a Linux kernel on an Apple CPU vendor: a Linux guest on Apple silicon, not the native macOS host.",
+  "funding": "unspecified",
+  "manifest_version": "1.0",
+  "result_source": "internal",
+  "submitted_by": "maintainer",
+  "known_defects": [
+    "defective-variant-or-loader-wrong-result"
+  ]
+}
