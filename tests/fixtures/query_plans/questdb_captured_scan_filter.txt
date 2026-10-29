@@ -1,0 +1,5 @@
+Async JIT Filter workers: 5
+  filter: 100<o_total
+    PageFrame
+        Row forward scan
+        Frame forward scan on: lpv_orders

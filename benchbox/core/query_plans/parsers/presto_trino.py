@@ -115,6 +115,9 @@ class PrestoTrinoQueryPlanParser(QueryPlanParser):
             table = self._extract_table(node, details)
             if table:
                 kwargs["table_name"] = table
+            predicate = self._extract_descriptor_field(node, ("filterPredicate",))
+            if predicate and predicate.strip():
+                kwargs["filter_expressions"] = [predicate.strip()]
         elif logical_type == LogicalOperatorType.JOIN:
             kwargs["join_type"] = self._classify_join_type(name, details, node)
             condition = self._extract_join_condition(node, details)

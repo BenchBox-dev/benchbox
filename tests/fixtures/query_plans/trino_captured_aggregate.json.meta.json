@@ -1,0 +1,5 @@
+{
+  "provenance": "captured",
+  "models": "Trino 484 EXPLAIN (FORMAT JSON) (memory catalog), captured",
+  "validated_against_live": true
+}

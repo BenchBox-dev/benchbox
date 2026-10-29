@@ -1,0 +1,16 @@
+WARNING [AUTOSTATS_OUTDATED_NO_ANALYZE]: Automatically computed cardinality statistics are not yet up-to-date on lpv.`customers` and no older statistics are available. See https://docs.memsql.com/docs/analyze#out-of-date-autostats for information and recommendations.
+WARNING [AUTOSTATS_OUTDATED_NO_ANALYZE]: Automatically computed cardinality statistics are not yet up-to-date on lpv.`orders` and no older statistics are available. See https://docs.memsql.com/docs/analyze#out-of-date-autostats for information and recommendations.
+
+See https://docs.memsql.com/docs/analyze for more information on statistics collection.
+
+Project [c.c_name, o.o_total] est_rows:2
+HashJoin
+|---HashTableProbe [o.o_cust = c.c_id]
+|   HashTableBuild alias:c
+|   Project [remote_1.c_name, remote_1.c_id] est_rows:2
+|   Gather partitions:all est_rows:2 alias:remote_1 parallelism_level:segment
+|   Project [c_0.c_name, c_0.c_id] est_rows:2
+|   ColumnStoreScan lpv.customers AS c_0, SORT KEY __UNORDERED () table_type:sharded_columnstore est_table_rows:2 est_filtered:2
+Gather partitions:all est_rows:3 alias:o parallelism_level:segment
+Project [remote_0.o_total, remote_0.o_cust] est_rows:3
+ColumnStoreScan lpv.orders AS remote_0, SORT KEY __UNORDERED () table_type:sharded_columnstore est_table_rows:3 est_filtered:3

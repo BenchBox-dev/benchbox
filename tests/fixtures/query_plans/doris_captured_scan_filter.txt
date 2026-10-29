@@ -1,0 +1,4 @@
+PhysicalResultSink
+--PhysicalProject
+----filter((orders.o_total > 100.0))
+------PhysicalOlapScan[orders]

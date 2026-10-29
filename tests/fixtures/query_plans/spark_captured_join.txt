@@ -1,0 +1,38 @@
+== Parsed Logical Plan ==
+'Project ['c.c_name, 'o.o_total]
++- 'Join Inner, ('o.o_cust = 'c.c_id)
+   :- 'SubqueryAlias o
+   :  +- 'UnresolvedRelation [orders], [], false
+   +- 'SubqueryAlias c
+      +- 'UnresolvedRelation [customers], [], false
+
+== Analyzed Logical Plan ==
+c_name: string, o_total: double
+Project [c_name#41, o_total#30]
++- Join Inner, (o_cust#29L = c_id#40L)
+   :- SubqueryAlias o
+   :  +- SubqueryAlias spark_catalog.default.orders
+   :     +- Relation spark_catalog.default.orders[o_id#28L,o_cust#29L,o_total#30] parquet
+   +- SubqueryAlias c
+      +- SubqueryAlias spark_catalog.default.customers
+         +- Relation spark_catalog.default.customers[c_id#40L,c_name#41,c_region#42] parquet
+
+== Optimized Logical Plan ==
+Project [c_name#41, o_total#30]
++- Join Inner, (o_cust#29L = c_id#40L)
+   :- Project [o_cust#29L, o_total#30]
+   :  +- Filter isnotnull(o_cust#29L)
+   :     +- Relation spark_catalog.default.orders[o_id#28L,o_cust#29L,o_total#30] parquet
+   +- Project [c_id#40L, c_name#41]
+      +- Filter isnotnull(c_id#40L)
+         +- Relation spark_catalog.default.customers[c_id#40L,c_name#41,c_region#42] parquet
+
+== Physical Plan ==
+AdaptiveSparkPlan isFinalPlan=false
++- Project [c_name#41, o_total#30]
+   +- BroadcastHashJoin [o_cust#29L], [c_id#40L], Inner, BuildRight, false, false
+      :- Filter isnotnull(o_cust#29L)
+      :  +- FileScan parquet spark_catalog.default.orders[o_cust#29L,o_total#30] Batched: true, DataFilters: [isnotnull(o_cust#29L)], Format: Parquet, Location: InMemoryFileIndex(1 paths)[file:/tmp/spark-warehouse..., PartitionFilters: [], PushedFilters: [IsNotNull(o_cust)], ReadSchema: struct<o_cust:bigint,o_total:double>
+      +- BroadcastExchange HashedRelationBroadcastMode(List(input[0, bigint, false]),false), [plan_id=97]
+         +- Filter isnotnull(c_id#40L)
+            +- FileScan parquet spark_catalog.default.customers[c_id#40L,c_name#41] Batched: true, DataFilters: [isnotnull(c_id#40L)], Format: Parquet, Location: InMemoryFileIndex(1 paths)[file:/tmp/spark-warehouse..., PartitionFilters: [], PushedFilters: [IsNotNull(c_id)], ReadSchema: struct<c_id:bigint,c_name:string>

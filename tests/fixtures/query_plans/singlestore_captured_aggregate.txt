@@ -1,0 +1,10 @@
+WARNING [AUTOSTATS_OUTDATED_NO_ANALYZE]: Automatically computed cardinality statistics are not yet up-to-date on lpv.`orders` and no older statistics are available. See https://docs.memsql.com/docs/analyze#out-of-date-autostats for information and recommendations.
+
+See https://docs.memsql.com/docs/analyze for more information on statistics collection.
+
+Project [remote_0.o_cust, total] est_rows:3
+HashGroupBy [SUM(remote_0.total) AS total] groups:[remote_0.o_cust]
+Gather partitions:all est_rows:3 alias:remote_0 parallelism_level:segment
+Project [orders.o_cust, total] est_rows:3
+HashGroupBy [SUM(orders.o_total) AS total] groups:[orders.o_cust]
+ColumnStoreScan lpv.orders, SORT KEY __UNORDERED () table_type:sharded_columnstore est_table_rows:3 est_filtered:3

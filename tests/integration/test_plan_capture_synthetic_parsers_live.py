@@ -6,23 +6,40 @@ import os
 
 import pytest
 
+from tests.integration._live_plan_shapes import (
+    SHAPE_QUERIES,
+    ShapeTraits,
+    assert_live_plan_shape,
+    cursor_executor,
+    plan_tables,
+)
+
 pytestmark = [
     pytest.mark.integration,
     pytest.mark.medium,
 ]
 
+_SHAPES = tuple(SHAPE_QUERIES)
 
-def _assert_live_plan(adapter, connection, query="SELECT 1"):
-    raw = adapter.get_query_plan(connection, query)
-    assert raw is not None and raw.strip(), "get_query_plan returned empty plan text"
-    plan, _ = adapter.capture_query_plan(connection, query, "live-validation")
-    assert plan is not None, "capture_query_plan returned None for live output"
-    assert plan.logical_root is not None
-    assert plan.plan_fingerprint is not None and len(plan.plan_fingerprint) == 64
-    plan2, _ = adapter.capture_query_plan(connection, query, "live-validation")
-    assert plan2 is not None
-    assert plan2.plan_fingerprint == plan.plan_fingerprint
-    return raw
+_CURSOR_DDL = (
+    "CREATE TABLE {orders} (o_id BIGINT, o_cust BIGINT, o_total DOUBLE)",
+    "CREATE TABLE {customers} (c_id BIGINT, c_name VARCHAR, c_region VARCHAR)",
+)
+
+_CLICKHOUSE_DDL = (
+    "CREATE TABLE {orders} (o_id Int64, o_cust Int64, o_total Float64) ENGINE = MergeTree ORDER BY o_id",
+    "CREATE TABLE {customers} (c_id Int64, c_name String, c_region String) ENGINE = MergeTree ORDER BY c_id",
+)
+
+_SPARK_DDL = (
+    "CREATE TABLE {orders} (o_id BIGINT, o_cust BIGINT, o_total DOUBLE) USING parquet",
+    "CREATE TABLE {customers} (c_id BIGINT, c_name STRING, c_region STRING) USING parquet",
+)
+
+
+def _plan_tables_fixture(execute, ddl):
+    with plan_tables(execute, ddl):
+        yield
 
 
 @pytest.mark.skipif(not os.environ.get("PRESTO_HOST"), reason="live Presto not available (PRESTO_HOST unset)")
@@ -35,8 +52,8 @@ class TestLivePrestoQueryPlanCapture:
             host=os.environ["PRESTO_HOST"],
             port=int(os.environ.get("PRESTO_PORT", "8080")),
             username=os.environ.get("PRESTO_USER", "benchbox"),
-            catalog=os.environ.get("PRESTO_CATALOG", "tpch"),
-            schema=os.environ.get("PRESTO_SCHEMA", "sf1"),
+            catalog=os.environ.get("PRESTO_CATALOG", "memory"),
+            schema=os.environ.get("PRESTO_SCHEMA", "default"),
             capture_plans=True,
         )
 
@@ -48,8 +65,13 @@ class TestLivePrestoQueryPlanCapture:
         finally:
             adapter.close_connection(conn)
 
-    def test_live_plan_parses(self, adapter, connection):
-        _assert_live_plan(adapter, connection)
+    @pytest.fixture
+    def tables(self, connection):
+        yield from _plan_tables_fixture(cursor_executor(connection), _CURSOR_DDL)
+
+    @pytest.mark.parametrize("shape", _SHAPES)
+    def test_live_plan_semantics(self, adapter, connection, tables, shape):
+        assert_live_plan_shape(adapter, connection, shape, traits=ShapeTraits(union_operator=False))
 
 
 @pytest.mark.skipif(not os.environ.get("TRINO_HOST"), reason="live Trino not available (TRINO_HOST unset)")
@@ -62,8 +84,8 @@ class TestLiveTrinoQueryPlanCapture:
             host=os.environ["TRINO_HOST"],
             port=int(os.environ.get("TRINO_PORT", "8080")),
             username=os.environ.get("TRINO_USER", "benchbox"),
-            catalog=os.environ.get("TRINO_CATALOG", "tpch"),
-            schema=os.environ.get("TRINO_SCHEMA", "sf1"),
+            catalog=os.environ.get("TRINO_CATALOG", "memory"),
+            schema=os.environ.get("TRINO_SCHEMA", "default"),
             capture_plans=True,
         )
 
@@ -75,8 +97,13 @@ class TestLiveTrinoQueryPlanCapture:
         finally:
             adapter.close_connection(conn)
 
-    def test_live_plan_parses(self, adapter, connection):
-        _assert_live_plan(adapter, connection)
+    @pytest.fixture
+    def tables(self, connection):
+        yield from _plan_tables_fixture(cursor_executor(connection), _CURSOR_DDL)
+
+    @pytest.mark.parametrize("shape", _SHAPES)
+    def test_live_plan_semantics(self, adapter, connection, tables, shape):
+        assert_live_plan_shape(adapter, connection, shape, traits=ShapeTraits(union_operator=False))
 
 
 @pytest.mark.skipif(
@@ -88,8 +115,9 @@ class TestLiveClickHouseQueryPlanCapture:
         from benchbox.platforms.clickhouse.adapter import ClickHouseAdapter
 
         return ClickHouseAdapter(
+            deployment_mode="server",
             host=os.environ["CLICKHOUSE_HOST"],
-            port=int(os.environ.get("CLICKHOUSE_PORT", "8123")),
+            port=int(os.environ.get("CLICKHOUSE_PORT", "9000")),
             username=os.environ.get("CLICKHOUSE_USER", "default"),
             password=os.environ.get("CLICKHOUSE_PASSWORD", ""),
             database=os.environ.get("CLICKHOUSE_DATABASE", "default"),
@@ -104,8 +132,13 @@ class TestLiveClickHouseQueryPlanCapture:
         finally:
             adapter.close_connection(conn)
 
-    def test_live_plan_parses(self, adapter, connection):
-        _assert_live_plan(adapter, connection)
+    @pytest.fixture
+    def tables(self, connection):
+        yield from _plan_tables_fixture(connection.execute, _CLICKHOUSE_DDL)
+
+    @pytest.mark.parametrize("shape", _SHAPES)
+    def test_live_plan_semantics(self, adapter, connection, tables, shape):
+        assert_live_plan_shape(adapter, connection, shape)
 
 
 @pytest.mark.skipif(not os.environ.get("SPARK_MASTER"), reason="live Spark not available (SPARK_MASTER unset)")
@@ -120,12 +153,24 @@ class TestLiveSparkQueryPlanCapture:
         )
 
     @pytest.fixture
-    def connection(self, adapter):
-        conn = adapter.create_connection()
+    def connection(self, adapter, tmp_path):
+        from pyspark.sql import SparkSession
+
+        conn = (
+            SparkSession.builder.master(os.environ["SPARK_MASTER"])
+            .config("spark.sql.warehouse.dir", str(tmp_path / "warehouse"))
+            .config("spark.ui.enabled", "false")
+            .getOrCreate()
+        )
         try:
             yield conn
         finally:
             adapter.close_connection(conn)
 
-    def test_live_plan_parses(self, adapter, connection):
-        _assert_live_plan(adapter, connection)
+    @pytest.fixture
+    def tables(self, connection):
+        yield from _plan_tables_fixture(lambda statement: connection.sql(statement).collect(), _SPARK_DDL)
+
+    @pytest.mark.parametrize("shape", _SHAPES)
+    def test_live_plan_semantics(self, adapter, connection, tables, shape):
+        assert_live_plan_shape(adapter, connection, shape)

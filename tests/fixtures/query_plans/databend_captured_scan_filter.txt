@@ -1,0 +1,11 @@
+TableScan
+├── table: default.default.orders
+├── scan id: 0
+├── output columns: [o_id (#0), o_total (#2)]
+├── read rows: 3
+├── read size: < 1 KiB
+├── partitions total: 1
+├── partitions scanned: 1
+├── pruning stats: [segments: <range pruning: 1 to 1 cost: 1 ms>, blocks: <range pruning: 1 to 1 cost: 1 ms>]
+├── push downs: [filters: [is_true(orders.o_total (#2) > 100)], limit: NONE]
+└── estimated rows: 2.24
