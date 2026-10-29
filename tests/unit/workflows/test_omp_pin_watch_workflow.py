@@ -7,6 +7,8 @@ from typing import Any
 import pytest
 import yaml
 
+from _project.scripts.oracle_reviewers import omp_watch
+
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 WORKFLOW = Path(__file__).resolve().parents[3] / ".github" / "workflows" / "omp-pin-watch.yml"
@@ -127,3 +129,9 @@ def test_the_run_summary_reports_the_watch_even_when_the_evaluation_fails() -> N
     assert report["if"] == "always() && steps.evaluate.outputs.state != ''"
     assert "assessment.txt" in report["run"] and "GITHUB_STEP_SUMMARY" in report["run"]
     assert "continue-on-error" not in steps(watch_job())["Compare the first reviews on the pin with the previous week"]
+
+
+def test_the_revert_commit_carries_the_author_the_watch_uses_to_recognise_its_own_revert() -> None:
+    text = run_text(opener_job())
+    assert f'git config user.email "{omp_watch.BOT_AUTHOR_EMAIL}"' in text
+    assert 'git config user.name "github-actions[bot]"' in text

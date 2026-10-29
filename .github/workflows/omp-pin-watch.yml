@@ -131,8 +131,8 @@ jobs:
               echo "A closed pull request for ${BRANCH} already exists; nothing to open."
               exit 0
             fi
-            git config user.name "benchbox-bot"
-            git config user.email "bot@benchbox.dev"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git checkout -b "$BRANCH"
             cp "$OUT_DIR/policy.yml" .github/oracle-reviewers.yml
             git add .github/oracle-reviewers.yml
