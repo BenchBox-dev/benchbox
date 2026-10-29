@@ -34,15 +34,15 @@ at four ranked platforms, above the floor.
 
 ClickHouse `map_access` (Read Primitives) returns 0 for a missing map key
 where DuckDB returns NULL. The ClickHouse Local Read Primitives SF0.01 and
-SF0.1 bundles (`3465d4f3`, `c1aeca88`) ran it successfully, but the query is
-`ORDER BY ps_suppkey LIMIT 10` over one row per supplier, so its recorded row
-count is 10 on ClickHouse Local and DuckDB alike and a wrong map value cannot
-change it; bundles record rows, status and timing only, not values. Neither
-bundle is flagged: a whole-bundle flag would unrank every query for one whose
-recorded result is unaffected, and both Read Primitives cohorts are already
-unranked. The wrong value is a defect in the ClickHouse query, recorded here;
-any future bundle that records result values for `map_access` must not be read
-as correct on ClickHouse.
+SF0.1 bundles (`9f79ff77`, `3f5c94e9`) ran it successfully with 10 rows, the
+same count as DuckDB, so the bundle records nothing that shows the wrong value.
+Both now carry `known_defects: ["defective-variant-or-loader-wrong-result"]`
+in their `.manifest.json` sidecars, so their timings are not ranked while the
+query is wrong (tracked in `clickhouse-map-access-missing-key-returns-zero`).
+This leaves DataFusion as the only ranked Read Primitives identity at SF0.01
+and SF0.1, and the `DOCUMENTED_SHALLOW_COHORTS` entries for both change from
+ClickHouse Local and DataFusion to DataFusion alone. The bundle JSON is
+unchanged. Unflag the sidecars when the query is corrected and rerun.
 
 ## Fork 30.24.0.17 published-impact audit (2026-10-26)
 
@@ -900,3 +900,729 @@ summary timings cover 91 query ids, so they are not like-for-like with the
 `tpcds_obt` SF1 cohort has two comparison identities (DataFusion and DuckDB);
 it is listed in `DOCUMENTED_SHALLOW_COHORTS` in `validate_corpus.py` beside the
 known-defective bundles of the same platforms.
+
+
+## Local reruns for published results computed with superseded SQL translations (2026-10-26)
+
+Fifty-eight replacement local bundles (`result_source: internal`) replace the
+flagged local bundles computed with superseded SQL translations across ClickHouse
+Local, DataFusion, and SQLite. Forty-four bundles were generated with bundled SQLGlot fork
+30.24.0.17 and fourteen with fork 30.25.0.2 (see Wheel consistency), all with raw-text DuckDB
+source dialect routing (#3544), under the SQLite database helper-index restoration path (#3563).
+
+Defective predecessors keep their manifest sidecar entries (`defective-superseded-sql-translation`,
+`defective-macdbgen-addresses`, `defective-tpchavoc-variant-divergence`,
+`defective-sqlite-clickbench-row-counts`) as unranked comparison history.
+
+### Hardware environment and container execution
+
+The DataFusion and SQLite replacement bundles ran natively on the Darwin Apple M4
+host (10 CPUs, 16 GB RAM), matching the DuckDB baseline.
+
+ClickHouse Local replacement bundles (26 bundles) ran in the Linux container
+lane (`benchbox-agent`, Linux 6.18.15 aarch64, 4 vCPUs, 10 GB RAM) using chDB
+4.1.6, because published chDB 4.1.6 macOS wheels fail to load on macOS 27
+(mis-aligned LINKEDIT string pool loader error), matching the container runner
+precedent established in the TPC-DS OBT SF1 reruns (#3550). Consequently,
+ClickHouse Local timings reflect the containerized virtualized execution
+environment and 4-vCPU allocation rather than the bare-metal Darwin Apple M4
+host. These bundles rank under the separate comparison identity
+`clickhouse-local^container` (`published_variant_id`, #3618) and carry the label
+`ClickHouse Local (Linux container on macOS)`; the execution class is recorded in
+their manifest sidecars by `scripts/annotate_execution_class.py`, and the bundle
+JSON is unchanged. Container timings are never ranked against Darwin host runs
+under one identity.
+
+### Coverage and validation
+
+- ClickHouse Local (26 bundles): covers TPC-H (SF0.01, SF0.1, SF1), TPC-H Skew
+  (SF0.01, SF0.1, SF1), TPC-DS (SF1), TPC-Havoc (SF0.01, SF0.1, SF1), and the
+  CH-4 group (CoffeeShop SF0.01/0.1/1, DataVault SF0.01/0.1, FlightData SF0.01/0.1/1,
+  NYCTaxi SF0.01/0.1/1, Read Primitives SF0.01/0.1, TPC-DI SF0.01/0.1/1).
+  TPC-Havoc variant divergence persists on ClickHouse Local and continues to carry
+  `defective-tpchavoc-variant-divergence` in its manifest sidecars.
+- DataFusion (20 bundles): covers TPC-DI (SF0.01, SF0.1, SF1), TPC-DS (SF1, SF10),
+  CoffeeShop (SF0.01, SF0.1, SF1), TPC-H (SF0.01, SF0.1, SF1), Read Primitives
+  (SF0.01, SF0.1), TPC-H Skew (SF0.01, SF0.1, SF1), TPC-Havoc (SF0.01, SF0.1, SF1),
+  and ClickBench (SF1).
+- SQLite (12 bundles): covers TPC-H (SF0.01, SF0.1, SF1), TPC-H Skew (SF0.01, SF0.1, SF1),
+  CoffeeShop (SF0.01, SF0.1, SF1), Read Primitives (SF0.01, SF0.1), and ClickBench (SF1).
+  TPC-H SF0.1 executes with restored helper indexes in 10.6s (Q21 warm 89ms) and
+  SF0.01 in 2.1s (Q21 warm 15ms), resolving the indexless-reuse plan regression.
+  Read Primitives bundles record `partial` summary status due to unsupported complex
+  collection operations, matching predecessor behavior.
+
+All 58 bundles pass `scripts/validate_submission.py --require-manifest --trust-internal-source --allow-partial-validation`
+with zero errors.
+
+### Documented shallow cohorts and ranking status
+
+Ingesting these replacements raises TPC-H SF0.01, TPC-H SF0.1, CoffeeShop SF0.01,
+and TPC-DI SF0.01 to >=3 comparison identities, restoring their platform floors.
+Three cohort groups become newly shallow in `DOCUMENTED_SHALLOW_COHORTS`
+(`results-data/validate_corpus.py`):
+- `datavault` SF0.01 and SF0.1 (`clickhouse-local^container` only, 1 identity);
+- `read_primitives` SF0.01 and SF0.1 (DataFusion only, 1 rankable identity, as the ClickHouse
+  Local bundles are excluded from ranking for the `map_access` defect described above);
+- `tpchavoc` SF0.01, SF0.1, and SF1.0 (DataFusion only, 1 rankable identity, as ClickHouse
+  Local remains excluded from ranking via `defective-tpchavoc-variant-divergence`).
+
+Replacement TPC-H SF1 (ClickHouse Local, DataFusion, SQLite) and TPC-DS SF1/SF10
+(ClickHouse Local, DataFusion) bundles carry compliance_class 'unofficial_nonstandard'
+(internal test type power with default parameters), preserving unranked comparison evidence.
+
+### Audit tail: json_extract_simple and TPC-Havoc text edits
+
+Census command: `git archive origin/develop results-data/bundles | tar -x`, then a
+Python pass over every bundle JSON including subdirectories. At origin/develop
+e4401a0ed it found 422 bundles with queries, 64 of them in subdirectories.
+
+- `json_extract_simple`: two historical bundles (3465d4f3, c1aeca88; chDB 4.1.6,
+  Darwin) ran the earlier SQL. Their replacements 9f79ff77 and 3f5c94e9 already use
+  the fixed `JSONExtractRaw` SQL; the text is identical on SQLGlot wheels 30.24.0.17
+  and 30.25.0.1 and the recorded 1000 rows with SUCCESS are identical. No rerun is
+  needed.
+- TPC-Havoc 14_v1, 14_v7 and 8_v7 now wrap empty filtered numerators in COALESCE
+  (#3118), and 18_v9 uses row_number with ORDER BY/LIMIT 100 (#3145). The 18 bundles
+  published before 2026-10-17 ran the earlier text. Their recorded row counts are the
+  same under both texts. Only 8_v7 at SF0.01 returned NULL market shares where the
+  current text returns 0.0. Bundles record no result values, so no recorded field is
+  affected. Note only; no new defect id.
+
+### Wheel consistency
+
+Fourteen replacement bundles ran on fork 30.25.0.2 and the other 44 on fork 30.24.0.17. The
+bundles do not record the wheel: the translation record names only the translator (`sqlglot`) and
+the dialects, and the vendored wheel carries no dist-info. The wheel in force is the vendored pin
+`benchbox/_vendor/sqlglot.json` (`version` and `sha256` of the archive beside it) in the checkout
+each run was started from, and `uv.lock` has no SQLGlot entry. Per-bundle values below come from
+that pin at the checkout's commit; every run used the editable project install of its worktree, so
+the checkout's `benchbox/_vendor` is what loaded.
+
+These 58 bundles are attested, not recorded: each manifest sidecar carries `sql_translator_version`
+with the wheel's `version`, `fork_sha`, `upstream_sha`, `wheel_sha256` (taken from
+`benchbox/_vendor/sqlglot.json` at the commit that pinned the wheel) and an `evidence` string naming the
+table row below. `scripts/annotate_sql_translator_version.py` writes it from this table and never
+edits bundle JSON.
+
+| id | cell | run timestamp (clock) | checkout commit | wheel | evidence |
+|---|---|---|---|---|---|
+| `95d5bdc8` | DataFusion coffeeshop SF0.01 | 2026-10-26 11:28:37 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `e1a0a0b3` | DataFusion tpch_skew SF0.01 | 2026-10-26 11:28:59 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `70d6c9e1` | DataFusion tpchavoc SF0.01 | 2026-10-26 11:29:44 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `001e082b` | DataFusion coffeeshop SF0.1 | 2026-10-26 11:32:01 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `b6e365e8` | DataFusion tpch_skew SF0.1 | 2026-10-26 11:33:43 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `b7c3e0be` | DataFusion tpchavoc SF0.1 | 2026-10-26 11:34:14 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `c6832587` | DataFusion coffeeshop SF1 | 2026-10-26 11:34:47 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `2fce59f7` | DataFusion tpcds SF1 | 2026-10-26 11:35:58 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `5ef63e23` | DataFusion tpch SF1 | 2026-10-26 11:36:13 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `5441c82c` | DataFusion tpch_skew SF1 | 2026-10-26 11:36:27 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `7c126887` | DataFusion tpchavoc SF1 | 2026-10-26 11:38:07 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `9b8837db` | DataFusion tpcds SF10 | 2026-10-26 11:47:39 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `3d030f43` | SQLite coffeeshop SF0.01 | 2026-10-26 11:47:44 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `d19931e6` | SQLite tpch_skew SF0.01 | 2026-10-26 11:49:05 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `5f688a96` | SQLite coffeeshop SF0.1 | 2026-10-26 11:49:34 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `432838b7` | SQLite tpch_skew SF0.1 | 2026-10-26 12:33:34 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `4bfe0dd1` | SQLite clickbench SF1 | 2026-10-26 12:34:37 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `9953f53c` | SQLite coffeeshop SF1 | 2026-10-26 12:39:49 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `8b8f54de` | DataFusion tpch SF0.01 | 2026-10-26 12:39:55 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `113a3ebe` | SQLite tpch SF1 | 2026-10-26 12:42:24 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `1bf2c529` | DataFusion tpch SF0.1 | 2026-10-26 12:42:30 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `dbf8bb59` | SQLite tpch_skew SF1 | 2026-10-26 12:44:53 EDT | `7b8484a4c` | 30.24.0.17 | A |
+| `93a0b6f9` | SQLite tpch SF0.1 | 2026-10-26 15:57:23 EDT | `5e82bcaa3` | 30.24.0.17 | B |
+| `14b260b9` | SQLite tpch SF0.01 | 2026-10-26 15:57:39 EDT | `5e82bcaa3` | 30.24.0.17 | B |
+| `3d2fa5e9` | ClickHouse Local datavault SF0.01 | 2026-10-26 17:40:57 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `c1d5ea31` | ClickHouse Local flightdata SF0.01 | 2026-10-26 17:41:11 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `ce89d00e` | ClickHouse Local nyctaxi SF0.01 | 2026-10-26 17:41:17 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `9f79ff77` | ClickHouse Local read_primitives SF0.01 | 2026-10-26 17:41:33 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `71dc6c6c` | ClickHouse Local tpch SF0.01 | 2026-10-26 17:41:47 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `3b4c54c2` | ClickHouse Local tpch_skew SF0.01 | 2026-10-26 17:41:52 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `5de9fab8` | ClickHouse Local tpchavoc SF0.01 | 2026-10-26 17:42:15 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `ac9b732e` | ClickHouse Local datavault SF0.1 | 2026-10-26 17:42:54 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `7ac18c39` | ClickHouse Local flightdata SF0.1 | 2026-10-26 17:44:36 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `46bfd3fb` | ClickHouse Local nyctaxi SF0.1 | 2026-10-26 17:45:47 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `3f5c94e9` | ClickHouse Local read_primitives SF0.1 | 2026-10-26 17:46:37 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `25806a27` | ClickHouse Local tpch SF0.1 | 2026-10-26 17:47:09 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `23306369` | ClickHouse Local tpch_skew SF0.1 | 2026-10-26 17:47:16 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `d542bf14` | ClickHouse Local tpchavoc SF0.1 | 2026-10-26 17:47:55 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `3b8b6f57` | ClickHouse Local flightdata SF1 | 2026-10-26 17:50:01 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `4d422b5f` | ClickHouse Local nyctaxi SF1 | 2026-10-26 17:50:23 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `4b9e5193` | ClickHouse Local tpcds SF1 | 2026-10-26 17:55:29 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `f2bafd17` | ClickHouse Local tpch SF1 | 2026-10-26 17:57:54 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `bb56ec24` | ClickHouse Local tpch_skew SF1 | 2026-10-26 17:58:45 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `34b1129c` | ClickHouse Local tpchavoc SF1 | 2026-10-26 18:13:02 UTC | `7b8484a4c` | 30.24.0.17 | A |
+| `fc04d558` | SQLite read_primitives SF0.01 | 2026-10-28 09:28:29 EDT | `be144e04f` | 30.25.0.2 | C |
+| `8edf1667` | SQLite read_primitives SF0.1 | 2026-10-28 09:29:52 EDT | `be144e04f` | 30.25.0.2 | C |
+| `093d2262` | DataFusion clickbench SF1 | 2026-10-28 10:05:25 EDT | `6acbcee6f` | 30.25.0.2 | D |
+| `328320ea` | DataFusion tpcdi SF0.01 | 2026-10-28 10:05:44 EDT | `6acbcee6f` | 30.25.0.2 | D |
+| `fb67aa79` | DataFusion tpcdi SF0.1 | 2026-10-28 10:05:54 EDT | `6acbcee6f` | 30.25.0.2 | D |
+| `ffe633e9` | DataFusion tpcdi SF1 | 2026-10-28 10:06:15 EDT | `6acbcee6f` | 30.25.0.2 | D |
+| `2594968f` | ClickHouse Local coffeeshop SF0.01 | 2026-10-28 14:06:52 UTC | `6acbcee6f` | 30.25.0.2 | D |
+| `da48d384` | ClickHouse Local coffeeshop SF0.1 | 2026-10-28 14:07:04 UTC | `6acbcee6f` | 30.25.0.2 | D |
+| `2888c2d3` | ClickHouse Local coffeeshop SF1 | 2026-10-28 14:07:31 UTC | `6acbcee6f` | 30.25.0.2 | D |
+| `3c9d9330` | ClickHouse Local tpcdi SF0.01 | 2026-10-28 14:08:02 UTC | `6acbcee6f` | 30.25.0.2 | D |
+| `61e36e9c` | ClickHouse Local tpcdi SF0.1 | 2026-10-28 14:08:31 UTC | `6acbcee6f` | 30.25.0.2 | D |
+| `30a5c9d1` | ClickHouse Local tpcdi SF1 | 2026-10-28 14:09:13 UTC | `6acbcee6f` | 30.25.0.2 | D |
+| `ac8474d7` | DataFusion read_primitives SF0.01 | 2026-10-28 15:59:34 EDT | `a6a78db53` | 30.25.0.2 | E |
+| `a45d3e71` | DataFusion read_primitives SF0.1 | 2026-10-28 15:59:41 EDT | `a6a78db53` | 30.25.0.2 | E |
+
+Run timestamps are the bundle's `run.timestamp`. Host runs (DataFusion, SQLite) record the Darwin
+host's local time (EDT, UTC-4). ClickHouse Local runs executed in the `benchbox-agent` Linux
+container and record its UTC clock; the matching host log modification times are 13:40-14:13 EDT on
+2026-10-26 and 10:06-10:09 EDT on 2026-10-28.
+
+Evidence, all read from the local worktrees' git history and files:
+
+- A: worktree `BenchBox.wt-superseded-reruns` at `7b8484a4c` (#3544), the HEAD from 2026-10-26
+  11:08:46 EDT (`git reflog --date=iso`) until the fast-forward at 15:57:05 EDT. The pin at that commit
+  is 30.24.0.17, archive sha256 `f91d0991...4fc526`. The first run log (`/tmp/sgrr/logs`, modification
+  time 11:09:49 EDT) postdates it, as do all runs in this class. The ClickHouse Local runs
+  (`/tmp/sgrr/runq_ch.sh`) ran `uv run --frozen -- benchbox run` in the container with that worktree as
+  the working directory.
+- B: the same worktree after the fast-forward to `5e82bcaa3` at 15:57:05 EDT; the pin is unchanged
+  (30.24.0.17, same sha256). Both SQLite TPC-H runs (15:57:23 and 15:57:39) fall in this window.
+- C: worktree `BenchBox.wt-sqlglot-adopt-2` at `be144e04f` (branch `chore/adopt-sqlglot-30-25-0-2`, the
+  #3649 branch; HEAD unchanged since 08:23:31 EDT on 2026-10-28, clean tree). Its pin is 30.25.0.2 with
+  archive sha256 `6207c352...ec8fa2`, and `shasum -a 256` of the vendored archive equals the pin. The SQLite
+  Read Primitives replacements ran there (`cd BenchBox.wt-sqlglot-adopt-2 && uv run --frozen --
+  benchbox run ...`, recorded in the agent session transcript) at 09:28-09:29 EDT, before the
+  adoption merged as `e071365f6` at 09:28:01 EDT and before `BenchBox.wt-superseded-reruns` was rebased.
+- D: worktree `BenchBox.wt-superseded-reruns` rebased onto `0033859cb` (which contains `e071365f6`) at
+  10:03:08-10:03:18 EDT on 2026-10-28, tip `6acbcee6f`. The pin is 30.25.0.2 and the vendored pin files
+  have a modification time of 10:03:08. The runs (`/tmp/sgrr-rerun/run_cell.sh`, logs modified
+  10:05-10:09 EDT) postdate the rebase. Between the 2026-10-27 22:23 rebase and this one that worktree
+  carried 30.25.0.1, and no bundle was run in that window.
+- E: the same worktree at `a6a78db53` (rebased onto `c8fa62236`, pin 30.25.0.2) at the 15:59 EDT
+  DataFusion Read Primitives runs (`uv run -- benchbox run --platform datafusion ...`, recorded in the
+  agent session transcript).
+
+Limits. The Linux virtualenv `/tmp/bbvenv-linux-sgrr` used by the ClickHouse Local runs no longer
+exists, so its `benchbox._vendor` cannot be inspected; the class A and D values for those 26 bundles
+rest on the worktree pin and the run scripts. No run log prints the wheel. Uncommitted working-tree
+changes at run time are not recorded; none is evidenced. No bundle is attributed to 30.25.0.1, and no
+bundle is `unknown`.
+
+Reproduction:
+
+```
+git show --name-only --diff-filter=A --format= 431cbe4c7 -- 'results-data/bundles/*.json' | grep -v manifest
+jq -r '.run.timestamp' results-data/bundles/<bundle>.json
+git -C <worktree> reflog --date=iso
+git -C <worktree> show <commit>:benchbox/_vendor/sqlglot.json
+shasum -a 256 <worktree>/benchbox/_vendor/*.zip
+```
+
+Later reruns use 30.25.0.1 or newer and earlier valid bundles are kept. The #3587 comparison
+translated 72,483 queries across both wheels and changed 9 outputs, all with a DuckDB target,
+none of which is a target of these bundles.
+
+### Staging path
+
+Maintainer-run local bundles do not use the pseudonym salt. The 58 bundles were produced from
+the original run output in `~/Developer/benchmark_runs/results` through the public anonymiser,
+`_project/scripts/results_explorer_corpus_migrate.py` (`AnonymizationManager()` with no salt),
+the same path as the earlier local bundles, with each `.manifest.json` written from the original
+run output (`result_source: internal`, `submitted_by: maintainer`) and `export.anonymized` set to
+`true`. Their machine pseudonyms (including `database_5d7b725135a6`, also present in 23 bundles
+already on develop) are therefore the unsalted public pseudonyms. `scripts/stage_seed_corpus_bundle.py`
+belongs to the CI seed-corpus lane, which holds the salt as the `BENCHBOX_MACHINE_ID_SALT` secret,
+and is not the maintainer path. Re-running the anonymiser on the raw results reproduces all 58
+bundle files byte for byte. Bundle JSON is not modified.
+
+### Submission validation refusal path
+
+Without `--trust-internal-source`, `scripts/validate_submission.py --require-manifest`
+refuses 17 of the 58 bundles: 12 for a non-official `benchmark.compliance_class`
+(`unofficial_subscale` or `unofficial_nonstandard`), 3 ClickHouse Local TPC-Havoc
+bundles for inconsistent per-variant row counts (the documented
+`defective-tpchavoc-variant-divergence`), and 2 SQLite Read Primitives bundles with
+`summary.validation` of `partial`. These are internal-source bundles, so the supported path is
+`--require-manifest --trust-internal-source --allow-partial-validation`, under which
+all 58 pass with zero errors. The internal-source trust path for these classes is
+tracked by `flagged-local-bundles-compliance-class-gate-20261025`.
+
+### Value evidence against DuckDB (wheel 30.25.0.1)
+
+Each of the 58 bundles was checked with a capture-only run of the same benchmark, scale
+and SQL on SQLGlot 30.25.0.1 (`--phases generate,load,power --iterations 1`, full result
+rows captured per query, 50,000-row cap, no new bundle written; ClickHouse captures apply the adapter's query rewrite and per-query settings, as the timed run does) and compared per query
+with a DuckDB capture of the same data. A query is `passed` when the row counts are equal,
+rows align on their non-numeric columns, every numeric value is within relative tolerance
+1e-6, and it is also consistent with the bundle's own warm-up row count. A query is
+`unproven` when the DuckDB result is empty or an all-zero/NULL aggregate, or when the
+capture hit the row cap; unproven queries are not counted as passed. `whitespace-only`
+means the rows are equal only after trimming leading or trailing whitespace. TPC-DS row
+counts vary per stream, so only the warm-up stream is comparable with a capture. NYC Taxi
+query parameters are unseeded, so both the DuckDB and the ClickHouse Local NYC Taxi
+captures pinned one parameter seed and are not compared with the bundle row counts. SQLite
+`bundle-failed` queries failed in the bundle itself and were not captured.
+
+
+`clickhouse-local`
+
+| benchmark | SF | passed | whitespace-only | unproven | discrepancy | bundle-failed | no capture/reference |
+|---|---|---|---|---|---|---|---|
+| coffeeshop | 0.01 | 10 | 0 | 0 | 1 | 0 | 0 |
+| coffeeshop | 0.1 | 10 | 0 | 0 | 1 | 0 | 0 |
+| coffeeshop | 1 | 10 | 0 | 0 | 1 | 0 | 0 |
+| datavault | 0.01 | 20 | 1 | 1 | 0 | 0 | 0 |
+| datavault | 0.1 | 20 | 2 | 0 | 0 | 0 | 0 |
+| flightdata | 0.01 | 20 | 0 | 0 | 0 | 0 | 0 |
+| flightdata | 0.1 | 19 | 0 | 0 | 1 | 0 | 0 |
+| flightdata | 1 | 20 | 0 | 0 | 0 | 0 | 0 |
+| nyctaxi | 0.01 | 23 | 0 | 0 | 2 | 0 | 0 |
+| nyctaxi | 0.1 | 25 | 0 | 0 | 0 | 0 | 0 |
+| nyctaxi | 1 | 25 | 0 | 0 | 0 | 0 | 0 |
+| read_primitives | 0.01 | 101 | 9 | 16 | 20 | 0 | 1 |
+| read_primitives | 0.1 | 94 | 8 | 21 | 23 | 0 | 1 |
+| tpcdi | 0.01 | 34 | 0 | 3 | 1 | 0 | 0 |
+| tpcdi | 0.1 | 35 | 0 | 2 | 1 | 0 | 0 |
+| tpcdi | 1 | 35 | 0 | 2 | 1 | 0 | 0 |
+| tpcds | 1 | 88 | 0 | 14 | 1 | 0 | 0 |
+| tpch | 0.01 | 20 | 1 | 1 | 0 | 0 | 0 |
+| tpch | 0.1 | 20 | 2 | 0 | 0 | 0 | 0 |
+| tpch | 1 | 19 | 3 | 0 | 0 | 0 | 0 |
+| tpch_skew | 0.01 | 17 | 2 | 3 | 0 | 0 | 0 |
+| tpch_skew | 0.1 | 17 | 3 | 2 | 0 | 0 | 0 |
+| tpch_skew | 1 | 17 | 3 | 2 | 0 | 0 | 0 |
+| tpchavoc | 0.01 | 177 | 7 | 8 | 7 | 0 | 0 |
+| tpchavoc | 0.1 | 177 | 16 | 0 | 6 | 0 | 0 |
+| tpchavoc | 1 | 167 | 26 | 0 | 6 | 0 | 0 |
+| **total (26 cells)** | | **1220** | **83** | **75** | **72** | **0** | **2** |
+
+`datafusion`
+
+| benchmark | SF | passed | whitespace-only | unproven | discrepancy | bundle-failed | no capture/reference |
+|---|---|---|---|---|---|---|---|
+| clickbench | 1 | 25 | 0 | 8 | 10 | 0 | 0 |
+| coffeeshop | 0.01 | 11 | 0 | 0 | 0 | 0 | 0 |
+| coffeeshop | 0.1 | 11 | 0 | 0 | 0 | 0 | 0 |
+| coffeeshop | 1 | 11 | 0 | 0 | 0 | 0 | 0 |
+| read_primitives | 0.01 | 112 | 0 | 15 | 11 | 0 | 0 |
+| read_primitives | 0.1 | 102 | 0 | 20 | 16 | 0 | 0 |
+| tpcdi | 0.01 | 34 | 0 | 3 | 1 | 0 | 0 |
+| tpcdi | 0.1 | 35 | 0 | 2 | 1 | 0 | 0 |
+| tpcdi | 1 | 35 | 0 | 2 | 1 | 0 | 0 |
+| tpcds | 1 | 89 | 0 | 14 | 0 | 0 | 0 |
+| tpcds | 10 | 97 | 0 | 5 | 1 | 0 | 0 |
+| tpch | 0.01 | 21 | 0 | 1 | 0 | 0 | 0 |
+| tpch | 0.1 | 22 | 0 | 0 | 0 | 0 | 0 |
+| tpch | 1 | 22 | 0 | 0 | 0 | 0 | 0 |
+| tpch_skew | 0.01 | 19 | 0 | 3 | 0 | 0 | 0 |
+| tpch_skew | 0.1 | 20 | 0 | 2 | 0 | 0 | 0 |
+| tpch_skew | 1 | 20 | 0 | 2 | 0 | 0 | 0 |
+| tpchavoc | 0.01 | 201 | 0 | 8 | 0 | 0 | 0 |
+| tpchavoc | 0.1 | 209 | 0 | 0 | 0 | 0 | 0 |
+| tpchavoc | 1 | 209 | 0 | 0 | 0 | 0 | 0 |
+| **total (20 cells)** | | **1305** | **0** | **85** | **41** | **0** | **0** |
+
+`sqlite`
+
+| benchmark | SF | passed | whitespace-only | unproven | discrepancy | bundle-failed | no capture/reference |
+|---|---|---|---|---|---|---|---|
+| clickbench | 1 | 27 | 0 | 8 | 8 | 0 | 0 |
+| coffeeshop | 0.01 | 11 | 0 | 0 | 0 | 0 | 0 |
+| coffeeshop | 0.1 | 11 | 0 | 0 | 0 | 0 | 0 |
+| coffeeshop | 1 | 11 | 0 | 0 | 0 | 0 | 0 |
+| read_primitives | 0.01 | 92 | 0 | 16 | 6 | 38 | 0 |
+| read_primitives | 0.1 | 85 | 0 | 21 | 8 | 38 | 0 |
+| tpch | 0.01 | 21 | 0 | 1 | 0 | 0 | 0 |
+| tpch | 0.1 | 22 | 0 | 0 | 0 | 0 | 0 |
+| tpch | 1 | 21 | 0 | 0 | 1 | 0 | 0 |
+| tpch_skew | 0.01 | 19 | 0 | 3 | 0 | 0 | 0 |
+| tpch_skew | 0.1 | 19 | 0 | 2 | 1 | 0 | 0 |
+| tpch_skew | 1 | 19 | 0 | 2 | 1 | 0 | 0 |
+| **total (12 cells)** | | **358** | **0** | **53** | **25** | **76** | **0** |
+
+Counts reconcile to the 58 bundles: 26 ClickHouse Local, 20 DataFusion, 12 SQLite.
+
+#### Discrepancy adjudication
+
+An earlier capture of the ClickHouse cells re-ran each query without the adapter's
+`rewrite_query_for_clickhouse` and per-query settings, which produced spurious TPC-H Q6,
+decimal-ratio, TPC-DS and Havoc discrepancies; those were capture artefacts and the tables
+above come from the corrected capture. The DataFusion and SQLite captures already used the
+same rewrite path as the timed run.
+
+Real defects found (the bundles hold wrong values or rows for these queries):
+
+- ClickHouse Local Coffeeshop TM1 returns one `Evening` row instead of four day parts (TIME
+  stored as a string); TPC-DI AQ6 differs from DuckDB (hand-written variant).
+- ClickHouse Local `map_access` returns 0 for a missing key, and the approximate, struct,
+  array and map Read Primitives shapes differ from DuckDB (20 and 23 queries in the SF0.01
+  and SF0.1 bundles, left unadjudicated individually).
+- DataFusion TPC-DI EQ7 returns wrong scores (Int64 division) in all three bundles;
+  DataFusion ClickBench Q6 returns 17 where DuckDB and SQLite return 18 (loader null
+  marker); DataFusion `pivot_basic` returned 2,100 rows against 2 in the original two Read
+  Primitives bundles, which were replaced on fork 30.25.0.2 (see the DataFusion section below).
+- SQLite Read Primitives `pivot_basic` (PIVOT dropped), `unpivot_basic` (UNPIVOT dropped)
+  and `orderby_all_desc` (no ordering) succeeded with wrong results in the original two
+  bundles. They were replaced on fork 30.25.0.2 (see the section below); the SQLite table
+  above holds the replacement counts.
+
+Accepted as engine semantics or ties:
+
+- The 8 SQLite ClickBench discrepancies are nondeterminism: Q18 has no ORDER BY; Q16, Q17,
+  Q19, Q31, Q32, Q33 and Q36 tie at the LIMIT 10 cutoff, the count multisets equal DuckDB's
+  and every SQLite row's count matches DuckDB's exact count. DataFusion ClickBench Q16 to
+  Q19, Q24, Q31 to Q33 and Q36 have the same shape (multisets verified except Q24).
+- ClickHouse Local TPC-DS Q78 differs in 3 of 100 rows by float tie rounding.
+- 83 ClickHouse Local queries are `whitespace-only` (loader trims leading or trailing
+  whitespace).
+- Remaining ORDER BY ... LIMIT differences (TOPN, running sum, `orderby_simple`,
+  `any_value`) differ only in rows tied at the LIMIT cutoff.
+- ClickHouse Local TPC-Havoc `2_v8`, `3_v7`, `7_v7`, `9_v7`, `10_v7`, `10_v8` row counts and
+  `13_v1` differ from DuckDB, consistent with the documented
+  `defective-tpchavoc-variant-divergence`.
+
+Still open: ClickHouse Local Flight Data `delay-by-airport` SF0.1 (7.9e-4 relative) and NYC
+Taxi SF0.01 `top-routes` and `airport-trips`; ClickHouse Local `json_extract_simple` has no
+DuckDB reference. SQLite TPC-H Q11 and TPC-H skew Q9 and Q11 were reported as one-row
+differences; re-run directly against DuckDB on the retained SF1 TPC-H, SF0.1 and SF1 skew
+databases (the bundle's query, translated for each engine), both engines return the same rows
+(TPC-H Q11 1,048; skew Q9 76 at SF0.1 and 98 at SF1; skew Q11 22 at SF0.1 and 1,048 at SF1)
+with every value within relative 1e-6, so no discrepancy reproduces.
+
+Cells reran after the engine fixes merged: ClickHouse Local Coffeeshop (3) and TPC-DI (3),
+DataFusion TPC-DI (3) and ClickBench SF1 (see the rerun section at the end), and DataFusion
+Read Primitives (2, see the DataFusion section below). ClickHouse Local Read Primitives (2) are
+not rerun; their differences are algorithmic or comparator printing, and `map_access` is tracked in
+`clickhouse-map-access-missing-key-returns-zero`.
+
+### SQLite Read Primitives replacement on fork 30.25.0.2 (2026-10-28)
+
+The two SQLite Read Primitives bundles of this set (`5d5687fd` at SF0.01 and `82ce61a4` at SF0.1,
+both on fork 30.24.0.17) held wrong results marked SUCCESS: `pivot_basic` returned 2,100 and
+22,576 rows against DuckDB's 2 (the generator wrote the query without its PIVOT),
+`unpivot_basic` returned 100 rows of literal column names against 200 (UNPIVOT dropped) and
+`orderby_all_desc` ran without its ordering (the Netezza source reads `ORDER BY ALL DESC` as a
+column named `ALL`, which SQLite received as the constant `"ALL"`). DataFusion `pivot_basic` had the
+same cause. Fork BenchBox-dev/benchbox-sqlglot#78 (release 30.25.0.2, adopted in BenchBox#3649)
+lowers a single-aggregate PIVOT to conditional aggregation and a plain-column UNPIVOT to a
+`UNION ALL`, expands `ORDER BY ALL` to ordinal keys with the query's direction, and raises an
+unsupported error for any other pivot so the query is recorded as a failure.
+
+Replacements, run through the project CLI exactly as the earlier SQLite reruns (`benchbox run
+--platform sqlite --benchmark read_primitives --scale <sf> --phases generate,load,power --tuning
+notuning --result-source internal --non-interactive`, wheel 30.25.0.2, same host, the
+read-primitives tables loaded in the shared SQLite database already present) and staged through
+the public anonymiser (see Staging path above; database pseudonym `database_5d7b725135a6` is unchanged):
+
+| scale | replaced bundle | replacement bundle |
+|---|---|---|
+| 0.01 | `5d5687fd` | `fc04d558` |
+| 0.1 | `82ce61a4` | `8edf1667` |
+
+The replaced bundles are removed from `results-data/bundles`, the ledger seed and the corpus
+inventory; their ids stay in this note as the superseded history. The run reused the loaded SQLite
+database, so the replacement bundles record `data_loading` and `schema_creation` phases of 0 ms
+and carry no `data_generation_hash`; query results and per-query timings come from the same
+tables. Both pass `scripts/validate_submission.py --require-manifest --trust-internal-source
+--allow-partial-validation` with zero errors and the corpus validation is unchanged.
+
+Capture comparison against DuckDB (capture run on 30.25.0.2, `compare.py` row comparison, values within
+1e-6 relative):
+
+| query | DuckDB rows | SQLite before (SF0.01 / SF0.1) | SQLite after (SF0.01 / SF0.1) |
+|---|---|---|---|
+| `pivot_basic` | 2 | 2,100 / 22,576 (wrong) | 2 / 2 (pass) |
+| `unpivot_basic` | 200 | 100 / 100 (wrong) | 200 / 200 (pass) |
+| `orderby_all_desc` | 100 | 100 unordered (wrong) | 100 / 100 (pass) |
+| `orderby_all_simple` | 25 | 25 unordered | 25 / 25 (pass) |
+
+DataFusion `pivot_basic` on 30.25.0.2 returns 2 rows at both scales and matches DuckDB.
+
+Per-cell adjudication after the rerun (passed / unproven / bundle-failed / discrepancy):
+SF0.01 92 / 16 / 38 / 6 (was 88 / 16 / 38 / 10), SF0.1 85 / 21 / 38 / 8 (was 83 / 21 / 38 / 10).
+The only other status change is `topn_aggregate_2columns`, which moves between passed and
+discrepancy at the two scales: it ties at the LIMIT cutoff and its SQL is byte-identical on both
+wheels. The 14,060-translation comparison of 30.25.0.1 and 30.25.0.2 over 370 shipped queries and
+38 targets changed eight outputs, all `pivot_basic`, `unpivot_basic`, `orderby_all_simple` and
+`orderby_all_desc` on SQLite and DataFusion.
+
+### DataFusion Read Primitives replacement on fork 30.25.0.2 (2026-10-28)
+
+The two DataFusion Read Primitives bundles of this set (`a4c2be65` at SF0.01 and `4cf65e8f` at
+SF0.1, both on fork 30.24.0.17) recorded `pivot_basic` as SUCCESS with 2,100 and 22,576 rows
+against DuckDB's 2, because the PIVOT was dropped (the same defect as SQLite above). They were
+rerun on 30.25.0.2 through the project CLI (`benchbox run --platform datafusion --benchmark
+read_primitives --scale <sf> --phases generate,load,power --tuning notuning --result-source
+internal --non-interactive`, DataFusion 54.0.0 on the Darwin host, same data) and staged through
+the public anonymiser as above. Both report 414 of 414 queries passed.
+
+| scale | replaced bundle | replacement bundle |
+|---|---|---|
+| 0.01 | `a4c2be65` | `ac8474d7` |
+| 0.1 | `4cf65e8f` | `a45d3e71` |
+
+Compared per query with the replaced bundles, `pivot_basic` is the only query whose status or
+row count changed (2,100 and 22,576 rows became 2 and 2, equal to DuckDB's); every other query
+returns the same rows as before. The replaced bundles are removed from `results-data/bundles`,
+the ledger seed and the corpus inventory; their ids stay in this note as superseded history. The
+discrepancy counts in the DataFusion table above predate the replacement and include
+`pivot_basic` (one fewer discrepancy at each scale after it).
+
+### Rerun of the variant and loader defect cells on fork 30.25.0.2 (2026-10-28)
+
+Ten of the 58 bundles ran on fork 30.24.0.17 with a BenchBox variant or loader that has since
+been fixed. They were rerun after the fixes merged (CoffeeShop TM1 on ClickHouse #3644, ClickHouse
+TPC-DI AQ6 variant removed and DataFusion EQ7 DOUBLE cast #3648, DataFusion ClickBench null marker
+#3646, SQLGlot fork 30.25.0.2 #3649), on a worktree rebased onto origin/develop. Each cell ran one
+at a time under `lockf /tmp/benchbox-heavy.lock` through the project CLI (`benchbox run
+--platform <p> --benchmark <b> --scale <sf> --phases generate,load,power --tuning notuning
+--result-source internal --non-interactive`, `BENCHBOX_OUTPUT_DIR=~/Developer/benchmark_runs`),
+with ClickHouse Local in the `benchbox-agent` Linux container (chDB 4.1.6) and DataFusion (54.0.0)
+natively on the Darwin host. The DataFusion ClickBench data directory was removed first so the
+CSV was converted to Parquet again with the corrected loader. Bundles record BenchBox 0.5.0rc1;
+the wheel (30.25.0.2) is the vendored pin `benchbox/_vendor/sqlglot.json` (see Wheel consistency). Staging used the
+public anonymiser, as for the rest of the set (see Staging path above).
+
+| cell | scale | replaced bundle | replacement bundle |
+|---|---|---|---|
+| ClickHouse Local CoffeeShop | 0.01 | `3580340d` | `2594968f` |
+| ClickHouse Local CoffeeShop | 0.1 | `be08f469` | `da48d384` |
+| ClickHouse Local CoffeeShop | 1 | `260b80d1` | `2888c2d3` |
+| ClickHouse Local TPC-DI | 0.01 | `4b0f48c4` | `3c9d9330` |
+| ClickHouse Local TPC-DI | 0.1 | `3afba5da` | `61e36e9c` |
+| ClickHouse Local TPC-DI | 1 | `b2190761` | `30a5c9d1` |
+| DataFusion TPC-DI | 0.01 | `fd444036` | `328320ea` |
+| DataFusion TPC-DI | 0.1 | `6d43a62b` | `fb67aa79` |
+| DataFusion TPC-DI | 1 | `9d41dd46` | `ffe633e9` |
+| DataFusion ClickBench | 1 | `726529fb` | `093d2262` |
+
+The replaced bundles are removed from `results-data/bundles`, the ledger seed and the corpus
+inventory; their ids stay in this note as superseded history. All ten report zero failed
+queries. The ClickHouse Local replacements record the `container` execution class in the bundle
+itself (kernel and Apple CPU vendor, source `inferred`), so `scripts/annotate_execution_class.py`
+adds no sidecar attestation and they rank under `clickhouse-local^container`.
+
+Capture comparison against DuckDB (capture-only run on the new code, `--iterations 1`, key-aligned
+`compare.py`, numeric values within relative 1e-6; the DuckDB captures are the earlier ones on the same
+data):
+
+| cell | scale | passed | failed | unproven | targeted query |
+|---|---|---|---|---|---|
+| ClickHouse Local CoffeeShop | 0.01, 0.1, 1 | 11, 11, 11 | 0 | 0 | TM1 returns 4 day parts with DuckDB's values |
+| ClickHouse Local TPC-DI | 0.01, 0.1, 1 | 35, 36, 36 | 0 | 3, 2, 2 | AQ6 5, 12, 12 rows, values equal |
+| DataFusion TPC-DI | 0.01, 0.1, 1 | 35, 36, 36 | 0 | 3, 2, 2 | EQ7 3 rows, values equal |
+| DataFusion ClickBench | 1 | 27 | 8 | 8 | Q6 returns 18 (was 17) |
+
+The unproven TPC-DI queries are `A3` (SF0.01 only), `VQ6` and `AQ9`, whose DuckDB result is empty or
+all zero; they were not changed by the reruns. The eight DataFusion ClickBench failures are
+nondeterminism, as in the SQLite ClickBench adjudication: Q18 has no ORDER BY, and Q16, Q17, Q19, Q31,
+Q32, Q33 and Q36 tie at the LIMIT 10 cutoff (the rows above the cutoff and the count multisets equal
+DuckDB's). No result changed unexpectedly.
+
+Corpus validation (`results-data/validate_corpus.py`) exits 0 before and after: 480 bundles, 41 ranked
+cohorts at or above the three-identity floor and 10 documented shallow cohorts in both runs. Each of
+the ten bundles passes `scripts/validate_submission.py --require-manifest`, with and without
+`--trust-internal-source --allow-partial-validation`, with zero errors, so none adds to the refusal
+list handed to `flagged-local-bundles-compliance-class-gate-20261025`.
+
+### Rerun closeout: rerun list, executed reruns and count reconciliation (2026-10-29)
+
+Everything below is derived from origin/develop at `bdfe4fbff`; group names are the audit groups of
+`history://AffectedResults` (the 2026-10-24 repository audit). Bundle JSON is not modified.
+
+#### Rerun list
+
+All five needs of the tracking item are done; `sql-execution-gate-vacuous-empty-results-20261025`, `local-rerun-bundles-fail-submission-validation-20261025` and `bundle-translator-version-sidecar-attestation` apply to every group. Minimum wheel is fork 30.24.0.13 (30.24.0.12 fixed DataVault Q6 folding, 30.24.0.13 fixed SQLite date literals);
+cells that depend on a later fix state the wheel that carries it. Needs of the tracking item:
+`sqlite-clickbench-sf1-row-count-mismatches-20261025` (SQ-3 ClickBench, SQLite loader),
+`sql-execution-gate-vacuous-empty-results-20261025` (visibility of empty results before any rerun),
+`questdb-unpadded-date-cast-null-20261025` (ClickHouse unpadded-date matrix row, gating the ClickHouse TPC-DS rerun),
+`local-rerun-bundles-fail-submission-validation-20261025` (validation path of the new bundles) and
+`bundle-translator-version-sidecar-attestation` (wheel attestation, #3717).
+
+Local (no approval needed to run; owner G1 2026-10-25 selected the 40 required bundles plus the optional timing/text-only groups):
+
+| group | audit bundles | owner | minimum wheel | blocking needs | state |
+|---|---|---|---|---|---|
+| CH-1, CH-2, CH-3 | 14 (13 ClickHouse Local, 1 ClickHouse Server) | `published-results-sqlglot-translation-rerun` | 30.24.0.13 | `questdb-unpadded-date-cast-null-20261025` (CH-2 TPC-DS only) | 10 cells rerun (`CH-1` 6, `CH-2` 1, `CH-3` 3); ClickHouse Server TPC-H SF0.01 `4cd12ac0` not rerun, the server engine was unavailable |
+| DF-1, DF-2, DF-3 | 11 | same | 30.24.0.13; 30.25.0.2 for TPC-DI (EQ7 cast #3648) | none specific | all 8 cells rerun |
+| SQ-1, SQ-2 | 9 | same | 30.24.0.13 | none specific | all 9 cells rerun |
+| SQ-3 | 3 | same | 30.25.0.2 (PIVOT/UNPIVOT/ORDER BY ALL, fork #78) | `sqlite-clickbench-sf1-row-count-mismatches-20261025` (ClickBench cell) | all 3 cells rerun |
+| OBT (DuckDB, DataFusion, ClickHouse Local) | 3 | `tpcds-obt-rerun-defective-sf1-bundles-20261017` (#3550) | lettered-catalog renderer | none left | 3 replacement bundles, see the OBT section |
+| CH-4 (optional) | 16 | this item | 30.24.0.13; 30.25.0.2 for CoffeeShop and TPC-DI | none specific | all 16 cells rerun (`3465d4f3`, `c1aeca88` were Read Primitives; their replacements use the fixed `JSONExtractRaw` SQL) |
+| DF-4, DF-5, DF-6 (optional) | 18 | this item | 30.24.0.13; 30.25.0.2 for Read Primitives and ClickBench | none specific | all 12 cells rerun |
+| TDI-EQ7 on DuckDB TPC-DI SF0.01/0.1/1 (optional) | 3 (`115bd3b6`, `1769a68f`, `1eb31887`) | this item | current | none | not rerun: no replacement run was made; the existing bundles return 3 rows for EQ7 like every other engine and stay as note-only history |
+| Note-only: CH-5 (11), DS-90 local (12 DuckDB, DataFusion, Spark), DS-58 local (3) | 26 | none | none | none | no rerun; no failure or wrong row observed |
+
+Cloud (rerun needs explicit spend approval, G4; none is requested):
+
+| group | audit bundles | owner | minimum wheel | blocking needs | state |
+|---|---|---|---|---|---|
+| OBT on BigQuery, Snowflake, Databricks | 3 (`480ffcea`, `d35974f6`, `d11b3297`) | none; G4 | lettered-catalog renderer | owner spend approval | not rerun; stay flagged `defective-tpcds-obt-parameters` |
+| TDI-EQ7, DS-58, DS-90 cloud | 18 | none | none | none | note-only (EQ7 rows unchanged at 3; no failure observed) |
+
+#### Executed reruns
+
+The 58 local bundles of the table above were produced by `benchbox run` through the project CLI with
+`BENCHBOX_OUTPUT_DIR=~/Developer/benchmark_runs`, one heavy run at a time; the full flag set of every run is recorded
+only for the 2026-10-28 runs (`--phases generate,load,power --tuning notuning --result-source internal --non-interactive`,
+see the SQLite, DataFusion and variant-cell sections above); the 2026-10-26 runs are recorded as `uv run --frozen -- benchbox run`
+in the cell scripts (Wheel consistency). ClickHouse Local ran in the Linux container lane, DataFusion and SQLite natively.
+The wheel of every bundle is attested in its manifest sidecar (`sql_translator_version`, #3717): the resolver reports
+`attested` for all 58 and `recorded` for none, because these bundles predate `execution.translation.runtime` (#3712);
+none is `not_recorded`. Every bundle records BenchBox 0.5.0rc1 (`export.benchbox_version`); only bundles whose benchmark writes
+a generator version record `benchmark.data_generation_version` (`1`), the rest record none.
+
+Per-query comparison against a DuckDB capture of the same data (definitions under Value evidence against DuckDB; numeric
+tolerance relative 1e-6). The counts are the per-cell tables above with the ten cells of the variant rerun and the two
+DataFusion Read Primitives cells substituted by their post-rerun values (`pivot_basic` moves from discrepancy to passed).
+Queries whose DuckDB result is empty or an all-zero/NULL aggregate are `unproven` and are not counted as passed.
+
+| group | change | cells | new bundles | wheel | data_generation_version | passed | whitespace-only | unproven | discrepancy | bundle-failed | no reference |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| CH-1 | Q6 bound fold, decimal division | TPC-H and TPC-H Skew, ClickHouse Local, SF0.01/0.1/1 (6) | `71dc6c6c`, `25806a27`, `f2bafd17`, `3b4c54c2`, `23306369`, `bb56ec24` | 30.24.0.17 x6 | 1 x1, none x5 | 110 | 14 | 8 | 0 | 0 | 0 |
+| CH-2 | ROLLUP NULL keys, decimal division | TPC-DS SF1, ClickHouse Local (1) | `4b9e5193` | 30.24.0.17 x1 | 1 x1 | 88 | 0 | 14 | 1 | 0 | 0 |
+| CH-3 | Q6 bound fold, decimal division | TPC-Havoc SF0.01/0.1/1, ClickHouse Local (3) | `5de9fab8`, `d542bf14`, `34b1129c` | 30.24.0.17 x3 | none x3 | 521 | 49 | 8 | 19 | 0 | 0 |
+| CH-4 | decimal precision, safe_division | CoffeeShop, DataVault, FlightData, NYC Taxi, Read Primitives, TPC-DI, ClickHouse Local (16) | `3c9d9330`, `61e36e9c`, `30a5c9d1`, `9f79ff77`, `3f5c94e9`, `2594968f`, `da48d384`, `2888c2d3`, `ce89d00e`, `46bfd3fb`, `4d422b5f`, `c1d5ea31`, `7ac18c39`, `3b8b6f57`, `3d2fa5e9`, `ac9b732e` | 30.24.0.17 x10, 30.25.0.2 x6 | 1 x5, none x11 | 507 | 20 | 45 | 46 | 0 | 2 |
+| DF-1 | integer division (AQ8, EQ8) | TPC-DI SF0.01/0.1/1, DataFusion (3) | `328320ea`, `fb67aa79`, `ffe633e9` | 30.25.0.2 x3 | 1 x3 | 107 | 0 | 7 | 0 | 0 | 0 |
+| DF-2 | integer division (Q21, Q78, Q83) | TPC-DS SF1/SF10, DataFusion (2) | `2fce59f7`, `9b8837db` | 30.24.0.17 x2 | 1 x2 | 186 | 0 | 19 | 1 | 0 | 0 |
+| DF-3 | integer division (QC1, SA3) | CoffeeShop SF0.01/0.1/1, DataFusion (3) | `95d5bdc8`, `001e082b`, `c6832587` | 30.24.0.17 x3 | 1 x3 | 33 | 0 | 0 | 0 | 0 | 0 |
+| DF-4 | Q11/Q16/Q18/Q20 rewrites (timing only) | TPC-H SF0.01/0.1/1, DataFusion (3) | `8b8f54de`, `1bf2c529`, `5ef63e23` | 30.24.0.17 x3 | 1 x3 | 65 | 0 | 1 | 0 | 0 | 0 |
+| DF-5 | casts (precision or timing only) | TPC-H Skew, TPC-Havoc, Read Primitives, DataFusion (8) | `e1a0a0b3`, `b6e365e8`, `5441c82c`, `70d6c9e1`, `b7c3e0be`, `7c126887`, `ac8474d7`, `a45d3e71` | 30.24.0.17 x6, 30.25.0.2 x2 | 1 x2, none x6 | 894 | 0 | 50 | 25 | 0 | 0 |
+| DF-6 | untranslated ClickHouse text | ClickBench SF1, DataFusion (1) | `093d2262` | 30.25.0.2 x1 | 1 x1 | 27 | 0 | 8 | 8 | 0 | 0 |
+| SQ-1 | Q6 bound fold, Q8 cast | TPC-H and TPC-H Skew, SQLite (6) | `14b260b9`, `93a0b6f9`, `113a3ebe`, `d19931e6`, `432838b7`, `dbf8bb59` | 30.24.0.17 x6 | 1 x1, none x5 | 121 | 0 | 8 | 3 | 0 | 0 |
+| SQ-2 | integer division (QC1, SA3) | CoffeeShop SF0.01/0.1/1, SQLite (3) | `3d030f43`, `5f688a96`, `9953f53c` | 30.24.0.17 x3 | 1 x3 | 33 | 0 | 0 | 0 | 0 | 0 |
+| SQ-3 | queries failed before and run now; PIVOT/UNPIVOT/ORDER BY ALL | Read Primitives SF0.01/0.1, ClickBench SF1, SQLite (3) | `fc04d558`, `8edf1667`, `4bfe0dd1` | 30.24.0.17 x1, 30.25.0.2 x2 | 1 x1, none x2 | 204 | 0 | 45 | 22 | 76 | 0 |
+| **total** | | | 58 | 44 on 30.24.0.17, 14 on 30.25.0.2 | | **2896** | **83** | **213** | **125** | **76** | **2** |
+
+Reading the discrepancy column. The adjudication under Discrepancy adjudication applies unchanged: ClickHouse Local Read
+Primitives (CH-4) holds the unadjudicated approximate/struct/array/map shapes and `map_access`, and those two bundles
+carry `defective-variant-or-loader-wrong-result`; SQLite Read Primitives `bundle-failed` queries failed in the bundle itself;
+the ClickBench and Havoc entries are LIMIT-cutoff ties, Q18 without ORDER BY, TPC-DS Q78 float ties and the documented
+`defective-tpchavoc-variant-divergence`. The unproven TPC-DI queries are `A3` (SF0.01), `VQ6` and `AQ9`.
+Per-bundle wheel, evidence class and run timestamp are in the Wheel consistency table.
+
+#### Audit bundle ledger
+
+The 124 bundles that ran changed SQL, keyed by the short hash of the bundle file name (the DuckDB version-matrix bundles by
+their file stem), grouped as in the audit. `wrong` are the 43 with wrong rows, wrong values or failed queries; `changed` are
+the 81 whose results are not wrong. The census below reads this table.
+
+| kind | audit group | venue | bundles |
+|---|---|---|---|
+| wrong | CH-1 | local | `7ae478d5`, `1d1e2b2e`, `a4d8447f`, `f22a0442`, `678507a6`, `4cd12ac0`, `ff38aebf`, `d17b65c3`, `276e9fdd` |
+| wrong | CH-2 | local | `c250741b`, `4eb148cf` |
+| wrong | CH-3 | local | `ce266327`, `4d088e3c`, `4f695fe1` |
+| wrong | DF-1 + TDI-EQ7 | local | `b9971b30`, `51f0bade`, `85837db4` |
+| wrong | DF-2 + DS-90 | local | `f8619d78`, `5207d224`, `6bed4cfc`, `754e0bfc`, `15b41887` |
+| wrong | DF-3 | local | `bb01b471`, `387c45c7`, `e1266562` |
+| wrong | SQ-1 | local | `4eddc10f`, `3bf2ac41`, `b9fdd7ba`, `5087d732`, `0792588d`, `bf2bedb1` |
+| wrong | SQ-2 | local | `16f67069`, `3aadc9a8`, `5bd85b97` |
+| wrong | SQ-3 | local | `7fa6915c`, `688f04bb`, `6eb94fe6` |
+| wrong | OBT | cloud | `480ffcea`, `d11b3297`, `d35974f6` |
+| wrong | OBT | local | `836c988b`, `4e6d3fff`, `2a6932b1` |
+| changed | CH-4 | local | `370b71e2`, `975cb3a1`, `4ce8154e`, `c202ec05`, `b4fd5612`, `5f3f4c89`, `49be64a3`, `1fe46258`, `fd44405e`, `21bbf078`, `45e02227`, `3465d4f3`, `c1aeca88` |
+| changed | CH-4 + TDI-EQ7 | local | `01f31a9c`, `4d6e3213`, `b6f8b467` |
+| changed | DF-4 | local | `e8a7d048`, `3e852d75`, `cfca5d59`, `c5cbcc9f`, `adcfb35e`, `dcb84b62`, `a41c5d64`, `1965c33f`, `1d62bd4f` |
+| changed | DF-5 | local | `cb4cfcba`, `1cdd70ad`, `70eb699a`, `16785577`, `2b46b000`, `721d2f5e`, `6b5bd124`, `28733b91` |
+| changed | DF-6 | local | `8014d1c9` |
+| changed | TDI-EQ7 | cloud | `ca696883`, `bc5850d1`, `5d042935`, `01329d67`, `dbfb95fb`, `92040a00`, `5dd95d51`, `b45dfad3`, `9ec08998` |
+| changed | TDI-EQ7 | local | `115bd3b6`, `1769a68f`, `1eb31887` |
+| changed | DS-58 + DS-90 | cloud | `a9f40f37`, `dab15f22`, `0fbf6500`, `294ed3a2`, `cf4f01d0`, `15e05c0c` |
+| changed | DS-58 + DS-90 | local | `1d9231a1`, `5bc78a3d`, `e9faf36f` |
+| changed | DS-90 | cloud | `f5fd99c7`, `27bd9f9c`, `b8820a1d` |
+| changed | DS-90 | local | `f8fa74b3`, `be435b62`, `2e3c74db`, `17603c19`, `11fd39df`, `tpcds_sf10_duckdb_v1_0_0_median`, `tpcds_sf10_duckdb_v1_1_3_median`, `tpcds_sf10_duckdb_v1_2_2_median`, `tpcds_sf10_duckdb_v1_3_2_median`, `tpcds_sf10_duckdb_v1_4_4_median`, `tpcds_sf10_duckdb_v1_5_5_median`, `tpcds_sf10_duckdb_v1_6_0_dev365_median` |
+| changed | CH-5 | local | `e89a4de7`, `4d4d5bcd`, `e3e40917`, `3bd30206`, `c45bba08`, `9dcc57ae`, `252ba7d7`, `45832acd`, `374cef00`, `5f654805`, `7134f926` |
+
+Census command (run from the repository root on origin/develop; a bundle is replaced when its benchmark, scale and platform have a
+different bundle run after the 2026-10-24 audit):
+
+```
+python3 - <<'EOF'
+import collections, json, pathlib, re
+
+AUDIT_DATE = "2026-10-24"
+root = pathlib.Path("results-data/bundles")
+notes = pathlib.Path("results-data/CORPUS_NOTES.md").read_text()
+section = notes.split("#### Audit bundle ledger", 1)[1].split("\n###", 1)[0]
+
+files = {p.stem: p for p in root.rglob("*.json") if not p.name.endswith(".manifest.json")}
+
+
+def load(path):
+    manifest = path.with_name(path.stem + ".manifest.json")
+    return json.loads(manifest.read_text()) if manifest.exists() else {}
+
+
+def cell(bundle):
+    bm, pl = bundle.get("benchmark") or {}, bundle.get("platform") or {}
+    return bm.get("id"), float(bm.get("scale_factor") or 0), pl.get("name")
+
+
+def find(token):
+    hits = [s for s in files if s == token or s.endswith("_" + token)]
+    assert len(hits) == 1, (token, hits)
+    return files[hits[0]]
+
+
+cells = collections.defaultdict(list)
+for stem, path in files.items():
+    bundle = json.loads(path.read_text())
+    cells[cell(bundle)].append((path, bundle))
+
+tally = collections.Counter()
+for line in section.splitlines():
+    match = re.match(r"\| (wrong|changed) \| ([^|]+) \| (cloud|local) \| (.+) \|$", line)
+    if not match:
+        continue
+    kind, group, venue, ids = match.groups()
+    for token in re.findall(r"`([^`]+)`", ids):
+        path = find(token)
+        bundle = json.loads(path.read_text())
+        flagged = bool(load(path).get("known_defects"))
+        replaced = any(
+            other_path != path and (other.get("run") or {}).get("timestamp", "") > AUDIT_DATE
+            for other_path, other in cells[cell(bundle)]
+        )
+        tally["audit bundles"] += 1
+        tally[f"{kind}"] += 1
+        tally[f"{kind} flagged"] += flagged
+        tally[f"{kind} replaced"] += replaced
+        tally[f"{kind} not replaced {venue}"] += not replaced
+print(dict(sorted(tally.items())))
+print("superseded-sql-translation flags:", sum(
+    "defective-superseded-sql-translation" in load(p).get("known_defects", []) for p in files.values()))
+print("bundle JSON:", len(files), "sidecars:", sum(1 for _ in root.rglob("*.manifest.json")))
+EOF
+```
+Output at origin/develop `bdfe4fbff`:
+
+```
+{'audit bundles': 124, 'changed': 81, 'changed flagged': 22, 'changed not replaced cloud': 18, 'changed not replaced local': 29, 'changed replaced': 34, 'wrong': 43, 'wrong flagged': 43, 'wrong not replaced cloud': 3, 'wrong not replaced local': 1, 'wrong replaced': 39}
+superseded-sql-translation flags: 23
+bundle JSON: 494 sidecars: 431
+```
+
+#### Count reconciliation
+
+| quantity | audit baseline (2026-10-24) | origin/develop `bdfe4fbff` |
+|---|---|---|
+| corpus bundles matched against the changes | 419 | 494 bundle JSON files (480 with queries); none of the 124 was edited or removed |
+| ran since-changed SQL | 124 | 124, all still present |
+| wrong rows, values or failed queries | 43 (40 local, 3 cloud OBT) | 43, all carry a `known_defects` entry (24 at the audit, 18 added as `defective-superseded-sql-translation`, 1 `defective-sqlite-clickbench-row-counts`) |
+| flagged `defective-superseded-sql-translation` | 20 (18 ranked wrong-value bundles and 2 DataVault) | 20 of the 124, plus 3 Databricks ClickBench bundles from the fork 30.24.0.15 impact audit: 23 sidecars |
+| replaced by a bundle run after the audit | 0 | 73: 39 of the 43 wrong (36 by the 58 local reruns, 3 by the OBT reruns of #3550) and 34 of the 81 not wrong |
+| flagged and not replaced | not applicable | 4 of the 43: ClickHouse Server TPC-H SF0.01 `4cd12ac0` (engine unavailable) and the 3 cloud OBT bundles (G4, no spend) |
+| note-only (changed SQL, results not wrong, not replaced) | 81 not wrong, action note or optional rerun | 47: 29 local (DuckDB TPC-DI x3, CH-5 11, DS-90 12, DS-58 3) and 18 cloud |
+
+124 = 73 replaced + 4 flagged and not replaced + 47 note-only. The audit baseline of 419, 124 and 43 and its
+24-already-flagged split come from the 2026-10-24 audit transcript (`history://AffectedResults`, 144 rows over 124 bundles),
+which compared generated SQL from BenchBox v0.4.1 and develop and is not reproducible from the repository alone; the
+audit ledger table above is its bundle list, and everything in the right-hand column is re-derived by the census command.
+
+Superseded predecessors are kept, labelled and unranked; replaced bundles are never removed. The DuckDB TPC-DI x3 bundles
+(`115bd3b6`, `1769a68f`, `1eb31887`) ran the earlier EQ7 text, return 3 rows like every other engine, and carry no defect,
+so they are recorded here and in the changed-SQL list above rather than flagged.
+
+#### Corpus gate after ingestion (#3678, #3717)
+
+At origin/develop `bdfe4fbff`: `uv run -- python results-data/validate_corpus.py` exits 0 and reports 480 bundles, 41 ranked
+cohorts at or above the three-identity floor, 10 documented shallow cohorts (ClickBench SF0.1, DataVault SF0.01 and SF0.1,
+Read Primitives SF0.01 and SF0.1, TPC-DS OBT SF1, TPC-H SF1, TPC-Havoc SF0.01, SF0.1 and SF1) and 11 unranked cohorts.
+`DOCUMENTED_SHALLOW_COHORTS` is unchanged by this note. The validator and Explorer parity and the cohort-depth tests
+(`tests/unit/publication/test_validator_parity.py`, `tests/unit/scripts/test_corpus_cohort_depth.py`) pass, 380 tests, so the
+ranked identities the validator computes agree with the Explorer pipeline.
