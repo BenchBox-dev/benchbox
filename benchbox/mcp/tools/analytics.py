@@ -13,6 +13,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
 
 from benchbox.core.results import analytics as _core_analytics
+from benchbox.core.results.loader import _index_plan_entries
 from benchbox.core.results.query_normalizer import normalize_query_id
 from benchbox.mcp.errors import ErrorCode, make_error, make_not_found_error
 from benchbox.mcp.security import PathProvider, resolve_path_provider
@@ -117,6 +118,8 @@ def register_analytics_tools(
         result_file: str,
         query_id: str,
         format: str = "tree",
+        stream: str | None = None,
+        test_type: str | None = None,
     ) -> dict[str, Any]:
         valid_formats = ["tree", "json", "summary"]
         format_lower = format.lower()
@@ -137,7 +140,7 @@ def register_analytics_tools(
             )
 
         try:
-            return _get_query_plan_impl(file_path, result_file, query_id, format_lower)
+            return _get_query_plan_impl(file_path, result_file, query_id, format_lower, stream, test_type)
         except json.JSONDecodeError as e:
             return make_error(
                 ErrorCode.RESOURCE_INVALID_FORMAT,
@@ -233,12 +236,17 @@ def register_analytics_tools(
             )
 
 
+def _prefer_measurement(rows: list[dict[str, Any]]) -> dict | None:
+    for row in rows:
+        if row.get("run_type") == "measurement":
+            return row
+    return rows[0] if rows else None
+
+
 def _find_query_execution(data: dict[str, Any], normalized_id: str) -> dict | None:
-    for query_result in data.get("queries", []):
-        qid = query_result.get("id", "")
-        if normalize_query_id(qid) == normalized_id:
-            return query_result
-    return None
+    return _prefer_measurement(
+        [q for q in data.get("queries", []) if normalize_query_id(q.get("id", "")) == normalized_id]
+    )
 
 
 def _resolve_plans_path(file_path: Path) -> Path | None:
@@ -265,7 +273,62 @@ def _format_plan_response(query_plan: dict, format_lower: str, normalized_id: st
     return response
 
 
-def _get_query_plan_impl(file_path: Path, result_file: str, query_id: str, format_lower: str) -> dict[str, Any]:
+def _split_variant_key(key: str) -> tuple[str, str | None]:
+    stream_id, sep, test_type = key.partition(":")
+    return stream_id, (test_type if sep else None)
+
+
+def _variant_test_types(data: dict[str, Any], normalized_id: str, key_stream: str) -> set[str]:
+    return {
+        str(q.get("test_type", "")).lower()
+        for q in data.get("queries", [])
+        if normalize_query_id(q.get("id", "")) == normalized_id and str(q.get("stream", 0)) == key_stream
+    }
+
+
+def _find_variant_execution(
+    data: dict[str, Any], normalized_id: str, key_stream: str, key_test_type: str | None
+) -> dict | None:
+    rows = [
+        q
+        for q in data.get("queries", [])
+        if normalize_query_id(q.get("id", "")) == normalized_id
+        and str(q.get("stream", 0)) == key_stream
+        and (not key_test_type or str(q.get("test_type", "")).lower() == key_test_type.lower())
+    ]
+    return _prefer_measurement(rows)
+
+
+def _select_plan_variant(
+    bucket: dict[str, Any],
+    stream: str | None,
+    test_type: str | None,
+    data: dict[str, Any],
+    normalized_id: str,
+) -> tuple[dict[str, Any] | None, list[str]]:
+    matches = []
+    for key in bucket:
+        key_stream, key_test_type = _split_variant_key(key)
+        if stream is not None and key_stream != stream:
+            continue
+        if test_type is not None:
+            known = {key_test_type.lower()} if key_test_type else _variant_test_types(data, normalized_id, key_stream)
+            if test_type.lower() not in known:
+                continue
+        matches.append(key)
+    if len(matches) == 1:
+        return bucket[matches[0]], matches
+    return None, matches
+
+
+def _get_query_plan_impl(
+    file_path: Path,
+    result_file: str,
+    query_id: str,
+    format_lower: str,
+    stream: str | int | None = None,
+    test_type: str | None = None,
+) -> dict[str, Any]:
     with open(file_path, encoding="utf-8") as f:
         data = json.load(f)
 
@@ -296,7 +359,30 @@ def _get_query_plan_impl(file_path: Path, result_file: str, query_id: str, forma
     with open(plans_path, encoding="utf-8") as plans_handle:
         plans_data = json.load(plans_handle)
 
-    query_plan_entry = plans_data.get("queries", {}).get(normalized_id)
+    stream_filter = None if stream is None else str(stream)
+    runtime_ms = query_exec.get("ms")
+    query_plan_entry = _index_plan_entries(plans_data).get(normalized_id)
+    if query_plan_entry is not None and "plan" not in query_plan_entry:
+        bucket = query_plan_entry
+        query_plan_entry, matches = _select_plan_variant(bucket, stream_filter, test_type, data, normalized_id)
+        if query_plan_entry is not None:
+            variant_exec = _find_variant_execution(data, normalized_id, *_split_variant_key(matches[0]))
+            if variant_exec is not None:
+                runtime_ms = variant_exec.get("ms")
+        if query_plan_entry is None and matches:
+            return make_error(
+                ErrorCode.VALIDATION_ERROR,
+                f"Query {normalized_id} has {len(matches)} plan variants; specify stream and/or test_type",
+                details={"query_id": normalized_id, "available_variants": sorted(matches)},
+                suggestion="Pass stream and/or test_type matching one of `details.available_variants` (format 'stream' or 'stream:test_type')",
+            )
+        if query_plan_entry is None and (stream_filter is not None or test_type is not None):
+            return make_not_found_error(
+                "query plan variant",
+                f"{normalized_id} (stream={stream_filter}, test_type={test_type})",
+                available=sorted(bucket),
+                suggestion="Use a stream/test_type matching one of `details.available`",
+            )
     if not query_plan_entry or "plan" not in query_plan_entry:
         return {
             "status": "no_plan",
@@ -305,7 +391,7 @@ def _get_query_plan_impl(file_path: Path, result_file: str, query_id: str, forma
             "query_info": query_info,
         }
 
-    return _format_plan_response(query_plan_entry["plan"], format_lower, normalized_id, query_exec.get("ms"))
+    return _format_plan_response(query_plan_entry["plan"], format_lower, normalized_id, runtime_ms)
 
 
 def _compare_results_impl(
