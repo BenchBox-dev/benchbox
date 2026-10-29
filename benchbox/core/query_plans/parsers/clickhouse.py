@@ -45,6 +45,8 @@ class ClickHouseQueryPlanParser(QueryPlanParser):
 
     _NODE_PATTERN = re.compile(r"^(?P<name>[A-Za-z][\w]*)\s*(?:\((?P<details>.*)\))?\s*$")
 
+    _FILTER_STEP_LABEL = re.compile(r"\b(?:PREWHERE|WHERE|HAVING)\b")
+
     def __init__(self):
         super().__init__("clickhouse")
 
@@ -116,6 +118,8 @@ class ClickHouseQueryPlanParser(QueryPlanParser):
         name = node["name"]
         details = node["details"]
         logical_type = self._map_operator_type(name)
+        if logical_type == LogicalOperatorType.PROJECT and self._FILTER_STEP_LABEL.search(details):
+            logical_type = LogicalOperatorType.FILTER
 
         kwargs: dict[str, Any] = {}
         if logical_type == LogicalOperatorType.SCAN:

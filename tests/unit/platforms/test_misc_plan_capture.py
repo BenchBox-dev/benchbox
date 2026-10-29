@@ -51,7 +51,7 @@ def _collect(op: LogicalOperator) -> list[LogicalOperator]:
             LogicalOperatorType.SORT,
             {"trades"},
             (LogicalOperatorType.AGGREGATE, LogicalOperatorType.FILTER, LogicalOperatorType.SCAN),
-            3,
+            1,
         ),
         (
             DorisQueryPlanParser(),

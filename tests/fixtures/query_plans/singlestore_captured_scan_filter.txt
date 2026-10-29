@@ -1,0 +1,4 @@
+Gather partitions:all alias:remote_0 parallelism_level:segment
+Project [orders.o_id, orders.o_total]
+ColumnStoreFilter [orders.o_total > (100!:>double NULL)]
+ColumnStoreScan lpv.orders, SORT KEY __UNORDERED () table_type:sharded_columnstore

@@ -1,0 +1,11 @@
+UnionAll
+|---Project [remote_1.o_id]
+|   Gather partitions:all alias:remote_1 parallelism_level:segment
+|   Project [customers.c_id AS o_id]
+|   ColumnStoreFilter [customers.c_region = 'EU']
+|   ColumnStoreScan lpv.customers, SORT KEY __UNORDERED () table_type:sharded_columnstore
++---Project [remote_0.o_id]
+    Gather partitions:all alias:remote_0 parallelism_level:segment
+    Project [orders.o_id]
+    ColumnStoreFilter [orders.o_total > (100!:>double NULL)]
+    ColumnStoreScan lpv.orders, SORT KEY __UNORDERED () table_type:sharded_columnstore

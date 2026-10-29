@@ -1,0 +1,7 @@
+Union
+  Expression ((Project names + Projection))
+    Expression ((WHERE + Change column names to column identifiers))
+      ReadFromMergeTree (default.orders)
+  Expression ((Conversion before UNION + (Project names + Projection)))
+    Expression ((WHERE + Change column names to column identifiers))
+      ReadFromMergeTree (default.customers)

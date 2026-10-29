@@ -1,0 +1,5 @@
+{
+  "provenance": "captured",
+  "models": "Spark 4.2.0 local[1] EXPLAIN EXTENDED via spark.sql (parquet tables), captured",
+  "validated_against_live": true
+}

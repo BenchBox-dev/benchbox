@@ -1,0 +1,21 @@
+== Parsed Logical Plan ==
+'Aggregate ['o_cust], ['o_cust, 'SUM('o_total) AS total#48]
++- 'UnresolvedRelation [orders], [], false
+
+== Analyzed Logical Plan ==
+o_cust: bigint, total: double
+Aggregate [o_cust#29L], [o_cust#29L, sum(o_total#30) AS total#48]
++- SubqueryAlias spark_catalog.default.orders
+   +- Relation spark_catalog.default.orders[o_id#28L,o_cust#29L,o_total#30] parquet
+
+== Optimized Logical Plan ==
+Aggregate [o_cust#29L], [o_cust#29L, sum(o_total#30) AS total#48]
++- Project [o_cust#29L, o_total#30]
+   +- Relation spark_catalog.default.orders[o_id#28L,o_cust#29L,o_total#30] parquet
+
+== Physical Plan ==
+AdaptiveSparkPlan isFinalPlan=false
++- HashAggregate(keys=[o_cust#29L], functions=[sum(o_total#30)], output=[o_cust#29L, total#48])
+   +- Exchange hashpartitioning(o_cust#29L, 200), ENSURE_REQUIREMENTS, [plan_id=152]
+      +- HashAggregate(keys=[o_cust#29L], functions=[partial_sum(o_total#30)], output=[o_cust#29L, sum#55])
+         +- FileScan parquet spark_catalog.default.orders[o_cust#29L,o_total#30] Batched: true, DataFilters: [], Format: Parquet, Location: InMemoryFileIndex(1 paths)[file:/tmp/spark-warehouse..., PartitionFilters: [], PushedFilters: [], ReadSchema: struct<o_cust:bigint,o_total:double>

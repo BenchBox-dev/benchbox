@@ -45,7 +45,9 @@ class SingleStoreQueryPlanParser(QueryPlanParser):
         ("shuffle", LogicalOperatorType.OTHER),
     )
 
-    _PREFIX_RE = re.compile(r"^((?:\|---|\|   |\|--|    )*)(.*)$")
+    _PREFIX_RE = re.compile(r"^((?:\|---|\+---|\|   |\|--|    )*)(.*)$")
+    _BLOCK_START_SUFFIXES = ("|---", "+---", "|--")
+    _NOTICE_RE = re.compile(r"^(?:WARNING\b|See\s+https?://)")
 
     def __init__(self):
         super().__init__("singlestore")
@@ -75,12 +77,13 @@ class SingleStoreQueryPlanParser(QueryPlanParser):
         for raw_line in explain_output.splitlines():
             if not raw_line.strip():
                 continue
-            line = raw_line.strip()
-            if line.startswith("|") and line.endswith("|") and ("---" not in line):
-                line = line[1:-1]
-            elif line.startswith("+") and set(line) <= {"+", "-"}:
+            line = raw_line.rstrip()
+            stripped = line.strip()
+            if stripped.startswith("|") and stripped.endswith("|") and ("---" not in stripped):
+                line = stripped[1:-1]
+            elif stripped.startswith("+") and set(stripped) <= {"+", "-"}:
                 continue
-            if line.strip() in ("EXPLAIN", "QUERY PLAN"):
+            if line.strip() in ("EXPLAIN", "QUERY PLAN") or self._NOTICE_RE.match(line.strip()):
                 continue
             line = re.sub(r"\| (?!-)", "|   ", line)
             prefix, rest = self._PREFIX_RE.match(line).groups()
@@ -88,7 +91,7 @@ class SingleStoreQueryPlanParser(QueryPlanParser):
             if not rest or not rest[0].isalpha():
                 continue
             depth = len(prefix) // 4
-            parsed.append({"depth": depth, "content": rest})
+            parsed.append({"depth": depth, "content": rest, "block_start": prefix.endswith(self._BLOCK_START_SUFFIXES)})
         return parsed
 
     def _build_tree(self, parsed_nodes: list[dict[str, Any]]) -> LogicalOperator | None:
@@ -99,7 +102,10 @@ class SingleStoreQueryPlanParser(QueryPlanParser):
             depth = node["depth"]
             logical_op = self._convert_to_logical_operator(node["content"])
 
-            parent = last_at_depth.get(depth - 1) if depth > 0 else last_at_depth.get(0)
+            if depth == 0 or not node["block_start"]:
+                parent = last_at_depth.get(depth) or last_at_depth.get(depth - 1)
+            else:
+                parent = last_at_depth.get(depth - 1)
             if parent is None:
                 if root is None:
                     root = logical_op

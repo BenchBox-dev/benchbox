@@ -1,0 +1,7 @@
+Async Group By workers: 5
+  keys: [o_cust]
+  values: [sum(o_total)]
+  filter: null
+    PageFrame
+        Row forward scan
+        Frame forward scan on: lpv_orders

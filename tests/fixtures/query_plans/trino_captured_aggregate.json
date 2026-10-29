@@ -1,0 +1,134 @@
+{
+  "0" : {
+    "id" : "9",
+    "name" : "Output",
+    "descriptor" : {
+      "columnNames" : "[o_cust, total]"
+    },
+    "outputs" : [ {
+      "type" : "bigint",
+      "name" : "o_cust"
+    }, {
+      "type" : "double",
+      "name" : "sum"
+    } ],
+    "details" : [ "total := sum" ],
+    "estimates" : [ {
+      "outputRowCount" : "NaN",
+      "outputSizeInBytes" : "NaN",
+      "cpuCost" : 0.0,
+      "memoryCost" : 0.0,
+      "networkCost" : 0.0
+    } ],
+    "children" : [ {
+      "id" : "4",
+      "name" : "Aggregate",
+      "descriptor" : {
+        "type" : "FINAL",
+        "keys" : "[o_cust]"
+      },
+      "outputs" : [ {
+        "type" : "bigint",
+        "name" : "o_cust"
+      }, {
+        "type" : "double",
+        "name" : "sum"
+      } ],
+      "details" : [ "sum := sum(sum_0)" ],
+      "estimates" : [ {
+        "outputRowCount" : "NaN",
+        "outputSizeInBytes" : "NaN",
+        "cpuCost" : 54.0,
+        "memoryCost" : "NaN",
+        "networkCost" : 0.0
+      } ],
+      "children" : [ {
+        "id" : "140",
+        "name" : "LocalExchange",
+        "descriptor" : {
+          "partitioning" : "HASH",
+          "isReplicateNullsAndAny" : "",
+          "arguments" : "[o_cust::bigint]"
+        },
+        "outputs" : [ {
+          "type" : "bigint",
+          "name" : "o_cust"
+        }, {
+          "type" : "double",
+          "name" : "sum_0"
+        } ],
+        "details" : [ ],
+        "estimates" : [ {
+          "outputRowCount" : 3.0,
+          "outputSizeInBytes" : 54.0,
+          "cpuCost" : 54.0,
+          "memoryCost" : 0.0,
+          "networkCost" : 0.0
+        } ],
+        "children" : [ {
+          "id" : "146",
+          "name" : "RemoteSource",
+          "descriptor" : {
+            "sourceFragmentIds" : "[1]"
+          },
+          "outputs" : [ {
+            "type" : "bigint",
+            "name" : "o_cust"
+          }, {
+            "type" : "double",
+            "name" : "sum_0"
+          } ],
+          "details" : [ ],
+          "estimates" : [ ],
+          "children" : [ ]
+        } ]
+      } ]
+    } ]
+  },
+  "1" : {
+    "id" : "144",
+    "name" : "Aggregate",
+    "descriptor" : {
+      "type" : "PARTIAL",
+      "keys" : "[o_cust]"
+    },
+    "outputs" : [ {
+      "type" : "bigint",
+      "name" : "o_cust"
+    }, {
+      "type" : "double",
+      "name" : "sum_0"
+    } ],
+    "details" : [ "sum_0 := sum(o_total)" ],
+    "estimates" : [ {
+      "outputRowCount" : 3.0,
+      "outputSizeInBytes" : 54.0,
+      "cpuCost" : "NaN",
+      "memoryCost" : "NaN",
+      "networkCost" : "NaN"
+    } ],
+    "children" : [ {
+      "id" : "0",
+      "name" : "TableScan",
+      "descriptor" : {
+        "table" : "memory:default.orders"
+      },
+      "outputs" : [ {
+        "type" : "bigint",
+        "name" : "o_cust"
+      }, {
+        "type" : "double",
+        "name" : "o_total"
+      } ],
+      "details" : [ "o_total := o_total:double", "o_cust := o_cust:bigint" ],
+      "estimates" : [ {
+        "outputRowCount" : 3.0,
+        "outputSizeInBytes" : 54.0,
+        "cpuCost" : 54.0,
+        "memoryCost" : 0.0,
+        "networkCost" : 0.0
+      } ],
+      "children" : [ ]
+    } ]
+  }
+}

@@ -49,6 +49,7 @@ class DatabendQueryPlanParser(QueryPlanParser):
     )
 
     _MARKER_RE = re.compile(r"├──|└──")
+    _PUSHED_FILTER_RE = re.compile(r"filters:\s*\[(.*)\],\s*limit:")
     _OPERATOR_RE = re.compile(r"^[A-Za-z][\w]*(?:\([^)]*\))?$")
 
     def __init__(self):
@@ -139,8 +140,15 @@ class DatabendQueryPlanParser(QueryPlanParser):
             table = details.get("table")
             if table:
                 kwargs["table_name"] = table
+            pushed_filter = self._PUSHED_FILTER_RE.search(details.get("push downs", ""))
+            if pushed_filter and pushed_filter.group(1).strip():
+                kwargs["filter_expressions"] = [pushed_filter.group(1).strip()]
         elif logical_type == LogicalOperatorType.JOIN:
             kwargs["join_type"] = self._classify_join_type(details)
+            build_keys = details.get("build keys", "").strip("[] ")
+            probe_keys = details.get("probe keys", "").strip("[] ")
+            if build_keys and probe_keys:
+                kwargs["join_conditions"] = [f"{build_keys} = {probe_keys}"]
 
         physical_op = self._create_physical_operator(
             name,

@@ -1,0 +1,101 @@
+{
+  "0" : {
+    "id" : "13",
+    "name" : "Output",
+    "descriptor" : {
+      "columnNames" : "[o_id]"
+    },
+    "outputs" : [ {
+      "type" : "bigint",
+      "name" : "o_id"
+    } ],
+    "details" : [ ],
+    "estimates" : [ {
+      "outputRowCount" : "NaN",
+      "outputSizeInBytes" : "NaN",
+      "cpuCost" : 0.0,
+      "memoryCost" : 0.0,
+      "networkCost" : 0.0
+    } ],
+    "children" : [ {
+      "id" : "285",
+      "name" : "RemoteSource",
+      "descriptor" : {
+        "sourceFragmentIds" : "[1, 2]"
+      },
+      "outputs" : [ {
+        "type" : "bigint",
+        "name" : "o_id"
+      } ],
+      "details" : [ ],
+      "estimates" : [ ],
+      "children" : [ ]
+    } ]
+  },
+  "1" : {
+    "id" : "4",
+    "name" : "ScanFilterProject",
+    "descriptor" : {
+      "table" : "memory:default.orders",
+      "filterPredicate" : "(double '100.0' < o_total)"
+    },
+    "outputs" : [ {
+      "type" : "bigint",
+      "name" : "o_id_0"
+    } ],
+    "details" : [ "o_total := o_total:double", "o_id_0 := o_id:bigint" ],
+    "estimates" : [ {
+      "outputRowCount" : 3.0,
+      "outputSizeInBytes" : 27.0,
+      "cpuCost" : 54.0,
+      "memoryCost" : 0.0,
+      "networkCost" : 0.0
+    }, {
+      "outputRowCount" : "NaN",
+      "outputSizeInBytes" : "NaN",
+      "cpuCost" : 54.0,
+      "memoryCost" : 0.0,
+      "networkCost" : 0.0
+    }, {
+      "outputRowCount" : "NaN",
+      "outputSizeInBytes" : "NaN",
+      "cpuCost" : "NaN",
+      "memoryCost" : 0.0,
+      "networkCost" : 0.0
+    } ],
+    "children" : [ ]
+  },
+  "2" : {
+    "id" : "9",
+    "name" : "ScanFilterProject",
+    "descriptor" : {
+      "table" : "memory:default.customers",
+      "filterPredicate" : "(c_region = varchar 'EU')"
+    },
+    "outputs" : [ {
+      "type" : "bigint",
+      "name" : "c_id"
+    } ],
+    "details" : [ "c_region := c_region:varchar", "c_id := c_id:bigint" ],
+    "estimates" : [ {
+      "outputRowCount" : 2.0,
+      "outputSizeInBytes" : 18.0,
+      "cpuCost" : 128.0,
+      "memoryCost" : 0.0,
+      "networkCost" : 0.0
+    }, {
+      "outputRowCount" : "NaN",
+      "outputSizeInBytes" : "NaN",
+      "cpuCost" : 128.0,
+      "memoryCost" : 0.0,
+      "networkCost" : 0.0
+    }, {
+      "outputRowCount" : "NaN",
+      "outputSizeInBytes" : "NaN",
+      "cpuCost" : "NaN",
+      "memoryCost" : 0.0,
+      "networkCost" : 0.0
+    } ],
+    "children" : [ ]
+  }
+}
