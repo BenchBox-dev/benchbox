@@ -41,6 +41,38 @@ def _stream(capture: dict[str, Any]) -> str:
     return "\n".join(json.dumps(event) for event in capture["events"])
 
 
+def _jsonl_events(text: str) -> list[Any]:
+    return [json.loads(line) for line in text.splitlines() if line.strip()]
+
+
+def _streamed_text(events: list[Any]) -> list[dict[str, str]]:
+    deltas: list[dict[str, str]] = []
+    for event in events:
+        inner = event.get("assistantMessageEvent") if isinstance(event, dict) else None
+        if isinstance(inner, dict) and isinstance(inner.get("delta"), str):
+            deltas.append({"text": inner["delta"]})
+    return deltas
+
+
+def _structural_check(name: str, text: str, tmp_path: Path, extra: tuple[str, ...] = ()) -> None:
+    copy = tmp_path / Path(name).name
+    if name.endswith(".jsonl"):
+        events = _jsonl_events(text)
+        streamed = _streamed_text(events)
+        joined = "".join(item["text"] for item in streamed)
+        assert not credentials.contains(joined, extra)
+        found = {kind: pattern.findall(joined)[:2] for kind, pattern in LEAKS.items() if pattern.search(joined)}
+        assert not found, found
+        copy = copy.with_suffix(".json")
+        copy.write_text(json.dumps([events, streamed]), encoding="utf-8")
+        expected = json.loads(copy.read_text(encoding="utf-8"))
+    else:
+        shutil.copyfile(FIXTURES / name, copy)
+        expected = json.loads(text)
+    redaction_check.sanitize(copy, extra)
+    assert json.loads(copy.read_text(encoding="utf-8")) == expected
+
+
 def _fixture_files() -> list[str]:
     return sorted(
         path.relative_to(FIXTURES).as_posix()
@@ -95,11 +127,19 @@ def test_no_fixture_carries_a_secret_or_a_private_host_or_path(name: str, tmp_pa
     assert not credentials.contains(text)
     found = {kind: pattern.findall(text)[:2] for kind, pattern in LEAKS.items() if pattern.search(text)}
     assert not found, found
-    if name.endswith(".json"):
-        copy = tmp_path / Path(name).name
-        shutil.copyfile(FIXTURES / name, copy)
-        redaction_check.sanitize(copy, ())
-        assert json.loads(copy.read_text(encoding="utf-8")) == json.loads(text)
+    _structural_check(name, text, tmp_path)
+
+
+def test_a_token_split_across_streamed_jsonl_deltas_fails_the_structural_check(tmp_path: Path) -> None:
+    split = ("sk-abcdef", "123456789")
+    text = "\n".join(
+        json.dumps({"type": "message_update", "assistantMessageEvent": {"type": "text_delta", "delta": part}})
+        for part in split
+    )
+
+    assert not credentials.contains(text) and not any(pattern.search(text) for pattern in LEAKS.values())
+    with pytest.raises(AssertionError):
+        _structural_check("stream.jsonl", text, tmp_path)
 
 
 def test_the_curated_ci_capture_is_the_recorded_run_and_carries_a_shippable_answer() -> None:
