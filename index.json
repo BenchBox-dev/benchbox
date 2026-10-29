@@ -24416,6 +24416,15 @@
       "status": "done",
       "title": "Widen the auto-merge soundness-review surface to cover oracle-adjacent assets"
     },
+    "spark-adapter-create-connection-jdk17-dagscheduler": {
+      "claim": null,
+      "needs": [
+        "query-plan-live-semantic-validation"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "SparkAdapter.create_connection fails on Spark 4.2.0 with JDK 17 after dropping the database"
+    },
     "spark-aqe-blog-reverify-claims": {
       "claim": null,
       "needs": [],

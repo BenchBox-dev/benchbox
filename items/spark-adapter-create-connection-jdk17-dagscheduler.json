@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Reproduce with SparkAdapter.create_connection() on local Spark 4.2.0 / JDK 17 and record the stack trace.",
+    "After the fix, create_connection succeeds repeatedly in one process, a TPC-H SF0.01 power run on local Spark completes, and the live Spark plan hook uses the adapter's connection instead of a private session.",
+    "A regression test covers the drop-then-reconnect sequence."
+  ],
+  "context": "Found during live plan parser validation (PR #3703). Not caused by that PR. Local only; no cloud.",
+  "description": "While capturing live Spark plans locally (Spark 4.2.0 local[1], JDK 17), SparkAdapter.create_connection() failed with a null DAGScheduler after its drop-database step, so the live plan hook had to build its own SparkSession. Reproduce through the adapter's own connection path, find whether the session is stopped/reused after the drop, and fix so the adapter can run local Spark benchmarks and the live plan hook can use the adapter connection again.",
+  "links": [
+    "benchbox/platforms/spark",
+    "tests/integration/test_plan_capture_synthetic_parsers_live.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bb7fd2d6b114a6501df93f97",
+      "at": "2026-10-29T01:27:37Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c7759fb9e6ba4680862457535281f22b",
+      "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
+    }
+  ]
+}
