@@ -2860,6 +2860,13 @@
       "status": "done",
       "title": "chDB SSB integration tests fail with 'Table default.date already exists' when they share a worker"
     },
+    "check-doc-anchors-windows-path-fix-unverified-20261029": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Confirm the Windows path handling fix in the Markdown anchor and missing-file checker"
+    },
     "check-scope-reports-ok-when-no-scope-rules-exist": {
       "claim": null,
       "needs": [],

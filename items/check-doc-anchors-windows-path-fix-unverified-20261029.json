@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Unit tests exercise the checker's target resolution with Windows path flavours (PureWindowsPath) and match POSIX results",
+    "The Windows CI job for the checker is green on develop"
+  ],
+  "description": "Found 2026-10-28 while landing core PR 3662. The Windows CI job for scripts/check_doc_anchors.py failed, its log was unreadable, and the fix (resolve link targets with POSIX paths) was inferred, not reproduced. The PR merged with that job passing, but the cause was never confirmed. Reproduce on a Windows runner or with PureWindowsPath inputs in a unit test: a relative link with forward slashes, a link with backslashes, drive-letter-like text, and a directory link, in the checker's resolution function, and assert the same results as on POSIX.",
+  "links": [
+    "BenchBox-dev/BenchBox: scripts/check_doc_anchors.py",
+    "BenchBox-dev/BenchBox: tests/unit/scripts/test_check_doc_anchors.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-29T12:40:12Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b9a21c63c61e4ad1b3fd771c83fdc29d",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    }
+  ]
+}
