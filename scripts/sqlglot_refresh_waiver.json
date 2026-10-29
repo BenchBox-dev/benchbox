@@ -1,4 +1,11 @@
 {
   "schema": 1,
-  "waivers": []
+  "waivers": [
+    {
+      "tag": "v30.26.0",
+      "reason": "Upstream SQLGlot v30.26.0 is not yet adopted. Item sqlglot-fork-refresh-v30-26-0 refreshes the fork onto v30.26.0 and adopts the new wheel before the final 0.5.0 release preparation, and that adoption removes this waiver.",
+      "approved": "2026-10-29",
+      "expires": "2026-11-12"
+    }
+  ]
 }
