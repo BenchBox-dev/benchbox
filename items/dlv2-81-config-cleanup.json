@@ -4,7 +4,7 @@
     "pytest.ini strict markers, .importlinter, codecov.yml and .pre-commit-config.yaml are kept",
     "Public testing docs that name removed config are corrected through the site owner"
   ],
-  "context": "2026-10-27 audit: all three principal targets are live.",
+  "context": "2026-10-27 audit: all three principal targets are live.\n\n2026-10-29 done: PR #3739 merged. Removed tox.ini (nothing runs tox; ci-units.yml, canary_impact.py and quality/comment-cleanup-scope.json entries and docs/internal/dependency-inventory.md rows updated), four unused pytest markers (advanced_sql, query_execution, c_compatible, tpch_c) from pytest.ini and pytest-ci.ini, and _project/scripts/pylint_duplicate_code_warn.py (only the removed hook called it). Kept with reasons per the acceptance: pytest-ci.ini (used by Makefile test-ci and the coverage targets, pinned by test_standardized_test_commands.py; pytest.ini has -p no:cov and a default -m filter that would change coverage behaviour), .github/path-filters.yml (ci.yml calls path_filter_decision.py at two points; eleven tests, heavy_tier_needed.py, pr_refresh_certification.py and test_ci_units.py also read it; its rules were not moved into ci-units.yml), pytest.ini strict markers, .importlinter, codecov.yml, .pre-commit-config.yaml. uat_loc_table.py and fast_lane_ceiling_check.py stay: ci.yml, lint.yml and the Makefile still call them. Left: the tox dev dependency remains in pyproject.toml and uv.lock (marked REVIEW in the dependency inventory); tests/fixtures/fast_tier_baseline/tests-03.json carries a stale tox canary test id the refresh workflow regenerates; core files naming pytest-ci.ini (CONTRIBUTING.md:210, tests/README.md:35) stay valid. Narrow proof: 264 tests across ci-units, path-filter, canary impact, marker strategy, pytest profiles, standardized test commands, ledger coverage and verify-fast-duration; makefile-inventory-check 260 targets unchanged.",
   "description": "AUDIT 2026-10-27 (owner-adjudicated, advisor-reviewed): the acceptance and context sections supersede this description wherever they differ. Historical text below is kept for reference.\n\nDelete pytest-ci.ini and tox.ini, and trim the scripts left unused by dlv2-44. Delete .github/path-filters.yml only after its job is merged into .github/ci-units.yml: ci.yml:156 and :261 still read it through scripts/path_filter_decision.py:17, so it is not yet replaced. Either drop it from the delete list or add an explicit step that moves its rules into ci-units.yml and changes path_filter_decision.py. Trim pytest.ini markers to tier markers plus engine/benchmark selection markers still used; keep .importlinter, codecov.yml, .pre-commit-config.yaml (trimmed).\n\nEach file has live references that this item must change in the same PR:\n- pytest-ci.ini: used by the Makefile targets at Makefile:333-370 (they pass `-c pytest-ci.ini`). Point them at pytest.ini or another kept config, or keep the file.\n- tox.ini: referenced by .github/ci-units.yml:18, scripts/canary_impact.py (lines 92 and 133, which also lists pytest-ci.ini), scripts/publication/verify_lane_isolation.py:109 and docs/development/dependency-inventory.md (lines 52 and 184).\n- path-filters.yml: referenced by ci.yml:156 and :261 via scripts/path_filter_decision.py:17.",
   "sessions": [
     {
@@ -38,6 +38,14 @@
       "generation": "34552cc5b7ed4a5c92f67feb8287880f",
       "op": "take",
       "op_id": "5a35d4fd475f4c31b05b40e0b6e2166d",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-29T18:04:46Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5e385b7fde0844dabee6002e656b8842",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
