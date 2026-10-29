@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import copy
+import importlib.util
 import json
 from pathlib import Path
+from types import ModuleType
 
 import pytest
 
@@ -14,9 +16,33 @@ from benchbox.validation.bundle import (
     _validate_manifest_provenance,
     resolve_translator_version,
 )
-from tests.unit.scripts.test_corpus_cohort_depth import MINIMAL_BUNDLE, _load_validator
 
-pytestmark = [pytest.mark.unit, pytest.mark.medium]
+try:
+    from tests.unit.scripts.explorer_pipeline.conftest import MINIMAL_BUNDLE
+
+    _EXPLORER_FIXTURES_PRESENT = True
+except ImportError:
+    MINIMAL_BUNDLE = {}
+    _EXPLORER_FIXTURES_PRESENT = False
+
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.medium,
+    pytest.mark.skipif(
+        not _EXPLORER_FIXTURES_PRESENT, reason="Explorer pipeline test fixtures are not in this checkout (release tree)"
+    ),
+]
+
+VALIDATOR = Path(__file__).resolve().parents[3] / "results-data" / "validate_corpus.py"
+
+
+def _load_validator() -> ModuleType:
+    spec = importlib.util.spec_from_file_location("validate_corpus", VALIDATOR)
+    assert spec and spec.loader, f"cannot load {VALIDATOR}"
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
 
 IDENTITY = {
     "version": "30.24.0.17",
