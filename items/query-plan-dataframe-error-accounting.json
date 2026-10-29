@@ -5,7 +5,7 @@
     "Adapter reuse resets capture error/warning state per run, and configured strict behavior is respected without double-executing the benchmark query.",
     "Regression tests cover helper-caught exceptions through actual profiling, mixin processing, statistics and serialization rather than only exceptions thrown outside the helper."
   ],
-  "context": "Source-backed defect hypothesis from 2026-10-28; reproduce before changing. Prior completed qpc-15 addressed error persistence/reset generally; this item targets caught helper errors retained as non-None plan objects and same-ID masking.\n\nGuardrails: the measured query must still succeed in non-strict mode; never re-execute a query to recover a plan; reuse the existing plan_capture_error row field / adapter plan_capture_errors / compute_plan_capture_stats(existing_errors=...) channel rather than adding a new one. Do not change SQL capture accounting semantics except where the shared stats function is corrected for both paths, and test SQL counts are unchanged.\n\nVerification rubric: (1) focused regression test fails before the change and passes after; (2) uv run -- python -m pytest -n 0 on the touched plan test modules passes; (3) make comment-policy-check and ruff/typecheck on touched files pass; (4) a runtime smoke on the real surface described in acceptance is recorded in the PR body.",
+  "context": "Implementation in PR #3702 (branch fix/dataframe-plan-error-accounting, head f704495dc). Capture helpers raise; failures go through plan_capture_error/plan_capture_errors; stats identity is (query_id, stream_id, iteration, test_type); errors-only .plans.json now written. pr-arm refused because develop trunk was red (first failing run at #3679, run 40795215113). Resume: re-arm once develop is green, verify merged, then take and finish.\n\nGuardrails: measured query must still succeed in non-strict mode; never re-execute to recover a plan; SQL accounting unchanged.",
   "description": "capture_polars_plan, capture_datafusion_plan and capture_pyspark_plan catch exceptions and return a truthy QueryPlan(plan_type=\"error\"). _structure_dataframe_plan explicitly retains error wrappers. compute_plan_capture_stats treats any non-None query_plan as captured, so these acquisition failures can appear as successful captures and their cause can bypass the existing error channel. ID-only set accounting can also mask a failed variant when another execution of the same query ID has a plan. Verify these paths and route genuine failures through the existing persisted error contract.",
   "links": [
     "benchbox/core/dataframe/profiling.py:378-442",
@@ -37,6 +37,14 @@
       "generation": "9814d51892f542aaae2117cfe431c83e",
       "op": "take",
       "op_id": "d739c79c6ec9424a8e96eee540b3f5f1",
+      "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bb7fd2d6b114a6501df93f97",
+      "at": "2026-10-29T01:02:01Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e0a6134985e24c89b5bf474992d95648",
       "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
     }
   ]
