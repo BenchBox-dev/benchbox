@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Fork refreshed onto upstream v30.26.0, wheel released and adopted in BenchBox with translation-corpus evidence",
+    "The v30.26.0 entry is removed from scripts/sqlglot_refresh_waiver.json in the adoption PR",
+    "Landed before the final 0.5.0 release prep (dlv2-52)"
+  ],
+  "context": "Owner decision 2026-10-29 (choice dialog, release session 01a17d41): waive v30.26.0 for rc2; the fork refresh is tracked here and must land before the final 0.5.0 prep.",
+  "description": "Upstream SQLGlot v30.26.0 was released 2026-10-29 19:49 UTC. The bundled runtime (30.25.0.2) is based on v30.25.0, so scripts/check_sqlglot_upstream_freshness.py fails release-check, which release-v2 runs at admission. The owner approved a waiver for v30.26.0 so the 0.5.0rc2 rehearsal can proceed; this item refreshes the fork (benchbox-sqlglot downstream/MAINTAINING.md), releases and adopts the new wheel with the usual translation-corpus evidence, and removes the waiver in the adoption PR. Follow the v30.25.0 precedent (#3586 waiver, #3587 adoption).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cbd63a5667398431c51c92e1",
+      "at": "2026-10-29T21:27:26Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "82196e7f7aa546649ee1140d966cab9b",
+      "session_id": "dfb93797c41c440a9261d3ab38ceb76e"
+    }
+  ]
+}
