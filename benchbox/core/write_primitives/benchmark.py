@@ -9,6 +9,7 @@ import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, Optional, Union
 
 if TYPE_CHECKING:
@@ -47,6 +48,7 @@ from benchbox.sql_compat.rules.execution_filter.postgres_write_primitives import
 )
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.cloud_storage import normalize_output_dir
+from benchbox.utils.dialect_utils import split_sql_statements
 from benchbox.utils.path_utils import get_benchmark_runs_datagen_path
 
 _POSTGRES_OPERATION_SKIP_DIALECTS = frozenset({"postgres", "postgresql"})
@@ -145,6 +147,7 @@ def _resolve_validation_sql(
 
 _SINGLE_STATEMENT_SETUP_DIALECTS = frozenset({"sqlite", "databricks"})
 _NO_TRUNCATE_DIALECTS = frozenset({"sqlite"})
+_SUMMED_ROWCOUNT_DIALECTS = frozenset({"sqlite"})
 
 
 class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBase["OperationResult"]):
@@ -853,7 +856,10 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
             effective_sql = self._rewrite_transactional_sql_for_platform(effective_sql, platform_key)
             write_sql = self._replace_placeholders(effective_sql)
             write_start = time.perf_counter()
-            write_result = connection.execute(write_sql)
+            if operation.category == "merge" and (platform_key or "").lower() in _SUMMED_ROWCOUNT_DIALECTS:
+                write_result = self._execute_summing_rowcounts(connection, write_sql)
+            else:
+                write_result = connection.execute(write_sql)
             write_duration_ms = (time.perf_counter() - write_start) * 1000
             if (write_error := failed_platform_error(write_result)) is not None:
                 raise RuntimeError(f"Write SQL failed on platform: {write_error}")
@@ -903,6 +909,18 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
                 error=error_msg,
                 cleanup_warning="Write operation failed during execution. Run reset() to ensure clean state.",
             )
+
+    @staticmethod
+    def _execute_summing_rowcounts(connection: DatabaseConnection, sql: str) -> SimpleNamespace:
+        total = 0
+        for statement in split_sql_statements(sql, "sqlite"):
+            cursor = connection.execute(statement)
+            if (error := failed_platform_error(cursor)) is not None:
+                return SimpleNamespace(rowcount=-1, platform_result={"status": "FAILED", "error": error})
+            if cursor.description is not None:
+                cursor.fetchall()
+            total += max(cursor.rowcount, 0)
+        return SimpleNamespace(rowcount=total)
 
     def _extract_rows_affected(self, write_result: Any, operation_id: str) -> int:
         rows_affected = getattr(write_result, "rowcount", None)

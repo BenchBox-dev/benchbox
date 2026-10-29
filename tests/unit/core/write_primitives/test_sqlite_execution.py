@@ -149,3 +149,11 @@ def test_is_setup_detects_emptied_staging_table(sqlite_wp):
     assert bench.is_setup(conn)
     conn.execute("DELETE FROM merge_ops_target")
     assert not bench.is_setup(conn)
+
+
+def test_merge_emulation_reports_rows_from_every_statement(sqlite_wp):
+    bench, conn = sqlite_wp
+    conn.execute("DELETE FROM merge_ops_target WHERE o_orderkey BETWEEN 6 AND 10")
+    result = bench.execute_operation("merge_simple_upsert_small", conn, platform_key="sqlite")
+    assert result.status == "SUCCESS"
+    assert result.rows_affected == 10
