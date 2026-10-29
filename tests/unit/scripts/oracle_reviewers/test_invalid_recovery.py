@@ -3,13 +3,13 @@ from __future__ import annotations
 import argparse
 import json
 from collections.abc import Mapping
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-from _project.scripts.oracle_reviewers import attempts, cli, recovery, selection
+from _project.scripts.oracle_reviewers import attempts, cli, recovery, report, retry, selection
 from _project.scripts.oracle_reviewers.absence import Absence
 from _project.scripts.oracle_reviewers.jev import JevError, JevSession
 from _project.scripts.oracle_reviewers.policy import Policy
@@ -44,6 +44,21 @@ def test_a_stop_answer_ends_the_run_pending_without_trying_another_reviewer() ->
     chosen, reasons = _chosen(["r1", "r2"], [_invalid(1, "r1", JEV_STOP)])
     assert chosen == PENDING
     assert reasons == (f"stopped: the process is blocked ({MESSAGE})",)
+
+
+def test_a_stopped_run_settles_with_a_cause_the_sweep_never_retries(policy: Policy) -> None:
+    step = next_step(_input([_reviewer("r1"), _reviewer("r2")]), [_invalid(1, "r1", JEV_STOP)])
+    _, cause = report._settled({}, step)
+    assert cause == retry.STOPPED
+    state = retry.State(7, HEAD, retry.PENDING, NOW, pending_cause=cause)
+    rules = policy.retry
+    assert not retry.due_for_retry(state, HEAD, NOW + timedelta(days=2), rules)
+    assert not retry.decide_rerun(
+        manual=False, new_diff=False, head_sha=HEAD, previous=state, now=NOW + timedelta(days=2), rules=rules
+    ).allowed
+    assert retry.decide_rerun(
+        manual=True, new_diff=False, head_sha=HEAD, previous=state, now=NOW + timedelta(days=2), rules=rules
+    ).allowed
 
 
 def test_an_escalate_answer_moves_to_the_next_reviewer() -> None:

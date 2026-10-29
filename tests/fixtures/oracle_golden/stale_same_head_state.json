@@ -35,7 +35,7 @@
     ],
     "reviews": [
       {
-        "body": "### oracle-verdict: pending for `<sha0>`\n\nThis result supersedes those for earlier heads; their open review threads still apply.\n\n**Reviewers not available**\n\n- medium (attempt 1): absent (invalid): the reviewer output is not JSON: Expecting value; recovery: retry (fallback, unavailable)\n- medium (attempt 2): absent (invalid): the reviewer output is not JSON: Expecting value; recovery: stop (fallback, unavailable)\n- stopped: the process is blocked (the reviewer output is not JSON: Expecting value)\n",
+        "body": "### oracle-verdict: pending for `<sha0>`\n\nThis result supersedes those for earlier heads; their open review threads still apply.\n\n**Reviewers not available**\n\n- medium (attempt 1): absent (error): exit code 1\n- medium (attempt 2): absent (error): exit code 1\n- large (attempt 3): absent (error): exit code 1\n- large (attempt 4): absent (error): exit code 1\n- huge (attempt 5): absent (error): exit code 1\n- max: skipped: no attempt slot left in this run\n",
         "commit_id": "<sha0>",
         "creator": "benchbox-oracle[bot]"
       }
@@ -44,7 +44,7 @@
       {
         "context": "oracle-verdict",
         "creator": "benchbox-oracle[bot]",
-        "description": "pending: stopped: the process is blocked (the reviewer output is not JSON: Expecting value)",
+        "description": "pending: medium: absent (error: exit code 1); large: absent (error: exit code 1); huge: skipped: no attempt slot left in this run; max: ski…",
         "state": "pending",
         "target_url": "https://github.localhost/BenchBox-dev/BenchBox/actions/runs/<run>"
       },

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import http.client
 import json
 import os
 import urllib.error
@@ -57,7 +58,7 @@ class JevSession:
                 raw = response.read()
         except urllib.error.HTTPError as exc:
             raise JevError(exc.code, _error_message(exc.read())) from exc
-        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        except (urllib.error.URLError, TimeoutError, OSError, http.client.HTTPException) as exc:
             raise JevError(None, f"the judgment service is unreachable: {exc}") from exc
         try:
             content = json.loads(raw)

@@ -467,8 +467,11 @@ reviewer and the earlier invalid messages of the run; never raw reply text, diff
 or secrets. `retry` runs the same reviewer again, at most twice per reviewer (a
 retry beyond that becomes `escalate`); `escalate` moves to the next reviewer;
 `stop` ends the run pending with "stopped: the process is blocked (<message>)"
-and posts nothing that passes. When Jev is unavailable, no key is set (a local
-review without one), the answer is not one of the three labels, or its
+and posts nothing that passes. A stopped run is recorded with the `stopped` pending
+cause: the sweep never re-dispatches it on the same head, and only a manual
+`/oracle-review` (within the usual backoff and budget) or a new head runs it again.
+When Jev is unavailable, no key is set (a local
+review without one), the connection drops mid-reply, the answer is not one of the three labels, or its
 confidence is below 0.60, the run retries the same reviewer once and then stops;
 it never escalates without a Jev answer. The answer, its probability and
 confidence, or the fallback reason, are stored on the attempt artifact

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import http.client
 import json
 import threading
 from collections.abc import Iterator
@@ -8,6 +9,7 @@ from typing import Any
 
 import pytest
 
+from _project.scripts.oracle_reviewers import jev, recovery
 from _project.scripts.oracle_reviewers.jev import JevError, JevSession
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -85,6 +87,26 @@ def test_unreachable_service_raises() -> None:
     session = JevSession(base_url="http://127.0.0.1:9", api_key="k", timeout_seconds=5)
     with session, pytest.raises(JevError, match="unreachable"):
         session.ask({}, {})
+
+
+class _DroppedResponse:
+    def __enter__(self) -> _DroppedResponse:
+        return self
+
+    def __exit__(self, *ignored: object) -> None:
+        return None
+
+    def read(self) -> bytes:
+        raise http.client.IncompleteRead(b"{", 100)
+
+
+def test_a_dropped_connection_raises_jev_error_and_classifies_as_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(jev.urllib.request, "urlopen", lambda *_args, **_kwargs: _DroppedResponse())
+    session = JevSession(base_url="http://127.0.0.1:9", api_key="k")
+    with session, pytest.raises(JevError, match="unreachable"):
+        session.ask({}, {})
+    held = recovery.classify(session, {}, 1, 2)
+    assert (held.source, held.reason) == (recovery.FALLBACK, recovery.UNAVAILABLE)
 
 
 def test_oversize_request_raises_before_sending() -> None:
