@@ -12,9 +12,12 @@ from typing import Any
 from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
 
+from benchbox.core.query_plans.insights import compute_complexity_score
+from benchbox.core.query_plans.visualization import render_plan
 from benchbox.core.results import analytics as _core_analytics
 from benchbox.core.results.loader import _index_plan_entries
 from benchbox.core.results.query_normalizer import normalize_query_id
+from benchbox.core.results.query_plan_models import QueryPlanDAG
 from benchbox.mcp.errors import ErrorCode, make_error, make_not_found_error
 from benchbox.mcp.security import PathProvider, resolve_path_provider
 from benchbox.mcp.tools.path_utils import resolve_result_file_path
@@ -256,6 +259,28 @@ def _resolve_plans_path(file_path: Path) -> Path | None:
     return plans_path if plans_path.exists() else None
 
 
+def _rehydrate_plan(query_plan: dict) -> QueryPlanDAG:
+    return QueryPlanDAG.from_dict(query_plan, verify_fingerprint=False)
+
+
+def _summarize_plan(plan: QueryPlanDAG) -> dict[str, Any]:
+    score = compute_complexity_score(plan)
+    summary: dict[str, Any] = {
+        "operator_count": score.total_operators,
+        "join_count": score.join_count,
+        "scan_count": score.scan_count,
+        "aggregate_count": score.aggregation_count,
+        "filter_count": score.filter_count,
+        "sort_count": score.sort_count,
+        "max_depth": score.max_tree_depth,
+        "estimated_rows": plan.estimated_rows,
+        "estimated_cost": plan.estimated_cost,
+    }
+    if plan.truncated_at_depth is not None:
+        summary["truncated_at_depth"] = plan.truncated_at_depth
+    return summary
+
+
 def _format_plan_response(query_plan: dict, format_lower: str, normalized_id: str, runtime_ms: Any) -> dict[str, Any]:
     response: dict[str, Any] = {
         "status": "success",
@@ -265,10 +290,21 @@ def _format_plan_response(query_plan: dict, format_lower: str, normalized_id: st
 
     if format_lower == "json":
         response["plan"] = query_plan
-    elif format_lower == "summary":
-        response["summary"] = _extract_plan_summary(query_plan)
-    else:
-        response["plan_tree"] = _format_plan_tree(query_plan)
+        return response
+
+    try:
+        plan = _rehydrate_plan(query_plan)
+        if format_lower == "summary":
+            response["summary"] = _summarize_plan(plan)
+        else:
+            response["plan_tree"] = render_plan(plan)
+    except (KeyError, TypeError, ValueError, AttributeError) as exc:
+        return make_error(
+            ErrorCode.VALIDATION_ERROR,
+            f"Stored query plan for {normalized_id} is not a canonical plan: {exc!r}",
+            details={"query_id": normalized_id},
+            suggestion="Request format='json' to inspect the stored plan",
+        )
 
     return response
 
@@ -483,61 +519,3 @@ def _aggregate_results_impl(
             details=result.get("details", {}),
         )
     return result
-
-
-def _extract_plan_summary(plan: dict) -> dict[str, Any]:
-    summary = {
-        "operator_count": 0,
-        "estimated_rows": None,
-        "estimated_cost": None,
-        "join_count": 0,
-        "scan_count": 0,
-    }
-
-    def count_operators(node: dict | list) -> None:
-        if isinstance(node, dict):
-            _update_plan_summary(summary, node)
-            for value in node.values():
-                count_operators(value)
-            return
-        if isinstance(node, list):
-            for item in node:
-                count_operators(item)
-
-    count_operators(plan)
-    return summary
-
-
-def _update_plan_summary(summary: dict[str, Any], node: dict[str, Any]) -> None:
-    summary["operator_count"] += 1
-    op_type = node.get("type", node.get("operator", "")).lower()
-    if "join" in op_type:
-        summary["join_count"] += 1
-    if "scan" in op_type or "read" in op_type:
-        summary["scan_count"] += 1
-    if summary["estimated_rows"] is None and "rows" in node:
-        summary["estimated_rows"] = node["rows"]
-    if summary["estimated_cost"] is None and "cost" in node:
-        summary["estimated_cost"] = node["cost"]
-
-
-def _format_plan_tree(plan: dict, indent: int = 0) -> str:
-    lines = []
-    prefix = "  " * indent
-
-    if isinstance(plan, dict):
-        op_type = plan.get("type") or plan.get("operator") or plan.get("name") or "Node"
-        lines.append(f"{prefix}├── {op_type}")
-
-        for key in ["table", "alias", "condition", "rows", "cost"]:
-            if key in plan:
-                lines.append(f"{prefix}│   {key}: {plan[key]}")
-
-        children = plan.get("children") or plan.get("inputs") or plan.get("plans") or []
-        if isinstance(children, list):
-            for child in children:
-                lines.append(_format_plan_tree(child, indent + 1))
-        elif isinstance(children, dict):
-            lines.append(_format_plan_tree(children, indent + 1))
-
-    return "\n".join(lines)
