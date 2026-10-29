@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "A reproducible table (bundle short id, run timestamp, worktree commit at run time, wheel version, evidence source) for all 58 bundles is written to CORPUS_NOTES, replacing the contradictory sentences; the command(s) used to build it are recorded.",
+    "Each wheel value is backed by primary evidence (commit pin, venv dist-info, or run log line); bundles without evidence are listed as unknown with the reason.",
+    "The 'recorded by the repository lock' sentence is corrected or removed so that the notes state one consistent account.",
+    "PR merged via make pr-open (oracle SHIP, no override) and make pr-arm; `uv run -- python results-data/validate_corpus.py` exits 0."
+  ],
+  "context": "DECISION GATE: if more than a handful of bundles have no primary evidence, STOP and ask the owner whether to attest only the evidenced ones or none.",
+  "description": "results-data/CORPUS_NOTES.md contradicts itself about the translator used by the 58 local rerun bundles ingested by PR #3678: one passage (~line 909) says all 58 ran on wheel 30.24.0.17; another (~lines 994-995) says 14 ran on 30.25.0.2; another (~line 1259) says the wheel 'is recorded by the repository lock, not by the bundles'. Before any sidecar attests a translator version, establish per bundle which wheel actually ran, from primary evidence.\n\nEVIDENCE SOURCES (in order of strength): the uv.lock / benchbox/_vendor/sqlglot.json at the exact commit of the worktree each run used (run timestamps in the bundle vs the rerun branch history `git log` of chore/superseded-reruns-bundles and the adoption PRs #3587 (30.25.0.1), #3649 (30.25.0.2)); run logs under /tmp/sgrr*, ~/Developer/benchmark_runs logs; the venv used (e.g. /tmp/bbvenv-linux-sgrr for the container lane) and its installed benchbox_sqlglot dist-info if still present. If evidence is missing for a bundle, record 'unknown' for it: never guess.\n\nGUARDRAILS: bundle JSON never modified; only CORPUS_NOTES text; every per-bundle wheel claim cites its evidence; no new runs.",
+  "links": [
+    "results-data/CORPUS_NOTES.md",
+    "https://github.com/BenchBox-dev/benchbox/pull/3678",
+    "https://github.com/BenchBox-dev/benchbox/pull/3649",
+    "https://github.com/BenchBox-dev/benchbox/pull/3587"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729",
+      "at": "2026-10-29T02:17:18Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "4a89b0a261844be5af496ee4605230b1",
+      "session_id": "dcc6105a05964c618dfd87771db72de4"
+    }
+  ]
+}
