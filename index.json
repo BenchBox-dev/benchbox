@@ -20042,10 +20042,15 @@
       "title": "Query Plan Platform Adapter Integration"
     },
     "query-plan-sqlite-branching-fidelity": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-30T00:46:02Z",
+        "generation": "eaee9799f3ec40b2a29f2483d18e9263",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bb7fd2d6b114a6501df93f97"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Verify and preserve branching SQLite query-plan structure"
     },
     "query-test-configure-visible-columns-failures": {
