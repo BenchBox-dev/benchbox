@@ -23647,12 +23647,17 @@
       "title": "Site docs: document execution.translation.runtime and the sql_translator_version attestation"
     },
     "site-run-receipt-sql-translator-row": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-30T12:51:22Z",
+        "generation": "c358cef12f9a473d9202dde5bb1d60ca",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729"
+      },
       "needs": [
         "explorer-read-model-18-translator-version"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Site: accept read models 17 and 18 and show the SQL translator version in the run receipt"
     },
     "site-runner-pool-decision-20261017": {
