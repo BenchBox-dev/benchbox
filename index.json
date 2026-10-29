@@ -22527,6 +22527,13 @@
       "status": "done",
       "title": "✅ Roll Out Core Verbosity/Quiet Across All Benchmarks (-v/-vv/-q)"
     },
+    "rollback-gates-on-pre-allowlist-removal-artifacts-20261029": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Check that a rollback to an artifact built before the known-broken-links allowance was emptied still passes the deploy gates"
+    },
     "root-cause-modin-df-51-51-no-json-entire-platform-produced-z": {
       "claim": null,
       "needs": [],
