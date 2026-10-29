@@ -23530,6 +23530,13 @@
       "status": "open",
       "title": "Sequence the site contract bump after the 2026-11-18 dependency window"
     },
+    "site-converter-tree-link-kind-immediate-parents-20261029": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Check that site docs links to core directories resolve against every ancestor directory, as repo-files.json now lists them"
+    },
     "site-docs-broken-fragments-20261009": {
       "claim": null,
       "needs": [],

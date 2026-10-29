@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "A site converter test links to a core directory that has no direct files and passes; a test links to a missing directory and fails",
+    "The site inventory/core-linked-paths.json kind field and core's check agree on every current entry"
+  ],
+  "description": "Found 2026-10-28 during the dead-link precheck. Core's repo_file_entries() (scripts/site_inputs.py) now lists every ancestor directory of each tracked file in repo-files.json; the earlier rule listed only the immediate parent. The site converter's 'tree' link kind (website/src/converter/handlers/links.ts:39-51, website/src/lib/repo-files.ts:12-21) reads that file, and the review of the site converter found it also treats only immediate parents. A site docs link to a core directory that holds only subdirectories was rejected before and is accepted by the new core list. Confirm the converter's tree resolution matches the new directory set, that no link to a directory such as examples/ or a parent of nested folders resolves differently between the site build and core's core-linked-paths check (make site-linked-paths-check), and add a test with a directory that contains only subdirectories.",
+  "links": [
+    "BenchBox-dev/benchbox-site: website/src/converter/handlers/links.ts",
+    "BenchBox-dev/benchbox-site: website/src/lib/repo-files.ts",
+    "BenchBox-dev/BenchBox: scripts/site_inputs.py",
+    "BenchBox-dev/BenchBox: scripts/check_site_linked_paths.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-29T12:39:52Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "588156ecad42418da92eedc3a080cc76",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    }
+  ]
+}
