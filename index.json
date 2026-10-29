@@ -2385,13 +2385,18 @@
       "title": "Record the bundled SQLGlot runtime identity in every new result bundle"
     },
     "bundle-translator-version-sidecar-attestation": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-30T03:55:01Z",
+        "generation": "e8639354930a485a878dec39202788b4",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729"
+      },
       "needs": [
         "bundle-translator-runtime-identity",
         "corpus-notes-reconcile-rerun-wheels"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Attest the SQLGlot translator version of already-published bundles through their manifest sidecars"
     },
     "burn-down-baselined-broken-doc-links": {
