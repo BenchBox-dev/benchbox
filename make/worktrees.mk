@@ -22,6 +22,11 @@ worktree-release: export WORKTREE_PATH := $(WORKTREE_PATH)
 worktree-release:
 	@$(BENCHBOX_MAKEFILE_ROOT)scripts/worktree_lifecycle.sh release
 
+.PHONY: worktree-session-release
+worktree-session-release: export WORKTREE_PATH := $(WORKTREE_PATH)
+worktree-session-release:
+	@$(BENCHBOX_MAKEFILE_ROOT)scripts/worktree_lifecycle.sh session-release
+
 worktree-finish: export WORKTREE_PATH := $(WORKTREE_PATH)
 worktree-finish: export EXPECTED_HEAD_OID := $(EXPECTED_HEAD_OID)
 worktree-finish: export FORMAT := $(FORMAT)

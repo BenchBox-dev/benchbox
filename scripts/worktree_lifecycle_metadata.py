@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import dataclasses
 import json
 import os
@@ -12,7 +13,13 @@ import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Iterator, Optional
+
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
+
 
 CLI_DESCRIPTION = (
     "Minimal durable lifecycle metadata for BenchBox disposable worktrees.\n"
@@ -32,6 +39,8 @@ CLI_DESCRIPTION = (
     "  belongs to the controller (e.g. Bossmode) and is NEVER duplicated locally.\n"
     "- Non-controller caller-owned worktrees support a non-destructive manual owner-release\n"
     "  record (`manual_released_at`, `manual_released_by`).\n"
+    "- `claim` / `session-release` record which live agent session (by harness session id and\n"
+    "  pid + process start time, never wall-clock age) currently owns a worktree.\n"
     "- Legacy (uninstrumented) and foreign worktrees evaluate to unknown owner.\n"
     "- Zero Deletion Authority: No metadata field alone authorizes deletion. Worktree removal\n"
     "  remains strictly gated on explicit checks (clean, attached, unlocked).\n"
@@ -39,6 +48,255 @@ CLI_DESCRIPTION = (
 
 CONFIG_PREFIX = "benchbox.worktree"
 KNOWN_CONTROLLER_KINDS = {"bossmode", "manual", "none"}
+
+SESSION_ENV_VARS = (
+    "PI_SESSION_ID",
+    "CLAUDE_CODE_SESSION_ID",
+    "CLAUDE_SESSION_ID",
+    "CODEX_SESSION_ID",
+    "AGENT_SESSION_ID",
+)
+WRAPPER_COMMANDS = {
+    "sh",
+    "bash",
+    "zsh",
+    "dash",
+    "fish",
+    "make",
+    "gmake",
+    "uv",
+    "env",
+    "python",
+    "python3",
+    "xargs",
+    "git",
+    "pre-commit",
+    "timeout",
+    "sudo",
+    "nohup",
+    "setsid",
+    "script",
+    "time",
+    "nice",
+    "caffeinate",
+    "direnv",
+    "npm",
+    "npx",
+}
+
+
+def current_session_id() -> Optional[str]:
+    for name in SESSION_ENV_VARS:
+        value = os.environ.get(name, "").strip()
+        if value:
+            return value
+    return None
+
+
+def _ps_field(pid: int, field: str) -> Optional[str]:
+    try:
+        res = subprocess.run(
+            ["ps", "-o", f"{field}=", "-p", str(pid)],
+            capture_output=True,
+            text=True,
+            check=False,
+            env={**os.environ, "LC_ALL": "C", "TZ": "UTC"},
+        )
+    except OSError:
+        return None
+    value = " ".join(res.stdout.split())
+    return value if res.returncode == 0 and value else None
+
+
+def _proc_start(proc_root: Path, pid: int) -> Optional[str]:
+    try:
+        stat = (proc_root / str(pid) / "stat").read_text(encoding="utf-8")
+        boot_id = (proc_root / "sys" / "kernel" / "random" / "boot_id").read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    fields = stat.rpartition(")")[2].split()
+    if len(fields) < 20 or not fields[19].isdigit():
+        return None
+    return f"{boot_id}:{fields[19]}"
+
+
+def process_start(pid: int) -> Optional[str]:
+    return _proc_start(Path("/proc"), pid) or _ps_field(pid, "lstart")
+
+
+HARNESS_PID_ENV = "BENCHBOX_HARNESS_PID"
+
+
+def harness_pid() -> Optional[int]:
+    declared = os.environ.get(HARNESS_PID_ENV, "").strip()
+    if declared:
+        if declared.isdigit() and int(declared) > 1 and process_start(int(declared)) is not None:
+            return int(declared)
+        return None
+    pid = os.getppid()
+    while pid > 1:
+        comm = _ps_field(pid, "comm")
+        if comm is None:
+            return None
+        name = Path(comm).name.lower().lstrip("-")
+        if name not in WRAPPER_COMMANDS and not name.startswith("python"):
+            return pid if process_start(pid) is not None else None
+        parent = _ps_field(pid, "ppid")
+        if not parent or not parent.isdigit():
+            return None
+        pid = int(parent)
+    return None
+
+
+def _pid_may_exist(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _owner_alive(pid_text: Optional[str], start: Optional[str]) -> bool:
+    if not pid_text or not pid_text.isdigit():
+        return False
+    pid = int(pid_text)
+    if start:
+        current = process_start(pid)
+        if current is not None:
+            return current == start
+    return _pid_may_exist(pid)
+
+
+def _read_owner(worktree_path: Path) -> Optional[dict[str, Any]]:
+    raw = _get_worktree_config("owner", worktree_path)
+    if raw is None:
+        return None
+    try:
+        record = json.loads(raw)
+        if (
+            isinstance(record, dict)
+            and isinstance(record.get("session"), str)
+            and record["session"]
+            and isinstance(record.get("pid"), int)
+            and isinstance(record.get("start"), str)
+        ):
+            return record
+    except ValueError:
+        pass
+    print(
+        "warning: ignoring malformed worktree ownership record; treating the worktree as unowned.",
+        file=sys.stderr,
+    )
+    return None
+
+
+def _write_owner(worktree_path: Path, record: dict[str, Any]) -> None:
+    _set_worktree_config("owner", json.dumps(record, sort_keys=True), worktree_path)
+
+
+def _clear_owner(worktree_path: Path) -> None:
+    result = _run_git(["config", "--worktree", "--unset-all", f"{CONFIG_PREFIX}.owner"], worktree_path)
+    if _get_worktree_config("owner", worktree_path) is not None:
+        raise MetadataError(
+            f"Could not clear the worktree ownership record: {result.stderr.strip() or 'git config failed'}"
+        )
+
+
+def _guard_supported() -> bool:
+    if fcntl is not None and sys.platform != "win32":
+        return True
+    print(
+        "warning: worktree session ownership is not enforced on this platform (needs POSIX ps and flock).",
+        file=sys.stderr,
+    )
+    return False
+
+
+@contextlib.contextmanager
+def _worktree_lock(worktree_path: Path) -> Iterator[None]:
+    git_dir = _run_git(["rev-parse", "--absolute-git-dir"], worktree_path).stdout.strip()
+    if not git_dir:
+        raise MetadataError(f"Path is not a valid git worktree: {worktree_path}")
+    with open(Path(git_dir) / "benchbox-owner.lock", "a+b") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        yield
+
+
+def claim_worktree(worktree_path: Path, takeover: bool = False) -> str:
+    if current_session_id() is None:
+        return "no-session"
+    if not _guard_supported():
+        return "unsupported"
+    with _worktree_lock(worktree_path):
+        return _claim_locked(worktree_path, takeover)
+
+
+def _claim_locked(worktree_path: Path, takeover: bool) -> str:
+    session = current_session_id()
+    if session is None:
+        return "no-session"
+
+    ext_check = _run_git(["config", "--get", "extensions.worktreeConfig"], worktree_path)
+    if ext_check.stdout.strip() != "true":
+        _run_git(["config", "extensions.worktreeConfig", "true"], worktree_path)
+
+    record = _read_owner(worktree_path)
+    if record is not None:
+        alive = _owner_alive(str(record["pid"]), record["start"])
+        if record["session"] != session and alive and not takeover:
+            raise MetadataError(
+                f"Worktree {worktree_path} is owned by live session {record['session']} "
+                f"(pid {record['pid']}); this session is {session}.\n"
+                "Create your own worktree (make worktree-create), or, if the other session is gone, "
+                "take it over with BENCHBOX_WORKTREE_TAKEOVER=1 make agent-write-preflight."
+            )
+        if record["session"] == session and alive:
+            return "renewed"
+
+    pid = harness_pid()
+    start = process_start(pid) if pid is not None else None
+    if pid is None or start is None:
+        print(
+            "warning: could not identify a long-lived harness process (is `ps` available?); "
+            "worktree ownership was NOT recorded and is not enforced for this run.",
+            file=sys.stderr,
+        )
+        return "unverifiable"
+    _write_owner(
+        worktree_path,
+        {
+            "session": session,
+            "pid": pid,
+            "start": start,
+            "claimed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        },
+    )
+    if record is None:
+        return "claimed"
+    return "renewed" if record["session"] == session else "taken-over"
+
+
+def release_session_claim(worktree_path: Path, force: bool = False) -> str:
+    if not _guard_supported():
+        return "unsupported"
+    with _worktree_lock(worktree_path):
+        return _release_locked(worktree_path, force)
+
+
+def _release_locked(worktree_path: Path, force: bool) -> str:
+    record = _read_owner(worktree_path)
+    if record is None:
+        return "unowned"
+    session = current_session_id()
+    if record["session"] != session and not force:
+        raise MetadataError(
+            f"Worktree {worktree_path} is owned by session {record['session']}; only the owner can release it. "
+            "Pass --force (BENCHBOX_WORKTREE_TAKEOVER=1 for make) to override."
+        )
+    _clear_owner(worktree_path)
+    return "released"
 
 
 class MetadataError(RuntimeError):
@@ -324,6 +582,14 @@ def main() -> int:
     release_parser.add_argument("--worktree-path", type=Path, required=True, help="Path to worktree")
     release_parser.add_argument("--released-by", help="Operator or actor name")
 
+    claim_parser = subparsers.add_parser("claim", help="Claim session ownership of a worktree")
+    claim_parser.add_argument("--worktree-path", type=Path, default=Path.cwd(), help="Path to worktree")
+    claim_parser.add_argument("--takeover", action="store_true", help="Replace a live owner")
+
+    session_release_parser = subparsers.add_parser("session-release", help="Give up session ownership")
+    session_release_parser.add_argument("--worktree-path", type=Path, default=Path.cwd(), help="Path to worktree")
+    session_release_parser.add_argument("--force", action="store_true", help="Release another session's claim")
+
     args = parser.parse_args()
 
     try:
@@ -369,6 +635,16 @@ def main() -> int:
             meta = release_worktree(args.worktree_path, released_by=args.released_by)
             print(
                 f"Manual owner release recorded for worktree: {args.worktree_path} (released_at: {meta.manual_released_at})"
+            )
+            return 0
+
+        elif args.command == "claim":
+            claim_worktree(args.worktree_path, takeover=args.takeover)
+            return 0
+
+        elif args.command == "session-release":
+            print(
+                f"Session ownership {release_session_claim(args.worktree_path, force=args.force)}: {args.worktree_path}"
             )
             return 0
 
