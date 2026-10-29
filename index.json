@@ -17292,15 +17292,10 @@
       "title": "Decide whether a signed pre-submission oracle verdict from the gateway host should count towards oracle-gate"
     },
     "oracle-small-trust-fixes-20261027": {
-      "claim": {
-        "expires_at": "2026-10-30T12:47:10Z",
-        "generation": "56378fcfd9b341c1b895b3e5536aa3ca",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Fix the small oracle trust gaps: absence status classification, repro citations, hidden overrides, download limits, token files, thread paging"
     },
     "oracle-staged-diff-silent-skip-and-nonatomic-write-20261022": {
