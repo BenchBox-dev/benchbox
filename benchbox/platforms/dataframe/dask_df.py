@@ -561,7 +561,7 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
                 regular_aggs[name] = spec
 
         if nunique_aggs:
-            return self._groupby_agg_with_nunique(df, by_list, regular_aggs, nunique_aggs, **kwargs)
+            return self._groupby_agg_with_nunique(df, by_list, regular_aggs, nunique_aggs, list(agg_spec), **kwargs)
 
         is_named_agg = any(isinstance(v, tuple) for v in regular_aggs.values())
 
@@ -581,6 +581,7 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
         by: list[str],
         regular_aggs: dict[str, Any],
         nunique_aggs: dict[str, tuple[str, str]],
+        column_order: list[str],
         **kwargs: Any,
     ) -> DaskDF:
         if regular_aggs:
@@ -595,7 +596,8 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
             nunique_result = nunique_result.rename(columns={source_col: col_name})
             result = result.merge(nunique_result, on=by)
 
-        return result
+        ordered = by + [name for name in column_order if name in result.columns and name not in by]
+        return result[ordered]
 
     def groupby_size(
         self,

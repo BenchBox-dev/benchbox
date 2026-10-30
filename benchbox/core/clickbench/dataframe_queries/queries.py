@@ -9,7 +9,7 @@ from datetime import date
 from typing import Any
 
 from benchbox.core.dataframe.context import DataFrameContext
-from benchbox.core.dataframe.pandas_ops import where as pandas_where
+from benchbox.core.dataframe.pandas_ops import is_lazy_frame, where as pandas_where
 from benchbox.core.dataframe.query import DataFrameQuery, QueryCategory
 
 from .registry import register_query
@@ -199,9 +199,20 @@ def _expr_agg(ctx: DataFrameContext, token: str) -> Any:
     return expr.alias(alias)
 
 
+def _partition_extreme(part: Any, op: str) -> Any:
+    import pandas as pd
+
+    return pd.Series([getattr(part.dropna(), op)() if part.notna().any() else None], dtype=object)
+
+
 def _pandas_value(hits: Any, source: str, op: str) -> Any:
     if op == "len":
         value = len(hits)
+    elif op in ("min", "max") and is_lazy_frame(hits) and str(hits[source].dtype).startswith("date"):
+        import pandas as pd
+
+        partials = hits[source].map_partitions(_partition_extreme, op, meta=pd.Series([], dtype=object)).compute()
+        return getattr(partials.dropna(), op)() if partials.notna().any() else None
     else:
         value = getattr(hits[source], op)()
     return value.compute() if hasattr(value, "compute") else value
@@ -282,6 +293,8 @@ def _make_group_pandas(
             sort_cols, descending = _sort_parts(sort_spec)
             result = result.sort_values(sort_cols, ascending=not descending)
         if offset:
+            if is_lazy_frame(result):
+                return getattr(result, "native", result).head(offset + limit, npartitions=-1).iloc[offset:]
             return result.iloc[offset : offset + limit]
         return result.head(limit) if limit else result
 

@@ -299,7 +299,7 @@ def q4_pandas_impl(ctx: DataFrameContext) -> Any:
     orders = orders[(orders["o_orderdate"] >= start_date) & (orders["o_orderdate"] < end_date)]
 
     result = orders.merge(late_keys, on="hk_order")
-    result = result.groupby("o_orderpriority").size().reset_index(name="order_count")
+    result = result.groupby("o_orderpriority").size().rename("order_count").reset_index()
     return result.sort_values("o_orderpriority")
 
 
@@ -924,9 +924,9 @@ def q13_pandas_impl(ctx: DataFrameContext) -> Any:
     order_cust = loc.merge(valid_orders, on="hk_order")
 
     cust_orders = hc.merge(order_cust, on="hk_customer", how="left")
-    c_counts = cust_orders.groupby("c_custkey")["hk_order"].count().reset_index(name="c_count")
+    c_counts = cust_orders.groupby("c_custkey")["hk_order"].count().rename("c_count").reset_index()
 
-    result = c_counts.groupby("c_count").size().reset_index(name="custdist")
+    result = c_counts.groupby("c_count").size().rename("custdist").reset_index()
     return result.sort_values(["custdist", "c_count"], ascending=[False, False])
 
 
@@ -984,10 +984,12 @@ def q14_pandas_impl(ctx: DataFrameContext) -> Any:
     df["promo_revenue"] = pandas_where(df["p_type"].str.startswith("PROMO"), df["revenue"], 0)
     if len(df) == 0:
         return pd.DataFrame({"promo_revenue": [None]})
-    revenue_sum = float(df["revenue"].sum())
+    revenue_total = df["revenue"].sum()
+    promo_total = df["promo_revenue"].sum()
+    revenue_sum = float(revenue_total.compute() if hasattr(revenue_total, "compute") else revenue_total)
     if revenue_sum == 0:
         return pd.DataFrame({"promo_revenue": [float("nan")]})
-    promo_pct = 100.0 * float(df["promo_revenue"].sum()) / revenue_sum
+    promo_pct = 100.0 * float(promo_total.compute() if hasattr(promo_total, "compute") else promo_total) / revenue_sum
     return pd.DataFrame({"promo_revenue": [promo_pct]})
 
 
@@ -1490,8 +1492,8 @@ def q21_pandas_impl(ctx: DataFrameContext) -> Any:
 
     l1 = late_li.merge(failed_orders, on="hk_order")
 
-    order_suppliers = li.groupby("hk_order")["hk_supplier"].nunique().reset_index(name="n_suppliers")
-    order_late = late_li.groupby("hk_order")["hk_supplier"].nunique().reset_index(name="n_late")
+    order_suppliers = li.groupby("hk_order")["hk_supplier"].nunique().rename("n_suppliers").reset_index()
+    order_late = late_li.groupby("hk_order")["hk_supplier"].nunique().rename("n_late").reset_index()
 
     df = l1.merge(supp_nation[["hk_supplier", "s_name"]], on="hk_supplier")
     df = df.merge(order_suppliers, on="hk_order")
@@ -1499,7 +1501,7 @@ def q21_pandas_impl(ctx: DataFrameContext) -> Any:
     df = df.merge(order_late, on="hk_order")
     df = df[df["n_late"] == 1]
 
-    result = df.groupby("s_name").size().reset_index(name="numwait")
+    result = df.groupby("s_name").size().rename("numwait").reset_index()
     return result.sort_values(["numwait", "s_name"], ascending=[False, True]).head(100)
 
 

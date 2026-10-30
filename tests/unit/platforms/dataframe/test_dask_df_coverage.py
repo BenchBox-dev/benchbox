@@ -41,7 +41,11 @@ class _FakeDaskDF:
         return _FakeDaskGroupBy(by)
 
     def merge(self, other, on=None):
-        return ("merged", on, other)
+        return _FakeDaskDF(
+            columns=self.columns + [c for c in other.columns if c not in self.columns],
+            rows=self._rows,
+            npartitions=self.npartitions,
+        )
 
     def reset_index(self):
         return self
@@ -445,7 +449,7 @@ def test_dask_specific_methods(monkeypatch):
     with_nunique = adapter.groupby_agg(df, by=["k"], agg_spec={"n_x": ("x", "nunique")}, as_index=False)
     assert "sum_x" in named.columns
     assert "x" in direct.columns
-    assert with_nunique[0] == "merged"
+    assert with_nunique.columns == ["k", "n_x"]
 
     size_df = adapter.groupby_size(df, by=["k"], name="cnt")
     assert "cnt" in size_df.columns

@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Dask DataFrame runs of CoffeeShop (QC1, SA4), Data Vault (Q4, Q13, Q14, Q21), ClickBench (Q7, Q39-Q42) and H2O-DB (Q9) no longer fail on lazy frames, and Dask aggregations that mix nunique with other aggregates keep the pandas column order."
+    }
+  ]
+}
