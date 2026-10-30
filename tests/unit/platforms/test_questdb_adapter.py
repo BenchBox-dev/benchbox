@@ -436,6 +436,27 @@ class TestQuestDBAdapter:
         assert b"3|4\n" in captured_body["content"]
         assert b"1|2|\n" not in captured_body["content"]
 
+    def test_rest_api_dat_keeps_trailing_delimiter(self, questdb_stubs, tmp_path):
+        adapter = QuestDBAdapter(host="localhost", http_port=9000)
+        data_file = tmp_path / "store_sales.dat"
+        data_file.write_text("1|2|\n3|4|5\n", encoding="utf-8")
+
+        captured_body = {}
+        mock_requests = Mock()
+        mock_response = Mock(status_code=200, text="| Rows imported | 2 |")
+
+        def _post(url, **kwargs):
+            captured_body["content"] = kwargs["files"]["data"][1].read()
+            return mock_response
+
+        mock_requests.post.side_effect = _post
+        dialect = CsvDialect("|", False, "", False, None)
+
+        with patch.dict("sys.modules", {"requests": mock_requests}):
+            adapter._load_table_via_rest_api("store_sales", data_file, dialect)
+
+        assert captured_body["content"] == b"1|2|\n3|4|5\n"
+
     def test_rest_api_csv_passes_data_verbatim(self, questdb_stubs, tmp_path):
         adapter = QuestDBAdapter(host="localhost", http_port=9000)
         data_file = tmp_path / "hits.csv"
