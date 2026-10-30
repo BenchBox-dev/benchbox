@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import csv
 from datetime import datetime, time, timedelta
 
 from ..financial_data import generate_realistic_tax_rates
+from .rows import PipeRowWriter
 
 
 class DimensionGenerationMixin:
@@ -15,7 +15,7 @@ class DimensionGenerationMixin:
         total_days = (end_date - start_date).days + 1
 
         with open(file_path, "w", newline="", buffering=self.buffer_size, encoding="utf-8") as f:
-            writer = csv.writer(f, delimiter="|")
+            writer = PipeRowWriter(f)
 
             current_date = start_date
             sk_date_id = 1
@@ -90,7 +90,7 @@ class DimensionGenerationMixin:
         file_path = self.output_dir / "DimTime.tbl"
 
         with open(file_path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f, delimiter="|")
+            writer = PipeRowWriter(f)
 
             sk_time_id = 1
 
@@ -129,7 +129,7 @@ class DimensionGenerationMixin:
         num_companies = int(self.base_companies * self.scale_factor)
 
         with open(file_path, "w", newline="", buffering=self.buffer_size, encoding="utf-8") as f:
-            writer = csv.writer(f, delimiter="|")
+            writer = PipeRowWriter(f)
 
             for chunk_start in range(1, num_companies + 1, self.chunk_size):
                 chunk_end = min(chunk_start + self.chunk_size, num_companies + 1)
@@ -212,7 +212,7 @@ class DimensionGenerationMixin:
         num_companies = int(self.base_companies * self.scale_factor)
 
         with open(file_path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f, delimiter="|")
+            writer = PipeRowWriter(f)
 
             for i in range(1, num_securities + 1):
                 sk_security_id = i
@@ -264,7 +264,7 @@ class DimensionGenerationMixin:
         num_customers = int(self.base_customers * self.scale_factor)
 
         with open(file_path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f, delimiter="|")
+            writer = PipeRowWriter(f)
 
             for i in range(1, num_customers + 1):
                 sk_customer_id = i
@@ -357,7 +357,7 @@ class DimensionGenerationMixin:
         num_customers = int(self.base_customers * self.scale_factor)
 
         with open(file_path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f, delimiter="|")
+            writer = PipeRowWriter(f)
 
             for i in range(1, num_accounts + 1):
                 sk_account_id = i
@@ -396,7 +396,7 @@ class DimensionGenerationMixin:
         file_path = self.output_dir / "Industry.tbl"
 
         with open(file_path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f, delimiter="|")
+            writer = PipeRowWriter(f)
 
             industry_data = self.financial_patterns.get_industry_data()
             for industry_id, industry_name, sector_code in industry_data:
@@ -411,7 +411,7 @@ class DimensionGenerationMixin:
         file_path = self.output_dir / "StatusType.tbl"
 
         with open(file_path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f, delimiter="|")
+            writer = PipeRowWriter(f)
 
             status_data = self.financial_patterns.get_status_types()
             for status_id, status_name in status_data:
@@ -426,7 +426,7 @@ class DimensionGenerationMixin:
         file_path = self.output_dir / "TaxRate.tbl"
 
         with open(file_path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f, delimiter="|")
+            writer = PipeRowWriter(f)
 
             tax_data = generate_realistic_tax_rates()
             for tax_id, tax_name, tax_rate in tax_data:
@@ -441,7 +441,7 @@ class DimensionGenerationMixin:
         file_path = self.output_dir / "TradeType.tbl"
 
         with open(file_path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f, delimiter="|")
+            writer = PipeRowWriter(f)
 
             trade_data = self.financial_patterns.get_trade_types()
             for type_id, type_name, is_sell, is_market in trade_data:
@@ -457,7 +457,7 @@ class DimensionGenerationMixin:
         num_brokers = max(100, int(self.scale_factor * 50))
 
         with open(file_path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f, delimiter="|")
+            writer = PipeRowWriter(f)
 
             managers = []
             for i in range(1, min(21, num_brokers // 5) + 1):
