@@ -23,8 +23,11 @@ Related: `docs/internal/merge-queue-governance.md`; `scripts/trunk_revert.py`.
    arming for other pull requests: only a green run does, because the revert may
    have named the wrong commit. A range of exactly one commit behaves as before.
    If the commits between the last green run and the first red run cannot be
-   read in full, the gate refuses and the disarm job fails visibly; it never
-   falls back to blaming the head commit.
+   read in full, the culprit is undetermined, as while an older run is
+   unfinished: the arm gate refuses without naming a commit, and the disarm job
+   disarms every armed pull request that is not a revert. It never falls back to
+   blaming the head commit. A streak that begins at the first run ever recorded
+   has no green run to compare against and names that run's commit.
 4. Release admission is unchanged. It needs a successful exact-commit `push` run,
    so a commit that was replaced cannot be released. Release from the newest
    tested head.

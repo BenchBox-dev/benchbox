@@ -169,22 +169,32 @@ def _scan_streak(runs: list[dict]) -> tuple[dict | None, dict | None]:
 
 def untested_shas(run: Runner, repo: str, green: dict | None, start: dict) -> list[str]:
     head = start.get("headSha") or ""
-    base = (green or {}).get("headSha") or ""
-    if not head or not base:
-        return [head] if head else []
+    if not head:
+        return []
+    if green is None:
+        return [head]
+    base = green.get("headSha") or ""
+    if not base:
+        raise UndeterminedCulpritError(f"the last green {TRUNK_WORKFLOW} run has no commit to compare against")
     code, out = run(["gh", "api", f"repos/{repo}/compare/{base}...{head}?per_page={UNTESTED_LIMIT}"])
     if code != 0:
-        raise TrunkError(f"reading the commits from {base[:9]} to {head[:9]} failed: {out.strip()[:200]}")
+        raise UndeterminedCulpritError(
+            f"the commits from {base[:9]} to {head[:9]} could not be read: {out.strip()[:200]}"
+        )
     try:
         body = json.loads(out)
         shas = [item["sha"] for item in body["commits"]]
         total = int(body.get("total_commits", len(shas)))
     except (ValueError, KeyError, TypeError, AttributeError) as exc:
-        raise TrunkError(f"unreadable commit range from {base[:9]} to {head[:9]}: {exc}") from exc
+        raise UndeterminedCulpritError(f"the commit range from {base[:9]} to {head[:9]} is unreadable: {exc}") from exc
     if total > len(shas):
-        raise TrunkError(f"{total} commits lie between {base[:9]} and {head[:9]}; only {len(shas)} are readable")
+        raise UndeterminedCulpritError(
+            f"{total} commits lie between {base[:9]} and {head[:9]}; only {len(shas)} are readable"
+        )
     if not shas or shas[-1] != head:
-        raise TrunkError(f"the commit range from {base[:9]} does not end at the failing run's commit {head[:9]}")
+        raise UndeterminedCulpritError(
+            f"the commit range from {base[:9]} does not end at the failing run's commit {head[:9]}"
+        )
     return shas
 
 

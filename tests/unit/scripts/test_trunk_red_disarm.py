@@ -395,14 +395,19 @@ def test_a_revert_branch_for_any_covered_commit_is_never_selected() -> None:
     assert [item["number"] for item in _selected(run)] == [3385]
 
 
-def test_an_unreadable_covered_range_fails_the_job_loudly_and_disarms_nothing(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
+def test_an_unreadable_covered_range_disarms_ordinary_prs_fail_closed() -> None:
     run = _batch_red_run()
     run.compare = []
-    assert trunk_red_disarm.disarm_all(run, trunk_revert.REPOSITORY) == 1
-    assert run.mutations == []
-    assert "could not establish the red streak" in capsys.readouterr().err
+    assert trunk_red_disarm.disarm_all(run, trunk_revert.REPOSITORY) == 0
+    assert run.mutations == ["PR_node_3385"]
+
+
+def test_an_unreadable_covered_range_never_disarms_a_revert_branch() -> None:
+    run = _batch_red_run()
+    run.compare = []
+    run.armed.append(_armed(3391, "fix/revert-3370"))
+    assert trunk_red_disarm.disarm_all(run, trunk_revert.REPOSITORY) == 0
+    assert run.mutations == ["PR_node_3385"]
 
 
 def test_disarm_disables_each_selected_and_logs_culprit_and_run_url(capsys: pytest.CaptureFixture[str]) -> None:
