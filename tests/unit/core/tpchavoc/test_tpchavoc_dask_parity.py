@@ -35,7 +35,7 @@ def _orders_lineitems(count: int):
             "l_suppkey": [1 + (k + j) % 3 for k in range(1, count + 1) for j in range(3)],
             "l_quantity": [120.0 + j for _ in range(1, count + 1) for j in range(3)],
             "l_commitdate": _dates([date(1993, 8, 1)] * (3 * count)),
-            "l_receiptdate": _dates([date(1993, 8, 2 - (j % 2)) for _ in range(1, count + 1) for j in range(3)]),
+            "l_receiptdate": _dates([date(1993, 8, 2 if j == 0 else 1) for _ in range(1, count + 1) for j in range(3)]),
         }
     )
     return orders, lineitem
@@ -84,3 +84,5 @@ def test_variant_rows_match_pandas_on_dask(query_id, monkeypatch):
     actual = result_rows(impl(build_context(FAMILIES[1], tables, npartitions=3)))
 
     assert actual == expected
+    if query_id.startswith("Q21"):
+        assert expected

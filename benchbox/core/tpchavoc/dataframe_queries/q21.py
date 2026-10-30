@@ -320,8 +320,8 @@ def _make_q21_pandas_impl(variant: int) -> VariantImpl:
             return out[out["l_orderkey"].isin(valid_keys)][["l_orderkey", "s_suppkey", "s_name"]]
 
         def _finish(candidates: Any, scoped: Any) -> Any:
-            multi = scoped.groupby("l_orderkey").agg(num_suppliers=("l_suppkey", "nunique"))
-            multi_orders = _to_list(multi[multi["num_suppliers"] > 1].index)
+            multi = scoped.groupby("l_orderkey", as_index=False).agg(num_suppliers=("l_suppkey", "nunique"))
+            multi_orders = _to_list(multi[multi["num_suppliers"] > 1]["l_orderkey"])
             kept = candidates[candidates["l_orderkey"].isin(multi_orders)]
             all_late = scoped[scoped["l_receiptdate"] > scoped["l_commitdate"]][["l_orderkey", "l_suppkey"]]
             keys = kept[["l_orderkey", "s_suppkey"]].drop_duplicates()
@@ -366,11 +366,11 @@ def _make_q21_pandas_impl(variant: int) -> VariantImpl:
             scoped = lineitem[lineitem["l_orderkey"].isin(cand_orders)]
             late_counts = (
                 scoped[scoped["l_receiptdate"] > scoped["l_commitdate"]]
-                .groupby("l_orderkey")
+                .groupby("l_orderkey", as_index=False)
                 .agg(num_late_suppliers=("l_suppkey", "nunique"))
             )
-            multi = scoped.groupby("l_orderkey").agg(num_suppliers=("l_suppkey", "nunique"))
-            kept = candidates[candidates["l_orderkey"].isin(_to_list(multi[multi["num_suppliers"] > 1].index))]
+            multi = scoped.groupby("l_orderkey", as_index=False).agg(num_suppliers=("l_suppkey", "nunique"))
+            kept = candidates[candidates["l_orderkey"].isin(_to_list(multi[multi["num_suppliers"] > 1]["l_orderkey"]))]
             all_late = scoped[scoped["l_receiptdate"] > scoped["l_commitdate"]][["l_orderkey", "l_suppkey"]]
             keys = kept[["l_orderkey", "s_suppkey"]].drop_duplicates()
             merged = keys.merge(all_late, on="l_orderkey")
@@ -379,7 +379,7 @@ def _make_q21_pandas_impl(variant: int) -> VariantImpl:
             bad["_exclude"] = True
             kept = kept.merge(bad, on=["l_orderkey", "s_suppkey"], how="left")
             kept = kept[kept["_exclude"].isna()].drop(columns=["_exclude"])
-            kept = kept.merge(late_counts, left_on="l_orderkey", right_index=True, how="left")
+            kept = kept.merge(late_counts, on="l_orderkey", how="left")
             kept = kept[kept["num_late_suppliers"] == 1].drop(columns=["num_late_suppliers"])
             return (
                 kept.groupby("s_name", as_index=False)
@@ -401,8 +401,8 @@ def _make_q21_pandas_impl(variant: int) -> VariantImpl:
             candidates = _candidates(lineitem)
             cand_orders = _to_list(candidates["l_orderkey"].unique())
             scoped = lineitem[lineitem["l_orderkey"].isin(cand_orders)]
-            multi = scoped.groupby("l_orderkey").agg(num_suppliers=("l_suppkey", "nunique"))
-            multi_orders = _to_list(multi[multi["num_suppliers"] > 1].index)
+            multi = scoped.groupby("l_orderkey", as_index=False).agg(num_suppliers=("l_suppkey", "nunique"))
+            multi_orders = _to_list(multi[multi["num_suppliers"] > 1]["l_orderkey"])
             all_late = scoped[scoped["l_receiptdate"] > scoped["l_commitdate"]][["l_orderkey", "l_suppkey"]]
             keys = candidates[["l_orderkey", "s_suppkey"]].drop_duplicates()
             merged = keys.merge(all_late, on="l_orderkey")
@@ -479,8 +479,8 @@ def _make_q21_pandas_impl(variant: int) -> VariantImpl:
             marked = pairs.merge(others, on=["l_orderkey", "s_suppkey"], how="left")
             good = marked[marked["_bad"].isna()][["l_orderkey"]].drop_duplicates()
             kept = candidates[candidates["l_orderkey"].isin(_to_list(good["l_orderkey"]))]
-            multi = scoped.groupby("l_orderkey").agg(num_suppliers=("l_suppkey", "nunique"))
-            kept = kept[kept["l_orderkey"].isin(_to_list(multi[multi["num_suppliers"] > 1].index))]
+            multi = scoped.groupby("l_orderkey", as_index=False).agg(num_suppliers=("l_suppkey", "nunique"))
+            kept = kept[kept["l_orderkey"].isin(_to_list(multi[multi["num_suppliers"] > 1]["l_orderkey"]))]
             return (
                 kept.groupby("s_name", as_index=False)
                 .agg(numwait=("l_orderkey", "count"))
