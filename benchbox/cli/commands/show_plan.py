@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import click
 from rich.panel import Panel
+from rich.text import Text
 
 from benchbox.cli.shared import console
 from benchbox.core.query_plans.visualization import (
@@ -18,9 +20,28 @@ from benchbox.core.results.query_normalizer import normalize_query_id
 
 def _find_query(results, query_id: str):
     normalized_target = normalize_query_id(query_id)
+    matches = [
+        qr for qr in iter_query_results(results) if normalize_query_id(qr.get("query_id", "")) == normalized_target
+    ]
     return next(
-        (qr for qr in iter_query_results(results) if normalize_query_id(qr.get("query_id", "")) == normalized_target),
-        None,
+        (qr for qr in matches if qr.get("query_plan") is not None or qr.get("query_plan_raw") is not None),
+        matches[0] if matches else None,
+    )
+
+
+def _print_raw_plan(query_id: str, raw_plan: Any, output_format: str) -> None:
+    if output_format == "json":
+        console.print(json.dumps(raw_plan, indent=2, default=str))
+        return
+    text = raw_plan.get("plan_text") if isinstance(raw_plan, dict) else None
+    platform = raw_plan.get("platform", "unknown") if isinstance(raw_plan, dict) else "unknown"
+    body = text if text else json.dumps(raw_plan, indent=2, default=str)
+    console.print(
+        Panel(
+            Text(body),
+            title=Text(f"Raw Query Plan: {query_id} ({platform}; no structured plan available)"),
+            border_style="yellow",
+        )
     )
 
 
@@ -102,6 +123,10 @@ def show_plan(
         if not query_exec:
             console.print(f"[red]Error:[/red] Query '{query_id}' not found in results")
             ctx.exit(1)
+
+        if query_exec.get("query_plan") is None and query_exec.get("query_plan_raw") is not None:
+            _print_raw_plan(query_id, query_exec["query_plan_raw"], output_format)
+            return
 
         if query_exec.get("query_plan") is None:
             plans_load_error = getattr(results, "plans_load_error", None)

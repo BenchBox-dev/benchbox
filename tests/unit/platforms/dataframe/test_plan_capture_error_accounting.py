@@ -195,13 +195,13 @@ def test_partial_failure_across_iterations_is_not_masked():
     assert result.plan_capture_errors[0]["error"] == "explain exploded"
 
 
-def test_strict_plan_capture_raises_without_reexecuting_query():
+def test_strict_plan_capture_raises_after_a_single_execution():
     adapter = _Adapter("Polars")
 
     with pytest.raises(PlanCaptureError, match="explain exploded"):
         _run(adapter, lambda: _Frame(), strict=True)
 
-    assert adapter.collect_calls == 0
+    assert adapter.collect_calls == 1
 
 
 def test_adapter_reuse_resets_capture_state():

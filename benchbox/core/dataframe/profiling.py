@@ -394,7 +394,7 @@ def capture_datafusion_plan(df: Any) -> QueryPlan:
     )
 
 
-def capture_pyspark_plan(df: Any) -> QueryPlan:
+def capture_pyspark_plan(df: Any, platform: str = "pyspark") -> QueryPlan:
     import io
     import sys
 
@@ -411,23 +411,51 @@ def capture_pyspark_plan(df: Any) -> QueryPlan:
     hints = _analyze_pyspark_plan(plan)
 
     return QueryPlan(
-        platform="pyspark",
+        platform=platform,
         plan_type="extended",
         plan_text=plan,
         optimization_hints=hints,
     )
 
 
+class PlanCaptureSupport(str, Enum):
+    DAG = "dag"
+    RAW_TEXT = "raw_text"
+    UNSUPPORTED = "unsupported"
+
+
+_PLAN_CAPTURE_SUPPORT: dict[str, PlanCaptureSupport] = {
+    "datafusion": PlanCaptureSupport.DAG,
+    "pyspark": PlanCaptureSupport.DAG,
+    "lakesail": PlanCaptureSupport.DAG,
+    "databricks": PlanCaptureSupport.DAG,
+    "polars": PlanCaptureSupport.RAW_TEXT,
+    "pandas": PlanCaptureSupport.UNSUPPORTED,
+    "dask": PlanCaptureSupport.UNSUPPORTED,
+    "cudf": PlanCaptureSupport.UNSUPPORTED,
+}
+
+_SPARK_FAMILY_PLATFORMS = frozenset({"pyspark", "lakesail", "databricks"})
+
+
+def normalize_dataframe_platform(platform: str) -> str:
+    return platform.lower().removesuffix("-df")
+
+
+def plan_capture_support(platform: str) -> PlanCaptureSupport:
+    return _PLAN_CAPTURE_SUPPORT.get(normalize_dataframe_platform(platform), PlanCaptureSupport.UNSUPPORTED)
+
+
 def capture_query_plan(df: Any, platform: str) -> QueryPlan | None:
-    platform_lower = platform.lower().replace("-df", "")
+    platform_lower = normalize_dataframe_platform(platform)
 
     if platform_lower == "polars":
         if hasattr(df, "explain"):
             return capture_polars_plan(df)
     elif platform_lower == "datafusion":
         return capture_datafusion_plan(df)
-    elif platform_lower == "pyspark":
-        return capture_pyspark_plan(df)
+    elif platform_lower in _SPARK_FAMILY_PLATFORMS:
+        return capture_pyspark_plan(df, platform=platform_lower)
 
     return None
 

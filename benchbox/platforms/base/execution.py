@@ -669,11 +669,15 @@ class TestDriversMixin:
         if phase_eligible:
             self._plan_capture_phase_active = True
             self._phase_recorded_queries = {}
+            self._phase_recorded_frames = {}
             self._captured_plans = {}
         workload_start_time = datetime.now().isoformat()
         workload_start = mono_time()
         try:
             results = self._dispatch_queries_by_type(benchmark, connection, run_config)
+        except BaseException:
+            self._phase_recorded_frames = {}
+            raise
         finally:
             if phase_eligible:
                 self._plan_capture_phase_active = False
@@ -691,10 +695,13 @@ class TestDriversMixin:
         if effective_type in {"standard", "power"} and not self.is_dry_run:
             self._last_power_workload_timing = (workload_start_time, workload_end_time, workload_duration_ms)
 
-        if not self._contain_outstanding_throughput_work(run_config):
-            return results
-        if phase_eligible:
-            self._capture_plans_post_measurement(connection, dict(self._phase_recorded_queries), results)
+        try:
+            if not self._contain_outstanding_throughput_work(run_config):
+                return results
+            if phase_eligible:
+                self._capture_plans_post_measurement(connection, dict(self._phase_recorded_queries), results)
+        finally:
+            self._phase_recorded_frames = {}
         return results
 
     def _contain_outstanding_throughput_work(self, run_config: dict[str, Any]) -> bool:

@@ -17,7 +17,9 @@ from typing import TYPE_CHECKING, Any
 
 from benchbox.core.dataframe.profiling import (
     MemoryTracker,
+    PlanCaptureSupport,
     capture_query_plan,
+    plan_capture_support,
 )
 from benchbox.core.tpch.dataframe_queries import get_tpch_dataframe_queries
 from benchbox.utils.path_utils import get_benchmark_runs_datagen_path
@@ -465,8 +467,7 @@ class DataFrameBenchmarkSuite:
 
                 del result
 
-            supported_plan_platforms = {"polars", "datafusion", "pyspark"}
-            if self.config.capture_plans and platform_name.lower().replace("-df", "") in supported_plan_platforms:
+            if self.config.capture_plans and plan_capture_support(platform_name) is not PlanCaptureSupport.UNSUPPORTED:
                 plan_frame = None
                 try:
                     plan_frame = query.execute(context, family)

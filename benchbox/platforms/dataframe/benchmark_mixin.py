@@ -24,6 +24,7 @@ from benchbox.core.dataframe import (
     validate_scale_factor,
 )
 from benchbox.core.dataframe.data_loader import DataFrameDataLoader, get_tpch_column_names
+from benchbox.core.dataframe.profiling import PlanCaptureSupport, plan_capture_support
 from benchbox.core.dataframe.query_resolution import (
     benchmark_provides_dataframe_queries,
     build_dataframe_query_filter_from_config,
@@ -330,6 +331,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
         self.strict_plan_capture = bool(getattr(benchmark_config, "strict_plan_capture", False))
 
         options_map = getattr(benchmark_config, "options", {}) or {}
+        self.normalize_plan_literals = bool(options_map.get("normalize_plan_literals", False))
         builder.set_run_config(
             RunConfigInput(
                 compression_type=options_map.get("compression_type"),
@@ -1133,11 +1135,16 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
                         raw_result, profile = profiled_runner(ctx, query)
                     raw_result = dict(raw_result)
                     if profile.query_plan is not None:
-                        raw_result["query_plan"] = self._structure_dataframe_plan(
-                            profile.query_plan, str(query.query_id)
-                        )
+                        structured_plan = self._structure_dataframe_plan(profile.query_plan, str(query.query_id))
+                        raw_result["query_plan"] = structured_plan
+                        self._apply_plan_fingerprints(raw_result, structured_plan)
                     if profile.plan_capture_time_ms:
                         raw_result["plan_capture_time_ms"] = profile.plan_capture_time_ms
+                    if (
+                        plan_capture_support(self.platform_name) is PlanCaptureSupport.UNSUPPORTED
+                        and str(raw_result.get("status", "")).upper() == "SUCCESS"
+                    ):
+                        self._report_unsupported_plan_capture(raw_result, str(query.query_id))
                     for record in getattr(self, "plan_capture_errors", [])[errors_before:]:
                         record.setdefault("stream_id", stream_id)
                         record.setdefault("iteration", iteration)
@@ -1163,6 +1170,41 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
             with monitor.time_operation(f"query_{query.query_id}_iter{iteration}"):
                 return _run()
         return _run()
+
+    def _apply_plan_fingerprints(self, row: dict[str, Any], plan: Any) -> None:
+        if not isinstance(plan, QueryPlanDAG):
+            return
+        row["plan_fingerprint"] = plan.plan_fingerprint
+        if getattr(self, "normalize_plan_literals", False):
+            row["plan_fingerprint_normalized"] = plan.normalized_fingerprint
+
+    def _report_unsupported_plan_capture(self, row: dict[str, Any], query_id: str) -> None:
+        message = f"{self.platform_name} is an eager DataFrame engine with no query plan to capture"
+        row["plan_capture_error"] = message
+        self._record_dataframe_plan_capture_failure(query_id, message)
+        if getattr(self, "strict_plan_capture", False):
+            raise PlanCaptureError(
+                reason="unsupported",
+                platform=self.platform_name,
+                query_id=query_id,
+                details=message,
+            )
+
+    def _record_dataframe_plan_capture_failure(self, query_id: str, message: str) -> None:
+        if not hasattr(self, "plan_capture_errors"):
+            self.plan_capture_errors: list[dict[str, Any]] = []
+        self.plan_capture_errors.append({"query_id": query_id, "error": message})
+
+        if not getattr(self, "_plan_capture_warning_emitted", False):
+            self._plan_capture_warning_emitted = True
+            logger.warning(
+                "Query plan capture failed for %s on %s: %s (further capture failures this run are logged at debug)",
+                query_id,
+                self.platform_name,
+                message,
+            )
+        else:
+            logger.debug("Query plan capture failed for %s: %s", query_id, message)
 
     def _structure_dataframe_plan(self, captured_plan: Any, query_id: str) -> Any:
         if isinstance(captured_plan, QueryPlanDAG):

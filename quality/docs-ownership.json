@@ -187,6 +187,7 @@
     "docs/internal/comment-cleanup-scope.md": "core-only",
     "docs/internal/comment-policy.md": "core-only",
     "docs/internal/corpus-refresh.md": "core-only",
+    "docs/internal/dataframe-plan-capture.md": "core-only",
     "docs/internal/dependency-audit-raw.md": "core-only",
     "docs/internal/dependency-inventory.md": "core-only",
     "docs/internal/dev-loop-property-ledger.md": "core-only",

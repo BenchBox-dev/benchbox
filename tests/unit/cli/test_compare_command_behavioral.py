@@ -469,7 +469,7 @@ class TestComparePlatformRunMode:
 
 class TestCompareHelperFunctions:
     def test_build_execution_map_keeps_first_execution_per_query(self):
-        from benchbox.cli.commands.compare import _build_execution_map
+        from benchbox.core.query_plans.comparison import build_execution_map
 
         results = SimpleNamespace(
             query_results=[
@@ -480,7 +480,7 @@ class TestCompareHelperFunctions:
             ]
         )
 
-        execution_map = _build_execution_map(results)
+        execution_map = build_execution_map(results)
 
         assert set(execution_map) == {"Q1", "Q2", "Q3"}
         assert execution_map["Q1"]["execution_time_ms"] == 10.0

@@ -396,6 +396,7 @@ class ResultCaptureMixin:
         self.plan_capture_errors: list[dict[str, Any]] = []
         self._plan_capture_phase_active = False
         self._phase_recorded_queries: dict[str, str] = {}
+        self._phase_recorded_frames: dict[str, Any] = {}
         self._analyze_plans_notice_printed = False
         if not hasattr(self, "_plan_capture_lock"):
             self._plan_capture_lock = threading.Lock()
@@ -674,6 +675,51 @@ class ResultCaptureMixin:
             )
             return None, capture_time_ms
 
+        return self._parse_captured_plan(query_id, explain_output, start_time)
+
+    def capture_spark_dataframe_plan(self, dataframe: Any, query_id: str) -> tuple[Any, float]:
+        if not self.capture_plans:
+            return None, 0.0
+
+        if self.plan_query_filter and (
+            query_id not in self.plan_query_filter and _plan_capture_public_id(query_id) not in self.plan_query_filter
+        ):
+            return None, 0.0
+
+        from benchbox.core.dataframe.profiling import capture_pyspark_plan
+
+        start_time = time.perf_counter()
+        try:
+            captured, timed_out = run_with_timeout(
+                capture_pyspark_plan,
+                self.plan_capture_timeout_seconds,
+                f"plan capture explain (query_id={query_id})",
+                dataframe,
+                self.platform_name.lower().removesuffix("-df"),
+            )
+        except PlanCaptureError:
+            raise
+        except Exception as exc:
+            self._record_plan_capture_failure(query_id, reason="explain_failed", message=str(exc))
+            return None, (time.perf_counter() - start_time) * 1000
+
+        if timed_out:
+            self._record_plan_capture_failure(
+                query_id,
+                reason="timeout",
+                message=f"explain timed out after {self.plan_capture_timeout_seconds}s",
+                log_warning=False,
+            )
+            return None, (time.perf_counter() - start_time) * 1000
+
+        return self._parse_captured_plan(query_id, captured.plan_text, start_time)
+
+    def _parse_captured_plan(
+        self,
+        query_id: str,
+        explain_output: str | None,
+        start_time: float,
+    ) -> tuple[Any, float]:
         if not explain_output:
             capture_time_ms = (time.perf_counter() - start_time) * 1000
             self._record_plan_capture_failure(

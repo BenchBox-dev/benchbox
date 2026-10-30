@@ -24,6 +24,8 @@ def _fake_parent_init(self, **config):
     self.logger = logging.getLogger("test.databricks.parent")
     self.log_verbose = lambda *_a, **_k: None
     self.log_very_verbose = lambda *_a, **_k: None
+    self.capture_plans = False
+    self.normalize_plan_literals = False
 
 
 def _patch_parent_init(monkeypatch: pytest.MonkeyPatch) -> None:

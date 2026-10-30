@@ -1270,6 +1270,10 @@ def _build_plan_entry(qr: dict[str, Any], *, max_depth: int = DEFAULT_PLAN_MAX_D
         plan_entry["fingerprint_normalized"] = plan_fingerprint_normalized
     if capture_time is not None:
         plan_entry["capture_time_ms"] = round(capture_time, 1)
+    if qr.get("iteration") is not None:
+        plan_entry["iteration"] = qr["iteration"]
+    if qr.get("run_type"):
+        plan_entry["run_type"] = qr["run_type"]
 
     if isinstance(query_plan, QueryPlanDAG):
         plan_entry["plan"] = query_plan.to_dict(max_depth=max_depth)

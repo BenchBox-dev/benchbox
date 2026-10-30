@@ -143,6 +143,7 @@ class PlatformAdapter(
         self._plan_capture_lock = threading.Lock()
         self._plan_capture_phase_active: bool = False
         self._phase_recorded_queries: dict[str, str] = {}
+        self._phase_recorded_frames: dict[str, Any] = {}
         self.tuning_enabled = config.get("tuning_enabled", False)
         self.driver_package = config.get("driver_package")
         self.driver_version_requested = config.get("driver_version") or config.get("driver_version_requested")

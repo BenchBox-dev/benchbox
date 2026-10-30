@@ -569,6 +569,8 @@ def _reconstruct_query_results(
         _attach_plan(
             result,
             _lookup_plan_entry(plan_entries, query_id, q.get("stream", 0), q.get("test_type")),
+            iteration=q.get("iter"),
+            run_type=q.get("run_type"),
         )
         results.append(result)
 
@@ -589,13 +591,27 @@ def _reconstruct_query_results(
     return results
 
 
-def _attach_plan(result: dict[str, Any], plan_entry: dict[str, Any] | None) -> None:
+def _attach_plan(
+    result: dict[str, Any],
+    plan_entry: dict[str, Any] | None,
+    *,
+    iteration: Any = None,
+    run_type: Any = None,
+) -> None:
     if not plan_entry:
+        return
+    recorded_iteration = plan_entry.get("iteration")
+    if recorded_iteration is not None and iteration is not None and recorded_iteration != iteration:
+        return
+    recorded_run_type = plan_entry.get("run_type")
+    if recorded_run_type and run_type and recorded_run_type != run_type:
         return
 
     plan_dict = plan_entry.get("plan")
-    if plan_dict is not None:
+    if isinstance(plan_dict, dict) and "logical_root" in plan_dict:
         result["query_plan"] = QueryPlanDAG.from_dict(plan_dict)
+    elif plan_dict is not None:
+        result["query_plan_raw"] = plan_dict
     if plan_entry.get("fingerprint"):
         result["plan_fingerprint"] = plan_entry["fingerprint"]
     if plan_entry.get("fingerprint_normalized"):
@@ -625,10 +641,10 @@ def _lookup_plan_entry(
     entry = plan_entries.get(normalize_query_id(query_id))
     if entry is None or "plan" in entry:
         return entry
-    if test_type:
-        qualified = entry.get(f"{stream_id}:{test_type}")
-        if qualified is not None:
-            return qualified
+    qualified_stream = f"{stream_id}:{test_type or ''}"
+    qualified = entry.get(qualified_stream)
+    if qualified is not None:
+        return qualified
     return entry.get(str(stream_id))
 
 

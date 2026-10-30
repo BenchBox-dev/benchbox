@@ -580,12 +580,15 @@ class PlanComparisonSummary:
         }
 
 
-def _build_execution_map(results: Any) -> dict[str, Any]:
+def build_execution_map(results: Any) -> dict[str, Any]:
     execution_map: dict[str, Any] = {}
     for execution in iter_query_results(results):
         query_id = execution.get("query_id")
-        if query_id is not None:
-            execution_map.setdefault(query_id, execution)
+        if query_id is None:
+            continue
+        existing = execution_map.get(query_id)
+        if existing is None or (existing.get("query_plan") is None and execution.get("query_plan") is not None):
+            execution_map[query_id] = execution
     return execution_map
 
 
@@ -595,8 +598,8 @@ def generate_plan_comparison_summary(
     *,
     regression_threshold_pct: float = 20.0,
 ) -> PlanComparisonSummary:
-    baseline_map = _build_execution_map(baseline_results)
-    current_map = _build_execution_map(current_results)
+    baseline_map = build_execution_map(baseline_results)
+    current_map = build_execution_map(current_results)
 
     common_queries = set(baseline_map.keys()) & set(current_map.keys())
 
