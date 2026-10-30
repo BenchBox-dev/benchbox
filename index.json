@@ -29020,7 +29020,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "Stop the generated tuning page rendering 'Aliases resolve to another platform's entry: .' when a platform has no aliases"
     },
     "tuning-paradedb-native-layout-20261017": {
