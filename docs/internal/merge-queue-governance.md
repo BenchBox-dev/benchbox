@@ -275,12 +275,15 @@ freshness changed. The
 `tests/conftest.py` coverage warning reads the data file named by
 `COVERAGE_FILE` so sharded runs report their own file.
 
-Each commit runs in its own `trunk-<sha>` concurrency group, so runs for
-different commits proceed in parallel and later pushes never wait behind or
-replace earlier runs; only a re-run of the same commit waits for the earlier
-run of that commit. Results can still arrive out of order. This covers runs for
-delivered events, not push-event delivery itself. See
-[the per-commit trunk decision](../../_project/decisions/trunk-per-commit-runs-2026-10-27.md).
+Develop pushes share one `trunk-develop` concurrency group. One run is in flight
+and the newest push waits behind it; a newer push replaces a waiting one, and a
+started run is never cancelled. A replaced commit has no run of its own, so a red
+run covers every commit merged since the last run, and the arm gate and
+`make trunk-status` name all of them. A revert of any of those commits is exempt
+from the gate, and one revert does not reopen arming for other PRs until a run
+is green. Runs started by `ci.yml` and by manual dispatch keep a per-commit group.
+This covers runs for delivered events, not push-event delivery itself. See
+[the latest-head trunk decision](../../_project/decisions/trunk-latest-head-runs-2026-10-30.md).
 Release admission requires the latest exact-commit trunk `push` run on `develop`
 to succeed and have a matching artifact attempt; it never falls back to an
 older success. See [the release artifact contract](release-artifacts.md).

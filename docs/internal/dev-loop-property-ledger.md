@@ -180,7 +180,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_t2_partition_workflow.py` | product-safety | Complete medium selection, correctness gate conservation, and binary framing placement |
 | `test_comment_policy_nightly_workflow.py` | tooling | Nightly comment-policy workflow triggers, develop checkout, read-only permissions, whole-tree launcher call and shared action pins |
 | `test_trunk_coverage_workflow.py` | product-safety | Coverage workflow triggers, instrumented shards, map combine with self-fetch, schedule-only staleness issue |
-| `test_trunk_workflow.py` | product-safety | Develop-push triggers, uninstrumented medium tier, whole-tree comment-policy scan, per-commit concurrency groups and read-only test permissions |
+| `test_trunk_workflow.py` | product-safety | Develop-push triggers, uninstrumented medium tier, whole-tree comment-policy scan, shared develop-push concurrency group with per-commit groups for other events, and read-only test permissions |
 | `test_trunk_red_disarm_workflow.py` | product-safety | Red-trunk disarm trigger, develop-push filter, exact permissions, workflow token and full-history checkout |
 | `test_published_results_base_ci.py` | product-safety | Published corpus CI |
 | `test_release_canary_shard_evidence.py` | product-safety | Release canary evidence |

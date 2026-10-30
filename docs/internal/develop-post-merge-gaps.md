@@ -34,14 +34,15 @@ lane, four-shard medium tier, correctness gate and required-local-cases. It also
 runs the whole-tree comment-policy scan and builds the verified release
 distribution artifact. A failing trunk run leads to a revert
 (`make trunk-revert PR=<n>`), except for an invalid-base-policy scan failure
-described below. Each commit runs in its own
-`trunk-<sha>` concurrency group, so merges that arrive together are all tested
-in parallel instead of replacing one another.
+described below. Develop pushes share the `trunk-develop` concurrency group: one
+run is in flight and only the newest push waits behind it, which bounds the
+queue to one run.
 
-This closes the concurrency-replacement gap for delivered events, not the
-event-delivery gap. A push that GitHub never delivers produces no run for that
-commit. The next delivered push tests a tree containing it but cannot certify
-that earlier commit's release artifact. The fast-lane count baseline and delta
+This leaves the concurrency-replacement gap open on purpose, and it does not
+close the event-delivery gap. A commit that is waiting when a newer push arrives
+is replaced and gets no run of its own; the newer run tests a tree containing it
+but cannot certify that earlier commit's release artifact. A push that GitHub
+never delivers produces the same result. The fast-lane count baseline and delta
 guard are retired. The remaining consequences include:
 
 | Workflow | Loses when its push is dropped | Recovery |

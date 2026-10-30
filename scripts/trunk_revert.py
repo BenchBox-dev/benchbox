@@ -29,6 +29,8 @@ DECISIVE_CONCLUSIONS = RED_CONCLUSIONS | {"success"}
 RUN_FIELDS = "conclusion,status,createdAt,updatedAt,databaseId,url,headSha"
 RUN_WINDOW = 30
 RUN_WINDOWS = (RUN_WINDOW, 100, 300, 1000)
+UNTESTED_LIMIT = 100
+NAMED_CANDIDATES = 8
 _UNDETERMINED = (
     f"the culprit of the red {TRUNK_WORKFLOW} streak on {BASE_BRANCH} is undetermined while the older run {{url}} "
     "is still in progress; no commit is named or reverted until it finishes"
@@ -140,7 +142,7 @@ def trunk_gate(
     named, revert_hint = "the culprit", "make trunk-revert PR=<number>"
     try:
         failed = red_streak_start(run, repo)
-        if failed is not None and not is_reverted(run, repo, failed.get("headSha") or ""):
+        if failed is not None and not culprit_reverted(run, repo, failed):
             named, revert_hint = describe_culprit(run, repo, failed)
     except TrunkError:
         pass
@@ -151,7 +153,7 @@ def trunk_gate(
     )
 
 
-def _scan_streak(runs: list[dict]) -> tuple[dict | None, bool]:
+def _scan_streak(runs: list[dict]) -> tuple[dict | None, dict | None]:
     start = None
     for item in runs:
         if item.get("status") != "completed":
@@ -161,16 +163,33 @@ def _scan_streak(runs: list[dict]) -> tuple[dict | None, bool]:
         if item.get("conclusion") in RED_CONCLUSIONS:
             start = item
         elif item.get("conclusion") == "success":
-            return start, True
-    return start, False
+            return start, item
+    return start, None
+
+
+def untested_shas(run: Runner, repo: str, green: dict | None, start: dict) -> list[str]:
+    head = start.get("headSha") or ""
+    base = (green or {}).get("headSha") or ""
+    if not head or not base:
+        return [head] if head else []
+    code, out = run(["gh", "api", f"repos/{repo}/compare/{base}...{head}?per_page={UNTESTED_LIMIT}"])
+    if code != 0:
+        return [head]
+    try:
+        shas = [item["sha"] for item in json.loads(out)["commits"]]
+    except (ValueError, KeyError, TypeError):
+        return [head]
+    return shas if shas and shas[-1] == head else [head]
 
 
 def red_streak_start(run: Runner, repo: str) -> dict | None:
     for limit in RUN_WINDOWS:
         runs = trunk_runs(run, repo, limit)
-        start, found_green = _scan_streak(runs)
-        if found_green or len(runs) < limit:
-            return start
+        start, green = _scan_streak(runs)
+        if green is not None or len(runs) < limit:
+            if start is None:
+                return None
+            return {**start, "untestedShas": untested_shas(run, repo, green, start)}
     raise TrunkError(
         f"the red {TRUNK_WORKFLOW} streak on {BASE_BRANCH} reaches back past the newest {RUN_WINDOWS[-1]} runs, "
         "so its first failing run cannot be established; refusing"
@@ -192,8 +211,27 @@ def culprit_pr(run: Runner, repo: str, sha: str) -> int | None:
     return merged[0] if merged else None
 
 
+def _candidates(failed: dict) -> list[str]:
+    shas = failed.get("untestedShas") or []
+    head = failed.get("headSha") or ""
+    return shas or ([head] if head else [])
+
+
+def culprit_reverted(run: Runner, repo: str, failed: dict) -> bool:
+    shas = _candidates(failed)
+    return len(shas) == 1 and is_reverted(run, repo, shas[0])
+
+
 def describe_culprit(run: Runner, repo: str, failed: dict) -> tuple[str, str]:
-    sha = failed.get("headSha") or ""
+    shas = _candidates(failed)
+    if len(shas) > 1:
+        shown = shas[-NAMED_CANDIDATES:]
+        labels = [f"PR #{pr}" if (pr := culprit_pr(run, repo, sha)) else sha[:9] for sha in shown]
+        if len(shas) > len(shown):
+            labels.insert(0, f"{len(shas) - len(shown)} older")
+        named = f"one of the {len(shas)} commits merged since the last green run ({', '.join(labels)})"
+        return named, "make trunk-revert PR=<number>"
+    sha = shas[0] if shas else ""
     culprit = culprit_pr(run, repo, sha) if sha else None
     named = f"PR #{culprit}" if culprit else f"commit {sha[:9] or 'unknown'}"
     revert_hint = f"make trunk-revert PR={culprit}" if culprit else "make trunk-revert PR=<number>"
@@ -341,13 +379,14 @@ def arm_refusal(
 ) -> str | None:
     if failed is None:
         return None
-    sha = failed.get("headSha") or ""
-    if sha and (reverted if reverted is not None else is_reverted(run, repo, sha)):
+    shas = _candidates(failed)
+    reverts = shas[0][:9] if len(shas) == 1 else "<sha>"
+    if len(shas) == 1 and (reverted if reverted is not None else is_reverted(run, repo, shas[0])):
         return None
     if (
-        sha
+        shas
         and pr.branch.startswith(REVERT_PREFIX)
-        and any(f"This reverts commit {sha}" in text for text in pr.messages)
+        and any(f"This reverts commit {sha}" in text for sha in shas for text in pr.messages)
     ):
         return None
     if (
@@ -355,12 +394,12 @@ def arm_refusal(
         and pr.head
         and fix_forward_authorized(issue_comments(run, repo, pr.number), pr.head, failed)
     ):
-        return fix_forward_relatedness_refusal(ref, sha, run, repo)
+        return fix_forward_relatedness_refusal(ref, shas[0] if shas else "", run, repo)
     named, revert_hint = describe_culprit(run, repo, failed)
     return (
         f"{BASE_BRANCH} is red: the first failing {TRUNK_WORKFLOW} run since the last green one failed at {named} ({failed['url']}). "
         f"Merge a revert ({revert_hint}) or get {BASE_BRANCH} green before arming other PRs; "
-        f"only a {REVERT_PREFIX}* branch whose commits carry `This reverts commit {sha[:9] or '<sha>'}...` is exempt, "
+        f"only a {REVERT_PREFIX}* branch whose commits carry `This reverts commit {reverts}...` is exempt, "
         "or a PR whose current head carries an unedited owner comment "
         f"`Fix-forward authorized: <head SHA> for trunk run {failed.get('databaseId')}`."
     )
@@ -383,8 +422,7 @@ def status(run: Runner = live_run, repo: str = REPOSITORY) -> str | None:
         return None
     if failed is None:
         return None
-    sha = failed.get("headSha") or ""
-    if sha and is_reverted(run, repo, sha):
+    if culprit_reverted(run, repo, failed):
         return None
     named, revert_hint = describe_culprit(run, repo, failed)
     return (
