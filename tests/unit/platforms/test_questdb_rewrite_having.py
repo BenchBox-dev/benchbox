@@ -135,3 +135,11 @@ def test_having_subquery_whose_only_aggregate_is_nested_is_not_hoisted():
 def test_having_subquery_with_window_aggregate_only_is_not_hoisted():
     rewritten = rewrite_query("SELECT k FROM t GROUP BY k HAVING SUM(v) > (SELECT SUM(x) OVER () FROM u)")
     assert "CROSS JOIN" not in rewritten
+
+
+def test_having_with_empty_group_by_drops_the_group_clause():
+    rewritten = rewrite_query("SELECT 100.0 * SUM(a) / SUM(b) AS r FROM t GROUP BY () HAVING SUM(b) > 0")
+    assert rewritten == (
+        "SELECT 100.0 * qdb_agg_1 / qdb_agg_2 AS r FROM "
+        "(SELECT SUM(a) AS qdb_agg_1, SUM(b) AS qdb_agg_2 FROM t) AS qdb_having WHERE qdb_agg_2 > 0"
+    )
