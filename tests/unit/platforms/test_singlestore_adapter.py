@@ -526,6 +526,93 @@ class TestSingleStoreDataLoading:
         assert mock_infile.call_count == 1
         assert mock_infile.call_args.args[4] is True
 
+    def test_load_parquet_converts_to_escaped_text_and_loads(self, tmp_path):
+        pa = pytest.importorskip("pyarrow")
+        pq = pytest.importorskip("pyarrow.parquet")
+
+        parquet_path = tmp_path / "title.parquet"
+        pq.write_table(
+            pa.table(
+                {
+                    "id": [1, None],
+                    "name": ['a"b\tc\\d\ne', None],
+                    "flag": [True, False],
+                }
+            ),
+            parquet_path,
+        )
+
+        adapter = SingleStoreAdapter()
+        mock_connection = Mock()
+        mock_cursor = Mock()
+        mock_connection.cursor.return_value = mock_cursor
+        mock_cursor.fetchone.side_effect = [(0,), (2,)]
+        captured: dict[str, str] = {}
+
+        def capture(sql):
+            if sql.startswith("LOAD DATA"):
+                load_path = sql.split("'")[1]
+                captured["sql"] = sql
+                captured["text"] = Path(load_path).read_text(encoding="utf-8")
+
+        mock_cursor.execute.side_effect = capture
+
+        rows = adapter._load_parquet_infile(mock_connection, "title", parquet_path)
+
+        assert rows == 2
+        assert "ESCAPED BY '\\\\'" in captured["sql"]
+        assert "FIELDS TERMINATED BY '\\t'" in captured["sql"]
+        assert captured["text"] == '1\ta"b\\tc\\\\d\\ne\t1\n\\N\t\\N\t0\n'
+        assert list(tmp_path.glob("*.tsv")) == []
+
+    def test_parquet_text_round_trips_under_mysql_escape_rules(self, tmp_path):
+        pa = pytest.importorskip("pyarrow")
+        pq = pytest.importorskip("pyarrow.parquet")
+        from benchbox.platforms.singlestore import _parquet_as_load_file
+
+        names = [
+            None,
+            "",
+            "plain",
+            "a\tb",
+            "a\nb",
+            "a\rb",
+            "a\\b",
+            "\\N",
+            "N",
+            "\\t",
+            "x\\",
+            "\t\n\\",
+            'q"uote',
+            "é\u2028",
+        ]
+        parquet_path = tmp_path / "t.parquet"
+        pq.write_table(pa.table({"id": list(range(len(names))), "name": names}), parquet_path)
+
+        def mysql_unescape(field):
+            if field == "\\N":
+                return None
+            out, i = [], 0
+            mapping = {"t": "\t", "n": "\n", "r": "\r", "\\": "\\"}
+            while i < len(field):
+                if field[i] == "\\":
+                    out.append(mapping[field[i + 1]])
+                    i += 2
+                else:
+                    out.append(field[i])
+                    i += 1
+            return "".join(out)
+
+        with _parquet_as_load_file(parquet_path) as load_path:
+            raw = load_path.read_bytes().decode("utf-8")
+
+        assert "\r" not in raw
+        lines = raw.split("\n")
+        assert lines.pop() == ""
+        assert len(lines) == len(names)
+        parsed = [mysql_unescape(line.split("\t")[1]) for line in lines]
+        assert parsed == names
+
     def test_load_data_keeps_trailing_null_field_for_dat_files(self):
         adapter = SingleStoreAdapter()
 
