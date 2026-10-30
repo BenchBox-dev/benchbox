@@ -105,7 +105,7 @@
       "reason": "the patch is unchanged since head <sha1>",
       "round": 1,
       "seen": [
-        1002
+        1001
       ],
       "strikes": 0,
       "struck_digests": []
