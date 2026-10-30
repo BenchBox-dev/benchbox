@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from benchbox._vendor.sqlglot import exp
 
-ORDER = 74
+ORDER = 90
 
 
 def _plain_double(node: exp.Expr) -> exp.Expr:

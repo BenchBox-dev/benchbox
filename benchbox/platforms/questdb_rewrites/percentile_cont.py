@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from benchbox._vendor.sqlglot import exp
 
-ORDER = 72
+ORDER = 82
 
 APPROX_PERCENTILE_PRECISION = 5
 
