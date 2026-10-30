@@ -12,6 +12,12 @@ _NO_SAVEPOINT = (
 )
 _NO_UPDATE_SUBQUERY = "QuestDB 10.0.1 rejects subqueries in UPDATE SET expressions with 'query is not allowed here'."
 
+_NO_READ_YOUR_WRITES = (
+    "QuestDB 10.0.1 does not show a transaction's uncommitted INSERTs to its own later statements: inside "
+    "BEGIN, `INSERT INTO t VALUES (1, 'a'); SELECT COUNT(*) FROM t` returns 0, so a following UPDATE or "
+    "INSERT ... SELECT over those rows affects nothing."
+)
+
 QUESTDB_TRANSACTION_PRIMITIVES_OPERATION_SKIPS = {
     "transaction_savepoint_nested": _NO_SAVEPOINT,
     "transaction_savepoint_deep_nesting": _NO_SAVEPOINT,
@@ -21,11 +27,9 @@ QUESTDB_TRANSACTION_PRIMITIVES_OPERATION_SKIPS = {
     "transaction_long_running_mixed": _NO_DELETE,
     "transaction_read_your_writes": _NO_UPDATE_SUBQUERY,
     "transaction_nested_subquery_updates": _NO_UPDATE_SUBQUERY,
-    "transaction_insert_with_subquery": (
-        "QuestDB 10.0.1 does not show a transaction's uncommitted INSERTs to its own later statements: inside "
-        "BEGIN, `INSERT INTO t VALUES (1, 'a'); SELECT COUNT(*) FROM t` returns 0, so INSERT ... SELECT over "
-        "rows written earlier in the transaction inserts nothing."
-    ),
+    "transaction_insert_with_subquery": _NO_READ_YOUR_WRITES,
+    "transaction_insert_update_chain": _NO_READ_YOUR_WRITES,
+    "transaction_with_cte": _NO_READ_YOUR_WRITES,
     "transaction_truncate_in_transaction": (
         "QuestDB 10.0.1 cannot TRUNCATE a table that has pending transactional INSERTs: the statement fails with "
         "'table busy [reason=insert]'."

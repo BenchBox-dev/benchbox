@@ -17,7 +17,7 @@ pytestmark = [
 import benchbox.sql_compat.rules.schema_emit.pk_capability
 from benchbox.sql_compat.registry import REGISTRY
 
-_EXPECTED_LOCK_TABLE_DIALECTS = ("datafusion", "clickhouse", "starrocks", "doris", "ducklake")
+_EXPECTED_LOCK_TABLE_DIALECTS = ("datafusion", "clickhouse", "starrocks", "doris", "ducklake", "questdb")
 _EXPECTED_INFORMATIONAL_DIALECTS = (
     "snowflake",
     "redshift",
@@ -44,7 +44,7 @@ def test_pk_capability_rules_registered():
     assert not missing, f"Missing PK rules: {sorted(missing)}"
 
 
-@pytest.mark.parametrize("platform", ["datafusion", "clickhouse", "starrocks", "doris", "ducklake"])
+@pytest.mark.parametrize("platform", ["datafusion", "clickhouse", "starrocks", "doris", "ducklake", "questdb"])
 def test_pk_rule_action_is_rewrite_ddl(platform: str):
     ctx = CompatibilityContext(
         platform=platform,
@@ -118,7 +118,7 @@ def test_starrocks_pk_rule_payload():
     assert payload.conditions == "first N columns only"
 
 
-@pytest.mark.parametrize("platform", ["datafusion", "clickhouse", "starrocks", "doris", "ducklake"])
+@pytest.mark.parametrize("platform", ["datafusion", "clickhouse", "starrocks", "doris", "ducklake", "questdb"])
 def test_all_lock_platforms_have_rewrite_ddl_rule(platform: str):
     ctx = CompatibilityContext(
         platform=platform,
