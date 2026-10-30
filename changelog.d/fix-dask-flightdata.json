@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "FlightData DataFrame queries now run on the Dask platform: holiday, distance and delay buckets use lazy-safe conditional columns, boolean flags treat null comparisons as false, repeated aggregations are computed once, and the delay-causes totals are materialized before rounding. Result rows match the pandas implementation."
+    }
+  ]
+}
