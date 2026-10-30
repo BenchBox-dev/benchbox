@@ -9,6 +9,11 @@
     {
       "category": "fixed",
       "breaking": false,
+      "text": "Read Primitives has Doris variants for 24 queries Doris could not run as written (approximate and exact percentiles, correlation, GROUP BY ALL and ORDER BY ALL, array, struct, map and lambda functions, JSON aggregates, UNPIVOT, correlated scalar subqueries)."
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
       "text": "The Databend compose stack runs on local storage in a single service instead of depending on the minio/minio and minio/mc images that Docker Hub no longer serves, so `docker compose up --wait` succeeds."
     }
   ]
