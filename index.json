@@ -2145,7 +2145,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "Replace the byte SHA-256 of the deployed snapshot cited in blog draft 17 with a content digest or remove the claim"
     },
     "blog-frontmatter-structure-check": {
