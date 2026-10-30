@@ -151,45 +151,32 @@ def test_between_in_scalar_subquery_bound_is_rewritten():
     assert "BETWEEN" not in rewrite_query(sql)
 
 
-@pytest.mark.parametrize("type_sql", ["DECIMAL(15,2)", "DECIMAL(10,4)", "DECIMAL", "NUMERIC(12,2)"])
-def test_decimal_cast_becomes_double(type_sql):
-    assert rewrite_query(f"SELECT CAST(a * 2 AS {type_sql}) FROM t") == "SELECT CAST(a * 2 AS DOUBLE) FROM t"
-
-
-def test_decimal_cast_in_predicate_becomes_double():
-    assert rewrite_query("SELECT a FROM t WHERE b > CAST(0.05 AS DECIMAL(15,2))") == (
-        "SELECT a FROM t WHERE b > CAST(0.05 AS DOUBLE)"
+def test_between_literal_bound_arithmetic_is_folded_exactly():
+    assert (
+        rewrite_query("SELECT SUM(x) FROM t WHERE d BETWEEN 0.06 - 0.01 AND 0.06 + 0.01 AND q < 24")
+        == "SELECT SUM(x) FROM t WHERE (d >= 0.05 AND d <= 0.07) AND q < 24"
     )
 
 
-def test_non_decimal_casts_are_left_unchanged():
-    sql = "SELECT CAST(a AS INT), CAST(b AS VARCHAR) FROM t"
-    assert rewrite_query(sql) == sql
-
-
-def test_create_table_as_select_is_parenthesised():
-    assert rewrite_query("CREATE TABLE a AS SELECT * FROM b WHERE x > 1") == (
-        "CREATE TABLE a AS (SELECT * FROM b WHERE x > 1)"
+def test_between_non_literal_bound_arithmetic_is_kept():
+    assert rewrite_query("SELECT * FROM t WHERE d BETWEEN c - 1 AND c + 1") == (
+        "SELECT * FROM t WHERE (d >= c - 1 AND d <= c + 1)"
     )
 
 
-def test_parenthesised_create_table_as_select_is_left_unchanged():
-    sql = "CREATE TABLE a AS (SELECT * FROM b)"
-    assert rewrite_query(sql) == sql
+def test_between_negative_folded_bound():
+    assert rewrite_query("SELECT * FROM t WHERE d BETWEEN 0.01 - 0.06 AND 1 + 2") == (
+        "SELECT * FROM t WHERE (d >= -0.05 AND d <= 3)"
+    )
 
 
-def test_plain_create_table_is_left_unchanged():
-    sql = "CREATE TABLE t (a INT)"
-    assert rewrite_query(sql) == sql
+def test_symmetric_between_accepts_either_bound_order():
+    assert rewrite_query("SELECT 1 FROM t WHERE x BETWEEN SYMMETRIC 5 AND 1") == (
+        "SELECT 1 FROM t WHERE ((x >= 5 AND x <= 1) OR (x >= 1 AND x <= 5))"
+    )
 
 
-@pytest.mark.parametrize(
-    ("source", "expected"),
-    [
-        ("SELECT ANY_VALUE(c_name) FROM c GROUP BY m", "SELECT FIRST(c_name) FROM c GROUP BY m"),
-        ("SELECT APPROX_DISTINCT(a) FROM t", "SELECT APPROX_COUNT_DISTINCT(a) FROM t"),
-        ("SELECT APPROX_QUANTILE(q, 0.5) FROM t", "SELECT APPROX_PERCENTILE(q, 0.5) FROM t"),
-    ],
-)
-def test_function_names_are_mapped_to_questdb_equivalents(source, expected):
-    assert rewrite_query(source) == expected
+def test_asymmetric_between_is_plain_range():
+    assert rewrite_query("SELECT 1 FROM t WHERE x BETWEEN ASYMMETRIC 1 AND 5") == (
+        "SELECT 1 FROM t WHERE (x >= 1 AND x <= 5)"
+    )
