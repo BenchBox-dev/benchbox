@@ -1116,8 +1116,13 @@ def _validate_cache_control_section(
         )
 
 
+ROWLESS_DML_BENCHMARKS = frozenset({"write_primitives", "transaction_primitives"})
+
+
 def _warn_empty_result_rows(data: dict[str, Any], vr: ValidationResult) -> None:
     if not isinstance(data, dict):
+        return
+    if _bundle_benchmark_id(data) in ROWLESS_DML_BENCHMARKS:
         return
     queries = data.get("queries")
     if not isinstance(queries, list):

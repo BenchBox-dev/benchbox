@@ -1270,6 +1270,21 @@ class TestEmptyResultRows:
         assert vr.ok, vr.errors
         assert any("result-rows-empty" in w for w in vr.warnings)
 
+    @pytest.mark.parametrize("benchmark_id", ["write_primitives", "transaction_primitives"])
+    def test_rowless_dml_benchmarks_do_not_warn(self, benchmark_id):
+        data = _bundle_with_rows([0, 0])
+        data["benchmark"]["id"] = benchmark_id
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr, allow_partial_validation=True)
+        assert not any("result-rows-empty" in w for w in vr.warnings)
+
+    def test_read_benchmark_with_empty_rows_still_warns(self):
+        data = _bundle_with_rows([0, 0])
+        data["benchmark"]["id"] = "read_primitives"
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr, allow_partial_validation=True)
+        assert any("result-rows-empty" in w for w in vr.warnings)
+
     def test_missing_rows_with_unreported_volume_warns(self):
         data = _bundle_with_rows([0, 0], rows_loaded=None)
         for q in data["queries"]:
