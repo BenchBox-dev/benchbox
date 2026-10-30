@@ -2558,7 +2558,7 @@ _PLATFORM_MANIFEST_JSON = """[
       {
         "name": "influxdb3",
         "required": true,
-        "import_name": "influxdb3"
+        "import_name": "influxdb_client_3"
       },
       {
         "name": "flightsql",

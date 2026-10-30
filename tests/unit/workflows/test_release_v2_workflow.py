@@ -258,3 +258,26 @@ def test_only_admission_checks_out_the_mutable_tag_ref():
                 assert ref == "${{ inputs.tag || github.ref_name }}"
             else:
                 assert ref == "${{ needs.admit.outputs.head_sha }}", f"{name} must check out the admitted commit"
+
+
+def _env_action_steps() -> list[dict]:
+    return yaml.safe_load(ENV_ACTION.read_text(encoding="utf-8"))["runs"]["steps"]
+
+
+def test_release_uat_environment_pins_a_pyspark_compatible_jdk():
+    java = next(s for s in _env_action_steps() if "actions/setup-java" in s.get("uses", ""))
+    assert java["with"]["java-version"] in {"17", "21"}
+    names = [s.get("name") for s in _env_action_steps()]
+    assert names.index(java["name"]) < names.index("Install the admitted wheel and record its digest")
+
+
+def test_release_uat_environment_installs_the_extra_of_every_shard_platform():
+    from tests.uat.matrix import PLATFORM_UV_EXTRA
+
+    sync = next(line for line in _env_action_commands().splitlines() if line.startswith("uv sync"))
+    installed = set(re.findall(r"--extra (\S+)", sync))
+    for name in UAT_STAGE_JOBS:
+        for entry in _jobs()[name]["strategy"]["matrix"]["include"]:
+            for platform in entry["platforms"].split(","):
+                extra = PLATFORM_UV_EXTRA.get(platform)
+                assert extra is None or extra in installed, f"{name} shard {entry['shard']}: {platform} needs {extra}"
