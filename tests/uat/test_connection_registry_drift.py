@@ -123,3 +123,14 @@ def test_uat_spark_connect_host_port_override_flows_through(
     monkeypatch.setattr(matrix, "tcp_probe", fake_probe)
     assert matrix.platform_is_reachable(platform) is True
     assert captured["port"] == 50052
+
+
+def test_remapped_host_ports_reach_the_cell_command():
+    for platform in docker_assets.docker_platform_specs():
+        host_port = docker_assets.resolve_published_host_port(platform)
+        if host_port is None or host_port == docker_assets.PLATFORM_SERVICE_PORT[platform]:
+            continue
+        opts = docker_assets.platform_extra_opts(platform)
+        assert any(opt.endswith(f"={host_port}") or opt.endswith(f":{host_port}") for opt in opts), (
+            f"{platform}: compose publishes host port {host_port} but the cell command does not pass it"
+        )

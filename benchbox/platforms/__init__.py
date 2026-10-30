@@ -473,6 +473,8 @@ trino|catalog|Trino catalog to use (e.g., hive, iceberg, memory). Auto-discovere
 trino|staging_root|Cloud storage path for staging data (e.g., s3://..., gs://..., abfss://...)|{}
 trino|table_format|Table format for creating tables (memory, hive, iceberg, delta)|{'default': 'memory'}
 trino|source_catalog|Source catalog for external data loading (e.g., hive connector)|{}
+trino|host|Trino coordinator hostname|{'default': 'localhost'}
+trino|port|Trino coordinator HTTP port|{'parser': 'int', 'default': 8080}
 firebolt|deployment_mode|Deprecated alias of the platform selector: 'core' for local Docker, 'cloud' for managed Firebolt|{'aliases': ('firebolt_mode',), 'choices': ('core', 'cloud')}
 firebolt|url|Firebolt Core endpoint URL (default: http://localhost:3473)|{'default': 'http://localhost:3473'}
 firebolt|client_id|Firebolt Cloud OAuth client ID|{}
@@ -491,6 +493,8 @@ presto|catalog|Presto catalog to use (e.g., hive, memory). Auto-discovered if no
 presto|staging_root|Cloud storage path for staging data (e.g., s3://..., gs://...)|{}
 presto|table_format|Table format for creating tables (memory, hive)|{'default': 'memory'}
 presto|source_catalog|Source catalog for external data loading (e.g., hive connector)|{}
+presto|host|Presto coordinator hostname|{'default': 'localhost'}
+presto|port|Presto coordinator HTTP port|{'parser': 'int', 'default': 8080}
 postgresql|host|PostgreSQL server hostname|{'default': 'localhost'}
 postgresql|port|PostgreSQL server port|{'parser': 'int', 'default': 5432}
 postgresql|database|PostgreSQL database name (auto-generated if not specified)|{}

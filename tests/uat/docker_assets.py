@@ -349,7 +349,9 @@ _PLATFORM_PASSWORD_ENV_KEYS: dict[str, str] = {
     "singlestore": "ROOT_PASSWORD",
 }
 
-_PLATFORM_INJECT_HOST_PORT_OPT: frozenset[str] = frozenset({"clickhouse-server", "singlestore", "starrocks", "doris"})
+_PLATFORM_INJECT_HOST_PORT_OPT: frozenset[str] = frozenset(
+    {"cedardb", "clickhouse-server", "doris", "presto", "singlestore", "starrocks", "trino"}
+)
 
 _PLATFORM_INJECT_SPARK_CONNECT_ENDPOINT_OPT: frozenset[str] = frozenset({"lakesail", "velox"})
 
