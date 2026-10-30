@@ -917,8 +917,8 @@ class TestMetadataPrimitivesDataFrameOperations:
         from benchbox.core.metadata_primitives.dataframe_operations import DataFrameMetadataOperationsManager
 
         fields = [
-            SimpleNamespace(name="x", type="Utf8", is_nullable=True),
-            SimpleNamespace(name="y", type="Int64", is_nullable=False),
+            SimpleNamespace(name="x", type="Utf8", nullable=True),
+            SimpleNamespace(name="y", type="Int64", nullable=False),
         ]
 
         fake_df = SimpleNamespace(

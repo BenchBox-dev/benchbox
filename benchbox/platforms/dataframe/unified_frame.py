@@ -8,6 +8,11 @@ import logging
 from functools import wraps
 from typing import TYPE_CHECKING, Any, Callable, Generic, TypeVar
 
+from benchbox.platforms.dataframe.datafusion_identifiers import (
+    datafusion_column as df_col,
+    datafusion_identifier,
+    datafusion_identifiers,
+)
 from benchbox.utils.polars_collection import collect_frame
 
 if TYPE_CHECKING:
@@ -1060,7 +1065,6 @@ class UnifiedExpr(_DataFusionDeferredOperations):
             return UnifiedExpr(self._expr.over(window))
 
         if self._is_datafusion:
-            from datafusion import col as df_col
             from datafusion.expr import Window
 
             partition_exprs = [df_col(c) if isinstance(c, str) else c for c in partition_cols]
@@ -1104,7 +1108,7 @@ class UnifiedExpr(_DataFusionDeferredOperations):
 
     def sort_by(self, column: str | Any, descending: bool = False) -> UnifiedExpr:
         if self._is_datafusion:
-            from datafusion import col as df_col, functions as df_f
+            from datafusion import functions as df_f
 
             col_name = column._expr if isinstance(column, UnifiedExpr) else column
             if isinstance(col_name, str):
@@ -1255,7 +1259,7 @@ class _DataFusionDeferredRank(UnifiedExpr):
         partition_by: str | list[str],
         order_by: str | None = None,
     ) -> UnifiedExpr:
-        from datafusion import col as df_col, functions as df_f
+        from datafusion import functions as df_f
         from datafusion.expr import Window
 
         partition_cols = [partition_by] if isinstance(partition_by, str) else list(partition_by)
@@ -1285,7 +1289,7 @@ class _DataFusionDeferredCumulative(UnifiedExpr):
         self._operation = operation
 
     def over(self, partition_by: str | list[str], order_by: str | None = None) -> UnifiedExpr:
-        from datafusion import col as df_col, functions as df_f
+        from datafusion import functions as df_f
         from datafusion.expr import Window, WindowFrame
 
         if order_by is None:
@@ -1525,7 +1529,7 @@ def _rename_duplicate_right_columns(other_df: Any, duplicate_cols: set[str], use
         while new_name in used_names:
             new_name = f"{col_name}{suffix}_{counter}"
             counter += 1
-        other_df = other_df.with_column_renamed(col_name, new_name)
+        other_df = other_df.with_column_renamed(datafusion_identifier(col_name), new_name)
         used_names.add(new_name)
     return other_df
 
@@ -1551,7 +1555,7 @@ def _rename_conflicting_join_keys(
                 used_names.add(new_right_key)
             else:
                 new_right_key = f"__right_join_key_{i}__"
-            other_df = other_df.with_column_renamed(right_key, new_right_key)
+            other_df = other_df.with_column_renamed(datafusion_identifier(right_key), new_right_key)
             right_join_key_renames[right_key] = new_right_key
     return other_df, right_join_key_renames
 
@@ -1613,7 +1617,6 @@ def _sort_pyspark(df, cols: list, desc_flags: list[bool], nulls_last: bool):
 
 
 def _sort_datafusion(df, cols: list, desc_flags: list[bool], nulls_last: bool):
-    from datafusion import col as df_col
     from datafusion.expr import SortExpr
 
     sort_exprs = []
@@ -1677,7 +1680,7 @@ def _rename_same_named_join_keys(
             used_names.add(new_right_key)
         else:
             new_right_key = f"__expr_join_right_key_{i}__"
-        right_df = right_df.with_column_renamed(right_key, new_right_key)
+        right_df = right_df.with_column_renamed(datafusion_identifier(right_key), new_right_key)
         renames[right_key] = new_right_key
     return right_df, renames
 
@@ -1830,8 +1833,8 @@ class UnifiedLazyFrame(Generic[DF, Expr]):
         actual_right_cols = [right_join_key_renames.get(c, c) for c in right_cols]
         result = self._df.join(
             renamed_other,
-            left_on=left_cols,
-            right_on=actual_right_cols,
+            left_on=datafusion_identifiers(left_cols),
+            right_on=datafusion_identifiers(actual_right_cols),
             how=how,
         )
 
@@ -2106,8 +2109,8 @@ class UnifiedLazyFrame(Generic[DF, Expr]):
         actual_right_join_cols = [right_join_key_renames.get(c, c) for c in right_join_cols]
         result = left_df.join(
             right_df,
-            left_on=left_join_cols,
-            right_on=actual_right_join_cols,
+            left_on=datafusion_identifiers(left_join_cols),
+            right_on=datafusion_identifiers(actual_right_join_cols),
             how=how,
         )
         return _drop_post_join_temp_columns(
@@ -2126,8 +2129,6 @@ class UnifiedLazyFrame(Generic[DF, Expr]):
         elif _is_polars_df(self._df):
             grouped = self._df.group_by(*col_list)
         elif _is_datafusion_df(self._df):
-            from datafusion import col as df_col
-
             col_exprs = [df_col(c) if isinstance(c, str) else c for c in col_list]
             grouped = None
             return UnifiedGroupBy(grouped, col_exprs, self._adapter, self._df)
@@ -2154,7 +2155,7 @@ class UnifiedLazyFrame(Generic[DF, Expr]):
             if has_aggregate:
                 result = self._df.aggregate([], unwrapped)
             else:
-                result = self._df.select(*unwrapped)
+                result = self._df.select(*datafusion_identifiers(unwrapped))
         else:
             result = self._df.select(*unwrapped)
         return UnifiedLazyFrame(result, self._adapter)
@@ -2224,7 +2225,7 @@ class UnifiedLazyFrame(Generic[DF, Expr]):
         elif _is_polars_df(self._df):
             result = self._df.sum()
         elif _is_datafusion_df(self._df):
-            from datafusion import col as df_col, functions as df_f
+            from datafusion import functions as df_f
 
             schema_fields = [field.name for field in self._df.schema()]
             sum_exprs = [df_f.sum(df_col(c)).alias(c) for c in schema_fields]
@@ -2243,7 +2244,7 @@ class UnifiedLazyFrame(Generic[DF, Expr]):
         elif _is_polars_df(self._df):
             result = self._df.mean()
         elif _is_datafusion_df(self._df):
-            from datafusion import col as df_col, functions as df_f
+            from datafusion import functions as df_f
 
             schema_fields = [field.name for field in self._df.schema()]
             mean_exprs = [df_f.avg(df_col(c)).alias(c) for c in schema_fields]
@@ -2267,7 +2268,7 @@ class UnifiedLazyFrame(Generic[DF, Expr]):
             result = self._df.unique(subset=subset) if subset is not None else self._df.unique()
         elif _is_datafusion_df(self._df):
             if subset is not None:
-                from datafusion import col as df_col, functions as df_f, lit as df_lit
+                from datafusion import functions as df_f, lit as df_lit
                 from datafusion.expr import Window, WindowFrame
 
                 cols = [subset] if isinstance(subset, str) else list(subset)
@@ -2347,7 +2348,7 @@ class UnifiedLazyFrame(Generic[DF, Expr]):
         elif _is_datafusion_df(self._df):
             result = self._df
             for old_name, new_name in mapping.items():
-                result = result.with_column_renamed(old_name, new_name)
+                result = result.with_column_renamed(datafusion_identifier(old_name), new_name)
         else:
             result = self._df.rename(mapping)
 
@@ -2361,7 +2362,7 @@ class UnifiedLazyFrame(Generic[DF, Expr]):
         elif _is_polars_df(self._df):
             result = self._df.explode(column)
         elif _is_datafusion_df(self._df):
-            result = self._df.unnest_columns(column)
+            result = self._df.unnest_columns(datafusion_identifier(column))
         else:
             result = self._df.explode(column)
 
@@ -2409,7 +2410,7 @@ class UnifiedLazyFrame(Generic[DF, Expr]):
             result = self._df.select(*id_vars, stack_expr)
         elif _is_datafusion_df(self._df):
             import pyarrow as pa
-            from datafusion import col as df_col, lit as df_lit
+            from datafusion import lit as df_lit
 
             frames = []
             for var in value_vars:
@@ -2497,7 +2498,10 @@ class UnifiedLazyFrame(Generic[DF, Expr]):
             return collected[row, col]
 
     def drop(self, *columns: str) -> UnifiedLazyFrame:
-        result = self._df.drop(*columns)
+        if _is_datafusion_df(self._df):
+            result = self._df.drop(*datafusion_identifiers(columns))
+        else:
+            result = self._df.drop(*columns)
         return UnifiedLazyFrame(result, self._adapter)
 
 

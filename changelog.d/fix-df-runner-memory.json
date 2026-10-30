@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "DataFusion dataframe benchmarks now resolve mixed-case column names (ClickBench, AMPLab) and report column nullability in metadata primitives, so those cells no longer fail every query."
+    }
+  ]
+}

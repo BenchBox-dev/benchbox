@@ -539,18 +539,16 @@ class TestPandasMetadataOperations:
 class TestDataFusionAndGenericMetadataOperations:
     @staticmethod
     def _datafusion_frame():
-        class _Field:
-            def __init__(self, name, dtype, nullable):
-                self.name = name
-                self.type = dtype
-                self.is_nullable = nullable
+        import pyarrow as pa
 
         class _Frame:
             def schema(self):
-                return [
-                    _Field("id", "int64", False),
-                    _Field("payload", "utf8", True),
-                ]
+                return pa.schema(
+                    [
+                        pa.field("id", pa.int64(), nullable=False),
+                        pa.field("payload", pa.string(), nullable=True),
+                    ]
+                )
 
             def count(self):
                 return 3
@@ -569,7 +567,7 @@ class TestDataFusionAndGenericMetadataOperations:
         column_count = manager.execute_column_count(dataframe)
 
         assert columns.result_data == ["id", "payload"]
-        assert dtypes.result_data == {"id": "int64", "payload": "utf8"}
+        assert dtypes.result_data == {"id": "int64", "payload": "string"}
         assert schema.result_data[0]["nullable"] is False
         assert describe.success is True and describe.result_count == 0
         assert row_count.result_data == 3

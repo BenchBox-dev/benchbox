@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any
 
 try:
     import datafusion
-    from datafusion import SessionContext, col, functions as f, lit
+    from datafusion import SessionContext, functions as f, lit
     from datafusion.expr import Window
 
     try:
@@ -27,7 +27,6 @@ except ImportError:
     SessionContext = None
     SessionConfig = None
     Window = None
-    col = None
     lit = None
     f = None
     pa = None
@@ -35,6 +34,7 @@ except ImportError:
 
 from benchbox.core.dataframe.tuning import DataFrameTuningConfiguration
 from benchbox.platforms.base.adapter import DriverIsolationCapability
+from benchbox.platforms.dataframe.datafusion_identifiers import datafusion_column as col, datafusion_identifier
 from benchbox.platforms.dataframe.expression_family import (
     ExpressionFamilyAdapter,
 )
@@ -417,7 +417,7 @@ class DataFusionDataFrameAdapter(ExpressionFamilyAdapter[DataFusionDF, DataFusio
             mapping = dict(zip(current_cols, column_names))
             for old_name, new_name in mapping.items():
                 if old_name != new_name:
-                    df = df.with_column_renamed(old_name, new_name)
+                    df = df.with_column_renamed(datafusion_identifier(old_name), new_name)
 
         return df
 
@@ -667,7 +667,7 @@ class DataFusionDataFrameAdapter(ExpressionFamilyAdapter[DataFusionDF, DataFusio
         schema_names = [field.name for field in result.schema()]
         for old_name, new_name in mapping.items():
             if old_name in schema_names:
-                result = result.with_column_renamed(old_name, new_name)
+                result = result.with_column_renamed(datafusion_identifier(old_name), new_name)
         return result
 
     def _concat_dataframes(self, dfs: list[DataFusionLazyDF]) -> DataFusionLazyDF:
