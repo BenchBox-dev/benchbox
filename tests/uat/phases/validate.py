@@ -5,7 +5,13 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from benchbox.validation.bundle import CLI_REFUSED_COMPLIANCE_CLASSES, discover_bundles, validate_bundles
+from benchbox.cli.commands.publish import _redacted_publish_source
+from benchbox.validation.bundle import (
+    CLI_REFUSED_COMPLIANCE_CLASSES,
+    ValidationResult,
+    discover_bundles,
+    validate_bundles,
+)
 from tests.uat.phases import PhaseResult
 from tests.uat.phases.report import atomic_write_text
 
@@ -104,7 +110,7 @@ def _build_rows(bundle_paths: Sequence[Path]) -> list[_RollupRow]:
             )
             continue
 
-        results = validate_bundles([bundle_path])
+        results = _validate_publishable_form(bundle_path)
         if not results:
             rows.append(
                 _RollupRow(
@@ -134,6 +140,28 @@ def _build_rows(bundle_paths: Sequence[Path]) -> list[_RollupRow]:
             )
         )
     return rows
+
+
+_TUNING_PRIVACY_PREFIX = "Public privacy contract rejects unanonymized tuning diagnostics"
+
+
+def _validate_publishable_form(bundle_path: Path) -> list[ValidationResult]:
+    raw = validate_bundles([bundle_path])
+    if not any(error.startswith(_TUNING_PRIVACY_PREFIX) for result in raw for error in result.errors):
+        return raw
+    redacted, scratch = _redacted_publish_source(bundle_path)
+    if redacted is None:
+        return raw
+    try:
+        publishable = validate_bundles([redacted])
+    finally:
+        if scratch is not None:
+            scratch.cleanup()
+    if publishable:
+        for error in raw[0].errors:
+            if not error.startswith(_TUNING_PRIVACY_PREFIX) and error not in publishable[0].errors:
+                publishable[0].error(error)
+    return publishable
 
 
 def _read_bundle_metadata(bundle_path: Path) -> tuple[str, str, str, str | None]:
