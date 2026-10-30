@@ -555,14 +555,7 @@ CLICKHOUSE_TARGET_DIALECT = "clickhouse"
 
 CLICKHOUSE_BENCHMARK_TYPE = "tpch"
 
-CLICKHOUSE_KNOWN_DIVERGENCES: dict[str, str] = {
-    "2_v8": "correlated-subquery-decorrelation",
-    "3_v7": "sum-empty-group-zero",
-    "7_v7": "sum-empty-group-zero",
-    "10_v7": "sum-empty-group-zero",
-    "10_v8": "sum-empty-group-zero",
-    "13_v1": "correlated-subquery-decorrelation",
-}
+CLICKHOUSE_KNOWN_DIVERGENCES: dict[str, str] = {}
 
 CLICKHOUSE_KNOWN_DIVERGENCES_REVIEW_BY: dict[str, date] = {}
 
