@@ -299,9 +299,9 @@ CHECKER = "benchbox/core/equivalence/checker.py"
 CAPTURE = "benchbox/core/expected_results/registry.py"
 
 
-def test_plan_records_the_run_uuid_for_binding(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_plan_records_one_run_id_for_binding(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     _, values, plan = _plan(monkeypatch, tmp_path, _fake(files=SOUNDNESS))
-    assert values["decision"] == "review" and plan["run_uuid"] == plan["run_id"] and plan["run_uuid"]
+    assert values["decision"] == "review" and plan["run_id"] and "run_uuid" not in plan
 
 
 def test_soundness_pr_plans_a_review_over_the_bucket_chain(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

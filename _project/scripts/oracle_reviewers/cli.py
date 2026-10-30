@@ -169,7 +169,6 @@ def _base_plan(policy: Policy, repo: str, pr: int | None, run_id: str) -> dict[s
         "repo": repo,
         "pr": pr,
         "run_id": run_id,
-        "run_uuid": run_id,
         "base_sha": "",
         "base_ref": "",
         "head_sha": "",
