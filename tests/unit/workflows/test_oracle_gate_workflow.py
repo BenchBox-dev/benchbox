@@ -562,6 +562,17 @@ def test_an_omp_evidence_comment_runs_the_gate_in_the_pull_request_group() -> No
         assert _group(event) == "oracle-gate-8"
 
 
+def test_an_adjudication_comment_runs_the_gate_in_the_pull_request_group() -> None:
+    line = "Oracle adjudication: WITHDRAW D1 - the helper keeps the row"
+    for event in (
+        _comment_event("created", line),
+        _comment_event("edited", "withdrawn", line),
+        _comment_event("deleted", line),
+    ):
+        assert _gate_runs(event)
+        assert _group(event) == "oracle-gate-8"
+
+
 def test_plain_comment_edit_skips_the_gate_and_never_joins_the_pull_request_group() -> None:
     event = _comment_event("edited", "looks good", "looks fine")
     assert not _gate_runs(event)

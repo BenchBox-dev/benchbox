@@ -31,7 +31,7 @@ SETUP_ALLOWANCE_MINUTES = 30
 JOB_TIMEOUT_CEILING_MINUTES = 360
 MAX_NON_LOOP_PHASE_MINUTES = 30
 SWEEP_TIMEOUT_MINUTES = 8
-UNCHANGED_PREFIX_SHA256 = "9b385521edbecce55a3c3f8dfeb4df5504498ff9c5409f253344f2b4348d74f6"
+UNCHANGED_PREFIX_SHA256 = "2091a409589eb3ff990c397ed1282b2e277f8432a06a22bc6b26a2722af8ad2e"
 POLICY_FLAG = "--policy .github/oracle-reviewers.yml"
 UV_RUN = "uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python -m"
 PYTHON_RUN = "python3 -m"
@@ -40,7 +40,8 @@ REVIEW_CONDITION = (
     "github.event_name == 'workflow_dispatch' ||"
     " (github.event_name == 'pull_request_target' && (github.event.action != 'edited' || github.event.changes.base)) ||"
     " (github.event_name == 'issue_comment' && github.event.issue.pull_request"
-    " && startsWith(github.event.comment.body, '/oracle-review')"
+    " && (startsWith(github.event.comment.body, '/oracle-review')"
+    " || startsWith(github.event.comment.body, 'Oracle adjudication:'))"
     ' && contains(fromJSON(\'["OWNER", "MEMBER", "COLLABORATOR"]\'), github.event.comment.author_association))'
 )
 REFUSE_STEP = "Refuse a dispatch from any ref other than develop"

@@ -27,6 +27,8 @@ EXEMPT_SUCCESS_DESCRIPTION = "only exempt paths changed"
 STANDIN_ATTESTERS = frozenset({"joeharris76"})
 REFUSED_DESCRIPTION_PREFIX = "refused after"
 _STANDIN_MARKER = re.compile(r"Stand-in oracle review: APPROVE ([0-9a-f]{40})")
+OPEN_FINDINGS_LABEL = "SHIP WITH FIXES"
+_ESCALATED = re.compile(r"escalated (?P<ids>D[0-9]+(?:,D[0-9]+)*)")
 
 
 def _attested_shas(comment: dict[str, Any]) -> list[str]:
@@ -184,6 +186,42 @@ def _parse_time(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
+def _latest_decisive(verdicts: list[dict[str, Any]]) -> dict[str, Any] | None:
+    return next((status for status in reversed(verdicts) if status["state"] in DECISIVE_VERDICTS), None)
+
+
+def _edit_hold(status: dict[str, Any]) -> bool:
+    from oracle_reviewers.edits import EDITED_REASON
+
+    return status["state"] == "pending" and (status.get("description") or "").startswith(EDITED_REASON)
+
+
+def _open_findings(verdicts: list[dict[str, Any]]) -> bool:
+    decisive = _latest_decisive(verdicts)
+    return (
+        decisive is not None
+        and not _edit_hold(verdicts[-1])
+        and OPEN_FINDINGS_LABEL in (decisive.get("description") or "")
+    )
+
+
+def _open_findings_message(verdicts: list[dict[str, Any]], head_sha: str) -> str:
+    from oracle_reviewers.adjudication import GRAMMAR
+
+    decisive = _latest_decisive(verdicts)
+    match = _ESCALATED.search((decisive or {}).get("description") or "")
+    if match:
+        return (
+            f"oracle-review: {match.group('ids')} on {head_sha} stayed open through repeated dispute re-reviews and "
+            f"need the owner's ruling: post '{GRAMMAR}' for each after an Owner instruction comment naming this "
+            "pull request, head and finding, or push a fix"
+        )
+    return (
+        f"oracle-review: the oracle's latest verdict for {head_sha} lists open findings, which a stand-in cannot "
+        "waive: fix them, or dispute a finding with file:line counter-evidence in its review thread"
+    )
+
+
 def decide(
     head_sha: str,
     files: Iterable[str],
@@ -208,7 +246,12 @@ def decide(
     standin_after = standin_not_before(
         base_time, ((_parse_time(status["created_at"]), status["state"]) for status in verdicts)
     )
-    standin = next((comment for comment in comments if _is_standin(comment, head_sha, standin_after)), None)
+    findings_open = _open_findings(verdicts)
+    standin = (
+        None
+        if findings_open
+        else next((comment for comment in comments if _is_standin(comment, head_sha, standin_after)), None)
+    )
     if latest and verdict != "success" and not standin:
         if (latest.get("description") or "").startswith(REFUSED_DESCRIPTION_PREFIX):
             return WAITING, (
@@ -216,6 +259,8 @@ def decide(
                 "close this pull request and open a new one, or post a stand-in attestation after that verdict, "
                 "then rerun this check"
             )
+        if findings_open:
+            return WAITING, _open_findings_message(verdicts, head_sha)
         return WAITING, (
             f"oracle-review: the oracle's latest verdict for {head_sha} is {verdict}, not success; fix the "
             "findings, or post a stand-in attestation after that verdict, then rerun this check"

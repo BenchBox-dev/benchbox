@@ -89,7 +89,7 @@ query($owner: String!, $name: String!, $number: Int!, $after: String) {
           path
           comments(first: 50) {
             pageInfo { hasNextPage endCursor }
-            nodes { author { __typename login } authorAssociation body lastEditedAt includesCreatedEdit }
+            nodes { author { __typename login } authorAssociation body createdAt lastEditedAt includesCreatedEdit }
           }
         }
       }
@@ -104,7 +104,7 @@ query($thread: ID!, $after: String!) {
     ... on PullRequestReviewThread {
       comments(first: 100, after: $after) {
         pageInfo { hasNextPage endCursor }
-        nodes { author { __typename login } authorAssociation body }
+        nodes { author { __typename login } authorAssociation body createdAt }
       }
     }
   }
@@ -164,6 +164,7 @@ def review_threads(repo: str, pr: int) -> list[dict[str, Any]]:
                             "author": (item.get("author") or {}).get("login"),
                             "author_type": (item.get("author") or {}).get("__typename"),
                             "association": item.get("authorAssociation"),
+                            "created_at": item.get("createdAt"),
                             "body": item.get("body") or "",
                         }
                         for item in comments[1:]

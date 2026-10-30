@@ -56,6 +56,14 @@ Quote the owner's instruction in a separate comment posted before the stand-in,
 naming the PR, the head, and the oracle findings the stand-in covers. The merge
 digest links each stand-in to the nearest preceding `Owner instruction` comment.
 
+A stand-in covers absence, an oversize brief, a refusal, or a head held because
+an oracle review was edited. It does not cover open findings: `oracle-gate`
+rejects a stand-in on a head whose latest decisive `oracle-verdict` status is
+SHIP WITH FIXES. Fix the findings, or dispute them with a `Dispute:` thread
+reply carrying file:line counter-evidence. Two dispute rounds per patch are
+re-judged without using the rerun budget. A finding the oracle maintains in
+both rounds is escalated, and the gate's waiting message names the owner action.
+
 A stand-in comment makes `oracle-gate` re-evaluate the head at once. To
 withdraw a stand-in, edit or delete it: the checker accepts only a comment
 that was never edited, and both actions re-run `oracle-gate`, which then fails
@@ -75,6 +83,21 @@ refresh `oracle-gate`. Withhold readiness before withdrawing accepted review
 evidence, such as deleting a stand-in comment: leave the PR unarmed, withdraw
 the evidence, dispatch the gate, and observe the new result on the current head
 before treating the PR as ready.
+
+## Owner adjudication
+
+The owner resolves an escalated finding with a top-level PR comment that is
+exactly `Oracle adjudication: WITHDRAW D<n> - <reason>` or `Oracle adjudication:
+MAINTAIN D<n> - <reason>`, posted from an attester account after the escalating
+oracle review of the current head and never edited. The comment re-runs the
+verdict workflow without a reviewer: `WITHDRAW` stops the finding blocking,
+`MAINTAIN` closes the dispute and keeps the finding open until a fix lands.
+
+Post an adjudication only when the owner names the PR, the head, the finding and
+the decision in the current request. Quote that instruction first in a separate
+`Owner instruction` comment. Agents share the owner's account, so the check is
+audit-only, as for a stand-in: the merge digest lists every adjudication and
+flags one with no preceding `Owner instruction` comment.
 
 ## Retry backoff reset
 

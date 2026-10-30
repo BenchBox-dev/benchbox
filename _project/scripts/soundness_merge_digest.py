@@ -22,7 +22,7 @@ from oracle_review_check import (
     standin_not_before,
     verdict_state,
 )
-from oracle_reviewers import edits
+from oracle_reviewers import adjudication, edits
 from oracle_reviewers.protocol import MarkerError, decode_marker
 
 ORACLE_VERDICT_LINE = re.compile(
@@ -227,6 +227,17 @@ class StandinOverride:
     attester: str
     instruction_gap_seconds: int | None
     severities: tuple[str, ...]
+    merged_at: str
+
+
+@dataclass(frozen=True)
+class AdjudicationRecord:
+    number: int
+    head: str
+    attester: str
+    action: str
+    defect_id: str
+    instruction_gap_seconds: int | None
     merged_at: str
 
 
@@ -536,6 +547,33 @@ def withdrawn_findings(pulls: Sequence[PullEvidence]) -> list[Withdrawal]:
             head = pull.commits[-1].sha if pull.commits else ""
             found.append(Withdrawal(pull.number, head, unique))
     return sorted(found, key=lambda withdrawal: withdrawal.number)
+
+
+def adjudication_records(pulls: Sequence[PullEvidence]) -> list[AdjudicationRecord]:
+    found: list[AdjudicationRecord] = []
+    for pull in pulls:
+        head = pull.commits[-1].sha if pull.commits else ""
+        for comment in pull.comments:
+            ruling = adjudication.parse(comment.body)
+            if (
+                ruling is not None
+                and comment.login in STANDIN_ATTESTERS
+                and comment.user_type == "User"
+                and comment.updated_at in (None, comment.created_at)
+                and comment.created_at <= pull.merged_at
+            ):
+                found.append(
+                    AdjudicationRecord(
+                        pull.number,
+                        head,
+                        comment.login,
+                        ruling.action,
+                        ruling.defect_id,
+                        instruction_gap_seconds(pull, comment.created_at),
+                        pull.merged_at,
+                    )
+                )
+    return sorted(found, key=lambda record: (record.merged_at, record.number, record.defect_id))
 
 
 def classify(sha: str, subject: str, files: Sequence[str], pull: PullEvidence | None) -> Entry:
@@ -1070,6 +1108,28 @@ def render_withdrawals(withdrawals: Sequence[Withdrawal]) -> str:
     return "\n".join(lines)
 
 
+def render_adjudications(records: Sequence[AdjudicationRecord]) -> str:
+    if not records:
+        return ""
+    lines = [
+        "",
+        "Owner adjudications: oracle findings the owner ruled on by comment before merge.",
+        "| Pull request | Head | Attester | Ruling | Instruction gap |",
+        "|---|---|---|---|---|",
+    ]
+    for record in records:
+        gap = (
+            format_gap(record.instruction_gap_seconds)
+            if record.instruction_gap_seconds is not None
+            else "NO OWNER INSTRUCTION COMMENT"
+        )
+        lines.append(
+            f"| #{record.number} | `{record.head[:9]}` | {record.attester} | {record.action} {record.defect_id} "
+            f"| {gap} |"
+        )
+    return "\n".join(lines)
+
+
 def render_unreadable(unreadable: Sequence[UnreadablePull]) -> str:
     if not unreadable:
         return ""
@@ -1333,6 +1393,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 clean.append(not marked)
             except (ReadError, KeyError, TypeError, ValueError) as exc:
                 supplement += f"\nOracle withdrawals are unavailable for this window: {exc}."
+            try:
+                supplement += render_adjudications(adjudication_records(pulls))
+            except (ReadError, KeyError, TypeError, ValueError) as exc:
+                supplement += f"\nOwner adjudications are unavailable for this window: {exc}."
             if unreadable and any(clean):
                 supplement += (
                     f"\nCoverage: {len(unreadable)} merged PR(s) were unreadable; "

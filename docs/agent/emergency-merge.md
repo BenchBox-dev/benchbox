@@ -32,6 +32,10 @@ no PR can pass it. Agents never run, script, or propose any of these:
   head SHA in the current request, and the agent quotes that instruction in a
   preceding `Owner instruction` comment naming the PR, head SHA, and covered
   findings.
+  A stand-in never covers open findings (`oracle-gate` rejects it on a SHIP
+  WITH FIXES head), and an `Oracle adjudication:` comment follows the same
+  owner-naming and `Owner instruction` rules; a broken gate is no reason to
+  post either.
 
 `docs/agent/merge-authority.md` already requires `make pr-arm` for every merge
 and the owner naming each PR. A broken gate changes neither.

@@ -2342,3 +2342,39 @@ def test_a_resolved_edited_oracle_thread_stays_an_override_in_the_gap_class():
         digest.CLASS_OVERRIDE
         in digest.classify("f" * 40, "change", ["AGENTS.md"], evidence(threads=(thread,))).reason_classes
     )
+
+
+def adjudication_comment(body="Oracle adjudication: WITHDRAW D2 - the helper keeps the row", at=AFTER, **overrides):
+    fields = {"login": "joeharris76", "user_type": "User", "updated_at": None, **overrides}
+    return digest.Comment(fields["login"], body, at, fields["user_type"], fields["updated_at"])
+
+
+def test_the_digest_lists_an_adjudication_with_the_gap_to_its_owner_instruction():
+    pull = evidence(comments=(instruction(BEFORE), adjudication_comment()))
+    found = digest.adjudication_records([pull])
+    assert [(record.number, record.action, record.defect_id) for record in found] == [(7, "WITHDRAW", "D2")]
+    assert found[0].instruction_gap_seconds == 7200
+    text = digest.render_adjudications(found)
+    assert "#7" in text and "WITHDRAW D2" in text and "NO OWNER INSTRUCTION" not in text
+
+
+def test_the_digest_flags_an_adjudication_without_a_prior_owner_instruction():
+    found = digest.adjudication_records([evidence(comments=(adjudication_comment(), instruction(LATER)))])
+    assert found[0].instruction_gap_seconds is None
+    assert "NO OWNER INSTRUCTION COMMENT" in digest.render_adjudications(found)
+
+
+@pytest.mark.parametrize(
+    "comment",
+    [
+        adjudication_comment(login="someone"),
+        adjudication_comment(user_type="Bot"),
+        adjudication_comment(updated_at=LATER),
+        adjudication_comment(at=LATER),
+        adjudication_comment("Oracle adjudication: WITHDRAW D2"),
+    ],
+    ids=["not an attester", "bot", "edited", "after the merge", "malformed"],
+)
+def test_the_digest_ignores_comments_that_are_not_valid_adjudications(comment):
+    assert digest.adjudication_records([evidence(comments=(comment,))]) == []
+    assert digest.render_adjudications([]) == ""

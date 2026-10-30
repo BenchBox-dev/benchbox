@@ -20,6 +20,7 @@ from urllib.parse import urlparse
 from _project.scripts.inert_paths import is_machine_read_doc
 
 from . import (
+    adjudication,
     attempts as attempt_files,
     base_change,
     credentials,
@@ -223,20 +224,27 @@ def _is_dispute(body: str) -> bool:
     return any(line.strip().startswith(DISPUTE_MARKER) for line in body.splitlines())
 
 
+def _dispute_replies(thread: Mapping[str, Any], bot_login: str) -> list[Mapping[str, Any]]:
+    if thread.get("resolved") or thread.get("edited") or thread.get("author_type") != "Bot":
+        return []
+    if (thread.get("author") or "").removesuffix("[bot]") != bot_login:
+        return []
+    return [
+        reply
+        for reply in thread.get("replies", [])
+        if isinstance(reply, dict)
+        and reply.get("author_type") != "Bot"
+        and reply.get("association") in github.TRUSTED_ASSOCIATIONS
+        and _is_dispute(reply.get("body") or "")
+    ]
+
+
 def _disputed_threads(threads: list[dict[str, Any]], bot_login: str) -> list[dict[str, Any]]:
     disputes = []
     for thread in threads:
-        if thread.get("resolved") or thread.get("edited") or thread.get("author_type") != "Bot":
-            continue
-        if (thread.get("author") or "").removesuffix("[bot]") != bot_login:
-            continue
         replies = [
             {"author": reply.get("author"), "body": protocol.dispute_claim(reply.get("body") or "")}
-            for reply in thread.get("replies", [])
-            if isinstance(reply, dict)
-            and reply.get("author_type") != "Bot"
-            and reply.get("association") in github.TRUSTED_ASSOCIATIONS
-            and _is_dispute(reply.get("body") or "")
+            for reply in _dispute_replies(thread, bot_login)
         ]
         if not replies:
             continue
@@ -395,6 +403,108 @@ def _refused_marked(finished: int, marked: bool, plan: Mapping[str, Any]) -> int
     return 1
 
 
+def _comment_view(comment: Mapping[str, Any]) -> dict[str, Any]:
+    user = comment.get("user") or {}
+    return {
+        "login": user.get("login"),
+        "user_type": user.get("type"),
+        "created_at": comment.get("created_at"),
+        "updated_at": comment.get("updated_at"),
+        "body": comment.get("body") or "",
+    }
+
+
+def _ruling(
+    found: protocol.History, view: Mapping[str, Any], head_sha: str
+) -> tuple[adjudication.Adjudication | None, str]:
+    latest = found.latest
+    if found.error is not None:
+        return None, found.error
+    if latest is None or latest["head_sha"] != head_sha:
+        return None, "the adjudication is not for the current head"
+    ruling = adjudication.valid(view, found.latest_at)
+    if ruling is None:
+        return None, "the adjudication is not an unedited attester comment posted after the latest review of this head"
+    if latest["decision"] != protocol.SHIP_WITH_FIXES or ruling.defect_id not in latest.get("escalated", ()):
+        return None, f"{ruling.defect_id} is not escalated to the owner on this head"
+    return ruling, ""
+
+
+def _plan_adjudication(out_dir: Path, plan: dict[str, Any], policy: Policy, event: Mapping[str, Any]) -> int:
+    repo, pr = plan["repo"], plan["pr"]
+    try:
+        comment = github.get_json(f"repos/{repo}/issues/comments/{int((event.get('comment') or {}).get('id'))}")
+        found = _plan_history(repo, pr, policy.bot_login)
+        previous = github.latest_state(repo, pr)
+    except edits.EditStateError as exc:
+        print(f"oracle-verdict: error: {exc}", file=sys.stderr)
+        return 2
+    except (github.GitHubError, KeyError, TypeError, ValueError) as exc:
+        plan["decision_reason"] = f"the adjudication could not be checked: {exc}"
+        return _finish_plan(out_dir, plan)
+    ruling, problem = _ruling(found, _comment_view(comment), plan["head_sha"])
+    latest = found.latest
+    if ruling is None or latest is None:
+        plan["decision_reason"] = problem
+        return _finish_plan(out_dir, plan)
+    plan["adjudication"] = {"action": ruling.action, "id": ruling.defect_id, "reason": ruling.reason}
+    plan["previous_state"] = previous.to_json() if previous else None
+    plan["protocol"] = {
+        "kind": protocol.CARRY,
+        "reason": f"owner adjudication {ruling.action} {ruling.defect_id}",
+        "cycle": latest["cycle"],
+        "round": latest["round"],
+        "base_ref": plan["base_ref"],
+        "patch_map": latest.get("patch_map"),
+        "patch_digest": latest["patch_digest"],
+        "strikes": latest["strikes_after"],
+        "struck_digests": sorted(protocol.struck_digests(found.records)),
+        "max_do_not_ship": policy.protocol.max_do_not_ship,
+        "prior": [],
+        "next_id": latest["next_id"],
+        "changed": None,
+        "previous": dict(latest),
+        "forced": False,
+        "seen": [item for item in found.ids if item is not None],
+    }
+    step = protocol.Round(
+        protocol.CARRY,
+        f"owner adjudication {ruling.action} {ruling.defect_id}",
+        latest["cycle"],
+        latest["round"],
+        latest,
+    )
+    return _plan_carry(out_dir, plan, policy.bot_login, step, found.latest_at)
+
+
+def _is_adjudication(event_name: str, event: Mapping[str, Any]) -> bool:
+    body = (event.get("comment") or {}).get("body") or ""
+    return event_name == "issue_comment" and body.lstrip().casefold().startswith(adjudication.TRIGGER.casefold())
+
+
+def _settled_round(
+    out_dir: Path,
+    plan: dict[str, Any],
+    policy: Policy,
+    step: protocol.Round,
+    found: protocol.History,
+    deferred: retry.RerunDecision | None,
+    marked: bool,
+) -> int | None:
+    if deferred is not None and not (step.kind == protocol.FOLLOW_UP and step.forced):
+        plan["decision_reason"] = deferred.reason
+        return _refused_marked(_finish_plan(out_dir, plan), marked, plan)
+    if step.kind == protocol.SKIP:
+        plan["decision_reason"] = step.reason
+        return _finish_plan(out_dir, plan)
+    if step.kind == protocol.REFUSAL:
+        plan.update({"decision": REFUSED, "decision_reason": step.reason})
+        return _finish_plan(out_dir, plan)
+    if step.kind == protocol.CARRY:
+        return _plan_carry(out_dir, plan, policy.bot_login, step, found.latest_at)
+    return None
+
+
 def command_plan(args: argparse.Namespace) -> int:
     policy = load_policy(Path(args.policy))
     repo = os.environ["GITHUB_REPOSITORY"]
@@ -448,6 +558,8 @@ def command_plan(args: argparse.Namespace) -> int:
         and isinstance(event_inputs, dict)
         and event_inputs.get("reason") == sweep.STATELESS_RETRY_REASON
     )
+    if _is_adjudication(event_name, event):
+        return _plan_adjudication(out_dir, plan, policy, event)
     try:
         previous = github.latest_state(repo, pr)
     except (github.GitHubError, KeyError, ValueError) as exc:
@@ -466,9 +578,12 @@ def command_plan(args: argparse.Namespace) -> int:
         rules=policy.retry,
         reset_at=reset_at,
     )
+    deferred: retry.RerunDecision | None = None
     if not rerun.allowed:
-        plan["decision_reason"] = rerun.reason
-        return _refused_marked(_finish_plan(out_dir, plan), marked, plan)
+        if not rerun.exemptible:
+            plan["decision_reason"] = rerun.reason
+            return _refused_marked(_finish_plan(out_dir, plan), marked, plan)
+        deferred = rerun
     in_scope = set(scope.paths)
     scoped = _scoped_files(files, in_scope, policy)
     plan["manual"] = manual
@@ -513,14 +628,12 @@ def command_plan(args: argparse.Namespace) -> int:
         base_changed_at,
         base_change_unreadable,
     )
-    if step.kind == protocol.SKIP:
-        plan["decision_reason"] = step.reason
-        return _finish_plan(out_dir, plan)
-    if step.kind == protocol.REFUSAL:
-        plan.update({"decision": REFUSED, "decision_reason": step.reason})
-        return _finish_plan(out_dir, plan)
-    if step.kind == protocol.CARRY:
-        return _plan_carry(out_dir, plan, policy.bot_login, step, found.latest_at)
+    settled = _settled_round(out_dir, plan, policy, step, found, deferred, marked)
+    if settled is not None:
+        return settled
+    if deferred is not None:
+        rerun = retry.RerunDecision(True, "dispute re-review exempt from the retry budget")
+        plan["manual"] = False
     try:
         threads = github.review_threads(repo, pr) if threads is None else threads
         plan["open_findings"] = dedup.open_fingerprints(threads, policy.bot_login)
@@ -676,6 +789,8 @@ def _protocol_round(
         "forced": step.forced,
         "seen": [item for item in found.ids if item is not None],
     }
+    if step.forced:
+        plan["protocol"]["maintained"] = protocol.maintained_counts(found.records, digest)
     return step
 
 
@@ -1085,7 +1200,11 @@ def command_finalize(args: argparse.Namespace) -> int:
         )
     elif plan["decision"] in (CARRY, REFUSED):
         previous = retry.State.from_json(plan["previous_state"]) if plan.get("previous_state") else None
-        final = report.carried(plan) if plan["decision"] == CARRY else report.refused(plan)
+        final = (
+            (report.adjudicated(plan) if plan.get("adjudication") else report.carried(plan))
+            if plan["decision"] == CARRY
+            else report.refused(plan)
+        )
         _write_states(
             out_dir,
             previous=previous,
@@ -1251,6 +1370,25 @@ def _state_after_base_change(repo: str, number: int, base_changed_at: datetime |
     return state
 
 
+def _dispute_awaits(
+    repo: str,
+    number: int,
+    bot_login: str,
+    state: retry.State | None,
+    head: str,
+    runs: Sequence[sweep.Run],
+) -> bool:
+    if state is None or state.head_sha != head or state.outcome != retry.FAILURE:
+        return False
+    moments = [
+        moment
+        for thread in github.review_threads(repo, number)
+        for reply in _dispute_replies(thread, bot_login)
+        if (moment := github.parse_time(reply.get("created_at"))) is not None
+    ]
+    return bool(moments) and not any(run.created_at > max(moments) for run in runs)
+
+
 def _retry_reason(
     repo: str,
     pull: Mapping[str, Any],
@@ -1272,6 +1410,9 @@ def _retry_reason(
     def resolved() -> tuple[tuple[sweep.Run, ...], tuple[sweep.Run, ...]]:
         found = sweep.with_timeouts(relevant, lambda run: github.run_timed_out(repo, run))
         return found, sweep.for_head(found, head)
+
+    if full and _dispute_awaits(repo, number, bot_login, state, head, relevant):
+        return "an open dispute awaits its re-judgement"
 
     if state is not None and state.head_sha == head:
         due = retry.due_for_retry(state, head, now, rules) and not _decided_unpublished(
@@ -1337,9 +1478,24 @@ def _retry_reason(
         return None
     if not full:
         return None
+    return _stateless_retry(repo, number, head, relevant, rules, now, status_context, bot_login, token, base_changed_at)
+
+
+def _stateless_retry(
+    repo: str,
+    number: int,
+    head: str,
+    relevant: tuple[sweep.Run, ...],
+    rules: RetryRules,
+    now: datetime,
+    status_context: str,
+    bot_login: str,
+    token: str | None,
+    base_changed_at: datetime | None,
+) -> str | None:
     if not any(run.head == head and run.conclusion in (*sweep.FAILED, "cancelled") for run in relevant):
         return None
-    _, head_runs = resolved()
+    head_runs = sweep.for_head(sweep.with_timeouts(relevant, lambda run: github.run_timed_out(repo, run)), head)
     if not sweep.newest_failed(head_runs):
         return None
     if sweep.stateless_failures(head_runs) == 0:
