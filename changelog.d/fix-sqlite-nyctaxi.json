@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed NYC Taxi on SQLite: the day-of-week and epoch-difference queries (trips-by-day-of-week, trip-duration-analysis, weekday-weekend-comparison, rush-hour-analysis) now translate to strftime instead of failing with a syntax error."
+    }
+  ]
+}
