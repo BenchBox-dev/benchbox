@@ -2593,7 +2593,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "Tighten or document what the deploy's canonical snapshot digest ignores"
     },
     "canonicalize-benchbox-agent-instructions-and-add-evaluation-gate": {
