@@ -4,7 +4,7 @@ import pytest
 
 from benchbox.core.tpcdi.generator.rows import PipeRowWriter, format_cell
 
-pytestmark = pytest.mark.fast
+pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 
 @pytest.mark.parametrize(
