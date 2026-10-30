@@ -25568,10 +25568,12 @@
     },
     "sqlglot-fork-refresh-v30-26-0": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "sqlglot-freshness-waiver-v30-27-0"
+      ],
       "priority": "high",
       "status": "open",
-      "title": "Refresh the bundled SQLGlot fork onto upstream v30.26.0 and remove its freshness waiver"
+      "title": "Refresh the bundled SQLGlot fork onto the newest upstream release (v30.27.0, superseding v30.26.0) and remove its freshness waivers"
     },
     "sqlglot-fork-review-h1-governance": {
       "claim": null,

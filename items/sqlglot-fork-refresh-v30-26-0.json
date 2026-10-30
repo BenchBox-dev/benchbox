@@ -1,11 +1,12 @@
 {
   "acceptance": [
-    "Fork refreshed onto upstream v30.26.0, wheel released and adopted in BenchBox with translation-corpus evidence",
-    "The v30.26.0 entry is removed from scripts/sqlglot_refresh_waiver.json in the adoption PR",
-    "Landed before the final 0.5.0 release prep (dlv2-52)"
+    "Fork refreshed onto the newest upstream final tag (v30.27.0 or newer), carried patches retained or each retirement justified by execution evidence; fork make check, make benchbox-dist and make benchbox-check pass; downstream/patches.json records the tag and commit; fork PR merged.",
+    "BenchBox adoption PR merged: pin, hash and runtime baseline updated via make sqlglot-adopt-wheel; make sql-execution-gate passes with 0 unexplained differences; translation diff vs 30.25.0.2 over the shipped query corpus recorded in the PR (changed outputs listed and adjudicated); scripts/check_sqlglot_advisories.py passes.",
+    "Every superseded waiver (v30.26.0, v30.27.0) is removed from scripts/sqlglot_refresh_waiver.json in the adoption PR, and scripts/check_sqlglot_upstream_freshness.py passes on develop with no waiver.",
+    "Landed before the final 0.5.0 release prep (dlv2-52)."
   ],
-  "context": "Owner decision 2026-10-29 (choice dialog, release session 01a17d41): waive v30.26.0 for rc2; the fork refresh is tracked here and must land before the final 0.5.0 prep.",
-  "description": "Upstream SQLGlot v30.26.0 was released 2026-10-29 19:49 UTC. The bundled runtime (30.25.0.2) is based on v30.25.0, so scripts/check_sqlglot_upstream_freshness.py fails release-check, which release-v2 runs at admission. The owner approved a waiver for v30.26.0 so the 0.5.0rc2 rehearsal can proceed; this item refreshes the fork (benchbox-sqlglot downstream/MAINTAINING.md), releases and adopts the new wheel with the usual translation-corpus evidence, and removes the waiver in the adoption PR. Follow the v30.25.0 precedent (#3586 waiver, #3587 adoption).",
+  "context": "Owner decision 2026-10-29 (choice dialog, release session 01a17d41): waive v30.26.0 for rc2; the fork refresh is tracked here and must land before the final 0.5.0 prep. 2026-10-30: v30.27.0 is also released, so the target moved to the newest tag; a v30.27.0 waiver is tracked by sqlglot-freshness-waiver-v30-27-0. DECISION GATE: if a carried patch conflicts and cannot be retained with its execution tests, or the translation diff shows an unexplained result change, STOP and ask the owner.",
+  "description": "Upstream SQLGlot v30.26.0 was released 2026-10-29 19:49 UTC (tag commit b0842a1ee0be2cc9345d7312724dbf2ee32e325a) and v30.27.0 followed (tag commit 98782638dd6dbdedebad0e6ff6edc6e69598b81e). The bundled runtime (30.25.0.2, fork 9f51489a1721) is based on v30.25.0, so scripts/check_sqlglot_upstream_freshness.py fails. The freshness gate requires the NEWEST final tag, so refreshing onto v30.26.0 alone would still fail: refresh directly onto v30.27.0 (or any newer final tag at implementation time). Procedure: benchbox-sqlglot downstream/MAINTAINING.md (refresh candidate, integrate on a descendant branch, fork checks), release the wheel, adopt with `make sqlglot-adopt-wheel WHEEL=... SHA256=...` (retirement check needs a live QuestDB on 127.0.0.1:8812, as #3587 and #3649 did), translation-corpus diff evidence vs 30.25.0.2, and remove every waiver this refresh supersedes (v30.26.0 and v30.27.0) in the adoption PR. Precedents: #3586/#3587 (v30.25.0), fork #78 + #3649 (30.25.0.2). Carried patches from fork #78 (pivot lowering, ORDER BY ALL expansion) must survive the refresh with their execution tests. New bundles record the runtime automatically (execution.translation.runtime, #3712).",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cbd63a5667398431c51c92e1",
@@ -14,6 +15,14 @@
       "op": "create",
       "op_id": "82196e7f7aa546649ee1140d966cab9b",
       "session_id": "dfb93797c41c440a9261d3ab38ceb76e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5b8b51dd540fa96f0730389e",
+      "at": "2026-10-30T19:47:17Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6914be20147d4338af50686ba31051e3",
+      "session_id": "17d2636672804880bd4b45c9e44779a5"
     }
   ]
 }
