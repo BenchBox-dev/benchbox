@@ -24,7 +24,7 @@ from ..utils.dependencies import (
     check_platform_dependencies,
     get_dependency_error_message,
 )
-from ..utils.file_format import get_data_extension
+from ..utils.file_format import get_data_extension, has_trailing_delimiter
 from .base import DriverIsolationCapability, PlatformAdapter, PsycopgConnectionMixin
 from .base.data_loading import (
     CsvDialect,
@@ -568,7 +568,13 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
             "delimiter": dialect.delimiter,
         }
 
-        strip_trailing_delim = get_data_extension(data_file) == ".tbl"
+        extension = get_data_extension(data_file)
+        strip_trailing_delim = extension == ".tbl"
+        if extension == ".dat":
+            column_names = self._get_table_columns(table_name)
+            strip_trailing_delim = bool(column_names) and has_trailing_delimiter(
+                data_file, dialect.delimiter, column_names
+            )
         with prepare_local_load_file(
             data_file, dialect=dialect, strip_trailing_delim=strip_trailing_delim
         ) as load_path:
