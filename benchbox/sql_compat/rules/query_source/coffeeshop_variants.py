@@ -83,3 +83,39 @@ REGISTRY.register(
     benchmark=_B,
     query_id="TM1",
 )
+
+QUESTDB_TM1_SQL = """\
+SELECT
+    CASE
+        WHEN hour(CAST('1970-01-01T' || ol.order_time AS TIMESTAMP)) BETWEEN 5 AND 10 THEN 'Morning'
+        WHEN hour(CAST('1970-01-01T' || ol.order_time AS TIMESTAMP)) BETWEEN 11 AND 14 THEN 'Midday'
+        WHEN hour(CAST('1970-01-01T' || ol.order_time AS TIMESTAMP)) BETWEEN 15 AND 17 THEN 'Afternoon'
+        ELSE 'Evening'
+    END AS day_part,
+    COUNT(DISTINCT ol.order_id) AS orders,
+    SUM(ol.total_price) AS revenue,
+    AVG(ol.total_price) AS avg_line_value
+FROM order_lines ol
+JOIN dim_locations dl ON ol.location_record_id = dl.record_id
+WHERE dl.region = '{region}'
+  AND ol.order_date BETWEEN CAST('{start_date}' AS DATE) AND CAST('{end_date}' AS DATE)
+GROUP BY day_part
+ORDER BY day_part;"""
+
+REGISTRY.register(
+    CompatibilityDecision(
+        rule_id="query_source.questdb.coffeeshop.tm1_varchar_time_variant",
+        action=CompatAction.SELECT_VARIANT,
+        support_level=SupportLevel.REWRITTEN,
+        failure_mode=FailureMode.UNSUPPORTED_FEATURE,
+        payload=SelectVariantPayload(
+            variant_key="questdb",
+            variant_sql=QUESTDB_TM1_SQL,
+        ),
+        reason="QuestDB has no TIME type, so order_time is stored as VARCHAR; prefix a date and cast to TIMESTAMP before extracting the hour",
+    ),
+    _P,
+    "questdb",
+    benchmark=_B,
+    query_id="TM1",
+)
