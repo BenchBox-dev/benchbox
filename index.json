@@ -20730,6 +20730,13 @@
       "status": "done",
       "title": "Align release-test command surfaces and repair stale release ratchets"
     },
+    "release-uat-java-25-breaks-pyspark-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "critical",
+      "status": "open",
+      "title": "Release UAT runs PySpark on Java 25, which PySpark 4 refuses"
+    },
     "release-uat-package-salt-unset-20261030": {
       "claim": null,
       "needs": [],

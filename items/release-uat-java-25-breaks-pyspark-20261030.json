@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "The pyspark-df shard runs on a supported JDK and its cells get past data loading.",
+    "Every workflow that starts Spark pins the JDK instead of relying on the runner default."
+  ],
+  "context": "Evidence: release-v2 run 40971306663 (tag v0.5.0rc2, commit b1459438d), artifact release-uat-v0.5.0rc2-stage1-pyspark-df: cells.jsonl, uat_gate_summary.json, validator_rollup.tsv, uat_lifecycle.log and per-cell logs. The artifacts do not keep result JSON, so query-level causes need a local rerun of the named cells. The three pyspark-df write_primitives cells reached the query phase and failed with query_failure; recheck them after the JDK fix.",
+  "description": "ubuntu-latest now defaults to Java 25. In the pyspark-df shard 43 of 45 cells failed with 'Detected Java 25. PySpark 4.x is not compatible with Java 23 or newer.' The Spark SQL shard ran on the same Java with 'restricted mode' warnings. Pin a supported JDK (17 or 21) with actions/setup-java for every Spark-family shard (spark, pyspark-df, lakesail if it needs one) in .github/actions/release-uat-env, and check the nightly and CI workflows for the same exposure.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/actions/runs/40971306663"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cbd63a5667398431c51c92e1",
+      "at": "2026-10-30T11:09:26Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "01eac59002bd4884950eed56dd5f673c",
+      "session_id": "dfb93797c41c440a9261d3ab38ceb76e"
+    }
+  ]
+}
