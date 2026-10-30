@@ -165,3 +165,64 @@ def test_parse_validator_status_by_path_handles_missing_columns(tmp_path: Path):
     tsv = tmp_path / "rollup.tsv"
     tsv.write_text("foo\tbar\n", encoding="utf-8")
     assert validate.parse_validator_status_by_path(tsv) == {}
+
+
+_HARNESS_STATEMENT = "SET threads TO 1"
+_PRIVATE_STATEMENT = "COPY orders FROM '/home/runner/private/orders.csv'"
+
+
+def _export_local_result(directory: Path, statement: str) -> Path:
+    from datetime import datetime
+
+    from benchbox.core.results.exporter import ResultExporter
+    from tests.fixtures.result_dict_fixtures import make_benchmark_results
+
+    result = make_benchmark_results(
+        benchmark_name="TPC-H",
+        platform="duckdb",
+        execution_id="uat-validate-privacy",
+        timestamp=datetime(2026, 10, 9, 12, 0, 0),
+        duration_seconds=3.0,
+        total_queries=1,
+        successful_queries=1,
+        query_results=[{"query_id": "Q1", "execution_time": 1.0, "status": "SUCCESS", "rows_returned": 4}],
+        validation_status="PASSED",
+        validation_details={},
+        applied_tuning_ledger={
+            "status": "not_applicable",
+            "statements": [{"statement": statement, "phase": "session", "status": "harness_default"}],
+        },
+    )
+    return ResultExporter(output_dir=directory, anonymize=False).export_result(result, ["json"])["json"]
+
+
+_CLICKHOUSE_DDL = "CREATE TABLE orders (o_id Int64) ENGINE = MergeTree() ORDER BY o_id"
+
+
+@pytest.mark.parametrize("statement", [_HARNESS_STATEMENT, _CLICKHOUSE_DDL, _PRIVATE_STATEMENT])
+def test_run_validate_checks_redacted_publish_form_of_local_tuning_statements(tmp_path: Path, statement: str):
+    from benchbox.validation.bundle import validate_bundles
+
+    source = _export_local_result(tmp_path / "results", statement)
+    assert any("unanonymized tuning" in error for error in validate_bundles([source])[0].errors)
+
+    out = validate.run_validate(source.parent, output_tsv=tmp_path / "rollup.tsv", floor=0.0)
+
+    text = out.rollup_tsv_path.read_text(encoding="utf-8")
+    assert "unanonymized tuning" not in text
+    assert statement not in text
+    assert str(source) in text
+
+
+def test_run_validate_still_rejects_unredactable_bundle_with_tuning_statements(tmp_path: Path, monkeypatch):
+    bundle = _minimal_bundle()
+    bundle["platform"]["tuning"] = {
+        "applied": {"statements": [{"statement": _PRIVATE_STATEMENT, "phase": "ddl", "status": "executed"}]}
+    }
+    _write_bundle(tmp_path / "raw.json", bundle)
+    monkeypatch.setattr(validate, "_redacted_publish_source", lambda path: (None, None))
+
+    out = validate.run_validate(tmp_path, output_tsv=tmp_path / "rollup.tsv", floor=0.0)
+
+    assert out.error_count == 1
+    assert "unanonymized tuning statement" in out.rollup_tsv_path.read_text(encoding="utf-8")

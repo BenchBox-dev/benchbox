@@ -5,7 +5,14 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from benchbox.validation.bundle import CLI_REFUSED_COMPLIANCE_CLASSES, discover_bundles, validate_bundles
+from benchbox.cli.commands.publish import _redacted_publish_source
+from benchbox.validation.bundle import (
+    CLI_REFUSED_COMPLIANCE_CLASSES,
+    ValidationResult,
+    discover_bundles,
+    unanonymized_tuning_findings,
+    validate_bundles,
+)
 from tests.uat.phases import PhaseResult
 from tests.uat.phases.report import atomic_write_text
 
@@ -104,7 +111,7 @@ def _build_rows(bundle_paths: Sequence[Path]) -> list[_RollupRow]:
             )
             continue
 
-        results = validate_bundles([bundle_path])
+        results = _validate_publishable_form(bundle_path)
         if not results:
             rows.append(
                 _RollupRow(
@@ -134,6 +141,27 @@ def _build_rows(bundle_paths: Sequence[Path]) -> list[_RollupRow]:
             )
         )
     return rows
+
+
+def _validate_publishable_form(bundle_path: Path) -> list[ValidationResult]:
+    if not _has_unanonymized_tuning(bundle_path):
+        return validate_bundles([bundle_path])
+    redacted, scratch = _redacted_publish_source(bundle_path)
+    if redacted is None:
+        return validate_bundles([bundle_path])
+    try:
+        return validate_bundles([redacted])
+    finally:
+        if scratch is not None:
+            scratch.cleanup()
+
+
+def _has_unanonymized_tuning(bundle_path: Path) -> bool:
+    try:
+        payload = json.loads(bundle_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    return bool(unanonymized_tuning_findings(payload))
 
 
 def _read_bundle_metadata(bundle_path: Path) -> tuple[str, str, str, str | None]:
