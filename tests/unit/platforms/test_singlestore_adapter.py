@@ -526,6 +526,33 @@ class TestSingleStoreDataLoading:
         assert mock_infile.call_count == 1
         assert mock_infile.call_args.args[4] is True
 
+    def test_load_data_keeps_trailing_null_field_for_dat_files(self):
+        adapter = SingleStoreAdapter()
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".dat", delete=False, encoding="utf-8") as f:
+            f.write("0|AAAAAAAABAAAAAAA|0|night|\n")
+            tmp_path = Path(f.name)
+
+        fake_ds = DataSource(
+            source_type="manifest_v2",
+            tables={"time_dim": tmp_path},
+            table_metadata={"time_dim": {"csv_delimiter": "|", "csv_null_marker": ""}},
+        )
+        mock_benchmark = self._make_benchmark({"time_dim": tmp_path})
+        mock_connection = Mock()
+
+        try:
+            with (
+                patch("benchbox.platforms.singlestore.DataSourceResolver") as mock_resolver_cls,
+                patch.object(adapter, "_load_data_infile", return_value=1) as mock_infile,
+            ):
+                mock_resolver_cls.return_value.resolve.return_value = fake_ds
+                adapter.load_data(mock_benchmark, mock_connection, Path("/tmp"))
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+        assert mock_infile.call_args.args[4] is False
+
     def test_load_data_does_not_strip_csv_files_with_null_marker(self):
         adapter = SingleStoreAdapter()
 
