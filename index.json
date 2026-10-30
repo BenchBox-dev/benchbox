@@ -25567,12 +25567,17 @@
       "title": "Fork: refresh onto upstream v30.25.0 and adopt the wheel in BenchBox"
     },
     "sqlglot-fork-refresh-v30-26-0": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-31T19:47:25Z",
+        "generation": "4cc06e6c9edc43acaec35f30666c1eb6",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5b8b51dd540fa96f0730389e"
+      },
       "needs": [
         "sqlglot-freshness-waiver-v30-27-0"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Refresh the bundled SQLGlot fork onto the newest upstream release (v30.27.0, superseding v30.26.0) and remove its freshness waivers"
     },
     "sqlglot-fork-review-h1-governance": {
