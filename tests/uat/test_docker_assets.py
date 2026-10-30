@@ -431,6 +431,17 @@ def test_no_uat_platform_option_forces_shared_database():
         assert not any("database=" in argv.replace("admin_database=", "") for argv in argvs), platform
 
 
+def test_uat_platform_options_are_registered_for_every_docker_platform():
+    from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
+
+    for platform in docker_assets._DOCKER_PLATFORM_SPECS:
+        argv = matrix.benchbox_run_argv(platform, "tpch", 0.01, local_managed_platform=True)
+        provided = [
+            tuple(argv[index + 1].split("=", 1)) for index, token in enumerate(argv) if token == "--platform-option"
+        ]
+        PlatformHookRegistry.parse_options(platform, provided)
+
+
 def test_resolve_container_cli_env_override_wins_over_platform_default(monkeypatch):
     monkeypatch.setenv(docker_assets.CONTAINER_CLI_ENV_VAR, "podman")
     monkeypatch.setattr(docker_assets, "_current_platform", lambda: "darwin")

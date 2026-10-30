@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "CedarDB now accepts `--platform-option admin_database=<name>`, the database used to create and drop the per-benchmark databases, matching the other PostgreSQL-family platforms."
+    }
+  ]
+}
