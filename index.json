@@ -20765,6 +20765,13 @@
       "status": "open",
       "title": "Release UAT Presto and Trino cells all report the server unreachable after compose start"
     },
+    "release-uat-velox-container-exits-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Release UAT Velox container exits with code 1 and its image is built on the runner"
+    },
     "relocate-cli-hook-registries": {
       "claim": null,
       "needs": [],
