@@ -24222,6 +24222,13 @@
       "status": "done",
       "title": "Run the owed agy adversarial review of the site-repo split plan and adjudicate its findings"
     },
+    "site-todo-state-scheduled-validation-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Validate the benchbox-site tracker branch on a schedule, as core's tracker is"
+    },
     "skill-integrity-ci-lane-live-validation": {
       "claim": null,
       "needs": [

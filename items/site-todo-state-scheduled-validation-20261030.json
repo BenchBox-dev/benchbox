@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "The site's todo-state branch is validated on a schedule, or the decision not to is recorded with its reason",
+    "A failed validation of the site branch reports where an owner will see it"
+  ],
+  "description": "BenchBox-dev/benchbox-site now keeps its own tracker on its todo-state branch. Core validates its own branch with .github/workflows/todo-state-validate.yml, which runs todo-db validate through uv. The site repository allows no Python or uv in its tooling, so it cannot copy that workflow. Decide whether core's workflow should also validate the site's state remote (it would need read access to that repository, which is public) or whether the site tracker goes unvalidated, and record the decision. Also decide whether the site tracker needs a public export like _project/todo-db-export/.",
+  "links": [
+    "BenchBox-dev/BenchBox: .github/workflows/todo-state-validate.yml",
+    "BenchBox-dev/benchbox-site: .todo-db/config.json"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-30T21:06:33Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b3efea252e4446119862349e440b9077",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
+    }
+  ]
+}
