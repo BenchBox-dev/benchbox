@@ -94,7 +94,7 @@ def _misplaced(joins: list[exp.Join], scope: _Scope, first: str, where_parts: li
         current = _ref(join.this)
         on = join.args.get("on")
         if on is None:
-            if any(current in tables and tables <= in_scope | {current} for tables in where_links):
+            if any(current in tables and len(tables) > 1 for tables in where_links):
                 return True
         else:
             for predicate in _flatten_and(on):

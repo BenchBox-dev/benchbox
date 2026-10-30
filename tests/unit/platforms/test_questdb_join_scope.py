@@ -104,3 +104,14 @@ def test_adapter_does_not_cache_a_failed_lookup(monkeypatch):
     assert adapter._table_columns("part") is None
     assert adapter._table_columns("part") is None
     assert lookup.call_count == 2
+
+
+def test_cross_join_linked_only_to_a_later_table_is_connected_by_its_predicate():
+    scrambled = (
+        "SELECT 1 FROM customer CROSS JOIN supplier CROSS JOIN orders "
+        "WHERE o_custkey = c_custkey AND s_nationkey = o_orderkey AND o_orderkey = 1"
+    )
+    assert rewrite_query(scrambled, columns_of) == (
+        "SELECT 1 FROM customer JOIN orders ON o_custkey = c_custkey JOIN supplier ON s_nationkey = o_orderkey "
+        "WHERE o_orderkey = 1"
+    )
