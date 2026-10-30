@@ -9549,6 +9549,13 @@
       "status": "open",
       "title": "Audit metric/scope truthfulness across all historical DONE items and add a recurrence guard"
     },
+    "doris-uat-failures-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Doris: query failures across seven benchmarks in release UAT"
+    },
     "drop-chdb-core-from-core-dependencies": {
       "claim": null,
       "needs": [],
