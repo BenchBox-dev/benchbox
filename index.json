@@ -17622,6 +17622,13 @@
       "status": "open",
       "title": "Accept Arrow results in digest, validation, and row count"
     },
+    "perf-clickhouse-server-bulk-load-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Bulk insert for ClickHouse server mode and Cloud without staging"
+    },
     "perf-databend-bulk-load-20261030": {
       "claim": null,
       "needs": [],

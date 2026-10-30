@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Server and Cloud (no staging) load via Arrow or file bodies.",
+    "Row counts and column types match current behavior."
+  ],
+  "description": "base/data_loading.py:1523-1585 and :1661-1707 generate Python rows with per-field type conversion and insert via clickhouse_driver VALUES. Move to clickhouse_connect insert_arrow/insert_file (Parquet/CSV body) or INSERT ... FORMAT Parquet. Also check ClickHouse Cloud with no staging: _execute_insert (clickhouse/client.py:268-280) inserts Python lists, and ClickHouseNativeHandler's file() runs server-side and cannot see local files.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:root@vm:2d53e6a98f44f4f4a8a4dedd",
+      "at": "2026-10-30T17:55:27Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "825f026e568d4584abf553837fbde972",
+      "session_id": "be00837164104ac2b4ed790cdb6812a2"
+    }
+  ]
+}
