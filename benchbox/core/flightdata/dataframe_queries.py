@@ -1132,12 +1132,12 @@ def _holiday_period(flights: Any) -> Any:
 
 _PANDAS_EXTRAS = {
     "operated": lambda f: f["cancelled"] == 0,
-    "operated_dep": lambda f: (f["cancelled"] == 0) & f["dep_delay"].notna(),
-    "operated_dep_time": lambda f: (f["cancelled"] == 0) & f["dep_delay"].notna() & f["crs_dep_time"].notna(),
-    "operated_arr": lambda f: (f["cancelled"] == 0) & f["arr_delay"].notna(),
-    "operated_dep_arr": lambda f: (f["cancelled"] == 0) & f["dep_delay"].notna() & f["arr_delay"].notna(),
+    "operated_dep": lambda f: (f["cancelled"] == 0) & f["dep_delay"].notnull(),
+    "operated_dep_time": lambda f: (f["cancelled"] == 0) & f["dep_delay"].notnull() & f["crs_dep_time"].notnull(),
+    "operated_arr": lambda f: (f["cancelled"] == 0) & f["arr_delay"].notnull(),
+    "operated_dep_arr": lambda f: (f["cancelled"] == 0) & f["dep_delay"].notnull() & f["arr_delay"].notnull(),
     "delayed_arr": lambda f: (f["cancelled"] == 0) & (f["arr_delay"] > 15),
-    "dep_time": lambda f: f["crs_dep_time"].notna(),
+    "dep_time": lambda f: f["crs_dep_time"].notnull(),
 }
 _PANDAS_JOINS = {
     "airline": lambda ctx, df: df.merge(

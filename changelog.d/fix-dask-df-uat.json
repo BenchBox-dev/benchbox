@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed Dask DataFrame queries that built conditional columns with numpy and null checks with Series.notna, which failed on lazy Dask frames."
+    }
+  ]
+}

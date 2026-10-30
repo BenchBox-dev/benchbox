@@ -6,6 +6,7 @@ from typing import Any
 import numpy as np
 
 from benchbox.core.dataframe.context import DataFrameContext
+from benchbox.core.dataframe.pandas_ops import select as pandas_select, where as pandas_where
 from benchbox.core.dataframe.query import DataFrameQuery, QueryCategory
 
 from .parameters import get_parameters
@@ -212,11 +213,11 @@ def _pandas_derive(frame: Any, names: str) -> Any:
         elif name == "day_of_week":
             frame["day_of_week"] = (frame["pickup_datetime"].dt.dayofweek + 1) % 7
         elif name == "tip_pct_nonzero":
-            frame["tip_pct"] = np.where(
+            frame["tip_pct"] = pandas_where(
                 frame["fare_amount"] != 0, frame["tip_amount"] / frame["fare_amount"] * 100, np.nan
             )
         elif name == "tip_pct_positive":
-            frame["tip_pct"] = np.where(
+            frame["tip_pct"] = pandas_where(
                 frame["fare_amount"] > 0, frame["tip_amount"] / frame["fare_amount"] * 100, np.nan
             )
         elif name == "fare_bucket":
@@ -224,7 +225,7 @@ def _pandas_derive(frame: Any, names: str) -> Any:
         elif name == "distance_miles":
             frame["distance_miles"] = np.floor(frame["trip_distance"])
         elif name == "fare_per_mile":
-            frame["fare_per_mile"] = np.where(
+            frame["fare_per_mile"] = pandas_where(
                 frame["trip_distance"] != 0, frame["total_amount"] / frame["trip_distance"], np.nan
             )
         elif name == "duration":
@@ -234,16 +235,16 @@ def _pandas_derive(frame: Any, names: str) -> Any:
             frame["duration_bucket_min"] = np.floor(frame["duration_sec"] / 60 / 5) * 5
         elif name == "day_type":
             frame["hour"] = frame["pickup_datetime"].dt.hour
-            frame["day_type"] = np.where(
+            frame["day_type"] = pandas_where(
                 ((frame["pickup_datetime"].dt.dayofweek + 1) % 7).isin([0, 6]), "weekend", "weekday"
             )
         elif name == "period":
             frame["hour"] = frame["pickup_datetime"].dt.hour
             frame["duration_min"] = (frame["dropoff_datetime"] - frame["pickup_datetime"]).dt.total_seconds() / 60
-            frame["period"] = np.select(
+            frame["period"] = pandas_select(
                 [(frame["hour"] >= 7) & (frame["hour"] <= 9), (frame["hour"] >= 17) & (frame["hour"] <= 19)],
                 ["morning_rush", "evening_rush"],
-                default="off_peak",
+                "off_peak",
             )
         elif name == "year_month":
             frame["year"] = frame["pickup_datetime"].dt.year
@@ -422,7 +423,7 @@ def q8_pandas_impl(ctx: DataFrameContext) -> Any:
     merged = _pandas_window(ctx, "Q8", "2019-01-01", "2019-03-31").merge(
         ctx.get_table("taxi_zones"), left_on="pickup_location_id", right_on="location_id", how="left"
     )
-    merged = merged[merged["borough"].notna()]
+    merged = merged[merged["borough"].notnull()]
     return (
         merged.groupby(["borough"], as_index=False, dropna=False)
         .agg(

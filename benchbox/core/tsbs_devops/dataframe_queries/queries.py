@@ -3,9 +3,8 @@ from __future__ import annotations
 from csv import reader
 from typing import Any
 
-import numpy as np
-
 from benchbox.core.dataframe.context import DataFrameContext
+from benchbox.core.dataframe.pandas_ops import where as pandas_where
 from benchbox.core.dataframe.query import DataFrameQuery, QueryCategory
 
 from .parameters import get_parameters
@@ -67,10 +66,10 @@ def _pandas_derive(frame: Any, names: str) -> Any:
         elif name == "second":
             frame["second"] = frame["time"].dt.floor("s")
         elif name == "disk_latency":
-            frame["read_latency_ms"] = np.where(
+            frame["read_latency_ms"] = pandas_where(
                 frame["reads_completed"] > 0, frame["read_time_ms"] / frame["reads_completed"], 0.0
             )
-            frame["write_latency_ms"] = np.where(
+            frame["write_latency_ms"] = pandas_where(
                 frame["writes_completed"] > 0, frame["write_time_ms"] / frame["writes_completed"], 0.0
             )
         elif name == "net_errors":
