@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed QuestDB failing on `PERCENTILE_CONT(p) WITHIN GROUP (ORDER BY x)` (H2ODB Q9: \"dangling literal\"); the adapter now rewrites it into `approx_percentile(x, p, 5)`."
+    }
+  ]
+}
