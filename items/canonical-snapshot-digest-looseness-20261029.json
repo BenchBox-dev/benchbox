@@ -3,6 +3,7 @@
     "The digest either covers column types and view definitions, or deploy/README.md states they are ignored and why, with a test for each rule",
     "No exclusion in canonical-digest.ts matches a column that does not exist; tests in deploy/test/canonical-digest.test.ts cover each rule"
   ],
+  "context": "Moved to the BenchBox-dev/benchbox-site tracker (todo-state branch of that repository) under the same id on 2026-10-30; track it there.",
   "description": "Found 2026-10-28 while reviewing results.duckdb byte differences. The deploy compares snapshots by canonical content digest (deploy/lib/canonical-digest.ts, deploy/gates/snapshot-digest.ts, from site PR 15). It orders rows by every column, rounds floats to 9 significant digits and drops generated_at. Gaps: (1) the generated_at exclusion now matches no column because core stores only read_model_version in the database (core duckdb_builder.py), so it is dead logic or hides a future column; (2) the digest ignores view and index definitions and column types, and float changes beyond 9 significant digits, although an exact EXCEPT ALL comparison of two core builds showed equal rows, row order and full float precision; (3) deploy/README.md does not explain why the digest is a content digest rather than a byte digest or what it ignores.\n\nRemove the dead exclusion or tie it to a real column, decide whether column types and view definitions belong in the digest (a schema change should change the digest), and add a short section to deploy/README.md that states the invariant and what is ignored.",
   "links": [
     "BenchBox-dev/benchbox-site: deploy/lib/canonical-digest.ts",
@@ -16,6 +17,14 @@
       "op": "create",
       "op_id": "16818f19939f4502b34e3ac64c5e3b8b",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-30T21:05:33Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "38393025a40f42dfb008bff50060eb50",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
     }
   ]
 }
