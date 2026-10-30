@@ -25648,6 +25648,13 @@
       "status": "done",
       "title": "SQLite: reusing an existing database skips load_data, so TPC-H helper indexes are missing and Q21 crawls"
     },
+    "sqlite-uat-failures-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "SQLite: NYC Taxi query failures and four timeouts in release UAT"
+    },
     "ssb-dataframe-row-count-validation-20261016": {
       "claim": null,
       "needs": [],
