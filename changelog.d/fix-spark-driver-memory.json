@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "The Spark platform now sizes its driver heap from system memory (60% of RAM, between 4g and 31g) when running on a local master and no --driver-memory is given, instead of a fixed 4g that ran out of Java heap on scale factor 1 joins and shuffles.",
+      "platforms": ["spark"]
+    }
+  ]
+}
