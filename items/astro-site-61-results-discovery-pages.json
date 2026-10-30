@@ -5,7 +5,7 @@
     "Withdrawn-result fixture absent from pages and search index after rebuild",
     "Results section of search returns a platform and a benchmark by name"
   ],
-  "context": "2026-10-17, after the site split: still a future feature that needs its own owner approval before starting. Needs moved from astro-site-54 to site-browser-acceptance-ci-20261017 (the Pagefind smoke search must run in CI first). Corrections to the description: (1) data source: explorer_publish.py runs in core, and the site sees only the bundle snapshot and per-result JSON, so generate the pages at site build time from the bundle and add any needed bundle fields in core first (site-split ADR D16); (2) routes: \"/results/platforms/<id>\" is wrong; the Explorer routes are /results/p/:platform/, /results/:benchmark/ and the index pages /results/platforms/ and /results/benchmarks/ (explorer/src/App.tsx), so agree the scheme against those; (3) search: website/scripts/pagefind-index.mjs indexes only docs and blog, and SearchBox.astro has a link to /results/, not a Results section, so this item adds both; (4) record the URL scheme in docs/internal/adr/adr-site-repo-split.md (core) or a benchbox-site decision note, since the astro ADR is partly superseded.",
+  "context": "2026-10-17, after the site split: still a future feature that needs its own owner approval before starting. Needs moved from astro-site-54 to site-browser-acceptance-ci-20261017 (the Pagefind smoke search must run in CI first). Corrections to the description: (1) data source: explorer_publish.py runs in core, and the site sees only the bundle snapshot and per-result JSON, so generate the pages at site build time from the bundle and add any needed bundle fields in core first (site-split ADR D16); (2) routes: \"/results/platforms/<id>\" is wrong; the Explorer routes are /results/p/:platform/, /results/:benchmark/ and the index pages /results/platforms/ and /results/benchmarks/ (explorer/src/App.tsx), so agree the scheme against those; (3) search: website/scripts/pagefind-index.mjs indexes only docs and blog, and SearchBox.astro has a link to /results/, not a Results section, so this item adds both; (4) record the URL scheme in docs/internal/adr/adr-site-repo-split.md (core) or a benchbox-site decision note, since the astro ADR is partly superseded.\n\nMoved to the BenchBox-dev/benchbox-site tracker (todo-state branch of that repository) under the same id on 2026-10-30; track it there.",
   "description": "A post-cutover feature with its own owner approval before starting.\n\nPagefind cannot see results loaded through DuckDB-WASM. At build time, generate static summary pages for each platform and benchmark from the same canonical pipeline output as the Explorer (explorer_publish.py and results.duckdb). Each page links into the Explorer view, and Pagefind indexes these pages under the Results search section.\n\nPages carry their snapshot identity, follow admission and withdrawal rules (withdrawn results are excluded from indexes and pages on the next build), and must not conflict with Explorer client routes: agree the URL scheme first, e.g. render at the same /results/platforms/<id> paths with the island hydrating on top.",
   "sessions": [
     {
@@ -31,6 +31,14 @@
       "op": "update",
       "op_id": "13d1516c86864f1d8b8cff510e4945f5",
       "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-30T23:04:41Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "42e6866d4af44f3e8e40fd496bb4d406",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
     }
   ]
 }
