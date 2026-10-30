@@ -34,6 +34,7 @@ from .base.data_loading import (
     resolve_csv_dialect,
 )
 from .base.sql_execution import execute_sql_query
+from .questdb_rewrites import rewrite_query
 
 QUESTDB_DIALECT = "questdb"
 
@@ -806,7 +807,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
     ) -> dict[str, Any]:
         result = execute_sql_query(
             connection,
-            query,
+            rewrite_query(query),
             query_id,
             log_verbose=self.log_verbose,
             build_query_result_with_validation=self._build_query_result_with_validation,
