@@ -2187,7 +2187,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "Add the SF1 basic row to the SCD2 blog scale table for balance"
     },
     "blog-skill-site-paths-20261017": {
