@@ -15,6 +15,8 @@ BASE_REF = f"origin/{BASE_BRANCH}"
 REPOSITORY_PATTERN = r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+"
 RECORD_SEPARATOR = "\x1e"
 FIELD_SEPARATOR = "\x1f"
+INTEGRATION_BRANCHES = frozenset({"develop", "release", "published-results"})
+MAX_STACK_DEPTH = 3
 
 Runner = Callable[[list[str]], tuple[int, str]]
 
@@ -68,9 +70,9 @@ def branch_commits(run: Runner, base_ref: str = BASE_REF) -> list[Commit]:
     return commits
 
 
-def default_title(commits: Sequence[Commit]) -> str:
+def default_title(commits: Sequence[Commit], base_ref: str = BASE_REF) -> str:
     if not commits or not commits[0].subject:
-        raise PrOpenError(f"no commits ahead of {BASE_REF}; nothing to open a PR for")
+        raise PrOpenError(f"no commits ahead of {base_ref}; nothing to open a PR for")
     return commits[0].subject
 
 
@@ -80,9 +82,13 @@ def default_body(commits: Sequence[Commit]) -> str:
     return "\n".join(f"- {commit.subject}" for commit in commits)
 
 
-def find_open_pr(run: Runner, repo: str, head_owner: str, branch: str) -> dict[str, object] | None:
+def find_open_pr(
+    run: Runner, repo: str, head_owner: str, branch: str, base: str | None = BASE_BRANCH
+) -> dict[str, object] | None:
     cmd = ["gh", "api", "--method", "GET", f"repos/{repo}/pulls", "-f", f"head={head_owner}:{branch}"]
-    cmd += ["-f", f"base={BASE_BRANCH}", "-f", "state=open", "-f", "per_page=100"]
+    if base is not None:
+        cmd += ["-f", f"base={base}"]
+    cmd += ["-f", "state=open", "-f", "per_page=100"]
     pulls = _json(_check(run, cmd, "open PR lookup"), "open PR lookup")
     if not isinstance(pulls, list):
         raise PrOpenError("unreadable open PR lookup response: expected a list")
@@ -94,6 +100,32 @@ def find_open_pr(run: Runner, repo: str, head_owner: str, branch: str) -> dict[s
         if str(owner).lower() == head_owner.lower() and head.get("ref") == branch:
             return pull
     return None
+
+
+def verify_parent(run: Runner, repo: str, head_owner: str, parent: str) -> None:
+    if parent in INTEGRATION_BRANCHES:
+        raise PrOpenError(f"--parent {parent} is an integration branch; omit PARENT to target it")
+    depth = 1
+    branch = parent
+    seen = {parent}
+    while True:
+        pull = find_open_pr(run, repo, head_owner, branch, None)
+        if pull is None:
+            raise PrOpenError(f"stack parent {branch} is not an open pull request branch of {head_owner} in {repo}")
+        base = str((pull.get("base") or {}).get("ref") or "")
+        if not base:
+            raise PrOpenError(f"unreadable open PR lookup response: no base for {branch}")
+        if base in INTEGRATION_BRANCHES:
+            break
+        if base in seen:
+            raise PrOpenError(f"stack parent {parent} has a cyclic base chain")
+        seen.add(base)
+        depth += 1
+        branch = base
+    if depth + 1 > MAX_STACK_DEPTH:
+        raise PrOpenError(
+            f"stack parent {parent} is already level {depth}; a stack is at most {MAX_STACK_DEPTH} PRs deep"
+        )
 
 
 def _pr_from(response: object, status: str) -> PublishedPr:
@@ -111,8 +143,10 @@ def publish(
     body_file: Path | None,
     run: Runner = live_run,
     draft: bool = False,
+    parent: str | None = None,
 ) -> PublishedPr:
-    existing = find_open_pr(run, repo, head_owner, branch)
+    base = parent or BASE_BRANCH
+    existing = find_open_pr(run, repo, head_owner, branch, base)
     if existing is not None:
         pr = _pr_from(existing, "reused")
         fields = []
@@ -127,10 +161,11 @@ def publish(
             cmd = ["gh", "api", "--method", "PATCH", f"repos/{repo}/pulls/{pr.number}"]
             _check(run, cmd + fields, "PR text update")
         return pr
-    commits = branch_commits(run)
-    resolved_title = title or default_title(commits)
+    base_ref = f"origin/{base}"
+    commits = branch_commits(run, base_ref)
+    resolved_title = title or default_title(commits, base_ref)
     cmd = ["gh", "api", "--method", "POST", f"repos/{repo}/pulls"]
-    cmd += ["-f", f"title={resolved_title}", "-f", f"head={head_spec}", "-f", f"base={BASE_BRANCH}"]
+    cmd += ["-f", f"title={resolved_title}", "-f", f"head={head_spec}", "-f", f"base={base}"]
     cmd += ["-F", f"body=@{body_file}"] if body_file is not None else ["-f", f"body={default_body(commits)}"]
     if draft:
         cmd += ["-F", "draft=true"]
@@ -146,6 +181,8 @@ def main(argv: Sequence[str] | None = None, run: Runner = live_run) -> int:
     parser.add_argument("--title", default="")
     parser.add_argument("--body-file", default="")
     parser.add_argument("--draft", action="store_true")
+    parser.add_argument("--parent", default="")
+    parser.add_argument("--verify-parent", action="store_true")
     args = parser.parse_args(argv)
     if not re.fullmatch(REPOSITORY_PATTERN, args.repo):
         print(f"pr-open: --repo must be owner/name, got {args.repo!r}", file=sys.stderr)
@@ -155,8 +192,19 @@ def main(argv: Sequence[str] | None = None, run: Runner = live_run) -> int:
         print(f"PR_BODY_FILE does not exist: {body_file}", file=sys.stderr)
         return 1
     try:
+        if args.verify_parent:
+            verify_parent(run, args.repo, args.head_owner, args.parent)
+            return 0
         pr = publish(
-            args.repo, args.head_owner, args.branch, args.head_spec, args.title or None, body_file, run, args.draft
+            args.repo,
+            args.head_owner,
+            args.branch,
+            args.head_spec,
+            args.title or None,
+            body_file,
+            run,
+            args.draft or bool(args.parent),
+            args.parent or None,
         )
     except (PrOpenError, OSError) as exc:
         print(f"pr-open: {exc}", file=sys.stderr)

@@ -5,8 +5,11 @@ Ready PRs target an integration branch. Stacking is allowed narrowly:
 1. A stack belongs to one agent and one tracker item and is at most three PRs
    deep. Agents must not build on another agent's unmerged branch.
 2. Every PR above the bottom one is a **draft** that targets its parent
-   branch, so it gets CI there. `make pr-open` always targets `develop`, so
-   open an upper draft with `gh pr create --draft --base <parent branch>`.
+   branch, so it gets CI there. Open it with
+   `make pr-open PARENT=<parent branch>`: the parent must be an open PR branch
+   of this repository (not a fork) and the stack, with the new PR, at most
+   three deep. The local review runs against the parent, so it covers only the
+   upper PR's own diff, and the PR is always opened as a draft.
 3. When the parent squash-merges, retarget the child to `develop`, rebase it
    onto the squash commit, let CI rerun, and only then arm it (see
    [After a parent merges](#after-a-parent-merges)). `make pr-arm` refuses a
@@ -125,12 +128,12 @@ conflicts, or a filter bug, from an empty or partial check list alone.
 
 ## Agent checklist
 
-- Ordinary PRs created with `make pr-open` or `gh pr create` target `develop`
-  unless the change is explicitly for `release` or `published-results`.
-  Parent-based drafts follow the exception below.
-- Open a PR with `--base` set to another feature branch only as a draft in a
-  stack (one agent, one tracker item, depth 3 or less). Never arm it before
-  it is retargeted at `develop`.
+- `make pr-open` is the only way to create a PR. Without `PARENT` it targets
+  `develop`, unless the change is explicitly for `release` or
+  `published-results`. Parent-based drafts follow the exception below.
+- Set `PARENT` to another feature branch only for a draft in a stack (one
+  agent, one tracker item, depth 3 or less). Never arm it before it is
+  retargeted at `develop`.
 - If the base check in `ci-paths` fails on a ready PR, fix the base. Do not try to "add CI" to
   the stacked base by editing branch filters.
 - Short agent-facing summary: `AGENTS.md` → section **Verification and
