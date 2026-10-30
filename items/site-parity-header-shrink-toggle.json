@@ -3,7 +3,7 @@
     "site-parity check passes on a docs-touching PR",
     "Docs and results sites agree on header shrink behavior"
   ],
-  "context": "Observed on PR #2688 (CI run 37361216876, site-parity job): header behaviour differs between docs and results for shrinkFocusOnToggle false vs true, in the page-chrome parity assertion. The PR touched only qualification code plus two markdown docs, so the failure is unrelated to its content — likely fallout from the Astro cutover work. site-parity is not a required check, so nothing is blocked, but it fails on any PR that triggers the site build.",
+  "context": "Observed on PR #2688 (CI run 37361216876, site-parity job): header behaviour differs between docs and results for shrinkFocusOnToggle false vs true, in the page-chrome parity assertion. The PR touched only qualification code plus two markdown docs, so the failure is unrelated to its content — likely fallout from the Astro cutover work. site-parity is not a required check, so nothing is blocked, but it fails on any PR that triggers the site build.\n\nMoved to the BenchBox-dev/benchbox-site tracker (todo-state branch of that repository) under the same id on 2026-10-30; track it there.",
   "description": "The site-parity CI job fails comparing docs-vs-results header behavior (shrinkFocusOnToggle false vs true) on PRs that trigger the site build, including PRs whose diff cannot affect site chrome. The mismatch needs a root cause and fix on the site side.",
   "sessions": [
     {
@@ -13,6 +13,14 @@
       "op": "create",
       "op_id": "d84d1a2eeef54da29f4a4bc292d44211",
       "session_id": "1b12a2c1c7b14a05a649d008ac5701eb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-30T23:05:11Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5c6d7e3204f84f10afa8e7d1d2262647",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
     }
   ]
 }
