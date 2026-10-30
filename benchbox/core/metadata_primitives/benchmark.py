@@ -867,7 +867,7 @@ class MetadataPrimitivesBenchmark(TranslatableQueryMixin, BaseBenchmark):
         if manager is None:
             raise ValueError(
                 f"Platform '{platform_name}' does not support DataFrame metadata operations. "
-                f"Supported platforms: polars-df, pandas-df, pyspark-df, datafusion-df"
+                f"Supported platforms: polars-df, pandas-df, dask-df, pyspark-df, datafusion-df"
             )
         return manager
 

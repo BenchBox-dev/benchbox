@@ -376,7 +376,7 @@ class DataFrameMetadataOperationsManager:
         def action(start_time: float) -> DataFrameMetadataResult:
             if "polars" in self.platform_name:
                 columns = dataframe.columns
-            elif "pandas" in self.platform_name:
+            elif "pandas" in self.platform_name or "dask" in self.platform_name:
                 columns = list(dataframe.columns)
             elif "pyspark" in self.platform_name or "spark" in self.platform_name:
                 columns = dataframe.columns
@@ -394,7 +394,7 @@ class DataFrameMetadataOperationsManager:
         def action(start_time: float) -> DataFrameMetadataResult:
             if "polars" in self.platform_name:
                 dtypes = {col: str(dtype) for col, dtype in zip(dataframe.columns, dataframe.dtypes)}
-            elif "pandas" in self.platform_name:
+            elif "pandas" in self.platform_name or "dask" in self.platform_name:
                 dtypes = {col: str(dtype) for col, dtype in dataframe.dtypes.items()}
             elif "pyspark" in self.platform_name or "spark" in self.platform_name:
                 dtypes = {field.name: str(field.dataType) for field in dataframe.schema.fields}
@@ -498,7 +498,7 @@ class DataFrameMetadataOperationsManager:
         def action(start_time: float) -> DataFrameMetadataResult:
             if "polars" in self.platform_name:
                 count = dataframe.height
-            elif "pandas" in self.platform_name:
+            elif "pandas" in self.platform_name or "dask" in self.platform_name:
                 count = len(dataframe)
             elif "pyspark" in self.platform_name or "spark" in self.platform_name or "datafusion" in self.platform_name:
                 count = dataframe.count()
@@ -514,7 +514,12 @@ class DataFrameMetadataOperationsManager:
         def action(start_time: float) -> DataFrameMetadataResult:
             if "polars" in self.platform_name:
                 count = dataframe.width
-            elif "pandas" in self.platform_name or "pyspark" in self.platform_name or "spark" in self.platform_name:
+            elif (
+                "pandas" in self.platform_name
+                or "dask" in self.platform_name
+                or "pyspark" in self.platform_name
+                or "spark" in self.platform_name
+            ):
                 count = len(dataframe.columns)
             elif "datafusion" in self.platform_name:
                 count = len(dataframe.schema())
@@ -771,7 +776,7 @@ class DataFrameMetadataOperationsManager:
                 schema_info = [
                     {"name": col, "dtype": str(dtype)} for col, dtype in zip(dataframe.columns, dataframe.dtypes)
                 ]
-            elif "pandas" in self.platform_name:
+            elif "pandas" in self.platform_name or "dask" in self.platform_name:
                 column_count = len(dataframe.columns)
                 schema_info = [{"name": col, "dtype": str(dtype)} for col, dtype in dataframe.dtypes.items()]
             elif "pyspark" in self.platform_name or "spark" in self.platform_name:
