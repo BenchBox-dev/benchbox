@@ -79,6 +79,13 @@
         "description": "fork: owner review",
         "state": "pending",
         "target_url": "https://github.localhost/BenchBox-dev/BenchBox/actions/runs/<run>"
+      },
+      {
+        "context": "oracle-gate",
+        "creator": "benchbox-oracle[bot]",
+        "description": "oracle-review: the oracle's latest verdict for <sha1> is pending, not success; fix the findings, or post …",
+        "state": "failure",
+        "target_url": "https://github.localhost/BenchBox-dev/BenchBox/actions/runs/<run>"
       }
     ],
     "threads": []
