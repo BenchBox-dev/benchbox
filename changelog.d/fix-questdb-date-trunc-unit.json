@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed QuestDB queries using DATE_TRUNC failing with \"invalid unit 'DAY'\" (and MINUTE, MONTH, SECOND); QuestDB only accepts lower-case units, so the adapter now rewrites them before execution. Adds a QuestDB query rewrite pipeline for later engine-specific rewrites."
+    }
+  ]
+}
