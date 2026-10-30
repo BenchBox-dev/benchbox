@@ -38,6 +38,8 @@ from .questdb_rewrites import rewrite_query
 
 QUESTDB_DIALECT = "questdb"
 
+QUESTDB_TYPE_MAP: dict[str, str] = {"TIME": "VARCHAR"}
+
 try:
     import psycopg
 except ImportError:
@@ -403,6 +405,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                         QUESTDB_DIALECT,
                         strip_primary_keys=True,
                         strip_foreign_keys=True,
+                        type_map=QUESTDB_TYPE_MAP,
                         default_layout=self._questdb_table_layout(stmt),
                     )
                 elif "DROP TABLE" in stmt_upper:
