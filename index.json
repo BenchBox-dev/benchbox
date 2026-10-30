@@ -22785,7 +22785,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Check that a rollback to an artifact built before the known-broken-links allowance was emptied still passes the deploy gates"
     },
     "root-cause-modin-df-51-51-no-json-entire-platform-produced-z": {
