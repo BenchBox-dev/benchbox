@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "No per-row Python loops in these load paths.",
+    "Row counts match."
+  ],
+  "description": "QuestDB questdb.py:586-623 converts Parquet via to_pandas().to_csv() before REST /imp (use pyarrow.csv.write_csv or server read_parquet); the ILP path :625-660 builds lines by hand (use questdb Sender.dataframe). InfluxDB influxdb/adapter.py:148-151 reads TSBS CSV into Python records (use write_file or a DataFrame write).",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:root@vm:2d53e6a98f44f4f4a8a4dedd",
+      "at": "2026-10-30T17:55:46Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "2b093acf6da14699bb7d52ca2ea92556",
+      "session_id": "be00837164104ac2b4ed790cdb6812a2"
+    }
+  ]
+}

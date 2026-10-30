@@ -17657,6 +17657,13 @@
       "status": "open",
       "title": "Native file loading for Firebolt Core and local runs"
     },
+    "perf-questdb-influxdb-load-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Remove pandas/Python row steps in QuestDB and InfluxDB loading"
+    },
     "perf-starrocks-parquet-load-20261030": {
       "claim": null,
       "needs": [],
