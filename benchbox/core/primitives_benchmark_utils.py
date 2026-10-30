@@ -77,6 +77,9 @@ def fetch_count_probe(connection: DatabaseConnection, sql: str) -> int:
     return row[0] if row else 0
 
 
+_CATALOG_PROBE_DIALECTS = frozenset({"postgres", "postgresql"})
+
+
 def table_exists(
     connection: DatabaseConnection,
     table_name: str,
@@ -85,6 +88,13 @@ def table_exists(
 ) -> bool:
     try:
         quoted_table = quote_identifier_for_dialect(table_name, dialect)
+        if (dialect or "").lower() in _CATALOG_PROBE_DIALECTS:
+            cursor = connection.execute(f"SELECT to_regclass('{quoted_table}') IS NOT NULL")
+            if (error := failed_platform_error(cursor)) is not None:
+                log_verbose(f"Unexpected error checking table '{table_name}': {error}")
+                return False
+            row = cursor.fetchone()
+            return bool(row and row[0])
         cursor = connection.execute(f"SELECT 1 FROM {quoted_table} LIMIT 0")
         if (error := failed_platform_error(cursor)) is not None:
             error_msg = error.lower()

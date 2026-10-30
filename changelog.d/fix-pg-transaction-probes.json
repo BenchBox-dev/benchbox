@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed Write Primitives and Transaction Primitives on PostgreSQL-family platforms failing every operation with 'current transaction is aborted': existence probes of staging tables that had not been created yet put the open transaction into an error state. Probes now use the catalog instead of a failing SELECT."
+    }
+  ]
+}

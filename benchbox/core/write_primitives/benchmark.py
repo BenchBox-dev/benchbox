@@ -680,6 +680,8 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
             ]
 
             for table_name in required_tables:
+                if not self._table_exists(connection, table_name):
+                    return False
                 quoted = self._quote_identifier(table_name)
                 probe = connection.execute(f"SELECT 1 FROM {quoted} LIMIT 1")
                 if failed_platform_error(probe) is not None or probe.fetchone() is None:
