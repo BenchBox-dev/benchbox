@@ -1,0 +1,718 @@
+{
+  "benchmark": {
+    "data_generation_hash": "6c2327e588ae42b1c2143d42b84085f7ad57db46061637a9dd2aa3b05063095e",
+    "data_generation_version": 1,
+    "id": "coffeeshop",
+    "name": "CoffeeShop",
+    "scale_factor": 1.0,
+    "test_type": "power"
+  },
+  "config": {
+    "compression": {
+      "level": null,
+      "type": "zstd"
+    },
+    "execution_engine": "default",
+    "mode": "sql",
+    "phases": [
+      "generate",
+      "load",
+      "power"
+    ],
+    "platform_option_sources": {
+      "check_same_thread": "saved_config",
+      "database_name": "saved_config",
+      "force_recreate": "saved_config",
+      "force_upload": "saved_config",
+      "normalize_plan_literals": "saved_config",
+      "show_query_plans": "saved_config",
+      "timeout": "saved_config",
+      "tuning_source": "saved_config"
+    },
+    "platform_options": {
+      "check_same_thread": false,
+      "database_name": "database_5d7b725135a6",
+      "force_recreate": false,
+      "force_upload": false,
+      "normalize_plan_literals": false,
+      "show_query_plans": false,
+      "timeout": 30.0,
+      "tuning_source": "baseline"
+    }
+  },
+  "cost": {
+    "model": "estimated",
+    "total_usd": 0
+  },
+  "environment": {
+    "arch": "arm64",
+    "client_host": {
+      "arch": "arm64",
+      "cpu_count": 10,
+      "cpu_identity_provenance": "measured",
+      "cpu_model": "Apple M4",
+      "cpu_vendor": "Apple",
+      "memory_gb": 16.0,
+      "os": "Darwin 27.0.0",
+      "python": "3.12.15"
+    },
+    "client_link": {
+      "collection_status": "partial",
+      "source": "unavailable",
+      "statement_overhead_ms": {
+        "median": 0.001,
+        "min": 0.001,
+        "samples": 5
+      }
+    },
+    "cpu_count": 10,
+    "cpu_identity_provenance": "measured",
+    "cpu_model": "Apple M4",
+    "cpu_vendor": "Apple",
+    "memory_gb": 16.0,
+    "os": "Darwin 27.0.0",
+    "platform_runtime": {
+      "collection_status": "partial",
+      "runtime_type": "local_process",
+      "source": "inferred"
+    },
+    "python": "3.12.15"
+  },
+  "execution": {
+    "compression": {
+      "type": "zstd"
+    },
+    "driver_runtime_strategy": "current-process",
+    "entry_point": "cli",
+    "mode": "sql",
+    "non_interactive": true,
+    "phases": [
+      "generate",
+      "load",
+      "power"
+    ],
+    "timestamp": "2026-10-26T12:34:39.150280",
+    "translation": {
+      "attempt_count": 56,
+      "failed_count": 0,
+      "fallback_count": 0,
+      "outcomes": [
+        {
+          "calls": 55,
+          "count": 55,
+          "normalized_source_dialect": "netezza",
+          "normalized_target_dialect": "sqlite",
+          "parser_grammar": "netezza",
+          "scope": "workload_query",
+          "source_dialect": "netezza",
+          "status": "success",
+          "strict_mode": false,
+          "target_dialect": "sqlite",
+          "translator": "sqlglot",
+          "unique_queries": 11
+        },
+        {
+          "calls": 1,
+          "count": 1,
+          "normalized_source_dialect": "postgres",
+          "normalized_target_dialect": "sqlite",
+          "parser_grammar": "postgres",
+          "scope": "schema_ddl",
+          "source_dialect": "standard",
+          "status": "success",
+          "strict_mode": false,
+          "target_dialect": "sqlite",
+          "translator": "sqlglot",
+          "unique_queries": 1
+        }
+      ],
+      "schema_statements_translated": 1,
+      "source_dialects": [
+        "netezza",
+        "standard"
+      ],
+      "status": "success",
+      "strict_mode": false,
+      "success_count": 56,
+      "target_dialects": [
+        "sqlite"
+      ],
+      "total_transpilation_calls": 56,
+      "translators": [
+        "sqlglot"
+      ],
+      "unique_queries_translated": 11
+    },
+    "tuning_mode": "notuning"
+  },
+  "export": {
+    "anonymized": true,
+    "benchbox_version": "0.5.0rc1",
+    "timestamp": "2026-10-26T12:39:49.977315",
+    "tool": "benchbox-exporter"
+  },
+  "normalized_cost": {
+    "billing_unit": "not_applicable",
+    "cost_model_source": "benchbox.core.cost.pricing",
+    "cost_model_version": "2026.09",
+    "cost_scope": "compute_only",
+    "cost_status": "not_applicable_local",
+    "cost_usd": null,
+    "deployment": {
+      "cloud_provider": null,
+      "cloud_region": null,
+      "cluster_size": null,
+      "instance_type": null,
+      "node_count": null,
+      "storage_format": null,
+      "storage_tier": null,
+      "warehouse_size": null
+    },
+    "normalized_cost_usd": "0",
+    "pricing_region": "not_applicable"
+  },
+  "phases": {
+    "data_generation": {
+      "duration_ms": 0,
+      "status": "SUCCESS"
+    },
+    "data_loading": {
+      "duration_ms": 18623,
+      "status": "SUCCESS"
+    },
+    "power_test": {
+      "duration_ms": 290944,
+      "geometric_mean_time": 6.608707027462184,
+      "power_at_size": 0.0,
+      "query_count": 44,
+      "status": "COMPLETED"
+    },
+    "schema_creation": {
+      "duration_ms": 231,
+      "status": "SUCCESS"
+    },
+    "throughput_test": {
+      "status": "NOT_RUN"
+    },
+    "validation": {
+      "duration_ms": 50,
+      "status": "PASSED"
+    }
+  },
+  "platform": {
+    "client_version": "builtin",
+    "cloud": {
+      "collection_status": "unavailable",
+      "source": "unavailable"
+    },
+    "compute": {
+      "collection_status": "unavailable",
+      "source": "unavailable"
+    },
+    "config": {
+      "check_same_thread": false,
+      "connection_mode": "file",
+      "driver_runtime_strategy": "current-process",
+      "engine_version": "3.53.1",
+      "engine_version_source": "sql_query",
+      "execution_mode": "sql",
+      "timeout": 30.0
+    },
+    "deployment": {
+      "collection_status": "partial",
+      "connection_mode": "file",
+      "deployment_type": "embedded",
+      "endpoint_class": "embedded_process",
+      "metadata_source": "inferred"
+    },
+    "driver_runtime_strategy": "current-process",
+    "execution_engine": {
+      "applied": null,
+      "applied_class": null,
+      "observed": "not_captured",
+      "observed_source": "none",
+      "requested": "default",
+      "resolution": "platform_default"
+    },
+    "name": "SQLite",
+    "raw_config": {
+      "check_same_thread": false,
+      "force_recreate": false,
+      "timeout": 30.0,
+      "tuning_source": "baseline",
+      "type": "sqlite"
+    },
+    "storage": {
+      "collection_status": "unavailable",
+      "source": "unavailable"
+    },
+    "tuning": {
+      "applied": {
+        "dropped": [],
+        "statements": [
+          {
+            "phase": "session",
+            "statement_redacted": true,
+            "status": "harness_default"
+          },
+          {
+            "phase": "session",
+            "statement_redacted": true,
+            "status": "harness_default"
+          }
+        ],
+        "status": "not_applicable"
+      },
+      "source": "auto",
+      "tuning_source": "baseline",
+      "validation_status": "not_applicable"
+    },
+    "variant": "sqlite",
+    "version": "3.53.1"
+  },
+  "provenance": {
+    "source": "internal"
+  },
+  "queries": [
+    {
+      "id": "QSA1",
+      "iter": 0,
+      "ms": 1117.9,
+      "rows": 93,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QSA2",
+      "iter": 0,
+      "ms": 6932.8,
+      "rows": 13,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QSA3",
+      "iter": 0,
+      "ms": 4494.6,
+      "rows": 12,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QSA4",
+      "iter": 0,
+      "ms": 5720.1,
+      "rows": 3,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QSA5",
+      "iter": 0,
+      "ms": 10383.8,
+      "rows": 20,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QPR1",
+      "iter": 0,
+      "ms": 4533.3,
+      "rows": 3,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QPR2",
+      "iter": 0,
+      "ms": 6216.3,
+      "rows": 3,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QTR1",
+      "iter": 0,
+      "ms": 10820.5,
+      "rows": 8,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QTM1",
+      "iter": 0,
+      "ms": 10785.0,
+      "rows": 4,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QQC1",
+      "iter": 0,
+      "ms": 1818.2,
+      "rows": 1,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QQC2",
+      "iter": 0,
+      "ms": 15706.3,
+      "rows": 12,
+      "run_type": "warmup",
+      "status": "SUCCESS",
+      "stream": 0
+    },
+    {
+      "id": "QSA1",
+      "iter": 1,
+      "ms": 1548.1,
+      "rows": 93,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QSA2",
+      "iter": 1,
+      "ms": 8234.1,
+      "rows": 13,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QSA3",
+      "iter": 1,
+      "ms": 4582.5,
+      "rows": 12,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QSA4",
+      "iter": 1,
+      "ms": 5027.5,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QSA5",
+      "iter": 1,
+      "ms": 9277.5,
+      "rows": 20,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QPR1",
+      "iter": 1,
+      "ms": 3222.6,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QPR2",
+      "iter": 1,
+      "ms": 3808.7,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QTR1",
+      "iter": 1,
+      "ms": 7413.2,
+      "rows": 8,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QTM1",
+      "iter": 1,
+      "ms": 10003.0,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QQC1",
+      "iter": 1,
+      "ms": 1737.8,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QQC2",
+      "iter": 1,
+      "ms": 14042.4,
+      "rows": 12,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 1
+    },
+    {
+      "id": "QSA1",
+      "iter": 2,
+      "ms": 1434.9,
+      "rows": 93,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QSA2",
+      "iter": 2,
+      "ms": 6246.6,
+      "rows": 13,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QSA3",
+      "iter": 2,
+      "ms": 4369.4,
+      "rows": 12,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QSA4",
+      "iter": 2,
+      "ms": 5172.0,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QSA5",
+      "iter": 2,
+      "ms": 8892.9,
+      "rows": 20,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QPR1",
+      "iter": 2,
+      "ms": 3113.0,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QPR2",
+      "iter": 2,
+      "ms": 3977.0,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QTR1",
+      "iter": 2,
+      "ms": 8388.0,
+      "rows": 8,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QTM1",
+      "iter": 2,
+      "ms": 14295.0,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QQC1",
+      "iter": 2,
+      "ms": 2334.7,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QQC2",
+      "iter": 2,
+      "ms": 15844.7,
+      "rows": 12,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 2
+    },
+    {
+      "id": "QSA1",
+      "iter": 3,
+      "ms": 1484.6,
+      "rows": 93,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QSA2",
+      "iter": 3,
+      "ms": 8143.4,
+      "rows": 13,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QSA3",
+      "iter": 3,
+      "ms": 5444.3,
+      "rows": 12,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QSA4",
+      "iter": 3,
+      "ms": 5381.6,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QSA5",
+      "iter": 3,
+      "ms": 9539.6,
+      "rows": 20,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QPR1",
+      "iter": 3,
+      "ms": 3417.1,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QPR2",
+      "iter": 3,
+      "ms": 4242.6,
+      "rows": 3,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QTR1",
+      "iter": 3,
+      "ms": 7900.1,
+      "rows": 8,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QTM1",
+      "iter": 3,
+      "ms": 10740.9,
+      "rows": 4,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QQC1",
+      "iter": 3,
+      "ms": 1850.5,
+      "rows": 1,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    },
+    {
+      "id": "QQC2",
+      "iter": 3,
+      "ms": 11143.9,
+      "rows": 12,
+      "run_type": "measurement",
+      "status": "SUCCESS",
+      "stream": 3
+    }
+  ],
+  "result_schema_version": "2.3",
+  "run": {
+    "id": "9953f53c",
+    "iterations": 3,
+    "query_time_ms": 212254,
+    "streams": 4,
+    "timestamp": "2026-10-26T12:39:49.959729",
+    "total_duration_ms": 309816
+  },
+  "summary": {
+    "data": {
+      "load_time_ms": 18623.6,
+      "rows_loaded": 13261026
+    },
+    "queries": {
+      "failed": 0,
+      "passed": 33,
+      "total": 33
+    },
+    "timing": {
+      "avg_ms": 6431.9,
+      "geometric_mean_ms": 5229.9,
+      "max_ms": 15844.7,
+      "min_ms": 1434.9,
+      "p90_ms": 11143.9,
+      "p95_ms": 14295.0,
+      "p99_ms": 15844.7,
+      "stdev_ms": 3926.5,
+      "total_ms": 212254.3
+    },
+    "validation": "passed"
+  },
+  "tables": {
+    "dim_locations": {
+      "rows": 1000
+    },
+    "dim_products": {
+      "rows": 26
+    },
+    "order_lines": {
+      "rows": 13260000
+    }
+  },
+  "version": "2.3"
+}
