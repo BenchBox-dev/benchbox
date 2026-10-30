@@ -1,0 +1,307 @@
+name: Release UAT dry run
+
+on:
+  push:
+    branches: [ci/release-uat-dryrun, ci/release-uat-dryrun-4]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-uat-dryrun-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  uat-stage1:
+    name: UAT stage 1 ${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: sqlite
+            platforms: sqlite
+          - shard: spark
+            platforms: spark
+          - shard: duckdb
+            platforms: duckdb
+          - shard: datafusion-clickhouse-local
+            platforms: datafusion,clickhouse-local
+          - shard: polars-df
+            platforms: polars-df
+          - shard: pandas-df
+            platforms: pandas-df
+          - shard: pyspark-df
+            platforms: pyspark-df
+          - shard: dask-df
+            platforms: dask-df
+          - shard: datafusion-df
+            platforms: datafusion-df
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Build and install the checkout wheel
+        uses: ./.github/actions/release-uat-env-dryrun
+
+      - name: Run the stage 1 shard against the admitted distribution
+        timeout-minutes: 345
+        env:
+          UV_NO_SYNC: '1'
+          UAT_CONFIG: tests/uat/configs/release-gate-01-native-dataframe.yaml
+          SHARD_PLATFORMS: ${{ matrix.platforms }}
+        run: |
+          set -euo pipefail
+          .venv/bin/python -c "import benchbox, pathlib; path = pathlib.Path(benchbox.__file__).resolve(); assert 'site-packages' in path.parts, path"
+          make uat-sweep CONFIG="$UAT_CONFIG" PLATFORMS="$SHARD_PLATFORMS"
+          .venv/bin/python -c "import benchbox, pathlib; path = pathlib.Path(benchbox.__file__).resolve(); assert 'site-packages' in path.parts, path"
+
+      - name: Restore the checkout package
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -d "$RUNNER_TEMP/benchbox.checkout" ]; then
+            mv "$RUNNER_TEMP/benchbox.checkout" benchbox
+          fi
+          git ls-files -z benchbox | xargs -0 git update-index --no-assume-unchanged
+
+      - name: Stage the shard evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/shard-evidence"
+          mkdir -p "$evidence"
+          shopt -s nullglob
+          if [ -f "${RELEASE_DIST_DIGEST_FILE:-}" ]; then
+            cp "$RELEASE_DIST_DIGEST_FILE" "$evidence/dist-digest.txt"
+          fi
+          runs=("$HOME"/Developer/benchmark_runs/logs/uat_*)
+          if [ "${#runs[@]}" -eq 1 ]; then
+            cp -R "${runs[0]}" "$evidence/run"
+          fi
+
+      - name: Upload the shard evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: dryrun-stage1-${{ matrix.shard }}
+          path: ${{ runner.temp }}/shard-evidence
+          retention-days: 30
+          if-no-files-found: warn
+
+  uat-stage2:
+    name: UAT stage 2 ${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: lakesail
+            platforms: lakesail
+          - shard: clickhouse-server
+            platforms: clickhouse-server
+          - shard: cedardb
+            platforms: cedardb
+          - shard: starrocks
+            platforms: starrocks
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Build and install the checkout wheel
+        uses: ./.github/actions/release-uat-env-dryrun
+
+      - name: Run the stage 2 shard against the admitted distribution
+        timeout-minutes: 345
+        env:
+          UV_NO_SYNC: '1'
+          UAT_CONFIG: tests/uat/configs/release-gate-02-docker-nonoltp.yaml
+          SHARD_PLATFORMS: ${{ matrix.platforms }}
+        run: |
+          set -euo pipefail
+          .venv/bin/python -c "import benchbox, pathlib; path = pathlib.Path(benchbox.__file__).resolve(); assert 'site-packages' in path.parts, path"
+          make uat-sweep CONFIG="$UAT_CONFIG" PLATFORMS="$SHARD_PLATFORMS"
+          .venv/bin/python -c "import benchbox, pathlib; path = pathlib.Path(benchbox.__file__).resolve(); assert 'site-packages' in path.parts, path"
+
+      - name: Restore the checkout package
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -d "$RUNNER_TEMP/benchbox.checkout" ]; then
+            mv "$RUNNER_TEMP/benchbox.checkout" benchbox
+          fi
+          git ls-files -z benchbox | xargs -0 git update-index --no-assume-unchanged
+
+      - name: Stage the shard evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/shard-evidence"
+          mkdir -p "$evidence"
+          shopt -s nullglob
+          if [ -f "${RELEASE_DIST_DIGEST_FILE:-}" ]; then
+            cp "$RELEASE_DIST_DIGEST_FILE" "$evidence/dist-digest.txt"
+          fi
+          runs=("$HOME"/Developer/benchmark_runs/logs/uat_*)
+          if [ "${#runs[@]}" -eq 1 ]; then
+            cp -R "${runs[0]}" "$evidence/run"
+          fi
+
+      - name: Upload the shard evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: dryrun-stage2-${{ matrix.shard }}
+          path: ${{ runner.temp }}/shard-evidence
+          retention-days: 30
+          if-no-files-found: warn
+
+  uat-stage3:
+    name: UAT stage 3 ${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: postgres-family
+            platforms: postgresql,pg-duckdb,pg-mooncake,timescaledb
+          - shard: query-engines
+            platforms: presto,trino,velox
+          - shard: olap
+            platforms: doris,databend,singlestore
+          - shard: timeseries
+            platforms: questdb
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Build and install the checkout wheel
+        uses: ./.github/actions/release-uat-env-dryrun
+
+      - name: Run the stage 3 shard against the admitted distribution
+        timeout-minutes: 345
+        env:
+          UV_NO_SYNC: '1'
+          UAT_CONFIG: tests/uat/configs/release-gate-03-docker-oltp.yaml
+          SHARD_PLATFORMS: ${{ matrix.platforms }}
+        run: |
+          set -euo pipefail
+          .venv/bin/python -c "import benchbox, pathlib; path = pathlib.Path(benchbox.__file__).resolve(); assert 'site-packages' in path.parts, path"
+          make uat-sweep CONFIG="$UAT_CONFIG" PLATFORMS="$SHARD_PLATFORMS"
+          .venv/bin/python -c "import benchbox, pathlib; path = pathlib.Path(benchbox.__file__).resolve(); assert 'site-packages' in path.parts, path"
+
+      - name: Restore the checkout package
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -d "$RUNNER_TEMP/benchbox.checkout" ]; then
+            mv "$RUNNER_TEMP/benchbox.checkout" benchbox
+          fi
+          git ls-files -z benchbox | xargs -0 git update-index --no-assume-unchanged
+
+      - name: Stage the shard evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/shard-evidence"
+          mkdir -p "$evidence"
+          shopt -s nullglob
+          if [ -f "${RELEASE_DIST_DIGEST_FILE:-}" ]; then
+            cp "$RELEASE_DIST_DIGEST_FILE" "$evidence/dist-digest.txt"
+          fi
+          runs=("$HOME"/Developer/benchmark_runs/logs/uat_*)
+          if [ "${#runs[@]}" -eq 1 ]; then
+            cp -R "${runs[0]}" "$evidence/run"
+          fi
+
+      - name: Upload the shard evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: dryrun-stage3-${{ matrix.shard }}
+          path: ${{ runner.temp }}/shard-evidence
+          retention-days: 30
+          if-no-files-found: warn
+
+  release-uat:
+    name: release UAT gate
+    needs: [uat-stage1, uat-stage2, uat-stage3]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Build and install the checkout wheel
+        uses: ./.github/actions/release-uat-env-dryrun
+
+      - name: Download every shard's evidence
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          pattern: dryrun-stage*
+          path: ${{ runner.temp }}/uat-evidence
+
+      - name: Check the combined release gate over every shard
+        env:
+          UV_NO_SYNC: '1'
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          .venv/bin/python -c "import benchbox, pathlib; path = pathlib.Path(benchbox.__file__).resolve(); assert 'site-packages' in path.parts, path"
+          evidence="$RUNNER_TEMP/uat-evidence"
+          stage1=("$evidence"/dryrun-stage1-*/run)
+          stage2=("$evidence"/dryrun-stage2-*/run)
+          stage3=("$evidence"/dryrun-stage3-*/run)
+          make uat-gate-check \
+            STAGE1="${stage1[*]}" \
+            STAGE2="${stage2[*]}" \
+            STAGE3="${stage3[*]}" \
+            OUTPUT="$RUNNER_TEMP/uat-gate-summary.json" \
+            DIST_DIGEST="$(sha256sum "$RELEASE_DIST_DIGEST_FILE" | cut -d' ' -f1)"
+
+      - name: Restore the checkout package
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -d "$RUNNER_TEMP/benchbox.checkout" ]; then
+            mv "$RUNNER_TEMP/benchbox.checkout" benchbox
+          fi
+          git ls-files -z benchbox | xargs -0 git update-index --no-assume-unchanged
+
+      - name: Require every shard job to have succeeded
+        if: always()
+        env:
+          STAGE1_RESULT: ${{ needs.uat-stage1.result }}
+          STAGE2_RESULT: ${{ needs.uat-stage2.result }}
+          STAGE3_RESULT: ${{ needs.uat-stage3.result }}
+        run: |
+          set -euo pipefail
+          status=0
+          for stage in 1 2 3; do
+            var="STAGE${stage}_RESULT"
+            if [ "${!var}" != "success" ]; then
+              echo "::error::UAT stage $stage shard jobs finished as '${!var}', not 'success'."
+              status=1
+            fi
+          done
+          exit "$status"
+
+      - name: Upload the combined UAT evidence with the distribution digest
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: dryrun-gate
+          path: |
+            ${{ runner.temp }}/dist-digest.txt
+            ${{ runner.temp }}/uat-gate-summary.json
+          retention-days: 30
+          if-no-files-found: warn
