@@ -293,7 +293,8 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
         source_digest = self._staging_source_digest(connection, source_tables)
         quoted_table = self._quote_identifier(self._STAGING_MANIFEST_TABLE)
         try:
-            self._ensure_staging_manifest_table(connection)
+            if not self._table_exists(connection, self._STAGING_MANIFEST_TABLE):
+                return False
             query = (
                 f"SELECT COUNT(*) FROM {quoted_table} WHERE "
                 f"benchmark = '{_sql_escape(benchmark_id)}' AND "

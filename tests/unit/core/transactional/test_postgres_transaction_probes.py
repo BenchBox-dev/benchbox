@@ -70,10 +70,7 @@ def test_staging_manifest_probe_on_postgres_does_not_abort_the_transaction(tmp_p
 
     assert benchmark._staging_manifest_matches(connection, ["orders", "lineitem"]) is False
     assert connection.aborted is False
-    assert any(
-        s.startswith("CREATE TABLE IF NOT EXISTS") and "benchbox_staging_manifest_v3" in s
-        for s in connection.statements
-    )
+    assert not any(s.startswith("CREATE TABLE") for s in connection.statements)
 
 
 def test_transaction_primitives_is_setup_on_postgres_does_not_abort_the_transaction(tmp_path: Path) -> None:
