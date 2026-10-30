@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "After a mirror passes validation and the freshness check, every other open same-repo auto/results-mirror-* PR on published-results whose develop commit is an ancestor of the mirrored commit is closed with a comment naming the superseding PR",
+    "A mirror PR whose develop commit is not an ancestor is left open",
+    "A failure to close one PR is a warning and does not fail the run",
+    "Workflow tests cover the close step and the ancestor guard; docs/internal/results-phase-2-runbook.md describes the behavior",
+    "Merged through the normal PR flow with an oracle success review on the exact head (the workflow is a soundness path); after merge the open stale mirror PRs close on the next develop push"
+  ],
+  "context": "2026-10-30: created from a worktree sweep audit. The existing unpublished commit c5934511b (branch fix/corpus-mirror-close-superseded) merges cleanly onto develop; fetch-depth is 0 and pull-requests: write is already granted in the workflow. Related, already done: independent-publication-a10-release-and-mirror-retirement.",
+  "description": "sync-results-data-to-published.yml opens one draft auto/results-mirror-<sha> PR per develop push and only closes a PR that fails its own freshness check. Older mirrors that are still valid stay open: on 2026-10-30 eight draft mirror PRs into published-results were open at once (#3694, #3699, #3715, #3716, #3718, #3722, #3723, #3729). Each mirror is a full snapshot of develop against the published-results tip, so a newer mirror contains every change an older one carries. After a mirror passes validation and the freshness check, close every other open same-repository auto/results-mirror-* PR whose develop commit is an ancestor of the commit being mirrored, leaving non-ancestor PRs open. Salvaged from the unpublished local commit c5934511b on fix/corpus-mirror-close-superseded (2026-10-27); that branch had no PR and no tracker item.",
+  "links": [
+    ".github/workflows/sync-results-data-to-published.yml",
+    "tests/unit/test_sync_results_workflow.py",
+    "docs/internal/results-phase-2-runbook.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:df2a71c2d1a87fbbfed9c494",
+      "at": "2026-10-30T14:06:54Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "89cb7bd0ef7d43bd909342560e7e94ee",
+      "session_id": "4b12aec6c4c5447fb786c6e2a1cffb60"
+    }
+  ]
+}
