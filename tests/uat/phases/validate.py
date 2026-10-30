@@ -10,7 +10,6 @@ from benchbox.validation.bundle import (
     CLI_REFUSED_COMPLIANCE_CLASSES,
     ValidationResult,
     discover_bundles,
-    unanonymized_tuning_findings,
     validate_bundles,
 )
 from tests.uat.phases import PhaseResult
@@ -143,25 +142,21 @@ def _build_rows(bundle_paths: Sequence[Path]) -> list[_RollupRow]:
     return rows
 
 
+_TUNING_PRIVACY_MARKER = "unanonymized tuning"
+
+
 def _validate_publishable_form(bundle_path: Path) -> list[ValidationResult]:
-    if not _has_unanonymized_tuning(bundle_path):
-        return validate_bundles([bundle_path])
+    raw = validate_bundles([bundle_path])
+    if not any(_TUNING_PRIVACY_MARKER in error for result in raw for error in result.errors):
+        return raw
     redacted, scratch = _redacted_publish_source(bundle_path)
     if redacted is None:
-        return validate_bundles([bundle_path])
+        return raw
     try:
         return validate_bundles([redacted])
     finally:
         if scratch is not None:
             scratch.cleanup()
-
-
-def _has_unanonymized_tuning(bundle_path: Path) -> bool:
-    try:
-        payload = json.loads(bundle_path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return False
-    return bool(unanonymized_tuning_findings(payload))
 
 
 def _read_bundle_metadata(bundle_path: Path) -> tuple[str, str, str, str | None]:

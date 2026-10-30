@@ -226,3 +226,17 @@ def test_run_validate_still_rejects_unredactable_bundle_with_tuning_statements(t
 
     assert out.error_count == 1
     assert "unanonymized tuning statement" in out.rollup_tsv_path.read_text(encoding="utf-8")
+
+
+def test_run_validate_redacts_companion_only_tuning_statements(tmp_path: Path):
+    source = _export_local_result(tmp_path / "results", "SET threads TO 1")
+    payload = json.loads(source.read_text(encoding="utf-8"))
+    applied = payload["platform"]["tuning"].pop("applied")
+    payload["platform"].pop("tuning")
+    source.write_text(json.dumps(payload), encoding="utf-8")
+    companion = source.with_name(f"{source.stem}.applied.json")
+    companion.write_text(json.dumps({"statements": applied["statements"]}), encoding="utf-8")
+
+    out = validate.run_validate(source.parent, output_tsv=tmp_path / "rollup.tsv", floor=0.0)
+
+    assert "unanonymized tuning" not in out.rollup_tsv_path.read_text(encoding="utf-8")
