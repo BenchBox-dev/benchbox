@@ -16,10 +16,11 @@ def test_plain_double_cast_is_emitted_as_double():
     assert rewrite_query("SELECT CAST(b AS DOUBLE) FROM t") == "SELECT CAST(b AS DOUBLE) FROM t"
 
 
-def test_float_cast_is_emitted_as_double():
-    assert rewrite_query("SELECT CAST(b AS FLOAT) FROM t") == "SELECT CAST(b AS DOUBLE) FROM t"
-
-
-def test_decimal_cast_keeps_its_type():
-    sql = "SELECT CAST(b AS DECIMAL(10, 2)) FROM t"
+def test_query_without_double_precision_is_left_alone():
+    sql = "SELECT CAST(b AS FLOAT), CAST(c AS DOUBLE) FROM t"
     assert rewrite_query(sql) == sql
+
+
+def test_decimal_cast_keeps_its_type_next_to_a_rewritten_cast():
+    sql = "SELECT CAST(b AS DECIMAL(10, 2)), CAST(c AS DOUBLE PRECISION) FROM t"
+    assert rewrite_query(sql) == "SELECT CAST(b AS DECIMAL(10, 2)), CAST(c AS DOUBLE) FROM t"
