@@ -17673,6 +17673,15 @@
       "status": "open",
       "title": "Remove pandas/Python row steps in QuestDB and InfluxDB loading"
     },
+    "perf-spark-arrow-collect-20261030": {
+      "claim": null,
+      "needs": [
+        "perf-arrow-aware-result-capture-20261030"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Use Arrow collect for Spark-family adapters"
+    },
     "perf-starrocks-parquet-load-20261030": {
       "claim": null,
       "needs": [],
