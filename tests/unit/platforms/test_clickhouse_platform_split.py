@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from unittest.mock import patch
 
 import pytest
@@ -166,6 +167,64 @@ class TestClickHouseServerAdapter:
         assert adapter.port == 19000
         assert adapter.username == "default"
         assert adapter.password == "benchbox"
+
+    def test_from_config_derives_database_per_benchmark_and_scale(self) -> None:
+        from benchbox.platforms.clickhouse_server import ClickHouseServerAdapter
+
+        def build(benchmark: str, scale: float) -> str:
+            with (
+                patch("benchbox.platforms.clickhouse.adapter.check_platform_dependencies", return_value=(True, [])),
+                patch("benchbox.platforms.clickhouse.setup.ClickHouseClient"),
+            ):
+                return ClickHouseServerAdapter.from_config({"benchmark": benchmark, "scale_factor": scale}).database
+
+        names = {build("tpch", 0.01), build("tpch", 1.0), build("tpcds", 0.01), build("tpcds_obt", 0.01)}
+
+        assert len(names) == 4
+        assert build("tpcds", 0.01) == "benchbox_tpcds_sf001"
+        assert all(re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) for name in names)
+
+    def test_from_config_keeps_explicit_database(self) -> None:
+        from benchbox.platforms.clickhouse_server import ClickHouseServerAdapter
+
+        with (
+            patch("benchbox.platforms.clickhouse.adapter.check_platform_dependencies", return_value=(True, [])),
+            patch("benchbox.platforms.clickhouse.setup.ClickHouseClient"),
+        ):
+            adapter = ClickHouseServerAdapter.from_config(
+                {"benchmark": "tpch", "scale_factor": 0.01, "options": {"database": "mine"}}
+            )
+
+        assert adapter.database == "mine"
+
+    def test_second_benchmark_does_not_find_first_benchmarks_database(self) -> None:
+        from benchbox.platforms.clickhouse_server import ClickHouseServerAdapter
+
+        server_databases: set[str] = set()
+
+        class _FakeAdmin:
+            def execute(self, sql: str):
+                return [(name,) for name in sorted({"default", "system", *server_databases})]
+
+            def disconnect(self) -> None:
+                return None
+
+        def build(benchmark: str) -> ClickHouseServerAdapter:
+            with (
+                patch("benchbox.platforms.clickhouse.adapter.check_platform_dependencies", return_value=(True, [])),
+                patch("benchbox.platforms.clickhouse.setup.ClickHouseClient"),
+            ):
+                adapter = ClickHouseServerAdapter.from_config({"benchmark": benchmark, "scale_factor": 0.01})
+            adapter._create_admin_client = lambda **_: _FakeAdmin()
+            return adapter
+
+        tpch = build("tpch")
+        assert tpch.check_server_database_exists() is False
+        server_databases.add(tpch.database)
+        assert tpch.check_server_database_exists() is True
+
+        tpcds = build("tpcds")
+        assert tpcds.check_server_database_exists() is False
 
 
 class TestAdapterFactoryMigration:
