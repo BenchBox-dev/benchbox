@@ -675,46 +675,13 @@ def test_refuses_a_pr_that_is_held_draft_closed_or_has_requested_changes(
     assert expected in _refusal(world, ready_pr, capsys)
 
 
-def gate_dispatch(head: str) -> list[str]:
-    return ["gh", "workflow", "run", "oracle-gate.yml", "--repo", REPO, "--ref", "develop"] + [
-        "-f",
-        "pr=7",
-        "-f",
-        f"head_sha={head}",
-    ]
-
-
-@pytest.mark.parametrize("state", ["failure", "error", "pending", ""])
-def test_dispatches_the_gate_before_arming_when_its_status_is_not_success(
-    world: World, ready_pr: FakeGitHub, state: str
-) -> None:
+@pytest.mark.parametrize("state", ["failure", "error", "pending", "", "success"])
+def test_arming_never_dispatches_the_gate_whatever_its_status(world: World, ready_pr: FakeGitHub, state: str) -> None:
     ready_pr.gate_state = state
     assert arm(world, ready_pr) == 0
-    assert ready_pr.dispatches() == [gate_dispatch(world.head)]
-    assert ready_pr.calls.index(gate_dispatch(world.head)) < ready_pr.calls.index(merge_command(world.head))
-
-
-def test_dispatches_nothing_when_the_gate_already_succeeded(world: World, ready_pr: FakeGitHub) -> None:
-    assert arm(world, ready_pr) == 0
     assert ready_pr.dispatches() == []
-
-
-def test_an_open_thread_refuses_without_dispatching(world: World, ready_pr: FakeGitHub) -> None:
-    ready_pr.gate_state = "failure"
-    ready_pr.threads = [{"id": "T1", "isResolved": False, "isOutdated": False}]
-    assert arm(world, ready_pr) == 2
-    assert ready_pr.dispatches() == []
-    assert ready_pr.arms() == []
-
-
-def test_a_failed_gate_dispatch_is_reported_and_arming_proceeds(
-    world: World, ready_pr: FakeGitHub, capsys: pytest.CaptureFixture[str]
-) -> None:
-    ready_pr.gate_state = "failure"
-    ready_pr.dispatch_code = 1
-    assert arm(world, ready_pr) == 0
+    assert not any(call[:3] == ["gh", "workflow", "run"] for call in ready_pr.calls)
     assert ready_pr.arms() == [merge_command(world.head)]
-    assert "dispatch for PR #7 failed; arming continues" in capsys.readouterr().out
 
 
 def test_refuses_an_unresolved_review_thread(
@@ -770,14 +737,14 @@ def test_pending_required_status_still_arms(world: World, ready_pr: FakeGitHub) 
     assert ready_pr.arms() == [merge_command(world.head)]
 
 
-def test_waiting_oracle_failure_status_refreshes_and_arms(world: World, ready_pr: FakeGitHub) -> None:
+def test_waiting_oracle_failure_status_arms_without_a_dispatch(world: World, ready_pr: FakeGitHub) -> None:
     ready_pr.statuses["oracle-gate"] = "failure"
     ready_pr.status_descriptions["oracle-gate"] = (
         f"oracle-review: waiting for the oracle's verdict on {world.head}, or a stand-in attestation"
     )
     ready_pr.gate_state = "failure"
     assert arm(world, ready_pr) == 0
-    assert len(ready_pr.dispatches()) == 1
+    assert ready_pr.dispatches() == []
     assert ready_pr.arms() == [merge_command(world.head)]
 
 

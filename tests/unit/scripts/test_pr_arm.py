@@ -503,57 +503,13 @@ def test_the_live_suite_check_receives_the_base_branch_and_local_head() -> None:
     assert seen == [("develop", HEAD)]
 
 
-DISPATCH = [
-    "gh",
-    "workflow",
-    "run",
-    "oracle-gate.yml",
-    "--repo",
-    pr_arm.REPOSITORY,
-    "--ref",
-    "develop",
-    "-f",
-    "pr=7",
-    "-f",
-    f"head_sha={HEAD}",
-]
-
-
-@pytest.mark.parametrize("state", ["failure", "error", "pending", ""])
-def test_dispatches_the_gate_before_arming_when_its_status_is_not_success(state: str) -> None:
+@pytest.mark.parametrize("state", ["failure", "error", "pending", "", "success"])
+def test_arming_never_dispatches_the_gate_whatever_its_status(state: str) -> None:
     gh = FakeGh(gate_state=state)
     assert _arm(gh) == 0
-    assert gh.dispatched() == [DISPATCH]
-    assert gh.calls.index(DISPATCH) < gh.calls.index(gh.merged()[0])
-
-
-def test_dispatches_nothing_when_the_gate_already_succeeded() -> None:
-    gh = FakeGh(gate_state="success")
-    assert _arm(gh) == 0
     assert gh.dispatched() == []
+    assert not any(call[:3] == ["gh", "workflow", "run"] for call in gh.calls)
     assert len(gh.merged()) == 1
-
-
-def test_an_open_thread_refuses_without_dispatching_or_arming() -> None:
-    gh = FakeGh(gate_state="failure")
-    assert _arm(gh, threads=True) == 2
-    assert gh.dispatched() == []
-    assert gh.merged() == []
-
-
-def test_a_failed_dispatch_is_reported_and_arming_proceeds(capsys: pytest.CaptureFixture[str]) -> None:
-    gh = FakeGh(gate_state="failure", dispatch_code=1)
-    assert _arm(gh) == 0
-    assert len(gh.merged()) == 1
-    assert "dispatch for PR #7 failed; arming continues" in capsys.readouterr().out
-
-
-def test_an_unreadable_gate_status_is_reported_and_arming_proceeds(capsys: pytest.CaptureFixture[str]) -> None:
-    gh = FakeGh(status_code=1)
-    assert _arm(gh) == 0
-    assert gh.dispatched() == []
-    assert len(gh.merged()) == 1
-    assert "could not read the oracle-gate status" in capsys.readouterr().out
 
 
 WOULD_BLOCK = {"verdict": "would-block", "sum_ratio": 1.4567, "median_test_ratio": 1.2345}
@@ -738,20 +694,6 @@ def test_visible_failed_required_status_refuses_arming(state: str, capsys: pytes
 def test_pending_required_status_still_arms() -> None:
     gh = FakeGh(statuses={"oracle-gate": "pending"}, rules=["core", "oracle-gate"])
     assert _arm(gh) == 0
-    assert len(gh.merged()) == 1
-
-
-def test_waiting_oracle_failure_status_refreshes_and_arms() -> None:
-    gh = FakeGh(
-        statuses={"oracle-gate": "failure"},
-        status_descriptions={
-            "oracle-gate": f"oracle-review: waiting for the oracle's verdict on {HEAD}, or a stand-in attestation"
-        },
-        rules=["core", "oracle-gate"],
-        gate_state="failure",
-    )
-    assert _arm(gh) == 0
-    assert gh.dispatched() == [DISPATCH]
     assert len(gh.merged()) == 1
 
 

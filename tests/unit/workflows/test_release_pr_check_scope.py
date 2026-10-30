@@ -25,11 +25,6 @@ def test_development_lanes_skip_release_pull_requests() -> None:
     assert "branches" not in pull_request
 
 
-def test_review_event_job_skips_reviews_on_release_pull_requests() -> None:
-    job = _load("oracle-review.yml")["jobs"]["review-event"]
-    assert job["if"] == "github.event.pull_request.base.ref != 'release'"
-
-
 @pytest.mark.parametrize(
     ("name", "job"), [("validate-release-pr.yml", "validate-base"), ("test.yml", "release-required-result")]
 )
