@@ -81,3 +81,23 @@ def test_plan_capture_and_explain_see_the_rewritten_query(monkeypatch):
     connection.cursor.return_value = cursor
     adapter.get_query_plan(connection, "SELECT DATE_TRUNC('DAY', ts) FROM t")
     cursor.execute.assert_called_once_with("EXPLAIN SELECT DATE_TRUNC('day', ts) FROM t")
+
+
+def test_already_lowercase_date_trunc_is_returned_verbatim():
+    sql = "select  date_trunc('day',ts)  from t"
+    assert rewrite_query(sql) == sql
+
+
+def test_regeneration_by_another_rewrite_keeps_lowercase_units(monkeypatch):
+    from benchbox.platforms import questdb_rewrites
+
+    class Marker:
+        ORDER = 5
+
+        @staticmethod
+        def transform(expression):
+            return expression.copy().where("1 = 1")
+
+    discovered = questdb_rewrites._modules()
+    monkeypatch.setattr(questdb_rewrites, "_modules", lambda: (Marker, *discovered))
+    assert rewrite_query("SELECT DATE_TRUNC('day', ts) FROM t") == "SELECT DATE_TRUNC('day', ts) FROM t WHERE 1 = 1"
