@@ -144,3 +144,15 @@ def test_window_inside_scalar_subquery_keeps_its_ordering():
     )
     assert "ORDER BY y + 1" in rewritten
     assert "__o0" not in rewritten
+
+
+def test_group_by_projection_alias_resolves_to_its_expression():
+    rewritten = rewrite_query("SELECT a + 1 AS k, SUM(x) AS s FROM t GROUP BY ROLLUP (k)")
+    assert "GROUP BY a + 1" in rewritten
+    assert "SELECT k AS" not in rewritten
+    assert rewritten.startswith("SELECT __g0 AS k, __a0 AS s FROM")
+
+
+def test_group_by_alias_of_the_same_column_is_unchanged():
+    rewritten = rewrite_query("SELECT a AS a, SUM(x) FROM t GROUP BY ROLLUP (a)")
+    assert "GROUP BY a" in rewritten

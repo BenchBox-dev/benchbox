@@ -81,6 +81,16 @@ def _is_group_element(literal: exp.Expr) -> bool:
     return isinstance(parent, _GROUP_CONTAINERS)
 
 
+def _aliased_expression(select: exp.Select, column: exp.Column) -> exp.Expr | None:
+    if column.table:
+        return None
+    for projection in select.expressions:
+        if isinstance(projection, exp.Alias) and projection.alias.lower() == column.name.lower():
+            inner = projection.this
+            return None if _same(inner, column) else inner
+    return None
+
+
 def resolve_ordinals(select: exp.Select, group: exp.Group) -> exp.Group | None:
     resolved = group.copy()
     for literal in list(resolved.find_all(exp.Literal)):
@@ -91,6 +101,12 @@ def resolve_ordinals(select: exp.Select, group: exp.Group) -> exp.Group | None:
             return None
         projection = select.expressions[position]
         literal.replace((projection.this if isinstance(projection, exp.Alias) else projection).copy())
+    for column in list(resolved.find_all(exp.Column)):
+        if not _is_group_element(column):
+            continue
+        aliased = _aliased_expression(select, column)
+        if aliased is not None:
+            column.replace(aliased.copy())
     return resolved
 
 
