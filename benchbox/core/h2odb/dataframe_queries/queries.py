@@ -8,6 +8,7 @@ from csv import reader
 from typing import Any
 
 from benchbox.core.dataframe.context import DataFrameContext
+from benchbox.core.dataframe.pandas_ops import is_lazy_frame
 from benchbox.core.dataframe.query import DataFrameQuery, QueryCategory
 
 from .registry import register_query
@@ -197,9 +198,35 @@ def q9_expression_impl(ctx: DataFrameContext) -> Any:
     )
 
 
+def _fare_quantiles(group: Any) -> Any:
+    import pandas as pd
+
+    fares = group["fare_amount"]
+    return pd.Series(
+        {
+            "median_fare_amount": fares.quantile(0.5, interpolation="linear"),
+            "p90_fare_amount": fares.quantile(0.9, interpolation="linear"),
+        }
+    )
+
+
 def q9_pandas_impl(ctx: DataFrameContext) -> Any:
+    import pandas as pd
 
     trips = ctx.get_table("trips")
+    if is_lazy_frame(trips):
+        meta = pd.DataFrame(
+            {
+                "median_fare_amount": pd.Series([], dtype="float64"),
+                "p90_fare_amount": pd.Series([], dtype="float64"),
+            }
+        )
+        return (
+            trips.groupby("passenger_count")[["fare_amount"]]
+            .apply(_fare_quantiles, meta=meta)
+            .reset_index()
+            .sort_values("passenger_count")
+        )
     grouped = trips.groupby("passenger_count")["fare_amount"]
     median = (
         grouped.quantile(0.5, interpolation="linear")

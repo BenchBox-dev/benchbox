@@ -263,6 +263,7 @@ def sa4_pandas_impl(ctx: DataFrameContext) -> Any:
         revenue=("total_price", "sum"),
     )
     total = grouped["revenue"].sum()
+    total = total.compute() if hasattr(total, "compute") else total
     grouped["revenue_share"] = grouped["revenue"] / total if total != 0 else 0
     return grouped.sort_values("revenue", ascending=False)
 
@@ -573,6 +574,10 @@ def qc1_pandas_impl(ctx: DataFrameContext) -> Any:
     total_lines = len(filtered)
     unique_orders = filtered["order_id"].nunique()
     total_items = filtered["quantity"].sum()
+    if hasattr(unique_orders, "compute"):
+        unique_orders = unique_orders.compute()
+    if hasattr(total_items, "compute"):
+        total_items = total_items.compute()
     return pd.DataFrame(
         {
             "avg_lines_per_order": [total_lines / unique_orders if unique_orders else np.nan],
