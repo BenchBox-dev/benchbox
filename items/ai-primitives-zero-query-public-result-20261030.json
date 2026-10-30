@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "A UAT ai_primitives cell on a runner without a provider no longer produces a validator error.",
+    "A run where every query is skipped is not reported as passed."
+  ],
+  "context": "Evidence: release-v2 run 40971306663 (tag v0.5.0rc2, commit b1459438d), artifact release-uat-v0.5.0rc2-stage1-duckdb: cells.jsonl, uat_gate_summary.json, validator_rollup.tsv, uat_lifecycle.log and per-cell logs. The artifacts do not keep result JSON, so query-level causes need a local rerun of the named cells.",
+  "description": "DuckDB ai_primitives at SF 0.01, 0.1 and 1 passed in release UAT but every result failed validation with 'summary.queries.total must be greater than 0 for a public result' (benchbox/validation/bundle.py:1316). With no model provider on the runner every query is skipped, yet the run exits 0 and writes a result. Decide the contract: the run should fail or be classified as skipped when no query can execute, or UAT should prune ai_primitives on runners without a provider.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/actions/runs/40971306663"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cbd63a5667398431c51c92e1",
+      "at": "2026-10-30T11:09:23Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c7b84b5aa5074189abfb0f0810c90c6e",
+      "session_id": "dfb93797c41c440a9261d3ab38ceb76e"
+    }
+  ]
+}
