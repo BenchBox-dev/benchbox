@@ -5,10 +5,11 @@ import pkgutil
 from functools import cache
 from types import ModuleType
 
-from benchbox._vendor import sqlglot
-from benchbox._vendor.sqlglot import exp
+from benchbox.utils.dialect_utils import rewrite_sql_tree, sql_expressions
 
 QUESTDB_DIALECT = "questdb"
+
+exp = sql_expressions()
 
 
 @cache
@@ -22,22 +23,19 @@ def _modules() -> tuple[ModuleType, ...]:
 
 
 def rewrite_query(sql: str) -> str:
-    try:
-        statements = [statement for statement in sqlglot.parse(sql, read=QUESTDB_DIALECT) if statement is not None]
-    except sqlglot.errors.SqlglotError:
-        return sql
-    if len(statements) != 1:
-        return sql
-    original = statements[0]
-    rewritten = original.copy()
-    for module in _modules():
-        applies = getattr(module, "applies", None)
-        if applies is None or applies(sql):
-            rewritten = module.transform(rewritten)
-    if rewritten == original:
-        return sql
-    for module in _modules():
-        finalize = getattr(module, "finalize", None)
-        if finalize is not None:
-            rewritten = finalize(rewritten)
-    return rewritten.sql(dialect=QUESTDB_DIALECT, identify=False)
+    modules = _modules()
+    active = [module for module in modules if getattr(module, "applies", None) is None or module.applies(sql)]
+
+    def transform(expression):
+        for module in active:
+            expression = module.transform(expression)
+        return expression
+
+    def finalize(expression):
+        for module in modules:
+            finalizer = getattr(module, "finalize", None)
+            if finalizer is not None:
+                expression = finalizer(expression)
+        return expression
+
+    return rewrite_sql_tree(sql, QUESTDB_DIALECT, transform, finalize)
