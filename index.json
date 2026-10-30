@@ -8996,7 +8996,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "Check #fragment anchors on external links in the site's nightly external-link step"
     },
     "docker-integration-registry-limit-and-test-selection-20261020": {
