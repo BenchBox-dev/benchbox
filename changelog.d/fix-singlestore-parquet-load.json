@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed SingleStore skipping every Parquet data file (JoinOrder SF1 failed with 'Required benchmark tables are missing or empty'). Parquet files are now converted to escaped tab-separated text with `\\N` nulls and loaded with LOAD DATA ... ESCAPED BY '\\\\'."
+    }
+  ]
+}

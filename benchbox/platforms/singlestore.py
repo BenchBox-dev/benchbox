@@ -4,7 +4,10 @@
 
 from __future__ import annotations
 
+import contextlib
 import os
+import tempfile
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -52,6 +55,47 @@ _TPCH_SORT_KEYS: dict[str, list[str]] = {
 _REFERENCE_TABLES = {"nation", "region"}
 
 _PARQUET_EXTENSIONS = {".parquet"}
+
+_LOAD_NULL_TOKEN = "\\N"
+
+
+def _parquet_batch_to_load_bytes(batch: Any) -> bytes:
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    columns = []
+    for column in batch.columns:
+        if pa.types.is_boolean(column.type):
+            text = pc.if_else(column, "1", "0").cast(pa.large_string())
+        else:
+            text = column.cast(pa.large_string())
+            for raw, escaped in (("\\", "\\\\"), ("\t", "\\t"), ("\n", "\\n"), ("\r", "\\r")):
+                text = pc.replace_substring(text, raw, escaped)
+        columns.append(pc.fill_null(text, _LOAD_NULL_TOKEN))
+    if batch.num_rows == 0:
+        return b""
+    tab, newline, empty = (pa.scalar(s, pa.large_string()) for s in ("\t", "\n", ""))
+    rows = pc.binary_join_element_wise(*columns, tab)
+    lines = pc.binary_join_element_wise(rows, newline, empty)
+    joined = pc.binary_join(pa.LargeListArray.from_arrays(pa.array([0, len(lines)], pa.int64()), lines), empty)
+    return joined[0].as_py().encode("utf-8")
+
+
+@contextlib.contextmanager
+def _parquet_as_load_file(data_file: Path) -> Iterator[Path]:
+    import pyarrow.parquet as pq
+
+    tmp_fd, tmp_name = tempfile.mkstemp(suffix=".tsv", dir=data_file.parent)
+    os.close(tmp_fd)
+    tmp_path = Path(tmp_name)
+    try:
+        parquet_file = pq.ParquetFile(data_file)
+        with tmp_path.open("wb") as dst:
+            for batch in parquet_file.iter_batches():
+                dst.write(_parquet_batch_to_load_bytes(batch))
+        yield tmp_path
+    finally:
+        tmp_path.unlink(missing_ok=True)
 
 
 class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapter):
@@ -207,11 +251,19 @@ class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, Platform
         data_source: Any,
     ) -> int:
         if data_file.suffix.lower() in _PARQUET_EXTENSIONS:
-            self.logger.warning(f"Skipping {data_file.name}: LOAD DATA LOCAL INFILE does not support Parquet")
-            return 0
+            return self._load_parquet_infile(connection, table_name, data_file)
         dialect = resolve_csv_dialect(data_source, source_table_name, data_file, benchmark)
         strip_trailing_delim = get_data_extension(data_file) == ".tbl"
         return self._load_data_infile(connection, table_name, data_file, dialect, strip_trailing_delim)
+
+    def _load_parquet_infile(self, connection: Any, table_name: str, data_file: Path) -> int:
+        with _parquet_as_load_file(data_file) as load_path:
+            return self._execute_load_data(
+                connection,
+                table_name,
+                load_path,
+                ["FIELDS TERMINATED BY '\\t' ESCAPED BY '\\\\'", "LINES TERMINATED BY '\\n'"],
+            )
 
     def _load_data_infile(
         self,
@@ -224,34 +276,33 @@ class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, Platform
         with prepare_local_load_file(
             data_file, dialect=dialect, strip_trailing_delim=strip_trailing_delim
         ) as load_path:
-            cursor = connection.cursor()
-            try:
-                cursor.execute(f"SELECT COUNT(*) FROM `{table_name}`")
-                pre_row = cursor.fetchone()
-                pre_count = int(pre_row[0]) if pre_row else 0
+            escaped_delim = dialect.delimiter.replace("\\", "\\\\").replace("'", "\\'")
+            clauses = [f"FIELDS TERMINATED BY '{escaped_delim}' OPTIONALLY ENCLOSED BY '\"'"]
+            if dialect.null_marker is not None:
+                escaped_null = dialect.null_marker.replace("\\", "\\\\").replace("'", "\\'")
+                clauses.append(f"NULL DEFINED BY '{escaped_null}'")
+            clauses.append("LINES TERMINATED BY '\\n'")
+            if dialect.has_header:
+                clauses.append("IGNORE 1 LINES")
+            return self._execute_load_data(connection, table_name, load_path, clauses)
 
-                escaped_path = str(load_path).replace("\\", "\\\\").replace("'", "\\'")
-                escaped_delim = dialect.delimiter.replace("\\", "\\\\").replace("'", "\\'")
-                clauses = [
-                    f"LOAD DATA LOCAL INFILE '{escaped_path}'",
-                    f"INTO TABLE `{table_name}`",
-                    f"FIELDS TERMINATED BY '{escaped_delim}' OPTIONALLY ENCLOSED BY '\"'",
-                ]
-                if dialect.null_marker is not None:
-                    escaped_null = dialect.null_marker.replace("\\", "\\\\").replace("'", "\\'")
-                    clauses.append(f"NULL DEFINED BY '{escaped_null}'")
-                clauses.append("LINES TERMINATED BY '\\n'")
-                if dialect.has_header:
-                    clauses.append("IGNORE 1 LINES")
-                sql = " ".join(clauses)
-                cursor.execute(sql)
+    def _execute_load_data(self, connection: Any, table_name: str, load_path: Path, clauses: list[str]) -> int:
+        cursor = connection.cursor()
+        try:
+            cursor.execute(f"SELECT COUNT(*) FROM `{table_name}`")
+            pre_row = cursor.fetchone()
+            pre_count = int(pre_row[0]) if pre_row else 0
 
-                cursor.execute(f"SELECT COUNT(*) FROM `{table_name}`")
-                post_row = cursor.fetchone()
-                post_count = int(post_row[0]) if post_row else 0
-                return post_count - pre_count
-            finally:
-                cursor.close()
+            escaped_path = str(load_path).replace("\\", "\\\\").replace("'", "\\'")
+            sql = " ".join([f"LOAD DATA LOCAL INFILE '{escaped_path}'", f"INTO TABLE `{table_name}`", *clauses])
+            cursor.execute(sql)
+
+            cursor.execute(f"SELECT COUNT(*) FROM `{table_name}`")
+            post_row = cursor.fetchone()
+            post_count = int(post_row[0]) if post_row else 0
+            return post_count - pre_count
+        finally:
+            cursor.close()
 
     def configure_for_benchmark(self, connection: Any, benchmark_type: str) -> None:
         cursor = connection.cursor()
