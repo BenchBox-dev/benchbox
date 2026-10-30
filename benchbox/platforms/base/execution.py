@@ -677,6 +677,12 @@ class TestDriversMixin:
         effective_type = run_config.get("_effective_execution_type") or run_config.get(
             "test_execution_type", "standard"
         )
+        if effective_type in {"standard", "power"} and not results and not self.is_dry_run:
+            benchmark_label = run_config.get("benchmark_name") or type(benchmark).__name__
+            raise RuntimeError(
+                f"{benchmark_label} executed no queries on {self.platform_name}: "
+                "the benchmark has no runnable queries for this platform or selection"
+            )
         if effective_type in {"standard", "power"} and not self.is_dry_run:
             self._last_power_workload_timing = (workload_start_time, workload_end_time, workload_duration_ms)
 

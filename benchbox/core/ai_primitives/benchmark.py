@@ -143,7 +143,7 @@ class AIPrimitivesBenchmark(BaseBenchmark):
 
     def get_queries(self, dialect: str | None = None) -> dict[str, str]:
         if dialect:
-            return self.query_manager.get_supported_queries(dialect)
+            return self.get_supported_queries(dialect)
         return self.query_manager.get_all_queries()
 
     def get_all_queries(self) -> dict[str, str]:

@@ -2622,3 +2622,21 @@ def test_execute_readiness_check_requests_ps_all(tmp_path):
         )
 
     assert ps_argvs and all(argv[-2:] == ("ps", "-a") for argv in ps_argvs)
+
+
+def test_enumerate_prunes_ai_primitives_on_platforms_without_ai_functions():
+    raw = {
+        "platforms": {"include": ["duckdb", "sqlite", "spark"]},
+        "benchmarks": {"include": ["ai_primitives", "tpch"]},
+        "scales": {"rungs": [0.01]},
+    }
+
+    result = enum_phase.enumerate_cells_with_pruning(_cfg(raw))
+
+    assert {c.benchmark for c in result.cells} == {"tpch"}
+    assert {(c.platform, c.benchmark) for c in result.compatibility_pruned} == {
+        ("duckdb", "ai_primitives"),
+        ("sqlite", "ai_primitives"),
+        ("spark", "ai_primitives"),
+    }
+    assert all(c.rule_id.endswith(".ai_primitives.benchmark_gate") for c in result.compatibility_pruned)
