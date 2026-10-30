@@ -644,6 +644,8 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                     reader = csv.reader(stream, delimiter=dialect.delimiter)
                     batch: list[str] = []
                     for row in reader:
+                        if len(row) == len(column_names) + 1 and not row[-1]:
+                            row = row[:-1]
                         if len(row) != len(column_names):
                             continue
                         line = self._row_to_ilp_line(table_name, column_names, row, ts_col)
