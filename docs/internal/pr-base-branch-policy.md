@@ -8,8 +8,9 @@ Ready PRs target an integration branch. Stacking is allowed narrowly:
    branch, so it gets CI there. Open it with
    `make pr-open PARENT=<parent branch>`: the parent must be an open PR branch
    of this repository (not a fork) and the stack, with the new PR, at most
-   three deep. The local review runs against the parent, so it covers only the
-   upper PR's own diff, and the PR is always opened as a draft.
+   three deep. The local review takes its diff from the parent, so it covers
+   only the upper PR's own diff, but reads its policy and manifests from
+   `origin/develop`. The PR is always opened as a draft.
 3. When the parent squash-merges, retarget the child to `develop`, rebase it
    onto the squash commit, let CI rerun, and only then arm it (see
    [After a parent merges](#after-a-parent-merges)). `make pr-arm` refuses a
