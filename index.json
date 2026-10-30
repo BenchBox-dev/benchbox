@@ -16607,9 +16607,7 @@
     },
     "oracle-gate-run-name-says-sweep-for-single-pr-20261023": {
       "claim": null,
-      "needs": [
-        "retire-oracle-review-workflow-20261021"
-      ],
+      "needs": [],
       "priority": "low",
       "status": "open",
       "title": "oracle-gate runs triggered by workflow_run are titled 'pr=sweep' although they gate one PR"

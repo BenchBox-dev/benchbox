@@ -2,7 +2,7 @@
   "acceptance": [
     "RUBRIC 1 a workflow_run gate run's title identifies its source (head SHA or PR) and the scheduled run is the only one titled sweep, pinned by a workflow test"
   ],
-  "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\n2026-10-26: the bridge and push sweep are removed by retire-oracle-review-workflow-20261021; re-check the run names after that merges (likely moot).\n\n",
+  "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\n2026-10-26: the bridge and push sweep are removed by retire-oracle-review-workflow-20261021; re-check the run names after that merges (likely moot).\n\n\n\n2026-10-30 already satisfied on develop by #3395 (43a3e5e603): .github/workflows/oracle-gate.yml run-name renders pr=<n> for PR events, sha=<head> for workflow_run runs and sweep only when neither exists (schedule/push); pinned by tests/unit/workflows/test_oracle_gate_workflow.py (_run_name cases ~573-585: schedule -> 'oracle-gate (schedule sweep)', workflow_run -> sha=). Need on retire-oracle-review-workflow dropped: the rule holds without it.",
   "description": "oracle-gate.yml's run-name falls back to 'sweep' when the event has no pull_request or issue number, so every workflow_run-triggered gate run (which runs the single-PR gate job) is titled 'oracle-gate (workflow_run pr=sweep)', the same as the hourly cron sweep. During the 2026-10-22 queue investigation this was misread as a full sweep of every open PR on each oracle completion. CHANGE: title workflow_run gate runs with the source run's head SHA or resolved PR, and keep 'sweep' for the scheduled sweep only.",
   "sessions": [
     {
@@ -44,6 +44,14 @@
       "op": "update",
       "op_id": "bad4dbce32a941a58f6f8d8832ea4576",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c8cf2fdb5a699f4b3049c8eb",
+      "at": "2026-10-30T23:56:11Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "61962115595a45c984fa55c72807971f",
+      "session_id": "adb1518a186a49b6a5f244d6ebc0f7ca"
     }
   ]
 }
