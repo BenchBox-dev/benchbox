@@ -17417,6 +17417,13 @@
       "status": "open",
       "title": "The oracle-verdict retry sweep runs every 2 to 6 hours instead of hourly, so pending verdicts wait hours after they become due"
     },
+    "oracle-sweep-stale-pending-live-observation-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Observe the first live sweep on a stale pending head dispatching at most once then posting the failure status"
+    },
     "oracle-sweep-stateless-retry-backoff-reset-20261026": {
       "claim": null,
       "needs": [],

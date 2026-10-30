@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "A sweep run on a head with stale pending state is identified (run ids recorded) and shown to dispatch at most once, then post the failure status.",
+    "If no such head has occurred by the next check, record the window and counts and move not_before."
+  ],
+  "description": "Follow-up to oracle-sweep-liveness-cluster-20261027, acceptance bullet: \"Live after merge: a sweep on a head with stale pending state dispatches at most once and then posts the failure status (record run ids), or record that no such head occurred within 72 hours and set a not_before follow-up.\" No such head occurred 2026-10-27T22:51Z to 2026-10-30T22:51Z. When a sweep meets a head with stale pending state, record the run ids showing it dispatched at most once and then posted the failure status.",
+  "not_before": "2026-11-13T00:00:00Z",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c8cf2fdb5a699f4b3049c8eb",
+      "at": "2026-10-30T23:00:39Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c5fea9601b574a059119f1a07c9728e2",
+      "session_id": "adb1518a186a49b6a5f244d6ebc0f7ca"
+    }
+  ]
+}
