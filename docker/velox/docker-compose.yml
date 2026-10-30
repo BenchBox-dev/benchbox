@@ -20,7 +20,7 @@ services:
     volumes:
       - "${BENCHBOX_DATA_DIR}:${BENCHBOX_DATA_DIR}:ro"
     tmpfs:
-      - /tmp:size=2g
+      - /tmp:exec,size=2g
     healthcheck:
       test: ["CMD", "python3", "-c", "import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost', 50051)); s.close()"]
       interval: 5s

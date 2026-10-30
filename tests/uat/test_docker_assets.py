@@ -892,3 +892,10 @@ def test_compose_ps_service_rows_is_empty_for_no_service_rows(stdout: str):
 def test_compose_ps_service_rows_keeps_real_rows():
     stdout = "NAME      IMAGE     COMMAND   STATUS\nsvc       img       cmd       Up 5 seconds\n"
     assert len(docker_assets.compose_ps_service_rows(stdout)) == 1
+
+
+def test_velox_connect_tmpfs_permits_native_library_loading():
+    compose = yaml.safe_load((docker_assets.REPO_ROOT / "docker/velox/docker-compose.yml").read_text(encoding="utf-8"))
+    tmpfs_mounts = compose["services"]["velox-connect"]["tmpfs"]
+
+    assert any(mount.startswith("/tmp:") and "exec" in mount.split(":", 1)[1].split(",") for mount in tmpfs_mounts)
