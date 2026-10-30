@@ -8,7 +8,9 @@ from benchbox.core.dryrun import DryRunExecutor
 from benchbox.core.schemas import BenchmarkConfig
 from benchbox.core.tpchavoc.benchmark import TPCHavocBenchmark
 from benchbox.core.tpchavoc.dialect_compat import (
+    CLICKHOUSE_COALESCED_COUNT_SUBQUERY_VARIANT_IDS,
     CLICKHOUSE_FILTER_VARIANT_IDS,
+    CLICKHOUSE_OUTER_ALIAS_VARIANTS,
     DATAFUSION_EMPTY_GROUP_VARIANT_IDS,
     POSTGRES_ALIAS_VARIANT_IDS,
     POSTGRES_DUAL_VARIANT_IDS,
@@ -147,6 +149,65 @@ def test_clickhouse_filter_rules_cover_each_deployment_mode():
             if key[:3] == (Phase.QUERY_ADAPTER, platform, "tpchavoc") and key[3] in CLICKHOUSE_FILTER_VARIANT_IDS
         }
         assert registered == CLICKHOUSE_FILTER_VARIANT_IDS
+
+
+@pytest.mark.parametrize(("query_id", "outer_alias"), [("2_v8", "partsupp_outer"), ("10_v8", "lineitem_outer")])
+def test_clickhouse_exists_variants_alias_the_outer_table(query_id, outer_alias):
+    table = CLICKHOUSE_OUTER_ALIAS_VARIANTS[query_id][0]
+    query = TPCHavocBenchmark(scale_factor=0.1).get_query(query_id, dialect="clickhouse")
+
+    assert f"{table} AS {outer_alias}" in query
+    assert f"{table}." not in query
+    assert f"{outer_alias}." in query
+    assert sqlglot.parse_one(query, read="clickhouse")
+
+
+def test_alias_outer_table_references_leaves_inner_aliased_table_untouched():
+    from benchbox.utils.dialect_utils import apply_rewrite
+
+    rewritten = apply_rewrite(
+        "alias_outer_table_references",
+        "SELECT a FROM t WHERE NOT EXISTS (SELECT 1 FROM t t2 WHERE t2.k = t.k AND t2.v < t.v)",
+        "clickhouse",
+        table="t",
+        alias="t_outer",
+    )
+
+    assert rewritten == (
+        "SELECT a FROM t AS t_outer WHERE NOT EXISTS(SELECT 1 FROM t AS t2 WHERE t2.k = t_outer.k AND t2.v < t_outer.v)"
+    )
+
+
+def test_alias_outer_table_references_ignores_queries_without_the_outer_table():
+    from benchbox.utils.dialect_utils import apply_rewrite
+
+    rewritten = apply_rewrite(
+        "alias_outer_table_references", "SELECT a FROM u", "clickhouse", table="t", alias="t_outer"
+    )
+
+    assert rewritten == "SELECT a FROM u"
+
+
+def test_clickhouse_correlated_count_subquery_is_coalesced_to_zero():
+    query = TPCHavocBenchmark(scale_factor=0.1).get_query("13_v1", dialect="clickhouse")
+
+    assert "COALESCE((SELECT COUNT(o2.o_orderkey)" in query
+    assert sqlglot.parse_one(query, read="clickhouse")
+
+
+def test_clickhouse_variant_rules_cover_each_deployment_mode():
+    import benchbox.sql_compat.rules.query_adapter.clickhouse_tpchavoc_rewrites
+    from benchbox.sql_compat.context import Phase
+    from benchbox.sql_compat.registry import REGISTRY
+
+    expected = set(CLICKHOUSE_OUTER_ALIAS_VARIANTS) | CLICKHOUSE_COALESCED_COUNT_SUBQUERY_VARIANT_IDS
+    for platform in ("clickhouse-local", "clickhouse-server", "clickhouse-cloud"):
+        registered = {
+            key[3]
+            for key, _ in REGISTRY.all_rules()
+            if key[:3] == (Phase.QUERY_ADAPTER, platform, "tpchavoc") and key[3] in expected
+        }
+        assert registered == expected
 
 
 def test_datafusion_empty_group_variants_drop_grouping_and_unskip():

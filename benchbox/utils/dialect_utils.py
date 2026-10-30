@@ -424,10 +424,49 @@ def _fork_rewrite(name: str) -> Callable[..., object]:
     raise ValueError(f"Unknown fork rewrite: {name!r}")
 
 
+def alias_outer_table_references(expression, table: str, alias: str, *, copy: bool = True):
+    from benchbox._vendor.sqlglot import exp
+
+    tree = expression.copy() if copy else expression
+    outer_tables = [
+        node
+        for node in tree.find_all(exp.Table)
+        if node.name == table and not node.alias and node.find_ancestor(exp.Select) is tree
+    ]
+    for node in outer_tables:
+        node.set("alias", exp.TableAlias(this=exp.to_identifier(alias)))
+    if outer_tables:
+        for column in tree.find_all(exp.Column):
+            if column.table == table:
+                column.set("table", exp.to_identifier(alias))
+    return tree
+
+
+def coalesce_count_subqueries(expression, *, copy: bool = True):
+    from benchbox._vendor.sqlglot import exp
+
+    tree = expression.copy() if copy else expression
+    for subquery in list(tree.find_all(exp.Subquery)):
+        inner = subquery.this
+        if not isinstance(inner, exp.Select) or inner.args.get("group") or len(inner.expressions) != 1:
+            continue
+        if not isinstance(subquery.parent, (exp.Alias, exp.Select)):
+            continue
+        if isinstance(inner.expressions[0], exp.Count):
+            subquery.replace(exp.Coalesce(this=subquery.copy(), expressions=[exp.Literal.number(0)]))
+    return tree
+
+
+_LOCAL_REWRITES: dict[str, Callable[..., object]] = {
+    "alias_outer_table_references": alias_outer_table_references,
+    "coalesce_count_subqueries": coalesce_count_subqueries,
+}
+
+
 def _rewrite_tree(name: str, expression, resolved: str, **args):
     import inspect
 
-    function = _fork_rewrite(name)
+    function = _LOCAL_REWRITES.get(name) or _fork_rewrite(name)
     if "dialect" in inspect.signature(function).parameters:
         args.setdefault("dialect", resolved)
     return function(expression, **args)
