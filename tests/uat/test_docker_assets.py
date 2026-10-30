@@ -736,6 +736,37 @@ def test_compose_declared_memory_limits_ignores_unparseable_file(tmp_path: Path)
     assert docker_assets.compose_declared_memory_limits(spec) == {}
 
 
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("4g", 4294967296),
+        ("5.25g", 5637144576),
+        ("4G", 4294967296),
+        ("4gb", 4294967296),
+        ("4GiB", 4294967296),
+        ("512m", 512 * 1024**2),
+        ("64k", 64 * 1024),
+        ("100b", 100),
+        ("1024", 1024),
+    ],
+)
+def test_parse_memory_bytes_uses_docker_binary_units(value, expected):
+    assert docker_assets.parse_memory_bytes(value) == expected
+
+
+@pytest.mark.parametrize("requested", ["4g", "5.25g"])
+def test_admission_accepts_runtime_limit_docker_reports_for_compose_request(requested):
+    from tests.uat.clickhouse_memory import runtime_limit_matches_rung
+
+    requested_bytes = docker_assets.parse_memory_bytes(requested)
+    runtime = docker_assets.parse_runtime_memory_limit(
+        '{{"Name":"c","MemUsage":"1MiB / {}"}}'.format({"4g": "4GiB", "5.25g": "5.25GiB"}[requested])
+    )
+    assert runtime_limit_matches_rung(runtime, requested_bytes / 1024**3, requested_bytes=requested_bytes)
+    assert runtime_limit_matches_rung(5637144576, 5.25, requested_bytes=5637144576)
+    assert not runtime_limit_matches_rung(4 * 1024**3 + 1, 4.0, requested_bytes=4 * 1024**3)
+
+
 @pytest.mark.parametrize("value", ["", "0", "0g", "garbage", "-1g", "1.2.3g"])
 def test_parse_memory_bytes_rejects_missing_malformed_or_zero_values(value):
     with pytest.raises(docker_assets.DockerAssetError, match="invalid memory limit"):
@@ -752,7 +783,7 @@ def test_resolve_clickhouse_memory_limit_prefers_environment_override(monkeypatc
     monkeypatch.setenv(docker_assets.CLICKHOUSE_MEMORY_LIMIT_ENV_VAR, "8g")
     value, size = docker_assets.resolve_clickhouse_memory_limit("4g")
     assert value == "8g"
-    assert size == 8_000_000_000
+    assert size == 8 * 1024**3
 
 
 def test_resolve_clickhouse_memory_limit_does_not_replace_empty_environment_with_config(monkeypatch):
@@ -762,10 +793,10 @@ def test_resolve_clickhouse_memory_limit_does_not_replace_empty_environment_with
 
 
 def test_resolve_starrocks_memory_limit_validates_config_and_environment():
-    assert managed_runtime.resolve_starrocks_memory_limit("4g", env={}) == ("4g", 4_000_000_000)
+    assert managed_runtime.resolve_starrocks_memory_limit("4g", env={}) == ("4g", 4 * 1024**3)
     assert managed_runtime.resolve_starrocks_memory_limit("4g", env={"STARROCKS_MEMORY_LIMIT": "6g"}) == (
         "6g",
-        6_000_000_000,
+        6 * 1024**3,
     )
     with pytest.raises(docker_assets.DockerAssetError, match="non-empty"):
         managed_runtime.resolve_starrocks_memory_limit("4g", env={"STARROCKS_MEMORY_LIMIT": ""})

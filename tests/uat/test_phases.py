@@ -584,7 +584,7 @@ def _healthy_ps_result(argv: list[str]) -> docker_assets.DockerCommandResult:
     return docker_assets.DockerCommandResult(tuple(argv), 0, healthy_ps_stdout(), "")
 
 
-def _healthy_stats_result(argv: list[str], *, limit: str = "5.25GB") -> docker_assets.DockerCommandResult:
+def _healthy_stats_result(argv: list[str], *, limit: str = "5.25GiB") -> docker_assets.DockerCommandResult:
     return docker_assets.DockerCommandResult(
         tuple(argv),
         0,
@@ -1324,7 +1324,7 @@ def test_execute_starrocks_memory_admission_uses_measured_request(tmp_path):
 
     assert outcome.aborted is True
     assert outcome.abort_kind == "memory_floor"
-    assert "starrocks=3.725 GiB" in (outcome.abort_reason or "")
+    assert "starrocks=4.000 GiB" in (outcome.abort_reason or "")
 
 
 def test_execute_memory_floor_aborts_the_platform_before_starting_it(tmp_path):
@@ -1413,7 +1413,7 @@ def test_execute_clickhouse_default_admission_uses_measured_request_without_unva
             databases_root=tmp_path / "databases",
             runner=_stub_runner_factory({0.01: 1.0}, {0.01: True}),
             docker_runner=_healthy_fake_docker,
-            memory_reader=_memory_reader(5.0),
+            memory_reader=_memory_reader(5.25),
             sleep_fn=lambda _s: None,
         )
 
