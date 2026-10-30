@@ -17622,6 +17622,13 @@
       "status": "open",
       "title": "Accept Arrow results in digest, validation, and row count"
     },
+    "perf-trino-presto-bulk-load-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Replace VALUES-literal loading for Trino, Presto, Starburst"
+    },
     "performance-regression-detection-system": {
       "claim": null,
       "needs": [],

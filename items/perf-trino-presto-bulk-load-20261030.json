@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "TPC-H SF1 loads through the external-table path.",
+    "VALUES path remains only as an explicit, warned fallback.",
+    "Row counts match."
+  ],
+  "description": "presto_trino_utils.py:30-62 (called from presto_trino_adapter_base.py:523) splits lines in Python and sends 500-row INSERT ... VALUES statements. It is the only load path and is very slow at SF>=1. Use object storage plus a Hive/Iceberg external table (external_location), then CTAS or INSERT ... SELECT.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:root@vm:2d53e6a98f44f4f4a8a4dedd",
+      "at": "2026-10-30T17:55:11Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "fcf8767133f244e48eef6d4962df3773",
+      "session_id": "be00837164104ac2b4ed790cdb6812a2"
+    }
+  ]
+}
