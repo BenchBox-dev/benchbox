@@ -65,6 +65,17 @@ _PK_UNSUPPORTED_RULES: tuple[tuple[str, str, SupportLevel, FailureMode, bool, bo
         "DuckLake rejects PRIMARY KEY syntax; skip lock table DDL and omit PK clauses",
     ),
     (
+        "questdb",
+        "pk_lock_table_unsupported",
+        SupportLevel.SKIPPED_DDL_FRAGMENT,
+        FailureMode.SYNTAX_ERROR,
+        False,
+        False,
+        None,
+        "QuestDB does not parse PRIMARY KEY in CREATE TABLE",
+        "QuestDB does not support PRIMARY KEY syntax; skip lock table DDL",
+    ),
+    (
         "clickhouse",
         "pk_lock_table_unsupported",
         SupportLevel.REWRITTEN,

@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed QuestDB write_primitives and transaction_primitives failing with \"Failed to initialize staging tables\" because the setup-lock table used PRIMARY KEY, which QuestDB cannot parse."
+    }
+  ]
+}
