@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Data Vault loads on pg_duckdb.",
+    "The pg_mooncake disk check measures the filesystem the database writes to.",
+    "Each other listed cell passes or is pruned with a documented reason."
+  ],
+  "context": "Evidence: release-v2 run 40971306663 (tag v0.5.0rc2, commit b1459438d), artifact release-uat-v0.5.0rc2-stage3-postgres-family. The artifact does not keep result JSON, so query-level causes need a local rerun of the named cells.",
+  "description": "Stage 3 postgres-family shard, run 40971306663. pg_duckdb: datavault 0.01 load 'value too long for type character(15)' on sat_order; write_primitives 0.01 query failure; tpcds_obt SF1 and joinorder SF1 timeouts. pg_mooncake: joinorder SF1 'Low disk space' although the runner reported over 69 GiB free, so the check may measure the wrong filesystem. transaction_primitives and pg_mooncake tpcds_obt are covered by foreign-table-guard-blocks-shared-database-20261030. The shard's execute phase exited 2 and it has no validate, package or report phase codes.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/actions/runs/40971306663"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cbd63a5667398431c51c92e1",
+      "at": "2026-10-30T11:11:00Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ae5bab0d35d9460fa5675764e88e0b6d",
+      "session_id": "dfb93797c41c440a9261d3ab38ceb76e"
+    }
+  ]
+}

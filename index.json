@@ -18230,6 +18230,13 @@
       "status": "done",
       "title": "Build Shared Infrastructure for Benchmarking PostgreSQL Extensions"
     },
+    "postgres-family-uat-failures-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "pg_duckdb and pg_mooncake: load, query and disk failures in release UAT"
+    },
     "postgres-obt-alias-and-round-double-20261025": {
       "claim": null,
       "needs": [],
