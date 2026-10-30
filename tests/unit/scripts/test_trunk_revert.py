@@ -749,6 +749,26 @@ def test_status_stays_red_after_one_covered_commit_is_reverted() -> None:
     assert trunk_revert.status(run=_batch_run(develop=develop)) is not None
 
 
+def test_the_refusal_for_several_covered_commits_does_not_promise_a_revert_reopens_arming() -> None:
+    message = trunk_revert.arm_gate("fix/thing", run=_batch_run())
+    assert message is not None
+    assert "Merge a revert" not in message
+    assert "does not reopen arming on its own when several commits are covered" in message
+
+
+def test_the_status_for_several_covered_commits_says_only_a_green_run_clears_it() -> None:
+    message = trunk_revert.status(run=_batch_run())
+    assert message is not None
+    assert "a revert of one covered commit does not clear it" in message
+    assert "merges." not in message
+
+
+def test_the_refusal_for_one_commit_still_offers_the_revert() -> None:
+    message = trunk_revert.arm_gate("fix/thing", run=_streak_run())
+    assert message is not None
+    assert "Merge a revert (make trunk-revert PR=3200)" in message
+
+
 def test_gate_names_every_commit_a_red_run_covers_when_drafting() -> None:
     message = trunk_revert.trunk_gate("fix/thing", run=_batch_run(), now=NOW + timedelta(hours=3))
     assert message is not None

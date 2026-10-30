@@ -412,9 +412,15 @@ def arm_refusal(
     ):
         return fix_forward_relatedness_refusal(ref, shas[0] if shas else "", run, repo)
     named, revert_hint = describe_culprit(run, repo, failed)
+    unlock = (
+        f"Merge a revert ({revert_hint}) or get {BASE_BRANCH} green before arming other PRs; "
+        if len(shas) == 1
+        else f"Get {BASE_BRANCH} green before arming other PRs; a revert ({revert_hint}) is exempt but "
+        "does not reopen arming on its own when several commits are covered; "
+    )
     return (
         f"{BASE_BRANCH} is red: the first failing {TRUNK_WORKFLOW} run since the last green one failed at {named} ({failed['url']}). "
-        f"Merge a revert ({revert_hint}) or get {BASE_BRANCH} green before arming other PRs; "
+        f"{unlock}"
         f"only a {REVERT_PREFIX}* branch whose commits carry `This reverts commit {reverts}...` is exempt, "
         "or a PR whose current head carries an unedited owner comment "
         f"`Fix-forward authorized: <head SHA> for trunk run {failed.get('databaseId')}`."
@@ -441,10 +447,15 @@ def status(run: Runner = live_run, repo: str = REPOSITORY) -> str | None:
     if culprit_reverted(run, repo, failed):
         return None
     named, revert_hint = describe_culprit(run, repo, failed)
+    cleared = (
+        f"is green or `{revert_hint}` merges"
+        if len(_candidates(failed)) == 1
+        else "is green; a revert of one covered commit does not clear it"
+    )
     return (
         f"{BASE_BRANCH} is red: the first failing {TRUNK_WORKFLOW} run since the last green one failed at {named} "
         f"({failed['url']}, {_parse_time(failed['updatedAt']).isoformat()}). "
-        f"Arming other PRs is refused until {BASE_BRANCH} is green or `{revert_hint}` merges."
+        f"Arming other PRs is refused until {BASE_BRANCH} {cleared}."
     )
 
 
