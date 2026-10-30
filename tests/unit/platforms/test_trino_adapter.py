@@ -1408,6 +1408,32 @@ class TestTrinoAutoSelectCatalog:
             assert adapter._auto_select_catalog() == "custom_catalog"
 
 
+class TestTrinoCatalogListingConnection:
+    def test_listing_params_carry_neither_catalog_nor_schema(self):
+        try:
+            adapter = TrinoAdapter(catalog="hive", schema="analytics", host="trino.example.com", port=18080)
+        except ImportError:
+            pytest.skip("Trino drivers not installed")
+
+        params = adapter._catalog_listing_params()
+
+        assert "catalog" not in params
+        assert "schema" not in params
+        assert params["host"] == "trino.example.com"
+        assert params["port"] == 18080
+
+
+@pytest.mark.parametrize("platform", ["trino", "presto"])
+def test_host_and_port_are_accepted_platform_options(platform):
+    import benchbox.platforms
+    from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
+
+    parsed = PlatformHookRegistry.parse_options(platform, [("host", "10.0.0.5"), ("port", "18080")])
+
+    assert parsed["host"] == "10.0.0.5"
+    assert parsed["port"] == 18080
+
+
 class TestTrinoTuningSupport:
     def _adapter(self, **kwargs):
         try:
