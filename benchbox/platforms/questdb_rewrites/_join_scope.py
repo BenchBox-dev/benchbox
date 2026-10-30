@@ -118,7 +118,9 @@ def _reassign(select: exp.Select, columns_of: ColumnsOf) -> None:
     first = _ref(from_.this)
     where = select.args.get("where")
     where_parts = _flatten_and(where.this) if where else []
-    if not _misplaced(joins, scope, first, where_parts):
+    if not _misplaced(joins, scope, first, where_parts) and not _unfiltered_lead(
+        scope, first, where_parts, len(sources)
+    ):
         return
 
     candidates: list[tuple[exp.Expr, set[str]]] = []
@@ -145,17 +147,23 @@ def _reassign(select: exp.Select, columns_of: ColumnsOf) -> None:
             else:
                 kept_where.append(predicate)
 
-    pending = list(joins)
-    in_scope = {first}
+    filter_rank = _filter_ranks(kept_where, scope)
+    nodes = [exp.Join(this=from_.this)] + list(joins)
+    start = min(nodes, key=lambda node: (-filter_rank.get(_ref(node.this), 0), nodes.index(node)))
+    pending = [node for node in nodes if node is not start]
+    in_scope = {_ref(start.this)}
+    from_.set("this", start.this)
     ordered: list[exp.Join] = []
     while pending:
-        chosen = next(
-            (
-                join
-                for join in pending
-                if any(_ref(join.this) in tables and tables <= in_scope | {_ref(join.this)} for _, tables in candidates)
-            ),
-            pending[0],
+        connectable = [
+            join
+            for join in pending
+            if any(_ref(join.this) in tables and tables <= in_scope | {_ref(join.this)} for _, tables in candidates)
+        ]
+        chosen = (
+            min(connectable, key=lambda join: (-filter_rank.get(_ref(join.this), 0), pending.index(join)))
+            if connectable
+            else pending[0]
         )
         pending.remove(chosen)
         current = _ref(chosen.this)
@@ -171,6 +179,31 @@ def _reassign(select: exp.Select, columns_of: ColumnsOf) -> None:
     kept_where.extend(predicate for predicate, _ in candidates)
     select.set("joins", ordered)
     select.set("where", exp.Where(this=exp.and_(*kept_where)) if kept_where else None)
+
+
+LARGE_CHAIN = 5
+
+
+def _unfiltered_lead(scope: _Scope, first: str, where_parts: list[exp.Expr], source_count: int) -> bool:
+    if source_count < LARGE_CHAIN:
+        return False
+    ranks = _filter_ranks([part for part in where_parts if not _is_column_equality(part)], scope)
+    return ranks.get(first, 0) == 0 and any(rank == 2 for rank in ranks.values())
+
+
+def _filter_ranks(predicates: list[exp.Expr], scope: _Scope) -> dict[str, int]:
+    ranks: dict[str, int] = {}
+    for predicate in predicates:
+        try:
+            tables = scope.tables_of(predicate)
+        except _Unresolved:
+            continue
+        if len(tables) != 1:
+            continue
+        table = next(iter(tables))
+        point = isinstance(predicate, (exp.EQ, exp.In)) and not predicate.find(exp.Subquery)
+        ranks[table] = max(ranks.get(table, 0), 2 if point else 1)
+    return ranks
 
 
 def reassign_join_predicates(expression: exp.Expr, columns_of: ColumnsOf) -> exp.Expr:

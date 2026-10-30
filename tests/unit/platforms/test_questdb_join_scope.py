@@ -112,6 +112,42 @@ def test_cross_join_linked_only_to_a_later_table_is_connected_by_its_predicate()
         "WHERE o_custkey = c_custkey AND s_nationkey = o_orderkey AND o_orderkey = 1"
     )
     assert rewrite_query(scrambled, columns_of) == (
-        "SELECT 1 FROM customer JOIN orders ON o_custkey = c_custkey JOIN supplier ON s_nationkey = o_orderkey "
+        "SELECT 1 FROM orders JOIN customer ON o_custkey = c_custkey JOIN supplier ON s_nationkey = o_orderkey "
         "WHERE o_orderkey = 1"
     )
+
+
+def test_filtered_table_leads_and_unfiltered_big_tables_are_joined_last():
+    scrambled = (
+        "SELECT 1 FROM lineitem CROSS JOIN orders CROSS JOIN customer "
+        "WHERE l_orderkey = o_orderkey AND o_custkey = c_custkey AND c_nationkey = 7"
+    )
+    assert rewrite_query(scrambled, columns_of) == (
+        "SELECT 1 FROM customer JOIN orders ON o_custkey = c_custkey JOIN lineitem ON l_orderkey = o_orderkey "
+        "WHERE c_nationkey = 7"
+    )
+
+
+def test_point_filter_outranks_a_range_filter_when_choosing_the_leading_table():
+    scrambled = (
+        "SELECT 1 FROM lineitem CROSS JOIN orders CROSS JOIN customer "
+        "WHERE l_orderkey = o_orderkey AND o_custkey = c_custkey AND c_nationkey = 7 AND l_suppkey > 5"
+    )
+    assert rewrite_query(scrambled, columns_of).startswith("SELECT 1 FROM customer JOIN orders")
+
+
+def test_large_chain_led_by_an_unfiltered_table_restarts_from_the_point_filtered_table():
+    sql = (
+        "SELECT 1 FROM lineitem JOIN orders ON l_orderkey = o_orderkey JOIN customer ON o_custkey = c_custkey "
+        "JOIN supplier ON l_suppkey = s_suppkey JOIN nation ON s_nationkey = n_nationkey "
+        "WHERE n_name = 'FRANCE'"
+    )
+    assert rewrite_query(sql, columns_of) == (
+        "SELECT 1 FROM nation JOIN supplier ON s_nationkey = n_nationkey JOIN lineitem ON l_suppkey = s_suppkey "
+        "JOIN orders ON l_orderkey = o_orderkey JOIN customer ON o_custkey = c_custkey WHERE n_name = 'FRANCE'"
+    )
+
+
+def test_small_chain_led_by_an_unfiltered_table_keeps_its_order():
+    sql = "SELECT 1 FROM lineitem JOIN orders ON l_orderkey = o_orderkey JOIN customer ON o_custkey = c_custkey WHERE c_nationkey = 7"
+    assert rewrite_query(sql, columns_of) == sql
