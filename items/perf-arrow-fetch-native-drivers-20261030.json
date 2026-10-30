@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Each listed adapter fetches Arrow by default, with a config switch back to rows.",
+    "Digests match the rows path.",
+    "A large-result query shows lower measured time on DuckDB."
+  ],
+  "description": "Replace fetchall/list() with existing Arrow paths: DuckDB duckdb.py:1049 and MotherDuck motherduck.py:222 (fetch_arrow_table); Snowflake snowflake.py:1323,1334 (fetch_arrow_all); BigQuery bigquery.py:1561 (to_arrow with BQ Storage); Databricks databricks/adapter.py:2486 (fetchall_arrow); GizmoSQL via base/sql_execution.py:84 (fetch_arrow_table, wrapper exists at gizmosql.py:310); Athena athena.py:961 (pyathena ArrowCursor); ClickHouse Cloud clickhouse/client.py:266-270 (query_arrow); InfluxDB influxdb/client.py:166-197 (drop per-cell as_py loops); chDB clickhouse/client.py:95-107 (keep pa.Table, skip to_pandas).",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:root@vm:2d53e6a98f44f4f4a8a4dedd",
+      "at": "2026-10-30T17:55:58Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "118f211b9f0946eb97691bd3a2868ea0",
+      "session_id": "be00837164104ac2b4ed790cdb6812a2"
+    }
+  ]
+}

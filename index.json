@@ -17622,6 +17622,15 @@
       "status": "open",
       "title": "Accept Arrow results in digest, validation, and row count"
     },
+    "perf-arrow-fetch-native-drivers-20261030": {
+      "claim": null,
+      "needs": [
+        "perf-arrow-aware-result-capture-20261030"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Fetch results as Arrow where the current driver supports it"
+    },
     "perf-clickhouse-server-bulk-load-20261030": {
       "claim": null,
       "needs": [],
