@@ -11,6 +11,7 @@ queries:
     clickhouse: "SELECT\n    name AS schema_name,\n    'default' AS catalog_name\nFROM system.databases\nORDER BY name;\n"
     bigquery: "SELECT\n    schema_name,\n    catalog_name\nFROM INFORMATION_SCHEMA.SCHEMATA\nORDER BY schema_name;\n"
     sqlite: "SELECT\n    name AS schema_name,\n    name AS catalog_name\nFROM pragma_database_list\nORDER BY schema_name;\n"
+    questdb: "SELECT\n    nspname AS schema_name,\n    'qdb' AS catalog_name\nFROM pg_catalog.pg_namespace\nORDER BY nspname;\n"
 - id: schema_list_tables
   category: schema
   description: List all tables in the current schema
@@ -45,6 +46,7 @@ queries:
     snowflake: "SELECT\n    table_name AS view_name,\n    table_schema AS view_schema,\n    view_definition\nFROM information_schema.views\nORDER BY table_name;\n"
     duckdb: "SELECT\n    view_name,\n    schema_name AS view_schema,\n    sql AS view_definition\nFROM duckdb_views()\nORDER BY view_name;\n"
     sqlite: "WITH sqlite_views AS (SELECT 'main' AS table_schema, name AS table_name, sql AS view_definition FROM sqlite_master WHERE type = 'view') SELECT table_name AS view_name, table_schema AS view_schema, view_definition FROM sqlite_views ORDER BY table_name;\n"
+    questdb: "SELECT\n    view_name,\n    'public' AS view_schema,\n    view_sql AS view_definition\nFROM views()\nORDER BY view_name;\n"
 - id: schema_object_types
   category: schema
   description: Count objects by type
@@ -125,6 +127,7 @@ queries:
     clickhouse: "SELECT\n    table AS table_name,\n    name AS column_name,\n    type AS data_type,\n    0 AS numeric_precision,\n    0 AS numeric_scale\nFROM system.columns\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA')\n  AND (type LIKE 'Int%' OR type LIKE 'UInt%' OR type LIKE 'Float%' OR type LIKE 'Decimal%')\nORDER BY table, name;\n"
     bigquery: "SELECT\n    table_name,\n    column_name,\n    data_type,\n    CAST(NULL AS INT64) AS numeric_precision,\n    CAST(NULL AS INT64) AS numeric_scale\nFROM INFORMATION_SCHEMA.COLUMNS\nWHERE STARTS_WITH(data_type, 'INT64') OR STARTS_WITH(data_type, 'NUMERIC') OR STARTS_WITH(data_type, 'BIGNUMERIC') OR STARTS_WITH(data_type, 'FLOAT64')\nORDER BY table_name, column_name;\n"
     sqlite: "WITH sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT table_name, column_name, data_type, numeric_precision, numeric_scale FROM sqlite_columns WHERE table_schema NOT IN ('information_schema', 'pg_catalog') AND base_type IN ('integer', 'int', 'bigint', 'smallint', 'tinyint', 'decimal', 'numeric', 'real', 'double', 'double precision', 'float') ORDER BY table_name, column_name;\n"
+    questdb: "SELECT\n    table_name,\n    column_name,\n    data_type\nFROM information_schema.columns\nWHERE table_schema NOT IN ('information_schema', 'pg_catalog')\n  AND data_type IN ('integer', 'bigint', 'smallint', 'decimal', 'numeric', 'real', 'double precision', 'float')\nORDER BY table_name, column_name;\n"
 - id: column_string_columns
   category: column
   description: List all string/text columns
@@ -134,6 +137,7 @@ queries:
     clickhouse: "SELECT\n    table AS table_name,\n    name AS column_name,\n    type AS data_type,\n    0 AS character_maximum_length\nFROM system.columns\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA')\n  AND (type = 'String' OR type LIKE 'FixedString%')\nORDER BY table, name;\n"
     bigquery: "SELECT\n    table_name,\n    column_name,\n    data_type,\n    CAST(NULL AS INT64) AS character_maximum_length\nFROM INFORMATION_SCHEMA.COLUMNS\nWHERE STARTS_WITH(data_type, 'STRING')\nORDER BY table_name, column_name;\n"
     sqlite: "WITH sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT table_name, column_name, data_type, character_maximum_length FROM sqlite_columns WHERE table_schema NOT IN ('information_schema', 'pg_catalog') AND base_type IN ('character varying', 'varchar', 'text', 'char', 'character', 'clob', 'nvarchar', 'nchar') ORDER BY table_name, column_name;\n"
+    questdb: "SELECT\n    table_name,\n    column_name,\n    data_type\nFROM information_schema.columns\nWHERE table_schema NOT IN ('information_schema', 'pg_catalog')\n  AND data_type IN ('character varying', 'varchar', 'text', 'char', 'character')\nORDER BY table_name, column_name;\n"
 - id: stats_row_counts
   category: stats
   description: Estimated row counts per table
@@ -263,6 +267,7 @@ queries:
     datafusion: "SELECT\n    table_name AS view_name,\n    definition AS view_definition\nFROM information_schema.views\nWHERE table_name LIKE 'benchbox_view_%'\nORDER BY table_name;\n"
     duckdb: "SELECT\n    view_name,\n    sql AS view_definition\nFROM duckdb_views()\nWHERE view_name LIKE 'benchbox_view_%'\nORDER BY view_name;\n"
     sqlite: "WITH sqlite_views AS (SELECT 'main' AS table_schema, name AS table_name, sql AS view_definition FROM sqlite_master WHERE type = 'view') SELECT table_name AS view_name, view_definition FROM sqlite_views WHERE table_name LIKE 'benchbox_view_%' ORDER BY table_name;\n"
+    questdb: "SELECT\n    view_name,\n    view_sql AS view_definition\nFROM views()\nWHERE view_name LIKE 'benchbox_view_%'\nORDER BY view_name;\n"
 - id: view_hierarchy_depth_analysis
   category: view_hierarchy
   description: Analyze view naming pattern for depth levels
@@ -272,6 +277,7 @@ queries:
   variants:
     duckdb: "SELECT\n    view_name,\n    CASE\n        WHEN view_name LIKE '%_d1' THEN 1\n        WHEN view_name LIKE '%_d2' THEN 2\n        WHEN view_name LIKE '%_d3' THEN 3\n        WHEN view_name LIKE '%_d4' THEN 4\n        WHEN view_name LIKE '%_d5' THEN 5\n        ELSE 0\n    END AS depth_level\nFROM duckdb_views()\nWHERE view_name LIKE 'benchbox_view_%'\nORDER BY depth_level, view_name;\n"
     sqlite: "WITH sqlite_views AS (SELECT 'main' AS table_schema, name AS table_name, sql AS view_definition FROM sqlite_master WHERE type = 'view') SELECT table_name AS view_name, CASE WHEN table_name LIKE '%_d1' THEN 1 WHEN table_name LIKE '%_d2' THEN 2 WHEN table_name LIKE '%_d3' THEN 3 WHEN table_name LIKE '%_d4' THEN 4 WHEN table_name LIKE '%_d5' THEN 5 ELSE 0 END AS depth_level FROM sqlite_views WHERE table_name LIKE 'benchbox_view_%' ORDER BY depth_level, table_name;\n"
+    questdb: "SELECT\n    view_name,\n    CASE\n        WHEN view_name LIKE '%_d1' THEN 1\n        WHEN view_name LIKE '%_d2' THEN 2\n        WHEN view_name LIKE '%_d3' THEN 3\n        WHEN view_name LIKE '%_d4' THEN 4\n        WHEN view_name LIKE '%_d5' THEN 5\n        ELSE 0\n    END AS depth_level\nFROM views()\nWHERE view_name LIKE 'benchbox_view_%'\nORDER BY depth_level, view_name;\n"
 - id: view_hierarchy_column_introspection
   category: view_hierarchy
   description: List columns exposed by views at each hierarchy level
@@ -281,6 +287,7 @@ queries:
   variants:
     duckdb: "SELECT\n    v.view_name,\n    c.column_name,\n    c.data_type\nFROM duckdb_views() v\nJOIN information_schema.columns c\n  ON v.view_name = c.table_name\nWHERE v.view_name LIKE 'benchbox_view_%'\nORDER BY v.view_name, c.ordinal_position;\n"
     sqlite: "WITH sqlite_views AS (SELECT 'main' AS table_schema, name AS table_name, sql AS view_definition FROM sqlite_master WHERE type = 'view'), sqlite_columns AS (SELECT 'main' AS table_schema, m.name AS table_name, p.name AS column_name, p.type AS data_type, p.cid + 1 AS ordinal_position, CASE WHEN p.\"notnull\" = 0 AND p.pk = 0 THEN 'YES' ELSE 'NO' END AS is_nullable, p.dflt_value AS column_default, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS numeric_precision, CASE WHEN INSTR(p.type, ',') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, ',') + 1) AS INTEGER) END AS numeric_scale, CASE WHEN INSTR(p.type, '(') > 0 THEN CAST(SUBSTR(p.type, INSTR(p.type, '(') + 1) AS INTEGER) END AS character_maximum_length, LOWER(CASE WHEN INSTR(p.type, '(') > 0 THEN TRIM(SUBSTR(p.type, 1, INSTR(p.type, '(') - 1)) ELSE p.type END) AS base_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type IN ('table', 'view') AND m.name NOT LIKE 'sqlite_%') SELECT v.table_name AS view_name, c.column_name, c.data_type FROM sqlite_views v JOIN sqlite_columns c ON v.table_name = c.table_name AND v.table_schema = c.table_schema WHERE v.table_name LIKE 'benchbox_view_%' ORDER BY v.table_name, c.ordinal_position;\n"
+    questdb: "SELECT\n    v.view_name,\n    c.column_name,\n    c.data_type\nFROM views() v\nJOIN information_schema.columns c\n  ON v.view_name = c.table_name\nWHERE v.view_name LIKE 'benchbox_view_%'\nORDER BY v.view_name, c.ordinal_position;\n"
 - id: view_hierarchy_definition_search
   category: view_hierarchy
   description: Search view definitions for source table references
@@ -291,6 +298,7 @@ queries:
     datafusion: "SELECT\n    table_name AS view_name,\n    definition AS view_definition,\n    LENGTH(definition) AS definition_length\nFROM information_schema.views\nWHERE table_name LIKE 'benchbox_view_%'\n  AND definition LIKE '%benchbox%'\nORDER BY table_name;\n"
     duckdb: "SELECT\n    view_name,\n    sql AS view_definition,\n    LENGTH(sql) AS definition_length\nFROM duckdb_views()\nWHERE view_name LIKE 'benchbox_view_%'\n  AND sql LIKE '%benchbox%'\nORDER BY view_name;\n"
     sqlite: "WITH sqlite_views AS (SELECT 'main' AS table_schema, name AS table_name, sql AS view_definition FROM sqlite_master WHERE type = 'view') SELECT table_name AS view_name, view_definition, LENGTH(view_definition) AS definition_length FROM sqlite_views WHERE table_name LIKE 'benchbox_view_%' AND view_definition LIKE '%benchbox%' ORDER BY table_name;\n"
+    questdb: "SELECT\n    view_name,\n    view_sql AS view_definition,\n    LENGTH(view_sql) AS definition_length\nFROM views()\nWHERE view_name LIKE 'benchbox_view_%'\n  AND view_sql LIKE '%benchbox%'\nORDER BY view_name;\n"
 - id: complex_type_column_list
   category: complex_type
   description: List columns with complex data types
@@ -413,6 +421,7 @@ queries:
   - duckdb
   - starrocks
   - datafusion
+  - questdb
   variants:
     snowflake: "SELECT\n    tc.table_name AS child_table,\n    rc.unique_constraint_name,\n    ptc.table_name AS parent_table,\n    '' AS fk_column\nFROM information_schema.table_constraints tc\nJOIN information_schema.referential_constraints rc\n  ON tc.constraint_name = rc.constraint_name\n  AND tc.table_schema = rc.constraint_schema\nJOIN information_schema.table_constraints ptc\n  ON rc.unique_constraint_name = ptc.constraint_name\n  AND rc.unique_constraint_schema = ptc.table_schema\nWHERE tc.table_name ILIKE 'benchbox_fk_%'\nORDER BY child_table;\n"
     sqlite: "SELECT table_name AS child_table, 'pk_' || parent_table AS unique_constraint_name, parent_table, column_name AS fk_column FROM (SELECT m.name AS table_name, 'fk_' || m.name || '_' || f.id AS constraint_name, 'FOREIGN KEY' AS constraint_type, f.\"from\" AS column_name, f.seq + 1 AS ordinal_position, f.\"table\" AS parent_table FROM sqlite_master m JOIN pragma_foreign_key_list(m.name) f WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%') WHERE table_name LIKE 'benchbox_fk_%' ORDER BY child_table;\n"
@@ -438,6 +447,7 @@ queries:
   - polars
   - athena
   - bigquery
+  - questdb
   variants:
     duckdb: "-- DuckDB lacks TABLE_PRIVILEGES introspection; return empty result\nSELECT\n    CAST(NULL AS VARCHAR) AS grantee,\n    CAST(NULL AS VARCHAR) AS table_schema,\n    CAST(NULL AS VARCHAR) AS table_name,\n    CAST(NULL AS VARCHAR) AS privilege_type,\n    CAST(NULL AS VARCHAR) AS is_grantable\nWHERE 1=0;\n"
     clickhouse: "SELECT\n    user_name AS grantee,\n    database AS table_schema,\n    table AS table_name,\n    access_type AS privilege_type,\n    IF(grant_option = 1, 'YES', 'NO') AS is_grantable\nFROM system.grants\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA')\n  AND table != ''\nORDER BY table, user_name, access_type;\n"
@@ -457,6 +467,7 @@ queries:
   - polars
   - athena
   - bigquery
+  - questdb
   variants:
     duckdb: "-- DuckDB lacks TABLE_PRIVILEGES introspection; return empty result\nSELECT\n    CAST(NULL AS VARCHAR) AS grantee,\n    CAST(NULL AS VARCHAR) AS table_schema,\n    CAST(NULL AS VARCHAR) AS table_name,\n    CAST(NULL AS VARCHAR) AS privilege_type,\n    CAST(NULL AS VARCHAR) AS is_grantable\nWHERE 1=0;\n"
     clickhouse: "SELECT\n    user_name AS grantee,\n    database AS table_schema,\n    table AS table_name,\n    access_type AS privilege_type,\n    IF(grant_option = 1, 'YES', 'NO') AS is_grantable\nFROM system.grants\nWHERE table LIKE 'benchbox_%'\nORDER BY table, user_name, access_type;\n"
@@ -476,6 +487,7 @@ queries:
   - polars
   - athena
   - bigquery
+  - questdb
   variants:
     duckdb: "-- DuckDB lacks TABLE_PRIVILEGES introspection; return empty result\nSELECT\n    CAST(NULL AS VARCHAR) AS privilege_type,\n    CAST(0 AS INTEGER) AS grant_count\nWHERE 1=0;\n"
     clickhouse: "SELECT\n    access_type AS privilege_type,\n    COUNT(*) AS grant_count\nFROM system.grants\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA')\n  AND table != ''\nGROUP BY access_type\nORDER BY grant_count DESC;\n"
@@ -495,6 +507,7 @@ queries:
   - polars
   - athena
   - bigquery
+  - questdb
   variants:
     duckdb: "-- DuckDB lacks TABLE_PRIVILEGES introspection; return empty result\nSELECT\n    CAST(NULL AS VARCHAR) AS table_name,\n    CAST(0 AS INTEGER) AS grantee_count,\n    CAST(0 AS INTEGER) AS total_grants\nWHERE 1=0;\n"
     clickhouse: "SELECT\n    table AS table_name,\n    uniq(user_name) AS grantee_count,\n    COUNT(*) AS total_grants\nFROM system.grants\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA')\n  AND table != ''\nGROUP BY table\nORDER BY grantee_count DESC\nLIMIT 20;\n"
@@ -515,6 +528,7 @@ queries:
   - athena
   - bigquery
   - starrocks
+  - questdb
   variants:
     duckdb: "-- DuckDB lacks TABLE_PRIVILEGES introspection; return empty result\nSELECT\n    CAST(NULL AS VARCHAR) AS table_schema,\n    CAST(NULL AS VARCHAR) AS table_name,\n    CAST(0 AS INTEGER) AS total_grants\nWHERE 1=0;\n"
     clickhouse: "SELECT\n    database AS table_schema,\n    table AS table_name,\n    COUNT(*) AS total_grants\nFROM system.grants\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA')\n  AND table != ''\nGROUP BY database, table\nORDER BY total_grants DESC;\n"
@@ -540,6 +554,7 @@ queries:
   - presto
   - firebolt
   - databricks
+  - questdb
   variants:
     redshift: "SELECT\n    identity_name AS grantee,\n    namespace_name AS table_schema,\n    relation_name AS table_name,\n    column_name,\n    privilege_type\nFROM svv_column_privileges\nORDER BY relation_name, column_name, identity_name;\n"
     synapse: "SELECT\n    dp.name AS grantee,\n    SCHEMA_NAME(t.schema_id) AS table_schema,\n    t.name AS table_name,\n    c.name AS column_name,\n    p.permission_name AS privilege_type\nFROM sys.database_permissions p\nJOIN sys.database_principals dp ON p.grantee_principal_id = dp.principal_id\nJOIN sys.columns c ON p.major_id = c.object_id AND p.minor_id = c.column_id\nJOIN sys.tables t ON c.object_id = t.object_id\nWHERE p.class = 1 AND p.minor_id > 0\nORDER BY t.name, c.name, dp.name;\n"
@@ -588,6 +603,7 @@ queries:
   - snowflake
   - starrocks
   - databricks
+  - questdb
   variants:
     clickhouse: "SELECT\n    role_name,\n    granted_role_name AS member_name,\n    with_admin_option AS admin_option\nFROM system.role_grants\nORDER BY role_name, granted_role_name;\n"
     redshift: "SELECT\n    pg_get_userbyid(roleid) AS role_name,\n    pg_get_userbyid(member) AS member_name,\n    admin_option\nFROM pg_auth_members\nORDER BY role_name, member_name;\n"
@@ -605,6 +621,7 @@ queries:
   - polars
   - athena
   - bigquery
+  - questdb
   variants:
     duckdb: "-- DuckDB lacks TABLE_PRIVILEGES introspection; return empty result\nSELECT\n    CAST(NULL AS VARCHAR) AS grantee,\n    CAST(NULL AS VARCHAR) AS table_schema,\n    CAST(NULL AS VARCHAR) AS table_name,\n    CAST(NULL AS VARCHAR) AS privilege_type\nWHERE 1=0;\n"
     clickhouse: "SELECT\n    user_name AS grantee,\n    database AS table_schema,\n    table AS table_name,\n    access_type AS privilege_type\nFROM system.grants\nWHERE grant_option = 1\n  AND database NOT IN ('system', 'INFORMATION_SCHEMA')\n  AND table != ''\nORDER BY table, user_name;\n"
@@ -625,6 +642,7 @@ queries:
   - polars
   - athena
   - bigquery
+  - questdb
   variants:
     duckdb: "-- DuckDB lacks TABLE_PRIVILEGES introspection; return empty result\nSELECT\n    CAST(NULL AS VARCHAR) AS grantee,\n    CAST(NULL AS VARCHAR) AS table_schema,\n    CAST(NULL AS VARCHAR) AS table_name,\n    CAST(NULL AS VARCHAR) AS privilege_type\nWHERE 1=0;\n"
     clickhouse: "SELECT\n    user_name AS grantee,\n    database AS table_schema,\n    table AS table_name,\n    access_type AS privilege_type\nFROM system.grants\nWHERE user_name LIKE 'benchbox_role_%'\nORDER BY user_name, table, access_type;\n"
@@ -646,6 +664,7 @@ queries:
   - polars
   - athena
   - bigquery
+  - questdb
   variants:
     duckdb: "-- DuckDB lacks TABLE_PRIVILEGES introspection; return empty result\nSELECT\n    CAST(NULL AS VARCHAR) AS privilege_type,\n    CAST(0 AS INTEGER) AS total_grants,\n    CAST(0 AS INTEGER) AS distinct_grantees,\n    CAST(0 AS INTEGER) AS distinct_tables\nWHERE 1=0;\n"
     clickhouse: "SELECT\n    access_type AS privilege_type,\n    COUNT(*) AS total_grants,\n    uniq(user_name) AS distinct_grantees,\n    uniq(table) AS distinct_tables\nFROM system.grants\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA')\n  AND table != ''\nGROUP BY access_type\nORDER BY total_grants DESC;\n"

@@ -650,6 +650,35 @@ class TestQuestDBAdapter:
         assert adapter.database_was_reused is True
         mock_conn.close.assert_called_once()
 
+    @pytest.mark.parametrize(
+        ("existing_columns", "expected_reuse"),
+        [
+            ([("customer", "c_custkey"), ("customer", "c_name"), ("customer", "extra")], True),
+            ([("customer", "c_customer_sk"), ("customer", "c_name")], False),
+            ([("customer", "c_custkey")], False),
+            ([], False),
+        ],
+    )
+    def test_handle_existing_database_checks_column_names(self, questdb_stubs, existing_columns, expected_reuse):
+        mock_cursor = MagicMock()
+        mock_cursor.__enter__.return_value = mock_cursor
+        mock_cursor.fetchall.side_effect = [[("customer",)], existing_columns]
+        mock_conn = Mock()
+        mock_conn.cursor.return_value = mock_cursor
+        questdb_stubs.connect.return_value = mock_conn
+
+        mock_benchmark = Mock()
+        mock_benchmark.get_schema.return_value = {
+            "customer": {"name": "customer", "columns": [{"name": "c_custkey"}, {"name": "c_name"}]}
+        }
+
+        adapter = QuestDBAdapter()
+        adapter.benchmark = mock_benchmark
+
+        adapter.handle_existing_database()
+
+        assert adapter.database_was_reused is expected_reuse
+
     def test_handle_existing_database_partial_stale_tables(self, questdb_stubs):
         mock_cursor = MagicMock()
         mock_cursor.__enter__.return_value = mock_cursor

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from benchbox._vendor.sqlglot import exp
 
-ORDER = 70
+ORDER = 110
 
 _DECIMAL_TYPES = (
     exp.DataType.Type.DECIMAL,

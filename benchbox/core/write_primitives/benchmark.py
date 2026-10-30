@@ -46,6 +46,7 @@ from benchbox.sql_compat.rules.execution_filter.postgres_write_primitives import
     POSTGRES_WRITE_PRIMITIVES_CATEGORY_SKIPS,
     POSTGRES_WRITE_PRIMITIVES_OPERATION_SKIPS,
 )
+from benchbox.sql_compat.rules.execution_filter.questdb_write_primitives import questdb_write_primitive_skip_reason
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.cloud_storage import normalize_output_dir
 from benchbox.utils.dialect_utils import split_sql_statements
@@ -305,6 +306,11 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
                     f"Operation '{operation.id}' is skipped on PostgreSQL-family platforms: "
                     f"{POSTGRES_WRITE_PRIMITIVES_OPERATION_SKIPS[operation.id]}"
                 )
+
+        if "questdb" in {(platform_key or "").lower(), (platform_fallback_key or "").lower()}:
+            questdb_skip_reason = questdb_write_primitive_skip_reason(operation)
+            if questdb_skip_reason is not None:
+                return None, f"Operation '{operation.id}' is skipped on QuestDB: {questdb_skip_reason}"
 
         platform_override_sql: str | None = None
         found_override, override = self._lookup_platform_override(
