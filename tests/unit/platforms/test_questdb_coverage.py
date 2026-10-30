@@ -1437,23 +1437,45 @@ class TestLoadParquetViaChunkedCsv:
             assert write_call.kwargs["write_options"].include_header is True
 
     def test_nullable_integers_are_posted_without_a_decimal_point(self, questdb_stubs, tmp_path):
+        import threading
+        from http.server import BaseHTTPRequestHandler, HTTPServer
+
         import pyarrow as pa
         import pyarrow.parquet as pq
+
+        received: list[bytes] = []
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_POST(self):
+                received.append(self.rfile.read(int(self.headers["Content-Length"])))
+                body = b"| Rows imported | 3 |"
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *args):
+                pass
+
+        server = HTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
 
         data_file = tmp_path / "title.parquet"
         pq.write_table(
             pa.table({"id": [1, 2, 3], "production_year": [1994, None, 2006], "title": ["a", "b,c", None]}),
             data_file,
         )
-        adapter = QuestDBAdapter(host="localhost", http_port=9000)
-        mock_response = MagicMock()
-        mock_response.text = "| Rows imported | 3 |"
+        adapter = QuestDBAdapter(host="127.0.0.1", http_port=server.server_address[1])
+        try:
+            rows = adapter._load_parquet_via_chunked_csv("title", data_file)
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join()
 
-        with patch("requests.post", return_value=mock_response) as mock_post:
-            adapter._load_parquet_via_chunked_csv("title", data_file)
-
-        upload = mock_post.call_args.kwargs["files"]["data"][1]
-        body = upload.read().decode()
+        assert rows == 3
+        body = b"".join(received).decode()
         assert "1994," in body
         assert "1994.0" not in body
         assert "2006," in body
