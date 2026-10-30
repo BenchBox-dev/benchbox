@@ -6,6 +6,7 @@ from benchbox.sql_compat.decision import CompatibilityDecision, FailureMode, Ski
 from benchbox.sql_compat.registry import REGISTRY
 
 LAKESAIL_TPCHAVOC_SKIPS: dict[str, str] = {
+    "1_v1": "Sail physical planning rejects the correlated scalar subqueries in the select list with `Physical plan does not support logical expression ScalarSubquery`.",
     "1_v7": "Sail rejects the LIST aggregate variant with `unknown function: LIST`.",
     "1_v8": "Sail rejects the named-window variant with `named window`.",
     "2_v5": "Sail reports an ambiguous `ps_partkey` attribute for the variant shape.",
