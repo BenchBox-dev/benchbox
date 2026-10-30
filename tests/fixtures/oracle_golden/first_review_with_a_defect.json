@@ -280,7 +280,7 @@
       {
         "context": "oracle-gate",
         "creator": "benchbox-oracle[bot]",
-        "description": "oracle-review: the oracle's latest verdict for <sha0> is failure, not success; fix the findings, or post …",
+        "description": "oracle-review: the oracle's latest verdict for <sha0> lists open findings, which a stand-in cannot waive:…",
         "state": "failure",
         "target_url": "https://github.localhost/BenchBox-dev/BenchBox/actions/runs/<run>"
       }

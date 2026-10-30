@@ -421,10 +421,34 @@ marker. Other accounts' replies never reach the brief or force a re-review. A
 plain acknowledgement such as `done` is not a dispute.
 
 Forced re-reviews run only after SHIP or SHIP WITH FIXES, never after DO NOT
-SHIP. The third for one patch is refused with a message to change the patch or
-ask the owner for a stand-in; empty commits and byte-identical rebases keep the
-digest and so share its budget. Ordinary follow-ups never consume it, and a push
-disputing nothing is carried, not rejudged.
+SHIP. A `/oracle-review` comment on the same head with an open, keyed `Dispute:`
+reply takes this path through the verdict workflow, and the hourly sweep
+re-dispatches a head whose open `Dispute:` reply is newer than every verdict run
+on that head. No workflow runs on review-comment events themselves. Up to two
+dispute rounds per patch digest are exempt from the daily retry budget and the
+doubling backoff and are not counted against them; a third is refused with a
+message naming the escalated findings and the owner adjudication grammar. Empty
+commits and byte-identical rebases keep the digest and so share its allowance.
+Ordinary follow-ups never consume it, and a push disputing nothing is carried,
+not rejudged.
+
+A finding that stays open in both dispute rounds of one patch digest is
+escalated: the verdict record lists it under `escalated` and the status
+description ends `; escalated D<n>`. The gate's waiting message then names the
+owner action. The owner (an attester account, as for stand-ins) resolves it with
+a top-level PR comment that is exactly `Oracle adjudication: WITHDRAW D<n> -
+<reason>` or `Oracle adjudication: MAINTAIN D<n> - <reason>`, unedited, posted
+after the oracle review that escalated it and while that review's head is still
+the PR head. The verdict workflow admits the comment, runs `plan` with no
+reviewer attempt, and posts a carry-kind review and status with an
+`adjudicated` entry. `WITHDRAW` removes the finding from the open set (SHIP when
+none remain); `MAINTAIN` keeps it open, closes its dispute, and leaves the head
+blocked until a fix. Like stand-ins the control is audit-only because agents
+share the owner account, so an agent posts an adjudication only when the owner
+names the PR, head, finding and decision in the current request, after an
+`Owner instruction` comment. The merge digest lists adjudications and flags one
+with no preceding `Owner instruction` comment. `oracle-gate` never parses
+findings.
 
 The oracle never resolves a thread: a follow-up lists defects it verified fixed,
 and the author resolves those. Each new thread carries a hidden `oracle-defect:
@@ -738,10 +762,16 @@ nothing.
   comments do not trigger it (they are review comments, not issue comments). A
   manual rerun may re-review a head after a decisive result, within the daily
   retry budget and doubling backoff, so an author can dispute a finding with a
-  `Dispute:` thread reply without a new commit; with no `Dispute:` reply the
+  `Dispute:` thread reply without a new commit (two such dispute rounds per
+  patch are exempt from the budget and backoff); with no `Dispute:` reply the
   decision stands. The brief carries unresolved thread replies as disputed
   findings keyed by finding id (see Rounds), and the reviewer checks any claimed
   grammar or documented behaviour.
+- A top-level PR comment from an owner, member or collaborator that starts with
+  `Oracle adjudication:` runs the same `review` job. `plan` accepts it only in
+  the exact grammar and only from an attester (see Rounds); any other comment
+  with that prefix plans nothing. An accepted ruling runs no reviewer and does
+  not touch the retry budget.
 - `gh workflow run oracle-verdict.yml --ref develop -f pr=<number>` does the
   same; other refs are refused. The optional `-f head=<sha>` names the head the
   dispatch targets: the run title records it, and a run whose pull request has
@@ -1300,6 +1330,13 @@ refresh of `oracle-gate`. `make pr-arm` and `make pr-arm-remote` dispatch
 A stand-in attestation must follow the oracle's latest decisive verdict
 (`success` or `failure`) on the head, so overriding a failure is deliberate; a
 later non-decisive review such as `pending` does not void it.
+
+A stand-in cannot cover open findings. `oracle-gate` rejects a stand-in on a
+head whose latest decisive `oracle-verdict` status reports SHIP WITH FIXES
+(including a carried or adjudicated decision), so the findings must be fixed,
+withdrawn by the oracle, or adjudicated by the owner. Stand-ins still cover
+absence, an oversize brief, a refusal, and a head held because an App review
+was edited, even if that head's earlier verdict had open findings.
 
 The merge digest applies the same window to merged history and files a
 `soundness-review-gap` issue for any commit it cannot account for. An attester's
