@@ -6149,15 +6149,10 @@
       "title": "Corpus anonymiser crashes on non-bundle JSON in its bundles directory"
     },
     "corpus-mirror-close-superseded-prs-20261030": {
-      "claim": {
-        "expires_at": "2026-10-31T14:07:01Z",
-        "generation": "ad3e6f1ca4d248549d28bcda3f48485d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:df2a71c2d1a87fbbfed9c494"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Close older results-mirror PRs when a newer mirror supersedes them"
     },
     "corpus-mislabelling-leaves-the-leaderboard-with-15-rows": {
