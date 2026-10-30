@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed QuestDB failing with \"unsupported cast\" on `CAST(x AS DOUBLE PRECISION)` inside a CASE expression (TPC-DS 4/11/12/20/21/31/34/39/47/53/57/63/73/74/78/89/98, NYC Taxi, TSBS DevOps, Flightdata, CoffeeShop); the adapter now emits the cast target as `DOUBLE`."
+    }
+  ]
+}
