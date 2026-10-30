@@ -568,7 +568,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
             "delimiter": dialect.delimiter,
         }
 
-        strip_trailing_delim = get_data_extension(data_file) in (".tbl", ".dat")
+        strip_trailing_delim = get_data_extension(data_file) == ".tbl"
         with prepare_local_load_file(
             data_file, dialect=dialect, strip_trailing_delim=strip_trailing_delim
         ) as load_path:
@@ -636,7 +636,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         try:
             sock.connect((self.ilp_host, self.ilp_port))
 
-            strip_trailing_delim = get_data_extension(data_file) in (".tbl", ".dat")
+            strip_trailing_delim = get_data_extension(data_file) == ".tbl"
             with prepare_local_load_file(
                 data_file, dialect=dialect, strip_trailing_delim=strip_trailing_delim
             ) as load_path:
