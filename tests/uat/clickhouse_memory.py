@@ -62,7 +62,7 @@ def runtime_limit_matches_rung(
 ) -> bool:
 
     if requested_bytes is not None:
-        return runtime_limit_bytes == requested_bytes
+        return runtime_limit_bytes in {requested_bytes, int(requested_bytes / GIB * _DECIMAL_GIB_EQUIVALENCE)}
     lower_limit = int(requested_memory_gib * _DECIMAL_GIB_EQUIVALENCE)
     upper_limit = int(requested_memory_gib * GIB)
     return runtime_limit_bytes in {lower_limit, upper_limit}

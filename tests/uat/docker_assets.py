@@ -34,29 +34,24 @@ class DockerAssetError(ValueError):
 
 CLICKHOUSE_MEMORY_LIMIT_ENV_VAR = "CLICKHOUSE_MEMORY_LIMIT"
 _MEMORY_VALUE_RE = re.compile(r"^\s*(?P<value>[0-9]+(?:\.[0-9]+)?)\s*(?P<unit>[KMGTPE]?i?B?)\s*$", re.IGNORECASE)
-_MEMORY_UNITS = {
+_COMPOSE_MEMORY_UNITS = {
     "": 1,
     "b": 1,
-    "k": 1000,
+    **dict.fromkeys(("k", "kb", "ki", "kib"), 1024),
+    **dict.fromkeys(("m", "mb", "mi", "mib"), 1024**2),
+    **dict.fromkeys(("g", "gb", "gi", "gib"), 1024**3),
+    **dict.fromkeys(("t", "tb", "ti", "tib"), 1024**4),
+}
+_RUNTIME_MEMORY_UNITS = {
+    **_COMPOSE_MEMORY_UNITS,
     "kb": 1000,
-    "ki": 1024,
-    "kib": 1024,
-    "m": 1000**2,
     "mb": 1000**2,
-    "mi": 1024**2,
-    "mib": 1024**2,
-    "g": 1000**3,
     "gb": 1000**3,
-    "gi": 1024**3,
-    "gib": 1024**3,
-    "t": 1000**4,
     "tb": 1000**4,
-    "ti": 1024**4,
-    "tib": 1024**4,
 }
 
 
-def parse_memory_bytes(value: str) -> int:
+def _parse_memory_bytes(value: str, units: dict[str, int]) -> int:
     if not isinstance(value, str):
         raise DockerAssetError(f"memory limit must be a string, got {type(value).__name__}")
     match = _MEMORY_VALUE_RE.fullmatch(value)
@@ -66,8 +61,7 @@ def parse_memory_bytes(value: str) -> int:
         amount = float(match.group("value"))
     except (OverflowError, ValueError) as exc:
         raise DockerAssetError(f"invalid memory limit {value!r}; use a positive value such as 4g or 4096MiB") from exc
-    unit = match.group("unit").lower()
-    multiplier = _MEMORY_UNITS.get(unit)
+    multiplier = units.get(match.group("unit").lower())
     if multiplier is None or amount <= 0:
         raise DockerAssetError(f"invalid memory limit {value!r}; use a positive value such as 4g or 4096MiB")
     try:
@@ -77,6 +71,14 @@ def parse_memory_bytes(value: str) -> int:
     if size <= 0:
         raise DockerAssetError(f"invalid memory limit {value!r}; use a positive value such as 4g or 4096MiB")
     return size
+
+
+def parse_memory_bytes(value: str) -> int:
+    return _parse_memory_bytes(value, _COMPOSE_MEMORY_UNITS)
+
+
+def parse_runtime_memory_bytes(value: str) -> int:
+    return _parse_memory_bytes(value, _RUNTIME_MEMORY_UNITS)
 
 
 def resolve_clickhouse_memory_limit(
@@ -130,7 +132,7 @@ def parse_runtime_memory_limit(text: str) -> int | None:
                 _, limit = usage.split("/", 1)
             if limit is not None:
                 try:
-                    return parse_memory_bytes(str(limit).strip())
+                    return parse_runtime_memory_bytes(str(limit).strip())
                 except DockerAssetError:
                     return None
         if candidate.upper().startswith(("CONTAINER ID", "NAME")):
@@ -138,7 +140,7 @@ def parse_runtime_memory_limit(text: str) -> int | None:
         table_match = re.search(r"(?P<usage>\S+\s*/\s*(?P<limit>\S+))", candidate)
         if table_match:
             try:
-                return parse_memory_bytes(table_match.group("limit"))
+                return parse_runtime_memory_bytes(table_match.group("limit"))
             except DockerAssetError:
                 return None
     return None
