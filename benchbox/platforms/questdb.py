@@ -584,13 +584,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
             "delimiter": dialect.delimiter,
         }
 
-        extension = get_data_extension(data_file)
-        strip_trailing_delim = extension == ".tbl"
-        if extension == ".dat":
-            column_names = self._get_table_columns(table_name)
-            strip_trailing_delim = bool(column_names) and has_trailing_delimiter(
-                data_file, dialect.delimiter, column_names
-            )
+        strip_trailing_delim = get_data_extension(data_file) == ".tbl"
         with prepare_local_load_file(
             data_file, dialect=dialect, strip_trailing_delim=strip_trailing_delim
         ) as load_path:
@@ -826,7 +820,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         query = rewrite_query(query)
         result = execute_sql_query(
             connection,
-            query,
+            rewrite_query(query),
             query_id,
             log_verbose=self.log_verbose,
             build_query_result_with_validation=self._build_query_result_with_validation,
