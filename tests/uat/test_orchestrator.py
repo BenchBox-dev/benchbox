@@ -1763,3 +1763,36 @@ def test_gate_summary_records_the_digest_of_the_admitted_distribution_file(tmp_p
 
     monkeypatch.delenv("RELEASE_DIST_DIGEST_FILE")
     assert orchestrator._distribution_digest() is None
+
+
+def test_cells_jsonl_records_failed_query_ids_and_errors_for_query_failure(tmp_path: Path):
+    result_path = tmp_path / "result.json"
+    rows = [{"id": "1", "status": "SUCCESS"}, {"id": "7", "status": "FAILED", "error_message": "boom\n" + "x" * 2000}]
+    rows += [{"id": f"q{i}", "status": "FAILED", "error": f"err{i}"} for i in range(100)]
+    result_path.write_text(json.dumps({"queries": rows}), encoding="utf-8")
+    cell_log = tmp_path / "cell.log"
+    cell_log.write_text("# benchbox run\n", encoding="utf-8")
+    cell = CellResult(
+        platform="duckdb",
+        benchmark="tpch",
+        scale=0.01,
+        status="failed",
+        exit_code=1,
+        elapsed_s=1.0,
+        log_path=cell_log,
+        result_path=result_path,
+        submit_terminal_state="query_failure",
+    )
+    source_info = orchestrator.RunSourceInfo(commit_sha="abc123", commit_short_sha="abc123", dirty=False)
+
+    row = json.loads(cells_io._render_cell_row(cell, source_info=source_info))
+
+    failed = row["failed_queries"]
+    assert len(failed) == cells_io.FAILED_QUERY_MAX_COUNT
+    assert failed[0]["query_id"] == "7"
+    assert failed[0]["error"].startswith("boom")
+    assert len(failed[0]["error"]) == cells_io.FAILED_QUERY_ERROR_CHARS
+    assert failed[1] == {"query_id": "q0", "status": "FAILED", "error": "err0"}
+    log_text = cell_log.read_text(encoding="utf-8")
+    assert "# UAT_FAILED_QUERY id=7 status=FAILED error=boom" in log_text
+    assert "id=1 " not in log_text

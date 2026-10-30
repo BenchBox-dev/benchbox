@@ -13,6 +13,9 @@ from tests.uat.runner import CellResult
 
 FAILURE_TAIL_LINES = 50
 FAILURE_TAIL_CHARS = 12_000
+FAILED_QUERY_MAX_COUNT = 50
+FAILED_QUERY_ERROR_CHARS = 500
+_NON_FAILED_QUERY_STATUSES = frozenset({"SUCCESS", "SKIPPED", "PASSED", "OK"})
 
 CELLS_FINALIZED_SUFFIX = ".finalized"
 CELLS_INPROGRESS_SUFFIX = ".inprogress"
@@ -38,7 +41,10 @@ def cells_inprogress_path(cells_jsonl: Path) -> Path:
 
 def _render_cell_row(cell: CellResult, *, source_info: SourceInfo) -> str:
     cell_terminal_state = terminal_state(cell)
-    failure_tail = _persist_cell_failure_context(cell, terminal_state=cell_terminal_state)
+    failed_queries = _failed_query_details(cell)
+    failure_tail = _persist_cell_failure_context(
+        cell, terminal_state=cell_terminal_state, failed_queries=failed_queries
+    )
     return (
         json.dumps(
             {
@@ -56,6 +62,7 @@ def _render_cell_row(cell: CellResult, *, source_info: SourceInfo) -> str:
                 "load_failure_path": (str(cell.load_failure_path) if cell.load_failure_path else None),
                 "throughput_check": cell.throughput_check,
                 "failure_tail": failure_tail,
+                "failed_queries": failed_queries,
                 "source_commit_sha": source_info.commit_sha,
                 "source_commit_short_sha": source_info.commit_short_sha,
                 "source_dirty": source_info.dirty,
@@ -228,7 +235,38 @@ def read_skipped_unreachable_sidecar(cells_jsonl: Path) -> tuple[int, bool]:
     return coerce_accounting_count(payload.get("skipped_unreachable_count", 0)), present
 
 
-def _persist_cell_failure_context(cell: CellResult, *, terminal_state: str) -> str:
+def _failed_query_details(cell: CellResult) -> list[dict[str, str]]:
+    if cell.status == "passed" or cell.result_path is None:
+        return []
+    try:
+        data = json.loads(Path(cell.result_path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    rows = data.get("queries") if isinstance(data, dict) else None
+    if not isinstance(rows, list):
+        return []
+    details: list[dict[str, str]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        if str(row.get("status") or "").strip().upper() in _NON_FAILED_QUERY_STATUSES:
+            continue
+        error = str(row.get("error") or row.get("error_message") or "").strip()
+        details.append(
+            {
+                "query_id": str(row.get("id") if row.get("id") is not None else row.get("query_id", "")),
+                "status": str(row.get("status") or ""),
+                "error": error[:FAILED_QUERY_ERROR_CHARS],
+            }
+        )
+        if len(details) >= FAILED_QUERY_MAX_COUNT:
+            break
+    return details
+
+
+def _persist_cell_failure_context(
+    cell: CellResult, *, terminal_state: str, failed_queries: list[dict[str, str]] | None = None
+) -> str:
     if cell.status == "passed" and cell.result_path is not None:
         return ""
     log_path = Path(cell.log_path)
@@ -241,6 +279,9 @@ def _persist_cell_failure_context(cell: CellResult, *, terminal_state: str) -> s
                     f"status={cell.status} exit_code={cell.exit_code} "
                     f"result_path={cell.result_path or ''}\n"
                 )
+                for failed in failed_queries or ():
+                    error = " ".join(failed["error"].split())
+                    fh.write(f"# UAT_FAILED_QUERY id={failed['query_id']} status={failed['status']} error={error}\n")
                 fh.write(f"# UAT_FAILURE_TAIL_START max_lines={FAILURE_TAIL_LINES}\n")
                 fh.write((tail or "(no subprocess output captured)") + "\n")
                 fh.write("# UAT_FAILURE_TAIL_END\n")
