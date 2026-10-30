@@ -16412,6 +16412,13 @@
       "status": "done",
       "title": "Make the oracle coverage map disclose oracle STRENGTH and SCALE, not just existence"
     },
+    "oracle-dead-harness-reply-branches-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Remove the oracle verdict parser's unreachable Claude and agy reply handling"
+    },
     "oracle-diff-parser-splitlines-20261023": {
       "claim": null,
       "needs": [

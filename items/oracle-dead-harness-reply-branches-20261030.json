@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "verdict.py has no Claude or agy envelope handling and no _stream_result; callers are updated if the harness parameter is removed.",
+    "The huge-integer and duplicate-key rejection tests pass through the omp or text path; no test builds a Claude or agy reply envelope.",
+    "The oracle_reviewers unit suite and the tests/integration/oracle scenarios pass unchanged.",
+    "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
+  ],
+  "context": "2026-10-30: filed from the 2026-10-27 evaluation of OMP's /review command. Checked on develop 947b16ff: parse_output at verdict.py:538-563, Claude branch 547-557, agy branch 558-562; test_report_body_cap.py:101 and :110 parametrize \"claude\"; test_response_ingress.py:187 parses a Claude envelope. If oracle-strict-reply-schema-20261030 lands first and removes parse_output's text path, fold this cleanup into it.",
+  "description": "Problem: the policy allows only the omp harness (policy.HARNESSES is (\"omp\",), and policy loading rejects any other harness at policy.py:148), yet verdict.parse_output still unwraps Claude result envelopes (structured_output, result, and the stream fallback in _stream_result) and agy status/response envelopes. Every production caller passes omp: runner.py passes reviewer.harness, which the policy restricts to omp, and candidate_checks.py passes \"omp\". Three tests still pin the dead Claude path: test_report_body_cap.py parametrizes the harness over \"claude\" in two tests, and test_response_ingress.py parses a Claude envelope.\n\nOutcome: parse_output handles only OMP's event stream and its internal text step. Delete the Claude and agy branches and _stream_result. Keep _strip_fence while the text step still accepts fenced JSON. Move the huge-integer and duplicate-key tests onto the omp and text paths so their invariants stay covered, and drop the Claude-envelope test.",
+  "links": [
+    "_project/scripts/oracle_reviewers/verdict.py",
+    "_project/scripts/oracle_reviewers/policy.py",
+    "tests/unit/scripts/oracle_reviewers/test_report_body_cap.py",
+    "tests/unit/scripts/oracle_reviewers/test_response_ingress.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9e09737a6dae48d68e938037",
+      "at": "2026-10-30T12:03:20Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9a651af14f414d2e812e668041183d52",
+      "session_id": "4381d019d1ef43f29abc27cb16c09156"
+    }
+  ]
+}
