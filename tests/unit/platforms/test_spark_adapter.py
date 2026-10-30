@@ -9,6 +9,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from benchbox.platforms._spark_helpers import default_spark_driver_memory
+
 pytestmark = [
     pytest.mark.unit,
     pytest.mark.medium,
@@ -188,7 +190,7 @@ class TestSparkAdapter:
         assert adapter.master == "local[*]"
         assert adapter.app_name == "BenchBox"
         assert adapter.database == "default"
-        assert adapter.driver_memory == "4g"
+        assert adapter.driver_memory == default_spark_driver_memory("local[*]")
         assert adapter.executor_memory == "4g"
         assert adapter.executor_cores == 2
         assert adapter.disable_cache is True
@@ -373,7 +375,7 @@ class TestSparkAdapter:
 
         conf = SparkAdapter()._get_spark_conf()
 
-        assert conf["spark.driver.memory"] == "4g"
+        assert conf["spark.driver.memory"] == default_spark_driver_memory("local[*]")
         assert conf["spark.executor.memory"] == "4g"
         assert conf["spark.executor.cores"] == "2"
         assert conf["spark.sql.inMemoryColumnarStorage.enabled"] == "false"
@@ -917,6 +919,15 @@ class TestSparkAdapterCliArguments:
         assert default_args.adaptive_enabled is None
         assert enabled_args.adaptive_enabled is True
         assert disabled_args.adaptive_enabled is False
+
+    def test_driver_memory_cli_default_is_unset_so_the_adapter_sizes_it(self, mock_pyspark):
+        from benchbox.platforms.spark import SparkAdapter
+
+        parser = argparse.ArgumentParser()
+        SparkAdapter.add_cli_arguments(parser)
+
+        assert parser.parse_args([]).driver_memory is None
+        assert parser.parse_args(["--driver-memory", "12g"]).driver_memory == "12g"
 
 
 class TestSparkAdapterCreateSession:
