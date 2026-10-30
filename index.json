@@ -17622,6 +17622,13 @@
       "status": "open",
       "title": "Accept Arrow results in digest, validation, and row count"
     },
+    "perf-databend-bulk-load-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Use stage + COPY INTO for Databend loading"
+    },
     "perf-trino-presto-bulk-load-20261030": {
       "claim": null,
       "needs": [],

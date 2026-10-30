@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "TPC-H SF1 loads without per-row Python handling.",
+    "Row counts match."
+  ],
+  "description": "databend/adapter.py:360-397 builds VALUES literals in Python; it is the only load path. Use stage + COPY INTO or databend_driver load_file/streaming load (existing driver).",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:root@vm:2d53e6a98f44f4f4a8a4dedd",
+      "at": "2026-10-30T17:55:16Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "fb70f1bb98844fd0890f0dd1f889ba9b",
+      "session_id": "be00837164104ac2b4ed790cdb6812a2"
+    }
+  ]
+}
