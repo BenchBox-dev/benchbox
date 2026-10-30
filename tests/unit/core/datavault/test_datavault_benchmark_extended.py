@@ -355,6 +355,7 @@ class TestDataVaultManifestDialectMetadata:
             "csv_has_header": False,
             "csv_null_marker": "",
             "csv_normalize_booleans": False,
+            "csv_quote": '"',
         }
 
     def test_csv_manifest_records_comma_dialect(self, tmp_path: Path) -> None:
@@ -362,6 +363,26 @@ class TestDataVaultManifestDialectMetadata:
         entry = manifest["tables"]["hub_region"]["formats"]["csv"][0]
         assert entry["metadata"]["csv_delimiter"] == ","
         assert entry["metadata"]["csv_has_header"] is False
+
+    def test_quoted_values_load_through_postgres_csv_copy(self, tmp_path: Path) -> None:
+        from benchbox.platforms.base.data_loading import DataSource, resolve_csv_dialect
+        from benchbox.platforms.postgresql import _postgres_copy_sql
+
+        manifest = self._write(tmp_path, "tbl")
+        metadata = manifest["tables"]["hub_region"]["formats"]["tbl"][0]["metadata"]
+        data_file = tmp_path / "sat_order.tbl"
+        data_file.write_text('hk1||"Clerk#000000951"|""\n')
+        source = DataSource(
+            source_type="manifest",
+            tables={"sat_order": data_file},
+            table_metadata={"sat_order": metadata},
+        )
+        dialect = resolve_csv_dialect(source, "sat_order", data_file, benchmark=None)
+
+        assert dialect.quote == '"'
+        sql = _postgres_copy_sql("sat_order", dialect)
+        assert "FORMAT csv" in sql
+        assert "NULL ''" in sql
 
     def test_satellite_manifest_resolves_empty_field_to_null(self, tmp_path: Path) -> None:
         from benchbox.platforms.base.data_loading import (

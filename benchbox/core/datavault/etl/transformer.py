@@ -336,6 +336,7 @@ class DataVaultETLTransformer(CompressionMixin):
             "csv_has_header": False,
             "csv_null_marker": "",
             "csv_normalize_booleans": False,
+            "csv_quote": '"',
         }
         for name, path in table_paths.items():
             p = Path(path)
