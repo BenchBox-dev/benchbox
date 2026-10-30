@@ -163,6 +163,7 @@ class FakeGitHub:
         self.changed_files: list[str] = []
         self.statuses: dict[str, str] = {}
         self.status_descriptions: dict[str, str] = {}
+        self.status_creators: dict[str, str] = {}
 
     def _duration_verdict_reply(self, cmd: list[str]) -> tuple[int, str] | None:
         if cmd[:2] == ["gh", "api"] and "/actions/artifacts?name=fast-duration-verdict-" in cmd[-1]:
@@ -270,8 +271,17 @@ class FakeGitHub:
         if cmd[:2] == ["gh", "api"] and cmd[-1].endswith("/status"):
             return 0, self.gate_state + "\n"
         if cmd[:2] == ["gh", "api"] and "/statuses?" in cmd[-1]:
+            default_creator = "benchbox-oracle[bot]\tBot"
             lines = [
-                f"{name}\t{state}\t{self.status_descriptions.get(name, '')}" for name, state in self.statuses.items()
+                "\t".join(
+                    [
+                        name,
+                        state,
+                        self.status_creators.get(name, default_creator),
+                        self.status_descriptions.get(name, ""),
+                    ]
+                )
+                for name, state in self.statuses.items()
             ]
             return 0, "\n".join(lines)
         if cmd[:3] == ["gh", "workflow", "run"]:
@@ -729,6 +739,12 @@ def test_refuses_a_failed_required_status(
     ready_pr.statuses["oracle-gate"] = state
     err = _refusal(world, ready_pr, capsys)
     assert f"condition 6: required status 'oracle-gate' failed with state {state!r}" in err
+
+
+def test_a_failed_oracle_gate_status_from_another_account_is_ignored(world: World, ready_pr: FakeGitHub) -> None:
+    ready_pr.statuses["oracle-gate"] = "failure"
+    ready_pr.status_creators["oracle-gate"] = "joeharris76\tUser"
+    assert arm(world, ready_pr) == 0
 
 
 def test_pending_required_status_still_arms(world: World, ready_pr: FakeGitHub) -> None:

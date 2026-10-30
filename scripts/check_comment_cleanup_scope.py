@@ -1668,7 +1668,9 @@ def _oracle_gate_covers(token: str, repo: str, head: str) -> bool:
             creator = status.get("creator") or {}
             login = creator.get("login") or ""
             login = login[:-5] if login.endswith("[bot]") else login
-            return login == ORACLE_LOGIN and creator.get("type") == "Bot" and status.get("state") == "success"
+            if login != ORACLE_LOGIN or creator.get("type") != "Bot":
+                continue
+            return status.get("state") == "success"
         if len(statuses) < 100 or page >= 10:
             return False
         page += 1
