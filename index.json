@@ -23619,6 +23619,13 @@
       "status": "done",
       "title": "SingleStore setup saves the plaintext password to credentials.yaml even when validation fails"
     },
+    "singlestore-uat-failures-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "SingleStore: TPC-DS load errors and query failures in release UAT"
+    },
     "siriusdb-adapter": {
       "claim": null,
       "needs": [
