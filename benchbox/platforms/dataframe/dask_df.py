@@ -435,6 +435,8 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
     def concat(self, dfs: list[DaskDF]) -> DaskDF:
         if len(dfs) == 1:
             return dfs[0]
+        if all(isinstance(df, pd.DataFrame) for df in dfs):
+            return pd.concat(dfs, ignore_index=True)
         return dd.concat(dfs, ignore_index=True)
 
     def get_row_count(self, df: DaskDF) -> int:
@@ -566,7 +568,17 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
         is_named_agg = any(isinstance(v, tuple) for v in regular_aggs.values())
 
         if is_named_agg:
-            result = df.groupby(by_list, **kwargs).agg(**regular_aggs)
+            first_alias: dict[Any, str] = {}
+            alias_of = {
+                name: first_alias.setdefault(tuple(spec) if isinstance(spec, tuple) else spec, name)
+                for name, spec in regular_aggs.items()
+            }
+            distinct_aggs = {name: regular_aggs[name] for name, alias in alias_of.items() if name == alias}
+            result = df.groupby(by_list, **kwargs).agg(**distinct_aggs)
+            if len(distinct_aggs) != len(regular_aggs):
+                result = result.assign(**{name: result[alias] for name, alias in alias_of.items() if name != alias})[
+                    list(regular_aggs)
+                ]
         else:
             result = df.groupby(by_list, **kwargs).agg(regular_aggs)
 

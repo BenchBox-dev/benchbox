@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "TPC-DS DataFrame queries Q5, Q6, Q9, Q15, Q16, Q23, Q28, Q32, Q36, Q37, Q44, Q48 and Q49 now run on the Dask platform with the same rows as pandas: date-window helpers no longer index lazy frames, scalar aggregates are computed before they are placed in result frames, named aggregates replace lambda aggregates, rollup and ranking steps run on the small aggregated result, and the joined-aggregate helper sorts before converting null keys to None."
+    }
+  ]
+}

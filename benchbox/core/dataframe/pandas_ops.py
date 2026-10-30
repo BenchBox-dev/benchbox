@@ -31,3 +31,14 @@ def select(conditions: list[Any], choices: list[Any], default: Any) -> Any:
     for condition, choice in reversed(list(zip(conditions, choices, strict=True))):
         result = where(condition, choice, result)
     return result
+
+
+def materialize(*values: Any) -> Any:
+    lazy = [value for value in values if hasattr(value, "compute")]
+    if not lazy:
+        return values if len(values) > 1 else values[0]
+    import dask
+
+    computed = iter(dask.compute(*lazy))
+    resolved = tuple(next(computed) if hasattr(value, "compute") else value for value in values)
+    return resolved if len(resolved) > 1 else resolved[0]
