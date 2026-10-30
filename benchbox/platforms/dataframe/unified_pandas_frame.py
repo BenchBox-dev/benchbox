@@ -144,7 +144,10 @@ class UnifiedPandasFrame(Generic[DF]):
         return UnifiedPandasFrame(result, self._adapter)
 
     def head(self, n: int = 5) -> UnifiedPandasFrame[DF]:
-        result = self._df.head(n)
+        if _is_dask_df(self._df):
+            result = self._df.head(n, npartitions=-1, compute=False)
+        else:
+            result = self._df.head(n)
         return UnifiedPandasFrame(result, self._adapter)
 
     def tail(self, n: int = 5) -> UnifiedPandasFrame[DF]:

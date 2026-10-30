@@ -4,11 +4,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from csv import reader
 from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
 
+from benchbox.core.dataframe.pandas_groups import collect, native_frame, per_group, per_partition
+from benchbox.core.dataframe.pandas_ops import select as pandas_select
 from benchbox.core.dataframe.query import DataFrameQuery, QueryCategory, QueryRegistry
 
 if TYPE_CHECKING:
@@ -35,6 +38,60 @@ def __getattr__(name: str) -> QueryImpl:
 
 def _tables(ctx: DataFrameContext, *names: str) -> tuple[Any, ...]:
     return tuple(ctx.get_table(name) for name in names)
+
+
+def _make_top_ranked_pandas_impl(
+    name: str,
+    *,
+    table_name: str,
+    group_col: str,
+    order_col: str,
+    method: str,
+    rank_col: str,
+    max_rank: int,
+    columns: list[str],
+    sort_cols: list[str],
+) -> None:
+    def rank_rows(df: Any) -> Any:
+        df = df.copy()
+        df[rank_col] = df.groupby(group_col)[order_col].rank(method=method, ascending=False)
+        return df
+
+    def pandas_impl(ctx: DataFrameContext) -> Any:
+        ranked = per_group(ctx.get_table(table_name), group_col, rank_rows)
+        return ranked[ranked[rank_col] <= max_rank][columns].sort_values(sort_cols).reset_index(drop=True)
+
+    pandas_impl.__name__ = f"{name}_pandas_impl"
+    pandas_impl.__qualname__ = pandas_impl.__name__
+    _register_generated_impl(pandas_impl)
+
+
+_make_top_ranked_pandas_impl(
+    "window_rank",
+    table_name="lineitem",
+    group_col="l_returnflag",
+    order_col="l_quantity",
+    method="min",
+    rank_col="qty_rank",
+    max_rank=5,
+    columns=["l_orderkey", "l_returnflag", "l_quantity", "qty_rank"],
+    sort_cols=["l_returnflag", "qty_rank", "l_orderkey"],
+)
+_make_top_ranked_pandas_impl(
+    "qualify_dense_rank",
+    table_name="part",
+    group_col="p_type",
+    order_col="p_retailprice",
+    method="dense",
+    rank_col="price_rank",
+    max_rank=2,
+    columns=["p_type", "p_name", "p_retailprice", "price_rank"],
+    sort_cols=["p_type", "price_rank", "p_name"],
+)
+
+
+def _scalar_frame(ctx: DataFrameContext, data: dict[str, Any]) -> Any:
+    return ctx.scalar_to_df({name: collect(value) for name, value in data.items()})
 
 
 def _is_dask_context(ctx: DataFrameContext) -> bool:
@@ -182,10 +239,15 @@ def _expr_grouped_list(ctx: DataFrameContext, table_name: str, group_col: str, v
     return ctx.get_table(table_name).group_by(group_col).agg(ctx.col(value_col).list().alias(alias))
 
 
-def _pandas_grouped_list(table: Any, group_col: str, value_col: str, alias: str) -> Any:
-    result = table.groupby(group_col)[value_col].apply(list).reset_index()
-    result.columns = [group_col, alias]
-    return result
+def _pandas_grouped_list(
+    table: Any, group_col: str, value_col: str, alias: str, derive: Callable[[Any], Any] | None = None
+) -> Any:
+    def build(df: Any) -> Any:
+        grouped = df.groupby(group_col)[value_col].apply(list).reset_index()
+        grouped.columns = [group_col, alias]
+        return derive(grouped) if derive is not None else grouped
+
+    return per_group(table, group_col, build)
 
 
 def _partsupp_map_expression(ctx: DataFrameContext, max_suppkey: int) -> Any:
@@ -199,16 +261,27 @@ def _partsupp_map_expression(ctx: DataFrameContext, max_suppkey: int) -> Any:
     )
 
 
-def _partsupp_map_pandas(ctx: DataFrameContext, max_suppkey: int) -> Any:
+def _partsupp_map_pandas(ctx: DataFrameContext, max_suppkey: int, derive: Callable[[Any], Any] | None = None) -> Any:
     filtered = ctx.get_table("partsupp")
     filtered = filtered[filtered["ps_suppkey"] <= max_suppkey]
-    result = filtered.groupby("ps_suppkey").apply(
-        lambda group: {str(row["ps_partkey"]): row["ps_supplycost"] for _, row in group.iterrows()},
-        include_groups=False,
-    )
-    result = result.reset_index()
-    result.columns = ["ps_suppkey", "part_costs"]
-    return result
+
+    def build(df: Any) -> Any:
+        import pandas as pd
+
+        keys = []
+        maps = []
+        for key, group in df.groupby("ps_suppkey"):
+            keys.append(key)
+            maps.append({str(row["ps_partkey"]): row["ps_supplycost"] for _, row in group.iterrows()})
+        result = pd.DataFrame(
+            {
+                "ps_suppkey": pd.Series(keys, dtype=df["ps_suppkey"].dtype),
+                "part_costs": pd.Series(maps, dtype=object),
+            }
+        )
+        return derive(result) if derive is not None else result
+
+    return per_group(filtered, "ps_suppkey", build)
 
 
 def _make_groupby_impl(
@@ -414,7 +487,7 @@ def _make_count_filter_impl(
 
     def pandas_impl(ctx: DataFrameContext) -> Any:
         table = ctx.get_table(table_name)
-        return ctx.scalar_to_df({alias: len(table[_pandas_count_filter_mask(table, column_name, op, value, lower)])})
+        return _scalar_frame(ctx, {alias: len(table[_pandas_count_filter_mask(table, column_name, op, value, lower)])})
 
     for family, impl in (("expression", expression_impl), ("pandas", pandas_impl)):
         impl.__name__ = f"{name}_{family}_impl"
@@ -646,9 +719,12 @@ def _make_extreme_row_impls(
     def pandas_impl(ctx: DataFrameContext) -> Any:
         table = _extreme_source(ctx, base, joins)
         idx_func = "idxmax" if agg == "max" else "idxmin"
-        result = table.loc[getattr(table.groupby(pd_group_key)[value], idx_func)()][list(pd_select)].rename(
-            columns=pd_rename
-        )
+
+        def extreme_rows(df: Any) -> Any:
+            df = df.reset_index(drop=True)
+            return df.loc[getattr(df.groupby(pd_group_key)[value], idx_func)()]
+
+        result = per_group(table, pd_group_key, extreme_rows)[list(pd_select)].rename(columns=pd_rename)
         result = result.sort_values(alias, ascending=not desc)
         return result.head(limit) if limit is not None else result
 
@@ -912,7 +988,7 @@ def approx_count_distinct_simple_pandas_impl(ctx: DataFrameContext) -> Any:
     filtered = ctx.get_table("orders")
     filtered = filtered[filtered["o_orderdate"] >= date(1995, 1, 1)]
     if _is_dask_context(ctx):
-        return ctx.scalar_to_df({"unique_customers": filtered["o_custkey"].nunique_approx().compute()})
+        return _scalar_frame(ctx, {"unique_customers": filtered["o_custkey"].nunique_approx().compute()})
     return filtered[["o_custkey"]].nunique().to_frame(name="unique_customers").reset_index(drop=True)
 
 
@@ -927,7 +1003,7 @@ def aggregation_materialize_expression_impl(ctx: DataFrameContext) -> Any:
 
 def aggregation_materialize_pandas_impl(ctx: DataFrameContext) -> Any:
     totals = ctx.get_table("orders").groupby("o_custkey", as_index=False).agg(customer_total=("o_totalprice", "sum"))
-    return ctx.scalar_to_df({"avg_customer_spending": totals["customer_total"].mean()})
+    return _scalar_frame(ctx, {"avg_customer_spending": totals["customer_total"].mean()})
 
 
 def aggregation_materialize_subquery_expression_impl(ctx: DataFrameContext) -> Any:
@@ -962,7 +1038,7 @@ def aggregation_selective_expression_impl(ctx: DataFrameContext) -> Any:
 def aggregation_selective_pandas_impl(ctx: DataFrameContext) -> Any:
     lineitem = ctx.get_table("lineitem")
     filtered = lineitem[(lineitem["l_discount"] > 0.05) & (lineitem["l_quantity"] < 24)]
-    return ctx.scalar_to_df({"total_discount_amount": (filtered["l_extendedprice"] * filtered["l_discount"]).sum()})
+    return _scalar_frame(ctx, {"total_discount_amount": (filtered["l_extendedprice"] * filtered["l_discount"]).sum()})
 
 
 def aggregation_simple_expression_impl(ctx: DataFrameContext) -> Any:
@@ -974,7 +1050,7 @@ def aggregation_simple_expression_impl(ctx: DataFrameContext) -> Any:
 
 def aggregation_simple_pandas_impl(ctx: DataFrameContext) -> Any:
     orders = ctx.get_table("orders")
-    return ctx.scalar_to_df({"total_orders": len(orders), "total_revenue": orders["o_totalprice"].sum()})
+    return _scalar_frame(ctx, {"total_orders": len(orders), "total_revenue": orders["o_totalprice"].sum()})
 
 
 def count_star_expression_impl(ctx: DataFrameContext) -> Any:
@@ -982,7 +1058,7 @@ def count_star_expression_impl(ctx: DataFrameContext) -> Any:
 
 
 def count_star_pandas_impl(ctx: DataFrameContext) -> Any:
-    return ctx.scalar_to_df({"total_lineitems": len(ctx.get_table("lineitem"))})
+    return _scalar_frame(ctx, {"total_lineitems": len(ctx.get_table("lineitem"))})
 
 
 def decimal_arithmetic_expression_impl(ctx: DataFrameContext) -> Any:
@@ -1055,8 +1131,13 @@ def window_row_number_expression_impl(ctx: DataFrameContext) -> Any:
 def window_row_number_pandas_impl(ctx: DataFrameContext) -> Any:
     orders = ctx.get_table("orders")
     result = orders[(orders["o_orderdate"] >= date(1995, 1, 1)) & (orders["o_orderdate"] < date(1996, 1, 1))].copy()
-    result = result.sort_values(["o_custkey", "o_totalprice"], ascending=[True, False])
-    result["order_rank"] = result.groupby("o_custkey").cumcount() + 1
+
+    def number_rows(df: Any) -> Any:
+        df = df.sort_values(["o_custkey", "o_totalprice"], ascending=[True, False])
+        df["order_rank"] = df.groupby("o_custkey").cumcount() + 1
+        return df
+
+    result = per_group(result, "o_custkey", number_rows)
     return result[["o_custkey", "o_orderkey", "o_totalprice", "order_rank"]].reset_index(drop=True)
 
 
@@ -1071,16 +1152,6 @@ def window_rank_expression_impl(ctx: DataFrameContext) -> Any:
     )
 
 
-def window_rank_pandas_impl(ctx: DataFrameContext) -> Any:
-    result = ctx.get_table("lineitem").copy()
-    result["qty_rank"] = result.groupby("l_returnflag")["l_quantity"].rank(method="min", ascending=False)
-    return (
-        result[result["qty_rank"] <= 5][["l_orderkey", "l_returnflag", "l_quantity", "qty_rank"]]
-        .sort_values(["l_returnflag", "qty_rank", "l_orderkey"])
-        .reset_index(drop=True)
-    )
-
-
 def window_sum_expression_impl(ctx: DataFrameContext) -> Any:
     return (
         ctx.get_table("lineitem")
@@ -1090,8 +1161,14 @@ def window_sum_expression_impl(ctx: DataFrameContext) -> Any:
 
 
 def window_sum_pandas_impl(ctx: DataFrameContext) -> Any:
-    result = ctx.get_table("lineitem").copy()
-    result["order_total"] = result.groupby("l_orderkey")["l_extendedprice"].transform("sum")
+    result = ctx.get_table("lineitem")
+
+    def total_per_order(df: Any) -> Any:
+        df = df.copy()
+        df["order_total"] = df.groupby("l_orderkey")["l_extendedprice"].transform("sum")
+        return df
+
+    result = per_group(result, "l_orderkey", total_per_order)
     return result[["l_orderkey", "l_linenumber", "l_extendedprice", "order_total"]]
 
 
@@ -1135,12 +1212,13 @@ def broadcast_join_two_tables_expression_impl(ctx: DataFrameContext) -> Any:
 
 
 def broadcast_join_two_tables_pandas_impl(ctx: DataFrameContext) -> Any:
-    return ctx.scalar_to_df(
+    return _scalar_frame(
+        ctx,
         {
             "supplier_count": len(
                 ctx.get_table("supplier").merge(ctx.get_table("nation"), left_on="s_nationkey", right_on="n_nationkey")
             )
-        }
+        },
     )
 
 
@@ -1187,7 +1265,7 @@ def predicate_ordering_aggregation_pandas_impl(ctx: DataFrameContext) -> Any:
         & (table["l_discount"] <= 0.07)
         & (table["l_quantity"] < 24)
     ]
-    return ctx.scalar_to_df({"total_price": filtered["l_extendedprice"].sum()})
+    return _scalar_frame(ctx, {"total_price": filtered["l_extendedprice"].sum()})
 
 
 def shuffle_join_expression_impl(ctx: DataFrameContext) -> Any:
@@ -1248,8 +1326,9 @@ def filter_in_predicate_subquery_expression_impl(ctx: DataFrameContext) -> Any:
 
 
 def filter_in_predicate_subquery_pandas_impl(ctx: DataFrameContext) -> Any:
-    high_qty = ctx.get_table("lineitem")[ctx.get_table("lineitem")["l_quantity"] > 45]["l_partkey"].unique()
-    return ctx.get_table("part")[ctx.get_table("part")["p_partkey"].isin(high_qty)].reset_index(drop=True)
+    lineitem, part = _tables(ctx, "lineitem", "part")
+    high_qty = collect(lineitem[lineitem["l_quantity"] > 45]["l_partkey"].unique())
+    return part[part["p_partkey"].isin(high_qty)].reset_index(drop=True)
 
 
 def orderby_expression_expression_impl(ctx: DataFrameContext) -> Any:
@@ -1370,9 +1449,14 @@ def window_lead_lag_expression_impl(ctx: DataFrameContext) -> Any:
 def window_lead_lag_pandas_impl(ctx: DataFrameContext) -> Any:
     result = ctx.get_table("orders")
     result = result[(result["o_orderdate"] >= date(1995, 1, 1)) & (result["o_orderdate"] < date(1996, 1, 1))].copy()
-    result = result.sort_values(["o_custkey", "o_orderdate", "o_orderkey"])
-    result["prev_order_price"] = result.groupby("o_custkey")["o_totalprice"].shift(1)
-    result["next_order_price"] = result.groupby("o_custkey")["o_totalprice"].shift(-1)
+
+    def shift_prices(df: Any) -> Any:
+        df = df.sort_values(["o_custkey", "o_orderdate", "o_orderkey"])
+        df["prev_order_price"] = df.groupby("o_custkey")["o_totalprice"].shift(1)
+        df["next_order_price"] = df.groupby("o_custkey")["o_totalprice"].shift(-1)
+        return df
+
+    result = per_group(result, "o_custkey", shift_prices)
     return result[["o_orderkey", "o_orderdate", "o_totalprice", "prev_order_price", "next_order_price"]].reset_index(
         drop=True
     )
@@ -1409,13 +1493,19 @@ def window_dense_rank_expression_impl(ctx: DataFrameContext) -> Any:
 def window_dense_rank_pandas_impl(ctx: DataFrameContext) -> Any:
     result = ctx.get_table("lineitem")
     result = result[result["l_orderkey"] <= 10000].copy()
-    grp = result.groupby("l_orderkey")
-    result["price_rank"] = grp["l_extendedprice"].rank(method="dense", ascending=False)
-    n = grp["l_quantity"].transform("count")
-    rank_min_qty = grp["l_quantity"].rank(method="min", ascending=True)
-    result["quantity_percentile"] = ((rank_min_qty - 1) / (n - 1)).where(n > 1, 0.0)
-    rank_max_price = grp["l_extendedprice"].rank(method="max", ascending=True)
-    result["price_distribution"] = rank_max_price / grp["l_extendedprice"].transform("count")
+
+    def rank_prices(df: Any) -> Any:
+        df = df.copy()
+        grp = df.groupby("l_orderkey")
+        df["price_rank"] = grp["l_extendedprice"].rank(method="dense", ascending=False)
+        n = grp["l_quantity"].transform("count")
+        rank_min_qty = grp["l_quantity"].rank(method="min", ascending=True)
+        df["quantity_percentile"] = ((rank_min_qty - 1) / (n - 1)).where(n > 1, 0.0)
+        rank_max_price = grp["l_extendedprice"].rank(method="max", ascending=True)
+        df["price_distribution"] = rank_max_price / grp["l_extendedprice"].transform("count")
+        return df
+
+    result = per_group(result, "l_orderkey", rank_prices)
     return result.sort_values(["l_orderkey", "price_rank"])[
         [
             "l_orderkey",
@@ -1591,12 +1681,14 @@ def statistical_correlation_expression_impl(ctx: DataFrameContext) -> Any:
 def statistical_correlation_pandas_impl(ctx: DataFrameContext) -> Any:
     filtered = ctx.get_table("lineitem")
     filtered = filtered[(filtered["l_shipdate"] >= date(1995, 1, 1)) & (filtered["l_shipdate"] < date(1996, 1, 1))]
+    filtered = collect(native_frame(filtered[["l_quantity", "l_extendedprice", "l_discount", "l_tax"]]))
     qty = filtered["l_quantity"]
     price = filtered["l_extendedprice"]
     slope = qty.cov(price, ddof=0) / qty.var(ddof=0)
     intercept = price.mean() - slope * qty.mean()
     corr_xy = qty.corr(price)
-    return ctx.scalar_to_df(
+    return _scalar_frame(
+        ctx,
         {
             "qty_price_correlation": corr_xy,
             "qty_discount_covariance": qty.cov(filtered["l_discount"], ddof=0),
@@ -1604,7 +1696,7 @@ def statistical_correlation_pandas_impl(ctx: DataFrameContext) -> Any:
             "price_qty_slope": slope,
             "price_qty_intercept": intercept,
             "regression_r_squared": corr_xy**2,
-        }
+        },
     )
 
 
@@ -1629,14 +1721,18 @@ def statistical_variance_expression_impl(ctx: DataFrameContext) -> Any:
 def statistical_variance_pandas_impl(ctx: DataFrameContext) -> Any:
     orders = ctx.get_table("orders")
     filtered = orders[orders["o_orderdate"] >= date(1995, 1, 1)]
-    return filtered.groupby("o_orderpriority", as_index=False).agg(
-        order_count=("o_orderkey", "count"),
-        avg_price=("o_totalprice", "mean"),
-        price_variance=("o_totalprice", lambda s: s.var(ddof=1)),
-        price_stddev=("o_totalprice", lambda s: s.std(ddof=1)),
-        price_stddev_pop=("o_totalprice", lambda s: s.std(ddof=0)),
-        price_stddev_samp=("o_totalprice", lambda s: s.std(ddof=1)),
-    )
+
+    def summarize(df: Any) -> Any:
+        return df.groupby("o_orderpriority", as_index=False).agg(
+            order_count=("o_orderkey", "count"),
+            avg_price=("o_totalprice", "mean"),
+            price_variance=("o_totalprice", lambda s: s.var(ddof=1)),
+            price_stddev=("o_totalprice", lambda s: s.std(ddof=1)),
+            price_stddev_pop=("o_totalprice", lambda s: s.std(ddof=0)),
+            price_stddev_samp=("o_totalprice", lambda s: s.std(ddof=1)),
+        )
+
+    return per_group(filtered, "o_orderpriority", summarize)
 
 
 def long_predicate_expression_impl(ctx: DataFrameContext) -> Any:
@@ -1678,7 +1774,7 @@ def long_predicate_pandas_impl(ctx: DataFrameContext) -> Any:
         & (merged["o_totalprice"] > 100000)
         & merged["c_nationkey"].isin([1, 2, 3, 4, 5])
     ]
-    return ctx.scalar_to_df({"count": len(filtered)})
+    return _scalar_frame(ctx, {"count": len(filtered)})
 
 
 def array_agg_simple_expression_impl(ctx: DataFrameContext) -> Any:
@@ -1697,11 +1793,12 @@ def array_agg_simple_expression_impl(ctx: DataFrameContext) -> Any:
 
 
 def array_agg_simple_pandas_impl(ctx: DataFrameContext) -> Any:
-    result = (
-        ctx.get_table("partsupp")
-        .groupby("ps_suppkey", as_index=False)
-        .agg(supplied_parts=("ps_partkey", lambda x: sorted(x)), part_count=("ps_partkey", "count"))
-    )
+    def build(df: Any) -> Any:
+        return df.groupby("ps_suppkey", as_index=False).agg(
+            supplied_parts=("ps_partkey", lambda x: sorted(x)), part_count=("ps_partkey", "count")
+        )
+
+    result = per_group(ctx.get_table("partsupp"), "ps_suppkey", build)
     return result[result["part_count"] <= 100].sort_values("ps_suppkey").head(100).reset_index(drop=True)
 
 
@@ -1715,12 +1812,11 @@ def array_agg_distinct_expression_impl(ctx: DataFrameContext) -> Any:
 
 
 def array_agg_distinct_pandas_impl(ctx: DataFrameContext) -> Any:
+    def build(df: Any) -> Any:
+        return df.groupby("c_mktsegment", as_index=False).agg(nation_keys=("c_nationkey", lambda x: sorted(set(x))))
+
     return (
-        ctx.get_table("customer")
-        .groupby("c_mktsegment", as_index=False)
-        .agg(nation_keys=("c_nationkey", lambda x: sorted(set(x))))
-        .sort_values("c_mktsegment")
-        .reset_index(drop=True)
+        per_group(ctx.get_table("customer"), "c_mktsegment", build).sort_values("c_mktsegment").reset_index(drop=True)
     )
 
 
@@ -1781,9 +1877,11 @@ def min_max_runtime_filter_expression_impl(ctx: DataFrameContext) -> Any:
 def min_max_runtime_filter_pandas_impl(ctx: DataFrameContext) -> Any:
     lineitem, orders = _tables(ctx, "lineitem", "orders")
 
-    date_filtered_orders = orders[
-        (orders["o_orderdate"] >= date(1995, 1, 1)) & (orders["o_orderdate"] <= date(1995, 3, 31))
-    ]["o_orderkey"].unique()
+    date_filtered_orders = collect(
+        orders[(orders["o_orderdate"] >= date(1995, 1, 1)) & (orders["o_orderdate"] <= date(1995, 3, 31))][
+            "o_orderkey"
+        ].unique()
+    )
 
     return lineitem[lineitem["l_orderkey"].isin(date_filtered_orders)].reset_index(drop=True)
 
@@ -1810,9 +1908,13 @@ def groupby_all_complex_pandas_impl(ctx: DataFrameContext) -> Any:
 
     orders = ctx.get_table("orders")
 
-    filtered = orders[orders["o_orderdate"] >= date(1995, 1, 1)].copy()
-    dt = filtered["o_orderdate"].astype("datetime64[ns]")
-    filtered["order_month"] = dt - pd.to_timedelta(dt.dt.day - 1, unit="D")
+    def add_month(df: Any) -> Any:
+        df = df.copy()
+        dt = df["o_orderdate"].astype("datetime64[ns]")
+        df["order_month"] = dt - pd.to_timedelta(dt.dt.day - 1, unit="D")
+        return df
+
+    filtered = per_partition(orders[orders["o_orderdate"] >= date(1995, 1, 1)], add_month)
 
     return (
         filtered.groupby(["order_month", "o_orderpriority"], as_index=False)
@@ -1870,9 +1972,9 @@ def predicate_ordering_subquery_expression_impl(ctx: DataFrameContext) -> Any:
 def predicate_ordering_subquery_pandas_impl(ctx: DataFrameContext) -> Any:
     orders, customer = _tables(ctx, "orders", "customer")
 
-    building_customers = customer[(customer["c_mktsegment"] == "BUILDING") & (customer["c_nationkey"] == 1)][
-        "c_custkey"
-    ].unique()
+    building_customers = collect(
+        customer[(customer["c_mktsegment"] == "BUILDING") & (customer["c_nationkey"] == 1)]["c_custkey"].unique()
+    )
 
     filtered_orders = orders[(orders["o_totalprice"] > 100000) & (orders["o_orderdate"] >= date(1995, 1, 1))]
     return filtered_orders[filtered_orders["o_custkey"].isin(building_customers)][["o_orderkey", "o_totalprice"]]
@@ -1937,8 +2039,8 @@ def window_moving_frame_pandas_impl(ctx: DataFrameContext) -> Any:
     import pandas as pd
 
     orders = ctx.get_table("orders")
-    filtered = orders[(orders["o_orderdate"] >= date(1995, 1, 1)) & (orders["o_orderdate"] < date(1996, 1, 1))].copy()
-    filtered = filtered.sort_values(["o_orderdate", "o_orderkey"]).reset_index(drop=True)
+    filtered = orders[(orders["o_orderdate"] >= date(1995, 1, 1)) & (orders["o_orderdate"] < date(1996, 1, 1))]
+    filtered = collect(native_frame(filtered)).sort_values(["o_orderdate", "o_orderkey"]).reset_index(drop=True)
     filtered["moving_avg_6_orders"] = filtered["o_totalprice"].rolling(window=6, min_periods=1).mean()
     daily = filtered.groupby("o_orderdate", as_index=False)["o_totalprice"].sum().sort_values("o_orderdate")
     didx = pd.DatetimeIndex(daily["o_orderdate"].astype("datetime64[ns]"))
@@ -1973,10 +2075,14 @@ def window_unbounded_frame_pandas_impl(ctx: DataFrameContext) -> Any:
     lineitem = ctx.get_table("lineitem")
 
     filtered = lineitem[(lineitem["l_orderkey"] >= 1) & (lineitem["l_orderkey"] <= 5000)].copy()
-    filtered = filtered.sort_values(["l_orderkey", "l_linenumber"])
 
-    filtered["first_line_qty"] = filtered.groupby("l_orderkey")["l_quantity"].transform("first")
-    filtered["last_line_qty"] = filtered.groupby("l_orderkey")["l_quantity"].transform("last")
+    def frame_bounds(df: Any) -> Any:
+        df = df.sort_values(["l_orderkey", "l_linenumber"])
+        df["first_line_qty"] = df.groupby("l_orderkey")["l_quantity"].transform("first")
+        df["last_line_qty"] = df.groupby("l_orderkey")["l_quantity"].transform("last")
+        return df
+
+    filtered = per_group(filtered, "l_orderkey", frame_bounds)
 
     return filtered[["l_orderkey", "l_linenumber", "l_shipdate", "l_quantity", "first_line_qty", "last_line_qty"]]
 
@@ -2118,7 +2224,7 @@ def olap_cube_analysis_pandas_impl(ctx: DataFrameContext) -> Any:
     filtered = orders[(orders["o_orderdate"] >= date(1995, 1, 1)) & (orders["o_orderdate"] < date(1997, 1, 1))]
     merged = filtered.merge(customer, left_on="o_custkey", right_on="c_custkey")
     merged = merged.merge(nation, left_on="c_nationkey", right_on="n_nationkey")
-    merged = merged.merge(region, left_on="n_regionkey", right_on="r_regionkey").copy()
+    merged = collect(native_frame(merged.merge(region, left_on="n_regionkey", right_on="r_regionkey"))).copy()
     od = pd.to_datetime(merged["o_orderdate"])
     merged["nation"] = merged["n_name"]
     merged["region"] = merged["r_name"]
@@ -2193,7 +2299,7 @@ def olap_rollup_analysis_pandas_impl(ctx: DataFrameContext) -> Any:
     filtered = orders[orders["o_orderdate"] >= date(1995, 1, 1)]
     merged = filtered.merge(customer, left_on="o_custkey", right_on="c_custkey")
     merged = merged.merge(nation, left_on="c_nationkey", right_on="n_nationkey")
-    merged = merged.merge(region, left_on="n_regionkey", right_on="r_regionkey").copy()
+    merged = collect(native_frame(merged.merge(region, left_on="n_regionkey", right_on="r_regionkey"))).copy()
     merged["region"] = merged["r_name"]
     merged["nation"] = merged["n_name"]
     merged["market_segment"] = merged["c_mktsegment"]
@@ -2251,7 +2357,8 @@ def pivot_basic_pandas_impl(ctx: DataFrameContext) -> Any:
         & (lineitem["l_shipmode"].isin(modes))
     ][["l_returnflag", "l_shipmode", "l_quantity"]]
 
-    pivoted = filtered.pivot_table(
+    totals = collect(native_frame(filtered).groupby(["l_returnflag", "l_shipmode"])["l_quantity"].sum().reset_index())
+    pivoted = totals.pivot_table(
         index="l_returnflag",
         columns="l_shipmode",
         values="l_quantity",
@@ -2377,9 +2484,7 @@ def optimizer_common_subexpression_pandas_impl(ctx: DataFrameContext) -> Any:
     filtered["revenue_with_tax"] = revenue
     filtered = filtered[filtered["revenue_with_tax"] > 1000].copy()
     rev = filtered["revenue_with_tax"]
-    filtered["value_category"] = "Low Value"
-    filtered.loc[rev > 10000, "value_category"] = "Medium Value"
-    filtered.loc[rev > 50000, "value_category"] = "High Value"
+    filtered["value_category"] = pandas_select([rev > 50000, rev > 10000], ["High Value", "Medium Value"], "Low Value")
     filtered["rounded_revenue"] = rev.round(2)
     return (
         filtered[
@@ -2786,7 +2891,13 @@ def qualify_row_number_expression_impl(ctx: DataFrameContext) -> Any:
 
 def qualify_row_number_pandas_impl(ctx: DataFrameContext) -> Any:
     result = _orders_customer_since_1995_pandas(ctx)
-    result["order_rank"] = result.groupby("c_custkey")["o_totalprice"].rank(method="first", ascending=False)
+
+    def rank_orders(df: Any) -> Any:
+        df = df.copy()
+        df["order_rank"] = df.groupby("c_custkey")["o_totalprice"].rank(method="first", ascending=False)
+        return df
+
+    result = per_group(result, "c_custkey", rank_orders)
     cols = ["c_custkey", "c_name", "o_orderkey", "o_orderdate", "o_totalprice", "order_rank"]
     return result[result["order_rank"] <= 3][cols].sort_values(["c_custkey", "order_rank"]).reset_index(drop=True)
 
@@ -2799,16 +2910,6 @@ def qualify_dense_rank_expression_impl(ctx: DataFrameContext) -> Any:
         result.filter(ctx.col("price_rank") <= ctx.lit(2))
         .select("p_type", "p_name", "p_retailprice", "price_rank")
         .sort(["p_type", "price_rank", "p_name"])
-    )
-
-
-def qualify_dense_rank_pandas_impl(ctx: DataFrameContext) -> Any:
-    result = ctx.get_table("part").copy()
-    result["price_rank"] = result.groupby("p_type")["p_retailprice"].rank(method="dense", ascending=False)
-    return (
-        result[result["price_rank"] <= 2][["p_type", "p_name", "p_retailprice", "price_rank"]]
-        .sort_values(["p_type", "price_rank", "p_name"])
-        .reset_index(drop=True)
     )
 
 
@@ -2833,19 +2934,21 @@ def qualify_ntile_pandas_impl(ctx: DataFrameContext) -> Any:
     import numpy as np
 
     n = 4
-    result = (
-        _orders_customer_since_1995_pandas(ctx)
-        .sort_values(["c_mktsegment", "o_totalprice", "o_orderkey"], kind="stable")
-        .copy()
-    )
-    grp = result.groupby("c_mktsegment")
-    r0 = grp.cumcount()
-    cnt = grp["o_orderkey"].transform("count")
-    base = cnt // n
-    rem = cnt % n
-    big = rem * (base + 1)
-    quartile = np.where(r0 < big, r0 // (base + 1) + 1, rem + (r0 - big) // base.replace(0, 1) + 1)
-    result["quartile"] = quartile.astype("int64")
+    result = _orders_customer_since_1995_pandas(ctx)
+
+    def assign_quartile(df: Any) -> Any:
+        df = df.sort_values(["c_mktsegment", "o_totalprice", "o_orderkey"], kind="stable")
+        grp = df.groupby("c_mktsegment")
+        r0 = grp.cumcount()
+        cnt = grp["o_orderkey"].transform("count")
+        base = cnt // n
+        rem = cnt % n
+        big = rem * (base + 1)
+        quartile = np.where(r0 < big, r0 // (base + 1) + 1, rem + (r0 - big) // base.replace(0, 1) + 1)
+        df["quartile"] = quartile.astype("int64")
+        return df
+
+    result = per_group(result, "c_mktsegment", assign_quartile)
     return (
         result[result["quartile"] == n][["c_mktsegment", "o_orderkey", "o_totalprice", "quartile"]]
         .sort_values(["c_mktsegment", "o_totalprice", "o_orderkey"], ascending=[True, False, False])
@@ -2873,10 +2976,16 @@ def qualify_percentile_expression_impl(ctx: DataFrameContext) -> Any:
 def qualify_percentile_pandas_impl(ctx: DataFrameContext) -> Any:
     result = ctx.get_table("orders")
     result = result[result["o_orderdate"] >= date(1995, 1, 1)].copy()
-    grp = result.groupby("o_orderpriority")["o_totalprice"]
-    n = grp.transform("count")
-    rank_min = grp.rank(method="min", ascending=True)
-    result["price_percentile"] = ((rank_min - 1) / (n - 1)).where(n > 1, 0.0)
+
+    def rank_percentile(df: Any) -> Any:
+        df = df.copy()
+        grp = df.groupby("o_orderpriority")["o_totalprice"]
+        n = grp.transform("count")
+        rank_min = grp.rank(method="min", ascending=True)
+        df["price_percentile"] = ((rank_min - 1) / (n - 1)).where(n > 1, 0.0)
+        return df
+
+    result = per_group(result, "o_orderpriority", rank_percentile)
     return (
         result[result["price_percentile"] >= 0.9][["o_orderpriority", "o_orderkey", "o_totalprice", "price_percentile"]]
         .sort_values(["o_orderpriority", "o_totalprice"], ascending=[True, False])
@@ -2905,8 +3014,14 @@ def qualify_cume_dist_expression_impl(ctx: DataFrameContext) -> Any:
 def qualify_cume_dist_pandas_impl(ctx: DataFrameContext) -> Any:
     lineitem = ctx.get_table("lineitem")
     result = lineitem[(lineitem["l_shipdate"] >= date(1995, 1, 1)) & (lineitem["l_shipdate"] < date(1996, 1, 1))].copy()
-    grp = result.groupby("l_shipdate")["l_quantity"]
-    result["quantity_cumulative_dist"] = grp.rank(method="max") / grp.transform("count")
+
+    def rank_distribution(df: Any) -> Any:
+        df = df.copy()
+        grp = df.groupby("l_shipdate")["l_quantity"]
+        df["quantity_cumulative_dist"] = grp.rank(method="max") / grp.transform("count")
+        return df
+
+    result = per_group(result, "l_shipdate", rank_distribution)
     return (
         result[result["quantity_cumulative_dist"] >= 0.95][
             ["l_shipdate", "l_orderkey", "l_linenumber", "l_quantity", "quantity_cumulative_dist"]
@@ -2934,8 +3049,14 @@ def qualify_lag_lead_expression_impl(ctx: DataFrameContext) -> Any:
 
 
 def qualify_lag_lead_pandas_impl(ctx: DataFrameContext) -> Any:
-    result = _orders_customer_since_1995_pandas(ctx).sort_values(["c_custkey", "o_orderdate", "o_orderkey"])
-    result["prev_order_price"] = result.groupby("c_custkey")["o_totalprice"].shift(1)
+    result = _orders_customer_since_1995_pandas(ctx)
+
+    def shift_prices(df: Any) -> Any:
+        df = df.sort_values(["c_custkey", "o_orderdate", "o_orderkey"])
+        df["prev_order_price"] = df.groupby("c_custkey")["o_totalprice"].shift(1)
+        return df
+
+    result = per_group(result, "c_custkey", shift_prices)
     return (
         result[result["o_totalprice"] > result["prev_order_price"]][
             ["c_custkey", "c_name", "o_orderkey", "o_orderdate", "o_totalprice", "prev_order_price"]
@@ -2995,15 +3116,18 @@ def struct_access_expression_impl(ctx: DataFrameContext) -> Any:
 def struct_access_pandas_impl(ctx: DataFrameContext) -> Any:
     customer = ctx.get_table("customer")
 
-    filtered = customer[customer["c_nationkey"] == 1].copy()
+    filtered = customer[customer["c_nationkey"] == 1]
 
-    filtered["info"] = filtered.apply(
-        lambda row: {"name": row["c_name"], "phone": row["c_phone"], "balance": row["c_acctbal"]}, axis=1
-    )
+    def extract(df: Any) -> Any:
+        df = df.copy()
+        df["info"] = df.apply(
+            lambda row: {"name": row["c_name"], "phone": row["c_phone"], "balance": row["c_acctbal"]}, axis=1
+        )
+        df["name"] = df["info"].apply(lambda x: x["name"])
+        df["balance"] = df["info"].apply(lambda x: x["balance"])
+        return df
 
-    filtered["name"] = filtered["info"].apply(lambda x: x["name"])
-    filtered["balance"] = filtered["info"].apply(lambda x: x["balance"])
-
+    filtered = per_partition(filtered, extract)
     return filtered[filtered["balance"] > 5000][["c_custkey", "name", "balance"]].head(100).reset_index(drop=True)
 
 
@@ -3021,8 +3145,11 @@ def array_contains_expression_impl(ctx: DataFrameContext) -> Any:
 
 
 def array_contains_pandas_impl(ctx: DataFrameContext) -> Any:
-    supplier_parts = _pandas_grouped_list(ctx.get_table("partsupp"), "ps_suppkey", "ps_partkey", "parts")
-    supplier_parts["has_part_100"] = supplier_parts["parts"].apply(lambda x: 100 in x)
+    def derive(df: Any) -> Any:
+        df["has_part_100"] = df["parts"].apply(lambda x: 100 in x)
+        return df
+
+    supplier_parts = _pandas_grouped_list(ctx.get_table("partsupp"), "ps_suppkey", "ps_partkey", "parts", derive)
     return supplier_parts.sort_values("ps_suppkey")[["ps_suppkey", "has_part_100"]].head(100).reset_index(drop=True)
 
 
@@ -3039,8 +3166,11 @@ def array_distinct_expression_impl(ctx: DataFrameContext) -> Any:
 
 
 def array_distinct_pandas_impl(ctx: DataFrameContext) -> Any:
-    ship_modes = _pandas_grouped_list(ctx.get_table("lineitem"), "l_orderkey", "l_shipmode", "modes")
-    ship_modes["unique_modes"] = ship_modes["modes"].apply(lambda x: sorted(set(x)))
+    def derive(df: Any) -> Any:
+        df["unique_modes"] = df["modes"].apply(lambda x: sorted(set(x)))
+        return df
+
+    ship_modes = _pandas_grouped_list(ctx.get_table("lineitem"), "l_orderkey", "l_shipmode", "modes", derive)
     return ship_modes.sort_values("l_orderkey")[["l_orderkey", "unique_modes"]].head(100).reset_index(drop=True)
 
 
@@ -3057,8 +3187,11 @@ def array_length_expression_impl(ctx: DataFrameContext) -> Any:
 
 
 def array_length_pandas_impl(ctx: DataFrameContext) -> Any:
-    supplier_parts = _pandas_grouped_list(ctx.get_table("partsupp"), "ps_suppkey", "ps_partkey", "parts")
-    supplier_parts["num_parts"] = supplier_parts["parts"].apply(len)
+    def derive(df: Any) -> Any:
+        df["num_parts"] = df["parts"].apply(len)
+        return df
+
+    supplier_parts = _pandas_grouped_list(ctx.get_table("partsupp"), "ps_suppkey", "ps_partkey", "parts", derive)
     return (
         supplier_parts.sort_values(["num_parts", "ps_suppkey"], ascending=[False, True])[["ps_suppkey", "num_parts"]]
         .head(100)
@@ -3079,9 +3212,12 @@ def array_min_max_expression_impl(ctx: DataFrameContext) -> Any:
 
 
 def array_min_max_pandas_impl(ctx: DataFrameContext) -> Any:
-    order_prices = _pandas_grouped_list(ctx.get_table("orders"), "o_custkey", "o_totalprice", "prices")
-    order_prices["min_order"] = order_prices["prices"].apply(min)
-    order_prices["max_order"] = order_prices["prices"].apply(max)
+    def derive(df: Any) -> Any:
+        df["min_order"] = df["prices"].apply(min)
+        df["max_order"] = df["prices"].apply(max)
+        return df
+
+    order_prices = _pandas_grouped_list(ctx.get_table("orders"), "o_custkey", "o_totalprice", "prices", derive)
     return (
         order_prices.sort_values("o_custkey")[["o_custkey", "min_order", "max_order"]].head(100).reset_index(drop=True)
     )
@@ -3151,12 +3287,14 @@ def array_slice_expression_impl(ctx: DataFrameContext) -> Any:
 def array_slice_pandas_impl(ctx: DataFrameContext) -> Any:
     orders = ctx.get_table("orders")
 
-    order_prices = orders.groupby("o_custkey")["o_totalprice"].apply(lambda x: sorted(x, reverse=True)).reset_index()
-    order_prices.columns = ["o_custkey", "prices"]
+    def build(df: Any) -> Any:
+        order_prices = df.groupby("o_custkey")["o_totalprice"].apply(lambda x: sorted(x, reverse=True)).reset_index()
+        order_prices.columns = ["o_custkey", "prices"]
+        order_prices = order_prices[order_prices["prices"].apply(len) >= 5].copy()
+        order_prices["top_3_orders"] = order_prices["prices"].apply(lambda x: x[:3])
+        return order_prices
 
-    order_prices = order_prices[order_prices["prices"].apply(len) >= 5].copy()
-    order_prices["top_3_orders"] = order_prices["prices"].apply(lambda x: x[:3])
-
+    order_prices = per_group(orders, "o_custkey", build)
     return order_prices.sort_values("o_custkey")[["o_custkey", "top_3_orders"]].head(100).reset_index(drop=True)
 
 
@@ -3173,8 +3311,11 @@ def array_sort_expression_impl(ctx: DataFrameContext) -> Any:
 
 
 def array_sort_pandas_impl(ctx: DataFrameContext) -> Any:
-    part_sizes = _pandas_grouped_list(ctx.get_table("part"), "p_brand", "p_size", "sizes")
-    part_sizes["sorted_sizes"] = part_sizes["sizes"].apply(sorted)
+    def derive(df: Any) -> Any:
+        df["sorted_sizes"] = df["sizes"].apply(sorted)
+        return df
+
+    part_sizes = _pandas_grouped_list(ctx.get_table("part"), "p_brand", "p_size", "sizes", derive)
     return part_sizes.sort_values("p_brand")[["p_brand", "sorted_sizes"]].head(50).reset_index(drop=True)
 
 
@@ -3223,10 +3364,12 @@ def map_access_expression_impl(ctx: DataFrameContext) -> Any:
 
 
 def map_access_pandas_impl(ctx: DataFrameContext) -> Any:
-    result = _partsupp_map_pandas(ctx, 10)
+    def derive(df: Any) -> Any:
+        df["cost_for_part_1"] = df["part_costs"].apply(lambda m: m.get("1"))
+        df["cost_for_part_5"] = df["part_costs"].apply(lambda m: m.get("5"))
+        return df
 
-    result["cost_for_part_1"] = result["part_costs"].apply(lambda m: m.get("1"))
-    result["cost_for_part_5"] = result["part_costs"].apply(lambda m: m.get("5"))
+    result = _partsupp_map_pandas(ctx, 10, derive)
 
     return result[["ps_suppkey", "cost_for_part_1", "cost_for_part_5"]].head(10).reset_index(drop=True)
 
@@ -3242,10 +3385,12 @@ def map_keys_values_expression_impl(ctx: DataFrameContext) -> Any:
 
 
 def map_keys_values_pandas_impl(ctx: DataFrameContext) -> Any:
-    result = _partsupp_map_pandas(ctx, 5)
+    def derive(df: Any) -> Any:
+        df["part_ids"] = df["part_costs"].apply(lambda m: list(m.keys()))
+        df["costs"] = df["part_costs"].apply(lambda m: list(m.values()))
+        return df
 
-    result["part_ids"] = result["part_costs"].apply(lambda m: list(m.keys()))
-    result["costs"] = result["part_costs"].apply(lambda m: list(m.values()))
+    result = _partsupp_map_pandas(ctx, 5, derive)
 
     return result[["ps_suppkey", "part_ids", "costs"]].reset_index(drop=True)
 
@@ -3265,8 +3410,11 @@ def list_filter_expression_impl(ctx: DataFrameContext) -> Any:
 
 
 def list_filter_pandas_impl(ctx: DataFrameContext) -> Any:
-    order_prices = _pandas_grouped_list(ctx.get_table("orders"), "o_custkey", "o_totalprice", "prices")
-    order_prices["large_orders"] = order_prices["prices"].apply(lambda x: [p for p in x if p > 100000])
+    def derive(df: Any) -> Any:
+        df["large_orders"] = df["prices"].apply(lambda x: [p for p in x if p > 100000])
+        return df
+
+    order_prices = _pandas_grouped_list(ctx.get_table("orders"), "o_custkey", "o_totalprice", "prices", derive)
     return order_prices.sort_values("o_custkey")[["o_custkey", "large_orders"]].head(100).reset_index(drop=True)
 
 
@@ -3285,8 +3433,11 @@ def list_transform_expression_impl(ctx: DataFrameContext) -> Any:
 
 
 def list_transform_pandas_impl(ctx: DataFrameContext) -> Any:
-    part_prices = _pandas_grouped_list(ctx.get_table("part"), "p_brand", "p_retailprice", "prices")
-    part_prices["prices_with_tax"] = part_prices["prices"].apply(lambda x: [p * 1.1 for p in x])
+    def derive(df: Any) -> Any:
+        df["prices_with_tax"] = df["prices"].apply(lambda x: [p * 1.1 for p in x])
+        return df
+
+    part_prices = _pandas_grouped_list(ctx.get_table("part"), "p_brand", "p_retailprice", "prices", derive)
     return part_prices.sort_values("p_brand")[["p_brand", "prices_with_tax"]].head(50).reset_index(drop=True)
 
 
@@ -3303,8 +3454,11 @@ def list_reduce_expression_impl(ctx: DataFrameContext) -> Any:
 
 
 def list_reduce_pandas_impl(ctx: DataFrameContext) -> Any:
-    quantities = _pandas_grouped_list(ctx.get_table("lineitem"), "l_orderkey", "l_quantity", "qtys")
-    quantities["total_qty"] = quantities["qtys"].apply(sum)
+    def derive(df: Any) -> Any:
+        df["total_qty"] = df["qtys"].apply(sum)
+        return df
+
+    quantities = _pandas_grouped_list(ctx.get_table("lineitem"), "l_orderkey", "l_quantity", "qtys", derive)
     return quantities.sort_values("l_orderkey")[["l_orderkey", "total_qty"]].head(100).reset_index(drop=True)
 
 
@@ -3435,13 +3589,19 @@ def timeseries_trend_analysis_pandas_impl(ctx: DataFrameContext) -> Any:
 
     orders = ctx.get_table("orders")
     df = orders[(orders["o_orderdate"] >= date(1995, 1, 1)) & (orders["o_orderdate"] < date(1997, 1, 1))].copy()
-    df["order_month"] = pd.to_datetime(df["o_orderdate"]).dt.to_period("M").dt.to_timestamp()
+
+    def add_month(frame: Any) -> Any:
+        frame = frame.copy()
+        frame["order_month"] = pd.to_datetime(frame["o_orderdate"]).dt.to_period("M").dt.to_timestamp()
+        return frame
+
+    df = per_partition(df, add_month)
     monthly = df.groupby("order_month", as_index=False).agg(
         order_count=("o_orderkey", "count"),
         monthly_revenue=("o_totalprice", "sum"),
         avg_order_value=("o_totalprice", "mean"),
     )
-    monthly = monthly.sort_values("order_month")
+    monthly = collect(native_frame(monthly)).sort_values("order_month")
     monthly["month_epoch"] = monthly["order_month"].astype("datetime64[s]").astype("int64")
     epoch = monthly["month_epoch"]
     slope = epoch.cov(monthly["monthly_revenue"], ddof=0) / epoch.var(ddof=0)
