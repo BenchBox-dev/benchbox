@@ -25,6 +25,7 @@ _DIALECT_READ = {
     "duckdb": "duckdb",
     "redshift": "redshift",
     "snowflake": "snowflake",
+    "spark": "spark",
 }
 
 _HIGH_RISK_CATEGORIES = {
