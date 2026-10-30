@@ -20737,6 +20737,13 @@
       "status": "open",
       "title": "Release UAT CedarDB cells all get connection refused after a successful compose start"
     },
+    "release-uat-dataframe-runner-shutdown-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Release UAT polars-df, pandas-df and datafusion-df runners are shut down mid-sweep"
+    },
     "release-uat-influxdb-extra-missing-20261030": {
       "claim": null,
       "needs": [],
