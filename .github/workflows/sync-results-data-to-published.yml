@@ -417,6 +417,7 @@ jobs:
           OPEN_MIRRORS=$(gh pr list \
             --base published-results \
             --state open \
+            --limit 1000 \
             --json number,headRefName,isCrossRepository \
             --jq '.[] | select(.isCrossRepository == false and (.headRefName | startswith("auto/results-mirror-"))) | "\(.number) \(.headRefName)"')
 

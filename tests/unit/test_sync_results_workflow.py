@@ -608,6 +608,7 @@ def test_superseded_mirror_prs_close_only_when_their_commit_is_an_ancestor(tmp_p
         return {"number": number, "headRefName": head, "isCrossRepository": cross}
 
     listing = [
+        *[pr(100 + index, f"feature/open-{index}") for index in range(30)],
         pr(10, f"auto/results-mirror-{older[:8]}"),
         pr(11, f"auto/results-mirror-{current[:8]}"),
         pr(12, f"auto/results-mirror-{sibling[:8]}"),
@@ -624,10 +625,14 @@ def test_superseded_mirror_prs_close_only_when_their_commit_is_an_ancestor(tmp_p
     fake_gh.write_text(
         "#!/usr/bin/env bash\n"
         'if [[ "$1 $2" == "pr list" ]]; then\n'
-        "  while [[ $# -gt 0 ]]; do\n"
-        '    if [[ "$1" == "--jq" ]]; then jq -r "$2" "$LISTING_FILE"; exit 0; fi\n'
-        "    shift\n"
+        "  limit=30; filter=''\n"
+        '  args=("$@")\n'
+        "  for ((i = 0; i < ${#args[@]}; i++)); do\n"
+        '    if [[ "${args[i]}" == "--limit" ]]; then limit="${args[i+1]}"; fi\n'
+        '    if [[ "${args[i]}" == "--jq" ]]; then filter="${args[i+1]}"; fi\n'
         "  done\n"
+        '  jq -c ".[0:$limit]" "$LISTING_FILE" | jq -r "$filter"\n'
+        "  exit 0\n"
         "fi\n"
         'if [[ "$1 $2" == "pr close" ]]; then echo "$3" >> "$CLOSED_LOG"; exit 0; fi\n'
         "exit 1\n",
