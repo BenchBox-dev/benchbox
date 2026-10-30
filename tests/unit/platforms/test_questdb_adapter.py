@@ -524,7 +524,6 @@ class TestQuestDBAdapter:
             )
             adapter.create_schema(Mock(), mock_conn)
 
-        mock_cursor.execute.assert_called_once()
         executed_sql = mock_cursor.execute.call_args[0][0]
         assert "CREATE TABLE" in executed_sql
         assert "FOREIGN KEY" not in executed_sql
@@ -558,6 +557,33 @@ class TestQuestDBAdapter:
 
         executed_sql = mock_cursor.execute.call_args[0][0]
         assert executed_sql.upper() == "CREATE TABLE LINEITEM (L_ORDERKEY BIGINT, L_DISCOUNT DOUBLE, L_TAX DOUBLE)"
+
+    def test_create_schema_pre_drops_schema_defined_tables(self, questdb_stubs):
+        mock_conn = Mock()
+        mock_cursor = Mock()
+        mock_conn.cursor.return_value = mock_cursor
+
+        adapter = QuestDBAdapter()
+        benchmark = Mock()
+        benchmark.tables = {"orders": "orders.tbl"}
+
+        with patch.object(adapter, "_create_schema_with_tuning") as mock_schema:
+            mock_schema.return_value = (
+                "CREATE TABLE orders (id INT);"
+                "CREATE TABLE batch_metadata (batch_id INT);"
+                "CREATE TABLE ddl_truncate_target (o_orderkey INT)"
+            )
+            adapter.create_schema(benchmark, mock_conn)
+
+        executed = [call[0][0] for call in mock_cursor.execute.call_args_list]
+        drops = [sql for sql in executed if sql.startswith("DROP TABLE IF EXISTS")]
+        assert drops == [
+            'DROP TABLE IF EXISTS "orders"',
+            'DROP TABLE IF EXISTS "batch_metadata"',
+            'DROP TABLE IF EXISTS "ddl_truncate_target"',
+        ]
+        first_create = next(i for i, sql in enumerate(executed) if sql.startswith("CREATE TABLE"))
+        assert executed.index(drops[-1]) < first_create
 
     def test_platform_registry_requirements_include_requests(self):
         info = PlatformRegistry.get_platform_info("questdb")

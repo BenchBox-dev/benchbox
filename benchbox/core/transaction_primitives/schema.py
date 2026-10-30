@@ -14,6 +14,7 @@ from benchbox.core.tpch.schema import (
     REGION,
     SUPPLIER,
 )
+from benchbox.core.transactional.staging_types import translate_staging_column_type
 
 
 def _load_schema_specs() -> dict[str, Any]:
@@ -103,7 +104,7 @@ def get_create_table_sql(table_name: str, dialect: str = "standard", if_not_exis
     columns: list[str] = []
 
     for col in table["columns"]:
-        col_def = f"{col['name']} {col['type']}"
+        col_def = f"{col['name']} {translate_staging_column_type(col['type'], dialect)}"
         if supports_pk and col.get("primary_key"):
             col_def += " PRIMARY KEY"
         if not col.get("nullable", False) and not col.get("primary_key"):
