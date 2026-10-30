@@ -43,3 +43,22 @@ def test_nunique_with_as_index_keeps_group_keys_as_index():
 
     assert result.index.name == "k"
     assert result[result["n_x"] > 1].index.tolist() == [10]
+
+
+def test_nunique_with_as_index_and_composite_key_keeps_key_columns():
+    dd = pytest.importorskip("dask.dataframe")
+    import pandas as pd
+
+    from benchbox.platforms.dataframe.dask_df import DaskDataFrameAdapter
+
+    frame = pd.DataFrame({"a": [1, 1, 2], "b": [1, 2, 3], "x": [1, 2, 3]})
+    adapter = DaskDataFrameAdapter(execution_engine="threaded")
+
+    result = adapter.groupby_agg(
+        dd.from_pandas(frame, npartitions=2),
+        by=["a", "b"],
+        agg_spec={"n_x": ("x", "nunique")},
+        as_index=True,
+    ).compute()
+
+    assert {"a", "b", "n_x"} <= set(result.columns)

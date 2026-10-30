@@ -601,8 +601,8 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
 
         ordered = by + [name for name in column_order if name in result.columns and name not in by]
         result = result[ordered]
-        if as_index:
-            result = result.set_index(by)
+        if as_index and len(by) == 1:
+            result = result.set_index(by[0])
         return result
 
     def groupby_size(
