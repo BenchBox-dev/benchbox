@@ -1,16 +1,24 @@
 from __future__ import annotations
 
+import re
 from itertools import combinations, product
 
-from benchbox._vendor.sqlglot import exp
+from benchbox.platforms.questdb_rewrites import exp
 
 ORDER = 200
+
+_GROUPING_SYNTAX = re.compile(r"\b(?:rollup|cube|grouping\s+sets)\b", re.IGNORECASE)
 
 _GROUP_PREFIX = "__g"
 _FLAG_PREFIX = "__f"
 _AGG_PREFIX = "__a"
+_ORDER_PREFIX = "__o"
 _RESULT_ALIAS = "__staged"
 _STAGE_ARGS = ("with_", "having", "qualify", "order", "limit", "offset", "distinct")
+
+
+def applies(sql: str) -> bool:
+    return _GROUPING_SYNTAX.search(sql) is not None
 
 
 def _members(element: exp.Expr) -> list[exp.Expr]:
@@ -63,20 +71,60 @@ def _index(items: list[exp.Expr], target: exp.Expr) -> int:
     return -1
 
 
+_GROUP_CONTAINERS = (exp.Group, exp.Rollup, exp.Cube, exp.GroupingSets, exp.Tuple)
+
+
+def _is_group_element(literal: exp.Expr) -> bool:
+    parent = literal.parent
+    if isinstance(parent, exp.Paren):
+        parent = parent.parent
+    return isinstance(parent, _GROUP_CONTAINERS)
+
+
+def _aliased_expression(select: exp.Select, column: exp.Column) -> exp.Expr | None:
+    if column.table:
+        return None
+    for projection in select.expressions:
+        if isinstance(projection, exp.Alias) and projection.alias.lower() == column.name.lower():
+            inner = projection.this
+            return None if _same(inner, column) else inner
+    return None
+
+
+def resolve_ordinals(select: exp.Select, group: exp.Group) -> exp.Group | None:
+    resolved = group.copy()
+    for literal in list(resolved.find_all(exp.Literal)):
+        if not literal.is_int or not _is_group_element(literal):
+            continue
+        position = int(literal.name) - 1
+        if not 0 <= position < len(select.expressions):
+            return None
+        projection = select.expressions[position]
+        literal.replace((projection.this if isinstance(projection, exp.Alias) else projection).copy())
+    for column in list(resolved.find_all(exp.Column)):
+        if not _is_group_element(column):
+            continue
+        aliased = _aliased_expression(select, column)
+        if aliased is not None:
+            column.replace(aliased.copy())
+    return resolved
+
+
+def has_grouping_syntax(group: exp.Group) -> bool:
+    if any(isinstance(element, (exp.Rollup, exp.Cube, exp.GroupingSets)) for element in group.expressions):
+        return True
+    return any(group.args.get(key) for key in ("rollup", "cube", "grouping_sets", "totals"))
+
+
 def _grouping_sets(group: exp.Group) -> list[list[exp.Expr]] | None:
     if not any(isinstance(element, (exp.Rollup, exp.Cube, exp.GroupingSets)) for element in group.expressions):
         return None
     if any(group.args.get(key) for key in ("rollup", "cube", "grouping_sets", "totals")):
         return None
-    combined = [
+    return [
         _dedupe([member for part in parts for member in part])
         for parts in product(*map(_element_sets, group.expressions))
     ]
-    unique: list[list[exp.Expr]] = []
-    for candidate in combined:
-        if candidate not in unique:
-            unique.append(candidate)
-    return unique
 
 
 def _is_grouping_call(node: exp.Expr) -> bool:
@@ -151,22 +199,20 @@ def _build_level(
     ]
     level.set("expressions", projections)
     level.set("group", exp.Group(expressions=[member.copy() for member in grouping_set]) if grouping_set else None)
-    if not aggregates:
-        level.set("distinct", exp.Distinct())
     return level
 
 
 def _flag_expression(node: exp.Expr, columns: list[exp.Expr]) -> exp.Expr:
     arguments = _grouping_arguments(node)
-    flags: exp.Expr | None = None
-    for argument in arguments:
+    terms: list[exp.Expr] = []
+    for offset, argument in enumerate(arguments):
         flag = exp.column(f"{_FLAG_PREFIX}{_index(columns, argument)}")
-        flags = (
-            flag
-            if flags is None
-            else exp.Add(this=exp.Mul(this=flags, expression=exp.Literal.number(2)), expression=flag)
-        )
-    return exp.Paren(this=flags) if len(arguments) > 1 else flags
+        weight = 2 ** (len(arguments) - 1 - offset)
+        terms.append(flag if weight == 1 else exp.Mul(this=flag, expression=exp.Literal.number(weight)))
+    total = terms[0]
+    for term in terms[1:]:
+        total = exp.Add(this=total, expression=term)
+    return exp.Paren(this=total) if len(terms) > 1 else total
 
 
 def _make_lowering(columns: list[exp.Expr], aggregates: list[exp.Expr]):
@@ -180,7 +226,47 @@ def _make_lowering(columns: list[exp.Expr], aggregates: list[exp.Expr]):
             return exp.column(f"{_GROUP_PREFIX}{position}")
         return node
 
-    return lambda expression: expression.copy().transform(substitute)
+    def lower(node: exp.Expr) -> exp.Expr:
+        if isinstance(node, exp.Select):
+            return node
+        replacement = substitute(node)
+        if replacement is not node:
+            return replacement
+        for key, child in list(node.args.items()):
+            if isinstance(child, list):
+                node.set(key, [lower(item) if isinstance(item, exp.Expr) else item for item in child])
+            elif isinstance(child, exp.Expr):
+                node.set(key, lower(child))
+        return node
+
+    return lambda expression: lower(expression.copy())
+
+
+def _scope_windows(node: exp.Expr):
+    if isinstance(node, exp.Select):
+        return
+    if isinstance(node, exp.Window):
+        yield node
+    for child in node.args.values():
+        for item in child if isinstance(child, list) else [child]:
+            if isinstance(item, exp.Expr):
+                yield from _scope_windows(item)
+
+
+def _hoist_window_orderings(roots: list[exp.Expr]) -> list[exp.Expr]:
+    hoisted: list[exp.Expr] = []
+    for root in roots:
+        for window in list(_scope_windows(root)):
+            order = window.args.get("order")
+            for item in order.expressions if order is not None else []:
+                if isinstance(item.this, (exp.Column, exp.Literal)):
+                    continue
+                position = _index(hoisted, item.this)
+                if position < 0:
+                    hoisted.append(item.this.copy())
+                    position = len(hoisted) - 1
+                item.set("this", exp.column(f"{_ORDER_PREFIX}{position}"))
+    return hoisted
 
 
 def _build_outer(select: exp.Select, union: exp.Expr, lower) -> exp.Select:
@@ -189,16 +275,25 @@ def _build_outer(select: exp.Select, union: exp.Expr, lower) -> exp.Select:
         name = projection.alias_or_name
         lowered = lower(projection.this if isinstance(projection, exp.Alias) else projection)
         projections.append(exp.alias_(lowered, name) if name else lowered)
+    clauses: dict[str, exp.Expr] = {}
+    if select.args.get("having") is not None:
+        clauses["where"] = exp.Where(this=lower(select.args["having"].this))
+    if select.args.get("qualify") is not None:
+        clauses["qualify"] = exp.Qualify(this=lower(select.args["qualify"].this))
+    if select.args.get("order") is not None:
+        clauses["order"] = lower(select.args["order"])
+    hoisted = _hoist_window_orderings([*projections, *clauses.values()])
+    if hoisted:
+        staged = [exp.alias_(exp.column(projection.alias), projection.alias) for projection in union.selects]
+        derived = [exp.alias_(expression, f"{_ORDER_PREFIX}{position}") for position, expression in enumerate(hoisted)]
+        base = exp.Subquery(this=union, alias=exp.TableAlias(this=exp.to_identifier(f"{_RESULT_ALIAS}_base")))
+        union = exp.select(*staged, *derived).from_(base)
     source = exp.Subquery(this=union, alias=exp.TableAlias(this=exp.to_identifier(_RESULT_ALIAS)))
     outer = exp.select(*projections).from_(source)
     if select.args.get("distinct") is not None:
         outer.set("distinct", select.args["distinct"].copy())
-    if select.args.get("having") is not None:
-        outer.set("where", exp.Where(this=lower(select.args["having"].this)))
-    if select.args.get("qualify") is not None:
-        outer.set("qualify", exp.Qualify(this=lower(select.args["qualify"].this)))
-    if select.args.get("order") is not None:
-        outer.set("order", lower(select.args["order"]))
+    for key, clause in clauses.items():
+        outer.set(key, clause)
     for key in ("limit", "offset", "with_"):
         if select.args.get(key) is not None:
             outer.set(key, select.args[key].copy())
@@ -225,7 +320,10 @@ def stage_aggregation(select: exp.Select, sets: list[list[exp.Expr]]) -> exp.Exp
 
 def _rewrite_select(select: exp.Select) -> exp.Expr | None:
     group = select.args.get("group")
-    sets = _grouping_sets(group) if group is not None else None
+    if group is None:
+        return None
+    resolved = resolve_ordinals(select, group)
+    sets = _grouping_sets(resolved) if resolved is not None else None
     return stage_aggregation(select, sets) if sets is not None else None
 
 
