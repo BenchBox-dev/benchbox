@@ -10,6 +10,7 @@ from benchbox._vendor.sqlglot.errors import ParseError
 from benchbox.platforms.starrocks.workload import (
     StarRocksWorkloadMixin,
     _alias_derived_tables,
+    _stream_load_row,
     _stream_load_treats_empty_as_null,
 )
 
@@ -111,3 +112,23 @@ class TestStreamLoadEmptyAsNull:
 
     def test_tab_delimited_keeps_empty_literal(self):
         assert _stream_load_treats_empty_as_null("\t") is False
+
+
+class TestStreamLoadTpcNulls:
+    def test_tpc_null_marker_treats_empty_as_null(self):
+        assert _stream_load_treats_empty_as_null("|", "") is True
+
+    def test_pipe_without_null_marker_keeps_empty_literal(self):
+        assert _stream_load_treats_empty_as_null("|", None) is False
+
+    def test_pipe_row_maps_every_empty_field_to_null_including_the_last(self):
+        assert _stream_load_row(["1", "", "x", ""], null_empty=True, delimiter="|") == "1|\\N|x|\\N"
+
+    def test_row_is_unchanged_without_null_mapping(self):
+        assert _stream_load_row(["1", "a", ""], null_empty=False, delimiter="|") == "1|a|"
+
+    def test_comma_csv_maps_nan_tokens_to_null(self):
+        assert _stream_load_row(["1", "NaN", "", "ok"], null_empty=True, delimiter=",") == "1,\\N,\\N,ok"
+
+    def test_pipe_keeps_nan_text(self):
+        assert _stream_load_row(["nan", ""], null_empty=True, delimiter="|") == "nan|\\N"
