@@ -400,7 +400,7 @@ def supports_foreign_keys(dialect: str) -> bool:
 
 
 def supports_acl(dialect: str) -> bool:
-    no_acl = {"sqlite", "datafusion", "spark", "polars", "duckdb", "questdb"}
+    no_acl = {"sqlite", "datafusion", "spark", "polars", "duckdb"}
     return dialect.lower() not in no_acl
 
 
