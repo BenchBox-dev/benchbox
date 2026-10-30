@@ -1,4 +1,10 @@
 {
   "schema": 1,
-  "internal": "UAT package phase stages local results through the maintainer publish command instead of community submit"
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed publishing a locally exported result dropping the recorded detail fields of non-core phases such as statistics."
+    }
+  ]
 }
