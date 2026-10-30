@@ -5,7 +5,7 @@
     "Metric values match the Explorer for the same snapshot (shared-code test)",
     "Pages without embeds still fetch zero Explorer bytes; axe clean"
   ],
-  "context": "2026-10-17, after the site split: still a future feature that needs its own owner approval before starting. Needs moved from astro-site-54 to site-browser-acceptance-ci-20261017, because the zero-Explorer-bytes and axe checks this item relies on only run once those browser checks are in CI. Corrections to the description: components import from the explorer/ workspace in BenchBox-dev/benchbox-site (there is no separate Explorer package); embeds read the snapshot the site-inputs bundle delivers (results/data/results.duckdb), identified by the bundle's snapshot_sha256.",
+  "context": "2026-10-17, after the site split: still a future feature that needs its own owner approval before starting. Needs moved from astro-site-54 to site-browser-acceptance-ci-20261017, because the zero-Explorer-bytes and axe checks this item relies on only run once those browser checks are in CI. Corrections to the description: components import from the explorer/ workspace in BenchBox-dev/benchbox-site (there is no separate Explorer package); embeds read the snapshot the site-inputs bundle delivers (results/data/results.duckdb), identified by the bundle's snapshot_sha256.\n\nMoved to the BenchBox-dev/benchbox-site tracker (todo-state branch of that repository) under the same id on 2026-10-30; track it there.",
   "description": "A post-cutover feature with its own owner approval before starting. Add two distinct Preact-island components:\n- **Cited result.** Frozen to a named corpus snapshot or bundle id. Shows that id and date, and never changes after publication. Use this in blog analysis.\n- **Current results.** Explicitly labelled live, reading the current published snapshot.\n\nBoth use the Explorer's canonical metric definitions, imported from the Explorer package, never reimplemented. Both honour the same visibility, admission and withdrawal rules as the Explorer: a withdrawn result renders as withdrawn and is never silently dropped or kept. Both load DuckDB only when scrolled into view, and pages without embeds ship zero Explorer bytes.",
   "sessions": [
     {
@@ -31,6 +31,14 @@
       "op": "update",
       "op_id": "ea5ba08759aa4825980bb2f5531be75b",
       "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-30T23:04:35Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "bbe043e90e5c4310b5c6456a27f5f6e8",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
     }
   ]
 }
