@@ -6,8 +6,9 @@ from benchbox.core.read_primitives.variant_contracts import collect_variant_cont
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
-SPARK_VARIANTS = ("json_extract_nested", "json_aggregates", "timeseries_trend_analysis", "list_reduce")
+SPARK_VARIANTS = ("json_aggregates", "timeseries_trend_analysis", "list_reduce")
 UNSUPPORTED_ON_SPARK = (
+    "json_extract_nested",
     "fulltext_simple_search",
     "fulltext_boolean_search",
     "fulltext_phrase_search",
