@@ -524,10 +524,36 @@ class TestQuestDBAdapter:
             )
             adapter.create_schema(Mock(), mock_conn)
 
-        mock_cursor.execute.assert_called_once()
         executed_sql = mock_cursor.execute.call_args[0][0]
         assert "CREATE TABLE" in executed_sql
         assert "FOREIGN KEY" not in executed_sql
+
+    def test_create_schema_pre_drops_schema_defined_tables(self, questdb_stubs):
+        mock_conn = Mock()
+        mock_cursor = Mock()
+        mock_conn.cursor.return_value = mock_cursor
+
+        adapter = QuestDBAdapter()
+        benchmark = Mock()
+        benchmark.tables = {"orders": "orders.tbl"}
+
+        with patch.object(adapter, "_create_schema_with_tuning") as mock_schema:
+            mock_schema.return_value = (
+                "CREATE TABLE orders (id INT);"
+                "CREATE TABLE batch_metadata (batch_id INT);"
+                "CREATE TABLE ddl_truncate_target (o_orderkey INT)"
+            )
+            adapter.create_schema(benchmark, mock_conn)
+
+        executed = [call[0][0] for call in mock_cursor.execute.call_args_list]
+        drops = [sql for sql in executed if sql.startswith("DROP TABLE IF EXISTS")]
+        assert drops == [
+            'DROP TABLE IF EXISTS "orders"',
+            'DROP TABLE IF EXISTS "batch_metadata"',
+            'DROP TABLE IF EXISTS "ddl_truncate_target"',
+        ]
+        first_create = next(i for i, sql in enumerate(executed) if sql.startswith("CREATE TABLE"))
+        assert executed.index(drops[-1]) < first_create
 
     def test_platform_registry_requirements_include_requests(self):
         info = PlatformRegistry.get_platform_info("questdb")
@@ -593,6 +619,35 @@ class TestQuestDBAdapter:
         hook.assert_called_once()
         assert adapter.database_was_reused is True
         mock_conn.close.assert_called_once()
+
+    @pytest.mark.parametrize(
+        ("existing_columns", "expected_reuse"),
+        [
+            ([("customer", "c_custkey"), ("customer", "c_name"), ("customer", "extra")], True),
+            ([("customer", "c_customer_sk"), ("customer", "c_name")], False),
+            ([("customer", "c_custkey")], False),
+            ([], False),
+        ],
+    )
+    def test_handle_existing_database_checks_column_names(self, questdb_stubs, existing_columns, expected_reuse):
+        mock_cursor = MagicMock()
+        mock_cursor.__enter__.return_value = mock_cursor
+        mock_cursor.fetchall.side_effect = [[("customer",)], existing_columns]
+        mock_conn = Mock()
+        mock_conn.cursor.return_value = mock_cursor
+        questdb_stubs.connect.return_value = mock_conn
+
+        mock_benchmark = Mock()
+        mock_benchmark.get_schema.return_value = {
+            "customer": {"name": "customer", "columns": [{"name": "c_custkey"}, {"name": "c_name"}]}
+        }
+
+        adapter = QuestDBAdapter()
+        adapter.benchmark = mock_benchmark
+
+        adapter.handle_existing_database()
+
+        assert adapter.database_was_reused is expected_reuse
 
     def test_handle_existing_database_partial_stale_tables(self, questdb_stubs):
         mock_cursor = MagicMock()
