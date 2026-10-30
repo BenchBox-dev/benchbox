@@ -1369,6 +1369,6 @@ timeout.
 `oracle-gate` became required on 2026-10-21, scoped to the `benchbox-oracle`
 App's integration ID, alongside `oracle-review`, which stopped being required on
 2026-10-24 after a side-by-side comparison
-(`_project/decisions/oracle-review-check-retired-2026-10-24.md`). Its workflow
-now only notifies; its completion after a review event is how `oracle-gate`
-re-evaluates without a trusted trigger of its own.
+(`_project/decisions/oracle-review-check-retired-2026-10-24.md`). Its
+notification workflow is deleted; its path stays in the soundness and gate path
+lists so a re-created file is still reviewed.

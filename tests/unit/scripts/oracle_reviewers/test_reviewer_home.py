@@ -268,9 +268,12 @@ def _gate_machinery_files() -> list[str]:
     return sorted({*declared, *on_disk})
 
 
+RETIRED_GATE_PATHS = {".github/workflows/oracle-review.yml"}
+
+
 @pytest.mark.parametrize("path", _gate_machinery_files())
 def test_every_gate_machinery_file_is_classified_as_gate(policy: Policy, path: str) -> None:
-    assert (REPO_ROOT / path).is_file()
+    assert (REPO_ROOT / path).is_file() or path in RETIRED_GATE_PATHS
     assert matching([path], policy.classifier.gate_paths) == [path]
 
 
