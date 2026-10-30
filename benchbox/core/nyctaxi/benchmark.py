@@ -276,6 +276,11 @@ class NYCTaxiBenchmark(GeneratorOutputDirMixin, TranslatableQueryMixin, BaseBenc
             query_text = _NYCTAXI_DOW_RE.sub(r"(DAYOFWEEK(\1) - 1)", query_text)
             query_text = _NYCTAXI_EPOCH_DIFF_RE.sub(r"(UNIX_TIMESTAMP(\1) - UNIX_TIMESTAMP(\2))", query_text)
         query_text = super().translate_query_text(query_text, target_dialect)
+        if "sqlite" in d:
+            query_text = _NYCTAXI_DOW_RE.sub(r"CAST(strftime('%w', \1) AS INTEGER)", query_text)
+            query_text = _NYCTAXI_EPOCH_DIFF_RE.sub(
+                r"(CAST(strftime('%s', \1) AS INTEGER) - CAST(strftime('%s', \2) AS INTEGER))", query_text
+            )
         if "snowflake" in d:
             query_text = _NYCTAXI_SF_EPOCH_RE.sub(r"(DATEDIFF(second, \2, \1))", query_text)
         return query_text

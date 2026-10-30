@@ -228,7 +228,7 @@ class TestCloudTranslation:
 
         with tempfile.TemporaryDirectory() as tmp:
             bm = NYCTaxiBenchmark(scale_factor=0.1, output_dir=tmp)
-            return {d: bm.get_queries(dialect=d) for d in ("bigquery", "snowflake", "databricks")}
+            return {d: bm.get_queries(dialect=d) for d in ("bigquery", "snowflake", "databricks", "sqlite")}
 
     def test_no_dow_or_epoch_residuals(self, queries_by_dialect):
         for dialect, queries in queries_by_dialect.items():
@@ -253,3 +253,32 @@ class TestCloudTranslation:
         sql = queries_by_dialect["databricks"]["trips-by-day-of-week"]
         assert "DAYOFWEEK(" in sql
         assert "- 1" in sql
+
+    def test_sqlite_dow_uses_strftime(self, queries_by_dialect):
+        sql = queries_by_dialect["sqlite"]["trips-by-day-of-week"]
+        assert "strftime('%w'" in sql
+        assert "EXTRACT(DOW" not in sql.upper()
+
+    def test_sqlite_epoch_uses_strftime_seconds(self, queries_by_dialect):
+        sql = queries_by_dialect["sqlite"]["trip-duration-analysis"]
+        assert "strftime('%s'" in sql
+        assert "EXTRACT(EPOCH" not in sql.upper()
+
+    def test_sqlite_translated_queries_execute(self, queries_by_dialect):
+        import sqlite3
+
+        from benchbox.core.nyctaxi.schema import get_create_tables_sql
+
+        conn = sqlite3.connect(":memory:")
+        conn.executescript(get_create_tables_sql(dialect="sqlite"))
+        conn.execute(
+            "INSERT INTO trips (pickup_datetime, dropoff_datetime, trip_distance, total_amount) "
+            "VALUES ('2019-01-05 08:15:00', '2019-01-05 08:45:30', 2.5, 12.0)"
+        )
+        for qid in (
+            "trips-by-day-of-week",
+            "trip-duration-analysis",
+            "weekday-weekend-comparison",
+            "rush-hour-analysis",
+        ):
+            conn.execute(queries_by_dialect["sqlite"][qid]).fetchall()
