@@ -37,7 +37,8 @@ from .base.sql_execution import execute_sql_query
 
 QUESTDB_DIALECT = "questdb"
 
-QUESTDB_TYPE_MAP: dict[str, str] = {"TIME": "VARCHAR"}
+QUESTDB_TYPE_MAP: dict[str, str] = {"TIME": "VARCHAR", "DECIMAL": "DOUBLE"}
+QUESTDB_PARAMETERLESS_TYPES: tuple[str, ...] = ("VARCHAR", "DOUBLE")
 
 try:
     import psycopg
@@ -405,6 +406,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                         strip_primary_keys=True,
                         strip_foreign_keys=True,
                         type_map=QUESTDB_TYPE_MAP,
+                        drop_type_parameters=QUESTDB_PARAMETERLESS_TYPES,
                         default_layout=self._questdb_table_layout(stmt),
                     )
                 elif "DROP TABLE" in stmt_upper:
