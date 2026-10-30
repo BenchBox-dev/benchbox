@@ -86,6 +86,7 @@ class ReviewRun:
     temp: Path
     steps: dict[str, Step] = field(default_factory=dict)
     step_env: dict[str, dict[str, str]] = field(default_factory=dict)
+    exported_env: dict[str, str] = field(default_factory=dict)
     loop_summary: str = ""
 
     @property

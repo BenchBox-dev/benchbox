@@ -209,21 +209,20 @@ class WorkflowRunner:
     def _drive(self, step: dict[str, Any], phase: str, policy: str | None) -> Step:
         key = self.keys[step["name"]]
         env = self._step_env(step, key)
-        extra: dict[str, str] = {}
-        if phase == "harness":
-            env_file = self.temp / "github-env.txt"
-            env_file.write_text("", encoding="utf-8")
-            extra = {"GITHUB_ENV": str(env_file)}
+        env_file = self.temp / f"github-env-{key}.txt"
+        env_file.write_text("", encoding="utf-8")
+        extra = {"GITHUB_ENV": str(env_file)}
         if phase == "scan":
             assert step["run"].strip() == SCAN_COMMAND
-            result = scan_step(self.harness, key, env)
+            result = scan_step(self.harness, key, {**env, **extra})
         else:
             args = ["drive", *(["--policy", str(self.harness.policy_file)] if policy else []), phase]
             result = self.harness.cli(key, args, {**env, **extra})
+        written = env_file.read_text(encoding="utf-8")
         if phase == "harness":
-            written = env_file.read_text(encoding="utf-8")
             result.outputs["env"] = written
-            self.github_env = dict(line.split("=", 1) for line in written.splitlines())
+        self.github_env.update(dict(line.split("=", 1) for line in written.splitlines()))
+        self.record.exported_env = dict(self.github_env)
         if phase == ISOLATION_PHASE:
             self._check_isolation(result, env)
         self.record.steps[key] = result
