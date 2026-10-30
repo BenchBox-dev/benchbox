@@ -9,7 +9,8 @@ from typing import Any
 
 import pytest
 
-from .harness import CHECKER, GATEWAY_TOKEN, POLICY, REPO_ROOT, Harness, Step, git
+from .fake_github import OWNER_TOKEN
+from .harness import CHECKER, GATEWAY_TOKEN, JEV_KEY, POLICY, REPO_ROOT, Harness, Step, git
 
 pytestmark = [pytest.mark.integration, pytest.mark.medium]
 
@@ -52,12 +53,13 @@ def _cloud_review(harness: Harness, branch: str, proxy: str | None) -> Step:
         )
     env = {
         **harness.base_env(),
-        "HTTP_PROXY": "",
-        "http_proxy": "",
         "PYTHONPATH": str(REPO_ROOT),
         "ORACLE_GATEWAY_URL": UNROUTABLE_GATEWAY,
         "ORACLE_CLOUD_GATEWAY_TOKEN": GATEWAY_TOKEN,
-        "BENCHBOX_LOCAL_ORACLE_DIR": str(harness.local_state),
+        "GH_TOKEN": OWNER_TOKEN,
+        "GH_ENTERPRISE_TOKEN": OWNER_TOKEN,
+        "TYPESAFE_BASE_URL": harness.jev.url,
+        "TYPESAFE_API_KEY": JEV_KEY,
     }
     argv = [sys.executable, "-m", "_project.scripts.oracle_reviewers.cli", "local-review", "--policy", POLICY]
     return harness.run("cloud-review", [*argv, "--base-ref", "develop"], env, cwd=checkout)

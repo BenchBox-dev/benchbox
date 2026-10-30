@@ -56,11 +56,14 @@ def _outermost(roots: Iterable[Path]) -> list[Path]:
     return kept
 
 
-def scan(roots: Iterable[Path], needles: Mapping[str, bytes]) -> list[tuple[str, Path]]:
+def scan(roots: Iterable[Path], needles: Mapping[str, bytes], excluded: Iterable[Path] = ()) -> list[tuple[str, Path]]:
     if not needles:
         return []
+    skipped = {path.resolve() for path in excluded}
     hits: list[tuple[str, Path]] = []
     for root in _outermost(roots):
         for path in _files(root):
+            if skipped and (path in skipped or any(parent in skipped for parent in path.parents)):
+                continue
             hits.extend((name, path) for name in sorted(_contains(path, needles)))
     return hits

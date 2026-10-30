@@ -107,11 +107,16 @@ The canonical loop is **branch → edit → preflight → `make pr-open` → arm
    missing or in progress fails at once instead of waiting; the check is re-run automatically when that full run
    completes.
 
-   Before it pushes, `make pr-open` runs a local oracle review of the committed `HEAD` and refuses on a Critical
-   or High finding. A `Local oracle override: <reason>` line in the `PR_BODY_FILE` lets a finding through; an
-   unreachable gateway, a quota or reviewer absence, or an `omp` that does not match the CI pin refuses
-   regardless. The review is advisory, may differ from the CI oracle, and posts nothing to GitHub. See
-   `docs/internal/oracle-review-v2.md`, Local pre-PR review.
+   Before it pushes, `make pr-open` runs the same review driver as CI on the committed `HEAD`, from a trusted
+   export of `origin/develop` that the branch cannot change, and refuses when the shared judgement is DO NOT
+   SHIP or leaves a Critical or High defect open, including one carried from an earlier review of the PR. A
+   Medium-only SHIP WITH FIXES proceeds. It needs the `TYPESAFE_API_KEY` classifier key (keychain service
+   `TYPESAFE_API_KEY`, added with `security add-generic-password -s TYPESAFE_API_KEY -a "$USER" -w`) and refuses
+   without it. A `Local oracle override: <reason>` line in the `PR_BODY_FILE` lets a finding through; a
+   review that cannot run (no key, `origin/develop` not fetchable, an unreachable gateway, a quota or reviewer
+   absence, a held PR, a secret value on disk, or an `omp` that does not match the CI pin) refuses regardless.
+   It pushes and arms exactly the commit it reviewed. The review is advisory, may differ from the CI oracle,
+   and posts nothing to GitHub. See `docs/internal/oracle-review-v2.md`, Local pre-PR review.
 
 5. **Arm it and monitor until it merges:**
 

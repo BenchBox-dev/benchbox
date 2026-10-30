@@ -9,8 +9,8 @@ from . import credentials, protocol
 
 
 class Unredactable(Exception):
-    def __init__(self, path: Path) -> None:
-        super().__init__(f"a secret value remains in {path}")
+    def __init__(self, path: Path, reason: str = "a secret value remains in") -> None:
+        super().__init__(f"{reason} {path}")
         self.path = path
 
 
@@ -103,7 +103,10 @@ def json_files(paths: Iterable[Path]) -> list[Path]:
 
 
 def sanitize(path: Path, extra: tuple[str, ...]) -> bool:
-    original = path.read_text(encoding="utf-8")
+    try:
+        original = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        raise Unredactable(path, "not valid UTF-8, so it cannot be checked for secrets:") from exc
     try:
         data = json.loads(original)
     except ValueError as exc:
