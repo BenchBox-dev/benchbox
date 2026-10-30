@@ -5,7 +5,7 @@
     "Docs distinguish capture opt-in, deferred-phase eligibility and actual adapter/parser capability, and say a matching fingerprint means matching normalized logical structure, not identical physical plans; remove the unsupported DuckDB estimate exception.",
     "Docs describe the SQL vs DataFrame result fields as implemented after DataFrame parity and the limits of post-measurement EXPLAIN for bespoke mid-run mutations; make docs-check/compat checks pass and add a changelog.d fragment."
   ],
-  "context": "Core PR #3709 (branch docs/query-plan-capture-contract, head b036bb12a): help text + real-CLI analyze-default test. Public docs moved to BenchBox-dev/benchbox-site: draft PR benchbox-site#84 covers all doc facts. Resume: land #3709; mark site #84 ready after core PRs merge (add MCP stream/test_type params to table once a bundle with #3693 is published), land, then finish.",
+  "context": "Merged via PR #3709 as cf08807f9 on develop. CI and oracle review passed on the merged head. Public docs merged in BenchBox-dev/benchbox-site#84 as fd4e85961. Decision recorded: estimated EXPLAIN stays the default (qpc-04); help and docs corrected.",
   "description": "CLI help and query-plan-analysis.md promise ANALYZE capture by default, but PlatformAdapter defaults analyze_plans to false and a real CLI run without either analyze flag captured estimated plans with null operator timing. Decision (recorded during review): keep the estimated default. qpc-04 (#1016, 2026-07-06) is the latest code decision and deliberately chose estimated EXPLAIN with an ANALYZE opt-in notice; the doc prose claiming ANALYZE default dates from 2026-06-24 (#887) and was never reconciled. So fix help/docs, not code. Other contract drift to fix: phase eligibility described as capability, a DuckDB estimate-fingerprint exception the structural signature does not support, and generic result-field claims that do not hold for DataFrame results (update after DataFrame parity lands).",
   "links": [
     "benchbox/platforms/base/adapter.py:121-137",
@@ -51,6 +51,14 @@
       "generation": "211703411bb648e494529c208250cc6b",
       "op": "take",
       "op_id": "2e466828a3d64918b16acd176f45d5a6",
+      "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bb7fd2d6b114a6501df93f97",
+      "at": "2026-10-30T15:48:15Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1fb2f0b02c504db09bf8fe92425cd93c",
       "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
     }
   ]
