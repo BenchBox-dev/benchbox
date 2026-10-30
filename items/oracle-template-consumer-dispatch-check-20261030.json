@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Gate results recorded in context: the cases, and per arm the dropped-value catch rate, false findings and valid-verdict rate.",
+    "If adopted: the instruction is in standard.md and in the Blast radius pass of deep.md and gate.md, template_version is bumped, templates/README.md is updated, and the golden prompt fixtures are regenerated with no other prompt change.",
+    "If not adopted: the item is dropped with the measurement in its context.",
+    "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
+  ],
+  "context": "2026-10-30: filed from the 2026-10-27 evaluation of OMP's /review command. Checked on develop 947b16ff: standard.md has no consumer or dispatch instruction; deep.md and gate.md pass 2 is Blast radius (callers, data flow, schema impact) with no consumer-side dispatch step. The 2026-10-23 bench cases and scripts are under ~/Developer/benchmark_runs/oracle-response-evidence/live/smol-candidate-bench-20261023/.",
+  "description": "Problem: no oracle template asks the reviewer to follow a newly added value to the code that consumes it. deep.md and gate.md have a Blast radius pass that follows callers, data flow and schema impact outward; standard.md has no such pass. A common integration defect is a producer that adds an event, enum variant, message, command or queue item while the consumer's switch, router, filter chain or handler registry silently drops it or does nothing with it. The dispatch point is often outside the diff, so a reviewer that reads only the changed files misses it. OMP's bundled reviewer prompt (reviewer.md in omp 18.13.2, its cross-boundary section) has a three-step check: locate the consumer-side dispatch point, confirm that an explicit branch or an existing catch-all forwards the value correctly, and report a silent drop, no-op or discard as a defect.\n\nOutcome: decide by measurement whether to add an equivalent instruction, in the templates' own wording and within their existing rules, to standard.md and to the Blast radius pass of deep.md and gate.md.\n\nDecision gates:\n1. Cases. Build at least two recorded or seeded pull requests in which a producer adds a value that an out-of-diff consumer drops, and use the 2026-10-23 bench cases (#3286, #3248, #3337, #3339 and the planted PAGE_SIZE = 0 defect) as false-positive controls.\n2. A/B. Run develop's templates against the candidate with the medium and large reviewer roles, three runs per case, through the local review harness. The runs spend gateway quota, so the owner approves the run budget first. Adopt only if the dropped-value catch rate improves and neither false findings nor the valid-verdict rate get worse. Otherwise drop this item and record the evidence.\n\nGuardrails: the templates are versioned review machinery reviewed under the gate template; keep the fences and the slot contract unchanged and bump template_version.",
+  "links": [
+    "_project/scripts/oracle_reviewers/templates/standard.md",
+    "_project/scripts/oracle_reviewers/templates/deep.md",
+    "_project/scripts/oracle_reviewers/templates/gate.md",
+    "_project/scripts/oracle_reviewers/templates/README.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9e09737a6dae48d68e938037",
+      "at": "2026-10-30T12:03:07Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "7a73e25fe6034fc88e50099bfa5282b7",
+      "session_id": "4381d019d1ef43f29abc27cb16c09156"
+    }
+  ]
+}

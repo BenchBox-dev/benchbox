@@ -17417,6 +17417,13 @@
       "status": "dropped",
       "title": "Decide whether SHIP_WITH_FIXES with an empty defect list should keep turning into SHIP"
     },
+    "oracle-template-consumer-dispatch-check-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Measure whether a consumer-side dispatch check in the oracle review templates catches dropped values, and add it only if it does"
+    },
     "oracle-tier-reason-lists-every-file-20261009": {
       "claim": null,
       "needs": [],
