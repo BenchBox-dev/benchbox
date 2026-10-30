@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "StarRocks now loads empty fields in pipe-delimited TPC data files as NULL instead of empty strings, which fixes TPC-DS queries 46 and 68 returning extra rows at small scale factors."
+    }
+  ]
+}
