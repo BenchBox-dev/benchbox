@@ -39,6 +39,24 @@ def _day_difference(node: exp.Expr) -> exp.Expr | None:
     )
 
 
+def _epoch_of_difference(node: exp.Expr) -> exp.Expr | None:
+    if not isinstance(node, exp.Extract) or node.this.name.upper() != "EPOCH":
+        return None
+    difference = node.expression
+    while isinstance(difference, exp.Paren):
+        difference = difference.this
+    if not isinstance(difference, exp.Sub):
+        return None
+    return exp.Anonymous(
+        this="datediff",
+        expressions=[
+            exp.Literal.string("s"),
+            _timestamp_operand(difference.expression),
+            _timestamp_operand(difference.this),
+        ],
+    )
+
+
 def _current_date() -> exp.Expr:
     today = exp.Anonymous(
         this="date_trunc", expressions=[exp.Literal.string("day"), exp.Anonymous(this="now", expressions=[])]
@@ -48,6 +66,8 @@ def _current_date() -> exp.Expr:
 
 def _rewrite(node: exp.Expr) -> exp.Expr:
     replacement = _day_difference(node)
+    if replacement is None:
+        replacement = _epoch_of_difference(node)
     if replacement is not None:
         return replacement
     if isinstance(node, exp.CurrentDate):

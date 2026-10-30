@@ -26,3 +26,13 @@ def test_current_date_inside_a_day_difference_is_rewritten_too():
 def test_epoch_extraction_that_is_not_a_day_difference_is_left_alone():
     sql = "SELECT EXTRACT(epoch FROM ts) / 3600 FROM t"
     assert rewrite_query(sql) == sql
+
+
+def test_epoch_of_a_timestamp_difference_becomes_whole_seconds():
+    sql = "SELECT EXTRACT(EPOCH FROM (dropoff - pickup)) FROM t"
+    assert rewrite_query(sql) == "SELECT DATEDIFF('s', pickup, dropoff) FROM t"
+
+
+def test_epoch_of_a_timestamp_difference_inside_a_comparison_is_rewritten():
+    sql = "SELECT 1 FROM t WHERE EXTRACT(EPOCH FROM (b - a)) >= 60"
+    assert rewrite_query(sql) == "SELECT 1 FROM t WHERE DATEDIFF('s', a, b) >= 60"
