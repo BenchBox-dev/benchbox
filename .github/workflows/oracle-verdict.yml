@@ -119,6 +119,8 @@ jobs:
             .github/soundness-paths.txt
             _project/scripts/oracle_reviewers
             _project/scripts/soundness_paths.py
+            _project/scripts/oracle_gate.py
+            _project/scripts/oracle_review_check.py
             .github/inert-paths.txt
             _project/scripts/inert_paths.py
           sparse-checkout-cone-mode: false
@@ -300,6 +302,7 @@ jobs:
           private-key: ${{ secrets.ORACLE_APP_PRIVATE_KEY }}
           permission-statuses: write
           permission-pull-requests: write
+          permission-contents: read
 
       - name: Post the result
         id: publish
@@ -309,7 +312,8 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
           JOB_TOKEN: ${{ github.token }}
-        run: python3 -m _project.scripts.oracle_reviewers.cli drive publish
+        run: >-
+          uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python -m _project.scripts.oracle_reviewers.cli drive publish
 
       - name: Record the retry attempt
         if: always() && steps.finalize.outcome == 'success' && steps.finalize.outputs.has_state == 'true' && steps.publish.outputs.skip != 'true'

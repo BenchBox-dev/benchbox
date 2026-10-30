@@ -116,10 +116,12 @@ jobs:
           GITHUB_TOKEN: ${{ steps.app.outputs.token }}
           PR_NUMBER: ${{ steps.resolve.outputs.pr }}
           KNOWN_HEAD: ${{ steps.resolve.outputs.head_sha }}
+          HEAD_CHANGED: ${{ github.event_name == 'pull_request_target' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened') }}
         run: |
           set -euo pipefail
           HEAD_ARGS=()
           if [ -n "$KNOWN_HEAD" ]; then HEAD_ARGS=(--head-sha "$KNOWN_HEAD"); fi
+          if [ "$HEAD_CHANGED" = true ]; then HEAD_ARGS+=(--pending-first); fi
           uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python _project/scripts/oracle_gate.py --repo "$REPO" --pr "$PR_NUMBER" "${HEAD_ARGS[@]}"
 
       - name: Log the gate without posting when the App is not configured

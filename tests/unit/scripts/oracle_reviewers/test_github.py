@@ -997,6 +997,37 @@ def test_dispatch_gate_and_base_read_raise_on_refusal(monkeypatch: pytest.Monkey
         github.pull_base_ref(REPO, 7, "app-token")
 
 
+def _fake_gate_module(monkeypatch: pytest.MonkeyPatch, code: int) -> list[Any]:
+    import types
+
+    requests: list[Any] = []
+    module = types.ModuleType("oracle_gate")
+    module.ERROR = 2
+    module.post_gate = lambda request, token: requests.append((request, token)) or code
+    monkeypatch.setitem(sys.modules, "oracle_gate", module)
+    return requests
+
+
+@pytest.mark.parametrize("code", [0, 1])
+def test_post_gate_evaluates_and_posts_the_head_with_the_given_token(
+    monkeypatch: pytest.MonkeyPatch, code: int
+) -> None:
+    requests = _fake_gate_module(monkeypatch, code)
+
+    github.post_gate(REPO, 7, SHA, "app-token")
+
+    request, token = requests[0]
+    assert token == "app-token"
+    assert (request.repo, request.pr, request.head_sha) == (REPO, 7, SHA)
+    assert request.no_post is False and request.pending_first is False
+
+
+def test_post_gate_raises_when_the_gate_could_not_be_posted(monkeypatch: pytest.MonkeyPatch) -> None:
+    _fake_gate_module(monkeypatch, 2)
+    with pytest.raises(github.GitHubError, match="could not post oracle-gate for #7"):
+        github.post_gate(REPO, 7, SHA, "app-token")
+
+
 def _page(runs: int, total: int | None) -> dict[str, Any]:
     page: dict[str, Any] = {"workflow_runs": [{"id": index} for index in range(runs)]}
     if total is not None:

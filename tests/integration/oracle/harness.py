@@ -338,11 +338,13 @@ class Harness:
         WorkflowRunner(self, pr, record, env, chosen).run()
         return record
 
-    def gate(self, pr: int, head_sha: str | None = None) -> Step:
+    def gate(self, pr: int, head_sha: str | None = None, *, pending_first: bool = False) -> Step:
         env = {**self.base_env(), "GITHUB_TOKEN": APP_TOKEN, "GH_TOKEN": APP_TOKEN}
         args = [sys.executable, "_project/scripts/oracle_gate.py", "--repo", SLUG, "--pr", str(pr)]
         if head_sha:
             args += ["--head-sha", head_sha]
+        if pending_first:
+            args.append("--pending-first")
         return self.run("gate", args, env)
 
     def sweep(self, *, surface: bool = True) -> Step:

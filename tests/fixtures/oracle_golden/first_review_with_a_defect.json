@@ -276,6 +276,13 @@
         "description": "medium: SHIP WITH FIXES, 1 defect(s) to fix",
         "state": "failure",
         "target_url": "https://github.localhost/BenchBox-dev/BenchBox/actions/runs/<run>"
+      },
+      {
+        "context": "oracle-gate",
+        "creator": "benchbox-oracle[bot]",
+        "description": "oracle-review: the oracle's latest verdict for <sha0> is failure, not success; fix the findings, or post …",
+        "state": "failure",
+        "target_url": "https://github.localhost/BenchBox-dev/BenchBox/actions/runs/<run>"
       }
     ],
     "threads": [
