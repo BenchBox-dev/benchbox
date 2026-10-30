@@ -3,7 +3,7 @@
     "A recorded decision (ADR row or decision note) with the reason",
     "If retiring: core docs converted, converter files deleted, site build and link gate green"
   ],
-  "context": "Found 2026-10-17 at site-split closeout (follow-up list in site-split-99).",
+  "context": "Found 2026-10-17 at site-split closeout (follow-up list in site-split-99).\n\nMoved to the BenchBox-dev/benchbox-site tracker (todo-state branch of that repository) under the same id on 2026-10-30; track it there.",
   "description": "The site build converts core's MyST docs at build time with a custom converter (benchbox-site website/src/converter/build.ts, document.ts, handlers/, inventory.ts, plus website/scripts/myst-inventory.ts and inventory/expected-removals-rst-to-myst.json). It was built for the Astro migration (astro-site-31) while Sphinx still rendered the same sources. Sphinx is gone from core since #3096, so the converter is now the only renderer and the MyST dialect is kept only for it.\n\nDecide: keep MyST and the converter, or convert core docs to plain Markdown/MDX once and delete the converter. Record the choice with its cost (core tests that lock doc text, README links, benchbox/utils/version.py reading docs/README.md).",
   "sessions": [
     {
@@ -13,6 +13,14 @@
       "op": "create",
       "op_id": "631b3034b70f41b088b0d222b23ae49e",
       "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-30T23:04:48Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "189dc5398e764d83a143dbb735e77ccb",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
     }
   ]
 }
