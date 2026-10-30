@@ -9,6 +9,7 @@ from datetime import date
 from typing import Any
 
 from benchbox.core.dataframe.context import DataFrameContext
+from benchbox.core.dataframe.pandas_ops import select as pandas_select
 from benchbox.core.dataframe.query import DataFrameQuery, QueryCategory, QueryRegistry
 
 try:
@@ -1103,31 +1104,27 @@ _MONTH_NAMES = dict(
 )
 
 
+def _flag(condition: Any) -> Any:
+    return condition.fillna(False).astype(int)
+
+
 def _bucket(series: Any, default: str, rules: tuple[tuple[str, float, str], ...]) -> Any:
-    pd = _pandas()
-    values = pd.Series(default, index=series.index, dtype="object")
-    for op, threshold, label in rules:
-        values.loc[series.lt(threshold) if op == "lt" else series.le(threshold)] = label
-    return values
+    conditions = [series.lt(threshold) if op == "lt" else series.le(threshold) for op, threshold, _ in rules]
+    labels = [label for _, _, label in rules]
+    return pandas_select(conditions[::-1], labels[::-1], default)
 
 
 def _holiday_period(flights: Any) -> Any:
-    pd = _pandas()
-    period = pd.Series("Regular Day", index=flights.index, dtype="object")
-    for label, mask in (
-        ("Labor Day", (flights["month"] == 9) & (flights["day_of_week"] == 1) & (flights["day_of_month"] <= 7)),
-        ("Memorial Day", (flights["month"] == 5) & (flights["day_of_week"] == 1) & (flights["day_of_month"] >= 25)),
-        ("July 4th", (flights["month"] == 7) & flights["day_of_month"].between(3, 5)),
-        (
-            "New Year",
-            ((flights["month"] == 1) & (flights["day_of_month"] <= 2))
-            | ((flights["month"] == 12) & (flights["day_of_month"] == 31)),
-        ),
-        ("Christmas", (flights["month"] == 12) & flights["day_of_month"].between(23, 27)),
-        ("Thanksgiving Week", (flights["month"] == 11) & flights["day_of_month"].between(21, 27)),
-    ):
-        period.loc[mask] = label
-    return period
+    month, day, weekday = flights["month"], flights["day_of_month"], flights["day_of_week"]
+    rules = (
+        ("Labor Day", (month == 9) & (weekday == 1) & (day <= 7)),
+        ("Memorial Day", (month == 5) & (weekday == 1) & (day >= 25)),
+        ("July 4th", (month == 7) & day.between(3, 5)),
+        ("New Year", ((month == 1) & (day <= 2)) | ((month == 12) & (day == 31))),
+        ("Christmas", (month == 12) & day.between(23, 27)),
+        ("Thanksgiving Week", (month == 11) & day.between(21, 27)),
+    )
+    return pandas_select([mask for _, mask in rules[::-1]], [label for label, _ in rules[::-1]], "Regular Day")
 
 
 _PANDAS_EXTRAS = {
@@ -1171,18 +1168,18 @@ _PANDAS_DERIVED = {
     ),
     "period": ("period", _holiday_period),
     "route": ("route", lambda f: f["origin"] + "-" + f["dest"]),
-    "cancelled": ("_cancelled", lambda f: (f["cancelled"] == 1).astype(int)),
-    "operated": ("_operated", lambda f: (f["cancelled"] == 0).astype(int)),
-    "non_cancelled": ("_non_cancelled", lambda f: (f["cancelled"] == 0).astype(int)),
-    "ontime": ("_ontime", lambda f: ((f["cancelled"] == 0) & (f["arr_delay"] <= 15)).astype(int)),
-    "ontime_raw": ("_ontime", lambda f: (f["arr_delay"] <= 15).astype(int)),
-    "delayed_dep": ("_delayed", lambda f: (f["dep_delay"] > 15).astype(int)),
+    "cancelled": ("_cancelled", lambda f: _flag(f["cancelled"] == 1)),
+    "operated": ("_operated", lambda f: _flag(f["cancelled"] == 0)),
+    "non_cancelled": ("_non_cancelled", lambda f: _flag(f["cancelled"] == 0)),
+    "ontime": ("_ontime", lambda f: _flag((f["cancelled"] == 0) & (f["arr_delay"] <= 15))),
+    "ontime_raw": ("_ontime", lambda f: _flag(f["arr_delay"] <= 15)),
+    "delayed_dep": ("_delayed", lambda f: _flag(f["dep_delay"] > 15)),
     "delayed_arr_positive": ("_delayed_val", lambda f: f["arr_delay"].where(f["arr_delay"] > 0)),
     "dep_delay_nc": ("_dep_delay_nc", lambda f: f["dep_delay"].where(f["cancelled"] == 0)),
     "arr_delay_nc": ("_arr_delay_nc", lambda f: f["arr_delay"].where(f["cancelled"] == 0)),
     "minutes_recovered": ("_minutes_recovered", lambda f: f["dep_delay"] - f["arr_delay"]),
-    "recovered": ("_recovered", lambda f: (f["arr_delay"] < f["dep_delay"]).astype(int)),
-    "cascade": ("_cascade", lambda f: (f["late_aircraft_delay"] > 0).astype(int)),
+    "recovered": ("_recovered", lambda f: _flag(f["arr_delay"] < f["dep_delay"])),
+    "cascade": ("_cascade", lambda f: _flag(f["late_aircraft_delay"] > 0)),
     "cascade_val": ("_cascade_val", lambda f: f["late_aircraft_delay"].where(f["late_aircraft_delay"] > 0)),
     "late_tenths": (
         "_late_tenths",
@@ -1192,17 +1189,17 @@ _PANDAS_DERIVED = {
             .astype("int64")
         ),
     ),
-    "weather": ("_weather_flag", lambda f: (f["weather_delay"] > 0).astype(int)),
+    "weather": ("_weather_flag", lambda f: _flag(f["weather_delay"] > 0)),
     "weather_val": ("_weather_val", lambda f: f["weather_delay"].where(f["weather_delay"] > 0)),
     "weather_tenths": (
         "_weather_tenths",
         lambda f: (_pandas_round_half_away(f["weather_delay"].fillna(0) * 10, 0)).astype("int64"),
     ),
-    "severe_dep": ("_severely_delayed", lambda f: (f["dep_delay"] > 60).astype(int)),
-    "code_a": ("_code_a", lambda f: (f["cancellation_code"] == "A").astype(int)),
-    "code_b": ("_code_b", lambda f: (f["cancellation_code"] == "B").astype(int)),
-    "code_c": ("_code_c", lambda f: (f["cancellation_code"] == "C").astype(int)),
-    "code_d": ("_code_d", lambda f: (f["cancellation_code"] == "D").astype(int)),
+    "severe_dep": ("_severely_delayed", lambda f: _flag(f["dep_delay"] > 60)),
+    "code_a": ("_code_a", lambda f: _flag(f["cancellation_code"] == "A")),
+    "code_b": ("_code_b", lambda f: _flag(f["cancellation_code"] == "B")),
+    "code_c": ("_code_c", lambda f: _flag(f["cancellation_code"] == "C")),
+    "code_d": ("_code_d", lambda f: _flag(f["cancellation_code"] == "D")),
 }
 
 
@@ -1235,9 +1232,21 @@ def _make_pandas_impl(row: list[str]) -> Any:
         for name in _csv(derives):
             column, derive = _PANDAS_DERIVED[name]
             filtered[column] = derive(filtered)
-        result = filtered.groupby(_csv(group) if "," in group else group, as_index=False, dropna=False).agg(
-            **_parse_aggs(aggs)
-        )
+        group_keys = _csv(group) if "," in group else group
+        named = _parse_aggs(aggs)
+        unique: dict[str, tuple[str, str]] = {}
+        first_by_spec: dict[tuple[str, str], str] = {}
+        copies: dict[str, str] = {}
+        for out, spec in named.items():
+            if spec in first_by_spec:
+                copies[out] = first_by_spec[spec]
+            else:
+                first_by_spec[spec] = out
+                unique[out] = spec
+        result = filtered.groupby(group_keys, as_index=False, dropna=False).agg(**unique)
+        for out, original in copies.items():
+            result[out] = result[original]
+        result = result[[*_csv(group), *named]]
         if result_filter:
             column, threshold = result_filter.split(">=")
             result = result[result[column] >= int(threshold)]
@@ -1292,21 +1301,35 @@ globals().update(
 )
 
 
+def _resolve(values: list[Any]) -> list[Any]:
+    if not any(hasattr(value, "compute") for value in values):
+        return values
+    import dask
+
+    return list(dask.compute(*values))
+
+
 def delay_causes_pandas_impl(ctx: DataFrameContext) -> Any:
     pd = _pandas()
     filtered = _pandas_window(ctx, extra=_PANDAS_EXTRAS["delayed_arr"])
-    row: dict[str, Any] = {}
-    for column, count_name, avg_name in (
+    columns = (
         ("carrier_delay", "carrier_delay_count", "avg_carrier_delay"),
         ("weather_delay", "weather_delay_count", "avg_weather_delay"),
         ("nas_delay", "nas_delay_count", "avg_nas_delay"),
         ("security_delay", "security_delay_count", "avg_security_delay"),
         ("late_aircraft_delay", "late_aircraft_count", "avg_late_aircraft_delay"),
-    ):
+    )
+    pending: list[Any] = []
+    for column, _, _ in columns:
         positive = filtered[column] > 0
-        row[count_name] = int(positive.sum())
-        row[avg_name] = float(_pandas_round_half_away(filtered[column].where(positive).mean(), 2))
-    row["total_delayed_flights"] = len(filtered)
+        pending.extend([positive.sum(), filtered[column].where(positive).mean()])
+    pending.append(filtered["flight_id"].size)
+    resolved = _resolve(pending)
+    row: dict[str, Any] = {}
+    for index, (_, count_name, avg_name) in enumerate(columns):
+        row[count_name] = int(resolved[2 * index])
+        row[avg_name] = float(_pandas_round_half_away(resolved[2 * index + 1], 2))
+    row["total_delayed_flights"] = int(resolved[-1])
     return pd.DataFrame(
         [row],
         columns=[
