@@ -775,6 +775,7 @@ def _run_platform_benchmark(
             cell.benchmark,
             cell.scale,
             timeout_s=config.execute.per_cell_timeout_s,
+            memory_limit_gib=config.execute.per_cell_memory_limit_gib,
             phases=config.execute.phases_arg,
             compression=config.execute.compression,
             extra_args=config.execute.extra_args,

@@ -947,3 +947,45 @@ def test_run_cell_rejects_documented_exclusion_when_a_warmup_row_failed_row_coun
         result = runner.run_cell("clickhouse-local", "tpcds_obt", 1.0, timeout_s=10, log_dir=tmp_path)
 
     assert result.status == "failed"
+
+
+def test_run_cell_logs_memory_limit_and_skips_diagnostic_rerun(tmp_path: Path):
+    from tests.uat.timeouts import EXIT_MEMORY_LIMIT, TimeoutResult
+
+    captured = {}
+
+    def fake_run_with_timeout(
+        argv, timeout_s, *, stdout=None, stderr=None, env=None, cwd=None, memory_limit_bytes=None
+    ):
+        captured["limit"] = memory_limit_bytes
+        captured["calls"] = captured.get("calls", 0) + 1
+        return TimeoutResult(
+            exit_code=EXIT_MEMORY_LIMIT,
+            timed_out=False,
+            elapsed_s=1.0,
+            stdout=b"",
+            stderr=None,
+            memory_exceeded=True,
+            peak_rss_bytes=2 * 1024**3,
+        )
+
+    with (
+        patch.object(runner, "benchbox_run_argv", return_value=[sys.executable, "-c", "pass"]),
+        patch.object(runner, "run_with_timeout", side_effect=fake_run_with_timeout),
+    ):
+        result = runner.run_cell(
+            "polars-df",
+            "tpch",
+            1.0,
+            timeout_s=10,
+            memory_limit_gib=1.5,
+            log_dir=tmp_path,
+            now=_dt.datetime(2026, 5, 5, 12, 0, 0),
+        )
+
+    assert result.status == "failed"
+    assert captured["calls"] == 1
+    assert captured["limit"] == int(1.5 * 1024**3)
+    log_text = result.log_path.read_text(encoding="utf-8")
+    assert "# UAT_MEMORY_LIMIT limit_gib=1.5 peak_gib=2.00 exit_code=137" in log_text
+    assert "# UAT_PEAK_RSS_GIB=2.00" in log_text

@@ -278,12 +278,28 @@ def _resolve_cell_result_path(
     return result_path
 
 
+def _write_exit_markers(log_fh, timeout_result: TimeoutResult, timeout_s: int, memory_limit_gib: float) -> bool:
+    if timeout_result.peak_rss_bytes is not None:
+        log_fh.write(f"# UAT_PEAK_RSS_GIB={timeout_result.peak_rss_bytes / 1024**3:.2f}\n")
+    if timeout_result.timed_out:
+        log_fh.write(f"# UAT_TIMEOUT timeout_s={timeout_s} exit_code={timeout_result.exit_code}\n")
+        return True
+    if timeout_result.memory_exceeded:
+        log_fh.write(
+            f"# UAT_MEMORY_LIMIT limit_gib={memory_limit_gib:g} "
+            f"peak_gib={(timeout_result.peak_rss_bytes or 0) / 1024**3:.2f} exit_code={timeout_result.exit_code}\n"
+        )
+        return True
+    return False
+
+
 def run_cell(
     platform: str,
     benchmark: str,
     scale: float,
     *,
     timeout_s: int = 600,
+    memory_limit_gib: float = 0.0,
     phases: str = "load,power",
     compression: str | None = None,
     log_dir: Path | str | None = None,
@@ -333,12 +349,14 @@ def run_cell(
         log_fh.write(f"# BENCHBOX_OUTPUT_DIR={runs_dir}\n")
         log_fh.flush()
         stderr_start_size = log_path.stat().st_size
+        guard = {"memory_limit_bytes": int(memory_limit_gib * 1024**3)} if memory_limit_gib > 0 else {}
         timeout_result = run_with_timeout(
             argv,
             timeout_s=timeout_s,
             stdout=subprocess.PIPE,
             stderr=log_fh,
             env=env,
+            **guard,
         )
         log_fh.flush()
         stderr_has_content = _log_region_has_nonempty_content(log_path, stderr_start_size)
@@ -349,9 +367,8 @@ def run_cell(
             stderr_has_content = stderr_has_content or bool(stderr_text.strip())
         if stdout_text:
             log_fh.write(stdout_text)
-        if timeout_result.timed_out:
-            log_fh.write(f"# UAT_TIMEOUT timeout_s={timeout_s} exit_code={timeout_result.exit_code}\n")
-        elif timeout_result.exit_code != 0 and not stdout_text.strip() and not stderr_has_content:
+        killed = _write_exit_markers(log_fh, timeout_result, timeout_s, memory_limit_gib)
+        if not killed and timeout_result.exit_code != 0 and not stdout_text.strip() and not stderr_has_content:
             rerun_argv = _diagnostic_rerun_argv(
                 official=official,
                 platform=platform,

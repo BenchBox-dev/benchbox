@@ -760,3 +760,14 @@ def test_top_level_config_paths_exclude_generated_rerun_shards():
     shard_dir = _CORPUS_CONFIGS_ROOT / "generated-rerun-shards"
     assert all(shard_dir not in p.parents for p in _top_level_config_paths())
     assert len(_top_level_config_paths()) == 16
+
+
+def test_execute_memory_limit_defaults_off_and_parses():
+    assert config.validate_config({"name": "smoke"}).execute.per_cell_memory_limit_gib == 0.0
+    cfg = config.validate_config({"name": "smoke", "execute": {"per_cell_memory_limit_gib": 13}})
+    assert cfg.execute.per_cell_memory_limit_gib == 13.0
+
+
+def test_execute_memory_limit_rejects_negative():
+    with pytest.raises(config.ConfigError, match="per_cell_memory_limit_gib"):
+        config.validate_config({"name": "smoke", "execute": {"per_cell_memory_limit_gib": -1}})

@@ -478,3 +478,40 @@ def _await_process_state(pid: int, accepted: set[str], *, timeout_s: float = _ST
 def _assert_process_terminated(pid: int, *, role: str) -> None:
     state = _await_process_state(pid, _PROC_TERMINATED)
     assert state != _PROC_LIVE, f"{role} remained live after teardown (state={state})"
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX-only kill ladder")
+def test_run_with_timeout_kills_cell_over_memory_limit():
+    script = "import time\nbuf = bytearray(300 * 1024 * 1024)\nbuf[::4096] = b'x' * len(buf[::4096])\ntime.sleep(30)"
+    result = timeouts.run_with_timeout(
+        [sys.executable, "-c", script],
+        timeout_s=60,
+        memory_limit_bytes=100 * 1024 * 1024,
+    )
+    assert result.memory_exceeded is True
+    assert result.timed_out is False
+    assert result.exit_code == timeouts.EXIT_MEMORY_LIMIT
+    assert result.peak_rss_bytes is not None and result.peak_rss_bytes > 100 * 1024 * 1024
+    assert result.elapsed_s < 20
+
+
+def test_run_with_timeout_reports_peak_rss_under_limit():
+    result = timeouts.run_with_timeout(
+        [sys.executable, "-c", "import time; time.sleep(0.6)"],
+        timeout_s=10,
+        memory_limit_bytes=8 * 1024**3,
+    )
+    assert result.exit_code == 0
+    assert result.memory_exceeded is False
+    assert result.peak_rss_bytes is not None and result.peak_rss_bytes > 0
+
+
+def test_run_with_timeout_enforces_timeout_with_memory_guard():
+    result = timeouts.run_with_timeout(
+        [sys.executable, "-c", "import time; time.sleep(5)"],
+        timeout_s=1,
+        memory_limit_bytes=8 * 1024**3,
+    )
+    assert result.timed_out is True
+    assert result.memory_exceeded is False
+    assert result.exit_code == timeouts.EXIT_TIMEOUT
