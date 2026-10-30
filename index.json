@@ -23777,7 +23777,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Run the site's browser acceptance checks against the built site in CI"
     },
     "site-bundle-tpc-license-sidecars": {
