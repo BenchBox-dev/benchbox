@@ -20723,6 +20723,13 @@
       "status": "done",
       "title": "Align release-test command surfaces and repair stale release ratchets"
     },
+    "release-uat-package-salt-unset-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "critical",
+      "status": "open",
+      "title": "Release UAT package phase fails on every shard because BENCHBOX_MACHINE_ID_SALT is unset"
+    },
     "relocate-cli-hook-registries": {
       "claim": null,
       "needs": [],
