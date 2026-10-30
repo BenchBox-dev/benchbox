@@ -111,7 +111,7 @@ tests/uat/
 │   ├── enumerate.py               # registry-driven cell helper used by execute
 │   ├── execute.py                 # iterates ladder, invokes runner per cell, applies cleanup
 │   ├── validate.py                # in-process bundle validation + validator TSV
-│   ├── package.py                 # invokes benchbox submit per submit_terminal_state
+│   ├── package.py                 # invokes benchbox publish run / submit --service per submit_terminal_state
 │   └── report.py                  # TSV roll-up + cross-scale coverage assertion
 ├── orchestrator.py                # composes phases per YAML phases: list (uat-sweep entry point)
 ├── configs/                       # tracked YAML configs
@@ -149,7 +149,7 @@ tests/uat/
 | `phases/enumerate.py` | Resolve final cell list for execute given config filters and registry truth; honour min/max scale | 100 |
 | `phases/execute.py` | Sequential iteration over (platform, benchmark, rung); invokes runner+ladder+cleanup; owns Docker platform-boundary lifecycle | 220 |
 | `phases/validate.py` | Call `benchbox.validation.bundle` in-process; write validator TSV; compute clean-rate floor | 100 |
-| `phases/package.py` | Read `submit_terminal_state`; invoke `benchbox submit --output` or `--service`; `draft-pr`/`merged-to-published-results` are **stubs** (dispatcher only, per `PR_STUB_TERMINAL_STATES`) that emit the same argv as `local-stage` plus an operator warning -- PR-opening to `published-results` is not implemented | 130 |
+| `phases/package.py` | Read `submit_terminal_state`; invoke `benchbox publish run --target` (maintainer redacted form; needs no pseudonym salt and writes no community manifest) for local-stage, or `benchbox submit --service` for cloud-uploaded; `draft-pr`/`merged-to-published-results` are **stubs** (dispatcher only, per `PR_STUB_TERMINAL_STATES`) that emit the same argv as `local-stage` plus an operator warning -- PR-opening to `published-results` is not implemented | 130 |
 | `phases/report.py` | Read each phase's outputs; emit `matrix_summary.tsv`; cross-scale coverage check | 130 |
 | `orchestrator.py` | Walk YAML `phases:` list in order; surface phase failures; respect `dry_run:` toggle | 100 |
 

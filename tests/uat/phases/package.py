@@ -53,16 +53,11 @@ def _build_submit_argv(
     submissions_dir: Path,
     service: str | None,
 ) -> list[str]:
-    base = [
-        "benchbox",
-        "submit",
-        str(result_path),
-    ]
     if state in ("local-stage", "draft-pr", "merged-to-published-results"):
-        return base + ["--output", str(submissions_dir)]
+        return ["benchbox", "publish", "run", str(result_path), "--target", str(submissions_dir)]
     if state == "cloud-uploaded":
         assert service is not None
-        return base + ["--service", service]
+        return ["benchbox", "submit", str(result_path), "--service", service]
     raise PackagePhaseError(f"Unhandled terminal state {state!r}")
 
 

@@ -663,7 +663,7 @@ def _recorded_phase_status(phases_section: dict[str, Any]) -> dict[str, dict[str
         status = entry.get("status")
         if not status or status == "NOT_RUN":
             continue
-        recorded[name] = {key: entry[key] for key in ("status", "duration_ms") if key in entry}
+        recorded[name] = dict(entry)
     return recorded
 
 

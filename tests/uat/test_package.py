@@ -32,8 +32,10 @@ def test_package_local_stage_invokes_output_mode(tmp_path: Path):
     )
     assert result.terminal_state == "local-stage"
     assert result.success_count == 1
-    assert result.invocations[0][:2] == ("benchbox", "submit")
-    assert "--output" in result.invocations[0]
+    assert result.invocations[0][:3] == ("benchbox", "publish", "run")
+    assert "--target" in result.invocations[0]
+    assert str(tmp_path / "subs") in result.invocations[0]
+    assert "submit" not in result.invocations[0]
 
 
 def test_package_cloud_uploaded_requires_service(tmp_path: Path):
@@ -67,6 +69,7 @@ def test_package_cloud_uploaded_invokes_service(tmp_path: Path):
         runner=runner,
     )
     argv = result.invocations[0]
+    assert argv[:2] == ("benchbox", "submit")
     assert "--service" in argv
     assert "https://results.example.com" in argv
 
@@ -264,3 +267,16 @@ def test_package_cloud_uploaded_does_not_warn(tmp_path: Path):
         warn=warnings.append,
     )
     assert warnings == []
+
+
+@pytest.mark.parametrize("state", ["local-stage", "draft-pr", "merged-to-published-results"])
+def test_package_local_states_stage_through_the_maintainer_publish_command(tmp_path: Path, state: str):
+    cfg = validate_config({"name": "x", "package": {"submit_terminal_state": state}})
+    result = package.run_package(
+        cfg,
+        result_paths=[tmp_path / "r.json"],
+        submissions_dir=tmp_path / "subs",
+        runner=_fake_runner_factory([0]),
+        warn=lambda _msg: None,
+    )
+    assert result.invocations[0][:3] == ("benchbox", "publish", "run")
