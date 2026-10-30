@@ -23842,7 +23842,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "Decide whether to keep or retire the site's MyST-to-Markdown converter"
     },
     "site-parity-header-shrink-toggle": {
