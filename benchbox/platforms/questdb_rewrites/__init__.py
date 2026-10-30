@@ -2,40 +2,38 @@ from __future__ import annotations
 
 import importlib
 import pkgutil
+from collections.abc import Callable
 from functools import cache
-from types import ModuleType
 
-from benchbox.utils.dialect_utils import rewrite_sql_tree, sql_expressions
+from benchbox._vendor import sqlglot
+from benchbox._vendor.sqlglot import exp
 
 QUESTDB_DIALECT = "questdb"
 
-exp = sql_expressions()
+Transform = Callable[[exp.Expr], exp.Expr]
 
 
 @cache
-def _modules() -> tuple[ModuleType, ...]:
+def _transforms() -> tuple[Transform, ...]:
     modules = [
         importlib.import_module(f"{__name__}.{module.name}")
         for module in pkgutil.iter_modules(__path__)
         if not module.name.startswith("_")
     ]
-    return tuple(sorted(modules, key=lambda module: module.ORDER))
+    return tuple(module.transform for module in sorted(modules, key=lambda module: module.ORDER))
 
 
 def rewrite_query(sql: str) -> str:
-    modules = _modules()
-    active = [module for module in modules if getattr(module, "applies", None) is None or module.applies(sql)]
-
-    def transform(expression):
-        for module in active:
-            expression = module.transform(expression)
-        return expression
-
-    def finalize(expression):
-        for module in modules:
-            finalizer = getattr(module, "finalize", None)
-            if finalizer is not None:
-                expression = finalizer(expression)
-        return expression
-
-    return rewrite_sql_tree(sql, QUESTDB_DIALECT, transform, finalize)
+    try:
+        statements = [statement for statement in sqlglot.parse(sql, read=QUESTDB_DIALECT) if statement is not None]
+    except sqlglot.errors.SqlglotError:
+        return sql
+    if len(statements) != 1:
+        return sql
+    original = statements[0]
+    rewritten = original.copy()
+    for transform in _transforms():
+        rewritten = transform(rewritten)
+    if rewritten == original:
+        return sql
+    return rewritten.sql(dialect=QUESTDB_DIALECT, identify=False)
