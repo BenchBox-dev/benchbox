@@ -3,6 +3,7 @@
     "A documented conclusion, shown by running the rollback gate path (locally with `npm run deploy -- gates` against a downloaded retained artifact, or by reading the workflow if gates are skipped), on whether a rollback to a pre-allowlist-removal receipt passes",
     "If it fails, the rollback path no longer re-runs content gates that depend on current inventory files, with a test in deploy/test/rollback.test.ts"
   ],
+  "context": "Moved to the BenchBox-dev/benchbox-site tracker (todo-state branch of that repository) under the same id on 2026-10-30; track it there.",
   "description": "Found 2026-10-28 while reviewing the rollback rehearsal item. Rollback restores a stored artifact but the run re-evaluates the current deploy gates. Site PR 80 emptied inventory/known-broken-links.json to []. A receipt built before that change (every retained receipt older than the PR 80 merge) may contain the 14 broken fragment targets the allowance used to cover, so the links gate could reject the rollback exactly when an owner needs it. Not verified: the reviewer inferred this from deploy/cli.ts and deploy/gates/links.ts but did not run it.\n\nVerify whether the gates run in rollback mode against the restored artifact (read .github/workflows/deploy.yml rollback steps, deploy/cli.ts, deploy/gates/links.ts). If they do and an older artifact fails, decide: skip the links gate for rollback (a rollback restores bytes that already passed their own gates), or record the gate's inputs in the receipt.",
   "links": [
     "BenchBox-dev/benchbox-site: .github/workflows/deploy.yml",
@@ -17,6 +18,14 @@
       "op": "create",
       "op_id": "63d356d3b46e42bebc06c3537bfa8497",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-30T21:04:03Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e0168185fae2417b92b68f7d9689befb",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
     }
   ]
 }
