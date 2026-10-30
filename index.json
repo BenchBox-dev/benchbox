@@ -17643,6 +17643,13 @@
       "status": "open",
       "title": "Native file loading for Firebolt Core and local runs"
     },
+    "perf-starrocks-parquet-load-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Load StarRocks Parquet via Stream Load, not executemany"
+    },
     "perf-trino-presto-bulk-load-20261030": {
       "claim": null,
       "needs": [],
