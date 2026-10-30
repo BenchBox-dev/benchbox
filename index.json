@@ -20138,12 +20138,17 @@
       "title": "Query Plan Core Infrastructure (Models & Storage)"
     },
     "query-plan-dataframe-contract-parity": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-31T14:34:02Z",
+        "generation": "42660b8671644cbf9552d1ccc30659ad",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bb7fd2d6b114a6501df93f97"
+      },
       "needs": [
         "query-plan-dataframe-error-accounting"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Close DataFrame query-plan capture and fingerprint integration gaps"
     },
     "query-plan-dataframe-error-accounting": {
