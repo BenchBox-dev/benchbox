@@ -231,7 +231,7 @@ def _make_q17_pandas_impl(variant: int) -> VariantImpl:
                 .merge(lineitem, left_on="p_partkey", right_on="l_partkey")
                 .merge(avg_table, left_on="p_partkey", right_on="l_partkey", how="left")
             )
-            joined = joined[joined["avg_qty"].notna()]
+            joined = joined[joined["avg_qty"].notnull()]
             return _q17_pandas_sum(joined[joined["l_quantity"] < joined["avg_qty"]])
 
         if variant == 8:

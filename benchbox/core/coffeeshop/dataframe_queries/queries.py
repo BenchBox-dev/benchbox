@@ -56,6 +56,7 @@ def _is_temporal_expression_column(frame: Any, name: str) -> bool:
 
 
 from benchbox.core.dataframe.context import DataFrameContext
+from benchbox.core.dataframe.pandas_ops import select as pandas_select, where as pandas_where
 from benchbox.core.dataframe.query import DataFrameQuery, QueryCategory
 
 from .parameters import get_parameters
@@ -109,7 +110,7 @@ def sa1_pandas_impl(ctx: DataFrameContext) -> Any:
         order_count=("order_id", "nunique"),
         gross_revenue=("total_price", "sum"),
     )
-    grouped["avg_order_value"] = np.where(
+    grouped["avg_order_value"] = pandas_where(
         grouped["order_count"] != 0, grouped["gross_revenue"] / grouped["order_count"], np.nan
     )
     return grouped.sort_values(["order_date", "region"])
@@ -209,8 +210,10 @@ def sa3_pandas_impl(ctx: DataFrameContext) -> Any:
         items_sold=("quantity", "sum"),
         revenue=("total_price", "sum"),
     )
-    grouped["avg_order_value"] = np.where(grouped["orders"] != 0, grouped["revenue"] / grouped["orders"], np.nan)
-    grouped["avg_items_per_order"] = np.where(grouped["orders"] != 0, grouped["items_sold"] / grouped["orders"], np.nan)
+    grouped["avg_order_value"] = pandas_where(grouped["orders"] != 0, grouped["revenue"] / grouped["orders"], np.nan)
+    grouped["avg_items_per_order"] = pandas_where(
+        grouped["orders"] != 0, grouped["items_sold"] / grouped["orders"], np.nan
+    )
     return grouped.sort_values(["year", "month"])
 
 
@@ -391,7 +394,6 @@ def pr2_expression_impl(ctx: DataFrameContext) -> Any:
 
 
 def pr2_pandas_impl(ctx: DataFrameContext) -> Any:
-    import numpy as np
 
     params = get_parameters("PR2")
     start_date = params.get("start_date", "2023-01-01")
@@ -405,7 +407,7 @@ def pr2_pandas_impl(ctx: DataFrameContext) -> Any:
         filtered["unit_price"] < 8,
     ]
     choices = ["Under $4", "$4-$5.99", "$6-$7.99"]
-    filtered["price_band"] = np.select(conditions, choices, default="$8+")
+    filtered["price_band"] = pandas_select(conditions, choices, "$8+")
     return (
         filtered.groupby(["price_band"], as_index=False)
         .agg(line_count=("price_band", "count"), revenue=("total_price", "sum"))
@@ -505,7 +507,6 @@ def tm1_expression_impl(ctx: DataFrameContext) -> Any:
 
 
 def tm1_pandas_impl(ctx: DataFrameContext) -> Any:
-    import numpy as np
 
     params = get_parameters("TM1")
     region = params.get("region", "South")
@@ -526,7 +527,7 @@ def tm1_pandas_impl(ctx: DataFrameContext) -> Any:
         (merged["hour"] >= 15) & (merged["hour"] <= 17),
     ]
     choices = ["Morning", "Midday", "Afternoon"]
-    merged["day_part"] = np.select(conditions, choices, default="Evening")
+    merged["day_part"] = pandas_select(conditions, choices, "Evening")
     return (
         merged.groupby(["day_part"], as_index=False)
         .agg(orders=("order_id", "nunique"), revenue=("total_price", "sum"), avg_line_value=("total_price", "mean"))
@@ -617,7 +618,6 @@ def qc2_expression_impl(ctx: DataFrameContext) -> Any:
 
 
 def qc2_pandas_impl(ctx: DataFrameContext) -> Any:
-    import numpy as np
 
     params = get_parameters("QC2")
     start_year = params.get("start_year", 2023)
@@ -636,7 +636,7 @@ def qc2_pandas_impl(ctx: DataFrameContext) -> Any:
         month.isin([6, 7, 8]),
     ]
     choices = ["Winter", "Spring", "Summer"]
-    merged["season"] = np.select(conditions, choices, default="Fall")
+    merged["season"] = pandas_select(conditions, choices, "Fall")
     return (
         merged.groupby(["region", "season"], as_index=False)
         .agg(revenue=("total_price", "sum"), orders=("order_id", "nunique"))

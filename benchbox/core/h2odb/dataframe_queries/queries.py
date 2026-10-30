@@ -224,7 +224,7 @@ def q10_expression_impl(ctx: DataFrameContext) -> Any:
 
 def q10_pandas_impl(ctx: DataFrameContext) -> Any:
     trips = ctx.get_table("trips")
-    filtered = trips[trips["pickup_location_id"].notna()]
+    filtered = trips[trips["pickup_location_id"].notnull()]
     return (
         filtered.groupby(["pickup_location_id"], as_index=False)
         .agg(trip_count=("pickup_location_id", "count"))

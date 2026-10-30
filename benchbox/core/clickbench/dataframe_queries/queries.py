@@ -9,6 +9,7 @@ from datetime import date
 from typing import Any
 
 from benchbox.core.dataframe.context import DataFrameContext
+from benchbox.core.dataframe.pandas_ops import where as pandas_where
 from benchbox.core.dataframe.query import DataFrameQuery, QueryCategory
 
 from .registry import register_query
@@ -90,20 +91,20 @@ def _pandas_filter(hits: Any, code: str) -> Any:
     if code == "adv_ne_0":
         return hits[hits["AdvEngineID"] != 0]
     if code == "phone_model_nonempty":
-        return hits[hits["MobilePhoneModel"].notna() & (hits["MobilePhoneModel"] != "")]
+        return hits[hits["MobilePhoneModel"].notnull() & (hits["MobilePhoneModel"] != "")]
     if code == "search_nonempty":
-        return hits[hits["SearchPhrase"].notna() & (hits["SearchPhrase"] != "")]
+        return hits[hits["SearchPhrase"].notnull() & (hits["SearchPhrase"] != "")]
     if code == "url_google":
         return hits[hits["URL"].str.contains("google", na=False)]
     if code == "google_search":
         return hits[
-            hits["URL"].str.contains("google", na=False) & hits["SearchPhrase"].notna() & (hits["SearchPhrase"] != "")
+            hits["URL"].str.contains("google", na=False) & hits["SearchPhrase"].notnull() & (hits["SearchPhrase"] != "")
         ]
     if code == "google_title":
         return hits[
             hits["Title"].str.contains("Google", na=False)
             & ~hits["URL"].str.contains(".google.", na=False, regex=False)
-            & hits["SearchPhrase"].notna()
+            & hits["SearchPhrase"].notnull()
             & (hits["SearchPhrase"] != "")
         ]
     if code == "user_lookup":
@@ -174,9 +175,7 @@ def _pandas_derive(hits: Any, code: str) -> Any:
         hits["ip_m2"] = hits["ClientIP"] - 2
         hits["ip_m3"] = hits["ClientIP"] - 3
     elif code == "source":
-        import numpy as np
-
-        hits["Src"] = np.where((hits["SearchEngineID"] == 0) & (hits["AdvEngineID"] == 0), hits["Referer"], "")
+        hits["Src"] = pandas_where((hits["SearchEngineID"] == 0) & (hits["AdvEngineID"] == 0), hits["Referer"], "")
     elif code == "trunc_minute":
         hits["M"] = hits["EventTime"].dt.floor("min")
     else:

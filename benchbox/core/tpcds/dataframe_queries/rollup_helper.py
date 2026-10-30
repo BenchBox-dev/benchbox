@@ -160,7 +160,7 @@ def expand_rollup_pandas(
         grouped = grouped.drop(columns=list(count_spec))
 
         for group_col in current_group:
-            grouped[group_col] = grouped[group_col].astype(object).where(grouped[group_col].notna(), None)
+            grouped[group_col] = grouped[group_col].astype(object).where(grouped[group_col].notnull(), None)
 
         rolled_up_cols = group_cols[n - i :]
         for null_col in rolled_up_cols:

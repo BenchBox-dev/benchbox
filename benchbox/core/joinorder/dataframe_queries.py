@@ -288,8 +288,8 @@ def _pandas_value(frame: pd.DataFrame, node: exp.Expression) -> Any:
 def _pandas_not_null_mask(*values: Any) -> Any:
     mask = True
     for value in values:
-        if hasattr(value, "notna"):
-            mask = mask & value.notna()
+        if hasattr(value, "notnull"):
+            mask = mask & value.notnull()
     return mask
 
 
