@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Firebolt Core loads TPC-H SF1 via a server-side file read.",
+    "executemany path is fallback only.",
+    "Row counts match."
+  ],
+  "description": "firebolt.py:762-845,1012-1019 splits lines and calls executemany in 500-row batches whenever S3 staging is absent (all Core/local runs). S3 mode already uses s3() table functions. Evaluate READ_CSV/READ_PARQUET on mounted files or COPY FROM for Core.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:root@vm:2d53e6a98f44f4f4a8a4dedd",
+      "at": "2026-10-30T17:55:20Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "4cf15231c9f347a6aba894a75d0c15c5",
+      "session_id": "be00837164104ac2b4ed790cdb6812a2"
+    }
+  ]
+}

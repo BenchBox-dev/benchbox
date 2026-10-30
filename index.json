@@ -17629,6 +17629,13 @@
       "status": "open",
       "title": "Use stage + COPY INTO for Databend loading"
     },
+    "perf-firebolt-core-bulk-load-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Native file loading for Firebolt Core and local runs"
+    },
     "perf-trino-presto-bulk-load-20261030": {
       "claim": null,
       "needs": [],
