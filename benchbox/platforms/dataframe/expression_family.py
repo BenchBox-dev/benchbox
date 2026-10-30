@@ -278,7 +278,9 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
             return UnifiedExpr(F.count(F.lit(1)))
 
         if platform == "DataFusion":
-            from datafusion import col as df_col, functions as df_f, lit as df_lit
+            from datafusion import functions as df_f, lit as df_lit
+
+            from benchbox.platforms.dataframe.datafusion_identifiers import datafusion_column as df_col
 
             if column:
                 return UnifiedExpr(df_f.count(df_col(column)))
@@ -316,7 +318,9 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
             return UnifiedExpr(F.sum(column))
 
         if platform == "DataFusion":
-            from datafusion import col as df_col, functions as df_f
+            from datafusion import functions as df_f
+
+            from benchbox.platforms.dataframe.datafusion_identifiers import datafusion_column as df_col
 
             return UnifiedExpr(df_f.sum(df_col(column)))
 
@@ -333,7 +337,9 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
             return UnifiedExpr(F.avg(column))
 
         if platform == "DataFusion":
-            from datafusion import col as df_col, functions as df_f
+            from datafusion import functions as df_f
+
+            from benchbox.platforms.dataframe.datafusion_identifiers import datafusion_column as df_col
 
             return UnifiedExpr(df_f.avg(df_col(column)))
 
@@ -350,7 +356,9 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
             return UnifiedExpr(F.stddev(column))
 
         if platform == "DataFusion":
-            from datafusion import col as df_col, functions as df_f
+            from datafusion import functions as df_f
+
+            from benchbox.platforms.dataframe.datafusion_identifiers import datafusion_column as df_col
 
             return UnifiedExpr(df_f.stddev(df_col(column)))
 
@@ -367,7 +375,9 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
             return UnifiedExpr(F.max(column))
 
         if platform == "DataFusion":
-            from datafusion import col as df_col, functions as df_f
+            from datafusion import functions as df_f
+
+            from benchbox.platforms.dataframe.datafusion_identifiers import datafusion_column as df_col
 
             return UnifiedExpr(df_f.max(df_col(column)))
 
@@ -389,7 +399,7 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
 
                     unwrapped.append(F.col(e))
                 elif platform == "DataFusion":
-                    from datafusion import col as df_col
+                    from benchbox.platforms.dataframe.datafusion_identifiers import datafusion_column as df_col
 
                     unwrapped.append(df_col(e))
                 else:

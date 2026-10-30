@@ -440,7 +440,7 @@ class DataFrameMetadataOperationsManager:
                         {
                             "name": field.name,
                             "dtype": str(field.type),
-                            "nullable": field.is_nullable,
+                            "nullable": field.nullable,
                         }
                     )
             else:
