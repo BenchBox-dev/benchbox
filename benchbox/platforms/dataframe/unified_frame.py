@@ -2362,7 +2362,7 @@ class UnifiedLazyFrame(Generic[DF, Expr]):
         elif _is_polars_df(self._df):
             result = self._df.explode(column)
         elif _is_datafusion_df(self._df):
-            result = self._df.unnest_columns(column)
+            result = self._df.unnest_columns(datafusion_identifier(column))
         else:
             result = self._df.explode(column)
 

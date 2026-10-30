@@ -105,3 +105,10 @@ def test_rename_and_drop_mixed_case_names(mixed_case_frames):
 def test_unique_subset_on_mixed_case_name(mixed_case_frames):
     hits, _ = mixed_case_frames
     assert len(_rows(hits.unique(subset="WatchID"))) == 3
+
+
+def test_explode_mixed_case_list_column():
+    ctx = datafusion.SessionContext()
+    ctx.register_record_batches("t", [pa.table({"Tags": [[1, 2], [3]], "id": [1, 2]}).to_batches()])
+    frame = UnifiedLazyFrame(ctx.table("t"), adapter=SimpleNamespace(platform_name="DataFusion"))
+    assert [row["Tags"] for row in _rows(frame.explode("Tags"))] == [1, 2, 3]
