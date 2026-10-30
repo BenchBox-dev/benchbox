@@ -114,6 +114,15 @@ def _resolve_groups(select: exp.Select) -> list[exp.Expr] | None:
     return resolved
 
 
+def _always_one_row(select: exp.Select) -> bool:
+    if select.args.get("group") is not None or select.args.get("having") is not None:
+        return False
+    if select.args.get("limit") is not None or select.args.get("offset") is not None:
+        return False
+    projection = select.expressions[0]
+    return any(not isinstance(agg.parent, exp.Window) for agg in projection.find_all(exp.AggFunc))
+
+
 def _hoist_scalar_subqueries(condition: exp.Expr) -> tuple[exp.Expr, list[exp.Join]]:
     joins: list[exp.Join] = []
     holder = exp.Paren(this=condition)
@@ -124,6 +133,7 @@ def _hoist_scalar_subqueries(condition: exp.Expr) -> tuple[exp.Expr, list[exp.Jo
                 isinstance(child, exp.Subquery)
                 and isinstance(child.this, exp.Select)
                 and len(child.this.expressions) == 1
+                and _always_one_row(child.this)
                 and not isinstance(node, (exp.In, exp.Exists, exp.Any, exp.All))
             ):
                 index = len(joins) + 1
