@@ -8,6 +8,7 @@
     "The composer filter and copy behave correctly on the built /prompts/ page, and landing/prompts/a11y-checklist.md names the CI job",
     "The owner decides whether the job joins the required ci aggregate or stays advisory like visual.yml, recorded in context"
   ],
+  "context": "Moved to the BenchBox-dev/benchbox-site tracker (todo-state branch of that repository) under the same id on 2026-10-30; track it there.",
   "description": "benchbox-site has browser acceptance scripts that passed in the Astro build PR (core #2606) but run in no workflow; site ci.yml runs only vitest and the Explorer Playwright suite.\n- website/e2e/shell.mjs: axe at 1280, 390 and 320 px in both themes, 44 px targets, theme persistence, Pagefind docs and blog search.\n- website/e2e/parity.mjs: axe over every page template and a Pagefind smoke search.\n- website/e2e/not-found.mjs: deep links and query-string URLs through the 404 fallback on a Pages-like server.\n- website/e2e/explorer.mjs: shell parity, back and forward, query-string restore, worker and WASM recovery, zero Explorer bytes on docs and blog pages.\n- website/e2e/landing.mjs: composer filter and copy, no third-party scripts on /, axe on / and /prompts/. Part of it compares against the legacy static landing/ tree, which astro-site-54 removes.\n- explorer/e2e/routes/pages-artifact.spec.ts: Pages-shaped direct routes, skipped unless E2E_PAGES_SHAPED and E2E_SITE_DIR are set.\n\nAdd a CI job that builds the site from the fetched bundle and runs these checks against website/dist. Drop the parts of landing.mjs that need the legacy landing/ tree. These criteria come from astro-site-22, 35, 36 and 40, which were dropped as delivered.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox-site"
@@ -20,6 +21,14 @@
       "op": "create",
       "op_id": "ae61132824564cf69061387845832adb",
       "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-30T23:04:28Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5986bb02abdb4155816a636cedebd6db",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
     }
   ]
 }
