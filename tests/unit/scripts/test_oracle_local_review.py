@@ -103,6 +103,7 @@ def test_the_review_launches_from_the_fetched_develop_export_with_the_pinned_run
     assert export.name == advanced
     assert (export / REVIEWER_FILE).read_text(encoding="utf-8") == "advanced cli\n"
     assert argv[:2] == ["uv", "run"] and "--isolated" in argv and "--no-project" in argv
+    assert argv[argv.index("python") + 1] == "-P"
     assert argv[argv.index("local-review") :][:3] == ["local-review", "--policy", ".github/oracle-reviewers.yml"]
     assert ("--base-ref", "origin/develop") in set(zip(argv, argv[1:], strict=False))
 

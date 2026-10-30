@@ -96,6 +96,7 @@ def review_command(args: argparse.Namespace) -> list[str]:
         YAML_REQUIREMENT,
         "--",
         "python",
+        "-P",
         "-m",
         REVIEW_MODULE,
         "local-review",
