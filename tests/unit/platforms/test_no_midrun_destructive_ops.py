@@ -190,6 +190,12 @@ ALLOWANCES = (
         after_creation=True,
     ),
     Allowance(
+        "pg-mooncake",
+        "load_data",
+        re.compile(r'DROP TABLE IF EXISTS (?:"[^"]+"\.)?"__bb_moon_src_region"', re.IGNORECASE),
+        "pg_mooncake drops the heap table renamed to a staging name in this run once its columnstore mirror is created",
+    ),
+    Allowance(
         "fabric_dw",
         "test_connection",
         re.compile(r"DROP TABLE #benchbox_test_temp", re.IGNORECASE),
