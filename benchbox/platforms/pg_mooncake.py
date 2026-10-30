@@ -10,6 +10,7 @@ import re
 import time
 from typing import Any
 
+from benchbox.core.benchmark_table_ownership import MOONCAKE_STAGING_PREFIX
 from benchbox.utils.dialect_utils import mooncake_mirror_statements
 
 from .base.config_utils import (
@@ -341,8 +342,8 @@ class PgMooncakeAdapter(PostgreSQLAdapter):
             self.logger.warning(f"Could not restore the heap table name {table_name} after a mirror failure: {exc}")
 
     def _mooncake_staging_table_name(self, table_name: str) -> str:
-        suffix_budget = 63 - len("__bb_moon_src_")
-        return f"__bb_moon_src_{table_name[:suffix_budget]}"
+        suffix_budget = 63 - len(MOONCAKE_STAGING_PREFIX)
+        return f"{MOONCAKE_STAGING_PREFIX}{table_name[:suffix_budget]}"
 
     def _qualified_identifier(self, table_name: str) -> str:
         if self.schema != "public":

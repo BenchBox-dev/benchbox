@@ -102,7 +102,7 @@ class SchemaValidator(BaseValidator):
             if extra_tables:
                 extra_tables = self._filter_system_tables(extra_tables)
                 if extra_tables:
-                    result.foreign_tables = set(extra_tables)
+                    result.foreign_tables = self._without_benchbox_owned(extra_tables)
                     result.add_warning(f"Extra tables found: {', '.join(sorted(extra_tables))}")
 
         except ValueError as e:
@@ -130,6 +130,17 @@ class SchemaValidator(BaseValidator):
     def _get_existing_tables(self, connection: Any) -> set[str]:
         existing_table_list = self.adapter._get_existing_tables(connection)
         return {t.lower() for t in existing_table_list}
+
+    def _without_benchbox_owned(self, tables: set[str]) -> set[str]:
+        from benchbox.core.benchmark_table_ownership import (
+            benchmark_family_of,
+            is_benchbox_staging_table,
+            tables_owned_by_benchmark_family,
+        )
+
+        family = benchmark_family_of(getattr(self.adapter, "benchmark_instance", None))
+        owned = tables_owned_by_benchmark_family(family) if family else frozenset()
+        return {t for t in tables if t not in owned and not is_benchbox_staging_table(t)}
 
     def _filter_system_tables(self, tables: set[str]) -> set[str]:
         system_tables = {
