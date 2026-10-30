@@ -365,30 +365,31 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
 
         self.log_very_verbose(f"Executing schema creation script ({len(schema_sql)} characters)")
 
+        statements = [s.strip() for s in schema_sql.split(";") if s.strip()]
         cursor = connection.cursor()
         critical_failures = []
         try:
             if not self.is_dry_run and not getattr(self, "database_was_reused", False):
                 benchmark_tables = getattr(benchmark, "tables", None)
-                if isinstance(benchmark_tables, dict):
-                    droppable = [
-                        name
-                        for name in benchmark_tables
-                        if isinstance(name, str) and self._validate_identifier(name.lower())
-                    ]
-                    if droppable:
-                        self.log_notice(
-                            f"Pre-dropping {len(droppable)} benchmark table(s) before schema creation: "
-                            f"{', '.join(droppable)}"
-                        )
-                    for table_name in droppable:
-                        try:
-                            self.log_notice(f'Dropping table if it exists: "{table_name}"')
-                            cursor.execute(f'DROP TABLE IF EXISTS "{table_name}"')
-                        except Exception as drop_err:
-                            self.logger.warning(f"Pre-create DROP TABLE {table_name} skipped: {drop_err}")
+                candidates = list(benchmark_tables) if isinstance(benchmark_tables, dict) else []
+                candidates.extend(name for stmt in statements for name in [self._extract_table_name(stmt)] if name)
+                droppable = list(
+                    dict.fromkeys(
+                        name for name in candidates if isinstance(name, str) and self._validate_identifier(name.lower())
+                    )
+                )
+                if droppable:
+                    self.log_notice(
+                        f"Pre-dropping {len(droppable)} benchmark table(s) before schema creation: "
+                        f"{', '.join(droppable)}"
+                    )
+                for table_name in droppable:
+                    try:
+                        self.log_notice(f'Dropping table if it exists: "{table_name}"')
+                        cursor.execute(f'DROP TABLE IF EXISTS "{table_name}"')
+                    except Exception as drop_err:
+                        self.logger.warning(f"Pre-create DROP TABLE {table_name} skipped: {drop_err}")
 
-            statements = [s.strip() for s in schema_sql.split(";") if s.strip()]
             for stmt in statements:
                 stmt_upper = stmt.upper()
 

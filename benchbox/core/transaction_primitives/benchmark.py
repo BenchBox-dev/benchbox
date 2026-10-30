@@ -586,9 +586,7 @@ class TransactionPrimitivesBenchmark(TransactionalBenchmarkBase["OperationResult
 
             if operation.cleanup_sql:
                 try:
-                    cleanup_res = connection.execute(operation.cleanup_sql)
-                    if (cleanup_err := failed_platform_error(cleanup_res)) is not None:
-                        raise RuntimeError(cleanup_err)
+                    self._execute_cleanup_sql(connection, operation.cleanup_sql, platform_key or fallback_key)
                 except Exception as e:
                     cleanup_error = str(e)
                     self.log_verbose(f"Cleanup SQL failed for {operation_id}: {cleanup_error}")
