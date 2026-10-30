@@ -25660,15 +25660,10 @@
       "title": "Unblock PRs: record a reviewed freshness waiver for upstream SQLGlot v30.25.0"
     },
     "sqlglot-freshness-waiver-v30-27-0": {
-      "claim": {
-        "expires_at": "2026-10-31T22:36:34Z",
-        "generation": "ea7164594de445e78a6d9d5b60fcdda7",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:73f4ce6dc372259381dd21db"
-      },
+      "claim": null,
       "needs": [],
       "priority": "critical",
-      "status": "active",
+      "status": "done",
       "title": "Unblock PRs and release checks: record a reviewed freshness waiver for upstream SQLGlot v30.27.0"
     },
     "sqlglot-mysql-retirement-needs-execution-evidence": {
