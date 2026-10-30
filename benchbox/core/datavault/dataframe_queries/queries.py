@@ -9,6 +9,7 @@ from datetime import date, timedelta
 from typing import Any
 
 from benchbox.core.dataframe.context import DataFrameContext
+from benchbox.core.dataframe.pandas_ops import where as pandas_where
 from benchbox.core.dataframe.query import DataFrameQuery, QueryCategory
 from benchbox.core.datavault.dataframe_queries.parameters import get_parameters
 from benchbox.core.datavault.dataframe_queries.registry import register_query
@@ -615,9 +616,7 @@ def q8_pandas_impl(ctx: DataFrameContext) -> Any:
     df["o_year"] = df["o_orderdate"].apply(lambda d: d.year if hasattr(d, "year") else d)
     df["volume"] = df["l_extendedprice"] * (1 - df["l_discount"])
 
-    import numpy as np
-
-    df["nation_vol"] = np.where(df["supp_nation"] == target_nation, df["volume"], 0)
+    df["nation_vol"] = pandas_where(df["supp_nation"] == target_nation, df["volume"], 0)
     result = df.groupby("o_year").agg(nation_vol=("nation_vol", "sum"), total_vol=("volume", "sum")).reset_index()
     result["mkt_share"] = result["nation_vol"] / result["total_vol"]
     return result[["o_year", "mkt_share"]].sort_values("o_year")
@@ -881,10 +880,8 @@ def q12_pandas_impl(ctx: DataFrameContext) -> Any:
         & (df["l_receiptdate"] < end_date)
     ]
 
-    import numpy as np
-
-    df["high"] = np.where(df["o_orderpriority"].isin(["1-URGENT", "2-HIGH"]), 1, 0)
-    df["low"] = np.where(~df["o_orderpriority"].isin(["1-URGENT", "2-HIGH"]), 1, 0)
+    df["high"] = pandas_where(df["o_orderpriority"].isin(["1-URGENT", "2-HIGH"]), 1, 0)
+    df["low"] = pandas_where(~df["o_orderpriority"].isin(["1-URGENT", "2-HIGH"]), 1, 0)
     result = df.groupby("l_shipmode").agg(high_line_count=("high", "sum"), low_line_count=("low", "sum")).reset_index()
     return result.sort_values("l_shipmode")
 
@@ -981,11 +978,10 @@ def q14_pandas_impl(ctx: DataFrameContext) -> Any:
     df = ll.merge(sl, on="hk_lineitem_link").merge(sp, on="hk_part")
     df = df[(df["l_shipdate"] >= start_date) & (df["l_shipdate"] < end_date)]
 
-    import numpy as np
     import pandas as pd
 
     df["revenue"] = df["l_extendedprice"] * (1 - df["l_discount"])
-    df["promo_revenue"] = np.where(df["p_type"].str.startswith("PROMO"), df["revenue"], 0)
+    df["promo_revenue"] = pandas_where(df["p_type"].str.startswith("PROMO"), df["revenue"], 0)
     if len(df) == 0:
         return pd.DataFrame({"promo_revenue": [None]})
     revenue_sum = float(df["revenue"].sum())

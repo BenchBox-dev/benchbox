@@ -1,0 +1,33 @@
+from __future__ import annotations
+
+from typing import Any
+
+import numpy as np
+
+
+def is_lazy_frame(value: Any) -> bool:
+    return hasattr(value, "dask") and hasattr(value, "npartitions")
+
+
+def _partition_where(condition: Any, if_true: Any, if_false: Any) -> Any:
+    import pandas as pd
+
+    mask = condition.to_numpy(dtype=bool, na_value=False)
+    return pd.Series(np.where(mask, if_true, if_false), index=condition.index)
+
+
+def where(condition: Any, if_true: Any, if_false: Any) -> Any:
+    if not is_lazy_frame(condition):
+        return np.where(condition, if_true, if_false)
+    import dask.dataframe as dd
+
+    return dd.map_partitions(_partition_where, condition, if_true, if_false)
+
+
+def select(conditions: list[Any], choices: list[Any], default: Any) -> Any:
+    if not any(is_lazy_frame(condition) for condition in conditions):
+        return np.select(conditions, choices, default=default)
+    result = default
+    for condition, choice in reversed(list(zip(conditions, choices, strict=True))):
+        result = where(condition, choice, result)
+    return result

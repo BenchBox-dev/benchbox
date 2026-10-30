@@ -262,6 +262,14 @@ scales:
 execute:
   per_cell_timeout_s: 600        # optional, int, default 600. Hard
                                  # wall-clock cap per cell.
+  per_cell_memory_limit_gib: 0   # optional, number >= 0, default 0 (off).
+                                 # When > 0, the cell's process tree is
+                                 # sampled once a second; if its combined
+                                 # resident set exceeds this many GiB the
+                                 # tree is killed and the cell fails with
+                                 # exit 137 and a `# UAT_MEMORY_LIMIT`
+                                 # log line, so one runaway cell cannot
+                                 # exhaust the host and end the sweep.
   early_stop_after_s: 180        # optional, int, default 180. If a
                                  # rung's wall-clock exceeds this,
                                  # subsequent higher rungs for that

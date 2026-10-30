@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Release UAT can bound each cell's resident memory so one runaway cell fails instead of ending the sweep"
+}

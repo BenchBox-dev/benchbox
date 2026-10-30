@@ -1047,14 +1047,14 @@ def _q77_pandas_channel(
         result = sales.merge(returns, on="_key").drop(columns=["_key"])
     else:
         result = sales.merge(returns, left_on=sales_group, right_on=returns_group, how=join_how)
-        result["returns"] = result["returns"].where(result["returns"].notna(), 0)
-        result["profit_loss"] = result["profit_loss"].where(result["profit_loss"].notna(), 0)
+        result["returns"] = result["returns"].where(result["returns"].notnull(), 0)
+        result["profit_loss"] = result["profit_loss"].where(result["profit_loss"].notnull(), 0)
     result["profit"] = [
         None if profit is None or loss is None else profit - loss
         for profit, loss in zip(result["profit"], result["profit_loss"])
     ]
     result["channel"] = channel_name
-    result[sales_group] = result[sales_group].astype(object).where(result[sales_group].notna(), None)
+    result[sales_group] = result[sales_group].astype(object).where(result[sales_group].notnull(), None)
     result["id"] = result[sales_group]
     return result[["channel", "id", "sales", "returns", "profit"]]
 
@@ -1625,7 +1625,7 @@ def _joined_agg_pandas_condition(frame: Any, params: Any, condition: _JoinedAggC
         values = [str(value) for value in list(_resolve_joined_agg_value(params, condition[3]))]
         return frame[column].astype(str).str[:length].isin(values)
     if op == "prefix_ne_cols":
-        both_present = frame[column].notna() & frame[condition[2]].notna()
+        both_present = frame[column].notnull() & frame[condition[2]].notnull()
         differs = frame[column].astype(str).str[: condition[3]] != frame[condition[2]].astype(str).str[: condition[3]]
         return differs & both_present
     if op == "starts_with":
@@ -2159,7 +2159,9 @@ def q46_pandas_impl(ctx: DataFrameContext) -> Any:
     )
     outer = inner.merge(customer, left_on="ss_customer_sk", right_on="c_customer_sk")
     outer = outer.merge(customer_address, left_on="c_current_addr_sk", right_on="ca_address_sk")
-    outer = outer[(outer["ca_city"] != outer["bought_city"]) & outer["ca_city"].notna() & outer["bought_city"].notna()]
+    outer = outer[
+        (outer["ca_city"] != outer["bought_city"]) & outer["ca_city"].notnull() & outer["bought_city"].notnull()
+    ]
     cols = ["c_last_name", "c_first_name", "ca_city", "bought_city", "ss_ticket_number", "amt", "profit"]
     result = outer[cols].sort_values(cols).head(100)
     return _none_for_null(result, [column for column in result.columns if result[column].dtype == object])
@@ -2229,7 +2231,9 @@ def q68_pandas_impl(ctx: DataFrameContext) -> Any:
     )
     outer = inner.merge(customer, left_on="ss_customer_sk", right_on="c_customer_sk")
     outer = outer.merge(customer_address, left_on="c_current_addr_sk", right_on="ca_address_sk")
-    outer = outer[(outer["ca_city"] != outer["bought_city"]) & outer["ca_city"].notna() & outer["bought_city"].notna()]
+    outer = outer[
+        (outer["ca_city"] != outer["bought_city"]) & outer["ca_city"].notnull() & outer["bought_city"].notnull()
+    ]
     cols = [
         "c_last_name",
         "c_first_name",
@@ -2801,7 +2805,7 @@ def q72_pandas_impl(ctx: DataFrameContext) -> Any:
 
     filtered = filtered.copy()
     filtered["no_promo"] = filtered["p_promo_id"].isna().astype(int)
-    filtered["promo"] = filtered["p_promo_id"].notna().astype(int)
+    filtered["promo"] = filtered["p_promo_id"].notnull().astype(int)
 
     grouped = filtered.groupby(["i_item_desc", "w_warehouse_name", "cs_week_seq"], as_index=False, dropna=False).agg(
         no_promo=("no_promo", "sum"), promo=("promo", "sum"), total_cnt=("i_item_desc", "size")
@@ -3700,7 +3704,7 @@ def q41_pandas_impl(ctx: DataFrameContext) -> Any:
         )
         condition = group if condition is None else condition | group
 
-    matching_manufacts = _to_list(item[condition & item["i_manufact"].notna()]["i_manufact"].unique())
+    matching_manufacts = _to_list(item[condition & item["i_manufact"].notnull()]["i_manufact"].unique())
 
     result = i1[i1["i_manufact"].isin(matching_manufacts)][["i_product_name"]].drop_duplicates()
     return result.sort_values("i_product_name").head(100)
@@ -3918,7 +3922,7 @@ def q36_pandas_impl(ctx: DataFrameContext) -> Any:
     )
 
     margin = rollup_result["sum_profit"].astype(float) / rollup_result["sum_sales"].astype(float)
-    valid_sums = rollup_result["sum_profit"].notna() & rollup_result["sum_sales"].notna()
+    valid_sums = rollup_result["sum_profit"].notnull() & rollup_result["sum_sales"].notnull()
     rollup_result["gross_margin"] = margin.astype(object).where(valid_sums, None)
     rollup_result["nan_margin"] = margin.isna() & valid_sums
 
@@ -4069,7 +4073,7 @@ def q51_pandas_impl(ctx: DataFrameContext) -> Any:
 
     dates = date_dim[(date_dim["d_month_seq"] >= dms) & (date_dim["d_month_seq"] <= dms + 11)]
 
-    web_merged = web_sales[web_sales["ws_item_sk"].notna()].merge(
+    web_merged = web_sales[web_sales["ws_item_sk"].notnull()].merge(
         dates[["d_date_sk", "d_date"]], left_on="ws_sold_date_sk", right_on="d_date_sk"
     )
     web_base = web_merged.groupby(["ws_item_sk", "d_date"], as_index=False).agg(
@@ -4079,7 +4083,7 @@ def q51_pandas_impl(ctx: DataFrameContext) -> Any:
     web_base["cume_sales"] = _q51_running_total_pandas(web_base, "ws_item_sk")
     web_v1 = web_base[["ws_item_sk", "d_date", "cume_sales"]].rename(columns={"ws_item_sk": "item_sk"})
 
-    store_merged = store_sales[store_sales["ss_item_sk"].notna()].merge(
+    store_merged = store_sales[store_sales["ss_item_sk"].notnull()].merge(
         dates[["d_date_sk", "d_date"]], left_on="ss_sold_date_sk", right_on="d_date_sk"
     )
     store_base = store_merged.groupby(["ss_item_sk", "d_date"], as_index=False).agg(
@@ -4103,7 +4107,7 @@ def q51_pandas_impl(ctx: DataFrameContext) -> Any:
 
     result = joined[joined["web_cumulative"] > joined["store_cumulative"]]
     result = result[["item_sk", "d_date", "web_sales", "store_sales", "web_cumulative", "store_cumulative"]]
-    return result.sort_values(["item_sk", "d_date"]).head(100).astype(object).where(lambda frame: frame.notna(), None)
+    return result.sort_values(["item_sk", "d_date"]).head(100).astype(object).where(lambda frame: frame.notnull(), None)
 
 
 _ROLLING_MEASURES = ("avg_monthly_sales", "sum_sales", "psum", "nsum")
@@ -4565,14 +4569,14 @@ def q70_pandas_impl(ctx: DataFrameContext) -> Any:
     merged = store_sales.merge(dates[["d_date_sk"]], left_on="ss_sold_date_sk", right_on="d_date_sk")
     merged = merged.merge(store[["s_store_sk", "s_state", "s_county"]], left_on="ss_store_sk", right_on="s_store_sk")
 
-    base = merged[merged["s_state"].notna()]
+    base = merged[merged["s_state"].notnull()]
 
     agg_dict = {"total_sum": ("ss_net_profit", "sum")}
     rollup_result = expand_rollup_pandas(
         base, ["s_state", "s_county"], agg_dict, ctx, count_sources={"total_sum": "ss_net_profit"}
     )
     totals = rollup_result["total_sum"]
-    rollup_result["total_sum"] = totals.astype(float).round(2).astype(object).where(totals.notna(), None)
+    rollup_result["total_sum"] = totals.astype(float).round(2).astype(object).where(totals.notnull(), None)
 
     rollup_result["lochierarchy"] = rollup_result["grouping_id"].apply(lambda x: bin(x).count("1"))
 
@@ -5404,9 +5408,9 @@ def q97_pandas_impl(ctx: DataFrameContext) -> Any:
         how="outer",
     )
 
-    store_only = ((joined["ss_customer_sk"].notna()) & (joined["cs_customer_sk"].isna())).sum()
-    catalog_only = ((joined["ss_customer_sk"].isna()) & (joined["cs_customer_sk"].notna())).sum()
-    store_and_catalog = ((joined["ss_customer_sk"].notna()) & (joined["cs_customer_sk"].notna())).sum()
+    store_only = ((joined["ss_customer_sk"].notnull()) & (joined["cs_customer_sk"].isna())).sum()
+    catalog_only = ((joined["ss_customer_sk"].isna()) & (joined["cs_customer_sk"].notnull())).sum()
+    store_and_catalog = ((joined["ss_customer_sk"].notnull()) & (joined["cs_customer_sk"].notnull())).sum()
 
     return pd.DataFrame(
         {
@@ -5987,7 +5991,7 @@ def q78_pandas_impl(ctx: DataFrameContext) -> Any:
         _sort_null_largest_pandas(result, order_by, descending)
         .head(100)
         .astype(object)
-        .where(lambda frame: frame.notna(), None)
+        .where(lambda frame: frame.notnull(), None)
     )
 
 
@@ -6148,7 +6152,7 @@ def _year_growth_pandas(
         result = result[result[f"{winner}_growth"] > result[f"{channel}_growth"]]
     columns = ["c_customer_id", "c_first_name", "c_last_name", select_column]
     top = _sort_null_largest_pandas(result[columns], columns, [False] * 4).head(100)
-    return top.astype(object).where(top.notna(), None)
+    return top.astype(object).where(top.notnull(), None)
 
 
 _YEAR_GROWTH_SHAPES: dict[int, tuple[tuple[str, ...], str, str, tuple[str, ...]]] = {
@@ -7112,7 +7116,7 @@ def q16_pandas_impl(ctx: DataFrameContext) -> Any:
 
     returned_orders = catalog_returns[["cr_order_number"]].drop_duplicates()
 
-    shipped = catalog_sales[catalog_sales["cs_warehouse_sk"].notna()]
+    shipped = catalog_sales[catalog_sales["cs_warehouse_sk"].notnull()]
     order_warehouses = shipped[["cs_order_number", "cs_warehouse_sk"]].drop_duplicates()
     ow_count = ctx.groupby_size(order_warehouses, "cs_order_number", name="wh_count")
     multi_warehouse_orders = ow_count[ow_count["wh_count"] > 1][["cs_order_number"]]
@@ -8275,7 +8279,7 @@ def q59_pandas_impl(ctx: DataFrameContext) -> Any:
         result.sort_values(["s_store_name1", "s_store_id1", "d_week_seq1"])
         .head(100)
         .astype(object)
-        .where(lambda frame: frame.notna(), None)
+        .where(lambda frame: frame.notnull(), None)
     )
 
 
@@ -8376,7 +8380,7 @@ def q61_pandas_impl(ctx: DataFrameContext) -> Any:
             }
         )
         .astype(object)
-        .where(lambda frame: frame.notna(), None)
+        .where(lambda frame: frame.notnull(), None)
     )
 
 

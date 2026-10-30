@@ -31,6 +31,7 @@ class ConfigError(ValueError):
 @dataclass(frozen=True)
 class ExecuteConfig:
     per_cell_timeout_s: int = 600
+    per_cell_memory_limit_gib: float = 0.0
     early_stop_after_s: int = 180
     early_stop_on_failure: bool = True
     phases_arg: str = "load,power"
@@ -338,6 +339,7 @@ def _validate_execute(payload: dict[str, Any]) -> ExecuteConfig:
         frozenset(
             {
                 "per_cell_timeout_s",
+                "per_cell_memory_limit_gib",
                 "early_stop_after_s",
                 "early_stop_on_failure",
                 "phases_arg",
@@ -389,6 +391,9 @@ def _validate_execute(payload: dict[str, Any]) -> ExecuteConfig:
         )
     return ExecuteConfig(
         per_cell_timeout_s=timeout,
+        per_cell_memory_limit_gib=_require_nonnegative_float(
+            payload, "per_cell_memory_limit_gib", default=0.0, section="execute"
+        ),
         early_stop_after_s=early_after,
         early_stop_on_failure=_require_bool(payload, "early_stop_on_failure", default=True, section="execute"),
         phases_arg=phases_arg,

@@ -9,6 +9,7 @@ from datetime import date
 from typing import Any
 
 from benchbox.core.dataframe.context import DataFrameContext
+from benchbox.core.dataframe.pandas_ops import where as pandas_where
 from benchbox.core.dataframe.query import DataFrameQuery, QueryCategory
 
 from .parameters import get_parameters
@@ -238,7 +239,6 @@ def q3a_expression_impl(ctx: DataFrameContext) -> Any:
 
 
 def q3a_pandas_impl(ctx: DataFrameContext) -> Any:
-    import numpy as np
 
     params = get_parameters("Q3a")
     keyword1 = params.get("keyword1", "web")
@@ -250,8 +250,8 @@ def q3a_pandas_impl(ctx: DataFrameContext) -> Any:
     df = documents.copy()
     df["content_length"] = df["contents"].str.len()
     df = df[df["content_length"] > min_content_length]
-    df["has_keyword1"] = np.where(df["contents"].str.contains(keyword1, na=False), 1, 0)
-    df["has_keyword2"] = np.where(df["contents"].str.contains(keyword2, na=False), 1, 0)
+    df["has_keyword1"] = pandas_where(df["contents"].str.contains(keyword1, na=False), 1, 0)
+    df["has_keyword2"] = pandas_where(df["contents"].str.contains(keyword2, na=False), 1, 0)
     return (
         df[["url", "content_length", "has_keyword1", "has_keyword2"]]
         .sort_values("content_length", ascending=False)

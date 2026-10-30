@@ -284,7 +284,7 @@ def _make_q18_pandas_impl(variant: int) -> VariantImpl:
             joined = customer.merge(orders, left_on="c_custkey", right_on="o_custkey").merge(
                 keys, left_on="o_orderkey", right_on="l_orderkey", how="left"
             )
-            joined = joined[joined["is_large"].notna()].drop(columns=["is_large", "l_orderkey"])
+            joined = joined[joined["is_large"].notnull()].drop(columns=["is_large", "l_orderkey"])
             return _q18_pandas_aggregate(joined.merge(lineitem, left_on="o_orderkey", right_on="l_orderkey"))
 
         if variant == 8:
