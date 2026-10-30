@@ -105,8 +105,13 @@ def test_every_phase_step_receives_exactly_the_secrets_its_workflow_step_names(h
         assert set(run.step_env[key]) - {"ORACLE_APP_PRIVATE_KEY"} == expected, key
 
 
-def test_the_app_private_key_reaches_no_phase_other_than_the_decoyed_ones(harness: Harness) -> None:
+def test_nothing_a_phase_exports_to_later_steps_carries_a_withheld_secret(harness: Harness) -> None:
     run = _reviewed(harness)
 
-    holders = {key for key, passed in run.step_env.items() if APP_PRIVATE_KEY in passed.values()}
-    assert holders == {"prepare", "finalize", "publish"}
+    exported = " ".join(step.outputs.get("env", "") for step in run.steps.values()) + " ".join(
+        run.exported_env.values()
+    )
+    assert not any(value in exported for value in (*WITHHELD.values(), APP_PRIVATE_KEY))
+    for key in ("attempts", "resume-1"):
+        passed = run.step_env.get(key, {})
+        assert APP_PRIVATE_KEY not in passed.values()
