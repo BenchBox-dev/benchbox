@@ -12116,6 +12116,13 @@
       "status": "done",
       "title": "`--force datagen` does not regenerate TPC-H data"
     },
+    "foreign-table-guard-blocks-shared-database-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "critical",
+      "status": "open",
+      "title": "Foreign-table guard refuses to reset databases that sibling benchmarks share in one sweep"
+    },
     "formalize-mcp-internal-apis": {
       "claim": null,
       "needs": [],
