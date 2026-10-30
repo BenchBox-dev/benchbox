@@ -381,8 +381,13 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         finally:
             cursor.close()
 
-    def _await_backends_ready(self) -> None:
-        deadline = time.monotonic() + _BACKEND_READY_TIMEOUT_S
+    def _await_backends_ready(
+        self,
+        *,
+        clock: Callable[[], float] = time.monotonic,
+        sleep: Callable[[float], None] = time.sleep,
+    ) -> None:
+        deadline = clock() + _BACKEND_READY_TIMEOUT_S
         required = max(1, self.replication_num)
         ready = 0
         while True:
@@ -400,13 +405,13 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
                 conn.close()
             if ready >= required:
                 return
-            if time.monotonic() >= deadline:
+            if clock() >= deadline:
                 self.logger.warning(
                     f"Doris reports {ready} of {required} required backends alive with disk capacity after "
                     f"{_BACKEND_READY_TIMEOUT_S:.0f}s; table creation may fail"
                 )
                 return
-            time.sleep(_BACKEND_READY_POLL_S)
+            sleep(_BACKEND_READY_POLL_S)
 
     def create_connection(self, **connection_config: Any) -> Any:
         self._await_backends_ready()

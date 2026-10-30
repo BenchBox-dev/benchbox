@@ -1876,11 +1876,9 @@ class TestDorisBackendReadiness:
         adapter = self._adapter()
         conn, cursor = self._conn([[(1, 0)], [], [(1, 78_400_000_000)]])
 
-        with (
-            patch.object(adapter, "_admin_connect", return_value=conn) as connect,
-            patch("benchbox.platforms.doris.time.sleep") as sleep,
-        ):
-            adapter._await_backends_ready()
+        sleep = Mock()
+        with patch.object(adapter, "_admin_connect", return_value=conn) as connect:
+            adapter._await_backends_ready(sleep=sleep)
 
         assert connect.call_count == 3
         assert sleep.call_count == 2
@@ -1890,11 +1888,8 @@ class TestDorisBackendReadiness:
         adapter = self._adapter(replication_num=2)
         conn, _ = self._conn([[(1, 10_000_000_000)], [(1, 10_000_000_000), (1, 10_000_000_000)]])
 
-        with (
-            patch.object(adapter, "_admin_connect", return_value=conn) as connect,
-            patch("benchbox.platforms.doris.time.sleep"),
-        ):
-            adapter._await_backends_ready()
+        with patch.object(adapter, "_admin_connect", return_value=conn) as connect:
+            adapter._await_backends_ready(sleep=Mock())
 
         assert connect.call_count == 2
 
@@ -1904,22 +1899,18 @@ class TestDorisBackendReadiness:
 
         with (
             patch.object(adapter, "_admin_connect", return_value=conn),
-            patch("benchbox.platforms.doris.time.sleep"),
-            patch("benchbox.platforms.doris.time.monotonic", side_effect=[0.0, 1.0, 1000.0]),
             patch.object(DorisAdapter, "logger", new_callable=PropertyMock) as logger,
         ):
-            adapter._await_backends_ready()
+            adapter._await_backends_ready(clock=Mock(side_effect=[0.0, 1.0, 1000.0]), sleep=Mock())
 
         logger.return_value.warning.assert_called_once()
 
     def test_unreachable_server_defers_to_connection_error(self):
         adapter = self._adapter()
 
-        with (
-            patch.object(adapter, "_admin_connect", side_effect=OSError("refused")),
-            patch("benchbox.platforms.doris.time.sleep") as sleep,
-        ):
-            adapter._await_backends_ready()
+        sleep = Mock()
+        with patch.object(adapter, "_admin_connect", side_effect=OSError("refused")):
+            adapter._await_backends_ready(sleep=sleep)
 
         sleep.assert_not_called()
 
@@ -1928,11 +1919,9 @@ class TestDorisBackendReadiness:
         conn = Mock()
         conn.cursor.return_value.execute.side_effect = RuntimeError("denied")
 
-        with (
-            patch.object(adapter, "_admin_connect", return_value=conn),
-            patch("benchbox.platforms.doris.time.sleep") as sleep,
-        ):
-            adapter._await_backends_ready()
+        sleep = Mock()
+        with patch.object(adapter, "_admin_connect", return_value=conn):
+            adapter._await_backends_ready(sleep=sleep)
 
         sleep.assert_not_called()
         conn.close.assert_called_once()
