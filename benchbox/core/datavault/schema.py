@@ -5,6 +5,7 @@ from typing import Any, NamedTuple, Optional
 import yaml
 
 from benchbox.core.schema_primitives import BaseSchemaTable
+from benchbox.utils.questdb_subquery_schemas import register_benchmark_schema
 
 
 class DataType(Enum):
@@ -69,6 +70,7 @@ HUBS = [TABLES_BY_NAME[name] for name in _SCHEMA_SPECS["groups"]["hubs"]]
 LINKS = [TABLES_BY_NAME[name] for name in _SCHEMA_SPECS["groups"]["links"]]
 SATELLITES = [TABLES_BY_NAME[name] for name in _SCHEMA_SPECS["groups"]["satellites"]]
 TABLES = HUBS + LINKS + SATELLITES
+register_benchmark_schema(TABLES)
 LOADING_ORDER = list(_SCHEMA_SPECS["loading_order"])
 
 
