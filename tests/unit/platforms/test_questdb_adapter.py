@@ -529,6 +529,20 @@ class TestQuestDBAdapter:
         assert "CREATE TABLE" in executed_sql
         assert "FOREIGN KEY" not in executed_sql
 
+    def test_create_schema_maps_time_columns_to_varchar(self, questdb_stubs):
+        mock_conn = Mock()
+        mock_cursor = Mock()
+        mock_conn.cursor.return_value = mock_cursor
+
+        adapter = QuestDBAdapter()
+
+        with patch.object(adapter, "_create_schema_with_tuning") as mock_schema:
+            mock_schema.return_value = "CREATE TABLE dimtime (id BIGINT, timevalue TIME, tm TIME)"
+            adapter.create_schema(Mock(), mock_conn)
+
+        executed_sql = mock_cursor.execute.call_args[0][0]
+        assert executed_sql.upper() == "CREATE TABLE DIMTIME (ID BIGINT, TIMEVALUE VARCHAR, TM VARCHAR)"
+
     def test_platform_registry_requirements_include_requests(self):
         info = PlatformRegistry.get_platform_info("questdb")
         assert info is not None
