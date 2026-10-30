@@ -25645,6 +25645,13 @@
       "status": "done",
       "title": "Unblock PRs: record a reviewed freshness waiver for upstream SQLGlot v30.25.0"
     },
+    "sqlglot-freshness-waiver-v30-27-0": {
+      "claim": null,
+      "needs": [],
+      "priority": "critical",
+      "status": "open",
+      "title": "Unblock PRs and release checks: record a reviewed freshness waiver for upstream SQLGlot v30.27.0"
+    },
     "sqlglot-mysql-retirement-needs-execution-evidence": {
       "claim": null,
       "needs": [],
