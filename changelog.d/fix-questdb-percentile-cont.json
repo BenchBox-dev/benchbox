@@ -4,7 +4,7 @@
     {
       "category": "fixed",
       "breaking": false,
-      "text": "Fixed QuestDB failing on `PERCENTILE_CONT(p) WITHIN GROUP (ORDER BY x)` (H2ODB Q9: \"dangling literal\"); the adapter now rewrites it into `approx_percentile(x, p, 5)`."
+      "text": "Fixed H2ODB Q9 on QuestDB failing with \"dangling literal\" on `PERCENTILE_CONT ... WITHIN GROUP`; QuestDB now runs a query-source variant that uses `approx_percentile(fare_amount, p, 5)` (an approximate percentile, like the ClickHouse and StarRocks variants)."
     }
   ]
 }
