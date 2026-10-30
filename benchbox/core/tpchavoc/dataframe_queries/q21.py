@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
+from benchbox.core.dataframe.compat import _to_list
 from benchbox.core.dataframe.context import DataFrameContext
 from benchbox.core.tpch.dataframe_queries import (
     get_query as get_tpch_query,
@@ -311,7 +312,7 @@ def _make_q21_pandas_impl(variant: int) -> VariantImpl:
         nation_name = params["nation_name"]
 
         targets = _q21_pandas_targets(supplier, nation, nation_name)
-        valid_keys = list(orders[orders["o_orderstatus"] == "F"]["o_orderkey"])
+        valid_keys = _to_list(orders[orders["o_orderstatus"] == "F"]["o_orderkey"])
 
         def _candidates(li: Any) -> Any:
             late = li[li["l_receiptdate"] > li["l_commitdate"]]
@@ -320,7 +321,7 @@ def _make_q21_pandas_impl(variant: int) -> VariantImpl:
 
         def _finish(candidates: Any, scoped: Any) -> Any:
             multi = scoped.groupby("l_orderkey").agg(num_suppliers=("l_suppkey", "nunique"))
-            multi_orders = list(multi[multi["num_suppliers"] > 1].index)
+            multi_orders = _to_list(multi[multi["num_suppliers"] > 1].index)
             kept = candidates[candidates["l_orderkey"].isin(multi_orders)]
             all_late = scoped[scoped["l_receiptdate"] > scoped["l_commitdate"]][["l_orderkey", "l_suppkey"]]
             keys = kept[["l_orderkey", "s_suppkey"]].drop_duplicates()
@@ -339,11 +340,11 @@ def _make_q21_pandas_impl(variant: int) -> VariantImpl:
 
         if variant == 2:
             candidates = _candidates(lineitem)
-            cand_orders = list(candidates["l_orderkey"].unique())
+            cand_orders = _to_list(candidates["l_orderkey"].unique())
             scoped = lineitem[lineitem["l_orderkey"].isin(cand_orders)]
             pairs = scoped[["l_orderkey", "l_suppkey"]].drop_duplicates()
             multi = pairs.groupby("l_orderkey").size()
-            kept = candidates[candidates["l_orderkey"].isin(list(multi[multi > 1].index))]
+            kept = candidates[candidates["l_orderkey"].isin(_to_list(multi[multi > 1].index))]
             all_late = scoped[scoped["l_receiptdate"] > scoped["l_commitdate"]][["l_orderkey", "l_suppkey"]]
             keys = kept[["l_orderkey", "s_suppkey"]].drop_duplicates()
             merged = keys.merge(all_late, on="l_orderkey")
@@ -361,7 +362,7 @@ def _make_q21_pandas_impl(variant: int) -> VariantImpl:
 
         if variant == 4:
             candidates = _candidates(lineitem)
-            cand_orders = list(candidates["l_orderkey"].unique())
+            cand_orders = _to_list(candidates["l_orderkey"].unique())
             scoped = lineitem[lineitem["l_orderkey"].isin(cand_orders)]
             late_counts = (
                 scoped[scoped["l_receiptdate"] > scoped["l_commitdate"]]
@@ -369,7 +370,7 @@ def _make_q21_pandas_impl(variant: int) -> VariantImpl:
                 .agg(num_late_suppliers=("l_suppkey", "nunique"))
             )
             multi = scoped.groupby("l_orderkey").agg(num_suppliers=("l_suppkey", "nunique"))
-            kept = candidates[candidates["l_orderkey"].isin(list(multi[multi["num_suppliers"] > 1].index))]
+            kept = candidates[candidates["l_orderkey"].isin(_to_list(multi[multi["num_suppliers"] > 1].index))]
             all_late = scoped[scoped["l_receiptdate"] > scoped["l_commitdate"]][["l_orderkey", "l_suppkey"]]
             keys = kept[["l_orderkey", "s_suppkey"]].drop_duplicates()
             merged = keys.merge(all_late, on="l_orderkey")
@@ -392,16 +393,16 @@ def _make_q21_pandas_impl(variant: int) -> VariantImpl:
                 targets, left_on="l_suppkey", right_on="s_suppkey"
             )
             kept = chained[chained["l_orderkey"].isin(valid_keys)][["l_orderkey", "s_suppkey", "s_name"]]
-            cand_orders = list(kept["l_orderkey"].unique())
+            cand_orders = _to_list(kept["l_orderkey"].unique())
             scoped = lineitem[lineitem["l_orderkey"].isin(cand_orders)]
             return _finish(kept, scoped)
 
         if variant == 8:
             candidates = _candidates(lineitem)
-            cand_orders = list(candidates["l_orderkey"].unique())
+            cand_orders = _to_list(candidates["l_orderkey"].unique())
             scoped = lineitem[lineitem["l_orderkey"].isin(cand_orders)]
             multi = scoped.groupby("l_orderkey").agg(num_suppliers=("l_suppkey", "nunique"))
-            multi_orders = list(multi[multi["num_suppliers"] > 1].index)
+            multi_orders = _to_list(multi[multi["num_suppliers"] > 1].index)
             all_late = scoped[scoped["l_receiptdate"] > scoped["l_commitdate"]][["l_orderkey", "l_suppkey"]]
             keys = candidates[["l_orderkey", "s_suppkey"]].drop_duplicates()
             merged = keys.merge(all_late, on="l_orderkey")
@@ -421,7 +422,7 @@ def _make_q21_pandas_impl(variant: int) -> VariantImpl:
 
         if variant == 9:
             candidates = _candidates(lineitem)
-            cand_orders = list(candidates["l_orderkey"].unique())
+            cand_orders = _to_list(candidates["l_orderkey"].unique())
             scoped = lineitem[lineitem["l_orderkey"].isin(cand_orders)]
             late_counts = (
                 scoped[scoped["l_receiptdate"] > scoped["l_commitdate"]]
@@ -452,11 +453,11 @@ def _make_q21_pandas_impl(variant: int) -> VariantImpl:
         if variant == 10:
             late_targets = lineitem[
                 (lineitem["l_receiptdate"] > lineitem["l_commitdate"])
-                & (lineitem["l_suppkey"].isin(list(targets["s_suppkey"])))
+                & (lineitem["l_suppkey"].isin(_to_list(targets["s_suppkey"])))
             ]
             candidates = _candidates(lineitem)
-            cand_orders = list(
-                late_targets[late_targets["l_orderkey"].isin(list(candidates["l_orderkey"].unique()))][
+            cand_orders = _to_list(
+                late_targets[late_targets["l_orderkey"].isin(_to_list(candidates["l_orderkey"].unique()))][
                     "l_orderkey"
                 ].unique()
             )
@@ -465,7 +466,7 @@ def _make_q21_pandas_impl(variant: int) -> VariantImpl:
 
         if variant == 3:
             candidates = _candidates(lineitem)
-            cand_orders = list(candidates["l_orderkey"].unique())
+            cand_orders = _to_list(candidates["l_orderkey"].unique())
             scoped = lineitem[lineitem["l_orderkey"].isin(cand_orders)]
             all_late = scoped[scoped["l_receiptdate"] > scoped["l_commitdate"]][
                 ["l_orderkey", "l_suppkey"]
@@ -477,9 +478,9 @@ def _make_q21_pandas_impl(variant: int) -> VariantImpl:
             others["_bad"] = True
             marked = pairs.merge(others, on=["l_orderkey", "s_suppkey"], how="left")
             good = marked[marked["_bad"].isna()][["l_orderkey"]].drop_duplicates()
-            kept = candidates[candidates["l_orderkey"].isin(list(good["l_orderkey"]))]
+            kept = candidates[candidates["l_orderkey"].isin(_to_list(good["l_orderkey"]))]
             multi = scoped.groupby("l_orderkey").agg(num_suppliers=("l_suppkey", "nunique"))
-            kept = kept[kept["l_orderkey"].isin(list(multi[multi["num_suppliers"] > 1].index))]
+            kept = kept[kept["l_orderkey"].isin(_to_list(multi[multi["num_suppliers"] > 1].index))]
             return (
                 kept.groupby("s_name", as_index=False)
                 .agg(numwait=("l_orderkey", "count"))
@@ -490,12 +491,12 @@ def _make_q21_pandas_impl(variant: int) -> VariantImpl:
         if variant == 5:
             li = lineitem[["l_orderkey", "l_suppkey", "l_receiptdate", "l_commitdate"]]
             candidates = _candidates(li)
-            cand_orders = list(candidates["l_orderkey"].unique())
+            cand_orders = _to_list(candidates["l_orderkey"].unique())
             return _finish(candidates, li[li["l_orderkey"].isin(cand_orders)])
 
         li = lineitem[lineitem["l_orderkey"].isin(valid_keys)]
         candidates = _candidates(li)
-        cand_orders = list(candidates["l_orderkey"].unique())
+        cand_orders = _to_list(candidates["l_orderkey"].unique())
         return _finish(candidates, li[li["l_orderkey"].isin(cand_orders)])
 
     impl.__name__ = f"q21_v{variant}_pandas_impl"

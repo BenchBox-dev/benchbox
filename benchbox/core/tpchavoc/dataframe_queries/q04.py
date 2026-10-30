@@ -379,8 +379,7 @@ def q4_v10_pandas_impl(ctx: DataFrameContext) -> Any:
 
     return (
         result_df.groupby("o_orderpriority", as_index=False)
-        .size()
-        .rename(columns={"size": "order_count"})
+        .agg(order_count=("o_orderkey", "count"))
         .sort_values("o_orderpriority")
     )
 
