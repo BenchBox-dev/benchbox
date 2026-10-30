@@ -283,6 +283,9 @@ class PandasFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, ABC,
     def concat(self, dfs: list[DF]) -> DF:
         pass
 
+    def concat_shards(self, dfs: list[DF]) -> DF:
+        return self.concat(dfs)
+
     @abstractmethod
     def get_row_count(self, df: DF) -> int:
         pass
@@ -704,7 +707,7 @@ class PandasFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, ABC,
             return self.read_parquet(file_paths[0])
 
         dfs = [self.read_parquet(f) for f in file_paths]
-        return self.concat(dfs)
+        return self.concat_shards(dfs)
 
     def _load_csv_files(
         self,
@@ -739,7 +742,7 @@ class PandasFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, ABC,
             )
             for f in file_paths
         ]
-        return self.concat(dfs)
+        return self.concat_shards(dfs)
 
     def _get_first_row(self, df: DF) -> tuple | None:
         return None

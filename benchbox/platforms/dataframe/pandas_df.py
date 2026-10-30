@@ -262,6 +262,22 @@ class PandasDataFrameAdapter(PandasFamilyAdapter[PandasDF]):
             return dfs[0]
         return pd.concat(dfs, ignore_index=True)
 
+    def concat_shards(self, dfs: list[PandasDF]) -> PandasDF:
+        if len(dfs) == 1:
+            return dfs[0]
+        columns = list(dfs[0].columns)
+        if any(list(df.columns) != columns for df in dfs[1:]):
+            return pd.concat(dfs, ignore_index=True)
+        shard_columns: list[dict[str, Any]] = []
+        while dfs:
+            df = dfs.pop(0)
+            shard_columns.append({column: df[column].copy() for column in columns})
+            del df
+        data = {
+            column: pd.concat([shard.pop(column) for shard in shard_columns], ignore_index=True) for column in columns
+        }
+        return pd.DataFrame(data, copy=False)
+
     def get_row_count(self, df: PandasDF) -> int:
         return len(df)
 
