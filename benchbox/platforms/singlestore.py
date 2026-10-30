@@ -210,7 +210,7 @@ class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, Platform
             self.logger.warning(f"Skipping {data_file.name}: LOAD DATA LOCAL INFILE does not support Parquet")
             return 0
         dialect = resolve_csv_dialect(data_source, source_table_name, data_file, benchmark)
-        strip_trailing_delim = get_data_extension(data_file) in (".tbl", ".dat")
+        strip_trailing_delim = get_data_extension(data_file) == ".tbl"
         return self._load_data_infile(connection, table_name, data_file, dialect, strip_trailing_delim)
 
     def _load_data_infile(
