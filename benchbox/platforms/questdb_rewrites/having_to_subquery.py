@@ -119,8 +119,17 @@ def _always_one_row(select: exp.Select) -> bool:
         return False
     if select.args.get("limit") is not None or select.args.get("offset") is not None:
         return False
-    projection = select.expressions[0]
-    return any(not isinstance(agg.parent, exp.Window) for agg in projection.find_all(exp.AggFunc))
+    return _has_own_aggregate(select.expressions[0])
+
+
+def _has_own_aggregate(node: exp.Expr) -> bool:
+    if isinstance(node, (exp.Subquery, exp.Query)):
+        return False
+    if isinstance(node, exp.Window):
+        return False
+    if isinstance(node, exp.AggFunc):
+        return True
+    return any(_has_own_aggregate(child) for child in node.iter_expressions())
 
 
 def _hoist_scalar_subqueries(condition: exp.Expr) -> tuple[exp.Expr, list[exp.Join]]:

@@ -125,3 +125,13 @@ def test_having_subquery_that_can_return_no_rows_is_not_hoisted():
 def test_having_ungrouped_aggregate_subquery_is_hoisted_under_or():
     rewritten = rewrite_query("SELECT k FROM t GROUP BY k HAVING SUM(v) > 5 OR SUM(v) > (SELECT MAX(x) FROM u)")
     assert "CROSS JOIN (SELECT MAX(x) AS qdb_sub_1 FROM u) AS qdb_scalar_1" in rewritten
+
+
+def test_having_subquery_whose_only_aggregate_is_nested_is_not_hoisted():
+    rewritten = rewrite_query("SELECT k FROM t GROUP BY k HAVING SUM(v) > (SELECT (SELECT MAX(z) FROM q) FROM u)")
+    assert "CROSS JOIN" not in rewritten
+
+
+def test_having_subquery_with_window_aggregate_only_is_not_hoisted():
+    rewritten = rewrite_query("SELECT k FROM t GROUP BY k HAVING SUM(v) > (SELECT SUM(x) OVER () FROM u)")
+    assert "CROSS JOIN" not in rewritten
