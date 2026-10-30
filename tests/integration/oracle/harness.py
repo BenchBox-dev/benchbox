@@ -207,7 +207,12 @@ class Harness:
         return sha
 
     def _install_omp(self) -> None:
-        source = Path(__file__).with_name("fake_omp.py").read_text(encoding="utf-8")
+        source = (
+            Path(__file__)
+            .with_name("fake_omp.py")
+            .read_text(encoding="utf-8")
+            .replace("RENDEZVOUS_SECONDS = 20\n", f"RENDEZVOUS_SECONDS = {STEP_TIMEOUT // 2}\n", 1)
+        )
         target = self.bin / "omp"
         target.write_text(f"#!{sys.executable}\n{source}", encoding="utf-8")
         target.chmod(target.stat().st_mode | stat.S_IXUSR)
@@ -403,7 +408,12 @@ class Harness:
         return subprocess.Popen(argv, cwd=checkout, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     def finish_local_review(self, process: subprocess.Popen[str]) -> Step:
-        stdout, stderr = process.communicate(timeout=STEP_TIMEOUT)
+        try:
+            stdout, stderr = process.communicate(timeout=STEP_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.communicate()
+            raise
         return Step("local-review", process.returncode, stdout, stderr, {})
 
     def _local_review_command(self, branch: str) -> tuple[list[str], dict[str, str], Path]:
