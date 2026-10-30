@@ -24712,6 +24712,13 @@
       "status": "done",
       "title": "Spark SQL TPCHavoc scalar subquery and dual rewrites"
     },
+    "spark-sql-uat-failures-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Spark SQL: 14 failed and 3 timed-out release UAT cells"
+    },
     "spark-trunc-day-returns-null-20261026": {
       "claim": null,
       "needs": [],

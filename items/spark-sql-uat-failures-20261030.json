@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Each listed cell passes on a supported JDK, or is pruned with a documented reason.",
+    "Fixed query failures have regression tests."
+  ],
+  "context": "Evidence: release-v2 run 40971306663 (tag v0.5.0rc2, commit b1459438d), artifact release-uat-v0.5.0rc2-stage1-spark. The artifact does not keep result JSON, so query-level causes need a local rerun of the named cells.",
+  "description": "Stage 1 spark shard, run 40971306663, on Java 25 (see release-uat-java-25-breaks-pyspark-20261030; rerun after the JDK pin). Query failures: read_primitives 0.01 and 0.1; write_primitives and transaction_primitives at all scales; metadata_primitives SF1; tpchavoc at all scales (SF1 blockDoesNotExistError). joinorder SF1: 'java.lang.OutOfMemoryError: Java heap space'. datavault SF1: RejectedExecutionException with shuffle index errors. Timeouts at SF1: tpcds_obt (still, after #3683), nyctaxi and flightdata with temp_shuffle file errors.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/actions/runs/40971306663"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cbd63a5667398431c51c92e1",
+      "at": "2026-10-30T11:10:26Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "2f25c86fd88b4359a7f58caa06a3d783",
+      "session_id": "dfb93797c41c440a9261d3ab38ceb76e"
+    }
+  ]
+}
