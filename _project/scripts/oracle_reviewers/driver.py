@@ -6,6 +6,7 @@ import os
 import subprocess
 import sys
 from collections.abc import Callable, Mapping
+from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
@@ -17,6 +18,8 @@ STATE_FILE = Path("state") / github.STATE_FILE
 SCAN_SECRETS = ("TYPESAFE_API_KEY", "TS_OAUTH_CI_SECRET", "JOB_TOKEN")
 REDACTED_SECRETS = ("JOB_TOKEN",)
 DEVELOP = "develop"
+CI = "ci"
+LOCAL = "local"
 VERSION_TIMEOUT_SECONDS = 60
 
 
@@ -38,6 +41,17 @@ class Layout:
             classification=temp / "oracle-classification" / cli.CLASSIFICATION_FILE,
             workspace=workspace,
             home_root=temp,
+        )
+
+    @classmethod
+    def local(cls, work: Path) -> Layout:
+        return cls(
+            plan=work / "plan",
+            attempts=work / "attempts",
+            final=work / "final",
+            classification=work / "classification" / cli.CLASSIFICATION_FILE,
+            workspace=work / "workspace",
+            home_root=work / "homes",
         )
 
     @property
@@ -87,8 +101,14 @@ class Environment(Protocol):
     scan_roots: tuple[Path, ...]
     scan_secrets: tuple[str, ...]
     redacted_secrets: tuple[str, ...]
+    scan_excludes: tuple[Path, ...]
+    loopback_http: bool
+
+    def plan(self) -> int: ...
 
     def sink(self) -> Sink: ...
+
+    def session(self) -> AbstractContextManager[None]: ...
 
     def isolation(self) -> int: ...
 
@@ -105,6 +125,8 @@ class CiEnvironment:
     job_token: str
     scan_secrets: tuple[str, ...] = SCAN_SECRETS
     redacted_secrets: tuple[str, ...] = REDACTED_SECRETS
+    scan_excludes: tuple[Path, ...] = ()
+    loopback_http: bool = False
 
     @classmethod
     def from_environ(cls, environ: Mapping[str, str], policy: Path) -> CiEnvironment:
@@ -132,11 +154,17 @@ class CiEnvironment:
             job_token=environ.get("JOB_TOKEN", ""),
         )
 
+    def plan(self) -> int:
+        return cli.command_plan(argparse.Namespace(policy=str(self.policy), pr=self.pr, out=str(self.layout.plan)))
+
     def sink(self) -> Sink:
         missing = [name for name, value in (("GH_TOKEN", self.app_token), ("JOB_TOKEN", self.job_token)) if not value]
         if missing:
             raise CredentialError(f"the App is configured but {', '.join(missing)} is empty")
         return GitHubSink(self.app_token, self.job_token)
+
+    def session(self) -> AbstractContextManager[None]:
+        return nullcontext()
 
     def isolation(self) -> int:
         return isolation.main()
@@ -152,13 +180,17 @@ def _read_if(path: Path) -> Any:
 
 def _scan(env: Environment) -> int:
     return cli.command_scan_disk(
-        argparse.Namespace(root=[str(root) for root in env.scan_roots], env=list(env.scan_secrets))
+        argparse.Namespace(
+            root=[str(root) for root in env.scan_roots],
+            env=list(env.scan_secrets),
+            exclude=[str(path) for path in env.scan_excludes],
+        )
     )
 
 
 def prepare(env: Environment, args: argparse.Namespace) -> int:
     layout = env.layout
-    code = cli.command_plan(argparse.Namespace(policy=str(env.policy), pr=env.pr, out=str(layout.plan)))
+    code = env.plan()
     if code != 0 or _read(layout.plan_file)["decision"] != cli.REVIEW:
         return code
     try:
@@ -217,15 +249,17 @@ def isolate(env: Environment, args: argparse.Namespace) -> int:
 
 def attempts(env: Environment, args: argparse.Namespace) -> int:
     layout = env.layout
-    return cli.command_attempts(
-        argparse.Namespace(
-            plan=str(layout.plan_file),
-            attempts_dir=str(layout.attempts),
-            classification=str(layout.classification),
-            workspace=str(layout.workspace),
-            home_root=str(layout.home_root),
+    with env.session():
+        return cli.command_attempts(
+            argparse.Namespace(
+                plan=str(layout.plan_file),
+                attempts_dir=str(layout.attempts),
+                classification=str(layout.classification),
+                workspace=str(layout.workspace),
+                home_root=str(layout.home_root),
+                allow_loopback_http=env.loopback_http,
+            )
         )
-    )
 
 
 def recover(env: Environment, args: argparse.Namespace) -> int:
@@ -344,13 +378,19 @@ PHASES: dict[str, Phase] = {
 
 
 def command_drive(args: argparse.Namespace) -> int:
-    env = CiEnvironment.from_environ(os.environ, Path(args.policy))
+    if args.environment == LOCAL:
+        from . import local
+
+        env: Environment = local.LocalEnvironment.from_environ(os.environ, Path(args.policy))
+    else:
+        env = CiEnvironment.from_environ(os.environ, Path(args.policy))
     return int(args.phase_handler(env, args))
 
 
 def register(commands: Any) -> None:
     drive = commands.add_parser("drive")
     drive.add_argument("--policy", default=POLICY_DEFAULT)
+    drive.add_argument("--environment", choices=(CI, LOCAL), default=CI)
     drive.set_defaults(handler=command_drive)
     phases = drive.add_subparsers(dest="phase", required=True)
     for name, handler in PHASES.items():
