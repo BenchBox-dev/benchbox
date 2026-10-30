@@ -31,7 +31,7 @@ def rewrite_query(sql: str) -> str:
     if len(statements) != 1:
         return sql
     original = statements[0]
-    rewritten = original
+    rewritten = original.copy()
     for transform in _transforms():
         rewritten = transform(rewritten)
     if rewritten == original:
