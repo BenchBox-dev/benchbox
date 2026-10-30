@@ -71,3 +71,10 @@ def test_doris_is_not_skipped_for_queries_it_has_variants_for():
 
     for query_id in DORIS_VARIANT_IDS:
         assert "doris" not in (catalog.queries[query_id].skip_on or [])
+
+
+def test_doris_array_of_struct_orders_the_collected_structs_explicitly():
+    sql = load_primitives_catalog().queries["array_of_struct"].variants["doris"].upper()
+
+    assert "ARRAY_SORTBY" in sql
+    assert "ORDER BY O_ORDERKEY, L_LINENUMBER" not in sql
