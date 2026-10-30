@@ -149,4 +149,6 @@ There is no frozen-hash file or hash-enforcement test.
 The framework imports registry truth directly from `benchbox.core.*`
 helpers and validates result bundles in-process through
 `benchbox.validation.bundle`. It does not shell out to validator scripts.
-Package still delegates to `benchbox submit`.
+Package stages local results through `benchbox publish run` (the maintainer
+redacted form, no pseudonym salt) and delegates `cloud-uploaded` to
+`benchbox submit --service`.
