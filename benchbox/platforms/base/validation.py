@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -102,7 +102,9 @@ class SchemaValidator(BaseValidator):
             if extra_tables:
                 extra_tables = self._filter_system_tables(extra_tables)
                 if extra_tables:
-                    result.foreign_tables = self._without_benchbox_owned(extra_tables)
+                    result.foreign_tables = set(extra_tables)
+                    with suppress(Exception):
+                        result.foreign_tables = self._without_benchbox_owned(extra_tables)
                     result.add_warning(f"Extra tables found: {', '.join(sorted(extra_tables))}")
 
         except ValueError as e:

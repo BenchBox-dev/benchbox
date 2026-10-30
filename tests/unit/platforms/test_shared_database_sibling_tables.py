@@ -174,3 +174,16 @@ def test_ownership_covers_what_each_sibling_benchmark_reports():
     for name in ("read_primitives", "write_primitives", "transaction_primitives", "ai_primitives", "tpch"):
         assert _tables_of(name) <= tables_owned_by_benchmark_family("tpch"), name
     assert _tables_of("tpcds_obt", 1.0) <= tables_owned_by_benchmark_family("tpcds")
+
+
+def test_a_failing_ownership_lookup_keeps_every_extra_table_foreign(monkeypatch):
+    def broken(family: str):
+        raise RuntimeError("registry unavailable")
+
+    monkeypatch.setattr("benchbox.core.benchmark_table_ownership.tables_owned_by_benchmark_family", broken)
+    adapter = _SharedServerAdapter(_tables_of("tpcds") | {"audit_log"})
+
+    with pytest.raises(RuntimeError, match="refusing to drop the database.*audit_log"):
+        _run_on(adapter, "tpcds_obt", 1.0)
+
+    assert adapter.dropped == 0
