@@ -113,6 +113,26 @@ def test_pandas_frames_carry_only_referenced_columns(pandas_ctx: PandasContext) 
     assert sorted(frame.columns) == ["ci__movie_id", "ci__person_id"]
 
 
+def test_pandas_frames_defer_output_only_columns_behind_a_row_id(pandas_ctx: PandasContext) -> None:
+    shape = _shape_for("8c")
+    assert shape.payload_columns["a1"] == {"name"}
+    frame = dataframe_queries._prefixed_pandas_frame(
+        pandas_ctx,
+        "aka_name",
+        "a1",
+        shape.local_predicates["a1"],
+        shape.referenced_columns["a1"],
+        shape.payload_columns["a1"],
+    )
+
+    assert "a1__name" not in frame.columns
+    assert "a1__row_id" in frame.columns
+
+
+def test_link_table_leads_the_join_chain_when_other_filters_are_broad() -> None:
+    assert _join_order("7c")[:4] == ["lt", "ml", "t", "ci"]
+
+
 def test_pandas_executor_uses_exact_planned_join_sequence(
     monkeypatch: pytest.MonkeyPatch,
     pandas_ctx: PandasContext,

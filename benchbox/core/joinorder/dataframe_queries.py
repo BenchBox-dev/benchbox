@@ -165,8 +165,22 @@ _TABLE_ROW_COUNTS = _load_table_row_counts()
 _DEFAULT_TABLE_ROWS = 1_000_000
 _EQUALITY_SELECTIVITY = 0.02
 _PATTERN_SELECTIVITY = 0.1
+_SHORT_PATTERN_SELECTIVITY = 0.3
+_BROAD_PATTERN_SELECTIVITY = 0.8
 _RANGE_SELECTIVITY = 0.3
 _INEQUALITY_SELECTIVITY = 0.9
+
+
+def _like_selectivity(node: exp.Like) -> float:
+    pattern = node.expression
+    literal_length = len(str(pattern.this).replace("%", "").replace("_", "")) if isinstance(pattern, exp.Literal) else 0
+    if literal_length <= 1:
+        selectivity = _BROAD_PATTERN_SELECTIVITY
+    elif literal_length == 2:
+        selectivity = _SHORT_PATTERN_SELECTIVITY
+    else:
+        selectivity = _PATTERN_SELECTIVITY
+    return 1.0 - selectivity if node.args.get("negate") else selectivity
 
 
 def _predicate_selectivity(node: exp.Expression) -> float:
@@ -183,7 +197,7 @@ def _predicate_selectivity(node: exp.Expression) -> float:
     if isinstance(node, exp.In):
         return min(0.5, _EQUALITY_SELECTIVITY * len(node.expressions))
     if isinstance(node, exp.Like):
-        return 1.0 - _PATTERN_SELECTIVITY if node.args.get("negate") else _PATTERN_SELECTIVITY
+        return _like_selectivity(node)
     if isinstance(node, exp.Is):
         return _PATTERN_SELECTIVITY
     if isinstance(node, (exp.GT, exp.GTE, exp.LT, exp.Between)):
@@ -364,6 +378,7 @@ class _QueryShape(NamedTuple):
     referenced_columns: dict[str, set[str]]
     anchor: str
     steps: list[_JoinStep]
+    payload_columns: dict[str, set[str]]
     peak_rows: float
 
 
@@ -380,10 +395,15 @@ def _analyze_query(tree: exp.Select) -> _QueryShape:
         for alias, _table in tables
     }
     referenced_columns: dict[str, set[str]] = {alias: set() for alias, _table in tables}
-    for node in [*predicates, *tree.expressions]:
-        for column in node.find_all(exp.Column):
-            if str(column.table) in referenced_columns:
-                referenced_columns[str(column.table)].add(column.name)
+    predicate_columns: dict[str, set[str]] = {alias: set() for alias, _table in tables}
+    for nodes, columns in ((predicates, predicate_columns), (tree.expressions, None)):
+        for node in nodes:
+            for column in node.find_all(exp.Column):
+                if str(column.table) in referenced_columns:
+                    referenced_columns[str(column.table)].add(column.name)
+                    if columns is not None:
+                        columns[str(column.table)].add(column.name)
+    payload_columns = {alias: referenced_columns[alias] - predicate_columns[alias] for alias in referenced_columns}
     plan = _plan_join_sequence(tables, join_predicates, _estimated_rows(tables, local_predicates))
     return _QueryShape(
         tables,
@@ -393,6 +413,7 @@ def _analyze_query(tree: exp.Select) -> _QueryShape:
         referenced_columns,
         plan.anchor,
         plan.steps,
+        payload_columns,
         plan.peak_rows,
     )
 
@@ -543,16 +564,28 @@ def _filter_pandas(frame: pd.DataFrame, predicate: exp.Expression) -> pd.DataFra
     return frame[_pandas_condition(frame, predicate).fillna(False)]
 
 
+def _row_id(alias: str) -> str:
+    return f"{alias}__row_id"
+
+
 def _prefixed_pandas_frame(
     ctx: DataFrameContext,
     table_name: str,
     alias: str,
     predicates: list[exp.Expression],
     referenced_columns: set[str],
+    payload_columns: set[str] | None = None,
 ) -> pd.DataFrame:
-    frame = _native_pandas_frame(ctx.get_table(table_name))
-    columns = [column for column in _TABLE_COLUMNS[table_name] if column in referenced_columns]
-    frame = frame[columns].rename(columns={column: _qualified(alias, column) for column in columns})
+    import pandas as pd
+
+    source = _native_pandas_frame(ctx.get_table(table_name))
+    deferred = payload_columns if payload_columns and isinstance(source, pd.DataFrame) else set()
+    columns = [
+        column for column in _TABLE_COLUMNS[table_name] if column in referenced_columns and column not in deferred
+    ]
+    frame = source[columns].rename(columns={column: _qualified(alias, column) for column in columns})
+    if deferred:
+        frame[_row_id(alias)] = range(len(frame))
     for predicate in predicates:
         frame = _filter_pandas(frame, predicate)
     return frame
@@ -567,13 +600,25 @@ def _empty_safe_min(frame: Any, column: str) -> Any:
     return None if pd.isna(value) else value
 
 
+def _deferred_min(source: pd.DataFrame, column: str, row_ids: Any) -> Any:
+    import pandas as pd
+
+    value = source[column].iloc[row_ids].min()
+    return None if pd.isna(value) else value
+
+
 def _run_pandas_query(ctx: DataFrameContext, tree: exp.Select) -> pd.DataFrame:
     import pandas as pd
 
     shape = _analyze_query(tree)
     frames = {
         alias: _prefixed_pandas_frame(
-            ctx, table_name, alias, shape.local_predicates[alias], shape.referenced_columns[alias]
+            ctx,
+            table_name,
+            alias,
+            shape.local_predicates[alias],
+            shape.referenced_columns[alias],
+            shape.payload_columns[alias],
         )
         for alias, table_name in shape.tables
     }
@@ -598,13 +643,14 @@ def _run_pandas_query(ctx: DataFrameContext, tree: exp.Select) -> pd.DataFrame:
         if id(predicate) not in used_join_predicates:
             result = _filter_pandas(result, predicate)
 
+    def output_value(alias: str, column: str) -> Any:
+        if _row_id(alias) in result.columns:
+            source = _native_pandas_frame(ctx.get_table(dict(shape.tables)[alias]))
+            return _deferred_min(source, column, result[_row_id(alias)].unique())
+        return _empty_safe_min(result, _qualified(alias, column))
+
     return pd.DataFrame(
-        [
-            {
-                output_alias: _empty_safe_min(result, _qualified(alias, column))
-                for alias, column, output_alias in _select_min_columns(tree)
-            }
-        ]
+        [{output_alias: output_value(alias, column) for alias, column, output_alias in _select_min_columns(tree)}]
     )
 
 
