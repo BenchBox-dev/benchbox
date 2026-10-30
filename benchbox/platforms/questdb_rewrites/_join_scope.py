@@ -105,12 +105,18 @@ def _misplaced(joins: list[exp.Join], scope: _Scope, first: str, where_parts: li
     return False
 
 
+def _is_star(item: exp.Expr) -> bool:
+    return isinstance(item, exp.Star) or (isinstance(item, exp.Column) and isinstance(item.this, exp.Star))
+
+
 def _reassign(select: exp.Select, columns_of: ColumnsOf) -> None:
     from_ = select.args.get("from_")
     joins = select.args.get("joins") or []
     if not from_ or not joins or not isinstance(from_.this, (exp.Table, exp.Subquery)):
         return
     if not all(_is_inner(join) for join in joins):
+        return
+    if any(_is_star(item) for item in select.expressions):
         return
 
     sources = [from_.this] + [join.this for join in joins]

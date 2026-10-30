@@ -4,6 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 
+import benchbox.platforms.questdb as questdb_module
 from benchbox.platforms.questdb import QuestDBAdapter
 from benchbox.platforms.questdb_rewrites import rewrite_query
 
@@ -18,6 +19,14 @@ SCHEMA = {
     "part": frozenset({"p_partkey", "p_size"}),
     "partsupp": frozenset({"ps_partkey", "ps_suppkey"}),
 }
+
+
+@pytest.fixture
+def questdb_stubs(monkeypatch):
+    stub = Mock()
+    stub.__version__ = "3.1.0"
+    monkeypatch.setattr(questdb_module, "psycopg", stub)
+    return stub
 
 
 def columns_of(table: str):
@@ -88,7 +97,7 @@ def test_without_a_schema_the_query_is_returned_verbatim():
     assert rewrite_query(sql) == sql
 
 
-def test_adapter_resolves_columns_from_the_live_table_and_caches_them(monkeypatch):
+def test_adapter_resolves_columns_from_the_live_table_and_caches_them(monkeypatch, questdb_stubs):
     adapter = QuestDBAdapter()
     lookup = Mock(return_value=["P_PARTKEY", "p_size"])
     monkeypatch.setattr(adapter, "_get_table_columns", lookup)
@@ -97,7 +106,7 @@ def test_adapter_resolves_columns_from_the_live_table_and_caches_them(monkeypatc
     lookup.assert_called_once_with("part")
 
 
-def test_adapter_does_not_cache_a_failed_lookup(monkeypatch):
+def test_adapter_does_not_cache_a_failed_lookup(monkeypatch, questdb_stubs):
     adapter = QuestDBAdapter()
     lookup = Mock(return_value=[])
     monkeypatch.setattr(adapter, "_get_table_columns", lookup)
@@ -150,4 +159,17 @@ def test_large_chain_led_by_an_unfiltered_table_restarts_from_the_point_filtered
 
 def test_small_chain_led_by_an_unfiltered_table_keeps_its_order():
     sql = "SELECT 1 FROM lineitem JOIN orders ON l_orderkey = o_orderkey JOIN customer ON o_custkey = c_custkey WHERE c_nationkey = 7"
+    assert rewrite_query(sql, columns_of) == sql
+
+
+def test_select_star_keeps_the_submitted_join_order():
+    sql = (
+        "SELECT * FROM lineitem JOIN orders ON l_orderkey = o_orderkey JOIN customer ON o_custkey = c_custkey "
+        "JOIN supplier ON l_suppkey = s_suppkey JOIN nation ON s_nationkey = n_nationkey WHERE n_name = 'FRANCE'"
+    )
+    assert rewrite_query(sql, columns_of) == sql
+
+
+def test_qualified_star_keeps_the_submitted_join_order():
+    sql = "SELECT o.* FROM customer CROSS JOIN orders AS o WHERE o_custkey = c_custkey AND c_nationkey = 7"
     assert rewrite_query(sql, columns_of) == sql
