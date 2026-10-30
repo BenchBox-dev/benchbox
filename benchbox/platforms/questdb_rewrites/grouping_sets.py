@@ -71,19 +71,33 @@ def _index(items: list[exp.Expr], target: exp.Expr) -> int:
     return -1
 
 
+_GROUP_CONTAINERS = (exp.Group, exp.Rollup, exp.Cube, exp.GroupingSets, exp.Tuple)
+
+
+def _is_group_element(literal: exp.Expr) -> bool:
+    parent = literal.parent
+    if isinstance(parent, exp.Paren):
+        parent = parent.parent
+    return isinstance(parent, _GROUP_CONTAINERS)
+
+
 def resolve_ordinals(select: exp.Select, group: exp.Group) -> exp.Group | None:
     resolved = group.copy()
     for literal in list(resolved.find_all(exp.Literal)):
-        if literal.is_string or not isinstance(
-            literal.parent, (exp.Group, exp.Rollup, exp.Cube, exp.GroupingSets, exp.Tuple, exp.Paren)
-        ):
+        if not literal.is_int or not _is_group_element(literal):
             continue
         position = int(literal.name) - 1
-        if not literal.is_int or not 0 <= position < len(select.expressions):
+        if not 0 <= position < len(select.expressions):
             return None
         projection = select.expressions[position]
         literal.replace((projection.this if isinstance(projection, exp.Alias) else projection).copy())
     return resolved
+
+
+def has_grouping_syntax(group: exp.Group) -> bool:
+    if any(isinstance(element, (exp.Rollup, exp.Cube, exp.GroupingSets)) for element in group.expressions):
+        return True
+    return any(group.args.get(key) for key in ("rollup", "cube", "grouping_sets", "totals"))
 
 
 def _grouping_sets(group: exp.Group) -> list[list[exp.Expr]] | None:
@@ -91,15 +105,10 @@ def _grouping_sets(group: exp.Group) -> list[list[exp.Expr]] | None:
         return None
     if any(group.args.get(key) for key in ("rollup", "cube", "grouping_sets", "totals")):
         return None
-    combined = [
+    return [
         _dedupe([member for part in parts for member in part])
         for parts in product(*map(_element_sets, group.expressions))
     ]
-    unique: list[list[exp.Expr]] = []
-    for candidate in combined:
-        if candidate not in unique:
-            unique.append(candidate)
-    return unique
 
 
 def _is_grouping_call(node: exp.Expr) -> bool:
@@ -179,15 +188,15 @@ def _build_level(
 
 def _flag_expression(node: exp.Expr, columns: list[exp.Expr]) -> exp.Expr:
     arguments = _grouping_arguments(node)
-    flags: exp.Expr | None = None
-    for argument in arguments:
+    terms: list[exp.Expr] = []
+    for offset, argument in enumerate(arguments):
         flag = exp.column(f"{_FLAG_PREFIX}{_index(columns, argument)}")
-        flags = (
-            flag
-            if flags is None
-            else exp.Add(this=exp.Mul(this=flags, expression=exp.Literal.number(2)), expression=flag)
-        )
-    return exp.Paren(this=flags) if len(arguments) > 1 else flags
+        weight = 2 ** (len(arguments) - 1 - offset)
+        terms.append(flag if weight == 1 else exp.Mul(this=flag, expression=exp.Literal.number(weight)))
+    total = terms[0]
+    for term in terms[1:]:
+        total = exp.Add(this=total, expression=term)
+    return exp.Paren(this=total) if len(terms) > 1 else total
 
 
 def _make_lowering(columns: list[exp.Expr], aggregates: list[exp.Expr]):
@@ -217,10 +226,21 @@ def _make_lowering(columns: list[exp.Expr], aggregates: list[exp.Expr]):
     return lambda expression: lower(expression.copy())
 
 
+def _scope_windows(node: exp.Expr):
+    if isinstance(node, exp.Select):
+        return
+    if isinstance(node, exp.Window):
+        yield node
+    for child in node.args.values():
+        for item in child if isinstance(child, list) else [child]:
+            if isinstance(item, exp.Expr):
+                yield from _scope_windows(item)
+
+
 def _hoist_window_orderings(roots: list[exp.Expr]) -> list[exp.Expr]:
     hoisted: list[exp.Expr] = []
     for root in roots:
-        for window in root.find_all(exp.Window):
+        for window in list(_scope_windows(root)):
             order = window.args.get("order")
             for item in order.expressions if order is not None else []:
                 if isinstance(item.this, (exp.Column, exp.Literal)):

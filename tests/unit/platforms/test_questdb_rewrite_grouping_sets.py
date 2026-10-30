@@ -116,3 +116,31 @@ def test_mixed_ordinal_and_rollup_resolves_ordinals():
     rewritten = rewrite_query("SELECT c, a, SUM(x) AS s FROM t GROUP BY 1, ROLLUP (a)")
     assert rewritten.count("GROUP BY c, a") == 1
     assert "GROUP BY c UNION ALL" in rewritten or "GROUP BY c)" in rewritten
+
+
+def test_grouping_with_three_arguments_builds_a_binary_weighted_mask():
+    rewritten = rewrite_query("SELECT a, b, c, SUM(x), GROUPING(a, b, c) AS g FROM t GROUP BY ROLLUP (a, b, c)")
+    assert "(__f0 * 4 + __f1 * 2 + __f2) AS g" in rewritten
+
+
+def test_duplicate_grouping_sets_are_kept():
+    assert len(_levels("SELECT a, SUM(x) FROM t GROUP BY GROUPING SETS ((a), (a))")) == 2
+    assert len(_levels("SELECT a, SUM(x) FROM t GROUP BY ROLLUP (a), ROLLUP (a)")) == 4
+
+
+def test_decimal_literal_in_group_by_is_not_an_ordinal():
+    rewritten = rewrite_query("SELECT a, SUM(x) FROM t GROUP BY ROLLUP (a), 1.5")
+    assert "GROUP BY a, 1.5" in rewritten
+
+
+def test_parenthesised_literal_in_expression_is_not_an_ordinal():
+    rewritten = rewrite_query("SELECT a + (1) AS k, SUM(x) FROM t GROUP BY ROLLUP (a + (1))")
+    assert "a + (1)" in rewritten
+
+
+def test_window_inside_scalar_subquery_keeps_its_ordering():
+    rewritten = rewrite_query(
+        "SELECT a, (SELECT RANK() OVER (ORDER BY y + 1) FROM u LIMIT 1) AS r, SUM(x) FROM t GROUP BY ROLLUP (a)"
+    )
+    assert "ORDER BY y + 1" in rewritten
+    assert "__o0" not in rewritten
