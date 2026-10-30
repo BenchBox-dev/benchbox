@@ -558,6 +558,13 @@ class TestPlatformAdapter:
         results = adapter._execute_queries_by_type(benchmark, connection, run_config)
         assert results[0]["run_type"] == "measurement"
 
+    def test_execute_queries_by_type_fails_when_no_queries_execute(self):
+        adapter = MockPlatformAdapter()
+        adapter._execute_power_test = Mock(return_value=[])
+
+        with pytest.raises(RuntimeError, match="executed no queries"):
+            adapter._execute_queries_by_type(Mock(), Mock(), {"test_execution_type": "power", "benchmark_name": "x"})
+
     def test_execute_queries_by_type_sets_run_type_for_maintenance(self):
         adapter = MockPlatformAdapter()
         benchmark = Mock()

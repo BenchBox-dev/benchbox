@@ -70,8 +70,9 @@ class TestTPCTestRouting:
         mock_benchmark = Mock()
         mock_connection = Mock()
 
-        adapter._execute_all_queries = Mock(return_value=[])
-        adapter._execute_power_test = Mock(return_value=[])
+        one_result = [{"query_id": "Q1", "status": "SUCCESS", "execution_time_seconds": 0.1}]
+        adapter._execute_all_queries = Mock(return_value=list(one_result))
+        adapter._execute_power_test = Mock(return_value=list(one_result))
         adapter._execute_throughput_test = Mock(return_value=[])
         adapter._execute_maintenance_test = Mock(return_value=[])
         adapter._execute_combined_test = Mock(return_value=[])

@@ -455,8 +455,8 @@ def test_release_gate_stage1_prunes_measured_runtime_envelopes():
     for cell in result.cells:
         by_pair.setdefault((cell.platform, cell.benchmark), set()).add(cell.scale)
     eligible = sum(1 for scales in by_pair.values() if set(stage1.scales.rungs).issubset(scales))
-    assert eligible == 136
-    assert stage1.report.cross_scale_coverage_min_pairs == int(0.8 * eligible) == 108
+    assert eligible == 133
+    assert stage1.report.cross_scale_coverage_min_pairs == int(0.8 * eligible) == 106
 
 
 def test_release_gate_cross_scale_floors_are_tuned_and_achievable():

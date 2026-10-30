@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from benchbox.core.ai_primitives.benchmark import SUPPORTED_PLATFORMS as AI_PRIMITIVES_SUPPORTED_PLATFORMS
 from benchbox.core.platform_registry import PlatformRegistry
 from tests.uat.matrix import DATAFRAME_PLATFORMS, BenchmarkInfo
 
@@ -62,6 +63,15 @@ _NATIVE_MODEL_BENCHMARK_EVIDENCE = (
     "benchbox/platforms/datafusion.py DataFusionConnectionCompat; "
     "benchbox/platforms/clickhouse_local.py embedded chDB local adapter; "
     "benchbox/core/vector_search/queries.py and schema_specs.yaml"
+)
+
+_AI_PRIMITIVES_NO_AI_FUNCTIONS_REASON = (
+    "AI primitives executes platform-hosted AI/ML SQL functions (Snowflake Cortex, BigQuery ML, Databricks AI "
+    "functions) and a run on any other platform executes zero queries, so the benchmark has nothing to measure."
+)
+_AI_PRIMITIVES_NO_AI_FUNCTIONS_EVIDENCE = (
+    "benchbox/core/ai_primitives/specs.yaml supported_platforms; "
+    "benchbox/platforms/base/execution.py zero-query run failure"
 )
 
 _DATAFRAME_TRANSACTIONAL_BENCHMARK_GATES = {
@@ -192,6 +202,13 @@ def compatibility_rule_for(
             benchmark,
             reason=native_reason,
             evidence=_NATIVE_MODEL_BENCHMARK_EVIDENCE,
+        )
+    if benchmark == "ai_primitives" and platform not in AI_PRIMITIVES_SUPPORTED_PLATFORMS:
+        return _benchmark_gate_rule(
+            platform,
+            benchmark,
+            reason=_AI_PRIMITIVES_NO_AI_FUNCTIONS_REASON,
+            evidence=_AI_PRIMITIVES_NO_AI_FUNCTIONS_EVIDENCE,
         )
     if platform in DATAFRAME_PLATFORMS and _is_sql_only_benchmark(info):
         return DATAFRAME_SQL_ONLY_RULE
