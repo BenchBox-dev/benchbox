@@ -23795,7 +23795,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "Check that site docs links to core directories resolve against every ancestor directory, as repo-files.json now lists them"
     },
     "site-docs-broken-fragments-20261009": {
