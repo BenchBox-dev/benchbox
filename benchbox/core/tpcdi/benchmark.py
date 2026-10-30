@@ -68,6 +68,7 @@ BOOLEAN_FLAG_STYLES = {
     "databricks": "is",
     "spark": "is",
     "bigquery": "equals",
+    "questdb": "equals",
 }
 
 
