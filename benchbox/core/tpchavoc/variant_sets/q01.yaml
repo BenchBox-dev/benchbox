@@ -101,9 +101,9 @@ variants:
         final.sum_base_price,
         final.sum_disc_price,
         final.sum_charge,
-        final.sum_qty / final.count_order as avg_qty,
-        final.sum_base_price / final.count_order as avg_price,
-        final.sum_disc / final.count_order as avg_disc,
+        final.sum_qty / nullif(final.count_order, 0) as avg_qty,
+        final.sum_base_price / nullif(final.count_order, 0) as avg_price,
+        final.sum_disc / nullif(final.count_order, 0) as avg_disc,
         final.count_order
     from (
         select

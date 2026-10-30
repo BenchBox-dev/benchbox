@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "TPC-H Havoc query 1 variant 4 no longer fails with a division by zero on engines that fold constants in ANSI mode such as Spark 4: the average expressions now guard the zero-count branch with NULLIF.",
+      "benchmarks": ["tpchavoc"]
+    }
+  ]
+}
