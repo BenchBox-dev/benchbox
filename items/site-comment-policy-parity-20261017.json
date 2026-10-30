@@ -4,7 +4,7 @@
     "The check runs in lefthook pre-commit",
     "Existing allowed comments are recorded so main passes"
   ],
-  "context": "Found 2026-10-17 at site-split closeout by grepping benchbox-site main 8812af7 for comment-policy (no matches). Listed as a follow-up in site-split-99.",
+  "context": "Found 2026-10-17 at site-split closeout by grepping benchbox-site main 8812af7 for comment-policy (no matches). Listed as a follow-up in site-split-99.\n\nMoved to the BenchBox-dev/benchbox-site tracker (todo-state branch of that repository) under the same id on 2026-10-30; track it there.",
   "description": "Core enforces its comment policy on every PR (quality/comment-policy.json, scripts/check_comment_policy.py, the required comment-policy check, .pre-commit-config.yaml:7-13), and that scope used to cover website/ and results-explorer/ (quality/comment-policy.json:252,257). Those trees now live in benchbox-site, and nothing there checks comments: no workflow, lefthook.yml entry or script in benchbox-site mentions a comment policy (.github/workflows/ has only ci.yml, deploy.yml, nightly.yml and visual.yml). New comments in the site's TypeScript and Astro source are unchecked.\n\nPort an equivalent check to the site in Node (ADR D9: no Python in the site repo), run it in site CI and lefthook, and seed it with the current state.",
   "sessions": [
     {
@@ -14,6 +14,14 @@
       "op": "create",
       "op_id": "afd942d4b7ec4d62b40aac74bc65ffa1",
       "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-30T23:05:05Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c8613a04259a4c85a8b8cef108813245",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
     }
   ]
 }
