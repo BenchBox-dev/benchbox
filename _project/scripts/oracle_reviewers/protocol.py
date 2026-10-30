@@ -45,6 +45,7 @@ FIRST = "first"
 FOLLOW_UP = "follow-up"
 CARRY = "carry"
 SKIP = "skip"
+REPOST = "repost"
 REFUSAL = "refused"
 KINDS = (FIRST, FOLLOW_UP, CARRY, REFUSAL)
 
@@ -443,6 +444,27 @@ def _forced_round(
     )
 
 
+def _decided_again(latest: Mapping[str, Any], head_sha: str, manual: bool) -> Round:
+    label = LABELS[latest["decision"]]
+    if not manual or latest["decision"] == REFUSED:
+        return Round(SKIP, f"head {head_sha} already has a {label} decision")
+    if latest.get("run_uuid"):
+        return Round(
+            REPOST,
+            f"head {head_sha} already has a {label} decision; it is posted again unchanged",
+            latest["cycle"],
+            latest["round"],
+            latest,
+        )
+    return Round(
+        CARRY,
+        f"the {label} decision on head {head_sha} has no run binding; it is posted again bound to this run",
+        latest["cycle"],
+        latest["round"],
+        latest,
+    )
+
+
 def plan_round(
     found: History,
     *,
@@ -456,6 +478,7 @@ def plan_round(
     force: bool = False,
     base_changed_at: datetime | None = None,
     base_change_unreadable: bool = False,
+    manual: bool = False,
 ) -> Round:
     latest = found.latest
     if strike_count >= max_do_not_ship:
@@ -482,7 +505,7 @@ def plan_round(
             or (base_changed_at is not None and (decided_at is None or decided_at <= base_changed_at))
         )
         if not stale:
-            return Round(SKIP, f"head {head_sha} already has a {LABELS[latest['decision']]} decision")
+            return _decided_again(latest, head_sha, manual)
         if latest["patch_digest"] == digest and not digest.startswith(UNREAD_DIGEST):
             return Round(
                 CARRY,

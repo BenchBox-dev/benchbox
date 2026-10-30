@@ -24,6 +24,7 @@ STANDIN_ATTESTERS = frozenset({"joeharris76"})
 REFUSED_DESCRIPTION_PREFIX = "refused after"
 _STANDIN_MARKER = re.compile(r"Stand-in oracle review: APPROVE ([0-9a-f]{40})")
 OPEN_FINDINGS_LABEL = "SHIP WITH FIXES"
+REPOSTED_MARK = " (reposted)"
 _ESCALATED = re.compile(r"escalated (?P<ids>D[0-9]+(?:,D[0-9]+)*)")
 
 
@@ -182,6 +183,10 @@ def _parse_time(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
+def _is_repost(status: dict[str, Any]) -> bool:
+    return _strip_run_suffix(status.get("description")).endswith(REPOSTED_MARK)
+
+
 def _latest_decisive(verdicts: list[dict[str, Any]]) -> dict[str, Any] | None:
     return next((status for status in reversed(verdicts) if status["state"] in DECISIVE_VERDICTS), None)
 
@@ -240,7 +245,8 @@ def decide(
     latest = verdicts[-1] if verdicts else None
     verdict = latest["state"] if latest else None
     standin_after = standin_not_before(
-        base_time, ((_parse_time(status["created_at"]), status["state"]) for status in verdicts)
+        base_time,
+        ((_parse_time(status["created_at"]), status["state"]) for status in verdicts if not _is_repost(status)),
     )
     findings_open = _open_findings(verdicts)
     standin = (

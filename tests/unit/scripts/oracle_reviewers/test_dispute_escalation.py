@@ -70,22 +70,22 @@ def test_a_dispute_round_runs_although_the_manual_budget_is_used(
     assert "exempt from the retry budget" in plan["decision_reason"]
 
 
-def test_a_rerun_without_a_dispute_is_still_refused_by_the_budget(
+def test_a_rerun_without_a_dispute_runs_no_reviewer_even_with_the_budget_used(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     fake = _thread_fake(_decided_head(), [_acked_thread()])
     fake.state = _exhausted()
     values, plan = _comment_plan(monkeypatch, tmp_path, fake)
-    assert values["decision"] == "skip" and values["post"] == "false"
-    assert "daily retry budget" in plan["decision_reason"]
+    assert values["decision"] == "carry"
+    assert plan["chain"] == []
 
 
 def test_an_untrusted_dispute_reply_gets_no_exemption(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     fake = _thread_fake(_decided_head(), [_disputed_thread(association="NONE")])
     fake.state = _exhausted()
     values, plan = _comment_plan(monkeypatch, tmp_path, fake)
-    assert values["decision"] == "skip"
-    assert "daily retry budget" in plan["decision_reason"]
+    assert values["decision"] == "carry"
+    assert plan["chain"] == [] and plan["manual"] is True
 
 
 def _forced_review(number: int) -> dict[str, Any]:

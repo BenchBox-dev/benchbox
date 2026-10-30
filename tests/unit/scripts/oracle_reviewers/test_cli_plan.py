@@ -1782,7 +1782,7 @@ def test_comment_without_a_dispute_leaves_the_decided_head_in_place(
     _, values, plan = _plan(
         monkeypatch, tmp_path, _thread_fake(_decided_head(), [_acked_thread()]), event_name="issue_comment", event=event
     )
-    assert values["decision"] == "skip" and values["post"] == "false"
+    assert values["decision"] == "carry" and values["post"] == "true"
     assert plan["manual"] is True
 
 

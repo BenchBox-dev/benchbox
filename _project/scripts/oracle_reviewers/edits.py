@@ -68,6 +68,10 @@ def run_suffix(description: str | None) -> str | None:
     return match.group("run") if match else None
 
 
+def strip_run_suffix(description: str | None) -> str:
+    return _RUN_SUFFIX.sub("", description or "")
+
+
 def _is_app(creator: Any, bot_login: str) -> bool:
     return (
         isinstance(creator, Mapping)
