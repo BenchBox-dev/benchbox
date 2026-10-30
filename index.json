@@ -1160,7 +1160,7 @@
         "site-browser-acceptance-ci-20261017"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "Add result embeds for docs and blog that cite their snapshot and obey Explorer withdrawal rules"
     },
     "astro-site-61-results-discovery-pages": {
