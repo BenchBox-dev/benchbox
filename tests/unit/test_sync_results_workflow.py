@@ -615,6 +615,8 @@ def test_superseded_mirror_prs_close_only_when_their_commit_is_an_ancestor(tmp_p
         pr(13, "auto/results-mirror-deadbeef"),
         pr(14, f"auto/results-mirror-{older[:8]}", cross=True),
         pr(15, "feature/unrelated"),
+        pr(16, "auto/results-mirror-main"),
+        pr(17, "auto/results-mirror-HEAD~1"),
     ]
     listing_file = tmp_path / "listing.json"
     listing_file.write_text(json.dumps(listing), encoding="utf-8")

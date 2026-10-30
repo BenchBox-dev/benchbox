@@ -427,6 +427,10 @@ jobs:
               continue
             fi
             older_sha="${head#auto/results-mirror-}"
+            if [[ ! "${older_sha}" =~ ^[0-9a-f]{8}$ ]]; then
+              echo "Leaving mirror PR #${number} open: ${head} does not name an eight-character commit."
+              continue
+            fi
             if ! git merge-base --is-ancestor "${older_sha}" "${GITHUB_SHA}" 2>/dev/null; then
               echo "Leaving mirror PR #${number} open: ${older_sha} is not an ancestor of ${GITHUB_SHA::8}."
               continue
