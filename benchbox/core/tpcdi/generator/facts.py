@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-import csv
 import hashlib
 import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from benchbox.utils.printing import emit
+
+from .rows import PipeRowWriter
 
 FACT_TRADE_GENERATION_ALGORITHM_VERSION = 1
 
@@ -36,7 +37,7 @@ class FactGenerationMixin:
             )
 
         with open(file_path, "w", newline="", buffering=self.buffer_size, encoding="utf-8") as f:
-            writer = csv.writer(f, delimiter="|")
+            writer = PipeRowWriter(f)
 
             for chunk_start in range(1, num_trades + 1, self.chunk_size):
                 chunk_end = min(chunk_start + self.chunk_size, num_trades + 1)
@@ -97,7 +98,7 @@ class FactGenerationMixin:
                 future_to_chunk[future] = (chunk_start, chunk_end)
 
             with open(file_path, "w", newline="", buffering=self.buffer_size, encoding="utf-8") as f:
-                writer = csv.writer(f, delimiter="|")
+                writer = PipeRowWriter(f)
 
                 completed_chunks = []
                 for future in as_completed(future_to_chunk):
@@ -206,7 +207,7 @@ class FactGenerationMixin:
         num_records = min(num_accounts * 30, 100000)
 
         with open(file_path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f, delimiter="|")
+            writer = PipeRowWriter(f)
 
             for _i in range(num_records):
                 sk_customer_id = self._rng.randint(1, num_customers)
@@ -246,7 +247,7 @@ class FactGenerationMixin:
         num_records = min(num_accounts * 10, 50000)
 
         with open(file_path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f, delimiter="|")
+            writer = PipeRowWriter(f)
 
             for _i in range(num_records):
                 sk_customer_id = self._rng.randint(1, num_customers)
@@ -289,7 +290,7 @@ class FactGenerationMixin:
         num_records = min(num_securities * days_of_data, 100000)
 
         with open(file_path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f, delimiter="|")
+            writer = PipeRowWriter(f)
 
             security_prices = {}
 
@@ -353,7 +354,7 @@ class FactGenerationMixin:
         num_records = min(int(num_customers * 5 * self.scale_factor), 25000)
 
         with open(file_path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f, delimiter="|")
+            writer = PipeRowWriter(f)
 
             for _i in range(num_records):
                 sk_customer_id = self._rng.randint(1, num_customers)

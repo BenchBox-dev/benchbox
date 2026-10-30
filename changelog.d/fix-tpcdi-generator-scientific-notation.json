@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed TPC-DI generated data writing small decimal values such as tax rates in scientific notation (for example 7e-05), which strict decimal casts on LakeSail rejected while loading DimCustomer; floats are now written as plain fixed-point decimals with unchanged values."
+    }
+  ]
+}
