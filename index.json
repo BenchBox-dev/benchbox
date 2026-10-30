@@ -1169,7 +1169,7 @@
         "site-browser-acceptance-ci-20261017"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "Generate static, searchable result summary pages for platforms and benchmarks"
     },
     "athena-configuration-validation": {
