@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
+import yaml
 
 from benchbox.platforms._spark_helpers import (
     SPARK_AQE_KEYS,
@@ -774,3 +776,17 @@ class TestDefaultSparkDriverMemory:
     @pytest.mark.parametrize("master", ["yarn", "spark://host:7077", "k8s://https://host"])
     def test_cluster_masters_keep_the_fixed_default(self, master: str) -> None:
         assert default_spark_driver_memory(master, 64 * self.GIB) == "4g"
+
+    def test_sixteen_gib_release_runner_gets_a_nine_gib_heap(self) -> None:
+        runner_total_bytes = int(15.6 * self.GIB)
+
+        assert default_spark_driver_memory("local[*]", runner_total_bytes) == "9g"
+
+    def test_runner_heap_plus_jvm_overhead_fits_the_stage_one_memory_guard(self) -> None:
+        jvm_non_heap_allowance_gib = 2
+        python_driver_allowance_gib = 1
+        stage_one = Path(__file__).resolve().parents[3] / "tests/uat/configs/release-gate-01-native-dataframe.yaml"
+        guard_gib = yaml.safe_load(stage_one.read_text(encoding="utf-8"))["execute"]["per_cell_memory_limit_gib"]
+        heap_gib = int(default_spark_driver_memory("local[*]", int(15.6 * self.GIB)).removesuffix("g"))
+
+        assert heap_gib + jvm_non_heap_allowance_gib + python_driver_allowance_gib <= guard_gib
