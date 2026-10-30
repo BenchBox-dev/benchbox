@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed QuestDB failing with \"column must appear in GROUP BY clause or aggregate function\" on grouped queries whose correlated subqueries were decorrelated into LEFT JOINed derived tables (TPC-H Havoc variant 1); the joined column is functionally dependent on the group keys, so the adapter now reads it through MAX()."
+    }
+  ]
+}
