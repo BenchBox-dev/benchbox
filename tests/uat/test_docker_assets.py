@@ -358,7 +358,7 @@ def test_local_managed_cedardb_compose_credentials_match_uat_argv():
         "--platform-option",
         "username=benchbox",
         "--platform-option",
-        "database=benchbox_test",
+        "admin_database=benchbox_test",
         "--platform-option",
         "password=Benchbox1!",
     ]
@@ -412,6 +412,23 @@ def test_connection_registries_do_not_duplicate_derived_values():
         for values in docker_assets._PLATFORM_LOCAL_MANAGED_STATIC_OPTS.values()
         for value in values
     )
+
+
+def test_no_uat_platform_option_forces_shared_database():
+    registries = (
+        docker_assets._PLATFORM_STATIC_OPTS,
+        docker_assets._PLATFORM_LOCAL_MANAGED_STATIC_OPTS,
+    )
+    for registry in registries:
+        for platform, values in registry.items():
+            assert not any(value.startswith("database=") for value in values), platform
+    for platform in docker_assets._DOCKER_PLATFORM_SPECS:
+        argvs = [
+            " ".join(matrix.benchbox_run_argv(platform, benchmark, 0.01, local_managed_platform=managed))
+            for benchmark in ("tpch", "tpcds")
+            for managed in (False, True)
+        ]
+        assert not any("database=" in argv.replace("admin_database=", "") for argv in argvs), platform
 
 
 def test_resolve_container_cli_env_override_wins_over_platform_default(monkeypatch):
