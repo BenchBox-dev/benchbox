@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed the generic power test regenerating and re-translating every benchmark query before each warm-up and measurement pass; queries are now resolved once per power test, which cuts TPC-Havoc power-phase wall time on SQLite SF0.01 from 115s to 28s."
+    }
+  ]
+}
