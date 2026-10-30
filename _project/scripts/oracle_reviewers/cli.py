@@ -1920,6 +1920,7 @@ def _parser() -> argparse.ArgumentParser:
     local_review = commands.add_parser("local-review")
     local_review.add_argument("--policy", required=True)
     local_review.add_argument("--base-ref", default="origin/develop")
+    local_review.add_argument("--trusted-ref", default="")
     local_review.add_argument("--head", default="HEAD")
     local_review.add_argument("--body-file", default="")
     local_review.set_defaults(handler=command_local_review)

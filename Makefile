@@ -1254,7 +1254,7 @@ pr-open:
 	DRAFT_FLAG=; \
 	if [ "$$TRUNK_MODE" = "draft" ] || [ -n "$$PR_OPEN_PARENT" ]; then DRAFT_FLAG=--draft; fi; \
 	REVIEWED=$$(git rev-parse HEAD); \
-	uv run -- python -m _project.scripts.oracle_reviewers.cli local-review --policy .github/oracle-reviewers.yml --base-ref "$$STACK_BASE" --head "$$REVIEWED" --body-file "$$PR_OPEN_BODY_FILE" || { echo "Refusing to open PR: the local oracle review did not clear this head. Nothing was pushed." >&2; exit 1; }; \
+	uv run -- python -m _project.scripts.oracle_reviewers.cli local-review --policy .github/oracle-reviewers.yml --base-ref "$$STACK_BASE" --trusted-ref origin/develop --head "$$REVIEWED" --body-file "$$PR_OPEN_BODY_FILE" || { echo "Refusing to open PR: the local oracle review did not clear this head. Nothing was pushed." >&2; exit 1; }; \
 	[ "$$(git rev-parse HEAD)" = "$$REVIEWED" ] || { echo "Refusing to open PR: HEAD moved during the local oracle review, so the pushed head would not be the reviewed one. Nothing was pushed." >&2; exit 1; }; \
 	$(MAKE) -s pr-conflict-scan BRANCH="$$CURRENT" REPO="$$REPOSITORY" || true; \
 	git push -u origin "$$CURRENT" || { echo "Push failed for $$CURRENT — aborting before opening a PR (remote branch may be stale)." >&2; exit 1; }; \

@@ -1649,6 +1649,8 @@ _RECORDER = """#!{python}
 import json, os, sys
 with open(os.environ["CALLS"], "a", encoding="utf-8") as handle:
     handle.write(json.dumps([os.path.basename(sys.argv[0]), sys.argv[1:]]) + "\\n")
+if "--verify-parent" in sys.argv:
+    sys.exit(int(os.environ.get("VERIFY_EXIT", "0")))
 if "local-review" in sys.argv:
     sys.exit(int(os.environ["LOCAL_REVIEW_EXIT"]))
 if "scripts/pr_open_rest.py" in sys.argv:
@@ -1694,6 +1696,7 @@ def _run_pr_open_result(
         "PUBLISH": publish,
         "LOCAL_REVIEW_EXIT": str(local_review_exit),
         "HEAD_MOVES": "1" if head_moves else "",
+        "VERIFY_EXIT": os.environ.get("VERIFY_EXIT", "0"),
     }
     result = subprocess.run(
         ["make", "-s", "pr-open", f"MAKE={stubs / 'fake-make'}", *variables],
@@ -1781,6 +1784,38 @@ def test_pr_open_runs_the_local_oracle_review_before_any_push_with_the_body_file
     } <= set(zip(review, review[1:], strict=False))
     assert ("--head", "1111111111111111111111111111111111111111") in set(zip(review, review[1:], strict=False))
     assert len(pushes) == 1
+
+
+@requires_posix_make
+def test_pr_open_with_a_parent_reviews_against_it_and_opens_a_draft_on_it(tmp_path: Path) -> None:
+    result, calls, pushes = _run_pr_open_result(tmp_path, "created", 0, "PARENT=feat/parent")
+
+    assert result.returncode == 0
+    names = [(name, args) for name, args in calls if name == "uv"]
+    verify = next(i for i, (_, args) in enumerate(names) if "--verify-parent" in args)
+    review = next(i for i, (_, args) in enumerate(names) if "local-review" in args)
+    publish = next(
+        i for i, (_, args) in enumerate(names) if "scripts/pr_open_rest.py" in args and "--verify-parent" not in args
+    )
+    assert verify < review < publish
+    assert {("--parent", "feat/parent"), ("--branch", "feat/x")} <= _adjacent(names[verify][1])
+    assert {("--base-ref", "origin/feat/parent"), ("--trusted-ref", "origin/develop")} <= _adjacent(names[review][1])
+    assert {("--parent", "feat/parent")} <= _adjacent(names[publish][1])
+    assert "--draft" in names[publish][1]
+    assert len(pushes) == 1
+
+
+@requires_posix_make
+def test_pr_open_with_a_refused_parent_stops_before_the_review_and_any_push(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("VERIFY_EXIT", "1")
+    result, calls, pushes = _run_pr_open_result(tmp_path, "created", 0, "PARENT=feat/parent")
+
+    assert result.returncode != 0
+    assert not [args for name, args in calls if name == "uv" and "local-review" in args]
+    assert not [args for _, args in calls if "scripts/pr_open_rest.py" in args and "--verify-parent" not in args]
+    assert pushes == []
 
 
 @requires_posix_make

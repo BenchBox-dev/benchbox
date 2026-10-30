@@ -102,26 +102,28 @@ def find_open_pr(
     return None
 
 
-def verify_parent(run: Runner, repo: str, head_owner: str, parent: str) -> None:
+def verify_parent(run: Runner, repo: str, head_owner: str, branch: str, parent: str) -> None:
+    if parent == branch:
+        raise PrOpenError(f"--parent {parent} is the branch being opened")
     if parent in INTEGRATION_BRANCHES:
         raise PrOpenError(f"--parent {parent} is an integration branch; omit PARENT to target it")
     depth = 1
-    branch = parent
-    seen = {parent}
+    level = parent
+    seen = {parent, branch}
     while True:
-        pull = find_open_pr(run, repo, head_owner, branch, None)
+        pull = find_open_pr(run, repo, head_owner, level, None)
         if pull is None:
-            raise PrOpenError(f"stack parent {branch} is not an open pull request branch of {head_owner} in {repo}")
+            raise PrOpenError(f"stack parent {level} is not an open pull request branch of {head_owner} in {repo}")
         base = str((pull.get("base") or {}).get("ref") or "")
         if not base:
-            raise PrOpenError(f"unreadable open PR lookup response: no base for {branch}")
+            raise PrOpenError(f"unreadable open PR lookup response: no base for {level}")
         if base in INTEGRATION_BRANCHES:
             break
         if base in seen:
             raise PrOpenError(f"stack parent {parent} has a cyclic base chain")
         seen.add(base)
         depth += 1
-        branch = base
+        level = base
     if depth + 1 > MAX_STACK_DEPTH:
         raise PrOpenError(
             f"stack parent {parent} is already level {depth}; a stack is at most {MAX_STACK_DEPTH} PRs deep"
@@ -146,6 +148,8 @@ def publish(
     parent: str | None = None,
 ) -> PublishedPr:
     base = parent or BASE_BRANCH
+    if parent:
+        verify_parent(run, repo, head_owner, branch, parent)
     existing = find_open_pr(run, repo, head_owner, branch, base)
     if existing is not None:
         pr = _pr_from(existing, "reused")
@@ -193,7 +197,7 @@ def main(argv: Sequence[str] | None = None, run: Runner = live_run) -> int:
         return 1
     try:
         if args.verify_parent:
-            verify_parent(run, args.repo, args.head_owner, args.parent)
+            verify_parent(run, args.repo, args.head_owner, args.branch, args.parent)
             return 0
         pr = publish(
             args.repo,
