@@ -23793,7 +23793,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "Enforce a comment and docstring policy on the site repo's source"
     },
     "site-contract-bump-sequencing-20261026": {
