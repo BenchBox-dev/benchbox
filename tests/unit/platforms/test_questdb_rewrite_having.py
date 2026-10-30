@@ -114,3 +114,14 @@ def test_having_matches_unqualified_reference_to_unique_qualified_group_column()
 def test_having_unaliased_unknown_function_keeps_its_name():
     rewritten = rewrite_query("SELECT a, my_fn(a) FROM t GROUP BY a HAVING COUNT(*) > 1")
     assert rewritten.startswith("SELECT qdb_grp_1 AS a, MY_FN(qdb_grp_1) AS my_fn FROM")
+
+
+def test_having_subquery_that_can_return_no_rows_is_not_hoisted():
+    rewritten = rewrite_query("SELECT k FROM t GROUP BY k HAVING SUM(v) > 5 OR SUM(v) > (SELECT x FROM u WHERE y = 1)")
+    assert "CROSS JOIN" not in rewritten
+    assert rewritten.endswith("WHERE qdb_agg_2 > 5 OR qdb_agg_2 > (SELECT x FROM u WHERE y = 1)")
+
+
+def test_having_ungrouped_aggregate_subquery_is_hoisted_under_or():
+    rewritten = rewrite_query("SELECT k FROM t GROUP BY k HAVING SUM(v) > 5 OR SUM(v) > (SELECT MAX(x) FROM u)")
+    assert "CROSS JOIN (SELECT MAX(x) AS qdb_sub_1 FROM u) AS qdb_scalar_1" in rewritten
