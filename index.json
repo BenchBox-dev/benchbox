@@ -8793,9 +8793,9 @@
     },
     "dlv2-52a-testpypi-rehearsal": {
       "claim": {
-        "expires_at": "2026-10-30T23:11:20Z",
+        "expires_at": "2026-10-31T15:19:43Z",
         "generation": "f263159a8b3d4e9487a1dcf3f9f8c01f",
-        "renewals": 0,
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cbd63a5667398431c51c92e1"
       },
       "needs": [
