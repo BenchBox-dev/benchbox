@@ -3,7 +3,9 @@ from __future__ import annotations
 import ast
 import importlib.util
 import json
+import os
 import shlex
+import shutil
 import subprocess
 import sys
 from pathlib import Path, PurePosixPath
@@ -583,3 +585,73 @@ def test_unguarded_import_detector(source: str, expected: list[str]) -> None:
     mirrored = {"benchbox/validation/bundle.py"}
 
     assert _unguarded_unmirrored_imports(source, mirrored) == expected
+
+
+def _close_superseded_step_run() -> str:
+    workflow = yaml.safe_load(WORKFLOW_PATH.read_text(encoding="utf-8"))
+    step = next(s for s in workflow["jobs"]["mirror"]["steps"] if s.get("name") == "Close superseded mirror PRs")
+    return step["run"]
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="runs a bash step body with a fake gh on PATH")
+@pytest.mark.skipif(shutil.which("jq") is None, reason="the fake gh applies the step's --jq filter with jq")
+def test_superseded_mirror_prs_close_only_when_their_commit_is_an_ancestor(tmp_path: Path) -> None:
+    repo = tmp_path / "supersede"
+    _init_repo(repo)
+    older = _commit_files(repo, {"a.txt": "1"}, "older develop commit")
+    current = _commit_files(repo, {"a.txt": "2"}, "current develop commit")
+    _run(["git", "checkout", "-b", "side", older], cwd=repo)
+    sibling = _commit_files(repo, {"b.txt": "3"}, "develop commit not contained in current")
+    _run(["git", "checkout", "main"], cwd=repo)
+
+    def pr(number: int, head: str, cross: bool = False) -> dict[str, object]:
+        return {"number": number, "headRefName": head, "isCrossRepository": cross}
+
+    listing = [
+        *[pr(100 + index, f"feature/open-{index}") for index in range(30)],
+        pr(10, f"auto/results-mirror-{older[:8]}"),
+        pr(11, f"auto/results-mirror-{current[:8]}"),
+        pr(12, f"auto/results-mirror-{sibling[:8]}"),
+        pr(13, "auto/results-mirror-deadbeef"),
+        pr(14, f"auto/results-mirror-{older[:8]}", cross=True),
+        pr(15, "feature/unrelated"),
+        pr(16, "auto/results-mirror-main"),
+        pr(17, "auto/results-mirror-HEAD~1"),
+    ]
+    listing_file = tmp_path / "listing.json"
+    listing_file.write_text(json.dumps(listing), encoding="utf-8")
+    closed_log = tmp_path / "closed.log"
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake_gh = bin_dir / "gh"
+    fake_gh.write_text(
+        "#!/usr/bin/env bash\n"
+        'if [[ "$1 $2" == "pr list" ]]; then\n'
+        "  limit=30; filter=''\n"
+        '  args=("$@")\n'
+        "  for ((i = 0; i < ${#args[@]}; i++)); do\n"
+        '    if [[ "${args[i]}" == "--limit" ]]; then limit="${args[i+1]}"; fi\n'
+        '    if [[ "${args[i]}" == "--jq" ]]; then filter="${args[i+1]}"; fi\n'
+        "  done\n"
+        '  jq -c ".[0:$limit]" "$LISTING_FILE" | jq -r "$filter"\n'
+        "  exit 0\n"
+        "fi\n"
+        'if [[ "$1 $2" == "pr close" ]]; then echo "$3" >> "$CLOSED_LOG"; exit 0; fi\n'
+        "exit 1\n",
+        encoding="utf-8",
+    )
+    fake_gh.chmod(0o755)
+
+    env = {
+        **os.environ,
+        "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+        "LISTING_FILE": str(listing_file),
+        "CLOSED_LOG": str(closed_log),
+        "PR_NUMBER": "11",
+        "GITHUB_SHA": current,
+    }
+    script = tmp_path / "close_superseded.sh"
+    script.write_text(_close_superseded_step_run(), encoding="utf-8")
+    subprocess.run(["bash", "-c", '. "$1"', "bash", str(script)], cwd=repo, env=env, check=True)
+
+    assert closed_log.read_text(encoding="utf-8").split() == ["10"]

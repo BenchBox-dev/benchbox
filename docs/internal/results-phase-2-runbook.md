@@ -108,8 +108,10 @@ adds or replaces bundles. Community submissions remain hand-opened PRs against
 gh workflow run sync-results-data-to-published.yml
 ```
 
-Review and merge the resulting `auto/results-mirror-*` PR. Hand-opened
-*maintainer archive-content* PRs against `published-results` must stay
+Review and merge the resulting `auto/results-mirror-*` PR. A newer mirror
+that passes its own validation closes any older open mirror PR whose
+`develop` commit it contains, so one open mirror PR is the one to review.
+Hand-opened *maintainer archive-content* PRs against `published-results` must stay
 deletion-only; do not use them to add maintainer or seed archive content. A
 hand-opened workflow-only PR is the required exception whenever
 `.github/workflows/validate-submission.yml` changes on `develop`, because the
