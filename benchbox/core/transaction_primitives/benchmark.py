@@ -391,6 +391,8 @@ class TransactionPrimitivesBenchmark(TransactionalBenchmarkBase["OperationResult
     def is_setup(self, connection: DatabaseConnection) -> bool:
         try:
             for table_name in ["txn_orders", "txn_lineitem", "txn_customer"]:
+                if not self._table_exists(connection, table_name):
+                    return False
                 quoted = self._quote_identifier(table_name)
                 count = fetch_count_probe(connection, f"SELECT COUNT(*) FROM {quoted}")
                 if count <= 0:

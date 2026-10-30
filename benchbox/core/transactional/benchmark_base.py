@@ -249,19 +249,23 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
         dialect = (getattr(self, "_setup_dialect", None) or "standard").lower()
         return "STRING" if dialect in ("databricks", "bigquery") else "VARCHAR"
 
+    def _ensure_staging_manifest_table(self, connection: DatabaseConnection) -> None:
+        quoted_table = self._quote_identifier(self._STAGING_MANIFEST_TABLE)
+        text_type = self._manifest_text_type()
+        res = connection.execute(
+            f"CREATE TABLE IF NOT EXISTS {quoted_table} ("
+            f"benchmark {text_type}, scale {text_type}, spec_version {text_type}, "
+            f"source_digest {text_type}, created_at {text_type})"
+        )
+        if (err := failed_platform_error(res)) is not None:
+            raise RuntimeError(f"Failed to create staging manifest table: {err}")
+
     def _write_staging_manifest(self, connection: DatabaseConnection, source_tables: list[str]) -> None:
         benchmark_id, scale, spec_version = self._staging_provenance_key()
         source_digest = self._staging_source_digest(connection, source_tables)
         quoted_table = self._quote_identifier(self._STAGING_MANIFEST_TABLE)
 
-        text_type = self._manifest_text_type()
-        res1 = connection.execute(
-            f"CREATE TABLE IF NOT EXISTS {quoted_table} ("
-            f"benchmark {text_type}, scale {text_type}, spec_version {text_type}, "
-            f"source_digest {text_type}, created_at {text_type})"
-        )
-        if (err := failed_platform_error(res1)) is not None:
-            raise RuntimeError(f"Failed to create staging manifest table: {err}")
+        self._ensure_staging_manifest_table(connection)
 
         res2 = connection.execute(f"DELETE FROM {quoted_table} WHERE benchmark = '{_sql_escape(benchmark_id)}'")
         if (err := failed_platform_error(res2)) is not None:
@@ -289,6 +293,7 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
         source_digest = self._staging_source_digest(connection, source_tables)
         quoted_table = self._quote_identifier(self._STAGING_MANIFEST_TABLE)
         try:
+            self._ensure_staging_manifest_table(connection)
             query = (
                 f"SELECT COUNT(*) FROM {quoted_table} WHERE "
                 f"benchmark = '{_sql_escape(benchmark_id)}' AND "
