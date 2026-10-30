@@ -524,6 +524,36 @@ def apply_rewrites(sql: str, dialect: str, rewrites: Sequence[tuple[str, dict]],
     return result
 
 
+def sql_expressions():
+    from benchbox._vendor.sqlglot import exp
+
+    return exp
+
+
+def rewrite_sql_tree(
+    sql: str,
+    dialect: str,
+    transform: Callable[[Any], Any],
+    finalize: Callable[[Any], Any] | None = None,
+) -> str:
+    from benchbox._vendor import sqlglot
+
+    resolved = resolve_sql_dialect(dialect)
+    try:
+        statements = [statement for statement in sqlglot.parse(sql, read=resolved) if statement is not None]
+    except sqlglot.errors.SqlglotError:
+        return sql
+    if len(statements) != 1:
+        return sql
+    original = statements[0]
+    rewritten = transform(original.copy())
+    if rewritten == original:
+        return sql
+    if finalize is not None:
+        rewritten = finalize(rewritten)
+    return rewritten.sql(dialect=resolved, identify=False)
+
+
 def unqualified_table_names(sql: str, dialect: str) -> list[str] | None:
     import importlib
 
