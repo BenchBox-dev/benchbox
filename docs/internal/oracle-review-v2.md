@@ -142,7 +142,9 @@ a manual dispatch, a `pull_request_target` event other than a plain edit, and a
 7. Disk scan (C4); `drive finalize`, which counts the attempts, re-validates
    this run's artifacts, replays selection and runs the redaction check (C5).
 8. **Post.** Mint the App token, then `drive publish` runs the guard, posts
-   the status and findings, and then evaluates and posts `oracle-gate` for the
+   the findings first and the `oracle-verdict` status last, because the status
+   is the receipt: a failed findings post leaves no decisive status, so the
+   sweep retries the head. It then evaluates and posts `oracle-gate` for the
    exact head. The retry state is uploaded only if every post
    succeeded, then the attempt artifacts and the captured event streams, and
    last `drive dispatch` dispatches `oracle-gate`. `findings_delivery` in
@@ -216,7 +218,7 @@ step per phase invocation; every phase step has its own `timeout-minutes`.
 | `attempts` | Runs attempts until the chain stops or an invalid attempt needs a recovery judgment. | gateway token and URL |
 | `recover` | Asks the judgment service how to recover the last invalid attempt. | TypeSafe key |
 | `finalize` | Counts the attempts, validates and decides, writes the status, comment, review and retry state, then redacts every secret value from the results. | every secret the job holds |
-| `publish` | Runs the guard, posts the status, comment and review, then evaluates and posts `oracle-gate` for the exact head from the trusted checkout with the same decision `oracle-gate.yml` uses, and reports `skip` and `state_recorded`: the attempt record is uploaded whenever the finalize phase wrote a state and the guard did not report a skip (so a failed mint or a crashed publish still counts the attempt), and the retry state only after the posts succeeded. A refused gate post is a warning, not a failure: the dispatch and the sweep post it again. With the App configured it fails before the guard when the App token or job token is empty; without the App it logs the result and still records the attempt. | App token, job token |
+| `publish` | Runs the guard, posts the comment and review, then the verdict status as the receipt of those posts, then evaluates and posts `oracle-gate` for the exact head from the trusted checkout with the same decision `oracle-gate.yml` uses, and reports `skip` and `state_recorded`: the attempt record is uploaded whenever the finalize phase wrote a state and the guard did not report a skip (so a failed mint or a crashed publish still counts the attempt), and the retry state only after the posts succeeded. A failed comment or review post leaves no decisive status for the head, so the sweep re-reviews it within the retry budget. A refused gate post is a warning, not a failure: the dispatch and the sweep post it again. With the App configured it fails before the guard when the App token or job token is empty; without the App it logs the result and still records the attempt. | App token, job token |
 | `dispatch` | Dispatches `oracle-gate` for the reviewed head when the pull request's base is `develop`; runs after the uploads so a failed upload withholds it. | App token, job token |
 | `sweep` | Dispatches due retries. | job token, App token |
 
@@ -1263,7 +1265,7 @@ status.
 
 `pull_request_review` runs the PR's own workflow file, so the PR controls the
 notification and can delete or alter it. The verdict path does not depend on it:
-after posting a head's status, comment and review, a final `review` step reads
+after posting a head's comment, review and status, a final `review` step reads
 the PR base through the API and, if `develop`, dispatches `oracle-gate.yml` from
 `develop` with `pr` and the reviewed `head_sha`. This covers comment, dispatch
 and scheduled verdict runs, whose completion carries `develop`'s head and cannot

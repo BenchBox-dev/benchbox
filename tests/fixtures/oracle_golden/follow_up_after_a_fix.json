@@ -232,7 +232,7 @@
       "reason": "the patch changed after SHIP WITH FIXES",
       "round": 2,
       "seen": [
-        1002
+        1001
       ],
       "strikes": 0,
       "struck_digests": []
