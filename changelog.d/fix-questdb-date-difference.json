@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed QuestDB queries that subtract dates through EXTRACT(epoch FROM ...) / 86400 and queries that use CURRENT_DATE (TPC-DI AQ7, AQ8, AQ10): QuestDB computes the timestamp difference as a timestamp instead of an interval and has no CURRENT_DATE, so the adapter now rewrites them to DATEDIFF('d', ...) and the start of today."
+    }
+  ]
+}
