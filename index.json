@@ -29468,6 +29468,13 @@
       "status": "done",
       "title": "Make the UAT disk-headroom gate always-on (decouple from phase list) and stop the budget gate degrading silently"
     },
+    "uat-docker-memory-admission-decimal-units-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "critical",
+      "status": "open",
+      "title": "UAT memory admission parses Docker \"g\" as 10^9 bytes, so StarRocks and ClickHouse server never start"
+    },
     "uat-docker-platform-switch-cleanup": {
       "claim": null,
       "needs": [],

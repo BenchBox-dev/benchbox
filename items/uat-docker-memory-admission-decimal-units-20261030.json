@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Admission accepts the limit Docker applies for '4g' and '5.25g'.",
+    "Unit tests pin the suffix semantics against Docker's documented units.",
+    "The StarRocks and ClickHouse server shards start and run cells."
+  ],
+  "context": "Evidence: release-v2 run 40971306663 (tag v0.5.0rc2, commit b1459438d), artifact release-uat-v0.5.0rc2-stage2-starrocks: cells.jsonl, uat_gate_summary.json, validator_rollup.tsv, uat_lifecycle.log and per-cell logs. The artifacts do not keep result JSON, so query-level causes need a local rerun of the named cells. Also release-uat-v0.5.0rc2-stage2-clickhouse-server.",
+  "description": "tests/uat/docker_assets.py:48 maps the 'g' suffix to 1000**3, but Docker treats '4g' as 4 GiB. The runtime memory admission check in tests/uat/managed_runtime.py:228 then compares 4000000000 requested bytes with the 4294967296 bytes Docker reports, and fails. In run 40971306663 the StarRocks shard ('requested 4g (4000000000 bytes), runtime reported 4294967296 bytes') and the ClickHouse server shard ('requested 5.25g (5250000000 bytes), runtime reported 5637144576 bytes') ran 0 cells with 57 startup failures each. Use Docker's binary units for k, m and g and check every caller of parse_memory_bytes.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/actions/runs/40971306663"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cbd63a5667398431c51c92e1",
+      "at": "2026-10-30T11:09:32Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0509bccaec494304b407c16a51ed5bd1",
+      "session_id": "dfb93797c41c440a9261d3ab38ceb76e"
+    }
+  ]
+}
