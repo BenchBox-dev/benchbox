@@ -51,6 +51,7 @@ jobs:
         if: always()
         run: |
           shopt -s nullglob
+          grep -rH -E "UAT_PEAK_RSS_GIB|UAT_MEMORY_LIMIT|UAT_TIMEOUT" "$HOME"/Developer/benchmark_runs/logs | sed 's#.*/##' | sort
           for f in "$HOME"/Developer/benchmark_runs/logs/uat_*/run/cells.jsonl "$HOME"/Developer/benchmark_runs/logs/uat_*/cells.jsonl; do
             echo "== $f"; cut -c1-260 "$f"
           done
