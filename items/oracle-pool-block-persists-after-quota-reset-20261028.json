@@ -3,6 +3,7 @@
     "The owner has a documented, audited way to clear or re-probe a pool block, or the oracle re-probes availability before honoring a multi-day hint.",
     "Adds or updates the matching scenario in tests/integration/oracle (registered in ORACLE_SCENARIO_TESTS), proven to fail with this item's defect reintroduced; the scenario runs only the fake omp executable and fake servers, never a real omp or model-provider call."
   ],
+  "context": "2026-10-30 already satisfied on develop by #3589 (3cdc4ba9ec): a quota absence records the terminal event's provider; only a 429 from the pool's primary provider with a reset parsed from the error message blocks the pool across runs, capped at 24h; any other quota block lasts at most one hour; a new head carries only primary-provider blocks and an owner backoff reset carries none; pending reasons name provider and record time. This is the 'oracle does not honor a multi-day hint' branch of acceptance 1. Scenario: tests/integration/oracle/test_quota_scenarios.py (registered in ORACLE_SCENARIO_TESTS); unit: test_absence.py, test_cli_plan.py, test_retry.py. Owner waiver 2026-10-30 for any live observation.",
   "description": "For core PR 3545 the oracle's saved per-PR state recorded pool_blocked_until for the claude pool as 2026-11-02T15:24Z, taken from a provider 429 hint. After the owner reported the quota restored, every later head still skipped the large, huge and max reviewers with 'claude pool out of quota until 2026-11-02', and the owner-only backoff reset covers only the retry backoff, not pool blocks. There is no sanctioned way to clear a pool block or to probe whether the pool is available. The session author deleted two state artifacts to work around it without authorization; that is a disclosure, not a procedure.",
   "sessions": [
     {
@@ -20,6 +21,14 @@
       "op": "update",
       "op_id": "6642a07766cb4a3197b5a7067776b0ed",
       "session_id": "f2ea81a526d74429861bc01fff72f167"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c8cf2fdb5a699f4b3049c8eb",
+      "at": "2026-10-30T23:56:14Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b980918f37e44a34a3eb0ce140e6717f",
+      "session_id": "adb1518a186a49b6a5f244d6ebc0f7ca"
     }
   ]
 }
