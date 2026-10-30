@@ -17361,6 +17361,16 @@
       "status": "done",
       "title": "Fix stand-in approval docs: the check rejects comments that quote the owner"
     },
+    "oracle-strict-reply-schema-20261030": {
+      "claim": null,
+      "needs": [
+        "oracle-review-driver-ci-20261026",
+        "oracle-review-driver-local-20261026"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Validate the oracle reviewer's verdict with OMP's strict output schema and delete the hand-built JSON reply contract"
+    },
     "oracle-strike-count-distinct-patches-20261008": {
       "claim": null,
       "needs": [],
