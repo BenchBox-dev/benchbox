@@ -22,6 +22,7 @@ from .complexity import (
     get_complexity_preset,
 )
 from .dataframe_operations import (
+    DASK_METADATA_CAPABILITIES,
     DATAFUSION_METADATA_CAPABILITIES,
     OPERATION_CATEGORIES,
     PANDAS_METADATA_CAPABILITIES,
@@ -58,6 +59,7 @@ __all__ = [
     "RoleHierarchyDepth",
     "TypeComplexity",
     "get_complexity_preset",
+    "DASK_METADATA_CAPABILITIES",
     "DATAFUSION_METADATA_CAPABILITIES",
     "DataFrameMetadataCapabilities",
     "DataFrameMetadataOperationsManager",

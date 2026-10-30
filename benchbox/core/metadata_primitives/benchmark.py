@@ -1198,6 +1198,12 @@ class MetadataPrimitivesBenchmark(TranslatableQueryMixin, BaseBenchmark):
 
             return pl.DataFrame([row])
 
+        if "dask" in platform_name:
+            import dask.dataframe as dd
+            import pandas as pd
+
+            return dd.from_pandas(pd.DataFrame([row]), npartitions=1)
+
         if "pandas" in platform_name:
             import pandas as pd
 
