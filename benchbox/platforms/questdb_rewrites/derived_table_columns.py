@@ -1,8 +1,16 @@
 from __future__ import annotations
 
-from benchbox._vendor.sqlglot import exp
+import re
 
-ORDER = 70
+from benchbox.platforms.questdb_rewrites import exp
+
+ORDER = 80
+
+_COLUMN_LIST = re.compile(r"\)\s*(?:AS\s+)?\w+\s*\(", re.IGNORECASE)
+
+
+def applies(sql: str) -> bool:
+    return _COLUMN_LIST.search(sql) is not None
 
 
 def _alias_projections(subquery: exp.Subquery) -> None:
