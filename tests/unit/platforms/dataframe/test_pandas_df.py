@@ -315,6 +315,57 @@ class TestPandasDataLoading:
 
         assert result is df
 
+    def test_concat_shards_matches_concat_and_consumes_inputs(self):
+        import pyarrow as pa
+
+        adapter = PandasDataFrameAdapter()
+        date_dtype = pd.ArrowDtype(pa.date32())
+
+        def shard(offset: int) -> pd.DataFrame:
+            return pd.DataFrame(
+                {
+                    "id": [offset, offset + 1],
+                    "d": pd.array([pd.Timestamp("2024-01-01").date()] * 2, dtype=date_dtype),
+                    "s": pd.Series(["a", None], dtype=object),
+                    "x": [1.5, float("nan")],
+                }
+            )
+
+        expected = pd.concat([shard(0), shard(2), shard(4)], ignore_index=True)
+        shards = [shard(0), shard(2), shard(4)]
+        combined = adapter.concat_shards(shards)
+
+        assert shards == []
+        assert list(combined.columns) == list(expected.columns)
+        assert combined.dtypes.to_dict() == expected.dtypes.to_dict()
+        pd.testing.assert_frame_equal(combined, expected)
+
+    def test_concat_shards_mismatched_columns_falls_back(self):
+        adapter = PandasDataFrameAdapter()
+
+        combined = adapter.concat_shards([pd.DataFrame({"a": [1]}), pd.DataFrame({"b": [2]})])
+
+        assert len(combined) == 2
+
+    def test_concat_shards_peak_memory_stays_near_final_size(self):
+        import tracemalloc
+
+        import numpy as np
+
+        adapter = PandasDataFrameAdapter()
+        shards = [pd.DataFrame(np.random.default_rng(i).random((100_000, 8))) for i in range(12)]
+        shards = [df.rename(columns=str) for df in shards]
+        final_bytes = sum(int(df.memory_usage(index=False).sum()) for df in shards)
+
+        tracemalloc.start()
+        baseline = tracemalloc.get_traced_memory()[0]
+        combined = adapter.concat_shards(shards)
+        peak = tracemalloc.get_traced_memory()[1] - baseline
+        tracemalloc.stop()
+
+        assert len(combined) == 1_200_000
+        assert peak < final_bytes * 1.25
+
     def test_get_row_count(self):
 
         adapter = PandasDataFrameAdapter()
