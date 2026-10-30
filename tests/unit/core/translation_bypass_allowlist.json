@@ -372,6 +372,12 @@
         "statistical_variance_stddev",
         "timeseries_trend_analysis",
         "window_moving_frame"
+      ],
+      "spark": [
+        "json_aggregates",
+        "json_extract_nested",
+        "list_reduce",
+        "timeseries_trend_analysis"
       ]
     }
   },
