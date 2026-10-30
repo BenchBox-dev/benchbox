@@ -867,7 +867,7 @@ class MetadataPrimitivesBenchmark(TranslatableQueryMixin, BaseBenchmark):
         if manager is None:
             raise ValueError(
                 f"Platform '{platform_name}' does not support DataFrame metadata operations. "
-                f"Supported platforms: polars-df, pandas-df, pyspark-df, datafusion-df"
+                f"Supported platforms: polars-df, pandas-df, dask-df, pyspark-df, datafusion-df"
             )
         return manager
 
@@ -1197,6 +1197,12 @@ class MetadataPrimitivesBenchmark(TranslatableQueryMixin, BaseBenchmark):
             import polars as pl
 
             return pl.DataFrame([row])
+
+        if "dask" in platform_name:
+            import dask.dataframe as dd
+            import pandas as pd
+
+            return dd.from_pandas(pd.DataFrame([row]), npartitions=1)
 
         if "pandas" in platform_name:
             import pandas as pd

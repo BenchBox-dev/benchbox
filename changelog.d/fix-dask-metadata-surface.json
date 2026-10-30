@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Metadata Primitives now runs on the Dask DataFrame platform: it builds Dask fixture frames, reports Dask metadata capabilities, and computes schema nullability and describe statistics lazily instead of failing with an unsupported-platform error."
+    }
+  ]
+}

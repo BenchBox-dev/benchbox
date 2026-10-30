@@ -127,6 +127,11 @@ PANDAS_METADATA_CAPABILITIES = _metadata_capabilities(
     "Schema introspection via df.dtypes, df.info(). No catalog support.",
     supports_complex_types=False,
 )
+DASK_METADATA_CAPABILITIES = _metadata_capabilities(
+    "dask-df",
+    "Schema introspection via df.dtypes; describe, null and row counts compute lazily. No catalog support.",
+    supports_complex_types=False,
+)
 PYSPARK_METADATA_CAPABILITIES = _metadata_capabilities(
     "pyspark-df",
     "Full catalog support via spark.catalog. Delta Lake/Iceberg require packages.",
@@ -144,6 +149,8 @@ def get_platform_capabilities(platform_name: str, **kwargs: Any) -> DataFrameMet
 
     if "polars" in platform_lower:
         base = POLARS_METADATA_CAPABILITIES
+    elif "dask" in platform_lower:
+        base = DASK_METADATA_CAPABILITIES
     elif "pandas" in platform_lower:
         base = PANDAS_METADATA_CAPABILITIES
     elif "pyspark" in platform_lower or "spark" in platform_lower:
@@ -369,7 +376,7 @@ class DataFrameMetadataOperationsManager:
         def action(start_time: float) -> DataFrameMetadataResult:
             if "polars" in self.platform_name:
                 columns = dataframe.columns
-            elif "pandas" in self.platform_name:
+            elif "pandas" in self.platform_name or "dask" in self.platform_name:
                 columns = list(dataframe.columns)
             elif "pyspark" in self.platform_name or "spark" in self.platform_name:
                 columns = dataframe.columns
@@ -387,7 +394,7 @@ class DataFrameMetadataOperationsManager:
         def action(start_time: float) -> DataFrameMetadataResult:
             if "polars" in self.platform_name:
                 dtypes = {col: str(dtype) for col, dtype in zip(dataframe.columns, dataframe.dtypes)}
-            elif "pandas" in self.platform_name:
+            elif "pandas" in self.platform_name or "dask" in self.platform_name:
                 dtypes = {col: str(dtype) for col, dtype in dataframe.dtypes.items()}
             elif "pyspark" in self.platform_name or "spark" in self.platform_name:
                 dtypes = {field.name: str(field.dataType) for field in dataframe.schema.fields}
@@ -416,6 +423,10 @@ class DataFrameMetadataOperationsManager:
                             "nullable": True,
                         }
                     )
+            elif "dask" in self.platform_name:
+                nullable = dataframe.isna().any().compute()
+                for col, dtype in dataframe.dtypes.items():
+                    schema_info.append({"name": col, "dtype": str(dtype), "nullable": bool(nullable[col])})
             elif "pandas" in self.platform_name:
                 for col, dtype in dataframe.dtypes.items():
                     schema_info.append(
@@ -467,6 +478,10 @@ class DataFrameMetadataOperationsManager:
                 stats_df = dataframe.describe()
                 result_data = stats_df.collect()
                 result_count = stats_df.count()
+            elif "dask" in self.platform_name:
+                stats_df = dataframe.describe().compute()
+                result_data = stats_df.to_dict()
+                result_count = len(stats_df)
             elif "datafusion" in self.platform_name:
                 result_data = None
                 result_count = 0
@@ -483,7 +498,7 @@ class DataFrameMetadataOperationsManager:
         def action(start_time: float) -> DataFrameMetadataResult:
             if "polars" in self.platform_name:
                 count = dataframe.height
-            elif "pandas" in self.platform_name:
+            elif "pandas" in self.platform_name or "dask" in self.platform_name:
                 count = len(dataframe)
             elif "pyspark" in self.platform_name or "spark" in self.platform_name or "datafusion" in self.platform_name:
                 count = dataframe.count()
@@ -499,7 +514,12 @@ class DataFrameMetadataOperationsManager:
         def action(start_time: float) -> DataFrameMetadataResult:
             if "polars" in self.platform_name:
                 count = dataframe.width
-            elif "pandas" in self.platform_name or "pyspark" in self.platform_name or "spark" in self.platform_name:
+            elif (
+                "pandas" in self.platform_name
+                or "dask" in self.platform_name
+                or "pyspark" in self.platform_name
+                or "spark" in self.platform_name
+            ):
                 count = len(dataframe.columns)
             elif "datafusion" in self.platform_name:
                 count = len(dataframe.schema())
@@ -756,7 +776,7 @@ class DataFrameMetadataOperationsManager:
                 schema_info = [
                     {"name": col, "dtype": str(dtype)} for col, dtype in zip(dataframe.columns, dataframe.dtypes)
                 ]
-            elif "pandas" in self.platform_name:
+            elif "pandas" in self.platform_name or "dask" in self.platform_name:
                 column_count = len(dataframe.columns)
                 schema_info = [{"name": col, "dtype": str(dtype)} for col, dtype in dataframe.dtypes.items()]
             elif "pyspark" in self.platform_name or "spark" in self.platform_name:
@@ -934,7 +954,17 @@ def get_dataframe_metadata_manager(
     return get_dataframe_manager(
         platform_name,
         manager_class=DataFrameMetadataOperationsManager,
-        supported_platforms=("polars-df", "polars", "pandas-df", "pandas", "pyspark-df", "pyspark", "datafusion"),
+        supported_platforms=(
+            "polars-df",
+            "polars",
+            "pandas-df",
+            "pandas",
+            "dask-df",
+            "dask",
+            "pyspark-df",
+            "pyspark",
+            "datafusion",
+        ),
         logger=logger,
         manager_label="metadata",
         spark_session=spark_session,
@@ -942,6 +972,7 @@ def get_dataframe_metadata_manager(
 
 
 __all__ = [
+    "DASK_METADATA_CAPABILITIES",
     "MetadataOperationType",
     "MetadataOperationCategory",
     "OPERATION_CATEGORIES",
