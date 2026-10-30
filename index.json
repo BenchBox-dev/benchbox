@@ -17167,7 +17167,12 @@
       "title": "Verify every oracle documentation claim the 2026-10-26 review found false is now true or removed"
     },
     "oracle-review-driver-ci-20261026": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-31T23:01:26Z",
+        "generation": "c2673c795255469a95d18f926835bab5",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c8cf2fdb5a699f4b3049c8eb"
+      },
       "needs": [
         "oracle-omp-pin-single-source-20261026",
         "oracle-verdict-oauth-tailnet-join-20261026",
@@ -17186,7 +17191,7 @@
         "oracle-invalid-attempt-jev-recovery-20261027"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Run the CI oracle review through one review driver called by a thin workflow"
     },
     "oracle-review-driver-local-20261026": {
