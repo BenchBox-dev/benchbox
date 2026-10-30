@@ -16370,6 +16370,13 @@
       "status": "open",
       "title": "Let make pr-open's local oracle review reach the gateway from cloud sessions through the tailnet proxy"
     },
+    "oracle-cloud-review-reachability-smoke-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Observe the cloud-session local oracle review through the tailnet proxy"
+    },
     "oracle-codex-sandbox-bwrap-ci-20261009": {
       "claim": null,
       "needs": [],
