@@ -31,6 +31,8 @@ def docker_verb(argv) -> str:
         return "ps"
     if "stats" in argv:
         return "stats"
+    if "logs" in argv:
+        return "logs"
     return "down"
 
 

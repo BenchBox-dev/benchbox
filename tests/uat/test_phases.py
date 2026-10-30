@@ -931,6 +931,7 @@ def test_execute_docker_startup_failure_records_and_advances_to_next_platform(tm
     assert outcome.aborted is False
     assert sequence == [
         ("docker", "up", "clickhouse-server"),
+        ("docker", "logs", "clickhouse-server"),
         ("docker", "down", "clickhouse-server"),
         ("docker", "up", "postgresql"),
         ("docker", "ps", "postgresql"),
@@ -1051,6 +1052,46 @@ def test_execute_readiness_check_fails_when_platform_unreachable_after_settle(tm
     readiness_event = next(e for e in outcome.docker_events if e.action == "readiness")
     assert readiness_event.status == "failed"
     assert "reachability probe" in readiness_event.message
+
+
+def test_execute_readiness_failure_captures_container_logs(tmp_path):
+    cfg = validate_config(
+        {
+            "name": "readiness logs",
+            "platforms": {"include": ["clickhouse-server"]},
+            "benchmarks": {"include": ["tpch"]},
+            "scales": {"rungs": [0.01]},
+            "cleanup": {"docker_manage_platforms": True, "docker_platform_switch": "volumes"},
+        }
+    )
+
+    def fake_docker(argv, **kwargs):
+        action = _docker_verb(argv)
+        if action == "ps":
+            return _healthy_ps_result(argv)
+        if action == "stats":
+            return _healthy_stats_result(argv)
+        if action == "logs":
+            return docker_assets.DockerCommandResult(tuple(argv), 0, "server crashed: bad config\n", "")
+        return docker_assets.DockerCommandResult(tuple(argv), 0, "", "")
+
+    def fail_runner(platform, benchmark, scale, **kwargs):
+        raise AssertionError("no cell should run against an unreachable stack")
+
+    with platform_reachability(False):
+        outcome = exec_phase.run_execute(
+            cfg,
+            log_dir=tmp_path,
+            databases_root=tmp_path / "databases",
+            runner=fail_runner,
+            docker_runner=fake_docker,
+            sleep_fn=lambda _s: None,
+        )
+
+    assert any(event.action == "logs" and event.status == "ok" for event in outcome.docker_events)
+    assert "server crashed: bad config" in (tmp_path / "container-logs-clickhouse-server.log").read_text(
+        encoding="utf-8"
+    )
 
 
 def test_execute_readiness_settle_uses_configured_docker_settle_s(tmp_path):
@@ -1580,6 +1621,7 @@ def test_execute_teardown_failure_after_startup_failure_advances_instead_of_abor
     assert outcome.abort_reason is None
     assert sequence == [
         ("docker", "up", "clickhouse-server"),
+        ("docker", "logs", "clickhouse-server"),
         ("docker", "down", "clickhouse-server"),
         ("docker", "up", "postgresql"),
         ("docker", "ps", "postgresql"),

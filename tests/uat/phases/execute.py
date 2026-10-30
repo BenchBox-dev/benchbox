@@ -33,6 +33,7 @@ from tests.uat.preflight_budget import (
 from tests.uat.runner import CellResult, run_cell
 
 _DEFAULT_OUTPUT = OutputConfig()
+_CONTAINER_LOG_CAPTURE_TIMEOUT_S = 60.0
 
 BENCHBOX_OUTPUT_DIR_ENV_VAR = "BENCHBOX_OUTPUT_DIR"
 
@@ -343,6 +344,16 @@ def _start_docker_platform_if_needed(
         result=up_result,
     )
     if not up_result.succeeded:
+        _capture_container_logs(
+            config,
+            spec=spec,
+            project_name=project_name,
+            platform=platform,
+            docker_runner=docker_runner,
+            docker_events=docker_events,
+            log_dir=log_dir,
+            benchmark_runs_dir=benchmark_runs_dir,
+        )
         state = _DockerPlatformState(
             spec=spec,
             project_name=project_name,
@@ -379,6 +390,16 @@ def _start_docker_platform_if_needed(
                 project_name=project_name,
                 message=readiness_reason,
             )
+            _capture_container_logs(
+                config,
+                spec=spec,
+                project_name=project_name,
+                platform=platform,
+                docker_runner=docker_runner,
+                docker_events=docker_events,
+                log_dir=log_dir,
+                benchmark_runs_dir=benchmark_runs_dir,
+            )
             state = _DockerPlatformState(
                 spec=spec,
                 project_name=project_name,
@@ -394,6 +415,43 @@ def _start_docker_platform_if_needed(
         cleanup_status="started",
     )
     return state, None
+
+
+def _capture_container_logs(
+    config: UATConfig,
+    *,
+    spec: docker_assets.DockerPlatformSpec,
+    project_name: str,
+    platform: str,
+    docker_runner: DockerRunner,
+    docker_events: list[DockerLifecycleEvent],
+    log_dir: Path | None,
+    benchmark_runs_dir: Path,
+) -> None:
+    if config.dry_run:
+        return
+    result = docker_runner(
+        docker_assets.compose_logs_command(spec, project_name),
+        dry_run=False,
+        timeout_s=_CONTAINER_LOG_CAPTURE_TIMEOUT_S,
+        cwd=docker_assets.REPO_ROOT,
+        env=managed_runtime.compose_environment(config, spec, benchmark_runs_dir),
+    )
+    artifact = f"container-logs-{platform}.log"
+    if log_dir is not None:
+        log_dir.mkdir(parents=True, exist_ok=True)
+        with (log_dir / artifact).open("a", encoding="utf-8") as fh:
+            fh.write(f"# {result.command} exit={result.returncode}\n{result.stdout}\n{result.stderr}\n")
+    _record_docker_event(
+        docker_events,
+        log_dir=log_dir,
+        platform=platform,
+        action="logs",
+        status="ok" if result.succeeded else "failed",
+        project_name=project_name,
+        message=f"container logs written to {artifact}" if result.succeeded else _docker_result_message(result),
+        result=result,
+    )
 
 
 def _check_docker_platform_readiness(
