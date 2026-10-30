@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "DuckDB transaction_primitives and ClickHouse Local results from a default UAT run validate clean.",
+    "A regression test covers the statement shape that triggered the finding.",
+    "Statements that carry private identifiers are still rejected."
+  ],
+  "context": "Evidence: release-v2 run 40971306663 (tag v0.5.0rc2, commit b1459438d), artifact release-uat-v0.5.0rc2-stage1-duckdb: cells.jsonl, uat_gate_summary.json, validator_rollup.tsv, uat_lifecycle.log and per-cell logs. The artifacts do not keep result JSON, so query-level causes need a local rerun of the named cells. Also release-uat-v0.5.0rc2-stage1-datafusion-clickhouse-local. Related done items: tuning-ledger-capture-non-dbapi-drivers-20261001, autogen-cedardb-uat-validation-and-baseline-tuning-20261018.",
+  "description": "The release UAT validate phase needs a 100% validator clean rate. In run 40971306663 the validator failed with 'Public privacy contract rejects unanonymized tuning diagnostics: platform.tuning.applied.statements[0] exposes unanonymized tuning statement' (benchbox/validation/bundle.py:2559) for DuckDB transaction_primitives at all three scales and for 36 of 89 ClickHouse Local cells, covering every benchmark it ran. Find whether the producer should anonymize these baseline or session tuning statements before export, or whether the validator flags statements the public contract allows, and fix the wrong side.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/actions/runs/40971306663"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cbd63a5667398431c51c92e1",
+      "at": "2026-10-30T11:09:20Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5ef8932479064317ad3b1f2cddda97fc",
+      "session_id": "dfb93797c41c440a9261d3ab38ceb76e"
+    }
+  ]
+}
