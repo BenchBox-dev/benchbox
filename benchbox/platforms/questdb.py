@@ -24,7 +24,7 @@ from ..utils.dependencies import (
     check_platform_dependencies,
     get_dependency_error_message,
 )
-from ..utils.file_format import get_data_extension, has_trailing_delimiter
+from ..utils.file_format import get_data_extension
 from .base import DriverIsolationCapability, PlatformAdapter, PsycopgConnectionMixin
 from .base.data_loading import (
     CsvDialect,
@@ -37,9 +37,6 @@ from .base.sql_execution import execute_sql_query
 from .questdb_rewrites import rewrite_query
 
 QUESTDB_DIALECT = "questdb"
-
-QUESTDB_TYPE_MAP: dict[str, str] = {"TIME": "VARCHAR", "DECIMAL": "DOUBLE"}
-QUESTDB_PARAMETERLESS_TYPES: tuple[str, ...] = ("VARCHAR", "DOUBLE")
 
 try:
     import psycopg
@@ -416,8 +413,6 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                         QUESTDB_DIALECT,
                         strip_primary_keys=True,
                         strip_foreign_keys=True,
-                        type_map=QUESTDB_TYPE_MAP,
-                        drop_type_parameters=QUESTDB_PARAMETERLESS_TYPES,
                         default_layout=self._questdb_table_layout(stmt),
                     )
                 elif "DROP TABLE" in stmt_upper:
@@ -584,7 +579,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
             "delimiter": dialect.delimiter,
         }
 
-        strip_trailing_delim = get_data_extension(data_file) == ".tbl"
+        strip_trailing_delim = get_data_extension(data_file) in (".tbl", ".dat")
         with prepare_local_load_file(
             data_file, dialect=dialect, strip_trailing_delim=strip_trailing_delim
         ) as load_path:
@@ -601,7 +596,6 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
 
     def _load_parquet_via_chunked_csv(self, table_name: str, data_file: Path) -> int:
         try:
-            import pyarrow.csv as pacsv
             import pyarrow.parquet as pq
         except ImportError as exc:
             raise ImportError(
@@ -618,7 +612,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         pf = pq.ParquetFile(data_file)
         for batch in pf.iter_batches(batch_size=self.parquet_chunk_rows):
             csv_buf = io.BytesIO()
-            pacsv.write_csv(batch, csv_buf, write_options=pacsv.WriteOptions(include_header=True))
+            batch.to_pandas().to_csv(csv_buf, index=False, header=True)
             csv_buf.seek(0)
 
             params = {
@@ -653,7 +647,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         try:
             sock.connect((self.ilp_host, self.ilp_port))
 
-            strip_trailing_delim = get_data_extension(data_file) == ".tbl"
+            strip_trailing_delim = get_data_extension(data_file) in (".tbl", ".dat")
             with prepare_local_load_file(
                 data_file, dialect=dialect, strip_trailing_delim=strip_trailing_delim
             ) as load_path:
@@ -661,8 +655,6 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                     reader = csv.reader(stream, delimiter=dialect.delimiter)
                     batch: list[str] = []
                     for row in reader:
-                        if len(row) == len(column_names) + 1 and not row[-1]:
-                            row = row[:-1]
                         if len(row) != len(column_names):
                             continue
                         line = self._row_to_ilp_line(table_name, column_names, row, ts_col)
@@ -818,10 +810,10 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         validate_row_count: bool = True,
         stream_id: int | None = None,
     ) -> dict[str, Any]:
-        query = rewrite_query(query)
+        query = rewrite_query(query, self._table_columns)
         result = execute_sql_query(
             connection,
-            rewrite_query(query),
+            query,
             query_id,
             log_verbose=self.log_verbose,
             build_query_result_with_validation=self._build_query_result_with_validation,
@@ -844,7 +836,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         _owns_cursor = callable(getattr(connection, "cursor", None))
         cursor = connection.cursor() if _owns_cursor else connection
 
-        explain_query = f"EXPLAIN {rewrite_query(query)}"
+        explain_query = f"EXPLAIN {rewrite_query(query, self._table_columns)}"
 
         try:
             cursor.execute(explain_query)

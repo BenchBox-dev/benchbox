@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import importlib
 import pkgutil
-from collections.abc import Callable
 from functools import cache
+from types import ModuleType
 
 from benchbox.utils.dialect_utils import rewrite_sql_tree, sql_expressions
 
@@ -12,17 +12,19 @@ from ._or_factor import factor_shared_or_conjuncts
 
 QUESTDB_DIALECT = "questdb"
 
-Transform = Callable[[exp.Expr], exp.Expr]
+exp = sql_expressions()
+
+from ._join_scope import ColumnsOf, reassign_join_predicates
 
 
 @cache
-def _transforms() -> tuple[Transform, ...]:
+def _modules() -> tuple[ModuleType, ...]:
     modules = [
         importlib.import_module(f"{__name__}.{module.name}")
         for module in pkgutil.iter_modules(__path__)
         if not module.name.startswith("_")
     ]
-    return tuple(module.transform for module in sorted(modules, key=lambda module: module.ORDER))
+    return tuple(sorted(modules, key=lambda module: module.ORDER))
 
 
 def rewrite_query(sql: str, columns_of: ColumnsOf | None = None) -> str:

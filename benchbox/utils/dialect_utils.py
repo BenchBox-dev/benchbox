@@ -355,10 +355,6 @@ def translate_sql_query(
             for rewrite_name, rewrite_args in rewrites or ():
                 rewrite_args = dict(rewrite_args)
                 expression = apply_rewrite(rewrite_name, expression, rewrite_args.pop("dialect", src), **rewrite_args)
-            if tgt == "questdb":
-                from benchbox.platforms.questdb_rewrites._subqueries import rewrite_subqueries
-
-                expression = rewrite_subqueries(expression.copy())
             if tgt == "sqlite":
                 expression = apply_rewrite("fold_between_literal_arithmetic", expression, tgt)
                 if date_columns:
@@ -482,26 +478,6 @@ def apply_rewrite(name: str, sql_or_expression, dialect: str, **args):
     return _rewrite_tree(name, sql_or_expression, resolve_sql_dialect(dialect), **args)
 
 
-def _record_rewrite_outcome(
-    dialect: str, resolved: str, strict_mode: bool, status: str, error: Exception | None = None
-) -> None:
-    record_sql_translation_outcome(
-        SqlTranslationOutcome(
-            source_dialect=dialect,
-            target_dialect=dialect,
-            normalized_source_dialect=resolved,
-            normalized_target_dialect=resolved,
-            translator="sqlglot_rewrite",
-            status=status,
-            strict_mode=strict_mode,
-            warning_category=None if error is None or strict_mode else "rewrite_failed",
-            error_category="rewrite_failed" if error is not None and strict_mode else None,
-            message=None if error is None else str(error),
-            scope=WORKLOAD_QUERY_SCOPE,
-        )
-    )
-
-
 def apply_rewrites(sql: str, dialect: str, rewrites: Sequence[tuple[str, dict]], *, keep_unchanged: bool = True) -> str:
     from benchbox._vendor import sqlglot
 
@@ -509,7 +485,21 @@ def apply_rewrites(sql: str, dialect: str, rewrites: Sequence[tuple[str, dict]],
     strict_mode = current_sql_translation_strict_mode()
 
     def record(status: str, error: Exception | None = None) -> None:
-        _record_rewrite_outcome(dialect, resolved, strict_mode, status, error)
+        record_sql_translation_outcome(
+            SqlTranslationOutcome(
+                source_dialect=dialect,
+                target_dialect=dialect,
+                normalized_source_dialect=resolved,
+                normalized_target_dialect=resolved,
+                translator="sqlglot_rewrite",
+                status=status,
+                strict_mode=strict_mode,
+                warning_category=None if error is None or strict_mode else "rewrite_failed",
+                error_category="rewrite_failed" if error is not None and strict_mode else None,
+                message=None if error is None else str(error),
+                scope=WORKLOAD_QUERY_SCOPE,
+            )
+        )
 
     try:
         originals = [statement for statement in sqlglot.parse(sql, read=resolved) if statement is not None]
@@ -549,27 +539,19 @@ def rewrite_sql_tree(
     from benchbox._vendor import sqlglot
 
     resolved = resolve_sql_dialect(dialect)
-    strict_mode = current_sql_translation_strict_mode()
     try:
         statements = [statement for statement in sqlglot.parse(sql, read=resolved) if statement is not None]
-        if len(statements) != 1:
-            _record_rewrite_outcome(dialect, resolved, strict_mode, "success")
-            return sql
-        original = statements[0]
-        rewritten = transform(original.copy())
-        if rewritten == original:
-            result = sql
-        else:
-            if finalize is not None:
-                rewritten = finalize(rewritten)
-            result = rewritten.sql(dialect=resolved, identify=False)
-    except Exception as error:
-        _record_rewrite_outcome(dialect, resolved, strict_mode, "failed" if strict_mode else "fallback", error)
-        if strict_mode:
-            raise
+    except sqlglot.errors.SqlglotError:
         return sql
-    _record_rewrite_outcome(dialect, resolved, strict_mode, "success")
-    return result
+    if len(statements) != 1:
+        return sql
+    original = statements[0]
+    rewritten = transform(original.copy())
+    if rewritten == original:
+        return sql
+    if finalize is not None:
+        rewritten = finalize(rewritten)
+    return rewritten.sql(dialect=resolved, identify=False)
 
 
 def unqualified_table_names(sql: str, dialect: str) -> list[str] | None:
