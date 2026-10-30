@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from ._dependencies import import_chdb
@@ -55,6 +56,15 @@ class ClickHouseMetadataMixin:
                     db_path += ".chdb"
                 data_dir.mkdir(parents=True, exist_ok=True)
                 adapter_config["database_path"] = db_path
+
+        elif deployment_mode == "server":
+            if config.get("database"):
+                adapter_config["database"] = config["database"]
+            elif config.get("benchmark") and config.get("scale_factor") is not None:
+                from benchbox.utils.scale_factor import format_benchmark_name
+
+                benchmark_name = format_benchmark_name(config["benchmark"], config["scale_factor"])
+                adapter_config["database"] = re.sub(r"[^a-z0-9_]", "_", f"benchbox_{benchmark_name}".lower())
 
         for key in [
             "host",

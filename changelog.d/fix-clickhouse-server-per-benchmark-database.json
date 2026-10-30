@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "ClickHouse Server now runs each benchmark and scale in its own database (`benchbox_<benchmark>_<scale>`, as on PostgreSQL, StarRocks and Doris) instead of sharing `default`, so a second benchmark no longer stops on the first one's tables; pass `--platform-option database=<name>` to choose the database."
+    }
+  ]
+}
