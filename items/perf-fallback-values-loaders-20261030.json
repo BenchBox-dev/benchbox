@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Fallback path is faster, or clearly warned and recorded in result metadata.",
+    "Staged path unchanged."
+  ],
+  "description": "When staging is not configured these build VALUES literals in Python: Azure Synapse azure_synapse.py:537-590, Fabric Warehouse fabric_warehouse.py:733-800, Redshift redshift.py:1320-1357 (used at :1687). Options: pyodbc fast_executemany or bcp for Synapse/Fabric; at minimum a loud warning recorded in result metadata.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:root@vm:2d53e6a98f44f4f4a8a4dedd",
+      "at": "2026-10-30T17:55:40Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "2d2cc261b73f45db92dc64557386ad56",
+      "session_id": "be00837164104ac2b4ed790cdb6812a2"
+    }
+  ]
+}

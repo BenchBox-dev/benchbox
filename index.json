@@ -17643,6 +17643,13 @@
       "status": "open",
       "title": "Wire DuckDB Vortex/DuckLake handlers; stop to_pylist in format handlers"
     },
+    "perf-fallback-values-loaders-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Speed up or flag VALUES-literal fallback loaders"
+    },
     "perf-firebolt-core-bulk-load-20261030": {
       "claim": null,
       "needs": [],
