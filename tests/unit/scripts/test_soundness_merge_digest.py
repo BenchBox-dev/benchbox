@@ -1195,7 +1195,7 @@ def gate_accepts(verdicts, standin_at, base_change):
         "includes_created_edit": False,
     }
     status, _ = checker.decide(
-        HEAD, ["AGENTS.md"], statuses, [], lambda _files: True, base_change, comments, reviews=[receipt]
+        HEAD, ["AGENTS.md"], statuses, lambda _files: True, base_change, comments, reviews=[receipt]
     )
     return status == checker.PASS
 
