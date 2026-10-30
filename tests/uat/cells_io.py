@@ -235,6 +235,16 @@ def read_skipped_unreachable_sidecar(cells_jsonl: Path) -> tuple[int, bool]:
     return coerce_accounting_count(payload.get("skipped_unreachable_count", 0)), present
 
 
+def _failed_query_error(entries: list[tuple[str, str]], cursor: dict[str, int], query_id: str) -> str:
+    if not entries:
+        return ""
+    if len({entry_type for entry_type, _ in entries}) > 1:
+        return " | ".join(dict.fromkeys(message for _, message in entries))
+    index = cursor.get(query_id, 0)
+    cursor[query_id] = index + 1
+    return entries[min(index, len(entries) - 1)][1]
+
+
 def _failed_query_details(cell: CellResult) -> list[dict[str, str]]:
     if cell.status == "passed" or cell.result_path is None:
         return []
@@ -245,12 +255,15 @@ def _failed_query_details(cell: CellResult) -> list[dict[str, str]]:
     rows = data.get("queries") if isinstance(data, dict) else None
     if not isinstance(rows, list):
         return []
-    errors_by_query: dict[str, str] = {}
+    errors_by_query: dict[str, list[tuple[str, str]]] = {}
     for entry in data.get("errors") or []:
         if isinstance(entry, dict) and entry.get("phase") == "query":
             message = str(entry.get("message") or "").strip()
             if message:
-                errors_by_query.setdefault(str(entry.get("query_id", "")), message)
+                errors_by_query.setdefault(str(entry.get("query_id", "")), []).append(
+                    (str(entry.get("type") or ""), message)
+                )
+    error_cursor: dict[str, int] = {}
     details: list[dict[str, str]] = []
     for row in rows:
         if not isinstance(row, dict):
@@ -258,7 +271,7 @@ def _failed_query_details(cell: CellResult) -> list[dict[str, str]]:
         if str(row.get("status") or "").strip().upper() in _NON_FAILED_QUERY_STATUSES:
             continue
         query_id = str(row.get("id") if row.get("id") is not None else row.get("query_id", ""))
-        error = errors_by_query.get(query_id, "")
+        error = _failed_query_error(errors_by_query.get(query_id, []), error_cursor, query_id)
         details.append(
             {
                 "query_id": query_id,

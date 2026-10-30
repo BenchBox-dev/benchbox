@@ -1851,3 +1851,35 @@ def test_cells_jsonl_records_failed_query_ids_and_errors_for_query_failure(tmp_p
     log_text = cell_log.read_text(encoding="utf-8")
     assert "# UAT_FAILED_QUERY id=7 status=FAILED error=boom" in log_text
     assert "id=1 " not in log_text
+
+
+def _failed_details_for(tmp_path: Path, failures: dict[str, str]) -> list[dict[str, str]]:
+    result_path = tmp_path / "result.json"
+    result_path.write_text(json.dumps(_exported_result_payload(failures)), encoding="utf-8")
+    cell = CellResult(
+        platform="duckdb",
+        benchmark="tpch",
+        scale=0.01,
+        status="failed",
+        exit_code=1,
+        elapsed_s=1.0,
+        log_path=tmp_path / "cell.log",
+        result_path=result_path,
+        submit_terminal_state="query_failure",
+    )
+    return cells_io._failed_query_details(cell)
+
+
+def test_cells_jsonl_repeated_query_id_same_error_type_keeps_each_execution_message(tmp_path: Path):
+    failed = _failed_details_for(tmp_path, {"7": "Binder Error: first", "7 ": "Binder Error: second"})
+
+    assert [(f["query_id"], f["error"]) for f in failed] == [
+        ("7", "Binder Error: first"),
+        ("7", "Binder Error: second"),
+    ]
+
+
+def test_cells_jsonl_repeated_query_id_mixed_error_types_never_misattributes(tmp_path: Path):
+    failed = _failed_details_for(tmp_path, {"7": "Timeout: slow", "7 ": "Binder Error: bad column"})
+
+    assert [f["error"] for f in failed] == ["Binder Error: bad column | Timeout: slow"] * 2
