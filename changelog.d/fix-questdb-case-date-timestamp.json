@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed QuestDB failing with \"inconvertible types: DATE -> TIMESTAMP\" on CASE and COALESCE expressions that mix DATEADD (which returns a TIMESTAMP) with DATE casts (TPC-H Havoc variant 10); the DATE branches are now cast to TIMESTAMP."
+    }
+  ]
+}
