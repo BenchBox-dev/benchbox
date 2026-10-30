@@ -55,6 +55,8 @@ _DEFAULT_STREAM_LOAD_CHUNK_SIZE = 10 * 1024 * 1024
 _DEFAULT_STREAM_LOAD_MAX_FILTER_RATIO = "0"
 
 _DEFAULT_BUCKETS = 10
+_BACKEND_READY_TIMEOUT_S = 120.0
+_BACKEND_READY_POLL_S = 2.0
 
 _TPCDS_DECIMAL_NULL_POSITIONS: dict[str, list[int]] = {
     "call_center": [29, 30],
@@ -169,6 +171,15 @@ def _read_doris_version_details(cursor: Any) -> tuple[str | None, str | None, st
     mysql_protocol_version_str = str(mysql_protocol_version) if mysql_protocol_version is not None else None
     version_comment_str = str(version_comment) if version_comment is not None else None
     return platform_version, mysql_protocol_version_str, version_comment_str
+
+
+def _backend_is_ready(alive: object, total_capacity: object) -> bool:
+    if str(alive).strip().lower() not in {"true", "1"}:
+        return False
+    try:
+        return float(cast(Any, total_capacity)) > 0
+    except (TypeError, ValueError):
+        return False
 
 
 class _DorisConnectionWrapper(MySqlWireConnectionWrapper):
@@ -362,6 +373,45 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
             charset="utf8mb4",
         )
 
+    def _ready_backend_count(self, conn: Any) -> int:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT Alive, TotalCapacity FROM backends()")
+            return sum(1 for alive, capacity in cursor.fetchall() if _backend_is_ready(alive, capacity))
+        finally:
+            cursor.close()
+
+    def _await_backends_ready(self) -> None:
+        deadline = time.monotonic() + _BACKEND_READY_TIMEOUT_S
+        required = max(1, self.replication_num)
+        ready = 0
+        while True:
+            try:
+                conn = self._admin_connect()
+            except Exception as exc:
+                self.logger.debug(f"Skipping Doris backend readiness wait: {exc}")
+                return
+            try:
+                ready = self._ready_backend_count(conn)
+            except Exception as exc:
+                self.logger.debug(f"Skipping Doris backend readiness wait: {exc}")
+                return
+            finally:
+                conn.close()
+            if ready >= required:
+                return
+            if time.monotonic() >= deadline:
+                self.logger.warning(
+                    f"Doris reports {ready} of {required} required backends alive with disk capacity after "
+                    f"{_BACKEND_READY_TIMEOUT_S:.0f}s; table creation may fail"
+                )
+                return
+            time.sleep(_BACKEND_READY_POLL_S)
+
+    def create_connection(self, **connection_config: Any) -> Any:
+        self._await_backends_ready()
+        return super().create_connection(**connection_config)
+
     def _wrap_database_connection(self, conn: Any) -> Any:
         return _DorisConnectionWrapper(conn, ddl_optimizer=self._translate_create_table)
 
@@ -500,6 +550,7 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         format_name: str,
         delimiter: str | None = None,
         is_tpc: bool = False,
+        skip_header: bool = False,
     ) -> dict[str, str]:
         headers = {
             "Expect": "100-continue",
@@ -510,6 +561,8 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
             headers["column_separator"] = delimiter
         if is_tpc:
             headers["trim_double_quotes"] = "true"
+        if skip_header:
+            headers["skip_lines"] = "1"
         return headers
 
     def _handle_stream_load_response(self, resp: Any, *, context: str) -> dict[str, Any]:
@@ -551,7 +604,9 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         scheme = "https" if self.use_tls else "http"
         url = f"{scheme}://{self.host}:{self.http_port}/api/{self.database}/{table_name}/_stream_load"
 
-        headers = self._stream_load_headers(format_name="csv", delimiter=delimiter, is_tpc=is_tpc)
+        headers = self._stream_load_headers(
+            format_name="csv", delimiter=delimiter, is_tpc=is_tpc, skip_header=dialect.has_header
+        )
 
         decimal_positions = _TPCDS_DECIMAL_NULL_POSITIONS.get(table_name, [])
 
@@ -593,6 +648,8 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         chunk_num = 0
 
         with self._open_data_file_text(data_file) as f:
+            if dialect.has_header:
+                next(f, None)
             while True:
                 chunk_lines: list[str] = []
                 chunk_bytes = 0
@@ -639,6 +696,8 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         cursor = connection.cursor()
 
         with open(data_file, encoding="utf-8") as f:
+            if dialect.has_header:
+                next(f, None)
             batch = []
             for line in f:
                 line = line.strip()

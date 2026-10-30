@@ -420,6 +420,7 @@ queries:
   - bigquery
   - duckdb
   - starrocks
+  - doris
   - datafusion
   - questdb
   variants:
@@ -575,6 +576,7 @@ queries:
   - trino
   - presto
   - starrocks
+  - doris
   - databricks
   variants:
     duckdb: "-- DuckDB lacks role introspection; return empty result\nSELECT\n    CAST(NULL AS VARCHAR) AS role_name,\n    CAST(NULL AS BOOLEAN) AS is_superuser,\n    CAST(NULL AS BOOLEAN) AS can_create_db,\n    CAST(NULL AS BOOLEAN) AS can_create_role\nWHERE 1=0;\n"
@@ -602,6 +604,7 @@ queries:
   - firebolt
   - snowflake
   - starrocks
+  - doris
   - databricks
   - questdb
   variants:

@@ -259,7 +259,7 @@ _DOCKER_PLATFORM_SPECS: dict[str, DockerPlatformSpec] = {
     "databend": DockerPlatformSpec(
         platform="databend",
         compose_files=(_repo_path("docker/databend/docker-compose.yml"),),
-        services=("minio", "minio-setup", "databend"),
+        services=("databend",),
     ),
     "doris": DockerPlatformSpec(
         platform="doris",
