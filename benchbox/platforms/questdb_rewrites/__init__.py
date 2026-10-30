@@ -5,8 +5,10 @@ import pkgutil
 from collections.abc import Callable
 from functools import cache
 
-from benchbox._vendor import sqlglot
-from benchbox._vendor.sqlglot import exp
+from benchbox.utils.dialect_utils import rewrite_sql_tree, sql_expressions
+
+from ._join_scope import ColumnsOf, reassign_join_predicates
+from ._or_factor import factor_shared_or_conjuncts
 
 QUESTDB_DIALECT = "questdb"
 
@@ -23,17 +25,23 @@ def _transforms() -> tuple[Transform, ...]:
     return tuple(module.transform for module in sorted(modules, key=lambda module: module.ORDER))
 
 
-def rewrite_query(sql: str) -> str:
-    try:
-        statements = [statement for statement in sqlglot.parse(sql, read=QUESTDB_DIALECT) if statement is not None]
-    except sqlglot.errors.SqlglotError:
-        return sql
-    if len(statements) != 1:
-        return sql
-    original = statements[0]
-    rewritten = original
-    for transform in _transforms():
-        rewritten = transform(rewritten)
-    if rewritten == original:
-        return sql
-    return rewritten.sql(dialect=QUESTDB_DIALECT, identify=False)
+def rewrite_query(sql: str, columns_of: ColumnsOf | None = None) -> str:
+    modules = _modules()
+    active = [module for module in modules if getattr(module, "applies", None) is None or module.applies(sql)]
+
+    def transform(expression):
+        expression = factor_shared_or_conjuncts(expression)
+        if columns_of is not None:
+            expression = reassign_join_predicates(expression, columns_of)
+        for module in active:
+            expression = module.transform(expression)
+        return expression
+
+    def finalize(expression):
+        for module in modules:
+            finalizer = getattr(module, "finalize", None)
+            if finalizer is not None:
+                expression = finalizer(expression)
+        return expression
+
+    return rewrite_sql_tree(sql, QUESTDB_DIALECT, transform, finalize)
