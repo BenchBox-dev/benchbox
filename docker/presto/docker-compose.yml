@@ -1,10 +1,14 @@
 services:
   presto:
     image: prestodb/presto:0.297
+    mem_limit: 6g
     ports:
       - "${PRESTO_HOST_PORT:-18081}:8080"
+    environment:
+      HOSTNAME: presto
     volumes:
       - ./catalog:/opt/presto-server/etc/catalog:ro
+      - ./jvm.properties:/opt/presto-server/etc/jvm.config:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/v1/info"]
       interval: 5s
