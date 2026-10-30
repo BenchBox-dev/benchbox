@@ -9089,7 +9089,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "Extend the site docs contract checks to option values beyond --platform, other pages, and non-bash code fences"
     },
     "docs-document-undocumented-cli-commands": {
