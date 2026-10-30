@@ -23849,7 +23849,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Fix the site-parity header shrink-toggle mismatch between docs and results sites"
     },
     "site-parity-prune-stale-allowances": {
