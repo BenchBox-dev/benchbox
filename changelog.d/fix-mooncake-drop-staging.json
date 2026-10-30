@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed pg_mooncake keeping a full heap copy of every table after mirroring it to the columnstore. The `__bb_moon_src_*` staging table is now dropped as soon as its mirror is created and counted, which removes the duplicate storage that filled the runner disk on large loads such as TPC-DS OBT."
+    }
+  ]
+}
