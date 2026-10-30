@@ -1765,11 +1765,66 @@ def test_gate_summary_records_the_digest_of_the_admitted_distribution_file(tmp_p
     assert orchestrator._distribution_digest() is None
 
 
+def _exported_result_payload(failures: dict[str, str]) -> dict:
+    from types import SimpleNamespace
+
+    from benchbox.core.results.schema import build_result_payload
+
+    def query(query_id: str, status: str, error: str | None = None) -> dict:
+        return {
+            "query_id": query_id,
+            "status": status,
+            "execution_time_seconds": 0.5,
+            "rows_returned": 0 if error else 3,
+            "iteration": 1,
+            "stream_id": 0,
+            "run_type": "measurement",
+            "error_message": error,
+        }
+
+    results = [query("1", "SUCCESS")] + [query(qid, "FAILED", err) for qid, err in failures.items()]
+    result = SimpleNamespace(
+        query_results=results,
+        total_rows_loaded=0,
+        data_loading_time=0.0,
+        validation_status=None,
+        execution_id="run_1",
+        timestamp=_dt.datetime(2026, 2, 12),
+        duration_seconds=1.5,
+        query_subset=None,
+        benchmark_name="TPC-H Benchmark",
+        benchmark_id="tpch",
+        scale_factor=0.01,
+        test_execution_type="power",
+        platform="duckdb",
+        platform_info=None,
+        system_profile=None,
+        table_statistics=None,
+        execution_phases=None,
+        cost_summary=None,
+        execution_context=None,
+        execution_metadata=None,
+        tuning_config=None,
+        power_at_size=None,
+        throughput_at_size=None,
+        qph_at_size=None,
+        throughput_qph=None,
+        composite_qph=None,
+        geometric_mean_execution_time=None,
+        tunings_applied=None,
+        tuning_source_file=None,
+        tuning_config_hash=None,
+    )
+    return build_result_payload(result)
+
+
 def test_cells_jsonl_records_failed_query_ids_and_errors_for_query_failure(tmp_path: Path):
     result_path = tmp_path / "result.json"
-    rows = [{"id": "1", "status": "SUCCESS"}, {"id": "7", "status": "FAILED", "error_message": "boom\n" + "x" * 2000}]
-    rows += [{"id": f"q{i}", "status": "FAILED", "error": f"err{i}"} for i in range(100)]
-    result_path.write_text(json.dumps({"queries": rows}), encoding="utf-8")
+    failures = {"7": "boom\n" + "x" * 2000}
+    failures.update({str(100 + i): f"err{i}" for i in range(100)})
+    payload = _exported_result_payload(failures)
+    assert all("error" not in q and "error_message" not in q for q in payload["queries"])
+    result_path.write_text(json.dumps(payload), encoding="utf-8")
     cell_log = tmp_path / "cell.log"
     cell_log.write_text("# benchbox run\n", encoding="utf-8")
     cell = CellResult(
@@ -1792,7 +1847,7 @@ def test_cells_jsonl_records_failed_query_ids_and_errors_for_query_failure(tmp_p
     assert failed[0]["query_id"] == "7"
     assert failed[0]["error"].startswith("boom")
     assert len(failed[0]["error"]) == cells_io.FAILED_QUERY_ERROR_CHARS
-    assert failed[1] == {"query_id": "q0", "status": "FAILED", "error": "err0"}
+    assert failed[1] == {"query_id": "100", "status": "FAILED", "error": "err0"}
     log_text = cell_log.read_text(encoding="utf-8")
     assert "# UAT_FAILED_QUERY id=7 status=FAILED error=boom" in log_text
     assert "id=1 " not in log_text

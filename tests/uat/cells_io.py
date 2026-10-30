@@ -245,16 +245,23 @@ def _failed_query_details(cell: CellResult) -> list[dict[str, str]]:
     rows = data.get("queries") if isinstance(data, dict) else None
     if not isinstance(rows, list):
         return []
+    errors_by_query: dict[str, str] = {}
+    for entry in data.get("errors") or []:
+        if isinstance(entry, dict) and entry.get("phase") == "query":
+            message = str(entry.get("message") or "").strip()
+            if message:
+                errors_by_query.setdefault(str(entry.get("query_id", "")), message)
     details: list[dict[str, str]] = []
     for row in rows:
         if not isinstance(row, dict):
             continue
         if str(row.get("status") or "").strip().upper() in _NON_FAILED_QUERY_STATUSES:
             continue
-        error = str(row.get("error") or row.get("error_message") or "").strip()
+        query_id = str(row.get("id") if row.get("id") is not None else row.get("query_id", ""))
+        error = errors_by_query.get(query_id, "")
         details.append(
             {
-                "query_id": str(row.get("id") if row.get("id") is not None else row.get("query_id", "")),
+                "query_id": query_id,
                 "status": str(row.get("status") or ""),
                 "error": error[:FAILED_QUERY_ERROR_CHARS],
             }
