@@ -136,7 +136,7 @@ def _build_rows(bundle_paths: Sequence[Path]) -> list[_RollupRow]:
                 validator_status=_classify(len(result.errors), len(result.warnings)),
                 error_count=len(result.errors),
                 warning_count=len(result.warnings),
-                first_error=result.errors[0] if result.errors else "",
+                first_error=(result.errors or result.warnings or [""])[0],
             )
         )
     return rows

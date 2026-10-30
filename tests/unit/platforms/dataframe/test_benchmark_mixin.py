@@ -389,6 +389,91 @@ def test_tpch_reference_run_records_query_and_run_validation_evidence() -> None:
     }
 
 
+class EmptyTableAdapter(DummyAdapter):
+    def load_table(self, ctx, table_name, file_paths, column_names=None, delimiter=None, benchmark=None, **kwargs):
+        super().load_table(ctx, table_name, file_paths, column_names, delimiter, benchmark, **kwargs)
+        return 0
+
+
+def _no_oracle_config() -> BenchmarkConfig:
+    return BenchmarkConfig(
+        name="dummy",
+        display_name="Dummy",
+        scale_factor=1.0,
+        options={"power_warmup_iterations": 0, "power_iterations": 1},
+    )
+
+
+def test_benchmark_without_oracle_passes_on_loaded_table_validation(tmp_path) -> None:
+    adapter = DummyAdapter()
+    source = tmp_path / "customer.tbl"
+    source.write_text("1|A|\n")
+
+    result = adapter.run_benchmark(
+        DummyBenchmark({"customer": source}),
+        benchmark_config=_no_oracle_config(),
+        phases=DataFramePhases(load=True, execute=True),
+        options=DataFrameRunOptions(prefer_parquet=False),
+    )
+
+    assert result.validation_status == "PASSED"
+    assert result.validation_details["load"]["provider"] == "loaded_table_checks"
+    assert build_result_payload(result)["phases"]["validation"] == {"status": "PASSED"}
+
+
+def test_benchmark_without_oracle_fails_when_a_loaded_table_is_empty(tmp_path) -> None:
+    adapter = EmptyTableAdapter()
+    source = tmp_path / "customer.tbl"
+    source.write_text("1|A|\n")
+
+    result = adapter.run_benchmark(
+        DummyBenchmark({"customer": source}),
+        benchmark_config=_no_oracle_config(),
+        phases=DataFramePhases(load=True, execute=True),
+        options=DataFrameRunOptions(prefer_parquet=False),
+    )
+
+    assert result.validation_status == "FAILED"
+    assert result.validation_details["load"]["empty_tables"] == ["customer"]
+
+
+class FailingQueryAdapter(DummyAdapter):
+    def execute_query(self, ctx, query, query_id=None):
+        result = super().execute_query(ctx, query, query_id)
+        result["status"] = "FAILED"
+        result["error"] = "boom"
+        return result
+
+
+def test_failed_queries_without_oracle_record_partial_validation_phase() -> None:
+    result = FailingQueryAdapter().run_benchmark(
+        DummyBenchmark({}),
+        benchmark_config=_no_oracle_config(),
+        phases=DataFramePhases(load=False, execute=True),
+        options=DataFrameRunOptions(prefer_parquet=False),
+    )
+
+    assert result.validation_status == "PARTIAL"
+    assert build_result_payload(result)["phases"]["validation"] == {"status": "PARTIAL"}
+
+
+def test_disabled_validation_mode_skips_loaded_table_validation(tmp_path) -> None:
+    adapter = DummyAdapter()
+    source = tmp_path / "customer.tbl"
+    source.write_text("1|A|\n")
+    config = _no_oracle_config()
+    config.options["validation_mode"] = "disabled"
+
+    result = adapter.run_benchmark(
+        DummyBenchmark({"customer": source}),
+        benchmark_config=config,
+        phases=DataFramePhases(load=True, execute=True),
+        options=DataFrameRunOptions(prefer_parquet=False),
+    )
+
+    assert result.validation_status == "NOT_RUN"
+
+
 def test_tpch_reference_mismatch_fails_the_query_and_run() -> None:
     adapter = TpchRowCountAdapter(rows_returned=3)
     benchmark = DummyBenchmark({})
