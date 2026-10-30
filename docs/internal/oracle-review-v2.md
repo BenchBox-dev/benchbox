@@ -141,8 +141,9 @@ a manual dispatch, a `pull_request_target` event other than a plain edit, and a
    PR code never runs.
 7. Disk scan (C4); `drive finalize`, which counts the attempts, re-validates
    this run's artifacts, replays selection and runs the redaction check (C5).
-8. **Post.** Mint the App token, then `drive publish` runs the guard and posts
-   the status and findings. The retry state is uploaded only if every post
+8. **Post.** Mint the App token, then `drive publish` runs the guard, posts
+   the status and findings, and then evaluates and posts `oracle-gate` for the
+   exact head. The retry state is uploaded only if every post
    succeeded, then the attempt artifacts and the captured event streams, and
    last `drive dispatch` dispatches `oracle-gate`. `findings_delivery` in
    `.github/oracle-reviewers.yml`
@@ -215,7 +216,7 @@ step per phase invocation; every phase step has its own `timeout-minutes`.
 | `attempts` | Runs attempts until the chain stops or an invalid attempt needs a recovery judgment. | gateway token and URL |
 | `recover` | Asks the judgment service how to recover the last invalid attempt. | TypeSafe key |
 | `finalize` | Counts the attempts, validates and decides, writes the status, comment, review and retry state, then redacts every secret value from the results. | every secret the job holds |
-| `publish` | Runs the guard, posts the status, comment and review, and reports `skip` and `state_recorded`: the attempt record is uploaded whenever the finalize phase wrote a state and the guard did not report a skip (so a failed mint or a crashed publish still counts the attempt), and the retry state only after the posts succeeded. With the App configured it fails before the guard when the App token or job token is empty; without the App it logs the result and still records the attempt. | App token, job token |
+| `publish` | Runs the guard, posts the status, comment and review, then evaluates and posts `oracle-gate` for the exact head from the trusted checkout with the same decision `oracle-gate.yml` uses, and reports `skip` and `state_recorded`: the attempt record is uploaded whenever the finalize phase wrote a state and the guard did not report a skip (so a failed mint or a crashed publish still counts the attempt), and the retry state only after the posts succeeded. A refused gate post is a warning, not a failure: the dispatch and the sweep post it again. With the App configured it fails before the guard when the App token or job token is empty; without the App it logs the result and still records the attempt. | App token, job token |
 | `dispatch` | Dispatches `oracle-gate` for the reviewed head when the pull request's base is `develop`; runs after the uploads so a failed upload withholds it. | App token, job token |
 | `sweep` | Dispatches due retries. | job token, App token |
 
@@ -1273,22 +1274,29 @@ gate re-reads everything. Remaining trusted fallbacks: the `oracle-gate` sweep
 (every push to `develop`, plus schedule) and the gate's own triggers
 (`pull_request_target`, stand-in comments, dispatch).
 
+The verdict run also posts `oracle-gate` itself: after the review is posted,
+`drive publish` evaluates the exact head with the same `decide()` and posts the
+App-bound status, so the gate does not wait for a second workflow. Every head
+change (opened, synchronize, reopened) first gets a pending `oracle-gate` from
+`oracle-gate.yml` before it is evaluated, so pushing back to an earlier green
+head cannot keep that head's stale green; between the push and the pending post
+the earlier status is still visible.
+
 GitHub dismisses only approvals and change requests, and the oracle posts
 comment reviews, so `dismissed` covers only human reviews, which are not
 `oracle-gate` inputs.
 
-Resolving a thread has no Actions event, so resolving the oracle's last thread
-starts nothing. `make pr-arm` and `make pr-arm-remote` dispatch `oracle-gate`
-for the PR and head when its `oracle-gate` status is not `success`. For an
-already-armed PR, run `gh workflow run oracle-gate.yml --ref develop -f
-pr=<number>` or wait for the next sweep (next push to `develop`, or the
-schedule). `make pr-rerun` re-runs failed CI jobs and does not refresh
+Resolving a thread has no Actions event and the gate does not read threads: the
+ruleset's `required_review_thread_resolution` on `develop` blocks the merge
+while any thread is open, so resolving the oracle's last thread needs no
+refresh of `oracle-gate`. `make pr-arm` and `make pr-arm-remote` dispatch
+`oracle-gate` for the PR and head when its `oracle-gate` status is not
+`success`. `make pr-rerun` re-runs failed CI jobs and does not refresh
 `oracle-gate`.
 
 A stand-in attestation must follow the oracle's latest decisive verdict
 (`success` or `failure`) on the head, so overriding a failure is deliberate; a
-later non-decisive review such as `pending` does not void it, and it never
-overrides an open thread.
+later non-decisive review such as `pending` does not void it.
 
 The merge digest applies the same window to merged history and files a
 `soundness-review-gap` issue for any commit it cannot account for. An attester's
@@ -1312,7 +1320,7 @@ status it reads. So the required check is `oracle-gate`:
 `_project/scripts/oracle_review_check.py` rather than reimplementing them, and
 posts `oracle-gate` on the PR head with the oracle App token. The pass rule is
 the checker's: only exempt paths changed, the App's latest review of the head
-reports success with no unresolved oracle thread, or a valid stand-in covers the
+reports success, or a valid stand-in covers the
 exact head; otherwise failure. The script re-reads review state just before
 posting, so a stale evaluation posts the fresh decision rather than overwriting
 a newer one. It posts only for PRs based on `develop`, the one branch whose

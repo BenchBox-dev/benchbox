@@ -5,12 +5,14 @@ from pathlib import Path
 
 import pytest
 
-from .fake_github import JOB_TOKEN
+from .fake_github import ACCOUNTS, APP_TOKEN, JOB_TOKEN
 from .harness import CHECKER, GATEWAY_TOKEN, RECORDED_STREAM, Harness
 
 pytestmark = [pytest.mark.integration, pytest.mark.medium]
 
 FIXED_CHECKER = "def checker(a, b):\n    if a is None or b is None:\n        return False\n    return a == b\n"
+
+ORACLE_BOT = ACCOUNTS[APP_TOKEN]
 
 
 def _ship(summary: str = "The change keeps checker semantics; no defects.") -> dict:
@@ -33,11 +35,84 @@ def test_first_review_ships_posts_success_and_the_gate_passes(harness: Harness) 
     assert harness.github.dispatches == [
         {"workflow": "oracle-gate.yml", "ref": "develop", "inputs": {"pr": "41", "head_sha": head}}
     ]
+    assert [(item["state"], item["description"]) for item in harness.github.gate_statuses(head)] == [
+        ("success", f"oracle-review: pass (oracle verdict for {head})")
+    ]
+    assert harness.github.gate_statuses(head)[0]["creator"]["login"] == "benchbox-oracle[bot]"
 
     gate = harness.gate(41, head)
 
     assert gate.code == 0, gate.stderr
+    assert [item["state"] for item in harness.github.gate_statuses(head)] == ["success", "success"]
+
+
+def test_the_verdict_run_posts_a_failing_gate_for_a_held_head(harness: Harness) -> None:
+    head = harness.branch("feat/checker", {CHECKER: FIXED_CHECKER}, "guard None operands")
+    harness.github.open_pull(42, "feat/checker")
+    harness.script_omp(
+        [
+            {
+                "decision": "SHIP_WITH_FIXES",
+                "summary": "One defect.",
+                "files_examined": [CHECKER],
+                "defects": [
+                    {
+                        "severity": "High",
+                        "file": CHECKER,
+                        "line": 2,
+                        "title": "Identity comparison replaces equality",
+                        "detail": "checker returns a is b, so equal values held in distinct objects compare unequal.",
+                    }
+                ],
+            }
+        ]
+    )
+
+    harness.review(42)
+
+    assert [item["state"] for item in harness.github.oracle_statuses(head)] == ["failure"]
+    assert [item["state"] for item in harness.github.gate_statuses(head)] == ["failure"]
+    assert "latest verdict" in harness.github.gate_statuses(head)[0]["description"]
+
+
+def test_an_open_oracle_thread_does_not_hold_the_gate_the_verdict_run_posts(harness: Harness) -> None:
+    head = harness.branch("feat/checker", {CHECKER: FIXED_CHECKER}, "guard None operands")
+    harness.github.open_pull(43, "feat/checker")
+    harness.github.threads[43].append(
+        {
+            "id": "PRRT_open",
+            "resolved": False,
+            "path": CHECKER,
+            "comments": [{"author": ORACLE_BOT, "association": "NONE", "body": "An earlier finding."}],
+        }
+    )
+    harness.script_omp([_ship()])
+
+    harness.review(43)
+
     assert [item["state"] for item in harness.github.gate_statuses(head)] == ["success"]
+
+
+@pytest.mark.parametrize("held", [False, True], ids=["still-green", "verdict-gone"])
+def test_a_head_change_marks_the_gate_pending_before_it_is_evaluated(harness: Harness, held: bool) -> None:
+    head = harness.branch("feat/checker", {CHECKER: FIXED_CHECKER}, "guard None operands")
+    harness.github.open_pull(44, "feat/checker")
+    harness.script_omp([_ship()])
+    harness.review(44)
+    assert [item["state"] for item in harness.github.gate_statuses(head)] == ["success"]
+    if held:
+        harness.github.statuses[head] = [
+            item for item in harness.github.statuses[head] if item["context"] != "oracle-verdict"
+        ]
+
+    gate = harness.gate(44, head, pending_first=True)
+
+    assert gate.code in (0, 3), gate.stderr
+    assert [item["state"] for item in harness.github.gate_statuses(head)] == [
+        "success",
+        "pending",
+        "failure" if held else "success",
+    ]
 
 
 def test_attempt_capture_keeps_the_redacted_event_stream(harness: Harness) -> None:

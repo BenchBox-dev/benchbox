@@ -60,10 +60,12 @@ A stand-in comment makes `oracle-gate` re-evaluate the head at once. To
 withdraw a stand-in, edit or delete it: the checker accepts only a comment
 that was never edited, and both actions re-run `oracle-gate`, which then fails
 the head again. Other comment edits and deletions do not run the gate.
-Resolving an oracle review thread starts no workflow run. `make pr-arm` and
-`make pr-arm-remote` dispatch `oracle-gate` for the PR and head when the head's
-`oracle-gate` status is not `success`, so thread resolution before arming needs
-no manual step. For a PR that is already armed, run
+Resolving an oracle review thread starts no workflow run and needs no
+`oracle-gate` refresh: `oracle-gate` does not read threads, and the ruleset's
+required thread resolution blocks the merge while one is open. `make pr-arm`
+and `make pr-arm-remote` dispatch `oracle-gate` for the PR and head when the
+head's `oracle-gate` status is not `success`. For a PR that is already armed
+whose gate is stale, run
 `gh workflow run oracle-gate.yml --ref develop -f pr=<number>` (or wait for the
 next sweep, which runs on every push to `develop` and on a schedule) and merge
 only after `oracle-gate` passes on the current head.

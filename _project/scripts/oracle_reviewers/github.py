@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import argparse
+import importlib
 import json
 import os
 import re
 import subprocess
+import sys
 import tempfile
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
@@ -548,6 +551,16 @@ def dispatch_gate(repo: str, pr: int, head: str, token: str) -> None:
     )
     if result.returncode != 0:
         raise GitHubError(f"could not dispatch the gate for #{pr}: {result.stderr.strip()[:500]}")
+
+
+def post_gate(repo: str, pr: int, head: str, token: str) -> None:
+    scripts = str(Path(__file__).resolve().parents[1])
+    if scripts not in sys.path:
+        sys.path.insert(0, scripts)
+    oracle_gate = importlib.import_module("oracle_gate")
+    request = argparse.Namespace(repo=repo, pr=pr, no_post=False, head_sha=head, pending_first=False)
+    if oracle_gate.post_gate(request, token) == oracle_gate.ERROR:
+        raise GitHubError(f"could not post oracle-gate for #{pr} at {head}")
 
 
 def backoff_reset_at(repo: str, pr: int, head_sha: str) -> datetime | None:

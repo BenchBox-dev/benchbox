@@ -483,7 +483,7 @@ def test_the_publish_step_holds_only_the_app_token_and_the_job_token() -> None:
         "GH_TOKEN": "${{ steps.app.outputs.token }}",
         "JOB_TOKEN": "${{ github.token }}",
     }
-    assert step["run"] == f"{PYTHON_RUN} {CLI} drive publish"
+    assert " ".join(step["run"].split()) == f"{UV_RUN} {CLI} drive publish"
     assert step["if"] == "steps.prepare.outputs.post == 'true'"
     assert _names().index(PUBLISH_STEP) == _names().index(MINT_STEP) + 1
     assert "continue-on-error" not in step
@@ -496,8 +496,27 @@ def test_the_mint_step_runs_only_when_a_result_is_to_be_posted_and_the_app_is_co
     assert mint["if"] == "steps.prepare.outputs.post == 'true' && env.HAS_APP == 'true'"
     assert mint["with"]["permission-statuses"] == "write"
     assert mint["with"]["permission-pull-requests"] == "write"
+    assert mint["with"]["permission-contents"] == "read"
     assert _review()["env"]["HAS_APP"] == "${{ secrets.ORACLE_APP_ID != '' }}"
     assert not any(str(step.get("uses", "")).startswith("actions/download-artifact@") for step in _steps())
+
+
+def test_the_publish_step_posts_the_gate_from_the_trusted_checkout_with_the_app_token() -> None:
+    trusted = _step(TRUSTED_STEP)
+    sparse = trusted["with"]["sparse-checkout"].split()
+    for required in (
+        "_project/scripts/oracle_gate.py",
+        "_project/scripts/oracle_review_check.py",
+        "_project/scripts/inert_paths.py",
+        "_project/scripts/soundness_paths.py",
+        ".github/oracle-reviewers.yml",
+    ):
+        assert required in sparse
+    assert trusted["with"]["ref"] == "${{ github.sha }}"
+    publish = _step(PUBLISH_STEP)
+    assert publish["working-directory"] == "trusted"
+    assert publish["env"]["GH_TOKEN"] == "${{ steps.app.outputs.token }}"
+    assert "GITHUB_TOKEN" not in publish["env"]
 
 
 def test_no_step_summary_write_reaches_the_summary_before_the_finalize_step() -> None:
