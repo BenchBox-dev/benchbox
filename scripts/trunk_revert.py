@@ -174,12 +174,18 @@ def untested_shas(run: Runner, repo: str, green: dict | None, start: dict) -> li
         return [head] if head else []
     code, out = run(["gh", "api", f"repos/{repo}/compare/{base}...{head}?per_page={UNTESTED_LIMIT}"])
     if code != 0:
-        return [head]
+        raise TrunkError(f"reading the commits from {base[:9]} to {head[:9]} failed: {out.strip()[:200]}")
     try:
-        shas = [item["sha"] for item in json.loads(out)["commits"]]
-    except (ValueError, KeyError, TypeError):
-        return [head]
-    return shas if shas and shas[-1] == head else [head]
+        body = json.loads(out)
+        shas = [item["sha"] for item in body["commits"]]
+        total = int(body.get("total_commits", len(shas)))
+    except (ValueError, KeyError, TypeError, AttributeError) as exc:
+        raise TrunkError(f"unreadable commit range from {base[:9]} to {head[:9]}: {exc}") from exc
+    if total > len(shas):
+        raise TrunkError(f"{total} commits lie between {base[:9]} and {head[:9]}; only {len(shas)} are readable")
+    if not shas or shas[-1] != head:
+        raise TrunkError(f"the commit range from {base[:9]} does not end at the failing run's commit {head[:9]}")
+    return shas
 
 
 def red_streak_start(run: Runner, repo: str) -> dict | None:
@@ -225,10 +231,10 @@ def culprit_reverted(run: Runner, repo: str, failed: dict) -> bool:
 def describe_culprit(run: Runner, repo: str, failed: dict) -> tuple[str, str]:
     shas = _candidates(failed)
     if len(shas) > 1:
-        shown = shas[-NAMED_CANDIDATES:]
+        shown = shas[:NAMED_CANDIDATES]
         labels = [f"PR #{pr}" if (pr := culprit_pr(run, repo, sha)) else sha[:9] for sha in shown]
         if len(shas) > len(shown):
-            labels.insert(0, f"{len(shas) - len(shown)} older")
+            labels.append(f"{len(shas) - len(shown)} newer")
         named = f"one of the {len(shas)} commits merged since the last green run ({', '.join(labels)})"
         return named, "make trunk-revert PR=<number>"
     sha = shas[0] if shas else ""

@@ -77,6 +77,7 @@ class DisarmRun:
         develop: list[dict] | None = None,
         comments: dict[int, list[dict]] | None = None,
         files: list[str] | None = None,
+        compare: list[str] | None = None,
         runs_code: int = 0,
         list_code: int = 0,
         develop_code: int = 0,
@@ -91,6 +92,7 @@ class DisarmRun:
         self.develop = develop if develop is not None else [{"commit": {"message": "feat: unrelated"}}]
         self.comments = comments if comments is not None else {}
         self.files = files
+        self.compare = compare
         self.runs_code = runs_code
         self.list_code = list_code
         self.develop_code = develop_code
@@ -134,6 +136,10 @@ class DisarmRun:
         if cmd[2] == "--paginate":
             number = int(cmd[3].split("/issues/")[1].split("/")[0])
             return 0, "\n".join(json.dumps(comment) for comment in self.comments.get(number, []))
+        if "/compare/" in cmd[2]:
+            head = cmd[2].split("...")[1].split("?")[0]
+            shas = self.compare if self.compare is not None else [head]
+            return 0, json.dumps({"total_commits": len(shas), "commits": [{"sha": sha} for sha in shas]})
         if self.develop_code != 0:
             return self.develop_code, "boom"
         return 0, json.dumps(self.develop)
@@ -361,6 +367,42 @@ def test_reverted_culprit_selects_nothing() -> None:
     selected, failed = trunk_red_disarm.select_for_disarm(run, trunk_revert.REPOSITORY)
     assert selected == []
     assert failed is not None
+
+
+MID_SHA = "d" * 40
+
+
+def _batch_red_run() -> DisarmRun:
+    run = _red_run()
+    run.compare = [MID_SHA, FIRST_RED_SHA]
+    return run
+
+
+def test_a_revert_of_one_covered_commit_does_not_clear_the_disarm() -> None:
+    run = _batch_red_run()
+    run.develop = [{"commit": {"message": f"Revert x\n\nThis reverts commit {FIRST_RED_SHA}."}}]
+    selected, failed = trunk_red_disarm.select_for_disarm(run, trunk_revert.REPOSITORY)
+    assert [item["number"] for item in selected] == [3385]
+    assert failed is not None
+
+
+def test_a_revert_branch_for_any_covered_commit_is_never_selected() -> None:
+    run = _batch_red_run()
+    run.armed.append(_armed(3391, "fix/revert-3370"))
+    run.views["3391"] = _view(
+        "fix/revert-3370", 3391, "e" * 40, [('Revert "x" (#3370)', f"This reverts commit {MID_SHA}.")]
+    )
+    assert [item["number"] for item in _selected(run)] == [3385]
+
+
+def test_an_unreadable_covered_range_fails_the_job_loudly_and_disarms_nothing(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    run = _batch_red_run()
+    run.compare = []
+    assert trunk_red_disarm.disarm_all(run, trunk_revert.REPOSITORY) == 1
+    assert run.mutations == []
+    assert "could not establish the red streak" in capsys.readouterr().err
 
 
 def test_disarm_disables_each_selected_and_logs_culprit_and_run_url(capsys: pytest.CaptureFixture[str]) -> None:

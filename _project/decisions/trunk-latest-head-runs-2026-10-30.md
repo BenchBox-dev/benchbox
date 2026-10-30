@@ -12,13 +12,19 @@ Related: `docs/internal/merge-queue-governance.md`; `scripts/trunk_revert.py`.
    run is never cancelled. Runs started by `ci.yml` and by manual dispatch keep
    the per-commit group `trunk-<sha>`, so they never wait behind or replace a
    develop run.
-2. A commit that was replaced while waiting has no run of its own. A red run
-   covers every commit merged since the last green run. `make pr-arm`,
-   `make pr-open` and `make trunk-status` name all of those commits (the newest
-   eight, and a count of older ones) instead of blaming the run's head commit.
-3. A revert of any commit a red run covers is exempt from the arm gate. Merging
-   one such revert does not reopen arming for other pull requests: only a green
-   run does, because the revert may have named the wrong commit.
+2. A commit that was replaced while waiting has no run of its own. The first red
+   run since the last green run covers every commit merged since that green run.
+   As before, the culprit is assumed to lie in that first red run's range, and
+   later red runs in the same streak are assumed to inherit it. `make pr-arm`,
+   `make pr-open` and `make trunk-status` name all of those commits (the oldest
+   eight, and a count of newer ones) instead of blaming the run's head commit.
+3. A revert of any commit that range covers is exempt from the arm gate. When the
+   range holds more than one commit, merging one such revert does not reopen
+   arming for other pull requests: only a green run does, because the revert may
+   have named the wrong commit. A range of exactly one commit behaves as before.
+   If the commits between the last green run and the first red run cannot be
+   read in full, the gate refuses and the disarm job fails visibly; it never
+   falls back to blaming the head commit.
 4. Release admission is unchanged. It needs a successful exact-commit `push` run,
    so a commit that was replaced cannot be released. Release from the newest
    tested head.
