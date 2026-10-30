@@ -2,6 +2,7 @@
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
 import hashlib
+import re
 from collections import Counter
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
@@ -359,7 +360,10 @@ def translate_sql_query(
                 expression = apply_rewrite("fold_between_literal_arithmetic", expression, tgt)
                 if date_columns:
                     expression = apply_rewrite("mark_date_columns", expression, tgt, date_columns=date_columns)
-            translated_statements.append(expression.sql(dialect=tgt, identify=should_identify, pretty=pretty))
+            statement_sql = expression.sql(dialect=tgt, identify=should_identify, pretty=pretty)
+            if tgt == "starrocks":
+                statement_sql = _starrocks_order_by_projection_aliases(statement_sql, should_identify, pretty)
+            translated_statements.append(statement_sql)
         translated = STATEMENT_SEPARATOR.join(translated_statements)
 
         record_sql_translation_outcome(
@@ -402,6 +406,46 @@ def translate_sql_query(
             f"SQLGlot translation failed from {source_dialect} to {target_dialect}: {e}. Returning original query."
         )
         return query
+
+
+_STARROCKS_ORDER_BY_ALIAS_GATE = re.compile(
+    r"\bORDER\s+BY\b.*\b(?:GROUPING|RANK|ROW_NUMBER|DENSE_RANK)\s*\(", re.I | re.S
+)
+
+
+def _starrocks_order_by_projection_aliases(sql: str, identify: bool, pretty: bool) -> str:
+    if not _STARROCKS_ORDER_BY_ALIAS_GATE.search(sql):
+        return sql
+
+    from benchbox._vendor import sqlglot
+    from benchbox._vendor.sqlglot import exp
+
+    tree = sqlglot.parse_one(sql, read="starrocks")
+    changed = False
+    for select in tree.find_all(exp.Select):
+        order = select.args.get("order")
+        if order is None:
+            continue
+        targets = {}
+        for projection in select.expressions:
+            if isinstance(projection, exp.Alias) and (
+                projection.this.find(exp.Grouping) or projection.this.find(exp.Window)
+            ):
+                targets.setdefault(projection.this, projection.alias)
+        if not targets:
+            continue
+
+        def replace(node, targets=targets):
+            alias = targets.get(node)
+            return exp.column(alias, quoted=True) if alias else node
+
+        rewritten = order.transform(replace)
+        if rewritten != order:
+            order.replace(rewritten)
+            changed = True
+    if not changed:
+        return sql
+    return tree.sql(dialect="starrocks", identify=identify, pretty=pretty)
 
 
 FORK_REWRITE_MODULES = ("rewrites", "engine_rewrites", "compat", "subqueries")
