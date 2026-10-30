@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "PR and run recorded for a real dispute re-judged on a same-head rerun or by the sweep, or recorded that none occurred.",
+    "Run recorded for a same-head rerun that returned the existing verdict without a reviewer attempt, or recorded that none occurred.",
+    "Stuck legacy PR recovery recorded, or recorded that none remains open."
+  ],
+  "description": "Observation deferred from the dispute-trigger and same-head-rerun items (live criteria waived by owner 2026-10-30). Record, once each occurs naturally: (a) a real Dispute: reply re-judged on its same-head /oracle-review or by the sweep (PR and run), (b) a same-head /oracle-review on a decided head with no open dispute that returns the existing verdict with no attempts (run), (c) one stuck legacy PR recovered by /oracle-review without a push, or that none remains open. Do not provoke runs for this; close with the PRs and runs observed, or record that none occurred.",
+  "not_before": "2026-11-06T00:00:00Z",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c8cf2fdb5a699f4b3049c8eb",
+      "at": "2026-10-30T23:36:04Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "4ebf5a882e524eb5bcd0941ef7a22291",
+      "session_id": "adb1518a186a49b6a5f244d6ebc0f7ca"
+    }
+  ]
+}

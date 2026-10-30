@@ -16442,6 +16442,13 @@
       "status": "done",
       "title": "Check the oracle diff parser for the same control-character line splitting"
     },
+    "oracle-dispute-and-rerun-live-observation-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Observe one live dispute re-judgement and one same-head rerun that returns the existing verdict"
+    },
     "oracle-dispute-keyed-published-evidence-20261026": {
       "claim": null,
       "needs": [
