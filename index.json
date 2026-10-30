@@ -19211,7 +19211,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Public-site visual regression reported every /results/ page changed for a PR that cannot affect rendering"
     },
     "publication-candidate-freshness-decouple-develop-tip": {
