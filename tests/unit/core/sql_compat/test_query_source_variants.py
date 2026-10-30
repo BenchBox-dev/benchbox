@@ -67,10 +67,11 @@ def test_coffeeshop_variant_rules_registered():
     rules = [
         (key, entry) for key, entry in REGISTRY.all_rules() if key[0] is Phase.QUERY_SOURCE and key[2] == "coffeeshop"
     ]
-    assert len(rules) == 2, f"Expected 2 coffeeshop rules, got {len(rules)}: {[e.rule_id for _, e in rules]}"
+    assert len(rules) == 3, f"Expected 3 coffeeshop rules, got {len(rules)}: {[e.rule_id for _, e in rules]}"
     rule_ids = [entry.rule_id for _, entry in rules]
     assert "query_source.clickhouse.coffeeshop.sa4_cross_join_variant" in rule_ids
     assert "query_source.clickhouse.coffeeshop.tm1_todatetime_variant" in rule_ids
+    assert "query_source.questdb.coffeeshop.tm1_varchar_time_variant" in rule_ids
 
 
 @pytest.mark.parametrize(
