@@ -256,12 +256,12 @@ class TestCloudTranslation:
 
     def test_sqlite_dow_uses_strftime(self, queries_by_dialect):
         sql = queries_by_dialect["sqlite"]["trips-by-day-of-week"]
-        assert "strftime('%w'" in sql
+        assert "STRFTIME('%w'," in sql
         assert "EXTRACT(DOW" not in sql.upper()
 
     def test_sqlite_epoch_uses_strftime_seconds(self, queries_by_dialect):
         sql = queries_by_dialect["sqlite"]["trip-duration-analysis"]
-        assert "strftime('%s'" in sql
+        assert "STRFTIME('%s'," in sql
         assert "EXTRACT(EPOCH" not in sql.upper()
 
     def test_sqlite_translated_queries_execute(self, queries_by_dialect):
