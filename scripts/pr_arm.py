@@ -24,10 +24,6 @@ REPOSITORY = "BenchBox-dev/BenchBox"
 BASE_BRANCH = "develop"
 VIEW_FIELDS = "number,state,isDraft,labels,reviewDecision,headRefOid,baseRefName"
 
-GATE_CONTEXT = "oracle-gate"
-GATE_WORKFLOW = "oracle-gate.yml"
-GATE_OK_STATE = "success"
-
 BASELINE_DIRECTORY = "tests/fixtures/fast_tier_baseline"
 VERDICT_ARTIFACT_PREFIX = "fast-duration-verdict"
 VERDICT_FILE = "fast-duration-verdict.json"
@@ -218,32 +214,6 @@ def duration_verdict_refusals(run: Runner, repo: str, number: int, head: str, la
     ]
 
 
-def refresh_oracle_gate(run: Runner, repo: str, number: int, head: str, label: str = "pr-arm") -> None:
-    code, out = run(
-        [
-            "gh",
-            "api",
-            "--jq",
-            f'[.statuses[] | select(.context == "{GATE_CONTEXT}")][0].state // ""',
-            f"repos/{repo}/commits/{head}/status",
-        ]
-    )
-    if code != 0:
-        print(f"{label}: could not read the {GATE_CONTEXT} status of {head[:9]}; not dispatching: {out.strip()[:200]}")
-        return
-    state = out.strip()
-    if state == GATE_OK_STATE:
-        return
-    code, out = run(
-        ["gh", "workflow", "run", GATE_WORKFLOW, "--repo", repo, "--ref", BASE_BRANCH]
-        + ["-f", f"pr={number}", "-f", f"head_sha={head}"]
-    )
-    if code != 0:
-        print(f"{label}: {GATE_CONTEXT} dispatch for PR #{number} failed; arming continues: {out.strip()[:200]}")
-        return
-    print(f"{label}: dispatched {GATE_CONTEXT} for PR #{number} at {head[:9]} (status was {state or 'missing'})")
-
-
 def refusals(
     view: dict,
     local_head: str,
@@ -351,7 +321,6 @@ def arm(
             if all(any(marker in reason for marker in WAITING_MARKERS) for reason in reasons):
                 return _outcome(f"waiting: PR #{view['number']} is not armed yet: {' | '.join(reasons)}", 2)
             return _outcome(f"refused: PR #{view['number']} was not armed: {' | '.join(reasons)}", 2)
-        refresh_oracle_gate(run, repo, int(view["number"]), local_head)
         code, out = run(
             [
                 "gh",

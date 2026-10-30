@@ -1256,26 +1256,10 @@ Merged PRs predate this and never re-run the gate. The oracle signal needs
 `findings_delivery: review`, under which every run reaching a result, pending
 included, posts a review then a status in the same state.
 
-The `oracle-review` workflow is a notification, not a check: it triggers only on
-`pull_request_review` submitted, edited and dismissed, holds no token
-permissions, and runs one `review-event` job with a single no-op step (no
-checkout, secrets or API calls), producing no check run named `oracle-review`.
-`edited` keeps edits to oracle reviews visible in run history; the gate never
-reads review bodies for its decision but rejects edited receipts when binding a
-status.
-
-`pull_request_review` runs the PR's own workflow file, so the PR controls the
-notification and can delete or alter it. The verdict path does not depend on it:
-after posting a head's comment, review and status, a final `review` step reads
-the PR base through the API and, if `develop`, dispatches `oracle-gate.yml` from
-`develop` with `pr` and the reviewed `head_sha`. This covers comment, dispatch
-and scheduled verdict runs, whose completion carries `develop`'s head and cannot
-be mapped to the PR by the gate's bridge. The step runs only with the App
-configured and the head not skipped by the guard, so never before the post; it
-uses the job's `actions: write` for this dispatch alone and posts no status; the
-gate re-reads everything. Remaining trusted fallbacks: the `oracle-gate` sweep
-(every push to `develop`, plus schedule) and the gate's own triggers
-(`pull_request_target`, stand-in comments, dispatch).
+No workflow reacts to review submitted, edited or dismissed events. The verdict
+run posts every review and its own `oracle-gate`, and the gate rejects an
+edited or deleted oracle receipt whenever it next evaluates, which is at the
+next head or base change, stand-in comment or sweep.
 
 The verdict run also posts `oracle-gate` itself: after the review is posted,
 `drive publish` evaluates the exact head with the gate code and review policy of a
@@ -1294,8 +1278,7 @@ Resolving a thread has no Actions event and the gate does not read threads: the
 ruleset's `required_review_thread_resolution` on `develop` blocks the merge
 while any thread is open, so resolving the oracle's last thread needs no
 refresh of `oracle-gate`. `make pr-arm` and `make pr-arm-remote` dispatch
-`oracle-gate` for the PR and head when its `oracle-gate` status is not
-`success`. `make pr-rerun` re-runs failed CI jobs and does not refresh
+nothing; `make pr-rerun` re-runs failed CI jobs and does not refresh
 `oracle-gate`.
 
 A stand-in attestation must follow the oracle's latest decisive verdict
@@ -1349,23 +1332,14 @@ success would count and the gate property would not hold.
   previous body) contains the stand-in marker anywhere, so leading whitespace,
   which the checker strips, still triggers; the checker decides on the exact
   text;
-- completion of `oracle-verdict` and `oracle-review` (the bridge for review and
-  thread events, which have no trusted trigger);
 - `workflow_dispatch` with a `pr` input;
-- a `schedule` sweep over open PRs targeting `develop`;
-- every `push` to `develop`, so a merge re-evaluates open PRs without waiting
-  for the schedule.
+- an hourly `schedule` sweep over open PRs targeting `develop`, the safety net
+  for events no trigger sees.
 
-GitHub delays and drops scheduled runs, so pushes bound latency while `develop`
-is active and the schedule covers quiet hours. Only the sweep job runs on
-`push`; the gate and bridge jobs exclude it. Push sweeps share one concurrency
-group, separate from every PR's, and queue rather than cancel, so a running
-sweep finishes before the next starts.
-
-A completion run evaluates nothing: its `bridge` job finds the open `develop` PR
-whose head is the completed run's head commit (not the payload's first PR, which
-can target another branch or be stacked on that head) and dispatches the gate
-for it from `develop`. Gate and sweep jobs check out `develop`, never the PR,
+There is no `push` trigger and no `workflow_run` bridge: the verdict run posts
+the gate for the head it reviewed. GitHub delays and drops scheduled runs, so a
+head the verdict run could not post for waits for the next sweep. Gate and sweep
+jobs check out `develop`, never the PR,
 sparsely (gate, predicate, reviewers policy), run the script with pinned
 `pyyaml` as `oracle-verdict` does, and mint the App token as `oracle-verdict`
 does, from the same `oracle` environment and secrets. If the reviewers policy
@@ -1383,7 +1357,7 @@ until its next successful evaluation. The PR read is retried three times,
 waiting 2 then 4 seconds. If it still fails, the script posts `failure` to the
 optional `--head-sha` if given; otherwise it makes one GraphQL read of the PR's
 `headRefOid` and posts there if it is a 40-character lowercase hex SHA. A live
-REST read always wins over both. Sweep and bridge dispatches pass a head;
+REST read always wins over both. Sweep runs and dispatches pass a head;
 `pull_request_target` runs pass the event payload's head, validated by the
 resolve step; `issue_comment` payloads carry none, so those runs rely on
 GraphQL. The remaining gap: if REST and GraphQL both fail with no head supplied,

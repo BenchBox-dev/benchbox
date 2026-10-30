@@ -28,19 +28,15 @@ review of the head supersedes it. An edited comment
 does not count, and neither does one with any other text, because Markdown
 around the line can hide or quote it.
 Posting the stand-in comment makes `oracle-gate` re-evaluate the head at once.
-Resolving an oracle review thread starts no workflow run; `make pr-arm` and
-`make pr-arm-remote` dispatch `oracle-gate` when the head's status is not
-`success`. For a PR that is already armed, run
-`gh workflow run oracle-gate.yml --ref develop -f pr=<number>`, or wait for the
-next sweep, which runs on every push to `develop` and on a schedule.
+Resolving an oracle review thread starts no workflow run and needs no refresh;
+`make pr-arm` and `make pr-arm-remote` dispatch nothing. A stale gate is
+re-evaluated by the next hourly sweep, or on demand with
+`gh workflow run oracle-gate.yml --ref develop -f pr=<number>`.
 
 The develop ruleset requires `oracle-gate` bound to the `benchbox-oracle`
 App's integration ID, so only a status that App posts satisfies it, and the
-`oracle-gate` workflow runs only `develop` code. The `oracle-review` workflow
-is a no-op `review-event` notification on `pull_request_review` submitted,
-edited and dismissed events; a completed `oracle-review` run is how
-`oracle-gate` learns that a review was submitted, edited or dismissed. It
-produces no check.
+`oracle-gate` workflow runs only `develop` code. The verdict run posts the
+gate for the head it reviewed; no workflow reacts to review events.
 
 The attester account is also the one local automation uses, so the
 attestation records who vouched for the review, not that a human read it.

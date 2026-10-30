@@ -73,34 +73,20 @@ def _text() -> str:
 def test_triggers_are_trusted_only() -> None:
     triggers = _triggers()
     assert set(triggers) == {
-        "push",
         "pull_request_target",
         "issue_comment",
-        "workflow_run",
         "workflow_dispatch",
         "schedule",
     }
-    assert triggers["push"]["branches"] == ["develop"]
-    assert set(triggers["push"]) == {"branches"}
+    assert "push" not in triggers
+    assert "workflow_run" not in triggers
     assert "pull_request" not in triggers
     assert "pull_request_review" not in triggers
 
 
-def test_every_develop_push_runs_only_the_sweep_in_the_uncancelled_push_group() -> None:
-    push = _triggers()["push"]
-    assert push == {"branches": ["develop"]}
-    jobs = _jobs()
-    assert "github.event_name == 'push'" in jobs["sweep"]["if"]
-    assert "github.event_name != 'push'" in jobs["gate"]["if"]
-    assert jobs["bridge"]["if"] == "github.event_name == 'workflow_run'"
-    concurrency = _load()["concurrency"]
-    assert concurrency["group"].count("'push-sweep'") == 1
-    assert "github.event_name == 'push' && 'push-sweep'" in concurrency["group"]
-    assert concurrency["cancel-in-progress"] == "${{ github.event_name != 'push' }}"
-
-
-def test_schedule_stays_as_the_fallback_for_hours_without_pushes() -> None:
-    assert "github.event_name == 'schedule'" in _jobs()["sweep"]["if"]
+def test_schedule_stays_as_the_only_sweep_trigger() -> None:
+    assert _jobs()["sweep"]["if"] == "github.event_name == 'schedule'"
+    assert "bridge" not in _jobs()
     assert _triggers()["schedule"] == [{"cron": "41 * * * *"}]
 
 
@@ -112,12 +98,6 @@ def test_pull_request_target_covers_open_push_reopen_ready_and_edit() -> None:
 def test_issue_comment_covers_created_edited_and_deleted_comments() -> None:
     assert _triggers()["issue_comment"]["types"] == ["created", "edited", "deleted"]
     assert "Stand-in oracle review: APPROVE" in _jobs()["gate"]["if"]
-
-
-def test_workflow_run_bridges_both_posting_workflows() -> None:
-    bridge = _triggers()["workflow_run"]
-    assert bridge["types"] == ["completed"]
-    assert set(bridge["workflows"]) == {"oracle-verdict", "oracle-review"}
 
 
 def test_dispatch_takes_a_pr_number_and_one_schedule_is_declared() -> None:
@@ -283,24 +263,6 @@ def test_dispatch_is_refused_outside_develop() -> None:
     assert "exit 2" in guard["run"]
 
 
-def test_completion_runs_dispatch_the_gate_for_the_develop_pull_request_at_that_head() -> None:
-    bridge = _jobs()["bridge"]
-    assert bridge["if"] == "github.event_name == 'workflow_run'"
-    assert bridge["permissions"] == {"actions": "write", "contents": "read", "pull-requests": "read"}
-    (step,) = bridge["steps"]
-    assert "pull_requests" not in str(step["env"])
-    assert step["env"]["HEAD_SHA"] == "${{ github.event.workflow_run.head_sha }}"
-    assert "*[!0-9a-f]*" in step["run"]
-    assert '.base.ref == "develop"' in step["run"]
-    assert ".head.sha == $sha" in step["run"]
-    assert 'gh workflow run oracle-gate.yml --repo "$REPO" --ref develop -f pr="$PR_NUMBER"' in step["run"]
-    assert '-f head_sha="$HEAD_SHA"' in step["run"]
-    assert SCRIPT not in step["run"]
-    assert "github.event_name != 'workflow_run'" in _jobs()["gate"]["if"]
-    resolve = next(step for step in _steps("gate") if step["name"] == "Resolve the pull request")
-    assert "workflow_run" not in str(resolve)
-
-
 def test_app_token_mint_matches_the_verdict_post_job_plus_contents_read_for_the_bump_check() -> None:
     verdict_text = VERDICT.read_text(encoding="utf-8")
     assert "actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1" in verdict_text
@@ -369,39 +331,7 @@ def test_concurrency_is_one_group_per_pull_request() -> None:
     assert "inputs.pr" in group
     assert "pull_requests" not in group
     assert "github.run_id" in group
-    assert "cancel-in-progress: true" not in _text()
-    assert _load()["concurrency"]["cancel-in-progress"] == "${{ github.event_name != 'push' }}"
-
-
-def test_completion_runs_group_by_head_sha_apart_from_pull_request_gates() -> None:
-    group = _load()["concurrency"]["group"]
-    assert "(github.event_name == 'workflow_run' && format('bridge-{0}', github.event.workflow_run.head_sha))" in group
-    assert group.count("github.event.workflow_run.head_sha") == 1
-    assert group.index("bridge-") < group.index("github.event.pull_request.number")
-    assert group.index("bridge-") < group.rindex("github.run_id")
-
-
-def _push_context() -> dict[str, Any]:
-    return {"github": {"event_name": "push", "event": {}, "run_id": "55", "sha": SHA}, "inputs": {}}
-
-
-def test_push_runs_only_the_sweep() -> None:
-    context = _push_context()
-    assert _evaluate(_jobs()["sweep"]["if"], context)
-    assert not _evaluate(_jobs()["gate"]["if"], context)
-    assert not _evaluate(_jobs()["bridge"]["if"], context)
-
-
-def test_push_sweeps_share_a_group_apart_from_pull_request_gates() -> None:
-    group = _render(_load()["concurrency"]["group"], _push_context())
-    assert group == "oracle-gate-push-sweep"
-    for number in (7, 8):
-        event = {"pull_request": {"number": number}}
-        context = {"github": {"event_name": "pull_request_target", "event": event, "run_id": "55"}, "inputs": {}}
-        assert _render(_load()["concurrency"]["group"], context) == f"oracle-gate-{number}"
-    cancel = _load()["concurrency"]["cancel-in-progress"].removeprefix("${{").removesuffix("}}")
-    assert _evaluate(cancel, _push_context()) is False
-    assert _evaluate(cancel, {"github": {"event_name": "pull_request_target"}}) is True
+    assert _load()["concurrency"]["cancel-in-progress"] is True
 
 
 def test_workflow_permissions_are_empty_and_jobs_stay_minimal() -> None:
@@ -419,21 +349,6 @@ def test_actions_are_pinned_to_known_shas() -> None:
                 assert step["uses"].split("@")[1] in KNOWN_SHAS, (name, step["uses"])
 
 
-DISPATCH_COMMAND = re.compile(
-    r"gh workflow run oracle-gate\.yml --repo \"\$REPO\" --ref develop -f pr=\"\$PR_NUMBER\"( -f head_sha=\"\$HEAD_SHA\")?"
-)
-
-
-def _only_dispatches_the_gate(step: dict[str, Any]) -> bool:
-    run = step.get("run", "")
-    if not DISPATCH_COMMAND.search(run) or "statuses/" in run or "context" in run:
-        return False
-    remainder = DISPATCH_COMMAND.sub("", run)
-    return "oracle-gate" not in remainder and "oracle-gate" not in str(
-        {key: value for key, value in step.items() if key != "run"}
-    )
-
-
 def test_only_the_gate_workflow_and_the_verdict_publish_step_post_the_gate_context() -> None:
     variable_context = re.compile(r"context[\"']?\s*[=:]\s*[\"']?\$")
     offenders = []
@@ -444,12 +359,7 @@ def test_only_the_gate_workflow_and_the_verdict_publish_step_post_the_gate_conte
         for job_name, job in (data.get("jobs") or {}).items():
             for step in job.get("steps") or []:
                 run = step.get("run", "")
-                if (
-                    "oracle-gate" in str(step)
-                    and not _only_dispatches_the_gate(step)
-                    or "statuses/" in run
-                    and (variable_context.search(run) or "oracle-gate" in run)
-                ):
+                if "oracle-gate" in str(step) or "statuses/" in run and variable_context.search(run):
                     offenders.append((workflow.name, job_name, step.get("name")))
     assert offenders == []
     gate_py = (REPO_ROOT / "_project/scripts/oracle_gate.py").read_text(encoding="utf-8")
@@ -611,8 +521,7 @@ def test_trigger_agrees_with_decide_on_trailing_whitespace(trailing: str) -> Non
 def test_non_comment_events_keep_the_gate_conditions() -> None:
     for name in ("pull_request_target", "workflow_dispatch"):
         assert _evaluate(_jobs()["gate"]["if"], {"github": {"event_name": name, "event": {}}})
-    for name in ("schedule", "workflow_run", "push"):
-        assert not _evaluate(_jobs()["gate"]["if"], {"github": {"event_name": name, "event": {}}})
+    assert not _evaluate(_jobs()["gate"]["if"], {"github": {"event_name": "schedule", "event": {}}})
 
 
 def _run_name(event_name: str, event: dict[str, Any], inputs: dict[str, Any] | None = None) -> str:
@@ -620,11 +529,9 @@ def _run_name(event_name: str, event: dict[str, Any], inputs: dict[str, Any] | N
     return _render(_load()["run-name"], context)
 
 
-def test_only_the_scheduled_and_push_runs_are_titled_sweep() -> None:
+def test_only_the_scheduled_runs_are_titled_sweep() -> None:
     assert _run_name("schedule", {}) == "oracle-gate (schedule sweep)"
-    assert _run_name("push", {}) == "oracle-gate (push sweep)"
     titles = {
-        "workflow_run": _run_name("workflow_run", {"workflow_run": {"head_sha": SHA}}),
         "pull_request_target": _run_name("pull_request_target", {"pull_request": {"number": 7}}),
         "issue_comment": _run_name("issue_comment", {"issue": {"number": 8}}),
         "workflow_dispatch": _run_name("workflow_dispatch", {}, {"pr": "9"}),
@@ -632,28 +539,7 @@ def test_only_the_scheduled_and_push_runs_are_titled_sweep() -> None:
     assert all("sweep" not in title for title in titles.values())
 
 
-def test_workflow_run_title_carries_the_source_head_sha() -> None:
-    assert _run_name("workflow_run", {"workflow_run": {"head_sha": SHA}}) == f"oracle-gate (workflow_run sha={SHA})"
-
-
 def test_pull_request_comment_and_dispatch_titles_keep_the_pr_number() -> None:
     assert _run_name("pull_request_target", {"pull_request": {"number": 7}}) == "oracle-gate (pull_request_target pr=7)"
     assert _run_name("issue_comment", {"issue": {"number": 8}}) == "oracle-gate (issue_comment pr=8)"
     assert _run_name("workflow_dispatch", {}, {"pr": "9"}) == "oracle-gate (workflow_dispatch pr=9)"
-
-
-def test_the_gate_dispatch_exemption_allows_dispatch_and_rejects_status_posts() -> None:
-    dispatch = {
-        "name": "d",
-        "run": 'gh workflow run oracle-gate.yml --repo "$REPO" --ref develop -f pr="$PR_NUMBER" -f head_sha="$HEAD_SHA"',
-    }
-    assert _only_dispatches_the_gate(dispatch)
-    post = {
-        "name": "p",
-        "run": 'gh api --method POST "repos/$REPO/statuses/$SHA" -f context=oracle-gate -f state=success',
-    }
-    assert not _only_dispatches_the_gate(post)
-    both = {"name": "b", "run": dispatch["run"] + '\ngh api "repos/$REPO/statuses/$SHA" -f context=oracle-gate'}
-    assert not _only_dispatches_the_gate(both)
-    renamed = {"name": "oracle-gate", "run": dispatch["run"]}
-    assert not _only_dispatches_the_gate(renamed)
