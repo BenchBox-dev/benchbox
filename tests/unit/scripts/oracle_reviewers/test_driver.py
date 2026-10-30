@@ -244,8 +244,8 @@ def test_publish_posts_status_comment_review_then_the_gate_and_never_dispatches_
     assert "dispatch" not in [item[0] for item in sink.calls]
     if scenario == "posts":
         assert code == 0
-        assert [item[0] for item in sink.calls] == ["status", "comment", "review", "gate"]
-        assert sink.calls[0][1:] == (REPO, HEAD) and sink.calls[-1][1:] == (REPO, HEAD)
+        assert [item[0] for item in sink.calls] == ["comment", "review", "status", "gate"]
+        assert sink.calls[-2][1:] == (REPO, HEAD) and sink.calls[-1][1:] == (REPO, HEAD)
         assert "skip=false" in written and "state_recorded=true" in written
     elif scenario == "skipped":
         assert code == 0 and sink.calls == []
@@ -273,7 +273,7 @@ def test_publish_posts_only_the_status_and_gate_when_no_comment_or_review_was_wr
     assert "state_recorded" not in outputs.read_text(encoding="utf-8")
 
 
-def test_a_refused_status_stops_the_phase_before_anything_else_is_posted(
+def test_a_refused_status_leaves_the_findings_posted_and_the_gate_unposted(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     outputs: Path,
@@ -288,7 +288,7 @@ def test_a_refused_status_stops_the_phase_before_anything_else_is_posted(
 
     assert driver.publish(environment, argparse.Namespace()) == 1
 
-    assert sink.calls == []
+    assert [item[0] for item in sink.calls] == ["comment", "review"]
     written = outputs.read_text(encoding="utf-8")
     assert "state_recorded" not in written
     assert "the status was refused" in capsys.readouterr().err
@@ -309,12 +309,12 @@ def test_a_refused_gate_post_leaves_the_published_result_and_warns(
 
     assert driver.publish(environment, argparse.Namespace()) == 0
 
-    assert [item[0] for item in sink.calls] == ["status", "comment", "review"]
+    assert [item[0] for item in sink.calls] == ["comment", "review", "status"]
     assert "state_recorded=true" in outputs.read_text(encoding="utf-8")
     assert "::warning::oracle-gate was not posted from this run: the gate was refused" in capsys.readouterr().err
 
 
-def test_a_refused_review_does_not_post_the_gate(
+def test_a_refused_review_leaves_no_verdict_status_and_no_gate(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, outputs: Path, sink: RecordingSink
 ) -> None:
     environment = _environment(tmp_path)
@@ -325,7 +325,8 @@ def test_a_refused_review_does_not_post_the_gate(
 
     assert driver.publish(environment, argparse.Namespace()) == 1
 
-    assert [item[0] for item in sink.calls] == ["status", "comment"]
+    assert [item[0] for item in sink.calls] == ["comment"]
+    assert "state_recorded" not in outputs.read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize("missing", [{"GH_TOKEN": ""}, {"JOB_TOKEN": ""}, {"GH_TOKEN": "", "JOB_TOKEN": ""}])

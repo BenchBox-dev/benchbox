@@ -272,11 +272,11 @@ def finalize(env: Environment, args: argparse.Namespace) -> int:
 def _post(env: Environment, sink: Sink, plan: Mapping[str, Any]) -> None:
     final = env.layout.final
     pr, head = int(plan["pr"]), plan["head_sha"]
-    sink.status(env.repo, head, final / "status.json")
     if (final / "comment.json").is_file():
         sink.comment(env.repo, pr, final / "comment.json")
     if (final / "review.json").is_file():
         sink.review(env.repo, pr, final / "review.json")
+    sink.status(env.repo, head, final / "status.json")
 
 
 def _post_gate(env: Environment, sink: Sink, plan: Mapping[str, Any]) -> None:

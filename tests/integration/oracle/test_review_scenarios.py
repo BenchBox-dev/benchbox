@@ -115,6 +115,47 @@ def test_a_head_change_marks_the_gate_pending_before_it_is_evaluated(harness: Ha
     ]
 
 
+def test_a_failed_review_post_leaves_no_verdict_status_so_the_sweep_retries_the_head(harness: Harness) -> None:
+    head = harness.branch("feat/checker", {CHECKER: FIXED_CHECKER}, "guard None operands")
+    harness.github.open_pull(45, "feat/checker")
+    harness.script_omp([_ship()])
+    harness.github.fail("POST", r"/pulls/45/reviews", 500, 1)
+
+    run = harness.review(45)
+    harness.github.failures.clear()
+
+    assert run.steps["publish"].code == 1
+    assert harness.github.oracle_statuses(head) == []
+    assert harness.github.gate_statuses(head) == []
+    assert harness.github.reviews[45] == []
+    harness.github.complete_run(run.run, "failure", ("Post the result",))
+    harness.github.age(run.run, 40)
+
+    sweep = harness.sweep()
+
+    assert sweep.code == 0, sweep.stderr
+    assert harness.github.dispatches[-1:] == [
+        {
+            "workflow": "oracle-verdict.yml",
+            "ref": "develop",
+            "inputs": {"pr": "45", "head": head, "reason": "stateless-retry"},
+        }
+    ], sweep.outputs["summary"]
+
+
+def test_the_verdict_status_is_posted_after_the_review_it_is_a_receipt_for(harness: Harness) -> None:
+    head = harness.branch("feat/checker", {CHECKER: FIXED_CHECKER}, "guard None operands")
+    harness.github.open_pull(46, "feat/checker")
+    harness.script_omp([_ship()])
+
+    harness.review(46)
+
+    review = harness.github.reviews[46][-1]
+    status = harness.github.oracle_statuses(head)[-1]
+    assert review["submitted_at"] <= status["created_at"]
+    assert [item["state"] for item in harness.github.gate_statuses(head)] == ["success"]
+
+
 def test_attempt_capture_keeps_the_redacted_event_stream(harness: Harness) -> None:
     harness.branch("feat/checker", {CHECKER: FIXED_CHECKER}, "guard None operands")
     harness.github.open_pull(42, "feat/checker")
