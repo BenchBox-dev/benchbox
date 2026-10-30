@@ -343,6 +343,25 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                     )
                     return False
 
+                expected_columns = self._expected_table_columns(benchmark)
+                if expected_columns:
+                    with test_conn.cursor() as column_cursor:
+                        column_cursor.execute("SELECT table_name, column_name FROM information_schema.columns")
+                        existing_columns: dict[str, set[str]] = {}
+                        for table_name, column_name in column_cursor.fetchall():
+                            existing_columns.setdefault(str(table_name).lower(), set()).add(str(column_name).lower())
+                    mismatched = sorted(
+                        name
+                        for name, columns in expected_columns.items()
+                        if name in expected_tables and not columns <= existing_columns.get(name, set())
+                    )
+                    if mismatched:
+                        self.log_verbose(
+                            f"Tables exist with a different schema: {', '.join(mismatched)} "
+                            "- treating as fresh database (will recreate schema)"
+                        )
+                        return False
+
                 self.log_verbose(
                     f"Found all {len(expected_tables)} expected benchmark tables with data - "
                     "attempting to reuse existing database"
@@ -356,6 +375,23 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
             self.logger.debug(f"Error checking existing tables: {e}")
             self.log_verbose("Unable to verify existing tables - treating as fresh database")
             return False
+
+    @staticmethod
+    def _expected_table_columns(benchmark) -> dict[str, set[str]]:
+        try:
+            schema = benchmark.get_schema()
+        except Exception:
+            return {}
+        if not isinstance(schema, dict):
+            return {}
+        expected: dict[str, set[str]] = {}
+        for name, table in schema.items():
+            columns = table.get("columns") if isinstance(table, dict) else None
+            if isinstance(columns, list):
+                expected[str(name).lower()] = {
+                    str(column["name"]).lower() for column in columns if isinstance(column, dict) and "name" in column
+                }
+        return expected
 
     def create_schema(self, benchmark, connection: Any) -> float:
         start_time = mono_time()

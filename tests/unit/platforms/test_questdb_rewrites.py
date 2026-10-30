@@ -129,3 +129,35 @@ def test_between_nested_in_operand_and_bounds_is_rewritten():
 def test_between_in_scalar_subquery_bound_is_rewritten():
     sql = "SELECT * FROM t WHERE x BETWEEN (SELECT MIN(y) FROM s WHERE y BETWEEN 1 AND 2) AND 9"
     assert "BETWEEN" not in rewrite_query(sql)
+
+
+@pytest.mark.parametrize("type_sql", ["DECIMAL(15,2)", "DECIMAL(10,4)", "DECIMAL", "NUMERIC(12,2)"])
+def test_decimal_cast_becomes_double(type_sql):
+    assert rewrite_query(f"SELECT CAST(a * 2 AS {type_sql}) FROM t") == "SELECT CAST(a * 2 AS DOUBLE) FROM t"
+
+
+def test_decimal_cast_in_predicate_becomes_double():
+    assert rewrite_query("SELECT a FROM t WHERE b > CAST(0.05 AS DECIMAL(15,2))") == (
+        "SELECT a FROM t WHERE b > CAST(0.05 AS DOUBLE)"
+    )
+
+
+def test_non_decimal_casts_are_left_unchanged():
+    sql = "SELECT CAST(a AS INT), CAST(b AS VARCHAR) FROM t"
+    assert rewrite_query(sql) == sql
+
+
+def test_create_table_as_select_is_parenthesised():
+    assert rewrite_query("CREATE TABLE a AS SELECT * FROM b WHERE x > 1") == (
+        "CREATE TABLE a AS (SELECT * FROM b WHERE x > 1)"
+    )
+
+
+def test_parenthesised_create_table_as_select_is_left_unchanged():
+    sql = "CREATE TABLE a AS (SELECT * FROM b)"
+    assert rewrite_query(sql) == sql
+
+
+def test_plain_create_table_is_left_unchanged():
+    sql = "CREATE TABLE t (a INT)"
+    assert rewrite_query(sql) == sql
