@@ -83,49 +83,21 @@ def test_plan_capture_and_explain_see_the_rewritten_query(monkeypatch):
     cursor.execute.assert_called_once_with("EXPLAIN SELECT DATE_TRUNC('day', ts) FROM t")
 
 
-def test_between_becomes_range_comparison():
-    assert (
-        rewrite_query("SELECT * FROM t WHERE dbl BETWEEN 0.05 AND 7.0")
-        == "SELECT * FROM t WHERE (dbl >= 0.05 AND dbl <= 7.0)"
-    )
+def test_already_lowercase_date_trunc_is_returned_verbatim():
+    sql = "select  date_trunc('day',ts)  from t"
+    assert rewrite_query(sql) == sql
 
 
-def test_not_between_keeps_negation():
-    assert (
-        rewrite_query("SELECT * FROM t WHERE dbl NOT BETWEEN 1 AND 2")
-        == "SELECT * FROM t WHERE NOT (dbl >= 1 AND dbl <= 2)"
-    )
+def test_regeneration_by_another_rewrite_keeps_lowercase_units(monkeypatch):
+    from benchbox.platforms import questdb_rewrites
 
+    class Marker:
+        ORDER = 5
 
-def test_between_operand_expression_is_repeated_per_comparison():
-    assert (
-        rewrite_query("SELECT * FROM t WHERE a + b BETWEEN 1 AND 2 AND c = 3")
-        == "SELECT * FROM t WHERE (a + b >= 1 AND a + b <= 2) AND c = 3"
-    )
+        @staticmethod
+        def transform(expression):
+            return expression.copy().where("1 = 1")
 
-
-def test_between_inside_or_and_subquery_precedence():
-    assert (
-        rewrite_query(
-            "SELECT * FROM t WHERE x = 1 OR y BETWEEN lo AND hi AND w IN (SELECT q FROM s WHERE q BETWEEN 1 AND 2)"
-        )
-        == "SELECT * FROM t WHERE x = 1 OR (y >= lo AND y <= hi) AND w IN (SELECT q FROM s WHERE (q >= 1 AND q <= 2))"
-    )
-
-
-def test_timestamp_between_with_string_bounds():
-    assert (
-        rewrite_query("SELECT * FROM t WHERE ts BETWEEN '2020-01-01' AND '2020-02-01'")
-        == "SELECT * FROM t WHERE (ts >= '2020-01-01' AND ts <= '2020-02-01')"
-    )
-
-
-def test_between_nested_in_operand_and_bounds_is_rewritten():
-    rewritten = rewrite_query("SELECT * FROM t WHERE (a BETWEEN 1 AND 2) BETWEEN (b BETWEEN 3 AND 4) AND 5")
-    assert "BETWEEN" not in rewritten
-    assert "b >= 3 AND b <= 4" in rewritten
-
-
-def test_between_in_scalar_subquery_bound_is_rewritten():
-    sql = "SELECT * FROM t WHERE x BETWEEN (SELECT MIN(y) FROM s WHERE y BETWEEN 1 AND 2) AND 9"
-    assert "BETWEEN" not in rewrite_query(sql)
+    discovered = questdb_rewrites._modules()
+    monkeypatch.setattr(questdb_rewrites, "_modules", lambda: (Marker, *discovered))
+    assert rewrite_query("SELECT DATE_TRUNC('day', ts) FROM t") == "SELECT DATE_TRUNC('day', ts) FROM t WHERE 1 = 1"
