@@ -655,3 +655,29 @@ class TestUnanonymizedBundleRejection:
         public = ResultExporter(output_dir=tmp_path, anonymize=True).export_result(_tuned_result(), ["json"])["json"]
 
         assert scan_directory_for_privacy(public.parent) == []
+
+
+def test_redacted_publish_preserves_statistics_phase_details(tmp_path):
+    from benchbox.cli.commands.publish import _redacted_publish_source
+
+    source = ResultExporter(output_dir=tmp_path / "local", anonymize=False).export_result(_tuned_result(), ["json"])[
+        "json"
+    ]
+    payload = json.loads(Path(source).read_text(encoding="utf-8"))
+    statistics = {
+        "status": "SUCCESS",
+        "duration_ms": 12,
+        "stats_mode": "analyze",
+        "tables_analyzed": 8,
+        "per_table_ms": {"lineitem": 5},
+    }
+    payload["phases"]["statistics"] = statistics
+    Path(source).write_text(json.dumps(payload), encoding="utf-8")
+
+    redacted, scratch = _redacted_publish_source(Path(source))
+    try:
+        assert redacted is not None
+        assert json.loads(redacted.read_text(encoding="utf-8"))["phases"]["statistics"] == statistics
+    finally:
+        if scratch is not None:
+            scratch.cleanup()
