@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Digest of an Arrow result equals the digest of the same rows fetched via fetchall (TPC-H SF0.01 on DuckDB).",
+    "Validation and first_row work on Arrow input.",
+    "Result metadata records fetch mode (rows|arrow) so runs are not compared across modes."
+  ],
+  "description": "Query timing (base/sql_execution.py:77-86 and every adapter execute_query) wraps fetchall(), so client-side row building is counted as query time. compute_result_digest (sql_execution.py:104) and structural validation (result_capture.py:72-85,1014) expect a Python row list, so any Arrow fetch would be converted back to rows. Make these accept pyarrow.Table/RecordBatchReader (or convert lazily, outside the timer). Prerequisite for the Arrow fetch items.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:root@vm:2d53e6a98f44f4f4a8a4dedd",
+      "at": "2026-10-30T17:55:06Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "36e8e438aa6b470ca81cf37ff519cfb0",
+      "session_id": "be00837164104ac2b4ed790cdb6812a2"
+    }
+  ]
+}

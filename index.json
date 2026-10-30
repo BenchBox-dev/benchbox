@@ -17615,6 +17615,13 @@
       "status": "done",
       "title": "Per-engine SQL dialect translation for the 113 queries on non-DuckDB engines"
     },
+    "perf-arrow-aware-result-capture-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Accept Arrow results in digest, validation, and row count"
+    },
     "performance-regression-detection-system": {
       "claim": null,
       "needs": [],
