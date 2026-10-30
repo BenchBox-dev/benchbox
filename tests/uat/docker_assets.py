@@ -601,6 +601,13 @@ def compose_ps_command(spec: DockerPlatformSpec, project_name: str) -> list[str]
     return argv
 
 
+def compose_logs_command(spec: DockerPlatformSpec, project_name: str, *, tail: int = 500) -> list[str]:
+    argv = _compose_base_command(spec, project_name)
+    argv.extend(["logs", "--no-color", "--tail", str(tail)])
+    argv.extend(spec.services)
+    return argv
+
+
 _UNHEALTHY_PS_STATE_RE = re.compile(r"\b(?:Exited|Restarting|Created|Dead|Paused)\b|\bExit\s+\d+|\(unhealthy\)")
 
 _PS_HEADER_RE = re.compile(r"^\s*(?:NAME|Name)\b")
