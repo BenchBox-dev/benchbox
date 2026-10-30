@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from benchbox.platforms.questdb_rewrites import exp
 
-ORDER = 90
+ORDER = 150
 
 
 def applies(sql: str) -> bool:
