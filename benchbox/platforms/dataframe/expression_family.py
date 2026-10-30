@@ -24,6 +24,7 @@ from benchbox.platforms.dataframe._result_helpers import (
     build_success_result_dict,
 )
 from benchbox.platforms.dataframe.benchmark_mixin import BenchmarkExecutionMixin
+from benchbox.platforms.dataframe.datafusion_identifiers import datafusion_column as df_col
 from benchbox.platforms.dataframe.shared_loading import (
     declared_string_columns,
     declared_temporal_columns,
@@ -280,8 +281,6 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
         if platform == "DataFusion":
             from datafusion import functions as df_f, lit as df_lit
 
-            from benchbox.platforms.dataframe.datafusion_identifiers import datafusion_column as df_col
-
             if column:
                 return UnifiedExpr(df_f.count(df_col(column)))
             return UnifiedExpr(df_f.count(df_lit(1)))
@@ -320,8 +319,6 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
         if platform == "DataFusion":
             from datafusion import functions as df_f
 
-            from benchbox.platforms.dataframe.datafusion_identifiers import datafusion_column as df_col
-
             return UnifiedExpr(df_f.sum(df_col(column)))
 
         import polars as pl
@@ -338,8 +335,6 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
 
         if platform == "DataFusion":
             from datafusion import functions as df_f
-
-            from benchbox.platforms.dataframe.datafusion_identifiers import datafusion_column as df_col
 
             return UnifiedExpr(df_f.avg(df_col(column)))
 
@@ -358,8 +353,6 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
         if platform == "DataFusion":
             from datafusion import functions as df_f
 
-            from benchbox.platforms.dataframe.datafusion_identifiers import datafusion_column as df_col
-
             return UnifiedExpr(df_f.stddev(df_col(column)))
 
         import polars as pl
@@ -376,8 +369,6 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
 
         if platform == "DataFusion":
             from datafusion import functions as df_f
-
-            from benchbox.platforms.dataframe.datafusion_identifiers import datafusion_column as df_col
 
             return UnifiedExpr(df_f.max(df_col(column)))
 
@@ -399,8 +390,6 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
 
                     unwrapped.append(F.col(e))
                 elif platform == "DataFusion":
-                    from benchbox.platforms.dataframe.datafusion_identifiers import datafusion_column as df_col
-
                     unwrapped.append(df_col(e))
                 else:
                     import polars as pl
