@@ -155,3 +155,22 @@ def test_pandas_executor_uses_exact_planned_join_sequence(
     assert len(calls) == 1
     tables, plan = calls[0]
     assert (tables, plan.anchor, plan.steps) == (expected.tables, expected.anchor, expected.steps)
+
+
+def test_pandas_composite_join_does_not_match_null_keys() -> None:
+    frame = pd.DataFrame(
+        {
+            "movie_id": pd.array([1, 1], dtype="Int64"),
+            "company_id": pd.array([None, 5], dtype="Int64"),
+            "note": ["null-key", "matching-key"],
+        }
+    )
+    tree = parse_one(
+        "SELECT MIN(a.note) AS first_note FROM movie_companies AS a, movie_companies AS b "
+        "WHERE a.movie_id = b.movie_id AND a.company_id = b.company_id",
+        read="duckdb",
+    )
+
+    result = dataframe_queries._run_pandas_query(PandasContext({"movie_companies": frame}), tree)
+
+    assert result["first_note"].tolist() == ["matching-key"]

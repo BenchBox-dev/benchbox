@@ -611,6 +611,11 @@ def _run_pandas_query(ctx: DataFrameContext, tree: exp.Select) -> pd.DataFrame:
     import pandas as pd
 
     shape = _analyze_query(tree)
+    join_columns: dict[str, set[str]] = {alias: set() for alias, _table in shape.tables}
+    for predicate in shape.join_predicates:
+        for side in (predicate.this, predicate.expression):
+            side_alias, side_column = _column_ref(side)
+            join_columns[side_alias].add(_qualified(side_alias, side_column))
     frames = {
         alias: _prefixed_pandas_frame(
             ctx,
@@ -619,7 +624,7 @@ def _run_pandas_query(ctx: DataFrameContext, tree: exp.Select) -> pd.DataFrame:
             shape.local_predicates[alias],
             shape.referenced_columns[alias],
             shape.payload_columns[alias],
-        )
+        ).dropna(subset=sorted(join_columns[alias]))
         for alias, table_name in shape.tables
     }
 

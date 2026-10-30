@@ -415,7 +415,7 @@ _BYPASS_ENTRIES: dict[tuple[str, str], AllowlistEntry] = {
         2, "fbdc7af8cca0373f", PARSE_ONLY, DATAFRAME_PARSE_ONLY
     ),
     ("benchbox/core/joinorder_synthetic/dataframe_queries.py", KIND_CALL): AllowlistEntry(
-        3, "897827f1a3e91fb4", PARSE_ONLY, DATAFRAME_PARSE_ONLY
+        2, "2c3c9725debd1334", PARSE_ONLY, DATAFRAME_PARSE_ONLY
     ),
     ("benchbox/core/read_primitives/variant_contracts.py", KIND_IMPORT): AllowlistEntry(
         2, "3cbc8c0042278b22", PARSE_ONLY, VARIANT_CONTRACTS
