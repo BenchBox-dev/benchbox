@@ -805,9 +805,10 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         validate_row_count: bool = True,
         stream_id: int | None = None,
     ) -> dict[str, Any]:
+        query = rewrite_query(query)
         result = execute_sql_query(
             connection,
-            rewrite_query(query),
+            query,
             query_id,
             log_verbose=self.log_verbose,
             build_query_result_with_validation=self._build_query_result_with_validation,
@@ -830,7 +831,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         _owns_cursor = callable(getattr(connection, "cursor", None))
         cursor = connection.cursor() if _owns_cursor else connection
 
-        explain_query = f"EXPLAIN {query}"
+        explain_query = f"EXPLAIN {rewrite_query(query)}"
 
         try:
             cursor.execute(explain_query)
