@@ -153,10 +153,15 @@ def _validate_publishable_form(bundle_path: Path) -> list[ValidationResult]:
     if redacted is None:
         return raw
     try:
-        return validate_bundles([redacted])
+        publishable = validate_bundles([redacted])
     finally:
         if scratch is not None:
             scratch.cleanup()
+    if publishable:
+        for error in raw[0].errors:
+            if _TUNING_PRIVACY_MARKER not in error and error not in publishable[0].errors:
+                publishable[0].error(error)
+    return publishable
 
 
 def _read_bundle_metadata(bundle_path: Path) -> tuple[str, str, str, str | None]:
