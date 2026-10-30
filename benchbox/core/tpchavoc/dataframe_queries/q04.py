@@ -377,11 +377,8 @@ def q4_v10_pandas_impl(ctx: DataFrameContext) -> Any:
     filtered = orders[(orders["o_orderdate"] >= start_date) & (orders["o_orderdate"] < end_date)]
     result_df = filtered[filtered["o_orderkey"].isin(late_orderkeys)]
 
-    return (
-        result_df.groupby("o_orderpriority", as_index=False)
-        .agg(order_count=("o_orderkey", "count"))
-        .sort_values("o_orderpriority")
-    )
+    counts = result_df.groupby("o_orderpriority")["o_orderkey"].count().reset_index()
+    return counts.rename(columns={"o_orderkey": "order_count"}).sort_values("o_orderpriority")
 
 
 Q4_VARIANTS = build_yaml_variants(__file__, globals(), 4, JOIN_AGG_SUBQUERY)
