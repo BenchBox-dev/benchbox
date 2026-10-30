@@ -13,7 +13,7 @@ def applies(sql: str) -> bool:
     return _HAVING_KEYWORD.search(sql) is not None
 
 
-_INNER_ARGS = ("from_", "joins", "laterals", "where", "group")
+_INNER_ARGS = ("from_", "joins", "laterals", "where")
 _OUTER_ARGS = ("with_", "distinct", "order", "limit", "offset")
 _UNSUPPORTED_ARGS = ("qualify", "windows", "into", "pivots", "connect", "match", "sample", "prewhere", "locks")
 
@@ -107,6 +107,8 @@ def _resolve_groups(select: exp.Select) -> list[exp.Expr] | None:
                 resolved.append(item.copy())
             else:
                 resolved.append(target.copy())
+        elif isinstance(item, exp.Tuple) and not item.expressions:
+            continue
         elif isinstance(item, (exp.Rollup, exp.Cube, exp.GroupingSets)):
             return None
         else:
@@ -222,7 +224,7 @@ def _rewrite_select(select: exp.Select) -> exp.Select | None:
         if value is not None:
             inner.set(arg, value.copy())
     group_clause = select.args.get("group")
-    if group_clause is not None:
+    if group_clause is not None and groups:
         inner.set("group", exp.Group(expressions=[group.copy() for group in groups]))
     if not inner.expressions:
         inner.set("expressions", [exp.alias_(exp.Count(this=exp.Star()), "qdb_agg_0")])
