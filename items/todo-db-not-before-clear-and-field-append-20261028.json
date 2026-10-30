@@ -3,7 +3,7 @@
     "update_item with not_before set to an empty string clears the hold and the item is claimable immediately (test or live proof)",
     "A documented way adds text to context or description without overwriting concurrent edits, or the replace-only behaviour is stated in the tool description"
   ],
-  "context": "Seen while closing items held until 2026-11-02 after the calendar waits were waived: clearing with an empty string was accepted but the hold stayed. The note-prepend workaround reads then rewrites the whole context field.\n\nTracked in the todo-db tracker as update-item-not-before-clear (copied 2026-10-28).\n\nRESOLVED 2026-10-29: BenchBox runs todo-db 0.11.0 (BenchBox-dev/benchbox#3725, merge a554c997f; release https://github.com/joeharris76/todo-db/releases/tag/v0.11.0). Criterion 1: not_before=\"\" clears the hold and the item is claimable at once (test_empty_not_before_clears_a_hold_over_mcp). Criterion 2: context_append adds text without overwriting concurrent edits, and the update_item description states that text fields are replaced whole (todo-db#52).",
+  "context": "Seen while closing items held until 2026-11-02 after the calendar waits were waived: clearing with an empty string was accepted but the hold stayed. The note-prepend workaround reads then rewrites the whole context field.\n\nTracked in the todo-db tracker as update-item-not-before-clear (copied 2026-10-28).\n\nRESOLVED 2026-10-29: BenchBox runs todo-db 0.11.0 (BenchBox-dev/benchbox#3725, merge a554c997f; release https://github.com/joeharris76/todo-db/releases/tag/v0.11.0). Criterion 1: not_before=\"\" clears the hold and the item is claimable at once (test_empty_not_before_clears_a_hold_over_mcp). Criterion 2: context_append adds text without overwriting concurrent edits, and the update_item description states that text fields are replaced whole (todo-db#52).\n\nProbe 2026-10-29: context_append accepted by update_item.",
   "description": "update_item with not_before set to an empty string does not clear a hold, so an item held to a future date cannot be released early; the only workaround is to set not_before a few seconds ahead, wait, then take. update_item also replaces text fields wholesale, so adding a note to context requires reading the field and writing it back. Both cost extra steps and risk overwriting concurrent edits.",
   "sessions": [
     {
@@ -47,6 +47,14 @@
       "op": "finish",
       "op_id": "fe49bbf655e0476e8a4519b6fef6e234",
       "session_id": "167fcfd7c4c74fa4b63606febd08c8d2"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:df1d64a773cbac5cfe394668",
+      "at": "2026-10-30T19:48:47Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3b8493a8046b48398a95e362529e73ec",
+      "session_id": "b6dcf5aba25e4d5c93c8b2dac596b0bf"
     }
   ]
 }
