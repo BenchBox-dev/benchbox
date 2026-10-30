@@ -5,7 +5,9 @@
 from __future__ import annotations
 
 import re
+import tomllib
 from csv import reader
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, NamedTuple, Protocol
 
 from benchbox._vendor.sqlglot import exp, parse_one
@@ -131,39 +133,186 @@ def _select_min_columns(tree: exp.Select) -> list[tuple[str, str, str]]:
     return columns
 
 
+class _JoinKey(NamedTuple):
+    existing_alias: str
+    existing_column: str
+    new_column: str
+    predicate_index: int
+
+
 class _JoinStep(NamedTuple):
     existing_alias: str
     existing_column: str
     new_alias: str
     new_column: str
     predicate_index: int
+    extra_keys: tuple[_JoinKey, ...] = ()
 
 
-def _plan_join_sequence(tables: list[tuple[str, str]], join_predicates: list[exp.Expression]) -> list[_JoinStep]:
-    anchor = tables[0][0]
+def _step_keys(step: _JoinStep) -> list[_JoinKey]:
+    return [
+        _JoinKey(step.existing_alias, step.existing_column, step.new_column, step.predicate_index),
+        *step.extra_keys,
+    ]
+
+
+def _load_table_row_counts() -> dict[str, int]:
+    manifest = tomllib.loads((Path(__file__).parent / "data_manifest.toml").read_text(encoding="utf-8"))
+    return {table["name"]: int(table["row_count"]) for table in manifest["tables"]}
+
+
+_TABLE_ROW_COUNTS = _load_table_row_counts()
+_DEFAULT_TABLE_ROWS = 1_000_000
+_EQUALITY_SELECTIVITY = 0.02
+_PATTERN_SELECTIVITY = 0.1
+_RANGE_SELECTIVITY = 0.3
+_INEQUALITY_SELECTIVITY = 0.9
+
+
+def _predicate_selectivity(node: exp.Expression) -> float:
+    if isinstance(node, exp.Paren):
+        return _predicate_selectivity(node.this)
+    if isinstance(node, exp.And):
+        return _predicate_selectivity(node.this) * _predicate_selectivity(node.expression)
+    if isinstance(node, exp.Or):
+        return min(1.0, _predicate_selectivity(node.this) + _predicate_selectivity(node.expression))
+    if isinstance(node, exp.Not):
+        return 1.0 - _predicate_selectivity(node.this)
+    if isinstance(node, exp.EQ):
+        return _EQUALITY_SELECTIVITY
+    if isinstance(node, exp.In):
+        return min(0.5, _EQUALITY_SELECTIVITY * len(node.expressions))
+    if isinstance(node, exp.Like):
+        return 1.0 - _PATTERN_SELECTIVITY if node.args.get("negate") else _PATTERN_SELECTIVITY
+    if isinstance(node, exp.Is):
+        return _PATTERN_SELECTIVITY
+    if isinstance(node, (exp.GT, exp.GTE, exp.LT, exp.Between)):
+        return _RANGE_SELECTIVITY
+    return _INEQUALITY_SELECTIVITY
+
+
+def _estimated_rows(
+    tables: list[tuple[str, str]], local_predicates: dict[str, list[exp.Expression]]
+) -> dict[str, float]:
+    estimates: dict[str, float] = {}
+    for alias, table in tables:
+        rows = float(_TABLE_ROW_COUNTS.get(table, _DEFAULT_TABLE_ROWS))
+        for predicate in local_predicates.get(alias, []):
+            rows *= _predicate_selectivity(predicate)
+        estimates[alias] = max(rows, 1.0)
+    return estimates
+
+
+class _JoinPlan(NamedTuple):
+    anchor: str
+    steps: list[_JoinStep]
+    cost: float
+    peak_rows: float
+
+
+_FOREIGN_KEY_DOMAINS = {
+    "movie_id": "title",
+    "linked_movie_id": "title",
+    "person_id": "name",
+    "person_role_id": "char_name",
+    "company_id": "company_name",
+    "keyword_id": "keyword",
+    "info_type_id": "info_type",
+}
+
+
+def _join_output_rows(
+    current_rows: float,
+    existing_estimate: float,
+    existing_total: float,
+    new_estimate: float,
+    new_total: float,
+    key: _JoinKey,
+) -> float:
+    if key.new_column == "id":
+        return current_rows * new_estimate / new_total
+    if key.existing_column == "id":
+        return new_estimate * min(1.0, min(current_rows, existing_estimate) / existing_total)
+    domain = _TABLE_ROW_COUNTS.get(_FOREIGN_KEY_DOMAINS.get(key.new_column, ""), max(existing_total, new_total))
+    return current_rows * new_estimate / domain
+
+
+def _plan_from(
+    anchor: str,
+    tables: list[tuple[str, str]],
+    edges: list[tuple[str, str, str, str, int]],
+    estimates: dict[str, float],
+) -> _JoinPlan:
+    order = {alias: position for position, (alias, _table) in enumerate(tables)}
+    totals = {alias: float(_TABLE_ROW_COUNTS.get(table, _DEFAULT_TABLE_ROWS)) for alias, table in tables}
     joined = {anchor}
-    remaining = [alias for alias, _table in tables[1:]]
+    remaining = [alias for alias, _table in tables if alias != anchor]
+    current_rows = estimates[anchor]
+    cost = peak_rows = current_rows
     steps: list[_JoinStep] = []
     while remaining:
-        for index, predicate in enumerate(join_predicates):
-            left_alias, left_column = _column_ref(predicate.this)
-            right_alias, right_column = _column_ref(predicate.expression)
+        links: dict[str, list[_JoinKey]] = {}
+        for left_alias, left_column, right_alias, right_column, index in edges:
             if left_alias in joined and right_alias in remaining:
-                steps.append(_JoinStep(left_alias, left_column, right_alias, right_column, index))
-                joined.add(right_alias)
-                remaining.remove(right_alias)
-                break
-            if right_alias in joined and left_alias in remaining:
-                steps.append(_JoinStep(right_alias, right_column, left_alias, left_column, index))
-                joined.add(left_alias)
-                remaining.remove(left_alias)
-                break
+                links.setdefault(right_alias, []).append(_JoinKey(left_alias, left_column, right_column, index))
+            elif right_alias in joined and left_alias in remaining:
+                links.setdefault(left_alias, []).append(_JoinKey(right_alias, right_column, left_column, index))
+        if links:
+            candidates = [
+                (
+                    min(
+                        _join_output_rows(
+                            current_rows,
+                            estimates[key.existing_alias],
+                            totals[key.existing_alias],
+                            estimates[alias],
+                            totals[alias],
+                            key,
+                        )
+                        for key in keys
+                    ),
+                    estimates[alias],
+                    order[alias],
+                    alias,
+                )
+                for alias, keys in links.items()
+            ]
+            output_rows, _estimate, _position, new_alias = min(candidates)
+            primary, *extra = links[new_alias]
+            steps.append(
+                _JoinStep(
+                    primary.existing_alias,
+                    primary.existing_column,
+                    new_alias,
+                    primary.new_column,
+                    primary.predicate_index,
+                    tuple(extra),
+                )
+            )
         else:
-            new_alias = remaining[0]
+            new_alias = min(remaining, key=lambda alias: (estimates[alias], order[alias]))
+            output_rows = current_rows * estimates[new_alias]
             steps.append(_JoinStep(anchor, "", new_alias, "", -1))
-            joined.add(new_alias)
-            remaining.remove(new_alias)
-    return steps
+        current_rows = max(output_rows, 1.0)
+        cost += current_rows + estimates[new_alias]
+        peak_rows = max(peak_rows, current_rows)
+        joined.add(new_alias)
+        remaining.remove(new_alias)
+    return _JoinPlan(anchor, steps, cost, peak_rows)
+
+
+def _plan_join_sequence(
+    tables: list[tuple[str, str]], join_predicates: list[exp.Expression], estimates: dict[str, float]
+) -> _JoinPlan:
+    edges: list[tuple[str, str, str, str, int]] = []
+    for index, predicate in enumerate(join_predicates):
+        left_alias, left_column = _column_ref(predicate.this)
+        right_alias, right_column = _column_ref(predicate.expression)
+        edges.append((left_alias, left_column, right_alias, right_column, index))
+    connected = {alias for edge in edges for alias in (edge[0], edge[2])}
+    anchors = [alias for alias, _table in tables if alias in connected] or [tables[0][0]]
+    plans = [_plan_from(anchor, tables, edges, estimates) for anchor in anchors]
+    return min(plans, key=lambda plan: plan.cost)
 
 
 def _expr_value(ctx: DataFrameContext, node: exp.Expression) -> Any:
@@ -207,34 +356,21 @@ def _expression_condition(ctx: DataFrameContext, node: exp.Expression) -> Any:
     raise NotImplementedError(f"Unsupported JoinOrder DataFrame SQL predicate: {node}")
 
 
-def _prefixed_expression_frame(
-    ctx: DataFrameContext,
-    table_name: str,
-    alias: str,
-    predicates: list[exp.Expression],
-    join_key_columns: list[tuple[str, int]],
-) -> Any:
-    frame = ctx.get_table(table_name)
-    frame = frame.select(
-        [ctx.col(column).alias(_qualified(alias, column)) for column in _TABLE_COLUMNS[table_name]]
-        + [ctx.col(column).alias(_join_key(alias, column, index)) for column, index in join_key_columns]
-    )
-    for predicate in predicates:
-        frame = frame.filter(_expression_condition(ctx, predicate))
-    return frame
+class _QueryShape(NamedTuple):
+    tables: list[tuple[str, str]]
+    predicates: list[exp.Expression]
+    join_predicates: list[exp.Expression]
+    local_predicates: dict[str, list[exp.Expression]]
+    referenced_columns: dict[str, set[str]]
+    anchor: str
+    steps: list[_JoinStep]
+    peak_rows: float
 
 
-def _execute_joinorder_expression_query(ctx: DataFrameContext, query_id: str) -> Any:
-    tree = parse_one(_QUERY_MANAGER.get_query(query_id), read="duckdb")
+def _analyze_query(tree: exp.Select) -> _QueryShape:
     tables = _sql_tables(tree)
     predicates = _flatten_and(tree.args["where"].this)
     join_predicates = [predicate for predicate in predicates if _is_join_equality(predicate)]
-    join_key_columns: dict[str, list[tuple[str, int]]] = {alias: [] for alias, _table in tables}
-    for index, predicate in enumerate(join_predicates):
-        left_alias, left_column = _column_ref(predicate.this)
-        right_alias, right_column = _column_ref(predicate.expression)
-        join_key_columns[left_alias].append((left_column, index))
-        join_key_columns[right_alias].append((right_column, index))
     local_predicates = {
         alias: [
             predicate
@@ -243,26 +379,78 @@ def _execute_joinorder_expression_query(ctx: DataFrameContext, query_id: str) ->
         ]
         for alias, _table in tables
     }
+    referenced_columns: dict[str, set[str]] = {alias: set() for alias, _table in tables}
+    for node in [*predicates, *tree.expressions]:
+        for column in node.find_all(exp.Column):
+            if str(column.table) in referenced_columns:
+                referenced_columns[str(column.table)].add(column.name)
+    plan = _plan_join_sequence(tables, join_predicates, _estimated_rows(tables, local_predicates))
+    return _QueryShape(
+        tables,
+        predicates,
+        join_predicates,
+        local_predicates,
+        referenced_columns,
+        plan.anchor,
+        plan.steps,
+        plan.peak_rows,
+    )
+
+
+def _prefixed_expression_frame(
+    ctx: DataFrameContext,
+    table_name: str,
+    alias: str,
+    predicates: list[exp.Expression],
+    join_key_columns: list[tuple[str, int]],
+    referenced_columns: set[str],
+) -> Any:
+    frame = ctx.get_table(table_name)
+    frame = frame.select(
+        [ctx.col(column).alias(_qualified(alias, column)) for column in sorted(referenced_columns)]
+        + [ctx.col(column).alias(_join_key(alias, column, index)) for column, index in join_key_columns]
+    )
+    for predicate in predicates:
+        frame = frame.filter(_expression_condition(ctx, predicate))
+    return frame
+
+
+def _run_expression_query(ctx: DataFrameContext, tree: exp.Select) -> Any:
+    shape = _analyze_query(tree)
+    join_key_columns: dict[str, list[tuple[str, int]]] = {alias: [] for alias, _table in shape.tables}
+    for index, predicate in enumerate(shape.join_predicates):
+        left_alias, left_column = _column_ref(predicate.this)
+        right_alias, right_column = _column_ref(predicate.expression)
+        join_key_columns[left_alias].append((left_column, index))
+        join_key_columns[right_alias].append((right_column, index))
     frames = {
-        alias: _prefixed_expression_frame(ctx, table_name, alias, local_predicates[alias], join_key_columns[alias])
-        for alias, table_name in tables
+        alias: _prefixed_expression_frame(
+            ctx,
+            table_name,
+            alias,
+            shape.local_predicates[alias],
+            join_key_columns[alias],
+            shape.referenced_columns[alias],
+        )
+        for alias, table_name in shape.tables
     }
 
-    result = frames[tables[0][0]]
+    result = frames[shape.anchor]
     used_indices: set[int] = set()
-    for step in _plan_join_sequence(tables, join_predicates):
+    for step in shape.steps:
         if step.predicate_index < 0:
             result = result.join(frames[step.new_alias], how="cross")
             continue
+        keys = _step_keys(step)
         result = result.join(
             frames[step.new_alias],
-            left_on=_join_key(step.existing_alias, step.existing_column, step.predicate_index),
-            right_on=_join_key(step.new_alias, step.new_column, step.predicate_index),
+            left_on=[_join_key(key.existing_alias, key.existing_column, key.predicate_index) for key in keys],
+            right_on=[_join_key(step.new_alias, key.new_column, key.predicate_index) for key in keys],
         )
-        used_indices.add(step.predicate_index)
+        used_indices.update(key.predicate_index for key in keys)
 
-    used_join_predicates = {id(join_predicates[index]) for index in used_indices}
-    for predicate in predicates:
+    used_join_predicates = {id(shape.join_predicates[index]) for index in used_indices}
+    for predicate in shape.predicates:
         if id(predicate) not in used_join_predicates:
             result = result.filter(_expression_condition(ctx, predicate))
 
@@ -272,6 +460,10 @@ def _execute_joinorder_expression_query(ctx: DataFrameContext, query_id: str) ->
             for alias, column, output_alias in _select_min_columns(tree)
         ]
     )
+
+
+def _execute_joinorder_expression_query(ctx: DataFrameContext, query_id: str) -> Any:
+    return _run_expression_query(ctx, parse_one(_QUERY_MANAGER.get_query(query_id), read="duckdb"))
 
 
 def _native_pandas_frame(frame: Any) -> Any:
@@ -352,10 +544,15 @@ def _filter_pandas(frame: pd.DataFrame, predicate: exp.Expression) -> pd.DataFra
 
 
 def _prefixed_pandas_frame(
-    ctx: DataFrameContext, table_name: str, alias: str, predicates: list[exp.Expression]
+    ctx: DataFrameContext,
+    table_name: str,
+    alias: str,
+    predicates: list[exp.Expression],
+    referenced_columns: set[str],
 ) -> pd.DataFrame:
     frame = _native_pandas_frame(ctx.get_table(table_name))
-    frame = frame.rename(columns={column: _qualified(alias, column) for column in _TABLE_COLUMNS[table_name]})
+    columns = [column for column in _TABLE_COLUMNS[table_name] if column in referenced_columns]
+    frame = frame[columns].rename(columns={column: _qualified(alias, column) for column in columns})
     for predicate in predicates:
         frame = _filter_pandas(frame, predicate)
     return frame
@@ -370,41 +567,34 @@ def _empty_safe_min(frame: Any, column: str) -> Any:
     return None if pd.isna(value) else value
 
 
-def _execute_joinorder_pandas_query(ctx: DataFrameContext, query_id: str) -> pd.DataFrame:
+def _run_pandas_query(ctx: DataFrameContext, tree: exp.Select) -> pd.DataFrame:
     import pandas as pd
 
-    tree = parse_one(_QUERY_MANAGER.get_query(query_id), read="duckdb")
-    tables = _sql_tables(tree)
-    predicates = _flatten_and(tree.args["where"].this)
-    join_predicates = [predicate for predicate in predicates if _is_join_equality(predicate)]
-    local_predicates = {
-        alias: [
-            predicate
-            for predicate in predicates
-            if not _is_join_equality(predicate) and _aliases_in(predicate) == {alias}
-        ]
-        for alias, _table in tables
-    }
+    shape = _analyze_query(tree)
     frames = {
-        alias: _prefixed_pandas_frame(ctx, table_name, alias, local_predicates[alias]) for alias, table_name in tables
+        alias: _prefixed_pandas_frame(
+            ctx, table_name, alias, shape.local_predicates[alias], shape.referenced_columns[alias]
+        )
+        for alias, table_name in shape.tables
     }
 
-    result = frames[tables[0][0]]
+    result = frames[shape.anchor]
     used_indices: set[int] = set()
-    for step in _plan_join_sequence(tables, join_predicates):
+    for step in shape.steps:
         if step.predicate_index < 0:
             result = result.merge(frames[step.new_alias], how="cross")
             continue
+        keys = _step_keys(step)
         result = result.merge(
             frames[step.new_alias],
-            left_on=_qualified(step.existing_alias, step.existing_column),
-            right_on=_qualified(step.new_alias, step.new_column),
+            left_on=[_qualified(key.existing_alias, key.existing_column) for key in keys],
+            right_on=[_qualified(step.new_alias, key.new_column) for key in keys],
             how="inner",
         )
-        used_indices.add(step.predicate_index)
+        used_indices.update(key.predicate_index for key in keys)
 
-    used_join_predicates = {id(join_predicates[index]) for index in used_indices}
-    for predicate in predicates:
+    used_join_predicates = {id(shape.join_predicates[index]) for index in used_indices}
+    for predicate in shape.predicates:
         if id(predicate) not in used_join_predicates:
             result = _filter_pandas(result, predicate)
 
@@ -416,6 +606,10 @@ def _execute_joinorder_pandas_query(ctx: DataFrameContext, query_id: str) -> pd.
             }
         ]
     )
+
+
+def _execute_joinorder_pandas_query(ctx: DataFrameContext, query_id: str) -> pd.DataFrame:
+    return _run_pandas_query(ctx, parse_one(_QUERY_MANAGER.get_query(query_id), read="duckdb"))
 
 
 def _make_generated_expression_impl(query_id: str) -> QueryImpl:
