@@ -142,12 +142,12 @@ def _build_rows(bundle_paths: Sequence[Path]) -> list[_RollupRow]:
     return rows
 
 
-_TUNING_PRIVACY_MARKER = "unanonymized tuning"
+_TUNING_PRIVACY_PREFIX = "Public privacy contract rejects unanonymized tuning diagnostics"
 
 
 def _validate_publishable_form(bundle_path: Path) -> list[ValidationResult]:
     raw = validate_bundles([bundle_path])
-    if not any(_TUNING_PRIVACY_MARKER in error for result in raw for error in result.errors):
+    if not any(error.startswith(_TUNING_PRIVACY_PREFIX) for result in raw for error in result.errors):
         return raw
     redacted, scratch = _redacted_publish_source(bundle_path)
     if redacted is None:
@@ -159,7 +159,7 @@ def _validate_publishable_form(bundle_path: Path) -> list[ValidationResult]:
             scratch.cleanup()
     if publishable:
         for error in raw[0].errors:
-            if _TUNING_PRIVACY_MARKER not in error and error not in publishable[0].errors:
+            if not error.startswith(_TUNING_PRIVACY_PREFIX) and error not in publishable[0].errors:
                 publishable[0].error(error)
     return publishable
 

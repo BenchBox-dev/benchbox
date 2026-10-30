@@ -242,12 +242,11 @@ def test_run_validate_redacts_companion_only_tuning_statements(tmp_path: Path):
     assert "unanonymized tuning" not in out.rollup_tsv_path.read_text(encoding="utf-8")
 
 
-def test_run_validate_keeps_non_privacy_errors_from_original_bundle(tmp_path: Path):
+def test_publishable_form_keeps_non_privacy_errors_from_original_bundle(tmp_path: Path):
     source = _export_local_result(tmp_path / "results", "SET threads TO 1")
-    source.with_name(f"{source.stem}.manifest.json").write_text('{"funding": "not-a-funding-source"}', encoding="utf-8")
+    source.with_name(f"{source.stem}.manifest.json").write_text('{"funding": "unanonymized tuning"}', encoding="utf-8")
 
-    out = validate.run_validate(source.parent, output_tsv=tmp_path / "rollup.tsv", floor=0.0)
+    errors = [error for result in validate._validate_publishable_form(source) for error in result.errors]
 
-    text = out.rollup_tsv_path.read_text(encoding="utf-8")
-    assert "unanonymized tuning" not in text
-    assert out.error_count == 1
+    assert not any(error.startswith("Public privacy contract") for error in errors)
+    assert "Submission manifest has no bundle_hash field" in errors
