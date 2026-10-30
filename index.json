@@ -17636,6 +17636,13 @@
       "status": "open",
       "title": "Use stage + COPY INTO for Databend loading"
     },
+    "perf-duckdb-wire-native-handlers-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Wire DuckDB Vortex/DuckLake handlers; stop to_pylist in format handlers"
+    },
     "perf-firebolt-core-bulk-load-20261030": {
       "claim": null,
       "needs": [],

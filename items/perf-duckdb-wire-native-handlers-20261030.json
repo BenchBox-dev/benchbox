@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "DuckDB loads Vortex, DuckLake and Iceberg without to_pylist.",
+    "Test asserts the factory returns the native handler for each format."
+  ],
+  "description": "DuckDB's handler factory (duckdb.py:893-923) only routes Delta, CSV and Parquet. Vortex files and DuckLake/Iceberg dirs fall to generic handlers (base/data_loading.py:1080-1390) that read the full table to Arrow, call to_pylist(), then executemany. DuckDBVortexHandler (duckdb.py:1395) and DuckDBDuckLakeHandler (:1206) exist but are unused. Wire them in; for generic handlers on engines that accept Arrow, use INSERT ... SELECT FROM the Arrow table.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:root@vm:2d53e6a98f44f4f4a8a4dedd",
+      "at": "2026-10-30T17:55:36Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "07863309d85640958d837e80b9929b9b",
+      "session_id": "be00837164104ac2b4ed790cdb6812a2"
+    }
+  ]
+}
