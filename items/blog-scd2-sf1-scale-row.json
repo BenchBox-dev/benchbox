@@ -1,5 +1,5 @@
 {
-  "context": "Small factual addition. Re-measure SF1 rather than reuse the audit's ~13.3 ms,\nthen extend the existing table and soften the \"~1.7x\" sentence to acknowledge the\nnon-constant per-decade rate. Draft is unpublished, so this is low urgency.\n",
+  "context": "Small factual addition. Re-measure SF1 rather than reuse the audit's ~13.3 ms,\nthen extend the existing table and soften the \"~1.7x\" sentence to acknowledge the\nnon-constant per-decade rate. Draft is unpublished, so this is low urgency.\n\n\nMoved to the BenchBox-dev/benchbox-site tracker (todo-state branch of that repository) under the same id on 2026-10-30; track it there.",
   "description": "Follow-up deferred from scd2-docs-and-count-hygiene-followup (audit finding N12)\nand re-deferred from scd2-basic-idempotency-and-cleanup-scoping w4, which updated\nthe blog line counts (18 -> 20) but did not add the third scale point.\n\nThe SCD2 blog draft\n(_blog/platform-deep-dives/drafts/apply-changes-into-vs-standard-sql.md) presents\nthe \"change-batch-bound, not dimension-bound\" scale claim on only two points\n(SF0.01 and SF0.1, ~1.7x). Adding an SF1 row makes the growth curve honest: the\naudit re-derivation measured SF1.0 basic median ~13.3 ms against a 150,000-row\ndimension, i.e. 100x data costs ~6.4x, and the per-decade rate is NOT constant\n(~1.74x then ~3.66x). The two-point presentation reads flatter than the curve.\n\nScope: blog draft only (the research note already records the SF1 figure in its\nscale-independence section). Re-measure SF1 before publishing rather than\ntrusting the stale audit number, since the idempotency guard changed basic's SQL.\n",
   "legacy": {
     "anti_patterns": [
@@ -105,5 +105,15 @@
         "wid": "w2"
       }
     ]
-  }
+  },
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-30T23:04:59Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "42957c98efd34aeb9526b456b578c00a",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
+    }
+  ]
 }
