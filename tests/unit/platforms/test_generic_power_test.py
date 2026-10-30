@@ -223,3 +223,20 @@ class TestGenericPowerTest:
         assert len(failed_results) == 2
         assert all("iteration" in r for r in failed_results)
         assert all(r["run_type"] == "measurement" for r in failed_results)
+
+    def test_dialect_queries_resolved_once_for_all_passes(self, mock_adapter, mock_benchmark, mock_connection):
+        run_config = {
+            "benchmark_name": "tpch",
+            "iterations": 3,
+            "warm_up_iterations": 1,
+            "scale_factor": 1.0,
+        }
+        resolved = {"Q1": "SELECT 1"}
+        mock_adapter._get_dialect_queries = MagicMock(return_value=resolved)
+        mock_adapter._execute_all_queries.side_effect = [[{"query_id": "Q1", "status": "SUCCESS"}] for _ in range(4)]
+
+        mock_adapter._execute_generic_power_test(mock_benchmark, mock_connection, run_config)
+
+        assert mock_adapter._get_dialect_queries.call_count == 1
+        for call in mock_adapter._execute_all_queries.call_args_list:
+            assert call.args[3] is resolved

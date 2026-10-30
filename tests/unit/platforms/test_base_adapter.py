@@ -3013,7 +3013,7 @@ class TestExecuteGenericPowerTest:
         adapter = self._make_adapter()
         call_count = [0]
 
-        def fake_execute_all(benchmark, connection, run_config):
+        def fake_execute_all(benchmark, connection, run_config, dialect_queries=None):
             call_count[0] += 1
             return [
                 {"query_id": "Q1", "execution_time_seconds": 0.5, "status": "SUCCESS", "rows_returned": 10},
@@ -3038,7 +3038,7 @@ class TestExecuteGenericPowerTest:
         adapter = self._make_adapter()
         call_count = [0]
 
-        def fake_execute_all(benchmark, connection, run_config):
+        def fake_execute_all(benchmark, connection, run_config, dialect_queries=None):
             call_count[0] += 1
             return [{"query_id": "Q1", "execution_time_seconds": 0.0, "status": "FAILED", "rows_returned": 0}]
 
@@ -3056,7 +3056,7 @@ class TestExecuteGenericPowerTest:
         adapter = self._make_adapter()
         call_count = [0]
 
-        def fake_execute_all(benchmark, connection, run_config):
+        def fake_execute_all(benchmark, connection, run_config, dialect_queries=None):
             call_count[0] += 1
             return [
                 {"query_id": "Q1", "execution_time_seconds": 0.3, "status": "SUCCESS", "rows_returned": 5},
@@ -3075,7 +3075,7 @@ class TestExecuteGenericPowerTest:
     def test_summary_printed_with_success_rate(self, mock_console):
         adapter = self._make_adapter()
 
-        def fake_execute_all(benchmark, connection, run_config):
+        def fake_execute_all(benchmark, connection, run_config, dialect_queries=None):
             return [{"query_id": "Q1", "execution_time_seconds": 1.0, "status": "SUCCESS", "rows_returned": 3}]
 
         adapter._execute_all_queries = fake_execute_all
@@ -3091,7 +3091,7 @@ class TestExecuteGenericPowerTest:
     @patch("benchbox.platforms.base.execution.quiet_console")
     def test_no_summary_for_empty_results(self, _mock_console):
         adapter = self._make_adapter()
-        adapter._execute_all_queries = lambda b, c, r: []
+        adapter._execute_all_queries = lambda b, c, r, d=None: []
         run_config = {"iterations": 1, "warm_up_iterations": 0}
 
         results = adapter._execute_generic_power_test(Mock(), Mock(), run_config)

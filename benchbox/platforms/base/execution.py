@@ -171,10 +171,15 @@ class TestDriversMixin:
         console.print(f"[green]Warm-up runs: {warm_up_iterations}, Measurement runs: {iterations}[/green]")
 
         all_measurement_results = []
+        dialect_queries = self._get_dialect_queries(
+            benchmark,
+            benchmark_slug=benchmark_name,
+            connection=connection,
+        )
 
         for i in range(warm_up_iterations):
             console.print(f"[cyan]--- Warm-up Run {i + 1}/{warm_up_iterations} ---[/cyan]")
-            warmup_results = self._execute_all_queries(benchmark, connection, run_config)
+            warmup_results = self._execute_all_queries(benchmark, connection, run_config, dialect_queries)
             for result in warmup_results:
                 result["iteration"] = 0
                 result["stream_id"] = 0
@@ -183,7 +188,7 @@ class TestDriversMixin:
 
         for i in range(iterations):
             console.print(f"[cyan]--- Measurement Run {i + 1}/{iterations} ---[/cyan]")
-            iteration_results = self._execute_all_queries(benchmark, connection, run_config)
+            iteration_results = self._execute_all_queries(benchmark, connection, run_config, dialect_queries)
 
             for result in iteration_results:
                 result["iteration"] = i + 1
@@ -1137,14 +1142,24 @@ class TestDriversMixin:
         else:
             console.print(f"[green]Completed all {total_queries} queries.[/green]")
 
-    def _execute_all_queries(self, benchmark, connection: Any, run_config: dict) -> list[dict[str, Any]]:
+    def _execute_all_queries(
+        self,
+        benchmark,
+        connection: Any,
+        run_config: dict,
+        dialect_queries: dict | None = None,
+    ) -> list[dict[str, Any]]:
 
         console = quiet_console
 
-        queries = self._get_dialect_queries(
-            benchmark,
-            benchmark_slug=run_config.get("benchmark_name", ""),
-            connection=connection,
+        queries = (
+            dialect_queries
+            if dialect_queries is not None
+            else self._get_dialect_queries(
+                benchmark,
+                benchmark_slug=run_config.get("benchmark_name", ""),
+                connection=connection,
+            )
         )
         benchmark_name = run_config.get("benchmark_name", "")
         queries = self._filter_queries(queries, benchmark, benchmark_name, run_config)
