@@ -37,7 +37,7 @@ def _factor(disjunction: exp.Or) -> list[exp.Expr] | None:
 
 
 def factor_shared_or_conjuncts(expression: exp.Expr) -> exp.Expr:
-    for where in list(expression.find_all(exp.Where)):
+    for where in reversed(list(expression.find_all(exp.Where))):
         conjuncts = _flatten(where.this, exp.And)
         rebuilt: list[exp.Expr] = []
         changed = False

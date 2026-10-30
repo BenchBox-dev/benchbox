@@ -45,3 +45,12 @@ def test_or_without_a_common_join_key_is_untouched():
 def test_shared_non_join_conjunct_is_not_factored():
     sql = "SELECT 1 FROM t WHERE (a.y = 1 AND a.z = 2) OR (a.y = 1 AND a.z = 3)"
     assert rewrite_query(sql) == sql
+
+
+def test_nested_where_inside_a_rewritten_outer_where_is_factored_too():
+    sql = (
+        "SELECT 1 FROM t WHERE (a.x = b.x AND a.y = 1) OR (a.x = b.x AND a.y = 2) AND k IN ("
+        "SELECT 2 FROM s WHERE (c.x = d.x AND c.y = 1) OR (c.x = d.x AND c.y = 2))"
+    )
+    rewritten = rewrite_query(sql)
+    assert "c.x = d.x AND (c.y = 1 OR c.y = 2)" in rewritten
