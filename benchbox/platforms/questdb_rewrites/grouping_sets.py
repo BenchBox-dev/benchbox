@@ -9,7 +9,7 @@ ORDER = 200
 _GROUP_PREFIX = "__g"
 _FLAG_PREFIX = "__f"
 _AGG_PREFIX = "__a"
-_RESULT_ALIAS = "__grouping_sets"
+_RESULT_ALIAS = "__staged"
 _STAGE_ARGS = ("with_", "having", "qualify", "order", "limit", "offset", "distinct")
 
 

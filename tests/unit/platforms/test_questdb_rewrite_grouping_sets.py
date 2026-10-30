@@ -18,7 +18,7 @@ def test_rollup_expands_to_one_select_per_level():
         "SELECT a AS __g0, b AS __g1, SUM(x) AS __a0 FROM t GROUP BY a, b "
         "UNION ALL SELECT a AS __g0, NULL AS __g1, SUM(x) AS __a0 FROM t GROUP BY a "
         "UNION ALL SELECT NULL AS __g0, NULL AS __g1, SUM(x) AS __a0 FROM t"
-        ") AS __grouping_sets"
+        ") AS __staged"
     )
 
 
@@ -59,7 +59,7 @@ def test_window_over_rolled_up_aggregate_runs_after_union():
 
 def test_having_becomes_outer_filter():
     assert rewrite_query("SELECT a, SUM(x) FROM t GROUP BY ROLLUP (a) HAVING SUM(x) > 1").endswith(
-        ") AS __grouping_sets WHERE __a0 > 1"
+        ") AS __staged WHERE __a0 > 1"
     )
 
 
