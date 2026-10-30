@@ -102,6 +102,7 @@ def test_regeneration_by_another_rewrite_keeps_lowercase_units(monkeypatch):
     monkeypatch.setattr(questdb_rewrites, "_modules", lambda: (Marker, *discovered))
     assert rewrite_query("SELECT DATE_TRUNC('day', ts) FROM t") == "SELECT DATE_TRUNC('day', ts) FROM t WHERE 1 = 1"
 
+
 def test_between_becomes_range_comparison():
     assert (
         rewrite_query("SELECT * FROM t WHERE dbl BETWEEN 0.05 AND 7.0")
@@ -180,3 +181,15 @@ def test_parenthesised_create_table_as_select_is_left_unchanged():
 def test_plain_create_table_is_left_unchanged():
     sql = "CREATE TABLE t (a INT)"
     assert rewrite_query(sql) == sql
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        ("SELECT ANY_VALUE(c_name) FROM c GROUP BY m", "SELECT FIRST(c_name) FROM c GROUP BY m"),
+        ("SELECT APPROX_DISTINCT(a) FROM t", "SELECT APPROX_COUNT_DISTINCT(a) FROM t"),
+        ("SELECT APPROX_QUANTILE(q, 0.5) FROM t", "SELECT APPROX_PERCENTILE(q, 0.5) FROM t"),
+    ],
+)
+def test_function_names_are_mapped_to_questdb_equivalents(source, expected):
+    assert rewrite_query(source) == expected

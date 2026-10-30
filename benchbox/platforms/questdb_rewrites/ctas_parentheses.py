@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from benchbox._vendor.sqlglot import exp
+from benchbox.platforms.questdb_rewrites import exp
 
 ORDER = 120
 
