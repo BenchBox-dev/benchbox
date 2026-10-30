@@ -145,6 +145,13 @@ class TestAIPrimitivesBenchmark:
 
         assert queries == {}
 
+    @pytest.mark.parametrize("dialect", ["duckdb", "spark", "sqlite"])
+    def test_get_queries_unsupported_dialect_is_empty(self, ai_benchmark, dialect):
+        assert ai_benchmark.get_queries(dialect=dialect) == {}
+
+    def test_get_queries_supported_dialect(self, ai_benchmark):
+        assert len(ai_benchmark.get_queries(dialect="snowflake")) > 0
+
     def test_get_benchmark_info(self, ai_benchmark):
 
         info = ai_benchmark.get_benchmark_info()
