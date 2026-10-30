@@ -5,7 +5,7 @@
     "A test covers the stale-baseline case.",
     "No visual tolerance is loosened, and no capture is excluded."
   ],
-  "context": "The diagnostics artifact `public-site-visual-diagnostics-38612765430` (artifact IDs 11921847821 and 11920436721) holds the current captures and the Playwright error context. It expires about 3 days after 2026-10-14, so download it first.\n\nRelevant code:\n- `.github/workflows/ci.yml`: the `visual-inputs` outputs `render_changed`, `base_sha` and `baseline_candidates` (around line 1451), and the job `public-site-visual-regression` (around line 1646);\n- `results-explorer/scripts/download-public-site-visual-baseline.mjs`;\n- `results-explorer/e2e/captures/public-site-pages.spec.ts`.\n\nNote that `check_explorer_compat.py` is listed as a site input in `scripts/site_inputs.py:303`, which is why render_changed was true before the rebase.",
+  "context": "The diagnostics artifact `public-site-visual-diagnostics-38612765430` (artifact IDs 11921847821 and 11920436721) holds the current captures and the Playwright error context. It expires about 3 days after 2026-10-14, so download it first.\n\nRelevant code:\n- `.github/workflows/ci.yml`: the `visual-inputs` outputs `render_changed`, `base_sha` and `baseline_candidates` (around line 1451), and the job `public-site-visual-regression` (around line 1646);\n- `results-explorer/scripts/download-public-site-visual-baseline.mjs`;\n- `results-explorer/e2e/captures/public-site-pages.spec.ts`.\n\nNote that `check_explorer_compat.py` is listed as a site input in `scripts/site_inputs.py:303`, which is why render_changed was true before the rebase.\n\nMoved to the BenchBox-dev/benchbox-site tracker (todo-state branch of that repository) under the same id on 2026-10-30; track it there.",
   "description": "PR #2960 changed only `scripts/publication/check_explorer_compat.py` and its unit test. The \"Public-site visual regression\" job still failed twice (run 38612765430, attempts 1 and 2, job 116045844509). It reported \"visual baseline mismatch\" for all 12 /results/, /results/benchmarks/ and /results/platforms/ captures at 390, 768, 1280 and 1600 px. The landing, getting-started and release-overview pages matched.\n\nAfter the branch was rebased onto develop 6296e0a2d, the job was skipped (render_changed=false) and the PR merged as 478e946de. The rebase removed the symptom, but the cause was never confirmed. The likely cause is that the baseline came from an older site-equivalent ancestor, whose results data differed from the PR's merge ref, rather than from the exact base.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/2960",
@@ -19,6 +19,14 @@
       "op": "create",
       "op_id": "cde76ef0a3454e259d8c4b7e7f030171",
       "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-30T23:05:17Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d7e776930dec4c4681f8a94b0f7fc771",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
     }
   ]
 }
