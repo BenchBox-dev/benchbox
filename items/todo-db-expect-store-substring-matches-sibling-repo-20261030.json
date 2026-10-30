@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "A server bound to https://github.com/BenchBox-dev/benchbox-site.git refuses expect_store BenchBox-dev/BenchBox with the E_STATE gate",
+    "A server bound to https://github.com/BenchBox-dev/BenchBox.git accepts BenchBox-dev/BenchBox and BenchBox-dev/BenchBox.git, and refuses BenchBox-dev/benchbox-site",
+    "Tests cover HTTPS, SSH (git@github.com:owner/repo.git) and local-path remotes",
+    "The vendored wheel in _project/scripts is updated to the fixed release"
+  ],
+  "description": "get_instructions compares expect_store as a case-insensitive substring of the bound state remote. Since BenchBox-dev/benchbox-site gained its own tracker, the value the todo skill tells core sessions to pass, BenchBox-dev/BenchBox, also matches https://github.com/BenchBox-dev/benchbox-site.git. Observed on 2026-10-30 with todo-db 0.11.0 bound to the site store: expect_store BenchBox-dev/BenchBox was accepted, while BenchBox-dev/BenchBox.git and BenchBox-dev/benchbox-site behaved correctly. A core session whose server was started from the site clone would therefore write core items into the site tracker without being refused.\n\nMatch owner/repo against the remote's path exactly (ignoring a trailing .git and case), for HTTPS, SSH and local-path remotes. Until that ships, core sessions can pass BenchBox-dev/BenchBox.git.",
+  "links": [
+    "BenchBox-dev/BenchBox: _project/scripts/vendor/",
+    "BenchBox-dev/benchbox-site: AGENTS.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-30T21:06:30Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "bbf10028f2b34f809d5ffff90dcd4b9a",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
+    }
+  ]
+}

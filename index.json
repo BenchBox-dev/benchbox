@@ -27161,6 +27161,13 @@
       "status": "done",
       "title": "G5: cut over to the DB-backed TODO tracker (freeze & delete legacy)"
     },
+    "todo-db-expect-store-substring-matches-sibling-repo-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Make expect_store refuse a store whose repository name merely starts with the expected one"
+    },
     "todo-db-git-backend-checkout-timeout-resilience": {
       "claim": null,
       "needs": [],
