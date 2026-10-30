@@ -16,9 +16,9 @@ def test_metadata_primitives_is_blocked_for_missing_information_schema(unsupport
     assert "INFORMATION_SCHEMA" in unsupported["metadata_primitives"]
 
 
-@pytest.mark.parametrize("benchmark", ["write_primitives", "transaction_primitives"])
-def test_row_level_dml_benchmarks_are_blocked(unsupported, benchmark):
-    assert "UNSUPPORTED_FEATURE.TABLE_OPERATION" in unsupported[benchmark]
+@pytest.mark.parametrize("benchmark_name", ["write_primitives", "transaction_primitives"])
+def test_row_level_dml_benchmarks_are_blocked(unsupported, benchmark_name):
+    assert "UNSUPPORTED_FEATURE.TABLE_OPERATION" in unsupported[benchmark_name]
 
 
 def test_supported_benchmarks_are_not_blocked(unsupported):
