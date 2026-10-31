@@ -2,9 +2,11 @@
   "acceptance": [
     "Each listed adapter fetches Arrow by default, with a config switch back to rows.",
     "Digests match the rows path.",
+    "BigQuery uses the Storage read API when the extra is installed.",
+    "Snowflake outcome recorded: works under pandas 3, or excluded with reason.",
     "A large-result query shows lower measured time on DuckDB."
   ],
-  "description": "Replace fetchall/list() with existing Arrow paths: DuckDB duckdb.py:1049 and MotherDuck motherduck.py:222 (fetch_arrow_table); Snowflake snowflake.py:1323,1334 (fetch_arrow_all); BigQuery bigquery.py:1561 (to_arrow with BQ Storage); Databricks databricks/adapter.py:2486 (fetchall_arrow); GizmoSQL via base/sql_execution.py:84 (fetch_arrow_table, wrapper exists at gizmosql.py:310); Athena athena.py:961 (pyathena ArrowCursor); ClickHouse Cloud clickhouse/client.py:266-270 (query_arrow); InfluxDB influxdb/client.py:166-197 (drop per-cell as_py loops); chDB clickhouse/client.py:95-107 (keep pa.Table, skip to_pandas).",
+  "description": "Replace fetchall/list() with Arrow paths in the current drivers (versions from uv.lock): DuckDB 1.5.5 duckdb.py:1049 and MotherDuck motherduck.py:222 — use to_arrow_table/to_arrow_reader (fetch_arrow_table is deprecated); Databricks databricks/adapter.py:2486 (fetchall_arrow); GizmoSQL gizmosql.py:1101 goes through base/sql_execution.py:84 fetchall — use fetch_arrow_table (wrapper at gizmosql.py:310 is only used for schema); Athena athena.py:961 (pyathena 3.36 ArrowCursor / as_arrow); ClickHouse Cloud clickhouse/client.py:257-269 (clickhouse-connect 1.8 query_arrow); chDB clickhouse/client.py:85-107 (keep pa.Table, skip to_pandas); InfluxDB influxdb/client.py:186-196 FlightSQL path only (per-cell as_py; the influxdb3 path at :166-177 is column-wise already). BigQuery bigquery.py:1561: to_arrow works but needs google-cloud-bigquery-storage (not locked) to beat REST; add the bqstorage extra. Snowflake snowflake.py:1323,1334: fetch_arrow_all is gated on the connector's pandas extra, which pins pandas<3 while the project needs pandas>=3 — verify it works or drop Snowflake from this item. Also cover CursorValidationQueryExecutionMixin (core/benchmark_mixins.py:182-189), which calls fetchall inside the timer for Presto/Trino, Redshift and Firebolt; those drivers have no Arrow path, so at minimum avoid double materialization.",
   "sessions": [
     {
       "actor": "mcp:claude-code:root@vm:2d53e6a98f44f4f4a8a4dedd",
@@ -13,6 +15,14 @@
       "op": "create",
       "op_id": "118f211b9f0946eb97691bd3a2868ea0",
       "session_id": "be00837164104ac2b4ed790cdb6812a2"
+    },
+    {
+      "actor": "mcp:claude-code:root@vm:cb45f246c9de058740ccbeed",
+      "at": "2026-10-31T00:36:03Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "746dddb7df9f4e2982e5a6b22e53c43a",
+      "session_id": "d2b018a349924f4f88b746458c80b878"
     }
   ]
 }
