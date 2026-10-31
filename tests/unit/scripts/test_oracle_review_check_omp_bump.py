@@ -62,7 +62,7 @@ def texts(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
 def _gate(comments: list[dict[str, Any]], files: list[str] | None = None) -> tuple[int, str]:
     files = [POLICY_PATH] if files is None else files
     refusals = check.fetch_bump_refusals("t", "o/r", _pull(len(files)), files, len(files), comments)
-    return check.decide(HEAD, files, [], [], lambda _f: True, None, [], bump_refusals=refusals)
+    return check.decide(HEAD, files, [], lambda _f: True, None, [], bump_refusals=refusals)
 
 
 def test_a_pin_bump_with_no_owner_evidence_is_held(texts: dict[str, str]) -> None:

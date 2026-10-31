@@ -97,7 +97,6 @@ def _decide(**kwargs: Any) -> tuple[int, str]:
         HEAD,
         kwargs.pop("files", SOUNDNESS),
         kwargs.pop("statuses", [_status()]),
-        kwargs.pop("threads", []),
         gate.path_matcher(2, 2, *gate._review_rules()),
         kwargs.pop("base_date", None),
         kwargs.pop("comments", []),
@@ -525,51 +524,6 @@ def test_a_review_edit_lookup_missing_any_field_fails_closed(net: Network, paylo
         gate.fetch_review_edit("tok", "N9")
 
 
-def _threads_page(nodes: list[dict[str, Any]], next_cursor: str | None) -> dict[str, Any]:
-    return {
-        "data": {
-            "repository": {
-                "pullRequest": {
-                    "reviewThreads": {
-                        "pageInfo": {"hasNextPage": next_cursor is not None, "endCursor": next_cursor},
-                        "nodes": nodes,
-                    }
-                }
-            }
-        }
-    }
-
-
-def _thread_node(resolved: bool, author: dict[str, Any] | None) -> dict[str, Any]:
-    return {"isResolved": resolved, "comments": {"nodes": [{"author": author}] if author is not None else []}}
-
-
-def test_review_threads_are_read_page_by_page_with_the_cursor(net: Network) -> None:
-    bot = {"login": ORACLE.removesuffix("[bot]"), "__typename": "Bot"}
-    pages = {
-        None: _threads_page([_thread_node(False, bot)], "c1"),
-        "c1": _threads_page([_thread_node(True, None), _thread_node(True, {})], None),
-    }
-    net.graphql = lambda body: pages[body["variables"]["after"]]
-    assert gate.fetch_threads("tok", "o/r", 7) == [
-        {"resolved": False, "author": "benchbox-oracle", "author_type": "Bot"},
-        {"resolved": True, "author": None, "author_type": None},
-        {"resolved": True, "author": None, "author_type": None},
-    ]
-    assert [request["body"]["variables"] for request in net.requests] == [
-        {"owner": "o", "name": "r", "number": 7, "after": None},
-        {"owner": "o", "name": "r", "number": 7, "after": "c1"},
-    ]
-    assert all("reviewThreads" in request["body"]["query"] for request in net.requests)
-    _authorized(net)
-
-
-def test_review_thread_graphql_errors_fail_even_when_data_is_present(net: Network) -> None:
-    net.graphql = lambda body: {**_threads_page([], None), "errors": [{"message": "x"}]}
-    with pytest.raises(gate.CheckError):
-        gate.fetch_threads("tok", "o/r", 7)
-
-
 def test_the_head_commit_is_read_from_graphql(net: Network) -> None:
     net.graphql = lambda body: {"data": {"repository": {"pullRequest": {"headRefOid": HEAD}}}}
     assert gate.fetch_head_oid("tok", "o/r", 7) == HEAD
@@ -630,12 +584,7 @@ def _wire(
     net.rest["/repos/o/r/issues/7/comments"] = {"pages": {1: extra.get("comments", [])}}
     net.rest["/repos/o/r/issues/7/timeline"] = {"pages": {1: extra.get("timeline", [])}}
 
-    def graphql(body: dict[str, Any]) -> dict[str, Any]:
-        if "reviewThreads" in body["query"]:
-            return _threads_page([], None)
-        return {"data": {"node": {"lastEditedAt": None, "includesCreatedEdit": False}}}
-
-    net.graphql = graphql
+    net.graphql = lambda body: {"data": {"node": {"lastEditedAt": None, "includesCreatedEdit": False}}}
 
 
 def _run(monkeypatch: pytest.MonkeyPatch) -> int:
@@ -659,12 +608,10 @@ def test_a_reviewed_pull_request_passes_and_every_call_uses_the_token_and_target
         "/repos/o/r/issues/7/comments?per_page=100&page=1",
         "/repos/o/r/pulls/7/reviews?per_page=100&page=1",
     }
-    assert len(net.requests) == 8
+    assert len(net.requests) == 7
     bodies = [request["body"] for request in net.requests if request["body"] is not None]
-    assert [body["variables"] for body in bodies if "reviewThreads" in body["query"]] == [
-        {"owner": "o", "name": "r", "number": 7, "after": None}
-    ]
-    assert [body["variables"] for body in bodies if "reviewThreads" not in body["query"]] == [{"id": "N1"}]
+    assert not any("reviewThreads" in body["query"] for body in bodies)
+    assert [body["variables"] for body in bodies] == [{"id": "N1"}]
 
 
 def test_only_exempt_paths_stop_before_any_status_is_read(

@@ -105,7 +105,7 @@
       "reason": "the patch is unchanged since head <sha1>",
       "round": 1,
       "seen": [
-        1002
+        1001
       ],
       "strikes": 0,
       "struck_digests": []
@@ -166,6 +166,13 @@
         "context": "oracle-verdict",
         "creator": "benchbox-oracle[bot]",
         "description": "carried from <sha1:12>: SHIP [run <run>]",
+        "state": "success",
+        "target_url": "https://github.localhost/BenchBox-dev/BenchBox/actions/runs/<run>"
+      },
+      {
+        "context": "oracle-gate",
+        "creator": "benchbox-oracle[bot]",
+        "description": "oracle-review: pass (oracle verdict for <sha0>)",
         "state": "success",
         "target_url": "https://github.localhost/BenchBox-dev/BenchBox/actions/runs/<run>"
       }

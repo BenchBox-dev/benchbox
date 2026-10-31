@@ -1060,7 +1060,7 @@ cloud-verify:
 .PHONY: pr-preflight
 pr-preflight:
 	@set -eu; \
-	sh scripts/check_primary_clone_clean.sh; \
+	sh scripts/check_primary_clone_clean.sh report; \
 	$(MAKE) -s changelog-check; \
 	git fetch origin develop --quiet; \
 	PY_LIST=$$(mktemp); \

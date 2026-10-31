@@ -87,7 +87,7 @@ Markdown routes to the `docs` unit alone unless a test or audit reads it. `.gith
 | `results-data` | `results-data/`, submission validator, `benchbox/core/results/` | corpus inventory and validation, submission validator sync, corpus and explorer-pipeline contract tests |
 | `docs` | `docs/`, examples, the prompt catalog, CLI and registries | example and docs reference validation, docs generators, spell check |
 | `tooling` | every event | content guard, skill integrity, and audit checks by path |
-| `oracle-gate` | every PR, from `develop` code on trusted triggers | `benchbox-oracle` success `oracle-verdict` status on the current head, or the stand-in approval, with oracle threads resolved; inert-only changes report success. Posted by the `benchbox-oracle` App, so it needs `ORACLE_APP_ID` and `ORACLE_APP_PRIVATE_KEY` in the `oracle` environment, else nothing is posted and the head cannot merge |
+| `oracle-gate` | every PR, from `develop` code on trusted triggers | `benchbox-oracle` success `oracle-verdict` status on the current head, or the stand-in approval; inert-only changes report success. Open review threads are enforced by the ruleset's required thread resolution, not by this status. Posted by the `benchbox-oracle` App from the verdict run right after its review and from `oracle-gate.yml` for stand-in comments, head and base changes and the scheduled sweep, so it needs `ORACLE_APP_ID` and `ORACLE_APP_PRIVATE_KEY` in the `oracle` environment, else nothing is posted and the head cannot merge |
 
 The Windows PR selection excludes tests changed only on `develop` unless the PR changes them or the
 coverage, importer or reader selection reaches them. POSIX-only repository
@@ -250,8 +250,7 @@ when any of these holds:
 
 - The change touches only inert paths (see Inert-path manifest in `docs/internal/oracle-review-v2.md`).
 - The latest `oracle-verdict` commit status on the current head, created by the
-  `benchbox-oracle` App after any retarget, is success, and none of the App's
-  review threads is unresolved. Review bodies are not read, so editing or
+  `benchbox-oracle` App after any retarget, is success. Review bodies are not read, so editing or
   deleting a review cannot change the result; statuses from any other creator
   and the legacy `oracle-review-shadow` context are ignored.
 - An account in `STANDIN_ATTESTERS` (`_project/scripts/oracle_review_check.py`)
@@ -259,16 +258,16 @@ when any of these holds:
   after any retarget and after the oracle's latest verdict status on that head. Per
   `docs/agent/merge-authority.md`, an agent posts a stand-in only when the owner
   names the PR and its head in the current request, with a preceding `Owner instruction`
-  comment naming the PR, head, and covered findings. The comment is unedited and
-  no oracle thread is unresolved.
+  comment naming the PR, head, and covered findings. The comment is unedited.
 
 A plain owner comment does not count. See [soundness drain](soundness-drain.md).
 A stand-in comment makes `oracle-gate` re-evaluate at once. Resolving a review
-thread starts no workflow run; `make pr-arm` and `make pr-arm-remote` dispatch
-`oracle-gate` when the head's status is not `success`. For a PR that is already
-armed, run `gh workflow run oracle-gate.yml --ref develop -f pr=<number>`, or
-wait for the next sweep, which runs on every push to `develop` and on a
-schedule.
+thread starts no workflow run and needs no `oracle-gate` refresh: the ruleset's
+required thread resolution blocks the merge while a thread is open. `make
+pr-arm` and `make pr-arm-remote` dispatch `oracle-gate` when the head's status
+is not `success`. For a PR that is already armed, run
+`gh workflow run oracle-gate.yml --ref develop -f pr=<number>`, or wait for the
+next sweep, which runs on every push to `develop` and on a schedule.
 
 The live `develop-squash-only` ruleset binds `oracle-gate` to
 `integration_id` 5201041, the `benchbox-oracle` App's ID
@@ -286,8 +285,8 @@ context, but a same-repo pull request with `statuses: write` could still post
 a status with that name, so the workflow alone is not the enforcement; the
 integration-ID binding is (see the residual-risk note below). It applies the
 checker's rule unchanged: success when only exempt paths changed, when the
-App's latest `oracle-verdict` status on the head is success with no unresolved
-oracle thread, or when a valid stand-in covers the exact head, and failure otherwise.
+App's latest `oracle-verdict` status on the head is success,
+or when a valid stand-in covers the exact head, and failure otherwise.
 
 The workflow posts the context only when `ORACLE_APP_ID` and
 `ORACLE_APP_PRIVATE_KEY` are set as secrets in the `oracle` environment; when

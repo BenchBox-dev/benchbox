@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed TPC-DS Q23 failing on QuestDB with 'Invalid column: _u_0.*' by resolving the star column of a decorrelated scalar subquery over a single-column CTE to that CTE's column."
+    }
+  ]
+}

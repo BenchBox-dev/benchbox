@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed TPC-DS Q75 failing on QuestDB with 'no matching operator < with DECIMAL(76,4) < DOUBLE' by writing fractional literals compared with DECIMAL arithmetic as QuestDB decimal literals."
+    }
+  ]
+}

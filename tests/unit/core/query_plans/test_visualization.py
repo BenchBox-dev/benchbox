@@ -461,3 +461,57 @@ class TestStringOperatorTypeVisualization:
 
         assert "CustomOp1" in output
         assert "..." in output
+
+
+class TestJoinConditionRendering:
+    @staticmethod
+    def _join_plan(conditions: list[str]) -> QueryPlanDAG:
+        root = LogicalOperator(
+            operator_id="join_1",
+            operator_type=LogicalOperatorType.JOIN,
+            join_type=JoinType.INNER,
+            join_conditions=conditions,
+            children=[
+                LogicalOperator(operator_id="s1", operator_type=LogicalOperatorType.SCAN, table_name="a"),
+                LogicalOperator(operator_id="s2", operator_type=LogicalOperatorType.SCAN, table_name="b"),
+            ],
+        )
+        return QueryPlanDAG(query_id="q", platform="duckdb", logical_root=root)
+
+    def test_real_duckdb_join_plan_shows_conditions(self):
+        duckdb = pytest.importorskip("duckdb")
+        from benchbox.core.query_plans.parsers.duckdb import DuckDBQueryPlanParser
+
+        conn = duckdb.connect()
+        conn.execute("CREATE TABLE a(k INT, v INT); CREATE TABLE b(k INT, w INT)")
+        explain = conn.execute("EXPLAIN (FORMAT JSON) SELECT * FROM a JOIN b ON a.k = b.k AND a.v < b.w").fetchall()[0][
+            1
+        ]
+        plan = DuckDBQueryPlanParser().parse_explain_output("q", explain)
+
+        rendered = render_plan(plan)
+
+        assert "Join (type=inner)" in rendered
+        assert "k = k" in rendered
+        assert "v < w" in rendered
+
+    def test_long_condition_truncated(self):
+        rendered = render_plan(self._join_plan(["x" * 300]))
+        assert "x" * 117 + "..." in rendered
+        assert "x" * 121 not in rendered
+
+    def test_condition_count_capped(self):
+        rendered = render_plan(self._join_plan([f"a{i} = b{i}" for i in range(8)]))
+        assert "a4 = b4" in rendered
+        assert "a5 = b5" not in rendered
+        assert "+3 more" in rendered
+
+    def test_compact_hides_conditions(self):
+        rendered = render_plan(self._join_plan(["a = b"]), VisualizationOptions(compact=True))
+        assert "a = b" not in rendered
+
+    def test_json_wrapped_conditions_unwrapped(self):
+        wrapped = '{"Join Type": "INNER", "Conditions": "l_orderkey = o_orderkey"}'
+        rendered = render_plan(self._join_plan([wrapped]))
+        assert "- l_orderkey = o_orderkey" in rendered
+        assert "Join Type" not in rendered

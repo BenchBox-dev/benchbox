@@ -997,6 +997,55 @@ def test_dispatch_gate_and_base_read_raise_on_refusal(monkeypatch: pytest.Monkey
         github.pull_base_ref(REPO, 7, "app-token")
 
 
+def _fake_gate_module(monkeypatch: pytest.MonkeyPatch, code: int) -> list[Any]:
+    import types
+
+    requests: list[Any] = []
+    module = types.ModuleType("oracle_gate")
+    module.ERROR = 2
+    module.post_gate = lambda request, token: requests.append((request, token)) or code
+    monkeypatch.setitem(sys.modules, "oracle_gate", module)
+    return requests
+
+
+@pytest.mark.parametrize("code", [0, 1])
+def test_post_gate_evaluates_and_posts_the_head_with_the_given_token(
+    monkeypatch: pytest.MonkeyPatch, code: int
+) -> None:
+    requests = _fake_gate_module(monkeypatch, code)
+
+    github.post_gate(REPO, 7, SHA, "app-token")
+
+    request, token = requests[0]
+    assert token == "app-token"
+    assert (request.repo, request.pr, request.head_sha) == (REPO, 7, SHA)
+    assert request.no_post is False and request.pending_first is False
+
+
+def test_post_gate_runs_the_gate_code_and_policy_from_the_configured_root(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    scripts = tmp_path / "_project" / "scripts"
+    scripts.mkdir(parents=True)
+    (scripts / "oracle_gate.py").write_text(
+        "import os\nERROR = 2\n\n\ndef post_gate(request, token):\n    return 0 if os.getcwd() == os.environ['EXPECTED'] else 2\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delitem(sys.modules, "oracle_gate", raising=False)
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    monkeypatch.setenv(github.GATE_ROOT_ENV, str(tmp_path))
+    monkeypatch.setenv("EXPECTED", str(tmp_path.resolve()))
+    github.post_gate(REPO, 7, SHA, "app-token")
+    assert Path(sys.modules["oracle_gate"].__file__).resolve() == (scripts / "oracle_gate.py").resolve()
+    monkeypatch.delitem(sys.modules, "oracle_gate", raising=False)
+
+
+def test_post_gate_raises_when_the_gate_could_not_be_posted(monkeypatch: pytest.MonkeyPatch) -> None:
+    _fake_gate_module(monkeypatch, 2)
+    with pytest.raises(github.GitHubError, match="could not post oracle-gate for #7"):
+        github.post_gate(REPO, 7, SHA, "app-token")
+
+
 def _page(runs: int, total: int | None) -> dict[str, Any]:
     page: dict[str, Any] = {"workflow_runs": [{"id": index} for index in range(runs)]}
     if total is not None:
