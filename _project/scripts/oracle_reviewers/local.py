@@ -434,15 +434,16 @@ _handed_over: dict[str, str] = {}
 def withhold_secrets() -> None:
     global _handed_over
     descriptor = os.environ.pop(HANDOVER_ENV, None)
+    received: dict[str, str] = {}
     if descriptor is not None:
         with os.fdopen(int(descriptor), "r", encoding="utf-8") as handle:
-            _handed_over = json.load(handle)
-        return
+            received = json.load(handle)
     held = {name: os.environ[name] for name in sorted(SCRUBBED_AT_START) if os.environ.get(name)}
     if not held:
+        _handed_over = received
         return
     read, write = os.pipe()
-    os.write(write, json.dumps(held).encode("utf-8"))
+    os.write(write, json.dumps({**received, **held}).encode("utf-8"))
     os.close(write)
     os.set_inheritable(read, True)
     scrubbed = {name: value for name, value in os.environ.items() if name not in held}

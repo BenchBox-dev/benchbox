@@ -561,3 +561,31 @@ def test_no_phase_environment_carries_the_gateway_proxy_as_a_proxy_variable(
 
     assert not {"HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "https_proxy", "http_proxy"} & set(environ)
     assert environ[local.PROXY_ENV] == "http://127.0.0.1:1055"
+
+
+def test_a_secret_left_in_the_environment_is_still_withheld_when_a_handover_arrives(tmp_path: Path) -> None:
+    script = (
+        "import os, json\n"
+        "from _project.scripts.oracle_reviewers import local\n"
+        "if 'STAGED' not in os.environ:\n"
+        "    os.environ['STAGED'] = '1'\n"
+        "    r, w = os.pipe()\n"
+        "    os.write(w, json.dumps({'TS_AUTHKEY': 'a' * 16}).encode())\n"
+        "    os.close(w)\n"
+        "    os.set_inheritable(r, True)\n"
+        "    os.environ[local.HANDOVER_ENV] = str(r)\n"
+        "    os.environ['TYPESAFE_API_KEY'] = 'k' * 16\n"
+        "local.withhold_secrets()\n"
+        "print(json.dumps({'env': [n for n in local.SCRUBBED_AT_START if n in os.environ], 'held': local._handed_over}))\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=REPO_ROOT,
+        env={**os.environ, "PYTHONPATH": str(REPO_ROOT)},
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    report = json.loads(result.stdout.strip().splitlines()[-1])
+    assert report["env"] == []
+    assert report["held"] == {"TS_AUTHKEY": "a" * 16, "TYPESAFE_API_KEY": "k" * 16}
