@@ -854,6 +854,12 @@ class MetadataPrimitivesBenchmark(TranslatableQueryMixin, BaseBenchmark):
     def skip_dataframe_data_loading(self) -> bool:
         return True
 
+    def dataframe_loaded_tables(self, *, ctx: Any, adapter: Any) -> tuple[dict[str, int], list[str]] | None:
+        dataframes = self._get_registered_dataframes(ctx)
+        if not dataframes:
+            return None
+        return {name: int(adapter.get_row_count(df)) for name, df in dataframes.items()}, list(self.get_table_names())
+
     def get_dataframe_operations(
         self,
         platform_name: str,
