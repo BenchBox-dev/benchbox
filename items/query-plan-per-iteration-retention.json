@@ -5,7 +5,7 @@
     "Tests: two DataFrame iterations with different plans produce the variation record; identical plans do not.",
     "Bundle schema validation (if the companion has a schema) accepts the new field; a changelog fragment describes it; a benchbox-site issue is filed for the docs and Explorer viewer if they should show it."
   ],
-  "context": "Arose from PR #3711 review.\n\nGuardrails: do not store multiple full plans or change keys (that broke the one-entry contract before). Additive fields only.\n\nVerification rubric: (1) a regression test or reproduction fails before and passes after; (2) focused suites pass via uv run -- python -m pytest -n 0; (3) make comment-policy-check and ruff on touched files pass; (4) the runtime smoke named in acceptance is recorded in the PR body; (5) the PR merges with green CI and a passing oracle review.",
+  "context": "Merged via PR #3887 as d1a724dec. build_plans_payload groups rows per plan key; stored plan unchanged (last row); when executions captured >1 distinct fingerprint the entry gains fingerprint_varied: true and fingerprint_variants [{fingerprint, iteration, run_type}]. Agreeing and SQL entries unchanged. Tests in tests/unit/core/results/test_dataframe_plan_bundle.py; pr-preflight 2159 passed. Explorer/docs exposure tracked in benchbox-site#89.",
   "description": "The plans companion stores one entry per (query, stream, test_type) and records the iteration and run_type it came from. SQL capture explains each distinct executed SQL once, so SQL iterations cannot differ. DataFrame capture runs per execution, so iterations can produce different plans, and all but one are discarded silently. Decision (made in review, conservative): keep one stored plan per key, but record when iterations disagreed, so a bundle states whether cross-iteration plan stability held instead of hiding variation.",
   "links": [
     "benchbox/core/results/schema.py",
@@ -35,6 +35,14 @@
       "generation": "fdb8e2ee2009466db48194ef259ac591",
       "op": "take",
       "op_id": "177e2c1374e64233bcb269da30bcf797",
+      "session_id": "acb77716a5b0405bb727f738cdbd8942"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8d313df504e30c76edc4bc0f",
+      "at": "2026-10-31T22:24:42Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7cde620aa03248b3aafe1f589f9dd675",
       "session_id": "acb77716a5b0405bb727f738cdbd8942"
     }
   ]
