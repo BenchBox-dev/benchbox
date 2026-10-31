@@ -18786,17 +18786,12 @@
       "title": "Make make pr-open work without GraphQL"
     },
     "pr-open-stacked-draft-base-20261026": {
-      "claim": {
-        "expires_at": "2026-11-01T21:13:20Z",
-        "generation": "85b21edfe0434e98b9f362c1327e7455",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e"
-      },
+      "claim": null,
       "needs": [
         "oracle-local-findings-record-disputes-20261026"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Open stacked upper drafts through make pr-open so every PR passes the local review"
     },
     "pr-open-stacked-draft-live-smoke-20261031": {
