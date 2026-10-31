@@ -12717,9 +12717,9 @@
     },
     "heavy-guard-lock-core-20261030": {
       "claim": {
-        "expires_at": "2026-11-01T00:38:28Z",
+        "expires_at": "2026-11-01T09:26:23Z",
         "generation": "319085c77f9b4eab8db0b7fe9bc2e7c0",
-        "renewals": 0,
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:19f6136ffb052a6f71a9c702"
       },
       "needs": [],
