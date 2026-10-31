@@ -286,6 +286,16 @@ def test_composite_action_change_selects_workflow_tests_and_tests_naming_the_act
     ]
 
 
+def test_python_file_in_a_composite_action_selects_workflow_tests(repo: Path) -> None:
+    _write(repo, "tests/unit/workflows/test_every_workflow.py")
+    _write(repo, "tests/system/test_uses_action.py", "USES = './.github/actions/setup-env'\n")
+
+    assert pt.map_tests(repo, [".github/actions/setup-env/resolve.py"]) == [
+        "tests/system/test_uses_action.py",
+        "tests/unit/workflows/test_every_workflow.py",
+    ]
+
+
 def test_oracle_workflow_change_still_selects_the_scenario_harness(repo: Path) -> None:
     for test in pt.ORACLE_SCENARIO_TESTS:
         _write(repo, test)

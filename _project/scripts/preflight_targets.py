@@ -275,9 +275,9 @@ def map_tests(repo: Path, paths: list[str]) -> list[str]:
     sources: list[str] = []
     texts: dict[str, str] = {}
     for path in paths:
+        selected.update(_workflow_tests(repo, path, test_files, texts))
         if not path.endswith(".py"):
             selected.update(_guard_tests(path, test_files))
-            selected.update(_workflow_tests(repo, path, test_files, texts))
             continue
         pure = PurePosixPath(path)
         if _is_test_file(path):
