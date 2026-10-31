@@ -23916,7 +23916,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Serve /docs/ from the latest release and add canonical tags from /docs/dev/"
     },
     "site-result-formats-translator-runtime-docs": {
