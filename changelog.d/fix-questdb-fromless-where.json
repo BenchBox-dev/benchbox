@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed QuestDB rejecting SELECT ... WHERE without a FROM clause ('found , from or over expected'), which failed TPC-Havoc variants 7_v8, 12_v8, 13_v8 and 18_v4; EXISTS over such a filter is replaced by its condition and other filtered selects read from long_sequence(1)."
+    }
+  ]
+}
