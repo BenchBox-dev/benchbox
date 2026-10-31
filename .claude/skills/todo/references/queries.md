@@ -29,7 +29,10 @@ history yourself.
   current context when the write lands, without resending the existing text.
   It cannot be combined with `context`. Requires todo-db 0.11.0 or later.
 - Closing goes through `finish`. Dropping is a human decision reported to the
-  user (`drop` needs the `generation` if the task is claimed).
+  user. Once the owner decides, `drop(id=..., reason="...")` records their
+  decision and any successor in the same commit as the status change, with no
+  separate `context_append`; `reason` is required (todo-db 0.12.0 or later)
+  and `drop` also needs the `generation` if the task is claimed.
 
 ## Managing output limits
 
