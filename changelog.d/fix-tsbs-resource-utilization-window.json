@@ -4,7 +4,7 @@
     {
       "category": "fixed",
       "breaking": false,
-      "text": "Fixed the TSBS DevOps resource-utilization query scanning every memory row of each host: the memory side of the join now carries the same time window as the CPU side, so engines with a host-and-time index (SQLite went from about 60 seconds to 1 second per run at scale factor 0.01) search only the window. Results are unchanged."
+      "text": "Fixed the TSBS DevOps resource-utilization query scanning every memory row of each host: the memory side of the join now carries the same time window as the CPU side, so engines with a host-and-time index search only the window. Results are unchanged."
     }
   ]
 }
