@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Local InfluxDB 3 Core SF0.01 runs load every UAT benchmark that the platform manifest claims for InfluxDB, and each cell passes or carries a documented skip naming a reproduced engine error",
+    "InfluxDB is back in the release-UAT timeseries shard, with floors updated and a passing dry run",
+    "Harness passes core-mode connection options (from the release-UAT harness fix) and the adapter creates the database on connect"
+  ],
+  "context": "Dry run 2 (run 41163626947): 21 InfluxDB cells failed. The 'No token / Cloud mode' connection failure is fixed by the harness change in fix/uat-harness (#3885, folded into the release integration PR). After that fix, 20 of 21 cells still stop at load.",
+  "description": "InfluxDBAdapter.load_data loads only TSBS DevOps data. Other benchmarks connect to a local InfluxDB 3 Core but fail with 'Required benchmark tables are missing or empty after load'. For 0.5.0 the owner removed InfluxDB from release UAT (decision 2026-10-31). This item adds a general loader (table creation and ingest for the TPC and other UAT benchmark schemas, through line protocol or the SQL/Arrow ingest path InfluxDB 3 Core supports), then runs every UAT benchmark InfluxDB can execute. Benchmarks the engine cannot express get documented skips that cite the engine error. Finally InfluxDB returns to the timeseries release-UAT shard.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b5c0af9e80316c2305b0741d",
+      "at": "2026-10-31T20:21:36Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "42515c48f1f5439eb95d74b84dbf83c9",
+      "session_id": "d069a37e6be440a9a93d9487f64d29cf"
+    }
+  ]
+}

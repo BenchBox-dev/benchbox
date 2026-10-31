@@ -13239,6 +13239,13 @@
       "status": "done",
       "title": "One inert-path manifest that excludes machine-read docs, with a drift guard"
     },
+    "influxdb-general-loader-uat": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Load every UAT benchmark into InfluxDB 3 Core and restore InfluxDB release-UAT coverage"
+    },
     "influxdb-timeseries-platform": {
       "claim": null,
       "needs": [],
