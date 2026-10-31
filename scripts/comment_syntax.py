@@ -172,8 +172,6 @@ def language(path: str) -> str | None:
     if not PurePosixPath(path).suffix and path.startswith(OWNED_ROOTS):
         return "unsupported"
     suffix = PurePosixPath(path).suffix.lower()
-    if path.startswith("docs/_templates/") and suffix in {".html", ".htm"}:
-        return "html+jinja"
     if suffix not in LANGUAGES and suffix not in DATA_SUFFIXES and path.startswith(OWNED_ROOTS):
         return "unsupported"
     return LANGUAGES.get(suffix)

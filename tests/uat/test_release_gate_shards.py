@@ -395,3 +395,22 @@ def test_workflow_shards_partition_each_release_gate_config(stage: int):
     assert set(shard_cells) == set(full.cells)
     assert len(shard_pruned) == len(set(shard_pruned))
     assert set(shard_pruned) == set(full.compatibility_pruned)
+
+
+@pytest.mark.parametrize("stage_name", STAGES)
+def test_release_gate_packaging_never_needs_a_public_pseudonym_salt(stage_name: str, tmp_path: Path):
+    from tests.uat.phases import package
+
+    config = load_config(CONFIGS / f"{stage_name}.yaml")
+    assert "package" in config.phases
+    assert config.package.submit_terminal_state != "cloud-uploaded"
+    result = package.run_package(
+        config,
+        result_paths=[tmp_path / "r.json"],
+        submissions_dir=tmp_path / "subs",
+        runner=lambda argv, check=False: SimpleNamespace(returncode=0),
+        warn=lambda _msg: None,
+        classify_results=False,
+    )
+    assert result.invocations[0][:3] == ("benchbox", "publish", "run")
+    assert "submit" not in result.invocations[0]

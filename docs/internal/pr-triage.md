@@ -183,9 +183,10 @@ lookup mechanism before updating the digest.
 
 `.github/workflows/trunk.yml` tests `develop` on pushes (fast lane,
 four-shard medium tier, correctness gate and required-local-cases), and builds
-the verified release distribution artifact. Each commit runs in its own
-concurrency group, in parallel with other commits, so results can arrive out of
-order; a missing
+the verified release distribution artifact. Develop pushes share one concurrency
+group: one run is in flight and only the newest push waits behind it, so a
+commit replaced while waiting has no run of its own and a red run covers every
+commit merged since the last run. A missing
 push event still needs separate recovery. A red develop tip is a trunk
 failure that the PR's own checks did not catch. Revert first: run
 `make trunk-revert PR=<n>` for the culprit and fix it afterwards. While trunk has

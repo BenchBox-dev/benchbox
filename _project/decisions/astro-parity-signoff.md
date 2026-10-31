@@ -21,14 +21,14 @@ The report covers:
   broken internal links and missing images;
 - tag pages, archives, series and categories, and generated query pages;
 - Atom feed entry ids;
-- the API URL map in `_project/design/site-inventory/api-reference-url-map.json`;
+- the API URL map in `inventory/api-reference-url-map.json` of `BenchBox-dev/benchbox-site`;
 - axe over every page template, in light and dark themes;
 - Explorer and DuckDB bytes on docs and blog pages;
 - the privacy scan on the Astro output;
 - a Pagefind smoke search.
 
 Every redirect page and every allowed difference carries a reason and an owner
-approval field. They live in `_project/design/site-inventory/`:
+approval field. They live in `inventory/` of `BenchBox-dev/benchbox-site`:
 `allowed-differences.json`, `redirect-pages.json`, `added-paths.json` and the
 `expected-removals-*.json` files. Their approval field reads `pending` until
 the owner edits it.
