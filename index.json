@@ -6950,7 +6950,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "blocked",
       "title": "Run Databricks DataFrame deferred plan capture against a real workspace"
     },
     "databricks-example-modernization-completed": {

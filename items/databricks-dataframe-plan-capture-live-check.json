@@ -4,7 +4,7 @@
     "The mixed frame/SQL-key path captures or records a failure for every key.",
     "If after-the-fact explain is not possible remotely, change the capability honestly and document it."
   ],
-  "context": "Needs explicit live-cloud approval and credentials; do not run without both.",
+  "context": "Blocked: requires explicit live-cloud approval and Databricks credentials (AGENTS.md: live cloud tests require explicit approval). Not authorized in the batch request. Unblock when the owner approves a bounded run.\n\nVerification rubric: (1) a regression test or reproduction fails before and passes after; (2) focused suites pass via uv run -- python -m pytest -n 0; (3) make comment-policy-check and ruff on touched files pass; (4) the runtime smoke named in acceptance is recorded in the PR body; (5) the PR merges with green CI and a passing oracle review.",
   "description": "PR #3711 moved Databricks DataFrame plan capture out of the measured windows: frames are recorded during measurement, explained in the post-measurement phase, and SQL-string keys are delegated to the base capture phase. All of this was tested with a fake Databricks Connect session only. Whether a collected remote DataFrame can still be explained after the workload, and what the round-trip costs, is unverified.",
   "links": [
     "benchbox/platforms/databricks/dataframe_adapter.py",
@@ -17,6 +17,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "17b49cbc74484383b91596946116aa0d",
+      "session_id": "57a74c8663c14523aa3e61ff1ddd4677"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0592050035774073ac1f90d3",
+      "at": "2026-10-31T15:23:09Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "420ba0fe6ab94d189b9a3ffbc6ae3cd8",
       "session_id": "57a74c8663c14523aa3e61ff1ddd4677"
     }
   ]
