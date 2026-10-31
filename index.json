@@ -27428,17 +27428,12 @@
       "title": "todo complete accepts items whose own verification rungs fail"
     },
     "todo-db-0-12-0-release-20261031": {
-      "claim": {
-        "expires_at": "2026-11-01T20:35:26Z",
-        "generation": "aa05637a3a654e70b9c28a9ad5e34092",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e45b8047daa131c418b6f1f3"
-      },
+      "claim": null,
       "needs": [
         "todo-db-drop-records-reason-20261031"
       ],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Release todo-db 0.12.0 with required drop reasons"
     },
     "todo-db-audited-scope-rule-update-20260801": {
