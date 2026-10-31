@@ -16761,6 +16761,13 @@
       "status": "open",
       "title": "Give cloud builder sessions access to the oracle gateway over the tailnet with their own client"
     },
+    "oracle-gateway-cloud-builder-smoke-20261031": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Observe cloud-builder gateway access in a Claude cloud session"
+    },
     "oracle-gateway-long-silence-timeout-20261022": {
       "claim": null,
       "needs": [],
