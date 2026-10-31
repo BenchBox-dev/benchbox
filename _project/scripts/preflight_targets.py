@@ -39,6 +39,7 @@ ORACLE_SCENARIO_TESTS = (
     "tests/integration/oracle/test_sweep_scenarios.py",
     "tests/integration/oracle/test_trust_scenarios.py",
 )
+WORKFLOW_TESTS_ROOT = "tests/unit/workflows/"
 SOURCE_GUARD_TESTS: dict[str, tuple[str, ...]] = {
     "benchbox/": ("tests/system/test_module_size_thresholds.py",),
     "benchbox/cli/": ("tests/uat/test_no_cli_surface_drift.py",),
@@ -234,6 +235,33 @@ def _guard_tests(path: str, test_files: list[str]) -> list[str]:
     ]
 
 
+def _workflow_reference(path: str) -> re.Pattern[str] | None:
+    parts = PurePosixPath(path).parts
+    if parts[:2] == (".github", "workflows") and len(parts) > 2:
+        needle = parts[-1]
+    elif parts[:2] == (".github", "actions") and len(parts) > 2:
+        needle = "/".join(parts[:3]) if len(parts) > 3 else path
+    else:
+        return None
+    return re.compile(rf"(?<![\w.-]){re.escape(needle)}(?![\w-]|\.\w)")
+
+
+def _workflow_tests(repo: Path, path: str, test_files: list[str], texts: dict[str, str]) -> list[str]:
+    reference = _workflow_reference(path)
+    if reference is None:
+        return []
+    selected = [test for test in test_files if test.startswith(WORKFLOW_TESTS_ROOT)]
+    for test in test_files:
+        if test not in texts:
+            try:
+                texts[test] = (repo / test).read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError):
+                texts[test] = ""
+        if reference.search(texts[test]):
+            selected.append(test)
+    return selected
+
+
 EXTRA_TEST_MAP: dict[str, list[str]] = {
     "tests/integration/platforms/common.py": ["tests/integration/test_ducklake_integration.py"],
 }
@@ -245,7 +273,9 @@ def map_tests(repo: Path, paths: list[str]) -> list[str]:
     selected: set[str] = set()
     helpers: list[str] = []
     sources: list[str] = []
+    texts: dict[str, str] = {}
     for path in paths:
+        selected.update(_workflow_tests(repo, path, test_files, texts))
         if not path.endswith(".py"):
             selected.update(_guard_tests(path, test_files))
             continue

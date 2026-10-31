@@ -36,9 +36,9 @@ clone to reinstall, then rerun preflight in the linked worktree. On a cold
 primary clone, the primary-clone `uv run` command may provision the environment;
 linked-worktree preflight never installs or repairs shared hooks.
 
-`make agent-write-preflight` and `make pr-preflight` also fail when the primary
-clone has uncommitted tracked changes, naming the paths; see
-`docs/agent/primary-clone-guard.md`.
+`make agent-write-preflight` records a snapshot of the primary clone's tracked
+changes, and `make pr-preflight` warns, naming the paths, when tracked files
+there changed since the snapshot; see `docs/agent/primary-clone-guard.md`.
 
 The branch must start with a Conventional Commit type and a slug:
 `feat/`, `fix/`, `docs/`, `style/`, `refactor/`, `perf/`, `test/`, `build/`,

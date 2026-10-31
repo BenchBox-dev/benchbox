@@ -35,7 +35,7 @@ requires a human audience that belongs on benchbox.dev. A new
 | `cloud-builder.md` | How a cloud session builds, verifies, and hands off one change |
 | `merge-authority.md` | Owner holds, stand-in approvals (requires owner-named PR, head SHA, and prior instruction comment), and stale failed check suites; ruleset relaxation is owner-only |
 | `emergency-merge.md` | Base-pinned gate breakage: agents reproduce, record evidence, and stop; stand-in evidence matches `merge-authority.md`; ruleset relaxation is owner-only |
-| `primary-clone-guard.md` | Dirty-primary check, absolute worktree paths for workers, and the lost-edit cause |
+| `primary-clone-guard.md` | Primary-clone change report, absolute worktree paths for workers, and the lost-edit cause |
 | `remote-closeout.md` | Closing out a PR from the primary clone without a checkout |
 
 The eval runbook is `docs/internal/agent-instruction-evaluation.md`. The

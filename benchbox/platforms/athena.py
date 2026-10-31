@@ -144,7 +144,7 @@ class AthenaAdapter(PlatformAdapter):
                 "  Configure via one of:\n"
                 "    --platform-option s3_staging_dir=s3://bucket/path/\n"
                 "    --platform-option s3_bucket=bucket-name\n"
-                "    Environment: ATHENA_S3_STAGING_DIR=s3://bucket/path/"
+                "    benchbox setup --platform athena (setup reads ATHENA_S3_STAGING_DIR when it is set)"
             )
 
         has_explicit_creds = bool(self.aws_access_key_id and self.aws_secret_access_key)

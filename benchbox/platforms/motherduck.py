@@ -73,8 +73,7 @@ class MotherDuckAdapter(PlatformAdapter):
         if not self.token:
             raise ValueError(
                 "MotherDuck requires authentication token.\n"
-                "Set MOTHERDUCK_TOKEN environment variable, or provide via:\n"
-                "  --motherduck-token <your-token>\n"
+                "Set the MOTHERDUCK_TOKEN environment variable.\n"
                 "\nGet your token at: https://app.motherduck.com/token-request"
             )
 

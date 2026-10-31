@@ -81,8 +81,8 @@ class ClickHouseSetupMixin:
             raise ValueError(
                 "ClickHouse Cloud requires authentication.\n"
                 "Provide one of:\n"
-                "  - Password: --clickhouse-cloud-password or CLICKHOUSE_CLOUD_PASSWORD env var\n"
-                "  - OAuth token: --clickhouse-cloud-oauth-token or CLICKHOUSE_CLOUD_OAUTH_TOKEN env var"
+                "  - Password: --platform-option password=<password> or CLICKHOUSE_CLOUD_PASSWORD env var\n"
+                "  - OAuth token: --platform-option oauth_token=<token> or CLICKHOUSE_CLOUD_OAUTH_TOKEN env var"
             )
 
         self.port = config.get("port", 8443)

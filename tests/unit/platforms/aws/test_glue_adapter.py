@@ -21,7 +21,7 @@ class TestAWSGlueAdapterInitialization:
     def test_missing_s3_staging_dir_raises_error(self):
         from benchbox.platforms.aws import AWSGlueAdapter
 
-        with pytest.raises(ConfigurationError, match="s3_staging_dir"):
+        with pytest.raises(ConfigurationError, match="S3 staging location"):
             AWSGlueAdapter(
                 job_role="arn:aws:iam::123456789012:role/GlueRole",
             )
