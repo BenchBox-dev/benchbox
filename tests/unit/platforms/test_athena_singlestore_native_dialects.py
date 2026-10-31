@@ -33,7 +33,8 @@ def test_write_primitives_overrides_name_singlestore_not_mysql():
     operations = load_write_primitives_catalog().operations.values()
     assert not [op.id for op in operations if "mysql" in op.platform_overrides]
     singlestore_keyed = [op for op in operations if "singlestore" in op.platform_overrides]
-    assert len(singlestore_keyed) == 12
+    assert len(singlestore_keyed) == 14
+    assert {"ddl_create_table_with_index", "ddl_create_index_on_existing"} <= {op.id for op in singlestore_keyed}
 
 
 def test_transaction_primitives_overrides_name_singlestore_not_mysql():
