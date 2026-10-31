@@ -72,9 +72,13 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
         return UnifiedExpr(self._adapter.element())
 
     def date_sub(self, column: Expr, days: int) -> Expr:
+        if self._adapter.platform_name in {"PySpark", "LakeSail"} and isinstance(column, UnifiedExpr):
+            return UnifiedExpr(self._adapter.date_sub(column._expr, days))
         return self._adapter.date_sub(column, days)
 
     def date_add(self, column: Expr, days: int) -> Expr:
+        if self._adapter.platform_name in {"PySpark", "LakeSail"} and isinstance(column, UnifiedExpr):
+            return UnifiedExpr(self._adapter.date_add(column._expr, days))
         return self._adapter.date_add(column, days)
 
     def cast_date(self, column: Expr) -> Expr:
@@ -416,16 +420,17 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
         platform = self._adapter.platform_name
 
         if platform == "PySpark":
-            from pyspark.sql import Row
+            from pyspark.sql.types import NullType, StructField, StructType, _infer_type
 
             spark = self._adapter._spark
-            rows = []
             keys = list(data.keys())
             num_rows = len(data[keys[0]]) if keys else 0
-            for i in range(num_rows):
-                row_data = {k: data[k][i] for k in keys}
-                rows.append(Row(**row_data))
-            df = spark.createDataFrame(rows)
+            fields = []
+            for k in keys:
+                first = next((v for v in data[k] if v is not None), None)
+                fields.append(StructField(k, NullType() if first is None else _infer_type(first), True))
+            rows = [tuple(data[k][i] for k in keys) for i in range(num_rows)]
+            df = spark.createDataFrame(rows, schema=StructType(fields))
             return UnifiedLazyFrame(df, self._adapter)
 
         if platform == "DataFusion":
