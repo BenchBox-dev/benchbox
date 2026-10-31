@@ -4,7 +4,7 @@
     "Site ci checks pass.",
     "Merged only after explicit owner approval for this production deploy in the current conversation; deploy succeeds; the live python-api Snowflake page shows the new message text (quote it)."
   ],
-  "context": "Usability plan 2026-10-31, revision R-W4 (W4b). May be combined into one deploy-approval question with usability-site-user-docs-inline-guidance.\n\nDECISION GATES: G1 production deploy approval before merge. G2 if a core message changed in a way the docs cannot quote cleanly (e.g. dynamic text), ask.\n\nGUARDRAILS: docs only; no secrets; follow site PR flow; do not touch other sessions' PRs.",
+  "context": "Usability plan 2026-10-31, revision R-W4 (W4b). May be combined into one deploy-approval question with usability-site-user-docs-inline-guidance.\n\nDECISION GATES: G1 production deploy approval before merge. G2 if a core message changed in a way the docs cannot quote cleanly (e.g. dynamic text), ask.\n\nGUARDRAILS: docs only; no secrets; follow site PR flow; do not touch other sessions' PRs.\n\nTodoReview 2026-10-31 applied. CITATION FIX: pages are docs/reference/python-api/platforms/snowflake.md and redshift.md. Commit and PR text contain no plan, gate or revision labels.",
   "description": "After usability-platform-config-messages-accurate and usability-benchmark-dependency-errors-actionable merge, benchbox-site pages that quote the old error text are wrong: python-api/platforms/snowflake.md:112,152 and python-api/platforms/redshift.md:126,171 quote the current Snowflake/Redshift messages; the MCP reference has no dependency-error example. Update the quotes to the merged text (copy from the core merge commit, not paraphrase) and add one MCP DEPENDENCY_MISSING example (module, extra, install command in suggestion). Re-grep the site for any other quote of a message changed by the two core PRs and update it.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox-site"
@@ -16,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "3c7664ac28284e81ae75fcad117b2228",
+      "session_id": "fdde7b96f2774961bbd4c814eff2ca0e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:73f4ce6dc372259381dd21db",
+      "at": "2026-10-31T15:16:14Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "565d5ead4dcd42cd9ee42715451fab93",
       "session_id": "fdde7b96f2774961bbd4c814eff2ca0e"
     }
   ]
