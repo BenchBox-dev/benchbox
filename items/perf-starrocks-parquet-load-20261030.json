@@ -3,6 +3,7 @@
     "Parquet and CSV loads send file bytes without per-row Python parsing.",
     "Row counts match."
   ],
+  "context": "Review 2026-10-31: StarRocksCSVHandler (starrocks/workload.py:382-437) is referenced nowhere, tests included. Live verification needs the UAT memory-admission fix so the StarRocks shard starts.",
   "description": "starrocks/workload.py:441-484 converts Parquet with to_pylist and inserts via pymysql executemany. Route through Stream Load (pyarrow.csv conversion) or the FILES() table function. Also :310-318 re-parses every CSV row with csv.reader just for null mapping; stream raw bytes and use Stream Load null/trim headers. Remove StarRocksCSVHandler (:382-438) if it is dead code.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "op": "create",
       "op_id": "2ef193aa18c44d6abcb08d08c408d0d0",
       "session_id": "be00837164104ac2b4ed790cdb6812a2"
+    },
+    {
+      "actor": "mcp:claude-code:root@vm:cb45f246c9de058740ccbeed",
+      "at": "2026-10-31T00:36:20Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "6ac43cf6068142a19ef0ad6fa6092ef5",
+      "session_id": "d2b018a349924f4f88b746458c80b878"
     }
   ]
 }
