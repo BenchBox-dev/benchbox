@@ -224,39 +224,123 @@ def test_configured_hook_allows_linked_worktree_commit(tmp_path: Path) -> None:
 
 def _dirty_primary_with_linked(tmp_path: Path) -> tuple[Path, Path]:
     primary, linked = _linked_worktree(tmp_path)
-    (primary / "README.md").write_text("stray agent edit\n", encoding="utf-8")
+    (primary / "README.md").write_text("pre-existing owner edit\n", encoding="utf-8")
     return primary, linked
 
 
-def _run_check_in(linked: Path, primary: Path, *, extra_env: dict[str, str] | None = None):
+def _run_check_in(
+    linked: Path, primary: Path, mode: str, *, extra_env: dict[str, str] | None = None
+) -> subprocess.CompletedProcess[str]:
+    skip_without_posix_shell()
     env = {**os.environ, **HUMAN_IDENTITY, "BENCHBOX_AGENT_PRIMARY_CLONE": str(primary)}
     for key in ("BENCHBOX_ALLOW_MAIN_CLONE_WRITE", "ALLOW_MAIN_CLONE_WRITE", "BENCHBOX_EPHEMERAL_CLONE"):
         env.pop(key, None)
     env.update(extra_env or {})
-    return _run_script(CLEAN_SCRIPT, cwd=linked, env=env)
+    return run_posix_shell(
+        f"sh {shlex.quote(CLEAN_SCRIPT.as_posix())} {mode}",
+        cwd=linked,
+        env=env,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
+    )
 
 
-def test_dirty_primary_clone_check_fails_naming_changed_paths(tmp_path: Path) -> None:
+def _snapshot_path(linked: Path) -> Path:
+    git_dir = subprocess.run(
+        ["git", "rev-parse", "--absolute-git-dir"],
+        cwd=linked,
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    ).stdout.strip()
+    return Path(git_dir) / "primary-clone-snapshot"
+
+
+def test_snapshot_records_changed_tracked_paths_with_hashes(tmp_path: Path) -> None:
     primary, linked = _dirty_primary_with_linked(tmp_path)
 
-    result = _run_check_in(linked, primary)
+    result = _run_check_in(linked, primary, "snapshot")
 
-    assert result.returncode == 1
-    assert "uncommitted tracked changes" in result.stderr
-    assert "README.md" in result.stderr
-    assert (primary / "README.md").read_text(encoding="utf-8") == "stray agent edit\n"
+    assert result.returncode == 0, result.stderr
+    entries = _snapshot_path(linked).read_text(encoding="utf-8").splitlines()
+    expected_hash = subprocess.run(
+        ["git", "hash-object", str(primary / "README.md")],
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    ).stdout.strip()
+    assert entries == [f"{expected_hash}\tREADME.md"]
+    assert (primary / "README.md").read_text(encoding="utf-8") == "pre-existing owner edit\n"
 
 
-def test_clean_primary_clone_check_passes(tmp_path: Path) -> None:
+def test_snapshot_of_clean_primary_is_empty_and_report_is_silent(tmp_path: Path) -> None:
     primary, linked = _linked_worktree(tmp_path)
     (primary / "untracked.txt").write_text("scratch\n", encoding="utf-8")
 
-    result = _run_check_in(linked, primary)
+    assert _run_check_in(linked, primary, "snapshot").returncode == 0
+    result = _run_check_in(linked, primary, "report")
 
-    assert result.returncode == 0, result.stderr
+    assert _snapshot_path(linked).read_text(encoding="utf-8") == ""
+    assert result.returncode == 0
+    assert result.stderr == ""
 
 
-def test_write_preflight_fails_from_worktree_when_primary_is_dirty(tmp_path: Path) -> None:
+def test_report_ignores_dirt_that_predates_the_snapshot(tmp_path: Path) -> None:
+    primary, linked = _dirty_primary_with_linked(tmp_path)
+    _run_check_in(linked, primary, "snapshot")
+
+    result = _run_check_in(linked, primary, "report")
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+
+
+def test_report_names_new_and_further_modified_tracked_paths(tmp_path: Path) -> None:
+    primary, linked = _dirty_primary_with_linked(tmp_path)
+    (primary / "notes.txt").write_text("tracked\n", encoding="utf-8")
+    subprocess.run(["git", "add", "notes.txt"], cwd=primary, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "add notes"], cwd=primary, check=True)
+    _run_check_in(linked, primary, "snapshot")
+    (primary / "notes.txt").write_text("stray write\n", encoding="utf-8")
+    (primary / "README.md").write_text("owner edit, then more\n", encoding="utf-8")
+
+    result = _run_check_in(linked, primary, "report")
+
+    assert result.returncode == 0
+    assert "notes.txt" in result.stderr
+    assert "README.md" in result.stderr
+    assert "Do NOT revert" in result.stderr
+    assert (primary / "notes.txt").read_text(encoding="utf-8") == "stray write\n"
+
+
+def test_snapshot_is_not_overwritten_by_later_preflight_runs(tmp_path: Path) -> None:
+    primary, linked = _linked_worktree(tmp_path)
+    _run_check_in(linked, primary, "snapshot")
+    (primary / "README.md").write_text("stray write\n", encoding="utf-8")
+
+    _run_check_in(linked, primary, "snapshot")
+    result = _run_check_in(linked, primary, "report")
+
+    assert "README.md" in result.stderr
+    refreshed = _run_check_in(linked, primary, "snapshot", extra_env={"BENCHBOX_PRIMARY_SNAPSHOT_REFRESH": "1"})
+    assert refreshed.returncode == 0
+    assert _run_check_in(linked, primary, "report").stderr == ""
+
+
+def test_report_without_snapshot_does_not_fail(tmp_path: Path) -> None:
+    primary, linked = _dirty_primary_with_linked(tmp_path)
+
+    result = _run_check_in(linked, primary, "report")
+
+    assert result.returncode == 0
+    assert "No primary-clone snapshot" in result.stderr
+
+
+def test_write_preflight_records_snapshot_and_passes_with_dirty_primary(tmp_path: Path) -> None:
     primary, linked = _dirty_primary_with_linked(tmp_path)
     _write_generated_hook(primary, sys.executable)
 
@@ -266,23 +350,24 @@ def test_write_preflight_fails_from_worktree_when_primary_is_dirty(tmp_path: Pat
         env={**os.environ, **HUMAN_IDENTITY, "BENCHBOX_AGENT_PRIMARY_CLONE": str(primary)},
     )
 
-    assert result.returncode == 1
-    assert "README.md" in result.stderr
+    assert result.returncode == 0, result.stderr
+    assert "README.md" in _snapshot_path(linked).read_text(encoding="utf-8")
 
 
-def test_dirty_primary_check_honors_declared_main_clone_write(tmp_path: Path) -> None:
+def test_snapshot_honors_declared_main_clone_write(tmp_path: Path) -> None:
     primary, linked = _dirty_primary_with_linked(tmp_path)
 
-    result = _run_check_in(linked, primary, extra_env={"BENCHBOX_ALLOW_MAIN_CLONE_WRITE": "1"})
+    result = _run_check_in(linked, primary, "snapshot", extra_env={"BENCHBOX_ALLOW_MAIN_CLONE_WRITE": "1"})
 
     assert result.returncode == 0
+    assert not _snapshot_path(linked).exists()
 
 
-def test_pr_preflight_runs_dirty_primary_check() -> None:
+def test_pr_preflight_reports_primary_clone_changes() -> None:
     makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
     target = makefile.split("\npr-preflight:", maxsplit=1)[1].split("\n.PHONY:", maxsplit=1)[0]
 
-    assert "scripts/check_primary_clone_clean.sh" in target
+    assert "scripts/check_primary_clone_clean.sh report" in target
 
 
 def test_claude_pr_command_runs_write_preflight_before_pr_workflow() -> None:
