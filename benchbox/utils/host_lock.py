@@ -39,6 +39,22 @@ class LockOwnershipError(LockUnavailable):
     pass
 
 
+IS_WINDOWS = sys.platform == "win32"
+_sleep = time.sleep
+
+
+def _load_msvcrt() -> Any:
+    import msvcrt
+
+    return msvcrt
+
+
+def _load_fcntl() -> Any:
+    import fcntl
+
+    return fcntl
+
+
 def _now() -> float:
     return time.monotonic()
 
@@ -54,7 +70,7 @@ def _psutil() -> Any:
 
 
 def real_home() -> Path:
-    if sys.platform == "win32":
+    if IS_WINDOWS:
         return Path.home()
     import pwd
 
@@ -93,8 +109,8 @@ def seek_lock_byte(fd: int) -> None:
 
 
 def try_lock(fd: int) -> bool:
-    if sys.platform == "win32":
-        import msvcrt
+    if IS_WINDOWS:
+        msvcrt = _load_msvcrt()
 
         try:
             seek_lock_byte(fd)
@@ -107,7 +123,7 @@ def try_lock(fd: int) -> bool:
                 raise
             return False
         return True
-    import fcntl
+    fcntl = _load_fcntl()
 
     try:
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -117,8 +133,8 @@ def try_lock(fd: int) -> bool:
 
 
 def lock_exclusive(fd: int) -> None:
-    if sys.platform == "win32":
-        import msvcrt
+    if IS_WINDOWS:
+        msvcrt = _load_msvcrt()
 
         try:
             seek_lock_byte(fd)
@@ -126,14 +142,14 @@ def lock_exclusive(fd: int) -> None:
             pass
         msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
         return
-    import fcntl
+    fcntl = _load_fcntl()
 
     fcntl.flock(fd, fcntl.LOCK_EX)
 
 
 def unlock(fd: int) -> None:
-    if sys.platform == "win32":
-        import msvcrt
+    if IS_WINDOWS:
+        msvcrt = _load_msvcrt()
 
         try:
             seek_lock_byte(fd)
@@ -141,14 +157,14 @@ def unlock(fd: int) -> None:
         except OSError:
             pass
         return
-    import fcntl
+    fcntl = _load_fcntl()
 
     fcntl.flock(fd, fcntl.LOCK_UN)
 
 
 def _close_lock(fd: int) -> None:
     try:
-        if sys.platform == "win32":
+        if IS_WINDOWS:
             unlock(fd)
     finally:
         os.close(fd)
@@ -298,7 +314,7 @@ def wait_on_fd(fd: int, lock_path: Path, timeout_seconds: float) -> int:
                 raise LockUnavailable(
                     f"timed out waiting for {lock_path} (holder: {holder}; live waiters: {waiters})"
                 ) from None
-            time.sleep(min(LOCK_POLL_SECONDS, max(0.0, deadline - now)))
+            _sleep(min(LOCK_POLL_SECONDS, max(0.0, deadline - now)))
     except BaseException:
         _close_lock(fd)
         raise
@@ -602,7 +618,7 @@ def run_command(command: Sequence[str], *, phase: str = "run", gate: str | None 
         return 128 + signal.SIGINT
     env = dict(os.environ) if handle.inherited else owner_environment()
     try:
-        if sys.platform == "win32":
+        if IS_WINDOWS:
             return _supervise_windows(command, env)
         return _supervise_posix(command, env)
     except FileNotFoundError as exc:

@@ -409,7 +409,7 @@ def test_an_interrupted_wait_closes_its_descriptor(lock_file: Path, monkeypatch:
         raise KeyboardInterrupt
 
     monkeypatch.setattr(hl, "_open_lock_file", recording)
-    monkeypatch.setattr(hl.time, "sleep", interrupt)
+    monkeypatch.setattr(hl, "_sleep", interrupt)
     try:
         with pytest.raises(KeyboardInterrupt):
             hl.wait_for_lock(lock_file, 5.0)
@@ -813,8 +813,8 @@ class _FakeMsvcrt(types.ModuleType):
 @pytest.fixture
 def windows_msvcrt(monkeypatch: pytest.MonkeyPatch) -> _FakeMsvcrt:
     module = _FakeMsvcrt()
-    monkeypatch.setitem(sys.modules, "msvcrt", module)
-    monkeypatch.setattr(hl.sys, "platform", "win32")
+    monkeypatch.setattr(hl, "_load_msvcrt", lambda: module)
+    monkeypatch.setattr(hl, "IS_WINDOWS", True)
     return module
 
 
@@ -830,7 +830,7 @@ def test_wait_on_fd_windows_retries_contention(
     lock_file: Path, windows_msvcrt: _FakeMsvcrt, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     windows_msvcrt.failures = [errno.EACCES]
-    monkeypatch.setattr(hl.time, "sleep", lambda _seconds: None)
+    monkeypatch.setattr(hl, "_sleep", lambda _seconds: None)
     lock_file.parent.mkdir(parents=True)
     fd = os.open(str(lock_file), os.O_CREAT | os.O_RDWR, 0o644)
     os.close(hl.wait_on_fd(fd, lock_file, 5.0))
@@ -854,15 +854,14 @@ def test_wait_on_fd_windows_propagates_non_contention_error(
 
 @posix_only
 def test_wait_on_fd_posix_propagates_non_contention_error(lock_file: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    import fcntl
-
     lock_file.parent.mkdir(parents=True)
     fd = os.open(str(lock_file), os.O_CREAT | os.O_RDWR, 0o644)
 
     def denied(_fd: int, _flags: int) -> None:
         raise PermissionError("lock denied")
 
-    monkeypatch.setattr(fcntl, "flock", denied)
+    denying = types.SimpleNamespace(LOCK_EX=2, LOCK_NB=4, LOCK_UN=8, flock=denied)
+    monkeypatch.setattr(hl, "_load_fcntl", lambda: denying)
     with pytest.raises(PermissionError, match="lock denied"):
         hl.wait_on_fd(fd, lock_file, 5.0)
 
