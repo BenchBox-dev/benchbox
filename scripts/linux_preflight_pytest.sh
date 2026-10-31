@@ -64,4 +64,5 @@ done <"$test_list"
 
 echo "==> Linux container run of ${#tests[@]} changed-file test target(s) in machine '$machine'"
 exec container machine run -n "$machine" -- \
-  env BENCHBOX_LINUX_INNER=1 bash "$top/scripts/linux_preflight_pytest.sh" "$top" "${tests[@]}"
+  env BENCHBOX_LINUX_INNER=1 BENCHBOX_TEST_LOCK_DIR=/tmp/benchbox-lock \
+  BENCHBOX_HEAVY_ADMIT_MIN_GIB=1.5 BENCHBOX_HEAVY_MIN_FREE_DISK_GIB=10 bash "$top/scripts/linux_preflight_pytest.sh" "$top" "${tests[@]}"

@@ -237,7 +237,8 @@ flock always means a live holder.
 `make test-unlock` clears only inactive diagnostic text and refuses an active
 kernel lock; it never removes the lock pathname.
 
-Only runs that use xdist take the lock. `make pr-preflight` lints the changed
+Runs that use xdist, and serial runs that select a heavy marker (slow, stress, resource_heavy, live_*, docker),
+take the lock; heavy runs also pass host admission and run under the watchdog. `make pr-preflight` lints the changed
 Python files and runs the tests mapped from the changed paths serially
 (`-n 0`), so it never waits on the lock and writes no local receipt. Use
 `make pr-preflight-fast-tests` to run the full fast lane locally under the
