@@ -2,14 +2,13 @@ from __future__ import annotations
 
 import pytest
 
-from benchbox.platforms.questdb_rewrites import scalar_subquery_projection
-from benchbox.utils.dialect_utils import rewrite_sql_tree
+from benchbox.platforms.questdb_rewrites import rewrite_with_modules
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 
 def rewrite_query(sql: str) -> str:
-    return rewrite_sql_tree(sql, "questdb", scalar_subquery_projection.transform)
+    return rewrite_with_modules(sql, "scalar_subquery_projection")
 
 
 def test_scalar_subquery_next_to_keyless_aggregates_is_left_alone():
