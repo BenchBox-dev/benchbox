@@ -5908,7 +5908,7 @@
       "needs": [],
       "priority": "low",
       "status": "open",
-      "title": "Add an advisory pre-merge site build for core PRs that change what the site consumes"
+      "title": "Warn on core PRs that change the documented contract the site checks"
     },
     "core-exec-compute-resource-unification": {
       "claim": null,

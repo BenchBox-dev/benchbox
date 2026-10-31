@@ -1,11 +1,18 @@
 {
   "acceptance": [
-    "A core PR that changes the CLI option or platform registry used by a site docs example gets an advisory check reporting whether the site builds from its bundle",
-    "A deliberately broken docs example in a test PR makes the check fail; the check is not in the required contexts",
-    "Core still contains no JS/TS or package.json"
+    "A core PR that adds, removes or changes an entry in the exported docs contract gets one warning annotation per entry and a step-summary list, from a step inside an existing CI job; the step never fails the job",
+    "A PR that leaves the contract unchanged produces no warning",
+    "Unit tests cover added, removed, changed and unchanged entries",
+    "docs/internal/adr/adr-site-docs-ownership.md names the warning where it lists the advisory pre-merge build as related work"
   ],
   "context": "Found 2026-10-17 at site-split closeout. Must not become a required context; D17 allows no further ruleset change. Rescoped after core PR 3658 covered path deletions.",
-  "description": "Rescoped 2026-10-28. Decision D5 of the site-repo split ADR (docs/internal/adr/adr-site-repo-split.md) means a core change that breaks the site build is found only after merge: the site refuses the bundle, keeps the last good site and opens an issue. Since the site authors the docs, a docs/-only trigger is stale. Core PR check_site_linked_paths (make site-linked-paths-check, in ci-paths) now catches the observed failure, deletion or rename of a core path that a site docs page links to. The residual gap is any other core change that makes the site converter, docs:check (block mode) or a deploy gate fail on the new bundle, for example a renamed CLI option or platform that a docs example uses, or a bundle member change. The ADR names an advisory pre-merge build as a follow-up. No core workflow builds the site before merge; the only reference to benchbox-site in core workflows is the post-merge dispatch in .github/workflows/site-inputs.yml.\n\nAdd a non-required check on core PRs that touch bundle-producing paths (site-inputs inputs: benchbox/ CLI and platform registries, doc contracts, results data, scripts/site_inputs.py): build the PR's site-inputs bundle and ask the site repo to build it (for example a dispatch that reports back as a check), without adding Node to core (ADR D9). Needs a cross-repo token the owner must provision; do not start before that decision.",
+  "description": "The site refuses a core bundle whose exported docs contract (for example CLI options or MCP tool parameters) has entries its docs do not cover: npm run docs:check -- --docs-mode block runs in the site's ci and deploy workflows. Core learns of it only after merge. In #3738 (2026-10-29) the site refused a bundle because get_query_plan.stream was undocumented, and benchbox.dev stayed on the previous bundle for about 5.5 hours until site PR #90 merged. Of 29 site-deploy failure issues from 2026-10-20 to 2026-10-30 it was the only one in this class. On a core PR, export the docs contract for the PR head and for its base, compare them, and report each added, removed or changed entry as a warning, so the author prepares the site docs change before the bundle ships. The check never fails the PR, needs no cross-repository token and adds no runner jobs.",
+  "links": [
+    "BenchBox-dev/BenchBox: scripts/export_docs_data.py",
+    "BenchBox-dev/BenchBox: scripts/check_site_linked_paths.py",
+    "BenchBox-dev/BenchBox: .github/workflows/ci.yml",
+    "BenchBox-dev/benchbox-site: docs-contracts/"
+  ],
   "sessions": [
     {
       "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
@@ -22,6 +29,14 @@
       "op": "update",
       "op_id": "0d9dd559879c47efbc81d3fd0e9aaa92",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-31T00:19:15Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8d5211fa79ea413a90f97519c19c22f0",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
     }
   ]
 }
