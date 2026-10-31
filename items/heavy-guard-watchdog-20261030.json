@@ -14,6 +14,16 @@
     "`make heavy-run` (from heavy-guard-status-policy) uses `--guard`; `make heavy-run CMD=...` over budget is killed in a smoke with a tiny budget."
   ],
   "context": "Incident evidence: JetsamEvent-2026-10-30-161255.ips top entries python3.12 64739 25.83 GiB, Virtualization VMs 6.06/5.14/2.13/1.13 GiB, java ~1.09 GiB each. Review probes: ulimit -v/-d invalid on macOS; taskpolicy -m not enforced; footprint vs RSS gap 3.4x on a VM process.",
+  "deferrals": [
+    {
+      "created_at": "2026-10-31T00:33:50Z",
+      "from_item": "heavy-guard-watchdog-20261030",
+      "id": 1,
+      "reason": "Removed from the guard plan during review; watchdog bounds the tree but engines should fail gracefully before it fires.",
+      "resolution": "open",
+      "summary": "Engine-level memory caps (DuckDB memory_limit, -Xmx, Spark driver memory) and per-service Apple container limits derived from the budget"
+    }
+  ],
   "description": "## Problem\nThe incident trigger was one python3.12 process at a 25.83 GiB footprint on a 16 GiB machine. Mutual exclusion does not bound a single job, and macOS enforces no per-process cap (`ulimit -v`/`-d` invalid; `taskpolicy -m` not enforced, probed). psutil RSS under-reports (a VM: 1076 MiB RSS vs 3614 MiB `proc_pid_rusage` footprint). Swap growth exhausted disk, so a start-time disk check is not enough. Two meters already exist: `tests/uat/timeouts.py:24-55` (`_RssMeter`, RSS tree meter with kill, `EXIT_MEMORY_LIMIT=137`) and `benchbox/utils/resource_limits.py:115+` (`ResourceLimitMonitor`, 2 s thread).\n\n## Change\n1. One footprint sampler in `benchbox/utils/resource_limits.py`: summed physical footprint of a pid and its descendants (macOS: libproc `proc_pid_rusage` `ri_phys_footprint` via ctypes; elsewhere psutil USS, else RSS). Switch `tests/uat/timeouts._RssMeter` to it so UAT cell limits stop under-reporting; extend or retire `ResourceLimitMonitor` rather than adding a third meter.\n2. Watcher: every lock holder that requests the guard spawns a small watcher process (not an in-process thread, so a GIL-holding native call or memory pressure in the holder cannot stall it). Every 2 s it samples the holder tree footprint (excluding itself), pressure level, free disk on the boot volume and output root, and `held_inode_matches()`. It exits when the holder exits.\n3. Breach rules: tree footprint above the budget from admission's resolver (50% of RAM, `BENCHBOX_HEAVY_MEMORY_BUDGET_GIB`); pressure level critical (4); free disk below `BENCHBOX_HEAVY_KILL_FREE_DISK_GIB` (default 20).\n4. Action (`BENCHBOX_HEAVY_WATCHDOG=kill`, default): report to stderr (signal, measured vs limit, top 5 tree processes by footprint), SIGTERM descendants deepest-first, wait 10 s, SIGKILL survivors, then SIGTERM the holder if it is still over budget. Re-verify parentage immediately before each signal; never signal a re-parented pid. Holder exit status distinct from UAT's 137 and documented. `warn` reports once per breach; `off` disables with a loud warning.\n5. Inode mismatch: loud warning, no kill. On normal release, list surviving descendants (no kill).\n6. VMs and containers started through the Apple `container` runtime are children of launchd, not of the holder: the report states that VM footprint is not tree-attributed; VM memory is bounded by machine size and admission.\n\n## Decision gates\n- D1 (resolved, owner instruction to proceed with recommended defaults): budget 50% of RAM; action kill; warn mode for tuning.\n- G1 (stop condition): if `proc_pid_rusage` via ctypes fails for same-user descendants on macOS, stop and report; do not silently fall back to RSS on macOS.\n- G2: sampling overhead under 1% of one core for a 50-process tree; measure and record; lengthen the interval rather than drop signals.\n- G3 (stop condition): if switching `_RssMeter` to footprint changes which existing UAT tests pass, record the difference and keep their asserted limits unchanged.\n\n## Guardrails (all heavy-guard items)\n- Linked worktree from `origin/develop` via `make worktree-create`; never the primary clone; stage paths explicitly; never `git add -A`.\n- `[COMMENT-POLICY-001]`: no comments or docstrings in new code. Durations use `benchbox.utils.clock.mono_time()`/`elapsed_seconds()`.\n- Tests use `BENCHBOX_TEST_LOCK_DIR` under `tmp_path` and injected readings; never touch the real `~/.benchbox/test.lock` or depend on live host pressure, VMs or disk.\n- Never delete, move or recreate a lock file from code; never stop, resize or signal processes/VMs this invocation did not start.\n- Keep names `test.lock`, `BENCHBOX_TEST_LOCK_DIR`, `BENCHBOX_TEST_LOCK_WAIT_SECONDS`, `BENCHBOX_SKIP_TEST_LOCK`, `BENCHBOX_TEST_SESSION_OWNER` (rename deferred on heavy-guard-status-policy).\n- No automatic skip on `CI` or `BENCHBOX_EPHEMERAL_CLONE` (agent shells export `CI=true`).\n- No heavy verification runs (no benchmark sweeps above scale 0.01, no real compose stacks) unless the item names one.\n\n## Non-goals\nEngine-level caps (DuckDB memory_limit, -Xmx, Spark driver memory) and per-service container limits: recorded as a deferral on this item, promoted or dismissed before finish.",
   "links": [
     "benchbox/utils/host_lock.py",
@@ -42,6 +52,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "cbf1d50f5dfa4880bc01b268b5fb1fbc",
+      "session_id": "5f71b48e76c54dd19a3f57d12779721e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:19f6136ffb052a6f71a9c702",
+      "at": "2026-10-31T00:33:51Z",
+      "client": "omp-coding-agent",
+      "op": "defer",
+      "op_id": "ab355ffbd2f04f5880d139dda221643a",
       "session_id": "5f71b48e76c54dd19a3f57d12779721e"
     }
   ]
