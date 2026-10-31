@@ -168,17 +168,86 @@ _SQLITE_TPCHAVOC_SF1_RUNTIME_ENVELOPE_REASON = (
     "release-v2 run 40701870861. SF1 scales the same joins roughly tenfold. SF0.01 and SF0.1 stay in the gate."
 )
 
-_RELEASE_GATE_RUNTIME_ENVELOPES = _PG_FAMILY_RELEASE_GATE_RUNTIME_ENVELOPES | {
-    ("sqlite", "datavault", 1.0): _SQLITE_DATAVAULT_SF1_RUNTIME_ENVELOPE_REASON,
-    ("sqlite", "tpchavoc", 1.0): _SQLITE_TPCHAVOC_SF1_RUNTIME_ENVELOPE_REASON,
-    ("datafusion", "datavault"): _DATAFUSION_DATAVAULT_RUNTIME_ENVELOPE_REASON,
-    ("sqlite", "tpcds"): _SQLITE_TPCDS_RUNTIME_ENVELOPE_REASON,
-    ("sqlite", "tpcds_obt"): _SQLITE_TPCDS_OBT_RUNTIME_ENVELOPE_REASON,
+_SF1_TIMEOUT_RUNNER_CLAUSE = "measured on the 4 vCPU / 16 GB release runner (release UAT dry run 2, run 41163626947). SF0.01 and SF0.1 stay in the gate."
+
+_DASK_DF_SF1_RUNTIME_ENVELOPE_REASON = (
+    "dask-df SF1 cannot meet the 1200s release-gate cell contract: the cell timed out at 1200s, "
+    + _SF1_TIMEOUT_RUNNER_CLAUSE
+)
+
+_PYSPARK_DF_SF1_RUNTIME_ENVELOPE_REASON = (
+    "pyspark-df SF1 cannot meet the 1200s release-gate cell contract: the cell timed out at 1200s, "
+    + _SF1_TIMEOUT_RUNNER_CLAUSE
+)
+
+_SPARK_SF1_RUNTIME_ENVELOPE_REASON = (
+    "spark SF1 cannot meet the 1200s release-gate cell contract: the cell timed out at 1200s with peak RSS "
+    "near the 13 GiB cell cap, " + _SF1_TIMEOUT_RUNNER_CLAUSE
+)
+
+_PANDAS_DF_SF1_RUNTIME_ENVELOPE_REASON = (
+    "pandas-df SF1 cannot meet the 1200s release-gate cell contract: the cell timed out at 1200s, "
+    + _SF1_TIMEOUT_RUNNER_CLAUSE
+)
+
+_SF1_TIMEOUT_PRUNED_CELLS = (
+    (
+        "dask-df",
+        _DASK_DF_SF1_RUNTIME_ENVELOPE_REASON,
+        (
+            "joinorder",
+            "tpchavoc",
+            "tpch_skew",
+            "flightdata",
+            "tpcds",
+            "clickbench",
+            "datavault",
+            "coffeeshop",
+            "tpch",
+        ),
+    ),
+    (
+        "pyspark-df",
+        _PYSPARK_DF_SF1_RUNTIME_ENVELOPE_REASON,
+        (
+            "datavault",
+            "tpchavoc",
+            "tpcds",
+            "joinorder",
+            "flightdata",
+        ),
+    ),
+    ("spark", _SPARK_SF1_RUNTIME_ENVELOPE_REASON, ("joinorder", "tpchavoc", "tpcds_obt")),
+    ("pandas-df", _PANDAS_DF_SF1_RUNTIME_ENVELOPE_REASON, ("joinorder",)),
+)
+
+_SF1_ONLY_BENCHMARKS = frozenset({"joinorder", "tpcds_obt"})
+
+_SF1_TIMEOUT_RUNTIME_ENVELOPES = {
+    ((platform, benchmark) if benchmark in _SF1_ONLY_BENCHMARKS else (platform, benchmark, 1.0)): reason
+    for platform, reason, benchmarks in _SF1_TIMEOUT_PRUNED_CELLS
+    for benchmark in benchmarks
 }
+
+_SF1_TIMEOUT_RUNTIME_ENVELOPE_EVIDENCE = dict.fromkeys(
+    _SF1_TIMEOUT_RUNTIME_ENVELOPES, "release UAT dry run 2 (run 41163626947) SF1 timing: terminal=timeout at 1200s"
+)
+
+_RELEASE_GATE_RUNTIME_ENVELOPES = (
+    _PG_FAMILY_RELEASE_GATE_RUNTIME_ENVELOPES
+    | _SF1_TIMEOUT_RUNTIME_ENVELOPES
+    | {
+        ("sqlite", "datavault", 1.0): _SQLITE_DATAVAULT_SF1_RUNTIME_ENVELOPE_REASON,
+        ("sqlite", "tpchavoc", 1.0): _SQLITE_TPCHAVOC_SF1_RUNTIME_ENVELOPE_REASON,
+        ("datafusion", "datavault"): _DATAFUSION_DATAVAULT_RUNTIME_ENVELOPE_REASON,
+        ("sqlite", "tpcds"): _SQLITE_TPCDS_RUNTIME_ENVELOPE_REASON,
+        ("sqlite", "tpcds_obt"): _SQLITE_TPCDS_OBT_RUNTIME_ENVELOPE_REASON,
+    }
+)
 
 _RELEASE_GATE_STAGES_UNUSED_RUNTIME_ENVELOPES = frozenset(_PG_FAMILY_RELEASE_GATE_RUNTIME_ENVELOPES)
 
-_RELEASE_GATE_RUNTIME_ENVELOPE_EVIDENCE = {
+_RELEASE_GATE_RUNTIME_ENVELOPE_EVIDENCE = _SF1_TIMEOUT_RUNTIME_ENVELOPE_EVIDENCE | {
     ("datafusion", "datavault"): "docs/internal/uat-release-campaign.md: DataFusion DataVault (2026-08-25)",
     ("sqlite", "tpcds"): "docs/internal/uat-release-campaign.md: SQLite TPC-DS (2026-08-25)",
     ("sqlite", "tpcds_obt"): "PR #1904; docs/internal/uat-release-campaign.md: SQLite TPC-DS OBT (2026-08-25)",

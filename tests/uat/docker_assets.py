@@ -762,14 +762,14 @@ def compose_environment(
     *,
     benchmark_runs_dir: Path | str | None = None,
     memory_limit: str | None = None,
-    starrocks_memory_limit: str | None = "4g",
+    starrocks_memory_limit: str | None = "8g",
 ) -> dict[str, str]:
     environment: dict[str, str] = {}
     if spec.platform == "clickhouse-server":
         resolved, _ = resolve_clickhouse_memory_limit(memory_limit)
         environment[CLICKHOUSE_MEMORY_LIMIT_ENV_VAR] = resolved
     if spec.platform == "starrocks":
-        environment["STARROCKS_MEMORY_LIMIT"] = os.environ.get("STARROCKS_MEMORY_LIMIT", starrocks_memory_limit or "4g")
+        environment["STARROCKS_MEMORY_LIMIT"] = os.environ.get("STARROCKS_MEMORY_LIMIT", starrocks_memory_limit or "8g")
     if spec.platform not in {"lakesail", "velox"}:
         return environment
     if benchmark_runs_dir is None:

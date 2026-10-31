@@ -266,10 +266,10 @@ def test_compose_environment_ignores_relative_dir_for_non_path_mirroring_platfor
 def test_starrocks_compose_memory_defaults_for_manual_use_and_harness_overrides(monkeypatch):
     spec = docker_assets.docker_platform_spec("starrocks")
     compose = yaml.safe_load(spec.compose_files[0].read_text(encoding="utf-8"))
-    assert compose["services"]["starrocks"]["mem_limit"] == "${STARROCKS_MEMORY_LIMIT:-4g}"
+    assert compose["services"]["starrocks"]["mem_limit"] == "${STARROCKS_MEMORY_LIMIT:-8g}"
 
     monkeypatch.delenv(managed_runtime.STARROCKS_MEMORY_LIMIT_ENV_VAR, raising=False)
-    assert docker_assets.compose_environment(spec) == {managed_runtime.STARROCKS_MEMORY_LIMIT_ENV_VAR: "4g"}
+    assert docker_assets.compose_environment(spec) == {managed_runtime.STARROCKS_MEMORY_LIMIT_ENV_VAR: "8g"}
 
     monkeypatch.setenv(managed_runtime.STARROCKS_MEMORY_LIMIT_ENV_VAR, "6g")
     assert docker_assets.compose_environment(spec, starrocks_memory_limit="4g") == {

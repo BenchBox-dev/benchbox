@@ -12,7 +12,7 @@ from tests.uat.config import UATConfig
 from tests.uat.preflight_budget import MemorySnapshot
 
 STARROCKS_MEMORY_LIMIT_ENV_VAR = "STARROCKS_MEMORY_LIMIT"
-STARROCKS_DEFAULT_MEMORY_LIMIT = "4g"
+STARROCKS_DEFAULT_MEMORY_LIMIT = "8g"
 STARROCKS_READINESS = (
     "sh",
     "-c",
