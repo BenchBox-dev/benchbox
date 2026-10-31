@@ -17,9 +17,17 @@ from benchbox.utils import git_flood, heavy_sentinel as hs, heavy_status, host_l
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium, pytest.mark.skipif(sys.platform == "win32", reason="POSIX only")]
 
+
+@pytest.fixture(autouse=True)
+def isolated_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(hl, "real_home", lambda: tmp_path / "home")
+    monkeypatch.setenv(heavy_status.SENTINEL_PID_ENV, str(tmp_path / "home" / "sentinel.pid"))
+
+
 GIB = 2**30
 MIB = 2**20
 PYTHON = "/usr/bin/python3"
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 def proc(
@@ -154,6 +162,57 @@ def test_unreadable_cwd_falls_back_to_executable_and_command_line_paths() -> Non
     assert hs.locate(neither, roots) is None
 
 
+def test_command_line_paths_are_used_only_when_the_cwd_is_unreadable() -> None:
+    roots = hs._root_variants([Path("/work/BenchBox.wt-a")])
+    elsewhere = proc(1, cwd="/other", exe=PYTHON, cmdline=("python3", "/work/BenchBox.wt-a/run.py"))
+    assert hs.locate(elsewhere, roots) is None
+
+
+def test_language_server_argv_stems_are_never_candidates() -> None:
+    for stem in ("pylsp", "my_language_server", "my-language-server", "jedilangserver", "ty_lsp"):
+        server = proc(10, cwd="/work/BenchBox.wt-a", cmdline=("python3.12", f"/tools/{stem}.py"))
+        assert not hs.is_candidate(server)
+
+
+def test_mcp_servers_are_never_candidates_but_a_repo_named_mcp_is_not_a_marker() -> None:
+    assert not hs.is_candidate(proc(10, cwd="/w", cmdline=("python3.12", "/tools/todo-db-mcp")))
+    assert not hs.is_candidate(proc(11, cwd="/w", cmdline=("python3.12", "/tools/mcp-server/run.py")))
+    assert not hs.is_candidate(proc(12, cwd="/w", cmdline=("python3.12", "-m", "benchbox.mcp.server")))
+    inside = proc(13, cwd="/w", cmdline=("/work/BenchBox.wt-mcp-fix/.venv/bin/python", "-m", "pytest", "tests/mcp"))
+    assert hs.is_candidate(inside)
+
+
+class VanishingProcess:
+    info = {"pid": 4242, "ppid": 1, "name": "python3.12", "create_time": 1.0, "uids": None}
+
+    def as_dict(self, attrs: list[str], ad_value: object = None) -> dict[str, object]:
+        raise psutil.NoSuchProcess(4242)
+
+
+def test_a_process_that_exits_while_being_read_is_skipped(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(psutil, "process_iter", lambda attrs=None: iter([VanishingProcess()]))
+    assert hs.read_processes() == []
+    vanishing = VanishingProcess()
+    vanishing.info = {**vanishing.info, "name": "git"}
+    monkeypatch.setattr(psutil, "process_iter", lambda attrs=None: iter([vanishing]))
+    assert git_flood.read_git_processes(["/work/BenchBox.wt-a"]) == []
+
+
+def test_policy_reads_the_injected_environment_not_the_process_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("BENCHBOX_HEAVY_WATCHDOG", "off")
+    args = hs.build_parser().parse_args([])
+    env = {"BENCHBOX_HEAVY_WATCHDOG": "kill", "BENCHBOX_HEAVY_WATCHDOG_GRACE_SECONDS": "7"}
+    policy = hs.policy_from_env(env, args)
+    assert policy.mode == "kill"
+    assert policy.grace_seconds == 7.0
+
+
+def test_the_pid_file_is_fixed_and_independent_of_the_log_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(hl, "real_home", lambda: tmp_path)
+    env = {heavy_status.SENTINEL_LOG_ENV: str(tmp_path / "elsewhere" / "s.log")}
+    assert heavy_status.sentinel_pid_path(env) == tmp_path / ".benchbox" / "sentinel.pid"
+
+
 def test_warn_mode_reports_once_per_offender_and_never_signals(monkeypatch: pytest.MonkeyPatch) -> None:
     table = [proc(10, cwd="/work/BenchBox.wt-a")]
     sentinel, lines = make_sentinel(table, {10: 6 * GIB})
@@ -232,6 +291,26 @@ def test_a_git_flood_is_reported_again_only_after_the_summary_interval() -> None
     assert sum("WARNING git flood" in line for line in lines) == 1
 
 
+def test_summaries_are_logged_only_when_the_heavy_set_pressure_or_flood_changes() -> None:
+    table = [proc(10, cwd="/work/BenchBox.wt-a"), proc(11, cwd="/work/BenchBox.wt-a")]
+    sizes = {10: GIB, 11: 3 * GIB}
+    pressure = {"level": 1}
+    sentinel, lines = make_sentinel(table, sizes)
+    sentinel._pressure_reader = lambda: pressure["level"]
+    sentinel.step()
+    sentinel.step()
+    assert sum("BenchBox-rooted" in line for line in lines) == 1
+    sizes[10] = 3 * GIB
+    sentinel.step()
+    assert sum("BenchBox-rooted" in line for line in lines) == 2
+    pressure["level"] = 2
+    sentinel.step()
+    assert sum("BenchBox-rooted" in line for line in lines) == 3
+    sizes[10] = 3 * GIB + MIB
+    sentinel.step()
+    assert sum("BenchBox-rooted" in line for line in lines) == 3
+
+
 def test_kill_mode_verifies_identity_before_signalling() -> None:
     table = [proc(10, cwd="/work/BenchBox.wt-a")]
     sentinel, lines = make_sentinel(table, {10: 6 * GIB}, mode="kill")
@@ -295,14 +374,14 @@ def test_install_and_uninstall_use_the_agents_dir_and_launchctl_bootstrap_bootou
 ) -> None:
     agents = tmp_path / "LaunchAgents"
     script, record = stub_launchctl(tmp_path)
-    repo = tmp_path / "BenchBox"
-    repo.mkdir()
+    repo = REPO_ROOT
+    assert repo.is_dir()
     env = {heavy_status.AGENTS_DIR_ENV: str(agents), "BENCHBOX_HEAVY_WATCHDOG": "warn"}
-    assert hs.main(["install", "--launchctl", str(script), "--repo", str(repo), "--python", "/p/python"], env) == 0
+    assert hs.main(["install", "--launchctl", str(script), "--repo", str(repo), "--python", sys.executable], env) == 0
     plist_path = agents / f"{heavy_status.LAUNCH_AGENT_LABEL}.plist"
     data = plistlib.loads(plist_path.read_bytes())
-    assert data["ProgramArguments"] == ["/p/python", "-m", "benchbox.utils.host_lock", "sentinel"]
-    assert data["WorkingDirectory"] == str(repo)
+    assert data["ProgramArguments"] == [sys.executable, "-m", "benchbox.utils.host_lock", "sentinel"]
+    assert data["WorkingDirectory"] == str(repo.resolve())
     assert data["EnvironmentVariables"]["BENCHBOX_HEAVY_WATCHDOG"] == "warn"
     assert data["KeepAlive"] is True
     uid = os.getuid()
@@ -317,7 +396,7 @@ def test_reinstall_boots_out_the_loaded_agent_first(tmp_path: Path) -> None:
     script, record = stub_launchctl(tmp_path)
     env = {heavy_status.AGENTS_DIR_ENV: str(agents)}
     for _ in range(2):
-        assert sentinel_launchd.install(env, repo=tmp_path, python="/p/python", launchctl=str(script)) == 0
+        assert sentinel_launchd.install(env, repo=REPO_ROOT, python=sys.executable, launchctl=str(script)) == 0
     verbs = [line.split()[0] for line in record.read_text(encoding="utf-8").splitlines()]
     assert verbs == ["bootstrap", "bootout", "bootstrap"]
 
@@ -327,19 +406,74 @@ def test_a_failing_bootstrap_is_reported(tmp_path: Path) -> None:
     script.write_text("#!/bin/sh\necho denied >&2\nexit 5\n")
     script.chmod(script.stat().st_mode | stat.S_IXUSR)
     env = {heavy_status.AGENTS_DIR_ENV: str(tmp_path / "agents")}
-    assert sentinel_launchd.install(env, repo=tmp_path, python="/p/python", launchctl=str(script)) == 1
+    assert sentinel_launchd.install(env, repo=REPO_ROOT, python=sys.executable, launchctl=str(script)) == 1
+
+
+def test_install_refuses_when_the_sentinel_cannot_start_with_that_python(tmp_path: Path) -> None:
+    script, record = stub_launchctl(tmp_path)
+    agents = tmp_path / "agents"
+    env = {heavy_status.AGENTS_DIR_ENV: str(agents)}
+    assert sentinel_launchd.install(env, repo=tmp_path, python="/nonexistent/python", launchctl=str(script)) == 1
+    assert not record.exists()
+    assert not agents.exists()
+
+
+def test_install_records_the_launchd_error_path_and_forwards_heavy_settings(tmp_path: Path) -> None:
+    script, _ = stub_launchctl(tmp_path)
+    repo = REPO_ROOT
+    assert repo.is_dir()
+    env = {
+        heavy_status.AGENTS_DIR_ENV: str(tmp_path / "agents"),
+        "BENCHBOX_HEAVY_MEMORY_BUDGET_GIB": "6",
+        "BENCHBOX_HEAVY_WATCHDOG_GRACE_SECONDS": "4",
+        "BENCHBOX_GIT_FLOOD_COUNT": "9",
+        hl.LOCK_DIR_ENV: str(tmp_path / "locks"),
+        "BENCHBOX_UNRELATED": "x",
+    }
+    assert sentinel_launchd.install(env, repo=repo, python=sys.executable, launchctl=str(script)) == 0
+    data = plistlib.loads(heavy_status.launch_agent_path(env).read_bytes())
+    variables = data["EnvironmentVariables"]
+    assert variables["BENCHBOX_HEAVY_MEMORY_BUDGET_GIB"] == "6"
+    assert variables["BENCHBOX_HEAVY_WATCHDOG_GRACE_SECONDS"] == "4"
+    assert variables["BENCHBOX_GIT_FLOOD_COUNT"] == "9"
+    assert variables[hl.LOCK_DIR_ENV] == str(tmp_path / "locks")
+    assert "BENCHBOX_UNRELATED" not in variables
+    assert data["StandardErrorPath"] == str(heavy_status.sentinel_launchd_err_path())
+    assert data["StandardErrorPath"].endswith("sentinel.launchd.err")
+
+
+def test_uninstall_fails_unless_the_agent_was_simply_not_loaded(tmp_path: Path) -> None:
+    env = {heavy_status.AGENTS_DIR_ENV: str(tmp_path / "agents")}
+    plist_path = heavy_status.launch_agent_path(env)
+    plist_path.parent.mkdir()
+    plist_path.write_text("x", encoding="utf-8")
+    broken = tmp_path / "launchctl-broken"
+    broken.write_text("#!/bin/sh\necho denied >&2\nexit 5\n")
+    broken.chmod(broken.stat().st_mode | stat.S_IXUSR)
+    assert sentinel_launchd.uninstall(env, launchctl=str(broken)) == 1
+    assert plist_path.exists()
+    idle = tmp_path / "launchctl-idle"
+    idle.write_text("#!/bin/sh\necho 'Boot-out failed: 3: No such process' >&2\nexit 3\n")
+    idle.chmod(idle.stat().st_mode | stat.S_IXUSR)
+    assert sentinel_launchd.uninstall(env, launchctl=str(idle)) == 0
+    assert not plist_path.exists()
 
 
 def test_status_reports_the_sentinel_running_and_not_running(tmp_path: Path) -> None:
-    env = {heavy_status.SENTINEL_LOG_ENV: str(tmp_path / "sentinel.log"), heavy_status.AGENTS_DIR_ENV: str(tmp_path)}
+    pid_file = tmp_path / heavy_status.SENTINEL_PID_NAME
+    env = {
+        heavy_status.SENTINEL_LOG_ENV: str(tmp_path / "other" / "sentinel.log"),
+        heavy_status.SENTINEL_PID_ENV: str(pid_file),
+        heavy_status.AGENTS_DIR_ENV: str(tmp_path),
+    }
     stopped = heavy_status.read_sentinel_state(env)
     assert not stopped.running
     assert "sentinel: not running" in heavy_status._render_sentinel(_reading(stopped))[0]
-    (tmp_path / heavy_status.SENTINEL_PID_NAME).write_text(hl.process_identity() + "\n", encoding="utf-8")
+    pid_file.write_text(hl.process_identity() + "\n", encoding="utf-8")
     running = heavy_status.read_sentinel_state(env)
     assert running.running and running.pid == os.getpid()
     assert f"sentinel: running (pid {os.getpid()}" in heavy_status._render_sentinel(_reading(running))[0]
-    (tmp_path / heavy_status.SENTINEL_PID_NAME).write_text("999999:1.00\n", encoding="utf-8")
+    pid_file.write_text("999999:1.00\n", encoding="utf-8")
     assert not heavy_status.read_sentinel_state(env).running
 
 
@@ -409,7 +543,7 @@ def start_sentinel(tmp_path: Path, worktree: Path, mode: str, spawned: list[subp
             stderr=subprocess.DEVNULL,
         )
     )
-    return log, tmp_path / "state" / heavy_status.SENTINEL_PID_NAME
+    return log, tmp_path / "home" / heavy_status.SENTINEL_PID_NAME
 
 
 def start_hog(worktree: Path, spawned: list[subprocess.Popen]) -> subprocess.Popen:
@@ -466,7 +600,11 @@ def test_the_sentinel_records_its_pid_for_heavy_status_and_removes_it_on_exit(
     worktree.mkdir()
     log, pid_path = start_sentinel(tmp_path, worktree, "warn", spawned)
     assert wait_for(pid_path.is_file)
-    env = {heavy_status.SENTINEL_LOG_ENV: str(log), heavy_status.AGENTS_DIR_ENV: str(tmp_path)}
+    env = {
+        heavy_status.SENTINEL_LOG_ENV: str(log),
+        heavy_status.SENTINEL_PID_ENV: str(pid_path),
+        heavy_status.AGENTS_DIR_ENV: str(tmp_path),
+    }
     assert heavy_status.read_sentinel_state(env).running
     sentinel = spawned[-1]
     sentinel.terminate()
