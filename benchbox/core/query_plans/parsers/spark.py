@@ -71,7 +71,7 @@ class SparkQueryPlanParser(QueryPlanParser):
             raise ValueError("No operators found in Spark physical plan")
 
         root = self._build_tree(parsed_nodes)
-        self._name_file_scans(root, set(re.findall(r"TableScan: ([A-Za-z_]\w*)", explain_output)))
+        self._name_file_scans(root, self._logical_table_names(explain_output))
         return QueryPlanDAG(
             query_id=query_id,
             platform=self.platform_name,
@@ -155,6 +155,26 @@ class SparkQueryPlanParser(QueryPlanParser):
                 return logical_type
         return LogicalOperatorType.OTHER
 
+    @staticmethod
+    def _logical_table_names(explain_output: str) -> set[str]:
+        names: set[str] = set()
+        section = explain_output.split("== Optimized Logical Plan ==", 1)[-1].split("== Physical Plan ==", 1)[0]
+        lines = section.splitlines()
+        for index, line in enumerate(lines):
+            scan = re.match(r"(\s*)TableScan: (\S+)", line)
+            if not scan:
+                continue
+            if re.fullmatch(r"[A-Za-z_]\w*", scan.group(2)):
+                names.add(scan.group(2))
+                continue
+            indent = len(scan.group(1))
+            for earlier in reversed(lines[:index]):
+                alias = re.match(r"(\s*)SubqueryAlias: ([A-Za-z_]\w*)\s*$", earlier)
+                if alias and len(alias.group(1)) < indent:
+                    names.add(alias.group(2))
+                    break
+        return names
+
     @classmethod
     def _name_file_scans(cls, root: LogicalOperator, logical_tables: set[str]) -> None:
         scans: list[tuple[LogicalOperator, str | None, str]] = []
@@ -173,12 +193,21 @@ class SparkQueryPlanParser(QueryPlanParser):
             scans.append((node, directory, stem))
         if not scans:
             return
+        unmatched = []
+        for node, directory, stem in scans:
+            matched = next((name for name in (directory, stem) if name in logical_tables), None)
+            if matched:
+                node.table_name = matched
+            else:
+                unmatched.append((node, directory, stem))
+        unused = logical_tables - {node.table_name for node, _, _ in scans}
+        if len(unmatched) == 1 and len(unused) == 1:
+            unmatched[0][0].table_name = next(iter(unused))
+            return
         directories_seen = {directory for _, directory, _ in scans}
         per_table_directories = len(scans) > 1 and len(directories_seen) == len(scans)
-        for node, directory, stem in scans:
-            if logical_tables:
-                node.table_name = next((name for name in (directory, stem) if name in logical_tables), None)
-            elif directory and (per_table_directories or not stem or cls._PART_FILE_RE.match(stem)):
+        for node, directory, stem in unmatched:
+            if directory and (per_table_directories or not stem or cls._PART_FILE_RE.match(stem)):
                 node.table_name = directory
             else:
                 node.table_name = stem or None
