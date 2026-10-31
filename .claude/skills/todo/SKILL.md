@@ -95,7 +95,7 @@ the product repository.
 | — | `prepare` | Persist verified member work and hand back the claim without marking the member done. Requires the registered batch, explicit same-batch edge, exact clean source checkout, original base, accepted/current heads, and frozen scope. |
 | — | `release` | Hand the claim back without finishing (needs the `generation`). |
 | — | `takeover` | Take over a live claim whose session cannot resume: name the inspected holder and why it is dead. Requires todo-db 0.8.1. |
-| — | `drop` | Abandon a task as dropped. Unclaimed tasks drop freely; a live claim needs its `generation`. |
+| — | `drop` | Abandon a task as dropped. Requires `reason`: the owner's decision and any successor, at most 2000 characters, stored with the status change in one commit. Requires todo-db 0.12.0 or later. Unclaimed tasks drop freely; a live claim needs its `generation`. |
 
 ## Reading the response envelope
 
@@ -152,7 +152,11 @@ replaced whole; an empty value clears one. To add a progress note without
 resending the context, pass `context_append` (todo-db 0.11.0 or later): the
 server adds it to the end of the current context when the write lands, so a
 concurrent note is not lost. Closing goes through `finish`; dropping a task is
-a human decision reported to the user.
+a human decision reported to the user. Once the owner has decided, call `drop`
+with their decision and any successor item as `reason` (todo-db 0.12.0 or
+later requires it, up to 2000 characters, newlines allowed); the server stores
+it as `drop_reason` in the same commit, so do not write a separate
+`context_append` note first.
 
 Use `not_before` rather than `blocked` when a task is waiting for a known time,
 such as the end of a measurement window. It takes a future RFC 3339 time with
@@ -181,7 +185,7 @@ prepared evidence transitively.
 | Inspect one item | `show_item` |
 | List or search items | `list_items` with `status`/`priority`/`text` |
 | Create or amend work | `create_item`, `update_item` |
-| Claim, extend, close, hand back, drop | `take`, `renew`, `finish`, `release`, `drop` |
+| Claim, extend, close, hand back, drop | `take`, `renew`, `finish`, `release`, `drop` (`drop` needs `reason`, 0.12.0+) |
 | Take over a dead session's live claim | `takeover` (0.8.1+) |
 
 ## Process guides

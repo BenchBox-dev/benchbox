@@ -14,12 +14,12 @@ pytestmark = [pytest.mark.integration, pytest.mark.medium]
 ROOT = Path(__file__).resolve().parents[3]
 
 
-DELIVERY_CATALOG_REV = "c6249751d12f581093978db5904cf854e1f5d42e"
+DELIVERY_CATALOG_REV = "e7b7fd91d6419ebecc18646c63ef686d499ef026"
 SOURCE_REV = "aaad6c97632f0a36341cb670c9e1a7fe0b3a860b"
-TODO_DB_VERSION = "0.11.0"
+TODO_DB_VERSION = "0.12.0"
 SCRIPTS_PROJECT = ROOT / "_project/scripts"
 WHEEL = SCRIPTS_PROJECT / f"vendor/todo_db-{TODO_DB_VERSION}-py3-none-any.whl"
-WHEEL_SHA256 = "fc0654d592996ec3d0f96ac30bd3549dcab9b8edc3e8642d94a765f698b6d8cd"
+WHEEL_SHA256 = "cdcadf44f130ff98dd11081576db2c8acf5ad3a60ab84d85e60ceba0250a590d"
 REQUIRED_BATCH_TOOLS = {"register_batch", "prepare", "bind_batch_pr", "abort_batch"}
 
 
@@ -172,6 +172,24 @@ def test_installed_runtime_handshake_exposes_registered_batch_tools(tmp_path: Pa
         names = {tool["name"] for tool in tools}
         assert len(tools) == 19
         assert names >= REQUIRED_BATCH_TOOLS
+        drop_schema = next(tool for tool in tools if tool["name"] == "drop")["inputSchema"]
+        assert "reason" in drop_schema["required"]
+
+        def call(request_id: int, name: str, arguments: dict) -> dict:
+            response = _rpc(proc, "tools/call", {"name": name, "arguments": arguments}, request_id=request_id)
+            result = response["result"]
+            payload = json.loads(result["content"][0]["text"]) if not result.get("isError") else None
+            return {"is_error": bool(result.get("isError")), "payload": payload}
+
+        assert call(3, "create_item", {"id": "drop-probe", "title": "Drop probe"})["payload"]["ok"]
+        assert call(4, "drop", {"id": "drop-probe"})["is_error"]
+        blank = call(5, "drop", {"id": "drop-probe", "reason": "  "})
+        assert blank["payload"]["ok"] is False and blank["payload"]["code"] == "E_STATE"
+        assert call(6, "show_item", {"id": "drop-probe"})["payload"]["data"]["status"] == "open"
+        reason = "Superseded.\nSee the successor."
+        assert call(7, "drop", {"id": "drop-probe", "reason": reason})["payload"]["data"]["status"] == "dropped"
+        shown = call(8, "show_item", {"id": "drop-probe"})["payload"]["data"]
+        assert shown["status"] == "dropped" and shown["drop_reason"] == reason
     finally:
         proc.terminate()
         proc.wait(timeout=5)

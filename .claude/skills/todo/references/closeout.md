@@ -57,7 +57,10 @@ ancestor, or its PR is green.
    then `finish`. If someone else holds the claim, tell the human to close it.
 3. Leave blocked items `open`/`blocked` and record the exact unblock condition.
 4. Dropping an item as unnecessary is a human decision — report it with the
-   fixing revision identified, do not `drop` it yourself.
+   fixing revision identified, do not `drop` it yourself. When the owner
+   decides to drop, call `drop(id=..., reason=...)` with their decision and
+   any successor item as the `reason` (todo-db 0.12.0 or later); do not add a
+   separate `context_append` note.
 
 ## Report
 
