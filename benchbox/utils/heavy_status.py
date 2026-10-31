@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from benchbox.utils import host_lock, resource_limits
+from benchbox.utils import git_flood as git_flood_module, host_lock, resource_limits
 from benchbox.utils.clock import elapsed_seconds, mono_time, utc_now
 from benchbox.utils.footprint import pid_footprint_bytes, top_processes_by_footprint
 from benchbox.utils.resource_limits import EXTERNAL_TIMEOUT_SECONDS, GIB, HostPressure, Runner
@@ -23,6 +23,12 @@ SERVER_NAMES = frozenset(
 _STARTED = re.compile(r"\bstarted:(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})")
 _PID = re.compile(r"^pid:(\d+)")
 UNREADABLE_RECORD = "(could not read lock file)"
+SENTINEL_LOG_ENV = "BENCHBOX_SENTINEL_LOG"
+SENTINEL_LOG_NAME = "sentinel.log"
+SENTINEL_PID_NAME = "sentinel.pid"
+LAUNCH_AGENT_LABEL = "dev.benchbox.sentinel"
+_IDENTITY = re.compile(r"^(\d+):\d+(?:\.\d+)?$")
+AGENTS_DIR_ENV = "BENCHBOX_SENTINEL_AGENTS_DIR"
 
 
 @dataclass(frozen=True)
@@ -42,6 +48,14 @@ class Orphan:
 
 
 @dataclass(frozen=True)
+class SentinelState:
+    running: bool
+    pid: int | None
+    pid_path: Path
+    installed: bool
+
+
+@dataclass(frozen=True)
 class StatusReading:
     lock_path: Path
     holder: HolderReading | None
@@ -50,6 +64,8 @@ class StatusReading:
     budget_gib: float | None
     top: tuple[tuple[int, str, int], ...] | None
     orphans: tuple[Orphan, ...] | None
+    sentinel: SentinelState
+    git_flood: git_flood_module.GitFlood | None = None
 
 
 def _holder_age(record: str) -> float | None:
@@ -154,11 +170,86 @@ def _read_top() -> tuple[tuple[int, str, int], ...] | None:
         return None
 
 
+def _read_git_flood(
+    environ: Mapping[str, str] | None, footprint: Callable[[int], int | None]
+) -> git_flood_module.GitFlood | None:
+    try:
+        from benchbox.utils import heavy_sentinel
+
+        worktrees = heavy_sentinel.discover_worktrees()
+        if not worktrees:
+            return None
+        roots = heavy_sentinel._root_variants(worktrees)
+        return git_flood_module.evaluate(
+            git_flood_module.read_git_processes(roots),
+            os.environ if environ is None else environ,
+            total_ram=git_flood_module.total_ram_bytes(),
+            footprint=footprint,
+        )
+    except Exception:
+        return None
+
+
 def _read_pressure(runner: Runner, which: Callable[[str], str | None]) -> HostPressure | None:
     try:
         return resource_limits.read_host_pressure(runner=runner, which=which)
     except Exception:
         return None
+
+
+def sentinel_state_dir(environ: Mapping[str, str] | None = None) -> Path:
+    env = os.environ if environ is None else environ
+    override = env.get(SENTINEL_LOG_ENV)
+    if override:
+        return Path(override).expanduser().parent
+    return host_lock.real_home() / ".benchbox"
+
+
+def sentinel_log_path(environ: Mapping[str, str] | None = None) -> Path:
+    env = os.environ if environ is None else environ
+    override = env.get(SENTINEL_LOG_ENV)
+    if override:
+        return Path(override).expanduser()
+    return sentinel_state_dir(environ) / SENTINEL_LOG_NAME
+
+
+def sentinel_pid_path(environ: Mapping[str, str] | None = None) -> Path:
+    return sentinel_state_dir(environ) / SENTINEL_PID_NAME
+
+
+def launch_agents_dir(environ: Mapping[str, str] | None = None) -> Path:
+    env = os.environ if environ is None else environ
+    override = env.get(AGENTS_DIR_ENV)
+    if override:
+        return Path(override).expanduser()
+    return host_lock.real_home() / "Library" / "LaunchAgents"
+
+
+def launch_agent_path(environ: Mapping[str, str] | None = None) -> Path:
+    return launch_agents_dir(environ) / f"{LAUNCH_AGENT_LABEL}.plist"
+
+
+def read_sentinel_pid(pid_path: Path) -> tuple[int, str] | None:
+    try:
+        identity = pid_path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    match = _IDENTITY.match(identity)
+    if match is None:
+        return None
+    return int(match.group(1)), identity
+
+
+def read_sentinel_state(environ: Mapping[str, str] | None = None) -> SentinelState:
+    pid_path = sentinel_pid_path(environ)
+    recorded = read_sentinel_pid(pid_path)
+    running = recorded is not None and host_lock.process_is_live(recorded[0], recorded[1])
+    return SentinelState(
+        running=running,
+        pid=recorded[0] if running and recorded is not None else None,
+        pid_path=pid_path,
+        installed=launch_agent_path(environ).is_file(),
+    )
 
 
 def collect(
@@ -169,6 +260,7 @@ def collect(
     footprint: Callable[[int], int | None] = pid_footprint_bytes,
     top_reader: Callable[[], tuple[tuple[int, str, int], ...] | None] = _read_top,
     pressure_reader: Callable[[], HostPressure | None] | None = None,
+    git_flood_reader: Callable[[], git_flood_module.GitFlood | None] | None = None,
 ) -> StatusReading:
     path = host_lock.lock_path(environ)
     with ThreadPoolExecutor(max_workers=3) as pool:
@@ -187,6 +279,8 @@ def collect(
         budget_gib=resource_limits.heavy_memory_budget_gib(environ),
         top=top,
         orphans=orphans,
+        sentinel=read_sentinel_state(environ),
+        git_flood=(git_flood_reader or (lambda: _read_git_flood(environ, footprint)))(),
     )
 
 
@@ -254,10 +348,30 @@ def _render_orphans(reading: StatusReading) -> list[str]:
     return lines
 
 
+def _render_sentinel(reading: StatusReading) -> list[str]:
+    state = reading.sentinel
+    if state.running:
+        return [f"sentinel: running (pid {state.pid}, pid file {state.pid_path})"]
+    installed = "LaunchAgent installed" if state.installed else "LaunchAgent not installed; make heavy-sentinel-install"
+    return [f"sentinel: not running ({installed})"]
+
+
+def _render_git_flood(reading: StatusReading) -> list[str]:
+    flood = reading.git_flood
+    if flood is None:
+        return ["git processes in BenchBox checkouts: unmeasured"]
+    lines = git_flood_module.describe(flood)
+    if flood.breached:
+        lines.insert(0, f"WARNING git flood: {'; '.join(flood.breaches)} (never signalled)")
+    return lines
+
+
 def render(reading: StatusReading, environ: Mapping[str, str] | None = None) -> str:
     sections = (
         _render_lock(reading),
         _render_pressure(reading, environ),
+        _render_sentinel(reading),
+        _render_git_flood(reading),
         _render_top(reading),
         _render_orphans(reading),
     )

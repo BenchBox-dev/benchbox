@@ -8,11 +8,19 @@ from pathlib import Path
 
 import pytest
 
-from benchbox.utils import heavy_status as hs, host_lock as hl, resource_limits as rl
+from benchbox.utils import git_flood, heavy_status as hs, host_lock as hl, resource_limits as rl
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
+SENT = hs.SentinelState(False, None, Path("x/sentinel.pid"), False)
 GIB = rl.GIB
+
+
+@pytest.fixture(autouse=True)
+def isolated_sentinel_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(hs.SENTINEL_LOG_ENV, str(tmp_path / "sentinel-state" / "sentinel.log"))
+    monkeypatch.setenv(hs.AGENTS_DIR_ENV, str(tmp_path / "agents"))
+
 
 PS_TABLE = "\n".join(
     [
@@ -119,6 +127,7 @@ def collect(**overrides: object) -> hs.StatusReading:
         "footprint": lambda pid: None,
         "top_reader": lambda: ((4242, "python", 3 * GIB),),
         "pressure_reader": pressure,
+        "git_flood_reader": lambda: None,
     }
     options.update(overrides)
     return hs.collect(**options)
@@ -184,21 +193,21 @@ def test_status_never_blocks_on_a_held_lock_and_leaves_it_untouched(lock_dir: Pa
 
 def test_an_unreadable_lock_file_is_unmeasured_not_free() -> None:
     holder = hs.HolderReading(hs.UNREADABLE_RECORD, None, False, None)
-    reading = hs.StatusReading(Path("x/test.lock"), holder, 0, None, None, None, None)
+    reading = hs.StatusReading(Path("x/test.lock"), holder, 0, None, None, None, None, SENT)
     assert "holder: unmeasured" in hs.render(reading)
 
 
 def test_render_uses_the_injected_environment_for_policy() -> None:
-    reading = hs.StatusReading(Path("x/test.lock"), None, 0, pressure(), None, (), ())
+    reading = hs.StatusReading(Path("x/test.lock"), None, 0, pressure(), None, (), (), SENT)
     assert "(need 2 GiB)" in hs.render(reading, {})
     assert "(need 9 GiB)" in hs.render(reading, {rl.ADMIT_MIN_GIB_ENV: "9"})
 
 
 def test_unmeasured_sections_render_explicitly() -> None:
-    reading = hs.StatusReading(Path("x/test.lock"), None, 0, None, None, None, None)
+    reading = hs.StatusReading(Path("x/test.lock"), None, 0, None, None, None, None, SENT)
     text = hs.render(reading)
     assert "host readings: unmeasured" in text
-    assert text.count("unmeasured") == 3
+    assert text.count("unmeasured") == 4
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX shell stub")
@@ -212,9 +221,21 @@ def test_a_hung_container_cli_is_cut_off_and_shown_as_unmeasured(
     stub.chmod(stub.stat().st_mode | stat.S_IXUSR)
     monkeypatch.setenv("PATH", f"{stubs}:/usr/bin:/bin:/usr/sbin:/sbin")
     started = rl.mono_time()
-    reading = hs.collect()
+    reading = hs.collect(git_flood_reader=lambda: None)
     elapsed = rl.elapsed_seconds(started)
     assert elapsed < 7.0
     assert reading.pressure is not None
     assert reading.pressure.vms is None
     assert "VM reservations: unmeasured" in hs.render(reading)
+
+
+def test_render_shows_a_git_flood_warning_with_the_top_processes() -> None:
+    procs = [git_flood.GitProc(100 + n, "/work/BenchBox.wt-a", "git status") for n in range(3)]
+    flood = git_flood.evaluate(
+        procs, {git_flood.COUNT_ENV: "2"}, total_ram=16 * GIB, footprint=lambda pid: (pid - 99) * GIB // 4
+    )
+    reading = collect(git_flood_reader=lambda: flood)
+    text = hs.render(reading)
+    assert "WARNING git flood: 3 git processes >= 2" in text
+    assert "pid 102 0.75 GiB cwd /work/BenchBox.wt-a cmd git status" in text
+    assert "unmeasured" in hs.render(collect(git_flood_reader=lambda: None))

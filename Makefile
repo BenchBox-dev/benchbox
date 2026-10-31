@@ -96,6 +96,18 @@ test-unlock:
 heavy-status:
 	@uv run -- python -m benchbox.utils.host_lock status
 
+.PHONY: heavy-sentinel
+heavy-sentinel:
+	@uv run -- python -m benchbox.utils.host_lock sentinel $(SENTINEL_ARGS)
+
+.PHONY: heavy-sentinel-install
+heavy-sentinel-install:
+	@uv run -- python -m benchbox.utils.host_lock sentinel install $(SENTINEL_ARGS)
+
+.PHONY: heavy-sentinel-uninstall
+heavy-sentinel-uninstall:
+	@uv run -- python -m benchbox.utils.host_lock sentinel uninstall $(SENTINEL_ARGS)
+
 .PHONY: heavy-run
 heavy-run:
 	@test -n "$$CMD" || { echo "usage: make heavy-run CMD='<command>'"; exit 2; }
