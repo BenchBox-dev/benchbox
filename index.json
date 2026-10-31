@@ -18942,6 +18942,13 @@
       "status": "done",
       "title": "Pre-Compile TPC Binaries for Multiple Platforms ✅ COMPLETED"
     },
+    "precommit-hook-loses-unstaged-edit": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Find why a docs edit made during a commit-hook run was silently lost"
+    },
     "preexisting-complexity-review-findings": {
       "claim": null,
       "needs": [],

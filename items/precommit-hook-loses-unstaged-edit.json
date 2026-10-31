@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Reproduce: edit a tracked file while hooks run for a commit of other files, and observe whether the edit survives.",
+    "If the hook framework's unstaged-change stash causes it, make the hook run refuse or warn rather than drop the edit, or document the rule in docs/agent with the exact failure mode.",
+    "A test or scripted reproduction is kept if practical."
+  ],
+  "context": "Unconfirmed report from a delegated worker; reproduce before changing anything.",
+  "description": "While landing the primary-clone guard (PR #3888), a docs edit made in the worktree while a commit's hooks were running disappeared without error. The pre-commit stash of unstaged changes is the suspect but was not confirmed. Silent loss of work is worse than a failed commit.",
+  "links": [
+    "lefthook.yml",
+    ".pre-commit-config.yaml",
+    "docs/agent/primary-clone-guard.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8d313df504e30c76edc4bc0f",
+      "at": "2026-10-31T20:29:16Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "52310ab2c742478790666437f32207a1",
+      "session_id": "acb77716a5b0405bb727f738cdbd8942"
+    }
+  ]
+}
