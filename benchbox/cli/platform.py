@@ -868,12 +868,9 @@ def check_platforms(platforms_to_check: tuple, enabled_only: bool):
         "This is about which adapters are available on this machine. For cloud\n"
         "CREDENTIALS -- Databricks, Snowflake, BigQuery, Redshift, Athena,\n"
         "MotherDuck, SingleStore -- use `benchbox setup --platform <name>`.\n"
-        "\n"
-        'The two commands are both spelled "setup", and adapter error messages have\n'
-        "repeatedly sent users to `benchbox platforms setup --platform <name>`,\n"
-        "which had no such option and exited 2. Rather than leave that a dead end,\n"
-        "`--platform` here delegates to `benchbox setup`, which is what the user\n"
-        "meant. `benchbox setup` rejects a non-cloud platform with its own list."
+        "`benchbox platforms setup --platform <name>` forwards to\n"
+        "`benchbox setup --platform <name>`. `benchbox setup` rejects a non-cloud\n"
+        "platform with its own list."
     ),
 )
 @click.option("--interactive/--non-interactive", default=True, help="Interactive setup mode")

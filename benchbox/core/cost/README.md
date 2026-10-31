@@ -329,8 +329,7 @@ scan under 1 TiB, so do not read a BenchBox BigQuery figure as a Google bill.
 
 ### Billing units (`NormalizedCost.billing_unit`)
 
-Scan-priced platforms report the unit actually billed, per
-<https://benchbox.dev/docs/development/adr/adr-billing-unit-tb-tib-contract.html>:
+Scan-priced platforms report the unit actually billed:
 
 - BigQuery: `tib_scanned` (tebibyte, 2^40 bytes — vendor-confirmed).
 - Athena and Synapse serverless: `tb_scanned` (decimal terabyte, 10^12

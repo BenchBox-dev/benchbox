@@ -2625,7 +2625,7 @@ def _interactive_handle_result(s: types.SimpleNamespace, result: Any, orchestrat
         "cold-stats measurement (adapters with no drop-stats primitive fall "
         "back to a safe no-op and record that in the result); --no-stats-reset "
         "explicitly records a warm-stats/persist run. Omit entirely for the "
-        "default PR #980 behavior (bundle stays byte-identical when unset)."
+        "default behavior (the result bundle is unchanged when unset)."
     ),
 )
 @advanced_option(
