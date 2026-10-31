@@ -4,7 +4,7 @@
     "A test with a real captured DuckDB or SQLite join plan asserts the condition text appears.",
     "Existing tree tests and MCP tree output stay correct."
   ],
-  "context": "Noted while moving MCP rendering to the canonical renderer (PR #3708).\n\nGuardrails: change rendering only, never plan data or fingerprints. Reuse the existing detail-line pattern in visualization.py; cap each condition (about 120 chars) and the number shown per node so huge plans stay readable. Smoke: benchbox show-plan on a real TPC-H Q3 DuckDB bundle and the MCP tree for the same plan.\n\nVerification rubric: (1) a regression test or reproduction fails before and passes after; (2) focused suites pass via uv run -- python -m pytest -n 0; (3) make comment-policy-check and ruff on touched files pass; (4) the runtime smoke named in acceptance is recorded in the PR body; (5) the PR merges with green CI and a passing oracle review.",
+  "context": "Merged via PR #3891 as a4ca9464b on develop; oracle SHIP. render_plan shows up to 5 join conditions per join (120 chars each, then +N more), unwraps DuckDB's JSON condition blob for display; compact mode hides them. Smoke: TPC-H Q3 DuckDB show-plan and MCP tree show l_orderkey = o_orderkey and o_custkey = c_custkey.",
   "description": "render_plan (benchbox/core/query_plans/visualization.py) prints Join nodes as `Join (type=inner)` without their join_conditions, although the canonical plan stores them and they are part of the fingerprint. benchbox show-plan and the MCP get_query_plan tree format both use it, so a reader cannot see why two joins differ.",
   "links": [
     "benchbox/core/query_plans/visualization.py",
@@ -34,6 +34,14 @@
       "generation": "ad0f8e8f97db40c9bd18100d12d55f03",
       "op": "take",
       "op_id": "b004ece6ba264c5c87b2f75d7cfddca0",
+      "session_id": "acb77716a5b0405bb727f738cdbd8942"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8d313df504e30c76edc4bc0f",
+      "at": "2026-10-31T19:38:24Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b141e8d32fe44a8a89fb1a1150d9bb7e",
       "session_id": "acb77716a5b0405bb727f738cdbd8942"
     }
   ]
