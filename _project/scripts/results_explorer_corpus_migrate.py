@@ -20,6 +20,8 @@ from benchbox.core.results.anonymization import (
     AnonymizationConfig,
     AnonymizationManager,
     MissingPublicPseudonymSaltError,
+    public_pseudonym_salt_path,
+    resolve_public_pseudonym_salt,
 )
 from benchbox.core.results.canonical_json import canonical_json_bytes
 from benchbox.validation.bundle import discover_bundles
@@ -121,6 +123,11 @@ def _semantic_signature(data: dict[str, Any]) -> dict[str, Any]:
 
 def migrate(*, bundles_dir: Path, write: bool, manifest_path: Path) -> dict[str, Any]:
     manager = AnonymizationManager(AnonymizationConfig.from_public_environ(require_salt=True))
+    if resolve_public_pseudonym_salt() is None:
+        print(
+            f"Using the pseudonym salt file {public_pseudonym_salt_path()}; set BENCHBOX_MACHINE_ID_SALT to override.",
+            file=sys.stderr,
+        )
     transformer = BundleTransformer()
     entries: list[dict[str, Any]] = []
     pending_writes: list[tuple[Path, bytes]] = []

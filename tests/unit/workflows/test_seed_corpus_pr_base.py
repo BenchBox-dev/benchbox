@@ -252,6 +252,8 @@ def test_seed_staging_uses_an_existing_salt_file_without_env(tmp_path: Path) -> 
     assert from_file.returncode == from_env.returncode == 0, from_file.stderr
     assert (from_file_destination / "bundle.json").read_bytes() == (from_env_destination / "bundle.json").read_bytes()
     assert salt_path.read_text(encoding="utf-8") == "seed-file-salt"
+    assert str(salt_path) in from_file.stderr
+    assert "salt file" not in from_env.stderr
 
 
 def test_seed_staging_anonymizes_plans_companions(tmp_path: Path) -> None:

@@ -27,7 +27,9 @@ def test_migrate_refuses_without_salt_and_creates_no_file(tmp_path: Path, monkey
     assert not public_pseudonym_salt_path().parent.exists()
 
 
-def test_migrate_uses_the_existing_salt_file_without_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_migrate_uses_the_existing_salt_file_without_env(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     monkeypatch.delenv("BENCHBOX_MACHINE_ID_SALT", raising=False)
     salt_path = public_pseudonym_salt_path()
     salt_path.parent.mkdir(parents=True)
@@ -39,6 +41,7 @@ def test_migrate_uses_the_existing_salt_file_without_env(tmp_path: Path, monkeyp
     migrated = json.loads((tmp_path / "run.json").read_text(encoding="utf-8"))
     assert "/Users/" not in json.dumps(migrated)
     assert salt_path.read_text(encoding="utf-8") == "file-salt"
+    assert str(salt_path) in capsys.readouterr().err
 
 
 def test_migrate_env_wins_over_the_salt_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

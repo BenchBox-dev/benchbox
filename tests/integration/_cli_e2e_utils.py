@@ -10,6 +10,12 @@ from pathlib import Path
 
 CLI_MODULE = "benchbox.cli.main"
 DEFAULT_TIMEOUT = 120.0
+PUBLICATION_COMMANDS = frozenset({"export", "submit", "publish"})
+
+
+def writes_pseudonym_salt(args: Sequence[str]) -> bool:
+    command = next((arg for arg in args if not arg.startswith("-")), None)
+    return command in PUBLICATION_COMMANDS
 
 
 @contextmanager
@@ -20,13 +26,14 @@ def isolated_cli_home() -> Iterator[Path]:
 
 def cli_subprocess_environment(
     *,
-    home: Path | str,
+    home: Path | str | None,
     cwd: Path | str | None = None,
     env: Mapping[str, str] | None = None,
 ) -> MutableMapping[str, str]:
     effective_env: MutableMapping[str, str] = os.environ.copy()
-    effective_env["HOME"] = str(home)
-    effective_env["USERPROFILE"] = str(home)
+    if home is not None:
+        effective_env["HOME"] = str(home)
+        effective_env["USERPROFILE"] = str(home)
     effective_env["PYTHONUTF8"] = "1"
     if cwd is not None:
         effective_env["BENCHBOX_OUTPUT_DIR"] = str(Path(cwd) / "benchmark_runs")
@@ -43,7 +50,7 @@ def run_cli_command(
     timeout: float = DEFAULT_TIMEOUT,
     home: Path | str | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    if home is None:
+    if home is None and writes_pseudonym_salt(args):
         with isolated_cli_home() as default_home:
             return run_cli_command(args, cwd=cwd, env=env, timeout=timeout, home=default_home)
 

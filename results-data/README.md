@@ -191,7 +191,10 @@ variable, then the private file `~/.benchbox/submission_salt`.
   `_project/scripts/results_explorer_corpus_migrate.py` never generate a salt,
   because the salt feeds the permanent `result_id` of staged bundles. They use
   the variable, then an existing salt file, and otherwise refuse with the file
-  path and the override named. The CI seed-corpus lane keeps passing the
+  path and the override named. When they use the file they print a notice naming
+  it on stderr. A maintainer who keeps the salt in a secret manager must keep
+  `BENCHBOX_MACHINE_ID_SALT` set when staging, because the file may be one a
+  publication command generated on that machine. The CI seed-corpus lane keeps passing the
   `BENCHBOX_MACHINE_ID_SALT` GitHub secret, and a runner has no salt file, so a
   missing secret still fails closed.
 - Set `BENCHBOX_MACHINE_ID_SALT` only to override: to share one salt across

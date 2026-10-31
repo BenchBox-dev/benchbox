@@ -7,7 +7,12 @@ from pathlib import Path
 
 import pytest
 
-from tests.integration._cli_e2e_utils import cli_subprocess_environment, isolated_cli_home, run_cli_command
+from tests.integration._cli_e2e_utils import (
+    cli_subprocess_environment,
+    isolated_cli_home,
+    run_cli_command,
+    writes_pseudonym_salt,
+)
 
 pytestmark = [pytest.mark.integration, pytest.mark.fast]
 
@@ -21,6 +26,18 @@ def test_default_cli_home_is_an_isolated_temporary_directory(tmp_path: Path, mon
         assert Path(environment["HOME"]) == home
         assert Path(environment["USERPROFILE"]) == home
     assert not home.exists()
+
+
+@pytest.mark.parametrize("command", ["export", "submit", "publish"])
+def test_publication_commands_get_an_isolated_home(command: str) -> None:
+    assert writes_pseudonym_salt([command, "--help"])
+
+
+@pytest.mark.parametrize("command", ["run", "platforms", "results"])
+def test_other_commands_keep_the_inherited_home(command: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    assert not writes_pseudonym_salt([command, "--help"])
+    monkeypatch.setenv("HOME", "/inherited/home")
+    assert cli_subprocess_environment(home=None)["HOME"] == "/inherited/home"
 
 
 def test_explicit_cli_home_overrides_inherited_home(tmp_path: Path) -> None:
