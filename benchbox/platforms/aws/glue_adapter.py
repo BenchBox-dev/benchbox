@@ -60,6 +60,7 @@ class GlueJobStatus:
 
 class AWSGlueAdapter(SparkTuningMixin, SparkExternalTableMixin, PlatformAdapter):
     plan_capture_phase_eligible = True
+    external_staging_instruction = "Pass --output s3://bucket/path."
 
     driver_isolation_capability = DriverIsolationCapability.NOT_FEASIBLE
 
@@ -82,11 +83,10 @@ class AWSGlueAdapter(SparkTuningMixin, SparkExternalTableMixin, PlatformAdapter)
         self.s3_staging_dir = config.get("s3_staging_dir") or config.get("staging_root")
         if not self.s3_staging_dir:
             raise ConfigurationError(
-                "AWS Glue requires s3_staging_dir for data and results.\n"
+                "AWS Glue requires an S3 staging location for data and results.\n"
                 "Example: s3://my-bucket/benchbox-data\n\n"
-                "Provide via:\n"
-                "  --staging-root s3://my-bucket/benchbox-data\n"
-                "  or: BENCHBOX_S3_STAGING_DIR environment variable"
+                "Provide it with:\n"
+                "  --output s3://my-bucket/benchbox-data"
             )
 
         if self.s3_staging_dir.startswith("s3://"):

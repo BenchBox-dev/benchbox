@@ -184,17 +184,18 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
         if not all([self.host, self.username, self.password]):
             missing = []
             if not self.host:
-                missing.append("host (or REDSHIFT_HOST)")
+                missing.append("host")
             if not self.username:
-                missing.append("username (or REDSHIFT_USER)")
+                missing.append("username")
             if not self.password:
-                missing.append("password (or REDSHIFT_PASSWORD)")
+                missing.append("password")
 
             raise ConfigurationError(
                 f"Redshift configuration is incomplete. Missing: {', '.join(missing)}\n"
-                "Configure with one of:\n"
-                "  1. CLI: benchbox setup --platform redshift\n"
-                "  2. Environment variables: REDSHIFT_HOST, REDSHIFT_USER, REDSHIFT_PASSWORD"
+                "benchbox run uses the saved Redshift credentials and does not read REDSHIFT_* environment variables.\n"
+                "Save them with: benchbox setup --platform redshift\n"
+                "Setup can read REDSHIFT_HOST, REDSHIFT_USERNAME, REDSHIFT_PASSWORD and REDSHIFT_DATABASE "
+                "from your environment."
             )
 
     @property
