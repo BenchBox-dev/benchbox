@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed QuestDB read_primitives reporting failures for queries QuestDB 10.0.1 cannot express (full-text MATCH AGAINST, STRUCT, MAP, lambda FILTER, approximate top-k, JSON aggregates, VARCHAR arrays); they are now skipped on QuestDB with the engine error recorded as the skip reason."
+    }
+  ]
+}
