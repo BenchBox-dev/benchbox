@@ -17730,7 +17730,9 @@
     },
     "perf-clickhouse-server-bulk-load-20261030": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "uat-docker-memory-admission-decimal-units-20261030"
+      ],
       "priority": "high",
       "status": "open",
       "title": "Bulk insert for ClickHouse server mode and Cloud without staging"
