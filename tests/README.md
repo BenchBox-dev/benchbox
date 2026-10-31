@@ -452,7 +452,8 @@ critical (4), or free disk below `BENCHBOX_HEAVY_KILL_FREE_DISK_GIB`. In `kill` 
 SIGKILLs survivors, then SIGTERMs the holder if the tree is still over budget. Parentage is re-verified immediately
 before every signal; re-parented, double-forked and sibling processes are never signalled. After a kill, `run --guard`
 exits **79** (distinct from UAT's 137, 75 busy, 76 admission refusal, 78 ownership); an in-process holder that
-acquired with `guard=True` exits 79 when the watcher terminates it. A lock file whose inode changed produces a loud
+acquired with `guard=True` exits 79 only when the watcher terminates it while the main thread is running Python code
+(a holder stuck in a native call is SIGKILLed after the grace period instead). A lock file whose inode changed produces a loud
 warning only. On normal release, surviving descendants are listed and left running.
 
 VMs and containers started through the Apple `container` runtime are children of launchd, not of the holder, so

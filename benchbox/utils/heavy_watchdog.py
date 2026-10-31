@@ -4,6 +4,7 @@ import argparse
 import ctypes
 import importlib.util
 import os
+import select
 import shutil
 import signal
 import sys
@@ -188,8 +189,20 @@ class Watchdog:
         self._inode_warned = False
 
     def log(self, message: str) -> None:
-        self._out.write(f"{LOG_PREFIX} {message}\n")
-        self._out.flush()
+        try:
+            if not self._writable():
+                return
+            self._out.write(f"{LOG_PREFIX} {message}\n")
+            self._out.flush()
+        except (BlockingIOError, OSError, ValueError):
+            pass
+
+    def _writable(self) -> bool:
+        try:
+            fd = self._out.fileno()
+        except (OSError, ValueError, AttributeError):
+            return True
+        return bool(select.select([], [fd], [], 0)[1])
 
     def _flag(self, value: bytes) -> None:
         if self._flag_fd is None:
@@ -228,6 +241,10 @@ class Watchdog:
         )
         for member in sample.top(TOP_PROCESS_COUNT):
             self.log(f"  pid {member.pid} {member.name or '?'} {(member.footprint_bytes or 0) / GIB:.2f} GiB")
+        unmeasured = [m for m in sample.members if m.footprint_bytes is None]
+        if unmeasured:
+            names = ", ".join(f"{m.pid} {m.name or '?'}" for m in unmeasured)
+            self.log(f"footprint unreadable (counted as 0): {names}")
         self.log(f"note: {VM_NOTE}")
 
     def _signal_descendant(self, member: TreeMember, sig: int) -> None:
@@ -242,12 +259,12 @@ class Watchdog:
         except (psutil.Error, OSError) as exc:
             self.log(f"could not send {label} to pid {member.pid}: {exc}")
 
-    def _wait_gone(self, members: Sequence[TreeMember]) -> list[TreeMember]:
-        deadline = self._clock() + self.policy.grace_seconds
+    def _wait_gone(self, members: Sequence[TreeMember], deadline: float | None = None) -> list[TreeMember]:
+        limit = self._clock() + self.policy.grace_seconds if deadline is None else deadline
         remaining = list(members)
         while remaining:
             remaining = [m for m in remaining if not process_tree.is_gone(m.pid, m.created)]
-            if not remaining or self._clock() >= deadline:
+            if not remaining or self._clock() >= limit:
                 break
             self._sleeper(0.1)
         return remaining
@@ -270,17 +287,18 @@ class Watchdog:
             self.log(f"could not terminate holder pid {self.policy.holder_pid}: {exc}")
 
     def _kill_tree(self, sample: TreeSample) -> None:
-        victims = sorted(
-            (m for m in sample.members if m.depth > 0),
-            key=lambda m: m.depth,
-            reverse=True,
-        )
+        levels: dict[int, list[TreeMember]] = {}
+        for member in sample.members:
+            if member.depth > 0:
+                levels.setdefault(member.depth, []).append(member)
         self._flag(FLAG_DESCENDANTS_KILLED)
-        for member in victims:
-            self._signal_descendant(member, SIG_TERM)
-        survivors = self._wait_gone(victims)
-        for member in survivors:
-            self._signal_descendant(member, SIG_KILL)
+        deadline = self._clock() + self.policy.grace_seconds
+        for depth in sorted(levels, reverse=True):
+            level = levels[depth]
+            for member in level:
+                self._signal_descendant(member, SIG_TERM)
+            for member in self._wait_gone(level, deadline):
+                self._signal_descendant(member, SIG_KILL)
         after = self._sampler(self.policy.holder_pid, self._exclude)
         if after is not None and self.policy.budget_bytes > 0 and after.total_bytes > self.policy.budget_bytes:
             self._terminate_holder()

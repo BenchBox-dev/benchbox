@@ -639,7 +639,7 @@ def start_guard(handle: HostLock, *, environ: Mapping[str, str] | None = None) -
         return None
     if mode not in ("", "kill", "warn"):
         _log(f"WARNING: {WATCHDOG_MODE_ENV}={mode!r} is not kill, warn or off; using kill")
-    if IS_WINDOWS or handle.inherited:
+    if IS_WINDOWS:
         return None
     try:
         return _spawn_guard(handle, env)

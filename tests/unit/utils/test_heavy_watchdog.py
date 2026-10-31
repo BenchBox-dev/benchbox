@@ -21,13 +21,27 @@ GIB = 2**30
 
 
 @pytest.fixture
-def spawned() -> Iterator[list[subprocess.Popen]]:
-    procs: list[subprocess.Popen] = []
+def spawned() -> Iterator[list[subprocess.Popen | int]]:
+    procs: list[subprocess.Popen | int] = []
     yield procs
-    for proc in procs:
-        if proc.poll() is None:
-            proc.kill()
-        proc.wait()
+    for item in procs:
+        if isinstance(item, int):
+            targets = [item]
+        else:
+            try:
+                targets = [child.pid for child in psutil.Process(item.pid).children(recursive=True)]
+            except psutil.Error:
+                targets = []
+        for pid in targets:
+            try:
+                psutil.Process(pid).kill()
+            except psutil.Error:
+                pass
+    for item in procs:
+        if not isinstance(item, int):
+            if item.poll() is None:
+                item.kill()
+            item.wait()
 
 
 def wait_for(predicate: Callable[[], bool], timeout: float = 20.0) -> bool:
@@ -179,7 +193,8 @@ def test_sibling_and_double_forked_descendant_are_never_signalled(tmp_path: Path
     victim = read_pid(tmp_path / "victim.pid")
     daemon = read_pid(tmp_path / "daemon.pid")
     read_pid(tmp_path / "sibling.pid")
-    assert psutil.Process(daemon).ppid() == 1
+    spawned.append(daemon)
+    assert psutil.Process(daemon).ppid() != holder.pid
     orphan = pt.TreeMember(daemon, holder.pid, "python", psutil.Process(daemon).create_time(), 1, None)
     assert pt.verified_descendant(orphan, holder.pid, psutil.Process(holder.pid).create_time()) is None
     start_driver(holder, 200 * MIB, "kill", spawned, tmp_path / "watch.err")
@@ -329,23 +344,100 @@ def test_off_mode_warns_loudly_and_starts_no_watcher(capfd: pytest.CaptureFixtur
     assert "disables the watchdog" in capfd.readouterr().err
 
 
-def test_run_command_guard_stops_a_runaway_command_with_the_watchdog_status(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
-) -> None:
-    monkeypatch.setenv("BENCHBOX_TEST_LOCK_DIR", str(tmp_path))
-    monkeypatch.setenv("BENCHBOX_HEAVY_MEMORY_BUDGET_GIB", "0.25")
-    monkeypatch.setenv("BENCHBOX_HEAVY_WATCHDOG_INTERVAL_SECONDS", "0.2")
-    monkeypatch.setenv("BENCHBOX_HEAVY_KILL_FREE_DISK_GIB", "0")
-    monkeypatch.setenv("BENCHBOX_HEAVY_WATCHDOG", "kill")
-    monkeypatch.delenv(hl.OWNER_ENV, raising=False)
-    code = hl.run_command(
-        [sys.executable, "-m", "tests.unit.utils.heavy_watchdog_helper", "alloc", "400", str(tmp_path / "run.pid")],
-        guard=True,
+def guard_env(tmp_path: Path, budget_gib: str = "0.25") -> dict[str, str]:
+    env = dict(os.environ)
+    env.update(
+        {
+            "BENCHBOX_TEST_LOCK_DIR": str(tmp_path),
+            "BENCHBOX_HEAVY_MEMORY_BUDGET_GIB": budget_gib,
+            "BENCHBOX_HEAVY_WATCHDOG_INTERVAL_SECONDS": "0.2",
+            "BENCHBOX_HEAVY_KILL_FREE_DISK_GIB": "0",
+            "BENCHBOX_HEAVY_WATCHDOG": "kill",
+        }
     )
-    assert code == hl.EXIT_WATCHDOG
-    err = capfd.readouterr().err
-    assert "BREACH tree footprint" in err
-    assert "exiting 79" in err
-    assert (
-        not alive(int((tmp_path / "run.pid").read_text(encoding="utf-8"))) if (tmp_path / "run.pid").exists() else True
+    env.pop(hl.OWNER_ENV, None)
+    return env
+
+
+def test_run_guard_subprocess_stops_a_runaway_command_with_the_watchdog_status(tmp_path: Path) -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "benchbox.utils.host_lock",
+            "run",
+            "--guard",
+            "--",
+            sys.executable,
+            "-m",
+            "tests.unit.utils.heavy_watchdog_helper",
+            "alloc",
+            "400",
+            str(tmp_path / "run.pid"),
+        ],
+        env=guard_env(tmp_path),
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
+    assert result.returncode == hl.EXIT_WATCHDOG == 79, result.stderr
+    assert "BREACH tree footprint" in result.stderr
+    assert "exiting 79" in result.stderr
+    pid_file = tmp_path / "run.pid"
+    if pid_file.exists():
+        assert not alive(int(pid_file.read_text(encoding="utf-8")))
+
+
+def test_nested_run_guard_under_an_outer_holder_is_guarded(tmp_path: Path) -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "benchbox.utils.host_lock",
+            "run",
+            "--",
+            sys.executable,
+            "-m",
+            "benchbox.utils.host_lock",
+            "run",
+            "--guard",
+            "--",
+            sys.executable,
+            "-m",
+            "tests.unit.utils.heavy_watchdog_helper",
+            "alloc",
+            "400",
+            str(tmp_path / "nested.pid"),
+        ],
+        env=guard_env(tmp_path),
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert result.returncode == hl.EXIT_WATCHDOG, result.stderr
+    assert "BREACH tree footprint" in result.stderr
+
+
+def test_slow_grandchild_ignoring_sigterm_dies_after_its_parent_is_terminated(tmp_path: Path, spawned) -> None:
+    holder = subprocess.Popen(
+        [sys.executable, "-m", "tests.unit.utils.heavy_watchdog_helper", "stubborn_holder", str(tmp_path), "300"]
+    )
+    spawned.append(holder)
+    stubborn = read_pid(tmp_path / "stubborn.pid")
+    start_driver(holder, 200 * MIB, "kill", spawned, tmp_path / "watch.err")
+    assert wait_for(lambda: not alive(stubborn), timeout=15.0), (tmp_path / "watch.err").read_text(encoding="utf-8")
+    assert alive(holder.pid)
+
+
+def test_unreadable_footprints_are_named_in_the_breach_report() -> None:
+    member = pt.TreeMember(os.getpid(), os.getppid(), "python", psutil.Process().create_time(), 0, None)
+    out = io.StringIO()
+    dog = hw.Watchdog(
+        policy(budget_gib=0.0, kill_free_disk_gib=20.0),
+        sampler=lambda pid, exclude=(): pt.TreeSample(os.getpid(), (member,), 0),
+        pressure_reader=lambda: 4,
+        disk_reader=lambda roots: [],
+        out=out,
+    )
+    dog.step()
+    assert "footprint unreadable" in out.getvalue()

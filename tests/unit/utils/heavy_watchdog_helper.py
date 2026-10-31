@@ -7,6 +7,8 @@ import sys
 import time
 from pathlib import Path
 
+WAIT_SECONDS = 60.0
+
 
 def spawn(role: str, *args: str) -> subprocess.Popen[bytes]:
     return subprocess.Popen([sys.executable, "-m", "tests.unit.utils.heavy_watchdog_helper", role, *args])
@@ -30,7 +32,8 @@ def alloc(mib: str, pid_file: str) -> None:
 def nested_grandchild(directory: str, mib: str) -> None:
     root = Path(directory)
     (root / "gc.pid").write_text(str(os.getpid()), encoding="utf-8")
-    while not (root / "go").exists():
+    deadline = time.monotonic() + WAIT_SECONDS
+    while not (root / "go").exists() and time.monotonic() < deadline:
         time.sleep(0.05)
     held = touch_memory(int(mib))
     time.sleep(60)
@@ -67,7 +70,8 @@ def guarded_holder(directory: str) -> None:
     host_lock.acquire(root / "test.lock", phase="t", guard=True)
     kid = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
     (root / "kid.pid").write_text(str(kid.pid), encoding="utf-8")
-    while not (root / "go").exists():
+    deadline = time.monotonic() + WAIT_SECONDS
+    while not (root / "go").exists() and time.monotonic() < deadline:
         time.sleep(0.05)
     held = touch_memory(300)
     time.sleep(60)
@@ -77,12 +81,32 @@ def guarded_holder(directory: str) -> None:
 def gil_holder(directory: str) -> None:
     root = Path(directory)
     spawn("alloc", "400", str(root / "victim.pid"))
-    while not (root / "victim.pid").exists():
+    deadline = time.monotonic() + WAIT_SECONDS
+    while not (root / "victim.pid").exists() and time.monotonic() < deadline:
         time.sleep(0.05)
     (root / "spinning").write_text("x", encoding="utf-8")
     end = time.time() + 20
     while time.time() < end:
         sum(range(30_000_000))
+
+
+def stubborn(directory: str, mib: str) -> None:
+    import signal
+
+    signal.signal(signal.Signals["SIGTERM"], signal.SIG_IGN)
+    held = touch_memory(int(mib))
+    (Path(directory) / "stubborn.pid").write_text(str(os.getpid()), encoding="utf-8")
+    time.sleep(60)
+    del held
+
+
+def intermediate(directory: str, mib: str) -> None:
+    spawn("stubborn", directory, mib).wait()
+
+
+def stubborn_holder(directory: str, mib: str) -> None:
+    spawn("intermediate", directory, mib)
+    time.sleep(60)
 
 
 def driver(config_json: str) -> None:
@@ -109,6 +133,9 @@ ROLES = {
     "orphan_holder": orphan_holder,
     "guarded_holder": guarded_holder,
     "gil_holder": gil_holder,
+    "stubborn": stubborn,
+    "intermediate": intermediate,
+    "stubborn_holder": stubborn_holder,
     "driver": driver,
 }
 
