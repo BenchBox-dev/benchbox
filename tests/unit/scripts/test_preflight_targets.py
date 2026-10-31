@@ -259,6 +259,41 @@ def test_platform_smoke_mapping_needs_the_whole_platform_name(repo: Path) -> Non
     ]
 
 
+def test_workflow_change_selects_workflow_tests_and_tests_naming_the_file(repo: Path) -> None:
+    _write(repo, "tests/unit/workflows/test_every_workflow.py")
+    _write(repo, "tests/system/test_names_ci.py", "WORKFLOW = '.github/workflows/ci.yml'\n")
+    _write(repo, "tests/system/test_names_bare.py", "NAME = 'ci.yml'\n")
+    _write(repo, "tests/system/test_names_other.py", "NAME = 'foo-ci.yml'\n")
+    _write(repo, "tests/system/test_names_suffix.py", "NAME = 'ci.yml.bak'\n")
+    _write(repo, "tests/system/test_names_nothing.py", "NAME = 'unrelated'\n")
+
+    assert pt.map_tests(repo, [".github/workflows/ci.yml"]) == [
+        "tests/system/test_names_bare.py",
+        "tests/system/test_names_ci.py",
+        "tests/unit/workflows/test_every_workflow.py",
+    ]
+
+
+def test_composite_action_change_selects_workflow_tests_and_tests_naming_the_action(repo: Path) -> None:
+    _write(repo, "tests/unit/workflows/test_every_workflow.py")
+    _write(repo, "tests/system/test_uses_action.py", "USES = './.github/actions/setup-env'\n")
+    _write(repo, "tests/system/test_uses_longer_action.py", "USES = './.github/actions/setup-env-extra'\n")
+    _write(repo, "tests/system/test_uses_nothing.py", "USES = 'other'\n")
+
+    assert pt.map_tests(repo, [".github/actions/setup-env/action.yml"]) == [
+        "tests/system/test_uses_action.py",
+        "tests/unit/workflows/test_every_workflow.py",
+    ]
+
+
+def test_oracle_workflow_change_still_selects_the_scenario_harness(repo: Path) -> None:
+    for test in pt.ORACLE_SCENARIO_TESTS:
+        _write(repo, test)
+    _write(repo, "tests/unit/workflows/test_every_workflow.py")
+
+    assert set(pt.ORACLE_SCENARIO_TESTS) <= set(pt.map_tests(repo, [".github/workflows/oracle-gate.yml"]))
+
+
 def test_changed_test_package_init_selects_its_package_and_importers(
     repo: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
