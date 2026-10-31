@@ -4,7 +4,7 @@
     "The existing `oracle-` mapping still selects the oracle scenario tests.",
     "`tests/unit/scripts/test_preflight_targets.py` covers a non-oracle workflow change and a composite-action change selecting those tests."
   ],
-  "context": "REVIEW 2026-10-31: VALID, refined. Name matching alone misses the directory-wide workflow tests, so the acceptance now selects the whole tests/unit/workflows directory plus name matches elsewhere, and covers .github/actions/.",
+  "context": "REVIEW 2026-10-31: VALID, refined. Name matching alone misses the directory-wide workflow tests, so the acceptance now selects the whole tests/unit/workflows directory plus name matches elsewhere, and covers .github/actions/.\n\nDONE 2026-10-31: BenchBox#3890 squash-merged (5fb3812c). `preflight_targets.map_tests` now sends every changed path under `.github/workflows/` or `.github/actions/`, Python files included, to all of `tests/unit/workflows/` plus every other test whose source names the changed file (boundary-matched: `ci.yml` does not match `foo-ci.yml` or `ci.yml.bak`; actions match `.github/actions/<name>`). The oracle mapping is unchanged. Four behaviour tests in test_preflight_targets.py, including a Python file inside a composite action (added for the benchbox-oracle Medium finding; fails on the earlier code). Measured cost: a ci.yml change selects 77 test files (3,544 tests, 14m48s serial), against about 3 minutes for tests/unit/workflows alone; trunk.yml selects 64 files and test.yml 60. benchbox-oracle SHIP on 79bdd857; full CI green; armed with make pr-arm.",
   "description": "`_project/scripts/preflight_targets.py` maps a changed non-Python path to tests only through the `SOURCE_GUARD_TESTS` prefixes, and the only workflow prefix there is `.github/workflows/oracle-`. Changing any other workflow selects nothing, although tests read those files: under `tests/unit/workflows` and `tests/system`, 20 test files mention `ci.yml`, 9 `nightly-v2.yml`, 6 `trunk.yml` and 4 `trunk-coverage.yml`. On #3725, a commit that edited `ci.yml` and `nightly-v2.yml` passed preflight with only the 7 tests mapped from the branch's Python changes. The 1,033 workflow and CI-parity tests ran only because they were started by hand, so a broken workflow test would have surfaced one CI round later.\n\nMatching test files by workflow name is not enough on its own: several tests under `tests/unit/workflows` check every workflow in the directory (for example `test_workflow_context_availability.py`, `test_workflow_dispatch_dedupe.py`, `test_ci_text_edit_skip.py`), so a name match would miss them. Composite actions under `.github/actions/` have the same gap. The whole `tests/unit/workflows` directory plus `tests/system/test_ci_lint_parity.py` (1,033 tests) ran serially in about three minutes on #3725.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3725"
@@ -34,6 +34,14 @@
       "op": "take",
       "op_id": "85a58bcc2c434c3c85611609b7311f0b",
       "session_id": "8bf48876605f4a6fb950461952d183a8"
+    },
+    {
+      "actor": "joe-batch-preflight-workflows",
+      "at": "2026-10-31T20:55:57Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "aab2f4cd660c42afba50581807963cd1",
+      "session_id": "4c4928e16bab47789a12f55e52bef685"
     }
   ]
 }
