@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "git grep -i for sphinx, furo, ablog, myst_parser, docs/_templates, docs/_extensions and linkcheck_ignore finds nothing outside CHANGELOG.md, _project/, ADRs, make/monolith-baseline.json and generated or frozen records; generated inventories such as quality/docs-reference-inventory.json are regenerated with their generator, and each remaining match in a record (quality/comment-cleanup-scope.json, docs/internal/dependency-inventory.md, tests/fixtures/fast_tier_baseline/) is fixed or named in the PR with the reason it stays",
+    "The _project/decisions links named above resolve or are marked historical",
+    "Core required checks are green"
+  ],
+  "context": "Split from astro-site-54-retire-sphinx-and-legacy-site on 2026-10-30; the site part moved to the benchbox-site tracker under that id.",
+  "description": "Core no longer contains Sphinx or the site (#3096); benchbox.dev is built in BenchBox-dev/benchbox-site. A few core references to the Sphinx layout remain (checked against origin/develop on 2026-10-30):\n\n- scripts/comment_syntax.py (around lines 175-176) keeps a docs/_templates HTML adapter. Its tests are in tests/unit/scripts/test_comment_policy.py (around lines 3866-3880 and 4134), with matching entries in the medium shard durations file.\n- tests/unit/scripts/test_path_filter_decision.py (around lines 257-290) uses docs/_extensions/sphinx_tags_fix.py and other Sphinx paths that no longer exist; replace them with paths that exist.\n- docs/internal/benchbox-results-platform-strategy.md (around line 631) sketches the Sphinx pipeline; correct it.\n- _project/decisions/adr-astro-unified-site.md needs a note that docs/internal/adr/adr-site-repo-split.md partly supersedes it. Its link around line 203, _project/decisions/astro-api-reference-contract.md around line 189 and _project/decisions/astro-parity-signoff.md around lines 24 and 31 point at a directory that no longer exists; re-point them (for example to the copy of api-reference-url-map.json in benchbox-site inventory/) or mark them historical.\n\ndocs/linkcheck_ignore.txt (deleted by #3659), make/documentation.mk and pyproject.toml are already clean. Out of scope: make/monolith-baseline.json (frozen history) and landing/prompts/catalog.yaml (the bundle's catalog source).",
+  "links": [
+    "BenchBox-dev/BenchBox: scripts/comment_syntax.py",
+    "BenchBox-dev/BenchBox: tests/unit/scripts/test_path_filter_decision.py",
+    "BenchBox-dev/BenchBox: _project/decisions/adr-astro-unified-site.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-31T00:19:22Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c724990a66454517bef366af96742376",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
+    }
+  ]
+}
