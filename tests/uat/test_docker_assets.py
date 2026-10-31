@@ -700,7 +700,7 @@ def test_sweep_leaked_mocker_volumes_swallows_individual_removal_failure(tmp_pat
 @pytest.mark.parametrize(
     ("platform", "expected_service_names"),
     [
-        ("databend", frozenset({"minio", "minio-setup", "databend"})),
+        ("databend", frozenset({"databend"})),
         ("doris", frozenset({"doris"})),
         ("starrocks", frozenset({"starrocks"})),
     ],

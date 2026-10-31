@@ -17,6 +17,7 @@ CLICKHOUSE_OUTER_ALIAS_VARIANTS: dict[str, tuple[str, str]] = {
     "10_v8": ("lineitem", "lineitem_outer"),
 }
 CLICKHOUSE_COALESCED_COUNT_SUBQUERY_VARIANT_IDS = frozenset({"13_v1"})
+DORIS_FILTER_VARIANT_IDS = frozenset({"1_v6", *(f"{number}_v7" for number in range(2, 19))})
 SINGLESTORE_FILTER_VARIANT_IDS = frozenset({"1_v6", *(f"{number}_v7" for number in range(2, 19))})
 SINGLESTORE_GROUPING_SET_VARIANT_IDS = frozenset({"1_v9"})
 SINGLESTORE_SOURCELESS_WHERE_VARIANT_IDS = frozenset({"7_v8", "12_v8", "13_v8", "18_v4"})
@@ -81,6 +82,8 @@ def _variant_rewrites(query_id: str, target: str) -> list[Rewrite]:
         return spark_variant_rewrites(query_id)
     if target == "clickhouse":
         return _clickhouse_variant_rewrites(query_id)
+    if target == "doris" and query_id in DORIS_FILTER_VARIANT_IDS:
+        return [("filtered_aggregates_to_conditional", {})]
     if target == "singlestore":
         return _singlestore_variant_rewrites(query_id)
     rewrites: list[Rewrite] = []
@@ -139,6 +142,8 @@ def rewrite_dialect_variant(query_id: str, query: str, target_dialect: str) -> s
     rewrites = _variant_rewrites(query_id, target)
     if rewrites:
         query = translate_sql_query(query, target, source_dialect=target, identify=False, rewrites=rewrites)
+    if target == "doris" and query_id in GROUP_BY_EMPTY_VARIANT_IDS:
+        query = query.replace(" GROUP BY ()", "")
     return query
 
 
@@ -170,6 +175,7 @@ __all__ = [
     "CLICKHOUSE_FILTER_VARIANT_IDS",
     "CLICKHOUSE_OUTER_ALIAS_VARIANTS",
     "DATAFUSION_EMPTY_GROUP_VARIANT_IDS",
+    "DORIS_FILTER_VARIANT_IDS",
     "DUAL_VARIANT_IDS",
     "GROUP_BY_EMPTY_VARIANT_IDS",
     "LIST_AGGREGATE_DIALECTS",

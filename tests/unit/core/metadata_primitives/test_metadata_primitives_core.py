@@ -245,6 +245,14 @@ class TestMetadataPrimitivesQueryManager:
         assert len(clickhouse_queries) > 0
         assert "schema_list_views" not in clickhouse_queries
 
+    def test_doris_skips_pg_catalog_and_referential_constraint_queries(self):
+        manager = MetadataPrimitivesQueryManager()
+
+        doris_queries = manager.get_queries_for_dialect("doris")
+        for query_id in ("constraint_referential_integrity", "acl_role_list", "acl_role_membership"):
+            assert query_id not in doris_queries
+        assert "constraint_summary" in doris_queries
+
 
 @pytest.mark.unit
 class TestMetadataPrimitivesBenchmark:

@@ -76,7 +76,7 @@ services:
       test: >
         mysql -h127.0.0.1 -P9030 -uroot -N -s -e "SELECT COUNT(*) FROM frontends() WHERE \`join\` AND alive"
         | grep -qx '1'
-        && mysql -h127.0.0.1 -P9030 -uroot -N -s -e "SELECT COUNT(*) FROM backends() WHERE alive"
+        && mysql -h127.0.0.1 -P9030 -uroot -N -s -e "SELECT COUNT(*) FROM backends() WHERE alive AND TotalCapacity > 0"
         | grep -qx '1'
         || exit 1
       interval: 15s

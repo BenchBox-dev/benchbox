@@ -84,6 +84,9 @@
       "clickhouse": [
         "Q9"
       ],
+      "doris": [
+        "Q9"
+      ],
       "sqlite": [
         "Q9"
       ],
@@ -332,6 +335,32 @@
         "unpivot_basic",
         "window_rank"
       ],
+      "doris": [
+        "approx_quantile_groupby",
+        "approx_quantiles_array",
+        "approx_top_k_lineitem",
+        "array_agg_distinct",
+        "array_agg_simple",
+        "array_of_struct",
+        "array_slice",
+        "array_unnest",
+        "groupby_all_complex",
+        "groupby_all_simple",
+        "json_aggregates",
+        "list_filter",
+        "list_reduce",
+        "list_transform",
+        "map_access",
+        "map_construction",
+        "map_keys_values",
+        "optimizer_scalar_subquery_flattening",
+        "orderby_all_desc",
+        "orderby_all_simple",
+        "statistical_correlation",
+        "statistical_percentiles",
+        "struct_access",
+        "unpivot_basic"
+      ],
       "duckdb": [
         "array_contains",
         "array_distinct",
@@ -355,6 +384,11 @@
         "json_aggregates",
         "struct_access"
       ],
+      "spark": [
+        "json_aggregates",
+        "list_reduce",
+        "timeseries_trend_analysis"
+      ],
       "sqlite": [
         "groupby_all_complex",
         "groupby_all_simple",
@@ -372,11 +406,6 @@
         "statistical_variance_stddev",
         "timeseries_trend_analysis",
         "window_moving_frame"
-      ],
-      "spark": [
-        "json_aggregates",
-        "list_reduce",
-        "timeseries_trend_analysis"
       ]
     }
   },
@@ -564,6 +593,15 @@
         "97",
         "98",
         "99"
+      ]
+    }
+  },
+  "tpchavoc": {
+    "reason": "Doris does not parse the empty GROUP BY () the translator emits for the 6_v2 and 14_v2 variants; the clause is dropped from the translated text so the global aggregate and HAVING run unchanged.",
+    "dialects": {
+      "doris": [
+        "14_v2",
+        "6_v2"
       ]
     }
   },

@@ -290,6 +290,44 @@ def test_dry_run_uses_production_dialect_rewrites_and_query_subset(
     assert all(fragment in rendered for fragment in required_fragments)
 
 
+def test_doris_variants_run_without_filter_clause_or_empty_group_by():
+    from benchbox.core.tpchavoc.dialect_compat import DORIS_FILTER_VARIANT_IDS, GROUP_BY_EMPTY_VARIANT_IDS
+
+    benchmark = TPCHavocBenchmark(scale_factor=0.1)
+    queries = benchmark.get_queries(dialect="doris")
+
+    for query_id in DORIS_FILTER_VARIANT_IDS:
+        tree = sqlglot.parse_one(queries[query_id], read="doris")
+        assert not list(tree.find_all(exp.Filter)), query_id
+    for query_id in GROUP_BY_EMPTY_VARIANT_IDS:
+        assert "GROUP BY ()" not in queries[query_id].upper()
+        assert "HAVING" in queries[query_id].upper()
+
+
+def test_doris_filter_variants_are_the_variants_that_use_filter():
+    from benchbox.core.tpchavoc.dialect_compat import DORIS_FILTER_VARIANT_IDS
+
+    benchmark = TPCHavocBenchmark(scale_factor=0.1)
+    uses_filter = {
+        query_id
+        for query_id, query in benchmark.get_queries(dialect="duckdb").items()
+        if list(sqlglot.parse_one(query, read="duckdb").find_all(exp.Filter))
+    }
+
+    assert uses_filter >= DORIS_FILTER_VARIANT_IDS
+
+
+def test_doris_rewrites_are_registered_per_variant():
+    import benchbox.sql_compat.rules.query_adapter.doris_tpchavoc_rewrites
+    from benchbox.core.tpchavoc.dialect_compat import DORIS_FILTER_VARIANT_IDS, GROUP_BY_EMPTY_VARIANT_IDS
+    from benchbox.sql_compat.context import Phase
+    from benchbox.sql_compat.registry import REGISTRY
+
+    registered = {key[3] for key, _ in REGISTRY.all_rules() if key[:3] == (Phase.QUERY_ADAPTER, "doris", "tpchavoc")}
+
+    assert registered == set(DORIS_FILTER_VARIANT_IDS) | set(GROUP_BY_EMPTY_VARIANT_IDS)
+
+
 def _singlestore_query(query_id):
     return TPCHavocBenchmark(scale_factor=0.01).get_query(query_id, dialect="singlestore")
 

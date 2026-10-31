@@ -2032,6 +2032,8 @@ class _DorisCursor:
             self._results = [("5.7.99-Doris-2.1.7",)]
         elif lowered.startswith("select database"):
             self._results = [(self._state.database,)]
+        elif "from backends()" in lowered:
+            self._results = [(1, 541132189696)]
         elif "select count" in lowered:
             from_index = lowered.find("from")
             if from_index >= 0:
