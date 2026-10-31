@@ -266,6 +266,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         conn = psycopg.connect(**params)
 
         conn.autocommit = True
+        conn.prepare_threshold = None
 
         cursor = conn.cursor()
         cursor.execute("SELECT 1")
@@ -284,6 +285,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         conn = psycopg.connect(**params)
         try:
             conn.autocommit = True
+            conn.prepare_threshold = None
             cursor = conn.cursor()
             try:
                 cursor.execute("SELECT 1")

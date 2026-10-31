@@ -104,6 +104,28 @@ class TestQuestDBAdapter:
         assert connection is mock_conn
         assert mock_conn.autocommit is True
 
+    def test_create_connection_disables_auto_prepare(self, questdb_stubs):
+        mock_conn = Mock()
+        mock_conn.cursor.return_value.fetchone.return_value = (1,)
+        questdb_stubs.connect.return_value = mock_conn
+
+        adapter = QuestDBAdapter()
+
+        with patch.object(adapter, "handle_existing_database"):
+            adapter.create_connection()
+
+        assert mock_conn.prepare_threshold is None
+
+    def test_new_stream_connection_disables_auto_prepare(self, questdb_stubs):
+        mock_conn = Mock()
+        mock_conn.cursor.return_value.fetchone.return_value = (1,)
+        questdb_stubs.connect.return_value = mock_conn
+
+        stream_conn = QuestDBAdapter().new_stream_connection(Mock())
+
+        assert stream_conn is mock_conn
+        assert mock_conn.prepare_threshold is None
+
     def test_create_connection_verifies_connectivity(self, questdb_stubs):
         mock_conn = Mock()
         mock_cursor = Mock()
