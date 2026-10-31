@@ -17772,6 +17772,13 @@
       "status": "open",
       "title": "Native file loading for Firebolt Core and local runs"
     },
+    "perf-pandas-df-loader-date-objects-20261031": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "pandas DataFrame loader: cast dates in Arrow, not via Python date objects"
+    },
     "perf-prepare-local-load-file-streaming-20261031": {
       "claim": null,
       "needs": [],
