@@ -49,13 +49,11 @@ merged head had both contexts passing, as both were required.
 
 ## What stays
 
-- `.github/workflows/oracle-review.yml` keeps its path and name but reduces to
-  a notification: it triggers on `pull_request_review` submitted, edited and
-  dismissed, has no token permissions, and runs one no-op `review-event` job.
-  It reports no `oracle-review` check. Its completion is how `oracle-gate`
-  learns of review events, which have no trusted trigger of their own.
-  Retiring the workflow needs a replacement for that trigger.
-- Gate refresh is `gh workflow run oracle-gate.yml --ref develop -f pr=<number>`; CI rerun is `make pr-rerun`.
+- `.github/workflows/oracle-review.yml` kept its path and name as a no-op
+  notification whose completion made `oracle-gate` re-evaluate. It has since
+  been deleted: the verdict run posts `oracle-gate` for the head it reviewed,
+  and the gate workflow has no `workflow_run` bridge or `push` trigger.
+- Gate refresh is `gh workflow run oracle-gate.yml --ref develop -f pr=<number>` or the hourly sweep; CI rerun is `make pr-rerun`.
   `make oracle-review-recover` was retired because it refreshed no required check.
 
 ## Owner step

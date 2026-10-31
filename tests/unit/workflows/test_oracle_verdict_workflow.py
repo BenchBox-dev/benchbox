@@ -21,7 +21,6 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "oracle-verdict.yml"
-LEGACY = REPO_ROOT / ".github" / "workflows" / "oracle-review.yml"
 POLICY = load_policy(REPO_ROOT / ".github" / "oracle-reviewers.yml")
 SHA_PIN = re.compile(r"^[\w.-]+/[\w.-]+@[0-9a-f]{40}$")
 SECRET_REF = re.compile(r"secrets\.([A-Z0-9_]+)")
@@ -201,9 +200,8 @@ def test_triggers() -> None:
     assert "pull_request" not in triggers
 
 
-def test_existing_gate_is_untouched() -> None:
-    legacy = yaml.safe_load(LEGACY.read_text(encoding="utf-8"))
-    assert legacy["name"] == "oracle-review"
+def test_the_retired_notification_workflow_stays_deleted() -> None:
+    assert not (REPO_ROOT / ".github" / "workflows" / "oracle-review.yml").exists()
     assert "context: oracle-review\n" not in _text_of_workflow()
 
 
