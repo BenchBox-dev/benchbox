@@ -7,6 +7,9 @@ from __future__ import annotations
 import csv
 import re
 import socket
+import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -522,7 +525,38 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
             stmt = re.sub(r"(?i)(DROP\s+TABLE)\s+", r"\1 IF EXISTS ", stmt, count=1)
         return stmt
 
+    CONNECTION_KEEPALIVE_SECONDS = 60.0
+
+    @contextmanager
+    def _keep_connection_alive(self, connection: Any) -> Iterator[None]:
+        stop = threading.Event()
+
+        def ping() -> None:
+            while not stop.wait(self.CONNECTION_KEEPALIVE_SECONDS):
+                try:
+                    connection.execute("SELECT 1").fetchone()
+                except Exception as exc:
+                    self.logger.debug(f"QuestDB connection keepalive stopped: {exc}")
+                    return
+
+        thread = threading.Thread(target=ping, name="questdb-connection-keepalive", daemon=True)
+        thread.start()
+        try:
+            yield
+        finally:
+            stop.set()
+            thread.join(timeout=5)
+
     def load_data(
+        self,
+        benchmark,
+        connection: Any,
+        data_dir: Path,
+    ) -> tuple[dict[str, int], float, dict[str, Any] | None]:
+        with self._keep_connection_alive(connection):
+            return self._load_data(benchmark, connection, data_dir)
+
+    def _load_data(
         self,
         benchmark,
         connection: Any,
