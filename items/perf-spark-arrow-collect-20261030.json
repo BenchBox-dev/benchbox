@@ -1,9 +1,10 @@
 {
   "acceptance": [
-    "Spark adapters fetch via Arrow when supported and fall back to collect() otherwise.",
-    "Digests match the collect() path."
+    "Spark adapters pick toArrow, Arrow-enabled toPandas, or collect() by runtime version; tests cover pyspark 3.5 and 4.x.",
+    "Digests match the collect() path.",
+    "Snowpark Connect outcome recorded."
   ],
-  "description": "base/spark_execution_mixin.py:372 uses collect(), building Python Row objects. Use toArrow() on Spark 4, or toPandas with spark.sql.execution.arrow.pyspark.enabled. Covers spark, pyspark, lakesail, velox, EMR/Glue/Dataproc/Fabric/Synapse Spark. Check snowpark_connect.py:285 too.",
+  "description": "base/spark_execution_mixin.py:372 uses collect(), building Python Row objects. DataFrame.toArrow exists only in pyspark 4.0+; pyproject allows pyspark>=3.5.0 and databricks-connect 16.1.7 (locked for Python <3.12) is Spark 3.5-based. Use toArrow when available, else toPandas with spark.sql.execution.arrow.pyspark.enabled, else collect(). Covers spark, pyspark, lakesail, velox, EMR/Glue/Dataproc/Fabric/Synapse Spark. snowpark_connect.py:285 is a Snowpark DataFrame (not PySpark): Snowpark 1.48 has DataFrame.to_arrow, but check whether it hits the same pandas<3 gate as the Snowflake connector.",
   "sessions": [
     {
       "actor": "mcp:claude-code:root@vm:2d53e6a98f44f4f4a8a4dedd",
@@ -12,6 +13,14 @@
       "op": "create",
       "op_id": "6e6b6cae435a4f44a6d82f2f524dfcc4",
       "session_id": "be00837164104ac2b4ed790cdb6812a2"
+    },
+    {
+      "actor": "mcp:claude-code:root@vm:cb45f246c9de058740ccbeed",
+      "at": "2026-10-31T00:36:07Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "d47f9b545a0b44c88088827e364d3258",
+      "session_id": "d2b018a349924f4f88b746458c80b878"
     }
   ]
 }
