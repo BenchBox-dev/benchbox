@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Adding a setup step to one medium-suite job and not the others fails a fast check, either because the jobs share one setup definition (a composite action or reusable workflow) or because a parity test compares their setup steps.",
+    "The check is shown to work by removing the `_project/scripts` sync from one job and seeing it fail."
+  ],
+  "description": "The medium suite runs in four jobs that each define their own setup: `medium-test` in `ci.yml`; `medium-test` in `trunk.yml` and in `trunk-coverage.yml`, which `ci.yml` calls as `trunk-lane-plain` and `trunk-lane-coverage`; and the core integration suite in `nightly-v2.yml`. On #3725, the locked `_project/scripts` sync that the tracker runtime handshake test needs was added to `ci.yml` and `nightly-v2.yml` but not to the two trunk workflows. `tests/unit/workflows` passed (1,033 tests). The gap showed only when the full CI run failed both trunk-lane `medium-test (shard 0)` jobs. The trunk lanes run on PRs, so they caught this before merge; the same drift in `nightly-v2.yml` would show only in the nightly run.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3725"
+  ],
+  "sessions": [
+    {
+      "actor": "joe-defect-filing",
+      "at": "2026-10-31T15:02:44Z",
+      "client": "mcp",
+      "op": "create",
+      "op_id": "12c4dec680894ee2a34ccd8323ed0228",
+      "session_id": "fdd5a72e54f64ffe965910e79d203e3e"
+    }
+  ]
+}

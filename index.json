@@ -15018,6 +15018,13 @@
       "status": "open",
       "title": "Drop deleted tests from medium_shard_durations.json and flag such entries in the weekly drift check"
     },
+    "medium-suite-job-setup-drift-20261031": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "The medium suite runs from four copied job definitions, and nothing checks that their setup agrees"
+    },
     "medium-test-timeout-headroom": {
       "claim": null,
       "needs": [],
