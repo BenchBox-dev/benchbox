@@ -135,6 +135,7 @@ Stable wrappers are `code`, `test`, `todo`, `docs`, `blog`, `benchbox`, `skill-s
 
 ## Operational references
 
-- Unpublished: `docs/agent/`; `docs/internal/` holds internal docs and runbooks (CI, release, repo admin, evidence, plans). List `development/` and `operations/` pages in `docs/publish-allowlist.txt` only for users.
-- Site: the site, Explorer app, landing page and blog live in `BenchBox-dev/benchbox-site`; change them there by PR.
+- Unpublished: `docs/agent/`; `docs/internal/`: runbooks (CI, release, repo admin, evidence, plans). List `development/` and `operations/` pages in `docs/publish-allowlist.txt` only for users.
+- Site, Explorer, landing, blog: `BenchBox-dev/benchbox-site`; change by PR.
 - SQL compatibility: `benchbox/sql_compat/README.md`; tests: `tests/README.md`
+- Salt is automatic, never a blocker: `docs/agent/maintainer-bundles.md`.

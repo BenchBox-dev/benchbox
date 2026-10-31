@@ -31,7 +31,7 @@ DEVELOPMENT_TREE_ONLY_TARGETS := \
 	agent-commit-range-check skill-integrity-check ci-lint pr-preflight pr-arm-auto-merge shrink-rollup \
 	pr-review-followups-list pr-review-followups dev-loop-metrics ci-usage-report platform-manifest \
 	platform-manifest-check test-docker-parity blind-spots-list blind-spots-report \
-	soundness-drain-report soundness-drain-self-test worktree-audit worktree-finish worktree-reap oracle-mutation-test
+	soundness-drain-report soundness-drain-self-test worktree-audit worktree-finish worktree-reap oracle-mutation-test corpus-stage-local
 
 .PHONY: coverage-check
 
@@ -1049,6 +1049,11 @@ changelog-preview:
 .PHONY: changelog-check
 changelog-check:
 	uv run -- python scripts/changelog_fragments.py check --require-empty-unreleased
+
+.PHONY: corpus-stage-local
+corpus-stage-local:
+	@test -n "$(RESULT)" -a -n "$(OUT)" || { echo "Usage: make corpus-stage-local RESULT=<run result json> OUT=<staging dir>" >&2; exit 1; }
+	uv run -- python scripts/stage_seed_corpus_bundle.py --internal-manifest "$(RESULT)" "$(OUT)"
 
 
 MAKE_TIMING_SHELL := $(BENCHBOX_MAKEFILE_ROOT)scripts/make_timing_shell.sh
