@@ -333,13 +333,20 @@ _PLATFORM_STATIC_OPTS: dict[str, list[str]] = {
     "velox": ["--platform-option", "deployment=remote"],
     "influxdb": [
         "--platform-option",
-        "deployment_mode=core",
-        "--platform-option",
         "host=localhost",
         "--platform-option",
         "ssl=false",
     ],
 }
+
+_PLATFORM_CLI_SELECTORS: dict[str, str] = {
+    "influxdb": "influxdb:core",
+}
+
+
+def platform_cli_selector(platform: str) -> str:
+    return _PLATFORM_CLI_SELECTORS.get(platform, platform)
+
 
 _PLATFORM_SECONDARY_PORTS: dict[str, dict[str, int]] = {
     "questdb": {"http_port": 9000},

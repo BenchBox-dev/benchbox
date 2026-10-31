@@ -4,7 +4,13 @@
     {
       "category": "fixed",
       "breaking": false,
-      "text": "Submission bundle validation recognises the Apache Doris, SingleStore, Velox and Databend platform names, derived from the platform manifest, instead of warning that they are unknown."
+      "text": "InfluxDB runs against a self-hosted InfluxDB 3 Core server now create the target database when it does not exist, and the ssl and port platform options are parsed as a boolean and an integer, so --platform-option ssl=false disables TLS.",
+      "platforms": ["influxdb"]
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Submission bundle validation recognises the Apache Doris, SingleStore, Velox and Databend platform names instead of warning that they are unknown."
     }
   ]
 }

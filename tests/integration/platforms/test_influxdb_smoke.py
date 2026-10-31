@@ -32,6 +32,7 @@ def test_influxdb_smoke_core_mode(monkeypatch, tmp_path):
         assert "InfluxDB" in info["platform_name"]
 
         assert "Core" in info["platform_name"]
+        assert state.databases_created == [state.database]
     finally:
         adapter.close_connection(connection)
 

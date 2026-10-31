@@ -1060,7 +1060,13 @@ def test_influxdb_cells_target_the_local_core_stack():
     pairs = {value.split("=", 1)[0]: value.split("=", 1)[1] for value in opts if "=" in value}
     assert pairs == {
         "port": "8181",
-        "deployment_mode": "core",
         "host": "localhost",
         "ssl": "false",
     }
+
+
+def test_influxdb_cells_select_the_core_deployment():
+    argv = matrix.benchbox_run_argv("influxdb", "tpch", 0.01, local_managed_platform=True)
+    assert argv[argv.index("--platform") + 1] == "influxdb:core"
+    duckdb_argv = matrix.benchbox_run_argv("duckdb", "tpch", 0.01)
+    assert duckdb_argv[duckdb_argv.index("--platform") + 1] == "duckdb"
