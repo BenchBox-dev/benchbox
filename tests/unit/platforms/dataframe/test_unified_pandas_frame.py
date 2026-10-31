@@ -296,6 +296,19 @@ class TestUnifiedPandasFrameHead:
         assert isinstance(result, UnifiedPandasFrame)
         assert len(result) == 3
 
+    def test_dask_head_after_sort_and_projection_keeps_sort_column(self):
+        import dask.dataframe as dd
+        import pandas as pd
+
+        pdf = pd.DataFrame({"a": [5, 3, 1, 4, 2, 6], "b": list("xyxyxy"), "c": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]})
+        pdf["diff"] = pdf["c"] - pdf["a"]
+        frame = UnifiedPandasFrame(dd.from_pandas(pdf, npartitions=2), Mock())
+
+        result = frame.sort_values(["diff", "b"])[["a", "b"]].head(3).compute()
+
+        expected = pdf.sort_values(["diff", "b"])[["a", "b"]].head(3)
+        assert result.to_dict("records") == expected.to_dict("records")
+
     def test_tail_returns_wrapper(self):
 
         import pandas as pd

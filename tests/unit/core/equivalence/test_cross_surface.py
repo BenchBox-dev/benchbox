@@ -1353,7 +1353,7 @@ def test_read_primitives_polars_map_gap_predicate():
 
     assert predicate(
         SurfaceDivergence(
-            "Qmap_access", "expression", "error: map_from_entries not supported on Polars (no native Map dtype)"
+            "Qmap_access", "expression", "error: map_from_arrays not supported on Polars (no native Map dtype)"
         )
     )
     assert predicate(
@@ -1430,7 +1430,7 @@ def _read_primitives_live_baseline_divergences() -> list[SurfaceDivergence]:
     for base in ("map_access", "map_construction", "map_keys_values"):
         divergences.append(
             SurfaceDivergence(
-                base, "expression", "error: map_from_entries not supported on Polars (no native Map dtype)"
+                base, "expression", "error: map_from_arrays not supported on Polars (no native Map dtype)"
             )
         )
     return divergences
