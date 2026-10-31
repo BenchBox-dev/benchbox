@@ -16933,17 +16933,12 @@
       "title": "oracle map renders a staged gate's scale from the shared default and passes unknown provenance labels through"
     },
     "oracle-marker-hmac-signing-20261027": {
-      "claim": {
-        "expires_at": "2026-11-01T03:08:41Z",
-        "generation": "bfff08f6e0194e23af2d15096c966b60",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c8cf2fdb5a699f4b3049c8eb"
-      },
+      "claim": null,
       "needs": [
         "oracle-history-edited-review-fail-closed-20261027"
       ],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Decide whether to sign oracle protocol markers with an App-held key as a second layer over edit detection"
     },
     "oracle-marker-overflow-crash-20261023": {
