@@ -282,7 +282,15 @@ def _build_outer(select: exp.Select, union: exp.Expr, lower) -> exp.Select:
             projections.append(exp.alias_(lowered, projection.sql(dialect="questdb"), quoted=True))
     clauses: dict[str, exp.Expr] = {}
     if select.args.get("having") is not None:
-        clauses["where"] = exp.Where(this=lower(select.args["having"].this))
+        having = exp.Where(this=lower(select.args["having"].this))
+        window_roots = [*projections, *([lower(select.args["order"])] if select.args.get("order") is not None else [])]
+        if any(True for root in window_roots for _ in _scope_windows(root)):
+            columns = [exp.alias_(exp.column(item.alias), item.alias) for item in union.selects]
+            base = exp.Subquery(this=union, alias=exp.TableAlias(this=exp.to_identifier(f"{_RESULT_ALIAS}_having")))
+            union = exp.select(*columns).from_(base)
+            union.set("where", having)
+        else:
+            clauses["where"] = having
     if select.args.get("qualify") is not None:
         clauses["qualify"] = exp.Qualify(this=lower(select.args["qualify"].this))
     if select.args.get("order") is not None:

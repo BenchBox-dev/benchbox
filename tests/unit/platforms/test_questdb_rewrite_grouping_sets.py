@@ -173,3 +173,11 @@ def test_cube_nested_in_grouping_sets_is_expanded():
 def test_unaliased_projections_keep_their_expression_text_as_the_column_label():
     rewritten = rewrite_query("SELECT a, COUNT(*), a || 'x' FROM t GROUP BY ROLLUP (a)")
     assert rewritten.startswith("SELECT __g0 AS a, __a0 AS \"COUNT(*)\", __g0 || 'x' AS \"a || 'x'\" FROM (")
+
+
+def test_having_filters_before_window_functions_run():
+    rewritten = rewrite_query(
+        "SELECT a, RANK() OVER (ORDER BY SUM(x)) AS r FROM t GROUP BY ROLLUP (a) HAVING SUM(x) > 1"
+    )
+    assert rewritten.startswith("SELECT __g0 AS a, RANK() OVER (ORDER BY __a0) AS r FROM (SELECT __g0 AS __g0")
+    assert rewritten.endswith("AS __staged_having WHERE __a0 > 1) AS __staged")
