@@ -4,7 +4,7 @@
     {
       "category": "fixed",
       "breaking": false,
-      "text": "Fixed QuestDB silently dropping every value of a DATE or TIMESTAMP column whose first thousand or so rows are NULL during HTTP import; the importer detects the date format from a leading sample, so the loader now posts an explicit schema with the date pattern taken from the target table's column types."
+      "text": "Fixed QuestDB silently dropping every value of a DATE column whose first thousand or so rows are NULL during HTTP import; the importer detects the date format from a leading sample, so the loader now posts an explicit schema with the date pattern taken from the target table's column types. TIMESTAMP columns are fixed only for the date-only TPC-H tables and for headerless files; other TIMESTAMP columns in files with a header still depend on the importer's detection."
     }
   ]
 }

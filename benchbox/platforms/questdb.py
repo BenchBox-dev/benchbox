@@ -685,14 +685,16 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         import requests
 
         if not self._validate_identifier(table_name):
-            return None
+            raise ValueError(f"Invalid table identifier for QuestDB import: {table_name!r}")
         url = f"{'https' if self.use_tls else 'http'}://{self.host}:{self.http_port}/exec"
         try:
             response = requests.get(url, params={"query": f'SHOW COLUMNS FROM "{table_name}"'}, timeout=30)
             response.raise_for_status()
             rows = [row for row in response.json().get("dataset", []) if len(row) >= 2]
-        except Exception:
-            return None
+        except Exception as exc:
+            raise RuntimeError(
+                f"Cannot read the column types of '{table_name}' to build the QuestDB import schema: {exc}"
+            ) from exc
         date_only_timestamps = table_name.lower() in TPCH_DATE_COLUMNS
         columns = []
         for name, type_name in ((row[0], str(row[1]).upper()) for row in rows):

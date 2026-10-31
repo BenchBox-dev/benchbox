@@ -417,6 +417,7 @@ class TestQuestDBAdapter:
 
     def test_rest_api_tbl_strips_trailing_delimiter(self, questdb_stubs, tmp_path):
         adapter = QuestDBAdapter(host="localhost", http_port=9000)
+        adapter._import_schema = lambda *args, **kwargs: None
         data_file = tmp_path / "lineitem.tbl"
         data_file.write_text("1|2|\n3|4|\n", encoding="utf-8")
 
@@ -584,8 +585,49 @@ class TestQuestDBAdapter:
         request.addfinalizer(lambda: (server.shutdown(), thread.join(timeout=10), server.server_close()))
         return server.server_address[1], captured
 
+    def test_import_schema_raises_when_the_column_lookup_fails(self, questdb_stubs):
+        adapter = QuestDBAdapter(host="127.0.0.1", http_port=1)
+
+        with pytest.raises(RuntimeError, match="Cannot read the column types of 't'"):
+            adapter._import_schema("t", named_only=True)
+
+    def test_import_schema_timestamp_patterns(self, questdb_stubs, schema_loopback):
+        port, _ = schema_loopback
+        adapter = QuestDBAdapter(host="127.0.0.1", http_port=port)
+
+        rows = {"dataset": [["d", "DATE"], ["ts", "TIMESTAMP"]]}
+        response = Mock()
+        response.json.return_value = rows
+        with patch("requests.get", return_value=response):
+            assert json.loads(adapter._import_schema("lineitem", named_only=True)) == [
+                {"name": "d", "type": "DATE", "pattern": "yyyy-MM-dd"},
+                {"name": "ts", "type": "TIMESTAMP", "pattern": "yyyy-MM-dd"},
+            ]
+            assert json.loads(adapter._import_schema("events", named_only=True)) == [
+                {"name": "d", "type": "DATE", "pattern": "yyyy-MM-dd"}
+            ]
+            assert json.loads(adapter._import_schema("events", named_only=False)) == [
+                {"name": "d", "type": "DATE", "pattern": "yyyy-MM-dd"},
+                {"name": "ts", "type": "TIMESTAMP", "pattern": "yyyy-MM-dd HH:mm:ss"},
+            ]
+
+    def test_parquet_chunks_post_the_date_schema(self, questdb_stubs, schema_loopback, tmp_path):
+        pa = pytest.importorskip("pyarrow")
+        pq = pytest.importorskip("pyarrow.parquet")
+        import datetime
+
+        port, captured = schema_loopback
+        adapter = QuestDBAdapter(host="127.0.0.1", http_port=port)
+        path = tmp_path / "t.parquet"
+        pq.write_table(pa.table({"x": [1, 2], "d": pa.array([None, datetime.date(1999, 1, 2)], pa.date32())}), path)
+
+        adapter._load_parquet_via_chunked_csv("t", path)
+
+        assert b'[{"name": "d", "type": "DATE", "pattern": "yyyy-MM-dd"}]' in captured["imports"][0]
+
     def test_rest_api_csv_passes_data_verbatim(self, questdb_stubs, tmp_path):
         adapter = QuestDBAdapter(host="localhost", http_port=9000)
+        adapter._import_schema = lambda *args, **kwargs: None
         data_file = tmp_path / "hits.csv"
         data_file.write_bytes(b"1,hello\n2,world\n")
 
@@ -838,6 +880,7 @@ class TestQuestDBTlsUrls:
 
     def test_imp_url_uses_http_by_default(self, questdb_stubs, tmp_path):
         adapter = QuestDBAdapter(host="myhost", http_port=9000)
+        adapter._import_schema = lambda *args, **kwargs: None
         mock_requests = Mock()
         mock_response = Mock(status_code=200, text="| Rows imported | 1 |")
         mock_requests.post.return_value = mock_response
@@ -853,6 +896,7 @@ class TestQuestDBTlsUrls:
 
     def test_imp_url_uses_https_when_tls_enabled(self, questdb_stubs, tmp_path):
         adapter = QuestDBAdapter(host="myhost", http_port=9000, use_tls=True)
+        adapter._import_schema = lambda *args, **kwargs: None
         mock_requests = Mock()
         mock_response = Mock(status_code=200, text="| Rows imported | 1 |")
         mock_requests.post.return_value = mock_response

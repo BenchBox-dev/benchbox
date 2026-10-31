@@ -364,6 +364,11 @@ class TestPopulateTransactionalStagingTables:
 
 
 class TestLoadTableViaRestApi:
+    @pytest.fixture(autouse=True)
+    def _no_import_schema(self):
+        with patch.object(QuestDBAdapter, "_import_schema", return_value=None):
+            yield
+
     def test_rest_api_rows_imported_from_text_response(self, questdb_stubs, tmp_path):
         data_file = tmp_path / "test.csv"
         data_file.write_text("col1\n1\n2\n", encoding="utf-8")
@@ -714,6 +719,11 @@ class TestRowToIlpLine:
 
 
 class TestPrepareLocalLoadFileForQuestDB:
+    @pytest.fixture(autouse=True)
+    def _no_import_schema(self):
+        with patch.object(QuestDBAdapter, "_import_schema", return_value=None):
+            yield
+
     def test_csv_file_no_transform_yields_original_path(self, questdb_stubs, tmp_path):
         from benchbox.platforms.base.data_loading import prepare_local_load_file
 
@@ -1382,6 +1392,11 @@ class TestBenchmarkGating:
 
 
 class TestLoadParquetViaChunkedCsv:
+    @pytest.fixture(autouse=True)
+    def _no_import_schema(self):
+        with patch.object(QuestDBAdapter, "_import_schema", return_value=None):
+            yield
+
     def _make_mock_pf(self, batches):
         mock_pf = MagicMock()
         mock_pf.iter_batches.return_value = iter(batches)
