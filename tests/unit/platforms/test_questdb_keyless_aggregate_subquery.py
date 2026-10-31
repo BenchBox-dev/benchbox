@@ -65,3 +65,11 @@ def test_subquery_without_a_sibling_aggregate_is_left_to_other_rewrites():
 def test_grouped_select_is_left_alone():
     sql = "SELECT k, COUNT(*) AS m, (SELECT COUNT(*) FROM t) AS c FROM u GROUP BY k"
     assert "_ag" not in rewrite_query(sql)
+
+
+def test_unaliased_items_keep_their_original_output_names():
+    sql = "SELECT AVG(x), (SELECT COUNT(*) FROM t) FROM u"
+    assert rewrite_query(sql) == (
+        'SELECT _ag._ag1 AS "AVG(x)", _ka1._ka1_v AS "(SELECT COUNT(*) FROM t)" '
+        "FROM (SELECT AVG(x) AS _ag1 FROM u) AS _ag CROSS JOIN (SELECT COUNT(*) AS _ka1_v FROM t) AS _ka1"
+    )

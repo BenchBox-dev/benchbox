@@ -74,6 +74,15 @@ def _rewrite_select(select: exp.Select, counter: list[int]) -> None:
     ]
     if not found:
         return
+    select.set(
+        "expressions",
+        [
+            item
+            if isinstance(item, exp.Alias)
+            else exp.Alias(this=item, alias=exp.to_identifier(item.sql(), quoted=True))
+            for item in select.expressions
+        ],
+    )
     staged: dict[str, str] = {}
     stage_items: list[exp.Expr] = []
     for aggregate in _outermost_aggregates(select):
