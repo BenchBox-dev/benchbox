@@ -29,12 +29,20 @@ def _is_plain_aggregate(node: exp.Expr) -> bool:
     return node.find_ancestor(exp.Window) is None
 
 
+def _own_aggregates(select: exp.Select, item: exp.Expr) -> list[exp.Expr]:
+    return [
+        node
+        for node in item.find_all(exp.AggFunc)
+        if node.find_ancestor(exp.Select) is select and _is_plain_aggregate(node)
+    ]
+
+
 def _returns_one_row(inner: exp.Select) -> bool:
     if inner.args.get("group") or inner.args.get("having") or inner.args.get("limit") or inner.args.get("offset"):
         return False
     if inner.args.get("from_") is None:
         return True
-    return any(_is_plain_aggregate(node) for node in inner.expressions[0].find_all(exp.AggFunc))
+    return bool(_own_aggregates(inner, inner.expressions[0]))
 
 
 def _is_scalar_position(subquery: exp.Subquery, select: exp.Select) -> bool:
@@ -60,15 +68,18 @@ def _projection_subqueries(select: exp.Select) -> list[exp.Subquery]:
     return found
 
 
+def _inside_own_aggregate(select: exp.Select, subquery: exp.Subquery) -> bool:
+    node = subquery.parent
+    while node is not None and node is not select:
+        if isinstance(node, exp.AggFunc) and _is_plain_aggregate(node):
+            return True
+        node = node.parent
+    return False
+
+
 def _has_aggregate_scope(select: exp.Select, subquery: exp.Subquery) -> tuple[bool, bool]:
-    inside_aggregate = subquery.find_ancestor(exp.AggFunc) is not None
-    outside = [
-        node
-        for item in select.expressions
-        for node in item.find_all(exp.AggFunc)
-        if node.find_ancestor(exp.Subquery) is None and _is_plain_aggregate(node)
-    ]
-    return inside_aggregate, bool(outside) or select.args.get("group") is not None
+    outside = [node for item in select.expressions for node in _own_aggregates(select, item)]
+    return _inside_own_aggregate(select, subquery), bool(outside) or select.args.get("group") is not None
 
 
 def _rewrite_select(select: exp.Select, counter: list[int]) -> None:
@@ -76,9 +87,10 @@ def _rewrite_select(select: exp.Select, counter: list[int]) -> None:
         counter[0] += 1
         name = f"_qs{counter[0]}"
         inner = subquery.this.copy()
-        inner.set("expressions", [exp.alias_(inner.expressions[0], "v")])
+        value = f"{name}_v"
+        inner.set("expressions", [exp.alias_(inner.expressions[0], value)])
         source = exp.Subquery(this=inner, alias=exp.TableAlias(this=exp.to_identifier(name)))
-        reference = exp.column("v", table=name)
+        reference = exp.column(value, table=name)
         inside_aggregate, aggregate_scope = _has_aggregate_scope(select, subquery)
         replacement = exp.Max(this=reference) if aggregate_scope and not inside_aggregate else reference
         subquery.replace(replacement)
