@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed QuestDB rejecting a scalar subquery in the select list of an ungrouped aggregate ('query is not expected, did you mean column?'), which failed the TPC-DI VQ4, EQ3 and EQ4 validation queries; the uncorrelated subquery now becomes a cross-joined derived table read through MAX."
+    }
+  ]
+}
