@@ -1028,14 +1028,15 @@ and an authentication failure is `errorStatus` 401; the message text of that
 event never classifies a failure, and the `CALIBRATED_*_PATTERNS` tables apply
 to stderr only. A quota absence records the `provider` of the terminal event,
 which may be a fallback provider. It skips the reviewer's whole pool for the rest
-of the run. In later runs the block lasts one hour (`QUOTA_BACKOFF` in
-`selection.py`) unless the provider is the pool's own primary provider
-(`POOL_PROVIDERS`) and the reset time was parsed from that error's own message;
-such a block lasts until the reset but at most 24 hours (`PRIMARY_BLOCK_CAP`),
-long enough to cover a daily or session limit without letting one stale reset
-hide a pool for days. A new head carries only primary-provider blocks, and an
-owner backoff reset carries none. A pending reason names the provider that
-returned the quota error and when the block was recorded.
+of the run. In later runs the block lasts at most one hour (`QUOTA_BACKOFF` in
+`selection.py`), and a parsed reset time from the pool's own primary provider
+(`POOL_PROVIDERS`) ends it sooner. Once the hour has passed the next review
+tries the pool again: a quota error records a new block from that moment, and
+any other outcome leaves no block, so a provider that serves again is used again
+instead of staying hidden until a long reset time passes. A new head carries
+only primary-provider blocks, and an owner backoff reset carries none. A pending
+reason names the provider that returned the quota error and when the block was
+recorded.
 
 ## Changing the reviewer harness
 

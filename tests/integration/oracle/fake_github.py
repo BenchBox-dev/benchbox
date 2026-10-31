@@ -270,6 +270,9 @@ class FakeGitHub:
                     state = json.loads(files["state.json"])
                     updated = datetime.fromisoformat(state["updated_at"]) - timedelta(minutes=minutes)
                     state["updated_at"] = updated.isoformat()
+                    for block in state.get("pool_blocked_until", {}).values():
+                        for key in ("until", "recorded_at"):
+                            block[key] = (datetime.fromisoformat(block[key]) - timedelta(minutes=minutes)).isoformat()
                     files["state.json"] = json.dumps(state).encode("utf-8")
                 item["data"] = _zip(files)
 

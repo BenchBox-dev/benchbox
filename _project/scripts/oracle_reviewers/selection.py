@@ -17,7 +17,6 @@ REVIEW = "review"
 PENDING = "pending"
 BRIEF_MODES = ("inline", "file-list", "oversize")
 QUOTA_BACKOFF = timedelta(hours=1)
-PRIMARY_BLOCK_CAP = timedelta(hours=24)
 POOL_PROVIDERS = {"claude": "anthropic", "codex": "openai-codex"}
 JOB_FAILURE_DETAIL = "the reviewer job did not finish"
 RETRYABLE_ABSENCES = frozenset({INCOMPLETE, EMPTY, ERROR})
@@ -96,16 +95,15 @@ def _from_primary(pool: str, provider: str) -> bool:
     return bool(provider) and POOL_PROVIDERS.get(pool) == provider
 
 
-def effective_until(pool: str, block: PoolBlock) -> datetime:
-    cap = PRIMARY_BLOCK_CAP if _from_primary(pool, block.provider) else QUOTA_BACKOFF
-    return min(block.until, block.recorded_at + cap)
+def effective_until(block: PoolBlock) -> datetime:
+    return min(block.until, block.recorded_at + QUOTA_BACKOFF)
 
 
 def active_blocks(blocks: Mapping[str, PoolBlock], now: datetime, *, same_head: bool = True) -> dict[str, PoolBlock]:
     return {
         pool: block
         for pool, block in blocks.items()
-        if effective_until(pool, block) > now and (same_head or _from_primary(pool, block.provider))
+        if effective_until(block) > now and (same_head or _from_primary(pool, block.provider))
     }
 
 
@@ -151,9 +149,9 @@ def _skip_reason(
     if reviewer.pool in quota_pools:
         return f"skipped: {reviewer.pool} pool blocked in this run, {_source(quota_pools[reviewer.pool])} returned a quota error"
     block = selection.pool_blocked_until.get(reviewer.pool)
-    if block is not None and effective_until(reviewer.pool, block) > selection.now:
+    if block is not None and effective_until(block) > selection.now:
         return (
-            f"skipped: {reviewer.pool} pool blocked until {effective_until(reviewer.pool, block).isoformat()}, "
+            f"skipped: {reviewer.pool} pool blocked until {effective_until(block).isoformat()}, "
             f"{_source(block.provider)} returned a quota error at {block.recorded_at.isoformat()}"
         )
     if selection.brief_mode == "oversize":
@@ -205,8 +203,7 @@ def pool_resets(selection: SelectionInput, attempts: Sequence[Attempt]) -> dict[
             pool = by_name[attempt.reviewer].pool
             primary = _from_primary(pool, attempt.provider)
             requested = attempt.reset_at if primary and attempt.reset_at else selection.now + QUOTA_BACKOFF
-            cap = PRIMARY_BLOCK_CAP if primary else QUOTA_BACKOFF
-            block = PoolBlock(min(requested, selection.now + cap), attempt.provider, selection.now)
+            block = PoolBlock(min(requested, selection.now + QUOTA_BACKOFF), attempt.provider, selection.now)
             kept = resets.get(pool)
             if kept is None or block.until >= kept.until:
                 resets[pool] = block

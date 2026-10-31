@@ -14,7 +14,6 @@ from _project.scripts.oracle_reviewers.selection import (
     PASS,
     PENDING,
     POOL_PROVIDERS,
-    PRIMARY_BLOCK_CAP,
     QUOTA_BACKOFF,
     REVIEW,
     Attempt,
@@ -197,13 +196,13 @@ def test_backoff_reason_names_the_provider_and_when_the_block_was_recorded() -> 
     assert "an unknown provider returned a quota error" in reasons[0]
 
 
-def test_a_carried_block_older_than_the_cap_is_ignored() -> None:
+def test_a_carried_primary_block_older_than_the_backoff_is_ignored() -> None:
     chain = [_reviewer("a", pool="claude")]
-    stale = PoolBlock(NOW + timedelta(days=6), "anthropic", NOW - PRIMARY_BLOCK_CAP - timedelta(minutes=1))
+    stale = PoolBlock(NOW + timedelta(days=6), "anthropic", NOW - QUOTA_BACKOFF - timedelta(minutes=1))
     step = next_step(_input(chain, pool_blocked_until={"claude": stale}), [])
     assert step.kind == REVIEW
     assert pool_resets(_input(chain, pool_blocked_until={"claude": stale}), []) == {}
-    fresh = PoolBlock(NOW + timedelta(days=6), "anthropic", NOW - timedelta(hours=1))
+    fresh = PoolBlock(NOW + timedelta(days=6), "anthropic", NOW - timedelta(minutes=59))
     assert next_step(_input(chain, pool_blocked_until={"claude": fresh}), []).kind == PENDING
 
 
@@ -214,14 +213,14 @@ def test_a_fallback_block_never_outlives_the_one_hour_backoff() -> None:
     assert next_step(_input(chain, pool_blocked_until={"claude": block}), []).kind == REVIEW
 
 
-def test_pool_resets_from_the_primary_provider_keep_a_parsed_reset_up_to_the_cap() -> None:
+def test_pool_resets_from_the_primary_provider_keep_a_parsed_reset_up_to_the_backoff() -> None:
     chain = [_reviewer("a", pool="claude")]
-    reset = NOW + timedelta(hours=3)
+    reset = NOW + timedelta(minutes=20)
     resets = pool_resets(_input(chain), [Attempt(1, "a", ABSENT, "quota", reset_at=reset, provider="anthropic")])
     assert resets == {"claude": PoolBlock(reset, "anthropic", NOW)}
     far = NOW + timedelta(days=6)
     resets = pool_resets(_input(chain), [Attempt(1, "a", ABSENT, "quota", reset_at=far, provider="anthropic")])
-    assert resets == {"claude": PoolBlock(NOW + PRIMARY_BLOCK_CAP, "anthropic", NOW)}
+    assert resets == {"claude": PoolBlock(NOW + QUOTA_BACKOFF, "anthropic", NOW)}
 
 
 def test_pool_resets_from_a_fallback_provider_ignore_the_reset_and_last_one_hour() -> None:
@@ -291,12 +290,12 @@ def test_pool_resets_ignore_absences_other_than_quota(absence: str) -> None:
     assert pool_resets(_input(chain), [Attempt(1, "a", ABSENT, absence, reset_at=NOW + timedelta(hours=3))]) == {}
 
 
-@pytest.mark.parametrize(("stored", "reported"), [(3, 1), (1, 3)])
+@pytest.mark.parametrize(("stored", "reported"), [(40, 10), (10, 40)])
 def test_pool_resets_keep_the_later_of_a_stored_block_and_a_new_quota_reset(stored: int, reported: int) -> None:
     chain = [_reviewer("a", pool="claude")]
-    kept = PoolBlock(NOW + timedelta(hours=stored), "anthropic", NOW - timedelta(minutes=5))
-    attempt = Attempt(1, "a", ABSENT, "quota", reset_at=NOW + timedelta(hours=reported), provider="anthropic")
-    later = kept if stored > reported else PoolBlock(NOW + timedelta(hours=reported), "anthropic", NOW)
+    kept = PoolBlock(NOW + timedelta(minutes=stored), "anthropic", NOW - timedelta(minutes=5))
+    attempt = Attempt(1, "a", ABSENT, "quota", reset_at=NOW + timedelta(minutes=reported), provider="anthropic")
+    later = kept if stored > reported else PoolBlock(NOW + timedelta(minutes=reported), "anthropic", NOW)
     assert pool_resets(_input(chain, pool_blocked_until={"claude": kept}), [attempt]) == {"claude": later}
 
 
