@@ -20,10 +20,9 @@ def _in_dates(column: str, start: date, end: date | None = None) -> Any:
     return condition if end is None else condition & (col(column) < lit(end))
 
 
-def _wrap(ctx: DataFrameContext, frame: Any) -> Any:
-    from benchbox.platforms.dataframe.unified_frame import UnifiedLazyFrame
-
-    return UnifiedLazyFrame(frame, ctx._adapter)
+def _wrap(ctx: DataFrameContext, frame: Any, anchor: str) -> Any:
+    source = ctx.get_table(anchor)
+    return type(source)(frame, source._adapter)
 
 
 def window_multiple_orderings(ctx: DataFrameContext) -> Any:
@@ -44,7 +43,7 @@ def window_multiple_orderings(ctx: DataFrameContext) -> Any:
         )
         .sort(col("l_orderkey").sort(), col("price_rank").sort())
     )
-    return _wrap(ctx, frame)
+    return _wrap(ctx, frame, "lineitem")
 
 
 def window_moving_frame(ctx: DataFrameContext) -> Any:
@@ -75,7 +74,7 @@ def window_moving_frame(ctx: DataFrameContext) -> Any:
         )
         .sort(col("o_orderdate").sort(), col("o_orderkey").sort())
     )
-    return _wrap(ctx, frame)
+    return _wrap(ctx, frame, "orders")
 
 
 def statistical_correlation(ctx: DataFrameContext) -> Any:
@@ -94,7 +93,7 @@ def statistical_correlation(ctx: DataFrameContext) -> Any:
             ],
         )
     )
-    return _wrap(ctx, frame)
+    return _wrap(ctx, frame, "lineitem")
 
 
 def statistical_variance(ctx: DataFrameContext) -> Any:
@@ -114,7 +113,7 @@ def statistical_variance(ctx: DataFrameContext) -> Any:
             ],
         )
     )
-    return _wrap(ctx, frame)
+    return _wrap(ctx, frame, "orders")
 
 
 def _order_region_join(ctx: DataFrameContext, orders: Any) -> Any:
@@ -141,7 +140,7 @@ def olap_cube_analysis(ctx: DataFrameContext) -> Any:
             f.avg(col("o_totalprice")).alias("avg_order_value"),
         ],
     )
-    return _wrap(ctx, frame)
+    return _wrap(ctx, frame, "orders")
 
 
 def olap_rollup_analysis(ctx: DataFrameContext) -> Any:
@@ -168,7 +167,7 @@ def olap_rollup_analysis(ctx: DataFrameContext) -> Any:
             col("market_segment").sort(nulls_first=False),
         )
     )
-    return _wrap(ctx, frame)
+    return _wrap(ctx, frame, "orders")
 
 
 def timeseries_trend_analysis(ctx: DataFrameContext) -> Any:
@@ -204,7 +203,7 @@ def timeseries_trend_analysis(ctx: DataFrameContext) -> Any:
         previous,
         ((col("monthly_revenue") - previous) / f.nullif(previous, lit(0)) * lit(100)).alias("mom_growth_pct"),
     ).sort(col("order_month").sort())
-    return _wrap(ctx, frame)
+    return _wrap(ctx, frame, "orders")
 
 
 def optimizer_common_subexpression(ctx: DataFrameContext) -> Any:
@@ -234,7 +233,7 @@ def optimizer_common_subexpression(ctx: DataFrameContext) -> Any:
         )
         .limit(5000)
     )
-    return _wrap(ctx, frame)
+    return _wrap(ctx, frame, "lineitem")
 
 
 def struct_construction(ctx: DataFrameContext) -> Any:
@@ -249,4 +248,4 @@ def struct_construction(ctx: DataFrameContext) -> Any:
         )
         .limit(100)
     )
-    return _wrap(ctx, frame)
+    return _wrap(ctx, frame, "customer")
