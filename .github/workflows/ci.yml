@@ -709,6 +709,7 @@ jobs:
         run: make doc-contracts-guard
 
       - name: Warn about docs contract changes against the PR base
+        continue-on-error: true
         env:
           EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: uv run -- python scripts/check_docs_contract_changes.py
