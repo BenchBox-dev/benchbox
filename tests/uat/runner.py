@@ -50,7 +50,7 @@ class CellResult:
 def last_nonempty_output_line(log_text: str) -> str | None:
     for line in reversed(log_text.splitlines()):
         stripped = line.strip()
-        if stripped and not stripped.startswith("# "):
+        if stripped and not stripped.startswith("# ") and not stripped.startswith(LOAD_FAILURE_MARKER):
             return stripped
     return None
 
@@ -267,13 +267,13 @@ def _resolve_cell_result_path(
             runs_dir / "results",
             emitted_path=last_nonempty_output_line(stdout_text),
         )
-        if result_path is not None and (result_path.suffix.lower() != ".json" or not result_path.exists()):
+        if result_path is not None and (result_path.suffix.lower() != ".json" or not _path_exists(result_path)):
             return None
         return result_path
 
     result_path_str = last_nonempty_output_line(stdout_text)
     result_path = _resolve_result_path(result_path_str, runs_dir) if result_path_str else None
-    if result_path is not None and (result_path.suffix.lower() != ".json" or not result_path.exists()):
+    if result_path is not None and (result_path.suffix.lower() != ".json" or not _path_exists(result_path)):
         return None
     return result_path
 
@@ -463,9 +463,16 @@ def run_cell(
     )
 
 
+def _path_exists(path: Path) -> bool:
+    try:
+        return path.exists()
+    except OSError:
+        return False
+
+
 def _resolve_result_path(result_path_str: str, runs_dir: Path) -> Path:
     path = Path(result_path_str).expanduser()
-    if path.is_absolute() or path.exists():
+    if path.is_absolute() or _path_exists(path):
         return path
     if len(path.parts) >= 2 and path.parts[0] == "benchmark_runs":
         return runs_dir.parent / path

@@ -12,6 +12,21 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Free runner disk space
+      shell: bash
+      run: |
+        set -euo pipefail
+        df -h / "$HOME"
+        for path in /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/boost /opt/hostedtoolcache/CodeQL; do
+          if [ -e "$path" ]; then
+            sudo rm -rf "$path"
+          fi
+        done
+        if [ -x /usr/bin/docker ]; then
+          docker system prune --all --force --volumes || true
+        fi
+        df -h / "$HOME"
+
     - name: Name the distribution digest file
       shell: bash
       run: echo "RELEASE_DIST_DIGEST_FILE=$RUNNER_TEMP/dist-digest.txt" >> "$GITHUB_ENV"

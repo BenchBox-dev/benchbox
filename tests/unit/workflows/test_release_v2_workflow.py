@@ -344,3 +344,15 @@ def test_stage_one_bounds_per_cell_memory_below_the_hosted_runner():
     config = load_config(_stage_configs()["uat-stage1"])
     assert _jobs()["uat-stage1"]["runs-on"] == "ubuntu-latest"
     assert 0 < config.execute.per_cell_memory_limit_gib <= RUNNER_MEMORY_GIB - 2
+
+
+def test_every_uat_job_frees_runner_disk_through_the_shared_environment_action():
+    action = yaml.safe_load(
+        (WORKFLOW.parents[1] / "actions" / "release-uat-env" / "action.yml").read_text(encoding="utf-8")
+    )
+    first = action["runs"]["steps"][0]
+    assert first["name"] == "Free runner disk space"
+    assert "/usr/share/dotnet" in first["run"] and "/usr/local/lib/android" in first["run"]
+    for name in ("uat-stage1", "uat-stage2", "uat-stage3"):
+        uses = [step.get("uses") for step in _jobs()[name]["steps"]]
+        assert "./.github/actions/release-uat-env" in uses

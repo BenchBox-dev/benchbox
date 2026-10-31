@@ -1053,3 +1053,20 @@ def test_coordinator_readiness_script_exits_127_when_curl_is_missing(platform, t
         check=False,
     )
     assert result.returncode == 127
+
+
+def test_influxdb_cells_target_the_local_core_stack():
+    opts = docker_assets.platform_extra_opts("influxdb")
+    pairs = {value.split("=", 1)[0]: value.split("=", 1)[1] for value in opts if "=" in value}
+    assert pairs == {
+        "port": "8181",
+        "host": "localhost",
+        "ssl": "false",
+    }
+
+
+def test_influxdb_cells_select_the_core_deployment():
+    argv = matrix.benchbox_run_argv("influxdb", "tpch", 0.01, local_managed_platform=True)
+    assert argv[argv.index("--platform") + 1] == "influxdb:core"
+    duckdb_argv = matrix.benchbox_run_argv("duckdb", "tpch", 0.01)
+    assert duckdb_argv[duckdb_argv.index("--platform") + 1] == "duckdb"
