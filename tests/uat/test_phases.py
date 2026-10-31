@@ -1381,20 +1381,20 @@ def test_application_readiness_retries_stay_within_one_deadline_and_cap_attempt_
         clock["t"] += kwargs["timeout_s"]
         return docker_assets.DockerCommandResult(tuple(argv), 1, "", "pending")
 
-    with patch("tests.uat.managed_runtime.time.monotonic", lambda: clock["t"]):
-        reason = managed_runtime.check_application_readiness(
-            cfg,
-            spec=spec,
-            project_name="p",
-            docker_runner=runner,
-            docker_events=[],
-            record_event=lambda *a, **k: None,
-            log_dir=None,
-            benchmark_runs_dir=Path("/tmp"),
-            retry_window_s=290.0,
-            retry_interval_s=10.0,
-            sleep_fn=lambda s: clock.__setitem__("t", clock["t"] + s),
-        )
+    reason = managed_runtime.check_application_readiness(
+        cfg,
+        spec=spec,
+        project_name="p",
+        docker_runner=runner,
+        docker_events=[],
+        record_event=lambda *a, **k: None,
+        log_dir=None,
+        benchmark_runs_dir=Path("/tmp"),
+        retry_window_s=290.0,
+        retry_interval_s=10.0,
+        sleep_fn=lambda s: clock.__setitem__("t", clock["t"] + s),
+        clock=lambda: clock["t"],
+    )
 
     assert reason is not None
     assert sum(timeouts) <= 290.0 + 1.0

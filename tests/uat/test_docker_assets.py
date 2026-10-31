@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import os
 import re
 from pathlib import Path
 
@@ -1030,3 +1031,25 @@ def test_presto_trino_free_memory_gate_is_request_aware(platform, tmp_path):
         )
         is None
     )
+
+
+@pytest.mark.parametrize("platform", ["presto", "trino"])
+def test_coordinator_readiness_script_exits_127_when_curl_is_missing(platform, tmp_path):
+    import shutil
+    import subprocess
+
+    sh = shutil.which("sh")
+    assert sh is not None
+    spec = docker_assets.docker_platform_spec(platform)
+    argv = managed_runtime._readiness_command(spec, "p")
+    assert argv is not None
+    result = subprocess.run(
+        [sh],
+        input=argv[-1],
+        env={**os.environ, "PATH": str(tmp_path)},
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+    assert result.returncode == 127

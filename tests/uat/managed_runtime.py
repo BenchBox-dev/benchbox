@@ -27,6 +27,7 @@ CEDARDB_READINESS = (
     'PGPASSWORD="$CEDAR_PASSWORD" psql -h 127.0.0.1 -p 5432 -U "$CEDAR_USER" -d "$CEDAR_DB" -tAc "SELECT 1"',
 )
 _COORDINATOR_QUERY_SCRIPT = """\
+command -v curl >/dev/null 2>&1 || exit 127
 r=$(curl -fsS -X POST -H "$USER_HEADER: benchbox" --data "SELECT 1" http://localhost:8080/v1/statement) || exit 1
 i=0
 while [ "$i" -lt 60 ]; do
@@ -121,6 +122,7 @@ def check_application_readiness(
     retry_window_s: float = 0.0,
     retry_interval_s: float = 0.0,
     sleep_fn: Callable[[float], None] | None = None,
+    clock: Callable[[], float] = time.monotonic,
 ) -> str | None:
     command = _readiness_command(spec, project_name)
     if command is None:
@@ -128,13 +130,13 @@ def check_application_readiness(
     interval = max(retry_interval_s, 1.0)
     attempts = max(1, int(retry_window_s / interval) + 1)
     base_timeout = _readiness_timeout_s(config, spec)
-    deadline = time.monotonic() + max(retry_window_s, base_timeout)
+    deadline = clock() + max(retry_window_s, base_timeout)
     result = None
     for attempt in range(attempts):
         result = docker_runner(
             command,
             dry_run=config.dry_run,
-            timeout_s=max(1.0, min(base_timeout, deadline - time.monotonic())),
+            timeout_s=max(1.0, min(base_timeout, deadline - clock())),
             cwd=docker_assets.REPO_ROOT,
             env=compose_environment(config, spec, benchmark_runs_dir),
         )
@@ -164,9 +166,9 @@ def check_application_readiness(
                 ),
             )
             return None
-        if attempt + 1 < attempts and time.monotonic() < deadline:
+        if attempt + 1 < attempts and clock() < deadline:
             (sleep_fn or time.sleep)(interval)
-        elif time.monotonic() >= deadline:
+        elif clock() >= deadline:
             break
     assert result is not None
     return f"UAT-managed Docker application readiness check failed for {spec.platform} project {project_name}: {_result_message(result)}"
