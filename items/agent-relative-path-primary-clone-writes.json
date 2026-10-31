@@ -5,7 +5,7 @@
     "Tests cover the snapshot and the report, including a primary clone that was already dirty before the snapshot (not reported) and a newly changed file (reported).",
     "AGENTS.md changes, if any, stay within its compactness rule."
   ],
-  "context": "Related to primary-clone-dirty-from-concurrent-session-20261020 (unknown writer); this item gives one concrete cause.\n\nGuardrails: the check must report, never modify or revert the primary clone. It must not block on pre-existing dirt that belongs to someone else. Keep it cheap (git status on tracked files only).\n\nVerification rubric: (1) a regression test or reproduction fails before and passes after; (2) focused suites pass via uv run -- python -m pytest -n 0; (3) make comment-policy-check and ruff on touched files pass; (4) the runtime smoke named in acceptance is recorded in the PR body; (5) the PR merges with green CI and a passing oracle review.",
+  "context": "Merged via PR #3888 as 686b83043 on develop. agent-write-preflight snapshots the primary clone's changed tracked paths with hashes; pr-preflight warns (not fails) on paths new or further modified since; pre-existing dirt ignored; agent-write-preflight no longer fails on a dirty primary clone. Guidance in docs/agent/primary-clone-guard.md. Report-only because owner concurrent edits are indistinguishable from stray agent writes.",
   "description": "In one batch, delegated agents working from linked worktrees wrote to the primary clone twice: one edited a source file there, and another's file tool resolved relative paths against the primary clone and modified 17 docs files before reverting them with git checkout, which would also discard uncommitted owner edits. A related slip cloned benchbox-site to a standalone directory instead of adding a linked worktree. How the agent harness resolves relative paths is outside this repository; the repository can tell agents the rule and detect the damage.",
   "links": [
     "scripts/agent_write_preflight.sh",
@@ -36,6 +36,14 @@
       "generation": "edbf270197bb48b48ff29be3f10124ae",
       "op": "take",
       "op_id": "0f2b608093294e178a53d4298f01d310",
+      "session_id": "acb77716a5b0405bb727f738cdbd8942"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8d313df504e30c76edc4bc0f",
+      "at": "2026-10-31T20:29:10Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a496c25968de4bb59a685451130dad1e",
       "session_id": "acb77716a5b0405bb727f738cdbd8942"
     }
   ]
