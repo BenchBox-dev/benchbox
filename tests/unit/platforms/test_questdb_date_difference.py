@@ -2,9 +2,13 @@ from __future__ import annotations
 
 import pytest
 
-from benchbox.platforms.questdb_rewrites import rewrite_query
+from benchbox.platforms.questdb_rewrites import rewrite_with_modules
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
+
+
+def rewrite_query(sql: str) -> str:
+    return rewrite_with_modules(sql, "date_difference")
 
 
 def test_day_difference_cast_to_an_integer_keeps_the_fraction_for_the_cast_to_truncate():
