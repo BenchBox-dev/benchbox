@@ -32,8 +32,8 @@ refuses to start it while the host is already under pressure.
 | Command | Effect |
 |---|---|
 | `make heavy-status` | Read-only report; never takes the lock; each external command is cut off at 5 s and shown as `unmeasured` |
-| `make heavy-run CMD='...'` | Admission check, then the command under the host lock; make exits 2 and prints `Error 75` (lock refused), `Error 76` (admission refused) or `Error 78` (ownership error) |
-| `uv run -- python -m benchbox.utils.host_lock run --admit -- sh -c '...'` | The same without make; exits with the raw code 75, 76 or 78 |
+| `make heavy-run CMD='...'` | Admission check, then the command under the host lock and watchdog; make exits 2 and prints `Error 75` (lock refused), `Error 76` (admission refused), `Error 78` (ownership error) or `Error 79` (watchdog stopped the tree) |
+| `uv run -- python -m benchbox.utils.host_lock run --admit --guard -- sh -c '...'` | The same without make; exits with the raw code 75, 76, 78 or 79 |
 | `python -m benchbox.utils.host_lock admit` | Admission check only |
 
 `make heavy-status` reports the lock holder and its age, live waiters, the

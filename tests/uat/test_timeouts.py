@@ -515,3 +515,31 @@ def test_run_with_timeout_enforces_timeout_with_memory_guard():
     assert result.timed_out is True
     assert result.memory_exceeded is False
     assert result.exit_code == timeouts.EXIT_TIMEOUT
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX memory metering")
+def test_memory_meter_reports_footprint_covering_the_memory_a_child_touches(tmp_path):
+    import psutil
+
+    ready = tmp_path / "ready"
+    script = (
+        "import pathlib, sys, time\n"
+        "buf = bytearray(120 * 1024 * 1024)\n"
+        "buf[::4096] = b'x' * len(buf[::4096])\n"
+        "pathlib.Path(sys.argv[1]).write_text('x', encoding='utf-8')\n"
+        "time.sleep(30)"
+    )
+    proc = subprocess.Popen([sys.executable, "-c", script, str(ready)])
+    try:
+        deadline = time.monotonic() + 30
+        while not ready.exists() and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert ready.exists()
+        meter = timeouts._RssMeter(proc.pid, 8 * 1024**3)
+        assert meter.over_limit() is False
+        rss = psutil.Process(proc.pid).memory_info().rss
+        assert meter.peak_bytes >= 120 * 1024 * 1024
+        assert meter.peak_bytes >= rss * 0.9
+    finally:
+        proc.kill()
+        proc.wait()

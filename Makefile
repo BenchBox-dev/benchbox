@@ -99,7 +99,7 @@ heavy-status:
 .PHONY: heavy-run
 heavy-run:
 	@test -n "$$CMD" || { echo "usage: make heavy-run CMD='<command>'"; exit 2; }
-	@uv run -- python -m benchbox.utils.host_lock run --admit -- sh -c "$$CMD"
+	@uv run -- python -m benchbox.utils.host_lock run --admit --guard -- sh -c "$$CMD"
 
 .PHONY: test-medium
 test-medium:

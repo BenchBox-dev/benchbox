@@ -441,8 +441,36 @@ refusing reading is re-sampled every 5 s for up to 30 s before the refusal stand
 `make heavy-status` (`python -m benchbox.utils.host_lock status`) is read-only and never takes the lock. It prints the
 holder and its age, live waiters, the admission readings, VM inventory, the top 10 processes by physical footprint
 and orphaned servers (ppid 1, working directory in a BenchBox worktree); each external command is cut off at 5 s and
-shown as `unmeasured`. `make heavy-run CMD='...'` is `run --admit -- sh -c "$CMD"`. Agent rules and known limits:
+shown as `unmeasured`. `make heavy-run CMD='...'` is `run --admit --guard -- sh -c "$CMD"`. Agent rules and known limits:
 `docs/agent/heavy-work.md`.
+
+### Heavy-work watchdog
+
+Admission only checks the host at start. `run --guard -- <cmd>` (and `host_lock.acquire(..., guard=True)`) also starts a
+small watcher **process** next to the lock holder, so a GIL-holding native call or memory pressure in the holder cannot
+stall it. Every 2 s it samples the summed physical footprint of the holder and all its descendants (macOS
+`proc_pid_rusage` `ri_phys_footprint`; elsewhere psutil USS, then RSS), memory pressure, free disk on the boot volume
+and output root, and whether the lock file is still the one the holder locked. It exits when the holder exits.
+
+Breach rules: tree footprint above `BENCHBOX_HEAVY_MEMORY_BUDGET_GIB` (the same budget admission uses), pressure level
+critical (4), or free disk below `BENCHBOX_HEAVY_KILL_FREE_DISK_GIB`. In `kill` mode the watcher reports to stderr
+(signal, measured versus limit, top 5 tree processes by footprint), SIGTERMs descendants deepest-first, waits 10 s,
+SIGKILLs survivors, then SIGTERMs the holder if the tree is still over budget. Parentage is re-verified immediately
+before every signal; re-parented, double-forked and sibling processes are never signalled. After a kill, `run --guard`
+exits **79** (distinct from UAT's 137, 75 busy, 76 admission refusal, 78 ownership); an in-process holder that
+acquired with `guard=True` exits 79 only when the watcher terminates it while the main thread is running Python code
+(a holder stuck in a native call is SIGKILLed after the grace period instead). A lock file whose inode changed produces a loud
+warning only. On normal release, surviving descendants are listed and left running.
+
+VMs and containers started through the Apple `container` runtime are children of launchd, not of the holder, so
+their footprint is not tree-attributed; VM memory is bounded by machine size and admission.
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `BENCHBOX_HEAVY_WATCHDOG` | `kill` | `kill`, `warn` (report once per breach, signal nothing) or `off` (loud warning, no watcher) |
+| `BENCHBOX_HEAVY_KILL_FREE_DISK_GIB` | 20 | Free-disk floor per root that counts as a breach |
+| `BENCHBOX_HEAVY_WATCHDOG_INTERVAL_SECONDS` | 2 | Sampling interval of the watcher |
+| `BENCHBOX_HEAVY_WATCHDOG_GRACE_SECONDS` | 10 | Wait between SIGTERM and SIGKILL of descendants |
 
 ### macOS-specific conftest branch (`tests/conftest.py:109-122`)
 
