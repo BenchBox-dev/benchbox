@@ -414,3 +414,28 @@ def test_wrap_order_by_subquery_aliases_keeps_limit_outside():
     )
 
     assert rewritten.endswith("AS ordered_rows ORDER BY total DESC LIMIT 5")
+
+
+def test_singlestore_rewrites_resolve_without_conflict_for_every_registered_variant():
+    import benchbox.sql_compat.rules.query_adapter.singlestore_tpchavoc_rewrites
+    from benchbox.sql_compat.context import CompatibilityContext, Phase
+    from benchbox.sql_compat.registry import REGISTRY
+
+    query_ids = {
+        key[3] for key, _ in REGISTRY.all_rules() if key[:3] == (Phase.QUERY_ADAPTER, "singlestore", "tpchavoc")
+    }
+
+    assert {"4_v7", "16_v7", "17_v7"} <= query_ids
+    for query_id in query_ids:
+        decision = REGISTRY.resolve(
+            CompatibilityContext(
+                platform="singlestore",
+                platform_version=None,
+                benchmark="tpchavoc",
+                query_id=query_id,
+                phase=Phase.QUERY_ADAPTER,
+                mode="sql",
+                dialect="singlestore",
+            )
+        )
+        assert decision is not None, query_id

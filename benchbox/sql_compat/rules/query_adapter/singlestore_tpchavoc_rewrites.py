@@ -66,19 +66,27 @@ _RULES = (
     ),
 )
 
+_RULES_BY_QUERY: dict[str, list[tuple[str, str, str]]] = {}
 for _suffix, _transformer, _query_ids, _reason in _RULES:
-    for _query_id in sorted(_query_ids):
-        REGISTRY.register(
-            CompatibilityDecision(
-                rule_id=f"query_adapter.singlestore.tpchavoc.{_query_id}.{_suffix}",
-                action=CompatAction.REWRITE_QUERY,
-                support_level=SupportLevel.REWRITTEN,
-                failure_mode=FailureMode.UNSUPPORTED_FEATURE,
-                payload=RewriteQueryPayload(transformer_id=_transformer, description=_reason),
-                reason=_reason,
-            ),
-            Phase.QUERY_ADAPTER,
-            "singlestore",
-            benchmark="tpchavoc",
-            query_id=_query_id,
-        )
+    for _query_id in _query_ids:
+        _RULES_BY_QUERY.setdefault(_query_id, []).append((_suffix, _transformer, _reason))
+
+for _query_id in sorted(_RULES_BY_QUERY):
+    _entries = _RULES_BY_QUERY[_query_id]
+    _suffix = "+".join(entry[0] for entry in _entries)
+    _transformer = "+".join(entry[1] for entry in _entries)
+    _reason = "; ".join(entry[2] for entry in _entries)
+    REGISTRY.register(
+        CompatibilityDecision(
+            rule_id=f"query_adapter.singlestore.tpchavoc.{_query_id}.{_suffix}",
+            action=CompatAction.REWRITE_QUERY,
+            support_level=SupportLevel.REWRITTEN,
+            failure_mode=FailureMode.UNSUPPORTED_FEATURE,
+            payload=RewriteQueryPayload(transformer_id=_transformer, description=_reason),
+            reason=_reason,
+        ),
+        Phase.QUERY_ADAPTER,
+        "singlestore",
+        benchmark="tpchavoc",
+        query_id=_query_id,
+    )
