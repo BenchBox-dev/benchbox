@@ -215,6 +215,13 @@ class TestVectorSearchQueryManager:
         assert "<=>" in sql
         assert "array_cosine_similarity" not in sql
 
+    def test_postgres_dialect_name_uses_pgvector_variants(self):
+        from benchbox.core.vector_search.queries import VectorSearchQueryManager
+
+        mgr = VectorSearchQueryManager()
+        assert mgr.get_query("Q1", dialect="postgres") == mgr.get_query("Q1", dialect="postgresql")
+        assert "array_cosine_similarity" not in mgr.get_query("Q2", dialect="postgres")
+
     def test_clickhouse_dialect(self):
         from benchbox.core.vector_search.queries import VectorSearchQueryManager
 

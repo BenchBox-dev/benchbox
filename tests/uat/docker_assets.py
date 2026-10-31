@@ -243,7 +243,10 @@ _DOCKER_PLATFORM_SPECS: dict[str, DockerPlatformSpec] = {
     ),
     "postgresql": DockerPlatformSpec(
         platform="postgresql",
-        compose_files=(_repo_path("docker/postgresql/docker-compose.yml"),),
+        compose_files=(
+            _repo_path("docker/postgresql/docker-compose.yml"),
+            _repo_path("docker/postgresql/docker-compose.pgvector.yml"),
+        ),
         services=("postgresql",),
     ),
     "presto": DockerPlatformSpec(

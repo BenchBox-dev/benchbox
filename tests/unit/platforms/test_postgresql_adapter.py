@@ -924,6 +924,34 @@ class TestPostgreSQLCreateSchema:
         assert isinstance(duration, float)
         mock_conn.commit.assert_called()
 
+    def test_create_schema_creates_vector_extension_before_vector_tables(self, postgres_stubs):
+        mock_conn = Mock()
+        mock_cursor = Mock()
+        mock_cursor.fetchone.return_value = None
+        mock_conn.cursor.return_value = mock_cursor
+        adapter = PostgreSQLAdapter()
+        schema_sql = "CREATE TABLE vectors (id BIGINT, embedding VECTOR(128))"
+
+        with patch.object(adapter, "_create_schema_with_tuning", return_value=schema_sql):
+            with pytest.raises(RuntimeError, match="vector extension is not available"):
+                adapter.create_schema(Mock(), mock_conn)
+
+        executed = [call.args[0] for call in mock_cursor.execute.call_args_list]
+        assert "CREATE EXTENSION IF NOT EXISTS vector" in executed
+        assert not any(sql.startswith("CREATE TABLE vectors") for sql in executed)
+
+    def test_create_schema_skips_vector_extension_for_plain_tables(self, postgres_stubs):
+        mock_conn = Mock()
+        mock_cursor = Mock()
+        mock_conn.cursor.return_value = mock_cursor
+        adapter = PostgreSQLAdapter()
+
+        with patch.object(adapter, "_create_schema_with_tuning", return_value="CREATE TABLE foo (id INT)"):
+            adapter.create_schema(Mock(), mock_conn)
+
+        executed = [call.args[0] for call in mock_cursor.execute.call_args_list]
+        assert not any("EXTENSION" in sql for sql in executed)
+
 
 class TestPostgreSQLValidatePlatformCapabilities:
     def test_valid_capabilities_with_psycopg(self, postgres_stubs):

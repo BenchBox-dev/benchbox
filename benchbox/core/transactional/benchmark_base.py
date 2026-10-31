@@ -186,7 +186,7 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
         if dialect not in _POSTGRES_SERIES_DIALECTS:
             return sql
         sql = _UNNEST_GENERATE_SERIES_RE.sub(r"generate_series(\g<args>)", sql)
-        return _SET_THEN_BEGIN_ISOLATION_RE.sub(r"BEGIN TRANSACTION ISOLATION LEVEL \g<level>;", sql)
+        return _SET_THEN_BEGIN_ISOLATION_RE.sub(r"COMMIT;\nBEGIN TRANSACTION ISOLATION LEVEL \g<level>;", sql)
 
     def _rollback_connection_after_error(self, connection: DatabaseConnection) -> None:
         try:
