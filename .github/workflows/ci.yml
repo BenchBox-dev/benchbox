@@ -708,6 +708,13 @@ jobs:
         continue-on-error: true
         run: make doc-contracts-guard
 
+      - name: Warn about docs contract changes against the PR base
+        id: guard-docs-contract-diff
+        continue-on-error: true
+        env:
+          EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: uv run -- python scripts/check_docs_contract_changes.py
+
       - name: Dependency audit (no unused declarations)
         id: guard-audit-deps
         continue-on-error: true

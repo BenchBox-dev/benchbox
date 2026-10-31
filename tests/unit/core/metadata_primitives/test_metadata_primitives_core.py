@@ -170,6 +170,16 @@ class TestMetadataPrimitivesQueryManager:
         assert "with_admin_option AS admin_option" in query
         assert "\n    admin_option\n" not in query
 
+    def test_singlestore_reads_roles_and_constraints_from_its_own_catalog(self):
+        manager = MetadataPrimitivesQueryManager()
+
+        for query_id in ("acl_role_list", "acl_role_membership", "constraint_referential_integrity"):
+            query = manager.get_query(query_id, dialect="singlestore")
+            assert "pg_roles" not in query
+            assert "pg_auth_members" not in query
+            assert "constraint_column_usage" not in query
+            assert "information_schema." in query
+
     def test_databricks_skips_unsupported_acl_queries(self):
         manager = MetadataPrimitivesQueryManager()
 

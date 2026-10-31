@@ -55,13 +55,16 @@ class ClickBenchBenchmark(GeneratorOutputDirMixin, SimpleBenchmarkMixin, DataGen
 
         from benchbox.utils.dialect_utils import translate_sql_query
 
-        return translate_sql_query(
+        translated = translate_sql_query(
             query,
             dialect,
             source_dialect="clickhouse",
             identify=False,
             strict=True,
         )
+        if "singlestore" in dialect.lower():
+            translated = translated.replace("(?:www\\\\.)?([^/]+)", "(www\\\\.)?([^/]+)").replace("'\\\\1'", "'\\\\2'")
+        return translated
 
     def get_query(self, query_id: Union[int, str], *, params: Optional[dict[str, Any]] = None) -> str:
 

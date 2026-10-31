@@ -12,9 +12,17 @@ from benchbox.core.tpchavoc.dialect_compat import (
     CLICKHOUSE_FILTER_VARIANT_IDS,
     CLICKHOUSE_OUTER_ALIAS_VARIANTS,
     DATAFUSION_EMPTY_GROUP_VARIANT_IDS,
+    GROUP_BY_EMPTY_VARIANT_IDS,
     POSTGRES_ALIAS_VARIANT_IDS,
     POSTGRES_DUAL_VARIANT_IDS,
     POSTGRES_QUALIFIED_COLUMNS,
+    SINGLESTORE_AGGREGATE_SUBQUERY_VARIANT_IDS,
+    SINGLESTORE_ALIAS_QUALIFIED_COLUMNS,
+    SINGLESTORE_CORRELATED_GROUP_VARIANTS,
+    SINGLESTORE_FILTER_VARIANT_IDS,
+    SINGLESTORE_GROUPING_SET_VARIANT_IDS,
+    SINGLESTORE_ORDER_SUBQUERY_VARIANT_IDS,
+    SINGLESTORE_SOURCELESS_WHERE_VARIANT_IDS,
 )
 from benchbox.platforms.clickhouse_local import ClickHouseLocalAdapter
 from benchbox.platforms.datafusion import DataFusionAdapter
@@ -318,3 +326,154 @@ def test_doris_rewrites_are_registered_per_variant():
     registered = {key[3] for key, _ in REGISTRY.all_rules() if key[:3] == (Phase.QUERY_ADAPTER, "doris", "tpchavoc")}
 
     assert registered == set(DORIS_FILTER_VARIANT_IDS) | set(GROUP_BY_EMPTY_VARIANT_IDS)
+
+
+def _singlestore_query(query_id):
+    return TPCHavocBenchmark(scale_factor=0.01).get_query(query_id, dialect="singlestore")
+
+
+def _singlestore_tree(query_id):
+    return sqlglot.parse_one(_singlestore_query(query_id), read="singlestore")
+
+
+@pytest.mark.parametrize("query_id", sorted(SINGLESTORE_FILTER_VARIANT_IDS))
+def test_singlestore_filter_variants_use_conditional_aggregates(query_id):
+    query = _singlestore_query(query_id)
+
+    assert "FILTER(" not in query.upper().replace(" ", "")
+    assert _singlestore_tree(query_id)
+
+
+@pytest.mark.parametrize("query_id", sorted(GROUP_BY_EMPTY_VARIANT_IDS))
+def test_singlestore_empty_group_by_is_dropped_and_having_kept(query_id):
+    query = _singlestore_query(query_id)
+
+    assert "GROUP BY ()" not in query
+    assert " HAVING " in query
+
+
+def test_singlestore_single_grouping_set_becomes_plain_group_by():
+    (query_id,) = SINGLESTORE_GROUPING_SET_VARIANT_IDS
+    query = _singlestore_query(query_id)
+
+    assert "GROUPING SETS" not in query
+    assert "GROUP BY `l_returnflag`, `l_linestatus` HAVING" in query
+
+
+@pytest.mark.parametrize("query_id", sorted(SINGLESTORE_SOURCELESS_WHERE_VARIANT_IDS))
+def test_singlestore_filtered_selects_without_source_read_from_dual(query_id):
+    tree = _singlestore_tree(query_id)
+
+    for select in tree.find_all(exp.Select):
+        if select.args.get("where") is not None:
+            assert select.args.get("from_") is not None
+    assert "FROM DUAL WHERE" in _singlestore_query(query_id)
+
+
+@pytest.mark.parametrize(("query_id", "columns"), sorted(SINGLESTORE_ALIAS_QUALIFIED_COLUMNS.items()))
+def test_singlestore_aggregated_columns_are_qualified_against_same_named_alias(query_id, columns):
+    query = _singlestore_query(query_id)
+
+    for column, table in columns.items():
+        assert f"SUM({table}.`{column}`)" in query
+        assert f"ORDER BY {table}." not in query
+
+
+@pytest.mark.parametrize("query_id", sorted(SINGLESTORE_ORDER_SUBQUERY_VARIANT_IDS))
+def test_singlestore_order_by_on_subquery_alias_runs_in_enclosing_query(query_id):
+    tree = _singlestore_tree(query_id)
+
+    assert tree.args.get("order") is not None
+    assert isinstance(tree.args["from_"].this, exp.Subquery)
+    inner = tree.args["from_"].this.this
+    assert inner.args.get("order") is None
+    assert inner.find(exp.Subquery) is not None
+
+
+@pytest.mark.parametrize("query_id", sorted(SINGLESTORE_AGGREGATE_SUBQUERY_VARIANT_IDS))
+def test_singlestore_aggregates_do_not_contain_subqueries(query_id):
+    tree = _singlestore_tree(query_id)
+
+    for aggregate in tree.find_all(exp.AggFunc):
+        assert aggregate.find(exp.Subquery, exp.Exists) is None
+        assert not any(node.args.get("query") is not None for node in aggregate.find_all(exp.In))
+
+
+def test_singlestore_correlated_scalar_subquery_drops_group_by():
+    for query_id, columns in SINGLESTORE_CORRELATED_GROUP_VARIANTS.items():
+        tree = _singlestore_tree(query_id)
+        scalar = next(node for node in tree.find_all(exp.Subquery) if isinstance(node.parent, exp.EQ))
+
+        assert scalar.this.args.get("group") is None
+        assert scalar.this.args.get("having") is not None
+        assert columns
+
+
+def test_singlestore_variant_rules_are_registered():
+    import benchbox.sql_compat.rules.query_adapter.singlestore_tpchavoc_rewrites
+    from benchbox.sql_compat.context import Phase
+    from benchbox.sql_compat.registry import REGISTRY
+
+    expected = (
+        SINGLESTORE_FILTER_VARIANT_IDS
+        | GROUP_BY_EMPTY_VARIANT_IDS
+        | SINGLESTORE_GROUPING_SET_VARIANT_IDS
+        | SINGLESTORE_SOURCELESS_WHERE_VARIANT_IDS
+        | set(SINGLESTORE_ALIAS_QUALIFIED_COLUMNS)
+        | SINGLESTORE_ORDER_SUBQUERY_VARIANT_IDS
+        | SINGLESTORE_AGGREGATE_SUBQUERY_VARIANT_IDS
+        | set(SINGLESTORE_CORRELATED_GROUP_VARIANTS)
+    )
+    registered = {
+        key[3] for key, _ in REGISTRY.all_rules() if key[:3] == (Phase.QUERY_ADAPTER, "singlestore", "tpchavoc")
+    }
+
+    assert registered == expected
+
+
+def test_hoist_aggregate_subqueries_rejects_qualified_multi_source_references():
+    from benchbox.utils.dialect_utils import apply_rewrite
+
+    with pytest.raises(ValueError, match="qualified column references"):
+        apply_rewrite(
+            "hoist_aggregate_subqueries",
+            "SELECT SUM(CASE WHEN EXISTS(SELECT 1 FROM u WHERE u.k = a.k) THEN a.v ELSE 0 END) FROM a, b",
+            "singlestore",
+        )
+
+
+def test_wrap_order_by_subquery_aliases_keeps_limit_outside():
+    from benchbox.utils.dialect_utils import apply_rewrite
+
+    rewritten = apply_rewrite(
+        "wrap_order_by_subquery_aliases",
+        "SELECT k, (SELECT SUM(v) FROM u WHERE u.k = t.k) AS total FROM t ORDER BY total DESC LIMIT 5",
+        "singlestore",
+    )
+
+    assert rewritten.endswith("AS ordered_rows ORDER BY total DESC LIMIT 5")
+
+
+def test_singlestore_rewrites_resolve_without_conflict_for_every_registered_variant():
+    import benchbox.sql_compat.rules.query_adapter.singlestore_tpchavoc_rewrites
+    from benchbox.sql_compat.context import CompatibilityContext, Phase
+    from benchbox.sql_compat.registry import REGISTRY
+
+    query_ids = {
+        key[3] for key, _ in REGISTRY.all_rules() if key[:3] == (Phase.QUERY_ADAPTER, "singlestore", "tpchavoc")
+    }
+
+    assert {"4_v7", "16_v7", "17_v7"} <= query_ids
+    for query_id in query_ids:
+        decision = REGISTRY.resolve(
+            CompatibilityContext(
+                platform="singlestore",
+                platform_version=None,
+                benchmark="tpchavoc",
+                query_id=query_id,
+                phase=Phase.QUERY_ADAPTER,
+                mode="sql",
+                dialect="singlestore",
+            )
+        )
+        assert decision is not None, query_id

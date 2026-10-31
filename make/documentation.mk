@@ -49,6 +49,10 @@ doc-contracts:
 doc-contracts-check:
 	uv run -- python scripts/doc_contracts.py --check
 
+.PHONY: docs-contract-diff
+docs-contract-diff:
+	uv run -- python scripts/check_docs_contract_changes.py --base-sha "$(BASE_REF)" --always
+
 .PHONY: docs-reference-inventory
 docs-reference-inventory:
 	uv run -- python scripts/doc_reference_inventory.py

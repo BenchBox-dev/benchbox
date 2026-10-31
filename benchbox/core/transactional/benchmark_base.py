@@ -247,7 +247,9 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
 
     def _manifest_text_type(self) -> str:
         dialect = (getattr(self, "_setup_dialect", None) or "standard").lower()
-        return "STRING" if dialect in ("databricks", "bigquery") else "VARCHAR"
+        if dialect in ("databricks", "bigquery"):
+            return "STRING"
+        return "TEXT" if dialect == "singlestore" else "VARCHAR"
 
     def _ensure_staging_manifest_table(self, connection: DatabaseConnection) -> None:
         quoted_table = self._quote_identifier(self._STAGING_MANIFEST_TABLE)

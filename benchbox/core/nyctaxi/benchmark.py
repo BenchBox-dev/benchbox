@@ -275,6 +275,8 @@ class NYCTaxiBenchmark(GeneratorOutputDirMixin, TranslatableQueryMixin, BaseBenc
         elif "databricks" in d or "spark" in d:
             query_text = _NYCTAXI_DOW_RE.sub(r"(DAYOFWEEK(\1) - 1)", query_text)
             query_text = _NYCTAXI_EPOCH_DIFF_RE.sub(r"(UNIX_TIMESTAMP(\1) - UNIX_TIMESTAMP(\2))", query_text)
+        elif "singlestore" in d:
+            query_text = _NYCTAXI_DOW_RE.sub(r"(DAYOFWEEK(\1) - 1)", query_text)
         elif "sqlite" in d:
             query_text = _NYCTAXI_DOW_RE.sub(r"CAST(strftime(\1, '%w') AS INTEGER)", query_text)
             query_text = _NYCTAXI_EPOCH_DIFF_RE.sub(

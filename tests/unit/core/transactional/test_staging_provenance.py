@@ -287,6 +287,7 @@ class TestStagingManifestHelpers:
             ("databricks", "STRING"),
             ("bigquery", "STRING"),
             ("snowflake", "VARCHAR"),
+            ("singlestore", "TEXT"),
             ("duckdb", "VARCHAR"),
             ("standard", "VARCHAR"),
         ],

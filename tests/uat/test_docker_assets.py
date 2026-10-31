@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import os
 import re
 from pathlib import Path
 
@@ -841,6 +842,61 @@ def test_starrocks_readiness_command_requires_alive_frontend_and_backend():
 
 
 @pytest.mark.parametrize(
+    ("platform", "service", "needle"),
+    [
+        ("cedardb", "cedardb", "psql"),
+        ("presto", "presto", "X-Presto-User"),
+        ("trino", "trino", "X-Trino-User"),
+    ],
+)
+def test_query_engine_readiness_command_runs_a_query_inside_the_service(platform, service, needle):
+    spec = docker_assets.docker_platform_spec(platform)
+    argv = managed_runtime._readiness_command(spec, f"benchbox-uat-{platform}")
+    assert argv is not None
+    exec_at = argv.index("exec")
+    assert argv[exec_at + 1 : exec_at + 3] == ["-T", service]
+    assert needle in " ".join(argv[exec_at + 3 :])
+    assert "SELECT 1" in " ".join(argv[exec_at + 3 :])
+
+
+@pytest.mark.parametrize("platform", ["presto", "trino"])
+def test_coordinator_readiness_uses_only_tools_the_healthcheck_already_needs(platform):
+    spec = docker_assets.docker_platform_spec(platform)
+    argv = managed_runtime._readiness_command(spec, f"benchbox-uat-{platform}")
+    assert argv is not None
+    assert argv[-3] == "sh"
+    script = argv[-1]
+    assert "curl" in script and "presto-cli" not in script and "trino --execute" not in script
+    assert "/v1/statement" in script and '"data":[[1]]' in script
+
+
+def test_cedardb_readiness_reads_credentials_from_the_container_environment():
+    spec = docker_assets.docker_platform_spec("cedardb")
+    argv = managed_runtime._readiness_command(spec, "benchbox-uat-cedardb")
+    assert argv is not None
+    script = argv[-1]
+    assert "$CEDAR_PASSWORD" in script and "$CEDAR_USER" in script and "$CEDAR_DB" in script
+    assert "Benchbox1!" not in script
+    assert "-h 127.0.0.1" in script
+
+
+@pytest.mark.parametrize(("platform", "floor"), [("cedardb", 15.0), ("presto", 60.0), ("trino", 60.0)])
+def test_query_readiness_timeout_outlasts_the_tcp_liveness_probe(platform, floor):
+    cfg = config.validate_config({"name": "readiness timeout", "platforms": {"include": [platform]}})
+    spec = docker_assets.docker_platform_spec(platform)
+    assert cfg.execute.liveness_probe_timeout_s < floor
+    assert managed_runtime._readiness_timeout_s(cfg, spec) == floor
+
+
+def test_readiness_timeout_never_exceeds_the_start_timeout():
+    cfg = config.validate_config(
+        {"name": "readiness cap", "platforms": {"include": ["presto"]}, "cleanup": {"docker_start_timeout_s": 20}}
+    )
+    spec = docker_assets.docker_platform_spec("presto")
+    assert managed_runtime._readiness_timeout_s(cfg, spec) == 20
+
+
+@pytest.mark.parametrize(
     ("text", "expected"),
     [
         ('{"Name":"clickhouse","MemUsage":"512MB / 4GB"}', 4_000_000_000),
@@ -975,3 +1031,25 @@ def test_presto_trino_free_memory_gate_is_request_aware(platform, tmp_path):
         )
         is None
     )
+
+
+@pytest.mark.parametrize("platform", ["presto", "trino"])
+def test_coordinator_readiness_script_exits_127_when_curl_is_missing(platform, tmp_path):
+    import shutil
+    import subprocess
+
+    sh = shutil.which("sh")
+    assert sh is not None
+    spec = docker_assets.docker_platform_spec(platform)
+    argv = managed_runtime._readiness_command(spec, "p")
+    assert argv is not None
+    result = subprocess.run(
+        [sh],
+        input=argv[-1],
+        env={**os.environ, "PATH": str(tmp_path)},
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+    assert result.returncode == 127

@@ -81,6 +81,15 @@ class TSBSDevOpsQueryManager:
 
         params.update(overrides)
 
+        fmt = "%Y-%m-%d %H:%M:%S"
+        window_start = datetime.strptime(str(params["start_time"]), fmt)
+        window_end = datetime.strptime(str(params["end_time"]), fmt)
+        params["start_minute"] = window_start.replace(second=0, microsecond=0).strftime(fmt)
+        end_minute = window_end.replace(second=0, microsecond=0)
+        if end_minute < window_end:
+            end_minute += timedelta(minutes=1)
+        params["end_minute_ceiling"] = end_minute.strftime(fmt)
+
         return params
 
     def get_queries(self) -> dict[str, str]:

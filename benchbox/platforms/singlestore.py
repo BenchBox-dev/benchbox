@@ -25,7 +25,12 @@ from .base.data_loading import (
     prepare_local_load_file,
     resolve_csv_dialect,
 )
-from .base.mysql_wire import MySqlWireLifecycleMixin, NoOpTableTuningMixin, build_database_config
+from .base.mysql_wire import (
+    MySqlWireConnectionWrapper,
+    MySqlWireLifecycleMixin,
+    NoOpTableTuningMixin,
+    build_database_config,
+)
 from .base.sql_execution import execute_sql_query as execute_sql_query
 
 SINGLESTORE_DIALECT = "singlestore"
@@ -231,12 +236,12 @@ class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, Platform
             local_infile=True,
         )
 
+    def _wrap_database_connection(self, conn: Any) -> Any:
+        return MySqlWireConnectionWrapper(conn)
+
     def _schema_statements(self, benchmark: Any) -> list[str]:
         schema_sql = self._create_schema_with_tuning(benchmark, source_dialect=self.get_target_dialect())
         return translate_ddl(schema_sql, "singlestore", "singlestore", **self._ddl_options())
-
-    def _load_table_name(self, table_name: str) -> str:
-        return table_name.lower()
 
     def _handle_invalid_load_table(self, table_name: str, table_stats: dict[str, int]) -> bool:
         raise ValueError(f"Invalid table identifier: {table_name!r}")
@@ -387,7 +392,6 @@ class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, Platform
     def _ddl_options(self) -> dict[str, Any]:
         return {
             "strip_foreign_keys": True,
-            "table_case": "lower",
             "type_map": "singlestore",
             "singlestore": {
                 "shard_keys": _TPCH_SHARD_KEYS,

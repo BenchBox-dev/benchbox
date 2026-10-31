@@ -115,6 +115,11 @@ class TestQuoteIdentifier:
 
         assert quote_identifier_for_dialect("benchbox_staging_manifest_v3", "doris") == "`benchbox_staging_manifest_v3`"
 
+    def test_singlestore_uses_backticks(self, wp_benchmark):
+        from benchbox.core.primitives_benchmark_utils import quote_identifier_for_dialect
+
+        assert quote_identifier_for_dialect("orders", "singlestore") == "`orders`"
+
     def test_identifier_with_numbers(self, wp_benchmark):
 
         assert wp_benchmark._quote_identifier("table123") == '"table123"'
@@ -2005,6 +2010,52 @@ def test_get_population_sql_merge_ops_target(fast_bench):
     sql = fast_bench._get_population_sql("merge_ops_target", "orders")
     assert "0.5" in sql or "50%" in sql or "CAST" in sql
     assert "merge_ops_target" in sql or '"merge_ops_target"' in sql
+
+
+@pytest.mark.parametrize("table_name", ["merge_ops_target", "merge_ops_source", "merge_ops_lineitem_target"])
+def test_get_population_sql_casts_to_signed_on_singlestore(fast_bench, table_name):
+    fast_bench._setup_dialect = "singlestore"
+
+    sql = fast_bench._get_population_sql(table_name, "orders")
+
+    assert "AS SIGNED)" in sql
+    assert "AS INTEGER)" not in sql
+
+
+def test_scd2_row_hash_uses_concat_on_singlestore(fast_bench):
+    fast_bench._setup_dialect = "singlestore"
+
+    sql = fast_bench._get_population_sql("scd2_ops_dim_customer", "customer")
+
+    assert "CONCAT(c_name, '|', c_address, '|', CAST(c_acctbal AS CHAR), '|', c_mktsegment)" in sql
+    assert "||" not in sql
+
+
+@pytest.mark.parametrize(
+    "operation_id,expected",
+    [
+        ("ddl_alter_table_rename_column", "CHANGE old_name new_name\n"),
+        ("ddl_create_table_with_index", "CREATE INDEX idx_test_value ON test_indexed(value)\n"),
+        ("ddl_create_index_on_existing", "CREATE INDEX idx_existing_price ON test_idx_existing(o_totalprice)\n"),
+    ],
+)
+def test_singlestore_ddl_overrides_avoid_unsupported_syntax(fast_bench, operation_id, expected):
+    operation = fast_bench.get_operation(operation_id)
+
+    sql, skip = fast_bench._get_effective_write_sql(operation, platform_key="singlestore")
+
+    assert skip is None
+    assert expected in sql
+    assert "NULLS LAST" not in sql
+
+
+def test_date_literals_are_casts_on_singlestore(fast_bench):
+    fast_bench._setup_dialect = "singlestore"
+
+    sql = fast_bench._get_population_sql("scd2_ops_dim_customer", "customer")
+
+    assert "CAST('1990-01-01' AS DATE) AS valid_from" in sql
+    assert "DATE '" not in sql
 
 
 def test_get_population_sql_merge_ops_source(fast_bench):
