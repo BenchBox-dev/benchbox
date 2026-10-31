@@ -151,6 +151,8 @@ def test_summary_lists_every_entry_and_names_the_site() -> None:
 def test_relevance_filter() -> None:
     assert check.is_relevant(["README.md", "benchbox/mcp/tools.py"])
     assert check.is_relevant(["scripts/doc_contracts.py"])
+    assert check.is_relevant(["quality/mcp-run-surface.json"])
+    assert check.is_relevant(["publish-allowlist.txt"])
     assert not check.is_relevant(["uv.lock", "tests/unit/test_x.py"])
 
 

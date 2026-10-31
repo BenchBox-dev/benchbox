@@ -19,7 +19,15 @@ CLI_DESCRIPTION = (
     "Never fails the build."
 )
 EXPORTER = "scripts/doc_contracts.py"
-RELEVANT_PREFIXES = ("benchbox/", EXPORTER)
+RELEVANT_PREFIXES = (
+    "benchbox/",
+    "quality/",
+    "_project/design/",
+    "tests/unit/generators/sf1_size_baseline.json",
+    "pyproject.toml",
+    "scripts/",
+)
+PUBLISH_LIST_NAMES = frozenset({"publish-allowlist.txt", "publish-exclusions.txt"})
 EXPORT_TIMEOUT_SECONDS = 600
 GIT_TIMEOUT_SECONDS = 120
 IDENTITY_KEYS = ("platform", "key", "path", "symbol", "names", "name")
@@ -165,7 +173,7 @@ def changed_paths(base_sha: str) -> list[str] | None:
 
 
 def is_relevant(paths: Sequence[str]) -> bool:
-    return any(path.startswith(RELEVANT_PREFIXES) for path in paths)
+    return any(path.startswith(RELEVANT_PREFIXES) or path.rsplit("/", 1)[-1] in PUBLISH_LIST_NAMES for path in paths)
 
 
 def export_contracts(tree: Path, output: Path) -> dict[str, Any]:
