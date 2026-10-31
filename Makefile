@@ -1243,10 +1243,10 @@ pr-open:
 	DRAFT_FLAG=; \
 	if [ "$$TRUNK_MODE" = "draft" ]; then DRAFT_FLAG=--draft; fi; \
 	REVIEWED=$$(git rev-parse HEAD); \
-	uv run -- python -m _project.scripts.oracle_reviewers.cli local-review --policy .github/oracle-reviewers.yml --base-ref origin/develop --head "$$REVIEWED" --body-file "$$PR_OPEN_BODY_FILE" || { echo "Refusing to open PR: the local oracle review did not clear this head. Nothing was pushed." >&2; exit 1; }; \
-	[ "$$(git rev-parse HEAD)" = "$$REVIEWED" ] || { echo "Refusing to open PR: HEAD moved during the local oracle review, so the pushed head would not be the reviewed one. Nothing was pushed." >&2; exit 1; }; \
+	uv run -- python scripts/oracle_local_review.py --policy .github/oracle-reviewers.yml --base-ref origin/develop --head "$$REVIEWED" --body-file "$$PR_OPEN_BODY_FILE" || { echo "Refusing to open PR: the local oracle review did not clear this head. Nothing was pushed." >&2; exit 1; }; \
 	$(MAKE) -s pr-conflict-scan BRANCH="$$CURRENT" REPO="$$REPOSITORY" || true; \
-	git push -u origin "$$CURRENT" || { echo "Push failed for $$CURRENT — aborting before opening a PR (remote branch may be stale)." >&2; exit 1; }; \
+	git push origin "$$REVIEWED:refs/heads/$$CURRENT" || { echo "Push failed for $$CURRENT — aborting before opening a PR (remote branch may be stale)." >&2; exit 1; }; \
+	git branch --set-upstream-to="origin/$$CURRENT" "$$CURRENT" >/dev/null 2>&1 || true; \
 	PUBLISHED=$$(uv run -- python scripts/pr_open_rest.py --repo "$$REPOSITORY" --head-owner "$$ORIGIN_OWNER" \
 		--branch "$$CURRENT" --head-spec "$$HEAD_SPEC" --title "$$PR_OPEN_TITLE" --body-file "$$PR_OPEN_BODY_FILE" $$DRAFT_FLAG); \
 	PR_STATUS="$${PUBLISHED%% *}"; \
@@ -1266,12 +1266,12 @@ pr-open:
 	elif [ -n "$(EVIDENCE)$(BATCH)" ]; then \
 		if [ "$$REUSED_PR" != "1" ]; then \
 			echo "READY=1 with EVIDENCE or BATCH applies to a reused PR, so this new PR is not armed."; \
-			echo "Arm it after review with make pr-arm, or with the evidence transaction: make pr-ready REPO=\"$$REPOSITORY\" URL=\"$$URL\" HEAD=\"$$(git rev-parse HEAD)\" EVIDENCE=\"<readiness-evidence.json>\""; \
+			echo "Arm it after review with make pr-arm, or with the evidence transaction: make pr-ready REPO=\"$$REPOSITORY\" URL=\"$$URL\" HEAD=\"$$REVIEWED\" EVIDENCE=\"<readiness-evidence.json>\""; \
 		else \
-			$(MAKE) -s pr-ready REPO="$$REPOSITORY" URL="$$URL" HEAD="$$(git rev-parse HEAD)" EVIDENCE="$(EVIDENCE)" BATCH="$(BATCH)"; \
+			$(MAKE) -s pr-ready REPO="$$REPOSITORY" URL="$$URL" HEAD="$$REVIEWED" EVIDENCE="$(EVIDENCE)" BATCH="$(BATCH)"; \
 		fi; \
 	else \
-		$(MAKE) -s pr-arm PR="$$PR_NUMBER" REPO="$$REPOSITORY" HEAD="$$(git rev-parse HEAD)"; \
+		$(MAKE) -s pr-arm PR="$$PR_NUMBER" REPO="$$REPOSITORY" HEAD="$$REVIEWED"; \
 	fi
 
 .PHONY: pr-arm-auto-merge
