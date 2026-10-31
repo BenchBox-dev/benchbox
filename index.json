@@ -24298,19 +24298,14 @@
       "title": "Tighten bundle-fetch producing-run provenance check"
     },
     "site-split-99-closeout": {
-      "claim": {
-        "expires_at": "2026-11-01T00:21:26Z",
-        "generation": "5e07dcb131d94bf9bf5d51f19964aaf8",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8"
-      },
+      "claim": null,
       "needs": [
         "site-split-53-landing-stub-removal",
         "site-split-54-publication-github-cleanup",
         "site-split-01-tracker-reconcile"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Close out the site-repo split: fold superseded tracker items and record follow-ups"
     },
     "site-split-agy-plan-review": {
