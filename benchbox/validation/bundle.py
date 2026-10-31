@@ -460,6 +460,21 @@ KNOWN_PLATFORMS = {
     "fabric_dw",
     "fabric-lakehouse",
     "fabric-spark",
+    "apache-doris",
+    "singlestore",
+    "velox",
+    "paradedb",
+    "citus",
+    "gizmosql",
+    "databricks-df",
+    "glue",
+    "emr-serverless",
+    "athena-spark",
+    "dataproc",
+    "dataproc-serverless",
+    "synapse-spark",
+    "snowpark-connect",
+    "quanton",
 }
 
 MAX_QUERY_DURATION_MS = 7_200_000

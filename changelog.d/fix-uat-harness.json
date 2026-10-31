@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Submission bundle validation recognises the Apache Doris, SingleStore, Velox and Databend platform names, derived from the platform manifest, instead of warning that they are unknown."
+    }
+  ]
+}
