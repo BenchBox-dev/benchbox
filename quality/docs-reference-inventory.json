@@ -1024,13 +1024,13 @@
    "kinds": {
     "pattern": 3,
     "root": 1,
-    "unresolved": 8
+    "unresolved": 7
    },
-   "occurrences": 22,
+   "occurrences": 20,
    "path": "_project/decisions/adr-astro-unified-site.md",
    "rule": "project-records",
-   "target_count": 12,
-   "targets_sha256": "54b2e47954214804e3b1a92137d7ed33bf344970a9f5fdf992c753feab7de5d0"
+   "target_count": 11,
+   "targets_sha256": "0852b07cc5b40c67e36ae60e474f12d89eb9f58c0eb2828a6c2496bbea8b3858"
   },
   {
    "disposition": "historical-record",
@@ -2261,16 +2261,21 @@
   {
    "disposition": "wiring-updated",
    "kinds": {
-    "root": 1
+    "root": 1,
+    "unresolved": 1
    },
-   "occurrences": 1,
+   "occurrences": 2,
    "path": "scripts/comment_syntax.py",
    "rule": "ci-path-classification",
-   "target_count": 1,
+   "target_count": 2,
    "targets": [
     {
      "kind": "root",
      "target": "docs/"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/_templates/"
     }
    ]
   },
@@ -2547,24 +2552,16 @@
    "disposition": "fixture-data",
    "kinds": {
     "file": 1,
-    "pattern": 4
+    "pattern": 2
    },
-   "occurrences": 6,
+   "occurrences": 4,
    "path": "tests/fixtures/fast_tier_baseline/tests-00.json",
    "rule": "test-sample-data",
-   "target_count": 5,
+   "target_count": 3,
    "targets": [
     {
      "kind": "pattern",
      "target": "docs/.gitattributes]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/README.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/publish-exclusions.txt]"
     },
     {
      "kind": "pattern",
@@ -2630,13 +2627,13 @@
    "disposition": "fixture-data",
    "kinds": {
     "file": 1,
-    "pattern": 9,
+    "pattern": 6,
     "unresolved": 1
    },
-   "occurrences": 12,
+   "occurrences": 9,
    "path": "tests/fixtures/fast_tier_baseline/tests-02.json",
    "rule": "test-sample-data",
-   "target_count": 11,
+   "target_count": 8,
    "targets": [
     {
      "kind": "pattern",
@@ -2648,15 +2645,7 @@
     },
     {
      "kind": "pattern",
-     "target": "docs/agent/notes.md]"
-    },
-    {
-     "kind": "pattern",
      "target": "docs/agent/review-protocol.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/assets/site.css]"
     },
     {
      "kind": "pattern",
@@ -2669,10 +2658,6 @@
     {
      "kind": "unresolved",
      "target": "docs/page.md-unsafe"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/publish-allowlist.txt]"
     },
     {
      "kind": "file",
@@ -2689,13 +2674,13 @@
    "kinds": {
     "extra": 1,
     "file": 1,
-    "pattern": 5,
+    "pattern": 4,
     "unresolved": 1
    },
-   "occurrences": 11,
+   "occurrences": 9,
    "path": "tests/fixtures/fast_tier_baseline/tests-03.json",
    "rule": "test-sample-data",
-   "target_count": 8,
+   "target_count": 7,
    "targets": [
     {
      "kind": "unresolved",
@@ -2704,10 +2689,6 @@
     {
      "kind": "pattern",
      "target": "docs/internal/independent-publication-threat-model.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/internal/nightly-t3.md]"
     },
     {
      "kind": "pattern",
@@ -2735,17 +2716,13 @@
    "disposition": "fixture-data",
    "kinds": {
     "file": 1,
-    "pattern": 5
+    "pattern": 4
    },
-   "occurrences": 6,
+   "occurrences": 5,
    "path": "tests/fixtures/fast_tier_baseline/tests-04.json",
    "rule": "test-sample-data",
-   "target_count": 6,
+   "target_count": 5,
    "targets": [
-    {
-     "kind": "pattern",
-     "target": "docs/agent/README.md]"
-    },
     {
      "kind": "pattern",
      "target": "docs/blog/post.md]"
@@ -2843,13 +2820,13 @@
    "disposition": "fixture-data",
    "kinds": {
     "file": 1,
-    "pattern": 9,
+    "pattern": 7,
     "unresolved": 1
    },
-   "occurrences": 11,
+   "occurrences": 9,
    "path": "tests/fixtures/fast_tier_baseline/tests-07.json",
    "rule": "test-sample-data",
-   "target_count": 11,
+   "target_count": 9,
    "targets": [
     {
      "kind": "unresolved",
@@ -2862,14 +2839,6 @@
     {
      "kind": "pattern",
      "target": "docs/agent/review-protocol.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/assets/page.html]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/example.py]"
     },
     {
      "kind": "pattern",
@@ -2901,12 +2870,12 @@
    "disposition": "fixture-data",
    "kinds": {
     "pattern": 7,
-    "unresolved": 8
+    "unresolved": 15
    },
-   "occurrences": 15,
+   "occurrences": 22,
    "path": "tests/fixtures/medium_shard_durations.json",
    "rule": "test-sample-data",
-   "target_count": 15,
+   "target_count": 22,
    "targets": [
     {
      "kind": "unresolved",
@@ -2951,6 +2920,34 @@
     {
      "kind": "pattern",
      "target": "docs/agent/review-protocol.md]"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/development/development.md-A"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/development/development.md-Auto-merge"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/development/development.md-Do"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/development/development.md-Mark"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/development/development.md-Run"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/development/development.md-The"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/development/development.md-Then"
     },
     {
      "kind": "pattern",
@@ -3403,20 +3400,16 @@
     "file": 2,
     "pattern": 1,
     "root": 1,
-    "unresolved": 4
+    "unresolved": 3
    },
-   "occurrences": 28,
+   "occurrences": 27,
    "path": "tests/unit/cli/test_shipped_docs_urls.py",
    "rule": "lock-tests-core",
-   "target_count": 8,
+   "target_count": 7,
    "targets": [
     {
      "kind": "root",
      "target": "docs/"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/agent/notes.md"
     },
     {
      "kind": "unresolved",
@@ -3611,35 +3604,6 @@
     {
      "kind": "file",
      "target": "docs/index.md"
-    }
-   ]
-  },
-  {
-   "disposition": "fixture-data",
-   "kinds": {
-    "root": 1,
-    "unresolved": 3
-   },
-   "occurrences": 9,
-   "path": "tests/unit/scripts/oracle_reviewers/test_local_review.py",
-   "rule": "test-sample-data",
-   "target_count": 4,
-   "targets": [
-    {
-     "kind": "root",
-     "target": "docs/"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/agent/overview.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/guide.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/plain.md"
     }
    ]
   },
@@ -3890,16 +3854,25 @@
   {
    "disposition": "fixture-data",
    "kinds": {
+    "built-url": 2,
     "unresolved": 7
    },
-   "occurrences": 14,
+   "occurrences": 19,
    "path": "tests/unit/scripts/test_comment_policy.py",
    "rule": "test-sample-data",
-   "target_count": 7,
+   "target_count": 9,
    "targets": [
     {
      "kind": "unresolved",
      "target": "docs/CNAME"
+    },
+    {
+     "kind": "built-url",
+     "target": "docs/_templates/a.html"
+    },
+    {
+     "kind": "built-url",
+     "target": "docs/_templates/page.html"
     },
     {
      "kind": "unresolved",
@@ -4335,18 +4308,22 @@
    "disposition": "wiring-updated",
    "kinds": {
     "built-url": 1,
-    "file": 6,
+    "file": 4,
     "pattern": 1,
-    "unresolved": 7
+    "unresolved": 11
    },
-   "occurrences": 24,
+   "occurrences": 25,
    "path": "tests/unit/scripts/test_path_filter_decision.py",
    "rule": "ci-path-classification",
-   "target_count": 15,
+   "target_count": 17,
    "targets": [
     {
      "kind": "pattern",
      "target": "docs/**"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/Makefile"
     },
     {
      "kind": "file",
@@ -4354,15 +4331,31 @@
     },
     {
      "kind": "unresolved",
-     "target": "docs/api/index.rst"
-    },
-    {
-     "kind": "built-url",
-     "target": "docs/assets/page.html"
+     "target": "docs/_extensions/sphinx_tags_fix.py"
     },
     {
      "kind": "unresolved",
-     "target": "docs/assets/site.css"
+     "target": "docs/_static/collapsible-nav.js"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/_static/custom.css"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/_static/pygments_cobalt2.py"
+    },
+    {
+     "kind": "built-url",
+     "target": "docs/_templates/page.html"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/api/index.rst"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/conf.py"
     },
     {
      "kind": "unresolved",
@@ -4378,10 +4371,6 @@
     },
     {
      "kind": "unresolved",
-     "target": "docs/example.py"
-    },
-    {
-     "kind": "unresolved",
      "target": "docs/foo.md"
     },
     {
@@ -4391,14 +4380,6 @@
     {
      "kind": "file",
      "target": "docs/index.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/publish-allowlist.txt"
-    },
-    {
-     "kind": "file",
-     "target": "docs/publish-exclusions.txt"
     },
     {
      "kind": "unresolved",
@@ -4708,7 +4689,7 @@
   "dispositions": {
    "contract-replaced": 1,
    "contract-tooling": 6,
-   "fixture-data": 66,
+   "fixture-data": 65,
    "governance-stays": 9,
    "historical-record": 112,
    "lock-test": 5,
@@ -4716,18 +4697,18 @@
    "site-pipeline-cutover": 4,
    "wiring-updated": 30
   },
-  "files": 245,
+  "files": 244,
   "kinds": {
-   "built-url": 29037,
+   "built-url": 29042,
    "dir": 163,
    "extra": 37,
-   "file": 1385,
+   "file": 1382,
    "generated": 3,
-   "pattern": 362,
-   "root": 203,
-   "unresolved": 2074
+   "pattern": 352,
+   "root": 202,
+   "unresolved": 2075
   },
-  "references": 33264,
+  "references": 33256,
   "unclassified": 0
  }
 }

@@ -32849,6 +32849,32 @@
       "alternative": "A literal binary path would stop the test from exercising the binary the package ships for the host.",
       "owner": "BenchBox maintainers",
       "removal": "Remove when the executable-payload adapter can resolve the bundled binary path statically."
+    },
+    {
+      "path": "_project/scripts/oracle_reviewers/local.py",
+      "symbol": "withhold_secrets",
+      "text": "unresolved executable source: sys.executable",
+      "payload": "sha256:e757f618414cb86d2f0de6ec641ef7437cb4e6867f434cd9eb2ff64565df635e",
+      "finding_kind": "payload-error",
+      "kind": "fixture",
+      "consumer": "_project/scripts/oracle_reviewers/local.py",
+      "necessity": "The local review must drop the secret environment variables from its own process image so no ancestor of the reviewer holds them. Replacing the process with itself is the only way to discard the initial environment block; the arguments are the interpreter's own original argument vector.",
+      "alternative": "Spawning a child leaves the parent, with the secrets in its environment, as an ancestor of the reviewer.",
+      "owner": "BenchBox maintainers",
+      "removal": "Remove when the executable-payload adapter can resolve process replacement calls statically."
+    },
+    {
+      "path": "scripts/oracle_local_review.py",
+      "symbol": "launch",
+      "text": "unresolved executable source: argv[0]",
+      "payload": "sha256:ce8aa0c7f9b774426ab27e1d07adb32090004f7c377948229d7a48d45c408828",
+      "finding_kind": "payload-error",
+      "kind": "fixture",
+      "consumer": "scripts/oracle_local_review.py",
+      "necessity": "The bootstrap hands the process to the pinned uv launcher so no extra Python process stays in the reviewer's ancestry. argv is built by review_command() from fixed tokens and the review options, with no inline source.",
+      "alternative": "Running uv as a child would keep the bootstrap process, with the caller's environment, as an ancestor of the reviewer.",
+      "owner": "BenchBox maintainers",
+      "removal": "Remove when the executable-payload adapter can resolve process replacement calls statically."
     }
   ]
 }
