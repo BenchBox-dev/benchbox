@@ -417,6 +417,9 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         self._await_backends_ready()
         return super().create_connection(**connection_config)
 
+    def _apply_stream_session_state(self, connection: Any) -> None:
+        del connection
+
     def _wrap_database_connection(self, conn: Any) -> Any:
         return _DorisConnectionWrapper(conn, ddl_optimizer=self._translate_create_table)
 
