@@ -477,10 +477,15 @@
       "title": "The instruction-budget guard did not stop a PR that landed develop 88 bytes over, blocking every commit repo-wide"
     },
     "agent-relative-path-primary-clone-writes": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-01T20:28:59Z",
+        "generation": "edbf270197bb48b48ff29be3f10124ae",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8d313df504e30c76edc4bc0f"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Stop delegated agents from writing to the primary clone through relative paths"
     },
     "agent-test-policy-documentation": {
