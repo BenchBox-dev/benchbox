@@ -136,8 +136,8 @@ the test-count ceiling is retired.
 `.github/workflows/trunk-coverage.yml` runs on a schedule (six producer runs a
 day at `17 1,5,9,13,17,21 * * *` UTC) and on `workflow_dispatch`, not on every
 push to `develop`, and publishes the coverage map that PR selection reads; it
-is not a required PR check and no arming gate consults it (`trunk.yml` still
-runs on every push and remains what `scripts/trunk_revert.py` reads). A
+is not a required PR check and no arming gate consults it (`trunk.yml` runs on
+every push that is not replaced while waiting and remains what `scripts/trunk_revert.py` reads). A
 scheduled run checks out the `develop` tip at trigger time, so the map can lag
 `develop` by up to one cadence interval plus run time; the cadence, the
 acceptable map age and the cron itself are owner decisions. It runs the same
@@ -275,12 +275,15 @@ freshness changed. The
 `tests/conftest.py` coverage warning reads the data file named by
 `COVERAGE_FILE` so sharded runs report their own file.
 
-Each commit runs in its own `trunk-<sha>` concurrency group, so runs for
-different commits proceed in parallel and later pushes never wait behind or
-replace earlier runs; only a re-run of the same commit waits for the earlier
-run of that commit. Results can still arrive out of order. This covers runs for
-delivered events, not push-event delivery itself. See
-[the per-commit trunk decision](../../_project/decisions/trunk-per-commit-runs-2026-10-27.md).
+Develop pushes share one `trunk-develop` concurrency group. One run is in flight
+and the newest push waits behind it; a newer push replaces a waiting one, and a
+started run is never cancelled. A replaced commit has no run of its own, so a red
+run covers every commit merged since the last run, and the arm gate and
+`make trunk-status` name all of them. A revert of any of those commits is exempt
+from the gate, and one revert does not reopen arming for other PRs until a run
+is green. Runs started by `ci.yml` and by manual dispatch keep a per-commit group.
+This covers runs for delivered events, not push-event delivery itself. See
+[the latest-head trunk decision](../../_project/decisions/trunk-latest-head-runs-2026-10-30.md).
 Release admission requires the latest exact-commit trunk `push` run on `develop`
 to succeed and have a matching artifact attempt; it never falls back to an
 older success. See [the release artifact contract](release-artifacts.md).
@@ -307,10 +310,15 @@ two-hour figure.
 Arming is stricter than opening: `make pr-arm`, `make pr-arm-remote`,
 `make pr-landing-remote-ready` and `make pr-landing-ready ARM=1` run `scripts/trunk_revert.py arm-gate`, which
 refuses at once, naming the culprit PR and run, while trunk is red and no
-revert of the culprit commit is on `develop`. The culprit is the head of the
-first red completed run after the last green one, so a failure that persists
-across later merges still blames the commit that broke it, and only a revert
-of that commit is exempt. The gate widens its run fetch (30, 100, 300, then
+revert of the culprit commit is on `develop`. The culprit lies in the first red
+completed run after the last green one: when a run covers several commits
+(waiting pushes are replaced, so a run's range reaches back to the last green
+run), the gate names every commit in that range, and a failure that persists
+across later merges still blames the range that broke it. A revert of any
+covered commit is exempt. When the range holds more than one commit, one
+revert does not reopen arming for other PRs; only a green run does. If the
+range cannot be read in full, the culprit is undetermined and the gate refuses.
+The gate widens its run fetch (30, 100, 300, then
 1000 runs) until it finds a green run or the run history ends, and refuses
 when the streak outruns that bound. An owner-authorized fix-forward comment
 (see [merge authority](../agent/merge-authority.md)) also admits one PR at its
