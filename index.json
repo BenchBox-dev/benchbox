@@ -17086,10 +17086,15 @@
       "title": "Re-check the PR head after reading the diff and detect base changes from the event"
     },
     "oracle-pool-block-persists-after-quota-reset-20261028": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-01T03:05:30Z",
+        "generation": "471351b05d6a4fb3903d35c78e8b93f6",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c8cf2fdb5a699f4b3049c8eb"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Oracle keeps a reviewer pool blocked until the provider reset date after quota is restored"
     },
     "oracle-post-guard-reread-retry-20261009": {
