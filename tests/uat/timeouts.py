@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-import psutil
+from benchbox.utils.process_tree import tree_footprint_bytes
 
 EXIT_TIMEOUT = 124
 EXIT_MEMORY_LIMIT = 137
@@ -40,17 +40,9 @@ class _RssMeter:
         self.peak_bytes = 0
 
     def over_limit(self) -> bool:
-        try:
-            root = psutil.Process(self._pid)
-            members = [root, *root.children(recursive=True)]
-        except psutil.Error:
+        total = tree_footprint_bytes(self._pid)
+        if total is None:
             return False
-        total = 0
-        for member in members:
-            try:
-                total += member.memory_info().rss
-            except psutil.Error:
-                continue
         self.peak_bytes = max(self.peak_bytes, total)
         return total > self.limit_bytes
 

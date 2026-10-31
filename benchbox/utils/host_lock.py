@@ -29,6 +29,12 @@ EXIT_OWNERSHIP = 78
 EXIT_ADMISSION = 76
 ADMIT_ENV = "BENCHBOX_HEAVY_ADMIT"
 LOG_PREFIX = "[host-lock]"
+WATCHDOG_MODE_ENV = "BENCHBOX_HEAVY_WATCHDOG"
+WATCHDOG_FLAG_HOLDER = b"H"
+WATCHDOG_STOP_SECONDS = 5.0
+EXIT_WATCHDOG = 79
+WATCHDOG_SCRIPT = Path(__file__).with_name("heavy_watchdog.py")
+_SIGTERM = signal.Signals["SIGTERM"]
 
 _HOLDER_OWNER = re.compile(r"^pid:\d+ owner:(\d+:\d+(?:\.\d+)?) ")
 
@@ -384,6 +390,7 @@ class HostLock:
     pid: int
     inherited: bool = False
     count: int = 1
+    guard: Any = None
 
     def release(self) -> None:
         _release(self)
@@ -409,7 +416,10 @@ def _release(handle: HostLock) -> None:
         key = _registry_key(handle.path)
         if _registry.get(key) is handle:
             del _registry[key]
+        guard, handle.guard = handle.guard, None
         fd, handle.fd = handle.fd, None
+    if guard is not None:
+        guard.stop()
     if fd is not None:
         _close_lock(fd)
 
@@ -494,6 +504,150 @@ def _acquire_handle(
     return handle
 
 
+class Guard:
+    def __init__(self, process: subprocess.Popen[bytes], flag_fd: int) -> None:
+        self.process = process
+        self._flag_fd = flag_fd
+        self._flags = b""
+        self._stopped = False
+        self._term_handler: Any = None
+
+    def _drain(self) -> None:
+        if self._flag_fd < 0:
+            return
+        try:
+            self._flags += os.read(self._flag_fd, 64)
+        except OSError:
+            pass
+
+    @property
+    def breached(self) -> bool:
+        self._drain()
+        return bool(self._flags)
+
+    @property
+    def holder_terminated(self) -> bool:
+        self._drain()
+        return WATCHDOG_FLAG_HOLDER in self._flags
+
+    def install_term_handler(self) -> None:
+        if threading.current_thread() is not threading.main_thread() or not hasattr(signal, "SIGTERM"):
+            return
+        if signal.getsignal(_SIGTERM) is not signal.SIG_DFL:
+            return
+
+        def handler(signum: int, _frame: object) -> None:
+            if self.holder_terminated:
+                raise SystemExit(EXIT_WATCHDOG)
+            signal.signal(signum, signal.SIG_DFL)
+            os.kill(os.getpid(), signum)
+
+        self._term_handler = handler
+        signal.signal(_SIGTERM, handler)
+
+    def _restore_term_handler(self) -> None:
+        if self._term_handler is not None and signal.getsignal(_SIGTERM) is self._term_handler:
+            signal.signal(_SIGTERM, signal.SIG_DFL)
+        self._term_handler = None
+
+    def _report_survivors(self) -> None:
+        psutil = _psutil()
+        try:
+            children = psutil.Process().children(recursive=True)
+        except psutil.Error:
+            return
+        rows: list[str] = []
+        for child in children:
+            if child.pid == self.process.pid:
+                continue
+            try:
+                if child.status() == psutil.STATUS_ZOMBIE:
+                    continue
+                rows.append(f"{child.pid} {child.name()}")
+            except psutil.Error:
+                continue
+        if rows:
+            _log(f"lock released with {len(rows)} surviving descendant process(es), left running: " + ", ".join(rows))
+
+    def stop(self) -> None:
+        if self._stopped:
+            return
+        self._stopped = True
+        self._report_survivors()
+        self._drain()
+        self.process.terminate()
+        try:
+            self.process.wait(timeout=WATCHDOG_STOP_SECONDS)
+        except subprocess.TimeoutExpired:
+            self.process.kill()
+            self.process.wait()
+        self._drain()
+        self._restore_term_handler()
+        if self._flag_fd >= 0:
+            os.close(self._flag_fd)
+            self._flag_fd = -1
+
+
+def _spawn_guard(handle: HostLock, env: Mapping[str, str]) -> Guard:
+    from benchbox.utils import resource_limits
+
+    budget = resource_limits.heavy_memory_budget_gib(env)
+    budget_bytes = int(budget * 1024**3) if budget else 0
+    created = _psutil().Process().create_time()
+    argv = [
+        sys.executable,
+        "-I",
+        str(WATCHDOG_SCRIPT),
+        "--holder-pid",
+        str(os.getpid()),
+        "--holder-created",
+        repr(created),
+        "--budget-bytes",
+        str(budget_bytes),
+        "--lock-path",
+        str(handle.path),
+    ]
+    if handle.fd is not None:
+        argv += ["--lock-inode", str(os.fstat(handle.fd).st_ino)]
+    for label, path in resource_limits.default_disk_roots(env):
+        argv += ["--disk", f"{label}={path}"]
+    read_fd, write_fd = os.pipe()
+    os.set_blocking(read_fd, False)
+    argv += ["--flag-fd", str(write_fd)]
+    try:
+        process = subprocess.Popen(
+            argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, pass_fds=(write_fd,), env=dict(env)
+        )
+    except BaseException:
+        os.close(read_fd)
+        raise
+    finally:
+        os.close(write_fd)
+    guard = Guard(process, read_fd)
+    guard.install_term_handler()
+    return guard
+
+
+def start_guard(handle: HostLock, *, environ: Mapping[str, str] | None = None) -> Guard | None:
+    env = os.environ if environ is None else environ
+    mode = (env.get(WATCHDOG_MODE_ENV) or "").strip().lower()
+    if mode == "off":
+        _log(
+            f"WARNING: {WATCHDOG_MODE_ENV}=off disables the watchdog; a runaway process can exhaust memory or "
+            "disk and crash this host"
+        )
+        return None
+    if mode not in ("", "kill", "warn"):
+        _log(f"WARNING: {WATCHDOG_MODE_ENV}={mode!r} is not kill, warn or off; using kill")
+    if IS_WINDOWS or handle.inherited:
+        return None
+    try:
+        return _spawn_guard(handle, env)
+    except (OSError, ImportError, ValueError) as exc:
+        _log(f"WARNING: could not start the heavy-work watchdog ({exc}); running unguarded")
+        return None
+
+
 def check_admission(*, need_gib: float | None = None, environ: Mapping[str, str] | None = None) -> str:
     from benchbox.utils import resource_limits
 
@@ -520,16 +674,19 @@ def acquire(
     environ: Mapping[str, str] | None = None,
     admit: bool = False,
     admit_need_gib: float | None = None,
+    guard: bool = False,
 ) -> HostLock:
     handle = _acquire_handle(
         lock_path, wait_seconds=wait_seconds, phase=phase, gate=gate, command=command, environ=environ
     )
-    if admit:
-        try:
+    try:
+        if admit:
             check_admission(need_gib=admit_need_gib, environ=environ)
-        except BaseException:
-            handle.release()
-            raise
+        if guard and handle.guard is None:
+            handle.guard = start_guard(handle, environ=environ)
+    except BaseException:
+        handle.release()
+        raise
     return handle
 
 
@@ -651,6 +808,19 @@ def _supervise_posix(command: Sequence[str], env: Mapping[str, str]) -> int:
             signal.signal(sig, handler)
 
 
+def _run_supervised(command: Sequence[str], env: Mapping[str, str]) -> int:
+    try:
+        if IS_WINDOWS:
+            return _supervise_windows(command, env)
+        return _supervise_posix(command, env)
+    except FileNotFoundError as exc:
+        _log(f"command not found: {exc.filename or command[0]}")
+        return 127
+    except PermissionError as exc:
+        _log(f"command not executable: {exc.filename or command[0]}")
+        return 126
+
+
 def run_command(
     command: Sequence[str],
     *,
@@ -658,11 +828,20 @@ def run_command(
     gate: str | None = None,
     admit: bool = False,
     admit_need_gib: float | None = None,
+    guard: bool = False,
 ) -> int:
     path = lock_path()
     rendered = " ".join(shlex.quote(part) for part in command)
     try:
-        handle = acquire(path, phase=phase, gate=gate, command=rendered, admit=admit, admit_need_gib=admit_need_gib)
+        handle = acquire(
+            path,
+            phase=phase,
+            gate=gate,
+            command=rendered,
+            admit=admit,
+            admit_need_gib=admit_need_gib,
+            guard=guard,
+        )
     except LockOwnershipError as exc:
         _log(str(exc))
         return EXIT_OWNERSHIP
@@ -675,18 +854,15 @@ def run_command(
     except KeyboardInterrupt:
         return 128 + signal.SIGINT
     env = dict(os.environ) if handle.inherited else owner_environment()
+    watcher = handle.guard
     try:
-        if IS_WINDOWS:
-            return _supervise_windows(command, env)
-        return _supervise_posix(command, env)
-    except FileNotFoundError as exc:
-        _log(f"command not found: {exc.filename or command[0]}")
-        return 127
-    except PermissionError as exc:
-        _log(f"command not executable: {exc.filename or command[0]}")
-        return 126
+        code = _run_supervised(command, env)
     finally:
         handle.release()
+    if watcher is not None and watcher.breached:
+        _log(f"watchdog stopped the process tree after a breach; exiting {EXIT_WATCHDOG} (command status was {code})")
+        return EXIT_WATCHDOG
+    return code
 
 
 def admit_command(need_gib: float | None = None) -> int:
@@ -708,6 +884,11 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--gate")
     run.add_argument("--admit", action="store_true", help="refuse to start when the host is under pressure")
     run.add_argument("--need-gib", type=float, help="memory needed for --admit")
+    run.add_argument(
+        "--guard",
+        action="store_true",
+        help="watch the command's process tree and stop it before it exhausts memory or disk",
+    )
     run.add_argument("argv", nargs=argparse.REMAINDER)
     clear = sub.add_parser("clear", help="clear an inactive shared test lock")
     clear.add_argument("path", nargs="?", type=Path)
@@ -728,7 +909,14 @@ def main(argv: list[str] | None = None) -> int:
         command = command[1:]
     if not command:
         parser.error("run requires a command after --")
-    return run_command(command, phase=args.phase, gate=args.gate, admit=args.admit, admit_need_gib=args.need_gib)
+    return run_command(
+        command,
+        phase=args.phase,
+        gate=args.gate,
+        admit=args.admit,
+        admit_need_gib=args.need_gib,
+        guard=args.guard,
+    )
 
 
 if __name__ == "__main__":
