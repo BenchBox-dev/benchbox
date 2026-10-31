@@ -20516,6 +20516,13 @@
       "status": "done",
       "title": "Query Plan Parser Framework"
     },
+    "query-plan-per-iteration-retention": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Decide whether to keep a plan per measurement iteration in the plans companion"
+    },
     "query-plan-platform-adapter-integration": {
       "claim": null,
       "needs": [],
