@@ -766,7 +766,7 @@ def test_ctrl_z_returns_the_terminal_to_the_shell_and_fg_resumes_the_child(lock_
                     os.read(master, 4096)
                 except OSError:
                     break
-        assert shell.poll() == 0
+        assert shell.wait(timeout=20) == 0
     finally:
         for leftover in psutil.Process(shell.pid).children(recursive=True) if shell.poll() is None else []:
             leftover.kill()

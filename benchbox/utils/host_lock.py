@@ -60,7 +60,8 @@ def _now() -> float:
 
 
 def _log(message: str) -> None:
-    print(f"{LOG_PREFIX} {message}", file=sys.stderr, flush=True)
+    sys.stderr.write(f"{LOG_PREFIX} {message}\n")
+    sys.stderr.flush()
 
 
 def _psutil() -> Any:
@@ -362,7 +363,7 @@ def clear_inactive_lock(lock_path: Path) -> int:
             _log(f"active lock retained: {lock_path}")
             return 1
         os.ftruncate(fd, 0)
-        print(f"{LOG_PREFIX} cleared inactive lock: {lock_path}")
+        sys.stdout.write(f"{LOG_PREFIX} cleared inactive lock: {lock_path}\n")
         return 0
     finally:
         _close_lock(fd)
