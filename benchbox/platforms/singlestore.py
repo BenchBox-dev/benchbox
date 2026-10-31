@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import contextlib
 import os
+import shutil
 import tempfile
 from collections.abc import Iterator
 from pathlib import Path
@@ -22,6 +23,8 @@ from .base import DriverIsolationCapability, PlatformAdapter
 from .base.data_loading import (
     CsvDialect,
     DataSourceResolver as DataSourceResolver,
+    FileFormatRegistry,
+    NoCompressionHandler,
     prepare_local_load_file,
     resolve_csv_dialect,
 )
@@ -101,6 +104,34 @@ def _parquet_as_load_file(data_file: Path) -> Iterator[Path]:
         yield tmp_path
     finally:
         tmp_path.unlink(missing_ok=True)
+
+
+@contextlib.contextmanager
+def _decompressed_load_file(data_file: Path) -> Iterator[Path]:
+    tmp_fd, tmp_name = tempfile.mkstemp(suffix=".csv", dir=data_file.parent)
+    os.close(tmp_fd)
+    tmp_path = Path(tmp_name)
+    try:
+        with (
+            FileFormatRegistry.get_compression_handler(data_file).open(data_file, newline="") as src,
+            tmp_path.open("w", encoding="utf-8", newline="") as dst,
+        ):
+            shutil.copyfileobj(src, dst)
+        yield tmp_path
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+
+@contextlib.contextmanager
+def stage_local_infile(data_file: Path) -> Iterator[Path]:
+    if data_file.suffix.lower() in _PARQUET_EXTENSIONS:
+        with _parquet_as_load_file(data_file) as load_path:
+            yield load_path
+    elif isinstance(FileFormatRegistry.get_compression_handler(data_file), NoCompressionHandler):
+        yield data_file
+    else:
+        with _decompressed_load_file(data_file) as load_path:
+            yield load_path
 
 
 class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapter):
