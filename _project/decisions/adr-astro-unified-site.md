@@ -6,6 +6,13 @@ Accepted 2026-10-03 under standing approval S1 (gate G0, tracker item
 `astro-site-00-decisions-adr`), after independent review. See
 [Approval](#approval).
 
+Partly superseded by [the site repo split](../../docs/internal/adr/adr-site-repo-split.md):
+the site, its inventory and its deploy plane moved to `BenchBox-dev/benchbox-site`,
+Sphinx was retired at cutover (D11), and docs revision follows trunk only (D7,
+which supersedes ADR D13). Paths below that name `landing/`, `website/`,
+`docs/_templates/`, `docs/conf.py` or `_project/design/site-inventory/` describe
+the layout at decision time.
+
 ## Context
 
 benchbox.dev is assembled from three separately built parts by
@@ -200,7 +207,7 @@ The comparison still evaluates the exact-head approval slots.
 ### Site inventory: decided
 
 `scripts/site_inventory.py` and its baseline under
-`_project/design/site-inventory/baseline-develop/` are the parity oracle for
+`inventory/baseline-develop/` in `BenchBox-dev/benchbox-site` are the parity oracle for
 `astro-site-50`.
 
 - **`diff`** fails on regressions against the baseline: missing paths, missing
