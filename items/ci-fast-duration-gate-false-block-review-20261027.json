@@ -2,7 +2,7 @@
   "acceptance": [
     "A report lists 20 measured post-flip verdicts with ratio, delta, speed factor and verdict, states how many blocked and whether each was a real slowdown, and recommends keeping, adjusting or rolling back the thresholds."
   ],
-  "context": "Interim data on 2026-10-27 (5 measured verdicts since the gate went blocking, all pass): ratio 1.046, 0.950, 0.561, 1.039, 0.977; delta +63.9, -68.7, -606.4, +53.9, -32.2 s; speed factor 0.993, 0.937, 0.589, 0.966, 1.231. The 0.561 run at speed factor 0.589 shows normalization can swing the result by a large factor; check whether a speed factor far from 1 hides or invents slowdowns. Verdict artifacts are named fast-duration-verdict-<pr>-<sha> on the ci.yml run for each head. Roll back by setting VERIFY_MODE to report in scripts/build_fast_duration_baseline.py.",
+  "context": "Interim data on 2026-10-27 (5 measured verdicts since the gate went blocking, all pass): ratio 1.046, 0.950, 0.561, 1.039, 0.977; delta +63.9, -68.7, -606.4, +53.9, -32.2 s; speed factor 0.993, 0.937, 0.589, 0.966, 1.231. The 0.561 run at speed factor 0.589 shows normalization can swing the result by a large factor; check whether a speed factor far from 1 hides or invents slowdowns. Verdict artifacts are named fast-duration-verdict-<pr>-<sha> on the ci.yml run for each head. Roll back by setting VERIFY_MODE to report in scripts/build_fast_duration_baseline.py.\n\nReport 2026-10-31: 59 measured pass verdicts from merged PRs #3760-#3853 (artifact fast-duration-verdict-<pr>-<sha>), 1 not-applicable, 0 blocks. sum_ratio: min 0.873, median 1.053, max 1.282; 8 runs above 1.20, none above 1.30. delta_seconds: max +437.2 s; 7 runs above the 360 s delta threshold, all passed on the ratio term. speed_factor: min 0.90, median 1.02, max 1.95; 15 runs at or above 1.5, and the 5 largest deltas (+384 to +437 s) all came from runs at speed 1.64-1.95 with ratio 1.247-1.282. No run needed a block and none was a real slowdown, so there were no false blocks, but runs on slow runners come within 0.02 of the 1.30 ratio limit. Recommendation: keep both thresholds (ratio above 1.30 AND delta above 360 s). The delta term alone would have blocked 7 of 59 runs, all slow-runner noise, so dropping the ratio term or the AND would introduce false blocks; do not roll back to report mode. Revisit if a run reaches ratio 1.28 at speed factor near 1.0.",
   "description": "Decide whether the blocking fast-tier duration gate (ratio above 1.30 and delta above 360 s) needs different thresholds, after collecting the first 20 measured pull-request verdicts that ran in block mode. Report ratio, delta, runner speed factor, coverage and verdict per run, the number of blocks and whether each was a real slowdown, and a recommendation on keeping both thresholds, dropping the delta term, or rolling back to report mode.",
   "sessions": [
     {
@@ -12,6 +12,14 @@
       "op": "create",
       "op_id": "147949cb1c2e4112bd10da96eaacb133",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a0b2540afd8496486a080cae",
+      "at": "2026-10-31T15:14:37Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "2a98318d6ddc4258910bd2b661acc5d3",
+      "session_id": "48c041f667b3405983c9c8df5ea4b938"
     }
   ]
 }
