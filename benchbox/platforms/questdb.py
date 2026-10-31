@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import csv
+import json
 import re
 import socket
 import threading
@@ -681,6 +682,9 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         ) as load_path:
             with open(load_path, "rb") as upload_stream:
                 files = {"data": (f"{table_name}.csv", upload_stream, "text/csv")}
+                schema = self._import_schema(table_name, named_only=dialect.has_header)
+                if schema:
+                    files = {"schema": (None, schema, "application/json"), **files}
                 response = requests.post(url, params=params, files=files, timeout=300)
         response.raise_for_status()
 
@@ -706,6 +710,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         url = f"{'https' if self.use_tls else 'http'}://{self.host}:{self.http_port}/imp"
         total_rows = 0
 
+        schema = self._import_schema(table_name, named_only=True)
         pf = pq.ParquetFile(data_file)
         for batch in pf.iter_batches(batch_size=self.parquet_chunk_rows):
             csv_buf = io.BytesIO()
@@ -720,6 +725,8 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                 "forceHeader": "true",
             }
             files = {"data": (f"{table_name}.csv", csv_buf, "text/csv")}
+            if schema:
+                files = {"schema": (None, schema, "application/json"), **files}
             response = requests.post(url, params=params, files=files, timeout=600)
             response.raise_for_status()
 
@@ -771,6 +778,33 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
             sock.close()
 
         return rows_sent
+
+    def _import_schema(self, table_name: str, *, named_only: bool) -> str | None:
+        import requests
+
+        if not self._validate_identifier(table_name):
+            raise ValueError(f"Invalid table identifier for QuestDB import: {table_name!r}")
+        url = f"{'https' if self.use_tls else 'http'}://{self.host}:{self.http_port}/exec"
+        try:
+            response = requests.get(url, params={"query": f'SHOW COLUMNS FROM "{table_name}"'}, timeout=30)
+            response.raise_for_status()
+            rows = [row for row in response.json().get("dataset", []) if len(row) >= 2]
+        except Exception as exc:
+            raise RuntimeError(
+                f"Cannot read the column types of '{table_name}' to build the QuestDB import schema: {exc}"
+            ) from exc
+        date_only_timestamps = table_name.lower() in TPCH_DATE_COLUMNS
+        columns = []
+        for name, type_name in ((row[0], str(row[1]).upper()) for row in rows):
+            entry: dict[str, str] = {"name": name, "type": type_name}
+            if type_name == "DATE" or (type_name == "TIMESTAMP" and date_only_timestamps):
+                entry["pattern"] = "yyyy-MM-dd"
+            elif type_name == "TIMESTAMP" and not named_only:
+                entry["pattern"] = "yyyy-MM-dd HH:mm:ss"
+            if named_only and "pattern" not in entry:
+                continue
+            columns.append(entry)
+        return json.dumps(columns) if columns else None
 
     def _get_table_columns(self, table_name: str) -> list[str]:
         import requests
