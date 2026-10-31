@@ -806,3 +806,111 @@ def test_completeness_gate_digest_provenance(tmp_path: Path):
         else:
             assert path.is_file()
             assert hashlib.sha256(path.read_bytes()).hexdigest() == expected
+
+
+def test_every_light_subcommand_is_a_registered_subparser():
+    parser = _cli._build_parser()
+    registered = next(action for action in parser._actions if hasattr(action, "choices") and action.choices).choices
+    assert set(registered) >= _cli.LIGHT_SUBCOMMANDS
+
+
+def _guard_env(monkeypatch, tmp_path):
+    monkeypatch.setenv("BENCHBOX_TEST_LOCK_DIR", str(tmp_path / "lock"))
+    monkeypatch.setenv("BENCHBOX_HEAVY_ADMIT", "force")
+    monkeypatch.setenv("BENCHBOX_HEAVY_WATCHDOG", "off")
+    monkeypatch.delenv("BENCHBOX_TEST_SESSION_OWNER", raising=False)
+
+
+def _spy_acquire(monkeypatch):
+    calls = []
+    real = _cli.host_lock.acquire
+
+    def spy(*args, **kwargs):
+        calls.append(kwargs)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(_cli.host_lock, "acquire", spy)
+    return calls
+
+
+def _with_fake_subcommand(monkeypatch, name, seen):
+    real_build = _cli._build_parser
+
+    def build():
+        parser = real_build()
+        sub = next(action for action in parser._actions if hasattr(action, "choices") and action.choices)
+        fake = sub.add_parser(name)
+        fake.set_defaults(handler=lambda args: seen.append(_cli.os.environ.get("BENCHBOX_TEST_SESSION_OWNER")) or 0)
+        return parser
+
+    monkeypatch.setattr(_cli, "_build_parser", build)
+
+
+def test_an_unlisted_subcommand_acquires_the_lock_with_admission_and_guard(monkeypatch, tmp_path):
+    _guard_env(monkeypatch, tmp_path)
+    monkeypatch.setattr(_cli.session_isolation, "active", lambda: False)
+    seen: list[str | None] = []
+    _with_fake_subcommand(monkeypatch, "future-heavy", seen)
+    calls = _spy_acquire(monkeypatch)
+    assert _cli.main(["future-heavy"]) == 0
+    assert len(calls) == 1
+    assert calls[0]["admit"] is True and calls[0]["guard"] is True
+    assert seen and seen[0]
+    assert "BENCHBOX_TEST_SESSION_OWNER" not in _cli.os.environ
+
+
+def test_dispatch_inside_an_isolated_session_does_not_acquire(monkeypatch, tmp_path):
+    _guard_env(monkeypatch, tmp_path)
+    monkeypatch.setattr(_cli.session_isolation, "active", lambda: True)
+    seen: list[str | None] = []
+    _with_fake_subcommand(monkeypatch, "future-heavy", seen)
+    calls = _spy_acquire(monkeypatch)
+    assert _cli.main(["future-heavy"]) == 0
+    assert calls == []
+
+
+def test_a_light_subcommand_does_not_acquire(monkeypatch, tmp_path):
+    _guard_env(monkeypatch, tmp_path)
+    monkeypatch.setattr(_cli.session_isolation, "active", lambda: False)
+    calls = _spy_acquire(monkeypatch)
+    monkeypatch.setattr(_cli, "_handle_report", lambda args: 0)
+    assert _cli.main(["report", "--cells-jsonl", "x", "--output-tsv", "y"]) == 0
+    assert calls == []
+
+
+def _uat_subprocess(tmp_path, *argv):
+    import os
+    import sys
+
+    from tests.utilities.lock_holder import held_lock
+
+    lock_dir = tmp_path / "lock"
+    env = dict(
+        os.environ,
+        BENCHBOX_TEST_LOCK_DIR=str(lock_dir),
+        BENCHBOX_TEST_LOCK_WAIT_SECONDS="0",
+        PYTHONPATH=str(REPO_ROOT),
+    )
+    env.pop("BENCHBOX_TEST_SESSION_OWNER", None)
+    env.pop("BENCHBOX_SKIP_TEST_LOCK", None)
+    with held_lock(lock_dir):
+        return subprocess.run(
+            [sys.executable, "-m", "tests.uat._cli", *argv],
+            cwd=REPO_ROOT,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+
+
+def test_a_dry_run_sweep_and_report_do_not_acquire_but_a_real_sweep_is_refused(tmp_path):
+    missing = str(tmp_path / "missing.yaml")
+    dry = _uat_subprocess(tmp_path / "a", "sweep", "--config", missing, "--dry-run")
+    report = _uat_subprocess(
+        tmp_path / "b", "report", "--cells-jsonl", missing, "--output-tsv", str(tmp_path / "out.tsv")
+    )
+    heavy = _uat_subprocess(tmp_path / "c", "sweep", "--config", missing)
+    assert "[host-lock]" not in dry.stderr and dry.returncode != 75
+    assert "[host-lock]" not in report.stderr and report.returncode != 75
+    assert heavy.returncode == 75, heavy.stdout + heavy.stderr

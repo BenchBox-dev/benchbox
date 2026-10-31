@@ -4,10 +4,14 @@ import argparse
 import csv
 import hashlib
 import json
+import os
 import sys
 from collections import Counter
 from collections.abc import Callable
 from pathlib import Path
+
+from benchbox.utils import host_lock
+from tests.utilities import session_isolation
 
 Handler = Callable[[argparse.Namespace], int]
 
@@ -22,6 +26,19 @@ MAKE_TARGET_SUBCOMMANDS = (
     "sweep",
     "stress",
     "verify-tuning-matrix",
+)
+
+LIGHT_SUBCOMMANDS = frozenset(
+    {
+        "preflight",
+        "gate-check",
+        "report",
+        "replay-classify",
+        "package",
+        "validate",
+        "verify-tuning-matrix",
+        "docker-cleanup",
+    }
 )
 
 
@@ -784,6 +801,54 @@ def _exit_code_from_system_exit(exc: SystemExit) -> int:
     return 1
 
 
+def _needs_heavy_guard(args: argparse.Namespace) -> bool:
+    if session_isolation.active() or getattr(args, "dry_run", False):
+        return False
+    return getattr(args, "cmd", None) not in LIGHT_SUBCOMMANDS
+
+
+def _log_refusal(message: str) -> None:
+    sys.stderr.write(f"{host_lock.LOG_PREFIX} {message}\n")
+    sys.stderr.flush()
+
+
+def _run_heavy(args: argparse.Namespace, handler: Handler, raw_argv: list[str]) -> int:
+    try:
+        handle = host_lock.acquire(
+            host_lock.lock_path(),
+            phase="uat",
+            gate=str(args.cmd),
+            command=" ".join(["tests.uat._cli", *raw_argv]),
+            admit=True,
+            guard=True,
+        )
+    except host_lock.LockOwnershipError as exc:
+        _log_refusal(str(exc))
+        return host_lock.EXIT_OWNERSHIP
+    except host_lock.LockUnavailable as exc:
+        _log_refusal(f"BLOCKED: {exc}")
+        return host_lock.EXIT_REFUSED
+    except host_lock.AdmissionRefused as exc:
+        _log_refusal(f"REFUSED: host is not ready for heavy work; lock released\n{exc.report}")
+        return host_lock.EXIT_ADMISSION
+    previous_owner = os.environ.get(host_lock.OWNER_ENV)
+    if not handle.inherited:
+        os.environ[host_lock.OWNER_ENV] = host_lock.process_identity()
+    watcher = handle.guard
+    try:
+        code = handler(args)
+    finally:
+        if previous_owner is None:
+            os.environ.pop(host_lock.OWNER_ENV, None)
+        else:
+            os.environ[host_lock.OWNER_ENV] = previous_owner
+        handle.release()
+    if watcher is not None and watcher.breached:
+        _log_refusal(f"watchdog stopped the process tree after a breach; exiting {host_lock.EXIT_WATCHDOG}")
+        return host_lock.EXIT_WATCHDOG
+    return code
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     raw_argv = list(sys.argv[1:] if argv is None else argv)
@@ -795,6 +860,8 @@ def main(argv: list[str] | None = None) -> int:
     if handler is None:
         parser.print_help()
         return 0
+    if _needs_heavy_guard(args):
+        return _run_heavy(args, handler, raw_argv)
     return handler(args)
 
 

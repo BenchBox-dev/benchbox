@@ -683,8 +683,8 @@ def acquire(
         lock_path, wait_seconds=wait_seconds, phase=phase, gate=gate, command=command, environ=environ
     )
     try:
-        if admit:
-            check_admission(need_gib=admit_need_gib, environ=environ)
+        if admit and not handle.inherited:
+            _log(check_admission(need_gib=admit_need_gib, environ=environ))
         if guard and handle.guard is None:
             handle.guard = start_guard(handle, environ=environ)
     except BaseException:

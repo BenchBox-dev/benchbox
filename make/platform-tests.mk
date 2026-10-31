@@ -77,7 +77,7 @@ test-docker-up-pg-extensions:
 			fi; \
 		}; \
 		trap cleanup EXIT INT TERM; \
-		docker compose -p "$$project_name" -f docker/postgres-extensions/docker-compose.yml up -d --wait; \
+		$(COMPOSE_ADMIT) docker compose -p "$$project_name" -f docker/postgres-extensions/docker-compose.yml up -d --wait; \
 		printf '%s\n' "$$project_name" > "$$project_file"; \
 		status=0
 
@@ -99,7 +99,7 @@ test-docker-pg-extensions:
 		project_name="benchbox-pg-extensions-test-$$(date +%s)-$$RANDOM"; \
 		cleanup() { docker compose -p "$$project_name" -f docker/postgres-extensions/docker-compose.yml down -v || true; }; \
 		trap cleanup EXIT INT TERM; \
-		docker compose -p "$$project_name" -f docker/postgres-extensions/docker-compose.yml up -d --wait; \
+		$(COMPOSE_ADMIT) docker compose -p "$$project_name" -f docker/postgres-extensions/docker-compose.yml up -d --wait; \
 		uv run -- python -m pytest -m "live_pg_duckdb or live_pg_mooncake" --tb=short -v -n 0
 
 DOCKER_PLATFORMS := clickhouse trino presto postgresql starrocks doris databend influxdb cedardb firebolt questdb singlestore
@@ -107,6 +107,8 @@ DOCKER_TEST_STATE_DIR ?= /tmp/benchbox-docker-projects
 
 CONTAINER_ENGINE ?= docker
 COMPOSE := $(CONTAINER_ENGINE) compose
+COMPOSE_UP_NEED_GIB ?= 2
+COMPOSE_ADMIT = $(HOST_LOCK_CLI) admit --need-gib $(COMPOSE_UP_NEED_GIB) >&2 || exit $$?;
 
 define require_data_dir_if_mounted
 case " lakesail velox " in *" $(1) "*) case "$$BENCHBOX_DATA_DIR" in "") echo "ERROR: BENCHBOX_DATA_DIR must be exported before bringing up docker/$(1) -- its compose file binds the data directory at the SAME absolute path inside the container as on the host, because the server resolves client-sent file paths server-side; an unset value is silently accepted as an empty mount by both docker compose and mocker. Example: export BENCHBOX_DATA_DIR=$$HOME/benchbox-data" >&2; exit 1 ;; /*) : ;; *) echo "ERROR: BENCHBOX_DATA_DIR must be an ABSOLUTE path (got '$$BENCHBOX_DATA_DIR') -- docker/$(1)'s compose file binds it at the SAME path inside the container as on the host, so a relative value can never match. Example: export BENCHBOX_DATA_DIR=$$HOME/benchbox-data" >&2; exit 1 ;; esac ;; esac
@@ -134,7 +136,7 @@ test-docker-up-%:
 			fi; \
 		}; \
 		trap cleanup EXIT INT TERM; \
-		$(COMPOSE) -p "$$project_name" -f docker/$*/docker-compose.yml up -d --wait; \
+		$(COMPOSE_ADMIT) $(COMPOSE) -p "$$project_name" -f docker/$*/docker-compose.yml up -d --wait; \
 		printf '%s\n' "$$project_name" > "$$project_file"; \
 		status=0
 
@@ -156,7 +158,7 @@ test-docker-firebolt:
 		project_name="benchbox-firebolt-test-$$(date +%s)-$$RANDOM"; \
 		cleanup() { { $(call compose_down_fresh,$$project_name,docker/firebolt/docker-compose.yml) ; } || true; }; \
 		trap cleanup EXIT INT TERM; \
-		$(COMPOSE) -p "$$project_name" -f docker/firebolt/docker-compose.yml up -d --wait; \
+		$(COMPOSE_ADMIT) $(COMPOSE) -p "$$project_name" -f docker/firebolt/docker-compose.yml up -d --wait; \
 		uv run -- python -m pytest -m "live_firebolt_core" --tb=short -v -n 0
 
 test-docker-%:
@@ -166,7 +168,7 @@ test-docker-%:
 		cleanup() { { $(call compose_down_fresh,$$project_name,docker/$*/docker-compose.yml) ; } || true; }; \
 		trap cleanup EXIT INT TERM; \
 		$(call require_data_dir_if_mounted,$*); \
-		$(COMPOSE) -p "$$project_name" -f docker/$*/docker-compose.yml up -d --wait; \
+		$(COMPOSE_ADMIT) $(COMPOSE) -p "$$project_name" -f docker/$*/docker-compose.yml up -d --wait; \
 		uv run -- python -m pytest -m "live_$*" --tb=short -v -n 0
 
 test-docker-up-all:
@@ -197,7 +199,7 @@ test-docker-up-all:
 				printf '%s\n' "$$project_name" > "$$project_file"; \
 			fi; \
 			echo "Starting $$p..."; \
-			$(COMPOSE) -p "$$project_name" -f docker/$$p/docker-compose.yml up -d --wait; \
+			$(COMPOSE_ADMIT) $(COMPOSE) -p "$$project_name" -f docker/$$p/docker-compose.yml up -d --wait; \
 		done; \
 		status=0
 

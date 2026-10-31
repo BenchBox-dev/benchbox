@@ -381,8 +381,24 @@ same module, so it honors the override and the real-home default.
 
 - Only the **xdist controller** process locks - workers do not. `pytest_configure`
   checks `hasattr(config, "workerinput")` to distinguish them.
-- Lock is skipped when `numprocesses` is 0/None (no `-n auto`) or when
-  `BENCHBOX_SKIP_TEST_LOCK=1` is set in the environment.
+- A parallel session (`-n` above 0, including the default `-n auto`) always locks. A serial session
+  (`-n 0`) locks only when its selected items, after deselection and before the first test, carry a heavy
+  marker: `slow`, `stress`, `resource_heavy`, `live_integration`, `docker_integration` or any `live_*`.
+  `make pr-preflight` runs only default-marker `-n 0` targets and a `fast and not (slow or stress ...)`
+  lane, so it never waits. `BENCHBOX_SKIP_TEST_LOCK=1` skips locking entirely.
+- Admission and the watchdog run only in sessions whose selected items include a heavy marker (a parallel
+  session is judged from its `-m` expression, since the controller does not collect). The admission report
+  is printed to stderr, so CI logs show the real readings. A refused lock exits **75**, refused admission **76**.
+- `python -m tests.uat._cli` takes the lock with admission and watchdog for every subcommand except the light
+  set (`preflight`, `gate-check`, `report`, `replay-classify`, `package`, `validate`,
+  `verify-tuning-matrix`, `docker-cleanup`) and `--dry-run`; inside an isolated pytest session it does not
+  acquire. Subprocesses inherit `BENCHBOX_TEST_SESSION_OWNER`; code that builds an environment from scratch
+  must pass it through or use its own `BENCHBOX_TEST_LOCK_DIR`.
+- Hosted CI sets `BENCHBOX_HEAVY_ADMIT_MIN_GIB` and `BENCHBOX_HEAVY_MIN_FREE_DISK_GIB` in each workflow `env:`.
+- The Linux guest (`make ci-linux`, `scripts/linux_preflight_pytest.sh`) uses
+  `BENCHBOX_TEST_LOCK_DIR=/tmp/benchbox-lock` on guest-local storage and guest-sized floors, so guest sessions
+  serialize among themselves and never write the host holder file. The guest therefore prints the
+  non-default-lock-dir bypass warning; that is expected.
 - Lock path defaults to `<real home>/.benchbox/test.lock`, where the real home
   comes from the user database rather than `$HOME`, so a session that rewrites
   `$HOME` still contends on the same file. `BENCHBOX_TEST_LOCK_DIR` changes only
