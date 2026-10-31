@@ -5,7 +5,7 @@
     "Unit tests cover added, removed, changed and unchanged entries",
     "docs/internal/adr/adr-site-docs-ownership.md names the warning where it lists the advisory pre-merge build as related work"
   ],
-  "context": "Found 2026-10-17 at site-split closeout. Must not become a required context; D17 allows no further ruleset change. Rescoped after core PR 3658 covered path deletions.",
+  "context": "Found 2026-10-17 at site-split closeout. Must not become a required context; D17 allows no further ruleset change. Rescoped after core PR 3658 covered path deletions.\n\nOwner decision 2026-10-30: build a core-side contract-change warning. Options considered: a cross-repository advisory site build (needs the benchbox-site-bridge App to gain statuses write and spends shared runner slots on every relevant core PR) and dropping the item (accept detection after merge).",
   "description": "The site refuses a core bundle whose exported docs contract (for example CLI options or MCP tool parameters) has entries its docs do not cover: npm run docs:check -- --docs-mode block runs in the site's ci and deploy workflows. Core learns of it only after merge. In #3738 (2026-10-29) the site refused a bundle because get_query_plan.stream was undocumented, and benchbox.dev stayed on the previous bundle for about 5.5 hours until site PR #90 merged. Of 29 site-deploy failure issues from 2026-10-20 to 2026-10-30 it was the only one in this class. On a core PR, export the docs contract for the PR head and for its base, compare them, and report each added, removed or changed entry as a warning, so the author prepares the site docs change before the bundle ships. The check never fails the PR, needs no cross-repository token and adds no runner jobs.",
   "links": [
     "BenchBox-dev/BenchBox: scripts/export_docs_data.py",
@@ -36,6 +36,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "8d5211fa79ea413a90f97519c19c22f0",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-31T00:19:18Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "75cbabdff555407e983b6b4d005f0830",
       "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
     }
   ]
