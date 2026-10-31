@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Changing a file under `.github/workflows/` makes `make pr-preflight` run the tests that read that workflow, not only the `oracle-` scenario tests.",
+    "`tests/unit/scripts/test_preflight_targets.py` covers a change to a non-oracle workflow selecting its tests."
+  ],
+  "description": "`_project/scripts/preflight_targets.py` maps a changed non-Python path to tests only through the `SOURCE_GUARD_TESTS` prefixes, and the only workflow prefix there is `.github/workflows/oracle-`. Changing any other workflow selects nothing, although tests read those files: under `tests/unit/workflows` and `tests/system`, 20 test files mention `ci.yml`, 9 `nightly-v2.yml`, 6 `trunk.yml` and 4 `trunk-coverage.yml`. On #3725, a commit that edited `ci.yml` and `nightly-v2.yml` passed preflight with only the 7 tests mapped from the branch's Python changes. The 1,033 workflow and CI-parity tests ran only because they were started by hand, so a broken workflow test would have surfaced one CI round later.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3725"
+  ],
+  "sessions": [
+    {
+      "actor": "joe-defect-filing",
+      "at": "2026-10-31T15:02:41Z",
+      "client": "mcp",
+      "op": "create",
+      "op_id": "0f66a0bc91984644917d46d51f6210af",
+      "session_id": "fdd5a72e54f64ffe965910e79d203e3e"
+    }
+  ]
+}
