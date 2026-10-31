@@ -17788,7 +17788,9 @@
     },
     "perf-trino-presto-bulk-load-20261030": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "release-uat-presto-trino-unreachable-20261030"
+      ],
       "priority": "high",
       "status": "open",
       "title": "Replace VALUES-literal loading for Trino, Presto, Starburst"

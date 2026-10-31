@@ -4,6 +4,7 @@
     "VALUES path remains only as an explicit, warned fallback.",
     "Row counts match."
   ],
+  "context": "Review 2026-10-31: this is new work, not rewiring — staging_root is parsed (presto_trino_adapter_base.py:93, starburst.py:179/205) but never used for loading, and no external-table path exists. Live verification needs the UAT Presto/Trino reachability fix first.",
   "description": "presto_trino_utils.py:30-62 (called from presto_trino_adapter_base.py:523) splits lines in Python and sends 500-row INSERT ... VALUES statements. It is the only load path and is very slow at SF>=1. Use object storage plus a Hive/Iceberg external table (external_location), then CTAS or INSERT ... SELECT.",
   "sessions": [
     {
@@ -13,6 +14,14 @@
       "op": "create",
       "op_id": "fcf8767133f244e48eef6d4962df3773",
       "session_id": "be00837164104ac2b4ed790cdb6812a2"
+    },
+    {
+      "actor": "mcp:claude-code:root@vm:cb45f246c9de058740ccbeed",
+      "at": "2026-10-31T00:36:16Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "c9c421adc92e49ceba83ef71d43c3241",
+      "session_id": "d2b018a349924f4f88b746458c80b878"
     }
   ]
 }
