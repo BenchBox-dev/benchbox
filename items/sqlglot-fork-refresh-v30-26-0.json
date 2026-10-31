@@ -5,7 +5,7 @@
     "Every superseded waiver (v30.26.0, v30.27.0) is removed from scripts/sqlglot_refresh_waiver.json in the adoption PR, and scripts/check_sqlglot_upstream_freshness.py passes on develop with no waiver.",
     "Landed before the final 0.5.0 release prep (dlv2-52)."
   ],
-  "context": "Owner decision 2026-10-29 (choice dialog, release session 01a17d41): waive v30.26.0 for rc2; the fork refresh is tracked here and must land before the final 0.5.0 prep. 2026-10-30: v30.27.0 is also released, so the target moved to the newest tag; a v30.27.0 waiver is tracked by sqlglot-freshness-waiver-v30-27-0. DECISION GATE: if a carried patch conflicts and cannot be retained with its execution tests, or the translation diff shows an unexplained result change, STOP and ask the owner.\n\n2026-10-30: all acceptance met. Fork PR BenchBox-dev/benchbox-sqlglot#79 merged (1ba4aec7bf6c, 30.27.0.1 on v30.27.0). BenchBox adoption PR #3823 merged (816530a57d38) with both waivers removed; origin/develop waiver list is empty and freshness passes. finish not recorded by the implementing session: its claim generation went stale (E_CLAIM_STALE, take returns E_CONFLICT for the shared worker); the live claim holder can finish.",
+  "context": "Owner decision 2026-10-29 (choice dialog, release session 01a17d41): waive v30.26.0 for rc2; the fork refresh is tracked here and must land before the final 0.5.0 prep. 2026-10-30: v30.27.0 is also released, so the target moved to the newest tag; a v30.27.0 waiver is tracked by sqlglot-freshness-waiver-v30-27-0. DECISION GATE: if a carried patch conflicts and cannot be retained with its execution tests, or the translation diff shows an unexplained result change, STOP and ask the owner.\n\n2026-10-30: all acceptance met. Fork PR BenchBox-dev/benchbox-sqlglot#79 merged (1ba4aec7bf6c, 30.27.0.1 on v30.27.0). BenchBox adoption PR #3823 merged (816530a57d38) with both waivers removed; origin/develop waiver list is empty and freshness passes. finish not recorded by the implementing session: its claim generation went stale (E_CLAIM_STALE, take returns E_CONFLICT for the shared worker); the live claim holder can finish.\n\n2026-10-31 parent verification on origin/develop (git archive of 816530a57+): pin 30.27.0.1, fork_sha 1ba4aec7bf6c, upstream_sha 98782638dd6d (v30.27.0, newest upstream tag); scripts/sqlglot_refresh_waiver.json waivers []; check_sqlglot_upstream_freshness.py OK with no waiver; check_sqlglot_advisories.py OK. Claim taken over from the exited subagent session to finish.",
   "description": "Upstream SQLGlot v30.26.0 was released 2026-10-29 19:49 UTC (tag commit b0842a1ee0be2cc9345d7312724dbf2ee32e325a) and v30.27.0 followed (tag commit 98782638dd6dbdedebad0e6ff6edc6e69598b81e). The bundled runtime (30.25.0.2, fork 9f51489a1721) is based on v30.25.0, so scripts/check_sqlglot_upstream_freshness.py fails. The freshness gate requires the NEWEST final tag, so refreshing onto v30.26.0 alone would still fail: refresh directly onto v30.27.0 (or any newer final tag at implementation time). Procedure: benchbox-sqlglot downstream/MAINTAINING.md (refresh candidate, integrate on a descendant branch, fork checks), release the wheel, adopt with `make sqlglot-adopt-wheel WHEEL=... SHA256=...` (retirement check needs a live QuestDB on 127.0.0.1:8812, as #3587 and #3649 did), translation-corpus diff evidence vs 30.25.0.2, and remove every waiver this refresh supersedes (v30.26.0 and v30.27.0) in the adoption PR. Precedents: #3586/#3587 (v30.25.0), fork #78 + #3649 (30.25.0.2). Carried patches from fork #78 (pivot lowering, ORDER BY ALL expansion) must survive the refresh with their execution tests. New bundles record the runtime automatically (execution.translation.runtime, #3712).",
   "sessions": [
     {
@@ -50,6 +50,14 @@
       "op": "takeover",
       "op_id": "d4d256b862e74d659c2c88a2a6665959",
       "reason": "Holder was subagent ForkRefreshV3027's MCP session 17d26366, now exited (its finish got E_CLAIM_STALE). Work merged: fork #79 1ba4aec7bf6c, core #3823 816530a57. Taking over only to finish.",
+      "session_id": "fdde7b96f2774961bbd4c814eff2ca0e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:73f4ce6dc372259381dd21db",
+      "at": "2026-10-31T01:48:34Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "12aa97f5465e40ffabab78c00e6f417e",
       "session_id": "fdde7b96f2774961bbd4c814eff2ca0e"
     }
   ]
