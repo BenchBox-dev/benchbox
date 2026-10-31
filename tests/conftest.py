@@ -51,6 +51,7 @@ from typing import Any
 import pytest
 
 pytest.register_assert_rewrite("tests.utilities.leak_detector")
+import benchbox.utils as _benchbox_utils
 from tests.utilities.leak_detector import restore_global
 from tests.utilities.optional_engines import (
     chdb_loaded,
@@ -58,7 +59,9 @@ from tests.utilities.optional_engines import (
     chdb_open_count,
     install_chdb_open_counter,
 )
-from tests.utilities.session_isolation import active as isolated_session_active, warn_lock_bypass
+from tests.utilities.session_isolation import active as isolated_session_active, host_lock, warn_lock_bypass
+
+_benchbox_utils.host_lock = host_lock
 
 pytest_plugins = [
     "tests.fixtures.database_fixtures",
@@ -81,44 +84,8 @@ def joinorder_canonical_tiny(tmp_path: Path) -> Path:
     return target
 
 
-_test_lock_fd: int | None = None
+_test_lock: Any = None
 _test_databases_created = False
-_lock_waiter: Any = None
-_lock_waiter_attempted = False
-
-
-def _load_lock_waiter() -> Any:
-    global _lock_waiter, _lock_waiter_attempted
-    if _lock_waiter_attempted:
-        return _lock_waiter
-    _lock_waiter_attempted = True
-    try:
-        import importlib.util
-
-        path = Path(__file__).resolve().parents[1] / "scripts" / "local_validation.py"
-        spec = importlib.util.spec_from_file_location("benchbox_local_validation", path)
-        if spec is None or spec.loader is None:
-            return None
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[spec.name] = module
-        spec.loader.exec_module(module)
-        _lock_waiter = module
-    except Exception:
-        _lock_waiter = None
-    return _lock_waiter
-
-
-def _lock_wait_seconds() -> float:
-    try:
-        return max(0.0, float(os.environ.get("BENCHBOX_TEST_LOCK_WAIT_SECONDS", "3600") or "3600"))
-    except ValueError:
-        return 3600.0
-
-
-def _get_test_lock_path() -> Path:
-    lock_dir = os.environ.get("BENCHBOX_TEST_LOCK_DIR")
-    base_dir = Path(lock_dir).expanduser() if lock_dir else Path.home() / ".benchbox"
-    return base_dir / "test.lock"
 
 
 def _should_acquire_test_lock(config: pytest.Config) -> bool:
@@ -161,7 +128,7 @@ def _suppress_xdist_worker_title(start_frame: FrameType | None = None) -> bool:
 
 
 def pytest_configure(config) -> None:
-    global _test_lock_fd
+    global _test_lock
 
     if sys.platform == "darwin" and hasattr(config, "workerinput"):
         _suppress_xdist_worker_title()
@@ -170,35 +137,14 @@ def pytest_configure(config) -> None:
         warn_lock_bypass()
 
     if _should_acquire_test_lock(config):
-        test_lock_path = _get_test_lock_path()
-        test_lock_path.parent.mkdir(parents=True, exist_ok=True)
-        fd = os.open(str(test_lock_path), os.O_CREAT | os.O_RDWR | getattr(os, "O_CLOEXEC", 0), 0o644)
-        waiter = _load_lock_waiter()
-        wait_seconds = 0.0 if waiter is None else _lock_wait_seconds()
-        lock_error: Exception | None = None
-        if waiter is not None and wait_seconds > 0:
-            try:
-                waiter.wait_on_fd(fd, test_lock_path, wait_seconds)
-            except TimeoutError as exc:
-                lock_error = exc
-            except BaseException:
-                os.close(fd)
-                raise
-        else:
-            try:
-                if sys.platform == "win32":
-                    import msvcrt
-
-                    msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
-                else:
-                    import fcntl
-
-                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except (BlockingIOError, OSError) as exc:
-                lock_error = exc
-        if lock_error is not None:
-            holder_info = waiter.read_holder(test_lock_path) if waiter is not None else "(could not read lock file)"
-            os.close(fd)
+        test_lock_path = host_lock.lock_path()
+        wait_seconds = host_lock.wait_seconds_from_env()
+        try:
+            _test_lock = host_lock.acquire(
+                test_lock_path, wait_seconds=wait_seconds, phase="pytest-session", gate="xdist"
+            )
+        except host_lock.LockUnavailable as exc:
+            holder_info = host_lock.read_holder(test_lock_path)
             waited_note = (
                 f"  Waited    : {wait_seconds:g}s (BENCHBOX_TEST_LOCK_WAIT_SECONDS)\n" if wait_seconds > 0 else ""
             )
@@ -206,6 +152,7 @@ def pytest_configure(config) -> None:
                 f"\n\033[91m[benchbox] BLOCKED: A parallel test run is still active.\033[0m\n"
                 f"  Lock file : {test_lock_path}\n"
                 f"  Holder    : {holder_info}\n"
+                f"  Detail    : {exc}\n"
                 f"{waited_note}\n"
                 f"  Options:\n"
                 f"    \u2022 Wait for the other run to finish and retry.\n"
@@ -215,17 +162,6 @@ def pytest_configure(config) -> None:
             )
             sys.stderr.flush()
             os._exit(1)
-        if waiter is not None:
-            waiter.write_holder(fd, test_lock_path, phase="pytest-session", gate="xdist")
-        else:
-            started = time.strftime("%Y-%m-%d %H:%M:%S")
-            cmd = " ".join(sys.argv[:4])
-            try:
-                os.ftruncate(fd, 0)
-                os.write(fd, f"pid:{os.getpid()} started:{started} phase:pytest-session cmd:{cmd}\n".encode())
-            except OSError:
-                pass
-        _test_lock_fd = fd
 
     try:
         import duckdb as _duckdb_mod
@@ -245,21 +181,10 @@ def pytest_configure(config) -> None:
 
 
 def pytest_unconfigure(config) -> None:
-    global _test_lock_fd
-    if _test_lock_fd is not None:
-        try:
-            if sys.platform == "win32":
-                import msvcrt
-
-                msvcrt.locking(_test_lock_fd, msvcrt.LK_UNLCK, 1)
-            else:
-                import fcntl
-
-                fcntl.flock(_test_lock_fd, fcntl.LOCK_UN)
-            os.close(_test_lock_fd)
-        except OSError:
-            pass
-        _test_lock_fd = None
+    global _test_lock
+    if _test_lock is not None:
+        _test_lock.release()
+        _test_lock = None
 
 
 def _warn_on_unreasoned_skip_markers(items) -> None:

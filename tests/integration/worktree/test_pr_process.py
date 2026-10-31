@@ -26,7 +26,6 @@ def _load(name: str) -> object:
 
 
 landing = _load("pr_landing")
-lv = _load("local_validation")
 bi = _load("batch_integration")
 
 HEAD = "a" * 40

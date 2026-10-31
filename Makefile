@@ -90,13 +90,7 @@ test-fast:
 
 .PHONY: test-unlock
 test-unlock:
-	@LOCK_DIR="$${BENCHBOX_TEST_LOCK_DIR:-$$HOME/.benchbox}"; \
-	case "$$LOCK_DIR" in \
-		"~") LOCK_DIR="$$HOME" ;; \
-		"~/"*) LOCK_DIR="$$HOME/$${LOCK_DIR#\~/}" ;; \
-	esac; \
-	LOCK_PATH="$$LOCK_DIR/test.lock"; \
-	python3 scripts/local_validation.py clear-test-lock "$$LOCK_PATH"
+	@python3 -I benchbox/utils/host_lock.py clear
 
 .PHONY: test-medium
 test-medium:

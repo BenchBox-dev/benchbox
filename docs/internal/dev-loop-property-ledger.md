@@ -247,7 +247,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_generate_corpus_inventory.py` | product-safety |
 | `test_guard_messages.py` | tooling |
 | `test_inline_applied_ledger_bounds.py` | product-safety |
-| `test_local_validation.py` | pure-process |
+| `test_host_lock.py` | pure-process |
 | `test_migrate_clickhouse_labels.py` | product-safety |
 | `test_mirror_partial_validation_policy.py` | pure-process |
 | `test_oracle_gate.py` | product-safety | Gate decision parity with the shared checker decision, status mapping and App posting |
@@ -376,7 +376,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `trunk_revert.py` | pure-process | Revert of a merged PR and the red-trunk gate on `make pr-open` |
 | `trunk_red_disarm.py` | pure-process | Disables auto-merge on armed PRs the arm gate would refuse when a develop Trunk run is red |
 | `pr_refresh_certification.py` | pure-process | Refresh mechanics |
-| `local_validation.py` | pure-process | Shared test-lock mechanics |
+| `benchbox/utils/host_lock.py` | pure-process | Shared test-lock mechanics |
 | `trunk_duration_trend.py` | tooling | Trunk job p50 comparison, run-timestamp windows, API-call budget and the single trend issue |
 | `bundled_binary_manifest.py` | product-safety | Deterministic hashes of the shipped generator tree |
 | `verify_distribution_binaries.py` | product-safety | Distribution membership, archive safety, and source-bound generator hashes |

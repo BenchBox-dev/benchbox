@@ -174,7 +174,7 @@ Agent workspace safety tooling is retained:
 
 Legacy PR-loop mechanics may retire only with their callers and safety contracts
 accounted for. `pr_landing.py` still supplies the exact-head revision/readiness
-transaction, `local_validation.py` supplies shared test-lock coordination, and the
+transaction, `benchbox/utils/host_lock.py` supplies shared test-lock coordination, and the
 soundness-drain report still diagnoses reviewed but unarmed PRs. These retained
 contracts are not removed by queue retirement.
 

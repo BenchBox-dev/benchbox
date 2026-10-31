@@ -10,7 +10,7 @@ import click
 import pytest
 from click.testing import CliRunner
 
-from scripts.local_validation import _close_lock, wait_for_lock, write_holder
+from benchbox.utils.host_lock import _close_lock, wait_for_lock, write_holder
 from tests.utilities.paths import REPO_ROOT
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
