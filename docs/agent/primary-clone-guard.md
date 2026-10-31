@@ -7,16 +7,21 @@ working directory, and nothing noticed until the next commit.
 
 ## The check
 
-`scripts/check_primary_clone_clean.sh` fails when the primary clone has
-uncommitted changes to tracked files and names every changed path. Untracked
-files are ignored. It never discards, stashes, or restores anything.
+`make agent-write-preflight` run in a worktree records a snapshot of the primary
+clone's tracked changes (each changed path with a content hash) in
+`$(git rev-parse --git-dir)/primary-clone-snapshot`, which Git never tracks. The
+first run wins; later runs, including the commit hook, keep it. Set
+`BENCHBOX_PRIMARY_SNAPSHOT_REFRESH=1` to re-record it.
 
-It runs from:
+`make pr-preflight` runs `scripts/check_primary_clone_clean.sh report`, which
+lists tracked paths in the primary clone that are new or further modified since
+the snapshot. Dirt that predates the snapshot is not reported. Untracked files
+are ignored. The check only reads the primary clone (one `git diff --name-only`
+plus a hash per changed file) and never discards, stashes, or restores anything.
 
-| Entry point | When |
-|---|---|
-| `make agent-write-preflight` | Start of a task, from the worktree, and on every commit through the pre-commit hook |
-| `make pr-preflight` | Before opening a PR |
+The report is a warning, not a failing gate. A changed primary-clone file can be
+the owner's legitimate concurrent edit, which an agent cannot tell apart from a
+stray write, so failing would block unrelated PRs.
 
 It is skipped when the primary clone is the working tree itself (the existing
 primary-clone refusal applies), for a declared ephemeral clone
@@ -25,8 +30,9 @@ authorizes primary-clone writes.
 
 ## When it fires
 
-Do not clean the primary clone yourself. Inspect it, re-apply any edit you want
-inside your worktree, and tell the owner the primary clone is dirty:
+Never revert the primary clone with `git checkout`, `git restore`, or any other
+command, even if the change looks like yours. Inspect it, re-apply any edit you
+want inside your worktree, and report the paths to the owner:
 
 ```bash
 git -C /abs/path/to/BenchBox status --short
@@ -38,8 +44,9 @@ git -C /abs/path/to/BenchBox diff
 Give workers absolute worktree paths and no relative ones. Every file edit and
 every command targets `/abs/path/to/BenchBox.wt-<slug>/...`, not `./...` or
 `../`, because a worker whose working directory is the primary clone silently
-writes there. Check that `git -C <primary clone> status --short` is empty when
-the task ends.
+writes there. For another repository, use a linked worktree made from the
+owner's clone (`git -C <owner clone> worktree add ...`), never a standalone
+clone of it.
 
 ## Worktree edits lost to a reset
 
