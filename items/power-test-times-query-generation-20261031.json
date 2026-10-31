@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Power-test per-query timers start after query text is generated, for TPC-H and TPC-DS.",
+    "Test asserts get_query is not called inside the timed window.",
+    "Changelog notes that power-test times from earlier versions include generation."
+  ],
+  "description": "benchbox/core/tpch/power_test.py:328 starts query_start before benchmark.get_query(...) at :344, which runs a qgen subprocess (tpch/queries.py:66) plus dialect translation. tpcds/power_test.py:255-276 does the same with dsqgen. Throughput tests pregenerate text (tpch/throughput_test.py:620 _resolve_query_text), so the two tests time different work, and power numbers carry ~10-50 ms of client work per query, which skews fast engines. Generate query text before the timer starts.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:root@vm:cb45f246c9de058740ccbeed",
+      "at": "2026-10-31T00:37:11Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "52cdc2c85e6b46869179c07d3f9ee7de",
+      "session_id": "d2b018a349924f4f88b746458c80b878"
+    }
+  ]
+}

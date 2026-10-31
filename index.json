@@ -18513,6 +18513,13 @@
       "status": "done",
       "title": "Power Run Iterations Configuration ✅ COMPLETED"
     },
+    "power-test-times-query-generation-20261031": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Power tests time qgen/dsqgen and dialect translation; throughput tests do not"
+    },
     "pr-1644-fix-commit-nits-20260811": {
       "claim": null,
       "needs": [],
