@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed the Read Primitives map_access query returning 0 instead of NULL for a missing map key on ClickHouse; the ClickHouse variant now checks key presence and also orders its rows. Earlier ClickHouse Local Read Primitives results are unaffected in ranking until rerun.",
+      "platforms": ["clickhouse-local", "clickhouse-server", "clickhouse-cloud"],
+      "benchmarks": ["read_primitives"]
+    }
+  ]
+}
