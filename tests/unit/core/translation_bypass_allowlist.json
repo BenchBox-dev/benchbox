@@ -377,6 +377,31 @@
         "struct_construction",
         "timeseries_trend_analysis"
       ],
+      "postgres": [
+        "array_distinct",
+        "array_min_max",
+        "array_of_struct",
+        "array_slice",
+        "asof_join_basic",
+        "groupby_all_complex",
+        "groupby_all_simple",
+        "json_aggregates",
+        "json_extract_nested",
+        "json_extract_simple",
+        "list_reduce",
+        "list_transform",
+        "max_by_complex",
+        "max_by_simple",
+        "max_by_with_ties",
+        "min_by_complex",
+        "min_by_simple",
+        "min_by_with_ties",
+        "orderby_all_desc",
+        "orderby_all_simple",
+        "struct_access",
+        "struct_construction",
+        "unpivot_basic"
+      ],
       "snowflake": [
         "approx_quantiles_array",
         "array_length",
@@ -905,6 +930,14 @@
         "Q6"
       ],
       "doris": [
+        "Q1",
+        "Q2",
+        "Q3",
+        "Q4",
+        "Q5",
+        "Q6"
+      ],
+      "postgres": [
         "Q1",
         "Q2",
         "Q3",
