@@ -8,6 +8,16 @@
     "`make comment-policy-check`, `make lint`, `make typecheck`, `make test-fast` pass."
   ],
   "context": "Observed 2026-10-30 after reboot: pid 61182 java QuestDB ppid 1 RSS 2.3 GB; pid 78738 java QuestDB ppid 1; benchbox-agent machine running 8G. Review findings H6 and N3.",
+  "deferrals": [
+    {
+      "created_at": "2026-10-31T00:33:55Z",
+      "from_item": "heavy-guard-status-policy-20261030",
+      "id": 1,
+      "reason": "Rename deferred to avoid churn across 6 workflows, docs and 20+ tests during rollout.",
+      "resolution": "open",
+      "summary": "Rename test.lock to heavy.lock and BENCHBOX_TEST_LOCK_* to BENCHBOX_HEAVY_* once the guard is stable"
+    }
+  ],
   "description": "## Problem\nNothing shows who holds the host lock, who waits, which VMs reserve memory, or which orphaned servers still run. Agents start servers by hand outside every entry point (two QuestDB JVMs orphaned to launchd, one at 2.3 GB RSS, cwd in BenchBox worktrees; no repo code launches them). Agents need the rule as early as possible in the rollout.\n\n## Change\n1. `python -m benchbox.utils.host_lock status` and `make heavy-status`: holder record and age, live waiters, admission readings, VM inventory, top 10 processes by physical footprint, orphaned JVMs/servers (ppid 1, cwd inside a BenchBox worktree). Read-only; per-command 5 s timeouts.\n2. `make heavy-run CMD=\"...\"` wrapping `python -m benchbox.utils.host_lock run --guard -- sh -c \"$(CMD)\"`.\n3. AGENTS.md `[HEAVY-LOCK-001]` (compact) linking `docs/agent/heavy-work.md`: heavy work runs only through entry points that take the lock or through `make heavy-run`; hand-started servers run under `make heavy-run` and are stopped afterwards; check `make heavy-status` first; never move, delete or recreate the lock file; never set `BENCHBOX_SKIP_TEST_LOCK`, `BENCHBOX_HEAVY_ADMIT=force` or `BENCHBOX_HEAVY_WATCHDOG=off` without owner approval in the current task. The detail doc also records known limits: fork-without-exec children inherit the flock; `kill -9` of a `run` wrapper leaves its child unlocked; VM memory is not tree-attributed.\n4. `make/help.mk` lines for the new targets.\n5. Record a deferral for the optional rename (`test.lock` -> `heavy.lock`, `BENCHBOX_TEST_LOCK_*` -> `BENCHBOX_HEAVY_*`).\n\n## Decision gates\n- G1: AGENTS.md rule stays within ~6 lines; detail goes to `docs/agent/heavy-work.md` (unpublished; not in docs/publish-allowlist.txt).\n- G2: status never needs the lock and finishes within 5 s with a hung `container` CLI.\n- G3: the watchdog flag (`--guard`) exists only after heavy-guard-watchdog lands; until then `heavy-run` uses lock+admission and the doc says so. If this item lands first, a one-line follow-up in heavy-guard-watchdog switches `heavy-run` to `--guard`.\n\n## Guardrails (all heavy-guard items)\n- Linked worktree from `origin/develop` via `make worktree-create`; never the primary clone; stage paths explicitly; never `git add -A`.\n- `[COMMENT-POLICY-001]`: no comments or docstrings in new code. Durations use `benchbox.utils.clock.mono_time()`/`elapsed_seconds()`.\n- Tests use `BENCHBOX_TEST_LOCK_DIR` under `tmp_path` and injected readings; never touch the real `~/.benchbox/test.lock` or depend on live host pressure, VMs or disk.\n- Never delete, move or recreate a lock file from code; never stop, resize or signal processes/VMs this invocation did not start.\n- Keep names `test.lock`, `BENCHBOX_TEST_LOCK_DIR`, `BENCHBOX_TEST_LOCK_WAIT_SECONDS`, `BENCHBOX_SKIP_TEST_LOCK`, `BENCHBOX_TEST_SESSION_OWNER` (rename deferred on heavy-guard-status-policy).\n- No automatic skip on `CI` or `BENCHBOX_EPHEMERAL_CLONE` (agent shells export `CI=true`).\n- No heavy verification runs (no benchmark sweeps above scale 0.01, no real compose stacks) unless the item names one.\n- Status never signals or modifies processes, VMs or the lock file.\n\n## Non-goals\nKilling orphans automatically (see heavy-guard-sentinel).",
   "links": [
     "AGENTS.md",
@@ -29,6 +39,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "78de65a9ed524ca1ac15204d35c58405",
+      "session_id": "5f71b48e76c54dd19a3f57d12779721e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:19f6136ffb052a6f71a9c702",
+      "at": "2026-10-31T00:33:56Z",
+      "client": "omp-coding-agent",
+      "op": "defer",
+      "op_id": "451a9a9dccbb4713b95418a9d798628a",
       "session_id": "5f71b48e76c54dd19a3f57d12779721e"
     }
   ]
