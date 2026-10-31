@@ -1,10 +1,11 @@
 {
   "acceptance": [
-    "Digest of an Arrow result equals the digest of the same rows fetched via fetchall (TPC-H SF0.01 on DuckDB).",
-    "Validation and first_row work on Arrow input.",
-    "Result metadata records fetch mode (rows|arrow) so runs are not compared across modes."
+    "Written decision on whether query time includes full result fetch, recorded in docs.",
+    "Result metadata records fetch mode (rows|arrow); compare refuses or warns across modes.",
+    "Digest of an Arrow result equals the digest of the same rows via fetchall (TPC-H SF0.01 on DuckDB).",
+    "Power and throughput fallback row counts no longer materialize Python rows inside the timer."
   ],
-  "description": "Query timing (base/sql_execution.py:77-86 and every adapter execute_query) wraps fetchall(), so client-side row building is counted as query time. compute_result_digest (sql_execution.py:104) and structural validation (result_capture.py:72-85,1014) expect a Python row list, so any Arrow fetch would be converted back to rows. Make these accept pyarrow.Table/RecordBatchReader (or convert lazily, outside the timer). Prerequisite for the Arrow fetch items.",
+  "description": "Query timing (base/sql_execution.py:77-86 and every adapter execute_query) wraps execute + fetchall(), so client-side row building counts as query time. compute_result_digest (sql_execution.py:104) already accepts any iterable of rows, and apply_materialized_result_validation (base/result_capture.py:72-86, called at :1014) already accepts a lazy callable (MaterializedRowsSource, :50). So Arrow results only need a lazy Arrow-to-rows converter for digest/validation, built outside the timer. The real decision is the timing contract: whether measured query time includes fetching the full result, and how runs with the old contract are kept separate. Also cover the fallback row counts that call len(cursor.fetchall()) inside the per-query timer when an adapter does not report rows_returned: tpch/power_test.py:478, tpcds/power_test.py:344, tpch/throughput_test.py:104, tpcds/throughput_test.py:83 (benchbox/core).",
   "sessions": [
     {
       "actor": "mcp:claude-code:root@vm:2d53e6a98f44f4f4a8a4dedd",
@@ -13,6 +14,14 @@
       "op": "create",
       "op_id": "36e8e438aa6b470ca81cf37ff519cfb0",
       "session_id": "be00837164104ac2b4ed790cdb6812a2"
+    },
+    {
+      "actor": "mcp:claude-code:root@vm:cb45f246c9de058740ccbeed",
+      "at": "2026-10-31T00:35:58Z",
+      "client": "claude-code",
+      "op": "update",
+      "op_id": "b96051ab59fc46b6a7f088abd58057e5",
+      "session_id": "d2b018a349924f4f88b746458c80b878"
     }
   ]
 }

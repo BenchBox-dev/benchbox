@@ -17717,7 +17717,7 @@
       "needs": [],
       "priority": "high",
       "status": "open",
-      "title": "Accept Arrow results in digest, validation, and row count"
+      "title": "Decide the fetch-timing contract and let execution paths use Arrow results"
     },
     "perf-arrow-fetch-native-drivers-20261030": {
       "claim": null,
