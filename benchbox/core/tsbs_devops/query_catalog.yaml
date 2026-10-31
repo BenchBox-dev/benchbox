@@ -244,6 +244,8 @@ QUERIES:
                 AND DATE_TRUNC('minute', c.time) = DATE_TRUNC('minute', m.time)
       WHERE c.time >= '{start_time}'
         AND c.time < '{end_time}'
+        AND m.time >= '{start_time}'
+        AND m.time < '{end_time}'
       GROUP BY c.hostname
       ORDER BY avg_cpu_total DESC
     params:
