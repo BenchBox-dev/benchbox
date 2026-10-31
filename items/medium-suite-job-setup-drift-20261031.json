@@ -1,7 +1,7 @@
 {
   "acceptance": [
     "`test.yml`'s `medium` job syncs the locked `_project/scripts` runtime before running tests, as the other four jobs do.",
-    "A fast test fails when a provisioning step present in one of the five medium-suite jobs is missing from another, with an explicit, commented-free allowlist only for differences each job needs (coverage tooling, matrix-specific steps).",
+    "A fast test fails when a provisioning step present in one of the five medium-suite jobs is missing from another; an explicit allowlist covers only differences a job needs (coverage tooling, matrix-specific steps).",
     "The test is shown to work by removing the `_project/scripts` sync from any one job and seeing it fail."
   ],
   "context": "REVIEW 2026-10-31: VALID but incomplete. Found a fifth medium-suite job (test.yml `medium`, release lane) and a live defect: it lacks the _project/scripts sync that the offline handshake test has needed since #3725, so the next release run fails. Fix added to acceptance; priority raised low -> medium-high. A parity test is chosen over a shared composite action: the five jobs differ in matrices and coverage setup, and the test is the smallest guard that fails on drift.",
@@ -25,6 +25,14 @@
       "op": "update",
       "op_id": "d091800dba3045e0ad4fb9c32650212c",
       "session_id": "2247d81583364302a6b16d1a367d8311"
+    },
+    {
+      "actor": "joe-batch-controller",
+      "at": "2026-10-31T15:17:45Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "516e55d34ab54bce9c00f6d9e18be2dc",
+      "session_id": "8a2091afc3cb45c59ec31eeaa8eb8be9"
     }
   ]
 }
