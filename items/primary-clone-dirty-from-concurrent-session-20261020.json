@@ -4,7 +4,7 @@
     "The edits live in a worktree or were deliberately dropped by their owner",
     "git status in the primary clone is empty"
   ],
-  "context": "Found 2026-10-20 during the follow-up batch. Evidence is from that session; re-verify before editing. Unclaimed.\n\n2026-10-27 21:19Z: another occurrence. Uncommitted edits to tests/unit/scripts/oracle_reviewers/conftest.py and test_attempt_loop.py in the primary clone made the pr-preflight pre-push hook refuse every worktree push until they were cleared about 13 minutes later. Not written by the docs migration session. Earlier in the docs migration, delegated agents also leaked edits into the primary clone through relative paths several times; each was reverted.",
+  "context": "Found 2026-10-20 during the follow-up batch. Evidence is from that session; re-verify before editing. Unclaimed.\n\n2026-10-27 21:19Z: another occurrence. Uncommitted edits to tests/unit/scripts/oracle_reviewers/conftest.py and test_attempt_loop.py in the primary clone made the pr-preflight pre-push hook refuse every worktree push until they were cleared about 13 minutes later. Not written by the docs migration session. Earlier in the docs migration, delegated agents also leaked edits into the primary clone through relative paths several times; each was reverted.\n\n2026-10-30 data point: a delegated subagent told to work in its own worktree made its first edit (one line in docs/internal/adr/adr-site-repo-split.md) at the primary clone's absolute path. It noticed, restored the line by hand, reapplied the change in the worktree, and the primary was clean afterwards. So in-session subagents using absolute primary-clone paths are one source of primary-clone writes, not only concurrent sessions; the edit tool does not refuse such paths.",
   "description": "The dirty-primary guard (merged 2026-10-20) now fails commits in every worktree while the primary has uncommitted changes. At 19:20 EDT on 2026-10-20 three tracked files appeared modified (written 2 s apart, after all batch workers had reported idle): _project/decisions/sqlglot-soft-fork-plan.md, docs/development/adr/adr-sql-compat-phase-aware-pipeline.md, docs/development/adr/adr-sqlglot-use-and-non-use.md (16 lines added). Related worktrees exist: BenchBox.wt-adr-ownership, wt-checker-wrapper, wt-sqlglot-floor-residual. Work: identify the writer (session history, the worktree for branch docs/adr-sqlglot-fork-ownership), move the edits into that worktree, and confirm the primary is clean. Never discard another session's edits. Also decide whether the guard needs a clearer message pointing at the likely cause.",
   "sessions": [
     {
@@ -22,6 +22,14 @@
       "op": "update",
       "op_id": "4d17994712df4ec3b15b183711e03ddd",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-31T14:57:28Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7a5297b7f6584302a8c59ec09fa92dab",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
     }
   ]
 }
