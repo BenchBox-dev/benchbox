@@ -30559,10 +30559,15 @@
       "title": "Upgrade pandas to 3.x after modin compat and Python 3.10 gates clear"
     },
     "usability-benchmark-dependency-errors-actionable": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-01T23:27:59Z",
+        "generation": "233d9815ad574794a347ef8a7930f7c1",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e275448d846640d27249a6f8"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Benchmark dependency errors name the missing module and the install command (MCP, CLI and Python API)"
     },
     "usability-core-contributor-references-guard": {
