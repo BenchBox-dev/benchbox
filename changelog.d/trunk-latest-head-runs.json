@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Trunk runs one develop push at a time and only the newest waiting push follows; a red run now names every commit it covers, and a revert of any of them is exempt from the arm gate."
+}
