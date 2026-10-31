@@ -473,6 +473,12 @@ class ReadPrimitivesBenchmark(GeneratorOutputDirMixin, TranslatableQueryMixin, D
                 "asof_join_basic",
                 "pivot_basic",
             ]
+        if name == "questdb":
+            from benchbox.sql_compat.rules.execution_filter.questdb_read_primitives import (
+                QUESTDB_READ_PRIMITIVES_SKIPS,
+            )
+
+            return list(QUESTDB_READ_PRIMITIVES_SKIPS)
         return []
 
     def get_df_platform_skip_queries(self, platform_name: str) -> list[str]:
