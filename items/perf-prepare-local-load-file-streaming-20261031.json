@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "PostgreSQL TPC-H .tbl load does no per-line Python split/join.",
+    "Loaded row counts and values match current behavior, including booleans and compressed input."
+  ],
+  "description": "benchbox/platforms/base/data_loading.py:1869-1907 rewrites compressed files, .tbl files with a trailing '|', and files needing boolean normalisation one line at a time with split/join. Callers: PostgreSQL family (postgresql.py:720; strip_trailing for .tbl at :655) — every TPC-H table on PostgreSQL, TimescaleDB, Citus and other subclasses; SingleStore (singlestore.py:224); DataFusion (datafusion.py:1264, compressed only). Stream-decompress straight into copy.write, strip trailing delimiters per chunk with a bytes regex, or declare a dummy trailing column. The Parquet path (_write_parquet_to_copy, postgresql.py:73-84) is already vectorized.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:root@vm:cb45f246c9de058740ccbeed",
+      "at": "2026-10-31T00:37:23Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "3c97b407ea63439681f42b60a2502746",
+      "session_id": "d2b018a349924f4f88b746458c80b878"
+    }
+  ]
+}

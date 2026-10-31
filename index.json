@@ -17765,6 +17765,13 @@
       "status": "open",
       "title": "Native file loading for Firebolt Core and local runs"
     },
+    "perf-prepare-local-load-file-streaming-20261031": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Stop line-by-line Python rewrites in prepare_local_load_file before COPY"
+    },
     "perf-questdb-influxdb-load-20261030": {
       "claim": null,
       "needs": [],
