@@ -5,7 +5,7 @@
     "The public identifier ADR and result-format routes serve only the approved safe content and no longer expose the retired procedure",
     "The changed and excluded production routes return the expected HTTP statuses and are recorded"
   ],
-  "context": "Owner-only production release/deploy action. This item replaces the prior handoff's untracked open note about live-site redeploy timing and is intentionally dependent on source remediation and the full audit.",
+  "context": "Owner-only production release/deploy action. This item replaces the prior handoff's untracked open note about live-site redeploy timing and is intentionally dependent on source remediation and the full audit.\n\nClosed 2026-10-30: the remediated content went live through the site-repo cutover, not through a release. On 2026-10-30 benchbox.dev serves none of the retired identifier-confirmation material on the /docs/ and /docs/dev/ copies of the three remediated pages (adr-published-identifier-field-set, result-formats, result-analysis), and they match the site source. /blog/2026-09-15-results-explorer-introduction.html returns 200, the /docs/blog/ and /blog/blog/ copies return 404, and the sitemap has no drafts entry. The site deploys on pushes to its main branch and on core-bundle dispatches, so the release-then-deploy steps in the acceptance are obsolete.",
   "description": "The live site still serves the pre-remediation identifier-confirmation content. After the source PR is merged and the exhaustive audit is clean, the repository owner must authorize and perform the release/site deployment; deployment is not authorized by the current PR request.",
   "sessions": [
     {
@@ -23,6 +23,14 @@
       "generation": "c28dc495db0a4d149ad43acd48df156d",
       "op": "take",
       "op_id": "8eeb00199c3543d6a81663b0b9513570",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-31T00:16:46Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "2be4244d769c4c4aaf4f6d8351a1b62d",
       "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
     }
   ]
