@@ -497,6 +497,9 @@ class ArmRun:
         pulls_by_sha: dict[str, list[dict]] | None = None,
         runs_code: int = 0,
         develop_code: int = 0,
+        compare: list[str] | None = None,
+        compare_code: int = 0,
+        compare_total: int | None = None,
     ):
         self.runs = runs
         self.branch = branch
@@ -510,6 +513,9 @@ class ArmRun:
         self.runs_code = runs_code
         self.develop_code = develop_code
         self.pulls_by_sha = pulls_by_sha
+        self.compare = compare
+        self.compare_code = compare_code
+        self.compare_total = compare_total
         self.calls: list[list[str]] = []
 
     def __call__(self, cmd: list[str]) -> tuple[int, str]:
@@ -526,6 +532,13 @@ class ArmRun:
                 sha = cmd[2].split("/commits/")[1].split("/")[0]
                 return 0, json.dumps(self.pulls_by_sha.get(sha, []))
             return 0, json.dumps(self.pulls)
+        if cmd[:2] == ["gh", "api"] and "/compare/" in cmd[2]:
+            if self.compare_code != 0:
+                return self.compare_code, "boom"
+            head = cmd[2].split("...")[1].split("?")[0]
+            shas = self.compare if self.compare is not None else [head]
+            total = self.compare_total if self.compare_total is not None else len(shas)
+            return 0, json.dumps({"total_commits": total, "commits": [{"sha": sha} for sha in shas]})
         if cmd[:2] == ["gh", "api"]:
             return self.develop_code, json.dumps(self.develop) if self.develop_code == 0 else "boom"
         raise AssertionError(f"unexpected command: {cmd}")
@@ -670,6 +683,112 @@ def test_arm_gate_refuses_the_revert_of_a_later_innocent_commit() -> None:
 def test_arm_gate_clears_once_the_first_red_commit_is_reverted_on_develop() -> None:
     develop = [{"commit": {"message": f'Revert "x" (#3200)\n\nThis reverts commit {FIRST_SHA}.'}}]
     assert trunk_revert.arm_gate("fix/thing", run=_streak_run(develop=develop)) is None
+
+
+MID_SHA = "c" * 40
+
+
+def _batch_run(**kwargs) -> ArmRun:
+    compare = kwargs.pop("compare", [FIRST_SHA, MID_SHA, LATER_SHA])
+    return ArmRun(
+        _streak(None, LATER_SHA),
+        pulls_by_sha={FIRST_SHA: _merged_pulls(3200), MID_SHA: _merged_pulls(3210), LATER_SHA: _merged_pulls(3220)},
+        compare=compare,
+        **kwargs,
+    )
+
+
+def test_arm_gate_names_every_commit_a_red_run_covers_instead_of_blaming_its_head() -> None:
+    message = trunk_revert.arm_gate("fix/thing", run=_batch_run())
+    assert message is not None
+    assert "one of the 3 commits merged since the last green run" in message
+    assert "PR #3200" in message and "PR #3210" in message and "PR #3220" in message
+    assert "make trunk-revert PR=<number>" in message
+
+
+def test_arm_gate_exempts_the_revert_of_any_commit_the_red_run_covers() -> None:
+    commits = [{"messageHeadline": 'Revert "x" (#3200)', "messageBody": f"This reverts commit {FIRST_SHA}."}]
+    run = _batch_run(branch="fix/revert-3200", commits=commits)
+    assert trunk_revert.arm_gate("fix/revert-3200", run=run) is None
+
+
+def test_arm_gate_refuses_the_revert_of_a_commit_outside_the_red_runs_range() -> None:
+    commits = [{"messageHeadline": "Revert x", "messageBody": "This reverts commit " + "e" * 40 + "."}]
+    run = _batch_run(branch="fix/revert-old", commits=commits)
+    assert trunk_revert.arm_gate("fix/revert-old", run=run) is not None
+
+
+def test_arm_gate_stays_closed_after_one_covered_commit_is_reverted_until_a_run_is_green() -> None:
+    develop = [{"commit": {"message": f'Revert "x" (#3200)\n\nThis reverts commit {FIRST_SHA}.'}}]
+    assert trunk_revert.arm_gate("fix/thing", run=_batch_run(develop=develop)) is not None
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        pytest.param({"compare_code": 1}, id="request-fails"),
+        pytest.param({"compare_total": 250}, id="range-longer-than-one-page"),
+        pytest.param({"compare": [FIRST_SHA, MID_SHA]}, id="range-does-not-end-at-the-red-head"),
+        pytest.param({"compare": []}, id="range-is-empty"),
+    ],
+)
+def test_arm_gate_fails_closed_when_the_covered_commits_cannot_be_established(kwargs: dict) -> None:
+    with pytest.raises(trunk_revert.TrunkError):
+        trunk_revert.arm_gate("fix/thing", run=_batch_run(**kwargs))
+
+
+def test_status_names_every_commit_a_red_run_covers() -> None:
+    message = trunk_revert.status(run=_batch_run())
+    assert message is not None
+    assert "one of the 3 commits" in message
+    assert "PR #3200" in message and "PR #3210" in message and "PR #3220" in message
+
+
+def test_status_stays_red_after_one_covered_commit_is_reverted() -> None:
+    develop = [{"commit": {"message": f'Revert "x" (#3200)\n\nThis reverts commit {FIRST_SHA}.'}}]
+    assert trunk_revert.status(run=_batch_run(develop=develop)) is not None
+
+
+def test_the_refusal_for_several_covered_commits_does_not_promise_a_revert_reopens_arming() -> None:
+    message = trunk_revert.arm_gate("fix/thing", run=_batch_run())
+    assert message is not None
+    assert "Merge a revert" not in message
+    assert "does not reopen arming on its own when several commits are covered" in message
+
+
+def test_the_status_for_several_covered_commits_says_only_a_green_run_clears_it() -> None:
+    message = trunk_revert.status(run=_batch_run())
+    assert message is not None
+    assert "a revert of one covered commit does not clear it" in message
+    assert "merges." not in message
+
+
+def test_the_refusal_for_one_commit_still_offers_the_revert() -> None:
+    message = trunk_revert.arm_gate("fix/thing", run=_streak_run())
+    assert message is not None
+    assert "Merge a revert (make trunk-revert PR=3200)" in message
+
+
+def test_gate_names_every_commit_a_red_run_covers_when_drafting() -> None:
+    message = trunk_revert.trunk_gate("fix/thing", run=_batch_run(), now=NOW + timedelta(hours=3))
+    assert message is not None
+    assert "one of the 3 commits" in message
+    assert "PR #3200" in message and "PR #3220" in message
+
+
+def test_arm_gate_caps_the_named_commits_and_counts_the_newer_ones() -> None:
+    shas = [f"{index:040x}" for index in range(1, 11)]
+    run = ArmRun(
+        _streak(None, shas[-1]),
+        pulls_by_sha={sha: _merged_pulls(4000 + index) for index, sha in enumerate(shas)},
+        compare=shas,
+    )
+    message = trunk_revert.arm_gate("fix/thing", run=run)
+    assert message is not None
+    assert "one of the 10 commits" in message
+    assert "2 newer" in message
+    assert "PR #4000" in message and "PR #4007" in message
+    assert "PR #4008" not in message and "PR #4009" not in message
 
 
 def test_arm_gate_streak_skips_cancelled_and_pending_runs() -> None:
