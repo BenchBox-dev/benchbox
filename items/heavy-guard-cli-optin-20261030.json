@@ -8,7 +8,7 @@
     "`changelog.d/` fragment present; docs updated; `make docs-validate` passes.",
     "`make comment-policy-check`, `make lint`, `make typecheck`, `make platform-manifest-check`, `make test-fast` pass."
   ],
-  "context": "Review finding M5: product-wide locking would change PyPI behavior; `pwd` is unavailable on Windows (scripts/check_windows_antipatterns.py:58). 39 in-process `invoke(cli, ['run', ...])` tests exist (e.g. tests/unit/cli/test_cli_data_load_modes.py:97); re-entry plus HOME-scoped opt-in keeps them lock-free. Depends on test-harness so nested pytest/UAT inheritance is already proven.",
+  "context": "Review finding M5: product-wide locking would change PyPI behavior; `pwd` is unavailable on Windows (scripts/check_windows_antipatterns.py:58). 39 in-process `invoke(cli, ['run', ...])` tests exist (e.g. tests/unit/cli/test_cli_data_load_modes.py:97); re-entry plus HOME-scoped opt-in keeps them lock-free. Depends on the watchdog; inheritance relies on lock-core owner/re-entry rules.",
   "description": "## Problem\n`benchbox run` and the other commands that generate data or execute queries take no host lock, so a benchmark started by hand or by an agent can overlap a test session or UAT sweep. Turning it on unconditionally would change behavior for every PyPI user and serialize legitimate parallel cloud runs.\n\n## Change\n1. Opt-in setting read only from the user's home config file (`~/.benchbox/config.yaml` resolved from `$HOME`, not `./benchbox.yaml`; loader at `benchbox/cli/config.py:145-151`) plus env override `BENCHBOX_HOST_LOCK=1|0`. Default off. Because it is `$HOME`-scoped, isolated test HOMEs never enable it.\n2. When enabled, these commands take the lock with admission and watchdog for their lifetime: `run` (not `--dry-run`), `run-official`, `datagen`, `convert`, `compare` when it executes queries, `compare-dataframes`. Read-only and help commands never acquire.\n3. Children and in-process re-entry follow lock-core rules, so a `benchbox run` launched by a locked pytest or UAT session never waits on its parent.\n4. Windows: lock-core path fallback and non-macOS sampler.\n5. User docs: the setting, env override, wait/bypass variables, watchdog modes, on the existing CLI or operations page; `changelog.d/` fragment.\n\n## Decision gates\n- D1 (resolved): opt-in, default off.\n- D2 (resolved): when enabled, cloud-platform runs also lock (data generation is local).\n- G1 (stop condition): if `compare` cannot tell before starting whether it will execute queries, lock the whole command and record why.\n\n## Guardrails (all heavy-guard items)\n- Linked worktree from `origin/develop` via `make worktree-create`; never the primary clone; stage paths explicitly; never `git add -A`.\n- `[COMMENT-POLICY-001]`: no comments or docstrings in new code. Durations use `benchbox.utils.clock.mono_time()`/`elapsed_seconds()`.\n- Tests use `BENCHBOX_TEST_LOCK_DIR` under `tmp_path` and injected readings; never touch the real `~/.benchbox/test.lock` or depend on live host pressure, VMs or disk.\n- Never delete, move or recreate a lock file from code; never stop, resize or signal processes/VMs this invocation did not start.\n- Keep names `test.lock`, `BENCHBOX_TEST_LOCK_DIR`, `BENCHBOX_TEST_LOCK_WAIT_SECONDS`, `BENCHBOX_SKIP_TEST_LOCK`, `BENCHBOX_TEST_SESSION_OWNER` (rename deferred on heavy-guard-status-policy).\n- No automatic skip on `CI` or `BENCHBOX_EPHEMERAL_CLONE` (agent shells export `CI=true`).\n- No heavy verification runs (no benchmark sweeps above scale 0.01, no real compose stacks) unless the item names one.\n- `[CHANGELOG-001]`; CLI dry runs stay lock-free and keep propagating explicit phases; adapter SDK imports stay lazy.\n\n## Non-goals\nPer-phase locking; engine-level memory limits.",
   "links": [
     "benchbox/cli/commands/run.py",
@@ -33,6 +33,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "938712445a144914be0908d8c0abfd6f",
+      "session_id": "5f71b48e76c54dd19a3f57d12779721e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:19f6136ffb052a6f71a9c702",
+      "at": "2026-10-31T00:37:56Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ccea8d56b27949868548a8c26b37fdfe",
       "session_id": "5f71b48e76c54dd19a3f57d12779721e"
     }
   ]
