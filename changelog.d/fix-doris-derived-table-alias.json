@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed TPC-DS queries 2, 14a, 23a, 23b and 49 failing on Apache Doris with 'Every derived table must have its own alias'; translated Doris queries now alias every derived table.",
+      "platforms": [
+        "doris"
+      ],
+      "benchmarks": [
+        "tpcds"
+      ]
+    }
+  ]
+}
