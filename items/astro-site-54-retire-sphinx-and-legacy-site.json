@@ -7,7 +7,7 @@
     "In core, git grep -i for sphinx, furo, ablog, myst_parser, docs/_templates, docs/_extensions and linkcheck_ignore finds nothing outside CHANGELOG.md, _project/, ADRs and make/monolith-baseline.json, and core required checks are green",
     "A production deploy after the site PR is green with probes"
   ],
-  "context": "Re-scoped 2026-10-17 (owner chose \"Drop delivered, re-scope rest\" for the astro-site chain). Core removed Sphinx, the site, the publication plane and the landing context (#3096, #3104, #3105, #3106; site-split-50/51/53/54). ADR D11 waived keeping the Sphinx artifact, and site-split-40 holds the production evidence. What remains are files the split copied into benchbox-site and left there, plus a few core leftovers.",
+  "context": "Re-scoped 2026-10-17 (owner chose \"Drop delivered, re-scope rest\" for the astro-site chain). Core removed Sphinx, the site, the publication plane and the landing context (#3096, #3104, #3105, #3106; site-split-50/51/53/54). ADR D11 waived keeping the Sphinx artifact, and site-split-40 holds the production evidence. What remains are files the split copied into benchbox-site and left there, plus a few core leftovers.\n\nSplit 2026-10-30: the site part moved to the benchbox-site tracker under the same id, and the core part is core-sphinx-leftovers-20261030.",
   "description": "Core no longer contains Sphinx or the site (#3096), and benchbox.dev is served by the Astro build in BenchBox-dev/benchbox-site. The site split copied files that the build no longer uses. One site PR and one core PR remove them.\n\nbenchbox-site:\n- Delete the unserved static pages and scripts: landing/index.html, landing/script.js, landing/style.css, landing/prompts/index.html, landing/prompts/prompts.js, landing/prompts/catalog.generated.js and landing/prompts/catalog.yaml (the catalog now comes from the bundle's landing/prompt-catalog.json).\n- Delete landing/shared/site-header.css, site-header.js and site-theme.js, used only by the deleted pages.\n- Retire the second theme file: move the two variables landing/prompts/prompts.css reads from landing/shared/site-theme.css (--bb-site-header-cta-text, --warning-color) into site-tokens.css, then drop site-theme.css and its import in website/src/styles/landing-theme.css.\n- Point the explorer/e2e/routes/header.spec.ts \"static surface\" tests at the built / and /prompts/ pages, or delete them in favour of website/tests/shell.test.ts; today they read the deleted files.\n- Remove the legacy old-vs-new comparison from website/e2e/landing.mjs (LANDING_DIR / OLD_BASE_URL).\n- Keep files the build imports: landing/shared/site-tokens.css, site-shell.css, landing/prompts/prompts.css, landing/hero.png (they may move to a neutral path, updating explorer/src/index.css, Shell.astro, astro.config.ts and tests).\n- Remove the Sphinx-era parity data only website/scripts/id-parity.ts reads (inventory/baseline-develop/, expected-removals-*.json, added-paths.json, allowed-inventory-losses.json) and id-parity.ts itself; remove scripts/shadow-compare.mjs, inventory/shadow-allowlist.json and their AGENTS.md mention. Keep inventory/known-broken-links.json and anything the build, deploy or CI still reads.\n\ncore:\n- Remove the docs/_templates HTML adapter in scripts/comment_syntax.py (around line 172) and its tests in tests/unit/scripts/test_comment_policy.py.\n- Replace the docs/_extensions/sphinx_tags_fix.py fixture in tests/unit/scripts/test_path_filter_decision.py with a path that exists.\n- Delete the unused docs/linkcheck_ignore.txt.\n- Correct the Sphinx pipeline sketch in docs/internal/benchbox-results-platform-strategy.md.\n- Mark _project/decisions/adr-astro-unified-site.md as partly superseded by docs/internal/adr/adr-site-repo-split.md, and re-point the links in _project/decisions/astro-api-reference-contract.md to the copy of api-reference-url-map.json in benchbox-site inventory/.\n\nOut of scope: make/monolith-baseline.json (frozen history) and core landing/prompts/catalog.yaml (the bundle's catalog source). The MyST converter decision stays with site-myst-converter-retirement-20261017.",
   "links": [
     "dlv2-61-retire-docs-yml-pages-fallback",
@@ -55,6 +55,14 @@
       "op": "update",
       "op_id": "95fb321ded734badbb6cde5f2f631fe7",
       "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-31T00:19:27Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5e3f949eb97546f998fa2e958655c923",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
     }
   ]
 }
