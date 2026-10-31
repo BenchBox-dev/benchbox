@@ -143,3 +143,12 @@ def test_having_with_empty_group_by_drops_the_group_clause():
         "SELECT 100.0 * qdb_agg_1 / qdb_agg_2 AS r FROM "
         "(SELECT SUM(a) AS qdb_agg_1, SUM(b) AS qdb_agg_2 FROM t) AS qdb_having WHERE qdb_agg_2 > 0"
     )
+
+
+@pytest.mark.parametrize(
+    "group_by",
+    ["GROUP BY a WITH ROLLUP", "GROUP BY ALL", "GROUP BY a GROUPING SETS ((a), ())", "GROUP BY ROLLUP (a)"],
+)
+def test_having_with_group_by_modifiers_is_left_alone(group_by):
+    sql = f"SELECT a, COUNT(*) AS n FROM t {group_by} HAVING COUNT(*) > 1"
+    assert "qdb_having" not in rewrite_query(sql)

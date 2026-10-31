@@ -190,6 +190,9 @@ def _rewrite_select(select: exp.Select) -> exp.Select | None:
         return None
     if any(isinstance(projection, exp.Star) or projection.is_star for projection in select.expressions):
         return None
+    group_clause = select.args.get("group")
+    if group_clause is not None and any(key != "expressions" and value for key, value in group_clause.args.items()):
+        return None
     groups = _resolve_groups(select)
     if groups is None:
         return None
@@ -223,7 +226,6 @@ def _rewrite_select(select: exp.Select) -> exp.Select | None:
         value = select.args.get(arg)
         if value is not None:
             inner.set(arg, value.copy())
-    group_clause = select.args.get("group")
     if group_clause is not None and groups:
         inner.set("group", exp.Group(expressions=[group.copy() for group in groups]))
     if not inner.expressions:
