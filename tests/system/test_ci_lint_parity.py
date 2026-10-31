@@ -27,6 +27,10 @@ EXCLUDED_STEPS: dict[str, str] = {
         "Promoted slow and medium regression reproducers; they are intentionally CI-gated, run here so they stay "
         "off the unit-test job's critical path, and are not silently represented by the fast local lane."
     ),
+    "Warn about docs contract changes against the PR base": (
+        "Warn-only comparison against the pull request base commit, which only exists in the PR checkout; it always "
+        "exits 0 and `make docs-contract-diff BASE_REF=<sha>` runs it locally."
+    ),
 }
 
 MERGE_GATE_WORKFLOWS = {
