@@ -8,7 +8,7 @@
     "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-19T10-56-55-578Z_01a153ce-ab1a-7152-979f-787cf9b6908f/local/oracle-adversarial-review/reports/Advisor48h.md",
     "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-19T10-56-55-578Z_01a153ce-ab1a-7152-979f-787cf9b6908f/local/oracle-adversarial-review/decisions.md"
   ],
-  "not_before": "2026-11-12T00:00:00Z",
+  "not_before": "2026-10-31T03:07:59Z",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
@@ -48,6 +48,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "2a40c2a2e8da412fb81e66a0837254e4",
+      "session_id": "adb1518a186a49b6a5f244d6ebc0f7ca"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c8cf2fdb5a699f4b3049c8eb",
+      "at": "2026-10-31T03:06:01Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "53b5600d3f9944c6b1ca194ae5b8bb5d",
       "session_id": "adb1518a186a49b6a5f244d6ebc0f7ca"
     }
   ]
