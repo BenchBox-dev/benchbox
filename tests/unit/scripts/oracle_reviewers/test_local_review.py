@@ -1003,6 +1003,7 @@ def test_cloud_review_reaches_the_gateway_through_the_proxy_without_stubbing_rea
     (review,) = env.reviews
     assert review["omp_env"]["HTTPS_PROXY"] == proxy.url
     assert review["omp_env"]["HTTP_PROXY"] == proxy.url
+    assert review["omp_env"]["PI_PROXY"] == proxy.url
     assert "127.0.0.1" in review["omp_env"]["NO_PROXY"]
 
 
@@ -1046,17 +1047,17 @@ def test_local_review_passes_no_proxy_variables_even_when_the_session_has_them(
     monkeypatch.setenv("NO_PROXY", "x")
     assert env.run() == local.EXIT_PROCEED
     (review,) = env.reviews
-    assert not {"HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY"} & set(review["omp_env"])
+    assert not {"HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "PI_PROXY"} & set(review["omp_env"])
 
 
 def test_a_session_cannot_inject_a_reviewer_proxy_through_its_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ORACLE_GATEWAY_PROXY", "http://evil.example:8080")
-    assert not {"HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY"} & set(omp_env())
+    assert not {"HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "PI_PROXY"} & set(omp_env())
     with gateway_proxy("http://evil.example:8080"):
-        assert not {"HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY"} & set(omp_env())
+        assert not {"HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "PI_PROXY"} & set(omp_env())
     with gateway_proxy("http://127.0.0.1:1055"):
-        assert omp_env()["HTTPS_PROXY"] == "http://127.0.0.1:1055"
-    assert not {"HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY"} & set(omp_env())
+        assert omp_env()["HTTPS_PROXY"] == omp_env()["PI_PROXY"] == "http://127.0.0.1:1055"
+    assert not {"HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "PI_PROXY"} & set(omp_env())
 
 
 def test_a_renamed_gate_file_still_flags_the_gate_through_its_old_path(monkeypatch: pytest.MonkeyPatch) -> None:
