@@ -27472,10 +27472,15 @@
       "title": "G5: cut over to the DB-backed TODO tracker (freeze & delete legacy)"
     },
     "todo-db-drop-records-reason-20261031": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-01T20:35:11Z",
+        "generation": "eab7859435a7465584ad9ae4caf13391",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e45b8047daa131c418b6f1f3"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Make todo-db drop require a reason and store it in the same commit as the status change"
     },
     "todo-db-expect-store-substring-matches-sibling-repo-20261030": {
