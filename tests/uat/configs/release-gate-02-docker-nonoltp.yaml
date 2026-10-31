@@ -17,6 +17,9 @@ platforms:
 benchmarks:
   groups: ["all"]
 
+compatibility:
+  release_gate_runtime_envelopes: true
+
 scales:
   rungs: [0.01, 0.1, 1.0]
 

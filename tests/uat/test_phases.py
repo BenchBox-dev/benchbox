@@ -290,31 +290,30 @@ def test_enumerate_records_pg_family_release_gate_compatibility_pruning():
         ("pg-duckdb", "tpcds"),
         ("pg-mooncake", "tpch"),
         ("pg-mooncake", "datavault"),
+        ("pg-mooncake", "joinorder"),
         ("timescaledb", "tpch"),
         ("timescaledb", "tpcds"),
+        ("timescaledb", "datavault"),
+        ("timescaledb", "joinorder"),
+        ("timescaledb", "tpcds_obt"),
     }
-    assert len(result.compatibility_pruned) == 17
+    assert len(result.compatibility_pruned) == 13
     pruned = {(c.platform, c.benchmark): c for c in result.compatibility_pruned}
     assert pruned[("pg-mooncake", "tpcds")].rule_id == "uat.compat.pg-mooncake.tpcds.benchmark_gate"
-    assert pruned[("timescaledb", "datavault")].rule_id == (
-        "uat.compat.timescaledb.datavault.release_gate_runtime_envelope"
-    )
     for platform in ("pg-duckdb", "pg-mooncake", "timescaledb"):
         caps = PlatformRegistry.get_platform_capabilities(platform)
         assert caps is not None
         assert "joinorder" not in caps.unsupported_benchmarks
         assert "tpcds_obt" not in caps.unsupported_benchmarks
         assert pruned[(platform, "ai_primitives")].rule_id == f"uat.compat.{platform}.ai_primitives.benchmark_gate"
-        assert pruned[(platform, "joinorder")].rule_id == (
-            f"uat.compat.{platform}.joinorder.release_gate_runtime_envelope"
-        )
         assert pruned[(platform, "read_primitives")].rule_id == (
             f"uat.compat.{platform}.read_primitives.benchmark_gate"
         )
-        assert pruned[(platform, "tpcds_obt")].rule_id == (
-            f"uat.compat.{platform}.tpcds_obt.release_gate_runtime_envelope"
-        )
         assert pruned[(platform, "vector_search")].rule_id == f"uat.compat.{platform}.vector_search.benchmark_gate"
+    for platform, benchmark in (("pg-duckdb", "joinorder"), ("pg-duckdb", "tpcds_obt"), ("pg-mooncake", "tpcds_obt")):
+        assert pruned[(platform, benchmark)].rule_id == (
+            f"uat.compat.{platform}.{benchmark}.release_gate_runtime_envelope"
+        )
     timescaledb_caps = PlatformRegistry.get_platform_capabilities("timescaledb")
     assert timescaledb_caps is not None
     assert "datavault" not in timescaledb_caps.unsupported_benchmarks

@@ -353,7 +353,7 @@ def test_local_managed_cedardb_compose_credentials_match_uat_argv():
 
     assert "CEDAR_USER: benchbox" in compose_text
     assert "CEDAR_PASSWORD: Benchbox1!" in compose_text
-    assert "mem_limit: 2g" in compose_text
+    assert "mem_limit: 8g" in compose_text
     assert "CEDAR_DB: benchbox_test" in compose_text
     assert argv[-6:] == [
         "--platform-option",

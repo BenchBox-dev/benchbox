@@ -418,8 +418,8 @@ def test_release_gate_configs_load_and_encode_stage_ordering():
 
     assert stage2.platforms.groups == ("docker-fast",)
     assert stage3.platforms.groups == ("docker-slow",)
-    assert stage2.compatibility.release_gate_runtime_envelopes is False
-    assert stage3.compatibility.release_gate_runtime_envelopes is False
+    assert stage2.compatibility.release_gate_runtime_envelopes is True
+    assert stage3.compatibility.release_gate_runtime_envelopes is True
     for stage in (stage2, stage3):
         assert stage.cleanup.docker_manage_platforms is True
         assert stage.execute.parallel_platforms is False
@@ -447,7 +447,8 @@ _SF1_TIMEOUT_PRUNED_CELLS = frozenset(
         ),
         "pyspark-df": ("datavault", "tpchavoc", "tpcds", "joinorder", "flightdata"),
         "spark": ("joinorder", "tpchavoc", "tpcds_obt"),
-        "pandas-df": ("joinorder",),
+        "pandas-df": ("joinorder", "flightdata", "datavault"),
+        "sqlite": ("joinorder", "flightdata", "tsbs_devops"),
     }.items()
     for benchmark in benchmarks
 )
@@ -465,7 +466,7 @@ def test_release_gate_stage1_prunes_sf1_timeouts_measured_in_dry_run_2():
         if cell.rule_id.endswith(".release_gate_runtime_envelope") and cell.scale == 1.0
     }
 
-    assert len(_SF1_TIMEOUT_PRUNED_CELLS) == 18
+    assert len(_SF1_TIMEOUT_PRUNED_CELLS) == 23
     assert pruned >= _SF1_TIMEOUT_PRUNED_CELLS
     assert _SF1_TIMEOUT_PRUNED_CELLS.isdisjoint(cells)
     for platform, benchmark, _ in _SF1_TIMEOUT_PRUNED_CELLS:
@@ -479,10 +480,56 @@ def test_release_gate_stage1_prunes_sf1_timeouts_measured_in_dry_run_2():
         ("dask-df", "nyctaxi", 1.0),
         ("pyspark-df", "nyctaxi", 1.0),
         ("spark", "nyctaxi", 1.0),
-        ("pandas-df", "flightdata", 1.0),
-        ("pandas-df", "datavault", 1.0),
+        ("sqlite", "tpch", 1.0),
     ):
         assert kept in cells
+
+
+_DOCKER_SF1_TIMEOUT_PRUNED_CELLS = {
+    "release-gate-02-docker-nonoltp.yaml": frozenset({("lakesail", "datavault", 1.0)}),
+    "release-gate-03-docker-oltp.yaml": frozenset(
+        {
+            ("pg-duckdb", "tpcds_obt", 0.01),
+            ("pg-duckdb", "joinorder", 0.01),
+            ("pg-mooncake", "tpcds_obt", 0.01),
+            ("postgresql", "joinorder", 0.01),
+            ("postgresql", "tpcds_obt", 0.01),
+            ("singlestore", "joinorder", 0.01),
+            ("singlestore", "tpcds_obt", 0.01),
+            ("questdb", "tpcds_obt", 0.01),
+        }
+    ),
+}
+
+
+@pytest.mark.parametrize("config_name", sorted(_DOCKER_SF1_TIMEOUT_PRUNED_CELLS))
+def test_release_gate_docker_stages_prune_sf1_timeouts_measured_in_dry_run_2(config_name):
+    from tests.uat.phases.enumerate import enumerate_cells_with_pruning
+
+    stage = config.load_config(_RELEASE_GATE_CONFIGS_DIR / config_name)
+    result = enumerate_cells_with_pruning(stage)
+    cells = {(cell.platform, cell.benchmark, cell.scale) for cell in result.cells}
+    pruned = {
+        (cell.platform, cell.benchmark, cell.scale)
+        for cell in result.compatibility_pruned
+        if cell.rule_id.endswith(".release_gate_runtime_envelope")
+    }
+    expected = _DOCKER_SF1_TIMEOUT_PRUNED_CELLS[config_name]
+
+    assert pruned == expected
+    assert cells.isdisjoint(expected)
+    for cell in result.compatibility_pruned:
+        if (cell.platform, cell.benchmark, cell.scale) in expected:
+            assert "timed out at 1200s" in cell.reason
+
+
+def test_release_gate_stage3_excludes_influxdb_from_the_timeseries_shard():
+    stage3 = config.load_config(_RELEASE_GATE_CONFIGS_DIR / "release-gate-03-docker-oltp.yaml")
+    assert stage3.platforms.exclude == ("influxdb",)
+    assert "influxdb-general-loader-uat" in stage3.description
+    assert "influxdb" not in matrix.resolve_platforms(
+        groups=stage3.platforms.groups or (), exclude=stage3.platforms.exclude
+    )
 
 
 def test_release_gate_stage1_prunes_measured_runtime_envelopes():
@@ -509,8 +556,8 @@ def test_release_gate_stage1_prunes_measured_runtime_envelopes():
     for cell in result.cells:
         by_pair.setdefault((cell.platform, cell.benchmark), set()).add(cell.scale)
     eligible = sum(1 for scales in by_pair.values() if set(stage1.scales.rungs).issubset(scales))
-    assert eligible == 119
-    assert stage1.report.cross_scale_coverage_min_pairs == int(0.8 * eligible) == 95
+    assert eligible == 115
+    assert stage1.report.cross_scale_coverage_min_pairs == int(0.8 * eligible) == 92
 
 
 def test_release_gate_cross_scale_floors_are_tuned_and_achievable():
@@ -732,10 +779,7 @@ def test_uat_smoke_config_is_native_tpch_sf001_loop():
 
 
 def test_release_gate_runtime_envelopes_are_enabled_or_unused_by_stages():
-    from tests.uat.compatibility import (
-        _RELEASE_GATE_RUNTIME_ENVELOPES,
-        _RELEASE_GATE_STAGES_UNUSED_RUNTIME_ENVELOPES,
-    )
+    from tests.uat.compatibility import _RELEASE_GATE_RUNTIME_ENVELOPES
     from tests.uat.phases.enumerate import enumerate_cells_with_pruning
 
     stage_cfgs = [
@@ -747,13 +791,11 @@ def test_release_gate_runtime_envelopes_are_enabled_or_unused_by_stages():
         )
     ]
     assert stage_cfgs[0].compatibility.release_gate_runtime_envelopes is True
-    assert stage_cfgs[1].compatibility.release_gate_runtime_envelopes is False
-    assert stage_cfgs[2].compatibility.release_gate_runtime_envelopes is False
+    assert stage_cfgs[1].compatibility.release_gate_runtime_envelopes is True
+    assert stage_cfgs[2].compatibility.release_gate_runtime_envelopes is True
 
     applied: set[tuple] = set()
     for cfg in stage_cfgs:
-        if not cfg.compatibility.release_gate_runtime_envelopes:
-            continue
         enumerated = enumerate_cells_with_pruning(cfg)
         applied.update(
             (cell.platform, cell.benchmark)
@@ -762,9 +804,7 @@ def test_release_gate_runtime_envelopes_are_enabled_or_unused_by_stages():
             for cell in enumerated.compatibility_pruned
             if "release_gate_runtime_envelope" in cell.rule_id
         )
-    unused = _RELEASE_GATE_STAGES_UNUSED_RUNTIME_ENVELOPES
-    assert applied.isdisjoint(unused)
-    assert set(_RELEASE_GATE_RUNTIME_ENVELOPES) == applied | unused
+    assert set(_RELEASE_GATE_RUNTIME_ENVELOPES) == applied
 
 
 def test_scale_specific_runtime_envelope_prunes_only_that_scale(monkeypatch):

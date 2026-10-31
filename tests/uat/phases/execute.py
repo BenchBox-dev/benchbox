@@ -1213,7 +1213,7 @@ def _free_memory_abort_reason(
             return f"StarRocks memory request is not admissible {context}: {exc}"
         request_gib = request_bytes / (1024**3)
         vm_request = f"starrocks={request_gib:.3f} GiB"
-    elif platform in ("presto", "trino"):
+    elif platform in ("cedardb", "presto", "trino"):
         try:
             declared = docker_assets.compose_declared_memory_limits(docker_assets.docker_platform_spec(platform))
             request_bytes = sum(docker_assets.parse_memory_bytes(limit) for limit in declared.values())
