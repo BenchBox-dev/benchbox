@@ -12700,7 +12700,7 @@
     "heavy-guard-cli-optin-20261030": {
       "claim": null,
       "needs": [
-        "heavy-guard-test-harness-20261030"
+        "heavy-guard-watchdog-20261030"
       ],
       "priority": "medium-high",
       "status": "open",
