@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "benchbox submit, benchbox export and benchbox publish now create a private pseudonym salt in ~/.benchbox/submission_salt on first use instead of requiring BENCHBOX_MACHINE_ID_SALT, which remains an override; anonymized exports are no longer pseudonymized with an empty salt."
+    }
+  ]
+}
