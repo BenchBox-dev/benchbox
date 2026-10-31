@@ -536,12 +536,12 @@ def _print_submission_summary(
         "\n"
         "Two modes, selected by the flag set:\n"
         "\n"
-        "  --output PATH (Phase 2, default)\n"
+        "  --output PATH (default)\n"
         "    Package the canonical bundle + submission manifest into PATH ready\n"
         "    for opening a PR against the BenchBox repository's results-data/\n"
-        "    directory. No network. No credentials. Existing v0.2.x behavior.\n"
+        "    directory. No network. No credentials.\n"
         "\n"
-        "  --service [URL] (Phase 3)\n"
+        "  --service [URL]\n"
         "    Upload the canonical bundle to a hosted ingest API. Requires\n"
         "    authentication via 'benchbox auth login'. With --dry-run, validates\n"
         "    the bundle and prints what would be uploaded - no credentials\n"
@@ -552,7 +552,7 @@ def _print_submission_summary(
         "\n"
         "\b\n"
         "Examples:\n"
-        "    # Package most recent result for PR contribution (Phase 2; default)\n"
+        "    # Package most recent result for PR contribution (default)\n"
         "    benchbox submit --last\n"
         "\n"
         "\b\n"
@@ -561,7 +561,7 @@ def _print_submission_summary(
         "    benchbox submit benchmark_runs/results/tpch_sf001_duckdb_20260401_120000.json --output ./submission\n"
         "\n"
         "\b\n"
-        "    # Submit most recent result to the hosted platform (Phase 3)\n"
+        "    # Submit most recent result to the hosted platform\n"
         "    benchbox submit --last --service\n"
         "\n"
         "\b\n"
@@ -598,7 +598,7 @@ def _print_submission_summary(
     type=click.Path(),
     default="submission",
     show_default=True,
-    help="Phase 2 mode: output directory for the PR-package",
+    help="Package mode: output directory for the PR-package",
 )
 @click.option(
     "--service",
@@ -607,7 +607,7 @@ def _print_submission_summary(
     flag_value=_DEFAULT_SERVICE_URL,
     default=None,
     help=(
-        "Phase 3 mode: submit to the hosted ingest API. Without a value, "
+        "Hosted mode: submit to the hosted ingest API. Without a value, "
         f"uses {_DEFAULT_SERVICE_URL}. Without this flag, --output runs."
     ),
 )
@@ -616,18 +616,18 @@ def _print_submission_summary(
     type=click.Choice(_VISIBILITY_CHOICES),
     default="public",
     show_default=True,
-    help="Phase 3 only: visibility of the submitted result.",
+    help="Hosted mode only: visibility of the submitted result.",
 )
 @click.option(
     "--idempotency-key",
     type=str,
     default=None,
-    help="Phase 3 only: override the auto-generated key. Useful for resumable retries.",
+    help="Hosted mode only: override the auto-generated key. Useful for resumable retries.",
 )
 @click.option(
     "--wait/--no-wait",
     default=True,
-    help="Phase 3 only: wait for ingest to finish and print the public URL. [default: --wait]",
+    help="Hosted mode only: wait for ingest to finish and print the public URL. [default: --wait]",
 )
 @click.option(
     "--dry-run",
