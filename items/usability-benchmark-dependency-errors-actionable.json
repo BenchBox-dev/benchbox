@@ -1,12 +1,12 @@
 {
   "acceptance": [
-    "Test: make the tpcdi benchmark import fail with ModuleNotFoundError(name='pandas') (or the module tpcdi actually needs); the MCP run/validate paths return error_code DEPENDENCY_MISSING with the module name in details and `benchbox[tpcdi]` in suggestion; the CLI loader prints the module and install command instead of 'not supported yet'; the Python API raises with the same text.",
+    "Test: make the tpcdi benchmark import fail with ModuleNotFoundError(name='pandas') (or the module tpcdi actually needs); each of the three MCP sites (benchbox/mcp/tools/benchmark.py:559, :810, benchbox/mcp/jobs.py:1151) returns error_code DEPENDENCY_MISSING with the module name in details and `benchbox[tpcdi]` in suggestion; the CLI loader prints the module and install command instead of 'not supported yet'; the Python API raises with the same text.",
     "Test: an AttributeError / missing class in a benchmark module is reported as an internal error, not as a missing dependency.",
     "Test: every extra named in `_BENCHMARK_REGISTRY.optional_dependencies` exists in pyproject `[project.optional-dependencies]`; `create_import_error` never advises a nonexistent extra.",
-    "Smoke: in a throwaway venv/worktree environment where the tpcdi extra dependency is absent (or simulated by import blocking), run `benchbox run --benchmark tpcdi ...` (dry run) and the MCP tool once; record both outputs in the item context.",
+    "Smoke: in an environment where the tpcdi dependency is absent (or simulated by import blocking), run `benchbox run --benchmark tpcdi ...` (dry run) and the MCP tool once; record both outputs in the item context.",
     "make comment-policy-check, targeted tests, make test-fast and make pr-preflight pass; PR merged through CI oracle review (no override)."
   ],
-  "context": "Usability plan 2026-10-31 (owner request: fix user-facing instructions that are undocumented or point at contributor material), adversarial review finding C1 (UsabilityPlanCritic, core 07de4cd). Plan: W3.\n\nDECISION GATES (stop and ask): G1 if fixing needs a NEW pyproject extra or dependency change. G2 if the MCP error envelope must change shape (new top-level fields) rather than using details/suggestion.\n\nGUARDRAILS: messages never contain secrets (an install command may contain the user's own interpreter path); no change to which benchmarks are available; clean cutover of callers; no comments/docstrings; worktree-only writes; identity Joe Harris; no agent trailers.",
+  "context": "Usability plan 2026-10-31 (owner request: fix user-facing instructions that are undocumented or point at contributor material), adversarial review finding C1 (UsabilityPlanCritic, core 07de4cd). Plan: W3.\n\nDECISION GATES (stop and ask): G1 if fixing needs a NEW pyproject extra or dependency change. G2 if the MCP error envelope must change shape (new top-level fields) rather than using details/suggestion.\n\nGUARDRAILS: messages never contain secrets (an install command may contain the user's own interpreter path); no change to which benchmarks are available; clean cutover of callers; no comments/docstrings; worktree-only writes; identity Joe Harris; no agent trailers.\n\nTodoReview 2026-10-31 applied. CITATION FIX: the CLI loader is benchbox/core/benchmark_loader.py:125 (not benchbox/cli/). Commit and PR text contain no plan, gate or revision labels (W3, G1, R-W3).",
   "description": "PROBLEM. When a benchmark cannot load because an import fails, users get no actionable instruction: MCP returns \"Benchmark '<name>' requires additional dependencies\" (benchbox/mcp/tools/benchmark.py:559,810; benchbox/mcp/jobs.py:1151) and the CLI says \"Benchmark 'tpcdi' not supported yet. Available: ...tpcdi...\" (benchbox/cli/benchmark_loader.py:121-125). Root cause: `get_public_benchmark_class` (benchbox/core/benchmark_registry.py:276-285) converts ImportError, AttributeError and a missing class into None, discarding the missing module. In addition `_BENCHMARK_REGISTRY.optional_dependencies` (benchbox/__init__.py:60-73) lists extras that do not exist in pyproject (ssb, amplab, h2odb, clickbench, joinorder, coffeeshop; only `tpcdi` exists), and `create_import_error` (benchbox/utils/version.py:457-470) prints them as install advice.\n\nCHANGE. (1) The lookup surfaces the import failure: a ModuleNotFoundError/ImportError is reported with the missing module name (`ModuleNotFoundError.name`); AttributeError or a missing class is an internal error, not a missing dependency. (2) Correct `optional_dependencies` to extras that exist in pyproject. (3) One message source used by MCP (reusing the existing `MCPError.suggestion` field and the DEPENDENCY_MISSING code; no new envelope fields), the CLI loader and the Python API: names the module, the extra when one maps, and the install command from `get_install_command` (benchbox/utils/dependencies.py:43); without a mapped extra, names the module and points to https://benchbox.dev/docs/ installation guide page that exists. (4) changelog.d fragment (fix).",
   "links": [
     "benchbox/core/benchmark_registry.py",
@@ -24,6 +24,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "12fa67576fb34e5fa7f5114f36cc1c8c",
+      "session_id": "fdde7b96f2774961bbd4c814eff2ca0e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:73f4ce6dc372259381dd21db",
+      "at": "2026-10-31T15:16:08Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "46696701e3d049b28153e55ed42fd515",
       "session_id": "fdde7b96f2774961bbd4c814eff2ca0e"
     }
   ]
