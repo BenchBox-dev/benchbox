@@ -17,7 +17,7 @@ on:
         default: ""
 
 concurrency:
-  group: trunk-${{ github.sha }}
+  group: ${{ github.event_name == 'push' && 'trunk-develop' || format('trunk-{0}', github.sha) }}
   cancel-in-progress: false
 
 permissions:
