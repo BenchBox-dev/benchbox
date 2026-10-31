@@ -31,6 +31,8 @@ help:
 	@echo "  make test-local-matrix Run real local benchmark matrix (stress)"
 	@echo "  make test-required-local-cases Run the required local-engine cases; a skipped, deselected or failed case fails"
 	@echo "  make test-ci         Maintained broad local CI profile"
+	@echo "  make heavy-status    Show heavy-work lock holder, waiters, host pressure, VMs and orphaned servers (read-only)"
+	@echo "  make heavy-run CMD=...  Run a hand-started heavy command under the host lock with admission"
 	@echo ""
 	@echo "Database-Specific Testing:"
 	@echo "  make test-duckdb     Run DuckDB-specific tests"

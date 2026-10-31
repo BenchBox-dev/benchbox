@@ -713,6 +713,7 @@ def build_parser() -> argparse.ArgumentParser:
     clear.add_argument("path", nargs="?", type=Path)
     admit = sub.add_parser("admit", help="check host admission without taking the lock")
     admit.add_argument("--need-gib", type=float)
+    sub.add_parser("status", help="show lock holder, waiters, host pressure, VMs and orphaned servers (read-only)")
     return parser
 
 
@@ -721,6 +722,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command == "clear":
         return clear_inactive_lock(args.path if args.path is not None else lock_path())
+    if args.command == "status":
+        from benchbox.utils.heavy_status import status_command
+
+        return status_command()
     if args.command == "admit":
         return admit_command(args.need_gib)
     command = list(args.argv)

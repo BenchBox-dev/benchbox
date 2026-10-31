@@ -84,6 +84,7 @@ A disposable clone (remote session, CI runner) declares `BENCHBOX_EPHEMERAL_CLON
 - No credentials in Git; redact logs and use environment variables.
 - Live cloud tests and broad/destructive cleanup require explicit approval.
 - `[CHANGELOG-001]` User-facing PRs add a `changelog.d/` fragment; never edit `CHANGELOG.md`.
+- `[HEAVY-LOCK-001]` Heavy work (benchmarks, local test tiers, CI, UAT, hand-started servers) runs only through entry points that take the host lock or `make heavy-run CMD='...'`; stop hand-started servers afterwards and check `make heavy-status` first. Never move, delete, or recreate the lock file. Never set `BENCHBOX_SKIP_TEST_LOCK`, `BENCHBOX_HEAVY_ADMIT=force`, or `BENCHBOX_HEAVY_WATCHDOG=off` without owner approval in the current task. Known limits: fork-without-exec children inherit the flock, `kill -9` of a `run` wrapper leaves its child unlocked, VM memory is not tree-attributed (`docs/agent/heavy-work.md`).
 
 For long output, write `/tmp/<slug>.log` (report status + short tail). UAT/stress runs use `BENCHBOX_OUTPUT_DIR=~/Developer/benchmark_runs` (announce command, max runtime, log path, and stop condition). Do not commit raw logs, screenshots, browser reports, or generated binaries.
 
