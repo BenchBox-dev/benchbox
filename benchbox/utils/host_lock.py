@@ -242,7 +242,9 @@ def _waiter_is_live(pid: int, recorded_identity: str) -> bool:
     except ImportError:
         return True
     try:
-        return not recorded_identity or process_identity(psutil.Process(pid)) == recorded_identity
+        if not recorded_identity:
+            return bool(psutil.pid_exists(pid))
+        return process_identity(psutil.Process(pid)) == recorded_identity
     except psutil.Error:
         return False
 
@@ -511,6 +513,39 @@ def _supervise_windows(command: Sequence[str], env: Mapping[str, str]) -> int:
         return 130
 
 
+def _suspend_with_child(child_pid: int) -> None:
+    try:
+        os.tcsetpgrp(0, os.getpgrp())
+    except OSError:
+        pass
+    previous = signal.signal(signal.SIGTSTP, signal.SIG_DFL)
+    try:
+        os.killpg(os.getpgrp(), signal.SIGTSTP)
+    finally:
+        signal.signal(signal.SIGTSTP, previous)
+    if _stdin_foreground_state() == (True, True):
+        try:
+            os.tcsetpgrp(0, child_pid)
+        except OSError:
+            pass
+    try:
+        os.killpg(child_pid, signal.SIGCONT)
+    except OSError:
+        pass
+
+
+def _wait_for_child(child: subprocess.Popen[bytes], foreground: bool) -> int:
+    while True:
+        _, status = os.waitpid(child.pid, os.WUNTRACED)
+        if os.WIFSTOPPED(status):
+            if foreground:
+                _suspend_with_child(child.pid)
+            continue
+        code = os.waitstatus_to_exitcode(status)
+        child.returncode = code
+        return _exit_code(code)
+
+
 def _supervise_posix(command: Sequence[str], env: Mapping[str, str]) -> int:
     stdin_is_tty, foreground = _stdin_foreground_state()
     stdin = subprocess.DEVNULL if stdin_is_tty and not foreground else None
@@ -524,20 +559,22 @@ def _supervise_posix(command: Sequence[str], env: Mapping[str, str]) -> int:
         except OSError:
             pass
 
-    previous = {sig: signal.signal(sig, forward) for sig in _FORWARDED_SIGNALS}
+    previous = {
+        sig: signal.signal(sig, forward) for sig in _FORWARDED_SIGNALS if signal.getsignal(sig) != signal.SIG_IGN
+    }
     previous_ttou = signal.signal(signal.SIGTTOU, signal.SIG_IGN) if foreground else None
-    signal.pthread_sigmask(signal.SIG_BLOCK, _FORWARDED_SIGNALS)
     try:
-        child = subprocess.Popen(
-            list(command),
-            env=dict(env),
-            stdin=stdin,
-            preexec_fn=lambda: _prepare_child(foreground),
-        )
-    finally:
-        signal.pthread_sigmask(signal.SIG_UNBLOCK, _FORWARDED_SIGNALS)
-    try:
-        return _exit_code(child.wait())
+        signal.pthread_sigmask(signal.SIG_BLOCK, _FORWARDED_SIGNALS)
+        try:
+            child = subprocess.Popen(
+                list(command),
+                env=dict(env),
+                stdin=stdin,
+                preexec_fn=lambda: _prepare_child(foreground),
+            )
+        finally:
+            signal.pthread_sigmask(signal.SIG_UNBLOCK, _FORWARDED_SIGNALS)
+        return _wait_for_child(child, foreground)
     finally:
         if foreground:
             try:

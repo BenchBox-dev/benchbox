@@ -112,13 +112,14 @@ def _run_child_acquire(env: dict[str, str]) -> subprocess.CompletedProcess[str]:
     )
 
 
-def _cli(*args: str, env: dict[str, str] | None = None) -> subprocess.Popen:
+def _cli(*args: str, env: dict[str, str] | None = None, preexec_fn=None) -> subprocess.Popen:
     return subprocess.Popen(
         [sys.executable, "-I", "-c", CLI_PROGRAM, str(HOST_LOCK_FILE), *args],
         env=dict(os.environ) if env is None else env,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
+        preexec_fn=preexec_fn,
     )
 
 
@@ -295,6 +296,7 @@ def test_hold_context_manager_nests(lock_file: Path) -> None:
     assert not hl.lock_is_held(lock_file)
 
 
+@posix_only
 def test_a_waiter_on_an_unlinked_inode_never_reports_itself_as_holder(lock_file: Path) -> None:
     lock_file.parent.mkdir(parents=True)
     stale_fd = os.open(str(lock_file), os.O_CREAT | os.O_RDWR, 0o644)
@@ -310,6 +312,7 @@ def test_a_waiter_on_an_unlinked_inode_never_reports_itself_as_holder(lock_file:
         os.close(replacement_fd)
 
 
+@posix_only
 def test_an_orphaned_descriptor_is_replaced_by_one_on_the_visible_file(lock_file: Path) -> None:
     lock_file.parent.mkdir(parents=True)
     stale_fd = os.open(str(lock_file), os.O_CREAT | os.O_RDWR, 0o644)
@@ -323,6 +326,7 @@ def test_an_orphaned_descriptor_is_replaced_by_one_on_the_visible_file(lock_file
         os.close(fd)
 
 
+@posix_only
 def test_held_inode_matches_detects_a_replaced_lock_file(lock_file: Path) -> None:
     handle = hl.acquire(lock_file, wait_seconds=0, phase="test")
     try:
@@ -388,14 +392,31 @@ def test_stale_holder_text_does_not_block_acquire(lock_file: Path) -> None:
     handle.release()
 
 
-def test_wait_for_lock_closes_fd_on_interrupt(lock_file: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    def interrupt(fd: int, path: Path, timeout: float) -> int:
-        os.close(fd)
+@posix_only
+def test_an_interrupted_wait_closes_its_descriptor(lock_file: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    lock_file.parent.mkdir(parents=True)
+    holder_fd = os.open(str(lock_file), os.O_CREAT | os.O_RDWR, 0o644)
+    assert hl.try_lock(holder_fd)
+    opened: list[int] = []
+    original = hl._open_lock_file
+
+    def recording(path: Path) -> int:
+        fd = original(path)
+        opened.append(fd)
+        return fd
+
+    def interrupt(_seconds: float) -> None:
         raise KeyboardInterrupt
 
-    monkeypatch.setattr(hl, "wait_on_fd", interrupt)
-    with pytest.raises(KeyboardInterrupt):
-        hl.wait_for_lock(lock_file, 5.0)
+    monkeypatch.setattr(hl, "_open_lock_file", recording)
+    monkeypatch.setattr(hl.time, "sleep", interrupt)
+    try:
+        with pytest.raises(KeyboardInterrupt):
+            hl.wait_for_lock(lock_file, 5.0)
+    finally:
+        os.close(holder_fd)
+    with pytest.raises(OSError):
+        os.fstat(opened[0])
 
 
 @posix_only
@@ -537,6 +558,68 @@ def test_a_signal_to_the_wrapper_stops_the_child_and_releases_the_lock(lock_file
                 stream.close()
 
 
+def test_the_package_attribute_resolves_to_the_loaded_module() -> None:
+    import benchbox.utils
+
+    assert benchbox.utils.host_lock is hl
+
+
+@posix_only
+def test_a_waiter_marker_without_identity_is_not_counted_once_its_pid_is_dead(lock_file: Path) -> None:
+    finished = subprocess.run([sys.executable, "-c", "import os; print(os.getpid())"], capture_output=True, text=True)
+    waiters = hl.waiters_dir(lock_file)
+    waiters.mkdir(parents=True)
+    (waiters / finished.stdout.strip()).write_text("", encoding="utf-8")
+    (waiters / str(os.getpid())).write_text("", encoding="utf-8")
+    assert hl.live_waiter_count(lock_file) == 1
+
+
+@posix_only
+def test_test_unlock_resolves_its_path_through_the_module_not_home(tmp_path: Path) -> None:
+    home = tmp_path / "rewritten-home"
+    home.mkdir()
+    env = {key: value for key, value in os.environ.items() if key != hl.LOCK_DIR_ENV}
+    env["HOME"] = str(home)
+    result = subprocess.run(
+        ["make", "-n", "--no-print-directory", "test-unlock"],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "python3 -I benchbox/utils/host_lock.py clear"
+    assert str(home) not in result.stdout
+    assert not (home / ".benchbox").exists()
+
+
+@posix_only
+def test_an_ignored_hangup_stays_ignored_for_the_child(lock_file: Path) -> None:
+    hangup = signal.Signals["SIGHUP"]
+    wrapper = _cli("run", "--", "sleep", "2", preexec_fn=lambda: signal.signal(hangup, signal.SIG_IGN))
+    try:
+        _wait_until(lambda: lock_file.exists() and hl.lock_is_held(lock_file))
+        _wait_until(lambda: bool(psutil.Process(wrapper.pid).children()))
+        os.kill(wrapper.pid, hangup)
+        assert wrapper.wait(timeout=15) == 0
+    finally:
+        if wrapper.poll() is None:
+            wrapper.kill()
+            wrapper.wait()
+        for stream in (wrapper.stdout, wrapper.stderr):
+            if stream is not None:
+                stream.close()
+
+
+@posix_only
+def test_a_failed_spawn_restores_the_signal_handlers() -> None:
+    before = {sig: signal.getsignal(sig) for sig in hl._FORWARDED_SIGNALS}
+    with pytest.raises(FileNotFoundError):
+        hl._supervise_posix(["definitely-not-a-command-xyz"], dict(os.environ))
+    assert {sig: signal.getsignal(sig) for sig in hl._FORWARDED_SIGNALS} == before
+
+
 def _read_pty(master: int, deadline: float) -> bytes:
     chunks: list[bytes] = []
     while time.monotonic() < deadline:
@@ -624,6 +707,73 @@ def test_a_wrapper_outside_the_terminal_foreground_gives_the_child_no_stdin(lock
 
     assert code == 0, output
     assert b"got:''" in output
+
+
+@posix_only
+@pytest.mark.skipif(shutil.which("bash") is None, reason="bash is required")
+def test_ctrl_z_returns_the_terminal_to_the_shell_and_fg_resumes_the_child(lock_file: Path) -> None:
+    import pty
+
+    master, slave = pty.openpty()
+    shell = subprocess.Popen(
+        ["bash", "--norc", "--noprofile", "-i"],
+        stdin=slave,
+        stdout=slave,
+        stderr=slave,
+        preexec_fn=_become_session_leader,
+        env=dict(os.environ, PS1="", HISTFILE=os.devnull),
+    )
+    os.close(slave)
+    seen = bytearray()
+
+    def expect(marker: bytes, timeout: float = 20.0) -> None:
+        deadline = time.monotonic() + timeout
+        while marker not in seen:
+            if time.monotonic() > deadline:
+                raise AssertionError(f"{marker!r} not seen in {bytes(seen)!r}")
+            ready, _, _ = select.select([master], [], [], 0.2)
+            if ready:
+                seen.extend(os.read(master, 4096))
+
+    def sleeper() -> psutil.Process:
+        found = [c for c in psutil.Process(shell.pid).children(recursive=True) if c.name() == "sleep"]
+        assert found
+        return found[0]
+
+    try:
+        os.write(master, f'"{sys.executable}" -I "{HOST_LOCK_FILE}" run -- sleep 60\n'.encode())
+        _wait_until(lambda: lock_file.exists() and hl.lock_is_held(lock_file))
+        _wait_until(lambda: any(c.name() == "sleep" for c in psutil.Process(shell.pid).children(recursive=True)))
+        child = sleeper()
+        time.sleep(0.5)
+        os.write(master, b"\x1a")
+        os.write(master, b"echo BACK_$((20+22))\n")
+        expect(b"BACK_42")
+        _wait_until(lambda: child.status() == psutil.STATUS_STOPPED)
+        os.write(master, b"fg\n")
+        _wait_until(lambda: child.status() != psutil.STATUS_STOPPED)
+        _wait_until(lambda: os.tcgetpgrp(master) == os.getpgid(child.pid))
+        os.write(master, b"\x03")
+        _wait_until(lambda: not hl.lock_is_held(lock_file))
+        os.write(master, b"echo DONE_$((1+1))\n")
+        expect(b"DONE_2")
+        os.write(master, b"exit\n")
+        deadline = time.monotonic() + 20
+        while shell.poll() is None and time.monotonic() < deadline:
+            ready, _, _ = select.select([master], [], [], 0.2)
+            if ready:
+                try:
+                    os.read(master, 4096)
+                except OSError:
+                    break
+        assert shell.poll() == 0
+    finally:
+        for leftover in psutil.Process(shell.pid).children(recursive=True) if shell.poll() is None else []:
+            leftover.kill()
+        os.close(master)
+        if shell.poll() is None:
+            shell.kill()
+            shell.wait(timeout=10)
 
 
 def test_the_module_entry_point_runs_without_import_warnings(lock_file: Path) -> None:

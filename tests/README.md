@@ -373,8 +373,8 @@ The default is intentionally global across worktrees: ten retained worktrees
 can otherwise start ten independent `pytest -n auto` runs and saturate a
 developer workstation. For isolated debugging or sandboxed CI, set
 `BENCHBOX_TEST_LOCK_DIR=/path/to/dir`; BenchBox will use
-`$BENCHBOX_TEST_LOCK_DIR/test.lock` instead. `make test-unlock` honors the same
-override.
+`$BENCHBOX_TEST_LOCK_DIR/test.lock` instead. `make test-unlock` resolves the path through the
+same module, so it honors the override and the real-home default.
 
 **Contract** (`benchbox/utils/host_lock.py`, called from `tests/conftest.py` and
 `tests/utilities/session_isolation.py`):

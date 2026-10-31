@@ -51,6 +51,7 @@ from typing import Any
 import pytest
 
 pytest.register_assert_rewrite("tests.utilities.leak_detector")
+import benchbox.utils as _benchbox_utils
 from tests.utilities.leak_detector import restore_global
 from tests.utilities.optional_engines import (
     chdb_loaded,
@@ -59,6 +60,8 @@ from tests.utilities.optional_engines import (
     install_chdb_open_counter,
 )
 from tests.utilities.session_isolation import active as isolated_session_active, host_lock, warn_lock_bypass
+
+_benchbox_utils.host_lock = host_lock
 
 pytest_plugins = [
     "tests.fixtures.database_fixtures",
