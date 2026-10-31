@@ -80,7 +80,7 @@ class QuantonAdapter(
         resolved_api_key = api_key or os.environ.get("ONEHOUSE_API_KEY")
         if not resolved_api_key:
             raise ConfigurationError(
-                "Onehouse API key required. Provide via api_key parameter or ONEHOUSE_API_KEY environment variable."
+                "Onehouse API key required. Provide via --platform-option api_key=<key> or ONEHOUSE_API_KEY environment variable."
             )
 
         if not s3_staging_dir:
@@ -265,8 +265,7 @@ class QuantonAdapter(
                 properties.append(f"'hoodie.datasource.write.recordkey.field' = '{self.record_key}'")
             else:
                 logger.warning(
-                    f"No record_key configured for Hudi table {table}. "
-                    "Set --record-key or provide record_key in config."
+                    f"No record_key configured for Hudi table {table}; using '{table}_key' as the record key."
                 )
                 properties.append(f"'hoodie.datasource.write.recordkey.field' = '{table}_key'")
 

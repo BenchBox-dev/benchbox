@@ -119,21 +119,22 @@ class SnowflakeAdapter(PlatformAdapter):
         if not all([self.account, self.username, self.password, self.warehouse, self.database]):
             missing = []
             if not self.account:
-                missing.append("account (or SNOWFLAKE_ACCOUNT)")
+                missing.append("account")
             if not self.username:
-                missing.append("username (or SNOWFLAKE_USER)")
+                missing.append("username")
             if not self.password:
-                missing.append("password (or SNOWFLAKE_PASSWORD)")
+                missing.append("password")
             if not self.warehouse:
-                missing.append("warehouse (or SNOWFLAKE_WAREHOUSE)")
+                missing.append("warehouse")
             if not self.database:
-                missing.append("database (or SNOWFLAKE_DATABASE)")
+                missing.append("database")
 
             raise ConfigurationError(
                 f"Snowflake configuration is incomplete. Missing: {', '.join(missing)}\n"
-                "Configure with one of:\n"
-                "  1. CLI: benchbox setup --platform snowflake\n"
-                "  2. Environment variables: SNOWFLAKE_ACCOUNT, SNOWFLAKE_USER, SNOWFLAKE_PASSWORD, etc."
+                "benchbox run uses the saved Snowflake credentials and does not read SNOWFLAKE_* environment variables.\n"
+                "Save them with: benchbox setup --platform snowflake\n"
+                "Setup can read SNOWFLAKE_ACCOUNT, SNOWFLAKE_USERNAME, SNOWFLAKE_PASSWORD, "
+                "SNOWFLAKE_WAREHOUSE and SNOWFLAKE_DATABASE from your environment."
             )
 
         self.gateway_endpoint = resolve_gateway_endpoint(

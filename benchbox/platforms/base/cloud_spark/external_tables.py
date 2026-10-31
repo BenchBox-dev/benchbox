@@ -31,6 +31,7 @@ _SOURCE_FORMAT_BY_EXTENSION = {
 
 class SparkExternalTableMixin:
     supports_external_tables: bool = True
+    external_staging_instruction: str = "Set the adapter's s3_staging_dir (AWS) or gcs_staging_dir (Dataproc)."
 
     def _external_staging_root(self) -> str | None:
         return getattr(self, "s3_staging_dir", None) or getattr(self, "gcs_staging_dir", None)
@@ -40,9 +41,7 @@ class SparkExternalTableMixin:
         platform = getattr(self, "platform_name", type(self).__name__)
         if not root:
             raise ValueError(
-                f"{platform} external mode requires a staging location. "
-                "Set --platform-option s3_staging_dir=s3://bucket/path (AWS) or "
-                "--platform-option gcs_staging_dir=gs://bucket/path (Dataproc)."
+                f"{platform} external mode requires a staging location. {self.external_staging_instruction}"
             )
         normalized = str(root).strip()
         lowered = normalized.lower()

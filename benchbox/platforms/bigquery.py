@@ -142,8 +142,8 @@ class BigQueryAdapter(PlatformAdapter):
             raise ConfigurationError(
                 "BigQuery configuration requires project_id.\n"
                 "Configure with one of:\n"
-                "  1. CLI: benchbox setup --platform bigquery\n"
-                "  2. Environment variable: BIGQUERY_PROJECT\n"
+                "  1. CLI: benchbox setup --platform bigquery (setup reads BIGQUERY_PROJECT when it is set)\n"
+                "  2. Application Default Credentials that carry a project (it is detected automatically)\n"
                 "Also ensure Google Cloud credentials are configured:\n"
                 "  - Set GOOGLE_APPLICATION_CREDENTIALS to service account JSON path\n"
                 "  - Or run 'gcloud auth application-default login'"
@@ -186,7 +186,9 @@ class BigQueryAdapter(PlatformAdapter):
                         logging.info(f"Auto-detected BigQuery project ID: {project_id}")
             except google.auth.exceptions.DefaultCredentialsError:
                 if very_verbose:
-                    logging.warning("Could not auto-detect BigQuery project ID. Please provide --project-id.")
+                    logging.warning(
+                        "Could not auto-detect BigQuery project ID. Run 'benchbox setup --platform bigquery' to save one."
+                    )
 
         if config.get("project_id"):
             adapter_config["project_id"] = config["project_id"]

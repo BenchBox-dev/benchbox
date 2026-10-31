@@ -285,7 +285,7 @@ def _auto_detect_snowflake(console: Union[Console, QuietConsoleProxy]) -> Option
     found_required = all(env_vars.get(field) for field in required)
 
     if not found_required:
-        missing = [field.upper() for field in required if not env_vars.get(field)]
+        missing = [f"SNOWFLAKE_{field.upper()}" for field in required if not env_vars.get(field)]
         console.print(f"  ⚠️  Missing environment variables: {', '.join(missing)}")
         return None
 
