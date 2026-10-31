@@ -183,21 +183,44 @@ def _items_select_heavy(items) -> bool:
     return any(_is_heavy_marker(marker.name) for item in items for marker in item.iter_markers())
 
 
+MAX_FREE_EXPRESSION_NAMES = 12
+GENERIC_LIVE_MARKER = "live_x"
+IMPLIES_LIVE = "live_integration"
+
+
+def _implied_marker_sets(marker: str, named: bool) -> list[frozenset[str]]:
+    plain = frozenset({marker})
+    if marker == IMPLIES_LIVE or not (marker == "docker_integration" or marker.startswith(LIVE_PREFIX)):
+        return [plain]
+    with_live = frozenset({marker, IMPLIES_LIVE})
+    return [with_live, plain] if named else [with_live]
+
+
 def _expression_selects_heavy(expression: str | None) -> bool:
     if expression is None:
         return False
     if not expression.strip():
         return True
     try:
+        from itertools import product
+
         from _pytest.mark.expression import Expression
 
         compiled = Expression.compile(expression)
-        named = {
-            word
-            for word in re.findall(r"[A-Za-z_][A-Za-z0-9_]*", expression)
-            if word not in {"and", "or", "not"} and _is_heavy_marker(word)
-        }
-        return any(bool(compiled.evaluate(lambda name, _only=word, **_: name == _only)) for word in sorted(named))
+        names = {word for word in re.findall(r"[A-Za-z_][A-Za-z0-9_]*", expression) if word not in {"and", "or", "not"}}
+        named_heavy = {name for name in names if _is_heavy_marker(name)}
+        free = sorted(names - named_heavy)
+        if len(free) > MAX_FREE_EXPRESSION_NAMES:
+            return True
+        candidates = [(marker, marker in named_heavy) for marker in sorted(HEAVY_MARKERS | named_heavy)]
+        candidates.append((GENERIC_LIVE_MARKER, False))
+        for marker, named in candidates:
+            for heavy_set in _implied_marker_sets(marker, named):
+                for values in product((False, True), repeat=len(free)):
+                    truth = dict(zip(free, values, strict=True))
+                    if compiled.evaluate(lambda name, _t=truth, _h=heavy_set: name in _h or _t.get(name, False)):
+                        return True
+        return False
     except Exception:
         return True
 

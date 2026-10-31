@@ -30,7 +30,9 @@ stop_if_started() {
   fi
 }
 
-trap 'exit 143' TERM INT HUP
+trap 'exit 130' INT
+trap 'exit 129' HUP
+trap 'exit 143' TERM
 trap stop_if_started EXIT
 
 container machine run -n "$machine" "$@"

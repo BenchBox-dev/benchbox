@@ -45,6 +45,8 @@ def _declared_need_gib(spec: docker_assets.DockerPlatformSpec, env: dict[str, st
 
 
 def _admit_bring_up(platform: str, spec: docker_assets.DockerPlatformSpec, env: dict[str, str]) -> int:
+    if os.environ.get(host_lock.OWNER_ENV):
+        return 0
     try:
         report = host_lock.check_admission(need_gib=_declared_need_gib(spec, env))
     except docker_assets.DockerAssetError as exc:

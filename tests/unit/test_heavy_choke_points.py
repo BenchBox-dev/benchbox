@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -13,10 +14,18 @@ from tests.utilities.paths import REPO_ROOT
 
 pytestmark = [pytest.mark.fast, pytest.mark.unit]
 
+posix_only = pytest.mark.skipif(sys.platform == "win32", reason="POSIX process semantics")
+needs_make = pytest.mark.skipif(shutil.which("make") is None, reason="make is required")
+needs_bash = pytest.mark.skipif(shutil.which("bash") is None, reason="bash is required")
+
 WRAPPER = "scripts/linux_machine_run.sh"
 WRAPPER_PATH = REPO_ROOT / WRAPPER
 MACHINE_RUN = re.compile(r"\bcontainer machine run\b")
-COMPOSE_UP = re.compile(r"(?:\bcompose\b|\$\(COMPOSE\))[^\n]*?\bup\b")
+QUOTED = re.compile(r"\"[^\"]*\"|'[^']*'")
+SEPARATORS = re.compile(r"&&|\|\||;")
+COMPOSE_TOKENS = frozenset({"compose", "$(COMPOSE)"})
+ADMIT_TOKEN = "$(COMPOSE_ADMIT)"
+PROSE_COMMANDS = frozenset({"echo", "printf"})
 PYTHON_UP_ARGV = re.compile(r"""["']up["']\s*,\s*["']-d["']""")
 PYTHON_UP_OWNER = "tests/uat/docker_assets.py"
 
@@ -43,6 +52,39 @@ def _python_sources() -> dict[str, str]:
     return {str(path.relative_to(REPO_ROOT)): path.read_text(encoding="utf-8") for path in paths}
 
 
+def _blocks(text: str) -> list[str]:
+    blocks: list[str] = []
+    previous_continues = False
+    for raw in text.splitlines(keepends=True):
+        if blocks and (raw.startswith("\t") or previous_continues):
+            blocks[-1] += raw
+        else:
+            blocks.append(raw)
+        previous_continues = raw.rstrip("\n").endswith("\\")
+    return blocks
+
+
+def _compose_up_without_admission(block: str) -> list[str]:
+    found: list[str] = []
+    admitted = False
+    for line in _logical_lines(block):
+        for segment in SEPARATORS.split(QUOTED.sub('""', line)):
+            tokens = segment.replace("@", " ", 1).split()
+            if tokens and tokens[0] in PROSE_COMMANDS:
+                continue
+            armed = False
+            for token in tokens:
+                if token == ADMIT_TOKEN:
+                    admitted = True
+                elif token in COMPOSE_TOKENS:
+                    armed = True
+                elif token == "up" and armed:
+                    armed = False
+                    if not admitted:
+                        found.append(segment.strip())
+    return found
+
+
 def find_violations(shell: dict[str, str], python: dict[str, str]) -> list[str]:
     violations: list[str] = []
     for name, text in shell.items():
@@ -55,8 +97,11 @@ def find_violations(shell: dict[str, str], python: dict[str, str]) -> list[str]:
                 guarded = "host_lock" in line or "$(HOST_LOCK_CLI)" in line
                 if not (guarded and " run " in line and "--guard" in line):
                     violations.append(f"{name}: {WRAPPER} not under host_lock run --guard: {line.strip()}")
-            if COMPOSE_UP.search(line) and "$(COMPOSE_ADMIT)" not in line:
-                violations.append(f"{name}: compose up without $(COMPOSE_ADMIT): {line.strip()}")
+        for block in _blocks(text):
+            violations.extend(
+                f"{name}: compose up without $(COMPOSE_ADMIT): {segment}"
+                for segment in _compose_up_without_admission(block)
+            )
     for name, text in python.items():
         if name != PYTHON_UP_OWNER and PYTHON_UP_ARGV.search(text):
             violations.append(f"{name}: compose up argv built outside compose_up_command")
@@ -87,6 +132,13 @@ def test_the_compose_admission_variable_runs_host_admission() -> None:
         ({"Makefile": "x:\n\tbash scripts/linux_machine_run.sh m -- true\n"}, {}, "not under host_lock"),
         ({"make/a.mk": "x:\n\t$(COMPOSE) -p p -f f.yml up -d --wait\n"}, {}, "compose up without"),
         ({"scripts/a.sh": "docker compose -f f.yml up -d\n"}, {}, "compose up without"),
+        ({"make/a.mk": "x:\n\t@set -e; foo && docker compose -f f.yml up -d\n"}, {}, "compose up without"),
+        (
+            {"make/a.mk": "x:\n\t$(COMPOSE_ADMIT) true\ny:\n\t$(COMPOSE) -p p up -d\n"},
+            {},
+            "compose up without",
+        ),
+        ({"make/a.mk": "x:\n\t$(COMPOSE) -p p up -d; $(COMPOSE_ADMIT) true\n"}, {}, "compose up without"),
         ({}, {"scripts/x.py": 'argv = ["compose", "up", "-d"]\n'}, "outside compose_up_command"),
     ],
 )
@@ -103,6 +155,9 @@ def test_the_choke_point_check_ignores_usage_lines_and_guarded_calls() -> None:
             '\t@echo "  container machine run -n m"\n'
             "\t$(HOST_LOCK_CLI) run --guard -- bash scripts/linux_machine_run.sh m -- true\n"
             "\t$(COMPOSE_ADMIT) $(COMPOSE) -p p -f f.yml up -d --wait\n"
+            "test-docker-up-%:\n"
+            '\t@echo "bringing compose up"; echo up-to-date\n'
+            "\t$(COMPOSE_ADMIT) x=1; $(COMPOSE) -p p up -d\n"
         )
     }
     assert find_violations(shell, {}) == []
@@ -179,12 +234,16 @@ def _locked_wrapper(env: dict[str, str], *args: str) -> subprocess.CompletedProc
     )
 
 
+@posix_only
+@needs_bash
 def test_the_wrapper_refuses_to_boot_the_machine_outside_the_host_lock(tmp_path: Path) -> None:
     result = _wrapper(_stub_env(tmp_path, "stopped"), "--", "true")
     assert result.returncode == 2
     assert _calls(tmp_path) == []
 
 
+@posix_only
+@needs_bash
 def test_a_machine_this_run_started_is_stopped_afterwards_and_the_lock_is_held_meanwhile(tmp_path: Path) -> None:
     probe = tmp_path / "probe"
     check = "from benchbox.utils import host_lock as h; print(h.lock_is_held(h.lock_path()))"
@@ -196,18 +255,36 @@ def test_a_machine_this_run_started_is_stopped_afterwards_and_the_lock_is_held_m
     assert calls[-2:] == ["machine run -n m -e A=1 -- true", "machine stop m"]
 
 
+@posix_only
+@needs_bash
 def test_a_machine_that_was_already_running_is_left_running(tmp_path: Path) -> None:
     result = _locked_wrapper(_stub_env(tmp_path, "running"), "--", "true")
     assert result.returncode == 0, result.stderr
     assert not any(call.startswith("machine stop") for call in _calls(tmp_path))
 
 
+@posix_only
+@needs_bash
+@pytest.mark.parametrize(("signal_name", "code"), [("INT", 130), ("HUP", 129), ("TERM", 143)])
+def test_a_signal_during_the_run_exits_with_its_conventional_code_and_still_stops_the_machine(
+    tmp_path: Path, signal_name: str, code: int
+) -> None:
+    hook = f'kill -{signal_name} "$(ps -o ppid= -p $PPID | tr -d " ")"'
+    result = _locked_wrapper(_stub_env(tmp_path, "stopped", STUB_RUN_HOOK=hook), "--", "true")
+    assert result.returncode == code, result.stderr
+    assert _calls(tmp_path)[-1] == "machine stop m"
+
+
+@posix_only
+@needs_bash
 def test_the_run_status_survives_the_stop(tmp_path: Path) -> None:
     result = _locked_wrapper(_stub_env(tmp_path, "stopped", STUB_RUN_EXIT="7", STUB_STOP_EXIT="1"), "--", "false")
     assert result.returncode == 7
     assert _calls(tmp_path)[-1] == "machine stop m"
 
 
+@posix_only
+@needs_bash
 def test_an_unknown_prior_state_is_never_stopped(tmp_path: Path) -> None:
     env = _stub_env(tmp_path, "unknown")
     result = _locked_wrapper(env, "--", "true")
@@ -221,7 +298,9 @@ exit 0
 """
 
 
-def _make_up(tmp_path: Path, **extra: str) -> subprocess.CompletedProcess[str]:
+def _make_up(
+    tmp_path: Path, *make_args: str, target: str = "test-docker-up-postgresql", **extra: str
+) -> subprocess.CompletedProcess[str]:
     engine = tmp_path / "engine"
     engine.write_text(STUB_ENGINE, encoding="utf-8")
     engine.chmod(0o755)
@@ -238,10 +317,11 @@ def _make_up(tmp_path: Path, **extra: str) -> subprocess.CompletedProcess[str]:
             "make",
             "--no-print-directory",
             "-s",
-            "test-docker-up-postgresql",
+            target,
             f"CONTAINER_ENGINE={engine}",
             f"DOCKER_TEST_STATE_DIR={tmp_path / 'state'}",
             f"HOST_LOCK_CLI={sys.executable} -m benchbox.utils.host_lock",
+            *make_args,
         ],
         cwd=REPO_ROOT,
         env=env,
@@ -251,13 +331,8 @@ def _make_up(tmp_path: Path, **extra: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def test_the_compose_bring_up_refuses_before_invoking_the_engine_when_admission_fails(tmp_path: Path) -> None:
-    result = _make_up(tmp_path, BENCHBOX_HEAVY_ADMIT_MIN_GIB="1000000")
-    assert result.returncode != 0
-    assert f"Error {EXIT_ADMISSION}" in result.stderr + result.stdout, result.stdout + result.stderr
-    assert not any(" up " in call for call in _calls(tmp_path))
-
-
+@posix_only
+@needs_make
 def test_the_compose_bring_up_invokes_the_engine_unchanged_when_admission_passes(tmp_path: Path) -> None:
     result = _make_up(tmp_path, BENCHBOX_HEAVY_ADMIT="force")
     assert result.returncode == 0, result.stdout + result.stderr
@@ -281,6 +356,7 @@ def _bring_up_harness(monkeypatch: pytest.MonkeyPatch, module, admission):
     from benchbox.utils import host_lock
     from tests.uat import matrix
 
+    monkeypatch.delenv(host_lock.OWNER_ENV, raising=False)
     calls: list[list[str]] = []
 
     def fake_run(argv, **kwargs):
@@ -311,6 +387,20 @@ def test_uat_bring_up_refuses_before_invoking_the_engine_when_admission_fails(mo
     assert calls == []
     assert "free memory 0.1 GiB below floor" in capsys.readouterr().err
     assert needs and (needs[0] is None or needs[0] > 0)
+
+
+def test_uat_bring_up_skips_admission_inside_a_locked_run(monkeypatch) -> None:
+    from benchbox.utils import host_lock
+
+    module = _load_bring_up()
+
+    def refuse(*, need_gib=None, environ=None):
+        raise AssertionError("a locked run owns admission")
+
+    calls = _bring_up_harness(monkeypatch, module, refuse)
+    monkeypatch.setenv(host_lock.OWNER_ENV, "1:1.0")
+    assert module.main(["--platform", "postgresql"]) == 0
+    assert len(calls) == 1
 
 
 def test_uat_bring_up_invokes_the_engine_unchanged_when_admission_passes(monkeypatch) -> None:

@@ -831,6 +831,8 @@ def _run_heavy(args: argparse.Namespace, handler: Handler, raw_argv: list[str]) 
     except host_lock.AdmissionRefused as exc:
         _log_refusal(f"REFUSED: host is not ready for heavy work; lock released\n{exc.report}")
         return host_lock.EXIT_ADMISSION
+    except KeyboardInterrupt:
+        return 130
     previous_owner = os.environ.get(host_lock.OWNER_ENV)
     if not handle.inherited:
         os.environ[host_lock.OWNER_ENV] = host_lock.process_identity()

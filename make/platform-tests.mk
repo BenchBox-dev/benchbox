@@ -67,6 +67,7 @@ test-docker-up-pg-extensions:
 		mkdir -p "$$state_dir"; \
 		project_name="$$(cat "$$project_file" 2>/dev/null || true)"; \
 		if [ -z "$$project_name" ]; then \
+			$(COMPOSE_ADMIT) \
 			project_name="benchbox-pg-extensions-test-$$(date +%s)-$$RANDOM"; \
 		fi; \
 		status=1; \
@@ -77,7 +78,7 @@ test-docker-up-pg-extensions:
 			fi; \
 		}; \
 		trap cleanup EXIT INT TERM; \
-		$(COMPOSE_ADMIT) docker compose -p "$$project_name" -f docker/postgres-extensions/docker-compose.yml up -d --wait; \
+		docker compose -p "$$project_name" -f docker/postgres-extensions/docker-compose.yml up -d --wait; \
 		printf '%s\n' "$$project_name" > "$$project_file"; \
 		status=0
 
@@ -96,10 +97,11 @@ test-docker-down-pg-extensions:
 test-docker-pg-extensions:
 	@echo "Running pg_duckdb and pg_mooncake Docker integration tests"
 	@set -e; \
+		$(COMPOSE_ADMIT) \
 		project_name="benchbox-pg-extensions-test-$$(date +%s)-$$RANDOM"; \
 		cleanup() { docker compose -p "$$project_name" -f docker/postgres-extensions/docker-compose.yml down -v || true; }; \
 		trap cleanup EXIT INT TERM; \
-		$(COMPOSE_ADMIT) docker compose -p "$$project_name" -f docker/postgres-extensions/docker-compose.yml up -d --wait; \
+		docker compose -p "$$project_name" -f docker/postgres-extensions/docker-compose.yml up -d --wait; \
 		uv run -- python -m pytest -m "live_pg_duckdb or live_pg_mooncake" --tb=short -v -n 0
 
 DOCKER_PLATFORMS := clickhouse trino presto postgresql starrocks doris databend influxdb cedardb firebolt questdb singlestore
@@ -126,6 +128,7 @@ test-docker-up-%:
 		mkdir -p "$$state_dir"; \
 		project_name="$$(cat "$$project_file" 2>/dev/null || true)"; \
 		if [ -z "$$project_name" ]; then \
+			$(COMPOSE_ADMIT) \
 			project_name="benchbox-$*-test-$$(date +%s)-$$RANDOM"; \
 		fi; \
 		status=1; \
@@ -136,7 +139,7 @@ test-docker-up-%:
 			fi; \
 		}; \
 		trap cleanup EXIT INT TERM; \
-		$(COMPOSE_ADMIT) $(COMPOSE) -p "$$project_name" -f docker/$*/docker-compose.yml up -d --wait; \
+		$(COMPOSE) -p "$$project_name" -f docker/$*/docker-compose.yml up -d --wait; \
 		printf '%s\n' "$$project_name" > "$$project_file"; \
 		status=0
 
@@ -155,20 +158,22 @@ test-docker-down-%:
 test-docker-firebolt:
 	@echo "Running Firebolt Core Docker integration tests"
 	@set -e; \
+		$(COMPOSE_ADMIT) \
 		project_name="benchbox-firebolt-test-$$(date +%s)-$$RANDOM"; \
 		cleanup() { { $(call compose_down_fresh,$$project_name,docker/firebolt/docker-compose.yml) ; } || true; }; \
 		trap cleanup EXIT INT TERM; \
-		$(COMPOSE_ADMIT) $(COMPOSE) -p "$$project_name" -f docker/firebolt/docker-compose.yml up -d --wait; \
+		$(COMPOSE) -p "$$project_name" -f docker/firebolt/docker-compose.yml up -d --wait; \
 		uv run -- python -m pytest -m "live_firebolt_core" --tb=short -v -n 0
 
 test-docker-%:
 	@echo "Running $* Docker integration tests"
 	@set -e; \
+		$(COMPOSE_ADMIT) \
 		project_name="benchbox-$*-test-$$(date +%s)-$$RANDOM"; \
 		cleanup() { { $(call compose_down_fresh,$$project_name,docker/$*/docker-compose.yml) ; } || true; }; \
 		trap cleanup EXIT INT TERM; \
 		$(call require_data_dir_if_mounted,$*); \
-		$(COMPOSE_ADMIT) $(COMPOSE) -p "$$project_name" -f docker/$*/docker-compose.yml up -d --wait; \
+		$(COMPOSE) -p "$$project_name" -f docker/$*/docker-compose.yml up -d --wait; \
 		uv run -- python -m pytest -m "live_$*" --tb=short -v -n 0
 
 test-docker-up-all:
@@ -195,11 +200,14 @@ test-docker-up-all:
 			project_file="$$state_dir/$$p.project"; \
 			project_name="$$(cat "$$project_file" 2>/dev/null || true)"; \
 			if [ -z "$$project_name" ]; then \
+				status=0; \
+				$(COMPOSE_ADMIT) \
+				status=1; \
 				project_name="benchbox-$$p-test-$$run_id"; \
 				printf '%s\n' "$$project_name" > "$$project_file"; \
 			fi; \
 			echo "Starting $$p..."; \
-			$(COMPOSE_ADMIT) $(COMPOSE) -p "$$project_name" -f docker/$$p/docker-compose.yml up -d --wait; \
+			$(COMPOSE) -p "$$project_name" -f docker/$$p/docker-compose.yml up -d --wait; \
 		done; \
 		status=0
 

@@ -859,6 +859,20 @@ def test_an_unlisted_subcommand_acquires_the_lock_with_admission_and_guard(monke
     assert "BENCHBOX_TEST_SESSION_OWNER" not in _cli.os.environ
 
 
+def test_an_interrupt_while_waiting_for_the_lock_exits_130(monkeypatch, tmp_path):
+    _guard_env(monkeypatch, tmp_path)
+    monkeypatch.setattr(_cli.session_isolation, "active", lambda: False)
+    seen: list[str | None] = []
+    _with_fake_subcommand(monkeypatch, "future-heavy", seen)
+
+    def interrupted(*args, **kwargs):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(_cli.host_lock, "acquire", interrupted)
+    assert _cli.main(["future-heavy"]) == 130
+    assert seen == []
+
+
 def test_dispatch_inside_an_isolated_session_does_not_acquire(monkeypatch, tmp_path):
     _guard_env(monkeypatch, tmp_path)
     monkeypatch.setattr(_cli.session_isolation, "active", lambda: True)

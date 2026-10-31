@@ -1,5 +1,9 @@
 name: Release v2
 
+env:
+  BENCHBOX_HEAVY_ADMIT_MIN_GIB: "1.5"
+  BENCHBOX_HEAVY_MIN_FREE_DISK_GIB: "5"
+
 on:
   push:
     tags: ['v*']
