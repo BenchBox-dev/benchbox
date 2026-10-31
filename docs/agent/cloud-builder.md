@@ -106,7 +106,8 @@ review.
 `make pr-open` does the proxy wiring itself. It reads `gateway_proxy=` from the
 status file (accepting only a loopback `http://127.0.0.1:<port>` value), reaches
 the gateway through it for the health check, and gives the reviewer
-`HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY` (loopback only) for that one run.
+`HTTPS_PROXY`, `HTTP_PROXY`, `PI_PROXY` and `NO_PROXY` (loopback only) for that
+one run. `omp` ignores the first two for its gateway call and honors `PI_PROXY`.
 The `oracle-local` client and CI never receive proxy variables. It installs
 or reuses the pinned `omp` in the shared cache (`~/.cache/benchbox/omp`, or
 `BENCHBOX_OMP_CACHE`), the same build `make cloud-gateway` verified; the
