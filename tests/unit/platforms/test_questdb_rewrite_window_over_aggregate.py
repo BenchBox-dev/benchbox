@@ -2,9 +2,13 @@ from __future__ import annotations
 
 import pytest
 
-from benchbox.platforms.questdb_rewrites import rewrite_query
+from benchbox.platforms.questdb_rewrites import rewrite_with_modules
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
+
+
+def rewrite_query(sql: str) -> str:
+    return rewrite_with_modules(sql, "window_over_aggregate")
 
 
 def test_window_over_aggregate_runs_above_the_aggregation():
@@ -62,7 +66,11 @@ def test_group_by_without_window_is_untouched():
 
 
 def test_rollup_with_window_is_staged_once():
-    rewritten = rewrite_query("SELECT a, SUM(x) AS s, RANK() OVER (ORDER BY SUM(x)) AS r FROM t GROUP BY ROLLUP (a)")
+    rewritten = rewrite_with_modules(
+        "SELECT a, SUM(x) AS s, RANK() OVER (ORDER BY SUM(x)) AS r FROM t GROUP BY ROLLUP (a)",
+        "grouping_sets",
+        "window_over_aggregate",
+    )
     assert rewritten.count("RANK()") == 1
     assert "UNION ALL" in rewritten
     assert rewritten.startswith("SELECT __g0 AS a, __a0 AS s, RANK() OVER (ORDER BY __a0) AS r FROM (")
