@@ -9455,9 +9455,9 @@
     },
     "docs-remediation-live-site-publish": {
       "claim": {
-        "expires_at": "2026-11-01T00:16:42Z",
-        "generation": "c28dc495db0a4d149ad43acd48df156d",
-        "renewals": 0,
+        "expires_at": "2026-11-01T00:16:56Z",
+        "generation": "bb9cdcd3fdf34f1ca3554fc1450ab1bc",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8"
       },
       "needs": [
