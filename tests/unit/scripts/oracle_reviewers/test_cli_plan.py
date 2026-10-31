@@ -509,7 +509,7 @@ def _block(provider: str, *, recorded: timedelta, remaining: timedelta) -> PoolB
 def test_a_primary_provider_pool_block_is_carried_to_a_new_head(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    block = _block("anthropic", recorded=timedelta(hours=1), remaining=timedelta(hours=2))
+    block = _block("anthropic", recorded=timedelta(minutes=20), remaining=timedelta(minutes=30))
     state = State(7, "c" * 40, "pending", block.recorded_at, (), {"claude": block})
     _, _, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), SOUNDNESS, state))
     assert plan["pool_blocked_until"] == {"claude": block.to_json()}
@@ -540,10 +540,10 @@ def test_a_fallback_provider_block_older_than_one_hour_is_dropped_for_the_same_h
     assert plan["pool_blocked_until"] == {}
 
 
-def test_a_primary_provider_block_older_than_the_cap_is_dropped(
+def test_a_primary_provider_block_older_than_the_backoff_is_dropped(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    block = _block("anthropic", recorded=timedelta(hours=25), remaining=timedelta(days=6))
+    block = _block("anthropic", recorded=timedelta(minutes=61), remaining=timedelta(days=6))
     state = State(7, HEAD, "pending", block.recorded_at, (), {"claude": block})
     _, _, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), SOUNDNESS, state))
     assert plan["pool_blocked_until"] == {}

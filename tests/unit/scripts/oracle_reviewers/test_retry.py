@@ -310,7 +310,7 @@ def test_a_legacy_pool_block_loads_with_an_unknown_provider() -> None:
     }
     block = State.from_json(data).pool_blocked_until["claude"]
     assert block == PoolBlock(until, "", NOW)
-    assert effective_until("claude", block) == NOW + QUOTA_BACKOFF
+    assert effective_until(block) == NOW + QUOTA_BACKOFF
 
 
 def test_a_failed_install_is_not_re_dispatched_by_the_sweep_but_a_manual_rerun_may_retry_it(policy: Policy) -> None:
