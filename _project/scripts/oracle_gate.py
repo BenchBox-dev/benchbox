@@ -29,13 +29,13 @@ from oracle_review_check import (
     fetch_pull,
     fetch_reviews,
     fetch_statuses,
-    fetch_threads,
     path_matcher,
 )
 
 GATE_CONTEXT = "oracle-gate"
 GATED_BASE = "develop"
 DESCRIPTION_LIMIT = 140
+PENDING_DESCRIPTION = "oracle-gate: evaluating this head"
 PULL_READ_ATTEMPTS = 3
 PULL_READ_BACKOFF_SECONDS = 2
 HEAD_SHA_PATTERN = re.compile(r"[0-9a-f]{40}")
@@ -84,8 +84,23 @@ def target_url(repo: str) -> str | None:
     return f"{server}/{repo}/actions/runs/{run_id}"
 
 
+def pending_payload(target_url: str | None = None) -> dict[str, Any]:
+    payload: dict[str, Any] = {"state": "pending", "context": GATE_CONTEXT, "description": PENDING_DESCRIPTION}
+    if target_url is not None:
+        payload["target_url"] = target_url
+    return payload
+
+
 def post_status(token: str, repo: str, head_sha: str, status: int, message: str) -> None:
-    body = json.dumps(status_payload(status, message, target_url(repo))).encode()
+    _post_payload(token, repo, head_sha, status_payload(status, message, target_url(repo)))
+
+
+def post_pending(token: str, repo: str, head_sha: str) -> None:
+    _post_payload(token, repo, head_sha, pending_payload(target_url(repo)))
+
+
+def _post_payload(token: str, repo: str, head_sha: str, payload: dict[str, Any]) -> None:
+    body = json.dumps(payload).encode()
     request = urllib.request.Request(
         f"{API_ROOT}/repos/{repo}/statuses/{head_sha}",
         data=body,
@@ -137,14 +152,13 @@ def evaluate(repo: str, pr: int, token: str) -> tuple[str, int, str]:
         files = changed_paths(items)
         matcher = path_matcher(len(items), pull["changed_files"], *load_policy_rules())
         statuses = fetch_statuses(token, repo, head_sha)
-        threads = fetch_threads(token, repo, pr)
         base_date = fetch_base_change_date(token, repo, pr)
         comments = fetch_comments(token, repo, pr)
         reviews = fetch_reviews(token, repo, pr)
         annotate_receipt(token, reviews, head_sha, base_date)
         bump = fetch_bump_refusals(token, repo, pull, files, len(items), comments)
         status, message = decide(
-            head_sha, files, statuses, threads, matcher, base_date, comments, reviews=reviews, bump_refusals=bump
+            head_sha, files, statuses, matcher, base_date, comments, reviews=reviews, bump_refusals=bump
         )
     except Exception as exc:
         raise EvaluationFailed(head_sha, exc) from exc
@@ -168,6 +182,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--pr", required=True, type=int)
     parser.add_argument("--no-post", action="store_true")
     parser.add_argument("--head-sha", type=_head_sha)
+    parser.add_argument("--pending-first", action="store_true")
     return parser.parse_args(argv)
 
 
@@ -213,6 +228,24 @@ def main(argv: list[str] | None = None) -> int:
     if args.repo.count("/") != 1:
         print("oracle-gate: error: --repo must be OWNER/NAME", file=sys.stderr)
         return ERROR
+    if args.pending_first and args.no_post:
+        print("oracle-gate: error: --pending-first cannot be combined with --no-post", file=sys.stderr)
+        return ERROR
+    return post_gate(args, token)
+
+
+def mark_pending(args: argparse.Namespace, token: str) -> None:
+    try:
+        _, base, head_sha = read_pull(args.repo, args.pr, token)
+        if base == GATED_BASE:
+            post_pending(token, args.repo, head_sha)
+    except (PullReadFailed, CheckError) as exc:
+        print(f"oracle-gate: error: {exc}", file=sys.stderr)
+
+
+def post_gate(args: argparse.Namespace, token: str) -> int:
+    if args.pending_first:
+        mark_pending(args, token)
     try:
         head_sha, status, message = evaluate(args.repo, args.pr, token)
     except UngatedBase as exc:

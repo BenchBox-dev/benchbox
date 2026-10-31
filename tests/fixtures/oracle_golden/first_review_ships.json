@@ -260,6 +260,13 @@
         "description": "medium: SHIP [run <run>]",
         "state": "success",
         "target_url": "https://github.localhost/BenchBox-dev/BenchBox/actions/runs/<run>"
+      },
+      {
+        "context": "oracle-gate",
+        "creator": "benchbox-oracle[bot]",
+        "description": "oracle-review: pass (oracle verdict for <sha0>)",
+        "state": "success",
+        "target_url": "https://github.localhost/BenchBox-dev/BenchBox/actions/runs/<run>"
       }
     ],
     "threads": []

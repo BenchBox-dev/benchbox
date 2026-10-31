@@ -35,6 +35,7 @@ ENVIRONMENT_STEPS = frozenset(
     {
         "Refuse a dispatch from any ref other than develop",
         "Check out the trusted develop copy",
+        "Check out the current develop gate",
         "Install uv",
         "Join the tailnet to reach the credential gateway",
     }
@@ -147,6 +148,7 @@ class WorkflowRunner:
         expression = _bare(str(raw))
         known: dict[str, str] = {
             "github.token": JOB_TOKEN,
+            "${{ github.workspace }}/gate": str(REPO_ROOT),
             "secrets.TYPESAFE_API_KEY": JEV_KEY,
             "secrets.TS_OAUTH_CI_SECRET": HELD_SECRET,
             "secrets.TS_OAUTH_CI_CLIENT_ID": OAUTH_CLIENT_ID,
