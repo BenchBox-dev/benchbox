@@ -5,7 +5,7 @@
     "G4 sweep clean for every retired publication name",
     "Archive tag for `publication` exists; environment, secrets, and App removed; before-state archived"
   ],
-  "context": "2026-10-27: site-split-40, -51 and -54 are done in the tracker; core publication workflows are gone. Keep as placeholder and drop at site-split-99 after verifying their production/rollback/cleanup evidence.",
+  "context": "2026-10-27: site-split-40, -51 and -54 are done in the tracker; core publication workflows are gone. Keep as placeholder and drop at site-split-99 after verifying their production/rollback/cleanup evidence.\n\nDropped 2026-10-30 as superseded by site-split-40 (production cutover, run 38177778939, probes 33/33), site-split-51 (#3096, #3105, #3106 and the dev-loop property ledger rows) and site-split-54 (tag archive/publication-20261004 at ef42ea54c; publication branch, environment and secrets deleted). Two exceptions: the owner cancelled the production rollback drill on 2026-10-16, and the rehearsal drill on next.benchbox.dev (run 37968525517) stands in for it; uninstalling the benchbox-publication-controller App is an owner action recorded in site-split-99-closeout.",
   "description": "AUDIT 2026-10-27 (owner-adjudicated, advisor-reviewed): the acceptance and context sections supersede this description wherever they differ. Historical text below is kept for reference.\n\nSuperseded: the cutover target is now the separate site repo, so the steps below are owned by other items and must not be claimed from here. Steps 1 and 2 are owned by site-split-40-production-cutover. Steps 3, 4 and 6 are owned by site-split-51-publication-retirement. Step 5 is owned by site-split-54-publication-github-cleanup. This item is dropped at site-split-99, after the mapped scope has merged. The text below is kept as the original scope for reference.\n\nAfter dlv2-60 shadow parity. Pre-approved admin changes (standing approvals) with G5 backups. Owner decision 2026-10-04: retirement is gated on evidence, with no elapsed-time observation window.\n1. Cutover: disable old publication triggers (workflow_dispatch-only first), run site-deploy to production, verify probes and receipt, run one production rollback drill to the previous artifact and forward again.\n2. Evidence before retiring: at least one green production deploy from site-deploy for each route class (release docs, dev docs, blog, results/corpus), green probes, and the rollback drill on record.\n3. Retire workflows: publication-deploy.yml, publication-transaction.yml, publication-preview-deploy.yml, publication-preview-soak.yml, publication-soak-monitor.yml (*/5 cron), publication-recover.yml (*/5 cron), publication-canaries.yml (daily availability probe moves to nightly t3:site), publication-corpus-cutover.yml (after ledger shows its property covered or pure-process).\n4. Retire scripts/publication/* not used by site-deploy (expected: transaction.py, transaction_executor.py, journal.py, reconciler.py, reconciliation.py, create_ledger_seed.py, acquire_canary_evidence.py, capture_baseline.py, verify_shadow_site.py, verify_lane_isolation.py, verify_release_isolation.py, verify_independence_matrix.py, check_operational_receipts.py, check_plan_reconciliation.py, check_control_plane.py, check_workflow_permissions.py, audit_mirror_prs.py, pages.cjs if superseded) plus publication/ledger-seed.json and their tests (tests/unit/scripts/publication/*, tests/unit/workflows/test_publication_*), keeping tests for reused checks.\n5. GitHub: archive-tag and delete branch `publication`; delete environment publication-attestation; delete secrets PUBLICATION_APP_ID and PUBLICATION_APP_PRIVATE_KEY; uninstall the publication GitHub App.\n6. Docs: supersede adr-independent-publication-authorities (reference adr-dev-loop-v2); delete or rewrite docs/operations/{publication-*, independent-publication-*} and docs/development/independent-publication-threat-model.md; write docs/operations/site-deploy.md (deploy, rollback, receipts). The runbook already exists at docs/operations/site-deploy.md in this repo; see the context note.",
   "sessions": [
     {
@@ -55,6 +55,14 @@
       "op": "update",
       "op_id": "8d96b958e3d84f55b6069ded43eb6dbc",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-31T00:18:13Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "13c0fecd2fb744639309fb8b1359d026",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
     }
   ]
 }
