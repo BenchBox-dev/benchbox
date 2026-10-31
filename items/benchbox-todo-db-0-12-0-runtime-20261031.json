@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "The skill-sync-skills PR with the updated drop guidance is merged",
+    "The BenchBox PR is merged to develop with the wheel hash verified against the release SHA256SUMS and todo_state_contract_check.py passing",
+    "After the merge, the locked _project/scripts runtime reports 0.12.0 in initialize and its drop schema lists reason as required",
+    "todo-db's skill-sync.conf todo revision is at the same catalog commit"
+  ],
+  "context": "Split from todo-db-drop-records-reason-20261031 by its 2026-10-31 review.",
+  "description": "Update the catalog todo skill in ~/Developer/skill-sync-skills (skills/todo/SKILL.md drop row and the drop mentions near :154 and :184, references/closeout.md, references/queries.md) to pass the owner's decision and any successor as reason on drop, with no separate context_append. Then follow the BenchBox PR #3725 pattern: vendor the 0.12.0 wheel checked against the release SHA256SUMS and relock _project/scripts; update EXPECTED_VERSION in todo_state_contract_check.py, quality/comment-policy.json, the test_batch_skill_delivery.py constants and batch-rollout-evidence.json; bump the skill-sync.conf todo revision and commit the make skill-sync output in the same PR (skill text telling agents to pass reason must not reach a 0.11.0 runtime). Bump todo-db's own skill-sync.conf to the same catalog revision. The site and todo-db repos run todo-db-mcp from PATH (0.10.1 on the maintainer's machine); their drops keep the old behaviour until todo-db's global-install-and-skill-behind-0-11-0 lands.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/pull/3725",
+    "_project/scripts/pyproject.toml",
+    "skill-sync.conf"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-31T15:14:14Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e69adbfcdfd54d40b9f542f38e2ca956",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
+    }
+  ]
+}
