@@ -22,10 +22,16 @@ def _is_fromless_filter(select: exp.Expr) -> bool:
     )
 
 
+def _is_plain_existence(select: exp.Select) -> bool:
+    if any(select.args.get(key) for key in ("group", "having", "limit", "offset", "qualify")):
+        return False
+    return not any(item.find(exp.AggFunc, exp.Window) for item in select.expressions)
+
+
 def _inline_exists(expression: exp.Expr) -> None:
     for node in list(expression.find_all(exp.Exists)):
         inner = node.this
-        if not _is_fromless_filter(inner) or inner.args.get("group") or inner.args.get("having"):
+        if not _is_fromless_filter(inner) or not _is_plain_existence(inner):
             continue
         condition = inner.args["where"].this
         node.replace(exp.Coalesce(this=condition.copy(), expressions=[exp.false()]))

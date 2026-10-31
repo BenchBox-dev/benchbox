@@ -30,3 +30,17 @@ def test_select_with_a_source_is_left_alone():
 def test_fromless_select_without_a_filter_is_left_alone():
     sql = "SELECT (SELECT 1) AS x FROM t WHERE a = 1"
     assert "LONG_SEQUENCE" not in rewrite_query(sql)
+
+
+@pytest.mark.parametrize(
+    "inner",
+    [
+        "SELECT COUNT(*) WHERE t.c = 1",
+        "SELECT 1 WHERE t.c = 1 LIMIT 0",
+        "SELECT 1 WHERE t.c = 1 OFFSET 1",
+        "SELECT SUM(1) OVER () WHERE t.c = 1",
+    ],
+)
+def test_exists_over_a_select_that_can_change_the_row_count_is_not_inlined(inner):
+    rewritten = rewrite_query(f"SELECT a FROM t WHERE EXISTS({inner})")
+    assert "COALESCE" not in rewritten
