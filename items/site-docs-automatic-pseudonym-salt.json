@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Site PR changes only the two docs pages (plus any generated API page the site build requires) and each statement matches the merged core code (spot-check against the core merge commit; record the checks in the item context).",
+    "Site docs build and the site's CI pass; the site's docs-contract checks pass.",
+    "Merged only after explicit owner approval for this production deploy in the current conversation; the deploy run succeeds and the live page https://benchbox.dev/docs/contributing-results.html shows the new text (fetch and quote one sentence)."
+  ],
+  "context": "Plan: automatic pseudonym salt (owner request 2026-10-31), review finding R4: user and API docs live in benchbox-site.\n\nDECISION GATES: G1 merging deploys production: ask the owner for approval of this specific PR before arming or merging; open and get CI green first. G2 if a snapshot-digest or other deploy gate needs a repository variable, ask the owner (only the owner sets site variables).\n\nGUARDRAILS: no salt values in docs or PR text; follow the site repo's own AGENTS/contributing rules and PR flow; do not touch other sessions' site PRs (e.g. #84).",
+  "description": "After public-pseudonym-salt-automatic merges, the benchbox-site docs still tell users to set BENCHBOX_MACHINE_ID_SALT before submitting. Update benchbox-site `docs/contributing-results.md` (salt prerequisite section, ~lines 10 and 43-55) and `docs/reference/python-api/result-analysis.md` (~735-748: `from_public_environ`, `MissingPublicPseudonymSaltError`, add `ensure_public_pseudonym_salt`) to describe: the salt is created automatically at ~/.benchbox/submission_salt on first `benchbox submit` / `export` / `publish run`; BENCHBOX_MACHINE_ID_SALT overrides it (use to share one salt across machines or match a CI secret); `--dry-run` never creates it; back it up to keep pseudonyms stable; containers or CI with an ephemeral HOME get a new salt per run, which changes pseudonyms and hosted idempotency keys; rotation changes pseudonyms of re-staged results. Text must match the merged core behaviour (cite the core merge commit in the PR body). Any merge to benchbox-site `main` deploys production.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-site"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:73f4ce6dc372259381dd21db",
+      "at": "2026-10-31T13:00:34Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "cfca0ec22cee49b2bd986858452c0839",
+      "session_id": "fdde7b96f2774961bbd4c814eff2ca0e"
+    }
+  ]
+}

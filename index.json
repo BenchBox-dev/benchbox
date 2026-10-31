@@ -24000,6 +24000,15 @@
       "status": "dropped",
       "title": "Check that site docs links to core directories resolve against every ancestor directory, as repo-files.json now lists them"
     },
+    "site-docs-automatic-pseudonym-salt": {
+      "claim": null,
+      "needs": [
+        "public-pseudonym-salt-automatic"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Site docs: describe the automatic pseudonym salt in the submission guide and Python API reference"
+    },
     "site-docs-broken-fragments-20261009": {
       "claim": null,
       "needs": [],
