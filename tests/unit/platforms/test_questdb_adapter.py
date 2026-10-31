@@ -528,6 +528,62 @@ class TestQuestDBAdapter:
 
         assert expected in captured["imports"][0]
 
+    def test_rest_api_posts_a_date_schema_part_from_the_table_columns(self, questdb_stubs, schema_loopback, tmp_path):
+        port, captured = schema_loopback
+        adapter = QuestDBAdapter(host="127.0.0.1", http_port=port)
+        data_file = tmp_path / "t.csv"
+        data_file.write_bytes(b"x,d\n" + b",\n" * 2000 + b"1,1999-01-02\n")
+
+        adapter._load_table_via_rest_api("t", data_file, CsvDialect(",", True, None, False, None))
+
+        body = captured["imports"][0]
+        assert b'name="schema"' in body
+        assert b'[{"name": "d", "type": "DATE", "pattern": "yyyy-MM-dd"}]' in body
+        assert b",\n" * 2000 in body
+
+    def test_headerless_rest_load_posts_every_column_in_table_order(self, questdb_stubs, schema_loopback, tmp_path):
+        port, captured = schema_loopback
+        adapter = QuestDBAdapter(host="127.0.0.1", http_port=port)
+        data_file = tmp_path / "t.tbl"
+        data_file.write_bytes(b"1|1999-01-02|\n")
+
+        adapter._load_table_via_rest_api("t", data_file, CsvDialect("|", False, None, False, None))
+
+        assert (
+            b'[{"name": "x", "type": "INT"}, {"name": "d", "type": "DATE", "pattern": "yyyy-MM-dd"}]'
+            in captured["imports"][0]
+        )
+
+    @pytest.fixture
+    def schema_loopback(self, request):
+        captured = {"imports": []}
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                body = json.dumps({"dataset": [["x", "INT"], ["d", "DATE"]]}).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def do_POST(self):
+                captured["imports"].append(self.rfile.read(int(self.headers["Content-Length"])))
+                body = b"| Rows imported | 1 |"
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *args):
+                return
+
+        server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=server.serve_forever)
+        thread.start()
+        request.addfinalizer(lambda: (server.shutdown(), thread.join(timeout=10), server.server_close()))
+        return server.server_address[1], captured
+
     def test_rest_api_csv_passes_data_verbatim(self, questdb_stubs, tmp_path):
         adapter = QuestDBAdapter(host="localhost", http_port=9000)
         data_file = tmp_path / "hits.csv"
