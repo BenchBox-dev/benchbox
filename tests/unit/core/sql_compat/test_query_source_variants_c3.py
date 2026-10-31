@@ -21,11 +21,11 @@ def test_vector_search_rule_registration_count():
         for key, entry in REGISTRY.all_rules()
         if key[0] is Phase.QUERY_SOURCE and key[2] == "vector_search"
     ]
-    assert len(rules) == 44, f"Expected 44 vector_search rules, got {len(rules)}: {[e.rule_id for _, e in rules]}"
+    assert len(rules) == 50, f"Expected 50 vector_search rules, got {len(rules)}: {[e.rule_id for _, e in rules]}"
 
 
 def test_vector_search_all_platforms_registered():
-    for platform in ("spark", "lakesail", "starrocks", "doris", "postgresql", "clickhouse", "snowflake"):
+    for platform in ("spark", "lakesail", "starrocks", "doris", "postgresql", "clickhouse", "snowflake", "singlestore"):
         rules = [
             (key, entry)
             for key, entry in REGISTRY.all_rules()
@@ -49,6 +49,8 @@ def test_vector_search_all_platforms_registered():
         ("postgresql", "Q2", "<->"),
         ("clickhouse", "Q1", "cosineDistance"),
         ("clickhouse", "Q2", "L2Distance"),
+        ("singlestore", "Q1", "DOT_PRODUCT"),
+        ("singlestore", "Q2", "EUCLIDEAN_DISTANCE"),
         ("snowflake", "Q1", "VECTOR_COSINE_SIMILARITY"),
         ("snowflake", "Q2", "VECTOR_L2_DISTANCE"),
         ("spark", "Q1", "zip_with"),
