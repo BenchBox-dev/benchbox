@@ -5,7 +5,7 @@
     "Unit tests cover added, removed, changed and unchanged entries",
     "docs/internal/adr/adr-site-docs-ownership.md names the warning where it lists the advisory pre-merge build as related work"
   ],
-  "context": "Found 2026-10-17 at site-split closeout. Must not become a required context; D17 allows no further ruleset change. Rescoped after core PR 3658 covered path deletions.\n\nOwner decision 2026-10-30: build a core-side contract-change warning. Options considered: a cross-repository advisory site build (needs the benchbox-site-bridge App to gain statuses write and spends shared runner slots on every relevant core PR) and dropping the item (accept detection after merge).\n\n2026-10-31: implemented in PR #3843 (head 1ea8a5443): scripts/check_docs_contract_changes.py, make docs-contract-diff, a continue-on-error guard-docs-contract-diff step in the existing lint job, 20 unit tests, and the related-work paragraph in adr-site-docs-ownership.md. Oracle verdict SHIP, threads resolved, lint green. Blocked only because the required core check fails on tests/integration/oracle/test_redaction_scenarios.py::test_no_loop_time_summary_line_reaches_the_step_summary_before_the_redaction_step, which fails on develop since #3836 (the step summary gained 'disk scan of ...' lines). Open PRs #3828 and #3835 carry the fix. Resume: once one merges, set this item open, rebase the PR branch ci/docs-contract-change-warning (worktree ../BenchBox.wt-docs-contract-warn) onto origin/develop, push with --force-with-lease, run make pr-arm when core passes, then finish this item after the PR shows MERGED.",
+  "context": "Found 2026-10-17 at site-split closeout. Must not become a required context; D17 allows no further ruleset change. Rescoped after core PR 3658 covered path deletions.\n\nOwner decision 2026-10-30: build a core-side contract-change warning. Options considered: a cross-repository advisory site build (needs the benchbox-site-bridge App to gain statuses write and spends shared runner slots on every relevant core PR) and dropping the item (accept detection after merge).\n\n2026-10-31: implemented in PR #3843 (head 1ea8a5443): scripts/check_docs_contract_changes.py, make docs-contract-diff, a continue-on-error guard-docs-contract-diff step in the existing lint job, 20 unit tests, and the related-work paragraph in adr-site-docs-ownership.md. Oracle verdict SHIP, threads resolved, lint green. Blocked only because the required core check fails on tests/integration/oracle/test_redaction_scenarios.py::test_no_loop_time_summary_line_reaches_the_step_summary_before_the_redaction_step, which fails on develop since #3836 (the step summary gained 'disk scan of ...' lines). Open PRs #3828 and #3835 carry the fix. Resume: once one merges, set this item open, rebase the PR branch ci/docs-contract-change-warning (worktree ../BenchBox.wt-docs-contract-warn) onto origin/develop, push with --force-with-lease, run make pr-arm when core passes, then finish this item after the PR shows MERGED.\n\n2026-10-31: develop test fixed by #3853 (61eb0f045); PR #3843 rebased onto develop to rerun CI.",
   "description": "The site refuses a core bundle whose exported docs contract (for example CLI options or MCP tool parameters) has entries its docs do not cover: npm run docs:check -- --docs-mode block runs in the site's ci and deploy workflows. Core learns of it only after merge. In #3738 (2026-10-29) the site refused a bundle because get_query_plan.stream was undocumented, and benchbox.dev stayed on the previous bundle for about 5.5 hours until site PR #90 merged. Of 29 site-deploy failure issues from 2026-10-20 to 2026-10-30 it was the only one in this class. On a core PR, export the docs contract for the PR head and for its base, compare them, and report each added, removed or changed entry as a warning, so the author prepares the site docs change before the bundle ships. The check never fails the PR, needs no cross-repository token and adds no runner jobs.",
   "links": [
     "BenchBox-dev/BenchBox: scripts/export_docs_data.py",
@@ -52,6 +52,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "b9898e76c9744397964727359db6bece",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-31T12:33:55Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b5001f92b2064627ba35cefcbac0284f",
       "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
     }
   ]
