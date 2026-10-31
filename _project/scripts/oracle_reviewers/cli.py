@@ -121,15 +121,16 @@ def _summary(text: str) -> None:
 
 def _defer_summary(directory: Path, text: str) -> None:
     path = directory / SUMMARY_FILE
+    lines = _read_json(path)["lines"] if path.is_file() else []
     held = credentials.redact(text)
-    earlier = _read_json(path)["summary"] if path.is_file() else ""
-    _write_json(path, {"summary": f"{earlier}\n{held}" if earlier else held})
+    _write_json(path, {"lines": [*lines, held]})
     print(held)
 
 
 def _emit_summary(path: Path) -> None:
     if path.is_file():
-        _summary(_read_json(path)["summary"])
+        for line in _read_json(path)["lines"]:
+            _summary(line)
 
 
 def _write_json(path: Path, data: Any) -> None:

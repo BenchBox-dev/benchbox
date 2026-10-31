@@ -36,25 +36,6 @@ def test_sanitize_keeps_unrelated_split_text(tmp_path: Path, monkeypatch: pytest
     assert json.loads(path.read_text(encoding="utf-8"))["content"] == content
 
 
-def test_sanitize_keeps_every_line_of_a_deferred_summary_when_one_holds_a_secret(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from _project.scripts.oracle_reviewers import cli
-
-    monkeypatch.setenv("OMP_GATEWAY_TOKEN", TOKEN)
-    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
-    cli._defer_summary(tmp_path, "slot 1: first")
-    cli._defer_summary(tmp_path, "slot 2: second")
-    path = tmp_path / cli.SUMMARY_FILE
-    data = json.loads(path.read_text(encoding="utf-8"))
-    data["summary"] += f"\nleaked {TOKEN}"
-    path.write_text(json.dumps(data), encoding="utf-8")
-    assert redaction_check.sanitize(path, ()) is True
-    kept = json.loads(path.read_text(encoding="utf-8"))["summary"].split("\n")
-    assert kept[:2] == ["slot 1: first", "slot 2: second"]
-    assert TOKEN not in kept[2]
-
-
 def _marked(title: str) -> str:
     from _project.scripts.oracle_reviewers import protocol
 

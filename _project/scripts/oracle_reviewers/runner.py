@@ -312,8 +312,9 @@ def _judge(
         reason = verdict.incomplete_reason or "the reviewer reported its review incomplete"
         return ReviewOutcome(None, absence.Absence(absence.INCOMPLETE, reason), traced)
     run = evidence.trace(reviewer.harness, result.stdout)
-    read = evidence.credited(run, workspace)
-    verdict = evidence.mark_citations(verdict, workspace, protocol.disputed_claims(plan), read)
+    verdict = evidence.mark_citations(
+        verdict, workspace, protocol.disputed_claims(plan), evidence.credited(run, workspace)
+    )
     problem = protocol.contradiction(verdict, plan, workspace=workspace)
     if problem is not None:
         shaped = f"shape={shape_fingerprint(verdict.to_json(), _credentials())}\n{traced}"
@@ -321,7 +322,7 @@ def _judge(
     verdict = protocol.keep_disputes_open(verdict, plan)
     gap = evidence.check(
         verdict,
-        ships=protocol.judge_planned(verdict, plan, workspace=workspace, read=read).decision == SHIP,
+        ships=protocol.judge_planned(verdict, plan, workspace=workspace).decision == SHIP,
         harness=reviewer.harness,
         brief_mode=plan["brief_mode"],
         workspace=workspace,
