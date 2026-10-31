@@ -1261,6 +1261,16 @@ run posts every review and its own `oracle-gate`, and the gate rejects an
 edited or deleted oracle receipt whenever it next evaluates, which is at the
 next head or base change, stand-in comment or sweep.
 
+Owner decision (2026-10-25, gate 4): an edit or dismissal of an oracle review by
+anyone other than the oracle, and a merge to `develop` that changes the gate
+policy, refresh `oracle-gate` only at the next hourly sweep. The accepted
+window is that hour (longer if GitHub delays or drops the schedule). Review
+edits and dismissals have no trusted trigger: `pull_request_review` runs the
+PR's own workflow file, so the PR could delete it. The ruleset's required
+review-thread resolution and the gate's rejection of edited receipts bound the
+exposure; a PR whose oracle review was tampered with must be withheld from
+arming until a sweep or manual dispatch re-evaluates it.
+
 The verdict run also posts `oracle-gate` itself: after the review is posted,
 `drive publish` evaluates the exact head with the gate code and review policy of a
 fresh `develop` checkout (the run's own checkout can be hours old) using the same

@@ -98,7 +98,7 @@ def _oracle(**kwargs: Any) -> tuple[int, str]:
         HEAD,
         kwargs.pop("files", SOUNDNESS_FILES),
         kwargs.pop("statuses", [_verdict()]),
-        kwargs.pop("paths", oracle_review_check.path_matcher(2, 2, *oracle_review_check._review_rules())),
+        kwargs.pop("paths", oracle_review_check.path_matcher(2, 2, *oracle_gate.load_policy_rules())),
         kwargs.pop("base_date", None),
         kwargs.pop("comments", []),
         reviews=kwargs.pop("reviews", [_receipt_review()]),
@@ -285,21 +285,6 @@ def test_gate_paths_beat_the_exemption() -> None:
     )
     assert matcher(["gate/policy.md"]) is True
     assert matcher(["docs/notes.md"]) is False
-
-
-def test_review_rules_come_from_the_reviewer_policy() -> None:
-    exempt, gate = oracle_review_check._review_rules()
-    assert exempt == ()
-    assert "_project/scripts/oracle_reviewers/*" in gate
-
-
-def test_unreadable_policy_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
-    def broken(path: object) -> object:
-        raise ValueError("bad policy")
-
-    monkeypatch.setattr("oracle_reviewers.policy.load_policy", broken)
-    assert oracle_review_check._review_rules() == ((), ())
-    assert oracle_review_check.path_matcher(1, 1)(["README.md"]) is True
 
 
 def test_verdict_before_a_retarget_waits() -> None:

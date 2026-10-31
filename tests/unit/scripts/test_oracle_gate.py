@@ -99,7 +99,7 @@ def _attestation(body: str | None = None) -> dict[str, Any]:
 
 
 def _matcher() -> Any:
-    return oracle_review_check.path_matcher(2, 2, *oracle_review_check._review_rules())
+    return oracle_review_check.path_matcher(2, 2, *oracle_gate.load_policy_rules())
 
 
 def test_gate_reuses_the_checker_decision_and_helpers() -> None:
@@ -111,10 +111,6 @@ def test_gate_reuses_the_checker_decision_and_helpers() -> None:
         oracle_review_check.WAITING,
         oracle_review_check.ERROR,
     )
-
-
-def test_policy_rules_match_the_checker_rules() -> None:
-    assert oracle_gate.load_policy_rules() == oracle_review_check._review_rules()
 
 
 def test_policy_rules_fail_when_the_policy_file_is_missing(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

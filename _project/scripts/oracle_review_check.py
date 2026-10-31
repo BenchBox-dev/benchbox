@@ -10,7 +10,6 @@ import urllib.parse
 import urllib.request
 from collections.abc import Callable, Iterable
 from datetime import datetime
-from pathlib import Path
 from typing import Any, TypeVar
 
 from inert_paths import is_inert_path
@@ -291,16 +290,6 @@ def changed_paths(items: Iterable[dict[str, Any]]) -> list[str]:
 
 def fetch_files(token: str, repo: str, pr: int) -> list[dict[str, Any]]:
     return _paginate(token, f"/repos/{repo}/pulls/{pr}/files")
-
-
-def _review_rules() -> tuple[tuple[str, ...], tuple[str, ...]]:
-    try:
-        from oracle_reviewers.policy import load_policy
-
-        classifier = load_policy(Path(".github/oracle-reviewers.yml")).classifier
-        return classifier.exempt_paths, classifier.gate_paths
-    except Exception:
-        return (), ()
 
 
 def _path_needs_review(path: str, exempt: tuple[str, ...], gate: tuple[str, ...]) -> bool:

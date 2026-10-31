@@ -98,7 +98,7 @@ def _decide(**kwargs: Any) -> tuple[int, str]:
         HEAD,
         kwargs.pop("files", SOUNDNESS),
         kwargs.pop("statuses", [_status()]),
-        gate.path_matcher(2, 2, *gate._review_rules()),
+        gate.path_matcher(2, 2, *oracle_gate.load_policy_rules()),
         kwargs.pop("base_date", None),
         kwargs.pop("comments", []),
         reviews=kwargs.pop("reviews", [_receipt()]),
@@ -190,25 +190,6 @@ def test_a_gate_path_that_is_also_inert_needs_review_and_an_exempt_pattern_skips
     assert gate.path_matcher(1, 1, (), ("gate/*",))(["gate/policy.md"]) is True
     assert gate.path_matcher(1, 1, ("zz_exempt/*",), ())(["zz_exempt/a.txt"]) is False
     assert gate.path_matcher(1, 1, ("zz_exempt/*",), ())(["zz_other/a.txt"]) is True
-
-
-def test_the_review_rules_are_read_from_the_reviewer_policy_file(monkeypatch: pytest.MonkeyPatch) -> None:
-    seen: list[Path] = []
-
-    class Classifier:
-        exempt_paths = ("e/*",)
-        gate_paths = ("g/*",)
-
-    class Policy:
-        classifier = Classifier()
-
-    def load(path: Path) -> Policy:
-        seen.append(path)
-        return Policy()
-
-    monkeypatch.setattr("oracle_reviewers.policy.load_policy", load)
-    assert gate._review_rules() == (("e/*",), ("g/*",))
-    assert seen == [Path(".github/oracle-reviewers.yml")]
 
 
 def test_annotate_receipt_ignores_reviews_before_the_retarget(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -580,7 +561,7 @@ def _wire(
 
 def _run(monkeypatch: pytest.MonkeyPatch) -> int:
     monkeypatch.setenv("GITHUB_TOKEN", "tok")
-    monkeypatch.setattr(oracle_gate.time, "sleep", lambda _seconds: None)
+    monkeypatch.setattr(oracle_gate, "PULL_READ_BACKOFF_SECONDS", 0)
     return oracle_gate.main(["--repo", "o/r", "--pr", "7", "--no-post"])
 
 
