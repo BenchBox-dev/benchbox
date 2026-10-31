@@ -28,6 +28,7 @@ from benchbox.core.run_selection import RunSelection, resolve_run_selection
 from benchbox.mcp.deprecations import attach_deprecations
 from benchbox.mcp.errors import (
     ErrorCode,
+    make_benchmark_load_error,
     make_error,
     make_execution_error,
     make_not_found_error,
@@ -42,6 +43,7 @@ from benchbox.mcp.schemas import (
 )
 from benchbox.mcp.security import PathProvider, resolve_path_provider
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.dependencies import BENCHMARK_LOAD_ERRORS
 from benchbox.utils.path_utils import get_benchmark_runs_datagen_path
 from benchbox.utils.printing import get_quiet_console, silence_output
 
@@ -551,16 +553,10 @@ def _run_benchmark_impl(
                 make_not_found_error("benchmark", benchmark, available=list(all_benchmarks.keys())), execution_id
             )
 
-        benchmark_class = get_public_benchmark_class(benchmark_lower)
-        if benchmark_class is None:
-            return _make_failed_response(
-                make_error(
-                    ErrorCode.DEPENDENCY_MISSING,
-                    f"Benchmark '{benchmark}' requires additional dependencies",
-                    details={"benchmark": benchmark},
-                ),
-                execution_id,
-            )
+        try:
+            benchmark_class = get_public_benchmark_class(benchmark_lower)
+        except BENCHMARK_LOAD_ERRORS as load_error:
+            return _make_failed_response(make_benchmark_load_error(benchmark, load_error), execution_id)
 
         resolved_mode, mode_error = _resolve_mcp_mode_with_registry(selection.platform, mode)
         if mode_error:
@@ -806,8 +802,10 @@ def _populate_sql_query_details(
 ) -> None:
     from benchbox.core.query_catalog import get_sql_render
 
-    if get_public_benchmark_class(benchmark) is None:
-        response["error"] = f"Benchmark '{benchmark}' requires additional dependencies"
+    try:
+        get_public_benchmark_class(benchmark)
+    except BENCHMARK_LOAD_ERRORS as load_error:
+        response["error"] = str(load_error)
         return
 
     dialect = None

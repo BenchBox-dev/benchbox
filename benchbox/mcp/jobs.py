@@ -1132,6 +1132,7 @@ class DurableJobWorker:
             mode_error["status"] = "failed"
             return mode_error
         from benchbox.core.benchmark_registry import get_public_benchmark_class
+        from benchbox.utils.dependencies import BENCHMARK_LOAD_ERRORS
 
         all_benchmarks = get_all_benchmarks()
         benchmark_lower = benchmark.lower()
@@ -1142,15 +1143,12 @@ class DurableJobWorker:
             response["execution_id"] = execution_id
             response["status"] = "failed"
             return response
-        benchmark_class = get_public_benchmark_class(benchmark_lower)
-        if benchmark_class is None:
-            from benchbox.mcp.errors import ErrorCode, make_error
+        try:
+            benchmark_class = get_public_benchmark_class(benchmark_lower)
+        except BENCHMARK_LOAD_ERRORS as load_error:
+            from benchbox.mcp.errors import make_benchmark_load_error
 
-            response = make_error(
-                ErrorCode.DEPENDENCY_MISSING,
-                f"Benchmark '{benchmark}' requires additional dependencies",
-                details={"benchmark": benchmark},
-            )
+            response = make_benchmark_load_error(benchmark, load_error)
             response["execution_id"] = execution_id
             response["status"] = "failed"
             return response

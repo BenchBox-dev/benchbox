@@ -111,7 +111,7 @@ class BenchBoxCommand(click.Command):
         for bench_id in sorted(list_loader_benchmark_ids()):
             try:
                 get_core_benchmark_class(bench_id)
-            except ValueError:
+            except (ValueError, ImportError):
                 continue
 
             lines = BenchmarkHookRegistry.describe_options(bench_id)

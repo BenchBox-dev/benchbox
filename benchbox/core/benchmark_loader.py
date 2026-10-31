@@ -10,12 +10,14 @@ from pathlib import Path
 from typing import Any, Union
 
 from benchbox.core.benchmark_registry import (
+    get_benchmark_optional_extras,
     get_core_benchmark_class_name,
     get_family_plugin,
     list_loader_benchmark_ids,
     validate_scale_factor,
 )
 from benchbox.core.schemas import BenchmarkConfig, SystemProfile
+from benchbox.utils.dependencies import BenchmarkDependencyError, find_missing_module
 
 BENCHMARK_LOADER_API_SURFACE = "internal"
 
@@ -121,6 +123,11 @@ def get_core_benchmark_class(benchmark_name: str) -> Any:
         benchmark_class = getattr(module, class_name)
         return benchmark_class
     except (ImportError, AttributeError) as e:
+        missing_module = find_missing_module(e)
+        if missing_module is not None:
+            raise BenchmarkDependencyError(
+                benchmark_name, missing_module, get_benchmark_optional_extras(benchmark_name)
+            ) from e
         available = list_loader_benchmark_ids()
         raise ValueError(f"Benchmark '{benchmark_name}' not supported yet. Available: {', '.join(available)}") from e
 
