@@ -1070,4 +1070,5 @@ def test_gate_refusals_map_the_evaluation_exit_code(exit_code: int, expected: ob
     found = pr_arm.gate_refusals(run, "o/r", 7, HEAD)
     assert seen[0][-3:] == ["o/r", "7", HEAD]
     assert "--no-post" in seen[0][2]
+    assert "git archive origin/develop" in seen[0][2]
     assert found == [] if exit_code == 0 else expected in found[0]

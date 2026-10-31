@@ -216,6 +216,7 @@ def duration_verdict_refusals(run: Runner, repo: str, number: int, head: str, la
 
 GATE_SCRIPT = "_project/scripts/oracle_gate.py"
 GATE_WAITING_EXIT = 3
+GATE_TREE = "_project/scripts .github/oracle-reviewers.yml .github/soundness-paths.txt .github/inert-paths.txt"
 
 
 def gate_refusals(run: Runner, repo: str, number: int, head: str, label: str = "pr-arm") -> list[str]:
@@ -223,8 +224,11 @@ def gate_refusals(run: Runner, repo: str, number: int, head: str, label: str = "
         [
             "sh",
             "-c",
-            'GITHUB_TOKEN="$(gh auth token)" exec uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 '
-            f'-- python {GATE_SCRIPT} --repo "$0" --pr "$1" --head-sha "$2" --no-post',
+            'set -eu; DIR="$(mktemp -d)"; trap \'rm -rf "$DIR"\' EXIT; '
+            f"git fetch --quiet origin {BASE_BRANCH}; "
+            f'git archive origin/{BASE_BRANCH} {GATE_TREE} | tar -x -C "$DIR"; '
+            'cd "$DIR"; GITHUB_TOKEN="$(gh auth token)" uv run --isolated --no-project --python 3.12 '
+            f'--with pyyaml==6.0.3 -- python {GATE_SCRIPT} --repo "$0" --pr "$1" --head-sha "$2" --no-post',
             repo,
             str(number),
             head,

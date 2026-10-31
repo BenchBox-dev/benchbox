@@ -1270,7 +1270,8 @@ PR's own workflow file, so the PR could delete it. The ruleset's required
 review-thread resolution and the gate's rejection of edited receipts bound the
 exposure; a PR whose oracle review was tampered with must be withheld from
 arming until a sweep or manual dispatch re-evaluates it. `make pr-arm` and
-`make pr-arm-remote` re-evaluate the gate decision read-only for the exact head
+`make pr-arm-remote` re-evaluate the gate decision read-only for the exact head, using the gate code
+and policy of `origin/develop` rather than the PR checkout,
 and refuse to arm unless it passes, which closes the window before arming; the
 window after arming remains.
 
