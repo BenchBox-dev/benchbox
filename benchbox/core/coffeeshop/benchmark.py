@@ -123,19 +123,19 @@ class CoffeeShopBenchmark(GeneratorOutputDirMixin, TranslatableQueryMixin, BaseB
             params = dict(self.query_manager._queries["SA4"].get("defaults", {}))
             translated["SA4"] = SPARK_SA4_SQL.format(**params)
 
-        if "clickhouse" not in dialect.lower():
+        platform = next((name for name in ("clickhouse", "questdb") if name in dialect.lower()), None)
+        if platform is None:
             return translated
 
         qm = self.query_manager
-        _ch_variants: dict[str, str] = {
-            "SA4": CLICKHOUSE_SA4_SQL,
-            "TM1": CLICKHOUSE_TM1_SQL,
-        }
-        for query_id, legacy_sql in _ch_variants.items():
+        legacy_variants: dict[str, str] = (
+            {"SA4": CLICKHOUSE_SA4_SQL, "TM1": CLICKHOUSE_TM1_SQL} if platform == "clickhouse" else {}
+        )
+        for query_id in ("SA4", "TM1"):
             if query_id not in translated:
                 continue
             ctx = CompatibilityContext(
-                platform="clickhouse",
+                platform=platform,
                 platform_version=None,
                 benchmark="coffeeshop",
                 query_id=query_id,
@@ -149,8 +149,10 @@ class CoffeeShopBenchmark(GeneratorOutputDirMixin, TranslatableQueryMixin, BaseB
                     variant_sql = registry_decision.payload.variant_sql
                 else:
                     continue
+            elif query_id in legacy_variants:
+                variant_sql = legacy_variants[query_id]
             else:
-                variant_sql = legacy_sql
+                continue
             entry = qm._queries[query_id]
             params = dict(entry.get("defaults", {}))
             translated[query_id] = variant_sql.format(**params)

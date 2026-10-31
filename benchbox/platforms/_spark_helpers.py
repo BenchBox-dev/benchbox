@@ -59,6 +59,26 @@ def adaptive_enabled_from_config(config: Mapping[str, Any]) -> bool:
     return bool(value)
 
 
+SPARK_DEFAULT_DRIVER_MEMORY_GIB = 4
+SPARK_LOCAL_DRIVER_MEMORY_FRACTION = 0.6
+SPARK_LOCAL_DRIVER_MEMORY_CAP_GIB = 31
+
+
+def default_spark_driver_memory(master: str, total_memory_bytes: int | None = None) -> str:
+    if not master.startswith("local"):
+        return f"{SPARK_DEFAULT_DRIVER_MEMORY_GIB}g"
+    if total_memory_bytes is None:
+        try:
+            import psutil
+
+            total_memory_bytes = psutil.virtual_memory().total
+        except Exception:
+            return f"{SPARK_DEFAULT_DRIVER_MEMORY_GIB}g"
+    scaled_gib = int(total_memory_bytes / (1024**3) * SPARK_LOCAL_DRIVER_MEMORY_FRACTION)
+    heap_gib = max(SPARK_DEFAULT_DRIVER_MEMORY_GIB, min(SPARK_LOCAL_DRIVER_MEMORY_CAP_GIB, scaled_gib))
+    return f"{heap_gib}g"
+
+
 def apply_spark_olap_runtime_conf(
     connection: Any,
     benchmark_type: str,

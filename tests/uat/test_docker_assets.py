@@ -358,7 +358,7 @@ def test_local_managed_cedardb_compose_credentials_match_uat_argv():
         "--platform-option",
         "username=benchbox",
         "--platform-option",
-        "database=benchbox_test",
+        "admin_database=benchbox_test",
         "--platform-option",
         "password=Benchbox1!",
     ]
@@ -412,6 +412,34 @@ def test_connection_registries_do_not_duplicate_derived_values():
         for values in docker_assets._PLATFORM_LOCAL_MANAGED_STATIC_OPTS.values()
         for value in values
     )
+
+
+def test_no_uat_platform_option_forces_shared_database():
+    registries = (
+        docker_assets._PLATFORM_STATIC_OPTS,
+        docker_assets._PLATFORM_LOCAL_MANAGED_STATIC_OPTS,
+    )
+    for registry in registries:
+        for platform, values in registry.items():
+            assert not any(value.startswith("database=") for value in values), platform
+    for platform in docker_assets._DOCKER_PLATFORM_SPECS:
+        argvs = [
+            " ".join(matrix.benchbox_run_argv(platform, benchmark, 0.01, local_managed_platform=managed))
+            for benchmark in ("tpch", "tpcds")
+            for managed in (False, True)
+        ]
+        assert not any("database=" in argv.replace("admin_database=", "") for argv in argvs), platform
+
+
+def test_uat_platform_options_are_registered_for_every_docker_platform():
+    from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
+
+    for platform in docker_assets._DOCKER_PLATFORM_SPECS:
+        argv = matrix.benchbox_run_argv(platform, "tpch", 0.01, local_managed_platform=True)
+        provided = [
+            tuple(argv[index + 1].split("=", 1)) for index, token in enumerate(argv) if token == "--platform-option"
+        ]
+        PlatformHookRegistry.parse_options(platform, provided)
 
 
 def test_resolve_container_cli_env_override_wins_over_platform_default(monkeypatch):
@@ -899,3 +927,51 @@ def test_velox_connect_tmpfs_permits_native_library_loading():
     tmpfs_mounts = compose["services"]["velox-connect"]["tmpfs"]
 
     assert any(mount.startswith("/tmp:") and "exec" in mount.split(":", 1)[1].split(",") for mount in tmpfs_mounts)
+
+
+def test_presto_compose_mounts_jvm_config_with_bounded_heap():
+    spec = docker_assets.docker_platform_spec("presto")
+    compose = yaml.safe_load(spec.compose_files[0].read_text(encoding="utf-8"))
+    service = compose["services"]["presto"]
+    assert "./jvm.properties:/opt/presto-server/etc/jvm.config:ro" in service["volumes"]
+    assert service["environment"]["HOSTNAME"] == "presto"
+    jvm_lines = (spec.compose_files[0].parent / "jvm.properties").read_text(encoding="utf-8").splitlines()
+    assert "-Xmx4G" in jvm_lines
+    assert not [line for line in jvm_lines if line.startswith("-Xmx") and line != "-Xmx4G"]
+    heap_bytes = docker_assets.parse_memory_bytes("4g")
+    assert heap_bytes < docker_assets.parse_memory_bytes(service["mem_limit"])
+
+
+@pytest.mark.parametrize("platform", ["presto", "trino"])
+def test_presto_trino_declare_six_gib_container_limit(platform):
+    spec = docker_assets.docker_platform_spec(platform)
+    assert docker_assets.compose_declared_memory_limits(spec) == {platform: "6g"}
+
+
+@pytest.mark.parametrize("platform", ["presto", "trino"])
+def test_presto_trino_free_memory_gate_is_request_aware(platform, tmp_path):
+    from tests.uat.phases import execute as exec_phase
+    from tests.uat.preflight_budget import MemorySnapshot
+
+    cfg = config.validate_config(
+        {
+            "name": "gate",
+            "preflight": {"docker_memory_reserve_gib": 1.0},
+            "cleanup": {"docker_manage_platforms": True, "docker_platform_switch": "volumes"},
+        }
+    )
+
+    def reader(free):
+        return lambda: MemorySnapshot(free_gib=free, swap_used_percent=0.0)
+
+    short = exec_phase._free_memory_abort_reason(
+        config=cfg, platform=platform, reader=reader(5.0), context="before start", log_dir=tmp_path
+    )
+    assert short is not None
+    assert f"vm_request={platform}=6.000 GiB" in short
+    assert (
+        exec_phase._free_memory_abort_reason(
+            config=cfg, platform=platform, reader=reader(7.5), context="before start", log_dir=tmp_path
+        )
+        is None
+    )

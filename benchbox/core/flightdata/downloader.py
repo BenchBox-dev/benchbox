@@ -16,6 +16,8 @@ import shutil
 import urllib.error
 import urllib.request
 import zipfile
+from collections.abc import Iterator
+from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -129,6 +131,38 @@ def _months_sequence(
     return result
 
 
+BTS_PREFETCH_WORKERS = 4
+
+
+class _ZipPrefetcher:
+    def __init__(self, fetch: Any, urls: list[str], workers: int = BTS_PREFETCH_WORKERS) -> None:
+        self._fetch = fetch
+        self._urls = urls
+        self._window = workers
+        self._executor = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="flightdata-bts")
+        self._futures: dict[str, Future[bytes]] = {}
+        self._submitted = 0
+        self._advance(0)
+
+    def _advance(self, consumed: int) -> None:
+        limit = min(len(self._urls), consumed + self._window)
+        while self._submitted < limit:
+            url = self._urls[self._submitted]
+            self._futures[url] = self._executor.submit(self._fetch, url)
+            self._submitted += 1
+
+    def take(self, url: str) -> bytes | None:
+        future = self._futures.pop(url, None)
+        if future is None:
+            return None
+        self._advance(self._urls.index(url) + 1)
+        return future.result()
+
+    def close(self) -> None:
+        self._executor.shutdown(wait=False, cancel_futures=True)
+        self._futures.clear()
+
+
 class FlightDataDownloader(CompressionMixin, VerbosityMixin):
     def __init__(
         self,
@@ -176,6 +210,7 @@ class FlightDataDownloader(CompressionMixin, VerbosityMixin):
         self._table_row_counts: dict[str, int] = {}
         self._table_file_row_counts: dict[Path, int] = {}
         self._content_hashes: dict[str, str] = {}
+        self._prefetcher: _ZipPrefetcher | None = None
 
     def source_provenance(self) -> dict[str, Any]:
         urls = set(self.source_contract()["urls"])
@@ -462,10 +497,11 @@ class FlightDataDownloader(CompressionMixin, VerbosityMixin):
             )
 
             flight_id = 1
-            for year, month in self._months:
-                rows_written = self._process_month(writer, year, month, flight_id)
-                flight_id += rows_written
-                self._stats["total_flights"] += rows_written
+            with self._prefetching_months():
+                for year, month in self._months:
+                    rows_written = self._process_month(writer, year, month, flight_id)
+                    flight_id += rows_written
+                    self._stats["total_flights"] += rows_written
 
         self._table_row_counts["flights"] = self._stats["total_flights"]
         self._table_file_row_counts[output_path] = self._stats["total_flights"]
@@ -480,14 +516,17 @@ class FlightDataDownloader(CompressionMixin, VerbosityMixin):
 
         shard_paths: list[Path] = []
         flight_id = 1
-        for shard_index, (year, month) in enumerate(self._months, start=1):
-            shard_name = self.get_compressed_filename(f"{FLIGHTS_SHARD_PREFIX}{shard_index:04d}_{year}_{month:02d}.csv")
-            shard_path = shard_dir / shard_name
-            rows_written = self._write_flights_shard(shard_path, year, month, flight_id)
-            flight_id += rows_written
-            self._stats["total_flights"] += rows_written
-            self._table_file_row_counts[shard_path] = rows_written
-            shard_paths.append(shard_path)
+        with self._prefetching_months():
+            for shard_index, (year, month) in enumerate(self._months, start=1):
+                shard_name = self.get_compressed_filename(
+                    f"{FLIGHTS_SHARD_PREFIX}{shard_index:04d}_{year}_{month:02d}.csv"
+                )
+                shard_path = shard_dir / shard_name
+                rows_written = self._write_flights_shard(shard_path, year, month, flight_id)
+                flight_id += rows_written
+                self._stats["total_flights"] += rows_written
+                self._table_file_row_counts[shard_path] = rows_written
+                shard_paths.append(shard_path)
 
         self._table_row_counts["flights"] = self._stats["total_flights"]
         self.log_verbose(f"Wrote {self._stats['total_flights']:,} flights across {len(shard_paths)} shards")
@@ -706,18 +745,39 @@ class FlightDataDownloader(CompressionMixin, VerbosityMixin):
             self._stats["synthetic_months"].append(f"{year}-{month:02d}")
             return rows
 
-    def _download_bts_month(self, writer: csv.writer, url: str, year: int, month: int, start_id: int) -> int:
-        self.log_verbose(f"  Downloading BTS data: {year}-{month:02d}")
-
+    def _fetch_bts_zip(self, url: str) -> bytes:
         req = urllib.request.Request(
             url, headers={"User-Agent": "BenchBox/1.0 (https://github.com/BenchBox-dev/BenchBox)"}
         )
         with tls.urlopen(req, timeout=120) as response:
             zip_bytes = response.read()
-        actual_sha256 = hashlib.sha256(zip_bytes).hexdigest()
         expected_sha256 = PINNED_SOURCE_SHA256.get(url)
-        if expected_sha256 is not None and actual_sha256 != expected_sha256:
-            raise ChecksumMismatchError(path=url, expected_sha256=expected_sha256, actual_sha256=actual_sha256)
+        if expected_sha256 is not None:
+            actual_sha256 = hashlib.sha256(zip_bytes).hexdigest()
+            if actual_sha256 != expected_sha256:
+                raise ChecksumMismatchError(path=url, expected_sha256=expected_sha256, actual_sha256=actual_sha256)
+        return zip_bytes
+
+    @contextlib.contextmanager
+    def _prefetching_months(self) -> Iterator[None]:
+        if self.scale_factor < 0.1:
+            yield
+            return
+        urls = [BTS_BASE_URL.format(year=year, month=month) for year, month in self._months]
+        self._prefetcher = _ZipPrefetcher(self._fetch_bts_zip, urls)
+        try:
+            yield
+        finally:
+            self._prefetcher.close()
+            self._prefetcher = None
+
+    def _download_bts_month(self, writer: csv.writer, url: str, year: int, month: int, start_id: int) -> int:
+        self.log_verbose(f"  Downloading BTS data: {year}-{month:02d}")
+
+        zip_bytes = self._prefetcher.take(url) if self._prefetcher is not None else None
+        if zip_bytes is None:
+            zip_bytes = self._fetch_bts_zip(url)
+        actual_sha256 = hashlib.sha256(zip_bytes).hexdigest()
         rows_written = 0
         with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
             csv_names = [n for n in zf.namelist() if n.lower().endswith(".csv")]

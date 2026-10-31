@@ -236,6 +236,7 @@ TPCHAVOC_DOCUMENTED_SKIPS: dict[str, frozenset[str]] = {
             "17_v2",
             "17_v4",
             "17_v7",
+            "1_v1",
             "1_v7",
             "1_v8",
             "2_v5",

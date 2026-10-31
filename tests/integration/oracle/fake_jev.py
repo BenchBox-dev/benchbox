@@ -10,6 +10,7 @@ class FakeJev:
     def __init__(self) -> None:
         self.answers: list[dict[str, Any] | None] = []
         self.requests: list[dict[str, Any]] = []
+        self.classification: tuple[str, str] = ("medium", "standard")
         self._server: ThreadingHTTPServer | None = None
         self._lock = threading.Lock()
 
@@ -19,6 +20,9 @@ class FakeJev:
         class Handler(BaseHTTPRequestHandler):
             def do_POST(self) -> None:
                 body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+                if "recovery" not in body["questions"]:
+                    self._send(200, {"answers": fake._classified(body["questions"])})
+                    return
                 with fake._lock:
                     fake.requests.append(body)
                     answer = fake.answers.pop(0) if fake.answers else None
@@ -41,6 +45,21 @@ class FakeJev:
         self._server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
         threading.Thread(target=self._server.serve_forever, daemon=True).start()
         return self
+
+    def _classified(self, questions: dict[str, Any]) -> dict[str, Any]:
+        size, template = self.classification
+        choices = {
+            "size": size,
+            "capability": "routine",
+            "template": template,
+            "impact": "low",
+        }
+        return {
+            name: {"score": 1}
+            if name == "importance"
+            else {"choice": choices[name], "probabilities": {choices[name]: 1.0}, "confidence": 0.0}
+            for name in questions
+        }
 
     @property
     def url(self) -> str:

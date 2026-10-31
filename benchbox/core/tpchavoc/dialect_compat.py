@@ -11,7 +11,12 @@ POSTGRES_QUALIFIED_COLUMNS: dict[str, dict[str, str]] = {
     "17_v2": {"l_partkey": "lineitem", "l_quantity": "lineitem", "l_extendedprice": "lineitem"},
 }
 POSTGRES_DUAL_VARIANT_IDS = frozenset({"17_v4"})
-CLICKHOUSE_FILTER_VARIANT_IDS = frozenset({"1_v6", "12_v7"})
+CLICKHOUSE_FILTER_VARIANT_IDS = frozenset({"1_v6", "3_v7", "7_v7", "10_v7", "12_v7"})
+CLICKHOUSE_OUTER_ALIAS_VARIANTS: dict[str, tuple[str, str]] = {
+    "2_v8": ("partsupp", "partsupp_outer"),
+    "10_v8": ("lineitem", "lineitem_outer"),
+}
+CLICKHOUSE_COALESCED_COUNT_SUBQUERY_VARIANT_IDS = frozenset({"13_v1"})
 DATAFUSION_EMPTY_GROUP_VARIANT_IDS = frozenset({"6_v2", "14_v2"})
 PRESTO_ALIAS_VARIANT_IDS = POSTGRES_ALIAS_VARIANT_IDS
 PRESTO_WINDOW_FILTER_VARIANT_IDS = frozenset({"2_v7"})
@@ -64,8 +69,8 @@ def rewrite_spark_variant(query_id: str | None, query: str) -> str:
 def _variant_rewrites(query_id: str, target: str) -> list[Rewrite]:
     if target == "databricks":
         return spark_variant_rewrites(query_id)
-    if target == "clickhouse" and query_id in CLICKHOUSE_FILTER_VARIANT_IDS:
-        return [("filtered_aggregates_to_conditional", {})]
+    if target == "clickhouse":
+        return _clickhouse_variant_rewrites(query_id)
     rewrites: list[Rewrite] = []
     if target in _PRESTO_TRINO_DIALECTS:
         if query_id in PRESTO_ALIAS_VARIANT_IDS:
@@ -79,6 +84,18 @@ def _variant_rewrites(query_id: str, target: str) -> list[Rewrite]:
             rewrites.append(("qualify_columns_by_name", {"tables": columns}))
         if query_id in POSTGRES_DUAL_VARIANT_IDS:
             rewrites.append(("drop_literal_row_source", {"alias": "dual"}))
+    return rewrites
+
+
+def _clickhouse_variant_rewrites(query_id: str) -> list[Rewrite]:
+    rewrites: list[Rewrite] = []
+    if query_id in CLICKHOUSE_FILTER_VARIANT_IDS:
+        rewrites.append(("filtered_aggregates_to_conditional", {}))
+    if outer_alias := CLICKHOUSE_OUTER_ALIAS_VARIANTS.get(query_id):
+        table, alias = outer_alias
+        rewrites.append(("alias_outer_table_references", {"table": table, "alias": alias}))
+    if query_id in CLICKHOUSE_COALESCED_COUNT_SUBQUERY_VARIANT_IDS:
+        rewrites.append(("coalesce_count_subqueries", {}))
     return rewrites
 
 
@@ -116,7 +133,9 @@ def translate_list_aggregate_variant(query_id: str, duckdb_query: str, target_di
 
 
 __all__ = [
+    "CLICKHOUSE_COALESCED_COUNT_SUBQUERY_VARIANT_IDS",
     "CLICKHOUSE_FILTER_VARIANT_IDS",
+    "CLICKHOUSE_OUTER_ALIAS_VARIANTS",
     "DATAFUSION_EMPTY_GROUP_VARIANT_IDS",
     "DUAL_VARIANT_IDS",
     "GROUP_BY_EMPTY_VARIANT_IDS",

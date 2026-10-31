@@ -2,6 +2,10 @@
 
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
+import http.server
+import json
+import socket
+import threading
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
@@ -436,6 +440,94 @@ class TestQuestDBAdapter:
         assert b"3|4\n" in captured_body["content"]
         assert b"1|2|\n" not in captured_body["content"]
 
+    def test_ilp_dat_keeps_trailing_null_column(self, questdb_stubs, tmp_path):
+        data_file = tmp_path / "store_sales.dat"
+        data_file.write_text("1|2|\n3|4|5\n7|8|9|\n", encoding="utf-8")
+
+        received: list[bytes] = []
+        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.bind(("127.0.0.1", 0))
+        server.listen(1)
+
+        def _serve():
+            conn, _ = server.accept()
+            with conn:
+                while chunk := conn.recv(4096):
+                    received.append(chunk)
+
+        thread = threading.Thread(target=_serve)
+        thread.start()
+        try:
+            adapter = QuestDBAdapter(host="localhost")
+            adapter.ilp_host = "127.0.0.1"
+            adapter.ilp_port = server.getsockname()[1]
+            dialect = CsvDialect("|", False, "", False, None)
+            with patch.object(adapter, "_get_table_columns", return_value=["a", "b", "c"]):
+                rows_sent = adapter._load_table_via_ilp("store_sales", data_file, dialect)
+        finally:
+            thread.join(timeout=10)
+            server.close()
+
+        lines = b"".join(received).decode().splitlines()
+        assert rows_sent == 3
+        assert len(lines) == 3
+        assert "c=" not in lines[0]
+        assert "c=" in lines[1]
+        assert "c=" in lines[2]
+
+    @pytest.fixture
+    def loopback_questdb(self):
+        captured = {"imports": []}
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                body = json.dumps({"dataset": [["a"], ["b"], ["c"]]}).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def do_POST(self):
+                captured["imports"].append(self.rfile.read(int(self.headers["Content-Length"])))
+                body = b"| Rows imported | 2 |"
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *args):
+                return
+
+        server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=server.serve_forever)
+        thread.start()
+        try:
+            yield server.server_address[1], captured
+        finally:
+            server.shutdown()
+            thread.join(timeout=10)
+            server.server_close()
+
+    @pytest.mark.parametrize(
+        ("content", "expected"),
+        [
+            (b"1|2|3|\n4|5|6|\n", b"1|2|3\n4|5|6\n"),
+            (b"1|2|\n4|5|6\n", b"1|2|\n4|5|6\n"),
+        ],
+    )
+    def test_rest_api_dat_strips_only_a_terminating_delimiter(
+        self, questdb_stubs, loopback_questdb, tmp_path, content, expected
+    ):
+        port, captured = loopback_questdb
+        adapter = QuestDBAdapter(host="127.0.0.1", http_port=port)
+        data_file = tmp_path / "store_sales.dat"
+        data_file.write_bytes(content)
+
+        adapter._load_table_via_rest_api("store_sales", data_file, CsvDialect("|", False, "", False, None))
+
+        assert expected in captured["imports"][0]
+
     def test_rest_api_csv_passes_data_verbatim(self, questdb_stubs, tmp_path):
         adapter = QuestDBAdapter(host="localhost", http_port=9000)
         data_file = tmp_path / "hits.csv"
@@ -528,6 +620,20 @@ class TestQuestDBAdapter:
         executed_sql = mock_cursor.execute.call_args[0][0]
         assert "CREATE TABLE" in executed_sql
         assert "FOREIGN KEY" not in executed_sql
+
+    def test_create_schema_maps_time_columns_to_varchar(self, questdb_stubs):
+        mock_conn = Mock()
+        mock_cursor = Mock()
+        mock_conn.cursor.return_value = mock_cursor
+
+        adapter = QuestDBAdapter()
+
+        with patch.object(adapter, "_create_schema_with_tuning") as mock_schema:
+            mock_schema.return_value = "CREATE TABLE dimtime (id BIGINT, timevalue TIME, tm TIME)"
+            adapter.create_schema(Mock(), mock_conn)
+
+        executed_sql = mock_cursor.execute.call_args[0][0]
+        assert executed_sql.upper() == "CREATE TABLE DIMTIME (ID BIGINT, TIMEVALUE VARCHAR, TM VARCHAR)"
 
     def test_platform_registry_requirements_include_requests(self):
         info = PlatformRegistry.get_platform_info("questdb")

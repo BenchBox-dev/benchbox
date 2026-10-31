@@ -338,6 +338,51 @@ class TestPgMooncakeLoadPromotion:
 
         assert events[:3] == ['execute:ALTER TABLE "orders"', "commit", "execute:CALL mooncake.create_table"]
 
+    def test_heap_staging_table_is_dropped_after_the_mirror_is_counted(self, pg_mooncake_stubs, tmp_path):
+        adapter = PgMooncakeAdapter()
+        conn = Mock()
+        cursor = Mock()
+        cursor.fetchone.side_effect = [(2,), (3,)]
+        conn.cursor.return_value = cursor
+
+        with patch.object(
+            postgresql_module.PostgreSQLAdapter,
+            "load_data",
+            return_value=({"orders": 2, "lineitem": 3}, 1.25, None),
+        ):
+            adapter.load_data(Mock(), conn, tmp_path)
+
+        executed = [call.args[0] for call in cursor.execute.call_args_list]
+        assert executed == [
+            'ALTER TABLE "orders" RENAME TO "__bb_moon_src_orders"',
+            "CALL mooncake.create_table('orders', '__bb_moon_src_orders')",
+            'SELECT COUNT(*) FROM "orders"',
+            'DROP TABLE IF EXISTS "__bb_moon_src_orders"',
+            'ALTER TABLE "lineitem" RENAME TO "__bb_moon_src_lineitem"',
+            "CALL mooncake.create_table('lineitem', '__bb_moon_src_lineitem')",
+            'SELECT COUNT(*) FROM "lineitem"',
+            'DROP TABLE IF EXISTS "__bb_moon_src_lineitem"',
+        ]
+
+    def test_staging_drop_failure_does_not_fail_the_load(self, pg_mooncake_stubs, tmp_path):
+        adapter = PgMooncakeAdapter()
+        conn = Mock()
+        cursor = Mock()
+        cursor.fetchone.return_value = (2,)
+
+        def execute(sql):
+            if sql.startswith("DROP TABLE"):
+                raise RuntimeError("drop failed")
+
+        cursor.execute.side_effect = execute
+        conn.cursor.return_value = cursor
+
+        with patch.object(postgresql_module.PostgreSQLAdapter, "load_data", return_value=({"orders": 2}, 1.25, None)):
+            stats, _, _ = adapter.load_data(Mock(), conn, tmp_path)
+
+        assert stats == {"orders": 2}
+        conn.rollback.assert_called()
+
     def test_failed_mirror_restores_the_heap_table_name(self, pg_mooncake_stubs, tmp_path):
         adapter = PgMooncakeAdapter()
         conn = Mock()

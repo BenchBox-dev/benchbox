@@ -95,33 +95,36 @@ a manual dispatch, a `pull_request_target` event other than a plain edit, and a
 
 1. Refuse a dispatch from a ref other than `develop`, and check out trusted
    `develop` into `trusted`.
-2. **Plan** (job token only) resolves the PR and head through the API, refuses
-   closed, draft and non-`develop` PRs, classifies the change, applies the rerun
-   rules and writes a 0600 brief. A fork's change outside the inert paths gets a
-   pending `fork: owner review` status and never reaches a reviewer; an
-   inert-only change gets `success`. Every later step is skipped unless the plan
-   decides `review` or a post. The plan's head SHA feeds the next step.
+2. **Prepare** (`drive prepare`; job token and the classification key only)
+   resolves the PR and head through the API, refuses closed, draft and
+   non-`develop` PRs, applies the rerun rules and writes a 0600 brief. A fork's
+   change outside the inert paths gets a pending `fork: owner review` status and
+   never reaches a reviewer; an inert-only change gets `success`. Every later
+   step is skipped unless the plan decides `review` or a post. For a plan that
+   will be reviewed it then classifies the change: it asks Jev, through
+   TypeSafe's `/v1/systemone` API, for the size bucket, review capability,
+   review template and per-file priority, and selects the attempt-1 reviewer. A
+   classification failure leaves the attempts pending and does not fail the
+   step. The bucket names the first reviewer in `.github/oracle-reviewers.yml`;
+   later slots reuse the classification and can move up the chain (see
+   Rounds). Review-machinery changes always get the `gate` template and at
+   least the `large` bucket. Selection skips disabled reviewers,
+   quota-exhausted pools and, when the diff exceeds the brief cap, any reviewer
+   that is not hard read-only with `reads_files: true`. The plan's head SHA
+   feeds the next step.
 3. Check out the PR head into `workspace`, as data never executed.
-4. **Classify** (the only step setting `TYPESAFE_API_KEY` for classification)
-   asks Jev, through TypeSafe's `/v1/systemone` API, for the size bucket, review
-   capability, review template and per-file priority, and selects the attempt-1
-   reviewer. The bucket names the first reviewer in
-   `.github/oracle-reviewers.yml`; later slots reuse the classification and can
-   move up the chain (see Rounds). Review-machinery changes always get the
-   `gate` template and at least the `large` bucket. Selection skips disabled
-   reviewers, quota-exhausted pools and, when the diff exceeds the brief cap,
-   any reviewer that is not hard read-only with `reads_files: true`.
-5. Disk scan (C4).
-6. Install and verify OMP, then join the tailnet; either failing leaves the
-   attempt absent instead of ending the run.
-7. **Attempt loop** (`cli.py attempts`): per slot up to `max_attempts` (five),
+4. Disk scan (C4).
+5. Install and verify OMP (`drive harness`), then join the tailnet; either
+   failing leaves the attempt absent instead of ending the run.
+6. **Attempt loop** (`drive attempts`): per slot up to `max_attempts` (five),
    select the reviewer, reset the checkout, create a fresh scratch `HOME` with
    its OMP home, run the reviewer, confirm nothing was left behind, delete the
    `HOME`, and write the slot's result file: an artifact with run ID, head SHA,
    reviewer, and a validated verdict or an absence, plus the `recovery` record
    once an invalid attempt is classified. The loop stops after an invalid attempt
-   until a keyed `recover` step records it, then resumes (a recover and a resume
-   step follow the first loop step for each slot that can still be followed). A
+   until a keyed `drive recover` step records it, then resumes (a recover and a
+   resume step follow the first loop step for each slot that can still be
+   followed). A
    crash or timeout still
    leaves an absence. OMP runs on a detached, credential-free head checkout: an
    empty working directory, the checkout as a read-only workspace, tools
@@ -136,11 +139,12 @@ a manual dispatch, a `pull_request_target` event other than a plain edit, and a
    character other than whitespace or another `@`; an `@` after that character
    starts no mention. None of this confines the file tools (see Accepted risk).
    PR code never runs.
-8. Disk scan (C4); finalize, which re-validates this run's artifacts and replays
-   selection; redaction check (C5).
-9. **Post.** Mint the App token, run the guard, post the status and findings,
-   upload the retry state (only if the status posted), the attempt artifacts and
-   the captured event streams, and dispatch `oracle-gate`. `findings_delivery` in
+7. Disk scan (C4); `drive finalize`, which counts the attempts, re-validates
+   this run's artifacts, replays selection and runs the redaction check (C5).
+8. **Post.** Mint the App token, then `drive publish` runs the guard and posts
+   the status and findings. The retry state is uploaded only if every post
+   succeeded, then the attempt artifacts and the captured event streams, and
+   last `drive dispatch` dispatches `oracle-gate`. `findings_delivery` in
    `.github/oracle-reviewers.yml`
    chooses the findings form:
    - `comment`: one PR comment, so findings never block a merge.
@@ -174,13 +178,13 @@ one-time inspection:
 |---|---|
 | C2 total exit | After each reviewer exit, `runner.execute` lists the harness process group and, on Linux, every orphan the loop adopts as child subreaper. Survivors are killed and the run fails closed: slot absent, loop stops, job fails, nothing posts. |
 | C3 no secret in a script | The workflow test fails if any `run:` block names `secrets.*` or `github.token`; secrets reach steps only via `env:` or `with:`. |
-| C4 disk scan | Before the reviewer, after the tailnet join and after the last exit, `cli.py scan-disk` searches `$HOME`, `$RUNNER_TEMP`, both checkouts, `/tmp`, `/var/tmp`, `/dev/shm` and `${TMPDIR:-/tmp}` for the exact TypeSafe key, Tailscale OAuth secret and job token, deduplicating nested roots and following no file or directory symlinks. It covers the declared readable scratch roots, not every readable file. Values come from the step's own `env:`. A hit fails the job. |
-| C5 redaction completeness | The finalize step and the later `cli.py redact-check` step hold every secret the job held (gateway token, TypeSafe key, gateway URL, Tailscale OAuth client ID and secret, job token). Finalize redacts the protocol record before it encodes the marker. `redact-check` redacts attempt, verdict, diagnostic, absence and result text across control-character splits, decodes the trailing protocol marker of each text, and fails if a value remains in the text or in a decoded marker. Finalize and the loop defer their step-summary lines to files that `redact-check` writes to the step summary only after it succeeds. The loop step cannot hold these: a same-user child can read its parent's environment. |
+| C4 disk scan | Before the reviewer, after the tailnet join and after the last exit, `drive scan` searches `$HOME`, `$RUNNER_TEMP`, both checkouts, `/tmp`, `/var/tmp`, `/dev/shm` and `${TMPDIR:-/tmp}` for the exact TypeSafe key, Tailscale OAuth secret and job token, deduplicating nested roots and following no file or directory symlinks. It covers the declared readable scratch roots, not every readable file. Values come from the step's own `env:`. A hit fails the job. |
+| C5 redaction completeness | The `finalize` phase holds every secret the job held (gateway token, TypeSafe key, gateway URL, Tailscale OAuth client ID and secret, job token). It redacts the protocol record before it encodes the marker, then runs the redaction check, which redacts attempt, verdict, diagnostic, absence and result text across control-character splits, decodes the trailing protocol marker of each text, and fails the phase if a value remains in the text or in a decoded marker. Finalize and the loop defer their step-summary lines to files that the check writes to the step summary only after it succeeds. The loop step cannot hold these: a same-user child can read its parent's environment. |
 | C6 fresh `HOME` | Each attempt gets a new `mkdtemp` directory; the previous one is deleted first and the checkout reset. |
 | C7 token scope | Job permissions are exactly `actions: write`, `contents: read`, `pull-requests: read`; no `id-token`, and the isolation step fails if `ACTIONS_ID_TOKEN_REQUEST_TOKEN` is present. `github.token` appears only in the `env:` of steps before or after the loop; both checkouts use `persist-credentials: false`. |
-| C8 timeout budget | `timeout-minutes` is `max_attempts` times the longest reviewer `timeout_minutes` plus setup, under 360; the harness timeout fires first and becomes an absence. A workflow test recomputes it from the policy. |
-| C9 cancellation | `cancel-in-progress` is true only for `pull_request_target`; comment, dispatch and sweep runs wait behind a run in flight, one waiting run per concurrency group, and a newer waiting run replaces the older one, which GitHub cancels. Posting steps keep the default success condition, so a cancelled run posts nothing. |
-| C10 App mint last | `ORACLE_APP_PRIVATE_KEY` is referenced by the review job's posting mint, after the loop, last disk scan and redaction check, and by the sweep job's failure-status mint; the sweep job runs no reviewer, so its mint cannot leak to one. |
+| C8 timeout budget | The job's `timeout-minutes` is `max_attempts` times the longest reviewer `timeout_minutes` plus setup, under 360; the harness timeout fires first and becomes an absence. Every phase step also carries its own `timeout-minutes`: attempt-loop steps the `max_attempts` times longest reviewer budget, every other phase at most 30. A workflow test recomputes both from the policy. |
+| C9 cancellation | `cancel-in-progress` is true only for `pull_request_target`; comment, dispatch and sweep runs wait behind a run in flight, one waiting run per concurrency group, and a newer waiting run replaces the older one, which GitHub cancels. The publish and dispatch steps keep the default success condition, so a cancelled run posts nothing. |
+| C10 App mint last | `ORACLE_APP_PRIVATE_KEY` is referenced by the review job's posting mint, after the loop, last disk scan and the finalize phase's redaction check, and by the sweep job's failure-status mint; the sweep job runs no reviewer, so its mint cannot leak to one. |
 
 Redaction is accident hygiene, not a control: it matches literal and
 control-split values, so an encoding defeats it. The loop environment holds the
@@ -195,12 +199,12 @@ the App key and reads the uploaded artifacts.
 
 ### Review driver
 
-`cli.py drive <phase>` is the one entrypoint that orchestrates a review. Until
-the workflow is cut over to it, the live review still runs the existing
-per-command steps and the driver runs only as a non-posting shadow beside
-them. After the cutover each phase is its own step and holds only the secrets
-that phase uses, so the attempt loop never sees the classifier key, the App
-token or the App private key.
+`cli.py drive <phase>` is the one entrypoint that orchestrates a review. Each
+phase is its own workflow step and holds only the secrets that phase uses, so
+the attempt loop never sees the classifier key, the App token or the App
+private key. The workflow keeps only the steps the environment forces
+(checkouts, uv, the tailnet join, the App-token mint, artifact uploads) and one
+step per phase invocation; every phase step has its own `timeout-minutes`.
 
 | Phase | Does | Secrets it holds |
 |---|---|---|
@@ -211,27 +215,32 @@ token or the App private key.
 | `attempts` | Runs attempts until the chain stops or an invalid attempt needs a recovery judgment. | gateway token and URL |
 | `recover` | Asks the judgment service how to recover the last invalid attempt. | TypeSafe key |
 | `finalize` | Counts the attempts, validates and decides, writes the status, comment, review and retry state, then redacts every secret value from the results. | every secret the job holds |
-| `publish` | Runs the guard, posts the status, comment and review, hands the retry state to the upload steps, and dispatches the gate. | App token, job token |
+| `publish` | Runs the guard, posts the status, comment and review, and reports `skip` and `state_recorded`: the attempt record is uploaded whenever the finalize phase wrote a state and the guard did not report a skip (so a failed mint or a crashed publish still counts the attempt), and the retry state only after the posts succeeded. With the App configured it fails before the guard when the App token or job token is empty; without the App it logs the result and still records the attempt. | App token, job token |
+| `dispatch` | Dispatches `oracle-gate` for the reviewed head when the pull request's base is `develop`; runs after the uploads so a failed upload withholds it. | App token, job token |
 | `sweep` | Dispatches due retries. | job token, App token |
 
 Phases pass state through files under `$RUNNER_TEMP` (`oracle-plan`,
 `oracle-classification`, `oracle-attempts`, `oracle-final`) and report through
-step outputs, so `recover` and `attempts` alternate in fixed workflow steps
-because a judgment key cannot share an environment with the reviewer.
+step outputs (`prepare`: `decision`, `post`, `pr`, `head_sha`; `harness`:
+`state`; `finalize`: `state`, `comment`, `review`, `has_state`, `attempts`;
+`publish`: `skip`, `state_recorded`), so `recover` and
+`attempts` alternate in fixed workflow steps because a judgment key cannot
+share an environment with the reviewer. The `harness` and `prepare` phases run
+under `uv` with `pyyaml` because they read the policy; the others use the
+runner's `python3`.
 
 The environment adapter supplies what differs by execution environment: the
-PR context, the scan roots and secret names, the isolation capability, the
-harness install, and the result sink (`GitHubSink` posts; `RecordingSink`
-records what would be posted). The CI adapter is `CiEnvironment`.
+pull request number and repository, the scan roots and secret names, the
+isolation capability, the harness install, the credentials and the result sink
+(`GitHubSink` posts). The CI adapter is `CiEnvironment`, which reads them from
+the step environment; the commands underneath still read the run identity and
+event payload from the GitHub Actions variables (`GITHUB_RUN_ID`,
+`GITHUB_EVENT_NAME`, `GITHUB_EVENT_PATH`).
 
-While the driver is proven against live runs it also runs as a shadow after
-the existing steps. `drive prepare --shadow` re-plans into `oracle-shadow`,
-`drive finalize --shadow` re-finalizes the same attempts there, and
-`drive compare` records what `publish` would post through a `RecordingSink` and
-compares the plan, the final files and the posting intents with what the
-posting steps did. The result is in the step summary and in the
-`oracle-verdict-shadow-<pr>` artifact (`result.json`). Shadow steps never post
-and never fail the job.
+The characterisation tests in `tests/integration/oracle` run the same phases
+against recorded outputs, and a Linux-only leak test reads `/proc/<pid>/environ`
+of every ancestor of the reviewer up to the step process and asserts that none
+holds the classifier key, the App token, the App private key or the job token.
 
 ## Inert-path manifest
 
@@ -303,7 +312,7 @@ deduplication and dispute binding therefore fail closed on edited App objects.
 a stripped marker cannot hide a record), holds the result pending, and no marker
 from it ever drives a carry, a follow-up scope or a strike count. If the edit
 state cannot be read (a GraphQL error, a review without a node id, a missing
-field) the `plan` step fails and posts nothing, so a decided head keeps its
+field) the `prepare` step fails and posts nothing, so a decided head keeps its
 latest status. The guard lets a planned hold post its pending status, but fails
 the run when the history it re-reads has an error the plan did not see (an edit
 that landed after the plan), and when it cannot re-read the history after its
@@ -318,7 +327,7 @@ or failure, and a non-`SHIP` record falls back to the App statuses without a run
 uuid, because only success statuses carry one). The status must be `success`
 exactly when the decision is `SHIP`; `SHIP WITH FIXES`, `DO NOT SHIP` and
 `REFUSED` require `failure`. A mismatch or a missing status holds the result
-pending, and a status list that cannot be read fails the `plan` step.
+pending, and a status list that cannot be read fails the `prepare` step.
 
 | Situation | Action |
 |---|---|
@@ -859,11 +868,11 @@ to GitHub.
 - **Harness pin.** The `omp:` section of `.github/oracle-reviewers.yml` holds the
   one pin: the version and, per platform (`linux-x64`, `linux-arm64`,
   `darwin-arm64`), the download URL and SHA-256. One installer (`omp_pin.py`,
-  `cli.py install-omp`, run under isolated `uv` with `pyyaml==6.0.3`; YAML is
+  `cli.py install-omp` and `drive harness`, run under isolated `uv` with `pyyaml==6.0.3`; YAML is
   imported only to parse the policy) downloads the platform build into
   `~/.cache/benchbox/omp/<version>/<platform>/omp` (`BENCHBOX_OMP_CACHE`
   overrides the root; `BENCHBOX_OMP_DOWNLOAD_MIRROR` swaps the pinned URL's origin for a loopback one so tests can serve a build locally, and is refused if it names any other host), checks the SHA-256 before the file is marked executable,
-  then checks the binary reports the pinned version. The CI `Install omp` step,
+  then checks the binary reports the pinned version. The CI `Install omp` step (`drive harness`),
   `scripts/cloud_gateway.sh` and the local review all use it, and the reviewer
   runs the installed binary by its path (`ORACLE_OMP_BINARY`), never the `omp` on
   `PATH`. A platform with no pin refuses, naming the platform. Build keys must be
@@ -874,7 +883,7 @@ to GitHub.
   binary, or a plan with no hash, is an error absence and the reviewer never
   starts. The `Install omp` step is not `continue-on-error`. When the install or
   the version check fails, the step reports `state=failed`, the attempt loop does
-  not run, and `finalize --omp-install failed` posts a `pending` status reading
+  not run, and `drive finalize` (told the state through `OMP_INSTALL_STATE`) posts a `pending` status reading
   "the pinned omp build could not be installed; no reviewer ran" with the
   `omp-install` pending cause. The sweep never re-dispatches that state; a
   manual `/oracle-review` retries it within the usual backoff and budget. Like the policy,

@@ -342,3 +342,52 @@ def test_verified_month_evidence_round_trips_through_result_bundle(tmp_path):
         dataset_identity_established=False,
     )
     assert unlinked.flightdata_source_provenance is None
+
+
+def test_prefetcher_overlaps_downloads_and_bounds_window():
+    import threading
+
+    from benchbox.core.flightdata.downloader import _ZipPrefetcher
+
+    urls = [f"u{i}" for i in range(10)]
+    started: list[str] = []
+    gate = threading.Event()
+    lock = threading.Lock()
+
+    def fetch(url: str) -> bytes:
+        with lock:
+            started.append(url)
+        gate.wait(timeout=5)
+        return url.encode()
+
+    prefetcher = _ZipPrefetcher(fetch, urls, workers=3)
+    try:
+        deadline = 0
+        while len(started) < 3 and deadline < 500:
+            threading.Event().wait(0.01)
+            deadline += 1
+        assert sorted(started) == ["u0", "u1", "u2"]
+        gate.set()
+        assert prefetcher.take("u0") == b"u0"
+        assert prefetcher.take("missing") is None
+        for i in range(1, 10):
+            assert prefetcher.take(f"u{i}") == f"u{i}".encode()
+    finally:
+        prefetcher.close()
+    assert sorted(started) == sorted(urls)
+
+
+def test_generation_consumes_months_in_order_with_prefetch(monkeypatch, tmp_path):
+    fetched: list[str] = []
+
+    def fake_fetch(self, url):
+        fetched.append(url)
+        raise OSError("offline")
+
+    monkeypatch.setattr(FlightDataDownloader, "_fetch_bts_zip", fake_fetch)
+    downloader = FlightDataDownloader(1.0, tmp_path, allow_synthetic_fallback=True)
+    paths = downloader._generate_flights_shards()
+
+    assert len(paths) == len(downloader.months)
+    assert sorted(fetched) == sorted(BTS_BASE_URL.format(year=y, month=m) for y, m in downloader.months)
+    assert downloader._prefetcher is None

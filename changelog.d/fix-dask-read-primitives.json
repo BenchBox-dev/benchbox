@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Read Primitives dataframe queries now run on the Dask platform: window, qualify, array, list, map, struct, olap, pivot, statistical and subquery queries are computed per shuffled group or from computed key sets instead of pandas-only constructs, scalar results are computed rather than returned as lazy Dask scalars, and top-N `head()` on a Dask frame reads every partition instead of only the first."
+    }
+  ]
+}

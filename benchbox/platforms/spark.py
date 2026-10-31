@@ -19,6 +19,7 @@ from ._spark_helpers import (
     SPARK_AQE_KEYS,
     SparkLikeAdapterMixin,
     analyze_spark_table,
+    default_spark_driver_memory,
     get_spark_query_plan,
     list_spark_tables,
     run_spark_schema_creation_loop,
@@ -179,7 +180,7 @@ class SparkAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
         self.warehouse_dir = config.get("warehouse_dir")
         self.database = config.get("database") or "default"
 
-        self.driver_memory = config.get("driver_memory") or "4g"
+        self.driver_memory = config.get("driver_memory") or default_spark_driver_memory(self.master)
         self.executor_memory = config.get("executor_memory") or "4g"
         self.executor_cores = config.get("executor_cores") if config.get("executor_cores") is not None else 2
         self.num_executors = config.get("num_executors")
@@ -220,7 +221,13 @@ class SparkAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
         spark_group.add_argument(
             "--deploy-mode", type=str, choices=["client", "cluster"], help="Spark deploy mode (client or cluster)"
         )
-        spark_group.add_argument("--driver-memory", type=str, default="4g", help="Spark driver memory (e.g., 4g, 8g)")
+        spark_group.add_argument(
+            "--driver-memory",
+            type=str,
+            default=None,
+            help="Spark driver memory (e.g., 4g, 8g); defaults to 60%% of system memory (4g minimum, 31g maximum) "
+            "for local masters and 4g otherwise",
+        )
         spark_group.add_argument(
             "--executor-memory", type=str, default="4g", help="Spark executor memory (e.g., 4g, 8g)"
         )

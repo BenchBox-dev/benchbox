@@ -699,20 +699,24 @@ def q10_expression_impl(ctx: DataFrameContext) -> Any:
     hc = _strip_audit_columns(ctx.get_table("hub_customer"))
     sc = _strip_audit_columns(ctx.get_table("sat_customer").filter(col("load_end_dts").is_null()))
     loc = _strip_audit_columns(ctx.get_table("link_order_customer"))
-    so = _strip_audit_columns(ctx.get_table("sat_order").filter(col("load_end_dts").is_null()))
+    so = _strip_audit_columns(
+        ctx.get_table("sat_order")
+        .filter(col("load_end_dts").is_null())
+        .filter((col("o_orderdate") >= lit(start_date)) & (col("o_orderdate") < lit(end_date)))
+    )
     ll = _strip_audit_columns(ctx.get_table("link_lineitem"))
-    sl = _strip_audit_columns(ctx.get_table("sat_lineitem").filter(col("load_end_dts").is_null()))
+    sl = _strip_audit_columns(
+        ctx.get_table("sat_lineitem").filter(col("load_end_dts").is_null()).filter(col("l_returnflag") == lit("R"))
+    )
     lcn = _strip_audit_columns(ctx.get_table("link_customer_nation"))
     sn = _strip_audit_columns(ctx.get_table("sat_nation").filter(col("load_end_dts").is_null()))
 
     df = (
-        hc.join(sc, left_on="hk_customer", right_on="hk_customer")
-        .join(loc, left_on="hk_customer", right_on="hk_customer")
-        .join(so, left_on="hk_order", right_on="hk_order")
-        .filter((col("o_orderdate") >= lit(start_date)) & (col("o_orderdate") < lit(end_date)))
-        .join(ll, left_on="hk_order", right_on="hk_order")
+        so.join(ll, left_on="hk_order", right_on="hk_order")
         .join(sl, left_on="hk_lineitem_link", right_on="hk_lineitem_link")
-        .filter(col("l_returnflag") == lit("R"))
+        .join(loc, left_on="hk_order", right_on="hk_order")
+        .join(hc, left_on="hk_customer", right_on="hk_customer")
+        .join(sc, left_on="hk_customer", right_on="hk_customer")
         .join(lcn, left_on="hk_customer", right_on="hk_customer")
         .join(sn, left_on="hk_nation", right_on="hk_nation")
     )
@@ -1190,11 +1194,11 @@ def q18_expression_impl(ctx: DataFrameContext) -> Any:
     )
 
     df = (
-        hc.join(sc, left_on="hk_customer", right_on="hk_customer")
-        .join(loc, left_on="hk_customer", right_on="hk_customer")
-        .join(ho, left_on="hk_order", right_on="hk_order")
+        order_qty.join(ho, left_on="hk_order", right_on="hk_order")
         .join(so, left_on="hk_order", right_on="hk_order")
-        .join(order_qty, left_on="hk_order", right_on="hk_order")
+        .join(loc, left_on="hk_order", right_on="hk_order")
+        .join(hc, left_on="hk_customer", right_on="hk_customer")
+        .join(sc, left_on="hk_customer", right_on="hk_customer")
     )
 
     result = df.select("c_name", "c_custkey", "o_orderkey", "o_orderdate", "o_totalprice", "total_qty")

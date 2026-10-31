@@ -619,16 +619,16 @@ Compare views use query parameters for flexibility:
 
 ### Site Integration
 
-The explorer is built as a standalone Vite app in `results-explorer/`. The
-static read-model pipeline writes build inputs to `results-explorer/public/data/`;
-the Vite build emits static files to `results-explorer/dist/`; the existing
-GitHub Pages workflow then copies that output into `site/results/`.
+The Results Explorer, docs, blog and landing pages are built in
+`BenchBox-dev/benchbox-site` (Astro) and deployed to GitHub Pages from there.
+Core produces the static read-model data and the site-inputs bundle that the
+site consumes ([ADR: site repo split](adr/adr-site-repo-split.md)).
 
 Build flow:
 
 ```
-results-data/ + static build pipeline → results-explorer/public/data/
-results-explorer/dist/ + [landing page] + [sphinx docs] + [blog] → /site/ → GitHub Pages
+core: results-data/ + static build pipeline → site-inputs bundle
+benchbox-site: bundle + explorer app + docs + blog + landing → /site/ → GitHub Pages
 ```
 
 Navigation integration: add "Results" link to the shared site header/nav.

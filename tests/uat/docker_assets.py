@@ -356,7 +356,7 @@ _PLATFORM_INJECT_HOST_PORT_OPT: frozenset[str] = frozenset(
 _PLATFORM_INJECT_SPARK_CONNECT_ENDPOINT_OPT: frozenset[str] = frozenset({"lakesail", "velox"})
 
 _PLATFORM_LOCAL_MANAGED_STATIC_OPTS: dict[str, list[str]] = {
-    "cedardb": ["--platform-option", "username=benchbox", "--platform-option", "database=benchbox_test"],
+    "cedardb": ["--platform-option", "username=benchbox", "--platform-option", "admin_database=benchbox_test"],
     "postgresql": ["--platform-option", "username=benchbox"],
 }
 

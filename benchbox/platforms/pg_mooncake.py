@@ -326,12 +326,21 @@ class PgMooncakeAdapter(PostgreSQLAdapter):
                 cursor.execute(f"SELECT COUNT(*) FROM {qualified_table}")
                 updated_stats[table_name_lower] = cursor.fetchone()[0]
                 connection.commit()
+                self._drop_mirrored_staging_table(cursor, connection, qualified_staging)
         except Exception:
             connection.rollback()
             raise
         finally:
             cursor.close()
         return updated_stats
+
+    def _drop_mirrored_staging_table(self, cursor: Any, connection: Any, qualified_staging: str) -> None:
+        try:
+            cursor.execute(f"DROP TABLE IF EXISTS {qualified_staging}")
+            connection.commit()
+        except Exception as exc:
+            connection.rollback()
+            self.logger.warning(f"Could not drop the heap staging table {qualified_staging} after the mirror: {exc}")
 
     def _restore_source_table_name(self, cursor: Any, connection: Any, qualified_staging: str, table_name: str) -> None:
         try:

@@ -603,6 +603,7 @@ questdb|loading_method|Data loading method: 'rest' (CSV import, default) or 'ilp
 cedardb|host|CedarDB server hostname|{'default': 'localhost'}
 cedardb|port|CedarDB server port|{'default': '5432'}
 cedardb|database|CedarDB database name (auto-generated if not specified)|{}
+cedardb|admin_database|Database used for CREATE/DROP DATABASE operations|{'default': 'postgres'}
 cedardb|username|CedarDB username|{'default': 'postgres'}
 cedardb|password|CedarDB password|{}
 cedardb|schema|CedarDB schema name|{'default': 'public'}

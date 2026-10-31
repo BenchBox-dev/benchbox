@@ -110,6 +110,7 @@ def expand_rollup_pandas(
     count_sources = count_sources or {}
 
     results = []
+    materialized = False
     n = len(group_cols)
 
     for i in range(n + 1):
@@ -125,6 +126,9 @@ def expand_rollup_pandas(
                 grouped = adapter.groupby_agg(native_df, current_group, agg_spec, as_index=False, dropna=False)
             else:
                 grouped = native_df.groupby(current_group, as_index=False, dropna=False).agg(**agg_spec)
+            if hasattr(grouped, "compute"):
+                grouped = grouped.compute()
+                materialized = True
         else:
             result_data = {}
             for out_col, (in_col, func) in {**agg_dict, **count_spec}.items():
@@ -171,6 +175,10 @@ def expand_rollup_pandas(
 
         results.append(grouped)
 
+    if materialized:
+        import pandas as _pd
+
+        return _pd.concat(results, ignore_index=True)
     return ctx.concat(results)
 
 

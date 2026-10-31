@@ -9,7 +9,7 @@ from typing import Any
 import pytest
 
 from _project.scripts.oracle_reviewers import cli, driver, github, isolation, omp_pin
-from _project.scripts.oracle_reviewers.driver import CiEnvironment, GitHubSink, RecordingSink
+from _project.scripts.oracle_reviewers.driver import CiEnvironment, GitHubSink
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -64,20 +64,41 @@ def outputs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return target
 
 
-class FailingSink(RecordingSink):
+class RecordingSink:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str, Any]] = []
+        self.refuse = ""
+
+    def _record(self, kind: str, repo: str, target: Any) -> None:
+        if self.refuse == kind:
+            raise github.GitHubError(f"the {kind} was refused")
+        self.calls.append((kind, repo, target))
+
     def status(self, repo: str, head: str, payload: Path) -> None:
-        raise github.GitHubError("the status was refused")
+        self._record("status", repo, head)
+
+    def comment(self, repo: str, pr: int, payload: Path) -> None:
+        self._record("comment", repo, pr)
+
+    def review(self, repo: str, pr: int, payload: Path) -> None:
+        self._record("review", repo, pr)
+
+    def dispatch_gate(self, repo: str, pr: int, head: str) -> None:
+        self._record("gate", repo, head)
 
 
-def test_every_phase_is_a_drive_subcommand_and_only_prepare_and_finalize_shadow() -> None:
+@pytest.fixture
+def sink(monkeypatch: pytest.MonkeyPatch) -> RecordingSink:
+    recording = RecordingSink()
+    monkeypatch.setattr(driver, "GitHubSink", lambda app_token, job_token: recording)
+    return recording
+
+
+def test_every_phase_is_a_drive_subcommand() -> None:
     parser = cli._parser()
     for name in driver.PHASES:
         parsed = parser.parse_args(["drive", name])
         assert parsed.phase == name and parsed.handler is driver.command_drive
-    assert parser.parse_args(["drive", "prepare", "--shadow"]).shadow is True
-    assert parser.parse_args(["drive", "finalize", "--shadow"]).shadow is True
-    with pytest.raises(SystemExit):
-        parser.parse_args(["drive", "publish", "--shadow"])
 
 
 def test_the_ci_environment_derives_its_layout_and_scan_roots_from_the_runner(tmp_path: Path) -> None:
@@ -86,8 +107,7 @@ def test_the_ci_environment_derives_its_layout_and_scan_roots_from_the_runner(tm
     assert environment.layout.plan == tmp_path / "oracle-plan"
     assert environment.layout.workspace == tmp_path / "workspace"
     assert environment.layout.classification == tmp_path / "oracle-classification" / "classification.json"
-    assert environment.layout.shadowed().final == tmp_path / "oracle-shadow" / "final"
-    assert environment.layout.shadowed().attempts == environment.layout.attempts
+    assert environment.layout.final == tmp_path / "oracle-final"
     assert Path("/custom/scratch") in environment.scan_roots
     assert tmp_path / "trusted" in environment.scan_roots and tmp_path / "workspace" in environment.scan_roots
 
@@ -151,23 +171,26 @@ def test_the_harness_phase_reports_a_failed_install_without_failing_the_step(
     assert "the pinned omp build could not be installed" in capsys.readouterr().out
 
 
-def test_a_shadow_prepare_writes_its_own_plan_and_reports_nothing_to_the_step(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, outputs: Path
-) -> None:
-    environment = _environment(tmp_path)
-    seen: list[str] = []
-
-    def plan(args: argparse.Namespace) -> int:
-        seen.append(args.out)
-        cli._output({"decision": "skip"})
-        return 0
-
-    monkeypatch.setattr(cli, "command_plan", plan)
-
-    assert driver.prepare(environment, argparse.Namespace(shadow=True)) == 0
-
-    assert seen == [str(tmp_path / "oracle-shadow" / "plan")]
-    assert outputs.read_text(encoding="utf-8") == ""
+def test_the_phases_are_exactly_the_cutover_set_and_none_accepts_shadow() -> None:
+    assert set(driver.PHASES) == {
+        "prepare",
+        "harness",
+        "scan",
+        "isolation",
+        "attempts",
+        "recover",
+        "finalize",
+        "publish",
+        "dispatch",
+        "sweep",
+    }
+    parser = cli._parser()
+    for name in driver.PHASES:
+        with pytest.raises(SystemExit):
+            parser.parse_args(["drive", name, "--shadow"])
+    for removed in ("compare", "shadow"):
+        with pytest.raises(SystemExit):
+            parser.parse_args(["drive", removed])
 
 
 def test_prepare_classifies_only_a_plan_that_will_be_reviewed_and_survives_a_classifier_crash(
@@ -197,104 +220,145 @@ def test_prepare_classifies_only_a_plan_that_will_be_reviewed_and_survives_a_cla
     assert "classification failed: RuntimeError" in (tmp_path / "summary.md").read_text(encoding="utf-8")
 
 
-def test_publish_posts_status_comment_review_then_dispatches_the_gate(tmp_path: Path, outputs: Path) -> None:
-    environment = _environment(tmp_path)
+@pytest.mark.parametrize("scenario", ["posts", "skipped", "guard_failed", "no_app"])
+def test_publish_posts_status_comment_review_and_never_dispatches_the_gate(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    outputs: Path,
+    sink: RecordingSink,
+    capsys: pytest.CaptureFixture[str],
+    scenario: str,
+) -> None:
+    environment = _environment(tmp_path, HAS_APP="false" if scenario == "no_app" else "true")
     _plan(environment.layout)
     _final(environment.layout.final, comment=True, review=True)
-    sink = RecordingSink()
+    decisions = {"posts": (0, False), "skipped": (0, True), "guard_failed": (2, False), "no_app": (0, False)}
+    monkeypatch.setattr(cli, "guard_decision", lambda plan: decisions[scenario])
 
-    code = driver.publish_with(environment, environment.layout, sink, guarded=False)
-
-    assert code == 0
-    assert [item["kind"] for item in sink.intents] == ["status", "comment", "review", "gate"]
-    assert sink.intents[0]["target"] == f"{REPO}/statuses/{HEAD}"
-    written = outputs.read_text(encoding="utf-8")
-    assert "attempt_state=true" in written and "state_recorded=true" in written
-
-
-def test_publish_posts_nothing_for_a_head_the_guard_says_is_decided(tmp_path: Path, outputs: Path) -> None:
-    environment = _environment(tmp_path)
-    _plan(environment.layout)
-    _final(environment.layout.final)
-    sink = RecordingSink()
-
-    code = driver.publish_with(environment, environment.layout, sink, guarded=False, skip=True)
-
-    assert code == 0 and sink.intents == []
-    assert "attempt_state" not in outputs.read_text(encoding="utf-8")
-
-
-def test_publish_runs_the_guard_and_reports_its_skip(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, outputs: Path
-) -> None:
-    environment = _environment(tmp_path)
-    _plan(environment.layout)
-    _final(environment.layout.final)
-    monkeypatch.setattr(cli, "guard_decision", lambda plan: (0, True))
-    sink = RecordingSink()
-
-    assert driver.publish_with(environment, environment.layout, sink, guarded=True) == 0
-
-    assert sink.intents == []
-    assert "skip=true" in outputs.read_text(encoding="utf-8")
-
-
-def test_a_guard_that_cannot_read_history_fails_the_phase_but_still_records_the_attempt(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, outputs: Path
-) -> None:
-    environment = _environment(tmp_path)
-    _plan(environment.layout)
-    _final(environment.layout.final)
-    monkeypatch.setattr(cli, "guard_decision", lambda plan: (2, False))
-    sink = RecordingSink()
-
-    assert driver.publish_with(environment, environment.layout, sink, guarded=True) == 2
+    code = driver.publish(environment, argparse.Namespace())
 
     written = outputs.read_text(encoding="utf-8")
-    assert sink.intents == [] and "attempt_state=true" in written and "skip=" not in written
+    assert "gate" not in [item[0] for item in sink.calls]
+    if scenario == "posts":
+        assert code == 0
+        assert [item[0] for item in sink.calls] == ["status", "comment", "review"]
+        assert sink.calls[0][1:] == (REPO, HEAD)
+        assert "skip=false" in written and "state_recorded=true" in written
+    elif scenario == "skipped":
+        assert code == 0 and sink.calls == []
+        assert "skip=true" in written and "state_recorded" not in written
+    elif scenario == "guard_failed":
+        assert code == 2 and sink.calls == []
+        assert "skip=" not in written and "state_recorded" not in written
+    else:
+        assert code == 0 and sink.calls == []
+        assert written == ""
+        assert "is not posted because the App secrets are not set; result success" in capsys.readouterr().out
 
 
-def test_without_the_app_nothing_is_posted_and_the_attempt_is_still_recorded(
-    tmp_path: Path, outputs: Path, capsys: pytest.CaptureFixture[str]
+def test_publish_posts_only_the_status_when_no_comment_or_review_was_written(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, outputs: Path, sink: RecordingSink
 ) -> None:
-    environment = _environment(tmp_path, HAS_APP="false")
+    environment = _environment(tmp_path)
     _plan(environment.layout)
-    _final(environment.layout.final)
-    sink = RecordingSink()
+    _final(environment.layout.final, state=False)
+    monkeypatch.setattr(cli, "guard_decision", lambda plan: (0, False))
 
-    assert driver.publish_with(environment, environment.layout, sink, guarded=True) == 0
+    assert driver.publish(environment, argparse.Namespace()) == 0
 
-    assert sink.intents == []
-    assert "attempt_state=true" in outputs.read_text(encoding="utf-8")
-    assert "is not posted because the App secrets are not set; result success" in capsys.readouterr().out
+    assert [item[0] for item in sink.calls] == ["status"]
+    assert "state_recorded" not in outputs.read_text(encoding="utf-8")
 
 
 def test_a_refused_status_stops_the_phase_before_anything_else_is_posted(
-    tmp_path: Path, outputs: Path, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    outputs: Path,
+    sink: RecordingSink,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     environment = _environment(tmp_path)
     _plan(environment.layout)
     _final(environment.layout.final, comment=True, review=True)
-    sink = FailingSink()
+    monkeypatch.setattr(cli, "guard_decision", lambda plan: (0, False))
+    sink.refuse = "status"
 
-    assert driver.publish_with(environment, environment.layout, sink, guarded=False) == 1
+    assert driver.publish(environment, argparse.Namespace()) == 1
 
-    assert sink.intents == []
-    assert "state_recorded" not in outputs.read_text(encoding="utf-8")
+    assert sink.calls == []
+    written = outputs.read_text(encoding="utf-8")
+    assert "state_recorded" not in written
     assert "the status was refused" in capsys.readouterr().err
 
 
-@pytest.mark.parametrize(("base", "dispatched"), [("develop", True), ("release", False)])
-def test_the_github_sink_dispatches_the_gate_only_for_a_develop_base(
-    monkeypatch: pytest.MonkeyPatch, base: str, dispatched: bool
+@pytest.mark.parametrize("missing", [{"GH_TOKEN": ""}, {"JOB_TOKEN": ""}, {"GH_TOKEN": "", "JOB_TOKEN": ""}])
+def test_publish_fails_before_the_guard_and_any_post_when_a_token_is_empty(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    outputs: Path,
+    sink: RecordingSink,
+    capsys: pytest.CaptureFixture[str],
+    missing: dict[str, str],
 ) -> None:
+    environment = _environment(tmp_path, **missing)
+    _plan(environment.layout)
+    _final(environment.layout.final, comment=True, review=True)
+    guarded: list[Any] = []
+    monkeypatch.setattr(cli, "guard_decision", lambda plan: guarded.append(plan) or (0, False))
+
+    assert driver.publish(environment, argparse.Namespace()) == 1
+
+    assert sink.calls == [] and guarded == []
+    written = outputs.read_text(encoding="utf-8")
+    assert "skip=" not in written and "state_recorded" not in written
+    assert "is empty" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(("base", "dispatched"), [("develop", True), ("release", False)])
+def test_the_dispatch_phase_dispatches_the_gate_only_for_a_develop_base(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, base: str, dispatched: bool
+) -> None:
+    environment = _environment(tmp_path)
+    _plan(environment.layout)
     calls: list[tuple[str, str]] = []
     monkeypatch.setattr(github, "pull_base_ref", lambda repo, pr, token: base)
     monkeypatch.setattr(github, "dispatch_gate", lambda repo, pr, head, token: calls.append((token, head)))
 
-    GitHubSink("app-token", "job-token").dispatch_gate(REPO, 7, HEAD)
+    assert driver.dispatch(environment, argparse.Namespace()) == 0
 
     assert calls == ([("job-token", HEAD)] if dispatched else [])
+
+
+def test_the_dispatch_phase_reports_a_github_error_as_a_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    environment = _environment(tmp_path)
+    _plan(environment.layout)
+
+    def refuse(repo: str, pr: int, token: str) -> str:
+        raise github.GitHubError("the base lookup was refused")
+
+    monkeypatch.setattr(github, "pull_base_ref", refuse)
+
+    assert driver.dispatch(environment, argparse.Namespace()) == 1
+
+    assert "the base lookup was refused" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("missing", [{"GH_TOKEN": ""}, {"JOB_TOKEN": ""}])
+def test_the_dispatch_phase_fails_before_any_request_when_a_token_is_empty(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], missing: dict[str, str]
+) -> None:
+    environment = _environment(tmp_path, **missing)
+    _plan(environment.layout)
+    requests: list[str] = []
+    monkeypatch.setattr(github, "pull_base_ref", lambda *args: requests.append("base") or "develop")
+    monkeypatch.setattr(github, "dispatch_gate", lambda *args: requests.append("dispatch"))
+
+    assert driver.dispatch(environment, argparse.Namespace()) == 1
+
+    assert requests == []
+    assert "is empty" in capsys.readouterr().err
 
 
 def test_the_github_sink_posts_each_payload_with_the_app_token(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -314,115 +378,18 @@ def test_the_github_sink_posts_each_payload_with_the_app_token(tmp_path: Path, m
     ]
 
 
-def _shadowed_run(tmp_path: Path, *, comment: bool = False) -> CiEnvironment:
-    environment = _environment(tmp_path)
-    for layout in (environment.layout, environment.layout.shadowed()):
-        _plan(layout)
-        _final(layout.final, comment=comment)
-    return environment
-
-
-def _outcomes(monkeypatch: pytest.MonkeyPatch, **values: str) -> None:
-    for name in ("POSTED_STATUS", "POSTED_COMMENT", "POSTED_REVIEW", "POSTED_GATE", "GUARD_SKIP", "GUARD_OUTCOME"):
-        monkeypatch.delenv(name, raising=False)
-    for name, value in values.items():
-        monkeypatch.setenv(name, value)
-
-
-def _result(tmp_path: Path) -> dict[str, Any]:
-    return json.loads((tmp_path / "oracle-shadow" / driver.RESULT_FILE).read_text(encoding="utf-8"))
-
-
-def test_compare_reports_equal_when_the_driver_outputs_match_what_was_posted(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, outputs: Path
-) -> None:
-    environment = _shadowed_run(tmp_path, comment=True)
-    _outcomes(
-        monkeypatch,
-        POSTED_STATUS="success",
-        POSTED_COMMENT="success",
-        POSTED_REVIEW="skipped",
-        POSTED_GATE="success",
-    )
-
-    assert driver.compare(environment, argparse.Namespace()) == 0
-
-    assert _result(tmp_path) == {"differences": {}, "equal": True}
-    assert "equal=true" in outputs.read_text(encoding="utf-8")
-
-
-def test_compare_names_the_final_file_that_differs(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, outputs: Path
-) -> None:
-    environment = _shadowed_run(tmp_path)
-    _write(environment.layout.shadowed().final / "status.json", {"state": "failure", "context": "oracle-verdict"})
-    _outcomes(monkeypatch, POSTED_STATUS="success", POSTED_GATE="success")
-
-    assert driver.compare(environment, argparse.Namespace()) == 0
-
-    result = _result(tmp_path)
-    assert result["equal"] is False
-    assert sorted(result["differences"]) == ["final/status.json", "publish"]
-    assert "equal=false" in outputs.read_text(encoding="utf-8")
-    assert "differ from the posted outputs in final/status.json, publish" in (tmp_path / "summary.md").read_text(
-        encoding="utf-8"
-    )
-
-
-def test_compare_ignores_the_plan_creation_time_but_not_other_plan_fields(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, outputs: Path
-) -> None:
-    environment = _shadowed_run(tmp_path)
-    _plan(environment.layout.shadowed(), created_at="later")
-    _outcomes(monkeypatch, POSTED_STATUS="success", POSTED_GATE="success")
-    driver.compare(environment, argparse.Namespace())
-    assert _result(tmp_path)["equal"] is True
-
-    _plan(environment.layout.shadowed(), decision="carry")
-    driver.compare(environment, argparse.Namespace())
-    assert list(_result(tmp_path)["differences"]) == ["plan"]
-
-
-def test_compare_flags_a_missing_shadow_plan(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, outputs: Path) -> None:
-    environment = _environment(tmp_path)
-    _plan(environment.layout)
-    _outcomes(monkeypatch)
-
-    driver.compare(environment, argparse.Namespace())
-
-    assert _result(tmp_path)["differences"] == {"plan": {"posted": "present", "shadow": None}}
-
-
-def test_compare_expects_nothing_posted_when_the_guard_failed_or_skipped(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, outputs: Path
-) -> None:
-    environment = _shadowed_run(tmp_path)
-    _outcomes(monkeypatch, GUARD_OUTCOME="failure", POSTED_STATUS="skipped", POSTED_GATE="skipped")
-    driver.compare(environment, argparse.Namespace())
-    assert _result(tmp_path)["equal"] is True
-
-    _outcomes(monkeypatch, GUARD_SKIP="true", POSTED_STATUS="skipped", POSTED_GATE="skipped")
-    driver.compare(environment, argparse.Namespace())
-    assert _result(tmp_path)["equal"] is True
-
-
-def test_the_shadow_finalize_reuses_the_posted_runs_clock(
+def test_the_harness_phase_does_not_swallow_a_missing_yaml_import(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, outputs: Path
 ) -> None:
     environment = _environment(tmp_path)
-    _final(environment.layout.final)
-    seen: list[Any] = []
+    environment.policy.write_text("omp: pinned", encoding="utf-8")
 
-    def finalize(args: argparse.Namespace) -> int:
-        seen.append((args.plan, args.out_dir, args.now))
-        return 0
+    def missing_yaml(text: str) -> object:
+        raise ImportError("No module named 'yaml'")
 
-    monkeypatch.setattr(cli, "command_finalize", finalize)
-    monkeypatch.setattr(cli, "command_redact_check", lambda args: 0)
+    monkeypatch.setattr(omp_pin, "pin_from_text", missing_yaml)
 
-    assert driver.finalize(environment, argparse.Namespace(shadow=True)) == 0
+    with pytest.raises(ImportError, match="yaml"):
+        driver.harness(environment, argparse.Namespace())
 
-    plan, out_dir, now = seen[0]
-    assert plan == str(tmp_path / "oracle-shadow" / "plan" / cli.PLAN_FILE)
-    assert out_dir == str(tmp_path / "oracle-shadow" / "final")
-    assert now.isoformat() == "2026-10-28T12:00:00+00:00"
+    assert outputs.read_text(encoding="utf-8") == ""

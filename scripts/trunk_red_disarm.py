@@ -71,9 +71,7 @@ def select_for_disarm(run: Runner, repo: str) -> tuple[list[dict], dict | None]:
         return [], None
     if failed is None:
         return [], None
-    sha = failed.get("headSha") or ""
-    reverted = bool(sha) and trunk_revert.is_reverted(run, repo, sha)
-    if reverted:
+    if trunk_revert.culprit_reverted(run, repo, failed):
         return [], failed
     selected: list[dict] = []
     for item in armed_pull_requests(run, repo):

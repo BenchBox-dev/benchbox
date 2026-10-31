@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed the Presto Docker stack running out of memory while loading TPC-H: the container now mounts a jvm.config with a 4 GiB heap and sets its node id, and the Presto and Trino stacks declare a 6 GiB container limit that the release-gate free-memory preflight accounts for."
+    }
+  ]
+}

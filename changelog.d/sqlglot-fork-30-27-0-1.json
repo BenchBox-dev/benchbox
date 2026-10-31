@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "The bundled SQLGlot runtime moves from 30.25.0.2 to 30.27.0.1 (fork commit `1ba4aec7bf6c`), rebased onto upstream SQLGlot v30.27.0 with every carried patch retained. Across 1,018 shipped benchmark queries translated from DuckDB, PostgreSQL and Netezza into all 37 targets (112,998 translations), only one query changes: TPC-DI `AQ7` now parenthesizes `CURRENT_DATE - INTERVAL '90 DAY'` on the right of a comparison, and the result is the same."
+    }
+  ]
+}

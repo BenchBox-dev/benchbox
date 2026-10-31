@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed DataFrame runs of benchmarks without a row-count oracle reporting validation as not_run; they now validate that every expected table loaded with rows, as SQL runs already do.",
+      "platforms": ["polars-df", "pandas-df", "datafusion-df", "dask-df", "pyspark-df"]
+    }
+  ]
+}
