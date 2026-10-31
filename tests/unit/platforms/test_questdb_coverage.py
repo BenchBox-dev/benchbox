@@ -183,7 +183,9 @@ class TestCreateSchemaBranches:
         mock_conn.cursor.return_value = mock_cursor
         with patch.object(adapter, "_create_schema_with_tuning", return_value=schema_sql):
             adapter.create_schema(Mock(), mock_conn)
-        return [call.args[0] for call in mock_cursor.execute.call_args_list]
+        return [
+            call.args[0] for call in mock_cursor.execute.call_args_list if not call.args[0].startswith("DROP TABLE")
+        ]
 
     @pytest.mark.parametrize(
         "stmt",
