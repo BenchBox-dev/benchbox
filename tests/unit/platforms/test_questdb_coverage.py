@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import threading
+import time
 from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 
@@ -248,6 +250,51 @@ class TestLoadDataBranches:
         assert mock_rest.call_count == 1
         assert mock_rest.call_args.args[:2] == ("lineitem", data_file)
         assert stats["lineitem"] == 100
+
+    def test_load_data_pings_the_connection_while_a_slow_load_runs(self, questdb_stubs, tmp_path):
+        data_file = tmp_path / "lineitem.csv"
+        data_file.write_text("col1\n1\n", encoding="utf-8")
+
+        adapter = QuestDBAdapter(loading_method="rest")
+        adapter.CONNECTION_KEEPALIVE_SECONDS = 0.01
+        mock_benchmark = self._make_benchmark({"lineitem": str(data_file)})
+        connection = Mock()
+        pinged = threading.Event()
+        connection.execute.side_effect = lambda sql: pinged.set() or Mock()
+
+        def slow_load(*args: Any) -> int:
+            assert pinged.wait(timeout=5)
+            return 100
+
+        with patch.object(adapter, "_load_table_via_rest_api", side_effect=slow_load):
+            stats, _, _ = adapter.load_data(mock_benchmark, connection, tmp_path)
+
+        assert stats["lineitem"] == 100
+        assert connection.execute.call_args.args == ("SELECT 1",)
+
+    def test_keepalive_stops_pinging_after_the_load(self, questdb_stubs):
+        adapter = QuestDBAdapter()
+        adapter.CONNECTION_KEEPALIVE_SECONDS = 0.01
+        connection = Mock()
+
+        with adapter._keep_connection_alive(connection):
+            while not connection.execute.called:
+                time.sleep(0.005)
+        calls = connection.execute.call_count
+        time.sleep(0.1)
+
+        assert connection.execute.call_count == calls
+
+    def test_keepalive_stops_after_a_failed_ping(self, questdb_stubs):
+        adapter = QuestDBAdapter()
+        adapter.CONNECTION_KEEPALIVE_SECONDS = 0.01
+        connection = Mock()
+        connection.execute.side_effect = RuntimeError("connection closed")
+
+        with adapter._keep_connection_alive(connection):
+            time.sleep(0.1)
+
+        assert connection.execute.call_count == 1
 
     def test_load_data_ilp_method_success(self, questdb_stubs, tmp_path):
         data_file = tmp_path / "lineitem.csv"
