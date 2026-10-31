@@ -24,6 +24,7 @@ from benchbox.core.dataframe import (
     validate_scale_factor,
 )
 from benchbox.core.dataframe.data_loader import DataFrameDataLoader, get_tpch_column_names
+from benchbox.core.dataframe.load_validation import combine_dataframe_validation, validate_dataframe_loaded_tables
 from benchbox.core.dataframe.profiling import PlanCaptureSupport, plan_capture_support
 from benchbox.core.dataframe.query_resolution import (
     benchmark_provides_dataframe_queries,
@@ -32,7 +33,7 @@ from benchbox.core.dataframe.query_resolution import (
     get_tpcds_dataframe_queries,
     get_tpch_dataframe_queries,
 )
-from benchbox.core.dataframe.query_validation import validate_dataframe_query_results
+from benchbox.core.dataframe.query_validation import DataFrameQueryValidationSummary, validate_dataframe_query_results
 from benchbox.core.dataframe.schema_utils import get_benchmark_schema_columns
 from benchbox.core.errors import PlanCaptureError
 from benchbox.core.exceptions import ConfigurationError, InsufficientMemoryError
@@ -352,6 +353,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
 
         query_results: list[dict[str, Any]] = []
         table_stats: dict[str, int] = {}
+        load_validation: DataFrameQueryValidationSummary | None = None
         load_time = 0.0
 
         try:
@@ -393,6 +395,9 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
                     builder.set_loading_time(load_time * 1000)
                     builder.set_phase_status("data_loading", "COMPLETED", load_time * 1000)
 
+                    if str(options_map.get("validation_mode") or "exact").strip().lower() != "disabled":
+                        load_validation = validate_dataframe_loaded_tables(table_stats, per_table_stats, benchmark)
+
                 except DataLoadingError as load_err:
                     load_time = elapsed_seconds(load_start)
 
@@ -433,8 +438,14 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
                     validation_mode=options_map.get("validation_mode"),
                     seed=options_map.get("seed"),
                 )
+                validation_summary = combine_dataframe_validation(validation_summary, load_validation)
                 builder.set_validation_status(validation_summary.status, validation_summary.details)
-                if validation_summary.details.get("checked") or validation_summary.details.get("errors"):
+                if (
+                    load_validation is not None
+                    or validation_summary.status in {"PARTIAL", "FAILED"}
+                    or validation_summary.details.get("checked")
+                    or validation_summary.details.get("errors")
+                ):
                     builder.set_phase_status("validation", validation_summary.status)
 
                 for qr in query_results:

@@ -6,7 +6,8 @@ push-triggered trunk run on `develop`. It never rebuilds or publishes packages.
 ## Producer
 
 The `dist-artifact` job of `.github/workflows/trunk.yml` runs on each push to
-`develop`. Its artifact name is
+`develop` that is not replaced while waiting; a replaced push gets no run and no
+artifact, so that commit cannot be released. Its artifact name is
 `dist-<full head SHA>-attempt-<positive run attempt>`.
 
 The artifact contains exactly four regular files at its root:

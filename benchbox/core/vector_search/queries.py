@@ -406,6 +406,18 @@ LIMIT 20
 for _spark_alias in ("pyspark", "velox", "databricks"):
     QUERY_VARIANTS[_spark_alias] = QUERY_VARIANTS["spark"]
 
+_SINGLESTORE_COSINE = (
+    "DOT_PRODUCT(v.embedding, q.query_vector)"
+    " / NULLIF(SQRT(DOT_PRODUCT(v.embedding, v.embedding)) * SQRT(DOT_PRODUCT(q.query_vector, q.query_vector)), 0)"
+)
+
+QUERY_VARIANTS["singlestore"] = {
+    _query_id: _sql.replace("array_cosine_similarity(v.embedding, q.query_vector)", _SINGLESTORE_COSINE).replace(
+        "array_distance(v.embedding, q.query_vector)", "EUCLIDEAN_DISTANCE(v.embedding, q.query_vector)"
+    )
+    for _query_id, _sql in _QUERIES.items()
+}
+
 
 class VectorSearchQueryManager:
     ALL_QUERY_IDS = ["Q1", "Q2", "Q3", "Q4", "Q5", "Q6"]

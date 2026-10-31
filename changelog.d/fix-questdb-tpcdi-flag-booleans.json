@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed TPC-DI queries on QuestDB failing with \"there is no matching operator `=` with the argument types: BOOLEAN = INT\" on IsCurrent, TT_IS_SELL and HolidayFlag comparisons; QuestDB now compares those flags to TRUE/FALSE literals."
+    }
+  ]
+}

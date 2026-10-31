@@ -372,5 +372,17 @@ def _register_queries() -> None:
 _register_queries()
 
 
+def get_load_columns() -> list[str]:
+    columns: dict[str, None] = {}
+    for spec in _QUERY_SPECS:
+        for column in (
+            *spec.group_keys,
+            *(column for _, column, _ in spec.aggregations),
+            *(column for column, _, _ in spec.filters),
+        ):
+            columns[column] = None
+    return list(columns)
+
+
 def get_dataframe_queries() -> list[DataFrameQuery]:
     return REGISTRY.get_all_queries()

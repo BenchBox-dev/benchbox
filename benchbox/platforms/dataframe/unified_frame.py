@@ -30,6 +30,7 @@ Expr = TypeVar("Expr")
 
 _DATAFUSION_TYPE_MAPPING: dict[str, Any] | None = None
 _NO_LITERAL_VALUE = object()
+_DATAFUSION_DISTINCT_ARGUMENT = "__distinct_argument__"
 
 
 def _get_datafusion_type_mapping() -> dict[str, Any]:
@@ -1467,11 +1468,39 @@ class UnifiedGroupBy(Generic[DF, Expr]):
         if _is_pyspark_df(self._source_df) or _is_polars_df(self._source_df):
             result = self._grouped.agg(*unwrapped)
         elif _is_datafusion_df(self._source_df):
-            result = self._source_df.aggregate(self._columns, unwrapped)
+            result = self._datafusion_aggregate(unwrapped)
         else:
             result = self._grouped.agg(*unwrapped)
 
         return UnifiedLazyFrame(result, self._adapter)
+
+    def _datafusion_aggregate(self, exprs: list[Any]) -> Any:
+        distinct = _single_distinct_count(exprs) if self._columns else None
+        if distinct is None:
+            return self._source_df.aggregate(self._columns, exprs)
+
+        from datafusion import col as df_col, functions as df_f
+
+        argument, alias = distinct
+        distinct_pairs = self._source_df.aggregate([*self._columns, argument.alias(_DATAFUSION_DISTINCT_ARGUMENT)], [])
+        return distinct_pairs.aggregate(self._columns, [df_f.count(df_col(_DATAFUSION_DISTINCT_ARGUMENT)).alias(alias)])
+
+
+def _single_distinct_count(exprs: list[Any]) -> tuple[Any, str] | None:
+    if len(exprs) != 1 or getattr(exprs[0], "variant_name", lambda: None)() != "Alias":
+        return None
+
+    from datafusion import Expr
+
+    aliased = exprs[0].to_variant()
+    aggregate = aliased.expr()
+    if aggregate.variant_name() != "AggregateFunction" or "FILTER" in str(aggregate):
+        return None
+    details = aggregate.to_variant()
+    arguments = details.args()
+    if details.aggregate_type().lower() != "count" or not details.is_distinct() or len(arguments) != 1:
+        return None
+    return Expr(arguments[0]), aliased.alias()
 
 
 def _normalize_join_keys(on: Any, left_on: Any, right_on: Any, is_cross_join: bool) -> tuple[list, list, bool]:

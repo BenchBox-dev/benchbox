@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from benchbox.core.tpchavoc.dialect_compat import CLICKHOUSE_FILTER_VARIANT_IDS
+from benchbox.core.tpchavoc.dialect_compat import (
+    CLICKHOUSE_COALESCED_COUNT_SUBQUERY_VARIANT_IDS,
+    CLICKHOUSE_FILTER_VARIANT_IDS,
+    CLICKHOUSE_OUTER_ALIAS_VARIANTS,
+)
 from benchbox.sql_compat.actions import CompatAction
 from benchbox.sql_compat.context import Phase
 from benchbox.sql_compat.decision import CompatibilityDecision, FailureMode, RewriteQueryPayload, SupportLevel
@@ -16,6 +20,40 @@ for _platform in ("clickhouse-local", "clickhouse-server", "clickhouse-cloud"):
                 support_level=SupportLevel.REWRITTEN,
                 failure_mode=FailureMode.UNSUPPORTED_FEATURE,
                 payload=RewriteQueryPayload(transformer_id="filtered_aggregates_to_conditional", description=_reason),
+                reason=_reason,
+            ),
+            Phase.QUERY_ADAPTER,
+            _platform,
+            benchmark="tpchavoc",
+            query_id=_query_id,
+        )
+    for _query_id in CLICKHOUSE_OUTER_ALIAS_VARIANTS:
+        _reason = (
+            "Alias the outer table so a correlated reference is not captured by the same-named table in the subquery"
+        )
+        REGISTRY.register(
+            CompatibilityDecision(
+                rule_id=f"query_adapter.{_platform}.tpchavoc.{_query_id}.alias_outer_table",
+                action=CompatAction.REWRITE_QUERY,
+                support_level=SupportLevel.REWRITTEN,
+                failure_mode=FailureMode.SILENT_CORRUPTION,
+                payload=RewriteQueryPayload(transformer_id="alias_outer_table_references", description=_reason),
+                reason=_reason,
+            ),
+            Phase.QUERY_ADAPTER,
+            _platform,
+            benchmark="tpchavoc",
+            query_id=_query_id,
+        )
+    for _query_id in CLICKHOUSE_COALESCED_COUNT_SUBQUERY_VARIANT_IDS:
+        _reason = "Coalesce a correlated count subquery to zero where the engine yields NULL for an empty match"
+        REGISTRY.register(
+            CompatibilityDecision(
+                rule_id=f"query_adapter.{_platform}.tpchavoc.{_query_id}.coalesce_count_subquery",
+                action=CompatAction.REWRITE_QUERY,
+                support_level=SupportLevel.REWRITTEN,
+                failure_mode=FailureMode.SILENT_CORRUPTION,
+                payload=RewriteQueryPayload(transformer_id="coalesce_count_subqueries", description=_reason),
                 reason=_reason,
             ),
             Phase.QUERY_ADAPTER,

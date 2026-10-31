@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "DataFusion DataFrame queries that count distinct values per group no longer hold a distinct-value set per group in memory; they plan as a two-stage aggregate, which takes Data Vault Q21 at scale 0.1 from 5.5 GiB to 0.7 GiB peak.",
+      "platforms": ["datafusion-df"]
+    }
+  ]
+}

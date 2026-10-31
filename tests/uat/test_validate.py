@@ -71,6 +71,10 @@ def test_run_validate_writes_rollup_and_computes_counts_without_subprocess(tmp_p
     text = out.rollup_tsv_path.read_text(encoding="utf-8")
     assert "clean.json\tclean\t0\t0" in text
     assert "warning.json\twarning_only\t0\t1" in text
+    warning_row = next(
+        line for line in text.splitlines() if line.startswith("MysteryDB\ttpch\t0.01\t") and "warning.json" in line
+    )
+    assert warning_row.split("\t")[7] != ""
     assert "error.json\terror\t" in text
     assert "refused.json\trefused-by-cli\t0\t0\tcompliance_class=unofficial_subscale" in text
     assert "# overall: total=4 submittable=3 clean=1" in text

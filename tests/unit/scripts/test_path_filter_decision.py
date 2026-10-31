@@ -253,40 +253,29 @@ def test_docs_rst_is_safe(rules: dict[str, list[str]]) -> None:
     assert decision["needs_code_ci"] is False
 
 
-def test_docs_conf_py_runs_code_ci(rules: dict[str, list[str]]) -> None:
-    decision = classify_paths(["docs/conf.py"], rules)
+@pytest.mark.parametrize(
+    "path",
+    [
+        "docs/publish-allowlist.txt",
+        "docs/publish-exclusions.txt",
+        "docs/agent/README.md",
+        "docs/README.md",
+        "docs/internal/release-guide.md",
+        "docs/internal/nightly-t3.md",
+    ],
+)
+def test_docs_control_files_run_code_ci(rules: dict[str, list[str]], path: str) -> None:
+    assert (REPO_RULES.parents[1] / path).is_file()
+    decision = classify_paths([path], rules)
     assert decision["needs_code_ci"] is True
     assert decision["safe_content_only"] is False
 
 
-def test_docs_extension_python_runs_code_ci(rules: dict[str, list[str]]) -> None:
-    decision = classify_paths(["docs/_extensions/sphinx_tags_fix.py"], rules)
+@pytest.mark.parametrize("path", ["docs/example.py", "docs/assets/site.css", "docs/assets/page.html"])
+def test_docs_code_assets_run_code_ci(rules: dict[str, list[str]], path: str) -> None:
+    decision = classify_paths([path], rules)
     assert decision["needs_code_ci"] is True
-
-
-def test_docs_static_python_runs_code_ci(rules: dict[str, list[str]]) -> None:
-    decision = classify_paths(["docs/_static/pygments_cobalt2.py"], rules)
-    assert decision["needs_code_ci"] is True
-
-
-def test_docs_javascript_runs_code_ci(rules: dict[str, list[str]]) -> None:
-    decision = classify_paths(["docs/_static/collapsible-nav.js"], rules)
-    assert decision["needs_code_ci"] is True
-
-
-def test_docs_css_runs_code_ci(rules: dict[str, list[str]]) -> None:
-    decision = classify_paths(["docs/_static/custom.css"], rules)
-    assert decision["needs_code_ci"] is True
-
-
-def test_docs_template_html_runs_code_ci(rules: dict[str, list[str]]) -> None:
-    decision = classify_paths(["docs/_templates/page.html"], rules)
-    assert decision["needs_code_ci"] is True
-
-
-def test_docs_makefile_runs_code_ci(rules: dict[str, list[str]]) -> None:
-    decision = classify_paths(["docs/Makefile"], rules)
-    assert decision["needs_code_ci"] is True
+    assert decision["safe_content_only"] is False
 
 
 def test_classify_does_not_treat_deleted_code_as_safe(

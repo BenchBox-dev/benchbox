@@ -39,17 +39,18 @@ adoption gate.
 | Fork tooling and private wheel build (`sqlglot-soft-fork-source`, `-distribution`, `-publish`) | Fork PRs #1 to #4 (`BenchBox-dev/benchbox-sqlglot`) |
 | Ownership plan and ADR | BenchBox PRs #3180, #3198, #3203 |
 | Fork-diff and soundness-path governance | BenchBox PR #3345 |
-| Current runtime adoption | BenchBox PR #3587, merge `432934279005ea25ed000125358b5e0937aa08fd` |
-| Freshness waiver for upstream v30.25.0 | BenchBox PR #3586 |
+| Runtime adoption of fork 30.25.0.1 | BenchBox PR #3587, merge `432934279005ea25ed000125358b5e0937aa08fd` |
+| Current runtime (fork 30.27.0.1 on upstream v30.27.0) | Fork PR #79 (`BenchBox-dev/benchbox-sqlglot`), merge `1ba4aec7bf6cbca5ec3b5a7cc4cf916aca02aa96` |
+| Freshness waivers for upstream v30.25.0, v30.26.0 and v30.27.0 (each removed by the adoption that supersedes it) | BenchBox PRs #3586, #3740, #3807 |
 | Advisory visibility gate | BenchBox PR #3453, merge `818268a2b7c92f6490698d845432efe2787f4c8d` |
 
 Current release identity, from `benchbox/_vendor/sqlglot.json`:
 
-- fork version `30.25.0.2` (upstream `30.25.0`, fork revision 2);
-- fork commit `9f51489a1721423dd45e2662b87a2870648b61bd` (fork PR #78);
-- upstream commit `9d2966ed3f8a7f0d370846dbae1579b40ddc2924`;
-- wheel `benchbox_sqlglot-30.25.0.2-py3-none-any.whl`, SHA256
-  `6207c3526bbaf1d90c6c69aec133496d0a4af2b3e2d1d06d2bb52c8c77ec8fa2`.
+- fork version `30.27.0.1` (upstream `30.27.0`, fork revision 1);
+- fork commit `1ba4aec7bf6cbca5ec3b5a7cc4cf916aca02aa96` (fork PR #79);
+- upstream commit `98782638dd6dbdedebad0e6ff6edc6e69598b81e`;
+- wheel `benchbox_sqlglot-30.27.0.1-py3-none-any.whl`, SHA256
+  `9698de8f6f1e225d885eb1da245d6360abaea8417af927ecc35fc353ed73c5f2`.
 
 Earlier refreshes (upstream v30.24.0 and v30.25.0) and the adoption slices A1 to
 A5 are recorded in the tracker as done, with the BenchBox PRs in the git history.

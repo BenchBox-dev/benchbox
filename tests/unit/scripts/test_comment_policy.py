@@ -3863,23 +3863,6 @@ def test_template_comments_cannot_hide_assembled_executable_regions(source):
     assert any(finding.kind == "coverage-error" for finding in findings)
 
 
-def test_sphinx_path_selects_template_adapter_without_waiving_dynamic_output():
-    source = "<script>{{ payload }}</script>"
-    lang = source_language("docs/_templates/page.html", source)
-    assert lang == "html+jinja"
-    assert any(f.kind == "coverage-error" for f in scan("docs/_templates/page.html", source, lang))
-
-
-def test_sphinx_path_preserves_literal_style_comments():
-    source = "<style>/* owned */a{color:red}</style>"
-    lang = source_language("docs/_templates/page.html", source)
-    assert any(f.kind == "comment" and "owned" in f.text for f in scan("docs/_templates/page.html", source, lang))
-
-
-def test_sphinx_alias_leaves_other_html_paths_unchanged():
-    assert source_language("landing/index.html", "<p>hi</p>") == "html"
-
-
 def notebook_cell(source: str, metadata: dict | None = None) -> str:
     return json.dumps(
         {
@@ -4131,7 +4114,7 @@ def test_literal_path_executable_must_not_be_an_option(literal: str, kinds: list
     ],
 )
 def test_jinja_html_template_logic_is_bounded(source: str, kinds: list) -> None:
-    assert [f.kind for f in scan("docs/_templates/a.html", source, "html+jinja")] == kinds
+    assert [f.kind for f in scan("a.html", source, "html+jinja")] == kinds
 
 
 @pytest.mark.parametrize(

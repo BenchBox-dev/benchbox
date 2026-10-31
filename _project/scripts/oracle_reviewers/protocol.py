@@ -523,6 +523,7 @@ def judge(
     changed: Iterable[str] | None = None,
     rejudge_fixed: bool = False,
     workspace: Path | str | None = None,
+    read: frozenset[str] | None = None,
 ) -> Judgement:
     if verdict.status != COMPLETE:
         raise ValueError("only a complete review can be judged")
@@ -531,7 +532,9 @@ def judge(
     if rejudge_fixed:
         statuses = {
             key: (
-                NOT_FIXED if value == FIXED or (value == WITHDRAWN and not withdrawal_cited(cited.get(key))) else value
+                NOT_FIXED
+                if value == FIXED or (value == WITHDRAWN and not withdrawal_cited(cited.get(key), read))
+                else value
             )
             for key, value in statuses.items()
         }
@@ -592,6 +595,7 @@ def judge_planned(
     verdict: Verdict,
     plan: Mapping[str, Any],
     workspace: Path | str | None = None,
+    read: frozenset[str] | None = None,
 ) -> Judgement:
     rules = plan.get("protocol") or {}
     changed = rules.get("changed") if rules.get("kind") == FOLLOW_UP else None
@@ -603,6 +607,7 @@ def judge_planned(
         changed,
         bool(rules.get("forced")),
         workspace=ws,
+        read=read,
     )
 
 

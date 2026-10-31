@@ -278,12 +278,17 @@ model_signature() {
 }
 
 check_clients_file() {
-  local names expected differing
+  local names expected differing name token_file recorded
   names=$(jq -r 'keys[]' "$CLIENTS_FILE" | sort) || fail "$CLIENTS_FILE is not readable JSON"
   expected=$(client_token_files | cut -d' ' -f1 | sort)
   [ "$names" = "$expected" ] || fail "$CLIENTS_FILE has clients [$(echo "$names" | joined)] but the token files are for [$(echo "$expected" | joined)]; run '$(basename "$0") gateway'"
   differing=$(jq -r '."oracle-ci".models as $ci | to_entries[] | select(.value.models != $ci) | .key' "$CLIENTS_FILE")
   [ -z "$differing" ] || fail "$CLIENTS_FILE gives [$(echo "$differing" | joined)] models that differ from oracle-ci's"
+  while read -r name token_file; do
+    recorded=$(jq -r --arg name "$name" '.[$name].tokenSha256 // empty' "$CLIENTS_FILE")
+    [ "$recorded" = "$(file_sha256 "$token_file")" ] \
+      || fail "$CLIENTS_FILE holds a token hash for $name that does not match $token_file; run '$(basename "$0") gateway'"
+  done < <(client_token_files)
 }
 
 check_gateway_scope() {

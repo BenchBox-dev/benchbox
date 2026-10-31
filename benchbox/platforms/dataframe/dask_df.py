@@ -435,6 +435,8 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
     def concat(self, dfs: list[DaskDF]) -> DaskDF:
         if len(dfs) == 1:
             return dfs[0]
+        if all(isinstance(df, pd.DataFrame) for df in dfs):
+            return pd.concat(dfs, ignore_index=True)
         return dd.concat(dfs, ignore_index=True)
 
     def get_row_count(self, df: DaskDF) -> int:
@@ -561,12 +563,24 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
                 regular_aggs[name] = spec
 
         if nunique_aggs:
-            return self._groupby_agg_with_nunique(df, by_list, regular_aggs, nunique_aggs, list(agg_spec), **kwargs)
+            return self._groupby_agg_with_nunique(
+                df, by_list, regular_aggs, nunique_aggs, list(agg_spec), as_index, **kwargs
+            )
 
         is_named_agg = any(isinstance(v, tuple) for v in regular_aggs.values())
 
         if is_named_agg:
-            result = df.groupby(by_list, **kwargs).agg(**regular_aggs)
+            first_alias: dict[Any, str] = {}
+            alias_of = {
+                name: first_alias.setdefault(tuple(spec) if isinstance(spec, tuple) else spec, name)
+                for name, spec in regular_aggs.items()
+            }
+            distinct_aggs = {name: regular_aggs[name] for name, alias in alias_of.items() if name == alias}
+            result = df.groupby(by_list, **kwargs).agg(**distinct_aggs)
+            if len(distinct_aggs) != len(regular_aggs):
+                result = result.assign(**{name: result[alias] for name, alias in alias_of.items() if name != alias})[
+                    list(regular_aggs)
+                ]
         else:
             result = df.groupby(by_list, **kwargs).agg(regular_aggs)
 
@@ -582,6 +596,7 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
         regular_aggs: dict[str, Any],
         nunique_aggs: dict[str, tuple[str, str]],
         column_order: list[str],
+        as_index: bool = False,
         **kwargs: Any,
     ) -> DaskDF:
         if regular_aggs:
@@ -597,7 +612,10 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
             result = result.merge(nunique_result, on=by)
 
         ordered = by + [name for name in column_order if name in result.columns and name not in by]
-        return result[ordered]
+        result = result[ordered]
+        if as_index and len(by) == 1:
+            result = result.set_index(by[0])
+        return result
 
     def groupby_size(
         self,

@@ -2,12 +2,23 @@
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
 import hashlib
+import re
 from collections import Counter
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict, dataclass
 from typing import Any, Callable
+
+from benchbox.utils.query_shape_rewrites import (
+    add_dual_source_to_filtered_selects,
+    drop_correlated_scalar_group_by,
+    drop_empty_group_by,
+    hoist_aggregate_subqueries,
+    qualify_aggregated_columns,
+    unwrap_single_grouping_set,
+    wrap_order_by_subquery_aliases,
+)
 
 SCHEMA_DDL_SCOPE = "schema_ddl"
 WORKLOAD_QUERY_SCOPE = "workload_query"
@@ -359,7 +370,10 @@ def translate_sql_query(
                 expression = apply_rewrite("fold_between_literal_arithmetic", expression, tgt)
                 if date_columns:
                     expression = apply_rewrite("mark_date_columns", expression, tgt, date_columns=date_columns)
-            translated_statements.append(expression.sql(dialect=tgt, identify=should_identify, pretty=pretty))
+            statement_sql = expression.sql(dialect=tgt, identify=should_identify, pretty=pretty)
+            if tgt == "starrocks":
+                statement_sql = _starrocks_order_by_projection_aliases(statement_sql, should_identify, pretty)
+            translated_statements.append(statement_sql)
         translated = STATEMENT_SEPARATOR.join(translated_statements)
 
         record_sql_translation_outcome(
@@ -404,6 +418,46 @@ def translate_sql_query(
         return query
 
 
+_STARROCKS_ORDER_BY_ALIAS_GATE = re.compile(
+    r"\bORDER\s+BY\b.*\b(?:GROUPING|RANK|ROW_NUMBER|DENSE_RANK)\s*\(", re.I | re.S
+)
+
+
+def _starrocks_order_by_projection_aliases(sql: str, identify: bool, pretty: bool) -> str:
+    if not _STARROCKS_ORDER_BY_ALIAS_GATE.search(sql):
+        return sql
+
+    from benchbox._vendor import sqlglot
+    from benchbox._vendor.sqlglot import exp
+
+    tree = sqlglot.parse_one(sql, read="starrocks")
+    changed = False
+    for select in tree.find_all(exp.Select):
+        order = select.args.get("order")
+        if order is None:
+            continue
+        targets = {}
+        for projection in select.expressions:
+            if isinstance(projection, exp.Alias) and (
+                projection.this.find(exp.Grouping) or projection.this.find(exp.Window)
+            ):
+                targets.setdefault(projection.this, projection.alias)
+        if not targets:
+            continue
+
+        def replace(node, targets=targets):
+            alias = targets.get(node)
+            return exp.column(alias, quoted=True) if alias else node
+
+        rewritten = order.transform(replace)
+        if rewritten != order:
+            order.replace(rewritten)
+            changed = True
+    if not changed:
+        return sql
+    return tree.sql(dialect="starrocks", identify=identify, pretty=pretty)
+
+
 FORK_REWRITE_MODULES = ("rewrites", "engine_rewrites", "compat", "subqueries")
 
 
@@ -424,10 +478,56 @@ def _fork_rewrite(name: str) -> Callable[..., object]:
     raise ValueError(f"Unknown fork rewrite: {name!r}")
 
 
+def alias_outer_table_references(expression, table: str, alias: str, *, copy: bool = True):
+    from benchbox._vendor.sqlglot import exp
+
+    tree = expression.copy() if copy else expression
+    outer_tables = [
+        node
+        for node in tree.find_all(exp.Table)
+        if node.name == table and not node.alias and node.find_ancestor(exp.Select) is tree
+    ]
+    for node in outer_tables:
+        node.set("alias", exp.TableAlias(this=exp.to_identifier(alias)))
+    if outer_tables:
+        for column in tree.find_all(exp.Column):
+            if column.table == table:
+                column.set("table", exp.to_identifier(alias))
+    return tree
+
+
+def coalesce_count_subqueries(expression, *, copy: bool = True):
+    from benchbox._vendor.sqlglot import exp
+
+    tree = expression.copy() if copy else expression
+    for subquery in list(tree.find_all(exp.Subquery)):
+        inner = subquery.this
+        if not isinstance(inner, exp.Select) or inner.args.get("group") or len(inner.expressions) != 1:
+            continue
+        if not isinstance(subquery.parent, (exp.Alias, exp.Select)):
+            continue
+        if isinstance(inner.expressions[0], exp.Count):
+            subquery.replace(exp.Coalesce(this=subquery.copy(), expressions=[exp.Literal.number(0)]))
+    return tree
+
+
+_LOCAL_REWRITES: dict[str, Callable[..., object]] = {
+    "add_dual_source_to_filtered_selects": add_dual_source_to_filtered_selects,
+    "alias_outer_table_references": alias_outer_table_references,
+    "coalesce_count_subqueries": coalesce_count_subqueries,
+    "drop_correlated_scalar_group_by": drop_correlated_scalar_group_by,
+    "drop_empty_group_by": drop_empty_group_by,
+    "hoist_aggregate_subqueries": hoist_aggregate_subqueries,
+    "qualify_aggregated_columns": qualify_aggregated_columns,
+    "unwrap_single_grouping_set": unwrap_single_grouping_set,
+    "wrap_order_by_subquery_aliases": wrap_order_by_subquery_aliases,
+}
+
+
 def _rewrite_tree(name: str, expression, resolved: str, **args):
     import inspect
 
-    function = _fork_rewrite(name)
+    function = _LOCAL_REWRITES.get(name) or _fork_rewrite(name)
     if "dialect" in inspect.signature(function).parameters:
         args.setdefault("dialect", resolved)
     return function(expression, **args)
@@ -483,6 +583,36 @@ def apply_rewrites(sql: str, dialect: str, rewrites: Sequence[tuple[str, dict]],
         raise
     record("success")
     return result
+
+
+def sql_expressions():
+    from benchbox._vendor.sqlglot import exp
+
+    return exp
+
+
+def rewrite_sql_tree(
+    sql: str,
+    dialect: str,
+    transform: Callable[[Any], Any],
+    finalize: Callable[[Any], Any] | None = None,
+) -> str:
+    from benchbox._vendor import sqlglot
+
+    resolved = resolve_sql_dialect(dialect)
+    try:
+        statements = [statement for statement in sqlglot.parse(sql, read=resolved) if statement is not None]
+    except sqlglot.errors.SqlglotError:
+        return sql
+    if len(statements) != 1:
+        return sql
+    original = statements[0]
+    rewritten = transform(original.copy())
+    if rewritten == original:
+        return sql
+    if finalize is not None:
+        rewritten = finalize(rewritten)
+    return rewritten.sql(dialect=resolved, identify=False)
 
 
 def unqualified_table_names(sql: str, dialect: str) -> list[str] | None:
