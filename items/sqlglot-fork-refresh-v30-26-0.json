@@ -40,6 +40,17 @@
       "op": "update",
       "op_id": "291f124f44654ab8b73e27885acb8bf0",
       "session_id": "fdde7b96f2774961bbd4c814eff2ca0e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:73f4ce6dc372259381dd21db",
+      "at": "2026-10-31T01:48:24Z",
+      "client": "omp-coding-agent",
+      "displaced": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5b8b51dd540fa96f0730389e",
+      "generation": "a37e8b57673a415e95bdc75e53528860",
+      "op": "takeover",
+      "op_id": "d4d256b862e74d659c2c88a2a6665959",
+      "reason": "Holder was subagent ForkRefreshV3027's MCP session 17d26366, now exited (its finish got E_CLAIM_STALE). Work merged: fork #79 1ba4aec7bf6c, core #3823 816530a57. Taking over only to finish.",
+      "session_id": "fdde7b96f2774961bbd4c814eff2ca0e"
     }
   ]
 }
