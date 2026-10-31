@@ -93,6 +93,7 @@ def _predicate_scope(inner: exp.Select) -> tuple[exp.Select, exp.Subquery | None
         and source.this.args.get("from_") is not None
         and not any(source.this.args.get(key) for key in (*_REJECTED, "distinct"))
         and not source.this.find(exp.Window)
+        and not any(item.find(exp.AggFunc) for item in source.this.expressions)
     ):
         return source.this, source
     return None

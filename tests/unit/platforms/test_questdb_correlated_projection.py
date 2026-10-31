@@ -68,3 +68,11 @@ def test_count_nested_in_an_expression_is_left_alone():
 def test_uncorrelated_subquery_is_left_alone():
     sql = "SELECT l1.k, (SELECT SUM(l2.q) FROM l AS l2 WHERE l2.j = 1) AS r FROM l AS l1"
     assert rewrite_query(sql) == sql
+
+
+def test_correlation_inside_an_aggregating_derived_source_is_left_alone():
+    sql = (
+        "SELECT a.y AS y, (SELECT SUM(s.v) FROM (SELECT COUNT(*) AS v FROM t WHERE t.y = a.y) AS s) AS total "
+        "FROM (SELECT DISTINCT y FROM z) AS a"
+    )
+    assert rewrite_query(sql) == sql
