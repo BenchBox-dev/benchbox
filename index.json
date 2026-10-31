@@ -14319,15 +14319,10 @@
       "title": "Unblock lxml PYSEC-2026-87 fix once redshift-connector relaxes its lxml pin"
     },
     "maintainer-bundle-staging-salt-guidance": {
-      "claim": {
-        "expires_at": "2026-11-01T12:32:32Z",
-        "generation": "1d83d08291fa421ea02c5cd53e949a18",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:73f4ce6dc372259381dd21db"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Make the maintainer bundle staging path discoverable so agents stop treating the pseudonym salt as required"
     },
     "maintainer-review-g4-uncertain-deferrals": {
