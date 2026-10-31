@@ -36,10 +36,15 @@
       "title": "Enhance Metadata Primitives with Access Control (ACL) Performance Testing"
     },
     "actions-runner-queue-oracle-latency-20261009": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-01T01:56:03Z",
+        "generation": "ca85675b7eaa4fa0a60bef4dcb3261b9",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Decide the org's GitHub Actions runner capacity: free 20-job cap, paid plan, or self-hosted"
     },
     "adapt-benchbox-to-textcharts-neutral-defaults": {
