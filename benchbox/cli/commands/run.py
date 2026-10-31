@@ -36,6 +36,7 @@ from benchbox.cli.exceptions import (
     create_error_handler,
 )
 from benchbox.cli.help import BenchBoxCommand, advanced_option
+from benchbox.cli.host_lock_optin import host_guarded
 from benchbox.cli.logo import rich_logo
 from benchbox.cli.orchestrator import BenchmarkOrchestrator, resolved_deployment_mode
 from benchbox.cli.output import ResultExporter
@@ -2818,6 +2819,7 @@ def _interactive_handle_result(s: types.SimpleNamespace, result: Any, orchestrat
     help="Disable post-benchmark statement overhead probe.",
 )
 @click.pass_context
+@host_guarded("run", skip=lambda kwargs: bool(kwargs.get("dry_run")))
 def run(
     ctx: click.Context,
     platform: str | None,

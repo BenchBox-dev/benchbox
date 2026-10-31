@@ -4,6 +4,7 @@ import click
 
 from benchbox.cli.commands.run import PlatformOptionParamType, run
 from benchbox.cli.composite_params import ValidationConfig
+from benchbox.cli.host_lock_optin import host_guarded
 from benchbox.cli.shared import console
 from benchbox.core.run_service import (
     TPC_ALLOWED_SCALE_FACTORS,
@@ -32,6 +33,7 @@ from benchbox.core.tpc_disclaimer import official_mode_disclaimer
 @click.option("-q", "--quiet", is_flag=True, help="Emit the exported result path on the final non-empty stdout line")
 @click.option("--validate-results", is_flag=True, help="Enable result validation")
 @click.pass_context
+@host_guarded("run-official")
 def run_official(
     ctx,
     benchmark,

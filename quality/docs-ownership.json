@@ -240,6 +240,7 @@
     "docs/operations/concurrency-proof-matrix.md": "site-owned",
     "docs/operations/fast-lane-budget.md": "site-owned",
     "docs/operations/guards-fix.md": "site-owned",
+    "docs/operations/heavy-work-guard.md": "core-only",
     "docs/operations/local-platform-provisioning.tsv": "core-only",
     "docs/operations/mcp-remote-security.md": "site-owned",
     "docs/operations/uat-framework.md": "site-owned",
