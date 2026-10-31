@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "The three test_sphinx_* entries are removed, either by a medium-refresh from a green Trunk run or by a targeted removal",
+    "medium-drift lists recorded test ids that no shard measured and recommends a refresh when there are any, covered by a unit test"
+  ],
+  "context": "Left over from the Sphinx cleanup in #3844, whose PR body expected a CI refresh to drop the entries; no automated refresh rewrites this file.",
+  "description": "tests/fixtures/medium_shard_durations.json still lists three test_sphinx_* tests that #3844 deleted with the Sphinx template adapter. Nothing removes entries like these: fast-duration-baseline-refresh.yml commits only tests/fixtures/fast_tier_baseline, and for medium durations it runs medium-drift, whose report (scripts/build_fast_duration_baseline.py:309-343) looks only at measured tests and recommends a refresh only on timing skew. The last medium refresh was a manual PR (#3538, 2026-10-26). The entries are inert for sharding but accumulate as tests are deleted.",
+  "links": [
+    "tests/fixtures/medium_shard_durations.json",
+    "scripts/build_fast_duration_baseline.py",
+    ".github/workflows/fast-duration-baseline-refresh.yml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-31T14:57:21Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "23be6d92e3d4423995a638ca3737a4e4",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
+    }
+  ]
+}
