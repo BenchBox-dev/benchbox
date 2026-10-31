@@ -30575,10 +30575,15 @@
       "title": "Remove contributor references (ADRs, PR numbers, internal paths, project labels) from user-facing core text and guard against regressions"
     },
     "usability-platform-config-messages-accurate": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-01T21:32:57Z",
+        "generation": "a7e847bbd2634c09961c8d4f61d4a7f2",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e275448d846640d27249a6f8"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Platform configuration and credential messages name only options and variables BenchBox accepts"
     },
     "usability-site-error-text-sync": {
