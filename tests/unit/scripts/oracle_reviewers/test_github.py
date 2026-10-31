@@ -1022,6 +1022,24 @@ def test_post_gate_evaluates_and_posts_the_head_with_the_given_token(
     assert request.no_post is False and request.pending_first is False
 
 
+def test_post_gate_runs_the_gate_code_and_policy_from_the_configured_root(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    scripts = tmp_path / "_project" / "scripts"
+    scripts.mkdir(parents=True)
+    (scripts / "oracle_gate.py").write_text(
+        "import os\nERROR = 2\n\n\ndef post_gate(request, token):\n    return 0 if os.getcwd() == os.environ['EXPECTED'] else 2\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delitem(sys.modules, "oracle_gate", raising=False)
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    monkeypatch.setenv(github.GATE_ROOT_ENV, str(tmp_path))
+    monkeypatch.setenv("EXPECTED", str(tmp_path.resolve()))
+    github.post_gate(REPO, 7, SHA, "app-token")
+    assert Path(sys.modules["oracle_gate"].__file__).resolve() == (scripts / "oracle_gate.py").resolve()
+    monkeypatch.delitem(sys.modules, "oracle_gate", raising=False)
+
+
 def test_post_gate_raises_when_the_gate_could_not_be_posted(monkeypatch: pytest.MonkeyPatch) -> None:
     _fake_gate_module(monkeypatch, 2)
     with pytest.raises(github.GitHubError, match="could not post oracle-gate for #7"):

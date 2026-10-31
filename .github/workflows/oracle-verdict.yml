@@ -304,6 +304,24 @@ jobs:
           permission-pull-requests: write
           permission-contents: read
 
+      - name: Check out the current develop gate
+        if: steps.prepare.outputs.post == 'true'
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: develop
+          path: gate
+          persist-credentials: false
+          sparse-checkout: |
+            .github/inert-paths.txt
+            .github/oracle-reviewers.yml
+            .github/soundness-paths.txt
+            _project/scripts/oracle_gate.py
+            _project/scripts/oracle_review_check.py
+            _project/scripts/oracle_reviewers
+            _project/scripts/inert_paths.py
+            _project/scripts/soundness_paths.py
+          sparse-checkout-cone-mode: false
+
       - name: Post the result
         id: publish
         if: steps.prepare.outputs.post == 'true'
@@ -312,6 +330,7 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
           JOB_TOKEN: ${{ github.token }}
+          ORACLE_GATE_ROOT: ${{ github.workspace }}/gate
         run: >-
           uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python -m _project.scripts.oracle_reviewers.cli drive publish
 

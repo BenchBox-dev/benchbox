@@ -1277,8 +1277,9 @@ gate re-reads everything. Remaining trusted fallbacks: the `oracle-gate` sweep
 (`pull_request_target`, stand-in comments, dispatch).
 
 The verdict run also posts `oracle-gate` itself: after the review is posted,
-`drive publish` evaluates the exact head with the same `decide()` and posts the
-App-bound status, so the gate does not wait for a second workflow. Every head
+`drive publish` evaluates the exact head with the gate code and review policy of a
+fresh `develop` checkout (the run's own checkout can be hours old) using the same
+`decide()`, and posts the App-bound status, so the gate does not wait for a second workflow. Every head
 change (opened, synchronize, reopened) first gets a pending `oracle-gate` from
 `oracle-gate.yml` before it is evaluated, so pushing back to an earlier green
 head cannot keep that head's stale green; between the push and the pending post
