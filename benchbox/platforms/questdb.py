@@ -24,7 +24,7 @@ from ..utils.dependencies import (
     check_platform_dependencies,
     get_dependency_error_message,
 )
-from ..utils.file_format import get_data_extension
+from ..utils.file_format import get_data_extension, has_trailing_delimiter
 from .base import DriverIsolationCapability, PlatformAdapter, PsycopgConnectionMixin
 from .base.data_loading import (
     CsvDialect,
@@ -572,7 +572,13 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
             "delimiter": dialect.delimiter,
         }
 
-        strip_trailing_delim = get_data_extension(data_file) in (".tbl", ".dat")
+        extension = get_data_extension(data_file)
+        strip_trailing_delim = extension == ".tbl"
+        if extension == ".dat":
+            column_names = self._get_table_columns(table_name)
+            strip_trailing_delim = bool(column_names) and has_trailing_delimiter(
+                data_file, dialect.delimiter, column_names
+            )
         with prepare_local_load_file(
             data_file, dialect=dialect, strip_trailing_delim=strip_trailing_delim
         ) as load_path:
@@ -640,7 +646,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         try:
             sock.connect((self.ilp_host, self.ilp_port))
 
-            strip_trailing_delim = get_data_extension(data_file) in (".tbl", ".dat")
+            strip_trailing_delim = get_data_extension(data_file) == ".tbl"
             with prepare_local_load_file(
                 data_file, dialect=dialect, strip_trailing_delim=strip_trailing_delim
             ) as load_path:
@@ -648,6 +654,8 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                     reader = csv.reader(stream, delimiter=dialect.delimiter)
                     batch: list[str] = []
                     for row in reader:
+                        if len(row) == len(column_names) + 1 and not row[-1]:
+                            row = row[:-1]
                         if len(row) != len(column_names):
                             continue
                         line = self._row_to_ilp_line(table_name, column_names, row, ts_col)

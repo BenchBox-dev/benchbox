@@ -24,7 +24,7 @@ def test_first_review_ships_posts_success_and_the_gate_passes(harness: Harness) 
 
     run = harness.review(41)
 
-    assert run.steps["plan"].outputs["decision"] == "review"
+    assert run.steps["prepare"].outputs["decision"] == "review"
     assert [item["outcome"] for item in run.attempts()] == ["verdict"]
     verdicts = harness.github.oracle_statuses(head)
     assert [(item["state"], item["creator"]["login"]) for item in verdicts] == [("success", "benchbox-oracle[bot]")]
@@ -47,7 +47,7 @@ def test_attempt_capture_keeps_the_redacted_event_stream(harness: Harness) -> No
 
     run = harness.review(42)
 
-    assert run.steps["redact"].code == 0, run.steps["redact"].stderr
+    assert run.steps["finalize"].code == 0, run.steps["finalize"].stderr
     [capture] = run.captures()
     text = json.dumps(capture)
     assert GATEWAY_TOKEN not in text and JOB_TOKEN not in text
@@ -65,7 +65,7 @@ def test_attempt_capture_keeps_the_redacted_event_stream(harness: Harness) -> No
     assert "oracle-verdict-capture" in uploaded
 
 
-@pytest.mark.parametrize("damage", [b"{not json", b"\xff\xfe\x00 not utf-8"], ids=["corrupt-json", "non-utf8"])
+@pytest.mark.parametrize("damage", [b"{}", b"[]"], ids=["empty-object", "array"])
 def test_an_unreadable_attempt_artifact_finalizes_pending_for_integrity(harness: Harness, damage: bytes) -> None:
     head = harness.branch("feat/checker", {CHECKER: FIXED_CHECKER}, "guard None operands")
     harness.github.open_pull(43, "feat/checker")
@@ -100,3 +100,22 @@ def test_a_second_pull_request_at_the_same_head_does_not_strand_the_first(harnes
 
     assert first.code == 0, first.stderr
     assert second.code == 0, second.stderr
+
+
+@pytest.mark.parametrize("damage", [b"{not json", b"\xff\xfe\x00 not utf-8"], ids=["corrupt-json", "non-utf8"])
+def test_an_attempt_artifact_that_cannot_be_redaction_checked_fails_the_finalize_step_and_posts_nothing(
+    harness: Harness, damage: bytes
+) -> None:
+    head = harness.branch("feat/checker", {CHECKER: FIXED_CHECKER}, "guard None operands")
+    harness.github.open_pull(44, "feat/checker")
+    harness.script_omp([_ship()])
+
+    def damage_artifact(attempts_dir: Path) -> None:
+        for path in attempts_dir.glob("attempt-*.json"):
+            path.write_bytes(damage)
+
+    run = harness.review(44, tamper_attempts=damage_artifact)
+
+    assert run.steps["finalize"].code == 1
+    assert "publish" not in run.steps
+    assert harness.github.oracle_statuses(head) == []

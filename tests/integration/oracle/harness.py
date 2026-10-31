@@ -34,9 +34,10 @@ TRUSTED_FILES = (
 GATEWAY_TOKEN = "gwtok-" + "Q7mZ4kLp" * 5
 HELD_SECRET = "oauth-secret-" + "W3xT9vNb" * 4
 JEV_KEY = "jevk-" + "T5nB8wXc" * 4
+OAUTH_CLIENT_ID = "oauth-client-" + "H6dK2sRq" * 3
+APP_PRIVATE_KEY = "app-private-key-" + "M8vC4zJf" * 6
 SHA256_LINE = re.compile(r"sha256: [0-9a-f]{64}")
 URL_LINE = re.compile(r"url: https://\S+")
-INSTALL_STEP = "Install omp"
 BUMP_WORKFLOW = ".github/workflows/omp-pin-bump.yml"
 BUMP_STEP = "Open the bump pull request"
 WORKFLOW = ".github/workflows/oracle-verdict.yml"
@@ -84,6 +85,8 @@ class ReviewRun:
     run: dict[str, Any]
     temp: Path
     steps: dict[str, Step] = field(default_factory=dict)
+    step_env: dict[str, dict[str, str]] = field(default_factory=dict)
+    exported_env: dict[str, str] = field(default_factory=dict)
     loop_summary: str = ""
 
     @property
@@ -105,9 +108,6 @@ class ReviewRun:
 
 
 class Harness:
-    default_mode = "steps"
-    default_shadow = False
-
     def __init__(self, root: Path) -> None:
         self.root = root
         self.repo = root / "repo"
@@ -138,33 +138,6 @@ class Harness:
     def swap_omp(self) -> None:
         binary = self.bin / "omp"
         binary.write_text(binary.read_text(encoding="utf-8") + "# swapped\n", encoding="utf-8")
-
-    def install_omp_step(self, temp: Path, *, installable: bool) -> Step:
-        steps = yaml.safe_load((REPO_ROOT / WORKFLOW).read_text(encoding="utf-8"))["jobs"]["review"]["steps"]
-        script = next(step["run"] for step in steps if step.get("name") == INSTALL_STEP)
-        trusted = temp / "trusted"
-        (trusted / ".github").mkdir(parents=True, exist_ok=True)
-        (trusted / POLICY).write_text(self.policy_file.read_text(encoding="utf-8"), encoding="utf-8")
-        uv = self.bin / "uv"
-        uv.write_text(
-            f"#!{sys.executable}\nimport os, sys\n"
-            "args = sys.argv[1:]\n"
-            "os.execv(sys.executable, [sys.executable, *args[args.index('--') + 2:]])\n",
-            encoding="utf-8",
-        )
-        uv.chmod(uv.stat().st_mode | stat.S_IXUSR)
-        env_file = temp / "github-env.txt"
-        env_file.write_text("", encoding="utf-8")
-        env = {
-            **self.base_env(temp),
-            "GITHUB_ENV": str(env_file),
-            "PYTHONPATH": str(REPO_ROOT),
-        }
-        if not installable:
-            env[omp_pin.CACHE_ENV] = str(self.root / "omp-cache-empty")
-        step = self.run(INSTALL_STEP, ["bash", "-e", "-c", script], env, cwd=trusted)
-        step.outputs["env"] = env_file.read_text(encoding="utf-8")
-        return step
 
     def _seed(self) -> None:
         self.repo.mkdir()
@@ -219,14 +192,30 @@ class Harness:
         security.chmod(security.stat().st_mode | stat.S_IXUSR)
         self.script_omp([])
 
-    def script_omp(self, replies: list[dict[str, Any]], leak_env: str | None = None) -> None:
-        script = {"version": PINNED_OMP, "stream": str(RECORDED_STREAM), "replies": replies, "leak_env": leak_env}
+    def script_omp(
+        self,
+        replies: list[dict[str, Any]],
+        leak_env: str | None = None,
+        ancestor_probe: dict[str, str] | None = None,
+    ) -> None:
+        script = {
+            "version": PINNED_OMP,
+            "stream": str(RECORDED_STREAM),
+            "replies": replies,
+            "leak_env": leak_env,
+            "ancestor_probe": {"stop": os.getpid(), "values": ancestor_probe} if ancestor_probe else None,
+        }
         (self.bin / "script.json").write_text(json.dumps(script), encoding="utf-8")
         (self.bin / "calls.json").unlink(missing_ok=True)
+        (self.bin / "ancestors.json").unlink(missing_ok=True)
         shutil.rmtree(self.bin / "arrivals", ignore_errors=True)
 
     def omp_log(self) -> list[dict[str, Any]]:
         path = self.bin / "calls.json"
+        return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else []
+
+    def omp_ancestors(self) -> list[dict[str, Any]]:
+        path = self.bin / "ancestors.json"
         return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else []
 
     def omp_calls(self) -> int:
@@ -307,10 +296,9 @@ class Harness:
         event_name: str = "pull_request_target",
         action: str = "synchronize",
         inputs: dict[str, str] | None = None,
-        mode: str | None = None,
         **options: Any,
     ) -> ReviewRun:
-        from .runs import Options, runner_for
+        from .runs import Options, WorkflowRunner
 
         pull = self.github.pulls[pr]
         self.github.refresh(pr)
@@ -345,19 +333,10 @@ class Harness:
             "GITHUB_EVENT_PATH": str(temp / "event.json"),
             "GITHUB_REF": "refs/heads/develop",
         }
-        mode = mode or self.default_mode
-        options.setdefault("shadow", self.default_shadow and mode == "steps")
-        runner_for(mode)(self, pr, record, env, Options(**options)).run()
+        chosen = Options(**options)
+        self.jev.classification = chosen.classification
+        WorkflowRunner(self, pr, record, env, chosen).run()
         return record
-
-    def _classify(self, plan: dict[str, Any], path: Path, classification: tuple[str, str]) -> None:
-        from _project.scripts.oracle_reviewers.classify import Classification
-
-        size, template = classification
-        path.parent.mkdir(parents=True, exist_ok=True)
-        gate_flags = tuple(plan.get("gate_paths", ()))
-        value = Classification(size, "routine", template, 0.0, gate_flags, ())
-        path.write_text(json.dumps(value.to_json()), encoding="utf-8")
 
     def gate(self, pr: int, head_sha: str | None = None) -> Step:
         env = {**self.base_env(), "GITHUB_TOKEN": APP_TOKEN, "GH_TOKEN": APP_TOKEN}
@@ -372,10 +351,7 @@ class Harness:
         env = {**self.base_env(temp), "GH_TOKEN": JOB_TOKEN, "GITHUB_RUN_ID": "1", "GITHUB_EVENT_NAME": "schedule"}
         if surface:
             env["SURFACE_TOKEN"] = APP_TOKEN
-        args = (
-            ["drive", "--policy", POLICY, "sweep"] if self.default_mode == "driver" else ["sweep", "--policy", POLICY]
-        )
-        step = self.cli("sweep", args, env)
+        step = self.cli("sweep", ["drive", "--policy", POLICY, "sweep"], env)
         summary = Path(env["GITHUB_STEP_SUMMARY"])
         step.outputs["summary"] = summary.read_text(encoding="utf-8") if summary.is_file() else ""
         return step
