@@ -342,17 +342,17 @@ class TestContextElementAndStructAndMap:
         result = ctx.struct("col_a", ctx.col("col_b"))
         assert isinstance(result, UnifiedExpr)
 
-    def test_map_from_entries_polars_raises(self):
+    def test_map_from_arrays_polars_raises(self):
         adapter = CoverageExpressionAdapter()
         ctx = adapter.create_context()
         with pytest.raises(NotImplementedError, match="Polars"):
-            ctx.map_from_entries("col_a")
+            ctx.map_from_arrays("col_a", "col_b")
 
-    def test_map_from_entries_unified_expr_input(self):
+    def test_map_from_arrays_unified_expr_input(self):
         adapter = CoverageExpressionAdapter()
         ctx = adapter.create_context()
         with pytest.raises(NotImplementedError, match="Polars"):
-            ctx.map_from_entries(ctx.col("col_a"))
+            ctx.map_from_arrays(ctx.col("col_a"), ctx.col("col_b"))
 
 
 class TestAdapterHelperMethods:
