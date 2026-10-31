@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "scripts/stage_seed_corpus_bundle.py still refuses without the salt (non-zero exit), and its message names `make corpus-stage-local` and docs/agent/maintainer-bundles.md; a unit test covers the refusal and pointer.",
+    "`make corpus-stage-local` exists, appears in make help per repo convention, and runs the maintainer migrate script without requiring BENCHBOX_MACHINE_ID_SALT; smoke-run it (or its --help/dry-run mode) with the salt unset and record the output.",
+    "docs/agent/maintainer-bundles.md exists with the salt matrix, commands and the guard-refusal rule; AGENTS.md has a one-line pointer; make comment-policy-check and any docs/agent link checks pass.",
+    "PR merged through the oracle-reviewed path with a changelog fragment if the title type needs one."
+  ],
+  "context": "Owner go: 2026-10-31 ('proceed'). Previous related PR #3672 (README salt paths) merged. DECISION GATE: if making the migrate script a make target requires changing its behaviour or arguments, stop and ask.",
+  "description": "Agents repeatedly reported BENCHBOX_MACHINE_ID_SALT as a blocker for staging maintainer/local result bundles. It is not required there: maintainer bundles are staged with _project/scripts/results_explorer_corpus_migrate.py, which builds AnonymizationManager() without a salt. The salt is required only by `benchbox submit` and the CI seed-corpus lane (scripts/stage_seed_corpus_bundle.py, require_public_pseudonym_salt). The refusal message in scripts/stage_seed_corpus_bundle.py gives no pointer to the maintainer path, and no doc names it. Scope: (1) the salt refusal in scripts/stage_seed_corpus_bundle.py names the maintainer staging path and doc, with a unit test asserting the pointer behaviour (refusal still raised, still exits non-zero); (2) a `make corpus-stage-local` target wrapping the maintainer migrate script (no salt), following existing Makefile conventions and help text; (3) docs/agent/maintainer-bundles.md stating which paths need the salt and which do not, with the commands, and a one-line pointer in the repo AGENTS.md operational references; (4) in that doc, a guard-refusal rule: a guard refusal is never worked around, and before relaying one as a blocker, check whether the documented maintainer path applies and verify it against live repository state, not a summary or recap. Out of scope: ~/.agents/AGENTS.md (needs separate owner permission); changes to anonymisation behaviour or the salt requirement itself.",
+  "links": [
+    "scripts/stage_seed_corpus_bundle.py",
+    "_project/scripts/results_explorer_corpus_migrate.py",
+    "results-data/README.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:73f4ce6dc372259381dd21db",
+      "at": "2026-10-31T12:32:26Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "8e6a14bf7ab44de48a3fbbc67ed27630",
+      "session_id": "fdde7b96f2774961bbd4c814eff2ca0e"
+    }
+  ]
+}
