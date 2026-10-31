@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "TPC-DS DataFrame queries Q51-Q99 now run on lazy Dask frames and return the same rows as the pandas implementation: null-preserving group sums, scalar lookups and totals, grouped row counts, datetime comparisons, rollups, and sort-then-limit projections no longer rely on pandas-only constructs."
+    }
+  ]
+}

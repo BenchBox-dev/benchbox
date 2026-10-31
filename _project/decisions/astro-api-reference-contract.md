@@ -186,7 +186,7 @@ tool is added.
 
 ## 6. URL and anchor map
 
-[`_project/design/site-inventory/api-reference-url-map.json`](../design/site-inventory/api-reference-url-map.json)
+[`inventory/api-reference-url-map.json`](https://github.com/BenchBox-dev/benchbox-site/blob/main/inventory/api-reference-url-map.json) in `BenchBox-dev/benchbox-site`
 lists the 27 reference pages and every `id` on them (autodoc object anchors,
 hand-written directive anchors, section ids and others) from the built Sphinx
 site at the source SHA.

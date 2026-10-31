@@ -35,8 +35,8 @@ Amended 2026-10-03: the merge queue and the strict up-to-date rule on `develop` 
 retired, and a pull request merges by auto-merge once its required checks pass on its
 own head. The queue's failures were mostly its own machinery: 38 of the 40 most recent
 failed merge-group runs, with no confirmed cross-PR integration failure. A post-merge
-workflow, `.github/workflows/trunk.yml`, tests pushes to `develop`, tests each
-commit in parallel in its own concurrency group (amended 2026-10-27), and produces verified release distributions.
+workflow, `.github/workflows/trunk.yml`, tests pushes to `develop` one at a time, with
+only the newest waiting push following the run in flight (amended 2026-10-30), and produces verified release distributions.
 A red trunk is reverted first. The sections below describe the replacement;
 dated queue decisions remain historical. See
 `_project/decisions/merge-queue-retirement-2026-10-03.md`.
