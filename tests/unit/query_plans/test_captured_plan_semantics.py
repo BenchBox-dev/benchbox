@@ -471,6 +471,15 @@ class TestDorisVerboseOperatorMapping:
 
 
 class TestLakeSailCapturedPlans:
+    def test_part_files_in_table_directories_name_scans_after_directory_without_logical_names(self):
+        text = (_FIXTURES / "lakesail_captured_join.txt").read_text(encoding="utf-8")
+        text = text.replace("TableScan: orders", "TableScan: ?table?").replace(
+            "TableScan: customers", "TableScan: ?table?"
+        )
+        text = text.replace("/p.parquet", "/part-00000-1b2c.parquet")
+        root = SparkQueryPlanParser().parse_explain_output("join", text).logical_root
+        assert _scanned_tables(root) == ["customers", "orders"]
+
     @pytest.mark.parametrize("shape", ["join", "union"])
     def test_flat_parquet_files_name_scans_after_file_stem(self, shape):
         text = (_FIXTURES / f"lakesail_flat_captured_{shape}.txt").read_text(encoding="utf-8")

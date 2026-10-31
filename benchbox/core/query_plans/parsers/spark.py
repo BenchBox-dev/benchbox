@@ -53,6 +53,7 @@ class SparkQueryPlanParser(QueryPlanParser):
     _PREFIX_RE = re.compile(r"^((?:\+- |:- |:  |   )*)(.*)$")
     _CODEGEN_RE = re.compile(r"^\*(?:\(\d+\))?\s*")
     _TREE_MARKER_RE = re.compile(r"^(?:[+:]- |:  )", re.MULTILINE)
+    _PART_FILE_RE = re.compile(r"^(?:part|chunk|data|file|\d+)(?:[-_.].*)?$|^[0-9a-f]{8}-[0-9a-f]{4}-", re.IGNORECASE)
     _FILE_GROUPS_RE = re.compile(r"file_groups=\{[^\[]*\[\[([^\],]+)")
 
     def __init__(self):
@@ -170,6 +171,8 @@ class SparkQueryPlanParser(QueryPlanParser):
             directory = next((part for part in reversed(directories) if part and "=" not in part), None)
             if logical_tables:
                 node.table_name = next((name for name in (directory, stem) if name in logical_tables), None)
+            elif directory and (not stem or cls._PART_FILE_RE.match(stem)):
+                node.table_name = directory
             else:
                 node.table_name = stem or None
 
