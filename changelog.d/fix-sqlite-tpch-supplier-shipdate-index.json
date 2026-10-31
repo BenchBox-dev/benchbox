@@ -4,7 +4,7 @@
     {
       "category": "fixed",
       "breaking": false,
-      "text": "Fixed SQLite TPC-H family runs spending minutes on supplier revenue subqueries: the TPC-H helper indexes now include a covering lineitem index on supplier and ship date, so correlated per-supplier revenue lookups such as TPC-Havoc query 15 variant 1 read a short index range instead of scanning lineitem."
+      "text": "Added a covering lineitem index on supplier and ship date to the SQLite TPC-H helper indexes, so correlated per-supplier revenue lookups such as TPC-Havoc query 15 variant 1 read an index range instead of scanning lineitem."
     }
   ]
 }
