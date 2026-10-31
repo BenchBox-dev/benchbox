@@ -2,9 +2,13 @@ from __future__ import annotations
 
 import pytest
 
-from benchbox.platforms.questdb_rewrites import rewrite_query
+from benchbox.platforms.questdb_rewrites import rewrite_with_modules
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
+
+
+def rewrite_query(sql: str) -> str:
+    return rewrite_with_modules(sql, "having_to_subquery")
 
 
 def test_having_becomes_filter_over_derived_table():
