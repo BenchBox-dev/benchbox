@@ -12,7 +12,6 @@ def applies(sql: str) -> bool:
     return "CURRENT_DATE" in upper or "EPOCH" in upper
 
 
-_INTEGER_TYPES = (exp.DType.BIGINT, exp.DType.INT, exp.DType.SMALLINT, exp.DType.TINYINT)
 _MICROSECONDS_PER_DAY = "86400000000.0"
 _MICROSECONDS_PER_SECOND = "1000000.0"
 
@@ -64,9 +63,6 @@ def _day_difference(node: exp.Expr) -> exp.Expr | None:
     operands = _epoch_difference(node.this)
     if operands is None:
         return None
-    parent = node.parent
-    if isinstance(parent, exp.Cast) and parent.to.is_type(*_INTEGER_TYPES):
-        return _datediff("d", *operands)
     return _fraction(_datediff("u", *operands), _MICROSECONDS_PER_DAY)
 
 

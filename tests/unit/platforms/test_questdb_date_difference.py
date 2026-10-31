@@ -7,9 +7,11 @@ from benchbox.platforms.questdb_rewrites import rewrite_query
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 
-def test_integer_day_difference_becomes_datediff():
+def test_day_difference_cast_to_an_integer_keeps_the_fraction_for_the_cast_to_truncate():
     sql = "SELECT CAST(EXTRACT(epoch FROM CAST(a.d AS TIMESTAMP) - CAST(b.d AS TIMESTAMP)) / 86400 AS BIGINT) FROM a, b"
-    assert rewrite_query(sql) == "SELECT CAST(DATEDIFF('d', b.d, a.d) AS BIGINT) FROM a CROSS JOIN b"
+    assert rewrite_query(sql) == (
+        "SELECT CAST((CAST(DATEDIFF('u', b.d, a.d) AS DOUBLE PRECISION) / 86400000000.0) AS BIGINT) FROM a CROSS JOIN b"
+    )
 
 
 def test_day_difference_keeps_its_fraction_when_it_is_not_cast_to_an_integer():
