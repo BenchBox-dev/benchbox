@@ -873,9 +873,9 @@ ci-local:
 
 CI_LINUX_MACHINE ?= benchbox-agent
 CI_LINUX_CMD ?= make test-correctness-gate
-CI_LINUX_NEED_GIB ?= 6
+CI_LINUX_NEED_GIB ?= 2
 HOST_LOCK_CLI = uv run -- python -m benchbox.utils.host_lock
-CI_LINUX_ENV = -e BENCHBOX_TEST_LOCK_DIR=/tmp/benchbox-lock -e BENCHBOX_HEAVY_ADMIT_MIN_GIB=1.5 -e BENCHBOX_HEAVY_MIN_FREE_DISK_GIB=10
+CI_LINUX_ENV = -e BENCHBOX_TEST_LOCK_DIR=/tmp/benchbox-lock -e BENCHBOX_HEAVY_ADMIT_MIN_GIB=1.5 -e BENCHBOX_HEAVY_MIN_FREE_DISK_GIB=2
 .PHONY: ci-linux
 ci-linux: export CI_LINUX_CMD := $(CI_LINUX_CMD)
 ci-linux:
