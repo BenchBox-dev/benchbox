@@ -73,11 +73,25 @@ def _split_predicates(
     return (keys, local) if keys else None
 
 
+_NULL_ON_EMPTY = tuple(
+    getattr(exp, name)
+    for name in ("Sum", "Avg", "Min", "Max", "Stddev", "StddevPop", "StddevSamp", "Variance", "VariancePop")
+    if hasattr(exp, name)
+)
+_ARITHMETIC = (exp.Alias, exp.Identifier, exp.Paren, exp.Add, exp.Sub, exp.Mul, exp.Div, exp.Neg, exp.Cast, exp.Literal)
+
+
 def _defaults_to_zero(projection: exp.Expr) -> bool | None:
     target = projection.this if isinstance(projection, exp.Alias) else projection
-    if isinstance(target, exp.Count):
+    if type(target) is exp.Count:
         return True
-    return None if target.find(exp.Count) is not None else False
+    for node in projection.walk():
+        if isinstance(node, exp.AggFunc):
+            if not isinstance(node, _NULL_ON_EMPTY):
+                return None
+        elif not isinstance(node, _ARITHMETIC) and node.find_ancestor(exp.AggFunc) is None:
+            return None
+    return False
 
 
 def _predicate_scope(inner: exp.Select) -> tuple[exp.Select, exp.Subquery | None] | None:

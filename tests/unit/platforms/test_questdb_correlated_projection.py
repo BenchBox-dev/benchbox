@@ -76,3 +76,17 @@ def test_correlation_inside_an_aggregating_derived_source_is_left_alone():
         "FROM (SELECT DISTINCT y FROM z) AS a"
     )
     assert rewrite_query(sql) == sql
+
+
+@pytest.mark.parametrize(
+    "projection",
+    ["COALESCE(SUM(l2.q), 0)", "IFNULL(AVG(l2.q), -1)", "COUNT_IF(l2.q > 1)", "COUNT(DISTINCT l2.q) + 1"],
+)
+def test_projections_with_a_non_null_empty_default_are_left_alone(projection):
+    sql = f"SELECT l1.k, (SELECT {projection} FROM l AS l2 WHERE l2.k = l1.k) AS r FROM l AS l1"
+    assert rewrite_query(sql) == sql
+
+
+def test_arithmetic_over_null_on_empty_aggregates_is_rewritten():
+    sql = "SELECT l1.k, (SELECT SUM(l2.q) / MAX(l2.q) FROM l AS l2 WHERE l2.k = l1.k) AS r FROM l AS l1"
+    assert "LEFT JOIN" in rewrite_query(sql)
