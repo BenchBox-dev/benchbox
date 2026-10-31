@@ -139,6 +139,7 @@ def _record(
     secrets: tuple[str, ...] = (),
     escalated: Sequence[str] = (),
     adjudicated: Sequence[Mapping[str, str]] = (),
+    disputed: Sequence[str] = (),
 ) -> str:
     rules = plan["protocol"]
     record = {
@@ -161,6 +162,8 @@ def _record(
     }
     if escalated:
         record["escalated"] = list(escalated)
+    if disputed:
+        record["disputed"] = list(disputed)
     if adjudicated:
         record["adjudicated"] = [dict(item) for item in adjudicated]
     if plan.get("run_uuid"):
@@ -277,6 +280,7 @@ def _marked(
     strikes: int,
     secrets: tuple[str, ...],
     escalated: Sequence[str] = (),
+    disputed: Sequence[str] = (),
 ) -> str | None:
     open_defects = [*judgement.carried, *(protocol.defect_entry(ids[item], item) for item in judgement.defects)]
     try:
@@ -289,6 +293,7 @@ def _marked(
             next_id=next_id + len(judgement.defects),
             strikes_after=strikes,
             escalated=escalated,
+            disputed=disputed,
             summary=judgement.summary,
             secrets=secrets,
         )
@@ -406,8 +411,9 @@ def finalize(
     markers = {finding: f"<!-- oracle-defect: c{cycle}-{defect_id} -->" for finding, defect_id in ids.items()}
     fresh, repeated = dedup.split(defects, plan.get("open_findings", ()))
     placement = place(fresh, commentable)
+    disputed = sorted(item["id"] for item in protocol.bound_disputes(plan)) if rules.get("forced") else []
     escalated = (
-        protocol.escalated_ids(rules.get("maintained") or {}, judgement.carried)
+        protocol.escalated_ids(rules.get("maintained") or {}, judgement.carried, disputed)
         if judgement is not None and rules.get("forced") and judgement.decision == protocol.SHIP_WITH_FIXES
         else []
     )
@@ -419,7 +425,7 @@ def finalize(
     ):
         strikes += 1
     marker = (
-        _marked(plan, judgement, reviewer or "", ids, next_id, strikes, secrets, escalated)
+        _marked(plan, judgement, reviewer or "", ids, next_id, strikes, secrets, escalated, disputed)
         if judgement and rules
         else None
     )

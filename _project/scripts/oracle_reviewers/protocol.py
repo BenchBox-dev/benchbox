@@ -80,7 +80,7 @@ RECORD_KEYS = frozenset(
         "summary",
     }
 )
-OPTIONAL_RECORD_KEYS = frozenset({"patch_map", "forced", "run_uuid", "escalated", "adjudicated"})
+OPTIONAL_RECORD_KEYS = frozenset({"patch_map", "forced", "run_uuid", "escalated", "adjudicated", "disputed"})
 DEFECT_KEYS = ("id", "severity", "file", "line", "end_line", "title")
 
 
@@ -254,10 +254,13 @@ def _valid_patches(patches: Any) -> bool:
 
 def _valid_escalation(record: Mapping[str, Any]) -> bool:
     escalated = record.get("escalated", [])
+    disputed = record.get("disputed", [])
     adjudicated = record.get("adjudicated", [])
     return (
         isinstance(escalated, list)
         and all(isinstance(item, str) and DEFECT_ID.fullmatch(item) for item in escalated)
+        and isinstance(disputed, list)
+        and all(isinstance(item, str) and DEFECT_ID.fullmatch(item) for item in disputed)
         and isinstance(adjudicated, list)
         and all(
             isinstance(item, dict)
@@ -394,13 +397,18 @@ def maintained_counts(records: Iterable[Mapping[str, Any]], digest: str) -> dict
     counts: dict[str, int] = {}
     for record in records:
         if record.get("patch_digest") == digest and record.get("kind") == FOLLOW_UP and record.get("forced"):
+            disputed = set(record.get("disputed") or ())
             for item in record["open_defects"]:
-                counts[item["id"]] = counts.get(item["id"], 0) + 1
+                if item["id"] in disputed:
+                    counts[item["id"]] = counts.get(item["id"], 0) + 1
     return counts
 
 
-def escalated_ids(counts: Mapping[str, int], carried: Iterable[Mapping[str, Any]]) -> list[str]:
-    return [item["id"] for item in carried if counts.get(item["id"], 0) + 1 >= ESCALATION_ROUNDS]
+def escalated_ids(
+    counts: Mapping[str, int], carried: Iterable[Mapping[str, Any]], disputed: Iterable[str]
+) -> list[str]:
+    live = set(disputed)
+    return [item["id"] for item in carried if item["id"] in live and counts.get(item["id"], 0) + 1 >= ESCALATION_ROUNDS]
 
 
 def _dispute_limit_reason(latest: Mapping[str, Any]) -> str:

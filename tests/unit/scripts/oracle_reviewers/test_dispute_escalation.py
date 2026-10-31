@@ -128,23 +128,63 @@ def test_a_maintained_finding_stops_counting_as_a_live_dispute() -> None:
     assert protocol.live_disputes(disputes, latest) == []
 
 
-def test_a_finding_maintained_twice_on_one_patch_is_escalated(policy: Policy, tmp_path: Path) -> None:
+REBUTTAL = "Dispute: pkg/kept.py:12 keeps the row, so the defect is wrong."
+
+
+def _dispute_of(defect_id: str) -> dict[str, Any]:
+    return {
+        "id": defect_id,
+        "cycle": 1,
+        "path": "pkg/a.py",
+        "title": "t",
+        "replies": [{"author": "joe", "body": REBUTTAL}],
+        "claim_hashes": [protocol.claim_hash(protocol.canonical_claim(REBUTTAL))],
+    }
+
+
+def _disposition(defect_id: str, disputed: bool) -> dict[str, Any]:
+    entry: dict[str, Any] = {"id": defect_id, "status": "not_fixed", "evidence": f"{defect_id} evidence"}
+    if disputed:
+        entry.update(claim=REBUTTAL, concedes=False)
+    return entry
+
+
+def _escalation_final(policy: Policy, tmp_path: Path, maintained: dict[str, int]) -> report.Final:
     plan = _protocol_plan(
         policy,
         kind="follow-up",
         round=3,
         forced=True,
-        prior=[_prior("D1")],
+        prior=[_prior("D1"), _prior("D2")],
         changed=[CHECKER],
-        maintained={"D1": 1},
-        next_id=2,
+        maintained=maintained,
+        next_id=3,
     )
     plan["findings_delivery"] = "review"
-    final = _final(policy, tmp_path, plan, _with_priors(_v("s"), D1="not_fixed"))
+    plan["disputes"] = [_dispute_of("D1")]
+    verdict = {**_v("s"), "prior_defects": [_disposition("D1", True), _disposition("D2", False)]}
+    return _final(policy, tmp_path, plan, verdict)
+
+
+def test_a_finding_disputed_and_maintained_twice_on_one_patch_is_escalated(policy: Policy, tmp_path: Path) -> None:
+    final = _escalation_final(policy, tmp_path, {"D1": 1, "D2": 1})
     record = protocol.decode_marker(final.review["body"])
     assert record["escalated"] == ["D1"]
+    assert record["disputed"] == ["D1"]
     assert final.description.endswith("; escalated D1")
     assert "adjudication: WITHDRAW|MAINTAIN D<n> - <reason>" in final.review["body"]
+
+
+def test_a_finding_that_was_never_disputed_is_not_escalated(policy: Policy, tmp_path: Path) -> None:
+    final = _escalation_final(policy, tmp_path, {"D1": 1, "D2": 1})
+    assert "D2" not in protocol.decode_marker(final.review["body"])["escalated"]
+
+
+def test_only_disputed_rounds_count_toward_escalation() -> None:
+    open_defects = [{"id": "D1"}, {"id": "D2"}]
+    base = {"patch_digest": "d", "kind": "follow-up", "forced": True, "open_defects": open_defects}
+    records = [{**base, "disputed": ["D1"]}, {**base}]
+    assert protocol.maintained_counts(records, "d") == {"D1": 1}
 
 
 def test_a_finding_maintained_once_is_not_escalated(policy: Policy, tmp_path: Path) -> None:
