@@ -46,6 +46,7 @@ from benchbox.sql_compat.rules.execution_filter.postgres_write_primitives import
     POSTGRES_WRITE_PRIMITIVES_CATEGORY_SKIPS,
     POSTGRES_WRITE_PRIMITIVES_OPERATION_SKIPS,
 )
+from benchbox.sql_compat.rules.execution_filter.questdb_write_primitives import questdb_write_primitive_skip_reason
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.cloud_storage import normalize_output_dir
 from benchbox.utils.dialect_utils import split_sql_statements
@@ -145,7 +146,7 @@ def _resolve_validation_sql(
     return override, None
 
 
-_SINGLE_STATEMENT_SETUP_DIALECTS = frozenset({"sqlite", "databricks"})
+_SINGLE_STATEMENT_SETUP_DIALECTS = frozenset({"sqlite", "databricks", "questdb"})
 _NO_TRUNCATE_DIALECTS = frozenset({"sqlite"})
 _SUMMED_ROWCOUNT_DIALECTS = frozenset({"sqlite"})
 
@@ -272,7 +273,9 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
 
     def _dialect_base_write_sql(self, operation: Any, platform_key: str | None) -> str:
         sql = operation.write_sql
-        if not platform_key or self._rewrite_transactional_sql_for_platform(sql, platform_key) != sql:
+        if not platform_key:
+            return sql
+        if platform_key.lower() != "questdb" and self._rewrite_transactional_sql_for_platform(sql, platform_key) != sql:
             return sql
         return self.translate_query_text(sql, platform_key)
 
@@ -303,6 +306,11 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
                     f"Operation '{operation.id}' is skipped on PostgreSQL-family platforms: "
                     f"{POSTGRES_WRITE_PRIMITIVES_OPERATION_SKIPS[operation.id]}"
                 )
+
+        if "questdb" in {(platform_key or "").lower(), (platform_fallback_key or "").lower()}:
+            questdb_skip_reason = questdb_write_primitive_skip_reason(operation)
+            if questdb_skip_reason is not None:
+                return None, f"Operation '{operation.id}' is skipped on QuestDB: {questdb_skip_reason}"
 
         platform_override_sql: str | None = None
         found_override, override = self._lookup_platform_override(
@@ -437,6 +445,14 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
             effective_changed = self._date_literal("2026-01-01")
             effective_unchanged = self._date_literal("2026-01-02")
             effective_new = self._date_literal("2026-01-03")
+            if self._setup_dialect.lower() == "questdb":
+                new_key_expr = "c_custkey + max_key.max_custkey"
+                new_source = (
+                    f"{quoted_source} CROSS JOIN (SELECT MAX(c_custkey) AS max_custkey FROM {quoted_source}) max_key"
+                )
+            else:
+                new_key_expr = f"c_custkey + (SELECT MAX(c_custkey) FROM {quoted_source})"
+                new_source = quoted_source
             return (
                 f"INSERT INTO {quoted_table} "
                 f"SELECT c_custkey, c_name, c_address, c_acctbal + 100, c_mktsegment, "
@@ -447,10 +463,10 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
                 f"{fp_same} AS row_hash, {effective_unchanged} AS effective_ts, 'unchanged' AS change_type "
                 f"FROM {quoted_source} WHERE c_custkey BETWEEN 21 AND 40;\n"
                 f"INSERT INTO {quoted_table} "
-                f"SELECT c_custkey + (SELECT MAX(c_custkey) FROM {quoted_source}), "
+                f"SELECT {new_key_expr}, "
                 f"c_name, c_address, c_acctbal, c_mktsegment, "
                 f"{fp_same} AS row_hash, {effective_new} AS effective_ts, 'new' AS change_type "
-                f"FROM {quoted_source} WHERE c_custkey BETWEEN 1 AND 20"
+                f"FROM {new_source} WHERE c_custkey BETWEEN 1 AND 20"
             )
         elif table_name == "ddl_truncate_target":
             return f"INSERT INTO {quoted_table} SELECT o_orderkey, o_custkey, o_orderdate FROM {quoted_source}"
@@ -1035,9 +1051,7 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
 
         if cleanup_sql:
             try:
-                cleanup_res = connection.execute(cleanup_sql)
-                if (cleanup_err := failed_platform_error(cleanup_res)) is not None:
-                    raise RuntimeError(cleanup_err)
+                self._execute_cleanup_sql(connection, cleanup_sql, platform_key or platform_fallback_key)
                 self.log_verbose(f"Executed cleanup SQL for {operation_id}")
             except Exception as e:
                 cleanup_error = str(e)
