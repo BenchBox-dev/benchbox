@@ -113,7 +113,7 @@ def _create_minimal_tpch_tables(connection):
     connection.execute("CREATE TABLE customer (c_custkey INTEGER, c_nationkey INTEGER)")
     connection.execute(
         "CREATE TABLE lineitem (l_orderkey INTEGER, l_suppkey INTEGER, l_receiptdate TEXT, l_commitdate TEXT, "
-        "l_partkey INTEGER, l_shipdate TEXT, l_quantity REAL)"
+        "l_partkey INTEGER, l_shipdate TEXT, l_quantity REAL, l_extendedprice REAL, l_discount REAL)"
     )
     connection.execute("CREATE TABLE nation (n_name TEXT, n_nationkey INTEGER)")
     connection.execute(
@@ -145,6 +145,25 @@ def test_tpch_helper_indexes_are_applied_after_load(adapter, connection):
     }.issubset(_index_names(connection))
 
 
+def test_tpch_helper_indexes_serve_correlated_supplier_revenue_subqueries(adapter, connection):
+    _create_minimal_tpch_tables(connection)
+    adapter._apply_benchmark_helper_indexes(_TpchBenchmarkStub(), connection)
+
+    plan = " ".join(
+        row[3]
+        for row in connection.execute(
+            "EXPLAIN QUERY PLAN SELECT s_suppkey, (SELECT SUM(l_extendedprice * (1 - l_discount)) FROM lineitem l2 "
+            "WHERE l2.l_suppkey = s_suppkey AND l2.l_shipdate >= '1996-01-01' AND l2.l_shipdate < '1996-04-01') "
+            "FROM supplier"
+        )
+    )
+
+    assert (
+        "USING COVERING INDEX idx_bb_tpch_lineitem_supp_ship_revenue (l_suppkey=? AND l_shipdate>? AND l_shipdate<?)"
+        in plan
+    )
+
+
 def test_tpch_helper_indexes_do_not_apply_to_other_benchmarks(adapter, connection):
     _create_minimal_tpch_tables(connection)
 
@@ -163,7 +182,7 @@ def test_reused_tpch_database_restores_helper_indexes_without_reloading(adapter,
 
     for _ in range(2):
         phases = adapter._setup_reused_database_phases(_TpchBenchmarkStub(), connection)
-        assert len(_index_names(connection)) == 9
+        assert len(_index_names(connection)) == 10
         assert connection.execute("SELECT * FROM orders").fetchall() == [("F", 1, "1995-01-01", 2)]
         assert phases[0] == phases[2] == 0.0
 

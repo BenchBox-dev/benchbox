@@ -54,6 +54,8 @@ class Sink(Protocol):
 
     def dispatch_gate(self, repo: str, pr: int, head: str) -> None: ...
 
+    def gate(self, repo: str, pr: int, head: str) -> None: ...
+
 
 class CredentialError(Exception):
     pass
@@ -76,6 +78,9 @@ class GitHubSink:
     def dispatch_gate(self, repo: str, pr: int, head: str) -> None:
         if github.pull_base_ref(repo, pr, self.app_token) == DEVELOP:
             github.dispatch_gate(repo, pr, head, self.job_token)
+
+    def gate(self, repo: str, pr: int, head: str) -> None:
+        github.post_gate(repo, pr, head, self.app_token)
 
 
 class Environment(Protocol):
@@ -267,11 +272,18 @@ def finalize(env: Environment, args: argparse.Namespace) -> int:
 def _post(env: Environment, sink: Sink, plan: Mapping[str, Any]) -> None:
     final = env.layout.final
     pr, head = int(plan["pr"]), plan["head_sha"]
-    sink.status(env.repo, head, final / "status.json")
     if (final / "comment.json").is_file():
         sink.comment(env.repo, pr, final / "comment.json")
     if (final / "review.json").is_file():
         sink.review(env.repo, pr, final / "review.json")
+    sink.status(env.repo, head, final / "status.json")
+
+
+def _post_gate(env: Environment, sink: Sink, plan: Mapping[str, Any]) -> None:
+    try:
+        sink.gate(env.repo, int(plan["pr"]), plan["head_sha"])
+    except github.GitHubError as exc:
+        print(f"::warning::oracle-gate was not posted from this run: {exc}", file=sys.stderr)
 
 
 def _credentialed_sink(env: Environment) -> Sink | None:
@@ -306,6 +318,7 @@ def publish(env: Environment, args: argparse.Namespace) -> int:
     except github.GitHubError as exc:
         print(f"oracle-verdict: error: {exc}", file=sys.stderr)
         return 1
+    _post_gate(env, sink, plan)
     if has_state:
         cli._output({"state_recorded": "true"})
     return 0

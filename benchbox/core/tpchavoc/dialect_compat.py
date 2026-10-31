@@ -17,6 +17,16 @@ CLICKHOUSE_OUTER_ALIAS_VARIANTS: dict[str, tuple[str, str]] = {
     "10_v8": ("lineitem", "lineitem_outer"),
 }
 CLICKHOUSE_COALESCED_COUNT_SUBQUERY_VARIANT_IDS = frozenset({"13_v1"})
+SINGLESTORE_FILTER_VARIANT_IDS = frozenset({"1_v6", *(f"{number}_v7" for number in range(2, 19))})
+SINGLESTORE_GROUPING_SET_VARIANT_IDS = frozenset({"1_v9"})
+SINGLESTORE_SOURCELESS_WHERE_VARIANT_IDS = frozenset({"7_v8", "12_v8", "13_v8", "18_v4"})
+SINGLESTORE_ALIAS_QUALIFIED_COLUMNS: dict[str, dict[str, str]] = {
+    "5_v4": {"revenue": "combined"},
+    "11_v4": {"value": "combined"},
+}
+SINGLESTORE_ORDER_SUBQUERY_VARIANT_IDS = frozenset({"3_v1", "5_v1", "10_v1", "16_v1"})
+SINGLESTORE_AGGREGATE_SUBQUERY_VARIANT_IDS = frozenset({"4_v7", "4_v10", "14_v8", "16_v7", "16_v10", "17_v7", "17_v10"})
+SINGLESTORE_CORRELATED_GROUP_VARIANTS: dict[str, tuple[str, ...]] = {"2_v2": ("ps_partkey",)}
 DATAFUSION_EMPTY_GROUP_VARIANT_IDS = frozenset({"6_v2", "14_v2"})
 PRESTO_ALIAS_VARIANT_IDS = POSTGRES_ALIAS_VARIANT_IDS
 PRESTO_WINDOW_FILTER_VARIANT_IDS = frozenset({"2_v7"})
@@ -71,6 +81,8 @@ def _variant_rewrites(query_id: str, target: str) -> list[Rewrite]:
         return spark_variant_rewrites(query_id)
     if target == "clickhouse":
         return _clickhouse_variant_rewrites(query_id)
+    if target == "singlestore":
+        return _singlestore_variant_rewrites(query_id)
     rewrites: list[Rewrite] = []
     if target in _PRESTO_TRINO_DIALECTS:
         if query_id in PRESTO_ALIAS_VARIANT_IDS:
@@ -84,6 +96,27 @@ def _variant_rewrites(query_id: str, target: str) -> list[Rewrite]:
             rewrites.append(("qualify_columns_by_name", {"tables": columns}))
         if query_id in POSTGRES_DUAL_VARIANT_IDS:
             rewrites.append(("drop_literal_row_source", {"alias": "dual"}))
+    return rewrites
+
+
+def _singlestore_variant_rewrites(query_id: str) -> list[Rewrite]:
+    rewrites: list[Rewrite] = []
+    if query_id in SINGLESTORE_FILTER_VARIANT_IDS:
+        rewrites.append(("filtered_aggregates_to_conditional", {}))
+    if query_id in GROUP_BY_EMPTY_VARIANT_IDS:
+        rewrites.append(("drop_empty_group_by", {}))
+    if query_id in SINGLESTORE_GROUPING_SET_VARIANT_IDS:
+        rewrites.append(("unwrap_single_grouping_set", {}))
+    if query_id in SINGLESTORE_SOURCELESS_WHERE_VARIANT_IDS:
+        rewrites.append(("add_dual_source_to_filtered_selects", {}))
+    if columns := SINGLESTORE_ALIAS_QUALIFIED_COLUMNS.get(query_id):
+        rewrites.append(("qualify_aggregated_columns", {"tables": columns}))
+    if query_id in SINGLESTORE_ORDER_SUBQUERY_VARIANT_IDS:
+        rewrites.append(("wrap_order_by_subquery_aliases", {}))
+    if query_id in SINGLESTORE_AGGREGATE_SUBQUERY_VARIANT_IDS:
+        rewrites.append(("hoist_aggregate_subqueries", {}))
+    if group_columns := SINGLESTORE_CORRELATED_GROUP_VARIANTS.get(query_id):
+        rewrites.append(("drop_correlated_scalar_group_by", {"columns": list(group_columns)}))
     return rewrites
 
 
@@ -148,6 +181,13 @@ __all__ = [
     "PRESTO_ALIAS_VARIANT_IDS",
     "PRESTO_WINDOW_FILTER_VARIANT_IDS",
     "SCALAR_GROUP_BY_VARIANT_IDS",
+    "SINGLESTORE_AGGREGATE_SUBQUERY_VARIANT_IDS",
+    "SINGLESTORE_ALIAS_QUALIFIED_COLUMNS",
+    "SINGLESTORE_CORRELATED_GROUP_VARIANTS",
+    "SINGLESTORE_FILTER_VARIANT_IDS",
+    "SINGLESTORE_GROUPING_SET_VARIANT_IDS",
+    "SINGLESTORE_ORDER_SUBQUERY_VARIANT_IDS",
+    "SINGLESTORE_SOURCELESS_WHERE_VARIANT_IDS",
     "SPARK_VARIANT_IDS",
     "list_aggregate_variant_rewrites",
     "normalize_variant_id",

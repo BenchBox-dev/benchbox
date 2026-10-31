@@ -385,32 +385,40 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
 
     def _scd2_row_hash_expr(self, acctbal_expr: str) -> str:
         dialect = getattr(self, "_setup_dialect", "standard").lower()
+        if dialect == "singlestore":
+            return f"CONCAT(c_name, '|', c_address, '|', CAST({acctbal_expr} AS CHAR), '|', c_mktsegment)"
         text_type = "STRING" if dialect in {"bigquery", "databricks"} else "VARCHAR"
         return f"c_name || '|' || c_address || '|' || CAST({acctbal_expr} AS {text_type}) || '|' || c_mktsegment"
+
+    def _integer_cast_type(self) -> str:
+        return "SIGNED" if self._setup_dialect.lower() == "singlestore" else "INTEGER"
 
     def _date_literal(self, value: str) -> str:
         if self._setup_dialect.lower() == "sqlite":
             return f"DATE('{value}')"
+        if self._setup_dialect.lower() == "singlestore":
+            return f"CAST('{value}' AS DATE)"
         return f"DATE '{value}'"
 
     def _get_population_sql(self, table_name: str, source_table: str) -> str:
         quoted_table = self._quote_identifier(table_name)
         quoted_source = self._quote_identifier(source_table)
+        integer_type = self._integer_cast_type()
 
         if table_name == "merge_ops_target":
             return (
                 f"INSERT INTO {quoted_table} SELECT * FROM {quoted_source} "
-                f"WHERE o_orderkey <= (SELECT CAST(MAX(o_orderkey) * 0.5 AS INTEGER) FROM {quoted_source})"
+                f"WHERE o_orderkey <= (SELECT CAST(MAX(o_orderkey) * 0.5 AS {integer_type}) FROM {quoted_source})"
             )
         elif table_name == "merge_ops_source":
             return (
                 f"INSERT INTO {quoted_table} SELECT * FROM {quoted_source} "
-                f"WHERE o_orderkey > (SELECT CAST(MAX(o_orderkey) * 0.5 AS INTEGER) FROM {quoted_source})"
+                f"WHERE o_orderkey > (SELECT CAST(MAX(o_orderkey) * 0.5 AS {integer_type}) FROM {quoted_source})"
             )
         elif table_name == "merge_ops_lineitem_target":
             return (
                 f"INSERT INTO {quoted_table} SELECT * FROM {quoted_source} "
-                f"WHERE l_orderkey <= (SELECT CAST(MAX(l_orderkey) * 0.5 AS INTEGER) FROM {quoted_source})"
+                f"WHERE l_orderkey <= (SELECT CAST(MAX(l_orderkey) * 0.5 AS {integer_type}) FROM {quoted_source})"
             )
         elif table_name == "scd2_ops_dim_customer":
             fingerprint = self._scd2_row_hash_expr("c_acctbal")

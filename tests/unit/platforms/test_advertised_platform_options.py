@@ -21,6 +21,10 @@ PLACEHOLDERS = frozenset({"key", "K", "name", "value", "option"})
 
 KNOWN_MISMATCHES: frozenset[tuple[str, str]] = frozenset()
 
+FILE_PLATFORM_OVERRIDES: dict[str, str] = {
+    "benchbox/platforms/clickhouse/setup.py": "clickhouse-cloud",
+}
+
 
 def _module_to_platform_key() -> dict[str, str]:
     mapping: dict[str, str] = {}
@@ -63,7 +67,9 @@ def _advertised_pairs() -> set[tuple[str, str]]:
         if not keys:
             continue
         module = ".".join(path.relative_to(REPO_ROOT).with_suffix("").parts)
-        platform = _owning_platform(module, module_to_key)
+        platform = FILE_PLATFORM_OVERRIDES.get(path.relative_to(REPO_ROOT).as_posix()) or _owning_platform(
+            module, module_to_key
+        )
         if platform is None:
             continue
         allowed = _accepted_option_names(platform)

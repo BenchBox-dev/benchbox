@@ -80,7 +80,8 @@ def _validate_gateway(gateway: str) -> None:
     if oauth_vars:
         raise ConfigurationError(
             f"Databricks gateway '{gateway}' supports personal access token authentication only, but "
-            f"{', '.join(oauth_vars)} is set. Unset it and provide access_token (DATABRICKS_TOKEN) instead."
+            f"{', '.join(oauth_vars)} is set. Unset it and save a personal access token with "
+            "'benchbox setup --platform databricks'."
         )
 
 

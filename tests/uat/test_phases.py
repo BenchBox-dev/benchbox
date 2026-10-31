@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pytest
 
 from benchbox.utils.resource_limits import MemorySnapshot
-from tests.uat import docker_assets, matrix
+from tests.uat import docker_assets, managed_runtime, matrix
 from tests.uat.config import ExecuteConfig, UATConfig, validate_config
 from tests.uat.conftest import docker_verb as _docker_verb, healthy_ps_stdout, platform_reachability
 from tests.uat.docker_path_helpers import compose_path_ends_with
@@ -1306,6 +1306,99 @@ def test_execute_starrocks_readiness_failure_is_startup_failure(monkeypatch, tmp
     assert "Current available backends" in (outcome.abort_reason or "") or any(
         "Current available backends" in event.message for event in outcome.docker_events
     )
+
+
+@pytest.mark.parametrize("platform", ["cedardb", "presto", "trino"])
+def test_execute_query_readiness_failure_is_one_startup_failure_with_container_log(platform, tmp_path):
+    def fake_docker(argv, **kwargs):
+        action = "exec" if "exec" in argv else _docker_verb(argv)
+        if action == "ps":
+            return _healthy_ps_result(argv)
+        if action == "exec":
+            return docker_assets.DockerCommandResult(tuple(argv), 1, "", "server is still initializing")
+        if action == "logs":
+            return docker_assets.DockerCommandResult(tuple(argv), 0, "coordinator booting\n", "")
+        return docker_assets.DockerCommandResult(tuple(argv), 0, "", "")
+
+    def fail_runner(*args, **kwargs):
+        raise AssertionError("no cell may run against a stack that cannot answer a query")
+
+    cfg = _managed_docker_cfg("query readiness", platforms={"include": [platform]})
+    with platform_reachability(True):
+        outcome = exec_phase.run_execute(
+            cfg,
+            log_dir=tmp_path,
+            databases_root=tmp_path / "databases",
+            runner=fail_runner,
+            docker_runner=fake_docker,
+            memory_reader=_memory_reader(16.0),
+            sleep_fn=lambda _s: None,
+        )
+
+    assert outcome.aborted is False
+    assert outcome.startup_failed
+    assert {cell.platform for cell in outcome.startup_failed} == {platform}
+    assert any(event.action == "application-readiness" and event.status == "failed" for event in outcome.docker_events)
+    assert "coordinator booting" in (tmp_path / f"container-logs-{platform}.log").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("platform", ["cedardb", "presto", "trino"])
+def test_execute_missing_probe_tool_degrades_to_healthcheck_readiness(platform, tmp_path):
+    def fake_docker(argv, **kwargs):
+        action = "exec" if "exec" in argv else _docker_verb(argv)
+        if action == "ps":
+            return _healthy_ps_result(argv)
+        if action == "exec":
+            return docker_assets.DockerCommandResult(tuple(argv), 127, "", "sh: curl: not found")
+        return docker_assets.DockerCommandResult(tuple(argv), 0, "", "")
+
+    cfg = _managed_docker_cfg("probe tool missing", platforms={"include": [platform]})
+    ran = []
+    with platform_reachability(True):
+        outcome = exec_phase.run_execute(
+            cfg,
+            log_dir=tmp_path,
+            databases_root=tmp_path / "databases",
+            runner=_stub_runner_factory({0.01: 1.0}, {0.01: True}),
+            docker_runner=fake_docker,
+            memory_reader=_memory_reader(16.0),
+            sleep_fn=lambda _s: ran.append(_s),
+        )
+
+    assert not outcome.startup_failed
+    skipped = [e for e in outcome.docker_events if e.action == "application-readiness" and e.status == "skipped"]
+    assert skipped and "WARNING" in skipped[0].message
+
+
+def test_application_readiness_retries_stay_within_one_deadline_and_cap_attempt_timeouts():
+    cfg = validate_config({"name": "deadline", "platforms": {"include": ["presto"]}})
+    spec = docker_assets.docker_platform_spec("presto")
+    timeouts = []
+    clock = {"t": 1000.0}
+
+    def runner(argv, **kwargs):
+        timeouts.append(kwargs["timeout_s"])
+        clock["t"] += kwargs["timeout_s"]
+        return docker_assets.DockerCommandResult(tuple(argv), 1, "", "pending")
+
+    reason = managed_runtime.check_application_readiness(
+        cfg,
+        spec=spec,
+        project_name="p",
+        docker_runner=runner,
+        docker_events=[],
+        record_event=lambda *a, **k: None,
+        log_dir=None,
+        benchmark_runs_dir=Path("/tmp"),
+        retry_window_s=290.0,
+        retry_interval_s=10.0,
+        sleep_fn=lambda s: clock.__setitem__("t", clock["t"] + s),
+        clock=lambda: clock["t"],
+    )
+
+    assert reason is not None
+    assert sum(timeouts) <= 290.0 + 1.0
+    assert all(t <= 60.0 for t in timeouts)
 
 
 def test_execute_starrocks_application_liveness_stops_after_runtime_wedge(monkeypatch, tmp_path):

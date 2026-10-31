@@ -24,6 +24,7 @@ _DIALECT_READ = {
     "clickhouse": "clickhouse",
     "duckdb": "duckdb",
     "redshift": "redshift",
+    "singlestore": "singlestore",
     "snowflake": "snowflake",
     "spark": "spark",
 }

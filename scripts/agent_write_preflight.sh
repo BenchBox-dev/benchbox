@@ -56,7 +56,7 @@ EOF
   exit 1
 fi
 
-sh "$(dirname "$0")/check_primary_clone_clean.sh"
+sh "$(dirname "$0")/check_primary_clone_clean.sh" snapshot
 
 if [ "${BENCHBOX_ALLOW_AGENT_GIT_IDENTITY:-}" != "1" ]; then
   author_ident=$(git -C "$top_abs" var GIT_AUTHOR_IDENT 2>/dev/null || true)

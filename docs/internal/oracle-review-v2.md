@@ -141,8 +141,11 @@ a manual dispatch, a `pull_request_target` event other than a plain edit, and a
    PR code never runs.
 7. Disk scan (C4); `drive finalize`, which counts the attempts, re-validates
    this run's artifacts, replays selection and runs the redaction check (C5).
-8. **Post.** Mint the App token, then `drive publish` runs the guard and posts
-   the status and findings. The retry state is uploaded only if every post
+8. **Post.** Mint the App token, then `drive publish` runs the guard, posts
+   the findings first and the `oracle-verdict` status last, because the status
+   is the receipt: a failed findings post leaves no decisive status, so the
+   sweep retries the head. It then evaluates and posts `oracle-gate` for the
+   exact head. The retry state is uploaded only if every post
    succeeded, then the attempt artifacts and the captured event streams, and
    last `drive dispatch` dispatches `oracle-gate`. `findings_delivery` in
    `.github/oracle-reviewers.yml`
@@ -215,7 +218,7 @@ step per phase invocation; every phase step has its own `timeout-minutes`.
 | `attempts` | Runs attempts until the chain stops or an invalid attempt needs a recovery judgment. | gateway token and URL |
 | `recover` | Asks the judgment service how to recover the last invalid attempt. | TypeSafe key |
 | `finalize` | Counts the attempts, validates and decides, writes the status, comment, review and retry state, then redacts every secret value from the results. | every secret the job holds |
-| `publish` | Runs the guard, posts the status, comment and review, and reports `skip` and `state_recorded`: the attempt record is uploaded whenever the finalize phase wrote a state and the guard did not report a skip (so a failed mint or a crashed publish still counts the attempt), and the retry state only after the posts succeeded. With the App configured it fails before the guard when the App token or job token is empty; without the App it logs the result and still records the attempt. | App token, job token |
+| `publish` | Runs the guard, posts the comment and review, then the verdict status as the receipt of those posts, then evaluates and posts `oracle-gate` for the exact head from the trusted checkout with the same decision `oracle-gate.yml` uses, and reports `skip` and `state_recorded`: the attempt record is uploaded whenever the finalize phase wrote a state and the guard did not report a skip (so a failed mint or a crashed publish still counts the attempt), and the retry state only after the posts succeeded. A failed comment or review post leaves no decisive status for the head, so the sweep re-reviews it within the retry budget. A refused gate post is a warning, not a failure: the dispatch and the sweep post it again. With the App configured it fails before the guard when the App token or job token is empty; without the App it logs the result and still records the attempt. | App token, job token |
 | `dispatch` | Dispatches `oracle-gate` for the reviewed head when the pull request's base is `develop`; runs after the uploads so a failed upload withholds it. | App token, job token |
 | `sweep` | Dispatches due retries. | job token, App token |
 
@@ -1025,14 +1028,15 @@ and an authentication failure is `errorStatus` 401; the message text of that
 event never classifies a failure, and the `CALIBRATED_*_PATTERNS` tables apply
 to stderr only. A quota absence records the `provider` of the terminal event,
 which may be a fallback provider. It skips the reviewer's whole pool for the rest
-of the run. In later runs the block lasts one hour (`QUOTA_BACKOFF` in
-`selection.py`) unless the provider is the pool's own primary provider
-(`POOL_PROVIDERS`) and the reset time was parsed from that error's own message;
-such a block lasts until the reset but at most 24 hours (`PRIMARY_BLOCK_CAP`),
-long enough to cover a daily or session limit without letting one stale reset
-hide a pool for days. A new head carries only primary-provider blocks, and an
-owner backoff reset carries none. A pending reason names the provider that
-returned the quota error and when the block was recorded.
+of the run. In later runs the block lasts at most one hour (`QUOTA_BACKOFF` in
+`selection.py`), and a parsed reset time from the pool's own primary provider
+(`POOL_PROVIDERS`) ends it sooner. Once the hour has passed the next review
+tries the pool again: a quota error records a new block from that moment, and
+any other outcome leaves no block, so a provider that serves again is used again
+instead of staying hidden until a long reset time passes. A new head carries
+only primary-provider blocks, and an owner backoff reset carries none. A pending
+reason names the provider that returned the quota error and when the block was
+recorded.
 
 ## Changing the reviewer harness
 
@@ -1262,7 +1266,7 @@ status.
 
 `pull_request_review` runs the PR's own workflow file, so the PR controls the
 notification and can delete or alter it. The verdict path does not depend on it:
-after posting a head's status, comment and review, a final `review` step reads
+after posting a head's comment, review and status, a final `review` step reads
 the PR base through the API and, if `develop`, dispatches `oracle-gate.yml` from
 `develop` with `pr` and the reviewed `head_sha`. This covers comment, dispatch
 and scheduled verdict runs, whose completion carries `develop`'s head and cannot
@@ -1273,22 +1277,30 @@ gate re-reads everything. Remaining trusted fallbacks: the `oracle-gate` sweep
 (every push to `develop`, plus schedule) and the gate's own triggers
 (`pull_request_target`, stand-in comments, dispatch).
 
+The verdict run also posts `oracle-gate` itself: after the review is posted,
+`drive publish` evaluates the exact head with the gate code and review policy of a
+fresh `develop` checkout (the run's own checkout can be hours old) using the same
+`decide()`, and posts the App-bound status, so the gate does not wait for a second workflow. Every head
+change (opened, synchronize, reopened) first gets a pending `oracle-gate` from
+`oracle-gate.yml` before it is evaluated, so pushing back to an earlier green
+head cannot keep that head's stale green; between the push and the pending post
+the earlier status is still visible.
+
 GitHub dismisses only approvals and change requests, and the oracle posts
 comment reviews, so `dismissed` covers only human reviews, which are not
 `oracle-gate` inputs.
 
-Resolving a thread has no Actions event, so resolving the oracle's last thread
-starts nothing. `make pr-arm` and `make pr-arm-remote` dispatch `oracle-gate`
-for the PR and head when its `oracle-gate` status is not `success`. For an
-already-armed PR, run `gh workflow run oracle-gate.yml --ref develop -f
-pr=<number>` or wait for the next sweep (next push to `develop`, or the
-schedule). `make pr-rerun` re-runs failed CI jobs and does not refresh
+Resolving a thread has no Actions event and the gate does not read threads: the
+ruleset's `required_review_thread_resolution` on `develop` blocks the merge
+while any thread is open, so resolving the oracle's last thread needs no
+refresh of `oracle-gate`. `make pr-arm` and `make pr-arm-remote` dispatch
+`oracle-gate` for the PR and head when its `oracle-gate` status is not
+`success`. `make pr-rerun` re-runs failed CI jobs and does not refresh
 `oracle-gate`.
 
 A stand-in attestation must follow the oracle's latest decisive verdict
 (`success` or `failure`) on the head, so overriding a failure is deliberate; a
-later non-decisive review such as `pending` does not void it, and it never
-overrides an open thread.
+later non-decisive review such as `pending` does not void it.
 
 The merge digest applies the same window to merged history and files a
 `soundness-review-gap` issue for any commit it cannot account for. An attester's
@@ -1312,7 +1324,7 @@ status it reads. So the required check is `oracle-gate`:
 `_project/scripts/oracle_review_check.py` rather than reimplementing them, and
 posts `oracle-gate` on the PR head with the oracle App token. The pass rule is
 the checker's: only exempt paths changed, the App's latest review of the head
-reports success with no unresolved oracle thread, or a valid stand-in covers the
+reports success, or a valid stand-in covers the
 exact head; otherwise failure. The script re-reads review state just before
 posting, so a stale evaluation posts the fresh decision rather than overwriting
 a newer one. It posts only for PRs based on `develop`, the one branch whose

@@ -77,6 +77,7 @@ class AthenaSparkCalculationState:
 
 class AthenaSparkAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkExternalTableMixin, PlatformAdapter):
     plan_capture_phase_eligible = True
+    external_staging_instruction = "Set the s3_staging_dir platform option to s3://bucket/path."
 
     driver_isolation_capability = DriverIsolationCapability.NOT_FEASIBLE
 

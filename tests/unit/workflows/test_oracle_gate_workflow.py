@@ -434,7 +434,7 @@ def _only_dispatches_the_gate(step: dict[str, Any]) -> bool:
     )
 
 
-def test_no_other_workflow_can_post_the_gate_context() -> None:
+def test_only_the_gate_workflow_and_the_verdict_publish_step_post_the_gate_context() -> None:
     variable_context = re.compile(r"context[\"']?\s*[=:]\s*[\"']?\$")
     offenders = []
     for workflow in sorted((REPO_ROOT / ".github" / "workflows").glob("*.yml")):
@@ -454,6 +454,51 @@ def test_no_other_workflow_can_post_the_gate_context() -> None:
     assert offenders == []
     gate_py = (REPO_ROOT / "_project/scripts/oracle_gate.py").read_text(encoding="utf-8")
     assert 'GATE_CONTEXT = "oracle-gate"' in gate_py
+
+    publishers = []
+    for workflow in sorted((REPO_ROOT / ".github" / "workflows").glob("*.yml")):
+        data = yaml.safe_load(workflow.read_text(encoding="utf-8"))
+        for job_name, job in (data.get("jobs") or {}).items():
+            for step in job.get("steps") or []:
+                run = " ".join(step.get("run", "").split())
+                if SCRIPT in run or run.endswith("oracle_reviewers.cli drive publish"):
+                    publishers.append((workflow.name, job_name, step.get("name")))
+    assert publishers == [
+        ("oracle-gate.yml", "gate", "Post the gate for the head"),
+        ("oracle-gate.yml", "gate", "Log the gate without posting when the App is not configured"),
+        ("oracle-gate.yml", "sweep", "Gate every open pull request targeting develop"),
+        ("oracle-verdict.yml", "review", "Post the result"),
+    ]
+    gate = _load()
+    trusted = next(step for step in _steps("gate") if step["name"] == "Check out the trusted develop copy")
+    assert trusted["with"]["ref"] == "develop"
+    post = next(step for step in gate["jobs"]["gate"]["steps"] if step["name"] == "Post the gate for the head")
+    assert post["env"]["GH_TOKEN"] == "${{ steps.app.outputs.token }}"
+    verdict = yaml.safe_load(VERDICT.read_text(encoding="utf-8"))["jobs"]["review"]["steps"]
+    verdict_post = next(step for step in verdict if step["name"] == "Post the result")
+    verdict_trusted = next(step for step in verdict if step["name"] == "Check out the trusted develop copy")
+    assert verdict_trusted["with"]["ref"] == "${{ github.sha }}"
+    assert verdict_post["working-directory"] == "trusted"
+    assert verdict_post["env"]["GH_TOKEN"] == "${{ steps.app.outputs.token }}"
+
+
+def test_a_head_change_posts_pending_before_evaluation_and_other_events_do_not() -> None:
+    post = next(step for step in _steps("gate") if step["name"] == "Post the gate for the head")
+    assert '"$HEAD_CHANGED" = true' in post["run"] and "--pending-first" in post["run"]
+    expression = post["env"]["HEAD_CHANGED"].removeprefix("${{").removesuffix("}}")
+    for action, expected in (
+        ("opened", True),
+        ("synchronize", True),
+        ("reopened", True),
+        ("ready_for_review", False),
+        ("edited", False),
+    ):
+        assert (
+            _evaluate(expression, {"github": {"event_name": "pull_request_target", "event": {"action": action}}})
+            is expected
+        )
+    for event_name in ("issue_comment", "workflow_dispatch", "schedule"):
+        assert _evaluate(expression, {"github": {"event_name": event_name, "event": {"action": "created"}}}) is False
 
 
 def test_workflow_has_no_comments() -> None:

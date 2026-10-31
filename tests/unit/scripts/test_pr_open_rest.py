@@ -288,3 +288,111 @@ def test_draft_reuse_leaves_an_existing_pr_untouched() -> None:
     pr = pr_open_rest.publish(REPO, "BenchBox-dev", "fix/widget", "fix/widget", None, None, gh, draft=True)
     assert pr.status == "reused"
     assert gh.api("POST") == [] and gh.api("PATCH") == []
+
+
+class ParentGh(FakeGh):
+    def __init__(self, stack: dict[str, tuple[str, str]], log: str = "") -> None:
+        super().__init__([], log)
+        self.stack = stack
+
+    def __call__(self, cmd: list[str]) -> tuple[int, str]:
+        if cmd[0] == "gh" and "--method" in cmd and cmd[cmd.index("--method") + 1] == "GET":
+            self.calls.append(cmd)
+            head = _fields(cmd)["head"]
+            owner, _, ref = head.partition(":")
+            if ref in self.stack and self.stack[ref][0].lower() == owner.lower():
+                pull = _pull(owner, ref)
+                pull["base"] = {"ref": self.stack[ref][1]}
+                return 0, json.dumps([pull])
+            return 0, "[]"
+        return super().__call__(cmd)
+
+
+def test_a_parent_that_is_an_open_pr_branch_is_accepted() -> None:
+    gh = ParentGh({"feat/parent": ("BenchBox-dev", "develop")})
+    pr_open_rest.verify_parent(gh, REPO, "feat/upper", "feat/parent")
+
+
+def test_a_parent_that_is_not_an_open_pr_is_refused() -> None:
+    with pytest.raises(pr_open_rest.PrOpenError, match="not an open pull request"):
+        pr_open_rest.verify_parent(ParentGh({}), REPO, "feat/upper", "feat/missing")
+
+
+def test_a_fork_parent_is_refused() -> None:
+    gh = ParentGh({"feat/parent": ("someone-else", "develop")})
+    with pytest.raises(pr_open_rest.PrOpenError, match="not an open pull request"):
+        pr_open_rest.verify_parent(gh, REPO, "feat/upper", "feat/parent")
+
+
+def test_an_integration_branch_is_not_a_parent() -> None:
+    with pytest.raises(pr_open_rest.PrOpenError, match="integration branch"):
+        pr_open_rest.verify_parent(ParentGh({}), REPO, "feat/upper", "develop")
+
+
+def test_a_fourth_level_is_refused_and_a_third_is_accepted() -> None:
+    gh = ParentGh(
+        {
+            "feat/one": ("BenchBox-dev", "develop"),
+            "feat/two": ("BenchBox-dev", "feat/one"),
+            "feat/three": ("BenchBox-dev", "feat/two"),
+        }
+    )
+    pr_open_rest.verify_parent(gh, REPO, "feat/upper", "feat/two")
+    with pytest.raises(pr_open_rest.PrOpenError, match="at most 3"):
+        pr_open_rest.verify_parent(gh, REPO, "feat/upper", "feat/three")
+
+
+def test_a_cyclic_base_chain_is_refused() -> None:
+    gh = ParentGh({"feat/a": ("BenchBox-dev", "feat/b"), "feat/b": ("BenchBox-dev", "feat/a")})
+    with pytest.raises(pr_open_rest.PrOpenError, match="cyclic"):
+        pr_open_rest.verify_parent(gh, REPO, "feat/upper", "feat/a")
+
+
+def test_a_stacked_create_targets_the_parent_as_a_draft_after_listing_its_own_commits() -> None:
+    gh = ParentGh({"feat/parent": ("BenchBox-dev", "develop")}, _log(("feat: upper", "Upper.")))
+
+    pr = pr_open_rest.publish(
+        REPO, "BenchBox-dev", "feat/upper", "feat/upper", None, None, gh, draft=True, parent="feat/parent"
+    )
+
+    assert pr.status == "created"
+    (log_call,) = [call for call in gh.calls if call[0] == "git"]
+    assert log_call[-1] == "origin/feat/parent..HEAD"
+    (create,) = gh.api("POST")
+    assert _fields(create)["base"] == "feat/parent"
+    assert _fields(create)["draft"] == "true"
+    *_, lookup = gh.api("GET")
+    assert _fields(lookup)["base"] == "feat/parent"
+
+
+def test_main_makes_a_stacked_pr_a_draft_even_without_the_flag(capsys: pytest.CaptureFixture[str]) -> None:
+    gh = ParentGh({"feat/parent": ("BenchBox-dev", "develop")}, _log(("feat: upper", "Upper.")))
+    argv = ["--repo", REPO, "--head-owner", "BenchBox-dev", "--branch", "feat/upper", "--head-spec", "feat/upper"]
+
+    assert pr_open_rest.main([*argv, "--parent", "feat/parent"], gh) == 0
+
+    (create,) = gh.api("POST")
+    assert _fields(create)["draft"] == "true"
+    assert pr_open_rest.main([*argv, "--parent", "feat/missing", "--verify-parent"], gh) == 1
+    assert "not an open pull request" in capsys.readouterr().err
+
+
+def test_publish_enforces_the_stack_policy_without_a_separate_verify_call() -> None:
+    gh = ParentGh({}, _log(("feat: upper", "Upper.")))
+
+    with pytest.raises(pr_open_rest.PrOpenError, match="not an open pull request"):
+        pr_open_rest.publish(REPO, "BenchBox-dev", "feat/upper", "feat/upper", None, None, gh, parent="feat/missing")
+
+    assert not gh.api("POST")
+
+
+def test_a_branch_cannot_be_its_own_parent() -> None:
+    gh = ParentGh({"feat/upper": ("BenchBox-dev", "develop")})
+    with pytest.raises(pr_open_rest.PrOpenError, match="branch being opened"):
+        pr_open_rest.verify_parent(gh, REPO, "feat/upper", "feat/upper")
+
+
+def test_a_fork_branch_opening_a_stack_cannot_use_its_own_fork_pr_as_the_parent() -> None:
+    gh = ParentGh({"feat/parent": ("someone-else", "develop")})
+    with pytest.raises(pr_open_rest.PrOpenError, match="not an open pull request"):
+        pr_open_rest.verify_parent(gh, REPO, "feat/upper", "feat/parent")

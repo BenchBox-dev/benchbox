@@ -203,7 +203,7 @@ class TestSingleStoreConnection:
             mock_s2.connect.return_value = mock_connection
             connection = adapter.create_connection()
 
-        assert connection == mock_connection
+        assert connection._conn is mock_connection
         mock_s2.connect.assert_called_once()
         call_kwargs = mock_s2.connect.call_args.kwargs
         assert call_kwargs["host"] == "localhost"
@@ -211,6 +211,26 @@ class TestSingleStoreConnection:
         assert call_kwargs["database"] == "test_db"
         assert call_kwargs["user"] == "root"
         assert call_kwargs["local_infile"] is True
+
+    def test_connection_runs_multi_statement_sql_one_statement_at_a_time(self):
+        adapter = SingleStoreAdapter(host="localhost", port=3306, database="test_db")
+
+        mock_connection = Mock()
+        executed: list[str] = []
+        mock_connection.cursor.return_value.execute.side_effect = lambda statement, *args: executed.append(statement)
+
+        with (
+            patch.object(adapter, "handle_existing_database"),
+            patch.object(adapter, "check_server_database_exists", return_value=True),
+            patch("benchbox.platforms.singlestore._s2") as mock_s2,
+        ):
+            mock_s2.connect.return_value = mock_connection
+            connection = adapter.create_connection()
+
+        executed.clear()
+        connection.execute("CREATE TABLE t (id INT); ALTER TABLE t ADD COLUMN c DATE")
+
+        assert executed == ["CREATE TABLE t (id INT)", "ALTER TABLE t ADD COLUMN c DATE"]
 
     def test_create_connection_creates_database_if_missing(self):
         adapter = SingleStoreAdapter(database="new_db")
@@ -1232,8 +1252,13 @@ class TestSingleStoreDDLTransformation:
         assert "SHARD KEY" not in result
         assert "SORT KEY" not in result
 
-    def test_table_name_lowercased(self):
-        (result,) = self._statements("CREATE TABLE IF NOT EXISTS ORDERS (o_orderkey BIGINT)")
+    def test_table_name_case_is_preserved(self):
+        (result,) = self._statements("CREATE TABLE IF NOT EXISTS DimCustomer (SK_CustomerID BIGINT)")
+        assert "`DimCustomer`" in result
+        assert "`dimcustomer`" not in result
+
+    def test_known_table_keeps_shard_and_sort_keys(self):
+        (result,) = self._statements("CREATE TABLE IF NOT EXISTS orders (o_orderkey BIGINT)")
         assert "`orders`" in result
         assert "SHARD KEY (`o_orderkey`)" in result
         assert "SORT KEY (`o_orderkey`)" in result

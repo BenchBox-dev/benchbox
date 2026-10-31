@@ -4,10 +4,19 @@ from unittest.mock import Mock
 
 import pytest
 
+import benchbox.platforms.questdb as questdb_module
 from benchbox.platforms.questdb import QuestDBAdapter
 from benchbox.platforms.questdb_rewrites import rewrite_query
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
+
+
+@pytest.fixture
+def questdb_stubs(monkeypatch):
+    stub = Mock()
+    stub.__version__ = "3.1.0"
+    monkeypatch.setattr(questdb_module, "psycopg", stub)
+    return stub
 
 
 def test_date_trunc_unit_is_lowercased():
@@ -32,9 +41,7 @@ def test_unparseable_query_is_returned_verbatim():
     assert rewrite_query(sql) == sql
 
 
-def test_execute_query_runs_rewritten_sql(monkeypatch):
-    import benchbox.platforms.questdb as questdb_module
-
+def test_execute_query_runs_rewritten_sql(monkeypatch, questdb_stubs):
     captured = {}
 
     def fake_execute(connection, query, query_id, **kwargs):
@@ -59,9 +66,7 @@ def test_nested_date_trunc_is_lowercased():
     )
 
 
-def test_plan_capture_and_explain_see_the_rewritten_query(monkeypatch):
-    import benchbox.platforms.questdb as questdb_module
-
+def test_plan_capture_and_explain_see_the_rewritten_query(monkeypatch, questdb_stubs):
     seen = {}
     monkeypatch.setattr(
         questdb_module,
@@ -148,3 +153,28 @@ def test_group_by_alias_of_an_extract_is_expanded_to_the_expression():
 def test_group_by_alias_of_a_plain_column_is_kept():
     sql = "SELECT EXTRACT(YEAR FROM ts) AS y, a AS k, COUNT(*) FROM t GROUP BY k"
     assert rewrite_query(sql) == "SELECT YEAR(ts) AS y, a AS k, COUNT(*) FROM t GROUP BY k"
+
+
+def test_unparseable_query_records_a_fallback_outcome():
+    from benchbox.utils.dialect_utils import sql_translation_context
+
+    with sql_translation_context(strict=False) as outcomes:
+        assert rewrite_query("SELEC (((") == "SELEC ((("
+    assert [outcome.status for outcome in outcomes] == ["fallback"]
+
+
+def test_unparseable_query_raises_in_strict_mode():
+    from benchbox.utils.dialect_utils import sql_translation_context
+
+    with sql_translation_context(strict=True) as outcomes:
+        with pytest.raises(Exception):
+            rewrite_query("SELEC (((")
+    assert [outcome.status for outcome in outcomes] == ["failed"]
+
+
+def test_rewritten_query_records_a_success_outcome():
+    from benchbox.utils.dialect_utils import sql_translation_context
+
+    with sql_translation_context(strict=False) as outcomes:
+        rewrite_query("SELECT DATE_TRUNC('DAY', ts) FROM t")
+    assert [outcome.status for outcome in outcomes] == ["success"]

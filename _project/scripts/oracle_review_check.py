@@ -67,22 +67,6 @@ query($owner: String!, $name: String!, $number: Int!) {
 }
 """
 
-_THREADS_QUERY = """
-query($owner: String!, $name: String!, $number: Int!, $after: String) {
-  repository(owner: $owner, name: $name) {
-    pullRequest(number: $number) {
-      reviewThreads(first: 100, after: $after) {
-        pageInfo { hasNextPage endCursor }
-        nodes {
-          isResolved
-          comments(first: 1) { nodes { author { __typename login } } }
-        }
-      }
-    }
-  }
-}
-"""
-
 
 class CheckError(RuntimeError):
     pass
@@ -204,7 +188,6 @@ def decide(
     head_sha: str,
     files: Iterable[str],
     statuses: Iterable[dict[str, Any]],
-    threads: Iterable[dict[str, Any]],
     paths: Callable[[Iterable[str]], bool],
     base_date: str | None = None,
     comments: Iterable[dict[str, Any]] = (),
@@ -241,17 +224,6 @@ def decide(
         return WAITING, (
             f"oracle-review: waiting for the oracle's verdict on {head_sha}, or a stand-in attestation "
             f"'Stand-in oracle review: APPROVE {head_sha}' from a listed attester; rerun this check after it lands"
-        )
-
-    open_threads = sum(
-        1
-        for thread in threads
-        if not thread.get("resolved") and _is_oracle(thread.get("author"), thread.get("author_type"))
-    )
-    if open_threads:
-        return WAITING, (
-            f"oracle-review: {open_threads} unresolved oracle review thread(s); resolve them, then run "
-            "`gh workflow run oracle-gate.yml --ref develop -f pr=<number>`"
         )
 
     if verdict == "success":
@@ -514,30 +486,6 @@ def fetch_head_oid(token: str, repo: str, pr: int) -> str:
     return payload["data"]["repository"]["pullRequest"]["headRefOid"]
 
 
-def fetch_threads(token: str, repo: str, pr: int) -> list[dict[str, Any]]:
-    owner, name = repo.split("/", 1)
-    threads: list[dict[str, Any]] = []
-    after: str | None = None
-    while True:
-        payload = _request(
-            token,
-            f"{API_ROOT}/graphql",
-            {"query": _THREADS_QUERY, "variables": {"owner": owner, "name": name, "number": pr, "after": after}},
-        )
-        if payload.get("errors"):
-            raise CheckError(f"GitHub GraphQL returned errors: {payload['errors']}")
-        connection = payload["data"]["repository"]["pullRequest"]["reviewThreads"]
-        for node in connection["nodes"]:
-            comments = node["comments"]["nodes"]
-            author = (comments[0].get("author") or {}) if comments else {}
-            threads.append(
-                {"resolved": node["isResolved"], "author": author.get("login"), "author_type": author.get("__typename")}
-            )
-        if not connection["pageInfo"]["hasNextPage"]:
-            return threads
-        after = connection["pageInfo"]["endCursor"]
-
-
 def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
@@ -570,7 +518,6 @@ def main(argv: list[str] | None = None) -> int:
             print("oracle-review: only exempt paths changed")
             return PASS
         statuses = fetch_statuses(token, args.repo, head_sha)
-        threads = fetch_threads(token, args.repo, args.pr)
         base_date = fetch_base_change_date(token, args.repo, args.pr)
         comments = fetch_comments(token, args.repo, args.pr)
         reviews = fetch_reviews(token, args.repo, args.pr)
@@ -578,7 +525,7 @@ def main(argv: list[str] | None = None) -> int:
 
         bump = fetch_bump_refusals(token, args.repo, pull, files, len(items), comments)
         status, message = decide(
-            head_sha, files, statuses, threads, matcher, base_date, comments, reviews=reviews, bump_refusals=bump
+            head_sha, files, statuses, matcher, base_date, comments, reviews=reviews, bump_refusals=bump
         )
     except (CheckError, KeyError, ValueError) as exc:
         print(f"oracle-review: error: {exc}", file=sys.stderr)

@@ -233,6 +233,15 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         self.parquet_chunk_rows = int(config.get("parquet_chunk_rows", 200_000))
 
         self.skip_database_management = True
+        self._table_column_cache: dict[str, frozenset[str]] = {}
+
+    def _table_columns(self, table_name: str) -> frozenset[str] | None:
+        if table_name not in self._table_column_cache:
+            columns = self._get_table_columns(table_name)
+            if not columns:
+                return None
+            self._table_column_cache[table_name] = frozenset(column.lower() for column in columns)
+        return self._table_column_cache[table_name]
 
     def _get_connection_params(self) -> dict[str, Any]:
         params = {
@@ -257,6 +266,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         conn = psycopg.connect(**params)
 
         conn.autocommit = True
+        conn.prepare_threshold = None
 
         cursor = conn.cursor()
         cursor.execute("SELECT 1")
@@ -275,6 +285,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         conn = psycopg.connect(**params)
         try:
             conn.autocommit = True
+            conn.prepare_threshold = None
             cursor = conn.cursor()
             try:
                 cursor.execute("SELECT 1")
@@ -342,6 +353,25 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                     )
                     return False
 
+                expected_columns = self._expected_table_columns(benchmark)
+                if expected_columns:
+                    with test_conn.cursor() as column_cursor:
+                        column_cursor.execute("SELECT table_name, column_name FROM information_schema.columns")
+                        existing_columns: dict[str, set[str]] = {}
+                        for table_name, column_name in column_cursor.fetchall():
+                            existing_columns.setdefault(str(table_name).lower(), set()).add(str(column_name).lower())
+                    mismatched = sorted(
+                        name
+                        for name, columns in expected_columns.items()
+                        if name in expected_tables and not columns <= existing_columns.get(name, set())
+                    )
+                    if mismatched:
+                        self.log_verbose(
+                            f"Tables exist with a different schema: {', '.join(mismatched)} "
+                            "- treating as fresh database (will recreate schema)"
+                        )
+                        return False
+
                 self.log_verbose(
                     f"Found all {len(expected_tables)} expected benchmark tables with data - "
                     "attempting to reuse existing database"
@@ -356,38 +386,57 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
             self.log_verbose("Unable to verify existing tables - treating as fresh database")
             return False
 
+    @staticmethod
+    def _expected_table_columns(benchmark) -> dict[str, set[str]]:
+        try:
+            schema = benchmark.get_schema()
+        except Exception:
+            return {}
+        if not isinstance(schema, dict):
+            return {}
+        expected: dict[str, set[str]] = {}
+        for name, table in schema.items():
+            columns = table.get("columns") if isinstance(table, dict) else None
+            if isinstance(columns, list):
+                expected[str(name).lower()] = {
+                    str(column["name"]).lower() for column in columns if isinstance(column, dict) and "name" in column
+                }
+        return expected
+
     def create_schema(self, benchmark, connection: Any) -> float:
         start_time = mono_time()
+        self._table_column_cache.clear()
         self.log_operation_start("Schema creation", f"benchmark: {benchmark.__class__.__name__}")
 
         schema_sql = self._create_schema_with_tuning(benchmark, source_dialect=QUESTDB_DIALECT)
 
         self.log_very_verbose(f"Executing schema creation script ({len(schema_sql)} characters)")
 
+        statements = [s.strip() for s in schema_sql.split(";") if s.strip()]
         cursor = connection.cursor()
         critical_failures = []
         try:
             if not self.is_dry_run and not getattr(self, "database_was_reused", False):
                 benchmark_tables = getattr(benchmark, "tables", None)
-                if isinstance(benchmark_tables, dict):
-                    droppable = [
-                        name
-                        for name in benchmark_tables
-                        if isinstance(name, str) and self._validate_identifier(name.lower())
-                    ]
-                    if droppable:
-                        self.log_notice(
-                            f"Pre-dropping {len(droppable)} benchmark table(s) before schema creation: "
-                            f"{', '.join(droppable)}"
-                        )
-                    for table_name in droppable:
-                        try:
-                            self.log_notice(f'Dropping table if it exists: "{table_name}"')
-                            cursor.execute(f'DROP TABLE IF EXISTS "{table_name}"')
-                        except Exception as drop_err:
-                            self.logger.warning(f"Pre-create DROP TABLE {table_name} skipped: {drop_err}")
+                candidates = list(benchmark_tables) if isinstance(benchmark_tables, dict) else []
+                candidates.extend(name for stmt in statements for name in [self._extract_table_name(stmt)] if name)
+                droppable = list(
+                    dict.fromkeys(
+                        name for name in candidates if isinstance(name, str) and self._validate_identifier(name.lower())
+                    )
+                )
+                if droppable:
+                    self.log_notice(
+                        f"Pre-dropping {len(droppable)} benchmark table(s) before schema creation: "
+                        f"{', '.join(droppable)}"
+                    )
+                for table_name in droppable:
+                    try:
+                        self.log_notice(f'Dropping table if it exists: "{table_name}"')
+                        cursor.execute(f'DROP TABLE IF EXISTS "{table_name}"')
+                    except Exception as drop_err:
+                        self.logger.warning(f"Pre-create DROP TABLE {table_name} skipped: {drop_err}")
 
-            statements = [s.strip() for s in schema_sql.split(";") if s.strip()]
             for stmt in statements:
                 stmt_upper = stmt.upper()
 
@@ -440,11 +489,20 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         if designated and not re.search(rf"\b{re.escape(designated)}\b", stmt, re.IGNORECASE):
             designated = None
         return {
-            "symbol_columns": TPCH_SYMBOL_COLUMNS.get(table_name_lower, []),
+            "symbol_columns": self._symbol_columns_for_table(table_name_lower),
             "timestamp_columns": TPCH_DATE_COLUMNS.get(table_name_lower, []),
             "designated_timestamp": designated,
             "time_partition": self._get_partition_for_table(table_name_lower) if designated else None,
         }
+
+    @staticmethod
+    def _symbol_columns_for_table(table_name_lower: str) -> list[str]:
+        from benchbox.core.tpcds.schema.models import DataType
+        from benchbox.core.tpcds_obt.schema import OBT_TABLE_NAME, get_obt_columns
+
+        if table_name_lower == OBT_TABLE_NAME:
+            return [c.name for c in get_obt_columns() if c.data_type in (DataType.CHAR, DataType.VARCHAR)]
+        return TPCH_SYMBOL_COLUMNS.get(table_name_lower, [])
 
     def _extract_table_name(self, stmt: str) -> str | None:
         match = re.search(r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[\"']?(\w+)[\"']?", stmt, re.IGNORECASE)
@@ -595,6 +653,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
 
     def _load_parquet_via_chunked_csv(self, table_name: str, data_file: Path) -> int:
         try:
+            import pyarrow.csv as pacsv
             import pyarrow.parquet as pq
         except ImportError as exc:
             raise ImportError(
@@ -611,7 +670,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         pf = pq.ParquetFile(data_file)
         for batch in pf.iter_batches(batch_size=self.parquet_chunk_rows):
             csv_buf = io.BytesIO()
-            batch.to_pandas().to_csv(csv_buf, index=False, header=True)
+            pacsv.write_csv(batch, csv_buf, write_options=pacsv.WriteOptions(include_header=True))
             csv_buf.seek(0)
 
             params = {
@@ -811,7 +870,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         validate_row_count: bool = True,
         stream_id: int | None = None,
     ) -> dict[str, Any]:
-        query = rewrite_query(query)
+        query = rewrite_query(query, self._table_columns)
         result = execute_sql_query(
             connection,
             query,
@@ -837,7 +896,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         _owns_cursor = callable(getattr(connection, "cursor", None))
         cursor = connection.cursor() if _owns_cursor else connection
 
-        explain_query = f"EXPLAIN {rewrite_query(query)}"
+        explain_query = f"EXPLAIN {rewrite_query(query, self._table_columns)}"
 
         try:
             cursor.execute(explain_query)

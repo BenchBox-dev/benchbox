@@ -52,7 +52,7 @@ PHASE_SECRETS = {
         "TS_OAUTH_CI_SECRET",
         "JOB_TOKEN",
     },
-    "publish": {"GH_TOKEN", "JOB_TOKEN"},
+    "publish": {"GH_TOKEN", "JOB_TOKEN", "ORACLE_GATE_ROOT"},
     "dispatch": {"GH_TOKEN", "JOB_TOKEN"},
 }
 
