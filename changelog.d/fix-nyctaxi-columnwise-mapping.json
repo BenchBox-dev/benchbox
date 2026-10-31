@@ -4,7 +4,7 @@
     {
       "category": "fixed",
       "breaking": false,
-      "text": "Fixed NYC Taxi data preparation timing out at scale factor 1: TLC parquet rows are now mapped column-wise instead of one pandas row at a time, roughly 20 times faster, with identical CSV output."
+      "text": "Fixed NYC Taxi data preparation timing out at scale factor 1: TLC parquet rows are now mapped column-wise instead of one pandas row at a time, with identical CSV output."
     }
   ]
 }
