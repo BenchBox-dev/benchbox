@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 _DERIVED_TABLE_ALIAS_DIALECTS = frozenset({"doris", "starrocks"})
 _POSTGRES_ALIAS_ORDER_QUERY_IDS = frozenset({36, 70, 86})
 _POSTGRES_ROUND_QUERY_IDS = frozenset({2, 78})
+_SPARK_ALIAS_ORDER_QUERY_IDS = frozenset({36, 70, 86})
+_SPARK_IN_SUBQUERY_JOIN_QUERY_IDS = frozenset({45})
 
 _CLICKHOUSE_OBT_REWRITES = {
     47: "alias_qualified_projections",
@@ -245,6 +247,11 @@ class TPCDSOBTBenchmark(BaseBenchmark):
         except UnknownSqlDialectError:
             return []
         rewrites: list[tuple[str, dict[str, Any]]] = []
+        if resolved == "spark":
+            if query_id in _SPARK_ALIAS_ORDER_QUERY_IDS:
+                rewrites.append(("inline_order_by_aliases", {}))
+            if query_id in _SPARK_IN_SUBQUERY_JOIN_QUERY_IDS:
+                rewrites.append(("in_subquery_or_to_left_join", {}))
         if resolved == "postgres":
             if query_id in _POSTGRES_ALIAS_ORDER_QUERY_IDS:
                 rewrites.append(("inline_order_by_aliases", {}))

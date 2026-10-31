@@ -129,6 +129,7 @@ def test_clickhouse_filtered_aggregates_use_native_combinators():
     assert "avgOrNullIf(" in q1
     assert "countIf(" in q1
     assert q12.count("countIf(") == 2
+    assert "sumOrNullIf(" in benchmark.get_query("9_v7", dialect="clickhouse")
 
 
 @pytest.mark.parametrize("aggregate", ["COUNT(l_orderkey)", "MIN(l_orderkey)", "MAX(l_orderkey)"])

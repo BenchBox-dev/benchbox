@@ -515,6 +515,68 @@ def coalesce_count_subqueries(expression, *, copy: bool = True):
     return tree
 
 
+def trim_char_case_comparisons(expression, *, copy: bool = True):
+    from benchbox._vendor.sqlglot import exp
+
+    tree = expression.copy() if copy else expression
+    for node in list(tree.find_all(exp.EQ)):
+        column, case = node.this, node.expression
+        if isinstance(column, exp.Case):
+            column, case = case, column
+        if not isinstance(column, exp.Column) or not isinstance(case, exp.Case) or case.args.get("default") != column:
+            continue
+        node.replace(
+            exp.EQ(
+                this=exp.Trim(this=column.copy(), position="TRAILING"),
+                expression=exp.Trim(this=case.copy(), position="TRAILING"),
+            )
+        )
+    return tree
+
+
+def in_subquery_or_to_left_join(expression, *, copy: bool = True):
+    from benchbox._vendor.sqlglot import exp
+
+    tree = expression.copy() if copy else expression
+    select = tree if isinstance(tree, exp.Select) else tree.find(exp.Select)
+    if select is None or select.args.get("joins"):
+        return tree
+    source = select.args.get("from_")
+    source_table = source.this if source is not None else None
+    outer_names = {source_table.alias_or_name} if isinstance(source_table, exp.Table) else set()
+    position = 0
+    for node in list(select.find_all(exp.In)):
+        query = node.args.get("query")
+        if (
+            not isinstance(query, exp.Subquery)
+            or not isinstance(query.this, exp.Select)
+            or len(query.this.expressions) != 1
+            or node.parent_select is not select
+            or node.find_ancestor(exp.Not)
+            or not node.find_ancestor(exp.Or)
+        ):
+            continue
+        inner = query.this.copy()
+        inner_names = {table.alias_or_name for table in inner.find_all(exp.Table)}
+        if any(column.table in outer_names - inner_names for column in inner.find_all(exp.Column)):
+            continue
+        position += 1
+        table_alias = f"in_subquery_{position}"
+        value_alias = f"in_value_{position}"
+        inner.set("distinct", exp.Distinct())
+        inner.set("expressions", [exp.alias_(inner.expressions[0], value_alias)])
+        select.append(
+            "joins",
+            exp.Join(
+                this=exp.Subquery(this=inner, alias=exp.TableAlias(this=exp.to_identifier(table_alias))),
+                side="LEFT",
+                on=exp.EQ(this=node.this.copy(), expression=exp.column(value_alias, table_alias)),
+            ),
+        )
+        node.replace(exp.Not(this=exp.Is(this=exp.column(value_alias, table_alias), expression=exp.Null())))
+    return tree
+
+
 _LOCAL_REWRITES: dict[str, Callable[..., object]] = {
     "add_dual_source_to_filtered_selects": add_dual_source_to_filtered_selects,
     "alias_outer_table_references": alias_outer_table_references,
@@ -522,7 +584,9 @@ _LOCAL_REWRITES: dict[str, Callable[..., object]] = {
     "drop_correlated_scalar_group_by": drop_correlated_scalar_group_by,
     "drop_empty_group_by": drop_empty_group_by,
     "hoist_aggregate_subqueries": hoist_aggregate_subqueries,
+    "in_subquery_or_to_left_join": in_subquery_or_to_left_join,
     "qualify_aggregated_columns": qualify_aggregated_columns,
+    "trim_char_case_comparisons": trim_char_case_comparisons,
     "unwrap_single_grouping_set": unwrap_single_grouping_set,
     "wrap_order_by_subquery_aliases": wrap_order_by_subquery_aliases,
 }
