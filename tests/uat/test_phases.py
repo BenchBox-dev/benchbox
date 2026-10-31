@@ -1211,7 +1211,7 @@ def test_execute_starrocks_requires_backend_liveness_and_runtime_memory(monkeypa
     cfg = _managed_docker_cfg(
         "starrocks readiness",
         platforms={"include": ["starrocks"]},
-        preflight={"starrocks_memory_limit": "4g"},
+        preflight={"starrocks_memory_limit": "8g"},
     )
     with platform_reachability(True):
         outcome = exec_phase.run_execute(
@@ -1256,7 +1256,7 @@ def test_execute_starrocks_reconciles_mismatched_mocker_runtime(monkeypatch, tmp
     cfg = _managed_docker_cfg(
         "starrocks resource reconcile",
         platforms={"include": ["starrocks"]},
-        preflight={"starrocks_memory_limit": "4g"},
+        preflight={"starrocks_memory_limit": "8g"},
     )
     with platform_reachability(True):
         outcome = exec_phase.run_execute(
