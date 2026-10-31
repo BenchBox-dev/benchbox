@@ -21,6 +21,35 @@ STARROCKS_READINESS = (
     '-e "SHOW BACKENDS\\G" | grep -q "Alive: true"',
 )
 
+CEDARDB_READINESS = (
+    "sh",
+    "-c",
+    'PGPASSWORD="$CEDAR_PASSWORD" psql -h 127.0.0.1 -p 5432 -U "$CEDAR_USER" -d "$CEDAR_DB" -tAc "SELECT 1"',
+)
+_COORDINATOR_QUERY_SCRIPT = """\
+r=$(curl -fsS -X POST -H "$USER_HEADER: benchbox" --data "SELECT 1" http://localhost:8080/v1/statement) || exit 1
+i=0
+while [ "$i" -lt 60 ]; do
+  case "$r" in *'"error"'*) echo "$r" >&2; exit 1;; esac
+  case "$r" in *'"data":[[1]]'*) exit 0;; esac
+  n=$(echo "$r" | grep -o '"nextUri":"[^"]*"' | cut -d'"' -f4)
+  [ -n "$n" ] || { echo "$r" >&2; exit 1; }
+  sleep 1
+  r=$(curl -fsS "http://localhost:8080/${n#*://*/}") || exit 1
+  i=$((i+1))
+done
+exit 1
+"""
+PRESTO_READINESS = ("sh", "-c", f"USER_HEADER=X-Presto-User\n{_COORDINATOR_QUERY_SCRIPT}")
+TRINO_READINESS = ("sh", "-c", f"USER_HEADER=X-Trino-User\n{_COORDINATOR_QUERY_SCRIPT}")
+
+_APPLICATION_READINESS: dict[str, tuple[tuple[str, ...], float]] = {
+    "starrocks": (STARROCKS_READINESS, 0.0),
+    "cedardb": (CEDARDB_READINESS, 15.0),
+    "presto": (PRESTO_READINESS, 60.0),
+    "trino": (TRINO_READINESS, 60.0),
+}
+
 DockerRunner = Callable[..., docker_assets.DockerCommandResult]
 RecordEvent = Callable[..., None]
 
@@ -61,11 +90,18 @@ def _result_message(result: docker_assets.DockerCommandResult) -> str:
 
 
 def _readiness_command(spec: docker_assets.DockerPlatformSpec, project_name: str) -> list[str] | None:
-    if spec.platform != "starrocks":
+    entry = _APPLICATION_READINESS.get(spec.platform)
+    if entry is None:
         return None
     argv = docker_assets.compose_ps_command(spec, project_name)
-    argv[-2:] = ["exec", "-T", spec.services[0], *STARROCKS_READINESS]
+    argv[-2:] = ["exec", "-T", spec.services[0], *entry[0]]
     return argv
+
+
+def _readiness_timeout_s(config: UATConfig, spec: docker_assets.DockerPlatformSpec) -> float:
+    floor = _APPLICATION_READINESS[spec.platform][1]
+    probe = config.execute.liveness_probe_timeout_s or 2.0
+    return min(config.cleanup.docker_start_timeout_s, max(probe, floor))
 
 
 def check_application_readiness(
@@ -93,7 +129,7 @@ def check_application_readiness(
         result = docker_runner(
             command,
             dry_run=config.dry_run,
-            timeout_s=min(config.cleanup.docker_start_timeout_s, config.execute.liveness_probe_timeout_s or 2.0),
+            timeout_s=_readiness_timeout_s(config, spec),
             cwd=docker_assets.REPO_ROOT,
             env=compose_environment(config, spec, benchmark_runs_dir),
         )

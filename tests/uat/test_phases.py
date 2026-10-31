@@ -1308,6 +1308,40 @@ def test_execute_starrocks_readiness_failure_is_startup_failure(monkeypatch, tmp
     )
 
 
+@pytest.mark.parametrize("platform", ["cedardb", "presto", "trino"])
+def test_execute_query_readiness_failure_is_one_startup_failure_with_container_log(platform, tmp_path):
+    def fake_docker(argv, **kwargs):
+        action = "exec" if "exec" in argv else _docker_verb(argv)
+        if action == "ps":
+            return _healthy_ps_result(argv)
+        if action == "exec":
+            return docker_assets.DockerCommandResult(tuple(argv), 1, "", "server is still initializing")
+        if action == "logs":
+            return docker_assets.DockerCommandResult(tuple(argv), 0, "coordinator booting\n", "")
+        return docker_assets.DockerCommandResult(tuple(argv), 0, "", "")
+
+    def fail_runner(*args, **kwargs):
+        raise AssertionError("no cell may run against a stack that cannot answer a query")
+
+    cfg = _managed_docker_cfg("query readiness", platforms={"include": [platform]})
+    with platform_reachability(True):
+        outcome = exec_phase.run_execute(
+            cfg,
+            log_dir=tmp_path,
+            databases_root=tmp_path / "databases",
+            runner=fail_runner,
+            docker_runner=fake_docker,
+            memory_reader=_memory_reader(16.0),
+            sleep_fn=lambda _s: None,
+        )
+
+    assert outcome.aborted is False
+    assert outcome.startup_failed
+    assert {cell.platform for cell in outcome.startup_failed} == {platform}
+    assert any(event.action == "application-readiness" and event.status == "failed" for event in outcome.docker_events)
+    assert "coordinator booting" in (tmp_path / f"container-logs-{platform}.log").read_text(encoding="utf-8")
+
+
 def test_execute_starrocks_application_liveness_stops_after_runtime_wedge(monkeypatch, tmp_path):
     monkeypatch.setenv(docker_assets.CONTAINER_CLI_ENV_VAR, "mocker")
     docker_assets.resolve_container_cli.cache_clear()
