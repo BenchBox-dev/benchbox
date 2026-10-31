@@ -16,6 +16,7 @@ from benchbox.core.primitives_benchmark_utils import (
     table_exists,
 )
 from benchbox.core.transactional.operations_registry_base import OperationsRegistryBase
+from benchbox.core.transactional.questdb_sql import questdb_cleanup_statements, rewrite_questdb_operation_sql
 
 ResultT = TypeVar("ResultT")
 _POSTGRES_SERIES_DIALECTS = frozenset({"postgres", "postgresql"})
@@ -28,6 +29,7 @@ _UNNEST_SERIES_SELECT_RE = re.compile(
 _SERIES_SELECT_TEMPLATES = {
     "snowflake": "SELECT value::INT AS {alias} FROM TABLE(FLATTEN(ARRAY_GENERATE_RANGE({lo}, {hi} + 1)))",
     "bigquery": "SELECT {alias} FROM UNNEST(GENERATE_ARRAY({lo}, {hi})) AS {alias}",
+    "questdb": "SELECT generate_series AS {alias} FROM generate_series({lo}, {hi})",
 }
 _SET_THEN_BEGIN_ISOLATION_RE = re.compile(
     r"SET\s+TRANSACTION\s+ISOLATION\s+LEVEL\s+(?P<level>REPEATABLE\s+READ|SERIALIZABLE|READ\s+COMMITTED)\s*;\s*"
@@ -180,13 +182,24 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
         dialect = (platform_key or "").lower()
         template = _SERIES_SELECT_TEMPLATES.get(dialect)
         if template is not None:
-            return _UNNEST_SERIES_SELECT_RE.sub(
+            sql = _UNNEST_SERIES_SELECT_RE.sub(
                 lambda m: template.format(lo=m.group("lo"), hi=m.group("hi"), alias=m.group("alias")), sql
             )
+            return rewrite_questdb_operation_sql(sql) if dialect == "questdb" else sql
         if dialect not in _POSTGRES_SERIES_DIALECTS:
             return sql
         sql = _UNNEST_GENERATE_SERIES_RE.sub(r"generate_series(\g<args>)", sql)
         return _SET_THEN_BEGIN_ISOLATION_RE.sub(r"BEGIN TRANSACTION ISOLATION LEVEL \g<level>;", sql)
+
+    def _execute_cleanup_sql(self, connection: DatabaseConnection, cleanup_sql: str, platform_key: str | None) -> None:
+        if (platform_key or "").lower() == "questdb":
+            statements = questdb_cleanup_statements(rewrite_questdb_operation_sql(cleanup_sql))
+        else:
+            statements = [cleanup_sql]
+        for statement in statements:
+            cleanup_res = connection.execute(statement)
+            if (cleanup_err := failed_platform_error(cleanup_res)) is not None:
+                raise RuntimeError(cleanup_err)
 
     def _rollback_connection_after_error(self, connection: DatabaseConnection) -> None:
         try:
@@ -260,6 +273,12 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
         if (err := failed_platform_error(res)) is not None:
             raise RuntimeError(f"Failed to create staging manifest table: {err}")
 
+    def _delete_staging_manifest_entry(self, connection: DatabaseConnection, benchmark_id: str) -> Any:
+        quoted_table = self._quote_identifier(self._STAGING_MANIFEST_TABLE)
+        if (getattr(self, "_setup_dialect", None) or "").lower() == "questdb":
+            return connection.execute(f"TRUNCATE TABLE {quoted_table}")
+        return connection.execute(f"DELETE FROM {quoted_table} WHERE benchmark = '{_sql_escape(benchmark_id)}'")
+
     def _write_staging_manifest(self, connection: DatabaseConnection, source_tables: list[str]) -> None:
         benchmark_id, scale, spec_version = self._staging_provenance_key()
         source_digest = self._staging_source_digest(connection, source_tables)
@@ -267,7 +286,7 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
 
         self._ensure_staging_manifest_table(connection)
 
-        res2 = connection.execute(f"DELETE FROM {quoted_table} WHERE benchmark = '{_sql_escape(benchmark_id)}'")
+        res2 = self._delete_staging_manifest_entry(connection, benchmark_id)
         if (err := failed_platform_error(res2)) is not None:
             raise RuntimeError(f"Failed to delete previous staging manifest entry: {err}")
 
@@ -282,9 +301,8 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
 
     def _invalidate_staging_manifest(self, connection: DatabaseConnection) -> None:
         benchmark_id, _scale, _spec = self._staging_provenance_key()
-        quoted_table = self._quote_identifier(self._STAGING_MANIFEST_TABLE)
         try:
-            connection.execute(f"DELETE FROM {quoted_table} WHERE benchmark = '{_sql_escape(benchmark_id)}'")
+            self._delete_staging_manifest_entry(connection, benchmark_id)
         except Exception as e:
             self.log_verbose(f"Staging manifest not cleared ({e})")
 
