@@ -14,8 +14,6 @@ def _own_aliases(select: exp.Select) -> set[str]:
     for source in select.find_all(exp.Table, exp.Subquery):
         if source.alias_or_name:
             aliases.add(source.alias_or_name.lower())
-    for table in select.find_all(exp.Table):
-        aliases.add(table.name.lower())
     return aliases
 
 

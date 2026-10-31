@@ -87,3 +87,8 @@ def test_outer_column_named_v_does_not_collide_with_the_moved_value():
 def test_subquery_whose_projection_holds_a_nested_aggregate_subquery_is_not_a_single_row_aggregate():
     sql = "SELECT (SELECT (SELECT MAX(b) FROM v WHERE v.k = t.k) FROM t) AS x FROM u"
     assert rewrite_query(sql) == sql
+
+
+def test_outer_reference_through_the_base_name_of_an_aliased_inner_table_is_correlated():
+    sql = "SELECT (SELECT MAX(t.b) FROM t AS t2 WHERE t2.k = t.k) AS m FROM t"
+    assert rewrite_query(sql) == sql
