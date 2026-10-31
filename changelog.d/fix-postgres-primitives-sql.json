@@ -4,7 +4,7 @@
     {
       "category": "fixed",
       "breaking": false,
-      "text": "Fixed PostgreSQL Read Primitives queries that PostgreSQL has no function for (approximate aggregates, ARG_MAX/ARG_MIN, GROUP BY ALL, array, struct, map, lambda, JSON, ASOF and UNPIVOT queries), the repeatable-read and serializable Transaction Primitives operations, and Vector Search, which now creates the pgvector extension and selects the pgvector queries.",
+      "text": "Fixed PostgreSQL Read Primitives queries that PostgreSQL has no function for (ARG_MAX/ARG_MIN, GROUP BY ALL, array, struct, lambda, JSON, ASOF and UNPIVOT queries), which now run as PostgreSQL variants, while approximate-aggregate and map queries PostgreSQL cannot express natively are skipped; fixed the repeatable-read and serializable Transaction Primitives operations; and Vector Search now runs on the pgvector image, creates the extension and selects the pgvector queries.",
       "platforms": [
         "postgresql"
       ],
