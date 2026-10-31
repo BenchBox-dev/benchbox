@@ -52,7 +52,7 @@ def test_window_over_rolled_up_aggregate_runs_after_union():
         "FROM t GROUP BY ROLLUP (a) ORDER BY r LIMIT 5"
     )
     assert rewritten.startswith(
-        "SELECT __g0 AS a, __a0, RANK() OVER (PARTITION BY __f0 ORDER BY __a0 DESC) AS r FROM ("
+        'SELECT __g0 AS a, __a0 AS "SUM(x)", RANK() OVER (PARTITION BY __f0 ORDER BY __a0 DESC) AS r FROM ('
     )
     assert rewritten.endswith("ORDER BY r LIMIT 5")
 
@@ -168,3 +168,8 @@ def test_rollup_nested_in_grouping_sets_is_expanded():
 
 def test_cube_nested_in_grouping_sets_is_expanded():
     assert len(_levels("SELECT a, b, SUM(x) FROM t GROUP BY GROUPING SETS (CUBE (a, b), ())")) == 5
+
+
+def test_unaliased_projections_keep_their_expression_text_as_the_column_label():
+    rewritten = rewrite_query("SELECT a, COUNT(*), a || 'x' FROM t GROUP BY ROLLUP (a)")
+    assert rewritten.startswith("SELECT __g0 AS a, __a0 AS \"COUNT(*)\", __g0 || 'x' AS \"a || 'x'\" FROM (")

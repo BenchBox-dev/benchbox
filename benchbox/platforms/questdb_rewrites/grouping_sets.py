@@ -275,9 +275,11 @@ def _hoist_window_orderings(roots: list[exp.Expr]) -> list[exp.Expr]:
 def _build_outer(select: exp.Select, union: exp.Expr, lower) -> exp.Select:
     projections = []
     for projection in select.expressions:
-        name = projection.alias_or_name
         lowered = lower(projection.this if isinstance(projection, exp.Alias) else projection)
-        projections.append(exp.alias_(lowered, name) if name else lowered)
+        if isinstance(projection, (exp.Alias, exp.Column)):
+            projections.append(exp.alias_(lowered, projection.alias_or_name))
+        else:
+            projections.append(exp.alias_(lowered, projection.sql(dialect="questdb"), quoted=True))
     clauses: dict[str, exp.Expr] = {}
     if select.args.get("having") is not None:
         clauses["where"] = exp.Where(this=lower(select.args["having"].this))
