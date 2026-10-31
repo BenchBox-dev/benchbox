@@ -376,20 +376,39 @@ developer workstation. For isolated debugging or sandboxed CI, set
 `$BENCHBOX_TEST_LOCK_DIR/test.lock` instead. `make test-unlock` honors the same
 override.
 
-**Contract** (`tests/conftest.py:52-216`):
+**Contract** (`benchbox/utils/host_lock.py`, called from `tests/conftest.py` and
+`tests/utilities/session_isolation.py`):
 
 - Only the **xdist controller** process locks - workers do not. `pytest_configure`
   checks `hasattr(config, "workerinput")` to distinguish them.
 - Lock is skipped when `numprocesses` is 0/None (no `-n auto`) or when
   `BENCHBOX_SKIP_TEST_LOCK=1` is set in the environment.
-- Lock path defaults to `~/.benchbox/test.lock`; `BENCHBOX_TEST_LOCK_DIR`
-  changes only the directory, not the filename.
+- Lock path defaults to `<real home>/.benchbox/test.lock`, where the real home
+  comes from the user database rather than `$HOME`, so a session that rewrites
+  `$HOME` still contends on the same file. `BENCHBOX_TEST_LOCK_DIR` changes only
+  the directory, not the filename.
 - Uses `fcntl.flock(LOCK_EX | LOCK_NB)` on POSIX, `msvcrt.locking` on Windows.
+  After each acquisition the held descriptor's inode is compared with the path's
+  inode; a mismatch (the file was replaced) closes the descriptor and retries.
+- The holder record and `BENCHBOX_TEST_SESSION_OWNER` carry `<pid>:<create_time>`.
+  A descendant of the holder skips acquisition only when the variable matches the
+  holder record and that process is the current process or one of its ancestors.
+  A descendant whose environment was scrubbed fails immediately with a message
+  naming the scrub instead of waiting on its own ancestor.
+- A process that already holds the lock re-enters it with a reference count; the
+  lock is released when the outermost holder releases.
+- Waiters register under `<lockdir>/test.lock.waiters/<pid>`; blocked messages
+  show the number of live waiters.
 - On contention, the second local run waits up to 3600 seconds with holder
   information and periodic progress messages. Set
   `BENCHBOX_TEST_LOCK_WAIT_SECONDS=0` to fail immediately; CI does this.
   Ctrl-C cancels the wait without disturbing the holder.
 - The fd is held open for the whole session and released in `pytest_unconfigure`.
+- `python -m benchbox.utils.host_lock run -- <cmd>` holds the lock for the
+  lifetime of `<cmd>`, exports the owner variable, and forwards SIGINT, SIGTERM
+  and SIGHUP to the child's process group. `python -m benchbox.utils.host_lock
+  clear` (`make test-unlock`) empties the holder record of an inactive lock and
+  refuses an active one.
 
 **When to bypass**: only for intentional concurrent debug runs. Set
 `BENCHBOX_SKIP_TEST_LOCK=1` - but expect noisy timing results and CPU
