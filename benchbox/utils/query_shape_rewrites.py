@@ -7,7 +7,7 @@ _ORDERED_ROWS_ALIAS = "ordered_rows"
 
 
 def drop_empty_group_by(expression, *, copy: bool = True):
-    exp = _exp()
+    exp = sql_expressions()
     tree = expression.copy() if copy else expression
     for select in tree.find_all(exp.Select):
         group = select.args.get("group")
@@ -24,7 +24,7 @@ def drop_empty_group_by(expression, *, copy: bool = True):
 
 
 def unwrap_single_grouping_set(expression, *, copy: bool = True):
-    exp = _exp()
+    exp = sql_expressions()
     tree = expression.copy() if copy else expression
     for group in list(tree.find_all(exp.Group)):
         if len(group.expressions) != 1 or not isinstance(group.expressions[0], exp.GroupingSets):
@@ -39,7 +39,7 @@ def unwrap_single_grouping_set(expression, *, copy: bool = True):
 
 
 def add_dual_source_to_filtered_selects(expression, *, copy: bool = True):
-    exp = _exp()
+    exp = sql_expressions()
     tree = expression.copy() if copy else expression
     for select in tree.find_all(exp.Select):
         if select.args.get("from_") is None and select.args.get("where") is not None:
@@ -48,7 +48,7 @@ def add_dual_source_to_filtered_selects(expression, *, copy: bool = True):
 
 
 def drop_correlated_scalar_group_by(expression, *, columns: Sequence[str], copy: bool = True):
-    exp = _exp()
+    exp = sql_expressions()
     tree = expression.copy() if copy else expression
     wanted = {name.lower() for name in columns}
     for subquery in list(tree.find_all(exp.Subquery)):
@@ -70,7 +70,7 @@ def drop_correlated_scalar_group_by(expression, *, columns: Sequence[str], copy:
 
 
 def _pinned_to_other_column(key, where) -> bool:
-    exp = _exp()
+    exp = sql_expressions()
     for conjunct in where.this.flatten():
         if not isinstance(conjunct, exp.EQ):
             continue
@@ -84,7 +84,7 @@ def _pinned_to_other_column(key, where) -> bool:
 
 
 def qualify_aggregated_columns(expression, *, tables: dict[str, str], copy: bool = True):
-    exp = _exp()
+    exp = sql_expressions()
     tree = expression.copy() if copy else expression
     wanted = {name.lower(): table for name, table in tables.items()}
     for aggregate in list(tree.find_all(exp.AggFunc)):
@@ -96,7 +96,7 @@ def qualify_aggregated_columns(expression, *, tables: dict[str, str], copy: bool
 
 
 def wrap_order_by_subquery_aliases(expression, *, copy: bool = True):
-    exp = _exp()
+    exp = sql_expressions()
     tree = expression.copy() if copy else expression
     if not isinstance(tree, exp.Select):
         return tree
@@ -129,7 +129,7 @@ def wrap_order_by_subquery_aliases(expression, *, copy: bool = True):
 
 
 def _is_hoistable(node) -> bool:
-    exp = _exp()
+    exp = sql_expressions()
     if isinstance(node, (exp.Exists, exp.Subquery)):
         return True
     return isinstance(node, exp.In) and node.args.get("query") is not None
@@ -149,7 +149,7 @@ def _outermost_subqueries(aggregate) -> list:
 
 
 def _hoist_aggregate_subqueries(select) -> None:
-    exp = _exp()
+    exp = sql_expressions()
     aggregates = [agg for agg in select.find_all(exp.AggFunc) if agg.find_ancestor(exp.Select) is select]
     hoisted = [node for agg in aggregates for node in _outermost_subqueries(agg)]
     source = select.args.get("from_")
@@ -184,14 +184,14 @@ def _hoist_aggregate_subqueries(select) -> None:
 
 
 def hoist_aggregate_subqueries(expression, *, copy: bool = True):
-    exp = _exp()
+    exp = sql_expressions()
     tree = expression.copy() if copy else expression
     for select in list(tree.find_all(exp.Select)):
         _hoist_aggregate_subqueries(select)
     return tree
 
 
-def _exp():
-    from benchbox._vendor.sqlglot import exp
+def sql_expressions():
+    from benchbox.utils.dialect_utils import sql_expressions as _sql_expressions
 
-    return exp
+    return _sql_expressions()
