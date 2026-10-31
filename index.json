@@ -20555,10 +20555,15 @@
       "title": "Verify and preserve branching SQLite query-plan structure"
     },
     "query-plan-tree-join-conditions": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-01T19:38:13Z",
+        "generation": "ad0f8e8f97db40c9bd18100d12d55f03",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8d313df504e30c76edc4bc0f"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Show join conditions in the query-plan tree view"
     },
     "query-test-configure-visible-columns-failures": {
