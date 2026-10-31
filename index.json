@@ -27404,7 +27404,7 @@
       "needs": [],
       "priority": "low",
       "status": "open",
-      "title": "Let todo-db drop record why the item was dropped in the same write"
+      "title": "Make todo-db drop require a reason and store it in the same commit as the status change"
     },
     "todo-db-expect-store-substring-matches-sibling-repo-20261030": {
       "claim": null,

@@ -1,11 +1,20 @@
 {
   "acceptance": [
-    "drop accepts a reason that is stored on the item in the same state commit as the status change",
-    "show_item and list rows for dropped items show the reason",
-    "The todo skill and get_instructions describe the reason field"
+    "drop (the MCP tool and TrackerService.drop) requires reason: non-empty after stripping, at most 2000 characters, newlines and tabs allowed, other control characters and U+0085/U+2028/U+2029 refused; a missing or blank reason is refused with E_STATE and the item is unchanged; covered by tests",
+    "A successful drop sets status dropped in index.json and drop_reason in items/<id>.json in exactly one state commit; a test asserts the branch advanced by one commit, and a publication retry after a competing push stores the reason once",
+    "show_item (MCP) and todo-db show return drop_reason for dropped items, including in the slim fallback forced by the byte cap; list_items rows are unchanged",
+    "validate_snapshot accepts dropped items without drop_reason and rejects a drop_reason that is not a non-empty string; SCHEMA_VERSION stays 3",
+    "scripts/mcp_snapshots/tools.json, the drop line in instructions.py, the README terms and CHANGELOG [Unreleased] are updated; the CHANGELOG lists the required parameter under Changed as a breaking tool-input change; the startup budget in test_mcp_slim.py rises only by the measured increase, with a comment",
+    "The PR is merged to joeharris76/todo-db main with CI green (uv run pytest -q, uv run ruff check .)"
   ],
-  "context": "Found while dropping superseded items during the site-split follow-ups batch on 2026-10-30.",
-  "description": "The drop tool takes only the item id (and generation for a live claim), so the reason for a drop has to go in a separate update_item context_append first. That is two state commits per drop, the reason can be lost if the second write fails or is skipped, and nothing requires a reason at all. On 2026-10-30 four core items were dropped this way.",
+  "context": "Found while dropping superseded items during the site-split follow-ups batch on 2026-10-30.\n\nReviewed 2026-10-31: corrected the drop count (19, not 4) and the failure order; split the release (todo-db-0-12-0-release-20261031) and the BenchBox runtime and skill change (benchbox-todo-db-0-12-0-runtime-20261031) into their own items.",
+  "description": "drop (todo-db mcp/tools.py:376-389, service.py:1257-1265, store.py:2123-2159) takes only the id and an optional generation. Agents therefore write the reason with a separate update_item context_append and then drop: two state commits per drop. On 2026-10-30, 19 BenchBox items were dropped that way.\n\nThree things go wrong. If the reason is skipped, there is none. If the drop fails after the note, the item stays open with a note saying it was dropped. If the note step is re-run, the note is duplicated (rollback-gates-on-pre-allowlist-removal-artifacts-20261029 got the same sentence in 30448aa0ca and 64909ab3d4).\n\nAdd a required reason to drop, stored in the item detail as drop_reason in the same commit. Follow the no-schema-bump pattern of ADR 0009 and ADR 0010: older clients load and keep the key. Reasons in practice run about 500 characters across lines, so the single-line 280-character session reason used by takeover does not fit; use the deferral-reason rules. Existing dropped items without a reason stay valid; clients older than this change can still drop without one until upgraded. list_items rows stay brief (600-token page cap). Open todo-db PR #47 adds blocked_reason, an 8 KiB cap and E_SECRET scanning; whichever lands second brings drop_reason under them. The same two-write pattern in finish is out of scope.",
+  "links": [
+    "https://github.com/joeharris76/todo-db/blob/main/src/todo_db/store.py",
+    "https://github.com/joeharris76/todo-db/blob/main/src/todo_db/service.py",
+    "https://github.com/joeharris76/todo-db/blob/main/src/todo_db/mcp/tools.py",
+    "https://github.com/joeharris76/todo-db/pull/47"
+  ],
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
@@ -13,6 +22,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "0754ebe1498843cd94ad32a3f8e51af8",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-31T15:14:08Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "abde25e9a8ed4353b360ffd9685b6f26",
       "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
     }
   ]
