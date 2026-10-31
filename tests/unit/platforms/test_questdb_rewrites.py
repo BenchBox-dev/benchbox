@@ -153,3 +153,28 @@ def test_group_by_alias_of_an_extract_is_expanded_to_the_expression():
 def test_group_by_alias_of_a_plain_column_is_kept():
     sql = "SELECT EXTRACT(YEAR FROM ts) AS y, a AS k, COUNT(*) FROM t GROUP BY k"
     assert rewrite_query(sql) == "SELECT YEAR(ts) AS y, a AS k, COUNT(*) FROM t GROUP BY k"
+
+
+def test_unparseable_query_records_a_fallback_outcome():
+    from benchbox.utils.dialect_utils import sql_translation_context
+
+    with sql_translation_context(strict=False) as outcomes:
+        assert rewrite_query("SELEC (((") == "SELEC ((("
+    assert [outcome.status for outcome in outcomes] == ["fallback"]
+
+
+def test_unparseable_query_raises_in_strict_mode():
+    from benchbox.utils.dialect_utils import sql_translation_context
+
+    with sql_translation_context(strict=True) as outcomes:
+        with pytest.raises(Exception):
+            rewrite_query("SELEC (((")
+    assert [outcome.status for outcome in outcomes] == ["failed"]
+
+
+def test_rewritten_query_records_a_success_outcome():
+    from benchbox.utils.dialect_utils import sql_translation_context
+
+    with sql_translation_context(strict=False) as outcomes:
+        rewrite_query("SELECT DATE_TRUNC('DAY', ts) FROM t")
+    assert [outcome.status for outcome in outcomes] == ["success"]
