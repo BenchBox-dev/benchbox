@@ -440,11 +440,20 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         if designated and not re.search(rf"\b{re.escape(designated)}\b", stmt, re.IGNORECASE):
             designated = None
         return {
-            "symbol_columns": TPCH_SYMBOL_COLUMNS.get(table_name_lower, []),
+            "symbol_columns": self._symbol_columns_for_table(table_name_lower),
             "timestamp_columns": TPCH_DATE_COLUMNS.get(table_name_lower, []),
             "designated_timestamp": designated,
             "time_partition": self._get_partition_for_table(table_name_lower) if designated else None,
         }
+
+    @staticmethod
+    def _symbol_columns_for_table(table_name_lower: str) -> list[str]:
+        from benchbox.core.tpcds.schema.models import DataType
+        from benchbox.core.tpcds_obt.schema import OBT_TABLE_NAME, get_obt_columns
+
+        if table_name_lower == OBT_TABLE_NAME:
+            return [c.name for c in get_obt_columns() if c.data_type in (DataType.CHAR, DataType.VARCHAR)]
+        return TPCH_SYMBOL_COLUMNS.get(table_name_lower, [])
 
     def _extract_table_name(self, stmt: str) -> str | None:
         match = re.search(r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[\"']?(\w+)[\"']?", stmt, re.IGNORECASE)
