@@ -4,10 +4,19 @@ from unittest.mock import Mock
 
 import pytest
 
+import benchbox.platforms.questdb as questdb_module
 from benchbox.platforms.questdb import QuestDBAdapter
 from benchbox.platforms.questdb_rewrites import rewrite_query
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
+
+
+@pytest.fixture
+def questdb_stubs(monkeypatch):
+    stub = Mock()
+    stub.__version__ = "3.1.0"
+    monkeypatch.setattr(questdb_module, "psycopg", stub)
+    return stub
 
 
 def test_date_trunc_unit_is_lowercased():
@@ -32,9 +41,7 @@ def test_unparseable_query_is_returned_verbatim():
     assert rewrite_query(sql) == sql
 
 
-def test_execute_query_runs_rewritten_sql(monkeypatch):
-    import benchbox.platforms.questdb as questdb_module
-
+def test_execute_query_runs_rewritten_sql(monkeypatch, questdb_stubs):
     captured = {}
 
     def fake_execute(connection, query, query_id, **kwargs):
@@ -59,9 +66,7 @@ def test_nested_date_trunc_is_lowercased():
     )
 
 
-def test_plan_capture_and_explain_see_the_rewritten_query(monkeypatch):
-    import benchbox.platforms.questdb as questdb_module
-
+def test_plan_capture_and_explain_see_the_rewritten_query(monkeypatch, questdb_stubs):
     seen = {}
     monkeypatch.setattr(
         questdb_module,
