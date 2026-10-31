@@ -42,3 +42,24 @@ def test_select_without_group_by_is_untouched():
 def test_ordinary_derived_table_column_is_untouched():
     sql = "SELECT l1.k, d.c FROM l AS l1 LEFT JOIN (SELECT k, COUNT(*) AS c FROM l GROUP BY k) AS d ON d.k = l1.k GROUP BY l1.k, d.c"
     assert rewrite_query(sql) == sql
+
+
+def test_decorrelated_column_is_left_alone_when_the_join_key_is_not_grouped():
+    sql = f"SELECT l1.j AS j, _u_0._col_0 AS avg_qty FROM l AS l1 {DERIVED} GROUP BY l1.j"
+    assert rewrite_query(sql) == sql
+
+
+def test_decorrelated_column_is_left_alone_when_the_join_is_not_a_plain_key_equality():
+    sql = (
+        "SELECT l1.k AS k, _u_0._col_0 AS avg_qty FROM l AS l1 "
+        "LEFT JOIN (SELECT AVG(q) AS _col_0, k AS _u_2 FROM l AS l2 GROUP BY k) AS _u_0 ON _u_0._u_2 < l1.k "
+        "GROUP BY l1.k"
+    )
+    assert rewrite_query(sql) == sql
+
+
+def test_decorrelated_column_in_having_is_wrapped():
+    sql = f"SELECT l1.k AS k, COUNT(*) AS n FROM l AS l1 {DERIVED} GROUP BY l1.k HAVING COUNT(*) > _u_0._col_0"
+    assert rewrite_query(sql) == (
+        f"SELECT l1.k AS k, COUNT(*) AS n FROM l AS l1 {DERIVED} GROUP BY l1.k HAVING COUNT(*) > MAX(_u_0._col_0)"
+    )
