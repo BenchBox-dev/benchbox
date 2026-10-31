@@ -11,7 +11,7 @@
     "Smoke on this Mac (tmp lock dir): `BENCHBOX_HEAVY_MEMORY_BUDGET_GIB=0.3 uv run -- python -m benchbox.utils.host_lock run --guard -- python -c 'b=bytearray(600*2**20); import time; time.sleep(30)'` is killed with a footprint report; output and G2 overhead recorded in the PR.",
     "Deferral for engine caps and per-service container limits exists and is promoted or dismissed before finish.",
     "`make comment-policy-check`, `make lint`, `make typecheck`, `make duplicate-check-delta`, `make test-fast` pass.",
-    "`make heavy-run` (from heavy-guard-status-policy) uses `--guard`; `make heavy-run CMD=...` over budget is killed in a smoke with a tiny budget."
+    "If `make heavy-run` exists when this lands, switch it to `--guard` and smoke it with a tiny budget; otherwise heavy-guard-status-policy adds `--guard` and owns that smoke."
   ],
   "context": "Incident evidence: JetsamEvent-2026-10-30-161255.ips top entries python3.12 64739 25.83 GiB, Virtualization VMs 6.06/5.14/2.13/1.13 GiB, java ~1.09 GiB each. Review probes: ulimit -v/-d invalid on macOS; taskpolicy -m not enforced; footprint vs RSS gap 3.4x on a VM process.",
   "deferrals": [
@@ -60,6 +60,14 @@
       "client": "omp-coding-agent",
       "op": "defer",
       "op_id": "ab355ffbd2f04f5880d139dda221643a",
+      "session_id": "5f71b48e76c54dd19a3f57d12779721e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:19f6136ffb052a6f71a9c702",
+      "at": "2026-10-31T00:38:15Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "653b190c8ca84827b09919d2b7238225",
       "session_id": "5f71b48e76c54dd19a3f57d12779721e"
     }
   ]
