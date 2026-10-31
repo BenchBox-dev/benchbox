@@ -6,6 +6,7 @@ from typing import Any
 
 import click
 
+from benchbox.cli.host_lock_optin import host_guarded
 from benchbox.cli.shared import console
 from benchbox.core.manifest import (
     ManifestV1,
@@ -167,6 +168,7 @@ def _get_schemas_from_manifest(manifest: ManifestV2, benchmark_name: str | None)
     is_flag=True,
     help="Enable verbose output",
 )
+@host_guarded("convert")
 def convert(
     input_dir: Path,
     target_format: str,

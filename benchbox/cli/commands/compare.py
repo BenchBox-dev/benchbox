@@ -19,6 +19,7 @@ from rich.markup import escape
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
+from benchbox.cli.host_lock_optin import host_guarded
 from benchbox.cli.shared import console
 from benchbox.core.results.exporter import ResultExporter
 from benchbox.core.results.loader import (
@@ -347,6 +348,7 @@ def _discover_result_files_with_metadata(
     help="Allow comparing runs with different execution variants (deployment, engine, gateway)",
 )
 @click.pass_context
+@host_guarded("compare", skip=lambda kwargs: bool(kwargs.get("list_platforms") or kwargs.get("result_files")))
 def compare(
     ctx,
     result_files,

@@ -3,6 +3,7 @@ from __future__ import annotations
 import click
 
 from benchbox.cli.commands.run import run
+from benchbox.cli.host_lock_optin import host_guarded
 from benchbox.cli.shared import console
 from benchbox.core.run_service import resolve_lifecycle_phases
 
@@ -73,6 +74,7 @@ from benchbox.core.run_service import resolve_lifecycle_phases
     help="Enable verbose logging",
 )
 @click.pass_context
+@host_guarded("datagen")
 def datagen(ctx, benchmark, scale, output_dir, data_format, seed, verbose):
     console.print("[bold blue]Running data generation...[/bold blue]")
     console.print(f"Benchmark: {benchmark}, Scale: {scale}")
