@@ -374,7 +374,9 @@ def _resolved_git_identity(project: Path, role: str) -> tuple[str, str]:
     if result.returncode != 0:
         return "", ""
     match = re.match(r"^(.*?) <([^>]+)>", result.stdout.strip())
-    return match.groups() if match else ("", "")
+    if match is None:
+        return "", ""
+    return match.group(1), match.group(2)
 
 
 def _is_agent_identity(name: str, email: str) -> bool:
