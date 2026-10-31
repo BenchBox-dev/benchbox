@@ -107,3 +107,12 @@ def test_get_queries_propagates_unknown_dialect_error(clickbench):
 def test_snowflake_regex_group_rewrite_still_applies(clickbench, clickbench_queries):
     translated = clickbench.translate_query_text(clickbench_queries["Q29"], "snowflake")
     assert "(?:www" not in translated
+
+
+def test_singlestore_domain_extraction_avoids_non_capturing_group(tmp_path) -> None:
+    benchmark = ClickBenchBenchmark(scale_factor=0.01, output_dir=tmp_path)
+
+    sql = benchmark.get_queries(dialect="singlestore")["Q29"]
+
+    assert "(?:" not in sql
+    assert "'^https?://(www\\\\.)?([^/]+)/.*$', '\\\\2'" in sql

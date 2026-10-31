@@ -228,7 +228,9 @@ class TestCloudTranslation:
 
         with tempfile.TemporaryDirectory() as tmp:
             bm = NYCTaxiBenchmark(scale_factor=0.1, output_dir=tmp)
-            return {d: bm.get_queries(dialect=d) for d in ("bigquery", "snowflake", "databricks", "sqlite")}
+            return {
+                d: bm.get_queries(dialect=d) for d in ("bigquery", "snowflake", "databricks", "sqlite", "singlestore")
+            }
 
     def test_no_dow_or_epoch_residuals(self, queries_by_dialect):
         for dialect, queries in queries_by_dialect.items():
@@ -253,6 +255,12 @@ class TestCloudTranslation:
         sql = queries_by_dialect["databricks"]["trips-by-day-of-week"]
         assert "DAYOFWEEK(" in sql
         assert "- 1" in sql
+
+    def test_singlestore_dow_uses_dayofweek(self, queries_by_dialect):
+        for qid in ("trips-by-day-of-week", "weekday-weekend-comparison"):
+            sql = queries_by_dialect["singlestore"][qid]
+            assert "DAYOFWEEK(" in sql.upper(), qid
+            assert "- 1" in sql, qid
 
     def test_sqlite_dow_uses_strftime(self, queries_by_dialect):
         sql = queries_by_dialect["sqlite"]["trips-by-day-of-week"]

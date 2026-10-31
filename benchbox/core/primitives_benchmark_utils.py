@@ -37,7 +37,7 @@ def quote_identifier_for_dialect(identifier: str, dialect: str | None) -> str:
     if normalized == "bigquery":
         quote_identifier(identifier)
         return f"`{identifier.upper()}`"
-    if normalized in ("databricks", "starrocks"):
+    if normalized in ("databricks", "singlestore", "starrocks"):
         quote_identifier(identifier)
         escaped = identifier.replace("`", "``")
         return f"`{escaped}`"

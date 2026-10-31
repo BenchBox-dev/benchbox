@@ -21,6 +21,7 @@ _REASONS: dict[str, str] = {
     "doris": "Doris uses cosine_distance / l2_distance on ARRAY<FLOAT>; DuckDB array_* functions are not available",
     "postgresql": "PostgreSQL + pgvector uses <=> and <-> operators; DuckDB array_* functions are not available",
     "clickhouse": "ClickHouse uses cosineDistance / L2Distance; DuckDB array_* functions are not available",
+    "singlestore": "SingleStore VECTOR columns use DOT_PRODUCT / EUCLIDEAN_DISTANCE; DuckDB array_* functions are not available",
     "snowflake": "Snowflake native VECTOR type uses VECTOR_COSINE_SIMILARITY / VECTOR_L2_DISTANCE",
 }
 

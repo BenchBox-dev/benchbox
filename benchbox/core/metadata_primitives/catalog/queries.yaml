@@ -414,6 +414,7 @@ queries:
   - starrocks
   - datafusion
   variants:
+    singlestore: "SELECT\n    table_name AS child_table,\n    unique_constraint_name,\n    referenced_table_name AS parent_table,\n    '' AS fk_column\nFROM information_schema.referential_constraints\nWHERE constraint_schema = DATABASE()\nORDER BY child_table, unique_constraint_name;\n"
     snowflake: "SELECT\n    tc.table_name AS child_table,\n    rc.unique_constraint_name,\n    ptc.table_name AS parent_table,\n    '' AS fk_column\nFROM information_schema.table_constraints tc\nJOIN information_schema.referential_constraints rc\n  ON tc.constraint_name = rc.constraint_name\n  AND tc.table_schema = rc.constraint_schema\nJOIN information_schema.table_constraints ptc\n  ON rc.unique_constraint_name = ptc.constraint_name\n  AND rc.unique_constraint_schema = ptc.table_schema\nWHERE tc.table_name ILIKE 'benchbox_fk_%'\nORDER BY child_table;\n"
     sqlite: "SELECT table_name AS child_table, 'pk_' || parent_table AS unique_constraint_name, parent_table, column_name AS fk_column FROM (SELECT m.name AS table_name, 'fk_' || m.name || '_' || f.id AS constraint_name, 'FOREIGN KEY' AS constraint_type, f.\"from\" AS column_name, f.seq + 1 AS ordinal_position, f.\"table\" AS parent_table FROM sqlite_master m JOIN pragma_foreign_key_list(m.name) f WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%') WHERE table_name LIKE 'benchbox_fk_%' ORDER BY child_table;\n"
 - id: constraint_summary
@@ -562,6 +563,7 @@ queries:
   - starrocks
   - databricks
   variants:
+    singlestore: "SELECT\n    `role` AS role_name,\n    0 AS is_superuser,\n    0 AS can_create_db,\n    0 AS can_create_role\nFROM information_schema.roles\nORDER BY `role`;\n"
     duckdb: "-- DuckDB lacks role introspection; return empty result\nSELECT\n    CAST(NULL AS VARCHAR) AS role_name,\n    CAST(NULL AS BOOLEAN) AS is_superuser,\n    CAST(NULL AS BOOLEAN) AS can_create_db,\n    CAST(NULL AS BOOLEAN) AS can_create_role\nWHERE 1=0;\n"
     clickhouse: "SELECT\n    name AS role_name,\n    0 AS is_superuser,\n    0 AS can_create_db,\n    0 AS can_create_role\nFROM system.roles\nORDER BY name;\n"
     redshift: "SELECT\n    usename AS role_name,\n    usesuper AS is_superuser,\n    usecreatedb AS can_create_db,\n    FALSE AS can_create_role\nFROM pg_user\nORDER BY usename;\n"
@@ -589,6 +591,7 @@ queries:
   - starrocks
   - databricks
   variants:
+    singlestore: "SELECT\n    `role` AS role_name,\n    `group` AS member_name,\n    0 AS admin_option\nFROM information_schema.groups_roles\nORDER BY `role`, `group`;\n"
     clickhouse: "SELECT\n    role_name,\n    granted_role_name AS member_name,\n    with_admin_option AS admin_option\nFROM system.role_grants\nORDER BY role_name, granted_role_name;\n"
     redshift: "SELECT\n    pg_get_userbyid(roleid) AS role_name,\n    pg_get_userbyid(member) AS member_name,\n    admin_option\nFROM pg_auth_members\nORDER BY role_name, member_name;\n"
     synapse: "SELECT\n    r.name AS role_name,\n    m.name AS member_name,\n    0 AS admin_option\nFROM sys.database_role_members rm\nJOIN sys.database_principals r ON rm.role_principal_id = r.principal_id\nJOIN sys.database_principals m ON rm.member_principal_id = m.principal_id\nORDER BY r.name, m.name;\n"
