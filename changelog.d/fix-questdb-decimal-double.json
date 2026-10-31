@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed QuestDB TPC-H, TPC-DS and related queries failing with 'there is no matching operator' on DECIMAL columns; QuestDB cannot compare, divide or multiply DECIMAL against numeric literals or DOUBLE, so DECIMAL columns are created as DOUBLE."
+    }
+  ]
+}
