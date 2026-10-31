@@ -4,7 +4,7 @@
     "Site ci checks pass.",
     "Merged only after explicit owner approval for this production deploy in the current conversation; deploy succeeds; the live python-api Snowflake page shows the new message text (quote it)."
   ],
-  "context": "Usability plan 2026-10-31, revision R-W4 (W4b). May be combined into one deploy-approval question with usability-site-user-docs-inline-guidance.\n\nDECISION GATES: G1 production deploy approval before merge. G2 if a core message changed in a way the docs cannot quote cleanly (e.g. dynamic text), ask.\n\nGUARDRAILS: docs only; no secrets; follow site PR flow; do not touch other sessions' PRs.\n\nTodoReview 2026-10-31 applied. CITATION FIX: pages are docs/reference/python-api/platforms/snowflake.md and redshift.md. Commit and PR text contain no plan, gate or revision labels.",
+  "context": "Usability plan 2026-10-31, revision R-W4 (W4b). May be combined into one deploy-approval question with usability-site-user-docs-inline-guidance.\n\nDECISION GATES: G1 production deploy approval before merge. G2 if a core message changed in a way the docs cannot quote cleanly (e.g. dynamic text), ask.\n\nGUARDRAILS: docs only; no secrets; follow site PR flow; do not touch other sessions' PRs.\n\nTodoReview 2026-10-31 applied. CITATION FIX: pages are docs/reference/python-api/platforms/snowflake.md and redshift.md. Commit and PR text contain no plan, gate or revision labels.\n\n2026-10-31 owner asked to consolidate PRs: this item and site-docs-automatic-pseudonym-salt ship as ONE benchbox-site PR (one deploy approval), opened after core #3878, #3895 and #3897 merge.",
   "description": "After usability-platform-config-messages-accurate and usability-benchmark-dependency-errors-actionable merge, benchbox-site pages that quote the old error text are wrong: python-api/platforms/snowflake.md:112,152 and python-api/platforms/redshift.md:126,171 quote the current Snowflake/Redshift messages; the MCP reference has no dependency-error example. Update the quotes to the merged text (copy from the core merge commit, not paraphrase) and add one MCP DEPENDENCY_MISSING example (module, extra, install command in suggestion). Re-grep the site for any other quote of a message changed by the two core PRs and update it.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox-site"
@@ -25,6 +25,14 @@
       "op": "update",
       "op_id": "565d5ead4dcd42cd9ee42715451fab93",
       "session_id": "fdde7b96f2774961bbd4c814eff2ca0e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e275448d846640d27249a6f8",
+      "at": "2026-10-31T20:10:45Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "91ad6b979e4648f8902d1b286156e8a4",
+      "session_id": "a36a04b6bc394082b5008f654e1bf00b"
     }
   ]
 }
