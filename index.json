@@ -12681,6 +12681,13 @@
       "status": "blocked",
       "title": "Harness re-applies ClickHouse server session settings beyond load time"
     },
+    "heavy-guard-lock-core-20261030": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Make the shared host lock exclusive-safe, re-entrant and reusable outside the test harness"
+    },
     "heavy-tier-merge-group-dead-code-20261009": {
       "claim": null,
       "needs": [],
