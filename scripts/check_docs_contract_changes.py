@@ -22,13 +22,14 @@ EXPORTER = "scripts/doc_contracts.py"
 RELEVANT_PREFIXES = ("benchbox/", EXPORTER)
 EXPORT_TIMEOUT_SECONDS = 600
 GIT_TIMEOUT_SECONDS = 120
-CLI_OPTION_FIELDS = ("is_flag", "choices")
-PLATFORM_OPTION_FIELDS = ("value_kind", "choices", "default", "aliases")
-MCP_PARAM_FIELDS = ("type", "required", "default")
+IDENTITY_KEYS = ("platform", "key", "path", "symbol", "names", "name")
+ROOT_ENTRY = "contract"
+DETAIL_LIMIT = 400
+IGNORED_FIELDS = frozenset({"contract.package.version"})
 ADVICE = (
-    "The site refuses a core bundle whose exported docs contract has entries its documentation does not cover, and "
-    "keeps serving the previous bundle until a site change lands. Open the matching benchbox-site documentation "
-    "change before this pull request merges."
+    "The site refuses a core bundle whose exported docs contract disagrees with its documentation or has entries the "
+    "documentation does not cover, and keeps serving the previous bundle until a site change lands. Open the "
+    "matching benchbox-site documentation change before this pull request merges."
 )
 
 Entries = dict[str, dict[str, Any]]
@@ -40,32 +41,69 @@ class Change(NamedTuple):
     detail: str
 
 
-def _fields(source: Mapping[str, Any], names: Sequence[str]) -> dict[str, Any]:
-    return {name: source.get(name) for name in names}
+def _is_record_list(value: Any) -> bool:
+    return isinstance(value, list) and bool(value) and all(isinstance(item, dict) for item in value)
+
+
+def _identity(record: Mapping[str, Any], position: int) -> str:
+    parts = []
+    for key in IDENTITY_KEYS:
+        value = record.get(key)
+        if isinstance(value, list):
+            value = "/".join(str(item) for item in value)
+        if isinstance(value, str | int) and not isinstance(value, bool):
+            parts.append(str(value))
+    return " ".join(parts) if parts else f"#{position}"
+
+
+def _children(value: Any) -> dict[str, Any]:
+    if not _is_record_list(value):
+        return dict(value)
+    children: dict[str, Any] = {}
+    for position, record in enumerate(value):
+        name = _identity(record, position)
+        while name in children:
+            name += "'"
+        children[name] = record
+    return children
+
+
+def _is_branch(value: Any) -> bool:
+    return isinstance(value, dict) or _is_record_list(value)
+
+
+def _collect(node: Any, path: str, entries: Entries) -> None:
+    children = _children(node)
+    own = {key: value for key, value in children.items() if not _is_branch(value)}
+    own = {key: value for key, value in own.items() if f"{path}.{key}" not in IGNORED_FIELDS}
+    if own or not children:
+        entries[path] = own
+    for key, value in children.items():
+        if _is_branch(value):
+            _collect(value, f"{path}.{key}", entries)
 
 
 def contract_entries(contracts: Mapping[str, Any]) -> Entries:
     entries: Entries = {}
-    mcp = contracts.get("mcp") or {}
-    for tool, definition in (mcp.get("tools") or {}).items():
-        entries[f"mcp tool {tool}"] = {}
-        for name, param in (definition.get("params") or {}).items():
-            entries[f"mcp tool {tool} parameter {name}"] = _fields(param, MCP_PARAM_FIELDS)
-    for tool in mcp.get("remote_only_tools") or []:
-        entries[f"mcp remote-only tool {tool}"] = {}
-    for command in (contracts.get("cli") or {}).get("commands") or []:
-        entries[f"cli command {command['path']}"] = {"is_group": command.get("is_group")}
-        for option in command.get("options") or []:
-            names = "/".join(option["names"])
-            entries[f"cli option {command['path']} {names}"] = _fields(option, CLI_OPTION_FIELDS)
-    for platform, options in ((contracts.get("platform_options") or {}).get("platforms") or {}).items():
-        for name, spec in options.items():
-            entries[f"platform option {platform} {name}"] = _fields(spec, PLATFORM_OPTION_FIELDS)
+    _collect(contracts, ROOT_ENTRY, entries)
     return entries
 
 
 def _show(value: Any) -> str:
     return json.dumps(value, sort_keys=True)
+
+
+def _clip(text: str) -> str:
+    return text if len(text) <= DETAIL_LIMIT else text[: DETAIL_LIMIT - 3] + "..."
+
+
+def _field_change(before: Any, after: Any) -> str:
+    if isinstance(before, list) and isinstance(after, list):
+        gone = [item for item in before if item not in after]
+        new = [item for item in after if item not in before]
+        if gone or new:
+            return "".join([f"+{_show(item)} " for item in new] + [f"-{_show(item)} " for item in gone]).strip()
+    return f"{_show(before)} -> {_show(after)}"
 
 
 def diff_entries(base: Entries, head: Entries) -> list[Change]:
@@ -77,12 +115,12 @@ def diff_entries(base: Entries, head: Entries) -> list[Change]:
     for identity in sorted(base.keys() & head.keys()):
         before, after = base[identity], head[identity]
         moved = [
-            f"{field}: {_show(before.get(field))} -> {_show(after.get(field))}"
+            f"{field}: {_field_change(before.get(field), after.get(field))}"
             for field in sorted(before.keys() | after.keys())
             if before.get(field) != after.get(field)
         ]
         if moved:
-            changes.append(Change("changed", identity, "; ".join(moved)))
+            changes.append(Change("changed", identity, _clip("; ".join(moved))))
     return changes
 
 
@@ -107,10 +145,10 @@ def render_summary(changes: Sequence[Change]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _git(args: Sequence[str], *, cwd: Path = REPO_ROOT) -> subprocess.CompletedProcess[str]:
+def _git(args: Sequence[str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["git", *args],
-        cwd=cwd,
+        cwd=REPO_ROOT,
         check=False,
         capture_output=True,
         text=True,
@@ -200,13 +238,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                 print("docs contract comparison skipped: no changed path feeds the exported contract")
                 return 0
         changes = compare(args.base_sha)
-    except (RuntimeError, OSError, ValueError, subprocess.SubprocessError) as error:
-        print(f"::notice title=Docs contract comparison skipped::{_escape(str(error))}")
-        return 0
-    if not changes:
-        print("docs contract unchanged")
-        return 0
-    publish(changes, args.summary)
+        if not changes:
+            print("docs contract unchanged")
+            return 0
+        publish(changes, args.summary)
+    except Exception as error:
+        print(f"::notice title=Docs contract comparison skipped::{_escape(f'{type(error).__name__}: {error}')}")
     return 0
 
 
