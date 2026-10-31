@@ -21,6 +21,7 @@ def _load():
 
 bootstrap = _load()
 REVIEWER_FILE = "_project/scripts/oracle_reviewers/cli.py"
+CREDENTIALS_FILE = "_project/scripts/oracle_reviewers/credentials.py"
 
 
 def _git(path: Path, *args: str) -> str:
@@ -51,6 +52,7 @@ def clones(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path]
     _git(origin, "init", "--quiet", "--initial-branch=develop")
     seed = {path: f"trusted {path}\n" for path in bootstrap.REVIEWER_PATHS if "." in Path(path).name}
     seed[REVIEWER_FILE] = "trusted cli\n"
+    seed[CREDENTIALS_FILE] = (ROOT / CREDENTIALS_FILE).read_text(encoding="utf-8")
     seed["unrelated.txt"] = "unrelated\n"
     _commit(origin, seed)
     work = tmp_path / "work"
@@ -154,3 +156,58 @@ def test_only_the_newest_exports_are_kept(clones: tuple[Path, Path]) -> None:
     kept = sorted(item.name for item in parent.iterdir())
     assert len(kept) == bootstrap.EXPORT_KEEP
     assert current.name in kept and f"{4:040d}" in kept and f"{0:040d}" not in kept
+
+
+def test_the_withheld_names_and_handover_variable_match_the_reviewer(clones: tuple[Path, Path]) -> None:
+    from _project.scripts.oracle_reviewers import local
+
+    _, work = clones
+    commit = _git(work, "rev-parse", "origin/develop")
+    target = bootstrap.export_reviewer(work, commit, Path.home() / bootstrap.EXPORT_PARENT)
+
+    assert bootstrap.withheld_names(target) == local.SCRUBBED_AT_START
+    assert bootstrap.HANDOVER_ENV == local.HANDOVER_ENV
+
+
+def test_the_launched_environment_holds_no_secret_and_hands_them_over_a_descriptor(
+    clones: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import json
+
+    secrets = {
+        "TYPESAFE_API_KEY": "k" * 16,
+        "TS_AUTHKEY": "t" * 16,
+        "GH_TOKEN": "g" * 16,
+        "ORACLE_CLOUD_GATEWAY_TOKEN": "c" * 16,
+    }
+    for name, value in secrets.items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.setenv("UNRELATED_SETTING", "kept")
+    launched: list[dict[str, str]] = []
+
+    code = bootstrap.run(_args(), lambda argv, env: launched.append(env) or 0)
+
+    assert code == 0
+    (env,) = launched
+    assert not set(secrets) & set(env)
+    assert not [value for value in env.values() if any(secret in value for secret in secrets.values())]
+    assert env["UNRELATED_SETTING"] == "kept"
+    with os.fdopen(int(env[bootstrap.HANDOVER_ENV]), "r", encoding="utf-8") as handle:
+        assert json.load(handle) == secrets
+
+
+def test_no_handover_descriptor_is_created_when_nothing_is_withheld(
+    clones: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for name in bootstrap_names():
+        monkeypatch.delenv(name, raising=False)
+    launched: list[dict[str, str]] = []
+
+    assert bootstrap.run(_args(), lambda argv, env: launched.append(env) or 0) == 0
+    assert bootstrap.HANDOVER_ENV not in launched[0]
+
+
+def bootstrap_names() -> frozenset[str]:
+    from _project.scripts.oracle_reviewers import local
+
+    return local.SCRUBBED_AT_START

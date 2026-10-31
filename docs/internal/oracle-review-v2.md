@@ -871,13 +871,17 @@ and posts nothing to GitHub.
   value). Without a key the review cannot classify, so it refuses (exit 2) and
   names that step; there is no fixed default. A change that needs no review
   (only exempt paths) needs no key. The classifier key stays out of the
-  reviewer's process tree as in CI: `local-review` re-executes itself without
-  `TYPESAFE_API_KEY`, `TS_AUTHKEY`, the gateway values and the GitHub tokens in
-  its environment and holds them in memory, then grants them to the phase
-  processes that need them (`prepare` and `recover` the key; both scans the key,
-  the Tailscale auth key and the gateway client tokens; `finalize` those and the
-  gateway pair; `attempts` only the gateway pair), so no ancestor of the reviewer
-  holds the key.
+  processes that `make pr-open` starts for the review: the launcher script takes
+  `TYPESAFE_API_KEY`, `TS_AUTHKEY`, the gateway values and the GitHub tokens out
+  of the environment it passes to `uv` and `local-review`, hands them to
+  `local-review` over an inherited pipe, and `local-review` holds them in memory,
+  then grants them to the phase processes that need them (`prepare` and `recover`
+  the key; both scans the key, the Tailscale auth key and the gateway client
+  tokens; `finalize` those and the gateway pair; `attempts` only the gateway
+  pair). Processes that started before the launcher, such as `make`, the recipe
+  shell and the session that ran it, keep the environment the session gave them;
+  the review cannot change that, so a same-user process can still read what the
+  session itself holds.
 - **Credentials.** Local sessions use the `oracle-local` gateway client at
   `http://127.0.0.1:4000` with the token in
   `~/.omp/oracle-gateway/local-client.token`. Cloud sessions
