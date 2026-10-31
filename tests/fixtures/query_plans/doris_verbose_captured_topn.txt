@@ -1,0 +1,86 @@
+PLAN FRAGMENT 0
+  OUTPUT EXPRS:
+    o_id[#10]
+    o_total[#11]
+  PARTITION: UNPARTITIONED
+
+  HAS_COLO_PLAN_NODE: false
+
+  VRESULT SINK
+     MYSQL_PROTOCOL
+
+  3:VMaterializeNode
+  |  materialize tuple id:3
+  |  output tuple id:4
+  |  projectList:[o_id, o_total]
+  |  column_descs_lists[[`o_id` bigint NULL]]
+  |  locations: [[1]]
+  |  table_idxs: [[0]]
+  |  row_ids: [__DORIS_GLOBAL_ROWID_COL__orders]
+  |  isTopMaterializeNode: true
+  |  final projections: o_id[#9], o_total[#8]
+  |  final project output tuple id: 4
+  |  tuple ids: 3
+  |
+  2:VMERGING-EXCHANGE
+     offset: 0
+     limit: 2
+     distribute expr lists:
+     tuple ids: 2
+
+PLAN FRAGMENT 1
+
+  PARTITION: HASH_PARTITIONED: o_id[#0]
+
+  HAS_COLO_PLAN_NODE: false
+
+  STREAM DATA SINK
+    EXCHANGE ID: 02
+    UNPARTITIONED
+IS_MERGE: true
+
+  1:VTOP-N(118)
+  |  order by: o_total[#6] DESC
+  |  algorithm: heap sort
+  |  local merge sort
+  |  merge by exchange
+  |  offset: 0
+  |  limit: 2
+  |  distribute expr lists:
+  |  tuple ids: 2
+  |
+  0:VOlapScanNode(92)
+     TABLE: pv_plan_validation.orders(orders), PREAGGREGATION: ON
+     partitions=1/1 (orders)
+     tablets=1/1, tabletList=1793479381837
+     cardinality=1, avgRowSize=0.0, numNodes=1
+     pushAggOp=NONE
+     final projections: o_total[#2], __DORIS_GLOBAL_ROWID_COL__orders[#3]
+     final project output tuple id: 1
+     tuple ids: 0
+
+Tuples:
+TupleDescriptor{id=0, tbl=orders}
+  SlotDescriptor{id=2, col=o_total, colUniqueId=2, type=double, nullable=true, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+  SlotDescriptor{id=3, col=__DORIS_GLOBAL_ROWID_COL__orders, colUniqueId=2147483647, type=text, nullable=false, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+
+TupleDescriptor{id=1, tbl=orders}
+  SlotDescriptor{id=4, col=o_total, colUniqueId=2, type=double, nullable=true, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+  SlotDescriptor{id=5, col=__DORIS_GLOBAL_ROWID_COL__orders, colUniqueId=2147483647, type=text, nullable=false, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+
+TupleDescriptor{id=2, tbl=null}
+  SlotDescriptor{id=6, col=o_total, colUniqueId=2, type=double, nullable=true, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+  SlotDescriptor{id=7, col=__DORIS_GLOBAL_ROWID_COL__orders, colUniqueId=2147483647, type=text, nullable=false, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+
+TupleDescriptor{id=3, tbl=null}
+  SlotDescriptor{id=8, col=o_total, colUniqueId=2, type=double, nullable=true, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+  SlotDescriptor{id=9, col=o_id, colUniqueId=0, type=bigint, nullable=true, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+
+TupleDescriptor{id=4, tbl=null}
+  SlotDescriptor{id=10, col=o_id, colUniqueId=0, type=bigint, nullable=true, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+  SlotDescriptor{id=11, col=o_total, colUniqueId=2, type=double, nullable=true, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+
+
+
+
+========== STATISTICS ==========

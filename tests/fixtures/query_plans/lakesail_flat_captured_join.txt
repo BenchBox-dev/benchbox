@@ -1,0 +1,53 @@
+== Parsed Logical Plan ==
+Projection: c.#4 AS #6, o.#2 AS #7
+  Inner Join:  Filter: o.#1 = c.#3
+    SubqueryAlias: o
+      Projection: orders.o_id AS #0, orders.o_cust AS #1, orders.o_total AS #2
+        Projection: orders.#0 AS o_id, orders.#1 AS o_cust, orders.#2 AS o_total
+          SubqueryAlias: orders
+            Projection: ?table?.o_id AS #0, ?table?.o_cust AS #1, ?table?.o_total AS #2
+              TableScan: ?table?
+    SubqueryAlias: c
+      Projection: customers.c_id AS #3, customers.c_name AS #4, customers.c_region AS #5
+        Projection: customers.#0 AS c_id, customers.#1 AS c_name, customers.#2 AS c_region
+          SubqueryAlias: customers
+            Projection: ?table?.c_id AS #0, ?table?.c_name AS #1, ?table?.c_region AS #2
+              TableScan: ?table?
+
+== Analyzed Logical Plan ==
+#6: Utf8, #7: Float64
+Projection: c.#4 AS #6, o.#2 AS #7
+  Inner Join:  Filter: o.#1 = c.#3
+    SubqueryAlias: o
+      Projection: orders.o_id AS #0, orders.o_cust AS #1, orders.o_total AS #2
+        Projection: orders.#0 AS o_id, orders.#1 AS o_cust, orders.#2 AS o_total
+          SubqueryAlias: orders
+            Projection: ?table?.o_id AS #0, ?table?.o_cust AS #1, ?table?.o_total AS #2
+              TableScan: ?table?
+    SubqueryAlias: c
+      Projection: customers.c_id AS #3, customers.c_name AS #4, customers.c_region AS #5
+        Projection: customers.#0 AS c_id, customers.#1 AS c_name, customers.#2 AS c_region
+          SubqueryAlias: customers
+            Projection: ?table?.c_id AS #0, ?table?.c_name AS #1, ?table?.c_region AS #2
+              TableScan: ?table?
+
+== Optimized Logical Plan ==
+Projection: c.#4 AS #6, o.#2 AS #7
+  Inner Join: o.#1 = c.#3
+    SubqueryAlias: o
+      Projection: orders.#1 AS #1, orders.#2 AS #2
+        SubqueryAlias: orders
+          Projection: ?table?.o_cust AS #1, ?table?.o_total AS #2
+            TableScan: ?table? projection=[o_cust, o_total]
+    SubqueryAlias: c
+      Projection: customers.#0 AS #3, customers.#1 AS #4
+        SubqueryAlias: customers
+          Projection: ?table?.c_id AS #0, ?table?.c_name AS #1
+            TableScan: ?table? projection=[c_id, c_name]
+
+== Physical Plan ==
+ProjectionExec: expr=[#6@0 as c_name, #7@1 as o_total]
+  ProjectionExec: expr=[#4@0 as #6, #2@1 as #7]
+    HashJoinExec: mode=CollectLeft, join_type=Inner, on=[(#3@0, #1@0)], projection=[#4@1, #2@3]
+      DataSourceExec: file_groups={1 group: [[tmp/pv/sailflat/tpch_sf1/customers.parquet]]}, projection=[c_id@0 as #3, c_name@1 as #4], file_type=parquet
+      DataSourceExec: file_groups={1 group: [[tmp/pv/sailflat/tpch_sf1/orders.parquet]]}, projection=[o_cust@1 as #1, o_total@2 as #2], file_type=parquet, predicate=DynamicFilter [ empty ], dynamic_rg_pruning=eligible

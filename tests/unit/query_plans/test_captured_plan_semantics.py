@@ -435,7 +435,48 @@ class TestDorisVerboseCapturedPlans:
         assert [s.table_name for s in scans] == ["pv_plan_validation.orders"]
 
 
+class TestDorisVerboseOperatorMapping:
+    @staticmethod
+    def _root(name):
+        text = (_FIXTURES / f"doris_verbose_captured_{name}.txt").read_text(encoding="utf-8")
+        return DorisQueryPlanParser().parse_explain_output(name, text).logical_root
+
+    @pytest.mark.parametrize(
+        ("name", "expected"),
+        [("semi_join", JoinType.SEMI), ("anti_join", JoinType.ANTI), ("left_join", JoinType.LEFT)],
+    )
+    def test_join_type_is_not_collapsed_to_left_or_right(self, name, expected):
+        joins = _of_type(self._root(name), LogicalOperatorType.JOIN)
+        assert [j.join_type for j in joins] == [expected]
+
+    @pytest.mark.parametrize(
+        ("name", "operator_type", "physical"),
+        [
+            ("topn", LogicalOperatorType.SORT, "VTOP-N"),
+            ("window", LogicalOperatorType.WINDOW, "VANALYTIC"),
+            ("intersect", LogicalOperatorType.INTERSECT, "VINTERSECT"),
+            ("except", LogicalOperatorType.EXCEPT, "VEXCEPT"),
+        ],
+    )
+    def test_node_names_map_to_logical_operator_types(self, name, operator_type, physical):
+        nodes = [n for n in _collect(self._root(name)) if n.operator_type == operator_type]
+        assert [n.physical_operator.operator_type for n in nodes][0] == physical
+
+    @pytest.mark.parametrize("name", ["intersect", "except"])
+    def test_set_operator_has_both_table_branches(self, name):
+        node = _of_type(
+            self._root(name), LogicalOperatorType.INTERSECT if name == "intersect" else LogicalOperatorType.EXCEPT
+        )[0]
+        assert _scanned_tables(node) == ["customers", "orders"]
+
+
 class TestLakeSailCapturedPlans:
+    @pytest.mark.parametrize("shape", ["join", "union"])
+    def test_flat_parquet_files_name_scans_after_file_stem(self, shape):
+        text = (_FIXTURES / f"lakesail_flat_captured_{shape}.txt").read_text(encoding="utf-8")
+        root = SparkQueryPlanParser().parse_explain_output(shape, text).logical_root
+        assert _scanned_tables(root) == ["customers", "orders"]
+
     def test_scans_are_datasource_exec_named_after_table_directory(self):
         scans = _scans(_parse(_LAKESAIL, "join").logical_root)
         assert {s.physical_operator.operator_type for s in scans} == {"DataSourceExec"}

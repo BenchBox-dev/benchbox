@@ -45,6 +45,10 @@ class DorisQueryPlanParser(QueryPlanParser):
         ("physicalintersect", LogicalOperatorType.INTERSECT),
         ("physicalfilter", LogicalOperatorType.FILTER),
         ("vselect", LogicalOperatorType.FILTER),
+        ("vtop", LogicalOperatorType.SORT),
+        ("vanalytic", LogicalOperatorType.WINDOW),
+        ("vexcept", LogicalOperatorType.EXCEPT),
+        ("vintersect", LogicalOperatorType.INTERSECT),
         ("filter", LogicalOperatorType.FILTER),
         ("physicalcte", LogicalOperatorType.CTE),
         ("physicaldistribute", LogicalOperatorType.OTHER),
@@ -259,6 +263,11 @@ class DorisQueryPlanParser(QueryPlanParser):
     def _classify_join_type(self, qualifier: str | None) -> JoinType:
         if not qualifier:
             return JoinType.INNER
+        lowered = qualifier.lower()
+        if "semi" in lowered:
+            return JoinType.SEMI
+        if "anti" in lowered:
+            return JoinType.ANTI
         return self._harmonize_join_type(qualifier)
 
 

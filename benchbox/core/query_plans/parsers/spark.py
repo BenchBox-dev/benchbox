@@ -70,6 +70,7 @@ class SparkQueryPlanParser(QueryPlanParser):
             raise ValueError("No operators found in Spark physical plan")
 
         root = self._build_tree(parsed_nodes)
+        self._name_file_scans(root, set(re.findall(r"TableScan: ([A-Za-z_]\w*)", explain_output)))
         return QueryPlanDAG(
             query_id=query_id,
             platform=self.platform_name,
@@ -153,13 +154,29 @@ class SparkQueryPlanParser(QueryPlanParser):
                 return logical_type
         return LogicalOperatorType.OTHER
 
+    @classmethod
+    def _name_file_scans(cls, root: LogicalOperator, logical_tables: set[str]) -> None:
+        stack = [root]
+        while stack:
+            node = stack.pop()
+            stack.extend(node.children)
+            if node.operator_type != LogicalOperatorType.SCAN or node.table_name or node.physical_operator is None:
+                continue
+            files = cls._FILE_GROUPS_RE.search(node.physical_operator.platform_metadata.get("details") or "")
+            if not files:
+                continue
+            *directories, filename = files.group(1).split("/")
+            stem = re.sub(r"\.\d+$", "", filename.rsplit(".", 1)[0])
+            directory = next((part for part in reversed(directories) if part and "=" not in part), None)
+            if logical_tables:
+                node.table_name = next((name for name in (directory, stem) if name in logical_tables), None)
+            else:
+                node.table_name = stem or None
+
     @staticmethod
     def _extract_table(details: str) -> str | None:
-        files = SparkQueryPlanParser._FILE_GROUPS_RE.search(details)
-        if files:
-            directories = [part for part in files.group(1).split("/")[:-1] if part and "=" not in part]
-            if directories:
-                return directories[-1]
+        if SparkQueryPlanParser._FILE_GROUPS_RE.search(details):
+            return None
         match = re.search(r"(?:FileScan|Scan)\s+\w+\s+([A-Za-z_][\w.]*)", details)
         if match:
             return match.group(1)
