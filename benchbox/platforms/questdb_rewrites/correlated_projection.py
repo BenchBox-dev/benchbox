@@ -148,13 +148,22 @@ def _plan(
     return derived, keys, zero, scope[1]
 
 
+def _require_present(select: exp.Select, key: exp.Expr) -> None:
+    guard = exp.Not(this=exp.Is(this=key.copy(), expression=exp.Null()))
+    where = select.args.get("where")
+    select.set("where", exp.Where(this=exp.and_(where.this, guard) if where is not None else guard))
+
+
 def _add_keys(derived: exp.Select, keys: list[exp.Expr], staged: exp.Subquery | None) -> None:
     for index, (inner_side, _) in enumerate(keys):
         name = f"_ck{index}"
         if staged is None:
             derived.expressions.append(exp.alias_(inner_side.copy(), name))
+            _require_present(derived, inner_side)
             continue
-        derived.args["from_"].this.this.expressions.append(exp.alias_(inner_side.copy(), name))
+        staged_select = derived.args["from_"].this.this
+        staged_select.expressions.append(exp.alias_(inner_side.copy(), name))
+        _require_present(staged_select, inner_side)
         derived.expressions.append(exp.column(name, table=staged.alias))
     keyed = (
         [exp.column(f"_ck{index}", table=staged.alias) for index in range(len(keys))]

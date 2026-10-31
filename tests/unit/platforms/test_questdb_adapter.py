@@ -6,6 +6,7 @@ import http.server
 import json
 import socket
 import threading
+import urllib.parse
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
@@ -583,7 +584,13 @@ class TestQuestDBAdapter:
 
         class Handler(http.server.BaseHTTPRequestHandler):
             def do_GET(self):
-                body = json.dumps({"dataset": [["x", "INT"], ["d", "DATE"]]}).encode()
+                query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)["query"][0]
+                dataset = (
+                    [["d", "DATE"], ["ts", "TIMESTAMP"]]
+                    if '"lineitem"' in query or '"events"' in query
+                    else [["x", "INT"], ["d", "DATE"]]
+                )
+                body = json.dumps({"dataset": dataset}).encode()
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(body)))
@@ -617,21 +624,17 @@ class TestQuestDBAdapter:
         port, _ = schema_loopback
         adapter = QuestDBAdapter(host="127.0.0.1", http_port=port)
 
-        rows = {"dataset": [["d", "DATE"], ["ts", "TIMESTAMP"]]}
-        response = Mock()
-        response.json.return_value = rows
-        with patch("requests.get", return_value=response):
-            assert json.loads(adapter._import_schema("lineitem", named_only=True)) == [
-                {"name": "d", "type": "DATE", "pattern": "yyyy-MM-dd"},
-                {"name": "ts", "type": "TIMESTAMP", "pattern": "yyyy-MM-dd"},
-            ]
-            assert json.loads(adapter._import_schema("events", named_only=True)) == [
-                {"name": "d", "type": "DATE", "pattern": "yyyy-MM-dd"}
-            ]
-            assert json.loads(adapter._import_schema("events", named_only=False)) == [
-                {"name": "d", "type": "DATE", "pattern": "yyyy-MM-dd"},
-                {"name": "ts", "type": "TIMESTAMP", "pattern": "yyyy-MM-dd HH:mm:ss"},
-            ]
+        assert json.loads(adapter._import_schema("lineitem", named_only=True)) == [
+            {"name": "d", "type": "DATE", "pattern": "yyyy-MM-dd"},
+            {"name": "ts", "type": "TIMESTAMP", "pattern": "yyyy-MM-dd"},
+        ]
+        assert json.loads(adapter._import_schema("events", named_only=True)) == [
+            {"name": "d", "type": "DATE", "pattern": "yyyy-MM-dd"}
+        ]
+        assert json.loads(adapter._import_schema("events", named_only=False)) == [
+            {"name": "d", "type": "DATE", "pattern": "yyyy-MM-dd"},
+            {"name": "ts", "type": "TIMESTAMP", "pattern": "yyyy-MM-dd HH:mm:ss"},
+        ]
 
     def test_parquet_chunks_post_the_date_schema(self, questdb_stubs, schema_loopback, tmp_path):
         pa = pytest.importorskip("pyarrow")

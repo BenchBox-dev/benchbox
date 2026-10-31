@@ -15,7 +15,7 @@ def test_correlated_aggregate_in_a_grouped_select_becomes_a_left_joined_group_by
     )
     assert rewrite_query(sql) == (
         "SELECT l1.k AS k, SUM(l1.q) AS s, MAX(_cs1._cv) AS avg_q FROM l AS l1 "
-        "LEFT JOIN (SELECT AVG(l2.q) AS _cv, l2.k AS _ck0 FROM l AS l2 WHERE l2.d <= 5 GROUP BY l2.k) AS _cs1 "
+        "LEFT JOIN (SELECT AVG(l2.q) AS _cv, l2.k AS _ck0 FROM l AS l2 WHERE l2.d <= 5 AND NOT l2.k IS NULL GROUP BY l2.k) AS _cs1 "
         "ON _cs1._ck0 = l1.k GROUP BY l1.k"
     )
 
@@ -24,7 +24,7 @@ def test_count_defaults_to_zero_when_no_group_matches():
     sql = "SELECT s.a, (SELECT COUNT(*) FROM t WHERE t.a = s.a) AS n FROM (SELECT DISTINCT a FROM z) AS s"
     assert rewrite_query(sql) == (
         "SELECT s.a, COALESCE(_cs1._cv, 0) AS n FROM (SELECT DISTINCT a FROM z) AS s "
-        "LEFT JOIN (SELECT COUNT(*) AS _cv, t.a AS _ck0 FROM t GROUP BY t.a) AS _cs1 ON _cs1._ck0 = s.a"
+        "LEFT JOIN (SELECT COUNT(*) AS _cv, t.a AS _ck0 FROM t WHERE NOT t.a IS NULL GROUP BY t.a) AS _cs1 ON _cs1._ck0 = s.a"
     )
 
 
@@ -45,7 +45,7 @@ def test_correlation_inside_a_derived_source_is_staged_into_the_derived_select()
     )
     assert rewrite_query(sql) == (
         "SELECT a.y AS y, _cs1._cv AS total FROM (SELECT DISTINCT y FROM z) AS a "
-        "LEFT JOIN (SELECT SUM(s.v) AS _cv, s._ck0 FROM (SELECT t.v AS v, t.y AS _ck0 FROM t) AS s GROUP BY s._ck0) "
+        "LEFT JOIN (SELECT SUM(s.v) AS _cv, s._ck0 FROM (SELECT t.v AS v, t.y AS _ck0 FROM t WHERE NOT t.y IS NULL) AS s GROUP BY s._ck0) "
         "AS _cs1 ON _cs1._ck0 = a.y"
     )
 
