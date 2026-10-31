@@ -3,7 +3,7 @@
     "Queue-time and merge-to-live statistics cover at least 30 days of production deploys after 2026-10-11, with the run ids used",
     "A runner-pool decision with its reason is recorded in the D13 row of docs/internal/adr/adr-site-repo-split.md"
   ],
-  "context": "Found 2026-10-17 at site-split closeout: the follow-up list in site-split-99 names it, and no tracker item existed. Related but separate: actions-runner-queue-oracle-latency-20261009 (core CI queueing). Receipts come from `gh run download <run-id> -R BenchBox-dev/benchbox-site`.",
+  "context": "Found 2026-10-17 at site-split closeout: the follow-up list in site-split-99 names it, and no tracker item existed. Related but separate: actions-runner-queue-oracle-latency-20261009 (core CI queueing). Receipts come from `gh run download <run-id> -R BenchBox-dev/benchbox-site`.\n\nMerged 2026-10-30 into actions-runner-queue-oracle-latency-20261009. On GitHub Free the site has no runner pool of its own: its jobs share the org's 20-job cap with core, so the D13 choice is the org-wide capacity decision. The D13 record requirement moved to that item.",
   "description": "The site-repo split ADR (docs/internal/adr/adr-site-repo-split.md:33, decision D13) deferred the runner-pool choice: measure first, then decide after a month. Site receipts already record the inputs: queued_at, core_merged_at, live_at and core_merge_to_live_seconds (benchbox-site deploy/cli.ts:198-221, deploy/lib/receipt.ts:27-29). Nobody owns the decision, so it would otherwise be forgotten.\n\nCollect the receipts of every production Deploy run from the cutover (2026-10-11, run 38177778939) to at least 2026-11-10. Report the queue-time and merge-to-live distributions (median, p90, max), then decide: keep GitHub-hosted runners, or move to another pool. Record the decision in the ADR's D13 row.",
   "not_before": "2026-11-10T00:00:00Z",
   "sessions": [
@@ -14,6 +14,14 @@
       "op": "create",
       "op_id": "c7b12a81873a44d69b063c139cab3fca",
       "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-31T00:19:07Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3632f3bb399e42ba85ea654ab2f2eb2f",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
     }
   ]
 }
