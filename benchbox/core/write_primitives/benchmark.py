@@ -30,6 +30,7 @@ from benchbox.core.primitives_benchmark_utils import (
     table_exists,
 )
 from benchbox.core.query_catalog_base import TranslatableQueryMixin
+from benchbox.core.tpch.schema import TABLES_BY_NAME as TPCH_TABLES_BY_NAME
 from benchbox.core.transactional.benchmark_base import TransactionalBenchmarkBase
 from benchbox.core.write_primitives.generator import WritePrimitivesDataGenerator
 from benchbox.core.write_primitives.operations import WriteOperationsManager
@@ -184,6 +185,7 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
 
         self._setup_dialect: str = "standard"
         self._manifest_verified_connection: Any = None
+        self._dataframe_loaded_table_counts: dict[str, int] | None = None
 
     def _acquire_setup_lock(
         self, connection: DatabaseConnection, timeout_seconds: int = 300, dialect: str = "standard"
@@ -1051,6 +1053,12 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
     def skip_dataframe_data_loading(self) -> bool:
         return True
 
+    def dataframe_loaded_tables(self, *, ctx: Any, adapter: Any) -> tuple[dict[str, int], list[str]] | None:
+        _ = (ctx, adapter)
+        if self._dataframe_loaded_table_counts is None:
+            return None
+        return dict(self._dataframe_loaded_table_counts), list(TPCH_TABLES_BY_NAME)
+
     def get_dataframe_operations(
         self, platform_name: str, *, execution_engine: str | None = None
     ) -> "DataFrameWriteOperationsManager | None":
@@ -1150,9 +1158,13 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
         try:
             parity_adapter.create_schema(self, connection)
             parity_adapter.load_data(self, connection, data_dir)
+            self._dataframe_loaded_table_counts = {
+                name: int(connection.execute(f"SELECT COUNT(*) FROM {name}").fetchone()[0])
+                for name in TPCH_TABLES_BY_NAME
+            }
 
             for op_id in sql_parity_op_ids:
-                op_result = self.execute_operation(op_id, connection)
+                op_result = self.execute_operation(op_id, connection, platform_key="duckdb")
                 status = "SUCCESS" if op_result.success and op_result.validation_passed else "FAILED"
                 error = op_result.error
                 if status == "FAILED" and not error and not op_result.validation_passed:
@@ -1364,6 +1376,7 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
         scale = float(getattr(self, "scale_factor", 0.01) or 0.01)
         scale_label = f"tpch_{format_scale_factor(scale)}"
         candidate_roots = [
+            output_dir,
             output_dir.parent / "datagen" / scale_label,
             output_dir / "datagen" / scale_label,
             Path.cwd() / "benchmark_runs" / "datagen" / scale_label,

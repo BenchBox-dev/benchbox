@@ -10,6 +10,7 @@ from benchbox.core.write_primitives.benchmark import (
     OperationResult,
     WritePrimitivesBenchmark,
     _check_validation_query,
+    _resolve_validation_sql,
 )
 
 pytestmark = [
@@ -345,6 +346,54 @@ class TestAggregateStateSourceConversion:
         assert "read_csv([" in sql
         assert "lineitem.tbl.1.gz" in sql
         assert "compression='zstd'" not in sql
+
+
+class TestAggregateSourceInDataDir:
+    def test_resolve_aggregate_source_path_reads_tbl_from_benchmark_data_dir(self, wp, tmp_path):
+        wp.scale_factor = 0.01
+        (tmp_path / "lineitem.tbl").write_text("1|", encoding="utf-8")
+        conn = MagicMock()
+
+        with patch("duckdb.connect", return_value=conn):
+            result = wp._resolve_aggregate_source_path("lineitem", adapter=None, output_dir=tmp_path, spark=None)
+
+        assert result == tmp_path / "_aggregate_state_sources" / "lineitem"
+        assert "/lineitem.tbl" in conn.execute.call_args.args[0]
+
+
+class TestDataFrameParityDialect:
+    def test_sketch_validation_queries_resolve_for_duckdb(self, wp):
+        sketch_ops = [
+            op for op in wp.operations_manager.get_all_operations().values() if op.id.startswith("sketch_query_")
+        ]
+        assert sketch_ops
+        for op in sketch_ops:
+            for val_query in op.validation_queries:
+                sql, skip_reason = _resolve_validation_sql(val_query, "duckdb", None)
+                assert skip_reason is not None or "toString(" not in sql, (op.id, val_query.id)
+
+    def test_parity_workload_executes_operations_with_duckdb_dialect(self, wp, monkeypatch):
+        adapter = MagicMock()
+        connection = MagicMock()
+        connection.execute.return_value.fetchone.return_value = (5,)
+        adapter.create_connection.return_value = connection
+        monkeypatch.setattr("benchbox.platforms.duckdb.DuckDBAdapter", lambda **_kw: adapter)
+        monkeypatch.setattr(wp, "_select_dataframe_operation_ids", lambda query_filter=None: ["insert_single_row"])
+        calls = []
+
+        def fake_execute(op_id, conn, **kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(
+                success=True, validation_passed=True, error=None, write_duration_ms=1.0, rows_affected=1
+            )
+
+        monkeypatch.setattr(wp, "execute_operation", fake_execute)
+
+        rows = wp._execute_dataframe_sql_parity_workload()
+
+        assert rows[0]["status"] == "SUCCESS"
+        assert calls == [{"platform_key": "duckdb"}]
+        assert wp.dataframe_loaded_tables(ctx=None, adapter=None)[0]["lineitem"] == 5
 
 
 class TestGetPopulationSql:

@@ -1090,6 +1090,11 @@ class TestCleanupAuxiliaryFiles:
         wp_benchmark.cleanup_auxiliary_files()
 
 
+class _CountingConnection:
+    def execute(self, _sql):
+        return SimpleNamespace(fetchone=lambda: (1,))
+
+
 class TestDataFrameSqlParity:
     @pytest.fixture
     def wp_benchmark(self, tmp_path):
@@ -1104,7 +1109,9 @@ class TestDataFrameSqlParity:
             lambda query_filter=None: operation_ids,
         )
 
-        monkeypatch.setattr("benchbox.platforms.duckdb.DuckDBAdapter.create_connection", lambda self, **_: object())
+        monkeypatch.setattr(
+            "benchbox.platforms.duckdb.DuckDBAdapter.create_connection", lambda self, **_: _CountingConnection()
+        )
         monkeypatch.setattr(
             "benchbox.platforms.duckdb.DuckDBAdapter.create_schema",
             lambda self, benchmark, connection: 0.0,
@@ -1158,7 +1165,7 @@ class TestDataFrameSqlParity:
         monkeypatch.setattr(
             wp_benchmark,
             "execute_operation",
-            lambda op_id, connection: results_by_id[op_id],
+            lambda op_id, connection, **_kwargs: results_by_id[op_id],
         )
 
         sql_results = wp_benchmark.run_benchmark(connection=object(), operation_ids=operation_ids)
@@ -1197,7 +1204,9 @@ class TestDataFrameSqlParity:
         assert all(row["rows_returned"] == 0 for row in ddl_rows)
 
     def test_dataframe_workload_query_filter_keeps_sql_subset(self, wp_benchmark, monkeypatch):
-        monkeypatch.setattr("benchbox.platforms.duckdb.DuckDBAdapter.create_connection", lambda self, **_: object())
+        monkeypatch.setattr(
+            "benchbox.platforms.duckdb.DuckDBAdapter.create_connection", lambda self, **_: _CountingConnection()
+        )
         monkeypatch.setattr(
             "benchbox.platforms.duckdb.DuckDBAdapter.create_schema",
             lambda self, benchmark, connection: 0.0,
@@ -1214,7 +1223,7 @@ class TestDataFrameSqlParity:
         monkeypatch.setattr(
             wp_benchmark,
             "execute_operation",
-            lambda op_id, connection: OperationResult(
+            lambda op_id, connection, **_kwargs: OperationResult(
                 operation_id=op_id,
                 success=True,
                 write_duration_ms=1.0,
