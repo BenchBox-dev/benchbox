@@ -42,14 +42,14 @@ def _is_prose(line: str) -> bool:
 def _shell_sources() -> dict[str, str]:
     paths = [REPO_ROOT / "Makefile", *sorted((REPO_ROOT / "make").glob("*.mk"))]
     paths += sorted((REPO_ROOT / "scripts").rglob("*.sh")) + sorted((REPO_ROOT / "_project" / "scripts").rglob("*.sh"))
-    return {str(path.relative_to(REPO_ROOT)): path.read_text(encoding="utf-8") for path in paths}
+    return {path.relative_to(REPO_ROOT).as_posix(): path.read_text(encoding="utf-8") for path in paths}
 
 
 def _python_sources() -> dict[str, str]:
     paths = sorted((REPO_ROOT / "scripts").rglob("*.py")) + sorted(
         path for path in (REPO_ROOT / "tests" / "uat").rglob("*.py") if not path.name.startswith("test_")
     )
-    return {str(path.relative_to(REPO_ROOT)): path.read_text(encoding="utf-8") for path in paths}
+    return {path.relative_to(REPO_ROOT).as_posix(): path.read_text(encoding="utf-8") for path in paths}
 
 
 def _blocks(text: str) -> list[str]:

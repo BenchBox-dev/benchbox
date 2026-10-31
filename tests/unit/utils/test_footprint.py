@@ -8,7 +8,7 @@ import pytest
 
 from benchbox.utils import footprint
 
-pytestmark = pytest.mark.fast
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 
 @pytest.fixture

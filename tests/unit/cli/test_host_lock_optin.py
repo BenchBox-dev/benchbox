@@ -41,6 +41,7 @@ def lock_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.delenv(hl.OWNER_ENV, raising=False)
     monkeypatch.delenv(HOST_LOCK_ENV, raising=False)
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))
     return directory / hl.LOCK_NAME
 
 
