@@ -410,7 +410,7 @@ same module, so it honors the override and the real-home default.
   clear` (`make test-unlock`) empties the holder record of an inactive lock and
   refuses an active one.
 
-**When to bypass**: only for intentional concurrent debug runs. Set
+**When to bypass**: only for intentional concurrent debug runs, and only with owner approval in the current task. Set
 `BENCHBOX_SKIP_TEST_LOCK=1` - but expect noisy timing results and CPU
 contention. Do not bypass in CI.
 

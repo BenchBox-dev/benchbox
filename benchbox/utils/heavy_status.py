@@ -22,7 +22,7 @@ SERVER_NAMES = frozenset(
 )
 _STARTED = re.compile(r"\bstarted:(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})")
 _PID = re.compile(r"^pid:(\d+)")
-_OWNER = re.compile(r"\bowner:(\d+:\d+(?:\.\d+)?)")
+UNREADABLE_RECORD = "(could not read lock file)"
 
 
 @dataclass(frozen=True)
@@ -63,19 +63,6 @@ def _holder_age(record: str) -> float | None:
     return max(0.0, (utc_now() - started).total_seconds())
 
 
-def _identity_is_live(pid: int, owner: str | None) -> bool:
-    try:
-        psutil = host_lock._psutil()
-    except ImportError:
-        return True
-    try:
-        if owner is None:
-            return bool(psutil.pid_exists(pid))
-        return host_lock.process_identity(psutil.Process(pid)) == owner
-    except psutil.Error:
-        return False
-
-
 def read_holder_state(lock_path: Path) -> HolderReading | None:
     if not lock_path.is_file():
         return None
@@ -84,8 +71,7 @@ def read_holder_state(lock_path: Path) -> HolderReading | None:
     if not pid_match:
         return HolderReading(record=record, pid=None, live=False, age_seconds=None)
     pid = int(pid_match.group(1))
-    owner_match = _OWNER.search(record)
-    live = _identity_is_live(pid, owner_match.group(1) if owner_match else None)
+    live = host_lock.process_is_live(pid, host_lock.holder_owner(lock_path) or "")
     return HolderReading(record=record, pid=pid, live=live, age_seconds=_holder_age(record))
 
 
@@ -124,19 +110,22 @@ def _parse_lsof_cwd(text: str) -> dict[int, str]:
     return cwds
 
 
-def _read_cwds(pids: Sequence[int], runner: Runner, timeout: float) -> dict[int, str] | None:
-    if not pids:
-        return {}
-    if sys.platform.startswith("linux"):
-        found: dict[int, str] = {}
-        for pid in pids:
+def _read_cwds(pids: Sequence[int], runner: Runner, started: float) -> dict[int, str]:
+    found: dict[int, str] = {}
+    for pid in pids:
+        if sys.platform.startswith("linux"):
             try:
                 found[pid] = os.readlink(f"/proc/{pid}/cwd")
             except OSError:
-                continue
-        return found
-    text = runner(["lsof", "-a", "-d", "cwd", "-Fpn", "-p", ",".join(str(p) for p in pids)], timeout)
-    return None if text is None else _parse_lsof_cwd(text)
+                pass
+            continue
+        remaining = EXTERNAL_TIMEOUT_SECONDS - elapsed_seconds(started)
+        if remaining <= 0:
+            break
+        text = runner(["lsof", "-a", "-d", "cwd", "-Fpn", "-p", str(pid)], remaining)
+        if text is not None:
+            found.update(_parse_lsof_cwd(text))
+    return found
 
 
 def find_orphans(
@@ -148,9 +137,8 @@ def find_orphans(
     if listing is None:
         return None
     candidates = _parse_ps(listing)
-    remaining = max(0.0, EXTERNAL_TIMEOUT_SECONDS - elapsed_seconds(started))
-    cwds = _read_cwds([pid for pid, _ in candidates], runner, remaining)
-    if cwds is None:
+    cwds = _read_cwds([pid for pid, _ in candidates], runner, started)
+    if candidates and not cwds:
         return None
     return tuple(
         Orphan(pid=pid, command=command, footprint_bytes=footprint(pid), cwd=cwds[pid])
@@ -179,12 +167,14 @@ def collect(
     runner: Runner = resource_limits.run_text,
     which: Callable[[str], str | None] = shutil.which,
     footprint: Callable[[int], int | None] = pid_footprint_bytes,
+    top_reader: Callable[[], tuple[tuple[int, str, int], ...] | None] = _read_top,
+    pressure_reader: Callable[[], HostPressure | None] | None = None,
 ) -> StatusReading:
     path = host_lock.lock_path(environ)
     with ThreadPoolExecutor(max_workers=3) as pool:
-        pressure_future = pool.submit(_read_pressure, runner, which)
+        pressure_future = pool.submit(pressure_reader or (lambda: _read_pressure(runner, which)))
         orphan_future = pool.submit(find_orphans, runner, footprint)
-        top = _read_top()
+        top = top_reader()
         holder = read_holder_state(path)
         waiters = host_lock.live_waiter_count(path)
         pressure = pressure_future.result()
@@ -215,7 +205,9 @@ def _age(seconds: float | None) -> str:
 def _render_lock(reading: StatusReading) -> list[str]:
     holder = reading.holder
     lines = [f"lock file: {reading.lock_path}"]
-    if holder is None or not holder.record or holder.record.startswith("("):
+    if holder is not None and holder.record == UNREADABLE_RECORD:
+        lines.append("  holder: unmeasured (could not read the lock file)")
+    elif holder is None or not holder.record or holder.record.startswith("("):
         lines.append("  holder: free (no holder record)")
     elif holder.live:
         lines.append(f"  holder: HELD for {_age(holder.age_seconds)}")
@@ -227,10 +219,10 @@ def _render_lock(reading: StatusReading) -> list[str]:
     return lines
 
 
-def _render_pressure(reading: StatusReading) -> list[str]:
+def _render_pressure(reading: StatusReading, environ: Mapping[str, str] | None) -> list[str]:
     if reading.pressure is None:
         return ["host readings: unmeasured"]
-    policy = resource_limits.admission_policy_from_env()
+    policy = resource_limits.admission_policy_from_env(environ)
     refusals = resource_limits.evaluate_admission(reading.pressure, policy)
     result = resource_limits.AdmissionResult(not refusals, refusals, reading.pressure)
     lines = resource_limits.format_admission_report(result, policy).splitlines()
@@ -262,10 +254,10 @@ def _render_orphans(reading: StatusReading) -> list[str]:
     return lines
 
 
-def render(reading: StatusReading) -> str:
+def render(reading: StatusReading, environ: Mapping[str, str] | None = None) -> str:
     sections = (
         _render_lock(reading),
-        _render_pressure(reading),
+        _render_pressure(reading, environ),
         _render_top(reading),
         _render_orphans(reading),
     )

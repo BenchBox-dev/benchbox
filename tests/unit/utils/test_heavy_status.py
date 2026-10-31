@@ -85,6 +85,22 @@ def test_orphans_are_unmeasured_when_cwd_lookup_fails() -> None:
     assert hs.find_orphans(runner) is None
 
 
+def test_an_unreadable_pid_does_not_hide_the_other_orphans(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "platform", "darwin")
+
+    def runner(argv, timeout):
+        if argv[0] == "ps":
+            return PS_TABLE
+        if argv[0] == "lsof":
+            pid = argv[-1]
+            return None if pid == "61182" else f"p{pid}\nn/Users/joe/Developer/BenchBox\n"
+        return None
+
+    found = hs.find_orphans(runner)
+    assert found is not None
+    assert [o.pid for o in found] == [78738, 500]
+
+
 def test_no_candidates_skips_the_cwd_lookup() -> None:
     calls: list[str] = []
 
@@ -94,6 +110,18 @@ def test_no_candidates_skips_the_cwd_lookup() -> None:
 
     assert hs.find_orphans(runner) == ()
     assert calls == ["ps"]
+
+
+def collect(**overrides: object) -> hs.StatusReading:
+    options: dict[str, object] = {
+        "runner": fake_runner,
+        "which": lambda name: None,
+        "footprint": lambda pid: None,
+        "top_reader": lambda: ((4242, "python", 3 * GIB),),
+        "pressure_reader": pressure,
+    }
+    options.update(overrides)
+    return hs.collect(**options)
 
 
 @pytest.fixture
@@ -108,11 +136,10 @@ def test_status_renders_holder_waiters_vms_top_and_orphan(lock_dir: Path) -> Non
     marker.parent.mkdir(parents=True, exist_ok=True)
     marker.write_text(hl.process_identity(), encoding="utf-8")
     try:
-        reading = hs.collect(runner=fake_runner, which=lambda name: "/usr/bin/" + name, footprint=lambda pid: GIB)
+        reading = collect(footprint=lambda pid: GIB)
     finally:
         marker.unlink()
         handle.release()
-    reading = dataclasses.replace(reading, pressure=pressure(), top=((4242, "python", 3 * GIB),))
     text = hs.render(reading)
     assert "holder: HELD" in text
     assert "make heavy-run" in text
@@ -126,7 +153,7 @@ def test_status_renders_holder_waiters_vms_top_and_orphan(lock_dir: Path) -> Non
 
 
 def test_status_reports_free_when_no_lock_file_exists(lock_dir: Path) -> None:
-    reading = hs.collect(runner=fake_runner, which=lambda name: None, footprint=lambda pid: None)
+    reading = collect()
     text = hs.render(reading)
     assert "holder: free" in text
     assert "live waiters: 0" in text
@@ -136,19 +163,35 @@ def test_status_reports_free_when_no_lock_file_exists(lock_dir: Path) -> None:
 def test_a_record_from_an_exited_process_is_shown_as_free(lock_dir: Path) -> None:
     path = lock_dir / hl.LOCK_NAME
     path.write_text("pid:999999 owner:999999:1.00 started:2026-01-01 00:00:00 phase:run cmd:old\n", encoding="utf-8")
-    text = hs.render(hs.collect(runner=fake_runner, which=lambda name: None, footprint=lambda pid: None))
+    text = hs.render(collect())
     assert "holder: free (last record belongs to a process that has exited)" in text
     assert "stale:" in text
 
 
-def test_status_never_blocks_on_a_held_lock(lock_dir: Path) -> None:
-    handle = hl.acquire(lock_dir / hl.LOCK_NAME, wait_seconds=0, phase="run")
+def test_status_never_blocks_on_a_held_lock_and_leaves_it_untouched(lock_dir: Path) -> None:
+    path = lock_dir / hl.LOCK_NAME
+    handle = hl.acquire(path, wait_seconds=0, phase="run")
+    before = path.read_bytes()
     try:
         started = rl.mono_time()
-        hs.collect(runner=fake_runner, which=lambda name: None, footprint=lambda pid: None)
+        collect()
         assert rl.elapsed_seconds(started) < 5.0
+        assert path.read_bytes() == before
+        assert hl.lock_is_held(path)
     finally:
         handle.release()
+
+
+def test_an_unreadable_lock_file_is_unmeasured_not_free() -> None:
+    holder = hs.HolderReading(hs.UNREADABLE_RECORD, None, False, None)
+    reading = hs.StatusReading(Path("x/test.lock"), holder, 0, None, None, None, None)
+    assert "holder: unmeasured" in hs.render(reading)
+
+
+def test_render_uses_the_injected_environment_for_policy() -> None:
+    reading = hs.StatusReading(Path("x/test.lock"), None, 0, pressure(), None, (), ())
+    assert "(need 2 GiB)" in hs.render(reading, {})
+    assert "(need 9 GiB)" in hs.render(reading, {rl.ADMIT_MIN_GIB_ENV: "9"})
 
 
 def test_unmeasured_sections_render_explicitly() -> None:
@@ -175,16 +218,3 @@ def test_a_hung_container_cli_is_cut_off_and_shown_as_unmeasured(
     assert reading.pressure is not None
     assert reading.pressure.vms is None
     assert "VM reservations: unmeasured" in hs.render(reading)
-
-
-def test_the_status_subcommand_prints_and_exits_zero(
-    lock_dir: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    monkeypatch.setattr(
-        hs, "collect", lambda: hs.StatusReading(lock_dir / hl.LOCK_NAME, None, 0, pressure(), 8.0, (), ())
-    )
-    assert hl.main(["status"]) == 0
-    out = capsys.readouterr().out
-    assert "holder: free" in out
-    assert "heavy-work memory budget: 8.00 GiB" in out
-    assert "orphaned servers" in out

@@ -261,7 +261,7 @@ def _unregister_waiter(marker: Path | None) -> None:
         pass
 
 
-def _waiter_is_live(pid: int, recorded_identity: str) -> bool:
+def process_is_live(pid: int, recorded_identity: str) -> bool:
     try:
         psutil = _psutil()
     except ImportError:
@@ -287,7 +287,7 @@ def live_waiter_count(lock_path: Path) -> int:
             recorded = entry.read_text(encoding="utf-8").strip()
         except OSError:
             continue
-        if _waiter_is_live(int(entry.name), recorded):
+        if process_is_live(int(entry.name), recorded):
             count += 1
     return count
 
