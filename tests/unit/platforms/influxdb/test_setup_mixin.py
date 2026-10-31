@@ -216,55 +216,62 @@ def test_cloud_mode_never_creates_the_database(monkeypatch):
     fake_conn.ensure_database.assert_not_called()
 
 
-class _FakeResponse:
-    def __enter__(self):
-        return self
+@pytest.fixture
+def loopback_server():
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
 
-    def __exit__(self, *exc):
-        return False
+    seen = {}
+    status = {"code": 200}
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            seen["path"] = self.path
+            seen["body"] = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+            seen["auth"] = self.headers.get("Authorization")
+            self.send_response(status["code"])
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
+        def log_message(self, *args):
+            return
+
+    server = HTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield server.server_address[1], seen, status
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
 
 
-def _connection():
+def _connection(port):
     from benchbox.platforms.influxdb.client import InfluxDBConnection
 
-    return InfluxDBConnection(host="localhost", token=None, database="bench", port=8181, ssl=False)
+    return InfluxDBConnection(host="127.0.0.1", token=None, database="bench", port=port, ssl=False)
 
 
-def test_ensure_database_posts_the_database_name(monkeypatch):
-    seen = {}
-
-    def fake_urlopen(request, timeout, context):
-        seen["url"] = request.full_url
-        seen["body"] = request.data
-        seen["auth"] = request.get_header("Authorization")
-        return _FakeResponse()
-
-    monkeypatch.setattr("benchbox.platforms.influxdb.client.urllib.request.urlopen", fake_urlopen)
-    _connection().ensure_database()
+def test_ensure_database_posts_the_database_name(loopback_server):
+    port, seen, _ = loopback_server
+    _connection(port).ensure_database()
 
     assert seen == {
-        "url": "http://localhost:8181/api/v3/configure/database",
+        "path": "/api/v3/configure/database",
         "body": b'{"db": "bench"}',
         "auth": None,
     }
 
 
-def test_ensure_database_accepts_an_existing_database(monkeypatch):
-    import urllib.error
-
-    def fake_urlopen(request, timeout, context):
-        raise urllib.error.HTTPError(request.full_url, 409, "Conflict", {}, None)
-
-    monkeypatch.setattr("benchbox.platforms.influxdb.client.urllib.request.urlopen", fake_urlopen)
-    _connection().ensure_database()
+def test_ensure_database_accepts_an_existing_database(loopback_server):
+    port, _, status = loopback_server
+    status["code"] = 409
+    _connection(port).ensure_database()
 
 
-def test_ensure_database_surfaces_other_http_errors(monkeypatch):
-    import urllib.error
-
-    def fake_urlopen(request, timeout, context):
-        raise urllib.error.HTTPError(request.full_url, 401, "Unauthorized", {}, None)
-
-    monkeypatch.setattr("benchbox.platforms.influxdb.client.urllib.request.urlopen", fake_urlopen)
+def test_ensure_database_surfaces_other_http_errors(loopback_server):
+    port, _, status = loopback_server
+    status["code"] = 401
     with pytest.raises(ConnectionError, match="HTTP 401"):
-        _connection().ensure_database()
+        _connection(port).ensure_database()
