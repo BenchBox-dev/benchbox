@@ -13,6 +13,12 @@ from typing import Any, Literal, Protocol, cast, runtime_checkable
 
 import yaml
 
+from benchbox.utils.dependencies import (
+    BENCHMARK_LOAD_ERRORS,
+    BenchmarkDependencyError,
+    BenchmarkLoadError,
+    find_missing_module,
+)
 from benchbox.utils.singleflight_cache import SingleFlightValueCache
 
 BenchmarkSupportStatus = Literal["stable", "beta", "experimental", "repo_only", "deprecated", "document_only"]
@@ -263,6 +269,23 @@ def get_benchmark_id_for_class_name(class_name: str) -> str | None:
     return _registry().benchmark_id_by_class_name.get(class_name)
 
 
+def get_benchmark_optional_extras(benchmark_id: str) -> tuple[str, ...]:
+    import benchbox
+
+    class_name = get_benchmark_class_name(benchmark_id)
+    spec = benchbox._BENCHMARK_REGISTRY.get(class_name) if class_name else None
+    return spec.optional_dependencies if spec is not None else ()
+
+
+def _benchmark_load_failure(benchmark_id: str, *errors: Exception) -> BenchmarkDependencyError | BenchmarkLoadError:
+    for error in errors:
+        module = find_missing_module(error)
+        if module is not None:
+            return BenchmarkDependencyError(benchmark_id, module, get_benchmark_optional_extras(benchmark_id))
+    last = errors[0]
+    return BenchmarkLoadError(benchmark_id, f"{type(last).__name__}: {last}")
+
+
 def get_public_benchmark_class(benchmark_id: str):
     import benchbox
 
@@ -273,17 +296,17 @@ def get_public_benchmark_class(benchmark_id: str):
 
     try:
         return getattr(benchbox, class_name)
-    except (AttributeError, ImportError):
+    except (AttributeError, ImportError) as public_error:
         core_class_name = get_core_benchmark_class_name(benchmark_id)
         if core_class_name is None:
-            return None
+            raise _benchmark_load_failure(benchmark_id, public_error) from public_error
 
         module_name = f"benchbox.core.{benchmark_id}.benchmark"
         try:
             module = importlib.import_module(module_name)
             return getattr(module, core_class_name)
-        except (ImportError, AttributeError):
-            return None
+        except (ImportError, AttributeError) as core_error:
+            raise _benchmark_load_failure(benchmark_id, core_error, public_error) from core_error
 
 
 def get_benchmark_class(benchmark_id: str):
@@ -291,7 +314,10 @@ def get_benchmark_class(benchmark_id: str):
 
 
 def is_benchmark_available(benchmark_id: str) -> bool:
-    return get_public_benchmark_class(benchmark_id) is not None
+    try:
+        return get_public_benchmark_class(benchmark_id) is not None
+    except BENCHMARK_LOAD_ERRORS:
+        return False
 
 
 def list_benchmark_ids() -> list[str]:
@@ -460,6 +486,7 @@ __all__ = sorted(
         "presort_capable_benchmarks",
         "get_benchmark_default_scale",
         "get_benchmark_id_for_class_name",
+        "get_benchmark_optional_extras",
         "get_benchmark_metadata",
         "get_benchmark_registry_summary",
         "get_benchmark_support_status",

@@ -290,6 +290,19 @@ def make_not_found_error(
     )
 
 
+def make_benchmark_load_error(benchmark: str, error: Exception) -> dict[str, Any]:
+    from benchbox.utils.dependencies import BenchmarkDependencyError
+
+    if isinstance(error, BenchmarkDependencyError):
+        return make_error(
+            ErrorCode.DEPENDENCY_MISSING,
+            error.summary,
+            details={"benchmark": benchmark, "module": error.module, "extras": list(error.extras)},
+            suggestion=error.remedy,
+        )
+    return make_error(ErrorCode.INTERNAL_ERROR, str(error), details={"benchmark": benchmark})
+
+
 def make_platform_error(
     code: ErrorCode,
     platform: str,

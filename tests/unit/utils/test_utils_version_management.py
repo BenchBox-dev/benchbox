@@ -97,12 +97,13 @@ class TestEnhancedImportErrors:
     def test_create_import_error_includes_dependency_guidance(self):
         error = version_utils.create_import_error(
             benchmark_name="TPCDI",
-            missing_dependencies=["tpcdi", "extras"],
-            original_error=ImportError("No module named benchbox.tpcdi"),
+            missing_dependencies=["tpcdi"],
+            original_error=ModuleNotFoundError("No module named 'pandas'", name="pandas"),
         )
 
         message = str(error)
 
-        assert "uv add" in message
+        assert "'pandas'" in message
+        assert "tpcdi" in message
         assert "Version Information" in message
         assert "Original error" in message
