@@ -379,10 +379,7 @@ def _annotate_one(token: str, receipt: dict[str, Any]) -> None:
         receipt["last_edited_at"] = ""
         receipt["includes_created_edit"] = True
         return
-    try:
-        last_edited_at, includes_created_edit = fetch_review_edit(token, receipt["node_id"])
-    except (CheckError, KeyError, ValueError):
-        last_edited_at, includes_created_edit = "", True
+    last_edited_at, includes_created_edit = fetch_review_edit(token, receipt["node_id"])
     receipt["last_edited_at"] = last_edited_at
     receipt["includes_created_edit"] = includes_created_edit
 

@@ -1820,9 +1820,27 @@ def test_live_statuses_distinguish_waiting_from_failed_oracle(description: str, 
     def run(cmd: list[str]) -> tuple[int, str]:
         assert "--paginate" in cmd
         assert cmd[-1] == f"repos/o/r/commits/{'a' * 40}/statuses?per_page=100"
-        return 0, f"oracle-gate\tfailure\t{description}\n"
+        return 0, f"oracle-gate\tfailure\tbenchbox-oracle[bot]\tBot\t{description}\n"
 
     assert landing.live_commit_statuses(run, "o/r", "a" * 40) == {"oracle-gate": expected}
+
+
+@pytest.mark.parametrize(("login", "account_type"), [("joeharris76", "User"), ("benchbox-oracle", "User"), ("", "")])
+def test_live_statuses_ignore_an_oracle_gate_status_the_app_did_not_create(login: str, account_type: str) -> None:
+    def run(cmd: list[str]) -> tuple[int, str]:
+        return 0, (
+            f"oracle-gate\tsuccess\t{login}\t{account_type}\tforged\n"
+            "oracle-gate\tfailure\tbenchbox-oracle[bot]\tBot\toracle-review: waiting\n"
+        )
+
+    assert landing.live_commit_statuses(run, "o/r", "a" * 40) == {"oracle-gate": "failure"}
+
+
+def test_live_statuses_without_an_app_oracle_gate_status_omit_the_context() -> None:
+    def run(cmd: list[str]) -> tuple[int, str]:
+        return 0, "oracle-gate\tsuccess\tjoeharris76\tUser\tforged\n"
+
+    assert landing.live_commit_statuses(run, "o/r", "a" * 40) == {}
 
 
 def test_live_statuses_keep_newest_context_across_paginated_results() -> None:

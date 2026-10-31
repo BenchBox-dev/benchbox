@@ -249,15 +249,15 @@ def test_a_receipt_that_cannot_be_checked_is_recorded_as_edited(node_id: str | N
     assert reviews[0]["includes_created_edit"] is True
 
 
-def test_a_failed_edit_check_is_recorded_as_edited(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_failed_edit_check_raises_instead_of_recording_an_edit(monkeypatch: pytest.MonkeyPatch) -> None:
     def broken(token: str, node_id: str) -> tuple[str | None, bool]:
         raise gate.CheckError("down")
 
     monkeypatch.setattr(gate, "fetch_review_edit", broken)
     reviews = [_receipt(node_id="node_1")]
-    gate.annotate_receipt("t", reviews, HEAD)
-    assert reviews[0]["last_edited_at"] is not None
-    assert reviews[0]["includes_created_edit"] is True
+    with pytest.raises(gate.CheckError, match="down"):
+        gate.annotate_receipt("t", reviews, HEAD)
+    assert reviews[0]["includes_created_edit"] is False
 
 
 class Network:
