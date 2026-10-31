@@ -157,6 +157,7 @@ class SparkQueryPlanParser(QueryPlanParser):
 
     @classmethod
     def _name_file_scans(cls, root: LogicalOperator, logical_tables: set[str]) -> None:
+        scans: list[tuple[LogicalOperator, str | None, str]] = []
         stack = [root]
         while stack:
             node = stack.pop()
@@ -169,9 +170,15 @@ class SparkQueryPlanParser(QueryPlanParser):
             *directories, filename = files.group(1).split("/")
             stem = re.sub(r"\.\d+$", "", filename.rsplit(".", 1)[0])
             directory = next((part for part in reversed(directories) if part and "=" not in part), None)
+            scans.append((node, directory, stem))
+        if not scans:
+            return
+        directories_seen = {directory for _, directory, _ in scans}
+        per_table_directories = len(scans) > 1 and len(directories_seen) == len(scans)
+        for node, directory, stem in scans:
             if logical_tables:
                 node.table_name = next((name for name in (directory, stem) if name in logical_tables), None)
-            elif directory and (not stem or cls._PART_FILE_RE.match(stem)):
+            elif directory and (per_table_directories or not stem or cls._PART_FILE_RE.match(stem)):
                 node.table_name = directory
             else:
                 node.table_name = stem or None

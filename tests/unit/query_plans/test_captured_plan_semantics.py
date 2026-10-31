@@ -471,6 +471,14 @@ class TestDorisVerboseOperatorMapping:
 
 
 class TestLakeSailCapturedPlans:
+    def test_distinct_directories_per_scan_name_scans_after_directory_without_logical_names(self):
+        text = (_FIXTURES / "lakesail_captured_join.txt").read_text(encoding="utf-8")
+        text = text.replace("TableScan: orders", "TableScan: ?table?").replace(
+            "TableScan: customers", "TableScan: ?table?"
+        )
+        root = SparkQueryPlanParser().parse_explain_output("join", text).logical_root
+        assert _scanned_tables(root) == ["customers", "orders"]
+
     def test_part_files_in_table_directories_name_scans_after_directory_without_logical_names(self):
         text = (_FIXTURES / "lakesail_captured_join.txt").read_text(encoding="utf-8")
         text = text.replace("TableScan: orders", "TableScan: ?table?").replace(
