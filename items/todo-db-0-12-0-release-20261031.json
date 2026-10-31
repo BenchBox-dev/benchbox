@@ -3,7 +3,7 @@
     "The release PR is merged; its body records Gate 1 on a scratch remote (the standard lifecycle, plus a drop without a reason refused and a drop with a reason giving one commit with drop_reason) and Gate 2 (todo-db validate against BenchBox todo-state succeeds)",
     "GitHub release v0.12.0 exists with the wheel, the sdist and SHA256SUMS; the known pypi-publish invalid-publisher failure is out of scope (todo-db pypi-trusted-publisher-configuration)"
   ],
-  "context": "Split from todo-db-drop-records-reason-20261031 by its 2026-10-31 review.",
+  "context": "Split from todo-db-drop-records-reason-20261031 by its 2026-10-31 review.\n\nOwner decision 2026-10-31: the agent may push the v0.12.0 tag after the release PR merges with both gates recorded.",
   "description": "Cut a todo-db release containing the drop-reason change through a release PR that bumps pyproject.toml, uv.lock and TOOL_VERSION and dates the CHANGELOG. Per docs/operations/release-gates.md, Gate 1 (scratch state-branch lifecycle) and Gate 2 (real downstream consumer) run against the release-candidate wheel before the tag and are recorded in the PR body, as in todo-db PR #54. Pushing the v0.12.0 tag triggers .github/workflows/publish.yml; a release is owner-gated under BenchBox WRITE-CLOSEOUT-001.",
   "links": [
     "https://github.com/joeharris76/todo-db/pull/54",
@@ -16,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "9f216e93e92e427487dd1355f1974ea2",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-31T15:19:09Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6ee11f8a9f884b90bc7f428646cf6c61",
       "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
     }
   ]
