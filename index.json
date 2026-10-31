@@ -1974,17 +1974,12 @@
       "title": "benchbox submit does not pseudonymize, contrary to docs/contributing-results.md"
     },
     "benchbox-todo-db-0-12-0-runtime-20261031": {
-      "claim": {
-        "expires_at": "2026-11-01T23:45:48Z",
-        "generation": "428b9a045a3749e18dd5b7dea1396d42",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e45b8047daa131c418b6f1f3"
-      },
+      "claim": null,
       "needs": [
         "todo-db-0-12-0-release-20261031"
       ],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Move BenchBox to todo-db 0.12.0 and teach the todo skill to pass a drop reason"
     },
     "benchmark-api-and-core-boundary-cleanup": {
