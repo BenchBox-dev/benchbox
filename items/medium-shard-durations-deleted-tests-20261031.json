@@ -1,14 +1,22 @@
 {
   "acceptance": [
-    "The three test_sphinx_* entries are removed, either by a medium-refresh from a green Trunk run or by a targeted removal",
-    "medium-drift lists recorded test ids that no shard measured and recommends a refresh when there are any, covered by a unit test"
+    "medium-refresh accepts --collected <nodeids file> and writes only ids listed there; a unit test shows an id present in the source junit but missing from --collected is dropped",
+    "medium_drift_report reports, and drift_markdown prints, the stale ids (recorded but not measured), the number of unrecorded ids with their measured seconds, and the busiest shard's measured time as a multiple of the average; covered by unit tests",
+    "fast-duration-baseline-refresh.yml has a separate medium job that takes the five newest successful push runs of trunk.yml on develop having all four unexpired t2-medium-shard-* artifacts (bounded scan), runs medium-refresh with --collected set to the newest run's medium-nodeids.txt, regenerates the docs reference inventory, and when the file changes opens at most one PR on a chore/medium-durations-* branch with the drift report and the before/after busiest-to-average shard ratio in the body; a failure in the medium job does not stop the fast-baseline PR; tests/unit/workflows/test_fast_duration_baseline_refresh.py covers this",
+    "After merge, a dispatched run of the workflow opens a medium refresh PR whose pre-merge trunk lane (plain and coverage) passes, and that PR merges",
+    "After that PR merges, the file on develop contains no id missing from the newest Trunk medium-nodeids.txt (the three test_sphinx_* ids are gone), and in the first Trunk run afterwards the busiest medium shard's junit time is at most 1.15x the average",
+    "docs/internal/merge-queue-governance.md describes the weekly medium refresh"
   ],
-  "context": "Left over from the Sphinx cleanup in #3844, whose PR body expected a CI refresh to drop the entries; no automated refresh rewrites this file.",
-  "description": "tests/fixtures/medium_shard_durations.json still lists three test_sphinx_* tests that #3844 deleted with the Sphinx template adapter. Nothing removes entries like these: fast-duration-baseline-refresh.yml commits only tests/fixtures/fast_tier_baseline, and for medium durations it runs medium-drift, whose report (scripts/build_fast_duration_baseline.py:309-343) looks only at measured tests and recommends a refresh only on timing skew. The last medium refresh was a manual PR (#3538, 2026-10-26). The entries are inert for sharding but accumulate as tests are deleted.",
+  "context": "Left over from the Sphinx cleanup in #3844, whose PR body expected a CI refresh to drop the entries; no automated refresh rewrites this file.\n\nReviewed 2026-10-31: re-scoped from removing three stale ids to keeping the file current; 63 stale and 1,402 unrecorded ids found; priority raised to medium because the imbalance lengthens the slowest Trunk medium shard.",
+  "description": "tests/fixtures/medium_shard_durations.json is only refreshed by hand (last in #3538, 2026-10-26), and nothing keeps it current. Against Trunk run 41201505679 (17,784 collected medium ids): 63 recorded ids are no longer collected, including the three test_sphinx_* tests deleted in #3844; 1,402 collected ids (39% of measured junit time) have no record and are weighted at default_seconds 0.0108. Shard junit totals are 743.8, 1,093.3, 775.3 and 512.5 s: the busiest shard is 1.40x the average against 1.03x after #3538, and the slowest shard's wall time is 11m03s against 5m57s. Stale ids do not change shard assignment but do inflate coverage_test_selection.py file-level runtime estimates (estimate_runtime, about :753-765).\n\nfast-duration-baseline-refresh.yml runs medium-drift against one Trunk run. That report ignores both stale and unrecorded ids, recommends a refresh on a skew measure that is biased by design (already True in run 40744476922 / PR #3669, with no action), and never rewrites the file. medium-refresh builds the union of ids across its source runs, so a multi-run refresh can keep a test deleted during the window. Hand removals cost a full pre-merge trunk-lane run (ci.yml:241-242) and change no shard assignment. The workflow's run selection takes the first green run among the five newest trunk.yml runs, which can contain none; the medium step shares a job with the fast refresh under set -e, so its failure would also stop the fast refresh PR. The docs reference inventory parses this file and must be regenerated with it.",
   "links": [
     "tests/fixtures/medium_shard_durations.json",
     "scripts/build_fast_duration_baseline.py",
-    ".github/workflows/fast-duration-baseline-refresh.yml"
+    ".github/workflows/fast-duration-baseline-refresh.yml",
+    "scripts/release_canary_sharding.py",
+    "scripts/coverage_test_selection.py",
+    "tests/unit/workflows/test_fast_duration_baseline_refresh.py",
+    ".github/workflows/ci.yml"
   ],
   "sessions": [
     {
@@ -17,6 +25,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "23be6d92e3d4423995a638ca3737a4e4",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-31T15:13:36Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f0dbe0634b4a4985b76648e4e17febeb",
       "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
     }
   ]

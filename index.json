@@ -15014,9 +15014,9 @@
     "medium-shard-durations-deleted-tests-20261031": {
       "claim": null,
       "needs": [],
-      "priority": "low",
+      "priority": "medium",
       "status": "open",
-      "title": "Drop deleted tests from medium_shard_durations.json and flag such entries in the weekly drift check"
+      "title": "Refresh medium_shard_durations.json weekly so deleted tests drop out and new tests get real weights"
     },
     "medium-suite-job-setup-drift-20261031": {
       "claim": null,
