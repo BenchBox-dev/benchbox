@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import inspect
 import sys
 from pathlib import Path
 from typing import Any
@@ -73,10 +74,6 @@ def _unbound_status(state: str = "success", created_at: str = AFTER_HEAD, **over
     return _verdict(state=state, created_at=created_at, description=f"large: {state}", **over)
 
 
-def _thread(resolved: bool, author: str = "benchbox-oracle", author_type: str = "Bot") -> dict[str, Any]:
-    return {"resolved": resolved, "author": author, "author_type": author_type}
-
-
 def _receipt_review(**over: Any) -> dict[str, Any]:
     review = {
         "login": ORACLE,
@@ -100,7 +97,6 @@ def _oracle(**kwargs: Any) -> tuple[int, str]:
         HEAD,
         kwargs.pop("files", SOUNDNESS_FILES),
         kwargs.pop("statuses", [_verdict()]),
-        kwargs.pop("threads", []),
         kwargs.pop("paths", oracle_review_check.path_matcher(2, 2, *oracle_review_check._review_rules())),
         kwargs.pop("base_date", None),
         kwargs.pop("comments", []),
@@ -247,33 +243,10 @@ def test_a_forged_success_does_not_hide_the_apps_failure() -> None:
     assert status == 1 and "the oracle's latest verdict" in message
 
 
-def test_open_oracle_threads_block_but_other_threads_do_not() -> None:
-    status, message = _oracle(threads=[_thread(False)])
-    assert status == 1
-    assert "1 unresolved oracle review thread(s)" in message
-    others = [
-        _thread(True),
-        _thread(False, author="benchbox-oracle", author_type="User"),
-        _thread(False, author="chatgpt-codex-connector", author_type="Bot"),
-        _thread(False, author="joeharris76", author_type="User"),
-    ]
-    assert _oracle(threads=others)[0] == 0
-
-
-def test_resolving_the_last_oracle_thread_turns_a_success_verdict_into_a_pass() -> None:
-    assert _oracle(threads=[_thread(True), _thread(False)])[0] == 1
-    assert _oracle(threads=[_thread(True), _thread(True)]) == (0, f"oracle-review: pass (oracle verdict for {HEAD})")
-    assert _oracle(threads=[_thread(True), _thread(False)])[0] == 1
-
-
-def test_the_open_thread_message_names_the_required_gate_dispatch() -> None:
-    message = _oracle(threads=[_thread(False)])[1]
-    assert "gh workflow run oracle-gate.yml --ref develop -f pr=<number>" in message
-    assert len(message) <= 140
-
-
-def test_resolved_threads_without_a_verdict_still_wait() -> None:
-    assert _decide(threads=[_thread(True)])[0] == 1
+def test_decide_takes_no_review_thread_state() -> None:
+    assert "threads" not in inspect.signature(oracle_review_check.decide).parameters
+    assert not hasattr(oracle_review_check, "fetch_threads")
+    assert _oracle() == (0, f"oracle-review: pass (oracle verdict for {HEAD})")
 
 
 def test_rename_with_a_non_exempt_side_needs_review() -> None:
@@ -543,12 +516,6 @@ def test_standin_attestation_must_be_exact_current_and_authorized(comment: dict[
     assert status == oracle_review_check.WAITING
 
 
-def test_standin_attestation_does_not_override_open_oracle_threads() -> None:
-    status, message = _decide(comments=[_attestation()], threads=[_thread(False)])
-    assert status == oracle_review_check.WAITING
-    assert "unresolved oracle review thread" in message
-
-
 def test_standin_attestation_before_a_retarget_waits() -> None:
     assert _decide(comments=[_attestation(created_at=AFTER_HEAD)], base_date=RETARGETED)[0] == 1
 
@@ -584,7 +551,7 @@ def _standin_comment() -> dict[str, Any]:
     }
 
 
-def test_standin_after_a_failing_oracle_verdict_overrides_it_but_not_open_threads() -> None:
+def test_standin_after_a_failing_oracle_verdict_overrides_it() -> None:
     failing = [_verdict("failure", created_at=HEAD_DATE)]
     assert _oracle(statuses=failing, comments=[_standin_comment()]) == (
         0,
@@ -593,8 +560,6 @@ def test_standin_after_a_failing_oracle_verdict_overrides_it_but_not_open_thread
     early = {**_standin_comment(), "created_at": BEFORE_HEAD, "updated_at": BEFORE_HEAD}
     assert _oracle(statuses=failing, comments=[early])[0] == 1
     assert _oracle(statuses=[], comments=[early])[0] == 0
-    threads = [{"resolved": False, "author": "benchbox-oracle", "author_type": "Bot"}]
-    assert _oracle(statuses=failing, comments=[_standin_comment()], threads=threads)[0] == 1
 
 
 def _standin_at(created_at: str) -> dict[str, Any]:
@@ -630,12 +595,6 @@ def test_another_context_does_not_advance_the_standin_window() -> None:
 def test_a_later_decisive_verdict_voids_an_earlier_standin() -> None:
     statuses = [_verdict("failure", created_at=HEAD_DATE), _verdict("failure", created_at=LATER)]
     assert _oracle(statuses=statuses, comments=[_standin_at(AFTER_HEAD)])[0] == 1
-
-
-def test_a_standin_after_pending_verdicts_never_overrides_an_open_thread() -> None:
-    statuses = [_verdict("failure", created_at=HEAD_DATE), _verdict("pending", created_at=LATER)]
-    threads = [{"resolved": False, "author": "benchbox-oracle", "author_type": "Bot"}]
-    assert _oracle(statuses=statuses, comments=[_standin_at(LATEST)], threads=threads)[0] == 1
 
 
 def test_the_verdict_still_comes_from_the_latest_status() -> None:
@@ -684,7 +643,6 @@ def _stub_main(
     monkeypatch.setattr(check, "fetch_pull", lambda token, repo, pr: {"head": {"sha": HEAD}, "changed_files": 1})
     monkeypatch.setattr(check, "fetch_files", lambda token, repo, pr: [{"filename": SOUNDNESS_FILES[0]}])
     monkeypatch.setattr(check, "_paginate", paginate)
-    monkeypatch.setattr(check, "fetch_threads", lambda token, repo, pr: [])
     monkeypatch.setattr(check, "fetch_base_change_date", lambda token, repo, pr: None)
     monkeypatch.setattr(check, "fetch_comments", lambda token, repo, pr: [])
     monkeypatch.setattr(check, "fetch_review_edit", lambda token, node_id: (None, False) if edited is None else edited)
@@ -932,19 +890,6 @@ def test_the_connector_signal_is_no_longer_accepted() -> None:
         oracle_review_check.main(["--repo", "o/r", "--pr", "7", "--signal", "connector"])
 
 
-def test_fetch_threads_keeps_the_author_type(monkeypatch: pytest.MonkeyPatch) -> None:
-    node = {"isResolved": False, "comments": {"nodes": [{"author": {"__typename": "Bot", "login": "benchbox-oracle"}}]}}
-    page = {
-        "data": {
-            "repository": {"pullRequest": {"reviewThreads": {"pageInfo": {"hasNextPage": False}, "nodes": [node]}}}
-        }
-    }
-    monkeypatch.setattr(oracle_review_check, "_request", lambda token, url, body=None: page)
-    assert oracle_review_check.fetch_threads("t", "o/r", 7) == [
-        {"resolved": False, "author": "benchbox-oracle", "author_type": "Bot"}
-    ]
-
-
 def test_fetch_statuses_reads_the_head_commit_and_keeps_the_creator_type(monkeypatch: pytest.MonkeyPatch) -> None:
     raw = {
         "id": 9,
@@ -1006,15 +951,6 @@ def test_a_standin_after_a_refusal_passes() -> None:
     assert status == oracle_review_check.PASS and "stand-in review attested" in message
     early = _oracle(statuses=statuses, comments=[_attestation(created_at=BEFORE_HEAD)])
     assert early[0] == oracle_review_check.WAITING
-
-
-def test_a_standin_never_overrides_an_open_oracle_thread_after_a_refusal() -> None:
-    statuses = [_verdict("failure", description=_refusal_description())]
-    threads = [{"resolved": False, "author": "benchbox-oracle", "author_type": "Bot"}]
-    status, message = _oracle(
-        statuses=statuses, threads=threads, comments=[_attestation(created_at="2026-10-08T23:59:59Z")]
-    )
-    assert status == oracle_review_check.WAITING and "unresolved oracle review thread" in message
 
 
 @pytest.mark.parametrize(

@@ -84,6 +84,9 @@ class RecordingSink:
         self._record("review", repo, pr)
 
     def dispatch_gate(self, repo: str, pr: int, head: str) -> None:
+        self._record("dispatch", repo, head)
+
+    def gate(self, repo: str, pr: int, head: str) -> None:
         self._record("gate", repo, head)
 
 
@@ -221,7 +224,7 @@ def test_prepare_classifies_only_a_plan_that_will_be_reviewed_and_survives_a_cla
 
 
 @pytest.mark.parametrize("scenario", ["posts", "skipped", "guard_failed", "no_app"])
-def test_publish_posts_status_comment_review_and_never_dispatches_the_gate(
+def test_publish_posts_status_comment_review_then_the_gate_and_never_dispatches_it(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     outputs: Path,
@@ -238,11 +241,11 @@ def test_publish_posts_status_comment_review_and_never_dispatches_the_gate(
     code = driver.publish(environment, argparse.Namespace())
 
     written = outputs.read_text(encoding="utf-8")
-    assert "gate" not in [item[0] for item in sink.calls]
+    assert "dispatch" not in [item[0] for item in sink.calls]
     if scenario == "posts":
         assert code == 0
-        assert [item[0] for item in sink.calls] == ["status", "comment", "review"]
-        assert sink.calls[0][1:] == (REPO, HEAD)
+        assert [item[0] for item in sink.calls] == ["comment", "review", "status", "gate"]
+        assert sink.calls[-2][1:] == (REPO, HEAD) and sink.calls[-1][1:] == (REPO, HEAD)
         assert "skip=false" in written and "state_recorded=true" in written
     elif scenario == "skipped":
         assert code == 0 and sink.calls == []
@@ -256,7 +259,7 @@ def test_publish_posts_status_comment_review_and_never_dispatches_the_gate(
         assert "is not posted because the App secrets are not set; result success" in capsys.readouterr().out
 
 
-def test_publish_posts_only_the_status_when_no_comment_or_review_was_written(
+def test_publish_posts_only_the_status_and_gate_when_no_comment_or_review_was_written(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, outputs: Path, sink: RecordingSink
 ) -> None:
     environment = _environment(tmp_path)
@@ -266,11 +269,11 @@ def test_publish_posts_only_the_status_when_no_comment_or_review_was_written(
 
     assert driver.publish(environment, argparse.Namespace()) == 0
 
-    assert [item[0] for item in sink.calls] == ["status"]
+    assert [item[0] for item in sink.calls] == ["status", "gate"]
     assert "state_recorded" not in outputs.read_text(encoding="utf-8")
 
 
-def test_a_refused_status_stops_the_phase_before_anything_else_is_posted(
+def test_a_refused_status_leaves_the_findings_posted_and_the_gate_unposted(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     outputs: Path,
@@ -285,10 +288,45 @@ def test_a_refused_status_stops_the_phase_before_anything_else_is_posted(
 
     assert driver.publish(environment, argparse.Namespace()) == 1
 
-    assert sink.calls == []
+    assert [item[0] for item in sink.calls] == ["comment", "review"]
     written = outputs.read_text(encoding="utf-8")
     assert "state_recorded" not in written
     assert "the status was refused" in capsys.readouterr().err
+
+
+def test_a_refused_gate_post_leaves_the_published_result_and_warns(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    outputs: Path,
+    sink: RecordingSink,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    environment = _environment(tmp_path)
+    _plan(environment.layout)
+    _final(environment.layout.final, comment=True, review=True)
+    monkeypatch.setattr(cli, "guard_decision", lambda plan: (0, False))
+    sink.refuse = "gate"
+
+    assert driver.publish(environment, argparse.Namespace()) == 0
+
+    assert [item[0] for item in sink.calls] == ["comment", "review", "status"]
+    assert "state_recorded=true" in outputs.read_text(encoding="utf-8")
+    assert "::warning::oracle-gate was not posted from this run: the gate was refused" in capsys.readouterr().err
+
+
+def test_a_refused_review_leaves_no_verdict_status_and_no_gate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, outputs: Path, sink: RecordingSink
+) -> None:
+    environment = _environment(tmp_path)
+    _plan(environment.layout)
+    _final(environment.layout.final, comment=True, review=True)
+    monkeypatch.setattr(cli, "guard_decision", lambda plan: (0, False))
+    sink.refuse = "review"
+
+    assert driver.publish(environment, argparse.Namespace()) == 1
+
+    assert [item[0] for item in sink.calls] == ["comment"]
+    assert "state_recorded" not in outputs.read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize("missing", [{"GH_TOKEN": ""}, {"JOB_TOKEN": ""}, {"GH_TOKEN": "", "JOB_TOKEN": ""}])
@@ -376,6 +414,15 @@ def test_the_github_sink_posts_each_payload_with_the_app_token(tmp_path: Path, m
         (f"repos/{REPO}/issues/7/comments", "app-token"),
         (f"repos/{REPO}/pulls/7/reviews", "app-token"),
     ]
+
+
+def test_the_github_sink_posts_the_gate_with_the_app_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    posted: list[tuple[str, int, str, str]] = []
+    monkeypatch.setattr(github, "post_gate", lambda repo, pr, head, token: posted.append((repo, pr, head, token)))
+
+    GitHubSink("app-token", "job-token").gate(REPO, 7, HEAD)
+
+    assert posted == [(REPO, 7, HEAD, "app-token")]
 
 
 def test_the_harness_phase_does_not_swallow_a_missing_yaml_import(

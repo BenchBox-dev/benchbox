@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import argparse
+import contextlib
+import importlib
 import json
 import os
 import re
 import subprocess
+import sys
 import tempfile
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
@@ -18,6 +22,7 @@ from .retry import State
 
 STATE_ARTIFACT_PREFIX = "oracle-verdict-state-"
 STATE_FILE = "state.json"
+GATE_ROOT_ENV = "ORACLE_GATE_ROOT"
 
 
 class GitHubError(RuntimeError):
@@ -548,6 +553,20 @@ def dispatch_gate(repo: str, pr: int, head: str, token: str) -> None:
     )
     if result.returncode != 0:
         raise GitHubError(f"could not dispatch the gate for #{pr}: {result.stderr.strip()[:500]}")
+
+
+def post_gate(repo: str, pr: int, head: str, token: str) -> None:
+    configured = os.environ.get(GATE_ROOT_ENV)
+    root = Path(configured) if configured else Path(__file__).resolve().parents[3]
+    scripts = str(root / "_project" / "scripts")
+    if scripts not in sys.path:
+        sys.path.insert(0, scripts)
+    oracle_gate = importlib.import_module("oracle_gate")
+    request = argparse.Namespace(repo=repo, pr=pr, no_post=False, head_sha=head, pending_first=False)
+    with contextlib.chdir(root):
+        status = oracle_gate.post_gate(request, token)
+    if status == oracle_gate.ERROR:
+        raise GitHubError(f"could not post oracle-gate for #{pr} at {head}")
 
 
 def backoff_reset_at(repo: str, pr: int, head_sha: str) -> datetime | None:
