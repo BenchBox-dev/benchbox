@@ -12706,6 +12706,15 @@
       "status": "open",
       "title": "Let workstation users opt the benchbox CLI into the host lock, admission and watchdog"
     },
+    "heavy-guard-container-vm-20261030": {
+      "claim": null,
+      "needs": [
+        "heavy-guard-test-harness-20261030"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Route Linux VM runs and compose bring-ups through the host lock and admission"
+    },
     "heavy-guard-lock-core-20261030": {
       "claim": null,
       "needs": [],
