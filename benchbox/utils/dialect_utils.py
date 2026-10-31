@@ -370,6 +370,9 @@ def translate_sql_query(
                 from benchbox.utils.questdb_subqueries import rewrite_subqueries
 
                 expression = rewrite_subqueries(expression.copy())
+
+            if tgt == "doris":
+                expression = apply_rewrite("alias_derived_tables", expression, tgt)
             if tgt == "sqlite":
                 expression = apply_rewrite("fold_between_literal_arithmetic", expression, tgt)
                 if date_columns:
@@ -500,6 +503,26 @@ def alias_outer_table_references(expression, table: str, alias: str, *, copy: bo
     return tree
 
 
+def alias_derived_tables(expression, *, prefix: str = "_dt", copy: bool = True):
+    from benchbox._vendor.sqlglot import exp
+
+    tree = expression.copy() if copy else expression
+    taken = {node.alias for node in tree.find_all(exp.Subquery) if node.alias}
+    taken.update(node.alias for node in tree.find_all(exp.Table) if node.alias)
+    counter = 0
+    for subquery in tree.find_all(exp.Subquery):
+        if subquery.alias or not isinstance(subquery.parent, (exp.From, exp.Join)):
+            continue
+        if not isinstance(subquery.this, exp.Query):
+            continue
+        counter += 1
+        while f"{prefix}{counter}" in taken:
+            counter += 1
+        subquery.set("alias", exp.TableAlias(this=exp.to_identifier(f"{prefix}{counter}")))
+        taken.add(f"{prefix}{counter}")
+    return tree
+
+
 def coalesce_count_subqueries(expression, *, copy: bool = True):
     from benchbox._vendor.sqlglot import exp
 
@@ -579,6 +602,7 @@ def in_subquery_or_to_left_join(expression, *, copy: bool = True):
 
 _LOCAL_REWRITES: dict[str, Callable[..., object]] = {
     "add_dual_source_to_filtered_selects": add_dual_source_to_filtered_selects,
+    "alias_derived_tables": alias_derived_tables,
     "alias_outer_table_references": alias_outer_table_references,
     "coalesce_count_subqueries": coalesce_count_subqueries,
     "drop_correlated_scalar_group_by": drop_correlated_scalar_group_by,
