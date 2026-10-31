@@ -4,7 +4,7 @@
     "The gate's failure text names the exact command to use",
     "Adds or updates the matching scenario in tests/integration/oracle (registered in ORACLE_SCENARIO_TESTS), proven to fail with this item's defect reintroduced; the scenario runs only the fake omp executable and fake servers, never a real omp or model-provider call."
   ],
-  "context": "Observed on PR 3577 at head f81dd929c: gate job in run 40497431237 failed with exit code 3 at 2026-10-27T11:36Z; oracle-verdict then passed; make pr-rerun (scripts/pr_rerun.py) only inspects the CI run 40497431205. Not checked whether the gate would also re-run itself on a later event (it did not before the manual rerun). Filed from session review 2026-10-27.\n\nMoved from the todo-db tracker on 2026-10-28; the item was filed there by mistake.",
+  "context": "Observed on PR 3577 at head f81dd929c: gate job in run 40497431237 failed with exit code 3 at 2026-10-27T11:36Z; oracle-verdict then passed; make pr-rerun (scripts/pr_rerun.py) only inspects the CI run 40497431205. Not checked whether the gate would also re-run itself on a later event (it did not before the manual rerun). Filed from session review 2026-10-27.\n\nMoved from the todo-db tracker on 2026-10-28; the item was filed there by mistake.\n\n2026-10-31: a second form of the same stale red on PR heads. The pull_request_target gate run for a new head waits for a runner and is cancelled when a later oracle-gate run enters the same concurrency group (oracle-gate.yml:30-32, cancel-in-progress for non-push events); the cancelled gate check stays on the PR head and gh pr checks lists it as fail. Seen on #3840 (run 41149988156), #3844 (41151328389) and #3843 (41201677614), each after 29-41 minutes queued; all three had a green App-posted oracle-gate status and merged. Of the latest 300 oracle-gate runs, the 98 pull_request_target runs were 61 cancelled, 24 failed waiting for a verdict (exit 3) and 13 still running. Two delegated workers reported these as real gate failures.",
   "description": "The oracle-gate workflow's gate job fails with 'waiting for the oracle's verdict on <sha> ... rerun this check after it lands' when it starts before the verdict exists. After the verdict landed, make pr-rerun answered 'CI run <id> on <sha> succeeded; nothing to re-run' and the failed gate stayed red until the run was re-run by hand with gh run rerun <run> --failed. The gate then passed.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3577"
@@ -25,6 +25,14 @@
       "op": "update",
       "op_id": "ee744d68f0184f7e86b08cc575e1d959",
       "session_id": "f2ea81a526d74429861bc01fff72f167"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-31T14:57:31Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "70fdabe4450e4382acf3357f9777abc0",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
     }
   ]
 }
