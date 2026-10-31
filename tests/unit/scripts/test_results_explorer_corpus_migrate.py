@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from _project.scripts.results_explorer_corpus_migrate import _semantic_signature, migrate
-from benchbox.core.results.anonymization import MissingPublicPseudonymSaltError
+from benchbox.core.results.anonymization import MissingPublicPseudonymSaltError, public_pseudonym_salt_path
 from benchbox.core.results.canonical_json import canonical_json_bytes
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -18,10 +18,47 @@ def _pseudonym_salt(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("BENCHBOX_MACHINE_ID_SALT", "test-salt")
 
 
-def test_migrate_refuses_without_salt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_migrate_refuses_without_salt_and_creates_no_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("BENCHBOX_MACHINE_ID_SALT", raising=False)
-    with pytest.raises(MissingPublicPseudonymSaltError):
+    with pytest.raises(MissingPublicPseudonymSaltError) as raised:
         migrate(bundles_dir=tmp_path, write=False, manifest_path=tmp_path / "migration.json")
+    assert str(public_pseudonym_salt_path()) in str(raised.value)
+    assert not public_pseudonym_salt_path().exists()
+    assert not public_pseudonym_salt_path().parent.exists()
+
+
+def test_migrate_uses_the_existing_salt_file_without_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("BENCHBOX_MACHINE_ID_SALT", raising=False)
+    salt_path = public_pseudonym_salt_path()
+    salt_path.parent.mkdir(parents=True)
+    salt_path.write_text("file-salt", encoding="utf-8")
+    _write_fixture(tmp_path)
+
+    migrate(bundles_dir=tmp_path, write=True, manifest_path=tmp_path / "migration.json")
+
+    migrated = json.loads((tmp_path / "run.json").read_text(encoding="utf-8"))
+    assert "/Users/" not in json.dumps(migrated)
+    assert salt_path.read_text(encoding="utf-8") == "file-salt"
+
+
+def test_migrate_env_wins_over_the_salt_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    salt_path = public_pseudonym_salt_path()
+    salt_path.parent.mkdir(parents=True)
+    salt_path.write_text("file-salt", encoding="utf-8")
+    env_dir, file_dir = tmp_path / "env", tmp_path / "file"
+    env_dir.mkdir()
+    file_dir.mkdir()
+    _write_fixture(env_dir)
+    _write_fixture(file_dir)
+
+    migrate(bundles_dir=env_dir, write=True, manifest_path=env_dir / "migration.json")
+    monkeypatch.delenv("BENCHBOX_MACHINE_ID_SALT")
+    migrate(bundles_dir=file_dir, write=True, manifest_path=file_dir / "migration.json")
+
+    env_companion = (env_dir / "run.tuning.json").read_text(encoding="utf-8")
+    file_companion = (file_dir / "run.tuning.json").read_text(encoding="utf-8")
+    assert "/Users/" not in env_companion + file_companion
+    assert env_companion != file_companion
 
 
 def _bundle() -> dict[str, object]:

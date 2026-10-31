@@ -3,11 +3,36 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
-from collections.abc import Mapping, MutableMapping, Sequence
+import tempfile
+from collections.abc import Iterator, Mapping, MutableMapping, Sequence
+from contextlib import contextmanager
 from pathlib import Path
 
 CLI_MODULE = "benchbox.cli.main"
 DEFAULT_TIMEOUT = 120.0
+
+
+@contextmanager
+def isolated_cli_home() -> Iterator[Path]:
+    with tempfile.TemporaryDirectory(prefix="benchbox-cli-home-") as home:
+        yield Path(home)
+
+
+def cli_subprocess_environment(
+    *,
+    home: Path | str,
+    cwd: Path | str | None = None,
+    env: Mapping[str, str] | None = None,
+) -> MutableMapping[str, str]:
+    effective_env: MutableMapping[str, str] = os.environ.copy()
+    effective_env["HOME"] = str(home)
+    effective_env["USERPROFILE"] = str(home)
+    effective_env["PYTHONUTF8"] = "1"
+    if cwd is not None:
+        effective_env["BENCHBOX_OUTPUT_DIR"] = str(Path(cwd) / "benchmark_runs")
+    if env:
+        effective_env.update(env)
+    return effective_env
 
 
 def run_cli_command(
@@ -16,17 +41,15 @@ def run_cli_command(
     cwd: Path | str | None = None,
     env: Mapping[str, str] | None = None,
     timeout: float = DEFAULT_TIMEOUT,
+    home: Path | str | None = None,
 ) -> subprocess.CompletedProcess[str]:
+    if home is None:
+        with isolated_cli_home() as default_home:
+            return run_cli_command(args, cwd=cwd, env=env, timeout=timeout, home=default_home)
 
     command = [sys.executable, "-m", CLI_MODULE, *args]
 
-    effective_env: MutableMapping[str, str] = os.environ.copy()
-
-    effective_env["PYTHONUTF8"] = "1"
-    if cwd is not None:
-        effective_env["BENCHBOX_OUTPUT_DIR"] = str(Path(cwd) / "benchmark_runs")
-    if env:
-        effective_env.update(env)
+    effective_env = cli_subprocess_environment(home=home, cwd=cwd, env=env)
 
     resolved_cwd = str(cwd) if cwd is not None else None
 

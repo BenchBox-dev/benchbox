@@ -235,3 +235,68 @@ def test_publish_bundle_refuses_partial_query_failure(monkeypatch: pytest.Monkey
     result = pub.publish_bundle(src, label="maintainer-run")
 
     assert result is None
+
+
+class _RecordingExporter:
+    configs: list[object] = []
+
+    def __init__(self, *, output_dir: str, anonymize: bool, anonymization_config: object = None) -> None:
+        self.output_dir = Path(output_dir)
+        self.configs.append(anonymization_config)
+
+    def export_result(self, _result: object, _formats: list[str]) -> dict[str, Path]:
+        return {"json": self.output_dir / "redacted.json"}
+
+
+def _publish_source(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    src = tmp_path / "tpch.json"
+    src.write_text('{"schema_version": "2.0"}', encoding="utf-8")
+    monkeypatch.setattr(pub, "load_result_file", lambda *_a, **_k: (_fake_result("official"), {}))
+    monkeypatch.setattr(pub, "ResultExporter", _RecordingExporter)
+    monkeypatch.setattr(pub, "_redacted_bundle_is_complete_and_clean", lambda *_a, **_k: True)
+    _RecordingExporter.configs.clear()
+    return src
+
+
+def test_publish_redaction_uses_a_generated_salt_and_prints_the_notice_once(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from benchbox.core.results.anonymization import public_pseudonym_salt_path
+
+    monkeypatch.delenv("BENCHBOX_MACHINE_ID_SALT", raising=False)
+    src = _publish_source(tmp_path, monkeypatch)
+    printed: list[str] = []
+    monkeypatch.setattr(pub, "console", SimpleNamespace(print=lambda *a, **_k: printed.append(str(a[0]))))
+    from benchbox.cli import pseudonym_salt
+
+    monkeypatch.setattr(pseudonym_salt, "console", pub.console)
+
+    for _ in range(2):
+        published, scratch = pub._redacted_publish_source(src)
+        assert published is not None
+        scratch.cleanup()
+
+    salt = public_pseudonym_salt_path().read_text(encoding="utf-8").strip()
+    assert [config.machine_id_salt for config in _RecordingExporter.configs] == [salt, salt]
+    assert sum("Created a private pseudonym salt" in line for line in printed) == 1
+    assert all(salt not in line for line in printed)
+
+
+def test_publish_redaction_surfaces_a_salt_store_error_naming_path_and_override(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from benchbox.core.results.anonymization import public_pseudonym_salt_path
+
+    monkeypatch.delenv("BENCHBOX_MACHINE_ID_SALT", raising=False)
+    src = _publish_source(tmp_path, monkeypatch)
+    salt_path = public_pseudonym_salt_path()
+    salt_path.parent.mkdir(parents=True)
+    salt_path.write_text("", encoding="utf-8")
+    printed: list[str] = []
+    monkeypatch.setattr(pub, "console", SimpleNamespace(print=lambda *a, **_k: printed.append(str(a[0]))))
+
+    published, scratch = pub._redacted_publish_source(src)
+
+    assert (published, scratch) == (None, None)
+    assert _RecordingExporter.configs == []
+    assert any(str(salt_path) in line and "BENCHBOX_MACHINE_ID_SALT" in line for line in printed)

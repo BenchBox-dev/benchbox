@@ -5,8 +5,10 @@ from pathlib import Path
 import click
 
 from benchbox.cli.output import ResultExporter
+from benchbox.cli.pseudonym_salt import ensure_publication_salt
 from benchbox.cli.shared import console
 from benchbox.core.constants import EXPORT_FORMATS
+from benchbox.core.results.anonymization import AnonymizationConfig
 from benchbox.core.results.loader import (
     ResultLoadError,
     UnsupportedSchemaError,
@@ -101,7 +103,11 @@ def export(ctx, result_file, formats, output_dir, last, benchmark, platform, for
         return
 
     try:
-        exporter = ResultExporter(output_dir=output_directory, anonymize=True)
+        exporter = ResultExporter(
+            output_dir=output_directory,
+            anonymize=True,
+            anonymization_config=AnonymizationConfig(machine_id_salt=ensure_publication_salt()),
+        )
         console.print(f"\n[bold]Exporting to {len(formats)} format(s)...[/bold]")
         exported = exporter.export_result(result, formats=list(formats))
         _print_export_summary(exported, output_directory)
