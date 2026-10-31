@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import json
+import secrets
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import click
+from rich.markup import escape
 
 import benchbox
+from benchbox.cli.pseudonym_salt import ensure_publication_salt
 from benchbox.cli.shared import console
 from benchbox.cli.submit_auth import (
     DEFAULT_SERVICE_URL as _DEFAULT_SERVICE_URL,
@@ -28,7 +31,9 @@ from benchbox.core.results.anonymization import (
     MissingPublicPseudonymSaltError,
     anonymize_applied_tuning_payload,
     anonymize_plans_payload,
+    public_pseudonym_salt_path,
     require_public_pseudonym_salt,
+    resolve_public_pseudonym_salt,
 )
 from benchbox.core.results.canonical_json import canonical_json_file_bytes, canonical_json_text
 from benchbox.core.results.loader import (
@@ -175,12 +180,22 @@ def _build_submission_manifest(
     return manifest
 
 
-def _require_public_pseudonym_salt(ctx: click.Context) -> str:
+def _resolve_submission_salt(ctx: click.Context, *, dry_run: bool) -> str:
     try:
+        if not dry_run:
+            return ensure_publication_salt()
+        path = public_pseudonym_salt_path()
+        if resolve_public_pseudonym_salt() is None and not path.exists():
+            console.print(
+                "[dim]--dry-run: no pseudonym salt exists yet; previewing with a temporary one. "
+                f"A real submit creates {escape(str(path))}.[/dim]"
+            )
+            return secrets.token_hex(32)
         return require_public_pseudonym_salt()
     except MissingPublicPseudonymSaltError as exc:
-        console.print(f"\n[red]❌ Submission refused: {exc}[/red]")
+        console.print(f"\n[red]❌ Submission refused: {escape(str(exc))}[/red]")
         ctx.exit(1)
+        raise
 
 
 def _inline_requested_tuning(payload: dict[str, object]) -> dict[str, object] | None:
@@ -728,7 +743,6 @@ def submit(
         ctx.exit(1)
         return
 
-    salt = _require_public_pseudonym_salt(ctx)
     submit_state = classify_loaded_result(result)
 
     if submit_state is SubmitTerminalState.unofficial:
@@ -750,6 +764,7 @@ def submit(
     companions = [
         p for suffix in COMPANION_SUFFIXES if (p := source_path.with_name(source_path.stem + suffix)).exists()
     ]
+    salt = _resolve_submission_salt(ctx, dry_run=dry_run)
     manager = AnonymizationManager(AnonymizationConfig(machine_id_salt=salt))
 
     with TemporaryDirectory(prefix="benchbox-submit-staging-") as tmpdir:
