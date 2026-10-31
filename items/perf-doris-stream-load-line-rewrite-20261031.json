@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "TPC-DS Stream Load sends file bytes without per-line Python rewriting.",
+    "Decimal NULL handling and row counts match current behavior."
+  ],
+  "description": "doris.py:560-563 and :596-610 apply _fix_tpcds_decimal_nulls to every line of TPC-DS files and re-encode them; the non-chunked path reads the whole file into memory. Use Doris load options (columns: header with ifnull/mappings) or pyarrow.csv preprocessing. The executemany fallback at doris.py:633-676 runs only when requests is missing; consider making requests required and removing it.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:root@vm:cb45f246c9de058740ccbeed",
+      "at": "2026-10-31T00:37:27Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "f4e0e7a9f4f74ea0837072656f6a2147",
+      "session_id": "d2b018a349924f4f88b746458c80b878"
+    }
+  ]
+}

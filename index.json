@@ -17744,6 +17744,13 @@
       "status": "open",
       "title": "Use stage + COPY INTO for Databend loading"
     },
+    "perf-doris-stream-load-line-rewrite-20261031": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Doris Stream Load: drop per-line Python decimal-null rewrite"
+    },
     "perf-duckdb-wire-native-handlers-20261030": {
       "claim": null,
       "needs": [],
