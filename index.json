@@ -12722,6 +12722,16 @@
       "status": "open",
       "title": "Make the shared host lock exclusive-safe, re-entrant and reusable outside the test harness"
     },
+    "heavy-guard-status-policy-20261030": {
+      "claim": null,
+      "needs": [
+        "heavy-guard-cli-optin-20261030",
+        "heavy-guard-container-vm-20261030"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Add a heavy-work status command and an agent rule that keeps hand-started heavy processes under the lock"
+    },
     "heavy-guard-test-harness-20261030": {
       "claim": null,
       "needs": [

@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "Smoke on this Mac: `make heavy-status` lists the current holder or 'free', the benchbox-agent reservation, top footprint processes, and flags orphaned java processes with ppid 1 and a BenchBox worktree cwd; output recorded in the PR.",
+    "Unit test with injected readings and a fake process table renders holder, waiters, VMs and an orphan entry; a hung `container` command is cut off by the timeout and reported as unmeasured.",
+    "`make heavy-run CMD='sleep 3'` holds the lock (a WAIT_SECONDS=0 acquire is refused meanwhile).",
+    "AGENTS.md contains `[HEAVY-LOCK-001]`; linked doc exists; `make docs-validate` (or the repo's agent-doc check) passes.",
+    "Rename deferral recorded on this item via `defer`, then promoted or dismissed before finish.",
+    "`make comment-policy-check`, `make lint`, `make typecheck`, `make test-fast` pass."
+  ],
+  "context": "Observed 2026-10-30 after reboot: pid 61182 java QuestDB ppid 1 RSS 2.3 GB; pid 78738 java QuestDB ppid 1; benchbox-agent machine running 8G. Review findings H6 and N3.",
+  "description": "## Problem\nNothing shows who holds the host lock, who waits, what VMs reserve memory, or which orphaned servers are still running. Agents start servers by hand outside every entry point: two native QuestDB JVMs orphaned to launchd (one with `-XX:+AlwaysPreTouch`, one at 2.3 GB RSS) run from BenchBox worktrees, and no repo code launches them. Without a rule, agents keep doing this.\n\n## Change\n1. `python -m benchbox.utils.host_lock status` and `make heavy-status`: holder record and age, live waiter count, admission readings (pressure, memorystatus_level, available memory, VM reservations, free disk), top 10 processes by physical footprint, and orphaned JVMs/servers (ppid 1 with cwd inside a BenchBox worktree). Read-only.\n2. `make heavy-run CMD=\"...\"` wrapping `python -m benchbox.utils.host_lock run -- sh -c \"$(CMD)\"` for ad-hoc heavy work.\n3. AGENTS.md rule `[HEAVY-LOCK-001]` (compact, linked to a detail doc under docs/agent/): heavy work runs only through entry points that take the lock or through `make heavy-run`; hand-started servers run under `make heavy-run` and are stopped afterwards; never move, delete or recreate the lock file; never set `BENCHBOX_SKIP_TEST_LOCK`, `BENCHBOX_HEAVY_ADMIT=force` or `BENCHBOX_HEAVY_WATCHDOG=off` without the owner's approval in the current task; check `make heavy-status` before starting heavy work.\n4. Record a deferral for the optional rename (`test.lock` -> `heavy.lock`, `BENCHBOX_TEST_LOCK_*` -> `BENCHBOX_HEAVY_LOCK_*`).\n\n## Decision gates\n- G1 (stop condition): AGENTS.md is the compact authority; if the rule needs more than ~6 lines there, put detail in `docs/agent/heavy-work.md` and link it.\n- G2: status must not require the lock and must finish in under 5 s even when the `container` CLI hangs (per-command timeouts).\n\n## Guardrails\n- Status never signals or modifies processes, VMs or the lock file.\n- Linked worktree; stage explicitly; `[COMMENT-POLICY-001]`; docs/agent stays unpublished (not in docs/publish-allowlist.txt).\n\n## Non-goals\nKilling orphans automatically.",
+  "links": [
+    "AGENTS.md",
+    "Makefile",
+    "benchbox/utils/host_lock.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:19f6136ffb052a6f71a9c702",
+      "at": "2026-10-31T00:19:50Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e2730adc342242cdae3bc1159f62fb43",
+      "session_id": "5f71b48e76c54dd19a3f57d12779721e"
+    }
+  ]
+}
