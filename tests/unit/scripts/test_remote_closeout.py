@@ -76,6 +76,11 @@ class World:
 
 
 @pytest.fixture(autouse=True)
+def fresh_gate_passes(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(remote_closeout.pr_arm, "gate_refusals", lambda *_args: [])
+
+
+@pytest.fixture(autouse=True)
 def isolated(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     for name in list(os.environ):
         if name.startswith("GIT_"):

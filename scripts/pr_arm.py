@@ -214,6 +214,30 @@ def duration_verdict_refusals(run: Runner, repo: str, number: int, head: str, la
     ]
 
 
+GATE_SCRIPT = "_project/scripts/oracle_gate.py"
+GATE_WAITING_EXIT = 3
+
+
+def gate_refusals(run: Runner, repo: str, number: int, head: str, label: str = "pr-arm") -> list[str]:
+    code, out = run(
+        [
+            "sh",
+            "-c",
+            'GITHUB_TOKEN="$(gh auth token)" exec uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 '
+            f'-- python {GATE_SCRIPT} --repo "$0" --pr "$1" --head-sha "$2" --no-post',
+            repo,
+            str(number),
+            head,
+        ]
+    )
+    if code == 0:
+        return []
+    detail = out.strip().splitlines()[-1][:300] if out.strip() else "no output"
+    if code == GATE_WAITING_EXIT:
+        return [f"a fresh oracle-gate evaluation of {head[:9]} does not pass: {detail}"]
+    return [f"a fresh oracle-gate evaluation of {head[:9]} failed (exit {code}): {detail}"]
+
+
 def refusals(
     view: dict,
     local_head: str,
@@ -284,6 +308,7 @@ def arm(
     duration: Callable[[Runner, str, int, str], list[str]] = duration_verdict_refusals,
     visible: Callable[[Runner, str, str, str], list[str]] = visible_refusals,
     bump: Callable[[Runner, str, int, str], list[str]] = pr_arm_omp_bump.bump_refusals,
+    gate: Callable[[Runner, str, int, str], list[str]] = gate_refusals,
 ) -> int:
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
         return _refused(f"--repo must be owner/name, got {repo!r}", 2)
@@ -313,6 +338,7 @@ def arm(
                 *(duration(run, repo, int(view["number"]), local_head) if view.get("headRefOid") == local_head else []),
                 *(bump(run, repo, int(view["number"]), local_head) if view.get("headRefOid") == local_head else []),
                 *visible(run, repo, BASE_BRANCH, local_head),
+                *(gate(run, repo, int(view["number"]), local_head) if view.get("headRefOid") == local_head else []),
             ],
         )
         if reasons:

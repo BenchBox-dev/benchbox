@@ -1269,7 +1269,10 @@ edits and dismissals have no trusted trigger: `pull_request_review` runs the
 PR's own workflow file, so the PR could delete it. The ruleset's required
 review-thread resolution and the gate's rejection of edited receipts bound the
 exposure; a PR whose oracle review was tampered with must be withheld from
-arming until a sweep or manual dispatch re-evaluates it.
+arming until a sweep or manual dispatch re-evaluates it. `make pr-arm` and
+`make pr-arm-remote` re-evaluate the gate decision read-only for the exact head
+and refuse to arm unless it passes, which closes the window before arming; the
+window after arming remains.
 
 The verdict run also posts `oracle-gate` itself: after the review is posted,
 `drive publish` evaluates the exact head with the gate code and review policy of a
@@ -1288,7 +1291,7 @@ Resolving a thread has no Actions event and the gate does not read threads: the
 ruleset's `required_review_thread_resolution` on `develop` blocks the merge
 while any thread is open, so resolving the oracle's last thread needs no
 refresh of `oracle-gate`. `make pr-arm` and `make pr-arm-remote` dispatch
-nothing; `make pr-rerun` re-runs failed CI jobs and does not refresh
+nothing and refuse to arm a head whose fresh gate decision does not pass; `make pr-rerun` re-runs failed CI jobs and does not refresh
 `oracle-gate`.
 
 A stand-in attestation must follow the oracle's latest decisive verdict

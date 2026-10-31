@@ -168,6 +168,7 @@ def _arm(gh: FakeGh, pr: str | None = "7", head: str | None = None, *, unpublish
         threads=lambda _run, _repo, _number: threads,
         suites=lambda _run, _repo, _base, _head: list(hidden),
         bump=lambda _run, _repo, _number, _head: [],
+        gate=lambda _run, _repo, _number, _head: [],
     )
 
 
@@ -499,7 +500,15 @@ def test_the_live_suite_check_receives_the_base_branch_and_local_head() -> None:
         seen.append((base, head))
         return []
 
-    pr_arm.arm("7", None, run=FakeGh(), unpublished=lambda _c: [], threads=lambda *_a: False, suites=record)
+    pr_arm.arm(
+        "7",
+        None,
+        run=FakeGh(),
+        unpublished=lambda _c: [],
+        threads=lambda *_a: False,
+        suites=record,
+        gate=lambda *_a: [],
+    )
     assert seen == [("develop", HEAD)]
 
 
@@ -720,6 +729,7 @@ def _arm_live(gh: FakeGh) -> int:
         run=gh,
         unpublished=lambda _checkout: [],
         threads=lambda _run, _repo, _number: False,
+        gate=lambda *_a: [],
     )
 
 
@@ -826,6 +836,7 @@ def _arm_bump(gh: FakeGh) -> int:
         suites=lambda *_a: [],
         duration=lambda *_a: [],
         visible=lambda *_a: [],
+        gate=lambda *_a: [],
     )
 
 
@@ -1028,3 +1039,35 @@ def test_a_passing_duration_verdict_line_does_not_read_as_an_arming_outcome(
 
 def _outcomes_from(text: str) -> list[str]:
     return [line for line in text.splitlines() if ": outcome: " in line]
+
+
+def test_a_fresh_gate_evaluation_that_does_not_pass_refuses_arming() -> None:
+    gh = FakeGh()
+    code = pr_arm.arm(
+        "7",
+        None,
+        run=gh,
+        unpublished=lambda _c: [],
+        threads=lambda *_a: False,
+        suites=lambda *_a: [],
+        duration=lambda *_a: [],
+        visible=lambda *_a: [],
+        bump=lambda *_a: [],
+        gate=lambda *_a: ["a fresh oracle-gate evaluation of aaaaaaaaa does not pass: waiting"],
+    )
+    assert code == 2
+    assert gh.merged() == []
+
+
+@pytest.mark.parametrize(("exit_code", "expected"), [(0, []), (3, "does not pass"), (2, "failed (exit 2)")])
+def test_gate_refusals_map_the_evaluation_exit_code(exit_code: int, expected: object) -> None:
+    seen: list[list[str]] = []
+
+    def run(cmd: Sequence[str]) -> tuple[int, str]:
+        seen.append(list(cmd))
+        return exit_code, "oracle-review: waiting for the verdict\n" if exit_code else ""
+
+    found = pr_arm.gate_refusals(run, "o/r", 7, HEAD)
+    assert seen[0][-3:] == ["o/r", "7", HEAD]
+    assert "--no-post" in seen[0][2]
+    assert found == [] if exit_code == 0 else expected in found[0]
