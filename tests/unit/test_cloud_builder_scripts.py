@@ -277,6 +277,7 @@ case "$1" in -m) echo x86_64 ;; *) echo Linux ;; esac
 STUB_MAKE = "#!/bin/sh\nexit 0\n"
 STUB_NODE = "#!/bin/sh\necho v24.15.0\n"
 STUB_UV = """#!/bin/sh
+env >"$STUB_DIR/uv.env"
 case " $* " in *" --no-project "*) ;; *) exit 0 ;; esac
 while [ $# -gt 0 ] && [ "$1" != -- ]; do shift; done
 [ $# -gt 0 ] || exit 0
@@ -702,6 +703,68 @@ def test_gateway_socket_path_stays_short_for_a_long_git_dir(tmp_path: Path) -> N
     finally:
         _stop(repo, env)
     assert not Path(socket_arg).exists()
+
+
+def test_gateway_never_hands_the_proxy_to_the_uv_install(tmp_path: Path) -> None:
+    repo = _gateway_clone(tmp_path)
+    env = _gateway_env(tmp_path)
+    try:
+        result = _run(GATEWAY, cwd=repo, env=env)
+
+        assert result.returncode == 0, result.stdout + result.stderr
+        uv_env = _stub_lines(tmp_path, "uv.env")
+        assert uv_env
+        assert not [
+            line
+            for line in uv_env
+            if "127.0.0.1:1055" in line or line.lower().startswith(("https_proxy", "http_proxy", "all_proxy"))
+        ]
+    finally:
+        _stop(repo, env)
+
+
+def test_gateway_refuses_a_socket_directory_owned_by_another_user(tmp_path: Path) -> None:
+    repo = _gateway_clone(tmp_path)
+    env = _gateway_env(tmp_path)
+    id_stub = tmp_path / "stubs" / "bin" / "id"
+    id_stub.write_text("#!/bin/sh\necho 4242424\n", encoding="utf-8")
+    id_stub.chmod(0o755)
+    try:
+        result = _run(GATEWAY, cwd=repo, env=env)
+
+        assert result.returncode != 0
+        assert "owned by another user" in result.stdout + result.stderr
+        assert not _stub_lines(tmp_path, "tailscaled.log")
+        assert "gateway=unavailable" in _status(repo)
+        _assert_no_secrets(result.stdout, result.stderr, _status(repo))
+    finally:
+        id_stub.unlink()
+        _stop(repo, env)
+
+
+def test_gateway_refuses_a_socket_directory_that_is_a_symbolic_link(tmp_path: Path) -> None:
+    repo = _gateway_clone(tmp_path)
+    env = _gateway_env(tmp_path, TMPDIR="/tmp")
+    hostile = tmp_path / "hostile"
+    hostile.mkdir()
+    tag = subprocess.run(
+        ["sh", "-c", 'printf %s "$1" | shasum -a 256 | cut -c1-16', "sh", str((repo / ".git").resolve())],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+    link = Path("/tmp") / f"bbcg-{tag}"
+    link.symlink_to(hostile)
+    try:
+        result = _run(GATEWAY, cwd=repo, env=env)
+
+        assert result.returncode != 0
+        assert "symbolic link" in result.stdout + result.stderr
+        assert not list(hostile.iterdir())
+        assert not _stub_lines(tmp_path, "tailscaled.log")
+    finally:
+        _stop(repo, env)
+        link.unlink(missing_ok=True)
 
 
 @pytest.mark.parametrize("temp_root", ["unset", "long"])

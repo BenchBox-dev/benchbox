@@ -42,3 +42,13 @@ def materialize(*values: Any) -> Any:
     computed = iter(dask.compute(*lazy))
     resolved = tuple(next(computed) if hasattr(value, "compute") else value for value in values)
     return resolved if len(resolved) > 1 else resolved[0]
+
+
+def to_datetime(series: Any) -> Any:
+    if is_lazy_frame(series):
+        import dask.dataframe as dd
+
+        return dd.to_datetime(series)
+    import pandas as pd
+
+    return pd.to_datetime(series)

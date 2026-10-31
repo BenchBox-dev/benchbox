@@ -15,7 +15,7 @@ import yaml
 
 from benchbox.core.dataframe.compat import _to_list
 from benchbox.core.dataframe.context import DataFrameContext
-from benchbox.core.dataframe.pandas_ops import materialize
+from benchbox.core.dataframe.pandas_ops import materialize, to_datetime as pandas_to_datetime
 from benchbox.core.dataframe.query import DataFrameQuery, QueryCategory
 
 from .parameters import get_parameters
@@ -1025,11 +1025,13 @@ def _q77_pandas_channel(
         )
     import pandas as _pd
 
-    sales = sales.groupby(sales_group, as_index=False, dropna=False).agg(
-        sales=(sales_col, "sum"),
-        n_sales=(sales_col, "count"),
-        profit=(profit_col, "sum"),
-        n_profit=(profit_col, "count"),
+    sales = _collect(
+        sales.groupby(sales_group, as_index=False, dropna=False).agg(
+            sales=(sales_col, "sum"),
+            n_sales=(sales_col, "count"),
+            profit=(profit_col, "sum"),
+            n_profit=(profit_col, "count"),
+        )
     )
     sales["sales"] = _pd.Series(
         [value if count > 0 else None for value, count in zip(sales["sales"], sales["n_sales"])], dtype=object
@@ -1044,11 +1046,13 @@ def _q77_pandas_channel(
             left_on=returns_dim_left,
             right_on=returns_dim_right,
         )
-    returns = returns.groupby(returns_group, as_index=False, dropna=False).agg(
-        returns=(returns_col, "sum"),
-        n_returns=(returns_col, "count"),
-        profit_loss=(loss_col, "sum"),
-        n_loss=(loss_col, "count"),
+    returns = _collect(
+        returns.groupby(returns_group, as_index=False, dropna=False).agg(
+            returns=(returns_col, "sum"),
+            n_returns=(returns_col, "count"),
+            profit_loss=(loss_col, "sum"),
+            n_loss=(loss_col, "count"),
+        )
     )
     returns["returns"] = _pd.Series(
         [value if count > 0 else None for value, count in zip(returns["returns"], returns["n_returns"])], dtype=object
@@ -2328,19 +2332,14 @@ def q79_pandas_impl(ctx: DataFrameContext) -> Any:
         profit=("ss_net_profit", "sum"),
         n_profit=("ss_net_profit", "count"),
     )
-    import pandas as _pd
-
-    inner["amt"] = _pd.Series(
-        [value if count > 0 else None for value, count in zip(inner["amt"], inner["n_amt"])], dtype=object
-    )
-    inner["profit"] = _pd.Series(
-        [value if count > 0 else None for value, count in zip(inner["profit"], inner["n_profit"])], dtype=object
-    )
+    inner["amt"] = inner["amt"].where(inner["n_amt"] > 0)
+    inner["profit"] = inner["profit"].where(inner["n_profit"] > 0)
     outer = inner.merge(customer, left_on="ss_customer_sk", right_on="c_customer_sk")
     outer["s_city"] = outer["s_city"].astype(str).str[:30]
     cols = ["c_last_name", "c_first_name", "s_city", "ss_ticket_number", "amt", "profit"]
     result = outer[cols].sort_values(["c_last_name", "c_first_name", "s_city", "profit"]).head(100)
-    return _none_for_null(result, [column for column in result.columns if result[column].dtype == object])
+    null_columns = ["amt", "profit", *[column for column in result.columns if result[column].dtype == object]]
+    return _none_for_null(result, list(dict.fromkeys(null_columns)))
 
 
 _Q50_STORE_COLS = [
@@ -2535,8 +2534,8 @@ def q89_pandas_impl(ctx: DataFrameContext) -> Any:
     partition = ["i_category", "i_brand", "s_store_name", "s_company_name"]
     grouped["avg_monthly_sales"] = grouped.groupby(partition, dropna=False)["sum_sales"].transform("mean")
     deviation = (grouped["sum_sales"] - grouped["avg_monthly_sales"]).abs() / grouped["avg_monthly_sales"]
-    kept = grouped[(grouped["avg_monthly_sales"] != 0) & (deviation > 0.1)].copy()
-    kept["diff"] = kept["sum_sales"] - kept["avg_monthly_sales"]
+    kept = grouped[(grouped["avg_monthly_sales"] != 0) & (deviation > 0.1)]
+    kept = kept.assign(diff=kept["sum_sales"] - kept["avg_monthly_sales"])
     cols = [
         "i_category",
         "i_class",
@@ -2547,7 +2546,7 @@ def q89_pandas_impl(ctx: DataFrameContext) -> Any:
         "sum_sales",
         "avg_monthly_sales",
     ]
-    return kept.sort_values(["diff", "s_store_name"])[cols].head(100)
+    return kept.sort_values(["diff", "s_store_name"]).head(100)[cols]
 
 
 def q1_expression_impl(ctx: DataFrameContext) -> Any:
@@ -2800,8 +2799,8 @@ def q72_pandas_impl(ctx: DataFrameContext) -> Any:
     merged = merged.merge(household_demographics, left_on="cs_bill_hdemo_sk", right_on="hd_demo_sk")
     merged = merged.merge(promotion, left_on="cs_promo_sk", right_on="p_promo_sk", how="left")
 
-    d1 = pd.to_datetime(merged["d1_date"]).dt.date
-    d3 = pd.to_datetime(merged["d3_date"]).dt.date
+    d1 = pandas_to_datetime(merged["d1_date"])
+    d3 = pandas_to_datetime(merged["d3_date"])
     filtered = merged[
         (merged["inv_quantity_on_hand"] < merged["cs_quantity"])
         & (d3 > d1 + pd.to_timedelta(5, unit="D"))
@@ -4073,6 +4072,17 @@ def q51_expression_impl(ctx: DataFrameContext) -> Any:
     )
 
 
+def _grouped_sum_or_null_pandas(frame: Any, by: list[str], sources: dict[str, str], *, dropna: bool = True) -> Any:
+    specs: dict[str, tuple[str, str]] = {}
+    for alias, source in sources.items():
+        specs[alias] = (source, "sum")
+        specs[f"__n_{alias}"] = (source, "count")
+    grouped = frame.groupby(by, as_index=False, dropna=dropna).agg(**specs)
+    for alias in sources:
+        grouped[alias] = grouped[alias].where(grouped[f"__n_{alias}"] > 0)
+    return grouped.drop(columns=[f"__n_{alias}" for alias in sources])
+
+
 def _q51_running_total_pandas(base: Any, item_key: str) -> Any:
     return base.groupby(item_key)["daily_sales"].cumsum().groupby(base[item_key], sort=False).ffill()
 
@@ -4088,8 +4098,8 @@ def q51_pandas_impl(ctx: DataFrameContext) -> Any:
     web_merged = web_sales[web_sales["ws_item_sk"].notnull()].merge(
         dates[["d_date_sk", "d_date"]], left_on="ws_sold_date_sk", right_on="d_date_sk"
     )
-    web_base = web_merged.groupby(["ws_item_sk", "d_date"], as_index=False).agg(
-        daily_sales=("ws_sales_price", lambda values: values.sum(min_count=1))
+    web_base = _collect(
+        _grouped_sum_or_null_pandas(web_merged, ["ws_item_sk", "d_date"], {"daily_sales": "ws_sales_price"})
     )
     web_base = web_base.sort_values(["ws_item_sk", "d_date"])
     web_base["cume_sales"] = _q51_running_total_pandas(web_base, "ws_item_sk")
@@ -4098,8 +4108,8 @@ def q51_pandas_impl(ctx: DataFrameContext) -> Any:
     store_merged = store_sales[store_sales["ss_item_sk"].notnull()].merge(
         dates[["d_date_sk", "d_date"]], left_on="ss_sold_date_sk", right_on="d_date_sk"
     )
-    store_base = store_merged.groupby(["ss_item_sk", "d_date"], as_index=False).agg(
-        daily_sales=("ss_sales_price", lambda values: values.sum(min_count=1))
+    store_base = _collect(
+        _grouped_sum_or_null_pandas(store_merged, ["ss_item_sk", "d_date"], {"daily_sales": "ss_sales_price"})
     )
     store_base = store_base.sort_values(["ss_item_sk", "d_date"])
     store_base["cume_sales"] = _q51_running_total_pandas(store_base, "ss_item_sk")
@@ -5214,8 +5224,10 @@ def q74_pandas_impl(ctx: DataFrameContext) -> Any:
         joined = sales.merge(customer, left_on=customer_key, right_on="c_customer_sk", how="inner").merge(
             dates, left_on=date_key, right_on="d_date_sk", how="inner"
         )
-        method = (lambda values: values.sum(min_count=1)) if aggregate == "sum" else aggregate
-        totals = joined.groupby(list(_Q74_OUTPUT), as_index=False, dropna=False).agg(**{alias: (amount, method)})
+        if aggregate == "sum":
+            totals = _grouped_sum_or_null_pandas(joined, list(_Q74_OUTPUT), {alias: amount}, dropna=False)
+        else:
+            totals = joined.groupby(list(_Q74_OUTPUT), as_index=False, dropna=False).agg(**{alias: (amount, aggregate)})
         totals[alias] = totals[alias].astype("float64")
         return totals
 
@@ -5406,11 +5418,11 @@ def q97_pandas_impl(ctx: DataFrameContext) -> Any:
 
     ss_joined = store_sales.merge(date_filtered[["d_date_sk"]], left_on="ss_sold_date_sk", right_on="d_date_sk")
     ssci = ss_joined.groupby(["ss_customer_sk", "ss_item_sk"], as_index=False).size()
-    ssci = ssci[["ss_customer_sk", "ss_item_sk"]].drop_duplicates()
+    ssci = ssci[["ss_customer_sk", "ss_item_sk"]]
 
     cs_joined = catalog_sales.merge(date_filtered[["d_date_sk"]], left_on="cs_sold_date_sk", right_on="d_date_sk")
     csci = cs_joined.groupby(["cs_bill_customer_sk", "cs_item_sk"], as_index=False).size()
-    csci = csci[["cs_bill_customer_sk", "cs_item_sk"]].drop_duplicates()
+    csci = csci[["cs_bill_customer_sk", "cs_item_sk"]]
     csci = csci.rename(columns={"cs_bill_customer_sk": "cs_customer_sk", "cs_item_sk": "cs_item_sk_r"})
 
     joined = ssci.merge(
@@ -5420,9 +5432,11 @@ def q97_pandas_impl(ctx: DataFrameContext) -> Any:
         how="outer",
     )
 
-    store_only = ((joined["ss_customer_sk"].notnull()) & (joined["cs_customer_sk"].isna())).sum()
-    catalog_only = ((joined["ss_customer_sk"].isna()) & (joined["cs_customer_sk"].notnull())).sum()
-    store_and_catalog = ((joined["ss_customer_sk"].notnull()) & (joined["cs_customer_sk"].notnull())).sum()
+    store_only, catalog_only, store_and_catalog = materialize(
+        ((joined["ss_customer_sk"].notnull()) & (joined["cs_customer_sk"].isna())).sum(),
+        ((joined["ss_customer_sk"].isna()) & (joined["cs_customer_sk"].notnull())).sum(),
+        ((joined["ss_customer_sk"].notnull()) & (joined["cs_customer_sk"].notnull())).sum(),
+    )
 
     return pd.DataFrame(
         {
@@ -7894,7 +7908,7 @@ def q58_pandas_impl(ctx: DataFrameContext) -> Any:
 
     item, date_dim = _tables(ctx, "item", "date_dim")
 
-    week_seq = date_dim[date_dim["d_date"] == sales_date]["d_week_seq"].iloc[0]
+    week_seq = _collect(date_dim[date_dim["d_date"] == sales_date]["d_week_seq"]).iloc[0]
     dates_in_week = date_dim[date_dim["d_week_seq"] == week_seq][["d_date_sk"]]
 
     def channel(table: str, item_key: str, date_key: str, value_col: str, alias: str) -> Any:
@@ -8028,7 +8042,7 @@ def q54_pandas_impl(ctx: DataFrameContext) -> Any:
     )
     my_customers = merged[["c_customer_sk", "c_current_addr_sk"]].drop_duplicates()
 
-    month_seq = date_dim[(date_dim["d_year"] == year) & (date_dim["d_moy"] == month)]["d_month_seq"].iloc[0]
+    month_seq = _collect(date_dim[(date_dim["d_year"] == year) & (date_dim["d_moy"] == month)]["d_month_seq"]).iloc[0]
 
     following_dates = date_dim[(date_dim["d_month_seq"] >= month_seq + 1) & (date_dim["d_month_seq"] <= month_seq + 3)][
         ["d_date_sk"]
@@ -8263,8 +8277,10 @@ def q59_pandas_impl(ctx: DataFrameContext) -> Any:
     for prefix, day in _Q59_DAYS:
         ss_with_date[f"{prefix}_sales"] = ss_with_date["ss_sales_price"].where(ss_with_date["d_day_name"] == day)
 
-    wss = ss_with_date.groupby(["d_week_seq", "ss_store_sk"], as_index=False).agg(
-        {f"{prefix}_sales": (lambda values: values.sum(min_count=1)) for prefix, _ in _Q59_DAYS}
+    wss = _grouped_sum_or_null_pandas(
+        ss_with_date,
+        ["d_week_seq", "ss_store_sk"],
+        {f"{prefix}_sales": f"{prefix}_sales" for prefix, _ in _Q59_DAYS},
     )
 
     wss = wss.merge(store, left_on="ss_store_sk", right_on="s_store_sk")
@@ -8376,21 +8392,22 @@ def q61_pandas_impl(ctx: DataFrameContext) -> Any:
     base = base.merge(ca_filtered[["ca_address_sk"]], left_on="c_current_addr_sk", right_on="ca_address_sk")
     base = base.merge(item_filtered[["i_item_sk"]], left_on="ss_item_sk", right_on="i_item_sk")
 
-    total = base["ss_ext_sales_price"].sum(min_count=1)
-
     promo_base = base.merge(promo_filtered[["p_promo_sk"]], left_on="ss_promo_sk", right_on="p_promo_sk")
-    promotions = promo_base["ss_ext_sales_price"].sum(min_count=1)
+    total, promotions = materialize(
+        base["ss_ext_sales_price"].sum(min_count=1), promo_base["ss_ext_sales_price"].sum(min_count=1)
+    )
 
     import pandas as pd
 
+    promotions = float("nan") if promotions is pd.NA else promotions
+    total = float("nan") if total is pd.NA else total
+    has_ratio = promotions == promotions and total == total and total != 0
     return (
         pd.DataFrame(
             {
                 "promotions": [promotions],
                 "total": [total],
-                "promo_pct": [
-                    promotions / total * 100 if promotions == promotions and total == total and total != 0 else None
-                ],
+                "promo_pct": [promotions / total * 100 if has_ratio else None],
             }
         )
         .astype(object)

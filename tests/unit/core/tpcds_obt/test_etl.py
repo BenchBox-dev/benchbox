@@ -205,8 +205,8 @@ def test_a_mixed_case_full_mode_still_enforces_coverage(tmp_path: Path, monkeypa
 def test_wide_tables_get_fewer_threads(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("os.cpu_count", lambda: 16)
 
-    assert TPCDSOBTTransformer._thread_limit(715) == 4
-    assert TPCDSOBTTransformer._thread_limit(424) == 7
+    assert TPCDSOBTTransformer._thread_limit(715) == 2
+    assert TPCDSOBTTransformer._thread_limit(424) == 3
     assert TPCDSOBTTransformer._thread_limit(100_000) == 1
     monkeypatch.setattr("os.cpu_count", lambda: 2)
     assert TPCDSOBTTransformer._thread_limit(715) == 2

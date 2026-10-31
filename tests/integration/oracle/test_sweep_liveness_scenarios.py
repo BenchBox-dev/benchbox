@@ -101,8 +101,8 @@ def test_a_marked_retry_the_plan_refuses_fails_its_run(harness: Harness) -> None
 
     run = harness.review(76, event_name="workflow_dispatch", inputs={"reason": "stateless-retry"})
 
-    assert run.steps["plan"].code == 1
-    assert run.steps["plan"].outputs["decision"] == "skip"
+    assert run.steps["prepare"].code == 1
+    assert run.steps["prepare"].outputs["decision"] == "skip"
 
 
 def test_a_dispatch_for_a_superseded_head_reviews_nothing_and_succeeds(harness: Harness) -> None:
@@ -111,8 +111,8 @@ def test_a_dispatch_for_a_superseded_head_reviews_nothing_and_succeeds(harness: 
 
     run = harness.review(77, event_name="workflow_dispatch", inputs={"head": "e" * 40})
 
-    assert run.steps["plan"].code == 0
-    assert run.steps["plan"].outputs["decision"] == "skip"
+    assert run.steps["prepare"].code == 0
+    assert run.steps["prepare"].outputs["decision"] == "skip"
 
 
 TIMEOUT = "The job has exceeded the maximum execution time of 255m0s"
