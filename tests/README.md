@@ -386,8 +386,10 @@ same module, so it honors the override and the real-home default.
   marker: `slow`, `stress`, `resource_heavy`, `live_integration`, `docker_integration` or any `live_*`.
   `make pr-preflight` runs only default-marker `-n 0` targets and a `fast and not (slow or stress ...)`
   lane, so it never waits. `BENCHBOX_SKIP_TEST_LOCK=1` skips locking entirely.
-- Admission and the watchdog run only in sessions whose selected items include a heavy marker (a parallel
-  session is judged from its `-m` expression, since the controller does not collect). The admission report
+- Admission and the watchdog run only in sessions whose selected items include a heavy marker. A parallel
+  session is judged from its `-m` expression, since the controller does not collect: it is heavy when a heavy
+  marker it names can be selected, or when a test carrying only an unnamed heavy marker would be (`not stress`
+  is heavy; `unit` or `integration and not live_integration and not stress` are not). The admission report
   is printed to stderr, so CI logs show the real readings. A refused lock exits **75**, refused admission **76**.
 - `python -m tests.uat._cli` takes the lock with admission and watchdog for every subcommand except the light
   set (`preflight`, `gate-check`, `report`, `replay-classify`, `package`, `validate`,

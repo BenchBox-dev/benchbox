@@ -216,7 +216,8 @@ def _expression_selects_heavy(expression: str | None) -> bool:
         candidates.append((GENERIC_LIVE_MARKER, False))
         for marker, named in candidates:
             for heavy_set in _implied_marker_sets(marker, named):
-                for values in product((False, True), repeat=len(free)):
+                assignments = product((False, True), repeat=len(free)) if named else [(False,) * len(free)]
+                for values in assignments:
                     truth = dict(zip(free, values, strict=True))
                     if compiled.evaluate(lambda name, _t=truth, _h=heavy_set: name in _h or _t.get(name, False)):
                         return True
