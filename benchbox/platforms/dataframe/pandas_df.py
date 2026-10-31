@@ -251,6 +251,9 @@ class PandasDataFrameAdapter(PandasFamilyAdapter[PandasDF]):
     def read_parquet(self, path: Path) -> PandasDF:
         return pd.read_parquet(path, dtype_backend="pyarrow")
 
+    def read_parquet_columns(self, path: Path, columns: list[str]) -> PandasDF:
+        return pd.read_parquet(path, columns=columns, dtype_backend="pyarrow")
+
     def to_datetime(self, series: Any) -> Any:
         return pd.to_datetime(series)
 

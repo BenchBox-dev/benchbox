@@ -1006,6 +1006,29 @@ def test_cloud_review_reaches_the_gateway_through_the_proxy_without_stubbing_rea
     assert "127.0.0.1" in review["omp_env"]["NO_PROXY"]
 
 
+def test_cloud_review_never_hands_the_proxy_to_git_uv_or_gh(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ORACLE_GATEWAY_URL", "http://127.0.0.1:1")
+    monkeypatch.setenv("ORACLE_CLOUD_GATEWAY_TOKEN", CLOUD_TOKEN)
+    seen: list[tuple[str, dict[str, str]]] = []
+    original = subprocess.Popen.__init__
+
+    def recording(self: Any, args: Any, *rest: Any, **kwargs: Any) -> None:
+        argv = [args] if isinstance(args, (str, bytes, os.PathLike)) else list(args)
+        tool = Path(os.fsdecode(argv[0])).name if argv else ""
+        seen.append((tool, dict(kwargs.get("env") or os.environ)))
+        original(self, args, *rest, **kwargs)
+
+    monkeypatch.setattr(subprocess.Popen, "__init__", recording)
+    with _ProxyServer() as proxy:
+        _write_status(env.repo, proxy.url)
+        assert env.run() == local.EXIT_PROCEED
+    tools = {tool for tool, _ in seen}
+    assert "git" in tools
+    for tool, environment in seen:
+        if tool in {"git", "uv", "gh"}:
+            assert not {value for name, value in environment.items() if "proxy" in name.lower()} & {proxy.url}
+
+
 def test_cloud_review_without_the_proxy_says_how_to_start_it(
     env: Env, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

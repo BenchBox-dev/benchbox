@@ -21,8 +21,18 @@ from benchbox.utils.dialect_utils import apply_rewrite, create_table_shape, is_c
 logger = logging.getLogger(__name__)
 
 
-def _stream_load_treats_empty_as_null(delimiter: str) -> bool:
-    return delimiter == ","
+_STREAM_LOAD_NULL_TOKENS = frozenset(("nan", "inf", "-inf", "+inf"))
+
+
+def _stream_load_treats_empty_as_null(delimiter: str, null_marker: str | None = None) -> bool:
+    return delimiter == "," or null_marker == ""
+
+
+def _stream_load_row(cells: list[str], *, null_empty: bool, delimiter: str) -> str:
+    if null_empty:
+        null_tokens = _STREAM_LOAD_NULL_TOKENS if delimiter == "," else ()
+        cells = ["\\N" if (cell == "" or cell.lower() in null_tokens) else cell for cell in cells]
+    return delimiter.join(cells)
 
 
 def _alias_derived_tables(query: str) -> str:
@@ -178,7 +188,7 @@ class StarRocksWorkloadMixin:
                 dialect = resolve_csv_dialect(
                     dialect_source, table_name or file_path.stem, file_path, benchmark_instance
                 )
-                null_empty = _stream_load_treats_empty_as_null(dialect.delimiter)
+                null_empty = _stream_load_treats_empty_as_null(dialect.delimiter, dialect.null_marker)
                 return StarRocksStreamLoadHandler(
                     delimiter=dialect.delimiter,
                     host=self.host,
@@ -309,7 +319,6 @@ class StarRocksStreamLoadHandler(FileFormatHandler):
             headers["null_format"] = "\\N"
 
         compression_handler = FileFormatRegistry.get_compression_handler(file_path)
-        null_markers = frozenset(("nan", "inf", "-inf", "+inf"))
 
         def _data_stream():
             with compression_handler.open(file_path) as f:
@@ -317,9 +326,12 @@ class StarRocksStreamLoadHandler(FileFormatHandler):
                 if self.has_header:
                     next(reader, None)
                 for row in reader:
-                    if self.null_empty_strings:
-                        row = ["\\N" if (cell == "" or cell.lower() in null_markers) else cell for cell in row]
-                    yield (self.delimiter.join(row) + "\n").encode("utf-8")
+                    line = _stream_load_row(
+                        row,
+                        null_empty=self.null_empty_strings,
+                        delimiter=self.delimiter,
+                    )
+                    yield (line + "\n").encode("utf-8")
 
         max_attempts = 3
         last_err: Exception | None = None

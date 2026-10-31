@@ -106,3 +106,50 @@ def test_regeneration_by_another_rewrite_keeps_lowercase_units(monkeypatch):
     discovered = questdb_rewrites._modules()
     monkeypatch.setattr(questdb_rewrites, "_modules", lambda: (Marker, *discovered))
     assert rewrite_query("SELECT DATE_TRUNC('day', ts) FROM t") == "SELECT DATE_TRUNC('day', ts) FROM t WHERE 1 = 1"
+
+
+@pytest.mark.parametrize(
+    ("part", "function"),
+    [
+        ("YEAR", "year"),
+        ("MONTH", "month"),
+        ("DAY", "day"),
+        ("HOUR", "hour"),
+        ("MINUTE", "minute"),
+        ("SECOND", "second"),
+        ("WEEK", "week_of_year"),
+        ("ISODOW", "day_of_week"),
+    ],
+)
+def test_extract_part_becomes_function(part, function):
+    assert rewrite_query(f"SELECT EXTRACT({part} FROM ts) FROM t") == f"SELECT {function.upper()}(ts) FROM t"
+
+
+def test_extract_inside_case_is_rewritten():
+    sql = "SELECT a FROM t ORDER BY CASE WHEN EXTRACT(HOUR FROM ts) IS NULL THEN 1 ELSE 0 END, EXTRACT(HOUR FROM ts)"
+    assert rewrite_query(sql) == "SELECT a FROM t ORDER BY CASE WHEN HOUR(ts) IS NULL THEN 1 ELSE 0 END, HOUR(ts)"
+
+
+def test_extract_dow_is_zero_based_from_sunday():
+    assert rewrite_query("SELECT EXTRACT(DOW FROM ts) FROM t") == "SELECT (DAY_OF_WEEK_SUNDAY_FIRST(ts) - 1) FROM t"
+
+
+def test_extract_without_a_function_equivalent_is_left_alone():
+    sql = "SELECT EXTRACT(QUARTER FROM ts) FROM t"
+    assert rewrite_query(sql) == sql
+
+
+def test_group_by_alias_of_an_extract_is_expanded_to_the_expression():
+    sql = (
+        "SELECT EXTRACT(YEAR FROM ts) AS year, COUNT(*) AS n FROM t GROUP BY year "
+        "ORDER BY CASE WHEN EXTRACT(YEAR FROM ts) IS NULL THEN 1 ELSE 0 END, EXTRACT(YEAR FROM ts)"
+    )
+    assert rewrite_query(sql) == (
+        "SELECT YEAR(ts) AS year, COUNT(*) AS n FROM t GROUP BY YEAR(ts) "
+        "ORDER BY CASE WHEN YEAR(ts) IS NULL THEN 1 ELSE 0 END, YEAR(ts)"
+    )
+
+
+def test_group_by_alias_of_a_plain_column_is_kept():
+    sql = "SELECT EXTRACT(YEAR FROM ts) AS y, a AS k, COUNT(*) FROM t GROUP BY k"
+    assert rewrite_query(sql) == "SELECT YEAR(ts) AS y, a AS k, COUNT(*) FROM t GROUP BY k"

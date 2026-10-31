@@ -974,3 +974,40 @@ def test_expand_multi_statement_queries_falls_back_for_an_unknown_split_dialect(
     from benchbox.utils.dialect_utils import expand_multi_statement_queries
 
     assert list(expand_multi_statement_queries({"1": "SELECT 1; SELECT 2"}, "no-such-dialect")) == ["1a", "1b"]
+
+
+_ROLLUP_RANK_QUERY = (
+    "select sum(a) as total, g, h, grouping(g) + grouping(h) as lochierarchy, "
+    "rank() over (partition by grouping(g) + grouping(h), case when grouping(h) = 0 then g end "
+    "order by sum(a) desc) as rank_within_parent "
+    "from x group by rollup(g, h) "
+    "order by lochierarchy desc, case when lochierarchy = 0 then g end, rank_within_parent limit 100"
+)
+
+
+def _order_by_clause(sql: str) -> str:
+    return sql.split("GROUP BY", 1)[1].split("ORDER BY", 1)[1]
+
+
+def test_starrocks_order_by_references_projection_aliases_for_grouping_and_window_expressions():
+    translated = translate_sql_query(_ROLLUP_RANK_QUERY, "starrocks", source_dialect="netezza")
+
+    order_by = _order_by_clause(translated)
+    assert "GROUPING(" not in order_by
+    assert "RANK()" not in order_by
+    assert "`lochierarchy`" in order_by
+    assert "`rank_within_parent`" in order_by
+
+
+def test_starrocks_order_by_alias_pass_leaves_other_queries_unchanged():
+    query = "select g, sum(a) as total from x group by g order by total desc, g"
+
+    translated = translate_sql_query(query, "starrocks", source_dialect="netezza")
+
+    assert "SUM(`a`)" in _order_by_clause(translated)
+
+
+def test_other_dialects_keep_grouping_expressions_in_order_by():
+    translated = translate_sql_query(_ROLLUP_RANK_QUERY, "doris", source_dialect="netezza")
+
+    assert "GROUPING(" in _order_by_clause(translated)
