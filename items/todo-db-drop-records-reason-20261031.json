@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "drop accepts a reason that is stored on the item in the same state commit as the status change",
+    "show_item and list rows for dropped items show the reason",
+    "The todo skill and get_instructions describe the reason field"
+  ],
+  "context": "Found while dropping superseded items during the site-split follow-ups batch on 2026-10-30.",
+  "description": "The drop tool takes only the item id (and generation for a live claim), so the reason for a drop has to go in a separate update_item context_append first. That is two state commits per drop, the reason can be lost if the second write fails or is skipped, and nothing requires a reason at all. On 2026-10-30 four core items were dropped this way.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-31T14:57:24Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0754ebe1498843cd94ad32a3f8e51af8",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
+    }
+  ]
+}

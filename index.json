@@ -27385,6 +27385,13 @@
       "status": "done",
       "title": "G5: cut over to the DB-backed TODO tracker (freeze & delete legacy)"
     },
+    "todo-db-drop-records-reason-20261031": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Let todo-db drop record why the item was dropped in the same write"
+    },
     "todo-db-expect-store-substring-matches-sibling-repo-20261030": {
       "claim": null,
       "needs": [],
