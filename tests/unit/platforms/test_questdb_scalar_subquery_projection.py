@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from benchbox.platforms.questdb_rewrites import rewrite_with_modules
+from benchbox.platforms.questdb_rewrites import rewrite_query as rewrite_pipeline, rewrite_with_modules
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -93,3 +93,11 @@ def test_subquery_whose_projection_holds_a_nested_aggregate_subquery_is_not_a_si
 def test_outer_reference_through_the_base_name_of_an_aliased_inner_table_is_correlated():
     sql = "SELECT (SELECT MAX(t.b) FROM t AS t2 WHERE t2.k = t.k) AS m FROM t"
     assert rewrite_query(sql) == sql
+
+
+def test_full_pipeline_moves_the_subquery_of_a_grouped_select():
+    sql = "SELECT k, COUNT(*) AS m, (SELECT COUNT(*) FROM t) AS c FROM u GROUP BY k"
+    assert rewrite_pipeline(sql) == (
+        "SELECT k, COUNT(*) AS m, _qs1._qs1_v AS c FROM u CROSS JOIN (SELECT COUNT(*) AS _qs1_v FROM t) AS _qs1 "
+        "GROUP BY k"
+    )
