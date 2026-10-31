@@ -1,11 +1,12 @@
 {
   "acceptance": [
-    "Identify how file tools choose their root when an agent's shell cwd is a worktree, and make delegated work resolve paths against the worktree, or refuse writes outside it.",
-    "A guard detects primary-clone modifications during agent work (for example a check run by agent tooling or pr-preflight that the primary clone is unchanged) and stops with a clear message instead of letting an agent revert files.",
-    "Agent guidance says to use absolute worktree paths and linked worktrees for other repositories, never standalone clones."
+    "docs/agent guidance (the worktree section linked from AGENTS.md) states: delegated agents use absolute paths under their worktree; other repositories use a linked worktree from the owner's clone, never a standalone clone; never revert files in the primary clone with git checkout or restore, report instead.",
+    "make agent-write-preflight records the primary clone's tracked-change state when run in a worktree, and a check run by make pr-preflight reports any tracked file changed in the primary clone since that snapshot, with a message naming the files and saying not to revert them.",
+    "Tests cover the snapshot and the report, including a primary clone that was already dirty before the snapshot (not reported) and a newly changed file (reported).",
+    "AGENTS.md changes, if any, stay within its compactness rule."
   ],
-  "context": "Related to primary-clone-dirty-from-concurrent-session-20261020, which tracks an unknown writer; this item gives one concrete cause.",
-  "description": "In one batch, delegated agents working from linked worktrees wrote to the primary clone twice: one edited a source file there, and another's file tool resolved relative paths against the primary clone and modified 17 docs files before reverting them with git checkout (which would also discard any uncommitted owner edits). A related slip cloned benchbox-site to a standalone directory instead of adding a linked worktree. make agent-write-preflight passes in the worktree but nothing stops writes that land in the primary clone, and git checkout reverts there are destructive.",
+  "context": "Related to primary-clone-dirty-from-concurrent-session-20261020 (unknown writer); this item gives one concrete cause.\n\nGuardrails: the check must report, never modify or revert the primary clone. It must not block on pre-existing dirt that belongs to someone else. Keep it cheap (git status on tracked files only).\n\nVerification rubric: (1) a regression test or reproduction fails before and passes after; (2) focused suites pass via uv run -- python -m pytest -n 0; (3) make comment-policy-check and ruff on touched files pass; (4) the runtime smoke named in acceptance is recorded in the PR body; (5) the PR merges with green CI and a passing oracle review.",
+  "description": "In one batch, delegated agents working from linked worktrees wrote to the primary clone twice: one edited a source file there, and another's file tool resolved relative paths against the primary clone and modified 17 docs files before reverting them with git checkout, which would also discard uncommitted owner edits. A related slip cloned benchbox-site to a standalone directory instead of adding a linked worktree. How the agent harness resolves relative paths is outside this repository; the repository can tell agents the rule and detect the damage.",
   "links": [
     "scripts/agent_write_preflight.sh",
     "make/worktrees.mk",
@@ -18,6 +19,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "1a0f5a4f5cfb4b6aae2eb05f254b7abb",
+      "session_id": "57a74c8663c14523aa3e61ff1ddd4677"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0592050035774073ac1f90d3",
+      "at": "2026-10-31T15:22:58Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b1947d46356a482ab939e8fd01f65719",
       "session_id": "57a74c8663c14523aa3e61ff1ddd4677"
     }
   ]
