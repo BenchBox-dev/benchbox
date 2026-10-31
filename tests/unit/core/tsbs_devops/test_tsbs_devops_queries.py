@@ -306,3 +306,69 @@ class TestQuerySQLValidity:
             if query_def["category"] in join_categories:
                 query = manager.get_query(query_id)
                 assert "JOIN" in query.upper()
+
+
+class TestResourceUtilizationJoinBounds:
+    @pytest.fixture
+    def sqlite_connection(self):
+        import sqlite3
+
+        connection = sqlite3.connect(":memory:")
+        connection.execute("CREATE TABLE cpu (time TEXT, hostname TEXT, usage_user REAL, usage_system REAL)")
+        connection.execute("CREATE TABLE mem (time TEXT, hostname TEXT, used_percent REAL)")
+        connection.execute("CREATE INDEX idx_mem_host_time ON mem (hostname, time)")
+        connection.execute("CREATE INDEX idx_cpu_host_time ON cpu (hostname, time)")
+        for minute in range(180):
+            stamp = f"2024-01-01 {minute // 60:02d}:{minute % 60:02d}:00"
+            connection.execute("INSERT INTO cpu VALUES (?, 'host_0', 10.0, 5.0)", (stamp,))
+            connection.execute("INSERT INTO mem VALUES (?, 'host_0', 40.0)", (stamp,))
+        return connection
+
+    @pytest.fixture
+    def rendered_sqlite(self):
+        from benchbox.core.tsbs_devops.benchmark import TSBSDevOpsBenchmark
+
+        benchmark = TSBSDevOpsBenchmark(scale_factor=0.01)
+        return benchmark.get_query(
+            "resource-utilization",
+            params={"start_time": "2024-01-01 01:00:00", "end_time": "2024-01-01 02:00:00"},
+            dialect="sqlite",
+        )
+
+    def test_memory_side_is_bounded_to_the_query_window(self):
+        manager = TSBSDevOpsQueryManager(num_hosts=1, start_time=datetime(2024, 1, 1), duration_days=1, seed=1)
+        sql = manager.get_query(
+            "resource-utilization", {"start_time": "2024-01-01 01:00:00", "end_time": "2024-01-01 02:00:00"}
+        )
+        assert "m.time >= '2024-01-01 01:00:00'" in sql
+        assert "m.time < '2024-01-01 02:00:00'" in sql
+
+    def test_memory_bounds_cover_whole_minutes_of_a_partial_minute_window(self):
+        manager = TSBSDevOpsQueryManager(num_hosts=1, start_time=datetime(2024, 1, 1), duration_days=1, seed=1)
+        sql = manager.get_query(
+            "resource-utilization", {"start_time": "2024-01-01 01:00:30", "end_time": "2024-01-01 02:00:30"}
+        )
+        assert "m.time >= '2024-01-01 01:00:00'" in sql
+        assert "m.time < '2024-01-01 02:01:00'" in sql
+
+    def test_partial_minute_window_keeps_same_minute_pairs(self, sqlite_connection):
+        from benchbox.core.tsbs_devops.benchmark import TSBSDevOpsBenchmark
+
+        sqlite_connection.execute("DELETE FROM cpu")
+        sqlite_connection.execute("DELETE FROM mem")
+        sqlite_connection.execute("INSERT INTO cpu VALUES ('2024-01-01 01:00:45', 'host_0', 10.0, 5.0)")
+        sqlite_connection.execute("INSERT INTO mem VALUES ('2024-01-01 01:00:10', 'host_0', 70.0)")
+        sql = TSBSDevOpsBenchmark(scale_factor=0.01).get_query(
+            "resource-utilization",
+            params={"start_time": "2024-01-01 01:00:30", "end_time": "2024-01-01 02:00:30"},
+            dialect="sqlite",
+        )
+        assert sqlite_connection.execute(sql).fetchall() == [("host_0", 15.0, 70.0)]
+
+    def test_sqlite_plan_searches_memory_by_host_and_time_range(self, sqlite_connection, rendered_sqlite):
+        plan = " ".join(row[3] for row in sqlite_connection.execute("EXPLAIN QUERY PLAN " + rendered_sqlite))
+        assert "SEARCH m USING INDEX idx_mem_host_time (hostname=? AND time>? AND time<?)" in plan
+
+    def test_window_bound_keeps_the_joined_rows(self, sqlite_connection, rendered_sqlite):
+        rows = sqlite_connection.execute(rendered_sqlite).fetchall()
+        assert rows == [("host_0", 15.0, 40.0)]
