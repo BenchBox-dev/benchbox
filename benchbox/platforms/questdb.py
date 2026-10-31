@@ -7,6 +7,7 @@ from __future__ import annotations
 import csv
 import re
 import socket
+from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -503,7 +504,10 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
             total_rows = 0
             for data_file in data_files:
                 try:
-                    dialect = resolve_csv_dialect(data_source, table_name_lower, data_file, benchmark)
+                    dialect = replace(
+                        resolve_csv_dialect(data_source, table_name_lower, data_file, benchmark),
+                        normalize_booleans=False,
+                    )
                     if method == "ilp":
                         rows = self._load_table_via_ilp(table_name_lower, data_file, dialect)
                         source = "ILP"

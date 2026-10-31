@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed QuestDB loading every BOOLEAN value as false: the shared boolean normalization rewrote True/False to 1/0, which QuestDB's CSV import reads as false, so TPC-DI flag columns such as IsCurrent were all false and the validation and analytics queries filtering on them returned no rows. QuestDB now receives the original True/False literals."
+    }
+  ]
+}
