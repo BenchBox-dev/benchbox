@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed SQLite TPC-H family runs spending minutes on supplier revenue subqueries: the TPC-H helper indexes now include a lineitem index on supplier and ship date, which takes TPC-Havoc query 15 variant 1 at scale factor 0.1 from about 60 seconds to under 0.1 second."
+    }
+  ]
+}

@@ -82,6 +82,8 @@ _TPCH_HELPER_INDEXES: tuple[str, ...] = (
     "ON lineitem (l_partkey, l_suppkey, l_shipdate, l_quantity)",
     "CREATE INDEX IF NOT EXISTS idx_bb_tpch_partsupp_part_supp_cost "
     "ON partsupp (ps_partkey, ps_suppkey, ps_supplycost)",
+    "CREATE INDEX IF NOT EXISTS idx_bb_tpch_lineitem_supp_ship_revenue "
+    "ON lineitem (l_suppkey, l_shipdate, l_extendedprice, l_discount)",
 )
 
 _JOINORDER_TABLES: frozenset[str] = frozenset(
