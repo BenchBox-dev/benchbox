@@ -21,6 +21,39 @@ STARROCKS_READINESS = (
     '-e "SHOW BACKENDS\\G" | grep -q "Alive: true"',
 )
 
+CEDARDB_READINESS = (
+    "sh",
+    "-c",
+    'PGPASSWORD="$CEDAR_PASSWORD" psql -h 127.0.0.1 -p 5432 -U "$CEDAR_USER" -d "$CEDAR_DB" -tAc "SELECT 1"',
+)
+_COORDINATOR_QUERY_SCRIPT = """\
+command -v curl >/dev/null 2>&1 || exit 127
+r=$(curl -fsS -X POST -H "$USER_HEADER: benchbox" --data "SELECT 1" http://localhost:8080/v1/statement) || exit 1
+i=0
+while [ "$i" -lt 60 ]; do
+  case "$r" in *'"error"'*) echo "$r" >&2; exit 1;; esac
+  case "$r" in *'"data":[[1]]'*) exit 0;; esac
+  n=$(echo "$r" | grep -o '"nextUri":"[^"]*"' | cut -d'"' -f4)
+  [ -n "$n" ] || { echo "$r" >&2; exit 1; }
+  sleep 1
+  r=$(curl -fsS "http://localhost:8080/${n#*://*/}") || exit 1
+  i=$((i+1))
+done
+exit 1
+"""
+PRESTO_READINESS = ("sh", "-c", f"USER_HEADER=X-Presto-User\n{_COORDINATOR_QUERY_SCRIPT}")
+TRINO_READINESS = ("sh", "-c", f"USER_HEADER=X-Trino-User\n{_COORDINATOR_QUERY_SCRIPT}")
+
+_APPLICATION_READINESS: dict[str, tuple[tuple[str, ...], float]] = {
+    "starrocks": (STARROCKS_READINESS, 0.0),
+    "cedardb": (CEDARDB_READINESS, 15.0),
+    "presto": (PRESTO_READINESS, 60.0),
+    "trino": (TRINO_READINESS, 60.0),
+}
+
+_PROBE_TOOL_OPTIONAL = frozenset({"cedardb", "presto", "trino"})
+_COMMAND_NOT_FOUND_EXIT_CODES = frozenset({126, 127})
+
 DockerRunner = Callable[..., docker_assets.DockerCommandResult]
 RecordEvent = Callable[..., None]
 
@@ -61,11 +94,18 @@ def _result_message(result: docker_assets.DockerCommandResult) -> str:
 
 
 def _readiness_command(spec: docker_assets.DockerPlatformSpec, project_name: str) -> list[str] | None:
-    if spec.platform != "starrocks":
+    entry = _APPLICATION_READINESS.get(spec.platform)
+    if entry is None:
         return None
     argv = docker_assets.compose_ps_command(spec, project_name)
-    argv[-2:] = ["exec", "-T", spec.services[0], *STARROCKS_READINESS]
+    argv[-2:] = ["exec", "-T", spec.services[0], *entry[0]]
     return argv
+
+
+def _readiness_timeout_s(config: UATConfig, spec: docker_assets.DockerPlatformSpec) -> float:
+    floor = _APPLICATION_READINESS[spec.platform][1]
+    probe = config.execute.liveness_probe_timeout_s or 2.0
+    return min(config.cleanup.docker_start_timeout_s, max(probe, floor))
 
 
 def check_application_readiness(
@@ -82,18 +122,21 @@ def check_application_readiness(
     retry_window_s: float = 0.0,
     retry_interval_s: float = 0.0,
     sleep_fn: Callable[[float], None] | None = None,
+    clock: Callable[[], float] = time.monotonic,
 ) -> str | None:
     command = _readiness_command(spec, project_name)
     if command is None:
         return None
     interval = max(retry_interval_s, 1.0)
     attempts = max(1, int(retry_window_s / interval) + 1)
+    base_timeout = _readiness_timeout_s(config, spec)
+    deadline = clock() + max(retry_window_s, base_timeout)
     result = None
     for attempt in range(attempts):
         result = docker_runner(
             command,
             dry_run=config.dry_run,
-            timeout_s=min(config.cleanup.docker_start_timeout_s, config.execute.liveness_probe_timeout_s or 2.0),
+            timeout_s=max(1.0, min(base_timeout, deadline - clock())),
             cwd=docker_assets.REPO_ROOT,
             env=compose_environment(config, spec, benchmark_runs_dir),
         )
@@ -109,8 +152,24 @@ def check_application_readiness(
         )
         if result.succeeded:
             return None
-        if attempt + 1 < attempts:
+        if spec.platform in _PROBE_TOOL_OPTIONAL and result.returncode in _COMMAND_NOT_FOUND_EXIT_CODES:
+            record_event(
+                docker_events,
+                log_dir=log_dir,
+                platform=spec.platform,
+                action=action,
+                status="skipped",
+                project_name=project_name,
+                message=(
+                    f"WARNING: query readiness probe tooling is missing in the {spec.platform} container "
+                    f"(exit {result.returncode}); falling back to healthcheck and TCP readiness only"
+                ),
+            )
+            return None
+        if attempt + 1 < attempts and clock() < deadline:
             (sleep_fn or time.sleep)(interval)
+        elif clock() >= deadline:
+            break
     assert result is not None
     return f"UAT-managed Docker application readiness check failed for {spec.platform} project {project_name}: {_result_message(result)}"
 
