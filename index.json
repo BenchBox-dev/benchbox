@@ -16445,12 +16445,17 @@
       "title": "Check whether a conflict-free rebase needs a fresh full oracle review and re-arm"
     },
     "oracle-cloud-review-reachability-20261027": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-01T03:05:09Z",
+        "generation": "818c678aeb2b405a89bd5c818014de9b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c8cf2fdb5a699f4b3049c8eb"
+      },
       "needs": [
         "oracle-omp-pin-single-source-20261026"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Let make pr-open's local oracle review reach the gateway from cloud sessions through the tailnet proxy"
     },
     "oracle-cloud-review-reachability-smoke-20261030": {
