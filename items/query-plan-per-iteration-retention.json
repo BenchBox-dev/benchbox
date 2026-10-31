@@ -1,11 +1,12 @@
 {
   "acceptance": [
-    "Record a decision: keep one plan per (query, stream, test_type), or retain per-iteration plans when fingerprints differ.",
-    "If retaining, store only differing plans, keep existing consumers (loader, show-plan, compare, MCP, Explorer viewer) working, and add a test with two iterations whose plans differ.",
-    "Either way, docs state what a bundle can and cannot tell about cross-iteration plan stability."
+    "When executions sharing a (query, stream, test_type) key captured differing plan_fingerprint values, the companion entry records that (for example `fingerprint_varied: true` plus the distinct fingerprints and the iteration of each), and the stored plan stays the one from the recorded iteration.",
+    "Entries whose captures all agree, and SQL entries, are unchanged; existing loader, show-plan, compare and MCP consumers keep working, and the analyze-default CLI test still sees one entry.",
+    "Tests: two DataFrame iterations with different plans produce the variation record; identical plans do not.",
+    "Bundle schema validation (if the companion has a schema) accepts the new field; a changelog fragment describes it; a benchbox-site issue is filed for the docs and Explorer viewer if they should show it."
   ],
-  "context": "Arose from PR #3711 review. SQL capture already captures each distinct executed SQL once, so the gap matters mainly for engines whose plan can change between identical executions.",
-  "description": "The plans companion now stores one entry per (query, stream, test_type) and records the iteration and run_type it came from; reloaded results attach the plan only to that row. Per-iteration keys were tried and reverted because they broke the one-entry contract. Consequence: plans of other iterations of the same query and stream are not stored, so plan stability across iterations (for example adaptive engines or warmup vs measurement) cannot be checked from a bundle.",
+  "context": "Arose from PR #3711 review.\n\nGuardrails: do not store multiple full plans or change keys (that broke the one-entry contract before). Additive fields only.\n\nVerification rubric: (1) a regression test or reproduction fails before and passes after; (2) focused suites pass via uv run -- python -m pytest -n 0; (3) make comment-policy-check and ruff on touched files pass; (4) the runtime smoke named in acceptance is recorded in the PR body; (5) the PR merges with green CI and a passing oracle review.",
+  "description": "The plans companion stores one entry per (query, stream, test_type) and records the iteration and run_type it came from. SQL capture explains each distinct executed SQL once, so SQL iterations cannot differ. DataFrame capture runs per execution, so iterations can produce different plans, and all but one are discarded silently. Decision (made in review, conservative): keep one stored plan per key, but record when iterations disagreed, so a bundle states whether cross-iteration plan stability held instead of hiding variation.",
   "links": [
     "benchbox/core/results/schema.py",
     "benchbox/core/results/loader.py"
@@ -17,6 +18,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "0e40fc02f5154fcebc0f28bad74e163f",
+      "session_id": "57a74c8663c14523aa3e61ff1ddd4677"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0592050035774073ac1f90d3",
+      "at": "2026-10-31T15:22:53Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "cefbec0101334569b90ff7317ae5d529",
       "session_id": "57a74c8663c14523aa3e61ff1ddd4677"
     }
   ]
