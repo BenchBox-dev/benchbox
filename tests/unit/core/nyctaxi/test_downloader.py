@@ -288,20 +288,75 @@ class TestCleanCsvValue:
         assert NYCTaxiDataDownloader._clean_csv_value(float("nan"), 0) == 0
         assert NYCTaxiDataDownloader._clean_csv_value(None, 1) == 1
 
-    def test_map_row_normalizes_parquet_floats(self):
+    def test_map_frame_normalizes_parquet_floats(self):
         import tempfile
 
-        row = {
-            "VendorID": 1.0,
-            "passenger_count": 2.0,
-            "congestion_surcharge": float("nan"),
-            "fare_amount": 6.5,
-        }
+        import pandas as pd
+
+        frame = pd.DataFrame(
+            {
+                "VendorID": [1.0, 2.0],
+                "passenger_count": [2.0, float("nan")],
+                "congestion_surcharge": [float("nan"), 2.5],
+                "fare_amount": [6.5, 7.0],
+                "tpep_pickup_datetime": pd.to_datetime(["2019-01-01 08:00:00", None]),
+                "store_and_fwd_flag": ["N", None],
+            }
+        )
         with tempfile.TemporaryDirectory() as tmpdir:
             downloader = NYCTaxiDataDownloader(output_dir=tmpdir)
-            mapped = downloader._map_row_to_schema(row, 0)
-        by_col = dict(zip(["trip_id", *NYCTaxiDataDownloader._COLUMN_PROVIDER()], mapped))
-        assert by_col["vendor_id"] == 1
-        assert by_col["passenger_count"] == 2
-        assert by_col["congestion_surcharge"] == 0
-        assert by_col["fare_amount"] == 6.5
+            mapped = list(downloader._map_frame_to_rows(frame, 10))
+        names = ["trip_id", *NYCTaxiDataDownloader._COLUMN_PROVIDER()]
+        first = dict(zip(names, mapped[0]))
+        second = dict(zip(names, mapped[1]))
+        assert first["trip_id"] == 10
+        assert first["vendor_id"] == 1
+        assert isinstance(first["vendor_id"], int)
+        assert first["passenger_count"] == 2
+        assert first["congestion_surcharge"] == 0
+        assert first["fare_amount"] == 6.5
+        assert first["pickup_datetime"] == "2019-01-01 08:00:00"
+        assert first["store_and_fwd_flag"] == "N"
+        assert second["trip_id"] == 11
+        assert second["passenger_count"] == 1
+        assert second["congestion_surcharge"] == 2.5
+        assert second["pickup_datetime"] == ""
+        assert second["store_and_fwd_flag"] == "N"
+        assert first["airport_fee"] == 0
+
+    def test_parquet_ingest_maps_columns_without_row_iteration(self, tmp_path, monkeypatch):
+        import csv
+        import io
+        import shutil
+
+        import pandas as pd
+
+        from benchbox.core.nyctaxi import downloader as module
+
+        source = tmp_path / "month.parquet"
+        pd.DataFrame(
+            {
+                "VendorID": [1, 2, 1],
+                "passenger_count": [1.0, 2.0, float("nan")],
+                "fare_amount": [5.5, 7.0, 9.25],
+                "tpep_pickup_datetime": pd.to_datetime(["2019-01-01 08:00:00"] * 3),
+            }
+        ).to_parquet(source)
+        monkeypatch.setattr(module, "download_to_file", lambda _url, path, **_kw: shutil.copyfile(source, path))
+
+        def forbidden(self):
+            raise AssertionError("rows must be mapped column-wise")
+
+        monkeypatch.setattr(pd.DataFrame, "iterrows", forbidden)
+        downloader = NYCTaxiDataDownloader(months=[1], output_dir=tmp_path, scale_factor=10.0)
+        buffer = io.StringIO()
+        written = downloader._process_parquet_file(downloader.source_contract()["urls"][0], csv.writer(buffer), 0)
+
+        rows = list(csv.reader(io.StringIO(buffer.getvalue())))
+        names = ["trip_id", *NYCTaxiDataDownloader._COLUMN_PROVIDER()]
+        assert written == len(rows) == 3
+        by_col = [dict(zip(names, row)) for row in rows]
+        assert [row["vendor_id"] for row in by_col] == ["1", "2", "1"]
+        assert [row["passenger_count"] for row in by_col] == ["1", "2", "1"]
+        assert [row["fare_amount"] for row in by_col] == ["5.5", "7", "9.25"]
+        assert by_col[0]["pickup_datetime"] == "2019-01-01 08:00:00"
