@@ -8837,7 +8837,7 @@
         "site-split-54-publication-github-cleanup"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "dropped",
       "title": "Superseded by site-split-40/51/54: Cut benchbox.dev over to site-deploy and retire the publication control plane"
     },
     "dlv2-70-retire-scheduled-workflows": {
