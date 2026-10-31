@@ -16795,12 +16795,17 @@
       "title": "Make the oracle-gate sweep fail only on evaluation errors, not on pull requests still waiting"
     },
     "oracle-gate-verdict-to-status-latency-20261025": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-01T21:30:25Z",
+        "generation": "b79fb1ed954840f9aea6e0d30c501d0a",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e"
+      },
       "needs": [
         "oracle-gate-from-verdict-job-20261026"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Shorten the delay between an oracle SHIP verdict and the oracle-gate status on the PR head"
     },
     "oracle-gateway-client-quota-revoke-20261026": {
