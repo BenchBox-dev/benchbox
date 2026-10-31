@@ -73,10 +73,11 @@ jobs:
           permission-statuses: write
 
       - name: Dispatch due retries
+        timeout-minutes: 8
         env:
           GH_TOKEN: ${{ github.token }}
           SURFACE_TOKEN: ${{ steps.app.outputs.token }}
-        run: uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python -m _project.scripts.oracle_reviewers.cli sweep --policy .github/oracle-reviewers.yml
+        run: uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python -m _project.scripts.oracle_reviewers.cli drive --policy .github/oracle-reviewers.yml sweep
 
   review:
     name: review
@@ -94,7 +95,6 @@ jobs:
     env:
       HAS_TAILNET: ${{ secrets.TS_OAUTH_CI_CLIENT_ID != '' && secrets.TS_OAUTH_CI_SECRET != '' }}
       HAS_APP: ${{ secrets.ORACLE_APP_ID != '' }}
-      REPO: ${{ github.repository }}
     steps:
       - name: Refuse a dispatch from any ref other than develop
         if: github.event_name == 'workflow_dispatch'
@@ -126,76 +126,46 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
 
-      - name: Plan the review
-        id: plan
+      - name: Prepare the review
+        id: prepare
+        timeout-minutes: 15
         working-directory: trusted
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
         run: >-
-          uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python -m _project.scripts.oracle_reviewers.cli plan --policy .github/oracle-reviewers.yml
-          --pr "$PR_NUMBER" --out "$RUNNER_TEMP/oracle-plan"
-
-      - name: Shadow the driver plan
-        id: shadow_plan
-        continue-on-error: true
-        working-directory: trusted
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
-        run: >-
-          uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python -m _project.scripts.oracle_reviewers.cli drive
-          --policy .github/oracle-reviewers.yml prepare --shadow
+          uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python -m _project.scripts.oracle_reviewers.cli drive --policy .github/oracle-reviewers.yml prepare
 
       - name: Check out the pull request head for reading only
-        if: steps.plan.outputs.decision == 'review'
+        if: steps.prepare.outputs.decision == 'review'
         continue-on-error: true
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
-          ref: ${{ steps.plan.outputs.head_sha }}
+          ref: ${{ steps.prepare.outputs.head_sha }}
           path: workspace
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Classify the change and select the reviewer for attempt 1
-        id: classify
-        if: steps.plan.outputs.decision == 'review'
-        continue-on-error: true
-        working-directory: trusted
-        env:
-          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
-        run: >-
-          python3 -m _project.scripts.oracle_reviewers.cli select --plan "$RUNNER_TEMP/oracle-plan/plan.json" --attempts-dir "$RUNNER_TEMP/oracle-attempts" --slot 1
-          --classification "$RUNNER_TEMP/oracle-classification/classification.json"
-
       - name: Scan the disk for secret values before the reviewer runs
-        if: steps.plan.outputs.decision == 'review'
+        if: steps.prepare.outputs.decision == 'review'
+        timeout-minutes: 10
         working-directory: trusted
         env:
           TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
           TS_OAUTH_CI_SECRET: ${{ secrets.TS_OAUTH_CI_SECRET }}
           JOB_TOKEN: ${{ github.token }}
-        run: >-
-          python3 -m _project.scripts.oracle_reviewers.cli scan-disk --root "$HOME" --root "$RUNNER_TEMP" --root "$GITHUB_WORKSPACE/trusted" --root "$GITHUB_WORKSPACE/workspace"
-          --root /tmp --root /var/tmp --root /dev/shm --root "${TMPDIR:-/tmp}"
-          --env TYPESAFE_API_KEY --env TS_OAUTH_CI_SECRET --env JOB_TOKEN
+        run: python3 -m _project.scripts.oracle_reviewers.cli drive scan
 
       - name: Install omp
-        id: omp
-        if: steps.plan.outputs.decision == 'review'
+        id: harness
+        if: steps.prepare.outputs.decision == 'review'
+        timeout-minutes: 10
         working-directory: trusted
-        run: |
-          if binary=$(uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python -m _project.scripts.oracle_reviewers.cli install-omp --policy .github/oracle-reviewers.yml) && version=$("$binary" --version); then
-            echo "$version" | tee -a "$GITHUB_STEP_SUMMARY"
-            echo "ORACLE_OMP_BINARY=$binary" >> "$GITHUB_ENV"
-            echo "state=installed" >> "$GITHUB_OUTPUT"
-          else
-            echo "::error::the pinned omp build could not be installed; no reviewer will run"
-            echo "state=failed" >> "$GITHUB_OUTPUT"
-          fi
+        run: uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python -m _project.scripts.oracle_reviewers.cli drive --policy .github/oracle-reviewers.yml harness
 
       - name: Join the tailnet to reach the credential gateway
-        if: steps.plan.outputs.decision == 'review' && env.HAS_TAILNET == 'true'
+        if: steps.prepare.outputs.decision == 'review' && env.HAS_TAILNET == 'true'
         continue-on-error: true
         uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd
         with:
@@ -204,189 +174,126 @@ jobs:
           tags: tag:oracle-ci
 
       - name: Scan the disk for secret values after the tailnet join
-        if: steps.plan.outputs.decision == 'review'
+        if: steps.prepare.outputs.decision == 'review'
+        timeout-minutes: 10
         working-directory: trusted
         env:
           TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
           TS_OAUTH_CI_SECRET: ${{ secrets.TS_OAUTH_CI_SECRET }}
           JOB_TOKEN: ${{ github.token }}
-        run: >-
-          python3 -m _project.scripts.oracle_reviewers.cli scan-disk --root "$HOME" --root "$RUNNER_TEMP" --root "$GITHUB_WORKSPACE/trusted" --root "$GITHUB_WORKSPACE/workspace"
-          --root /tmp --root /var/tmp --root /dev/shm --root "${TMPDIR:-/tmp}"
-          --env TYPESAFE_API_KEY --env TS_OAUTH_CI_SECRET --env JOB_TOKEN
+        run: python3 -m _project.scripts.oracle_reviewers.cli drive scan
 
       - name: Verify Linux process isolation
-        if: steps.plan.outputs.decision == 'review'
+        if: steps.prepare.outputs.decision == 'review'
+        timeout-minutes: 5
         working-directory: trusted
-        run: python3 -m _project.scripts.oracle_reviewers.isolation
+        run: python3 -m _project.scripts.oracle_reviewers.cli drive isolation
 
       - name: Run the attempt loop
-        if: steps.plan.outputs.decision == 'review' && steps.omp.outputs.state == 'installed'
+        if: steps.prepare.outputs.decision == 'review' && steps.harness.outputs.state == 'installed'
+        timeout-minutes: 225
         working-directory: trusted
         env:
           OMP_GATEWAY_TOKEN: ${{ secrets.ORACLE_GATEWAY_TOKEN }}
           ORACLE_GATEWAY_URL: ${{ secrets.ORACLE_GATEWAY_URL }}
-        run: >-
-          python3 -m _project.scripts.oracle_reviewers.cli attempts --plan "$RUNNER_TEMP/oracle-plan/plan.json" --attempts-dir "$RUNNER_TEMP/oracle-attempts"
-          --classification "$RUNNER_TEMP/oracle-classification/classification.json"
-          --workspace "$GITHUB_WORKSPACE/workspace" --home-root "$RUNNER_TEMP"
+        run: python3 -m _project.scripts.oracle_reviewers.cli drive attempts
 
       - name: Classify the invalid attempt after attempt 1
-        if: steps.plan.outputs.decision == 'review' && steps.omp.outputs.state == 'installed'
+        if: steps.prepare.outputs.decision == 'review' && steps.harness.outputs.state == 'installed'
+        timeout-minutes: 10
         working-directory: trusted
         env:
           TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
-        run: >-
-          python3 -m _project.scripts.oracle_reviewers.cli recover --plan "$RUNNER_TEMP/oracle-plan/plan.json" --attempts-dir "$RUNNER_TEMP/oracle-attempts"
-          --workspace "$GITHUB_WORKSPACE/workspace"
+        run: python3 -m _project.scripts.oracle_reviewers.cli drive recover
 
       - name: Resume the attempt loop after attempt 1
-        if: steps.plan.outputs.decision == 'review' && steps.omp.outputs.state == 'installed'
+        if: steps.prepare.outputs.decision == 'review' && steps.harness.outputs.state == 'installed'
+        timeout-minutes: 225
         working-directory: trusted
         env:
           OMP_GATEWAY_TOKEN: ${{ secrets.ORACLE_GATEWAY_TOKEN }}
           ORACLE_GATEWAY_URL: ${{ secrets.ORACLE_GATEWAY_URL }}
-        run: >-
-          python3 -m _project.scripts.oracle_reviewers.cli attempts --plan "$RUNNER_TEMP/oracle-plan/plan.json" --attempts-dir "$RUNNER_TEMP/oracle-attempts"
-          --classification "$RUNNER_TEMP/oracle-classification/classification.json"
-          --workspace "$GITHUB_WORKSPACE/workspace" --home-root "$RUNNER_TEMP"
+        run: python3 -m _project.scripts.oracle_reviewers.cli drive attempts
 
       - name: Classify the invalid attempt after attempt 2
-        if: steps.plan.outputs.decision == 'review' && steps.omp.outputs.state == 'installed'
+        if: steps.prepare.outputs.decision == 'review' && steps.harness.outputs.state == 'installed'
+        timeout-minutes: 10
         working-directory: trusted
         env:
           TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
-        run: >-
-          python3 -m _project.scripts.oracle_reviewers.cli recover --plan "$RUNNER_TEMP/oracle-plan/plan.json" --attempts-dir "$RUNNER_TEMP/oracle-attempts"
-          --workspace "$GITHUB_WORKSPACE/workspace"
+        run: python3 -m _project.scripts.oracle_reviewers.cli drive recover
 
       - name: Resume the attempt loop after attempt 2
-        if: steps.plan.outputs.decision == 'review' && steps.omp.outputs.state == 'installed'
+        if: steps.prepare.outputs.decision == 'review' && steps.harness.outputs.state == 'installed'
+        timeout-minutes: 225
         working-directory: trusted
         env:
           OMP_GATEWAY_TOKEN: ${{ secrets.ORACLE_GATEWAY_TOKEN }}
           ORACLE_GATEWAY_URL: ${{ secrets.ORACLE_GATEWAY_URL }}
-        run: >-
-          python3 -m _project.scripts.oracle_reviewers.cli attempts --plan "$RUNNER_TEMP/oracle-plan/plan.json" --attempts-dir "$RUNNER_TEMP/oracle-attempts"
-          --classification "$RUNNER_TEMP/oracle-classification/classification.json"
-          --workspace "$GITHUB_WORKSPACE/workspace" --home-root "$RUNNER_TEMP"
+        run: python3 -m _project.scripts.oracle_reviewers.cli drive attempts
 
       - name: Classify the invalid attempt after attempt 3
-        if: steps.plan.outputs.decision == 'review' && steps.omp.outputs.state == 'installed'
+        if: steps.prepare.outputs.decision == 'review' && steps.harness.outputs.state == 'installed'
+        timeout-minutes: 10
         working-directory: trusted
         env:
           TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
-        run: >-
-          python3 -m _project.scripts.oracle_reviewers.cli recover --plan "$RUNNER_TEMP/oracle-plan/plan.json" --attempts-dir "$RUNNER_TEMP/oracle-attempts"
-          --workspace "$GITHUB_WORKSPACE/workspace"
+        run: python3 -m _project.scripts.oracle_reviewers.cli drive recover
 
       - name: Resume the attempt loop after attempt 3
-        if: steps.plan.outputs.decision == 'review' && steps.omp.outputs.state == 'installed'
+        if: steps.prepare.outputs.decision == 'review' && steps.harness.outputs.state == 'installed'
+        timeout-minutes: 225
         working-directory: trusted
         env:
           OMP_GATEWAY_TOKEN: ${{ secrets.ORACLE_GATEWAY_TOKEN }}
           ORACLE_GATEWAY_URL: ${{ secrets.ORACLE_GATEWAY_URL }}
-        run: >-
-          python3 -m _project.scripts.oracle_reviewers.cli attempts --plan "$RUNNER_TEMP/oracle-plan/plan.json" --attempts-dir "$RUNNER_TEMP/oracle-attempts"
-          --classification "$RUNNER_TEMP/oracle-classification/classification.json"
-          --workspace "$GITHUB_WORKSPACE/workspace" --home-root "$RUNNER_TEMP"
+        run: python3 -m _project.scripts.oracle_reviewers.cli drive attempts
 
       - name: Classify the invalid attempt after attempt 4
-        if: steps.plan.outputs.decision == 'review' && steps.omp.outputs.state == 'installed'
+        if: steps.prepare.outputs.decision == 'review' && steps.harness.outputs.state == 'installed'
+        timeout-minutes: 10
         working-directory: trusted
         env:
           TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
-        run: >-
-          python3 -m _project.scripts.oracle_reviewers.cli recover --plan "$RUNNER_TEMP/oracle-plan/plan.json" --attempts-dir "$RUNNER_TEMP/oracle-attempts"
-          --workspace "$GITHUB_WORKSPACE/workspace"
+        run: python3 -m _project.scripts.oracle_reviewers.cli drive recover
 
       - name: Resume the attempt loop after attempt 4
-        if: steps.plan.outputs.decision == 'review' && steps.omp.outputs.state == 'installed'
+        if: steps.prepare.outputs.decision == 'review' && steps.harness.outputs.state == 'installed'
+        timeout-minutes: 225
         working-directory: trusted
         env:
           OMP_GATEWAY_TOKEN: ${{ secrets.ORACLE_GATEWAY_TOKEN }}
           ORACLE_GATEWAY_URL: ${{ secrets.ORACLE_GATEWAY_URL }}
-        run: >-
-          python3 -m _project.scripts.oracle_reviewers.cli attempts --plan "$RUNNER_TEMP/oracle-plan/plan.json" --attempts-dir "$RUNNER_TEMP/oracle-attempts"
-          --classification "$RUNNER_TEMP/oracle-classification/classification.json"
-          --workspace "$GITHUB_WORKSPACE/workspace" --home-root "$RUNNER_TEMP"
-
-      - name: Count the attempts
-        id: count
-        if: always() && steps.plan.outputs.decision == 'review'
-        working-directory: trusted
-        run: >-
-          python3 -m _project.scripts.oracle_reviewers.cli count-attempts --attempts-dir "$RUNNER_TEMP/oracle-attempts"
+        run: python3 -m _project.scripts.oracle_reviewers.cli drive attempts
 
       - name: Scan the disk for secret values after the reviewer exits
-        if: steps.plan.outputs.decision == 'review'
+        if: steps.prepare.outputs.decision == 'review'
+        timeout-minutes: 10
         working-directory: trusted
         env:
           TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
           TS_OAUTH_CI_SECRET: ${{ secrets.TS_OAUTH_CI_SECRET }}
           JOB_TOKEN: ${{ github.token }}
-        run: >-
-          python3 -m _project.scripts.oracle_reviewers.cli scan-disk --root "$HOME" --root "$RUNNER_TEMP" --root "$GITHUB_WORKSPACE/trusted" --root "$GITHUB_WORKSPACE/workspace"
-          --root /tmp --root /var/tmp --root /dev/shm --root "${TMPDIR:-/tmp}"
-          --env TYPESAFE_API_KEY --env TS_OAUTH_CI_SECRET --env JOB_TOKEN
+        run: python3 -m _project.scripts.oracle_reviewers.cli drive scan
 
-      - name: Validate this run's attempts and decide
+      - name: Decide the verdict and redact every secret value from the results
         id: finalize
-        if: steps.plan.outputs.post == 'true'
+        if: steps.prepare.outputs.post == 'true'
+        timeout-minutes: 15
         working-directory: trusted
         env:
-          OMP_INSTALL_STATE: ${{ steps.omp.outputs.state }}
+          OMP_INSTALL_STATE: ${{ steps.harness.outputs.state }}
           OMP_GATEWAY_TOKEN: ${{ secrets.ORACLE_GATEWAY_TOKEN }}
           TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
           ORACLE_GATEWAY_URL: ${{ secrets.ORACLE_GATEWAY_URL }}
           TS_OAUTH_CI_CLIENT_ID: ${{ secrets.TS_OAUTH_CI_CLIENT_ID }}
           TS_OAUTH_CI_SECRET: ${{ secrets.TS_OAUTH_CI_SECRET }}
           JOB_TOKEN: ${{ github.token }}
-        run: >-
-          python3 -m _project.scripts.oracle_reviewers.cli finalize --plan "$RUNNER_TEMP/oracle-plan/plan.json" --attempts-dir "$RUNNER_TEMP/oracle-attempts"
-          --out-dir "$RUNNER_TEMP/oracle-final" --classification "$RUNNER_TEMP/oracle-classification/classification.json"
-          --workspace "$GITHUB_WORKSPACE/workspace" --omp-install "${OMP_INSTALL_STATE:-installed}" --env JOB_TOKEN
-
-      - name: Redact every secret value held by the job from the results
-        id: redact
-        if: steps.plan.outputs.post == 'true'
-        working-directory: trusted
-        env:
-          OMP_GATEWAY_TOKEN: ${{ secrets.ORACLE_GATEWAY_TOKEN }}
-          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
-          ORACLE_GATEWAY_URL: ${{ secrets.ORACLE_GATEWAY_URL }}
-          TS_OAUTH_CI_CLIENT_ID: ${{ secrets.TS_OAUTH_CI_CLIENT_ID }}
-          TS_OAUTH_CI_SECRET: ${{ secrets.TS_OAUTH_CI_SECRET }}
-          JOB_TOKEN: ${{ github.token }}
-        run: >-
-          python3 -m _project.scripts.oracle_reviewers.cli redact-check --path "$RUNNER_TEMP/oracle-attempts" --path "$RUNNER_TEMP/oracle-final"
-          --env JOB_TOKEN --summary-file "$RUNNER_TEMP/oracle-attempts/summary.json" --summary-file "$RUNNER_TEMP/oracle-final/summary.json"
-
-      - name: Shadow the driver finalize
-        id: shadow_finalize
-        if: steps.plan.outputs.post == 'true' && steps.shadow_plan.outcome == 'success'
-        continue-on-error: true
-        working-directory: trusted
-        env:
-          OMP_INSTALL_STATE: ${{ steps.omp.outputs.state }}
-          OMP_GATEWAY_TOKEN: ${{ secrets.ORACLE_GATEWAY_TOKEN }}
-          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
-          ORACLE_GATEWAY_URL: ${{ secrets.ORACLE_GATEWAY_URL }}
-          TS_OAUTH_CI_CLIENT_ID: ${{ secrets.TS_OAUTH_CI_CLIENT_ID }}
-          TS_OAUTH_CI_SECRET: ${{ secrets.TS_OAUTH_CI_SECRET }}
-          JOB_TOKEN: ${{ github.token }}
-        run: python3 -m _project.scripts.oracle_reviewers.cli drive finalize --shadow
-
-      - name: Log the result when the App is not configured
-        if: steps.plan.outputs.post == 'true' && env.HAS_APP != 'true'
-        env:
-          RESULT_STATE: ${{ steps.finalize.outputs.state }}
-          HEAD_SHA: ${{ steps.plan.outputs.head_sha }}
-        run: echo "::notice::oracle-verdict is not posted because the App secrets are not set; result $RESULT_STATE for $HEAD_SHA"
+        run: python3 -m _project.scripts.oracle_reviewers.cli drive finalize
 
       - name: Mint the App token
         id: app
-        if: steps.plan.outputs.post == 'true' && env.HAS_APP == 'true'
+        if: steps.prepare.outputs.post == 'true' && env.HAS_APP == 'true'
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
         with:
           app-id: ${{ secrets.ORACLE_APP_ID }}
@@ -394,60 +301,38 @@ jobs:
           permission-statuses: write
           permission-pull-requests: write
 
-      - name: Skip a result this head already has
-        id: guard
-        if: steps.plan.outputs.post == 'true' && env.HAS_APP == 'true'
+      - name: Post the result
+        id: publish
+        if: steps.prepare.outputs.post == 'true'
+        timeout-minutes: 10
         working-directory: trusted
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
-        run: python3 -m _project.scripts.oracle_reviewers.cli guard --plan "$RUNNER_TEMP/oracle-plan/plan.json"
+          JOB_TOKEN: ${{ github.token }}
+        run: python3 -m _project.scripts.oracle_reviewers.cli drive publish
 
       - name: Record the retry attempt
-        if: always() && steps.redact.outcome == 'success' && steps.finalize.outputs.has_state == 'true' && steps.guard.outputs.skip != 'true'
+        if: always() && steps.finalize.outcome == 'success' && steps.finalize.outputs.has_state == 'true' && steps.publish.outputs.skip != 'true'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           overwrite: true
-          name: oracle-verdict-state-attempt-${{ steps.plan.outputs.pr }}
+          name: oracle-verdict-state-attempt-${{ steps.prepare.outputs.pr }}
           path: ${{ runner.temp }}/oracle-final/attempt/state.json
           if-no-files-found: ignore
           retention-days: 7
 
-      - name: Post the commit status
-        id: status
-        if: steps.plan.outputs.post == 'true' && env.HAS_APP == 'true' && steps.guard.outputs.skip != 'true'
-        env:
-          GH_TOKEN: ${{ steps.app.outputs.token }}
-          HEAD_SHA: ${{ steps.plan.outputs.head_sha }}
-        run: gh api --method POST "repos/$REPO/statuses/$HEAD_SHA" --input "$RUNNER_TEMP/oracle-final/status.json"
-
-      - name: Post the findings comment
-        id: comment
-        if: steps.plan.outputs.post == 'true' && env.HAS_APP == 'true' && steps.guard.outputs.skip != 'true' && steps.finalize.outputs.comment == 'true'
-        env:
-          GH_TOKEN: ${{ steps.app.outputs.token }}
-          PR_NUMBER: ${{ steps.plan.outputs.pr }}
-        run: gh api --method POST "repos/$REPO/issues/$PR_NUMBER/comments" --input "$RUNNER_TEMP/oracle-final/comment.json"
-
-      - name: Post the findings review
-        id: review
-        if: steps.plan.outputs.post == 'true' && env.HAS_APP == 'true' && steps.guard.outputs.skip != 'true' && steps.finalize.outputs.review == 'true'
-        env:
-          GH_TOKEN: ${{ steps.app.outputs.token }}
-          PR_NUMBER: ${{ steps.plan.outputs.pr }}
-        run: gh api --method POST "repos/$REPO/pulls/$PR_NUMBER/reviews" --input "$RUNNER_TEMP/oracle-final/review.json"
-
       - name: Upload the retry state
-        if: steps.status.outcome == 'success' && steps.finalize.outputs.has_state == 'true'
+        if: steps.publish.outputs.state_recorded == 'true'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           overwrite: true
-          name: oracle-verdict-state-${{ steps.plan.outputs.pr }}
+          name: oracle-verdict-state-${{ steps.prepare.outputs.pr }}
           path: ${{ runner.temp }}/oracle-final/state/state.json
           if-no-files-found: error
           retention-days: 7
 
       - name: Upload attempt 1
-        if: ${{ always() && steps.redact.outcome == 'success' && steps.count.outputs.attempts >= 1 }}
+        if: ${{ always() && steps.finalize.outcome == 'success' && steps.finalize.outputs.attempts >= 1 }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: oracle-verdict-attempt-1
@@ -456,7 +341,7 @@ jobs:
           retention-days: 7
 
       - name: Upload attempt 2
-        if: ${{ always() && steps.redact.outcome == 'success' && steps.count.outputs.attempts >= 2 }}
+        if: ${{ always() && steps.finalize.outcome == 'success' && steps.finalize.outputs.attempts >= 2 }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: oracle-verdict-attempt-2
@@ -465,7 +350,7 @@ jobs:
           retention-days: 7
 
       - name: Upload attempt 3
-        if: ${{ always() && steps.redact.outcome == 'success' && steps.count.outputs.attempts >= 3 }}
+        if: ${{ always() && steps.finalize.outcome == 'success' && steps.finalize.outputs.attempts >= 3 }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: oracle-verdict-attempt-3
@@ -474,7 +359,7 @@ jobs:
           retention-days: 7
 
       - name: Upload attempt 4
-        if: ${{ always() && steps.redact.outcome == 'success' && steps.count.outputs.attempts >= 4 }}
+        if: ${{ always() && steps.finalize.outcome == 'success' && steps.finalize.outputs.attempts >= 4 }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: oracle-verdict-attempt-4
@@ -483,7 +368,7 @@ jobs:
           retention-days: 7
 
       - name: Upload attempt 5
-        if: ${{ always() && steps.redact.outcome == 'success' && steps.count.outputs.attempts >= 5 }}
+        if: ${{ always() && steps.finalize.outcome == 'success' && steps.finalize.outputs.attempts >= 5 }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: oracle-verdict-attempt-5
@@ -492,7 +377,7 @@ jobs:
           retention-days: 7
 
       - name: Upload the captured reviewer event streams
-        if: ${{ always() && steps.redact.outcome == 'success' && steps.count.outputs.attempts >= 1 }}
+        if: ${{ always() && steps.finalize.outcome == 'success' && steps.finalize.outputs.attempts >= 1 }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: oracle-verdict-capture
@@ -501,46 +386,10 @@ jobs:
           retention-days: 30
 
       - name: Dispatch the gate for the reviewed head
-        id: dispatch
-        if: steps.plan.outputs.post == 'true' && env.HAS_APP == 'true' && steps.guard.outputs.skip != 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          READ_TOKEN: ${{ steps.app.outputs.token }}
-          PR_NUMBER: ${{ steps.plan.outputs.pr }}
-          HEAD_SHA: ${{ steps.plan.outputs.head_sha }}
-        run: |
-          base=$(GH_TOKEN="$READ_TOKEN" gh api "repos/$REPO/pulls/$PR_NUMBER" --jq .base.ref)
-          if [ "$base" = develop ]; then
-            gh workflow run oracle-gate.yml --repo "$REPO" --ref develop -f pr="$PR_NUMBER" -f head_sha="$HEAD_SHA"
-          fi
-
-      - name: Compare the driver outputs with the posted outputs
-        id: shadow_compare
-        if: >-
-          always() && steps.shadow_plan.outcome != 'skipped' &&
-          (steps.plan.outputs.post != 'true' || (steps.redact.outcome == 'success' && steps.shadow_finalize.outcome == 'success'))
-        continue-on-error: true
+        if: steps.prepare.outputs.post == 'true' && env.HAS_APP == 'true' && steps.publish.outputs.skip != 'true'
+        timeout-minutes: 5
         working-directory: trusted
         env:
-          GUARD_SKIP: ${{ steps.guard.outputs.skip }}
-          GUARD_OUTCOME: ${{ steps.guard.outcome }}
-          POSTED_STATUS: ${{ steps.status.outcome }}
-          POSTED_COMMENT: ${{ steps.comment.outcome }}
-          POSTED_REVIEW: ${{ steps.review.outcome }}
-          POSTED_GATE: ${{ steps.dispatch.outcome }}
-        run: python3 -m _project.scripts.oracle_reviewers.cli drive compare
-
-      - name: Upload the shadow comparison
-        if: >-
-          always() && steps.shadow_plan.outcome != 'skipped' &&
-          (steps.plan.outputs.post != 'true' || (steps.redact.outcome == 'success' && steps.shadow_finalize.outcome == 'success'))
-        continue-on-error: true
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
-        with:
-          overwrite: true
-          name: oracle-verdict-shadow-${{ steps.plan.outputs.pr }}
-          path: |
-            ${{ runner.temp }}/oracle-shadow/result.json
-            ${{ runner.temp }}/oracle-shadow/final/
-          if-no-files-found: ignore
-          retention-days: 30
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          JOB_TOKEN: ${{ github.token }}
+        run: python3 -m _project.scripts.oracle_reviewers.cli drive dispatch

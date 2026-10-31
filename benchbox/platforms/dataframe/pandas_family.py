@@ -23,7 +23,7 @@ from benchbox.platforms.dataframe._result_helpers import (
     build_success_result_dict,
 )
 from benchbox.platforms.dataframe.benchmark_mixin import BenchmarkExecutionMixin
-from benchbox.platforms.dataframe.shared_loading import resolve_dataframe_csv_dialect
+from benchbox.platforms.dataframe.shared_loading import declared_load_columns, resolve_dataframe_csv_dialect
 from benchbox.platforms.dataframe.tuning_mixin import TuningConfigurableMixin
 from benchbox.platforms.dataframe.unified_pandas_frame import UnifiedPandasFrame
 from benchbox.utils.clock import elapsed_seconds, mono_time
@@ -270,6 +270,9 @@ class PandasFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, ABC,
     @abstractmethod
     def read_parquet(self, path: Path) -> DF:
         pass
+
+    def read_parquet_columns(self, path: Path, columns: list[str]) -> DF:
+        return self.read_parquet(path)[columns]
 
     @abstractmethod
     def to_datetime(self, series: Any) -> Any:
@@ -528,7 +531,7 @@ class PandasFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, ABC,
         self._log_verbose(f"Loading table {table_name} from {len(file_paths)} file(s), format: {format_type}")
 
         if format_type == "parquet":
-            df = self._load_parquet_files(file_paths)
+            df = self._load_parquet_files(file_paths, declared_load_columns(benchmark, table_name))
         else:
             actual_delimiter = delimiter if delimiter is not None else ("|" if format_type == "tbl" else ",")
 
@@ -702,11 +705,16 @@ class PandasFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, ABC,
     def _detect_format(self, path: Path) -> str:
         return detect_data_format(path)
 
-    def _load_parquet_files(self, file_paths: list[Path]) -> DF:
-        if len(file_paths) == 1:
-            return self.read_parquet(file_paths[0])
+    def _read_parquet_file(self, path: Path, columns: list[str] | None) -> DF:
+        if columns is None:
+            return self.read_parquet(path)
+        return self.read_parquet_columns(path, columns)
 
-        dfs = [self.read_parquet(f) for f in file_paths]
+    def _load_parquet_files(self, file_paths: list[Path], columns: list[str] | None = None) -> DF:
+        if len(file_paths) == 1:
+            return self._read_parquet_file(file_paths[0], columns)
+
+        dfs = [self._read_parquet_file(f, columns) for f in file_paths]
         return self.concat_shards(dfs)
 
     def _load_csv_files(

@@ -542,3 +542,27 @@ def test_a_rerun_restarts_an_agent_that_predates_its_pinned_binary_even_when_not
     result = _source(pinned, body, env)
     assert result.returncode == 0, result.stderr
     assert ("bootstrap" in calls.read_text(encoding="utf-8")) == restarted
+
+
+def _check_clients(host: dict) -> subprocess.CompletedProcess[str]:
+    return run_posix_shell(
+        f"bash -c '. \"$0\"; check_clients_file' {shlex.quote(str(HOST_SCRIPT))}",
+        env=host["env"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def test_the_clients_check_accepts_each_client_with_its_own_token_hash(host: dict) -> None:
+    result = _check_clients(host)
+    assert result.returncode == 0, result.stderr
+
+
+def test_the_clients_check_refuses_a_client_whose_recorded_hash_is_not_its_token_files(host: dict) -> None:
+    host["clients"]["oracle-cloud"]["tokenSha256"] = host["clients"]["oracle-local"]["tokenSha256"]
+    (host["dir"] / "clients.json").write_text(json.dumps(host["clients"]), encoding="utf-8")
+    result = _check_clients(host)
+    assert result.returncode != 0
+    assert "oracle-cloud" in result.stderr
+    assert TOKENS["oracle-cloud"] not in result.stdout + result.stderr

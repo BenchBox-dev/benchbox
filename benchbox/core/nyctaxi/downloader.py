@@ -249,27 +249,8 @@ class _TripDataDownloader(CompressionMixin, VerbosityMixin):
             sample_size = max(1, int(len(df) * self.sample_rate))
             df = df.sample(n=sample_size, random_state=self.seed)
 
-        rows_written = 0
-        rows_skipped = 0
-        for _idx, row in df.iterrows():
-            try:
-                writer.writerow(self._map_row_to_schema(row, start_trip_id + rows_written))
-                rows_written += 1
-            except Exception:
-                rows_skipped += 1
-                continue
-
-        if rows_skipped:
-            label = self._TAXI_LABEL if self._TAXI_LABEL == "HVFHV" else f"{self._TAXI_LABEL} Taxi"
-            self.logger.debug("Skipped %d malformed rows during %s processing", rows_skipped, label)
-        return rows_written
-
-    @staticmethod
-    def _get_col(row: Any, names: tuple[str, ...], default: Any = None) -> Any:
-        for name in names:
-            if name in row and row[name] is not None:
-                return row[name]
-        return default
+        writer.writerows(self._map_frame_to_rows(df, start_trip_id))
+        return len(df)
 
     @staticmethod
     def _clean_csv_value(value: Any, default: Any) -> Any:
@@ -309,18 +290,52 @@ class _TripDataDownloader(CompressionMixin, VerbosityMixin):
         text = str(value).strip().lower()
         return "Y" if text in ("1", "1.0", "y", "yes", "true") else "N"
 
-    def _map_row_to_schema(self, row, trip_id: int) -> list:
-        columns = type(self)._COLUMN_PROVIDER()
-        mapped = [trip_id]
-        for column in columns:
-            value = self._clean_csv_value(
-                self._get_col(row, self._COLUMN_ALIASES.get(column, (column,)), self._COLUMN_DEFAULTS.get(column, 0)),
-                self._COLUMN_DEFAULTS.get(column, 0),
-            )
+    def _source_series(self, df: Any, column: str) -> Any | None:
+        present = [name for name in self._COLUMN_ALIASES.get(column, (column,)) if name in df.columns]
+        if not present:
+            return None
+        series = df[present[0]]
+        for name in present[1:]:
+            if series.dtype == object:
+                missing = np.fromiter((value is None for value in series), dtype=bool, count=len(series))
+                if missing.any():
+                    series = series.where(~missing, df[name])
+        return series
+
+    def _clean_series(self, series: Any, default: Any) -> list:
+        dtype = series.dtype
+        kind = dtype.kind
+        if kind == "M":
+            text = series.dt.strftime("%Y-%m-%d %H:%M:%S")
+            return text.where(series.notna(), default).tolist()
+        if kind == "f":
+            values = series.to_numpy(dtype="float64", na_value=np.nan)
+            missing = np.isnan(values)
+            integral = np.isfinite(values) & (values == np.floor(values))
+            cleaned = values.astype(object)
+            cleaned[integral] = values[integral].astype(np.int64).astype(object)
+            cleaned[missing] = default
+            return cleaned.tolist()
+        if isinstance(dtype, np.dtype) and kind in "iu":
+            return series.tolist()
+        if isinstance(dtype, np.dtype) and kind == "b":
+            return series.astype(np.int64).tolist()
+        return [self._clean_csv_value(value, default) for value in series.astype(object).tolist()]
+
+    def _map_frame_to_rows(self, df: Any, start_trip_id: int) -> Any:
+        count = len(df)
+        columns: list[Any] = [range(start_trip_id, start_trip_id + count)]
+        for column in type(self)._COLUMN_PROVIDER():
+            default = self._COLUMN_DEFAULTS.get(column, 0)
+            series = self._source_series(df, column)
+            if series is None:
+                values = [self._clean_csv_value(default, default)] * count
+            else:
+                values = self._clean_series(series, default)
             if column == "sr_flag":
-                value = self._normalize_sr_flag(value)
-            mapped.append(value)
-        return mapped
+                values = [self._normalize_sr_flag(value) for value in values]
+            columns.append(values)
+        return zip(*columns)
 
     def _generate_synthetic_month(self, writer: csv.writer, start_trip_id: int) -> int:
         num_trips = max(self._SYNTHETIC_MIN_TRIPS, int(self._SYNTHETIC_MONTHLY_TRIPS * self.sample_rate * 100))

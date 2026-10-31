@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "JoinOrder DataFrame queries now join the most selective tables first, apply every join predicate as a join key instead of filtering a larger intermediate afterwards, read only the columns a query uses, and on pandas fetch output-only columns after the joins. At scale 1 the Polars power phase peaks near 5 GiB instead of 9 GiB and finishes in about 2 minutes instead of 7, DataFusion peaks near 3 GiB instead of exceeding 7 GiB and the 20 minute cell limit, and pandas runs all 113 queries within 8 GiB.",
+      "platforms": ["polars-df", "datafusion-df", "pandas-df", "dask-df"],
+      "benchmarks": ["joinorder", "joinorder_synthetic"]
+    }
+  ]
+}
