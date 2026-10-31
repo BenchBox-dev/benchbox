@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Query plan trees shown by show-plan and the MCP get_query_plan tool now list each join's conditions, capped at 5 conditions of 120 characters per join."
+    }
+  ]
+}
