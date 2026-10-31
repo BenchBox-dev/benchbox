@@ -6,7 +6,7 @@
     "Unit test: every name in the UAT light set is a registered subparser; registering a fake subcommand and dispatching it acquires.",
     "Subprocess test: `python -m tests.uat._cli sweep --config <tmp> --dry-run` does not acquire; a non-dry-run heavy subcommand is refused under a held lock; `report` is not.",
     "With the real-path lock held and WAIT=0, `pytest -n 0 tests/uat/test_cli_dispatch.py` passes and never touches the held lock.",
-    "Smoke: `make ci-linux CI_LINUX_CMD='make test-correctness-gate'` is not required; instead `make ci-linux CI_LINUX_CMD=\"uv run -- python -c 'import benchbox.utils.host_lock as h; print(h.lock_path())'\"` prints a guest-local path and the host holder file is byte-identical before and after.",
+    "Smoke: `make ci-linux CI_LINUX_CMD=\"uv run -- python -c 'import benchbox.utils.host_lock as h; print(h.lock_path())'\"` prints a guest-local path, and the host holder file is byte-identical before and after.",
     "`tests/unit/test_session_isolation.py` passes with :237 and :448 never-wait assertions unchanged.",
     "G1, G2 and G3 records in the PR body; PR CI green on all required jobs.",
     "`make comment-policy-check`, `make lint`, `make typecheck`, `make test-fast` pass."
@@ -36,6 +36,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "e9f2f86d5fcd4104a696c4e2bd00c928",
+      "session_id": "5f71b48e76c54dd19a3f57d12779721e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:19f6136ffb052a6f71a9c702",
+      "at": "2026-10-31T00:33:30Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "26d9f1e3270141cf9f06f1982fff7fa2",
       "session_id": "5f71b48e76c54dd19a3f57d12779721e"
     }
   ]
