@@ -845,6 +845,7 @@ def test_starrocks_readiness_command_requires_alive_frontend_and_backend():
     ("platform", "service", "needle"),
     [
         ("cedardb", "cedardb", "psql"),
+        ("pg-mooncake", "pg-mooncake", "psql"),
         ("presto", "presto", "X-Presto-User"),
         ("trino", "trino", "X-Trino-User"),
     ],
@@ -880,7 +881,9 @@ def test_cedardb_readiness_reads_credentials_from_the_container_environment():
     assert "-h 127.0.0.1" in script
 
 
-@pytest.mark.parametrize(("platform", "floor"), [("cedardb", 15.0), ("presto", 60.0), ("trino", 60.0)])
+@pytest.mark.parametrize(
+    ("platform", "floor"), [("cedardb", 15.0), ("pg-mooncake", 15.0), ("presto", 60.0), ("trino", 60.0)]
+)
 def test_query_readiness_timeout_outlasts_the_tcp_liveness_probe(platform, floor):
     cfg = config.validate_config({"name": "readiness timeout", "platforms": {"include": [platform]}})
     spec = docker_assets.docker_platform_spec(platform)
@@ -1053,3 +1056,12 @@ def test_coordinator_readiness_script_exits_127_when_curl_is_missing(platform, t
         check=False,
     )
     assert result.returncode == 127
+
+
+def test_pg_mooncake_readiness_reads_credentials_from_the_container_environment():
+    spec = docker_assets.docker_platform_spec("pg-mooncake")
+    argv = managed_runtime._readiness_command(spec, "benchbox-uat-pg-mooncake")
+    assert argv is not None
+    script = argv[-1]
+    assert "$POSTGRES_PASSWORD" in script and "$POSTGRES_USER" in script and "$POSTGRES_DB" in script
+    assert "-h 127.0.0.1" in script and "SELECT 1" in script
