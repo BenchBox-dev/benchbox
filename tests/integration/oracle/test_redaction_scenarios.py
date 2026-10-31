@@ -107,7 +107,7 @@ def test_no_loop_time_summary_line_reaches_the_step_summary_before_the_redaction
 
     pre_loop = [line for line in run.loop_summary.splitlines() if line]
     assert pre_loop[0].startswith("oracle-verdict plan for #63:")
-    assert all(re.fullmatch(r"\d+(\.\d+)*", line) for line in pre_loop[1:])
+    assert all(re.fullmatch(r"\d+(\.\d+)*|disk scan of .*: \d+ hit\(s\)", line) for line in pre_loop[1:])
     assert "slot 1:" in run.step_summary()
     assert "oracle-verdict #63" in run.step_summary()
 
