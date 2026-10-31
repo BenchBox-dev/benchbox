@@ -40,7 +40,7 @@
       "needs": [],
       "priority": "medium",
       "status": "open",
-      "title": "GitHub Actions runs queue for one to three hours, so each oracle review and merge waits far longer than the review itself"
+      "title": "Decide the org's GitHub Actions runner capacity: free 20-job cap, paid plan, or self-hosted"
     },
     "adapt-benchbox-to-textcharts-neutral-defaults": {
       "claim": null,
