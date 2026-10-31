@@ -30507,6 +30507,13 @@
       "status": "open",
       "title": "Platform configuration and credential messages name only options and variables BenchBox accepts"
     },
+    "usability-site-user-docs-inline-guidance": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Site: user pages state setup requirements inline, match real flows, and use contributor pages only as background"
+    },
     "use-benchmark-support-status-to-redesign-the-explorer-benchm": {
       "claim": null,
       "needs": [],
