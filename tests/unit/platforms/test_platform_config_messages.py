@@ -249,9 +249,13 @@ class TestAthenaStagingMessage:
         clean_environment.delenv("AWS_ACCESS_KEY_ID", raising=False)
         clean_environment.delenv("AWS_SECRET_ACCESS_KEY", raising=False)
         clean_environment.setenv("HOME", str(tmp_path))
-        with patch.dict("sys.modules", {"boto3": MagicMock(), "pyathena": MagicMock(), "pyathena.cursor": MagicMock()}):
-            with pytest.raises(ConfigurationError) as excinfo:
-                AthenaAdapter()
+        modules = {"boto3": MagicMock(), "pyathena": MagicMock(), "pyathena.cursor": MagicMock()}
+        with (
+            patch.dict("sys.modules", modules),
+            patch.object(AthenaAdapter, "_check_instance_metadata_available", return_value=False),
+            pytest.raises(ConfigurationError) as excinfo,
+        ):
+            AthenaAdapter()
         return str(excinfo.value)
 
     def test_named_options_are_accepted(self, message):
