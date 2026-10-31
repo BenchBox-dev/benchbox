@@ -278,7 +278,7 @@ def test_every_phase_receives_exactly_the_secrets_it_needs(
     monkeypatch.setattr(local, "_handed_over", {"TS_AUTHKEY": TS_AUTHKEY})
 
     assert _grants(run, "prepare") == key | set(GITHUB_ACCESS) | {"GH_ENTERPRISE_TOKEN"}
-    assert _grants(run, "scan") == key | {"TS_AUTHKEY"} | hosts
+    assert _grants(run, "scan") == key | {"TS_AUTHKEY", "OMP_GATEWAY_TOKEN"} | hosts
     assert _grants(run, "harness") == set()
     assert _grants(run, "isolation") == set()
     assert _grants(run, "attempts") == gateway_pair

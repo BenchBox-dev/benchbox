@@ -247,8 +247,8 @@ class LocalEnvironment:
     proxy: str
     loopback_http: bool = True
     has_app: bool = False
-    scan_secrets: tuple[str, ...] = ("TYPESAFE_API_KEY", "TS_AUTHKEY", *HOST_TOKEN_FILES)
-    redacted_secrets: tuple[str, ...] = ("TYPESAFE_API_KEY", "TS_AUTHKEY", *HOST_TOKEN_FILES)
+    scan_secrets: tuple[str, ...] = ("TYPESAFE_API_KEY", "TS_AUTHKEY", "OMP_GATEWAY_TOKEN", *HOST_TOKEN_FILES)
+    redacted_secrets: tuple[str, ...] = ("TYPESAFE_API_KEY", "TS_AUTHKEY", "OMP_GATEWAY_TOKEN", *HOST_TOKEN_FILES)
 
     @classmethod
     def from_environ(cls, environ: Mapping[str, str], policy: Path) -> LocalEnvironment:
@@ -760,7 +760,7 @@ class Run:
         if phase == "prepare" or phase == "recover":
             return key
         if phase == "scan":
-            return {**key, **held, **hosts}
+            return {**key, **held, **hosts, **{k: v for k, v in gateway.items() if k == "OMP_GATEWAY_TOKEN"}}
         if phase == "attempts":
             return gateway
         if phase == "finalize":

@@ -32854,7 +32854,7 @@
       "path": "_project/scripts/oracle_reviewers/local.py",
       "symbol": "withhold_secrets",
       "text": "unresolved executable source: sys.executable",
-      "payload": "sha256:f74245f8cb1fd39c19bc21647d8653f7f72f6aa095a6785aef4ceb5747eaa478",
+      "payload": "sha256:fe76d24c7c6d158241fbe971052a8ec90d551a2e6e188c0b66506edb4f7de380",
       "finding_kind": "payload-error",
       "kind": "fixture",
       "consumer": "_project/scripts/oracle_reviewers/local.py",
