@@ -1,11 +1,11 @@
 {
   "acceptance": [
-    "docs/agent/maintainer-bundles.md exists with the salt resolution order, the generate vs never-generate split, the staging command, and the guard-refusal rule; AGENTS.md has one pointer line; every command in the doc is run once in a smoke test (temporary HOME or real staging output dir outside the repo) and its output recorded.",
+    "docs/agent/maintainer-bundles.md exists with the salt resolution order, the generate vs never-generate split, the staging command, and the guard-refusal rule; no command in the doc prints the salt file's contents; AGENTS.md has one pointer line; every command in the doc is run once in a smoke test (temporary HOME or staging output dir outside the repo) and its output recorded.",
     "`make corpus-stage-local` appears in make help, stages a real local run result into a temporary directory using the existing salt file with no env var set, and refuses (non-zero, message naming the path and override) with HOME pointing at an empty temporary dir.",
     "CORPUS_NOTES.md gains an appended dated note; the historical paragraph is unchanged (diff shows additions only); `python results-data/validate_corpus.py` passes.",
-    "make comment-policy-check and docs/agent link checks pass; PR merged through CI oracle review with no override."
+    "`make comment-policy-check` and `make pr-preflight` pass; PR merged through CI oracle review with no override."
   ],
-  "context": "Owner go 2026-10-31. SaltGuidance agent stopped at the original DECISION GATE because #3672 removed the salt-free path; the owner then requested the automatic-salt plan, which this item now follows (plan review finding K4: append, do not rewrite, CORPUS_NOTES).\n\nDECISION GATES: G1 if the make target needs behaviour changes in stage_seed_corpus_bundle.py beyond what the core item shipped, stop and ask. G2 if the core item's merged behaviour differs from this description, follow the merged code and record the difference.\n\nGUARDRAILS: never print or commit the salt; never edit ~/.agents/AGENTS.md; published bundle JSON never modified; docs-only plus the Makefile target; worktree-only writes; identity Joe Harris; no agent trailers.",
+  "context": "Owner go 2026-10-31. SaltGuidance agent stopped at the original DECISION GATE because #3672 removed the salt-free path; the owner then requested the automatic-salt plan, which this item now follows (plan review finding K4: append, do not rewrite, CORPUS_NOTES).\n\nDECISION GATES: G1 if the make target needs behaviour changes in stage_seed_corpus_bundle.py beyond what the core item shipped, stop and ask. G2 if the core item's merged behaviour differs from this description, follow the merged code and record the difference.\n\nGUARDRAILS: never print or commit the salt; never edit ~/.agents/AGENTS.md; published bundle JSON never modified; docs-only plus the Makefile target; worktree-only writes; identity Joe Harris; no agent trailers.\n\nTodoReview 2026-10-31 applied: removed nonexistent docs link-check target; added no-salt-printing clause.",
   "description": "RESCOPED 2026-10-31 after the owner asked for an automatic salt (public-pseudonym-salt-automatic). The original premise (a salt-free maintainer path) is void: #3672 made the corpus migration script require the salt, and after the core item the corpus tools read BENCHBOX_MACHINE_ID_SALT or the existing ~/.benchbox/submission_salt automatically and refuse only when neither exists; user publication paths generate the file. Agents previously treated the salt as an owner blocker. Scope after the core item merges: (1) docs/agent/maintainer-bundles.md: the salt is automatic; agents never ask the owner for it and never relay its absence as a blocker without checking live state (does ~/.benchbox/submission_salt exist? never print it); which commands stage maintainer bundles and which tools never generate a salt and why (result_id identity); the CI seed-corpus lane uses the secret. (2) Guard-refusal rule in that doc: a guard refusal is never worked around; before relaying one as a blocker, verify it against live repository and machine state, not a summary or recap. (3) One-line pointer in the repo AGENTS.md operational references. (4) `make corpus-stage-local RESULT=<run json> OUT=<staging dir>` wrapping `uv run -- python scripts/stage_seed_corpus_bundle.py --internal-manifest`, following Makefile help conventions. (5) results-data/CORPUS_NOTES.md: APPEND a dated note under the staging-path section (lines ~1119-1130) stating the migration script has required a salt since #3672 and now reads it automatically; the historical paragraph stays as written. Out of scope: ~/.agents/AGENTS.md (needs separate owner permission).",
   "links": [
     "scripts/stage_seed_corpus_bundle.py",
@@ -53,6 +53,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "0034697744e94a0aa77e7fce53e238db",
+      "session_id": "fdde7b96f2774961bbd4c814eff2ca0e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:73f4ce6dc372259381dd21db",
+      "at": "2026-10-31T13:03:11Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "0aa3a96fd7604ddb845fedf8b58b2b45",
       "session_id": "fdde7b96f2774961bbd4c814eff2ca0e"
     }
   ]
