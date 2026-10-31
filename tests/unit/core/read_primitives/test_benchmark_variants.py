@@ -667,3 +667,69 @@ def test_array_and_lambda_queries_do_not_pass_through_the_havoc_list_rewrites(di
         assert "_item" not in sql
         assert "_acc" not in sql
         assert "GENERATE_ARRAY(" not in sql
+
+
+class TestPostgresVariants:
+    _DUCKDB_ONLY_FUNCTIONS = (
+        "APPROX_DISTINCT",
+        "APPROX_COUNT_DISTINCT",
+        "APPROX_QUANTILE",
+        "APPROX_TOP_K",
+        "ARG_MAX",
+        "ARG_MIN",
+        "MAX_BY",
+        "MIN_BY",
+        "GROUP BY ALL",
+        "ORDER BY ALL",
+        "ARRAY_SLICE",
+        "ARRAY_MIN",
+        "ARRAY_MAX",
+        "ARRAY_DISTINCT",
+        "ARRAY_SORT",
+        "MAP_FROM_ENTRIES",
+        "MAP_KEYS",
+        "MAP_VALUES",
+        "TRANSFORM(",
+        "REDUCE(",
+        "ASOF JOIN",
+        "UNPIVOT",
+        "STRUCT(",
+        "JSON_EXTRACT(",
+        "JSON_VALID",
+        "JSON_ARRAYAGG",
+        "JSON_OBJECTAGG",
+    )
+
+    def test_postgres_runs_every_query_it_can_express_without_duckdb_only_syntax(self):
+        benchmark = ReadPrimitivesBenchmark()
+        queries = benchmark.get_queries(dialect="postgres")
+        variant_ids = {query_id for query_id in queries if benchmark.query_manager.has_variant(query_id, "postgres")}
+
+        assert {
+            "approx_count_distinct_simple",
+            "approx_quantile_groupby",
+            "approx_top_k_lineitem",
+            "approx_quantiles_array",
+            "json_extract_simple",
+            "json_extract_nested",
+            "json_aggregates",
+            "max_by_simple",
+            "groupby_all_complex",
+            "orderby_all_desc",
+            "array_distinct",
+            "map_keys_values",
+            "asof_join_basic",
+            "unpivot_basic",
+        } <= variant_ids
+        for query_id in variant_ids:
+            sql = queries[query_id].upper()
+            assert not [fn for fn in self._DUCKDB_ONLY_FUNCTIONS if fn in sql], query_id
+
+    def test_postgres_json_variants_guard_non_json_comments(self):
+        benchmark = ReadPrimitivesBenchmark()
+
+        simple = benchmark.query_manager.get_query("json_extract_simple", dialect="postgres")
+        nested = benchmark.query_manager.get_query("json_extract_nested", dialect="postgres")
+
+        assert "o_comment IS JSON" in simple
+        assert "c_comment IS JSON" in nested

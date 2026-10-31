@@ -1,0 +1,6 @@
+services:
+  postgresql:
+    image: benchbox-postgresql-pgvector:18
+    build:
+      context: .
+      dockerfile: Dockerfile.pgvector

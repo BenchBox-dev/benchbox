@@ -546,6 +546,9 @@ class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
 
         schema_sql = self._create_schema_with_tuning(benchmark, source_dialect="standard")
 
+        if re.search(r"\bVECTOR\s*\(", schema_sql, re.IGNORECASE):
+            ensure_postgres_extension(connection, self.logger, "vector", "https://github.com/pgvector/pgvector")
+
         self.log_very_verbose(f"Executing schema creation script ({len(schema_sql)} characters)")
 
         cursor = connection.cursor()
