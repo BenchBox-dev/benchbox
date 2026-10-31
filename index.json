@@ -20545,10 +20545,15 @@
       "title": "Query Plan Parser Framework"
     },
     "query-plan-per-iteration-retention": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-01T22:24:31Z",
+        "generation": "fdb8e2ee2009466db48194ef259ac591",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8d313df504e30c76edc4bc0f"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Decide whether to keep a plan per measurement iteration in the plans companion"
     },
     "query-plan-platform-adapter-integration": {
