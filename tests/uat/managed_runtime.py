@@ -50,6 +50,9 @@ _APPLICATION_READINESS: dict[str, tuple[tuple[str, ...], float]] = {
     "trino": (TRINO_READINESS, 60.0),
 }
 
+_PROBE_TOOL_OPTIONAL = frozenset({"cedardb", "presto", "trino"})
+_COMMAND_NOT_FOUND_EXIT_CODES = frozenset({126, 127})
+
 DockerRunner = Callable[..., docker_assets.DockerCommandResult]
 RecordEvent = Callable[..., None]
 
@@ -124,12 +127,14 @@ def check_application_readiness(
         return None
     interval = max(retry_interval_s, 1.0)
     attempts = max(1, int(retry_window_s / interval) + 1)
+    base_timeout = _readiness_timeout_s(config, spec)
+    deadline = time.monotonic() + max(retry_window_s, base_timeout)
     result = None
     for attempt in range(attempts):
         result = docker_runner(
             command,
             dry_run=config.dry_run,
-            timeout_s=_readiness_timeout_s(config, spec),
+            timeout_s=max(1.0, min(base_timeout, deadline - time.monotonic())),
             cwd=docker_assets.REPO_ROOT,
             env=compose_environment(config, spec, benchmark_runs_dir),
         )
@@ -145,8 +150,24 @@ def check_application_readiness(
         )
         if result.succeeded:
             return None
-        if attempt + 1 < attempts:
+        if spec.platform in _PROBE_TOOL_OPTIONAL and result.returncode in _COMMAND_NOT_FOUND_EXIT_CODES:
+            record_event(
+                docker_events,
+                log_dir=log_dir,
+                platform=spec.platform,
+                action=action,
+                status="skipped",
+                project_name=project_name,
+                message=(
+                    f"WARNING: query readiness probe tooling is missing in the {spec.platform} container "
+                    f"(exit {result.returncode}); falling back to healthcheck and TCP readiness only"
+                ),
+            )
+            return None
+        if attempt + 1 < attempts and time.monotonic() < deadline:
             (sleep_fn or time.sleep)(interval)
+        elif time.monotonic() >= deadline:
+            break
     assert result is not None
     return f"UAT-managed Docker application readiness check failed for {spec.platform} project {project_name}: {_result_message(result)}"
 
