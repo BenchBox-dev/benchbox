@@ -1,0 +1,5 @@
+{
+  "provenance": "captured",
+  "models": "ClickHouse chdb 3.7.2 (ClickHouse 25.8.2.1) local mode EXPLAIN PLAN (MergeTree tables), captured",
+  "validated_against_live": true
+}

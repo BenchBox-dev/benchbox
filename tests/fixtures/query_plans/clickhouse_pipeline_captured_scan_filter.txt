@@ -1,0 +1,6 @@
+(Expression)
+ExpressionTransform
+  (Expression)
+  ExpressionTransform
+    (ReadFromMergeTree)
+    MergeTreeSelect(pool: ReadPoolInOrder, algorithm: InOrder) 0 → 1

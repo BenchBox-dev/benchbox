@@ -1,0 +1,26 @@
+== Parsed Logical Plan ==
+Projection: orders.#1 AS #3, sum(orders.#2) AS total AS #4
+  Aggregate: groupBy=[[orders.#1]], aggr=[[sum(orders.#2)]]
+    Projection: orders.o_id AS #0, orders.o_cust AS #1, orders.o_total AS #2
+      TableScan: orders
+
+== Analyzed Logical Plan ==
+#3: Int64, #4: Float64
+Projection: orders.#1 AS #3, sum(orders.#2) AS total AS #4
+  Aggregate: groupBy=[[orders.#1]], aggr=[[sum(orders.#2)]]
+    Projection: orders.o_id AS #0, orders.o_cust AS #1, orders.o_total AS #2
+      TableScan: orders
+
+== Optimized Logical Plan ==
+Projection: orders.#1 AS #3, sum(orders.#2) AS total AS #4
+  Aggregate: groupBy=[[orders.#1]], aggr=[[sum(orders.#2)]]
+    Projection: orders.o_cust AS #1, orders.o_total AS #2
+      TableScan: orders projection=[o_cust, o_total]
+
+== Physical Plan ==
+ProjectionExec: expr=[#3@0 as o_cust, #4@1 as total]
+  ProjectionExec: expr=[#1@0 as #3, sum(orders.#2)@1 as #4]
+    AggregateExec: mode=FinalPartitioned, gby=[#1@0 as #1], aggr=[sum(orders.#2)]
+      RepartitionExec: partitioning=Hash([#1@0], 10), input_partitions=1
+        AggregateExec: mode=Partial, gby=[#1@0 as #1], aggr=[sum(orders.#2)]
+          DataSourceExec: file_groups={1 group: [[tmp/pv/sail/orders/p.parquet]]}, projection=[o_cust@1 as #1, o_total@2 as #2], file_type=parquet

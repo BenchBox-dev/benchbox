@@ -1,0 +1,5 @@
+{
+  "provenance": "captured",
+  "models": "ClickHouse 25.8.33.6 server EXPLAIN PIPELINE (MergeTree tables), captured",
+  "validated_against_live": true
+}

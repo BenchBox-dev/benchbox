@@ -1,0 +1,36 @@
+PLAN FRAGMENT 0
+  OUTPUT EXPRS:
+    o_id[#3]
+    o_total[#4]
+  PARTITION: HASH_PARTITIONED: o_id[#0]
+
+  HAS_COLO_PLAN_NODE: false
+
+  VRESULT SINK
+     MYSQL_PROTOCOL
+
+  0:VOlapScanNode(81)
+     TABLE: pv_plan_validation.orders(orders), PREAGGREGATION: ON
+     PREDICATES: (o_total[#2] > 100)
+     partitions=1/1 (orders)
+     tablets=1/1, tabletList=1793455604648
+     cardinality=1, avgRowSize=0.0, numNodes=1
+     pushAggOp=NONE
+     final projections: o_id[#0], o_total[#2]
+     final project output tuple id: 1
+     tuple ids: 0
+
+Tuples:
+TupleDescriptor{id=0, tbl=orders}
+  SlotDescriptor{id=0, col=o_id, colUniqueId=0, type=bigint, nullable=true, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+  SlotDescriptor{id=2, col=o_total, colUniqueId=2, type=double, nullable=true, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+
+TupleDescriptor{id=1, tbl=orders}
+  SlotDescriptor{id=3, col=o_id, colUniqueId=0, type=bigint, nullable=true, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+  SlotDescriptor{id=4, col=o_total, colUniqueId=2, type=double, nullable=true, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+
+
+
+
+========== STATISTICS ==========
+planned with unknown column statistics

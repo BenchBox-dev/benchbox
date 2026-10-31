@@ -7,10 +7,15 @@ import os
 import pytest
 
 from tests.integration._live_plan_shapes import (
+    CUSTOMERS,
+    ORDERS,
     SHAPE_QUERIES,
+    ShapeTraits,
     assert_live_plan_shape,
+    assert_plan_semantics,
     cursor_executor,
     plan_tables,
+    shape_query,
 )
 
 pytestmark = [
@@ -143,6 +148,15 @@ class TestLiveDorisQueryPlanCapture:
     @pytest.mark.parametrize("shape", _SHAPES)
     def test_live_plan_semantics(self, adapter, connection, tables, shape):
         assert_live_plan_shape(adapter, connection, shape)
+
+    @pytest.mark.parametrize("shape", _SHAPES)
+    def test_live_verbose_plan_semantics(self, adapter, connection, tables, shape):
+        raw = adapter.get_query_plan(connection, shape_query(shape), explain_options={"verbose": True})
+        assert raw is not None and "PLAN FRAGMENT" in raw
+        plan = adapter.get_query_plan_parser().parse_explain_output(f"live-verbose-{shape}", raw)
+        assert plan is not None
+        assert plan.verify_fingerprint()
+        assert_plan_semantics(plan, shape, ShapeTraits(), ORDERS, CUSTOMERS)
 
 
 @pytest.mark.skipif(

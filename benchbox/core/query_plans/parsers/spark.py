@@ -22,6 +22,7 @@ class SparkQueryPlanParser(QueryPlanParser):
         ("batchscan", LogicalOperatorType.SCAN),
         ("rowdatasourcescan", LogicalOperatorType.SCAN),
         ("datasourcescan", LogicalOperatorType.SCAN),
+        ("datasourceexec", LogicalOperatorType.SCAN),
         ("datasourcev2scan", LogicalOperatorType.SCAN),
         ("scan", LogicalOperatorType.SCAN),
         ("broadcasthashjoin", LogicalOperatorType.JOIN),
@@ -51,6 +52,8 @@ class SparkQueryPlanParser(QueryPlanParser):
     _PHYSICAL_HEADER = "== Physical Plan =="
     _PREFIX_RE = re.compile(r"^((?:\+- |:- |:  |   )*)(.*)$")
     _CODEGEN_RE = re.compile(r"^\*(?:\(\d+\))?\s*")
+    _TREE_MARKER_RE = re.compile(r"^(?:[+:]- |:  )", re.MULTILINE)
+    _FILE_GROUPS_RE = re.compile(r"file_groups=\{[^\[]*\[\[([^\],]+)")
 
     def __init__(self):
         super().__init__("spark")
@@ -82,6 +85,7 @@ class SparkQueryPlanParser(QueryPlanParser):
 
     def _parse_lines(self, physical_text: str) -> list[dict[str, Any]]:
         parsed: list[dict[str, Any]] = []
+        indented = not self._TREE_MARKER_RE.search(physical_text)
         for raw_line in physical_text.splitlines():
             if not raw_line.strip():
                 continue
@@ -89,7 +93,7 @@ class SparkQueryPlanParser(QueryPlanParser):
             rest = rest.strip()
             if rest.startswith("==") and rest.endswith("=="):
                 continue
-            depth = len(prefix) // 3
+            depth = (len(raw_line) - len(raw_line.lstrip())) // 2 if indented else len(prefix) // 3
             node_text = self._CODEGEN_RE.sub("", rest).strip()
             name_match = re.match(r"([A-Za-z][\w]*)", node_text)
             if not name_match:
@@ -151,6 +155,11 @@ class SparkQueryPlanParser(QueryPlanParser):
 
     @staticmethod
     def _extract_table(details: str) -> str | None:
+        files = SparkQueryPlanParser._FILE_GROUPS_RE.search(details)
+        if files:
+            directories = [part for part in files.group(1).split("/")[:-1] if part and "=" not in part]
+            if directories:
+                return directories[-1]
         match = re.search(r"(?:FileScan|Scan)\s+\w+\s+([A-Za-z_][\w.]*)", details)
         if match:
             return match.group(1)

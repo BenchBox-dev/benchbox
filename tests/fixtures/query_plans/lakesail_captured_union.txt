@@ -1,0 +1,41 @@
+== Parsed Logical Plan ==
+Union
+  Projection: orders.#0 AS #3
+    Filter: orders.#2 > Int32(100)
+      Projection: orders.o_id AS #0, orders.o_cust AS #1, orders.o_total AS #2
+        TableScan: orders
+  Projection: customers.#4 AS #7
+    Filter: customers.#6 = Utf8("EU")
+      Projection: customers.c_id AS #4, customers.c_name AS #5, customers.c_region AS #6
+        TableScan: customers
+
+== Analyzed Logical Plan ==
+#3: Int64
+Union
+  Projection: orders.#0 AS #3
+    Filter: orders.#2 > CAST(Int32(100) AS Float64)
+      Projection: orders.o_id AS #0, orders.o_cust AS #1, orders.o_total AS #2
+        TableScan: orders
+  Projection: customers.#4 AS #3
+    Filter: customers.#6 = Utf8("EU")
+      Projection: customers.c_id AS #4, customers.c_name AS #5, customers.c_region AS #6
+        TableScan: customers
+
+== Optimized Logical Plan ==
+Union
+  Projection: orders.o_id AS #3
+    Filter: orders.o_total > Float64(100)
+      TableScan: orders projection=[o_id, o_total], partial_filters=[orders.o_total > Float64(100)]
+  Projection: customers.c_id AS #3
+    Filter: customers.c_region = Utf8("EU")
+      TableScan: customers projection=[c_id, c_region], partial_filters=[customers.c_region = Utf8("EU")]
+
+== Physical Plan ==
+ProjectionExec: expr=[#3@0 as o_id]
+  UnionExec
+    ProjectionExec: expr=[o_id@0 as #3]
+      FilterExec: o_total@1 > 100, projection=[o_id@0]
+        DataSourceExec: file_groups={1 group: [[tmp/pv/sail/orders/p.parquet]]}, projection=[o_id, o_total], file_type=parquet, predicate=o_total@2 > 100, pruning_predicate=o_total_null_count@1 != row_count@2 AND o_total_max@0 > 100, required_guarantees=[]
+    ProjectionExec: expr=[c_id@0 as #3]
+      FilterExec: c_region@1 = EU, projection=[c_id@0]
+        DataSourceExec: file_groups={1 group: [[tmp/pv/sail/customers/p.parquet]]}, projection=[c_id, c_region], file_type=parquet, predicate=c_region@2 = EU, pruning_predicate=c_region_null_count@2 != row_count@3 AND c_region_min@0 <= EU AND EU <= c_region_max@1, required_guarantees=[c_region in (EU)]

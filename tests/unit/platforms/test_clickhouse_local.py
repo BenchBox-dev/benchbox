@@ -136,6 +136,14 @@ class TestClickHouseLocalClient:
         client = ClickHouseLocalClient()
         client.disconnect()
 
+    def test_disconnect_closes_underlying_connection(self):
+        client = ClickHouseLocalClient.__new__(ClickHouseLocalClient)
+        connection = Mock()
+        client._conn = connection
+        client.disconnect()
+        connection.close.assert_called_once_with()
+        assert client._conn is None
+
 
 class TestClickHouseEmbeddedConnection:
     def test_create_local_connection(self):
