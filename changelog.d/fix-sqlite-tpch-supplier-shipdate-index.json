@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Added a covering lineitem index on supplier and ship date to the SQLite TPC-H helper indexes, so correlated per-supplier revenue lookups such as TPC-Havoc query 15 variant 1 read an index range instead of scanning lineitem."
+    }
+  ]
+}
