@@ -1381,148 +1381,100 @@ class TestBenchmarkGating:
             )
 
 
-class TestLoadParquetViaChunkedCsv:
-    @pytest.fixture
-    def mock_write(self):
-        with patch("pyarrow.csv.write_csv") as write:
-            yield write
-
-    def _make_mock_pf(self, batches):
-        mock_pf = MagicMock()
-        mock_pf.iter_batches.return_value = iter(batches)
-        return mock_pf
-
-    @pytest.mark.usefixtures("mock_write")
-    def test_all_chunks_use_overwrite_false(self, questdb_stubs, tmp_path):
-        data_file = tmp_path / "obt.parquet"
-        data_file.write_bytes(b"")
-
-        adapter = QuestDBAdapter(host="localhost", http_port=9000)
-        batch1, batch2 = MagicMock(), MagicMock()
-
-        mock_response = MagicMock()
-        mock_response.text = "| Rows imported | 100 |"
-
-        with (
-            patch("pyarrow.parquet.ParquetFile", return_value=self._make_mock_pf([batch1, batch2])),
-            patch("requests.post", return_value=mock_response) as mock_post,
-        ):
-            rows = adapter._load_parquet_via_chunked_csv("obt_table", data_file)
-
-        assert mock_post.call_count == 2
-        for post_call in mock_post.call_args_list:
-            assert post_call.kwargs["params"]["overwrite"] == "false", (
-                "overwrite=true on any chunk risks discarding QuestDB schema enhancements"
-            )
-        assert rows == 200
-
-    def test_header_on_every_chunk(self, questdb_stubs, tmp_path, mock_write):
-        data_file = tmp_path / "obt.parquet"
-        data_file.write_bytes(b"")
-
-        adapter = QuestDBAdapter(host="localhost", http_port=9000)
-        batch1, batch2 = MagicMock(), MagicMock()
-
-        mock_response = MagicMock()
-        mock_response.text = "| Rows imported | 1 |"
-
-        with (
-            patch("pyarrow.parquet.ParquetFile", return_value=self._make_mock_pf([batch1, batch2])),
-            patch("requests.post", return_value=mock_response),
-        ):
-            adapter._load_parquet_via_chunked_csv("obt_table", data_file)
-
-        assert mock_write.call_count == 2
-        for write_call in mock_write.call_args_list:
-            assert write_call.kwargs["write_options"].include_header is True
-
-    def test_nullable_integers_are_posted_without_a_decimal_point(self, questdb_stubs, tmp_path):
+class _UploadServer:
+    def __init__(self):
         import threading
         from http.server import BaseHTTPRequestHandler, HTTPServer
+        from urllib.parse import parse_qs, urlparse
 
-        import pyarrow as pa
-        import pyarrow.parquet as pq
-
-        received: list[bytes] = []
+        self.requests: list[dict] = []
+        self.reply = "| Rows imported | 1 |"
+        outer = self
 
         class Handler(BaseHTTPRequestHandler):
             def do_POST(self):
-                received.append(self.rfile.read(int(self.headers["Content-Length"])))
-                body = b"| Rows imported | 3 |"
+                length = int(self.headers["Content-Length"])
+                body = self.rfile.read(length)
+                query = {key: values[0] for key, values in parse_qs(urlparse(self.path).query).items()}
+                outer.requests.append({"query": query, "body": body})
+                payload = outer.reply.encode()
                 self.send_response(200)
-                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Content-Length", str(len(payload)))
                 self.end_headers()
-                self.wfile.write(body)
+                self.wfile.write(payload)
 
             def log_message(self, *args):
                 pass
 
-        server = HTTPServer(("127.0.0.1", 0), Handler)
-        thread = threading.Thread(target=server.serve_forever, daemon=True)
-        thread.start()
+        self._server = HTTPServer(("127.0.0.1", 0), Handler)
+        self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
+        self._thread.start()
+        self.port = self._server.server_address[1]
 
-        data_file = tmp_path / "title.parquet"
-        pq.write_table(
-            pa.table({"id": [1, 2, 3], "production_year": [1994, None, 2006], "title": ["a", "b,c", None]}),
-            data_file,
-        )
-        adapter = QuestDBAdapter(host="127.0.0.1", http_port=server.server_address[1])
-        try:
-            rows = adapter._load_parquet_via_chunked_csv("title", data_file)
-        finally:
-            server.shutdown()
-            server.server_close()
-            thread.join()
+    def close(self):
+        self._server.shutdown()
+        self._server.server_close()
+        self._thread.join()
 
-        assert rows == 3
-        body = b"".join(received).decode()
-        assert "1994," in body
-        assert "1994.0" not in body
-        assert "2006," in body
-        assert "2,,b" in body.replace('"', "")
 
-    @pytest.mark.usefixtures("mock_write")
-    def test_force_header_param_on_every_chunk(self, questdb_stubs, tmp_path):
-        data_file = tmp_path / "obt.parquet"
-        data_file.write_bytes(b"")
+class TestLoadParquetViaChunkedCsv:
+    @pytest.fixture
+    def upload_server(self):
+        server = _UploadServer()
+        yield server
+        server.close()
 
-        adapter = QuestDBAdapter(host="localhost", http_port=9000)
-        batch1, batch2 = MagicMock(), MagicMock()
+    @staticmethod
+    def _parquet(tmp_path, rows, name="obt.parquet"):
+        import pyarrow as pa
+        import pyarrow.parquet as pq
 
-        mock_response = MagicMock()
-        mock_response.text = "| Rows imported | 1 |"
+        data_file = tmp_path / name
+        pq.write_table(pa.table({"id": list(range(rows)), "label": [f"row{i}" for i in range(rows)]}), data_file)
+        return data_file
 
-        with (
-            patch("pyarrow.parquet.ParquetFile", return_value=self._make_mock_pf([batch1, batch2])),
-            patch("requests.post", return_value=mock_response) as mock_post,
-        ):
-            adapter._load_parquet_via_chunked_csv("obt_table", data_file)
+    def test_all_chunks_use_overwrite_false(self, questdb_stubs, tmp_path, upload_server):
+        data_file = self._parquet(tmp_path, 4)
+        adapter = QuestDBAdapter(host="127.0.0.1", http_port=upload_server.port, parquet_chunk_rows=2)
+        upload_server.reply = "| Rows imported | 100 |"
 
-        for post_call in mock_post.call_args_list:
-            assert post_call.kwargs["params"].get("forceHeader") == "true", (
+        rows = adapter._load_parquet_via_chunked_csv("obt_table", data_file)
+
+        assert len(upload_server.requests) == 2
+        for request in upload_server.requests:
+            assert request["query"]["overwrite"] == "false", (
+                "overwrite=true on any chunk risks discarding QuestDB schema enhancements"
+            )
+        assert rows == 200
+
+    def test_header_on_every_chunk(self, questdb_stubs, tmp_path, upload_server):
+        data_file = self._parquet(tmp_path, 4)
+        adapter = QuestDBAdapter(host="127.0.0.1", http_port=upload_server.port, parquet_chunk_rows=2)
+
+        adapter._load_parquet_via_chunked_csv("obt_table", data_file)
+
+        assert len(upload_server.requests) == 2
+        for request in upload_server.requests:
+            assert "id,label" in request["body"].decode().replace('"', "").splitlines()
+
+    def test_force_header_param_on_every_chunk(self, questdb_stubs, tmp_path, upload_server):
+        data_file = self._parquet(tmp_path, 4)
+        adapter = QuestDBAdapter(host="127.0.0.1", http_port=upload_server.port, parquet_chunk_rows=2)
+
+        adapter._load_parquet_via_chunked_csv("obt_table", data_file)
+
+        for request in upload_server.requests:
+            assert request["query"].get("forceHeader") == "true", (
                 "forceHeader=true missing - QuestDB may map headerless CSV by position "
                 "and silently corrupt column order"
             )
 
-    @pytest.mark.usefixtures("mock_write")
-    def test_row_count_fallback_uses_batch_len(self, questdb_stubs, tmp_path):
-        data_file = tmp_path / "obt.parquet"
-        data_file.write_bytes(b"")
+    def test_row_count_fallback_uses_batch_len(self, questdb_stubs, tmp_path, upload_server):
+        data_file = self._parquet(tmp_path, 3)
+        adapter = QuestDBAdapter(host="127.0.0.1", http_port=upload_server.port)
+        upload_server.reply = "unexpected response format"
 
-        adapter = QuestDBAdapter(host="localhost", http_port=9000)
-        batch = MagicMock()
-        batch.__len__ = Mock(return_value=42)
-
-        mock_response = MagicMock()
-        mock_response.text = "unexpected response format"
-
-        with (
-            patch("pyarrow.parquet.ParquetFile", return_value=self._make_mock_pf([batch])),
-            patch("requests.post", return_value=mock_response),
-        ):
-            rows = adapter._load_parquet_via_chunked_csv("obt_table", data_file)
-
-        assert rows == 42
+        assert adapter._load_parquet_via_chunked_csv("obt_table", data_file) == 3
 
     def test_missing_pyarrow_raises_import_error(self, questdb_stubs, tmp_path):
         data_file = tmp_path / "obt.parquet"
@@ -1536,25 +1488,34 @@ class TestLoadParquetViaChunkedCsv:
         ):
             adapter._load_parquet_via_chunked_csv("obt_table", data_file)
 
-    @pytest.mark.usefixtures("mock_write")
-    def test_custom_chunk_rows_passed_to_iter_batches(self, questdb_stubs, tmp_path):
-        data_file = tmp_path / "obt.parquet"
-        data_file.write_bytes(b"")
+    def test_custom_chunk_rows_set_the_upload_size(self, questdb_stubs, tmp_path, upload_server):
+        data_file = self._parquet(tmp_path, 5)
+        adapter = QuestDBAdapter(host="127.0.0.1", http_port=upload_server.port, parquet_chunk_rows=2)
 
-        adapter = QuestDBAdapter(host="localhost", http_port=9000, parquet_chunk_rows=500)
-        batch = MagicMock()
-        mock_pf = self._make_mock_pf([batch])
+        adapter._load_parquet_via_chunked_csv("obt_table", data_file)
 
-        mock_response = MagicMock()
-        mock_response.text = "| Rows imported | 1 |"
+        assert len(upload_server.requests) == 3
 
-        with (
-            patch("pyarrow.parquet.ParquetFile", return_value=mock_pf),
-            patch("requests.post", return_value=mock_response),
-        ):
-            adapter._load_parquet_via_chunked_csv("obt_table", data_file)
+    def test_nullable_integers_are_posted_without_a_decimal_point(self, questdb_stubs, tmp_path, upload_server):
+        import pyarrow as pa
+        import pyarrow.parquet as pq
 
-        mock_pf.iter_batches.assert_called_once_with(batch_size=500)
+        data_file = tmp_path / "title.parquet"
+        pq.write_table(
+            pa.table({"id": [1, 2, 3], "production_year": [1994, None, 2006], "title": ["a", "b,c", None]}),
+            data_file,
+        )
+        adapter = QuestDBAdapter(host="127.0.0.1", http_port=upload_server.port)
+        upload_server.reply = "| Rows imported | 3 |"
+
+        rows = adapter._load_parquet_via_chunked_csv("title", data_file)
+
+        assert rows == 3
+        body = b"".join(request["body"] for request in upload_server.requests).decode()
+        assert "1994," in body
+        assert "1994.0" not in body
+        assert "2006," in body
+        assert "2,,b" in body.replace('"', "")
 
 
 class TestBenchmarkCompatibilityGateCli:
