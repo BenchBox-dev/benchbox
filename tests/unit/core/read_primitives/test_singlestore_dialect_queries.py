@@ -125,3 +125,12 @@ def test_singlestore_variants_satisfy_the_variant_contract_check(catalog):
     issues = [issue for issue in collect_variant_contract_issues(catalog) if issue.dialect == "singlestore"]
 
     assert issues == []
+
+
+@pytest.mark.parametrize("query_id", ("json_aggregates", "map_construction", "map_access"))
+def test_singlestore_map_variants_cannot_truncate(query_id):
+    from benchbox.core.read_primitives.catalog import load_primitives_catalog
+
+    sql = load_primitives_catalog().queries[query_id].variants["singlestore"].upper()
+
+    assert "GROUP_CONCAT" not in sql
