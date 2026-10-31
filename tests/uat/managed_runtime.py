@@ -6,10 +6,10 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from benchbox.utils.resource_limits import MemorySnapshot
 from tests.uat import docker_assets
 from tests.uat.clickhouse_memory import runtime_limit_matches_rung
 from tests.uat.config import UATConfig
-from tests.uat.preflight_budget import MemorySnapshot
 
 STARROCKS_MEMORY_LIMIT_ENV_VAR = "STARROCKS_MEMORY_LIMIT"
 STARROCKS_DEFAULT_MEMORY_LIMIT = "4g"

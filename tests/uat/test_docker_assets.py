@@ -950,8 +950,8 @@ def test_presto_trino_declare_six_gib_container_limit(platform):
 
 @pytest.mark.parametrize("platform", ["presto", "trino"])
 def test_presto_trino_free_memory_gate_is_request_aware(platform, tmp_path):
+    from benchbox.utils.resource_limits import MemorySnapshot
     from tests.uat.phases import execute as exec_phase
-    from tests.uat.preflight_budget import MemorySnapshot
 
     cfg = config.validate_config(
         {

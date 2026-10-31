@@ -651,7 +651,7 @@ def test_disk_floor_abort_emits_partial_artifacts(tmp_path: Path):
         patch.object(orchestrator.preflight_phase, "run_preflight", return_value=fake_preflight),
         patch.object(orchestrator.exec_phase, "run_cell", return_value=cell),
         patch.object(orchestrator.exec_phase, "default_free_space_reader", return_value=100.0),
-        patch.object(orchestrator.preflight_budget, "free_space_gib", return_value=1.0),
+        patch.object(orchestrator, "free_space_gib", return_value=1.0),
         patch.object(orchestrator.preflight_budget, "load_budget_table", return_value={}),
     ):
         result = orchestrator.run_sweep(cfg, log_dir_override=tmp_path / "logs")
@@ -697,7 +697,7 @@ def test_disk_floor_abort_threads_real_compatibility_pruned_without_reenumeratin
     with (
         patch.object(orchestrator.exec_phase, "run_cell", return_value=cell),
         patch.object(orchestrator.exec_phase, "default_free_space_reader", return_value=100.0),
-        patch.object(orchestrator.preflight_budget, "free_space_gib", return_value=1.0),
+        patch.object(orchestrator, "free_space_gib", return_value=1.0),
         patch.object(orchestrator, "_compatibility_pruned_for_config", side_effect=spy_compat_for_config),
     ):
         result = orchestrator.run_sweep(cfg, log_dir_override=tmp_path / "logs")
@@ -739,7 +739,7 @@ def test_execute_only_config_still_gets_disk_floor_watch(tmp_path: Path):
     with (
         patch.object(orchestrator.exec_phase, "run_cell", return_value=cell),
         patch.object(orchestrator.exec_phase, "default_free_space_reader", return_value=100.0),
-        patch.object(orchestrator.preflight_budget, "free_space_gib", return_value=1.0),
+        patch.object(orchestrator, "free_space_gib", return_value=1.0),
     ):
         result = orchestrator.run_sweep(cfg, log_dir_override=tmp_path / "logs")
 
@@ -1190,7 +1190,7 @@ def test_disk_floor_abort_threads_startup_failed_count_into_sidecar_and_partial_
         patch.object(exec_phase.docker_assets, "run_docker_command", side_effect=_startup_fail_clickhouse_docker),
         patch.object(orchestrator.exec_phase, "run_cell", return_value=cell),
         patch.object(orchestrator.exec_phase, "default_free_space_reader", return_value=100.0),
-        patch.object(orchestrator.preflight_budget, "free_space_gib", return_value=1.0),
+        patch.object(orchestrator, "free_space_gib", return_value=1.0),
         patch.object(orchestrator.preflight_budget, "load_budget_table", return_value={}),
     ):
         result = orchestrator.run_sweep(cfg, log_dir_override=tmp_path / "logs")
