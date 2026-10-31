@@ -30581,10 +30581,15 @@
       "title": "Site: update pages that quote platform and dependency error text after the core message fixes"
     },
     "usability-site-user-docs-inline-guidance": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-01T19:59:15Z",
+        "generation": "7855415337eb4ae2b54ebb2e148c3fd9",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e275448d846640d27249a6f8"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Site: user pages state setup requirements inline, match real flows, and use contributor pages only as background"
     },
     "use-benchmark-support-status-to-redesign-the-explorer-benchm": {
