@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed QuestDB failing on aggregates with a FILTER (WHERE ...) clause (TPC-H Havoc variants 6 and 7, \"found '(' ',', 'from' or 'over' expected\"); the adapter now rewrites them to aggregates over CASE WHEN."
+    }
+  ]
+}

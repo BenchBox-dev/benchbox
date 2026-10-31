@@ -82,6 +82,20 @@ environment image or setup script. The marker file records `gateway=reachable`
 with `gateway_proxy=...`, or `gateway=unavailable` with the reason, and
 `omp=installed` or `omp=not-installed`.
 
+The cloud environment also needs `TYPESAFE_API_KEY`, which `make pr-open`'s
+local review uses to classify the diff. The gateway client token, the Tailscale
+key and `TYPESAFE_API_KEY` stay in the session environment and may be readable
+by the review process; that residual is accepted because the `oracle-cloud`
+client has its own quota and can be revoked alone, the Tailscale key is
+ephemeral and tagged so it reaches only the gateway, and the TypeSafe key
+classifies only. No other sensitive value, such as a GitHub token, may be
+readable there.
+
+The daemon socket lives in a per-checkout directory under `/tmp` (or a short
+`TMPDIR`). The script refuses to start the daemon when that path is a symbolic
+link or is owned by another user, so another local user cannot pre-create it
+to capture the join.
+
 Without the three variables, or when Tailscale is missing or the join or check
 fails, bootstrap still succeeds, stops any daemon it started, and records the
 gateway as unavailable. `make pr-open` then refuses before any push, because

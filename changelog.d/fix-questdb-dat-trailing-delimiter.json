@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed QuestDB loading of TPC-DS `.dat` files: the trailing field delimiter is now stripped only from `.tbl` files, so trailing empty fields in `.dat` rows are no longer dropped or misaligned."
+    }
+  ]
+}

@@ -55,6 +55,26 @@ def _rendezvous(home: Path, index: int, peers: int) -> bool:
     return False
 
 
+def _parent(pid: int) -> int:
+    stat = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8")
+    return int(stat.rsplit(")", 1)[1].split()[1])
+
+
+def _record_ancestors(home: Path, probe: dict[str, Any]) -> None:
+    stop = int(probe["stop"])
+    chain = []
+    pid = _parent(os.getpid())
+    while pid != stop and pid > 1:
+        chain.append(pid)
+        pid = _parent(pid)
+    seen = []
+    for ancestor in chain:
+        environ = Path(f"/proc/{ancestor}/environ").read_bytes()
+        found = sorted(name for name, value in probe["values"].items() if value.encode("utf-8") in environ)
+        seen.append({"pid": ancestor, "found": found})
+    (home / "ancestors.json").write_text(json.dumps(seen), encoding="utf-8")
+
+
 def response_template(prompt: str) -> Any:
     start = prompt.rindex('\n{\n  "status"') + 1
     template, _ = json.JSONDecoder().raw_decode(prompt, start)
@@ -224,6 +244,8 @@ def main(argv: list[str]) -> int:
     cwd = argv[argv.index("--cwd") + 1]
     prompt = argv[-1]
     reply, call = _next_reply(home, script["replies"], prompt)
+    if script.get("ancestor_probe"):
+        _record_ancestors(home, script["ancestor_probe"])
     if reply.get("rendezvous"):
         _record_met(home, call, _rendezvous(home, call, int(reply["rendezvous"])))
     recorded = [

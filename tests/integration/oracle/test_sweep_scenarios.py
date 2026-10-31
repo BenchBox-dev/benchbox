@@ -109,9 +109,9 @@ def test_a_manual_retry_whose_guard_fails_still_consumes_the_retry(harness: Harn
     )
     harness.github.failures.clear()
 
-    assert first.steps["plan"].outputs["decision"] == "review"
-    assert first.steps["guard"].code == 2
+    assert first.steps["prepare"].outputs["decision"] == "review"
+    assert first.steps["publish"].code == 2
     assert len(harness.github.oracle_statuses(head)) == posted
     harness.script_omp([UNAVAILABLE])
     second = harness.review(90, event_name="workflow_dispatch")
-    assert second.steps["plan"].outputs["decision"] == "skip"
+    assert second.steps["prepare"].outputs["decision"] == "skip"

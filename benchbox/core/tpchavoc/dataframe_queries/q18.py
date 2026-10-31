@@ -5,6 +5,7 @@ from typing import Any
 
 from benchbox.core.dataframe.compat import _to_list
 from benchbox.core.dataframe.context import DataFrameContext
+from benchbox.core.dataframe.pandas_ops import is_lazy_frame
 from benchbox.core.tpch.dataframe_queries import (
     get_query as get_tpch_query,
     get_tpch_parameters,
@@ -205,6 +206,13 @@ def _q18_pandas_aggregate(joined: Any) -> Any:
     )
 
 
+def _top_rows(frame: Any, count: int) -> Any:
+    native = getattr(frame, "native", frame)
+    if is_lazy_frame(native):
+        return native.head(count, npartitions=-1)
+    return native.head(count)
+
+
 def _make_q18_pandas_impl(variant: int) -> VariantImpl:
     def impl(ctx: DataFrameContext) -> Any:
         if variant == 1:
@@ -290,7 +298,11 @@ def _make_q18_pandas_impl(variant: int) -> VariantImpl:
         if variant == 8:
             large_orders = _q18_pandas_large_orders(lineitem, threshold)
             order_sums = lineitem.groupby("l_orderkey", as_index=False).agg(sum_qty=("l_quantity", "sum"))
-            order_sums = order_sums[order_sums["l_orderkey"].isin(large_orders)]
+            import pandas as pd
+
+            order_sums = order_sums.merge(
+                pd.DataFrame({"l_orderkey": pd.Series(large_orders, dtype="int64")}), on="l_orderkey"
+            )
             joined = customer.merge(orders, left_on="c_custkey", right_on="o_custkey").merge(
                 order_sums, left_on="o_orderkey", right_on="l_orderkey"
             )
@@ -305,7 +317,9 @@ def _make_q18_pandas_impl(variant: int) -> VariantImpl:
             large_orders = _q18_pandas_large_orders(lineitem, threshold)
             ranked = customer.merge(orders, left_on="c_custkey", right_on="o_custkey")
             ranked = ranked[ranked["o_orderkey"].isin(large_orders)]
-            ranked = ranked.sort_values(["o_totalprice", "o_orderdate"], ascending=[False, True]).head(100)
+            ranked = ranked.sort_values(["o_totalprice", "o_orderdate"], ascending=[False, True])
+            top_orders = _to_list(_top_rows(ranked, 100)["o_orderkey"])
+            ranked = ranked[ranked["o_orderkey"].isin(top_orders)]
             return _q18_pandas_aggregate(ranked.merge(lineitem, left_on="o_orderkey", right_on="l_orderkey"))
 
         large_orders = _q18_pandas_large_orders(lineitem, threshold)
