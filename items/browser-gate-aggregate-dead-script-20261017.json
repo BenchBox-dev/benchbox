@@ -4,7 +4,7 @@
     "git grep browser_gate_aggregate on develop matches only the comment-policy completed entry, CHANGELOG and tracker exports",
     "make pr-preflight passes"
   ],
-  "context": "Found 2026-10-17 while cleaning up site-removal leftovers (#3105); out of that PR's scope. Verified present with `git grep browser_gate_aggregate origin/develop`.",
+  "context": "Found 2026-10-17 while cleaning up site-removal leftovers (#3105); out of that PR's scope. Verified present with `git grep browser_gate_aggregate origin/develop`.\n\nClosed 2026-10-30: PR #3676 (d4b7a0d254) deleted _project/scripts/browser_gate_aggregate.py and its test. Only stale test ids in tests/fixtures/fast_tier_baseline/*.json still match, and the next baseline refresh replaces them.",
   "description": "_project/scripts/browser_gate_aggregate.py evaluated the Results Explorer browser gate. Its only caller, .github/workflows/results-explorer-browser.yml, was deleted with the site removal (#3096, 364a6e9cd), so nothing runs it. It still exists on develop (27f7a7d1f), with:\n- its test tests/unit/scripts/test_browser_gate_aggregate.py;\n- a soundness self-change entry at scripts/pr_refresh_certification.py:101 and the test parameter at tests/unit/scripts/test_pr_refresh_certification.py:331;\n- a retained-path entry at tests/unit/test_release_infrastructure.py:771;\n- the release-cut `git rm` lists in Makefile:900 and :904;\n- a ledger row at docs/internal/dev-loop-property-ledger.md:144;\n- a completed-scope entry at quality/comment-policy.json:132 (the ratchet in scripts/check_comment_policy.py:97-98 forbids removing completed scopes, so that entry stays).\n\nDelete the script and its test, and remove the references above except the comment-policy entry.",
   "sessions": [
     {
@@ -22,6 +22,14 @@
       "generation": "bbacaf9f8ba94166ad15be75771e72ad",
       "op": "take",
       "op_id": "bab7b1ac5fe746b28d14230dc78f7e9b",
+      "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8",
+      "at": "2026-10-31T00:18:01Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8fc038dbdc934e3b87af25218e4ae644",
       "session_id": "bac38d3bfa7d4965aab068a01f6e5b7b"
     }
   ]
