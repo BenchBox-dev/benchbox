@@ -10,6 +10,8 @@ from benchbox.core.tpchavoc.dialect_compat import (
     DUAL_VARIANT_IDS,
     GROUP_BY_EMPTY_VARIANT_IDS,
     SCALAR_GROUP_BY_VARIANT_IDS,
+    SPARK_CHAR_CASE_VARIANT_IDS,
+    SPARK_WINDOW_FILTER_VARIANT_IDS,
     rewrite_spark_variant,
 )
 
@@ -21,6 +23,8 @@ pytestmark = [
 SCALAR_IDS = sorted(SCALAR_GROUP_BY_VARIANT_IDS)
 EMPTY_IDS = sorted(GROUP_BY_EMPTY_VARIANT_IDS)
 DUAL_IDS = sorted(DUAL_VARIANT_IDS)
+WINDOW_FILTER_IDS = sorted(SPARK_WINDOW_FILTER_VARIANT_IDS)
+CHAR_CASE_IDS = sorted(SPARK_CHAR_CASE_VARIANT_IDS)
 
 
 def _variant_sql(variant_id: str) -> str:
@@ -64,6 +68,26 @@ def test_dual_variants_gain_column_alias(variant_id: str):
     _assert_spark_parseable(rewritten, variant_id)
 
 
+@pytest.mark.parametrize("variant_id", WINDOW_FILTER_IDS)
+def test_window_filter_variants_move_condition_into_aggregate(variant_id: str):
+    original = _variant_sql(variant_id)
+    assert "filter (where" in original.lower()
+    rewritten = rewrite_spark_variant(variant_id, original)
+    assert "filter" not in rewritten.lower()
+    assert "MIN(IF(" in rewritten.upper()
+    assert "OVER (PARTITION BY" in rewritten.upper()
+    _assert_spark_parseable(rewritten, variant_id)
+
+
+@pytest.mark.parametrize("variant_id", CHAR_CASE_IDS)
+def test_char_case_variants_trim_both_comparison_sides(variant_id: str):
+    original = _variant_sql(variant_id)
+    rewritten = rewrite_spark_variant(variant_id, original)
+    assert "RTRIM(r_name) = RTRIM(CASE WHEN" in rewritten
+    assert "r_name = CASE" not in rewritten
+    _assert_spark_parseable(rewritten, variant_id)
+
+
 @pytest.mark.parametrize("variant_id", ["2_v1", "5_v5", "22_v10", "Q99", "11"])
 def test_unlisted_query_ids_pass_through_unchanged(variant_id: str):
     original = _variant_sql("2_v1")
@@ -81,7 +105,7 @@ def test_query_id_normalization_accepts_prefixed_forms():
         assert "FIRST(" in rewrite_spark_variant(form, original).upper(), form
 
 
-@pytest.mark.parametrize("variant_id", SCALAR_IDS + EMPTY_IDS + DUAL_IDS)
+@pytest.mark.parametrize("variant_id", SCALAR_IDS + EMPTY_IDS + DUAL_IDS + WINDOW_FILTER_IDS + CHAR_CASE_IDS)
 def test_rewrites_are_idempotent(variant_id: str):
     first_pass = rewrite_spark_variant(variant_id, _variant_sql(variant_id))
     second_pass = rewrite_spark_variant(variant_id, first_pass)
@@ -102,6 +126,8 @@ def test_rewrite_rule_ids_cover_transformer_ids():
     } == SCALAR_GROUP_BY_VARIANT_IDS
     assert {"6_v2", "14_v2"} == GROUP_BY_EMPTY_VARIANT_IDS
     assert {"17_v4"} == DUAL_VARIANT_IDS
+    assert {"2_v7"} == SPARK_WINDOW_FILTER_VARIANT_IDS
+    assert {"2_v10"} == SPARK_CHAR_CASE_VARIANT_IDS
 
 
 def test_spark_tpchavoc_rules_registered():
@@ -114,14 +140,14 @@ def test_spark_tpchavoc_rules_registered():
         for key, entry in REGISTRY.all_rules()
         if key[0] is Phase.QUERY_ADAPTER and key[1] == "spark" and key[2] == "tpchavoc"
     ]
-    assert len(rules) == 11, f"Expected 11 spark/tpchavoc rules, got {len(rules)}"
+    assert len(rules) == 13, f"Expected 13 spark/tpchavoc rules, got {len(rules)}"
     rule_ids = {entry.rule_id for _, entry in rules}
     assert "query_adapter.spark.tpchavoc.q01_scalar_group_by_first" in rule_ids
     assert "query_adapter.spark.tpchavoc.q06_group_by_empty_drop" in rule_ids
     assert "query_adapter.spark.tpchavoc.q17_dual_column_alias" in rule_ids
 
 
-@pytest.mark.parametrize("variant_id", SCALAR_IDS + EMPTY_IDS + DUAL_IDS)
+@pytest.mark.parametrize("variant_id", SCALAR_IDS + EMPTY_IDS + DUAL_IDS + WINDOW_FILTER_IDS + CHAR_CASE_IDS)
 def test_spark_tpchavoc_rule_resolution(variant_id: str):
     import benchbox.sql_compat.rules.query_adapter.spark_tpchavoc_rewrites
     from benchbox.sql_compat.actions import CompatAction
@@ -146,6 +172,8 @@ def test_spark_tpchavoc_rule_resolution(variant_id: str):
         "wrap_grouped_scalar_subqueries",
         "name_literal_subquery_columns",
         "translate_sql_query",
+        "filtered_aggregates_to_conditional",
+        "trim_char_case_comparisons",
     }
 
 

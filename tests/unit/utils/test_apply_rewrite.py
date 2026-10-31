@@ -357,3 +357,49 @@ def test_unqualified_table_names_returns_none_for_unparseable_sql():
     from benchbox.utils.dialect_utils import unqualified_table_names
 
     assert unqualified_table_names("SELECT FROM WHERE (", "bigquery") is None
+
+
+def test_in_subquery_under_or_becomes_a_left_join_with_the_same_rows():
+    import duckdb
+
+    sql = "SELECT id FROM items WHERE grp IN ('x', 'y') OR code IN (SELECT code FROM marks WHERE flag = 1) ORDER BY id"
+    rewritten = apply_rewrite("in_subquery_or_to_left_join", sql, "duckdb")
+
+    assert "LEFT JOIN" in rewritten
+    assert " IN (SELECT" not in rewritten
+    connection = duckdb.connect()
+    connection.execute("CREATE TABLE items (id INT, grp VARCHAR, code VARCHAR)")
+    connection.execute("CREATE TABLE marks (code VARCHAR, flag INT)")
+    connection.execute(
+        "INSERT INTO items VALUES (1, 'x', 'a'), (2, 'z', 'a'), (3, 'z', 'b'), (4, 'z', NULL), (5, NULL, 'c'), (6, 'z', 'd')"
+    )
+    connection.execute("INSERT INTO marks VALUES ('a', 1), ('a', 1), ('c', 1), (NULL, 1), ('b', 0)")
+    expected = connection.execute(sql).fetchall()
+    assert expected == [(1,), (2,), (5,)]
+    assert connection.execute(rewritten).fetchall() == expected
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "SELECT id FROM items WHERE code IN (SELECT code FROM marks)",
+        "SELECT id FROM items WHERE NOT (grp = 'x' OR code IN (SELECT code FROM marks))",
+        "SELECT id FROM items AS i WHERE grp = 'x' OR code IN (SELECT code FROM marks WHERE marks.code = i.code)",
+        "SELECT id FROM items, marks WHERE grp = 'x' OR items.code IN (SELECT code FROM marks)",
+    ],
+)
+def test_in_subquery_rewrite_leaves_unsupported_shapes_alone(sql: str):
+    assert apply_rewrite("in_subquery_or_to_left_join", sql, "duckdb") == sql
+
+
+def test_char_case_comparison_trims_both_sides_only_for_the_self_defaulting_case():
+    rewritten = apply_rewrite(
+        "trim_char_case_comparisons",
+        "SELECT 1 FROM r WHERE r_name = CASE WHEN 'EUROPE' IS NOT NULL THEN 'EUROPE' ELSE r_name END",
+        "spark",
+    )
+    assert rewritten == (
+        "SELECT 1 FROM r WHERE RTRIM(r_name) = RTRIM(CASE WHEN NOT 'EUROPE' IS NULL THEN 'EUROPE' ELSE r_name END)"
+    )
+    untouched = "SELECT 1 FROM r WHERE r_name = CASE WHEN a = 1 THEN 'EUROPE' ELSE 'ASIA' END"
+    assert apply_rewrite("trim_char_case_comparisons", untouched, "spark") == untouched

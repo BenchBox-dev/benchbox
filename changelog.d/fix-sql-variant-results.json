@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed TPC-Havoc variant 9_v7 returning groups with no matching rows on ClickHouse, variant 2_v10 returning no rows on Spark because a CASE-wrapped comparison of a CHAR column lost its padding, and variant 2_v7 failing on Velox because it rejects FILTER on window aggregates.",
+      "platforms": ["clickhouse-local", "clickhouse-server", "clickhouse-cloud", "spark", "velox"],
+      "benchmarks": ["tpchavoc"]
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed TPC-DS OBT queries 36, 45, 70 and 86 failing on LakeSail Sail because it cannot plan a CASE over a ROLLUP alias in ORDER BY or an IN subquery under OR.",
+      "platforms": ["lakesail"],
+      "benchmarks": ["tpcds_obt"]
+    }
+  ]
+}

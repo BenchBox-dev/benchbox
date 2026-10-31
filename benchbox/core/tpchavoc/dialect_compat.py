@@ -11,7 +11,7 @@ POSTGRES_QUALIFIED_COLUMNS: dict[str, dict[str, str]] = {
     "17_v2": {"l_partkey": "lineitem", "l_quantity": "lineitem", "l_extendedprice": "lineitem"},
 }
 POSTGRES_DUAL_VARIANT_IDS = frozenset({"17_v4"})
-CLICKHOUSE_FILTER_VARIANT_IDS = frozenset({"1_v6", "3_v7", "7_v7", "10_v7", "12_v7"})
+CLICKHOUSE_FILTER_VARIANT_IDS = frozenset({"1_v6", "3_v7", "7_v7", "9_v7", "10_v7", "12_v7"})
 CLICKHOUSE_OUTER_ALIAS_VARIANTS: dict[str, tuple[str, str]] = {
     "2_v8": ("partsupp", "partsupp_outer"),
     "10_v8": ("lineitem", "lineitem_outer"),
@@ -28,7 +28,15 @@ LIST_AGGREGATE_ORDER = ("l_orderkey", "l_linenumber")
 SCALAR_GROUP_BY_VARIANT_IDS = frozenset({"1_v1", "3_v1", "7_v1", "8_v1", "9_v1", "10_v1", "12_v1", "16_v1"})
 GROUP_BY_EMPTY_VARIANT_IDS = frozenset({"6_v2", "14_v2"})
 DUAL_VARIANT_IDS = frozenset({"17_v4"})
-SPARK_VARIANT_IDS = SCALAR_GROUP_BY_VARIANT_IDS | GROUP_BY_EMPTY_VARIANT_IDS | DUAL_VARIANT_IDS
+SPARK_WINDOW_FILTER_VARIANT_IDS = frozenset({"2_v7"})
+SPARK_CHAR_CASE_VARIANT_IDS = frozenset({"2_v10"})
+SPARK_VARIANT_IDS = (
+    SCALAR_GROUP_BY_VARIANT_IDS
+    | GROUP_BY_EMPTY_VARIANT_IDS
+    | DUAL_VARIANT_IDS
+    | SPARK_WINDOW_FILTER_VARIANT_IDS
+    | SPARK_CHAR_CASE_VARIANT_IDS
+)
 _CLOUD_DIALECTS = frozenset({"bigquery", "databricks", "snowflake"})
 _POSTGRES_DIALECTS = frozenset({"postgres", "postgresql"})
 _PRESTO_TRINO_DIALECTS = frozenset({"presto", "trino", "athena"})
@@ -54,6 +62,10 @@ def spark_variant_rewrites(query_id: str) -> list[Rewrite]:
         return [("wrap_grouped_scalar_subqueries", {})]
     if query_id in DUAL_VARIANT_IDS:
         return [("name_literal_subquery_columns", {"column": "dual_col"})]
+    if query_id in SPARK_WINDOW_FILTER_VARIANT_IDS:
+        return [("filtered_aggregates_to_conditional", {"windows_only": True})]
+    if query_id in SPARK_CHAR_CASE_VARIANT_IDS:
+        return [("trim_char_case_comparisons", {})]
     return []
 
 
@@ -148,7 +160,9 @@ __all__ = [
     "PRESTO_ALIAS_VARIANT_IDS",
     "PRESTO_WINDOW_FILTER_VARIANT_IDS",
     "SCALAR_GROUP_BY_VARIANT_IDS",
+    "SPARK_CHAR_CASE_VARIANT_IDS",
     "SPARK_VARIANT_IDS",
+    "SPARK_WINDOW_FILTER_VARIANT_IDS",
     "list_aggregate_variant_rewrites",
     "normalize_variant_id",
     "rewrite_dialect_variant",
