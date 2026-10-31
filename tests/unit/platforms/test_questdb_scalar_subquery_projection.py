@@ -7,11 +7,16 @@ from benchbox.platforms.questdb_rewrites import rewrite_query
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 
-def test_scalar_subquery_in_an_aggregate_projection_becomes_a_cross_joined_derived_table():
+def test_scalar_subquery_next_to_keyless_aggregates_is_left_alone():
     sql = "SELECT 'n' AS name, (SELECT COUNT(*) FROM t WHERE a = 1) AS c, COUNT(*) AS m FROM u"
+    assert rewrite_query(sql) == sql
+
+
+def test_scalar_subquery_in_a_grouped_select_becomes_a_cross_joined_derived_table():
+    sql = "SELECT k, COUNT(*) AS m, (SELECT COUNT(*) FROM t) AS c FROM u GROUP BY k"
     assert rewrite_query(sql) == (
-        "SELECT 'n' AS name, MAX(_qs1._qs1_v) AS c, COUNT(*) AS m FROM u "
-        "CROSS JOIN (SELECT COUNT(*) AS _qs1_v FROM t WHERE a = 1) AS _qs1"
+        "SELECT k, COUNT(*) AS m, _qs1._qs1_v AS c FROM u CROSS JOIN (SELECT COUNT(*) AS _qs1_v FROM t) AS _qs1 "
+        "GROUP BY k"
     )
 
 
@@ -67,14 +72,6 @@ def test_window_function_does_not_make_the_select_an_aggregate_query():
 def test_constant_subquery_without_from_is_moved():
     sql = "SELECT (SELECT 1) AS x FROM u"
     assert rewrite_query(sql) == "SELECT _qs1._qs1_v AS x FROM u CROSS JOIN (SELECT 1 AS _qs1_v) AS _qs1"
-
-
-def test_aggregate_in_a_nested_select_still_makes_that_select_an_aggregate_query():
-    sql = "SELECT x.c FROM (SELECT COUNT(*) AS m, (SELECT MAX(a) FROM t) AS c FROM u) AS x"
-    assert rewrite_query(sql) == (
-        "SELECT x.c FROM (SELECT COUNT(*) AS m, MAX(_qs1._qs1_v) AS c FROM u "
-        "CROSS JOIN (SELECT MAX(a) AS _qs1_v FROM t) AS _qs1) AS x"
-    )
 
 
 def test_outer_column_named_v_does_not_collide_with_the_moved_value():

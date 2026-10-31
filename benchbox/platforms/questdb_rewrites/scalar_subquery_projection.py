@@ -75,23 +75,25 @@ def _inside_own_aggregate(select: exp.Select, subquery: exp.Subquery) -> bool:
     return False
 
 
-def _has_aggregate_scope(select: exp.Select, subquery: exp.Subquery) -> tuple[bool, bool]:
-    outside = [node for item in select.expressions for node in _own_aggregates(select, item)]
-    return _inside_own_aggregate(select, subquery), bool(outside) or select.args.get("group") is not None
+def _is_keyless_aggregate(select: exp.Select) -> bool:
+    if select.args.get("group") is not None:
+        return False
+    return any(_own_aggregates(select, item) for item in select.expressions)
 
 
 def _rewrite_select(select: exp.Select, counter: list[int]) -> None:
+    keyless = _is_keyless_aggregate(select)
     for subquery in _projection_subqueries(select):
+        inside_aggregate = _inside_own_aggregate(select, subquery)
+        if keyless and not inside_aggregate:
+            continue
         counter[0] += 1
         name = f"_qs{counter[0]}"
         inner = subquery.this.copy()
         value = f"{name}_v"
         inner.set("expressions", [exp.alias_(inner.expressions[0], value)])
         source = exp.Subquery(this=inner, alias=exp.TableAlias(this=exp.to_identifier(name)))
-        reference = exp.column(value, table=name)
-        inside_aggregate, aggregate_scope = _has_aggregate_scope(select, subquery)
-        replacement = exp.Max(this=reference) if aggregate_scope and not inside_aggregate else reference
-        subquery.replace(replacement)
+        subquery.replace(exp.column(value, table=name))
         if select.args.get("from_") is None:
             select.set("from_", exp.From(this=source))
         else:
