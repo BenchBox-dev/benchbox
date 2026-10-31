@@ -20537,6 +20537,13 @@
       "status": "done",
       "title": "Verify and preserve branching SQLite query-plan structure"
     },
+    "query-plan-tree-join-conditions": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Show join conditions in the query-plan tree view"
+    },
     "query-test-configure-visible-columns-failures": {
       "claim": null,
       "needs": [],

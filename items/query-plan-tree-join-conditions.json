@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Tree output for a join shows its conditions, truncated sensibly for long expressions.",
+    "A test with a real captured DuckDB or SQLite join plan asserts the condition text appears.",
+    "Existing tree tests and MCP tree output stay correct."
+  ],
+  "context": "Noted while moving MCP rendering to the canonical renderer (PR #3708).",
+  "description": "render_plan (benchbox/core/query_plans/visualization.py) prints Join nodes as `Join (type=inner)` without their join_conditions, although the canonical plan stores them and they are part of the fingerprint. benchbox show-plan and the MCP get_query_plan tree format both use it, so a reader cannot see why two joins differ.",
+  "links": [
+    "benchbox/core/query_plans/visualization.py",
+    "benchbox/mcp/tools/analytics.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0592050035774073ac1f90d3",
+      "at": "2026-10-31T15:14:57Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c5c93c2203004d71bd0f263bcb678d7d",
+      "session_id": "57a74c8663c14523aa3e61ff1ddd4677"
+    }
+  ]
+}
