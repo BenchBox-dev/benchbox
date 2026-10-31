@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "RF1 on DuckDB and PostgreSQL loads through a native bulk path; inserted row counts match the current path.",
+    "Spec review recorded for which staging steps may sit outside the RF1 timer.",
+    "RF1 time at SF1 on DuckDB drops measurably vs current path."
+  ],
+  "description": "benchbox/core/tpch/refresh.py:232-299: _source_row_chunks reads orders.tbl.uN / lineitem.tbl.uN with csv.reader, _sql_literal converts every field (Decimal/int), and apply_rf1 sends 1000-row INSERT ... VALUES via connection.execute (:275). All of this runs inside the RF1 timer (tpch/power_test.py:439-445, tpch/throughput_test.py:447-454), so Python cost feeds Power@Size and Throughput@Size (~750k rows at SF100). Use each platform's bulk path (COPY, read_csv, Stream Load, stage) into a staging table, then INSERT ... SELECT, ideally with staging done before the timer if the spec allows. RF2 builds IN-lists from Python key chunks (:247-263); lower cost, review together.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:root@vm:cb45f246c9de058740ccbeed",
+      "at": "2026-10-31T00:37:06Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "b3875de41cbd4659a0f7aa34a94b50ad",
+      "session_id": "d2b018a349924f4f88b746458c80b878"
+    }
+  ]
+}

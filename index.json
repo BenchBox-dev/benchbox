@@ -17790,6 +17790,13 @@
       "status": "open",
       "title": "Load StarRocks Parquet via Stream Load, not executemany"
     },
+    "perf-tpch-rf1-bulk-load-20261031": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "TPC-H RF1: replace timed Python CSV parsing and VALUES inserts with bulk load"
+    },
     "perf-trino-presto-bulk-load-20261030": {
       "claim": null,
       "needs": [
