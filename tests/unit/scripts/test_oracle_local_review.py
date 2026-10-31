@@ -213,6 +213,7 @@ def bootstrap_names() -> frozenset[str]:
     return local.SCRUBBED_AT_START
 
 
+@pytest.mark.skipif(os.name == "nt", reason="the stub uv is a shebang script")
 def test_the_real_launcher_execs_uv_without_any_withheld_secret_in_its_environment(
     clones: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
