@@ -2,9 +2,14 @@ from __future__ import annotations
 
 import pytest
 
-from benchbox.platforms.questdb_rewrites import rewrite_query
+from benchbox.platforms.questdb_rewrites import rewrite_with_modules
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
+
+
+def rewrite_query(sql: str) -> str:
+    return rewrite_with_modules(sql, "decorrelated_group_columns")
+
 
 DERIVED = "LEFT JOIN (SELECT AVG(q) AS _col_0, k AS _u_2 FROM l AS l2 GROUP BY k) AS _u_0 ON _u_0._u_2 = l1.k"
 
