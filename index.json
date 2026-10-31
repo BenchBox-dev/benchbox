@@ -9454,13 +9454,18 @@
       "title": "Re-audit every published surface after remediation"
     },
     "docs-remediation-live-site-publish": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-01T00:16:42Z",
+        "generation": "c28dc495db0a4d149ad43acd48df156d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8"
+      },
       "needs": [
         "docs-remediation-review-followups",
         "docs-remediation-full-surface-audit"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Publish and verify the approved documentation remediation"
     },
     "docs-remediation-review-followups": {
