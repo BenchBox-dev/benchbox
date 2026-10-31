@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 
 import pytest
 
@@ -10,6 +11,7 @@ from .harness import CHECKER, GATEWAY_TOKEN, HELD_SECRET, Harness
 
 pytestmark = [pytest.mark.integration, pytest.mark.medium]
 
+LOOP_TIME_LINE = re.compile(r"\d+(\.\d+)*|disk scan of \d+ root\(s\) for \d+ secret value\(s\): 0 hit\(s\)")
 FIRST = "def checker(a, b):\n    return a is b\n"
 QUOTING_DEFECT = {
     "severity": "High",
@@ -104,8 +106,9 @@ def test_no_loop_time_summary_line_reaches_the_step_summary_before_the_redaction
 
     run = harness.review(63)
 
-    assert "slot 1:" not in run.loop_summary
-    assert "oracle-verdict #63" not in run.loop_summary
+    pre_loop = [line for line in run.loop_summary.splitlines() if line]
+    assert pre_loop[0].startswith("oracle-verdict plan for #63:")
+    assert all(LOOP_TIME_LINE.fullmatch(line) for line in pre_loop[1:])
     assert "slot 1:" in run.step_summary()
     assert "oracle-verdict #63" in run.step_summary()
 

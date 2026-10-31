@@ -41,6 +41,13 @@ def test_withdrawal_citations_outside_the_read_files_stay_unverified(workspace: 
     assert not evidence._withdrawal_verified(text, workspace, frozenset({HIDDEN, "Makefile", "pkg/mod.py"}))
 
 
+def test_a_withdrawal_citation_counts_only_for_a_path_in_the_read_set() -> None:
+    assert evidence.withdrawal_cited("pkg/mod.py:1 shows it", frozenset({"pkg/mod.py"}))
+    assert not evidence.withdrawal_cited("pkg/mod.py:1 shows it", frozenset({"Makefile"}))
+    assert not evidence.withdrawal_cited("no citation here", frozenset({"pkg/mod.py"}))
+    assert evidence.withdrawal_cited("pkg/mod.py:1 shows it")
+
+
 def test_a_hidden_path_reproduction_is_verified(workspace: Path) -> None:
     assert evidence._repro_verified(f"repro: {HIDDEN}", workspace, frozenset({HIDDEN}))
     assert evidence._repro_verified("repro: Makefile.", workspace, frozenset({"Makefile"}))
