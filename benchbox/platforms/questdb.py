@@ -504,10 +504,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
             total_rows = 0
             for data_file in data_files:
                 try:
-                    dialect = replace(
-                        resolve_csv_dialect(data_source, table_name_lower, data_file, benchmark),
-                        normalize_booleans=False,
-                    )
+                    dialect = resolve_csv_dialect(data_source, table_name_lower, data_file, benchmark)
                     if method == "ilp":
                         rows = self._load_table_via_ilp(table_name_lower, data_file, dialect)
                         source = "ILP"
@@ -515,7 +512,9 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                         rows = self._load_parquet_via_chunked_csv(table_name_lower, data_file)
                         source = "REST/parquet-csv"
                     else:
-                        rows = self._load_table_via_rest_api(table_name_lower, data_file, dialect)
+                        rows = self._load_table_via_rest_api(
+                            table_name_lower, data_file, replace(dialect, normalize_booleans=False)
+                        )
                         source = "REST"
                 except Exception as e:
                     self.logger.error(f"Failed to load {table_name_lower} chunk {data_file.name}: {e}")

@@ -262,6 +262,19 @@ class TestLoadDataBranches:
 
         assert mock_rest.call_args.args[2].normalize_booleans is False
 
+    def test_load_data_ilp_keeps_the_resolved_boolean_normalization(self, questdb_stubs, tmp_path):
+        data_file = tmp_path / "dimbroker.csv"
+        data_file.write_text("1|True\n", encoding="utf-8")
+
+        adapter = QuestDBAdapter(loading_method="ilp")
+        mock_benchmark = self._make_benchmark({"dimbroker": str(data_file)})
+        mock_benchmark.csv_normalize_booleans = True
+
+        with patch.object(adapter, "_load_table_via_ilp", return_value=1) as mock_ilp:
+            adapter.load_data(mock_benchmark, Mock(), tmp_path)
+
+        assert mock_ilp.call_args.args[2].normalize_booleans is True
+
     def test_load_data_ilp_method_success(self, questdb_stubs, tmp_path):
         data_file = tmp_path / "lineitem.csv"
         data_file.write_text("col1\n1\n", encoding="utf-8")
