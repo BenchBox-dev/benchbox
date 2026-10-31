@@ -76,6 +76,41 @@ def test_plan_entry_records_the_execution_it_came_from():
     assert entry["run_type"] == "measurement"
 
 
+def test_differing_iteration_fingerprints_are_flagged_additively():
+    entry = build_plans_payload(_results())["queries"]["Q1#0:"]
+
+    assert entry["fingerprint_varied"] is True
+    assert entry["fingerprint_variants"] == [
+        {"fingerprint": _plan("a").plan_fingerprint, "iteration": 1, "run_type": "measurement"},
+        {"fingerprint": _plan("b").plan_fingerprint, "iteration": 2, "run_type": "measurement"},
+    ]
+    assert entry["fingerprint"] == _plan("b").plan_fingerprint
+
+
+def test_identical_iteration_fingerprints_are_not_flagged():
+    rows = _rows()
+    rows[1]["query_plan"] = rows[2]["query_plan"]
+    rows[1]["plan_fingerprint"] = rows[2]["plan_fingerprint"]
+    results = make_benchmark_results(
+        benchmark_id="tpch",
+        benchmark_name="tpch",
+        platform="datafusion-df",
+        scale_factor=1.0,
+        execution_id="df_bundle",
+        timestamp=datetime(2025, 1, 1),
+        duration_seconds=1.0,
+        total_queries=3,
+        successful_queries=3,
+        query_plans_captured=1,
+        query_results=rows,
+    )
+
+    entry = build_plans_payload(results)["queries"]["Q1#0:"]
+
+    assert "fingerprint_varied" not in entry
+    assert "fingerprint_variants" not in entry
+
+
 def test_loader_attaches_plan_only_to_the_recorded_execution():
     payload = build_plans_payload(_results())
     compact = [
