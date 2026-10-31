@@ -1355,7 +1355,7 @@ class UnifiedWhenThen(_DataFusionDeferredOperations):
         cond = condition._expr if isinstance(condition, UnifiedExpr) else condition
 
         if self._platform == "PySpark":
-            return UnifiedWhen(self._when_builder.when(cond), platform="PySpark")
+            return UnifiedWhen(cond, platform="PySpark", chain=self._when_builder)
         if self._platform == "DataFusion":
             return UnifiedWhen(cond, platform="DataFusion", when_pairs=self._when_pairs)
         return UnifiedWhen(self._when_builder.when(cond), platform="Polars")
@@ -1388,10 +1388,13 @@ class UnifiedWhenThen(_DataFusionDeferredOperations):
 
 
 class UnifiedWhen(_DataFusionDeferredOperations):
-    def __init__(self, when_builder: Any, platform: str, when_pairs: list | None = None) -> None:
+    def __init__(
+        self, when_builder: Any, platform: str, when_pairs: list | None = None, chain: Any | None = None
+    ) -> None:
         self._when_builder = when_builder
         self._platform = platform
         self._when_pairs = when_pairs or []
+        self._chain = chain
 
     def then(self, value: Any) -> UnifiedWhenThen:
         val = value._expr if isinstance(value, UnifiedExpr) else value
@@ -1399,7 +1402,10 @@ class UnifiedWhen(_DataFusionDeferredOperations):
         if self._platform == "PySpark":
             from pyspark.sql import functions as F
 
-            when_expr = F.when(self._when_builder, val)
+            if self._chain is not None:
+                when_expr = self._chain.when(self._when_builder, val)
+            else:
+                when_expr = F.when(self._when_builder, val)
             return UnifiedWhenThen(when_expr, platform="PySpark")
 
         if self._platform == "DataFusion":
@@ -2361,7 +2367,9 @@ class UnifiedLazyFrame(Generic[DF, Expr]):
                 raise NotImplementedError("UnifiedLazyFrame.slice without a length is not supported for DataFusion")
             result = self._df.limit(length, offset=offset)
         elif _is_pyspark_df(self._df):
-            raise NotImplementedError("UnifiedLazyFrame.slice is not implemented for PySpark")
+            result = self._df.offset(offset) if offset else self._df
+            if length is not None:
+                result = result.limit(length)
         else:
             result = self._df.slice(offset, length)
         return UnifiedLazyFrame(result, self._adapter)
