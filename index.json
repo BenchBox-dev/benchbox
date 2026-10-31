@@ -14320,10 +14320,12 @@
     },
     "maintainer-bundle-staging-salt-guidance": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "public-pseudonym-salt-automatic"
+      ],
       "priority": "medium",
       "status": "open",
-      "title": "Make the maintainer bundle staging path discoverable so agents stop treating the pseudonym salt as required"
+      "title": "Agent and maintainer guidance for the automatic pseudonym salt: staging target, maintainer-bundles doc, guard-refusal rule"
     },
     "maintainer-review-g4-uncertain-deferrals": {
       "claim": null,
