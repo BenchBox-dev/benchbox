@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed QuestDB rejecting equality-correlated scalar aggregate subqueries in the select list or ORDER BY ('query is not expected, did you mean column?' and 'Invalid table name or alias'), which failed TPC-Havoc variants 1_v1, 3_v1, 7_v1, 8_v1, 9_v1, 10_v1, 12_v1 and 16_v1; each subquery becomes a LEFT JOIN of a grouped derived table keyed on the correlated columns."
+    }
+  ]
+}
