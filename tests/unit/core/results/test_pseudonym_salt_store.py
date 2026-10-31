@@ -34,7 +34,7 @@ def _no_env_salt(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.fixture(autouse=True)
 def _no_read_retry_delay(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(anonymization.time, "sleep", lambda _seconds: None)
+    monkeypatch.setattr(anonymization, "_SALT_READ_DELAY_SECONDS", 0)
 
 
 def test_salt_path_lives_under_home_benchbox(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
