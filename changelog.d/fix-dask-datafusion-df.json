@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed Dask TPC-DS queries 47, 57 and 89 and the TPC-DS OBT aggregates on Dask, and DataFusion DataFrame queries for read_primitives (approximate distinct count, as-of join day difference, map construction and access, windows, statistics, CUBE and ROLLUP, struct construction), TSBS DevOps query 6 and the FlightData market-share query."
+    }
+  ]
+}

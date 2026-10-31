@@ -238,27 +238,27 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
         return UnifiedExpr(pl.struct(*native_cols))
 
     @_defer_datafusion_operation
-    def map_from_entries(self, column: Any) -> UnifiedExpr:
+    def map_from_arrays(self, keys: Any, values: Any) -> UnifiedExpr:
         platform = self._adapter.platform_name
 
-        if isinstance(column, UnifiedExpr):
-            native_col = column._expr
-        elif isinstance(column, str):
-            native_col = self._adapter.col(column)
-        else:
-            native_col = column
+        def native(column: Any) -> Any:
+            if isinstance(column, UnifiedExpr):
+                return column._expr
+            if isinstance(column, str):
+                return self._adapter.col(column)
+            return column
+
+        native_keys, native_values = native(keys), native(values)
 
         if platform == "PySpark":
             from pyspark.sql import functions as F
 
-            return UnifiedExpr(F.map_from_entries(native_col))
+            return UnifiedExpr(F.map_from_arrays(native_keys, native_values))
 
         if platform == "DataFusion":
-            from datafusion import functions as df_f
+            return UnifiedExpr(self._adapter.session_ctx.udf("map")(native_keys, native_values))
 
-            return UnifiedExpr(df_f.map_from_entries(native_col))
-
-        raise NotImplementedError("map_from_entries not supported on Polars (no native Map dtype)")
+        raise NotImplementedError("map_from_arrays not supported on Polars (no native Map dtype)")
 
     def scalar(self, df: LazyDF, column: str | None = None) -> Any:
         native_df = df.native if isinstance(df, UnifiedLazyFrame) else df

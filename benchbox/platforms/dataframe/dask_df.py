@@ -424,7 +424,15 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
         return df
 
     def read_parquet(self, path: Path) -> DaskDF:
-        return dd.read_parquet(path)
+        import pyarrow.types as pa_types
+
+        df = dd.read_parquet(path)
+        decimal_columns = [
+            name
+            for name, dtype in df.dtypes.items()
+            if isinstance(dtype, pd.ArrowDtype) and pa_types.is_decimal(dtype.pyarrow_dtype)
+        ]
+        return df.assign(**{name: df[name].astype("float64") for name in decimal_columns}) if decimal_columns else df
 
     def to_datetime(self, series: Any) -> Any:
         return pd.to_datetime(series)

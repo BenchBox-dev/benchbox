@@ -9016,7 +9016,7 @@
     "p50_seconds": 0.012909
   },
   {
-    "id": "tests/unit/platforms/dataframe/test_expression_family_coverage.py::TestContextElementAndStructAndMap::test_map_from_entries_polars_raises",
+    "id": "tests/unit/platforms/dataframe/test_expression_family_coverage.py::TestContextElementAndStructAndMap::test_map_from_arrays_polars_raises",
     "p50_seconds": 0.014291
   },
   {

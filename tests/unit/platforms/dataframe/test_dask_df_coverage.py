@@ -402,6 +402,28 @@ def test_close_and_del_cleanup():
     adapter.__del__()
 
 
+def test_read_parquet_casts_decimal_columns_so_reductions_tokenize(tmp_path):
+    import decimal
+
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    table = pa.table(
+        {
+            "id": [1, 2, 3],
+            "amount": pa.array([decimal.Decimal("1.10"), None, decimal.Decimal("4.40")], pa.decimal128(7, 2)),
+        }
+    )
+    pq.write_table(table, tmp_path / "t.parquet")
+
+    frame = _make_adapter().read_parquet(tmp_path)
+
+    assert str(frame.dtypes["amount"]) == "float64"
+    projected = frame[["id", "amount"]]
+    assert float(projected["amount"].sum().compute()) == pytest.approx(5.5)
+    assert float(projected["amount"].count().compute()) == 2
+
+
 def test_read_csv_parquet_datetime_timedelta_concat_and_counts(monkeypatch, tmp_path):
     adapter = _make_adapter()
 
@@ -413,7 +435,6 @@ def test_read_csv_parquet_datetime_timedelta_concat_and_counts(monkeypatch, tmp_
         "dd",
         SimpleNamespace(
             read_csv=_read_csv,
-            read_parquet=lambda p: ("pq", p),
             concat=lambda dfs, ignore_index: ("concat", len(dfs), ignore_index),
         ),
     )
@@ -422,7 +443,6 @@ def test_read_csv_parquet_datetime_timedelta_concat_and_counts(monkeypatch, tmp_
 
     out = adapter.read_csv(tmp_path / "x.tbl", delimiter="|", header=None, names=["a", "b"], null_marker="")
     assert TRAILING_DUMMY_COLUMN not in out.columns
-    assert adapter.read_parquet(tmp_path / "x.parquet")[0] == "pq"
     assert str(adapter.to_datetime(pd.Series(["2020-01-01"])).iloc[0]).startswith("2020-01-01")
     assert adapter.timedelta_days(3).days == 3
 

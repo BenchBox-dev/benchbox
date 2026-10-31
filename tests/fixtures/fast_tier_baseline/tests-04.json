@@ -9052,7 +9052,7 @@
     "p50_seconds": 0.015553
   },
   {
-    "id": "tests/unit/platforms/dataframe/test_expression_family_coverage.py::TestContextElementAndStructAndMap::test_map_from_entries_unified_expr_input",
+    "id": "tests/unit/platforms/dataframe/test_expression_family_coverage.py::TestContextElementAndStructAndMap::test_map_from_arrays_unified_expr_input",
     "p50_seconds": 0.013533
   },
   {
