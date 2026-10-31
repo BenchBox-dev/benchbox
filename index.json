@@ -16709,18 +16709,13 @@
       "title": "Make oracle-gate post failure when evaluation errors, and sweep every open develop pull request"
     },
     "oracle-gate-from-verdict-job-20261026": {
-      "claim": {
-        "expires_at": "2026-11-01T21:30:14Z",
-        "generation": "638735e3523a470cac3be5ccae8bad22",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e"
-      },
+      "claim": null,
       "needs": [
         "oracle-gate-reject-edited-reviews-20261026",
         "oracle-review-driver-ci-20261026"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Post oracle-gate from the verdict run and leave thread resolution to the ruleset"
     },
     "oracle-gate-hardening-lows-20261026": {
