@@ -8,7 +8,9 @@ from benchbox.sql_compat.registry import REGISTRY
 _ROW_LEVEL_DML_REASON = (
     "Apache Spark's built-in table formats (parquet, orc) reject row-level DML: UPDATE, DELETE, and MERGE fail "
     "with `UNSUPPORTED_FEATURE.TABLE_OPERATION`, and the staging manifest cannot be maintained. Row-level DML "
-    "needs a transactional table format such as Delta Lake or Iceberg, which the Spark platform does not bundle."
+    "needs a transactional table format such as Delta Lake or Iceberg, whose packages the Spark platform does not "
+    "fetch (it sets no spark.jars.packages), so those formats are unavailable without a separately provisioned "
+    "classpath."
 )
 
 _GATES = {
