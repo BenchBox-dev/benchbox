@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "All 36 TPC-Havoc variants that SingleStore rejected now run there with unchanged results: FILTER aggregates, empty GROUP BY and single GROUPING SETS are rewritten, source-less filtered selects read FROM DUAL, ORDER BY on a correlated subselect alias and subselects inside aggregate functions are moved into derived tables, and shadowed aggregate columns are qualified."
+    }
+  ]
+}
