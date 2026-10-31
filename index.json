@@ -12725,8 +12725,7 @@
     "heavy-guard-status-policy-20261030": {
       "claim": null,
       "needs": [
-        "heavy-guard-cli-optin-20261030",
-        "heavy-guard-container-vm-20261030"
+        "heavy-guard-admission-20261030"
       ],
       "priority": "medium-high",
       "status": "open",
