@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed TPC-DS Q39 and Q64 failing on QuestDB with 'Duplicate column' by renaming repeated explicit output column aliases within a SELECT to unique names."
+    }
+  ]
+}
