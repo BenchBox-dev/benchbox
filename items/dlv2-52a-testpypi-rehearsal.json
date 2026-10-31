@@ -177,6 +177,17 @@
       "op": "renew",
       "op_id": "4cc6082f18804ea88e9790b4e726a723",
       "session_id": "dfb93797c41c440a9261d3ab38ceb76e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a63fcec2cce4aef850b08064",
+      "at": "2026-10-31T06:16:35Z",
+      "client": "omp-coding-agent",
+      "displaced": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cbd63a5667398431c51c92e1",
+      "generation": "a69dcd35f6f74314be309cb02f156233",
+      "op": "takeover",
+      "op_id": "86d7bcb56d2d4df6a916f2fdd78270d7",
+      "reason": "Same coordinating omp session (01a17d41); the Mac rebooted on 2026-10-30 ~20:15 UTC, which ended the MCP server process that held the claim, so the old actor cannot renew. Re-adopting to keep driving the rehearsal.",
+      "session_id": "1b7883c828fe4439af2d03fd6083831d"
     }
   ]
 }

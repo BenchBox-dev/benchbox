@@ -8795,10 +8795,10 @@
     },
     "dlv2-52a-testpypi-rehearsal": {
       "claim": {
-        "expires_at": "2026-10-31T15:19:43Z",
-        "generation": "f263159a8b3d4e9487a1dcf3f9f8c01f",
-        "renewals": 1,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cbd63a5667398431c51c92e1"
+        "expires_at": "2026-11-01T06:16:35Z",
+        "generation": "a69dcd35f6f74314be309cb02f156233",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a63fcec2cce4aef850b08064"
       },
       "needs": [
         "dlv2-51-release-yml-v2"
