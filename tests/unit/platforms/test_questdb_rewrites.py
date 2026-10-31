@@ -152,7 +152,10 @@ def test_group_by_alias_of_a_plain_column_is_kept():
 
 @pytest.mark.parametrize("type_sql", ["DECIMAL(15,2)", "DECIMAL(10,4)", "DECIMAL", "NUMERIC(12,2)"])
 def test_decimal_cast_becomes_double(type_sql):
-    assert rewrite_query(f"SELECT CAST(a * 2 AS {type_sql}) FROM t") == "SELECT CAST(a * 2 AS DOUBLE) FROM t"
+    assert (
+        rewrite_query(f"INSERT INTO u SELECT CAST(a * 2 AS {type_sql}) FROM t")
+        == "INSERT INTO u SELECT CAST(a * 2 AS DOUBLE) FROM t"
+    )
 
 
 def test_non_decimal_casts_are_left_unchanged():
@@ -181,3 +184,11 @@ def test_parenthesised_create_table_as_select_is_left_unchanged():
 )
 def test_function_names_are_mapped_to_questdb_equivalents(source, expected):
     assert rewrite_query(source) == expected
+
+
+def test_decimal_cast_only_rewrites_write_statements():
+    select = "SELECT CAST(a AS DECIMAL(15,4)) / CAST(b AS DECIMAL(15,4)) FROM t"
+    assert rewrite_query(select) == select
+    assert rewrite_query("INSERT INTO t SELECT CAST(a AS DECIMAL(15,2)) FROM s") == (
+        "INSERT INTO t SELECT CAST(a AS DOUBLE) FROM s"
+    )

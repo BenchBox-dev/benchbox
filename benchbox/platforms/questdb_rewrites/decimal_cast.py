@@ -21,3 +21,7 @@ def _decimal_to_double(node: exp.Expr) -> exp.Expr:
 
 def transform(expression: exp.Expr) -> exp.Expr:
     return expression.transform(_decimal_to_double)
+
+
+def applies(sql: str) -> bool:
+    return sql.lstrip().upper().startswith(("INSERT", "UPDATE"))
