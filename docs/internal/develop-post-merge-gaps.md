@@ -81,19 +81,25 @@ with `ARM=1`, which is what `make pr-ready` and `make pr-arm-auto-merge` reach. 
 completed `trunk.yml` runs on `develop` back to the last success, ignoring runs still in
 progress and cancelled runs. If the newest completed run failed, `timed_out` or
 `startup_failure`, arming is refused with the run URL and the culprit: the first red
-run of that streak, not the newest one. The culprit is the PR associated with that
-run's head commit through the GitHub commits API, or the bare commit when no merged
-PR is associated. The message gives the `make trunk-revert PR=<n>` command.
+run of that streak, not the newest one. A commit that was replaced while waiting has
+no run of its own, so that run covers every commit since the last green run. When it
+covers one commit, the culprit is the PR associated with that commit through the
+GitHub commits API, or the bare commit when no merged PR is associated. When it
+covers several, the message names all of them (the oldest eight and a count of newer
+ones). If the range cannot be read in full, the culprit is undetermined and arming is
+refused without naming a commit. The message gives the `make trunk-revert PR=<n>` command.
 
 The refusal lifts when either:
 
 - a newer completed trunk run succeeds, or
-- one of the 100 newest `develop` commits, read through the GitHub API, says
-  `This reverts commit <culprit sha>`, which `make trunk-revert` writes.
+- the run covered exactly one commit and one of the 100 newest `develop` commits, read
+  through the GitHub API, says `This reverts commit <culprit sha>`, which
+  `make trunk-revert` writes. A revert of one of several covered commits does not lift
+  the refusal for other PRs; only a green run does.
 
 The revert PR itself is exempt: a `fix/revert-*` branch can be armed only if
-its own commits carry `This reverts commit <culprit sha>`, so the branch name
-alone buys nothing. Unlike `make pr-open`, which waits 30 minutes before
+its own commits carry `This reverts commit <sha>` for a commit the red run covers, so
+the branch name alone buys nothing. Unlike `make pr-open`, which waits 30 minutes before
 opening new PRs as drafts, arming is refused as soon as the red run completes.
 
 A fix-forward PR is the other way through. While `develop` has been red for more than
