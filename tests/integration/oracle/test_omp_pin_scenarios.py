@@ -26,10 +26,10 @@ def test_a_failed_install_posts_a_distinct_pending_status_runs_no_attempt_and_is
 
     run = harness.review(71, installable=False)
 
-    assert run.steps["install"].code == 0
-    assert run.steps["install"].outputs["state"] == "failed"
-    assert "the omp download failed" in run.steps["install"].stderr
-    assert run.steps["install"].outputs["env"] == ""
+    assert run.steps["harness"].code == 0
+    assert run.steps["harness"].outputs["state"] == "failed"
+    assert "the omp download failed" in run.steps["harness"].stderr
+    assert run.steps["harness"].outputs["env"] == ""
     assert "attempts" not in run.steps
     assert run.attempts() == [] and harness.omp_calls() == 0
     [status] = harness.github.oracle_statuses(head)
@@ -51,7 +51,7 @@ def test_a_binary_swapped_after_the_install_is_refused_before_any_review_runs(ha
 
     run = harness.review(72, swap_after_install=True)
 
-    assert run.steps["install"].outputs["state"] == "installed"
+    assert run.steps["harness"].outputs["state"] == "installed"
     attempts = run.attempts()
     assert attempts
     for attempt in attempts:
@@ -69,8 +69,8 @@ def test_a_pin_with_a_path_character_build_key_stops_the_plan(harness: Harness) 
 
     run = harness.review(73)
 
-    assert run.steps["plan"].code != 0
-    assert "not a platform name" in run.steps["plan"].stderr
+    assert run.steps["prepare"].code != 0
+    assert "not a platform name" in run.steps["prepare"].stderr
     assert harness.github.oracle_statuses(harness.github.pulls[73]["head"]["sha"]) == []
     assert harness.omp_calls() == 0
 

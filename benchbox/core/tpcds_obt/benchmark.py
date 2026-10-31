@@ -11,7 +11,7 @@ from benchbox.base import BaseBenchmark
 from benchbox.core.tpcds.generator import TPCDSDataGenerator
 from benchbox.core.tpcds_obt.etl.transformer import SUPPORTED_CHANNELS, TPCDSOBTTransformer
 from benchbox.core.tpcds_obt.queries import TPCDSOBTQueryManager
-from benchbox.core.tpcds_obt.schema import get_obt_columns
+from benchbox.core.tpcds_obt.schema import OBT_TABLE_NAME, get_obt_columns
 from benchbox.utils.cloud_storage import normalize_output_dir
 from benchbox.utils.path_utils import get_benchmark_runs_datagen_path
 
@@ -286,6 +286,13 @@ class TPCDSOBTBenchmark(BaseBenchmark):
         from benchbox.core.tpcds_obt.dataframe_queries import get_dataframe_queries
 
         return get_dataframe_queries()
+
+    def get_dataframe_load_columns(self, table_name: str) -> list[str] | None:
+        if table_name != OBT_TABLE_NAME:
+            return None
+        from benchbox.core.tpcds_obt.dataframe_queries import get_load_columns
+
+        return get_load_columns()
 
     def execute_query(
         self,

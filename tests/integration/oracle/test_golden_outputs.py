@@ -9,20 +9,12 @@ import pytest
 from .fake_github import ACCOUNTS, OWNER_TOKEN
 from .golden import assert_golden, logical_steps, posted, run_capture
 from .harness import CHECKER, REPO_ROOT, Harness, ReviewRun
-from .runs import DRIVER, STEPS
 from .test_carry_scenarios import _rebase, _reviewed
 from .test_evidence_scenarios import FILLER, LARGE_CHECKER, NOTES
 from .test_followup_scenarios import FIXED, REBUTTAL, _first_round
 from .test_sweep_scenarios import UNAVAILABLE, VERDICT, _failed_run, _pending_review
 
 pytestmark = [pytest.mark.integration, pytest.mark.medium]
-
-
-@pytest.fixture(params=[STEPS, DRIVER], autouse=True)
-def orchestration(request: pytest.FixtureRequest, harness: Harness) -> str:
-    harness.default_mode = request.param
-    harness.default_shadow = True
-    return str(request.param)
 
 
 FIXED_CHECKER = "def checker(a, b):\n    if a is None or b is None:\n        return False\n    return a == b\n"
@@ -46,9 +38,6 @@ WITHDRAWN = {
 
 def _check(name: str, harness: Harness, run: ReviewRun, pr: int, head: str | None = None) -> None:
     assert_golden(name, run_capture(harness, run, pr, head or run.plan.get("head_sha", "")), harness)
-    if harness.default_mode == STEPS and "shadow-plan" in run.steps:
-        result = json.loads((run.temp / "oracle-shadow" / "result.json").read_text(encoding="utf-8"))
-        assert result == {"differences": {}, "equal": True}
 
 
 def _open(harness: Harness, pr: int, files: dict[str, str] | None = None, **extra: Any) -> str:

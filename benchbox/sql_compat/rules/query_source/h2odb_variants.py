@@ -23,6 +23,16 @@ GROUP BY passenger_count
 ORDER BY passenger_count;
 """
 
+QUESTDB_Q9_SQL = """
+SELECT
+    passenger_count,
+    approx_percentile(fare_amount, 0.5, 5) as median_fare_amount,
+    approx_percentile(fare_amount, 0.9, 5) as p90_fare_amount
+FROM trips
+GROUP BY passenger_count
+ORDER BY passenger_count;
+"""
+
 STARROCKS_Q9_SQL = """
 SELECT
     passenger_count,
@@ -118,6 +128,24 @@ REGISTRY.register(
     ),
     _P,
     "bigquery",
+    benchmark=_B,
+    query_id="Q9",
+)
+
+REGISTRY.register(
+    CompatibilityDecision(
+        rule_id="query_source.questdb.h2odb.q9_approx_percentile_variant",
+        action=CompatAction.SELECT_VARIANT,
+        support_level=SupportLevel.REWRITTEN,
+        failure_mode=FailureMode.SYNTAX_ERROR,
+        payload=SelectVariantPayload(
+            variant_key="questdb",
+            variant_sql=QUESTDB_Q9_SQL,
+        ),
+        reason="QuestDB cannot parse PERCENTILE_CONT … WITHIN GROUP; use approx_percentile at precision 5",
+    ),
+    _P,
+    "questdb",
     benchmark=_B,
     query_id="Q9",
 )
