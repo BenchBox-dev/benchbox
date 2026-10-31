@@ -29,7 +29,8 @@ from benchbox.core.tpcds_obt.schema import (
 logger = logging.getLogger(__name__)
 
 SUPPORTED_CHANNELS = CHANNELS
-COLUMN_THREAD_BUDGET = 3000
+COLUMN_THREAD_BUDGET = 1500
+TRANSFORM_MEMORY_LIMIT = "6GB"
 
 
 class OBTCoverageError(RuntimeError):
@@ -106,6 +107,9 @@ class TPCDSOBTTransformer:
 
         conn.execute("SET preserve_insertion_order = false")
         conn.execute(f"SET threads = {self._thread_limit(column_count)}")
+        conn.execute(f"SET memory_limit = '{TRANSFORM_MEMORY_LIMIT}'")
+        if db_path is not None:
+            conn.execute(f"SET temp_directory = '{db_path.parent / 'spill'}'")
         return conn
 
     @staticmethod

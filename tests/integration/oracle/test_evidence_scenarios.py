@@ -34,7 +34,7 @@ INERT_WITHOUT_MARKDOWN = (
 
 
 def _line(prompt: str, path: str) -> str:
-    return next(row for row in prompt.splitlines() if row.startswith(f"{path} ") or row == path)
+    return next(row for row in prompt.splitlines() if row.startswith(f"{path} (") or row == path)
 
 
 def test_a_file_list_brief_names_the_required_reads_and_a_retry_marks_the_missed_file(harness: Harness) -> None:
@@ -51,7 +51,7 @@ def test_a_file_list_brief_names_the_required_reads_and_a_retry_marks_the_missed
     assert run.plan["brief_mode"] == "file-list"
     assert run.plan["evidence_files"] == [CELLS, CHECKER]
     first, second = harness.omp_prompts()
-    required, _, others = first.partition("Not required reads")
+    required, _, others = first.partition("BEGIN CHANGE DATA")[2].partition("Not required reads")
     assert "Required reads: each file listed here needs its own direct read" in required
     assert CHECKER in required and CELLS in required and NOTES not in required
     assert NOTES in others

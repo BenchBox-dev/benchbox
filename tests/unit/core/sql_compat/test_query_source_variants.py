@@ -18,12 +18,13 @@ from benchbox.sql_compat.registry import REGISTRY
 
 def test_h2odb_variant_rules_registered():
     rules = [(key, entry) for key, entry in REGISTRY.all_rules() if key[0] is Phase.QUERY_SOURCE and key[2] == "h2odb"]
-    assert len(rules) == 4, f"Expected 4 h2odb rules, got {len(rules)}: {[e.rule_id for _, e in rules]}"
+    assert len(rules) == 5, f"Expected 5 h2odb rules, got {len(rules)}: {[e.rule_id for _, e in rules]}"
     rule_ids = [entry.rule_id for _, entry in rules]
     assert "query_source.sqlite.h2odb.q9_percentile_cont_variant" in rule_ids
     assert "query_source.clickhouse.h2odb.q9_quantile_variant" in rule_ids
     assert "query_source.starrocks.h2odb.q9_percentile_approx_variant" in rule_ids
     assert "query_source.bigquery.h2odb.q9_percentile_window_variant" in rule_ids
+    assert "query_source.questdb.h2odb.q9_approx_percentile_variant" in rule_ids
 
 
 @pytest.mark.parametrize(
@@ -31,6 +32,7 @@ def test_h2odb_variant_rules_registered():
     [
         ("clickhouse", "quantile"),
         ("starrocks", "PERCENTILE_APPROX"),
+        ("questdb", "approx_percentile"),
     ],
 )
 def test_h2odb_rule_action_and_payload(platform: str, expected_snippet: str):
@@ -67,10 +69,11 @@ def test_coffeeshop_variant_rules_registered():
     rules = [
         (key, entry) for key, entry in REGISTRY.all_rules() if key[0] is Phase.QUERY_SOURCE and key[2] == "coffeeshop"
     ]
-    assert len(rules) == 2, f"Expected 2 coffeeshop rules, got {len(rules)}: {[e.rule_id for _, e in rules]}"
+    assert len(rules) == 3, f"Expected 3 coffeeshop rules, got {len(rules)}: {[e.rule_id for _, e in rules]}"
     rule_ids = [entry.rule_id for _, entry in rules]
     assert "query_source.clickhouse.coffeeshop.sa4_cross_join_variant" in rule_ids
     assert "query_source.clickhouse.coffeeshop.tm1_todatetime_variant" in rule_ids
+    assert "query_source.questdb.coffeeshop.tm1_varchar_time_variant" in rule_ids
 
 
 @pytest.mark.parametrize(

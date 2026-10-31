@@ -332,8 +332,8 @@ def _withdrawal_verified(evidence: str, workspace: Path, read: frozenset[str]) -
     return False
 
 
-def withdrawal_cited(evidence_text: str | None) -> bool:
-    return next(iter(_line_citations(evidence_text or "")), None) is not None
+def withdrawal_cited(evidence_text: str | None, read: frozenset[str] | None = None) -> bool:
+    return any(read is None or cited in read for cited, _ in _line_citations(evidence_text or ""))
 
 
 def _repro_verified(evidence: str, workspace: Path, read: frozenset[str]) -> bool:
