@@ -269,6 +269,25 @@ def test_low_free_disk_breaches_each_root_and_enough_disk_does_not() -> None:
     assert step_once(policy(kill_free_disk_gib=5.0), free_gib=10.0) == ""
 
 
+@pytest.mark.parametrize(
+    ("admit_floor", "kill_floor", "expected"),
+    [(None, None, 20.0), ("50", None, 20.0), ("100", None, 20.0), ("5", None, 2.0), ("2", None, 0.8), ("5", "3", 3.0)],
+)
+def test_kill_disk_floor_stays_below_the_admission_floor_unless_set_explicitly(
+    monkeypatch: pytest.MonkeyPatch, admit_floor: str | None, kill_floor: str | None, expected: float
+) -> None:
+    for name, value in (
+        ("BENCHBOX_HEAVY_MIN_FREE_DISK_GIB", admit_floor),
+        ("BENCHBOX_HEAVY_KILL_FREE_DISK_GIB", kill_floor),
+    ):
+        if value is None:
+            monkeypatch.delenv(name, raising=False)
+        else:
+            monkeypatch.setenv(name, value)
+    args = hw.build_parser().parse_args(["--holder-pid", "1", "--holder-created", "0", "--budget-bytes", "0"])
+    assert hw.policy_from_args(args).kill_free_disk_gib == pytest.approx(expected)
+
+
 def test_evaluate_breaches_reports_every_failing_signal() -> None:
     pol = policy(budget_gib=0.5)
     disks = [hw.DiskFree("boot volume", "/", 1.0)]

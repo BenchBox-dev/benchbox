@@ -74,7 +74,8 @@ def pressure(**overrides: object) -> rl.HostPressure:
     return dataclasses.replace(base, **overrides)
 
 
-def test_orphans_are_ppid_one_servers_with_a_benchbox_worktree_cwd() -> None:
+def test_orphans_are_ppid_one_servers_with_a_benchbox_worktree_cwd(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "platform", "darwin")
     found = hs.find_orphans(fake_runner, footprint=lambda pid: 2 * GIB if pid == 61182 else None)
     assert found is not None
     assert [(o.pid, o.cwd, o.footprint_bytes) for o in found] == [
@@ -87,7 +88,9 @@ def test_orphans_are_unmeasured_when_the_process_table_is_unreadable() -> None:
     assert hs.find_orphans(lambda argv, timeout: None) is None
 
 
-def test_orphans_are_unmeasured_when_cwd_lookup_fails() -> None:
+def test_orphans_are_unmeasured_when_cwd_lookup_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "platform", "darwin")
+
     def runner(argv, timeout):
         return PS_TABLE if argv[0] == "ps" else None
 
@@ -140,7 +143,8 @@ def lock_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return tmp_path
 
 
-def test_status_renders_holder_waiters_vms_top_and_orphan(lock_dir: Path) -> None:
+def test_status_renders_holder_waiters_vms_top_and_orphan(lock_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "platform", "darwin")
     handle = hl.acquire(lock_dir / hl.LOCK_NAME, wait_seconds=0, phase="run", command="make heavy-run")
     marker = hl.waiters_dir(handle.path) / str(os.getpid())
     marker.parent.mkdir(parents=True, exist_ok=True)

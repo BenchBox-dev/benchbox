@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 
 MODE_ENV = "BENCHBOX_HEAVY_WATCHDOG"
 KILL_FREE_DISK_GIB_ENV = "BENCHBOX_HEAVY_KILL_FREE_DISK_GIB"
+ADMIT_MIN_FREE_DISK_GIB_ENV = "BENCHBOX_HEAVY_MIN_FREE_DISK_GIB"
 INTERVAL_ENV = "BENCHBOX_HEAVY_WATCHDOG_INTERVAL_SECONDS"
 GRACE_ENV = "BENCHBOX_HEAVY_WATCHDOG_GRACE_SECONDS"
 MEMORY_BUDGET_GIB_ENV = "BENCHBOX_HEAVY_MEMORY_BUDGET_GIB"
@@ -30,6 +31,7 @@ DEFAULT_MODE = "kill"
 DEFAULT_INTERVAL_SECONDS = 2.0
 DEFAULT_GRACE_SECONDS = 10.0
 DEFAULT_KILL_FREE_DISK_GIB = 20.0
+KILL_FLOOR_SHARE_OF_ADMIT_FLOOR = 0.4
 CRITICAL_PRESSURE_LEVEL = 4
 TOP_PROCESS_COUNT = 5
 GIB = 1024**3
@@ -76,6 +78,13 @@ def _float_env(name: str, default: float, minimum: float = 0.0) -> float:
     except ValueError:
         return default
     return value if value == value and value >= minimum else default
+
+
+def default_kill_free_disk_gib() -> float:
+    admit_floor = _float_env(ADMIT_MIN_FREE_DISK_GIB_ENV, -1.0)
+    if admit_floor < 0:
+        return DEFAULT_KILL_FREE_DISK_GIB
+    return min(DEFAULT_KILL_FREE_DISK_GIB, admit_floor * KILL_FLOOR_SHARE_OF_ADMIT_FLOOR)
 
 
 @dataclass(frozen=True)
@@ -352,7 +361,7 @@ def policy_from_args(args: argparse.Namespace) -> WatchPolicy:
         holder_created=args.holder_created,
         budget_bytes=args.budget_bytes,
         mode=mode_from_env(),
-        kill_free_disk_gib=_float_env(KILL_FREE_DISK_GIB_ENV, DEFAULT_KILL_FREE_DISK_GIB),
+        kill_free_disk_gib=_float_env(KILL_FREE_DISK_GIB_ENV, default_kill_free_disk_gib()),
         interval_seconds=_float_env(INTERVAL_ENV, DEFAULT_INTERVAL_SECONDS, minimum=0.05),
         grace_seconds=_float_env(GRACE_ENV, DEFAULT_GRACE_SECONDS),
         lock_path=args.lock_path,

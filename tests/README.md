@@ -486,7 +486,7 @@ their footprint is not tree-attributed; VM memory is bounded by machine size and
 | Setting | Default | Meaning |
 | --- | --- | --- |
 | `BENCHBOX_HEAVY_WATCHDOG` | `kill` | `kill`, `warn` (report once per breach, signal nothing) or `off` (loud warning, no watcher) |
-| `BENCHBOX_HEAVY_KILL_FREE_DISK_GIB` | 20 | Free-disk floor per root that counts as a breach |
+| `BENCHBOX_HEAVY_KILL_FREE_DISK_GIB` | 20, or 40% of `BENCHBOX_HEAVY_MIN_FREE_DISK_GIB` when that is set and lower | Free-disk floor per root that counts as a breach; always below the admission floor unless set explicitly |
 | `BENCHBOX_HEAVY_WATCHDOG_INTERVAL_SECONDS` | 2 | Sampling interval of the watcher |
 | `BENCHBOX_HEAVY_WATCHDOG_GRACE_SECONDS` | 10 | Wait between SIGTERM and SIGKILL of descendants |
 

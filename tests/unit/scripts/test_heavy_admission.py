@@ -341,17 +341,14 @@ def test_macos_reads_pressure_level_and_memorystatus_level() -> None:
     assert (pressure.pressure_level, pressure.memorystatus_level) == (2, 41)
 
 
-def test_free_space_converts_bytes_to_gib_for_the_nearest_existing_ancestor(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_free_space_converts_bytes_to_gib_for_the_nearest_existing_ancestor(tmp_path: Path) -> None:
     seen: list[Path] = []
 
     def fake_usage(path: Path) -> types.SimpleNamespace:
         seen.append(path)
         return types.SimpleNamespace(free=3 * 2**30 + 2**29)
 
-    monkeypatch.setattr(rl.shutil, "disk_usage", fake_usage)
-    assert rl.free_space_gib(tmp_path / "missing" / "deeper") == 3.5
+    assert rl.free_space_gib(tmp_path / "missing" / "deeper", disk_usage=fake_usage) == 3.5
     assert seen == [tmp_path]
 
 

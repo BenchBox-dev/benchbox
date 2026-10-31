@@ -423,8 +423,8 @@ def _existing_ancestor(path: Path) -> Path:
     return next((ancestor for ancestor in path.parents if ancestor.exists()), Path("/"))
 
 
-def free_space_gib(path: str | Path) -> float:
-    usage = shutil.disk_usage(_existing_ancestor(Path(path).expanduser()))
+def free_space_gib(path: str | Path, disk_usage: Callable[[Path], Any] = shutil.disk_usage) -> float:
+    usage = disk_usage(_existing_ancestor(Path(path).expanduser()))
     return usage.free / GIB
 
 
