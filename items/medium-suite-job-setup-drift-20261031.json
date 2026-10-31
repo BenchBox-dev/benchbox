@@ -4,7 +4,7 @@
     "A fast test fails when a provisioning step present in one of the five medium-suite jobs is missing from another; an explicit allowlist covers only differences a job needs (coverage tooling, matrix-specific steps).",
     "The test is shown to work by removing the `_project/scripts` sync from any one job and seeing it fail."
   ],
-  "context": "REVIEW 2026-10-31: VALID but incomplete. Found a fifth medium-suite job (test.yml `medium`, release lane) and a live defect: it lacks the _project/scripts sync that the offline handshake test has needed since #3725, so the next release run fails. Fix added to acceptance; priority raised low -> medium-high. A parity test is chosen over a shared composite action: the five jobs differ in matrices and coverage setup, and the test is the smallest guard that fails on drift.",
+  "context": "REVIEW 2026-10-31: VALID but incomplete. Found a fifth medium-suite job (test.yml `medium`, release lane) and a live defect: it lacks the _project/scripts sync that the offline handshake test has needed since #3725, so the next release run fails. Fix added to acceptance; priority raised low -> medium-high. A parity test is chosen over a shared composite action: the five jobs differ in matrices and coverage setup, and the test is the smallest guard that fails on drift.\n\nDONE 2026-10-31: BenchBox#3892 squash-merged (bee97c33). test.yml `medium` now runs 'Sync locked package-only runtime' (`uv sync --project _project/scripts --locked`) after 'Install dependencies'. tests/unit/workflows/test_medium_suite_setup_parity.py compares the provisioning steps (before the first artifact download or pytest step, keyed by `uses` or `run`) of the five medium-suite jobs; the allowlist is empty and has a stale-entry check; a matrix `if:` counts when some matrix entry satisfies it. Deleting the sync from each of the five jobs in turn failed the test. tests/unit/workflows + test_ci_lint_parity: 1,045 passed serially; benchbox-oracle SHIP; full CI green; armed with make pr-arm.",
   "description": "The medium suite (`-m \"medium and not (slow or stress or resource_heavy or live_integration)\"` or the nightly core integration suite) runs in five jobs that each define their own setup: `medium-test` in `ci.yml`; `medium-test` in `trunk.yml` and in `trunk-coverage.yml`, which `ci.yml` calls as `trunk-lane-plain` and `trunk-lane-coverage`; the `integration` core suite in `nightly-v2.yml`; and `medium` in `test.yml`, which runs on pushes and PRs to `release`. Nothing checks that they provision the same things.\n\nLive defect: since #3725, `test_installed_runtime_handshake_exposes_registered_batch_tools` runs `uv run --offline` against `_project/scripts` and needs the locked `uv sync --project _project/scripts --locked` step. `ci.yml`, `trunk.yml`, `trunk-coverage.yml` and `nightly-v2.yml` have it; `test.yml`'s `medium` job runs only `uv sync --group dev`, so the next release PR or push will fail that test.\n\nHow the drift showed: on #3725 the sync was first added to `ci.yml` and `nightly-v2.yml` only. `tests/unit/workflows` passed (1,033 tests); the gap showed only when the full CI run failed both trunk-lane `medium-test (shard 0)` jobs. The trunk lanes run on PRs, so they caught it before merge; drift in `nightly-v2.yml` or `test.yml` shows only in a nightly or release run.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3725"
@@ -42,6 +42,14 @@
       "op": "take",
       "op_id": "3dc9c4c986bf49eeb7d8483a93199364",
       "session_id": "67b735ab48ef46329968b661140d14be"
+    },
+    {
+      "actor": "joe-batch-medium-parity",
+      "at": "2026-10-31T20:19:30Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "151b63090d774f9e9f9e0695f3eff96e",
+      "session_id": "3d5d45402c734f32a2cdddfa4a6e57b9"
     }
   ]
 }
