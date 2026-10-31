@@ -13,8 +13,6 @@ QUESTDB_DIALECT = "questdb"
 
 exp = sql_expressions()
 
-from ._join_scope import ColumnsOf, reassign_join_predicates
-
 
 @cache
 def _modules() -> tuple[ModuleType, ...]:
