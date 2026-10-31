@@ -148,3 +148,47 @@ def test_group_by_alias_of_an_extract_is_expanded_to_the_expression():
 def test_group_by_alias_of_a_plain_column_is_kept():
     sql = "SELECT EXTRACT(YEAR FROM ts) AS y, a AS k, COUNT(*) FROM t GROUP BY k"
     assert rewrite_query(sql) == "SELECT YEAR(ts) AS y, a AS k, COUNT(*) FROM t GROUP BY k"
+
+
+@pytest.mark.parametrize("type_sql", ["DECIMAL(15,2)", "DECIMAL(10,4)", "DECIMAL", "NUMERIC(12,2)"])
+def test_decimal_cast_becomes_double(type_sql):
+    assert (
+        rewrite_query(f"INSERT INTO u SELECT CAST(a * 2 AS {type_sql}) FROM t")
+        == "INSERT INTO u SELECT CAST(a * 2 AS DOUBLE) FROM t"
+    )
+
+
+def test_non_decimal_casts_are_left_unchanged():
+    sql = "SELECT CAST(a AS INT), CAST(b AS VARCHAR) FROM t"
+    assert rewrite_query(sql) == sql
+
+
+def test_create_table_as_select_is_parenthesised():
+    assert rewrite_query("CREATE TABLE a AS SELECT * FROM b WHERE x > 1") == (
+        "CREATE TABLE a AS (SELECT * FROM b WHERE x > 1)"
+    )
+
+
+def test_parenthesised_create_table_as_select_is_left_unchanged():
+    sql = "CREATE TABLE a AS (SELECT * FROM b)"
+    assert rewrite_query(sql) == sql
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        ("SELECT ANY_VALUE(c_name) FROM c GROUP BY m", "SELECT FIRST(c_name) FROM c GROUP BY m"),
+        ("SELECT APPROX_DISTINCT(a) FROM t", "SELECT APPROX_COUNT_DISTINCT(a) FROM t"),
+        ("SELECT APPROX_QUANTILE(q, 0.5) FROM t", "SELECT APPROX_PERCENTILE(q, 0.5) FROM t"),
+    ],
+)
+def test_function_names_are_mapped_to_questdb_equivalents(source, expected):
+    assert rewrite_query(source) == expected
+
+
+def test_decimal_cast_only_rewrites_write_statements():
+    select = "SELECT CAST(a AS DECIMAL(15,4)) / CAST(b AS DECIMAL(15,4)) FROM t"
+    assert rewrite_query(select) == select
+    assert rewrite_query("INSERT INTO t SELECT CAST(a AS DECIMAL(15,2)) FROM s") == (
+        "INSERT INTO t SELECT CAST(a AS DOUBLE) FROM s"
+    )

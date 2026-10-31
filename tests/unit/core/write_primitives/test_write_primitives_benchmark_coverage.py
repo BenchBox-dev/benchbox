@@ -938,3 +938,14 @@ class TestSelectDataframeOperationIds:
     def test_empty_filter_returns_all(self, wp):
         ids = wp._select_dataframe_operation_ids(query_filter=set())
         assert len(ids) == len(wp.operations_manager.get_all_operations())
+
+
+def test_questdb_staging_tables_use_parameterless_types():
+    from benchbox.core.write_primitives.schema import STAGING_TABLES, get_create_table_sql
+
+    for table_name in STAGING_TABLES:
+        sql = get_create_table_sql(table_name, dialect="questdb", if_not_exists=True)
+        assert "VARCHAR(" not in sql, table_name
+        assert "DECIMAL" not in sql, table_name
+
+    assert "DECIMAL(15,2)" in get_create_table_sql("insert_ops_orders", dialect="postgres")

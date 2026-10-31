@@ -5,6 +5,7 @@ from typing import Any, cast
 import yaml
 
 from benchbox.core.tpch.schema import CUSTOMER, LINEITEM, NATION, ORDERS, PART, PARTSUPP, REGION, SUPPLIER
+from benchbox.core.transactional.staging_types import translate_staging_column_type
 
 
 def _load_schema_specs() -> dict[str, Any]:
@@ -50,7 +51,7 @@ def translate_column_type(type_str: str, dialect: str) -> str | None:
     canonical = type_str.strip().upper()
     if canonical == "BINARY":
         return _BINARY_TYPE_BY_DIALECT.get(dialect.lower(), "BINARY")
-    return type_str
+    return translate_staging_column_type(type_str, dialect)
 
 
 def _supports_primary_keys(dialect: str) -> bool:

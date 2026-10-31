@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed QuestDB write_primitives and transaction_primitives failing on staging DDL, DML syntax and DELETE-based cleanups; unsupported operations (DELETE, MERGE, bulk load, savepoints, RETURNING, ON CONFLICT, CREATE INDEX) are skipped with the engine error as the reason."
+    }
+  ]
+}
