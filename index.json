@@ -16727,6 +16727,13 @@
       "status": "open",
       "title": "Validate oracle-gate dispatch inputs and ignore oracle-gate statuses not posted by the App"
     },
+    "oracle-gate-in-run-latency-observation-20261031": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Measure in-run oracle-gate latency and the force-back residual over 7 days"
+    },
     "oracle-gate-policy-change-refresh-20261025": {
       "claim": null,
       "needs": [],

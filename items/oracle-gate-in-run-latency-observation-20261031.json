@@ -1,0 +1,14 @@
+{
+  "context": "Owner waived the live latency measurement on 2026-10-30 for oracle-gate-from-verdict-job-20261026 and oracle-gate-verdict-to-status-latency-20261025. #3828 (d18d419c98) moved the oracle-gate post into the verdict run. Over the 7 days after merge, measure verdict-to-oracle-gate-status latency per head (p50/p90) against the old dispatch baseline (median 54 s, p90 779 s), and record how often a head change leaves a stale status before the pending post lands (force-back residual window).",
+  "not_before": "2026-11-07T21:30:00Z",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e",
+      "at": "2026-10-31T21:30:09Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "89e5e09234ce4cd2b5c58011d9eb05a9",
+      "session_id": "1273bcfa4d0e4ed89453e147e32359eb"
+    }
+  ]
+}
