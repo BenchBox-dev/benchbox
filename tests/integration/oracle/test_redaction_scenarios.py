@@ -6,7 +6,7 @@ import pytest
 
 from _project.scripts.oracle_reviewers import protocol
 
-from .harness import CHECKER, HELD_SECRET, Harness
+from .harness import CHECKER, GATEWAY_TOKEN, HELD_SECRET, Harness
 
 pytestmark = [pytest.mark.integration, pytest.mark.medium]
 
@@ -15,7 +15,7 @@ QUOTING_DEFECT = {
     "severity": "High",
     "file": CHECKER,
     "line": 2,
-    "title": f"Identity comparison replaces equality, see {HELD_SECRET}",
+    "title": f"Identity comparison replaces equality, see {GATEWAY_TOKEN}",
     "detail": "checker returns a is b, so equal values held in distinct objects compare unequal.",
 }
 
@@ -33,7 +33,7 @@ def test_a_secret_quoted_in_a_finding_title_reaches_neither_the_posted_review_no
         [
             {
                 "decision": "SHIP_WITH_FIXES",
-                "summary": f"One defect; the reviewer saw {HELD_SECRET}.",
+                "summary": f"One defect; the reviewer saw {GATEWAY_TOKEN}.",
                 "files_examined": [CHECKER],
                 "defects": [QUOTING_DEFECT],
             }
@@ -44,11 +44,11 @@ def test_a_secret_quoted_in_a_finding_title_reaches_neither_the_posted_review_no
 
     body = harness.github.reviews[61][-1]["body"]
     marker = _decoded(body)
-    assert run.steps["redact"].code == 0, run.steps["redact"].stderr
+    assert run.steps["finalize"].code == 0, run.steps["finalize"].stderr
     assert "Identity comparison replaces equality" in marker
-    assert HELD_SECRET not in marker
-    assert HELD_SECRET not in body
-    assert HELD_SECRET not in run.step_summary()
+    assert GATEWAY_TOKEN not in marker
+    assert GATEWAY_TOKEN not in body
+    assert GATEWAY_TOKEN not in run.step_summary()
     assert protocol.MARKER_OPEN in run.step_summary()
     assert protocol.decode_marker(body)["open_defects"][0]["id"] == "D1"
 
@@ -70,7 +70,7 @@ def test_the_redaction_step_fails_the_job_when_a_decoded_marker_still_holds_a_se
     final = plan_run.temp / "oracle-final"
     review = json.loads((final / "review.json").read_text(encoding="utf-8"))
     record = protocol.decode_marker(review["body"])
-    record["open_defects"][0]["title"] = f"see {HELD_SECRET}"
+    record["open_defects"][0]["title"] = f"see {GATEWAY_TOKEN}"
     forged = protocol.encode_marker(record)
     review["body"] = review["body"][: review["body"].rindex(protocol.MARKER_OPEN)] + forged
     (final / "review.json").write_text(json.dumps(review), encoding="utf-8")
@@ -79,12 +79,12 @@ def test_the_redaction_step_fails_the_job_when_a_decoded_marker_still_holds_a_se
     step = harness.cli(
         "redact",
         ["redact-check", "--path", str(final), "--summary-file", str(final / "summary.json")],
-        {**harness.base_env(plan_run.temp), "TS_OAUTH_CI_SECRET": HELD_SECRET},
+        {**harness.base_env(plan_run.temp), "OMP_GATEWAY_TOKEN": GATEWAY_TOKEN},
     )
 
     assert step.code == 1
     assert "a secret value remains" in step.stderr
-    assert HELD_SECRET not in step.stdout + step.stderr
+    assert GATEWAY_TOKEN not in step.stdout + step.stderr
     assert plan_run.step_summary() == ""
 
 
@@ -108,3 +108,28 @@ def test_no_loop_time_summary_line_reaches_the_step_summary_before_the_redaction
     assert "oracle-verdict #63" not in run.loop_summary
     assert "slot 1:" in run.step_summary()
     assert "oracle-verdict #63" in run.step_summary()
+
+
+def test_an_oauth_secret_quoted_by_the_reviewer_fails_the_scan_after_it_exits_and_posts_nothing(
+    harness: Harness,
+) -> None:
+    harness.branch("feat/checker", {CHECKER: FIRST}, "compare by identity")
+    harness.github.open_pull(64, "feat/checker")
+    harness.script_omp(
+        [
+            {
+                "decision": "SHIP_WITH_FIXES",
+                "summary": f"One defect; the reviewer saw {HELD_SECRET}.",
+                "files_examined": [CHECKER],
+                "defects": [QUOTING_DEFECT],
+            }
+        ]
+    )
+
+    run = harness.review(64)
+
+    assert run.steps["scan-after-exit"].code == 1
+    assert HELD_SECRET not in run.steps["scan-after-exit"].stdout + run.steps["scan-after-exit"].stderr
+    assert "finalize" not in run.steps and "publish" not in run.steps
+    assert harness.github.reviews.get(64, []) == []
+    assert harness.github.oracle_statuses(run.plan["head_sha"]) == []
