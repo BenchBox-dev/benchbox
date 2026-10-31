@@ -12681,6 +12681,15 @@
       "status": "blocked",
       "title": "Harness re-applies ClickHouse server session settings beyond load time"
     },
+    "heavy-guard-admission-20261030": {
+      "claim": null,
+      "needs": [
+        "heavy-guard-lock-core-20261030"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Refuse to start heavy work when the host is already under memory pressure, VM reservations or low disk"
+    },
     "heavy-guard-lock-core-20261030": {
       "claim": null,
       "needs": [],

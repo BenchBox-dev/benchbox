@@ -1,0 +1,28 @@
+{
+  "acceptance": [
+    "Table-driven unit tests cover admit and refuse for each signal: pressure level 1 vs 2/4, memorystatus_level 34 vs 35, available minus VM reservations below vs above budget, disk 49.9 vs 50 GiB, and an unmeasured signal that does not refuse.",
+    "A refusal message lists every failing signal with measured and required values and names each VM with its reservation.",
+    "With a tmp lock dir, an acquirer whose injected readings fail admission exits non-zero and the lock is free immediately afterwards (a WAIT_SECONDS=0 acquire succeeds).",
+    "`BENCHBOX_HEAVY_ADMIT=force` admits and prints a warning to stderr.",
+    "Smoke on this Mac: `uv run -- python -m benchbox.utils.host_lock admit` prints live readings including the `benchbox-agent` machine reservation and exits 0 or 1 consistent with them; output recorded in the PR.",
+    "No UAT behavior change: `tests/uat` tests pass; if helpers moved, `git grep` shows no stale imports.",
+    "`make comment-policy-check`, `make lint`, `make typecheck`, `make duplicate-check-delta`, `make test-fast` pass."
+  ],
+  "context": "Evidence from adversarial review: `sysctl` on this host showed swap 78-85% used with pressure level 1 and memorystatus_level 51-65; a 75% swap gate would refuse on a healthy machine. `container machine list` shows benchbox-agent 4 CPU / 8G running. Docker binary is absent; UAT uses mocker on macOS (docker_assets.py:162-163). Physical RAM 16 GiB (hw.memsize 17179869184).",
+  "description": "## Problem\nA one-slot lock cannot see memory held by things outside BenchBox: resident Apple `container` VMs (the idle `benchbox-agent` ci-linux machine held 6 GiB during the incident), orphaned JVMs started by hand, IDEs. The only existing check is UAT's per-cell `_free_memory_abort_reason` (`tests/uat/phases/execute.py:1122-1198`), which product code cannot import. Swap percentage is a misleading signal on macOS: swap sits at 78-85% while `kern.memorystatus_vm_pressure_level` is 1 (normal), because swapfiles are added on demand.\n\n## Change\n1. Add a host-pressure reader to `benchbox/utils/resource_limits.py`: on macOS read `kern.memorystatus_vm_pressure_level`, `kern.memorystatus_level`, available memory, and memory reserved by running VMs from `container list --format json` and `container machine list --format json` when the `container` CLI exists; on other platforms use psutil available memory. Read free space for the boot volume and the benchmark output root.\n2. Add an admission function: admit only when pressure level is normal (1), `memorystatus_level` >= 35, available memory minus VM reservations covers the job budget (default from `heavy-guard-watchdog-20261030` decision: 50% of physical RAM, overridable via `BENCHBOX_HEAVY_MEMORY_BUDGET_GIB`), and free disk >= 50 GiB on each checked root. Return an itemized refusal (each failed signal, measured vs required, the VMs and their reservations).\n3. Expose it through `benchbox.utils.host_lock`: an acquirer runs admission after it obtains the lock and before work starts; refusal releases the lock and exits non-zero. `BENCHBOX_HEAVY_ADMIT=force` admits anyway with a loud stderr warning.\n4. Add `python -m benchbox.utils.host_lock admit` so shell/Make call sites (compose `up`) can run admission without holding the lock.\n5. If `read_memory_snapshot` / `free_space_gib` in `tests/uat/preflight_budget.py` duplicate the new readers, move them into `benchbox/utils/resource_limits.py` and migrate UAT imports (clean cutover).\n\n## Decision gates\n- D1 (resolved): thresholds pressure==normal, memorystatus_level>=35, disk>=50 GiB; swap percentage is reported but never gates.\n- G1 (stop condition): if `container list`/`container machine list` JSON lacks a memory field, report the observed schema and use the configured `--memory` from `container machine inspect`; do not guess sizes.\n- G2 (coordination): open item `uat-docker-memory-admission-decimal-units-20261030` owns UAT Docker memory-unit parsing. Do not change `execute.py` admission semantics here; if a shared parser is needed, stop and record a dependency instead of editing that path.\n\n## Guardrails\n- Linked worktree from `origin/develop`; stage paths explicitly; `[COMMENT-POLICY-001]`; durations via `mono_time`.\n- Readers must time out (<= 5 s per external command) and degrade to 'unmeasured' rather than block; unmeasured signals never refuse (matches `check_memory_headroom` semantics).\n- Tests inject readings; no test depends on the live host's pressure, VMs or disk.\n- Never stop, resize or inspect-and-modify VMs or processes from admission code; it only reads.\n\n## Non-goals\nThe in-run watchdog; wiring admission into specific entry points (done by the acquirer items).",
+  "links": [
+    "benchbox/utils/resource_limits.py",
+    "tests/uat/preflight_budget.py",
+    "tests/uat/phases/execute.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:19f6136ffb052a6f71a9c702",
+      "at": "2026-10-31T00:17:33Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "efbe1b76bcb144089a378f5779da967b",
+      "session_id": "5f71b48e76c54dd19a3f57d12779721e"
+    }
+  ]
+}
