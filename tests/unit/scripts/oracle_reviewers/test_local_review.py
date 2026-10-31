@@ -184,8 +184,10 @@ class Env:
         )
         return runner.ReviewOutcome(self.verdict, None, self.diagnostic)
 
-    def run(self, body: str = "", head: str = "") -> int:
-        argv = ["local-review", "--policy", POLICY_RELATIVE, "--base-ref", "develop"]
+    def run(self, body: str = "", head: str = "", base: str = "develop", trusted: str = "") -> int:
+        argv = ["local-review", "--policy", POLICY_RELATIVE, "--base-ref", base]
+        if trusted:
+            argv += ["--trusted-ref", trusted]
         if head:
             argv += ["--head", head]
         if body:
@@ -972,6 +974,35 @@ def test_reachable_goes_through_the_gateway_proxy_and_fails_without_it(monkeypat
         assert local.reachable(unreachable, proxy.url) is True
         assert proxy.requests == [(f"{unreachable}/healthz", "127.0.0.1:1")]
     assert local.reachable(unreachable) is False
+
+
+def test_a_stacked_review_covers_only_the_upper_diff_against_its_parent(env: Env) -> None:
+    _git(env.repo, "branch", "parent")
+    upper = "benchbox/core/equivalence/upper.py"
+    (env.repo / upper).write_text("value = 2\n", encoding="utf-8")
+    _git(env.repo, "add", upper)
+    _git(env.repo, "commit", "--quiet", "-m", "feat: upper")
+    assert env.run(base="parent") == local.EXIT_PROCEED
+    (review,) = env.reviews
+    plan = review["plan"]
+    assert plan["base_sha"] == _git(env.repo, "rev-parse", "parent")
+    assert [item["path"] for item in plan["reviewed_files"]] == [upper]
+
+
+def test_a_stacked_review_takes_policy_and_manifests_from_the_trusted_ref_not_the_parent(env: Env) -> None:
+    _git(env.repo, "switch", "--quiet", "-c", "parent")
+    (env.repo / POLICY_RELATIVE).write_text("not: a policy\n", encoding="utf-8")
+    (env.repo / local.SOUNDNESS_MANIFEST).write_text("paths: []\n", encoding="utf-8")
+    _git(env.repo, "add", POLICY_RELATIVE, local.SOUNDNESS_MANIFEST)
+    _git(env.repo, "commit", "--quiet", "-m", "weaken the trusted inputs")
+    _git(env.repo, "switch", "--quiet", "-c", "upper")
+    upper = "benchbox/core/equivalence/upper.py"
+    (env.repo / upper).write_text("value = 2\n", encoding="utf-8")
+    _git(env.repo, "add", upper)
+    _git(env.repo, "commit", "--quiet", "-m", "feat: upper")
+    assert env.run(base="parent", trusted="develop") == local.EXIT_PROCEED
+    (review,) = env.reviews
+    assert [item["path"] for item in review["plan"]["reviewed_files"]] == [upper]
 
 
 def test_cloud_credentials_read_the_proxy_from_the_gateway_status_file(

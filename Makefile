@@ -1187,6 +1187,8 @@ pr-open: override TITLE := $(value TITLE)
 pr-open: export PR_OPEN_TITLE := $(TITLE)
 pr-open: override PR_BODY_FILE := $(value PR_BODY_FILE)
 pr-open: export PR_OPEN_BODY_FILE := $(PR_BODY_FILE)
+pr-open: override PARENT := $(value PARENT)
+pr-open: export PR_OPEN_PARENT := $(PARENT)
 pr-open:
 	@set -eu; \
 	$(MAKE) -s agent-write-preflight; \
@@ -1226,29 +1228,38 @@ pr-open:
 		HEAD_SPEC="$$ORIGIN_OWNER:$$CURRENT"; \
 	fi; \
 	git fetch origin develop --quiet; \
-	if ! git merge-base --is-ancestor origin/develop HEAD; then \
+	STACK_BASE=origin/develop; \
+	PARENT_ARGS=; \
+	if [ -n "$$PR_OPEN_PARENT" ]; then \
+		uv run -- python scripts/pr_open_rest.py --repo "$$REPOSITORY" --head-owner "$$ORIGIN_OWNER" --branch "$$CURRENT" \
+			--head-spec "$$HEAD_SPEC" --parent "$$PR_OPEN_PARENT" --verify-parent || { echo "Refusing to open PR: PARENT is not a valid stack parent." >&2; exit 1; }; \
+		git fetch origin "+refs/heads/$$PR_OPEN_PARENT:refs/remotes/origin/$$PR_OPEN_PARENT" --quiet || { echo "Refusing to open PR: cannot fetch the parent branch $$PR_OPEN_PARENT." >&2; exit 1; }; \
+		STACK_BASE="origin/$$PR_OPEN_PARENT"; \
+		PARENT_ARGS="--parent $$PR_OPEN_PARENT"; \
+		git merge-base --is-ancestor "$$STACK_BASE" HEAD || { echo "Refusing to open PR: HEAD does not contain $$STACK_BASE. Rebase onto the parent first." >&2; exit 1; }; \
+	elif ! git merge-base --is-ancestor origin/develop HEAD; then \
 		if ! git merge-tree --write-tree origin/develop HEAD >/dev/null 2>&1; then \
 			echo "Refusing to open PR: HEAD conflicts with origin/develop. Resolve the conflict first; no refresh merge is attempted." >&2; \
 			exit 1; \
 		fi; \
 	fi; \
 	CL_TITLE="$$PR_OPEN_TITLE"; \
-	if [ -z "$$CL_TITLE" ]; then CL_TITLE=$$(git log --reverse --format=%s origin/develop..HEAD | sed -n 1p); fi; \
+	if [ -z "$$CL_TITLE" ]; then CL_TITLE=$$(git log --reverse --format=%s "$$STACK_BASE"..HEAD | sed -n 1p); fi; \
 	CL_DIR=$$(mktemp -d); \
-	git diff --name-only --diff-filter=ACDMRT origin/develop...HEAD > "$$CL_DIR/changed.txt"; \
-	git diff --name-only --diff-filter=A origin/develop...HEAD > "$$CL_DIR/added.txt"; \
+	git diff --name-only --diff-filter=ACDMRT "$$STACK_BASE"...HEAD > "$$CL_DIR/changed.txt"; \
+	git diff --name-only --diff-filter=A "$$STACK_BASE"...HEAD > "$$CL_DIR/added.txt"; \
 	uv run -- python scripts/changelog_fragments.py required --title "$$CL_TITLE" --changed-files-from "$$CL_DIR/changed.txt" --added-files-from "$$CL_DIR/added.txt" --release-base-sha "$$(git rev-parse origin/develop)" || { rm -rf "$$CL_DIR"; echo "Refusing to open PR: add a changelog fragment (make changelog-entry) or fix the title." >&2; exit 1; }; \
 	rm -rf "$$CL_DIR"; \
 	TRUNK_MODE=$$(uv run -- python scripts/trunk_revert.py gate --branch "$$CURRENT" --repo "$$REPOSITORY"); \
 	DRAFT_FLAG=; \
-	if [ "$$TRUNK_MODE" = "draft" ]; then DRAFT_FLAG=--draft; fi; \
+	if [ "$$TRUNK_MODE" = "draft" ] || [ -n "$$PR_OPEN_PARENT" ]; then DRAFT_FLAG=--draft; fi; \
 	REVIEWED=$$(git rev-parse HEAD); \
-	uv run -- python -m _project.scripts.oracle_reviewers.cli local-review --policy .github/oracle-reviewers.yml --base-ref origin/develop --head "$$REVIEWED" --body-file "$$PR_OPEN_BODY_FILE" || { echo "Refusing to open PR: the local oracle review did not clear this head. Nothing was pushed." >&2; exit 1; }; \
+	uv run -- python -m _project.scripts.oracle_reviewers.cli local-review --policy .github/oracle-reviewers.yml --base-ref "$$STACK_BASE" --trusted-ref origin/develop --head "$$REVIEWED" --body-file "$$PR_OPEN_BODY_FILE" || { echo "Refusing to open PR: the local oracle review did not clear this head. Nothing was pushed." >&2; exit 1; }; \
 	[ "$$(git rev-parse HEAD)" = "$$REVIEWED" ] || { echo "Refusing to open PR: HEAD moved during the local oracle review, so the pushed head would not be the reviewed one. Nothing was pushed." >&2; exit 1; }; \
 	$(MAKE) -s pr-conflict-scan BRANCH="$$CURRENT" REPO="$$REPOSITORY" || true; \
 	git push -u origin "$$CURRENT" || { echo "Push failed for $$CURRENT — aborting before opening a PR (remote branch may be stale)." >&2; exit 1; }; \
 	PUBLISHED=$$(uv run -- python scripts/pr_open_rest.py --repo "$$REPOSITORY" --head-owner "$$ORIGIN_OWNER" \
-		--branch "$$CURRENT" --head-spec "$$HEAD_SPEC" --title "$$PR_OPEN_TITLE" --body-file "$$PR_OPEN_BODY_FILE" $$DRAFT_FLAG); \
+		--branch "$$CURRENT" --head-spec "$$HEAD_SPEC" --title "$$PR_OPEN_TITLE" --body-file "$$PR_OPEN_BODY_FILE" $$DRAFT_FLAG $$PARENT_ARGS); \
 	PR_STATUS="$${PUBLISHED%% *}"; \
 	PR_NUMBER="$${PUBLISHED#* }"; \
 	URL="$${PR_NUMBER#* }"; \

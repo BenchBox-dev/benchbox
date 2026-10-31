@@ -188,14 +188,21 @@ def changed_files(root: Path, base: str, head: str) -> list[ChangedFile]:
 
 
 def build_plan(
-    policy: Policy, root: Path, base_ref: str, head: str, out_dir: Path, manifest: str | None = None
+    policy: Policy,
+    root: Path,
+    base_ref: str,
+    head: str,
+    out_dir: Path,
+    manifest: str | None = None,
+    trusted_ref: str | None = None,
 ) -> dict[str, Any]:
+    trusted_ref = trusted_ref or base_ref
     base = _git(root, "merge-base", base_ref, head).strip()
     plan = cli._base_plan(policy, _repository(root), None, uuid.uuid4().hex)
     plan.update({"base_sha": base, "base_ref": base_ref.removeprefix("origin/"), "head_sha": head})
     plan["head_tree"] = _git(root, "rev-parse", f"{head}^{{tree}}").strip()
     files = changed_files(root, base, head)
-    predicate = trusted_predicate(root, base_ref) if manifest is None else soundness_predicate(manifest)
+    predicate = trusted_predicate(root, trusted_ref) if manifest is None else soundness_predicate(manifest)
     if not files:
         plan["decision_reason"] = f"no committed changes against {base_ref}"
         return plan
@@ -246,7 +253,7 @@ def build_plan(
         full_diff,
         {},
         predicate,
-        trusted_machine_read(root, base_ref),
+        trusted_machine_read(root, trusted_ref),
     )
     plan["decision_reason"] = reason
     return plan
@@ -640,7 +647,7 @@ def _reviewed(
     reporter: Reporter,
 ) -> dict[str, Any] | None:
     plan_dir = work / "plan"
-    plan = build_plan(policy, root, args.base_ref, head, plan_dir)
+    plan = build_plan(policy, root, args.base_ref, head, plan_dir, trusted_ref=args.trusted_ref or None)
     if plan["decision"] != cli.REVIEW:
         reporter.say(f"{ADVISORY}: no review needed ({plan['decision_reason']}).")
         return None
@@ -699,7 +706,7 @@ def _review(args: argparse.Namespace, reporter: Reporter) -> int:
     root = Path.cwd()
     head = _git(root, "rev-parse", args.head).strip()
     body = override_body(args.body_file)
-    policy_text = trusted_text(root, args.base_ref, args.policy)
+    policy_text = trusted_text(root, args.trusted_ref or args.base_ref, args.policy)
     policy = parse_policy(yaml.safe_load(policy_text))
     work = Path(tempfile.mkdtemp(prefix="oracle-local-"))
     try:
