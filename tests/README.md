@@ -414,6 +414,30 @@ same module, so it honors the override and the real-home default.
 `BENCHBOX_SKIP_TEST_LOCK=1` - but expect noisy timing results and CPU
 contention. Do not bypass in CI.
 
+### Heavy-work admission
+
+The lock serializes BenchBox jobs but cannot see memory held elsewhere (resident Apple `container` VMs,
+JVMs, IDEs). `python -m benchbox.utils.host_lock admit [--need-gib N]` (no lock taken) and
+`run --admit [--need-gib N] -- <cmd>` (after the lock is obtained, before `<cmd>`) check the host and refuse to
+start heavy work when it is already stressed. A refusal from `run --admit` releases the lock and exits **76**
+(75 stays "lock busy", 78 "ownership/scrubbed environment"); `admit` also exits 76 on refusal. Python callers
+use `host_lock.acquire(..., admit=True)`, which raises `AdmissionRefused` after releasing the lock.
+
+Admitted only when all measured signals pass: macOS memory pressure level is 1 (normal),
+`kern.memorystatus_level` is at least the floor, psutil available memory is at least the need, and free disk on the
+boot volume and the output root (`BENCHBOX_OUTPUT_DIR`, default `benchmark_runs`) is at least the floor. Swap use
+and `container`/`container machine` VM reservations are reported itemized but never gate: resident VM pages are
+already missing from available memory. Unmeasured signals (failed or >5 s external commands) never refuse. A
+refusing reading is re-sampled every 5 s for up to 30 s before the refusal stands.
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `BENCHBOX_HEAVY_ADMIT_MIN_GIB` | 2 | Available memory needed to admit |
+| `BENCHBOX_HEAVY_MIN_LEVEL` | 35 | Minimum `kern.memorystatus_level` |
+| `BENCHBOX_HEAVY_MIN_FREE_DISK_GIB` | 50 | Minimum free disk per root |
+| `BENCHBOX_HEAVY_MEMORY_BUDGET_GIB` | 50% of RAM | Shared memory budget resolver (`resource_limits.heavy_memory_budget_gib`) |
+| `BENCHBOX_HEAVY_ADMIT` | unset | `force` admits despite refusals, with a stderr warning |
+
 ### macOS-specific conftest branch (`tests/conftest.py:109-122`)
 
 On macOS, xdist workers suppress `setproctitle` to avoid a

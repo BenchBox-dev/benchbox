@@ -26,6 +26,8 @@ WAIT_PROGRESS_SECONDS = 5.0
 LOCK_OFFSET = 1 << 30
 EXIT_REFUSED = 75
 EXIT_OWNERSHIP = 78
+EXIT_ADMISSION = 76
+ADMIT_ENV = "BENCHBOX_HEAVY_ADMIT"
 LOG_PREFIX = "[host-lock]"
 
 _HOLDER_OWNER = re.compile(r"^pid:\d+ owner:(\d+:\d+(?:\.\d+)?) ")
@@ -37,6 +39,12 @@ class LockUnavailable(TimeoutError):
 
 class LockOwnershipError(LockUnavailable):
     pass
+
+
+class AdmissionRefused(RuntimeError):
+    def __init__(self, report: str) -> None:
+        super().__init__(report)
+        self.report = report
 
 
 IS_WINDOWS = sys.platform == "win32"
@@ -455,14 +463,14 @@ def _inherits_lock(path: Path, environ: Mapping[str, str]) -> bool:
     )
 
 
-def acquire(
-    lock_path: Path | None = None,
+def _acquire_handle(
+    lock_path: Path | None,
     *,
-    wait_seconds: float | None = None,
+    wait_seconds: float | None,
     phase: str,
-    gate: str | None = None,
-    command: str | None = None,
-    environ: Mapping[str, str] | None = None,
+    gate: str | None,
+    command: str | None,
+    environ: Mapping[str, str] | None,
 ) -> HostLock:
     path = default_lock_path() if lock_path is None else lock_path
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -483,6 +491,45 @@ def acquire(
         handle = HostLock(path, fd, pid)
     with _registry_lock:
         _registry[key] = handle
+    return handle
+
+
+def check_admission(*, need_gib: float | None = None, environ: Mapping[str, str] | None = None) -> str:
+    from benchbox.utils import resource_limits
+
+    env = os.environ if environ is None else environ
+    force = env.get(ADMIT_ENV, "").strip().lower() == "force"
+    policy = resource_limits.admission_policy_from_env(env, need_gib=need_gib)
+    result = resource_limits.admit_heavy_work(policy, force=force)
+    report = resource_limits.format_admission_report(result, policy)
+    if result.forced and result.refusals:
+        _log(f"WARNING: {ADMIT_ENV}=force overrides the admission refusals below; the host may be overcommitted")
+        _log(report)
+    if not result.admitted:
+        raise AdmissionRefused(report)
+    return report
+
+
+def acquire(
+    lock_path: Path | None = None,
+    *,
+    wait_seconds: float | None = None,
+    phase: str,
+    gate: str | None = None,
+    command: str | None = None,
+    environ: Mapping[str, str] | None = None,
+    admit: bool = False,
+    admit_need_gib: float | None = None,
+) -> HostLock:
+    handle = _acquire_handle(
+        lock_path, wait_seconds=wait_seconds, phase=phase, gate=gate, command=command, environ=environ
+    )
+    if admit:
+        try:
+            check_admission(need_gib=admit_need_gib, environ=environ)
+        except BaseException:
+            handle.release()
+            raise
     return handle
 
 
@@ -604,17 +651,27 @@ def _supervise_posix(command: Sequence[str], env: Mapping[str, str]) -> int:
             signal.signal(sig, handler)
 
 
-def run_command(command: Sequence[str], *, phase: str = "run", gate: str | None = None) -> int:
+def run_command(
+    command: Sequence[str],
+    *,
+    phase: str = "run",
+    gate: str | None = None,
+    admit: bool = False,
+    admit_need_gib: float | None = None,
+) -> int:
     path = lock_path()
     rendered = " ".join(shlex.quote(part) for part in command)
     try:
-        handle = acquire(path, phase=phase, gate=gate, command=rendered)
+        handle = acquire(path, phase=phase, gate=gate, command=rendered, admit=admit, admit_need_gib=admit_need_gib)
     except LockOwnershipError as exc:
         _log(str(exc))
         return EXIT_OWNERSHIP
     except LockUnavailable as exc:
         _log(f"BLOCKED: {exc}")
         return EXIT_REFUSED
+    except AdmissionRefused as exc:
+        _log(f"REFUSED: host is not ready for heavy work; lock released\n{exc.report}")
+        return EXIT_ADMISSION
     except KeyboardInterrupt:
         return 128 + signal.SIGINT
     env = dict(os.environ) if handle.inherited else owner_environment()
@@ -632,15 +689,30 @@ def run_command(command: Sequence[str], *, phase: str = "run", gate: str | None 
         handle.release()
 
 
+def admit_command(need_gib: float | None = None) -> int:
+    try:
+        report = check_admission(need_gib=need_gib)
+    except AdmissionRefused as exc:
+        _log(f"REFUSED: host is not ready for heavy work\n{exc.report}")
+        return EXIT_ADMISSION
+    sys.stdout.write(report + "\n")
+    sys.stdout.flush()
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m benchbox.utils.host_lock")
     sub = parser.add_subparsers(dest="command", required=True)
     run = sub.add_parser("run", help="hold the host lock for the lifetime of a command")
     run.add_argument("--phase", default="run")
     run.add_argument("--gate")
+    run.add_argument("--admit", action="store_true", help="refuse to start when the host is under pressure")
+    run.add_argument("--need-gib", type=float, help="memory needed for --admit")
     run.add_argument("argv", nargs=argparse.REMAINDER)
     clear = sub.add_parser("clear", help="clear an inactive shared test lock")
     clear.add_argument("path", nargs="?", type=Path)
+    admit = sub.add_parser("admit", help="check host admission without taking the lock")
+    admit.add_argument("--need-gib", type=float)
     return parser
 
 
@@ -649,12 +721,14 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command == "clear":
         return clear_inactive_lock(args.path if args.path is not None else lock_path())
+    if args.command == "admit":
+        return admit_command(args.need_gib)
     command = list(args.argv)
     if command and command[0] == "--":
         command = command[1:]
     if not command:
         parser.error("run requires a command after --")
-    return run_command(command, phase=args.phase, gate=args.gate)
+    return run_command(command, phase=args.phase, gate=args.gate, admit=args.admit, admit_need_gib=args.need_gib)
 
 
 if __name__ == "__main__":

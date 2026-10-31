@@ -4,12 +4,22 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import os
+import shutil
+import signal
+import subprocess
+import sys
 import threading
 import time
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 from typing import Any, Callable
+
+from benchbox.utils.clock import elapsed_seconds, mono_time
 
 try:
     import psutil
@@ -378,3 +388,382 @@ def calculate_safe_memory_limit(
         safe_mb = min(safe_mb, max_limit_mb)
 
     return safe_mb
+
+
+GIB = 1024**3
+EXTERNAL_TIMEOUT_SECONDS = 5.0
+RETRY_INTERVAL_SECONDS = 5.0
+RETRY_WINDOW_SECONDS = 30.0
+NORMAL_PRESSURE_LEVEL = 1
+ADMIT_MIN_GIB_ENV = "BENCHBOX_HEAVY_ADMIT_MIN_GIB"
+MIN_LEVEL_ENV = "BENCHBOX_HEAVY_MIN_LEVEL"
+MIN_FREE_DISK_GIB_ENV = "BENCHBOX_HEAVY_MIN_FREE_DISK_GIB"
+MEMORY_BUDGET_GIB_ENV = "BENCHBOX_HEAVY_MEMORY_BUDGET_GIB"
+OUTPUT_DIR_ENV = "BENCHBOX_OUTPUT_DIR"
+DEFAULT_ADMIT_MIN_GIB = 2.0
+DEFAULT_MIN_LEVEL = 35.0
+DEFAULT_MIN_FREE_DISK_GIB = 50.0
+DEFAULT_BUDGET_FRACTION = 0.5
+DEFAULT_OUTPUT_ROOT = "benchmark_runs"
+
+_sleep = time.sleep
+
+Runner = Callable[[Sequence[str], float], "str | None"]
+
+
+def free_space_gib(path: str | Path) -> float:
+    p = Path(path).expanduser()
+    if not p.exists():
+        p = next((ancestor for ancestor in p.parents if ancestor.exists()), Path("/"))
+    usage = shutil.disk_usage(p)
+    return usage.free / GIB
+
+
+@dataclass(frozen=True)
+class MemorySnapshot:
+    free_gib: float | None
+    swap_used_percent: float | None
+
+
+def read_memory_snapshot() -> MemorySnapshot:
+    if psutil is None:
+        return MemorySnapshot(free_gib=None, swap_used_percent=None)
+    try:
+        free_gib = psutil.virtual_memory().available / GIB
+    except (OSError, RuntimeError, ValueError, AttributeError):
+        free_gib = None
+    try:
+        swap_used_percent = psutil.swap_memory().percent
+    except (OSError, RuntimeError, ValueError, AttributeError):
+        swap_used_percent = None
+    return MemorySnapshot(free_gib=free_gib, swap_used_percent=swap_used_percent)
+
+
+def _kill_started_group(process: subprocess.Popen[str]) -> None:
+    try:
+        if hasattr(os, "killpg") and hasattr(signal, "SIGKILL"):
+            os.killpg(process.pid, signal.SIGKILL)
+        else:
+            process.kill()
+    except OSError:
+        pass
+
+
+def run_text(argv: Sequence[str], timeout: float) -> str | None:
+    try:
+        process = subprocess.Popen(
+            list(argv),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            start_new_session=sys.platform != "win32",
+        )
+    except OSError:
+        return None
+    try:
+        output, _ = process.communicate(timeout=max(timeout, 0.0))
+    except subprocess.TimeoutExpired:
+        _kill_started_group(process)
+        process.communicate()
+        return None
+    except OSError:
+        return None
+    return output if process.returncode == 0 else None
+
+
+@dataclass(frozen=True)
+class VmReservation:
+    kind: str
+    name: str
+    state: str | None
+    memory_gib: float | None
+
+
+@dataclass(frozen=True)
+class DiskReading:
+    label: str
+    path: str
+    free_gib: float | None
+
+
+@dataclass(frozen=True)
+class HostPressure:
+    total_gib: float | None
+    available_gib: float | None
+    swap_used_percent: float | None
+    pressure_level: int | None
+    memorystatus_level: int | None
+    disks: tuple[DiskReading, ...]
+    vms: tuple[VmReservation, ...] | None
+
+
+@dataclass(frozen=True)
+class AdmissionPolicy:
+    need_gib: float = DEFAULT_ADMIT_MIN_GIB
+    min_level: float = DEFAULT_MIN_LEVEL
+    min_free_disk_gib: float = DEFAULT_MIN_FREE_DISK_GIB
+
+
+@dataclass(frozen=True)
+class AdmissionResult:
+    admitted: bool
+    refusals: tuple[str, ...]
+    pressure: HostPressure
+    samples: int = 1
+    forced: bool = False
+
+
+def _float_setting(environ: Mapping[str, str], name: str, default: float) -> float:
+    raw = environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        return default
+    if value != value or value < 0:
+        return default
+    return value
+
+
+def admission_policy_from_env(
+    environ: Mapping[str, str] | None = None, *, need_gib: float | None = None
+) -> AdmissionPolicy:
+    env = os.environ if environ is None else environ
+    return AdmissionPolicy(
+        need_gib=_float_setting(env, ADMIT_MIN_GIB_ENV, DEFAULT_ADMIT_MIN_GIB) if need_gib is None else need_gib,
+        min_level=_float_setting(env, MIN_LEVEL_ENV, DEFAULT_MIN_LEVEL),
+        min_free_disk_gib=_float_setting(env, MIN_FREE_DISK_GIB_ENV, DEFAULT_MIN_FREE_DISK_GIB),
+    )
+
+
+def heavy_memory_budget_gib(environ: Mapping[str, str] | None = None) -> float | None:
+    env = os.environ if environ is None else environ
+    raw = env.get(MEMORY_BUDGET_GIB_ENV)
+    if raw is not None and raw.strip():
+        try:
+            value = float(raw)
+        except ValueError:
+            value = -1.0
+        if value > 0 and value == value:
+            return value
+    total_mb = get_system_memory_mb()
+    if total_mb <= 0:
+        return None
+    return total_mb / 1024 * DEFAULT_BUDGET_FRACTION
+
+
+def _sysctl_int(name: str, runner: Runner) -> int | None:
+    text = runner(["sysctl", "-n", name], EXTERNAL_TIMEOUT_SECONDS)
+    if text is None:
+        return None
+    try:
+        return int(text.strip())
+    except ValueError:
+        return None
+
+
+def _bytes_to_gib(value: Any) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
+        return None
+    return value / GIB
+
+
+def _nested(value: Any, *keys: str) -> Any:
+    for key in keys:
+        if not isinstance(value, dict):
+            return None
+        value = value.get(key)
+    return value
+
+
+def _parse_containers(text: str) -> tuple[VmReservation, ...] | None:
+    try:
+        items = json.loads(text)
+    except ValueError:
+        return None
+    if not isinstance(items, list):
+        return None
+    found = []
+    for item in items:
+        name = _nested(item, "configuration", "id") or _nested(item, "id")
+        if not isinstance(name, str):
+            continue
+        state = _nested(item, "status", "state")
+        found.append(
+            VmReservation(
+                kind="container",
+                name=name,
+                state=state if isinstance(state, str) else None,
+                memory_gib=_bytes_to_gib(_nested(item, "configuration", "resources", "memoryInBytes")),
+            )
+        )
+    return tuple(found)
+
+
+def _parse_machines(text: str) -> tuple[VmReservation, ...] | None:
+    try:
+        items = json.loads(text)
+    except ValueError:
+        return None
+    if not isinstance(items, list):
+        return None
+    found = []
+    for item in items:
+        name = _nested(item, "id")
+        if not isinstance(name, str):
+            continue
+        state = _nested(item, "status")
+        found.append(
+            VmReservation(
+                kind="machine",
+                name=name,
+                state=state if isinstance(state, str) else None,
+                memory_gib=_bytes_to_gib(_nested(item, "memory")),
+            )
+        )
+    return tuple(found)
+
+
+def read_vm_reservations(
+    runner: Runner = run_text, which: Callable[[str], str | None] = shutil.which
+) -> tuple[VmReservation, ...] | None:
+    if which("container") is None:
+        return ()
+    started = mono_time()
+    found: list[VmReservation] = []
+    for argv, parse in (
+        (["container", "list", "--format", "json"], _parse_containers),
+        (["container", "machine", "list", "--format", "json"], _parse_machines),
+    ):
+        remaining = EXTERNAL_TIMEOUT_SECONDS - elapsed_seconds(started)
+        if remaining <= 0:
+            return None
+        text = runner(argv, remaining)
+        parsed = None if text is None else parse(text)
+        if parsed is None:
+            return None
+        found.extend(parsed)
+    return tuple(found)
+
+
+def default_disk_roots(environ: Mapping[str, str] | None = None) -> tuple[tuple[str, str], ...]:
+    env = os.environ if environ is None else environ
+    output = env.get(OUTPUT_DIR_ENV) or DEFAULT_OUTPUT_ROOT
+    return (("boot volume", Path.cwd().anchor or "/"), ("output root", str(Path(output).expanduser())))
+
+
+def _read_disk(label: str, path: str) -> DiskReading:
+    try:
+        free = free_space_gib(path)
+    except (OSError, ValueError):
+        free = None
+    return DiskReading(label=label, path=path, free_gib=free)
+
+
+def read_host_pressure(
+    roots: Sequence[tuple[str, str]] | None = None,
+    *,
+    runner: Runner = run_text,
+    which: Callable[[str], str | None] = shutil.which,
+    platform: str | None = None,
+) -> HostPressure:
+    is_macos = (sys.platform if platform is None else platform) == "darwin"
+    snapshot = read_memory_snapshot()
+    total_mb = get_system_memory_mb()
+    return HostPressure(
+        total_gib=total_mb / 1024 if total_mb > 0 else None,
+        available_gib=snapshot.free_gib,
+        swap_used_percent=snapshot.swap_used_percent,
+        pressure_level=_sysctl_int("kern.memorystatus_vm_pressure_level", runner) if is_macos else None,
+        memorystatus_level=_sysctl_int("kern.memorystatus_level", runner) if is_macos else None,
+        disks=tuple(_read_disk(label, path) for label, path in (default_disk_roots() if roots is None else roots)),
+        vms=read_vm_reservations(runner, which),
+    )
+
+
+def evaluate_admission(pressure: HostPressure, policy: AdmissionPolicy) -> tuple[str, ...]:
+    refusals: list[str] = []
+    level = pressure.pressure_level
+    if level is not None and level != NORMAL_PRESSURE_LEVEL:
+        refusals.append(f"memory pressure level {level} (admits only {NORMAL_PRESSURE_LEVEL}, normal)")
+    status = pressure.memorystatus_level
+    if status is not None and status < policy.min_level:
+        refusals.append(f"memorystatus_level {status} below floor {policy.min_level:g} ({MIN_LEVEL_ENV})")
+    available = pressure.available_gib
+    if available is not None and available < policy.need_gib:
+        refusals.append(
+            f"available memory {available:.2f} GiB below need {policy.need_gib:g} GiB ({ADMIT_MIN_GIB_ENV})"
+        )
+    for disk in pressure.disks:
+        if disk.free_gib is not None and disk.free_gib < policy.min_free_disk_gib:
+            refusals.append(
+                f"free disk on {disk.label} ({disk.path}) {disk.free_gib:.1f} GiB below floor "
+                f"{policy.min_free_disk_gib:g} GiB ({MIN_FREE_DISK_GIB_ENV})"
+            )
+    return tuple(refusals)
+
+
+def _fmt(value: float | int | None, unit: str = "") -> str:
+    if value is None:
+        return "unmeasured"
+    return f"{value:.2f}{unit}" if isinstance(value, float) else f"{value}{unit}"
+
+
+def format_admission_report(result: AdmissionResult, policy: AdmissionPolicy) -> str:
+    pressure = result.pressure
+    verdict = (
+        "FORCED (refusals overridden)"
+        if result.forced and result.refusals
+        else ("ADMITTED" if result.admitted else "REFUSED")
+    )
+    lines = [
+        f"heavy-work admission: {verdict} after {result.samples} sample(s)",
+        f"  memory pressure level: {_fmt(pressure.pressure_level)} (admit {NORMAL_PRESSURE_LEVEL})",
+        f"  memorystatus_level: {_fmt(pressure.memorystatus_level)} (floor {policy.min_level:g})",
+        f"  available memory: {_fmt(pressure.available_gib, ' GiB')} (need {policy.need_gib:g} GiB)",
+        f"  total memory: {_fmt(pressure.total_gib, ' GiB')}; swap used (reported only): "
+        f"{_fmt(pressure.swap_used_percent, '%')}",
+    ]
+    for disk in pressure.disks:
+        lines.append(
+            f"  free disk, {disk.label} ({disk.path}): {_fmt(disk.free_gib, ' GiB')} (floor {policy.min_free_disk_gib:g} GiB)"
+        )
+    if pressure.vms is None:
+        lines.append("  VM reservations: unmeasured")
+    elif not pressure.vms:
+        lines.append("  VM reservations: none")
+    else:
+        known = sum(vm.memory_gib or 0.0 for vm in pressure.vms)
+        lines.append(f"  VM reservations (reported, not subtracted): {known:.2f} GiB across {len(pressure.vms)}")
+        for vm in pressure.vms:
+            lines.append(f"    {vm.kind} {vm.name} [{vm.state or 'unknown'}]: {_fmt(vm.memory_gib, ' GiB')}")
+    for refusal in result.refusals:
+        lines.append(f"  refused: {refusal}")
+    return "\n".join(lines)
+
+
+def admit_heavy_work(
+    policy: AdmissionPolicy,
+    *,
+    reader: Callable[[], HostPressure] | None = None,
+    force: bool = False,
+    retry_window_seconds: float = RETRY_WINDOW_SECONDS,
+    retry_interval_seconds: float = RETRY_INTERVAL_SECONDS,
+) -> AdmissionResult:
+    read = read_host_pressure if reader is None else reader
+    started = mono_time()
+    samples = 0
+    while True:
+        pressure = read()
+        samples += 1
+        refusals = evaluate_admission(pressure, policy)
+        if not refusals:
+            return AdmissionResult(True, (), pressure, samples)
+        if force:
+            return AdmissionResult(True, refusals, pressure, samples, forced=True)
+        remaining = retry_window_seconds - elapsed_seconds(started)
+        if remaining <= 0:
+            return AdmissionResult(False, refusals, pressure, samples)
+        _sleep(min(retry_interval_seconds, remaining))
