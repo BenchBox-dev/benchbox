@@ -16689,15 +16689,10 @@
       "title": "Stop oracle-gate trusting an edited or deleted oracle review, and narrow the gate's App token"
     },
     "oracle-gate-run-name-says-sweep-for-single-pr-20261023": {
-      "claim": {
-        "expires_at": "2026-11-01T03:05:20Z",
-        "generation": "4f7653f66c4a4050b29a52ec0fd65385",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c8cf2fdb5a699f4b3049c8eb"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "oracle-gate runs triggered by workflow_run are titled 'pr=sweep' although they gate one PR"
     },
     "oracle-gate-standin-edit-delete-20261025": {
