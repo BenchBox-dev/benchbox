@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "The Spark platform now declines Metadata Primitives, Write Primitives and Transaction Primitives up front: Apache Spark exposes no INFORMATION_SCHEMA catalog and its built-in parquet tables reject UPDATE, DELETE and MERGE, so every operation failed.",
+      "platforms": ["spark"],
+      "benchmarks": ["metadata_primitives", "write_primitives", "transaction_primitives"]
+    }
+  ]
+}
