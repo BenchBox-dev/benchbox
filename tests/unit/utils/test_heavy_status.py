@@ -19,6 +19,7 @@ GIB = rl.GIB
 @pytest.fixture(autouse=True)
 def isolated_sentinel_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv(hs.SENTINEL_LOG_ENV, str(tmp_path / "sentinel-state" / "sentinel.log"))
+    monkeypatch.setenv(hs.SENTINEL_PID_ENV, str(tmp_path / "sentinel-state" / "sentinel.pid"))
     monkeypatch.setenv(hs.AGENTS_DIR_ENV, str(tmp_path / "agents"))
 
 

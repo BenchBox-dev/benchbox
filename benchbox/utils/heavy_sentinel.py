@@ -22,7 +22,7 @@ from benchbox.utils.footprint import pid_footprint_bytes
 INTERVAL_ENV = "BENCHBOX_SENTINEL_INTERVAL_SECONDS"
 DEFAULT_INTERVAL_SECONDS = 5.0
 WORKTREE_REFRESH_SECONDS = 60.0
-SUMMARY_SECONDS = 60.0
+LANGUAGE_SERVER_MARKERS = ("lsp", "language_server", "language-server", "langserver")
 LOG_MAX_BYTES = 1024 * 1024
 LOG_BACKUPS = 2
 WARN_PRESSURE_LEVEL = 2
@@ -107,7 +107,6 @@ class SentinelPolicy:
     interval_seconds: float = DEFAULT_INTERVAL_SECONDS
     grace_seconds: float = heavy_watchdog.DEFAULT_GRACE_SECONDS
     worktree_refresh_seconds: float = WORKTREE_REFRESH_SECONDS
-    summary_seconds: float = SUMMARY_SECONDS
 
 
 def _basename(value: str) -> str:
@@ -127,8 +126,16 @@ def is_candidate(proc: ProcInfo) -> bool:
         names.add(_basename(proc.exe))
     if names & DENIED_NAMES:
         return False
-    leading = {_basename(arg) for arg in proc.cmdline[:_INTERPRETER_ARGS]}
-    if {Path(arg).stem for arg in leading} & DENIED_NAMES or leading & DENIED_NAMES:
+    leading = proc.cmdline[:_INTERPRETER_ARGS]
+    base = {_basename(arg) for arg in leading}
+    stems = {Path(arg).stem for arg in base}
+    if stems & DENIED_NAMES or base & DENIED_NAMES:
+        return False
+    if any(marker in stem for stem in stems for marker in LANGUAGE_SERVER_MARKERS):
+        return False
+    mcp_parts = [_basename(leading[0])] if leading else []
+    mcp_parts += [part for arg in leading[1:] for part in (_basename(arg), _basename(os.path.dirname(arg)))]
+    if any("mcp" in part for part in mcp_parts):
         return False
     return any(name_is_allowed(name) for name in names)
 
@@ -151,7 +158,7 @@ def locate(proc: ProcInfo, roots: Sequence[str]) -> str | None:
         return "cwd"
     if proc.exe and _under(proc.exe, roots):
         return "exe"
-    if any(os.path.isabs(arg) and _under(arg, roots) for arg in proc.cmdline):
+    if proc.cwd is None and any(os.path.isabs(arg) and _under(arg, roots) for arg in proc.cmdline):
         return "cmdline"
     return None
 
@@ -193,7 +200,10 @@ def read_processes(prefilter: Callable[[str], bool] = name_is_allowed) -> list[P
             continue
         if not prefilter(info["name"]):
             continue
-        detail = proc.as_dict(["exe", "cmdline", "cwd"], ad_value=None)
+        try:
+            detail = proc.as_dict(["exe", "cmdline", "cwd"], ad_value=None)
+        except psutil.NoSuchProcess:
+            continue
         found.append(
             ProcInfo(
                 pid=info["pid"],
@@ -256,7 +266,8 @@ class SentinelLog:
         backups: int = LOG_BACKUPS,
         err: IO[str] | None = None,
     ) -> None:
-        self._err = sys.stderr if err is None else err
+        stream = sys.stderr if err is None else err
+        self._err = stream if err is not None or stream.isatty() else None
         self._logger = logging.Logger(f"benchbox.sentinel.{id(self)}")
         self._handler: logging.handlers.RotatingFileHandler | None = None
         if path is not None:
@@ -268,12 +279,13 @@ class SentinelLog:
                 self._handler.setFormatter(logging.Formatter("%(message)s"))
                 self._logger.addHandler(self._handler)
             except OSError as exc:
-                self._err.write(f"{LOG_PREFIX} cannot open log {path}: {exc}\n")
+                (self._err or sys.stderr).write(f"{LOG_PREFIX} cannot open log {path}: {exc}\n")
 
     def write(self, message: str) -> None:
         line = f"{time.strftime('%Y-%m-%d %H:%M:%S')} {LOG_PREFIX} {message}"
-        self._err.write(line + "\n")
-        self._err.flush()
+        if self._err is not None:
+            self._err.write(line + "\n")
+            self._err.flush()
         if self._handler is not None:
             try:
                 self._logger.info(line)
@@ -318,11 +330,11 @@ class Sentinel:
         self._git_reader = git_reader
         self._total_ram = total_ram
         self._environ = os.environ if environ is None else environ
-        self._git_reported_at: float | None = None
         self._roots: tuple[str, ...] = ()
         self._root_count = 0
         self._roots_at: float | None = None
-        self._summary_at: float | None = None
+        self._summary_key: tuple[frozenset[int], int, bool] | None = None
+        self._flooded = False
         self._reported: tuple[int, float] | None = None
 
     def _refresh_roots(self) -> None:
@@ -361,12 +373,16 @@ class Sentinel:
             measured.append(Measured(proc, size, scope, proc.pid in held))
         return measured, unreadable
 
-    def _summarize(self, measured: Sequence[Measured], unreadable: int, pressure: int) -> None:
-        now = self._clock()
-        if self._summary_at is not None and elapsed_seconds(self._summary_at, now) < self.policy.summary_seconds:
+    def _summarize(self, measured: Sequence[Measured], unreadable: int, pressure: int, flooded: bool) -> None:
+        budget_bytes = self.policy.budget_bytes
+        heavy = frozenset(
+            m.proc.pid for m in measured if budget_bytes is not None and m.footprint_bytes * 2 > budget_bytes
+        )
+        key = (heavy, pressure, flooded)
+        if key == self._summary_key:
             return
-        self._summary_at = now
-        budget = "unmeasured" if self.policy.budget_bytes is None else f"{self.policy.budget_bytes / GIB:.2f} GiB"
+        self._summary_key = key
+        budget = "unmeasured" if budget_bytes is None else f"{budget_bytes / GIB:.2f} GiB"
         total = sum(m.footprint_bytes for m in measured) / GIB
         self._log(
             f"mode {self.policy.mode}; budget {budget}; pressure level {pressure}; {len(measured)} BenchBox-rooted "
@@ -412,28 +428,23 @@ class Sentinel:
                 return
             self._sleeper(0.1)
 
-    def _check_git(self) -> None:
+    def _check_git(self) -> bool:
         if not self._roots:
-            return
+            return False
         try:
             procs = self._git_reader(self._roots)
             flood = git_flood.evaluate(procs, self._environ, total_ram=self._total_ram(), footprint=self._footprint)
         except Exception as exc:
             self._log(f"could not read git processes: {exc}")
-            return
-        if not flood.breached:
-            self._git_reported_at = None
-            return
-        now = self._clock()
-        if (
-            self._git_reported_at is not None
-            and elapsed_seconds(self._git_reported_at, now) < self.policy.summary_seconds
-        ):
-            return
-        self._git_reported_at = now
-        self._log(f"WARNING git flood: {'; '.join(flood.breaches)}; git is never signalled by the sentinel")
-        for line in git_flood.describe(flood):
-            self._log(line)
+            return self._flooded
+        if flood.breached and not self._flooded:
+            self._log(f"WARNING git flood: {'; '.join(flood.breaches)}; git is never signalled by the sentinel")
+            for line in git_flood.describe(flood):
+                self._log(line)
+        elif self._flooded and not flood.breached:
+            self._log("git flood cleared")
+        self._flooded = flood.breached
+        return flood.breached
 
     def step(self) -> None:
         if self.policy.mode == "off":
@@ -445,8 +456,8 @@ class Sentinel:
         if held:
             measured = [Measured(m.proc, m.footprint_bytes, m.scope, m.proc.pid in held) for m in measured]
         evaluation = evaluate(measured, pressure, self.policy.budget_bytes)
-        self._summarize(measured, unreadable, pressure)
-        self._check_git()
+        flooded = self._check_git()
+        self._summarize(measured, unreadable, pressure, flooded)
         offender = evaluation.offender
         if offender is None:
             self._reported = None
@@ -465,7 +476,10 @@ class Sentinel:
     def run(self, duration_seconds: float | None = None) -> None:
         started = self._clock()
         while duration_seconds is None or elapsed_seconds(started, self._clock()) < duration_seconds:
-            self.step()
+            try:
+                self.step()
+            except (psutil.Error, OSError) as exc:
+                self._log(f"sample failed: {exc}")
             self._sleeper(self.policy.interval_seconds)
 
 
@@ -474,7 +488,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--duration", type=float, help="exit after this many seconds")
     parser.add_argument("--log", type=Path, help=f"log file (default: ~/.benchbox/{heavy_status.SENTINEL_LOG_NAME})")
     parser.add_argument("--interval", type=float, help="seconds between samples")
-    parser.add_argument("--summary-seconds", type=float, default=SUMMARY_SECONDS)
     parser.add_argument("--worktree", action="append", type=Path, help="watch only these checkouts (repeatable)")
     sub = parser.add_subparsers(dest="action")
     for action in ("install", "uninstall"):
@@ -485,17 +498,32 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _mode(environ: Mapping[str, str]) -> str:
+    raw = (environ.get(heavy_watchdog.MODE_ENV) or "").strip().lower()
+    return raw if raw in heavy_watchdog.MODES else heavy_watchdog.DEFAULT_MODE
+
+
+def _float(environ: Mapping[str, str], name: str, default: float, minimum: float = 0.0) -> float:
+    raw = environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        return default
+    return value if value == value and value >= minimum else default
+
+
 def policy_from_env(environ: Mapping[str, str], args: argparse.Namespace) -> SentinelPolicy:
     budget = resource_limits.heavy_memory_budget_gib(environ)
     interval = args.interval
     if interval is None:
-        interval = heavy_watchdog._float_env(INTERVAL_ENV, DEFAULT_INTERVAL_SECONDS, minimum=0.05)
+        interval = _float(environ, INTERVAL_ENV, DEFAULT_INTERVAL_SECONDS, minimum=0.05)
     return SentinelPolicy(
-        mode=heavy_watchdog.mode_from_env(),
+        mode=_mode(environ),
         budget_bytes=None if budget is None else int(budget * GIB),
         interval_seconds=max(0.05, interval),
-        grace_seconds=heavy_watchdog._float_env(heavy_watchdog.GRACE_ENV, heavy_watchdog.DEFAULT_GRACE_SECONDS),
-        summary_seconds=max(0.0, args.summary_seconds),
+        grace_seconds=_float(environ, heavy_watchdog.GRACE_ENV, heavy_watchdog.DEFAULT_GRACE_SECONDS),
     )
 
 

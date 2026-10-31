@@ -50,17 +50,26 @@ task that started it.
 
 The sentinel is a per-user watcher independent of any lock holder. Every 5 s it
 reads pressure and footprints of python, java and database-server processes
-whose working directory, executable or command-line path is inside a BenchBox
-checkout or linked worktree (from `git worktree list` of the primary clone,
-refreshed every minute). Node/bun, editors, language servers, shells and `git`
-are never candidates. A process over the memory budget, or elevated pressure
-(level 2) while such processes together exceed it, gets SIGTERM, then SIGKILL
-after 10 s (`BENCHBOX_HEAVY_WATCHDOG=warn` only reports). Processes in a live
-lock holder's tree are left to that holder's watchdog unless pressure is
-critical. Breaches and actions go to `~/.benchbox/sentinel.log` (rotated, at most
-3 MiB) and stderr; `make heavy-status` reports whether it is running. Where
-the working directory of a process is unreadable, scoping falls back to its
-executable and command-line paths.
+whose working directory or executable is inside a BenchBox checkout or linked
+worktree (from `git worktree list` of the primary clone, refreshed every
+minute). Command-line paths scope a process only when its working directory
+cannot be read. Node/bun, editors, language servers (argv stems containing
+`lsp`, `language_server`, `language-server` or `langserver`), MCP servers
+(`mcp` in the script name, its parent directory or the module), shells and
+`git` are never candidates. A process over the memory budget, or elevated
+pressure (level 2) while such processes together exceed it, gets SIGTERM, then
+SIGKILL after 10 s (`BENCHBOX_HEAVY_WATCHDOG=warn` only reports). Processes in
+a live lock holder's tree are left to that holder's watchdog unless pressure is
+critical. Breaches, actions and a process summary go to
+`~/.benchbox/sentinel.log` (rotated, at most 3 MiB); the summary is written
+only when the set of processes over half the budget, the pressure level or the
+git-flood state changes, and stderr gets the same lines only on a terminal.
+The pid file is `~/.benchbox/sentinel.pid`, independent of `--log`. The
+LaunchAgent writes launchd errors to `~/.benchbox/sentinel.launchd.err` and
+carries the `BENCHBOX_HEAVY_*`, `BENCHBOX_GIT_FLOOD_*` and
+`BENCHBOX_TEST_LOCK_DIR` settings present at install time; install first runs
+`<python> -m benchbox.utils.host_lock sentinel --help` in the checkout and
+refuses on failure. `make heavy-status` reports whether the sentinel is running.
 
 ## Git floods
 
@@ -68,8 +77,9 @@ executable and command-line paths.
 report when same-user `git` processes with a working directory in a BenchBox
 checkout number `BENCHBOX_GIT_FLOOD_COUNT` (default 16) or more, or their
 summed footprint reaches `BENCHBOX_GIT_FLOOD_RAM_FRACTION` (default 0.25) of
-RAM. The sentinel logs a WARNING with the five largest, at most once per
-summary interval. Nothing is signalled; stop the launching shells instead.
+RAM. The sentinel logs a WARNING with the five largest once when the flood
+starts and a line when it clears. Nothing is signalled; stop the launching
+shells instead.
 
 ## Known limits
 

@@ -67,7 +67,10 @@ def read_git_processes(roots: Sequence[str]) -> list[GitProc]:
         uids = info["uids"]
         if uid is not None and uids is not None and uids.real != uid:
             continue
-        detail = proc.as_dict(["cwd", "cmdline"], ad_value=None)
+        try:
+            detail = proc.as_dict(["cwd", "cmdline"], ad_value=None)
+        except psutil.NoSuchProcess:
+            continue
         cwd = detail["cwd"]
         if cwd and _under(cwd, roots):
             found.append(GitProc(info["pid"], cwd, " ".join(detail["cmdline"] or ("git",))[:200]))

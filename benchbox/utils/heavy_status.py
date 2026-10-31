@@ -26,6 +26,8 @@ UNREADABLE_RECORD = "(could not read lock file)"
 SENTINEL_LOG_ENV = "BENCHBOX_SENTINEL_LOG"
 SENTINEL_LOG_NAME = "sentinel.log"
 SENTINEL_PID_NAME = "sentinel.pid"
+SENTINEL_PID_ENV = "BENCHBOX_SENTINEL_PID"
+SENTINEL_LAUNCHD_ERR_NAME = "sentinel.launchd.err"
 LAUNCH_AGENT_LABEL = "dev.benchbox.sentinel"
 _IDENTITY = re.compile(r"^(\d+):\d+(?:\.\d+)?$")
 AGENTS_DIR_ENV = "BENCHBOX_SENTINEL_AGENTS_DIR"
@@ -214,7 +216,15 @@ def sentinel_log_path(environ: Mapping[str, str] | None = None) -> Path:
 
 
 def sentinel_pid_path(environ: Mapping[str, str] | None = None) -> Path:
-    return sentinel_state_dir(environ) / SENTINEL_PID_NAME
+    env = os.environ if environ is None else environ
+    override = env.get(SENTINEL_PID_ENV)
+    if override:
+        return Path(override).expanduser()
+    return host_lock.real_home() / ".benchbox" / SENTINEL_PID_NAME
+
+
+def sentinel_launchd_err_path() -> Path:
+    return host_lock.real_home() / ".benchbox" / SENTINEL_LAUNCHD_ERR_NAME
 
 
 def launch_agents_dir(environ: Mapping[str, str] | None = None) -> Path:
