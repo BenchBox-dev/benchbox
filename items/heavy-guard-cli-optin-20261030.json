@@ -1,0 +1,30 @@
+{
+  "acceptance": [
+    "With the setting off, `benchbox run --platform duckdb --benchmark tpch --scale 0.01` never touches the lock file (tmp lock dir shows no holder record).",
+    "With `BENCHBOX_HOST_LOCK=1` and a held tmp lock, each listed command is refused with WAIT_SECONDS=0 and names the holder; `run --dry-run` and a results-only command are not refused.",
+    "Inside a locked pytest session, an in-process `CliRunner.invoke(cli, ['run', ...])` with the setting on completes without waiting.",
+    "Smoke: `BENCHBOX_HOST_LOCK=1 uv run -- benchbox run --platform duckdb --benchmark tpch --scale 0.01 --non-interactive` succeeds and its holder record appears in the tmp lock file during the run; output recorded in the PR.",
+    "`changelog.d/` fragment present; docs page updated and `make docs-validate` passes.",
+    "`make comment-policy-check`, `make lint`, `make typecheck`, `make platform-manifest-check`, `make test-fast` pass."
+  ],
+  "context": "Review finding M5: product-wide locking would change PyPI behavior; `pwd` is unavailable on Windows (scripts/check_windows_antipatterns.py:58). 39 in-process `invoke(cli, ['run', ...])` tests exist (e.g. tests/unit/cli/test_cli_data_load_modes.py:97); re-entry plus HOME-scoped opt-in keeps them lock-free. Depends on test-harness so nested pytest/UAT inheritance is already proven.",
+  "description": "## Problem\n`benchbox run` and the other commands that generate data or execute queries take no host lock, so a benchmark started by hand or by an agent can overlap a test session or UAT sweep. Turning the lock on unconditionally would change behavior for every PyPI user and serialize legitimate parallel cloud runs.\n\n## Change\n1. Add an opt-in setting read from the current user's BenchBox configuration under `$HOME` (so isolated test HOMEs never enable it) plus an env override `BENCHBOX_HOST_LOCK=1|0`. Default off.\n2. When enabled, these commands take the lock, run admission and start the watchdog for their whole lifetime: `run` (not `--dry-run`), `run-official`, `datagen`, `convert`, `compare` when it executes queries, `compare-dataframes`. Commands that only read results or print help never acquire.\n3. Child processes and in-process re-entry use the owner/re-entry rules from `heavy-guard-lock-core-20261030`, so a `benchbox run` launched by a locked pytest or UAT session never waits on its parent.\n4. Windows: no `pwd`; the lock-core path fallback applies; the watchdog uses the non-macOS reader.\n5. User docs: document the setting, the env override, the wait/bypass variables and the watchdog modes on the existing CLI or operations page; add a `changelog.d/` fragment.\n\n## Decision gates\n- D1 (resolved by owner instruction to proceed with recommended defaults): opt-in, default off.\n- D2 (resolved): when enabled, cloud-platform runs also lock, because data generation runs locally.\n- G1 (stop condition): find the existing user-config loader first. If BenchBox has no user-level config file, use only the env override plus a documented one-line config file, and record the choice in the PR; do not invent a second config system.\n- G2 (stop condition): if `compare` cannot tell whether it will execute queries before it starts, lock the whole command and record why.\n\n## Guardrails\n- Linked worktree; stage explicitly; `[COMMENT-POLICY-001]`; `[CHANGELOG-001]`.\n- CLI dry runs must stay lock-free and keep propagating explicit phases.\n- Verification runs use `--dry-run` or the smallest scale with duckdb; no runs above scale 0.01.\n- Adapter SDK imports stay lazy: acquiring the lock must not import platform SDKs.\n\n## Non-goals\nPer-phase locking; engine-level memory limits.",
+  "links": [
+    "benchbox/cli/commands/run.py",
+    "benchbox/cli/commands/run_official.py",
+    "benchbox/cli/commands/datagen.py",
+    "benchbox/cli/commands/convert.py",
+    "benchbox/cli/commands/compare.py",
+    "benchbox/cli/commands/compare_dataframes.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:19f6136ffb052a6f71a9c702",
+      "at": "2026-10-31T00:19:03Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "2fcdadbdcff24fe6bde16e305c9306f1",
+      "session_id": "5f71b48e76c54dd19a3f57d12779721e"
+    }
+  ]
+}
