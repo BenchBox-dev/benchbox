@@ -310,23 +310,23 @@ class ParentGh(FakeGh):
 
 def test_a_parent_that_is_an_open_pr_branch_is_accepted() -> None:
     gh = ParentGh({"feat/parent": ("BenchBox-dev", "develop")})
-    pr_open_rest.verify_parent(gh, REPO, "BenchBox-dev", "feat/upper", "feat/parent")
+    pr_open_rest.verify_parent(gh, REPO, "feat/upper", "feat/parent")
 
 
 def test_a_parent_that_is_not_an_open_pr_is_refused() -> None:
     with pytest.raises(pr_open_rest.PrOpenError, match="not an open pull request"):
-        pr_open_rest.verify_parent(ParentGh({}), REPO, "BenchBox-dev", "feat/upper", "feat/missing")
+        pr_open_rest.verify_parent(ParentGh({}), REPO, "feat/upper", "feat/missing")
 
 
 def test_a_fork_parent_is_refused() -> None:
     gh = ParentGh({"feat/parent": ("someone-else", "develop")})
     with pytest.raises(pr_open_rest.PrOpenError, match="not an open pull request"):
-        pr_open_rest.verify_parent(gh, REPO, "BenchBox-dev", "feat/upper", "feat/parent")
+        pr_open_rest.verify_parent(gh, REPO, "feat/upper", "feat/parent")
 
 
 def test_an_integration_branch_is_not_a_parent() -> None:
     with pytest.raises(pr_open_rest.PrOpenError, match="integration branch"):
-        pr_open_rest.verify_parent(ParentGh({}), REPO, "BenchBox-dev", "feat/upper", "develop")
+        pr_open_rest.verify_parent(ParentGh({}), REPO, "feat/upper", "develop")
 
 
 def test_a_fourth_level_is_refused_and_a_third_is_accepted() -> None:
@@ -337,15 +337,15 @@ def test_a_fourth_level_is_refused_and_a_third_is_accepted() -> None:
             "feat/three": ("BenchBox-dev", "feat/two"),
         }
     )
-    pr_open_rest.verify_parent(gh, REPO, "BenchBox-dev", "feat/upper", "feat/two")
+    pr_open_rest.verify_parent(gh, REPO, "feat/upper", "feat/two")
     with pytest.raises(pr_open_rest.PrOpenError, match="at most 3"):
-        pr_open_rest.verify_parent(gh, REPO, "BenchBox-dev", "feat/upper", "feat/three")
+        pr_open_rest.verify_parent(gh, REPO, "feat/upper", "feat/three")
 
 
 def test_a_cyclic_base_chain_is_refused() -> None:
     gh = ParentGh({"feat/a": ("BenchBox-dev", "feat/b"), "feat/b": ("BenchBox-dev", "feat/a")})
     with pytest.raises(pr_open_rest.PrOpenError, match="cyclic"):
-        pr_open_rest.verify_parent(gh, REPO, "BenchBox-dev", "feat/upper", "feat/a")
+        pr_open_rest.verify_parent(gh, REPO, "feat/upper", "feat/a")
 
 
 def test_a_stacked_create_targets_the_parent_as_a_draft_after_listing_its_own_commits() -> None:
@@ -389,4 +389,10 @@ def test_publish_enforces_the_stack_policy_without_a_separate_verify_call() -> N
 def test_a_branch_cannot_be_its_own_parent() -> None:
     gh = ParentGh({"feat/upper": ("BenchBox-dev", "develop")})
     with pytest.raises(pr_open_rest.PrOpenError, match="branch being opened"):
-        pr_open_rest.verify_parent(gh, REPO, "BenchBox-dev", "feat/upper", "feat/upper")
+        pr_open_rest.verify_parent(gh, REPO, "feat/upper", "feat/upper")
+
+
+def test_a_fork_branch_opening_a_stack_cannot_use_its_own_fork_pr_as_the_parent() -> None:
+    gh = ParentGh({"feat/parent": ("someone-else", "develop")})
+    with pytest.raises(pr_open_rest.PrOpenError, match="not an open pull request"):
+        pr_open_rest.verify_parent(gh, REPO, "feat/upper", "feat/parent")

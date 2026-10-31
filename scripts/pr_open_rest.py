@@ -102,18 +102,19 @@ def find_open_pr(
     return None
 
 
-def verify_parent(run: Runner, repo: str, head_owner: str, branch: str, parent: str) -> None:
+def verify_parent(run: Runner, repo: str, branch: str, parent: str) -> None:
     if parent == branch:
         raise PrOpenError(f"--parent {parent} is the branch being opened")
     if parent in INTEGRATION_BRANCHES:
         raise PrOpenError(f"--parent {parent} is an integration branch; omit PARENT to target it")
+    repo_owner = repo.split("/", 1)[0]
     depth = 1
     level = parent
     seen = {parent, branch}
     while True:
-        pull = find_open_pr(run, repo, head_owner, level, None)
+        pull = find_open_pr(run, repo, repo_owner, level, None)
         if pull is None:
-            raise PrOpenError(f"stack parent {level} is not an open pull request branch of {head_owner} in {repo}")
+            raise PrOpenError(f"stack parent {level} is not an open pull request branch of {repo}")
         base = str((pull.get("base") or {}).get("ref") or "")
         if not base:
             raise PrOpenError(f"unreadable open PR lookup response: no base for {level}")
@@ -149,7 +150,7 @@ def publish(
 ) -> PublishedPr:
     base = parent or BASE_BRANCH
     if parent:
-        verify_parent(run, repo, head_owner, branch, parent)
+        verify_parent(run, repo, branch, parent)
     existing = find_open_pr(run, repo, head_owner, branch, base)
     if existing is not None:
         pr = _pr_from(existing, "reused")
@@ -197,7 +198,7 @@ def main(argv: Sequence[str] | None = None, run: Runner = live_run) -> int:
         return 1
     try:
         if args.verify_parent:
-            verify_parent(run, args.repo, args.head_owner, args.branch, args.parent)
+            verify_parent(run, args.repo, args.branch, args.parent)
             return 0
         pr = publish(
             args.repo,
