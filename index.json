@@ -30507,6 +30507,16 @@
       "status": "open",
       "title": "Platform configuration and credential messages name only options and variables BenchBox accepts"
     },
+    "usability-site-error-text-sync": {
+      "claim": null,
+      "needs": [
+        "usability-platform-config-messages-accurate",
+        "usability-benchmark-dependency-errors-actionable"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "Site: update pages that quote platform and dependency error text after the core message fixes"
+    },
     "usability-site-user-docs-inline-guidance": {
       "claim": null,
       "needs": [],
