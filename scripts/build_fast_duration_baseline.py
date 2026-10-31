@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from scripts.release_canary_sharding import load_durations, partition_node_ids
 from tests.duration_policy import _junit_nodeid, _percentile
 
 SCHEMA = 1
@@ -20,6 +21,8 @@ XDIST_MODE = "auto"
 GATE_SUM_TOLERANCE = 0.10
 GATE_COVERAGE_MINIMUM = 0.95
 MEDIUM_SKEW_THRESHOLD = 0.20
+MEDIUM_STALE_LIST_LIMIT = 50
+MEDIUM_SHARD_COUNT = 4
 TEST_SHARD_COUNT = 8
 
 
@@ -306,6 +309,27 @@ def read_shard_measured(paths: list[Path]) -> dict[str, dict[str, float]]:
     return measured
 
 
+def _max_to_mean(totals: list[float]) -> float | None:
+    mean = sum(totals) / len(totals) if totals else 0.0
+    return max(totals) / mean if mean > 0 else None
+
+
+def projected_max_to_mean(
+    durations_path: Path, collected: set[str], measured: dict[str, dict[str, float]]
+) -> float | None:
+    durations = load_durations(durations_path)
+    seconds: dict[str, float] = {}
+    for shard_tests in measured.values():
+        for nodeid, amount in shard_tests.items():
+            seconds[nodeid] = seconds.get(nodeid, 0.0) + amount
+    ordered = sorted(collected)
+    totals = [
+        sum(seconds.get(nodeid, 0.0) for nodeid in partition_node_ids(ordered, index, MEDIUM_SHARD_COUNT, durations))
+        for index in range(MEDIUM_SHARD_COUNT)
+    ]
+    return _max_to_mean(totals)
+
+
 def medium_drift_report(recorded: dict[str, float], measured: dict[str, dict[str, float]]) -> dict[str, Any]:
     shards: list[dict[str, Any]] = []
     all_ratios: list[float] = []
@@ -325,12 +349,17 @@ def medium_drift_report(recorded: dict[str, float], measured: dict[str, dict[str
                 "measured_sum_seconds": measured_sum,
                 "recorded_sum_seconds": recorded_sum,
                 "sum_skew": shard_skew,
+                "measured_total_seconds": float(sum(shard_tests.values())),
             }
         )
     overall_skew = float(statistics.median(all_ratios)) - 1 if all_ratios else None
     recommends = overall_skew is not None and abs(overall_skew) > MEDIUM_SKEW_THRESHOLD
     recommends = recommends or any(
         shard["sum_skew"] is not None and abs(float(shard["sum_skew"])) > MEDIUM_SKEW_THRESHOLD for shard in shards
+    )
+    measured_ids = {nodeid for shard_tests in measured.values() for nodeid in shard_tests}
+    unrecorded_seconds = sum(
+        amount for shard_tests in measured.values() for nodeid, amount in shard_tests.items() if nodeid not in recorded
     )
     measured_total = sum(len(shard_tests) for shard_tests in measured.values())
     return {
@@ -339,6 +368,10 @@ def medium_drift_report(recorded: dict[str, float], measured: dict[str, dict[str
         "overall_median_ratio_skew": overall_skew,
         "recommends_refresh": recommends,
         "skew_threshold": MEDIUM_SKEW_THRESHOLD,
+        "stale_ids": sorted(set(recorded) - measured_ids),
+        "unrecorded_test_count": len(measured_ids - set(recorded)),
+        "unrecorded_measured_seconds": float(unrecorded_seconds),
+        "max_to_mean_shard_seconds": _max_to_mean([float(shard["measured_total_seconds"]) for shard in shards]),
         "shards": shards,
     }
 
@@ -363,8 +396,27 @@ def build_medium_durations(runs: list[dict[str, dict[str, float]]], generated_at
     }
 
 
+def read_collected_ids(path: Path) -> set[str]:
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        raise BaselineError(f"missing or unreadable collected node ids {path}: {exc}") from exc
+    return {line.strip() for line in lines if line.strip()}
+
+
 def medium_refresh_command(args: argparse.Namespace) -> int:
     runs = [read_shard_measured(sorted(Path(run_dir).glob("*/shard-*-junit.xml"))) for run_dir in args.run_dir]
+    if args.collected:
+        collected = read_collected_ids(Path(args.collected))
+        runs = [
+            {
+                shard: {nodeid: amount for nodeid, amount in tests.items() if nodeid in collected}
+                for shard, tests in run.items()
+            }
+            for run in runs
+        ]
+        if not any(any(run.values()) for run in runs):
+            raise BaselineError("no measured test is listed in the collected node ids")
     generated_at = args.generated_at or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     payload = build_medium_durations(runs, generated_at, args.source)
     Path(args.output).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -378,6 +430,22 @@ def drift_markdown(report: dict[str, Any]) -> str:
         f"Matched tests: {report['matched_test_count']} of {report['overall_measured_test_count']} measured",
         f"Overall median-ratio skew: {report['overall_median_ratio_skew']}",
         f"Refresh recommended: {report['recommends_refresh']}",
+        f"Unrecorded measured tests: {report['unrecorded_test_count']} "
+        f"({report['unrecorded_measured_seconds']:.2f} s measured)",
+        f"Busiest shard measured time / average: {_format_ratio(report['max_to_mean_shard_seconds'])}",
+    ]
+    if "projected_max_to_mean_shard_seconds" in report:
+        lines.append(
+            "Busiest shard / average if repartitioned with the refreshed durations: "
+            f"{_format_ratio(report['projected_max_to_mean_shard_seconds'])}"
+        )
+    stale = report["stale_ids"]
+    lines += ["", f"Stale recorded ids (recorded, not measured): {len(stale)}"]
+    if stale:
+        lines += ["", *(f"- `{nodeid}`" for nodeid in stale[:MEDIUM_STALE_LIST_LIMIT])]
+        if len(stale) > MEDIUM_STALE_LIST_LIMIT:
+            lines.append(f"- ... and {len(stale) - MEDIUM_STALE_LIST_LIMIT} more")
+    lines += [
         "",
         "| shard | measured tests | matched | measured sum (s) | recorded sum (s) | skew |",
         "| --- | ---: | ---: | ---: | ---: | ---: |",
@@ -388,6 +456,10 @@ def drift_markdown(report: dict[str, Any]) -> str:
             f"{shard['measured_sum_seconds']:.2f} | {shard['recorded_sum_seconds']:.2f} | {shard['sum_skew']} |"
         )
     return "\n".join(lines) + "\n"
+
+
+def _format_ratio(value: float | None) -> str:
+    return "n/a" if value is None else f"{value:.3f}"
 
 
 VERIFY_RATIO_THRESHOLD = 0.30
@@ -600,6 +672,12 @@ def medium_drift_command(args: argparse.Namespace) -> int:
     recorded = read_medium_recorded(Path(args.recorded))
     measured = read_shard_measured([Path(item) for item in args.shard])
     report = medium_drift_report(recorded, measured)
+    if args.projected_durations:
+        if not args.collected:
+            raise BaselineError("--projected-durations requires --collected")
+        report["projected_max_to_mean_shard_seconds"] = projected_max_to_mean(
+            Path(args.projected_durations), read_collected_ids(Path(args.collected)), measured
+        )
     if args.report_out:
         Path(args.report_out).write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(drift_markdown(report))
@@ -624,6 +702,8 @@ def main(argv: list[str] | None = None) -> int:
     drift_parser.add_argument("--recorded", required=True)
     drift_parser.add_argument("--shard", action="append", default=[])
     drift_parser.add_argument("--report-out", default=None)
+    drift_parser.add_argument("--collected", default=None)
+    drift_parser.add_argument("--projected-durations", default=None)
     drift_parser.set_defaults(handler=medium_drift_command)
     refresh_parser = subparsers.add_parser(
         "medium-refresh", help="Rebuild the medium shard durations from shard junit."
@@ -632,6 +712,7 @@ def main(argv: list[str] | None = None) -> int:
     refresh_parser.add_argument("--output", required=True)
     refresh_parser.add_argument("--source", required=True)
     refresh_parser.add_argument("--generated-at", default=None)
+    refresh_parser.add_argument("--collected", default=None)
     refresh_parser.set_defaults(handler=medium_refresh_command)
     verify_parser = subparsers.add_parser("verify", help="Report a PR fast-tier run against the committed baseline.")
     verify_parser.add_argument("--baseline", required=True)

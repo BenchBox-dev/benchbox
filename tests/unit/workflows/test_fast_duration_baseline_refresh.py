@@ -16,12 +16,12 @@ def load() -> dict[str, Any]:
     return yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
 
 
-def job() -> dict[str, Any]:
-    return load()["jobs"]["refresh"]
+def job(name: str = "refresh") -> dict[str, Any]:
+    return load()["jobs"][name]
 
 
-def all_run_text() -> str:
-    return "\n".join(step.get("run", "") for step in job()["steps"] if "run" in step)
+def all_run_text(name: str = "refresh") -> str:
+    return "\n".join(step.get("run", "") for step in job(name)["steps"] if "run" in step)
 
 
 def test_refresh_runs_weekly_and_on_demand() -> None:
@@ -32,8 +32,9 @@ def test_refresh_runs_weekly_and_on_demand() -> None:
     assert re.fullmatch(r"\d+ \d+ \* \* \d", triggers["schedule"][0]["cron"])
 
 
-def test_refresh_holds_only_contents_and_pull_request_write() -> None:
-    permissions = job()["permissions"]
+@pytest.mark.parametrize("name", ["refresh", "medium"])
+def test_refresh_holds_only_contents_and_pull_request_write(name: str) -> None:
+    permissions = job(name)["permissions"]
     assert permissions["contents"] == "write"
     assert permissions["pull-requests"] == "write"
     for scope, access in permissions.items():
@@ -42,16 +43,20 @@ def test_refresh_holds_only_contents_and_pull_request_write() -> None:
         assert access != "write", scope
 
 
-def test_refresh_never_pushes_to_develop_or_merges() -> None:
-    text = all_run_text()
+@pytest.mark.parametrize(
+    ("name", "prefix"), [("refresh", "chore/fast-baseline-"), ("medium", "chore/medium-durations-")]
+)
+def test_refresh_never_pushes_to_develop_or_merges(name: str, prefix: str) -> None:
+    text = all_run_text(name)
     assert "git push origin develop" not in text
     assert "gh pr merge" not in text
     assert "--base develop" in text
-    assert "chore/fast-baseline-" in text
+    assert prefix in text
 
 
-def test_refresh_opens_at_most_one_pr() -> None:
-    text = all_run_text()
+@pytest.mark.parametrize("name", ["refresh", "medium"])
+def test_refresh_opens_at_most_one_pr(name: str) -> None:
+    text = all_run_text(name)
     assert len(re.findall(r"gh pr create", text)) == 1
     assert 'gh pr list --head "$BRANCH"' in text
 
@@ -72,11 +77,10 @@ def test_refresh_rebuilds_and_gate_checks_the_baseline() -> None:
     assert "--collected-ids" in text
 
 
-def test_refresh_reports_medium_shard_drift() -> None:
+def test_refresh_job_no_longer_touches_the_medium_durations() -> None:
     text = all_run_text()
-    assert "scripts.build_fast_duration_baseline medium-drift" in text
-    assert "tests/fixtures/medium_shard_durations.json" in text
-    assert "t2-medium-shard-" in text
+    assert "medium" not in text
+    assert "tests/fixtures/medium_shard_durations.json" not in text
 
 
 def test_refresh_only_commits_the_baseline() -> None:
@@ -84,23 +88,77 @@ def test_refresh_only_commits_the_baseline() -> None:
     assert "git add tests/fixtures/fast_tier_baseline quality/docs-reference-inventory.json" in text
 
 
+def test_medium_job_only_commits_the_medium_durations() -> None:
+    text = all_run_text("medium")
+    assert "git add tests/fixtures/medium_shard_durations.json quality/docs-reference-inventory.json" in text
+    assert "fast_tier_baseline" not in text
+
+
+def test_jobs_are_independent_so_a_medium_failure_cannot_stop_the_fast_pr() -> None:
+    for name in ("refresh", "medium"):
+        assert "needs" not in job(name)
+
+
+def test_medium_job_scans_only_successful_develop_push_trunk_runs() -> None:
+    text = all_run_text("medium")
+    assert "gh run list --workflow trunk.yml --branch develop --event push --status success" in text
+    assert '--limit "$MAX_RUNS_SCAN"' in text
+    assert step_named("Fetch the five newest", "medium")["env"]["MAX_RUNS_SCAN"] == "30"
+
+
+def test_medium_job_keeps_five_runs_with_every_unexpired_medium_artifact() -> None:
+    text = all_run_text("medium")
+    assert step_named("Fetch the five newest", "medium")["env"]["SOURCE_RUNS"] == "5"
+    assert "select(.expired | not)" in text
+    for shard in range(4):
+        assert f"t2-medium-shard-{shard}-" in text
+    assert "t2-medium-nodeids-" in text
+
+
+def test_medium_job_filters_the_refresh_by_the_newest_collected_ids() -> None:
+    text = all_run_text("medium")
+    assert "scripts.build_fast_duration_baseline medium-refresh" in text
+    assert "--collected fast-refresh/medium/collected.txt" in text
+    assert "scripts.build_fast_duration_baseline medium-drift" in text
+    assert "--projected-durations" in text
+
+
+def test_medium_pr_body_reports_drift_and_the_before_after_ratio() -> None:
+    text = all_run_text("medium")
+    assert "cat fast-refresh/drift.md" in text
+    assert "max_to_mean_shard_seconds" in text
+    assert "projected_max_to_mean_shard_seconds" in text
+
+
 def test_refresh_only_accepts_successful_source_runs() -> None:
     assert 'run.get("conclusion") == "success"' in all_run_text()
 
 
-def test_medium_drift_only_uses_successful_trunk_runs() -> None:
-    assert '.status == "completed" and .conclusion == "success"' in all_run_text()
-
-
-def step_index(name_fragment: str) -> int:
-    for index, step in enumerate(job()["steps"]):
+def step_index(name_fragment: str, name: str = "refresh") -> int:
+    for index, step in enumerate(job(name)["steps"]):
         if name_fragment in step.get("name", ""):
             return index
     raise AssertionError(name_fragment)
 
 
-def step_named(name_fragment: str) -> dict[str, Any]:
-    return job()["steps"][step_index(name_fragment)]
+def step_named(name_fragment: str, name: str = "refresh") -> dict[str, Any]:
+    return job(name)["steps"][step_index(name_fragment, name)]
+
+
+def test_medium_inventory_is_regenerated_after_the_rebuild_and_before_the_commit() -> None:
+    regenerate = step_index("Regenerate the docs reference inventory", "medium")
+    verify = step_index("Verify the docs reference inventory is current", "medium")
+    assert step_index("Rebuild the medium-shard durations", "medium") < step_index("Check for medium", "medium")
+    assert step_index("Check for medium", "medium") < regenerate < verify
+    assert verify < step_index("Create medium durations PR", "medium")
+    for fragment in ("Regenerate the docs reference inventory", "Verify the docs reference inventory is current"):
+        assert step_named(fragment, "medium")["if"] == "steps.check.outputs.changed == 'true'"
+
+
+def test_medium_pr_uses_the_existing_pr_token_so_runs_start_unapproved() -> None:
+    expected = "${{ secrets.CROSS_SURFACE_BASELINE_PR_TOKEN || github.token }}"
+    assert step_named("Checkout code", "medium")["with"]["token"] == expected
+    assert step_named("Create medium durations PR", "medium")["env"]["GH_TOKEN"] == expected
 
 
 def test_inventory_is_regenerated_after_the_shards_and_before_the_commit() -> None:

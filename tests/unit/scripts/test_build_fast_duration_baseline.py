@@ -209,6 +209,103 @@ def test_medium_drift_stays_quiet_within_threshold() -> None:
     assert report["recommends_refresh"] is False
 
 
+def test_medium_drift_reports_stale_and_unrecorded_ids_and_shard_balance() -> None:
+    recorded = {"tests/test_a.py::test_one": 1.0, "tests/test_a.py::test_gone": 2.0}
+    measured = {
+        "shard 0": {"tests/test_a.py::test_one": 1.0, "tests/test_b.py::test_new": 2.0},
+        "shard 1": {"tests/test_c.py::test_new": 1.0},
+    }
+
+    report = baseline.medium_drift_report(recorded, measured)
+
+    assert report["stale_ids"] == ["tests/test_a.py::test_gone"]
+    assert report["unrecorded_test_count"] == 2
+    assert report["unrecorded_measured_seconds"] == pytest.approx(3.0)
+    assert report["max_to_mean_shard_seconds"] == pytest.approx(3.0 / 2.0)
+    text = baseline.drift_markdown(report)
+    assert "Stale recorded ids (recorded, not measured): 1" in text
+    assert "- `tests/test_a.py::test_gone`" in text
+    assert "Unrecorded measured tests: 2 (3.00 s measured)" in text
+    assert "Busiest shard measured time / average: 1.500" in text
+
+
+def test_drift_markdown_caps_the_stale_list() -> None:
+    recorded = {f"tests/test_a.py::test_{index}": 1.0 for index in range(60)}
+    measured = {"shard 0": {"tests/test_a.py::test_other": 1.0}}
+
+    text = baseline.drift_markdown(baseline.medium_drift_report(recorded, measured))
+
+    assert "Stale recorded ids (recorded, not measured): 60" in text
+    assert text.count("- `tests/test_a.py::test_") == 50
+    assert "- ... and 10 more" in text
+
+
+def test_medium_drift_projects_the_ratio_with_refreshed_durations(tmp_path: Path) -> None:
+    ids = [f"tests/test_{name}.py::test_x" for name in "abcd"]
+    measured = {"shard 0": {ids[0]: 8.0, ids[1]: 8.0, ids[2]: 1.0, ids[3]: 1.0}}
+    durations = tmp_path / "durations.json"
+    durations.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "default_seconds": 0.01,
+                "tests": {
+                    ids[0]: {"p95_seconds": 8.0},
+                    ids[1]: {"p95_seconds": 8.0},
+                    ids[2]: {"p95_seconds": 1.0},
+                    ids[3]: {"p95_seconds": 1.0},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert baseline.projected_max_to_mean(durations, set(ids), measured) == pytest.approx(8.0 / 4.5)
+
+
+def test_medium_refresh_drops_ids_missing_from_the_collected_list(tmp_path: Path) -> None:
+    shard_dir = tmp_path / "run0" / "t2-medium-shard-0-abc"
+    shard_dir.mkdir(parents=True)
+    (shard_dir / "shard-0-junit.xml").write_text(
+        "<testsuite>"
+        '<testcase classname="tests.test_sample.TestSample" file="tests/test_sample.py" name="test_kept" time="1.0"/>'
+        '<testcase classname="tests.test_sample.TestSample" file="tests/test_sample.py" name="test_deleted" time="2.0"/>'
+        "</testsuite>",
+        encoding="utf-8",
+    )
+    collected = tmp_path / "collected.txt"
+    collected.write_text("tests/test_sample.py::TestSample::test_kept\n", encoding="utf-8")
+    output = tmp_path / "durations.json"
+    argv = ["medium-refresh", "--output", str(output), "--source", "x", "--run-dir", str(tmp_path / "run0")]
+
+    assert baseline.main([*argv, "--collected", str(collected)]) == 0
+
+    assert list(json.loads(output.read_text(encoding="utf-8"))["tests"]) == [
+        "tests/test_sample.py::TestSample::test_kept"
+    ]
+
+
+def test_medium_refresh_fails_when_the_collected_list_matches_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    shard_dir = tmp_path / "run0" / "t2-medium-shard-0-abc"
+    shard_dir.mkdir(parents=True)
+    (shard_dir / "shard-0-junit.xml").write_text(
+        '<testsuite><testcase classname="tests.test_sample.TestSample" file="tests/test_sample.py" '
+        'name="test_alpha" time="1.0"/></testsuite>',
+        encoding="utf-8",
+    )
+    collected = tmp_path / "collected.txt"
+    collected.write_text("tests/other.py::test_x\n", encoding="utf-8")
+    output = tmp_path / "durations.json"
+    argv = ["medium-refresh", "--output", str(output), "--source", "x", "--run-dir", str(tmp_path / "run0")]
+
+    assert baseline.main([*argv, "--collected", str(collected)]) == 1
+
+    assert "no measured test is listed in the collected node ids" in capsys.readouterr().err
+    assert not output.exists()
+
+
 def test_medium_refresh_takes_p95_across_runs_and_round_trips(tmp_path: Path) -> None:
     run_dirs = []
     for run_index, duration in enumerate((1.0, 3.0)):
