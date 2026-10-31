@@ -895,12 +895,19 @@ def build_parser() -> argparse.ArgumentParser:
     admit = sub.add_parser("admit", help="check host admission without taking the lock")
     admit.add_argument("--need-gib", type=float)
     sub.add_parser("status", help="show lock holder, waiters, host pressure, VMs and orphaned servers (read-only)")
+    sentinel = sub.add_parser("sentinel", help="watch BenchBox checkouts and stop a process over the memory budget")
+    sentinel.add_argument("argv", nargs=argparse.REMAINDER)
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
+    raw = list(sys.argv[1:] if argv is None else argv)
+    if raw[:1] == ["sentinel"]:
+        from benchbox.utils.heavy_sentinel import main as sentinel_main
+
+        return sentinel_main(raw[1:])
     parser = build_parser()
-    args = parser.parse_args(argv)
+    args = parser.parse_args(raw)
     if args.command == "clear":
         return clear_inactive_lock(args.path if args.path is not None else lock_path())
     if args.command == "status":

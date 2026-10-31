@@ -35,6 +35,8 @@ refuses to start it while the host is already under pressure.
 | `make heavy-run CMD='...'` | Admission check, then the command under the host lock; make exits 2 and prints `Error 75` (lock refused), `Error 76` (admission refused) or `Error 78` (ownership error) |
 | `uv run -- python -m benchbox.utils.host_lock run --admit -- sh -c '...'` | The same without make; exits with the raw code 75, 76 or 78 |
 | `python -m benchbox.utils.host_lock admit` | Admission check only |
+| `make heavy-sentinel` | Foreground sentinel; `SENTINEL_ARGS='--duration 30 --log /tmp/s.log'` bounds it and redirects the log |
+| `make heavy-sentinel-install` / `make heavy-sentinel-uninstall` | Write or remove the per-user LaunchAgent `~/Library/LaunchAgents/dev.benchbox.sentinel.plist` and load or unload it with `launchctl bootstrap/bootout gui/$UID`; changes host state, owner approval required |
 
 `make heavy-status` reports the lock holder and its age, live waiters, the
 admission readings (pressure level, available memory, disk), VM inventory,
@@ -43,6 +45,31 @@ the top 10 processes by physical footprint, and orphans: server processes
 directory is inside a BenchBox worktree. It never signals or modifies a
 process, VM, or the lock file. Stopping an orphan is the owner's call or the
 task that started it.
+
+## Sentinel
+
+The sentinel is a per-user watcher independent of any lock holder. Every 5 s it
+reads pressure and footprints of python, java and database-server processes
+whose working directory, executable or command-line path is inside a BenchBox
+checkout or linked worktree (from `git worktree list` of the primary clone,
+refreshed every minute). Node/bun, editors, language servers, shells and `git`
+are never candidates. A process over the memory budget, or elevated pressure
+(level 2) while such processes together exceed it, gets SIGTERM, then SIGKILL
+after 10 s (`BENCHBOX_HEAVY_WATCHDOG=warn` only reports). Processes in a live
+lock holder's tree are left to that holder's watchdog unless pressure is
+critical. Breaches and actions go to `~/.benchbox/sentinel.log` (rotated, at most
+3 MiB) and stderr; `make heavy-status` reports whether it is running. Where
+the working directory of a process is unreadable, scoping falls back to its
+executable and command-line paths.
+
+## Git floods
+
+`git` is never a kill candidate, but the sentinel and `make heavy-status`
+report when same-user `git` processes with a working directory in a BenchBox
+checkout number `BENCHBOX_GIT_FLOOD_COUNT` (default 16) or more, or their
+summed footprint reaches `BENCHBOX_GIT_FLOOD_RAM_FRACTION` (default 0.25) of
+RAM. The sentinel logs a WARNING with the five largest, at most once per
+summary interval. Nothing is signalled; stop the launching shells instead.
 
 ## Known limits
 
