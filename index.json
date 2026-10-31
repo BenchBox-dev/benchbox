@@ -18821,10 +18821,15 @@
       "title": "`make pr-preflight` does not run the landing quickstarts check, so stale quickstarts surface only in CI"
     },
     "pr-preflight-maps-no-tests-for-workflow-edits-20261031": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-01T15:19:17Z",
+        "generation": "30b58419a9ae4d759cb389640e95792a",
+        "renewals": 0,
+        "worker": "joe-batch-preflight-workflows"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "`make pr-preflight` selects no tests when a PR changes a CI workflow file"
     },
     "pr-process-low-drama-acceptance": {
