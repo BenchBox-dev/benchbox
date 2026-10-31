@@ -20484,6 +20484,13 @@
       "status": "done",
       "title": "Validate synthetic plan parsers against realistic live-engine plans"
     },
+    "query-plan-live-validation-remaining-engines": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Validate the plan parsers and capture routes still checked only against synthetic or faked output"
+    },
     "query-plan-mcp-canonical-rendering": {
       "claim": null,
       "needs": [

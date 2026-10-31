@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "For each route that can run locally (PrestoDB container, ClickHouse pipeline, Doris verbose, chdb on a host where it loads, LakeSail with pysail), capture real output for scan+filter, join, aggregate and union/subquery shapes, add captured fixtures with engine/version sidecars and semantic tests, and fix parser defects found.",
+    "PROVENANCE.md marks a route validated only when it was actually run; anything still unrunnable keeps an explicit reason.",
+    "Athena stays unvalidated unless live-cloud spend is explicitly approved."
+  ],
+  "context": "Follow-up to query-plan-live-semantic-validation (PR #3703) and query-plan-dataframe-contract-parity (PR #3711). Local engines and Mocker only; no cloud spend without approval. The chdb load failure may share a cause with chdb-4x-engine-load-verification-20261006.",
+  "description": "Live semantic validation covered Spark, ClickHouse server, Trino, Databend, QuestDB, Doris and SingleStore. These routes are still unvalidated against real engine output: PrestoDB server and Athena (Presto/Trino parser), ClickHouse EXPLAIN PIPELINE, Doris EXPLAIN VERBOSE, ClickHouse chdb local mode (the installed chdb failed to load on macOS), and LakeSail DataFrame capture (pysail not installed; tested by dispatch with a local PySpark frame only). PROVENANCE.md records each as not live-validated.",
+  "links": [
+    "tests/fixtures/query_plans/PROVENANCE.md",
+    "tests/integration/test_plan_capture_synthetic_parsers_live.py",
+    "tests/integration/_live_plan_shapes.py",
+    "benchbox/platforms/dataframe/lakesail_df.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0592050035774073ac1f90d3",
+      "at": "2026-10-31T15:14:43Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6e4aef4686cf43f5871e7ddc5347f6b5",
+      "session_id": "57a74c8663c14523aa3e61ff1ddd4677"
+    }
+  ]
+}
