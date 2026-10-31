@@ -1,0 +1,31 @@
+{
+  "acceptance": [
+    "Subprocess tests with a tmp lock dir: while a holder runs, `pytest -n 0` on a tmp file containing only an unmarked test does not wait; on a tmp file with a `@pytest.mark.slow` test it is refused with WAIT_SECONDS=0; `-n 2` on either is refused.",
+    "Subprocess test: a heavy serial pytest session that runs `python -m benchbox.utils.host_lock run -- true` and a nested `pytest -n 0` heavy file completes without waiting (inheritance).",
+    "Unit test enumerates every subparser in `tests/uat/_cli.py` and asserts each is in exactly one of the light set or the acquiring set; adding an unclassified subcommand fails the test only if it is placed in neither (default acquires).",
+    "Subprocess test: `python -m tests.uat._cli sweep --config <tmp> --dry-run` does not acquire; a non-dry-run heavy subcommand is refused under a held lock with WAIT_SECONDS=0, and `report` is not.",
+    "`tests/unit/test_session_isolation.py` passes with the never-wait assertions at :237 and :448 unchanged.",
+    "G1 listing of pr-preflight pytest invocations is recorded in the PR body.",
+    "`make comment-policy-check`, `make lint`, `make typecheck`, `make test-fast` pass."
+  ],
+  "context": "Review evidence: tracker events 4665/4748 show lock-blocked work already; `BENCHBOX_SKIP_TEST_LOCK=1` appears in _project/audits/remediation-contract-evidence.md:432-434. UAT subcommands registered at tests/uat/_cli.py:636-741.",
+  "description": "## Problem\nThe host lock is taken only by parallel pytest sessions (`_wants_parallel_lock`, `_benchbox_pytest_xdist_safety.py:96-102`; `_should_acquire_test_lock`, `tests/conftest.py:124-135`). The heaviest local runs are serial and take no lock: `test-slow`, `test-stress`, `test-correctness-gate`, `test-local-matrix`, `tpcds-obt-equivalence`, `test-required-local-cases`, `plan-capture-gate`, `test-docker-%`, `test-live-gizmosql` (Makefile:117,121,133,142,306,318,362; make/platform-tests.mk:60,103,170). UAT (`tests/uat/_cli.py`) has no host lock at all. Locking every pytest session is not acceptable: `docs/agent/dev-loop-worktrees.md:240-244` promises `pr-preflight` never waits on the lock, tests encode that (`tests/unit/test_session_isolation.py:237,448`), and ~15 concurrent agent sessions would push people to the bypass.\n\n## Change\n1. pytest: keep the `-n>0` rule. A serial controller session also acquires when the collected, selected items include a marker in {slow, stress, resource_heavy, live_integration, docker_integration} or any `live_*` marker. Decide after collection in the controller (e.g. `pytest_collection_finish`), before the first test runs. xdist workers and owner-verified descendants never acquire.\n2. Every acquiring pytest session runs admission and the watchdog from `heavy-guard-admission-20261030` and `heavy-guard-watchdog-20261030`.\n3. UAT: in the `tests/uat/_cli.py` dispatcher, define an explicit light set {preflight, gate-check, report, replay-classify, package, validate, verify-tuning-matrix, docker-cleanup}; every other subcommand (cell, sweep, stress, execute and any future one) acquires the lock, admission and watchdog for the command lifetime, except `--dry-run`.\n4. Make sure environment construction for UAT cell subprocesses and nested `benchbox run`/pytest preserves `BENCHBOX_TEST_SESSION_OWNER`, so children inherit instead of deadlocking. Where a call site builds env from scratch (e.g. `tests/unit/test_standardized_test_commands.py:146-151`), pass the owner var or point it at a tmp lock dir.\n5. Update `tests/README.md` lock section to the new rule.\n\n## Decision gates\n- D1 (resolved): serial sessions lock only when heavy markers are selected; `pr-preflight` and targeted fast/medium runs keep the never-wait promise.\n- G1 (stop condition): before coding, list the pytest invocations inside `make pr-preflight` and whether any selects heavy-marked tests serially. If one does, stop and record the conflict with the never-wait contract instead of silently changing it.\n- G2 (stop condition): if deciding after collection makes a heavy session hold isolation state (HOME swap) that conflicts with late acquisition, record the constraint and choose acquisition in `pytest_collection_finish` only if all existing `test_session_isolation.py` contract tests stay green unmodified.\n\n## Guardrails\n- Linked worktree; stage explicitly; `[COMMENT-POLICY-001]`.\n- Do not run the heavy suites for verification; use synthetic test files marked `slow`/`stress` in tmp dirs with a tmp lock dir.\n- Do not change marker definitions in `pytest.ini` or reclassify existing tests.\n\n## Non-goals\n`benchbox` CLI acquisition, container/VM call sites, docs outside tests/README.md.",
+  "links": [
+    "_benchbox_pytest_xdist_safety.py",
+    "tests/conftest.py",
+    "tests/utilities/session_isolation.py",
+    "tests/uat/_cli.py",
+    "tests/README.md",
+    "docs/agent/dev-loop-worktrees.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:19f6136ffb052a6f71a9c702",
+      "at": "2026-10-31T00:18:31Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f87c22d63bc84b68a216a1d7019c2feb",
+      "session_id": "5f71b48e76c54dd19a3f57d12779721e"
+    }
+  ]
+}

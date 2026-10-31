@@ -12697,6 +12697,15 @@
       "status": "open",
       "title": "Make the shared host lock exclusive-safe, re-entrant and reusable outside the test harness"
     },
+    "heavy-guard-test-harness-20261030": {
+      "claim": null,
+      "needs": [
+        "heavy-guard-watchdog-20261030"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Make heavy serial pytest sessions and heavy UAT commands take the host lock with admission and watchdog"
+    },
     "heavy-guard-watchdog-20261030": {
       "claim": null,
       "needs": [
