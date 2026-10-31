@@ -4,7 +4,7 @@
     {
       "category": "fixed",
       "breaking": false,
-      "text": "Fixed the TSBS DevOps resource-utilization query scanning every memory row of each host: the memory side of the join now carries the same time window as the CPU side, so engines with a host-and-time index search only the window. Results are unchanged."
+      "text": "Fixed the TSBS DevOps resource-utilization query scanning every memory row of each host: the memory side of the join is now bounded to the whole minutes the CPU window touches, so engines with a host-and-time index search only that range. Results are unchanged, including for windows that start or end inside a minute."
     }
   ]
 }
