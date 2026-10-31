@@ -644,6 +644,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
 
     def _load_parquet_via_chunked_csv(self, table_name: str, data_file: Path) -> int:
         try:
+            import pyarrow.csv as pacsv
             import pyarrow.parquet as pq
         except ImportError as exc:
             raise ImportError(
@@ -660,7 +661,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         pf = pq.ParquetFile(data_file)
         for batch in pf.iter_batches(batch_size=self.parquet_chunk_rows):
             csv_buf = io.BytesIO()
-            batch.to_pandas().to_csv(csv_buf, index=False, header=True)
+            pacsv.write_csv(batch, csv_buf, write_options=pacsv.WriteOptions(include_header=True))
             csv_buf.seek(0)
 
             params = {
