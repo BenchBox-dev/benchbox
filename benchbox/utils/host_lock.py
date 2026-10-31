@@ -494,7 +494,9 @@ def _acquire_handle(
     return handle
 
 
-def check_admission(*, need_gib: float | None = None, environ: Mapping[str, str] | None = None) -> str:
+def check_admission(
+    *, need_gib: float | None = None, environ: Mapping[str, str] | None = None, echo: bool = True
+) -> str:
     from benchbox.utils import resource_limits
 
     env = os.environ if environ is None else environ
@@ -504,7 +506,8 @@ def check_admission(*, need_gib: float | None = None, environ: Mapping[str, str]
     report = resource_limits.format_admission_report(result, policy)
     if result.forced and result.refusals:
         _log(f"WARNING: {ADMIT_ENV}=force overrides the admission refusals below; the host may be overcommitted")
-        _log(report)
+        if echo:
+            _log(report)
     if not result.admitted:
         raise AdmissionRefused(report)
     return report
@@ -691,7 +694,7 @@ def run_command(
 
 def admit_command(need_gib: float | None = None) -> int:
     try:
-        report = check_admission(need_gib=need_gib)
+        report = check_admission(need_gib=need_gib, echo=False)
     except AdmissionRefused as exc:
         _log(f"REFUSED: host is not ready for heavy work\n{exc.report}")
         return EXIT_ADMISSION

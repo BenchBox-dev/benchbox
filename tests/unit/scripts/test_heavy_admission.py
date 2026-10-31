@@ -4,6 +4,7 @@ import dataclasses
 import json
 import stat
 import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -126,13 +127,18 @@ def test_a_hung_container_cli_degrades_to_unmeasured_within_six_seconds(
     stub.chmod(stub.stat().st_mode | stat.S_IXUSR)
     monkeypatch.setenv("PATH", f"{tmp_path}:/usr/bin:/bin")
     started = rl.mono_time()
-    pressure = rl.read_host_pressure(roots=[("scratch", str(tmp_path))])
-    assert rl.elapsed_seconds(started) < 6.0
-    assert pressure.vms is None
-    sound = dataclasses.replace(
-        pressure, available_gib=8.0, pressure_level=1, memorystatus_level=60, disks=(rl.DiskReading("s", "x", 99.0),)
+    result = rl.admit_heavy_work(
+        POLICY,
+        reader=lambda: dataclasses.replace(
+            rl.read_host_pressure(roots=[]),
+            available_gib=8.0,
+            pressure_level=1,
+            memorystatus_level=60,
+        ),
     )
-    assert rl.evaluate_admission(sound, POLICY) == ()
+    assert rl.elapsed_seconds(started) < 6.0
+    assert result.pressure.vms is None
+    assert result.admitted and result.refusals == ()
 
 
 class FakeClock:
@@ -259,10 +265,33 @@ def test_admit_command_reports_on_stdout_when_admitted_and_on_stderr_when_refuse
     assert captured.out == ""
 
 
-def test_the_cli_parses_admit_flags() -> None:
-    args = hl.build_parser().parse_args(["run", "--admit", "--need-gib", "3", "--", "true"])
-    assert args.admit and args.need_gib == 3.0
-    assert hl.build_parser().parse_args(["admit"]).need_gib is None
+def test_run_admit_end_to_end_refuses_with_exit_76_and_reports_the_need(
+    lock_file: Path,
+    clock: FakeClock,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(rl, "read_host_pressure", lambda: healthy(available_gib=1.0))
+    marker = tmp_path / "ran"
+    code = hl.main(
+        ["run", "--admit", "--need-gib", "7.5", "--", sys.executable, "-c", f"open({str(marker)!r}, 'w').close()"]
+    )
+    assert code == 76
+    assert not marker.exists()
+    assert not hl.lock_is_held(lock_file)
+    assert "need 7.5 GiB" in capsys.readouterr().err
+
+
+def test_forced_admit_prints_the_report_once(
+    clock: FakeClock, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv(hl.ADMIT_ENV, "force")
+    monkeypatch.setattr(rl, "read_host_pressure", lambda: healthy(pressure_level=4))
+    assert hl.main(["admit"]) == 0
+    captured = capsys.readouterr()
+    assert (captured.out + captured.err).count("heavy-work admission:") == 1
+    assert "WARNING" in captured.err
 
 
 def test_settings_default_and_override_from_the_environment() -> None:
@@ -312,16 +341,58 @@ def test_macos_reads_pressure_level_and_memorystatus_level() -> None:
     assert (pressure.pressure_level, pressure.memorystatus_level) == (2, 41)
 
 
-def test_free_space_walks_up_to_an_existing_ancestor(tmp_path: Path) -> None:
-    assert rl.free_space_gib(tmp_path / "missing" / "deeper") > 0.0
+def test_free_space_converts_bytes_to_gib_for_the_nearest_existing_ancestor(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen: list[Path] = []
+
+    def fake_usage(path: Path) -> types.SimpleNamespace:
+        seen.append(path)
+        return types.SimpleNamespace(free=3 * 2**30 + 2**29)
+
+    monkeypatch.setattr(rl.shutil, "disk_usage", fake_usage)
+    assert rl.free_space_gib(tmp_path / "missing" / "deeper") == 3.5
+    assert seen == [tmp_path]
 
 
-def test_read_memory_snapshot_reports_a_measured_reading_on_this_host() -> None:
-    snapshot = rl.read_memory_snapshot()
-    assert snapshot.free_gib is None or snapshot.free_gib >= 0.0
-    assert snapshot.swap_used_percent is None or snapshot.swap_used_percent >= 0.0
+def test_read_memory_snapshot_converts_psutil_readings(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = types.SimpleNamespace(
+        virtual_memory=lambda: types.SimpleNamespace(available=5 * 2**30 + 2**29),
+        swap_memory=lambda: types.SimpleNamespace(percent=42.5),
+    )
+    monkeypatch.setattr(rl, "psutil", fake)
+    assert rl.read_memory_snapshot() == rl.MemorySnapshot(free_gib=5.5, swap_used_percent=42.5)
 
 
 def test_read_memory_snapshot_degrades_safely_when_psutil_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(rl, "psutil", None)
     assert rl.read_memory_snapshot() == rl.MemorySnapshot(free_gib=None, swap_used_percent=None)
+
+
+def test_roots_on_one_filesystem_produce_a_single_refusal() -> None:
+    shared = (rl.DiskReading("boot volume", "/", 10.0, device=7), rl.DiskReading("output root", "out", 10.0, device=7))
+    refusals = rl.evaluate_admission(healthy(disks=shared), POLICY)
+    assert len(refusals) == 1
+    assert "boot volume" in refusals[0] and "output root" in refusals[0]
+    separate = (
+        rl.DiskReading("boot volume", "/", 10.0, device=7),
+        rl.DiskReading("output root", "out", 10.0, device=8),
+    )
+    assert len(rl.evaluate_admission(healthy(disks=separate), POLICY)) == 2
+
+
+def test_roots_in_the_same_directory_share_a_device(tmp_path: Path) -> None:
+    first = rl._read_disk("a", str(tmp_path))
+    second = rl._read_disk("b", str(tmp_path / "missing"))
+    assert first.device is not None and first.device == second.device
+
+
+def test_macos_reads_sysctl_by_absolute_path() -> None:
+    seen: list[str] = []
+
+    def runner(argv, timeout):
+        seen.append(argv[0])
+        return "1\n"
+
+    rl.read_host_pressure(roots=[], runner=runner, which=lambda name: None, platform="darwin")
+    assert seen == ["/usr/sbin/sysctl", "/usr/sbin/sysctl"]

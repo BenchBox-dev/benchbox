@@ -405,17 +405,21 @@ DEFAULT_MIN_LEVEL = 35.0
 DEFAULT_MIN_FREE_DISK_GIB = 50.0
 DEFAULT_BUDGET_FRACTION = 0.5
 DEFAULT_OUTPUT_ROOT = "benchmark_runs"
+SYSCTL_PATH = "/usr/sbin/sysctl"
 
 _sleep = time.sleep
 
 Runner = Callable[[Sequence[str], float], "str | None"]
 
 
+def _existing_ancestor(path: Path) -> Path:
+    if path.exists():
+        return path
+    return next((ancestor for ancestor in path.parents if ancestor.exists()), Path("/"))
+
+
 def free_space_gib(path: str | Path) -> float:
-    p = Path(path).expanduser()
-    if not p.exists():
-        p = next((ancestor for ancestor in p.parents if ancestor.exists()), Path("/"))
-    usage = shutil.disk_usage(p)
+    usage = shutil.disk_usage(_existing_ancestor(Path(path).expanduser()))
     return usage.free / GIB
 
 
@@ -465,7 +469,10 @@ def run_text(argv: Sequence[str], timeout: float) -> str | None:
         output, _ = process.communicate(timeout=max(timeout, 0.0))
     except subprocess.TimeoutExpired:
         _kill_started_group(process)
-        process.communicate()
+        try:
+            process.communicate(timeout=1.0)
+        except subprocess.TimeoutExpired:
+            pass
         return None
     except OSError:
         return None
@@ -485,6 +492,7 @@ class DiskReading:
     label: str
     path: str
     free_gib: float | None
+    device: int | None = None
 
 
 @dataclass(frozen=True)
@@ -555,7 +563,7 @@ def heavy_memory_budget_gib(environ: Mapping[str, str] | None = None) -> float |
 
 
 def _sysctl_int(name: str, runner: Runner) -> int | None:
-    text = runner(["sysctl", "-n", name], EXTERNAL_TIMEOUT_SECONDS)
+    text = runner([SYSCTL_PATH, "-n", name], EXTERNAL_TIMEOUT_SECONDS)
     if text is None:
         return None
     try:
@@ -659,7 +667,11 @@ def _read_disk(label: str, path: str) -> DiskReading:
         free = free_space_gib(path)
     except (OSError, ValueError):
         free = None
-    return DiskReading(label=label, path=path, free_gib=free)
+    try:
+        device = os.stat(_existing_ancestor(Path(path).expanduser())).st_dev
+    except OSError:
+        device = None
+    return DiskReading(label=label, path=path, free_gib=free, device=device)
 
 
 def read_host_pressure(
@@ -696,12 +708,17 @@ def evaluate_admission(pressure: HostPressure, policy: AdmissionPolicy) -> tuple
         refusals.append(
             f"available memory {available:.2f} GiB below need {policy.need_gib:g} GiB ({ADMIT_MIN_GIB_ENV})"
         )
-    for disk in pressure.disks:
+    groups: dict[object, list[DiskReading]] = {}
+    for index, disk in enumerate(pressure.disks):
         if disk.free_gib is not None and disk.free_gib < policy.min_free_disk_gib:
-            refusals.append(
-                f"free disk on {disk.label} ({disk.path}) {disk.free_gib:.1f} GiB below floor "
-                f"{policy.min_free_disk_gib:g} GiB ({MIN_FREE_DISK_GIB_ENV})"
-            )
+            groups.setdefault(("dev", disk.device) if disk.device is not None else ("root", index), []).append(disk)
+    for members in groups.values():
+        names = ", ".join(f"{disk.label} ({disk.path})" for disk in members)
+        lowest = min(disk.free_gib for disk in members if disk.free_gib is not None)
+        refusals.append(
+            f"free disk on {names} {lowest:.1f} GiB below floor {policy.min_free_disk_gib:g} GiB "
+            f"({MIN_FREE_DISK_GIB_ENV})"
+        )
     return tuple(refusals)
 
 
