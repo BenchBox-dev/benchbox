@@ -16751,19 +16751,14 @@
       "title": "Bound each named gateway client and make revoking one need no broker and no branch rebuild"
     },
     "oracle-gateway-cloud-builder-access-20261025": {
-      "claim": {
-        "expires_at": "2026-11-01T03:05:39Z",
-        "generation": "3cf8a53b8ca14fa3b9895c82425efa0d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c8cf2fdb5a699f4b3049c8eb"
-      },
+      "claim": null,
       "needs": [
         "oracle-gateway-named-clients-20261025",
         "oracle-review-driver-local-20261026",
         "oracle-cloud-review-reachability-20261027"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Give cloud builder sessions access to the oracle gateway over the tailnet with their own client"
     },
     "oracle-gateway-cloud-builder-smoke-20261031": {
