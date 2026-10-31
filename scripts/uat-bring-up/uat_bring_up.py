@@ -11,6 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from benchbox.utils import host_lock
 from tests.uat import docker_assets, matrix
 
 DOCUMENT_ONLY_PLATFORMS = frozenset()
@@ -35,6 +36,25 @@ def _benchmark_runs_dir(value: str | None) -> Path:
         return Path(value).expanduser()
     default = Path.home() / "Developer" / "benchmark_runs"
     return Path(os.environ.get("BENCHBOX_OUTPUT_DIR", str(default))).expanduser()
+
+
+def _declared_need_gib(spec: docker_assets.DockerPlatformSpec, env: dict[str, str]) -> float | None:
+    limits = docker_assets.compose_declared_memory_limits(spec, env=env)
+    total = sum(docker_assets.parse_memory_bytes(limit) for limit in limits.values())
+    return total / 1024**3 if total else None
+
+
+def _admit_bring_up(platform: str, spec: docker_assets.DockerPlatformSpec, env: dict[str, str]) -> int:
+    try:
+        report = host_lock.check_admission(need_gib=_declared_need_gib(spec, env))
+    except docker_assets.DockerAssetError as exc:
+        print(f"UAT bring-up failed for {platform}: {exc}", file=sys.stderr)
+        return 2
+    except host_lock.AdmissionRefused as exc:
+        print(f"UAT bring-up refused for {platform}: host is not ready for heavy work\n{exc.report}", file=sys.stderr)
+        return host_lock.EXIT_ADMISSION
+    print(report, file=sys.stderr)
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -127,6 +147,11 @@ def main(argv: list[str] | None = None) -> int:
                 return result.returncode or 1
         print(f"UAT prepull OK for {platform} (project={project_name})")
         return 0
+
+    if not args.dry_run:
+        admission = _admit_bring_up(platform, spec, compose_env)
+        if admission:
+            return admission
 
     argv_up = docker_assets.compose_up_command(spec, project_name, start_timeout_s=args.timeout_s)
     result = docker_assets.run_docker_command(

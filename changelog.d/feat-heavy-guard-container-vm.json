@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Developer tooling: the Linux VM runs take the host lock with admission and watchdog and stop a machine they started; compose bring-ups check admission first"
+}
