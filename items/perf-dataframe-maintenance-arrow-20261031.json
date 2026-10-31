@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Iceberg merge does not load the full target table into pandas.",
+    "Spark maintenance enables Arrow conversion or passes Arrow directly.",
+    "Post-maintenance table contents match current behavior."
+  ],
+  "description": "platforms/dataframe/iceberg_maintenance.py:289-297 (update) converts matching rows to pandas and back; :322-345 (merge) scans the entire target table to pandas and merges with .map(dict(zip(...))). hudi_maintenance.py:79,87 and pyspark_maintenance.py:123 call spark.createDataFrame(arrow.to_pandas()), row-wise unless Arrow is enabled. platforms/datafusion.py:66-74 DataFusionCursorCompat._materialize builds a tuple per row via to_pylist; maintenance, write primitives and power/throughput fallback fetchall use it. Use pyiceberg upsert/overwrite with Arrow filters, Arrow-enabled or direct Arrow createDataFrame on Spark 4, and an Arrow-native count/fetch in the DataFusion cursor.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:root@vm:cb45f246c9de058740ccbeed",
+      "at": "2026-10-31T00:37:35Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "1ccd379381334f8fad31c1b1df4feb28",
+      "session_id": "d2b018a349924f4f88b746458c80b878"
+    }
+  ]
+}

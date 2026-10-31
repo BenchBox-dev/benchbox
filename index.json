@@ -17744,6 +17744,13 @@
       "status": "open",
       "title": "Use stage + COPY INTO for Databend loading"
     },
+    "perf-dataframe-maintenance-arrow-20261031": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Iceberg/Hudi/PySpark maintenance and DataFusion cursor: avoid pandas and to_pylist round trips"
+    },
     "perf-doris-stream-load-line-rewrite-20261031": {
       "claim": null,
       "needs": [],
