@@ -4,7 +4,7 @@
     "Fix so a missing key yields NULL on ClickHouse (e.g. an adapter/variant using a presence check) with an execution-based test against DuckDB, or record why no exact equivalent exists and make the query fail loudly or be excluded.",
     "Affected published bundles are identified by id and flagged; replacement reruns are scheduled in the rerun item."
   ],
-  "context": "2026-10-31: Reproduced on standalone ClickHouse 26.11 and chDB 3.7.2: Map subscript of an absent key returns the value type default (0 for Decimal); no setting changes it. Root cause is the hand-written clickhouse variant of map_access in read_primitives catalog queries.yaml, not the fork, so a BenchBox-side variant is the right layer (no fork PR/wheel). Fix in PR #3877: mapContains guard + ORDER BY, chDB-vs-DuckDB execution test (fails on old variant). Affected published bundles (ClickHouse Local read_primitives, all ran the defective text with 10 rows): SF0.01 3465d4f3 and 9f79ff77; SF0.1 c1aeca88 and 3f5c94e9. 3465d4f3/c1aeca88 carry defective-macdbgen-addresses (superseded); 9f79ff77/3f5c94e9 carry defective-variant-or-loader-wrong-result (flagged by #3678). No other bundle used the clickhouse variant. Replacement reruns needed after #3877 merges: ClickHouse Local read_primitives SF0.01 and SF0.1 (to be scheduled in the rerun item; not run here). Unflag 9f79ff77/3f5c94e9 only when replacements publish.",
+  "context": "2026-10-31: Reproduced on standalone ClickHouse 26.11 and chDB 3.7.2: Map subscript of an absent key returns the value type default (0 for Decimal); no setting changes it. Root cause is the hand-written clickhouse variant of map_access in read_primitives catalog queries.yaml, not the fork, so a BenchBox-side variant is the right layer (no fork PR/wheel). Fix in PR #3877: mapContains guard + ORDER BY, chDB-vs-DuckDB execution test (fails on old variant). Affected published bundles (ClickHouse Local read_primitives, all ran the defective text with 10 rows): SF0.01 3465d4f3 and 9f79ff77; SF0.1 c1aeca88 and 3f5c94e9. 3465d4f3/c1aeca88 carry defective-macdbgen-addresses (superseded); 9f79ff77/3f5c94e9 carry defective-variant-or-loader-wrong-result (flagged by #3678). No other bundle used the clickhouse variant. Replacement reruns needed after #3877 merges: ClickHouse Local read_primitives SF0.01 and SF0.1 (to be scheduled in the rerun item; not run here). Unflag 9f79ff77/3f5c94e9 only when replacements publish.\n\n2026-10-31: #3877 was closed by the release session as 'Folded into #3902' (fix/release-uat-rc3). Parent verified #3902 contains all four #3877 files (read_primitives queries.yaml with mapContains, changelog fragment, CORPUS_NOTES paragraph, variant parity test). Finish this item after #3902 merges. Replacement reruns (ClickHouse Local Read Primitives SF0.01, SF0.1) remain to schedule after merge.",
   "description": "Adjudication (2026-10-28) found the read_primitives map_access query on ClickHouse returns 0 for a missing map key where DuckDB returns NULL, so a missing key becomes a plausible value. The owner decided to treat this as a defect (not accepted engine semantics). Published ClickHouse read_primitives bundles that ran map_access are being flagged under defective-variant-or-loader-wrong-result by the flagging PR.",
   "links": [
     "benchbox/sql_compat",
@@ -26,6 +26,14 @@
       "op": "update",
       "op_id": "ebc9b2c442ef4bedae5971c816dc4275",
       "session_id": "fdde7b96f2774961bbd4c814eff2ca0e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e275448d846640d27249a6f8",
+      "at": "2026-10-31T21:36:14Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8fd04c5cd6a04cb4bbbe86d37df347b0",
+      "session_id": "a36a04b6bc394082b5008f654e1bf00b"
     }
   ]
 }
