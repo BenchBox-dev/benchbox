@@ -7,7 +7,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from benchbox.core.write_primitives.benchmark import WritePrimitivesBenchmark, _stage_local_infiles
+from benchbox.core.write_primitives.benchmark import WritePrimitivesBenchmark
+from benchbox.platforms.singlestore import SingleStoreConnectionWrapper, _stage_local_infiles
 
 pytestmark = [
     pytest.mark.unit,
@@ -151,52 +152,35 @@ def test_parquet_infile_is_converted_to_escaped_text(tmp_path):
     assert not staged_path.exists()
 
 
-def test_execute_operation_stages_compressed_file_for_singlestore(fast_bench, tmp_path):
-    auxiliary = tmp_path / "write_primitives_auxiliary"
-    auxiliary.mkdir()
-    with gzip.open(auxiliary / "csv_small_1k.csv.gz", "wb") as handle:
+def test_singlestore_connection_stages_compressed_file_for_the_load_and_removes_it(tmp_path):
+    source = tmp_path / "csv_small_1k.csv.gz"
+    with gzip.open(source, "wb") as handle:
         handle.write(CSV_BYTES)
-    fast_bench.data_generator.files_dir = auxiliary
+    seen: list[tuple[str, bool, bytes]] = []
 
-    executed: list[tuple[str, bool, bytes]] = []
+    def record(statement, *args, **kwargs):
+        match = re.search(r"LOAD DATA LOCAL INFILE '([^']+)'", statement)
+        staged = Path(match.group(1))
+        seen.append((statement, staged.exists(), staged.read_bytes()))
+        return MagicMock()
 
-    def record(sql, *args, **kwargs):
-        match = re.search(r"LOAD DATA LOCAL INFILE '([^']+)'", sql)
-        if match:
-            staged = Path(match.group(1))
-            executed.append((sql, staged.exists(), staged.read_bytes() if staged.exists() else b""))
-        result = MagicMock()
-        result.rowcount = 2
-        result.fetchall.return_value = [(2,)]
-        return result
+    raw = MagicMock()
+    raw.cursor.return_value.execute.side_effect = record
+    wrapper = SingleStoreConnectionWrapper(raw)
 
-    connection = MagicMock()
-    connection.execute.side_effect = record
+    wrapper.execute(f"LOAD DATA LOCAL INFILE '{source}' INTO TABLE t FIELDS TERMINATED BY ','")
 
-    with patch.object(fast_bench, "is_setup", return_value=True):
-        result = fast_bench.execute_operation("bulk_load_csv_small_gzip", connection, platform_key="singlestore")
-
-    assert result.status in {"SUCCESS", "VALIDATION_FAILED"}
-    assert len(executed) == 1
-    run_sql, existed, content = executed[0]
+    ((statement, existed, content),) = seen
     assert existed
     assert content == CSV_BYTES
-    assert ".csv.gz" not in run_sql
-    assert str(auxiliary / "csv_small_1k.csv.gz") in result.executed_sql
-    assert not list(auxiliary.glob("tmp*"))
+    assert ".csv.gz" not in statement
+    assert not list(tmp_path.glob("tmp*"))
 
 
-def test_execute_operation_does_not_stage_for_other_platforms(fast_bench, tmp_path):
-    auxiliary = tmp_path / "write_primitives_auxiliary"
-    auxiliary.mkdir()
-    (auxiliary / "csv_small_1k.csv.gz").write_bytes(b"not gzip")
-    fast_bench.data_generator.files_dir = auxiliary
-    connection = MagicMock()
+def test_singlestore_connection_leaves_other_statements_untouched():
+    raw = MagicMock()
+    wrapper = SingleStoreConnectionWrapper(raw)
 
-    with (
-        patch.object(fast_bench, "is_setup", return_value=True),
-        patch("benchbox.core.write_primitives.benchmark._stage_local_infiles") as stage,
-    ):
-        fast_bench.execute_operation("bulk_load_csv_small_gzip", connection, platform_key="duckdb")
+    wrapper.execute("SELECT 1")
 
-    stage.assert_not_called()
+    raw.cursor.return_value.execute.assert_called_once_with("SELECT 1", None)

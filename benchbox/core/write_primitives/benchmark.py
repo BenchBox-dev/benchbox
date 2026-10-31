@@ -7,7 +7,6 @@
 import importlib
 import re
 import time
-from contextlib import ExitStack
 from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
@@ -149,19 +148,6 @@ def _resolve_validation_sql(
 _SINGLE_STATEMENT_SETUP_DIALECTS = frozenset({"sqlite", "databricks"})
 _NO_TRUNCATE_DIALECTS = frozenset({"sqlite"})
 _SUMMED_ROWCOUNT_DIALECTS = frozenset({"sqlite"})
-
-_LOCAL_INFILE_PATH = re.compile(r"(LOAD DATA LOCAL INFILE ')((?:[^']|'')*)(')", re.IGNORECASE)
-
-
-def _stage_local_infiles(sql: str, stack: ExitStack) -> str:
-    from benchbox.platforms.singlestore import stage_local_infile
-
-    def stage(match: re.Match[str]) -> str:
-        source = Path(match.group(2).replace("''", "'"))
-        staged = str(stack.enter_context(stage_local_infile(source))).replace("'", "''")
-        return f"{match.group(1)}{staged}{match.group(3)}"
-
-    return _LOCAL_INFILE_PATH.sub(stage, sql)
 
 
 class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBase["OperationResult"]):
@@ -885,13 +871,10 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
                 else None
             )
             write_start = time.perf_counter()
-            with ExitStack() as staging:
-                if summed_statements is not None:
-                    write_result = self._execute_summing_rowcounts(connection, summed_statements)
-                elif (platform_key or fallback_key or "").lower() == "singlestore":
-                    write_result = connection.execute(_stage_local_infiles(write_sql, staging))
-                else:
-                    write_result = connection.execute(write_sql)
+            if summed_statements is not None:
+                write_result = self._execute_summing_rowcounts(connection, summed_statements)
+            else:
+                write_result = connection.execute(write_sql)
             write_duration_ms = (time.perf_counter() - write_start) * 1000
             if (write_error := failed_platform_error(write_result)) is not None:
                 raise RuntimeError(f"Write SQL failed on platform: {write_error}")

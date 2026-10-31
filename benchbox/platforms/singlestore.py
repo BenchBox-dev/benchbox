@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import contextlib
 import os
+import re
 import shutil
 import tempfile
 from collections.abc import Iterator
@@ -132,6 +133,24 @@ def stage_local_infile(data_file: Path) -> Iterator[Path]:
     else:
         with _decompressed_load_file(data_file) as load_path:
             yield load_path
+
+
+_LOCAL_INFILE_PATH = re.compile(r"(LOAD DATA LOCAL INFILE ')((?:[^']|'')*)(')", re.IGNORECASE)
+
+
+def _stage_local_infiles(sql: str, stack: contextlib.ExitStack) -> str:
+    def stage(match: re.Match[str]) -> str:
+        source = Path(match.group(2).replace("''", "'"))
+        staged = str(stack.enter_context(stage_local_infile(source))).replace("'", "''")
+        return f"{match.group(1)}{staged}{match.group(3)}"
+
+    return _LOCAL_INFILE_PATH.sub(stage, sql)
+
+
+class SingleStoreConnectionWrapper(MySqlWireConnectionWrapper):
+    def execute(self, sql: str, params: Any = None) -> Any:
+        with contextlib.ExitStack() as staging:
+            return super().execute(_stage_local_infiles(sql, staging), params)
 
 
 class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapter):
@@ -268,7 +287,7 @@ class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, Platform
         )
 
     def _wrap_database_connection(self, conn: Any) -> Any:
-        return MySqlWireConnectionWrapper(conn)
+        return SingleStoreConnectionWrapper(conn)
 
     def _schema_statements(self, benchmark: Any) -> list[str]:
         schema_sql = self._create_schema_with_tuning(benchmark, source_dialect=self.get_target_dialect())
