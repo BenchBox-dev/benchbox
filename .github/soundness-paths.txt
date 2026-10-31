@@ -20,6 +20,7 @@ file	.github/path-filters.yml
 file	scripts/pr_arm.py
 file	scripts/pr_arm_omp_bump.py
 file	scripts/pr_landing.py
+file	scripts/oracle_local_review.py
 file	scripts/remote_closeout.py
 file	scripts/build_fast_duration_baseline.py
 file	scripts/fast_tier_calibration.py
