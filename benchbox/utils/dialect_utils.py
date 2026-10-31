@@ -366,6 +366,10 @@ def translate_sql_query(
             for rewrite_name, rewrite_args in rewrites or ():
                 rewrite_args = dict(rewrite_args)
                 expression = apply_rewrite(rewrite_name, expression, rewrite_args.pop("dialect", src), **rewrite_args)
+            if tgt == "questdb":
+                from benchbox.utils.questdb_subqueries import rewrite_subqueries
+
+                expression = rewrite_subqueries(expression.copy())
             if tgt == "sqlite":
                 expression = apply_rewrite("fold_between_literal_arithmetic", expression, tgt)
                 if date_columns:
