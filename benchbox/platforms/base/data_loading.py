@@ -113,6 +113,7 @@ class CsvDialect:
     null_marker: str | None
     normalize_booleans: bool
     quote: str | None
+    encoding: str = "utf-8"
 
 
 NO_BENCHMARK: Any = object()
@@ -154,6 +155,7 @@ def resolve_csv_dialect(
                 )
             ),
             quote=meta.get("csv_quote", None),
+            encoding=meta.get("csv_encoding") or "utf-8",
         )
 
     if any(v is not None for v in (benchmark_delimiter, benchmark_header, benchmark_booleans, benchmark_null_marker)):
@@ -576,14 +578,14 @@ def resolve_adapter_data_source(adapter: Any, benchmark: Any, data_dir: Path) ->
 class CompressionHandler(ABC):
     @abstractmethod
     @contextmanager
-    def open(self, file_path: Path, newline: str | None = None) -> Iterator[Any]:
+    def open(self, file_path: Path, newline: str | None = None, encoding: str = "utf-8") -> Iterator[Any]:
         pass
 
 
 class GzipHandler(CompressionHandler):
     @contextmanager
-    def open(self, file_path: Path, newline: str | None = None) -> Iterator[Any]:
-        with gzip.open(file_path, "rt", newline=newline) as f:
+    def open(self, file_path: Path, newline: str | None = None, encoding: str = "utf-8") -> Iterator[Any]:
+        with gzip.open(file_path, "rt", encoding=encoding, newline=newline) as f:
             yield f
 
 
@@ -599,7 +601,7 @@ class ZstdHandler(CompressionHandler):
         self.adapter = adapter
 
     @contextmanager
-    def open(self, file_path: Path, newline: str | None = None) -> Iterator[Any]:
+    def open(self, file_path: Path, newline: str | None = None, encoding: str = "utf-8") -> Iterator[Any]:
         if shutil.which("zstd") is None:
             raise DataLoadingError(
                 f"Cannot load zstd-compressed file '{file_path.name}': the 'zstd' command was not found "
@@ -614,18 +616,17 @@ class ZstdHandler(CompressionHandler):
         os.close(temp_fd)
 
         try:
-            with open(temp_file_path, "w", encoding="utf-8") as temp_file:
+            with open(temp_file_path, "wb") as temp_file:
                 subprocess.run(
                     ["zstd", "-d", str(file_path), "-c"],
                     stdout=temp_file,
                     check=True,
-                    text=True,
                 )
 
             if self.adapter and hasattr(self.adapter, "log_very_verbose"):
                 self.adapter.log_very_verbose(f"Decompressed to temporary file: {temp_file_path}")
 
-            with open(temp_file_path, encoding="utf-8", newline=newline) as f:
+            with open(temp_file_path, encoding=encoding, newline=newline) as f:
                 yield f
 
         finally:
@@ -635,8 +636,8 @@ class ZstdHandler(CompressionHandler):
 
 class NoCompressionHandler(CompressionHandler):
     @contextmanager
-    def open(self, file_path: Path, newline: str | None = None) -> Iterator[Any]:
-        with open(file_path, encoding="utf-8", newline=newline) as f:
+    def open(self, file_path: Path, newline: str | None = None, encoding: str = "utf-8") -> Iterator[Any]:
+        with open(file_path, encoding=encoding, newline=newline) as f:
             yield f
 
 

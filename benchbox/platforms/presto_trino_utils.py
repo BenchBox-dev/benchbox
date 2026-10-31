@@ -1,63 +1,211 @@
 from __future__ import annotations
 
-import re
-from collections.abc import Callable
+import datetime
+import json
+from collections.abc import Callable, Iterator, Sequence
 from logging import Logger
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from benchbox.core.exceptions import ConfigurationError
 
-_DATE_LITERAL_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+if TYPE_CHECKING:
+    from benchbox.platforms.base.data_loading import CsvDialect
+
+_MAX_INSERT_TEXT_CHARS = 500_000
+_MAX_INSERT_ROWS = 1000
+_PARQUET_READ_ROWS = 1000
+_BOOLEAN_TRUE = frozenset({"true", "t", "1"})
+_BOOLEAN_FALSE = frozenset({"false", "f", "0"})
+_STRUCTURED_BASE_TYPES = frozenset({"array", "map", "row", "json"})
 
 
-def is_date_value(value: str) -> bool:
-    return bool(_DATE_LITERAL_RE.match(value))
+def base_type(type_name: str) -> str:
+    return type_name.strip().lower().split("(", 1)[0].strip()
 
 
-def escape_insert_value(value: str) -> str:
-    if value == "" or value.lower() == "null":
-        return "NULL"
-    if is_date_value(value):
-        return f"DATE '{value}'"
-    try:
-        float(value)
+def python_cell_to_text(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, bytes):
+        return value.hex()
+    if isinstance(value, datetime.datetime):
+        return value.isoformat(sep=" ")
+    if isinstance(value, (datetime.date, datetime.time)):
+        return value.isoformat()
+    return str(value)
+
+
+def _jsonable(value: Any) -> Any:
+    if isinstance(value, (list, tuple)):
+        return [_jsonable(item) for item in value]
+    if isinstance(value, dict):
+        return {str(key): _jsonable(item) for key, item in value.items()}
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
         return value
+    return python_cell_to_text(value)
+
+
+def _structured_cell(value: Any) -> Any:
+    if not isinstance(value, str):
+        return _jsonable(value)
+    text = value.strip()
+    if not text or text.lower() == "null":
+        return None
+    try:
+        return json.loads(text)
     except ValueError:
-        return "'" + str(value).replace("'", "''") + "'"
+        return text
 
 
-def load_file_batches(cursor: Any, file_path: Path, qualified_table: str, *, delimiter: str | None = None) -> int:
-    from benchbox.platforms.base.data_loading import FileFormatRegistry
-    from benchbox.utils.file_format import get_delimiter_for_file
+def json_cell(value: Any, type_name: str, null_token: str | None) -> Any:
+    if value is None:
+        return None
+    kind = base_type(type_name)
+    if kind in _STRUCTURED_BASE_TYPES:
+        return _structured_cell(value)
+    text = value if isinstance(value, str) else python_cell_to_text(value)
+    if kind == "varchar":
+        return None if null_token is not None and text == null_token else text
+    text = text.strip()
+    if text == (null_token or "") or text.lower() == "null":
+        return None
+    if kind == "boolean":
+        lowered = text.lower()
+        if lowered in _BOOLEAN_TRUE:
+            return "true"
+        if lowered in _BOOLEAN_FALSE:
+            return "false"
+    return text
 
-    if delimiter is None:
-        delimiter = get_delimiter_for_file(file_path)
+
+def _carrier_type(type_name: str) -> str:
+    return type_name if base_type(type_name) in _STRUCTURED_BASE_TYPES else "varchar"
+
+
+def _column_expression(name: str, type_name: str) -> str:
+    kind = base_type(type_name)
+    if kind in _STRUCTURED_BASE_TYPES or kind == "varchar":
+        return name
+    if kind == "varbinary":
+        return f"from_hex({name})"
+    return f"CAST({name} AS {type_name})"
+
+
+def build_insert_sql(qualified_table: str, column_types: Sequence[str], rows_json: str) -> str:
+    names = [f"c{index}" for index in range(len(column_types))]
+    carrier = ", ".join(f"{name} {_carrier_type(kind)}" for name, kind in zip(names, column_types))
+    projection = ", ".join(_column_expression(name, kind) for name, kind in zip(names, column_types))
+    literal = rows_json.replace("'", "''")
+    return (
+        f"INSERT INTO {qualified_table} SELECT {projection} "
+        f"FROM UNNEST(CAST(json_parse('{literal}') AS ARRAY(ROW({carrier})))) AS u({', '.join(names)})"
+    )
+
+
+def fetch_column_types(cursor: Any, qualified_table: str) -> list[str]:
+    cursor.execute(f"DESCRIBE {qualified_table}")
+    return [str(row[1]) for row in cursor.fetchall()]
+
+
+def _run_insert(cursor: Any, sql: str) -> None:
+    cursor.execute(sql)
+    cursor.fetchall()
+
+
+def _flush_inserts(cursor: Any, qualified_table: str, column_types: Sequence[str], row_jsons: list[str]) -> None:
+    budget = _MAX_INSERT_TEXT_CHARS - len(build_insert_sql(qualified_table, column_types, ""))
+    chunk: list[str] = []
+    size = 0
+    for row_json in row_jsons:
+        cost = len(row_json) + 1
+        if chunk and size + cost > budget:
+            _run_insert(cursor, build_insert_sql(qualified_table, column_types, "[" + ",".join(chunk) + "]"))
+            chunk = []
+            size = 0
+        chunk.append(row_json)
+        size += cost
+    if chunk:
+        _run_insert(cursor, build_insert_sql(qualified_table, column_types, "[" + ",".join(chunk) + "]"))
+
+
+def _iter_delimited_rows(
+    file_path: Path, column_count: int, dialect: CsvDialect, delimiter: str
+) -> Iterator[list[list[Any]]]:
+    from benchbox.platforms.base.data_loading import FileFormatRegistry, RowBatchProcessor
+
     compression_handler = FileFormatRegistry.get_compression_handler(file_path)
+    processor = RowBatchProcessor(batch_size=_MAX_INSERT_ROWS)
+    with compression_handler.open(
+        file_path, newline="" if dialect.quote else None, encoding=dialect.encoding
+    ) as file_handle:
+        for batch, _ in processor.process_file(
+            file_handle,
+            delimiter,
+            column_count,
+            quote=dialect.quote,
+            has_header=dialect.has_header,
+        ):
+            yield batch
+
+
+def _iter_parquet_rows(file_path: Path, column_count: int) -> Iterator[list[list[Any]]]:
+    import pyarrow.parquet as pq
+
+    parquet_file = pq.ParquetFile(file_path)
+    if len(parquet_file.schema_arrow.names) != column_count:
+        raise ValueError(
+            f"{file_path.name} has {len(parquet_file.schema_arrow.names)} columns; target table has {column_count}"
+        )
+    for record_batch in parquet_file.iter_batches(batch_size=_PARQUET_READ_ROWS):
+        columns = [column.to_pylist() for column in record_batch.columns]
+        yield [list(row) for row in zip(*columns)]
+
+
+def load_file_batches(
+    cursor: Any,
+    file_path: Path,
+    qualified_table: str,
+    *,
+    dialect: CsvDialect | None = None,
+    column_types: Sequence[str] | None = None,
+) -> int:
+    from benchbox.platforms.base.data_loading import CsvDialect as _CsvDialect
+    from benchbox.utils.file_format import get_data_extension, get_delimiter_for_file
+
+    if column_types is None:
+        column_types = fetch_column_types(cursor, qualified_table)
+    column_count = len(column_types)
     rows_loaded = 0
 
-    with compression_handler.open(file_path) as file_handle:
-        batch_size = 500
-        batch_data: list[str] = []
+    if get_data_extension(file_path) == ".parquet":
+        batches = _iter_parquet_rows(file_path, column_count)
+        null_token: str | None = None
+    else:
+        if dialect is None:
+            is_tpc = get_data_extension(file_path) in (".tbl", ".dat")
+            dialect = _CsvDialect(
+                delimiter=get_delimiter_for_file(file_path),
+                has_header=False,
+                null_marker="" if is_tpc else None,
+                normalize_booleans=False,
+                quote=None,
+            )
+        batches = _iter_delimited_rows(file_path, column_count, dialect, dialect.delimiter)
+        null_token = dialect.null_marker
 
-        for line in file_handle:
-            line = line.strip()
-            if line and line.endswith(delimiter):
-                line = line[:-1]
-            if not line:
-                continue
-
-            escaped_values = [escape_insert_value(value) for value in line.split(delimiter)]
-            batch_data.append(f"({', '.join(escaped_values)})")
-
-            if len(batch_data) >= batch_size:
-                cursor.execute(f"INSERT INTO {qualified_table} VALUES " + ", ".join(batch_data))
-                rows_loaded += len(batch_data)
-                batch_data = []
-
-        if batch_data:
-            cursor.execute(f"INSERT INTO {qualified_table} VALUES " + ", ".join(batch_data))
-            rows_loaded += len(batch_data)
+    for batch in batches:
+        row_jsons = [
+            json.dumps(
+                [json_cell(cell, kind, null_token) for cell, kind in zip(cells, column_types)],
+                separators=(",", ":"),
+            )
+            for cells in batch
+        ]
+        _flush_inserts(cursor, qualified_table, column_types, row_jsons)
+        rows_loaded += len(row_jsons)
 
     return rows_loaded
 
