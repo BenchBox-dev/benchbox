@@ -3,7 +3,7 @@
     "The release PR is merged; its body records Gate 1 on a scratch remote (the standard lifecycle, plus a drop without a reason refused and a drop with a reason giving one commit with drop_reason) and Gate 2 (todo-db validate against BenchBox todo-state succeeds)",
     "GitHub release v0.12.0 exists with the wheel, the sdist and SHA256SUMS; the known pypi-publish invalid-publisher failure is out of scope (todo-db pypi-trusted-publisher-configuration)"
   ],
-  "context": "Split from todo-db-drop-records-reason-20261031 by its 2026-10-31 review.\n\nOwner decision 2026-10-31: the agent may push the v0.12.0 tag after the release PR merges with both gates recorded.",
+  "context": "Split from todo-db-drop-records-reason-20261031 by its 2026-10-31 review.\n\nOwner decision 2026-10-31: the agent may push the v0.12.0 tag after the release PR merges with both gates recorded.\n\nClosed 2026-10-31: release PR joeharris76/todo-db #59 merged as ac515ec2d with Gate 1 (scratch remote, two real todo-db-mcp servers, drop without reason refused, drop with reason in one commit) and Gate 2 (todo-db validate against BenchBox todo-state) recorded in its body. Tag v0.12.0 pushed; GitHub release v0.12.0 published 2026-10-31T15:40:42Z with todo_db-0.12.0-py3-none-any.whl, todo_db-0.12.0.tar.gz and SHA256SUMS (Publish run 41215952834: build and github-release succeeded; pypi-publish failed with the known invalid-publisher error, out of scope).",
   "description": "Cut a todo-db release containing the drop-reason change through a release PR that bumps pyproject.toml, uv.lock and TOOL_VERSION and dates the CHANGELOG. Per docs/operations/release-gates.md, Gate 1 (scratch state-branch lifecycle) and Gate 2 (real downstream consumer) run against the release-candidate wheel before the tag and are recorded in the PR body, as in todo-db PR #54. Pushing the v0.12.0 tag triggers .github/workflows/publish.yml; a release is owner-gated under BenchBox WRITE-CLOSEOUT-001.",
   "links": [
     "https://github.com/joeharris76/todo-db/pull/54",
@@ -33,6 +33,14 @@
       "generation": "aa05637a3a654e70b9c28a9ad5e34092",
       "op": "take",
       "op_id": "870c5b1279184ed59fcd51ed8d3f55d1",
+      "session_id": "5a1d3b40c1da49d4846c079fde232012"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e45b8047daa131c418b6f1f3",
+      "at": "2026-10-31T20:35:30Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "2cd408c8af094d7ca5a17dbc8f7718a5",
       "session_id": "5a1d3b40c1da49d4846c079fde232012"
     }
   ]
