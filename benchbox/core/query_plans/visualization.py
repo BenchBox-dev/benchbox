@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import Any
 
@@ -27,6 +28,43 @@ def _format_truncated_list(label: str, items: list[str], max_display: int = 3) -
         lines.append(f"  - {item}")
     if len(items) > max_display:
         lines.append(f"  ... and {len(items) - max_display} more")
+    return lines
+
+
+_MAX_JOIN_CONDITIONS = 5
+_MAX_CONDITION_CHARS = 120
+
+
+def _unwrap_join_conditions(conditions: list[str]) -> list[str]:
+    unwrapped: list[str] = []
+    for condition in conditions:
+        text = str(condition)
+        if text.startswith("{"):
+            try:
+                payload = json.loads(text)
+            except ValueError:
+                payload = None
+            inner = payload.get("Conditions") if isinstance(payload, dict) else None
+            if isinstance(inner, str):
+                unwrapped.append(inner)
+                continue
+            if isinstance(inner, list) and inner:
+                unwrapped.extend(str(item) for item in inner)
+                continue
+        unwrapped.append(text)
+    return unwrapped
+
+
+def _format_join_conditions(conditions: list[str]) -> list[str]:
+    conditions = _unwrap_join_conditions(conditions)
+    lines = [f"Join Conditions: {len(conditions)}"]
+    for condition in conditions[:_MAX_JOIN_CONDITIONS]:
+        text = " ".join(str(condition).split())
+        if len(text) > _MAX_CONDITION_CHARS:
+            text = text[: _MAX_CONDITION_CHARS - 3] + "..."
+        lines.append(f"  - {text}")
+    if len(conditions) > _MAX_JOIN_CONDITIONS:
+        lines.append(f"  +{len(conditions) - _MAX_JOIN_CONDITIONS} more")
     return lines
 
 
@@ -272,6 +310,8 @@ class QueryPlanVisualizer:
     def _format_operator_properties(self, operator: LogicalOperator) -> list[str]:
         props: list[str] = []
 
+        if operator.join_conditions:
+            props.extend(_format_join_conditions(operator.join_conditions))
         if operator.filter_expressions and len(operator.filter_expressions) > 1:
             props.extend(_format_truncated_list("Filters", operator.filter_expressions))
         if operator.aggregation_functions and len(operator.aggregation_functions) > 2:
