@@ -233,6 +233,15 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         self.parquet_chunk_rows = int(config.get("parquet_chunk_rows", 200_000))
 
         self.skip_database_management = True
+        self._table_column_cache: dict[str, frozenset[str]] = {}
+
+    def _table_columns(self, table_name: str) -> frozenset[str] | None:
+        if table_name not in self._table_column_cache:
+            columns = self._get_table_columns(table_name)
+            if not columns:
+                return None
+            self._table_column_cache[table_name] = frozenset(column.lower() for column in columns)
+        return self._table_column_cache[table_name]
 
     def _get_connection_params(self) -> dict[str, Any]:
         params = {
@@ -358,6 +367,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
 
     def create_schema(self, benchmark, connection: Any) -> float:
         start_time = mono_time()
+        self._table_column_cache.clear()
         self.log_operation_start("Schema creation", f"benchmark: {benchmark.__class__.__name__}")
 
         schema_sql = self._create_schema_with_tuning(benchmark, source_dialect=QUESTDB_DIALECT)
@@ -811,7 +821,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         validate_row_count: bool = True,
         stream_id: int | None = None,
     ) -> dict[str, Any]:
-        query = rewrite_query(query)
+        query = rewrite_query(query, self._table_columns)
         result = execute_sql_query(
             connection,
             query,
@@ -837,7 +847,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         _owns_cursor = callable(getattr(connection, "cursor", None))
         cursor = connection.cursor() if _owns_cursor else connection
 
-        explain_query = f"EXPLAIN {rewrite_query(query)}"
+        explain_query = f"EXPLAIN {rewrite_query(query, self._table_columns)}"
 
         try:
             cursor.execute(explain_query)
