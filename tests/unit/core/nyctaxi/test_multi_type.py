@@ -451,22 +451,30 @@ class TestFHVDataDownloader:
         assert row["sr_flag"] in ("Y", "N")
 
     def test_row_mapping_accepts_exact_tlc_spellings(self, fhv_downloader):
-        row = {
-            "dispatching_base_num": "B01234",
-            "Affiliated_base_number": "B01234",
-            "pickup_datetime": "2019-01-01 08:00:00",
-            "dropOff_datetime": "2019-01-01 08:20:00",
-            "PUlocationID": 161,
-            "DOlocationID": 162,
-            "SR_Flag": None,
-        }
-        mapped = fhv_downloader._map_row_to_schema(row, 1)
+        import pandas as pd
+
+        frame = pd.DataFrame(
+            [
+                {
+                    "dispatching_base_num": "B01234",
+                    "Affiliated_base_number": "B01234",
+                    "pickup_datetime": "2019-01-01 08:00:00",
+                    "dropOff_datetime": "2019-01-01 08:20:00",
+                    "PUlocationID": 161,
+                    "DOlocationID": 162,
+                    "SR_Flag": None,
+                }
+            ]
+        )
+        mapped = list(fhv_downloader._map_frame_to_rows(frame, 1))[0]
         assert mapped[1] == "B01234"
         assert mapped[5] == 161
         assert mapped[6] == 162
         assert mapped[7] == "N"
 
     def test_row_mapping_normalizes_numeric_shared_flag(self, fhv_downloader):
+        import pandas as pd
+
         base = {
             "dispatching_base_num": "B01234",
             "Affiliated_base_number": "B01234",
@@ -475,10 +483,9 @@ class TestFHVDataDownloader:
             "PUlocationID": 161,
             "DOlocationID": 162,
         }
-        assert fhv_downloader._map_row_to_schema({**base, "SR_Flag": 1}, 1)[7] == "Y"
-        assert fhv_downloader._map_row_to_schema({**base, "SR_Flag": 1.0}, 1)[7] == "Y"
-        assert fhv_downloader._map_row_to_schema({**base, "SR_Flag": "Y"}, 1)[7] == "Y"
-        assert fhv_downloader._map_row_to_schema({**base, "SR_Flag": "N"}, 1)[7] == "N"
+        for flag, expected in ((1, "Y"), (1.0, "Y"), ("Y", "Y"), ("N", "N")):
+            frame = pd.DataFrame([{**base, "SR_Flag": flag}])
+            assert list(fhv_downloader._map_frame_to_rows(frame, 1))[0][7] == expected
 
     def test_download_stats(self, fhv_downloader):
         stats = fhv_downloader.get_download_stats()

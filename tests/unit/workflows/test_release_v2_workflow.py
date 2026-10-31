@@ -281,3 +281,66 @@ def test_release_uat_environment_installs_the_extra_of_every_shard_platform():
             for platform in entry["platforms"].split(","):
                 extra = PLATFORM_UV_EXTRA.get(platform)
                 assert extra is None or extra in installed, f"{name} shard {entry['shard']}: {platform} needs {extra}"
+
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+RUNNER_MEMORY_GIB = 16
+
+
+def _requirement_name(requirement: str) -> str:
+    return re.split(r"[\s\[<>=!~;]", requirement.strip(), maxsplit=1)[0].lower().replace("_", "-")
+
+
+def _installed_distributions() -> set[str]:
+    import tomllib
+
+    pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    sync = next(line for line in _env_action_commands().splitlines() if line.startswith("uv sync"))
+    extras = re.findall(r"--extra (\S+)", sync)
+    requirements = list(pyproject["dependency-groups"]["dev"]) + list(pyproject["project"]["dependencies"])
+    for extra in extras:
+        requirements += pyproject["project"]["optional-dependencies"][extra]
+    return {_requirement_name(item) for item in requirements if isinstance(item, str)}
+
+
+def _manifest_requirements(platform: str) -> tuple[str, ...]:
+    from benchbox.core.platform_manifest import get_platform_manifest_entry
+
+    entry = get_platform_manifest_entry(platform) or get_platform_manifest_entry(platform.removesuffix("-df"))
+    assert entry is not None, f"{platform} has no platform manifest entry"
+    return tuple(item for item in entry.metadata.get("requirements", ()) if "(built-in)" not in item)
+
+
+def _stage_configs() -> dict[str, Path]:
+    configs = {}
+    for name in UAT_STAGE_JOBS:
+        job = _jobs()[name]
+        relative = next(step["env"]["UAT_CONFIG"] for step in job["steps"] if "UAT_CONFIG" in step.get("env", {}))
+        configs[name] = REPO_ROOT / relative
+    return configs
+
+
+@pytest.mark.parametrize("stage", UAT_STAGE_JOBS)
+def test_release_uat_shards_cover_the_config_platforms_and_install_their_requirements(stage):
+    from tests.uat.config import load_config
+    from tests.uat.phases.enumerate import resolved_platforms
+
+    config_platforms = set(resolved_platforms(load_config(_stage_configs()[stage])))
+    shard_platforms = {
+        platform
+        for entry in _jobs()[stage]["strategy"]["matrix"]["include"]
+        for platform in entry["platforms"].split(",")
+    }
+    assert shard_platforms == config_platforms
+    installed = _installed_distributions()
+    for platform in sorted(config_platforms):
+        missing = [item for item in _manifest_requirements(platform) if _requirement_name(item) not in installed]
+        assert not missing, f"{stage}: {platform} requires {missing} that the shard environment does not install"
+
+
+def test_stage_one_bounds_per_cell_memory_below_the_hosted_runner():
+    from tests.uat.config import load_config
+
+    config = load_config(_stage_configs()["uat-stage1"])
+    assert _jobs()["uat-stage1"]["runs-on"] == "ubuntu-latest"
+    assert 0 < config.execute.per_cell_memory_limit_gib <= RUNNER_MEMORY_GIB - 2

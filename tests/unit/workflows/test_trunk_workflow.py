@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -24,15 +25,34 @@ def test_runs_after_each_push_to_develop_and_on_demand() -> None:
     assert "pull_request" not in triggers and "merge_group" not in triggers
 
 
-def test_every_commit_runs_in_parallel_in_its_own_group() -> None:
+GROUP = re.compile(
+    r"^\$\{\{ github\.event_name == '(?P<event>\w+)' && '(?P<shared>[\w-]+)' \|\| format\('(?P<other>[\w-]*\{0\})', github\.sha\) \}\}$"
+)
+
+
+def _group(event_name: str, sha: str) -> str:
+    match = GROUP.fullmatch(_workflow()["concurrency"]["group"])
+    assert match, "the concurrency group is no longer one shared name for pushes and one name per commit otherwise"
+    if event_name == match["event"]:
+        return match["shared"]
+    return match["other"].format(sha)
+
+
+def test_develop_pushes_share_one_group_so_only_the_latest_waits() -> None:
+    assert _group("push", "a" * 40) == _group("push", "b" * 40)
+
+
+def test_a_run_for_another_event_never_shares_the_develop_group() -> None:
+    develop = _group("push", "a" * 40)
+    assert _group("pull_request", "a" * 40) != develop
+    assert _group("workflow_dispatch", "a" * 40) != develop
+    assert _group("pull_request", "a" * 40) != _group("pull_request", "b" * 40)
+
+
+def test_a_running_run_is_never_cancelled_and_no_queue_keeps_older_pending_runs() -> None:
     concurrency = _workflow()["concurrency"]
-    assert concurrency["group"] == "trunk-${{ github.sha }}", (
-        "a per-ref group serialises develop pushes behind each other; the group must be the commit"
-    )
-    assert concurrency["cancel-in-progress"] is False, "a re-run of a commit must wait, never cancel a delivered run"
-    assert "queue" not in concurrency, (
-        "a per-commit group needs no queue: the only contender is a re-run of the same commit"
-    )
+    assert concurrency["cancel-in-progress"] is False
+    assert "queue" not in concurrency
 
 
 def test_is_read_only() -> None:
