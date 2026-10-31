@@ -1,0 +1,28 @@
+{
+  "acceptance": [
+    "Unit test: a held lock with a 64 MiB budget and a grandchild that allocates 128 MiB is terminated within 5 s; the report names the grandchild pid and footprint; the holder exits with the distinct status when it is itself over budget.",
+    "Unit test: in warn mode the same child survives and the report prints once per breach, not every sample.",
+    "Unit test: injected critical pressure and injected low disk each trigger the breach path; injected normal readings never do.",
+    "Unit test: a process that is not a descendant (sibling spawned outside the holder) is never signalled even if it is large.",
+    "Unit test: on normal release a surviving descendant is listed on stderr and still alive afterwards.",
+    "Smoke on this Mac: `uv run -- python -m benchbox.utils.host_lock run -- python -c 'b=bytearray(300*2**20); import time; time.sleep(30)'` with `BENCHBOX_HEAVY_MEMORY_BUDGET_GIB=0.2` and a tmp lock dir is killed and reports the footprint; output recorded in the PR.",
+    "Measured sampling overhead (G2) recorded in the PR.",
+    "`make comment-policy-check`, `make lint`, `make typecheck`, `make duplicate-check-delta`, `make test-fast` pass."
+  ],
+  "context": "Incident evidence: JetsamEvent-2026-10-30-161255.ips top entries python3.12 64739 25.83 GiB, Virtualization VMs 6.06/5.14/2.13/1.13 GiB, java ~1.09 GiB each. Review probes: ulimit -v/-d invalid on macOS; taskpolicy -m not enforced; footprint vs RSS gap 3.4x on a VM process.",
+  "description": "## Problem\nThe incident trigger was one python3.12 process that reached a 25.83 GiB footprint on a 16 GiB machine. Mutual exclusion does not bound a single job, and macOS gives no enforceable per-process cap: `ulimit -v`/`-d` fail with 'Invalid argument' and `taskpolicy -m 300` let a process and its child touch 600 MiB (probed). psutil RSS under-reports: a VM measured 1076 MiB RSS against a 3614 MiB `proc_pid_rusage` footprint. Disk ran out because swapfiles grew, and a python process wrote 34.36 GB in 41 minutes, so a start-time disk check is not enough.\n\n## Change\n1. Add a watchdog to `benchbox.utils.host_lock`: a daemon thread started by every lock holder that every 2 s samples (a) the summed physical footprint of the holder and all descendants (macOS: libproc `proc_pid_rusage` `ri_phys_footprint` via ctypes; elsewhere psutil USS, else RSS), (b) the pressure level reader from `heavy-guard-admission-20261030`, (c) free disk on the boot volume and output root, (d) whether the held lock inode still matches the path.\n2. Breach rules: tree footprint above budget (default 50% of physical RAM, `BENCHBOX_HEAVY_MEMORY_BUDGET_GIB` override, same setting admission uses), pressure level critical (4), or free disk below 20 GiB.\n3. Action on breach (`BENCHBOX_HEAVY_WATCHDOG=kill`, the default): print a report to stderr (signal, measured vs limit, top 5 processes in the tree by footprint), SIGTERM descendants deepest-first, wait 10 s, SIGKILL survivors; if the holder process itself is the largest consumer, exit it with a distinct status after killing descendants. `BENCHBOX_HEAVY_WATCHDOG=warn` prints the report once per breach and does not kill; `off` disables it with a loud warning.\n4. Lock-inode mismatch logs a loud warning naming the path (no kill).\n5. On normal release, list descendants still alive (pid, command, footprint) to stderr; do not kill them.\n\n## Decision gates\n- D1 (resolved by owner instruction to proceed with the recommended defaults): budget 50% of RAM; breach action kill; warn mode available for tuning.\n- G1 (stop condition): if `proc_pid_rusage` via ctypes is unavailable or returns errors for descendants owned by the same user, stop and report rather than silently falling back to RSS on macOS.\n- G2 (stop condition): sampling overhead must stay under 1% of one core on a tree of 50 processes; measure and record. If higher, lengthen the interval rather than dropping signals.\n\n## Guardrails\n- Only signal processes that are descendants of the holder at sampling time; never signal a pid that was re-parented, and re-verify parentage immediately before each signal.\n- Linked worktree; stage paths explicitly; `[COMMENT-POLICY-001]`; durations via `mono_time`.\n- Tests use small budgets (tens of MiB) and child processes that allocate slightly above them; no test allocates more than 512 MiB or depends on live host pressure.\n\n## Non-goals\nCapping memory inside engines (DuckDB memory_limit, -Xmx, Spark driver memory) and entry-point wiring.",
+  "links": [
+    "benchbox/utils/host_lock.py",
+    "benchbox/utils/resource_limits.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:19f6136ffb052a6f71a9c702",
+      "at": "2026-10-31T00:18:05Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "abfd1fabe3a74621b5841ac54a819d10",
+      "session_id": "5f71b48e76c54dd19a3f57d12779721e"
+    }
+  ]
+}

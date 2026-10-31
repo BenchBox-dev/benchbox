@@ -12702,6 +12702,15 @@
       "status": "open",
       "title": "Make the shared host lock exclusive-safe, re-entrant and reusable outside the test harness"
     },
+    "heavy-guard-watchdog-20261030": {
+      "claim": null,
+      "needs": [
+        "heavy-guard-admission-20261030"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Stop a lock holder's process tree before it exhausts memory or disk"
+    },
     "heavy-tier-merge-group-dead-code-20261009": {
       "claim": null,
       "needs": [],
