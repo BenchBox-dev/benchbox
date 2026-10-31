@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "With explicit live-cloud approval, run a small TPC-H DataFrame power run on Databricks with --capture-plans; plans and fingerprints attach to measured rows and no explain call happens inside timed windows.",
+    "The mixed frame/SQL-key path captures or records a failure for every key.",
+    "If after-the-fact explain is not possible remotely, change the capability honestly and document it."
+  ],
+  "context": "Needs explicit live-cloud approval and credentials; do not run without both.",
+  "description": "PR #3711 moved Databricks DataFrame plan capture out of the measured windows: frames are recorded during measurement, explained in the post-measurement phase, and SQL-string keys are delegated to the base capture phase. All of this was tested with a fake Databricks Connect session only. Whether a collected remote DataFrame can still be explained after the workload, and what the round-trip costs, is unverified.",
+  "links": [
+    "benchbox/platforms/databricks/dataframe_adapter.py",
+    "tests/unit/platforms/databricks/test_databricks_df_plan_capture.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0592050035774073ac1f90d3",
+      "at": "2026-10-31T15:14:49Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "17b49cbc74484383b91596946116aa0d",
+      "session_id": "57a74c8663c14523aa3e61ff1ddd4677"
+    }
+  ]
+}

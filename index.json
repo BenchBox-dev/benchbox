@@ -6939,6 +6939,13 @@
       "status": "done",
       "title": "Databricks DataFrame Mode - CRITICAL PRIORITY"
     },
+    "databricks-dataframe-plan-capture-live-check": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Run Databricks DataFrame deferred plan capture against a real workspace"
+    },
     "databricks-example-modernization-completed": {
       "claim": null,
       "needs": [],
