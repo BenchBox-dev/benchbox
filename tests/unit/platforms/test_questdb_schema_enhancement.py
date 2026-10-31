@@ -113,3 +113,27 @@ class TestDimensionTables:
         result = _render(adapter, ORDERS_DDL)
         assert "PARTITION BY YEAR" in result
         assert "PARTITION BY MONTH" not in result
+
+
+class TestTpcdsObtSymbolColumns:
+    def test_every_text_column_of_the_obt_is_a_symbol(self, questdb_stubs) -> None:
+        from benchbox.core.tpcds.schema.models import DataType
+        from benchbox.core.tpcds_obt.schema import OBT_TABLE_NAME, get_obt_columns
+
+        text_columns = [c.name for c in get_obt_columns() if c.data_type in (DataType.CHAR, DataType.VARCHAR)]
+        ddl = (
+            f"CREATE TABLE {OBT_TABLE_NAME} (channel VARCHAR(10) NOT NULL, ss_ticket_number INT, "
+            "sold_date_d_date_id CHAR(16), item_i_brand_id INT)"
+        )
+        result = _render(QuestDBAdapter(), ddl)
+        assert "channel SYMBOL" in result
+        assert "sold_date_d_date_id SYMBOL" in result
+        assert "item_i_brand_id INT" in result
+        assert "ss_ticket_number INT" in result
+        assert "VARCHAR" not in result
+        assert len(text_columns) == 345
+        assert QuestDBAdapter._symbol_columns_for_table(OBT_TABLE_NAME) == text_columns
+
+    def test_other_tables_keep_their_static_symbol_columns(self, questdb_stubs) -> None:
+        assert QuestDBAdapter._symbol_columns_for_table("nation") == ["n_name"]
+        assert QuestDBAdapter._symbol_columns_for_table("unknown_table") == []
