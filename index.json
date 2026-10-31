@@ -12716,10 +12716,15 @@
       "title": "Route Linux VM runs and compose bring-ups through the host lock and admission"
     },
     "heavy-guard-lock-core-20261030": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-01T00:38:28Z",
+        "generation": "319085c77f9b4eab8db0b7fe9bc2e7c0",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:19f6136ffb052a6f71a9c702"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Make the shared host lock exclusive-safe, re-entrant and reusable outside the test harness"
     },
     "heavy-guard-sentinel-20261030": {
