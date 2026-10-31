@@ -27364,6 +27364,15 @@
       "status": "done",
       "title": "todo complete accepts items whose own verification rungs fail"
     },
+    "todo-db-0-12-0-release-20261031": {
+      "claim": null,
+      "needs": [
+        "todo-db-drop-records-reason-20261031"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "Release todo-db 0.12.0 with required drop reasons"
+    },
     "todo-db-audited-scope-rule-update-20260801": {
       "claim": null,
       "needs": [],
