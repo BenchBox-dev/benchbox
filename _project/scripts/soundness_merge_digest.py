@@ -239,6 +239,7 @@ class AdjudicationRecord:
     defect_id: str
     instruction_gap_seconds: int | None
     merged_at: str
+    note: str = ""
 
 
 @dataclass(frozen=True)
@@ -549,19 +550,33 @@ def withdrawn_findings(pulls: Sequence[PullEvidence]) -> list[Withdrawal]:
     return sorted(found, key=lambda withdrawal: withdrawal.number)
 
 
+def _recorded_rulings(pull: PullEvidence) -> list[tuple[str, str, str]]:
+    found: list[tuple[str, str, str]] = []
+    for review in _oracle_reviews(pull, {commit.sha for commit in pull.commits}, include_unverifiable=True):
+        try:
+            record = decode_marker(review.body)
+        except MarkerError:
+            continue
+        for item in (record or {}).get("adjudicated") or ():
+            found.append((item["action"], item["id"], review.submitted_at))
+    return found
+
+
 def adjudication_records(pulls: Sequence[PullEvidence]) -> list[AdjudicationRecord]:
     found: list[AdjudicationRecord] = []
     for pull in pulls:
         head = pull.commits[-1].sha if pull.commits else ""
+        seen: set[tuple[str, str]] = set()
         for comment in pull.comments:
             ruling = adjudication.parse(comment.body)
             if (
                 ruling is not None
                 and comment.login in STANDIN_ATTESTERS
                 and comment.user_type == "User"
-                and comment.updated_at in (None, comment.created_at)
                 and comment.created_at <= pull.merged_at
             ):
+                edited = comment.updated_at not in (None, comment.created_at)
+                seen.add((ruling.action, ruling.defect_id))
                 found.append(
                     AdjudicationRecord(
                         pull.number,
@@ -571,6 +586,21 @@ def adjudication_records(pulls: Sequence[PullEvidence]) -> list[AdjudicationReco
                         ruling.defect_id,
                         instruction_gap_seconds(pull, comment.created_at),
                         pull.merged_at,
+                        "comment edited after posting" if edited else "",
+                    )
+                )
+        for action, defect_id, posted_at in _recorded_rulings(pull):
+            if (action, defect_id) not in seen:
+                found.append(
+                    AdjudicationRecord(
+                        pull.number,
+                        head,
+                        "",
+                        action,
+                        defect_id,
+                        instruction_gap_seconds(pull, posted_at),
+                        pull.merged_at,
+                        "recorded by the oracle; its comment is missing or was edited",
                     )
                 )
     return sorted(found, key=lambda record: (record.merged_at, record.number, record.defect_id))
@@ -1124,8 +1154,8 @@ def render_adjudications(records: Sequence[AdjudicationRecord]) -> str:
             else "NO OWNER INSTRUCTION COMMENT"
         )
         lines.append(
-            f"| #{record.number} | `{record.head[:9]}` | {record.attester} | {record.action} {record.defect_id} "
-            f"| {gap} |"
+            f"| #{record.number} | `{record.head[:9]}` | {record.attester or 'unknown'} "
+            f"| {record.action} {record.defect_id}{f' ({record.note})' if record.note else ''} | {gap} |"
         )
     return "\n".join(lines)
 

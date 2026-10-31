@@ -2369,12 +2369,46 @@ def test_the_digest_flags_an_adjudication_without_a_prior_owner_instruction():
     [
         adjudication_comment(login="someone"),
         adjudication_comment(user_type="Bot"),
-        adjudication_comment(updated_at=LATER),
         adjudication_comment(at=LATER),
         adjudication_comment("Oracle adjudication: WITHDRAW D2"),
     ],
-    ids=["not an attester", "bot", "edited", "after the merge", "malformed"],
+    ids=["not an attester", "bot", "after the merge", "malformed"],
 )
 def test_the_digest_ignores_comments_that_are_not_valid_adjudications(comment):
     assert digest.adjudication_records([evidence(comments=(comment,))]) == []
     assert digest.render_adjudications([]) == ""
+
+
+def test_an_edited_adjudication_comment_is_still_listed_and_noted():
+    found = digest.adjudication_records([evidence(comments=(adjudication_comment(updated_at=LATER),))])
+    assert [record.note for record in found] == ["comment edited after posting"]
+    assert "comment edited after posting" in digest.render_adjudications(found)
+
+
+def test_a_ruling_recorded_by_the_oracle_is_listed_when_its_comment_is_gone():
+    from oracle_reviewers import protocol
+
+    record = {
+        "v": 1,
+        "cycle": 1,
+        "round": 1,
+        "kind": "carry",
+        "decision": "SHIP",
+        "head_sha": HEAD,
+        "base_ref": "develop",
+        "reviewer": "",
+        "tier": "",
+        "strikes_after": 0,
+        "open_defects": [],
+        "next_id": 2,
+        "patch_digest": "d" * 32,
+        "carried": True,
+        "summary": "",
+        "adjudicated": [{"id": "D2", "action": "WITHDRAW"}],
+    }
+    body = f"{oracle_verdict(HEAD, 'success')}\n\n{protocol.encode_marker(record)}"
+    pull = evidence(reviews=(review(ORACLE_BOT, HEAD, AFTER, user_type="Bot", body=body),))
+    found = digest.adjudication_records([pull])
+    assert [(r.action, r.defect_id) for r in found] == [("WITHDRAW", "D2")]
+    assert "NO OWNER INSTRUCTION" in digest.render_adjudications(found)
+    assert "comment is missing" in digest.render_adjudications(found)

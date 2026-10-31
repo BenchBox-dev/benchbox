@@ -96,8 +96,9 @@ verdict workflow without a reviewer: `WITHDRAW` stops the finding blocking,
 Post an adjudication only when the owner names the PR, the head, the finding and
 the decision in the current request. Quote that instruction first in a separate
 `Owner instruction` comment. Agents share the owner's account, so the check is
-audit-only, as for a stand-in: the merge digest lists every adjudication and
-flags one with no preceding `Owner instruction` comment.
+audit-only, as for a stand-in: the merge digest lists every adjudication,
+including one whose comment was edited or deleted (read from the oracle's own
+record), and flags one with no preceding `Owner instruction` comment.
 
 ## Retry backoff reset
 
