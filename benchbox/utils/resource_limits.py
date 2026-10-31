@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.process_tree import tree_footprint_bytes
 
 try:
     import psutil
@@ -191,13 +192,18 @@ class ResourceLimitMonitor:
 
             self._stop_event.wait(self.sample_interval)
 
+    def _tree_footprint_mb(self) -> float:
+        total = tree_footprint_bytes(self._process.pid)
+        if total is None:
+            raise RuntimeError("process tree is not sampleable")
+        return total / (1024 * 1024)
+
     def _sample_and_check(self) -> None:
         if self._process is None:
             return
 
         try:
-            mem_info = self._process.memory_info()
-            memory_mb = mem_info.rss / (1024 * 1024)
+            memory_mb = self._tree_footprint_mb()
             memory_percent = (memory_mb / self._total_memory_mb * 100) if self._total_memory_mb else 0
 
             cpu_percent = self._process.cpu_percent(interval=0.1)
@@ -333,8 +339,7 @@ class ResourceLimitMonitor:
             return {"memory_mb": 0.0, "memory_percent": 0.0, "cpu_percent": 0.0}
 
         try:
-            mem_info = self._process.memory_info()
-            memory_mb = mem_info.rss / (1024 * 1024)
+            memory_mb = self._tree_footprint_mb()
             memory_percent = (memory_mb / self._total_memory_mb * 100) if self._total_memory_mb else 0
             return {
                 "memory_mb": memory_mb,
