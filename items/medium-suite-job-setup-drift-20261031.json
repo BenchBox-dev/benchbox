@@ -33,6 +33,15 @@
       "op": "update",
       "op_id": "516e55d34ab54bce9c00f6d9e18be2dc",
       "session_id": "8a2091afc3cb45c59ec31eeaa8eb8be9"
+    },
+    {
+      "actor": "joe-batch-medium-parity",
+      "at": "2026-10-31T15:19:12Z",
+      "client": "mcp",
+      "generation": "d2fa144bf3b447989aad49a7fecb66e0",
+      "op": "take",
+      "op_id": "3dc9c4c986bf49eeb7d8483a93199364",
+      "session_id": "67b735ab48ef46329968b661140d14be"
     }
   ]
 }

@@ -15042,10 +15042,15 @@
       "title": "Refresh medium_shard_durations.json weekly so deleted tests drop out and new tests get real weights"
     },
     "medium-suite-job-setup-drift-20261031": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-01T15:19:12Z",
+        "generation": "d2fa144bf3b447989aad49a7fecb66e0",
+        "renewals": 0,
+        "worker": "joe-batch-medium-parity"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "The medium suite runs from five copied job definitions, and the release lane lacks the tracker runtime sync"
     },
     "medium-test-timeout-headroom": {
