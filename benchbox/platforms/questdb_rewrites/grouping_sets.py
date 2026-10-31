@@ -41,11 +41,14 @@ def _element_sets(element: exp.Expr) -> list[list[exp.Expr]]:
                 sets.append([member for index in chosen for member in parts[index]])
         return sets
     if isinstance(element, exp.GroupingSets):
-        return [
-            _members(part) if not isinstance(part, exp.Tuple) or part.expressions else []
-            for part in element.expressions
-        ]
+        return [grouping_set for part in element.expressions for grouping_set in _grouping_set_parts(part)]
     return [[element]]
+
+
+def _grouping_set_parts(part: exp.Expr) -> list[list[exp.Expr]]:
+    if isinstance(part, (exp.Rollup, exp.Cube, exp.GroupingSets)):
+        return _element_sets(part)
+    return [_members(part) if not isinstance(part, exp.Tuple) or part.expressions else []]
 
 
 def _same(left: exp.Expr, right: exp.Expr) -> bool:

@@ -156,3 +156,15 @@ def test_group_by_projection_alias_resolves_to_its_expression():
 def test_group_by_alias_of_the_same_column_is_unchanged():
     rewritten = rewrite_query("SELECT a AS a, SUM(x) FROM t GROUP BY ROLLUP (a)")
     assert "GROUP BY a" in rewritten
+
+
+def test_rollup_nested_in_grouping_sets_is_expanded():
+    levels = _levels("SELECT a, b, SUM(x) FROM t GROUP BY GROUPING SETS (ROLLUP (a), b)")
+    assert len(levels) == 3
+    assert "ROLLUP" not in rewrite_query("SELECT a, b, SUM(x) FROM t GROUP BY GROUPING SETS (ROLLUP (a), b)")
+    assert levels[0].count("GROUP BY a") == 1
+    assert "GROUP BY b" in levels[2]
+
+
+def test_cube_nested_in_grouping_sets_is_expanded():
+    assert len(_levels("SELECT a, b, SUM(x) FROM t GROUP BY GROUPING SETS (CUBE (a, b), ())")) == 5
