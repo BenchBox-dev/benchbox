@@ -410,7 +410,7 @@ same module, so it honors the override and the real-home default.
   clear` (`make test-unlock`) empties the holder record of an inactive lock and
   refuses an active one.
 
-**When to bypass**: only for intentional concurrent debug runs. Set
+**When to bypass**: only for intentional concurrent debug runs, and only with owner approval in the current task. Set
 `BENCHBOX_SKIP_TEST_LOCK=1` - but expect noisy timing results and CPU
 contention. Do not bypass in CI.
 
@@ -437,6 +437,12 @@ refusing reading is re-sampled every 5 s for up to 30 s before the refusal stand
 | `BENCHBOX_HEAVY_MIN_FREE_DISK_GIB` | 50 | Minimum free disk per root |
 | `BENCHBOX_HEAVY_MEMORY_BUDGET_GIB` | 50% of RAM | Shared memory budget resolver (`resource_limits.heavy_memory_budget_gib`) |
 | `BENCHBOX_HEAVY_ADMIT` | unset | `force` admits despite refusals, with a stderr warning |
+
+`make heavy-status` (`python -m benchbox.utils.host_lock status`) is read-only and never takes the lock. It prints the
+holder and its age, live waiters, the admission readings, VM inventory, the top 10 processes by physical footprint
+and orphaned servers (ppid 1, working directory in a BenchBox worktree); each external command is cut off at 5 s and
+shown as `unmeasured`. `make heavy-run CMD='...'` is `run --admit -- sh -c "$CMD"`. Agent rules and known limits:
+`docs/agent/heavy-work.md`.
 
 ### macOS-specific conftest branch (`tests/conftest.py:109-122`)
 

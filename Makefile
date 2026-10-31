@@ -92,6 +92,15 @@ test-fast:
 test-unlock:
 	@python3 -I benchbox/utils/host_lock.py clear
 
+.PHONY: heavy-status
+heavy-status:
+	@uv run -- python -m benchbox.utils.host_lock status
+
+.PHONY: heavy-run
+heavy-run:
+	@test -n "$$CMD" || { echo "usage: make heavy-run CMD='<command>'"; exit 2; }
+	@uv run -- python -m benchbox.utils.host_lock run --admit -- sh -c "$$CMD"
+
 .PHONY: test-medium
 test-medium:
 	BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest -m "medium and not (slow or stress or resource_heavy or live_integration)" --tb=short --timeout=60 -n 5
