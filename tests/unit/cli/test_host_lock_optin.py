@@ -205,3 +205,49 @@ def test_admission_refusal_exits_with_the_admission_code(lock_file: Path, monkey
         pass
     assert raised.value.code == hl.EXIT_ADMISSION
     assert not hl.lock_is_held(lock_file)
+
+
+class _BreachedGuard:
+    breached = True
+
+    def stop(self) -> None:
+        return None
+
+
+@pytest.mark.parametrize("body", ["exit", "error", "normal"])
+def test_a_watchdog_breach_exits_79_on_every_path(lock_file: Path, monkeypatch: pytest.MonkeyPatch, body: str) -> None:
+    import click
+
+    from benchbox.cli.host_lock_optin import heavy_guard
+
+    monkeypatch.setenv(HOST_LOCK_ENV, "1")
+    monkeypatch.setattr(hl, "check_admission", lambda **_kwargs: "")
+    monkeypatch.setattr(hl, "start_guard", lambda handle, **_kwargs: _BreachedGuard())
+    with pytest.raises(SystemExit) as raised, heavy_guard("run"):
+        if body == "exit":
+            raise click.exceptions.Exit(1)
+        if body == "error":
+            raise RuntimeError("engine died")
+    assert raised.value.code == hl.EXIT_WATCHDOG
+    if body != "normal":
+        assert raised.value.__cause__ is not None
+    assert hl.OWNER_ENV not in os.environ
+    assert not hl.lock_is_held(lock_file)
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"), [("host_lock: yes\n", True), ("host_lock: 1\n", True), ("host_lock: off\n", False)]
+)
+def test_home_config_accepts_the_env_truthy_set(lock_file: Path, tmp_path: Path, text: str, expected: bool) -> None:
+    _write_home_config(tmp_path / "home", text)
+    assert host_lock_enabled() is expected
+
+
+@POSIX_ONLY
+def test_non_interactive_compare_without_platforms_is_not_locked(
+    lock_file: Path, holder: subprocess.Popen, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv(HOST_LOCK_ENV, "1")
+    result = CliRunner().invoke(cli, ["compare", "--non-interactive"])
+    assert result.exit_code != hl.EXIT_REFUSED
+    assert "holder-cmd" not in result.output

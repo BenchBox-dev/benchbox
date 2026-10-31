@@ -14,9 +14,10 @@ Set `host_lock: true` at the top level of `~/.benchbox/config.yaml`:
 host_lock: true
 ```
 
-Or set `BENCHBOX_HOST_LOCK=1` in the environment (`0` disables it and overrides the file). Only the file under
-`$HOME/.benchbox/` and the environment variable are consulted. A `benchbox.yaml` in the working directory cannot
-enable or disable the guard.
+Or set `BENCHBOX_HOST_LOCK=1` in the environment (`0` disables it and overrides the file). The file accepts `true`,
+`1`, `yes` or `on`, as the variable does. Only the file under `.benchbox/` in the home directory (`$HOME`,
+`%USERPROFILE%` on Windows) and the environment variable are consulted. A `benchbox.yaml` in the working directory
+cannot enable or disable the guard.
 
 ## Commands that take the lock
 
@@ -26,9 +27,9 @@ When enabled, these commands hold the lock, pass admission and run under the wat
 - `benchbox run-official`
 - `benchbox datagen`
 - `benchbox convert`
-- `benchbox compare` when result files are not given: `compare -p ...` runs queries, and the interactive wizard
-  cannot tell in advance whether it will run queries, so the whole command is locked. `compare` on result files and
-  `compare --list-platforms` never lock.
+- `benchbox compare` with `-p` platforms, or in the interactive wizard: the wizard cannot tell in advance whether it
+  will run queries, so the whole command is locked. `compare` on result files, `compare --list-platforms` and
+  `compare --non-interactive` without platforms (a usage error) never lock.
 - `benchbox compare-dataframes`, except `--list-platforms`
 
 Cloud-platform runs are locked too, even though only data generation is local. Help, results and other read-only
@@ -65,5 +66,8 @@ Before starting, the command checks memory pressure, available memory and free d
 - `warn`: report the same conditions without stopping anything.
 - `off`: no watchdog.
 
-The watchdog uses macOS memory readings and a portable fallback elsewhere. On Windows the lock uses the user's home
-directory and no watchdog process is started.
+The watchdog uses macOS memory readings and a portable fallback elsewhere. On Windows the lock lives under the user's
+home directory and no watchdog process is started.
+
+The watched process is the command itself when the engine runs in-process (DuckDB, for example). On a breach the
+watchdog sends SIGTERM and then SIGKILL after a grace period, so the command may exit 137 instead of 79.

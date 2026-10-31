@@ -348,7 +348,14 @@ def _discover_result_files_with_metadata(
     help="Allow comparing runs with different execution variants (deployment, engine, gateway)",
 )
 @click.pass_context
-@host_guarded("compare", skip=lambda kwargs: bool(kwargs.get("list_platforms") or kwargs.get("result_files")))
+@host_guarded(
+    "compare",
+    skip=lambda kwargs: bool(
+        kwargs.get("list_platforms")
+        or kwargs.get("result_files")
+        or (kwargs.get("non_interactive") and not kwargs.get("platforms"))
+    ),
+)
 def compare(
     ctx,
     result_files,

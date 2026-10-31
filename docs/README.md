@@ -43,7 +43,6 @@ Current release: `v0.5.0rc2`. Use `benchbox --version` for a human-readable summ
 - [Optimizer and validation tooling](https://benchbox.dev/docs/advanced/optimizer-tests.html).
 - [Performance monitoring and regression alerts](https://benchbox.dev/docs/advanced/performance.html).
 - [Custom benchmark authoring](https://benchbox.dev/docs/advanced/custom-benchmarks.html).
-- Heavy-work guard (`docs/operations/heavy-work-guard.md`): opt in the CLI to the host lock, admission checks and watchdog.
 
 ## Design & Contribution
 

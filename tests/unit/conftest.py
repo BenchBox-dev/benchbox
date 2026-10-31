@@ -20,6 +20,7 @@ def _unit_home(_hermetic_state, tmp_path_factory: pytest.TempPathFactory, monkey
     home = tmp_path_factory.mktemp("unit-home")
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.delenv("BENCHBOX_HOST_LOCK", raising=False)
     if _sys.platform == "win32":
         roaming = home / "AppData" / "Roaming"
         local = home / "AppData" / "Local"

@@ -12,6 +12,7 @@ import click
 HOST_LOCK_ENV = "BENCHBOX_HOST_LOCK"
 HOST_LOCK_CONFIG_KEY = "host_lock"
 PHASE = "benchbox-cli"
+WATCHDOG_MESSAGE = "watchdog stopped the process tree after a breach"
 
 _TRUE = frozenset({"1", "true", "yes", "on"})
 _FALSE = frozenset({"0", "false", "no", "off"})
@@ -31,7 +32,7 @@ def _config_enabled(path: Path) -> bool:
             data = yaml.safe_load(handle)
     except (OSError, ValueError, yaml.YAMLError):
         return False
-    return isinstance(data, dict) and data.get(HOST_LOCK_CONFIG_KEY) is True
+    return isinstance(data, dict) and str(data.get(HOST_LOCK_CONFIG_KEY)).strip().lower() in _TRUE
 
 
 def host_lock_enabled(environ: Mapping[str, str] | None = None, config_path: Path | None = None) -> bool:
@@ -75,13 +76,19 @@ def heavy_guard(command: str) -> Iterator[None]:
             host_lock.EXIT_ADMISSION, f"REFUSED: host is not ready for heavy work; lock released\n{exc.report}"
         ) from exc
 
+    watcher = handle.guard
     previous_owner = os.environ.get(host_lock.OWNER_ENV)
     if not handle.inherited:
         os.environ[host_lock.OWNER_ENV] = host_lock.process_identity()
     try:
-        yield
-        if handle.guard is not None and handle.guard.breached:
-            raise _refuse(host_lock.EXIT_WATCHDOG, "watchdog stopped the process tree after a breach")
+        try:
+            yield
+        except BaseException as exc:
+            if watcher is not None and watcher.breached:
+                raise _refuse(host_lock.EXIT_WATCHDOG, WATCHDOG_MESSAGE) from exc
+            raise
+        if watcher is not None and watcher.breached:
+            raise _refuse(host_lock.EXIT_WATCHDOG, WATCHDOG_MESSAGE)
     finally:
         if previous_owner is None:
             os.environ.pop(host_lock.OWNER_ENV, None)
