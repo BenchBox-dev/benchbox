@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import bz2
 import contextlib
 import csv
 import gzip
@@ -583,6 +584,13 @@ class GzipHandler(CompressionHandler):
     @contextmanager
     def open(self, file_path: Path, newline: str | None = None) -> Iterator[Any]:
         with gzip.open(file_path, "rt", newline=newline) as f:
+            yield f
+
+
+class Bzip2Handler(CompressionHandler):
+    @contextmanager
+    def open(self, file_path: Path, newline: str | None = None) -> Iterator[Any]:
+        with bz2.open(file_path, "rt", newline=newline) as f:
             yield f
 
 
@@ -1833,6 +1841,7 @@ class FileFormatRegistry:
 
     _compression_handlers = {
         ".gz": GzipHandler,
+        ".bz2": Bzip2Handler,
         ".zst": ZstdHandler,
     }
 
