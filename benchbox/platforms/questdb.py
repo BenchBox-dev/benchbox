@@ -7,6 +7,7 @@ from __future__ import annotations
 import csv
 import re
 import socket
+from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -571,7 +572,9 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                         rows = self._load_parquet_via_chunked_csv(table_name_lower, data_file)
                         source = "REST/parquet-csv"
                     else:
-                        rows = self._load_table_via_rest_api(table_name_lower, data_file, dialect)
+                        rows = self._load_table_via_rest_api(
+                            table_name_lower, data_file, replace(dialect, normalize_booleans=False)
+                        )
                         source = "REST"
                 except Exception as e:
                     self.logger.error(f"Failed to load {table_name_lower} chunk {data_file.name}: {e}")
