@@ -5,7 +5,7 @@
     "After the merge, the locked _project/scripts runtime reports 0.12.0 in initialize and its drop schema lists reason as required",
     "todo-db's skill-sync.conf todo revision is at the same catalog commit"
   ],
-  "context": "Split from todo-db-drop-records-reason-20261031 by its 2026-10-31 review.\n\n2026-10-31: owner asked to consolidate PRs; the BenchBox runtime bump and skill sync land in the same PR as the medium-durations refresh.",
+  "context": "Split from todo-db-drop-records-reason-20261031 by its 2026-10-31 review.\n\n2026-10-31: owner asked to consolidate PRs; the BenchBox runtime bump and skill sync land in the same PR as the medium-durations refresh.\n\nClosed 2026-10-31: catalog joeharris76/skill-sync-skills PR #101 merged as e7b7fd9 (drop guidance passes the owner's decision and successor as reason, needs 0.12.0+). BenchBox PR #3886 (merged as 0d1f556490, shared with the medium-durations refresh at the owner's request) vendors todo_db-0.12.0-py3-none-any.whl, whose sha256 cdcadf44f130ff98dd11081576db2c8acf5ad3a60ab84d85e60ceba0250a590d matches the v0.12.0 release SHA256SUMS, relocks _project/scripts, updates the version contract and pins the todo skill to e7b7fd9 with the make skill-sync output. Post-merge check from a clean export of origin/develop _project/scripts: todo-db-mcp initialize reports serverInfo version 0.12.0 and the drop tool requires ['id', 'reason']. todo-db PR #60 merged as 8554ff0ab pins its skill-sync.conf to e7b7fd9.",
   "description": "Update the catalog todo skill in ~/Developer/skill-sync-skills (skills/todo/SKILL.md drop row and the drop mentions near :154 and :184, references/closeout.md, references/queries.md) to pass the owner's decision and any successor as reason on drop, with no separate context_append. Then follow the BenchBox PR #3725 pattern: vendor the 0.12.0 wheel checked against the release SHA256SUMS and relock _project/scripts; update EXPECTED_VERSION in todo_state_contract_check.py, quality/comment-policy.json, the test_batch_skill_delivery.py constants and batch-rollout-evidence.json; bump the skill-sync.conf todo revision and commit the make skill-sync output in the same PR (skill text telling agents to pass reason must not reach a 0.11.0 runtime). Bump todo-db's own skill-sync.conf to the same catalog revision. The site and todo-db repos run todo-db-mcp from PATH (0.10.1 on the maintainer's machine); their drops keep the old behaviour until todo-db's global-install-and-skill-behind-0-11-0 lands.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/pull/3725",
@@ -36,6 +36,14 @@
       "generation": "428b9a045a3749e18dd5b7dea1396d42",
       "op": "take",
       "op_id": "c412c8b0a6ca44bcba0ebac707d0dc90",
+      "session_id": "5a1d3b40c1da49d4846c079fde232012"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e45b8047daa131c418b6f1f3",
+      "at": "2026-10-31T23:45:52Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "30128b2f782a4b2fab9aba29c50b001d",
       "session_id": "5a1d3b40c1da49d4846c079fde232012"
     }
   ]
