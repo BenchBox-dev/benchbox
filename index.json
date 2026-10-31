@@ -1151,7 +1151,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Remove the legacy static landing and Sphinx-era parity files from benchbox-site, and the last Sphinx leftovers from core"
     },
     "astro-site-60-results-embeds": {
