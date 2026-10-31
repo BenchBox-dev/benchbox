@@ -58,7 +58,7 @@ stop_daemon() {
       kill -9 "$pid" 2>/dev/null || true
     fi
   fi
-  rm -rf "$socket_dir"
+  rm -rf "$socket_dir" 2>/dev/null || true
   if [ -d "$state_dir" ]; then
     find "$state_dir" -mindepth 1 -maxdepth 1 ! -name omp-binary ! -name omp-install.log -exec rm -rf {} +
   fi
@@ -113,15 +113,31 @@ install_omp() {
   return 1
 }
 
+secure_socket_dir() {
+  if [ -L "$socket_dir" ]; then
+    say "refusing socket directory $socket_dir: it is a symbolic link"
+    return 1
+  fi
+  mkdir -p "$socket_dir" || return 1
+  owner=$(stat -c %u "$socket_dir" 2>/dev/null || stat -f %u "$socket_dir" 2>/dev/null) || return 1
+  if [ "$owner" != "$(id -u)" ]; then
+    say "refusing socket directory $socket_dir: it is owned by another user"
+    return 1
+  fi
+  chmod 700 "$socket_dir"
+}
+
 bring_up() {
   mkdir -p "$state_dir"
   chmod 700 "$state_dir"
+  secure_socket_dir || return 1
   if daemon_alive && [ -e "$socket" ]; then
     return 0
   fi
   stop_daemon
-  mkdir -p "$state_dir" "$socket_dir"
-  chmod 700 "$state_dir" "$socket_dir"
+  mkdir -p "$state_dir"
+  secure_socket_dir || return 1
+  chmod 700 "$state_dir"
   nohup tailscaled --tun=userspace-networking --state=mem: --socket="$socket" \
     --outbound-http-proxy-listen="127.0.0.1:$proxy_port" >"$state_dir/tailscaled.log" 2>&1 &
   echo "$!" >"$pid_file"

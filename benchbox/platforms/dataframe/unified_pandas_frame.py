@@ -206,6 +206,15 @@ class UnifiedPandasGroupBy(Generic[DF]):
         )
         return UnifiedPandasFrame(result, self._adapter)
 
+    def size(self) -> Any:
+        result = self._native_groupby().size()
+        if _is_dask_df(self._df) and not self._as_index:
+            result = result.reset_index()
+            count_col = next(column for column in result.columns if column not in self._by)
+            if count_col != "size":
+                result = result.rename(columns={count_col: "size"})
+        return result
+
     def _native_groupby(self) -> Any:
         if _is_dask_df(self._df):
             return self._df.groupby(self._by, **self._kwargs)

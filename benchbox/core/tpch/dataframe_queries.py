@@ -1570,8 +1570,8 @@ def q21_pandas_impl(ctx: DataFrameContext) -> Any:
     supplier_late_orders = supplier_late.merge(orders, left_on="l_orderkey", right_on="o_orderkey")
     supplier_late_orders = supplier_late_orders[supplier_late_orders["o_orderstatus"] == "F"]
 
-    order_suppliers = lineitem.groupby("l_orderkey").agg(num_suppliers=("l_suppkey", "nunique"))
-    multi_supplier_orders = _to_list(order_suppliers[order_suppliers["num_suppliers"] > 1].index)
+    order_suppliers = lineitem.groupby("l_orderkey", as_index=False).agg(num_suppliers=("l_suppkey", "nunique"))
+    multi_supplier_orders = _to_list(order_suppliers[order_suppliers["num_suppliers"] > 1]["l_orderkey"])
 
     supplier_late_orders = supplier_late_orders[supplier_late_orders["l_orderkey"].isin(multi_supplier_orders)]
 
