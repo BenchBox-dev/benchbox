@@ -584,7 +584,7 @@ def _healthy_ps_result(argv: list[str]) -> docker_assets.DockerCommandResult:
     return docker_assets.DockerCommandResult(tuple(argv), 0, healthy_ps_stdout(), "")
 
 
-def _healthy_stats_result(argv: list[str], *, limit: str = "5.25GiB") -> docker_assets.DockerCommandResult:
+def _healthy_stats_result(argv: list[str], *, limit: str = "8GiB") -> docker_assets.DockerCommandResult:
     return docker_assets.DockerCommandResult(
         tuple(argv),
         0,
@@ -1205,7 +1205,7 @@ def test_execute_starrocks_requires_backend_liveness_and_runtime_memory(monkeypa
             first_application_probe = False
             return docker_assets.DockerCommandResult(call, 1, "", "BE heartbeat pending")
         if "stats" in call:
-            return _healthy_stats_result(argv, limit="4GB")
+            return _healthy_stats_result(argv, limit="8GiB")
         return docker_assets.DockerCommandResult(call, 0, "", "")
 
     cfg = _managed_docker_cfg(
@@ -1250,7 +1250,7 @@ def test_execute_starrocks_reconciles_mismatched_mocker_runtime(monkeypatch, tmp
             return _healthy_ps_result(argv) if "ps" in call else docker_assets.DockerCommandResult(call, 0, "", "")
         if "stats" in call:
             stats_calls += 1
-            return _healthy_stats_result(argv, limit="1GB" if stats_calls == 1 else "4GB")
+            return _healthy_stats_result(argv, limit="1GB" if stats_calls == 1 else "8GiB")
         return docker_assets.DockerCommandResult(call, 0, "", "")
 
     cfg = _managed_docker_cfg(
@@ -1416,7 +1416,7 @@ def test_execute_starrocks_application_liveness_stops_after_runtime_wedge(monkey
             if application_calls >= 3:
                 return docker_assets.DockerCommandResult(call, 1, "", "SQL listener wedged")
         if "stats" in call:
-            return _healthy_stats_result(argv, limit="4GB")
+            return _healthy_stats_result(argv, limit="8GiB")
         return docker_assets.DockerCommandResult(call, 0, "", "")
 
     cfg = _managed_docker_cfg(
@@ -1547,7 +1547,7 @@ def test_execute_clickhouse_default_admission_uses_measured_request_without_unva
             databases_root=tmp_path / "databases",
             runner=_stub_runner_factory({0.01: 1.0}, {0.01: True}),
             docker_runner=_healthy_fake_docker,
-            memory_reader=_memory_reader(5.25),
+            memory_reader=_memory_reader(8.0),
             sleep_fn=lambda _s: None,
         )
 

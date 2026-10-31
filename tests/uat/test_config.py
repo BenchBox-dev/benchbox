@@ -41,8 +41,8 @@ def test_validate_config_minimal():
     assert cfg.output.benchmark_runs_dir_template == "~/Developer/benchmark_runs"
     assert cfg.preflight.free_space_min_gib == 5.0
     assert cfg.preflight.free_memory_min_gib == 2.0
-    assert cfg.preflight.clickhouse_memory_limit == "5.25g"
-    assert cfg.preflight.starrocks_memory_limit == "4g"
+    assert cfg.preflight.clickhouse_memory_limit == "8g"
+    assert cfg.preflight.starrocks_memory_limit == "8g"
     assert cfg.preflight.docker_memory_reserve_gib == 0.0
     assert cfg.memory_gate_enabled is True
     assert cfg.cleanup.docker_manage_platforms is False
@@ -431,6 +431,60 @@ def test_release_gate_configs_load_and_encode_stage_ordering():
         assert stage.execute.parallel_platforms is False
 
 
+_SF1_TIMEOUT_PRUNED_CELLS = frozenset(
+    (platform, benchmark, 1.0)
+    for platform, benchmarks in {
+        "dask-df": (
+            "joinorder",
+            "tpchavoc",
+            "tpch_skew",
+            "flightdata",
+            "tpcds",
+            "clickbench",
+            "datavault",
+            "coffeeshop",
+            "tpch",
+        ),
+        "pyspark-df": ("datavault", "tpchavoc", "tpcds", "joinorder", "flightdata"),
+        "spark": ("joinorder", "tpchavoc", "tpcds_obt"),
+        "pandas-df": ("joinorder",),
+    }.items()
+    for benchmark in benchmarks
+)
+
+
+def test_release_gate_stage1_prunes_sf1_timeouts_measured_in_dry_run_2():
+    from tests.uat.phases.enumerate import enumerate_cells_with_pruning
+
+    stage1 = config.load_config(_RELEASE_GATE_CONFIGS_DIR / "release-gate-01-native-dataframe.yaml")
+    result = enumerate_cells_with_pruning(stage1)
+    cells = {(cell.platform, cell.benchmark, cell.scale) for cell in result.cells}
+    pruned = {
+        (cell.platform, cell.benchmark, cell.scale)
+        for cell in result.compatibility_pruned
+        if cell.rule_id.endswith(".release_gate_runtime_envelope") and cell.scale == 1.0
+    }
+
+    assert len(_SF1_TIMEOUT_PRUNED_CELLS) == 18
+    assert pruned >= _SF1_TIMEOUT_PRUNED_CELLS
+    assert _SF1_TIMEOUT_PRUNED_CELLS.isdisjoint(cells)
+    for platform, benchmark, _ in _SF1_TIMEOUT_PRUNED_CELLS:
+        if benchmark not in ("joinorder", "tpcds_obt"):
+            assert {
+                scale
+                for cell_platform, cell_benchmark, scale in cells
+                if (cell_platform, cell_benchmark) == (platform, benchmark)
+            }
+    for kept in (
+        ("dask-df", "nyctaxi", 1.0),
+        ("pyspark-df", "nyctaxi", 1.0),
+        ("spark", "nyctaxi", 1.0),
+        ("pandas-df", "flightdata", 1.0),
+        ("pandas-df", "datavault", 1.0),
+    ):
+        assert kept in cells
+
+
 def test_release_gate_stage1_prunes_measured_runtime_envelopes():
     from tests.uat.phases.enumerate import enumerate_cells_with_pruning
 
@@ -455,8 +509,8 @@ def test_release_gate_stage1_prunes_measured_runtime_envelopes():
     for cell in result.cells:
         by_pair.setdefault((cell.platform, cell.benchmark), set()).add(cell.scale)
     eligible = sum(1 for scales in by_pair.values() if set(stage1.scales.rungs).issubset(scales))
-    assert eligible == 133
-    assert stage1.report.cross_scale_coverage_min_pairs == int(0.8 * eligible) == 106
+    assert eligible == 119
+    assert stage1.report.cross_scale_coverage_min_pairs == int(0.8 * eligible) == 95
 
 
 def test_release_gate_cross_scale_floors_are_tuned_and_achievable():
@@ -481,8 +535,8 @@ def test_release_gate_cross_scale_floors_are_tuned_and_achievable():
         eligible = sum(1 for scales in by_pair.values() if rungs.issubset(scales))
 
         assert floor_value >= minimum, f"{config_name}: floor {floor_value} below absolute minimum {minimum}"
-        assert floor_value <= math.floor(0.8 * eligible), (
-            f"{config_name}: floor {floor_value} exceeds 0.8 * eligible ({eligible}); re-run the w4 derivation"
+        assert floor_value == math.floor(0.8 * eligible), (
+            f"{config_name}: floor {floor_value} is not 0.8 * eligible ({eligible}); re-run the w4 derivation"
         )
         assert floor_value < eligible, f"{config_name}: floor must never equal the eligible count"
 
@@ -723,7 +777,11 @@ def test_scale_specific_runtime_envelope_prunes_only_that_scale(monkeypatch):
         for cell in enumerate_cells_with_pruning(cfg).compatibility_pruned
         if ".sf" in cell.rule_id
     }
-    assert scale_pruned == {("sqlite", "datavault", 1.0), ("sqlite", "tpchavoc", 1.0)}
+    assert scale_pruned == {
+        ("sqlite", "datavault", 1.0),
+        ("sqlite", "tpchavoc", 1.0),
+        *(cell for cell in _SF1_TIMEOUT_PRUNED_CELLS if cell[1] not in ("joinorder", "tpcds_obt")),
+    }
 
     cells = {(cell.platform, cell.benchmark, cell.scale) for cell in enumerate_cells_with_pruning(cfg).cells}
     assert scale_pruned.isdisjoint(cells)

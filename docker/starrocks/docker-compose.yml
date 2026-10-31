@@ -1,7 +1,7 @@
 services:
   starrocks:
     image: starrocks/allin1-ubuntu:3.5.16
-    mem_limit: ${STARROCKS_MEMORY_LIMIT:-4g}
+    mem_limit: ${STARROCKS_MEMORY_LIMIT:-8g}
     ports:
       - "${STARROCKS_HOST_PORT:-19030}:9030"
       - "${STARROCKS_HTTP_PORT:-18040}:8040"
