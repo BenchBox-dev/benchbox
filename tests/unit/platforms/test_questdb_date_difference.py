@@ -7,9 +7,14 @@ from benchbox.platforms.questdb_rewrites import rewrite_query
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 
-def test_epoch_day_difference_becomes_datediff():
+def test_integer_day_difference_becomes_datediff():
     sql = "SELECT CAST(EXTRACT(epoch FROM CAST(a.d AS TIMESTAMP) - CAST(b.d AS TIMESTAMP)) / 86400 AS BIGINT) FROM a, b"
     assert rewrite_query(sql) == "SELECT CAST(DATEDIFF('d', b.d, a.d) AS BIGINT) FROM a CROSS JOIN b"
+
+
+def test_day_difference_keeps_its_fraction_when_it_is_not_cast_to_an_integer():
+    sql = "SELECT EXTRACT(epoch FROM (a - b)) / 86400 FROM t"
+    assert rewrite_query(sql) == "SELECT (CAST(DATEDIFF('u', b, a) AS DOUBLE PRECISION) / 86400000000.0) FROM t"
 
 
 def test_current_date_becomes_the_start_of_today():
@@ -20,7 +25,10 @@ def test_current_date_becomes_the_start_of_today():
 
 def test_current_date_inside_a_day_difference_is_rewritten_too():
     sql = "SELECT EXTRACT(epoch FROM CAST(CURRENT_DATE AS TIMESTAMP) - CAST(MIN(x) AS TIMESTAMP)) / 86400 FROM t"
-    assert rewrite_query(sql) == "SELECT DATEDIFF('d', MIN(x), CAST(DATE_TRUNC('day', NOW()) AS DATE)) FROM t"
+    assert rewrite_query(sql) == (
+        "SELECT (CAST(DATEDIFF('u', MIN(x), CAST(DATE_TRUNC('day', NOW()) AS DATE)) AS DOUBLE PRECISION) "
+        "/ 86400000000.0) FROM t"
+    )
 
 
 def test_epoch_extraction_that_is_not_a_day_difference_is_left_alone():
@@ -28,11 +36,20 @@ def test_epoch_extraction_that_is_not_a_day_difference_is_left_alone():
     assert rewrite_query(sql) == sql
 
 
-def test_epoch_of_a_timestamp_difference_becomes_whole_seconds():
+def test_epoch_of_a_timestamp_difference_keeps_fractional_seconds():
     sql = "SELECT EXTRACT(EPOCH FROM (dropoff - pickup)) FROM t"
-    assert rewrite_query(sql) == "SELECT DATEDIFF('s', pickup, dropoff) FROM t"
+    assert rewrite_query(sql) == (
+        "SELECT (CAST(DATEDIFF('u', pickup, dropoff) AS DOUBLE PRECISION) / 1000000.0) FROM t"
+    )
 
 
 def test_epoch_of_a_timestamp_difference_inside_a_comparison_is_rewritten():
-    sql = "SELECT 1 FROM t WHERE EXTRACT(EPOCH FROM (b - a)) >= 60"
-    assert rewrite_query(sql) == "SELECT 1 FROM t WHERE DATEDIFF('s', a, b) >= 60"
+    sql = "SELECT 1 FROM t WHERE EXTRACT(EPOCH FROM (b - a)) > 60"
+    assert rewrite_query(sql) == (
+        "SELECT 1 FROM t WHERE (CAST(DATEDIFF('u', a, b) AS DOUBLE PRECISION) / 1000000.0) > 60"
+    )
+
+
+def test_epoch_of_a_timestamp_shifted_by_an_interval_is_left_alone():
+    sql = "SELECT EXTRACT(EPOCH FROM (ts - INTERVAL '1 day')) FROM t"
+    assert rewrite_query(sql) == sql

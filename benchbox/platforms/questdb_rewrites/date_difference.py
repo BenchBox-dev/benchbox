@@ -12,34 +12,26 @@ def applies(sql: str) -> bool:
     return "CURRENT_DATE" in upper or "EPOCH" in upper
 
 
+_INTEGER_TYPES = (exp.DType.BIGINT, exp.DType.INT, exp.DType.SMALLINT, exp.DType.TINYINT)
+_MICROSECONDS_PER_DAY = "86400000000.0"
+_MICROSECONDS_PER_SECOND = "1000000.0"
+
+
 def _timestamp_operand(node: exp.Expr) -> exp.Expr:
     if isinstance(node, exp.Cast) and node.to.is_type(exp.DType.TIMESTAMP):
         node = node.this
     return node.transform(_rewrite)
 
 
-def _day_difference(node: exp.Expr) -> exp.Expr | None:
-    if not isinstance(node, exp.Div) or not isinstance(node.expression, exp.Literal):
-        return None
-    if node.expression.is_string or node.expression.name != _SECONDS_PER_DAY:
-        return None
-    extract = node.this
-    if not isinstance(extract, exp.Extract) or extract.this.name.upper() != "EPOCH":
-        return None
-    difference = extract.expression
-    if not isinstance(difference, exp.Sub):
-        return None
-    return exp.Anonymous(
-        this="datediff",
-        expressions=[
-            exp.Literal.string("d"),
-            _timestamp_operand(difference.expression),
-            _timestamp_operand(difference.this),
-        ],
-    )
+def _is_point_in_time(node: exp.Expr) -> bool:
+    if isinstance(node, exp.Cast) and node.to.is_type(exp.DType.TIMESTAMP, exp.DType.DATE, exp.DType.DATETIME):
+        return True
+    if node.find(exp.Interval) is not None or node.find(exp.Literal) is not None:
+        return False
+    return isinstance(node, (exp.Column, exp.Max, exp.Min, exp.CurrentDate, exp.CurrentTimestamp))
 
 
-def _epoch_of_difference(node: exp.Expr) -> exp.Expr | None:
+def _epoch_difference(node: exp.Expr) -> tuple[exp.Expr, exp.Expr] | None:
     if not isinstance(node, exp.Extract) or node.this.name.upper() != "EPOCH":
         return None
     difference = node.expression
@@ -47,14 +39,42 @@ def _epoch_of_difference(node: exp.Expr) -> exp.Expr | None:
         difference = difference.this
     if not isinstance(difference, exp.Sub):
         return None
+    if not (_is_point_in_time(difference.this) and _is_point_in_time(difference.expression)):
+        return None
+    return difference.this, difference.expression
+
+
+def _datediff(unit: str, later: exp.Expr, earlier: exp.Expr) -> exp.Expr:
     return exp.Anonymous(
         this="datediff",
-        expressions=[
-            exp.Literal.string("s"),
-            _timestamp_operand(difference.expression),
-            _timestamp_operand(difference.this),
-        ],
+        expressions=[exp.Literal.string(unit), _timestamp_operand(earlier), _timestamp_operand(later)],
     )
+
+
+def _fraction(microseconds: exp.Expr, divisor: str) -> exp.Expr:
+    as_double = exp.Cast(this=microseconds, to=exp.DataType.build("DOUBLE"))
+    return exp.Paren(this=exp.Div(this=as_double, expression=exp.Literal.number(divisor), typed=True, safe=False))
+
+
+def _day_difference(node: exp.Expr) -> exp.Expr | None:
+    if not isinstance(node, exp.Div) or not isinstance(node.expression, exp.Literal):
+        return None
+    if node.expression.is_string or node.expression.name != _SECONDS_PER_DAY:
+        return None
+    operands = _epoch_difference(node.this)
+    if operands is None:
+        return None
+    parent = node.parent
+    if isinstance(parent, exp.Cast) and parent.to.is_type(*_INTEGER_TYPES):
+        return _datediff("d", *operands)
+    return _fraction(_datediff("u", *operands), _MICROSECONDS_PER_DAY)
+
+
+def _epoch_of_difference(node: exp.Expr) -> exp.Expr | None:
+    operands = _epoch_difference(node)
+    if operands is None:
+        return None
+    return _fraction(_datediff("u", *operands), _MICROSECONDS_PER_SECOND)
 
 
 def _current_date() -> exp.Expr:
