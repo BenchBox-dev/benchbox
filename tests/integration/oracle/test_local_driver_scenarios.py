@@ -302,3 +302,23 @@ def test_no_withheld_secret_is_readable_in_any_ancestor_environment_of_the_local
     found = {name for ancestor in chain for name in ancestor["found"]}
     assert found <= {"OMP_GATEWAY_TOKEN"}, chain
     assert chain[-1]["found"] == [], chain
+
+
+@pytest.mark.parametrize(
+    ("relative", "text"),
+    [
+        (".github/soundness-paths.txt", "file\tnothing/at/all.txt\n"),
+        (".github/inert-paths.txt", "prefix\tbenchbox/core/equivalence/\n"),
+        (".github/oracle-reviewers.yml", "not: a policy\n"),
+    ],
+)
+def test_a_branch_cannot_steer_its_own_review_by_editing_the_trusted_inputs(
+    harness: Harness, relative: str, text: str
+) -> None:
+    harness.branch("feat/steer", {CHECKER: PATCH, relative: text}, "reject None and edit the trusted input")
+    harness.script_omp([_reply("SHIP_WITH_FIXES", _defect("Critical"))])
+
+    review = _local(harness, "feat/steer")
+
+    assert review.code == 1, review.stdout + review.stderr
+    assert "Critical issue" in review.stdout
