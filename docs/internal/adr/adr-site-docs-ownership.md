@@ -187,8 +187,12 @@ the consumer's only usable schema or rely on restoring deleted source paths.
 Documentation authorship becomes independent of core releases, while factual
 correctness remains a cross-repository contract. Trunk-only documentation and
 the existing release policy remain unchanged; release-pinned documentation is
-not introduced. Live-site remediation and advisory pre-merge builds remain
-related work, not implicitly completed by this decision.
+not introduced. Live-site remediation remains related work, not implicitly
+completed by this decision. The advisory pre-merge signal is the core lint job's
+docs contract change warning (`scripts/check_docs_contract_changes.py`), which
+compares the exported contract of a pull request with its base and names each
+added, removed or changed entry the site documentation must cover; it never
+fails the job and is not a required check.
 
 The [future-state proposals](../../design/future-state/index.md) and
 [architecture contract index](../../design/future-state/contract-index.md)
