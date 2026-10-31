@@ -42,6 +42,15 @@
       "op": "update",
       "op_id": "aab2f4cd660c42afba50581807963cd1",
       "session_id": "4c4928e16bab47789a12f55e52bef685"
+    },
+    {
+      "actor": "joe-batch-preflight-workflows",
+      "at": "2026-10-31T20:56:00Z",
+      "client": "mcp",
+      "generation": "30b58419a9ae4d759cb389640e95792a",
+      "op": "finish",
+      "op_id": "595de5e157d54195aac1f8f2fe67c4eb",
+      "session_id": "4c4928e16bab47789a12f55e52bef685"
     }
   ]
 }
