@@ -7,6 +7,9 @@ from types import ModuleType
 
 from benchbox.utils.dialect_utils import rewrite_sql_tree, sql_expressions
 
+from ._join_scope import ColumnsOf, reassign_join_predicates
+from ._or_factor import factor_shared_or_conjuncts
+
 QUESTDB_DIALECT = "questdb"
 
 exp = sql_expressions()
@@ -22,11 +25,14 @@ def _modules() -> tuple[ModuleType, ...]:
     return tuple(sorted(modules, key=lambda module: module.ORDER))
 
 
-def rewrite_query(sql: str) -> str:
+def rewrite_query(sql: str, columns_of: ColumnsOf | None = None) -> str:
     modules = _modules()
     active = [module for module in modules if getattr(module, "applies", None) is None or module.applies(sql)]
 
     def transform(expression):
+        expression = factor_shared_or_conjuncts(expression)
+        if columns_of is not None:
+            expression = reassign_join_predicates(expression, columns_of)
         for module in active:
             expression = module.transform(expression)
         return expression
