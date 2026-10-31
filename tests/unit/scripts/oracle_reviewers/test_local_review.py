@@ -545,3 +545,19 @@ def test_a_renamed_gate_file_still_flags_the_gate_through_its_old_path() -> None
 def test_the_known_credential_names_cover_the_values_the_phases_withhold() -> None:
     assert {"TYPESAFE_API_KEY", "OMP_GATEWAY_TOKEN", "ORACLE_GATEWAY_URL"} <= set(credentials.NAMES)
     assert set(local.HOST_TOKEN_FILES) | {"TS_AUTHKEY", "GH_TOKEN"} <= local.WITHHELD_FROM_PHASES
+
+
+@pytest.mark.parametrize("phase", ["prepare", "harness", "scan", "isolation", "attempts", "recover", "finalize"])
+def test_no_phase_environment_carries_the_gateway_proxy_as_a_proxy_variable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, phase: str
+) -> None:
+    monkeypatch.delenv("HTTPS_PROXY", raising=False)
+    monkeypatch.delenv("HTTP_PROXY", raising=False)
+    monkeypatch.delenv("NO_PROXY", raising=False)
+    run = _run(tmp_path)
+    run.access = local.Credentials(local.CLOUD_CLIENT, CLOUD_URL, CLOUD_TOKEN, "http://127.0.0.1:1055")
+
+    environ = run._environ(phase, run.grants(phase))
+
+    assert not {"HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "https_proxy", "http_proxy"} & set(environ)
+    assert environ[local.PROXY_ENV] == "http://127.0.0.1:1055"
