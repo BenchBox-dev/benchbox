@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Maintenance handlers issue a bounded number of statements per operation, not per row.",
+    "Post-maintenance table row counts and checksums match the current implementation for a fixed seed.",
+    "Maintenance time at SF1 on DuckDB drops measurably."
+  ],
+  "description": "benchbox/core/tpcds/maintenance_operations.py:215 starts the timer before handlers run. _update_customer, _update_item, _update_inventory, _bulk_update_inventory (:498-722) send one parameterized UPDATE per row (one round trip per row on cloud warehouses). Sales inserts (:314-370) build rows with Python random and send 100-row VALUES batches. _insert_returns_generic (:371-430) fetchall()s sales rows to Python and rebuilds them. Use set-based SQL (UPDATE ... FROM (SELECT ...), INSERT ... SELECT) or a staged bulk load, keeping results deterministic.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:root@vm:cb45f246c9de058740ccbeed",
+      "at": "2026-10-31T00:37:15Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "cec7ab6ae6d1490e9ee0832bc66a4d73",
+      "session_id": "d2b018a349924f4f88b746458c80b878"
+    }
+  ]
+}

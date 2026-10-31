@@ -17790,6 +17790,13 @@
       "status": "open",
       "title": "Load StarRocks Parquet via Stream Load, not executemany"
     },
+    "perf-tpcds-maintenance-set-based-20261031": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "TPC-DS maintenance: replace per-row UPDATEs and Python-built inserts with set-based SQL"
+    },
     "perf-tpch-rf1-bulk-load-20261031": {
       "claim": null,
       "needs": [],
