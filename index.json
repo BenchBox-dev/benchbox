@@ -19365,10 +19365,15 @@
       "title": "Extend public drop list to alias path/host keys still empty-salt hashed"
     },
     "public-pseudonym-salt-automatic": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-01T13:03:33Z",
+        "generation": "24bee2c2a10346f4b5057725a93a10a6",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:73f4ce6dc372259381dd21db"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Make the public pseudonym salt automatic: generate and persist it locally, with BENCHBOX_MACHINE_ID_SALT only as an override"
     },
     "public-result-id-permanence-and-documented-format": {
