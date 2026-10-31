@@ -1011,3 +1011,29 @@ def test_other_dialects_keep_grouping_expressions_in_order_by():
     translated = translate_sql_query(_ROLLUP_RANK_QUERY, "doris", source_dialect="netezza")
 
     assert "GROUPING(" in _order_by_clause(translated)
+
+
+def test_doris_aliases_unaliased_derived_tables_and_keeps_existing_aliases():
+    query = (
+        "with w as (select a from (select x a from t union all select y from u)) "
+        "select * from w join (select k from v) on w.a = k join (select z from q) _dt1 on 1 = 1"
+    )
+
+    translated = translate_sql_query(query, "doris", source_dialect="netezza")
+
+    assert translated.count(" AS `_dt") == 3
+    assert translated.count("AS `_dt1`") == 1
+    assert "`_dt2`" in translated
+    assert "`_dt3`" in translated
+
+
+def test_doris_alias_pass_leaves_predicate_subqueries_alone():
+    translated = translate_sql_query("select a from t where a in (select b from u)", "doris", source_dialect="netezza")
+
+    assert "_dt" not in translated
+
+
+def test_other_dialects_do_not_alias_derived_tables():
+    translated = translate_sql_query("select a from (select x a from t union all select y from u)", "postgres")
+
+    assert "_dt" not in translated
