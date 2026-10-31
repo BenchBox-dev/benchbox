@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "No iterrows or per-row UPDATE in SCD processing.",
+    "Loads use a bulk path on DuckDB and PostgreSQL.",
+    "TPC-DI validation queries return the same results as the current implementation."
+  ],
+  "description": "The TPC-DI load phase is timed at benchbox/core/tpcdi/benchmark.py:1123-1129. Inside it: etl/sql_backend.py:190-200 converts DataFrames to tuples and executemany in 1000-row batches; etl/scd_processor.py loops with iterrows() at :461, :507, :725, :748, :882, :892 (one UPDATE per row at :725) and builds parameter lists at :605; etl/pipeline.py:341-655 generates facts/dimensions in Python and loads with executemany; tpcdi/benchmark.py:1263 uses pd.read_csv without the pyarrow engine. Use DataFrame/Arrow registration (DuckDB) or COPY, and set-based MERGE/UPDATE for SCD steps.",
+  "sessions": [
+    {
+      "actor": "mcp:claude-code:root@vm:cb45f246c9de058740ccbeed",
+      "at": "2026-10-31T00:37:19Z",
+      "client": "claude-code",
+      "op": "create",
+      "op_id": "ed171f98a5894ede886cdfb1d29088ed",
+      "session_id": "d2b018a349924f4f88b746458c80b878"
+    }
+  ]
+}

@@ -17790,6 +17790,13 @@
       "status": "open",
       "title": "Load StarRocks Parquet via Stream Load, not executemany"
     },
+    "perf-tpcdi-etl-bulk-paths-20261031": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "TPC-DI ETL: replace executemany and iterrows row loops in the timed load and SCD phases"
+    },
     "perf-tpcds-maintenance-set-based-20261031": {
       "claim": null,
       "needs": [],
