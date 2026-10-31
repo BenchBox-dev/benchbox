@@ -6045,15 +6045,10 @@
       "title": "Record execution variants in result bundles: schema 2.3 fields, legacy mapping, and anonymizer rules"
     },
     "core-sphinx-leftovers-20261030": {
-      "claim": {
-        "expires_at": "2026-11-01T03:01:52Z",
-        "generation": "ea371293db5e43c1b5f5152247794880",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7dbb15325c3991d0952275f8"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Remove the last Sphinx-era references from core scripts, tests and planning docs"
     },
     "corpus-65-bundles-carry-failed-queries": {
