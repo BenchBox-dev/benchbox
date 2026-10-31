@@ -420,6 +420,7 @@ queries:
   - bigquery
   - duckdb
   - starrocks
+  - doris
   - datafusion
   - questdb
   variants:
@@ -576,6 +577,7 @@ queries:
   - trino
   - presto
   - starrocks
+  - doris
   - databricks
   variants:
     singlestore: "SELECT\n    `role` AS role_name,\n    0 AS is_superuser,\n    0 AS can_create_db,\n    0 AS can_create_role\nFROM information_schema.roles\nORDER BY `role`;\n"
@@ -604,6 +606,7 @@ queries:
   - firebolt
   - snowflake
   - starrocks
+  - doris
   - databricks
   - questdb
   variants:

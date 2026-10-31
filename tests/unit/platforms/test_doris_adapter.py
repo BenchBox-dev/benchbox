@@ -5,7 +5,7 @@
 import gzip
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, PropertyMock, patch
 
 import pytest
 
@@ -180,6 +180,7 @@ class TestDorisConnection:
         mock_cursor.fetchone.return_value = (1,)
 
         with (
+            patch.object(adapter, "_await_backends_ready"),
             patch.object(adapter, "handle_existing_database"),
             patch.object(adapter, "check_server_database_exists", return_value=True),
             patch("benchbox.platforms.doris.pymysql") as mock_pymysql,
@@ -213,6 +214,7 @@ class TestDorisConnection:
         mock_cursor.fetchone.return_value = (1,)
 
         with (
+            patch.object(adapter, "_await_backends_ready"),
             patch.object(adapter, "handle_existing_database"),
             patch.object(adapter, "check_server_database_exists", return_value=False),
             patch.object(adapter, "_create_database") as mock_create_db,
@@ -222,6 +224,23 @@ class TestDorisConnection:
             adapter.create_connection()
 
         mock_create_db.assert_called_once()
+
+    def test_create_connection_waits_for_backends_first(self):
+        try:
+            adapter = DorisAdapter(database="test_db")
+        except ImportError:
+            pytest.skip("pymysql not installed")
+
+        order: list[str] = []
+        with (
+            patch.object(adapter, "_await_backends_ready", side_effect=lambda: order.append("wait")),
+            patch.object(adapter, "handle_existing_database", side_effect=lambda **_: order.append("existing")),
+            patch.object(adapter, "check_server_database_exists", return_value=True),
+            patch("benchbox.platforms.doris.pymysql"),
+        ):
+            adapter.create_connection()
+
+        assert order == ["wait", "existing"]
 
     def test_close_connection(self):
         try:
@@ -1825,3 +1844,149 @@ CREATE TABLE vectors (
         assert details["accessible_tables"] == ["DimCustomer"]
         mock_cursor.execute.assert_called_once_with("SELECT 1 FROM `DimCustomer` LIMIT 1")
         mock_cursor.close.assert_called_once()
+
+
+class TestDorisBackendReadiness:
+    @staticmethod
+    def _adapter(**config):
+        try:
+            return DorisAdapter(**config)
+        except ImportError:
+            pytest.skip("pymysql not installed")
+
+    @staticmethod
+    def _conn(rows_by_call):
+        conn = Mock()
+        cursor = Mock()
+        cursor.fetchall.side_effect = list(rows_by_call)
+        conn.cursor.return_value = cursor
+        return conn, cursor
+
+    def test_backend_registered_without_disks_is_not_ready(self):
+        from benchbox.platforms.doris import _backend_is_ready
+
+        assert not _backend_is_ready(1, 0)
+        assert not _backend_is_ready(1, None)
+        assert not _backend_is_ready(0, 541132189696)
+        assert not _backend_is_ready("false", 541132189696)
+        assert _backend_is_ready(1, 541132189696)
+        assert _backend_is_ready("true", 541132189696)
+
+    def test_waits_until_backend_reports_disk_capacity(self):
+        adapter = self._adapter()
+        conn, cursor = self._conn([[(1, 0)], [], [(1, 78_400_000_000)]])
+
+        sleep = Mock()
+        with patch.object(adapter, "_admin_connect", return_value=conn) as connect:
+            adapter._await_backends_ready(sleep=sleep)
+
+        assert connect.call_count == 3
+        assert sleep.call_count == 2
+        cursor.execute.assert_called_with("SELECT Alive, TotalCapacity FROM backends()")
+
+    def test_requires_one_ready_backend_per_replica(self):
+        adapter = self._adapter(replication_num=2)
+        conn, _ = self._conn([[(1, 10_000_000_000)], [(1, 10_000_000_000), (1, 10_000_000_000)]])
+
+        with patch.object(adapter, "_admin_connect", return_value=conn) as connect:
+            adapter._await_backends_ready(sleep=Mock())
+
+        assert connect.call_count == 2
+
+    def test_gives_up_with_warning_after_timeout(self):
+        adapter = self._adapter()
+        conn, _ = self._conn([[(1, 0)]] * 3)
+
+        with (
+            patch.object(adapter, "_admin_connect", return_value=conn),
+            patch.object(DorisAdapter, "logger", new_callable=PropertyMock) as logger,
+        ):
+            adapter._await_backends_ready(clock=Mock(side_effect=[0.0, 1.0, 1000.0]), sleep=Mock())
+
+        logger.return_value.warning.assert_called_once()
+
+    def test_unreachable_server_defers_to_connection_error(self):
+        adapter = self._adapter()
+
+        sleep = Mock()
+        with patch.object(adapter, "_admin_connect", side_effect=OSError("refused")):
+            adapter._await_backends_ready(sleep=sleep)
+
+        sleep.assert_not_called()
+
+    def test_backends_query_failure_skips_wait(self):
+        adapter = self._adapter()
+        conn = Mock()
+        conn.cursor.return_value.execute.side_effect = RuntimeError("denied")
+
+        sleep = Mock()
+        with patch.object(adapter, "_admin_connect", return_value=conn):
+            adapter._await_backends_ready(sleep=sleep)
+
+        sleep.assert_not_called()
+        conn.close.assert_called_once()
+
+
+class TestDorisHeaderedCsv:
+    @staticmethod
+    def _adapter(**config):
+        try:
+            return DorisAdapter(database="test_db", **config)
+        except ImportError:
+            pytest.skip("pymysql not installed")
+
+    @staticmethod
+    def _ok_response(rows):
+        response = Mock()
+        response.status_code = 200
+        response.json.return_value = {"Status": "Success", "NumberLoadedRows": rows}
+        return response
+
+    def test_single_stream_load_skips_header_line(self, tmp_path):
+        adapter = self._adapter()
+        data_file = tmp_path / "t.csv"
+        data_file.write_text("id|name\n1|a\n", encoding="utf-8")
+
+        with patch("benchbox.platforms.doris._requests") as mock_requests:
+            mock_requests.put.return_value = self._ok_response(1)
+            adapter._stream_load_file("t", data_file, CsvDialect("|", True, None, False, None))
+
+        assert mock_requests.put.call_args.kwargs["headers"]["skip_lines"] == "1"
+
+    def test_single_stream_load_without_header_does_not_skip(self, tmp_path):
+        adapter = self._adapter()
+        data_file = tmp_path / "t.csv"
+        data_file.write_text("1|a\n", encoding="utf-8")
+
+        with patch("benchbox.platforms.doris._requests") as mock_requests:
+            mock_requests.put.return_value = self._ok_response(1)
+            adapter._stream_load_file("t", data_file, CsvDialect("|", False, None, False, None))
+
+        assert "skip_lines" not in mock_requests.put.call_args.kwargs["headers"]
+
+    def test_chunked_stream_load_drops_header_line_only_once(self, tmp_path):
+        adapter = self._adapter(stream_load_chunk_size=16)
+        data_file = tmp_path / "t.csv"
+        data_file.write_text("id|name\n" + "".join(f"{i}|row{i}\n" for i in range(6)), encoding="utf-8")
+
+        with patch("benchbox.platforms.doris._requests") as mock_requests:
+            mock_requests.put.return_value = self._ok_response(1)
+            adapter._stream_load_file("t", data_file, CsvDialect("|", True, None, False, None))
+
+        assert mock_requests.put.call_count > 1
+        bodies = [call.kwargs["data"].decode("utf-8") for call in mock_requests.put.call_args_list]
+        assert "id|name" not in "\n".join(bodies)
+        assert sum(body.count("row") for body in bodies) == 6
+        assert all("skip_lines" not in call.kwargs["headers"] for call in mock_requests.put.call_args_list)
+
+    def test_insert_fallback_skips_header_line(self, tmp_path):
+        adapter = self._adapter()
+        data_file = tmp_path / "t.csv"
+        data_file.write_text("id|name\n1|a\n2|b\n", encoding="utf-8")
+        connection = Mock()
+
+        with patch.object(adapter, "_execute_batch_insert") as insert:
+            count = adapter._insert_load_file(connection, "t", data_file, CsvDialect("|", True, None, False, None))
+
+        assert count == 2
+        assert insert.call_args.args[2] == [["1", "a"], ["2", "b"]]

@@ -110,6 +110,11 @@ class TestQuoteIdentifier:
         assert quote_identifier_for_dialect("orders", "databricks") == "`orders`"
         assert quote_identifier_for_dialect("orders", "standard") == '"orders"'
 
+    def test_doris_uses_backticks(self, wp_benchmark):
+        from benchbox.core.primitives_benchmark_utils import quote_identifier_for_dialect
+
+        assert quote_identifier_for_dialect("benchbox_staging_manifest_v3", "doris") == "`benchbox_staging_manifest_v3`"
+
     def test_singlestore_uses_backticks(self, wp_benchmark):
         from benchbox.core.primitives_benchmark_utils import quote_identifier_for_dialect
 

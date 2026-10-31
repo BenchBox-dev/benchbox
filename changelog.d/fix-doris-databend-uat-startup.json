@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Doris now waits until a backend is alive and reports disk capacity before creating tables, and its compose healthcheck requires the same, so the first cells no longer fail with \"Failed to find enough backend\"; header lines of CSV data files are skipped on Stream Load and INSERT loads, H2O-DB Q9 uses PERCENTILE_APPROX, Write and Transaction Primitives quote staging tables with backticks, and TPC-H Havoc variants avoid FILTER clauses and empty GROUP BY on Doris."
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Read Primitives has Doris variants for 24 queries Doris could not run as written (approximate and exact percentiles, correlation, GROUP BY ALL and ORDER BY ALL, array, struct, map and lambda functions, JSON aggregates, UNPIVOT, correlated scalar subqueries)."
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "The Databend compose stack runs on local storage in a single service instead of depending on the minio/minio and minio/mc images that Docker Hub no longer serves, so `docker compose up --wait` succeeds."
+    }
+  ]
+}
