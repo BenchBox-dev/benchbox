@@ -15044,9 +15044,9 @@
     "medium-suite-job-setup-drift-20261031": {
       "claim": null,
       "needs": [],
-      "priority": "low",
+      "priority": "medium-high",
       "status": "open",
-      "title": "The medium suite runs from four copied job definitions, and nothing checks that their setup agrees"
+      "title": "The medium suite runs from five copied job definitions, and the release lane lacks the tracker runtime sync"
     },
     "medium-test-timeout-headroom": {
       "claim": null,

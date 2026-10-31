@@ -1,9 +1,11 @@
 {
   "acceptance": [
-    "Adding a setup step to one medium-suite job and not the others fails a fast check, either because the jobs share one setup definition (a composite action or reusable workflow) or because a parity test compares their setup steps.",
-    "The check is shown to work by removing the `_project/scripts` sync from one job and seeing it fail."
+    "`test.yml`'s `medium` job syncs the locked `_project/scripts` runtime before running tests, as the other four jobs do.",
+    "A fast test fails when a provisioning step present in one of the five medium-suite jobs is missing from another, with an explicit, commented-free allowlist only for differences each job needs (coverage tooling, matrix-specific steps).",
+    "The test is shown to work by removing the `_project/scripts` sync from any one job and seeing it fail."
   ],
-  "description": "The medium suite runs in four jobs that each define their own setup: `medium-test` in `ci.yml`; `medium-test` in `trunk.yml` and in `trunk-coverage.yml`, which `ci.yml` calls as `trunk-lane-plain` and `trunk-lane-coverage`; and the core integration suite in `nightly-v2.yml`. On #3725, the locked `_project/scripts` sync that the tracker runtime handshake test needs was added to `ci.yml` and `nightly-v2.yml` but not to the two trunk workflows. `tests/unit/workflows` passed (1,033 tests). The gap showed only when the full CI run failed both trunk-lane `medium-test (shard 0)` jobs. The trunk lanes run on PRs, so they caught this before merge; the same drift in `nightly-v2.yml` would show only in the nightly run.",
+  "context": "REVIEW 2026-10-31: VALID but incomplete. Found a fifth medium-suite job (test.yml `medium`, release lane) and a live defect: it lacks the _project/scripts sync that the offline handshake test has needed since #3725, so the next release run fails. Fix added to acceptance; priority raised low -> medium-high. A parity test is chosen over a shared composite action: the five jobs differ in matrices and coverage setup, and the test is the smallest guard that fails on drift.",
+  "description": "The medium suite (`-m \"medium and not (slow or stress or resource_heavy or live_integration)\"` or the nightly core integration suite) runs in five jobs that each define their own setup: `medium-test` in `ci.yml`; `medium-test` in `trunk.yml` and in `trunk-coverage.yml`, which `ci.yml` calls as `trunk-lane-plain` and `trunk-lane-coverage`; the `integration` core suite in `nightly-v2.yml`; and `medium` in `test.yml`, which runs on pushes and PRs to `release`. Nothing checks that they provision the same things.\n\nLive defect: since #3725, `test_installed_runtime_handshake_exposes_registered_batch_tools` runs `uv run --offline` against `_project/scripts` and needs the locked `uv sync --project _project/scripts --locked` step. `ci.yml`, `trunk.yml`, `trunk-coverage.yml` and `nightly-v2.yml` have it; `test.yml`'s `medium` job runs only `uv sync --group dev`, so the next release PR or push will fail that test.\n\nHow the drift showed: on #3725 the sync was first added to `ci.yml` and `nightly-v2.yml` only. `tests/unit/workflows` passed (1,033 tests); the gap showed only when the full CI run failed both trunk-lane `medium-test (shard 0)` jobs. The trunk lanes run on PRs, so they caught it before merge; drift in `nightly-v2.yml` or `test.yml` shows only in a nightly or release run.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3725"
   ],
@@ -15,6 +17,14 @@
       "op": "create",
       "op_id": "12c4dec680894ee2a34ccd8323ed0228",
       "session_id": "fdd5a72e54f64ffe965910e79d203e3e"
+    },
+    {
+      "actor": "joe-batch-controller",
+      "at": "2026-10-31T15:17:34Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "d091800dba3045e0ad4fb9c32650212c",
+      "session_id": "2247d81583364302a6b16d1a367d8311"
     }
   ]
 }
