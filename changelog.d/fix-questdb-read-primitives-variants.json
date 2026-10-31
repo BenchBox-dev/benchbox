@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed QuestDB read_primitives failures for min_by, exact percentile, approximate quantile array, array, UNNEST, UNPIVOT, ASOF join, JSON extraction and REGR_SLOPE-window queries by adding QuestDB-specific catalog variants that use QuestDB's native forms (ROW_NUMBER for ARG_MIN over text, rank-based exact percentiles, ARRAY_SORT over array_agg, array_position/dim_length/array_sum, CROSS JOIN UNNEST, UNION ALL, keyed ASOF JOIN, json_extract, and an aggregate subquery in place of a windowed REGR_SLOPE)."
+    }
+  ]
+}
