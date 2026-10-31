@@ -36,3 +36,18 @@ class TestBundlePlatformAllowlist:
         vr = _validate_platform_name("Not A Real Platform")
         assert vr.errors == []
         assert any("Unknown platform name" in warning for warning in vr.warnings)
+
+    @pytest.mark.parametrize("name", ["Apache Doris", "SingleStore", "Velox", "Databend"])
+    def test_release_platform_display_names_validate_clean(self, name):
+        vr = _validate_platform_name(name)
+        assert vr.warnings == []
+
+    def test_every_manifest_platform_key_is_known(self):
+        from benchbox.core.platform_manifest import PLATFORM_MANIFEST
+
+        missing = sorted(
+            entry.key
+            for entry in PLATFORM_MANIFEST
+            if not {entry.key, entry.key.replace("-", "_"), entry.key.replace("_", "-")} & KNOWN_PLATFORMS
+        )
+        assert missing == []

@@ -189,3 +189,82 @@ def test_check_benchmark_tables_exist_returns_false_when_connection_creation_fai
     assert adapter.check_benchmark_tables_exist() is False
 
     adapter.logger.debug.assert_called_once()
+
+
+def test_core_mode_creates_the_database_before_the_connection_test(monkeypatch):
+    adapter = _Adapter()
+    adapter.mode = "core"
+    fake_conn = MagicMock()
+    order = []
+    fake_conn.ensure_database.side_effect = lambda: order.append("ensure")
+    fake_conn.test_connection.side_effect = lambda: order.append("test") or True
+    monkeypatch.setattr("benchbox.platforms.influxdb.setup.InfluxDBConnection", lambda **kwargs: fake_conn)
+
+    adapter.create_connection(host="localhost", port=8181)
+
+    assert order == ["ensure", "test"]
+
+
+def test_cloud_mode_never_creates_the_database(monkeypatch):
+    adapter = _Adapter()
+    fake_conn = MagicMock()
+    fake_conn.test_connection.return_value = True
+    monkeypatch.setattr("benchbox.platforms.influxdb.setup.InfluxDBConnection", lambda **kwargs: fake_conn)
+
+    adapter.create_connection()
+
+    fake_conn.ensure_database.assert_not_called()
+
+
+class _FakeResponse:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+def _connection():
+    from benchbox.platforms.influxdb.client import InfluxDBConnection
+
+    return InfluxDBConnection(host="localhost", token=None, database="bench", port=8181, ssl=False)
+
+
+def test_ensure_database_posts_the_database_name(monkeypatch):
+    seen = {}
+
+    def fake_urlopen(request, timeout, context):
+        seen["url"] = request.full_url
+        seen["body"] = request.data
+        seen["auth"] = request.get_header("Authorization")
+        return _FakeResponse()
+
+    monkeypatch.setattr("benchbox.platforms.influxdb.client.urllib.request.urlopen", fake_urlopen)
+    _connection().ensure_database()
+
+    assert seen == {
+        "url": "http://localhost:8181/api/v3/configure/database",
+        "body": b'{"db": "bench"}',
+        "auth": None,
+    }
+
+
+def test_ensure_database_accepts_an_existing_database(monkeypatch):
+    import urllib.error
+
+    def fake_urlopen(request, timeout, context):
+        raise urllib.error.HTTPError(request.full_url, 409, "Conflict", {}, None)
+
+    monkeypatch.setattr("benchbox.platforms.influxdb.client.urllib.request.urlopen", fake_urlopen)
+    _connection().ensure_database()
+
+
+def test_ensure_database_surfaces_other_http_errors(monkeypatch):
+    import urllib.error
+
+    def fake_urlopen(request, timeout, context):
+        raise urllib.error.HTTPError(request.full_url, 401, "Unauthorized", {}, None)
+
+    monkeypatch.setattr("benchbox.platforms.influxdb.client.urllib.request.urlopen", fake_urlopen)
+    with pytest.raises(ConnectionError, match="HTTP 401"):
+        _connection().ensure_database()

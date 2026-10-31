@@ -2,6 +2,7 @@
 
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
+import importlib
 import os
 from unittest.mock import Mock, patch
 
@@ -468,3 +469,21 @@ class TestInfluxDBTlsCertValidation:
                     conn._connect_flightsql()
                     _, kwargs = mock_client.call_args
                     assert kwargs["disable_server_verification"] is True
+
+
+class TestInfluxDBPlatformOptionParsing:
+    def test_ssl_and_port_options_are_typed(self):
+        import benchbox.platforms
+        from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
+
+        parsed = PlatformHookRegistry.parse_options("influxdb", [("ssl", "false"), ("port", "8181")])
+        assert parsed["ssl"] is False
+        assert parsed["port"] == 8181
+
+    def test_ssl_and_port_defaults_are_typed(self):
+        import benchbox.platforms
+        from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
+
+        parsed = PlatformHookRegistry.parse_options("influxdb", [])
+        assert parsed["ssl"] is True
+        assert parsed["port"] == 8086

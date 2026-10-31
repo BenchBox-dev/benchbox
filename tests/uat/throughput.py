@@ -22,8 +22,11 @@ def resolve_official_result_path(results_dir: Path, *, emitted_path: str | None 
     if not emitted_path:
         return None
     path = Path(emitted_path).expanduser()
-    if path.is_absolute() or path.exists():
-        return path
+    try:
+        if path.is_absolute() or path.exists():
+            return path
+    except OSError:
+        return None
     runs_dir = results_dir.parent
     if len(path.parts) >= 2 and path.parts[0] == "benchmark_runs":
         return runs_dir.parent / path

@@ -2556,6 +2556,59 @@ def test_execute_stack_dying_mid_platform_records_remaining_cells_as_died_not_fa
     assert "died-mid-platform" in lifecycle
 
 
+def test_execute_stack_dying_mid_platform_captures_container_state_and_log_tail(tmp_path):
+    cfg = validate_config(
+        {
+            "name": "mid platform death diagnostics",
+            "platforms": {"include": ["clickhouse-server"]},
+            "benchmarks": {"include": ["tpch"]},
+            "scales": {"rungs": [0.01, 0.1]},
+            "cleanup": {"docker_manage_platforms": True, "docker_platform_switch": "volumes"},
+        }
+    )
+    seen: list[list[str]] = []
+
+    def fake_docker(argv, **kwargs):
+        seen.append(list(argv))
+        if "-q" in argv:
+            return docker_assets.DockerCommandResult(tuple(argv), 0, "abc123\n", "")
+        if argv[1] == "inspect":
+            return docker_assets.DockerCommandResult(
+                tuple(argv), 0, "/ch Status=exited OOMKilled=true ExitCode=137 Error= \n", ""
+            )
+        if _docker_verb(argv) == "logs":
+            return docker_assets.DockerCommandResult(tuple(argv), 0, "Code: 241 memory limit exceeded\n", "")
+        return _healthy_fake_docker(argv, **kwargs)
+
+    def passing_runner(platform, benchmark, scale, **kwargs):
+        return CellResult(
+            platform=platform,
+            benchmark=benchmark,
+            scale=scale,
+            status="passed",
+            exit_code=0,
+            elapsed_s=1.0,
+            log_path=tmp_path / f"{platform}-{scale}.log",
+            result_path=None,
+        )
+
+    with platform_reachability(True, probe=_probe_dying_after(3)):
+        outcome = exec_phase.run_execute(
+            cfg,
+            log_dir=tmp_path,
+            databases_root=tmp_path / "databases",
+            runner=passing_runner,
+            docker_runner=fake_docker,
+            sleep_fn=lambda _s: None,
+        )
+
+    assert [c.scale for c in outcome.died_mid_platform] == [0.1]
+    artifact = (tmp_path / "container-logs-clickhouse-server.log").read_text(encoding="utf-8")
+    assert "OOMKilled=true ExitCode=137" in artifact
+    assert "Code: 241 memory limit exceeded" in artifact
+    assert any(argv[1] == "inspect" for argv in seen)
+
+
 def test_execute_stack_death_also_claims_the_platforms_later_benchmarks(tmp_path):
     cfg = validate_config(
         {

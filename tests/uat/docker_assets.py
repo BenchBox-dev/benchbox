@@ -12,7 +12,7 @@ import subprocess
 import sys
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Sequence
 
 import yaml
 
@@ -331,7 +331,22 @@ PLATFORM_SERVICE_PORT: dict[str, int] = _adapter_service_ports()
 
 _PLATFORM_STATIC_OPTS: dict[str, list[str]] = {
     "velox": ["--platform-option", "deployment=remote"],
+    "influxdb": [
+        "--platform-option",
+        "host=localhost",
+        "--platform-option",
+        "ssl=false",
+    ],
 }
+
+_PLATFORM_CLI_SELECTORS: dict[str, str] = {
+    "influxdb": "influxdb:core",
+}
+
+
+def platform_cli_selector(platform: str) -> str:
+    return _PLATFORM_CLI_SELECTORS.get(platform, platform)
+
 
 _PLATFORM_SECONDARY_PORTS: dict[str, dict[str, int]] = {
     "questdb": {"http_port": 9000},
@@ -350,7 +365,7 @@ _PLATFORM_PASSWORD_ENV_KEYS: dict[str, str] = {
 }
 
 _PLATFORM_INJECT_HOST_PORT_OPT: frozenset[str] = frozenset(
-    {"cedardb", "clickhouse-server", "doris", "presto", "singlestore", "starrocks", "trino"}
+    {"cedardb", "clickhouse-server", "doris", "influxdb", "presto", "singlestore", "starrocks", "trino"}
 )
 
 _PLATFORM_INJECT_SPARK_CONNECT_ENDPOINT_OPT: frozenset[str] = frozenset({"lakesail", "velox"})
@@ -606,6 +621,23 @@ def compose_logs_command(spec: DockerPlatformSpec, project_name: str, *, tail: i
     argv.extend(["logs", "--no-color", "--tail", str(tail)])
     argv.extend(spec.services)
     return argv
+
+
+def compose_container_ids_command(spec: DockerPlatformSpec, project_name: str) -> list[str]:
+    argv = _compose_base_command(spec, project_name)
+    argv.extend(["ps", "-a", "-q"])
+    argv.extend(spec.services)
+    return argv
+
+
+CONTAINER_STATE_FORMAT = (
+    "{{.Name}} Status={{.State.Status}} OOMKilled={{.State.OOMKilled}} ExitCode={{.State.ExitCode}} "
+    "Error={{.State.Error}} StartedAt={{.State.StartedAt}} FinishedAt={{.State.FinishedAt}}"
+)
+
+
+def container_inspect_command(container_ids: Sequence[str]) -> list[str]:
+    return [resolve_container_cli(), "inspect", "--format", CONTAINER_STATE_FORMAT, *container_ids]
 
 
 _UNHEALTHY_PS_STATE_RE = re.compile(r"\b(?:Exited|Restarting|Created|Dead|Paused)\b|\bExit\s+\d+|\(unhealthy\)")

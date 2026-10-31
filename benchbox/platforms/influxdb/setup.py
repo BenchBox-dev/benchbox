@@ -50,6 +50,8 @@ class InfluxDBSetupMixin:
                 ca_cert_path=ca_cert_path,
             )
             connection.connect()
+            if self.mode == "core":
+                connection.ensure_database()
 
             if connection.test_connection():
                 self.logger.info(f"Connected to InfluxDB at {host}:{port}")
