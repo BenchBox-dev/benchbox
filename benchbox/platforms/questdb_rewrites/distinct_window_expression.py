@@ -4,6 +4,8 @@ import re
 
 from benchbox.platforms.questdb_rewrites import exp
 
+from ._select_walk import replace_selects
+
 ORDER = 350
 
 _DISTINCT_WINDOW = re.compile(r"\bdistinct\b.*\bover\s*\(", re.IGNORECASE | re.DOTALL)
@@ -75,12 +77,4 @@ def _stage(select: exp.Select) -> exp.Select | None:
 
 
 def transform(expression: exp.Expr) -> exp.Expr:
-    for select in reversed(list(expression.find_all(exp.Select))):
-        replacement = _stage(select)
-        if replacement is None:
-            continue
-        if select is expression:
-            expression = replacement
-        else:
-            select.replace(replacement)
-    return expression
+    return replace_selects(expression, _stage)

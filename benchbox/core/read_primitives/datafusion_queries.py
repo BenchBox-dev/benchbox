@@ -243,7 +243,9 @@ def struct_construction(ctx: DataFrameContext) -> Any:
         .sort(col("c_custkey").sort())
         .select(
             col("c_custkey"),
-            f.make_array(col("c_name"), col("c_address"), col("c_phone")).alias("contact_info"),
+            f.named_struct(
+                [("c_name", col("c_name")), ("c_address", col("c_address")), ("c_phone", col("c_phone"))]
+            ).alias("contact_info"),
             col("c_acctbal"),
         )
         .limit(100)
