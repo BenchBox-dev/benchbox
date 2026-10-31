@@ -67,8 +67,9 @@ it passes at once for a change confined to inert paths (see Inert-path
 manifest in `docs/internal/oracle-review-v2.md`). `hold` comes from
 `.github/workflows/pr-hold.yml` and fails while the PR carries the
 `no-auto-merge` label; it re-runs when a label is added or removed.
-No workflow reports an `oracle-review` check: the verdict run posts
-`oracle-gate` for the head it reviewed.
+`.github/workflows/oracle-review.yml` reports no check: it runs a no-op
+`review-event` job on oracle review edited and dismissed events only, and its
+completion makes `oracle-gate` re-evaluate that head.
 
 The `ci-paths` job maps changed paths to units with `.github/ci-units.yml`. An
 untouched unit reports success at once. A touched unit succeeds only when every
@@ -263,8 +264,11 @@ A plain owner comment does not count. See [soundness drain](soundness-drain.md).
 A stand-in comment makes `oracle-gate` re-evaluate at once. Resolving a review
 thread starts no workflow run and needs no `oracle-gate` refresh: the ruleset's
 required thread resolution blocks the merge while a thread is open. `make
-pr-arm` and `make pr-arm-remote` dispatch nothing. A head whose gate is stale is
-re-evaluated by the next hourly sweep, or on demand with
+pr-arm` and `make pr-arm-remote` dispatch nothing; they refuse to arm a head whose
+fresh gate evaluation, run with `origin/develop`'s gate code and policy, does
+not pass. A stale gate on an armed PR is re-evaluated by a review edit or
+dismissal, a `develop` push that changes the gate code or policy, or the hourly
+sweep; to force it, run
 `gh workflow run oracle-gate.yml --ref develop -f pr=<number>`.
 
 The live `develop-squash-only` ruleset binds `oracle-gate` to

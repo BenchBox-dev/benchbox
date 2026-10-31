@@ -1,0 +1,19 @@
+name: oracle-review
+
+run-name: oracle-review (${{ github.event.action }})
+
+on:
+  pull_request_review:
+    types: [edited, dismissed]
+
+permissions: {}
+
+jobs:
+  review-event:
+    name: review-event
+    if: github.event.pull_request.base.ref != 'release'
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Record the review event
+        run: "true"

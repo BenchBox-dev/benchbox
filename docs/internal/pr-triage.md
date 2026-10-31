@@ -106,10 +106,10 @@ a PR's mergeability — both only alert.
   Withdraw readiness before editing an armed PR.
 
   `oracle-gate` is posted by the verdict run for the head it reviewed and
-  re-evaluates on its own when a stand-in comment lands and on an hourly sweep.
-  Resolving a review thread starts no run and needs no refresh; `make pr-arm`
-  dispatches nothing. For a PR that is already armed, re-evaluate it from
-  `develop`:
+  re-evaluates on its own when a stand-in comment lands, an oracle review is
+  edited or dismissed, gate code or policy changes on `develop`, and hourly.
+  Resolving a review thread starts no run; `make pr-arm` dispatches nothing. For
+  a PR that is already armed, re-evaluate it from `develop`:
 
   ```bash
   gh workflow run oracle-gate.yml --repo BenchBox-dev/BenchBox --ref develop -f pr=<pr>

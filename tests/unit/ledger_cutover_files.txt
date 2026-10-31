@@ -146,6 +146,7 @@ tests/unit/workflows/test_omp_pin_bump_workflow.py
 tests/unit/workflows/test_omp_pin_watch_workflow.py
 tests/unit/workflows/test_oracle_gate_workflow.py
 tests/unit/workflows/test_oracle_verdict_workflow.py
+tests/unit/workflows/test_oracle_review_workflow.py
 tests/unit/workflows/test_published_results_base_ci.py
 tests/unit/workflows/test_release_canary_shard_evidence.py
 tests/unit/workflows/test_release_uat_charter_guard.py
