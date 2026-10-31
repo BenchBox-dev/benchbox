@@ -1,0 +1,197 @@
+from __future__ import annotations
+
+from collections.abc import Sequence
+
+_DERIVED_SOURCE_ALIAS = "hoisted_source"
+_ORDERED_ROWS_ALIAS = "ordered_rows"
+
+
+def drop_empty_group_by(expression, *, copy: bool = True):
+    exp = _exp()
+    tree = expression.copy() if copy else expression
+    for select in tree.find_all(exp.Select):
+        group = select.args.get("group")
+        if group is None:
+            continue
+        remaining = [item for item in group.expressions if not (isinstance(item, exp.Tuple) and not item.expressions)]
+        if len(remaining) == len(group.expressions):
+            continue
+        if remaining or any(group.args.get(key) for key in ("grouping_sets", "cube", "rollup", "totals")):
+            group.set("expressions", remaining)
+        else:
+            select.set("group", None)
+    return tree
+
+
+def unwrap_single_grouping_set(expression, *, copy: bool = True):
+    exp = _exp()
+    tree = expression.copy() if copy else expression
+    for group in list(tree.find_all(exp.Group)):
+        if len(group.expressions) != 1 or not isinstance(group.expressions[0], exp.GroupingSets):
+            continue
+        sets = group.expressions[0].expressions
+        if len(sets) != 1:
+            continue
+        only = sets[0]
+        keys = only.expressions if isinstance(only, exp.Tuple) else [only]
+        group.set("expressions", [key.copy() for key in keys])
+    return tree
+
+
+def add_dual_source_to_filtered_selects(expression, *, copy: bool = True):
+    exp = _exp()
+    tree = expression.copy() if copy else expression
+    for select in tree.find_all(exp.Select):
+        if select.args.get("from_") is None and select.args.get("where") is not None:
+            select.set("from_", exp.From(this=exp.Var(this="DUAL")))
+    return tree
+
+
+def drop_correlated_scalar_group_by(expression, *, columns: Sequence[str], copy: bool = True):
+    exp = _exp()
+    tree = expression.copy() if copy else expression
+    wanted = {name.lower() for name in columns}
+    for subquery in list(tree.find_all(exp.Subquery)):
+        inner = subquery.this
+        if not isinstance(inner, exp.Select) or not isinstance(subquery.parent, exp.Binary):
+            continue
+        group = inner.args.get("group")
+        where = inner.args.get("where")
+        if group is None or where is None:
+            continue
+        keys = group.expressions
+        if not keys or not all(isinstance(key, exp.Column) for key in keys):
+            continue
+        if {key.name.lower() for key in keys} != wanted:
+            continue
+        if all(_pinned_to_other_column(key, where) for key in keys):
+            inner.set("group", None)
+    return tree
+
+
+def _pinned_to_other_column(key, where) -> bool:
+    exp = _exp()
+    for conjunct in where.this.flatten():
+        if not isinstance(conjunct, exp.EQ):
+            continue
+        left, right = conjunct.this, conjunct.expression
+        if not (isinstance(left, exp.Column) and isinstance(right, exp.Column)):
+            continue
+        for mine, other in ((left, right), (right, left)):
+            if mine == key and other.name.lower() != key.name.lower():
+                return True
+    return False
+
+
+def qualify_aggregated_columns(expression, *, tables: dict[str, str], copy: bool = True):
+    exp = _exp()
+    tree = expression.copy() if copy else expression
+    wanted = {name.lower(): table for name, table in tables.items()}
+    for aggregate in list(tree.find_all(exp.AggFunc)):
+        for column in aggregate.find_all(exp.Column):
+            table = wanted.get(column.name.lower())
+            if table is not None and not column.table:
+                column.set("table", exp.to_identifier(table))
+    return tree
+
+
+def wrap_order_by_subquery_aliases(expression, *, copy: bool = True):
+    exp = _exp()
+    tree = expression.copy() if copy else expression
+    if not isinstance(tree, exp.Select):
+        return tree
+    order = tree.args.get("order")
+    if order is None:
+        return tree
+    projected = {projection.alias_or_name for projection in tree.expressions}
+    subquery_aliases = {
+        projection.alias
+        for projection in tree.expressions
+        if isinstance(projection, exp.Alias) and projection.find(exp.Subquery) is not None
+    }
+    ordered = {column.name for column in order.find_all(exp.Column) if not column.table}
+    if not ordered & subquery_aliases:
+        return tree
+    if not ordered <= projected:
+        raise ValueError("ORDER BY references a column that is not projected")
+    limit = tree.args.get("limit")
+    offset = tree.args.get("offset")
+    tree.set("order", None)
+    tree.set("limit", None)
+    tree.set("offset", None)
+    outer = exp.select("*").from_(tree.subquery(_ORDERED_ROWS_ALIAS))
+    outer.set("order", order)
+    if limit is not None:
+        outer.set("limit", limit)
+    if offset is not None:
+        outer.set("offset", offset)
+    return outer
+
+
+def _is_hoistable(node) -> bool:
+    exp = _exp()
+    if isinstance(node, (exp.Exists, exp.Subquery)):
+        return True
+    return isinstance(node, exp.In) and node.args.get("query") is not None
+
+
+def _outermost_subqueries(aggregate) -> list:
+    found = []
+    stack = [aggregate]
+    while stack:
+        node = stack.pop()
+        for child in node.iter_expressions():
+            if _is_hoistable(child):
+                found.append(child)
+            else:
+                stack.append(child)
+    return found
+
+
+def _hoist_aggregate_subqueries(select) -> None:
+    exp = _exp()
+    aggregates = [agg for agg in select.find_all(exp.AggFunc) if agg.find_ancestor(exp.Select) is select]
+    hoisted = [node for agg in aggregates for node in _outermost_subqueries(agg)]
+    source = select.args.get("from_")
+    if not hoisted or source is None:
+        return
+    joins = select.args.get("joins") or []
+    single_table = not joins and isinstance(source.this, exp.Table)
+    source_alias = source.this.alias_or_name if single_table else _DERIVED_SOURCE_ALIAS
+    columns: dict[str, str] = {}
+    projections = [exp.Star()]
+    for node in hoisted:
+        key = node.sql()
+        if key not in columns:
+            columns[key] = f"hoisted_subquery_{len(columns) + 1}"
+            projections.append(exp.alias_(node.copy(), columns[key]))
+        node.replace(exp.column(columns[key]))
+    if not single_table and any(
+        column.table
+        for column in select.find_all(exp.Column)
+        if column.find_ancestor(exp.Select) is select and column.find_ancestor(exp.Where, exp.Join) is None
+    ):
+        raise ValueError("Cannot hoist subqueries from a multi-source select with qualified column references")
+    inner = exp.Select(expressions=projections)
+    inner.set("from_", source)
+    if joins:
+        inner.set("joins", joins)
+    if select.args.get("where") is not None:
+        inner.set("where", select.args["where"])
+    select.set("joins", None)
+    select.set("where", None)
+    select.set("from_", exp.From(this=inner.subquery(source_alias)))
+
+
+def hoist_aggregate_subqueries(expression, *, copy: bool = True):
+    exp = _exp()
+    tree = expression.copy() if copy else expression
+    for select in list(tree.find_all(exp.Select)):
+        _hoist_aggregate_subqueries(select)
+    return tree
+
+
+def _exp():
+    from benchbox._vendor.sqlglot import exp
+
+    return exp

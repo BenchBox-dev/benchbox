@@ -10,6 +10,16 @@ from contextvars import ContextVar
 from dataclasses import asdict, dataclass
 from typing import Any, Callable
 
+from benchbox.utils.query_shape_rewrites import (
+    add_dual_source_to_filtered_selects,
+    drop_correlated_scalar_group_by,
+    drop_empty_group_by,
+    hoist_aggregate_subqueries,
+    qualify_aggregated_columns,
+    unwrap_single_grouping_set,
+    wrap_order_by_subquery_aliases,
+)
+
 SCHEMA_DDL_SCOPE = "schema_ddl"
 WORKLOAD_QUERY_SCOPE = "workload_query"
 
@@ -502,8 +512,15 @@ def coalesce_count_subqueries(expression, *, copy: bool = True):
 
 
 _LOCAL_REWRITES: dict[str, Callable[..., object]] = {
+    "add_dual_source_to_filtered_selects": add_dual_source_to_filtered_selects,
     "alias_outer_table_references": alias_outer_table_references,
     "coalesce_count_subqueries": coalesce_count_subqueries,
+    "drop_correlated_scalar_group_by": drop_correlated_scalar_group_by,
+    "drop_empty_group_by": drop_empty_group_by,
+    "hoist_aggregate_subqueries": hoist_aggregate_subqueries,
+    "qualify_aggregated_columns": qualify_aggregated_columns,
+    "unwrap_single_grouping_set": unwrap_single_grouping_set,
+    "wrap_order_by_subquery_aliases": wrap_order_by_subquery_aliases,
 }
 
 
