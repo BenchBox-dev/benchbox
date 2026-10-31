@@ -4,7 +4,7 @@
     "A manual dispatch during backoff does not move the retry time later",
     "Adds or updates the matching scenario in tests/integration/oracle (registered in ORACLE_SCENARIO_TESTS), proven to fail with this item's defect reintroduced; the scenario runs only the fake omp executable and fake servers, never a real omp or model-provider call."
   ],
-  "context": "Observed on pull request 3569 between 2026-10-26 and 2026-10-27. Owned by the oracle workstream; the repository owner asked that oracle workflows and config not be edited from this effort, so this item records evidence only.",
+  "context": "Observed on pull request 3569 between 2026-10-26 and 2026-10-27. Owned by the oracle workstream; the repository owner asked that oracle workflows and config not be edited from this effort, so this item records evidence only.\n\nFixed 2026-10-31 by PR 3901 (ee341771f), authorized by the owner for reviewer code and tests only. Cause: a quota error from a pool's primary provider hid the whole pool for up to 24 h (PRIMARY_BLOCK_CAP); no reviewer in the pool ran, so a provider that served again was never noticed. Fix: every pool block lasts at most one hour (QUOTA_BACKOFF); after that the next review tries the pool and either records a fresh block or leaves none. Acceptance: scenarios in tests/integration/oracle/test_quota_scenarios.py show a block clears once the hour passes and the provider answers (fails on the old code), and a block lasts at most one hour (fails on the old code). Manual dispatch during backoff: not reproducible on current code; the refused run is a skip with post=false, so the recorded block is unchanged. A guard scenario pins this; it passes on the old code too, so that part was fixed earlier. Cost: a really exhausted pool now costs one failed attempt about hourly per pending review.",
   "description": "For about a day the hosted oracle skipped the large, huge and max reviewers with 'claude pool out of quota until 2026-11-02' although the same provider was serving medium reviews locally and the owner reported the pool had reset. Dispatching the verdict workflow by hand while it was in backoff moved the next-retry time later (18:41 to 20:34 UTC) instead of leaving it. A later change limited pool blocks to the provider that returned the error; it was not checked whether that clears a stale record or stops manual dispatch from extending the backoff.",
   "sessions": [
     {
@@ -22,6 +22,14 @@
       "op": "update",
       "op_id": "5cf8a5c2b41c4967827982be456d392c",
       "session_id": "f2ea81a526d74429861bc01fff72f167"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:96cfd54c7d2180daa76d178f",
+      "at": "2026-10-31T22:22:51Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8d7c0806390c462ca34daed72eef6208",
+      "session_id": "77bfd3a6737c4f8e9b68d27f796e8651"
     }
   ]
 }
