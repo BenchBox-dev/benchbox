@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Local oracle review keeps a findings record per patch with CI finding ids, re-judges keyed rebuttals under the dispute rules, and embeds the record in the pull request body for CI to read as claims; the local override line is removed"
+}

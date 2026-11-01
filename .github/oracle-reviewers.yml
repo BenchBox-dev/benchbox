@@ -122,6 +122,7 @@ classifier:
     - _project/scripts/check_soundness_review.py
     - _project/scripts/ruleset_review_enforcement.py
     - scripts/ruleset_drift_check.py
+    - scripts/oracle_local_review.py
   logic_paths:
     - benchbox/core/equivalence/*
     - benchbox/core/expected_results/*

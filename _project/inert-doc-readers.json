@@ -25,6 +25,7 @@
     "tests/unit/test_release_infrastructure.py"
   ],
   "CONTRIBUTING.md": [
+    "tests/unit/scripts/oracle_reviewers/test_findings_record.py",
     "tests/unit/test_contributing_pr_open_auto_merge_docs.py"
   ],
   "COPYRIGHT.md": [

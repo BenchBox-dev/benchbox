@@ -54,7 +54,7 @@ instruction prose of the template itself.
 | `gate_flags` | text | 2048 | count of changed review-machinery files, or `none` |
 | `file_priority` | table | 8192 | `path \| score \| impact` rows, score descending, cut to fit, or `none`; fenced |
 | `max_defects` | integer | 4 | protocol defect cap from policy |
-| `prior_rule` | prose | 2048 | first / ship / follow-up prior-defect rule |
+| `prior_rule` | prose | 3072 | first / ship / follow-up prior-defect rule |
 | `retry_note` | prose | 512 | `none`, or the fixed note carrying only the count of required files an earlier attempt of the same reviewer left unread; the files themselves are marked inside the fenced `change_data` |
 | `change_data` | prose+diff | 100000 | file list, then inline diff or read instructions per brief mode; in file-list mode the list names the required reads and marks every other file not required; fenced |
 | `response_template` | JSON | 16384 | JSON template to populate, rendered after `change_data`; see below |

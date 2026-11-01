@@ -1618,7 +1618,7 @@ with open(os.environ["CALLS"], "a", encoding="utf-8") as handle:
     handle.write(json.dumps([os.path.basename(sys.argv[0]), sys.argv[1:]]) + "\\n")
 if "--verify-parent" in sys.argv:
     sys.exit(int(os.environ.get("VERIFY_EXIT", "0")))
-if "local-review" in sys.argv:
+if "scripts/oracle_local_review.py" in sys.argv:
     sys.exit(int(os.environ["LOCAL_REVIEW_EXIT"]))
 if "scripts/pr_open_rest.py" in sys.argv:
     print(os.environ["PUBLISH"], 7, "https://github.com/BenchBox-dev/BenchBox/pull/7")
@@ -1646,6 +1646,7 @@ def _run_pr_open_result(
     for name, body in (
         ("git", _GIT),
         ("uv", _RECORDER.format(python=sys.executable)),
+        ("python3", _RECORDER.format(python=sys.executable)),
         ("fake-make", _RECORDER.format(python=sys.executable)),
     ):
         (stubs / name).write_text(body, encoding="utf-8")
@@ -1734,20 +1735,23 @@ def test_makefile_has_separate_bounded_all_open_status_view() -> None:
 
 
 @requires_posix_make
-def test_pr_open_runs_the_local_oracle_review_before_any_push_with_the_body_file(tmp_path: Path) -> None:
+def test_pr_open_runs_the_local_oracle_review_before_any_push(tmp_path: Path) -> None:
     body = tmp_path / "body.md"
     body.write_text("body\n", encoding="utf-8")
     result, calls, pushes = _run_pr_open_result(tmp_path, "created", 0, f"PR_BODY_FILE={body}")
 
     assert result.returncode == 0
-    review_index = next(index for index, (name, args) in enumerate(calls) if name == "uv" and "local-review" in args)
+    review_index = next(
+        index
+        for index, (name, args) in enumerate(calls)
+        if name == "python3" and "scripts/oracle_local_review.py" in args
+    )
     publish_index = next(index for index, (_, args) in enumerate(calls) if "scripts/pr_open_rest.py" in args)
     assert review_index < publish_index
     review = calls[review_index][1]
     assert {
         ("--policy", ".github/oracle-reviewers.yml"),
         ("--base-ref", "origin/develop"),
-        ("--body-file", str(body)),
     } <= set(zip(review, review[1:], strict=False))
     assert ("--head", "1111111111111111111111111111111111111111") in set(zip(review, review[1:], strict=False))
     assert len(pushes) == 1
@@ -1758,9 +1762,9 @@ def test_pr_open_with_a_parent_reviews_against_it_and_opens_a_draft_on_it(tmp_pa
     result, calls, pushes = _run_pr_open_result(tmp_path, "created", 0, "PARENT=feat/parent")
 
     assert result.returncode == 0
-    names = [(name, args) for name, args in calls if name == "uv"]
+    names = [(name, args) for name, args in calls if name in ("uv", "python3")]
     verify = next(i for i, (_, args) in enumerate(names) if "--verify-parent" in args)
-    review = next(i for i, (_, args) in enumerate(names) if "local-review" in args)
+    review = next(i for i, (_, args) in enumerate(names) if "scripts/oracle_local_review.py" in args)
     publish = next(
         i for i, (_, args) in enumerate(names) if "scripts/pr_open_rest.py" in args and "--verify-parent" not in args
     )
@@ -1780,7 +1784,7 @@ def test_pr_open_with_a_refused_parent_stops_before_the_review_and_any_push(
     result, calls, pushes = _run_pr_open_result(tmp_path, "created", 0, "PARENT=feat/parent")
 
     assert result.returncode != 0
-    assert not [args for name, args in calls if name == "uv" and "local-review" in args]
+    assert not [args for name, args in calls if name == "python3" and "scripts/oracle_local_review.py" in args]
     assert not [args for _, args in calls if "scripts/pr_open_rest.py" in args and "--verify-parent" not in args]
     assert pushes == []
 
@@ -1799,13 +1803,24 @@ def test_pr_open_refuses_before_any_push_when_the_local_oracle_review_does_not_c
 
 
 @requires_posix_make
-def test_pr_open_refuses_before_any_push_when_head_moves_during_the_local_oracle_review(tmp_path: Path) -> None:
-    result, calls, pushes = _run_pr_open_result(tmp_path, "created", 0, head_moves=True)
+def test_pr_open_pushes_and_arms_the_reviewed_sha_when_the_branch_ref_moves_during_the_review(tmp_path: Path) -> None:
+    reviewed = "1111111111111111111111111111111111111111"
+    result, calls, pushes = _run_pr_open_result(tmp_path, "created", 0, "READY=1", head_moves=True)
 
-    assert result.returncode != 0
-    assert "HEAD moved during the local oracle review" in result.stderr.decode()
-    assert pushes == []
-    assert not [args for _, args in calls if "scripts/pr_open_rest.py" in args]
+    assert result.returncode == 0
+    assert pushes == [f"push origin {reviewed}:refs/heads/feat/x"]
+    review = next(args for name, args in calls if name == "python3" and "scripts/oracle_local_review.py" in args)
+    assert ("--head", reviewed) in set(zip(review, review[1:], strict=False))
+    (arm,) = [m for m in _makes(calls) if "pr-arm" in m]
+    assert f"HEAD={reviewed}" in arm
+
+
+def test_pr_open_never_selects_the_reviewer_copy() -> None:
+    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+    start = makefile.index(".PHONY: pr-open\n")
+    recipe = makefile[start : makefile.index("\n\n", start)]
+    assert "scripts/oracle_local_review.py" in recipe
+    assert "--reviewer-ref" not in recipe
 
 
 @pytest.mark.parametrize(
