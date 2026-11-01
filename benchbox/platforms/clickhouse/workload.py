@@ -22,6 +22,9 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+WIDE_TABLE_COLUMN_THRESHOLD = 500
+WIDE_TABLE_PART_SETTINGS = {"min_bytes_for_wide_part": 10_000_000_000, "min_rows_for_wide_part": 100_000_000}
+
 
 def _clickhouse_handler_for(file_path, adapter, benchmark_instance, table_name=None, data_source=None):
     from benchbox.platforms.base.data_loading import (
@@ -174,6 +177,8 @@ class ClickHouseWorkloadMixin:
                 if expression:
                     layout[option] = [expression]
         layout["nullable_columns"] = sorted(nullable_columns or ())
+        if len(self._ddl_column_name_map(statement)) >= WIDE_TABLE_COLUMN_THRESHOLD:
+            layout["properties"] = dict(WIDE_TABLE_PART_SETTINGS)
         try:
             statements = translate_ddl(
                 statement,

@@ -180,3 +180,11 @@ def test_structured_schema_without_nullable_columns_stays_non_nullable() -> None
 def test_ddl_not_null_columns_ignore_constraints_and_quotes() -> None:
     statement = 'CREATE TABLE t (a INTEGER NOT NULL, "b" TEXT, c DECIMAL(10, 2) NOT NULL, PRIMARY KEY (a))'
     assert ClickHouseWorkloadMixin._ddl_not_null_columns(statement) == {"a", "c"}
+
+
+def test_very_wide_tables_use_compact_parts() -> None:
+    columns = ", ".join(f"c{i} INTEGER" for i in range(500))
+    rendered = ClickHouseWorkloadMixin()._translate_schema_statement(f"CREATE TABLE wide ({columns})")
+    assert "SETTINGS min_bytes_for_wide_part = 10000000000, min_rows_for_wide_part = 100000000" in rendered
+    narrow = ClickHouseWorkloadMixin()._translate_schema_statement("CREATE TABLE narrow (a INTEGER)")
+    assert "SETTINGS" not in narrow

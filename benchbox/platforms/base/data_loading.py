@@ -1716,9 +1716,9 @@ class ClickHouseNativeHandler(FileFormatHandler):
                 for file_path in file_paths:
                     parquet_file = pq.ParquetFile(file_path)
                     for batch in parquet_file.iter_batches(batch_size=batch_size):
-                        for row in batch.to_pylist():
+                        for row in zip(*(batch.column(name).to_pylist() for name in column_names)):
                             row_count += 1
-                            yield tuple(row[column_name] for column_name in column_names)
+                            yield row
 
             row_generator = rows()
             connection.execute(insert_sql, row_generator, settings=self._server_insert_settings())
