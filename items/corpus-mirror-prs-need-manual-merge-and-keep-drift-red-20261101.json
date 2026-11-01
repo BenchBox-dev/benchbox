@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Decide whether to auto-merge mirror PRs after their checks or make t3:drift tolerate a pending mirror. Triage #3906. State when bot-managed issues #2471 and #3511 may be closed and stay closed."
+  ],
+  "description": "Mirror PRs #3629, #3635, #3656, #3790 (closed unmerged) and #3906 (open for develop@cd374960) needed hand merging. Until one merges, the nightly t3:drift corpus step is red and bot issue #2471 reopens (closed 2026-10-28 with evidence, reopened 2026-10-28 and 2026-10-29 by github-actions). Issue #3511 (trunk duration alarm) likewise reopened after closure. #3906 was not merged by this session because the earlier instruction named only #3635 and #3656.",
+  "links": [
+    "issue #2471",
+    "issue #3511",
+    "PR #3906"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:44087b544fee5237bdde41f8",
+      "at": "2026-11-01T13:46:32Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "901fbd55a1d64dccb93c6ac2fffd3619",
+      "session_id": "b38147de5e3b4952857534e2b3c9221c"
+    }
+  ]
+}
