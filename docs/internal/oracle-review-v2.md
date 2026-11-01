@@ -1053,16 +1053,54 @@ and posts nothing to GitHub.
   whose open defects are all Medium or Low proceeds. On a PR that already has a
   decision for this head, or an unchanged patch, the recorded decision and its open
   defects are judged by the same rule, so a carried Critical blocks even when the
-  new diff is clean. A `Local oracle override: <reason>` line with a non-empty
-  reason in the PR body file (`PR_BODY_FILE`) lets a blocked review proceed and
-  stays in the body; an empty or `<placeholder>` reason, or a line inside an
-  HTML comment or code fence, is refused. Nothing else overrides, not even a
-  commit message. A review that cannot run also refuses (exit 2) and the override
-  does not apply: unreachable gateway, timeout, quota exhaustion, no verdict, no
-  classifier key, a held PR (an edited oracle review, an unreadable history, the
-  strike limit), a secret value found on disk, a classification that failed, an
-  `omp` build that fails its checksum or has no pin for this platform, or an
-  `origin/develop` that cannot be fetched.
+  new diff is clean. Nothing in the PR body overrides a block, and no commit message does.
+  A review that cannot run also refuses (exit 2): unreachable gateway, timeout,
+  quota exhaustion, no verdict, no classifier key, a held PR (an edited oracle
+  review, an unreadable history, the strike limit), a secret value found on disk,
+  a classification that failed, an `omp` build that fails its checksum or has no
+  pin for this platform, the reviewer that raised a finding being absent from the
+  policy or unable to answer a rebuttal, or an `origin/develop` that cannot be
+  fetched.
+- **Findings record and local disputes.** The driver keeps one findings record per
+  patch digest under `~/.cache/benchbox/local-oracle/records/`. It holds the
+  CI-shaped protocol records of every local round (so the same planner, round
+  limits and escalation rules apply) and, per finding, the CI-identical id
+  (`c<cycle>-D<n>`, assigned by the same id function as CI), severity, location,
+  title, fingerprint, the reviewer that raised it, its status (`open`,
+  `withdrawn`, `fixed`, `adjudicated-withdrawn`, `adjudicated-maintained`), the
+  dispute round count, every rebuttal and the reviewer's dispositions. A rebuttal
+  comes from `REBUTTALS_FILE`, a JSON object of finding id to rebuttal text; the
+  text needs a line that starts `Dispute:`, exactly as a CI thread reply does. Only
+  a rebuttal not yet recorded for the finding starts a round. The round is the CI
+  forced re-review of the unchanged patch: the dispute rules, evidence rules and
+  the limit of 2 dispute re-reviews apply unchanged, and only the reviewer that raised
+  the findings may answer (the chain is pinned to it, and a different answering
+  reviewer is refused). A finding still open after the second re-review is
+  escalated. A local owner adjudication is `ADJUDICATE='WITHDRAW|MAINTAIN D<n> -
+  <instruction>'` on the same invocation; it needs an escalated finding, records
+  the instruction text in the finding and in the CI-shaped record, and removes a
+  withdrawn finding from the open set. Agents pass it only when the owner names
+  the head, the finding and the decision in the current request.
+- **Findings record in the PR body.** `pr-open` writes the record of the reviewed
+  patch as one hidden `<!-- oracle-local-record: v1 ... -->` marker at the end of
+  the PR body (`scripts/pr_open_rest.py --record-file`), replacing any earlier
+  marker and keeping the rest of the body. CI's first plan of a PR with no
+  recorded oracle review reads that marker as claims only. A record is ignored
+  when its patch digest differs from the PR's patch digest, when the marker is
+  repeated or malformed, or when the PR already has an oracle review. Otherwise
+  every finding becomes a prior defect of that first round with the id it had
+  locally, and every finding with a rebuttal, a local withdrawal or an adjudication
+  becomes a disputed finding, so the CI verdict needs an explicit disposition for it
+  and must restate the claim. Rebuttal text and the adjudication instruction carry as claims. A finding
+  the owner maintained, or that was maintained in the escalation limit of local
+  rounds, stays a prior defect but is not replayed as a dispute, so it cannot be
+  re-argued to a new CI reviewer. The record's status never closes a
+  finding, never withdraws one and never counts as a strike: the claimed priors the reviewer
+  confirms count toward the defect-count overflow up to one short of the limit, so they never force a
+  DO NOT SHIP alone, the record carries no strike data, and the
+  CI id counter starts above the claimed ids, so a forged or edited record can only
+  create work. A local adjudication does not clear a finding in CI; CI escalation
+  still needs the owner's `Oracle adjudication:` comment on the PR.
 - **Pinned head.** `pr-open` records `HEAD` before the review and passes it as
   `--head`. It pushes exactly that commit (`git push origin <reviewed>:refs/heads/<branch>`)
   and arms that commit, even when the branch ref moved while the review ran; the

@@ -9,7 +9,7 @@ pytestmark = [pytest.mark.integration, pytest.mark.medium]
 PATCH_A = "def checker(a, b):\n    return a == b and a is not None\n"
 PATCH_B = "def checker(a, b):\n    return a == b or a is b\n"
 SHIP = {"decision": "SHIP", "summary": "No defects.", "files_examined": [CHECKER]}
-CACHED = "Reusing the cached local review of this unchanged patch."
+CACHED = "the recorded review stands"
 
 
 def test_local_reviews_of_different_patches_run_at_the_same_time(harness: Harness) -> None:

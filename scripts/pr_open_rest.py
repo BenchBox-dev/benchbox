@@ -17,6 +17,7 @@ RECORD_SEPARATOR = "\x1e"
 FIELD_SEPARATOR = "\x1f"
 INTEGRATION_BRANCHES = frozenset({"develop", "release", "published-results"})
 MAX_STACK_DEPTH = 3
+RECORD_MARKER = re.compile(r"<!-- oracle-local-record: v1 [A-Za-z0-9_-]+ -->")
 
 Runner = Callable[[list[str]], tuple[int, str]]
 
@@ -137,6 +138,11 @@ def _pr_from(response: object, status: str) -> PublishedPr:
     return PublishedPr(status, int(response["number"]), str(response["html_url"]))
 
 
+def with_record(body: str, marker: str) -> str:
+    kept = [line for line in body.replace("\r\n", "\n").split("\n") if not RECORD_MARKER.fullmatch(line.strip())]
+    return "\n".join(kept).rstrip() + f"\n\n{marker}\n"
+
+
 def publish(
     repo: str,
     head_owner: str,
@@ -147,6 +153,7 @@ def publish(
     run: Runner = live_run,
     draft: bool = False,
     parent: str | None = None,
+    record: str = "",
 ) -> PublishedPr:
     base = parent or BASE_BRANCH
     if parent:
@@ -157,7 +164,14 @@ def publish(
         fields = []
         if title and title.strip() != str(existing.get("title") or "").strip():
             fields += ["-f", f"title={title}"]
-        if body_file is not None:
+        if record:
+            base_text = (
+                body_file.read_text(encoding="utf-8") if body_file is not None else str(existing.get("body") or "")
+            )
+            body = with_record(base_text, record)
+            if body.rstrip() != str(existing.get("body") or "").replace("\r\n", "\n").rstrip():
+                fields += ["-f", f"body={body}"]
+        elif body_file is not None:
             body = body_file.read_text(encoding="utf-8")
             current_body = str(existing.get("body") or "")
             if body.replace("\r\n", "\n").rstrip() != current_body.replace("\r\n", "\n").rstrip():
@@ -171,7 +185,13 @@ def publish(
     resolved_title = title or default_title(commits, base_ref)
     cmd = ["gh", "api", "--method", "POST", f"repos/{repo}/pulls"]
     cmd += ["-f", f"title={resolved_title}", "-f", f"head={head_spec}", "-f", f"base={base}"]
-    cmd += ["-F", f"body=@{body_file}"] if body_file is not None else ["-f", f"body={default_body(commits)}"]
+    if record:
+        text = body_file.read_text(encoding="utf-8") if body_file is not None else default_body(commits)
+        cmd += ["-f", f"body={with_record(text, record)}"]
+    elif body_file is not None:
+        cmd += ["-F", f"body=@{body_file}"]
+    else:
+        cmd += ["-f", f"body={default_body(commits)}"]
     if draft:
         cmd += ["-F", "draft=true"]
     return _pr_from(_json(_check(run, cmd, "PR create"), "PR create"), "created")
@@ -185,6 +205,7 @@ def main(argv: Sequence[str] | None = None, run: Runner = live_run) -> int:
     parser.add_argument("--head-spec", required=True)
     parser.add_argument("--title", default="")
     parser.add_argument("--body-file", default="")
+    parser.add_argument("--record-file", default="")
     parser.add_argument("--draft", action="store_true")
     parser.add_argument("--parent", default="")
     parser.add_argument("--verify-parent", action="store_true")
@@ -196,6 +217,16 @@ def main(argv: Sequence[str] | None = None, run: Runner = live_run) -> int:
     if body_file is not None and not body_file.is_file():
         print(f"PR_BODY_FILE does not exist: {body_file}", file=sys.stderr)
         return 1
+    record = ""
+    if args.record_file:
+        try:
+            record = Path(args.record_file).read_text(encoding="utf-8").strip()
+        except OSError as exc:
+            print(f"pr-open: the findings record file cannot be read: {exc}", file=sys.stderr)
+            return 1
+        if record and not RECORD_MARKER.fullmatch(record):
+            print("pr-open: the findings record file does not hold one record marker", file=sys.stderr)
+            return 1
     try:
         if args.verify_parent:
             verify_parent(run, args.repo, args.branch, args.parent)
@@ -210,6 +241,7 @@ def main(argv: Sequence[str] | None = None, run: Runner = live_run) -> int:
             run,
             args.draft or bool(args.parent),
             args.parent or None,
+            record,
         )
     except (PrOpenError, OSError) as exc:
         print(f"pr-open: {exc}", file=sys.stderr)

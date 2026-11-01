@@ -33,6 +33,7 @@ YAML_REQUIREMENT = "pyyaml==6.0.3"
 REVIEW_MODULE = "_project.scripts.oracle_reviewers.cli"
 EXIT_UNAVAILABLE = 2
 HANDOVER_ENV = "ORACLE_LOCAL_HANDOVER_FD"
+RECORD_OUT_ENV = "ORACLE_LOCAL_RECORD_OUT"
 CREDENTIALS_MODULE = Path("_project") / "scripts" / "oracle_reviewers" / "credentials.py"
 EXTRA_WITHHELD = ("TS_AUTHKEY", "GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN")
 
@@ -114,7 +115,7 @@ def hand_over(environ: dict[str, str], names: frozenset[str]) -> dict[str, str]:
 
 
 def review_command(args: argparse.Namespace) -> list[str]:
-    return [
+    command = [
         "uv",
         "run",
         "--isolated",
@@ -137,9 +138,12 @@ def review_command(args: argparse.Namespace) -> list[str]:
         args.trusted_ref or args.base_ref,
         "--head",
         args.head,
-        "--body-file",
-        args.body_file,
     ]
+    if args.rebuttals:
+        command += ["--rebuttals", args.rebuttals]
+    if args.adjudicate:
+        command += ["--adjudicate", args.adjudicate]
+    return command
 
 
 def launch(argv: list[str], env: dict[str, str]) -> int:
@@ -163,6 +167,8 @@ def run(args: argparse.Namespace, launcher: Launcher = launch) -> int:
         )
         return EXIT_UNAVAILABLE
     env = hand_over({**os.environ, "PYTHONPATH": str(target)}, names)
+    if args.record_out:
+        env[RECORD_OUT_ENV] = args.record_out
     return launcher(review_command(args), env)
 
 
@@ -172,7 +178,9 @@ def parser() -> argparse.ArgumentParser:
     built.add_argument("--base-ref", default=DEVELOP_REF)
     built.add_argument("--trusted-ref", default="")
     built.add_argument("--head", default="HEAD")
-    built.add_argument("--body-file", default="")
+    built.add_argument("--rebuttals", default="")
+    built.add_argument("--adjudicate", default="")
+    built.add_argument("--record-out", default="")
     built.add_argument("--reviewer-ref", default=DEVELOP_REF)
     return built
 

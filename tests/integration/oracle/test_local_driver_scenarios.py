@@ -219,7 +219,7 @@ def _planned_and_judged(harness: Harness, branch: str, monkeypatch: pytest.Monke
     saved: dict[str, Any] = {}
     original = local._decided
 
-    def spy(run: local.Run, plan: dict[str, Any]) -> local.Outcome:
+    def spy(run: local.Run, plan: dict[str, Any], previous: Any) -> local.Outcome:
         saved["plan"] = plan
         os.environ["GITHUB_RUN_ID"] = run.run_id
         _, loaded, step, errors = cli.decided_attempts(
@@ -228,7 +228,7 @@ def _planned_and_judged(harness: Harness, branch: str, monkeypatch: pytest.Monke
         saved["final"] = report.finalize(
             plan, step, errors, loaded.attempts, loaded.verdicts, {}, workspace=run.layout.workspace, secrets=()
         )
-        return original(run, plan)
+        return original(run, plan, previous)
 
     monkeypatch.setattr(local, "_decided", spy)
     for name, value in env.items():
@@ -240,7 +240,7 @@ def _planned_and_judged(harness: Harness, branch: str, monkeypatch: pytest.Monke
     return saved["plan"], saved["final"]
 
 
-ADAPTER_FIELDS = {"run_id", "run_uuid", "created_at", "pr", "head_sha", "decision_reason", "previous_state"}
+ADAPTER_FIELDS = {"run_id", "run_uuid", "created_at", "pr", "head_sha", "decision_reason", "previous_state", "history"}
 PARITY_CASES = {
     "clean": ([_reply("SHIP")], False),
     "medium-only": ([_reply("SHIP_WITH_FIXES", _defect("Medium"))], False),

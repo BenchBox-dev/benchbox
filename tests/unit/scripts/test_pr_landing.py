@@ -1768,7 +1768,7 @@ def test_makefile_has_separate_bounded_all_open_status_view() -> None:
 
 
 @requires_posix_make
-def test_pr_open_runs_the_local_oracle_review_before_any_push_with_the_body_file(tmp_path: Path) -> None:
+def test_pr_open_runs_the_local_oracle_review_before_any_push(tmp_path: Path) -> None:
     body = tmp_path / "body.md"
     body.write_text("body\n", encoding="utf-8")
     result, calls, pushes = _run_pr_open_result(tmp_path, "created", 0, f"PR_BODY_FILE={body}")
@@ -1785,7 +1785,6 @@ def test_pr_open_runs_the_local_oracle_review_before_any_push_with_the_body_file
     assert {
         ("--policy", ".github/oracle-reviewers.yml"),
         ("--base-ref", "origin/develop"),
-        ("--body-file", str(body)),
     } <= set(zip(review, review[1:], strict=False))
     assert ("--head", "1111111111111111111111111111111111111111") in set(zip(review, review[1:], strict=False))
     assert len(pushes) == 1
