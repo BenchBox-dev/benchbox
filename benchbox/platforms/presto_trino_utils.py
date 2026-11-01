@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import json
+import re
 from collections.abc import Callable, Iterator, Sequence
 from logging import Logger
 from pathlib import Path
@@ -68,7 +69,12 @@ def json_cell(value: Any, type_name: str, null_token: str | None) -> Any:
         return _structured_cell(value)
     text = value if isinstance(value, str) else python_cell_to_text(value)
     if kind == "varchar":
-        return None if null_token is not None and text == null_token else text
+        if null_token is not None and text == null_token:
+            return None
+        limit = _varchar_limit(type_name)
+        if limit is not None and len(text) > limit:
+            raise ValueError(f"value of length {len(text)} does not fit {type_name}")
+        return text
     text = text.strip()
     if text == (null_token or "") or text.lower() == "null":
         return None
@@ -81,13 +87,18 @@ def json_cell(value: Any, type_name: str, null_token: str | None) -> Any:
     return text
 
 
+def _varchar_limit(type_name: str) -> int | None:
+    match = re.search(r"\((\d+)\)", type_name)
+    return int(match.group(1)) if match else None
+
+
 def _carrier_type(type_name: str) -> str:
     return type_name if base_type(type_name) in _STRUCTURED_BASE_TYPES else "varchar"
 
 
 def _column_expression(name: str, type_name: str) -> str:
     kind = base_type(type_name)
-    if kind in _STRUCTURED_BASE_TYPES or kind == "varchar":
+    if kind in _STRUCTURED_BASE_TYPES or (kind == "varchar" and _varchar_limit(type_name) is None):
         return name
     if kind == "varbinary":
         return f"from_hex({name})"

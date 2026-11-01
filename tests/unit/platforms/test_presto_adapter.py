@@ -364,7 +364,7 @@ class TestPrestoAdapter:
 
         assert stats["orders"] == 2
         executed_sql = " ".join(call.args[0] for call in mock_cursor.execute.call_args_list)
-        assert "INSERT INTO hive.analytics.orders VALUES" in executed_sql
+        assert "INSERT INTO hive.analytics.orders SELECT" in executed_sql
 
     def test_load_data_skips_invalid_identifier(self, presto_stubs, tmp_path):
 

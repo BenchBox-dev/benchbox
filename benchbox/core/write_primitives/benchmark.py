@@ -147,7 +147,7 @@ def _resolve_validation_sql(
     return override, None
 
 
-_SINGLE_STATEMENT_SETUP_DIALECTS = frozenset({"sqlite", "databricks", "questdb"})
+_SINGLE_STATEMENT_SETUP_DIALECTS = frozenset({"sqlite", "databricks", "questdb", "presto", "trino"})
 _NO_TRUNCATE_DIALECTS = frozenset({"sqlite"})
 _SUMMED_ROWCOUNT_DIALECTS = frozenset({"sqlite"})
 

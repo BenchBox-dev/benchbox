@@ -29,7 +29,19 @@ _DELTA_ICEBERG_REQUIRED_REASON = (
     "configures a delta or iceberg table format with the connector jars is not blocked."
 )
 
+_MEMORY_CONNECTOR_DML_REASON = (
+    "{engine}'s memory catalog, the only data catalog in the release UAT stack, rejects UPDATE, DELETE, and "
+    "MERGE (`This connector does not support modifying table rows`), so the staging manifest cannot be "
+    "maintained and the benchmark has no statement it can run. A run against a Hive, Iceberg, or Delta catalog "
+    "is not blocked."
+)
+
 _NATIVE_MODEL_BENCHMARK_GATES = {
+    **{
+        (platform, benchmark): _MEMORY_CONNECTOR_DML_REASON.format(engine=engine)
+        for platform, engine in (("presto", "Presto"), ("trino", "Trino"))
+        for benchmark in ("write_primitives", "transaction_primitives")
+    },
     **{
         (platform, benchmark): _DELTA_ICEBERG_REQUIRED_REASON.format(engine=engine)
         for platform, engine in (("spark", "Apache Spark"), ("velox", "Velox"))

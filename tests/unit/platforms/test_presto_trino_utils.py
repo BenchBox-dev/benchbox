@@ -26,6 +26,10 @@ class TestJsonCell:
         assert json_cell("O'Brien", "varchar(25)", "") == "O'Brien"
         assert json_cell("12345", "varchar", "") == "12345"
 
+    def test_text_longer_than_the_declared_length_is_rejected(self) -> None:
+        with pytest.raises(ValueError):
+            json_cell("abcdef", "varchar(5)", "")
+
     def test_empty_text_follows_the_null_marker(self) -> None:
         assert json_cell("", "varchar(10)", "") is None
         assert json_cell("", "varchar(10)", None) == ""
@@ -57,7 +61,7 @@ class TestBuildInsertSql:
     def test_projects_each_column_through_its_target_type(self) -> None:
         sql = build_insert_sql("m.s.t", ["bigint", "varchar(10)", "decimal(15,2)", "varbinary"], "[[]]")
         assert sql == (
-            "INSERT INTO m.s.t SELECT CAST(c0 AS bigint), c1, CAST(c2 AS decimal(15,2)), from_hex(c3) "
+            "INSERT INTO m.s.t SELECT CAST(c0 AS bigint), CAST(c1 AS varchar(10)), CAST(c2 AS decimal(15,2)), from_hex(c3) "
             "FROM UNNEST(CAST(json_parse('[[]]') AS ARRAY(ROW(c0 varchar, c1 varchar, c2 varchar, c3 varchar)))) "
             "AS u(c0, c1, c2, c3)"
         )
@@ -148,7 +152,9 @@ class TestLoadFileBatches:
         rows = load_file_batches(cursor, f, "s.t", column_types=["bigint", "varchar(10)", "date"])
         assert rows == 2
         (sql,) = self._statements(cursor)
-        assert sql.startswith("INSERT INTO s.t SELECT CAST(c0 AS bigint), c1, CAST(c2 AS date) FROM UNNEST(")
+        assert sql.startswith(
+            "INSERT INTO s.t SELECT CAST(c0 AS bigint), CAST(c1 AS varchar(10)), CAST(c2 AS date) FROM UNNEST("
+        )
         assert self._payload(sql) == [["1", "Alice", "1992-01-01"], ["2", None, "1993-02-02"]]
 
     def test_quoted_csv_dialect_keeps_embedded_delimiters_and_skips_header(self, tmp_path: Path) -> None:
