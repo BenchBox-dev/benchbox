@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Owner decides keep (documented rationale) or retire (delete script, tests, workflow step and Make target)."
+  ],
+  "description": "The 2026-10-27 owner decision superseded the per-test 0.5 s duration policy with the aggregate fast-duration gate. scripts/fast_lane_ceiling_check.py survives as a live strict CI lint gate, kept deliberately by PRs #3676 and #3688 because deleting it would remove an enforced check. Whether it should remain was not decided.",
+  "links": [
+    "PR #3676",
+    "PR #3688"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:44087b544fee5237bdde41f8",
+      "at": "2026-11-01T13:46:37Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6a3df9718cdc4bab80fa40cd6ad02e67",
+      "session_id": "b38147de5e3b4952857534e2b3c9221c"
+    }
+  ]
+}

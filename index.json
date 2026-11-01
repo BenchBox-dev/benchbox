@@ -11482,6 +11482,13 @@
       "status": "done",
       "title": "Confirm docs/operations/fast-lane-budget.md in this repository is removed or updated"
     },
+    "fast-lane-ceiling-check-retire-decision-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Owner decision: keep or retire the fast_lane_ceiling_check.py strict CI gate now that the per-test 0.5 s policy is superseded"
+    },
     "fast-lane-ceiling-decouple-contention": {
       "claim": null,
       "needs": [
