@@ -4,7 +4,7 @@
     "PROVENANCE.md marks a route validated only when it was actually run; anything still unrunnable keeps an explicit reason.",
     "Athena stays unvalidated unless live-cloud spend is explicitly approved."
   ],
-  "context": "Follow-up to PRs #3703 and #3711. Local engines and Mocker only (no docker on this host; Mocker is local-only, never CI). Disk is tight: remove containers and images you pull and delete scratch data. For LakeSail, install pysail only into a throwaway environment or with uv run --with; do not add it as a project dependency. If chdb still fails to load, record the exact error and leave the route unvalidated; that may share a cause with chdb-4x-engine-load-verification-20261006.\n\nVerification rubric: (1) a regression test or reproduction fails before and passes after; (2) focused suites pass via uv run -- python -m pytest -n 0; (3) make comment-policy-check and ruff on touched files pass; (4) the runtime smoke named in acceptance is recorded in the PR body; (5) the PR merges with green CI and a passing oracle review.",
+  "context": "Merged via PR #3896 as 244416300. Live-validated with captured fixtures and semantic tests: PrestoDB 0.299, ClickHouse 25.8 EXPLAIN PIPELINE, chdb local mode (throwaway chdb 3.7.2; locked chdb 4.1.6 still fails dlopen on macOS, see chdb-4x-engine-load-verification-20261006), Doris 4.0.3 EXPLAIN VERBOSE, LakeSail pysail 0.7.3. Athena not validated (cloud, no credentials), recorded in PROVENANCE.md. Parser fixes: Presto identifiers, Doris verbose fragment tree, ClickHouse processor names, Spark/DataFusion nesting; chdb disconnect leak fixed.",
   "description": "Live semantic validation covered Spark, ClickHouse server, Trino, Databend, QuestDB, Doris and SingleStore. These routes are still unvalidated against real engine output: PrestoDB server and Athena (Presto/Trino parser), ClickHouse EXPLAIN PIPELINE, Doris EXPLAIN VERBOSE, ClickHouse chdb local mode (the installed chdb failed to load on macOS), and LakeSail DataFrame capture (pysail not installed; tested by dispatch with a local PySpark frame only). PROVENANCE.md records each as not live-validated.",
   "links": [
     "tests/fixtures/query_plans/PROVENANCE.md",
@@ -36,6 +36,14 @@
       "generation": "ff8aaf69527e468b8f6f7abd5f666d14",
       "op": "take",
       "op_id": "7970301a46894921821c1db5d67956b7",
+      "session_id": "acb77716a5b0405bb727f738cdbd8942"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8d313df504e30c76edc4bc0f",
+      "at": "2026-11-01T01:23:08Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "331762828d3742948cbe67268d9dfc9c",
       "session_id": "acb77716a5b0405bb727f738cdbd8942"
     }
   ]
