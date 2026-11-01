@@ -313,6 +313,23 @@ class TestSQLiteAdapter:
         assert "ON lineitem (l_partkey, l_suppkey, l_shipdate, l_quantity)" in indexes
         assert "ON partsupp (ps_partkey, ps_suppkey, ps_supplycost)" in indexes
 
+    def test_tpchavoc_gets_key_indexes_and_statistics_while_tpch_does_not(self):
+        from benchbox.core.tpch.benchmark import TPCHBenchmark
+        from benchbox.core.tpchavoc.benchmark import TPCHavocBenchmark
+        from benchbox.platforms import sqlite as sqlite_platform
+
+        adapter = SQLiteAdapter(database_path=":memory:")
+        adapter._apply_helper_index_set = lambda **kwargs: kwargs
+
+        havoc = adapter._apply_benchmark_helper_indexes(TPCHavocBenchmark(scale_factor=0.01), object())
+        plain = adapter._apply_benchmark_helper_indexes(TPCHBenchmark(scale_factor=0.01), object())
+
+        assert havoc["statements"] == sqlite_platform._TPCHAVOC_HELPER_INDEXES
+        assert "ON orders (o_orderkey, o_custkey, o_orderdate)" in "\n".join(havoc["statements"])
+        assert havoc["analyze"] is True
+        assert plain["statements"] == sqlite_platform._TPCH_HELPER_INDEXES
+        assert plain["analyze"] is False
+
     def test_create_connection_registers_sqlite_compatibility_functions(self):
         adapter = SQLiteAdapter(database_path=":memory:")
         connection = adapter.create_connection()
