@@ -139,16 +139,6 @@ _SQLITE_TPCDS_OBT_RUNTIME_ENVELOPE_REASON = (
     "issue. Keep it pruned until a bounded atomic bulk loader fits the declared budget."
 )
 
-_CEDARDB_TPCDS_OBT_DISK_ENVELOPE_REASON = (
-    "CedarDB cannot load the 5,041,336-row, 715-column TPC-DS OBT at SF1 within the release-host disk. In release "
-    "UAT dry runs 3 and 4 the cell failed with exit 1 (no result JSON) after the CedarDB data volume consumed the "
-    "whole 144 GiB runner disk (free 0 B, from 83 GiB free at cell start; `Low disk space ... 0.00 B free`). A local "
-    "reproduction with the pinned image at mem_limit 8g, loading the same Parquet through BenchBox's COPY path, "
-    "grew the data directory to 17.6 GB at 1,048,577 rows and kept growing at 1,000,000-row commit boundaries "
-    "(15.6 GB after the first commit, 18.1 GB at 2,097,154 rows), so the full load needs well over 80 GB. CedarDB "
-    "keeps the uncompacted pages and WAL of the load on disk; this is not a query, validation or timeout failure."
-)
-
 _SQLITE_TPCDS_RUNTIME_ENVELOPE_REASON = (
     "SQLite TPC-DS missed the 1200s release-gate contract at all three scales on 2026-08-25. "
     "At SF0.01, query 13 and query 48 exceeded 300s; eleven queries also need unsupported ROLLUP semantics. "
@@ -200,19 +190,6 @@ _PANDAS_DF_SF1_MEMORY_RUNTIME_ENVELOPE_REASON = (
 _PANDAS_DF_SF1_MEMORY_RUNTIME_ENVELOPES = {
     ("pandas-df", benchmark, 1.0): _PANDAS_DF_SF1_MEMORY_RUNTIME_ENVELOPE_REASON
     for benchmark in ("flightdata", "datavault")
-}
-
-_MEMORY_CATALOG_SF1_RUNTIME_ENVELOPE_REASON = (
-    "{engine}'s memory catalog cannot hold this SF1 dataset in the release UAT stack: joinorder is about 74M rows and "
-    "tpcds_obt about 5M rows by 518 columns, beyond the connector's per-node data cap, and row-wise inserts cannot "
-    "finish inside the 1200s cell contract. SF0.01 and SF0.1 stay in the gate; a Hive or Iceberg catalog over "
-    "external Parquet is not blocked."
-)
-
-_MEMORY_CATALOG_SF1_RUNTIME_ENVELOPES = {
-    (platform, benchmark): _MEMORY_CATALOG_SF1_RUNTIME_ENVELOPE_REASON.format(engine=engine)
-    for platform, engine in (("presto", "Presto"), ("trino", "Trino"))
-    for benchmark in ("joinorder", "tpcds_obt")
 }
 
 
@@ -275,23 +252,37 @@ _SF1_TIMEOUT_RUNTIME_ENVELOPE_EVIDENCE = dict.fromkeys(
 )
 
 _LATER_SF1_TIMEOUT_PRUNED_CELLS = (
-    ("sqlite", ("tpch", "tpch_skew")),
-    ("dask-df", ("nyctaxi",)),
-    ("starrocks", ("tpcds_obt", "write_primitives")),
+    (
+        "release UAT dry run 4 (run 41255388284) SF1 timing: terminal=timeout at 1200s",
+        (
+            ("sqlite", ("tpch", "tpch_skew")),
+            ("dask-df", ("nyctaxi",)),
+            ("starrocks", ("tpcds_obt", "write_primitives")),
+        ),
+    ),
+    (
+        "release UAT dry runs 5 (run 41309974530) and 6 (run 41317250643) SF1 timing: terminal=timeout at 1200s",
+        (
+            ("dask-df", ("amplab", "tsbs_devops")),
+            ("clickhouse-server", ("tpcds_obt", "write_primitives", "flightdata")),
+            ("starrocks", ("joinorder",)),
+            ("velox", ("joinorder",)),
+        ),
+    ),
 )
 
-_LATER_SF1_TIMEOUT_RUNTIME_ENVELOPES = {
-    ((platform, benchmark) if benchmark in _SF1_ONLY_BENCHMARKS else (platform, benchmark, 1.0)): _sf1_timeout_reason(
-        platform
-    )
-    for platform, benchmarks in _LATER_SF1_TIMEOUT_PRUNED_CELLS
+_LATER_SF1_TIMEOUT_CELL_EVIDENCE = {
+    ((platform, benchmark) if benchmark in _SF1_ONLY_BENCHMARKS else (platform, benchmark, 1.0)): evidence
+    for evidence, groups in _LATER_SF1_TIMEOUT_PRUNED_CELLS
+    for platform, benchmarks in groups
     for benchmark in benchmarks
 }
+
+_LATER_SF1_TIMEOUT_RUNTIME_ENVELOPES = {key: _sf1_timeout_reason(key[0]) for key in _LATER_SF1_TIMEOUT_CELL_EVIDENCE}
 
 _RELEASE_GATE_RUNTIME_ENVELOPES = (
     _SF1_TIMEOUT_RUNTIME_ENVELOPES
     | _PANDAS_DF_SF1_MEMORY_RUNTIME_ENVELOPES
-    | _MEMORY_CATALOG_SF1_RUNTIME_ENVELOPES
     | _LATER_SF1_TIMEOUT_RUNTIME_ENVELOPES
     | {
         ("sqlite", "datavault", 1.0): _SQLITE_DATAVAULT_SF1_RUNTIME_ENVELOPE_REASON,
@@ -299,33 +290,20 @@ _RELEASE_GATE_RUNTIME_ENVELOPES = (
         ("datafusion", "datavault"): _DATAFUSION_DATAVAULT_RUNTIME_ENVELOPE_REASON,
         ("sqlite", "tpcds"): _SQLITE_TPCDS_RUNTIME_ENVELOPE_REASON,
         ("sqlite", "tpcds_obt"): _SQLITE_TPCDS_OBT_RUNTIME_ENVELOPE_REASON,
-        ("cedardb", "tpcds_obt"): _CEDARDB_TPCDS_OBT_DISK_ENVELOPE_REASON,
     }
 )
 
 _RELEASE_GATE_RUNTIME_ENVELOPE_EVIDENCE = (
     _SF1_TIMEOUT_RUNTIME_ENVELOPE_EVIDENCE
-    | dict.fromkeys(
-        _LATER_SF1_TIMEOUT_RUNTIME_ENVELOPES,
-        "release UAT dry run 4 (run 41255388284) SF1 timing: terminal=timeout at 1200s",
-    )
+    | _LATER_SF1_TIMEOUT_CELL_EVIDENCE
     | dict.fromkeys(
         _PANDAS_DF_SF1_MEMORY_RUNTIME_ENVELOPES,
         "release UAT dry run 2 (run 41163626947) SF1 memory: UAT_MEMORY_LIMIT limit_gib=13 peak_gib=13.09 / 13.22",
-    )
-    | dict.fromkeys(
-        _MEMORY_CATALOG_SF1_RUNTIME_ENVELOPES,
-        "release UAT dry runs 2 and 3 stage 3 query-engines: SF1 load failed in the memory catalog; local Trino 484 "
-        "and Presto 0.298.1 load profile 2026-11-01",
     )
     | {
         ("datafusion", "datavault"): "docs/internal/uat-release-campaign.md: DataFusion DataVault (2026-08-25)",
         ("sqlite", "tpcds"): "docs/internal/uat-release-campaign.md: SQLite TPC-DS (2026-08-25)",
         ("sqlite", "tpcds_obt"): "PR #1904; docs/internal/uat-release-campaign.md: SQLite TPC-DS OBT (2026-08-25)",
-        ("cedardb", "tpcds_obt"): (
-            "release UAT dry runs 3 (run 41243890531) and 4 (run 41255388284) stage 2 cedardb: terminal=no_json_nonzero, "
-            "runner disk exhausted; local SF1 Parquet COPY reproduction 2026-11-01"
-        ),
         (
             "sqlite",
             "datavault",

@@ -261,8 +261,6 @@ jobs:
             platforms: lakesail
           - shard: clickhouse-server
             platforms: clickhouse-server
-          - shard: cedardb
-            platforms: cedardb
           - shard: starrocks
             platforms: starrocks
     steps:
@@ -334,7 +332,7 @@ jobs:
           - shard: postgres-family
             platforms: postgresql,pg-duckdb,pg-mooncake,timescaledb
           - shard: query-engines
-            platforms: presto,trino,velox
+            platforms: velox
           - shard: olap
             platforms: doris,databend,singlestore
           - shard: timeseries

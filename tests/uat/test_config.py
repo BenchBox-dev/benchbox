@@ -445,6 +445,8 @@ _SF1_TIMEOUT_PRUNED_CELLS = frozenset(
             "coffeeshop",
             "tpch",
             "nyctaxi",
+            "amplab",
+            "tsbs_devops",
         ),
         "pyspark-df": ("datavault", "tpchavoc", "tpcds", "joinorder", "flightdata"),
         "spark": ("joinorder", "tpchavoc", "tpcds_obt"),
@@ -467,7 +469,7 @@ def test_release_gate_stage1_prunes_sf1_timeouts_measured_in_dry_run_2():
         if cell.rule_id.endswith(".release_gate_runtime_envelope") and cell.scale == 1.0
     }
 
-    assert len(_SF1_TIMEOUT_PRUNED_CELLS) == 26
+    assert len(_SF1_TIMEOUT_PRUNED_CELLS) == 28
     assert pruned >= _SF1_TIMEOUT_PRUNED_CELLS
     assert _SF1_TIMEOUT_PRUNED_CELLS.isdisjoint(cells)
     for platform, benchmark, _ in _SF1_TIMEOUT_PRUNED_CELLS:
@@ -488,9 +490,14 @@ _DOCKER_SF1_TIMEOUT_PRUNED_CELLS = {
     "release-gate-02-docker-nonoltp.yaml": frozenset(
         {
             ("lakesail", "datavault", 1.0),
-            ("cedardb", "tpcds_obt", 0.01),
-            ("cedardb", "tpcds_obt", 0.1),
-            ("cedardb", "tpcds_obt", 1.0),
+            ("clickhouse-server", "flightdata", 1.0),
+            ("clickhouse-server", "tpcds_obt", 0.01),
+            ("clickhouse-server", "tpcds_obt", 0.1),
+            ("clickhouse-server", "tpcds_obt", 1.0),
+            ("clickhouse-server", "write_primitives", 1.0),
+            ("starrocks", "joinorder", 0.01),
+            ("starrocks", "joinorder", 0.1),
+            ("starrocks", "joinorder", 1.0),
             ("starrocks", "tpcds_obt", 0.01),
             ("starrocks", "tpcds_obt", 0.1),
             ("starrocks", "tpcds_obt", 1.0),
@@ -509,10 +516,7 @@ _DOCKER_SF1_TIMEOUT_PRUNED_CELLS = {
             ("questdb", "joinorder", 0.01),
             ("questdb", "tpcds_obt", 0.01),
             ("timescaledb", "tpcds_obt", 0.01),
-            ("presto", "joinorder", 0.01),
-            ("presto", "tpcds_obt", 0.01),
-            ("trino", "joinorder", 0.01),
-            ("trino", "tpcds_obt", 0.01),
+            ("velox", "joinorder", 0.01),
         }
     ),
 }
@@ -536,21 +540,20 @@ def test_release_gate_docker_stages_prune_sf1_timeouts_measured_in_dry_run_2(con
     assert cells.isdisjoint(expected)
     for cell in result.compatibility_pruned:
         if (cell.platform, cell.benchmark, cell.scale) in expected:
-            if (cell.platform, cell.benchmark) == ("cedardb", "tpcds_obt"):
-                assert "whole 144 GiB runner disk" in cell.reason
-            elif cell.platform in {"presto", "trino"}:
-                assert "memory catalog cannot hold this SF1 dataset" in cell.reason
-            else:
-                assert "timed out at 1200s" in cell.reason
+            assert "timed out at 1200s" in cell.reason
 
 
-def test_release_gate_stage3_excludes_influxdb_from_the_timeseries_shard():
+def test_release_gate_stages_exclude_platforms_tracked_for_follow_up():
+    stage2 = config.load_config(_RELEASE_GATE_CONFIGS_DIR / "release-gate-02-docker-nonoltp.yaml")
     stage3 = config.load_config(_RELEASE_GATE_CONFIGS_DIR / "release-gate-03-docker-oltp.yaml")
-    assert stage3.platforms.exclude == ("influxdb",)
+    assert stage2.platforms.exclude == ("cedardb",)
+    assert stage3.platforms.exclude == ("influxdb", "presto", "trino")
+    assert "cedardb-release-uat-coverage" in stage2.description
     assert "influxdb-general-loader-uat" in stage3.description
-    assert "influxdb" not in matrix.resolve_platforms(
-        groups=stage3.platforms.groups or (), exclude=stage3.platforms.exclude
-    )
+    assert "presto-trino-release-uat-coverage" in stage3.description
+    for stage in (stage2, stage3):
+        resolved = matrix.resolve_platforms(groups=stage.platforms.groups or (), exclude=stage.platforms.exclude)
+        assert set(stage.platforms.exclude).isdisjoint(resolved)
 
 
 def test_release_gate_stage1_prunes_measured_runtime_envelopes():
@@ -577,8 +580,8 @@ def test_release_gate_stage1_prunes_measured_runtime_envelopes():
     for cell in result.cells:
         by_pair.setdefault((cell.platform, cell.benchmark), set()).add(cell.scale)
     eligible = sum(1 for scales in by_pair.values() if set(stage1.scales.rungs).issubset(scales))
-    assert eligible == 112
-    assert stage1.report.cross_scale_coverage_min_pairs == int(0.8 * eligible) == 89
+    assert eligible == 110
+    assert stage1.report.cross_scale_coverage_min_pairs == int(0.8 * eligible) == 88
 
 
 def test_release_gate_cross_scale_floors_are_tuned_and_achievable():

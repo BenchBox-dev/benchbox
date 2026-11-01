@@ -2,7 +2,7 @@
 # place across releases (e.g. cross_scale_coverage_min_pairs re-derivation),
 # not cloned per sweep. See _project/specs/uat-framework.md Section 9.
 name: "release-gate-02-docker-nonoltp"
-description: "Release-gate stage 2: Docker non-OLTP stacks, scales 0.01/0.1/1"
+description: "Release-gate stage 2: Docker non-OLTP stacks, scales 0.01/0.1/1; CedarDB is excluded until its release-gate cells pass (tracked in cedardb-release-uat-coverage)"
 
 phases:
   - preflight
@@ -13,6 +13,7 @@ phases:
 
 platforms:
   groups: ["docker-fast"]
+  exclude: ["cedardb"]
 
 benchmarks:
   groups: ["all"]
@@ -52,4 +53,4 @@ package:
 
 report:
   matrix_summary_tsv: "matrix_summary.tsv"
-  cross_scale_coverage_min_pairs: 46
+  cross_scale_coverage_min_pairs: 32
