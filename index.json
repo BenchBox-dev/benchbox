@@ -3289,6 +3289,13 @@
       "status": "done",
       "title": "Disarm red PRs #3548/#3549 and make pr-arm refuse visible required-check failures"
     },
+    "ci-queue-throughput-delays-arming-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "PR core checks wait 1 to 5 hours in a 60 to 200 run queue, so every fix cycle costs half a day"
+    },
     "ci-rebalance-medium-shards": {
       "claim": null,
       "needs": [],

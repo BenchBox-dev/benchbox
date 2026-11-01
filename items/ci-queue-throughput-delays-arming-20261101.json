@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Measure queue depth and wait per workflow for one week; identify runs that add no signal (superseded heads, duplicate extension-smoke, cancelled-but-queued) and add concurrency cancellation or path filters; decide on runner capacity. Report median core wait before and after."
+  ],
+  "description": "Observed 2026-10-31: 59-128 queued workflow runs with 1-6 in progress; later 197 queued and 0 in progress at 15:32Z, oldest queued run from 11:50Z. pr-arm refuses until core records the verify-fast-duration verdict, so each push (including GitHub \"Update branch\" merges, which also restart oracle review) restarts a multi-hour wait. Six release-UAT fix PRs took from about 07:30Z to 14:11Z to merge once their CI was fixed; later fixes waited 5+ h more. Queue contributors include about 30 concurrent QuestDB PRs from one session and per-PR oracle and extension-smoke runs.",
+  "links": [
+    "ci-usage-metrics-report-20261024"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:44087b544fee5237bdde41f8",
+      "at": "2026-11-01T13:45:10Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "eaf248a92151499d81fbe431699e343a",
+      "session_id": "b38147de5e3b4952857534e2b3c9221c"
+    }
+  ]
+}
