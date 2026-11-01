@@ -16838,6 +16838,13 @@
       "status": "done",
       "title": "Verify the oracle follow-up sequence end to end after its last change merges"
     },
+    "oracle-gate-bridge-noop-runs-hold-runner-slots-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Most oracle-gate bridge runs do nothing but wait for a runner first"
+    },
     "oracle-gate-consumers-cutover-20261021": {
       "claim": null,
       "needs": [

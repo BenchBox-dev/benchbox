@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Any change removes no-op bridge runs without weakening the oracle-gate or oracle-verdict checks, and a scenario shows a stale-head dispatch is still caught by the sweep",
+    "The change is measured against run counts before and after"
+  ],
+  "context": "Do NOT add a job-level if: or drop the workflow_run trigger without reading this. An adversarial review on 2026-10-31 found that job-level skips still run workflow-level concurrency first, so a skipped run cancels a real in-flight gate run; a skipped required check counts as success; the sweep is the only trusted backstop for a lost dispatch and GitHub drops schedules (see oracle-sweep-schedules-dropped-by-github-20261101); and removing the verdict trigger removes the backstop for a failed same-head re-review. The bridge is about 0.1% of runner time; CI is about 97%. Doing nothing is a valid outcome. Tests that pin the bridge condition: tests/unit/workflows/test_oracle_gate_workflow.py.",
+  "description": "The oracle-gate bridge job runs on every completed oracle-verdict or oracle-review run and dispatches the gate for the open pull request at that head. Of 40 sampled bridge runs that executed, 30 found no open pull request at that head (it had moved or merged) and 10 dispatched; 36 of 156 were cancelled. They waited 30 to 58 minutes for a runner and ran for 3 to 6 seconds. Only 12 of 156 carry a develop head. Skipped verdict runs also trigger a bridge.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:96cfd54c7d2180daa76d178f",
+      "at": "2026-11-01T13:47:14Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "dc148b29db4d4e9fab973eab9b187d80",
+      "session_id": "77bfd3a6737c4f8e9b68d27f796e8651"
+    }
+  ]
+}
