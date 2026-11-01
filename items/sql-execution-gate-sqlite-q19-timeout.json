@@ -4,7 +4,7 @@
     "The gate no longer fails on it: either the timeout is classified with a reason like q21, the query is made to finish reliably, or the budget is justified",
     "A rerun of the job passes on an unchanged tree"
   ],
-  "context": "Logs: run 40590583534 job 122494308893 (step 'Run the executed SQL comparison gate', make sql-execution-gate, Makefile:479) and run 40497564501 job 122167420044 (PR 3547). The same job also lists many datafusion and postgres tpchavoc errors classified as expected. It is path-gated (skipped on most PRs) but ran for a docs-only change, which may be worth a separate look. Filed from session review 2026-10-27.\n\nMoved from the todo-db tracker on 2026-10-28; the item was filed there by mistake.",
+  "context": "Logs: run 40590583534 job 122494308893 (step 'Run the executed SQL comparison gate', make sql-execution-gate, Makefile:479) and run 40497564501 job 122167420044 (PR 3547). The same job also lists many datafusion and postgres tpchavoc errors classified as expected. It is path-gated (skipped on most PRs) but ran for a docs-only change, which may be worth a separate look. Filed from session review 2026-10-27.\n\nMoved from the todo-db tracker on 2026-10-28; the item was filed there by mistake.\n\n2026-11-01 evidence from this session: (1) #3823 (wheel 30.27.0.1) sql-execution-evidence job 124357315302 failed with 10 unexplained differences, all `sqlite tpchavoc q19_v1..v10 timeout: exceeded 15s`; the SQL sent to SQLite was identical for all 220 Havoc queries under 30.25.0.2 and 30.27.0.1, q19 took ~4s locally, and the rerun passed. (2) On an earlier #3878 head the same job flagged an unexplained tpch/sqlite difference that later runs did not repeat; it was not investigated.",
   "description": "The sql-execution-evidence job failed on PR 3577 (head b7ec8a9f4) and PR 3547 with 11 UNEXPLAINED DIFFERENCES, all 'sqlite ... [error] timeout: exceeded 15s': tpch q19 and tpchavoc q19_v1 to q19_v10. SQLite q21 and its variants time out as well but are classified as expected differences; q19 is not. The failing code is outside both PRs (a docs-only PR hit it too), so a runner-speed difference seems the likely cause, but the cause was not confirmed. The job ran 3m26s and fails the required check.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3577",
@@ -18,6 +18,14 @@
       "op": "create",
       "op_id": "664546870b3f400d8197d303593d22ee",
       "session_id": "8dd2786d2f544912829f10b74985f086"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e275448d846640d27249a6f8",
+      "at": "2026-11-01T13:43:56Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e43f06700b34446f84e6982cdae1b966",
+      "session_id": "a36a04b6bc394082b5008f654e1bf00b"
     }
   ]
 }
