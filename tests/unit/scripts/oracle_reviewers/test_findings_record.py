@@ -435,3 +435,22 @@ def test_the_claimed_exemption_is_not_written_into_the_protocol_record() -> None
 
     with pytest.raises(protocol.MarkerError):
         protocol.decode_marker(protocol.encode_marker({**record, "claimed": ["D1"]}))
+
+
+def test_a_finding_maintained_in_every_escalation_round_or_by_the_owner_is_not_replayed_as_a_dispute() -> None:
+    from _project.scripts.oracle_reviewers import findings, protocol
+
+    base = {"severity": "High", "file": "a.py", "line": 1, "end_line": None, "title": "t", "status": findings.OPEN}
+    escalated = {**base, "id": "D1", "rebuttals": ["Dispute: no"], "rounds": protocol.ESCALATION_ROUNDS}
+    maintained = {
+        **base,
+        "id": "D2",
+        "rebuttals": ["Dispute: no"],
+        "status": findings.ADJUDICATED_MAINTAINED,
+        "rounds": 1,
+    }
+    open_dispute = {**base, "id": "D3", "rebuttals": ["Dispute: no"], "rounds": 1}
+
+    claims = [findings._claim(item) for item in (escalated, maintained, open_dispute)]
+
+    assert [item["settled"] for item in claims] == [True, True, False]

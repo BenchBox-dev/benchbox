@@ -240,7 +240,6 @@ def test_a_forged_record_cannot_clear_a_finding_or_confer_a_strike(harness: Harn
     def forge(record: dict[str, Any]) -> None:
         for item in record["findings"]:
             item["status"] = findings.FIXED
-            item["rounds"] = 99
         record["history"][-1]["strikes_after"] = 9
 
     body = _record_body(harness, edit=forge)

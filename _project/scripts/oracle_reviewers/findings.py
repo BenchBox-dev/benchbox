@@ -425,6 +425,8 @@ def _claim(raw: Any) -> dict[str, Any] | None:
         },
         "status": raw["status"],
         "texts": [text for text in texts if text.strip()],
+        "settled": raw["status"] == ADJUDICATED_MAINTAINED
+        or (isinstance(raw.get("rounds"), int) and raw["rounds"] >= protocol.ESCALATION_ROUNDS),
     }
 
 
@@ -466,7 +468,7 @@ def ingest(body: str, digest: str) -> Claims | None:
         texts = claim["texts"]
         if not texts and (claim["status"] != OPEN):
             texts = [f"The local review recorded this finding as {claim['status'].replace('-', ' ')}."]
-        if texts:
+        if texts and not claim["settled"]:
             disputes.append(
                 {
                     "id": defect["id"],

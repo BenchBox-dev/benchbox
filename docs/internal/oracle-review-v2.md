@@ -1091,8 +1091,10 @@ and posts nothing to GitHub.
   every finding becomes a prior defect of that first round with the id it had
   locally, and every finding with a rebuttal, a local withdrawal or an adjudication
   becomes a disputed finding, so the CI verdict needs an explicit disposition for it
-  and must restate the claim. Rebuttal text, round counts (capped at the limit) and
-  the adjudication instruction carry as claims. The record's status never closes a
+  and must restate the claim. Rebuttal text and the adjudication instruction carry as claims. A finding
+  the owner maintained, or that was maintained in the escalation limit of local
+  rounds, stays a prior defect but is not replayed as a dispute, so it cannot be
+  re-argued to a new CI reviewer. The record's status never closes a
   finding, never withdraws one and never counts as a strike: the claimed priors are
   exempt from the defect-count overflow, the record carries no strike data, and the
   CI id counter starts above the claimed ids, so a forged or edited record can only
