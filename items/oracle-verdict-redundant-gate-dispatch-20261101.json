@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "The dispatch step is gone or limited to a case the in-run post does not cover, with a workflow test pinning it; a verdict run produces no oracle-gate workflow run."
+  ],
+  "description": "Since #3828 the verdict run evaluates and posts oracle-gate for the reviewed head in-run, but .github/workflows/oracle-verdict.yml (develop, step 'Dispatch the gate for the reviewed head', ~line 411) still dispatches oracle-gate.yml for that head. Every verdict run therefore triggers a second gate run, undercutting the run-count reduction that #3828/#3829 targeted (baseline 2,817 gate runs in 2026-10-24..26).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e",
+      "at": "2026-11-01T13:44:29Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f5df5967c38e430cb7b21a39c0b4098d",
+      "session_id": "1273bcfa4d0e4ed89453e147e32359eb"
+    }
+  ]
+}

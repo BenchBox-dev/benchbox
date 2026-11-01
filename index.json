@@ -17756,6 +17756,13 @@
       "status": "done",
       "title": "Join the tailnet with a step-scoped OAuth secret and drop id-token: write from the oracle verdict job"
     },
+    "oracle-verdict-redundant-gate-dispatch-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Remove the gate dispatch from the verdict run now that it posts oracle-gate itself"
+    },
     "oracle-verdict-single-job-20261025": {
       "claim": null,
       "needs": [],
