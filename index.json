@@ -3212,10 +3212,15 @@
       "title": "Baseline CI-failure metrics in dev-loop-metrics before landing the reduction workstreams"
     },
     "ci-fast-baseline-refresh-pr-not-self-sufficient-20261028": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-02T16:32:21Z",
+        "generation": "d5387859cfe040cdba93f7e7ce0ac008",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:96cfd54c7d2180daa76d178f"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Make the scheduled fast-tier baseline refresh pull request pass CI and get an oracle verdict without manual steps"
     },
     "ci-fast-duration-baseline-20261025": {
