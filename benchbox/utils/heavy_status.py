@@ -4,13 +4,20 @@ import os
 import re
 import shutil
 import sys
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from benchbox.utils import git_flood as git_flood_module, host_lock, resource_limits
+from benchbox.utils import (
+    git_flood as git_flood_module,
+    host_lock,
+    linux_machine,
+    process_tree,
+    resource_limits,
+    vm_footprint,
+)
 from benchbox.utils.clock import elapsed_seconds, mono_time, utc_now
 from benchbox.utils.footprint import pid_footprint_bytes, top_processes_by_footprint
 from benchbox.utils.resource_limits import EXTERNAL_TIMEOUT_SECONDS, GIB, HostPressure, Runner
@@ -68,6 +75,8 @@ class StatusReading:
     orphans: tuple[Orphan, ...] | None
     sentinel: SentinelState
     git_flood: git_flood_module.GitFlood | None = None
+    vm: linux_machine.VmAssessment | None = None
+    vm_line: str | None = None
 
 
 def _holder_age(record: str) -> float | None:
@@ -262,6 +271,64 @@ def read_sentinel_state(environ: Mapping[str, str] | None = None) -> SentinelSta
     )
 
 
+def held_tree_pids(
+    lock_path: Path, sampler: Callable[[int], process_tree.TreeSample | None] = process_tree.sample_tree
+) -> frozenset[int]:
+    holder = read_holder_state(lock_path)
+    if holder is None or not holder.live or holder.pid is None:
+        return frozenset()
+    sample = sampler(holder.pid)
+    if sample is None:
+        return frozenset({holder.pid})
+    return frozenset(member.pid for member in sample.members)
+
+
+def _read_vm(
+    environ: Mapping[str, str] | None, runner: Runner, which: Callable[[str], str | None]
+) -> linux_machine.VmAssessment | None:
+    machine = linux_machine.machine_name(environ)
+    state = linux_machine.read_machine_state(machine, runner, which)
+    if state is None:
+        return None
+    try:
+        processes = linux_machine.read_machine_processes(machine, state.is_default)
+    except Exception:
+        return None
+    return linux_machine.assess(machine, state, processes, held_tree_pids(host_lock.lock_path(environ)))
+
+
+def read_vm_footprint(
+    attributor: vm_footprint.VmAttributor,
+    machine: str,
+    held: Iterable[int],
+    environ: Mapping[str, str] | None = None,
+    platform: str | None = None,
+) -> tuple[vm_footprint.VmReading, bool] | None:
+    if (sys.platform if platform is None else platform) != "darwin":
+        return None
+    attributed = attributor.attribute(held, machine, environ)
+    if attributed is not None:
+        return attributed, True
+    reading = attributor.read(machine, environ)
+    return None if reading is None else (reading, False)
+
+
+def describe_vm_footprint(found: tuple[vm_footprint.VmReading, bool]) -> str:
+    reading, attributed = found
+    owner = "attributed to the lock holder" if attributed else "not attributed to a lock holder"
+    return f"{vm_footprint.vm_footprint_line(reading)} [{owner}]"
+
+
+def _read_vm_line(
+    vm: linux_machine.VmAssessment | None, attributor: vm_footprint.VmAttributor, environ: Mapping[str, str] | None
+) -> str | None:
+    if vm is None or not vm.running:
+        return None
+    held = held_tree_pids(host_lock.lock_path(environ))
+    found = read_vm_footprint(attributor, vm.machine, held, environ)
+    return None if found is None else describe_vm_footprint(found)
+
+
 def collect(
     environ: Mapping[str, str] | None = None,
     *,
@@ -271,16 +338,20 @@ def collect(
     top_reader: Callable[[], tuple[tuple[int, str, int], ...] | None] = _read_top,
     pressure_reader: Callable[[], HostPressure | None] | None = None,
     git_flood_reader: Callable[[], git_flood_module.GitFlood | None] | None = None,
+    vm_reader: Callable[[], linux_machine.VmAssessment | None] | None = None,
+    vm_attributor: vm_footprint.VmAttributor | None = None,
 ) -> StatusReading:
     path = host_lock.lock_path(environ)
-    with ThreadPoolExecutor(max_workers=3) as pool:
+    with ThreadPoolExecutor(max_workers=4) as pool:
         pressure_future = pool.submit(pressure_reader or (lambda: _read_pressure(runner, which)))
         orphan_future = pool.submit(find_orphans, runner, footprint)
+        vm_future = pool.submit(vm_reader or (lambda: _read_vm(environ, runner, which)))
         top = top_reader()
         holder = read_holder_state(path)
         waiters = host_lock.live_waiter_count(path)
         pressure = pressure_future.result()
         orphans = orphan_future.result()
+        vm = vm_future.result()
     return StatusReading(
         lock_path=path,
         holder=holder,
@@ -291,6 +362,8 @@ def collect(
         orphans=orphans,
         sentinel=read_sentinel_state(environ),
         git_flood=(git_flood_reader or (lambda: _read_git_flood(environ, footprint)))(),
+        vm=vm,
+        vm_line=_read_vm_line(vm, vm_attributor or vm_footprint.VmAttributor(), environ),
     )
 
 
@@ -366,6 +439,28 @@ def _render_sentinel(reading: StatusReading) -> list[str]:
     return [f"sentinel: not running ({installed})"]
 
 
+def _render_vm(reading: StatusReading) -> list[str]:
+    vm = reading.vm
+    if vm is None:
+        return []
+    memory = "unmeasured" if vm.state.memory_gib is None else f"{vm.state.memory_gib:.2f} GiB"
+    lines: list[str] = []
+    if vm.idle:
+        lines.append(
+            f"WARNING VM running with no lock holder: machine '{vm.machine}' state {vm.state.status}, "
+            f"configured memory {memory}"
+        )
+        lines.append(f"  remedy: container machine stop {vm.machine}")
+    else:
+        lines.append(f"linux machine '{vm.machine}': {vm.state.status or 'unknown'}, configured memory {memory}")
+    if reading.vm_line:
+        lines.append(reading.vm_line)
+    lines.extend(
+        f"UNGUARDED VM RUN pid {pid} (outside every lock holder's tree; never signalled)" for pid in vm.unguarded
+    )
+    return lines
+
+
 def _render_git_flood(reading: StatusReading) -> list[str]:
     flood = reading.git_flood
     if flood is None:
@@ -381,6 +476,7 @@ def render(reading: StatusReading, environ: Mapping[str, str] | None = None) -> 
         _render_lock(reading),
         _render_pressure(reading, environ),
         _render_sentinel(reading),
+        _render_vm(reading),
         _render_git_flood(reading),
         _render_top(reading),
         _render_orphans(reading),

@@ -871,13 +871,14 @@ ci-local:
 	@echo "✅ All CI checks passed!"
 	@echo "========================================"
 
-CI_LINUX_MACHINE ?= benchbox-agent
+CI_LINUX_MACHINE ?= $(or $(BENCHBOX_HEAVY_LINUX_MACHINE),benchbox-agent)
 CI_LINUX_CMD ?= make test-correctness-gate
 CI_LINUX_NEED_GIB ?= 2
 HOST_LOCK_CLI = uv run -- python -m benchbox.utils.host_lock
 CI_LINUX_ENV = -e BENCHBOX_TEST_LOCK_DIR=/tmp/benchbox-lock -e BENCHBOX_HEAVY_ADMIT_MIN_GIB=1.5 -e BENCHBOX_HEAVY_MIN_FREE_DISK_GIB=2
 .PHONY: ci-linux
 ci-linux: export CI_LINUX_CMD := $(CI_LINUX_CMD)
+ci-linux: export BENCHBOX_HEAVY_LINUX_MACHINE := $(CI_LINUX_MACHINE)
 ci-linux:
 	@if [ "$$(uname -s)" != "Darwin" ] || [ "$$(uname -m)" != "arm64" ]; then \
 		echo "ci-linux: skipped -- Apple silicon macOS only (host $$(uname -s)/$$(uname -m)); no-op."; \
@@ -896,6 +897,7 @@ ci-linux:
 		echo "  container system start"; \
 		echo "  container build --arch arm64 --tag local/benchbox-agent docker/benchbox-agent"; \
 		echo "  container machine create local/benchbox-agent --name $(CI_LINUX_MACHINE) --home-mount rw --cpus 4 --memory 6G"; \
+		echo "  container machine stop $(CI_LINUX_MACHINE)"; \
 		exit 1; \
 	fi; \
 	echo "==> ci-linux: '$(CI_LINUX_CMD)' inside container machine '$(CI_LINUX_MACHINE)'"; \
@@ -903,8 +905,10 @@ ci-linux:
 	CMD_FILE=$$(mktemp "$$HOME/.cache/benchbox-ci-linux-cmd.XXXXXX"); \
 	trap 'rm -f "$$CMD_FILE"' EXIT; \
 	printf 'cd "%s"\nexport UV_PROJECT_ENVIRONMENT="$${UV_PROJECT_ENVIRONMENT:-$$HOME/.cache/benchbox-linux-venv}"\n%s\n' "$(CURDIR)" "$$CI_LINUX_CMD" > "$$CMD_FILE"; \
-	echo "==> ci-linux: the host lock and watchdog cover host memory pressure and disk; the VM footprint is not tree-attributed (container runtime and VM processes are launchd children), so machine size and admission bound it" >&2; \
-	$(HOST_LOCK_CLI) run --phase ci-linux --gate ci-linux --admit --need-gib $(CI_LINUX_NEED_GIB) --guard -- bash scripts/linux_machine_run.sh $(CI_LINUX_MACHINE) $(CI_LINUX_ENV) -- bash -l "$$CMD_FILE"
+	echo "==> ci-linux: the host lock and watchdog cover host memory pressure and disk; the VM footprint is reported separately and bounded by its own allowance (BENCHBOX_HEAVY_VM_ALLOWANCE_GIB); the machine is stopped after the run unless BENCHBOX_KEEP_LINUX_MACHINE=1 or another run uses it, and the sentinel stops it when idle" >&2; \
+	NEED_GIB=$$($(HOST_LOCK_CLI) machine-need --machine $(CI_LINUX_MACHINE) --fallback-gib $(CI_LINUX_NEED_GIB)) || NEED_GIB=""; \
+	NEED_GIB=$${NEED_GIB:-$(CI_LINUX_NEED_GIB)}; \
+	$(HOST_LOCK_CLI) run --phase ci-linux --gate ci-linux --admit --need-gib "$$NEED_GIB" --guard -- bash scripts/linux_machine_run.sh $(CI_LINUX_MACHINE) $(CI_LINUX_ENV) -- bash -l "$$CMD_FILE"
 
 .PHONY: typecheck
 typecheck:
