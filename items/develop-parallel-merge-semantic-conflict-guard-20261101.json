@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "Owner chooses an option; it is in place and a test or live observation shows a PR green on a stale base cannot land a combination that fails on develop."
+  ],
+  "description": "Three times in three days two PRs, each green on its own base, merged within minutes of each other and broke trunk together: #3679 (omp pin) against goldens; #3836 against #3734 (trunk run 41166847029, test_redaction_scenarios); #3837 against #3899 (trunk run 41273143829, test_same_head_rerun.py: #3899 read plan run_uuid, #3837 removed it). The develop ruleset has strict_required_status_checks_policy false, auto-merge lands on checks from the old base, and make pr-arm checks only that trunk is green and the head has SHIP. An agent instruction to test a merge-tree with current develop before arming was not followed (#3837 armed at 04:26:26Z from a 03:54Z rebase, 14 minutes after #3899 merged) and would have run only touched tests.\n\nOptions for the owner: (a) GitHub merge queue on develop; (b) require branches to be up to date; (c) make pr-arm build a merge-tree with origin/develop and run tests/integration/oracle plus oracle unit tests, refusing on failure (oracle paths only; blind to merges after arming).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e",
+      "at": "2026-11-01T13:44:24Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c4fa8d0dd99245dab1f455283b97edb4",
+      "session_id": "1273bcfa4d0e4ed89453e147e32359eb"
+    }
+  ]
+}

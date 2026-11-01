@@ -7943,6 +7943,13 @@
       "status": "open",
       "title": "Three integration tests fail on unmodified develop under `make test-pytest`"
     },
+    "develop-parallel-merge-semantic-conflict-guard-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Stop PRs tested on a stale base from turning develop red"
+    },
     "develop-post-merge-lint-red-since-1494": {
       "claim": null,
       "needs": [],
