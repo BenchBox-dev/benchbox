@@ -2629,7 +2629,12 @@ def test_oracle_review_covers_ignores_a_gate_status_the_app_did_not_create(
     import check_comment_cleanup_scope as scope
 
     _review_env(tmp_path, monkeypatch)
-    _fake_api(monkeypatch, statuses=statuses)
+    pages = {"statuses": statuses, "reviews": [_verdict_review()]}
+
+    def api(token: str, path: str) -> list[dict]:
+        return pages["statuses" if "/statuses?" in path else "reviews"]
+
+    monkeypatch.setattr(scope, "_github_api", api)
     assert scope.oracle_review_covers(tmp_path) is expected
 
 
