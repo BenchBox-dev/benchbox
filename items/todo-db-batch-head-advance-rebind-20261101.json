@@ -3,7 +3,7 @@
     "An advance by the owner with the right expected head succeeds and is recorded with reason and files; a stale expected head, a non-descendant head or a non-owner is refused; an exact retry is idempotent.",
     "A fix advance touching an earlier member's files makes final evidence require that member's current-acceptance evidence; a develop-merge advance is excluded from the member file union.",
     "bind_batch_pr moves the bound head given the expected previous head, invalidates final evidence, is idempotent on retry and refuses a different PR.",
-    "context and context_append edits on a prepared member keep its receipt; an acceptance edit, a needs edit, a scope edit and a batch edit each still invalidate it and its dependents (one test each).",
+    "context and context_append edits on a prepared member keep its receipt; an acceptance edit, a needs edit, a scope edit, a batch edit, a description edit and a links edit each still invalidate it and its dependents (one test each).",
     "Merged on joeharris76/todo-db main."
   ],
   "context": "Decision gate: start only after todo-db-batch-dispatch-base-overlap-20261101 is done, because advances add to the recorded heads that dispatch bases use. Guardrails: work in joeharris76/todo-db under its own repository rules, on a branch and PR, never directly on main; never patch the vendored wheel in BenchBox; one server stays one worker identity (todo-db ADRs 0003 and 0006); every new refusal fails closed with a gate code and recovery steps; BenchBox line citations refer to the vendored 0.12.0 wheel (_project/scripts/vendor/todo_db-0.12.0-py3-none-any.whl), so re-read todo-db main before editing; tests prove behaviour, never wiring.",
@@ -23,6 +23,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "49c8e0bfda5b45f487b20f4453278699",
+      "session_id": "fe251e187e814d5cb1baf53870326a77"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:53a3b48ce5c94efdbf857652",
+      "at": "2026-11-01T14:22:29Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "98c895bb5e4b4e40adb5bb255b6e6a6f",
       "session_id": "fe251e187e814d5cb1baf53870326a77"
     }
   ]
