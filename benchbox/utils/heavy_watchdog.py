@@ -190,7 +190,10 @@ def default_vm_reader() -> Callable[[TreeSample], VmReading | None]:
     def read(sample: TreeSample) -> VmReading | None:
         if sys.platform != "darwin":
             return None
-        return attributor.attribute([member.pid for member in sample.members], machine, os.environ)
+        try:
+            return attributor.attribute([member.pid for member in sample.members], machine, os.environ)
+        except Exception:
+            return None
 
     return read
 

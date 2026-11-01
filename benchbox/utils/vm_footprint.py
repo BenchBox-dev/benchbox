@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import time
@@ -113,10 +114,23 @@ def read_footprint(pid: int) -> int | None:
 
 
 def read_configured_gib(machine: str) -> float | None:
-    from benchbox.utils import linux_machine
-
-    state = linux_machine.read_machine_state(machine)
-    return None if state is None else state.memory_gib
+    text = _run_text(["container", "machine", "list", "--format", "json"], EXTERNAL_TIMEOUT_SECONDS)
+    if text is None:
+        return None
+    try:
+        items = json.loads(text)
+    except ValueError:
+        return None
+    if not isinstance(items, list):
+        return None
+    for item in items:
+        if not isinstance(item, dict) or item.get("id") != machine:
+            continue
+        memory = item.get("memory")
+        if isinstance(memory, bool) or not isinstance(memory, (int, float)) or memory <= 0:
+            return None
+        return memory / GIB
+    return None
 
 
 def read_cmdline(pid: int) -> Sequence[str] | None:
@@ -190,7 +204,10 @@ class VmAttributor:
         if override is not None:
             return int(override * GIB)
         if machine not in self._memory or self._memory[machine] is None:
-            self._memory[machine] = self._configured_gib(machine)
+            try:
+                self._memory[machine] = self._configured_gib(machine)
+            except Exception:
+                self._memory[machine] = None
         configured = self._memory[machine]
         return None if configured is None else int(configured * VM_ALLOWANCE_MARGIN * GIB)
 

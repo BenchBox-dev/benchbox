@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import io
+import json
+import os
 import subprocess
 import sys
 import time
+import types
 from pathlib import Path
 
 import psutil
@@ -56,7 +59,16 @@ def test_a_vm_breach_terminates_the_holder_tree_but_not_the_holder(tmp_path: Pat
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX only")
-def test_the_watchdog_script_does_not_import_the_benchbox_package() -> None:
+def test_the_attribution_path_reads_the_allowance_without_importing_the_benchbox_package(tmp_path: Path) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    stub = bin_dir / "container"
+    stub.write_text(
+        '#!/bin/sh\necho \'[{"id":"other","memory":1073741824},{"id":"m","memory":8589934592,"status":"running"}]\'\n',
+        encoding="utf-8",
+    )
+    stub.chmod(0o755)
+    env = {**os.environ, "PATH": f"{bin_dir}:/usr/bin:/bin"}
     probe = Path(__file__).with_name("watchdog_isolation_probe.py")
     result = subprocess.run(
         [sys.executable, "-I", str(probe), str(Path(hw.__file__).resolve())],
@@ -64,6 +76,44 @@ def test_the_watchdog_script_does_not_import_the_benchbox_package() -> None:
         text=True,
         check=False,
         timeout=60,
+        env=env,
     )
     assert result.returncode == 0, result.stderr
-    assert result.stdout.strip().splitlines()[-1] == "[]"
+    report = json.loads(result.stdout.strip().splitlines()[-1])
+    assert report["loaded"] == []
+    assert report["allowance_gib"] == pytest.approx(8 * 1.1)
+
+
+def test_a_raising_configured_reader_leaves_the_watchdog_running_with_an_unmeasured_allowance() -> None:
+    def boom(machine: str) -> float:
+        raise RuntimeError("container failed")
+
+    attr = vf.VmAttributor(
+        process_lister=lambda: [vf.VmProcess(1, 1.0)],
+        open_paths=lambda pid: ["/x/machine-apiserver/machines/m/rootfs.ext4"],
+        footprint_reader=lambda pid: 9 * GIB,
+        configured_gib=boom,
+        cmdline_reader=lambda pid: ["bash", "scripts/linux_machine_run.sh", "m"],
+    )
+    reading = attr.attribute([1], "m", {})
+    assert reading is not None and reading.allowance_bytes is None
+    assert vf.vm_breach_detail(reading) is None
+
+
+def test_the_stdlib_configured_reader_returns_none_without_the_container_cli(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("PATH", str(tmp_path))
+    assert vf.read_configured_gib("m") is None
+
+
+def test_a_raising_vm_reader_never_stops_the_default_reader(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "platform", "darwin")
+
+    def boom(self, tree_pids, machine, environ=None):
+        raise RuntimeError("lsof failed")
+
+    monkeypatch.setattr(vf.VmAttributor, "attribute", boom)
+    read = hw.default_vm_reader()
+    sample = types.SimpleNamespace(members=[types.SimpleNamespace(pid=1)])
+    assert read(sample) is None

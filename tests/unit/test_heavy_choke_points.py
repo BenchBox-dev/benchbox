@@ -166,7 +166,7 @@ def test_the_choke_point_check_ignores_usage_lines_and_guarded_calls() -> None:
 STUB_CONTAINER = """#!/usr/bin/env bash
 printf '%s\\n' "$*" >> "$STUB_LOG"
 case "$1 $2" in
-  "machine list") printf '[{"status":"%s","id":"m","default":true},{"status":"running","id":"other"}]\\n' "$STUB_STATUS" ;;
+  "machine list") printf '[{"status":"%s","id":"%s","default":true},{"status":"running","id":"other"}]\\n' "$STUB_STATUS" "${STUB_MACHINE:-m}" ;;
   "machine run") [ -n "${STUB_RUN_HOOK:-}" ] && bash -c "$STUB_RUN_HOOK"; exit "${STUB_RUN_EXIT:-0}" ;;
   "machine stop") [ -n "${STUB_STOP_HANG:-}" ] && exec sleep 30; exit "${STUB_STOP_EXIT:-0}" ;;
 esac
@@ -179,6 +179,9 @@ def _stub_env(tmp_path: Path, status: str, **extra: str) -> dict[str, str]:
     stub = bin_dir / "container"
     stub.write_text(STUB_CONTAINER, encoding="utf-8")
     stub.chmod(0o755)
+    idle_checker = tmp_path / "idle_checker"
+    idle_checker.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+    idle_checker.chmod(0o755)
     env = dict(
         os.environ,
         PATH=f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
@@ -189,7 +192,7 @@ def _stub_env(tmp_path: Path, status: str, **extra: str) -> dict[str, str]:
         BENCHBOX_TEST_LOCK_WAIT_SECONDS="0",
         BENCHBOX_HEAVY_ADMIT="force",
         BENCHBOX_HEAVY_WATCHDOG="off",
-        **{"BENCHBOX_PYTHON": sys.executable, **extra},
+        **{"BENCHBOX_PYTHON": str(idle_checker), **extra},
     )
     for key in ("BENCHBOX_TEST_SESSION_OWNER", "BENCHBOX_SKIP_TEST_LOCK"):
         env.pop(key, None)
@@ -203,7 +206,7 @@ def _calls(tmp_path: Path) -> list[str]:
 
 def _wrapper(env: dict[str, str], *args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        ["bash", "scripts/linux_machine_run.sh", "m", *args],
+        ["bash", "scripts/linux_machine_run.sh", env.get("STUB_MACHINE", "m"), *args],
         env=env,
         capture_output=True,
         text=True,
@@ -223,7 +226,7 @@ def _locked_wrapper(env: dict[str, str], *args: str) -> subprocess.CompletedProc
             "--",
             "bash",
             str(WRAPPER_PATH),
-            "m",
+            env.get("STUB_MACHINE", "m"),
             *args,
         ],
         env=env,
@@ -307,10 +310,18 @@ def test_no_foreign_run_or_an_unrunnable_check_stops_the_machine(tmp_path: Path,
 @posix_only
 @needs_bash
 def test_the_real_process_check_finds_no_foreign_run_and_the_machine_is_stopped(tmp_path: Path) -> None:
-    result = _locked_wrapper(_stub_env(tmp_path, "running", STUB_RUN_HOOK="sleep 0.2"), "-e", "A=1", "--", "true")
+    machine = f"m-{tmp_path.name}"
+    env = _stub_env(
+        tmp_path,
+        "running",
+        BENCHBOX_PYTHON=sys.executable,
+        STUB_MACHINE=machine,
+        STUB_RUN_HOOK="sleep 0.2",
+    )
+    result = _locked_wrapper(env, "-e", "A=1", "--", "true")
     assert result.returncode == 0, result.stderr
     assert "left running" not in result.stderr
-    assert _calls(tmp_path)[-1] == "machine stop m"
+    assert _calls(tmp_path)[-1] == f"machine stop {machine}"
 
 
 @posix_only
