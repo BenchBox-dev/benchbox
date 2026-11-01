@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "The diff the migration would apply to the 232 manifests is classified by field (command and per-field counts recorded).",
+    "Either the sanitiser is corrected so the dry run reports 0 manifest writes on develop, or the sidecars are updated in one reviewed PR (sidecars only; bundle JSON never modified) and the dry run then reports 0.",
+    "`python results-data/validate_corpus.py` output is unchanged."
+  ],
+  "context": "Evidence: SaltAutoCore G1 run on 2026-10-31 under the owner's HOME (no salt value printed). Published bundle JSON is never modified.",
+  "description": "While verifying the automatic salt (#3878), `migrate(bundles_dir=results-data/bundles, write=False)` from _project/scripts/results_explorer_corpus_migrate.py reported 232 pending manifest writes and 0 bundle, result_id or companion changes. The same 232 appeared under an arbitrary other salt, so they do not depend on the salt: the committed manifest sidecars are not at the fixed point of the migration's manifest sanitisation. Either the sidecars drifted from the current sanitiser, or the sanitiser changes fields it should leave alone.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e275448d846640d27249a6f8",
+      "at": "2026-11-01T13:43:30Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "8602d874395f4ae995b9dc33b259a054",
+      "session_id": "a36a04b6bc394082b5008f654e1bf00b"
+    }
+  ]
+}

@@ -6185,6 +6185,13 @@
       "status": "open",
       "title": "Make test_unknown_phase_merges_with_power_cohort exercise an unknown phase"
     },
+    "corpus-migrate-232-pending-manifest-writes": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Corpus migration dry run would rewrite 232 manifests that already passed publication"
+    },
     "corpus-migrate-reads-non-bundle-json": {
       "claim": null,
       "needs": [],
