@@ -24,6 +24,35 @@ REVIEWER_FILE = "_project/scripts/oracle_reviewers/cli.py"
 CREDENTIALS_FILE = "_project/scripts/oracle_reviewers/credentials.py"
 
 
+@pytest.fixture(autouse=True)
+def _no_ambient_secrets(monkeypatch: pytest.MonkeyPatch) -> None:
+    from _project.scripts.oracle_reviewers import local
+
+    for name in local.SCRUBBED_AT_START:
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.delenv(bootstrap.HANDOVER_ENV, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def _close_handover_descriptors(monkeypatch: pytest.MonkeyPatch):
+    opened: list[int] = []
+    original = bootstrap.hand_over
+
+    def recording(environ, names):
+        scrubbed = original(environ, names)
+        if bootstrap.HANDOVER_ENV in scrubbed:
+            opened.append(int(scrubbed[bootstrap.HANDOVER_ENV]))
+        return scrubbed
+
+    monkeypatch.setattr(bootstrap, "hand_over", recording)
+    yield
+    for descriptor in opened:
+        try:
+            os.close(descriptor)
+        except OSError:
+            pass
+
+
 def _git(path: Path, *args: str) -> str:
     result = subprocess.run(
         ["git", "-C", str(path), "-c", "user.name=t", "-c", "user.email=t@example.com", *args],
