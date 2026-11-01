@@ -7,7 +7,7 @@
     "Rename deferral recorded, then promoted or dismissed before finish.",
     "`make comment-policy-check`, `make lint`, `make typecheck`, `make test-fast` pass."
   ],
-  "context": "Observed 2026-10-30 after reboot: pid 61182 java QuestDB ppid 1 RSS 2.3 GB; pid 78738 java QuestDB ppid 1; benchbox-agent machine running 8G. Review findings H6 and N3.",
+  "context": "Observed 2026-10-30 after reboot: pid 61182 java QuestDB ppid 1 RSS 2.3 GB; pid 78738 java QuestDB ppid 1; benchbox-agent machine running 8G. Review findings H6 and N3.\n\nDelivered in PR #3848 (https://github.com/BenchBox-dev/benchbox/pull/3848), squash-merged to develop as 2ab29ce3bb on 2026-11-01. The whole heavy-guard series landed together at the owner's request.",
   "deferrals": [
     {
       "created_at": "2026-10-31T00:33:55Z",
@@ -64,6 +64,14 @@
       "generation": "9bc3c4cc8c8b4046a8b61c7e2e461b9d",
       "op": "take",
       "op_id": "1556d03770f847dfbb7b5ba275ce76ca",
+      "session_id": "6f8f4a28707f4702ad48cd7b8d6aaabb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:94e4d2f7dee4726eca194412",
+      "at": "2026-11-01T02:23:51Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "eeb329f83d594a53acafbc578efa1c06",
       "session_id": "6f8f4a28707f4702ad48cd7b8d6aaabb"
     }
   ]
