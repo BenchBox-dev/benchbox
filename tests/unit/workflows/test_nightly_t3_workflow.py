@@ -1230,3 +1230,11 @@ def test_lint_job_pulls_the_questdb_mirror_with_job_token_credentials() -> None:
         "password": "${{ github.token }}",
     }
     assert job["permissions"] == {"contents": "read", "pull-requests": "read", "packages": "read"}
+
+
+def test_uat_questdb_compose_pins_the_same_digest_as_the_mirror() -> None:
+    compose = (REPO_ROOT / "docker/questdb/docker-compose.yml").read_text(encoding="utf-8")
+    match = re.search(r"image: \$\{QUESTDB_IMAGE:-questdb/questdb:([^@}]+)@(sha256:[0-9a-f]{64})\}", compose)
+    assert match is not None
+    assert match.group(1) == "10.0.1"
+    assert match.group(2) == QUESTDB_DIGEST
