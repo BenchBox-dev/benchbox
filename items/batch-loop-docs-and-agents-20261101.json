@@ -1,9 +1,9 @@
 {
   "acceptance": [
     "AGENTS.md describes the loop under Delivery modes and keeps it opt-in; WRITE-CLOSEOUT-001 says a member ends when its change is landed on the integration branch and reported, and the leader ends at the merged final PR; the worktree section shows BASE= and says integration worktrees are leader-only; the stack rule exempts members based on their leader's integration branch.",
-    "A grep finds no 'no starting-ref option' text, no runtime-unavailable claim and no check_scope or progress verb in docs/agent.",
+    "batch-feature-delivery.md's Starting ref step ('no separate starting-ref option exists') and its 'This batch' section are rewritten or moved to a decision record; batch-tracker-contract.md:13-15 (check_scope and progress) and :57-58 ('runtime still lacks the registered-batch capability') are rewritten to the v2 contract with the leader as the only tracker writer (register_batch; take then prepare after each landing; bind_batch_pr; final take then finish); AGENTS.md Delivery modes no longer says 'an immutable base' and names the v2 capability instead of 'a compatible schema'.",
     "handoffs.md says the tracker is authoritative, the ledger is a rebuildable cache, and batch notes go on an umbrella item that is never a batch member.",
-    "The docs cover: members run mapped and named tests while the leader runs the fast tier once; member local review with not-reviewed for exempt-only; cloud builders are not members; the integration branch is never a PR base; one changelog fragment per member; the hosted brief cap as a hard batch-size limit; batch-wide rollback through trunk_revert.",
+    "The docs cover: members run mapped and named tests while the leader runs the fast tier once; member local review with not-reviewed for exempt-only; cloud builders are not members; the integration branch is never a PR base; one changelog fragment per member; the hosted brief cap as a hard batch-size limit; batch-wide rollback through trunk_revert; owner recovery after a dead leader; the abort_batch fallback; docs/agent/README.md lists the new targets.",
     "make agent-instructions-check and make comment-policy-check pass; merged to develop; no test pins document wording."
   ],
   "context": "Decision gate: start only after batch-land-and-status-20261101 and pr-landing-arm-batch-evidence-20261101 are done, so the docs describe shipped commands. Owner decision 2026-11-01 (owner answer in the choice dialog, BenchBox session 01a19729, 2026-11-01): \"Flip it automatically if the pilot passes\". This item keeps the mode opt-in; batch-loop-default-mode-20261101 flips it. Size-limit facts: brief_max_bytes is 100000 (.github/oracle-reviewers.yml); a diff over the cap switches to file-list mode, where only hard read-only reviewers that read files run, and a file list over the cap skips reviewers (_project/scripts/oracle_reviewers/selection.py:157-160). Guardrails: deliver as an ordinary serial PR to develop (AGENTS.md: feature delivery cannot deliver the changes that make it possible); write only from a linked worktree made with make worktree-create and checked with make agent-write-preflight, never the primary clone; stage explicit paths, never git add -A; no explanatory comments or docstrings (COMMENT-POLICY-001, make comment-policy-check); heavy test runs only through lock-taking entry points, never BENCHBOX_SKIP_TEST_LOCK; never weaken hold labels, the unresolved-thread refusal, oracle-gate, duration or suite gates; add a changelog.d fragment (CHANGELOG_INTERNAL when nothing is user-visible); durable artifacts carry no session or phase labels; cited line numbers are leads, so re-read the code before editing; tests prove behaviour, never wiring or wording.",
@@ -21,6 +21,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "9b993d56745745fcbe3466e89674abc1",
+      "session_id": "fe251e187e814d5cb1baf53870326a77"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:53a3b48ce5c94efdbf857652",
+      "at": "2026-11-01T14:19:58Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "db1076df6700403dab26c3dd52e15c7c",
       "session_id": "fe251e187e814d5cb1baf53870326a77"
     }
   ]
