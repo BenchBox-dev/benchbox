@@ -61,6 +61,73 @@ def inline_sourceless_exists(expression, *, copy: bool = True):
     return tree
 
 
+def exists_to_derived_join(expression, *, copy: bool = True):
+    exp = sql_expressions()
+    tree = expression.copy() if copy else expression
+    for node in list(tree.find_all(exp.Exists)):
+        outer = node.find_ancestor(exp.Select)
+        inner = node.this.this if isinstance(node.this, exp.Subquery) else node.this
+        if outer is None or not isinstance(inner, exp.Select) or outer.args.get("where") is None:
+            continue
+        conjuncts = list(outer.args["where"].this.flatten())
+        if not any(item is node for item in conjuncts):
+            continue
+        source = inner.args.get("from_")
+        if (
+            source is None
+            or not isinstance(source.this, exp.Table)
+            or inner.args.get("joins")
+            or any(inner.args.get(key) for key in ("group", "having", "limit", "order", "distinct"))
+            or inner.args.get("where") is None
+        ):
+            continue
+        inner_alias = source.this.alias_or_name
+        local: list = []
+        correlated: list = []
+        join_columns: dict[str, object] = {}
+        convertible = True
+        for conjunct in inner.args["where"].this.flatten():
+            if not any(column.table not in ("", inner_alias) for column in conjunct.find_all(exp.Column)):
+                local.append(conjunct)
+                continue
+            if not isinstance(conjunct, exp.EQ):
+                convertible = False
+                break
+            sides = [conjunct.this, conjunct.expression]
+            mine = [side for side in sides if isinstance(side, exp.Column) and side.table == inner_alias]
+            theirs = [side for side in sides if isinstance(side, exp.Column) and side.table not in ("", inner_alias)]
+            if len(mine) != 1 or len(theirs) != 1:
+                convertible = False
+                break
+            join_columns.setdefault(mine[0].name, mine[0])
+            correlated.append((conjunct, mine[0]))
+        if not convertible or not correlated:
+            continue
+        derived = exp.Select(
+            expressions=[
+                exp.alias_(column.copy(), f"{inner_alias}_{name}", quoted=column.this.quoted)
+                for name, column in join_columns.items()
+            ],
+            distinct=exp.Distinct(),
+        )
+        derived.set("from_", exp.From(this=source.this.copy()))
+        if local:
+            derived.set("where", exp.Where(this=exp.and_(*[item.copy() for item in local])))
+        outer.append(
+            "joins",
+            exp.Join(this=exp.Subquery(this=derived, alias=exp.TableAlias(this=exp.to_identifier(inner_alias)))),
+        )
+        kept = [item for item in conjuncts if item is not node]
+        for conjunct, column in correlated:
+            joined = conjunct.copy()
+            for candidate in joined.find_all(exp.Column):
+                if candidate.table == inner_alias:
+                    candidate.replace(exp.column(f"{inner_alias}_{candidate.name}", table=inner_alias))
+            kept.append(joined)
+        outer.set("where", exp.Where(this=exp.and_(*kept)))
+    return tree
+
+
 def drop_correlated_scalar_group_by(expression, *, columns: Sequence[str], copy: bool = True):
     exp = sql_expressions()
     tree = expression.copy() if copy else expression

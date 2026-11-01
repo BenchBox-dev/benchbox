@@ -1,6 +1,6 @@
 services:
   databend:
-    image: datafuselabs/databend:latest
+    image: ${DATABEND_IMAGE:-datafuselabs/databend:v1.2.881@sha256:847b20b0cfbadaa8dd87fc5c023db1d07042e9be6231dfc8303e75feefd94bf8}
     environment:
       QUERY_STORAGE_TYPE: fs
       QUERY_DEFAULT_USER: benchbox

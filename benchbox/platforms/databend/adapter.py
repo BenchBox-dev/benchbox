@@ -67,6 +67,7 @@ class DatabendAdapter(PlatformAdapter):
         self.username = config.get("username") or os.environ.get("DATABEND_USER") or "benchbox"
         self.password = config.get("password") or os.environ.get("DATABEND_PASSWORD")
         self.database = config.get("database") or os.environ.get("DATABEND_DATABASE") or "benchbox"
+        self.admin_database = config.get("admin_database") or "default"
         self.dsn = config.get("dsn") or os.environ.get("DATABEND_DSN")
         self.deployment_mode = select_adapter_deployment("databend", config, DEFAULT_DEPLOYMENT)
         self.deployment_selected = self.deployment_mode
@@ -170,6 +171,7 @@ class DatabendAdapter(PlatformAdapter):
                     "compute_resource",
                     "warehouse",
                     "disable_result_cache",
+                    "admin_database",
                 ],
                 include_none=False,
             )
@@ -178,7 +180,7 @@ class DatabendAdapter(PlatformAdapter):
     def get_target_dialect(self) -> str:
         return "snowflake"
 
-    def _build_dsn(self) -> str:
+    def _build_dsn(self, database: str | None = None) -> str:
         if self.dsn:
             return self._normalize_dsn_scheme(self.dsn)
 
@@ -192,7 +194,7 @@ class DatabendAdapter(PlatformAdapter):
 
         scheme = "databend+http" if not self.ssl else "databend+https"
 
-        dsn = f"{scheme}://{user_part}@{self.host}:{port}/{self.database}"
+        dsn = f"{scheme}://{user_part}@{self.host}:{port}/{database or self.database}"
 
         params = []
         if not self.ssl:
@@ -229,7 +231,7 @@ class DatabendAdapter(PlatformAdapter):
 
         self.handle_existing_database(**connection_config)
 
-        dsn = self._build_dsn()
+        dsn = self._build_dsn(self.admin_database)
         self.log_very_verbose(f"Databend connection: host={self.host}, database={self.database}")
 
         connection = None
@@ -242,6 +244,9 @@ class DatabendAdapter(PlatformAdapter):
             row = connection.query_row("SELECT 1")
             if row is None:
                 raise ConnectionError("Databend connection test returned no result")
+
+            connection.exec(f"CREATE DATABASE IF NOT EXISTS {self._quote_identifier(self.database)}")
+            connection.exec(f"USE {self._quote_identifier(self.database)}")
 
             self.logger.info(f"Connected to Databend at {self.host}")
             self.log_operation_complete("Databend connection", details=f"Connected to {self.host}")
@@ -504,7 +509,7 @@ class DatabendAdapter(PlatformAdapter):
         try:
             from databend_driver import BlockingDatabendClient
 
-            dsn = self._build_dsn()
+            dsn = self._build_dsn(self.admin_database)
             client = BlockingDatabendClient(dsn)
             connection = self._get_blocking_connection(client)
             row = connection.query_row("SELECT 1")
@@ -571,7 +576,7 @@ class DatabendAdapter(PlatformAdapter):
         try:
             from databend_driver import BlockingDatabendClient
 
-            dsn = self._build_dsn()
+            dsn = self._build_dsn(self.admin_database)
             client = BlockingDatabendClient(dsn)
             connection = self._get_blocking_connection(client)
 
@@ -597,7 +602,7 @@ class DatabendAdapter(PlatformAdapter):
         try:
             from databend_driver import BlockingDatabendClient
 
-            dsn = self._build_dsn()
+            dsn = self._build_dsn(self.admin_database)
             client = BlockingDatabendClient(dsn)
             connection = self._get_blocking_connection(client)
             connection.exec(f"DROP DATABASE IF EXISTS {self._quote_identifier(database)}")
