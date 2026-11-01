@@ -6,6 +6,7 @@
   ],
   "context": "Found 2026-10-17 during the site-split remediation; the error text is in that session's transcript. The coordinator's workaround was to retry until the shared slot was free. todo-db source: ~/Developer/todo-db (src/todo_db/service.py has the same check at the same lines).\n\nTracked in the todo-db tracker as mcp-shared-worker-claim-slot (copied 2026-10-28).\n\nRESOLVED 2026-10-29: BenchBox runs todo-db 0.11.0 (BenchBox-dev/benchbox#3725, merge a554c997f; release https://github.com/joeharris76/todo-db/releases/tag/v0.11.0). Partly delivered; left open for an owner decision. 0.11.0 makes the E_MULTIPLE_CLAIMS refusal name the claim held and carry recovery steps: finish or release it, or run each concurrent agent on its own todo-db-mcp server with a distinct --actor (test_multiple_claims_refusal_tells_a_sibling_agent_what_to_do, todo-db#51). Per-agent claims on one shared server (criteria 2 and 3) are not implemented: todo-db ADR 0003 section 2.3 and ADR 0006 G5 make one server one worker identity, so the server cannot tell subagents apart. Close as delivered-by-narrowing, or drop, is a human call.",
   "description": "The tracker allows one live claim per worker (vendored todo_db 0.9.1, todo_db/service.py:933-943 raises E_MULTIPLE_CLAIMS). The MCP server derives the worker identity once per server process when --actor and TODO_DB_ACTOR are unset (todo_db/mcp/server.py:45,75,106). Every subagent of one Claude Code session talks to the same server, so they all act as one worker, `mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c`.\n\nOn 2026-10-17 a site-split agent's take on site-split-50 and site-split-55 failed with E_MULTIPLE_CLAIMS at least 12 times, because unrelated agents in the same session held claims on spark-tuning-discovery-cli, spark-effective-config-preflight-capture, spark-family-session-config-velox-lakesail and tuning-render-layout-postgres-family-20261001. Those agents could finish and release each other's work, so claim ownership did not protect anything either.\n\nGive each agent its own worker identity, for example a per-call agent or session id that becomes part of the worker, or document and enforce one claim per session with a clear recovery hint naming the holder.",
+  "drop_reason": "Owner decision 2026-11-01 (owner answer in the choice dialog, BenchBox session 01a19729): \"Drop it, citing this plan\". todo-db 0.11.0 delivered the refusal that names the held claim with recovery steps. Per-agent claims on one shared server are rejected by todo-db ADR 0003 section 2.3 and ADR 0006 G5, so criterion 2 stays unmet by design. The integration-branch batch loop (batch-integration-loop-20261101) makes the leader the only tracker writer, so member subagents never hold claims; concurrent claim holders need one todo-db-mcp server per agent with a distinct --actor. Successor for batch claim protection: todo-db-batch-owner-claims-recovery-20261101.",
   "sessions": [
     {
       "actor": "mcp:claude-code:joe@joe-mac-mini.local:0f148a36cca5316266af272c",
@@ -30,6 +31,14 @@
       "op": "update",
       "op_id": "4e2dc2e446e9406aaa481e51873bd5e3",
       "session_id": "167fcfd7c4c74fa4b63606febd08c8d2"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:53a3b48ce5c94efdbf857652",
+      "at": "2026-11-01T14:10:46Z",
+      "client": "omp-coding-agent",
+      "op": "drop",
+      "op_id": "bc62cacbdef64a06896bdb62fc4f1b26",
+      "session_id": "fe251e187e814d5cb1baf53870326a77"
     }
   ]
 }

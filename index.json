@@ -27953,7 +27953,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Subagents sharing one tracker MCP server share one claim slot, so one agent's claim blocks every other agent's take"
     },
     "todo-db-not-before-clear-and-field-append-20261028": {
