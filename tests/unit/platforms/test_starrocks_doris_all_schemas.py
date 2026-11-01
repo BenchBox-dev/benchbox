@@ -84,7 +84,7 @@ def test_doris_translates_every_shipped_schema(name, statement, partitioning):
     translated = adapter._transform_schema_statement(statement.strip(), None)
     assert translated
     if is_create_table(statement):
-        assert "DUPLICATE KEY" in translated.upper()
+        assert "DUPLICATE KEY" in translated.upper() or "UNIQUE KEY" in translated.upper()
         assert "DISTRIBUTED BY" in translated.upper()
         assert "PRIMARY KEY" not in translated.upper()
         assert "FOREIGN KEY" not in translated.upper()

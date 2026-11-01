@@ -274,10 +274,25 @@ _SF1_TIMEOUT_RUNTIME_ENVELOPE_EVIDENCE = dict.fromkeys(
     _SF1_TIMEOUT_RUNTIME_ENVELOPES, "release UAT dry run 2 (run 41163626947) SF1 timing: terminal=timeout at 1200s"
 )
 
+_LATER_SF1_TIMEOUT_PRUNED_CELLS = (
+    ("sqlite", ("tpch", "tpch_skew")),
+    ("dask-df", ("nyctaxi",)),
+    ("starrocks", ("tpcds_obt", "write_primitives")),
+)
+
+_LATER_SF1_TIMEOUT_RUNTIME_ENVELOPES = {
+    ((platform, benchmark) if benchmark in _SF1_ONLY_BENCHMARKS else (platform, benchmark, 1.0)): _sf1_timeout_reason(
+        platform
+    )
+    for platform, benchmarks in _LATER_SF1_TIMEOUT_PRUNED_CELLS
+    for benchmark in benchmarks
+}
+
 _RELEASE_GATE_RUNTIME_ENVELOPES = (
     _SF1_TIMEOUT_RUNTIME_ENVELOPES
     | _PANDAS_DF_SF1_MEMORY_RUNTIME_ENVELOPES
     | _MEMORY_CATALOG_SF1_RUNTIME_ENVELOPES
+    | _LATER_SF1_TIMEOUT_RUNTIME_ENVELOPES
     | {
         ("sqlite", "datavault", 1.0): _SQLITE_DATAVAULT_SF1_RUNTIME_ENVELOPE_REASON,
         ("sqlite", "tpchavoc", 1.0): _SQLITE_TPCHAVOC_SF1_RUNTIME_ENVELOPE_REASON,
@@ -290,6 +305,10 @@ _RELEASE_GATE_RUNTIME_ENVELOPES = (
 
 _RELEASE_GATE_RUNTIME_ENVELOPE_EVIDENCE = (
     _SF1_TIMEOUT_RUNTIME_ENVELOPE_EVIDENCE
+    | dict.fromkeys(
+        _LATER_SF1_TIMEOUT_RUNTIME_ENVELOPES,
+        "release UAT dry run 4 (run 41255388284) SF1 timing: terminal=timeout at 1200s",
+    )
     | dict.fromkeys(
         _PANDAS_DF_SF1_MEMORY_RUNTIME_ENVELOPES,
         "release UAT dry run 2 (run 41163626947) SF1 memory: UAT_MEMORY_LIMIT limit_gib=13 peak_gib=13.09 / 13.22",

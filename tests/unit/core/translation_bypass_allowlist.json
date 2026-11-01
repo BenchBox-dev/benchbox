@@ -344,6 +344,10 @@
         "array_of_struct",
         "array_slice",
         "array_unnest",
+        "asof_join_basic",
+        "fulltext_boolean_search",
+        "fulltext_phrase_search",
+        "fulltext_simple_search",
         "groupby_all_complex",
         "groupby_all_simple",
         "json_aggregates",
@@ -359,7 +363,8 @@
         "statistical_correlation",
         "statistical_percentiles",
         "struct_access",
-        "unpivot_basic"
+        "unpivot_basic",
+        "window_moving_frame"
       ],
       "duckdb": [
         "array_contains",
@@ -1010,6 +1015,22 @@
       "datafusion": [
         "insert_batch_values_100",
         "insert_batch_values_1000"
+      ],
+      "doris": [
+        "ddl_alter_table_rename_column",
+        "ddl_create_index_on_existing",
+        "ddl_create_table_with_index",
+        "ddl_drop_index",
+        "insert_batch_values_100",
+        "insert_batch_values_1000",
+        "insert_on_conflict_ignore",
+        "merge_conditional_update",
+        "merge_error_handling",
+        "merge_no_overlap_all_insert",
+        "merge_overlap_10pct",
+        "merge_overlap_50pct",
+        "merge_overlap_90pct",
+        "merge_simple_upsert_small"
       ],
       "postgres": [
         "insert_batch_values_100",

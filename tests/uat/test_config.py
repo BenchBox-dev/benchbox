@@ -444,11 +444,12 @@ _SF1_TIMEOUT_PRUNED_CELLS = frozenset(
             "datavault",
             "coffeeshop",
             "tpch",
+            "nyctaxi",
         ),
         "pyspark-df": ("datavault", "tpchavoc", "tpcds", "joinorder", "flightdata"),
         "spark": ("joinorder", "tpchavoc", "tpcds_obt"),
         "pandas-df": ("joinorder", "flightdata", "datavault"),
-        "sqlite": ("joinorder", "flightdata", "tsbs_devops"),
+        "sqlite": ("joinorder", "flightdata", "tsbs_devops", "tpch", "tpch_skew"),
     }.items()
     for benchmark in benchmarks
 )
@@ -466,7 +467,7 @@ def test_release_gate_stage1_prunes_sf1_timeouts_measured_in_dry_run_2():
         if cell.rule_id.endswith(".release_gate_runtime_envelope") and cell.scale == 1.0
     }
 
-    assert len(_SF1_TIMEOUT_PRUNED_CELLS) == 23
+    assert len(_SF1_TIMEOUT_PRUNED_CELLS) == 26
     assert pruned >= _SF1_TIMEOUT_PRUNED_CELLS
     assert _SF1_TIMEOUT_PRUNED_CELLS.isdisjoint(cells)
     for platform, benchmark, _ in _SF1_TIMEOUT_PRUNED_CELLS:
@@ -477,10 +478,8 @@ def test_release_gate_stage1_prunes_sf1_timeouts_measured_in_dry_run_2():
                 if (cell_platform, cell_benchmark) == (platform, benchmark)
             }
     for kept in (
-        ("dask-df", "nyctaxi", 1.0),
         ("pyspark-df", "nyctaxi", 1.0),
         ("spark", "nyctaxi", 1.0),
-        ("sqlite", "tpch", 1.0),
     ):
         assert kept in cells
 
@@ -492,6 +491,10 @@ _DOCKER_SF1_TIMEOUT_PRUNED_CELLS = {
             ("cedardb", "tpcds_obt", 0.01),
             ("cedardb", "tpcds_obt", 0.1),
             ("cedardb", "tpcds_obt", 1.0),
+            ("starrocks", "tpcds_obt", 0.01),
+            ("starrocks", "tpcds_obt", 0.1),
+            ("starrocks", "tpcds_obt", 1.0),
+            ("starrocks", "write_primitives", 1.0),
         }
     ),
     "release-gate-03-docker-oltp.yaml": frozenset(
@@ -574,8 +577,8 @@ def test_release_gate_stage1_prunes_measured_runtime_envelopes():
     for cell in result.cells:
         by_pair.setdefault((cell.platform, cell.benchmark), set()).add(cell.scale)
     eligible = sum(1 for scales in by_pair.values() if set(stage1.scales.rungs).issubset(scales))
-    assert eligible == 115
-    assert stage1.report.cross_scale_coverage_min_pairs == int(0.8 * eligible) == 92
+    assert eligible == 112
+    assert stage1.report.cross_scale_coverage_min_pairs == int(0.8 * eligible) == 89
 
 
 def test_release_gate_cross_scale_floors_are_tuned_and_achievable():

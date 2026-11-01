@@ -8,6 +8,7 @@ from collections.abc import Iterable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict, dataclass
+from functools import cache
 from typing import Any, Callable
 
 from benchbox.utils.query_shape_rewrites import (
@@ -26,6 +27,7 @@ from benchbox.utils.query_shape_rewrites import (
 )
 
 
+@cache
 def _keep_doris_full_outer_join() -> None:
     from benchbox._vendor.sqlglot import exp, transforms
     from benchbox._vendor.sqlglot.generators.doris import DorisGenerator
@@ -39,8 +41,6 @@ def _keep_doris_full_outer_join() -> None:
         ]
     )
 
-
-_keep_doris_full_outer_join()
 
 SCHEMA_DDL_SCOPE = "schema_ddl"
 WORKLOAD_QUERY_SCOPE = "workload_query"
@@ -394,6 +394,7 @@ def translate_sql_query(
                 expression = rewrite_subqueries(expression.copy())
 
             if tgt == "doris":
+                _keep_doris_full_outer_join()
                 for doris_rewrite in (
                     "alias_derived_tables",
                     "date_column_integer_arithmetic",
@@ -924,6 +925,17 @@ def contains_division(sql: str, dialect: str) -> bool:
 def is_create_table(ddl: str) -> bool:
     body = "\n".join(line for line in ddl.splitlines() if not line.lstrip().startswith("--"))
     return body.lstrip().upper().startswith("CREATE TABLE")
+
+
+def is_unfiltered_update_or_delete(sql: str, dialect: str) -> bool:
+    from benchbox._vendor import sqlglot
+    from benchbox._vendor.sqlglot import exp
+
+    try:
+        tree = sqlglot.parse_one(sql, read=resolve_sql_dialect(dialect))
+    except Exception:
+        return False
+    return isinstance(tree, (exp.Update, exp.Delete)) and not tree.args.get("where")
 
 
 def create_table_shape(ddl: str, source_dialect: str = "standard") -> tuple[str, list[str], list[str]]:
