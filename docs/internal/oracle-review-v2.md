@@ -891,8 +891,9 @@ to GitHub.
   `ORACLE_CLOUD_GATEWAY_TOKEN`, refusing if either is missing.
   The tailnet is reachable only through the local proxy that `make cloud-gateway`
   records as `gateway_proxy=` in `<git dir>/benchbox-cloud-gateway.status`: the
-  health check uses it, and the reviewer gets `HTTPS_PROXY`, `HTTP_PROXY` and a
-  loopback-only `NO_PROXY` for the cloud client alone, never for local or CI.
+  health check uses it, and the reviewer gets `HTTPS_PROXY`, `HTTP_PROXY`,
+  `PI_PROXY` and a loopback-only `NO_PROXY` for the cloud client alone, never
+  for local or CI.
   `write_reviewer_home` accepts `http://` on a loopback host only for local
   review; the CI loop still requires `https://`. Token, key and URL values are
   never printed: every line passes the redaction that covers the stored result.
