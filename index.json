@@ -17217,6 +17217,13 @@
       "status": "done",
       "title": "An oversize pull request never gets a review, yet the sweep keeps retrying it and posting pending reviews"
     },
+    "oracle-owner-decisions-visible-to-reviewer-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Give the oracle reviewer a trusted record of owner decisions"
+    },
     "oracle-patch-hash-first-hunk-relocation-20261023": {
       "claim": null,
       "needs": [

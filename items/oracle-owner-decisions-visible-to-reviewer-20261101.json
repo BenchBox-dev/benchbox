@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "The reviewer prompt includes owner decisions read from develop, not from the PR head; a scenario shows a decision added only on the PR branch has no effect."
+  ],
+  "description": "On #3829 the CI oracle twice maintained findings that the owner had accepted on 2026-10-25 (Gate 4, stale green until the next sweep), because the decision lived only in the tracker and in docs the same PR added, so the reviewer could not treat it as authority. Owner decisions that bound review outcomes need a develop-resident record (for example under _project/decisions/) that the reviewer reads from the trusted checkout, so a PR cannot write its own exemption.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e",
+      "at": "2026-11-01T13:44:50Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "4e5426dc00b14afda68be94c5adb2cdb",
+      "session_id": "1273bcfa4d0e4ed89453e147e32359eb"
+    }
+  ]
+}
