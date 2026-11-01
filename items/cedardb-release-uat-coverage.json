@@ -4,6 +4,7 @@
     "SF0.01 and SF0.1 cells finish under 1200 s on the 4 vCPU / 16 GB release runner",
     "CedarDB is back in the stage-2 release UAT shard with recomputed floors and a passing dry run"
   ],
+  "context": "When CedarDB left the gate, the release-gate runtime envelope for ('cedardb', 'tpcds_obt') was removed. Restore it with that reason. CedarDB cannot load the 5,041,336-row, 715-column TPC-DS OBT at SF1 within the release-host disk. In dry runs 3 (run 41243890531) and 4 (run 41255388284) the cell exhausted the 144 GiB runner disk. A local SF1 Parquet COPY reproduction (pinned image, mem_limit 8g) grew the data directory to 17.6 GB at 1,048,577 rows and kept growing, so the full load needs well over 80 GB.",
   "description": "CedarDB was removed from the 0.5.0 release UAT by owner decision on 2026-11-01. In release UAT dry run 5 (run 41309974530, stage 2 cedardb, 8 GiB container) these cells failed: tpcdi QV1/QAQ5/QAQ7 at all scales; read_primitives (aggregation_distinct, intrinsic_to_date, window_moving_frame, json_*); write_primitives (insert_* at setup); transaction_primitives (commit, rollback, savepoint); and tpchavoc at SF0.01 (1_v1, 4_v7, 16_v7, 17_v7, 17_v10). tpchavoc and tpch_skew timed out at 1200 s even at SF0.01 and SF0.1, and vector_search exits 1. The tpcds_obt SF1 disk envelope stays.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "617311ed61db4af5918f3207ca42d984",
+      "session_id": "d069a37e6be440a9a93d9487f64d29cf"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b5c0af9e80316c2305b0741d",
+      "at": "2026-11-01T23:28:31Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c33b80e9af6c4c3caf9499edbae93a0f",
       "session_id": "d069a37e6be440a9a93d9487f64d29cf"
     }
   ]
