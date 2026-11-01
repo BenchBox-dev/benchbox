@@ -24116,17 +24116,12 @@
       "title": "Check that site docs links to core directories resolve against every ancestor directory, as repo-files.json now lists them"
     },
     "site-docs-automatic-pseudonym-salt": {
-      "claim": {
-        "expires_at": "2026-11-02T13:04:10Z",
-        "generation": "ac72a9204dbe42878f579daa05cdf049",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e275448d846640d27249a6f8"
-      },
+      "claim": null,
       "needs": [
         "public-pseudonym-salt-automatic"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Site docs: describe the automatic pseudonym salt in the submission guide and Python API reference"
     },
     "site-docs-broken-fragments-20261009": {
