@@ -19400,6 +19400,13 @@
       "status": "done",
       "title": "Presto and Trino Platform Documentation"
     },
+    "presto-trino-release-uat-coverage": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Restore Presto and Trino to the release UAT gate"
+    },
     "pricing-config-validation-coverage": {
       "claim": null,
       "needs": [

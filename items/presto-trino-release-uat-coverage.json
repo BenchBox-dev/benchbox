@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Every Presto and Trino release UAT cell passes, or carries a documented skip that cites a reproduced engine error",
+    "Presto and Trino are back in the stage-3 query-engines shard with recomputed floors and a passing dry run"
+  ],
+  "description": "Presto and Trino were removed from the 0.5.0 release UAT by owner decision on 2026-11-01. In release UAT dry run 5 (run 41309974530, stage 3 query-engines) the JSON-batch loader loaded most benchmarks, but these still failed: tpcds queries 92, 93, 95, 97, 98, 99 and others (failed:unofficial); tpcdi QV1/QV2/QA*; clickbench 19, 29, 37-40; amplab 2, 2a, 3-5; coffeeshop QSA3/QPR2/QTR1/QTM1/QQC2; and Trino read_primitives approx_top_k_lineitem. Loads for tsbs_devops, nyctaxi, flightdata, datavault and vector_search exit 1. Write and transaction primitives stay gated, and the SF1 JoinOrder and TPC-DS OBT memory-catalog envelopes stay, until a Hive or Iceberg catalog is added to the stacks.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b5c0af9e80316c2305b0741d",
+      "at": "2026-11-01T23:23:24Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5f45a09a61b149a3b7ae382a55b95ca3",
+      "session_id": "d069a37e6be440a9a93d9487f64d29cf"
+    }
+  ]
+}
