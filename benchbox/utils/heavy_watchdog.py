@@ -19,6 +19,7 @@ import psutil
 
 if TYPE_CHECKING:
     from benchbox.utils.process_tree import TreeMember, TreeSample
+    from benchbox.utils.vm_footprint import VmReading
 
 MODE_ENV = "BENCHBOX_HEAVY_WATCHDOG"
 KILL_FREE_DISK_GIB_ENV = "BENCHBOX_HEAVY_KILL_FREE_DISK_GIB"
@@ -42,7 +43,8 @@ FLAG_DESCENDANTS_KILLED = b"K"
 FLAG_HOLDER_TERMINATED = b"H"
 VM_NOTE = (
     "VMs and containers started through the Apple container runtime are children of launchd, not of the lock "
-    "holder, so their footprint is not tree-attributed; VM memory is bounded by machine size and admission"
+    "holder, so their footprint is not tree-attributed; only the Linux machine run through "
+    "scripts/linux_machine_run.sh is attributed, against its own VM allowance and never the shared budget"
 )
 
 
@@ -62,6 +64,7 @@ def _load_sibling(name: str) -> ModuleType:
 
 
 process_tree = _load_sibling("process_tree")
+vm_footprint = _load_sibling("vm_footprint")
 
 
 def mode_from_env() -> str:
@@ -145,9 +148,17 @@ def read_disks(roots: Sequence[tuple[str, str]]) -> list[DiskFree]:
 
 
 def evaluate_breaches(
-    footprint_bytes: int, pressure_level: int | None, disks: Sequence[DiskFree], policy: WatchPolicy
+    footprint_bytes: int,
+    pressure_level: int | None,
+    disks: Sequence[DiskFree],
+    policy: WatchPolicy,
+    vm: VmReading | None = None,
 ) -> list[Breach]:
     breaches: list[Breach] = []
+    if vm is not None:
+        detail = vm_footprint.vm_breach_detail(vm)
+        if detail is not None:
+            breaches.append(Breach(f"VM footprint ({vm.machine})", detail[0], detail[1]))
     if policy.budget_bytes > 0 and footprint_bytes > policy.budget_bytes:
         breaches.append(
             Breach(
@@ -172,6 +183,20 @@ def evaluate_breaches(
     return breaches
 
 
+def default_vm_reader() -> Callable[[TreeSample], VmReading | None]:
+    from benchbox.utils import linux_machine
+
+    machine = linux_machine.machine_name(os.environ)
+    attributor = vm_footprint.VmAttributor(footprint_reader=process_tree.footprint.pid_footprint_bytes)
+
+    def read(sample: TreeSample) -> VmReading | None:
+        if sys.platform != "darwin":
+            return None
+        return attributor.attribute([member.pid for member in sample.members], machine, os.environ)
+
+    return read
+
+
 class Watchdog:
     def __init__(
         self,
@@ -180,6 +205,7 @@ class Watchdog:
         sampler: Callable[..., TreeSample | None] = process_tree.sample_tree,
         pressure_reader: Callable[[], int | None] = read_pressure_level,
         disk_reader: Callable[[Sequence[tuple[str, str]]], list[DiskFree]] = read_disks,
+        vm_reader: Callable[[TreeSample], VmReading | None] | None = None,
         sleeper: Callable[[float], None] = time.sleep,
         clock: Callable[[], float] = time.monotonic,
         out: IO[str] | None = None,
@@ -189,6 +215,7 @@ class Watchdog:
         self._sampler = sampler
         self._pressure_reader = pressure_reader
         self._disk_reader = disk_reader
+        self._vm_reader = default_vm_reader() if vm_reader is None else vm_reader
         self._sleeper = sleeper
         self._clock = clock
         self._out = sys.stderr if out is None else out
@@ -241,7 +268,7 @@ class Watchdog:
                 f"(inode {self.policy.lock_inode} -> {current}); mutual exclusion may be broken. Not killing anything"
             )
 
-    def _report(self, sample: TreeSample, breaches: Sequence[Breach]) -> None:
+    def _report(self, sample: TreeSample, breaches: Sequence[Breach], vm: VmReading | None = None) -> None:
         action = "kill" if self.policy.mode == "kill" else "warn only"
         for breach in breaches:
             self.log(f"BREACH {breach.signal}: measured {breach.measured}, limit {breach.limit}; action: {action}")
@@ -254,6 +281,8 @@ class Watchdog:
         if unmeasured:
             names = ", ".join(f"{m.pid} {m.name or '?'}" for m in unmeasured)
             self.log(f"footprint unreadable (counted as 0): {names}")
+        if vm is not None:
+            self.log(vm_footprint.vm_footprint_line(vm))
         self.log(f"note: {VM_NOTE}")
 
     def _signal_descendant(self, member: TreeMember, sig: int) -> None:
@@ -319,11 +348,13 @@ class Watchdog:
         if sample is None:
             return False
         self._check_inode()
+        vm = self._vm_reader(sample)
         breaches = evaluate_breaches(
             sample.total_bytes,
             self._pressure_reader(),
             self._disk_reader(self.policy.disks),
             self.policy,
+            vm,
         )
         if not breaches:
             self._in_breach = False
@@ -331,9 +362,9 @@ class Watchdog:
         if self.policy.mode == "warn":
             if not self._in_breach:
                 self._in_breach = True
-                self._report(sample, breaches)
+                self._report(sample, breaches, vm)
             return True
-        self._report(sample, breaches)
+        self._report(sample, breaches, vm)
         self._kill_tree(sample)
         return True
 
