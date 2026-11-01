@@ -8655,6 +8655,13 @@
       "status": "done",
       "title": "Find the owner of the v0-4-2-release-scope worktree and dispose of it"
     },
+    "dist-artifact-producer-binding-fails-under-jobs-api-lag-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "The dist-artifact producer step fails when the jobs API is slow to list its own job"
+    },
     "distinct-database-naming-based-on-configuration-characteristics": {
       "claim": null,
       "needs": [],

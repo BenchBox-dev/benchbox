@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "A producer that starts while the jobs API lags by more than 60 seconds still binds, or fails with a message that names the lag and says a rerun is safe",
+    "A test covers the lag with a fake jobs API and fails with the 60-second limit in place",
+    "The change keeps the fail-closed admission rules in docs/internal/release-artifacts.md"
+  ],
+  "context": "Found 2026-10-30 while diagnosing a red develop. The step log was not available, so the lag is an inference from the 93-second failure and the job having waited 2.5 hours for a runner. This is release-adjacent supply-chain code that another session owns while v0.5.0 is in flight; do not edit it without that owner's agreement.",
+  "description": "scripts/release_artifact_consumer.py producer polls the jobs API for 60 seconds (PRODUCER_WAIT_SECONDS) until its own job is listed in_progress. Under load the listing lagged and the 'Bind distributions to the producer attempt' step failed about 93 seconds after the job started: Trunk run 41081078735 (commit 5635b1417) and run 41081661345 (commit f4e091e12). A failed producer leaves that commit without a releasable artifact and turns Trunk red for a cause unrelated to the code.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:96cfd54c7d2180daa76d178f",
+      "at": "2026-11-01T13:46:47Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "66298c25eaf44a3999fc0a34ee988149",
+      "session_id": "77bfd3a6737c4f8e9b68d27f796e8651"
+    }
+  ]
+}
