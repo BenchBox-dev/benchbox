@@ -550,6 +550,8 @@
     "reason": "DuckDB targets run the duckdb-authored query text untranslated (native passthrough, pre-existing and out of scope); every other target translates from the duckdb source.",
     "dialects": {
       "clickhouse": [
+        "41",
+        "44",
         "47",
         "57",
         "66"

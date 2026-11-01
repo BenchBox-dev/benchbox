@@ -27,6 +27,7 @@ class ValidationQuery:
     check_expression: str | None = None
     expected_value_min: float | None = None
     expected_value_max: float | None = None
+    bounds_scale_with_sf: bool = False
     platform_overrides: dict[str, str | None] = field(default_factory=dict)
 
 
