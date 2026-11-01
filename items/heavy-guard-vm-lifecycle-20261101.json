@@ -1,0 +1,28 @@
+{
+  "acceptance": [
+    "Stub-CLI test: after a wrapped run the machine is stopped whether it was running or stopped before; with BENCHBOX_KEEP_LINUX_MACHINE=1 it is left in its prior state; the run's exit code is preserved.",
+    "Sentinel test with injected readings: a running machine with no lock holder and no machine-run process for longer than the idle window is stopped once; a machine with a live lock holder, a live `container machine run` process, or within the window is not; warn mode signals and stops nothing; another machine name is never touched.",
+    "heavy-status test: renders the idle-VM flag only when the machine is running and no live holder exists.",
+    "Smoke on the Mac (owner present): with the lock free and the machine idle, `make heavy-status` shows the flag; a warn-mode sentinel run reports it without stopping.",
+    "make comment-policy-check, lint, typecheck, makefile-inventory-check, test-fast pass."
+  ],
+  "context": "Evidence 2026-11-01: benchbox-agent (4 CPU, 8G) was running at a 7.83 GiB footprint (pid 49810, started 2026-10-31 15:45 local, before PR #3848 merged) with no lock holder, no `container machine run` process and memory pressure level 2 / memorystatus_level 29. scripts/linux_machine_run.sh restores the machine's prior state, so a machine already running stays running; the choke-point test only covers repo files; the VM process is a launchd child, so the watchdog budget does not count it; admission needs 2 GiB to boot an 8 GiB machine.",
+  "description": "Problem: the Linux VM can stay resident (8 GiB reserved) with nothing holding the host lock, because the wrapper restores the machine's prior state and nothing reclaims a machine left running by a hand-started or pre-guard run.\n\nChange:\n1. scripts/linux_machine_run.sh stops the machine after every run, whatever its prior state, unless BENCHBOX_KEEP_LINUX_MACHINE=1. Runs are serialized by the host lock, so no other guarded run can be using it.\n2. The sentinel stops the machine when it is running, no live process holds the host lock, and no host process running `container machine run`, `container machine exec` or scripts/linux_machine_run.sh has been seen for BENCHBOX_LINUX_MACHINE_IDLE_MINUTES (default 10). Log the action; warn mode reports only.\n3. make heavy-status flags 'VM running with no lock holder' with the machine's configured memory and how long it has been idle, if known.\n4. Update docs/agent/heavy-work.md and the tests/README.md heavy-work sections; changelog fragment.\n\nDecision gates:\n- G1 (stop condition): confirm from `container machine --help`/docs that `container machine stop` is graceful and that a stopped machine boots again on the next `container machine run`; if either fails, stop and record.\n- G2 (owner gate): the sentinel acts only once installed; installing the LaunchAgent stays an owner action.\n\nGuardrails: linked worktree via make worktree-create; stage paths explicitly. [COMMENT-POLICY-001]: no comments or docstrings. Tests use stub `container` executables, tmp BENCHBOX_TEST_LOCK_DIR and injected readings; never touch the real lock, and never start, stop or resize a real VM from tests. Act only on the machine named by CI_LINUX_MACHINE (default benchbox-agent); never touch other machines (e.g. ss-dev) or containers.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3848",
+    "scripts/linux_machine_run.sh",
+    "benchbox/utils/heavy_sentinel.py",
+    "benchbox/utils/heavy_status.py",
+    "tests/unit/test_heavy_choke_points.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:94e4d2f7dee4726eca194412",
+      "at": "2026-11-01T13:15:08Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6501a993adf349bfbc9bbb29db61ee9f",
+      "session_id": "6f8f4a28707f4702ad48cd7b8d6aaabb"
+    }
+  ]
+}

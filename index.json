@@ -12787,6 +12787,13 @@
       "status": "done",
       "title": "Make heavy serial pytest sessions and heavy UAT commands take the host lock with admission and watchdog"
     },
+    "heavy-guard-vm-lifecycle-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Stop the Linux VM after guarded runs and when it sits idle with no lock holder"
+    },
     "heavy-guard-watchdog-20261030": {
       "claim": null,
       "needs": [
