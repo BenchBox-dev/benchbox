@@ -763,6 +763,13 @@ class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
                 connection.rollback()
                 table_stats[table_name_lower] = 0
 
+        for loaded_table in [name for name, rows in table_stats.items() if rows]:
+            try:
+                self.analyze_table(connection, loaded_table)
+            except Exception as e:
+                self.logger.warning(f"ANALYZE failed for {loaded_table}: {e}")
+                connection.rollback()
+
         cursor.close()
         loading_time = elapsed_seconds(start_time)
 

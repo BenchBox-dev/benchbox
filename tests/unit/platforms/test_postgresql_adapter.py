@@ -584,7 +584,7 @@ class TestPostgreSQLDataLoading:
         written = "".join(call.args[0] for call in copy_cm.write.call_args_list)
         assert "1,alice" in written
         assert "6,frank" in written
-        mock_conn.commit.assert_called_once_with()
+        assert mock_conn.commit.call_count == 2
 
     def test_load_data_preserves_record_boundary_without_trailing_newline(self, postgres_stubs, tmp_path):
         mock_conn = Mock()
