@@ -4,7 +4,7 @@
     "Site docs build and the site's CI pass; the site's docs-contract checks pass.",
     "Merged only after explicit owner approval for this production deploy in the current conversation; the deploy run succeeds; the live https://benchbox.dev/docs/contributing-results.html shows the new text and the live Python API reference page shows the `ensure_public_pseudonym_salt` entry (fetch and quote one sentence from each)."
   ],
-  "context": "Plan: automatic pseudonym salt (owner request 2026-10-31), review finding R4: user and API docs live in benchbox-site.\n\nDECISION GATES: G1 merging deploys production: ask the owner for approval of this specific PR before arming or merging; open and get CI green first. G2 if a snapshot-digest or other deploy gate needs a repository variable, ask the owner (only the owner sets site variables).\n\nGUARDRAILS: no salt values in docs or PR text; follow the site repo's own AGENTS/contributing rules and PR flow; do not touch other sessions' site PRs (e.g. #84).\n\nTodoReview 2026-10-31 applied: live check covers the API reference page too.\n\n2026-10-31 owner asked to consolidate PRs: this item and usability-site-error-text-sync ship as ONE benchbox-site PR (one deploy approval), opened after core #3878, #3895 and #3897 merge.",
+  "context": "Plan: automatic pseudonym salt (owner request 2026-10-31), review finding R4: user and API docs live in benchbox-site.\n\nDECISION GATES: G1 merging deploys production: ask the owner for approval of this specific PR before arming or merging; open and get CI green first. G2 if a snapshot-digest or other deploy gate needs a repository variable, ask the owner (only the owner sets site variables).\n\nGUARDRAILS: no salt values in docs or PR text; follow the site repo's own AGENTS/contributing rules and PR flow; do not touch other sessions' site PRs (e.g. #84).\n\nTodoReview 2026-10-31 applied: live check covers the API reference page too.\n\n2026-10-31 owner asked to consolidate PRs: this item and usability-site-error-text-sync ship as ONE benchbox-site PR (one deploy approval), opened after core #3878, #3895 and #3897 merge.\n\nSite PR BenchBox-dev/benchbox-site#100 (ci green) covers this item and usability-site-error-text-sync. Verified against core develop after merges (#3878 cd374960b6, #3895 d9ac8d7904, #3897 dada7fc7b5): ensure_public_pseudonym_salt resolution order explicit > env > ~/.benchbox/submission_salt, create 0600 in 0700 dir; submit/export/publish run call ensure_publication_salt; submit --dry-run and publish run --dry-run create nothing; from_public_environ(require_salt=True) reads the file but never creates it. Not merged; awaiting owner production-deploy approval.",
   "description": "After public-pseudonym-salt-automatic merges, the benchbox-site docs still tell users to set BENCHBOX_MACHINE_ID_SALT before submitting. Update benchbox-site `docs/contributing-results.md` (salt prerequisite section, ~lines 10 and 43-55) and `docs/reference/python-api/result-analysis.md` (~735-748: `from_public_environ`, `MissingPublicPseudonymSaltError`, add `ensure_public_pseudonym_salt`) to describe: the salt is created automatically at ~/.benchbox/submission_salt on first `benchbox submit` / `export` / `publish run`; BENCHBOX_MACHINE_ID_SALT overrides it (use to share one salt across machines or match a CI secret); `--dry-run` never creates it; back it up to keep pseudonyms stable; containers or CI with an ephemeral HOME get a new salt per run, which changes pseudonyms and hosted idempotency keys; rotation changes pseudonyms of re-staged results. Text must match the merged core behaviour (cite the core merge commit in the PR body). Any merge to benchbox-site `main` deploys production.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox-site"
@@ -32,6 +32,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "74006f1f35ca49de92b741d778d81c2c",
+      "session_id": "a36a04b6bc394082b5008f654e1bf00b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e275448d846640d27249a6f8",
+      "at": "2026-11-01T03:42:51Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1c8534a0a6414220ba74e1cbd1e0f006",
       "session_id": "a36a04b6bc394082b5008f654e1bf00b"
     }
   ]
