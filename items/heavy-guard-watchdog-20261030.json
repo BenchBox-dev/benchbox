@@ -13,7 +13,7 @@
     "`make comment-policy-check`, `make lint`, `make typecheck`, `make duplicate-check-delta`, `make test-fast` pass.",
     "If `make heavy-run` exists when this lands, switch it to `--guard` and smoke it with a tiny budget; otherwise heavy-guard-status-policy adds `--guard` and owns that smoke."
   ],
-  "context": "Incident evidence: JetsamEvent-2026-10-30-161255.ips top entries python3.12 64739 25.83 GiB, Virtualization VMs 6.06/5.14/2.13/1.13 GiB, java ~1.09 GiB each. Review probes: ulimit -v/-d invalid on macOS; taskpolicy -m not enforced; footprint vs RSS gap 3.4x on a VM process.",
+  "context": "Incident evidence: JetsamEvent-2026-10-30-161255.ips top entries python3.12 64739 25.83 GiB, Virtualization VMs 6.06/5.14/2.13/1.13 GiB, java ~1.09 GiB each. Review probes: ulimit -v/-d invalid on macOS; taskpolicy -m not enforced; footprint vs RSS gap 3.4x on a VM process.\n\nDelivered in PR #3848 (https://github.com/BenchBox-dev/benchbox/pull/3848), squash-merged to develop as 2ab29ce3bb on 2026-11-01. The whole heavy-guard series landed together at the owner's request.",
   "deferrals": [
     {
       "created_at": "2026-10-31T00:33:50Z",
@@ -77,6 +77,14 @@
       "generation": "622517bcb11342318694574ab4374e70",
       "op": "take",
       "op_id": "6186939da8ec4bbbad265e40b6523a71",
+      "session_id": "6f8f4a28707f4702ad48cd7b8d6aaabb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:94e4d2f7dee4726eca194412",
+      "at": "2026-11-01T02:24:03Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "def96ac44c2d4c9389b6c4b36a9cde3d",
       "session_id": "6f8f4a28707f4702ad48cd7b8d6aaabb"
     }
   ]
