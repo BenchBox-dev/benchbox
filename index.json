@@ -1776,6 +1776,16 @@
       "status": "open",
       "title": "Document the integration batch loop in AGENTS.md and docs/agent, keeping it opt-in until the pilot passes"
     },
+    "batch-loop-pilot-20261101": {
+      "claim": null,
+      "needs": [
+        "batch-loop-disposable-e2e-20261101",
+        "skill-catalog-batch-loop-20261101"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Pilot the batch loop on a real related batch through a merged final PR"
+    },
     "batch-member-side-tooling-20261101": {
       "claim": null,
       "needs": [
