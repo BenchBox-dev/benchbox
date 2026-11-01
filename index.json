@@ -12794,6 +12794,13 @@
       "status": "open",
       "title": "Size Linux VM admission to the machine's configured memory"
     },
+    "heavy-guard-vm-footprint-attribution-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Research attributing the Linux VM's footprint to the lock holder that booted it"
+    },
     "heavy-guard-vm-lifecycle-20261101": {
       "claim": null,
       "needs": [],

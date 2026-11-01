@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Research note in the item context or PR: probes tried, outputs, and the mapping chosen or the negative result.",
+    "If implemented: a test with injected process and machine readings shows the VM footprint counted for the booting holder and never for another machine; a breach report names the VM.",
+    "If implemented: make comment-policy-check, lint, typecheck, test-fast pass."
+  ],
+  "context": "Evidence 2026-11-01: benchbox-agent (4 CPU, 8G) was running at a 7.83 GiB footprint (pid 49810, started 2026-10-31 15:45 local, before PR #3848 merged) with no lock holder, no `container machine run` process and memory pressure level 2 / memorystatus_level 29. scripts/linux_machine_run.sh restores the machine's prior state, so a machine already running stays running; the choke-point test only covers repo files; the VM process is a launchd child, so the watchdog budget does not count it; admission needs 2 GiB to boot an 8 GiB machine.",
+  "description": "Problem: Apple container VMs run as launchd children (com.apple.Virtualization.VirtualMachine XPC service), so the watchdog's tree footprint never includes them and a run's real memory cost is invisible to the budget.\n\nQuestion: can the VM process for a named machine be identified reliably and without elevated rights (for example from `container machine inspect`, the XPC process's arguments, open files, or launchd labels)?\n\nChange if yes: the watchdog adds that VM's footprint to the holder tree while the guarded run that booted it is active, and the breach report names it. If no reliable mapping exists, record the negative result with the probes tried and close the item.\n\nDecision gates:\n- G1 (stop condition): any mapping that could match another machine or another user's VM is rejected; never guess.\n\nGuardrails: linked worktree via make worktree-create; stage paths explicitly. [COMMENT-POLICY-001]: no comments or docstrings. Tests use stub `container` executables, tmp BENCHBOX_TEST_LOCK_DIR and injected readings; never touch the real lock, and never start, stop or resize a real VM from tests. Act only on the machine named by CI_LINUX_MACHINE (default benchbox-agent); never touch other machines (e.g. ss-dev) or containers.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3848",
+    "scripts/linux_machine_run.sh",
+    "benchbox/utils/heavy_sentinel.py",
+    "benchbox/utils/heavy_status.py",
+    "tests/unit/test_heavy_choke_points.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:94e4d2f7dee4726eca194412",
+      "at": "2026-11-01T13:15:15Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c1d3de3122224579b47a34b4550d0d6a",
+      "session_id": "6f8f4a28707f4702ad48cd7b8d6aaabb"
+    }
+  ]
+}
