@@ -12772,12 +12772,17 @@
       "title": "Rename test.lock to heavy.lock and BENCHBOX_TEST_LOCK_* to BENCHBOX_HEAVY_* once the guard is stable"
     },
     "heavy-guard-test-harness-20261030": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-02T02:24:13Z",
+        "generation": "fe83238888ea4fcba31fa907db33d8e2",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:94e4d2f7dee4726eca194412"
+      },
       "needs": [
         "heavy-guard-watchdog-20261030"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Make heavy serial pytest sessions and heavy UAT commands take the host lock with admission and watchdog"
     },
     "heavy-guard-watchdog-20261030": {
