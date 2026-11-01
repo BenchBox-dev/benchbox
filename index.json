@@ -17242,12 +17242,7 @@
       "title": "BenchBox owner: make oracle-engine-installed a required check"
     },
     "oracle-local-prepr-review-20261025": {
-      "claim": {
-        "expires_at": "2026-11-02T22:03:58Z",
-        "generation": "4479af01b10846b0b1db5ce9bcd7b30d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e"
-      },
+      "claim": null,
       "needs": [
         "oracle-verdict-single-job-20261025",
         "oracle-gateway-named-clients-20261025",
@@ -17257,7 +17252,7 @@
         "oracle-review-docs-claims-sweep-20261026"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Run a local oracle review inside make pr-open and refuse to open a PR with Critical or High findings"
     },
     "oracle-local-review-lock-per-patch-20261027": {
