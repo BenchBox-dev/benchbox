@@ -17840,6 +17840,13 @@
       "status": "open",
       "title": "Remove the gate dispatch from the verdict run now that it posts oracle-gate itself"
     },
+    "oracle-verdict-same-second-push-and-ready-cancels-new-head-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "A push and ready_for_review in the same second can leave the new head without an oracle verdict"
+    },
     "oracle-verdict-single-job-20261025": {
       "claim": null,
       "needs": [],

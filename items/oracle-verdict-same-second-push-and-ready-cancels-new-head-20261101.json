@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "A scenario in tests/integration/oracle (registered in ORACLE_SCENARIO_TESTS) delivers a push and a ready_for_review event for different heads in the same second and ends with a verdict for the new head, proven to fail with the defect reintroduced",
+    "The scenario runs only the fake omp executable and fake servers, never a real omp or model-provider call"
+  ],
+  "context": "Found 2026-10-31 by an adversarial review of oracle queue load. Evidence: oracle-verdict.yml concurrency group (lines 32-33, cancel-in-progress for pull_request_target) and the skip message at _project/scripts/oracle_reviewers/cli.py:382-383; log of run 41208598369. The cause of the same-second pair (tooling that marks a pull request ready right after pushing) is an inference, not confirmed. Oracle workflows are soundness paths: the owner authorized reviewer code and tests only for the earlier quota item, so ask before editing workflow files.",
+  "description": "When a push and a ready_for_review event land in the same second, the event that carries the older head wins the verdict concurrency group and cancels the run for the new head. That run then skips with 'a newer head exists; its own run reviews it', so no run reviews the new head until another trigger fires. Pull requests 3868, 3870 and 3875 showed oracle-gate failure 'waiting for the oracle's verdict' for about 70 minutes.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:96cfd54c7d2180daa76d178f",
+      "at": "2026-11-01T13:46:42Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "834ca3fde5994a22994ea1508f739d85",
+      "session_id": "77bfd3a6737c4f8e9b68d27f796e8651"
+    }
+  ]
+}
