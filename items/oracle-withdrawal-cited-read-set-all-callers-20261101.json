@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "Every caller passes the read set or the parameter becomes required; a test fails if a withdrawal citing an unread path is accepted on any path."
+  ],
+  "description": "#3836 made withdrawal_cited require the cited path in the reviewer's read set, but only the runner passes it (protocol.py:608). report.py:349 and the other callers (attempts.py, protocol.contradiction) call it without a read set, so there it only checks that some citation exists. That is safe today only because mark_citations has already demoted unread withdrawals before those callers run; a reordering would silently accept an uncited withdrawal.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e",
+      "at": "2026-11-01T13:44:32Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "89be0eadd4944e6bbe0a08a8bac995ff",
+      "session_id": "1273bcfa4d0e4ed89453e147e32359eb"
+    }
+  ]
+}

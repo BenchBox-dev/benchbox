@@ -17777,6 +17777,13 @@
       "status": "done",
       "title": "Add the oracle verdict workflow to the soundness path list so changes to it need an oracle review"
     },
+    "oracle-withdrawal-cited-read-set-all-callers-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Pass the read set to every withdrawal_cited caller"
+    },
     "orphan-detector-freeze-branch-residual-20260804": {
       "claim": null,
       "needs": [],
