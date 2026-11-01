@@ -19100,6 +19100,13 @@
       "status": "done",
       "title": "Address pre-existing issues surfaced by complexity batch 8-10 review"
     },
+    "premerge-composed-tree-gap-red-trunk-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Two individually green PRs broke develop because no check tests them combined before merge"
+    },
     "prepare-project-for-publication": {
       "claim": null,
       "needs": [],
