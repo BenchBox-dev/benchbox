@@ -123,8 +123,9 @@ documentation tree, so the complete runnable flow is included here:
 
 1. Install BenchBox with the extra for your platform, then run a complete suite:
    `uv run -- benchbox run --platform <platform> --benchmark <benchmark> --scale <sf>`.
-2. Set a stable, private `BENCHBOX_MACHINE_ID_SALT` for public submission. Store
-   and reuse it through a secret manager or protected local environment config.
+2. The pseudonym salt is created automatically in `~/.benchbox/submission_salt`
+   on the first `benchbox submit`. Set `BENCHBOX_MACHINE_ID_SALT` only to
+   override it; see "Pseudonym salt" below.
 3. Package the latest result: `uv run -- benchbox submit --last --output ./submission`.
 4. Fork [`BenchBox-dev/BenchBox`](https://github.com/BenchBox-dev/BenchBox), check out its
    `published-results` branch, and copy `submission/bundle/` plus the generated
@@ -160,10 +161,10 @@ exporter keeps absolute `platform.config.database_path` and
 `benchbox submit` packages the raw bytes and refuses for the same reasons.
 
 Maintainers stage locally produced results with the same anonymiser the seed
-lane uses, and write the internal manifest in the same step:
+lane uses, and write the internal manifest in the same step. The salt comes from
+`BENCHBOX_MACHINE_ID_SALT` when set, otherwise from `~/.benchbox/submission_salt`:
 
 ```bash
-export BENCHBOX_MACHINE_ID_SALT=<the maintainer pseudonym salt; never commit it>
 BENCHBOX_OUTPUT_DIR=~/Developer/benchmark_runs uv run -- benchbox run ...
 uv run -- python scripts/stage_seed_corpus_bundle.py --internal-manifest \
   ~/Developer/benchmark_runs/results/<run>.json <staging dir>
@@ -171,10 +172,53 @@ uv run -- python scripts/validate_submission.py --require-manifest <staging dir>
 ```
 
 The staged bundle carries `export.anonymized: true`, redacted paths and tuning
-statements, and a `<run>.manifest.json` with `result_source: internal`. A
-throwaway salt is enough to check validation, but bundles destined for the
-corpus must use the maintainer salt so pseudonyms stay stable across runs.
-Copying staged files into `results-data/bundles/` needs the owner's approval.
+statements, and a `<run>.manifest.json` with `result_source: internal`. Bundles
+destined for the corpus must use the maintainer salt (see "Pseudonym salt"
+below) so pseudonyms stay stable across runs. Copying staged files into
+`results-data/bundles/` needs the owner's approval.
+
+### Pseudonym salt
+
+The salt that seeds public pseudonyms is automatic. Resolution order is an
+explicit value passed in code, then the `BENCHBOX_MACHINE_ID_SALT` environment
+variable, then the private file `~/.benchbox/submission_salt`.
+
+- `benchbox submit`, `benchbox export` and `benchbox publish run` create the
+  file with a random 64-character hex value (mode `0600`) when neither the
+  variable nor the file exists, print one line naming the path, and never print
+  the value. `benchbox submit --dry-run` creates nothing.
+- `scripts/stage_seed_corpus_bundle.py` and
+  `_project/scripts/results_explorer_corpus_migrate.py` never generate a salt,
+  because the salt feeds the permanent `result_id` of staged bundles. They use
+  the variable, then an existing salt file, and otherwise refuse with the file
+  path and the override named. When they use the file they print a notice naming
+  it on stderr. A maintainer who keeps the salt in a secret manager must keep
+  `BENCHBOX_MACHINE_ID_SALT` set when staging, because the file may be one a
+  publication command generated on that machine. The CI seed-corpus lane keeps passing the
+  `BENCHBOX_MACHINE_ID_SALT` GitHub secret, and a runner has no salt file, so a
+  missing secret still fails closed.
+- Set `BENCHBOX_MACHINE_ID_SALT` only to override: to share one salt across
+  machines, to match the CI secret, or to rotate. Any non-empty value is
+  accepted. An existing salt file with any non-empty content is used as is.
+- Back up `~/.benchbox/submission_salt` and never commit it. Losing it means a
+  new salt, and different pseudonyms for the same raw values.
+- Rotating the salt changes the `result_id` of every re-staged result, because
+  `result_id` derives from the staged bundle bytes. Already-public pseudonym
+  tokens pass through unchanged under any salt, so published bundles are not
+  rewritten.
+- Without an override, each machine has its own salt, so the same path or host
+  yields different pseudonyms on different machines. An ephemeral `HOME`, such as
+  a fresh container, gets a new salt on every run, and a hosted submission's
+  idempotency key (derived from the bundle bytes) changes with it. Mount a
+  persistent `HOME` or set the variable when that matters.
+- Library callers that anonymize without a salt (`ResultExporter` defaults, run
+  capture, the Explorer pipeline and the CPU attestation backfill) read neither
+  the file nor generate one; only the three publication commands above do.
+- The migration script's default `--bundles-dir` is `results-data/bundles/`, and
+  `--write` rewrites bundles, companions and manifests there in place, so run it
+  with the same salt as the staging path. It preserves identifiers that are
+  already public hashes, so it does not re-pseudonymise bundles that passed a
+  salted path.
 
 ## Reproducibility
 
