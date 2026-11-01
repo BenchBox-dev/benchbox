@@ -18869,6 +18869,13 @@
       "status": "open",
       "title": "pr_landing refuses soundness PRs on an approval that can never be given; defer to the required oracle-review check"
     },
+    "pr-landing-surface-unresolved-threads-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Report unresolved review threads when an armed PR sits blocked with green checks"
+    },
     "pr-local-validation-singleflight": {
       "claim": null,
       "needs": [

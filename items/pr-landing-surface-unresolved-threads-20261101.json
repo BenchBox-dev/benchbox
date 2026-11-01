@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "make pr-arm and the landing status name unresolved review threads on the PR; a test covers an armed PR blocked only by one."
+  ],
+  "description": "#3839 sat armed and BLOCKED for about 90 minutes with every required check green and oracle SHIP, because one oracle thread was left unresolved after a Dispute: reply (the ruleset requires conversation resolution). Nothing in pr-arm or the landing tools reported it. pr-arm should refuse or warn on unresolved threads, and the landing status should name them.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e",
+      "at": "2026-11-01T13:44:47Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "75902ccf255c454ea6e63f08c49c4ee0",
+      "session_id": "1273bcfa4d0e4ed89453e147e32359eb"
+    }
+  ]
+}
