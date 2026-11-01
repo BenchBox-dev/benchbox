@@ -139,7 +139,7 @@ FRAMING_TRIGGER_PATHS = [
     "tests/unit/plugins/hook.py",
     "tests/fixtures/utility_fixtures.py",
     "_benchbox_pytest_xdist_safety.py",
-    "scripts/local_validation.py",
+    "benchbox/utils/host_lock.py",
     "tests/duration_policy.py",
     "pytest.ini",
     "tests/unit/core/tpch/test_tpch_dbgen_framing_binaries.py",
@@ -200,11 +200,15 @@ def test_first_party_imports_of_pytest_startup_files_trigger_the_framing_job(rul
                 imported.add(node.module)
             elif isinstance(node, ast.Import):
                 imported.update(alias.name for alias in node.names)
+            elif isinstance(node, ast.Constant) and node.value == "benchbox.utils.host_lock":
+                imported.add(node.value)
 
     first_party = sorted(
-        module for module in imported if module.split(".")[0] in {"scripts", "tests"} and module != "tests"
+        module
+        for module in imported
+        if (module.split(".")[0] in {"scripts", "tests"} and module != "tests") or module == "benchbox.utils.host_lock"
     )
-    assert "scripts.local_validation" in first_party
+    assert "benchbox.utils.host_lock" in first_party
     for module in first_party:
         path = f"{module.replace('.', '/')}.py"
         assert (repo_root / path).is_file(), path

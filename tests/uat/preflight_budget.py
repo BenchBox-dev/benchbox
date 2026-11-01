@@ -1,49 +1,19 @@
 from __future__ import annotations
 
 import csv
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
+from benchbox.utils.resource_limits import MemorySnapshot
 from tests.uat.config import UATConfig
 from tests.uat.phases.enumerate import Cell, enumerate_cells
 
 DEFAULT_TABLE_PATH = Path(__file__).resolve().parent / "data" / "disk_budget_table.tsv"
 
 
-def free_space_gib(path: str | Path) -> float:
-    p = Path(path).expanduser()
-    if not p.exists():
-        p = next((ancestor for ancestor in p.parents if ancestor.exists()), Path("/"))
-    usage = shutil.disk_usage(p)
-    return usage.free / (1024**3)
-
-
 DATABASE_STATUS_MEASURED = "measured"
 DATABASE_STATUS_UNMEASURED = "unmeasured"
-
-
-@dataclass(frozen=True)
-class MemorySnapshot:
-    free_gib: float | None
-    swap_used_percent: float | None
-
-
-def read_memory_snapshot() -> MemorySnapshot:
-    try:
-        import psutil
-    except ImportError:
-        return MemorySnapshot(free_gib=None, swap_used_percent=None)
-    try:
-        free_gib = psutil.virtual_memory().available / (1024**3)
-    except (OSError, RuntimeError, ValueError, AttributeError):
-        free_gib = None
-    try:
-        swap_used_percent = psutil.swap_memory().percent
-    except (OSError, RuntimeError, ValueError, AttributeError):
-        swap_used_percent = None
-    return MemorySnapshot(free_gib=free_gib, swap_used_percent=swap_used_percent)
 
 
 @dataclass(frozen=True)

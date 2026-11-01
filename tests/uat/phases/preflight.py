@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from tests.uat.config import UATConfig
 
+from benchbox.utils.resource_limits import free_space_gib
 from tests.uat import docker_assets
 from tests.uat.matrix import (
     invalidate_reachability_cache_after_lifecycle_change,
@@ -24,7 +25,6 @@ from tests.uat.preflight_budget import (
     DiskBudgetCoverage,
     DiskHeadroomCheck,
     DiskRootFreeSpace,
-    free_space_gib as free_space_gib,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[3]

@@ -1,5 +1,10 @@
 name: TPC-H dbgen Intel macOS
 
+env:
+  BENCHBOX_HEAVY_ADMIT_MIN_GIB: "1.5"
+  BENCHBOX_HEAVY_MIN_FREE_DISK_GIB: "5"
+  BENCHBOX_HEAVY_MIN_LEVEL: "20"
+
 on:
   schedule:
     - cron: "45 4 * * 1"

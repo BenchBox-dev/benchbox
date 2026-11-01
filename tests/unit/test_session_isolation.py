@@ -10,7 +10,7 @@ import click
 import pytest
 from click.testing import CliRunner
 
-from scripts.local_validation import _close_lock, wait_for_lock, write_holder
+from benchbox.utils.host_lock import _close_lock, wait_for_lock, write_holder
 from tests.utilities.paths import REPO_ROOT
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
@@ -189,6 +189,8 @@ def _run_session_probe(
         PYTHONPATH=str(REPO_ROOT),
         BENCHBOX_TEST_LOCK_DIR=str(lock_path.parent),
         BENCHBOX_TEST_LOCK_WAIT_SECONDS="0",
+        BENCHBOX_HEAVY_ADMIT="force",
+        BENCHBOX_HEAVY_WATCHDOG="off",
         **(extra_env or {}),
     )
     for inherited in (

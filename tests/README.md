@@ -373,27 +373,122 @@ The default is intentionally global across worktrees: ten retained worktrees
 can otherwise start ten independent `pytest -n auto` runs and saturate a
 developer workstation. For isolated debugging or sandboxed CI, set
 `BENCHBOX_TEST_LOCK_DIR=/path/to/dir`; BenchBox will use
-`$BENCHBOX_TEST_LOCK_DIR/test.lock` instead. `make test-unlock` honors the same
-override.
+`$BENCHBOX_TEST_LOCK_DIR/test.lock` instead. `make test-unlock` resolves the path through the
+same module, so it honors the override and the real-home default.
 
-**Contract** (`tests/conftest.py:52-216`):
+**Contract** (`benchbox/utils/host_lock.py`, called from `tests/conftest.py` and
+`tests/utilities/session_isolation.py`):
 
 - Only the **xdist controller** process locks - workers do not. `pytest_configure`
   checks `hasattr(config, "workerinput")` to distinguish them.
-- Lock is skipped when `numprocesses` is 0/None (no `-n auto`) or when
-  `BENCHBOX_SKIP_TEST_LOCK=1` is set in the environment.
-- Lock path defaults to `~/.benchbox/test.lock`; `BENCHBOX_TEST_LOCK_DIR`
-  changes only the directory, not the filename.
+- A parallel session (`-n` above 0, including the default `-n auto`) always locks. A serial session
+  (`-n 0`) locks only when its selected items, after deselection and before the first test, carry a heavy
+  marker: `slow`, `stress`, `resource_heavy`, `live_integration`, `docker_integration` or any `live_*`.
+  `make pr-preflight` runs only default-marker `-n 0` targets and a `fast and not (slow or stress ...)`
+  lane, so it never waits. `BENCHBOX_SKIP_TEST_LOCK=1` skips locking entirely.
+- Admission and the watchdog run only in sessions whose selected items include a heavy marker. A parallel
+  session is judged from its `-m` expression, since the controller does not collect: it is heavy when a heavy
+  marker it names can be selected, or when a test carrying only an unnamed heavy marker would be (`not stress`
+  is heavy; `unit` or `integration and not live_integration and not stress` are not). The admission report
+  is printed to stderr, so CI logs show the real readings. A refused lock exits **75**, refused admission **76**.
+- `python -m tests.uat._cli` takes the lock with admission and watchdog for every subcommand except the light
+  set (`preflight`, `gate-check`, `report`, `replay-classify`, `package`, `validate`,
+  `verify-tuning-matrix`, `docker-cleanup`) and `--dry-run`; inside an isolated pytest session it does not
+  acquire. Subprocesses inherit `BENCHBOX_TEST_SESSION_OWNER`; code that builds an environment from scratch
+  must pass it through or use its own `BENCHBOX_TEST_LOCK_DIR`.
+- Hosted CI sets `BENCHBOX_HEAVY_ADMIT_MIN_GIB` and `BENCHBOX_HEAVY_MIN_FREE_DISK_GIB` in each workflow `env:`.
+- The Linux guest (`make ci-linux`, `scripts/linux_preflight_pytest.sh`) uses
+  `BENCHBOX_TEST_LOCK_DIR=/tmp/benchbox-lock` on guest-local storage and guest-sized floors, so guest sessions
+  serialize among themselves and never write the host holder file. The guest therefore prints the
+  non-default-lock-dir bypass warning; that is expected.
+- Lock path defaults to `<real home>/.benchbox/test.lock`, where the real home
+  comes from the user database rather than `$HOME`, so a session that rewrites
+  `$HOME` still contends on the same file. `BENCHBOX_TEST_LOCK_DIR` changes only
+  the directory, not the filename.
 - Uses `fcntl.flock(LOCK_EX | LOCK_NB)` on POSIX, `msvcrt.locking` on Windows.
+  After each acquisition the held descriptor's inode is compared with the path's
+  inode; a mismatch (the file was replaced) closes the descriptor and retries.
+- The holder record and `BENCHBOX_TEST_SESSION_OWNER` carry `<pid>:<create_time>`.
+  A descendant of the holder skips acquisition only when the variable matches the
+  holder record and that process is the current process or one of its ancestors.
+  A descendant whose environment was scrubbed fails immediately with a message
+  naming the scrub instead of waiting on its own ancestor.
+- A process that already holds the lock re-enters it with a reference count; the
+  lock is released when the outermost holder releases.
+- Waiters register under `<lockdir>/test.lock.waiters/<pid>`; blocked messages
+  show the number of live waiters.
 - On contention, the second local run waits up to 3600 seconds with holder
   information and periodic progress messages. Set
   `BENCHBOX_TEST_LOCK_WAIT_SECONDS=0` to fail immediately; CI does this.
   Ctrl-C cancels the wait without disturbing the holder.
 - The fd is held open for the whole session and released in `pytest_unconfigure`.
+- `python -m benchbox.utils.host_lock run -- <cmd>` holds the lock for the
+  lifetime of `<cmd>`, exports the owner variable, and forwards SIGINT, SIGTERM
+  and SIGHUP to the child's process group. `python -m benchbox.utils.host_lock
+  clear` (`make test-unlock`) empties the holder record of an inactive lock and
+  refuses an active one.
 
-**When to bypass**: only for intentional concurrent debug runs. Set
+**When to bypass**: only for intentional concurrent debug runs, and only with owner approval in the current task. Set
 `BENCHBOX_SKIP_TEST_LOCK=1` - but expect noisy timing results and CPU
 contention. Do not bypass in CI.
+
+### Heavy-work admission
+
+The lock serializes BenchBox jobs but cannot see memory held elsewhere (resident Apple `container` VMs,
+JVMs, IDEs). `python -m benchbox.utils.host_lock admit [--need-gib N]` (no lock taken) and
+`run --admit [--need-gib N] -- <cmd>` (after the lock is obtained, before `<cmd>`) check the host and refuse to
+start heavy work when it is already stressed. A refusal from `run --admit` releases the lock and exits **76**
+(75 stays "lock busy", 78 "ownership/scrubbed environment"); `admit` also exits 76 on refusal. Python callers
+use `host_lock.acquire(..., admit=True)`, which raises `AdmissionRefused` after releasing the lock.
+
+Admitted only when all measured signals pass: macOS memory pressure level is 1 (normal),
+`kern.memorystatus_level` is at least the floor, psutil available memory is at least the need, and free disk on the
+boot volume and the output root (`BENCHBOX_OUTPUT_DIR`, default `benchmark_runs`) is at least the floor. Swap use
+and `container`/`container machine` VM reservations are reported itemized but never gate: resident VM pages are
+already missing from available memory. Unmeasured signals (failed or >5 s external commands) never refuse. A
+refusing reading is re-sampled every 5 s for up to 30 s before the refusal stands.
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `BENCHBOX_HEAVY_ADMIT_MIN_GIB` | 2 | Available memory needed to admit |
+| `BENCHBOX_HEAVY_MIN_LEVEL` | 35 | Minimum `kern.memorystatus_level` |
+| `BENCHBOX_HEAVY_MIN_FREE_DISK_GIB` | 50 | Minimum free disk per root |
+| `BENCHBOX_HEAVY_MEMORY_BUDGET_GIB` | 50% of RAM | Shared memory budget resolver (`resource_limits.heavy_memory_budget_gib`) |
+| `BENCHBOX_HEAVY_ADMIT` | unset | `force` admits despite refusals, with a stderr warning |
+
+`make heavy-status` (`python -m benchbox.utils.host_lock status`) is read-only and never takes the lock. It prints the
+holder and its age, live waiters, the admission readings, VM inventory, the top 10 processes by physical footprint
+and orphaned servers (ppid 1, working directory in a BenchBox worktree); each external command is cut off at 5 s and
+shown as `unmeasured`. `make heavy-run CMD='...'` is `run --admit --guard -- sh -c "$CMD"`. Agent rules and known limits:
+`docs/agent/heavy-work.md`.
+
+### Heavy-work watchdog
+
+Admission only checks the host at start. `run --guard -- <cmd>` (and `host_lock.acquire(..., guard=True)`) also starts a
+small watcher **process** next to the lock holder, so a GIL-holding native call or memory pressure in the holder cannot
+stall it. Every 2 s it samples the summed physical footprint of the holder and all its descendants (macOS
+`proc_pid_rusage` `ri_phys_footprint`; elsewhere psutil USS, then RSS), memory pressure, free disk on the boot volume
+and output root, and whether the lock file is still the one the holder locked. It exits when the holder exits.
+
+Breach rules: tree footprint above `BENCHBOX_HEAVY_MEMORY_BUDGET_GIB` (the same budget admission uses), pressure level
+critical (4), or free disk below `BENCHBOX_HEAVY_KILL_FREE_DISK_GIB`. In `kill` mode the watcher reports to stderr
+(signal, measured versus limit, top 5 tree processes by footprint), SIGTERMs descendants deepest-first, waits 10 s,
+SIGKILLs survivors, then SIGTERMs the holder if the tree is still over budget. Parentage is re-verified immediately
+before every signal; re-parented, double-forked and sibling processes are never signalled. After a kill, `run --guard`
+exits **79** (distinct from UAT's 137, 75 busy, 76 admission refusal, 78 ownership); an in-process holder that
+acquired with `guard=True` exits 79 only when the watcher terminates it while the main thread is running Python code
+(a holder stuck in a native call is SIGKILLed after the grace period instead). A lock file whose inode changed produces a loud
+warning only. On normal release, surviving descendants are listed and left running.
+
+VMs and containers started through the Apple `container` runtime are children of launchd, not of the holder, so
+their footprint is not tree-attributed; VM memory is bounded by machine size and admission.
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `BENCHBOX_HEAVY_WATCHDOG` | `kill` | `kill`, `warn` (report once per breach, signal nothing) or `off` (loud warning, no watcher) |
+| `BENCHBOX_HEAVY_KILL_FREE_DISK_GIB` | 20, or 40% of `BENCHBOX_HEAVY_MIN_FREE_DISK_GIB` when that is set and lower | Free-disk floor per root that counts as a breach; always below the admission floor unless set explicitly |
+| `BENCHBOX_HEAVY_WATCHDOG_INTERVAL_SECONDS` | 2 | Sampling interval of the watcher |
+| `BENCHBOX_HEAVY_WATCHDOG_GRACE_SECONDS` | 10 | Wait between SIGTERM and SIGKILL of descendants |
 
 ### macOS-specific conftest branch (`tests/conftest.py:109-122`)
 

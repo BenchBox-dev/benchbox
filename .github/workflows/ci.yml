@@ -4,6 +4,8 @@ run-name: ${{ (github.event.action == 'edited' && !github.event.changes.base) &&
 
 env:
   BENCHBOX_TEST_LOCK_WAIT_SECONDS: "0"
+  BENCHBOX_HEAVY_ADMIT_MIN_GIB: "1.5"
+  BENCHBOX_HEAVY_MIN_FREE_DISK_GIB: "5"
 
 on:
   pull_request:

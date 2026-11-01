@@ -8,6 +8,11 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from benchbox.utils.resource_limits import (
+    MemorySnapshot,
+    free_space_gib as default_free_space_reader,
+    read_memory_snapshot as default_free_memory_reader,
+)
 from tests.uat import docker_assets, managed_runtime
 from tests.uat.cleanup import CellKey, can_prune, prune_database_dir, source_reuse_graph
 from tests.uat.config import OutputConfig, UATConfig
@@ -24,11 +29,8 @@ from tests.uat.phases.enumerate import (
     enumerate_cells_with_pruning,
 )
 from tests.uat.preflight_budget import (
-    MemorySnapshot,
     check_memory_headroom,
     format_memory_headroom_failure,
-    free_space_gib as default_free_space_reader,
-    read_memory_snapshot as default_free_memory_reader,
 )
 from tests.uat.runner import CellResult, run_cell
 

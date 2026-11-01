@@ -12,6 +12,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
+from benchbox.utils.resource_limits import free_space_gib
 from tests.uat import cells_io, docker_assets, gate_summary, preflight_budget
 from tests.uat.config import UATConfig, disk_gate_disabled_warning, load_config, memory_gate_disabled_warning
 from tests.uat.phases import (
@@ -167,7 +168,7 @@ def _build_disk_floor_runner(
 ) -> CellRunner:
 
     seen_datagen_dirs: set[Path] = set()
-    read_free_space = free_space_reader or preflight_budget.free_space_gib
+    read_free_space = free_space_reader or free_space_gib
     datagen_complete = datagen_cache_probe or _datagen_cache_complete
 
     def runner(platform: str, benchmark: str, scale: float, **kwargs) -> CellResult:

@@ -131,9 +131,11 @@ class TestResourceLimitMonitorWithMocking:
     def test_sample_and_check_handles_process_errors(self):
         monitor = ResourceLimitMonitor()
         monitor._process = Mock()
-        monitor._process.memory_info.side_effect = RuntimeError("boom")
 
-        with patch("benchbox.utils.resource_limits.logger.debug") as debug_log:
+        with (
+            patch("benchbox.utils.resource_limits.tree_footprint_bytes", side_effect=RuntimeError("boom")),
+            patch("benchbox.utils.resource_limits.logger.debug") as debug_log,
+        ):
             monitor._sample_and_check()
 
         debug_log.assert_called_once()
@@ -272,8 +274,8 @@ class TestResourceLimitMonitorWithMocking:
     def test_get_current_usage_handles_process_errors(self):
         monitor = ResourceLimitMonitor()
         monitor._process = Mock()
-        monitor._process.memory_info.side_effect = RuntimeError("boom")
 
-        usage = monitor.get_current_usage()
+        with patch("benchbox.utils.resource_limits.tree_footprint_bytes", side_effect=RuntimeError("boom")):
+            usage = monitor.get_current_usage()
 
         assert usage == {"memory_mb": 0.0, "memory_percent": 0.0, "cpu_percent": 0.0}

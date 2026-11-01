@@ -4,6 +4,7 @@ from pathlib import Path
 
 import click
 
+from benchbox.cli.host_lock_optin import host_guarded
 from benchbox.cli.shared import console
 
 
@@ -26,6 +27,7 @@ from benchbox.cli.shared import console
 @click.option("--generate-charts", is_flag=True)
 @click.option("--theme", type=click.Choice(["light", "dark"]), default="light")
 @click.option("--list-platforms", is_flag=True)
+@host_guarded("compare-dataframes", skip=lambda kwargs: bool(kwargs.get("list_platforms")))
 def compare_dataframes(
     platforms,
     benchmark,

@@ -25,5 +25,6 @@ design/future-state/prune-publishing-subsystem/README.md
 design/future-state/remove-release-tooling-from-wheel/README.md
 design/future-state/benchmark-family-plugin-seam/README.md
 platforms/workaround-index.md
+operations/heavy-work-guard.md
 reference/threat-model.md
 tpc-licensing-analysis.md

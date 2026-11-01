@@ -37,6 +37,7 @@ requires a human audience that belongs on benchbox.dev. A new
 | `emergency-merge.md` | Base-pinned gate breakage: agents reproduce, record evidence, and stop; stand-in evidence matches `merge-authority.md`; ruleset relaxation is owner-only |
 | `primary-clone-guard.md` | Primary-clone change report, absolute worktree paths for workers, and the lost-edit cause |
 | `remote-closeout.md` | Closing out a PR from the primary clone without a checkout |
+| `heavy-work.md` | Host lock, admission, `make heavy-status`/`heavy-run`, and the known limits behind `[HEAVY-LOCK-001]` |
 
 The eval runbook is `docs/internal/agent-instruction-evaluation.md`. The
 scenario corpus is `_project/evals/agent-instructions/`.

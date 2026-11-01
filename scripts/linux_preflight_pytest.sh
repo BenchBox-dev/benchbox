@@ -34,7 +34,7 @@ setup_steps="  One-time setup (Apple silicon, macOS 26+):
     brew install container
     container system start
     container build --arch arm64 --tag local/benchbox-agent docker/benchbox-agent
-    container machine create local/benchbox-agent --name $machine --home-mount rw --cpus 4 --memory 8G"
+    container machine create local/benchbox-agent --name $machine --home-mount rw --cpus 4 --memory 6G"
 
 if [ "$#" -ne 1 ] || [ ! -f "$1" ]; then
   echo "usage: linux_preflight_pytest.sh <test-list-file>" >&2
@@ -63,5 +63,10 @@ while IFS= read -r line; do
 done <"$test_list"
 
 echo "==> Linux container run of ${#tests[@]} changed-file test target(s) in machine '$machine'"
-exec container machine run -n "$machine" -- \
-  env BENCHBOX_LINUX_INNER=1 bash "$top/scripts/linux_preflight_pytest.sh" "$top" "${tests[@]}"
+cd "$top"
+exec uv run -- python -m benchbox.utils.host_lock run --phase linux-preflight --gate linux-preflight \
+  --admit --need-gib "${CI_LINUX_NEED_GIB:-2}" --guard -- \
+  bash "$top/scripts/linux_machine_run.sh" "$machine" \
+  -e BENCHBOX_LINUX_INNER=1 -e BENCHBOX_TEST_LOCK_DIR=/tmp/benchbox-lock \
+  -e BENCHBOX_HEAVY_ADMIT_MIN_GIB=1.5 -e BENCHBOX_HEAVY_MIN_FREE_DISK_GIB=2 -- \
+  bash "$top/scripts/linux_preflight_pytest.sh" "$top" "${tests[@]}"

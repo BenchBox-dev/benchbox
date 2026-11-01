@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import errno
+import importlib.util
 import os
 import sys
 import tempfile
@@ -10,27 +10,43 @@ from typing import Any
 
 import pytest
 
-from scripts.local_validation import _close_lock, read_holder, seek_lock_byte, wait_for_lock, write_holder
+_HOST_LOCK_MODULE = "benchbox.utils.host_lock"
+_HOST_LOCK_PATH = Path(__file__).resolve().parents[2] / "benchbox" / "utils" / "host_lock.py"
 
-_OWNER = "BENCHBOX_TEST_SESSION_OWNER"
+
+def _load_host_lock() -> Any:
+    loaded = sys.modules.get(_HOST_LOCK_MODULE)
+    if loaded is not None:
+        return loaded
+    spec = importlib.util.spec_from_file_location(_HOST_LOCK_MODULE, _HOST_LOCK_PATH)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[_HOST_LOCK_MODULE] = module
+    try:
+        spec.loader.exec_module(module)
+    except BaseException:
+        sys.modules.pop(_HOST_LOCK_MODULE, None)
+        raise
+    return module
+
+
+host_lock = _load_host_lock()
+
+_OWNER = host_lock.OWNER_ENV
 _OUTPUT_DIR = "BENCHBOX_OUTPUT_DIR"
 _OWNED_OUTPUT_DIR = "BENCHBOX_TEST_SESSION_OUTPUT_DIR"
 _ENV_KEYS = ("HOME", "USERPROFILE", "BENCHBOX_TEST_LOCK_DIR", _OUTPUT_DIR, _OWNER, _OWNED_OUTPUT_DIR)
 _state: dict[str, Any] | None = None
 _SKIP_LOCK = "BENCHBOX_SKIP_TEST_LOCK"
-_LOCK_DIR = "BENCHBOX_TEST_LOCK_DIR"
+_LOCK_DIR = host_lock.LOCK_DIR_ENV
 _XDIST_WORKER = "PYTEST_XDIST_WORKER"
-
-
-def _default_lock_path() -> Path:
-    return Path.home() / ".benchbox" / "test.lock"
 
 
 def lock_bypass_trigger() -> str | None:
     if os.environ.get(_XDIST_WORKER):
         return None
     owner = (os.environ.get(_OWNER) or "").strip()
-    if owner and owner != str(os.getpid()):
+    if owner and owner != host_lock.process_identity():
         return None
     if os.environ.get(_SKIP_LOCK):
         return _SKIP_LOCK
@@ -41,7 +57,7 @@ def lock_bypass_trigger() -> str | None:
         except OSError:
             return _LOCK_DIR
         try:
-            if custom != _default_lock_path().resolve():
+            if custom != host_lock.default_lock_path().parent.resolve():
                 return _LOCK_DIR
         except OSError:
             return _LOCK_DIR
@@ -59,73 +75,26 @@ def warn_lock_bypass() -> None:
     sys.stderr.flush()
 
 
-def _ancestor_holds_lock(lock_path: Path) -> bool:
-    try:
-        import psutil
-    except ImportError:
-        return False
-    try:
-        owner = int(os.environ.get(_OWNER, "0"))
-
-        if owner not in {parent.pid for parent in psutil.Process().parents()}:
-            return False
-        if not read_holder(lock_path).startswith(f"pid:{owner} "):
-            return False
-        fd = os.open(lock_path, os.O_RDWR)
-        try:
-            if sys.platform == "win32":
-                import msvcrt
-
-                seek_lock_byte(fd)
-                try:
-                    msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
-                except OSError as exc:
-                    if exc.errno == errno.EACCES:
-                        return True
-                    raise
-                seek_lock_byte(fd)
-                msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
-            else:
-                import fcntl
-
-                try:
-                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                except BlockingIOError:
-                    return True
-                fcntl.flock(fd, fcntl.LOCK_UN)
-        finally:
-            os.close(fd)
-    except (psutil.Error, OSError, ValueError):
-        return False
-    return False
-
-
 def start(acquire_lock: bool = True) -> bool:
     global _state
     if _state is not None:
         return False
     previous = {key: os.environ.get(key) for key in _ENV_KEYS}
-    configured = os.environ.get("BENCHBOX_TEST_LOCK_DIR")
-    lock_dir = Path(configured).expanduser().resolve() if configured else Path.home() / ".benchbox"
-    lock_path = lock_dir / "test.lock"
-    fd: int | None = None
-    inherited = _ancestor_holds_lock(lock_path) if acquire_lock else False
-    if acquire_lock and not inherited:
-        try:
-            wait = max(0.0, float(os.environ.get("BENCHBOX_TEST_LOCK_WAIT_SECONDS", "3600") or "3600"))
-        except ValueError:
-            wait = 3600.0
-        fd = wait_for_lock(lock_path, wait)
-        write_holder(fd, lock_path, phase="pytest-session", gate="hermetic")
-    if not inherited and (not acquire_lock or lock_path != _default_lock_path()):
+    lock_dir = host_lock.lock_dir()
+    lock_path = lock_dir / host_lock.LOCK_NAME
+    handle = None
+    if acquire_lock:
+        handle = host_lock.acquire(lock_path, phase="pytest-session", gate="hermetic")
+    inherited = handle is not None and handle.inherited
+    if not inherited and (not acquire_lock or lock_path != host_lock.default_lock_path()):
         warn_lock_bypass()
     try:
         home = tempfile.TemporaryDirectory(
             prefix="benchbox-pytest-home-", dir=os.environ.get("JCODE_SCRATCH_DIR"), ignore_cleanup_errors=True
         )
     except BaseException:
-        if fd is not None:
-            _close_lock(fd)
+        if handle is not None:
+            handle.release()
         raise
     os.environ["HOME"] = home.name
     os.environ["USERPROFILE"] = home.name
@@ -136,8 +105,8 @@ def start(acquire_lock: bool = True) -> bool:
         os.environ[_OUTPUT_DIR] = owned_output
         os.environ[_OWNED_OUTPUT_DIR] = owned_output
     if acquire_lock and not inherited:
-        os.environ[_OWNER] = str(os.getpid())
-    _state = {"previous": previous, "home": home, "fd": fd}
+        os.environ[_OWNER] = host_lock.process_identity()
+    _state = {"previous": previous, "home": home, "lock": handle}
     return True
 
 
@@ -172,5 +141,5 @@ def finish() -> None:
                 os.environ[key] = value
         state["home"].cleanup()
     finally:
-        if state["fd"] is not None:
-            _close_lock(state["fd"])
+        if state["lock"] is not None:
+            state["lock"].release()

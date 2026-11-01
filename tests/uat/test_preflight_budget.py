@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import pytest
 
+from benchbox.utils.resource_limits import MemorySnapshot
 from tests.uat.config import validate_config
 from tests.uat.preflight_budget import (
     DATABASE_STATUS_MEASURED,
@@ -12,7 +12,6 @@ from tests.uat.preflight_budget import (
     DEFAULT_TABLE_PATH,
     DiskBudget,
     DiskRootFreeSpace,
-    MemorySnapshot,
     assess_budget_coverage,
     check_disk_headroom,
     check_memory_headroom,
@@ -25,7 +24,6 @@ from tests.uat.preflight_budget import (
     largest_scale_cells,
     load_budget_table,
     predict_cell_disk_growth,
-    read_memory_snapshot,
 )
 
 pytestmark = pytest.mark.medium
@@ -432,18 +430,6 @@ def test_checked_in_budget_table_declares_its_database_column_unmeasured():
         f"{sorted(zero_but_measured)[:5]}. Mark them "
         f"{DATABASE_STATUS_UNMEASURED!r} until a real sweep measures them."
     )
-
-
-def test_read_memory_snapshot_reports_a_measured_reading_on_this_host():
-    snapshot = read_memory_snapshot()
-    assert snapshot.free_gib is None or snapshot.free_gib >= 0.0
-    assert snapshot.swap_used_percent is None or snapshot.swap_used_percent >= 0.0
-
-
-def test_read_memory_snapshot_degrades_safely_when_psutil_unavailable(monkeypatch):
-    monkeypatch.setitem(sys.modules, "psutil", None)
-    snapshot = read_memory_snapshot()
-    assert snapshot == MemorySnapshot(free_gib=None, swap_used_percent=None)
 
 
 def test_check_memory_headroom_shortfall_when_measured_below_floor():

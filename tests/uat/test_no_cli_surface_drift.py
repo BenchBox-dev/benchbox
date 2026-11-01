@@ -50,6 +50,7 @@ ALLOWED_INTERNAL_CLI_FILES = {
     "benchbox/cli/tuning_resolver.py",
     "benchbox/cli/exceptions.py",
     "benchbox/cli/help.py",
+    "benchbox/cli/host_lock_optin.py",
     "benchbox/cli/main.py",
     "benchbox/cli/onboarding.py",
     "benchbox/cli/orchestrator.py",
