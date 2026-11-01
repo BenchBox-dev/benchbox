@@ -622,7 +622,7 @@ def test_two_forced_rounds_per_patch_are_allowed_and_the_third_is_refused() -> N
     history.records.append({**_forced(HEAD, 3), "open_defects": [], "next_id": 2})
     refused = _plan_same_head(history, force=True)
     assert refused.kind == protocol.SKIP
-    assert "already had 2 forced re-reviews" in refused.reason
+    assert "already had 2 dispute re-reviews" in refused.reason
 
 
 def test_empty_commit_heads_share_one_forced_round_budget_per_patch() -> None:
@@ -653,7 +653,7 @@ def test_empty_commit_heads_share_one_forced_round_budget_per_patch() -> None:
         force=True,
     )
     assert refused.kind == protocol.SKIP
-    assert "already had 2 forced re-reviews" in refused.reason
+    assert "already had 2 dispute re-reviews" in refused.reason
 
 
 def test_a_changed_patch_takes_the_ordinary_follow_up_path_despite_a_spent_budget() -> None:

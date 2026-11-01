@@ -14,6 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from . import adjudication
 from .edits import EDITED_REASON, EditStateError, is_edited
 from .evidence import withdrawal_cited
 from .policy import SEVERITIES
@@ -79,7 +80,7 @@ RECORD_KEYS = frozenset(
         "summary",
     }
 )
-OPTIONAL_RECORD_KEYS = frozenset({"patch_map", "forced", "run_uuid"})
+OPTIONAL_RECORD_KEYS = frozenset({"patch_map", "forced", "run_uuid", "escalated", "adjudicated", "disputed"})
 DEFECT_KEYS = ("id", "severity", "file", "line", "end_line", "title")
 
 
@@ -251,6 +252,27 @@ def _valid_patches(patches: Any) -> bool:
     return isinstance(patches, dict) and all(isinstance(v, str) for v in patches.values())
 
 
+def _valid_escalation(record: Mapping[str, Any]) -> bool:
+    escalated = record.get("escalated", [])
+    disputed = record.get("disputed", [])
+    adjudicated = record.get("adjudicated", [])
+    return (
+        isinstance(escalated, list)
+        and all(isinstance(item, str) and DEFECT_ID.fullmatch(item) for item in escalated)
+        and isinstance(disputed, list)
+        and all(isinstance(item, str) and DEFECT_ID.fullmatch(item) for item in disputed)
+        and isinstance(adjudicated, list)
+        and all(
+            isinstance(item, dict)
+            and set(item) == {"id", "action"}
+            and isinstance(item["id"], str)
+            and DEFECT_ID.fullmatch(item["id"]) is not None
+            and item["action"] in adjudication.ACTIONS
+            for item in adjudicated
+        )
+    )
+
+
 def _valid_record(record: Any) -> bool:
     if not isinstance(record, dict) or not RECORD_KEYS <= set(record) <= RECORD_KEYS | OPTIONAL_RECORD_KEYS:
         return False
@@ -264,6 +286,7 @@ def _valid_record(record: Any) -> bool:
         and all(isinstance(record[key], str) for key in ("base_ref", "reviewer", "tier", "patch_digest", "summary"))
         and isinstance(record["carried"], bool)
         and ("forced" not in record or isinstance(record["forced"], bool))
+        and _valid_escalation(record)
         and ("run_uuid" not in record or re.fullmatch(r"[0-9a-f]{32}|[0-9]+", str(record["run_uuid"])) is not None)
         and isinstance(record["open_defects"], list)
         and all(_valid_defect(item) for item in record["open_defects"])
@@ -359,6 +382,7 @@ def strikes(records: Iterable[Mapping[str, Any]]) -> int:
 
 
 FORCED_ROUND_LIMIT = 2
+ESCALATION_ROUNDS = 2
 
 
 def forced_rounds(records: Iterable[Mapping[str, Any]], digest: str) -> int:
@@ -366,6 +390,35 @@ def forced_rounds(records: Iterable[Mapping[str, Any]], digest: str) -> int:
         1
         for record in records
         if record.get("patch_digest") == digest and record.get("kind") == FOLLOW_UP and record.get("forced")
+    )
+
+
+def maintained_counts(records: Iterable[Mapping[str, Any]], digest: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for record in records:
+        if record.get("patch_digest") == digest and record.get("kind") == FOLLOW_UP and record.get("forced"):
+            disputed = set(record.get("disputed") or ())
+            for item in record["open_defects"]:
+                if item["id"] in disputed:
+                    counts[item["id"]] = counts.get(item["id"], 0) + 1
+    return counts
+
+
+def escalated_ids(
+    counts: Mapping[str, int], carried: Iterable[Mapping[str, Any]], disputed: Iterable[str]
+) -> list[str]:
+    live = set(disputed)
+    return [item["id"] for item in carried if item["id"] in live and counts.get(item["id"], 0) + 1 >= ESCALATION_ROUNDS]
+
+
+def _dispute_limit_reason(latest: Mapping[str, Any]) -> str:
+    settled = maintained_ids(latest)
+    escalated = [item for item in latest.get("escalated") or () if item not in settled]
+    if not escalated:
+        return f"the patch already had {FORCED_ROUND_LIMIT} dispute re-reviews; change the patch"
+    return (
+        f"the patch already had {FORCED_ROUND_LIMIT} dispute re-reviews; {', '.join(escalated)} escalated to the "
+        f"owner: post '{adjudication.GRAMMAR}' for each, or change the patch"
     )
 
 
@@ -378,11 +431,7 @@ def _forced_round(
     reason: str,
 ) -> Round:
     if forced_rounds(records, digest) >= FORCED_ROUND_LIMIT:
-        return Round(
-            SKIP,
-            f"the patch already had {FORCED_ROUND_LIMIT} forced re-reviews;"
-            " change the patch or ask the owner for a stand-in",
-        )
+        return Round(SKIP, _dispute_limit_reason(latest))
     return Round(
         FOLLOW_UP,
         reason,
@@ -673,11 +722,22 @@ def disputed_claims(plan: Mapping[str, Any]) -> dict[str, list[str]]:
     return claims
 
 
+def maintained_ids(latest: Mapping[str, Any]) -> frozenset[str]:
+    return frozenset(
+        item["id"]
+        for item in latest.get("adjudicated") or ()
+        if isinstance(item, Mapping) and item.get("action") == adjudication.MAINTAIN
+    )
+
+
 def live_disputes(disputes: Any, latest: Any) -> list[dict[str, Any]]:
     if not isinstance(latest, Mapping):
         return []
+    settled = maintained_ids(latest)
     open_ids = {
-        item.get("id") for item in latest.get("open_defects") or () if isinstance(item, Mapping) and item.get("id")
+        item.get("id")
+        for item in latest.get("open_defects") or ()
+        if isinstance(item, Mapping) and item.get("id") and item.get("id") not in settled
     }
     cycle = latest.get("cycle")
     return [

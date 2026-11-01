@@ -1980,7 +1980,7 @@ def test_a_byte_identical_rebase_keeps_the_strike_count_and_the_forced_round_all
     forced = {"kind": "follow-up", "forced": True, "round": 2}
     spent = [_record(TWO_FILE_DIFF, "SHIP"), *(_record(TWO_FILE_DIFF, "SHIP", **forced) for _ in range(2))]
     refused = _round(spent, force=True)
-    assert refused.kind == protocol.SKIP and "already had 2 forced re-reviews" in refused.reason
+    assert refused.kind == protocol.SKIP and "already had 2 dispute re-reviews" in refused.reason
 
 
 def test_a_rebase_onto_changed_files_is_a_new_digest_with_its_own_strike_and_forced_allowance() -> None:

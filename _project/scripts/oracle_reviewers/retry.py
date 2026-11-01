@@ -94,6 +94,7 @@ class State:
 class RerunDecision:
     allowed: bool
     reason: str
+    exemptible: bool = False
 
 
 def recent_retries(state: State | None, now: datetime) -> tuple[datetime, ...]:
@@ -144,12 +145,12 @@ def decide_rerun(
         return RerunDecision(True, "retry backoff reset by the owner")
     retries = inherited_retries(previous, head_sha, now)
     if len(retries) >= rules.daily_budget:
-        return RerunDecision(False, f"the daily retry budget of {rules.daily_budget} is used")
+        return RerunDecision(False, f"the daily retry budget of {rules.daily_budget} is used", True)
     if same_head and previous is not None:
         wait = timedelta(minutes=rules.backoff_start_minutes * 2 ** len(retries))
         ready_at = previous.backoff_from + wait
         if now < ready_at:
-            return RerunDecision(False, f"backoff: the next retry is allowed after {ready_at.isoformat()}")
+            return RerunDecision(False, f"backoff: the next retry is allowed after {ready_at.isoformat()}", True)
         if previous.outcome in DECISIVE:
             return RerunDecision(True, "manual same-head re-review within budget")
     return RerunDecision(True, "retry within budget")

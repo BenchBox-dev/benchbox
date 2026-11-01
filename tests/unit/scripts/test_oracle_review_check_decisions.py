@@ -720,3 +720,54 @@ def test_the_policy_exempt_paths_are_applied_to_the_pull_request_files(
     _wire(net, files=["zz_exempt/a.txt"], statuses=[], reviews=[])
     assert _run(monkeypatch) == gate.PASS
     assert capsys.readouterr().out == "oracle-review: only exempt paths changed\n"
+
+
+def _open_findings_status(description: str = "large: SHIP WITH FIXES, 2 defect(s) to fix") -> dict[str, Any]:
+    return _status("failure", created_at=RETARGETED, description=description)
+
+
+def test_a_standin_is_rejected_on_a_head_whose_latest_decisive_verdict_lists_open_findings() -> None:
+    code, message = _decide(statuses=[_open_findings_status()], comments=[_standin(AFTER_RETARGET)])
+    assert code == gate.WAITING
+    assert "cannot waive" in message and "stand-in attestation" not in message
+
+
+def test_a_carried_ship_with_fixes_verdict_also_rejects_a_standin() -> None:
+    carried = _open_findings_status("carried from aaaaaaaaaaaa: SHIP WITH FIXES")
+    assert _decide(statuses=[carried], comments=[_standin(AFTER_RETARGET)])[0] == gate.WAITING
+
+
+@pytest.mark.parametrize(
+    "description",
+    [
+        "large: DO NOT SHIP",
+        "pending: too large for the oracle",
+        "refused after 3 DO NOT SHIP decisions: open a new one",
+    ],
+)
+def test_a_standin_still_covers_a_head_without_open_findings(description: str) -> None:
+    status = _status("failure", created_at=RETARGETED, description=description)
+    assert _decide(statuses=[status], comments=[_standin(AFTER_RETARGET)])[0] == gate.PASS
+
+
+def test_a_standin_still_covers_absence() -> None:
+    assert _decide(statuses=[], comments=[_standin(AFTER_RETARGET)])[0] == gate.PASS
+
+
+def test_a_standin_still_covers_an_edit_hold_even_with_open_findings() -> None:
+    hold = _status("pending", created_at=AFTER_RETARGET, description="an oracle review was edited")
+    standin = _standin("2026-10-01T16:00:00Z")
+    assert _decide(statuses=[_open_findings_status(), hold], comments=[standin])[0] == gate.PASS
+
+
+def test_a_later_non_hold_pending_status_does_not_lift_the_open_findings_rejection() -> None:
+    later = _status("pending", created_at=AFTER_RETARGET, description="pending: no reviewer available")
+    standin = _standin("2026-10-01T16:00:00Z")
+    assert _decide(statuses=[_open_findings_status(), later], comments=[standin])[0] == gate.WAITING
+
+
+def test_an_escalated_finding_names_the_exact_owner_action() -> None:
+    escalated = _open_findings_status("large: SHIP WITH FIXES, 2 defect(s) to fix; escalated D1,D3")
+    code, message = _decide(statuses=[escalated], comments=[_standin(AFTER_RETARGET)])
+    assert code == gate.WAITING
+    assert "D1,D3" in message and "Oracle adjudication: WITHDRAW|MAINTAIN D<n> - <reason>" in message
