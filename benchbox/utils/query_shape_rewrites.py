@@ -191,6 +191,60 @@ def alias_order_by_projections(expression, *, copy: bool = True):
     return tree
 
 
+def date_column_integer_arithmetic(expression, *, copy: bool = True):
+    exp = sql_expressions()
+    tree = expression.copy() if copy else expression
+    for node in list(tree.find_all(exp.Add, exp.Sub)):
+        column, amount = node.this, node.expression
+        if not (isinstance(column, exp.Column) and column.name.lower().endswith("_date")):
+            continue
+        if not (isinstance(amount, exp.Literal) and not amount.is_string and amount.name.isdigit()):
+            continue
+        builder = exp.DateAdd if isinstance(node, exp.Add) else exp.DateSub
+        node.replace(builder(this=column.copy(), expression=amount.copy(), unit=exp.var("DAY")))
+    return tree
+
+
+def rollup_empty_input_row(expression, *, copy: bool = True):
+    exp = sql_expressions()
+    tree = expression.copy() if copy else expression
+    for select in reversed(list(tree.find_all(exp.Select))):
+        group = select.args.get("group")
+        if group is None or len(group.expressions) != 1 or not isinstance(group.expressions[0], exp.Rollup):
+            continue
+        order = select.args.get("order")
+        if select.args.get("having") is not None or select.find(exp.Grouping) is not None:
+            continue
+        if order is not None and any(column.table for column in order.find_all(exp.Column)):
+            continue
+        keys = {key.sql() for key in group.expressions[0].expressions}
+        branch = select.copy()
+        for clause in ("group", "order", "limit", "offset"):
+            branch.set(clause, None)
+        for index, projection in enumerate(list(branch.expressions)):
+            if isinstance(projection, exp.Column) and projection.sql() in keys:
+                branch.expressions[index] = exp.alias_(exp.Null(), projection.name)
+                continue
+            for column in list(projection.find_all(exp.Column)):
+                if column.sql() in keys and column.find_ancestor(exp.AggFunc) is None:
+                    column.replace(exp.Null())
+        branch.set("having", exp.Having(this=exp.EQ(this=exp.Count(this=exp.Star()), expression=exp.Literal.number(0))))
+        limit, offset = select.args.get("limit"), select.args.get("offset")
+        with_clause = select.args.get("with_")
+        for clause in ("order", "limit", "offset", "with_"):
+            select.set(clause, None)
+        branch.set("with_", None)
+        union = exp.Union(this=select.copy(), expression=branch, distinct=False)
+        wrapper = exp.select("*").from_(union.subquery("rollup_rows"))
+        for clause, value in (("with_", with_clause), ("order", order), ("limit", limit), ("offset", offset)):
+            if value is not None:
+                wrapper.set(clause, value)
+        if select is tree:
+            return wrapper
+        select.replace(wrapper)
+    return tree
+
+
 def _is_hoistable(node) -> bool:
     exp = sql_expressions()
     if isinstance(node, (exp.Exists, exp.Subquery)):
