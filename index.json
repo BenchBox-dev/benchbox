@@ -16611,7 +16611,12 @@
       "title": "Bind each oracle dispute to its finding id, require evidence to maintain it, and publish every disposition"
     },
     "oracle-dispute-trigger-budget-escalation-20261026": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-02T03:02:34Z",
+        "generation": "b7bf7e595bc24c108f404e8ff8b12cb4",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e"
+      },
       "needs": [
         "oracle-dispute-keyed-published-evidence-20261026",
         "oracle-gate-from-verdict-job-20261026",
@@ -16620,7 +16625,7 @@
         "oracle-history-edited-review-fail-closed-20261027"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Re-judge disputes on a same-head rerun or sweep, exempt dispute rounds from the budget, and escalate twice-maintained findings to owner adjudication"
     },
     "oracle-duplicate-findings-collapse-to-same-id-20261024": {
