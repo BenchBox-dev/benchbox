@@ -211,6 +211,7 @@ class FlightDataDownloader(CompressionMixin, VerbosityMixin):
         self._table_file_row_counts: dict[Path, int] = {}
         self._content_hashes: dict[str, str] = {}
         self._prefetcher: _ZipPrefetcher | None = None
+        self._prefetch_urls: list[str] | None = None
 
     def source_provenance(self) -> dict[str, Any]:
         urls = set(self.source_contract()["urls"])
@@ -763,18 +764,25 @@ class FlightDataDownloader(CompressionMixin, VerbosityMixin):
         if self.scale_factor < 0.1:
             yield
             return
-        urls = [BTS_BASE_URL.format(year=year, month=month) for year, month in self._months]
-        self._prefetcher = _ZipPrefetcher(self._fetch_bts_zip, urls)
+        self._prefetch_urls = [BTS_BASE_URL.format(year=year, month=month) for year, month in self._months]
         try:
             yield
         finally:
-            self._prefetcher.close()
+            if self._prefetcher is not None:
+                self._prefetcher.close()
             self._prefetcher = None
+            self._prefetch_urls = None
+
+    def _month_prefetcher(self) -> _ZipPrefetcher | None:
+        if self._prefetcher is None and self._prefetch_urls is not None:
+            self._prefetcher = _ZipPrefetcher(self._fetch_bts_zip, self._prefetch_urls)
+        return self._prefetcher
 
     def _download_bts_month(self, writer: csv.writer, url: str, year: int, month: int, start_id: int) -> int:
         self.log_verbose(f"  Downloading BTS data: {year}-{month:02d}")
 
-        zip_bytes = self._prefetcher.take(url) if self._prefetcher is not None else None
+        prefetcher = self._month_prefetcher()
+        zip_bytes = prefetcher.take(url) if prefetcher is not None else None
         if zip_bytes is None:
             zip_bytes = self._fetch_bts_zip(url)
         actual_sha256 = hashlib.sha256(zip_bytes).hexdigest()

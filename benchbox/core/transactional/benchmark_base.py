@@ -16,6 +16,7 @@ from benchbox.core.primitives_benchmark_utils import (
     table_exists,
 )
 from benchbox.core.transactional.operations_registry_base import OperationsRegistryBase
+from benchbox.sql_compat.local_exemptions import compat_local
 
 ResultT = TypeVar("ResultT")
 _POSTGRES_SERIES_DIALECTS = frozenset({"postgres", "postgresql"})
@@ -245,6 +246,14 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
         payload = "|".join(parts)
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
+    @compat_local(
+        kind="type_mapping",
+        platform_specific=True,
+        reason=(
+            "Selects the text column type for the staging manifest table: STRING on Databricks and BigQuery, "
+            "TEXT on SingleStore, VARCHAR elsewhere. The manifest is harness bookkeeping, not benchmark SQL."
+        ),
+    )
     def _manifest_text_type(self) -> str:
         dialect = (getattr(self, "_setup_dialect", None) or "standard").lower()
         if dialect in ("databricks", "bigquery"):
