@@ -32,7 +32,7 @@ GLUTEN_CONF=(
     "--conf" "spark.driver.memory=${SPARK_DRIVER_MEM}"
     "--conf" "spark.sql.adaptive.enabled=true"
     "--conf" "spark.hadoop.io.compression.codecs=io.benchbox.codec.ZstdJniCodec"
-    "--conf" "spark.sql.warehouse.dir=/tmp/spark-warehouse"
+    "--conf" "spark.sql.warehouse.dir=/var/lib/spark-warehouse"
 )
 
 MODE="${1:-connect}"

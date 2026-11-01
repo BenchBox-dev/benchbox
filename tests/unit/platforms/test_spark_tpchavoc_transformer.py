@@ -83,8 +83,12 @@ def test_window_filter_variants_move_condition_into_aggregate(variant_id: str):
 def test_char_case_variants_trim_both_comparison_sides(variant_id: str):
     original = _variant_sql(variant_id)
     rewritten = rewrite_spark_variant(variant_id, original)
-    assert "RTRIM(r_name) = RTRIM(CASE WHEN" in rewritten
-    assert "r_name = CASE" not in rewritten
+    if variant_id == "2_v10":
+        assert "RTRIM(r_name) = RTRIM(CASE WHEN" in rewritten
+        assert "r_name = CASE" not in rewritten
+    else:
+        assert "= rtrim(case when" in rewritten.lower()
+        assert "rtrim('" in rewritten.lower()
     _assert_spark_parseable(rewritten, variant_id)
 
 
@@ -127,7 +131,7 @@ def test_rewrite_rule_ids_cover_transformer_ids():
     assert {"6_v2", "14_v2"} == GROUP_BY_EMPTY_VARIANT_IDS
     assert {"17_v4"} == DUAL_VARIANT_IDS
     assert {"2_v7"} == SPARK_WINDOW_FILTER_VARIANT_IDS
-    assert {"2_v10"} == SPARK_CHAR_CASE_VARIANT_IDS
+    assert {"2_v10", "5_v10", "8_v10", "11_v10"} == SPARK_CHAR_CASE_VARIANT_IDS
 
 
 def test_spark_tpchavoc_rules_registered():
@@ -140,7 +144,7 @@ def test_spark_tpchavoc_rules_registered():
         for key, entry in REGISTRY.all_rules()
         if key[0] is Phase.QUERY_ADAPTER and key[1] == "spark" and key[2] == "tpchavoc"
     ]
-    assert len(rules) == 13, f"Expected 13 spark/tpchavoc rules, got {len(rules)}"
+    assert len(rules) == 16, f"Expected 16 spark/tpchavoc rules, got {len(rules)}"
     rule_ids = {entry.rule_id for _, entry in rules}
     assert "query_adapter.spark.tpchavoc.q01_scalar_group_by_first" in rule_ids
     assert "query_adapter.spark.tpchavoc.q06_group_by_empty_drop" in rule_ids

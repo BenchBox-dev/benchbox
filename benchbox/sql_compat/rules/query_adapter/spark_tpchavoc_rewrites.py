@@ -35,6 +35,21 @@ _REWRITES = [
         "Spark pads CHAR columns on read but compares a CASE result as an unpadded string; trim both sides",
     ),
     (
+        "5_v10",
+        "q05_char_case_trim",
+        "Spark pads CHAR columns on read but compares a CASE result as an unpadded string; trim both sides",
+    ),
+    (
+        "8_v10",
+        "q08_char_case_trim",
+        "Spark pads CHAR columns on read but compares a CASE result as an unpadded string; trim both sides",
+    ),
+    (
+        "11_v10",
+        "q11_char_case_trim",
+        "Spark pads CHAR columns on read but compares a CASE result as an unpadded string; trim both sides",
+    ),
+    (
         "6_v2",
         "q06_group_by_empty_drop",
         "Spark parser rejects the empty GROUP BY () in this variant; drop it",
