@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "The contract amendment is merged and keeps the rule that source-tip ancestry against develop never proves integration.",
+    "batch-finish defaults to a dry run; with its execute flag it deletes only branches meeting both conditions, using an expected-old-OID update.",
+    "Tests: a branch that moved since the check, a missing refs/pull/<N>/head, an unmerged final PR and a dirty member worktree are each refused.",
+    "Merged to develop."
+  ],
+  "context": "Owner decision 2026-11-01 (owner answer in the choice dialog, BenchBox session 01a19729, 2026-11-01): \"Yes, as a low-priority item after the pilot\". Destructive: dry run by default; never touch another session's worktree; never run git worktree prune or gc; never delete integration branches here. Guardrails: deliver as an ordinary serial PR to develop (AGENTS.md: feature delivery cannot deliver the changes that make it possible); write only from a linked worktree made with make worktree-create and checked with make agent-write-preflight, never the primary clone; stage explicit paths, never git add -A; no explanatory comments or docstrings (COMMENT-POLICY-001, make comment-policy-check); heavy test runs only through lock-taking entry points, never BENCHBOX_SKIP_TEST_LOCK; never weaken hold labels, the unresolved-thread refusal, oracle-gate, duration or suite gates; add a changelog.d fragment (CHANGELOG_INTERNAL when nothing is user-visible); durable artifacts carry no session or phase labels; cited line numbers are leads, so re-read the code before editing; tests prove behaviour, never wiring or wording.",
+  "description": "Member branches are never a PR head, so lifecycle tooling classifies them uncertain and keeps them forever (_project/specs/worktree-lifecycle-evidence-contract.md:214-254). Amend the contract with a separate deletion basis that proves nothing is lost without claiming integration: the member branch tip equals the accepted head in its tracker receipt, and that head is an ancestor of the head GitHub recorded for the merged final PR, kept under refs/pull/<N>/head (confirmed for PRs 100, 500 and 1914 on 2026-11-01). Add batch-finish to remove clean member worktrees and delete such branches with an expected-old-OID ref update.",
+  "links": [
+    "_project/specs/worktree-lifecycle-evidence-contract.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:53a3b48ce5c94efdbf857652",
+      "at": "2026-11-01T14:10:26Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "d560ef521c4e41169283cfcc29a233bf",
+      "session_id": "fe251e187e814d5cb1baf53870326a77"
+    }
+  ]
+}

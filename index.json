@@ -1795,6 +1795,15 @@
       "status": "open",
       "title": "Pilot the batch loop on a real related batch through a merged final PR"
     },
+    "batch-member-branch-cleanup-20261101": {
+      "claim": null,
+      "needs": [
+        "batch-loop-pilot-20261101"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "Delete batch member branches only when nothing would be lost, after amending the lifecycle contract"
+    },
     "batch-member-side-tooling-20261101": {
       "claim": null,
       "needs": [
