@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "release-prep runs uv lock for every project lock it versions, or release-check names the stale lock before CI; release-prep either curates or fails early with the count and the limit. A test covers both."
+  ],
+  "description": "For 0.5.0rc3 prep (PR #3882, since closed in favor of #3902) release-prep did not update _project/sql-translation-ml/uv.lock (benchbox stayed 0.5.0rc2), so lint failed make uv-lock-revision-check. It also appended about 60 raw fragment bullets, taking the section to 105 bullets against the 45-bullet release-check limit, which needed manual curation.",
+  "links": [
+    "PR #3882",
+    "PR #3737"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:44087b544fee5237bdde41f8",
+      "at": "2026-11-01T13:45:22Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "da5db4012a634bb896a1d9abb073090c",
+      "session_id": "b38147de5e3b4952857534e2b3c9221c"
+    }
+  ]
+}
