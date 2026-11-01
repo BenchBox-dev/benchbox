@@ -316,7 +316,7 @@ def test_the_real_process_check_finds_no_foreign_run_and_the_machine_is_stopped(
 @posix_only
 @needs_bash
 def test_a_sigterm_during_the_exit_busy_check_still_stops_the_machine_and_keeps_the_status(tmp_path: Path) -> None:
-    checker = _checker(tmp_path, '#!/bin/sh\nkill -TERM "$5"\nsleep 1\nexit 1\n')
+    checker = _checker(tmp_path, '#!/bin/sh\n[ "$5" = --own-pid ] || exit 9\nkill -TERM "$6"\nsleep 1\nexit 1\n')
     env = _stub_env(tmp_path, "running", BENCHBOX_PYTHON=checker, STUB_RUN_EXIT="5")
     result = _locked_wrapper(env, "--", "true")
     assert result.returncode == 5, result.stderr
