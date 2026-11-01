@@ -1747,6 +1747,15 @@
       "status": "done",
       "title": "Integrate verified batch commits through one owned feature branch"
     },
+    "batch-land-and-status-20261101": {
+      "claim": null,
+      "needs": [
+        "batch-member-side-tooling-20261101"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Add leader-only batch-land, recorded head advances and batch-status reconciliation"
+    },
     "batch-member-side-tooling-20261101": {
       "claim": null,
       "needs": [

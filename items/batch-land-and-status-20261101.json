@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "Disposable-repository tests: a stale integration head is refused; a merge whose tree differs from the member's is refused; an overlap triggers the earlier member's rerun and records it; a crash after merge and before prepare is reported by batch-status and a repeated batch-land does not merge twice; a deleted ledger is rebuilt from tracker and Git.",
+    "batch-land outside a role=integration worktree refuses.",
+    "verify passes after origin/develop moves and after a recorded develop merge, and fails on an unrecorded first-parent commit.",
+    "Registered member order is preserved in all output.",
+    "Merged to develop."
+  ],
+  "context": "Decision gate: start only after batch-member-side-tooling-20261101 is done. The hunk warning is advisory; the overlap rerun is the guard. Write preflight ownership is a guardrail, not a lock (no session id skips it; BENCHBOX_WORKTREE_TAKEOVER=1 bypasses it, agent_write_preflight.sh:200-203); the unchanged-head check is what serialises landings. Guardrails: deliver as an ordinary serial PR to develop (AGENTS.md: feature delivery cannot deliver the changes that make it possible); write only from a linked worktree made with make worktree-create and checked with make agent-write-preflight, never the primary clone; stage explicit paths, never git add -A; no explanatory comments or docstrings (COMMENT-POLICY-001, make comment-policy-check); heavy test runs only through lock-taking entry points, never BENCHBOX_SKIP_TEST_LOCK; never weaken hold labels, the unresolved-thread refusal, oracle-gate, duration or suite gates; add a changelog.d fragment (CHANGELOG_INTERNAL when nothing is user-visible); durable artifacts carry no session or phase labels; cited line numbers are leads, so re-read the code before editing; tests prove behaviour, never wiring or wording.",
+  "description": "Add the leader side in scripts/batch_integration.py and make/batch.mk. batch-land MEMBER=<id> runs only in the role=integration worktree: it refuses if the integration head moved since the member synced; recomputes clean tree, member head, containment of the integration head and scope; reads the member's oracle result from the local review cache instead of trusting the member's config; merges with --no-ff; refuses unless the merged tree equals the member's tree; prints a non-blocking hunk-presence warning (git diff -U0, then git apply -R --check --unidiff-zero; it misses reverted deletions and reverted generic lines); when the member changed files an earlier member changed, reruns that earlier member's recorded verification commands on the landed head and records the result; writes the ledger under .todo-batch/<batch>/; pushes the integration branch as a backup; and prints the prepare payload. batch-advance records a leader fix commit or a develop merge for the todo-db advance operation. batch-status reconciles the ledger with the tracker's batch record and Git, rebuilds a missing ledger, and after an interruption between merge and prepare names the next step without merging again. Fix verify to check the integration branch's first-parent history and accept recorded develop merges, instead of failing whenever origin/develop moves (batch_integration.py:130-132); keep the registered member order (:95 sorts it); stop treating the committer-identity check (:135-141) as enforcement.",
+  "links": [
+    "scripts/batch_integration.py",
+    ".gitignore"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:53a3b48ce5c94efdbf857652",
+      "at": "2026-11-01T14:09:58Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "3d0949419a204c288178e9cb5c8506c4",
+      "session_id": "fe251e187e814d5cb1baf53870326a77"
+    }
+  ]
+}
