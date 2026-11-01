@@ -197,6 +197,43 @@ def read_machine_state(
     return None if text is None else parse_machine_state(text, machine)
 
 
+@dataclass(frozen=True)
+class VmAssessment:
+    machine: str
+    state: MachineState
+    protected: bool
+    active: bool
+    unguarded: tuple[int, ...]
+
+    @property
+    def running(self) -> bool:
+        return self.state.status == "running"
+
+    @property
+    def idle(self) -> bool:
+        return self.running and not self.protected and not self.active
+
+
+def assess(
+    machine: str,
+    state: MachineState,
+    processes: Sequence[tuple[int, tuple[str, ...]]],
+    held: frozenset[int],
+) -> VmAssessment:
+    unguarded = tuple(
+        sorted(
+            pid for pid, argv in processes if pid not in held and argv_targets_machine(argv, machine, state.is_default)
+        )
+    )
+    return VmAssessment(
+        machine=machine,
+        state=state,
+        protected=any(pid in held for pid, _argv in processes),
+        active=bool(processes),
+        unguarded=unguarded,
+    )
+
+
 def busy_main(machine: str, own_pid: int) -> int:
     try:
         state = read_machine_state(machine)

@@ -401,6 +401,12 @@ same module, so it honors the override and the real-home default.
   `BENCHBOX_TEST_LOCK_DIR=/tmp/benchbox-lock` on guest-local storage and guest-sized floors, so guest sessions
   serialize among themselves and never write the host holder file. The guest therefore prints the
   non-default-lock-dir bypass warning; that is expected.
+- `scripts/linux_machine_run.sh` stops the machine after every run (any prior state) unless
+  `BENCHBOX_KEEP_LINUX_MACHINE=1` or another same-user `container machine run`/`create` against it is live
+  (logged as `left running: in use by pid N`). The sentinel stops it after `BENCHBOX_HEAVY_VM_IDLE_MINUTES`
+  (default 10) with no lock holder or run process; `make heavy-status` flags an idle running VM and any
+  `UNGUARDED VM RUN`. The machine name comes from `BENCHBOX_HEAVY_LINUX_MACHINE` (default `benchbox-agent`).
+  Tests use stub `container` executables and injected readings, never a real VM.
 - Lock path defaults to `<real home>/.benchbox/test.lock`, where the real home
   comes from the user database rather than `$HOME`, so a session that rewrites
   `$HOME` still contends on the same file. `BENCHBOX_TEST_LOCK_DIR` changes only

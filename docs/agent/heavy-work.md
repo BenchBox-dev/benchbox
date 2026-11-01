@@ -25,7 +25,18 @@ refuses to start it while the host is already under pressure.
   only an inactive one.
 - Never set `BENCHBOX_SKIP_TEST_LOCK`, `BENCHBOX_HEAVY_ADMIT=force`, or
   `BENCHBOX_HEAVY_WATCHDOG=off` without owner approval in the current task.
-- Never stop, resize, or signal a process or VM you did not start.
+- Never stop, resize, or signal a process or VM you did not start. Exception:
+  `scripts/linux_machine_run.sh` (after every run, unless
+  `BENCHBOX_KEEP_LINUX_MACHINE=1` or another same-user `container machine
+  run`/`create` process is using the machine) and the sentinel (when the
+  machine has been idle with no lock holder for `BENCHBOX_HEAVY_VM_IDLE_MINUTES`)
+  stop the one machine named by `BENCHBOX_HEAVY_LINUX_MACHINE` (default
+  `benchbox-agent`), never another machine or container.
+- Interactive Linux VM use goes through
+  `make heavy-run CMD='bash scripts/linux_machine_run.sh benchbox-agent -- <cmd>'`,
+  never a hand-started `container machine run` or `create`. The documented
+  setup `create` leaves the machine running; stop it with
+  `container machine stop benchbox-agent`.
 
 ## Commands
 
@@ -71,6 +82,32 @@ carries the `BENCHBOX_HEAVY_*`, `BENCHBOX_GIT_FLOOD_*` and
 `<python> -m benchbox.utils.host_lock sentinel --help` in the checkout and
 refuses on failure. `make heavy-status` reports whether the sentinel is running.
 
+## Linux VM
+
+`scripts/linux_machine_run.sh` stops the machine when its run ends, whatever
+state the machine was in before (including unknown). It leaves it running only
+when `BENCHBOX_KEEP_LINUX_MACHINE=1` (then the prior state is restored and the
+idle reclaim below applies) or when another same-user host process that is not
+its own child runs `container machine run`/`create` against the machine (`-n`
+or `--name` naming it, or no name when the machine is `default: true`) or
+the wrapper itself; it logs `left running: in use by pid N`. If that check
+cannot run, the machine is stopped.
+
+The sentinel stops the machine when it is running, no live lock holder's process
+tree contains the wrapper or a `container machine run` for it, and no such
+process has been seen for `BENCHBOX_HEAVY_VM_IDLE_MINUTES` (default 10). It
+re-checks processes and holders immediately before stopping, gives
+`container machine stop` 60 s without blocking memory checks, and after a
+failure or timeout retries no sooner than the next idle window.
+`BENCHBOX_HEAVY_WATCHDOG=warn` only logs the idle machine. Without `container`
+on `PATH` every VM check is a no-op.
+
+`make heavy-status` flags `VM running with no lock holder` (machine, state,
+configured memory) with the remedy `container machine stop <machine>`, and
+`UNGUARDED VM RUN pid N` for a live `container machine run`/`create` outside
+every lock holder's tree. Both are report-only; unguarded runs are never
+signalled.
+
 ## Git floods
 
 `git` is never a kill candidate, but the sentinel and `make heavy-status`
@@ -89,6 +126,11 @@ shells instead.
   backgrounds the server) leaves the lock when the wrapper exits while the
   server keeps running.
 - `kill -9` of a `run` wrapper leaves its child running without the lock.
+- A SIGKILLed `linux_machine_run.sh` skips its EXIT trap and leaves the machine
+  running; the sentinel's idle reclaim stops it once installed.
+- `container machine run -d` guest processes are invisible to the host; the
+  machine is stopped when no host-side run remains, which ends them.
+- `BENCHBOX_KEEP_LINUX_MACHINE=1` leaves the machine to the idle reclaim.
 - VM memory is reported per VM but is not attributed to the process tree of
   the job that started it, and admission does not subtract it.
 - Orphan detection matches a fixed set of server names and needs `lsof` (or

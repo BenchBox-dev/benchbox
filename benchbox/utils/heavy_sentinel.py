@@ -6,16 +6,25 @@ import logging.handlers
 import os
 import re
 import signal
+import subprocess
 import sys
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import IO
+from typing import IO, Protocol
 
 import psutil
 
-from benchbox.utils import git_flood, heavy_status, heavy_watchdog, host_lock, process_tree, resource_limits
+from benchbox.utils import (
+    git_flood,
+    heavy_status,
+    heavy_watchdog,
+    host_lock,
+    linux_machine,
+    process_tree,
+    resource_limits,
+)
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.footprint import pid_footprint_bytes
 
@@ -36,6 +45,10 @@ CREATE_TIME_TOLERANCE = 1e-3
 SIG_TERM = signal.Signals["SIGTERM"]
 SIG_KILL = getattr(signal, "SIGKILL", SIG_TERM)
 EXIT_ALREADY_RUNNING = host_lock.EXIT_REFUSED
+VM_IDLE_ENV = "BENCHBOX_HEAVY_VM_IDLE_MINUTES"
+DEFAULT_VM_IDLE_MINUTES = 10.0
+VM_STOP_TIMEOUT_SECONDS = 60.0
+VM_POLL_SECONDS = 15.0
 DENIED_NAMES = frozenset(
     {
         "node",
@@ -107,6 +120,8 @@ class SentinelPolicy:
     interval_seconds: float = DEFAULT_INTERVAL_SECONDS
     grace_seconds: float = heavy_watchdog.DEFAULT_GRACE_SECONDS
     worktree_refresh_seconds: float = WORKTREE_REFRESH_SECONDS
+    vm_machine: str = linux_machine.DEFAULT_MACHINE
+    vm_idle_seconds: float = DEFAULT_VM_IDLE_MINUTES * 60
 
 
 def _basename(value: str) -> str:
@@ -245,16 +260,7 @@ def discover_worktrees(
     return list_worktrees(primary, runner) or [primary]
 
 
-def held_tree_pids(
-    lock_path: Path, sampler: Callable[[int], process_tree.TreeSample | None] = process_tree.sample_tree
-) -> frozenset[int]:
-    holder = heavy_status.read_holder_state(lock_path)
-    if holder is None or not holder.live or holder.pid is None:
-        return frozenset()
-    sample = sampler(holder.pid)
-    if sample is None:
-        return frozenset({holder.pid})
-    return frozenset(member.pid for member in sample.members)
+held_tree_pids = heavy_status.held_tree_pids
 
 
 class SentinelLog:
@@ -299,6 +305,133 @@ class SentinelLog:
             self._handler = None
 
 
+class StopHandle(Protocol):
+    def poll(self) -> int | None: ...
+
+    def kill(self) -> None: ...
+
+
+def start_machine_stop(machine: str) -> StopHandle:
+    return subprocess.Popen(
+        ["container", "machine", "stop", machine],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+
+
+class VmWatch:
+    def __init__(
+        self,
+        policy: SentinelPolicy,
+        *,
+        log: Callable[[str], None],
+        holder_reader: Callable[[], frozenset[int]],
+        state_reader: Callable[[str], linux_machine.MachineState | None] = linux_machine.read_machine_state,
+        process_reader: Callable[[str, bool], list[tuple[int, tuple[str, ...]]]] = linux_machine.read_machine_processes,
+        stopper: Callable[[str], StopHandle] = start_machine_stop,
+        clock: Callable[[], float] = mono_time,
+    ) -> None:
+        self.policy = policy
+        self._log = log
+        self._holder_reader = holder_reader
+        self._state_reader = state_reader
+        self._process_reader = process_reader
+        self._stopper = stopper
+        self._clock = clock
+        self._next_poll: float | None = None
+        self._idle_since: float | None = None
+        self._reported_idle = False
+        self._reported_unguarded: frozenset[int] = frozenset()
+        self._stop: tuple[StopHandle, float] | None = None
+
+    def _reset_idle(self) -> None:
+        self._idle_since = None
+        self._reported_idle = False
+
+    def _fail(self, now: float, reason: str) -> None:
+        machine = self.policy.vm_machine
+        self._log(f"could not stop linux machine '{machine}': {reason}; retrying after the next idle window")
+        self._stop = None
+        self._idle_since = now
+        self._reported_idle = True
+
+    def _poll_stop(self, now: float) -> None:
+        assert self._stop is not None
+        handle, started = self._stop
+        code = handle.poll()
+        if code is None:
+            if elapsed_seconds(started, now) >= VM_STOP_TIMEOUT_SECONDS:
+                handle.kill()
+                self._fail(now, f"timed out after {VM_STOP_TIMEOUT_SECONDS:.0f}s")
+            return
+        if code != 0:
+            self._fail(now, f"exit {code}")
+            return
+        self._log(f"stopped idle linux machine '{self.policy.vm_machine}'")
+        self._stop = None
+        self._reset_idle()
+
+    def _assess(self, state: linux_machine.MachineState) -> linux_machine.VmAssessment:
+        machine = self.policy.vm_machine
+        processes = self._process_reader(machine, state.is_default)
+        return linux_machine.assess(machine, state, processes, self._holder_reader())
+
+    def _report_unguarded(self, assessment: linux_machine.VmAssessment) -> None:
+        current = frozenset(assessment.unguarded)
+        for pid in sorted(current - self._reported_unguarded):
+            self._log(
+                f"UNGUARDED VM RUN pid {pid} against linux machine '{assessment.machine}' "
+                "outside every lock holder's tree; never signalled"
+            )
+        self._reported_unguarded = current
+
+    def check(self) -> None:
+        if self.policy.mode == "off":
+            return
+        now = self._clock()
+        if self._stop is not None:
+            self._poll_stop(now)
+            return
+        if self._next_poll is not None and now < self._next_poll:
+            return
+        self._next_poll = now + VM_POLL_SECONDS
+        machine = self.policy.vm_machine
+        state = self._state_reader(machine)
+        if state is None or state.status != "running":
+            self._reset_idle()
+            self._reported_unguarded = frozenset()
+            return
+        assessment = self._assess(state)
+        self._report_unguarded(assessment)
+        if not assessment.idle:
+            self._reset_idle()
+            return
+        if self._idle_since is None:
+            self._idle_since = now
+        if elapsed_seconds(self._idle_since, now) < self.policy.vm_idle_seconds:
+            return
+        assessment = self._assess(state)
+        if not assessment.idle:
+            self._reset_idle()
+            return
+        memory = "unmeasured" if state.memory_gib is None else f"{state.memory_gib:.2f} GiB"
+        idle = f"linux machine '{machine}' running with no lock holder or run process (configured memory {memory})"
+        if self.policy.mode != "kill":
+            if not self._reported_idle:
+                self._reported_idle = True
+                self._log(f"VM idle: {idle}; warn mode, not stopping")
+            return
+        self._log(f"VM idle: {idle}; stopping it")
+        try:
+            handle = self._stopper(machine)
+        except OSError as exc:
+            self._fail(now, str(exc))
+            return
+        self._stop = (handle, now)
+
+
 class Sentinel:
     def __init__(
         self,
@@ -316,8 +449,10 @@ class Sentinel:
         total_ram: Callable[[], int | None] = git_flood.total_ram_bytes,
         environ: Mapping[str, str] | None = None,
         exclude: Sequence[int] = (),
+        vm_watch: VmWatch | None = None,
     ) -> None:
         self.policy = policy
+        self._vm_watch = vm_watch
         self._log = log
         self._process_reader = process_reader
         self._footprint = footprint
@@ -446,9 +581,18 @@ class Sentinel:
         self._flooded = flood.breached
         return flood.breached
 
+    def _check_vm(self) -> None:
+        if self._vm_watch is None:
+            return
+        try:
+            self._vm_watch.check()
+        except Exception as exc:
+            self._log(f"could not check the linux machine: {exc}")
+
     def step(self) -> None:
         if self.policy.mode == "off":
             return
+        self._check_vm()
         self._refresh_roots()
         pressure = self._pressure_reader() or 0
         measured, unreadable = self._measure(self._process_reader(), frozenset())
@@ -524,6 +668,8 @@ def policy_from_env(environ: Mapping[str, str], args: argparse.Namespace) -> Sen
         budget_bytes=None if budget is None else int(budget * GIB),
         interval_seconds=max(0.05, interval),
         grace_seconds=_float(environ, heavy_watchdog.GRACE_ENV, heavy_watchdog.DEFAULT_GRACE_SECONDS),
+        vm_machine=linux_machine.machine_name(environ),
+        vm_idle_seconds=_float(environ, VM_IDLE_ENV, DEFAULT_VM_IDLE_MINUTES) * 60,
     )
 
 
@@ -566,14 +712,17 @@ def run_sentinel(args: argparse.Namespace, environ: Mapping[str, str]) -> int:
     if args.worktree:
         fixed = list(args.worktree)
         lister = lambda: fixed
+    holders = lambda: held_tree_pids(lock_path)
     sentinel = Sentinel(
         policy,
         log=log.write,
         worktree_lister=lister,
-        holder_reader=lambda: held_tree_pids(lock_path),
+        holder_reader=holders,
+        vm_watch=VmWatch(policy, log=log.write, holder_reader=holders),
     )
     previous = signal.signal(SIG_TERM, _terminate)
     log.write(f"started pid {os.getpid()}; mode {policy.mode}; log {log_path}")
+    log.write(f"linux machine '{policy.vm_machine}' idle window {policy.vm_idle_seconds / 60:g} minutes")
     if policy.budget_bytes is None:
         log.write("memory budget unmeasured; no process will be signalled")
     try:

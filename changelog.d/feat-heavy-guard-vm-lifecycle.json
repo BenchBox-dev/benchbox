@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "lead": "Linux VM stops when idle",
+      "text": "The Linux machine used by make ci-linux and the pr-preflight Linux step is now stopped after every guarded run (set BENCHBOX_KEEP_LINUX_MACHINE=1 to keep it), and the heavy-work sentinel stops it after BENCHBOX_HEAVY_VM_IDLE_MINUTES (default 10) with no lock holder or run process; BENCHBOX_HEAVY_LINUX_MACHINE names the machine. make heavy-status flags a running VM with no lock holder and any UNGUARDED VM RUN, and the setup text now ends with container machine stop."
+    }
+  ]
+}
