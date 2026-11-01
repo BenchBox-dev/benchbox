@@ -19003,6 +19003,16 @@
       "status": "done",
       "title": "Close PR-gate gap: darwin/windows TPC-H binaries behaviorally validated only on nightly"
     },
+    "pr-landing-arm-batch-evidence-20261101": {
+      "claim": null,
+      "needs": [
+        "benchbox-todo-db-batch-v2-runtime-20261101",
+        "pr-landing-soundness-refusal-unreachable-20261009"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Make the final-PR batch checks match batch v2 and enforce them on the pr-arm path"
+    },
     "pr-landing-soundness-refusal-unreachable-20261009": {
       "claim": null,
       "needs": [],
