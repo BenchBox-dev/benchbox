@@ -119,8 +119,8 @@ def test_a_record_without_a_run_id_is_carried_bound_to_the_new_run(
     final = report.carried(plan)
     assert final.review is not None or final.body
     payload = report.status_payload(plan, final, "https://example.test/run")
-    assert payload["state"] == "success" and payload["description"].endswith(f"[run {plan['run_uuid']}]")
-    assert protocol.decode_marker(final.body)["run_uuid"] == plan["run_uuid"]
+    assert payload["state"] == "success" and payload["description"].endswith(f"[run {plan['run_id']}]")
+    assert protocol.decode_marker(final.body)["run_uuid"] == plan["run_id"]
 
 
 def test_an_edited_record_without_a_run_id_holds(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
