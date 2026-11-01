@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -56,8 +57,18 @@ def _rendezvous(home: Path, index: int, peers: int) -> bool:
 
 
 def _parent(pid: int) -> int:
-    stat = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8")
-    return int(stat.rsplit(")", 1)[1].split()[1])
+    proc = Path(f"/proc/{pid}/stat")
+    if proc.exists():
+        return int(proc.read_text(encoding="utf-8").rsplit(")", 1)[1].split()[1])
+    listed = subprocess.run(["ps", "-o", "ppid=", "-p", str(pid)], capture_output=True, text=True, check=False)
+    return int(listed.stdout.strip() or 0)
+
+
+def _environment(pid: int) -> bytes:
+    proc = Path(f"/proc/{pid}/environ")
+    if proc.exists():
+        return proc.read_bytes()
+    return subprocess.run(["ps", "eww", "-o", "command=", "-p", str(pid)], capture_output=True, check=False).stdout
 
 
 def _record_ancestors(home: Path, probe: dict[str, Any]) -> None:
@@ -69,7 +80,7 @@ def _record_ancestors(home: Path, probe: dict[str, Any]) -> None:
         pid = _parent(pid)
     seen = []
     for ancestor in chain:
-        environ = Path(f"/proc/{ancestor}/environ").read_bytes()
+        environ = _environment(ancestor)
         found = sorted(name for name, value in probe["values"].items() if value.encode("utf-8") in environ)
         seen.append({"pid": ancestor, "found": found})
     (home / "ancestors.json").write_text(json.dumps(seen), encoding="utf-8")

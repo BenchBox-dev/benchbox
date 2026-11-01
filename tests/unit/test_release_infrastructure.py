@@ -962,7 +962,7 @@ class TestReleaseInfrastructure:
         gate_at = recipe.find("git merge-base --is-ancestor origin/develop HEAD")
         conflict_at = recipe.find("git merge-tree --write-tree origin/develop HEAD")
         trunk_at = recipe.find("scripts/trunk_revert.py gate")
-        push_at = recipe.find("git push -u origin")
+        push_at = recipe.find('git push origin "$$REVIEWED:refs/heads/')
         assert fetch_at != -1 and gate_at != -1 and conflict_at != -1 and trunk_at != -1 and push_at != -1
         assert fetch_at < gate_at < conflict_at < trunk_at < push_at
 
