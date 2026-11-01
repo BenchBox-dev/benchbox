@@ -43,11 +43,13 @@ def _epoch_difference(node: exp.Expr) -> tuple[exp.Expr, exp.Expr] | None:
     return difference.this, difference.expression
 
 
-def _datediff(unit: str, later: exp.Expr, earlier: exp.Expr) -> exp.Expr:
-    return exp.Anonymous(
-        this="datediff",
-        expressions=[exp.Literal.string(unit), _timestamp_operand(earlier), _timestamp_operand(later)],
-    )
+def _epoch_micros(operand: exp.Expr) -> exp.Expr:
+    as_timestamp = exp.Cast(this=_timestamp_operand(operand), to=exp.DataType.build("TIMESTAMP"))
+    return exp.Cast(this=as_timestamp, to=exp.DataType.build("BIGINT"))
+
+
+def _signed_micros(later: exp.Expr, earlier: exp.Expr) -> exp.Expr:
+    return exp.Paren(this=exp.Sub(this=_epoch_micros(later), expression=_epoch_micros(earlier)))
 
 
 def _fraction(microseconds: exp.Expr, divisor: str) -> exp.Expr:
@@ -63,14 +65,14 @@ def _day_difference(node: exp.Expr) -> exp.Expr | None:
     operands = _epoch_difference(node.this)
     if operands is None:
         return None
-    return _fraction(_datediff("u", *operands), _MICROSECONDS_PER_DAY)
+    return _fraction(_signed_micros(*operands), _MICROSECONDS_PER_DAY)
 
 
 def _epoch_of_difference(node: exp.Expr) -> exp.Expr | None:
     operands = _epoch_difference(node)
     if operands is None:
         return None
-    return _fraction(_datediff("u", *operands), _MICROSECONDS_PER_SECOND)
+    return _fraction(_signed_micros(*operands), _MICROSECONDS_PER_SECOND)
 
 
 def _current_date() -> exp.Expr:
