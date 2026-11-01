@@ -216,7 +216,7 @@ _SF1_TIMEOUT_PRUNED_CELLS = (
     ("pg-mooncake", _sf1_timeout_reason("pg-mooncake"), ("tpcds_obt",)),
     ("postgresql", _sf1_timeout_reason("postgresql"), ("joinorder", "tpcds_obt")),
     ("singlestore", _sf1_timeout_reason("singlestore"), ("joinorder", "tpcds_obt")),
-    ("questdb", _sf1_timeout_reason("questdb"), ("tpcds_obt",)),
+    ("questdb", _sf1_timeout_reason("questdb"), ("joinorder", "tpcds_obt")),
 )
 
 _SF1_ONLY_BENCHMARKS = frozenset({"joinorder", "tpcds_obt"})
