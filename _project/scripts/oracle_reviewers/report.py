@@ -608,13 +608,15 @@ REPOST_NOTE = (
 
 
 REPOSTED_MARK = " (reposted)"
+RUN_SUFFIX_RESERVE = 45
 
 
 def reposted(plan: Mapping[str, Any]) -> Final:
     repost = plan["repost"]
     body = f"oracle-verdict for `{plan['head_sha']}`: **{repost['label']}** ({repost['state']}).\n\n{REPOST_NOTE}\n"
     base = repost["description"].removesuffix(REPOSTED_MARK)
-    description = _clip(base, DESCRIPTION_LIMIT - len(REPOSTED_MARK) - 45) + REPOSTED_MARK
+    reserve = RUN_SUFFIX_RESERVE if repost["state"] == SUCCESS else 0
+    description = _clip(base, DESCRIPTION_LIMIT - len(REPOSTED_MARK) - reserve) + REPOSTED_MARK
     return Final(repost["state"], description, body, None, None, None, None)
 
 

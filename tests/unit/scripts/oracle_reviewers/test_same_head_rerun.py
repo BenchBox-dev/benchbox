@@ -140,3 +140,11 @@ def test_a_status_that_disagrees_with_the_record_holds_instead_of_reposting(
     fake.derive_verdict_statuses = False
     values, _ = _comment(monkeypatch, tmp_path, fake)
     assert values["decision"] == "hold"
+
+
+def test_a_reposted_failure_keeps_a_long_escalation_list_whole() -> None:
+    ids = ",".join(f"D{n}" for n in range(1, 13))
+    description = f"large: SHIP WITH FIXES, 12 defect(s) to fix; escalated {ids}"
+    plan = {"head_sha": HEAD, "repost": {"state": "failure", "description": description, "label": "SHIP WITH FIXES"}}
+    final = report.reposted(plan)
+    assert final.description == description + report.REPOSTED_MARK
