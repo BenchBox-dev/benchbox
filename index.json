@@ -16793,12 +16793,17 @@
       "title": "Post the merge gate as an App status from trusted develop code (oracle-gate)"
     },
     "oracle-gate-sweep-cadence-20261025": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-02T02:55:44Z",
+        "generation": "835638a2afba47cea299fe849ec2e12d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e"
+      },
       "needs": [
         "retire-oracle-review-workflow-20261021"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "The oracle-gate sweep runs every 3 to 5 hours instead of hourly, so gate refreshes that only the sweep performs wait hours"
     },
     "oracle-gate-sweep-cadence-observation-20261101": {
