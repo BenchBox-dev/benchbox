@@ -198,10 +198,10 @@ class TestDorisConnection:
         assert call_kwargs["port"] == 9030
         assert call_kwargs["database"] == "test_db"
         assert call_kwargs["user"] == "root"
-        mock_cursor.execute.assert_any_call("SET sql_mode = CONCAT(@@sql_mode, ',PIPES_AS_CONCAT')")
+        assert "PIPES_AS_CONCAT" in call_kwargs["init_command"]
         mock_cursor.execute.assert_called_with("SELECT 1")
         mock_cursor.fetchone.assert_called_once()
-        assert mock_cursor.close.call_count == 2
+        assert mock_cursor.close.call_count == 1
 
     def test_create_connection_creates_database_if_missing(self):
         try:

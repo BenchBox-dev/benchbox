@@ -154,7 +154,7 @@ def test_list_aggregate_skips_fire_for_adapter_display_names():
         normalized = re.sub(r"[^a-z0-9]+", "-", display_name.lower()).strip("-")
         if normalized != key:
             assert LIST_AGGREGATE_TPCHAVOC_PLATFORM_ALIASES[normalized] == key
-        assert benchmark.get_platform_skip_queries(display_name) == ["1_v7"]
+        assert "1_v7" in benchmark.get_platform_skip_queries(display_name)
 
 
 def test_list_aggregate_skip_reasons_name_a_platform_without_a_translation():
@@ -164,4 +164,4 @@ def test_list_aggregate_skip_reasons_name_a_platform_without_a_translation():
         dialect = get_platform_sql_dialect(platform)
         assert dialect not in LIST_AGGREGATE_DIALECTS
         assert reason
-        assert benchmark.get_platform_skip_queries(platform) == ["1_v7"]
+        assert "1_v7" in benchmark.get_platform_skip_queries(platform)

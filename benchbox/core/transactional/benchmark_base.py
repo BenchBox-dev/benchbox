@@ -30,6 +30,7 @@ _SERIES_SELECT_TEMPLATES = {
     "snowflake": "SELECT value::INT AS {alias} FROM TABLE(FLATTEN(ARRAY_GENERATE_RANGE({lo}, {hi} + 1)))",
     "bigquery": "SELECT {alias} FROM UNNEST(GENERATE_ARRAY({lo}, {hi})) AS {alias}",
     "questdb": "SELECT generate_series AS {alias} FROM generate_series({lo}, {hi})",
+    "starrocks": "SELECT {alias} FROM TABLE(generate_series({lo}, {hi})) AS series({alias})",
 }
 _SET_THEN_BEGIN_ISOLATION_RE = re.compile(
     r"SET\s+TRANSACTION\s+ISOLATION\s+LEVEL\s+(?P<level>REPEATABLE\s+READ|SERIALIZABLE|READ\s+COMMITTED)\s*;\s*"
@@ -42,6 +43,40 @@ _BEGIN_TRANSACTION_RE = re.compile(r"\bBEGIN\s+TRANSACTION\s*;", re.IGNORECASE)
 def _doris_numbers_select(match: re.Match[str]) -> str:
     lo, hi = int(match.group("lo")), int(match.group("hi"))
     return f'SELECT number + {lo} AS {match.group("alias")} FROM numbers("number" = {hi - lo + 1})'
+
+
+_STARROCKS_BETWEEN_RE = re.compile(r"(?P<column>\w+)\s+BETWEEN\s+(?P<lo>\S+)\s+AND\s+(?P<hi>\S+)", re.IGNORECASE)
+_STARROCKS_UNCONDITIONAL_DELETE_RE = re.compile(r"^\s*DELETE\s+FROM\s+\S+\s*$", re.IGNORECASE)
+
+
+_INSERT_VALUES_RE = re.compile(
+    r"^\s*INSERT\s+INTO\s+(?P<table>\w+)\s+VALUES\s*(?P<rows>\(.*\))\s*$", re.IGNORECASE | re.DOTALL
+)
+
+
+def _merge_insert_values(sql: str) -> str:
+    merged: list[str] = []
+    last_table: str | None = None
+    combined = False
+    for statement in (part.strip() for part in sql.split(";")):
+        if not statement:
+            continue
+        match = _INSERT_VALUES_RE.match(statement)
+        if match and last_table == match["table"].lower():
+            merged[-1] = f"{merged[-1]}, {match['rows']}"
+            combined = True
+        else:
+            merged.append(statement)
+        last_table = match["table"].lower() if match else None
+    return "; ".join(merged) + ";" if combined else sql
+
+
+def _starrocks_cleanup_statement(statement: str) -> str:
+    if not statement.lstrip().upper().startswith("DELETE"):
+        return statement
+    if _STARROCKS_UNCONDITIONAL_DELETE_RE.match(statement):
+        return f"{statement.strip()} WHERE 1 = 1"
+    return _STARROCKS_BETWEEN_RE.sub(r"\g<column> >= \g<lo> AND \g<column> <= \g<hi>", statement)
 
 
 def _sql_escape(value: Any) -> str:
@@ -194,6 +229,8 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
             sql = _UNNEST_SERIES_SELECT_RE.sub(
                 lambda m: template.format(lo=m.group("lo"), hi=m.group("hi"), alias=m.group("alias")), sql
             )
+            if dialect == "starrocks":
+                return _merge_insert_values(_BEGIN_TRANSACTION_RE.sub("BEGIN;", sql))
             return rewrite_questdb_operation_sql(sql) if dialect == "questdb" else sql
         if dialect not in _POSTGRES_SERIES_DIALECTS:
             return sql
@@ -203,6 +240,10 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
     def _execute_cleanup_sql(self, connection: DatabaseConnection, cleanup_sql: str, platform_key: str | None) -> None:
         if (platform_key or "").lower() == "questdb":
             statements = questdb_cleanup_statements(rewrite_questdb_operation_sql(cleanup_sql))
+        elif (platform_key or "").lower() == "starrocks":
+            statements = [
+                _starrocks_cleanup_statement(statement) for statement in cleanup_sql.split(";") if statement.strip()
+            ]
         else:
             statements = [cleanup_sql]
         for statement in statements:
@@ -269,7 +310,7 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
 
     def _manifest_text_type(self) -> str:
         dialect = (getattr(self, "_setup_dialect", None) or "standard").lower()
-        if dialect in ("databricks", "bigquery"):
+        if dialect in ("databricks", "bigquery", "starrocks"):
             return "STRING"
         return "TEXT" if dialect == "singlestore" else "VARCHAR"
 

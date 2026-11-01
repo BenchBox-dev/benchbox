@@ -19,6 +19,7 @@ from benchbox.utils.query_shape_rewrites import (
     fold_scalar_having_into_case,
     hoist_aggregate_subqueries,
     inline_named_windows,
+    inline_sourceless_exists,
     qualify_aggregated_columns,
     rollup_empty_input_row,
     unwrap_single_grouping_set,
@@ -41,6 +42,22 @@ def _keep_doris_full_outer_join() -> None:
 
 
 _keep_doris_full_outer_join()
+
+
+def _eliminate_starrocks_qualify() -> None:
+    from benchbox._vendor.sqlglot import exp, transforms
+    from benchbox._vendor.sqlglot.generators.starrocks import StarRocksGenerator
+
+    StarRocksGenerator.TRANSFORMS[exp.Select] = transforms.preprocess(
+        [
+            transforms.eliminate_distinct_on,
+            transforms.eliminate_qualify,
+            transforms.unnest_generate_date_array_using_recursive_cte,
+        ]
+    )
+
+
+_eliminate_starrocks_qualify()
 
 SCHEMA_DDL_SCOPE = "schema_ddl"
 WORKLOAD_QUERY_SCOPE = "workload_query"
@@ -640,6 +657,7 @@ _LOCAL_REWRITES: dict[str, Callable[..., object]] = {
     "hoist_aggregate_subqueries": hoist_aggregate_subqueries,
     "in_subquery_or_to_left_join": in_subquery_or_to_left_join,
     "inline_named_windows": inline_named_windows,
+    "inline_sourceless_exists": inline_sourceless_exists,
     "qualify_aggregated_columns": qualify_aggregated_columns,
     "rollup_empty_input_row": rollup_empty_input_row,
     "trim_char_case_comparisons": trim_char_case_comparisons,
