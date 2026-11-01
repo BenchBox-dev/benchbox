@@ -1,0 +1,13 @@
+{
+  "description": "Promoted from deferral 1 on heavy-guard-status-policy-20261030: Rename deferred to avoid churn across 6 workflows, docs and 20+ tests during rollout.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:94e4d2f7dee4726eca194412",
+      "at": "2026-11-01T02:23:54Z",
+      "client": "omp-coding-agent",
+      "op": "promote",
+      "op_id": "4bd9f10ae8224cb185f082f50f71c2fc",
+      "session_id": "6f8f4a28707f4702ad48cd7b8d6aaabb"
+    }
+  ]
+}

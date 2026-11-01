@@ -14,7 +14,9 @@
       "from_item": "heavy-guard-status-policy-20261030",
       "id": 1,
       "reason": "Rename deferred to avoid churn across 6 workflows, docs and 20+ tests during rollout.",
-      "resolution": "open",
+      "resolution": "promoted",
+      "resolved_at": "2026-11-01T02:23:53Z",
+      "resolved_item": "heavy-guard-status-policy-20261030-deferral-1",
       "summary": "Rename test.lock to heavy.lock and BENCHBOX_TEST_LOCK_* to BENCHBOX_HEAVY_* once the guard is stable"
     }
   ],
@@ -72,6 +74,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "eeb329f83d594a53acafbc578efa1c06",
+      "session_id": "6f8f4a28707f4702ad48cd7b8d6aaabb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:94e4d2f7dee4726eca194412",
+      "at": "2026-11-01T02:23:53Z",
+      "client": "omp-coding-agent",
+      "op": "promote",
+      "op_id": "4bd9f10ae8224cb185f082f50f71c2fc",
       "session_id": "6f8f4a28707f4702ad48cd7b8d6aaabb"
     }
   ]
