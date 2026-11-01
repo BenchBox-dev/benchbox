@@ -16735,17 +16735,12 @@
       "title": "Post oracle-gate from the verdict run and leave thread resolution to the ruleset"
     },
     "oracle-gate-hardening-lows-20261026": {
-      "claim": {
-        "expires_at": "2026-11-02T04:31:43Z",
-        "generation": "2d25149c238e4e779c077c4e5a83ddbb",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e"
-      },
+      "claim": null,
       "needs": [
         "retire-oracle-review-workflow-20261021"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Validate oracle-gate dispatch inputs and ignore oracle-gate statuses not posted by the App"
     },
     "oracle-gate-in-run-latency-observation-20261031": {
