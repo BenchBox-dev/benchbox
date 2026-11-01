@@ -98,10 +98,11 @@ to capture the join.
 
 Without the three variables, or when Tailscale is missing or the join or check
 fails, bootstrap still succeeds, stops any daemon it started, and records the
-gateway as unavailable. `make pr-open` then refuses before any push, because
-its local review cannot run: fix the missing variable or Tailscale install and
-run `make cloud-gateway`, or report the blocker. A builder never skips the
-review.
+gateway as unavailable. When the diff needs a review, `make pr-open` then
+refuses before any push (exit 2), because its local review cannot run: fix the
+missing variable or Tailscale install and run `make cloud-gateway`, or report
+the blocker. A diff the policy classifies as needing no review proceeds without
+the gateway. A builder never skips a required review.
 
 `make pr-open` does the proxy wiring itself. It reads `gateway_proxy=` from the
 status file (accepting only a loopback `http://127.0.0.1:<port>` value), reaches

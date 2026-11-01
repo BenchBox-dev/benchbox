@@ -182,11 +182,11 @@ one-time inspection:
 | C2 total exit | After each reviewer exit, `runner.execute` lists the harness process group and, on Linux, every orphan the loop adopts as child subreaper. Survivors are killed and the run fails closed: slot absent, loop stops, job fails, nothing posts. |
 | C3 no secret in a script | The workflow test fails if any `run:` block names `secrets.*` or `github.token`; secrets reach steps only via `env:` or `with:`. |
 | C4 disk scan | Before the reviewer, after the tailnet join and after the last exit, `drive scan` searches `$HOME`, `$RUNNER_TEMP`, both checkouts, `/tmp`, `/var/tmp`, `/dev/shm` and `${TMPDIR:-/tmp}` for the exact TypeSafe key, Tailscale OAuth secret and job token, deduplicating nested roots and following no file or directory symlinks. It covers the declared readable scratch roots, not every readable file. Values come from the step's own `env:`. A hit fails the job. |
-| C5 redaction completeness | The `finalize` phase holds every secret the job held (gateway token, TypeSafe key, gateway URL, Tailscale OAuth client ID and secret, job token). It redacts the protocol record before it encodes the marker, then runs the redaction check, which redacts attempt, verdict, diagnostic, absence and result text across control-character splits, decodes the trailing protocol marker of each text, and fails the phase if a value remains in the text or in a decoded marker. Finalize and the loop defer their step-summary lines to files that the check writes to the step summary only after it succeeds. The loop step cannot hold these: a same-user child can read its parent's environment. |
+| C5 redaction completeness | The `finalize` phase holds every secret the job held (gateway token, TypeSafe key, gateway URL, Tailscale OAuth client ID and secret, job token). It redacts the protocol record before it encodes the marker, then runs the redaction check, which rewrites every JSON file in the attempt and final directories (attempt, verdict, diagnostic, absence, status, comment, review, state and deferred-summary files) so no secret value survives, including one split by ASCII control characters, decodes the trailing protocol marker of each text, and fails the phase if a file is not valid JSON or a value remains in a text, a key or a decoded marker. Finalize and the attempt loop defer their per-slot and verdict summary lines to `summary.json` files (one newline-joined string, so redacting a secret cannot merge lines) that the check writes to the step summary only after it succeeds; the lines are also printed to the step log, and a few fixed status lines (selection failures, the recover step's choice) go straight to the step summary. The loop step cannot hold these: a same-user child can read its parent's environment. |
 | C6 fresh `HOME` | Each attempt gets a new `mkdtemp` directory; the previous one is deleted first and the checkout reset. |
 | C7 token scope | Job permissions are exactly `actions: write`, `contents: read`, `pull-requests: read`; no `id-token`, and the isolation step fails if `ACTIONS_ID_TOKEN_REQUEST_TOKEN` is present. `github.token` appears only in the `env:` of steps before or after the loop; both checkouts use `persist-credentials: false`. |
 | C8 timeout budget | The job's `timeout-minutes` is `max_attempts` times the longest reviewer `timeout_minutes` plus setup, under 360; the harness timeout fires first and becomes an absence. Every phase step also carries its own `timeout-minutes`: attempt-loop steps the `max_attempts` times longest reviewer budget, every other phase at most 30. A workflow test recomputes both from the policy. |
-| C9 cancellation | `cancel-in-progress` is true only for `pull_request_target`; comment, dispatch and sweep runs wait behind a run in flight, one waiting run per concurrency group, and a newer waiting run replaces the older one, which GitHub cancels. The publish and dispatch steps keep the default success condition, so a cancelled run posts nothing. |
+| C9 cancellation | `cancel-in-progress` is true only for `pull_request_target`. Push and schedule runs share one `sweep` group; owner `/oracle-review` and adjudication comments and dispatches share the pull request's group with its `pull_request_target` runs; every other event gets a group of its own. A run that waits behind one in flight is held as the group's single pending run, and a newer pending run replaces the older one, which GitHub cancels. The publish and dispatch steps keep the default success condition, so a cancelled run posts nothing. |
 | C10 App mint last | `ORACLE_APP_PRIVATE_KEY` is referenced by the review job's posting mint, after the loop, last disk scan and the finalize phase's redaction check, and by the sweep job's failure-status mint; the sweep job runs no reviewer, so its mint cannot leak to one. |
 
 Redaction is accident hygiene, not a control: it matches literal and
@@ -324,8 +324,8 @@ three tries, instead of posting unconfirmed.
 Before a carry is planned, the recorded decision is checked against the App's
 own `oracle-verdict` status for the reviewed head: only statuses created by the
 App's Bot account count, the one whose description carries the record's
-`[run <uuid>]` is chosen, and when several qualify the one created nearest the
-review's submission wins (a record with no run uuid considers every App success
+`[run <run id>]` is chosen, and when several qualify the one created nearest the
+review's submission wins (the run id is the workflow run's `GITHUB_RUN_ID`, which a re-run attempt keeps; a record with no run id considers every App success
 or failure, and a non-`SHIP` record falls back to the App statuses without a run
 uuid, because only success statuses carry one). The status must be `success`
 exactly when the decision is `SHIP`; `SHIP WITH FIXES`, `DO NOT SHIP` and
@@ -538,8 +538,9 @@ The review body lists every absent attempt under "Reviewers not available" as `-
 attempt by `; recovery: <choice> (Jev, probability, confidence)` or
 `; recovery: <choice> (fallback, <reason>)`. The detail is the
 attempt artifact's, credentials redacted, whitespace collapsed, at most 160
-characters, and omitted when absent. Raw reviewer responses are never published
-there.
+characters, and omitted when absent. A reviewer's raw response is never published
+there; the detail can carry the reviewer's own `incomplete_reason` or the text of a
+contradiction, redacted and clipped like any other detail.
 
 ## Decisions
 
@@ -637,8 +638,9 @@ fallback over family exclusion.
 ## Evidence that a review happened
 
 A defect-free verdict can be hollow: a reviewer that could not read the files
-may still answer. The job checks each verdict against the head checkout before
-recording it; a failure records the reviewer absent (`incomplete`) and the
+may still answer. For a file-list brief the job checks a verdict that would ship
+against the head checkout before recording it: the trace must show a successful
+read of each required file and `files_examined` must name it; a failure records the reviewer absent (`incomplete`) and the
 required files it left unread on the attempt artifact (`absence.unread`). The
 same reviewer then runs once more. Its brief marks those files in the fenced
 "Required reads" list, taken from the plan's required list intersected with the
@@ -646,7 +648,9 @@ recorded list, never from reviewer text, and carries a fixed "Earlier attempt
 feedback" note that holds only their count, so author-chosen file names stay
 inside the data fences. If the retry also fails the check, the chain advances
 and the next reviewer's brief carries neither mark nor note. With no verdict the
-run stays pending. A hollow answer never passes.
+run stays pending. The check is an exposure check, not a quality check: it
+confirms the required files were read and named, not that the review of them was
+sound, and it does not apply to an inline brief or to a verdict that does not ship.
 
 - Every defect must cite a head-commit file and a line within it. One that does
   not is kept, noted as citation not found, so it still fails the change;
@@ -687,10 +691,11 @@ run stays pending. A hollow answer never passes.
   sibling or outside path credits nothing. Out-of-bounds line reads and
   notice-only reads stay with `oracle-verdict-labels-unreviewed-bytes` and
   `oracle-read-evidence-tightening-20261008`.
-- The evidence check is an exposure check: it confirms that changed files were
-  exposed to the reviewer, not whole-file or semantic proof of review. Two classes
+- The evidence check is an exposure check: it confirms that the required files (the plan's
+  in-scope, non-deleted reviewed files) were exposed to the reviewer, not whole-file or semantic proof of review. Two classes
   of files are exempt from the per-file read requirement while staying in the
-  reviewed diff and in scope for findings:
+  diff the reviewer is given; in a follow-up round, prose files outside the scope
+  leave the reviewed-files list, though a non-partial inline diff still carries them:
   1. Binary files: a diff `Binary files ... differ` or `GIT binary patch` notice, taken from the
      plan's diff, only nominates a file. The exemption applies only to font files (`.eot`, `.otf`,
      `.ttf`, `.woff`, `.woff2`), which the harness cannot read, when the head checkout holds a
@@ -1275,18 +1280,20 @@ Done: `.github/oracle-reviewers.yml` sets `mode: enforce`, and the checker
   App's Bot account, state `success`, posted after any retarget;
 - no unresolved review thread from the App.
 
-The verdict comes from the App's commit status, never a review body: the account
-every agent uses can edit or delete reviews, while a status cannot be edited or
-deleted and records its creator. Statuses from other accounts or contexts,
+The verdict state comes from the App's commit status: the account every agent
+uses can edit or delete reviews, while a status cannot be edited or deleted and
+records its creator. A success counts only when it is bound to an unedited App
+review of the same head (below), whose body the gate reads for its marker and header. Statuses from other accounts or contexts,
 including legacy `oracle-review-shadow`, are ignored. A status belongs to a
-commit, not a PR, so the gate binds it by run: each verdict run mints a run
-uuid, writes it into the review marker and appends `[run <uuid>]` to the success
-status description (within the 140-character limit). The gate passes on a
+commit, not a PR, so the gate binds it by run: each verdict run writes its
+workflow run id (`GITHUB_RUN_ID`, kept by a re-run attempt; local reviews use a
+random uuid instead) into the review marker as `run_uuid` and appends
+`[run <run id>]` to the success status description (within the 140-character limit). The gate passes on a
 success status only when this PR has its own unedited oracle review of that head
 whose marker carries the same uuid and whose header agrees with the status.
-Unedited is verified through the review API; an unverifiable edit state never
-authorizes. A status from another PR at the same head, or an earlier policy,
-never authorizes: any success status without a run uuid, including evidence
+Unedited is verified through the GraphQL `lastEditedAt` and `includesCreatedEdit`
+fields; an unverifiable edit state errors the gate and never authorizes. A status from another PR at the same head, or an earlier policy,
+never authorizes: any success status without a run id, including evidence
 predating the requirement, fails closed and waits for a fresh verdict run.
 Merged PRs predate this and never re-run the gate. The oracle signal needs
 `findings_delivery: review`, under which every run reaching a result, pending
