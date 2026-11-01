@@ -189,7 +189,7 @@ def _stub_env(tmp_path: Path, status: str, **extra: str) -> dict[str, str]:
         BENCHBOX_TEST_LOCK_WAIT_SECONDS="0",
         BENCHBOX_HEAVY_ADMIT="force",
         BENCHBOX_HEAVY_WATCHDOG="off",
-        **extra,
+        **{"BENCHBOX_PYTHON": sys.executable, **extra},
     )
     for key in ("BENCHBOX_TEST_SESSION_OWNER", "BENCHBOX_SKIP_TEST_LOCK"):
         env.pop(key, None)
@@ -252,15 +252,65 @@ def test_a_machine_this_run_started_is_stopped_afterwards_and_the_lock_is_held_m
     assert result.returncode == 0, result.stderr
     assert probe.read_text(encoding="utf-8").strip() == "True"
     calls = _calls(tmp_path)
-    assert calls[-2:] == ["machine run -n m -e A=1 -- true", "machine stop m"]
+    assert [call for call in calls if call != "machine list --format json"][-2:] == [
+        "machine run -n m -e A=1 -- true",
+        "machine stop m",
+    ]
 
 
 @posix_only
 @needs_bash
-def test_a_machine_that_was_already_running_is_left_running(tmp_path: Path) -> None:
-    result = _locked_wrapper(_stub_env(tmp_path, "running"), "--", "true")
+@pytest.mark.parametrize("prior", ["running", "stopped", "unknown"])
+def test_the_machine_is_stopped_after_a_run_whatever_state_it_was_in(tmp_path: Path, prior: str) -> None:
+    result = _locked_wrapper(_stub_env(tmp_path, prior), "--", "true")
     assert result.returncode == 0, result.stderr
+    assert _calls(tmp_path)[-1] == "machine stop m"
+
+
+@posix_only
+@needs_bash
+@pytest.mark.parametrize(("prior", "stops"), [("running", False), ("unknown", False), ("stopped", True)])
+def test_keep_machine_leaves_its_prior_state(tmp_path: Path, prior: str, stops: bool) -> None:
+    env = _stub_env(tmp_path, prior, BENCHBOX_KEEP_LINUX_MACHINE="1")
+    result = _locked_wrapper(env, "--", "true")
+    assert result.returncode == 0, result.stderr
+    assert any(call.startswith("machine stop") for call in _calls(tmp_path)) is stops
+
+
+def _checker(tmp_path: Path, script: str) -> str:
+    path = tmp_path / "checker"
+    path.write_text(script, encoding="utf-8")
+    path.chmod(0o755)
+    return str(path)
+
+
+@posix_only
+@needs_bash
+def test_a_live_foreign_machine_run_prevents_the_stop_and_is_logged(tmp_path: Path) -> None:
+    checker = _checker(tmp_path, "#!/bin/sh\necho 4242\nexit 0\n")
+    result = _locked_wrapper(_stub_env(tmp_path, "running", BENCHBOX_PYTHON=checker, STUB_RUN_EXIT="3"), "--", "false")
+    assert result.returncode == 3
     assert not any(call.startswith("machine stop") for call in _calls(tmp_path))
+    assert "left running: in use by pid 4242" in result.stderr
+
+
+@posix_only
+@needs_bash
+@pytest.mark.parametrize("code", [1, 2, 127])
+def test_no_foreign_run_or_an_unrunnable_check_stops_the_machine(tmp_path: Path, code: int) -> None:
+    checker = _checker(tmp_path, f"#!/bin/sh\nexit {code}\n")
+    result = _locked_wrapper(_stub_env(tmp_path, "running", BENCHBOX_PYTHON=checker), "--", "true")
+    assert result.returncode == 0, result.stderr
+    assert _calls(tmp_path)[-1] == "machine stop m"
+
+
+@posix_only
+@needs_bash
+def test_the_real_process_check_ignores_the_wrapper_and_its_own_run(tmp_path: Path) -> None:
+    result = _locked_wrapper(_stub_env(tmp_path, "running", STUB_RUN_HOOK="sleep 0.2"), "-e", "A=1", "--", "true")
+    assert result.returncode == 0, result.stderr
+    assert "left running" not in result.stderr
+    assert _calls(tmp_path)[-1] == "machine stop m"
 
 
 @posix_only
@@ -281,15 +331,6 @@ def test_the_run_status_survives_the_stop(tmp_path: Path) -> None:
     result = _locked_wrapper(_stub_env(tmp_path, "stopped", STUB_RUN_EXIT="7", STUB_STOP_EXIT="1"), "--", "false")
     assert result.returncode == 7
     assert _calls(tmp_path)[-1] == "machine stop m"
-
-
-@posix_only
-@needs_bash
-def test_an_unknown_prior_state_is_never_stopped(tmp_path: Path) -> None:
-    env = _stub_env(tmp_path, "unknown")
-    result = _locked_wrapper(env, "--", "true")
-    assert result.returncode == 0, result.stderr
-    assert not any(call.startswith("machine stop") for call in _calls(tmp_path))
 
 
 STUB_ENGINE = """#!/usr/bin/env bash
