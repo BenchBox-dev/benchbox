@@ -146,7 +146,8 @@ a manual dispatch, a `pull_request_target` event other than a plain edit, and a
    is the receipt: a failed findings post leaves no decisive status, so the
    sweep retries the head. It then evaluates and posts `oracle-gate` for the
    exact head. The retry state is uploaded only if every post
-   succeeded, then the attempt artifacts and the captured event streams, and
+   succeeded (a separate attempt record of the same state is kept either way, so
+   a failed post still counts against the retry budget), then the attempt artifacts and the captured event streams, and
    last `drive dispatch` dispatches `oracle-gate`. `findings_delivery` in
    `.github/oracle-reviewers.yml`
    chooses the findings form:
