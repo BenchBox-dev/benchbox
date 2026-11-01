@@ -12859,6 +12859,13 @@
       "status": "done",
       "title": "Remove the dead merge_group branch from heavy_tier_needed.py and its tests and docs"
     },
+    "history-retention-adr-stale-doc-references": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "History-retention ADR and the publish allowlist reference documentation paths that no longer exist in core"
+    },
     "holistic-review-followup-metadata-truth": {
       "claim": null,
       "needs": [],
