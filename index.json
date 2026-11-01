@@ -17297,12 +17297,17 @@
       "title": "Do not leave the oracle gate waiting forever after a PR is retargeted away and back"
     },
     "oracle-review-automatic-reevaluation-20261021": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-02T02:55:38Z",
+        "generation": "d7acde08e2794506b4d21dbdd87b6c65",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e"
+      },
       "needs": [
         "retire-oracle-review-workflow-20261021"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Refresh oracle-gate when a pull request is armed, so resolving oracle threads before make pr-arm does not leave a stale gate failure until the sweep"
     },
     "oracle-review-body-length-cap-20261022": {
