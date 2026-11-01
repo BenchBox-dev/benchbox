@@ -445,19 +445,16 @@ class TestQuestDBAdapter:
         data_file.write_text("1|2|\n3|4|\n", encoding="utf-8")
 
         captured_body = {}
-        mock_requests = Mock()
         mock_response = Mock(status_code=200, text="| Rows imported | 2 |")
-        mock_requests.post.return_value = mock_response
 
         def _post(url, **kwargs):
             f = kwargs["files"]["data"][1]
             captured_body["content"] = f.read()
             return mock_response
 
-        mock_requests.post.side_effect = _post
         dialect = CsvDialect("|", False, "", False, None)
 
-        with patch.dict("sys.modules", {"requests": mock_requests}):
+        with patch.object(questdb_module, "_http_post", side_effect=_post):
             adapter._load_table_via_rest_api("lineitem", data_file, dialect)
 
         assert b"1|2\n" in captured_body["content"]
@@ -657,7 +654,6 @@ class TestQuestDBAdapter:
         data_file.write_bytes(b"1,hello\n2,world\n")
 
         captured_body = {}
-        mock_requests = Mock()
         mock_response = Mock(status_code=200, text="| Rows imported | 2 |")
 
         def _post(url, **kwargs):
@@ -665,10 +661,9 @@ class TestQuestDBAdapter:
             captured_body["content"] = f.read()
             return mock_response
 
-        mock_requests.post.side_effect = _post
         dialect = CsvDialect(",", False, None, False, None)
 
-        with patch.dict("sys.modules", {"requests": mock_requests}):
+        with patch.object(questdb_module, "_http_post", side_effect=_post):
             adapter._load_table_via_rest_api("hits", data_file, dialect)
 
         assert b"1,hello\n" in captured_body["content"]
@@ -977,46 +972,37 @@ class TestQuestDBTlsUrls:
     def test_imp_url_uses_http_by_default(self, questdb_stubs, tmp_path):
         adapter = QuestDBAdapter(host="myhost", http_port=9000)
         adapter._import_schema = lambda *args, **kwargs: None
-        mock_requests = Mock()
         mock_response = Mock(status_code=200, text="| Rows imported | 1 |")
-        mock_requests.post.return_value = mock_response
 
         data_file = tmp_path / "data.csv"
         data_file.write_text("1,test\n", encoding="utf-8")
         dialect = CsvDialect(",", False, None, False, None)
 
-        with patch.dict("sys.modules", {"requests": mock_requests}):
+        with patch.object(questdb_module, "_http_post", return_value=mock_response) as http_post:
             adapter._load_table_via_rest_api("test_table", data_file, dialect)
-            url = mock_requests.post.call_args[0][0]
-            assert url == "http://myhost:9000/imp"
+            assert http_post.call_args[0][0] == "http://myhost:9000/imp"
 
     def test_imp_url_uses_https_when_tls_enabled(self, questdb_stubs, tmp_path):
         adapter = QuestDBAdapter(host="myhost", http_port=9000, use_tls=True)
         adapter._import_schema = lambda *args, **kwargs: None
-        mock_requests = Mock()
         mock_response = Mock(status_code=200, text="| Rows imported | 1 |")
-        mock_requests.post.return_value = mock_response
 
         data_file = tmp_path / "data.csv"
         data_file.write_text("1,test\n", encoding="utf-8")
         dialect = CsvDialect(",", False, None, False, None)
 
-        with patch.dict("sys.modules", {"requests": mock_requests}):
+        with patch.object(questdb_module, "_http_post", return_value=mock_response) as http_post:
             adapter._load_table_via_rest_api("test_table", data_file, dialect)
-            url = mock_requests.post.call_args[0][0]
-            assert url == "https://myhost:9000/imp"
+            assert http_post.call_args[0][0] == "https://myhost:9000/imp"
 
     def test_exec_url_uses_https_when_tls_enabled(self, questdb_stubs):
         adapter = QuestDBAdapter(host="myhost", http_port=9000, use_tls=True)
-        mock_requests = Mock()
         mock_response = Mock(status_code=200)
         mock_response.json.return_value = {"dataset": [[42]]}
-        mock_requests.get.return_value = mock_response
 
-        with patch.dict("sys.modules", {"requests": mock_requests}):
+        with patch.object(questdb_module, "_http_get", return_value=mock_response) as http_get:
             adapter._count_table_rows_via_http("test_table")
-            url = mock_requests.get.call_args[0][0]
-            assert url == "https://myhost:9000/exec"
+            assert http_get.call_args[0][0] == "https://myhost:9000/exec"
 
     def test_from_config_passes_use_tls(self, questdb_stubs):
         config = {
