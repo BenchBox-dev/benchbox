@@ -103,6 +103,17 @@
       "op": "update",
       "op_id": "eeb7c5b38b994bc4914cb72963f6960d",
       "session_id": "6f8f4a28707f4702ad48cd7b8d6aaabb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:94e4d2f7dee4726eca194412",
+      "at": "2026-11-01T02:23:23Z",
+      "client": "omp-coding-agent",
+      "displaced": "mcp:omp-coding-agent:joe@joe-mac-mini.local:19f6136ffb052a6f71a9c702",
+      "generation": "d71dc4fb17484c09854fbda68c121d0b",
+      "op": "takeover",
+      "op_id": "524dab0430f94b15aac345d4c3146f42",
+      "reason": "Same owner session; its OMP process exited during the 2026-10-31 host hang and its MCP connection cannot resume. The work it claimed is merged in PR #3848.",
+      "session_id": "6f8f4a28707f4702ad48cd7b8d6aaabb"
     }
   ]
 }
