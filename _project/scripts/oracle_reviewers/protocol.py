@@ -81,7 +81,7 @@ RECORD_KEYS = frozenset(
         "summary",
     }
 )
-OPTIONAL_RECORD_KEYS = frozenset({"patch_map", "forced", "run_uuid", "escalated", "adjudicated", "disputed"})
+OPTIONAL_RECORD_KEYS = frozenset({"patch_map", "forced", "run_uuid", "escalated", "adjudicated", "disputed", "claimed"})
 DEFECT_KEYS = ("id", "severity", "file", "line", "end_line", "title")
 
 
@@ -257,11 +257,14 @@ def _valid_escalation(record: Mapping[str, Any]) -> bool:
     escalated = record.get("escalated", [])
     disputed = record.get("disputed", [])
     adjudicated = record.get("adjudicated", [])
+    claimed = record.get("claimed", [])
     return (
         isinstance(escalated, list)
         and all(isinstance(item, str) and DEFECT_ID.fullmatch(item) for item in escalated)
         and isinstance(disputed, list)
         and all(isinstance(item, str) and DEFECT_ID.fullmatch(item) for item in disputed)
+        and isinstance(claimed, list)
+        and all(isinstance(item, str) and DEFECT_ID.fullmatch(item) for item in claimed)
         and isinstance(adjudicated, list)
         and all(
             isinstance(item, dict)

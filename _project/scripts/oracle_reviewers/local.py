@@ -498,7 +498,7 @@ def withhold_secrets() -> None:
     os.set_inheritable(read, True)
     scrubbed = {name: value for name, value in os.environ.items() if name not in held}
     scrubbed[HANDOVER_ENV] = str(read)
-    os.execve(sys.executable, sys.orig_argv, scrubbed)
+    raise SystemExit(subprocess.run(sys.orig_argv, env=scrubbed, pass_fds=(read,), check=False).returncode)
 
 
 def _held(name: str) -> str:
@@ -1115,28 +1115,31 @@ def _patch_digest(root: Path, base_ref: str, head: str) -> str:
     return protocol.patch_digest(protocol.fingerprints(file_states(root, base, head)))
 
 
-def _checked_inputs(args: argparse.Namespace, previous: Mapping[str, Any] | None, reporter: Reporter) -> None:
-    if args.rebuttals and args.adjudicate:
+def _checked_inputs(rebuttals: str, adjudicate: str, previous: Mapping[str, Any] | None, reporter: Reporter) -> None:
+    if rebuttals and adjudicate:
         raise Refused("pass either a rebuttal file or an adjudication, not both")
     try:
-        if args.rebuttals:
+        if rebuttals:
             if previous is None:
                 raise findings.RecordError("no local review of this patch exists to dispute")
-            if not findings.rebuttal_disputes(previous, findings.load_rebuttals(Path(args.rebuttals))):
+            if not findings.rebuttal_disputes(previous, findings.load_rebuttals(Path(rebuttals))):
                 reporter.say("Every rebuttal was already judged for this patch; there is nothing new to re-judge.")
-        if args.adjudicate:
-            findings.check_ruling(previous, findings.parse_ruling(args.adjudicate))
+        if adjudicate:
+            findings.check_ruling(previous, findings.parse_ruling(adjudicate))
     except findings.RecordError as exc:
         raise Refused(str(exc)) from exc
 
 
-def _review(args: argparse.Namespace, reporter: Reporter) -> int:
+def _run_review(
+    args: argparse.Namespace,
+    head: str,
+    previous: Mapping[str, Any] | None,
+    rebuttals: str,
+    reporter: Reporter,
+) -> Outcome:
     root = Path.cwd()
-    head = _git(root, "rev-parse", args.head).strip()
     trusted = Trusted.read(root, args.trusted_ref or args.base_ref, args.policy)
     repository = _repository(root)
-    previous = findings.load(state_dir(), _patch_digest(root, args.base_ref, head))
-    _checked_inputs(args, previous, reporter)
     key = classifier_key()
     reporter.hide(key, *(_held(name) for name in ("TS_AUTHKEY", *GITHUB_ACCESS_ENV)), *host_token_values().values())
     with _github_access():
@@ -1157,15 +1160,27 @@ def _review(args: argparse.Namespace, reporter: Reporter) -> int:
             uuid.uuid4().hex,
             reporter,
             key,
-            rebuttals=args.rebuttals,
+            rebuttals=rebuttals,
             adjudicate=args.adjudicate,
         )
-        outcome = _reviewed(run, trusted, previous)
+        return _reviewed(run, trusted, previous)
     finally:
         shutil.rmtree(work, ignore_errors=True)
+
+
+def _review(args: argparse.Namespace, reporter: Reporter) -> int:
+    root = Path.cwd()
+    head = _git(root, "rev-parse", args.head).strip()
+    rebuttals = str(Path(args.rebuttals).resolve()) if args.rebuttals else ""
+    digest = _patch_digest(root, args.base_ref, head)
+    state = state_dir()
+    with exclusive(findings.record_path(state, digest).with_suffix(".lock"), reporter, _holder(root)):
+        previous = findings.load(state, digest)
+        _checked_inputs(rebuttals, args.adjudicate, previous, reporter)
+        outcome = _run_review(args, head, previous, rebuttals, reporter)
+        if outcome.record is not None:
+            findings.store(state, outcome.record, reporter.secrets)
     record = outcome.record or previous
-    if outcome.record is not None:
-        findings.store(state_dir(), outcome.record, reporter.secrets)
     _show(outcome, reporter)
     code = _decide(outcome, reporter)
     _escalated(record, outcome, reporter)

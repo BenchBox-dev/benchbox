@@ -749,7 +749,7 @@ def plan_decision(plan: dict[str, Any], policy: Policy, out_dir: Path, inputs: R
         except (github.GitHubError, KeyError, ValueError) as exc:
             _summary(f"oracle-verdict: open review threads could not be read, so none are suppressed: {exc}")
     claims = (
-        findings.ingest(inputs.body, plan["protocol"]["patch_digest"], int(plan["max_defects"]))
+        findings.ingest(inputs.body, plan["protocol"]["patch_digest"])
         if step.kind == protocol.FIRST and not found.records and inputs.body
         else None
     )
@@ -915,6 +915,9 @@ def _protocol_round(
     }
     if step.forced:
         plan["protocol"]["maintained"] = protocol.maintained_counts(found.records, digest)
+    claimed = [item["id"] for item in plan["protocol"]["prior"] if item["id"] in (latest.get("claimed") or ())]
+    if claimed:
+        plan["protocol"]["claimed"] = claimed
     return step
 
 
@@ -1187,7 +1190,12 @@ def _assemble_prompt(
         head_sha=plan["head_sha"],
         max_defects=int(plan["max_defects"]),
         prior_rule=select_prior_rule(
-            prior or None, plan.get("reviewed_head"), int(plan["max_defects"]), bool(keyed), unkeyed
+            prior or None,
+            plan.get("reviewed_head"),
+            int(plan["max_defects"]),
+            bool(keyed),
+            unkeyed,
+            plan["protocol"].get("claimed") or (),
         ),
         prior_block=prior_block,
         prior_ids=[item["id"] for item in prior],

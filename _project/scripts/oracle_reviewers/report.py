@@ -142,6 +142,7 @@ def _record(
     escalated: Sequence[str] = (),
     adjudicated: Sequence[Mapping[str, str]] = (),
     disputed: Sequence[str] = (),
+    claimed: Sequence[str] | None = None,
 ) -> str:
     rules = plan["protocol"]
     record = {
@@ -556,6 +557,7 @@ def carried(plan: Mapping[str, Any]) -> Final:
             carried=True,
             escalated=previous.get("escalated", ()),
             adjudicated=previous.get("adjudicated", ()),
+            claimed=previous.get("claimed", ()),
         )
     )
     review = {"commit_id": plan["head_sha"], "event": "COMMENT", "body": body, "comments": []}
@@ -609,6 +611,7 @@ def adjudicated(plan: Mapping[str, Any]) -> Final:
             carried=True,
             escalated=escalated,
             adjudicated=settled,
+            claimed=previous.get("claimed", ()),
         )
     )
     review = {"commit_id": plan["head_sha"], "event": "COMMENT", "body": body, "comments": []}

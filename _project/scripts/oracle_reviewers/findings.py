@@ -14,7 +14,7 @@ from typing import Any
 
 from . import adjudication, dedup, protocol, redaction_check, report
 from .policy import SEVERITIES
-from .verdict import MAX_LINE, PriorDefect
+from .verdict import MAX_LINE, PriorDefect, sanitize
 
 RECORD_VERSION = 1
 FINDING_CAP = 20
@@ -375,7 +375,7 @@ def decode_body(body: str) -> dict[str, Any] | None:
 
 
 def _text(value: Any, cap: int) -> str | None:
-    return value[:cap] if isinstance(value, str) else None
+    return sanitize(" ".join(value.split()), cap) if isinstance(value, str) else None
 
 
 def _claim(raw: Any) -> dict[str, Any] | None:
@@ -449,7 +449,7 @@ class Claims:
         }
 
 
-def ingest(body: str, digest: str, max_defects: int) -> Claims | None:
+def ingest(body: str, digest: str) -> Claims | None:
     payload = decode_body(body)
     if payload is None or payload.get("v") != RECORD_VERSION or payload.get("patch_digest") != digest:
         return None
@@ -461,7 +461,7 @@ def ingest(body: str, digest: str, max_defects: int) -> Claims | None:
         claim = _claim(item)
         if claim is not None:
             unique.setdefault(claim["defect"]["id"], claim)
-    claims = sorted(unique.values(), key=lambda item: _number(item["defect"]["id"]))[: max(FINDING_CAP, max_defects)]
+    claims = sorted(unique.values(), key=lambda item: _number(item["defect"]["id"]))[:FINDING_CAP]
     if not claims:
         return None
     prior, disputes, maintained = [], [], {}

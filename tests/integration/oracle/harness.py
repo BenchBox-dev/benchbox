@@ -379,13 +379,14 @@ class Harness:
         *,
         rebuttals: dict[str, str] | None = None,
         adjudicate: str | None = None,
+        relative_path: bool = False,
         **options: Any,
     ) -> Step:
         argv, env, checkout = self._local_review_command(branch, **options)
         if rebuttals is not None:
-            rebuttal_file = self.root / "rebuttals.json"
+            rebuttal_file = (checkout if relative_path else self.root) / "rebuttals.json"
             rebuttal_file.write_text(json.dumps(rebuttals), encoding="utf-8")
-            argv = [*argv, "--rebuttals", str(rebuttal_file)]
+            argv = [*argv, "--rebuttals", rebuttal_file.name if relative_path else str(rebuttal_file)]
         if adjudicate is not None:
             argv = [*argv, "--adjudicate", adjudicate]
         self.record_out.unlink(missing_ok=True)

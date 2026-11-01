@@ -289,13 +289,44 @@ def test_a_record_for_another_patch_is_ignored_by_ci(harness: Harness) -> None:
 def test_a_record_is_not_ingested_once_the_pull_request_has_an_oracle_review(harness: Harness) -> None:
     _blocked_round(harness)
     body = _record_body(harness)
-    harness.github.open_pull(87, "feat/checker", body=body)
+    harness.github.open_pull(87, "feat/checker")
     harness.script_omp([_reply("SHIP_WITH_FIXES", DEFECT)])
     harness.review(87)
+    harness.github.pulls[87]["body"] = body
     harness.push("feat/checker", {"README.md": "seed\n\nA note.\n"}, "explain")
     harness.script_omp([_reply("SHIP_WITH_FIXES", priors={"D1": _maintained("Dispute: other")})])
 
     run = harness.review(87)
 
-    assert "claimed" not in run.plan["protocol"]
+    assert "claimed" not in run.plan["protocol"] and run.plan["disputes"] == []
     assert run.plan["protocol"]["kind"] == "follow-up"
+
+
+def test_claimed_findings_stay_exempt_from_the_defect_cap_in_later_ci_rounds(harness: Harness) -> None:
+    _blocked_round(harness)
+    harness.github.open_pull(88, "feat/checker", body=_record_body(harness))
+    kept = {"status": "not_fixed", "evidence": f"{CHECKER}:2 still returns a is b."}
+    harness.script_omp([_reply("SHIP_WITH_FIXES", priors={"D1": kept})])
+
+    first = harness.review(88)
+
+    assert first.plan["protocol"]["claimed"] == ["D1"]
+    assert "author supplied" in harness.omp_prompts()[0]
+    harness.push("feat/checker", {"README.md": "seed\n\nA note.\n"}, "explain")
+    harness.script_omp([_reply("SHIP_WITH_FIXES", priors={"D1": kept})])
+
+    second = harness.review(88)
+
+    assert second.plan["protocol"]["kind"] == "follow-up"
+    assert second.plan["protocol"]["claimed"] == ["D1"]
+    assert [item["id"] for item in second.plan["protocol"]["prior"]] == ["D1"]
+
+
+def test_a_rebuttal_file_named_by_a_relative_path_is_read_from_the_working_directory(harness: Harness) -> None:
+    _blocked_round(harness)
+    harness.script_omp([_reply("SHIP", priors={"D1": WITHDRAWN})])
+
+    review = harness.local_review("feat/checker", rebuttals={"c1-D1": REBUTTAL}, relative_path=True)
+
+    assert review.code == 0, review.stdout + review.stderr
+    assert harness.local_records()[0]["findings"][0]["status"] == findings.WITHDRAWN
