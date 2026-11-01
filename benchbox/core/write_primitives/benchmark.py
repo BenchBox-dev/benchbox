@@ -103,7 +103,24 @@ class OperationResult:
     executed_sql: Optional[str] = None
 
 
-def _check_validation_query(val_query: Any, actual_rows: int, val_result: list | None = None) -> bool:
+BOUNDS_BASE_SCALE_FACTOR = 0.01
+
+
+def _scaled_value_bounds(val_query: Any, scale_factor: float) -> tuple[float, float]:
+    lo = float(val_query.expected_value_min)
+    hi = float(val_query.expected_value_max)
+    if getattr(val_query, "bounds_scale_with_sf", False):
+        factor = float(scale_factor) / BOUNDS_BASE_SCALE_FACTOR
+        return lo * factor, hi * factor
+    return lo, hi
+
+
+def _check_validation_query(
+    val_query: Any,
+    actual_rows: int,
+    val_result: list | None = None,
+    scale_factor: float = BOUNDS_BASE_SCALE_FACTOR,
+) -> bool:
     expected_rows = val_query.expected_rows
     if expected_rows is not None:
         return actual_rows == expected_rows
@@ -117,6 +134,7 @@ def _check_validation_query(val_query: Any, actual_rows: int, val_result: list |
     ):
         if not val_result:
             return False
+        lo, hi = _scaled_value_bounds(val_query, scale_factor)
         for row in val_result:
             if not row or row[0] is None:
                 return False
@@ -124,7 +142,7 @@ def _check_validation_query(val_query: Any, actual_rows: int, val_result: list |
                 scalar = float(row[0])
             except (TypeError, ValueError):
                 return False
-            if not (val_query.expected_value_min <= scalar <= val_query.expected_value_max):
+            if not (lo <= scalar <= hi):
                 return False
         return True
     return True
@@ -1020,7 +1038,7 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
                 continue
             val_result = val_cursor.fetchall()
             actual_rows = len(val_result)
-            passed = _check_validation_query(val_query, actual_rows, val_result)
+            passed = _check_validation_query(val_query, actual_rows, val_result, self.scale_factor)
             validation_passed = validation_passed and passed
 
             validation_results.append(
@@ -1350,7 +1368,7 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
                 }
 
             aggregate_value = float(merge.metrics.get("aggregate_value", 0.0))
-            validation_pass, validation_error = self._validate_aggregate_value(op, aggregate_value)
+            validation_pass, validation_error = self._validate_aggregate_value(op, aggregate_value, self.scale_factor)
             if not validation_pass:
                 return {
                     "query_id": op_id,
@@ -1482,15 +1500,16 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
         )
 
     @staticmethod
-    def _validate_aggregate_value(op: Any, value: float) -> tuple[bool, str | None]:
+    def _validate_aggregate_value(
+        op: Any, value: float, scale_factor: float = BOUNDS_BASE_SCALE_FACTOR
+    ) -> tuple[bool, str | None]:
         if not op.validation_queries:
             return True, None
         vq = op.validation_queries[0]
-        lo = vq.expected_value_min
-        hi = vq.expected_value_max
-        if lo is None or hi is None:
+        if vq.expected_value_min is None or vq.expected_value_max is None:
             return True, None
-        if value < float(lo) or value > float(hi):
+        lo, hi = _scaled_value_bounds(vq, scale_factor)
+        if value < lo or value > hi:
             return False, (
                 f"Aggregate scalar {value:.4f} outside bounds [{lo}, {hi}] for op '{op.id}' validation '{vq.id}'"
             )

@@ -1272,6 +1272,7 @@ class TestCheckValidationQuery:
         expected_rows_max=None,
         expected_value_min=None,
         expected_value_max=None,
+        bounds_scale_with_sf=False,
     ):
         return SimpleNamespace(
             expected_rows=expected_rows,
@@ -1279,6 +1280,7 @@ class TestCheckValidationQuery:
             expected_rows_max=expected_rows_max,
             expected_value_min=expected_value_min,
             expected_value_max=expected_value_max,
+            bounds_scale_with_sf=bounds_scale_with_sf,
         )
 
     def test_exact_match_passes(self):
@@ -1332,6 +1334,21 @@ class TestCheckValidationQuery:
 
         q = self._make_query(expected_value_min=14000, expected_value_max=16000)
         assert _check_validation_query(q, actual_rows=1, val_result=[(14836.89,)]) is True
+
+    def test_scaled_value_bounds_follow_scale_factor(self):
+        from benchbox.core.write_primitives.benchmark import _check_validation_query
+
+        q = self._make_query(expected_value_min=14500, expected_value_max=15500, bounds_scale_with_sf=True)
+        assert _check_validation_query(q, 1, [(149164.0,)], scale_factor=0.1) is True
+        assert _check_validation_query(q, 1, [(1498948.0,)], scale_factor=1.0) is True
+        assert _check_validation_query(q, 1, [(14836.0,)], scale_factor=1.0) is False
+        assert _check_validation_query(q, 1, [(1600000.0,)], scale_factor=1.0) is False
+
+    def test_unscaled_value_bounds_ignore_scale_factor(self):
+        from benchbox.core.write_primitives.benchmark import _check_validation_query
+
+        q = self._make_query(expected_value_min=1000, expected_value_max=12000)
+        assert _check_validation_query(q, 1, [(9736.0,)], scale_factor=1.0) is True
 
     def test_value_bounds_below_range_fails(self):
         from benchbox.core.write_primitives.benchmark import _check_validation_query
