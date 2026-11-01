@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Merged to develop with the wheel hash matching the release SHA256SUMS and todo_state_contract_check.py passing.",
+    "From a clean export of origin/develop _project/scripts, todo-db-mcp initialize reports the new version and lists the v2 batch tools.",
+    "A live read of todo-state after the merge shows the pre-merge schema_version; the cutover waits for the pilot."
+  ],
+  "context": "Decision gate: start only after todo-db-batch-v2-release-20261101 published its release assets. Owner decision 2026-11-01 (owner answer in the choice dialog, BenchBox session 01a19729, 2026-11-01): \"Approve one cutover on the new release, with preconditions\" [option text: no schema-3 cutover on 0.12.0; the pilot's first register_batch on the new release performs one cutover only when develop pins the new runtime, list_items shows no live claim held by another worker, and Gate 1 proved an old client refuses with E_SCHEMA]. Guardrails: deliver as an ordinary serial PR to develop (AGENTS.md: feature delivery cannot deliver the changes that make it possible); write only from a linked worktree made with make worktree-create and checked with make agent-write-preflight, never the primary clone; stage explicit paths, never git add -A; no explanatory comments or docstrings (COMMENT-POLICY-001, make comment-policy-check); heavy test runs only through lock-taking entry points, never BENCHBOX_SKIP_TEST_LOCK; never weaken hold labels, the unresolved-thread refusal, oracle-gate, duration or suite gates; add a changelog.d fragment (CHANGELOG_INTERNAL when nothing is user-visible); durable artifacts carry no session or phase labels; cited line numbers are leads, so re-read the code before editing; tests prove behaviour, never wiring or wording.",
+  "description": "Follow the 0.12.0 adoption pattern (benchbox-todo-db-0-12-0-runtime-20261031): vendor the new wheel after checking its sha256 against the release SHA256SUMS, relock _project/scripts, and update EXPECTED_VERSION in todo_state_contract_check.py, the test_batch_skill_delivery.py constants, quality/comment-policy.json if it names the wheel, and _project/analysis/batch-rollout-evidence.json (version, receipt schema, tool list). Do not register a batch or cut over the store here.",
+  "links": [
+    "_project/scripts/pyproject.toml",
+    "_project/analysis/batch-rollout-evidence.json"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:53a3b48ce5c94efdbf857652",
+      "at": "2026-11-01T14:09:41Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "85009536c5824f64b5c7ba819fcf1b06",
+      "session_id": "fe251e187e814d5cb1baf53870326a77"
+    }
+  ]
+}
