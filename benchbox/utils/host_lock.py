@@ -880,20 +880,12 @@ def admit_command(need_gib: float | None = None) -> int:
 
 
 def machine_need_gib(machine: str, fallback_gib: float) -> float:
-    import shutil
+    from benchbox.utils import linux_machine
 
-    from benchbox.utils import resource_limits
-
-    if shutil.which("container") is None:
+    state = linux_machine.read_machine_state(machine)
+    if state is None or state.status == "running" or state.memory_gib is None or state.memory_gib <= 0:
         return fallback_gib
-    text = resource_limits.run_text(["container", "machine", "list", "--format", "json"], 5.0)
-    machines = None if text is None else resource_limits._parse_machines(text)
-    for entry in machines or ():
-        if entry.name == machine:
-            if entry.state == "running" or entry.memory_gib is None or entry.memory_gib <= 0:
-                return fallback_gib
-            return entry.memory_gib
-    return fallback_gib
+    return state.memory_gib
 
 
 def machine_need_command(machine: str, fallback_gib: float) -> int:
