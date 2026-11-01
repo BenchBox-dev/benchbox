@@ -113,6 +113,7 @@
     "repo": "BenchBox-dev/BenchBox",
     "reviewed_head": "<sha1>",
     "run_id": "<volatile>",
+    "run_uuid": "<volatile>",
     "schema": 1,
     "scope": "full",
     "scope_paths": [

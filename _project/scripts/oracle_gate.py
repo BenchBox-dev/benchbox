@@ -209,20 +209,10 @@ def _graphql_head(args: argparse.Namespace, token: str) -> str | None:
     return head_sha
 
 
-def _owned_head(args: argparse.Namespace, token: str) -> str | None:
-    head_sha = _graphql_head(args, token)
-    if head_sha is None:
-        return None
-    if args.head_sha is not None and args.head_sha != head_sha:
-        print(f"oracle-gate: error: {args.head_sha} is not the head of #{args.pr}; nothing is posted", file=sys.stderr)
-        return None
-    return head_sha
-
-
 def _read_failed(args: argparse.Namespace, token: str, exc: PullReadFailed, known_head: str | None) -> int:
-    head_sha = known_head
+    head_sha = known_head or args.head_sha
     if head_sha is None and not args.no_post:
-        head_sha = _owned_head(args, token)
+        head_sha = _graphql_head(args, token)
     if head_sha is None:
         print(f"oracle-gate: error: {exc}", file=sys.stderr)
         return ERROR

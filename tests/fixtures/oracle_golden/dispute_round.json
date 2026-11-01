@@ -267,6 +267,7 @@
     ],
     "reviewed_head": "<sha1>",
     "run_id": "<volatile>",
+    "run_uuid": "<volatile>",
     "schema": 1,
     "scope": "changed",
     "scope_paths": [

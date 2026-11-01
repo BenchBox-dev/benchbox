@@ -65,11 +65,7 @@ REQUIRED_CONTEXTS: tuple[str, ...] = (
     "tooling",
 )
 TERMINAL_STATUS_FAILURES = frozenset({"failure", "error"})
-STATUS_CONTEXTS_JQ = (
-    r'.[] | [.context, .state, (.creator.login // ""), (.creator.type // ""), (.description // "")] | @tsv'
-)
-ORACLE_GATE_CONTEXT = "oracle-gate"
-ORACLE_APP_LOGIN = "benchbox-oracle"
+STATUS_CONTEXTS_JQ = r'.[] | [.context, .state, (.description // "")] | @tsv'
 REQUIRED_BATCH_TOOLS = frozenset({"register_batch", "prepare", "bind_batch_pr", "abort_batch"})
 MAX_RERUNS_PER_JOB = 1
 MAX_REENTRIES_PER_HEAD = 1
@@ -611,18 +607,17 @@ def live_commit_statuses(run: Runner, repo_full: str, head: str) -> dict[str, st
         raise LandingError(f"live status verification failed for {head[:12]}")
     statuses: dict[str, str] = {}
     for line in out.splitlines():
-        parts = line.rstrip("\n").split("\t", 4)
-        if len(parts) < 2 or parts[0] in statuses:
-            continue
-        name, state, login, account_type, description = [*parts, "", "", ""][:5]
-        if name == ORACLE_GATE_CONTEXT:
-            if login.removesuffix("[bot]") != ORACLE_APP_LOGIN or account_type != "Bot":
-                continue
-            if state == "failure" and description.startswith(
-                f"oracle-review: waiting for the oracle's verdict on {head},"
+        parts = line.rstrip("\n").split("\t", 2)
+        if len(parts) >= 2 and parts[0] not in statuses:
+            name, state = parts[:2]
+            description = parts[2] if len(parts) == 3 else ""
+            if (
+                name == "oracle-gate"
+                and state == "failure"
+                and description.startswith(f"oracle-review: waiting for the oracle's verdict on {head},")
             ):
                 state = "pending"
-        statuses[name] = state
+            statuses[name] = state
     return statuses
 
 

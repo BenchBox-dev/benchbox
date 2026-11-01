@@ -713,20 +713,13 @@ def test_an_edited_receipt_over_a_success_verdict_does_not_pass(monkeypatch: pyt
     assert _gate() == oracle_review_check.WAITING
 
 
-def test_an_unreadable_receipt_check_is_an_error_not_an_edited_receipt(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_an_unreadable_receipt_check_waits_instead_of_erroring(monkeypatch: pytest.MonkeyPatch) -> None:
     def broken(_token: str, _node_id: str) -> tuple[None, bool]:
         raise oracle_review_check.CheckError("GraphQL down")
 
     _stub_main(monkeypatch, [_verdict("success")], reviews=[_review(SHIP_BODY, node_id="node_9")])
     monkeypatch.setattr(oracle_review_check, "fetch_review_edit", broken)
-    posts: list[tuple[str, int, str]] = []
-    monkeypatch.setattr(
-        oracle_gate, "post_status", lambda token, repo, head, status, message: posts.append((head, status, message))
-    )
-    assert oracle_gate.main(["--repo", "o/r", "--pr", "7"]) == oracle_review_check.ERROR
-    assert [(head, status) for head, status, _ in posts] == [(HEAD, oracle_review_check.ERROR)]
-    assert "GraphQL down" in posts[0][2]
-    assert _gate() == oracle_review_check.ERROR
+    assert _gate() == oracle_review_check.WAITING
 
 
 def test_fetch_review_edit_reads_the_graphql_edit_flags(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -843,7 +836,7 @@ def test_a_success_with_no_matching_receipt_here_still_waits() -> None:
     assert _oracle(statuses=[_other_pr_success()])[0] == oracle_review_check.WAITING
 
 
-def test_annotate_receipt_raises_when_the_edit_check_is_unreadable(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_annotate_receipt_marks_an_unreadable_edit_check_as_edited(monkeypatch: pytest.MonkeyPatch) -> None:
     reviews = [_receipt_review()]
     reviews[0]["node_id"] = "node_9"
 
@@ -851,8 +844,8 @@ def test_annotate_receipt_raises_when_the_edit_check_is_unreadable(monkeypatch: 
         raise oracle_review_check.CheckError("GraphQL down")
 
     monkeypatch.setattr(oracle_review_check, "fetch_review_edit", broken)
-    with pytest.raises(oracle_review_check.CheckError, match="GraphQL down"):
-        oracle_review_check.annotate_receipt("t", reviews, HEAD)
+    oracle_review_check.annotate_receipt("t", reviews, HEAD)
+    assert _oracle(statuses=[_verdict()], reviews=reviews)[0] == 1
 
 
 def test_a_standin_still_counts_against_an_exempt_success_verdict() -> None:

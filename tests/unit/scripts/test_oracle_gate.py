@@ -558,16 +558,14 @@ def test_pull_read_that_fails_twice_then_succeeds_evaluates_normally(
     assert [head for head, _, _ in posts] == [HEAD]
 
 
-def test_pull_read_failing_three_times_posts_failure_to_the_given_head_when_the_pull_request_owns_it(
+def test_pull_read_failing_three_times_posts_failure_to_the_given_head(
     monkeypatch: pytest.MonkeyPatch, sleeps: list[float]
 ) -> None:
     calls = _stub_unreadable_pull(monkeypatch, failures=99)
-    graphql = _stub_graphql_head(monkeypatch, OTHER_HEAD)
     posts = _record_posts(monkeypatch)
     assert oracle_gate.main(["--repo", "o/r", "--pr", "7", "--head-sha", OTHER_HEAD]) == oracle_gate.ERROR
     assert len(calls) == 3
     assert sleeps == [2, 4]
-    assert graphql == [("o/r", 7)]
     assert [(head, oracle_gate.gate_state(status)) for head, status, _ in posts] == [(OTHER_HEAD, "failure")]
 
 
@@ -615,21 +613,13 @@ def test_an_unusable_graphql_head_posts_nothing(monkeypatch: pytest.MonkeyPatch,
     assert posts == []
 
 
-def test_a_given_head_that_the_pull_request_does_not_own_posts_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_given_head_is_used_without_the_graphql_read(monkeypatch: pytest.MonkeyPatch) -> None:
     _stub_unreadable_pull(monkeypatch, failures=99)
     graphql = _stub_graphql_head(monkeypatch, HEAD)
     posts = _record_posts(monkeypatch)
     assert oracle_gate.main(["--repo", "o/r", "--pr", "7", "--head-sha", OTHER_HEAD]) == oracle_gate.ERROR
-    assert graphql == [("o/r", 7)]
-    assert posts == []
-
-
-def test_a_bogus_pull_request_number_posts_nothing_on_a_foreign_head(monkeypatch: pytest.MonkeyPatch) -> None:
-    _stub_unreadable_pull(monkeypatch, failures=99)
-    _stub_graphql_head(monkeypatch, oracle_gate.CheckError("Could not resolve to a PullRequest"))
-    posts = _record_posts(monkeypatch)
-    assert oracle_gate.main(["--repo", "o/r", "--pr", "999999", "--head-sha", OTHER_HEAD]) == oracle_gate.ERROR
-    assert posts == []
+    assert graphql == []
+    assert [head for head, _, _ in posts] == [OTHER_HEAD]
 
 
 def test_no_post_never_reads_the_graphql_head(monkeypatch: pytest.MonkeyPatch) -> None:

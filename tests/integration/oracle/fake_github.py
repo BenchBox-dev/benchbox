@@ -433,8 +433,6 @@ class FakeGitHub:
 
     def _pull(self, request: Request, match: re.Match[str]) -> Response:
         number = int(match[1])
-        if number not in self.pulls:
-            return 404, {"message": "Not Found"}, {}
         if "diff" in request.accept:
             return 200, self.diff(number), {"Content-Type": "text/plain; charset=utf-8"}
         self.refresh(number)

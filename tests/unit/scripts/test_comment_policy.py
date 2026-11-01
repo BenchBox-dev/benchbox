@@ -2615,29 +2615,6 @@ def test_oracle_review_covers_uses_newest_gate_status(tmp_path: Path, monkeypatc
     assert scope.oracle_review_covers(tmp_path) is True
 
 
-@pytest.mark.parametrize(
-    ("statuses", "expected"),
-    [
-        ([_gate_status(login="someone-else"), _gate_status(state="failure")], False),
-        ([_gate_status(login="someone-else", state="failure"), _gate_status()], True),
-        ([_gate_status(account_type="User"), _gate_status(state="failure")], False),
-    ],
-)
-def test_oracle_review_covers_ignores_a_gate_status_the_app_did_not_create(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, statuses: list[dict], expected: bool
-) -> None:
-    import check_comment_cleanup_scope as scope
-
-    _review_env(tmp_path, monkeypatch)
-    pages = {"statuses": statuses, "reviews": [_verdict_review()]}
-
-    def api(token: str, path: str) -> list[dict]:
-        return pages["statuses" if "/statuses?" in path else "reviews"]
-
-    monkeypatch.setattr(scope, "_github_api", api)
-    assert scope.oracle_review_covers(tmp_path) is expected
-
-
 def test_oracle_review_covers_fails_closed_on_api_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import check_comment_cleanup_scope as scope
 

@@ -435,16 +435,14 @@ def test_cli_finalize_fixed_decisions(
     )
     assert out["state"] == state and out["has_state"] == "false" and out["comment"] == "false"
     status = json.loads((tmp_path / "o" / "status.json").read_text(encoding="utf-8"))
-    assert status["description"] == (
-        f"only exempt paths changed [run {RUN_ID}]" if decision == "success" else "fork: owner review"
-    )
+    assert status["description"] == ("only exempt paths changed" if decision == "success" else "fork: owner review")
 
 
 def test_a_finalized_exempt_success_never_satisfies_a_gate_whose_rules_require_a_review(
     policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     plan_path = tmp_path / "plan.json"
-    plan_path.write_text(json.dumps({**_plan(policy), "decision": "success"}), encoding="utf-8")
+    plan_path.write_text(json.dumps({**_plan(policy), "decision": "success", "run_uuid": "1" * 32}), encoding="utf-8")
     _run_cli(
         monkeypatch,
         tmp_path,
@@ -747,27 +745,27 @@ def test_a_long_status_description_is_cut_to_the_status_limit(policy: Policy, tm
     assert report.status_payload(plan, final, "u")["description"] == final.description
 
 
-def test_a_success_status_carries_the_run_id_for_direct_equality(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_success_status_carries_the_run_uuid_for_direct_equality(monkeypatch: pytest.MonkeyPatch) -> None:
     from _project.scripts.oracle_reviewers import report
 
-    plan = {"status_context": "oracle-verdict", "run_id": "a" * 32}
+    plan = {"status_context": "oracle-verdict", "run_uuid": "a" * 32}
     final = report.fixed(report.SUCCESS, "large: SHIP")
     payload = report.status_payload(plan, final, "u")
     assert payload["description"] == f"large: SHIP [run {'a' * 32}]"
     assert len(payload["description"]) <= 140
 
 
-def test_a_long_success_description_still_fits_with_the_run_id() -> None:
+def test_a_long_success_description_still_fits_with_the_run_uuid() -> None:
     from _project.scripts.oracle_reviewers import report
 
-    plan = {"status_context": "oracle-verdict", "run_id": "a" * 32}
+    plan = {"status_context": "oracle-verdict", "run_uuid": "a" * 32}
     final = report.fixed(report.SUCCESS, "x" * 200)
     payload = report.status_payload(plan, final, "u")
     assert payload["description"].endswith(f"[run {'a' * 32}]")
     assert len(payload["description"]) <= 140
 
 
-def test_a_status_without_a_plan_run_id_is_unchanged() -> None:
+def test_a_status_without_a_plan_run_uuid_is_unchanged() -> None:
     from _project.scripts.oracle_reviewers import report
 
     plan = {"status_context": "oracle-verdict"}

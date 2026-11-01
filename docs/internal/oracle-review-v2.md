@@ -1428,20 +1428,14 @@ with a short error description and exits with the error code, so an earlier
 `success` cannot outlive a gate that can no longer evaluate. This is
 deliberately fail-closed: an API outage turns every touched PR to `failure`
 until its next successful evaluation. The PR read is retried three times,
-waiting 2 then 4 seconds. If it still fails, the script makes one GraphQL read of
-the PR's `headRefOid` and posts `failure` there if it is a 40-character
-lowercase hex SHA. An optional `--head-sha` is only a claim: when it differs from
-the head GraphQL reports for that PR, or the PR does not exist, nothing posts,
-so a dispatch naming another PR cannot paint a foreign head red. A live REST
-read always wins. Sweep runs and dispatches pass a head;
+waiting 2 then 4 seconds. If it still fails, the script posts `failure` to the
+optional `--head-sha` if given; otherwise it makes one GraphQL read of the PR's
+`headRefOid` and posts there if it is a 40-character lowercase hex SHA. A live
+REST read always wins over both. Sweep and bridge dispatches pass a head;
 `pull_request_target` runs pass the event payload's head, validated by the
-resolve step. The remaining gap: if REST and GraphQL both fail, nothing posts
-and the prior status stands until the next sweep.
-Every reader of `oracle-gate` (the merge landing checks, the remote closeout and
-the comment-cleanup scope check) ignores a status whose creator is not the
-`benchbox-oracle` App.
-When the GraphQL read of a receipt's edit state fails, the evaluation errors and
-the gate posts `failure` rather than treating the receipt as edited.
+resolve step; `issue_comment` payloads carry none, so those runs rely on
+GraphQL. The remaining gap: if REST and GraphQL both fail with no head supplied,
+nothing posts and the prior status stands until the next sweep carries the head.
 PRs not based on `develop` and `--no-post` runs never post, errors included. The
 sweep lists open `develop` PRs with `gh api --paginate`, with a 45-minute
 timeout.
