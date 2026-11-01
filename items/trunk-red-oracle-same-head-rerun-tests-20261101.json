@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Identify the culprit PR, fix forward or revert, and show a green trunk run on the fixing commit."
+  ],
+  "description": "Trunk run 41273143829 (develop abc110263, 2026-11-01): job \"fast (ubuntu-latest, 3.12)\" fails tests/unit/scripts/oracle_reviewers/test_same_head_rerun.py::test_the_repost_returns_the_existing_status_and_says_how_to_get_a_rejudgement (assert False) and ::test_a_record_without_a_run_id_is_carried_bound_to_the_new_run (KeyError: run_uuid). The introducing PR was not identified. While trunk is red make pr-arm refuses other PRs, including the canary fix #3911. Unaddressed at filing.",
+  "links": [
+    "trunk run 41273143829"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:44087b544fee5237bdde41f8",
+      "at": "2026-11-01T13:45:06Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "fecc7db516624cb58a3ab21a0d2640d8",
+      "session_id": "b38147de5e3b4952857534e2b3c9221c"
+    }
+  ]
+}
