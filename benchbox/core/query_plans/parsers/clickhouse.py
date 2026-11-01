@@ -84,7 +84,8 @@ class ClickHouseQueryPlanParser(QueryPlanParser):
                     name = match.group("name")
                     details = (match.group("details") or "").strip()
                 else:
-                    name = content.split()[0] if content.split() else content
+                    head = re.match(r"[A-Za-z]\w*", content)
+                    name = head.group(0) if head else (content.split()[0] if content.split() else content)
                     details = content[len(name) :].strip()
             if not name:
                 continue

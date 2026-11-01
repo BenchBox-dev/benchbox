@@ -1,0 +1,265 @@
+{
+  "id" : "9",
+  "name" : "Output",
+  "identifier" : "[c_name, o_total]",
+  "details" : "",
+  "children" : [ {
+    "id" : "329",
+    "name" : "RemoteStreamingExchange",
+    "identifier" : "[GATHER - COLUMNAR]",
+    "details" : "",
+    "children" : [ {
+      "id" : "4",
+      "name" : "InnerJoin",
+      "identifier" : "[(\"o_cust\" = \"c_id\")][$hashvalue, $hashvalue_10]",
+      "details" : "Distribution: PARTITIONED\n",
+      "children" : [ {
+        "id" : "327",
+        "name" : "RemoteStreamingExchange",
+        "identifier" : "[REPARTITION - COLUMNAR][$hashvalue]",
+        "details" : "",
+        "children" : [ {
+          "id" : "429",
+          "name" : "ScanProject",
+          "identifier" : "[table = TableHandle {connectorId='memory', connectorHandle='MemoryTableHandle{connectorId=memory, schemaName=default, tableName=orders, tableId=4, columnHandles=[MemoryColumnHandle{name=o_id, columnType=bigint, columnIndex=0}, MemoryColumnHandle{name=o_cust, columnType=bigint, columnIndex=1}, MemoryColumnHandle{name=o_total, columnType=double, columnIndex=2}]}', layout='Optional[MemoryTableHandle{connectorId=memory, schemaName=default, tableName=orders, tableId=4, columnHandles=[MemoryColumnHandle{name=o_id, columnType=bigint, columnIndex=0}, MemoryColumnHandle{name=o_cust, columnType=bigint, columnIndex=1}, MemoryColumnHandle{name=o_total, columnType=double, columnIndex=2}]}]'}, projectLocality = LOCAL]",
+          "details" : "$hashvalue_9 := combine_hash(BIGINT'0', COALESCE($operator$hash_code(o_cust), BIGINT'0')) (1:55)\no_cust := MemoryColumnHandle{name=o_cust, columnType=bigint, columnIndex=1} (1:55)\no_total := MemoryColumnHandle{name=o_total, columnType=double, columnIndex=2} (1:55)\n",
+          "children" : [ ],
+          "remoteSources" : [ ],
+          "estimates" : [ {
+            "outputRowCount" : "NaN",
+            "totalSize" : "NaN",
+            "confident" : "LOW",
+            "variableStatistics" : { },
+            "joinNodeStatsEstimate" : {
+              "nullJoinBuildKeyCount" : "NaN",
+              "joinBuildKeyCount" : "NaN",
+              "nullJoinProbeKeyCount" : "NaN",
+              "joinProbeKeyCount" : "NaN"
+            },
+            "tableWriterNodeStatsEstimate" : {
+              "taskCountIfScaledWriter" : "NaN"
+            },
+            "partialAggregationStatsEstimate" : {
+              "inputBytes" : "NaN",
+              "outputBytes" : "NaN",
+              "inputRowCount" : "NaN",
+              "outputRowCount" : "NaN"
+            }
+          }, {
+            "outputRowCount" : "NaN",
+            "totalSize" : "NaN",
+            "confident" : "LOW",
+            "variableStatistics" : { },
+            "joinNodeStatsEstimate" : {
+              "nullJoinBuildKeyCount" : "NaN",
+              "joinBuildKeyCount" : "NaN",
+              "nullJoinProbeKeyCount" : "NaN",
+              "joinProbeKeyCount" : "NaN"
+            },
+            "tableWriterNodeStatsEstimate" : {
+              "taskCountIfScaledWriter" : "NaN"
+            },
+            "partialAggregationStatsEstimate" : {
+              "inputBytes" : "NaN",
+              "outputBytes" : "NaN",
+              "inputRowCount" : "NaN",
+              "outputRowCount" : "NaN"
+            }
+          } ]
+        } ],
+        "remoteSources" : [ ],
+        "estimates" : [ {
+          "outputRowCount" : "NaN",
+          "totalSize" : "NaN",
+          "confident" : "LOW",
+          "variableStatistics" : { },
+          "joinNodeStatsEstimate" : {
+            "nullJoinBuildKeyCount" : "NaN",
+            "joinBuildKeyCount" : "NaN",
+            "nullJoinProbeKeyCount" : "NaN",
+            "joinProbeKeyCount" : "NaN"
+          },
+          "tableWriterNodeStatsEstimate" : {
+            "taskCountIfScaledWriter" : "NaN"
+          },
+          "partialAggregationStatsEstimate" : {
+            "inputBytes" : "NaN",
+            "outputBytes" : "NaN",
+            "inputRowCount" : "NaN",
+            "outputRowCount" : "NaN"
+          }
+        } ]
+      }, {
+        "id" : "372",
+        "name" : "LocalExchange",
+        "identifier" : "[HASH][$hashvalue_10] (c_id)",
+        "details" : "",
+        "children" : [ {
+          "id" : "328",
+          "name" : "RemoteStreamingExchange",
+          "identifier" : "[REPARTITION - COLUMNAR][$hashvalue_11]",
+          "details" : "",
+          "children" : [ {
+            "id" : "430",
+            "name" : "ScanProject",
+            "identifier" : "[table = TableHandle {connectorId='memory', connectorHandle='MemoryTableHandle{connectorId=memory, schemaName=default, tableName=customers, tableId=5, columnHandles=[MemoryColumnHandle{name=c_id, columnType=bigint, columnIndex=0}, MemoryColumnHandle{name=c_name, columnType=varchar, columnIndex=1}, MemoryColumnHandle{name=c_region, columnType=varchar, columnIndex=2}]}', layout='Optional[MemoryTableHandle{connectorId=memory, schemaName=default, tableName=customers, tableId=5, columnHandles=[MemoryColumnHandle{name=c_id, columnType=bigint, columnIndex=0}, MemoryColumnHandle{name=c_name, columnType=varchar, columnIndex=1}, MemoryColumnHandle{name=c_region, columnType=varchar, columnIndex=2}]}]'}, projectLocality = LOCAL]",
+            "details" : "$hashvalue_12 := combine_hash(BIGINT'0', COALESCE($operator$hash_code(c_id), BIGINT'0')) (1:69)\nc_name := MemoryColumnHandle{name=c_name, columnType=varchar, columnIndex=1} (1:69)\nc_id := MemoryColumnHandle{name=c_id, columnType=bigint, columnIndex=0} (1:69)\n",
+            "children" : [ ],
+            "remoteSources" : [ ],
+            "estimates" : [ {
+              "outputRowCount" : "NaN",
+              "totalSize" : "NaN",
+              "confident" : "LOW",
+              "variableStatistics" : { },
+              "joinNodeStatsEstimate" : {
+                "nullJoinBuildKeyCount" : "NaN",
+                "joinBuildKeyCount" : "NaN",
+                "nullJoinProbeKeyCount" : "NaN",
+                "joinProbeKeyCount" : "NaN"
+              },
+              "tableWriterNodeStatsEstimate" : {
+                "taskCountIfScaledWriter" : "NaN"
+              },
+              "partialAggregationStatsEstimate" : {
+                "inputBytes" : "NaN",
+                "outputBytes" : "NaN",
+                "inputRowCount" : "NaN",
+                "outputRowCount" : "NaN"
+              }
+            }, {
+              "outputRowCount" : "NaN",
+              "totalSize" : "NaN",
+              "confident" : "LOW",
+              "variableStatistics" : { },
+              "joinNodeStatsEstimate" : {
+                "nullJoinBuildKeyCount" : "NaN",
+                "joinBuildKeyCount" : "NaN",
+                "nullJoinProbeKeyCount" : "NaN",
+                "joinProbeKeyCount" : "NaN"
+              },
+              "tableWriterNodeStatsEstimate" : {
+                "taskCountIfScaledWriter" : "NaN"
+              },
+              "partialAggregationStatsEstimate" : {
+                "inputBytes" : "NaN",
+                "outputBytes" : "NaN",
+                "inputRowCount" : "NaN",
+                "outputRowCount" : "NaN"
+              }
+            } ]
+          } ],
+          "remoteSources" : [ ],
+          "estimates" : [ {
+            "outputRowCount" : "NaN",
+            "totalSize" : "NaN",
+            "confident" : "LOW",
+            "variableStatistics" : { },
+            "joinNodeStatsEstimate" : {
+              "nullJoinBuildKeyCount" : "NaN",
+              "joinBuildKeyCount" : "NaN",
+              "nullJoinProbeKeyCount" : "NaN",
+              "joinProbeKeyCount" : "NaN"
+            },
+            "tableWriterNodeStatsEstimate" : {
+              "taskCountIfScaledWriter" : "NaN"
+            },
+            "partialAggregationStatsEstimate" : {
+              "inputBytes" : "NaN",
+              "outputBytes" : "NaN",
+              "inputRowCount" : "NaN",
+              "outputRowCount" : "NaN"
+            }
+          } ]
+        } ],
+        "remoteSources" : [ ],
+        "estimates" : [ {
+          "outputRowCount" : "NaN",
+          "totalSize" : "NaN",
+          "confident" : "LOW",
+          "variableStatistics" : { },
+          "joinNodeStatsEstimate" : {
+            "nullJoinBuildKeyCount" : "NaN",
+            "joinBuildKeyCount" : "NaN",
+            "nullJoinProbeKeyCount" : "NaN",
+            "joinProbeKeyCount" : "NaN"
+          },
+          "tableWriterNodeStatsEstimate" : {
+            "taskCountIfScaledWriter" : "NaN"
+          },
+          "partialAggregationStatsEstimate" : {
+            "inputBytes" : "NaN",
+            "outputBytes" : "NaN",
+            "inputRowCount" : "NaN",
+            "outputRowCount" : "NaN"
+          }
+        } ]
+      } ],
+      "remoteSources" : [ ],
+      "estimates" : [ {
+        "outputRowCount" : "NaN",
+        "totalSize" : "NaN",
+        "confident" : "LOW",
+        "variableStatistics" : { },
+        "joinNodeStatsEstimate" : {
+          "nullJoinBuildKeyCount" : "NaN",
+          "joinBuildKeyCount" : "NaN",
+          "nullJoinProbeKeyCount" : "NaN",
+          "joinProbeKeyCount" : "NaN"
+        },
+        "tableWriterNodeStatsEstimate" : {
+          "taskCountIfScaledWriter" : "NaN"
+        },
+        "partialAggregationStatsEstimate" : {
+          "inputBytes" : "NaN",
+          "outputBytes" : "NaN",
+          "inputRowCount" : "NaN",
+          "outputRowCount" : "NaN"
+        }
+      } ]
+    } ],
+    "remoteSources" : [ ],
+    "estimates" : [ {
+      "outputRowCount" : "NaN",
+      "totalSize" : "NaN",
+      "confident" : "LOW",
+      "variableStatistics" : { },
+      "joinNodeStatsEstimate" : {
+        "nullJoinBuildKeyCount" : "NaN",
+        "joinBuildKeyCount" : "NaN",
+        "nullJoinProbeKeyCount" : "NaN",
+        "joinProbeKeyCount" : "NaN"
+      },
+      "tableWriterNodeStatsEstimate" : {
+        "taskCountIfScaledWriter" : "NaN"
+      },
+      "partialAggregationStatsEstimate" : {
+        "inputBytes" : "NaN",
+        "outputBytes" : "NaN",
+        "inputRowCount" : "NaN",
+        "outputRowCount" : "NaN"
+      }
+    } ]
+  } ],
+  "remoteSources" : [ ],
+  "estimates" : [ {
+    "outputRowCount" : "NaN",
+    "totalSize" : "NaN",
+    "confident" : "LOW",
+    "variableStatistics" : { },
+    "joinNodeStatsEstimate" : {
+      "nullJoinBuildKeyCount" : "NaN",
+      "joinBuildKeyCount" : "NaN",
+      "nullJoinProbeKeyCount" : "NaN",
+      "joinProbeKeyCount" : "NaN"
+    },
+    "tableWriterNodeStatsEstimate" : {
+      "taskCountIfScaledWriter" : "NaN"
+    },
+    "partialAggregationStatsEstimate" : {
+      "inputBytes" : "NaN",
+      "outputBytes" : "NaN",
+      "inputRowCount" : "NaN",
+      "outputRowCount" : "NaN"
+    }
+  } ]
+}

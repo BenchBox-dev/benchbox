@@ -1,0 +1,13 @@
+(Union)
+  (Expression)
+  ExpressionTransform
+    (Expression)
+    ExpressionTransform
+      (ReadFromMergeTree)
+      MergeTreeSelect(pool: ReadPoolInOrder, algorithm: InOrder) 0 → 1
+  (Expression)
+  ExpressionTransform
+    (Expression)
+    ExpressionTransform
+      (ReadFromMergeTree)
+      MergeTreeSelect(pool: ReadPoolInOrder, algorithm: InOrder) 0 → 1

@@ -1,0 +1,5 @@
+{
+  "provenance": "captured",
+  "models": "Presto 0.299 (prestodb/presto 0.299-7d50721) EXPLAIN (FORMAT JSON) (memory catalog), captured",
+  "validated_against_live": true
+}

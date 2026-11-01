@@ -1,0 +1,93 @@
+PLAN FRAGMENT 0
+  OUTPUT EXPRS:
+    o_id[#8]
+  PARTITION: RANDOM
+
+  HAS_COLO_PLAN_NODE: false
+
+  VRESULT SINK
+     MYSQL_PROTOCOL
+
+  4:VUNION(222)
+  |  child exprs:
+  |      o_id[#3]
+  |      c_id[#7]
+  |  distribute expr lists:
+  |  distribute expr lists:
+  |  tuple ids: 4
+  |
+  |----3:VEXCHANGE
+  |       offset: 0
+  |       distribute expr lists: c_id[#7]
+  |       tuple ids: 3N
+  |
+  1:VEXCHANGE
+     offset: 0
+     distribute expr lists: o_id[#3]
+     tuple ids: 1N
+
+PLAN FRAGMENT 1
+
+  PARTITION: HASH_PARTITIONED: c_id[#4]
+
+  HAS_COLO_PLAN_NODE: false
+
+  STREAM DATA SINK
+    EXCHANGE ID: 03
+    RANDOM
+
+  2:VOlapScanNode(206)
+     TABLE: pv_plan_validation.customers(customers), PREAGGREGATION: ON
+     PREDICATES: (c_region[#6] = 'EU')
+     partitions=1/1 (customers)
+     tablets=1/1, tabletList=1793455604653
+     cardinality=1, avgRowSize=0.0, numNodes=1
+     pushAggOp=NONE
+     final projections: c_id[#4]
+     final project output tuple id: 3
+     tuple ids: 2
+
+PLAN FRAGMENT 2
+
+  PARTITION: HASH_PARTITIONED: o_id[#0]
+
+  HAS_COLO_PLAN_NODE: false
+
+  STREAM DATA SINK
+    EXCHANGE ID: 01
+    RANDOM
+
+  0:VOlapScanNode(193)
+     TABLE: pv_plan_validation.orders(orders), PREAGGREGATION: ON
+     PREDICATES: (o_total[#2] > 100)
+     partitions=1/1 (orders)
+     tablets=1/1, tabletList=1793455604648
+     cardinality=1, avgRowSize=0.0, numNodes=1
+     pushAggOp=NONE
+     final projections: o_id[#0]
+     final project output tuple id: 1
+     tuple ids: 0
+
+Tuples:
+TupleDescriptor{id=0, tbl=orders}
+  SlotDescriptor{id=0, col=o_id, colUniqueId=0, type=bigint, nullable=true, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+  SlotDescriptor{id=2, col=o_total, colUniqueId=2, type=double, nullable=true, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+
+TupleDescriptor{id=1, tbl=orders}
+  SlotDescriptor{id=3, col=o_id, colUniqueId=0, type=bigint, nullable=true, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+
+TupleDescriptor{id=2, tbl=customers}
+  SlotDescriptor{id=4, col=c_id, colUniqueId=0, type=bigint, nullable=true, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+  SlotDescriptor{id=6, col=c_region, colUniqueId=2, type=varchar(20), nullable=true, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+
+TupleDescriptor{id=3, tbl=customers}
+  SlotDescriptor{id=7, col=c_id, colUniqueId=0, type=bigint, nullable=true, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+
+TupleDescriptor{id=4, tbl=null}
+  SlotDescriptor{id=8, col=null, colUniqueId=null, type=bigint, nullable=true, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+
+
+
+
+========== STATISTICS ==========
+planned with unknown column statistics
