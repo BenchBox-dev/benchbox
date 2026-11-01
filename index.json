@@ -24870,6 +24870,15 @@
       "status": "open",
       "title": "Validate the benchbox-site tracker branch on a schedule, as core's tracker is"
     },
+    "skill-catalog-batch-loop-20261101": {
+      "claim": null,
+      "needs": [
+        "batch-loop-docs-and-agents-20261101"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Update the canonical skills for the batch loop and sync them into BenchBox and todo-db"
+    },
     "skill-integrity-ci-lane-live-validation": {
       "claim": null,
       "needs": [

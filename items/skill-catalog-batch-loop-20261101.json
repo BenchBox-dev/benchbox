@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "The catalog PR is merged; a grep of the changed skills finds no BenchBox make target names.",
+    "The BenchBox PR bumps skill-sync.conf with the make skill-sync output; scripts/check_untracked_skill_mirrors.sh and make skill-integrity-check pass; merged to develop.",
+    "todo-db's skill-sync.conf names the same catalog revision.",
+    "Skill text describing v2 behaviour reaches BenchBox only after benchbox-todo-db-batch-v2-runtime-20261101 is merged."
+  ],
+  "context": "Decision gate: start only after batch-loop-docs-and-agents-20261101 is done, so skills point to repository docs that exist. Owner decision 2026-11-01 (owner answer in the choice dialog, BenchBox session 01a19729, 2026-11-01): \"Both repos; agent tags the release after gates\" [option text: the agent opens and merges PRs in joeharris76/todo-db and joeharris76/skill-sync-skills, and pushes the todo-db release tag once the release PR merges with Gate 1 (scratch remote) and Gate 2 (validate against BenchBox todo-state) recorded]. Never hand-edit .claude/skills or .agents/skills; regenerate with make skill-sync. Guardrails: deliver as an ordinary serial PR to develop (AGENTS.md: feature delivery cannot deliver the changes that make it possible); write only from a linked worktree made with make worktree-create and checked with make agent-write-preflight, never the primary clone; stage explicit paths, never git add -A; no explanatory comments or docstrings (COMMENT-POLICY-001, make comment-policy-check); heavy test runs only through lock-taking entry points, never BENCHBOX_SKIP_TEST_LOCK; never weaken hold labels, the unresolved-thread refusal, oracle-gate, duration or suite gates; add a changelog.d fragment (CHANGELOG_INTERNAL when nothing is user-visible); durable artifacts carry no session or phase labels; cited line numbers are leads, so re-read the code before editing; tests prove behaviour, never wiring or wording.",
+  "description": "In joeharris76/skill-sync-skills update skills/todo/references/batch.md (parallel members under prepared delivery; the leader as sole tracker and ledger writer; LANDED and INTEGRATION_HEAD ledger fields instead of member PR fields; member closeout ending in a landing request; the overlap rule replacing byte-equality text), references/implement.md (member delivery and standalone PR closeout as alternatives; no unconditional finish after prepare), closeout.md, recovery.md, handoff.md, skills/todo/SKILL.md (role boundaries, the leader claiming on members' behalf, the v2 capability requirement), shared-change-framework section 4 steps 6-7 (a narrow member terminal-state exception: no push, no PR), code/references/implementation.md (point to that exception), shared-agent-execution (parallel write workers only in separate member worktrees with one integrator) and shared-review-protocol (member review before landing, combined review before publishing). Keep skills generic, with no BenchBox make targets, and check the separately pinned benchbox skill for PR-workflow text. Then bump skill-sync.conf in BenchBox and commit the make skill-sync output, and bump todo-db's skill-sync.conf to the same catalog revision.",
+  "links": [
+    "skill-sync.conf",
+    "https://github.com/joeharris76/skill-sync-skills"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:53a3b48ce5c94efdbf857652",
+      "at": "2026-11-01T14:10:10Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "27ca0e7e7eaf4199b864c8b00b4b4858",
+      "session_id": "fe251e187e814d5cb1baf53870326a77"
+    }
+  ]
+}
