@@ -1,0 +1,31 @@
+{
+  "acceptance": [
+    "Two independent members and one dependent member land and produce one bound final PR.",
+    "The outsider server's take of an active member is refused.",
+    "A second landing with a stale integration head is refused, then succeeds after the member re-syncs and rechecks.",
+    "A declared same-file overlap lands and the earlier member's rerun is recorded; the silent-revert counterexample cannot reach passing final evidence.",
+    "A run killed after merge and before prepare resumes through batch-status without a second merge.",
+    "context_append on a prepared member keeps its receipt; an acceptance edit invalidates it.",
+    "A review fix after the PR opens is recorded as an advance and rebinds the PR; stale final evidence is refused until refreshed.",
+    "A conflicting develop change is merged in as a recorded develop-merge advance and readiness passes.",
+    "pr-open in a member worktree refuses before any side effect; abort_batch returns members to the ordinary lifecycle.",
+    "An ordinary single-item delivery is unchanged.",
+    "Runs through a lock-taking entry point with no live cloud and no real model or omp calls; no scenario only checks wiring."
+  ],
+  "context": "Decision gate: start only after batch-land-and-status-20261101 and pr-landing-arm-batch-evidence-20261101 are done. Guardrails: deliver as an ordinary serial PR to develop (AGENTS.md: feature delivery cannot deliver the changes that make it possible); write only from a linked worktree made with make worktree-create and checked with make agent-write-preflight, never the primary clone; stage explicit paths, never git add -A; no explanatory comments or docstrings (COMMENT-POLICY-001, make comment-policy-check); heavy test runs only through lock-taking entry points, never BENCHBOX_SKIP_TEST_LOCK; never weaken hold labels, the unresolved-thread refusal, oracle-gate, duration or suite gates; add a changelog.d fragment (CHANGELOG_INTERNAL when nothing is user-visible); durable artifacts carry no session or phase labels; cited line numbers are leads, so re-read the code before editing; tests prove behaviour, never wiring or wording.",
+  "description": "Add a real-Git end-to-end scenario under tests/integration/worktree/ using an isolated tracker remote, two real todo-db-mcp servers (leader and outsider) and fake hosted responses, driving the batch targets as built. This is the proof before the pilot runs on real work.",
+  "links": [
+    "tests/integration/worktree/test_pr_process.py",
+    "tests/unit/scripts/test_batch_integration.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:53a3b48ce5c94efdbf857652",
+      "at": "2026-11-01T14:10:14Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "850e5d4b7ead4387a7297f5cd746d0e7",
+      "session_id": "fe251e187e814d5cb1baf53870326a77"
+    }
+  ]
+}

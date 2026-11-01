@@ -1756,6 +1756,16 @@
       "status": "open",
       "title": "Add leader-only batch-land, recorded head advances and batch-status reconciliation"
     },
+    "batch-loop-disposable-e2e-20261101": {
+      "claim": null,
+      "needs": [
+        "batch-land-and-status-20261101",
+        "pr-landing-arm-batch-evidence-20261101"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Prove the batch loop end to end in a disposable repository with an isolated tracker"
+    },
     "batch-loop-docs-and-agents-20261101": {
       "claim": null,
       "needs": [
