@@ -17763,6 +17763,13 @@
       "status": "open",
       "title": "The oracle-verdict retry sweep runs every 2 to 6 hours instead of hourly, so pending verdicts wait hours after they become due"
     },
+    "oracle-sweep-schedules-dropped-by-github-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Scheduled oracle sweeps run far less often than their cron says"
+    },
     "oracle-sweep-stale-pending-live-observation-20261030": {
       "claim": null,
       "needs": [],
