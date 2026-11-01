@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "The warning measures time since a run started, or ignores a run that is waiting behind one in flight, and a test covers a waiting run older than 30 minutes",
+    "A run that has really stalled after starting is still reported"
+  ],
+  "context": "Left unchanged on purpose in the Trunk latest-head change; recorded in the decision note _project/decisions/trunk-latest-head-runs-2026-10-30.md. Not yet observed to mislead anyone.",
+  "description": "scripts/trunk_revert.py stale_run_warning flags a develop run after 30 minutes. With one Trunk run in flight at a time, a waiting run can sit longer than that behind a healthy, long run, so the warning can fire when nothing is wrong.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:96cfd54c7d2180daa76d178f",
+      "at": "2026-11-01T13:46:57Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "fc469f3b09d6462080f1abe5347230d8",
+      "session_id": "77bfd3a6737c4f8e9b68d27f796e8651"
+    }
+  ]
+}

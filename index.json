@@ -29046,6 +29046,13 @@
       "status": "done",
       "title": "Shorten the wait for post-merge Trunk results without losing a run per commit"
     },
+    "trunk-stale-run-warning-fires-behind-run-in-flight-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "The stale-run warning counts time a Trunk run spent waiting behind another run"
+    },
     "trunk-trim-after-selection-live-20261024": {
       "claim": null,
       "needs": [
