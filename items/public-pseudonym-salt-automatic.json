@@ -91,6 +91,15 @@
       "op_id": "af5d2b2fdff044a18cfd2dfd8180fd3f",
       "reason": "Holder is subagent SaltAutoCore's MCP session fdde7b96, now exited (its finish got E_CLAIM_STALE). Work merged in #3878 cd374960b6. Taking over only to finish.",
       "session_id": "a36a04b6bc394082b5008f654e1bf00b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e275448d846640d27249a6f8",
+      "at": "2026-11-01T03:10:43Z",
+      "client": "omp-coding-agent",
+      "generation": "64913c3b746f48ea96cc79b5cdafa08f",
+      "op": "finish",
+      "op_id": "116579b79cc34f2484f45823a387de7c",
+      "session_id": "a36a04b6bc394082b5008f654e1bf00b"
     }
   ]
 }
