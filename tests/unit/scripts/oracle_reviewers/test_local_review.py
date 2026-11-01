@@ -196,6 +196,38 @@ class Env:
             argv += ["--body-file", str(path)]
         return cli.main(argv)
 
+    def member(self, *, base: str = "develop", trusted: str = "develop", head: str = "HEAD", body: str = "") -> int:
+        argv = [
+            "local-review",
+            "--policy",
+            POLICY_RELATIVE,
+            "--member",
+            "--base-ref",
+            _rev(self.repo, base),
+            "--trusted-ref",
+            _rev(self.repo, trusted),
+            "--head",
+            _rev(self.repo, head),
+            "--result-json",
+            str(self.result_path),
+        ]
+        if body:
+            path = self.tmp_path / "body.md"
+            path.write_text(body, encoding="utf-8")
+            argv += ["--body-file", str(path)]
+        return cli.main(argv)
+
+    @property
+    def result_path(self) -> Path:
+        return self.tmp_path / "out" / "member.json"
+
+    def result(self) -> dict[str, Any]:
+        return json.loads(self.result_path.read_text(encoding="utf-8"))
+
+
+def _rev(repo: Path, ref: str) -> str:
+    return _git(repo, "rev-parse", ref)
+
 
 @pytest.fixture
 def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, policy: Policy, gateway: Gateway) -> Env:
@@ -1127,3 +1159,154 @@ def test_a_renamed_gate_file_still_flags_the_gate_through_its_old_path(monkeypat
     cli._classify_plan(plan)
 
     assert seen["gate_flags"] == [".github/workflows/oracle-verdict.yml"]
+
+
+def test_a_member_review_writes_a_result_bound_to_the_patch_and_the_trusted_commit(env: Env) -> None:
+    assert env.member() == local.EXIT_PROCEED
+    result = env.result()
+    assert result["schema"] == "benchbox_member_review_v1"
+    assert result["outcome"] == "clear"
+    assert result["base_sha"] == _rev(env.repo, "develop")
+    assert result["head_sha"] == _rev(env.repo, "HEAD")
+    assert result["head_tree"] == _rev(env.repo, "HEAD^{tree}")
+    assert result["trusted_sha"] == _rev(env.repo, "develop")
+    plan = local.build_plan(env.policy, env.repo, "develop", result["head_sha"], env.tmp_path / "plan-bound")
+    assert result["patch_digest"] == plan["protocol"]["patch_digest"]
+
+
+def test_member_findings_are_recorded_and_refused_unless_overridden(env: Env) -> None:
+    env.verdict = _high()
+    assert env.member() == local.EXIT_REFUSED
+    assert env.result()["outcome"] == "findings"
+    assert env.member(body=OVERRIDE_BODY) == local.EXIT_PROCEED
+    overridden = env.result()
+    assert overridden["outcome"] == "override"
+    assert "known false positive" in overridden["reason"]
+    assert len(env.reviews) == 1
+
+
+def test_an_exempt_only_member_is_not_reviewed_rather_than_clear(env: Env, tmp_path: Path) -> None:
+    inert = _make_repo(tmp_path / "inert-member", "NOTES.md")
+    env.monkeypatch.chdir(inert)
+    env.repo = inert
+    assert env.member() == local.EXIT_PROCEED
+    assert env.result()["outcome"] == "not-reviewed"
+    assert env.reviews == []
+
+
+def test_a_member_without_changes_is_not_reviewed_rather_than_clear(env: Env) -> None:
+    _git(env.repo, "switch", "--quiet", "develop")
+    assert env.member() == local.EXIT_PROCEED
+    assert env.result()["outcome"] == "not-reviewed"
+    assert env.reviews == []
+
+
+@pytest.mark.parametrize("moving", ["develop", "origin/develop", "HEAD", "feat/x", ""])
+def test_member_mode_refuses_a_moving_ref_for_any_of_its_commits(env: Env, moving: str) -> None:
+    base, head = _rev(env.repo, "develop"), _rev(env.repo, "HEAD")
+    for index in range(3):
+        refs = [base, base, head]
+        refs[index] = moving
+        argv = ["local-review", "--policy", POLICY_RELATIVE, "--member", "--result-json", str(env.result_path)]
+        argv += ["--base-ref", refs[0], "--trusted-ref", refs[1], "--head", refs[2]]
+        assert cli.main(argv) == local.EXIT_REFUSED
+        assert not env.result_path.exists()
+    assert env.reviews == []
+
+
+def test_member_mode_refuses_a_base_that_is_not_an_ancestor_of_the_head(env: Env) -> None:
+    _git(env.repo, "switch", "--quiet", "develop")
+    (env.repo / "README.md").write_text("moved\n", encoding="utf-8")
+    _git(env.repo, "commit", "--quiet", "-am", "develop moves")
+    assert env.member(head="feat/x") == local.EXIT_REFUSED
+    assert not env.result_path.exists()
+
+
+def test_a_failed_member_review_leaves_no_stale_result(env: Env) -> None:
+    assert env.member() == local.EXIT_PROCEED
+    env.monkeypatch.setattr(local, "reachable", lambda url, proxy="": False)
+    (env.repo / CHECKER).write_text("value = 5\n", encoding="utf-8")
+    _git(env.repo, "commit", "--quiet", "-am", "feat: change it")
+    assert env.member() == local.EXIT_UNAVAILABLE
+    assert not env.result_path.exists()
+
+
+def test_member_mode_flags_must_come_together(env: Env) -> None:
+    base = ["local-review", "--policy", POLICY_RELATIVE]
+    assert cli.main([*base, "--member"]) == local.EXIT_REFUSED
+    assert cli.main([*base, "--result-json", str(env.result_path)]) == local.EXIT_REFUSED
+    assert env.reviews == []
+
+
+def test_member_review_result_returns_the_cached_result_for_exactly_that_patch(env: Env) -> None:
+    base, head, trusted = _rev(env.repo, "develop"), _rev(env.repo, "HEAD"), _rev(env.repo, "develop")
+    assert local.member_review_result(env.repo, base, head, trusted) is None
+    env.verdict = _high()
+    assert env.member() == local.EXIT_REFUSED
+    written = env.result()
+    found = local.member_review_result(env.repo, base, head, trusted)
+    assert found == written
+    assert found is not None and found["outcome"] == "findings"
+    (env.repo / CHECKER).write_text("value = 9\n", encoding="utf-8")
+    _git(env.repo, "commit", "--quiet", "-am", "feat: change it")
+    assert local.member_review_result(env.repo, base, _rev(env.repo, "HEAD"), trusted) is None
+    assert len(env.reviews) == 1
+
+
+def test_member_review_result_rejects_refs_that_are_not_full_commit_shas(env: Env) -> None:
+    assert env.member() == local.EXIT_PROCEED
+    base, head = _rev(env.repo, "develop"), _rev(env.repo, "HEAD")
+    assert local.member_review_result(env.repo, base, head, "develop") is None
+    assert local.member_review_result(env.repo, base, head, base[:12]) is None
+
+
+def test_member_review_result_reports_exempt_only_members_as_not_reviewed(env: Env, tmp_path: Path) -> None:
+    inert = _make_repo(tmp_path / "inert-result", "NOTES.md")
+    base, head = _rev(inert, "develop"), _rev(inert, "HEAD")
+    found = local.member_review_result(inert, base, head, base)
+    assert found is not None and found["outcome"] == "not-reviewed"
+
+
+def test_a_member_result_is_not_reused_under_a_different_trusted_commit(env: Env) -> None:
+    assert env.member() == local.EXIT_PROCEED
+    _git(env.repo, "branch", "other-trusted", "develop")
+    _git(env.repo, "switch", "--quiet", "other-trusted")
+    _git(env.repo, "commit", "--quiet", "--allow-empty", "-m", "another trusted commit")
+    _git(env.repo, "switch", "--quiet", "feat/x")
+    base, head = _rev(env.repo, "develop"), _rev(env.repo, "HEAD")
+    assert local.member_review_result(env.repo, base, head, _rev(env.repo, "other-trusted")) is None
+    assert env.member(trusted="other-trusted") == local.EXIT_PROCEED
+    assert len(env.reviews) == 2
+
+
+def test_a_trusted_manifest_change_invalidates_the_cached_review(env: Env) -> None:
+    _git(env.repo, "branch", "same-manifests", "develop")
+    _git(env.repo, "switch", "--quiet", "-c", "changed-manifest", "develop")
+    (env.repo / local.SOUNDNESS_MANIFEST).write_text(MANIFEST_TEXT + "file\tunrelated.txt\n", encoding="utf-8")
+    _git(env.repo, "commit", "--quiet", "-am", "extend the soundness manifest")
+    _git(env.repo, "switch", "--quiet", "feat/x")
+    assert env.run(trusted="develop") == local.EXIT_PROCEED
+    assert env.run(trusted="same-manifests") == local.EXIT_PROCEED
+    assert len(env.reviews) == 1
+    assert env.run(trusted="changed-manifest") == local.EXIT_PROCEED
+    assert len(env.reviews) == 2
+
+
+def test_a_trusted_inert_manifest_change_invalidates_the_cached_review(env: Env) -> None:
+    _git(env.repo, "switch", "--quiet", "-c", "changed-inert", "develop")
+    (env.repo / local.INERT_MANIFEST).write_text(INERT_TEXT + "\n", encoding="utf-8")
+    _git(env.repo, "commit", "--quiet", "-am", "touch the inert manifest")
+    _git(env.repo, "switch", "--quiet", "feat/x")
+    assert env.run(trusted="develop") == local.EXIT_PROCEED
+    assert env.run(trusted="changed-inert") == local.EXIT_PROCEED
+    assert len(env.reviews) == 2
+
+
+def test_the_default_review_writes_no_result_file_and_keeps_its_exit_codes(env: Env) -> None:
+    assert env.run() == local.EXIT_PROCEED
+    assert not env.result_path.exists()
+    env.verdict = _high()
+    (env.repo / CHECKER).write_text("value = 4\n", encoding="utf-8")
+    _git(env.repo, "commit", "--quiet", "-am", "feat: change it")
+    assert env.run() == local.EXIT_REFUSED
+    assert env.run(OVERRIDE_BODY) == local.EXIT_PROCEED

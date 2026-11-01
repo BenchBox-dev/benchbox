@@ -68,10 +68,21 @@ BLOCKED = "blocked"
 EXIT_PROCEED = 0
 EXIT_REFUSED = 1
 EXIT_UNAVAILABLE = 2
+MEMBER_SCHEMA = "benchbox_member_review_v1"
+MEMBER_CLEAR = "clear"
+MEMBER_FINDINGS = "findings"
+MEMBER_NOT_REVIEWED = "not-reviewed"
+MEMBER_OVERRIDE = "override"
+FULL_SHA = re.compile(r"[0-9a-f]{40}(?:[0-9a-f]{24})?")
+DEFAULT_POLICY = ".github/oracle-reviewers.yml"
 ADVISORY = "Local oracle review (advisory; it may differ from the CI oracle and posts nothing to GitHub)"
 
 
 class Unavailable(Exception):
+    pass
+
+
+class Refused(Exception):
     pass
 
 
@@ -475,13 +486,25 @@ def machinery_digest() -> str:
     return digest.hexdigest()
 
 
-def _cache_path(directory: Path, plan: Mapping[str, Any], policy_text: str, version: str, keyed: bool) -> Path:
+def trusted_digest(root: Path, trusted_ref: str, pinned: str = "") -> str:
+    digest = hashlib.sha256()
+    for path in (SOUNDNESS_MANIFEST, INERT_MANIFEST):
+        digest.update(trusted_text(root, trusted_ref, path).encode("utf-8"))
+        digest.update(b"\0")
+    digest.update(pinned.encode("utf-8"))
+    return digest.hexdigest()
+
+
+def _cache_path(
+    directory: Path, plan: Mapping[str, Any], policy_text: str, version: str, keyed: bool, trusted: str
+) -> Path:
     policy_hash = hashlib.sha256(policy_text.encode("utf-8")).hexdigest()
     parts = (
         plan["protocol"]["patch_digest"],
         plan["base_sha"],
         plan["head_tree"],
         policy_hash,
+        trusted,
         version,
         f"keyed={keyed}",
         machinery_digest(),
@@ -647,14 +670,21 @@ def _reviewed(
     reporter: Reporter,
 ) -> dict[str, Any] | None:
     plan_dir = work / "plan"
+    trusted_ref = args.trusted_ref or args.base_ref
     plan = build_plan(policy, root, args.base_ref, head, plan_dir, trusted_ref=args.trusted_ref or None)
     if plan["decision"] != cli.REVIEW:
         reporter.say(f"{ADVISORY}: no review needed ({plan['decision_reason']}).")
         return None
+    return _review_plan(root, plan, plan_dir, policy_text, trusted_digest(root, trusted_ref), work, reporter)
+
+
+def _review_plan(
+    root: Path, plan: dict[str, Any], plan_dir: Path, policy_text: str, trusted: str, work: Path, reporter: Reporter
+) -> dict[str, Any]:
     version, omp_binary = pinned_omp(policy_text)
     key = os.environ.get("TYPESAFE_API_KEY", "") or keychain_key()
     reporter.hide(key)
-    cache = _cache_path(state_dir(), plan, policy_text, version, bool(key))
+    cache = _cache_path(state_dir(), plan, policy_text, version, bool(key), trusted)
     cached = _load_cached(cache)
     if cached is not None:
         reporter.say("Reusing the cached local review of this unchanged patch.")
@@ -719,11 +749,128 @@ def _review(args: argparse.Namespace, reporter: Reporter) -> int:
     return _decide(result, body, reporter)
 
 
+def _commit_sha(root: Path, label: str, value: str) -> str:
+    if not FULL_SHA.fullmatch(value):
+        raise Refused(f"--{label} must be a full commit SHA in member mode, not {value!r}")
+    resolved = _git(root, "rev-parse", "--verify", "--quiet", f"{value}^{{commit}}").strip()
+    if resolved != value:
+        raise Refused(f"--{label} {value} is not a commit in this repository")
+    return resolved
+
+
+def _member_record(plan: Mapping[str, Any], root: Path, trusted_sha: str, outcome: str, reason: str) -> dict[str, Any]:
+    prints = protocol.fingerprints(file_states(root, plan["base_sha"], plan["head_sha"]))
+    return {
+        "schema": MEMBER_SCHEMA,
+        "outcome": outcome,
+        "reason": reason,
+        "base_sha": plan["base_sha"],
+        "head_sha": plan["head_sha"],
+        "head_tree": plan["head_tree"],
+        "patch_digest": protocol.patch_digest(prints),
+        "trusted_sha": trusted_sha,
+    }
+
+
+def _not_reviewed(plan: Mapping[str, Any], root: Path, trusted_sha: str) -> dict[str, Any]:
+    return _member_record(plan, root, trusted_sha, MEMBER_NOT_REVIEWED, str(plan["decision_reason"]))
+
+
+def _cached_outcome(result: Mapping[str, Any]) -> tuple[str, str]:
+    if result["decision"] == CLEAR:
+        return MEMBER_CLEAR, "no Critical or High findings"
+    blocking = sum(1 for item in result["findings"] if item.get("severity") in BLOCKING_SEVERITIES)
+    return MEMBER_FINDINGS, f"{blocking} Critical or High finding(s)"
+
+
+def member_review_result(root: Path, base_sha: str, head_sha: str, trusted_sha: str) -> dict[str, Any] | None:
+    try:
+        for label, value in (("base", base_sha), ("head", head_sha), ("trusted", trusted_sha)):
+            _commit_sha(root, label, value)
+        policy_text = trusted_text(root, trusted_sha, DEFAULT_POLICY)
+        policy = parse_policy(yaml.safe_load(policy_text))
+        version = omp_pin.pin_from_text(policy_text).version
+        with tempfile.TemporaryDirectory(prefix="oracle-member-") as scratch:
+            plan = build_plan(policy, root, base_sha, head_sha, Path(scratch) / "plan", trusted_ref=trusted_sha)
+        if plan["base_sha"] != base_sha:
+            return None
+        if plan["decision"] != cli.REVIEW:
+            return _not_reviewed(plan, root, trusted_sha)
+        trusted = trusted_digest(root, trusted_sha, trusted_sha)
+        for keyed in (True, False):
+            cached = _load_cached(_cache_path(state_dir(), plan, policy_text, version, keyed, trusted))
+            if cached is not None:
+                outcome, reason = _cached_outcome(cached)
+                return _member_record(plan, root, trusted_sha, outcome, reason)
+    except (Refused, Unavailable, omp_pin.PinError, yaml.YAMLError, KeyError, TypeError, ValueError):
+        return None
+    return None
+
+
+def _write_member_result(path: Path, record: Mapping[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    scratch = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    scratch.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    os.replace(scratch, path)
+
+
+def _member_review(args: argparse.Namespace, reporter: Reporter) -> int:
+    root = Path.cwd()
+    result_path = Path(args.result_json)
+    result_path.unlink(missing_ok=True)
+    base = _commit_sha(root, "base-ref", args.base_ref)
+    trusted = _commit_sha(root, "trusted-ref", args.trusted_ref)
+    head = _commit_sha(root, "head", args.head)
+    body = override_body(args.body_file)
+    policy_text = trusted_text(root, trusted, args.policy)
+    policy = parse_policy(yaml.safe_load(policy_text))
+    work = Path(tempfile.mkdtemp(prefix="oracle-local-"))
+    try:
+        plan_dir = work / "plan"
+        plan = build_plan(policy, root, base, head, plan_dir, trusted_ref=trusted)
+        if plan["base_sha"] != base:
+            raise Refused(
+                f"--base-ref {base} is not an ancestor of --head {head}; merge the base into the member first"
+            )
+        if plan["decision"] != cli.REVIEW:
+            reporter.say(f"{ADVISORY}: not reviewed ({plan['decision_reason']}).")
+            record = _not_reviewed(plan, root, trusted)
+            _write_member_result(result_path, record)
+            return EXIT_PROCEED
+        result = _review_plan(root, plan, plan_dir, policy_text, trusted_digest(root, trusted, trusted), work, reporter)
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+    _show(result, reporter)
+    outcome, reason = _cached_outcome(result)
+    code = EXIT_PROCEED
+    if outcome == MEMBER_FINDINGS:
+        override = override_reason(body)
+        if override:
+            outcome, reason, code = MEMBER_OVERRIDE, override, EXIT_PROCEED
+        else:
+            code = EXIT_REFUSED
+            reporter.say(
+                "Member review found Critical or High findings. Fix them, or add a "
+                "'Local oracle override: <reason>' line to the body file.",
+                error=True,
+            )
+    _write_member_result(result_path, _member_record(plan, root, trusted, outcome, reason))
+    return code
+
+
 def command_review(args: argparse.Namespace) -> int:
     reporter = Reporter()
+    member = getattr(args, "member", False)
+    if bool(member) != bool(getattr(args, "result_json", "")):
+        reporter.say("--member and --result-json must be given together.", error=True)
+        return EXIT_REFUSED
+    subject = "the member review" if member else "to open the PR"
     try:
-        return _review(args, reporter)
+        return _member_review(args, reporter) if member else _review(args, reporter)
+    except Refused as exc:
+        reporter.say(f"Refusing the local review: {exc}", error=True)
+        return EXIT_REFUSED
     except Unavailable as exc:
-        reporter.say(f"Refusing to open the PR: the local oracle review is unavailable: {exc}", error=True)
+        reporter.say(f"Refusing {subject}: the local oracle review is unavailable: {exc}", error=True)
         reporter.say("A 'Local oracle override:' line does not cover an unavailable review.", error=True)
         return EXIT_UNAVAILABLE
