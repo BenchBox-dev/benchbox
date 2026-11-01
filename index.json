@@ -1747,6 +1747,15 @@
       "status": "done",
       "title": "Integrate verified batch commits through one owned feature branch"
     },
+    "batch-integration-loop-20261101": {
+      "claim": null,
+      "needs": [
+        "batch-loop-default-mode-20261101"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Deliver the two-layer integration-branch batch loop: parallel member worktrees, leader landing, one final PR"
+    },
     "batch-land-and-status-20261101": {
       "claim": null,
       "needs": [
