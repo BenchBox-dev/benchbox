@@ -31765,6 +31765,13 @@
       "status": "done",
       "title": "Stop two agent sessions from editing and committing in the same worktree"
     },
+    "worktree-create-base-ref-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Let worktree-create start from a resolved BASE commit and pr-preflight scope its checks to BASE"
+    },
     "worktree-create-type-prefix-mismatch-20261020": {
       "claim": null,
       "needs": [],
