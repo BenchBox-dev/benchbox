@@ -17431,6 +17431,13 @@
       "status": "done",
       "title": "oracle-review has no fallback when Codex connector hits usage limits"
     },
+    "oracle-review-comment-skipped-on-backoff-after-dispute-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Find why /oracle-review after a Dispute: reply was skipped on backoff"
+    },
     "oracle-review-docs-claims-sweep-20261026": {
       "claim": null,
       "needs": [

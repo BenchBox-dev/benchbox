@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "Root cause found; a dispute-triggered rerun either runs or reports why, and a scenario covers the race if that is the cause."
+  ],
+  "description": "On #3835 head 07f2f0b3e8 the first /oracle-review after a keyed Dispute: reply skipped on a backoff instead of using the dispute budget exemption from #3835's own rules; a second /oracle-review was queued and worked. The likely cause, unconfirmed, is that the run read threads before the reply was visible. A dispute rerun that silently backs off costs a review cycle.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e",
+      "at": "2026-11-01T13:45:38Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1b2bdeb9e9eb414797d8ee236c81908a",
+      "session_id": "1273bcfa4d0e4ed89453e147e32359eb"
+    }
+  ]
+}
