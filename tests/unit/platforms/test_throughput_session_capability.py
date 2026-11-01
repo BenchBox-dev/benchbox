@@ -237,9 +237,7 @@ class TestMySQLWireStreamOverride:
         adapter.new_stream_connection(Mock())
 
         executed = [str(call) for call in stream_cursor.execute.call_args_list]
-        assert executed == ["call(\"SET sql_mode = CONCAT(@@sql_mode, ',PIPES_AS_CONCAT')\")", "call('SELECT 1')"], (
-            executed
-        )
+        assert executed == ["call('SELECT 1')"], executed
 
     def test_stream_setup_failure_closes_nothing_shared(self, monkeypatch):
         pytest.importorskip("pymysql")

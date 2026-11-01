@@ -8,7 +8,6 @@ from collections.abc import Iterable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict, dataclass
-from functools import cache
 from typing import Any, Callable
 
 from benchbox.utils.query_shape_rewrites import (
@@ -27,33 +26,39 @@ from benchbox.utils.query_shape_rewrites import (
     wrap_order_by_subquery_aliases,
 )
 
+_SELECT_TRANSFORMS_MARKER = "_benchbox_select_transforms"
 
-@cache
+
+def _install_select_transforms(generator: type, steps: tuple[str, ...]) -> None:
+    if generator.__dict__.get(_SELECT_TRANSFORMS_MARKER) == steps:
+        return
+    from benchbox._vendor.sqlglot import exp, generator as sqlglot_generator, transforms
+
+    generator.TRANSFORMS[exp.Select] = transforms.preprocess([getattr(transforms, step) for step in steps])
+    sqlglot_generator._DISPATCH_CACHE.pop(generator, None)
+    setattr(generator, _SELECT_TRANSFORMS_MARKER, steps)
+
+
 def _keep_doris_full_outer_join() -> None:
-    from benchbox._vendor.sqlglot import exp, transforms
     from benchbox._vendor.sqlglot.generators.doris import DorisGenerator
 
-    DorisGenerator.TRANSFORMS[exp.Select] = transforms.preprocess(
-        [
-            transforms.eliminate_distinct_on,
-            transforms.eliminate_semi_and_anti_joins,
-            transforms.eliminate_qualify,
-            transforms.unnest_generate_date_array_using_recursive_cte,
-        ]
+    _install_select_transforms(
+        DorisGenerator,
+        (
+            "eliminate_distinct_on",
+            "eliminate_semi_and_anti_joins",
+            "eliminate_qualify",
+            "unnest_generate_date_array_using_recursive_cte",
+        ),
     )
 
 
-@cache
 def _eliminate_starrocks_qualify() -> None:
-    from benchbox._vendor.sqlglot import exp, transforms
     from benchbox._vendor.sqlglot.generators.starrocks import StarRocksGenerator
 
-    StarRocksGenerator.TRANSFORMS[exp.Select] = transforms.preprocess(
-        [
-            transforms.eliminate_distinct_on,
-            transforms.eliminate_qualify,
-            transforms.unnest_generate_date_array_using_recursive_cte,
-        ]
+    _install_select_transforms(
+        StarRocksGenerator,
+        ("eliminate_distinct_on", "eliminate_qualify", "unnest_generate_date_array_using_recursive_cte"),
     )
 
 

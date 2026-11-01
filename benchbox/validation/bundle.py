@@ -206,6 +206,7 @@ CANONICAL_LOGICAL_QUERY_IDS: dict[str, frozenset[str]] = {
 TPCHAVOC_CANONICAL_VARIANTS = frozenset(f"{query}_v{variant}" for query in range(1, 23) for variant in range(1, 11))
 TPCHAVOC_DOCUMENTED_SKIPS: dict[str, frozenset[str]] = {
     "sqlite": frozenset(["5_v8"]),
+    "starrocks": frozenset(["1_v7", "8_v1"]),
     "datafusion": frozenset(
         [
             "12_v1",

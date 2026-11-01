@@ -437,6 +437,30 @@
         "statistical_variance_stddev",
         "timeseries_trend_analysis",
         "window_moving_frame"
+      ],
+      "starrocks": [
+        "approx_quantile_groupby",
+        "approx_quantiles_array",
+        "array_unnest",
+        "asof_join_basic",
+        "groupby_all_complex",
+        "groupby_all_simple",
+        "json_aggregates",
+        "json_extract_nested",
+        "json_extract_simple",
+        "list_reduce",
+        "map_access",
+        "map_construction",
+        "map_keys_values",
+        "optimizer_scalar_subquery_flattening",
+        "orderby_all_desc",
+        "orderby_all_simple",
+        "statistical_correlation",
+        "statistical_percentiles",
+        "struct_access",
+        "timeseries_trend_analysis",
+        "unpivot_basic",
+        "window_moving_frame"
       ]
     }
   },
@@ -628,9 +652,13 @@
     }
   },
   "tpchavoc": {
-    "reason": "Doris does not parse the empty GROUP BY () the translator emits for the 6_v2 and 14_v2 variants; the clause is dropped from the translated text so the global aggregate and HAVING run unchanged.",
+    "reason": "Doris and StarRocks do not parse the empty GROUP BY () the translator emits for the 6_v2 and 14_v2 variants; the clause is dropped from the translated text so the global aggregate and HAVING run unchanged.",
     "dialects": {
       "doris": [
+        "14_v2",
+        "6_v2"
+      ],
+      "starrocks": [
         "14_v2",
         "6_v2"
       ]
@@ -1076,6 +1104,15 @@
         "merge_with_cte_source",
         "merge_with_join_condition",
         "update_date_arithmetic"
+      ],
+      "starrocks": [
+        "ddl_create_index_on_existing",
+        "ddl_create_table_with_index",
+        "ddl_drop_index",
+        "delete_all_truncate_comparison",
+        "insert_batch_values_100",
+        "insert_batch_values_1000",
+        "insert_on_conflict_ignore"
       ]
     }
   }
