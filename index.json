@@ -16786,6 +16786,13 @@
       "status": "done",
       "title": "Compare changed-file paths canonically so an escaped filename cannot exclude a finding from the verdict"
     },
+    "oracle-flags-code-outside-the-diff-and-dispute-does-not-rerun-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Oracle failed #3883 on code the PR did not change, and a Dispute comment did not trigger a re-judgement"
+    },
     "oracle-followup-read-bypass-out-of-scope-defect-20261009": {
       "claim": null,
       "needs": [],

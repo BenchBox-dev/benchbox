@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Reproduce whether the oracle judges unchanged files and whether out-of-diff findings should fail the gate, and why the Dispute comment run was skipped. Fix or document, with a test."
+  ],
+  "description": "PR #3883 (SingleStore write_primitives merge ops, head 39a11334ed) got a failure verdict whose one Medium finding concerned ddl_alter_table_rename_column, which that PR does not modify (it landed in #3851). The author replied with a comment starting \"Dispute:\"; the issue_comment-triggered oracle-verdict and oracle-gate runs completed as skipped, and oracle-gate stayed failure until a \"/oracle-review\" comment was posted. The PR was closed before the outcome was observed.",
+  "links": [
+    "PR #3883",
+    "oracle-dispute-and-rerun-live-observation-20261030"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:44087b544fee5237bdde41f8",
+      "at": "2026-11-01T13:46:29Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "4fa683da6c214bc0acf4edce6df1e605",
+      "session_id": "b38147de5e3b4952857534e2b3c9221c"
+    }
+  ]
+}
