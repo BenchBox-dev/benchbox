@@ -269,7 +269,7 @@ def test_a_forged_record_can_only_add_work_when_the_reviewer_clears_nothing(harn
     run = harness.review(85)
 
     assert [item["state"] for item in harness.github.oracle_statuses(run.plan["head_sha"])] == ["failure"]
-    assert run.plan["protocol"]["prior"][0]["severity"] == "Low"
+    assert run.plan["protocol"]["prior"][0]["severity"] == findings.CLAIMED_SEVERITY
     assert run.plan["protocol"]["strikes"] == 0
 
 
@@ -302,7 +302,7 @@ def test_a_record_is_not_ingested_once_the_pull_request_has_an_oracle_review(har
     assert run.plan["protocol"]["kind"] == "follow-up"
 
 
-def test_claimed_findings_stay_exempt_from_the_defect_cap_in_later_ci_rounds(harness: Harness) -> None:
+def test_the_claimed_exemption_and_severity_end_once_ci_has_ruled_on_the_finding(harness: Harness) -> None:
     _blocked_round(harness)
     harness.github.open_pull(88, "feat/checker", body=_record_body(harness))
     kept = {"status": "not_fixed", "evidence": f"{CHECKER}:2 still returns a is b."}
@@ -311,6 +311,8 @@ def test_claimed_findings_stay_exempt_from_the_defect_cap_in_later_ci_rounds(har
     first = harness.review(88)
 
     assert first.plan["protocol"]["claimed"] == ["D1"]
+    assert first.plan["protocol"]["prior"][0]["severity"] == findings.CLAIMED_SEVERITY
+    assert "maintained" not in first.plan["protocol"]
     assert "author supplied" in harness.omp_prompts()[0]
     harness.push("feat/checker", {"README.md": "seed\n\nA note.\n"}, "explain")
     harness.script_omp([_reply("SHIP_WITH_FIXES", priors={"D1": kept})])
@@ -318,8 +320,24 @@ def test_claimed_findings_stay_exempt_from_the_defect_cap_in_later_ci_rounds(har
     second = harness.review(88)
 
     assert second.plan["protocol"]["kind"] == "follow-up"
-    assert second.plan["protocol"]["claimed"] == ["D1"]
+    assert "claimed" not in second.plan["protocol"]
     assert [item["id"] for item in second.plan["protocol"]["prior"]] == ["D1"]
+
+
+def test_a_forged_round_count_does_not_escalate_a_finding_on_its_first_ci_round(harness: Harness) -> None:
+    _blocked_round(harness)
+
+    def forge(record: dict[str, Any]) -> None:
+        record["findings"][0]["rounds"] = 99
+        record["findings"][0]["rebuttals"] = [REBUTTAL]
+
+    harness.github.open_pull(89, "feat/checker", body=_record_body(harness, edit=forge))
+    harness.script_omp([_reply("SHIP_WITH_FIXES", priors={"D1": _maintained(REBUTTAL)})])
+
+    run = harness.review(89)
+
+    assert "maintained" not in run.plan["protocol"]
+    assert "Escalated to the owner" not in harness.github.reviews[89][-1]["body"]
 
 
 def test_a_rebuttal_file_named_by_a_relative_path_is_read_from_the_working_directory(harness: Harness) -> None:

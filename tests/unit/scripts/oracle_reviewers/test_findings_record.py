@@ -237,7 +237,7 @@ def test_the_exported_record_is_ingested_as_claims_with_every_finding_disputed_o
     assert claims is not None
     assert [item["id"] for item in claims.prior] == ["D1", "D2", "D3"]
     assert claims.next_id == 4 and claims.claimed == ["D1", "D2", "D3"]
-    assert claims.maintained == {"D1": 1}
+    assert not hasattr(claims, "maintained") and "maintained" not in claims.rules()
     assert [item["id"] for item in claims.disputes] == ["D1", "D2"]
     assert claims.disputes[1]["replies"][0]["body"].startswith("Local owner adjudication, not verified: WITHDRAW")
     assert claims.rules()["forced"] is True
@@ -332,9 +332,9 @@ def test_a_forged_record_cannot_confer_strikes_round_counts_or_oversized_ids() -
 
     assert claims is not None
     assert [item["id"] for item in claims.prior] == ["D1"]
-    assert claims.maintained == {"D1": protocol.FORCED_ROUND_LIMIT}
+    assert "maintained" not in claims.rules()
     assert claims.next_id == 2
-    assert set(claims.rules()) == {"prior", "next_id", "forced", "maintained", "claimed"}
+    assert set(claims.rules()) == {"prior", "next_id", "forced", "claimed"}
 
 
 def test_forged_text_is_clamped_and_marker_lines_are_stripped_from_claims() -> None:
@@ -413,12 +413,25 @@ def test_claimed_titles_and_paths_cannot_smuggle_markup_into_a_bot_review() -> N
     assert "<!--" not in shown["file"] and "\n" not in shown["file"]
 
 
-def test_the_claimed_ids_survive_the_protocol_record_and_must_be_defect_ids() -> None:
+def test_a_claimed_severity_is_labelled_as_claimed_and_never_shown_as_the_oracles() -> None:
+    claims = findings.ingest(_forged(_claim(1, severity="Critical"), _claim(2, severity="Low")), DIGEST)
+
+    assert claims is not None
+    assert {item["severity"] for item in claims.prior} == {findings.CLAIMED_SEVERITY}
+    assert [item["title"] for item in claims.prior] == ["(claimed Critical) t", "(claimed Low) t"]
+
+
+def test_forged_round_counts_cannot_escalate_a_finding_in_ci() -> None:
+    claims = findings.ingest(_forged(_claim(1, rounds=2, rebuttals=[REBUTTAL])), DIGEST)
+
+    assert claims is not None
+    assert "maintained" not in claims.rules()
+    assert protocol.escalated_ids({}, claims.prior, ["D1"]) == []
+
+
+def test_the_claimed_exemption_is_not_written_into_the_protocol_record() -> None:
     record = protocol.decode_marker(_marker([_defect(1)]))
     assert record is not None
 
-    kept = protocol.decode_marker(protocol.encode_marker({**record, "claimed": ["D1"]}))
-
-    assert kept is not None and kept["claimed"] == ["D1"]
     with pytest.raises(protocol.MarkerError):
-        protocol.decode_marker(protocol.encode_marker({**record, "claimed": ["not-an-id"]}))
+        protocol.decode_marker(protocol.encode_marker({**record, "claimed": ["D1"]}))

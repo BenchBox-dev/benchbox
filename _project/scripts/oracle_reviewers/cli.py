@@ -915,9 +915,6 @@ def _protocol_round(
     }
     if step.forced:
         plan["protocol"]["maintained"] = protocol.maintained_counts(found.records, digest)
-    claimed = [item["id"] for item in plan["protocol"]["prior"] if item["id"] in (latest.get("claimed") or ())]
-    if claimed:
-        plan["protocol"]["claimed"] = claimed
     return step
 
 

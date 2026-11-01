@@ -17,6 +17,7 @@ from .policy import SEVERITIES
 from .verdict import MAX_LINE, PriorDefect, sanitize
 
 RECORD_VERSION = 1
+CLAIMED_SEVERITY = "Medium"
 FINDING_CAP = 20
 NUMBER_CAP = 999
 TEXT_CAP = protocol.REPLY_LIMIT
@@ -397,7 +398,6 @@ def _claim(raw: Any) -> dict[str, Any] | None:
         or raw.get("status") not in STATUSES
     ):
         return None
-    rounds = raw.get("rounds")
     rebuttals = raw.get("rebuttals")
     ruling = raw.get("adjudication")
     texts = [
@@ -417,16 +417,13 @@ def _claim(raw: Any) -> dict[str, Any] | None:
     return {
         "defect": {
             "id": short,
-            "severity": severity,
+            "severity": CLAIMED_SEVERITY,
             "file": path,
             "line": max(min(line, MAX_LINE), 1),
             "end_line": None if end is None else max(min(end, MAX_LINE), 1),
-            "title": title,
+            "title": sanitize(f"(claimed {severity}) {title}", TITLE_CAP),
         },
         "status": raw["status"],
-        "rounds": max(min(rounds, protocol.FORCED_ROUND_LIMIT), 0)
-        if isinstance(rounds, int) and not isinstance(rounds, bool)
-        else 0,
         "texts": [text for text in texts if text.strip()],
     }
 
@@ -435,7 +432,6 @@ def _claim(raw: Any) -> dict[str, Any] | None:
 class Claims:
     prior: list[dict[str, Any]]
     disputes: list[dict[str, Any]]
-    maintained: dict[str, int]
     next_id: int
     claimed: list[str]
 
@@ -444,7 +440,6 @@ class Claims:
             "prior": self.prior,
             "next_id": self.next_id,
             "forced": True,
-            "maintained": self.maintained,
             "claimed": self.claimed,
         }
 
@@ -464,15 +459,13 @@ def ingest(body: str, digest: str) -> Claims | None:
     claims = sorted(unique.values(), key=lambda item: _number(item["defect"]["id"]))[:FINDING_CAP]
     if not claims:
         return None
-    prior, disputes, maintained = [], [], {}
+    prior, disputes = [], []
     for claim in claims:
         defect = claim["defect"]
         prior.append(defect)
         texts = claim["texts"]
         if not texts and (claim["status"] != OPEN):
             texts = [f"The local review recorded this finding as {claim['status'].replace('-', ' ')}."]
-        if claim["rounds"]:
-            maintained[defect["id"]] = claim["rounds"]
         if texts:
             disputes.append(
                 {
@@ -487,7 +480,6 @@ def ingest(body: str, digest: str) -> Claims | None:
     return Claims(
         prior=prior,
         disputes=disputes,
-        maintained=maintained,
         next_id=max(_number(item["id"]) for item in prior) + 1,
         claimed=[item["id"] for item in prior],
     )
