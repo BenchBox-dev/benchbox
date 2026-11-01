@@ -431,3 +431,13 @@ def test_the_brief_cap_counts_the_response_template() -> None:
     assert _review(_classification(()), "x", max_bytes=exact)
     with pytest.raises(OversizeError):
         _review(_classification(()), "x", max_bytes=exact - 1)
+
+
+def test_select_prior_rule_adds_the_claimed_rule_only_with_claimed_ids() -> None:
+    prior = [{"id": "D1"}, {"id": "D2"}]
+
+    rule = select_prior_rule(prior, None, 10, False, False, ["D1", "D2"])
+
+    assert "D1, D2" in rule and "author supplied" in rule and "10 limit" in rule
+    assert "author supplied" not in select_prior_rule(prior, None, 10)
+    assert "author supplied" not in select_prior_rule(None, None, 10, False, False, ["D1"])
