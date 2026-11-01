@@ -17602,12 +17602,7 @@
       "title": "Find why /oracle-review after a Dispute: reply was skipped on backoff"
     },
     "oracle-review-docs-claims-sweep-20261026": {
-      "claim": {
-        "expires_at": "2026-11-02T17:59:41Z",
-        "generation": "a69de09af18e4fd89178ad2e3fb7a708",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e"
-      },
+      "claim": null,
       "needs": [
         "oracle-local-findings-record-disputes-20261026",
         "oracle-gateway-cloud-builder-access-20261025",
@@ -17628,7 +17623,7 @@
         "oracle-small-trust-fixes-20261027"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Verify every oracle documentation claim the 2026-10-26 review found false is now true or removed"
     },
     "oracle-review-driver-ci-20261026": {
