@@ -7832,6 +7832,13 @@
       "status": "done",
       "title": "Design results ingest, storage, and derived read-model architecture"
     },
+    "dev-host-disk-below-heavy-work-floor-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Recover dev host disk so make pr-preflight runs without lowering the floor"
+    },
     "dev-loop-metrics-ci-failure-baseline": {
       "claim": null,
       "needs": [],

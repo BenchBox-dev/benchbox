@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "Free disk is above the floor with headroom; stale merged worktrees are removed under an owner-approved rule; make pr-preflight runs without an override."
+  ],
+  "description": "On 2026-11-01 the Mac had about 40 GiB free against the 50 GiB BENCHBOX_HEAVY_MIN_FREE_DISK_GIB floor, so make pr-preflight refused heavy work (exit 76). Three PRs ran preflight once with the floor lowered to 35, and #3899 merged without a clean preflight exit. The host has about 256 linked worktrees and a 31 GiB uv cache; uv cache prune was blocked by running uv processes. Owner-approved cleanup of merged-branch worktrees and caches is needed.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e",
+      "at": "2026-11-01T13:45:43Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "51bd46fae905494c9108369a7a2909f1",
+      "session_id": "1273bcfa4d0e4ed89453e147e32359eb"
+    }
+  ]
+}
