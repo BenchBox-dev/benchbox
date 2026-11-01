@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Every path that ends make pr-arm without arming, including the trunk arm gate refusal, prints one 'pr-arm: outcome: refused: ...' line",
+    "A test covers the red-develop refusal and fails without the change"
+  ],
+  "context": "Seen 2026-11-01 arming baseline refresh PRs 3914 and 3915 while develop was red from the failed Trunk run on abc110263. The outcome-line behavior was added for hold messages in the pr-arm outcome change; this gate was not routed through it.",
+  "description": "The earlier change that makes make pr-arm always end with 'pr-arm: outcome: armed|refused|waiting: ...' does not cover the trunk arm gate. When develop is red the refusal text ('Refusing to arm <branch>: develop is red: ...') and 'make: *** [pr-arm] Error 1' are the only output, so a loop that greps for the outcome line sees nothing and logs an empty status.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:96cfd54c7d2180daa76d178f",
+      "at": "2026-11-01T15:18:03Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b935ca1d523b4a539f6313d2b4360605",
+      "session_id": "77bfd3a6737c4f8e9b68d27f796e8651"
+    }
+  ]
+}

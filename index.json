@@ -18993,6 +18993,13 @@
       "status": "done",
       "title": "Make the pr-arm duration-verdict message say whether the pull request was armed"
     },
+    "pr-arm-red-develop-refusal-prints-no-outcome-line-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "make pr-arm prints no 'pr-arm: outcome:' line when the red-develop gate refuses"
+    },
     "pr-arm-refuses-already-clean-pr-20261101": {
       "claim": null,
       "needs": [],
