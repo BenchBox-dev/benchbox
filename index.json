@@ -19071,7 +19071,8 @@
       "claim": null,
       "needs": [
         "benchbox-todo-db-batch-v2-runtime-20261101",
-        "pr-landing-soundness-refusal-unreachable-20261009"
+        "pr-landing-soundness-refusal-unreachable-20261009",
+        "batch-land-and-status-20261101"
       ],
       "priority": "high",
       "status": "open",
