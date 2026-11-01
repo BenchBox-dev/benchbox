@@ -168,7 +168,7 @@ printf '%s\\n' "$*" >> "$STUB_LOG"
 case "$1 $2" in
   "machine list") printf '[{"status":"%s","id":"m","default":true},{"status":"running","id":"other"}]\\n' "$STUB_STATUS" ;;
   "machine run") [ -n "${STUB_RUN_HOOK:-}" ] && bash -c "$STUB_RUN_HOOK"; exit "${STUB_RUN_EXIT:-0}" ;;
-  "machine stop") exit "${STUB_STOP_EXIT:-0}" ;;
+  "machine stop") [ -n "${STUB_STOP_HANG:-}" ] && exec sleep 30; exit "${STUB_STOP_EXIT:-0}" ;;
 esac
 """
 
@@ -306,11 +306,42 @@ def test_no_foreign_run_or_an_unrunnable_check_stops_the_machine(tmp_path: Path,
 
 @posix_only
 @needs_bash
-def test_the_real_process_check_ignores_the_wrapper_and_its_own_run(tmp_path: Path) -> None:
+def test_the_real_process_check_finds_no_foreign_run_and_the_machine_is_stopped(tmp_path: Path) -> None:
     result = _locked_wrapper(_stub_env(tmp_path, "running", STUB_RUN_HOOK="sleep 0.2"), "-e", "A=1", "--", "true")
     assert result.returncode == 0, result.stderr
     assert "left running" not in result.stderr
     assert _calls(tmp_path)[-1] == "machine stop m"
+
+
+@posix_only
+@needs_bash
+def test_a_sigterm_during_the_exit_busy_check_still_stops_the_machine_and_keeps_the_status(tmp_path: Path) -> None:
+    checker = _checker(tmp_path, '#!/bin/sh\nkill -TERM "$5"\nsleep 1\nexit 1\n')
+    env = _stub_env(tmp_path, "running", BENCHBOX_PYTHON=checker, STUB_RUN_EXIT="5")
+    result = _locked_wrapper(env, "--", "true")
+    assert result.returncode == 5, result.stderr
+    assert _calls(tmp_path)[-1] == "machine stop m"
+
+
+@posix_only
+@needs_bash
+def test_a_hanging_stop_is_cut_off_with_a_warning_and_the_status_survives(tmp_path: Path) -> None:
+    env = _stub_env(tmp_path, "running", STUB_STOP_HANG="1", BENCHBOX_LINUX_STOP_TIMEOUT_SECONDS="1", STUB_RUN_EXIT="4")
+    result = _locked_wrapper(env, "--", "true")
+    assert result.returncode == 4, result.stderr
+    assert "timed out after 1s" in result.stderr
+    assert "WARNING: could not stop machine 'm'" in result.stderr
+
+
+@posix_only
+@needs_bash
+def test_keep_machine_with_a_stopped_prior_state_still_yields_to_a_foreign_run(tmp_path: Path) -> None:
+    checker = _checker(tmp_path, "#!/bin/sh\necho 4242\nexit 0\n")
+    env = _stub_env(tmp_path, "stopped", BENCHBOX_PYTHON=checker, BENCHBOX_KEEP_LINUX_MACHINE="1")
+    result = _locked_wrapper(env, "--", "true")
+    assert result.returncode == 0, result.stderr
+    assert not any(call.startswith("machine stop") for call in _calls(tmp_path))
+    assert "left running: in use by pid 4242" in result.stderr
 
 
 @posix_only

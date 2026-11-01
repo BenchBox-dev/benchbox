@@ -2,10 +2,6 @@ from __future__ import annotations
 
 import io
 import os
-import subprocess
-import sys
-import time
-from pathlib import Path
 
 import psutil
 import pytest
@@ -237,40 +233,37 @@ def test_a_clean_step_with_a_vm_logs_nothing() -> None:
     assert out.getvalue() == ""
 
 
-@pytest.mark.skipif(sys.platform == "win32", reason="POSIX only")
-def test_a_vm_breach_terminates_the_holder_tree_but_not_the_holder(tmp_path: Path) -> None:
-    pidfile = tmp_path / "child.pid"
-    holder = subprocess.Popen(
-        ["sh", "-c", 'sleep 60 & echo $! > "$1"; while :; do sleep 0.2; done', "sh", str(pidfile)],
-        start_new_session=True,
+def test_a_negative_mapping_is_cached_only_once_the_process_is_old() -> None:
+    calls: list[int] = []
+    now = {"t": 0.0}
+
+    def open_paths(pid: int) -> list[str]:
+        calls.append(pid)
+        return ["/usr/lib/x"]
+
+    attr = vf.VmAttributor(process_lister=lambda: [vf.VmProcess(7, 1.0)], open_paths=open_paths, clock=lambda: now["t"])
+    attr.machine_pids("benchbox-agent")
+    now["t"] = 10.0
+    attr.machine_pids("benchbox-agent")
+    assert calls == [7, 7]
+    now["t"] = 31.0
+    attr.machine_pids("benchbox-agent")
+    attr.machine_pids("benchbox-agent")
+    assert calls == [7, 7, 7]
+
+
+def test_a_vm_process_that_gains_its_machine_files_later_is_matched() -> None:
+    paths: dict[int, list[str]] = {1: ["/usr/lib/x"]}
+    attr = vf.VmAttributor(
+        process_lister=lambda: [vf.VmProcess(1, 1.0)], open_paths=lambda pid: paths[pid], clock=lambda: 0.0
     )
-    try:
-        deadline = time.monotonic() + 10
-        while time.monotonic() < deadline and not (pidfile.exists() and pidfile.read_text(encoding="utf-8").strip()):
-            time.sleep(0.05)
-        child = int(pidfile.read_text(encoding="utf-8"))
-        pol = hw.WatchPolicy(
-            holder_pid=holder.pid,
-            holder_created=psutil.Process(holder.pid).create_time(),
-            budget_bytes=0,
-            mode="kill",
-            kill_free_disk_gib=0.0,
-            grace_seconds=5.0,
-        )
-        vm = vf.VmReading("benchbox-agent", (5,), 9 * GIB, int(8.8 * GIB))
-        out = io.StringIO()
-        dog = hw.Watchdog(pol, pressure_reader=lambda: 1, disk_reader=lambda roots: [], vm_reader=lambda s: vm, out=out)
-        dog.step()
+    assert attr.machine_pids("benchbox-agent") == ()
+    paths[1] = listing("benchbox-agent")
+    assert attr.machine_pids("benchbox-agent") == (1,)
 
-        def gone() -> bool:
-            return not psutil.pid_exists(child) or psutil.Process(child).status() == psutil.STATUS_ZOMBIE
 
-        deadline = time.monotonic() + 10
-        while time.monotonic() < deadline and not gone():
-            time.sleep(0.05)
-        assert gone()
-        assert holder.poll() is None
-        assert f"sent SIGTERM to pid {child}" in out.getvalue()
-    finally:
-        holder.kill()
-        holder.wait()
+def test_the_wrapper_matcher_and_machine_name_live_in_the_stdlib_module() -> None:
+    assert vf.argv_runs_wrapper(WRAPPER_ARGV, "benchbox-agent")
+    assert not vf.argv_runs_wrapper(WRAPPER_ARGV, "benchbox-agent-2")
+    assert vf.machine_name_from_env({}) == vf.DEFAULT_MACHINE
+    assert vf.machine_name_from_env({vf.MACHINE_ENV: " x "}) == "x"

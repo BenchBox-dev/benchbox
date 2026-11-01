@@ -9,11 +9,14 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 
 from benchbox.utils import resource_limits
+from benchbox.utils.vm_footprint import (
+    DEFAULT_MACHINE as DEFAULT_MACHINE,
+    MACHINE_ENV as MACHINE_ENV,
+    argv_runs_wrapper as argv_runs_wrapper,
+    basename,
+    machine_name_from_env,
+)
 
-MACHINE_ENV = "BENCHBOX_HEAVY_LINUX_MACHINE"
-DEFAULT_MACHINE = "benchbox-agent"
-WRAPPER_NAME = "linux_machine_run.sh"
-SHELL_NAMES = frozenset({"bash", "sh", "zsh", "dash"})
 VALUE_OPTIONS = frozenset(
     {
         "-e",
@@ -55,16 +58,11 @@ class MachineState:
 
 
 def machine_name(environ: Mapping[str, str] | None = None) -> str:
-    env = os.environ if environ is None else environ
-    return (env.get(MACHINE_ENV) or "").strip() or DEFAULT_MACHINE
-
-
-def _basename(value: str) -> str:
-    return os.path.basename(value.rstrip("/"))
+    return machine_name_from_env(os.environ if environ is None else environ)
 
 
 def _subcommand(argv: Sequence[str]) -> tuple[str, Sequence[str]] | None:
-    if not argv or _basename(argv[0]) != "container":
+    if not argv or basename(argv[0]) != "container":
         return None
     rest = list(argv[1:])
     index = 0
@@ -110,15 +108,6 @@ def argv_targets_machine(argv: Sequence[str], machine: str, machine_is_default: 
     if named:
         return name == machine
     return command == "run" and machine_is_default
-
-
-def argv_runs_wrapper(argv: Sequence[str], machine: str) -> bool:
-    if not argv or _basename(argv[0]) not in SHELL_NAMES:
-        return False
-    for index, token in enumerate(argv[1:-1], start=1):
-        if _basename(token) == WRAPPER_NAME:
-            return argv[index + 1] == machine
-    return False
 
 
 def argv_matches(argv: Sequence[str], machine: str, machine_is_default: bool) -> bool:

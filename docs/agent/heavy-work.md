@@ -26,12 +26,18 @@ refuses to start it while the host is already under pressure.
 - Never set `BENCHBOX_SKIP_TEST_LOCK`, `BENCHBOX_HEAVY_ADMIT=force`, or
   `BENCHBOX_HEAVY_WATCHDOG=off` without owner approval in the current task.
 - Never stop, resize, or signal a process or VM you did not start. Exception:
-  `scripts/linux_machine_run.sh` (after every run, unless
-  `BENCHBOX_KEEP_LINUX_MACHINE=1` or another same-user `container machine
-  run`/`create` process is using the machine) and the sentinel (when the
-  machine has been idle with no lock holder for `BENCHBOX_HEAVY_VM_IDLE_MINUTES`)
-  stop the one machine named by `BENCHBOX_HEAVY_LINUX_MACHINE` (default
-  `benchbox-agent`), never another machine or container.
+  the one machine named by `BENCHBOX_HEAVY_LINUX_MACHINE` (default
+  `benchbox-agent`), never another machine or container, may be stopped by
+  - `scripts/linux_machine_run.sh`, after every run, unless
+    `BENCHBOX_KEEP_LINUX_MACHINE=1` (and the machine was not stopped before the
+    run) or another same-user host process that is not its own child is running
+    `container machine run`/`create` against the machine or another
+    `linux_machine_run.sh <machine>`;
+  - the sentinel, when the machine is running, no matching `container machine
+    run`/`create` or `linux_machine_run.sh <machine>` process has been seen for
+    `BENCHBOX_HEAVY_VM_IDLE_MINUTES`, and no live lock holder's tree contains
+    `scripts/linux_machine_run.sh` or a `container machine run` for that
+    machine.
 - Interactive Linux VM use goes through
   `make heavy-run CMD='bash scripts/linux_machine_run.sh benchbox-agent -- <cmd>'`,
   never a hand-started `container machine run` or `create`. The documented

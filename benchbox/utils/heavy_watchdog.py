@@ -184,9 +184,7 @@ def evaluate_breaches(
 
 
 def default_vm_reader() -> Callable[[TreeSample], VmReading | None]:
-    from benchbox.utils import linux_machine
-
-    machine = linux_machine.machine_name(os.environ)
+    machine = vm_footprint.machine_name_from_env(os.environ)
     attributor = vm_footprint.VmAttributor(footprint_reader=process_tree.footprint.pid_footprint_bytes)
 
     def read(sample: TreeSample) -> VmReading | None:

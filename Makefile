@@ -906,7 +906,8 @@ ci-linux:
 	trap 'rm -f "$$CMD_FILE"' EXIT; \
 	printf 'cd "%s"\nexport UV_PROJECT_ENVIRONMENT="$${UV_PROJECT_ENVIRONMENT:-$$HOME/.cache/benchbox-linux-venv}"\n%s\n' "$(CURDIR)" "$$CI_LINUX_CMD" > "$$CMD_FILE"; \
 	echo "==> ci-linux: the host lock and watchdog cover host memory pressure and disk; the VM footprint is reported separately and bounded by its own allowance (BENCHBOX_HEAVY_VM_ALLOWANCE_GIB); the machine is stopped after the run unless BENCHBOX_KEEP_LINUX_MACHINE=1 or another run uses it, and the sentinel stops it when idle" >&2; \
-	NEED_GIB=$$($(HOST_LOCK_CLI) machine-need --machine $(CI_LINUX_MACHINE) --fallback-gib $(CI_LINUX_NEED_GIB)); \
+	NEED_GIB=$$($(HOST_LOCK_CLI) machine-need --machine $(CI_LINUX_MACHINE) --fallback-gib $(CI_LINUX_NEED_GIB)) || NEED_GIB=""; \
+	NEED_GIB=$${NEED_GIB:-$(CI_LINUX_NEED_GIB)}; \
 	$(HOST_LOCK_CLI) run --phase ci-linux --gate ci-linux --admit --need-gib "$$NEED_GIB" --guard -- bash scripts/linux_machine_run.sh $(CI_LINUX_MACHINE) $(CI_LINUX_ENV) -- bash -l "$$CMD_FILE"
 
 .PHONY: typecheck

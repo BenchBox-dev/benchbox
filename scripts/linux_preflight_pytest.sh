@@ -66,7 +66,8 @@ done <"$test_list"
 
 echo "==> Linux container run of ${#tests[@]} changed-file test target(s) in machine '$machine'"
 cd "$top"
-need_gib=$(uv run -- python -m benchbox.utils.host_lock machine-need --machine "$machine" --fallback-gib "${CI_LINUX_NEED_GIB:-2}")
+need_gib=$(uv run -- python -m benchbox.utils.host_lock machine-need --machine "$machine" --fallback-gib "${CI_LINUX_NEED_GIB:-2}") || need_gib=""
+need_gib=${need_gib:-${CI_LINUX_NEED_GIB:-2}}
 status=0
 uv run -- python -m benchbox.utils.host_lock run --phase linux-preflight --gate linux-preflight \
   --admit --need-gib "$need_gib" --guard -- \
@@ -75,6 +76,6 @@ uv run -- python -m benchbox.utils.host_lock run --phase linux-preflight --gate 
   -e BENCHBOX_HEAVY_ADMIT_MIN_GIB=1.5 -e BENCHBOX_HEAVY_MIN_FREE_DISK_GIB=2 -- \
   bash "$top/scripts/linux_preflight_pytest.sh" "$top" "${tests[@]}" || status=$?
 if [ "$status" -eq 76 ]; then
-  unverified "admission refused; the host is under memory or disk pressure, so the Linux run did not start."
+  unverified "admission refused (host or guest); the host is under memory or disk pressure or the guest could not start, so the Linux run did not start."
 fi
 exit "$status"

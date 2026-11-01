@@ -36,15 +36,26 @@ foreign_pid() {
 }
 
 stop_machine() {
-  container machine stop "$machine" >&2 || echo "WARNING: could not stop machine '$machine'" >&2
+  limit=${BENCHBOX_LINUX_STOP_TIMEOUT_SECONDS:-60}
+  container machine stop "$machine" >&2 &
+  stop_pid=$!
+  waited=0
+  while kill -0 "$stop_pid" 2>/dev/null; do
+    if [ "$waited" -ge "$limit" ]; then
+      kill "$stop_pid" 2>/dev/null
+      echo "WARNING: stopping machine '$machine' timed out after ${limit}s" >&2
+      break
+    fi
+    sleep 1
+    waited=$((waited + 1))
+  done
+  wait "$stop_pid" 2>/dev/null || echo "WARNING: could not stop machine '$machine'" >&2
 }
 
 finish_machine() {
-  if [ "${BENCHBOX_KEEP_LINUX_MACHINE:-}" = "1" ]; then
-    if [ "$prior" = "stopped" ]; then
-      echo "==> linux machine '$machine' was stopped before this run; stopping it again" >&2
-      stop_machine
-    fi
+  trap : INT HUP TERM
+  keep=${BENCHBOX_KEEP_LINUX_MACHINE:-}
+  if [ "$keep" = "1" ] && [ "$prior" != "stopped" ]; then
     return 0
   fi
   other=$(foreign_pid 2>/dev/null)
@@ -52,7 +63,11 @@ finish_machine() {
     echo "==> linux machine '$machine' left running: in use by pid $other" >&2
     return 0
   fi
-  echo "==> stopping linux machine '$machine'" >&2
+  if [ "$keep" = "1" ]; then
+    echo "==> linux machine '$machine' was stopped before this run; stopping it again" >&2
+  else
+    echo "==> stopping linux machine '$machine'" >&2
+  fi
   stop_machine
 }
 

@@ -2,16 +2,22 @@ from __future__ import annotations
 
 import os
 import subprocess
+import time
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 
+MACHINE_ENV = "BENCHBOX_HEAVY_LINUX_MACHINE"
+DEFAULT_MACHINE = "benchbox-agent"
+WRAPPER_NAME = "linux_machine_run.sh"
+SHELL_NAMES = frozenset({"bash", "sh", "zsh", "dash"})
 VM_ALLOWANCE_GIB_ENV = "BENCHBOX_HEAVY_VM_ALLOWANCE_GIB"
 VM_ALLOWANCE_MARGIN = 1.1
 VM_PROCESS_NAME = "com.apple.Virtualization.VirtualMachine"
 MACHINE_PATH_PARENTS = ("machine-apiserver", "machines")
 EXTERNAL_TIMEOUT_SECONDS = 5.0
 GIB = 1024**3
+NEGATIVE_CACHE_SECONDS = 30.0
 
 ProcessLister = Callable[[], Sequence["VmProcess"]]
 OpenPathsReader = Callable[[int], "list[str] | None"]
@@ -36,6 +42,23 @@ class VmReading:
     @property
     def over_allowance(self) -> bool:
         return self.allowance_bytes is not None and self.footprint_bytes > self.allowance_bytes
+
+
+def basename(value: str) -> str:
+    return os.path.basename(value.rstrip("/"))
+
+
+def machine_name_from_env(environ: Mapping[str, str]) -> str:
+    return (environ.get(MACHINE_ENV) or "").strip() or DEFAULT_MACHINE
+
+
+def argv_runs_wrapper(argv: Sequence[str], machine: str) -> bool:
+    if not argv or basename(argv[0]) not in SHELL_NAMES:
+        return False
+    for index, token in enumerate(argv[1:-1], start=1):
+        if basename(token) == WRAPPER_NAME:
+            return argv[index + 1] == machine
+    return False
 
 
 def parse_lsof_names(text: str) -> list[str]:
@@ -128,6 +151,7 @@ class VmAttributor:
         footprint_reader: FootprintReader = read_footprint,
         configured_gib: MemoryReader = read_configured_gib,
         cmdline_reader: CmdlineReader = read_cmdline,
+        clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self._process_lister = process_lister
         self._open_paths = open_paths
@@ -135,16 +159,23 @@ class VmAttributor:
         self._configured_gib = configured_gib
         self._cmdline = cmdline_reader
         self._mapping: dict[tuple[int, float], str | None] = {}
+        self._first_seen: dict[tuple[int, float], float] = {}
+        self._clock = clock
         self._memory: dict[str, float | None] = {}
 
     def _machine_of(self, process: VmProcess) -> str | None:
         key = (process.pid, process.created)
-        if key not in self._mapping:
-            paths = self._open_paths(process.pid)
-            if paths is None:
-                return None
-            self._mapping[key] = _machine_from_paths(paths)
-        return self._mapping[key]
+        if key in self._mapping:
+            return self._mapping[key]
+        paths = self._open_paths(process.pid)
+        if paths is None:
+            return None
+        named = _machine_from_paths(paths)
+        now = self._clock()
+        first_seen = self._first_seen.setdefault(key, now)
+        if named is not None or now - first_seen >= NEGATIVE_CACHE_SECONDS:
+            self._mapping[key] = named
+        return named
 
     def machine_pids(self, machine: str) -> tuple[int, ...]:
         pids = []
@@ -174,11 +205,9 @@ class VmAttributor:
         return VmReading(machine, pids, sum(measured), self._allowance_bytes(machine, environ))
 
     def tree_runs_wrapper(self, pids: Iterable[int], machine: str) -> bool:
-        from benchbox.utils import linux_machine
-
         for pid in pids:
             argv = self._cmdline(pid)
-            if argv is not None and linux_machine.argv_runs_wrapper(argv, machine):
+            if argv is not None and argv_runs_wrapper(argv, machine):
                 return True
         return False
 

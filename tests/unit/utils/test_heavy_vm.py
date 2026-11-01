@@ -285,15 +285,16 @@ def test_status_reports_an_unguarded_run() -> None:
     assert "no lock holder" not in text
 
 
-def test_collect_reads_the_vm_through_the_injected_reader() -> None:
+def test_collect_reads_the_vm_through_the_injected_reader(tmp_path: Path) -> None:
     vm = lm.assess("m", RUNNING, [], frozenset())
     reading = heavy_status.collect(
-        {},
+        {"BENCHBOX_TEST_LOCK_DIR": str(tmp_path)},
         runner=lambda argv, timeout: "[]",
         pressure_reader=lambda: None,
         git_flood_reader=lambda: None,
         top_reader=lambda: (),
         vm_reader=lambda: vm,
+        vm_attributor=FakeAttributor(),
     )
     assert reading.vm is vm
 
@@ -347,7 +348,9 @@ def test_the_vm_footprint_is_skipped_off_macos_or_when_unmeasured() -> None:
     assert heavy_status.read_vm_footprint(FakeAttributor(), "m", set(), {}, "darwin") is None
 
 
-def test_status_prints_the_vm_footprint_line_only_for_a_running_machine(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_status_prints_the_vm_footprint_line_only_for_a_running_machine(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     monkeypatch.setattr(heavy_status.sys, "platform", "darwin")
     attr = FakeAttributor(plain=_reading_of(5.0))
     kwargs = {
@@ -357,10 +360,14 @@ def test_status_prints_the_vm_footprint_line_only_for_a_running_machine(monkeypa
         "top_reader": lambda: (),
         "vm_attributor": attr,
     }
-    running = heavy_status.collect({}, vm_reader=lambda: lm.assess("m", RUNNING, [], frozenset()), **kwargs)
+    running = heavy_status.collect(
+        {"BENCHBOX_TEST_LOCK_DIR": str(tmp_path)}, vm_reader=lambda: lm.assess("m", RUNNING, [], frozenset()), **kwargs
+    )
     assert "VM m footprint 5.00 GiB" in heavy_status.render(running)
     attr.calls.clear()
-    stopped = heavy_status.collect({}, vm_reader=lambda: lm.assess("m", STOPPED, [], frozenset()), **kwargs)
+    stopped = heavy_status.collect(
+        {"BENCHBOX_TEST_LOCK_DIR": str(tmp_path)}, vm_reader=lambda: lm.assess("m", STOPPED, [], frozenset()), **kwargs
+    )
     assert stopped.vm_line is None and attr.calls == []
 
 

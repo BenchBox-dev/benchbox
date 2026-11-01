@@ -143,7 +143,12 @@ def _preflight(tmp_path: Path, run_status: int) -> tuple[subprocess.CompletedPro
     )
     test_list = tmp_path / "tests.txt"
     test_list.write_text("tests/unit/test_x.py\n", encoding="utf-8")
-    env = {**os.environ, "PATH": f"{bin_dir}:/usr/bin:/bin", "HOME": str(tmp_path)}
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in {"CI_LINUX_MACHINE", "BENCHBOX_HEAVY_LINUX_MACHINE", "CI_LINUX_NEED_GIB"}
+    }
+    env.update(PATH=f"{bin_dir}:/usr/bin:/bin", HOME=str(tmp_path))
     result = subprocess.run(
         ["/bin/bash", str(PREFLIGHT), str(test_list)],
         capture_output=True,

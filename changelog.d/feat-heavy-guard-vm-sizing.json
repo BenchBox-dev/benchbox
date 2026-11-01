@@ -1,4 +1,11 @@
 {
   "schema": 1,
-  "internal": "Developer tooling: Linux VM admission needs half the machine's configured memory, and pr-preflight reports a refused Linux admission as unverified"
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "lead": "Linux VM admission sized to the machine",
+      "text": "make ci-linux and the pr-preflight Linux step now require half the Linux machine's configured memory to be available before booting it (the flat need while it is already running), and pr-preflight reports a refused Linux admission as unverified instead of failing."
+    }
+  ]
 }
