@@ -168,7 +168,9 @@ def test_singlestore_connection_stages_compressed_file_for_the_load_and_removes_
     raw.cursor.return_value.execute.side_effect = record
     wrapper = SingleStoreConnectionWrapper(raw)
 
-    wrapper.execute(f"LOAD DATA LOCAL INFILE '{source}' INTO TABLE t FIELDS TERMINATED BY ','")
+    load_sql = f"LOAD DATA LOCAL INFILE '{source}' INTO TABLE t FIELDS TERMINATED BY ','"
+    with wrapper.prepare_write(load_sql) as prepared:
+        wrapper.execute(prepared)
 
     ((statement, existed, content),) = seen
     assert existed
@@ -184,3 +186,34 @@ def test_singlestore_connection_leaves_other_statements_untouched():
     wrapper.execute("SELECT 1")
 
     raw.cursor.return_value.execute.assert_called_once_with("SELECT 1", None)
+
+
+def test_write_timing_excludes_infile_staging(tmp_path, fast_bench):
+    import time
+
+    source = tmp_path / "csv_small_1k.csv.gz"
+    with gzip.open(source, "wb") as handle:
+        handle.write(CSV_BYTES)
+    delay = 0.3
+    original = _stage_local_infiles
+    timed: dict[str, float] = {}
+
+    def slow_stage(sql, stack):
+        time.sleep(delay)
+        return original(sql, stack)
+
+    raw = MagicMock()
+    wrapper = SingleStoreConnectionWrapper(raw)
+    sql = f"LOAD DATA LOCAL INFILE '{source}' INTO TABLE t FIELDS TERMINATED BY ','"
+    with patch("benchbox.platforms.singlestore._stage_local_infiles", slow_stage):
+        start = time.perf_counter()
+        with fast_bench._untimed_write_preparation(wrapper, sql) as prepared:
+            prep_elapsed = time.perf_counter() - start
+            t0 = time.perf_counter()
+            wrapper.execute(prepared)
+            timed["write"] = time.perf_counter() - t0
+
+    assert prep_elapsed >= delay
+    assert timed["write"] < delay
+    assert ".csv.gz" not in raw.cursor.return_value.execute.call_args.args[0]
+    assert not list(tmp_path.glob("tmp*"))

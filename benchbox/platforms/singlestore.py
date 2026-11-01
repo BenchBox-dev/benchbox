@@ -148,9 +148,10 @@ def _stage_local_infiles(sql: str, stack: contextlib.ExitStack) -> str:
 
 
 class SingleStoreConnectionWrapper(MySqlWireConnectionWrapper):
-    def execute(self, sql: str, params: Any = None) -> Any:
+    @contextlib.contextmanager
+    def prepare_write(self, sql: str) -> Iterator[str]:
         with contextlib.ExitStack() as staging:
-            return super().execute(_stage_local_infiles(sql, staging), params)
+            yield _stage_local_infiles(sql, staging)
 
 
 class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapter):
