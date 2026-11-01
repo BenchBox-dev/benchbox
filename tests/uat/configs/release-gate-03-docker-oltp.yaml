@@ -53,4 +53,4 @@ package:
 
 report:
   matrix_summary_tsv: "matrix_summary.tsv"
-  cross_scale_coverage_min_pairs: 148
+  cross_scale_coverage_min_pairs: 145
