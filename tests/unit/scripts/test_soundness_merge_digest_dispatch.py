@@ -1264,7 +1264,9 @@ UNREADABLE_WINDOW = "The window's pull requests were unreadable: window gone."
 def test_any_read_failure_of_the_window_is_survived(wired, capsys, error):
     wired.window = error
     assert digest.main([]) == 0
-    assert "were unreadable" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "were unreadable" in out
+    assert "Owner adjudications are unavailable for this window" in out
 
 
 def override_item():

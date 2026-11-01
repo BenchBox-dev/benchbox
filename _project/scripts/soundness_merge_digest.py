@@ -1409,6 +1409,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             supplement += (
                 "\nOracle withdrawals are unavailable for this window: the window's pull requests were unreadable."
             )
+            supplement += (
+                "\nOwner adjudications are unavailable for this window: the window's pull requests were unreadable."
+            )
         else:
             supplement = render_unreadable(unreadable) + render_unverifiable(pulls)
             try:
