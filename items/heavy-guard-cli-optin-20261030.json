@@ -8,7 +8,7 @@
     "`changelog.d/` fragment present; docs updated; `make docs-validate` passes.",
     "`make comment-policy-check`, `make lint`, `make typecheck`, `make platform-manifest-check`, `make test-fast` pass."
   ],
-  "context": "Review finding M5: product-wide locking would change PyPI behavior; `pwd` is unavailable on Windows (scripts/check_windows_antipatterns.py:58). 39 in-process `invoke(cli, ['run', ...])` tests exist (e.g. tests/unit/cli/test_cli_data_load_modes.py:97); re-entry plus HOME-scoped opt-in keeps them lock-free. Depends on the watchdog; inheritance relies on lock-core owner/re-entry rules.",
+  "context": "Review finding M5: product-wide locking would change PyPI behavior; `pwd` is unavailable on Windows (scripts/check_windows_antipatterns.py:58). 39 in-process `invoke(cli, ['run', ...])` tests exist (e.g. tests/unit/cli/test_cli_data_load_modes.py:97); re-entry plus HOME-scoped opt-in keeps them lock-free. Depends on the watchdog; inheritance relies on lock-core owner/re-entry rules.\n\nDelivered in PR #3848 (https://github.com/BenchBox-dev/benchbox/pull/3848), squash-merged to develop as 2ab29ce3bb on 2026-11-01. The whole heavy-guard series landed together at the owner's request.",
   "description": "## Problem\n`benchbox run` and the other commands that generate data or execute queries take no host lock, so a benchmark started by hand or by an agent can overlap a test session or UAT sweep. Turning it on unconditionally would change behavior for every PyPI user and serialize legitimate parallel cloud runs.\n\n## Change\n1. Opt-in setting read only from the user's home config file (`~/.benchbox/config.yaml` resolved from `$HOME`, not `./benchbox.yaml`; loader at `benchbox/cli/config.py:145-151`) plus env override `BENCHBOX_HOST_LOCK=1|0`. Default off. Because it is `$HOME`-scoped, isolated test HOMEs never enable it.\n2. When enabled, these commands take the lock with admission and watchdog for their lifetime: `run` (not `--dry-run`), `run-official`, `datagen`, `convert`, `compare` when it executes queries, `compare-dataframes`. Read-only and help commands never acquire.\n3. Children and in-process re-entry follow lock-core rules, so a `benchbox run` launched by a locked pytest or UAT session never waits on its parent.\n4. Windows: lock-core path fallback and non-macOS sampler.\n5. User docs: the setting, env override, wait/bypass variables, watchdog modes, on the existing CLI or operations page; `changelog.d/` fragment.\n\n## Decision gates\n- D1 (resolved): opt-in, default off.\n- D2 (resolved): when enabled, cloud-platform runs also lock (data generation is local).\n- G1 (stop condition): if `compare` cannot tell before starting whether it will execute queries, lock the whole command and record why.\n\n## Guardrails (all heavy-guard items)\n- Linked worktree from `origin/develop` via `make worktree-create`; never the primary clone; stage paths explicitly; never `git add -A`.\n- `[COMMENT-POLICY-001]`: no comments or docstrings in new code. Durations use `benchbox.utils.clock.mono_time()`/`elapsed_seconds()`.\n- Tests use `BENCHBOX_TEST_LOCK_DIR` under `tmp_path` and injected readings; never touch the real `~/.benchbox/test.lock` or depend on live host pressure, VMs or disk.\n- Never delete, move or recreate a lock file from code; never stop, resize or signal processes/VMs this invocation did not start.\n- Keep names `test.lock`, `BENCHBOX_TEST_LOCK_DIR`, `BENCHBOX_TEST_LOCK_WAIT_SECONDS`, `BENCHBOX_SKIP_TEST_LOCK`, `BENCHBOX_TEST_SESSION_OWNER` (rename deferred on heavy-guard-status-policy).\n- No automatic skip on `CI` or `BENCHBOX_EPHEMERAL_CLONE` (agent shells export `CI=true`).\n- No heavy verification runs (no benchmark sweeps above scale 0.01, no real compose stacks) unless the item names one.\n- `[CHANGELOG-001]`; CLI dry runs stay lock-free and keep propagating explicit phases; adapter SDK imports stay lazy.\n\n## Non-goals\nPer-phase locking; engine-level memory limits.",
   "links": [
     "benchbox/cli/commands/run.py",
@@ -50,6 +50,14 @@
       "generation": "98462639b62a440e9de42fb22c9317b5",
       "op": "take",
       "op_id": "ce3dda3295104d76bcdc79a66ea0bf39",
+      "session_id": "6f8f4a28707f4702ad48cd7b8d6aaabb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:94e4d2f7dee4726eca194412",
+      "at": "2026-11-01T02:24:25Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a78edbb3ce674ebe8b82518a4712149e",
       "session_id": "6f8f4a28707f4702ad48cd7b8d6aaabb"
     }
   ]
