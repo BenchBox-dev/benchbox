@@ -12781,12 +12781,17 @@
       "title": "Make heavy serial pytest sessions and heavy UAT commands take the host lock with admission and watchdog"
     },
     "heavy-guard-watchdog-20261030": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-02T02:24:00Z",
+        "generation": "622517bcb11342318694574ab4374e70",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:94e4d2f7dee4726eca194412"
+      },
       "needs": [
         "heavy-guard-admission-20261030"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Stop a lock holder's process tree before it exhausts memory or disk"
     },
     "heavy-tier-merge-group-dead-code-20261009": {
