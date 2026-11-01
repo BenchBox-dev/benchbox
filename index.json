@@ -2148,6 +2148,13 @@
       "status": "done",
       "title": "Capture BigQuery per-region on-demand prices to replace derived values"
     },
+    "bigquery-setup-application-default-credentials": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "benchbox setup for BigQuery accepts only a service-account key file, not Application Default Credentials"
+    },
     "blind-spot-command-protocol-alignment-20260724": {
       "claim": null,
       "needs": [],
