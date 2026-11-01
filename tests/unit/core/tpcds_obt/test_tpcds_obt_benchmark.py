@@ -365,3 +365,18 @@ def test_clickhouse_q95_has_no_correlated_in_subquery() -> None:
     query = TPCDSOBTBenchmark(scale_factor=1.0).get_queries(dialect="clickhouse")["95"]
 
     assert "ret_obt.sale_id = obt.sale_id" not in query
+
+
+def test_clickhouse_q41_replaces_the_correlated_count_with_an_in_semi_join() -> None:
+    query = TPCDSOBTBenchmark(scale_factor=1.0).get_query(41, dialect="clickhouse-local")
+
+    assert "COUNT(" not in query
+    assert "i1.item_i_manufact IN (SELECT item_i_manufact FROM item WHERE" in query
+
+
+def test_clickhouse_q44_decorrelates_the_product_name_lookups() -> None:
+    query = TPCDSOBTBenchmark(scale_factor=1.0).get_query(44, dialect="clickhouse-local")
+
+    assert query.count("LEFT JOIN") == 2
+    assert "best_obt.item_sk = asceding.item_sk" not in query
+    assert "worst_obt.item_sk = descending.item_sk" not in query

@@ -416,3 +416,34 @@ def test_char_case_comparison_trims_a_column_guarded_case_compared_to_a_string_l
     )
     numeric = "SELECT 1 FROM r WHERE CASE WHEN a = b THEN a ELSE NULL END = b"
     assert apply_rewrite("trim_char_case_comparisons", numeric, "spark") == numeric
+
+
+def test_positive_count_subquery_and_common_conjunct_rewrites_preserve_results():
+    import duckdb
+
+    sql = (
+        "SELECT DISTINCT o.name FROM items AS o WHERE o.pk > 0 AND "
+        "(SELECT COUNT(*) AS n FROM items AS i WHERE (i.grp = o.grp AND i.kind = 'a') OR (i.grp = o.grp AND i.kind = 'b')) > 0 "
+        "ORDER BY 1"
+    )
+    rewritten = sql
+    for name in ("positive_count_subquery_to_exists", "factor_common_conjuncts"):
+        rewritten = apply_rewrite(name, rewritten, "duckdb")
+    rewritten = apply_rewrite("correlated_exists_to_in", rewritten, "duckdb", expected=1)
+
+    assert "COUNT" not in rewritten
+    assert " IN (SELECT" in rewritten
+    connection = duckdb.connect()
+    connection.execute("CREATE TABLE items (pk INT, name VARCHAR, grp VARCHAR, kind VARCHAR)")
+    connection.execute(
+        "INSERT INTO items VALUES (1, 'p', 'g1', 'a'), (2, 'q', 'g1', 'c'), (3, 'r', 'g2', 'c'), "
+        "(4, 's', 'g3', 'b'), (5, 't', NULL, 'a'), (0, 'u', 'g1', 'a')"
+    )
+    expected = connection.execute(sql).fetchall()
+    assert expected == [("p",), ("q",), ("s",)]
+    assert connection.execute(rewritten).fetchall() == expected
+
+
+def test_factor_common_conjuncts_leaves_disjunctions_without_shared_terms_alone():
+    sql = "SELECT 1 FROM t WHERE a = 1 AND b = 2 OR c = 3 AND d = 4"
+    assert apply_rewrite("factor_common_conjuncts", sql, "duckdb") == sql

@@ -658,6 +658,81 @@ def in_subquery_or_to_left_join(expression, *, copy: bool = True):
     return tree
 
 
+def factor_common_conjuncts(expression, *, copy: bool = True):
+    from benchbox._vendor.sqlglot import exp
+
+    tree = expression.copy() if copy else expression
+
+    def disjuncts(node):
+        if isinstance(node, exp.Or):
+            return disjuncts(node.this) + disjuncts(node.expression)
+        return [node]
+
+    def conjuncts(node):
+        if isinstance(node, exp.Paren) and isinstance(node.this, exp.And):
+            return conjuncts(node.this)
+        if isinstance(node, exp.And):
+            return conjuncts(node.this) + conjuncts(node.expression)
+        return [node]
+
+    def conjoin(parts):
+        result = parts[0]
+        for part in parts[1:]:
+            result = exp.And(this=result, expression=part)
+        return result
+
+    def disjoin(parts):
+        result = parts[0]
+        for part in parts[1:]:
+            result = exp.Or(this=result, expression=part)
+        return result
+
+    for node in list(tree.find_all(exp.Or)):
+        if isinstance(node.parent, exp.Or):
+            continue
+        terms = [conjuncts(term.this if isinstance(term, exp.Paren) else term) for term in disjuncts(node)]
+        if len(terms) < 2:
+            continue
+        common = [part for part in terms[0] if all(part in other for other in terms[1:])]
+        if not common:
+            continue
+        remainders = []
+        for term in terms:
+            rest = [part for part in term if part not in common]
+            remainders.append(conjoin([part.copy() for part in rest]) if rest else None)
+        if any(rest is None for rest in remainders):
+            replacement = conjoin([part.copy() for part in common])
+        else:
+            residual = exp.Paren(this=disjoin([exp.Paren(this=rest) for rest in remainders]))
+            replacement = conjoin([*(part.copy() for part in common), residual])
+        node.replace(replacement if isinstance(node.parent, (exp.Where, exp.Paren)) else exp.Paren(this=replacement))
+    return tree
+
+
+def positive_count_subquery_to_exists(expression, *, copy: bool = True):
+    from benchbox._vendor.sqlglot import exp
+
+    tree = expression.copy() if copy else expression
+    for node in list(tree.find_all(exp.GT)):
+        subquery, zero = node.this, node.expression
+        if not isinstance(subquery, exp.Subquery) or not isinstance(zero, exp.Literal) or zero.name != "0":
+            continue
+        inner = subquery.this
+        if (
+            not isinstance(inner, exp.Select)
+            or len(inner.expressions) != 1
+            or any(inner.args.get(key) for key in ("distinct", "group", "having", "qualify", "limit", "offset"))
+        ):
+            continue
+        projection = inner.expressions[0]
+        count = projection.this if isinstance(projection, exp.Alias) else projection
+        if not isinstance(count, exp.Count) or not isinstance(count.this, exp.Star):
+            continue
+        inner.set("expressions", [exp.Literal.number(1)])
+        node.replace(exp.Exists(this=inner.copy()))
+    return tree
+
+
 _LOCAL_REWRITES: dict[str, Callable[..., object]] = {
     "add_dual_source_to_filtered_selects": add_dual_source_to_filtered_selects,
     "alias_derived_tables": alias_derived_tables,
@@ -667,11 +742,13 @@ _LOCAL_REWRITES: dict[str, Callable[..., object]] = {
     "coalesce_count_subqueries": coalesce_count_subqueries,
     "drop_correlated_scalar_group_by": drop_correlated_scalar_group_by,
     "drop_empty_group_by": drop_empty_group_by,
+    "factor_common_conjuncts": factor_common_conjuncts,
     "fold_scalar_having_into_case": fold_scalar_having_into_case,
     "hoist_aggregate_subqueries": hoist_aggregate_subqueries,
     "in_subquery_or_to_left_join": in_subquery_or_to_left_join,
     "inline_named_windows": inline_named_windows,
     "inline_sourceless_exists": inline_sourceless_exists,
+    "positive_count_subquery_to_exists": positive_count_subquery_to_exists,
     "qualify_aggregated_columns": qualify_aggregated_columns,
     "rollup_empty_input_row": rollup_empty_input_row,
     "trim_char_case_comparisons": trim_char_case_comparisons,

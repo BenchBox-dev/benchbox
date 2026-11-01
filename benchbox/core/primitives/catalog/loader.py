@@ -432,6 +432,7 @@ def _parse_validation_queries(
             "check_expression": val_entry.get("check_expression"),
             "expected_value_min": expected_value_min,
             "expected_value_max": expected_value_max,
+            "bounds_scale_with_sf": val_entry.get("bounds_scale_with_sf", False),
             "platform_overrides": platform_overrides,
         }
         validation_queries.append(
