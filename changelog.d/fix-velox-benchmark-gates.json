@@ -4,9 +4,13 @@
     {
       "category": "fixed",
       "breaking": false,
-      "text": "The Velox platform now declines Metadata Primitives, Write Primitives and Transaction Primitives up front: it executes through Apache Spark, which exposes no INFORMATION_SCHEMA catalog, and its built-in parquet tables reject UPDATE, DELETE and MERGE, so every operation failed.",
-      "platforms": ["velox"],
-      "benchmarks": ["metadata_primitives", "write_primitives", "transaction_primitives"]
+      "text": "The Velox platform now declines Metadata Primitives up front because it executes through Apache Spark, which exposes no INFORMATION_SCHEMA catalog, so every query failed. The release UAT skips Velox Write Primitives and Transaction Primitives on the default parquet tables, which reject UPDATE, DELETE and MERGE; runs with a delta or iceberg table format are not blocked.",
+      "platforms": [
+        "velox"
+      ],
+      "benchmarks": [
+        "metadata_primitives"
+      ]
     }
   ]
 }

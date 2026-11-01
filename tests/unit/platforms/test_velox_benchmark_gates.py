@@ -17,9 +17,8 @@ def test_metadata_primitives_is_blocked_for_missing_information_schema(unsupport
 
 
 @pytest.mark.parametrize("benchmark_name", ["write_primitives", "transaction_primitives"])
-def test_row_level_dml_benchmarks_are_blocked(unsupported, benchmark_name):
-    assert "row-level DML" in unsupported[benchmark_name]
-    assert "Gluten" in unsupported[benchmark_name]
+def test_row_level_dml_benchmarks_are_not_blocked_by_the_registry(unsupported, benchmark_name):
+    assert benchmark_name not in unsupported
 
 
 def test_supported_benchmarks_are_not_blocked(unsupported):

@@ -38,7 +38,7 @@ def test_create_table_as_select_is_parenthesised():
 def test_delete_with_predicate_is_emulated_by_rebuilding_the_table():
     assert questdb_cleanup_statements("DELETE FROM txn_orders WHERE o_comment = 'x'\n") == [
         'DROP TABLE IF EXISTS "txn_orders__keep"',
-        'CREATE TABLE "txn_orders__keep" AS (SELECT * FROM "txn_orders" WHERE NOT (o_comment = \'x\'))',
+        'CREATE TABLE "txn_orders__keep" AS (SELECT * FROM "txn_orders" WHERE COALESCE((o_comment = \'x\'), false) = false)',
         'DROP TABLE "txn_orders"',
         'RENAME TABLE "txn_orders__keep" TO "txn_orders"',
     ]

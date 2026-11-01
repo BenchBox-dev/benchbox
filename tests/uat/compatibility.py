@@ -22,7 +22,19 @@ DATAFRAME_SQL_ONLY_RULE = CompatibilityRule(
     evidence="benchmark registry `supports_dataframe` metadata",
 )
 
+_DELTA_ICEBERG_REQUIRED_REASON = (
+    "{engine}'s default parquet tables reject row-level DML: UPDATE, DELETE, and MERGE fail, and the staging "
+    "manifest cannot be maintained (the staging `Count probe` fails). The release UAT runs the default table "
+    "format and fetches no Delta Lake or Iceberg packages, so the benchmark cannot run in the gate. A run that "
+    "configures a delta or iceberg table format with the connector jars is not blocked."
+)
+
 _NATIVE_MODEL_BENCHMARK_GATES = {
+    **{
+        (platform, benchmark): _DELTA_ICEBERG_REQUIRED_REASON.format(engine=engine)
+        for platform, engine in (("spark", "Apache Spark"), ("velox", "Velox"))
+        for benchmark in ("write_primitives", "transaction_primitives")
+    },
     ("sqlite", "vector_search"): (
         "SQLite lacks vector similarity/ANN support; vector_search has no SQLite query variant and uses "
         "DuckDB-specific array syntax."

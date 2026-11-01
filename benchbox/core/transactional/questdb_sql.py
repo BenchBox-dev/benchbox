@@ -38,7 +38,7 @@ def questdb_cleanup_statements(cleanup_sql: str) -> list[str]:
         statements.extend(
             [
                 f'DROP TABLE IF EXISTS "{keep}"',
-                f'CREATE TABLE "{keep}" AS (SELECT * FROM "{table}" WHERE NOT ({where}))',
+                f'CREATE TABLE "{keep}" AS (SELECT * FROM "{table}" WHERE COALESCE(({where}), false) = false)',
                 f'DROP TABLE "{table}"',
                 f'RENAME TABLE "{keep}" TO "{table}"',
             ]

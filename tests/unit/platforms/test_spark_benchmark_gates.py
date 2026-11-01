@@ -17,8 +17,8 @@ def test_metadata_primitives_is_blocked_for_missing_information_schema(unsupport
 
 
 @pytest.mark.parametrize("benchmark_name", ["write_primitives", "transaction_primitives"])
-def test_row_level_dml_benchmarks_are_blocked(unsupported, benchmark_name):
-    assert "UNSUPPORTED_FEATURE.TABLE_OPERATION" in unsupported[benchmark_name]
+def test_row_level_dml_benchmarks_are_not_blocked_by_the_registry(unsupported, benchmark_name):
+    assert benchmark_name not in unsupported
 
 
 def test_supported_benchmarks_are_not_blocked(unsupported):
@@ -29,8 +29,3 @@ def test_supported_benchmarks_are_not_blocked(unsupported):
 def test_dataframe_pyspark_platform_is_not_gated():
     caps = PlatformRegistry.get_platform_capabilities("pyspark-df")
     assert caps is None or "write_primitives" not in caps.unsupported_benchmarks
-
-
-@pytest.mark.parametrize("benchmark_name", ["write_primitives", "transaction_primitives"])
-def test_row_level_dml_reason_names_the_missing_transactional_format_packages(unsupported, benchmark_name):
-    assert "spark.jars.packages" in unsupported[benchmark_name]
