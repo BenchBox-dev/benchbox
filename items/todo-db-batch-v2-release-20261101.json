@@ -1,11 +1,11 @@
 {
   "acceptance": [
-    "The release PR is merged and its body records Gate 1 (each step above, including the 0.12.0 client's E_SCHEMA refusal) and Gate 2 (validate against BenchBox todo-state passes).",
+    "The release PR is merged and its body records Gate 1 (each step above, starting with the direct migration of the seeded copy and including the 0.12.0 client's E_SCHEMA refusal) and Gate 2 (validate against BenchBox todo-state passes).",
     "BenchBox todo-state is not migrated by the gates: a live read after Gate 2 shows the same schema_version as before.",
     "The release tag is pushed and the GitHub release carries the wheel, the sdist and SHA256SUMS."
   ],
-  "context": "Owner decision 2026-11-01 (owner answer in the choice dialog, BenchBox session 01a19729, 2026-11-01): \"Both repos; agent tags the release after gates\" [option text: the agent opens and merges PRs in joeharris76/todo-db and joeharris76/skill-sync-skills, and pushes the todo-db release tag once the release PR merges with Gate 1 (scratch remote) and Gate 2 (validate against BenchBox todo-state) recorded]. Decision gate: do not tag if either gate is missing or failed. Never cut over or write the real BenchBox store in a gate; the only real cutover happens in batch-loop-pilot-20261101. A pypi-publish failure from the known invalid-publisher configuration is out of scope, as in 0.12.0. Guardrails: work in joeharris76/todo-db under its own repository rules, on a branch and PR, never directly on main; never patch the vendored wheel in BenchBox; one server stays one worker identity (todo-db ADRs 0003 and 0006); every new refusal fails closed with a gate code and recovery steps; BenchBox line citations refer to the vendored 0.12.0 wheel (_project/scripts/vendor/todo_db-0.12.0-py3-none-any.whl), so re-read todo-db main before editing; tests prove behaviour, never wiring.",
-  "description": "Cut a todo-db release containing the batch v2 work through a release PR that bumps pyproject.toml, uv.lock and TOOL_VERSION and dates the CHANGELOG, following docs/operations/release-gates.md and the 0.12.0 precedent (todo-db-0-12-0-release-20261031). Gate 1 on a scratch remote runs the full v2 flow with two real todo-db-mcp servers: register with the cutover, an outsider's take refused, a synced member prepared, a fix advance, a rebind and finish; then an 0.12.0 client refusing with E_SCHEMA after the cutover. Gate 2 runs todo-db validate against BenchBox todo-state, read-only.",
+  "context": "Owner decision 2026-11-01 (owner answer in the choice dialog, BenchBox session 01a19729, 2026-11-01): \"Both repos; agent tags the release after gates\" [option text: the agent opens and merges PRs in joeharris76/todo-db and joeharris76/skill-sync-skills, and pushes the todo-db release tag once the release PR merges with Gate 1 (scratch remote) and Gate 2 (validate against BenchBox todo-state) recorded]. Decision gate: do not tag if either gate is missing or failed. Never cut over or write the real BenchBox store in a gate, and never push the seeded copy to a hosted remote; the only real cutover happens in batch-loop-pilot-20261101. A pypi-publish failure from the known invalid-publisher configuration is out of scope, as in 0.12.0. Guardrails: work in joeharris76/todo-db under its own repository rules, on a branch and PR, never directly on main; never patch the vendored wheel in BenchBox; one server stays one worker identity (todo-db ADRs 0003 and 0006); every new refusal fails closed with a gate code and recovery steps; BenchBox line citations refer to the vendored 0.12.0 wheel (_project/scripts/vendor/todo_db-0.12.0-py3-none-any.whl), so re-read todo-db main before editing; tests prove behaviour, never wiring.",
+  "description": "Cut a todo-db release containing the batch v2 work through a release PR that bumps pyproject.toml, uv.lock and TOOL_VERSION and dates the CHANGELOG, following docs/operations/release-gates.md and the 0.12.0 precedent (todo-db-0-12-0-release-20261031). Gate 1 on a local scratch remote seeded with a copy of BenchBox todo-state at its current schema (schema 1 on 2026-11-01) runs the full v2 flow with two real todo-db-mcp servers: register with the cutover, an outsider's take refused, a synced member prepared, a fix advance, a rebind and finish; then an 0.12.0 client refusing with E_SCHEMA after the cutover. Gate 2 runs todo-db validate against BenchBox todo-state, read-only.",
   "links": [
     "https://github.com/joeharris76/todo-db/blob/main/docs/operations/release-gates.md"
   ],
@@ -16,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "e4884aa8a55f48b4a7a786c13da3923c",
+      "session_id": "fe251e187e814d5cb1baf53870326a77"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:53a3b48ce5c94efdbf857652",
+      "at": "2026-11-01T14:19:42Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "be984491e4c14c38b07db51dabe9fc46",
       "session_id": "fe251e187e814d5cb1baf53870326a77"
     }
   ]
