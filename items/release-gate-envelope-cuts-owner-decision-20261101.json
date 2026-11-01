@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Owner records approve, modify or reject per cut class with the measured timings as evidence, or chooses a larger runner or a higher per-cell timeout instead. Each approved cut has a reinstatement condition or tracked item (influxdb-general-loader-uat for InfluxDB). Gate floors in tests/uat match the decision."
+  ],
+  "description": "PR #3902 (fix/release-uat-rc3, another session) folds the rc3 UAT fixes and also reduces what the release gate certifies: it prunes SF1 cells measured above the 1200 s per-cell limit (dask-df 9 benchmarks, pyspark-df 5, spark joinorder/tpchavoc/tpcds_obt, pandas-df joinorder/flightdata/datavault, sqlite joinorder/flightdata/tsbs_devops, lakesail datavault, pg-duckdb tpcds_obt/joinorder, pg-mooncake tpcds_obt, postgresql joinorder/tpcds_obt, singlestore joinorder/tpcds_obt, questdb tpcds_obt), excludes InfluxDB from the gate, and recomputes cross-scale floors as floor(0.8 x eligible) (92/115, 48/60, 148/186). Gate reductions are owner decisions and no owner approval was found on record in the tracker. The already-merged ai_primitives pruning, the Doris write_primitives rework and three SingleStore fulltext skips are likewise not recorded as approved.",
+  "links": [
+    "PR #3902",
+    "influxdb-general-loader-uat",
+    "dlv2-52a-testpypi-rehearsal"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:44087b544fee5237bdde41f8",
+      "at": "2026-11-01T13:45:14Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "13cfcdb36ba941839d9a4f2289b21173",
+      "session_id": "b38147de5e3b4952857534e2b3c9221c"
+    }
+  ]
+}
