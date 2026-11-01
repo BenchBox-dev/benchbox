@@ -7,7 +7,14 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.fast,
+    pytest.mark.skipif(
+        not (Path(__file__).resolve().parents[3] / "_project" / "scripts" / "oracle_reviewers").is_dir(),
+        reason="_project scripts are not in this checkout (release tree)",
+    ),
+]
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -26,7 +33,10 @@ CREDENTIALS_FILE = "_project/scripts/oracle_reviewers/credentials.py"
 
 @pytest.fixture(autouse=True)
 def _no_ambient_secrets(monkeypatch: pytest.MonkeyPatch) -> None:
-    from _project.scripts.oracle_reviewers import local
+    try:
+        from _project.scripts.oracle_reviewers import local
+    except ModuleNotFoundError:
+        return
 
     for name in local.SCRUBBED_AT_START:
         monkeypatch.delenv(name, raising=False)
