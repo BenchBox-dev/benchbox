@@ -52,6 +52,9 @@ from benchbox.sql_compat.rules.execution_filter.postgres_write_primitives import
     POSTGRES_WRITE_PRIMITIVES_OPERATION_SKIPS,
 )
 from benchbox.sql_compat.rules.execution_filter.questdb_write_primitives import questdb_write_primitive_skip_reason
+from benchbox.sql_compat.rules.execution_filter.starrocks_write_primitives import (
+    starrocks_write_primitive_skip_reason,
+)
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.cloud_storage import normalize_output_dir
 from benchbox.utils.dialect_utils import split_sql_statements
@@ -157,6 +160,7 @@ _SUMMED_ROWCOUNT_DIALECTS = frozenset({"sqlite"})
 
 _ENGINE_WRITE_PRIMITIVE_SKIPS = (
     ("doris", "Doris", doris_write_primitive_skip_reason),
+    ("starrocks", "StarRocks", starrocks_write_primitive_skip_reason),
     ("questdb", "QuestDB", questdb_write_primitive_skip_reason),
     ("clickhouse", "ClickHouse", clickhouse_write_primitive_skip_reason),
 )

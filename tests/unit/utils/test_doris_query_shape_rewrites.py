@@ -41,3 +41,16 @@ def test_rollup_with_grouping_function_is_left_alone():
 def test_empty_fields_become_nulls_without_touching_the_trailing_delimiter():
     assert _empty_fields_to_null("1||x|", "|") == "1|\\N|x|"
     assert _empty_fields_to_null("1||x", "|") == "1|\\N|x"
+
+
+def test_sourceless_exists_is_inlined_as_its_predicate():
+    from benchbox._vendor import sqlglot
+    from benchbox.utils.query_shape_rewrites import inline_sourceless_exists
+
+    tree = sqlglot.parse_one("SELECT 1 FROM a WHERE EXISTS(SELECT 1 WHERE a.x = 1 OR a.y = 2)", read="starrocks")
+    rewritten = inline_sourceless_exists(tree).sql(dialect="starrocks")
+    assert "EXISTS" not in rewritten
+    assert "(a.x = 1 OR a.y = 2)" in rewritten
+
+    kept = sqlglot.parse_one("SELECT 1 FROM a WHERE EXISTS(SELECT 1 FROM b WHERE b.k = a.k)", read="starrocks")
+    assert "EXISTS" in inline_sourceless_exists(kept).sql(dialect="starrocks")

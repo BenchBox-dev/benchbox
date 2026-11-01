@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import functools
 import gzip
 import io
 import math
@@ -15,6 +14,7 @@ from pathlib import Path
 from typing import Any, Callable, cast
 from urllib.parse import urlparse, urlunparse
 
+from benchbox.core.transactional.staging_keys import leading_key_columns
 from benchbox.utils.dialect_utils import create_table_shape, is_create_table, translate_ddl
 
 from ..utils.dependencies import (
@@ -116,25 +116,7 @@ _TPCH_BITMAP_COLUMNS: dict[str, list[str]] = {
 
 _CTAS_RE = re.compile(r"^(?P<head>\s*CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?\S+)\s+AS\b(?P<rest>.*)$", re.I | re.S)
 
-_STAGING_EXTRA_UNIQUE_KEYS = {"merge_ops_summary_target": ["o_orderkey", "o_custkey"]}
-
 _PIPES_AS_CONCAT_SQL = "SET sql_mode = CONCAT(@@sql_mode, ',PIPES_AS_CONCAT')"
-
-
-@functools.cache
-def _staging_primary_keys() -> dict[str, list[str]]:
-    from benchbox.core.transaction_primitives.schema import STAGING_TABLES as TRANSACTION_TABLES
-    from benchbox.core.write_primitives.schema import STAGING_TABLES as WRITE_TABLES
-
-    keys: dict[str, list[str]] = {}
-    for tables in (WRITE_TABLES, TRANSACTION_TABLES):
-        for name, spec in tables.items():
-            declared = spec.get("primary_key")
-            if not isinstance(declared, list):
-                declared = [column["name"] for column in spec["columns"] if column.get("primary_key")]
-            if declared:
-                keys[name.lower()] = [column.lower() for column in declared]
-    return keys | _STAGING_EXTRA_UNIQUE_KEYS
 
 
 def _normalize_doris_engine_version(
@@ -370,7 +352,7 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         )
 
     def _connect_database(self, **connection_config: Any) -> Any:
-        conn = pymysql.connect(
+        return pymysql.connect(
             host=self.host,
             port=self.port,
             user=self.username,
@@ -380,13 +362,8 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
             read_timeout=300,
             write_timeout=300,
             charset="utf8mb4",
+            init_command=_PIPES_AS_CONCAT_SQL,
         )
-        cursor = conn.cursor()
-        try:
-            cursor.execute(_PIPES_AS_CONCAT_SQL)
-        finally:
-            cursor.close()
-        return conn
 
     def _ready_backend_count(self, conn: Any) -> int:
         cursor = conn.cursor()
@@ -888,10 +865,9 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         key_model = self.table_model if self.table_model in {"duplicate", "aggregate", "unique"} else "duplicate"
         tpch_keys = _TPCH_TABLE_KEYS.get(table_name, [])
         key_columns = tpch_keys if tpch_keys and set(tpch_keys) <= set(columns) else []
-        if staging_key := _staging_primary_keys().get(table_name):
-            if set(staging_key) <= set(columns):
-                key_model = "unique"
-                key_columns = columns[: max(columns.index(column) for column in staging_key) + 1]
+        if staging_columns := leading_key_columns(table_name, columns):
+            key_model = "unique"
+            key_columns = staging_columns
         distribution_key = _TPCH_DISTRIBUTION_KEYS.get(table_name)
         if distribution_key not in columns:
             distribution_key = None

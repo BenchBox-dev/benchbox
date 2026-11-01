@@ -543,3 +543,66 @@ def test_singlestore_rewrites_resolve_without_conflict_for_every_registered_vari
             )
         )
         assert decision is not None, query_id
+
+
+def test_starrocks_variants_run_without_filter_clause_or_empty_group_by():
+    from benchbox.core.tpchavoc.dialect_compat import STARROCKS_FILTER_VARIANT_IDS
+
+    queries = TPCHavocBenchmark(scale_factor=0.1).get_queries(dialect="starrocks")
+
+    for query_id in STARROCKS_FILTER_VARIANT_IDS:
+        tree = sqlglot.parse_one(queries[query_id], read="starrocks")
+        assert not list(tree.find_all(exp.Filter)), query_id
+    for query_id in ("6_v2", "14_v2"):
+        assert "GROUP BY ()" not in queries[query_id].upper()
+
+
+def test_starrocks_rewrites_are_registered_per_variant():
+    import benchbox.sql_compat.rules.query_adapter.starrocks_query_rewrites
+    from benchbox.core.tpchavoc.dialect_compat import (
+        GROUP_BY_EMPTY_VARIANT_IDS,
+        STARROCKS_CORRELATED_GROUP_VARIANTS,
+        STARROCKS_FILTER_VARIANT_IDS,
+        STARROCKS_NAMED_WINDOW_VARIANT_IDS,
+        STARROCKS_ORDER_BY_PROJECTION_VARIANT_IDS,
+        STARROCKS_SOURCELESS_EXISTS_VARIANT_IDS,
+    )
+    from benchbox.sql_compat.context import Phase
+    from benchbox.sql_compat.registry import REGISTRY
+
+    registered = {
+        key[3] for key, _ in REGISTRY.all_rules() if key[:3] == (Phase.QUERY_ADAPTER, "starrocks", "tpchavoc")
+    }
+
+    assert registered == set(STARROCKS_FILTER_VARIANT_IDS) | set(GROUP_BY_EMPTY_VARIANT_IDS) | set(
+        STARROCKS_NAMED_WINDOW_VARIANT_IDS
+    ) | set(STARROCKS_ORDER_BY_PROJECTION_VARIANT_IDS) | set(STARROCKS_CORRELATED_GROUP_VARIANTS) | set(
+        STARROCKS_SOURCELESS_EXISTS_VARIANT_IDS
+    )
+
+
+@pytest.mark.parametrize("query_id", ["3_v1", "3_v9", "5_v1", "10_v1", "16_v1", "16_v7", "16_v10"])
+def test_starrocks_order_by_references_the_projected_alias(query_id):
+    tree = sqlglot.parse_one(
+        TPCHavocBenchmark(scale_factor=0.01).get_query(query_id, dialect="starrocks"), read="starrocks"
+    )
+    order = tree.args["order"]
+
+    assert order.find(exp.Subquery) is None
+    assert order.find(exp.Window) is None
+
+
+@pytest.mark.parametrize("query_id", ["7_v8", "12_v8", "13_v8"])
+def test_starrocks_sourceless_exists_becomes_the_predicate(query_id):
+    tree = sqlglot.parse_one(
+        TPCHavocBenchmark(scale_factor=0.01).get_query(query_id, dialect="starrocks"), read="starrocks"
+    )
+
+    assert not [node for node in tree.find_all(exp.Exists) if node.this.args.get("from_") is None]
+
+
+def test_starrocks_skips_the_variant_with_an_outer_reference_inside_a_derived_table():
+    queries = TPCHavocBenchmark(scale_factor=0.01).get_platform_skip_queries("starrocks")
+
+    assert "8_v1" in queries
+    assert "1_v7" in queries

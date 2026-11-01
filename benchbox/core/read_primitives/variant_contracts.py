@@ -28,6 +28,7 @@ _DIALECT_READ = {
     "singlestore": "singlestore",
     "snowflake": "snowflake",
     "spark": "spark",
+    "starrocks": "starrocks",
 }
 
 _HIGH_RISK_CATEGORIES = {

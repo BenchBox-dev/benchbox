@@ -47,6 +47,20 @@ def add_dual_source_to_filtered_selects(expression, *, copy: bool = True):
     return tree
 
 
+def inline_sourceless_exists(expression, *, copy: bool = True):
+    exp = sql_expressions()
+    tree = expression.copy() if copy else expression
+    for node in list(tree.find_all(exp.Exists)):
+        inner = node.this.this if isinstance(node.this, exp.Subquery) else node.this
+        if not isinstance(inner, exp.Select) or inner.args.get("from_") is not None:
+            continue
+        where = inner.args.get("where")
+        if where is None or any(inner.args.get(key) for key in ("group", "having", "limit", "joins")):
+            continue
+        node.replace(exp.paren(where.this.copy()))
+    return tree
+
+
 def drop_correlated_scalar_group_by(expression, *, columns: Sequence[str], copy: bool = True):
     exp = sql_expressions()
     tree = expression.copy() if copy else expression
