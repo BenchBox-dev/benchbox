@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Census on develop: every code path that parses or generates SQL with the bundled SQLGlot during a run is listed with file:line and whether it records the runtime (command recorded, e.g. git grep for the vendored namespace imports in run paths).",
+    "Each listed path that changes executed SQL causes `execution.translation.runtime` to be recorded; a test per path runs a small benchmark (e.g. read_primitives on DuckDB or SQLite) and asserts the runtime block is present and matches benchbox/_vendor/sqlglot.json.",
+    "Paths that use SQLGlot without changing executed SQL are listed with the reason they record nothing.",
+    "No schema bump unless the owner approves (the block already exists)."
+  ],
+  "context": "DECISION GATE: if recording needs a schema change or a new field, ask the owner. Related: bundle-translator-runtime-identity (done, #3712).",
+  "description": "#3712 records `execution.translation.runtime` (distribution, version, fork_sha, upstream_sha, wheel_sha256) only when a run logs a SQL translation. Some paths rewrite SQL through the bundled SQLGlot without logging one, so their bundles record no runtime even though their SQL depends on the wheel: read_primitives variants and TPC-DS query qualification were named during the translator-provenance work (2026-10-28 to 2026-10-30). Their results cannot be tied to a wheel version, which is the gap the provenance work closed for logged translations.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e275448d846640d27249a6f8",
+      "at": "2026-11-01T13:43:23Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "08ebcaf0f4a247a28c29f68742b40cc1",
+      "session_id": "a36a04b6bc394082b5008f654e1bf00b"
+    }
+  ]
+}
