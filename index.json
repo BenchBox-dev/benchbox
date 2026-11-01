@@ -12746,18 +12746,13 @@
       "title": "Make the shared host lock exclusive-safe, re-entrant and reusable outside the test harness"
     },
     "heavy-guard-sentinel-20261030": {
-      "claim": {
-        "expires_at": "2026-11-02T02:24:49Z",
-        "generation": "576b7f1e2bf24cc299da70ce4771c3a0",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:94e4d2f7dee4726eca194412"
-      },
+      "claim": null,
       "needs": [
         "heavy-guard-watchdog-20261030",
         "heavy-guard-status-policy-20261030"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Run a per-user sentinel that stops any BenchBox process growing past the memory budget, whatever started it"
     },
     "heavy-guard-status-policy-20261030": {
