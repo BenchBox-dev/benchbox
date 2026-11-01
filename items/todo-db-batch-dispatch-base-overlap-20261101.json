@@ -5,10 +5,12 @@
     "An overlap with an earlier member is recorded on prepare; final evidence lacking current-acceptance evidence for each overlapped earlier member is refused.",
     "The silent-revert counterexample (member B descends from A, restores A's line and lands last) cannot reach passing final evidence without A's acceptance rerun recorded.",
     "Receipts carry the new schema version; old-schema receipts are refused under the new semantics.",
+    "initialize advertises a distinct v2 batch capability (tool version, receipt schema and supported schema versions); prepared_work_v1 receipts are never reinterpreted under v2 rules.",
+    "register_batch with the confirm flag migrates a schema-1 store directly to the new schema in one commit and refuses without the flag (test from a schema-1 fixture); a 0.12.0 client then refuses the migrated store with E_SCHEMA.",
     "Merged on joeharris76/todo-db main with a test for each case."
   ],
   "context": "Decision gate: start only after todo-db-batch-v2-contract-20261101 is done. Guardrails: work in joeharris76/todo-db under its own repository rules, on a branch and PR, never directly on main; never patch the vendored wheel in BenchBox; one server stays one worker identity (todo-db ADRs 0003 and 0006); every new refusal fails closed with a gate code and recovery steps; BenchBox line citations refer to the vendored 0.12.0 wheel (_project/scripts/vendor/todo_db-0.12.0-py3-none-any.whl), so re-read todo-db main before editing; tests prove behaviour, never wiring.",
-  "description": "Implement the dispatch-base and overlap parts of the batch v2 ADR. prepare accepts a source base equal to the batch start head or any integration head this batch recorded (by prepare or advance) and refuses any other base. Changed files are measured from that base, so a member that merged in the current integration head lists only its own files; per-member frozen scope stays enforced. When a later member changes files an earlier member changed, prepare records the overlap (members and paths) instead of refusing, and final evidence then requires current-acceptance evidence for each overlapped earlier member at the final head. Receipts keep the integration head they were integrated at and move to a new versioned schema.",
+  "description": "Implement the dispatch-base and overlap parts of the batch v2 ADR. prepare accepts a source base equal to the batch start head or any integration head this batch recorded (by prepare or advance) and refuses any other base. Changed files are measured from that base, so a member that merged in the current integration head lists only its own files; per-member frozen scope stays enforced. When a later member changes files an earlier member changed, prepare records the overlap (members and paths) instead of refusing, and final evidence then requires current-acceptance evidence for each overlapped earlier member at the final head. Receipts keep the integration head they were integrated at and move to a new versioned schema. This item also owns the store migration and the capability advertisement: register_batch with the confirm flag migrates the store once, from its current schema directly to the new one, and the server advertises the v2 batch capability so consumers can refuse a runtime without it.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:53a3b48ce5c94efdbf857652",
@@ -16,6 +18,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "eb66538f241e4634882b5326c117317c",
+      "session_id": "fe251e187e814d5cb1baf53870326a77"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:53a3b48ce5c94efdbf857652",
+      "at": "2026-11-01T14:19:34Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ddd02bcdad394d8cb10e8d5f83fc1e46",
       "session_id": "fe251e187e814d5cb1baf53870326a77"
     }
   ]
