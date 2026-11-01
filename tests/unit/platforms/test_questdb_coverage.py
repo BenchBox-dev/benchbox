@@ -461,10 +461,8 @@ class TestLoadTableViaRestApi:
         mock_response = Mock()
         mock_response.headers = {"content-type": "text/plain"}
         mock_response.text = questdb_text_response
-        mock_requests = Mock()
-        mock_requests.post.return_value = mock_response
 
-        with patch.dict("sys.modules", {"requests": mock_requests}):
+        with patch.object(questdb_module, "_http_post", return_value=mock_response):
             count = adapter._load_table_via_rest_api("test_table", data_file, dialect)
 
         assert count == 42
@@ -479,11 +477,9 @@ class TestLoadTableViaRestApi:
         mock_response = Mock()
         mock_response.headers = {"content-type": "text/plain"}
         mock_response.text = "unexpected response format"
-        mock_requests = Mock()
-        mock_requests.post.return_value = mock_response
 
         with (
-            patch.dict("sys.modules", {"requests": mock_requests}),
+            patch.object(questdb_module, "_http_post", return_value=mock_response),
             patch.object(adapter, "_count_table_rows_via_http", return_value=5) as mock_count,
         ):
             count = adapter._load_table_via_rest_api("test_table", data_file, dialect)
@@ -498,10 +494,8 @@ class TestCountTableRowsViaHttp:
 
         mock_response = Mock()
         mock_response.json.return_value = {"dataset": [[123]]}
-        mock_requests = Mock()
-        mock_requests.get.return_value = mock_response
 
-        with patch.dict("sys.modules", {"requests": mock_requests}):
+        with patch.object(questdb_module, "_http_get", return_value=mock_response):
             count = adapter._count_table_rows_via_http("lineitem")
 
         assert count == 123
@@ -511,10 +505,8 @@ class TestCountTableRowsViaHttp:
 
         mock_response = Mock()
         mock_response.json.return_value = {"dataset": []}
-        mock_requests = Mock()
-        mock_requests.get.return_value = mock_response
 
-        with patch.dict("sys.modules", {"requests": mock_requests}):
+        with patch.object(questdb_module, "_http_get", return_value=mock_response):
             count = adapter._count_table_rows_via_http("lineitem")
 
         assert count == 0
@@ -527,10 +519,7 @@ class TestCountTableRowsViaHttp:
     def test_count_rows_request_exception(self, questdb_stubs):
         adapter = QuestDBAdapter(host="myhost", http_port=9000)
 
-        mock_requests = Mock()
-        mock_requests.get.side_effect = Exception("Connection refused")
-
-        with patch.dict("sys.modules", {"requests": mock_requests}):
+        with patch.object(questdb_module, "_http_get", side_effect=Exception("Connection refused")):
             count = adapter._count_table_rows_via_http("lineitem")
 
         assert count == 0
@@ -542,10 +531,8 @@ class TestGetTableColumns:
 
         mock_response = Mock()
         mock_response.json.return_value = {"dataset": [["col1", "INT"], ["col2", "VARCHAR"]]}
-        mock_requests = Mock()
-        mock_requests.get.return_value = mock_response
 
-        with patch.dict("sys.modules", {"requests": mock_requests}):
+        with patch.object(questdb_module, "_http_get", return_value=mock_response):
             cols = adapter._get_table_columns("lineitem")
 
         assert cols == ["col1", "col2"]
@@ -558,10 +545,7 @@ class TestGetTableColumns:
     def test_get_table_columns_request_failure(self, questdb_stubs):
         adapter = QuestDBAdapter(host="myhost", http_port=9000)
 
-        mock_requests = Mock()
-        mock_requests.get.side_effect = Exception("Connection refused")
-
-        with patch.dict("sys.modules", {"requests": mock_requests}):
+        with patch.object(questdb_module, "_http_get", side_effect=Exception("Connection refused")):
             cols = adapter._get_table_columns("lineitem")
 
         assert cols == []
@@ -571,14 +555,11 @@ class TestGetTableColumns:
 
         mock_response = Mock()
         mock_response.json.return_value = {"dataset": []}
-        mock_requests = Mock()
-        mock_requests.get.return_value = mock_response
 
-        with patch.dict("sys.modules", {"requests": mock_requests}):
+        with patch.object(questdb_module, "_http_get", return_value=mock_response) as http_get:
             adapter._get_table_columns("test_table")
 
-        url = mock_requests.get.call_args[0][0]
-        assert url.startswith("https://")
+        assert http_get.call_args[0][0].startswith("https://")
 
 
 class TestLoadTableViaIlp:
@@ -836,13 +817,11 @@ class TestPrepareLocalLoadFileForQuestDB:
             def raise_for_status(self):
                 pass
 
-        class _FakeRequests:
-            def post(self, url, *, params=None, files=None, timeout=None):
-                f = files["data"][1]
-                captured.append(f.read())
-                return _FakeResp()
+        def _post(url, *, params=None, files=None, timeout=None):
+            captured.append(files["data"][1].read())
+            return _FakeResp()
 
-        with patch.dict("sys.modules", {"requests": _FakeRequests()}):
+        with patch.object(questdb_module, "_http_post", side_effect=_post):
             adapter._load_table_via_rest_api("lineitem", data_file, dialect)
 
         assert b"1|2\n" in captured[0]
@@ -864,13 +843,11 @@ class TestPrepareLocalLoadFileForQuestDB:
             def raise_for_status(self):
                 pass
 
-        class _FakeRequests:
-            def post(self, url, *, params=None, files=None, timeout=None):
-                f = files["data"][1]
-                captured.append(f.read())
-                return _FakeResp()
+        def _post(url, *, params=None, files=None, timeout=None):
+            captured.append(files["data"][1].read())
+            return _FakeResp()
 
-        with patch.dict("sys.modules", {"requests": _FakeRequests()}):
+        with patch.object(questdb_module, "_http_post", side_effect=_post):
             adapter._load_table_via_rest_api("title", data_file, dialect)
 
         assert b"1,Comedy Adventure,,4,1957,,,,,,,\n" in captured[0]
