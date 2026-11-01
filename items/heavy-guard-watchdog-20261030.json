@@ -20,7 +20,9 @@
       "from_item": "heavy-guard-watchdog-20261030",
       "id": 1,
       "reason": "Removed from the guard plan during review; watchdog bounds the tree but engines should fail gracefully before it fires.",
-      "resolution": "open",
+      "resolution": "promoted",
+      "resolved_at": "2026-11-01T02:24:05Z",
+      "resolved_item": "heavy-guard-watchdog-20261030-deferral-1",
       "summary": "Engine-level memory caps (DuckDB memory_limit, -Xmx, Spark driver memory) and per-service Apple container limits derived from the budget"
     }
   ],
@@ -85,6 +87,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "def96ac44c2d4c9389b6c4b36a9cde3d",
+      "session_id": "6f8f4a28707f4702ad48cd7b8d6aaabb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:94e4d2f7dee4726eca194412",
+      "at": "2026-11-01T02:24:06Z",
+      "client": "omp-coding-agent",
+      "op": "promote",
+      "op_id": "84aa981d8a4340fb8e8bb81a0e00434d",
       "session_id": "6f8f4a28707f4702ad48cd7b8d6aaabb"
     }
   ]

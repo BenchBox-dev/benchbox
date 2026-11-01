@@ -12794,6 +12794,13 @@
       "status": "active",
       "title": "Stop a lock holder's process tree before it exhausts memory or disk"
     },
+    "heavy-guard-watchdog-20261030-deferral-1": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Engine-level memory caps (DuckDB memory_limit, -Xmx, Spark driver memory) and per-service Apple container limits derived from the budget"
+    },
     "heavy-tier-merge-group-dead-code-20261009": {
       "claim": null,
       "needs": [],

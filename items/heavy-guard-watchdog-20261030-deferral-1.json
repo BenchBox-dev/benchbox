@@ -1,0 +1,13 @@
+{
+  "description": "Promoted from deferral 1 on heavy-guard-watchdog-20261030: Removed from the guard plan during review; watchdog bounds the tree but engines should fail gracefully before it fires.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:94e4d2f7dee4726eca194412",
+      "at": "2026-11-01T02:24:06Z",
+      "client": "omp-coding-agent",
+      "op": "promote",
+      "op_id": "84aa981d8a4340fb8e8bb81a0e00434d",
+      "session_id": "6f8f4a28707f4702ad48cd7b8d6aaabb"
+    }
+  ]
+}
