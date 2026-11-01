@@ -3,7 +3,7 @@
     "batch-loop-pilot-20261101 records a pass against its rubric before this item starts.",
     "AGENTS.md states the new default and the serial exceptions; make agent-instructions-check passes; merged to develop."
   ],
-  "context": "Owner decision 2026-11-01 (owner answer in the choice dialog, BenchBox session 01a19729, 2026-11-01): \"Flip it automatically if the pilot passes\". Decision gate: if the pilot report says fail, set this item blocked with the failed criteria and leave AGENTS.md unchanged. Guardrails: deliver as an ordinary serial PR to develop (AGENTS.md: feature delivery cannot deliver the changes that make it possible); write only from a linked worktree made with make worktree-create and checked with make agent-write-preflight, never the primary clone; stage explicit paths, never git add -A; no explanatory comments or docstrings (COMMENT-POLICY-001, make comment-policy-check); heavy test runs only through lock-taking entry points, never BENCHBOX_SKIP_TEST_LOCK; never weaken hold labels, the unresolved-thread refusal, oracle-gate, duration or suite gates; add a changelog.d fragment (CHANGELOG_INTERNAL when nothing is user-visible); durable artifacts carry no session or phase labels; cited line numbers are leads, so re-read the code before editing; tests prove behaviour, never wiring or wording.",
+  "context": "Owner decision 2026-11-01 (owner answer in the choice dialog, BenchBox session 01a19729, 2026-11-01): \"Flip it automatically if the pilot passes\". Decision gate: if the pilot report says fail, set this item blocked with the failed criteria and leave AGENTS.md unchanged. Guardrails: deliver as an ordinary serial PR to develop (AGENTS.md: feature delivery cannot deliver the changes that make it possible); write only from a linked worktree made with make worktree-create and checked with make agent-write-preflight, never the primary clone; stage explicit paths, never git add -A; no explanatory comments or docstrings (COMMENT-POLICY-001, make comment-policy-check); heavy test runs only through lock-taking entry points, never BENCHBOX_SKIP_TEST_LOCK; never weaken hold labels, the unresolved-thread refusal, oracle-gate, duration or suite gates; add a changelog.d fragment (CHANGELOG_INTERNAL when nothing is user-visible); durable artifacts carry no session or phase labels; cited line numbers are leads, so re-read the code before editing; tests prove behaviour, never wiring or wording. On a failed pilot the owner decides whether to pilot again or drop this item; batch-integration-loop-20261101 stays open until then.",
   "description": "Change AGENTS.md Delivery modes so an explicitly assigned cohesive batch uses the integration loop by default, while standalone, cross-repository, review-separated and approval-separated work stays serial.",
   "sessions": [
     {
@@ -12,6 +12,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "53e2f817895f4059b8c4ceb0cf632d6a",
+      "session_id": "fe251e187e814d5cb1baf53870326a77"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:53a3b48ce5c94efdbf857652",
+      "at": "2026-11-01T14:20:11Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "38eac6a7b5ed4c4ca710a660c1f5f1e3",
       "session_id": "fe251e187e814d5cb1baf53870326a77"
     }
   ]
