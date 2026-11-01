@@ -114,6 +114,15 @@
       "op_id": "524dab0430f94b15aac345d4c3146f42",
       "reason": "Same owner session; its OMP process exited during the 2026-10-31 host hang and its MCP connection cannot resume. The work it claimed is merged in PR #3848.",
       "session_id": "6f8f4a28707f4702ad48cd7b8d6aaabb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:94e4d2f7dee4726eca194412",
+      "at": "2026-11-01T02:23:30Z",
+      "client": "omp-coding-agent",
+      "generation": "d71dc4fb17484c09854fbda68c121d0b",
+      "op": "finish",
+      "op_id": "3c6cbf4126a94477b2acebc465dd8e18",
+      "session_id": "6f8f4a28707f4702ad48cd7b8d6aaabb"
     }
   ]
 }
