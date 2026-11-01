@@ -18,6 +18,7 @@ from benchbox.core.primitives_benchmark_utils import (
 from benchbox.core.transactional.operations_registry_base import OperationsRegistryBase
 from benchbox.core.transactional.questdb_sql import questdb_cleanup_statements, rewrite_questdb_operation_sql
 from benchbox.core.transactional.staging_types import staging_table_suffix
+from benchbox.sql_compat.local_exemptions import compat_local
 
 ResultT = TypeVar("ResultT")
 _POSTGRES_SERIES_DIALECTS = frozenset({"postgres", "postgresql"})
@@ -207,6 +208,15 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
                 return True, overrides[fallback_key]
         return False, None
 
+    @compat_local(
+        kind="rendering",
+        platform_specific=True,
+        reason=(
+            "Rewrites transactional primitive SQL for engines without PostgreSQL's series and transaction syntax: "
+            "series generation, BEGIN and isolation statements and temporary-table DDL per Doris, SingleStore, "
+            "StarRocks, QuestDB, Snowflake, BigQuery and PostgreSQL."
+        ),
+    )
     def _rewrite_transactional_sql_for_platform(self, sql: str, platform_key: str | None) -> str:
         dialect = (platform_key or "").lower()
         if dialect == "doris":
@@ -306,6 +316,14 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
         payload = "|".join(parts)
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
+    @compat_local(
+        kind="type_mapping",
+        platform_specific=True,
+        reason=(
+            "Selects the text column type for the staging manifest table: STRING on Databricks, BigQuery and "
+            "StarRocks, TEXT on SingleStore, VARCHAR elsewhere. The manifest is harness bookkeeping, not benchmark SQL."
+        ),
+    )
     def _manifest_text_type(self) -> str:
         dialect = (getattr(self, "_setup_dialect", None) or "standard").lower()
         if dialect in ("databricks", "bigquery", "starrocks"):
