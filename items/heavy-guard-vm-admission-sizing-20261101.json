@@ -1,17 +1,17 @@
 {
   "acceptance": [
-    "Stub-CLI test: the need passed to admission equals the configured machine memory; unmeasured falls back to CI_LINUX_NEED_GIB; an already-running machine skips sizing.",
-    "G1 readings and the chosen behaviour recorded in the PR.",
+    "Stub-CLI tests: machine-need prints the configured machine memory; unmeasured or running prints the fallback; both callers pass it as --need-gib.",
+    "Stub test pins the chosen pr-preflight behaviour when the Linux step's admission refuses.",
+    "G1 readings, the chosen need behaviour and the 6G/8G resolution recorded in the PR; setup texts match the machine size.",
     "make comment-policy-check, lint, typecheck, makefile-inventory-check, test-fast pass."
   ],
   "context": "Evidence 2026-11-01: benchbox-agent (4 CPU, 8G) was running at a 7.83 GiB footprint (pid 49810, started 2026-10-31 15:45 local, before PR #3848 merged) with no lock holder, no `container machine run` process and memory pressure level 2 / memorystatus_level 29. scripts/linux_machine_run.sh restores the machine's prior state, so a machine already running stays running; the choke-point test only covers repo files; the VM process is a launchd child, so the watchdog budget does not count it; admission needs 2 GiB to boot an 8 GiB machine.",
-  "description": "Problem: ci-linux and the pr-preflight Linux step admit the VM boot with a 2 GiB need while the machine reserves 8 GiB, so admission does not reflect what the boot costs.\n\nChange:\n1. Before booting, read the machine's configured memory from `container machine list --format json` (field `memory`, bytes) and pass it as --need-gib; fall back to CI_LINUX_NEED_GIB when unmeasured (5 s timeout).\n2. Skip the sizing when the machine is already running (its memory is already resident).\n3. Docs and changelog.\n\nDecision gates:\n- G1 (stop condition): run `python -m benchbox.utils.host_lock admit --need-gib <machine size>` on the Mac in its normal working state at the current size (8G) and after an owner-approved resize to 6G. If neither admits in the normal state, stop and record the readings for an owner decision (keep the flat need, resize further, or accept refusals).\n- G2 (owner gate): resizing the machine (`container machine stop benchbox-agent && container machine set -n benchbox-agent memory=6G`) is an operator action.\n\nGuardrails: linked worktree via make worktree-create; stage paths explicitly. [COMMENT-POLICY-001]: no comments or docstrings. Tests use stub `container` executables, tmp BENCHBOX_TEST_LOCK_DIR and injected readings; never touch the real lock, and never start, stop or resize a real VM from tests. Act only on the machine named by CI_LINUX_MACHINE (default benchbox-agent); never touch other machines (e.g. ss-dev) or containers.",
+  "description": "Problem: ci-linux and the pr-preflight Linux step admit the VM boot with a 2 GiB need while the machine reserves 8 GiB, so admission does not reflect what the boot costs.\n\nChange:\n1. One helper, `python -m benchbox.utils.host_lock machine-need --machine <m> --fallback-gib <CI_LINUX_NEED_GIB>`, reuses resource_limits._parse_machines (memory_gib, state) over run_text with the 5 s timeout and prints the configured GiB; it prints the fallback when the machine is unmeasured or already running (its memory is already resident). Both callers (the Makefile ci-linux recipe and scripts/linux_preflight_pytest.sh) pass its output as --need-gib. Update make/monolith-baseline.json for the recipe change through the documented makefile-inventory flow.\n2. Define pr-preflight behaviour on admission refusal of the Linux step (keep exit 76, or report 'Linux not verified: admission refused' as unverified) and pin it with a stub test.\n3. Resolve the drift between the documented setup (`--memory 6G` in the Makefile and linux_preflight_pytest.sh setup text) and the actual 8G machine: the G1 outcome either restores 6G (owner action) or updates both setup texts.\n4. Docs and changelog.\n\nDecision gates:\n- G1 (stop condition): with benchbox-agent stopped (admission does not subtract VM reservations, so a running machine makes the reading meaningless), run `python -m benchbox.utils.host_lock admit --need-gib 8` and `--need-gib 6` on the Mac in its normal working state. If neither admits, stop and record the readings for an owner decision (keep the flat need, resize further, or accept refusals).\n- G2 (owner gate): resizing the machine (`container machine stop benchbox-agent && container machine set -n benchbox-agent memory=6G`) is an operator action.\n\nGuardrails: linked worktree via make worktree-create; stage paths explicitly. [COMMENT-POLICY-001]: no comments or docstrings. Tests use stub `container` executables, tmp BENCHBOX_TEST_LOCK_DIR, injected process tables and readings; never touch the real lock, never start, stop or resize a real VM from tests. Act only on the machine named by BENCHBOX_HEAVY_LINUX_MACHINE (default benchbox-agent, matching the Makefile CI_LINUX_MACHINE default); never touch other machines (e.g. ss-dev) or containers. `container` CLI 1.1.0 machine subcommands: create (creates and boots), delete, inspect, list, logs, run (boots on demand; no -n targets the default machine), set, set-default, stop. There is no start or exec. When `container` is not on PATH (Linux CI, Windows) every VM check is a silent no-op.",
   "links": [
-    "https://github.com/BenchBox-dev/benchbox/pull/3848",
-    "scripts/linux_machine_run.sh",
-    "benchbox/utils/heavy_sentinel.py",
-    "benchbox/utils/heavy_status.py",
-    "tests/unit/test_heavy_choke_points.py"
+    "Makefile",
+    "scripts/linux_preflight_pytest.sh",
+    "benchbox/utils/resource_limits.py",
+    "benchbox/utils/host_lock.py"
   ],
   "sessions": [
     {
@@ -20,6 +20,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "c84caa2307c3438bb7f21c1df00a1e01",
+      "session_id": "6f8f4a28707f4702ad48cd7b8d6aaabb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:94e4d2f7dee4726eca194412",
+      "at": "2026-11-01T14:11:44Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b84a2a1bb490449a84b27496eec53600",
       "session_id": "6f8f4a28707f4702ad48cd7b8d6aaabb"
     }
   ]
