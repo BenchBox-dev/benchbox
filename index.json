@@ -4212,6 +4212,13 @@
       "status": "done",
       "title": "Cloud Spark Shared Infrastructure"
     },
+    "cloud-spark-staging-dir-unsettable-emr-dataproc": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "EMR Serverless, Dataproc and Dataproc Serverless: the staging location cannot be supplied through benchbox run"
+    },
     "cloud-sql-open-table-format-loading": {
       "claim": null,
       "needs": [],

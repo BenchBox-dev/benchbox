@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Each of the three platforms accepts a staging location through a documented run-time route (platform option or `--output`), following the Glue or Athena Spark pattern; `PlatformHookRegistry.parse_options` accepts the option and the adapter constructs with it set (unit tests, no cloud calls).",
+    "Their error messages name that route, and the site platform pages document it.",
+    "No live cloud run without explicit spend approval."
+  ],
+  "context": "DECISION GATE: this is a behaviour change (new platform options or config mapping); confirm with the owner which route each platform should use before implementing. Evidence: UsabPlatformMsgs report on #3895 (merged d9ac8d7904).",
+  "description": "Found 2026-10-31 while correcting platform configuration messages (#3895). The cloud_spark external-table path (benchbox/platforms/base/cloud_spark/external_tables.py) needs an S3 or GCS staging directory, but emr-serverless, dataproc and dataproc-serverless register no staging platform option and have no config builder that maps `--output` to a staging root, so a user has no supported way to supply it through `benchbox run`. #3895 made their error messages accurate (they now name only the adapter setting) but left behaviour unchanged. Glue uses `--output s3://...` and Athena Spark the `s3_staging_dir` option; these three have neither.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e275448d846640d27249a6f8",
+      "at": "2026-11-01T13:43:19Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9fbd3e0915a545bcba8d0ba6ea1de310",
+      "session_id": "a36a04b6bc394082b5008f654e1bf00b"
+    }
+  ]
+}
