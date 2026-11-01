@@ -12721,12 +12721,17 @@
       "title": "Refuse to start heavy work when the host is already under memory pressure, VM reservations or low disk"
     },
     "heavy-guard-cli-optin-20261030": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-02T02:24:22Z",
+        "generation": "98462639b62a440e9de42fb22c9317b5",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:94e4d2f7dee4726eca194412"
+      },
       "needs": [
         "heavy-guard-watchdog-20261030"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Let workstation users opt the benchbox CLI into the host lock, admission and watchdog"
     },
     "heavy-guard-container-vm-20261030": {
