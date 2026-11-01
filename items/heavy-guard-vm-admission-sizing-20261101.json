@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Stub-CLI test: the need passed to admission equals the configured machine memory; unmeasured falls back to CI_LINUX_NEED_GIB; an already-running machine skips sizing.",
+    "G1 readings and the chosen behaviour recorded in the PR.",
+    "make comment-policy-check, lint, typecheck, makefile-inventory-check, test-fast pass."
+  ],
+  "context": "Evidence 2026-11-01: benchbox-agent (4 CPU, 8G) was running at a 7.83 GiB footprint (pid 49810, started 2026-10-31 15:45 local, before PR #3848 merged) with no lock holder, no `container machine run` process and memory pressure level 2 / memorystatus_level 29. scripts/linux_machine_run.sh restores the machine's prior state, so a machine already running stays running; the choke-point test only covers repo files; the VM process is a launchd child, so the watchdog budget does not count it; admission needs 2 GiB to boot an 8 GiB machine.",
+  "description": "Problem: ci-linux and the pr-preflight Linux step admit the VM boot with a 2 GiB need while the machine reserves 8 GiB, so admission does not reflect what the boot costs.\n\nChange:\n1. Before booting, read the machine's configured memory from `container machine list --format json` (field `memory`, bytes) and pass it as --need-gib; fall back to CI_LINUX_NEED_GIB when unmeasured (5 s timeout).\n2. Skip the sizing when the machine is already running (its memory is already resident).\n3. Docs and changelog.\n\nDecision gates:\n- G1 (stop condition): run `python -m benchbox.utils.host_lock admit --need-gib <machine size>` on the Mac in its normal working state at the current size (8G) and after an owner-approved resize to 6G. If neither admits in the normal state, stop and record the readings for an owner decision (keep the flat need, resize further, or accept refusals).\n- G2 (owner gate): resizing the machine (`container machine stop benchbox-agent && container machine set -n benchbox-agent memory=6G`) is an operator action.\n\nGuardrails: linked worktree via make worktree-create; stage paths explicitly. [COMMENT-POLICY-001]: no comments or docstrings. Tests use stub `container` executables, tmp BENCHBOX_TEST_LOCK_DIR and injected readings; never touch the real lock, and never start, stop or resize a real VM from tests. Act only on the machine named by CI_LINUX_MACHINE (default benchbox-agent); never touch other machines (e.g. ss-dev) or containers.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3848",
+    "scripts/linux_machine_run.sh",
+    "benchbox/utils/heavy_sentinel.py",
+    "benchbox/utils/heavy_status.py",
+    "tests/unit/test_heavy_choke_points.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:94e4d2f7dee4726eca194412",
+      "at": "2026-11-01T13:15:12Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c84caa2307c3438bb7f21c1df00a1e01",
+      "session_id": "6f8f4a28707f4702ad48cd7b8d6aaabb"
+    }
+  ]
+}

@@ -12787,6 +12787,13 @@
       "status": "done",
       "title": "Make heavy serial pytest sessions and heavy UAT commands take the host lock with admission and watchdog"
     },
+    "heavy-guard-vm-admission-sizing-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Size Linux VM admission to the machine's configured memory"
+    },
     "heavy-guard-vm-lifecycle-20261101": {
       "claim": null,
       "needs": [],
