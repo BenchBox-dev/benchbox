@@ -1238,6 +1238,21 @@ class TestClickHouseWorkloadCoverage:
         assert "join_algorithm = 'grace_hash'" in statement
         assert "grace_hash_join_initial_buckets = 8" in statement
 
+    @pytest.mark.parametrize(
+        ("deployment_mode", "query_id", "grace"),
+        [("server", "21", True), ("server", "20", False), ("local", "21", False)],
+    )
+    def test_datavault_query_21_spills_join_to_disk_on_server(self, deployment_mode, query_id, grace):
+        adapter = self._adapter(deployment_mode=deployment_mode)
+        connection = Mock()
+        connection.execute.return_value = [(1,)]
+
+        adapter.execute_query(connection, "SELECT 1", query_id, benchmark_type="datavault", validate_row_count=False)
+
+        statement = connection.execute.call_args.args[0]
+        assert ("join_algorithm = 'grace_hash'" in statement) is grace
+        assert ("grace_hash_join_initial_buckets = 8" in statement) is grace
+
     def test_server_tpchavoc_resource_variants_keep_session_policy_unchanged(self):
         adapter = self._adapter(deployment_mode="server")
         connection = Mock()
