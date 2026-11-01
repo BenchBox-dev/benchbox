@@ -20515,15 +20515,10 @@
       "title": "Validate synthetic plan parsers against realistic live-engine plans"
     },
     "query-plan-live-validation-remaining-engines": {
-      "claim": {
-        "expires_at": "2026-11-02T01:23:00Z",
-        "generation": "ff8aaf69527e468b8f6f7abd5f666d14",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8d313df504e30c76edc4bc0f"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Validate the plan parsers and capture routes still checked only against synthetic or faked output"
     },
     "query-plan-mcp-canonical-rendering": {
