@@ -454,3 +454,16 @@ def test_a_finding_maintained_in_every_escalation_round_or_by_the_owner_is_not_r
     claims = [findings._claim(item) for item in (escalated, maintained, open_dispute)]
 
     assert [item["settled"] for item in claims] == [True, True, False]
+
+
+def test_a_claimed_first_round_prompt_carries_one_scope_and_limit_rule() -> None:
+    from _project.scripts.oracle_reviewers import render
+
+    prior = [{"id": "D1"}]
+    plain = render.select_prior_rule(prior, None, 10)
+    claimed = render.select_prior_rule(prior, None, 10, claimed=["D1"])
+
+    assert "only in the files changed since that review" in plain
+    assert "only in the files changed since that review" not in claimed
+    assert "every file it touches" in claimed
+    assert "counting the not_fixed ones" not in claimed

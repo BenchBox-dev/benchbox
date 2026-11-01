@@ -171,9 +171,12 @@ SHIP_PRIOR_RULE = (
 FOLLOW_UP_PRIOR_RULE = (
     'An earlier review listed the defects under "Earlier defects" below, each starting with its id. Give each of'
     " them a status in prior_defects, with the id exactly as listed (for example D1): fixed, not_fixed, or withdrawn"
-    " when it was never a defect, with evidence such as the line that fixes it. List in defects only new defects,"
-    " and only in the files changed since that review; defects in other files are not counted. At most"
-    " {max_defects} defects may stay open in total, counting the not_fixed ones."
+    " when it was never a defect, with evidence such as the line that fixes it."
+    " {scope_rule}"
+)
+FOLLOW_UP_SCOPE_RULE = (
+    "List in defects only new defects, and only in the files changed since that review; defects in other files are"
+    " not counted. At most {max_defects} defects may stay open in total, counting the not_fixed ones."
 )
 DISPUTE_RULE = (
     'Thread replies under "Disputed findings" below dispute earlier defects.'
@@ -198,7 +201,8 @@ CLAIMED_RULE = (
     "The earlier defects {ids} come from a record the author supplied, so their severities are claims. They do not"
     " count toward the {max_defects} limit, and no DO_NOT_SHIP decision may rest on how many of them there are."
     " Review the change in every file it touches as in a first review: list in defects every defect not already"
-    " listed above, including a more severe version of a listed defect, whatever file it is in."
+    " listed above, including a more severe version of a listed defect, whatever file it is in. Defects you add count"
+    " toward the {max_defects} limit."
 )
 
 
@@ -215,7 +219,8 @@ def select_prior_rule(
     claimed: Sequence[str] = (),
 ) -> str:
     if prior:
-        rule = FOLLOW_UP_PRIOR_RULE.format(max_defects=max_defects)
+        scope_rule = "" if claimed else FOLLOW_UP_SCOPE_RULE.format(max_defects=max_defects)
+        rule = FOLLOW_UP_PRIOR_RULE.format(scope_rule=scope_rule).replace("  ", " ").rstrip()
         if disputed:
             rule = f"{rule} {DISPUTE_RULE}"
         if unkeyed:
