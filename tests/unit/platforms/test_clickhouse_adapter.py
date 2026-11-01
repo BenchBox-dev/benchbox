@@ -610,6 +610,21 @@ class TestClickHouseAdapter:
         assert handler._convert_field_for_clickhouse("", "FLOAT[3]") is None
         assert handler._convert_field_for_clickhouse("\\N", "FLOAT[3]") is None
 
+    def test_boolean_conversion_maps_null_true_false_and_rejects_unknown(self):
+        from benchbox.platforms.base.data_loading import ClickHouseNativeHandler
+
+        handler = ClickHouseNativeHandler(delimiter=",", adapter=None, benchmark=None)
+        conv = handler._convert_field_for_clickhouse
+
+        for token in ("", "\\N", "NULL", "null"):
+            assert conv(token, "Bool") is None
+        for token in ("true", "T", "1", "Yes"):
+            assert conv(token, "Nullable(Bool)") is True
+        for token in ("false", "F", "0", "no"):
+            assert conv(token, "BOOLEAN") is False
+        with pytest.raises(ValueError):
+            conv("maybe", "Bool")
+
     def test_datetime_and_timestamp_conversion(self):
         from datetime import date as date_cls, datetime as dt
 
