@@ -1,0 +1,14 @@
+{
+  "context": "Owner waived the Mac smoke on 2026-10-30 for oracle-local-findings-record-disputes-20261026 (#3913). On the owner's Mac: block a local review on a seeded Critical, dispute it with a keyed rebuttal, observe the re-judgement by the same reviewer, adjudicate only under an owner instruction naming the head, finding and decision, then open the PR and confirm CI ingests the record as claims needing explicit dispositions. Close the smoke PR and record outputs.",
+  "not_before": "2026-11-08T13:00:00Z",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e",
+      "at": "2026-11-01T13:40:59Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ffdaddc6e13f4a8bb30bd40d481016af",
+      "session_id": "1273bcfa4d0e4ed89453e147e32359eb"
+    }
+  ]
+}

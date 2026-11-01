@@ -16980,6 +16980,13 @@
       "status": "dropped",
       "title": "BenchBox: delete the in-repo oracle engine"
     },
+    "oracle-local-findings-mac-smoke-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Run the local findings and dispute smoke on the Mac"
+    },
     "oracle-local-findings-record-disputes-20261026": {
       "claim": null,
       "needs": [
