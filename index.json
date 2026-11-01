@@ -22979,14 +22979,19 @@
       "title": "Retire the dead complexity checker and make curated-release quality targets work"
     },
     "retire-oracle-review-workflow-20261021": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-02T02:55:32Z",
+        "generation": "8851a615451c4e8b937a96e315322eca",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e"
+      },
       "needs": [
         "owner-drop-oracle-review-required-20261021",
         "oracle-verdict-dispatch-gate-after-review-20261025",
         "oracle-gate-from-verdict-job-20261026"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Retire the oracle-review notification workflow once the verdict's gate dispatch has proved reliable"
     },
     "retire-sqlglot-duckdb-all-workaround": {
