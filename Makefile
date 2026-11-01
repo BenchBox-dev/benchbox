@@ -895,7 +895,7 @@ ci-linux:
 		echo "ci-linux: machine '$(CI_LINUX_MACHINE)' not found. One-time setup:"; \
 		echo "  container system start"; \
 		echo "  container build --arch arm64 --tag local/benchbox-agent docker/benchbox-agent"; \
-		echo "  container machine create local/benchbox-agent --name $(CI_LINUX_MACHINE) --home-mount rw --cpus 4 --memory 6G"; \
+		echo "  container machine create local/benchbox-agent --name $(CI_LINUX_MACHINE) --home-mount rw --cpus 4 --memory 8G"; \
 		exit 1; \
 	fi; \
 	echo "==> ci-linux: '$(CI_LINUX_CMD)' inside container machine '$(CI_LINUX_MACHINE)'"; \
@@ -904,7 +904,8 @@ ci-linux:
 	trap 'rm -f "$$CMD_FILE"' EXIT; \
 	printf 'cd "%s"\nexport UV_PROJECT_ENVIRONMENT="$${UV_PROJECT_ENVIRONMENT:-$$HOME/.cache/benchbox-linux-venv}"\n%s\n' "$(CURDIR)" "$$CI_LINUX_CMD" > "$$CMD_FILE"; \
 	echo "==> ci-linux: the host lock and watchdog cover host memory pressure and disk; the VM footprint is not tree-attributed (container runtime and VM processes are launchd children), so machine size and admission bound it" >&2; \
-	$(HOST_LOCK_CLI) run --phase ci-linux --gate ci-linux --admit --need-gib $(CI_LINUX_NEED_GIB) --guard -- bash scripts/linux_machine_run.sh $(CI_LINUX_MACHINE) $(CI_LINUX_ENV) -- bash -l "$$CMD_FILE"
+	NEED_GIB=$$($(HOST_LOCK_CLI) machine-need --machine $(CI_LINUX_MACHINE) --fallback-gib $(CI_LINUX_NEED_GIB)); \
+	$(HOST_LOCK_CLI) run --phase ci-linux --gate ci-linux --admit --need-gib "$$NEED_GIB" --guard -- bash scripts/linux_machine_run.sh $(CI_LINUX_MACHINE) $(CI_LINUX_ENV) -- bash -l "$$CMD_FILE"
 
 .PHONY: typecheck
 typecheck:

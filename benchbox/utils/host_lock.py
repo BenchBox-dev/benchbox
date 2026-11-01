@@ -879,6 +879,29 @@ def admit_command(need_gib: float | None = None) -> int:
     return 0
 
 
+def machine_need_gib(machine: str, fallback_gib: float) -> float:
+    import shutil
+
+    from benchbox.utils import resource_limits
+
+    if shutil.which("container") is None:
+        return fallback_gib
+    text = resource_limits.run_text(["container", "machine", "list", "--format", "json"], 5.0)
+    machines = None if text is None else resource_limits._parse_machines(text)
+    for entry in machines or ():
+        if entry.name == machine:
+            if entry.state == "running" or entry.memory_gib is None or entry.memory_gib <= 0:
+                return fallback_gib
+            return entry.memory_gib
+    return fallback_gib
+
+
+def machine_need_command(machine: str, fallback_gib: float) -> int:
+    sys.stdout.write(f"{machine_need_gib(machine, fallback_gib):g}\n")
+    sys.stdout.flush()
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m benchbox.utils.host_lock")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -897,6 +920,9 @@ def build_parser() -> argparse.ArgumentParser:
     clear.add_argument("path", nargs="?", type=Path)
     admit = sub.add_parser("admit", help="check host admission without taking the lock")
     admit.add_argument("--need-gib", type=float)
+    machine_need = sub.add_parser("machine-need", help="print the memory a Linux machine boot needs (GiB)")
+    machine_need.add_argument("--machine", required=True)
+    machine_need.add_argument("--fallback-gib", type=float, required=True)
     sub.add_parser("status", help="show lock holder, waiters, host pressure, VMs and orphaned servers (read-only)")
     sentinel = sub.add_parser("sentinel", help="watch BenchBox checkouts and stop a process over the memory budget")
     sentinel.add_argument("argv", nargs=argparse.REMAINDER)
@@ -917,6 +943,8 @@ def main(argv: list[str] | None = None) -> int:
         from benchbox.utils.heavy_status import status_command
 
         return status_command()
+    if args.command == "machine-need":
+        return machine_need_command(args.machine, args.fallback_gib)
     if args.command == "admit":
         return admit_command(args.need_gib)
     command = list(args.argv)

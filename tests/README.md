@@ -448,6 +448,13 @@ and `container`/`container machine` VM reservations are reported itemized but ne
 already missing from available memory. Unmeasured signals (failed or >5 s external commands) never refuse. A
 refusing reading is re-sampled every 5 s for up to 30 s before the refusal stands.
 
+Linux VM sizing: `make ci-linux` and `scripts/linux_preflight_pytest.sh` pass `python -m benchbox.utils.host_lock
+machine-need --machine <m> --fallback-gib $CI_LINUX_NEED_GIB` as `--need-gib`. It prints the machine's configured
+memory (booting it reserves that much) and the fallback (default 2) when the machine is already running, absent,
+unmeasured or `container` is missing. The documented machine is `--memory 8G`. `make pr-preflight` reports a Linux
+admission refusal (exit 76) as `Linux not verified -- admission refused` and does not fail; `make ci-linux` still
+exits 76.
+
 | Setting | Default | Meaning |
 | --- | --- | --- |
 | `BENCHBOX_HEAVY_ADMIT_MIN_GIB` | 2 | Available memory needed to admit |

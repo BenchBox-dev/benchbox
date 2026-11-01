@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Developer tooling: Linux VM admission is sized to the machine's configured memory, and pr-preflight reports a refused Linux admission as unverified"
+}
