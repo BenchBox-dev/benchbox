@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "When a failed suite's merge commit predates current develop, make pr-rerun starts CI on a fresh merge ref and pr-arm accepts a head whose newest suite passed without deleting runs; a unit test covers the stale merge case."
+  ],
+  "description": "After trunk was fixed by #3908, #3907 and #3827 still carried a failed 'core' suite from a CI run that tested their heads merged with the broken develop (abc110263). make pr-rerun re-ran that run's failed jobs, but GitHub re-runs reuse the original merge SHA, so the same tests failed again. Closing and reopening each PR produced a fresh run that passed, yet pr-arm then refused because the old failed suite is 'hidden behind a newer success' and still counts in the merge rollup, and its advice was again make pr-rerun. The only way through was deleting the stale failed runs (41273807700, 41273329730) with gh run delete. pr-rerun should detect that the failed run's merge base predates a trunk fix and start a fresh run (or tell the user to close and reopen), and pr-arm's hidden-failure advice should not loop back to pr-rerun.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e",
+      "at": "2026-11-01T17:00:08Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "60f1964681f14b3e9a2a5a34bed888d5",
+      "session_id": "1273bcfa4d0e4ed89453e147e32359eb"
+    }
+  ]
+}

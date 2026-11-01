@@ -19243,6 +19243,13 @@
       "status": "open",
       "title": "Make pr-rerun re-run the oracle-gate job that failed waiting for a verdict"
     },
+    "pr-rerun-reruns-stale-merge-ref-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Make make pr-rerun refresh CI against current develop instead of re-running the old merge commit"
+    },
     "pr-review-followups-2026-08-20": {
       "claim": null,
       "needs": [],
