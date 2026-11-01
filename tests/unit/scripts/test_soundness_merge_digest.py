@@ -2412,3 +2412,37 @@ def test_a_ruling_recorded_by_the_oracle_is_listed_when_its_comment_is_gone():
     assert [(r.action, r.defect_id) for r in found] == [("WITHDRAW", "D2")]
     assert "NO OWNER INSTRUCTION" in digest.render_adjudications(found)
     assert "comment is missing" in digest.render_adjudications(found)
+
+
+def test_a_recovered_ruling_needs_an_instruction_before_the_review_that_preceded_it():
+    from oracle_reviewers import protocol
+
+    base = {
+        "v": 1,
+        "cycle": 1,
+        "round": 1,
+        "kind": "first",
+        "decision": "SHIP_WITH_FIXES",
+        "head_sha": HEAD,
+        "base_ref": "develop",
+        "reviewer": "",
+        "tier": "",
+        "strikes_after": 0,
+        "open_defects": [],
+        "next_id": 2,
+        "patch_digest": "d" * 32,
+        "carried": False,
+        "summary": "",
+    }
+    ruled = {**base, "kind": "carry", "decision": "SHIP", "carried": True}
+    ruled["adjudicated"] = [{"id": "D2", "action": "WITHDRAW"}]
+
+    def posted(record, at):
+        body = f"{oracle_verdict(HEAD, 'success')}\n\n{protocol.encode_marker(record)}"
+        return review(ORACLE_BOT, HEAD, at, user_type="Bot", body=body)
+
+    reviews = (posted(base, "2026-10-02T10:30:00Z"), posted(ruled, AFTER))
+    late = digest.adjudication_records([evidence(reviews=reviews, comments=(instruction("2026-10-02T10:45:00Z"),))])
+    early = digest.adjudication_records([evidence(reviews=reviews, comments=(instruction("2026-10-02T10:15:00Z"),))])
+    assert late[0].instruction_gap_seconds is None
+    assert early[0].instruction_gap_seconds is not None

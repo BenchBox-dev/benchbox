@@ -551,15 +551,21 @@ def withdrawn_findings(pulls: Sequence[PullEvidence]) -> list[Withdrawal]:
 
 
 def _recorded_rulings(pull: PullEvidence) -> list[tuple[str, str, str]]:
-    found: list[tuple[str, str, str]] = []
-    for review in _oracle_reviews(pull, {commit.sha for commit in pull.commits}, include_unverifiable=True):
+    reviews = sorted(
+        _oracle_reviews(pull, {commit.sha for commit in pull.commits}, include_unverifiable=True),
+        key=lambda review: review.submitted_at,
+    )
+    first: dict[tuple[str, str], str] = {}
+    previous = ""
+    for review in reviews:
         try:
             record = decode_marker(review.body)
         except MarkerError:
-            continue
+            record = None
         for item in (record or {}).get("adjudicated") or ():
-            found.append((item["action"], item["id"], review.submitted_at))
-    return found
+            first.setdefault((item["action"], item["id"]), previous or review.submitted_at)
+        previous = review.submitted_at
+    return [(action, defect_id, bound) for (action, defect_id), bound in first.items()]
 
 
 def adjudication_records(pulls: Sequence[PullEvidence]) -> list[AdjudicationRecord]:
