@@ -147,8 +147,8 @@ def review_command(args: argparse.Namespace) -> list[str]:
 
 
 def launch(argv: list[str], env: dict[str, str]) -> int:
-    inherited = [int(env[HANDOVER_ENV])] if HANDOVER_ENV in env else []
-    return subprocess.run(argv, env=env, pass_fds=inherited, check=False).returncode
+    os.execvpe(argv[0], argv, env)
+    return EXIT_UNAVAILABLE
 
 
 def run(args: argparse.Namespace, launcher: Launcher = launch) -> int:

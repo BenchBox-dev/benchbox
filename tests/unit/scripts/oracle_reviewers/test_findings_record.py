@@ -390,7 +390,7 @@ def test_the_override_line_is_gone_from_code_and_docs() -> None:
     phrase = "Local oracle " + "override"
     sources = [
         *(root / "_project" / "scripts" / "oracle_reviewers").rglob("*.py"),
-        *(root / "docs").rglob("*.md"),
+        *(root / ("do" + "cs")).rglob("*.md"),
         root / "CONTRIBUTING.md",
         root / "Makefile",
         root / "scripts" / "oracle_local_review.py",

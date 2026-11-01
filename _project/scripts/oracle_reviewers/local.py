@@ -498,7 +498,7 @@ def withhold_secrets() -> None:
     os.set_inheritable(read, True)
     scrubbed = {name: value for name, value in os.environ.items() if name not in held}
     scrubbed[HANDOVER_ENV] = str(read)
-    raise SystemExit(subprocess.run(sys.orig_argv, env=scrubbed, pass_fds=(read,), check=False).returncode)
+    os.execve(sys.executable, sys.orig_argv, scrubbed)
 
 
 def _held(name: str) -> str:
