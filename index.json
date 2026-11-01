@@ -21344,6 +21344,13 @@
       "status": "done",
       "title": "Dry-run release on 0.3.0-rc.1 to validate the 2-command flow end-to-end"
     },
+    "release-from-replaced-develop-commit-has-no-artifact-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Nothing tells a releaser which develop commit has a Trunk run when the chosen commit was replaced"
+    },
     "release-full-suite-canary-and-ruleset-drift": {
       "claim": null,
       "needs": [

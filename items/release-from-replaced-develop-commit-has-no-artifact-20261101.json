@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "When release admission refuses a commit because it has no push run, the message names the nearest develop commit that has a successful run",
+    "A test with a replaced commit proves the message and that admission still fails closed"
+  ],
+  "context": "Introduced by the trunk-develop concurrency group (trunk.yml) and documented in docs/internal/release-artifacts.md and _project/decisions/trunk-latest-head-runs-2026-10-30.md as 'release from the newest tested head'. The doc states the rule but no tool enforces or helps with it.",
+  "description": "Since develop pushes share one Trunk group, a push replaced while waiting gets no run and no dist-<sha>-attempt-N artifact, and release admission fails closed for it. The failure message does not point to the newest tested ancestor or descendant, so the releaser has to search by hand.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:96cfd54c7d2180daa76d178f",
+      "at": "2026-11-01T13:46:52Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e0db86abbadb429abdfaac4b0372f4ae",
+      "session_id": "77bfd3a6737c4f8e9b68d27f796e8651"
+    }
+  ]
+}
