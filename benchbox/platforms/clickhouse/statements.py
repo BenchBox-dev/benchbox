@@ -10,10 +10,24 @@ _CREATE_TABLE_RE = re.compile(
     r"^(?P<head>\s*CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:[A-Za-z_]\w*\.)?[A-Za-z_]\w*)(?P<rest>\s*[(]|\s+AS\b)",
     re.IGNORECASE,
 )
+_ENGINE_RE = re.compile(r"\bENGINE\s*=\s*(?P<name>\w+)", re.IGNORECASE)
+_CREATE_TARGET_RE = re.compile(
+    r"^\s*CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?P<table>(?:[A-Za-z_]\w*\.)?[A-Za-z_]\w*)$", re.IGNORECASE
+)
 _DEFAULT_ENGINE = " ENGINE = MergeTree ORDER BY tuple()"
 _GENERATE_SERIES_RE = re.compile(
     r"\barrayJoin\(\s*GENERATE_SERIES\(\s*(?P<lo>-?\d+)\s*,\s*(?P<hi>-?\d+)\s*\)\s*\)", re.IGNORECASE
 )
+
+
+def merge_tree_create_target(statement: str) -> str | None:
+    create = _CREATE_TABLE_RE.match(statement)
+    if create is None:
+        return None
+    engine = _ENGINE_RE.search(statement)
+    if engine is not None and not engine.group("name").lower().endswith("mergetree"):
+        return None
+    return _CREATE_TARGET_RE.match(create.group("head")).group("table")
 
 
 def lightweight_update_target(statement: str) -> str | None:

@@ -54,22 +54,48 @@ def test_connection_runs_each_statement_and_returns_fetchable_rows() -> None:
 
     result = connection.execute("CREATE TABLE t (a Int32); SELECT 1")
 
-    assert client.executed == ["CREATE TABLE t (a Int32) ENGINE = MergeTree ORDER BY tuple()", "SELECT 1"]
+    assert client.executed == [
+        "CREATE TABLE t (a Int32) ENGINE = MergeTree ORDER BY tuple()",
+        "ALTER TABLE t MODIFY SETTING enable_block_number_column = 1, enable_block_offset_column = 1",
+        "SELECT 1",
+    ]
     assert result.fetchone() == (1,)
     assert result.fetchone() is None
 
 
-def test_lightweight_updates_are_enabled_once_per_table_and_reset_by_ddl() -> None:
+def test_lightweight_updates_are_enabled_at_create_not_in_the_update() -> None:
+    client = _Client()
+    connection = ClickHouseServerConnection(client)
+
+    connection.execute("CREATE TABLE t (a Int32, b Int32)")
+    created = len(client.executed)
+    connection.execute("UPDATE t SET a = 1 WHERE b = 2")
+    connection.execute("UPDATE t SET a = 2 WHERE b = 3")
+
+    assert client.executed[:created] == [
+        "CREATE TABLE t (a Int32, b Int32) ENGINE = MergeTree ORDER BY tuple()",
+        "ALTER TABLE t MODIFY SETTING enable_block_number_column = 1, enable_block_offset_column = 1",
+    ]
+    assert client.executed[created:] == ["UPDATE t SET a = 1 WHERE b = 2", "UPDATE t SET a = 2 WHERE b = 3"]
+
+
+def test_lightweight_updates_fall_back_to_first_update_for_tables_not_created_here() -> None:
     client = _Client()
     connection = ClickHouseServerConnection(client)
 
     connection.execute("UPDATE t SET a = 1 WHERE b = 2")
     connection.execute("UPDATE t SET a = 2 WHERE b = 3")
-    connection.execute("DROP TABLE t")
+    connection.execute("RENAME TABLE s TO t")
     connection.execute("UPDATE t SET a = 3 WHERE b = 4")
 
-    alters = [q for q in client.executed if q.startswith("ALTER TABLE t MODIFY SETTING")]
-    assert len(alters) == 2
+    assert len([q for q in client.executed if q.startswith("ALTER TABLE t MODIFY SETTING")]) == 2
+
+
+def test_non_merge_tree_tables_are_not_altered_at_create() -> None:
+    client = _Client()
+    ClickHouseServerConnection(client).execute("CREATE TABLE t (a Int32) ENGINE = Memory")
+
+    assert client.executed == ["CREATE TABLE t (a Int32) ENGINE = Memory"]
 
 
 def test_insert_with_rows_is_passed_through() -> None:

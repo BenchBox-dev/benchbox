@@ -591,8 +591,8 @@ class GzipHandler(CompressionHandler):
 
 class Bzip2Handler(CompressionHandler):
     @contextmanager
-    def open(self, file_path: Path, newline: str | None = None) -> Iterator[Any]:
-        with bz2.open(file_path, "rt", newline=newline) as f:
+    def open(self, file_path: Path, newline: str | None = None, encoding: str = "utf-8") -> Iterator[Any]:
+        with bz2.open(file_path, "rt", newline=newline, encoding=encoding) as f:
             yield f
 
 
@@ -1433,6 +1433,8 @@ class DuckDBVortexHandler(FileFormatHandler):
             return row_count
 
 
+_CLICKHOUSE_TRUE_TOKENS = frozenset(("true", "t", "1", "yes"))
+_CLICKHOUSE_FALSE_TOKENS = frozenset(("false", "f", "0", "no"))
 _CLICKHOUSE_VECTOR_TYPE_RE = re.compile(r"\[\s*\d*\s*\]")
 
 
@@ -1673,7 +1675,14 @@ class ClickHouseNativeHandler(FileFormatHandler):
             return None if needs_non_string_value else value
 
         if is_bool:
-            return value.strip().lower() in ("true", "t", "1", "yes")
+            token = value.strip().lower()
+            if token in ("\\n", "null"):
+                return None
+            if token in _CLICKHOUSE_TRUE_TOKENS:
+                return True
+            if token in _CLICKHOUSE_FALSE_TOKENS:
+                return False
+            raise ValueError(f"Unrecognised boolean value for ClickHouse column type {type_name}: {value!r}")
         if "INT" in type_upper:
             return int(value)
         if any(token in type_upper for token in ("DECIMAL", "NUMERIC")):
