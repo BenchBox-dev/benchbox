@@ -30589,12 +30589,17 @@
       "title": "Benchmark dependency errors name the missing module and the install command (MCP, CLI and Python API)"
     },
     "usability-core-contributor-references-guard": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-02T03:09:40Z",
+        "generation": "f06e29510e9a47479b24033b3c4ccb2b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e275448d846640d27249a6f8"
+      },
       "needs": [
         "public-pseudonym-salt-automatic"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Remove contributor references (ADRs, PR numbers, internal paths, project labels) from user-facing core text and guard against regressions"
     },
     "usability-platform-config-messages-accurate": {
