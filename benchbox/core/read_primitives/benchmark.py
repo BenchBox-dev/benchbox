@@ -479,6 +479,10 @@ class ReadPrimitivesBenchmark(GeneratorOutputDirMixin, TranslatableQueryMixin, D
             )
 
             return list(QUESTDB_READ_PRIMITIVES_SKIPS)
+        if name == "velox":
+            from benchbox.sql_compat.rules.execution_filter.velox_read_primitives import VELOX_READ_PRIMITIVES_SKIPS
+
+            return list(VELOX_READ_PRIMITIVES_SKIPS)
         return []
 
     def get_df_platform_skip_queries(self, platform_name: str) -> list[str]:

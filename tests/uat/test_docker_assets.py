@@ -988,6 +988,20 @@ def test_velox_connect_tmpfs_permits_native_library_loading():
     assert any(mount.startswith("/tmp:") and "exec" in mount.split(":", 1)[1].split(",") for mount in tmpfs_mounts)
 
 
+def test_velox_warehouse_is_off_the_tmpfs():
+    root = docker_assets.REPO_ROOT / "docker/velox"
+    entrypoint = (root / "entrypoint.sh").read_text(encoding="utf-8")
+    dockerfile = (root / "Dockerfile").read_text(encoding="utf-8")
+    compose = yaml.safe_load((root / "docker-compose.yml").read_text(encoding="utf-8"))
+    warehouse = "/var/lib/spark-warehouse"
+    assert f"spark.sql.warehouse.dir={warehouse}" in entrypoint
+    assert f"chown spark:spark {warehouse}" in dockerfile
+    assert not any(
+        warehouse.startswith(mount.split(":", 1)[0].rstrip("/") + "/")
+        for mount in compose["services"]["velox-connect"]["tmpfs"]
+    )
+
+
 def test_presto_compose_mounts_jvm_config_with_bounded_heap():
     spec = docker_assets.docker_platform_spec("presto")
     compose = yaml.safe_load(spec.compose_files[0].read_text(encoding="utf-8"))

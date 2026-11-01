@@ -403,3 +403,16 @@ def test_char_case_comparison_trims_both_sides_only_for_the_self_defaulting_case
     )
     untouched = "SELECT 1 FROM r WHERE r_name = CASE WHEN a = 1 THEN 'EUROPE' ELSE 'ASIA' END"
     assert apply_rewrite("trim_char_case_comparisons", untouched, "spark") == untouched
+
+
+def test_char_case_comparison_trims_a_column_guarded_case_compared_to_a_string_literal():
+    rewritten = apply_rewrite(
+        "trim_char_case_comparisons",
+        "SELECT 1 FROM r WHERE CASE WHEN r_name = 'ASIA' THEN r_name ELSE NULL END = 'ASIA'",
+        "spark",
+    )
+    assert rewritten == (
+        "SELECT 1 FROM r WHERE RTRIM('ASIA') = RTRIM(CASE WHEN r_name = 'ASIA' THEN r_name ELSE NULL END)"
+    )
+    numeric = "SELECT 1 FROM r WHERE CASE WHEN a = b THEN a ELSE NULL END = b"
+    assert apply_rewrite("trim_char_case_comparisons", numeric, "spark") == numeric

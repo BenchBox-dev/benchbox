@@ -43,7 +43,7 @@ SCALAR_GROUP_BY_VARIANT_IDS = frozenset({"1_v1", "3_v1", "7_v1", "8_v1", "9_v1",
 GROUP_BY_EMPTY_VARIANT_IDS = frozenset({"6_v2", "14_v2"})
 DUAL_VARIANT_IDS = frozenset({"17_v4"})
 SPARK_WINDOW_FILTER_VARIANT_IDS = frozenset({"2_v7"})
-SPARK_CHAR_CASE_VARIANT_IDS = frozenset({"2_v10"})
+SPARK_CHAR_CASE_VARIANT_IDS = frozenset({"2_v10", "5_v10", "8_v10", "11_v10"})
 SPARK_VARIANT_IDS = (
     SCALAR_GROUP_BY_VARIANT_IDS
     | GROUP_BY_EMPTY_VARIANT_IDS

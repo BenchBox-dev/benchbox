@@ -573,7 +573,15 @@ def trim_char_case_comparisons(expression, *, copy: bool = True):
         column, case = node.this, node.expression
         if isinstance(column, exp.Case):
             column, case = case, column
-        if not isinstance(column, exp.Column) or not isinstance(case, exp.Case) or case.args.get("default") != column:
+        if not isinstance(case, exp.Case):
+            continue
+        self_defaulting = isinstance(column, exp.Column) and case.args.get("default") == column
+        column_guarded_literal = (
+            isinstance(column, exp.Literal)
+            and column.is_string
+            and any(isinstance(branch.args.get("true"), exp.Column) for branch in case.args.get("ifs") or [])
+        )
+        if not self_defaulting and not column_guarded_literal:
             continue
         node.replace(
             exp.EQ(
