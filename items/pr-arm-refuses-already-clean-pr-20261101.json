@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "A CLEAN PR that passes every pr-arm gate merges through make pr-arm at the checked head; a unit test covers the clean-state path."
+  ],
+  "description": "On #3734, make pr-arm passed every gate but could not enable auto-merge because GitHub reported the PR already CLEAN (auto-merge cannot be enabled on a PR that is mergeable now). The closer fell back to a raw `gh pr merge --match-head-commit`, which the merge-authority rules forbid. pr-arm should handle this state itself, for example by merging with --match-head-commit after the same gates pass.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e",
+      "at": "2026-11-01T13:44:36Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "8c66bc464af54e87b45eaa3dbdf8c80d",
+      "session_id": "1273bcfa4d0e4ed89453e147e32359eb"
+    }
+  ]
+}
