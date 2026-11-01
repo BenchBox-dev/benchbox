@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "A change to scripts/worktree_lifecycle.sh, make/worktrees.mk or Makefile selects the tests that exercise them.",
+    "tests/unit/scripts/test_preflight_targets.py covers a Make path and a shell path selecting real tests.",
+    "No fixture-only name matching is added (see pr-preflight-workflow-selection-cost-20261101 on the same file).",
+    "Merged to develop."
+  ],
+  "context": "Not on the batch loop's critical path: batch-member-check requires named tests for non-Python changes until this lands. Coordinate with pr-preflight-workflow-selection-cost-20261101, which changes the same file. Guardrails: deliver as an ordinary serial PR to develop (AGENTS.md: feature delivery cannot deliver the changes that make it possible); write only from a linked worktree made with make worktree-create and checked with make agent-write-preflight, never the primary clone; stage explicit paths, never git add -A; no explanatory comments or docstrings (COMMENT-POLICY-001, make comment-policy-check); heavy test runs only through lock-taking entry points, never BENCHBOX_SKIP_TEST_LOCK; never weaken hold labels, the unresolved-thread refusal, oracle-gate, duration or suite gates; add a changelog.d fragment (CHANGELOG_INTERNAL when nothing is user-visible); durable artifacts carry no session or phase labels; cited line numbers are leads, so re-read the code before editing; tests prove behaviour, never wiring or wording.",
+  "description": "_project/scripts/preflight_targets.py skips non-Python paths before applying EXTRA_TEST_MAP (:279-281 versus :303), so a change to Makefile, make/*.mk or a worktree shell script selects only guard tests. Batch members routinely change these shared files. Apply the explicit map before the non-Python early return and map the worktree lifecycle scripts and Make files to the tests that exercise them.",
+  "links": [
+    "_project/scripts/preflight_targets.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:53a3b48ce5c94efdbf857652",
+      "at": "2026-11-01T14:10:30Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "7bca57e57c7c40fd833081f98ca55403",
+      "session_id": "fe251e187e814d5cb1baf53870326a77"
+    }
+  ]
+}

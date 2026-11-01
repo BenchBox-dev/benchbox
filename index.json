@@ -19306,6 +19306,13 @@
       "status": "done",
       "title": "Address pre-existing issues surfaced by complexity batch 8-10 review"
     },
+    "preflight-targets-non-python-mapping-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Map Make and shell changes to their tests in pr-preflight"
+    },
     "premerge-composed-tree-gap-red-trunk-20261101": {
       "claim": null,
       "needs": [],
