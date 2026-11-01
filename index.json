@@ -15042,15 +15042,10 @@
       "title": "Run the medium-tier generate_data tests at a reduced scale factor without losing generator coverage"
     },
     "medium-shard-durations-deleted-tests-20261031": {
-      "claim": {
-        "expires_at": "2026-11-02T00:46:43Z",
-        "generation": "09e38f75ff034c6693a473f8a3ccceec",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e45b8047daa131c418b6f1f3"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Refresh medium_shard_durations.json weekly so deleted tests drop out and new tests get real weights"
     },
     "medium-suite-job-setup-drift-20261031": {
