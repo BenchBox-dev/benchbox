@@ -69,6 +69,7 @@ _RESOURCE_ENVELOPE_PATTERNS = (
 _DEFAULT_LOCAL_MEMORY_LIMIT = "2GB"
 _DEFAULT_LOCAL_WORKER_CAP = 2
 _DEFAULT_LOCAL_THREADS_PER_WORKER_CAP = 2
+_SINGLE_PARTITION_MAX_INPUT_BYTES = 64 * 1024 * 1024
 
 
 class DaskResourceEnvelopeError(RuntimeError):
@@ -439,6 +440,19 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
 
     def timedelta_days(self, days: int) -> timedelta:
         return pd.Timedelta(days=days)
+
+    def _load_csv_files(self, file_paths: list[Path], *args: Any, **kwargs: Any) -> DaskDF:
+        return self._coalesce_small_table(super()._load_csv_files(file_paths, *args, **kwargs), file_paths)
+
+    def _load_parquet_files(self, file_paths: list[Path], columns: list[str] | None = None) -> DaskDF:
+        return self._coalesce_small_table(super()._load_parquet_files(file_paths, columns), file_paths)
+
+    def _coalesce_small_table(self, df: DaskDF, file_paths: list[Path]) -> DaskDF:
+        if not hasattr(df, "npartitions"):
+            return df
+        if sum(Path(path).stat().st_size for path in file_paths) > _SINGLE_PARTITION_MAX_INPUT_BYTES:
+            return df
+        return self.persist(df.repartition(npartitions=1))
 
     def concat(self, dfs: list[DaskDF]) -> DaskDF:
         if len(dfs) == 1:
