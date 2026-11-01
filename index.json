@@ -12712,12 +12712,17 @@
       "title": "Harness re-applies ClickHouse server session settings beyond load time"
     },
     "heavy-guard-admission-20261030": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-02T02:23:39Z",
+        "generation": "7332d4df93364834894c6d3f9b87f32c",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:94e4d2f7dee4726eca194412"
+      },
       "needs": [
         "heavy-guard-lock-core-20261030"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Refuse to start heavy work when the host is already under memory pressure, VM reservations or low disk"
     },
     "heavy-guard-cli-optin-20261030": {
