@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "A scheduled audit on develop opens the bump PR or an issue when an advisory lands; decide whether the PR-level dependency-audit blocks only on advisories the PR introduces."
+  ],
+  "description": "2026-10-31: pyasn1 0.6.4 gained CVE-2026-119194/5/6/7 (fixed in 0.6.5) and dependency-audit failed on every open PR, including release PRs; PR #3894 fixed it after an agent diagnosed it from a failing PR. Nothing detects a new advisory on develop before PRs fail, and the check fails PRs that did not cause it.",
+  "links": [
+    "PR #3894"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:44087b544fee5237bdde41f8",
+      "at": "2026-11-01T13:45:30Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "77e9990b31de408992b7bebf290b2ddb",
+      "session_id": "b38147de5e3b4952857534e2b3c9221c"
+    }
+  ]
+}

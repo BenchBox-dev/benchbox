@@ -7711,6 +7711,13 @@
       "status": "done",
       "title": "Demote the falsifiability lint from gating to advisory"
     },
+    "dependency-audit-new-advisory-reddens-every-pr-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "A newly published advisory fails dependency-audit on every PR until someone bumps the lock"
+    },
     "dependency-audit-raw-drift-guard": {
       "claim": null,
       "needs": [],
