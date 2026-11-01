@@ -1747,6 +1747,17 @@
       "status": "done",
       "title": "Integrate verified batch commits through one owned feature branch"
     },
+    "batch-member-side-tooling-20261101": {
+      "claim": null,
+      "needs": [
+        "benchbox-todo-db-batch-v2-runtime-20261101",
+        "worktree-create-base-ref-20261101",
+        "local-oracle-member-review-20261101"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Add batch-start, batch-member-create and batch-member-check, and refuse pr-open and pr-fanout in member worktrees"
+    },
     "batch-prepared-delivery-tracker-and-skill": {
       "claim": null,
       "needs": [
