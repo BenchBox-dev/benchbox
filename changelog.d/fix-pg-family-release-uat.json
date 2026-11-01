@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed TPC-Havoc Q20 variants taking about 20s each at scale 0.01 on PostgreSQL-family engines because the correlated lineitem subquery was re-scanned for every partsupp row; the rewrite now joins a grouped lineitem subquery.",
+      "platforms": ["postgresql", "timescaledb", "pg-duckdb", "pg-mooncake"],
+      "benchmarks": ["tpchavoc"]
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed JOB query 8c failing on TimescaleDB with 'could not resize shared memory segment' by raising the container shared memory to 2 GiB, and JOB query 18a running out of DuckDB memory on pg_mooncake by raising duckdb.max_memory from the 4 GiB default to 10 GiB.",
+      "platforms": ["timescaledb", "pg-mooncake"],
+      "benchmarks": ["joinorder"]
+    }
+  ]
+}

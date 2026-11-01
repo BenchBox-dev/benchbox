@@ -215,6 +215,7 @@ _SF1_TIMEOUT_PRUNED_CELLS = (
     ("pg-duckdb", _sf1_timeout_reason("pg-duckdb"), ("tpcds_obt", "joinorder")),
     ("pg-mooncake", _sf1_timeout_reason("pg-mooncake"), ("tpcds_obt",)),
     ("postgresql", _sf1_timeout_reason("postgresql"), ("joinorder", "tpcds_obt")),
+    ("timescaledb", _sf1_timeout_reason("timescaledb"), ("tpcds_obt",)),
     ("singlestore", _sf1_timeout_reason("singlestore"), ("joinorder", "tpcds_obt")),
     ("questdb", _sf1_timeout_reason("questdb"), ("tpcds_obt",)),
 )

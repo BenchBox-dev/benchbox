@@ -1082,3 +1082,17 @@ def test_pg_mooncake_readiness_reads_credentials_from_the_container_environment(
     script = argv[-1]
     assert "$POSTGRES_PASSWORD" in script and "$POSTGRES_USER" in script and "$POSTGRES_DB" in script
     assert "-h 127.0.0.1" in script and "SELECT 1" in script
+
+
+def test_timescaledb_compose_sizes_shared_memory_for_parallel_hash_joins():
+    spec = docker_assets.docker_platform_spec("timescaledb")
+    compose_text = "\n".join(path.read_text(encoding="utf-8") for path in spec.compose_files)
+
+    assert 'shm_size: "2gb"' in compose_text
+
+
+def test_pg_mooncake_compose_raises_the_duckdb_memory_limit_above_the_4gb_default():
+    spec = docker_assets.docker_platform_spec("pg-mooncake")
+    compose_text = "\n".join(path.read_text(encoding="utf-8") for path in spec.compose_files)
+
+    assert "duckdb.max_memory=10240" in compose_text

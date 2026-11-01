@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+from functools import cache
 
 from benchbox.core.tpchavoc.cloud_compat import rewrite_cloud_variant
 from benchbox.utils.dialect_utils import UnknownSqlDialectError, resolve_sql_dialect, translate_sql_query
@@ -11,6 +12,7 @@ POSTGRES_QUALIFIED_COLUMNS: dict[str, dict[str, str]] = {
     "17_v2": {"l_partkey": "lineitem", "l_quantity": "lineitem", "l_extendedprice": "lineitem"},
 }
 POSTGRES_DUAL_VARIANT_IDS = frozenset({"17_v4"})
+POSTGRES_DECORRELATED_VARIANT_IDS = frozenset(f"20_v{number}" for number in range(1, 11))
 CLICKHOUSE_FILTER_VARIANT_IDS = frozenset({"1_v6", "3_v7", "7_v7", "9_v7", "10_v7", "12_v7"})
 CLICKHOUSE_OUTER_ALIAS_VARIANTS: dict[str, tuple[str, str]] = {
     "2_v8": ("partsupp", "partsupp_outer"),
@@ -53,6 +55,13 @@ _POSTGRES_DIALECTS = frozenset({"postgres", "postgresql"})
 _PRESTO_TRINO_DIALECTS = frozenset({"presto", "trino", "athena"})
 
 Rewrite = tuple[str, dict]
+
+
+@cache
+def _tpch_schema() -> dict[str, dict[str, str]]:
+    from benchbox.core.tpch.schema import TABLES
+
+    return {table.name: {column.name: column.get_sql_type() for column in table.columns} for table in TABLES}
 
 
 def normalize_variant_id(query_id: str | None) -> str | None:
@@ -111,6 +120,8 @@ def _variant_rewrites(query_id: str, target: str) -> list[Rewrite]:
             rewrites.append(("qualify_columns_by_name", {"tables": columns}))
         if query_id in POSTGRES_DUAL_VARIANT_IDS:
             rewrites.append(("drop_literal_row_source", {"alias": "dual"}))
+        if query_id in POSTGRES_DECORRELATED_VARIANT_IDS:
+            rewrites.append(("decorrelate_subqueries", {"schema": _tpch_schema()}))
     return rewrites
 
 
@@ -194,6 +205,7 @@ __all__ = [
     "LIST_AGGREGATE_ORDER",
     "LIST_AGGREGATE_VARIANT_IDS",
     "POSTGRES_ALIAS_VARIANT_IDS",
+    "POSTGRES_DECORRELATED_VARIANT_IDS",
     "POSTGRES_DUAL_VARIANT_IDS",
     "POSTGRES_QUALIFIED_COLUMNS",
     "PRESTO_ALIAS_VARIANT_IDS",

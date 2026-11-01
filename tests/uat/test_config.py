@@ -497,6 +497,7 @@ _DOCKER_SF1_TIMEOUT_PRUNED_CELLS = {
             ("singlestore", "joinorder", 0.01),
             ("singlestore", "tpcds_obt", 0.01),
             ("questdb", "tpcds_obt", 0.01),
+            ("timescaledb", "tpcds_obt", 0.01),
         }
     ),
 }

@@ -14,6 +14,7 @@ from benchbox.core.tpchavoc.dialect_compat import (
     DATAFUSION_EMPTY_GROUP_VARIANT_IDS,
     GROUP_BY_EMPTY_VARIANT_IDS,
     POSTGRES_ALIAS_VARIANT_IDS,
+    POSTGRES_DECORRELATED_VARIANT_IDS,
     POSTGRES_DUAL_VARIANT_IDS,
     POSTGRES_QUALIFIED_COLUMNS,
     SINGLESTORE_AGGREGATE_SUBQUERY_VARIANT_IDS,
@@ -78,6 +79,12 @@ def test_postgres_alias_rules_cover_each_family_platform():
             for key, _ in REGISTRY.all_rules()
             if key[:3] == (Phase.QUERY_ADAPTER, platform, "tpchavoc") and key[3] in POSTGRES_DUAL_VARIANT_IDS
         }
+        decorrelated_rules = {
+            key[3]
+            for key, _ in REGISTRY.all_rules()
+            if key[:3] == (Phase.QUERY_ADAPTER, platform, "tpchavoc") and key[3] in POSTGRES_DECORRELATED_VARIANT_IDS
+        }
+        assert decorrelated_rules == POSTGRES_DECORRELATED_VARIANT_IDS
         assert alias_rules == POSTGRES_ALIAS_VARIANT_IDS
         assert qualified_rules == set(POSTGRES_QUALIFIED_COLUMNS)
         assert dual_rules == POSTGRES_DUAL_VARIANT_IDS
@@ -104,6 +111,22 @@ def test_postgres_dual_variant_drops_the_one_row_source():
     assert "dual" not in query
     assert "SELECT 0 AS revenue WHERE FALSE" in query
     assert sqlglot.parse_one(query, read="postgres")
+
+
+@pytest.mark.parametrize("query_id", sorted(POSTGRES_DECORRELATED_VARIANT_IDS))
+def test_postgres_excess_inventory_variants_join_a_grouped_lineitem_subquery(query_id):
+    query = TPCHavocBenchmark(scale_factor=0.1).get_query(query_id, dialect="postgres")
+    tree = sqlglot.parse_one(query, read="postgres")
+
+    assert query_id not in POSTGRES_TPCHAVOC_SKIPS
+    lineitem_aggregates = [
+        select
+        for select in tree.find_all(exp.Select)
+        if any(projection.find(exp.Sum) for projection in select.expressions)
+    ]
+    assert len(lineitem_aggregates) == 1
+    assert {column.table for column in lineitem_aggregates[0].args["where"].find_all(exp.Column)} == {"lineitem"}
+    assert "GROUP BY lineitem.l_partkey, lineitem.l_suppkey" in query
 
 
 def test_postgres_alias_rewrite_preserves_order_by_aliases():
