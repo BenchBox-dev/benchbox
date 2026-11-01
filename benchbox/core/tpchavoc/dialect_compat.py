@@ -38,6 +38,7 @@ SINGLESTORE_ALIAS_QUALIFIED_COLUMNS: dict[str, dict[str, str]] = {
 SINGLESTORE_ORDER_SUBQUERY_VARIANT_IDS = frozenset({"3_v1", "5_v1", "10_v1", "16_v1"})
 SINGLESTORE_AGGREGATE_SUBQUERY_VARIANT_IDS = frozenset({"4_v7", "4_v10", "14_v8", "16_v7", "16_v10", "17_v7", "17_v10"})
 SINGLESTORE_CORRELATED_GROUP_VARIANTS: dict[str, tuple[str, ...]] = {"2_v2": ("ps_partkey",)}
+SINGLESTORE_EXISTS_JOIN_VARIANT_IDS = frozenset({"10_v8"})
 DATAFUSION_EMPTY_GROUP_VARIANT_IDS = frozenset({"6_v2", "14_v2"})
 PRESTO_ALIAS_VARIANT_IDS = POSTGRES_ALIAS_VARIANT_IDS
 PRESTO_WINDOW_FILTER_VARIANT_IDS = frozenset({"2_v7"})
@@ -183,6 +184,8 @@ def _singlestore_variant_rewrites(query_id: str) -> list[Rewrite]:
         rewrites.append(("hoist_aggregate_subqueries", {}))
     if group_columns := SINGLESTORE_CORRELATED_GROUP_VARIANTS.get(query_id):
         rewrites.append(("drop_correlated_scalar_group_by", {"columns": list(group_columns)}))
+    if query_id in SINGLESTORE_EXISTS_JOIN_VARIANT_IDS:
+        rewrites.append(("exists_to_derived_join", {}))
     return rewrites
 
 
@@ -257,6 +260,7 @@ __all__ = [
     "SINGLESTORE_AGGREGATE_SUBQUERY_VARIANT_IDS",
     "SINGLESTORE_ALIAS_QUALIFIED_COLUMNS",
     "SINGLESTORE_CORRELATED_GROUP_VARIANTS",
+    "SINGLESTORE_EXISTS_JOIN_VARIANT_IDS",
     "SINGLESTORE_FILTER_VARIANT_IDS",
     "SINGLESTORE_GROUPING_SET_VARIANT_IDS",
     "SINGLESTORE_ORDER_SUBQUERY_VARIANT_IDS",

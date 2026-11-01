@@ -20,6 +20,7 @@ from benchbox.core.tpchavoc.dialect_compat import (
     SINGLESTORE_AGGREGATE_SUBQUERY_VARIANT_IDS,
     SINGLESTORE_ALIAS_QUALIFIED_COLUMNS,
     SINGLESTORE_CORRELATED_GROUP_VARIANTS,
+    SINGLESTORE_EXISTS_JOIN_VARIANT_IDS,
     SINGLESTORE_FILTER_VARIANT_IDS,
     SINGLESTORE_GROUPING_SET_VARIANT_IDS,
     SINGLESTORE_ORDER_SUBQUERY_VARIANT_IDS,
@@ -489,6 +490,7 @@ def test_singlestore_variant_rules_are_registered():
         | SINGLESTORE_ORDER_SUBQUERY_VARIANT_IDS
         | SINGLESTORE_AGGREGATE_SUBQUERY_VARIANT_IDS
         | set(SINGLESTORE_CORRELATED_GROUP_VARIANTS)
+        | SINGLESTORE_EXISTS_JOIN_VARIANT_IDS
     )
     registered = {
         key[3] for key, _ in REGISTRY.all_rules() if key[:3] == (Phase.QUERY_ADAPTER, "singlestore", "tpchavoc")
@@ -606,3 +608,43 @@ def test_starrocks_skips_the_variant_with_an_outer_reference_inside_a_derived_ta
 
     assert "8_v1" in queries
     assert "1_v7" in queries
+
+
+def test_singlestore_correlated_exists_variant_joins_a_derived_table_of_matching_keys():
+    query = TPCHavocBenchmark(scale_factor=0.01).get_query("10_v8", dialect="singlestore")
+
+    assert "EXISTS" not in query.upper()
+    assert "SELECT DISTINCT" in query.upper()
+    assert "l2_l_orderkey" in query
+    assert sqlglot.parse_one(query, read="singlestore")
+
+
+def test_exists_to_derived_join_keeps_matching_rows_identical():
+    import sqlite3
+
+    from benchbox.utils.dialect_utils import apply_rewrite
+
+    source = (
+        "SELECT t.k, t.v FROM t WHERE t.v > 0 AND EXISTS "
+        "(SELECT 1 FROM t t2 WHERE t2.k = t.k AND t2.v = t.v AND t2.flag = 'R') ORDER BY t.k, t.v"
+    )
+    rewritten = apply_rewrite("exists_to_derived_join", source, "sqlite")
+    connection = sqlite3.connect(":memory:")
+    connection.execute("CREATE TABLE t (k INT, v INT, flag TEXT)")
+    connection.executemany(
+        "INSERT INTO t VALUES (?, ?, ?)",
+        [(1, 1, "R"), (1, 1, "R"), (2, 5, "N"), (3, 7, "R"), (4, 0, "R")],
+    )
+
+    assert "EXISTS" not in rewritten.upper()
+    assert connection.execute(rewritten).fetchall() == connection.execute(source).fetchall()
+
+
+def test_exists_to_derived_join_leaves_non_equality_correlation_untouched():
+    from benchbox.utils.dialect_utils import apply_rewrite
+
+    source = "SELECT a FROM t WHERE EXISTS (SELECT 1 FROM t t2 WHERE t2.v < t.v)"
+
+    assert apply_rewrite("exists_to_derived_join", source, "sqlite") == (
+        "SELECT a FROM t WHERE EXISTS(SELECT 1 FROM t AS t2 WHERE t2.v < t.v)"
+    )

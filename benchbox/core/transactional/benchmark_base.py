@@ -39,6 +39,14 @@ _SET_THEN_BEGIN_ISOLATION_RE = re.compile(
     re.IGNORECASE,
 )
 _BEGIN_TRANSACTION_RE = re.compile(r"\bBEGIN\s+TRANSACTION\s*;", re.IGNORECASE)
+_SET_READ_COMMITTED_RE = re.compile(r"SET\s+TRANSACTION\s+ISOLATION\s+LEVEL\s+READ\s+COMMITTED\s*;\s*", re.IGNORECASE)
+_DIGIT_ROWS = " UNION ALL ".join(f"SELECT {digit} AS d" for digit in range(10))
+_CREATE_TEMP_TABLE_RE = re.compile(r"\bCREATE\s+TEMP\s+TABLE\b", re.IGNORECASE)
+_SINGLESTORE_SERIES_TEMPLATE = (
+    "SELECT n AS {alias} FROM (SELECT a.d + 10 * b.d + 100 * c.d + 1000 * e.d AS n FROM "
+    f"({_DIGIT_ROWS}) a, ({_DIGIT_ROWS}) b, ({_DIGIT_ROWS}) c, ({_DIGIT_ROWS}) e) series "
+    "WHERE n BETWEEN {lo} AND {hi}"
+)
 
 
 def _doris_numbers_select(match: re.Match[str]) -> str:
@@ -224,6 +232,15 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
         dialect = (platform_key or "").lower()
         if dialect == "doris":
             sql = _UNNEST_SERIES_SELECT_RE.sub(_doris_numbers_select, sql)
+            return _BEGIN_TRANSACTION_RE.sub("BEGIN;", sql)
+        if dialect == "singlestore":
+            sql = _UNNEST_SERIES_SELECT_RE.sub(
+                lambda m: _SINGLESTORE_SERIES_TEMPLATE.format(
+                    lo=m.group("lo"), hi=m.group("hi"), alias=m.group("alias")
+                ),
+                sql,
+            )
+            sql = _CREATE_TEMP_TABLE_RE.sub("CREATE TEMPORARY TABLE", _SET_READ_COMMITTED_RE.sub("", sql))
             return _BEGIN_TRANSACTION_RE.sub("BEGIN;", sql)
         template = _SERIES_SELECT_TEMPLATES.get(dialect)
         if template is not None:

@@ -47,6 +47,9 @@ from benchbox.sql_compat.rules.execution_filter.pg_duckdb_transaction_primitives
 from benchbox.sql_compat.rules.execution_filter.questdb_transaction_primitives import (
     QUESTDB_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
 )
+from benchbox.sql_compat.rules.execution_filter.singlestore_transaction_primitives import (
+    SINGLESTORE_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
+)
 from benchbox.sql_compat.rules.execution_filter.sqlite_transaction_primitives import (
     SQLITE_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
 )
@@ -474,6 +477,7 @@ class TransactionPrimitivesBenchmark(TransactionalBenchmarkBase["OperationResult
                 "databricks": DATABRICKS_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
                 "apache doris": DORIS_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
                 "duckdb": DUCKDB_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
+                "singlestore": SINGLESTORE_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
                 "snowflake": SNOWFLAKE_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
                 "sqlite": SQLITE_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
                 "starrocks": STARROCKS_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,

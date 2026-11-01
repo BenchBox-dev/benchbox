@@ -228,7 +228,7 @@ class TestDatabendConnection:
         except ImportError:
             pytest.skip("databend-driver not installed")
 
-        mock_connection = Mock(spec=["query_row", "close"])
+        mock_connection = Mock(spec=["query_row", "query_iter", "exec", "close"])
         mock_connection.query_row.return_value = Mock()
         mock_client = Mock(spec=["get_conn"])
         mock_client.get_conn.return_value = mock_connection
@@ -244,6 +244,37 @@ class TestDatabendConnection:
         assert connection == mock_connection
         mock_client.get_conn.assert_called_once()
         mock_connection.query_row.assert_called_with("SELECT 1")
+
+    def test_create_connection_logs_in_to_admin_database_before_creating_benchmark_database(self):
+        try:
+            adapter = DatabendAdapter(host="localhost", ssl=False, password="", database="benchbox")
+        except ImportError:
+            pytest.skip("databend-driver not installed")
+
+        mock_client = Mock()
+        mock_client.query_row.return_value = Mock()
+
+        with (
+            patch.object(adapter, "handle_existing_database"),
+            patch("benchbox.platforms.databend.adapter.databend_driver") as mock_dd,
+        ):
+            mock_dd.BlockingDatabendClient.return_value = mock_client
+            with patch.dict("sys.modules", {"databend_driver": mock_dd}):
+                adapter.create_connection()
+
+        dsn = mock_dd.BlockingDatabendClient.call_args.args[0]
+        assert dsn.endswith("@localhost:8000/default?sslmode=disable")
+        statements = [call.args[0] for call in mock_client.exec.call_args_list]
+        assert statements == ["CREATE DATABASE IF NOT EXISTS `benchbox`", "USE `benchbox`"]
+
+    def test_admin_database_connections_use_admin_dsn(self):
+        try:
+            adapter = DatabendAdapter(host="localhost", ssl=False, password="", database="benchbox")
+        except ImportError:
+            pytest.skip("databend-driver not installed")
+
+        assert adapter._build_dsn(adapter.admin_database).startswith("databend+http://benchbox@localhost:8000/default?")
+        assert adapter._build_dsn().startswith("databend+http://benchbox@localhost:8000/benchbox?")
 
     def test_close_connection(self):
         try:
@@ -974,3 +1005,11 @@ class TestDatabendDsnConstruction:
             pytest.skip("databend-driver not installed")
         dsn = adapter._build_dsn()
         assert "admin:secret123@" in dsn
+
+
+def test_databend_compose_pins_the_image_to_a_digest():
+    import re
+
+    compose = (Path(__file__).resolve().parents[3] / "docker/databend/docker-compose.yml").read_text(encoding="utf-8")
+    assert re.search(r"image: \$\{DATABEND_IMAGE:-datafuselabs/databend:v[\d.]+@sha256:[0-9a-f]{64}\}", compose)
+    assert ":latest" not in compose
