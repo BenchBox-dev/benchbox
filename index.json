@@ -16801,6 +16801,13 @@
       "status": "open",
       "title": "The oracle-gate sweep runs every 3 to 5 hours instead of hourly, so gate refreshes that only the sweep performs wait hours"
     },
+    "oracle-gate-sweep-cadence-observation-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Measure oracle-gate run counts and sweep cadence for 3 days after the trigger narrowing"
+    },
     "oracle-gate-sweep-waiting-is-not-error-20261025": {
       "claim": null,
       "needs": [

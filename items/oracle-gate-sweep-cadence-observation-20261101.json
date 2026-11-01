@@ -1,0 +1,14 @@
+{
+  "context": "Owner waived the 3-day measurement on 2026-10-30 for oracle-gate-sweep-cadence-20261025. #3829 (3d75e54246) retired the oracle-review workflow and generic bridge, kept the hourly cron, narrowed the review notifier to edited/dismissed, and path-filtered the develop push sweep to gate code and policy. Count oracle-gate runs per trigger over 3 days and compare with the 2026-10-24..26 baseline (2,817 gate runs, 43% of all Actions runs). Also confirm a review dismissal and a policy-file push each re-evaluate open PRs within one run.",
+  "not_before": "2026-11-08T12:00:00Z",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e",
+      "at": "2026-11-01T02:55:19Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "63ece072f6454849bdfcc64e24291080",
+      "session_id": "1273bcfa4d0e4ed89453e147e32359eb"
+    }
+  ]
+}
