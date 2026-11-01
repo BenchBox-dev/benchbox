@@ -28646,6 +28646,13 @@
       "status": "done",
       "title": "Track-2: statistics-phase reset/persist control, per-table breakdown, and idempotence check"
     },
+    "tracker-claims-shared-identity-parallel-agents": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Parallel subagents sharing one tracker identity cannot hold their own claims, and claims strand when an MCP session is replaced"
+    },
     "tracker-corpus-repair-inert-scope-and-stale-refs": {
       "claim": null,
       "needs": [],

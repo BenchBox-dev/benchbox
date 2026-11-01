@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Documented, tested way for parallel subagents to hold one claim each (distinct actors per subagent, or registered-batch mode), recorded in docs/agent/ and the todo skill's guidance for this repository.",
+    "A replaced MCP session of the same worker can re-adopt its own live claim with `take` (or the documented recovery is a single step), demonstrated once.",
+    "No change weakens the one-claim-per-worker rule for a single worker."
+  ],
+  "context": "DECISION GATE: changes to todo-db itself belong in the todo-db repository; this item covers the BenchBox-side configuration and guidance unless the owner directs otherwise.",
+  "description": "Observed repeatedly 2026-10-30 to 2026-11-01 while running tracker items in parallel subagents. All subagents share one todo-db worker identity, so only one can hold a claim: the others got E_MULTIPLE_CLAIMS and worked unclaimed, finishing only after merge. When a subagent's MCP session was replaced mid-run, its `finish` returned E_CLAIM_STALE and `take` returned E_CONFLICT for a claim still held under the same identity, so the parent had to `takeover` to close sqlglot-fork-refresh-v30-26-0 and public-pseudonym-salt-automatic. The repository guide says separate servers with distinct --actor values are needed for concurrent workers, but the agent harness starts subagents on the parent's server.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e275448d846640d27249a6f8",
+      "at": "2026-11-01T13:43:38Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "11d18ba50dee4eecb5fe5d507661a76b",
+      "session_id": "a36a04b6bc394082b5008f654e1bf00b"
+    }
+  ]
+}
