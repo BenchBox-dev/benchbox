@@ -21355,6 +21355,13 @@
       "status": "open",
       "title": "Release UAT artifacts keep only the result path for failed cells, not the failed queries"
     },
+    "release-uat-fixes-unverified-on-real-runner-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Several rc3 UAT fixes are verified only by unit tests, not on a real runner shard"
+    },
     "release-uat-influxdb-extra-missing-20261030": {
       "claim": null,
       "needs": [],

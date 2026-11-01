@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "A complete release-v2 rehearsal (dlv2-52a) runs on the real runner and each listed fix is confirmed or reopened with shard evidence. The SingleStore wrapper gets a live bulk-load check and the loosened test gets a meaningful assertion."
+  ],
+  "description": "No release-v2 run has passed UAT, and these fixes could not be run locally (no Docker, 26 GiB free disk): CedarDB/Presto/Trino query-level readiness assumes psql and curl exist in those images (falls back to the old healthcheck if missing); the Velox container exit cause and tmpfs exec fix; SF1 timings measured only on a developer machine; Spark failures from the rc2 shard ran on Java 25 and may not reproduce; SingleStore bulk load now goes through a new SingleStoreConnectionWrapper (layering fix for core importing platforms.singlestore) covered by two wrapper unit tests only, the earlier live bulk-load sweep having run through the old path; test_write_primitives_overrides_name_singlestore_not_mysql was loosened from an exact count to non-empty in one branch.",
+  "links": [
+    "dlv2-52a-testpypi-rehearsal",
+    "release-uat-velox-container-exits-20261030",
+    "singlestore-uat-failures-20261030"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:44087b544fee5237bdde41f8",
+      "at": "2026-11-01T13:45:18Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ce13d274d28942a7bc1a49fb91a68300",
+      "session_id": "b38147de5e3b4952857534e2b3c9221c"
+    }
+  ]
+}
