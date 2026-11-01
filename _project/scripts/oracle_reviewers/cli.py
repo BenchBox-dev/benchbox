@@ -27,6 +27,7 @@ from . import (
     dedup,
     disk_scan,
     edits,
+    findings,
     github,
     omp_pin,
     processes,
@@ -216,11 +217,6 @@ def _finish_plan(out_dir: Path, plan: dict[str, Any]) -> int:
 
 OMP_INSTALLED = "installed"
 OMP_INSTALL_FAILED = "failed"
-DISPUTE_MARKER = "Dispute:"
-
-
-def _is_dispute(body: str) -> bool:
-    return any(line.strip().startswith(DISPUTE_MARKER) for line in body.splitlines())
 
 
 def _dispute_replies(thread: Mapping[str, Any], bot_login: str) -> list[Mapping[str, Any]]:
@@ -234,7 +230,7 @@ def _dispute_replies(thread: Mapping[str, Any], bot_login: str) -> list[Mapping[
         if isinstance(reply, dict)
         and reply.get("author_type") != "Bot"
         and reply.get("association") in github.TRUSTED_ASSOCIATIONS
-        and _is_dispute(reply.get("body") or "")
+        and protocol.is_dispute(reply.get("body") or "")
     ]
 
 
@@ -279,8 +275,23 @@ def _dispute_step(
     event_name: str,
     base_changed_at: datetime | None = None,
     base_change_unreadable: bool = False,
+    local: Sequence[Mapping[str, Any]] | None = None,
 ) -> tuple[list[dict[str, Any]] | None, protocol.Round]:
     if step.kind not in (protocol.SKIP, protocol.CARRY, protocol.REPOST):
+        return None, step
+    if local is not None:
+        if protocol.live_disputes(local, found.latest):
+            step = _protocol_round(
+                plan,
+                policy,
+                found,
+                scoped,
+                states,
+                strike_count,
+                force=True,
+                base_changed_at=base_changed_at,
+                base_change_unreadable=base_change_unreadable,
+            )
         return None, step
     if not manual and event_name != "pull_request_target":
         return None, step
@@ -436,6 +447,18 @@ def _plan_adjudication(out_dir: Path, plan: dict[str, Any], policy: Policy, even
     if ruling is None or latest is None:
         plan["decision_reason"] = problem
         return _finish_plan(out_dir, plan)
+    return adjudicate_round(out_dir, plan, policy, found, ruling, previous)
+
+
+def adjudicate_round(
+    out_dir: Path,
+    plan: dict[str, Any],
+    policy: Policy,
+    found: protocol.History,
+    ruling: adjudication.Adjudication,
+    previous: retry.State | None,
+) -> int:
+    latest = found.latest or {}
     plan["adjudication"] = {"action": ruling.action, "id": ruling.defect_id, "reason": ruling.reason}
     plan["previous_state"] = previous.to_json() if previous else None
     plan["protocol"] = {
@@ -654,6 +677,7 @@ def command_plan(args: argparse.Namespace) -> int:
             reason_suffix=rerun.reason,
             deferred=deferred,
             marked=marked,
+            body=pull.get("body") or "",
         ),
     )
 
@@ -674,6 +698,8 @@ class RoundInputs:
     reason_suffix: str | None = None
     deferred: retry.RerunDecision | None = None
     marked: bool = False
+    body: str = ""
+    disputes: Sequence[Mapping[str, Any]] | None = None
 
 
 def plan_decision(plan: dict[str, Any], policy: Policy, out_dir: Path, inputs: RoundInputs) -> int:
@@ -703,6 +729,7 @@ def plan_decision(plan: dict[str, Any], policy: Policy, out_dir: Path, inputs: R
         inputs.event_name,
         inputs.base_changed_at,
         inputs.base_change_unreadable,
+        inputs.disputes,
     )
     settled = _settled_round(out_dir, plan, policy, step, found, inputs.deferred, inputs.marked)
     if settled is not None:
@@ -712,13 +739,23 @@ def plan_decision(plan: dict[str, Any], policy: Policy, out_dir: Path, inputs: R
         reason = "dispute re-review exempt from the retry budget"
         plan["manual"] = False
     plan["open_findings"], plan["disputes"] = {}, []
-    if plan["pr"] is not None:
+    if inputs.disputes is not None:
+        plan["disputes"] = [dict(item) for item in inputs.disputes]
+    elif plan["pr"] is not None:
         try:
             threads = github.review_threads(plan["repo"], plan["pr"]) if threads is None else threads
             plan["open_findings"] = dedup.open_fingerprints(threads, policy.bot_login)
             plan["disputes"] = _disputed_threads(threads, policy.bot_login)
         except (github.GitHubError, KeyError, ValueError) as exc:
             _summary(f"oracle-verdict: open review threads could not be read, so none are suppressed: {exc}")
+    claims = (
+        findings.ingest(inputs.body, plan["protocol"]["patch_digest"], int(plan["max_defects"]))
+        if step.kind == protocol.FIRST and not found.records and inputs.body
+        else None
+    )
+    if claims is not None:
+        plan["protocol"].update(claims.rules())
+        plan["disputes"] = [*claims.disputes, *plan["disputes"]]
     _plan_review(
         plan,
         out_dir,
@@ -773,7 +810,7 @@ def _plan_carry(
 ) -> int:
     previous = step.previous
     try:
-        disagreement = _carry_disagreement(plan, bot_login, previous, near)
+        disagreement = None if plan.get("history") == "local" else _carry_disagreement(plan, bot_login, previous, near)
     except (github.GitHubError, KeyError, TypeError, ValueError) as exc:
         print(
             f"oracle-verdict: error: the status of head {previous['head_sha']} could not be read: {exc}",
@@ -2179,7 +2216,8 @@ def _parser() -> argparse.ArgumentParser:
     local_review.add_argument("--base-ref", default="origin/develop")
     local_review.add_argument("--trusted-ref", default="")
     local_review.add_argument("--head", default="HEAD")
-    local_review.add_argument("--body-file", default="")
+    local_review.add_argument("--rebuttals", default="")
+    local_review.add_argument("--adjudicate", default="")
     local_review.set_defaults(handler=command_local_review)
     install_omp = commands.add_parser("install-omp")
     install_omp.add_argument("--policy", required=True)

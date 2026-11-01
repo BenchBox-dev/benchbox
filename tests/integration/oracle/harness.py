@@ -373,13 +373,31 @@ class Harness:
         argv = [sys.executable, str(REPO_ROOT / "scripts" / "pr_arm.py"), "--pr", str(pr), "--head", head]
         return self.run("arm", [*argv, "--repo", SLUG], env, cwd=checkout)
 
-    def local_review(self, branch: str, body: str | None = None, **options: Any) -> Step:
+    def local_review(
+        self,
+        branch: str,
+        *,
+        rebuttals: dict[str, str] | None = None,
+        adjudicate: str | None = None,
+        **options: Any,
+    ) -> Step:
         argv, env, checkout = self._local_review_command(branch, **options)
-        if body is not None:
-            body_file = self.root / "pr-body.md"
-            body_file.write_text(body, encoding="utf-8")
-            argv = [*argv, "--body-file", str(body_file)]
-        return self.run("local-review", argv, env, cwd=checkout)
+        if rebuttals is not None:
+            rebuttal_file = self.root / "rebuttals.json"
+            rebuttal_file.write_text(json.dumps(rebuttals), encoding="utf-8")
+            argv = [*argv, "--rebuttals", str(rebuttal_file)]
+        if adjudicate is not None:
+            argv = [*argv, "--adjudicate", adjudicate]
+        self.record_out.unlink(missing_ok=True)
+        return self.run("local-review", argv, {**env, "ORACLE_LOCAL_RECORD_OUT": str(self.record_out)}, cwd=checkout)
+
+    @property
+    def record_out(self) -> Path:
+        return self.root / "record-out.txt"
+
+    def local_records(self) -> list[dict[str, Any]]:
+        paths = sorted((self.local_state / "records").glob("*.json"))
+        return [json.loads(path.read_text(encoding="utf-8")) for path in paths]
 
     def start_local_review(self, branch: str, **options: Any) -> subprocess.Popen[str]:
         argv, env, checkout = self._local_review_command(branch, **options)

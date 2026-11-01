@@ -62,6 +62,7 @@ class Final:
     pending_cause: str | None = None
     strikes: int | None = None
     judgement: protocol.Judgement | None = None
+    marker: str | None = None
 
 
 def _clip(text: str, limit: int = DESCRIPTION_LIMIT) -> str:
@@ -302,6 +303,11 @@ def _marked(
         return None
 
 
+def defect_ids(plan: Mapping[str, Any], defects: Sequence[Finding]) -> dict[Finding, str]:
+    next_id = int((plan.get("protocol") or {}).get("next_id", 1))
+    return {finding: f"D{next_id + index}" for index, finding in enumerate(defects)}
+
+
 def escalation_suffix(escalated: Sequence[str]) -> str:
     return f"; escalated {','.join(escalated)}" if escalated else ""
 
@@ -339,11 +345,11 @@ def _judgement_notes(judgement: protocol.Judgement | None) -> list[str]:
     return lines + _section("Still open from earlier reviews", [_entry_line(entry) for entry in judgement.carried])
 
 
-def _disposition_label(status: str) -> str:
+def disposition_label(status: str) -> str:
     return {"not_fixed": "maintained", "withdrawn": "withdrawn", "fixed": "fixed"}.get(status, status)
 
 
-def _effective_status(plan: Mapping[str, Any], entry: PriorDefect) -> str:
+def effective_status(plan: Mapping[str, Any], entry: PriorDefect) -> str:
     forced = bool((plan.get("protocol") or {}).get("forced"))
     if forced and entry.status == protocol.FIXED:
         return protocol.NOT_FIXED
@@ -370,7 +376,7 @@ def _dispositions(plan: Mapping[str, Any], verdict: Verdict | None, evidence_cap
         else:
             shown = entry.evidence if evidence_cap is None else _cut(entry.evidence, evidence_cap)
             suffix = f": {shown}" if shown else ""
-            lines.append(f"- {dispute['id']} ({_disposition_label(_effective_status(plan, entry))}){suffix}")
+            lines.append(f"- {dispute['id']} ({disposition_label(effective_status(plan, entry))}){suffix}")
     return _section("Dispute dispositions", lines)
 
 
@@ -407,7 +413,7 @@ def finalize(
     rules = plan.get("protocol") or {}
     defects = judgement.defects if judgement is not None else ()
     next_id = int(rules.get("next_id", 1))
-    ids = {finding: f"D{next_id + index}" for index, finding in enumerate(defects)}
+    ids = defect_ids(plan, defects)
     cycle = rules.get("cycle", 1)
     markers = {finding: f"<!-- oracle-defect: c{cycle}-{defect_id} -->" for finding, defect_id in ids.items()}
     fresh, repeated = dedup.split(defects, plan.get("open_findings", ()))
@@ -503,7 +509,15 @@ def finalize(
     cause = pending_cause if state == PENDING else None
     final_strikes = strikes if judgement is not None and not unrecorded else None
     return Final(
-        state, _clip(description), body if has_content else "", review, reviewer, cause, final_strikes, judgement
+        state,
+        _clip(description),
+        body if has_content else "",
+        review,
+        reviewer,
+        cause,
+        final_strikes,
+        judgement,
+        marker,
     )
 
 

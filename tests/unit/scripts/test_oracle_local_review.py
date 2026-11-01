@@ -104,7 +104,7 @@ def clones(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path]
 
 
 def _args(*extra: str):
-    return bootstrap.parser().parse_args(["--head", "HEAD", "--body-file", "body.md", *extra])
+    return bootstrap.parser().parse_args(["--head", "HEAD", *extra])
 
 
 def test_the_export_holds_only_the_reviewer_paths_of_the_chosen_commit(clones: tuple[Path, Path]) -> None:
@@ -147,6 +147,34 @@ def test_the_review_launches_from_the_fetched_develop_export_with_the_pinned_run
     assert argv[argv.index("python") + 1] == "-P"
     assert argv[argv.index("local-review") :][:3] == ["local-review", "--policy", ".github/oracle-reviewers.yml"]
     assert ("--base-ref", "origin/develop") in set(zip(argv, argv[1:], strict=False))
+
+
+def test_dispute_options_reach_the_review_and_the_record_path_travels_in_the_environment(
+    clones: tuple[Path, Path],
+) -> None:
+    launched: list[tuple[list[str], dict[str, str]]] = []
+
+    code = bootstrap.run(
+        _args("--rebuttals", "r.json", "--adjudicate", "WITHDRAW D1 - owner said so", "--record-out", "rec.txt"),
+        lambda argv, env: launched.append((argv, env)) or 0,
+    )
+
+    assert code == 0
+    ((argv, env),) = launched
+    assert argv[argv.index("--rebuttals") + 1] == "r.json"
+    assert argv[argv.index("--adjudicate") + 1] == "WITHDRAW D1 - owner said so"
+    assert "--record-out" not in argv and "--body-file" not in argv
+    assert env[bootstrap.RECORD_OUT_ENV] == "rec.txt"
+
+
+def test_a_plain_review_passes_no_dispute_options(clones: tuple[Path, Path]) -> None:
+    launched: list[tuple[list[str], dict[str, str]]] = []
+
+    bootstrap.run(_args(), lambda argv, env: launched.append((argv, env)) or 0)
+
+    ((argv, env),) = launched
+    assert "--rebuttals" not in argv and "--adjudicate" not in argv
+    assert bootstrap.RECORD_OUT_ENV not in env
 
 
 def test_the_review_refuses_without_launching_when_develop_cannot_be_fetched(
@@ -279,7 +307,7 @@ def test_the_real_launcher_execs_uv_without_any_withheld_secret_in_its_environme
     env = {**os.environ, **secrets, "HOME": os.environ["HOME"], "PATH": f"{stubs}{os.pathsep}{os.environ['PATH']}"}
 
     result = subprocess.run(
-        [sys.executable, str(ROOT / "scripts/oracle_local_review.py"), "--head", "HEAD", "--body-file", "body.md"],
+        [sys.executable, str(ROOT / "scripts/oracle_local_review.py"), "--head", "HEAD"],
         cwd=work,
         env=env,
         capture_output=True,

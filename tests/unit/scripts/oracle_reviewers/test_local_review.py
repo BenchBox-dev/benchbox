@@ -91,7 +91,7 @@ def test_a_medium_only_ship_with_fixes_proceeds(capsys: pytest.CaptureFixture[st
 
     assert outcome.label == "SHIP WITH FIXES" and not outcome.blocked
     reporter = local.Reporter()
-    assert local._decide(outcome, "", reporter) == local.EXIT_PROCEED
+    assert local._decide(outcome, reporter) == local.EXIT_PROCEED
 
 
 @pytest.mark.parametrize("severity", ["Critical", "High"])
@@ -99,7 +99,7 @@ def test_a_blocking_finding_blocks(severity: str, capsys: pytest.CaptureFixture[
     outcome = local.judged_outcome(_judged([_finding(severity)]), "medium")
 
     assert outcome.blocked
-    assert local._decide(outcome, "", local.Reporter()) == local.EXIT_REFUSED
+    assert local._decide(outcome, local.Reporter()) == local.EXIT_REFUSED
     assert "Refusing to open the PR" in capsys.readouterr().err
 
 
@@ -150,15 +150,18 @@ def test_a_recorded_decision_blocks_on_the_same_rule(decision: str, severities: 
     assert local.recorded_outcome(_record(decision, *severities)).blocked is blocked
 
 
-def test_override_line_semantics_are_unchanged() -> None:
+def test_a_blocked_outcome_is_refused_and_names_the_dispute_route(capsys: pytest.CaptureFixture[str]) -> None:
     blocked = local.Outcome(True, "SHIP WITH FIXES", "medium", "", ())
-    reporter = local.Reporter()
 
-    assert local._decide(blocked, "Notes\n\nLocal oracle override: intended\n", reporter) == local.EXIT_PROCEED
-    assert local._decide(blocked, "Local oracle override:\n", reporter) == local.EXIT_REFUSED
-    assert local._decide(blocked, "<!--\nLocal oracle override: hidden\n", reporter) == local.EXIT_REFUSED
-    assert local._decide(blocked, "    Local oracle override: code sample\n", reporter) == local.EXIT_REFUSED
-    assert local._decide(blocked, "Local oracle override: <reason>\n", reporter) == local.EXIT_REFUSED
+    assert local._decide(blocked, local.Reporter()) == local.EXIT_REFUSED
+    assert "REBUTTALS_FILE" in capsys.readouterr().err
+
+
+def test_the_local_review_refuses_a_body_file_argument() -> None:
+    parsed = local.cli._parser()
+
+    with pytest.raises(SystemExit):
+        parsed.parse_args(["local-review", "--policy", "p", "--body-file", "b"])
 
 
 def _plan() -> dict[str, Any]:
@@ -380,6 +383,71 @@ def test_a_lock_held_for_another_patch_does_not_delay_this_review(
         fcntl.flock(held, fcntl.LOCK_EX)
         with local.exclusive(directory / ("1" * 64 + ".lock"), local.Reporter(), "branch feat/me"):
             assert (directory / ("1" * 64 + ".lock")).read_text(encoding="utf-8") == "branch feat/me"
+
+
+def _pin_environment(tmp_path: Path) -> local.LocalEnvironment:
+    environ = {
+        local.WORK_ENV: str(tmp_path / "work"),
+        local.REPOSITORY_ENV: "o/r",
+        local.ROOT_ENV: str(tmp_path / "repo"),
+        local.BASE_ENV: "origin/develop",
+        local.HEAD_ENV: "h" * 40,
+        local.STATE_ENV: str(tmp_path / "state"),
+    }
+    return local.LocalEnvironment.from_environ(environ, tmp_path / "policy.yml")
+
+
+def _write_review_plan(env: local.LocalEnvironment, forced: bool) -> Path:
+    env.layout.plan.mkdir(parents=True)
+    plan_file = env.layout.plan / local.cli.PLAN_FILE
+    plan = {
+        "decision": "review",
+        "protocol": {"forced": forced},
+        "chain": [{"name": "small"}, {"name": "medium"}, {"name": "large"}],
+        "follow_up_reviewer": None,
+    }
+    plan_file.write_text(json.dumps(plan), encoding="utf-8")
+    return plan_file
+
+
+def test_a_rebuttal_round_is_pinned_to_the_reviewer_that_raised_the_findings(tmp_path: Path) -> None:
+    env = _pin_environment(tmp_path)
+    plan_file = _write_review_plan(env, forced=True)
+
+    env._pin_reviewer(env.layout.plan, "medium")
+
+    pinned = json.loads(plan_file.read_text(encoding="utf-8"))
+    assert pinned["chain"] == [{"name": "medium"}] and pinned["follow_up_reviewer"] == "medium"
+
+
+def test_a_rebuttal_round_cannot_run_when_the_original_reviewer_left_the_policy(tmp_path: Path) -> None:
+    env = _pin_environment(tmp_path)
+    _write_review_plan(env, forced=True)
+
+    with pytest.raises(local.Unavailable, match="reviewer gone that raised these findings is not in the review policy"):
+        env._pin_reviewer(env.layout.plan, "gone")
+
+
+def test_an_unforced_round_keeps_the_whole_chain(tmp_path: Path) -> None:
+    env = _pin_environment(tmp_path)
+    plan_file = _write_review_plan(env, forced=False)
+
+    env._pin_reviewer(env.layout.plan, "medium")
+
+    assert len(json.loads(plan_file.read_text(encoding="utf-8"))["chain"]) == 3
+
+
+def test_a_different_answering_reviewer_is_refused_and_a_record_that_does_not_fit_is_refused() -> None:
+    previous = {"history": [{"reviewer": "medium"}]}
+    plan = {"protocol": {"forced": True}}
+    final = local.report.Final(
+        "failure", "d", "", None, "large", marker="m", judgement=protocol.Judgement("SHIP", (), "")
+    )
+
+    with pytest.raises(local.Unavailable, match="only that reviewer can re-judge"):
+        local._advanced(previous, plan, final, None)
+    with pytest.raises(local.Unavailable, match="do not fit"):
+        local._advanced(previous, plan, local.report.Final("failure", "d", "", None, "medium"), None)
 
 
 def test_the_local_environment_reads_its_adapter_values_and_posts_nothing(tmp_path: Path) -> None:

@@ -15,19 +15,31 @@ import urllib.error
 import urllib.request
 import uuid
 from collections.abc import Iterator, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from . import cli, commands, credentials, driver, edits, github, isolation, protocol, redaction_check, report, selection
+from . import (
+    cli,
+    commands,
+    credentials,
+    driver,
+    edits,
+    findings,
+    github,
+    isolation,
+    protocol,
+    redaction_check,
+    report,
+    selection,
+)
 from .classifier import ChangedFile, soundness_scope
 from .commands import LOOPBACK_PROXY
 from .policy import Policy, load_policy
-from .verdict import DO_NOT_SHIP
+from .verdict import DO_NOT_SHIP, Finding
 
 BLOCKING_SEVERITIES = ("Critical", "High")
-OVERRIDE_PATTERN = re.compile(r"^Local oracle override:[ \t]*(.*?)[ \t]*$", re.MULTILINE)
 KEYCHAIN_SERVICE = "TYPESAFE_API_KEY"
 KEYCHAIN_STEP = f'security add-generic-password -s {KEYCHAIN_SERVICE} -a "$USER" -w'
 LOCAL_CLIENT = "oracle-local"
@@ -45,15 +57,6 @@ CLOUD_SESSION_ENV = "BENCHBOX_EPHEMERAL_CLONE"
 CLOUD_STATUS_FILE = "benchbox-cloud-gateway.status"
 SOUNDNESS_MANIFEST = ".github/soundness-paths.txt"
 INERT_MANIFEST = ".github/inert-paths.txt"
-HIDDEN_TEXT = re.compile(
-    r"<!--.*?(?:-->|\Z)"
-    r"|^[ \t]*(`{3,}+)[^\n]*\n.*?(?:^ {0,3}\1`*[ \t]*$|\Z)"
-    r"|^[ \t]*(~{3,}+)[^\n]*\n.*?(?:^ {0,3}\2~*[ \t]*$|\Z)"
-    r"|<details\b.*?(?:</details>|\Z)"
-    r"|^(?: {4}|\t)[^\n]*$",
-    re.DOTALL | re.IGNORECASE | re.MULTILINE,
-)
-PLACEHOLDER = re.compile(r"<.*>")
 REMOTE_SLUG = re.compile(r"github\.com[:/]([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?/?$")
 DEFAULT_REPOSITORY = "BenchBox-dev/BenchBox"
 CACHE_SCHEMA = 2
@@ -83,6 +86,9 @@ REPOSITORY_ENV = "ORACLE_LOCAL_REPOSITORY"
 STATE_ENV = "ORACLE_LOCAL_STATE"
 PROXY_ENV = "ORACLE_LOCAL_PROXY"
 SCAN_ENV = "ORACLE_LOCAL_SCAN"
+REBUTTALS_ENV = "ORACLE_LOCAL_REBUTTALS"
+RECORD_OUT_ENV = "ORACLE_LOCAL_RECORD_OUT"
+ADJUDICATE_ENV = "ORACLE_LOCAL_ADJUDICATE"
 EXCLUDE_ENV = "ORACLE_LOCAL_EXCLUDE"
 PACKAGE_ROOT = Path(__file__).resolve().parents[3]
 STATUS_NAMES = {"A": "added", "C": "added", "D": "removed", "R": "renamed"}
@@ -247,6 +253,8 @@ class LocalEnvironment:
     proxy: str
     loopback_http: bool = True
     has_app: bool = False
+    rebuttals: str = ""
+    adjudicate: str = ""
     scan_secrets: tuple[str, ...] = ("TYPESAFE_API_KEY", "TS_AUTHKEY", "OMP_GATEWAY_TOKEN", *HOST_TOKEN_FILES)
     redacted_secrets: tuple[str, ...] = ("TYPESAFE_API_KEY", "TS_AUTHKEY", "OMP_GATEWAY_TOKEN", *HOST_TOKEN_FILES)
 
@@ -265,6 +273,8 @@ class LocalEnvironment:
             scan_roots=tuple(Path(item) for item in environ.get(SCAN_ENV, "").split(os.pathsep) if item),
             scan_excludes=tuple(Path(item) for item in environ.get(EXCLUDE_ENV, "").split(os.pathsep) if item),
             proxy=environ.get(PROXY_ENV, ""),
+            rebuttals=environ.get(REBUTTALS_ENV, ""),
+            adjudicate=environ.get(ADJUDICATE_ENV, ""),
         )
 
     def sink(self) -> driver.Sink:
@@ -326,14 +336,38 @@ class LocalEnvironment:
                 plan.update({"decision": cli.HOLD, "decision_reason": found.error})
                 return cli._finish_plan(out_dir, plan)
             base_changed = cli._base_changed_at(self.repo, pr)
+        states = file_states(self.root, base, self.head)
+        local = not found.records
+        record = findings.load(self.state, protocol.patch_digest(protocol.fingerprints(states))) if local else None
+        if local:
+            plan["history"] = "local"
+            found = findings.history_of(record)
         cli._write_json(out_dir / PRIOR_FILE, found.latest)
+        disputes: list[dict[str, Any]] | None = None
+        try:
+            if (self.rebuttals or self.adjudicate) and not local:
+                raise findings.RecordError(
+                    "the pull request already has CI reviews; dispute a finding on its review thread instead"
+                )
+            if local:
+                disputes = []
+                if self.rebuttals:
+                    if record is None:
+                        raise findings.RecordError("no local review of this patch exists to dispute")
+                    disputes = findings.rebuttal_disputes(record, findings.load_rebuttals(Path(self.rebuttals)))
+            if self.adjudicate:
+                ruling = findings.parse_ruling(self.adjudicate)
+                findings.check_ruling(record, ruling)
+                return cli.adjudicate_round(out_dir, plan, policy, found, ruling, None)
+        except findings.RecordError as exc:
+            raise Unavailable(str(exc)) from exc
         full_diff = _git_bytes(
             self.root, "diff", "--no-color", "--no-ext-diff", "--no-textconv", "-M", base, self.head
         ).decode("utf-8", errors="replace")
         blocks = selection.active_blocks(
             _load_pool_blocks(self.state / POOL_BLOCKS_FILE), datetime.now(UTC), same_head=False
         )
-        return cli.plan_decision(
+        code = cli.plan_decision(
             plan,
             policy,
             out_dir,
@@ -341,7 +375,7 @@ class LocalEnvironment:
                 files=files,
                 in_scope=set(scope.paths),
                 full_diff=full_diff,
-                states=file_states(self.root, base, self.head),
+                states=states,
                 found=found,
                 previous_strikes=0,
                 pool_blocks=blocks,
@@ -349,8 +383,24 @@ class LocalEnvironment:
                 event_name="pull_request_target",
                 base_changed_at=base_changed[0],
                 base_change_unreadable=base_changed[1],
+                disputes=disputes,
             ),
         )
+        if code == 0 and local and found.latest is not None:
+            self._pin_reviewer(out_dir, found.latest["reviewer"])
+        return code
+
+    def _pin_reviewer(self, out_dir: Path, reviewer: str) -> None:
+        plan_file = out_dir / cli.PLAN_FILE
+        plan = _read(plan_file)
+        if plan["decision"] != cli.REVIEW or not plan["protocol"]["forced"]:
+            return
+        chain = [item for item in plan["chain"] if item["name"] == reviewer]
+        if not chain:
+            raise Unavailable(f"the reviewer {reviewer} that raised these findings is not in the review policy")
+        plan["chain"] = chain
+        plan["follow_up_reviewer"] = reviewer
+        cli._write_json(plan_file, plan)
 
 
 def cloud_gateway_proxy() -> str:
@@ -539,6 +589,7 @@ class Outcome:
     reviewer: str
     summary: str
     findings: tuple[dict[str, Any], ...]
+    record: dict[str, Any] | None = None
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -547,6 +598,7 @@ class Outcome:
             "reviewer": self.reviewer,
             "summary": self.summary,
             "findings": list(self.findings),
+            "record": self.record,
         }
 
     @classmethod
@@ -557,10 +609,13 @@ class Outcome:
             isinstance(data.get(key), str) for key in ("label", "reviewer", "summary")
         ):
             return None
-        return cls(data["blocked"], data["label"], data["reviewer"], data["summary"], tuple(data["findings"]))
+        record = data.get("record")
+        if record is not None and not isinstance(record, dict):
+            return None
+        return cls(data["blocked"], data["label"], data["reviewer"], data["summary"], tuple(data["findings"]), record)
 
 
-def _entry_finding(entry: Mapping[str, Any]) -> dict[str, Any]:
+def _entry_finding(entry: Mapping[str, Any], cycle: int = 1) -> dict[str, Any]:
     return {
         "severity": entry.get("severity", ""),
         "file": entry.get("file", ""),
@@ -568,28 +623,31 @@ def _entry_finding(entry: Mapping[str, Any]) -> dict[str, Any]:
         "end_line": entry.get("end_line"),
         "title": entry.get("title", ""),
         "detail": entry.get("detail", ""),
-        "id": entry.get("id"),
+        "id": findings.finding_id(cycle, entry["id"]) if entry.get("id") else None,
     }
 
 
-def _blocking(findings: tuple[dict[str, Any], ...]) -> bool:
-    return any(item["severity"] in BLOCKING_SEVERITIES for item in findings)
+def _blocking(found: tuple[dict[str, Any], ...]) -> bool:
+    return any(item["severity"] in BLOCKING_SEVERITIES for item in found)
 
 
-def judged_outcome(judgement: protocol.Judgement, reviewer: str) -> Outcome:
-    findings = (
-        *(_entry_finding(item.to_json()) for item in judgement.defects),
-        *(_entry_finding(entry) for entry in judgement.carried),
+def judged_outcome(
+    judgement: protocol.Judgement, reviewer: str, cycle: int = 1, ids: Mapping[Finding, str] | None = None
+) -> Outcome:
+    named = ids or {}
+    found = (
+        *(_entry_finding({**item.to_json(), "id": named.get(item)}, cycle) for item in judgement.defects),
+        *(_entry_finding(entry, cycle) for entry in judgement.carried),
     )
-    blocked = judgement.decision == DO_NOT_SHIP or _blocking(findings)
-    return Outcome(blocked, judgement.label, reviewer, judgement.summary, findings)
+    blocked = judgement.decision == DO_NOT_SHIP or _blocking(found)
+    return Outcome(blocked, judgement.label, reviewer, judgement.summary, found)
 
 
 def recorded_outcome(record: Mapping[str, Any]) -> Outcome:
-    findings = tuple(_entry_finding(entry) for entry in record.get("open_defects", ()))
-    blocked = record["decision"] in (DO_NOT_SHIP, protocol.REFUSED) or _blocking(findings)
+    found = tuple(_entry_finding(entry, record.get("cycle", 1)) for entry in record.get("open_defects", ()))
+    blocked = record["decision"] in (DO_NOT_SHIP, protocol.REFUSED) or _blocking(found)
     return Outcome(
-        blocked, protocol.LABELS[record["decision"]], record.get("reviewer", ""), record.get("summary", ""), findings
+        blocked, protocol.LABELS[record["decision"]], record.get("reviewer", ""), record.get("summary", ""), found
     )
 
 
@@ -708,6 +766,8 @@ class Run:
     omp_binary: str = ""
     access: Credentials | None = None
     relayed: set[str] = field(default_factory=set)
+    rebuttals: str = ""
+    adjudicate: str = ""
 
     @property
     def layout(self) -> driver.Layout:
@@ -740,6 +800,8 @@ class Run:
                 PR_ENV: "" if self.pr is None else str(self.pr),
                 REPOSITORY_ENV: self.repository,
                 STATE_ENV: str(state_dir()),
+                REBUTTALS_ENV: self.rebuttals,
+                ADJUDICATE_ENV: self.adjudicate,
                 PROXY_ENV: "" if self.access is None else self.access.proxy,
                 SCAN_ENV: os.pathsep.join(str(path) for path in scan_roots),
                 EXCLUDE_ENV: os.pathsep.join(str(path) for path in excludes),
@@ -814,7 +876,28 @@ def _read(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _decided(run: Run, plan: dict[str, Any]) -> Outcome:
+def _advanced(
+    previous: Mapping[str, Any] | None,
+    plan: Mapping[str, Any],
+    final: report.Final,
+    verdict: Any,
+) -> dict[str, Any]:
+    if final.marker is None or final.judgement is None:
+        raise Unavailable("the findings do not fit in a protocol record; shorten the findings or change the patch")
+    latest = previous["history"][-1] if previous else None
+    if plan["protocol"]["forced"] and latest is not None and latest["reviewer"] != final.reviewer:
+        raise Unavailable(
+            f"the findings were raised by {latest['reviewer']} and only that reviewer can re-judge them; "
+            f"{final.reviewer} answered"
+        )
+    entries = {item.id: item for item in verdict.prior_defects} if verdict is not None else {}
+    try:
+        return findings.advance(previous, plan, final.marker, judgement=final.judgement, entries=entries)
+    except (findings.RecordError, protocol.MarkerError) as exc:
+        raise Unavailable(str(exc)) from exc
+
+
+def _decided(run: Run, plan: dict[str, Any], previous: Mapping[str, Any] | None) -> Outcome:
     os.environ["GITHUB_RUN_ID"] = run.run_id
     layout = run.layout
     _, loaded, step, errors = cli.decided_attempts(plan, layout.attempts, layout.classification, layout.workspace)
@@ -826,7 +909,18 @@ def _decided(run: Run, plan: dict[str, Any]) -> Outcome:
     if final.judgement is None:
         reasons = "; ".join(errors) if errors else final.description
         raise Unavailable(f"no reviewer produced a verdict: {reasons}")
-    return judged_outcome(final.judgement, final.reviewer or "")
+    terminal = next(
+        (item for item in loaded.attempts if item.reviewer == final.reviewer and item.outcome == step.kind), None
+    )
+    verdict = loaded.verdicts.get(terminal.slot) if terminal is not None else None
+    record = _advanced(previous, plan, final, verdict) if plan.get("history") == "local" else None
+    outcome = judged_outcome(
+        final.judgement,
+        final.reviewer or "",
+        plan["protocol"]["cycle"],
+        report.defect_ids(plan, final.judgement.defects),
+    )
+    return replace(outcome, record=record)
 
 
 def _persist_pool_blocks(run: Run) -> None:
@@ -868,7 +962,7 @@ def _scan_clean(run: Run, when: str) -> None:
         raise Unavailable(f"a secret value is on disk ({when}); remove it and run again")
 
 
-def _fresh_review(run: Run, plan: dict[str, Any]) -> Outcome:
+def _fresh_review(run: Run, plan: dict[str, Any], previous: Mapping[str, Any] | None) -> Outcome:
     layout = run.layout
     layout.home_root.mkdir(parents=True, exist_ok=True)
     _stage_workspace(run.root, run.head, layout.workspace)
@@ -882,7 +976,7 @@ def _fresh_review(run: Run, plan: dict[str, Any]) -> Outcome:
         raise Unavailable("the verdict could not be finalised without leaving a secret value in the results")
     _persist_pool_blocks(run)
     _keep_captures(layout.attempts / cli.CAPTURE_DIR, run.head, run.reporter.secrets)
-    return _decided(run, plan)
+    return _decided(run, plan, previous)
 
 
 def _severity_rank(finding: Mapping[str, Any]) -> int:
@@ -897,51 +991,55 @@ def _show(outcome: Outcome, reporter: Reporter) -> None:
     ordered = sorted(outcome.findings, key=_severity_rank)
     for finding in ordered[:FINDING_LIMIT]:
         reporter.say(
-            f"  [{finding['severity']}] {finding['file']}:{finding['line']} {finding['title']}\n"
+            f"  [{finding['severity']}] {finding['id'] + ' ' if finding['id'] else ''}"
+            f"{finding['file']}:{finding['line']} {finding['title']}\n"
             f"      {str(finding['detail'])[:DETAIL_LIMIT]}"
         )
     if len(ordered) > FINDING_LIMIT:
         reporter.say(f"  ... and {len(ordered) - FINDING_LIMIT} more finding(s)")
 
 
-def override_body(body_file: str) -> str:
-    if not body_file:
-        return ""
-    try:
-        return Path(body_file).read_text(encoding="utf-8")
-    except OSError:
-        return ""
+class Refused(Exception):
+    pass
 
 
-def override_reason(body: str) -> str | None:
-    reasons = OVERRIDE_PATTERN.findall(HIDDEN_TEXT.sub("", body))
-    if not reasons:
-        return None
-    real = (reason for reason in reasons if reason and not PLACEHOLDER.fullmatch(reason))
-    return next(real, "")
-
-
-def _decide(outcome: Outcome, body: str, reporter: Reporter) -> int:
+def _decide(outcome: Outcome, reporter: Reporter) -> int:
     if not outcome.blocked:
         reporter.say("Local oracle review: no Critical or High findings; pr-open may proceed.")
         return EXIT_PROCEED
-    reason = override_reason(body)
-    if reason:
-        reporter.say(f"Local oracle override accepted; pr-open proceeds. Reason: {reason}")
-        return EXIT_PROCEED
-    if reason is None:
-        reporter.say(
-            f"Refusing to open the PR: the local oracle review decided {outcome.label} with Critical or High findings "
-            "or too many open defects. Fix them, or add a "
-            "'Local oracle override: <reason>' line to the PR body file (PR_BODY_FILE).",
-            error=True,
-        )
-    else:
-        reporter.say(
-            "Refusing to open the PR: the 'Local oracle override:' line in the PR body file has an empty reason.",
-            error=True,
-        )
+    reporter.say(
+        f"Refusing to open the PR: the local oracle review decided {outcome.label} with Critical or High findings "
+        "or too many open defects. Fix them, or dispute a finding with a keyed rebuttal "
+        "(REBUTTALS_FILE=<JSON object of finding id to a rebuttal with a line that starts 'Dispute:'>); "
+        "the reviewer that raised it re-judges it.",
+        error=True,
+    )
     return EXIT_REFUSED
+
+
+def _escalated(record: Mapping[str, Any] | None, outcome: Outcome, reporter: Reporter) -> None:
+    latest = record["history"][-1] if record else None
+    if latest is None or not outcome.blocked or not latest.get("escalated"):
+        return
+    ids = ", ".join(findings.finding_id(latest["cycle"], item) for item in latest["escalated"])
+    reporter.say(
+        f"Escalated to the owner: {ids} stayed open through {protocol.ESCALATION_ROUNDS} dispute re-reviews. "
+        f"Only the owner can adjudicate (ADJUDICATE='{findings.ADJUDICATION_GRAMMAR}'): pass it only when the owner "
+        "names this head, the finding and the decision in the current request.",
+        error=True,
+    )
+
+
+def _write_record(path: str, record: Mapping[str, Any] | None, reporter: Reporter) -> None:
+    if not path:
+        return
+    marker = None
+    if record is not None:
+        try:
+            marker = findings.export(record)
+        except findings.RecordError as exc:
+            reporter.say(f"The findings record is not embedded in the pull request body: {exc}", error=True)
+    Path(path).write_text(f"{marker}\n" if marker else "", encoding="utf-8")
 
 
 def _prior_outcome(run: Run, plan: Mapping[str, Any]) -> Outcome | None:
@@ -951,7 +1049,16 @@ def _prior_outcome(run: Run, plan: Mapping[str, Any]) -> Outcome | None:
     return None if prior is None else recorded_outcome(prior)
 
 
-def _planned(run: Run) -> tuple[dict[str, Any], Outcome | None]:
+def _adjudicated(plan: Mapping[str, Any], previous: Mapping[str, Any] | None) -> Outcome:
+    final = report.adjudicated(plan)
+    try:
+        record = findings.advance(previous, plan, final.body)
+    except (findings.RecordError, protocol.MarkerError) as exc:
+        raise Unavailable(str(exc)) from exc
+    return replace(recorded_outcome(record["history"][-1]), record=record)
+
+
+def _planned(run: Run, previous: Mapping[str, Any] | None) -> tuple[dict[str, Any], Outcome | None]:
     code, _ = run.phase("prepare")
     plan_file = run.layout.plan_file
     if code != 0 or not plan_file.is_file():
@@ -960,17 +1067,20 @@ def _planned(run: Run) -> tuple[dict[str, Any], Outcome | None]:
     decision = plan["decision"]
     if decision == cli.REVIEW:
         return plan, None
+    if decision == cli.CARRY and plan.get("adjudication"):
+        return plan, _adjudicated(plan, previous)
     if decision in (cli.SUCCESS, cli.SKIP, cli.CARRY):
         known = _prior_outcome(run, plan) if decision != cli.SUCCESS else None
         if known is None:
             run.reporter.say(f"{ADVISORY}: no review needed ({plan['decision_reason']}).")
             return plan, Outcome(False, "SHIP", "", "", ())
+        run.reporter.say(f"{ADVISORY}: the recorded review stands ({plan['decision_reason']}).")
         return plan, known
     raise Unavailable(f"the oracle holds this change ({decision}): {plan['decision_reason']}")
 
 
-def _reviewed(run: Run, trusted: Trusted) -> Outcome:
-    plan, settled = _planned(run)
+def _reviewed(run: Run, trusted: Trusted, previous: Mapping[str, Any] | None) -> Outcome:
+    plan, settled = _planned(run, previous)
     if settled is not None:
         return settled
     if not run.key:
@@ -995,17 +1105,38 @@ def _reviewed(run: Run, trusted: Trusted) -> Outcome:
         if cached is not None:
             run.reporter.say("Reusing the cached local review of this unchanged patch.")
             return cached
-        outcome = _fresh_review(run, plan)
+        outcome = _fresh_review(run, plan, previous)
         _store(cache, outcome, run.reporter.secrets)
     return outcome
+
+
+def _patch_digest(root: Path, base_ref: str, head: str) -> str:
+    base = _git(root, "merge-base", base_ref, head).strip()
+    return protocol.patch_digest(protocol.fingerprints(file_states(root, base, head)))
+
+
+def _checked_inputs(args: argparse.Namespace, previous: Mapping[str, Any] | None, reporter: Reporter) -> None:
+    if args.rebuttals and args.adjudicate:
+        raise Refused("pass either a rebuttal file or an adjudication, not both")
+    try:
+        if args.rebuttals:
+            if previous is None:
+                raise findings.RecordError("no local review of this patch exists to dispute")
+            if not findings.rebuttal_disputes(previous, findings.load_rebuttals(Path(args.rebuttals))):
+                reporter.say("Every rebuttal was already judged for this patch; there is nothing new to re-judge.")
+        if args.adjudicate:
+            findings.check_ruling(previous, findings.parse_ruling(args.adjudicate))
+    except findings.RecordError as exc:
+        raise Refused(str(exc)) from exc
 
 
 def _review(args: argparse.Namespace, reporter: Reporter) -> int:
     root = Path.cwd()
     head = _git(root, "rev-parse", args.head).strip()
-    body = override_body(args.body_file)
     trusted = Trusted.read(root, args.trusted_ref or args.base_ref, args.policy)
     repository = _repository(root)
+    previous = findings.load(state_dir(), _patch_digest(root, args.base_ref, head))
+    _checked_inputs(args, previous, reporter)
     key = classifier_key()
     reporter.hide(key, *(_held(name) for name in ("TS_AUTHKEY", *GITHUB_ACCESS_ENV)), *host_token_values().values())
     with _github_access():
@@ -1026,19 +1157,30 @@ def _review(args: argparse.Namespace, reporter: Reporter) -> int:
             uuid.uuid4().hex,
             reporter,
             key,
+            rebuttals=args.rebuttals,
+            adjudicate=args.adjudicate,
         )
-        outcome = _reviewed(run, trusted)
+        outcome = _reviewed(run, trusted, previous)
     finally:
         shutil.rmtree(work, ignore_errors=True)
+    record = outcome.record or previous
+    if outcome.record is not None:
+        findings.store(state_dir(), outcome.record, reporter.secrets)
     _show(outcome, reporter)
-    return _decide(outcome, body, reporter)
+    code = _decide(outcome, reporter)
+    _escalated(record, outcome, reporter)
+    if code == EXIT_PROCEED:
+        _write_record(os.environ.get(RECORD_OUT_ENV, ""), record, reporter)
+    return code
 
 
 def command_review(args: argparse.Namespace) -> int:
     reporter = Reporter()
     try:
         return _review(args, reporter)
+    except Refused as exc:
+        reporter.say(f"Refusing to open the PR: {exc}", error=True)
+        return EXIT_REFUSED
     except Unavailable as exc:
         reporter.say(f"Refusing to open the PR: the local oracle review is unavailable: {exc}", error=True)
-        reporter.say("A 'Local oracle override:' line does not cover an unavailable review.", error=True)
         return EXIT_UNAVAILABLE

@@ -317,8 +317,15 @@ def decode_marker(body: str) -> dict[str, Any] | None:
         record = json.loads(raw)
     except (binascii.Error, ValueError, zlib.error) as exc:
         raise MarkerError(f"a protocol marker cannot be decoded: {exc}") from exc
-    if not _valid_record(record):
+    checked = checked_record(record)
+    if checked is None:
         raise MarkerError("a protocol marker has an unexpected shape")
+    return checked
+
+
+def checked_record(record: Any) -> dict[str, Any] | None:
+    if not _valid_record(record):
+        return None
     return {**record, "open_defects": [_clamped(item) for item in record["open_defects"]]}
 
 
@@ -596,6 +603,7 @@ def judge(
     rejudge_fixed: bool = False,
     workspace: Path | str | None = None,
     read: frozenset[str] | None = None,
+    claimed: frozenset[str] = frozenset(),
 ) -> Judgement:
     if verdict.status != COMPLETE:
         raise ValueError("only a complete review can be judged")
@@ -651,7 +659,7 @@ def judge(
     counted = tuple(dict.fromkeys(in_scope))
     merged = len(in_scope) - len(counted)
     uncounted = verdict.listed - len(verdict.defects)
-    total = len(carried) + len(counted) + uncounted
+    total = sum(1 for item in carried if item["id"] not in claimed) + len(counted) + uncounted
     if verdict.decision == DO_NOT_SHIP or total > max_defects:
         note = ""
         if total > max_defects:
@@ -680,12 +688,18 @@ def judge_planned(
         bool(rules.get("forced")),
         workspace=ws,
         read=read,
+        claimed=frozenset(rules.get("claimed") or ()),
     )
 
 
 THREAD_MARKER = re.compile(r"<!--\s*oracle-defect:\s*c([0-9]+)-(D[1-9][0-9]{0,3})\s*-->")
 MARKER_LINE = re.compile(r"^\s*(?:<!--\s*oracle-[\s\S]*?-->\s*|oracle-defect\s*:.*)$")
 REPLY_LIMIT = 1000
+DISPUTE_MARKER = "Dispute:"
+
+
+def is_dispute(body: str) -> bool:
+    return any(line.strip().startswith(DISPUTE_MARKER) for line in body.splitlines())
 
 
 def thread_finding(body: str) -> tuple[int, str] | None:

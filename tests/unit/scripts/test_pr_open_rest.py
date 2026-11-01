@@ -396,3 +396,60 @@ def test_a_fork_branch_opening_a_stack_cannot_use_its_own_fork_pr_as_the_parent(
     gh = ParentGh({"feat/parent": ("someone-else", "develop")})
     with pytest.raises(pr_open_rest.PrOpenError, match="not an open pull request"):
         pr_open_rest.verify_parent(gh, REPO, "feat/upper", "feat/parent")
+
+
+MARKER = "<!-- oracle-local-record: v1 abc_DEF-123 -->"
+OTHER_MARKER = "<!-- oracle-local-record: v1 zzz -->"
+
+
+def test_a_created_pr_carries_the_record_marker_after_its_body(tmp_path: Path) -> None:
+    body = tmp_path / "body.md"
+    body.write_text("Summary\n")
+    gh = FakeGh([], _log(("feat: add widget", "")))
+
+    pr_open_rest.publish(REPO, "BenchBox-dev", "feat/widget", "feat/widget", None, body, gh, record=MARKER)
+
+    assert _fields(gh.api("POST")[0])["body"] == f"Summary\n\n{MARKER}\n"
+
+
+def test_a_created_pr_without_a_body_file_keeps_the_commit_body_and_adds_the_marker() -> None:
+    gh = FakeGh([], _log(("feat: add widget", "Why widget.")))
+
+    pr_open_rest.publish(REPO, "BenchBox-dev", "feat/widget", "feat/widget", None, None, gh, record=MARKER)
+
+    assert _fields(gh.api("POST")[0])["body"] == f"Why widget.\n\n{MARKER}\n"
+
+
+def test_a_reused_pr_replaces_a_stale_marker_and_keeps_the_rest_of_its_body() -> None:
+    gh = FakeGh([_pull("BenchBox-dev", "feat/widget", body=f"Hand written.\n\n{OTHER_MARKER}\n")])
+
+    pr_open_rest.publish(REPO, "BenchBox-dev", "feat/widget", "feat/widget", None, None, gh, record=MARKER)
+
+    (patch,) = gh.api("PATCH")
+    assert _fields(patch) == {"body": f"Hand written.\n\n{MARKER}\n"}
+
+
+def test_a_reused_pr_whose_body_already_ends_in_the_marker_is_left_alone() -> None:
+    gh = FakeGh([_pull("BenchBox-dev", "feat/widget", body=f"Hand written.\n\n{MARKER}\n")])
+
+    pr_open_rest.publish(REPO, "BenchBox-dev", "feat/widget", "feat/widget", None, None, gh, record=MARKER)
+
+    assert gh.api("PATCH") == []
+
+
+def test_main_embeds_the_record_file_and_refuses_one_that_is_not_a_marker(tmp_path: Path) -> None:
+    record = tmp_path / "record.txt"
+    record.write_text(f"{MARKER}\n")
+    gh = FakeGh([], _log(("feat: add widget", "Why.")))
+    args = ["--repo", REPO, "--head-owner", "BenchBox-dev", "--branch", "feat/widget", "--head-spec", "feat/widget"]
+
+    assert pr_open_rest.main([*args, "--record-file", str(record)], gh) == 0
+    assert MARKER in _fields(gh.api("POST")[0])["body"]
+
+    record.write_text("not a marker\n")
+    assert pr_open_rest.main([*args, "--record-file", str(record)], FakeGh([], _log(("feat: x", "")))) == 1
+
+    record.write_text("")
+    empty = FakeGh([], _log(("feat: add widget", "Why.")))
+    assert pr_open_rest.main([*args, "--record-file", str(record)], empty) == 0
+    assert "oracle-local-record" not in _fields(empty.api("POST")[0])["body"]
