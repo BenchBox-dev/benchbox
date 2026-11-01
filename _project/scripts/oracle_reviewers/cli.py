@@ -91,6 +91,7 @@ SUCCESS = "success"
 FORK = "fork"
 SKIP = "skip"
 CARRY = "carry"
+REPOST = "repost"
 REFUSED = "refused"
 HOLD = "hold"
 PROSE_SUFFIXES = (".md", ".mdx", ".rst")
@@ -200,7 +201,7 @@ def _base_plan(policy: Policy, repo: str, pr: int | None, run_id: str) -> dict[s
 
 def _finish_plan(out_dir: Path, plan: dict[str, Any]) -> int:
     _write_json(out_dir / PLAN_FILE, plan)
-    post = plan["pr"] is not None and plan["decision"] in (REVIEW, SUCCESS, FORK, CARRY, REFUSED, HOLD)
+    post = plan["pr"] is not None and plan["decision"] in (REVIEW, SUCCESS, FORK, CARRY, REPOST, REFUSED, HOLD)
     _output(
         {
             "decision": plan["decision"],
@@ -280,7 +281,7 @@ def _dispute_step(
     base_changed_at: datetime | None = None,
     base_change_unreadable: bool = False,
 ) -> tuple[list[dict[str, Any]] | None, protocol.Round]:
-    if step.kind not in (protocol.SKIP, protocol.CARRY):
+    if step.kind not in (protocol.SKIP, protocol.CARRY, protocol.REPOST):
         return None, step
     if not manual and event_name != "pull_request_target":
         return None, step
@@ -490,7 +491,9 @@ def _settled_round(
     deferred: retry.RerunDecision | None,
     marked: bool,
 ) -> int | None:
-    if deferred is not None and not (step.kind == protocol.FOLLOW_UP and step.forced):
+    if step.kind == protocol.REPOST:
+        return _plan_repost(out_dir, plan, policy, step, found)
+    if deferred is not None and step.kind in (protocol.FIRST, protocol.FOLLOW_UP) and not step.forced:
         plan["decision_reason"] = deferred.reason
         return _refused_marked(_finish_plan(out_dir, plan), marked, plan)
     if step.kind == protocol.SKIP:
@@ -502,6 +505,46 @@ def _settled_round(
     if step.kind == protocol.CARRY:
         return _plan_carry(out_dir, plan, policy.bot_login, step, found.latest_at)
     return None
+
+
+def _plan_repost(
+    out_dir: Path, plan: dict[str, Any], policy: Policy, step: protocol.Round, found: protocol.History
+) -> int:
+    previous = step.previous or {}
+    try:
+        statuses = github.commit_statuses(plan["repo"], previous["head_sha"])
+    except (github.GitHubError, KeyError, TypeError, ValueError) as exc:
+        print(
+            f"oracle-verdict: error: the status of head {previous['head_sha']} could not be read: {exc}",
+            file=sys.stderr,
+        )
+        return 2
+    status = edits.chosen_status(
+        statuses,
+        plan["status_context"],
+        policy.bot_login,
+        previous.get("run_uuid"),
+        previous["decision"],
+        found.latest_at,
+    )
+    if status is None or status.get("state") != edits.expected_state(previous["decision"]):
+        plan.update({"decision": HOLD, "decision_reason": _status_mismatch(previous)})
+        return _finish_plan(out_dir, plan)
+    plan["run_uuid"] = previous["run_uuid"]
+    plan["repost"] = {
+        "state": status["state"],
+        "description": edits.strip_run_suffix(status.get("description")).removesuffix(report.REPOSTED_MARK),
+        "label": protocol.LABELS[previous["decision"]],
+    }
+    plan.update({"decision": REPOST, "decision_reason": step.reason, "reviewed_head": previous["head_sha"]})
+    return _finish_plan(out_dir, plan)
+
+
+def _status_mismatch(previous: Mapping[str, Any]) -> str:
+    return (
+        f"the recorded {protocol.LABELS[previous['decision']]} decision on head {previous['head_sha']} "
+        "does not match the oracle's own status for that head"
+    )
 
 
 def command_plan(args: argparse.Namespace) -> int:
@@ -613,6 +656,7 @@ def command_plan(args: argparse.Namespace) -> int:
         strike_count,
         base_changed_at=base_changed_at,
         base_change_unreadable=base_change_unreadable,
+        manual=manual,
     )
     threads, step = _dispute_step(
         plan,
@@ -704,10 +748,7 @@ def _carry_disagreement(
     statuses = github.commit_statuses(plan["repo"], previous["head_sha"])
     if edits.status_agrees(statuses, plan["status_context"], bot_login, previous, near):
         return None
-    return (
-        f"the recorded {protocol.LABELS[previous['decision']]} decision on head {previous['head_sha']} "
-        "does not match the oracle's own status for that head"
-    )
+    return _status_mismatch(previous)
 
 
 def _carried_blocks(
@@ -749,6 +790,7 @@ def _protocol_round(
     force: bool = False,
     base_changed_at: datetime | None = None,
     base_change_unreadable: bool = False,
+    manual: bool = False,
 ) -> protocol.Round:
     paths = sorted(item.path for item in scoped)
     prints = protocol.fingerprints(states or ())
@@ -767,6 +809,7 @@ def _protocol_round(
         force=force,
         base_changed_at=base_changed_at,
         base_change_unreadable=base_change_unreadable,
+        manual=manual,
     )
     latest = step.previous or {}
     follow_up = step.kind == protocol.FOLLOW_UP
@@ -1197,6 +1240,8 @@ def command_finalize(args: argparse.Namespace) -> int:
             pool_blocked_until=_carried_blocks(previous, plan["head_sha"], now, False),
             pending_cause=final.pending_cause,
         )
+    elif plan["decision"] == REPOST:
+        final = report.reposted(plan)
     elif plan["decision"] in (CARRY, REFUSED):
         previous = retry.State.from_json(plan["previous_state"]) if plan.get("previous_state") else None
         final = (

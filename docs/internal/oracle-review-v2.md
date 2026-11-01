@@ -759,14 +759,19 @@ nothing.
 
 - `/oracle-review` at the start of a top-level PR comment from an owner, member
   or collaborator reruns the review on the current head. Thread replies and line
-  comments do not trigger it (they are review comments, not issue comments). A
-  manual rerun may re-review a head after a decisive result, within the daily
-  retry budget and doubling backoff, so an author can dispute a finding with a
-  `Dispute:` thread reply without a new commit (two such dispute rounds per
-  patch are exempt from the budget and backoff); with no `Dispute:` reply the
-  decision stands. The brief carries unresolved thread replies as disputed
-  findings keyed by finding id (see Rounds), and the reviewer checks any claimed
-  grammar or documented behaviour.
+  comments do not trigger it (they are review comments, not issue comments). On
+  a head that already has a decisive verdict and no open `Dispute:` reply, the
+  rerun runs no reviewer: it posts the existing decision again (the
+  `oracle-verdict` status, marked `(reposted)`, then `oracle-gate`) and replies
+  with how to get a re-judgement. It uses no retry budget. A repost does not
+  move the window a stand-in must follow, and a stand-in posted before it stays
+  valid. A record with no run id is carried instead, which posts a review and a
+  status bound to the new run. A pending or absent head reruns normally, within
+  the daily retry budget and doubling backoff. With a keyed `Dispute:` thread
+  reply (two such dispute rounds per patch are exempt from the budget and
+  backoff) the rerun re-judges the disputed finding. The brief carries
+  unresolved thread replies as disputed findings keyed by finding id (see
+  Rounds), and the reviewer checks any claimed grammar or documented behaviour.
 - A top-level PR comment from an owner, member or collaborator that starts with
   `Oracle adjudication:` runs the same `review` job. `plan` accepts it only in
   the exact grammar and only from an attester (see Rounds); any other comment

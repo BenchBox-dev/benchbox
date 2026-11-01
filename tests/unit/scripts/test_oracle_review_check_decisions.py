@@ -711,3 +711,16 @@ def test_an_escalated_finding_names_the_exact_owner_action() -> None:
     code, message = _decide(statuses=[escalated], comments=[_standin(AFTER_RETARGET)])
     assert code == gate.WAITING
     assert "D1,D3" in message and "Oracle adjudication: WITHDRAW|MAINTAIN D<n> - <reason>" in message
+
+
+def test_a_reposted_status_does_not_invalidate_a_standin_posted_before_it() -> None:
+    failing = _status("failure", created_at=RETARGETED, description="large: DO NOT SHIP")
+    reposted = _status("failure", created_at="2026-10-01T16:00:00Z", description="large: DO NOT SHIP (reposted)")
+    standin = _standin(AFTER_RETARGET)
+    assert _decide(statuses=[failing, reposted], comments=[standin])[0] == gate.PASS
+
+
+def test_a_genuinely_new_decisive_status_still_invalidates_an_earlier_standin() -> None:
+    failing = _status("failure", created_at=RETARGETED, description="large: DO NOT SHIP")
+    newer = _status("failure", created_at="2026-10-01T16:00:00Z", description="large: DO NOT SHIP")
+    assert _decide(statuses=[failing, newer], comments=[_standin(AFTER_RETARGET)])[0] == gate.WAITING

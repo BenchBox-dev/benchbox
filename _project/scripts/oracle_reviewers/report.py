@@ -517,7 +517,9 @@ def carried(plan: Mapping[str, Any]) -> Final:
         f"Decision: **{label}**, carried from head `{reviewed_head}`.",
         "",
         f"The patch is unchanged since head `{reviewed_head}` was reviewed, so its decision is carried to this head"
-        " without running a reviewer. Its open review threads still apply.",
+        " without running a reviewer. Its open review threads still apply."
+        if reviewed_head != plan["head_sha"]
+        else "The decision on this head is posted again bound to this run without running a reviewer.",
         "",
         *_section("Still open", [_entry_line(entry) for entry in protocol.unique_defects(previous["open_defects"])]),
         *_strike_line(plan, int(previous["strikes_after"])),
@@ -596,6 +598,26 @@ def adjudicated(plan: Mapping[str, Any]) -> Final:
     delivered = review if plan.get("findings_delivery") == "review" else None
     description = f"owner adjudication: {action} {defect_id}; {label}{escalation_suffix(escalated)}"
     return Final(outcome, _clip(description), body, delivered, None, None, int(previous["strikes_after"]))
+
+
+REPOST_NOTE = (
+    "No reviewer ran: this head already has a decision, so it is posted again unchanged. A rerun does not "
+    "re-judge an unchanged head. To get a new judgement, push a change, or reply `Dispute:` with file:line "
+    "counter-evidence on the finding's review thread and then comment `/oracle-review`."
+)
+
+
+REPOSTED_MARK = " (reposted)"
+RUN_SUFFIX_RESERVE = 45
+
+
+def reposted(plan: Mapping[str, Any]) -> Final:
+    repost = plan["repost"]
+    body = f"oracle-verdict for `{plan['head_sha']}`: **{repost['label']}** ({repost['state']}).\n\n{REPOST_NOTE}\n"
+    base = repost["description"].removesuffix(REPOSTED_MARK)
+    reserve = RUN_SUFFIX_RESERVE if repost["state"] == SUCCESS else 0
+    description = _clip(base, DESCRIPTION_LIMIT - len(REPOSTED_MARK) - reserve) + REPOSTED_MARK
+    return Final(repost["state"], description, body, None, None, None, None)
 
 
 def refused(plan: Mapping[str, Any]) -> Final:
