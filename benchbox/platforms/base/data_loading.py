@@ -1554,6 +1554,8 @@ class ClickHouseNativeHandler(FileFormatHandler):
                 return 0
 
             column_types = self._get_column_type_names(benchmark, validated_table)
+            if not any(column_types):
+                column_types = self._describe_server_column_types(connection, validated_table)
 
             def rows() -> Iterator[tuple[Any, ...]]:
                 nonlocal row_count
@@ -1596,7 +1598,10 @@ class ClickHouseNativeHandler(FileFormatHandler):
     def _get_column_type_names(self, benchmark: Any, table_name: str) -> list[str | None]:
         schema = benchmark.get_schema() if hasattr(benchmark, "get_schema") else {}
         table_schema = _resolve_table_schema(schema, table_name)
-        columns = _schema_table_columns(table_schema) or []
+        columns = _schema_table_columns(table_schema)
+        if columns is None:
+            keyed = table_schema.get("columns") if isinstance(table_schema, dict) else None
+            columns = list(keyed.values()) if isinstance(keyed, dict) else []
 
         type_names: list[str | None] = []
         for column in columns:
@@ -1607,6 +1612,14 @@ class ClickHouseNativeHandler(FileFormatHandler):
             else:
                 type_names.append(None)
         return type_names
+
+    @staticmethod
+    def _describe_server_column_types(connection: Any, validated_table: str) -> list[str | None]:
+        rows = connection.execute(
+            "SELECT type FROM system.columns "
+            f"WHERE database = currentDatabase() AND table = '{validated_table}' ORDER BY position"
+        )
+        return [str(row[0]) for row in rows or []]
 
     def _convert_rows_for_clickhouse(
         self,
@@ -1631,6 +1644,8 @@ class ClickHouseNativeHandler(FileFormatHandler):
             return value
 
         type_upper = type_name.upper()
+        while type_upper.startswith(("NULLABLE(", "LOWCARDINALITY(")):
+            type_upper = type_upper[type_upper.index("(") + 1 : -1]
 
         if "ARRAY" in type_upper or _CLICKHOUSE_VECTOR_TYPE_RE.search(type_upper):
             if not value or value.upper() in ("\\N", "NULL"):
@@ -1646,8 +1661,10 @@ class ClickHouseNativeHandler(FileFormatHandler):
         is_datetime = "DATETIME" in type_upper or "TIMESTAMP" in type_upper
         is_date = not is_datetime and type_upper.startswith("DATE")
 
+        is_bool = type_upper.startswith("BOOL")
         needs_non_string_value = (
-            "INT" in type_upper
+            is_bool
+            or "INT" in type_upper
             or any(token in type_upper for token in ("DECIMAL", "NUMERIC", "DOUBLE", "FLOAT", "REAL"))
             or is_date
             or is_datetime
@@ -1655,6 +1672,8 @@ class ClickHouseNativeHandler(FileFormatHandler):
         if value == "":
             return None if needs_non_string_value else value
 
+        if is_bool:
+            return value.strip().lower() in ("true", "t", "1", "yes")
         if "INT" in type_upper:
             return int(value)
         if any(token in type_upper for token in ("DECIMAL", "NUMERIC")):
@@ -1698,9 +1717,9 @@ class ClickHouseNativeHandler(FileFormatHandler):
                 for file_path in file_paths:
                     parquet_file = pq.ParquetFile(file_path)
                     for batch in parquet_file.iter_batches(batch_size=batch_size):
-                        for row in batch.to_pylist():
+                        for row in zip(*(batch.column(name).to_pylist() for name in column_names)):
                             row_count += 1
-                            yield tuple(row[column_name] for column_name in column_names)
+                            yield row
 
             row_generator = rows()
             connection.execute(insert_sql, row_generator, settings=self._server_insert_settings())

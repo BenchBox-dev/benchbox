@@ -40,6 +40,9 @@ from benchbox.core.write_primitives.schema import (
     get_all_staging_tables_sql,
     get_create_table_sql,
 )
+from benchbox.sql_compat.rules.execution_filter.clickhouse_write_primitives import (
+    clickhouse_write_primitive_skip_reason,
+)
 from benchbox.sql_compat.rules.execution_filter.doris_write_primitives import doris_write_primitive_skip_reason
 from benchbox.sql_compat.rules.execution_filter.duckdb_write_primitives import (
     duckdb_write_primitive_skip_reason,
@@ -148,9 +151,23 @@ def _resolve_validation_sql(
     return override, None
 
 
-_SINGLE_STATEMENT_SETUP_DIALECTS = frozenset({"sqlite", "databricks", "questdb", "presto", "trino"})
+_SINGLE_STATEMENT_SETUP_DIALECTS = frozenset({"sqlite", "databricks", "questdb", "presto", "trino", "clickhouse"})
 _NO_TRUNCATE_DIALECTS = frozenset({"sqlite"})
 _SUMMED_ROWCOUNT_DIALECTS = frozenset({"sqlite"})
+
+_ENGINE_WRITE_PRIMITIVE_SKIPS = (
+    ("doris", "Doris", doris_write_primitive_skip_reason),
+    ("questdb", "QuestDB", questdb_write_primitive_skip_reason),
+    ("clickhouse", "ClickHouse", clickhouse_write_primitive_skip_reason),
+)
+
+
+def _engine_write_primitive_skip(operation: Any, platform_key: str | None, fallback_key: str | None) -> str | None:
+    keys = {(platform_key or "").lower(), (fallback_key or "").lower()}
+    for engine, label, skip_reason in _ENGINE_WRITE_PRIMITIVE_SKIPS:
+        if engine in keys and (reason := skip_reason(operation)) is not None:
+            return f"Operation '{operation.id}' is skipped on {label}: {reason}"
+    return None
 
 
 class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBase["OperationResult"]):
@@ -310,15 +327,8 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
                     f"{POSTGRES_WRITE_PRIMITIVES_OPERATION_SKIPS[operation.id]}"
                 )
 
-        if "doris" in {(platform_key or "").lower(), (platform_fallback_key or "").lower()}:
-            doris_skip_reason = doris_write_primitive_skip_reason(operation)
-            if doris_skip_reason is not None:
-                return None, f"Operation '{operation.id}' is skipped on Doris: {doris_skip_reason}"
-
-        if "questdb" in {(platform_key or "").lower(), (platform_fallback_key or "").lower()}:
-            questdb_skip_reason = questdb_write_primitive_skip_reason(operation)
-            if questdb_skip_reason is not None:
-                return None, f"Operation '{operation.id}' is skipped on QuestDB: {questdb_skip_reason}"
+        if (engine_skip := _engine_write_primitive_skip(operation, platform_key, platform_fallback_key)) is not None:
+            return None, engine_skip
 
         platform_override_sql: str | None = None
         found_override, override = self._lookup_platform_override(

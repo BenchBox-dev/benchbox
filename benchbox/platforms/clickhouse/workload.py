@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import copy
 import logging
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from benchbox.core.tuning.introspection import has_order_by_clause
+from benchbox.platforms.base.result_capture import strip_leading_sql_comments
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.cloud_storage import get_cloud_path_info, is_cloud_path
 from benchbox.utils.dialect_utils import translate_ddl
@@ -19,6 +21,9 @@ if TYPE_CHECKING:
     from .delta_lake import DeltaReader
 
 logger = logging.getLogger(__name__)
+
+WIDE_TABLE_COLUMN_THRESHOLD = 500
+WIDE_TABLE_PART_SETTINGS = {"min_bytes_for_wide_part": 10_000_000_000, "min_rows_for_wide_part": 100_000_000}
 
 
 def _clickhouse_handler_for(file_path, adapter, benchmark_instance, table_name=None, data_source=None):
@@ -104,6 +109,7 @@ class ClickHouseWorkloadMixin:
                 tuning_config=schema_config,
             )
             nullable_columns_by_table = self._get_nullable_columns_by_table(benchmark)
+            schema_tables = self._get_schema_table_names(benchmark)
 
             table_tunings = None
             if self.tuning_enabled and effective_config is not None:
@@ -111,7 +117,11 @@ class ClickHouseWorkloadMixin:
 
             primary_keys_enabled = effective_config.primary_keys.enabled if effective_config else True
 
-            statements = [stmt.strip() for stmt in schema_sql.split(";") if stmt.strip()]
+            statements = [
+                statement
+                for statement in (strip_leading_sql_comments(stmt) for stmt in schema_sql.split(";"))
+                if statement
+            ]
 
             prepared_statements = []
             for statement in statements:
@@ -119,7 +129,9 @@ class ClickHouseWorkloadMixin:
                 optimized = self._translate_schema_statement(
                     statement,
                     table_tunings,
-                    nullable_columns=nullable_columns_by_table.get(table_name.lower(), set()) if table_name else set(),
+                    nullable_columns=self._resolve_nullable_columns(
+                        statement, table_name, nullable_columns_by_table, schema_tables, table_tunings
+                    ),
                     primary_keys_enabled=primary_keys_enabled,
                 )
                 prepared_statements.append((statement, table_name, optimized))
@@ -155,7 +167,7 @@ class ClickHouseWorkloadMixin:
             table_tunings,
             primary_key_columns=self._extract_primary_key_columns(statement) if primary_keys_enabled else None,
         )
-        layout: dict[str, Any] = {"engine": "MergeTree()", "nullable_columns": sorted(nullable_columns or ())}
+        layout: dict[str, Any] = {"engine": "MergeTree()"}
         if tuning_clauses is not None:
             for option, expression in (
                 ("partition_by", tuning_clauses.partition_by),
@@ -164,6 +176,9 @@ class ClickHouseWorkloadMixin:
             ):
                 if expression:
                     layout[option] = [expression]
+        layout["nullable_columns"] = sorted(nullable_columns or ())
+        if len(self._ddl_column_name_map(statement)) >= WIDE_TABLE_COLUMN_THRESHOLD:
+            layout["properties"] = dict(WIDE_TABLE_PART_SETTINGS)
         try:
             statements = translate_ddl(
                 statement,
@@ -249,6 +264,72 @@ class ClickHouseWorkloadMixin:
 
         match = re.search(r"CREATE TABLE(?:\s+IF NOT EXISTS)?\s+([A-Za-z_]\w*)", statement, re.IGNORECASE)
         return match.group(1) if match else None
+
+    def _resolve_nullable_columns(
+        self,
+        statement: str,
+        table_name: str | None,
+        nullable_by_table: dict[str, set[str]],
+        schema_tables: set[str],
+        table_tunings: dict[str, Any] | None,
+    ) -> set[str]:
+        if not table_name:
+            return set()
+        key = table_name.lower()
+        not_null = self._ddl_not_null_columns(statement)
+        if key in nullable_by_table:
+            return nullable_by_table[key] - not_null
+        if key in schema_tables:
+            return set()
+        tuned_expressions = self._tuned_expressions(statement, table_tunings)
+        return {
+            name
+            for name in self._ddl_column_name_map(statement)
+            if name not in not_null
+            and not any(
+                re.search(rf"\b{re.escape(name)}\b", expression, re.IGNORECASE) for expression in tuned_expressions
+            )
+        }
+
+    def _tuned_expressions(self, statement: str, table_tunings: dict[str, Any] | None) -> list[str]:
+        clauses = self._resolve_tuned_ddl_clauses(
+            statement,
+            table_tunings,
+            primary_key_columns=self._extract_primary_key_columns(statement),
+        )
+        if clauses is None:
+            return []
+        return [
+            str(expression) for expression in (clauses.partition_by, clauses.sort_by, clauses.primary_key) if expression
+        ]
+
+    @staticmethod
+    def _get_schema_table_names(benchmark: Any) -> set[str]:
+        schema_getter = getattr(benchmark, "get_schema", None)
+        if not callable(schema_getter):
+            return set()
+        schema = schema_getter()
+        if not isinstance(schema, dict):
+            return set()
+        names: set[str] = set()
+        for table_name, table_schema in schema.items():
+            columns = (
+                table_schema.get("columns")
+                if isinstance(table_schema, dict)
+                else getattr(table_schema, "columns", None)
+            )
+            if isinstance(columns, dict):
+                structured = bool(columns)
+            elif isinstance(columns, (list, tuple)):
+                structured = any(
+                    isinstance(column.get("name") if isinstance(column, dict) else getattr(column, "name", None), str)
+                    for column in columns
+                )
+            else:
+                structured = False
+            if structured:
+                names.add(str(table_name).lower())
+        return names
 
     @staticmethod
     def _get_nullable_columns_by_table(benchmark: Any) -> dict[str, set[str]]:
@@ -405,6 +486,29 @@ class ClickHouseWorkloadMixin:
             if name.upper() not in {"PRIMARY", "FOREIGN", "UNIQUE", "CHECK", "CONSTRAINT"}:
                 names[name.lower()] = name
         return names
+
+    @classmethod
+    def _ddl_not_null_columns(cls, statement: str) -> set[str]:
+        import re
+
+        create_match = re.search(r"CREATE TABLE(?:\s+IF NOT EXISTS)?\s+[A-Za-z_]\w*\s*\(", statement, re.IGNORECASE)
+        if create_match is None:
+            return set()
+        open_index = statement.find("(", create_match.start())
+        close_index = find_matching_parenthesis(statement, open_index)
+        body = statement[open_index + 1 : close_index]
+        not_null: set[str] = set()
+        for start, end in cls._top_level_column_spans(body):
+            segment = body[start:end]
+            match = re.match(r'^\s*(?:"(?P<quoted>[^"]+)"|(?P<plain>[A-Za-z_]\w*))\s+', segment)
+            if match is None:
+                continue
+            name = (match.group("quoted") or match.group("plain")).lower()
+            if name.upper() in {"PRIMARY", "FOREIGN", "UNIQUE", "CHECK", "CONSTRAINT"}:
+                continue
+            if re.search(r"\bNOT\s+NULL\b", segment, re.IGNORECASE):
+                not_null.add(name)
+        return not_null
 
     def _extract_primary_key_columns(self, statement: str) -> list[str]:
         import re
@@ -622,6 +726,12 @@ class ClickHouseWorkloadMixin:
                 and str(query_id).lower().removeprefix("q") == "21"
             ):
                 additional_settings = {"join_algorithm": "hash"}
+            elif (
+                self.deployment_mode == "server"
+                and (benchmark_type or "").lower() in {"datavault", "data_vault"}
+                and str(query_id).lower().removeprefix("q") == "21"
+            ):
+                additional_settings = {"join_algorithm": "grace_hash", "grace_hash_join_initial_buckets": 8}
             transformed_query = rewrite_query_for_clickhouse(query, additional_settings)
 
             start_time = mono_time()

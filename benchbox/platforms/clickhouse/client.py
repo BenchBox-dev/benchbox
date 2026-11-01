@@ -9,6 +9,8 @@ from collections.abc import Sequence
 
 import pyarrow as pa
 
+from .statements import lightweight_update_target, prepare_clickhouse_statements
+
 logger = logging.getLogger(__name__)
 
 
@@ -64,6 +66,56 @@ class _ResultProxy(Sequence):
         if isinstance(other, list):
             return self._ensure_rows() == other
         return NotImplemented
+
+
+class _ListResult(list):
+    _pos = 0
+
+    def fetchone(self):
+        if self._pos < len(self):
+            row = self[self._pos]
+            self._pos += 1
+            return row
+        return None
+
+    def fetchall(self):
+        remaining = self[self._pos :]
+        self._pos = len(self)
+        return remaining
+
+
+class ClickHouseServerConnection:
+    def __init__(self, client) -> None:
+        self._client = client
+        self._lightweight_update_tables: set[str] = set()
+
+    def execute(self, query, *args, **kwargs):
+        if args or not isinstance(query, str):
+            return self._run(query, *args, **kwargs)
+        result = None
+        for statement in prepare_clickhouse_statements(query):
+            self._enable_lightweight_updates(statement)
+            result = self._run(statement, **kwargs)
+        return result
+
+    def _run(self, query, *args, **kwargs):
+        result = self._client.execute(query, *args, **kwargs)
+        return _ListResult(result) if isinstance(result, list) else result
+
+    def _enable_lightweight_updates(self, statement: str) -> None:
+        if statement.lstrip().upper().startswith(("DROP", "CREATE", "RENAME", "EXCHANGE")):
+            self._lightweight_update_tables.clear()
+            return
+        table = lightweight_update_target(statement)
+        if table is None or table in self._lightweight_update_tables:
+            return
+        self._client.execute(
+            f"ALTER TABLE {table} MODIFY SETTING enable_block_number_column = 1, enable_block_offset_column = 1"
+        )
+        self._lightweight_update_tables.add(table)
+
+    def __getattr__(self, name):
+        return getattr(self._client, name)
 
 
 class ClickHouseLocalClient:
@@ -301,4 +353,4 @@ class ClickHouseCloudClient:
         return self._database
 
 
-__all__ = ["ClickHouseLocalClient", "ClickHouseCloudClient"]
+__all__ = ["ClickHouseLocalClient", "ClickHouseCloudClient", "ClickHouseServerConnection"]
