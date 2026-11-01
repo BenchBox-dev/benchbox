@@ -139,6 +139,16 @@ _SQLITE_TPCDS_OBT_RUNTIME_ENVELOPE_REASON = (
     "issue. Keep it pruned until a bounded atomic bulk loader fits the declared budget."
 )
 
+_CEDARDB_TPCDS_OBT_DISK_ENVELOPE_REASON = (
+    "CedarDB cannot load the 5,041,336-row, 715-column TPC-DS OBT at SF1 within the release-host disk. In release "
+    "UAT dry runs 3 and 4 the cell failed with exit 1 (no result JSON) after the CedarDB data volume consumed the "
+    "whole 144 GiB runner disk (free 0 B, from 83 GiB free at cell start; `Low disk space ... 0.00 B free`). A local "
+    "reproduction with the pinned image at mem_limit 8g, loading the same Parquet through BenchBox's COPY path, "
+    "grew the data directory to 17.6 GB at 1,048,577 rows and kept growing at 1,000,000-row commit boundaries "
+    "(15.6 GB after the first commit, 18.1 GB at 2,097,154 rows), so the full load needs well over 80 GB. CedarDB "
+    "keeps the uncompacted pages and WAL of the load on disk; this is not a query, validation or timeout failure."
+)
+
 _SQLITE_TPCDS_RUNTIME_ENVELOPE_REASON = (
     "SQLite TPC-DS missed the 1200s release-gate contract at all three scales on 2026-08-25. "
     "At SF0.01, query 13 and query 48 exceeded 300s; eleven queries also need unsupported ROLLUP semantics. "
@@ -234,6 +244,7 @@ _SF1_TIMEOUT_PRUNED_CELLS = (
     ("pg-duckdb", _sf1_timeout_reason("pg-duckdb"), ("tpcds_obt", "joinorder")),
     ("pg-mooncake", _sf1_timeout_reason("pg-mooncake"), ("tpcds_obt",)),
     ("postgresql", _sf1_timeout_reason("postgresql"), ("joinorder", "tpcds_obt")),
+    ("timescaledb", _sf1_timeout_reason("timescaledb"), ("tpcds_obt",)),
     ("singlestore", _sf1_timeout_reason("singlestore"), ("joinorder", "tpcds_obt")),
     ("questdb", _sf1_timeout_reason("questdb"), ("joinorder", "tpcds_obt")),
 )
@@ -259,6 +270,7 @@ _RELEASE_GATE_RUNTIME_ENVELOPES = (
         ("datafusion", "datavault"): _DATAFUSION_DATAVAULT_RUNTIME_ENVELOPE_REASON,
         ("sqlite", "tpcds"): _SQLITE_TPCDS_RUNTIME_ENVELOPE_REASON,
         ("sqlite", "tpcds_obt"): _SQLITE_TPCDS_OBT_RUNTIME_ENVELOPE_REASON,
+        ("cedardb", "tpcds_obt"): _CEDARDB_TPCDS_OBT_DISK_ENVELOPE_REASON,
     }
 )
 
@@ -272,6 +284,10 @@ _RELEASE_GATE_RUNTIME_ENVELOPE_EVIDENCE = (
         ("datafusion", "datavault"): "docs/internal/uat-release-campaign.md: DataFusion DataVault (2026-08-25)",
         ("sqlite", "tpcds"): "docs/internal/uat-release-campaign.md: SQLite TPC-DS (2026-08-25)",
         ("sqlite", "tpcds_obt"): "PR #1904; docs/internal/uat-release-campaign.md: SQLite TPC-DS OBT (2026-08-25)",
+        ("cedardb", "tpcds_obt"): (
+            "release UAT dry runs 3 (run 41243890531) and 4 (run 41255388284) stage 2 cedardb: terminal=no_json_nonzero, "
+            "runner disk exhausted; local SF1 Parquet COPY reproduction 2026-11-01"
+        ),
         (
             "sqlite",
             "datavault",

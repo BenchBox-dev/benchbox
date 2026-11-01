@@ -486,7 +486,14 @@ def test_release_gate_stage1_prunes_sf1_timeouts_measured_in_dry_run_2():
 
 
 _DOCKER_SF1_TIMEOUT_PRUNED_CELLS = {
-    "release-gate-02-docker-nonoltp.yaml": frozenset({("lakesail", "datavault", 1.0)}),
+    "release-gate-02-docker-nonoltp.yaml": frozenset(
+        {
+            ("lakesail", "datavault", 1.0),
+            ("cedardb", "tpcds_obt", 0.01),
+            ("cedardb", "tpcds_obt", 0.1),
+            ("cedardb", "tpcds_obt", 1.0),
+        }
+    ),
     "release-gate-03-docker-oltp.yaml": frozenset(
         {
             ("pg-duckdb", "tpcds_obt", 0.01),
@@ -498,6 +505,7 @@ _DOCKER_SF1_TIMEOUT_PRUNED_CELLS = {
             ("singlestore", "tpcds_obt", 0.01),
             ("questdb", "joinorder", 0.01),
             ("questdb", "tpcds_obt", 0.01),
+            ("timescaledb", "tpcds_obt", 0.01),
         }
     ),
 }
@@ -521,7 +529,10 @@ def test_release_gate_docker_stages_prune_sf1_timeouts_measured_in_dry_run_2(con
     assert cells.isdisjoint(expected)
     for cell in result.compatibility_pruned:
         if (cell.platform, cell.benchmark, cell.scale) in expected:
-            assert "timed out at 1200s" in cell.reason
+            if (cell.platform, cell.benchmark) == ("cedardb", "tpcds_obt"):
+                assert "whole 144 GiB runner disk" in cell.reason
+            else:
+                assert "timed out at 1200s" in cell.reason
 
 
 def test_release_gate_stage3_excludes_influxdb_from_the_timeseries_shard():
