@@ -2,6 +2,7 @@
   "acceptance": [
     "Decide and record one of: an up-to-date or re-run requirement for PRs whose paths overlap recently merged soundness/oracle paths; a bounded combined-tree check at arm time; or automated fast revert of the first-red culprit. Implement it, and show a replay of the #3734 + #3836 pair that the mechanism would have caught before merge. Update the ledger row and the composed-tree evidence in dlv2-evidence-reconcile."
   ],
+  "context": "Overlaps develop-parallel-merge-semantic-conflict-guard-20261101, filed by another session the same day, which records three occurrences (#3679 vs goldens, #3836 vs #3734, #3837 vs #3899) and that the develop ruleset has strict_required_status_checks_policy false. Work this item through that one; close this as a duplicate once its acceptance covers the dev-loop ledger composed-tree evidence.",
   "description": "Dev-loop v2 retired the merge queue (ledger row \"Combined-tree validation before merge\": composition failures are detected after merge and handled by revert). Evidence: #3836 (head 54f6bb3eb, CI green) added test_no_loop_time_summary_line_reaches_the_step_summary_before_the_redaction_step; #3734 (merged earlier; the review driver now writes \"disk scan of N root(s) ... 0 hit(s)\" lines to the step summary) was not in #3836's head. Merged together the test failed on every later PR and on trunk run 41166847029 (2026-10-31T04:01Z). make pr-arm then refused every PR, including the fix #3853, until an owner \"Fix-forward authorized\" comment was posted; six release-UAT fixes waited about 9 h. Trunk went red again on abc110263 (see trunk-red-oracle-same-head-rerun-tests-20261101).",
   "links": [
     "PR #3734",
@@ -16,6 +17,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "4e04a2add0fd43fa88d649c8f08cc15c",
+      "session_id": "b38147de5e3b4952857534e2b3c9221c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:44087b544fee5237bdde41f8",
+      "at": "2026-11-01T13:47:01Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "bdddf807085e49faa2166352f99f5558",
       "session_id": "b38147de5e3b4952857534e2b3c9221c"
     }
   ]
