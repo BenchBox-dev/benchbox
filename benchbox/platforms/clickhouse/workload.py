@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from benchbox.core.tuning.introspection import has_order_by_clause
+from benchbox.platforms.base.result_capture import strip_leading_sql_comments
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.cloud_storage import get_cloud_path_info, is_cloud_path
 from benchbox.utils.dialect_utils import translate_ddl
@@ -113,7 +114,11 @@ class ClickHouseWorkloadMixin:
 
             primary_keys_enabled = effective_config.primary_keys.enabled if effective_config else True
 
-            statements = [stmt.strip() for stmt in schema_sql.split(";") if stmt.strip()]
+            statements = [
+                statement
+                for statement in (strip_leading_sql_comments(stmt) for stmt in schema_sql.split(";"))
+                if statement
+            ]
 
             prepared_statements = []
             for statement in statements:

@@ -40,6 +40,9 @@ from benchbox.core.write_primitives.schema import (
     get_all_staging_tables_sql,
     get_create_table_sql,
 )
+from benchbox.sql_compat.rules.execution_filter.clickhouse_write_primitives import (
+    clickhouse_write_primitive_skip_reason,
+)
 from benchbox.sql_compat.rules.execution_filter.duckdb_write_primitives import (
     duckdb_write_primitive_skip_reason,
 )
@@ -147,7 +150,7 @@ def _resolve_validation_sql(
     return override, None
 
 
-_SINGLE_STATEMENT_SETUP_DIALECTS = frozenset({"sqlite", "databricks", "questdb"})
+_SINGLE_STATEMENT_SETUP_DIALECTS = frozenset({"sqlite", "databricks", "questdb", "clickhouse"})
 _NO_TRUNCATE_DIALECTS = frozenset({"sqlite"})
 _SUMMED_ROWCOUNT_DIALECTS = frozenset({"sqlite"})
 
@@ -313,6 +316,11 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
             questdb_skip_reason = questdb_write_primitive_skip_reason(operation)
             if questdb_skip_reason is not None:
                 return None, f"Operation '{operation.id}' is skipped on QuestDB: {questdb_skip_reason}"
+
+        if "clickhouse" in {(platform_key or "").lower(), (platform_fallback_key or "").lower()}:
+            clickhouse_skip_reason = clickhouse_write_primitive_skip_reason(operation)
+            if clickhouse_skip_reason is not None:
+                return None, f"Operation '{operation.id}' is skipped on ClickHouse: {clickhouse_skip_reason}"
 
         platform_override_sql: str | None = None
         found_override, override = self._lookup_platform_override(

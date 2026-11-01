@@ -17,6 +17,7 @@ from benchbox.core.primitives_benchmark_utils import (
 )
 from benchbox.core.transactional.operations_registry_base import OperationsRegistryBase
 from benchbox.core.transactional.questdb_sql import questdb_cleanup_statements, rewrite_questdb_operation_sql
+from benchbox.core.transactional.staging_types import staging_table_suffix
 
 ResultT = TypeVar("ResultT")
 _POSTGRES_SERIES_DIALECTS = frozenset({"postgres", "postgresql"})
@@ -271,6 +272,7 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
             f"CREATE TABLE IF NOT EXISTS {quoted_table} ("
             f"benchmark {text_type}, scale {text_type}, spec_version {text_type}, "
             f"source_digest {text_type}, created_at {text_type})"
+            f"{staging_table_suffix(getattr(self, '_setup_dialect', None) or 'standard', {'columns': []})}"
         )
         if (err := failed_platform_error(res)) is not None:
             raise RuntimeError(f"Failed to create staging manifest table: {err}")

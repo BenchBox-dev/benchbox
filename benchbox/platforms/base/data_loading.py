@@ -1553,6 +1553,8 @@ class ClickHouseNativeHandler(FileFormatHandler):
                 return 0
 
             column_types = self._get_column_type_names(benchmark, validated_table)
+            if not any(column_types):
+                column_types = self._describe_server_column_types(connection, validated_table)
 
             def rows() -> Iterator[tuple[Any, ...]]:
                 nonlocal row_count
@@ -1610,6 +1612,14 @@ class ClickHouseNativeHandler(FileFormatHandler):
                 type_names.append(None)
         return type_names
 
+    @staticmethod
+    def _describe_server_column_types(connection: Any, validated_table: str) -> list[str | None]:
+        rows = connection.execute(
+            "SELECT type FROM system.columns "
+            f"WHERE database = currentDatabase() AND table = '{validated_table}' ORDER BY position"
+        )
+        return [str(row[0]) for row in rows or []]
+
     def _convert_rows_for_clickhouse(
         self,
         rows: list[tuple[Any, ...]],
@@ -1633,6 +1643,8 @@ class ClickHouseNativeHandler(FileFormatHandler):
             return value
 
         type_upper = type_name.upper()
+        while type_upper.startswith(("NULLABLE(", "LOWCARDINALITY(")):
+            type_upper = type_upper[type_upper.index("(") + 1 : -1]
 
         if "ARRAY" in type_upper or _CLICKHOUSE_VECTOR_TYPE_RE.search(type_upper):
             if not value or value.upper() in ("\\N", "NULL"):
@@ -1648,8 +1660,10 @@ class ClickHouseNativeHandler(FileFormatHandler):
         is_datetime = "DATETIME" in type_upper or "TIMESTAMP" in type_upper
         is_date = not is_datetime and type_upper.startswith("DATE")
 
+        is_bool = type_upper.startswith("BOOL")
         needs_non_string_value = (
-            "INT" in type_upper
+            is_bool
+            or "INT" in type_upper
             or any(token in type_upper for token in ("DECIMAL", "NUMERIC", "DOUBLE", "FLOAT", "REAL"))
             or is_date
             or is_datetime
@@ -1657,6 +1671,8 @@ class ClickHouseNativeHandler(FileFormatHandler):
         if value == "":
             return None if needs_non_string_value else value
 
+        if is_bool:
+            return value.strip().lower() in ("true", "t", "1", "yes")
         if "INT" in type_upper:
             return int(value)
         if any(token in type_upper for token in ("DECIMAL", "NUMERIC")):

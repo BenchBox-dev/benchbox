@@ -84,7 +84,7 @@ class TestClickHouseAdapter:
         adapter = ClickHouseAdapter(deployment_mode="server", host="localhost", port=9000)
         connection = adapter.create_connection()
 
-        assert connection == mock_client
+        assert connection._client is mock_client
         assert mock_client_class.call_count == 3
         assert mock_client.execute.call_count == 3
         assert mock_client_class.call_args_list[2].kwargs["send_receive_timeout"] == 300
@@ -118,7 +118,7 @@ class TestClickHouseAdapter:
             password="benchbox",
         )
 
-        assert adapter.create_connection() == main_client
+        assert adapter.create_connection()._client is main_client
 
         create_client.execute.assert_called_once_with("CREATE DATABASE IF NOT EXISTS `benchbox_run`")
         assert "database" not in mock_client_class.call_args_list[1].kwargs
@@ -187,7 +187,7 @@ class TestClickHouseAdapter:
     def test_load_data_with_tables(self, mock_client_class):
         mock_client = Mock()
         mock_client_class.return_value = mock_client
-        execute_results = iter([[], None, None])
+        execute_results = iter([[], [], None, None])
 
         def execute(*args, **kwargs):
             if len(args) > 1 and isinstance(args[1], GeneratorType):
@@ -1105,6 +1105,8 @@ class TestClickHouseNativeHandlerBulk:
         connection = Mock()
 
         def execute(query, params=None, **kwargs):
+            if params is None:
+                return []
             list(params)
             raise RuntimeError("server timed out")
 
