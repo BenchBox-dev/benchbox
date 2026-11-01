@@ -659,7 +659,13 @@ def judge(
     counted = tuple(dict.fromkeys(in_scope))
     merged = len(in_scope) - len(counted)
     uncounted = verdict.listed - len(verdict.defects)
-    total = sum(1 for item in carried if item["id"] not in claimed) + len(counted) + uncounted
+    confirmed_claims = sum(1 for item in carried if item["id"] in claimed)
+    total = (
+        sum(1 for item in carried if item["id"] not in claimed)
+        + min(confirmed_claims, max(max_defects - 1, 0))
+        + len(counted)
+        + uncounted
+    )
     if verdict.decision == DO_NOT_SHIP or total > max_defects:
         note = ""
         if total > max_defects:

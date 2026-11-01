@@ -467,3 +467,14 @@ def test_a_claimed_first_round_prompt_carries_one_scope_and_limit_rule() -> None
     assert "only in the files changed since that review" not in claimed
     assert "every file it touches" in claimed
     assert "counting the not_fixed ones" not in claimed
+
+
+def test_confirmed_claims_count_toward_the_overflow_but_never_force_a_do_not_ship_alone() -> None:
+    claims = findings.ingest(_forged(*[_claim(number) for number in range(1, 31)]), DIGEST)
+    assert claims is not None
+    claimed = frozenset(claims.claimed)
+    one = validate(_v("one new", [_finding("Medium")], "SHIP_WITH_FIXES"))
+    two = validate(_v("two new", [_finding("Medium", line=1), _finding("Medium", line=2)], "SHIP_WITH_FIXES"))
+
+    assert protocol.judge(one, 10, claims.prior, claimed=claimed).decision == protocol.SHIP_WITH_FIXES
+    assert protocol.judge(two, 10, claims.prior, claimed=claimed).decision == protocol.DO_NOT_SHIP

@@ -1095,8 +1095,9 @@ and posts nothing to GitHub.
   the owner maintained, or that was maintained in the escalation limit of local
   rounds, stays a prior defect but is not replayed as a dispute, so it cannot be
   re-argued to a new CI reviewer. The record's status never closes a
-  finding, never withdraws one and never counts as a strike: the claimed priors are
-  exempt from the defect-count overflow, the record carries no strike data, and the
+  finding, never withdraws one and never counts as a strike: the claimed priors the reviewer
+  confirms count toward the defect-count overflow up to one short of the limit, so they never force a
+  DO NOT SHIP alone, the record carries no strike data, and the
   CI id counter starts above the claimed ids, so a forged or edited record can only
   create work. A local adjudication does not clear a finding in CI; CI escalation
   still needs the owner's `Oracle adjudication:` comment on the PR.

@@ -199,7 +199,7 @@ UNKEYED_RULE = (
 )
 CLAIMED_RULE = (
     "The earlier defects {ids} come from a record the author supplied, so their severities are claims. They do not"
-    " count toward the {max_defects} limit, and no DO_NOT_SHIP decision may rest on how many of them there are."
+    " count toward the {max_defects} limit up to one short of it, so they alone never force a DO_NOT_SHIP decision."
     " Review the change in every file it touches as in a first review: list in defects every defect not already"
     " listed above, including a more severe version of a listed defect, whatever file it is in. Defects you add count"
     " toward the {max_defects} limit."
