@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "For a `ci.yml` change, `make pr-preflight` still selects every test that reads the real workflow file, including `tests/system/test_ci_lint_parity.py`, and skips tests that only use the name as fixture or API data.",
+    "`tests/unit/scripts/test_preflight_targets.py` covers the rule with a real-file reader and a fixture-only mention.",
+    "The serial runtime of the selected set for a `ci.yml` change is measured before and after and recorded in the PR; the after figure is close to the `tests/unit/workflows` baseline of about 3 minutes."
+  ],
+  "context": "Measured while closing pr-preflight-maps-no-tests-for-workflow-edits-20261031 (2026-10-31).",
+  "description": "Since #3890, a changed workflow selects every test under `tests/unit/workflows/` plus every other test whose source names the file. For `ci.yml` that is 77 files: 54 under `tests/unit/workflows/` and 23 elsewhere. Their serial run took 14m48s (3,544 tests), against about 3 minutes for `tests/unit/workflows` plus `tests/system/test_ci_lint_parity.py` (1,045 tests in 187 s). Several of the 23 use `.github/workflows/ci.yml` only as a fixture path or a workflow name in API data and never read the real file, for example `tests/unit/scripts/test_comment_policy.py`, `test_pr_arm.py`, `test_remote_closeout.py` and `test_preflight_targets.py` (48 tests, 154–332 s on its own). `trunk.yml` selects 64 files and `test.yml` 60. CI runs all of them anyway, so the extra local time buys little.\n\nPossible shapes: match only tests that read real workflow files (for example through one shared workflow loader), or keep real-file readers under `tests/unit/workflows` and drop the name match elsewhere.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3890"
+  ],
+  "sessions": [
+    {
+      "actor": "joe-batch-controller",
+      "at": "2026-11-01T13:46:01Z",
+      "client": "mcp",
+      "op": "create",
+      "op_id": "17e4da0c4f824a23a5ea940cf4f1d64f",
+      "session_id": "59c8caf60caa4b2cba9e01a6eee66a2b"
+    }
+  ]
+}

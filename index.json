@@ -19020,6 +19020,13 @@
       "status": "done",
       "title": "`make pr-preflight` selects no tests when a PR changes a CI workflow file"
     },
+    "pr-preflight-workflow-selection-cost-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "`make pr-preflight` runs about 15 minutes of tests for a `ci.yml` change, mostly from fixture-only name matches"
+    },
     "pr-process-low-drama-acceptance": {
       "claim": null,
       "needs": [
