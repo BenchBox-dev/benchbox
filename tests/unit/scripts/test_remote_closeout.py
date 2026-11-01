@@ -689,6 +689,18 @@ def test_arming_never_dispatches_the_gate_whatever_its_status(world: World, read
     assert ready_pr.arms() == [merge_command(world.head)]
 
 
+def test_refuses_a_head_whose_fresh_gate_evaluation_does_not_pass(
+    world: World, ready_pr: FakeGitHub, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        remote_closeout.pr_arm,
+        "gate_refusals",
+        lambda *_args: ["a fresh oracle-gate evaluation of aaaaaaaaa does not pass: waiting"],
+    )
+    assert "a fresh oracle-gate evaluation of aaaaaaaaa does not pass" in _refusal(world, ready_pr, capsys)
+    assert ready_pr.arms() == []
+
+
 def test_refuses_an_unresolved_review_thread(
     world: World, ready_pr: FakeGitHub, capsys: pytest.CaptureFixture[str]
 ) -> None:

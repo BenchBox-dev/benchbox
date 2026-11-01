@@ -56,6 +56,9 @@ PUSH_PATHS = [
     ".github/inert-paths.txt",
     "_project/scripts/oracle_gate.py",
     "_project/scripts/oracle_review_check.py",
+    "_project/scripts/oracle_reviewers/**",
+    "_project/scripts/inert_paths.py",
+    "_project/scripts/soundness_paths.py",
 ]
 
 

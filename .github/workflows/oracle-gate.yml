@@ -12,6 +12,9 @@ on:
       - .github/inert-paths.txt
       - _project/scripts/oracle_gate.py
       - _project/scripts/oracle_review_check.py
+      - _project/scripts/oracle_reviewers/**
+      - _project/scripts/inert_paths.py
+      - _project/scripts/soundness_paths.py
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review, edited]
   issue_comment:
