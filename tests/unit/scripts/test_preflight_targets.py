@@ -221,6 +221,7 @@ def test_source_guard_tests_exist() -> None:
         "_project/scripts/oracle_gate.py",
         "_project/scripts/soundness_merge_digest.py",
         "scripts/pr_arm.py",
+        "scripts/pr_landing.py",
         "tests/integration/oracle/harness.py",
         "tests/integration/oracle/fake_github.py",
         "tests/fixtures/oracle_reviewers/captures/ci_attempt.json",

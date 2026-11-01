@@ -373,6 +373,36 @@ class Harness:
         argv = [sys.executable, str(REPO_ROOT / "scripts" / "pr_arm.py"), "--pr", str(pr), "--head", head]
         return self.run("arm", [*argv, "--repo", SLUG], env, cwd=checkout)
 
+    def landing_ready(self, pr: int, branch: str, evidence: dict[str, Any]) -> Step:
+        checkout = self.root / f"landing-{pr}"
+        origin = f"https://github.com/{SLUG}.git"
+        if not checkout.exists():
+            git(self.root, "clone", "--quiet", str(self.repo), str(checkout))
+            git(checkout, "switch", "--quiet", branch)
+            git(checkout, "config", f"url.{self.repo}.insteadOf", origin)
+            git(checkout, "remote", "set-url", "origin", origin)
+        head = git(checkout, "rev-parse", "HEAD")
+        evidence_file = self.root / f"landing-{pr}-evidence.json"
+        evidence_file.write_text(json.dumps(evidence), encoding="utf-8")
+        env = {
+            **self.base_env(),
+            "GH_TOKEN": OWNER_TOKEN,
+            "GH_ENTERPRISE_TOKEN": OWNER_TOKEN,
+            "BENCHBOX_PR_LANDING_DIR": str(self.root / "landing-state"),
+        }
+        argv = [
+            sys.executable,
+            str(REPO_ROOT / "scripts" / "pr_landing.py"),
+            "--repo",
+            SLUG,
+            "--worktree",
+            str(checkout),
+        ]
+        started = self.run("landing-start", [*argv, "start"], env, cwd=checkout)
+        assert started.code == 0, started.stdout + started.stderr
+        ready = ["ready", "--pr", str(pr), "--expected-head", head, "--evidence-json", str(evidence_file), "--arm"]
+        return self.run("landing-ready", [*argv, *ready], env, cwd=checkout)
+
     def local_review(self, branch: str, body: str | None = None) -> Step:
         argv, env, checkout = self._local_review_command(branch)
         if body is not None:
