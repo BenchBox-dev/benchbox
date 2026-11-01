@@ -29198,10 +29198,15 @@
       "title": "Run the Trunk medium job on the PR when a PR changes trunk.yml, trunk-coverage.yml or shard scheduling"
     },
     "trunk-red-oracle-same-head-rerun-tests-20261101": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-02T15:35:24Z",
+        "generation": "fb80cd9d66dd4f07a14a724cbfd647e6",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Trunk is red again: two same-head-rerun oracle tests fail on develop abc110263"
     },
     "trunk-red-rate-target-20261024": {
