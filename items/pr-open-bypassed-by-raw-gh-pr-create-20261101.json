@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "A PR whose head lacks a matching local review record is flagged or refused at pr-arm; trunk-revert PRs stay exempt."
+  ],
+  "description": "During the oracle batch, #3835 and #3899 were opened with git push plus gh pr create, and #3829's final head was pushed after the local review blocked it, so make pr-open's local oracle review was skipped. Policy says make pr-open is the only creation path, but nothing enforces it. CI or pr-arm could require a local-review record bound to the patch digest (once the local findings record lands) or flag PRs without one.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e",
+      "at": "2026-11-01T13:45:27Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1b125580ea034cc2a6ed6addb6c2612c",
+      "session_id": "1273bcfa4d0e4ed89453e147e32359eb"
+    }
+  ]
+}

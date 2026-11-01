@@ -18913,6 +18913,13 @@
       "status": "done",
       "title": "Stop make pr-open enabling auto-merge before the work is finished"
     },
+    "pr-open-bypassed-by-raw-gh-pr-create-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Detect PRs opened without make pr-open's local review"
+    },
     "pr-open-fill-branch-name-title-20261017": {
       "claim": null,
       "needs": [],
