@@ -4,9 +4,13 @@
     "A stale receipt, a missing overlap rerun, or a final head not bound in the tracker is refused.",
     "A develop-merge refresh passes, and its develop changes are not counted as member changes.",
     "pr_arm refuses an integration-branch PR without current batch acceptance and arms one with it; an ordinary PR's arming path is unchanged (test).",
+    "Readiness requires the v2 capability and receipt schema recorded in batch-rollout-evidence.json, replacing REQUIRED_BATCH_TOOLS, PREPARED_RECEIPT_SCHEMA and the schema check (pr_landing.py:73, :76, :200-231), and refuses v1 receipts.",
+    "A member review disposition bound to the member's source range at an earlier integration head passes; one bound to another member's range is refused.",
+    "A recorded fix advance's files count in the final file union, and a net reversion recorded by an advance passes.",
+    "pr_arm fails closed: it refuses when the batch read errors, or when the worktree carries benchbox.batch.role=integration or the readiness evidence declares delivery_mode batch but no active batch matches the PR.",
     "Merged to develop, after a benchbox-oracle success review of its head if it touches soundness paths."
   ],
-  "context": "Decision gate: start only after benchbox-todo-db-batch-v2-runtime-20261101 and pr-landing-soundness-refusal-unreachable-20261009 are done. pr-landing-soundness-refusal-unreachable-20261009 records the soundness direction: pr_landing's ready path defers to the required oracle check, as pr_arm.py does. Its text names oracle-review; since 2026-10-24 the required check is oracle-gate (_project/decisions/oracle-review-check-retired-2026-10-24.md). Guardrails: deliver as an ordinary serial PR to develop (AGENTS.md: feature delivery cannot deliver the changes that make it possible); write only from a linked worktree made with make worktree-create and checked with make agent-write-preflight, never the primary clone; stage explicit paths, never git add -A; no explanatory comments or docstrings (COMMENT-POLICY-001, make comment-policy-check); heavy test runs only through lock-taking entry points, never BENCHBOX_SKIP_TEST_LOCK; never weaken hold labels, the unresolved-thread refusal, oracle-gate, duration or suite gates; add a changelog.d fragment (CHANGELOG_INTERNAL when nothing is user-visible); durable artifacts carry no session or phase labels; cited line numbers are leads, so re-read the code before editing; tests prove behaviour, never wiring or wording.",
+  "context": "Decision gate: start only after benchbox-todo-db-batch-v2-runtime-20261101 and pr-landing-soundness-refusal-unreachable-20261009 are done. pr-landing-soundness-refusal-unreachable-20261009 records the soundness direction: pr_landing's ready path defers to the required oracle check, as pr_arm.py does. Its text names oracle-review; since 2026-10-24 the required check is oracle-gate (_project/decisions/oracle-review-check-retired-2026-10-24.md). Guardrails: deliver as an ordinary serial PR to develop (AGENTS.md: feature delivery cannot deliver the changes that make it possible); write only from a linked worktree made with make worktree-create and checked with make agent-write-preflight, never the primary clone; stage explicit paths, never git add -A; no explanatory comments or docstrings (COMMENT-POLICY-001, make comment-policy-check); heavy test runs only through lock-taking entry points, never BENCHBOX_SKIP_TEST_LOCK; never weaken hold labels, the unresolved-thread refusal, oracle-gate, duration or suite gates; add a changelog.d fragment (CHANGELOG_INTERNAL when nothing is user-visible); durable artifacts carry no session or phase labels; cited line numbers are leads, so re-read the code before editing; tests prove behaviour, never wiring or wording. The soundness readiness test belongs to pr-landing-soundness-refusal-unreachable-20261009's own acceptance; do not duplicate it here.",
   "description": "scripts/pr_landing.py's batch checks cannot pass for a batch prepared one member at a time: every receipt must name the final integration head (:913, :921, :1186), member review dispositions must name the final head (:946), member files must stay byte-identical (:1042-1051), final files must equal the member union (:1056-1057, which also rejects net reversions), and the final diff is taken from the start head (:1058-1072). pr_arm.py, the required arming path, has no batch check at all. Rework pr_landing to the v2 contract: receipts checked against the head they were integrated at; dispositions bound to member source ranges; overlap and current-acceptance evidence in place of byte equality; a union that counts recorded fix advances and allows net reversions; the final diff from the merge-base with develop, excluding recorded develop merges. Make pr_arm.py refuse to arm a PR whose head branch is a registered integration branch unless the batch's current acceptance holds at that head, read through the todo-db batch read path.",
   "links": [
     "scripts/pr_landing.py",
@@ -19,6 +23,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "0a8c42f61ddd4616b27f87f62f6c141d",
+      "session_id": "fe251e187e814d5cb1baf53870326a77"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:53a3b48ce5c94efdbf857652",
+      "at": "2026-11-01T14:19:55Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4ff87c48f2f743db9072ca89afa12d3f",
       "session_id": "fe251e187e814d5cb1baf53870326a77"
     }
   ]
