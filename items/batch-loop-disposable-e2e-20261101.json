@@ -13,7 +13,7 @@
     "After the leader server is killed, a new server recovers batch ownership with the exact owner and generation, and batch-status continues the batch with no lost receipt.",
     "Runs through a lock-taking entry point with no live cloud and no real model or omp calls; no scenario only checks wiring."
   ],
-  "context": "Decision gate: start only after batch-land-and-status-20261101 and pr-landing-arm-batch-evidence-20261101 are done. Guardrails: deliver as an ordinary serial PR to develop (AGENTS.md: feature delivery cannot deliver the changes that make it possible); write only from a linked worktree made with make worktree-create and checked with make agent-write-preflight, never the primary clone; stage explicit paths, never git add -A; no explanatory comments or docstrings (COMMENT-POLICY-001, make comment-policy-check); heavy test runs only through lock-taking entry points, never BENCHBOX_SKIP_TEST_LOCK; never weaken hold labels, the unresolved-thread refusal, oracle-gate, duration or suite gates; add a changelog.d fragment (CHANGELOG_INTERNAL when nothing is user-visible); durable artifacts carry no session or phase labels; cited line numbers are leads, so re-read the code before editing; tests prove behaviour, never wiring or wording.",
+  "context": "Decision gate: start only after batch-land-and-status-20261101 and pr-landing-arm-batch-evidence-20261101 are done. Guardrails: deliver as an ordinary serial PR to develop (AGENTS.md: feature delivery cannot deliver the changes that make it possible); write only from a linked worktree made with make worktree-create and checked with make agent-write-preflight, never the primary clone; stage explicit paths, never git add -A; no explanatory comments or docstrings (COMMENT-POLICY-001, make comment-policy-check); heavy test runs only through lock-taking entry points, never BENCHBOX_SKIP_TEST_LOCK; never weaken hold labels, the unresolved-thread refusal, oracle-gate, duration or suite gates; add a changelog.d fragment (CHANGELOG_INTERNAL when nothing is user-visible); durable artifacts carry no session or phase labels; cited line numbers are leads, so re-read the code before editing; tests prove behaviour, never wiring or wording.\n\nLands in the BenchBox core PR, so the proof exists before the pilot uses the loop.",
   "description": "Add a real-Git end-to-end scenario under tests/integration/worktree/ using an isolated tracker remote, two real todo-db-mcp servers (leader and outsider) and fake hosted responses, driving the batch targets as built. This is the proof before the pilot runs on real work.",
   "links": [
     "tests/integration/worktree/test_pr_process.py",
@@ -34,6 +34,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "296bdc4eb1a64a5bb60dbbea38761334",
+      "session_id": "fe251e187e814d5cb1baf53870326a77"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:53a3b48ce5c94efdbf857652",
+      "at": "2026-11-01T15:55:14Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "2b335ad59a4b44e4a3b22d2a9b515356",
       "session_id": "fe251e187e814d5cb1baf53870326a77"
     }
   ]
