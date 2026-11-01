@@ -2865,12 +2865,12 @@
    "disposition": "fixture-data",
    "kinds": {
     "pattern": 7,
-    "unresolved": 15
+    "unresolved": 8
    },
-   "occurrences": 22,
+   "occurrences": 15,
    "path": "tests/fixtures/medium_shard_durations.json",
    "rule": "test-sample-data",
-   "target_count": 22,
+   "target_count": 15,
    "targets": [
     {
      "kind": "unresolved",
@@ -2915,34 +2915,6 @@
     {
      "kind": "pattern",
      "target": "docs/agent/review-protocol.md]"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/development/development.md-A"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/development/development.md-Auto-merge"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/development/development.md-Do"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/development/development.md-Mark"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/development/development.md-Run"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/development/development.md-The"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/development/development.md-Then"
     },
     {
      "kind": "pattern",
@@ -4684,9 +4656,9 @@
    "generated": 3,
    "pattern": 352,
    "root": 202,
-   "unresolved": 2072
+   "unresolved": 2065
   },
-  "references": 33251,
+  "references": 33244,
   "unclassified": 0
  }
 }
