@@ -70,6 +70,13 @@ _DEFAULT_LOCAL_MEMORY_LIMIT = "2GB"
 _DEFAULT_LOCAL_WORKER_CAP = 2
 _DEFAULT_LOCAL_THREADS_PER_WORKER_CAP = 2
 _SINGLE_PARTITION_MAX_INPUT_BYTES = 64 * 1024 * 1024
+_COMPRESSED_INPUT_EXPANSION = 8
+_COMPRESSED_INPUT_SUFFIXES = frozenset({".zst", ".gz", ".bz2", ".xz", ".lz4", ".zip", ".parquet"})
+
+
+def _estimated_in_memory_bytes(path: Path) -> int:
+    size = Path(path).stat().st_size
+    return size * _COMPRESSED_INPUT_EXPANSION if Path(path).suffix.lower() in _COMPRESSED_INPUT_SUFFIXES else size
 
 
 class DaskResourceEnvelopeError(RuntimeError):
@@ -450,7 +457,7 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
     def _coalesce_small_table(self, df: DaskDF, file_paths: list[Path]) -> DaskDF:
         if not hasattr(df, "npartitions"):
             return df
-        if sum(Path(path).stat().st_size for path in file_paths) > _SINGLE_PARTITION_MAX_INPUT_BYTES:
+        if sum(_estimated_in_memory_bytes(path) for path in file_paths) > _SINGLE_PARTITION_MAX_INPUT_BYTES:
             return df
         return self.persist(df.repartition(npartitions=1))
 
