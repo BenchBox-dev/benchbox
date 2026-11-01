@@ -61,6 +61,7 @@ class Final:
     reviewer: str | None
     pending_cause: str | None = None
     strikes: int | None = None
+    judgement: protocol.Judgement | None = None
 
 
 def _clip(text: str, limit: int = DESCRIPTION_LIMIT) -> str:
@@ -501,7 +502,9 @@ def finalize(
     review = _review_payload(plan, body, placement, commentable, markers) if delivery == "review" else None
     cause = pending_cause if state == PENDING else None
     final_strikes = strikes if judgement is not None and not unrecorded else None
-    return Final(state, _clip(description), body if has_content else "", review, reviewer, cause, final_strikes)
+    return Final(
+        state, _clip(description), body if has_content else "", review, reviewer, cause, final_strikes, judgement
+    )
 
 
 def carried(plan: Mapping[str, Any]) -> Final:

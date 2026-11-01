@@ -199,15 +199,20 @@ deferred it. Only Claude Code on the web is verified.
    closer and the owner. After reporting, push again only when the closer
    hands back a review finding or CI failure, after disabling auto-merge.
 
-   `make pr-open` first runs a local oracle review of the committed `HEAD`
-   (see `docs/internal/oracle-review-v2.md`, Local pre-PR review) and refuses
-   before any push on a Critical or High finding, an unreachable gateway, a
-   missing `oracle-cloud` client (`ORACLE_GATEWAY_URL` and
-   `ORACLE_CLOUD_GATEWAY_TOKEN`), or an `omp` that is not the CI-pinned
-   version. Fix a finding and recommit. A finding that is a false positive
-   may go ahead with a `Local oracle override: <reason>` line in `PR_BODY_FILE`;
-   an unavailable review cannot be overridden, so report that blocker
-   instead. Never print the token or the gateway URL.
+   `make pr-open` first runs the same review driver as CI on the committed
+   `HEAD`, from a trusted export of `origin/develop` (see
+   `docs/internal/oracle-review-v2.md`, Local pre-PR review), and refuses before
+   any push on a DO NOT SHIP or a Critical or High defect, including one carried
+   from an earlier review of the PR, a missing `TYPESAFE_API_KEY` in the cloud
+   environment, an unreachable gateway, a missing `oracle-cloud` client
+   (`ORACLE_GATEWAY_URL` and `ORACLE_CLOUD_GATEWAY_TOKEN`), a secret value found
+   on disk, an `origin/develop` that cannot be fetched, or an `omp` that is not
+   the CI-pinned version. A Medium-only SHIP WITH FIXES proceeds. Fix a finding
+   and recommit. A finding that is a false positive may go ahead with a
+   `Local oracle override: <reason>` line in `PR_BODY_FILE`; a review that
+   cannot run cannot be overridden, so report that blocker instead. It pushes
+   exactly the commit it reviewed. Never print the token, the key or the gateway
+   URL.
 
 ## Builder report
 

@@ -10,7 +10,7 @@ import shutil
 import sys
 import tempfile
 from collections.abc import Callable, Iterator, Mapping, Sequence
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from time import sleep
@@ -340,16 +340,6 @@ def _scoped_files(
     ]
 
 
-def command_plan_entry(args: argparse.Namespace) -> int:
-    if args.local:
-        from . import local
-
-        return local.command_plan(args)
-    if not args.pr:
-        raise SystemExit("oracle-verdict: error: plan needs --pr or --local")
-    return command_plan(args)
-
-
 def _backoff_reset(
     repo: str, pr: int, head_sha: str, run_id: str, manual: bool, previous: retry.State | None
 ) -> datetime | None:
@@ -626,7 +616,6 @@ def command_plan(args: argparse.Namespace) -> int:
             return _refused_marked(_finish_plan(out_dir, plan), marked, plan)
         deferred = rerun
     in_scope = set(scope.paths)
-    scoped = _scoped_files(files, in_scope, policy)
     plan["manual"] = manual
     plan["previous_state"] = previous.to_json() if previous else None
     try:
@@ -644,48 +633,105 @@ def command_plan(args: argparse.Namespace) -> int:
     full_diff = None if raw_diff is None else raw_diff.decode("utf-8", errors="replace")
     complete = full_diff is not None and len(files) >= int(pull.get("changed_files") or 0)
     states = _file_states(plan, files) if complete else None
-    strike_count = max(protocol.strikes(found.records), previous.strikes if previous else 0)
     base_changed_at, base_change_unreadable = _base_changed_at(repo, pr, event_name, event)
+    owner_reset = retry.reset_applies(previous, plan["head_sha"], reset_at)
+    return plan_decision(
+        plan,
+        policy,
+        out_dir,
+        RoundInputs(
+            files=files,
+            in_scope=in_scope,
+            full_diff=full_diff,
+            states=states,
+            found=found,
+            previous_strikes=previous.strikes if previous else 0,
+            pool_blocks=_carried_blocks(previous, plan["head_sha"], now, owner_reset),
+            manual=manual,
+            event_name=event_name,
+            base_changed_at=base_changed_at,
+            base_change_unreadable=base_change_unreadable,
+            reason_suffix=rerun.reason,
+            deferred=deferred,
+            marked=marked,
+        ),
+    )
+
+
+@dataclass(frozen=True)
+class RoundInputs:
+    files: list[ChangedFile]
+    in_scope: set[str]
+    full_diff: str | None
+    states: list[protocol.FileState] | None
+    found: protocol.History
+    previous_strikes: int
+    pool_blocks: Mapping[str, selection.PoolBlock]
+    manual: bool
+    event_name: str
+    base_changed_at: datetime | None
+    base_change_unreadable: bool
+    reason_suffix: str | None = None
+    deferred: retry.RerunDecision | None = None
+    marked: bool = False
+
+
+def plan_decision(plan: dict[str, Any], policy: Policy, out_dir: Path, inputs: RoundInputs) -> int:
+    scoped = _scoped_files(inputs.files, inputs.in_scope, policy)
+    found = inputs.found
+    strike_count = max(protocol.strikes(found.records), inputs.previous_strikes)
     step = _protocol_round(
         plan,
         policy,
         found,
         scoped,
-        states,
+        inputs.states,
         strike_count,
-        base_changed_at=base_changed_at,
-        base_change_unreadable=base_change_unreadable,
-        manual=manual,
+        base_changed_at=inputs.base_changed_at,
+        base_change_unreadable=inputs.base_change_unreadable,
+        manual=inputs.manual,
     )
     threads, step = _dispute_step(
         plan,
         policy,
         found,
         scoped,
-        states,
+        inputs.states,
         strike_count,
         step,
-        manual,
-        event_name,
-        base_changed_at,
-        base_change_unreadable,
+        inputs.manual,
+        inputs.event_name,
+        inputs.base_changed_at,
+        inputs.base_change_unreadable,
     )
-    settled = _settled_round(out_dir, plan, policy, step, found, deferred, marked)
+    settled = _settled_round(out_dir, plan, policy, step, found, inputs.deferred, inputs.marked)
     if settled is not None:
         return settled
-    if deferred is not None:
-        rerun = retry.RerunDecision(True, "dispute re-review exempt from the retry budget")
+    reason = inputs.reason_suffix
+    if inputs.deferred is not None:
+        reason = "dispute re-review exempt from the retry budget"
         plan["manual"] = False
-    try:
-        threads = github.review_threads(repo, pr) if threads is None else threads
-        plan["open_findings"] = dedup.open_fingerprints(threads, policy.bot_login)
-        plan["disputes"] = _disputed_threads(threads, policy.bot_login)
-    except (github.GitHubError, KeyError, ValueError) as exc:
-        _summary(f"oracle-verdict: open review threads could not be read, so none are suppressed: {exc}")
-    owner_reset = retry.reset_applies(previous, plan["head_sha"], reset_at)
-    pool_blocks = _carried_blocks(previous, plan["head_sha"], now, owner_reset)
-    _plan_review(plan, out_dir, policy, step, files, scoped, in_scope, full_diff, pool_blocks, _soundness_predicate())
-    plan["decision_reason"] = f"{step.reason}; {rerun.reason}"
+    plan["open_findings"], plan["disputes"] = {}, []
+    if plan["pr"] is not None:
+        try:
+            threads = github.review_threads(plan["repo"], plan["pr"]) if threads is None else threads
+            plan["open_findings"] = dedup.open_fingerprints(threads, policy.bot_login)
+            plan["disputes"] = _disputed_threads(threads, policy.bot_login)
+        except (github.GitHubError, KeyError, ValueError) as exc:
+            _summary(f"oracle-verdict: open review threads could not be read, so none are suppressed: {exc}")
+    _plan_review(
+        plan,
+        out_dir,
+        policy,
+        step,
+        inputs.files,
+        scoped,
+        inputs.in_scope,
+        inputs.full_diff,
+        inputs.pool_blocks,
+        _soundness_predicate(),
+    )
+    plan["decision_reason"] = step.reason if reason is None else f"{step.reason}; {reason}"
     return _finish_plan(out_dir, plan)
 
 
@@ -1210,6 +1256,19 @@ def _held(args: argparse.Namespace) -> tuple[str, ...]:
     return tuple(value for value in (os.environ.get(name, "") for name in getattr(args, "env", ())) if value)
 
 
+def decided_attempts(
+    plan: Mapping[str, Any],
+    attempts_dir: Path,
+    classification_path: str | Path | None,
+    workspace: str | Path | None,
+) -> tuple[SelectionInput, attempt_files.LoadedAttempts, selection.Step, list[str]]:
+    classification = _read_classification(Path(classification_path)) if classification_path else None
+    selection_input = _selection(plan, classification)
+    loaded = attempt_files.load(attempts_dir, plan, os.environ["GITHUB_RUN_ID"], workspace=workspace)
+    step, errors = attempt_files.decide(selection_input, loaded)
+    return selection_input, loaded, step, errors
+
+
 def command_finalize(args: argparse.Namespace) -> int:
     plan = _read_json(Path(args.plan))
     out_dir = Path(args.out_dir)
@@ -1260,11 +1319,10 @@ def command_finalize(args: argparse.Namespace) -> int:
             strikes=final.strikes,
         )
     else:
-        classification = _read_classification(Path(args.classification)) if args.classification else None
-        selection_input = _selection(plan, classification)
+        selection_input, loaded, step, errors = decided_attempts(
+            plan, Path(args.attempts_dir), args.classification, getattr(args, "workspace", None)
+        )
         ws = Path(args.workspace) if getattr(args, "workspace", None) else None
-        loaded = attempt_files.load(Path(args.attempts_dir), plan, os.environ["GITHUB_RUN_ID"], workspace=ws)
-        step, errors = attempt_files.decide(selection_input, loaded)
         diff_path = Path(args.plan).parent / DIFF_FILE
         commentable = commentable_lines(diff_path.read_bytes().decode("utf-8")) if diff_path.is_file() else {}
         final = report.finalize(
@@ -1917,7 +1975,8 @@ def command_attempts(args: argparse.Namespace) -> int:
 
 def command_scan_disk(args: argparse.Namespace) -> int:
     needles = disk_scan.secret_values(args.env, os.environ)
-    hits = disk_scan.scan([Path(root) for root in args.root], needles)
+    excluded = [Path(item) for item in getattr(args, "exclude", ())]
+    hits = disk_scan.scan([Path(root) for root in args.root], needles, excluded)
     for name, path in hits:
         print(f"oracle-verdict: error: the value of {name} is on disk at {path}", file=sys.stderr)
     _summary(f"disk scan of {len(args.root)} root(s) for {len(needles)} secret value(s): {len(hits)} hit(s)")
@@ -2034,11 +2093,9 @@ def _parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
     plan = commands.add_parser("plan")
     plan.add_argument("--policy", required=True)
-    plan.add_argument("--pr")
-    plan.add_argument("--local", action="store_true")
-    plan.add_argument("--base-ref", default="origin/develop")
+    plan.add_argument("--pr", required=True)
     plan.add_argument("--out", required=True)
-    plan.set_defaults(handler=command_plan_entry)
+    plan.set_defaults(handler=command_plan)
     select = commands.add_parser("select")
     select.add_argument("--plan", required=True)
     select.add_argument("--attempts-dir", required=True)
@@ -2139,4 +2196,8 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
+    if sys.argv[1:2] == ["local-review"]:
+        from . import local
+
+        local.withhold_secrets()
     raise SystemExit(main())

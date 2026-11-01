@@ -92,4 +92,5 @@ def test_renaming_gate_machinery_keeps_the_gate_template(harness: Harness) -> No
 
     review = harness.local_review("feat/rename-gate")
 
-    assert "with the gate template" in review.stdout + review.stderr, review.stdout + review.stderr
+    assert review.code == 0, review.stdout + review.stderr
+    assert "# Review template: gate" in harness.omp_prompts()[0]
