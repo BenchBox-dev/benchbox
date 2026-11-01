@@ -66,9 +66,15 @@ done <"$test_list"
 
 echo "==> Linux container run of ${#tests[@]} changed-file test target(s) in machine '$machine'"
 cd "$top"
-exec uv run -- python -m benchbox.utils.host_lock run --phase linux-preflight --gate linux-preflight \
-  --admit --need-gib "${CI_LINUX_NEED_GIB:-2}" --guard -- \
+need_gib=$(uv run -- python -m benchbox.utils.host_lock machine-need --machine "$machine" --fallback-gib "${CI_LINUX_NEED_GIB:-2}")
+status=0
+uv run -- python -m benchbox.utils.host_lock run --phase linux-preflight --gate linux-preflight \
+  --admit --need-gib "$need_gib" --guard -- \
   bash "$top/scripts/linux_machine_run.sh" "$machine" \
   -e BENCHBOX_LINUX_INNER=1 -e BENCHBOX_TEST_LOCK_DIR=/tmp/benchbox-lock \
   -e BENCHBOX_HEAVY_ADMIT_MIN_GIB=1.5 -e BENCHBOX_HEAVY_MIN_FREE_DISK_GIB=2 -- \
-  bash "$top/scripts/linux_preflight_pytest.sh" "$top" "${tests[@]}"
+  bash "$top/scripts/linux_preflight_pytest.sh" "$top" "${tests[@]}" || status=$?
+if [ "$status" -eq 76 ]; then
+  unverified "admission refused; the host is under memory or disk pressure, so the Linux run did not start."
+fi
+exit "$status"
