@@ -108,6 +108,26 @@ configured memory) with the remedy `container machine stop <machine>`, and
 every lock holder's tree. Both are report-only; unguarded runs are never
 signalled.
 
+The VM's physical footprint is shown as a separate line (`VM <machine>
+footprint ... not counted in the shared budget`) in `make heavy-status`, the
+sentinel log (written when it changes by 0.1 GiB or the VM process changes) and
+the watchdog breach report. It is mapped to the machine by the exact
+`/machines/<machine>/` segment of the VM process's open files (same user, 5 s
+`lsof` bound), is read-only, and is skipped without `container` or off macOS.
+`heavy-status` and the sentinel mark it `attributed to the lock holder` only
+when a live holder's tree contains the wrapper for that machine. The watchdog
+counts it toward a breach only above its own allowance,
+`BENCHBOX_HEAVY_VM_ALLOWANCE_GIB` (default the machine's configured memory plus
+10%), and only for the holder whose tree contains the wrapper; it is never added
+to the shared budget. A VM breach SIGTERMs the tree so the wrapper's EXIT trap
+stops the machine.
+
+`benchbox-agent` is currently a 6G machine (the owner resized it from 8G on
+2026-11-01), matching the documented `container machine create ... --memory 6G`.
+`make ci-linux` and `scripts/linux_preflight_pytest.sh` export
+`BENCHBOX_HEAVY_LINUX_MACHINE` from `CI_LINUX_MACHINE` (default that variable,
+else `benchbox-agent`) so the wrapper and the sentinel name the same machine.
+
 ## Git floods
 
 `git` is never a kill candidate, but the sentinel and `make heavy-status`
@@ -131,8 +151,8 @@ shells instead.
 - `container machine run -d` guest processes are invisible to the host; the
   machine is stopped when no host-side run remains, which ends them.
 - `BENCHBOX_KEEP_LINUX_MACHINE=1` leaves the machine to the idle reclaim.
-- VM memory is reported per VM but is not attributed to the process tree of
-  the job that started it, and admission does not subtract it.
+- VM memory is attributed only through the wrapper's machine name, never added
+  to a holder's tree footprint, and admission does not subtract it.
 - Orphan detection matches a fixed set of server names and needs `lsof` (or
   `/proc`) to read working directories; a failed lookup is shown as
   `unmeasured`, not as `none`.

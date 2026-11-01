@@ -871,13 +871,14 @@ ci-local:
 	@echo "✅ All CI checks passed!"
 	@echo "========================================"
 
-CI_LINUX_MACHINE ?= benchbox-agent
+CI_LINUX_MACHINE ?= $(or $(BENCHBOX_HEAVY_LINUX_MACHINE),benchbox-agent)
 CI_LINUX_CMD ?= make test-correctness-gate
 CI_LINUX_NEED_GIB ?= 2
 HOST_LOCK_CLI = uv run -- python -m benchbox.utils.host_lock
 CI_LINUX_ENV = -e BENCHBOX_TEST_LOCK_DIR=/tmp/benchbox-lock -e BENCHBOX_HEAVY_ADMIT_MIN_GIB=1.5 -e BENCHBOX_HEAVY_MIN_FREE_DISK_GIB=2
 .PHONY: ci-linux
 ci-linux: export CI_LINUX_CMD := $(CI_LINUX_CMD)
+ci-linux: export BENCHBOX_HEAVY_LINUX_MACHINE := $(CI_LINUX_MACHINE)
 ci-linux:
 	@if [ "$$(uname -s)" != "Darwin" ] || [ "$$(uname -m)" != "arm64" ]; then \
 		echo "ci-linux: skipped -- Apple silicon macOS only (host $$(uname -s)/$$(uname -m)); no-op."; \

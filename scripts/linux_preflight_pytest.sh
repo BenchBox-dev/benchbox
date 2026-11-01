@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-machine=${CI_LINUX_MACHINE:-benchbox-agent}
+machine=${CI_LINUX_MACHINE:-${BENCHBOX_HEAVY_LINUX_MACHINE:-benchbox-agent}}
+export BENCHBOX_HEAVY_LINUX_MACHINE=$machine
 
 if [ "${BENCHBOX_LINUX_INNER:-}" = "1" ]; then
   cd "$1"

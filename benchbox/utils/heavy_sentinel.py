@@ -24,6 +24,7 @@ from benchbox.utils import (
     linux_machine,
     process_tree,
     resource_limits,
+    vm_footprint,
 )
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.footprint import pid_footprint_bytes
@@ -332,7 +333,10 @@ class VmWatch:
         process_reader: Callable[[str, bool], list[tuple[int, tuple[str, ...]]]] = linux_machine.read_machine_processes,
         stopper: Callable[[str], StopHandle] = start_machine_stop,
         clock: Callable[[], float] = mono_time,
+        footprint_reader: Callable[[str, frozenset[int]], str | None] | None = None,
     ) -> None:
+        self._footprint_reader = footprint_reader
+        self._footprint_key: str | None = None
         self.policy = policy
         self._log = log
         self._holder_reader = holder_reader
@@ -345,6 +349,16 @@ class VmWatch:
         self._reported_idle = False
         self._reported_unguarded: frozenset[int] = frozenset()
         self._stop: tuple[StopHandle, float] | None = None
+        self._held: frozenset[int] = frozenset()
+
+    def _log_footprint(self, machine: str) -> None:
+        if self._footprint_reader is None:
+            return
+        line = self._footprint_reader(machine, self._held)
+        key = None if line is None else re.sub(r"footprint (\d+\.\d)\d GiB", r"footprint \1 GiB", line)
+        if key is not None and key != self._footprint_key:
+            self._log(line)
+        self._footprint_key = key
 
     def _reset_idle(self) -> None:
         self._idle_since = None
@@ -376,7 +390,8 @@ class VmWatch:
     def _assess(self, state: linux_machine.MachineState) -> linux_machine.VmAssessment:
         machine = self.policy.vm_machine
         processes = self._process_reader(machine, state.is_default)
-        return linux_machine.assess(machine, state, processes, self._holder_reader())
+        self._held = self._holder_reader()
+        return linux_machine.assess(machine, state, processes, self._held)
 
     def _report_unguarded(self, assessment: linux_machine.VmAssessment) -> None:
         current = frozenset(assessment.unguarded)
@@ -402,8 +417,10 @@ class VmWatch:
         if state is None or state.status != "running":
             self._reset_idle()
             self._reported_unguarded = frozenset()
+            self._footprint_key = None
             return
         assessment = self._assess(state)
+        self._log_footprint(machine)
         self._report_unguarded(assessment)
         if not assessment.idle:
             self._reset_idle()
@@ -713,12 +730,18 @@ def run_sentinel(args: argparse.Namespace, environ: Mapping[str, str]) -> int:
         fixed = list(args.worktree)
         lister = lambda: fixed
     holders = lambda: held_tree_pids(lock_path)
+    attributor = vm_footprint.VmAttributor()
+
+    def vm_line(machine: str, held: frozenset[int]) -> str | None:
+        found = heavy_status.read_vm_footprint(attributor, machine, held, environ)
+        return None if found is None else heavy_status.describe_vm_footprint(found)
+
     sentinel = Sentinel(
         policy,
         log=log.write,
         worktree_lister=lister,
         holder_reader=holders,
-        vm_watch=VmWatch(policy, log=log.write, holder_reader=holders),
+        vm_watch=VmWatch(policy, log=log.write, holder_reader=holders, footprint_reader=vm_line),
     )
     previous = signal.signal(SIG_TERM, _terminate)
     log.write(f"started pid {os.getpid()}; mode {policy.mode}; log {log_path}")

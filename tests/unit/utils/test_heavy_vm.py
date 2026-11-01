@@ -300,3 +300,77 @@ def test_collect_reads_the_vm_through_the_injected_reader() -> None:
 
 def test_the_default_vm_reading_is_absent_without_the_container_cli() -> None:
     assert heavy_status._read_vm({}, lambda argv, timeout: "[]", lambda name: None) is None
+
+
+class FakeAttributor:
+    def __init__(self, attributed=None, plain=None) -> None:
+        self.attributed = attributed
+        self.plain = plain
+        self.calls: list[str] = []
+
+    def attribute(self, held, machine, environ=None):
+        self.calls.append("attribute")
+        return self.attributed
+
+    def read(self, machine, environ=None):
+        self.calls.append("read")
+        return self.plain
+
+
+def _reading_of(gib: float):
+    from benchbox.utils import vm_footprint
+
+    return vm_footprint.VmReading("m", (7,), int(gib * 2**30), 7 * 2**30)
+
+
+def test_a_holder_owned_vm_footprint_is_attributed() -> None:
+    attr = FakeAttributor(attributed=_reading_of(5.0))
+    found = heavy_status.read_vm_footprint(attr, "m", {1}, {}, "darwin")
+    assert found is not None and found[1] is True
+    assert "VM m footprint 5.00 GiB" in heavy_status.describe_vm_footprint(found)
+    assert "[attributed to the lock holder]" in heavy_status.describe_vm_footprint(found)
+    assert attr.calls == ["attribute"]
+
+
+def test_an_unowned_vm_footprint_is_read_unattributed() -> None:
+    attr = FakeAttributor(plain=_reading_of(5.0))
+    found = heavy_status.read_vm_footprint(attr, "m", set(), {}, "darwin")
+    assert found is not None and found[1] is False
+    assert "[not attributed to a lock holder]" in heavy_status.describe_vm_footprint(found)
+    assert attr.calls == ["attribute", "read"]
+
+
+def test_the_vm_footprint_is_skipped_off_macos_or_when_unmeasured() -> None:
+    attr = FakeAttributor(plain=_reading_of(5.0))
+    assert heavy_status.read_vm_footprint(attr, "m", set(), {}, "linux") is None
+    assert attr.calls == []
+    assert heavy_status.read_vm_footprint(FakeAttributor(), "m", set(), {}, "darwin") is None
+
+
+def test_status_prints_the_vm_footprint_line_only_for_a_running_machine(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(heavy_status.sys, "platform", "darwin")
+    attr = FakeAttributor(plain=_reading_of(5.0))
+    kwargs = {
+        "runner": lambda argv, timeout: "[]",
+        "pressure_reader": lambda: None,
+        "git_flood_reader": lambda: None,
+        "top_reader": lambda: (),
+        "vm_attributor": attr,
+    }
+    running = heavy_status.collect({}, vm_reader=lambda: lm.assess("m", RUNNING, [], frozenset()), **kwargs)
+    assert "VM m footprint 5.00 GiB" in heavy_status.render(running)
+    attr.calls.clear()
+    stopped = heavy_status.collect({}, vm_reader=lambda: lm.assess("m", STOPPED, [], frozenset()), **kwargs)
+    assert stopped.vm_line is None and attr.calls == []
+
+
+def test_the_sentinel_logs_the_vm_footprint_when_it_changes() -> None:
+    rig = Rig()
+    lines: list[str | None] = ["VM m footprint 5.01 GiB x", "VM m footprint 5.04 GiB x", "VM m footprint 6.00 GiB x"]
+    rig.watch._footprint_reader = lambda machine, held: lines.pop(0)
+    for _ in range(3):
+        rig.advance(30)
+    assert [line for line in rig.lines if line.startswith("VM m footprint")] == [
+        "VM m footprint 5.01 GiB x",
+        "VM m footprint 6.00 GiB x",
+    ]
