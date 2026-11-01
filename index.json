@@ -15057,6 +15057,13 @@
       "status": "done",
       "title": "Refresh medium_shard_durations.json weekly so deleted tests drop out and new tests get real weights"
     },
+    "medium-shard-p95-weights-overpredict-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Medium shards stay 1.22x unbalanced after the duration refresh because p95 weights overpredict unevenly"
+    },
     "medium-suite-job-setup-drift-20261031": {
       "claim": null,
       "needs": [],

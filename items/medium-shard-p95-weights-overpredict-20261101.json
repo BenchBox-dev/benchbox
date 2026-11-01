@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "A hold-out comparison over at least three Trunk runs not used to build the weights reports busiest/mean for p95 and at least one alternative (for example median or mean of the runs), and the chosen statistic is recorded with that evidence",
+    "build_fast_duration_baseline.py medium-refresh builds weights with the chosen statistic, covered by a unit test, and the weekly medium job uses it",
+    "The fixture is refreshed with it; across the first three Trunk runs on develop after merge, busiest/mean medium shard junit time averages at most 1.15, with run ids listed"
+  ],
+  "context": "Found 2026-11-01 when measuring criterion 5 of medium-shard-durations-deleted-tests-20261031 after it closed.",
+  "description": "After #3886 refreshed tests/fixtures/medium_shard_durations.json (per-test p95 over five Trunk runs, ids limited to the newest run's collected list), the first Trunk run on develop, 41253715661 at 0d1f556490, scheduled every medium shard at 860.2 s but measured 528.7 / 835.7 / 552.4 / 816.3 s of junit time: busiest/mean 1.223 against a 1.15 target (1.40 before the refresh). Total predicted 3,441 s against 2,733 s measured; the 707 s of over-prediction falls mostly on shards 0 and 2 (about 38% over) rather than 1 and 3 (3-5% over). It is spread over many files, led by tests/unit/core/read_primitives/test_read_primitives_sqlite_queries.py (38.7 s over), tests/integration/oracle/test_golden_outputs.py (38.0 s), tests/unit/scripts/test_preflight_targets.py (35.8 s) and tests/unit/scripts/test_sql_execution_gate.py (33.4 s). A per-test p95 over five runs inflates noisy tests, and balancing on inflated weights gives the shards holding them too little work. The #3538 hold-out measured 1.032 with the same statistic, so a single run can mislead; measure over several runs. Open refresh PR #3905 uses the same p95 statistic.",
+  "links": [
+    "scripts/build_fast_duration_baseline.py",
+    "scripts/release_canary_sharding.py",
+    "tests/fixtures/medium_shard_durations.json",
+    "https://github.com/BenchBox-dev/benchbox/pull/3886",
+    "https://github.com/BenchBox-dev/benchbox/pull/3905"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e45b8047daa131c418b6f1f3",
+      "at": "2026-11-01T02:51:53Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f199a24f5f2b4ac78e06e1c127250512",
+      "session_id": "5a1d3b40c1da49d4846c079fde232012"
+    }
+  ]
+}
