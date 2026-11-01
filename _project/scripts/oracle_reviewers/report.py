@@ -166,8 +166,8 @@ def _record(
         record["disputed"] = list(disputed)
     if adjudicated:
         record["adjudicated"] = [dict(item) for item in adjudicated]
-    if plan.get("run_id"):
-        record["run_uuid"] = plan["run_id"]
+    if bound_run(plan):
+        record["run_uuid"] = bound_run(plan)
     return protocol.encode_marker(redaction_check.redact(record, secrets), rules.get("patch_map"))
 
 
@@ -660,9 +660,13 @@ def omp_install_failed() -> Final:
     return Final(PENDING, "the pinned omp build could not be installed; no reviewer ran", "", None, None, OMP_INSTALL)
 
 
+def bound_run(plan: Mapping[str, Any]) -> Any:
+    return plan.get("run_uuid") or plan.get("run_id")
+
+
 def status_payload(plan: Mapping[str, Any], final: Final, target_url: str) -> dict[str, Any]:
     description = final.description
-    run_id = plan.get("run_id")
+    run_id = bound_run(plan)
     if final.state == SUCCESS and run_id:
         suffix = f" [run {run_id}]"
         if len(description) + len(suffix) > DESCRIPTION_LIMIT:
