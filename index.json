@@ -2473,6 +2473,13 @@
       "status": "done",
       "title": "Fix (not just pin) calculate_checksum's separator/dtype collisions with an escaped, type-tagged rendering plus same-change digest regen"
     },
+    "canary-3893-green-run-not-yet-confirmed-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Confirm the release canary is green after the flightdata and compat-lint fix; the heavy-test disk floor blocks local repro"
+    },
     "canary-chdb-leak-source-20261009": {
       "claim": null,
       "needs": [],

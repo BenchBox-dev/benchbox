@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "#3911 merged; the next release-canary run on an ancestor of the release head is green and issue #3893 closes. Record whether the 50 GiB floor should be lowered or the tests made runnable on developer machines."
+  ],
+  "description": "Issue #3893 (canary run 41209235137 on 8a2054135): test_large_scale_generation_uses_manifest_tracked_flight_shards (the BTS prefetcher started in _prefetching_months and hit the network guard) and test_compat_lint_passes (unregistered dialect branch _manifest_text_type from #3851). Fix PR #3911 (head f72248cb73, unmerged at filing) makes the prefetcher lazy and registers the branch with compat_local. Neither resource-heavy test could run locally: the heavy-test harness requires 50 GiB free disk (BENCHBOX_HEAVY_MIN_FREE_DISK_GIB) and the dev machine had 26.3 GiB, so the fix is verified only by unit tests and scripts/compat_lint.py. A red canary blocks every release PR in release_readiness_check.py.",
+  "links": [
+    "issue #3893",
+    "PR #3911",
+    "PR #3779",
+    "PR #3851"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:44087b544fee5237bdde41f8",
+      "at": "2026-11-01T13:46:11Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9fc2f684155c4c08909c5bf29ce901c1",
+      "session_id": "b38147de5e3b4952857534e2b3c9221c"
+    }
+  ]
+}
