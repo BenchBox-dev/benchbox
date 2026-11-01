@@ -27743,6 +27743,15 @@
       "status": "done",
       "title": "Surface turso auto-provision mint failures instead of silent local fallback"
     },
+    "todo-db-batch-dispatch-base-overlap-20261101": {
+      "claim": null,
+      "needs": [
+        "todo-db-batch-v2-contract-20261101"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Accept members started from any recorded integration head and record same-file overlap instead of byte equality in todo-db"
+    },
     "todo-db-batch-owner-claims-recovery-20261101": {
       "claim": null,
       "needs": [
