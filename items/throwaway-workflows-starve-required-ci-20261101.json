@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "Non-required experimental workflows have a job concurrency cap or separate runner pool; required PR checks are not queued behind them."
+  ],
+  "description": "On 2026-10-31 a throwaway 'release UAT dry run' (run 41163626947, branch ci/release-uat-dryrun) held about 15 parallel jobs for hours while 100+ required CI, oracle-verdict and oracle-gate runs queued; PR CI waited 1-4 hours. Experimental workflows need a concurrency cap (max-parallel, a separate runner group, or off-hours scheduling) so required checks keep runners.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e",
+      "at": "2026-11-01T13:45:51Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "bdddb09f056141c1b35267551984a196",
+      "session_id": "1273bcfa4d0e4ed89453e147e32359eb"
+    }
+  ]
+}

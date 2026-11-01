@@ -27467,6 +27467,13 @@
       "status": "done",
       "title": "Throughput UAT asserts still glob for results and count streams across all phases"
     },
+    "throwaway-workflows-starve-required-ci-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Keep throwaway workflow runs from holding most Actions runners"
+    },
     "tigerdata-cloud-enhancements": {
       "claim": null,
       "needs": [],
