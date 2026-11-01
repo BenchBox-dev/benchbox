@@ -4,7 +4,7 @@ run-name: oracle-review (${{ github.event.action }})
 
 on:
   pull_request_review:
-    types: [submitted, edited, dismissed]
+    types: [edited, dismissed]
 
 permissions: {}
 

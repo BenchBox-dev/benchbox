@@ -464,7 +464,7 @@ def test_a_finalized_exempt_success_never_satisfies_a_gate_whose_rules_require_a
     }
     monkeypatch.syspath_prepend(str(Path(cli.__file__).resolve().parents[1]))
     gate = importlib.import_module("_project.scripts.oracle_review_check")
-    rules = gate.path_matcher(2, 2, *gate._review_rules())
+    rules = gate.path_matcher(2, 2, *importlib.import_module("_project.scripts.oracle_gate").load_policy_rules())
     code, message = gate.decide(HEAD, [CHECKER], [posted], rules)
     assert code == gate.WAITING and "reports only exempt paths changed" in message
     assert gate.decide(HEAD, ["notes.md"], [posted], rules) == (

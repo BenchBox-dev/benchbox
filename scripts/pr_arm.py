@@ -24,10 +24,6 @@ REPOSITORY = "BenchBox-dev/BenchBox"
 BASE_BRANCH = "develop"
 VIEW_FIELDS = "number,state,isDraft,labels,reviewDecision,headRefOid,baseRefName"
 
-GATE_CONTEXT = "oracle-gate"
-GATE_WORKFLOW = "oracle-gate.yml"
-GATE_OK_STATE = "success"
-
 BASELINE_DIRECTORY = "tests/fixtures/fast_tier_baseline"
 VERDICT_ARTIFACT_PREFIX = "fast-duration-verdict"
 VERDICT_FILE = "fast-duration-verdict.json"
@@ -218,30 +214,32 @@ def duration_verdict_refusals(run: Runner, repo: str, number: int, head: str, la
     ]
 
 
-def refresh_oracle_gate(run: Runner, repo: str, number: int, head: str, label: str = "pr-arm") -> None:
+GATE_SCRIPT = "_project/scripts/oracle_gate.py"
+GATE_WAITING_EXIT = 3
+GATE_TREE = "_project/scripts .github/oracle-reviewers.yml .github/soundness-paths.txt .github/inert-paths.txt"
+
+
+def gate_refusals(run: Runner, repo: str, number: int, head: str, label: str = "pr-arm") -> list[str]:
     code, out = run(
         [
-            "gh",
-            "api",
-            "--jq",
-            f'[.statuses[] | select(.context == "{GATE_CONTEXT}")][0].state // ""',
-            f"repos/{repo}/commits/{head}/status",
+            "sh",
+            "-c",
+            'set -eu; DIR="$(mktemp -d)"; trap \'rm -rf "$DIR"\' EXIT; '
+            f"git fetch --quiet origin {BASE_BRANCH}; "
+            f'git archive origin/{BASE_BRANCH} {GATE_TREE} | tar -x -C "$DIR"; '
+            'cd "$DIR"; GITHUB_TOKEN="$(gh auth token)" uv run --isolated --no-project --python 3.12 '
+            f'--with pyyaml==6.0.3 -- python {GATE_SCRIPT} --repo "$0" --pr "$1" --head-sha "$2" --no-post',
+            repo,
+            str(number),
+            head,
         ]
     )
-    if code != 0:
-        print(f"{label}: could not read the {GATE_CONTEXT} status of {head[:9]}; not dispatching: {out.strip()[:200]}")
-        return
-    state = out.strip()
-    if state == GATE_OK_STATE:
-        return
-    code, out = run(
-        ["gh", "workflow", "run", GATE_WORKFLOW, "--repo", repo, "--ref", BASE_BRANCH]
-        + ["-f", f"pr={number}", "-f", f"head_sha={head}"]
-    )
-    if code != 0:
-        print(f"{label}: {GATE_CONTEXT} dispatch for PR #{number} failed; arming continues: {out.strip()[:200]}")
-        return
-    print(f"{label}: dispatched {GATE_CONTEXT} for PR #{number} at {head[:9]} (status was {state or 'missing'})")
+    if code == 0:
+        return []
+    detail = out.strip().splitlines()[-1][:300] if out.strip() else "no output"
+    if code == GATE_WAITING_EXIT:
+        return [f"a fresh oracle-gate evaluation of {head[:9]} does not pass: {detail}"]
+    return [f"a fresh oracle-gate evaluation of {head[:9]} failed (exit {code}): {detail}"]
 
 
 def refusals(
@@ -314,6 +312,7 @@ def arm(
     duration: Callable[[Runner, str, int, str], list[str]] = duration_verdict_refusals,
     visible: Callable[[Runner, str, str, str], list[str]] = visible_refusals,
     bump: Callable[[Runner, str, int, str], list[str]] = pr_arm_omp_bump.bump_refusals,
+    gate: Callable[[Runner, str, int, str], list[str]] = gate_refusals,
 ) -> int:
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
         return _refused(f"--repo must be owner/name, got {repo!r}", 2)
@@ -343,6 +342,7 @@ def arm(
                 *(duration(run, repo, int(view["number"]), local_head) if view.get("headRefOid") == local_head else []),
                 *(bump(run, repo, int(view["number"]), local_head) if view.get("headRefOid") == local_head else []),
                 *visible(run, repo, BASE_BRANCH, local_head),
+                *(gate(run, repo, int(view["number"]), local_head) if view.get("headRefOid") == local_head else []),
             ],
         )
         if reasons:
@@ -351,7 +351,6 @@ def arm(
             if all(any(marker in reason for marker in WAITING_MARKERS) for reason in reasons):
                 return _outcome(f"waiting: PR #{view['number']} is not armed yet: {' | '.join(reasons)}", 2)
             return _outcome(f"refused: PR #{view['number']} was not armed: {' | '.join(reasons)}", 2)
-        refresh_oracle_gate(run, repo, int(view["number"]), local_head)
         code, out = run(
             [
                 "gh",

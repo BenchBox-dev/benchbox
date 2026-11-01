@@ -168,6 +168,7 @@ def _arm(gh: FakeGh, pr: str | None = "7", head: str | None = None, *, unpublish
         threads=lambda _run, _repo, _number: threads,
         suites=lambda _run, _repo, _base, _head: list(hidden),
         bump=lambda _run, _repo, _number, _head: [],
+        gate=lambda _run, _repo, _number, _head: [],
     )
 
 
@@ -499,61 +500,25 @@ def test_the_live_suite_check_receives_the_base_branch_and_local_head() -> None:
         seen.append((base, head))
         return []
 
-    pr_arm.arm("7", None, run=FakeGh(), unpublished=lambda _c: [], threads=lambda *_a: False, suites=record)
+    pr_arm.arm(
+        "7",
+        None,
+        run=FakeGh(),
+        unpublished=lambda _c: [],
+        threads=lambda *_a: False,
+        suites=record,
+        gate=lambda *_a: [],
+    )
     assert seen == [("develop", HEAD)]
 
 
-DISPATCH = [
-    "gh",
-    "workflow",
-    "run",
-    "oracle-gate.yml",
-    "--repo",
-    pr_arm.REPOSITORY,
-    "--ref",
-    "develop",
-    "-f",
-    "pr=7",
-    "-f",
-    f"head_sha={HEAD}",
-]
-
-
-@pytest.mark.parametrize("state", ["failure", "error", "pending", ""])
-def test_dispatches_the_gate_before_arming_when_its_status_is_not_success(state: str) -> None:
+@pytest.mark.parametrize("state", ["failure", "error", "pending", "", "success"])
+def test_arming_never_dispatches_the_gate_whatever_its_status(state: str) -> None:
     gh = FakeGh(gate_state=state)
     assert _arm(gh) == 0
-    assert gh.dispatched() == [DISPATCH]
-    assert gh.calls.index(DISPATCH) < gh.calls.index(gh.merged()[0])
-
-
-def test_dispatches_nothing_when_the_gate_already_succeeded() -> None:
-    gh = FakeGh(gate_state="success")
-    assert _arm(gh) == 0
     assert gh.dispatched() == []
+    assert not any(call[:3] == ["gh", "workflow", "run"] for call in gh.calls)
     assert len(gh.merged()) == 1
-
-
-def test_an_open_thread_refuses_without_dispatching_or_arming() -> None:
-    gh = FakeGh(gate_state="failure")
-    assert _arm(gh, threads=True) == 2
-    assert gh.dispatched() == []
-    assert gh.merged() == []
-
-
-def test_a_failed_dispatch_is_reported_and_arming_proceeds(capsys: pytest.CaptureFixture[str]) -> None:
-    gh = FakeGh(gate_state="failure", dispatch_code=1)
-    assert _arm(gh) == 0
-    assert len(gh.merged()) == 1
-    assert "dispatch for PR #7 failed; arming continues" in capsys.readouterr().out
-
-
-def test_an_unreadable_gate_status_is_reported_and_arming_proceeds(capsys: pytest.CaptureFixture[str]) -> None:
-    gh = FakeGh(status_code=1)
-    assert _arm(gh) == 0
-    assert gh.dispatched() == []
-    assert len(gh.merged()) == 1
-    assert "could not read the oracle-gate status" in capsys.readouterr().out
 
 
 WOULD_BLOCK = {"verdict": "would-block", "sum_ratio": 1.4567, "median_test_ratio": 1.2345}
@@ -741,20 +706,6 @@ def test_pending_required_status_still_arms() -> None:
     assert len(gh.merged()) == 1
 
 
-def test_waiting_oracle_failure_status_refreshes_and_arms() -> None:
-    gh = FakeGh(
-        statuses={"oracle-gate": "failure"},
-        status_descriptions={
-            "oracle-gate": f"oracle-review: waiting for the oracle's verdict on {HEAD}, or a stand-in attestation"
-        },
-        rules=["core", "oracle-gate"],
-        gate_state="failure",
-    )
-    assert _arm(gh) == 0
-    assert gh.dispatched() == [DISPATCH]
-    assert len(gh.merged()) == 1
-
-
 def test_waiting_oracle_description_for_another_head_does_not_mask_failure() -> None:
     gh = FakeGh(
         statuses={"oracle-gate": "failure"},
@@ -778,6 +729,7 @@ def _arm_live(gh: FakeGh) -> int:
         run=gh,
         unpublished=lambda _checkout: [],
         threads=lambda _run, _repo, _number: False,
+        gate=lambda *_a: [],
     )
 
 
@@ -884,6 +836,7 @@ def _arm_bump(gh: FakeGh) -> int:
         suites=lambda *_a: [],
         duration=lambda *_a: [],
         visible=lambda *_a: [],
+        gate=lambda *_a: [],
     )
 
 
@@ -1086,3 +1039,36 @@ def test_a_passing_duration_verdict_line_does_not_read_as_an_arming_outcome(
 
 def _outcomes_from(text: str) -> list[str]:
     return [line for line in text.splitlines() if ": outcome: " in line]
+
+
+def test_a_fresh_gate_evaluation_that_does_not_pass_refuses_arming() -> None:
+    gh = FakeGh()
+    code = pr_arm.arm(
+        "7",
+        None,
+        run=gh,
+        unpublished=lambda _c: [],
+        threads=lambda *_a: False,
+        suites=lambda *_a: [],
+        duration=lambda *_a: [],
+        visible=lambda *_a: [],
+        bump=lambda *_a: [],
+        gate=lambda *_a: ["a fresh oracle-gate evaluation of aaaaaaaaa does not pass: waiting"],
+    )
+    assert code == 2
+    assert gh.merged() == []
+
+
+@pytest.mark.parametrize(("exit_code", "expected"), [(0, []), (3, "does not pass"), (2, "failed (exit 2)")])
+def test_gate_refusals_map_the_evaluation_exit_code(exit_code: int, expected: object) -> None:
+    seen: list[list[str]] = []
+
+    def run(cmd: Sequence[str]) -> tuple[int, str]:
+        seen.append(list(cmd))
+        return exit_code, "oracle-review: waiting for the verdict\n" if exit_code else ""
+
+    found = pr_arm.gate_refusals(run, "o/r", 7, HEAD)
+    assert seen[0][-3:] == ["o/r", "7", HEAD]
+    assert "--no-post" in seen[0][2]
+    assert "git archive origin/develop" in seen[0][2]
+    assert found == [] if exit_code == 0 else expected in found[0]

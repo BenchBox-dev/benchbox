@@ -5,12 +5,22 @@ run-name: oracle-gate (${{ github.event_name }} ${{ (github.event.pull_request.n
 on:
   push:
     branches: [develop]
+    paths:
+      - .github/workflows/oracle-gate.yml
+      - .github/oracle-reviewers.yml
+      - .github/soundness-paths.txt
+      - .github/inert-paths.txt
+      - _project/scripts/oracle_gate.py
+      - _project/scripts/oracle_review_check.py
+      - _project/scripts/oracle_reviewers/**
+      - _project/scripts/inert_paths.py
+      - _project/scripts/soundness_paths.py
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review, edited]
   issue_comment:
     types: [created, edited, deleted]
   workflow_run:
-    workflows: [oracle-verdict, oracle-review]
+    workflows: [oracle-review]
     types: [completed]
   workflow_dispatch:
     inputs:

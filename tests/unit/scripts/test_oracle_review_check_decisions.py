@@ -14,6 +14,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT / "_project/scripts"))
 gate = importlib.import_module("_project.scripts.oracle_review_check")
 sys.modules["oracle_review_check"] = gate
+oracle_gate = importlib.import_module("_project.scripts.oracle_gate")
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -97,7 +98,7 @@ def _decide(**kwargs: Any) -> tuple[int, str]:
         HEAD,
         kwargs.pop("files", SOUNDNESS),
         kwargs.pop("statuses", [_status()]),
-        gate.path_matcher(2, 2, *gate._review_rules()),
+        gate.path_matcher(2, 2, *oracle_gate.load_policy_rules()),
         kwargs.pop("base_date", None),
         kwargs.pop("comments", []),
         reviews=kwargs.pop("reviews", [_receipt()]),
@@ -189,25 +190,6 @@ def test_a_gate_path_that_is_also_inert_needs_review_and_an_exempt_pattern_skips
     assert gate.path_matcher(1, 1, (), ("gate/*",))(["gate/policy.md"]) is True
     assert gate.path_matcher(1, 1, ("zz_exempt/*",), ())(["zz_exempt/a.txt"]) is False
     assert gate.path_matcher(1, 1, ("zz_exempt/*",), ())(["zz_other/a.txt"]) is True
-
-
-def test_the_review_rules_are_read_from_the_reviewer_policy_file(monkeypatch: pytest.MonkeyPatch) -> None:
-    seen: list[Path] = []
-
-    class Classifier:
-        exempt_paths = ("e/*",)
-        gate_paths = ("g/*",)
-
-    class Policy:
-        classifier = Classifier()
-
-    def load(path: Path) -> Policy:
-        seen.append(path)
-        return Policy()
-
-    monkeypatch.setattr("oracle_reviewers.policy.load_policy", load)
-    assert gate._review_rules() == (("e/*",), ("g/*",))
-    assert seen == [Path(".github/oracle-reviewers.yml")]
 
 
 def test_annotate_receipt_ignores_reviews_before_the_retarget(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -430,7 +412,6 @@ def test_fetch_pull_and_files_read_this_pull_request(net: Network) -> None:
     net.rest["/repos/o/r/pulls/7/files"] = {"pages": {1: [{"filename": "a.py"}]}}
     assert gate.fetch_pull("tok", "o/r", 7) == {"head": {"sha": HEAD}}
     assert gate.fetch_files("tok", "o/r", 7) == [{"filename": "a.py"}]
-    assert net.paths() == ["/repos/o/r/pulls/7", "/repos/o/r/pulls/7/files?per_page=100&page=1"]
     _authorized(net)
 
 
@@ -536,19 +517,10 @@ def test_the_head_commit_is_read_from_graphql(net: Network) -> None:
         gate.fetch_head_oid("tok", "o/r", 7)
 
 
-def test_the_arguments_default_to_the_oracle_and_require_a_repository_and_pull_request() -> None:
-    args = gate._parse_args(["--repo", "o/r", "--pr", "7"])
-    assert (args.repo, args.pr, args.signal) == ("o/r", 7, "oracle")
-    for argv in (["--pr", "7"], ["--repo", "o/r"], ["--repo", "o/r", "--pr", "x"]):
-        with pytest.raises(SystemExit) as exit_info:
-            gate._parse_args(argv)
-        assert exit_info.value.code == 2
-
-
 def _wire(
     net: Network, *, files: list[str], statuses: list[dict[str, Any]], reviews: list[dict[str, Any]], **extra: Any
 ) -> None:
-    net.rest["/repos/o/r/pulls/7"] = {"head": {"sha": HEAD}, "changed_files": len(files)}
+    net.rest["/repos/o/r/pulls/7"] = {"head": {"sha": HEAD}, "base": {"ref": "develop"}, "changed_files": len(files)}
     net.rest["/repos/o/r/pulls/7/files"] = {"pages": {1: [{"filename": name} for name in files]}}
     net.rest[f"/repos/o/r/commits/{HEAD}/statuses"] = {
         "pages": {
@@ -589,7 +561,8 @@ def _wire(
 
 def _run(monkeypatch: pytest.MonkeyPatch) -> int:
     monkeypatch.setenv("GITHUB_TOKEN", "tok")
-    return gate.main(["--repo", "o/r", "--pr", "7"])
+    monkeypatch.setattr(oracle_gate, "PULL_READ_BACKOFF_SECONDS", 0)
+    return oracle_gate.main(["--repo", "o/r", "--pr", "7", "--no-post"])
 
 
 def test_a_reviewed_pull_request_passes_and_every_call_uses_the_token_and_target(
@@ -614,13 +587,10 @@ def test_a_reviewed_pull_request_passes_and_every_call_uses_the_token_and_target
     assert [body["variables"] for body in bodies] == [{"id": "N1"}]
 
 
-def test_only_exempt_paths_stop_before_any_status_is_read(
-    net: Network, monkeypatch: pytest.MonkeyPatch, capsys: Any
-) -> None:
+def test_only_exempt_paths_pass_without_a_verdict(net: Network, monkeypatch: pytest.MonkeyPatch, capsys: Any) -> None:
     _wire(net, files=["NOTES.md"], statuses=[], reviews=[])
     assert _run(monkeypatch) == gate.PASS
     assert capsys.readouterr().out == "oracle-review: only exempt paths changed\n"
-    assert net.paths() == ["/repos/o/r/pulls/7", "/repos/o/r/pulls/7/files?per_page=100&page=1"]
 
 
 def test_the_reviewer_policy_gate_paths_keep_an_otherwise_exempt_change_under_review(
@@ -672,26 +642,6 @@ def test_a_standin_attestation_is_read_from_the_pull_request_comments(
     _authorized(net)
 
 
-def test_a_missing_token_is_an_error(monkeypatch: pytest.MonkeyPatch, capsys: Any) -> None:
-    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
-    assert gate.main(["--repo", "o/r", "--pr", "7"]) == gate.ERROR
-    captured = capsys.readouterr()
-    assert captured.out == ""
-    assert captured.err == "oracle-review: error: GITHUB_TOKEN is not set\n"
-
-
-def test_a_repository_that_is_not_owner_slash_name_is_an_error(
-    net: Network, monkeypatch: pytest.MonkeyPatch, capsys: Any
-) -> None:
-    monkeypatch.setenv("GITHUB_TOKEN", "tok")
-    for repo in ("o", "o/r/x"):
-        assert gate.main(["--repo", repo, "--pr", "7"]) == gate.ERROR
-        captured = capsys.readouterr()
-        assert captured.out == ""
-        assert captured.err == "oracle-review: error: --repo must be OWNER/NAME\n"
-    assert net.requests == []
-
-
 def test_a_github_failure_is_reported_on_stderr_as_an_error(
     net: Network, monkeypatch: pytest.MonkeyPatch, capsys: Any
 ) -> None:
@@ -699,24 +649,14 @@ def test_a_github_failure_is_reported_on_stderr_as_an_error(
     assert _run(monkeypatch) == gate.ERROR
     captured = capsys.readouterr()
     assert captured.out == ""
-    assert captured.err.startswith("oracle-review: error: ")
+    assert captured.err.startswith("oracle-gate: error: ")
     assert "500" in captured.err
-
-
-def test_the_command_line_defaults_to_the_process_arguments(
-    net: Network, monkeypatch: pytest.MonkeyPatch, capsys: Any
-) -> None:
-    _wire(net, files=["NOTES.md"], statuses=[], reviews=[])
-    monkeypatch.setenv("GITHUB_TOKEN", "tok")
-    monkeypatch.setattr(sys, "argv", ["oracle_review_check.py", "--repo", "o/r", "--pr", "7"])
-    assert gate.main() == gate.PASS
-    assert capsys.readouterr().out == "oracle-review: only exempt paths changed\n"
 
 
 def test_the_policy_exempt_paths_are_applied_to_the_pull_request_files(
     net: Network, monkeypatch: pytest.MonkeyPatch, capsys: Any
 ) -> None:
-    monkeypatch.setattr(gate, "_review_rules", lambda: (("zz_exempt/*",), ()))
+    monkeypatch.setattr(oracle_gate, "load_policy_rules", lambda: (("zz_exempt/*",), ()))
     _wire(net, files=["zz_exempt/a.txt"], statuses=[], reviews=[])
     assert _run(monkeypatch) == gate.PASS
     assert capsys.readouterr().out == "oracle-review: only exempt paths changed\n"

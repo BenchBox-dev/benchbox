@@ -1287,7 +1287,7 @@ Merged PRs predate this and never re-run the gate. The oracle signal needs
 included, posts a review then a status in the same state.
 
 The `oracle-review` workflow is a notification, not a check: it triggers only on
-`pull_request_review` submitted, edited and dismissed, holds no token
+`pull_request_review` edited and dismissed (never submitted), holds no token
 permissions, and runs one `review-event` job with a single no-op step (no
 checkout, secrets or API calls), producing no check run named `oracle-review`.
 `edited` keeps edits to oracle reviews visible in run history; the gate never
@@ -1304,7 +1304,7 @@ be mapped to the PR by the gate's bridge. The step runs only with the App
 configured and the head not skipped by the guard, so never before the post; it
 uses the job's `actions: write` for this dispatch alone and posts no status; the
 gate re-reads everything. Remaining trusted fallbacks: the `oracle-gate` sweep
-(every push to `develop`, plus schedule) and the gate's own triggers
+(a `develop` push that changes gate code or policy, plus schedule) and the gate's own triggers
 (`pull_request_target`, stand-in comments, dispatch).
 
 The verdict run also posts `oracle-gate` itself: after the review is posted,
@@ -1324,8 +1324,11 @@ Resolving a thread has no Actions event and the gate does not read threads: the
 ruleset's `required_review_thread_resolution` on `develop` blocks the merge
 while any thread is open, so resolving the oracle's last thread needs no
 refresh of `oracle-gate`. `make pr-arm` and `make pr-arm-remote` dispatch
-`oracle-gate` for the PR and head when its `oracle-gate` status is not
-`success`. `make pr-rerun` re-runs failed CI jobs and does not refresh
+nothing; they re-evaluate the gate decision read-only for the exact head with
+the gate code and policy of `origin/develop` (never the PR checkout) and refuse
+to arm unless it passes. An oracle review edit or dismissal re-evaluates the
+gate through the notification and bridge, and a `develop` push that changes the
+gate code or policy re-runs the sweep. `make pr-rerun` re-runs failed CI jobs and does not refresh
 `oracle-gate`.
 
 A stand-in attestation must follow the oracle's latest decisive verdict
@@ -1386,15 +1389,17 @@ success would count and the gate property would not hold.
   previous body) contains the stand-in marker anywhere, so leading whitespace,
   which the checker strips, still triggers; the checker decides on the exact
   text;
-- completion of `oracle-verdict` and `oracle-review` (the bridge for review and
-  thread events, which have no trusted trigger);
+- completion of `oracle-review` (the bridge for oracle review edits and
+  dismissals, which have no trusted trigger; verdict runs post the gate
+  themselves);
 - `workflow_dispatch` with a `pr` input;
 - a `schedule` sweep over open PRs targeting `develop`;
-- every `push` to `develop`, so a merge re-evaluates open PRs without waiting
-  for the schedule.
+- a `push` to `develop` that changes the gate workflow, the gate or checker
+  scripts, or the oracle, soundness or inert path policy, so a gate or policy
+  change re-evaluates open PRs without waiting for the schedule.
 
-GitHub delays and drops scheduled runs, so pushes bound latency while `develop`
-is active and the schedule covers quiet hours. Only the sweep job runs on
+GitHub delays and drops scheduled runs, so those pushes bound latency for gate
+and policy changes and the schedule covers everything else. Only the sweep job runs on
 `push`; the gate and bridge jobs exclude it. Push sweeps share one concurrency
 group, separate from every PR's, and queue rather than cancel, so a running
 sweep finishes before the next starts.

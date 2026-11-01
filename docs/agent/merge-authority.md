@@ -71,12 +71,11 @@ the head again. Other comment edits and deletions do not run the gate.
 Resolving an oracle review thread starts no workflow run and needs no
 `oracle-gate` refresh: `oracle-gate` does not read threads, and the ruleset's
 required thread resolution blocks the merge while one is open. `make pr-arm`
-and `make pr-arm-remote` dispatch `oracle-gate` for the PR and head when the
-head's `oracle-gate` status is not `success`. For a PR that is already armed
-whose gate is stale, run
-`gh workflow run oracle-gate.yml --ref develop -f pr=<number>` (or wait for the
-next sweep, which runs on every push to `develop` and on a schedule) and merge
-only after `oracle-gate` passes on the current head.
+and `make pr-arm-remote` dispatch nothing and refuse to arm a head whose fresh
+gate evaluation does not pass. For a PR that is already armed whose gate is
+stale, run `gh workflow run oracle-gate.yml --ref develop -f pr=<number>` (or
+wait for the hourly sweep) and merge only after `oracle-gate` passes on the
+current head.
 
 To refresh the gate, dispatch it; `make pr-rerun` re-runs CI and does not
 refresh `oracle-gate`. Withhold readiness before withdrawing accepted review
