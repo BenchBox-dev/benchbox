@@ -231,7 +231,7 @@ def busy_main(machine: str, own_pid: int) -> int:
         return EXIT_UNKNOWN
     if pid is None:
         return EXIT_IDLE
-    print(pid)
+    sys.stdout.write(f"{pid}\n")
     return EXIT_BUSY
 
 
