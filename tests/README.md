@@ -481,7 +481,14 @@ acquired with `guard=True` exits 79 only when the watcher terminates it while th
 warning only. On normal release, surviving descendants are listed and left running.
 
 VMs and containers started through the Apple `container` runtime are children of launchd, not of the holder, so
-their footprint is not tree-attributed; VM memory is bounded by machine size and admission.
+they are not in the tree footprint and never count toward the shared budget. One exception is attributed separately:
+the Linux machine named by `BENCHBOX_HEAVY_LINUX_MACHINE` (default `benchbox-agent`), only for the holder whose tree
+contains `scripts/linux_machine_run.sh <machine>`. The `com.apple.Virtualization.VirtualMachine` process of the same
+user is mapped to the machine by `lsof -p <pid> -Fn` (5 s timeout) and the exact
+`machine-apiserver/machines/<machine>/` path segment; prefix-similar names, a process naming two machines or an
+unreadable `lsof` match nothing. Its footprint is reported as a separate line in breach reports and counts toward a
+breach only above `BENCHBOX_HEAVY_VM_ALLOWANCE_GIB` (default the machine's configured memory plus 10%; unknown
+memory never breaches). A VM breach SIGTERMs the holder tree so the wrapper's EXIT trap stops the machine.
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
@@ -489,6 +496,7 @@ their footprint is not tree-attributed; VM memory is bounded by machine size and
 | `BENCHBOX_HEAVY_KILL_FREE_DISK_GIB` | 20, or 40% of `BENCHBOX_HEAVY_MIN_FREE_DISK_GIB` when that is set and lower | Free-disk floor per root that counts as a breach; always below the admission floor unless set explicitly |
 | `BENCHBOX_HEAVY_WATCHDOG_INTERVAL_SECONDS` | 2 | Sampling interval of the watcher |
 | `BENCHBOX_HEAVY_WATCHDOG_GRACE_SECONDS` | 10 | Wait between SIGTERM and SIGKILL of descendants |
+| `BENCHBOX_HEAVY_VM_ALLOWANCE_GIB` | configured machine memory + 10% | Footprint of the attributed Linux VM above which the watcher treats it as a breach |
 
 ### macOS-specific conftest branch (`tests/conftest.py:109-122`)
 
