@@ -14274,6 +14274,13 @@
       "status": "done",
       "title": "Ensure local equivalents exist for all CI workflow steps"
     },
+    "local-oracle-member-review-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Produce a bound member-review result from the local oracle reviewer, recording exempt-only changes as not reviewed"
+    },
     "local-platform-cost-tracking": {
       "claim": null,
       "needs": [],
