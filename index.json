@@ -2780,6 +2780,13 @@
       "status": "done",
       "title": "Add CedarDB Platform Adapter"
     },
+    "cedardb-release-uat-coverage": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Restore CedarDB to the release UAT gate"
+    },
     "centralize-ddl-translation-phase": {
       "claim": null,
       "needs": [

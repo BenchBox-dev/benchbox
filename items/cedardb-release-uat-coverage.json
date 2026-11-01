@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Every CedarDB release UAT cell passes, or carries a documented skip that cites a reproduced engine error",
+    "SF0.01 and SF0.1 cells finish under 1200 s on the 4 vCPU / 16 GB release runner",
+    "CedarDB is back in the stage-2 release UAT shard with recomputed floors and a passing dry run"
+  ],
+  "description": "CedarDB was removed from the 0.5.0 release UAT by owner decision on 2026-11-01. In release UAT dry run 5 (run 41309974530, stage 2 cedardb, 8 GiB container) these cells failed: tpcdi QV1/QAQ5/QAQ7 at all scales; read_primitives (aggregation_distinct, intrinsic_to_date, window_moving_frame, json_*); write_primitives (insert_* at setup); transaction_primitives (commit, rollback, savepoint); and tpchavoc at SF0.01 (1_v1, 4_v7, 16_v7, 17_v7, 17_v10). tpchavoc and tpch_skew timed out at 1200 s even at SF0.01 and SF0.1, and vector_search exits 1. The tpcds_obt SF1 disk envelope stays.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b5c0af9e80316c2305b0741d",
+      "at": "2026-11-01T23:23:21Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "617311ed61db4af5918f3207ca42d984",
+      "session_id": "d069a37e6be440a9a93d9487f64d29cf"
+    }
+  ]
+}
