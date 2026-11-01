@@ -7738,6 +7738,13 @@
       "status": "done",
       "title": "Platform Deployment Factory Integration"
     },
+    "deployment-modes-test-host-dependent": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "test_deployment_modes_recorded fails locally when the host is detected as a container"
+    },
     "deployment-modes-unrecorded-20261014": {
       "claim": null,
       "needs": [],

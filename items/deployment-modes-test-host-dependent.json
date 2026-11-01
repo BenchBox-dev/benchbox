@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Reproduce by forcing container detection (e.g. monkeypatching the detector) and show the failure; the tests then pin container detection explicitly so they pass on any host.",
+    "A test covers both container and non-container variant ids for at least one platform.",
+    "make test-fast passes."
+  ],
+  "context": "Evidence: SaltAutoCore report, 2026-11-01 (not reproduced by the parent).",
+  "description": "During #3878, `make pr-preflight` on the agent's host failed 12 tests in tests/unit/platforms/test_deployment_modes_recorded.py because the computed published_variant_id gained the `^container` suffix (added by #3618 for runs inside a container). CI passed the same tests. The tests read real host container detection instead of fixing it, so their result depends on where they run.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e275448d846640d27249a6f8",
+      "at": "2026-11-01T13:43:34Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "14f518b9cf0648d68f27a0d92c0931ea",
+      "session_id": "a36a04b6bc394082b5008f654e1bf00b"
+    }
+  ]
+}
