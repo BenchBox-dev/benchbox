@@ -13,15 +13,34 @@ from typing import Any, Callable
 from benchbox.utils.query_shape_rewrites import (
     add_dual_source_to_filtered_selects,
     alias_order_by_projections,
+    date_column_integer_arithmetic,
     drop_correlated_scalar_group_by,
     drop_empty_group_by,
     fold_scalar_having_into_case,
     hoist_aggregate_subqueries,
     inline_named_windows,
     qualify_aggregated_columns,
+    rollup_empty_input_row,
     unwrap_single_grouping_set,
     wrap_order_by_subquery_aliases,
 )
+
+
+def _keep_doris_full_outer_join() -> None:
+    from benchbox._vendor.sqlglot import exp, transforms
+    from benchbox._vendor.sqlglot.generators.doris import DorisGenerator
+
+    DorisGenerator.TRANSFORMS[exp.Select] = transforms.preprocess(
+        [
+            transforms.eliminate_distinct_on,
+            transforms.eliminate_semi_and_anti_joins,
+            transforms.eliminate_qualify,
+            transforms.unnest_generate_date_array_using_recursive_cte,
+        ]
+    )
+
+
+_keep_doris_full_outer_join()
 
 SCHEMA_DDL_SCOPE = "schema_ddl"
 WORKLOAD_QUERY_SCOPE = "workload_query"
@@ -375,7 +394,12 @@ def translate_sql_query(
                 expression = rewrite_subqueries(expression.copy())
 
             if tgt == "doris":
-                expression = apply_rewrite("alias_derived_tables", expression, tgt)
+                for doris_rewrite in (
+                    "alias_derived_tables",
+                    "date_column_integer_arithmetic",
+                    "rollup_empty_input_row",
+                ):
+                    expression = apply_rewrite(doris_rewrite, expression, tgt)
             if tgt == "sqlite":
                 expression = apply_rewrite("fold_between_literal_arithmetic", expression, tgt)
                 if date_columns:
@@ -607,6 +631,7 @@ _LOCAL_REWRITES: dict[str, Callable[..., object]] = {
     "add_dual_source_to_filtered_selects": add_dual_source_to_filtered_selects,
     "alias_derived_tables": alias_derived_tables,
     "alias_order_by_projections": alias_order_by_projections,
+    "date_column_integer_arithmetic": date_column_integer_arithmetic,
     "alias_outer_table_references": alias_outer_table_references,
     "coalesce_count_subqueries": coalesce_count_subqueries,
     "drop_correlated_scalar_group_by": drop_correlated_scalar_group_by,
@@ -616,6 +641,7 @@ _LOCAL_REWRITES: dict[str, Callable[..., object]] = {
     "in_subquery_or_to_left_join": in_subquery_or_to_left_join,
     "inline_named_windows": inline_named_windows,
     "qualify_aggregated_columns": qualify_aggregated_columns,
+    "rollup_empty_input_row": rollup_empty_input_row,
     "trim_char_case_comparisons": trim_char_case_comparisons,
     "unwrap_single_grouping_set": unwrap_single_grouping_set,
     "wrap_order_by_subquery_aliases": wrap_order_by_subquery_aliases,

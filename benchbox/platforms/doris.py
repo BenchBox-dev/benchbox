@@ -59,29 +59,14 @@ _DEFAULT_BUCKETS = 10
 _BACKEND_READY_TIMEOUT_S = 120.0
 _BACKEND_READY_POLL_S = 2.0
 
-_TPCDS_DECIMAL_NULL_POSITIONS: dict[str, list[int]] = {
-    "call_center": [29, 30],
-    "catalog_returns": list(range(18, 27)),
-    "catalog_sales": list(range(19, 34)),
-    "customer_address": [11],
-    "item": [5, 6],
-    "promotion": [5],
-    "store": [27, 28],
-    "store_returns": list(range(11, 20)),
-    "store_sales": list(range(11, 22)),
-    "warehouse": [13],
-    "web_returns": list(range(15, 24)),
-    "web_sales": list(range(19, 34)),
-    "web_site": [24, 25],
-}
 
-
-def _fix_tpcds_decimal_nulls(line: str, delimiter: str, positions: list[int]) -> str:
+def _empty_fields_to_null(line: str, delimiter: str) -> str:
+    trailing = line.endswith(delimiter)
     fields = line.split(delimiter)
-    for pos in positions:
-        if pos < len(fields) and fields[pos] == "":
-            fields[pos] = r"\N"
-    return delimiter.join(fields)
+    if trailing:
+        fields.pop()
+    joined = delimiter.join(r"\N" if field == "" else field for field in fields)
+    return joined + delimiter if trailing else joined
 
 
 def _format_filter_ratio(value: Any) -> str:
@@ -646,13 +631,10 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
             format_name="csv", delimiter=delimiter, is_tpc=is_tpc, skip_header=dialect.has_header
         )
 
-        decimal_positions = _TPCDS_DECIMAL_NULL_POSITIONS.get(table_name, [])
-
         if is_tpc:
             with self._open_data_file_text(data_file) as f:
                 lines = f.read().splitlines()
-            if decimal_positions:
-                lines = [_fix_tpcds_decimal_nulls(line, delimiter, decimal_positions) for line in lines]
+            lines = [_empty_fields_to_null(line, delimiter) for line in lines]
             data = "\n".join(lines).encode("utf-8")
         else:
             with self._open_data_file_binary(data_file) as f:
@@ -680,8 +662,6 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
 
         headers = self._stream_load_headers(format_name="csv", delimiter=delimiter, is_tpc=is_tpc)
 
-        decimal_positions = _TPCDS_DECIMAL_NULL_POSITIONS.get(table_name, [])
-
         total_rows = 0
         chunk_num = 0
 
@@ -697,8 +677,8 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
                     if not line:
                         continue
 
-                    if decimal_positions:
-                        line = _fix_tpcds_decimal_nulls(line, delimiter, decimal_positions)
+                    if is_tpc:
+                        line = _empty_fields_to_null(line, delimiter)
 
                     chunk_lines.append(line)
                     chunk_bytes += len(line.encode("utf-8", errors="replace")) + 1
