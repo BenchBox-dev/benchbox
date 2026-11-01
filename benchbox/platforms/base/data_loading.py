@@ -1595,7 +1595,10 @@ class ClickHouseNativeHandler(FileFormatHandler):
     def _get_column_type_names(self, benchmark: Any, table_name: str) -> list[str | None]:
         schema = benchmark.get_schema() if hasattr(benchmark, "get_schema") else {}
         table_schema = _resolve_table_schema(schema, table_name)
-        columns = _schema_table_columns(table_schema) or []
+        columns = _schema_table_columns(table_schema)
+        if columns is None:
+            keyed = table_schema.get("columns") if isinstance(table_schema, dict) else None
+            columns = list(keyed.values()) if isinstance(keyed, dict) else []
 
         type_names: list[str | None] = []
         for column in columns:
