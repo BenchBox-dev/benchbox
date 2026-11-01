@@ -2,6 +2,7 @@
 
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
+import contextlib
 import copy
 import functools
 import hashlib
@@ -9,7 +10,9 @@ import logging
 import os
 import platform
 import re
+import secrets
 import subprocess
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
@@ -194,26 +197,134 @@ def resolve_public_pseudonym_salt(
     return stripped or None
 
 
+PUBLIC_PSEUDONYM_SALT_FILENAME = "submission_salt"
+PUBLIC_PSEUDONYM_SALT_DOCS_URL = "https://benchbox.dev/docs/contributing-results.html"
+_SALT_READ_ATTEMPTS = 5
+_SALT_READ_DELAY_SECONDS = 0.05
+
+
+def public_pseudonym_salt_path() -> Path:
+    try:
+        return Path.home() / ".benchbox" / PUBLIC_PSEUDONYM_SALT_FILENAME
+    except RuntimeError:
+        raise MissingPublicPseudonymSaltError(
+            "Cannot locate the home directory for the public pseudonym salt file. "
+            f"Set the {PUBLIC_PSEUDONYM_SALT_ENV} environment variable to a private value. "
+            f"See {PUBLIC_PSEUDONYM_SALT_DOCS_URL}."
+        ) from None
+
+
+def _salt_store_error(path: Path, problem: str) -> MissingPublicPseudonymSaltError:
+    return MissingPublicPseudonymSaltError(
+        f"The public pseudonym salt file {path} {problem}. "
+        f"Fix or delete that file, or set the {PUBLIC_PSEUDONYM_SALT_ENV} environment variable "
+        f"to a private value. See {PUBLIC_PSEUDONYM_SALT_DOCS_URL}."
+    )
+
+
+def _read_salt_file(path: Path) -> Optional[str]:
+    for attempt in range(_SALT_READ_ATTEMPTS):
+        try:
+            stripped = path.read_text(encoding="utf-8").strip()
+        except FileNotFoundError:
+            return None
+        except (OSError, UnicodeDecodeError) as exc:
+            raise _salt_store_error(path, f"cannot be read ({type(exc).__name__})") from None
+        if stripped:
+            return stripped
+        if attempt + 1 < _SALT_READ_ATTEMPTS:
+            time.sleep(_SALT_READ_DELAY_SECONDS)
+    raise _salt_store_error(path, "is empty")
+
+
+def _write_salt_exclusive(path: Path, value: str) -> bool:
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        return False
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(value)
+            handle.flush()
+            os.fsync(handle.fileno())
+    except BaseException:
+        with contextlib.suppress(OSError):
+            path.unlink()
+        raise
+    return True
+
+
+def _create_salt_file(path: Path) -> Optional[str]:
+    value = secrets.token_hex(32)
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    temp_path = path.parent / f".{path.name}.{os.getpid()}.{secrets.token_hex(4)}.tmp"
+    fd = os.open(temp_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(value)
+            handle.flush()
+            os.fsync(handle.fileno())
+        with contextlib.suppress(OSError):
+            temp_path.chmod(0o600)
+        try:
+            os.link(temp_path, path)
+        except FileExistsError:
+            return None
+        except OSError:
+            return value if _write_salt_exclusive(path, value) else None
+        return value
+    finally:
+        with contextlib.suppress(OSError):
+            temp_path.unlink()
+
+
 def require_public_pseudonym_salt(
     *,
     explicit: Optional[str] = None,
     environ: Optional[dict[str, str]] = None,
 ) -> str:
     salt = resolve_public_pseudonym_salt(explicit=explicit, environ=environ)
-    if salt is None:
+    if salt is not None:
+        return salt
+    path = public_pseudonym_salt_path()
+    stored = _read_salt_file(path)
+    if stored is None:
         raise MissingPublicPseudonymSaltError(
             "Community publish requires a non-empty public pseudonym salt. "
             f"Set the {PUBLIC_PSEUDONYM_SALT_ENV} environment variable to a "
-            "deployment-private value before the first public export/submit. "
-            "See https://benchbox.dev/docs/development/adr/adr-published-identifier-field-set.html "
-            "(retained-field salt decision)."
+            f"deployment-private value, or place one in {path}. "
+            f"See {PUBLIC_PSEUDONYM_SALT_DOCS_URL}."
         )
-    return salt
+    return stored
+
+
+def ensure_public_pseudonym_salt(
+    *,
+    explicit: Optional[str] = None,
+    environ: Optional[dict[str, str]] = None,
+) -> tuple[str, bool]:
+    salt = resolve_public_pseudonym_salt(explicit=explicit, environ=environ)
+    if salt is not None:
+        return salt, False
+    path = public_pseudonym_salt_path()
+    stored = _read_salt_file(path)
+    if stored is not None:
+        return stored, False
+    try:
+        created = _create_salt_file(path)
+    except OSError as exc:
+        raise _salt_store_error(path, f"cannot be created ({type(exc).__name__})") from None
+    if created is not None:
+        return created, True
+    winner = _read_salt_file(path)
+    if winner is None:
+        raise _salt_store_error(path, "disappeared while it was being created")
+    return winner, False
 
 
 @dataclass
 class AnonymizationConfig:
-    machine_id_salt: Optional[str] = None
+    machine_id_salt: Optional[str] = field(default=None, repr=False)
 
     pii_patterns: list[str] = field(
         default_factory=lambda: [
@@ -817,7 +928,9 @@ __all__ = [
     "MissingPublicPseudonymSaltError",
     "anonymize_applied_tuning_payload",
     "anonymize_plans_payload",
+    "ensure_public_pseudonym_salt",
     "find_public_path_leaks",
+    "public_pseudonym_salt_path",
     "require_public_pseudonym_salt",
     "resolve_public_pseudonym_salt",
 ]

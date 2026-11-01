@@ -210,7 +210,7 @@ Full cross-platform reference:
 
 The benchmark reuses TPC-H data through `get_data_source_benchmark() -> "tpch"` and generates:
 - Staging tables (10% of ORDERS, 5% of LINEITEM)
-- Bulk load files in `_project/write_primitives_files/{scale_factor}/`
+- Bulk load files in `write_primitives_auxiliary/` under the benchmark output directory
 - CSV files: uncompressed, gzip, zstd (1K, 100K, 1M rows)
 - Parquet files: uncompressed, snappy, zstd (1K, 100K, 1M rows)
 

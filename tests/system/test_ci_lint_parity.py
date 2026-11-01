@@ -137,6 +137,10 @@ MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
 }
 
 MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
+    ("ci.yml", "example-validation", "Check user-facing text for contributor references"): (
+        "A fast unit test, tests/unit/cli/test_shipped_docs_urls.py, that make test-fast and "
+        "pr-preflight already run; the hosted step exists only so Markdown-only changes run it."
+    ),
     ("ci.yml", "medium-test", "Run changed tests on the curated release tree"): (
         "The curated release-tree selector runs hosted against the PR base ref; no "
         "standalone Make target invokes scripts/release_curation_dry_run.py, and "

@@ -3367,16 +3367,20 @@
     "file": 2,
     "pattern": 1,
     "root": 1,
-    "unresolved": 3
+    "unresolved": 4
    },
-   "occurrences": 27,
+   "occurrences": 28,
    "path": "tests/unit/cli/test_shipped_docs_urls.py",
    "rule": "lock-tests-core",
-   "target_count": 7,
+   "target_count": 8,
    "targets": [
     {
      "kind": "root",
      "target": "docs/"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/agent/notes.md"
     },
     {
      "kind": "unresolved",
@@ -4685,9 +4689,9 @@
    "generated": 3,
    "pattern": 352,
    "root": 203,
-   "unresolved": 2073
+   "unresolved": 2074
   },
-  "references": 33253,
+  "references": 33254,
   "unclassified": 0
  }
 }

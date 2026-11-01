@@ -221,12 +221,6 @@ databricks_liquid_auto`, keep ZORDER disabled, and avoid per-table partitioning
 or distribution fields. The listed table columns are logical workload intent;
 with `CLUSTER BY AUTO`, Databricks chooses effective Liquid keys asynchronously.
 
-Run the checked-template profile gate with:
-
-```bash
-uv run -- python _project/scripts/tuning_profile_check.py --benchmarks tpch,tpcds --platforms databricks,duckdb --strict
-```
-
 See <https://benchbox.dev/docs/usage/tpc-tuning-profiles.html> for the profile schema, current
 Databricks/DuckDB mapping matrix, result metadata fields, and comparison
 caveats. Do not treat a benchmark-specific tuned template and a

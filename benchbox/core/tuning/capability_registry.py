@@ -122,7 +122,7 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "clickhouse_order_by_or_tuple_fallback",
             "MergeTree requires ORDER BY. When no tuned sort/cluster columns are configured, "
             "translate_ddl falls back to primary-key-derived columns or ORDER BY tuple() -- "
-            "this fallback is the engine-mandatory baseline (see ADR-3 baseline policy), not tuned "
+            "this fallback is the engine-mandatory baseline, not tuned "
             "rendering. ClickHouse enables primary keys even without tuning, so a change to a benchmark's "
             "declared keys changes the untuned MergeTree ORDER BY: the TPC-DS composite keys moved "
             "store_sales from ORDER BY (ss_ticket_number) to ORDER BY (ss_item_sk, ss_ticket_number) and "

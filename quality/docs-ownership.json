@@ -23,6 +23,7 @@
     "docs/agent/handoffs.md": "core-only",
     "docs/agent/heavy-work.md": "core-only",
     "docs/agent/identity-instruction-boundary.md": "core-only",
+    "docs/agent/maintainer-bundles.md": "core-only",
     "docs/agent/merge-authority.md": "core-only",
     "docs/agent/pr-review-evidence.md": "core-only",
     "docs/agent/primary-clone-guard.md": "core-only",

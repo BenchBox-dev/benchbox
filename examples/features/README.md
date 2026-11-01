@@ -248,7 +248,7 @@ Have a feature that needs a focused example? Submit a PR following this pattern:
 
 1. One feature per example
 2. Complete, runnable code
-3. No comments or docstrings (see the [comment policy](../../docs/internal/comment-policy.md))
+3. No comments or docstrings (see [CONTRIBUTING.md](../CONTRIBUTING.md))
 4. Describe the example and its usage in this README
 5. Add the example to the list above
 
