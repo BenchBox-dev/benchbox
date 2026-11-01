@@ -19456,10 +19456,10 @@
     },
     "public-pseudonym-salt-automatic": {
       "claim": {
-        "expires_at": "2026-11-01T13:03:33Z",
-        "generation": "24bee2c2a10346f4b5057725a93a10a6",
+        "expires_at": "2026-11-02T03:10:36Z",
+        "generation": "64913c3b746f48ea96cc79b5cdafa08f",
         "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:73f4ce6dc372259381dd21db"
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e275448d846640d27249a6f8"
       },
       "needs": [],
       "priority": "high",
