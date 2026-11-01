@@ -12995,15 +12995,10 @@
       "title": "Research attributing the Linux VM's footprint to the lock holder that booted it"
     },
     "heavy-guard-vm-lifecycle-20261101": {
-      "claim": {
-        "expires_at": "2026-11-02T14:12:27Z",
-        "generation": "452697f74dc0438380ab4ba128ed5326",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:94e4d2f7dee4726eca194412"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Stop the Linux VM after guarded runs and when it sits idle with no lock holder"
     },
     "heavy-guard-watchdog-20261030": {
