@@ -1756,6 +1756,15 @@
       "status": "open",
       "title": "Add leader-only batch-land, recorded head advances and batch-status reconciliation"
     },
+    "batch-loop-default-mode-20261101": {
+      "claim": null,
+      "needs": [
+        "batch-loop-pilot-20261101"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Make integration mode the AGENTS.md default for explicitly assigned cohesive batches after a passing pilot"
+    },
     "batch-loop-disposable-e2e-20261101": {
       "claim": null,
       "needs": [
