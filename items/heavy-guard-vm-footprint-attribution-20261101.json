@@ -5,7 +5,7 @@
     "If implemented: the VM allowance, not the shared budget, decides a VM breach; a breach report names the VM; heavy-status and the sentinel summary show the VM footprint line.",
     "If implemented: make comment-policy-check, lint, typecheck, test-fast pass."
   ],
-  "context": "Evidence 2026-11-01: benchbox-agent (4 CPU, 8G) was running at a 7.83 GiB footprint (pid 49810, started 2026-10-31 15:45 local, before PR #3848 merged) with no lock holder, no `container machine run` process and memory pressure level 2 / memorystatus_level 29. scripts/linux_machine_run.sh restores the machine's prior state, so a machine already running stays running; the choke-point test only covers repo files; the VM process is a launchd child, so the watchdog budget does not count it; admission needs 2 GiB to boot an 8 GiB machine.",
+  "context": "Evidence 2026-11-01: benchbox-agent (4 CPU, 8G) was running at a 7.83 GiB footprint (pid 49810, started 2026-10-31 15:45 local, before PR #3848 merged) with no lock holder, no `container machine run` process and memory pressure level 2 / memorystatus_level 29. scripts/linux_machine_run.sh restores the machine's prior state, so a machine already running stays running; the choke-point test only covers repo files; the VM process is a launchd child, so the watchdog budget does not count it; admission needs 2 GiB to boot an 8 GiB machine.\n\n2026-11-01: revised after TODO review (agent://VmTodoReview): wrapper stop guarded against foreign machine runs, sentinel reader/matcher and settings prefix, rule amendment, unguarded-run report, sizing helper and G1 with the machine stopped, attribution as a separate VM allowance.",
   "description": "Problem: Apple container VMs run as launchd children (com.apple.Virtualization.VirtualMachine XPC service), so the watchdog's tree footprint never includes them and a run's real memory cost is invisible.\n\nVerify the lead found 2026-11-01: as the same user, `lsof -p <pid> -Fn` for a com.apple.Virtualization.VirtualMachine process lists `.../machine-apiserver/machines/<machine>/rootfs.ext4`. Match only the exact `/machines/<machine>/` path segment, with a 5 s timeout and same uid; reject any prefix match (such as the runtime helper's `--uuid <machine>-<hex>`). Confirm across a stop/boot cycle (owner present) and, if available, with a second machine.\n\nChange if the mapping holds: report the VM's footprint as a separate line in the watchdog breach report, make heavy-status and the sentinel summary. It counts toward a breach only above a separate VM allowance (BENCHBOX_HEAVY_VM_ALLOWANCE_GIB, default the machine's configured memory plus 10%), never the shared budget, and only for the holder whose tree contains scripts/linux_machine_run.sh for that machine. A breach SIGTERMs the tree so the wrapper's EXIT trap stops the machine. Record how the VM interacts with the budget in the PR together with the machine-size decision from heavy-guard-vm-admission-sizing-20261101. If no reliable mapping exists, record the negative result with the probes tried and close the item.\n\nDecision gates:\n- G1 (stop condition): any mapping that could match another machine or another user's VM is rejected; never guess.\n\nGuardrails: linked worktree via make worktree-create; stage paths explicitly. [COMMENT-POLICY-001]: no comments or docstrings. Tests use stub `container` executables, tmp BENCHBOX_TEST_LOCK_DIR, injected process tables and readings; never touch the real lock, never start, stop or resize a real VM from tests. Act only on the machine named by BENCHBOX_HEAVY_LINUX_MACHINE (default benchbox-agent, matching the Makefile CI_LINUX_MACHINE default); never touch other machines (e.g. ss-dev) or containers. `container` CLI 1.1.0 machine subcommands: create (creates and boots), delete, inspect, list, logs, run (boots on demand; no -n targets the default machine), set, set-default, stop. There is no start or exec. When `container` is not on PATH (Linux CI, Windows) every VM check is a silent no-op.",
   "links": [
     "benchbox/utils/heavy_watchdog.py",
@@ -28,6 +28,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "fc770e321f414ef88dcfe73c241d7b24",
+      "session_id": "6f8f4a28707f4702ad48cd7b8d6aaabb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:94e4d2f7dee4726eca194412",
+      "at": "2026-11-01T14:11:58Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "2f72f6d279374e1ea493ef17e0a7448a",
       "session_id": "6f8f4a28707f4702ad48cd7b8d6aaabb"
     }
   ]
