@@ -17214,13 +17214,18 @@
       "title": "Run the local findings and dispute smoke on the Mac"
     },
     "oracle-local-findings-record-disputes-20261026": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-02T22:03:52Z",
+        "generation": "352634572d544d2bbb391085ee123d27",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e"
+      },
       "needs": [
         "oracle-review-driver-local-20261026",
         "oracle-dispute-trigger-budget-escalation-20261026"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Carry local findings and disputes into CI as claims and replace the local override with dispute and owner adjudication"
     },
     "oracle-local-o10-delete-reviewer-secrets": {
