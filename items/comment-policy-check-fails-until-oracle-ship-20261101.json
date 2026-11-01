@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "The comment-policy result for a head does not change with oracle verdict timing; a test or recorded run shows it passing before SHIP."
+  ],
+  "description": "On #3827 (head a20d6ebac4) CI's comment-policy job failed and passed only after a manual rerun once the oracle had SHIPped the head. A required check whose result depends on oracle timing forces manual reruns and adds a CI cycle per PR. Find why the job reads oracle state (or races it) and make it deterministic for a given head.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e",
+      "at": "2026-11-01T13:44:43Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e2e8f8915f4e46508439449bfe614b84",
+      "session_id": "1273bcfa4d0e4ed89453e147e32359eb"
+    }
+  ]
+}

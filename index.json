@@ -5312,6 +5312,13 @@
       "status": "done",
       "title": "Remove comments and docstrings from Write primitives modules"
     },
+    "comment-policy-check-fails-until-oracle-ship-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Stop the CI comment-policy check failing on a head until the oracle SHIPs it"
+    },
     "comment-policy-ci-job-timeout-20261017": {
       "claim": null,
       "needs": [],
