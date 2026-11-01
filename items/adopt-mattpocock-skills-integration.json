@@ -1,0 +1,29 @@
+{
+  "acceptance": [
+    "Owner decisions recorded: handoff location, plugin auto-update vs pinned revision via skill-sync, and the policy for never-merged prototype/research branches",
+    "Pocock promoted skills installed at a pinned revision for BenchBox, with /setup-matt-pocock-skills run and docs/agents/issue-tracker.md mapping his tracker operations onto todo-db",
+    "AGENTS.md states the worktree-first rule for implement and origin/develop as the default review fixed point",
+    "Retired local skills or actions removed from skill-sync.conf with no remaining callers; the todo skill reduced to tracker mechanics (claims, gates, batches, deferrals, human-only CLI)",
+    "One real change run end to end through grill-with-docs, to-spec, to-tickets, implement and code-review against todo-db, reaching a merged PR"
+  ],
+  "context": "Revisit requested two weeks after the 2026-11-01 comparison. Suggested order: install pinned set and tracker adapter; retire overlapping code/test/todo actions as equivalents prove out; fold shared-change-framework, shared-review-protocol and shared-investigation-framework into AGENTS.md and docs/agent/; start GLOSSARY.md via domain-modeling; adopt a SCOPE.md-style bar (observed failure) for new local rules; prune AGENTS.md with writing-for-agents. implement-spec should run only through feature delivery mode until worktree-create supports a non-develop base and the integrator owns tracker claims.",
+  "description": "Goal: move from locally accreted skills (code, test, todo ideate/spec, shared-change-framework, shared-review-protocol, shared-investigation-framework) toward the widely used mattpocock/skills set (https://github.com/mattpocock/skills, reviewed at commit 59db609, MIT, ~305k stars), keeping only what that set deliberately excludes: write governance (worktrees, PR close-out, merge authority), the todo-db tracker mechanics, and BenchBox/personal skills (benchbox, blog, substack, tidy-perms, skill-sync, memex-search, session-takeover).\n\nCandidate replacements: implement + tdd (code implement/fix/perf, test); diagnosing-bugs (code debug, investigation-framework root cause); code-review (code review / five-axis); grilling, grill-with-docs, to-spec, to-tickets, wayfinder (todo ideate/spec, code to-spec, batch decomposition); pr (PR body). New capability with no local equivalent: domain-modeling (GLOSSARY.md + ADRs), codebase-design, improve-codebase-architecture, prototype, research, retro, writing-for-agents.\n\ntodo-db as his tracker: choose 'Other' in /setup-matt-pocock-skills and write docs/agents/issue-tracker.md mapping ticket=item, Blocked by=needs, frontier=list_items(ready_only=true), claim=take, resolve=finish, needs-info=blocked, wontfix=drop. Specs stay as files in _project/specs/<slug>.md (landed by PR); tickets use id <slug>-NN-<short> with the spec path in links; optional umbrella item whose needs list every ticket. Gaps: no parent link, no needs-triage/ready-for-human labels, context is overwritten not appended (adapter must say append or defer).\n\nWorktree/branch conflicts: (1) implement commits to the current branch; AGENTS.md must require make worktree-create first. (2) implement-spec bases implementer worktrees on an integration branch, but scripts/worktree_lifecycle.sh:160-163 always branches from origin/develop; needs an optional base, and the integrator must own take/prepare/finish (one live claim per worker identity). (3) prototype/* and wayfinder research/* branches are pushed and never merged, which conflicts with WRITE-CLOSEOUT-001. (4) his code-review/review fixed points default to main; ours is origin/develop. (5) his handoff writes to $TMPDIR, which conflicts with SESSION-STATE-001. (6) his to-spec forbids file paths; our spec guidance requires Prior art with paths (suggest: paths in spec file only).",
+  "links": [
+    "https://github.com/mattpocock/skills",
+    "skill-sync.conf",
+    "scripts/worktree_lifecycle.sh",
+    ".claude/skills/todo/SKILL.md",
+    ".claude/skills/code/SKILL.md"
+  ],
+  "not_before": "2026-11-15T09:00:00Z",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:695b7bc37a67caa53ed85495",
+      "at": "2026-11-01T12:50:42Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c0b6beea10234752b26424e73f71ec60",
+      "session_id": "1330b6f5ea4a4e6bb7981e869c43f60a"
+    }
+  ]
+}

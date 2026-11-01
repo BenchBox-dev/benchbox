@@ -383,6 +383,13 @@
       "status": "done",
       "title": "Adopt the locked todo-db runtime in secondary consumers"
     },
+    "adopt-mattpocock-skills-integration": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Evaluate and integrate the most useful mattpocock/skills workflows into BenchBox, replacing accreted local skills"
+    },
     "adopt-todo-db-standalone-cli-for-amendable-items": {
       "claim": null,
       "needs": [],
