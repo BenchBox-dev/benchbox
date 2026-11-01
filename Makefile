@@ -895,7 +895,7 @@ ci-linux:
 		echo "ci-linux: machine '$(CI_LINUX_MACHINE)' not found. One-time setup:"; \
 		echo "  container system start"; \
 		echo "  container build --arch arm64 --tag local/benchbox-agent docker/benchbox-agent"; \
-		echo "  container machine create local/benchbox-agent --name $(CI_LINUX_MACHINE) --home-mount rw --cpus 4 --memory 8G"; \
+		echo "  container machine create local/benchbox-agent --name $(CI_LINUX_MACHINE) --home-mount rw --cpus 4 --memory 6G"; \
 		exit 1; \
 	fi; \
 	echo "==> ci-linux: '$(CI_LINUX_CMD)' inside container machine '$(CI_LINUX_MACHINE)'"; \

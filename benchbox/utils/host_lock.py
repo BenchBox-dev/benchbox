@@ -879,13 +879,16 @@ def admit_command(need_gib: float | None = None) -> int:
     return 0
 
 
+BOOT_RESIDENT_FRACTION = 0.5
+
+
 def machine_need_gib(machine: str, fallback_gib: float) -> float:
     from benchbox.utils import linux_machine
 
     state = linux_machine.read_machine_state(machine)
     if state is None or state.status == "running" or state.memory_gib is None or state.memory_gib <= 0:
         return fallback_gib
-    return state.memory_gib
+    return state.memory_gib * BOOT_RESIDENT_FRACTION
 
 
 def machine_need_command(machine: str, fallback_gib: float) -> int:

@@ -64,13 +64,13 @@ def _need(path: str, machine: str = "benchbox-agent", fallback: str = "2") -> su
     )
 
 
-def test_a_stopped_machine_needs_its_configured_memory(tmp_path: Path) -> None:
+def test_a_stopped_machine_needs_half_its_configured_memory(tmp_path: Path) -> None:
     bin_dir = _container(tmp_path, [_machine("benchbox-agent", "stopped", 8)])
 
     result = _need(f"{bin_dir}:/usr/bin:/bin")
 
     assert result.returncode == 0
-    assert result.stdout.strip() == "8"
+    assert result.stdout.strip() == "4"
 
 
 def test_a_running_machine_needs_only_the_fallback(tmp_path: Path) -> None:
@@ -90,7 +90,7 @@ def test_a_prefix_similar_machine_is_not_matched(tmp_path: Path) -> None:
         tmp_path, [_machine("benchbox-agent-2", "stopped", 16), _machine("benchbox-agent", "stopped", 6)]
     )
 
-    assert _need(f"{bin_dir}:/usr/bin:/bin").stdout.strip() == "6"
+    assert _need(f"{bin_dir}:/usr/bin:/bin").stdout.strip() == "3"
 
 
 def test_an_unreadable_listing_needs_the_fallback(tmp_path: Path) -> None:
@@ -124,8 +124,8 @@ def test_the_makefile_recipe_passes_the_helper_output_as_the_need() -> None:
 def test_the_setup_texts_name_the_machine_size_the_sizing_assumes() -> None:
     for relative in ("Makefile", "scripts/linux_preflight_pytest.sh"):
         text = (REPO_ROOT / relative).read_text(encoding="utf-8")
-        assert "--memory 8G" in text
-        assert "--memory 6G" not in text
+        assert "--memory 6G" in text
+        assert "--memory 8G" not in text
 
 
 darwin_arm64 = pytest.mark.skipif(

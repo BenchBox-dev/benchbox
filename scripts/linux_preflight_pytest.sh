@@ -34,7 +34,7 @@ setup_steps="  One-time setup (Apple silicon, macOS 26+):
     brew install container
     container system start
     container build --arch arm64 --tag local/benchbox-agent docker/benchbox-agent
-    container machine create local/benchbox-agent --name $machine --home-mount rw --cpus 4 --memory 8G"
+    container machine create local/benchbox-agent --name $machine --home-mount rw --cpus 4 --memory 6G"
 
 if [ "$#" -ne 1 ] || [ ! -f "$1" ]; then
   echo "usage: linux_preflight_pytest.sh <test-list-file>" >&2
