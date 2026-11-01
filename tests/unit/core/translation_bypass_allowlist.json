@@ -417,6 +417,7 @@
       "spark": [
         "json_aggregates",
         "list_reduce",
+        "olap_rollup_analysis",
         "timeseries_trend_analysis"
       ],
       "sqlite": [

@@ -169,4 +169,4 @@ def test_registry_describes_runtime_rewrites():
         "3_v9",
     }
     assert registered["snowflake"] == {"6_v2", "14_v2"}
-    assert len(registered["databricks"]) == 13
+    assert len(registered["databricks"]) == 16
