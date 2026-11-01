@@ -12980,7 +12980,9 @@
     },
     "heavy-guard-vm-footprint-attribution-20261101": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "heavy-guard-vm-lifecycle-20261101"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Research attributing the Linux VM's footprint to the lock holder that booted it"
