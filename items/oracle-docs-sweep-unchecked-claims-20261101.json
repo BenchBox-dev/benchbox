@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "Both claims are verified against develop with path:line evidence and corrected if false."
+  ],
+  "description": "The oracle docs-claims sweep (#3907) did not check docs/internal/oracle-gateway-host.md:155-156, and did not re-verify the 2026-10-29 wording about a branch editing its own exempt paths against current develop (only that policy and manifests are read from the base branch).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e",
+      "at": "2026-11-01T13:45:47Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "d0d1be51153b452bb686acb1e9553150",
+      "session_id": "1273bcfa4d0e4ed89453e147e32359eb"
+    }
+  ]
+}
