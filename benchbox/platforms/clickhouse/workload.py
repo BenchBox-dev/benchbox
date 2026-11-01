@@ -313,7 +313,16 @@ class ClickHouseWorkloadMixin:
                 if isinstance(table_schema, dict)
                 else getattr(table_schema, "columns", None)
             )
-            if isinstance(columns, (dict, list, tuple)):
+            if isinstance(columns, dict):
+                structured = bool(columns)
+            elif isinstance(columns, (list, tuple)):
+                structured = any(
+                    isinstance(column.get("name") if isinstance(column, dict) else getattr(column, "name", None), str)
+                    for column in columns
+                )
+            else:
+                structured = False
+            if structured:
                 names.add(str(table_name).lower())
         return names
 

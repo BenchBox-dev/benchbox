@@ -163,6 +163,14 @@ def test_keyed_schema_columns_defer_to_ddl_not_null() -> None:
     assert "note Nullable(String)" in rendered
 
 
+def test_string_column_specs_defer_to_the_ddl() -> None:
+    ddl = "CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT NOT NULL, note VARCHAR(5));"
+    schema = {"t": {"columns": ["id INTEGER PRIMARY KEY", "name TEXT NOT NULL", "note VARCHAR(5)"]}}
+    rendered = _created_ddl(_Benchmark(ddl, schema))
+    assert "name String" in rendered and "name Nullable" not in rendered
+    assert "note Nullable(String)" in rendered
+
+
 def test_structured_schema_without_nullable_columns_stays_non_nullable() -> None:
     ddl = "CREATE TABLE t (name STRING);"
     schema = {"t": {"columns": {"name": {"type": "STRING", "nullable": False}}}}
