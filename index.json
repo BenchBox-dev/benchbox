@@ -17491,13 +17491,18 @@
       "title": "An author cannot get the oracle to reconsider a disputed finding without pushing a new commit"
     },
     "oracle-same-head-rerun-returns-verdict-20261026": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-02T04:20:43Z",
+        "generation": "469e08f64994428688b302ef5af1bbb7",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e"
+      },
       "needs": [
         "oracle-dispute-trigger-budget-escalation-20261026",
         "oracle-history-edited-review-fail-closed-20261027"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Return the existing verdict for a same-head /oracle-review with no open dispute"
     },
     "oracle-scope-path-canonical-20261026": {
