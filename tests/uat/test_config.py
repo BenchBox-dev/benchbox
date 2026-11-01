@@ -506,6 +506,10 @@ _DOCKER_SF1_TIMEOUT_PRUNED_CELLS = {
             ("questdb", "joinorder", 0.01),
             ("questdb", "tpcds_obt", 0.01),
             ("timescaledb", "tpcds_obt", 0.01),
+            ("presto", "joinorder", 0.01),
+            ("presto", "tpcds_obt", 0.01),
+            ("trino", "joinorder", 0.01),
+            ("trino", "tpcds_obt", 0.01),
         }
     ),
 }
@@ -531,6 +535,8 @@ def test_release_gate_docker_stages_prune_sf1_timeouts_measured_in_dry_run_2(con
         if (cell.platform, cell.benchmark, cell.scale) in expected:
             if (cell.platform, cell.benchmark) == ("cedardb", "tpcds_obt"):
                 assert "whole 144 GiB runner disk" in cell.reason
+            elif cell.platform in {"presto", "trino"}:
+                assert "memory catalog cannot hold this SF1 dataset" in cell.reason
             else:
                 assert "timed out at 1200s" in cell.reason
 

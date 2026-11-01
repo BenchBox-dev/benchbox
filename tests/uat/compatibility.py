@@ -202,6 +202,19 @@ _PANDAS_DF_SF1_MEMORY_RUNTIME_ENVELOPES = {
     for benchmark in ("flightdata", "datavault")
 }
 
+_MEMORY_CATALOG_SF1_RUNTIME_ENVELOPE_REASON = (
+    "{engine}'s memory catalog cannot hold this SF1 dataset in the release UAT stack: joinorder is about 74M rows and "
+    "tpcds_obt about 5M rows by 518 columns, beyond the connector's per-node data cap, and row-wise inserts cannot "
+    "finish inside the 1200s cell contract. SF0.01 and SF0.1 stay in the gate; a Hive or Iceberg catalog over "
+    "external Parquet is not blocked."
+)
+
+_MEMORY_CATALOG_SF1_RUNTIME_ENVELOPES = {
+    (platform, benchmark): _MEMORY_CATALOG_SF1_RUNTIME_ENVELOPE_REASON.format(engine=engine)
+    for platform, engine in (("presto", "Presto"), ("trino", "Trino"))
+    for benchmark in ("joinorder", "tpcds_obt")
+}
+
 
 def _sf1_timeout_reason(platform: str) -> str:
     return (
@@ -264,6 +277,7 @@ _SF1_TIMEOUT_RUNTIME_ENVELOPE_EVIDENCE = dict.fromkeys(
 _RELEASE_GATE_RUNTIME_ENVELOPES = (
     _SF1_TIMEOUT_RUNTIME_ENVELOPES
     | _PANDAS_DF_SF1_MEMORY_RUNTIME_ENVELOPES
+    | _MEMORY_CATALOG_SF1_RUNTIME_ENVELOPES
     | {
         ("sqlite", "datavault", 1.0): _SQLITE_DATAVAULT_SF1_RUNTIME_ENVELOPE_REASON,
         ("sqlite", "tpchavoc", 1.0): _SQLITE_TPCHAVOC_SF1_RUNTIME_ENVELOPE_REASON,
@@ -279,6 +293,11 @@ _RELEASE_GATE_RUNTIME_ENVELOPE_EVIDENCE = (
     | dict.fromkeys(
         _PANDAS_DF_SF1_MEMORY_RUNTIME_ENVELOPES,
         "release UAT dry run 2 (run 41163626947) SF1 memory: UAT_MEMORY_LIMIT limit_gib=13 peak_gib=13.09 / 13.22",
+    )
+    | dict.fromkeys(
+        _MEMORY_CATALOG_SF1_RUNTIME_ENVELOPES,
+        "release UAT dry runs 2 and 3 stage 3 query-engines: SF1 load failed in the memory catalog; local Trino 484 "
+        "and Presto 0.298.1 load profile 2026-11-01",
     )
     | {
         ("datafusion", "datavault"): "docs/internal/uat-release-campaign.md: DataFusion DataVault (2026-08-25)",
