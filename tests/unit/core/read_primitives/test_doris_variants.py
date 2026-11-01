@@ -33,6 +33,11 @@ DORIS_VARIANT_IDS = {
     "list_filter",
     "list_reduce",
     "unpivot_basic",
+    "window_moving_frame",
+    "fulltext_simple_search",
+    "fulltext_boolean_search",
+    "fulltext_phrase_search",
+    "asof_join_basic",
 }
 
 UNSUPPORTED_ON_DORIS = (

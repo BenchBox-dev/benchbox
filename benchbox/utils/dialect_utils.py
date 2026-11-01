@@ -12,9 +12,12 @@ from typing import Any, Callable
 
 from benchbox.utils.query_shape_rewrites import (
     add_dual_source_to_filtered_selects,
+    alias_order_by_projections,
     drop_correlated_scalar_group_by,
     drop_empty_group_by,
+    fold_scalar_having_into_case,
     hoist_aggregate_subqueries,
+    inline_named_windows,
     qualify_aggregated_columns,
     unwrap_single_grouping_set,
     wrap_order_by_subquery_aliases,
@@ -603,12 +606,15 @@ def in_subquery_or_to_left_join(expression, *, copy: bool = True):
 _LOCAL_REWRITES: dict[str, Callable[..., object]] = {
     "add_dual_source_to_filtered_selects": add_dual_source_to_filtered_selects,
     "alias_derived_tables": alias_derived_tables,
+    "alias_order_by_projections": alias_order_by_projections,
     "alias_outer_table_references": alias_outer_table_references,
     "coalesce_count_subqueries": coalesce_count_subqueries,
     "drop_correlated_scalar_group_by": drop_correlated_scalar_group_by,
     "drop_empty_group_by": drop_empty_group_by,
+    "fold_scalar_having_into_case": fold_scalar_having_into_case,
     "hoist_aggregate_subqueries": hoist_aggregate_subqueries,
     "in_subquery_or_to_left_join": in_subquery_or_to_left_join,
+    "inline_named_windows": inline_named_windows,
     "qualify_aggregated_columns": qualify_aggregated_columns,
     "trim_char_case_comparisons": trim_char_case_comparisons,
     "unwrap_single_grouping_set": unwrap_single_grouping_set,

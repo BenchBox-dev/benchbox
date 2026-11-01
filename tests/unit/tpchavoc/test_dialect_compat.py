@@ -320,13 +320,55 @@ def test_doris_filter_variants_are_the_variants_that_use_filter():
 
 def test_doris_rewrites_are_registered_per_variant():
     import benchbox.sql_compat.rules.query_adapter.doris_tpchavoc_rewrites
-    from benchbox.core.tpchavoc.dialect_compat import DORIS_FILTER_VARIANT_IDS, GROUP_BY_EMPTY_VARIANT_IDS
+    from benchbox.core.tpchavoc.dialect_compat import (
+        DORIS_CORRELATED_GROUP_VARIANTS,
+        DORIS_FILTER_VARIANT_IDS,
+        DORIS_NAMED_WINDOW_VARIANT_IDS,
+        DORIS_ORDER_BY_PROJECTION_VARIANT_IDS,
+        GROUP_BY_EMPTY_VARIANT_IDS,
+    )
     from benchbox.sql_compat.context import Phase
     from benchbox.sql_compat.registry import REGISTRY
 
     registered = {key[3] for key, _ in REGISTRY.all_rules() if key[:3] == (Phase.QUERY_ADAPTER, "doris", "tpchavoc")}
 
-    assert registered == set(DORIS_FILTER_VARIANT_IDS) | set(GROUP_BY_EMPTY_VARIANT_IDS)
+    assert registered == set(DORIS_FILTER_VARIANT_IDS) | set(GROUP_BY_EMPTY_VARIANT_IDS) | set(
+        DORIS_NAMED_WINDOW_VARIANT_IDS
+    ) | set(DORIS_ORDER_BY_PROJECTION_VARIANT_IDS) | set(DORIS_CORRELATED_GROUP_VARIANTS)
+
+
+def _doris_tree(query_id):
+    return sqlglot.parse_one(TPCHavocBenchmark(scale_factor=0.01).get_query(query_id, dialect="doris"), read="doris")
+
+
+def test_doris_named_window_variant_inlines_the_window_definition():
+    tree = _doris_tree("1_v8")
+
+    assert tree.args.get("windows") is None
+    assert not [window for window in tree.find_all(exp.Window) if window.args.get("alias") is not None]
+    assert "WINDOW" not in tree.sql(dialect="doris").upper()
+
+
+@pytest.mark.parametrize("query_id", ["3_v1", "3_v9", "5_v1", "10_v1", "16_v1"])
+def test_doris_order_by_references_the_projected_alias(query_id):
+    tree = _doris_tree(query_id)
+    order = tree.args["order"]
+
+    assert order.find(exp.Subquery) is None
+    assert order.find(exp.Window) is None
+
+
+def test_doris_correlated_scalar_group_by_is_a_single_group_guarded_by_case():
+    tree = _doris_tree("2_v2")
+    scalar = next(
+        subquery.this
+        for subquery in tree.find_all(exp.Subquery)
+        if isinstance(subquery.parent, exp.Binary) and isinstance(subquery.this, exp.Select)
+    )
+
+    assert scalar.args.get("group") is None
+    assert scalar.args.get("having") is None
+    assert scalar.find(exp.Case) is not None
 
 
 def _singlestore_query(query_id):

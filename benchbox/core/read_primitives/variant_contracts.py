@@ -22,6 +22,7 @@ class VariantContractIssue:
 _DIALECT_READ = {
     "bigquery": "bigquery",
     "clickhouse": "clickhouse",
+    "doris": "doris",
     "duckdb": "duckdb",
     "redshift": "redshift",
     "singlestore": "singlestore",

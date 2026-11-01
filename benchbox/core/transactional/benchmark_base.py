@@ -36,6 +36,12 @@ _SET_THEN_BEGIN_ISOLATION_RE = re.compile(
     r"BEGIN\s+TRANSACTION\s*;",
     re.IGNORECASE,
 )
+_BEGIN_TRANSACTION_RE = re.compile(r"\bBEGIN\s+TRANSACTION\s*;", re.IGNORECASE)
+
+
+def _doris_numbers_select(match: re.Match[str]) -> str:
+    lo, hi = int(match.group("lo")), int(match.group("hi"))
+    return f'SELECT number + {lo} AS {match.group("alias")} FROM numbers("number" = {hi - lo + 1})'
 
 
 def _sql_escape(value: Any) -> str:
@@ -180,6 +186,9 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
 
     def _rewrite_transactional_sql_for_platform(self, sql: str, platform_key: str | None) -> str:
         dialect = (platform_key or "").lower()
+        if dialect == "doris":
+            sql = _UNNEST_SERIES_SELECT_RE.sub(_doris_numbers_select, sql)
+            return _BEGIN_TRANSACTION_RE.sub("BEGIN;", sql)
         template = _SERIES_SELECT_TEMPLATES.get(dialect)
         if template is not None:
             sql = _UNNEST_SERIES_SELECT_RE.sub(

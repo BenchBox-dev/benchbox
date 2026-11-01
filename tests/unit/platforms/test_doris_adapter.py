@@ -198,9 +198,10 @@ class TestDorisConnection:
         assert call_kwargs["port"] == 9030
         assert call_kwargs["database"] == "test_db"
         assert call_kwargs["user"] == "root"
+        mock_cursor.execute.assert_any_call("SET sql_mode = CONCAT(@@sql_mode, ',PIPES_AS_CONCAT')")
         mock_cursor.execute.assert_called_with("SELECT 1")
         mock_cursor.fetchone.assert_called_once()
-        mock_cursor.close.assert_called_once()
+        assert mock_cursor.close.call_count == 2
 
     def test_create_connection_creates_database_if_missing(self):
         try:
@@ -1310,10 +1311,45 @@ class TestDorisTableModel:
         assert "c_customer_sk" in translated.split("UNIQUE KEY", 1)[1]
 
     @pytest.mark.parametrize("model", ["duplicate", "unique", "aggregate"])
-    def test_create_table_as_select_passes_through(self, model):
+    def test_create_table_as_select_gets_the_replication_property(self, model):
         adapter = DorisAdapter(table_model=model)
-        statement = "CREATE TABLE t2 AS SELECT a FROM t1"
-        assert adapter._translate_create_table(statement) == statement
+        translated = adapter._translate_create_table("CREATE TABLE t2 AS SELECT a FROM t1")
+        assert translated == "CREATE TABLE t2 PROPERTIES ('replication_num' = '1') AS SELECT a FROM t1"
+
+    def test_create_table_as_select_honours_the_configured_replication(self):
+        adapter = DorisAdapter(replication_num=3)
+        translated = adapter._translate_create_table("CREATE TABLE IF NOT EXISTS t2 AS\nSELECT a FROM t1")
+        assert translated == "CREATE TABLE IF NOT EXISTS t2 PROPERTIES ('replication_num' = '3') AS\nSELECT a FROM t1"
+
+    def test_backtick_quoted_staging_manifest_is_translated_to_a_replicated_olap_table(self):
+        adapter = DorisAdapter()
+        translated = adapter._translate_create_table(
+            "CREATE TABLE IF NOT EXISTS `benchbox_staging_manifest_v3` (benchmark VARCHAR, scale VARCHAR)"
+        )
+        assert "DUPLICATE KEY" in translated
+        assert "'replication_num'='1'" in translated
+
+    @pytest.mark.parametrize(
+        ("table", "key"),
+        [
+            ("txn_orders", "`o_orderkey`"),
+            ("update_ops_orders", "`o_orderkey`"),
+            ("merge_ops_summary_target", "`o_orderkey`, `o_custkey`"),
+        ],
+    )
+    def test_updatable_staging_tables_use_the_unique_key_model(self, table, key):
+        from benchbox.core.transaction_primitives.schema import get_create_table_sql as txn_sql
+        from benchbox.core.write_primitives.schema import get_create_table_sql as write_sql
+
+        ddl = txn_sql(table, "doris") if table.startswith("txn_") else write_sql(table, "doris")
+        translated = DorisAdapter()._translate_create_table(ddl)
+        assert f"UNIQUE KEY ({key})" in translated
+
+    def test_composite_staging_key_is_widened_to_a_leading_prefix(self):
+        from benchbox.core.transaction_primitives.schema import get_create_table_sql
+
+        translated = DorisAdapter()._translate_create_table(get_create_table_sql("txn_lineitem", "doris"))
+        assert "UNIQUE KEY (`l_orderkey`, `l_partkey`, `l_suppkey`, `l_linenumber`)" in translated
 
     def test_from_config_passes_table_model(self):
         config = {"table_model": "unique"}
