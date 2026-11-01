@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "With cancelled intermediate runs, trunk-status names the commit that introduced the failure, or starts a run that determines it; a test covers the cancelled-range case."
+  ],
+  "description": "Trunk runs are now one at a time (#3834), so intermediate develop pushes get cancelled. When #3836 broke develop its own trunk run was cancelled, and make trunk-status first named #3834 (the commit whose run failed) as the culprit, then 'one of 11 commits'. trunk-revert then offers either the wrong revert or none, leaving only owner fix-forward. Re-run trunk on the earliest uncovered commit, bisect the cancelled range, or let a revert of any covered commit that makes the failing test pass reopen arming.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:166ba848256931e9cd45b59e",
+      "at": "2026-11-01T13:45:34Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "bc612355554f41888b98640bb8ee0ce4",
+      "session_id": "1273bcfa4d0e4ed89453e147e32359eb"
+    }
+  ]
+}

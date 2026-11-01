@@ -28878,6 +28878,13 @@
       "status": "done",
       "title": "Move per-test coverage to its own trunk workflow and make the coverage map smaller, statement-aware and failure-tolerant"
     },
+    "trunk-culprit-undetermined-after-cancelled-runs-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Name the right culprit when trunk runs between green and red were cancelled"
+    },
     "trunk-dist-artifact-producer-check-flake-20261022": {
       "claim": null,
       "needs": [],
