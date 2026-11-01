@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Revisit when any run has sum_ratio above 1.25 at a speed factor within 0.1 of 1.0, or any block occurs; record ratio, delta, speed factor and whether the slowdown was real",
+    "Thresholds stay as they are until then"
+  ],
+  "context": "Report recorded when ci-fast-duration-gate-false-block-review-20261027 was closed on 2026-10-31 (59 verdicts from merged PRs 3760-3853). Recommendation then: keep both thresholds, do not roll back to report mode.",
+  "description": "Of 59 measured post-flip verdicts none blocked, but 15 ran on runners with a speed factor of 1.5 or more (up to 1.95), and 8 had a sum ratio above 1.20 (max 1.282 against the 1.30 limit). 7 of 59 exceeded the 360 s delta term alone, all slow-runner noise that the ratio term absorbed. A real slowdown on a slow runner could land just under the limit, and normal noise on a slow runner could land just over it.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:96cfd54c7d2180daa76d178f",
+      "at": "2026-11-01T13:47:18Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "7e950bc2e4d64dea8fc96825bb4e876f",
+      "session_id": "77bfd3a6737c4f8e9b68d27f796e8651"
+    }
+  ]
+}

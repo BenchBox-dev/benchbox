@@ -3164,6 +3164,13 @@
       "status": "done",
       "title": "Review the blocking duration gate after 20 measured runs"
     },
+    "ci-fast-duration-gate-slow-runner-margin-20261101": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "The duration gate passes slow-runner runs within 0.02 of its ratio limit"
+    },
     "ci-fast-test-slowdown-20261016": {
       "claim": null,
       "needs": [],
