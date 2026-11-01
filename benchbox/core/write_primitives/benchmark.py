@@ -40,6 +40,7 @@ from benchbox.core.write_primitives.schema import (
     get_all_staging_tables_sql,
     get_create_table_sql,
 )
+from benchbox.sql_compat.rules.execution_filter.doris_write_primitives import doris_write_primitive_skip_reason
 from benchbox.sql_compat.rules.execution_filter.duckdb_write_primitives import (
     duckdb_write_primitive_skip_reason,
 )
@@ -308,6 +309,11 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
                     f"Operation '{operation.id}' is skipped on PostgreSQL-family platforms: "
                     f"{POSTGRES_WRITE_PRIMITIVES_OPERATION_SKIPS[operation.id]}"
                 )
+
+        if "doris" in {(platform_key or "").lower(), (platform_fallback_key or "").lower()}:
+            doris_skip_reason = doris_write_primitive_skip_reason(operation)
+            if doris_skip_reason is not None:
+                return None, f"Operation '{operation.id}' is skipped on Doris: {doris_skip_reason}"
 
         if "questdb" in {(platform_key or "").lower(), (platform_fallback_key or "").lower()}:
             questdb_skip_reason = questdb_write_primitive_skip_reason(operation)

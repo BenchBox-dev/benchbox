@@ -69,6 +69,24 @@ def drop_correlated_scalar_group_by(expression, *, columns: Sequence[str], copy:
     return tree
 
 
+def fold_scalar_having_into_case(expression, *, copy: bool = True):
+    exp = sql_expressions()
+    tree = expression.copy() if copy else expression
+    for subquery in list(tree.find_all(exp.Subquery)):
+        inner = subquery.this
+        if not isinstance(inner, exp.Select) or not isinstance(subquery.parent, exp.Binary):
+            continue
+        having = inner.args.get("having")
+        if having is None or inner.args.get("group") is not None or len(inner.expressions) != 1:
+            continue
+        projection = inner.expressions[0]
+        value = projection.this if isinstance(projection, exp.Alias) else projection
+        guarded = exp.Case(ifs=[exp.If(this=having.this.copy(), true=value.copy())])
+        value.replace(guarded)
+        inner.set("having", None)
+    return tree
+
+
 def _pinned_to_other_column(key, where) -> bool:
     exp = sql_expressions()
     for conjunct in where.this.flatten():
@@ -126,6 +144,51 @@ def wrap_order_by_subquery_aliases(expression, *, copy: bool = True):
     if offset is not None:
         outer.set("offset", offset)
     return outer
+
+
+def inline_named_windows(expression, *, copy: bool = True):
+    exp = sql_expressions()
+    tree = expression.copy() if copy else expression
+    for select in tree.find_all(exp.Select):
+        definitions = select.args.get("windows")
+        if not definitions:
+            continue
+        named = {definition.this.name.lower(): definition for definition in definitions}
+        for use in list(select.find_all(exp.Window)):
+            alias = use.args.get("alias")
+            if alias is None or use.find_ancestor(exp.Select) is not select:
+                continue
+            definition = named.get(alias.name.lower())
+            if definition is None:
+                continue
+            use.set("alias", None)
+            for key in ("partition_by", "order", "spec"):
+                value = definition.args.get(key)
+                if value is not None:
+                    use.set(key, [item.copy() for item in value] if isinstance(value, list) else value.copy())
+        select.set("windows", None)
+    return tree
+
+
+def alias_order_by_projections(expression, *, copy: bool = True):
+    exp = sql_expressions()
+    tree = expression.copy() if copy else expression
+    for select in tree.find_all(exp.Select):
+        order = select.args.get("order")
+        if order is None:
+            continue
+        projected = {
+            projection.this.sql(): projection.args["alias"]
+            for projection in select.expressions
+            if isinstance(projection, exp.Alias) and projection.this.find(exp.Subquery, exp.Window) is not None
+        }
+        if not projected:
+            continue
+        for node in list(order.walk()):
+            alias = projected.get(node.sql())
+            if alias is not None:
+                node.replace(exp.Column(this=alias.copy()))
+    return tree
 
 
 def _is_hoistable(node) -> bool:

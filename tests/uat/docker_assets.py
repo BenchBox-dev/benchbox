@@ -334,6 +334,7 @@ PLATFORM_SERVICE_PORT: dict[str, int] = _adapter_service_ports()
 
 _PLATFORM_STATIC_OPTS: dict[str, list[str]] = {
     "velox": ["--platform-option", "deployment=remote"],
+    "databend": ["--platform-option", "deployment_mode=self-hosted", "--platform-option", "host=localhost"],
     "influxdb": [
         "--platform-option",
         "host=localhost",
@@ -365,10 +366,13 @@ _PLATFORM_PASSWORD_ENV_KEYS: dict[str, str] = {
     "timescaledb": "POSTGRES_PASSWORD",
     "postgresql": "POSTGRES_PASSWORD",
     "singlestore": "ROOT_PASSWORD",
+    "databend": "QUERY_DEFAULT_PASSWORD",
 }
 
+_PLATFORM_COMPOSE_PASSWORD_OPT: frozenset[str] = frozenset({"databend", "singlestore"})
+
 _PLATFORM_INJECT_HOST_PORT_OPT: frozenset[str] = frozenset(
-    {"cedardb", "clickhouse-server", "doris", "influxdb", "presto", "singlestore", "starrocks", "trino"}
+    {"cedardb", "clickhouse-server", "databend", "doris", "influxdb", "presto", "singlestore", "starrocks", "trino"}
 )
 
 _PLATFORM_INJECT_SPARK_CONNECT_ENDPOINT_OPT: frozenset[str] = frozenset({"lakesail", "velox"})
@@ -502,7 +506,7 @@ def platform_extra_opts(platform: str, *, env: dict[str, str] | None = None) -> 
         host_port = resolve_published_host_port_for_container(platform, container_port, env=env)
         if host_port is not None:
             opts += ["--platform-option", f"{option}={host_port}"]
-    if platform == "singlestore":
+    if platform in _PLATFORM_COMPOSE_PASSWORD_OPT:
         password = _compose_service_environment_value(platform, _PLATFORM_PASSWORD_ENV_KEYS[platform], env=env)
         if password is not None:
             opts += ["--platform-option", f"password={password}"]
