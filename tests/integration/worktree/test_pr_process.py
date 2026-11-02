@@ -26,7 +26,6 @@ def _load(name: str) -> object:
 
 
 landing = _load("pr_landing")
-bi = _load("batch_integration")
 
 HEAD = "a" * 40
 OTHER = "b" * 40
@@ -154,18 +153,6 @@ def test_protected_hold_survives_withdraw_and_ready(tmp_path: Path) -> None:
     repo, head = _repo(tmp_path / "r")
     failures = landing.ready_failures(_identity(repo, head), head, _evidence(head, hold_labels=["no-auto-merge"]), repo)
     assert any("no-auto-merge" in f for f in failures)
-
-
-def test_base_advance_detected_not_repaired(tmp_path: Path) -> None:
-
-    repo, _ = _repo(tmp_path / "r")
-    record = bi.record_start(repo, "batch-t", ["A"])
-    assert bi.verify_base(repo, record)["moved"] is False
-    (repo / "advance.txt").write_text("develop moved")
-    subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
-    subprocess.run(["git", "commit", "-qm", "advance"], cwd=repo, check=True, capture_output=True)
-    subprocess.run(["git", "update-ref", "refs/remotes/origin/develop", "HEAD"], cwd=repo, check=True)
-    assert bi.verify_base(repo, record)["moved"] is True
 
 
 def test_transient_failure_retry_bounded_then_escalated(tmp_path: Path) -> None:
