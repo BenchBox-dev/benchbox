@@ -939,6 +939,9 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
                 if operation.category == "merge" and (platform_key or "").lower() in _SUMMED_ROWCOUNT_DIALECTS
                 else None
             )
+            prepare_write = getattr(connection, "prepare_write", None)
+            if callable(prepare_write):
+                prepare_write(write_sql)
             write_start = time.perf_counter()
             if summed_statements is not None:
                 write_result = self._execute_summing_rowcounts(connection, summed_statements)

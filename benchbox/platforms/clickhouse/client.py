@@ -94,7 +94,8 @@ class ClickHouseServerConnection:
             return self._run(query, *args, **kwargs)
         result = None
         for statement in prepare_clickhouse_statements(query):
-            self._enable_lightweight_updates(statement)
+            if statement.lstrip().upper().startswith(("DROP", "RENAME", "EXCHANGE")):
+                self._lightweight_update_tables.clear()
             result = self._run(statement, **kwargs)
             self._enable_lightweight_updates_after_create(statement)
         return result
@@ -103,14 +104,11 @@ class ClickHouseServerConnection:
         result = self._client.execute(query, *args, **kwargs)
         return _ListResult(result) if isinstance(result, list) else result
 
-    def _enable_lightweight_updates(self, statement: str) -> None:
-        if statement.lstrip().upper().startswith(("DROP", "RENAME", "EXCHANGE")):
-            self._lightweight_update_tables.clear()
-            return
-        table = lightweight_update_target(statement)
-        if table is None or table in self._lightweight_update_tables:
-            return
-        self._apply_lightweight_update_settings(table)
+    def prepare_write(self, query: str) -> None:
+        for statement in prepare_clickhouse_statements(query):
+            table = lightweight_update_target(statement)
+            if table is not None and table not in self._lightweight_update_tables:
+                self._apply_lightweight_update_settings(table)
 
     def _apply_lightweight_update_settings(self, table: str) -> None:
         self._client.execute(
