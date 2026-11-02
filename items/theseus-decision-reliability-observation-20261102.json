@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Context records option (a) or (b), date and quoted owner message.",
+    "theseus-observation-disposition-20261102 applies the chosen rule."
+  ],
+  "context": "Status blocked until the owner answers.",
+  "description": "Owner-only decision gate. oracle-response-reliability-observation-20261021 needs at least 7 days AND 60 attempts on remediated code with provenance, and waits on oracle-response-live-verification-20261021 (open). Production-connected extraction steps (a new gateway client, any shared gateway change, any live review through it: theseus-gateway-client-first-live-gate-20261102 and later) would start a new measurement epoch and could contaminate the sample.\n\nOptions:\n(a) Wait: production-connected steps start only after the reliability item meets its acceptance (targets met or residual causes in owned remediation items).\n(b) Waive: as the owner waived the 2026-10-30 latency and cadence measurements; the reliability item stays open and is re-measured unpooled after cutover.\n\nGuardrails: agents must not choose; a waiver never counts as the reliability criterion being met.",
+  "links": [
+    "oracle-response-reliability-observation-20261021",
+    "oracle-response-live-verification-20261021"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4c6f341b7f4b66f30a37a2f1",
+      "at": "2026-11-02T13:45:07Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e86e1ca337304802b6d4ca58546e34d8",
+      "session_id": "8cfcc9dbcab5419a91fc8b650901f36b"
+    }
+  ]
+}

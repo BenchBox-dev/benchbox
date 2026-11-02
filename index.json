@@ -27710,6 +27710,13 @@
       "status": "open",
       "title": "Owner decision: choose the record the gate reads to accept a Theseus promotion PR"
     },
+    "theseus-decision-reliability-observation-20261102": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Owner decision: wait for or waive the oracle reliability observation before production-connected extraction steps"
+    },
     "theseus-decision-separate-repo-20261102": {
       "claim": null,
       "needs": [],
