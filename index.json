@@ -27733,10 +27733,15 @@
       "title": "Owner decision: choose the record the gate reads to accept a Theseus promotion PR"
     },
     "theseus-decision-reliability-observation-20261102": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-03T16:57:07Z",
+        "generation": "9c2f61bec61e41308e4c593065d6498a",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b58f5aa5b2bb5e33c84a53cb"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Owner decision: wait for or waive the oracle reliability observation before production-connected extraction steps"
     },
     "theseus-decision-separate-repo-20261102": {
