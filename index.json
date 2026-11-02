@@ -1970,13 +1970,18 @@
       "title": "Document the integration batch loop in AGENTS.md and docs/agent, keeping it opt-in until the pilot passes"
     },
     "batch-loop-pilot-20261101": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-03T07:18:19Z",
+        "generation": "3de5ed1edce64200a751c899f8f6e5cd",
+        "renewals": 0,
+        "worker": "benchbox-batch-pilot-leader"
+      },
       "needs": [
         "batch-loop-disposable-e2e-20261101",
         "skill-catalog-batch-loop-20261101"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Pilot the batch loop on a real related batch through a merged final PR"
     },
     "batch-member-branch-cleanup-20261101": {
