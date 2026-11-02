@@ -1011,3 +1011,79 @@ def test_other_dialects_keep_grouping_expressions_in_order_by():
     translated = translate_sql_query(_ROLLUP_RANK_QUERY, "doris", source_dialect="netezza")
 
     assert "GROUPING(" in _order_by_clause(translated)
+
+
+def test_doris_aliases_unaliased_derived_tables_and_keeps_existing_aliases():
+    query = (
+        "with w as (select a from (select x a from t union all select y from u)) "
+        "select * from w join (select k from v) on w.a = k join (select z from q) _dt1 on 1 = 1"
+    )
+
+    translated = translate_sql_query(query, "doris", source_dialect="netezza")
+
+    assert translated.count(" AS `_dt") == 3
+    assert translated.count("AS `_dt1`") == 1
+    assert "`_dt2`" in translated
+    assert "`_dt3`" in translated
+
+
+def test_doris_alias_pass_leaves_predicate_subqueries_alone():
+    translated = translate_sql_query("select a from t where a in (select b from u)", "doris", source_dialect="netezza")
+
+    assert "_dt" not in translated
+
+
+def test_other_dialects_do_not_alias_derived_tables():
+    translated = translate_sql_query("select a from (select x a from t union all select y from u)", "postgres")
+
+    assert "_dt" not in translated
+
+
+_DORIS_ROLLUP_QUERY = (
+    "select k, sum(v) as s, count(*) as n, avg(v) / 2 as half from t join u on t.id = u.id "
+    "where v > 0 group by rollup(k) order by k limit 100"
+)
+
+
+def _doris_rollup_without_grand_total(sql: str) -> str:
+    assert "GROUP BY ROLLUP (`k`)" in sql
+    return sql.replace("GROUP BY ROLLUP (`k`)", "GROUP BY `k`")
+
+
+def _rollup_fixture(rows: list[tuple[str, int]]):
+    duckdb = pytest.importorskip("duckdb")
+    connection = duckdb.connect(":memory:")
+    connection.execute("create table t (id integer, k varchar, v integer)")
+    connection.execute("create table u (id integer)")
+    for index, (key, value) in enumerate(rows):
+        connection.execute("insert into t values (?, ?, ?)", [index, key, value])
+        connection.execute("insert into u values (?)", [index])
+    return connection
+
+
+def test_doris_rollup_rewrite_reads_the_input_once():
+    translated = translate_sql_query(_DORIS_ROLLUP_QUERY, "doris", source_dialect="netezza")
+
+    assert translated.count("FROM `t`") == 1
+    assert translated.count("JOIN `u`") == 1
+
+
+def test_doris_rollup_rewrite_adds_grand_total_only_for_empty_input():
+    translated = translate_sql_query(_DORIS_ROLLUP_QUERY, "doris", source_dialect="netezza")
+    sql = _doris_rollup_without_grand_total(translated).replace("`", '"')
+
+    empty = _rollup_fixture([]).execute(sql).fetchall()
+    populated = _rollup_fixture([("a", 1), ("a", 3), ("b", 5)]).execute(sql).fetchall()
+
+    assert empty == [(None, None, 0, None)]
+    assert populated == [("a", 4, 2, 1.0), ("b", 5, 1, 2.5)]
+
+
+def test_doris_rollup_rewrite_preserves_with_clause_and_limit():
+    query = "with w as (select k, v from t) select k, sum(v) as s from w group by rollup(k) order by k limit 5"
+
+    translated = translate_sql_query(query, "doris", source_dialect="netezza")
+
+    assert translated.startswith("WITH `w` AS")
+    assert "`rollup_rows` AS" in translated
+    assert translated.rstrip().endswith("LIMIT 5")

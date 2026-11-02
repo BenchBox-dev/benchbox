@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+from functools import cache
 
 from benchbox.core.tpchavoc.cloud_compat import rewrite_cloud_variant
 from benchbox.utils.dialect_utils import UnknownSqlDialectError, resolve_sql_dialect, translate_sql_query
@@ -11,12 +12,22 @@ POSTGRES_QUALIFIED_COLUMNS: dict[str, dict[str, str]] = {
     "17_v2": {"l_partkey": "lineitem", "l_quantity": "lineitem", "l_extendedprice": "lineitem"},
 }
 POSTGRES_DUAL_VARIANT_IDS = frozenset({"17_v4"})
-CLICKHOUSE_FILTER_VARIANT_IDS = frozenset({"1_v6", "3_v7", "7_v7", "10_v7", "12_v7"})
+POSTGRES_DECORRELATED_VARIANT_IDS = frozenset(f"20_v{number}" for number in range(1, 11))
+CLICKHOUSE_FILTER_VARIANT_IDS = frozenset({"1_v6", "3_v7", "7_v7", "9_v7", "10_v7", "12_v7"})
 CLICKHOUSE_OUTER_ALIAS_VARIANTS: dict[str, tuple[str, str]] = {
     "2_v8": ("partsupp", "partsupp_outer"),
     "10_v8": ("lineitem", "lineitem_outer"),
 }
 CLICKHOUSE_COALESCED_COUNT_SUBQUERY_VARIANT_IDS = frozenset({"13_v1"})
+DORIS_FILTER_VARIANT_IDS = frozenset({"1_v6", *(f"{number}_v7" for number in range(2, 19))})
+DORIS_NAMED_WINDOW_VARIANT_IDS = frozenset({"1_v8"})
+DORIS_ORDER_BY_PROJECTION_VARIANT_IDS = frozenset({"3_v1", "3_v9", "5_v1", "10_v1", "16_v1"})
+DORIS_CORRELATED_GROUP_VARIANTS: dict[str, tuple[str, ...]] = {"2_v2": ("ps_partkey",)}
+STARROCKS_FILTER_VARIANT_IDS = DORIS_FILTER_VARIANT_IDS
+STARROCKS_NAMED_WINDOW_VARIANT_IDS = DORIS_NAMED_WINDOW_VARIANT_IDS
+STARROCKS_ORDER_BY_PROJECTION_VARIANT_IDS = frozenset({"3_v1", "3_v9", "5_v1", "10_v1", "16_v1", "16_v7", "16_v10"})
+STARROCKS_CORRELATED_GROUP_VARIANTS = DORIS_CORRELATED_GROUP_VARIANTS
+STARROCKS_SOURCELESS_EXISTS_VARIANT_IDS = frozenset({"7_v8", "12_v8", "13_v8"})
 SINGLESTORE_FILTER_VARIANT_IDS = frozenset({"1_v6", *(f"{number}_v7" for number in range(2, 19))})
 SINGLESTORE_GROUPING_SET_VARIANT_IDS = frozenset({"1_v9"})
 SINGLESTORE_SOURCELESS_WHERE_VARIANT_IDS = frozenset({"7_v8", "12_v8", "13_v8", "18_v4"})
@@ -27,6 +38,7 @@ SINGLESTORE_ALIAS_QUALIFIED_COLUMNS: dict[str, dict[str, str]] = {
 SINGLESTORE_ORDER_SUBQUERY_VARIANT_IDS = frozenset({"3_v1", "5_v1", "10_v1", "16_v1"})
 SINGLESTORE_AGGREGATE_SUBQUERY_VARIANT_IDS = frozenset({"4_v7", "4_v10", "14_v8", "16_v7", "16_v10", "17_v7", "17_v10"})
 SINGLESTORE_CORRELATED_GROUP_VARIANTS: dict[str, tuple[str, ...]] = {"2_v2": ("ps_partkey",)}
+SINGLESTORE_EXISTS_JOIN_VARIANT_IDS = frozenset({"10_v8"})
 DATAFUSION_EMPTY_GROUP_VARIANT_IDS = frozenset({"6_v2", "14_v2"})
 PRESTO_ALIAS_VARIANT_IDS = POSTGRES_ALIAS_VARIANT_IDS
 PRESTO_WINDOW_FILTER_VARIANT_IDS = frozenset({"2_v7"})
@@ -38,12 +50,27 @@ LIST_AGGREGATE_ORDER = ("l_orderkey", "l_linenumber")
 SCALAR_GROUP_BY_VARIANT_IDS = frozenset({"1_v1", "3_v1", "7_v1", "8_v1", "9_v1", "10_v1", "12_v1", "16_v1"})
 GROUP_BY_EMPTY_VARIANT_IDS = frozenset({"6_v2", "14_v2"})
 DUAL_VARIANT_IDS = frozenset({"17_v4"})
-SPARK_VARIANT_IDS = SCALAR_GROUP_BY_VARIANT_IDS | GROUP_BY_EMPTY_VARIANT_IDS | DUAL_VARIANT_IDS
+SPARK_WINDOW_FILTER_VARIANT_IDS = frozenset({"2_v7"})
+SPARK_CHAR_CASE_VARIANT_IDS = frozenset({"2_v10", "5_v10", "8_v10", "11_v10"})
+SPARK_VARIANT_IDS = (
+    SCALAR_GROUP_BY_VARIANT_IDS
+    | GROUP_BY_EMPTY_VARIANT_IDS
+    | DUAL_VARIANT_IDS
+    | SPARK_WINDOW_FILTER_VARIANT_IDS
+    | SPARK_CHAR_CASE_VARIANT_IDS
+)
 _CLOUD_DIALECTS = frozenset({"bigquery", "databricks", "snowflake"})
 _POSTGRES_DIALECTS = frozenset({"postgres", "postgresql"})
 _PRESTO_TRINO_DIALECTS = frozenset({"presto", "trino", "athena"})
 
 Rewrite = tuple[str, dict]
+
+
+@cache
+def _tpch_schema() -> dict[str, dict[str, str]]:
+    from benchbox.core.tpch.schema import TABLES
+
+    return {table.name: {column.name: column.get_sql_type() for column in table.columns} for table in TABLES}
 
 
 def normalize_variant_id(query_id: str | None) -> str | None:
@@ -64,6 +91,10 @@ def spark_variant_rewrites(query_id: str) -> list[Rewrite]:
         return [("wrap_grouped_scalar_subqueries", {})]
     if query_id in DUAL_VARIANT_IDS:
         return [("name_literal_subquery_columns", {"column": "dual_col"})]
+    if query_id in SPARK_WINDOW_FILTER_VARIANT_IDS:
+        return [("filtered_aggregates_to_conditional", {"windows_only": True})]
+    if query_id in SPARK_CHAR_CASE_VARIANT_IDS:
+        return [("trim_char_case_comparisons", {})]
     return []
 
 
@@ -81,8 +112,12 @@ def _variant_rewrites(query_id: str, target: str) -> list[Rewrite]:
         return spark_variant_rewrites(query_id)
     if target == "clickhouse":
         return _clickhouse_variant_rewrites(query_id)
+    if target == "doris":
+        return _doris_variant_rewrites(query_id)
     if target == "singlestore":
         return _singlestore_variant_rewrites(query_id)
+    if target == "starrocks":
+        return _starrocks_variant_rewrites(query_id)
     rewrites: list[Rewrite] = []
     if target in _PRESTO_TRINO_DIALECTS:
         if query_id in PRESTO_ALIAS_VARIANT_IDS:
@@ -96,6 +131,38 @@ def _variant_rewrites(query_id: str, target: str) -> list[Rewrite]:
             rewrites.append(("qualify_columns_by_name", {"tables": columns}))
         if query_id in POSTGRES_DUAL_VARIANT_IDS:
             rewrites.append(("drop_literal_row_source", {"alias": "dual"}))
+        if query_id in POSTGRES_DECORRELATED_VARIANT_IDS:
+            rewrites.append(("decorrelate_subqueries", {"schema": _tpch_schema()}))
+    return rewrites
+
+
+def _doris_variant_rewrites(query_id: str) -> list[Rewrite]:
+    rewrites: list[Rewrite] = []
+    if query_id in DORIS_FILTER_VARIANT_IDS:
+        rewrites.append(("filtered_aggregates_to_conditional", {}))
+    if query_id in DORIS_NAMED_WINDOW_VARIANT_IDS:
+        rewrites.append(("inline_named_windows", {}))
+    if query_id in DORIS_ORDER_BY_PROJECTION_VARIANT_IDS:
+        rewrites.append(("alias_order_by_projections", {}))
+    if group_columns := DORIS_CORRELATED_GROUP_VARIANTS.get(query_id):
+        rewrites.append(("drop_correlated_scalar_group_by", {"columns": list(group_columns)}))
+        rewrites.append(("fold_scalar_having_into_case", {}))
+    return rewrites
+
+
+def _starrocks_variant_rewrites(query_id: str) -> list[Rewrite]:
+    rewrites: list[Rewrite] = []
+    if query_id in STARROCKS_FILTER_VARIANT_IDS:
+        rewrites.append(("filtered_aggregates_to_conditional", {}))
+    if query_id in STARROCKS_NAMED_WINDOW_VARIANT_IDS:
+        rewrites.append(("inline_named_windows", {}))
+    if query_id in STARROCKS_ORDER_BY_PROJECTION_VARIANT_IDS:
+        rewrites.append(("alias_order_by_projections", {}))
+    if query_id in STARROCKS_SOURCELESS_EXISTS_VARIANT_IDS:
+        rewrites.append(("inline_sourceless_exists", {}))
+    if group_columns := STARROCKS_CORRELATED_GROUP_VARIANTS.get(query_id):
+        rewrites.append(("drop_correlated_scalar_group_by", {"columns": list(group_columns)}))
+        rewrites.append(("fold_scalar_having_into_case", {}))
     return rewrites
 
 
@@ -117,6 +184,8 @@ def _singlestore_variant_rewrites(query_id: str) -> list[Rewrite]:
         rewrites.append(("hoist_aggregate_subqueries", {}))
     if group_columns := SINGLESTORE_CORRELATED_GROUP_VARIANTS.get(query_id):
         rewrites.append(("drop_correlated_scalar_group_by", {"columns": list(group_columns)}))
+    if query_id in SINGLESTORE_EXISTS_JOIN_VARIANT_IDS:
+        rewrites.append(("exists_to_derived_join", {}))
     return rewrites
 
 
@@ -139,6 +208,8 @@ def rewrite_dialect_variant(query_id: str, query: str, target_dialect: str) -> s
     rewrites = _variant_rewrites(query_id, target)
     if rewrites:
         query = translate_sql_query(query, target, source_dialect=target, identify=False, rewrites=rewrites)
+    if target in {"doris", "starrocks"} and query_id in GROUP_BY_EMPTY_VARIANT_IDS:
+        query = query.replace(" GROUP BY ()", "")
     return query
 
 
@@ -170,12 +241,17 @@ __all__ = [
     "CLICKHOUSE_FILTER_VARIANT_IDS",
     "CLICKHOUSE_OUTER_ALIAS_VARIANTS",
     "DATAFUSION_EMPTY_GROUP_VARIANT_IDS",
+    "DORIS_CORRELATED_GROUP_VARIANTS",
+    "DORIS_FILTER_VARIANT_IDS",
+    "DORIS_NAMED_WINDOW_VARIANT_IDS",
+    "DORIS_ORDER_BY_PROJECTION_VARIANT_IDS",
     "DUAL_VARIANT_IDS",
     "GROUP_BY_EMPTY_VARIANT_IDS",
     "LIST_AGGREGATE_DIALECTS",
     "LIST_AGGREGATE_ORDER",
     "LIST_AGGREGATE_VARIANT_IDS",
     "POSTGRES_ALIAS_VARIANT_IDS",
+    "POSTGRES_DECORRELATED_VARIANT_IDS",
     "POSTGRES_DUAL_VARIANT_IDS",
     "POSTGRES_QUALIFIED_COLUMNS",
     "PRESTO_ALIAS_VARIANT_IDS",
@@ -184,11 +260,19 @@ __all__ = [
     "SINGLESTORE_AGGREGATE_SUBQUERY_VARIANT_IDS",
     "SINGLESTORE_ALIAS_QUALIFIED_COLUMNS",
     "SINGLESTORE_CORRELATED_GROUP_VARIANTS",
+    "SINGLESTORE_EXISTS_JOIN_VARIANT_IDS",
     "SINGLESTORE_FILTER_VARIANT_IDS",
     "SINGLESTORE_GROUPING_SET_VARIANT_IDS",
     "SINGLESTORE_ORDER_SUBQUERY_VARIANT_IDS",
     "SINGLESTORE_SOURCELESS_WHERE_VARIANT_IDS",
+    "SPARK_CHAR_CASE_VARIANT_IDS",
+    "STARROCKS_CORRELATED_GROUP_VARIANTS",
+    "STARROCKS_FILTER_VARIANT_IDS",
+    "STARROCKS_NAMED_WINDOW_VARIANT_IDS",
+    "STARROCKS_ORDER_BY_PROJECTION_VARIANT_IDS",
+    "STARROCKS_SOURCELESS_EXISTS_VARIANT_IDS",
     "SPARK_VARIANT_IDS",
+    "SPARK_WINDOW_FILTER_VARIANT_IDS",
     "list_aggregate_variant_rewrites",
     "normalize_variant_id",
     "rewrite_dialect_variant",

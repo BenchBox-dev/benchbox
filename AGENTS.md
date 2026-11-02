@@ -127,7 +127,7 @@ and state the next operator step.
 - CLI dry runs must propagate explicit phases; deterministic runs use a seed.
 - Green focused/fast tests are not UAT or production certification.
 
-Apple/macOS: correctness-gate digests are Linux-generated; use `make ci-linux` (`release-guide.md`). Mocker is local-only, never CI: databend's `minio` was observed to exit under it; doris/starrocks are single-service. Per-stack status: https://benchbox.dev/docs/operations/uat-framework.html. Never prune globally.
+Apple/macOS: correctness-gate digests are Linux-generated; use `make ci-linux` (`release-guide.md`). Mocker is local-only, never CI: databend, doris and starrocks are single-service stacks. Per-stack status: https://benchbox.dev/docs/operations/uat-framework.html. Never prune globally.
 
 ## Skills and generated mirrors
 

@@ -33,6 +33,7 @@ from benchbox.sql_compat.rules.execution_filter.postgres_tpchavoc import (
     POSTGRES_TPCHAVOC_SKIPS,
 )
 from benchbox.sql_compat.rules.execution_filter.sqlite_tpchavoc import SQLITE_TPCHAVOC_SKIPS
+from benchbox.sql_compat.rules.execution_filter.starrocks_tpchavoc import STARROCKS_TPCHAVOC_SKIPS
 
 
 class TPCHavocBenchmark(TPCHBenchmark):
@@ -77,9 +78,10 @@ class TPCHavocBenchmark(TPCHBenchmark):
         if platform in CLOUD_TPCHAVOC_SKIPS:
             return list(CLOUD_TPCHAVOC_SKIPS[platform])
         platform = LIST_AGGREGATE_TPCHAVOC_PLATFORM_ALIASES.get(platform, platform)
+        skips = list(STARROCKS_TPCHAVOC_SKIPS) if platform == "starrocks" else []
         if platform in LIST_AGGREGATE_TPCHAVOC_SKIPS:
-            return [LIST_AGGREGATE_TPCHAVOC_QUERY_ID]
-        return []
+            skips.append(LIST_AGGREGATE_TPCHAVOC_QUERY_ID)
+        return skips
 
     def get_queries(self, dialect: str | None = None, base_dialect: str | None = None) -> dict[str, str]:
         queries = super().get_queries(dialect=dialect, base_dialect=base_dialect)

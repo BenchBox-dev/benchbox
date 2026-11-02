@@ -84,6 +84,9 @@
       "clickhouse": [
         "Q9"
       ],
+      "doris": [
+        "Q9"
+      ],
       "sqlite": [
         "Q9"
       ],
@@ -332,6 +335,37 @@
         "unpivot_basic",
         "window_rank"
       ],
+      "doris": [
+        "approx_quantile_groupby",
+        "approx_quantiles_array",
+        "approx_top_k_lineitem",
+        "array_agg_distinct",
+        "array_agg_simple",
+        "array_of_struct",
+        "array_slice",
+        "array_unnest",
+        "asof_join_basic",
+        "fulltext_boolean_search",
+        "fulltext_phrase_search",
+        "fulltext_simple_search",
+        "groupby_all_complex",
+        "groupby_all_simple",
+        "json_aggregates",
+        "list_filter",
+        "list_reduce",
+        "list_transform",
+        "map_access",
+        "map_construction",
+        "map_keys_values",
+        "optimizer_scalar_subquery_flattening",
+        "orderby_all_desc",
+        "orderby_all_simple",
+        "statistical_correlation",
+        "statistical_percentiles",
+        "struct_access",
+        "unpivot_basic",
+        "window_moving_frame"
+      ],
       "duckdb": [
         "array_contains",
         "array_distinct",
@@ -348,12 +382,43 @@
         "struct_construction",
         "timeseries_trend_analysis"
       ],
+      "postgres": [
+        "array_distinct",
+        "array_min_max",
+        "array_of_struct",
+        "array_slice",
+        "asof_join_basic",
+        "groupby_all_complex",
+        "groupby_all_simple",
+        "json_aggregates",
+        "json_extract_nested",
+        "json_extract_simple",
+        "list_reduce",
+        "list_transform",
+        "max_by_complex",
+        "max_by_simple",
+        "max_by_with_ties",
+        "min_by_complex",
+        "min_by_simple",
+        "min_by_with_ties",
+        "orderby_all_desc",
+        "orderby_all_simple",
+        "struct_access",
+        "struct_construction",
+        "unpivot_basic"
+      ],
       "snowflake": [
         "approx_quantiles_array",
         "array_length",
         "asof_join_basic",
         "json_aggregates",
         "struct_access"
+      ],
+      "spark": [
+        "json_aggregates",
+        "list_reduce",
+        "olap_rollup_analysis",
+        "timeseries_trend_analysis"
       ],
       "sqlite": [
         "groupby_all_complex",
@@ -373,10 +438,29 @@
         "timeseries_trend_analysis",
         "window_moving_frame"
       ],
-      "spark": [
+      "starrocks": [
+        "approx_quantile_groupby",
+        "approx_quantiles_array",
+        "array_unnest",
+        "asof_join_basic",
+        "groupby_all_complex",
+        "groupby_all_simple",
         "json_aggregates",
+        "json_extract_nested",
+        "json_extract_simple",
         "list_reduce",
-        "timeseries_trend_analysis"
+        "map_access",
+        "map_construction",
+        "map_keys_values",
+        "optimizer_scalar_subquery_flattening",
+        "orderby_all_desc",
+        "orderby_all_simple",
+        "statistical_correlation",
+        "statistical_percentiles",
+        "struct_access",
+        "timeseries_trend_analysis",
+        "unpivot_basic",
+        "window_moving_frame"
       ]
     }
   },
@@ -466,6 +550,8 @@
     "reason": "DuckDB targets run the duckdb-authored query text untranslated (native passthrough, pre-existing and out of scope); every other target translates from the duckdb source.",
     "dialects": {
       "clickhouse": [
+        "41",
+        "44",
         "47",
         "57",
         "66"
@@ -564,6 +650,19 @@
         "97",
         "98",
         "99"
+      ]
+    }
+  },
+  "tpchavoc": {
+    "reason": "Doris and StarRocks do not parse the empty GROUP BY () the translator emits for the 6_v2 and 14_v2 variants; the clause is dropped from the translated text so the global aggregate and HAVING run unchanged.",
+    "dialects": {
+      "doris": [
+        "14_v2",
+        "6_v2"
+      ],
+      "starrocks": [
+        "14_v2",
+        "6_v2"
       ]
     }
   },
@@ -874,6 +973,14 @@
         "Q5",
         "Q6"
       ],
+      "postgres": [
+        "Q1",
+        "Q2",
+        "Q3",
+        "Q4",
+        "Q5",
+        "Q6"
+      ],
       "snowflake": [
         "Q1",
         "Q2",
@@ -940,6 +1047,22 @@
         "insert_batch_values_100",
         "insert_batch_values_1000"
       ],
+      "doris": [
+        "ddl_alter_table_rename_column",
+        "ddl_create_index_on_existing",
+        "ddl_create_table_with_index",
+        "ddl_drop_index",
+        "insert_batch_values_100",
+        "insert_batch_values_1000",
+        "insert_on_conflict_ignore",
+        "merge_conditional_update",
+        "merge_error_handling",
+        "merge_no_overlap_all_insert",
+        "merge_overlap_10pct",
+        "merge_overlap_50pct",
+        "merge_overlap_90pct",
+        "merge_simple_upsert_small"
+      ],
       "postgres": [
         "insert_batch_values_100",
         "insert_batch_values_1000"
@@ -983,6 +1106,15 @@
         "merge_with_cte_source",
         "merge_with_join_condition",
         "update_date_arithmetic"
+      ],
+      "starrocks": [
+        "ddl_create_index_on_existing",
+        "ddl_create_table_with_index",
+        "ddl_drop_index",
+        "delete_all_truncate_comparison",
+        "insert_batch_values_100",
+        "insert_batch_values_1000",
+        "insert_on_conflict_ignore"
       ]
     }
   }

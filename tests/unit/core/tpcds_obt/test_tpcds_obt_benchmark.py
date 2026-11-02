@@ -277,6 +277,28 @@ def test_postgres_rollup_queries_inline_the_alias_used_in_an_order_by_expression
     assert benchmark.get_queries(dialect="postgres")[str(query_id)] == postgres
 
 
+@pytest.mark.parametrize("query_id", [36, 70, 86])
+def test_spark_rollup_queries_inline_the_alias_used_in_an_order_by_expression(query_id: int) -> None:
+    benchmark = TPCDSOBTBenchmark(scale_factor=1.0)
+
+    spark = benchmark.get_query(query_id, dialect="spark")
+
+    order_by = spark.rsplit(" ORDER BY ", 1)[1]
+    assert re.search(r"CASE WHEN `?lochierarchy`?\b", order_by) is None
+    assert re.search(r"CASE WHEN \(?GROUPING\(", order_by)
+    assert order_by.startswith("`lochierarchy` DESC")
+
+
+def test_spark_q45_replaces_the_in_subquery_under_or_with_a_left_join() -> None:
+    benchmark = TPCDSOBTBenchmark(scale_factor=1.0)
+
+    spark = benchmark.get_query(45, dialect="spark")
+
+    assert "LEFT JOIN (SELECT DISTINCT `item_i_item_id` AS `in_value_1`" in spark
+    assert "IN (SELECT" not in spark.split(" WHERE `channel`", 1)[1]
+    assert "LEFT JOIN" not in benchmark.get_query(45, dialect="duckdb")
+
+
 @pytest.mark.parametrize("query_id", [2, 78])
 def test_postgres_round_queries_cast_the_rounded_double_to_decimal(query_id: int) -> None:
     benchmark = TPCDSOBTBenchmark(scale_factor=1.0)
@@ -343,3 +365,18 @@ def test_clickhouse_q95_has_no_correlated_in_subquery() -> None:
     query = TPCDSOBTBenchmark(scale_factor=1.0).get_queries(dialect="clickhouse")["95"]
 
     assert "ret_obt.sale_id = obt.sale_id" not in query
+
+
+def test_clickhouse_q41_replaces_the_correlated_count_with_an_in_semi_join() -> None:
+    query = TPCDSOBTBenchmark(scale_factor=1.0).get_query(41, dialect="clickhouse-local")
+
+    assert "COUNT(" not in query
+    assert "i1.item_i_manufact IN (SELECT item_i_manufact FROM item WHERE" in query
+
+
+def test_clickhouse_q44_decorrelates_the_product_name_lookups() -> None:
+    query = TPCDSOBTBenchmark(scale_factor=1.0).get_query(44, dialect="clickhouse-local")
+
+    assert query.count("LEFT JOIN") == 2
+    assert "best_obt.item_sk = asceding.item_sk" not in query
+    assert "worst_obt.item_sk = descending.item_sk" not in query

@@ -41,8 +41,8 @@ def test_validate_config_minimal():
     assert cfg.output.benchmark_runs_dir_template == "~/Developer/benchmark_runs"
     assert cfg.preflight.free_space_min_gib == 5.0
     assert cfg.preflight.free_memory_min_gib == 2.0
-    assert cfg.preflight.clickhouse_memory_limit == "5.25g"
-    assert cfg.preflight.starrocks_memory_limit == "4g"
+    assert cfg.preflight.clickhouse_memory_limit == "8g"
+    assert cfg.preflight.starrocks_memory_limit == "8g"
     assert cfg.preflight.docker_memory_reserve_gib == 0.0
     assert cfg.memory_gate_enabled is True
     assert cfg.cleanup.docker_manage_platforms is False
@@ -418,8 +418,8 @@ def test_release_gate_configs_load_and_encode_stage_ordering():
 
     assert stage2.platforms.groups == ("docker-fast",)
     assert stage3.platforms.groups == ("docker-slow",)
-    assert stage2.compatibility.release_gate_runtime_envelopes is False
-    assert stage3.compatibility.release_gate_runtime_envelopes is False
+    assert stage2.compatibility.release_gate_runtime_envelopes is True
+    assert stage3.compatibility.release_gate_runtime_envelopes is True
     for stage in (stage2, stage3):
         assert stage.cleanup.docker_manage_platforms is True
         assert stage.execute.parallel_platforms is False
@@ -429,6 +429,132 @@ def test_release_gate_configs_load_and_encode_stage_ordering():
         assert "report" in stage.phases
         assert stage.report.cross_scale_coverage_min_pairs is not None
         assert stage.execute.parallel_platforms is False
+
+
+_SF1_TIMEOUT_PRUNED_CELLS = frozenset(
+    (platform, benchmark, 1.0)
+    for platform, benchmarks in {
+        "dask-df": (
+            "joinorder",
+            "tpchavoc",
+            "tpch_skew",
+            "flightdata",
+            "tpcds",
+            "clickbench",
+            "datavault",
+            "coffeeshop",
+            "tpch",
+            "nyctaxi",
+            "amplab",
+            "tsbs_devops",
+        ),
+        "pyspark-df": ("datavault", "tpchavoc", "tpcds", "joinorder", "flightdata"),
+        "spark": ("joinorder", "tpchavoc", "tpcds_obt"),
+        "pandas-df": ("joinorder", "flightdata", "datavault"),
+        "sqlite": ("joinorder", "flightdata", "tsbs_devops", "tpch", "tpch_skew"),
+    }.items()
+    for benchmark in benchmarks
+)
+
+
+def test_release_gate_stage1_prunes_sf1_timeouts_measured_in_dry_run_2():
+    from tests.uat.phases.enumerate import enumerate_cells_with_pruning
+
+    stage1 = config.load_config(_RELEASE_GATE_CONFIGS_DIR / "release-gate-01-native-dataframe.yaml")
+    result = enumerate_cells_with_pruning(stage1)
+    cells = {(cell.platform, cell.benchmark, cell.scale) for cell in result.cells}
+    pruned = {
+        (cell.platform, cell.benchmark, cell.scale)
+        for cell in result.compatibility_pruned
+        if cell.rule_id.endswith(".release_gate_runtime_envelope") and cell.scale == 1.0
+    }
+
+    assert len(_SF1_TIMEOUT_PRUNED_CELLS) == 28
+    assert pruned >= _SF1_TIMEOUT_PRUNED_CELLS
+    assert _SF1_TIMEOUT_PRUNED_CELLS.isdisjoint(cells)
+    for platform, benchmark, _ in _SF1_TIMEOUT_PRUNED_CELLS:
+        if benchmark not in ("joinorder", "tpcds_obt"):
+            assert {
+                scale
+                for cell_platform, cell_benchmark, scale in cells
+                if (cell_platform, cell_benchmark) == (platform, benchmark)
+            }
+    for kept in (
+        ("pyspark-df", "nyctaxi", 1.0),
+        ("spark", "nyctaxi", 1.0),
+    ):
+        assert kept in cells
+
+
+_DOCKER_SF1_TIMEOUT_PRUNED_CELLS = {
+    "release-gate-02-docker-nonoltp.yaml": frozenset(
+        {
+            ("lakesail", "datavault", 1.0),
+            ("clickhouse-server", "flightdata", 1.0),
+            ("clickhouse-server", "tpcds_obt", 0.01),
+            ("clickhouse-server", "tpcds_obt", 0.1),
+            ("clickhouse-server", "tpcds_obt", 1.0),
+            ("clickhouse-server", "write_primitives", 1.0),
+            ("starrocks", "joinorder", 0.01),
+            ("starrocks", "joinorder", 0.1),
+            ("starrocks", "joinorder", 1.0),
+            ("starrocks", "tpcds_obt", 0.01),
+            ("starrocks", "tpcds_obt", 0.1),
+            ("starrocks", "tpcds_obt", 1.0),
+            ("starrocks", "write_primitives", 1.0),
+        }
+    ),
+    "release-gate-03-docker-oltp.yaml": frozenset(
+        {
+            ("pg-duckdb", "tpcds_obt", 0.01),
+            ("pg-duckdb", "joinorder", 0.01),
+            ("pg-mooncake", "tpcds_obt", 0.01),
+            ("postgresql", "joinorder", 0.01),
+            ("postgresql", "tpcds_obt", 0.01),
+            ("singlestore", "joinorder", 0.01),
+            ("singlestore", "tpcds_obt", 0.01),
+            ("questdb", "joinorder", 0.01),
+            ("questdb", "tpcds_obt", 0.01),
+            ("timescaledb", "tpcds_obt", 0.01),
+            ("timescaledb", "joinorder", 0.01),
+            ("velox", "joinorder", 0.01),
+        }
+    ),
+}
+
+
+@pytest.mark.parametrize("config_name", sorted(_DOCKER_SF1_TIMEOUT_PRUNED_CELLS))
+def test_release_gate_docker_stages_prune_sf1_timeouts_measured_in_dry_run_2(config_name):
+    from tests.uat.phases.enumerate import enumerate_cells_with_pruning
+
+    stage = config.load_config(_RELEASE_GATE_CONFIGS_DIR / config_name)
+    result = enumerate_cells_with_pruning(stage)
+    cells = {(cell.platform, cell.benchmark, cell.scale) for cell in result.cells}
+    pruned = {
+        (cell.platform, cell.benchmark, cell.scale)
+        for cell in result.compatibility_pruned
+        if cell.rule_id.endswith(".release_gate_runtime_envelope")
+    }
+    expected = _DOCKER_SF1_TIMEOUT_PRUNED_CELLS[config_name]
+
+    assert pruned == expected
+    assert cells.isdisjoint(expected)
+    for cell in result.compatibility_pruned:
+        if (cell.platform, cell.benchmark, cell.scale) in expected:
+            assert "timed out at 1200s" in cell.reason
+
+
+def test_release_gate_stages_exclude_platforms_tracked_for_follow_up():
+    stage2 = config.load_config(_RELEASE_GATE_CONFIGS_DIR / "release-gate-02-docker-nonoltp.yaml")
+    stage3 = config.load_config(_RELEASE_GATE_CONFIGS_DIR / "release-gate-03-docker-oltp.yaml")
+    assert stage2.platforms.exclude == ("cedardb",)
+    assert stage3.platforms.exclude == ("influxdb", "presto", "trino")
+    assert "cedardb-release-uat-coverage" in stage2.description
+    assert "influxdb-general-loader-uat" in stage3.description
+    assert "presto-trino-release-uat-coverage" in stage3.description
+    for stage in (stage2, stage3):
+        resolved = matrix.resolve_platforms(groups=stage.platforms.groups or (), exclude=stage.platforms.exclude)
+        assert set(stage.platforms.exclude).isdisjoint(resolved)
 
 
 def test_release_gate_stage1_prunes_measured_runtime_envelopes():
@@ -455,8 +581,8 @@ def test_release_gate_stage1_prunes_measured_runtime_envelopes():
     for cell in result.cells:
         by_pair.setdefault((cell.platform, cell.benchmark), set()).add(cell.scale)
     eligible = sum(1 for scales in by_pair.values() if set(stage1.scales.rungs).issubset(scales))
-    assert eligible == 133
-    assert stage1.report.cross_scale_coverage_min_pairs == int(0.8 * eligible) == 106
+    assert eligible == 110
+    assert stage1.report.cross_scale_coverage_min_pairs == int(0.8 * eligible) == 88
 
 
 def test_release_gate_cross_scale_floors_are_tuned_and_achievable():
@@ -481,8 +607,8 @@ def test_release_gate_cross_scale_floors_are_tuned_and_achievable():
         eligible = sum(1 for scales in by_pair.values() if rungs.issubset(scales))
 
         assert floor_value >= minimum, f"{config_name}: floor {floor_value} below absolute minimum {minimum}"
-        assert floor_value <= math.floor(0.8 * eligible), (
-            f"{config_name}: floor {floor_value} exceeds 0.8 * eligible ({eligible}); re-run the w4 derivation"
+        assert floor_value == math.floor(0.8 * eligible), (
+            f"{config_name}: floor {floor_value} is not 0.8 * eligible ({eligible}); re-run the w4 derivation"
         )
         assert floor_value < eligible, f"{config_name}: floor must never equal the eligible count"
 
@@ -678,10 +804,7 @@ def test_uat_smoke_config_is_native_tpch_sf001_loop():
 
 
 def test_release_gate_runtime_envelopes_are_enabled_or_unused_by_stages():
-    from tests.uat.compatibility import (
-        _RELEASE_GATE_RUNTIME_ENVELOPES,
-        _RELEASE_GATE_STAGES_UNUSED_RUNTIME_ENVELOPES,
-    )
+    from tests.uat.compatibility import _RELEASE_GATE_RUNTIME_ENVELOPES
     from tests.uat.phases.enumerate import enumerate_cells_with_pruning
 
     stage_cfgs = [
@@ -693,13 +816,11 @@ def test_release_gate_runtime_envelopes_are_enabled_or_unused_by_stages():
         )
     ]
     assert stage_cfgs[0].compatibility.release_gate_runtime_envelopes is True
-    assert stage_cfgs[1].compatibility.release_gate_runtime_envelopes is False
-    assert stage_cfgs[2].compatibility.release_gate_runtime_envelopes is False
+    assert stage_cfgs[1].compatibility.release_gate_runtime_envelopes is True
+    assert stage_cfgs[2].compatibility.release_gate_runtime_envelopes is True
 
     applied: set[tuple] = set()
     for cfg in stage_cfgs:
-        if not cfg.compatibility.release_gate_runtime_envelopes:
-            continue
         enumerated = enumerate_cells_with_pruning(cfg)
         applied.update(
             (cell.platform, cell.benchmark)
@@ -708,9 +829,7 @@ def test_release_gate_runtime_envelopes_are_enabled_or_unused_by_stages():
             for cell in enumerated.compatibility_pruned
             if "release_gate_runtime_envelope" in cell.rule_id
         )
-    unused = _RELEASE_GATE_STAGES_UNUSED_RUNTIME_ENVELOPES
-    assert applied.isdisjoint(unused)
-    assert set(_RELEASE_GATE_RUNTIME_ENVELOPES) == applied | unused
+    assert set(_RELEASE_GATE_RUNTIME_ENVELOPES) == applied
 
 
 def test_scale_specific_runtime_envelope_prunes_only_that_scale(monkeypatch):
@@ -723,7 +842,11 @@ def test_scale_specific_runtime_envelope_prunes_only_that_scale(monkeypatch):
         for cell in enumerate_cells_with_pruning(cfg).compatibility_pruned
         if ".sf" in cell.rule_id
     }
-    assert scale_pruned == {("sqlite", "datavault", 1.0), ("sqlite", "tpchavoc", 1.0)}
+    assert scale_pruned == {
+        ("sqlite", "datavault", 1.0),
+        ("sqlite", "tpchavoc", 1.0),
+        *(cell for cell in _SF1_TIMEOUT_PRUNED_CELLS if cell[1] not in ("joinorder", "tpcds_obt")),
+    }
 
     cells = {(cell.platform, cell.benchmark, cell.scale) for cell in enumerate_cells_with_pruning(cfg).cells}
     assert scale_pruned.isdisjoint(cells)

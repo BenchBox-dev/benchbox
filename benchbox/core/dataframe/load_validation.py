@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from benchbox.core.dataframe.query_validation import DataFrameQueryValidationSummary
@@ -13,9 +13,10 @@ def validate_dataframe_loaded_tables(
     table_stats: Mapping[str, int],
     per_table_stats: Mapping[str, Any],
     benchmark: Any,
+    expected_tables: Sequence[str] | None = None,
 ) -> DataFrameQueryValidationSummary:
     loaded = {str(name).lower(): int(rows) for name, rows in table_stats.items()}
-    expected = expected_table_names(benchmark)
+    expected = [str(name).lower() for name in expected_tables] if expected_tables else expected_table_names(benchmark)
 
     missing = sorted(name for name in (expected or ()) if name not in loaded)
     empty = sorted(name for name, rows in loaded.items() if rows <= 0)
@@ -59,3 +60,14 @@ def combine_dataframe_validation(
     if query_summary.status == "NOT_RUN" and query_summary.details.get("provider") == "none":
         return DataFrameQueryValidationSummary(load_summary.status, details)
     return DataFrameQueryValidationSummary(query_summary.status, details)
+
+
+def validate_managed_dataframe_tables(benchmark: Any, ctx: Any, adapter: Any) -> DataFrameQueryValidationSummary | None:
+    hook = getattr(benchmark, "dataframe_loaded_tables", None)
+    if not callable(hook):
+        return None
+    loaded = hook(ctx=ctx, adapter=adapter)
+    if loaded is None:
+        return None
+    table_stats, expected_tables = loaded
+    return validate_dataframe_loaded_tables(table_stats, {}, benchmark, expected_tables)

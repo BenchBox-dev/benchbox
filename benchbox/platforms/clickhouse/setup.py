@@ -6,7 +6,7 @@ import re
 from typing import Any
 
 from ._dependencies import ClickHouseClient
-from .client import ClickHouseCloudClient, ClickHouseLocalClient
+from .client import ClickHouseCloudClient, ClickHouseLocalClient, ClickHouseServerConnection
 
 logger = logging.getLogger(__name__)
 
@@ -191,7 +191,7 @@ class ClickHouseSetupMixin:
             client.execute("SELECT 1")
             self.logger.info(f"Connected to ClickHouse server at {params['host']}:{params['port']}")
 
-            return client
+            return ClickHouseServerConnection(client)
 
         except Exception as e:
             self.logger.error(f"Failed to connect to ClickHouse server: {e}")

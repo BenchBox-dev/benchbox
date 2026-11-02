@@ -84,7 +84,7 @@ class TestClickHouseAdapter:
         adapter = ClickHouseAdapter(deployment_mode="server", host="localhost", port=9000)
         connection = adapter.create_connection()
 
-        assert connection == mock_client
+        assert connection._client is mock_client
         assert mock_client_class.call_count == 3
         assert mock_client.execute.call_count == 3
         assert mock_client_class.call_args_list[2].kwargs["send_receive_timeout"] == 300
@@ -118,7 +118,7 @@ class TestClickHouseAdapter:
             password="benchbox",
         )
 
-        assert adapter.create_connection() == main_client
+        assert adapter.create_connection()._client is main_client
 
         create_client.execute.assert_called_once_with("CREATE DATABASE IF NOT EXISTS `benchbox_run`")
         assert "database" not in mock_client_class.call_args_list[1].kwargs
@@ -187,7 +187,7 @@ class TestClickHouseAdapter:
     def test_load_data_with_tables(self, mock_client_class):
         mock_client = Mock()
         mock_client_class.return_value = mock_client
-        execute_results = iter([[], None, None])
+        execute_results = iter([[], [], None, None])
 
         def execute(*args, **kwargs):
             if len(args) > 1 and isinstance(args[1], GeneratorType):
@@ -609,6 +609,21 @@ class TestClickHouseAdapter:
         assert handler._convert_field_for_clickhouse("[0.1,0.2]", "DOUBLE[2]") == [0.1, 0.2]
         assert handler._convert_field_for_clickhouse("", "FLOAT[3]") is None
         assert handler._convert_field_for_clickhouse("\\N", "FLOAT[3]") is None
+
+    def test_boolean_conversion_maps_null_true_false_and_rejects_unknown(self):
+        from benchbox.platforms.base.data_loading import ClickHouseNativeHandler
+
+        handler = ClickHouseNativeHandler(delimiter=",", adapter=None, benchmark=None)
+        conv = handler._convert_field_for_clickhouse
+
+        for token in ("", "\\N", "NULL", "null"):
+            assert conv(token, "Bool") is None
+        for token in ("true", "T", "1", "Yes"):
+            assert conv(token, "Nullable(Bool)") is True
+        for token in ("false", "F", "0", "no"):
+            assert conv(token, "BOOLEAN") is False
+        with pytest.raises(ValueError):
+            conv("maybe", "Bool")
 
     def test_datetime_and_timestamp_conversion(self):
         from datetime import date as date_cls, datetime as dt
@@ -1105,6 +1120,8 @@ class TestClickHouseNativeHandlerBulk:
         connection = Mock()
 
         def execute(query, params=None, **kwargs):
+            if params is None:
+                return []
             list(params)
             raise RuntimeError("server timed out")
 
@@ -1235,6 +1252,27 @@ class TestClickHouseWorkloadCoverage:
         statement = connection.execute.call_args.args[0]
         assert "join_algorithm = 'grace_hash'" in statement
         assert "grace_hash_join_initial_buckets = 8" in statement
+
+    @pytest.mark.parametrize(
+        ("deployment_mode", "query_id", "grace"),
+        [
+            ("server", "21", True),
+            ("server", "5", True),
+            ("server", "20", False),
+            ("local", "21", False),
+            ("local", "5", False),
+        ],
+    )
+    def test_datavault_memory_heavy_queries_spill_join_to_disk_on_server(self, deployment_mode, query_id, grace):
+        adapter = self._adapter(deployment_mode=deployment_mode)
+        connection = Mock()
+        connection.execute.return_value = [(1,)]
+
+        adapter.execute_query(connection, "SELECT 1", query_id, benchmark_type="datavault", validate_row_count=False)
+
+        statement = connection.execute.call_args.args[0]
+        assert ("join_algorithm = 'grace_hash'" in statement) is grace
+        assert ("grace_hash_join_initial_buckets = 8" in statement) is grace
 
     def test_server_tpchavoc_resource_variants_keep_session_policy_unchanged(self):
         adapter = self._adapter(deployment_mode="server")

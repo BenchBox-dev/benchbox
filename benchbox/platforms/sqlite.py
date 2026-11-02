@@ -86,6 +86,14 @@ _TPCH_HELPER_INDEXES: tuple[str, ...] = (
     "ON lineitem (l_suppkey, l_shipdate, l_extendedprice, l_discount)",
 )
 
+_TPCHAVOC_HELPER_INDEXES: tuple[str, ...] = (
+    *_TPCH_HELPER_INDEXES,
+    "CREATE INDEX IF NOT EXISTS idx_bb_tpch_orders_key_cust_date ON orders (o_orderkey, o_custkey, o_orderdate)",
+    "CREATE INDEX IF NOT EXISTS idx_bb_tpch_customer_key_nation ON customer (c_custkey, c_nationkey)",
+    "CREATE INDEX IF NOT EXISTS idx_bb_tpch_supplier_key_nation ON supplier (s_suppkey, s_nationkey)",
+    "CREATE INDEX IF NOT EXISTS idx_bb_tpch_part_key_name ON part (p_partkey, p_name)",
+)
+
 _JOINORDER_TABLES: frozenset[str] = frozenset(
     {
         "aka_name",
@@ -531,12 +539,13 @@ class SQLiteAdapter(PlatformAdapter):
 
     def _apply_benchmark_helper_indexes(self, benchmark: Any, connection: Any, *, required: bool = False) -> float:
         if _is_tpch_benchmark(benchmark):
+            is_havoc = _is_tpchavoc_benchmark(benchmark)
             return self._apply_helper_index_set(
                 benchmark_name="TPC-H",
                 required_tables=_TPCH_TABLES,
-                statements=_TPCH_HELPER_INDEXES,
+                statements=_TPCHAVOC_HELPER_INDEXES if is_havoc else _TPCH_HELPER_INDEXES,
                 connection=connection,
-                analyze=False,
+                analyze=is_havoc,
                 required=required,
             )
         if _is_joinorder_benchmark(benchmark):
@@ -759,6 +768,11 @@ def _is_tpch_benchmark(benchmark: Any) -> bool:
     class_name = benchmark.__class__.__name__.lower()
     display_name = str(getattr(benchmark, "_name", "") or getattr(benchmark, "name", "")).lower()
     return "tpch" in class_name or "tpc-h" in display_name
+
+
+def _is_tpchavoc_benchmark(benchmark: Any) -> bool:
+    benchmark_id = str(getattr(benchmark, "benchmark_id", "") or getattr(benchmark, "id", "")).lower()
+    return benchmark_id == "tpchavoc" or "tpchavoc" in benchmark.__class__.__name__.lower()
 
 
 def _is_joinorder_benchmark(benchmark: Any) -> bool:

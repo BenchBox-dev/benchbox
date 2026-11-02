@@ -1256,6 +1256,7 @@ class InfluxDBStubState:
     mode: str = "core"
     statements: list[str] = field(default_factory=list)
     writes: list[str] = field(default_factory=list)
+    databases_created: list[str] = field(default_factory=list)
     row_counts: dict[str, int] = field(default_factory=lambda: {"cpu": 100, "mem": 100})
 
 
@@ -1347,6 +1348,11 @@ def install_influxdb_stub(
     monkeypatch.setattr(client_module, "INFLUXDB3_AVAILABLE", True)
     monkeypatch.setattr(client_module, "FLIGHTSQL_AVAILABLE", False)
     monkeypatch.setattr(client_module, "InfluxDBClient3", lambda **kwargs: _InfluxDBStubClient(state, **kwargs))
+    monkeypatch.setattr(
+        client_module.InfluxDBConnection,
+        "ensure_database",
+        lambda self, timeout_s=30.0: state.databases_created.append(self.database),
+    )
 
     return state
 
@@ -2026,6 +2032,8 @@ class _DorisCursor:
             self._results = [("5.7.99-Doris-2.1.7",)]
         elif lowered.startswith("select database"):
             self._results = [(self._state.database,)]
+        elif "from backends()" in lowered:
+            self._results = [(1, 541132189696)]
         elif "select count" in lowered:
             from_index = lowered.find("from")
             if from_index >= 0:

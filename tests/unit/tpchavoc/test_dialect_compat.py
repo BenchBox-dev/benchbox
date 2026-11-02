@@ -14,11 +14,13 @@ from benchbox.core.tpchavoc.dialect_compat import (
     DATAFUSION_EMPTY_GROUP_VARIANT_IDS,
     GROUP_BY_EMPTY_VARIANT_IDS,
     POSTGRES_ALIAS_VARIANT_IDS,
+    POSTGRES_DECORRELATED_VARIANT_IDS,
     POSTGRES_DUAL_VARIANT_IDS,
     POSTGRES_QUALIFIED_COLUMNS,
     SINGLESTORE_AGGREGATE_SUBQUERY_VARIANT_IDS,
     SINGLESTORE_ALIAS_QUALIFIED_COLUMNS,
     SINGLESTORE_CORRELATED_GROUP_VARIANTS,
+    SINGLESTORE_EXISTS_JOIN_VARIANT_IDS,
     SINGLESTORE_FILTER_VARIANT_IDS,
     SINGLESTORE_GROUPING_SET_VARIANT_IDS,
     SINGLESTORE_ORDER_SUBQUERY_VARIANT_IDS,
@@ -78,6 +80,12 @@ def test_postgres_alias_rules_cover_each_family_platform():
             for key, _ in REGISTRY.all_rules()
             if key[:3] == (Phase.QUERY_ADAPTER, platform, "tpchavoc") and key[3] in POSTGRES_DUAL_VARIANT_IDS
         }
+        decorrelated_rules = {
+            key[3]
+            for key, _ in REGISTRY.all_rules()
+            if key[:3] == (Phase.QUERY_ADAPTER, platform, "tpchavoc") and key[3] in POSTGRES_DECORRELATED_VARIANT_IDS
+        }
+        assert decorrelated_rules == POSTGRES_DECORRELATED_VARIANT_IDS
         assert alias_rules == POSTGRES_ALIAS_VARIANT_IDS
         assert qualified_rules == set(POSTGRES_QUALIFIED_COLUMNS)
         assert dual_rules == POSTGRES_DUAL_VARIANT_IDS
@@ -106,6 +114,22 @@ def test_postgres_dual_variant_drops_the_one_row_source():
     assert sqlglot.parse_one(query, read="postgres")
 
 
+@pytest.mark.parametrize("query_id", sorted(POSTGRES_DECORRELATED_VARIANT_IDS))
+def test_postgres_excess_inventory_variants_join_a_grouped_lineitem_subquery(query_id):
+    query = TPCHavocBenchmark(scale_factor=0.1).get_query(query_id, dialect="postgres")
+    tree = sqlglot.parse_one(query, read="postgres")
+
+    assert query_id not in POSTGRES_TPCHAVOC_SKIPS
+    lineitem_aggregates = [
+        select
+        for select in tree.find_all(exp.Select)
+        if any(projection.find(exp.Sum) for projection in select.expressions)
+    ]
+    assert len(lineitem_aggregates) == 1
+    assert {column.table for column in lineitem_aggregates[0].args["where"].find_all(exp.Column)} == {"lineitem"}
+    assert "GROUP BY lineitem.l_partkey, lineitem.l_suppkey" in query
+
+
 def test_postgres_alias_rewrite_preserves_order_by_aliases():
     query = TPCHavocBenchmark(scale_factor=0.1).get_query("3_v7", dialect="postgres")
 
@@ -129,6 +153,7 @@ def test_clickhouse_filtered_aggregates_use_native_combinators():
     assert "avgOrNullIf(" in q1
     assert "countIf(" in q1
     assert q12.count("countIf(") == 2
+    assert "sumOrNullIf(" in benchmark.get_query("9_v7", dialect="clickhouse")
 
 
 @pytest.mark.parametrize("aggregate", ["COUNT(l_orderkey)", "MIN(l_orderkey)", "MAX(l_orderkey)"])
@@ -290,6 +315,86 @@ def test_dry_run_uses_production_dialect_rewrites_and_query_subset(
     assert all(fragment in rendered for fragment in required_fragments)
 
 
+def test_doris_variants_run_without_filter_clause_or_empty_group_by():
+    from benchbox.core.tpchavoc.dialect_compat import DORIS_FILTER_VARIANT_IDS, GROUP_BY_EMPTY_VARIANT_IDS
+
+    benchmark = TPCHavocBenchmark(scale_factor=0.1)
+    queries = benchmark.get_queries(dialect="doris")
+
+    for query_id in DORIS_FILTER_VARIANT_IDS:
+        tree = sqlglot.parse_one(queries[query_id], read="doris")
+        assert not list(tree.find_all(exp.Filter)), query_id
+    for query_id in GROUP_BY_EMPTY_VARIANT_IDS:
+        assert "GROUP BY ()" not in queries[query_id].upper()
+        assert "HAVING" in queries[query_id].upper()
+
+
+def test_doris_filter_variants_are_the_variants_that_use_filter():
+    from benchbox.core.tpchavoc.dialect_compat import DORIS_FILTER_VARIANT_IDS
+
+    benchmark = TPCHavocBenchmark(scale_factor=0.1)
+    uses_filter = {
+        query_id
+        for query_id, query in benchmark.get_queries(dialect="duckdb").items()
+        if list(sqlglot.parse_one(query, read="duckdb").find_all(exp.Filter))
+    }
+
+    assert uses_filter >= DORIS_FILTER_VARIANT_IDS
+
+
+def test_doris_rewrites_are_registered_per_variant():
+    import benchbox.sql_compat.rules.query_adapter.doris_tpchavoc_rewrites
+    from benchbox.core.tpchavoc.dialect_compat import (
+        DORIS_CORRELATED_GROUP_VARIANTS,
+        DORIS_FILTER_VARIANT_IDS,
+        DORIS_NAMED_WINDOW_VARIANT_IDS,
+        DORIS_ORDER_BY_PROJECTION_VARIANT_IDS,
+        GROUP_BY_EMPTY_VARIANT_IDS,
+    )
+    from benchbox.sql_compat.context import Phase
+    from benchbox.sql_compat.registry import REGISTRY
+
+    registered = {key[3] for key, _ in REGISTRY.all_rules() if key[:3] == (Phase.QUERY_ADAPTER, "doris", "tpchavoc")}
+
+    assert registered == set(DORIS_FILTER_VARIANT_IDS) | set(GROUP_BY_EMPTY_VARIANT_IDS) | set(
+        DORIS_NAMED_WINDOW_VARIANT_IDS
+    ) | set(DORIS_ORDER_BY_PROJECTION_VARIANT_IDS) | set(DORIS_CORRELATED_GROUP_VARIANTS)
+
+
+def _doris_tree(query_id):
+    return sqlglot.parse_one(TPCHavocBenchmark(scale_factor=0.01).get_query(query_id, dialect="doris"), read="doris")
+
+
+def test_doris_named_window_variant_inlines_the_window_definition():
+    tree = _doris_tree("1_v8")
+
+    assert tree.args.get("windows") is None
+    assert not [window for window in tree.find_all(exp.Window) if window.args.get("alias") is not None]
+    assert "WINDOW" not in tree.sql(dialect="doris").upper()
+
+
+@pytest.mark.parametrize("query_id", ["3_v1", "3_v9", "5_v1", "10_v1", "16_v1"])
+def test_doris_order_by_references_the_projected_alias(query_id):
+    tree = _doris_tree(query_id)
+    order = tree.args["order"]
+
+    assert order.find(exp.Subquery) is None
+    assert order.find(exp.Window) is None
+
+
+def test_doris_correlated_scalar_group_by_is_a_single_group_guarded_by_case():
+    tree = _doris_tree("2_v2")
+    scalar = next(
+        subquery.this
+        for subquery in tree.find_all(exp.Subquery)
+        if isinstance(subquery.parent, exp.Binary) and isinstance(subquery.this, exp.Select)
+    )
+
+    assert scalar.args.get("group") is None
+    assert scalar.args.get("having") is None
+    assert scalar.find(exp.Case) is not None
+
+
 def _singlestore_query(query_id):
     return TPCHavocBenchmark(scale_factor=0.01).get_query(query_id, dialect="singlestore")
 
@@ -385,6 +490,7 @@ def test_singlestore_variant_rules_are_registered():
         | SINGLESTORE_ORDER_SUBQUERY_VARIANT_IDS
         | SINGLESTORE_AGGREGATE_SUBQUERY_VARIANT_IDS
         | set(SINGLESTORE_CORRELATED_GROUP_VARIANTS)
+        | SINGLESTORE_EXISTS_JOIN_VARIANT_IDS
     )
     registered = {
         key[3] for key, _ in REGISTRY.all_rules() if key[:3] == (Phase.QUERY_ADAPTER, "singlestore", "tpchavoc")
@@ -439,3 +545,106 @@ def test_singlestore_rewrites_resolve_without_conflict_for_every_registered_vari
             )
         )
         assert decision is not None, query_id
+
+
+def test_starrocks_variants_run_without_filter_clause_or_empty_group_by():
+    from benchbox.core.tpchavoc.dialect_compat import STARROCKS_FILTER_VARIANT_IDS
+
+    queries = TPCHavocBenchmark(scale_factor=0.1).get_queries(dialect="starrocks")
+
+    for query_id in STARROCKS_FILTER_VARIANT_IDS:
+        tree = sqlglot.parse_one(queries[query_id], read="starrocks")
+        assert not list(tree.find_all(exp.Filter)), query_id
+    for query_id in ("6_v2", "14_v2"):
+        assert "GROUP BY ()" not in queries[query_id].upper()
+
+
+def test_starrocks_rewrites_are_registered_per_variant():
+    import benchbox.sql_compat.rules.query_adapter.starrocks_query_rewrites
+    from benchbox.core.tpchavoc.dialect_compat import (
+        GROUP_BY_EMPTY_VARIANT_IDS,
+        STARROCKS_CORRELATED_GROUP_VARIANTS,
+        STARROCKS_FILTER_VARIANT_IDS,
+        STARROCKS_NAMED_WINDOW_VARIANT_IDS,
+        STARROCKS_ORDER_BY_PROJECTION_VARIANT_IDS,
+        STARROCKS_SOURCELESS_EXISTS_VARIANT_IDS,
+    )
+    from benchbox.sql_compat.context import Phase
+    from benchbox.sql_compat.registry import REGISTRY
+
+    registered = {
+        key[3] for key, _ in REGISTRY.all_rules() if key[:3] == (Phase.QUERY_ADAPTER, "starrocks", "tpchavoc")
+    }
+
+    assert registered == set(STARROCKS_FILTER_VARIANT_IDS) | set(GROUP_BY_EMPTY_VARIANT_IDS) | set(
+        STARROCKS_NAMED_WINDOW_VARIANT_IDS
+    ) | set(STARROCKS_ORDER_BY_PROJECTION_VARIANT_IDS) | set(STARROCKS_CORRELATED_GROUP_VARIANTS) | set(
+        STARROCKS_SOURCELESS_EXISTS_VARIANT_IDS
+    )
+
+
+@pytest.mark.parametrize("query_id", ["3_v1", "3_v9", "5_v1", "10_v1", "16_v1", "16_v7", "16_v10"])
+def test_starrocks_order_by_references_the_projected_alias(query_id):
+    tree = sqlglot.parse_one(
+        TPCHavocBenchmark(scale_factor=0.01).get_query(query_id, dialect="starrocks"), read="starrocks"
+    )
+    order = tree.args["order"]
+
+    assert order.find(exp.Subquery) is None
+    assert order.find(exp.Window) is None
+
+
+@pytest.mark.parametrize("query_id", ["7_v8", "12_v8", "13_v8"])
+def test_starrocks_sourceless_exists_becomes_the_predicate(query_id):
+    tree = sqlglot.parse_one(
+        TPCHavocBenchmark(scale_factor=0.01).get_query(query_id, dialect="starrocks"), read="starrocks"
+    )
+
+    assert not [node for node in tree.find_all(exp.Exists) if node.this.args.get("from_") is None]
+
+
+def test_starrocks_skips_the_variant_with_an_outer_reference_inside_a_derived_table():
+    queries = TPCHavocBenchmark(scale_factor=0.01).get_platform_skip_queries("starrocks")
+
+    assert "8_v1" in queries
+    assert "1_v7" in queries
+
+
+def test_singlestore_correlated_exists_variant_joins_a_derived_table_of_matching_keys():
+    query = TPCHavocBenchmark(scale_factor=0.01).get_query("10_v8", dialect="singlestore")
+
+    assert "EXISTS" not in query.upper()
+    assert "SELECT DISTINCT" in query.upper()
+    assert "l2_l_orderkey" in query
+    assert sqlglot.parse_one(query, read="singlestore")
+
+
+def test_exists_to_derived_join_keeps_matching_rows_identical():
+    import sqlite3
+
+    from benchbox.utils.dialect_utils import apply_rewrite
+
+    source = (
+        "SELECT t.k, t.v FROM t WHERE t.v > 0 AND EXISTS "
+        "(SELECT 1 FROM t t2 WHERE t2.k = t.k AND t2.v = t.v AND t2.flag = 'R') ORDER BY t.k, t.v"
+    )
+    rewritten = apply_rewrite("exists_to_derived_join", source, "sqlite")
+    connection = sqlite3.connect(":memory:")
+    connection.execute("CREATE TABLE t (k INT, v INT, flag TEXT)")
+    connection.executemany(
+        "INSERT INTO t VALUES (?, ?, ?)",
+        [(1, 1, "R"), (1, 1, "R"), (2, 5, "N"), (3, 7, "R"), (4, 0, "R")],
+    )
+
+    assert "EXISTS" not in rewritten.upper()
+    assert connection.execute(rewritten).fetchall() == connection.execute(source).fetchall()
+
+
+def test_exists_to_derived_join_leaves_non_equality_correlation_untouched():
+    from benchbox.utils.dialect_utils import apply_rewrite
+
+    source = "SELECT a FROM t WHERE EXISTS (SELECT 1 FROM t t2 WHERE t2.v < t.v)"
+
+    assert apply_rewrite("exists_to_derived_join", source, "sqlite") == (
+        "SELECT a FROM t WHERE EXISTS(SELECT 1 FROM t AS t2 WHERE t2.v < t.v)"
+    )

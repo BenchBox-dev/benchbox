@@ -347,6 +347,7 @@ class TestPrestoAdapter:
 
         prestodb_mock, _ = presto_stubs
         mock_cursor = Mock()
+        mock_cursor.fetchall.return_value = [("c1", "varchar", "", ""), ("c2", "varchar", "", "")]
         mock_connection = Mock()
         mock_connection.cursor.return_value = mock_cursor
         prestodb_mock.dbapi.connect.return_value = mock_connection
@@ -363,7 +364,7 @@ class TestPrestoAdapter:
 
         assert stats["orders"] == 2
         executed_sql = " ".join(call.args[0] for call in mock_cursor.execute.call_args_list)
-        assert "INSERT INTO hive.analytics.orders VALUES" in executed_sql
+        assert "INSERT INTO hive.analytics.orders SELECT" in executed_sql
 
     def test_load_data_skips_invalid_identifier(self, presto_stubs, tmp_path):
 
@@ -424,6 +425,7 @@ class TestPrestoAdapter:
     def test_load_data_does_not_invoke_external_registration(self, presto_stubs, tmp_path):
 
         mock_cursor = Mock()
+        mock_cursor.fetchall.return_value = [("c1", "varchar", "", ""), ("c2", "varchar", "", "")]
         mock_connection = Mock()
         mock_connection.cursor.return_value = mock_cursor
 
@@ -787,6 +789,7 @@ class TestPrestoAdapter:
             table_metadata={"orders": {"csv_delimiter": ","}},
         )
         cursor = Mock()
+        cursor.fetchall.return_value = [("id", "bigint", "", ""), ("name", "varchar", "", "")]
         with (
             patch.object(adapter, "_validate_identifier", return_value=True),
             patch("benchbox.platforms.presto_trino_adapter_base.load_file_batches") as batches,
@@ -802,7 +805,8 @@ class TestPrestoAdapter:
                 data_source=data_source,
             )
         assert result == (1, 1)
-        assert batches.call_args.kwargs["delimiter"] == ","
+        assert batches.call_args.kwargs["dialect"].delimiter == ","
+        assert batches.call_args.kwargs["column_types"] == ["bigint", "varchar"]
 
     def test_load_table_data_without_context_keeps_heuristic(self, presto_stubs, tmp_path):
 
@@ -810,6 +814,7 @@ class TestPrestoAdapter:
         data_file = tmp_path / "orders.tbl"
         data_file.write_text("1|Alice\n")
         cursor = Mock()
+        cursor.fetchall.return_value = [("id", "bigint", "", ""), ("name", "varchar", "", "")]
         with (
             patch.object(adapter, "_validate_identifier", return_value=True),
             patch("benchbox.platforms.presto_trino_adapter_base.load_file_batches") as batches,
@@ -817,4 +822,4 @@ class TestPrestoAdapter:
             batches.return_value = 1
             result = adapter._load_table_data(cursor, "orders", data_file, "hive", "default")
         assert result == (1, 1)
-        assert batches.call_args.kwargs["delimiter"] is None
+        assert batches.call_args.kwargs["dialect"] is None

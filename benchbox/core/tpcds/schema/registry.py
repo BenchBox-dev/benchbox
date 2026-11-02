@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from benchbox.core.tuning import BenchmarkTunings, TableTuning, TuningColumn
+from benchbox.utils.questdb_subquery_schemas import register_benchmark_schema
 
 from .models import Table
 from .tables import _TABLES
@@ -36,6 +37,8 @@ _TABLE_ORDER = (
 TABLES = [_TABLES[name] for name in _TABLE_ORDER]
 
 TABLES_BY_NAME = {table.name: table for table in TABLES}
+
+register_benchmark_schema(TABLES)
 
 
 def get_table(name: str) -> Table:

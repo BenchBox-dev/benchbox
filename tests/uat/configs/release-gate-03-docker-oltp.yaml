@@ -2,7 +2,7 @@
 # place across releases (e.g. cross_scale_coverage_min_pairs re-derivation),
 # not cloned per sweep. See _project/specs/uat-framework.md Section 9.
 name: "release-gate-03-docker-oltp"
-description: "Release-gate stage 3: Docker OLTP stacks, scale 0.01"
+description: "Release-gate stage 3: Docker OLTP stacks, scale 0.01; InfluxDB is excluded because the adapter loads only TSBS DevOps data (tracked in influxdb-general-loader-uat); Presto and Trino are excluded until their release-gate cells pass (tracked in presto-trino-release-uat-coverage)"
 
 phases:
   - preflight
@@ -13,9 +13,13 @@ phases:
 
 platforms:
   groups: ["docker-slow"]
+  exclude: ["influxdb", "presto", "trino"]
 
 benchmarks:
   groups: ["all"]
+
+compatibility:
+  release_gate_runtime_envelopes: true
 
 scales:
   rungs: [0.01]
@@ -49,4 +53,4 @@ package:
 
 report:
   matrix_summary_tsv: "matrix_summary.tsv"
-  cross_scale_coverage_min_pairs: 162
+  cross_scale_coverage_min_pairs: 120

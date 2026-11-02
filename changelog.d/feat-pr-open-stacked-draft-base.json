@@ -1,4 +1,0 @@
-{
-  "schema": 1,
-  "internal": "make pr-open takes a PARENT option that opens a reviewed stacked draft against the parent branch"
-}

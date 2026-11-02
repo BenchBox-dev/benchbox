@@ -5,6 +5,11 @@ from typing import Any, cast
 import yaml
 
 from benchbox.core.tpch.schema import CUSTOMER, LINEITEM, NATION, ORDERS, PART, PARTSUPP, REGION, SUPPLIER
+from benchbox.core.transactional.staging_types import (
+    staging_nullable_type,
+    staging_table_suffix,
+    translate_staging_column_type,
+)
 
 
 def _load_schema_specs() -> dict[str, Any]:
@@ -50,7 +55,7 @@ def translate_column_type(type_str: str, dialect: str) -> str | None:
     canonical = type_str.strip().upper()
     if canonical == "BINARY":
         return _BINARY_TYPE_BY_DIALECT.get(dialect.lower(), "BINARY")
-    return type_str
+    return translate_staging_column_type(type_str, dialect)
 
 
 def _supports_primary_keys(dialect: str) -> bool:
@@ -90,6 +95,9 @@ def get_create_table_sql(table_name: str, dialect: str = "standard", if_not_exis
                 f"Column '{col['name']}' uses logical type '{col['type']}' which has no "
                 f"mapping for dialect '{dialect}'. Skip this table or pick a dialect with support."
             )
+        column_type = staging_nullable_type(
+            column_type, dialect, bool(col.get("nullable", False)) and not col.get("primary_key")
+        )
         col_def = f"{col['name']} {column_type}"
         if col.get("primary_key") and supports_primary_keys:
             col_def += " PRIMARY KEY"
@@ -103,7 +111,9 @@ def get_create_table_sql(table_name: str, dialect: str = "standard", if_not_exis
     if_not_exists_clause = " IF NOT EXISTS" if if_not_exists else ""
     sql = f"CREATE TABLE{if_not_exists_clause} {table['name']} (\n"
     sql += ",\n".join(f"  {col}" for col in columns)
-    sql += "\n);"
+    sql += "\n)"
+    sql += staging_table_suffix(dialect, table)
+    sql += ";"
     return sql
 
 

@@ -134,3 +134,12 @@ def test_remapped_host_ports_reach_the_cell_command():
         assert any(opt.endswith(f"={host_port}") or opt.endswith(f":{host_port}") for opt in opts), (
             f"{platform}: compose publishes host port {host_port} but the cell command does not pass it"
         )
+
+
+def test_uat_databend_connects_to_the_published_self_hosted_endpoint():
+    opts = docker_assets.platform_extra_opts("databend")
+
+    assert opts[opts.index("host=localhost") - 1] == "--platform-option"
+    assert "port=8000" in opts
+    assert "password=benchbox" in opts
+    assert "deployment_mode=self-hosted" in opts

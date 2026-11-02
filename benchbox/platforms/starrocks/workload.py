@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from benchbox.core.transactional.staging_keys import leading_key_columns
 from benchbox.core.tuning.generators.starrocks import DEFAULT_BUCKET_COUNT
 from benchbox.platforms.base.data_loading import (
     DataSource,
@@ -86,12 +87,17 @@ class StarRocksWorkloadMixin:
         if not is_create_table(statement):
             return statement
 
-        table_name, columns, key = create_table_shape(statement)
+        source_dialect = "starrocks" if "`" in statement else "standard"
+        table_name, columns, key = create_table_shape(statement, source_dialect)
         if not columns:
-            return "; ".join(translate_ddl(statement, "starrocks", source_dialect="standard", **self._ddl_options()))
+            return "; ".join(
+                translate_ddl(statement, "starrocks", source_dialect=source_dialect, **self._ddl_options())
+            )
 
         table_tuning, tuning_clauses = self._resolve_table_tuning(table_name, table_tunings)
         layout = self._starrocks_layout(columns, key, table_tuning)
+        if staging_key := leading_key_columns(table_name, columns):
+            layout |= {"key_model": "primary", "key_columns": staging_key, "distribute_by": [staging_key[0]]}
         undefined = sorted(
             {name.lower() for field in ("distribute_by", "partition_by", "sort_by") for name in layout.get(field, [])}
             - set(columns)
@@ -111,7 +117,7 @@ class StarRocksWorkloadMixin:
             )
         return "; ".join(
             translate_ddl(
-                statement, "starrocks", source_dialect="standard", default_layout=layout, **self._ddl_options()
+                statement, "starrocks", source_dialect=source_dialect, default_layout=layout, **self._ddl_options()
             )
         )
 

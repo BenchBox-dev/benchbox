@@ -5,8 +5,13 @@
 from __future__ import annotations
 
 import csv
+import json
 import re
 import socket
+import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
+from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -38,7 +43,8 @@ from .questdb_rewrites import rewrite_query
 
 QUESTDB_DIALECT = "questdb"
 
-QUESTDB_TYPE_MAP: dict[str, str] = {"TIME": "VARCHAR"}
+QUESTDB_TYPE_MAP: dict[str, str] = {"TIME": "VARCHAR", "DECIMAL": "DOUBLE"}
+QUESTDB_PARAMETERLESS_TYPES: tuple[str, ...] = ("VARCHAR", "DOUBLE")
 
 try:
     import psycopg
@@ -76,6 +82,18 @@ TPCH_DATE_COLUMNS: dict[str, list[str]] = {
     "lineitem": ["l_shipdate", "l_commitdate", "l_receiptdate"],
     "orders": ["o_orderdate"],
 }
+
+
+def _http_get(url: str, **kwargs: Any) -> Any:
+    import requests
+
+    return requests.get(url, **kwargs)
+
+
+def _http_post(url: str, **kwargs: Any) -> Any:
+    import requests
+
+    return requests.post(url, **kwargs)
 
 
 class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
@@ -455,6 +473,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                         strip_primary_keys=True,
                         strip_foreign_keys=True,
                         type_map=QUESTDB_TYPE_MAP,
+                        drop_type_parameters=QUESTDB_PARAMETERLESS_TYPES,
                         default_layout=self._questdb_table_layout(stmt),
                     )
                 elif "DROP TABLE" in stmt_upper:
@@ -519,7 +538,38 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
             stmt = re.sub(r"(?i)(DROP\s+TABLE)\s+", r"\1 IF EXISTS ", stmt, count=1)
         return stmt
 
+    CONNECTION_KEEPALIVE_SECONDS = 60.0
+
+    @contextmanager
+    def _keep_connection_alive(self, connection: Any) -> Iterator[None]:
+        stop = threading.Event()
+
+        def ping() -> None:
+            while not stop.wait(self.CONNECTION_KEEPALIVE_SECONDS):
+                try:
+                    connection.execute("SELECT 1").fetchone()
+                except Exception as exc:
+                    self.logger.debug(f"QuestDB connection keepalive stopped: {exc}")
+                    return
+
+        thread = threading.Thread(target=ping, name="questdb-connection-keepalive", daemon=True)
+        thread.start()
+        try:
+            yield
+        finally:
+            stop.set()
+            thread.join(timeout=5)
+
     def load_data(
+        self,
+        benchmark,
+        connection: Any,
+        data_dir: Path,
+    ) -> tuple[dict[str, int], float, dict[str, Any] | None]:
+        with self._keep_connection_alive(connection):
+            return self._load_data(benchmark, connection, data_dir)
+
+    def _load_data(
         self,
         benchmark,
         connection: Any,
@@ -569,7 +619,9 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                         rows = self._load_parquet_via_chunked_csv(table_name_lower, data_file)
                         source = "REST/parquet-csv"
                     else:
-                        rows = self._load_table_via_rest_api(table_name_lower, data_file, dialect)
+                        rows = self._load_table_via_rest_api(
+                            table_name_lower, data_file, replace(dialect, normalize_booleans=False)
+                        )
                         source = "REST"
                 except Exception as e:
                     self.logger.error(f"Failed to load {table_name_lower} chunk {data_file.name}: {e}")
@@ -619,8 +671,6 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                 self.logger.warning(f"Failed to populate staging table {staging_name}: {e}")
 
     def _load_table_via_rest_api(self, table_name: str, data_file: Path, dialect: CsvDialect) -> int:
-        import requests
-
         url = f"{'https' if self.use_tls else 'http'}://{self.host}:{self.http_port}/imp"
 
         params = {
@@ -642,7 +692,10 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         ) as load_path:
             with open(load_path, "rb") as upload_stream:
                 files = {"data": (f"{table_name}.csv", upload_stream, "text/csv")}
-                response = requests.post(url, params=params, files=files, timeout=300)
+                schema = self._import_schema(table_name, named_only=dialect.has_header)
+                if schema:
+                    files = {"schema": (None, schema, "application/json"), **files}
+                response = _http_post(url, params=params, files=files, timeout=300)
         response.raise_for_status()
 
         match = re.search(r"Rows imported\s*\|\s*(\d+)", response.text)
@@ -662,11 +715,10 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
 
         import io
 
-        import requests
-
         url = f"{'https' if self.use_tls else 'http'}://{self.host}:{self.http_port}/imp"
         total_rows = 0
 
+        schema = self._import_schema(table_name, named_only=True)
         pf = pq.ParquetFile(data_file)
         for batch in pf.iter_batches(batch_size=self.parquet_chunk_rows):
             csv_buf = io.BytesIO()
@@ -681,7 +733,9 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                 "forceHeader": "true",
             }
             files = {"data": (f"{table_name}.csv", csv_buf, "text/csv")}
-            response = requests.post(url, params=params, files=files, timeout=600)
+            if schema:
+                files = {"schema": (None, schema, "application/json"), **files}
+            response = _http_post(url, params=params, files=files, timeout=600)
             response.raise_for_status()
 
             match = re.search(r"Rows imported\s*\|\s*(\d+)", response.text)
@@ -733,9 +787,32 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
 
         return rows_sent
 
-    def _get_table_columns(self, table_name: str) -> list[str]:
-        import requests
+    def _import_schema(self, table_name: str, *, named_only: bool) -> str | None:
+        if not self._validate_identifier(table_name):
+            raise ValueError(f"Invalid table identifier for QuestDB import: {table_name!r}")
+        url = f"{'https' if self.use_tls else 'http'}://{self.host}:{self.http_port}/exec"
+        try:
+            response = _http_get(url, params={"query": f'SHOW COLUMNS FROM "{table_name}"'}, timeout=30)
+            response.raise_for_status()
+            rows = [row for row in response.json().get("dataset", []) if len(row) >= 2]
+        except Exception as exc:
+            raise RuntimeError(
+                f"Cannot read the column types of '{table_name}' to build the QuestDB import schema: {exc}"
+            ) from exc
+        date_only_timestamps = table_name.lower() in TPCH_DATE_COLUMNS
+        columns = []
+        for name, type_name in ((row[0], str(row[1]).upper()) for row in rows):
+            entry: dict[str, str] = {"name": name, "type": type_name}
+            if type_name == "DATE" or (type_name == "TIMESTAMP" and date_only_timestamps):
+                entry["pattern"] = "yyyy-MM-dd"
+            elif type_name == "TIMESTAMP" and not named_only:
+                entry["pattern"] = "yyyy-MM-dd HH:mm:ss"
+            if named_only and "pattern" not in entry:
+                continue
+            columns.append(entry)
+        return json.dumps(columns) if columns else None
 
+    def _get_table_columns(self, table_name: str) -> list[str]:
         if not self._validate_identifier(table_name):
             return []
 
@@ -743,7 +820,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         params = {"query": f'SHOW COLUMNS FROM "{table_name}"'}
 
         try:
-            response = requests.get(url, params=params, timeout=30)
+            response = _http_get(url, params=params, timeout=30)
             response.raise_for_status()
             result = response.json()
             dataset = result.get("dataset", [])
@@ -783,8 +860,6 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         return line
 
     def _count_table_rows_via_http(self, table_name: str) -> int:
-        import requests
-
         if not self._validate_identifier(table_name):
             return 0
 
@@ -792,7 +867,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         params = {"query": f'SELECT count() FROM "{table_name}"'}
 
         try:
-            response = requests.get(url, params=params, timeout=30)
+            response = _http_get(url, params=params, timeout=30)
             response.raise_for_status()
             result = response.json()
             dataset = result.get("dataset", [])

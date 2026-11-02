@@ -30,6 +30,7 @@ from benchbox.core.primitives_benchmark_utils import (
     table_exists,
 )
 from benchbox.core.query_catalog_base import TranslatableQueryMixin
+from benchbox.core.tpch.schema import TABLES_BY_NAME as TPCH_TABLES_BY_NAME
 from benchbox.core.transactional.benchmark_base import TransactionalBenchmarkBase
 from benchbox.core.write_primitives.generator import WritePrimitivesDataGenerator
 from benchbox.core.write_primitives.operations import WriteOperationsManager
@@ -39,12 +40,23 @@ from benchbox.core.write_primitives.schema import (
     get_all_staging_tables_sql,
     get_create_table_sql,
 )
+from benchbox.sql_compat.rules.execution_filter.clickhouse_write_primitives import (
+    clickhouse_write_primitive_skip_reason,
+)
+from benchbox.sql_compat.rules.execution_filter.doris_write_primitives import doris_write_primitive_skip_reason
 from benchbox.sql_compat.rules.execution_filter.duckdb_write_primitives import (
     duckdb_write_primitive_skip_reason,
 )
 from benchbox.sql_compat.rules.execution_filter.postgres_write_primitives import (
     POSTGRES_WRITE_PRIMITIVES_CATEGORY_SKIPS,
     POSTGRES_WRITE_PRIMITIVES_OPERATION_SKIPS,
+)
+from benchbox.sql_compat.rules.execution_filter.questdb_write_primitives import questdb_write_primitive_skip_reason
+from benchbox.sql_compat.rules.execution_filter.singlestore_write_primitives import (
+    singlestore_write_primitive_skip_reason,
+)
+from benchbox.sql_compat.rules.execution_filter.starrocks_write_primitives import (
+    starrocks_write_primitive_skip_reason,
 )
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.cloud_storage import normalize_output_dir
@@ -100,7 +112,24 @@ class OperationResult:
     executed_sql: Optional[str] = None
 
 
-def _check_validation_query(val_query: Any, actual_rows: int, val_result: list | None = None) -> bool:
+BOUNDS_BASE_SCALE_FACTOR = 0.01
+
+
+def _scaled_value_bounds(val_query: Any, scale_factor: float) -> tuple[float, float]:
+    lo = float(val_query.expected_value_min)
+    hi = float(val_query.expected_value_max)
+    if getattr(val_query, "bounds_scale_with_sf", False):
+        factor = float(scale_factor) / BOUNDS_BASE_SCALE_FACTOR
+        return lo * factor, hi * factor
+    return lo, hi
+
+
+def _check_validation_query(
+    val_query: Any,
+    actual_rows: int,
+    val_result: list | None = None,
+    scale_factor: float = BOUNDS_BASE_SCALE_FACTOR,
+) -> bool:
     expected_rows = val_query.expected_rows
     if expected_rows is not None:
         return actual_rows == expected_rows
@@ -114,6 +143,7 @@ def _check_validation_query(val_query: Any, actual_rows: int, val_result: list |
     ):
         if not val_result:
             return False
+        lo, hi = _scaled_value_bounds(val_query, scale_factor)
         for row in val_result:
             if not row or row[0] is None:
                 return False
@@ -121,7 +151,7 @@ def _check_validation_query(val_query: Any, actual_rows: int, val_result: list |
                 scalar = float(row[0])
             except (TypeError, ValueError):
                 return False
-            if not (val_query.expected_value_min <= scalar <= val_query.expected_value_max):
+            if not (lo <= scalar <= hi):
                 return False
         return True
     return True
@@ -145,9 +175,26 @@ def _resolve_validation_sql(
     return override, None
 
 
-_SINGLE_STATEMENT_SETUP_DIALECTS = frozenset({"sqlite", "databricks"})
+_SINGLE_STATEMENT_SETUP_DIALECTS = frozenset({"sqlite", "databricks", "questdb", "presto", "trino", "clickhouse"})
 _NO_TRUNCATE_DIALECTS = frozenset({"sqlite"})
+_COUNT_PROBE_DIALECTS = frozenset({"clickhouse"})
 _SUMMED_ROWCOUNT_DIALECTS = frozenset({"sqlite"})
+
+_ENGINE_WRITE_PRIMITIVE_SKIPS = (
+    ("doris", "Doris", doris_write_primitive_skip_reason),
+    ("singlestore", "SingleStore", singlestore_write_primitive_skip_reason),
+    ("starrocks", "StarRocks", starrocks_write_primitive_skip_reason),
+    ("questdb", "QuestDB", questdb_write_primitive_skip_reason),
+    ("clickhouse", "ClickHouse", clickhouse_write_primitive_skip_reason),
+)
+
+
+def _engine_write_primitive_skip(operation: Any, platform_key: str | None, fallback_key: str | None) -> str | None:
+    keys = {(platform_key or "").lower(), (fallback_key or "").lower()}
+    for engine, label, skip_reason in _ENGINE_WRITE_PRIMITIVE_SKIPS:
+        if engine in keys and (reason := skip_reason(operation)) is not None:
+            return f"Operation '{operation.id}' is skipped on {label}: {reason}"
+    return None
 
 
 class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBase["OperationResult"]):
@@ -184,6 +231,7 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
 
         self._setup_dialect: str = "standard"
         self._manifest_verified_connection: Any = None
+        self._dataframe_loaded_table_counts: dict[str, int] | None = None
 
     def _acquire_setup_lock(
         self, connection: DatabaseConnection, timeout_seconds: int = 300, dialect: str = "standard"
@@ -272,7 +320,9 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
 
     def _dialect_base_write_sql(self, operation: Any, platform_key: str | None) -> str:
         sql = operation.write_sql
-        if not platform_key or self._rewrite_transactional_sql_for_platform(sql, platform_key) != sql:
+        if not platform_key:
+            return sql
+        if platform_key.lower() != "questdb" and self._rewrite_transactional_sql_for_platform(sql, platform_key) != sql:
             return sql
         return self.translate_query_text(sql, platform_key)
 
@@ -303,6 +353,9 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
                     f"Operation '{operation.id}' is skipped on PostgreSQL-family platforms: "
                     f"{POSTGRES_WRITE_PRIMITIVES_OPERATION_SKIPS[operation.id]}"
                 )
+
+        if (engine_skip := _engine_write_primitive_skip(operation, platform_key, platform_fallback_key)) is not None:
+            return None, engine_skip
 
         platform_override_sql: str | None = None
         found_override, override = self._lookup_platform_override(
@@ -437,6 +490,14 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
             effective_changed = self._date_literal("2026-01-01")
             effective_unchanged = self._date_literal("2026-01-02")
             effective_new = self._date_literal("2026-01-03")
+            if self._setup_dialect.lower() == "questdb":
+                new_key_expr = "c_custkey + max_key.max_custkey"
+                new_source = (
+                    f"{quoted_source} CROSS JOIN (SELECT MAX(c_custkey) AS max_custkey FROM {quoted_source}) max_key"
+                )
+            else:
+                new_key_expr = f"c_custkey + (SELECT MAX(c_custkey) FROM {quoted_source})"
+                new_source = quoted_source
             return (
                 f"INSERT INTO {quoted_table} "
                 f"SELECT c_custkey, c_name, c_address, c_acctbal + 100, c_mktsegment, "
@@ -447,10 +508,10 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
                 f"{fp_same} AS row_hash, {effective_unchanged} AS effective_ts, 'unchanged' AS change_type "
                 f"FROM {quoted_source} WHERE c_custkey BETWEEN 21 AND 40;\n"
                 f"INSERT INTO {quoted_table} "
-                f"SELECT c_custkey + (SELECT MAX(c_custkey) FROM {quoted_source}), "
+                f"SELECT {new_key_expr}, "
                 f"c_name, c_address, c_acctbal, c_mktsegment, "
                 f"{fp_same} AS row_hash, {effective_new} AS effective_ts, 'new' AS change_type "
-                f"FROM {quoted_source} WHERE c_custkey BETWEEN 1 AND 20"
+                f"FROM {new_source} WHERE c_custkey BETWEEN 1 AND 20"
             )
         elif table_name == "ddl_truncate_target":
             return f"INSERT INTO {quoted_table} SELECT o_orderkey, o_custkey, o_orderdate FROM {quoted_source}"
@@ -675,6 +736,11 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
         self._populate_staging_tables(connection, reset_map)
         self.log_verbose("Reset complete")
 
+    def _staging_nonempty_probe_sql(self, quoted_table: str) -> str:
+        if self._setup_dialect.lower() in _COUNT_PROBE_DIALECTS:
+            return f"SELECT COUNT(*) FROM {quoted_table}"
+        return f"SELECT 1 FROM {quoted_table} LIMIT 1"
+
     def is_setup(self, connection: DatabaseConnection) -> bool:
         try:
             required_tables = [
@@ -691,8 +757,11 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
                 if not self._table_exists(connection, table_name):
                     return False
                 quoted = self._quote_identifier(table_name)
-                probe = connection.execute(f"SELECT 1 FROM {quoted} LIMIT 1")
-                if failed_platform_error(probe) is not None or probe.fetchone() is None:
+                probe = connection.execute(self._staging_nonempty_probe_sql(quoted))
+                if failed_platform_error(probe) is not None:
+                    return False
+                row = probe.fetchone()
+                if row is None or (self._setup_dialect.lower() in _COUNT_PROBE_DIALECTS and not row[0]):
                     return False
             if self._manifest_verified_connection is connection:
                 return True
@@ -996,7 +1065,7 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
                 continue
             val_result = val_cursor.fetchall()
             actual_rows = len(val_result)
-            passed = _check_validation_query(val_query, actual_rows, val_result)
+            passed = _check_validation_query(val_query, actual_rows, val_result, self.scale_factor)
             validation_passed = validation_passed and passed
 
             validation_results.append(
@@ -1035,9 +1104,7 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
 
         if cleanup_sql:
             try:
-                cleanup_res = connection.execute(cleanup_sql)
-                if (cleanup_err := failed_platform_error(cleanup_res)) is not None:
-                    raise RuntimeError(cleanup_err)
+                self._execute_cleanup_sql(connection, cleanup_sql, platform_key or platform_fallback_key)
                 self.log_verbose(f"Executed cleanup SQL for {operation_id}")
             except Exception as e:
                 cleanup_error = str(e)
@@ -1058,6 +1125,12 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
 
     def skip_dataframe_data_loading(self) -> bool:
         return True
+
+    def dataframe_loaded_tables(self, *, ctx: Any, adapter: Any) -> tuple[dict[str, int], list[str]] | None:
+        _ = (ctx, adapter)
+        if self._dataframe_loaded_table_counts is None:
+            return None
+        return dict(self._dataframe_loaded_table_counts), list(TPCH_TABLES_BY_NAME)
 
     def get_dataframe_operations(
         self, platform_name: str, *, execution_engine: str | None = None
@@ -1158,9 +1231,13 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
         try:
             parity_adapter.create_schema(self, connection)
             parity_adapter.load_data(self, connection, data_dir)
+            self._dataframe_loaded_table_counts = {
+                name: int(connection.execute(f"SELECT COUNT(*) FROM {name}").fetchone()[0])
+                for name in TPCH_TABLES_BY_NAME
+            }
 
             for op_id in sql_parity_op_ids:
-                op_result = self.execute_operation(op_id, connection)
+                op_result = self.execute_operation(op_id, connection, platform_key="duckdb")
                 status = "SUCCESS" if op_result.success and op_result.validation_passed else "FAILED"
                 error = op_result.error
                 if status == "FAILED" and not error and not op_result.validation_passed:
@@ -1318,7 +1395,7 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
                 }
 
             aggregate_value = float(merge.metrics.get("aggregate_value", 0.0))
-            validation_pass, validation_error = self._validate_aggregate_value(op, aggregate_value)
+            validation_pass, validation_error = self._validate_aggregate_value(op, aggregate_value, self.scale_factor)
             if not validation_pass:
                 return {
                     "query_id": op_id,
@@ -1372,6 +1449,7 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
         scale = float(getattr(self, "scale_factor", 0.01) or 0.01)
         scale_label = f"tpch_{format_scale_factor(scale)}"
         candidate_roots = [
+            output_dir,
             output_dir.parent / "datagen" / scale_label,
             output_dir / "datagen" / scale_label,
             Path.cwd() / "benchmark_runs" / "datagen" / scale_label,
@@ -1449,15 +1527,16 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
         )
 
     @staticmethod
-    def _validate_aggregate_value(op: Any, value: float) -> tuple[bool, str | None]:
+    def _validate_aggregate_value(
+        op: Any, value: float, scale_factor: float = BOUNDS_BASE_SCALE_FACTOR
+    ) -> tuple[bool, str | None]:
         if not op.validation_queries:
             return True, None
         vq = op.validation_queries[0]
-        lo = vq.expected_value_min
-        hi = vq.expected_value_max
-        if lo is None or hi is None:
+        if vq.expected_value_min is None or vq.expected_value_max is None:
             return True, None
-        if value < float(lo) or value > float(hi):
+        lo, hi = _scaled_value_bounds(vq, scale_factor)
+        if value < lo or value > hi:
             return False, (
                 f"Aggregate scalar {value:.4f} outside bounds [{lo}, {hi}] for op '{op.id}' validation '{vq.id}'"
             )

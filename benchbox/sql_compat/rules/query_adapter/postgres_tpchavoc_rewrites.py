@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from benchbox.core.tpchavoc.dialect_compat import (
     POSTGRES_ALIAS_VARIANT_IDS,
+    POSTGRES_DECORRELATED_VARIANT_IDS,
     POSTGRES_DUAL_VARIANT_IDS,
     POSTGRES_QUALIFIED_COLUMNS,
 )
@@ -52,6 +53,22 @@ for _platform in ("pg-duckdb", "pg-mooncake", "timescaledb"):
                 support_level=SupportLevel.REWRITTEN,
                 failure_mode=FailureMode.UNSUPPORTED_FEATURE,
                 payload=RewriteQueryPayload(transformer_id="drop_literal_row_source", description=_reason),
+                reason=_reason,
+            ),
+            Phase.QUERY_ADAPTER,
+            _platform,
+            benchmark="tpchavoc",
+            query_id=_query_id,
+        )
+    for _query_id in POSTGRES_DECORRELATED_VARIANT_IDS:
+        _reason = "Join a pre-aggregated lineitem subquery instead of re-scanning lineitem for every partsupp row"
+        REGISTRY.register(
+            CompatibilityDecision(
+                rule_id=f"query_adapter.{_platform}.tpchavoc.{_query_id}.decorrelate_subqueries",
+                action=CompatAction.REWRITE_QUERY,
+                support_level=SupportLevel.REWRITTEN,
+                failure_mode=FailureMode.UNSUPPORTED_FEATURE,
+                payload=RewriteQueryPayload(transformer_id="decorrelate_subqueries", description=_reason),
                 reason=_reason,
             ),
             Phase.QUERY_ADAPTER,

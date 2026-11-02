@@ -44,6 +44,16 @@ and SF0.1, and the `DOCUMENTED_SHALLOW_COHORTS` entries for both change from
 ClickHouse Local and DataFusion to DataFusion alone. The bundle JSON is
 unchanged. Unflag the sidecars when the query is corrected and rerun.
 
+Root cause and fix (2026-10-31): ClickHouse `Map` subscripting returns the value
+type's default (0 for `Decimal`) for an absent key, and no setting changes that.
+The hand-written ClickHouse variant in the Read Primitives catalog (not the fork
+translation) subscripted the map directly. It now guards each lookup with
+`mapContains`, so a missing key is NULL as on DuckDB, and it orders its rows like
+the DuckDB query. The two earlier ClickHouse Local bundles (`3465d4f3`, `c1aeca88`)
+ran the same defective text; both are already excluded by
+`defective-macdbgen-addresses`. All four bundles stay flagged until replacement
+runs on the corrected catalog are published.
+
 ## Fork 30.24.0.17 published-impact audit (2026-10-26)
 
 - Spark and Databricks (fork #73): `DATE_TRUNC('DAY', x)` was written

@@ -189,3 +189,89 @@ def test_check_benchmark_tables_exist_returns_false_when_connection_creation_fai
     assert adapter.check_benchmark_tables_exist() is False
 
     adapter.logger.debug.assert_called_once()
+
+
+def test_core_mode_creates_the_database_before_the_connection_test(monkeypatch):
+    adapter = _Adapter()
+    adapter.mode = "core"
+    fake_conn = MagicMock()
+    order = []
+    fake_conn.ensure_database.side_effect = lambda: order.append("ensure")
+    fake_conn.test_connection.side_effect = lambda: order.append("test") or True
+    monkeypatch.setattr("benchbox.platforms.influxdb.setup.InfluxDBConnection", lambda **kwargs: fake_conn)
+
+    adapter.create_connection(host="localhost", port=8181)
+
+    assert order == ["ensure", "test"]
+
+
+def test_cloud_mode_never_creates_the_database(monkeypatch):
+    adapter = _Adapter()
+    fake_conn = MagicMock()
+    fake_conn.test_connection.return_value = True
+    monkeypatch.setattr("benchbox.platforms.influxdb.setup.InfluxDBConnection", lambda **kwargs: fake_conn)
+
+    adapter.create_connection()
+
+    fake_conn.ensure_database.assert_not_called()
+
+
+@pytest.fixture
+def loopback_server():
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    seen = {}
+    status = {"code": 200}
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            seen["path"] = self.path
+            seen["body"] = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+            seen["auth"] = self.headers.get("Authorization")
+            self.send_response(status["code"])
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
+        def log_message(self, *args):
+            return
+
+    server = HTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield server.server_address[1], seen, status
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
+
+
+def _connection(port):
+    from benchbox.platforms.influxdb.client import InfluxDBConnection
+
+    return InfluxDBConnection(host="127.0.0.1", token=None, database="bench", port=port, ssl=False)
+
+
+def test_ensure_database_posts_the_database_name(loopback_server):
+    port, seen, _ = loopback_server
+    _connection(port).ensure_database()
+
+    assert seen == {
+        "path": "/api/v3/configure/database",
+        "body": b'{"db": "bench"}',
+        "auth": None,
+    }
+
+
+def test_ensure_database_accepts_an_existing_database(loopback_server):
+    port, _, status = loopback_server
+    status["code"] = 409
+    _connection(port).ensure_database()
+
+
+def test_ensure_database_surfaces_other_http_errors(loopback_server):
+    port, _, status = loopback_server
+    status["code"] = 401
+    with pytest.raises(ConnectionError, match="HTTP 401"):
+        _connection(port).ensure_database()

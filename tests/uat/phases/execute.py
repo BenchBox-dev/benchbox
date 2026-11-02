@@ -429,6 +429,7 @@ def _capture_container_logs(
     docker_events: list[DockerLifecycleEvent],
     log_dir: Path | None,
     benchmark_runs_dir: Path,
+    inspect_state: bool = False,
 ) -> None:
     if config.dry_run:
         return
@@ -440,9 +441,20 @@ def _capture_container_logs(
         env=managed_runtime.compose_environment(config, spec, benchmark_runs_dir),
     )
     artifact = f"container-logs-{platform}.log"
+    state_text = (
+        _container_state_report(
+            spec,
+            project_name,
+            docker_runner=docker_runner,
+            env=managed_runtime.compose_environment(config, spec, benchmark_runs_dir),
+        )
+        if inspect_state
+        else ""
+    )
     if log_dir is not None:
         log_dir.mkdir(parents=True, exist_ok=True)
         with (log_dir / artifact).open("a", encoding="utf-8") as fh:
+            fh.write(state_text)
             fh.write(f"# {result.command} exit={result.returncode}\n{result.stdout}\n{result.stderr}\n")
     _record_docker_event(
         docker_events,
@@ -454,6 +466,33 @@ def _capture_container_logs(
         message=f"container logs written to {artifact}" if result.succeeded else _docker_result_message(result),
         result=result,
     )
+
+
+def _container_state_report(
+    spec: docker_assets.DockerPlatformSpec,
+    project_name: str,
+    *,
+    docker_runner: DockerRunner,
+    env: dict[str, str],
+) -> str:
+    ids_result = docker_runner(
+        docker_assets.compose_container_ids_command(spec, project_name),
+        dry_run=False,
+        timeout_s=_CONTAINER_LOG_CAPTURE_TIMEOUT_S,
+        cwd=docker_assets.REPO_ROOT,
+        env=env,
+    )
+    container_ids = ids_result.stdout.split() if ids_result.succeeded else []
+    if not container_ids:
+        return f"# {ids_result.command} exit={ids_result.returncode}\n# no containers found to inspect\n"
+    inspect_result = docker_runner(
+        docker_assets.container_inspect_command(container_ids),
+        dry_run=False,
+        timeout_s=_CONTAINER_LOG_CAPTURE_TIMEOUT_S,
+        cwd=docker_assets.REPO_ROOT,
+        env=env,
+    )
+    return f"# {inspect_result.command} exit={inspect_result.returncode}\n{inspect_result.stdout}\n{inspect_result.stderr}\n"
 
 
 def _check_docker_platform_readiness(
@@ -809,6 +848,18 @@ def _run_platform_benchmark(
                 f"scale={cell.scale}; stack was reachable when the platform started. "
                 f"Recording this and every remaining {platform} cell as died-mid-platform.",
             )
+            if application_liveness_project_name is not None:
+                _capture_container_logs(
+                    config,
+                    spec=docker_assets.docker_platform_spec(platform),
+                    project_name=application_liveness_project_name,
+                    platform=platform,
+                    docker_runner=docker_runner,
+                    docker_events=docker_events,
+                    log_dir=log_dir,
+                    benchmark_runs_dir=benchmark_runs_dir,
+                    inspect_state=True,
+                )
             raise _PlatformDiedMidRun(platform=platform, remaining_cells=list(pb_cells[index:]))
         if liveness_armed and application_liveness_project_name is not None:
             application_reason = managed_runtime.check_application_readiness(
@@ -828,6 +879,17 @@ def _run_platform_benchmark(
                     f"[liveness] {platform}/{benchmark}: application probe failed before cell "
                     f"scale={cell.scale}; stack was reachable when the platform started. "
                     f"Recording this and every remaining {platform} cell as died-mid-platform: {application_reason}",
+                )
+                _capture_container_logs(
+                    config,
+                    spec=docker_assets.docker_platform_spec(platform),
+                    project_name=application_liveness_project_name,
+                    platform=platform,
+                    docker_runner=docker_runner,
+                    docker_events=docker_events,
+                    log_dir=log_dir,
+                    benchmark_runs_dir=benchmark_runs_dir,
+                    inspect_state=True,
                 )
                 raise _PlatformDiedMidRun(platform=platform, remaining_cells=list(pb_cells[index:]))
         cell_result = runner(
@@ -1153,7 +1215,7 @@ def _free_memory_abort_reason(
             return f"StarRocks memory request is not admissible {context}: {exc}"
         request_gib = request_bytes / (1024**3)
         vm_request = f"starrocks={request_gib:.3f} GiB"
-    elif platform in ("presto", "trino"):
+    elif platform in ("cedardb", "presto", "trino"):
         try:
             declared = docker_assets.compose_declared_memory_limits(docker_assets.docker_platform_spec(platform))
             request_bytes = sum(docker_assets.parse_memory_bytes(limit) for limit in declared.values())

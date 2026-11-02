@@ -12,7 +12,7 @@ from tests.uat.clickhouse_memory import runtime_limit_matches_rung
 from tests.uat.config import UATConfig
 
 STARROCKS_MEMORY_LIMIT_ENV_VAR = "STARROCKS_MEMORY_LIMIT"
-STARROCKS_DEFAULT_MEMORY_LIMIT = "4g"
+STARROCKS_DEFAULT_MEMORY_LIMIT = "8g"
 STARROCKS_READINESS = (
     "sh",
     "-c",
@@ -25,6 +25,11 @@ CEDARDB_READINESS = (
     "sh",
     "-c",
     'PGPASSWORD="$CEDAR_PASSWORD" psql -h 127.0.0.1 -p 5432 -U "$CEDAR_USER" -d "$CEDAR_DB" -tAc "SELECT 1"',
+)
+PG_MOONCAKE_READINESS = (
+    "sh",
+    "-c",
+    'PGPASSWORD="$POSTGRES_PASSWORD" psql -h 127.0.0.1 -p 5432 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT 1"',
 )
 _COORDINATOR_QUERY_SCRIPT = """\
 command -v curl >/dev/null 2>&1 || exit 127
@@ -47,11 +52,12 @@ TRINO_READINESS = ("sh", "-c", f"USER_HEADER=X-Trino-User\n{_COORDINATOR_QUERY_S
 _APPLICATION_READINESS: dict[str, tuple[tuple[str, ...], float]] = {
     "starrocks": (STARROCKS_READINESS, 0.0),
     "cedardb": (CEDARDB_READINESS, 15.0),
+    "pg-mooncake": (PG_MOONCAKE_READINESS, 15.0),
     "presto": (PRESTO_READINESS, 60.0),
     "trino": (TRINO_READINESS, 60.0),
 }
 
-_PROBE_TOOL_OPTIONAL = frozenset({"cedardb", "presto", "trino"})
+_PROBE_TOOL_OPTIONAL = frozenset({"cedardb", "pg-mooncake", "presto", "trino"})
 _COMMAND_NOT_FOUND_EXIT_CODES = frozenset({126, 127})
 
 DockerRunner = Callable[..., docker_assets.DockerCommandResult]

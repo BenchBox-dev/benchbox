@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import bz2
 import contextlib
 import csv
 import gzip
@@ -112,6 +113,7 @@ class CsvDialect:
     null_marker: str | None
     normalize_booleans: bool
     quote: str | None
+    encoding: str = "utf-8"
 
 
 NO_BENCHMARK: Any = object()
@@ -153,6 +155,7 @@ def resolve_csv_dialect(
                 )
             ),
             quote=meta.get("csv_quote", None),
+            encoding=meta.get("csv_encoding") or "utf-8",
         )
 
     if any(v is not None for v in (benchmark_delimiter, benchmark_header, benchmark_booleans, benchmark_null_marker)):
@@ -575,14 +578,21 @@ def resolve_adapter_data_source(adapter: Any, benchmark: Any, data_dir: Path) ->
 class CompressionHandler(ABC):
     @abstractmethod
     @contextmanager
-    def open(self, file_path: Path, newline: str | None = None) -> Iterator[Any]:
+    def open(self, file_path: Path, newline: str | None = None, encoding: str = "utf-8") -> Iterator[Any]:
         pass
 
 
 class GzipHandler(CompressionHandler):
     @contextmanager
-    def open(self, file_path: Path, newline: str | None = None) -> Iterator[Any]:
-        with gzip.open(file_path, "rt", newline=newline) as f:
+    def open(self, file_path: Path, newline: str | None = None, encoding: str = "utf-8") -> Iterator[Any]:
+        with gzip.open(file_path, "rt", encoding=encoding, newline=newline) as f:
+            yield f
+
+
+class Bzip2Handler(CompressionHandler):
+    @contextmanager
+    def open(self, file_path: Path, newline: str | None = None, encoding: str = "utf-8") -> Iterator[Any]:
+        with bz2.open(file_path, "rt", newline=newline, encoding=encoding) as f:
             yield f
 
 
@@ -591,7 +601,7 @@ class ZstdHandler(CompressionHandler):
         self.adapter = adapter
 
     @contextmanager
-    def open(self, file_path: Path, newline: str | None = None) -> Iterator[Any]:
+    def open(self, file_path: Path, newline: str | None = None, encoding: str = "utf-8") -> Iterator[Any]:
         if shutil.which("zstd") is None:
             raise DataLoadingError(
                 f"Cannot load zstd-compressed file '{file_path.name}': the 'zstd' command was not found "
@@ -606,18 +616,17 @@ class ZstdHandler(CompressionHandler):
         os.close(temp_fd)
 
         try:
-            with open(temp_file_path, "w", encoding="utf-8") as temp_file:
+            with open(temp_file_path, "wb") as temp_file:
                 subprocess.run(
                     ["zstd", "-d", str(file_path), "-c"],
                     stdout=temp_file,
                     check=True,
-                    text=True,
                 )
 
             if self.adapter and hasattr(self.adapter, "log_very_verbose"):
                 self.adapter.log_very_verbose(f"Decompressed to temporary file: {temp_file_path}")
 
-            with open(temp_file_path, encoding="utf-8", newline=newline) as f:
+            with open(temp_file_path, encoding=encoding, newline=newline) as f:
                 yield f
 
         finally:
@@ -627,8 +636,8 @@ class ZstdHandler(CompressionHandler):
 
 class NoCompressionHandler(CompressionHandler):
     @contextmanager
-    def open(self, file_path: Path, newline: str | None = None) -> Iterator[Any]:
-        with open(file_path, encoding="utf-8", newline=newline) as f:
+    def open(self, file_path: Path, newline: str | None = None, encoding: str = "utf-8") -> Iterator[Any]:
+        with open(file_path, encoding=encoding, newline=newline) as f:
             yield f
 
 
@@ -1424,6 +1433,8 @@ class DuckDBVortexHandler(FileFormatHandler):
             return row_count
 
 
+_CLICKHOUSE_TRUE_TOKENS = frozenset(("true", "t", "1", "yes"))
+_CLICKHOUSE_FALSE_TOKENS = frozenset(("false", "f", "0", "no"))
 _CLICKHOUSE_VECTOR_TYPE_RE = re.compile(r"\[\s*\d*\s*\]")
 
 
@@ -1545,6 +1556,8 @@ class ClickHouseNativeHandler(FileFormatHandler):
                 return 0
 
             column_types = self._get_column_type_names(benchmark, validated_table)
+            if not any(column_types):
+                column_types = self._describe_server_column_types(connection, validated_table)
 
             def rows() -> Iterator[tuple[Any, ...]]:
                 nonlocal row_count
@@ -1587,7 +1600,10 @@ class ClickHouseNativeHandler(FileFormatHandler):
     def _get_column_type_names(self, benchmark: Any, table_name: str) -> list[str | None]:
         schema = benchmark.get_schema() if hasattr(benchmark, "get_schema") else {}
         table_schema = _resolve_table_schema(schema, table_name)
-        columns = _schema_table_columns(table_schema) or []
+        columns = _schema_table_columns(table_schema)
+        if columns is None:
+            keyed = table_schema.get("columns") if isinstance(table_schema, dict) else None
+            columns = list(keyed.values()) if isinstance(keyed, dict) else []
 
         type_names: list[str | None] = []
         for column in columns:
@@ -1598,6 +1614,14 @@ class ClickHouseNativeHandler(FileFormatHandler):
             else:
                 type_names.append(None)
         return type_names
+
+    @staticmethod
+    def _describe_server_column_types(connection: Any, validated_table: str) -> list[str | None]:
+        rows = connection.execute(
+            "SELECT type FROM system.columns "
+            f"WHERE database = currentDatabase() AND table = '{validated_table}' ORDER BY position"
+        )
+        return [str(row[0]) for row in rows or []]
 
     def _convert_rows_for_clickhouse(
         self,
@@ -1622,6 +1646,8 @@ class ClickHouseNativeHandler(FileFormatHandler):
             return value
 
         type_upper = type_name.upper()
+        while type_upper.startswith(("NULLABLE(", "LOWCARDINALITY(")):
+            type_upper = type_upper[type_upper.index("(") + 1 : -1]
 
         if "ARRAY" in type_upper or _CLICKHOUSE_VECTOR_TYPE_RE.search(type_upper):
             if not value or value.upper() in ("\\N", "NULL"):
@@ -1637,8 +1663,10 @@ class ClickHouseNativeHandler(FileFormatHandler):
         is_datetime = "DATETIME" in type_upper or "TIMESTAMP" in type_upper
         is_date = not is_datetime and type_upper.startswith("DATE")
 
+        is_bool = type_upper.startswith("BOOL")
         needs_non_string_value = (
-            "INT" in type_upper
+            is_bool
+            or "INT" in type_upper
             or any(token in type_upper for token in ("DECIMAL", "NUMERIC", "DOUBLE", "FLOAT", "REAL"))
             or is_date
             or is_datetime
@@ -1646,6 +1674,15 @@ class ClickHouseNativeHandler(FileFormatHandler):
         if value == "":
             return None if needs_non_string_value else value
 
+        if is_bool:
+            token = value.strip().lower()
+            if token in ("\\n", "null"):
+                return None
+            if token in _CLICKHOUSE_TRUE_TOKENS:
+                return True
+            if token in _CLICKHOUSE_FALSE_TOKENS:
+                return False
+            raise ValueError(f"Unrecognised boolean value for ClickHouse column type {type_name}: {value!r}")
         if "INT" in type_upper:
             return int(value)
         if any(token in type_upper for token in ("DECIMAL", "NUMERIC")):
@@ -1689,9 +1726,9 @@ class ClickHouseNativeHandler(FileFormatHandler):
                 for file_path in file_paths:
                     parquet_file = pq.ParquetFile(file_path)
                     for batch in parquet_file.iter_batches(batch_size=batch_size):
-                        for row in batch.to_pylist():
+                        for row in zip(*(batch.column(name).to_pylist() for name in column_names)):
                             row_count += 1
-                            yield tuple(row[column_name] for column_name in column_names)
+                            yield row
 
             row_generator = rows()
             connection.execute(insert_sql, row_generator, settings=self._server_insert_settings())
@@ -1833,6 +1870,7 @@ class FileFormatRegistry:
 
     _compression_handlers = {
         ".gz": GzipHandler,
+        ".bz2": Bzip2Handler,
         ".zst": ZstdHandler,
     }
 

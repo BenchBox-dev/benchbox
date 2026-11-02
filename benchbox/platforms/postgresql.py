@@ -546,6 +546,9 @@ class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
 
         schema_sql = self._create_schema_with_tuning(benchmark, source_dialect="standard")
 
+        if re.search(r"\bVECTOR\s*\(", schema_sql, re.IGNORECASE):
+            ensure_postgres_extension(connection, self.logger, "vector", "https://github.com/pgvector/pgvector")
+
         self.log_very_verbose(f"Executing schema creation script ({len(schema_sql)} characters)")
 
         cursor = connection.cursor()
@@ -759,6 +762,13 @@ class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
                 self.logger.error(f"Failed to count rows for {table_name_lower}: {e}")
                 connection.rollback()
                 table_stats[table_name_lower] = 0
+
+        for loaded_table in [name for name, rows in table_stats.items() if rows]:
+            try:
+                self.analyze_table(connection, loaded_table)
+            except Exception as e:
+                self.logger.warning(f"ANALYZE failed for {loaded_table}: {e}")
+                connection.rollback()
 
         cursor.close()
         loading_time = elapsed_seconds(start_time)

@@ -47,6 +47,87 @@ def add_dual_source_to_filtered_selects(expression, *, copy: bool = True):
     return tree
 
 
+def inline_sourceless_exists(expression, *, copy: bool = True):
+    exp = sql_expressions()
+    tree = expression.copy() if copy else expression
+    for node in list(tree.find_all(exp.Exists)):
+        inner = node.this.this if isinstance(node.this, exp.Subquery) else node.this
+        if not isinstance(inner, exp.Select) or inner.args.get("from_") is not None:
+            continue
+        where = inner.args.get("where")
+        if where is None or any(inner.args.get(key) for key in ("group", "having", "limit", "joins")):
+            continue
+        node.replace(exp.paren(where.this.copy()))
+    return tree
+
+
+def exists_to_derived_join(expression, *, copy: bool = True):
+    exp = sql_expressions()
+    tree = expression.copy() if copy else expression
+    for node in list(tree.find_all(exp.Exists)):
+        outer = node.find_ancestor(exp.Select)
+        inner = node.this.this if isinstance(node.this, exp.Subquery) else node.this
+        if outer is None or not isinstance(inner, exp.Select) or outer.args.get("where") is None:
+            continue
+        conjuncts = list(outer.args["where"].this.flatten())
+        if not any(item is node for item in conjuncts):
+            continue
+        source = inner.args.get("from_")
+        if (
+            source is None
+            or not isinstance(source.this, exp.Table)
+            or inner.args.get("joins")
+            or any(inner.args.get(key) for key in ("group", "having", "limit", "order", "distinct"))
+            or inner.args.get("where") is None
+        ):
+            continue
+        inner_alias = source.this.alias_or_name
+        local: list = []
+        correlated: list = []
+        join_columns: dict[str, object] = {}
+        convertible = True
+        for conjunct in inner.args["where"].this.flatten():
+            if not any(column.table not in ("", inner_alias) for column in conjunct.find_all(exp.Column)):
+                local.append(conjunct)
+                continue
+            if not isinstance(conjunct, exp.EQ):
+                convertible = False
+                break
+            sides = [conjunct.this, conjunct.expression]
+            mine = [side for side in sides if isinstance(side, exp.Column) and side.table == inner_alias]
+            theirs = [side for side in sides if isinstance(side, exp.Column) and side.table not in ("", inner_alias)]
+            if len(mine) != 1 or len(theirs) != 1:
+                convertible = False
+                break
+            join_columns.setdefault(mine[0].name, mine[0])
+            correlated.append((conjunct, mine[0]))
+        if not convertible or not correlated:
+            continue
+        derived = exp.Select(
+            expressions=[
+                exp.alias_(column.copy(), f"{inner_alias}_{name}", quoted=column.this.quoted)
+                for name, column in join_columns.items()
+            ],
+            distinct=exp.Distinct(),
+        )
+        derived.set("from_", exp.From(this=source.this.copy()))
+        if local:
+            derived.set("where", exp.Where(this=exp.and_(*[item.copy() for item in local])))
+        outer.append(
+            "joins",
+            exp.Join(this=exp.Subquery(this=derived, alias=exp.TableAlias(this=exp.to_identifier(inner_alias)))),
+        )
+        kept = [item for item in conjuncts if item is not node]
+        for conjunct, column in correlated:
+            joined = conjunct.copy()
+            for candidate in joined.find_all(exp.Column):
+                if candidate.table == inner_alias:
+                    candidate.replace(exp.column(f"{inner_alias}_{candidate.name}", table=inner_alias))
+            kept.append(joined)
+        outer.set("where", exp.Where(this=exp.and_(*kept)))
+    return tree
+
+
 def drop_correlated_scalar_group_by(expression, *, columns: Sequence[str], copy: bool = True):
     exp = sql_expressions()
     tree = expression.copy() if copy else expression
@@ -66,6 +147,24 @@ def drop_correlated_scalar_group_by(expression, *, columns: Sequence[str], copy:
             continue
         if all(_pinned_to_other_column(key, where) for key in keys):
             inner.set("group", None)
+    return tree
+
+
+def fold_scalar_having_into_case(expression, *, copy: bool = True):
+    exp = sql_expressions()
+    tree = expression.copy() if copy else expression
+    for subquery in list(tree.find_all(exp.Subquery)):
+        inner = subquery.this
+        if not isinstance(inner, exp.Select) or not isinstance(subquery.parent, exp.Binary):
+            continue
+        having = inner.args.get("having")
+        if having is None or inner.args.get("group") is not None or len(inner.expressions) != 1:
+            continue
+        projection = inner.expressions[0]
+        value = projection.this if isinstance(projection, exp.Alias) else projection
+        guarded = exp.Case(ifs=[exp.If(this=having.this.copy(), true=value.copy())])
+        value.replace(guarded)
+        inner.set("having", None)
     return tree
 
 
@@ -126,6 +225,138 @@ def wrap_order_by_subquery_aliases(expression, *, copy: bool = True):
     if offset is not None:
         outer.set("offset", offset)
     return outer
+
+
+def inline_named_windows(expression, *, copy: bool = True):
+    exp = sql_expressions()
+    tree = expression.copy() if copy else expression
+    for select in tree.find_all(exp.Select):
+        definitions = select.args.get("windows")
+        if not definitions:
+            continue
+        named = {definition.this.name.lower(): definition for definition in definitions}
+        for use in list(select.find_all(exp.Window)):
+            alias = use.args.get("alias")
+            if alias is None or use.find_ancestor(exp.Select) is not select:
+                continue
+            definition = named.get(alias.name.lower())
+            if definition is None:
+                continue
+            use.set("alias", None)
+            for key in ("partition_by", "order", "spec"):
+                value = definition.args.get(key)
+                if value is not None:
+                    use.set(key, [item.copy() for item in value] if isinstance(value, list) else value.copy())
+        select.set("windows", None)
+    return tree
+
+
+def alias_order_by_projections(expression, *, copy: bool = True):
+    exp = sql_expressions()
+    tree = expression.copy() if copy else expression
+    for select in tree.find_all(exp.Select):
+        order = select.args.get("order")
+        if order is None:
+            continue
+        projected = {
+            projection.this.sql(): projection.args["alias"]
+            for projection in select.expressions
+            if isinstance(projection, exp.Alias) and projection.this.find(exp.Subquery, exp.Window) is not None
+        }
+        if not projected:
+            continue
+        for node in list(order.walk()):
+            alias = projected.get(node.sql())
+            if alias is not None:
+                node.replace(exp.Column(this=alias.copy()))
+    return tree
+
+
+def date_column_integer_arithmetic(expression, *, copy: bool = True):
+    exp = sql_expressions()
+    tree = expression.copy() if copy else expression
+    for node in list(tree.find_all(exp.Add, exp.Sub)):
+        column, amount = node.this, node.expression
+        if not (isinstance(column, exp.Column) and column.name.lower().endswith("_date")):
+            continue
+        if not (isinstance(amount, exp.Literal) and not amount.is_string and amount.name.isdigit()):
+            continue
+        builder = exp.DateAdd if isinstance(node, exp.Add) else exp.DateSub
+        node.replace(builder(this=column.copy(), expression=amount.copy(), unit=exp.var("DAY")))
+    return tree
+
+
+def _empty_input_projection(select, keys: set[str]):
+    exp = sql_expressions()
+    empty = select.copy()
+    for clause in ("from_", "joins", "laterals", "where", "group", "order", "limit", "offset", "with_"):
+        empty.set(clause, None)
+    for index, projection in enumerate(list(empty.expressions)):
+        if isinstance(projection, exp.Column) and projection.sql() in keys:
+            empty.expressions[index] = exp.alias_(exp.Null(), projection.name)
+            continue
+        if isinstance(projection, exp.Alias) and isinstance(projection.this, exp.Column):
+            if projection.this.sql() in keys:
+                projection.set("this", exp.Null())
+                continue
+        for aggregate in list(projection.find_all(exp.AggFunc)):
+            aggregate.replace(
+                exp.Cast(this=exp.Literal.number(0), to=exp.DataType.build("bigint"))
+                if isinstance(aggregate, exp.Count)
+                else exp.Null()
+            )
+        for column in list(projection.find_all(exp.Column)):
+            column.replace(exp.Null())
+    return empty
+
+
+def rollup_empty_input_row(expression, *, copy: bool = True):
+    exp = sql_expressions()
+    tree = expression.copy() if copy else expression
+    taken = {name.lower() for name in (cte.alias for cte in tree.find_all(exp.CTE))}
+    taken |= {table.name.lower() for table in tree.find_all(exp.Table)}
+    for select in reversed(list(tree.find_all(exp.Select))):
+        group = select.args.get("group")
+        if group is None or len(group.expressions) != 1 or not isinstance(group.expressions[0], exp.Rollup):
+            continue
+        order = select.args.get("order")
+        if select.args.get("having") is not None or select.find(exp.Grouping) is not None:
+            continue
+        if order is not None and any(column.table for column in order.find_all(exp.Column)):
+            continue
+        keys = {key.sql() for key in group.expressions[0].expressions}
+        empty = _empty_input_projection(select, keys)
+        name = "rollup_rows"
+        while name in taken:
+            name += "_"
+        taken.add(name)
+        limit, offset = select.args.get("limit"), select.args.get("offset")
+        with_clause = select.args.get("with_")
+        for clause in ("order", "limit", "offset", "with_"):
+            select.set(clause, None)
+        empty.set(
+            "from_",
+            exp.From(
+                this=exp.Subquery(this=exp.select("1"), alias=exp.TableAlias(this=exp.to_identifier("rollup_dual")))
+            ),
+        )
+        empty.set(
+            "where",
+            exp.Where(this=exp.Not(this=exp.Exists(this=exp.select("1").from_(exp.to_table(name))))),
+        )
+        union = exp.Union(this=exp.select("*").from_(exp.to_table(name)), expression=empty, distinct=False)
+        wrapper = exp.select("*").from_(union.subquery("rollup_union"))
+        for clause, value in (("order", order), ("limit", limit), ("offset", offset)):
+            if value is not None:
+                wrapper.set(clause, value)
+        wrapper = wrapper.with_(name, as_=select.copy())
+        if with_clause is not None:
+            for cte in reversed(with_clause.expressions):
+                wrapper.args["with_"].expressions.insert(0, cte.copy())
+        if select is tree:
+            return wrapper
+        select.replace(wrapper)
+    return tree
 
 
 def _is_hoistable(node) -> bool:

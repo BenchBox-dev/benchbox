@@ -43,6 +43,8 @@ GROUP BY passenger_count
 ORDER BY passenger_count;
 """
 
+DORIS_Q9_SQL = STARROCKS_Q9_SQL
+
 SQLITE_Q9_SQL = """
 SELECT
     "passenger_count",
@@ -146,6 +148,24 @@ REGISTRY.register(
     ),
     _P,
     "questdb",
+    benchmark=_B,
+    query_id="Q9",
+)
+
+REGISTRY.register(
+    CompatibilityDecision(
+        rule_id="query_source.doris.h2odb.q9_percentile_approx_variant",
+        action=CompatAction.SELECT_VARIANT,
+        support_level=SupportLevel.REWRITTEN,
+        failure_mode=FailureMode.SYNTAX_ERROR,
+        payload=SelectVariantPayload(
+            variant_key="doris",
+            variant_sql=DORIS_Q9_SQL,
+        ),
+        reason="Doris does not parse ANSI PERCENTILE_CONT … WITHIN GROUP; use PERCENTILE_APPROX",
+    ),
+    _P,
+    "doris",
     benchmark=_B,
     query_id="Q9",
 )

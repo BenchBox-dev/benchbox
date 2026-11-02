@@ -19,7 +19,7 @@ BenchBox adopts Semantic Versioning (`MAJOR.MINOR.PATCH`) to communicate compati
 - Increase **MINOR** for backward-compatible feature additions.
 - Increase **PATCH** for bug fixes or documentation-only updates.
 
-Current release: `v0.5.0rc2`. Use `benchbox --version` for a human-readable summary or `benchbox --version-json` when you need structured diagnostics in automation. Both commands confirm that the package, `pyproject.toml`, and documentation markers stay aligned. Platform runs now capture the requested versus resolved driver package versions, so comparisons across DuckDB or connector releases remain reproducible.
+Current release: `v0.5.0rc3`. Use `benchbox --version` for a human-readable summary or `benchbox --version-json` when you need structured diagnostics in automation. Both commands confirm that the package, `pyproject.toml`, and documentation markers stay aligned. Platform runs now capture the requested versus resolved driver package versions, so comparisons across DuckDB or connector releases remain reproducible.
 
 ## Usage Guides
 

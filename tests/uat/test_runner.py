@@ -268,6 +268,36 @@ def test_run_cell_writes_clickhouse_load_failure_sidecar(tmp_path: Path):
     assert artifact["log_path"] == str(result.log_path)
 
 
+def test_run_cell_survives_load_failure_payload_longer_than_a_file_name(tmp_path: Path):
+    payload = {
+        "table": "lineitem",
+        "source_files": [f"/tmp/part-{i:05d}.tbl" for i in range(40)],
+        "rows_attempted": 196608,
+        "exception": {"type": "RuntimeError", "message": "Code: 241 memory limit exceeded " * 4},
+        "result_json": None,
+    }
+    line = runner.LOAD_FAILURE_MARKER + json.dumps(payload, separators=(",", ":"))
+    assert len(line) > 1024
+    fake_argv = [sys.executable, "-c", f"print({line!r}); raise SystemExit(1)"]
+
+    with patch.object(runner, "benchbox_run_argv", return_value=fake_argv):
+        result = runner.run_cell("clickhouse-server", "tpcds_obt", 1.0, timeout_s=10, log_dir=tmp_path)
+
+    assert result.status == "failed"
+    assert result.result_path is None
+    assert result.load_failure_path is not None
+
+
+def test_last_nonempty_output_line_skips_load_failure_marker():
+    text = "/tmp/result.json\n" + runner.LOAD_FAILURE_MARKER + "{}\n"
+    assert runner.last_nonempty_output_line(text) == "/tmp/result.json"
+
+
+def test_resolve_result_path_tolerates_unstat_able_names(tmp_path: Path):
+    resolved = runner._resolve_result_path("x" * 5000, tmp_path / "runs")
+    assert resolved.parent == tmp_path / "runs"
+
+
 def test_load_failure_sidecar_scans_large_log_incrementally(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     log_path = tmp_path / "cell.log"
     payload = {"table": "lineitem", "rows_attempted": 1, "result_json": None}

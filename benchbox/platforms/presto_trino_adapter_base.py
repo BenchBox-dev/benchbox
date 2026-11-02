@@ -10,6 +10,7 @@ from benchbox.core.benchmark_mixins import CursorValidationQueryExecutionMixin
 from benchbox.platforms.base.data_loading import resolve_adapter_data_source
 from benchbox.platforms.base.external_table_mixin import HiveExternalTableMixin
 from benchbox.platforms.presto_trino_utils import (
+    fetch_column_types,
     load_file_batches,
     normalize_existing_files,
     show_tables_lower,
@@ -515,12 +516,15 @@ class PrestoTrinoAdapterBase(CursorValidationQueryExecutionMixin, HiveExternalTa
 
         dialect = None
         if data_source is not None and benchmark is not None:
-            dialect = resolve_csv_dialect(data_source, table_name, valid_files[0], benchmark).delimiter
+            dialect = resolve_csv_dialect(data_source, table_name, valid_files[0], benchmark)
 
         qualified_table = f"{target_catalog}.{target_schema}.{table_name_lower}"
+        column_types = fetch_column_types(cursor, qualified_table)
         rows_loaded = 0
         for file_path in valid_files:
-            rows_loaded += load_file_batches(cursor, file_path, qualified_table, delimiter=dialect)
+            rows_loaded += load_file_batches(
+                cursor, file_path, qualified_table, dialect=dialect, column_types=column_types
+            )
 
         return rows_loaded, len(valid_files)
 
@@ -669,7 +673,7 @@ class PrestoTrinoAdapterBase(CursorValidationQueryExecutionMixin, HiveExternalTa
         return self.execute_query_with_plan_capture(
             super().execute_query,
             connection=connection,
-            query=query,
+            query=query.rstrip().rstrip(";").rstrip(),
             query_id=query_id,
             benchmark_type=benchmark_type,
             scale_factor=scale_factor,

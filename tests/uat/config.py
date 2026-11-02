@@ -62,8 +62,8 @@ class PreflightConfig:
     noisy_neighbor_warn_load: float = 8.0
     local_platforms_check: bool = False
     free_memory_min_gib: float = 2.0
-    clickhouse_memory_limit: str = "5.25g"
-    starrocks_memory_limit: str = "4g"
+    clickhouse_memory_limit: str = "8g"
+    starrocks_memory_limit: str = "8g"
     docker_memory_reserve_gib: float = 0.0
 
 
@@ -522,13 +522,13 @@ def _validate_preflight(payload: dict[str, Any] | None) -> PreflightConfig:
         clickhouse_memory_limit=_require_nonempty_string(
             payload,
             "clickhouse_memory_limit",
-            default="5.25g",
+            default="8g",
             section="preflight",
         ),
         starrocks_memory_limit=_require_nonempty_string(
             payload,
             "starrocks_memory_limit",
-            default="4g",
+            default="8g",
             section="preflight",
         ),
         docker_memory_reserve_gib=_require_nonnegative_float(

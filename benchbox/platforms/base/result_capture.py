@@ -162,7 +162,7 @@ def _has_top_level_keyword(statement: str, keyword: str, followed_by: re.Pattern
     return False
 
 
-def _strip_leading_sql_comments(statement: str) -> str:
+def strip_leading_sql_comments(statement: str) -> str:
     statement = statement.lstrip()
     while True:
         if statement.startswith("--"):
@@ -180,7 +180,7 @@ def _strip_leading_sql_comments(statement: str) -> str:
 
 
 def is_dml_query(query: str) -> bool:
-    statement = _strip_leading_sql_comments(query)
+    statement = strip_leading_sql_comments(query)
     if not statement:
         return False
     if _DML_LEADING_RE.match(statement):

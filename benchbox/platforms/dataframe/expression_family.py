@@ -72,9 +72,13 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
         return UnifiedExpr(self._adapter.element())
 
     def date_sub(self, column: Expr, days: int) -> Expr:
+        if self._adapter.platform_name in {"PySpark", "LakeSail"} and isinstance(column, UnifiedExpr):
+            return UnifiedExpr(self._adapter.date_sub(column._expr, days))
         return self._adapter.date_sub(column, days)
 
     def date_add(self, column: Expr, days: int) -> Expr:
+        if self._adapter.platform_name in {"PySpark", "LakeSail"} and isinstance(column, UnifiedExpr):
+            return UnifiedExpr(self._adapter.date_add(column._expr, days))
         return self._adapter.date_add(column, days)
 
     def cast_date(self, column: Expr) -> Expr:
@@ -238,27 +242,27 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
         return UnifiedExpr(pl.struct(*native_cols))
 
     @_defer_datafusion_operation
-    def map_from_entries(self, column: Any) -> UnifiedExpr:
+    def map_from_arrays(self, keys: Any, values: Any) -> UnifiedExpr:
         platform = self._adapter.platform_name
 
-        if isinstance(column, UnifiedExpr):
-            native_col = column._expr
-        elif isinstance(column, str):
-            native_col = self._adapter.col(column)
-        else:
-            native_col = column
+        def native(column: Any) -> Any:
+            if isinstance(column, UnifiedExpr):
+                return column._expr
+            if isinstance(column, str):
+                return self._adapter.col(column)
+            return column
+
+        native_keys, native_values = native(keys), native(values)
 
         if platform == "PySpark":
             from pyspark.sql import functions as F
 
-            return UnifiedExpr(F.map_from_entries(native_col))
+            return UnifiedExpr(F.map_from_arrays(native_keys, native_values))
 
         if platform == "DataFusion":
-            from datafusion import functions as df_f
+            return UnifiedExpr(self._adapter.session_ctx.udf("map")(native_keys, native_values))
 
-            return UnifiedExpr(df_f.map_from_entries(native_col))
-
-        raise NotImplementedError("map_from_entries not supported on Polars (no native Map dtype)")
+        raise NotImplementedError("map_from_arrays not supported on Polars (no native Map dtype)")
 
     def scalar(self, df: LazyDF, column: str | None = None) -> Any:
         native_df = df.native if isinstance(df, UnifiedLazyFrame) else df
@@ -416,16 +420,17 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
         platform = self._adapter.platform_name
 
         if platform == "PySpark":
-            from pyspark.sql import Row
+            from pyspark.sql.types import NullType, StructField, StructType, _infer_type
 
             spark = self._adapter._spark
-            rows = []
             keys = list(data.keys())
             num_rows = len(data[keys[0]]) if keys else 0
-            for i in range(num_rows):
-                row_data = {k: data[k][i] for k in keys}
-                rows.append(Row(**row_data))
-            df = spark.createDataFrame(rows)
+            fields = []
+            for k in keys:
+                first = next((v for v in data[k] if v is not None), None)
+                fields.append(StructField(k, NullType() if first is None else _infer_type(first), True))
+            rows = [tuple(data[k][i] for k in keys) for i in range(num_rows)]
+            df = spark.createDataFrame(rows, schema=StructType(fields))
             return UnifiedLazyFrame(df, self._adapter)
 
         if platform == "DataFusion":

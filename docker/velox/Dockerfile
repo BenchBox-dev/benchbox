@@ -71,7 +71,7 @@ RUN set -eux; \
     chmod -R a+rX "${VIRTUAL_ENV}" "${UV_PYTHON_INSTALL_DIR}"
 
 COPY docker/velox/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN chmod +x /entrypoint.sh && mkdir -p /var/lib/spark-warehouse && chown spark:spark /var/lib/spark-warehouse
 
 USER spark
 

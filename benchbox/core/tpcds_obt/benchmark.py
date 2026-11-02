@@ -21,11 +21,15 @@ logger = logging.getLogger(__name__)
 _DERIVED_TABLE_ALIAS_DIALECTS = frozenset({"doris", "starrocks"})
 _POSTGRES_ALIAS_ORDER_QUERY_IDS = frozenset({36, 70, 86})
 _POSTGRES_ROUND_QUERY_IDS = frozenset({2, 78})
+_SPARK_ALIAS_ORDER_QUERY_IDS = frozenset({36, 70, 86})
+_SPARK_IN_SUBQUERY_JOIN_QUERY_IDS = frozenset({45})
 
 _CLICKHOUSE_OBT_REWRITES = {
-    47: "alias_qualified_projections",
-    57: "alias_qualified_projections",
-    66: "qualify_alias_shadowed_columns",
+    41: ("positive_count_subquery_to_exists", "factor_common_conjuncts", "correlated_exists_to_in"),
+    44: ("decorrelate_subqueries",),
+    47: ("alias_qualified_projections",),
+    57: ("alias_qualified_projections",),
+    66: ("qualify_alias_shadowed_columns",),
 }
 
 
@@ -224,15 +228,18 @@ class TPCDSOBTBenchmark(BaseBenchmark):
     def get_all_queries(self) -> dict[str, str]:
         return self.query_manager.get_statement_queries(scale_factor=self.scale_factor)
 
-    @staticmethod
-    def _rewrite_clickhouse_query(query_id: int, query_text: str) -> str:
-        rewrite_name = _CLICKHOUSE_OBT_REWRITES.get(query_id)
-        if rewrite_name is None:
+    def _rewrite_clickhouse_query(self, query_id: int, query_text: str) -> str:
+        rewrite_names = _CLICKHOUSE_OBT_REWRITES.get(query_id)
+        if rewrite_names is None:
             return query_text
 
-        from benchbox.utils.dialect_utils import apply_rewrite
+        from benchbox.utils.dialect_utils import apply_rewrites
 
-        return apply_rewrite(rewrite_name, query_text, "clickhouse")
+        schema = {
+            OBT_TABLE_NAME: {column.name: column.data_type.value for column in get_obt_columns(self.dimension_mode)}
+        }
+        rewrites = [(name, {"schema": schema} if name == "decorrelate_subqueries" else {}) for name in rewrite_names]
+        return apply_rewrites(query_text, "clickhouse", rewrites, keep_unchanged=False)
 
     @staticmethod
     def _translation_rewrites(target: str, query_id: int | None) -> list[tuple[str, dict[str, Any]]]:
@@ -245,6 +252,11 @@ class TPCDSOBTBenchmark(BaseBenchmark):
         except UnknownSqlDialectError:
             return []
         rewrites: list[tuple[str, dict[str, Any]]] = []
+        if resolved == "spark":
+            if query_id in _SPARK_ALIAS_ORDER_QUERY_IDS:
+                rewrites.append(("inline_order_by_aliases", {}))
+            if query_id in _SPARK_IN_SUBQUERY_JOIN_QUERY_IDS:
+                rewrites.append(("in_subquery_or_to_left_join", {}))
         if resolved == "postgres":
             if query_id in _POSTGRES_ALIAS_ORDER_QUERY_IDS:
                 rewrites.append(("inline_order_by_aliases", {}))

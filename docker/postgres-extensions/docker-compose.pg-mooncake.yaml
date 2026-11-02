@@ -9,6 +9,8 @@ services:
       - max_wal_senders=128
       - -c
       - max_replication_slots=128
+      - -c
+      - duckdb.max_memory=10240
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: benchbox
