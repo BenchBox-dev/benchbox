@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Owner activation approval and UTC epoch boundary precede all production-connected actions and are linked in this item.",
+    "A genuine Theseus PR receives an exact-head review and oracle-gate authenticated as the Theseus App; a wrong-App verdict is refused.",
+    "Live read of main protection proves oracle-gate is required and source-bound to that App; bootstrap-only governance is retired only after this proof.",
+    "BenchBox client configuration/OMP cache remains valid; any restart was explicitly owner-approved with quiet-time/in-flight disposition recorded.",
+    "Run IDs, exact package hash, client identity, observed gate result and residual failure ownership are recorded without raw secrets."
+  ],
+  "context": "T4b, R2/P4. Production activation is a separate owner permission, not implied by the task's implementation authorization.",
+  "description": "Production-connected boundary T4b. After the recorded observation disposition and explicit owner activation approval, add only the named Theseus gateway client and perform the first genuine Theseus hosted review under its separate App. Record the measurement epoch boundary before any shared clients.json regeneration, agent restart, live review or gateway change. Use a quiet-time procedure and preserve BenchBox clients/OMP cache and in-flight reviews. Prove the gate source is the configured Theseus App, then owner enforces the required check; owner full-diff bootstrap governance ends only once that check is actually enforced.\nGuardrails: no natural-event observation can be manufactured as proof of old observation acceptance. These live reviews are explicitly extraction verification, tagged to the new epoch. No unapproved restart, shared-account load, App reuse, settings write, secret disclosure, bypass or production publication.",
+  "links": [
+    "theseus-owner-app-tailnet-setup-20261102",
+    "theseus-observation-disposition-20261102",
+    "docs/internal/oracle-gateway-host.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4c6f341b7f4b66f30a37a2f1",
+      "at": "2026-11-02T13:48:51Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "317559beccf2412880279a4f348c935f",
+      "session_id": "8cfcc9dbcab5419a91fc8b650901f36b"
+    }
+  ]
+}

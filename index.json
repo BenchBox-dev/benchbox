@@ -27740,6 +27740,18 @@
       "status": "blocked",
       "title": "Owner decision: approve one vendored soundness-path matcher module as the only embedded exception"
     },
+    "theseus-gateway-client-first-live-gate-20261102": {
+      "claim": null,
+      "needs": [
+        "theseus-hosted-workflows-offline-20261102",
+        "theseus-local-gateway-tooling-20261102",
+        "theseus-owner-app-tailnet-setup-20261102",
+        "theseus-observation-disposition-20261102"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Activate the named Theseus gateway client and prove its first App-bound gate after observation disposition"
+    },
     "theseus-hosted-workflows-offline-20261102": {
       "claim": null,
       "needs": [
