@@ -1255,9 +1255,15 @@ class TestClickHouseWorkloadCoverage:
 
     @pytest.mark.parametrize(
         ("deployment_mode", "query_id", "grace"),
-        [("server", "21", True), ("server", "20", False), ("local", "21", False)],
+        [
+            ("server", "21", True),
+            ("server", "5", True),
+            ("server", "20", False),
+            ("local", "21", False),
+            ("local", "5", False),
+        ],
     )
-    def test_datavault_query_21_spills_join_to_disk_on_server(self, deployment_mode, query_id, grace):
+    def test_datavault_memory_heavy_queries_spill_join_to_disk_on_server(self, deployment_mode, query_id, grace):
         adapter = self._adapter(deployment_mode=deployment_mode)
         connection = Mock()
         connection.execute.return_value = [(1,)]
