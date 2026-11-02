@@ -1922,6 +1922,13 @@
       "status": "done",
       "title": "Integrate verified batch commits through one owned feature branch"
     },
+    "batch-finish-integration-worktree-20261102": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Make batch-finish finish the leader's integration worktree through the existing worktree-finish proof"
+    },
     "batch-integration-loop-20261101": {
       "claim": null,
       "needs": [

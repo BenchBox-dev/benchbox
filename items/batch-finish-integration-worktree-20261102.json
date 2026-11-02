@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "The dry run reports the integration worktree's finish status and changes nothing.",
+    "With EXECUTE=1, the integration worktree and its local branch are removed (expected-old-OID ref delete) only after every member is deleted or already gone; any refused member, a dirty or foreign integration worktree, or a head that differs from the merged final PR's head blocks it.",
+    "Rerunning after members were deleted finishes the integration worktree; running from inside the integration worktree works.",
+    "The lifecycle contract says batch-finish invokes the section 7 finish for the integration branch last and that section 7.1 never applies to it; docs/agent/batch-feature-delivery.md describes the step.",
+    "Real run: batch-finish on the completed batch-loop-pilot removes the leftover leader worktree and branch."
+  ],
+  "context": "Owner instruction 2026-11-02 (session 01a19729): \"Close the gap\", after the answer that the exclusion of the integration branch from batch-finish was an agent design choice and the recommended fix is to reuse the existing worktree-finish proof as batch-finish's last step. Verified 2026-11-02: git worktree remove succeeds on the current worktree, so running from inside the integration worktree is not a blocker. Preview of make worktree-finish for /Users/joe/Developer/BenchBox.wt-batch-loop-pilot (HEAD f748ea6d5de6 = PR #3921 head, merged, reachable, clean, owned): ACTIONABLE.",
+  "description": "make batch-finish removes member branches and worktrees under the contract's member deletion basis (section 7.1) and deliberately never touches the integration branch. Nothing then tells the leader to run the existing make worktree-finish for the integration worktree, so it is left behind: the batch-loop-pilot leader worktree and local branch remained after the pilot (its remote branch was deleted by GitHub on merge). Fix: as the last step of batch-finish, evaluate the integration worktree with the existing worktree-finish (section 7) logic - PR head equals the branch tip, merge commit reachable, clean, owned - and report it in the dry run; with EXECUTE=1 apply it only after every member branch is deleted or already gone and the batch is completed. No new deletion basis. Members already deleted on an earlier run count as done (idempotent rerun); a kept remote that differs stays refused and blocks the integration step.",
+  "links": [
+    "_project/specs/worktree-lifecycle-evidence-contract.md",
+    "scripts/batch_integration.py",
+    "scripts/worktree_finish.py"
+  ],
+  "sessions": [
+    {
+      "actor": "benchbox-batch-pilot-leader",
+      "at": "2026-11-02T12:59:55Z",
+      "client": "benchbox-batch-leader",
+      "op": "create",
+      "op_id": "a01aee337cc547b49a4f428fbf27446e",
+      "session_id": "64b11ef1266e4bc1adb684bf06fdabd0"
+    }
+  ]
+}
