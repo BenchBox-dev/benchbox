@@ -4,7 +4,8 @@
     "A genuine Theseus PR receives an exact-head review and oracle-gate authenticated as the Theseus App; a wrong-App verdict is refused.",
     "Live read of main protection proves oracle-gate is required and source-bound to that App; bootstrap-only governance is retired only after this proof.",
     "BenchBox client configuration/OMP cache remains valid; any restart was explicitly owner-approved with quiet-time/in-flight disposition recorded.",
-    "Run IDs, exact package hash, client identity, observed gate result and residual failure ownership are recorded without raw secrets."
+    "Run IDs, exact package hash, client identity, observed gate result and residual failure ownership are recorded without raw secrets.",
+    "The first live run resolves the owner-approved bootstrap source/lock/artifact/dependency hashes and fetch locations recorded by theseus-owner-app-tailnet-setup-20261102. It does not depend on the later final release or claim final BenchBox parity approval."
   ],
   "context": "T4b, R2/P4. Production activation is a separate owner permission, not implied by the task's implementation authorization.",
   "description": "Production-connected boundary T4b. After the recorded observation disposition and explicit owner activation approval, add only the named Theseus gateway client and perform the first genuine Theseus hosted review under its separate App. Record the measurement epoch boundary before any shared clients.json regeneration, agent restart, live review or gateway change. Use a quiet-time procedure and preserve BenchBox clients/OMP cache and in-flight reviews. Prove the gate source is the configured Theseus App, then owner enforces the required check; owner full-diff bootstrap governance ends only once that check is actually enforced.\nGuardrails: no natural-event observation can be manufactured as proof of old observation acceptance. These live reviews are explicitly extraction verification, tagged to the new epoch. No unapproved restart, shared-account load, App reuse, settings write, secret disclosure, bypass or production publication.",
@@ -21,6 +22,14 @@
       "op": "create",
       "op_id": "317559beccf2412880279a4f348c935f",
       "session_id": "8cfcc9dbcab5419a91fc8b650901f36b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b58f5aa5b2bb5e33c84a53cb",
+      "at": "2026-11-02T14:07:31Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "879090cf749f4f389d3c3e0a1f9e6764",
+      "session_id": "c4d4cd94bd464a16a29b8b24353d6e06"
     }
   ]
 }
