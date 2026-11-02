@@ -58,7 +58,7 @@
         }
       },
       "integration_branch": "feat/batch-loop-pilot",
-      "integration_head": "45e6fd342d5378955c25f56530dcf372520b5964",
+      "integration_head": "5ba51438932c2751cda955c04d2ada672c1cd9dd",
       "integration_log": [
         {
           "at": "2026-11-02T06:29:18Z",
@@ -83,6 +83,23 @@
           "op_id": "4938c4cba2e7405e80edf6bcb1822028",
           "previous_head": "b9d055b310144656386193cead5701d1d09e98f9",
           "seq": 2
+        },
+        {
+          "at": "2026-11-02T06:41:07Z",
+          "changed_files": [
+            "_project/decisions/batch-integration-loop-2026-11-01.md",
+            "_project/decisions/batch-process-improvements-base-correction-2026-09-08.md",
+            "docs/agent/batch-feature-delivery.md",
+            "docs/internal/adr/adr-batch-integration-loop.md"
+          ],
+          "head": "5ba51438932c2751cda955c04d2ada672c1cd9dd",
+          "kind": "fix",
+          "op_id": "1ed9eea46601411d95f909415dab6885",
+          "previous_head": "45e6fd342d5378955c25f56530dcf372520b5964",
+          "requires_acceptance": [
+            "batch-loop-docs-and-agents-20261101"
+          ],
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-batch-loop-pilot",
