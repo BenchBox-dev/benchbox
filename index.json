@@ -27921,15 +27921,10 @@
       "title": "Reserve active batch members to the batch owner, and add owner recovery and a batch read path in todo-db"
     },
     "todo-db-batch-v2-contract-20261101": {
-      "claim": {
-        "expires_at": "2026-11-03T02:50:08Z",
-        "generation": "a2aa0b93000b4d4a940c5b0f1eb8755c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d680f2b9a00523ec18de3879"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Specify the todo-db batch v2 contract (claims, dispatch bases, head advances, rebinding, recovery, versioning) before any code"
     },
     "todo-db-batch-v2-release-20261101": {
