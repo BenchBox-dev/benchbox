@@ -43,6 +43,11 @@ refuses to start it while the host is already under pressure.
   never a hand-started `container machine run` or `create`. The documented
   setup `create` leaves the machine running; stop it with
   `container machine stop benchbox-agent`.
+- In a feature batch (`docs/agent/batch-feature-delivery.md`), members run only
+  mapped and named tests through `make batch-member-check`; the leader runs the
+  fast tier once on the integration tree. A member never starts a test tier, a
+  benchmark, or a server for the batch, so concurrent members do not multiply
+  heavy work on the host.
 
 ## Commands
 

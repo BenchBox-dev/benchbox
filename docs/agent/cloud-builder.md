@@ -130,6 +130,15 @@ Codex Cloud is not yet enabled for the gateway: the same variables are set on
 its environments, but the path has not been tested there and the owner has
 deferred it. Only Claude Code on the web is verified.
 
+## Batch work
+
+A cloud builder is never a batch member. Batch members and the integration
+branch live in local linked worktrees under one leader, who is the only tracker
+writer (`docs/agent/batch-feature-delivery.md`); a cloud session cannot be
+handed a member branch, a landing, or the final PR. A cloud session builds one
+change on its own branch and PR as below. Items of a batch that are not yet
+landed are not dispatched to a cloud session.
+
 ## Builder procedure
 
 1. **First-minute checks.** Before any other work, confirm that the session

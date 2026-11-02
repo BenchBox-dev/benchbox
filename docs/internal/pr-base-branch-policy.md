@@ -28,6 +28,12 @@ The only other allowed base is the parent branch of a draft PR in a stack. A
 ready PR on any other base, including a sibling feature branch, is out of
 policy.
 
+A batch integration branch (`feat/<batch>`) is never a PR base, not even a
+draft's parent. Members based on their leader's integration branch open no PR
+at all, so they are not a stack and the three-deep and unmerged-branch rules do
+not apply to them; the leader opens one final PR from the integration branch
+to `develop` (`docs/agent/batch-feature-delivery.md`).
+
 ## Why stacked bases used to get zero CI
 
 Before the single `ci.yml`, almost every PR workflow filtered on an

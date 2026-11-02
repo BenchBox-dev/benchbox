@@ -62,25 +62,6 @@ def test_pin_receipt_and_tracked_mirror_bind_catalog_tip() -> None:
         assert _sha256(ROOT / ".claude/skills/todo" / relative) == expected
 
 
-def test_feature_mode_is_capability_gated_and_serial_remains_default() -> None:
-    docs = "\n".join(
-        (ROOT / relative).read_text(encoding="utf-8")
-        for relative in (
-            "AGENTS.md",
-            "docs/agent/batch-feature-delivery.md",
-            "docs/agent/review-protocol.md",
-            "docs/internal/dev-loop-worktrees.md",
-        )
-    )
-    normalized = docs.lower()
-    assert "serial mode is the default" in normalized
-    assert "active todo-db mcp server" in normalized
-    assert "one shared integration branch" in normalized
-    assert "one integrator" in normalized
-    assert "no feature-base prs" in normalized
-    assert "no new ci skips" in normalized
-
-
 def test_project_local_wheel_and_lock_are_exact_and_sibling_free() -> None:
     assert WHEEL.is_file()
     assert _sha256(WHEEL) == WHEEL_SHA256

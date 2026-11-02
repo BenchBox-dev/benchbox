@@ -21,11 +21,24 @@ and give the state to the owner in the final reply; do not write it to a file.
 | A hold on a PR | The `no-auto-merge` label, which is the only thing that holds a PR (`[MERGE-AUTHORITY-001]`) |
 | A hold on the item | `blocked`, or `not_before` for a time hold |
 | A plan awaiting approval | A plan document linked from the item's `links` |
-| Batch members, order, and the current member | The batch ledger described by the `todo` skill. It is local, so a batch runs and resumes only on the owner's machine; a cloud session takes one item at a time |
+| Batch membership, receipts, integration heads, and the final PR binding | The batch record in the tracker (`show_batch`), which any session can read |
+| Batch notes: order, decisions, the state of the whole batch | The batch's umbrella item, which is never a batch member |
 
 Keep each item short. Its `context` describes where the work stands now, not
 how it got there; the item's session history already records who changed it
 and when.
+
+### Batches
+
+The tracker is authoritative for a feature batch
+(`docs/agent/batch-feature-delivery.md`). The leader's `.todo-batch/<batch>/`
+ledger is a rebuildable cache of it: Git and `show_batch` are the sources, and
+`make batch-status` rebuilds a lost ledger. The one thing the ledger holds that
+no tool serves back is the owner generation; if it is lost, a new session uses
+`recover_batch_owner`. Write batch notes on the batch's umbrella item, never on
+a member: an edit to a member other than `context` deletes its receipt, and a
+member's `context` describes that member only. A member reads the tracker only
+through the leader.
 
 ## What not to record
 

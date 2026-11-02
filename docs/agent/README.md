@@ -39,6 +39,8 @@ requires a human audience that belongs on benchbox.dev. A new
 | `remote-closeout.md` | Closing out a PR from the primary clone without a checkout |
 | `heavy-work.md` | Host lock, admission, `make heavy-status`/`heavy-run`, and the known limits behind `[HEAVY-LOCK-001]` |
 | `maintainer-bundles.md` | Automatic pseudonym salt, staging a local run with `make corpus-stage-local`, and the guard-refusal rule |
+| `batch-feature-delivery.md` | The opt-in feature batch loop: leader and member roles, the `batch-start`, `batch-member-create`, `batch-member-check`, `batch-land`, `batch-advance`, `batch-status`, `batch-verify`, and `batch-evidence` targets, the brief-size limit, rollback, and recovery |
+| `batch-tracker-contract.md` | The todo-db v2 batch contract BenchBox consumes: `register_batch`, `take` then `prepare`, `advance_batch_head`, `bind_batch_pr`, `finish`, and recovery, with the leader as the only tracker writer |
 
 The eval runbook is `docs/internal/agent-instruction-evaluation.md`. The
 scenario corpus is `_project/evals/agent-instructions/`.

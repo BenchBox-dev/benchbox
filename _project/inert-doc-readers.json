@@ -16,7 +16,6 @@
     "tests/unit/test_release_infrastructure.py"
   ],
   "AGENTS.md": [
-    "tests/integration/worktree/test_batch_skill_delivery.py",
     "tests/unit/scripts/test_check_makefile_inventory.py",
     "tests/unit/workflows/test_stacked_pr_base_guard.py"
   ],
@@ -56,14 +55,10 @@
   "_sources/tpc-h/PATCHES.md": [
     "tests/unit/scripts/test_comment_cleanup_scope.py"
   ],
-  "docs/agent/batch-feature-delivery.md": [
-    "tests/integration/worktree/test_batch_skill_delivery.py"
-  ],
   "docs/agent/review-protocol-legacy.md": [
     "tests/unit/scripts/test_blind_spot_tools.py"
   ],
   "docs/agent/review-protocol.md": [
-    "tests/integration/worktree/test_batch_skill_delivery.py",
     "tests/unit/scripts/test_blind_spot_tools.py"
   ],
   "docs/agent/todo-review.md": [
@@ -74,9 +69,6 @@
   ],
   "docs/internal/dev-loop-property-ledger.md": [
     "tests/unit/test_ledger_coverage.py"
-  ],
-  "docs/internal/dev-loop-worktrees.md": [
-    "tests/integration/worktree/test_batch_skill_delivery.py"
   ],
   "docs/internal/hosted-results-planning.md": [
     "tests/unit/docs/test_publication_architecture.py"

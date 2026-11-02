@@ -16,6 +16,18 @@ make agent-write-preflight
 uv sync --group dev
 ```
 
+`BASE=<ref>` starts the branch at a ref other than the default
+`origin/develop`; a remote-tracking ref is fetched first, and an unresolvable
+ref fails before anything is created:
+
+```bash
+make worktree-create BRANCH=feat/example WORKTREE_PATH=../BenchBox.wt-example BASE=<ref>
+```
+
+Use it for a batch member, which starts at its leader's integration head, not
+to build on another agent's unmerged branch. `make pr-preflight BASE=<ref>`
+diffs against the same ref, so a member checks only its own change.
+
 Do not run `pre-commit install` inside a linked worktree. Git hooks live in the
 common Git directory and are shared across all linked worktrees. Running `pre-commit install`
 in a worktree captures the shared hook to that worktree's virtual environment, which
@@ -102,18 +114,28 @@ The first gives up your claim; the second takes over a worktree whose owner is l
 
 Use serial mode for independent, cross-repository, review-separated, or
 approval-separated work. Feature delivery mode is available only for related
-items after the active todo-db MCP server has passed the registered-batch
-capability and compatible-schema check. The prerequisite source/runtime,
-catalog pin, and workflow rollout cannot use feature mode to prove their own
-installation; an unavailable capability is an owned blocker and keeps work in
-serial mode.
+items after the active todo-db MCP server has advertised the registered-batch
+v2 capability. The prerequisite runtime, catalog pin, and workflow rollout
+cannot use feature mode to prove their own installation; an unavailable
+capability is an owned blocker and keeps work in serial mode.
 
-Feature mode uses one shared integration branch/worktree and one integrator.
-Record the immutable base, member set, per-member scope and dependency, actual
-member/base/head/final-tree evidence, and one final PR. It does not create a
-feature-base PR, skip CI, or weaken hosted/native review, merge, deployment, or
-authority gates. Revalidate after base, member, scope, dependency, head, or
-conflict movement; use only reversible rollback/previews for recovery.
+Feature mode uses one shared integration branch/worktree and one integrator
+(the leader), with each member in its own worktree
+(`docs/agent/batch-feature-delivery.md`). The branch layout:
+
+| Worktree | Branch | Created by | Started at |
+| --- | --- | --- | --- |
+| Integration (`benchbox.batch.role=integration`) | `feat/<batch>` | `make batch-start` | `refs/remotes/origin/develop` through `BASE=` |
+| Member (`benchbox.batch.role=member`) | `feat/<batch>--<member>` | `make batch-member-create`, run by the leader | The current integration head through `BASE=` |
+
+Integration worktrees are leader-only. `make worktree-create` clears inherited
+`benchbox.*` keys, and the batch targets set the role keys afterwards. A member
+worktree refuses `make pr-open` and `make pr-fanout`, and `make pr-fanout` skips
+member worktrees; the integration branch is never a PR base. Only the leader's
+final PR reaches `develop`. It does not skip CI or weaken hosted/native review,
+merge, deployment, or authority gates. Revalidate after base, member, scope,
+dependency, head, or conflict movement; use only reversible rollback/previews
+for recovery.
 
 ## Finish a task
 

@@ -1128,6 +1128,22 @@ and posts nothing to GitHub.
   stream, as described under P4, in a `captures/<time>-<head>` directory of
   the same cache directory, with the local client token and gateway URL
   redacted.
+- **Member mode.** A batch member runs `cli.py local-review --member --base-ref
+  <full sha> --trusted-ref <full sha> --head <full sha> --result-json <path>`
+  (through `make batch-member-check`), with the base being the integration head
+  the member merged. It uses the same trusted copy, driver, and cache as the
+  review above but opens no PR, posts nothing, and writes no findings record to a
+  PR body. It refuses when the base is not an ancestor of the head, and when
+  `findings` (Critical or High) remain it exits 1. The result is a
+  `benchbox_member_review_v1` JSON object with `outcome` (`clear`, `findings`,
+  `not-reviewed`, or `override`), `reason`, `base_sha`, `head_sha`, `head_tree`,
+  `patch_digest`, and `trusted_sha`, and it is also stored in the local cache
+  keyed by that base, head, and trusted commit. `member_review_result` returns
+  the stored result only for exactly that patch, so `batch-land` trusts the
+  cache rather than a member's report. A change that touches only exempt paths
+  is recorded `not-reviewed` with the skip reason: the same bar as a standalone
+  PR, where an exempt-only change needs no review. Landing accepts `clear`,
+  `not-reviewed`, and `override`, and refuses `findings`.
 
 ## Calibration
 

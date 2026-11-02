@@ -36,16 +36,14 @@ pr-landing-start/withdraw/ready`): record the start-revision identity
 on the exact head before enqueue. Wrong-PR resolution, unpublished work,
 head races, and durable holds refuse loudly; a merge that wins the race
 stops modification and routes to follow-up. Batch readiness additionally
-binds id/version, member heads (ancestors of the integration head), owner
-generation, writer quiescence, explicit member/base/head/final-tree evidence,
-and the final PR. Serial mode remains the default for independent or
-approval-separated work. Feature delivery mode is opt-in only after the active
-todo-db MCP server advertises the compatible registered-batch capability and
-schema; it cannot be used to establish those prerequisites. Feature mode has
-one shared integration branch, one integrator, no feature-base PRs, no new CI
-skips, and no change to hosted/native review, merge, deployment, or authority
-boundaries. A source receipt, catalog pin, or local mirror is not active
-runtime evidence.
+binds the final head to the tracker's integration head and final-PR binding,
+every member receipt, current acceptance, the recomputed diff and member
+scopes, and a usable local member review. Serial mode remains the default for
+independent or approval-separated work. Feature delivery mode is opt-in only
+after the active todo-db MCP server advertises the registered-batch v2
+capability. It has one shared integration branch, one integrator, no
+feature-base PRs, no new CI skips, and no change to hosted/native review, merge,
+deployment, or authority boundaries (`docs/agent/batch-feature-delivery.md`).
 
 ## Architecture and plan review axes
 
