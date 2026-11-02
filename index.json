@@ -27749,6 +27749,16 @@
       "status": "open",
       "title": "Record a disposition for every pending oracle observation before production-connected extraction steps"
     },
+    "theseus-package-identity-install-20261102": {
+      "claim": null,
+      "needs": [
+        "theseus-repository-governance-bootstrap-20261102",
+        "theseus-decision-vendored-matcher-20261102"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Package Theseus with consumer-configured identity and a hash-verified isolated installer"
+    },
     "theseus-promotion-review-path-benchbox-20261102": {
       "claim": null,
       "needs": [
