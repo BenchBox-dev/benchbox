@@ -1,4 +1,4 @@
 {
   "schema": 1,
-  "internal": "Developer tooling: make batch-finish removes clean batch member worktrees and deletes member branches whose tip equals the tracker's accepted head contained in the merged final PR's refs/pull/<N>/head (dry run unless EXECUTE=1), under a new deletion basis in the worktree lifecycle evidence contract"
+  "internal": "Agent delivery tooling and instructions: an explicitly assigned cohesive batch now uses the integration loop by default after the pilot passed; batch-land reads a member's implementation dependencies from the tracker instead of a DEPENDENCIES argument; make batch-finish removes clean member worktrees and deletes member branches that lose nothing (dry run unless EXECUTE=1) under a new deletion basis in the worktree lifecycle evidence contract"
 }

@@ -1,9 +1,9 @@
 # Batch delivery modes
 
-BenchBox has two delivery modes. Serial mode is the default for independent,
-cross-repository, review-separated, approval-separated, or unrelated items.
-Feature delivery mode is opt-in for related items whose prerequisites are
-already installed and verified. A source PR, catalog revision, or local mirror
+BenchBox has two delivery modes. An explicitly assigned cohesive batch uses
+feature delivery mode by default once its prerequisites are installed and
+verified. Serial mode covers standalone, cross-repository, review-separated,
+approval-separated, or unrelated items. A source PR, catalog revision, or local mirror
 does not by itself install the capability required for feature mode. The
 decision to use two layers is recorded in
 [`batch-integration-loop-2026-11-01.md`](../../_project/decisions/batch-integration-loop-2026-11-01.md);
@@ -72,11 +72,12 @@ Rules that hold for the whole batch:
 | `make batch-start BATCH= MEMBERS= SCOPE_JSON= PROJECT_ID= [WORKTREE_PATH=] [DEPENDENCIES=member=dep1+dep2,...] [CONFIRM_CUTOVER=1]` | Leader, any worktree | Creates `feat/<batch>` and its worktree from `refs/remotes/origin/develop`, writes the ledger and owner generation, and prints the `register_batch` arguments and an `after_register` block of `update_item` steps |
 | `make batch-member-create MEMBER= [WORKTREE_PATH=]` | Leader, integration worktree | Creates `feat/<batch>--<member>` at the current integration head; refuses an existing branch |
 | `make batch-member-check [TESTS=a,b]` | Member | Requires a clean branch that contains the integration head and has changes; runs `make pr-preflight` against that head (or the command given as `PREFLIGHT_CMD`, which is recorded and warned about at landing); the member review always runs through `scripts/oracle_local_review.py`, the changelog check, and the member review; records the result bound to the base and head |
-| `make batch-land MEMBER= [DEPENDENCIES=a,b]` | Leader | Merges a checked member with `--no-ff` and prints the `take`/`prepare` payload (`prepare` only for a dependent member, which must already be taken) |
+| `make batch-land MEMBER=` | Leader | Merges a checked member with `--no-ff` and prints the `take`/`prepare` payload (`prepare` only for a dependent member, which must already be taken); the member's implementation dependencies are read from its registered tracker metadata |
 | `make batch-advance REASON=fix\|develop-merge` | Leader | Records a leader commit or a develop merge and prints the `advance_batch_head` payload |
 | `make batch-status` | Leader | Reconciles the ledger with the tracker and Git (rebuilding a missing ledger) and names the next step |
 | `make batch-verify` | Leader | Checks first-parent history, recorded heads, and member ancestry |
 | `make batch-evidence [SUITE=name]` | Leader | Reruns each required acceptance on the final head, writes `.todo-batch/<batch>/final-evidence.json`, and prints the `finish` payloads |
+| `make batch-finish [EXECUTE=1]` | Leader, integration worktree | After the batch is completed and the final PR merged: a dry run by default; with `EXECUTE=1` removes clean member worktrees and deletes member branches that meet the deletion basis |
 
 The scripts only read the tracker. Every tracker write is printed as a payload
 and submitted by the leader through the todo-db MCP tools.
@@ -145,11 +146,10 @@ A member:
    integration branch.
 3. For an independent member, the leader then calls `take` and `prepare` with
    the printed payload. A member with implementation dependencies must be taken
-   before `batch-land` and landed with `DEPENDENCIES=<its registered
-   implementation dependencies>` (land refuses an untaken dependent, because
-   the tracker refuses a take once the integration head moves past the recorded
-   head, and `prepare` refuses dependencies that differ from the registered
-   ones); the printed payload is then `prepare` only, using the generation from
+   before `batch-land`; land reads the member's registered implementation
+   dependencies from the tracker and refuses an untaken dependent, because the
+   tracker refuses a take once the integration head moves past the recorded
+   head. The printed payload is then `prepare` only, using the generation from
    that take.
    `prepare` records the receipt, releases the claim, and leaves the member
    `open`. Claims are held only for this moment.
@@ -214,8 +214,17 @@ After the final PR is green on the bound head, the leader runs the acceptance
 reruns (`make batch-evidence`), then `take` and `finish` each member with the
 printed payload (`finish` carries the cumulative current-tree evidence). Finish
 follows the PR's merge decision; an open or green PR is not proof of merge. The
-leader ends at the merged final PR. After it merges, remove the member and
-integration worktrees and branches through the normal worktree finish.
+leader ends at the merged final PR.
+
+After every member is `done`, the batch is completed, and the final PR has
+merged, run `make batch-finish` from the integration worktree. It is a dry run
+unless `EXECUTE=1`. It removes a clean member worktree and deletes a member
+branch (and its remote branch if it matches) only when the branch tip equals the
+accepted head in the member's receipt and that head is an ancestor of the merged
+final PR's `refs/pull/<N>/head`, fetched in the same run; otherwise the branch is
+kept and the reason printed. This basis proves nothing is lost, not integration
+(`_project/specs/worktree-lifecycle-evidence-contract.md`, section 7.1). Remove
+the integration worktree and branch through the normal worktree finish.
 
 ## Sizing: the hosted brief cap
 

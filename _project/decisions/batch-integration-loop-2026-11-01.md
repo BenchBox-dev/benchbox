@@ -9,6 +9,12 @@ and the protocol in
 [`docs/agent/batch-feature-delivery.md`](../../docs/agent/batch-feature-delivery.md),
 and builds on todo-db's batch v2 design (todo-db ADR 0012).
 
+Status update (2026-11-02): the default changed after the pilot passed its rubric
+(PR #3921). An explicitly assigned cohesive batch now uses the loop by default;
+standalone, cross-repository, review-separated, and approval-separated work stays
+serial. The capability requirement and the serial delivery of changes to the loop
+itself are unchanged.
+
 ## Context
 
 Related items were delivered either as separate serial PRs, each with its own

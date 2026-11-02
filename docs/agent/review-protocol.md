@@ -38,10 +38,10 @@ head races, and durable holds refuse loudly; a merge that wins the race
 stops modification and routes to follow-up. Batch readiness additionally
 binds the final head to the tracker's integration head and final-PR binding,
 every member receipt, current acceptance, the recomputed diff and member
-scopes, and a usable local member review. Serial mode remains the default for
-independent or approval-separated work. Feature delivery mode is opt-in only
-after the active todo-db MCP server advertises the registered-batch v2
-capability. It has one shared integration branch, one integrator, no
+scopes, and a usable local member review. Serial mode covers standalone or
+approval-separated work. An explicitly assigned cohesive batch uses feature
+delivery mode by default, only after the active todo-db MCP server advertises the
+registered-batch v2 capability. It has one shared integration branch, one integrator, no
 feature-base PRs, no new CI skips, and no change to hosted/native review, merge,
 deployment, or authority boundaries (`docs/agent/batch-feature-delivery.md`).
 
