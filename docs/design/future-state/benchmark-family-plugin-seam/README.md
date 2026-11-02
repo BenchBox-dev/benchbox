@@ -2,9 +2,6 @@
 
 # Benchmark Family Plugin Seam Future State
 
-```{tags} contributor, architecture
-```
-
 Related TODOs: `arch-ssb-family-plugin-seam-pilot`, `benchmark-api-and-core-boundary-cleanup`
 
 Composition prerequisite: [`Core Kernel and Runtime Composition Boundary`](https://benchbox.dev/docs/development/adr/adr-runtime-composition-boundary.html).

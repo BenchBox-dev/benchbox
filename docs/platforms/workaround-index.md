@@ -2,9 +2,6 @@
 
 # Platform Workaround Index
 
-```{tags} reference, clickhouse, maintenance
-```
-
 Correct-but-papering-over workarounds in the platform layer: each entry names
 the symptom, the workaround, the upstream fix that would allow removal, and
 how to verify the upstream fix landed. Sweep this index when an upstream

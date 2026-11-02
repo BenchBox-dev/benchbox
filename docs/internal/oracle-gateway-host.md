@@ -2,9 +2,6 @@
 
 # Oracle gateway host
 
-```{tags} contributor, operations, ci
-```
-
 The oracle's CI reviewers hold one credential: a client token for an
 `omp auth-gateway` on the owner's Mac. This page rebuilds that Mac from
 scratch. The design and its accepted risks are in

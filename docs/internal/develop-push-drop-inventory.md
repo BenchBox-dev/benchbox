@@ -2,9 +2,6 @@
 
 # Develop push-drop coverage inventory
 
-```{tags} contributor, operations, ci
-```
-
 Companion to [`develop-post-merge-gaps.md`](develop-post-merge-gaps.md).
 That doc explains the **class**: GitHub can drop `push` delivery for
 consecutive develop merges. Required PR checks run on the pull request head;

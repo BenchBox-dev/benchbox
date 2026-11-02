@@ -2,9 +2,6 @@
 
 # Prune publishing subsystem — COMPLETED (v0.2.1)
 
-```{tags} contributor, architecture
-```
-
 > **Status: Completed / superseded. Do not act on the original proposal.**
 >
 > This proposal targeted an *older* generic publishing layer (the
