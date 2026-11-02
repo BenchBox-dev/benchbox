@@ -27740,6 +27740,21 @@
       "status": "blocked",
       "title": "Owner decision: approve one vendored soundness-path matcher module as the only embedded exception"
     },
+    "theseus-freeze-final-parity-20261102": {
+      "claim": null,
+      "needs": [
+        "theseus-promotion-review-path-benchbox-20261102",
+        "theseus-gateway-client-first-live-gate-20261102",
+        "theseus-local-gateway-tooling-20261102",
+        "theseus-observation-disposition-20261102",
+        "oracle-verdict-same-second-push-and-ready-cancels-new-head-20261101",
+        "develop-parallel-merge-semantic-conflict-guard-20261101",
+        "premerge-composed-tree-gap-red-trunk-20261101"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Freeze the synchronized Theseus source and prove installed-artifact parity before release"
+    },
     "theseus-gateway-client-first-live-gate-20261102": {
       "claim": null,
       "needs": [
