@@ -453,3 +453,35 @@ def test_linux_kind_cli_prints_tests_only_when_triggered(repo: Path, capsys: pyt
 
     assert pt.main(["linux", "--repo-root", str(repo)]) == 0
     assert capsys.readouterr().out.split() == ["tests/unit/test_tool.py"]
+
+
+@pytest.mark.parametrize("path", ["scripts/worktree_lifecycle.sh", "make/worktrees.mk", "Makefile"])
+def test_worktree_shell_and_make_paths_select_the_worktree_tests(repo: Path, path: str) -> None:
+    selected = pt.map_tests(repo, [path])
+
+    assert "tests/unit/scripts/test_worktree_create_linked.py" in selected
+    assert "tests/integration/worktree/test_worktree_lifecycle_metadata.py" in selected
+
+
+@pytest.mark.parametrize("path", ["make/worktrees.mk", "Makefile"])
+def test_make_paths_select_the_make_interface_tests(repo: Path, path: str) -> None:
+    assert "tests/unit/scripts/test_check_makefile_inventory.py" in pt.map_tests(repo, [path])
+
+
+def test_make_path_selection_reaches_the_cli_through_a_git_diff(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    _write(repo, "make/worktrees.mk", "worktree-create:\n")
+    _commit_all(repo)
+
+    assert pt.main(["tests", "--repo-root", str(repo)]) == 0
+    assert "tests/unit/scripts/test_worktree_create_linked.py" in capsys.readouterr().out.split()
+
+
+def test_unmapped_non_python_path_still_selects_nothing(repo: Path) -> None:
+    assert pt.map_tests(repo, ["make/other.mk", "scripts/other.sh"]) == []
+
+
+def test_non_python_test_map_entries_name_existing_tests() -> None:
+    root = SCRIPT.parents[2]
+    missing = [test for tests in pt.EXTRA_TEST_MAP.values() for test in tests if not (root / test).is_file()]
+
+    assert missing == []

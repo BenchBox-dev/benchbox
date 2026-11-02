@@ -267,8 +267,25 @@ def _workflow_tests(repo: Path, path: str, test_files: list[str], texts: dict[st
     return selected
 
 
+WORKTREE_TESTS = [
+    "tests/integration/worktree/test_worktree_finish_preview.py",
+    "tests/integration/worktree/test_worktree_lifecycle_metadata.py",
+    "tests/integration/worktree/test_worktree_release_dirty_guard.py",
+    "tests/unit/scripts/test_worktree_create_base.py",
+    "tests/unit/scripts/test_worktree_create_linked.py",
+    "tests/unit/test_agent_write_preflight.py",
+]
+MAKE_INTERFACE_TESTS = [
+    "tests/unit/scripts/test_check_makefile_inventory.py",
+    "tests/unit/scripts/test_make_interface_summary.py",
+    "tests/unit/scripts/test_pr_preflight_base.py",
+    "tests/unit/test_standardized_test_commands.py",
+]
 EXTRA_TEST_MAP: dict[str, list[str]] = {
     "tests/integration/platforms/common.py": ["tests/integration/test_ducklake_integration.py"],
+    "scripts/worktree_lifecycle.sh": WORKTREE_TESTS,
+    "make/worktrees.mk": [*WORKTREE_TESTS, *MAKE_INTERFACE_TESTS],
+    "Makefile": [*WORKTREE_TESTS, *MAKE_INTERFACE_TESTS],
 }
 
 
@@ -281,6 +298,7 @@ def map_tests(repo: Path, paths: list[str]) -> list[str]:
     texts: dict[str, str] = {}
     for path in paths:
         selected.update(_workflow_tests(repo, path, test_files, texts))
+        selected.update(EXTRA_TEST_MAP.get(path, ()))
         if not path.endswith(".py"):
             selected.update(_guard_tests(path, test_files))
             continue
@@ -305,7 +323,6 @@ def map_tests(repo: Path, paths: list[str]) -> list[str]:
                 selected.update(index.get(f"test_{module}.py", ()))
             selected.update(_platform_smoke_tests(path, test_files))
             selected.update(_guard_tests(path, test_files))
-        selected.update(EXTRA_TEST_MAP.get(path, ()))
     selected.update(_helper_importers(repo, helpers, test_files))
     selected.update(_source_dependents(repo, sources, test_files))
     return sorted(selected)
