@@ -3,7 +3,7 @@
     "Context records option (i) or (ii), the date, and the quoted owner message.",
     "theseus-promotion-review-path-benchbox-20261102 becomes ready only after this item is done."
   ],
-  "context": "Status blocked until the owner answers.",
+  "context": "Status blocked until the owner answers.\n\nOwner decision recorded on 2026-11-02 (ask response: \"promotion-evidence: Oracle-authored record\"): choose option (ii), an oracle-authored head-bound promotion evidence record published only when the full staged upstream-delta evidence check passed, read from existing PR reviews/statuses without granting Actions artifact read permission, with versioned marker/protocol compatibility tests.",
   "description": "Owner-only decision gate. After cutover BenchBox pins Theseus by a reviewed lock. A promotion PR (lock bump) must be refused by oracle-gate unless a record proves the upstream source delta was reviewed. The refusal sits beside the existing omp-bump refusal (_project/scripts/oracle_review_check.py decide(), evaluated before stand-ins) and may read only what the gate already reads: PR files, comments, reviews and statuses. No Actions-artifact read and no new App permission.\n\nOptions:\n(i) An attester evidence comment bound to the head, as omp bumps use (_project/scripts/omp_bump_gate.py). Cost: one owner action per promotion; oracle source changes about nine times a day today.\n(ii) A field in the oracle's own review or status for that head, written only when the promotion evidence check passed.\n\nEither way no existing marker or status changes meaning without a versioned compatibility test.\n\nGuardrails: agents must not choose; record only the owner's answer.",
   "links": [
     "_project/scripts/oracle_review_check.py",
@@ -26,6 +26,14 @@
       "op": "update",
       "op_id": "9f3f87dea07840cbba6a09bdc18ed2bc",
       "session_id": "8cfcc9dbcab5419a91fc8b650901f36b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b58f5aa5b2bb5e33c84a53cb",
+      "at": "2026-11-02T16:56:45Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a01c86c816514ed5aee64253c8ce0cc4",
+      "session_id": "c4d4cd94bd464a16a29b8b24353d6e06"
     }
   ]
 }

@@ -27729,7 +27729,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "blocked",
+      "status": "open",
       "title": "Owner decision: choose the record the gate reads to accept a Theseus promotion PR"
     },
     "theseus-decision-reliability-observation-20261102": {
