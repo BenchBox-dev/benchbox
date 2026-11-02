@@ -81,13 +81,21 @@ Review-shaped actions must not:
 
 - Commit any file.
 - Push to a remote.
-- Open PRs or run `make pr-open` / `gh pr create`.
+- Open PRs or run the repository's PR-open command or `gh pr create`.
 - Enable auto-merge.
 - Chain into write-shaped skills without authorization in a later user turn.
 
 A later user authorization starts a distinct write-shaped action. It does not
 convert the completed review, or an Independent Reviewer dispatched inside the
 authorized work, into a writer.
+
+In an integration-branch batch (the `todo` skill's prepared delivery), review
+happens at two points inside the authorized write. Each member is reviewed
+before the leader lands it, against that member's exact patch against its base;
+a review result bound to a different patch does not count. The combined
+integration diff is reviewed once before the final PR is published, and again
+only for leader fix commits made afterward. These are stages of authorized
+work, not separate review-shaped actions.
 
 Capture authorizes only the local file write. End with `Recorded: <path>`; the
 user decides whether to open a PR.

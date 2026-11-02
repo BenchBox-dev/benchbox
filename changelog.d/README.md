@@ -55,6 +55,17 @@ A change with no user effect records why instead of an entry:
 {"schema": 1, "internal": "Test-only refactor with no user effect"}
 ```
 
+## Batch delivery
+
+In a feature batch (`docs/agent/batch-feature-delivery.md`), each member writes
+exactly one fragment for its own change, with at most five entries. The default
+name is the member branch slug (`feat/<batch>--<member>` becomes
+`feat-<batch>--<member>.json`), so members never collide; pass
+`CHANGELOG_FRAGMENT` when that name is over the 100-character limit.
+`make batch-member-check` validates the member's fragments. The final PR carries
+one fragment per member, and the required-entry rule is evaluated once, against
+the final PR's title.
+
 ## Pull request numbers
 
 Never write a pull request number in a fragment. Release preparation derives it
