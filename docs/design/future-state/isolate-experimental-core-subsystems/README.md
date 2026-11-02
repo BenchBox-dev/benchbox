@@ -2,9 +2,6 @@
 
 # benchbox-experimental Future State
 
-```{tags} contributor, architecture, experimental
-```
-
 Related TODO: `isolate-experimental-core-subsystems`
 
 Proposed extracted library or package name: `benchbox-experimental`

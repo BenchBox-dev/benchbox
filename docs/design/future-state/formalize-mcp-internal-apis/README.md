@@ -2,9 +2,6 @@
 
 # MCP API Formalization Future State
 
-```{tags} contributor, architecture
-```
-
 Related TODO: `formalize-mcp-internal-apis`
 
 ## Future State

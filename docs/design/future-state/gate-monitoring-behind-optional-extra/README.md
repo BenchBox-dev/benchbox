@@ -2,9 +2,6 @@
 
 # Monitoring Optional Extra Future State
 
-```{tags} contributor, architecture
-```
-
 Related TODO: `gate-monitoring-behind-optional-extra`
 
 ## Status (2026-08-13)
