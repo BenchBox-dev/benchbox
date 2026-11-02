@@ -27894,17 +27894,12 @@
       "title": "Surface turso auto-provision mint failures instead of silent local fallback"
     },
     "todo-db-batch-dispatch-base-overlap-20261101": {
-      "claim": {
-        "expires_at": "2026-11-03T02:49:26Z",
-        "generation": "506df8b39be74f4b8eddf35c4374da41",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d680f2b9a00523ec18de3879"
-      },
+      "claim": null,
       "needs": [
         "todo-db-batch-v2-contract-20261101"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Accept members started from any recorded integration head and record same-file overlap instead of byte equality in todo-db"
     },
     "todo-db-batch-head-advance-rebind-20261101": {

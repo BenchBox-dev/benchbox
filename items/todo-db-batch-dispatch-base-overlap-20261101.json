@@ -52,6 +52,15 @@
       "op": "update",
       "op_id": "6b1eaf656d5d47c293acd321641cf170",
       "session_id": "3dd2b4a046904511bb5ce7edcc3205fd"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d680f2b9a00523ec18de3879",
+      "at": "2026-11-02T02:49:32Z",
+      "client": "omp-coding-agent",
+      "generation": "506df8b39be74f4b8eddf35c4374da41",
+      "op": "finish",
+      "op_id": "38e0ecc7f5ab43a78f59c03ce8fdb573",
+      "session_id": "3dd2b4a046904511bb5ce7edcc3205fd"
     }
   ]
 }
