@@ -27933,14 +27933,19 @@
       "title": "Specify the todo-db batch v2 contract (claims, dispatch bases, head advances, rebinding, recovery, versioning) before any code"
     },
     "todo-db-batch-v2-release-20261101": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-03T02:49:47Z",
+        "generation": "01a686bc13a149379fc3a63f34846226",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d680f2b9a00523ec18de3879"
+      },
       "needs": [
         "todo-db-batch-owner-claims-recovery-20261101",
         "todo-db-batch-dispatch-base-overlap-20261101",
         "todo-db-batch-head-advance-rebind-20261101"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Release todo-db with the batch v2 semantics after Gate 1 and Gate 2"
     },
     "todo-db-context-update-replaces-shared-guardrails-20261023": {
