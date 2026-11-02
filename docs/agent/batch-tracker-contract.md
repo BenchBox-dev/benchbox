@@ -31,7 +31,10 @@ anyone but the owner (`E_BATCH_OWNER`). The leader's calls, in order:
    `develop_ref` set to `refs/remotes/origin/develop`), then `update_item` with
    batch metadata and `needs` replaced wholesale (current needs plus every
    implementation dependency). Metadata before registration is refused.
-2. After each landing, `take` the member then `prepare` it: the receipt records
+2. After each landing, `prepare` the member: an independent member is taken
+   after landing, but a member with implementation dependencies is taken
+   before landing, because the tracker refuses its take once the integration
+   head moves. The receipt records
    the batch and member, the source worktree and revisions, the base the member
    merged, the accepted head, the integration head it was integrated at, the
    frozen scope hash, the changed files computed from that base, any overlap

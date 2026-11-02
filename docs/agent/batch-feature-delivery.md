@@ -69,10 +69,10 @@ Rules that hold for the whole batch:
 
 | Target | Run by | Does |
 |---|---|---|
-| `make batch-start BATCH= MEMBERS= SCOPE_JSON= PROJECT_ID= [WORKTREE_PATH=] [CONFIRM_CUTOVER=1]` | Leader, any worktree | Creates `feat/<batch>` and its worktree from `refs/remotes/origin/develop`, writes the ledger and owner generation, and prints the `register_batch` arguments |
+| `make batch-start BATCH= MEMBERS= SCOPE_JSON= PROJECT_ID= [WORKTREE_PATH=] [DEPENDENCIES=member=dep1+dep2,...] [CONFIRM_CUTOVER=1]` | Leader, any worktree | Creates `feat/<batch>` and its worktree from `refs/remotes/origin/develop`, writes the ledger and owner generation, and prints the `register_batch` arguments and an `after_register` block of `update_item` steps |
 | `make batch-member-create MEMBER= [WORKTREE_PATH=]` | Leader, integration worktree | Creates `feat/<batch>--<member>` at the current integration head; refuses an existing branch |
-| `make batch-member-check [TESTS=a,b]` | Member | Requires a clean branch that contains the integration head and has changes; runs `make pr-preflight` against that head, the changelog check, and the member review; records the result bound to the base and head |
-| `make batch-land MEMBER= [DEPENDENCIES=a,b]` | Leader | Merges a checked member with `--no-ff` and prints the `take`/`prepare` payload |
+| `make batch-member-check [TESTS=a,b]` | Member | Requires a clean branch that contains the integration head and has changes; runs `make pr-preflight` against that head (or the command given as `PREFLIGHT_CMD`, which is recorded), the changelog check, and the member review; records the result bound to the base and head |
+| `make batch-land MEMBER= [DEPENDENCIES=a,b]` | Leader | Merges a checked member with `--no-ff` and prints the `take`/`prepare` payload (`prepare` only for a dependent member, which must already be taken) |
 | `make batch-advance REASON=fix\|develop-merge` | Leader | Records a leader commit or a develop merge and prints the `advance_batch_head` payload |
 | `make batch-status` | Leader | Reconciles the ledger with the tracker and Git (rebuilding a missing ledger) and names the next step |
 | `make batch-verify` | Leader | Checks first-parent history, recorded heads, and member ancestry |
@@ -96,11 +96,13 @@ and submitted by the leader through the todo-db MCP tools.
    worktree, the start head, `develop_ref`, the ordered members, the frozen
    scopes and their hash, the delivery boundary, and the intended terminal
    outcome. It refuses a member another worker holds a live claim on.
-5. Only after registration, attach batch metadata with `update_item`
-   (`batch={batch_id, member_id, implementation_dependencies}`), replacing
-   `needs` wholesale with the current needs plus every implementation
-   dependency. For a new item, `create_item` takes the same `batch`. Metadata
-   attached before registration is refused (`E_SCHEMA`).
+5. Run the `after_register` steps that `batch-start` printed, in order, after
+   `register_batch`: one `update_item` per member with the batch metadata
+   (`batch={batch_id, member_id, implementation_dependencies}`) and `needs`
+   replaced wholesale with the current needs plus every implementation
+   dependency. Pass dependencies as `DEPENDENCIES=member=dep1+dep2,...`. On a
+   store below schema 4, metadata attached before registration is refused
+   (`E_SCHEMA`). A new item takes the same `batch` through `create_item`.
 
 The owner generation is a credential that no tool serves back. It lives only in
 the leader's ledger.
@@ -137,15 +139,24 @@ A member:
    combined file list past the hosted brief cap (below).
 2. It merges with `--no-ff` and requires the merged tree to equal the member
    tree; anything else means the head moved and the member merges again. It
-   pushes a backup of the integration branch, reruns the recorded verification
-   of every earlier member whose files overlap, and prints warnings for
-   suspicious hunks.
-3. The leader calls `take` on the member, then `prepare` with the printed
-   payload. `prepare` records the receipt, releases the claim, and leaves the
-   member `open`. Claims are held only for this moment.
+   reruns the recorded verification of every earlier member whose files
+   overlap, prints warnings for suspicious hunks and for a member preflight that
+   was not the default command, and only then pushes a backup of the
+   integration branch.
+3. For an independent member, the leader then calls `take` and `prepare` with
+   the printed payload. A member with implementation dependencies must be taken
+   before `batch-land` (land refuses otherwise, because the tracker refuses a
+   take once the integration head moves past the recorded head); the printed
+   payload is then `prepare` only, using the generation from that take.
+   `prepare` records the receipt, releases the claim, and leaves the member
+   `open`. Claims are held only for this moment.
 4. `make batch-status` names the next step. If a merge succeeded but `prepare`
    did not, `batch-status` reports `merged-unprepared`; running `batch-land`
    again prints the payload without merging.
+5. If an overlap rerun fails, landing stops with the merge in place and nothing
+   pushed. Landing the member again is refused. The only recovery is to reset
+   the integration branch to the pre-merge head the error prints, repair the
+   member, and land it again; do not prepare it.
 
 Every commit on the integration branch outside a member's own range must be
 recorded (`batch-advance`) before the next `prepare`, or the tracker refuses
@@ -161,12 +172,15 @@ recorded (`batch-advance`) before the next `prepare`, or the tracker refuses
    PR's repository, number, node id, and head.
 3. `make batch-evidence` (it refuses unless the PR is bound at the integration
    head) writes the evidence the readiness check reads.
-4. `make pr-arm` runs the batch check in an integration worktree and refuses on
-   any failure; `pr_landing.py ready` with `delivery_mode: batch` reads the file
-   named by `batch_evidence_path`. Readiness binds the final head to the
-   tracker, every receipt to an ancestor of that head, current acceptance to the
-   final head, the changed files to the recomputed diff and the member scopes,
-   and every member to a usable review.
+4. `make pr-arm` runs the batch check only in a worktree whose
+   `benchbox.batch.role` is `integration`, and only when
+   `extensions.worktreeConfig` is enabled; it refuses on any failure.
+   `pr_landing.py ready` with `delivery_mode: batch` reads the file named by
+   `batch_evidence_path`. Readiness binds the final head to the tracker, every
+   receipt to an ancestor of that head, current acceptance to the final head,
+   the changed files to the recomputed diff and the member scopes, and every
+   member to a usable review. The batch tooling, `pr_landing`, and `pr_arm`
+   refuse a stale tracker read (an offline cache or one without a revision).
 
 ### 5. Review fixes and develop merges (leader)
 
