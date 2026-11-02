@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Developer tooling: a slow end-to-end scenario drives the batch loop against real Git remotes and two real todo-db MCP servers, covering landing, overlap reruns, head advances, rebinding, owner recovery and abort"
+}
