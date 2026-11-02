@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "ADR exists under _project/decisions/ and cites or supersedes oracle-review-protocol-2026-10-08, oracle-reviewer-gateway-2026-10-22, oracle-single-review-job-2026-10-25, oracle-gate-required-check-2026-10-21 and oracle-review-check-retired-2026-10-24.",
+    "Inventory recounts reviewer files (.py and templates) at a named develop commit and lists every consumer with path and line: oracle_gate.py, oracle_review_check.py, omp_bump_gate.py, reset.py, oracle-verdict.yml, oracle-gate.yml, omp-pin-watch.yml, _project/scripts/oracle_gateway_host.sh, scripts/oracle_local_review.py, scripts/pr_arm.py, scripts/heavy_tier_needed.py, scripts/changelog_fragments.py, coverage_test_selection, the soundness drain report (actual path verified), scripts/pr_landing.py, both ci.yml git-show copies, Makefile targets, pyproject mutation config, quality/comment-policy.json registrations and docs (oracle-gateway-host.md and others found by search).",
+    "Every inventoried consumer names the later item that migrates it; none is unassigned.",
+    "Cost baseline states measured oracle-verdict runner and wall minutes per day, reviews per day, and commits touching reviewer paths per day over the last 30 days, with the commands used.",
+    "The ADR records lessons from the dropped ship-no-ship items (ssns-*, ship-no-ship-gate-parity-20261021) and names how this plan avoids two drifting matchers.",
+    "make comment-policy-check and the docs checks pass; PR merged through make pr-open / make pr-arm."
+  ],
+  "context": "Source baseline for planning: develop 6f5692490e851bf9344aa1fa4f26d3ef2ddc0a48. Earlier counts disagree (44 vs 45 .py files); recount. docs/internal/oracle-gateway-host.md names omp 18.12.1 while policy pins 18.13.3: record, do not fix here. PyPI name theseus is taken: dist theseus-reviewer, import theseus_reviewer, CLI theseus.",
+  "description": "First BenchBox change for moving the oracle reviewer (_project/scripts/oracle_reviewers/, oracle_gate.py, oracle_review_check.py and the matcher) into BenchBox-dev/theseus. Docs only; no code moves.\n\nDeliver one ADR under _project/decisions/ and an inventory the later items consume. The ADR records: purpose and the in-BenchBox-package alternative with the owner decision from theseus-decision-separate-repo-20261102; ownership split; identity narrowing (App login, attesters and gated branch become consumer configuration; verdict marker, status contexts, artifact names and finding IDs stay stable); installation trust chain (consumer trusted commit -> reviewed lock -> verified bytes -> isolated install, no latest, no ambient install, cache keyed by hash); promotion review rules; recovery (owner-only, docs/agent/emergency-merge.md); rejected alternatives (wheel-extraction CI stage, BenchBox matcher plus second parser, granting the gate Actions read, a new App-authored promotion record).\n\nGuardrails: worktree only (make worktree-create; make agent-write-preflight). No code, workflow or setting change. Do not rename persisted identifiers. Comment policy applies. Cite or explicitly supersede each prior oracle decision record (REVIEW-PLAN-RECON-001).",
+  "links": [
+    "_project/decisions/",
+    "docs/agent/emergency-merge.md",
+    ".github/oracle-reviewers.yml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4c6f341b7f4b66f30a37a2f1",
+      "at": "2026-11-02T13:45:48Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6ab1dcfdf3cc4cd2b964cb870574514e",
+      "session_id": "8cfcc9dbcab5419a91fc8b650901f36b"
+    }
+  ]
+}
