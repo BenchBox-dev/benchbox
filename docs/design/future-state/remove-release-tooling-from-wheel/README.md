@@ -2,9 +2,6 @@
 
 # benchbox-maintainer Future State
 
-```{tags} contributor, architecture
-```
-
 Related TODO: `remove-release-tooling-from-wheel`
 
 ## Status (2026-08-13)

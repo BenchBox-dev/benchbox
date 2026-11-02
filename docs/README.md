@@ -2,9 +2,6 @@
 
 # BenchBox Documentation
 
-```{tags} beginner
-```
-
 BenchBox helps you run industry benchmarks across analytical databases. The documentation is organized to get you productive quickly and keep deeper references tidy.
 
 ## Start Here

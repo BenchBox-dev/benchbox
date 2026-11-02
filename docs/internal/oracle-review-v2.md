@@ -2,9 +2,6 @@
 
 # Self-hosted oracle review
 
-```{tags} contributor, operations, ci
-```
-
 `.github/workflows/oracle-verdict.yml` reviews every pull request (PR) with
 agent CLIs, except changes confined to inert paths (see Inert-path manifest),
 and posts a non-required `oracle-verdict` status and a review through the

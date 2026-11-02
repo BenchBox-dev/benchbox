@@ -2,9 +2,6 @@
 
 # ADR: Retain `published-results` git history after the 2026-08-04 corpus leak
 
-```{tags} adr, privacy, operations
-```
-
 **Status:** Accepted — 2026-08-04; re-examined against pseudonym reversibility — 2026-08-05
 **Scope:** the `published-results` branch only
 
