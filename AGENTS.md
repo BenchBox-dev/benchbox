@@ -53,6 +53,8 @@ Critical/High review, or a real design choice. Do not stop before `make pr-open`
 the prompt explicitly forbids publication, authorizes only a local commit, or a gate
 fails (keep the commit and report the blocker).
 
+A batch member opens no PR and writes no tracker state: it ends when its change is landed on the integration branch and reported; the leader ends at the merged final PR.
+
 Active bindings: `docs/agent/review-protocol.md`, superseding `docs/agent/review-protocol-legacy.md`.
 
 ## Worktree and change safety
@@ -66,7 +68,7 @@ cd <WORKTREE_PATH>
 make agent-write-preflight
 ```
 
-`worktree-create` pins identity via `git config --worktree`, so later writes cannot reauthor it.
+`worktree-create` pins identity via `git config --worktree`, so later writes cannot reauthor it. `BASE=<ref>` (default `origin/develop`) sets the start ref. Integration worktrees are leader-only (`make batch-start`).
 
 Stop if `git rev-parse --show-toplevel` is the primary clone; emergency writes there need explicit authorization plus `BENCHBOX_ALLOW_MAIN_CLONE_WRITE=1`. Preserve unrelated dirty work; never use destructive Git/filesystem commands without approval. Use `rg`; stage only authorized paths; never `git add -A`.
 
@@ -94,7 +96,7 @@ For long output, write `/tmp/<slug>.log` (report status + short tail). UAT/stres
 
 Before publication, self-review with the `code` review action and fix all Critical and Required findings; nits and considerations are optional. Run `make pr-preflight` once, then `make pr-open`. Low-effort subagents may handle boilerplate gates; you choose commands and interpret failures. Check CI on a schedule, never in a loop. Wait on pending checks.
 
-Dev PRs target `develop` (or `release` / `published-results`); squash-merge, never direct-push protected branches. Force-push feature branches only with `--force-with-lease`. Soundness paths need oracle review: resolve `benchbox-oracle` threads; arm only on its success review of the current head (rerun if pending/absent). Land drift/pinning guards with required-CI wiring. Five `ci.yml` unit checks pass even when untouched. Stacks: one agent, one tracker item, 3 PRs max; no other agent's unmerged branch. Upper PRs are parent-based drafts. After parent squash-merge, retarget to `develop`, `git rebase --onto origin/develop <old parent tip>`, mark ready, pass CI and review on that head, then arm.
+Dev PRs target `develop` (or `release` / `published-results`); squash-merge, never direct-push protected branches. Force-push feature branches only with `--force-with-lease`. Soundness paths need oracle review: resolve `benchbox-oracle` threads; arm only on its success review of the current head (rerun if pending/absent). Land drift/pinning guards with required-CI wiring. Five `ci.yml` unit checks pass even when untouched. Stacks: one agent, one tracker item, 3 PRs max; no other agent's unmerged branch (a member on its leader's integration branch is exempt). Upper PRs are parent-based drafts. After parent squash-merge, retarget to `develop`, `git rebase --onto origin/develop <old parent tip>`, mark ready, pass CI and review on that head, then arm.
 
 ## TODO tracker
 
@@ -108,15 +110,15 @@ implementation, verification, review, merge, and deployment boundaries.
 
 Feature delivery mode is opt-in for related items only after prerequisites
 are deployed and verified. It requires the active todo-db MCP server to
-advertise registered-batch support on a compatible schema; a source PR,
-catalog pin, or local mirror is not an installation. The mode uses one shared
-integration branch and worktree, one integrator, an immutable base, an explicit
-ordered member set, frozen member scopes, explicit member/base/head/final-tree
-evidence, and one final PR. It never creates a feature-base PR, skips CI, or
-bypasses hosted/native review, merge, deployment, or authority controls.
+advertise the registered-batch v2 capability; a source PR, catalog pin, or local
+mirror is not an installation. A leader owns one integration branch and
+worktree, lands members, is the only tracker writer, and opens one final PR;
+members stop at a landing report (`docs/agent/batch-feature-delivery.md`). The
+integration branch is never a PR base. It never skips CI or bypasses
+hosted/native review, merge, deployment, or authority controls.
 
 Feature delivery cannot certify or unlock the changes that make it possible.
-If the capability or schema is absent, retain serial mode, record the owned blocker,
+If the v2 capability is absent, retain serial mode, record the owned blocker,
 and state the next operator step.
 
 ## BenchBox invariants
