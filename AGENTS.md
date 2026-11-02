@@ -104,12 +104,12 @@ Use the `todo` skill for tracker operations. Tracker writes follow worktree poli
 
 ### Delivery modes
 
-Serial mode is the default for independent, cross-repository, review-separated,
+Serial mode covers standalone, cross-repository, review-separated,
 approval-separated, or otherwise unrelated work: follow the ordinary claim,
 implementation, verification, review, merge, and deployment boundaries.
 
-Feature delivery mode is opt-in for related items only after prerequisites
-are deployed and verified. It requires the active todo-db MCP server to
+An explicitly assigned cohesive batch uses feature delivery mode by default
+once prerequisites are deployed and verified. It requires the active todo-db MCP server to
 advertise the registered-batch v2 capability; a source PR, catalog pin, or local
 mirror is not an installation. A leader owns one integration branch and
 worktree, lands members, is the only tracker writer, and opens one final PR;

@@ -45,10 +45,9 @@ batch-member-check:
 
 .PHONY: batch-land
 batch-land: export BATCH_ARG_MEMBER := $(MEMBER)
-batch-land: export BATCH_ARG_DEPENDENCIES := $(DEPENDENCIES)
 batch-land:
-	@test -n "$$BATCH_ARG_MEMBER" || { echo "Usage: make batch-land MEMBER=<id> [DEPENDENCIES=<a,b>]" >&2; exit 2; }
-	@$(BATCH_SCRIPT) land --member "$$BATCH_ARG_MEMBER" $${BATCH_ARG_DEPENDENCIES:+--dependencies "$$BATCH_ARG_DEPENDENCIES"}
+	@test -n "$$BATCH_ARG_MEMBER" || { echo "Usage: make batch-land MEMBER=<id>" >&2; exit 2; }
+	@$(BATCH_SCRIPT) land --member "$$BATCH_ARG_MEMBER"
 
 .PHONY: batch-advance
 batch-advance: export BATCH_ARG_REASON := $(REASON)
@@ -68,3 +67,11 @@ batch-verify:
 batch-evidence: export BATCH_ARG_SUITE := $(SUITE)
 batch-evidence:
 	@$(BATCH_SCRIPT) evidence $${BATCH_ARG_SUITE:+--suite "$$BATCH_ARG_SUITE"}
+
+override EXECUTE := $(value EXECUTE)
+
+.PHONY: batch-finish
+batch-finish: export BATCH_ARG_EXECUTE := $(EXECUTE)
+batch-finish:
+	@FLAG=""; case "$$BATCH_ARG_EXECUTE" in 1|true|yes) FLAG="--execute";; esac; \
+	$(BATCH_SCRIPT) finish $$FLAG

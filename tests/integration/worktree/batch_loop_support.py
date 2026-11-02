@@ -458,11 +458,7 @@ class Loop:
         return self.world.member_check(self.worktrees[name], tests)
 
     def land(self, name: str) -> dict:
-        deps = ",".join(self.dependencies.get(self.mid(name), []))
-        variables = {"MEMBER": self.mid(name)}
-        if deps:
-            variables["DEPENDENCIES"] = deps
-        return self.world.make_json(self.integration, "batch-land", **variables)
+        return self.world.make_json(self.integration, "batch-land", MEMBER=self.mid(name))
 
     def claim(self, name: str) -> str:
         self.claims[name] = self.leader.ok("take", id=self.mid(name))["claim"]["generation"]

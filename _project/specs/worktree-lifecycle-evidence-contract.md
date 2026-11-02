@@ -284,6 +284,49 @@ locked, detached, unregistered, or missing worktree state, may set
 `classification.state` to `verified-integrated`; every other complete
 outcome for that branch stays `uncertain`.
 
+### 7.1 Batch member branches: deletion basis without integration
+
+A batch member branch (`feat/<batch>--<member>`) is never a PR head: the
+leader merges it into the batch integration branch and only the integration
+branch's PR reaches `develop`. §7 therefore never resolves it and the record
+stays `uncertain` forever. This subsection adds a **separate deletion basis**
+for exactly those branches. It proves that deleting the branch loses no
+commit; it does **not** prove, and MUST NOT be reported as, integration
+(`verified-integrated` is unchanged and still needs §7 points 1–4).
+
+A member branch and its worktree MAY be removed by `make batch-finish` only
+when all of the following hold:
+
+1. **Merged final PR** — the todo-db batch record has lifecycle `completed`
+   and a bound final PR whose repository equals `origin`, and `gh pr view`
+   reports that PR as `MERGED`.
+2. **Recorded accepted head** — the tracker holds a receipt for the member,
+   and the local member branch tip equals that receipt's `accepted_head`. A
+   branch that moved after acceptance, or a member with no receipt, is kept.
+3. **Contained in the final PR head** — `accepted_head` is an ancestor of the
+   head GitHub recorded for the merged final PR, read from
+   `refs/pull/<N>/head` and fetched explicitly from `origin` in the same run
+   (`git merge-base --is-ancestor <accepted_head> <fetched_pull_head>`). If
+   the ref cannot be fetched the run is refused; a stale local copy is never
+   used. The PR's own recorded head is used instead of the squash-merge
+   commit because the squash commit never contains the member commits.
+4. **Worktree safety** — a worktree holding the branch must be the batch's
+   own member worktree (`benchbox.batch.role=member` with this batch id and
+   member), clean including untracked files, and not the integration
+   worktree. Any other worktree, dirty or locked, keeps the branch.
+
+Deletion MUST use an atomic expected-old-OID ref update
+(`git update-ref -d refs/heads/<branch> <accepted_head>`) so a concurrent
+move is refused rather than deleted. The remote branch is deleted only if it
+exists and its tip equals `accepted_head` (lease-guarded push of the
+deletion); a remote branch at any other commit is kept and reported.
+
+Tools applying this basis MUST default to a dry run, MUST NOT touch the
+integration branch, other sessions' worktrees, `git worktree prune` or
+`git gc`, and MUST NOT use it for any branch that is not a batch member
+branch. The rule of §7 stands: source-tip ancestry against `develop` never
+proves integration, and this basis never consults it.
+
 ## 8. Controller-provider boundary
 
 Two systems, two ownership domains, one non-negotiable boundary:

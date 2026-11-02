@@ -62,6 +62,7 @@ class FakeTracker:
         self.stale = False
         self.claims: dict[str, str] = {}
         self.item_needs: dict[str, list[str]] = {}
+        self.item_batch: dict[str, dict] = {}
 
     def register(self, arguments: dict) -> None:
         self.batch = dict(arguments)
@@ -170,7 +171,10 @@ class FakeTracker:
     def show(self, args: list[str]) -> SimpleNamespace:
         if args[0] == "show":
             needs = self.item_needs.get(args[1], [])
-            return ok({"id": args[1], "needs": {"total": len(needs), "values": needs}})
+            data = {"id": args[1], "needs": {"total": len(needs), "values": needs}}
+            if args[1] in self.item_batch:
+                data["batch"] = self.item_batch[args[1]]
+            return ok(data)
         if self.unreadable or self.batch is None:
             return SimpleNamespace(
                 returncode=2,
@@ -333,6 +337,8 @@ class World:
             dependencies=dependencies,
         )
         self.tracker.register(payload["arguments"])
+        for step in payload["after_register"]["steps"]:
+            self.tracker.item_batch[step["arguments"]["id"]] = step["arguments"]["batch"]
         self.integration = Path(payload["worktree"])
         self.payload = payload
         return self.integration

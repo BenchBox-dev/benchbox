@@ -301,18 +301,36 @@ def test_land_merges_checks_the_tree_and_prints_the_prepare_payload(world: World
 
 
 def test_a_dependent_member_is_not_landed_until_the_owner_holds_its_claim(world: World) -> None:
-    world.start()
+    world.start(dependencies={"alpha": ["zeta"]})
     world.deliver("zeta", {"src/a.py": "member\n"})
     world.land_and_prepare("zeta")
     world.deliver("alpha", {"src/b.py": "member\n"})
     before = world.head()
     with _raises("take it now, before landing"):
-        world.land("alpha", dependencies=["zeta"])
+        world.land("alpha")
     assert world.head() == before
     world.tracker.claims["alpha"] = "leader"
-    result = world.land("alpha", dependencies=["zeta"])
+    result = world.land("alpha")
     (prepare,) = result["payload"]["steps"]
     assert prepare["tool"] == "prepare" and prepare["arguments"]["implementation_dependencies"] == ["zeta"]
+
+
+def test_land_refuses_when_the_tracker_carries_no_batch_metadata_for_the_member(world: World) -> None:
+    world.start()
+    world.deliver("zeta", {"src/a.py": "member\n"})
+    del world.tracker.item_batch["zeta"]
+    before = world.head()
+    with _raises("no batch metadata for member 'zeta'"):
+        world.land("zeta")
+    assert world.head() == before
+
+
+def test_a_member_without_dependencies_lands_with_an_empty_registered_dependency_list(world: World) -> None:
+    world.start(dependencies={"alpha": ["zeta"]})
+    world.deliver("zeta", {"src/a.py": "member\n"})
+    result = world.land("zeta")
+    steps = {step["tool"]: step["arguments"] for step in result["payload"]["steps"]}
+    assert steps["prepare"]["implementation_dependencies"] == [] and "take" in steps
 
 
 def test_a_member_whose_receipt_was_invalidated_is_prepared_again_at_the_current_head(world: World) -> None:
@@ -946,7 +964,7 @@ def test_cli_prints_the_register_payload_for_start(world: World, capsys: pytest.
     [
         (
             "batch-land",
-            {"MEMBER": '$(touch pwned) `touch pwned` "; touch pwned; "', "DEPENDENCIES": "a`touch pwned`"},
+            {"MEMBER": '$(touch pwned) `touch pwned` "; touch pwned; "'},
         ),
         ("batch-advance", {"REASON": 'x"; touch pwned; echo "'}),
         ("batch-member-create", {"MEMBER": "m`touch pwned`", "WORKTREE_PATH": "$(touch pwned)"}),
