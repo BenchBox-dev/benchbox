@@ -19,6 +19,64 @@
     "docs/agent/batch-tracker-contract.md",
     "docs/agent/handoffs.md"
   ],
+  "prepared": {
+    "accepted_head": "cc5125da2ec55865371bcbd626f267c7c2b4bd91",
+    "batch_id": "batch-loop-pilot",
+    "changed_files": [
+      "AGENTS.md",
+      "_project/decisions/batch-process-improvements-base-correction-2026-09-08.md",
+      "changelog.d/README.md",
+      "changelog.d/feat-batch-loop-pilot--batch-loop-docs-and-agents-20261101.json",
+      "docs/agent/README.md",
+      "docs/agent/batch-feature-delivery.md",
+      "docs/agent/batch-tracker-contract.md",
+      "docs/agent/cloud-builder.md",
+      "docs/agent/handoffs.md",
+      "docs/agent/heavy-work.md",
+      "docs/agent/review-protocol.md",
+      "docs/internal/adr/adr-batch-integration-loop.md",
+      "docs/internal/dev-loop-worktrees.md",
+      "docs/internal/oracle-review-v2.md",
+      "docs/internal/pr-base-branch-policy.md"
+    ],
+    "integration_head": "b9d055b310144656386193cead5701d1d09e98f9",
+    "integration_seq": 1,
+    "member_id": "batch-loop-docs-and-agents-20261101",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "b9c7208cbe74aa884dd245e67f0bc8e375262d11d7e3ae20e21c9154d36a04bc",
+    "source_base": "5cfea582d2197ecc150d80c6125a65130c02f23a",
+    "source_revision": "cc5125da2ec55865371bcbd626f267c7c2b4bd91",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-batch-loop-pilot-docs",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/unit/scripts/test_inert_paths.py",
+        "tests/unit/scripts/test_agent_instruction_audit.py",
+        "tests/unit/workflows/test_stacked_pr_base_guard.py",
+        "tests/unit/docs/test_architecture_decision_surfaces.py",
+        "tests/unit/scripts/test_check_project_references.py",
+        "tests/unit/scripts/test_check_untracked_handoffs.py"
+      ],
+      "review": {
+        "outcome": "clear",
+        "trusted_sha": "5cfea582d2197ecc150d80c6125a65130c02f23a"
+      },
+      "revision": "cc5125da2ec55865371bcbd626f267c7c2b4bd91",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:53a3b48ce5c94efdbf857652",
@@ -59,6 +117,15 @@
       "generation": "8d8ce6b68a594b819df91822399a1e57",
       "op": "take",
       "op_id": "554260a2e59741268fbe821eea95ca4a",
+      "session_id": "b249fb5e3b804f6fab2e27e759c8e1fb"
+    },
+    {
+      "actor": "benchbox-batch-pilot-leader",
+      "at": "2026-11-02T06:34:48Z",
+      "client": "benchbox-batch-leader",
+      "generation": "8d8ce6b68a594b819df91822399a1e57",
+      "op": "prepare",
+      "op_id": "beec3e91940d4434a6920b46e0f12eef",
       "session_id": "b249fb5e3b804f6fab2e27e759c8e1fb"
     }
   ]

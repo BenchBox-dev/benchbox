@@ -1,20 +1,54 @@
 {
   "batches": {
     "batch-loop-pilot": {
-      "accepted_members": {},
+      "accepted_members": {
+        "batch-loop-docs-and-agents-20261101": "cc5125da2ec55865371bcbd626f267c7c2b4bd91"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "batch-loop-docs-and-agents-20261101": {
+          "accepted_head": "cc5125da2ec55865371bcbd626f267c7c2b4bd91",
+          "changed_files": [
+            "AGENTS.md",
+            "_project/decisions/batch-process-improvements-base-correction-2026-09-08.md",
+            "changelog.d/README.md",
+            "changelog.d/feat-batch-loop-pilot--batch-loop-docs-and-agents-20261101.json",
+            "docs/agent/README.md",
+            "docs/agent/batch-feature-delivery.md",
+            "docs/agent/batch-tracker-contract.md",
+            "docs/agent/cloud-builder.md",
+            "docs/agent/handoffs.md",
+            "docs/agent/heavy-work.md",
+            "docs/agent/review-protocol.md",
+            "docs/internal/adr/adr-batch-integration-loop.md",
+            "docs/internal/dev-loop-worktrees.md",
+            "docs/internal/oracle-review-v2.md",
+            "docs/internal/pr-base-branch-policy.md"
+          ],
+          "integration_head": "b9d055b310144656386193cead5701d1d09e98f9",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/batch-loop-pilot",
-      "integration_head": "5cfea582d2197ecc150d80c6125a65130c02f23a",
+      "integration_head": "b9d055b310144656386193cead5701d1d09e98f9",
       "integration_log": [
         {
           "at": "2026-11-02T06:29:18Z",
           "head": "5cfea582d2197ecc150d80c6125a65130c02f23a",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-02T06:34:47Z",
+          "head": "b9d055b310144656386193cead5701d1d09e98f9",
+          "kind": "prepare",
+          "member": "batch-loop-docs-and-agents-20261101",
+          "op_id": "beec3e91940d4434a6920b46e0f12eef",
+          "previous_head": "5cfea582d2197ecc150d80c6125a65130c02f23a",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-batch-loop-pilot",
@@ -1835,18 +1869,13 @@
       "title": "Prove the batch loop end to end in a disposable repository with an isolated tracker"
     },
     "batch-loop-docs-and-agents-20261101": {
-      "claim": {
-        "expires_at": "2026-11-03T06:34:44Z",
-        "generation": "8d8ce6b68a594b819df91822399a1e57",
-        "renewals": 0,
-        "worker": "benchbox-batch-pilot-leader"
-      },
+      "claim": null,
       "needs": [
         "batch-land-and-status-20261101",
         "pr-landing-arm-batch-evidence-20261101"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Document the integration batch loop in AGENTS.md and docs/agent, keeping it opt-in until the pilot passes"
     },
     "batch-loop-pilot-20261101": {
