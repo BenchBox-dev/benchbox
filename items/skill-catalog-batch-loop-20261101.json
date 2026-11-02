@@ -124,6 +124,15 @@
       "op": "prepare",
       "op_id": "4938c4cba2e7405e80edf6bcb1822028",
       "session_id": "b249fb5e3b804f6fab2e27e759c8e1fb"
+    },
+    {
+      "actor": "benchbox-batch-pilot-leader",
+      "at": "2026-11-02T07:17:47Z",
+      "client": "benchbox-batch-leader",
+      "generation": "b6855be1c540430fba6812fa5e1911e5",
+      "op": "take",
+      "op_id": "8387a60ebf944663a4011f344a191afb",
+      "session_id": "b249fb5e3b804f6fab2e27e759c8e1fb"
     }
   ]
 }
