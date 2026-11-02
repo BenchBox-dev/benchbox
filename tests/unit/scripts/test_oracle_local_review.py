@@ -177,6 +177,44 @@ def test_a_plain_review_passes_no_dispute_options(clones: tuple[Path, Path]) -> 
     assert bootstrap.RECORD_OUT_ENV not in env
 
 
+SHA_A = "a" * 40
+SHA_B = "b" * 40
+SHA_C = "c" * 40
+
+
+def _launched_argv(clones: tuple[Path, Path], *extra: str) -> list[str]:
+    launched: list[list[str]] = []
+    bootstrap.run(_args(*extra), lambda argv, env: launched.append(argv) or 0)
+    return launched[0]
+
+
+def test_member_mode_passes_the_trusted_ref_unchanged_and_never_falls_back_to_the_base(
+    clones: tuple[Path, Path],
+) -> None:
+    argv = _launched_argv(
+        clones, "--member", "--result-json", "r.json", "--base-ref", SHA_A, "--trusted-ref", SHA_B, "--head", SHA_C
+    )
+    assert argv[argv.index("--trusted-ref") + 1] == SHA_B
+
+    argv = _launched_argv(clones, "--member", "--result-json", "r.json", "--base-ref", SHA_A, "--head", SHA_C)
+    assert argv[argv.index("--trusted-ref") + 1] == ""
+
+
+def test_a_result_path_without_member_mode_reaches_the_review_so_the_pairing_check_refuses(
+    clones: tuple[Path, Path],
+) -> None:
+    argv = _launched_argv(clones, "--result-json", "r.json")
+
+    assert "--member" not in argv
+    assert argv[argv.index("--result-json") + 1] == "r.json"
+
+
+def test_member_mode_without_a_result_path_forwards_only_the_member_flag(clones: tuple[Path, Path]) -> None:
+    argv = _launched_argv(clones, "--member")
+
+    assert "--member" in argv and "--result-json" not in argv
+
+
 def test_the_review_refuses_without_launching_when_develop_cannot_be_fetched(
     clones: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
 ) -> None:

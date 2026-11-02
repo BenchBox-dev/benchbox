@@ -56,12 +56,12 @@
     {
       "scenario": "concurrent-writer-conflicting-integration-edit",
       "status": "pass",
-      "evidence": "tests/unit/scripts/test_batch_integration.py::test_single_integrator_enforcement, tests/integration/worktree/test_pr_process.py::test_two_writers_second_blocked_without_mutation"
+      "evidence": "tests/unit/scripts/test_batch_integration.py::test_land_refuses_a_member_that_synced_before_the_integration_head_moved, tests/integration/worktree/test_pr_process.py::test_two_writers_second_blocked_without_mutation"
     },
     {
       "scenario": "late-member-after-readiness",
       "status": "pass",
-      "evidence": "tests/unit/scripts/test_batch_integration.py::test_late_member_after_readiness_requires_revalidation"
+      "evidence": "tests/unit/scripts/test_batch_integration.py::test_land_refuses_a_second_member_while_the_first_is_merged_but_not_prepared"
     }
   ],
   "cohort": {

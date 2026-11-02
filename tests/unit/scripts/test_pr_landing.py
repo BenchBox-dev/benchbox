@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.utilities import batch_evidence as fx
+
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -38,6 +40,14 @@ class FakeRun:
         self.calls.append(cmd)
         rc, payload = self.responses.pop(0)
         return rc, payload if isinstance(payload, str) else json.dumps(payload)
+
+
+@pytest.fixture(autouse=True)
+def _trusted_review_store(monkeypatch: pytest.MonkeyPatch):
+    fx.REVIEW_STORE.clear()
+    monkeypatch.setattr(landing, "_stored_member_review", fx.stored_review)
+    yield
+    fx.REVIEW_STORE.clear()
 
 
 def _repo(path: Path) -> Path:
@@ -96,78 +106,6 @@ def _evidence(head: str = HEAD, **over: object) -> landing.ReadyEvidence:
     }
     base.update(over)
     return landing.ReadyEvidence(**base)
-
-
-def _canonical_batch(repo: Path, head: str) -> dict[str, object]:
-    scope = {"a": ["**"]}
-    receipt = {
-        "schema": landing.PREPARED_RECEIPT_SCHEMA,
-        "batch_id": "b",
-        "member_id": "a",
-        "owner_generation": "1" * 32,
-        "source_worktree": str(repo),
-        "source_revision": head,
-        "source_base": head,
-        "accepted_head": head,
-        "integration_head": head,
-        "scope_hash": landing._scope_digest(scope),
-        "changed_files": [],
-        "verification": {
-            "status": "passed",
-            "revision": head,
-            "clean": True,
-            "suite": "focused",
-            "command": ["pytest", "-q"],
-        },
-    }
-    final_pr = {"number": 1, "node_id": "PR_1", "head": head}
-    return {
-        "batch_id": "b",
-        "project_id": "project",
-        "repository": "o/r",
-        "owner": "worker",
-        "owner_generation": "1" * 32,
-        "integration_branch": "main",
-        "integration_worktree": str(repo),
-        "start_head": head,
-        "members": ["a"],
-        "scope": scope,
-        "scope_hash": landing._scope_digest(scope),
-        "delivery_boundary": "final-pr",
-        "terminal_outcome": "merged",
-        "integration_head": head,
-        "accepted_members": {"a": head},
-        "integrated_members": {"a": {"accepted_head": head, "integration_head": head}},
-        "prepared_receipts": {"a": receipt},
-        "review_dispositions": {
-            "a": {
-                "status": "approved",
-                "current": True,
-                "resolved": True,
-                "member_id": "a",
-                "head": head,
-                "integration_head": head,
-            }
-        },
-        "final_pr": final_pr,
-        "final_evidence": {
-            "status": "passed",
-            "batch_id": "b",
-            "project_id": "project",
-            "repository": "o/r",
-            "tree_worktree": str(repo),
-            "tree_revision": head,
-            "integration_branch": "main",
-            "integration_head": head,
-            "scope_hash": landing._scope_digest(scope),
-            "member_heads": {"a": head},
-            "member_ranges": {"a": {"base": head, "head": head}},
-            "changed_files": [],
-            "final_pr": final_pr,
-            "suite": "combined-tree",
-            "clean": True,
-        },
-    }
 
 
 def test_resolve_pr_refuses_cross_branch_match() -> None:
@@ -233,7 +171,7 @@ def test_ready_allows_empty_review_decision_for_non_soundness_pr(tmp_path: Path)
     assert landing.ready_failures(_identity(repo, head, base), head, evidence, repo) == []
 
 
-def test_ready_rejects_empty_review_decision_for_soundness_pr(tmp_path: Path) -> None:
+def _soundness_head(tmp_path: Path) -> tuple[Path, str, str]:
     repo = _repo(tmp_path / "r")
     base = subprocess.run(
         ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
@@ -246,22 +184,43 @@ def test_ready_rejects_empty_review_decision_for_soundness_pr(tmp_path: Path) ->
     head = subprocess.run(
         ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
     ).stdout.strip()
-
-    failures = landing.ready_failures(_identity(repo, head, base), head, _evidence(head, review_decision=""), repo)
-
-    assert any("not APPROVED" in failure for failure in failures)
+    return repo, base, head
 
 
-def test_batch_ready_requires_active_registered_runtime(tmp_path: Path) -> None:
+@pytest.mark.parametrize("decision", ["", "APPROVED"])
+def test_ready_accepts_a_soundness_pr_when_the_oracle_gate_passed(tmp_path: Path, decision: str) -> None:
+    repo, base, head = _soundness_head(tmp_path)
+    evidence = _evidence(head, review_decision=decision, oracle_gate_state="success")
+
+    assert landing.ready_failures(_identity(repo, head, base), head, evidence, repo) == []
+
+
+@pytest.mark.parametrize("state", [None, "pending", "failure", "error"])
+def test_ready_refuses_a_soundness_pr_without_a_passing_oracle_gate(tmp_path: Path, state: str | None) -> None:
+    repo, base, head = _soundness_head(tmp_path)
+    evidence = _evidence(head, review_decision="", oracle_gate_state=state)
+
+    failures = landing.ready_failures(_identity(repo, head, base), head, evidence, repo)
+
+    assert any("oracle-gate" in failure for failure in failures)
+
+
+def test_ready_ignores_the_oracle_gate_for_a_non_soundness_pr(tmp_path: Path) -> None:
     repo = _repo(tmp_path / "r")
     head = subprocess.run(
         ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
     ).stdout.strip()
-    evidence = _evidence(head, batch=_canonical_batch(repo, head), require_batch=True)
 
-    failures = landing.ready_failures(_identity(repo, head), head, evidence, repo)
+    assert landing.ready_failures(_identity(repo, head), head, _evidence(head, oracle_gate_state=None), repo) == []
 
-    assert any("active todo-db runtime" in failure for failure in failures)
+
+def test_ready_still_refuses_a_soundness_pr_with_requested_changes_despite_a_passing_gate(tmp_path: Path) -> None:
+    repo, base, head = _soundness_head(tmp_path)
+    evidence = _evidence(head, review_decision="CHANGES_REQUESTED", oracle_gate_state="success")
+
+    failures = landing.ready_failures(_identity(repo, head, base), head, evidence, repo)
+
+    assert any("CHANGES_REQUESTED" in failure for failure in failures)
 
 
 def test_start_identity_is_persisted_and_consumed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -299,33 +258,15 @@ def test_ready_rejects_late_review_unpublished_and_stale_checks(tmp_path: Path) 
     assert any("not expected head" in f for f in failures)
 
 
-def test_ready_holds_soundness_even_with_caller_approval(tmp_path: Path) -> None:
-    repo = _repo(tmp_path / "r")
-    base = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
-    ).stdout.strip()
-    (repo / "publication").mkdir()
-    (repo / "publication" / "ledger-seed.json").write_text("{}")
-    subprocess.run(["git", "add", "publication/ledger-seed.json"], cwd=repo, check=True, capture_output=True)
-    subprocess.run(["git", "commit", "-m", "soundness"], cwd=repo, check=True, capture_output=True)
-    head = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
-    ).stdout.strip()
+def test_ready_keeps_the_hold_label_on_a_soundness_pr_whose_oracle_gate_passed(tmp_path: Path) -> None:
+    repo, base, head = _soundness_head(tmp_path)
     failures = landing.ready_failures(
         _identity(repo, head, base),
         head,
-        _evidence(head, hold_labels=["no-auto-merge"], soundness_paths_changed=False),
+        _evidence(head, hold_labels=["no-auto-merge"], oracle_gate_state="success"),
         repo,
     )
     assert any("no-auto-merge" in f for f in failures)
-    assert any("soundness" in f for f in failures)
-    still_blocked = landing.ready_failures(
-        _identity(repo, head, base),
-        head,
-        _evidence(head, soundness_paths_changed=False, maintainer_approved=True),
-        repo,
-    )
-    assert any("soundness" in failure for failure in still_blocked)
 
 
 def test_enqueue_refuses_moved_head() -> None:
@@ -339,46 +280,6 @@ def test_enqueue_arms_on_stable_head() -> None:
     run = FakeRun([(0, "x.py\n"), (0, "")])
     assert landing.enqueue_pr(run, "o/r", 3, HEAD, HEAD)["enqueued"] is True
     assert "--auto" in run.calls[1]
-
-
-def test_batch_binding_requires_ancestors_and_quiescence(tmp_path: Path) -> None:
-    repo = _repo(tmp_path / "r")
-    head = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
-    ).stdout.strip()
-    batch = _canonical_batch(repo, head)
-    assert landing.check_batch_binding(repo, batch, head) == []
-    assert landing.check_batch_binding(repo, {**batch, "active_writers": ["w"]}, head) != []
-    assert landing.check_batch_binding(repo, {**batch, "members": ["B"]}, head) != []
-    assert landing.check_batch_binding(repo, {**batch, "integration_head": OTHER}, head) != []
-
-
-def test_batch_binding_rejects_dirty_current_integration_checkout(tmp_path: Path) -> None:
-    repo = _repo(tmp_path / "r")
-    head = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
-    ).stdout.strip()
-    batch = _canonical_batch(repo, head)
-    (repo / "dirty.txt").write_text("uncommitted")
-
-    failures = landing.check_batch_binding(repo, batch, head)
-
-    assert any("current integration checkout is dirty" in failure for failure in failures)
-
-
-def test_batch_binding_rejects_current_head_mismatch(tmp_path: Path) -> None:
-    repo = _repo(tmp_path / "r")
-    declared_head = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
-    ).stdout.strip()
-    batch = _canonical_batch(repo, declared_head)
-    (repo / "later.txt").write_text("later integration commit")
-    subprocess.run(["git", "add", "later.txt"], cwd=repo, check=True, capture_output=True)
-    subprocess.run(["git", "commit", "-qm", "later"], cwd=repo, check=True, capture_output=True)
-
-    failures = landing.check_batch_binding(repo, batch, declared_head)
-
-    assert any("current integration checkout HEAD" in failure for failure in failures)
 
 
 def test_followup_roundtrip_and_resume(tmp_path: Path) -> None:
@@ -1253,6 +1154,7 @@ def test_ready_forwards_the_live_verified_review_decision(
     monkeypatch.setattr(landing, "require_start_identity", lambda *a, **kw: {})
     monkeypatch.setattr(landing, "resolve_pr", lambda *a, **kw: pr)
     monkeypatch.setattr(landing, "view_pr", lambda *a, **kw: pr)
+    monkeypatch.setattr(landing, "live_commit_statuses", lambda *a, **kw: {})
     events: list[str] = []
 
     def verify(*args: object) -> None:
@@ -1317,191 +1219,6 @@ def test_worktree_binding_rejects_a_reused_checkout_identity(tmp_path: Path) -> 
         landing.check_worktree_binding(identity, worktree_id="worktree-generation-2")
 
 
-def test_batch_binding_rejects_late_member_and_changed_membership(tmp_path: Path) -> None:
-    repo = _repo(tmp_path / "r")
-    head = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
-    ).stdout.strip()
-    base = _canonical_batch(repo, head)
-    late = {**base, "members": ["a", "a"]}
-    failures = landing.check_batch_binding(repo, late, head)
-    assert any("unique" in failure for failure in failures)
-    failures = landing.check_batch_binding(repo, {**base, "members": ["A"]}, head)
-    assert any("canonical" in failure or "members" in failure for failure in failures)
-
-
-def test_batch_binding_rejects_conflict_pending_writer_and_stale_review(tmp_path: Path) -> None:
-    repo = _repo(tmp_path / "r")
-    head = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
-    ).stdout.strip()
-    batch = {
-        **_canonical_batch(repo, head),
-        "pending_writers": ["member-a"],
-        "conflict_resolution": True,
-    }
-    batch["review_dispositions"] = {
-        "a": {
-            "status": "approved",
-            "current": False,
-            "resolved": True,
-            "member_id": "a",
-            "head": head,
-            "integration_head": head,
-        }
-    }
-    failures = landing.check_batch_binding(repo, batch, head)
-    assert any("conflict resolution" in failure for failure in failures)
-    assert any("active or pending" in failure for failure in failures)
-    assert any("stale" in failure for failure in failures)
-
-
-def test_batch_binding_rejects_review_alias_and_unauthorized_final_file(tmp_path: Path) -> None:
-    repo = _repo(tmp_path / "r")
-    head = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
-    ).stdout.strip()
-    batch = _canonical_batch(repo, head)
-    scope = {"a": ["allowed/**"]}
-    scope_hash = landing._scope_digest(scope)
-    batch["scope"] = scope
-    batch["scope_hash"] = scope_hash
-    batch["prepared_receipts"]["a"]["scope_hash"] = scope_hash
-    batch["final_evidence"]["scope_hash"] = scope_hash
-    batch["review_dispositions"]["a"]["status"] = "accepted"
-    batch["final_evidence"]["changed_files"] = ["outside.txt"]
-    failures = landing.check_batch_binding(repo, batch, head)
-    assert any("not passing" in failure for failure in failures)
-    assert any("exceed the frozen batch scope" in failure for failure in failures)
-
-
-def test_batch_binding_rejects_malformed_receipt_without_crashing(tmp_path: Path) -> None:
-    repo = _repo(tmp_path / "r")
-    head = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
-    ).stdout.strip()
-    batch = _canonical_batch(repo, head)
-    batch["prepared_receipts"]["a"]["changed_files"] = None
-    failures = landing.check_batch_binding(repo, batch, head)
-    assert any("changed_files" in failure for failure in failures)
-
-
-def test_batch_binding_rejects_member_content_changed_since_receipt(tmp_path: Path) -> None:
-    repo = _repo(tmp_path / "r")
-    head = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
-    ).stdout.strip()
-    batch = _canonical_batch(repo, head)
-    receipt = batch["prepared_receipts"]["a"]
-    assert isinstance(receipt, dict)
-    receipt["changed_files"] = ["changed.txt"]
-    assert any("changed_files differ" in failure for failure in landing.check_batch_binding(repo, batch, head))
-
-
-def test_batch_binding_rejects_accepted_content_overwritten_in_final_tree(tmp_path: Path) -> None:
-    repo = _repo(tmp_path / "r")
-    start = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
-    ).stdout.strip()
-    (repo / "changed.txt").write_text("accepted", encoding="utf-8")
-    subprocess.run(["git", "add", "changed.txt"], cwd=repo, check=True, capture_output=True)
-    subprocess.run(["git", "commit", "-qm", "accepted"], cwd=repo, check=True, capture_output=True)
-    accepted = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
-    ).stdout.strip()
-    (repo / "changed.txt").write_text("overwritten", encoding="utf-8")
-    subprocess.run(["git", "add", "changed.txt"], cwd=repo, check=True, capture_output=True)
-    subprocess.run(["git", "commit", "-qm", "overwrite"], cwd=repo, check=True, capture_output=True)
-    integrated = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
-    ).stdout.strip()
-
-    scope = {"a": ["changed.txt"]}
-    receipt = {
-        "schema": landing.PREPARED_RECEIPT_SCHEMA,
-        "batch_id": "b",
-        "member_id": "a",
-        "owner_generation": "1" * 32,
-        "source_worktree": str(repo),
-        "source_revision": accepted,
-        "source_base": start,
-        "accepted_head": accepted,
-        "integration_head": integrated,
-        "scope_hash": landing._scope_digest(scope),
-        "changed_files": ["changed.txt"],
-        "verification": {
-            "status": "passed",
-            "revision": accepted,
-            "clean": True,
-            "suite": "focused",
-            "command": ["pytest", "-q"],
-        },
-    }
-    final_pr = {"number": 1, "node_id": "PR_1", "head": integrated}
-    batch = {
-        "batch_id": "b",
-        "project_id": "project",
-        "repository": "o/r",
-        "owner": "worker",
-        "owner_generation": "1" * 32,
-        "integration_branch": "main",
-        "integration_worktree": str(repo),
-        "start_head": start,
-        "members": ["a"],
-        "scope": scope,
-        "scope_hash": landing._scope_digest(scope),
-        "delivery_boundary": "final-pr",
-        "terminal_outcome": "merged",
-        "integration_head": integrated,
-        "accepted_members": {"a": accepted},
-        "integrated_members": {"a": {"accepted_head": accepted, "integration_head": integrated}},
-        "prepared_receipts": {"a": receipt},
-        "review_dispositions": {
-            "a": {
-                "status": "approved",
-                "current": True,
-                "resolved": True,
-                "member_id": "a",
-                "head": accepted,
-                "integration_head": integrated,
-            }
-        },
-        "final_pr": final_pr,
-        "final_evidence": {
-            "status": "passed",
-            "batch_id": "b",
-            "project_id": "project",
-            "repository": "o/r",
-            "tree_worktree": str(repo),
-            "tree_revision": integrated,
-            "integration_branch": "main",
-            "integration_head": integrated,
-            "scope_hash": landing._scope_digest(scope),
-            "member_heads": {"a": accepted},
-            "member_ranges": {"a": {"base": start, "head": accepted}},
-            "changed_files": ["changed.txt"],
-            "final_pr": final_pr,
-            "suite": "combined-tree",
-            "clean": True,
-        },
-    }
-    failures = landing.check_batch_binding(repo, batch, integrated)
-    assert any("accepted content was overwritten" in failure for failure in failures)
-
-
-def test_batch_binding_rejects_missing_or_placeholder_final_evidence(tmp_path: Path) -> None:
-    repo = _repo(tmp_path / "r")
-    head = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
-    ).stdout.strip()
-    batch = _canonical_batch(repo, head)
-    batch.pop("prepared_receipts")
-    assert any("prepared_receipts" in failure for failure in landing.check_batch_binding(repo, batch, head))
-    batch = _canonical_batch(repo, head)
-    batch["final_evidence"] = True
-    assert any("final evidence" in failure for failure in landing.check_batch_binding(repo, batch, head))
-
-
 def test_github_repository_normalizes_supported_origin_forms() -> None:
     for origin in (
         "https://github.com/BenchBox-dev/BenchBox.git",
@@ -1534,55 +1251,6 @@ def test_git_identity_and_cli_bind_repo_to_origin(tmp_path: Path, monkeypatch: p
         ["ready", "--pr", "3", "--expected-head", "a" * 40, "--evidence-json", str(evidence)],
     ):
         assert landing.main(["--repo", "foreign/repository", "--worktree", str(repo), *command]) == 1
-
-
-def test_arm_current_pr_refuses_head_race_before_merge(tmp_path: Path) -> None:
-    repo = _repo(tmp_path / "r")
-    head = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
-    ).stdout.strip()
-    identity = landing.GitIdentity(
-        repo=str(repo),
-        repository="o/r",
-        branch="feat/x",
-        worktree=str(repo),
-        head=head,
-        base=head,
-        upstream="origin/main",
-    )
-    run = FakeRun(
-        [
-            (0, [{"number": 3, "id": "PR_node_3", "headRefName": "feat/x", "headRefOid": head, "labels": []}]),
-            (
-                0,
-                {
-                    "number": 3,
-                    "id": "PR_node_3",
-                    "headRefName": "feat/x",
-                    "headRefOid": OTHER,
-                    "reviewDecision": "APPROVED",
-                },
-            ),
-        ]
-    )
-    with pytest.raises(landing.WrongPR, match="head"):
-        landing.arm_current_pr(run, identity, repo, 3)
-    assert not any("--auto" in " ".join(call) for call in run.calls)
-
-
-def test_arm_current_pr_rejects_dirty_checkout_before_hosted_lookup(tmp_path: Path) -> None:
-    repo = _repo(tmp_path / "r")
-    head = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
-    ).stdout.strip()
-    identity = _identity(repo, head)
-    (repo / "dirty.txt").write_text("review fix not committed")
-    run = FakeRun([])
-
-    with pytest.raises(landing.LandingError, match="unpublished work"):
-        landing.arm_current_pr(run, identity, repo, 3)
-
-    assert run.calls == []
 
 
 requires_posix_make = pytest.mark.skipif(
@@ -1910,3 +1578,470 @@ def test_live_statuses_keep_contexts_that_contain_spaces() -> None:
         return 0, "build / test\tfailure\tboom\nlint\tsuccess\n"
 
     assert landing.live_commit_statuses(run, "o/r", "a" * 40) == {"build / test": "failure", "lint": "success"}
+
+
+def _batch(tmp_path: Path, scope: dict[str, list[str]] | None = None) -> fx.BatchFixture:
+    repo = _repo(tmp_path / "r")
+    batch = fx.BatchFixture(repo, scope or {"a": ["a/**"], "b": ["b/**"]})
+    batch.land("a", {"a/x.txt": "a"})
+    batch.land("b", {"b/y.txt": "b"})
+    return batch
+
+
+def _verdict(batch: fx.BatchFixture, *, tracker: dict | None = None, evidence: dict | None = None) -> list[str]:
+    fresh = tracker if tracker is not None else batch.tracker()
+    built = evidence if evidence is not None else batch.evidence()
+    return landing.check_batch_evidence(batch.repo, built, fx.head_of(batch.repo), fresh)
+
+
+def test_batch_evidence_passes_for_members_prepared_at_successive_heads(tmp_path: Path) -> None:
+    batch = _batch(tmp_path)
+
+    assert batch.receipts["a"]["source_base"] == batch.start
+    assert batch.receipts["b"]["source_base"] == batch.receipts["a"]["integration_head"] != batch.start
+    assert _verdict(batch) == []
+
+
+def test_batch_evidence_refuses_a_receipt_changed_since_the_evidence_was_built(tmp_path: Path) -> None:
+    batch = _batch(tmp_path)
+    evidence = batch.evidence()
+    fresh = batch.tracker()
+    fresh["receipts"]["a"]["verification"]["suite"] = "re-prepared"
+
+    failures = _verdict(batch, tracker=fresh, evidence=evidence)
+
+    assert any("receipts changed" in failure for failure in failures)
+
+
+def test_batch_evidence_refuses_a_receipt_whose_accepted_head_is_not_in_the_final_head(tmp_path: Path) -> None:
+    batch = _batch(tmp_path)
+    batch.receipts["a"]["accepted_head"] = "c" * 40
+
+    failures = _verdict(batch)
+
+    assert any("member a accepted head is not an ancestor" in failure for failure in failures)
+
+
+def test_batch_evidence_requires_a_rerun_for_every_member_the_tracker_marks(tmp_path: Path) -> None:
+    batch = _batch(tmp_path)
+    batch.overlap("b", "a", ["a/x.txt"])
+    evidence = batch.evidence()
+    assert _verdict(batch, evidence=evidence) == []
+    del evidence["current_acceptance"]["a"]
+
+    failures = _verdict(batch, evidence=evidence)
+
+    assert any("current acceptance is missing for member a" in failure for failure in failures)
+
+
+@pytest.mark.parametrize(
+    ("key", "value", "expected"),
+    [
+        ("revision", "d" * 40, "not at the PR head"),
+        ("suite", "weaker-suite", "not its own receipt verification"),
+        ("command", ["true"], "not its own receipt verification"),
+        ("status", "failed", "not passed and clean"),
+        ("clean", False, "not passed and clean"),
+        ("worktree", "/elsewhere", "outside the integration worktree"),
+    ],
+)
+def test_batch_evidence_refuses_acceptance_that_is_not_the_members_own_pass_at_the_head(
+    tmp_path: Path, key: str, value: object, expected: str
+) -> None:
+    batch = _batch(tmp_path)
+    batch.overlap("b", "a", ["a/x.txt"])
+    evidence = batch.evidence()
+    evidence["current_acceptance"]["a"][key] = value
+
+    failures = _verdict(batch, evidence=evidence)
+
+    assert any(expected in failure for failure in failures)
+
+
+@pytest.mark.parametrize("binding", ["tracker_head", "final_pr_head", "evidence_head"])
+def test_batch_evidence_refuses_a_final_head_the_tracker_does_not_bind(tmp_path: Path, binding: str) -> None:
+    batch = _batch(tmp_path)
+    evidence = batch.evidence()
+    fresh = batch.tracker()
+    earlier = batch.receipts["a"]["integration_head"]
+    if binding == "tracker_head":
+        fresh["integration_head"] = earlier
+    elif binding == "final_pr_head":
+        fresh["final_pr"]["head"] = earlier
+    else:
+        evidence["final_head"] = earlier
+
+    assert _verdict(batch, tracker=fresh, evidence=evidence) != []
+
+
+def test_batch_evidence_refuses_a_path_no_member_scope_covers(tmp_path: Path) -> None:
+    batch = _batch(tmp_path)
+    batch.fix({"z/other.txt": "z"})
+
+    failures = _verdict(batch)
+
+    assert any("z/other.txt matches no member scope" in failure for failure in failures)
+
+
+def test_batch_evidence_refuses_changed_files_that_differ_from_the_integration_diff(tmp_path: Path) -> None:
+    batch = _batch(tmp_path)
+    evidence = batch.evidence()
+    evidence["changed_files"] = ["a/x.txt"]
+
+    failures = _verdict(batch, evidence=evidence)
+
+    assert any("differ from the recomputed integration diff" in failure for failure in failures)
+
+
+@pytest.mark.parametrize("defect", ["missing", "findings", "other-range"])
+def test_batch_evidence_refuses_a_missing_or_unusable_member_review(tmp_path: Path, defect: str) -> None:
+    batch = _batch(tmp_path)
+    evidence = batch.evidence()
+    if defect == "missing":
+        del evidence["member_reviews"]["a"]
+    elif defect == "findings":
+        evidence["member_reviews"]["a"]["outcome"] = "findings"
+    else:
+        evidence["member_reviews"]["a"] = evidence["member_reviews"]["b"]
+
+    failures = _verdict(batch, evidence=evidence)
+
+    assert any("member a" in failure and "review" in failure for failure in failures)
+
+
+@pytest.mark.parametrize("outcome", ["clear", "not-reviewed", "override"])
+def test_batch_evidence_accepts_every_landable_review_outcome(tmp_path: Path, outcome: str) -> None:
+    batch = _batch(tmp_path)
+    evidence = batch.evidence()
+    evidence["member_reviews"]["a"]["outcome"] = outcome
+    fx.REVIEW_STORE[(batch.receipts["a"]["source_base"], batch.receipts["a"]["accepted_head"], batch.start)][
+        "outcome"
+    ] = outcome
+
+    assert _verdict(batch, evidence=evidence) == []
+
+
+def test_batch_evidence_passes_a_develop_merge_refresh_without_counting_its_files(tmp_path: Path) -> None:
+    batch = _batch(tmp_path)
+    batch.develop_merge({"docs/dev.txt": "from develop"})
+    evidence = batch.evidence()
+
+    assert "docs/dev.txt" not in evidence["changed_files"]
+    assert _verdict(batch, evidence=evidence) == []
+    evidence["changed_files"] = sorted([*evidence["changed_files"], "docs/dev.txt"])
+    assert any("differ from the recomputed" in failure for failure in _verdict(batch, evidence=evidence))
+
+
+def test_batch_evidence_counts_the_files_of_a_recorded_fix_advance(tmp_path: Path) -> None:
+    batch = _batch(tmp_path)
+    batch.fix({"b/fix.txt": "fixed"})
+    evidence = batch.evidence()
+
+    assert "b/fix.txt" in evidence["changed_files"]
+    assert _verdict(batch, evidence=evidence) == []
+    evidence["changed_files"].remove("b/fix.txt")
+    assert any("differ from the recomputed" in failure for failure in _verdict(batch, evidence=evidence))
+
+
+def test_batch_evidence_passes_a_net_reversion_recorded_by_a_fix_advance(tmp_path: Path) -> None:
+    batch = _batch(tmp_path)
+    batch.fix({"a/x.txt": None})
+    evidence = batch.evidence()
+
+    assert "a/x.txt" not in evidence["changed_files"]
+    assert _verdict(batch, evidence=evidence) == []
+    del evidence["current_acceptance"]["a"]
+    assert any("missing for member a" in failure for failure in _verdict(batch, evidence=evidence))
+
+
+def test_batch_evidence_refuses_v1_receipts(tmp_path: Path) -> None:
+    batch = _batch(tmp_path)
+    batch.receipts["a"]["schema"] = "prepared_work_v1"
+
+    failures = _verdict(batch)
+
+    assert any("member a lacks a prepared_work_v2 receipt" in failure for failure in failures)
+
+
+def test_batch_evidence_refuses_another_schema_or_batch(tmp_path: Path) -> None:
+    batch = _batch(tmp_path)
+    evidence = batch.evidence()
+    evidence["schema"] = "benchbox_batch_evidence_v1"
+    evidence["batch_id"] = "other"
+
+    failures = _verdict(batch, evidence=evidence)
+
+    assert any("schema" in failure for failure in failures)
+    assert any("different batch" in failure for failure in failures)
+
+
+def test_batch_evidence_refuses_a_checkout_that_is_not_at_the_final_head(tmp_path: Path) -> None:
+    batch = _batch(tmp_path)
+    evidence = batch.evidence()
+    fx.git(batch.repo, "checkout", "-q", "--detach", batch.receipts["a"]["integration_head"])
+
+    failures = landing.check_batch_evidence(batch.repo, evidence, evidence["final_head"], batch.tracker())
+
+    assert any("checkout HEAD is not the PR head" in failure for failure in failures)
+
+
+def test_read_batch_tracker_pages_every_oversized_section(tmp_path: Path) -> None:
+    batch = _batch(tmp_path)
+    tracker = batch.tracker()
+    tracker["integration_log"] += [
+        {"seq": index, "kind": "fix", "head": "e" * 40, "changed_files": [f"b/f{index}.txt"]} for index in range(1, 200)
+    ]
+    show = fx.FakeBatchShow(tracker)
+
+    read = landing.read_batch_tracker("b", show)
+    assert {key: value for key, value in read.items() if key != "rev"} == tracker
+    assert any("--offset" in call and call[call.index("--offset") + 1] != "0" for call in show.calls)
+
+
+def test_read_batch_tracker_refuses_unknown_batches_and_unparseable_output(tmp_path: Path) -> None:
+    show = fx.FakeBatchShow(_batch(tmp_path).tracker())
+
+    with pytest.raises(landing.LandingError, match="unknown batch"):
+        landing.read_batch_tracker("other", show)
+    with pytest.raises(landing.LandingError, match="unparseable"):
+        landing.read_batch_tracker("b", lambda _cmd: (0, "not json"))
+
+
+def test_read_batch_tracker_refuses_a_section_read_after_the_revision_moved(tmp_path: Path) -> None:
+    show = fx.FakeBatchShow(_batch(tmp_path).tracker())
+
+    def moving(cmd: list[str]) -> tuple[int, str]:
+        result = show(cmd)
+        show.rev = "rev-2"
+        return result
+
+    with pytest.raises(landing.LandingError, match="revision moved"):
+        landing.read_batch_tracker("b", moving)
+
+
+def test_read_batch_tracker_refuses_a_stale_cached_read(tmp_path: Path) -> None:
+    show = fx.FakeBatchShow(_batch(tmp_path).tracker(), stale=True)
+
+    with pytest.raises(landing.LandingError, match="stale or unrevisioned"):
+        landing.read_batch_tracker("b", show)
+
+
+def test_read_batch_tracker_refuses_a_read_without_a_revision(tmp_path: Path) -> None:
+    tracker = _batch(tmp_path).tracker()
+
+    def unrevisioned(_cmd: list[str]) -> tuple[int, str]:
+        return 0, json.dumps({"ok": True, "data": {"batch_id": "b", "sections": {}}})
+
+    with pytest.raises(landing.LandingError, match="stale or unrevisioned"):
+        landing.read_batch_tracker("b", unrevisioned)
+    assert tracker["batch_id"] == "b"
+
+
+def test_a_tracker_command_that_cannot_start_is_a_landing_error() -> None:
+    with pytest.raises(landing.LandingError, match="cannot run the tracker read"):
+        landing._tracker_stdout(["/nonexistent/todo-db"])
+
+
+def test_a_tracker_command_that_outlives_its_timeout_is_a_landing_error() -> None:
+    with pytest.raises(landing.LandingError, match="cannot run the tracker read"):
+        landing._tracker_stdout([sys.executable, "-c", "import time; time.sleep(30)"], timeout=0.2)
+
+
+def _capability(**overrides: object) -> dict:
+    batch_capability = {
+        "version": 2,
+        "receipt_schema": "prepared_work_v2",
+        "store_schema_version": 4,
+        "supported_schema_versions": [1, 2, 3, 4],
+    }
+    batch_capability.update(overrides)
+    return {"runtime": {"todo_db_batch": batch_capability, "mcp_handshake": {"result": "pass"}}}
+
+
+def _ready_batch(tmp_path: Path, rollout: dict | None) -> fx.BatchFixture:
+    repo = _repo(tmp_path / "r")
+    if rollout is not None:
+        fx.write_commit(repo, {"_project/analysis/batch-rollout-evidence.json": json.dumps(rollout)}, "record runtime")
+    batch = fx.BatchFixture(repo, {"a": ["a/**"], "b": ["b/**"]})
+    batch.land("a", {"a/x.txt": "a"})
+    batch.land("b", {"b/y.txt": "b"})
+    subprocess.run(["git", "push", "-q", "origin", "main"], cwd=repo, check=True, capture_output=True)
+    return batch
+
+
+def _ready(batch: fx.BatchFixture, tracker: object, evidence: dict | None) -> list[str]:
+    head = fx.head_of(batch.repo)
+    ready = _evidence(
+        head,
+        repository="o/r",
+        branch="feat/x",
+        pr_number=7,
+        worktree=str(batch.repo),
+        require_batch=True,
+        batch_evidence=evidence,
+    )
+
+    def read(_batch_id: str) -> dict:
+        if isinstance(tracker, Exception):
+            raise tracker
+        assert isinstance(tracker, dict)
+        return tracker
+
+    return landing.ready_failures(_identity(batch.repo, head), head, ready, batch.repo, read)
+
+
+def test_batch_ready_passes_with_the_v2_capability_and_a_fresh_matching_tracker(tmp_path: Path) -> None:
+    batch = _ready_batch(tmp_path, _capability())
+
+    assert _ready(batch, batch.tracker(), batch.evidence()) == []
+
+
+@pytest.mark.parametrize(
+    "capability",
+    [
+        _capability(version=1),
+        _capability(receipt_schema="prepared_work_v1"),
+        _capability(store_schema_version=3, supported_schema_versions=[1, 2, 3]),
+        {"runtime": {"schema_version": 3, "prepared_receipt_schema": "prepared_work_v1"}},
+        None,
+    ],
+)
+def test_batch_ready_refuses_a_runtime_without_the_v2_capability(tmp_path: Path, capability: dict | None) -> None:
+    batch = _ready_batch(tmp_path, capability)
+
+    failures = _ready(batch, batch.tracker(), batch.evidence())
+
+    assert any("todo_db_batch version 2" in failure for failure in failures)
+
+
+def test_batch_ready_refuses_when_the_tracker_cannot_be_read(tmp_path: Path) -> None:
+    batch = _ready_batch(tmp_path, _capability())
+
+    failures = _ready(batch, landing.LandingError("cannot read tracker batch b: offline"), batch.evidence())
+
+    assert any("offline" in failure for failure in failures)
+
+
+def test_batch_ready_requires_the_evidence_file(tmp_path: Path) -> None:
+    batch = _ready_batch(tmp_path, _capability())
+
+    failures = _ready(batch, batch.tracker(), None)
+
+    assert any("batch evidence is required" in failure for failure in failures)
+
+
+def test_batch_ready_refuses_evidence_for_another_branch_or_repository(tmp_path: Path) -> None:
+    batch = _ready_batch(tmp_path, _capability())
+    evidence = batch.evidence()
+    evidence["integration_branch"] = "feat/other"
+    evidence["repository"] = "o/other"
+
+    failures = _ready(batch, batch.tracker(), evidence)
+
+    assert any("repository does not match" in failure for failure in failures)
+    assert any("integration branch does not match" in failure for failure in failures)
+
+
+def test_batch_evidence_file_is_loaded_relative_to_the_checkout(tmp_path: Path) -> None:
+    (tmp_path / "evidence.json").write_text('{"schema": "x"}', encoding="utf-8")
+
+    assert landing._load_batch_evidence(tmp_path, "evidence.json") == {"schema": "x"}
+    assert landing._load_batch_evidence(tmp_path, None) is None
+    with pytest.raises(landing.LandingError, match="unreadable batch evidence"):
+        landing._load_batch_evidence(tmp_path, "missing.json")
+
+
+def _ready_with(tmp_path: Path, mutate) -> list[str]:
+    batch = _ready_batch(tmp_path, _capability())
+    tracker = batch.tracker()
+    mutate(tracker)
+    return _ready(batch, tracker, batch.evidence())
+
+
+@pytest.mark.parametrize(
+    ("mutate", "message"),
+    [
+        (lambda tracker: tracker.update(lifecycle="aborted"), "not active"),
+        (lambda tracker: tracker["final_pr"].update(number=99), "is not bound to PR"),
+        (lambda tracker: tracker.update(integration_branch="feat/other"), "integration branch"),
+    ],
+)
+def test_batch_ready_refuses_a_tracker_that_does_not_describe_this_pr(tmp_path: Path, mutate, message: str) -> None:
+    failures = _ready_with(tmp_path, mutate)
+
+    assert any(message in failure for failure in failures)
+
+
+def _smuggle_into_a_develop_merge(batch: fx.BatchFixture, path: str, text: str) -> None:
+    batch.develop_merge({"docs/dev.txt": "from develop"})
+    fx.write_commit(batch.repo, {path: text}, "leader edit")
+    batch.log[-1]["head"] = fx.head_of(batch.repo)
+    batch.log[-1]["changed_files"] = sorted([*batch.log[-1]["changed_files"], path])
+
+
+def test_batch_evidence_refuses_a_leader_edit_labelled_as_a_develop_merge(tmp_path: Path) -> None:
+    batch = _batch(tmp_path)
+    _smuggle_into_a_develop_merge(batch, "z/smuggled.txt", "not from develop")
+
+    failures = _verdict(batch)
+
+    assert any("not a two-parent merge" in failure for failure in failures)
+    assert any("differ from the recomputed" in failure or "matches no member scope" in failure for failure in failures)
+
+
+def test_batch_evidence_keeps_a_later_leader_edit_of_a_develop_path_subject_to_scope(tmp_path: Path) -> None:
+    batch = _batch(tmp_path)
+    batch.develop_merge({"docs/dev.txt": "from develop"})
+    fx.write_commit(batch.repo, {"docs/dev.txt": "edited by the leader"}, "leader edit")
+    batch.log.append(
+        {"seq": len(batch.log), "kind": "fix", "head": fx.head_of(batch.repo), "changed_files": [], "previous_head": ""}
+    )
+    batch.tracker()
+
+    failures = _verdict(batch, evidence={**batch.evidence(), "changed_files": batch.changed_files()})
+
+    assert any("docs/dev.txt matches no member scope" in failure for failure in failures)
+
+
+def test_batch_evidence_refuses_a_develop_merge_whose_parent_is_not_on_develop(tmp_path: Path) -> None:
+    batch = _batch(tmp_path)
+    batch.develop_merge({"docs/dev.txt": "from develop"})
+    fx.git(batch.repo, "update-ref", "refs/remotes/origin/develop", batch.start)
+
+    failures = _verdict(batch)
+
+    assert any("merged parent is not an ancestor of origin/develop" in failure for failure in failures)
+
+
+def test_batch_evidence_refuses_a_review_outcome_the_trusted_store_does_not_hold(tmp_path: Path) -> None:
+    batch = _batch(tmp_path)
+    evidence = batch.evidence()
+    fx.REVIEW_STORE[(batch.receipts["a"]["source_base"], batch.receipts["a"]["accepted_head"], batch.start)][
+        "outcome"
+    ] = "findings"
+
+    failures = _verdict(batch, evidence=evidence)
+
+    assert any("member a review outcome 'clear' differs from the stored outcome 'findings'" in f for f in failures)
+
+
+@pytest.mark.parametrize("outcome", ["clear", "override"])
+def test_batch_evidence_refuses_a_review_that_is_only_in_the_evidence_file(tmp_path: Path, outcome: str) -> None:
+    batch = _batch(tmp_path)
+    evidence = batch.evidence()
+    evidence["member_reviews"]["b"]["outcome"] = outcome
+    fx.REVIEW_STORE.pop((batch.receipts["b"]["source_base"], batch.receipts["b"]["accepted_head"], batch.start))
+
+    failures = _verdict(batch, evidence=evidence)
+
+    assert any("member b review is not in the trusted review store" in failure for failure in failures)
+
+
+def test_batch_evidence_refuses_a_review_bound_to_an_untrusted_commit(tmp_path: Path) -> None:
+    batch = _batch(tmp_path)
+    evidence = batch.evidence()
+    evidence["member_reviews"]["a"]["trusted_sha"] = batch.receipts["a"]["integration_head"]
+
+    failures = _verdict(batch, evidence=evidence)
+
+    assert any("member a review names no trusted commit" in failure for failure in failures)

@@ -22,6 +22,7 @@ EXPECTED_INCLUDE_ORDER = [
     "make/documentation.mk",
     "make/worktrees.mk",
     "make/worktree-maintenance.mk",
+    "make/batch.mk",
     "make/help.mk",
 ]
 HISTORICAL_INCLUDE_ORDER = [

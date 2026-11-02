@@ -363,8 +363,9 @@ class FakeGitHub:
                 failure.remaining -= 1
                 return failure.status, {"message": "Server Error"}, {}
         prefix = f"/repos/{self.slug}"
-        table = self._top_routes() if not request.path.startswith(prefix) else self._repo_routes()
-        rest = request.path.removeprefix(prefix)
+        in_repo = request.path.lower().startswith(prefix.lower())
+        table = self._repo_routes() if in_repo else self._top_routes()
+        rest = request.path[len(prefix) :] if in_repo else request.path
         for method, pattern, handler in table:
             match = re.fullmatch(pattern, rest)
             if match is not None and method in (request.method, "*"):
@@ -652,6 +653,11 @@ class FakeGitHub:
             return {"data": {"node": None if review is None else self._edit_state(review, review["node_id"])}}
         if query.lstrip().startswith("mutation"):
             return self.mutation(query, variables)
+        if "__type(" in query:
+            aliases = re.findall(r"(\w+):\s*__type\(", query)
+            return {"data": {alias: {"fields": []} for alias in aliases}}
+        if "pullRequests(" in query:
+            return self._pull_requests(variables)
         number = int(variables.get("number") or variables.get("pr_number") or 0)
         pull = self.pulls.get(number)
         if pull is None:
@@ -690,6 +696,21 @@ class FakeGitHub:
             }
             return {"data": {"repository": {"pullRequest": {"reviewThreads": connection}}}}
         return {"data": {"repository": {"pullRequest": self.graphql_pull(pull)}}}
+
+    def _pull_requests(self, variables: dict[str, Any]) -> dict[str, Any]:
+        states = {str(state).lower() for state in variables.get("state") or ["OPEN"]}
+        nodes = []
+        for number, pull in self.pulls.items():
+            if pull["state"] not in states:
+                continue
+            if variables.get("baseBranch") and pull["base"]["ref"] != variables["baseBranch"]:
+                continue
+            if variables.get("headBranch") and pull["head"]["ref"] != variables["headBranch"]:
+                continue
+            self.refresh(number)
+            nodes.append(self.graphql_pull(pull))
+        connection = {"totalCount": len(nodes), "nodes": nodes, "pageInfo": {"hasNextPage": False, "endCursor": None}}
+        return {"data": {"repository": {"pullRequests": connection}}}
 
     def _comment_page(self, thread: dict[str, Any], start: int, size: int) -> dict[str, Any]:
         end = start + size
@@ -740,11 +761,12 @@ class FakeGitHub:
 
     def mutation(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
         if "enablePullRequestAutoMerge" in query:
-            pull = next(item for item in self.pulls.values() if item["node_id"] == variables.get("prID"))
+            payload = variables["input"]
+            pull = next(item for item in self.pulls.values() if item["node_id"] == payload["pullRequestId"])
             record = {
                 "pr": pull["number"],
-                "head": variables.get("expectedHeadOid"),
-                "method": variables.get("mergeMethod"),
+                "head": payload.get("expectedHeadOid"),
+                "method": payload.get("mergeMethod"),
             }
             self.auto_merges.append(record)
             pull["auto_merge"] = {"enabledAt": now_text(), "mergeMethod": record["method"]}

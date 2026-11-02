@@ -72,6 +72,14 @@ ERROR_LIMIT = 600
 EXIT_PROCEED = 0
 EXIT_REFUSED = 1
 EXIT_UNAVAILABLE = 2
+MEMBER_SCHEMA = "benchbox_member_review_v1"
+MEMBER_DIR = "member"
+MEMBER_CLEAR = "clear"
+MEMBER_FINDINGS = "findings"
+MEMBER_NOT_REVIEWED = "not-reviewed"
+MEMBER_OVERRIDE = "override"
+FULL_SHA = re.compile(r"[0-9a-f]{40}(?:[0-9a-f]{24})?")
+DEFAULT_POLICY = ".github/oracle-reviewers.yml"
 ADVISORY = "Local oracle review (advisory; it may differ from the CI oracle and posts nothing to GitHub)"
 WITHHELD_FROM_PHASES = frozenset(
     {*credentials.NAMES, "TS_AUTHKEY", "GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", *HOST_TOKEN_FILES}
@@ -590,6 +598,7 @@ class Outcome:
     summary: str
     findings: tuple[dict[str, Any], ...]
     record: dict[str, Any] | None = None
+    skipped: str = ""
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -1073,7 +1082,7 @@ def _planned(run: Run, previous: Mapping[str, Any] | None) -> tuple[dict[str, An
         known = _prior_outcome(run, plan) if decision != cli.SUCCESS else None
         if known is None:
             run.reporter.say(f"{ADVISORY}: no review needed ({plan['decision_reason']}).")
-            return plan, Outcome(False, "SHIP", "", "", ())
+            return plan, Outcome(False, "SHIP", "", "", (), skipped=str(plan["decision_reason"]))
         run.reporter.say(f"{ADVISORY}: the recorded review stands ({plan['decision_reason']}).")
         return plan, known
     raise Unavailable(f"the oracle holds this change ({decision}): {plan['decision_reason']}")
@@ -1136,14 +1145,17 @@ def _run_review(
     previous: Mapping[str, Any] | None,
     rebuttals: str,
     reporter: Reporter,
+    member: bool = False,
 ) -> Outcome:
     root = Path.cwd()
     trusted = Trusted.read(root, args.trusted_ref or args.base_ref, args.policy)
     repository = _repository(root)
     key = classifier_key()
     reporter.hide(key, *(_held(name) for name in ("TS_AUTHKEY", *GITHUB_ACCESS_ENV)), *host_token_values().values())
-    with _github_access():
-        pr = open_pull(repository, _current_branch(root))
+    pr = None
+    if not member:
+        with _github_access():
+            pr = open_pull(repository, _current_branch(root))
     work = Path(tempfile.mkdtemp(prefix="oracle-local-"))
     try:
         policy, soundness, inert = trusted.write(work / "trusted")
@@ -1168,19 +1180,26 @@ def _run_review(
         shutil.rmtree(work, ignore_errors=True)
 
 
-def _review(args: argparse.Namespace, reporter: Reporter) -> int:
+def _outcome(
+    args: argparse.Namespace, head: str, reporter: Reporter, member: bool
+) -> tuple[Outcome, Mapping[str, Any] | None]:
     root = Path.cwd()
-    head = _git(root, "rev-parse", args.head).strip()
     rebuttals = str(Path(args.rebuttals).resolve()) if args.rebuttals else ""
     digest = _patch_digest(root, args.base_ref, head)
     state = state_dir()
     with exclusive(findings.record_path(state, digest).with_suffix(".lock"), reporter, _holder(root)):
         previous = findings.load(state, digest)
         _checked_inputs(rebuttals, args.adjudicate, previous, reporter)
-        outcome = _run_review(args, head, previous, rebuttals, reporter)
+        outcome = _run_review(args, head, previous, rebuttals, reporter, member)
         if outcome.record is not None:
             findings.store(state, outcome.record, reporter.secrets)
-    record = outcome.record or previous
+    return outcome, outcome.record or previous
+
+
+def _review(args: argparse.Namespace, reporter: Reporter) -> int:
+    root = Path.cwd()
+    head = _git(root, "rev-parse", args.head).strip()
+    outcome, record = _outcome(args, head, reporter, False)
     _show(outcome, reporter)
     code = _decide(outcome, reporter)
     _escalated(record, outcome, reporter)
@@ -1189,13 +1208,112 @@ def _review(args: argparse.Namespace, reporter: Reporter) -> int:
     return code
 
 
+def _commit_sha(root: Path, label: str, value: str) -> str:
+    if not FULL_SHA.fullmatch(value):
+        raise Refused(f"--{label} must be a full commit SHA in member mode, not {value!r}")
+    resolved = _git(root, "rev-parse", "--verify", "--quiet", f"{value}^{{commit}}").strip()
+    if resolved != value:
+        raise Refused(f"--{label} {value} is not a commit in this repository")
+    return resolved
+
+
+def _member_key(base: str, head: str, trusted_sha: str, trusted: Trusted) -> str:
+    parts = (MEMBER_SCHEMA, base, head, trusted_sha, trusted.digest())
+    return hashlib.sha256("\0".join(parts).encode("utf-8")).hexdigest()
+
+
+def _member_path(directory: Path, key: str) -> Path:
+    return directory / MEMBER_DIR / f"{key}.json"
+
+
+def _member_record(root: Path, base: str, head: str, trusted_sha: str, outcome: str, reason: str) -> dict[str, Any]:
+    return {
+        "schema": MEMBER_SCHEMA,
+        "outcome": outcome,
+        "reason": reason,
+        "base_sha": base,
+        "head_sha": head,
+        "head_tree": _git(root, "rev-parse", f"{head}^{{tree}}").strip(),
+        "patch_digest": _patch_digest(root, base, head),
+        "trusted_sha": trusted_sha,
+    }
+
+
+def _write_json_atomic(path: Path, record: Mapping[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    scratch = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    scratch.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    os.replace(scratch, path)
+
+
+def _member_outcome(outcome: Outcome, adjudicate: str) -> tuple[str, str]:
+    if outcome.skipped:
+        return MEMBER_NOT_REVIEWED, outcome.skipped
+    if outcome.blocked:
+        blocking = sum(1 for item in outcome.findings if item["severity"] in BLOCKING_SEVERITIES)
+        return MEMBER_FINDINGS, f"decided {outcome.label} with {blocking} Critical or High finding(s)"
+    if adjudicate:
+        return MEMBER_OVERRIDE, adjudicate
+    return MEMBER_CLEAR, f"decided {outcome.label} with no Critical or High findings"
+
+
+def member_review_result(root: Path, base_sha: str, head_sha: str, trusted_sha: str) -> dict[str, Any] | None:
+    try:
+        for label, value in (("base", base_sha), ("head", head_sha), ("trusted", trusted_sha)):
+            _commit_sha(root, label, value)
+        trusted = Trusted.read(root, trusted_sha, DEFAULT_POLICY)
+        data = json.loads(
+            _member_path(state_dir(), _member_key(base_sha, head_sha, trusted_sha, trusted)).read_text("utf-8")
+        )
+        expected = _member_record(root, base_sha, head_sha, trusted_sha, data["outcome"], data["reason"])
+    except (Refused, Unavailable, OSError, ValueError, KeyError, TypeError):
+        return None
+    ok = data == expected and data["outcome"] in (MEMBER_CLEAR, MEMBER_FINDINGS, MEMBER_NOT_REVIEWED, MEMBER_OVERRIDE)
+    return data if ok else None
+
+
+def _member_review(args: argparse.Namespace, reporter: Reporter) -> int:
+    root = Path.cwd()
+    result_path = Path(args.result_json)
+    result_path.unlink(missing_ok=True)
+    base = _commit_sha(root, "base-ref", args.base_ref)
+    trusted_sha = _commit_sha(root, "trusted-ref", args.trusted_ref)
+    head = _commit_sha(root, "head", args.head)
+    if _git(root, "merge-base", base, head).strip() != base:
+        raise Refused(f"--base-ref {base} is not an ancestor of --head {head}; merge the base into the member first")
+    outcome, record = _outcome(args, head, reporter, True)
+    kind, reason = _member_outcome(outcome, args.adjudicate)
+    if outcome.skipped:
+        reporter.say(f"{ADVISORY}: not reviewed ({outcome.skipped}).")
+    else:
+        _show(outcome, reporter)
+    _escalated(record, outcome, reporter)
+    result = _member_record(root, base, head, trusted_sha, kind, reason)
+    trusted = Trusted.read(root, trusted_sha, args.policy)
+    _write_json_atomic(_member_path(state_dir(), _member_key(base, head, trusted_sha, trusted)), result)
+    _write_json_atomic(result_path, result)
+    if kind == MEMBER_FINDINGS:
+        reporter.say(
+            "Member review found Critical or High findings. Fix them, or dispute a finding with a keyed rebuttal "
+            "(--rebuttals <JSON object of finding id to a rebuttal with a line that starts 'Dispute:'>).",
+            error=True,
+        )
+        return EXIT_REFUSED
+    return EXIT_PROCEED
+
+
 def command_review(args: argparse.Namespace) -> int:
     reporter = Reporter()
+    member = getattr(args, "member", False)
+    if bool(member) != bool(getattr(args, "result_json", "")):
+        reporter.say("--member and --result-json must be given together.", error=True)
+        return EXIT_REFUSED
+    subject = "the member review" if member else "to open the PR"
     try:
-        return _review(args, reporter)
+        return _member_review(args, reporter) if member else _review(args, reporter)
     except Refused as exc:
-        reporter.say(f"Refusing to open the PR: {exc}", error=True)
+        reporter.say(f"Refusing {subject}: {exc}", error=True)
         return EXIT_REFUSED
     except Unavailable as exc:
-        reporter.say(f"Refusing to open the PR: the local oracle review is unavailable: {exc}", error=True)
+        reporter.say(f"Refusing {subject}: the local oracle review is unavailable: {exc}", error=True)
         return EXIT_UNAVAILABLE

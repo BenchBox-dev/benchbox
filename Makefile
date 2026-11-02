@@ -1095,13 +1095,14 @@ pr-preflight:
 	@set -eu; \
 	sh scripts/check_primary_clone_clean.sh report; \
 	$(MAKE) -s changelog-check; \
-	git fetch origin develop --quiet; \
+	PREFLIGHT_BASE="$(or $(BASE),origin/develop)"; \
+	if [ -z "$(BASE)" ]; then git fetch origin develop --quiet; fi; \
 	PY_LIST=$$(mktemp); \
 	TEST_LIST=$$(mktemp); \
 	LINUX_LIST=$$(mktemp); \
 	trap 'rm -f "$$PY_LIST" "$$TEST_LIST" "$$LINUX_LIST"' EXIT; \
-	uv run -- python _project/scripts/preflight_targets.py python --base-ref origin/develop > "$$PY_LIST"; \
-	uv run -- python _project/scripts/preflight_targets.py tests --base-ref origin/develop > "$$TEST_LIST"; \
+	uv run -- python _project/scripts/preflight_targets.py python --base-ref "$$PREFLIGHT_BASE" > "$$PY_LIST"; \
+	uv run -- python _project/scripts/preflight_targets.py tests --base-ref "$$PREFLIGHT_BASE" > "$$TEST_LIST"; \
 	if [ -s "$$PY_LIST" ]; then \
 		echo "==> ruff (changed Python files)"; \
 		uv run -- ruff check --force-exclude $$(cat "$$PY_LIST"); \
@@ -1118,7 +1119,7 @@ pr-preflight:
 	env $$(env | sed -n 's/^\(GIT_[A-Za-z0-9_]*\)=.*/-u \1/p') uv run -- python -m pytest -q -n 0 --tb=short --ff $$(cat "$$TEST_LIST") || STATUS=$$?; \
 	if [ "$$STATUS" -eq 5 ]; then echo "Mapped tests are all deselected by the default markers."; STATUS=0; fi; \
 	if [ "$$STATUS" -eq 0 ]; then \
-		uv run -- python _project/scripts/preflight_targets.py linux --base-ref origin/develop > "$$LINUX_LIST"; \
+		uv run -- python _project/scripts/preflight_targets.py linux --base-ref "$$PREFLIGHT_BASE" > "$$LINUX_LIST"; \
 		if [ -s "$$LINUX_LIST" ]; then \
 			echo "==> Linux run (change touches platform-branching code or platform skips)"; \
 			bash scripts/linux_preflight_pytest.sh "$$LINUX_LIST" || STATUS=$$?; \
@@ -1228,6 +1229,11 @@ pr-open: override ADJUDICATE := $(value ADJUDICATE)
 pr-open: export PR_OPEN_ADJUDICATE := $(ADJUDICATE)
 pr-open:
 	@set -eu; \
+	ROLE=$$(git config --worktree --get benchbox.batch.role 2>/dev/null || true); \
+	if [ "$$ROLE" = member ]; then \
+		echo "Refusing: this is a batch member worktree. Members never open pull requests; the leader lands the member with batch-land and opens the final PR." >&2; \
+		exit 1; \
+	fi; \
 	$(MAKE) -s agent-write-preflight; \
 	CURRENT=$$(git branch --show-current); \
 	case "$$CURRENT" in \
@@ -1437,12 +1443,18 @@ shrink-rollup:
 
 .PHONY: pr-fanout
 pr-fanout:
-	@MAIN_CLONE=$$(dirname "$$(realpath "$$(git rev-parse --git-common-dir)")"); \
+	@ROLE=$$(git config --worktree --get benchbox.batch.role 2>/dev/null || true); \
+	if [ "$$ROLE" = member ]; then \
+		echo "Refusing: this is a batch member worktree. Members never open pull requests; the leader lands the member with batch-land and opens the final PR." >&2; \
+		exit 1; \
+	fi; \
+	MAIN_CLONE=$$(dirname "$$(realpath "$$(git rev-parse --git-common-dir)")"); \
 	TMP=$$(mktemp); \
 	LOGDIR=$$(mktemp -d); \
 	trap 'rm -f "$$TMP"; rm -rf "$$LOGDIR"' EXIT; \
 	git worktree list --porcelain | sed -n 's/^worktree //p' | while IFS= read -r wt; do \
 		[ "$$(realpath "$$wt")" = "$$MAIN_CLONE" ] && { echo "(skip $$wt: main clone)"; continue; }; \
+		[ "$$(git -C "$$wt" config --worktree --get benchbox.batch.role 2>/dev/null || true)" = member ] && { echo "(skip $$wt: batch member)"; continue; }; \
 		BR=$$(git -C "$$wt" branch --show-current 2>/dev/null); \
 		case "$$BR" in develop|main|release|"") echo "(skip $$wt: branch=$$BR)"; continue ;; esac; \
 		IDX=$$(($${IDX:-0} + 1)); \
@@ -1578,6 +1590,8 @@ ci-usage-report:
 include $(BENCHBOX_MAKEFILE_ROOT)make/worktrees.mk
 
 include $(BENCHBOX_MAKEFILE_ROOT)make/worktree-maintenance.mk
+
+include $(BENCHBOX_MAKEFILE_ROOT)make/batch.mk
 
 .PHONY: branch-prune-merged
 branch-prune-merged:
