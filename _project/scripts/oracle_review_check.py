@@ -237,14 +237,14 @@ def decide(
     promotion_refusals: Iterable[str] = (),
     is_promotion: bool = False,
 ) -> tuple[int, str]:
-    if not paths(files):
-        return PASS, "oracle-review: only exempt paths changed"
     refused = list(bump_refusals)
     if refused:
         return WAITING, f"oracle-review: omp pin bump refused: {'; '.join(refused)}"
     promo_refused = list(promotion_refusals)
     if promo_refused:
         return WAITING, f"oracle-review: theseus promotion refused: {'; '.join(promo_refused)}"
+    if not is_promotion and not paths(files):
+        return PASS, "oracle-review: only exempt paths changed"
     base_time = _parse_time(base_date) if base_date else None
     verdicts = _verdict_statuses(statuses, base_time)
     latest = verdicts[-1] if verdicts else None
@@ -545,6 +545,12 @@ def fetch_promotion_refusals(
     oracle_login: str = ORACLE_LOGIN,
     expected_package: str = "theseus-reviewer",
     expected_repository: str = "BenchBox-dev/theseus",
+    allowed_artifact_hosts: tuple[str, ...] = (
+        "github.com",
+        "objects.githubusercontent.com",
+        "release-assets.githubusercontent.com",
+        "files.pythonhosted.org",
+    ),
     bootstrap_baseline_commit: str | None = None,
     bootstrap_path_map: dict[str, str] | None = None,
     bootstrap_reviewers: tuple[str, ...] = ("joeharris76",),
@@ -589,6 +595,7 @@ def fetch_promotion_refusals(
         oracle_login=oracle_login,
         expected_package=expected_package,
         expected_repository=expected_repository,
+        allowed_artifact_hosts=allowed_artifact_hosts,
         bootstrap_baseline_commit=bootstrap_baseline_commit,
         bootstrap_path_map=bootstrap_path_map,
         bootstrap_reviewers=bootstrap_reviewers,

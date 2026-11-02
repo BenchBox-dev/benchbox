@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import base64
+import hashlib
+import io
 import json
-from pathlib import Path
+import zipfile
 from typing import Any
 
 import pytest
+import yaml
 
 from _project.scripts.oracle_reviewers import promotion, protocol
 
@@ -15,14 +19,56 @@ pytestmark = [pytest.mark.integration, pytest.mark.medium]
 
 OLD_COMMIT = "1" * 40
 NEW_COMMIT = "2" * 40
-WORKFLOW_SHA = "3" * 40
-OLD_ART = "4" * 64
-NEW_ART = "5" * 64
 
 
-def _register_tarball(harness: Harness, repo_slug: str, commit: str, files: dict[str, bytes]) -> str:
-    harness.github.add_tarball(repo_slug, commit, files)
-    return promotion.tree_sha256(files)
+def _build_wheel(package: str, version: str, source_tree: dict[str, bytes]) -> tuple[bytes, str]:
+    norm_pkg = package.replace("-", "_")
+    dist_info = f"{norm_pkg}-{version}.dist-info"
+    pkg_files = {
+        path.removeprefix("src/"): content
+        for path, content in source_tree.items()
+        if path.startswith(f"src/{norm_pkg}/")
+    }
+    entries: dict[str, bytes] = {
+        **pkg_files,
+        f"{dist_info}/METADATA": f"Metadata-Version: 2.1\nName: {package}\nVersion: {version}\n".encode(),
+        f"{dist_info}/WHEEL": b"Wheel-Version: 1.0\nGenerator: test\nRoot-Is-Purelib: true\nTag: py3-none-any\n",
+    }
+    record_lines: list[str] = []
+    for name, content in sorted(entries.items()):
+        b64 = base64.urlsafe_b64encode(hashlib.sha256(content).digest()).decode("ascii").rstrip("=")
+        record_lines.append(f"{name},sha256={b64},{len(content)}")
+    record_path = f"{dist_info}/RECORD"
+    record_lines.append(f"{record_path},,")
+    entries[record_path] = ("\n".join(record_lines) + "\n").encode("utf-8")
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for name, content in sorted(entries.items()):
+            zf.writestr(name, content)
+    raw = buf.getvalue()
+    return raw, hashlib.sha256(raw).hexdigest()
+
+
+def _register_release(
+    harness: Harness, version: str, commit: str, files: dict[str, bytes]
+) -> tuple[str, str, list[str], str, list[dict[str, Any]]]:
+    harness.github.add_tarball("BenchBox-dev/theseus", commit, files)
+    wheel_bytes, wheel_sha = _build_wheel("theseus-reviewer", version, files)
+    urls = [
+        f"https://github.com/BenchBox-dev/theseus/releases/download/v{version}/theseus_reviewer-{version}-py3-none-any.whl",
+        f"https://files.pythonhosted.org/packages/theseus/theseus_reviewer-{version}-py3-none-any.whl",
+    ]
+    for url in urls:
+        harness.github.add_https_asset(url, wheel_bytes)
+    dep_wheel, dep_sha = _build_wheel(
+        "pyyaml",
+        "6.0.3",
+        {"src/pyyaml/__init__.py": b"VERSION = '6.0.3'\n"},
+    )
+    dep_url = "https://files.pythonhosted.org/packages/pyyaml/pyyaml-6.0.3-py3-none-any.whl"
+    harness.github.add_https_asset(dep_url, dep_wheel)
+    deps = [{"name": "pyyaml", "version": "6.0.3", "sha256": dep_sha, "urls": [dep_url]}]
+    return promotion.tree_sha256(files), wheel_sha, urls, dep_sha, deps
 
 
 def _lock_json(
@@ -31,6 +77,8 @@ def _lock_json(
     source_commit: str,
     source_sha256: str,
     artifact_sha256: str,
+    artifact_urls: list[str],
+    dependencies: list[dict[str, Any]],
     delta_sha256: str,
     bootstrap: dict[str, Any] | None = None,
 ) -> str:
@@ -44,27 +92,19 @@ def _lock_json(
         "delta_sha256": delta_sha256,
         "artifact": {
             "sha256": artifact_sha256,
-            "urls": [
-                f"https://github.com/BenchBox-dev/theseus/releases/download/v{version}/theseus_reviewer-{version}-py3-none-any.whl",
-                f"https://mirror.example/theseus/theseus_reviewer-{version}-py3-none-any.whl",
-            ],
+            "urls": artifact_urls,
         },
-        "dependencies": [
-            {
-                "name": "pyyaml",
-                "version": "6.0.3",
-                "sha256": "6" * 64,
-                "urls": ["https://files.pythonhosted.org/packages/pyyaml-6.0.3.whl"],
-            }
-        ],
-        "workflow_sha": WORKFLOW_SHA,
+        "dependencies": dependencies,
+        "workflow_sha": source_commit,
     }
     if bootstrap is not None:
         payload["bootstrap"] = bootstrap
     return json.dumps(payload, indent=2) + "\n"
 
 
-def _large_upstream_trees(harness: Harness) -> tuple[dict[str, bytes], dict[str, bytes], str, str, str]:
+def test_one_line_lock_bump_verifies_wheel_sources_requires_every_upstream_read_and_blocks_standin(
+    harness: Harness,
+) -> None:
     old_files = {
         "src/theseus_reviewer/engine.py": "".join(f"LINE_{idx} = {idx}\n" for idx in range(60)).encode("utf-8"),
         "src/theseus_reviewer/gate.py": "".join(f"GATE_{idx} = True\n" for idx in range(40)).encode("utf-8"),
@@ -73,21 +113,12 @@ def _large_upstream_trees(harness: Harness) -> tuple[dict[str, bytes], dict[str,
     new_files = {
         "src/theseus_reviewer/engine.py": "".join(f"LINE_{idx} = {idx + 100}\n" for idx in range(90)).encode("utf-8"),
         "src/theseus_reviewer/gate.py": "".join(f"GATE_{idx} = False\n" for idx in range(70)).encode("utf-8"),
-        "src/theseus_reviewer/ verifier.py".replace(" ", ""): "".join(
-            f"VERIFY_{idx} = {idx}\n" for idx in range(50)
-        ).encode("utf-8"),
+        "src/theseus_reviewer/verifier.py": "".join(f"VERIFY_{idx} = {idx}\n" for idx in range(50)).encode("utf-8"),
         "README.md": b"new readme\n",
     }
-    old_hash = _register_tarball(harness, "BenchBox-dev/theseus", OLD_COMMIT, old_files)
-    new_hash = _register_tarball(harness, "BenchBox-dev/theseus", NEW_COMMIT, new_files)
+    old_hash, old_art, old_urls, _, deps = _register_release(harness, "0.1.0", OLD_COMMIT, old_files)
+    new_hash, new_art, new_urls, _, _ = _register_release(harness, "0.2.0", NEW_COMMIT, new_files)
     delta_hash = promotion.compute_delta_sha256(old_files, new_files)
-    return old_files, new_files, old_hash, new_hash, delta_hash
-
-
-def test_one_line_lock_bump_forces_gate_file_list_mode_requires_every_upstream_read_and_blocks_standin(
-    harness: Harness,
-) -> None:
-    old_files, _, old_hash, new_hash, delta_hash = _large_upstream_trees(harness)
 
     initial_delta = promotion.compute_delta_sha256({}, old_files)
     harness.write(
@@ -96,19 +127,52 @@ def test_one_line_lock_bump_forces_gate_file_list_mode_requires_every_upstream_r
                 version="0.1.0",
                 source_commit=OLD_COMMIT,
                 source_sha256=old_hash,
-                artifact_sha256=OLD_ART,
+                artifact_sha256=old_art,
+                artifact_urls=old_urls,
+                dependencies=deps,
                 delta_sha256=initial_delta,
             )
         },
         "seed theseus lock",
     )
+
+    tampered_wheel, tampered_art = _build_wheel(
+        "theseus-reviewer",
+        "0.2.0",
+        {**new_files, "src/theseus_reviewer/verifier.py": b"BACKDOOR = True\n"},
+    )
+    tampered_urls = [
+        "https://github.com/BenchBox-dev/theseus/releases/download/v0.2.0/tampered.whl",
+        "https://files.pythonhosted.org/packages/theseus/tampered.whl",
+    ]
+    for url in tampered_urls:
+        harness.github.add_https_asset(url, tampered_wheel)
+    tampered_lock = _lock_json(
+        version="0.2.0",
+        source_commit=NEW_COMMIT,
+        source_sha256=new_hash,
+        artifact_sha256=tampered_art,
+        artifact_urls=tampered_urls,
+        dependencies=deps,
+        delta_sha256=delta_hash,
+    )
+    tampered_head = harness.branch("feat/tampered-wheel", {promotion.LOCK_PATH: tampered_lock}, "tampered wheel")
+    harness.github.open_pull(10, "feat/tampered-wheel")
+    tampered_run = harness.review(10)
+    assert tampered_run.plan["decision"] == "hold"
+    assert "bytes do not match the reviewed upstream source tree" in tampered_run.plan["decision_reason"]
+    assert harness.gate(10, tampered_head).code == 3
+
     updated_lock = _lock_json(
         version="0.2.0",
         source_commit=NEW_COMMIT,
         source_sha256=new_hash,
-        artifact_sha256=NEW_ART,
+        artifact_sha256=new_art,
+        artifact_urls=new_urls,
+        dependencies=deps,
         delta_sha256=delta_hash,
     )
+    expected_lock_sha = promotion.lock_digest(promotion.parse_lock(updated_lock))
     head = harness.branch("feat/promote-theseus", {promotion.LOCK_PATH: updated_lock}, "bump theseus lock")
     harness.github.open_pull(1, "feat/promote-theseus")
 
@@ -203,9 +267,10 @@ def test_one_line_lock_bump_forces_gate_file_list_mode_requires_every_upstream_r
         "head_sha": shipped_head,
         "old_source_sha256": old_hash,
         "new_source_sha256": new_hash,
-        "old_artifact_sha256": OLD_ART,
-        "new_artifact_sha256": NEW_ART,
+        "old_artifact_sha256": old_art,
+        "new_artifact_sha256": new_art,
         "delta_sha256": delta_hash,
+        "lock_sha256": expected_lock_sha,
         "bootstrap": False,
     }
     gate_after_ship = harness.gate(1, shipped_head)
@@ -243,8 +308,6 @@ def test_one_line_lock_bump_forces_gate_file_list_mode_requires_every_upstream_r
 def test_first_promotion_enforces_policy_pinned_bootstrap_baseline_and_removed_upstream_reads(
     harness: Harness,
 ) -> None:
-    import yaml
-
     baseline_sha = harness.write(
         {
             "_project/scripts/oracle_reviewers/sample.py": "VALUE = 1\n",
@@ -274,14 +337,16 @@ def test_first_promotion_enforces_policy_pinned_bootstrap_baseline_and_removed_u
         "src/theseus_reviewer/sample.py": b"VALUE = 2\n",
         "src/theseus_reviewer/added.py": b"EXTRA = True\n",
     }
-    new_hash = _register_tarball(harness, "BenchBox-dev/theseus", NEW_COMMIT, new_files)
+    new_hash, new_art, new_urls, _, deps = _register_release(harness, "0.1.0", NEW_COMMIT, new_files)
     delta_hash = promotion.compute_delta_sha256(mapped_baseline, new_files)
 
     forged_lock = _lock_json(
         version="0.1.0",
         source_commit=NEW_COMMIT,
         source_sha256=new_hash,
-        artifact_sha256=NEW_ART,
+        artifact_sha256=new_art,
+        artifact_urls=new_urls,
+        dependencies=deps,
         delta_sha256=delta_hash,
         bootstrap={
             "baseline_repo": SLUG,
@@ -303,7 +368,9 @@ def test_first_promotion_enforces_policy_pinned_bootstrap_baseline_and_removed_u
         version="0.1.0",
         source_commit=NEW_COMMIT,
         source_sha256=new_hash,
-        artifact_sha256=NEW_ART,
+        artifact_sha256=new_art,
+        artifact_urls=new_urls,
+        dependencies=deps,
         delta_sha256=delta_hash,
         bootstrap={
             "baseline_repo": SLUG,

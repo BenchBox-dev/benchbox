@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import csv
 import difflib
 import hashlib
 import io
@@ -9,6 +11,10 @@ import re
 import shutil
 import subprocess
 import tarfile
+import urllib.error
+import urllib.parse
+import urllib.request
+import zipfile
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -27,11 +33,19 @@ STAGED_PROMOTION_DIR = ".oracle-promotion"
 PROMOTION_PLAN_DIR = "promotion"
 UPSTREAM_DIFF_NAME = "upstream.diff"
 SOURCES_ENV = "ORACLE_PROMOTION_SOURCES"
+ARTIFACT_MIRROR_ENV = "ORACLE_PROMOTION_MIRROR"
 BOOTSTRAP_ARTIFACT_SHA256 = "0" * 64
 RECORD_VERSION = 1
 MAX_TREE_FILES = 5000
 MAX_TREE_BYTES = 64 << 20
-
+DOWNLOAD_TIMEOUT_SECONDS = 30
+DEFAULT_ALLOWED_ARTIFACT_HOSTS = (
+    "github.com",
+    "objects.githubusercontent.com",
+    "release-assets.githubusercontent.com",
+    "files.pythonhosted.org",
+)
+FORBIDDEN_WHEEL_SUFFIXES = (".pth", ".so", ".pyd", ".dll", ".dylib")
 _COMMIT_SHA = re.compile(r"[0-9a-f]{40}")
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _REPO_SLUG = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
@@ -74,11 +88,13 @@ PROMOTION_RECORD_KEYS = frozenset(
         "old_artifact_sha256",
         "new_artifact_sha256",
         "delta_sha256",
+        "lock_sha256",
         "bootstrap",
     }
 )
 
 SourceLoader = Callable[[str, str], dict[str, bytes]]
+ArtifactLoader = Callable[[str], bytes]
 AncestorCheck = Callable[[str, str], bool]
 
 
@@ -175,6 +191,7 @@ class PromotionRecord:
     old_artifact_sha256: str
     new_artifact_sha256: str
     delta_sha256: str
+    lock_sha256: str
     bootstrap: bool = False
 
     def to_json(self) -> dict[str, Any]:
@@ -186,6 +203,7 @@ class PromotionRecord:
             "old_artifact_sha256": self.old_artifact_sha256,
             "new_artifact_sha256": self.new_artifact_sha256,
             "delta_sha256": self.delta_sha256,
+            "lock_sha256": self.lock_sha256,
             "bootstrap": self.bootstrap,
         }
 
@@ -334,6 +352,10 @@ def parse_lock(text: str) -> TheseusLock:
         isinstance(workflow_sha, str) and _COMMIT_SHA.fullmatch(workflow_sha) is not None,
         "theseus lock workflow_sha must be 40-char lowercase hex",
     )
+    _require(
+        workflow_sha == source_commit,
+        "theseus lock workflow_sha must equal the reviewed source_commit",
+    )
     _require(isinstance(artifact, Mapping) and set(artifact) == ARTIFACT_KEYS, "theseus lock artifact is invalid")
     artifact_sha256 = artifact.get("sha256")
     _require(
@@ -386,6 +408,7 @@ def valid_promotion_record(value: Any) -> bool:
                 "old_artifact_sha256",
                 "new_artifact_sha256",
                 "delta_sha256",
+                "lock_sha256",
             )
         )
     )
@@ -594,6 +617,211 @@ def default_source_loader(
     return load
 
 
+def _normalized_dist_name(name: str) -> str:
+    return re.sub(r"[-_.]+", "_", name).lower()
+
+
+def _check_https_host(url: str, allowed_hosts: frozenset[str], *, github_prefix: str | None = None) -> None:
+    parsed = urllib.parse.urlsplit(url)
+    _require(parsed.scheme == "https" and not parsed.username and not parsed.password, f"invalid https url {url!r}")
+    host = (parsed.hostname or "").lower()
+    _require(host in allowed_hosts, f"artifact host {host!r} is not in allowed_artifact_hosts")
+    if github_prefix is not None and host == "github.com":
+        _require(
+            parsed.path.startswith(github_prefix),
+            f"github.com artifact url must start with {github_prefix}",
+        )
+
+
+def validate_lock_urls(lock: TheseusLock, allowed_hosts: Sequence[str] = DEFAULT_ALLOWED_ARTIFACT_HOSTS) -> None:
+    hosts = frozenset(item.lower() for item in allowed_hosts)
+    gh_prefix = f"/{lock.repository}/releases/download/"
+    for url in lock.artifact_urls:
+        _check_https_host(url, hosts, github_prefix=gh_prefix)
+    for dep in lock.dependencies:
+        for url in dep.urls:
+            _check_https_host(url, hosts)
+
+
+def default_artifact_loader() -> ArtifactLoader:
+    mirror_raw = os.environ.get(ARTIFACT_MIRROR_ENV, "").strip()
+    api_raw = os.environ.get("GITHUB_API_URL", "").strip()
+    loopback_origin: str | None = None
+    if mirror_raw:
+        _require(omp_pin._loopback(mirror_raw), f"{ARTIFACT_MIRROR_ENV} must name a loopback http(s) origin")
+        loopback_origin = mirror_raw.rstrip("/")
+    elif api_raw and omp_pin._loopback(api_raw):
+        loopback_origin = api_raw.rstrip("/")
+
+    def fetch(url: str) -> bytes:
+        _require(url.startswith("https://"), "artifacts are downloaded over https only")
+        target = url
+        allow_loopback = False
+        if loopback_origin is not None:
+            parts = urllib.parse.urlsplit(url)
+            host = (parts.hostname or "").lower()
+            target = f"{loopback_origin}/_assets/{host}{parts.path}"
+            if parts.query:
+                target = f"{target}?{parts.query}"
+            allow_loopback = True
+        opener = urllib.request.build_opener(
+            urllib.request.ProxyHandler({}) if allow_loopback else urllib.request.ProxyHandler(),
+            omp_pin.HttpsOnlyRedirectHandler(allow_loopback=allow_loopback),
+        )
+        req = urllib.request.Request(target, headers={"User-Agent": omp_pin.USER_AGENT})
+        try:
+            with opener.open(req, timeout=DOWNLOAD_TIMEOUT_SECONDS) as response:
+                data = response.read(MAX_TREE_BYTES + 1)
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            raise PromotionError(f"cannot download {url}: {exc}") from exc
+        _require(len(data) <= MAX_TREE_BYTES, f"artifact {url} exceeds maximum size")
+        return data
+
+    return fetch
+
+
+def _read_wheel_entries(wheel_bytes: bytes) -> dict[str, bytes]:
+    entries: dict[str, bytes] = {}
+    total_bytes = 0
+    try:
+        with zipfile.ZipFile(io.BytesIO(wheel_bytes), mode="r") as zf:
+            infos = zf.infolist()
+            for info in infos:
+                if info.is_dir():
+                    continue
+                mode_type = (info.external_attr >> 16) & 0o170000
+                _require(mode_type != 0o120000, f"wheel contains symlink {info.filename!r}")
+                name = info.filename
+                _require(valid_path(name), f"wheel contains invalid path {name!r}")
+                _require(name not in entries, f"wheel contains duplicate entry {name!r}")
+                _require(len(entries) < MAX_TREE_FILES, "wheel exceeds maximum file count")
+                with zf.open(info, "r") as handle:
+                    data = handle.read(MAX_TREE_BYTES - total_bytes + 1)
+                total_bytes += len(data)
+                _require(total_bytes <= MAX_TREE_BYTES, "wheel exceeds maximum uncompressed size")
+                entries[name] = data
+    except (zipfile.BadZipFile, OSError, EOFError) as exc:
+        raise PromotionError(f"invalid wheel archive: {exc}") from exc
+    _require(bool(entries), "wheel archive is empty")
+    return entries
+
+
+def verify_wheel_record(entries: Mapping[str, bytes], package: str, version: str) -> str:
+    norm_pkg = _normalized_dist_name(package)
+    dist_info = f"{norm_pkg}-{version}.dist-info"
+    for required_meta in ("METADATA", "WHEEL", "RECORD"):
+        _require(f"{dist_info}/{required_meta}" in entries, f"wheel missing {dist_info}/{required_meta}")
+    for name in entries:
+        lower = name.lower()
+        _require(
+            not lower.endswith(FORBIDDEN_WHEEL_SUFFIXES),
+            f"wheel contains forbidden executable or hook entry {name!r}",
+        )
+        _require(
+            not any(seg.endswith(".data") for seg in name.split("/")[:-1]),
+            f"wheel contains forbidden .data directory entry {name!r}",
+        )
+    record_path = f"{dist_info}/RECORD"
+    try:
+        record_text = entries[record_path].decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise PromotionError("wheel RECORD is not valid UTF-8") from exc
+    recorded: dict[str, tuple[str, str]] = {}
+    for row in csv.reader(io.StringIO(record_text)):
+        if not row:
+            continue
+        _require(len(row) == 3, f"malformed wheel RECORD row {row!r}")
+        rec_file, rec_hash, rec_size = row
+        _require(rec_file not in recorded, f"duplicate wheel RECORD entry {rec_file!r}")
+        recorded[rec_file] = (rec_hash, rec_size)
+    _require(set(recorded) == set(entries), "wheel RECORD file set does not match wheel archive entries")
+    for name, content in entries.items():
+        rec_hash, rec_size = recorded[name]
+        if name == record_path:
+            _require(rec_hash == "" and rec_size == "", "wheel RECORD entry for itself must have empty hash and size")
+            continue
+        _require(rec_hash.startswith("sha256="), f"wheel RECORD for {name!r} must use sha256=")
+        b64_digest = base64.urlsafe_b64encode(hashlib.sha256(content).digest()).decode("ascii").rstrip("=")
+        _require(rec_hash == f"sha256={b64_digest}", f"wheel RECORD sha256 mismatch for {name!r}")
+        _require(rec_size == str(len(content)), f"wheel RECORD size mismatch for {name!r}")
+    return norm_pkg
+
+
+def verify_wheel_matches_source(
+    wheel_bytes: bytes,
+    source_tree: Mapping[str, bytes],
+    *,
+    package: str,
+    version: str,
+) -> None:
+    entries = _read_wheel_entries(wheel_bytes)
+    norm_pkg = verify_wheel_record(entries, package, version)
+    dist_prefix = f"{norm_pkg}-{version}.dist-info/"
+    pkg_prefix = f"{norm_pkg}/"
+    wheel_pkg_files: dict[str, bytes] = {}
+    for name, content in entries.items():
+        if name.startswith(dist_prefix):
+            continue
+        _require(name.startswith(pkg_prefix), f"wheel entry {name!r} is outside package {norm_pkg!r}")
+        wheel_pkg_files[name] = content
+    _require(
+        any(name.endswith(".py") for name in wheel_pkg_files),
+        f"wheel for {package} contains no Python modules under {pkg_prefix}",
+    )
+    src_layout_prefix = f"src/{pkg_prefix}"
+    has_src_layout = any(path.startswith(src_layout_prefix) for path in source_tree)
+    source_prefix = "src/" if has_src_layout else ""
+    expected_pkg_files = {
+        path.removeprefix(source_prefix): content
+        for path, content in source_tree.items()
+        if path.startswith(f"{source_prefix}{pkg_prefix}")
+    }
+    _require(
+        set(wheel_pkg_files) == set(expected_pkg_files),
+        "wheel package file list does not match the reviewed upstream source tree",
+    )
+    for rel_name, wheel_content in sorted(wheel_pkg_files.items()):
+        _require(
+            expected_pkg_files[rel_name] == wheel_content,
+            f"wheel file {rel_name!r} bytes do not match the reviewed upstream source tree",
+        )
+
+
+def verify_lock_artifacts(
+    head_lock: TheseusLock,
+    new_tree: Mapping[str, bytes],
+    artifact_loader: ArtifactLoader,
+    allowed_hosts: Sequence[str] = DEFAULT_ALLOWED_ARTIFACT_HOSTS,
+) -> None:
+    validate_lock_urls(head_lock, allowed_hosts)
+    verified_wheel: bytes | None = None
+    for url in head_lock.artifact_urls:
+        raw = artifact_loader(url)
+        actual_sha = hashlib.sha256(raw).hexdigest()
+        _require(
+            actual_sha == head_lock.artifact_sha256,
+            f"theseus artifact from {url} has sha256 {actual_sha}, expected {head_lock.artifact_sha256}",
+        )
+        verified_wheel = raw
+    assert verified_wheel is not None
+    verify_wheel_matches_source(
+        verified_wheel,
+        new_tree,
+        package=head_lock.package,
+        version=head_lock.version,
+    )
+    for dep in head_lock.dependencies:
+        for url in dep.urls:
+            dep_raw = artifact_loader(url)
+            dep_sha = hashlib.sha256(dep_raw).hexdigest()
+            _require(
+                dep_sha == dep.sha256,
+                f"dependency {dep.name} from {url} has sha256 {dep_sha}, expected {dep.sha256}",
+            )
+            dep_entries = _read_wheel_entries(dep_raw)
+            verify_wheel_record(dep_entries, dep.name, dep.version)
+
+
 def ci_ancestor_check(repo: str) -> AncestorCheck:
     def check(ancestor: str, descendant: str) -> bool:
         if ancestor == descendant:
@@ -665,9 +893,11 @@ def prepare_promotion(
     head_lock_text: str | None,
     source_loader: SourceLoader,
     is_ancestor: AncestorCheck,
+    artifact_loader: ArtifactLoader | None = None,
     pr_paths: Iterable[str] = (),
     expected_package: str = "theseus-reviewer",
     expected_repository: str = "BenchBox-dev/theseus",
+    allowed_artifact_hosts: Sequence[str] = DEFAULT_ALLOWED_ARTIFACT_HOSTS,
     bootstrap_baseline_commit: str | None = None,
     bootstrap_path_map: Mapping[str, str] | None = None,
     bootstrap_reviewers: Sequence[str] = ("joeharris76",),
@@ -680,6 +910,7 @@ def prepare_promotion(
     head_lock = parse_lock(head_lock_text)
     _require(head_lock.package == expected_package, "theseus lock package does not match consumer policy")
     _require(head_lock.repository == expected_repository, "theseus lock repository does not match consumer policy")
+    validate_lock_urls(head_lock, allowed_artifact_hosts)
     if base_lock_text is not None:
         base_lock = parse_lock(base_lock_text)
         _require(
@@ -728,6 +959,12 @@ def prepare_promotion(
         tree_sha256(new_tree) == head_lock.source_sha256,
         "promoted theseus source tree does not match head lock source_sha256",
     )
+    verify_lock_artifacts(
+        head_lock,
+        new_tree,
+        artifact_loader or default_artifact_loader(),
+        allowed_artifact_hosts,
+    )
     changed_files, diff_text, actual_delta_sha256 = compute_upstream_delta(old_tree, new_tree)
     _require(
         actual_delta_sha256 == head_lock.delta_sha256,
@@ -740,6 +977,7 @@ def prepare_promotion(
         old_artifact_sha256=old_artifact_sha256,
         new_artifact_sha256=head_lock.artifact_sha256,
         delta_sha256=actual_delta_sha256,
+        lock_sha256=lock_digest(head_lock),
         bootstrap=is_bootstrap,
     )
     return PromotionBundle(
@@ -979,6 +1217,8 @@ def _record_refusals(
         reasons.append("promotion evidence record artifact hashes do not match the base/head lock")
     if promo["delta_sha256"] != head_lock.delta_sha256:
         reasons.append("promotion evidence record delta digest does not match the lock delta_sha256")
+    if promo["lock_sha256"] != lock_digest(head_lock):
+        reasons.append("promotion evidence record lock_sha256 does not match the head lock")
     if promo["bootstrap"] != expected_bootstrap:
         reasons.append("promotion evidence record bootstrap flag does not match the base lock state")
     return reasons
@@ -997,6 +1237,7 @@ def refusals(
     oracle_login: str = "benchbox-oracle",
     expected_package: str = "theseus-reviewer",
     expected_repository: str = "BenchBox-dev/theseus",
+    allowed_artifact_hosts: Sequence[str] = DEFAULT_ALLOWED_ARTIFACT_HOSTS,
     bootstrap_baseline_commit: str | None = None,
     bootstrap_path_map: Mapping[str, str] | None = None,
     bootstrap_reviewers: Sequence[str] = ("joeharris76",),
@@ -1019,6 +1260,10 @@ def refusals(
     if base_lock is not None and head_lock.bootstrap is None and lock_digest(base_lock) == lock_digest(head_lock):
         return False, []
     reasons = [] if complete else ["the pull request's file list is incomplete, so promotion scope cannot be verified"]
+    try:
+        validate_lock_urls(head_lock, allowed_artifact_hosts)
+    except PromotionError as exc:
+        reasons.append(str(exc))
     expected, baseline_reasons = _baseline_expectations(
         base_lock,
         head_lock,

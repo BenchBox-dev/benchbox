@@ -26,7 +26,6 @@ OTHER_HEAD = "b" * 40
 BASELINE_COMMIT = "0" * 39 + "1"
 OLD_SRC_COMMIT = "2" * 40
 NEW_SRC_COMMIT = "3" * 40
-WORKFLOW_SHA = "4" * 40
 OLD_SRC_HASH = "5" * 64
 NEW_SRC_HASH = "6" * 64
 OLD_ART_HASH = "7" * 64
@@ -48,7 +47,12 @@ def _lock_text(
     delta_sha256: str,
     bootstrap: dict[str, Any] | None = None,
     matcher: dict[str, str] | None = None,
+    artifact_urls: list[str] | None = None,
 ) -> str:
+    urls = artifact_urls or [
+        f"https://github.com/BenchBox-dev/theseus/releases/download/v{version}/theseus_reviewer-{version}-py3-none-any.whl",
+        f"https://files.pythonhosted.org/packages/theseus/theseus_reviewer-{version}-py3-none-any.whl",
+    ]
     payload: dict[str, Any] = {
         "schema": 1,
         "package": "theseus-reviewer",
@@ -59,10 +63,7 @@ def _lock_text(
         "delta_sha256": delta_sha256,
         "artifact": {
             "sha256": artifact_sha256,
-            "urls": [
-                f"https://github.com/BenchBox-dev/theseus/releases/download/v{version}/theseus_reviewer-{version}-py3-none-any.whl",
-                f"https://mirror.example/theseus/theseus_reviewer-{version}-py3-none-any.whl",
-            ],
+            "urls": urls,
         },
         "dependencies": [
             {
@@ -72,7 +73,7 @@ def _lock_text(
                 "urls": ["https://files.pythonhosted.org/packages/pyyaml-6.0.3.whl"],
             }
         ],
-        "workflow_sha": WORKFLOW_SHA,
+        "workflow_sha": source_commit,
     }
     if bootstrap is not None:
         payload["bootstrap"] = bootstrap
@@ -95,9 +96,10 @@ HEAD_LOCK = _lock_text(
     artifact_sha256=NEW_ART_HASH,
     delta_sha256=DELTA_HASH,
 )
+HEAD_LOCK_DIGEST = promotion.lock_digest(promotion.parse_lock(HEAD_LOCK))
 
 
-def _promo_dict(**overrides: Any) -> dict[str, Any]:
+def _promo_dict(lock_text: str = HEAD_LOCK, **overrides: Any) -> dict[str, Any]:
     base = {
         "v": 1,
         "head_sha": HEAD,
@@ -106,6 +108,7 @@ def _promo_dict(**overrides: Any) -> dict[str, Any]:
         "old_artifact_sha256": OLD_ART_HASH,
         "new_artifact_sha256": NEW_ART_HASH,
         "delta_sha256": DELTA_HASH,
+        "lock_sha256": promotion.lock_digest(promotion.parse_lock(lock_text)),
         "bootstrap": False,
     }
     return {**base, **overrides}
@@ -146,7 +149,11 @@ def _review(
     }
     if promo is not None:
         record["promotion"] = promo
-    body = f"### oracle-verdict: {state_header} for `{head_sha}`\n\nDecision: **{decision}**.\n\n{protocol.encode_marker(record)}"
+    body = (
+        f"### oracle-verdict: {state_header} for `{head_sha}`\n\n"
+        f"Decision: **{decision}**.\n\n"
+        f"{protocol.encode_marker(record)}"
+    )
     return {
         "id": 10,
         "login": login,
@@ -208,6 +215,7 @@ def _evaluate_gate(
     bootstrap_baseline_commit: str | None = None,
     bootstrap_path_map: dict[str, str] | None = None,
     bootstrap_reviewers: tuple[str, ...] = ("joeharris76",),
+    force_exempt_matcher: bool = False,
 ) -> tuple[int, str]:
     chosen_files = [promotion.LOCK_PATH] if files is None else files
 
@@ -238,7 +246,11 @@ def _evaluate_gate(
         bootstrap_path_map=bootstrap_path_map,
         bootstrap_reviewers=bootstrap_reviewers,
     )
-    matcher = gate.path_matcher(len(chosen_files), len(chosen_files), *oracle_gate.load_policy_rules())
+    matcher = (
+        (lambda _f: False)
+        if force_exempt_matcher
+        else gate.path_matcher(len(chosen_files), len(chosen_files), *oracle_gate.load_policy_rules())
+    )
     return gate.decide(
         HEAD,
         chosen_files,
@@ -256,6 +268,29 @@ def test_valid_exact_head_promotion_record_with_valid_verdict_passes(monkeypatch
     status, message = _evaluate_gate(monkeypatch, reviews=[_review(promo=_promo_dict())])
     assert status == gate.PASS
     assert "pass (oracle verdict" in message
+
+
+def test_promotion_refusal_and_is_promotion_still_hold_even_if_exempt_matcher_returns_false(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    refused_status, refused_msg = _evaluate_gate(
+        monkeypatch,
+        reviews=[],
+        statuses=[],
+        comments=[_standin()],
+        force_exempt_matcher=True,
+    )
+    assert refused_status == gate.WAITING
+    assert "theseus promotion refused" in refused_msg
+
+    no_status_code, _ = _evaluate_gate(
+        monkeypatch,
+        reviews=[_review(promo=_promo_dict())],
+        statuses=[],
+        comments=[_standin()],
+        force_exempt_matcher=True,
+    )
+    assert no_status_code == gate.WAITING
 
 
 def test_missing_promotion_record_is_refused_even_with_ship_verdict_and_standin(
@@ -291,6 +326,7 @@ def test_standin_without_oracle_review_cannot_bypass_promotion(monkeypatch: pyte
         ({"promo": _promo_dict(old_artifact_sha256="0" * 64)}, "artifact hashes do not match"),
         ({"promo": _promo_dict(new_artifact_sha256="0" * 64)}, "artifact hashes do not match"),
         ({"promo": _promo_dict(delta_sha256="0" * 64)}, "delta digest does not match"),
+        ({"promo": _promo_dict(lock_sha256="0" * 64)}, "lock_sha256 does not match"),
         ({"login": "other-app[bot]", "promo": _promo_dict()}, "no unedited oracle promotion review"),
         ({"login": "joeharris76", "user_type": "User", "promo": _promo_dict()}, "no unedited oracle promotion review"),
         ({"last_edited_at": STATUS_AT, "promo": _promo_dict()}, "edited after submission"),
@@ -307,6 +343,27 @@ def test_wrong_head_hashes_attester_edit_or_carry_is_refused(
     )
     assert status == gate.WAITING
     assert expected_fragment in message
+
+
+def test_untrusted_artifact_host_in_lock_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    evil_lock = _lock_text(
+        version="0.2.0",
+        source_commit=NEW_SRC_COMMIT,
+        source_sha256=NEW_SRC_HASH,
+        artifact_sha256=NEW_ART_HASH,
+        delta_sha256=DELTA_HASH,
+        artifact_urls=[
+            "https://github.com/BenchBox-dev/theseus/releases/download/v0.2.0/theseus_reviewer-0.2.0-py3-none-any.whl",
+            "https://attacker.example/evil.whl",
+        ],
+    )
+    status, message = _evaluate_gate(
+        monkeypatch,
+        head_lock=evil_lock,
+        reviews=[_review(promo=_promo_dict(lock_text=evil_lock))],
+    )
+    assert status == gate.WAITING
+    assert "allowed_artifact_hosts" in message
 
 
 def test_unresolved_finding_blocks_promotion(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -377,6 +434,7 @@ def test_first_promotion_accepts_approved_bootstrap_baseline_and_forbids_later_b
         bootstrap=bootstrap,
     )
     first_promo = _promo_dict(
+        lock_text=first_lock,
         old_source_sha256=OLD_SRC_HASH,
         old_artifact_sha256=promotion.BOOTSTRAP_ARTIFACT_SHA256,
         bootstrap=True,
@@ -433,6 +491,7 @@ def test_first_promotion_accepts_approved_bootstrap_baseline_and_forbids_later_b
     )
     assert malformed_status == gate.WAITING
     assert "invalid protocol marker" in malformed_msg
+
     later_bypass_status, later_bypass_msg = _evaluate_gate(
         monkeypatch,
         base_lock=BASE_LOCK,
@@ -464,7 +523,7 @@ def test_fork_promotion_and_vendored_matcher_drift_are_refused(monkeypatch: pyte
     drift_status, drift_msg = _evaluate_gate(
         monkeypatch,
         head_lock=matcher_lock,
-        reviews=[_review(promo=_promo_dict())],
+        reviews=[_review(promo=_promo_dict(lock_text=matcher_lock))],
         matcher_bytes=b"def match_rules():\n    return False\n",
     )
     assert drift_status == gate.WAITING

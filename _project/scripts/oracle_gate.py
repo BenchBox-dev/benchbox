@@ -134,7 +134,7 @@ def load_policy_rules() -> tuple[tuple[str, ...], tuple[str, ...]]:
 
 def load_promotion_policy(
     token: str, repo: str, base_ref: str
-) -> tuple[str, str, str | None, dict[str, str], tuple[str, ...]]:
+) -> tuple[str, str, tuple[str, ...], str | None, dict[str, str], tuple[str, ...]]:
     try:
         import yaml
         from oracle_reviewers.policy import parse_policy
@@ -144,6 +144,7 @@ def load_promotion_policy(
         return (
             promo.package,
             promo.repository,
+            promo.allowed_artifact_hosts,
             promo.bootstrap_baseline_commit,
             dict(promo.bootstrap_path_map),
             promo.bootstrap_reviewers,
@@ -181,6 +182,12 @@ def evaluate(repo: str, pr: int, token: str) -> tuple[str, int, str]:
         bump = fetch_bump_refusals(token, repo, pull, files, len(items), comments)
         from oracle_reviewers import promotion
 
+        default_hosts = (
+            "github.com",
+            "objects.githubusercontent.com",
+            "release-assets.githubusercontent.com",
+            "files.pythonhosted.org",
+        )
         promo_policy = (
             load_promotion_policy(token, repo, pull["base"].get("sha") or pull["base"]["ref"])
             if (
@@ -188,7 +195,7 @@ def evaluate(repo: str, pr: int, token: str) -> tuple[str, int, str]:
                 or promotion.has_planted_promotion_path(files)
                 or len(items) < pull["changed_files"]
             )
-            else ("theseus-reviewer", "BenchBox-dev/theseus", None, {}, ("joeharris76",))
+            else ("theseus-reviewer", "BenchBox-dev/theseus", default_hosts, None, {}, ("joeharris76",))
         )
         is_promotion, promo = fetch_promotion_refusals(
             token,
@@ -201,9 +208,10 @@ def evaluate(repo: str, pr: int, token: str) -> tuple[str, int, str]:
             statuses=statuses,
             expected_package=promo_policy[0],
             expected_repository=promo_policy[1],
-            bootstrap_baseline_commit=promo_policy[2],
-            bootstrap_path_map=promo_policy[3],
-            bootstrap_reviewers=promo_policy[4],
+            allowed_artifact_hosts=promo_policy[2],
+            bootstrap_baseline_commit=promo_policy[3],
+            bootstrap_path_map=promo_policy[4],
+            bootstrap_reviewers=promo_policy[5],
         )
         status, message = decide(
             head_sha,

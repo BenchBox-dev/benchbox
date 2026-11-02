@@ -94,6 +94,7 @@ class FakeGitHub:
         self.auto_merges: list[dict[str, Any]] = []
         self.failures: list[Failure] = []
         self.tarballs: dict[tuple[str, str], bytes] = {}
+        self.assets: dict[str, bytes] = {}
         self.unhandled: list[str] = []
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), self._handler())
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
@@ -136,6 +137,12 @@ class FakeGitHub:
                 archive.addfile(info, io.BytesIO(content))
         with self.lock:
             self.tarballs[(repo_slug.lower(), commit_sha)] = buffer.getvalue()
+
+    def add_https_asset(self, https_url: str, content: bytes) -> None:
+        parts = urlsplit(https_url)
+        host = (parts.hostname or "").lower()
+        with self.lock:
+            self.assets[f"/{host}{parts.path}"] = content
 
     def open_pull(self, number: int, head_ref: str, base_ref: str = "develop", **extra: Any) -> dict[str, Any]:
         with self.lock:
@@ -396,6 +403,7 @@ class FakeGitHub:
             ("POST", "/graphql", lambda request, match: (200, self.graphql(request.json(), request.token), {})),
             ("GET", "/user", lambda request, match: (200, {**ACCOUNTS[request.token], "id": 1}, {})),
             ("GET", r"/repos/([^/]+/[^/]+)/tarball/([0-9a-f]{40})", self._external_tarball),
+            ("GET", r"/_assets(/.+)", self._mirrored_asset),
         ]
 
     def _repo_routes(self) -> list[tuple[str, str, Route]]:
@@ -467,6 +475,12 @@ class FakeGitHub:
         except subprocess.CalledProcessError:
             return 404, {"message": "Not Found"}, {}
         return 200, data, {"Content-Type": "application/gzip"}
+
+    def _mirrored_asset(self, _request: Request, match: re.Match[str]) -> Response:
+        asset = self.assets.get(match[1])
+        if asset is None:
+            return 404, {"message": "Not Found"}, {}
+        return 200, asset, {"Content-Type": "application/octet-stream"}
 
     def _pull(self, request: Request, match: re.Match[str]) -> Response:
         number = int(match[1])

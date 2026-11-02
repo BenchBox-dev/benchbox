@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import base64
+import hashlib
 import io
 import json
+import subprocess
 import tarfile
+import zipfile
 from pathlib import Path
 from typing import Any
 
@@ -15,7 +19,29 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 SHA_A = "a" * 40
 SHA_B = "b" * 40
 SHA_C = "c" * 40
-WORKFLOW_SHA = "e" * 40
+
+
+def _build_wheel(package: str, version: str, pkg_files: dict[str, bytes]) -> tuple[bytes, str]:
+    norm_pkg = package.replace("-", "_")
+    dist_info = f"{norm_pkg}-{version}.dist-info"
+    entries: dict[str, bytes] = {
+        **pkg_files,
+        f"{dist_info}/METADATA": f"Metadata-Version: 2.1\nName: {package}\nVersion: {version}\n".encode(),
+        f"{dist_info}/WHEEL": b"Wheel-Version: 1.0\nGenerator: test\nRoot-Is-Purelib: true\nTag: py3-none-any\n",
+    }
+    record_lines: list[str] = []
+    for name, content in sorted(entries.items()):
+        b64 = base64.urlsafe_b64encode(hashlib.sha256(content).digest()).decode("ascii").rstrip("=")
+        record_lines.append(f"{name},sha256={b64},{len(content)}")
+    record_path = f"{dist_info}/RECORD"
+    record_lines.append(f"{record_path},,")
+    entries[record_path] = ("\n".join(record_lines) + "\n").encode("utf-8")
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for name, content in sorted(entries.items()):
+            zf.writestr(name, content)
+    raw = buf.getvalue()
+    return raw, hashlib.sha256(raw).hexdigest()
 
 
 def _lock_payload(
@@ -25,6 +51,7 @@ def _lock_payload(
     source_sha256: str = "1" * 64,
     delta_sha256: str = "2" * 64,
     artifact_sha256: str = "3" * 64,
+    workflow_sha: str | None = None,
     bootstrap: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
@@ -38,8 +65,8 @@ def _lock_payload(
         "artifact": {
             "sha256": artifact_sha256,
             "urls": [
-                "https://github.com/BenchBox-dev/theseus/releases/download/v0.2.0/theseus_reviewer-0.2.0-py3-none-any.whl",
-                "https://mirror.example/theseus/theseus_reviewer-0.2.0-py3-none-any.whl",
+                f"https://github.com/BenchBox-dev/theseus/releases/download/v{version}/theseus_reviewer-{version}-py3-none-any.whl",
+                f"https://files.pythonhosted.org/packages/theseus/theseus_reviewer-{version}-py3-none-any.whl",
             ],
         },
         "dependencies": [
@@ -50,7 +77,7 @@ def _lock_payload(
                 "urls": ["https://files.pythonhosted.org/packages/pyyaml-6.0.3.whl"],
             }
         ],
-        "workflow_sha": WORKFLOW_SHA,
+        "workflow_sha": source_commit if workflow_sha is None else workflow_sha,
     }
     if bootstrap is not None:
         payload["bootstrap"] = bootstrap
@@ -79,19 +106,93 @@ def _base_record(head_sha: str = SHA_A, **overrides: Any) -> dict[str, Any]:
     return {**record, **overrides}
 
 
-def test_lock_requires_two_distinct_https_artifact_sources() -> None:
+def test_lock_requires_two_distinct_https_artifact_sources_and_matching_workflow_sha() -> None:
     single = _lock_payload()
-    single["artifact"] = {"sha256": "3" * 64, "urls": ["https://only-one.example/wheel.whl"]}
+    single["artifact"] = {
+        "sha256": "3" * 64,
+        "urls": ["https://github.com/BenchBox-dev/theseus/releases/download/v0.2.0/wheel.whl"],
+    }
     with pytest.raises(promotion.PromotionError, match="at least 2 https url"):
         promotion.parse_lock(json.dumps(single))
 
     duplicate = _lock_payload()
     duplicate["artifact"] = {
         "sha256": "3" * 64,
-        "urls": ["https://same.example/wheel.whl", "https://same.example/wheel.whl"],
+        "urls": [
+            "https://github.com/BenchBox-dev/theseus/releases/download/v0.2.0/wheel.whl",
+            "https://github.com/BenchBox-dev/theseus/releases/download/v0.2.0/wheel.whl",
+        ],
     }
     with pytest.raises(promotion.PromotionError, match="distinct"):
         promotion.parse_lock(json.dumps(duplicate))
+
+    mismatched_wf = _lock_payload(workflow_sha=SHA_C)
+    with pytest.raises(promotion.PromotionError, match="workflow_sha must equal"):
+        promotion.parse_lock(json.dumps(mismatched_wf))
+
+    untrusted_host = _lock_payload()
+    untrusted_host["artifact"]["urls"] = [
+        "https://github.com/BenchBox-dev/theseus/releases/download/v0.2.0/wheel.whl",
+        "https://attacker.example/evil.whl",
+    ]
+    parsed = promotion.parse_lock(json.dumps(untrusted_host))
+    with pytest.raises(promotion.PromotionError, match="allowed_artifact_hosts"):
+        promotion.validate_lock_urls(parsed)
+
+
+def test_verify_wheel_matches_source_rejects_tampered_bytes_extra_files_and_pth_hooks() -> None:
+    source_tree = {
+        "src/theseus_reviewer/__init__.py": b"VERSION = '0.2.0'\n",
+        "src/theseus_reviewer/cli.py": b"def main():\n    return 0\n",
+        "README.md": b"docs\n",
+    }
+    good_wheel, _ = _build_wheel(
+        "theseus-reviewer",
+        "0.2.0",
+        {
+            "theseus_reviewer/__init__.py": b"VERSION = '0.2.0'\n",
+            "theseus_reviewer/cli.py": b"def main():\n    return 0\n",
+        },
+    )
+    promotion.verify_wheel_matches_source(
+        good_wheel,
+        source_tree,
+        package="theseus-reviewer",
+        version="0.2.0",
+    )
+
+    backdoored_wheel, _ = _build_wheel(
+        "theseus-reviewer",
+        "0.2.0",
+        {
+            "theseus_reviewer/__init__.py": b"VERSION = '0.2.0'\n",
+            "theseus_reviewer/cli.py": b"def main():\n    return 99\n",
+        },
+    )
+    with pytest.raises(promotion.PromotionError, match="bytes do not match"):
+        promotion.verify_wheel_matches_source(
+            backdoored_wheel,
+            source_tree,
+            package="theseus-reviewer",
+            version="0.2.0",
+        )
+
+    pth_wheel, _ = _build_wheel(
+        "theseus-reviewer",
+        "0.2.0",
+        {
+            "theseus_reviewer/__init__.py": b"VERSION = '0.2.0'\n",
+            "theseus_reviewer/cli.py": b"def main():\n    return 0\n",
+            "evil.pth": b"import os\n",
+        },
+    )
+    with pytest.raises(promotion.PromotionError, match="forbidden executable or hook"):
+        promotion.verify_wheel_matches_source(
+            pth_wheel,
+            source_tree,
+            package="theseus-reviewer",
+            version="0.2.0",
+        )
 
 
 def test_bootstrap_path_map_and_delta_digests_are_deterministic() -> None:
@@ -155,6 +256,7 @@ def test_protocol_marker_preserves_legacy_v1_compatibility_and_validates_promoti
         old_artifact_sha256="3" * 64,
         new_artifact_sha256="4" * 64,
         delta_sha256="5" * 64,
+        lock_sha256="6" * 64,
         bootstrap=False,
     ).to_json()
     promo_encoded = protocol.encode_marker(_base_record(promotion=promo))
@@ -203,6 +305,7 @@ def test_promotion_rounds_never_carry_across_byte_identical_rebase_while_ordinar
             old_artifact_sha256="3" * 64,
             new_artifact_sha256="4" * 64,
             delta_sha256="5" * 64,
+            lock_sha256="6" * 64,
         ).to_json(),
     )
     rebased_from_promo = protocol.plan_round(
@@ -220,8 +323,6 @@ def test_promotion_rounds_never_carry_across_byte_identical_rebase_while_ordinar
 
 
 def test_stage_promotion_workspace_is_git_ignored_and_detects_tampering(tmp_path: Path) -> None:
-    import subprocess
-
     ws = tmp_path / "ws"
     ws.mkdir()
     subprocess.run(["git", "-C", str(ws), "init", "--quiet"], check=True)
@@ -240,6 +341,7 @@ def test_stage_promotion_workspace_is_git_ignored_and_detects_tampering(tmp_path
             old_artifact_sha256="3" * 64,
             new_artifact_sha256="4" * 64,
             delta_sha256="5" * 64,
+            lock_sha256="6" * 64,
         ),
         changed_files=(),
         diff_text="diff --git a/a.py b/a.py\n",
@@ -265,8 +367,6 @@ def test_stage_promotion_workspace_is_git_ignored_and_detects_tampering(tmp_path
 
 
 def test_planted_oracle_promotion_directory_is_refused(tmp_path: Path) -> None:
-    import subprocess
-
     ws = tmp_path / "ws-planted"
     ws.mkdir()
     subprocess.run(["git", "-C", str(ws), "init", "--quiet"], check=True)
@@ -289,6 +389,7 @@ def test_planted_oracle_promotion_directory_is_refused(tmp_path: Path) -> None:
             old_artifact_sha256="3" * 64,
             new_artifact_sha256="4" * 64,
             delta_sha256="5" * 64,
+            lock_sha256="6" * 64,
         ),
         changed_files=(),
         diff_text="diff --git a/a.py b/a.py\n",

@@ -95,6 +95,14 @@ class EvidenceRules:
     exempt_paths: tuple[str, ...] = ()
 
 
+DEFAULT_ALLOWED_ARTIFACT_HOSTS = (
+    "github.com",
+    "objects.githubusercontent.com",
+    "release-assets.githubusercontent.com",
+    "files.pythonhosted.org",
+)
+
+
 @dataclass(frozen=True)
 class PromotionRules:
     package: str = "theseus-reviewer"
@@ -102,6 +110,7 @@ class PromotionRules:
     bootstrap_baseline_commit: str | None = None
     bootstrap_path_map: Mapping[str, str] = field(default_factory=dict)
     bootstrap_reviewers: tuple[str, ...] = ("joeharris76",)
+    allowed_artifact_hosts: tuple[str, ...] = DEFAULT_ALLOWED_ARTIFACT_HOSTS
 
 
 @dataclass(frozen=True)
@@ -238,6 +247,14 @@ def parse_policy(data: Mapping[str, Any]) -> Policy:
     _require(
         bool(promo_reviewers) and all(item.strip() for item in promo_reviewers), "bootstrap_reviewers cannot be empty"
     )
+    allowed_hosts = _str_tuple(
+        promotion_raw.get("allowed_artifact_hosts") or list(DEFAULT_ALLOWED_ARTIFACT_HOSTS),
+        "promotion allowed_artifact_hosts",
+    )
+    _require(
+        bool(allowed_hosts) and all(re.fullmatch(r"[a-z0-9][a-z0-9.-]*", host) is not None for host in allowed_hosts),
+        "promotion allowed_artifact_hosts must be lowercase hostnames",
+    )
     policy = Policy(
         mode=data.get("mode", ""),
         status_context=data.get("status_context", ""),
@@ -273,6 +290,7 @@ def parse_policy(data: Mapping[str, Any]) -> Policy:
             bootstrap_baseline_commit=baseline_commit,
             bootstrap_path_map=parsed_path_map,
             bootstrap_reviewers=promo_reviewers,
+            allowed_artifact_hosts=allowed_hosts,
         ),
     )
     _require(policy.mode in ("shadow", "enforce"), "mode must be shadow or enforce")
