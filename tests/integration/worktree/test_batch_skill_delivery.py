@@ -16,10 +16,10 @@ ROOT = Path(__file__).resolve().parents[3]
 
 DELIVERY_CATALOG_REV = "e7b7fd91d6419ebecc18646c63ef686d499ef026"
 SOURCE_REV = "aaad6c97632f0a36341cb670c9e1a7fe0b3a860b"
-TODO_DB_VERSION = "0.12.0"
+TODO_DB_VERSION = "0.13.0"
 SCRIPTS_PROJECT = ROOT / "_project/scripts"
 WHEEL = SCRIPTS_PROJECT / f"vendor/todo_db-{TODO_DB_VERSION}-py3-none-any.whl"
-WHEEL_SHA256 = "cdcadf44f130ff98dd11081576db2c8acf5ad3a60ab84d85e60ceba0250a590d"
+WHEEL_SHA256 = "edeff52e66d1369955844c8705bcc029928c4af614565dfaeb6f6be225ee00b0"
 REQUIRED_BATCH_TOOLS = {"register_batch", "prepare", "bind_batch_pr", "abort_batch"}
 
 
