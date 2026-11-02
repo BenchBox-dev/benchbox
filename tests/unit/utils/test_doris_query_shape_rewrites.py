@@ -29,7 +29,7 @@ def test_rollup_over_empty_input_still_emits_the_grand_total_row():
         "WITH c AS (SELECT 1 AS a, 2 AS x) SELECT a, AVG(x) AS m FROM c GROUP BY ROLLUP (a) ORDER BY a LIMIT 5"
     )
     assert sql.startswith("WITH `c` AS")
-    assert "HAVING COUNT(*) = 0" in sql
+    assert "NOT EXISTS" in sql
     assert "UNION ALL" in sql
 
 
