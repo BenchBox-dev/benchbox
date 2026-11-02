@@ -39,6 +39,15 @@
       "op": "update",
       "op_id": "39180d7f76884057936af068215fc6a3",
       "session_id": "b249fb5e3b804f6fab2e27e759c8e1fb"
+    },
+    {
+      "actor": "benchbox-batch-pilot-leader",
+      "at": "2026-11-02T08:10:36Z",
+      "client": "benchbox-batch-leader",
+      "generation": "6eb30bee37ef49f08c88bb9c74264b73",
+      "op": "take",
+      "op_id": "5406525a6f6c4fc9992bfafa953b7473",
+      "session_id": "b249fb5e3b804f6fab2e27e759c8e1fb"
     }
   ]
 }
