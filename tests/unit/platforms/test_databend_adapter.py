@@ -1099,3 +1099,22 @@ class TestDatabendCursorlessConnection:
 
         assert status == "FAILED"
         assert details["inaccessible_tables"] == ["lineitem"]
+
+
+class TestDatabendIntervalLiterals:
+    def test_quoted_interval_with_unit_is_split_before_execution(self):
+        adapter = DatabendAdapter(host="localhost", ssl=False, password="")
+        connection = Mock()
+        connection.query_iter.return_value = [(1,)]
+        query = (
+            "SELECT 1 FROM t WHERE d < CAST('1994-01-01' AS DATE) + INTERVAL '1 YEAR' AND x < 3 "
+            "AND e < d + INTERVAL '3 MONTH' AND note = 'interval'"
+        )
+
+        adapter.execute_query(connection, query, "q6")
+
+        sent = connection.query_iter.call_args.args[0]
+        assert "INTERVAL '1' YEAR AND" in sent
+        assert "INTERVAL '3' MONTH AND" in sent
+        assert "'1 YEAR'" not in sent
+        assert "note = 'interval'" in sent

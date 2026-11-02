@@ -42,6 +42,8 @@ except ImportError:
 
 DEFAULT_DEPLOYMENT = "cloud"
 
+_QUOTED_INTERVAL = re.compile(r"\bINTERVAL\s+'\s*(-?\d+)\s+([A-Za-z]+)\s*'", re.IGNORECASE)
+
 
 class DatabendAdapter(PlatformAdapter):
     physical_identifier_case = "lower"
@@ -423,7 +425,7 @@ class DatabendAdapter(PlatformAdapter):
         start_time = mono_time()
 
         try:
-            rows = connection.query_iter(query)
+            rows = connection.query_iter(_QUOTED_INTERVAL.sub(r"INTERVAL '\1' \2", query))
             result = list(rows)
 
             execution_time = elapsed_seconds(start_time)
