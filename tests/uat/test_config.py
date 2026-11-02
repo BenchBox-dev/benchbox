@@ -548,10 +548,11 @@ def test_release_gate_stages_exclude_platforms_tracked_for_follow_up():
     stage2 = config.load_config(_RELEASE_GATE_CONFIGS_DIR / "release-gate-02-docker-nonoltp.yaml")
     stage3 = config.load_config(_RELEASE_GATE_CONFIGS_DIR / "release-gate-03-docker-oltp.yaml")
     assert stage2.platforms.exclude == ("cedardb",)
-    assert stage3.platforms.exclude == ("influxdb", "presto", "trino")
+    assert stage3.platforms.exclude == ("influxdb", "presto", "trino", "databend")
     assert "cedardb-release-uat-coverage" in stage2.description
     assert "influxdb-general-loader-uat" in stage3.description
     assert "presto-trino-release-uat-coverage" in stage3.description
+    assert "databend-release-uat-coverage" in stage3.description
     for stage in (stage2, stage3):
         resolved = matrix.resolve_platforms(groups=stage.platforms.groups or (), exclude=stage.platforms.exclude)
         assert set(stage.platforms.exclude).isdisjoint(resolved)

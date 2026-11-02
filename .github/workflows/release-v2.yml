@@ -338,7 +338,7 @@ jobs:
           - shard: query-engines
             platforms: velox
           - shard: olap
-            platforms: doris,databend,singlestore
+            platforms: doris,singlestore
           - shard: timeseries
             platforms: questdb
     steps:
