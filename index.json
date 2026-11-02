@@ -2067,12 +2067,17 @@
       "title": "Move BenchBox to todo-db 0.12.0 and teach the todo skill to pass a drop reason"
     },
     "benchbox-todo-db-batch-v2-runtime-20261101": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-03T06:26:40Z",
+        "generation": "2689abef4d0145379a02531ba14d648d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d680f2b9a00523ec18de3879"
+      },
       "needs": [
         "todo-db-batch-v2-release-20261101"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Move BenchBox to the batch v2 todo-db runtime without cutting over the store"
     },
     "benchmark-api-and-core-boundary-cleanup": {
