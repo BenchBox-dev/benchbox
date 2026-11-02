@@ -3,7 +3,7 @@
     "Context records the owner's option, date and quoted message.",
     "theseus-package-identity-install-20261102 becomes ready only after this item is done."
   ],
-  "context": "Status blocked until the owner answers.",
+  "context": "Status blocked until the owner answers.\n\nOwner decision recorded on 2026-11-02 (ask response: \"matcher-arrangement: One verified vendored module\"): choose option (a), one Theseus-owned stdlib-only import-pure matcher module with a single verbatim hash-pinned copy in BenchBox updated only by promotion PRs and checked for drift against the pinned release.",
   "description": "Owner-only decision gate. Three BenchBox consumers read the soundness matcher as a file at a git ref with no package install: .github/workflows/ci.yml (git show $EVENT_BASE_SHA:_project/scripts/soundness_paths.py, two places), scripts/heavy_tier_needed.py (PREDICATE_REPO_PATH, runs base and PR copies with -I -S, fails closed to heavy_needed), scripts/changelog_fragments.py (_load_rules), plus coverage selection run with bare python.\n\nProposed: Theseus owns one stdlib-only matcher module; BenchBox keeps a single verbatim, hash-pinned copy recorded in the lock and updated only by promotion PRs, with a CI drift check against the pinned release.\n\nRejected alternatives (record if owner overrides): a wheel-extraction CI stage in each consumer (adds a network dependency to core CI units); a BenchBox-owned matcher plus a second Theseus parser (repeats the ship-no-ship gate-parity drift).\n\nOptions: (a) approve vendored copy; (b) wheel-extraction stage; (c) another arrangement the owner names.\n\nGuardrails: agents must not choose.",
   "links": [
     "_project/scripts/soundness_paths.py",
@@ -27,6 +27,14 @@
       "op": "update",
       "op_id": "77fa7018a99d461da3dfb18e30cd7802",
       "session_id": "8cfcc9dbcab5419a91fc8b650901f36b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b58f5aa5b2bb5e33c84a53cb",
+      "at": "2026-11-02T16:56:54Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5f43d3f1a503455a8a0998f168e27d71",
+      "session_id": "c4d4cd94bd464a16a29b8b24353d6e06"
     }
   ]
 }

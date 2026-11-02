@@ -27750,7 +27750,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "blocked",
+      "status": "open",
       "title": "Owner decision: approve one vendored soundness-path matcher module as the only embedded exception"
     },
     "theseus-freeze-final-parity-20261102": {
