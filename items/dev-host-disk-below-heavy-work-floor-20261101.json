@@ -2,7 +2,7 @@
   "acceptance": [
     "Free disk is above the floor with headroom; stale merged worktrees are removed under an owner-approved rule; make pr-preflight runs without an override."
   ],
-  "context": "2026-11-01 ~19:30Z: free disk fell to about 26 GiB; #3827's preflight ran with BENCHBOX_HEAVY_MIN_FREE_DISK_GIB=20 and its tail showed the machine stopping, not a pass line. Urgency rising.\n\n2026-11-02: owner approved `make worktree-reap APPLY=1` on 2026-11-01 (choice dialog, session 01a19729). It removed 113 worktrees whose PR merged with HEAD at the merged head, clean and nothing unpushed (dry run: 116 remove, 45 keep, 113 ambiguous untouched). The space returned once the Time Machine local snapshot taken before the reap expired: free disk went from 15 GiB to 531 GiB and heavy-work admission is ADMITTED at the 50 GiB floor. The uv cache was not pruned. Ambiguous worktrees remain for an owner-approved rule.",
+  "context": "2026-11-01 ~19:30Z: free disk fell to about 26 GiB; #3827's preflight ran with BENCHBOX_HEAVY_MIN_FREE_DISK_GIB=20 and its tail showed the machine stopping, not a pass line. Urgency rising.\n\n2026-11-02: owner approved `make worktree-reap APPLY=1` on 2026-11-01 (choice dialog, session 01a19729). It removed 113 worktrees whose PR merged with HEAD at the merged head, clean and nothing unpushed (dry run: 116 remove, 45 keep, 113 ambiguous untouched). The space returned once the Time Machine local snapshot taken before the reap expired: free disk went from 15 GiB to 531 GiB and heavy-work admission is ADMITTED at the 50 GiB floor. The uv cache was not pruned. Ambiguous worktrees remain for an owner-approved rule.\n\nClosed 2026-11-02: make pr-preflight ran on the batch-loop core branch with heavy-work admission ADMITTED at the unchanged 50 GiB floor (531 GiB free). Its only failures were two Linux-VM environment failures that also fail on unmodified develop, tracked as pr-preflight-linux-vm-env-failures-20261102.",
   "description": "On 2026-11-01 the Mac had about 40 GiB free against the 50 GiB BENCHBOX_HEAVY_MIN_FREE_DISK_GIB floor, so make pr-preflight refused heavy work (exit 76). Three PRs ran preflight once with the floor lowered to 35, and #3899 merged without a clean preflight exit. The host has about 256 linked worktrees and a 31 GiB uv cache; uv cache prune was blocked by running uv processes. Owner-approved cleanup of merged-branch worktrees and caches is needed.",
   "sessions": [
     {
@@ -36,6 +36,14 @@
       "generation": "167fe5807567476dad729820a883fcbf",
       "op": "take",
       "op_id": "aef32463f6a44afba7cfc69e0c442706",
+      "session_id": "3dd2b4a046904511bb5ce7edcc3205fd"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d680f2b9a00523ec18de3879",
+      "at": "2026-11-02T04:46:24Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6c2f885c386542f6a3e0b322f0c9cba1",
       "session_id": "3dd2b4a046904511bb5ce7edcc3205fd"
     }
   ]
