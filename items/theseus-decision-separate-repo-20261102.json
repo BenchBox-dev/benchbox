@@ -4,7 +4,7 @@
     "Tradeoffs and the in-repository alternative are recorded without imposing an additional demand/justification gate.",
     "No unresolved owner choice or production authority is inferred from this architectural decision."
   ],
-  "context": "Authority: user requested 'split the oracle reviewer application out of benchbox and into a separate OSS project named theseus', preserved BenchBox-dev/theseus, then instructed 'convert the change proposal and decisions into TODO items' and 'proceed fully complete the todos as a batch in the correct sequence'. These authorize the separate-repository implementation goal. Historical first-revision H1 explicitly rejected another demand/justification gate. The later assistant cost question did not revoke that user decision. Administrative settings, release/publication, activation and actual unresolved choices remain gated.",
+  "context": "Authority: user requested 'split the oracle reviewer application out of benchbox and into a separate OSS project named theseus', preserved BenchBox-dev/theseus, then instructed 'convert the change proposal and decisions into TODO items' and 'proceed fully complete the todos as a batch in the correct sequence'. These authorize the separate-repository implementation goal. Historical first-revision H1 explicitly rejected another demand/justification gate. The later assistant cost question did not revoke that user decision. Administrative settings, release/publication, activation and actual unresolved choices remain gated.\n\nCompleted record-only acceptance: live show_item confirms separate OSS repository authority and cost alternative are recorded, with no inferred matcher choice, promotion-record choice, reliability waiver or production authority. No repository change was required for this tracker decision record. TODO review identified and corrected the redundant renewed-demand gate before finishing. Next ready deliverable is the ADR/inventory task; independent review of the full sequence remains separate.",
   "description": "Record the owner's existing separate-repository decision, not a new go/no-go gate. The owner explicitly requested a separate OSS Theseus project, preserved BenchBox-dev/theseus, and subsequently directed conversion to TODOs and implementation. A renewed cost confirmation was an assistant recommendation, not a standing requirement.\nThe cost tradeoff remains documented: promotion review, a shared matcher distribution arrangement, separate governance/App/gateway client, and trusted reviewer/gate resolution. The smaller in-BenchBox-package alternative does not meet the requested separate OSS project outcome.\nGuardrails: this record grants no settings, secret, activation, publication or observation-waiver authority; unresolved promotion-record/matcher/reliability decisions remain separate gates. Do not drop unrelated or every theseus-* item by assumption.",
   "links": [
     "_project/scripts/oracle_reviewers/",
@@ -42,6 +42,14 @@
       "generation": "7862bff82237486a9387783cf1c2d8cf",
       "op": "take",
       "op_id": "940de6dba9b848b0b35fa09c0994aeee",
+      "session_id": "c4d4cd94bd464a16a29b8b24353d6e06"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b58f5aa5b2bb5e33c84a53cb",
+      "at": "2026-11-02T14:00:14Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e7a034cae9ee463cb1080dfcd8c7c930",
       "session_id": "c4d4cd94bd464a16a29b8b24353d6e06"
     }
   ]
