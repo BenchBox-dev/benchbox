@@ -192,22 +192,24 @@ The standard gates are intentionally split by the risk they are meant to catch:
   signals until their cost, credential, and flake policies are suitable for
   blocking routine PRs.
 
-The `medium-test` matrix in `.github/workflows/ci.yml` has two paths:
+Code-routed PRs currently run the complete medium tier in the `medium-test`
+matrix. Coverage selection is in **shadow mode**: it records what it would
+select but escalates to the complete tier. `scripts/heavy_tier_needed.py`
+therefore reports `heavy-needed == 'true'`; `medium-collect` collects the
+complete tier and four Python 3.12 shards partition it using
+`tests/fixtures/medium_shard_durations.json`. Do not assume ordinary code PRs
+skip the full medium tier.
 
-- When `scripts/heavy_tier_needed.py` reports `heavy-needed == 'true'`,
-  `medium-collect` collects the complete medium tier and four Python 3.12
-  shards partition it using `tests/fixtures/medium_shard_durations.json`.
-- Otherwise, code-routed PRs run coverage-selected node IDs in Python 3.14
-  medium shards. Selection combines coverage impact with the name/import-based
-  fallback from `_project/scripts/preflight_targets.py`. The selected tests run
-  in `medium-test`, not in the fast-test `code-test` job.
+The workflow also implements a selected-only Python 3.14 medium path for
+`heavy-needed != 'true'`, but shadow-mode escalation prevents code-routed PRs
+from taking it today. Its selection combines coverage impact with the
+name/import-based fallback from `_project/scripts/preflight_targets.py`.
+It belongs to `medium-test`, not the fast-test `code-test` job.
 
-Both paths exclude slow, stress, resource-heavy and live integration tests and
-run without coverage instrumentation. Coverage selection currently runs in
-**shadow mode**: it records what it would select but escalates to the complete
-medium tier. Do not assume ordinary code PRs skip the full medium tier.
-Missing or unusable coverage evidence also escalates rather than silently
-reducing test coverage. Content-only PRs can skip Python tests altogether.
+Both medium paths exclude slow, stress, resource-heavy and live integration
+tests and run without coverage instrumentation. Missing or unusable coverage
+evidence also escalates rather than silently reducing test coverage.
+Content-only PRs can skip Python tests altogether.
 
 Local `make pr-preflight` is narrower: it runs mapped tests for changed paths,
 not the complete CI selection. A green local preflight is not proof that the
