@@ -19088,15 +19088,10 @@
       "title": "Make the final-PR batch checks match batch v2 and enforce them on the pr-arm path"
     },
     "pr-landing-soundness-refusal-unreachable-20261009": {
-      "claim": {
-        "expires_at": "2026-11-03T06:27:53Z",
-        "generation": "863fdae97de141c1abdb1f33f39b1562",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d680f2b9a00523ec18de3879"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "pr_landing refuses soundness PRs on an approval that can never be given; defer to the required oracle-review check"
     },
     "pr-landing-surface-unresolved-threads-20261101": {
