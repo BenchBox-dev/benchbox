@@ -35,15 +35,38 @@ def test_begin_transaction_is_rewritten_to_begin_on_starrocks(txn):
     assert "TRANSACTION" not in sql
 
 
-def test_consecutive_inserts_into_one_table_become_a_single_statement_on_starrocks(txn):
-    sql = txn._rewrite_transactional_sql_for_platform(
-        "BEGIN TRANSACTION;\nINSERT INTO a VALUES (1, 'x');\nINSERT INTO a VALUES (2, 'y');\n"
-        "INSERT INTO b VALUES (3, 'z');\nCOMMIT;\n",
-        "starrocks",
-    )
-    assert sql.count("INSERT INTO a") == 1
-    assert "VALUES (1, 'x'), (2, 'y')" in sql
-    assert "INSERT INTO b VALUES (3, 'z')" in sql
+def test_starrocks_transaction_sql_is_never_merged_and_skips_are_exactly_the_multi_dml_operations(txn):
+    import re
+    from collections import Counter
+
+    multi_dml = set()
+    for operation_id, operation in txn.get_all_operations().items():
+        original = operation.write_sql
+        sql = txn._rewrite_transactional_sql_for_platform(original, "starrocks")
+        dml = r"(?im)^\s*(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(\w+)"
+        assert Counter(re.findall(dml, sql)) == Counter(
+            re.findall(dml, txn._rewrite_transactional_sql_for_platform(original, "mysql"))
+        ), operation_id
+        if any(count > 1 for count in Counter(re.findall(dml, sql)).values()):
+            multi_dml.add(operation_id)
+
+    one_dml_skips = {
+        operation_id
+        for operation_id, reason in STARROCKS_TRANSACTION_PRIMITIVES_OPERATION_SKIPS.items()
+        if "one DML statement per table" in reason
+    }
+    assert multi_dml <= set(STARROCKS_TRANSACTION_PRIMITIVES_OPERATION_SKIPS)
+    assert one_dml_skips <= multi_dml
+    assert {
+        "transaction_commit_small",
+        "transaction_rollback_small",
+        "transaction_isolation_read_committed",
+        "transaction_isolation_repeatable_read",
+        "transaction_isolation_serializable",
+        "transaction_multi_table_writes",
+    } <= one_dml_skips
+    runnable = set(txn.get_all_operations()) - set(STARROCKS_TRANSACTION_PRIMITIVES_OPERATION_SKIPS)
+    assert not runnable & multi_dml
 
 
 def test_generate_series_is_rewritten_to_the_table_function_on_starrocks(txn):

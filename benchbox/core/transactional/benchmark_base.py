@@ -59,28 +59,6 @@ _STARROCKS_BETWEEN_RE = re.compile(r"(?P<column>\w+)\s+BETWEEN\s+(?P<lo>\S+)\s+A
 _STARROCKS_UNCONDITIONAL_DELETE_RE = re.compile(r"^\s*DELETE\s+FROM\s+\S+\s*$", re.IGNORECASE)
 
 
-_INSERT_VALUES_RE = re.compile(
-    r"^\s*INSERT\s+INTO\s+(?P<table>\w+)\s+VALUES\s*(?P<rows>\(.*\))\s*$", re.IGNORECASE | re.DOTALL
-)
-
-
-def _merge_insert_values(sql: str) -> str:
-    merged: list[str] = []
-    last_table: str | None = None
-    combined = False
-    for statement in (part.strip() for part in sql.split(";")):
-        if not statement:
-            continue
-        match = _INSERT_VALUES_RE.match(statement)
-        if match and last_table == match["table"].lower():
-            merged[-1] = f"{merged[-1]}, {match['rows']}"
-            combined = True
-        else:
-            merged.append(statement)
-        last_table = match["table"].lower() if match else None
-    return "; ".join(merged) + ";" if combined else sql
-
-
 def _starrocks_cleanup_statement(statement: str) -> str:
     if not statement.lstrip().upper().startswith("DELETE"):
         return statement
@@ -250,7 +228,7 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
                 lambda m: template.format(lo=m.group("lo"), hi=m.group("hi"), alias=m.group("alias")), sql
             )
             if dialect == "starrocks":
-                return _merge_insert_values(_BEGIN_TRANSACTION_RE.sub("BEGIN;", sql))
+                return _BEGIN_TRANSACTION_RE.sub("BEGIN;", sql)
             return rewrite_questdb_operation_sql(sql) if dialect == "questdb" else sql
         if dialect not in _POSTGRES_SERIES_DIALECTS:
             return sql

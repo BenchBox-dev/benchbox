@@ -10,12 +10,23 @@ _NO_UPDATE_DELETE = (
     "fail with 'Explicit transaction only support begin/commit/rollback/insert/update/delete/set/select "
     "statements.' (error 5305)."
 )
+_ONE_DML_PER_TABLE = (
+    "StarRocks 3.5.16 allows one DML statement per table in an explicit transaction: a second statement against "
+    "the same table fails with 'NOT allowed to read or write tables that have been subjected to DML operations "
+    "before' (error 5303)."
+)
 _NO_SAVEPOINT = (
     "StarRocks 3.5 has no SAVEPOINT statement: `SAVEPOINT sp1` fails with \"Unexpected input 'SAVEPOINT', the most "
     "similar input is {'EXPORT', 'EXPLAIN', 'ADMIN', 'BEGIN', 'GRANT', '(', ';'}\"."
 )
 
 STARROCKS_TRANSACTION_PRIMITIVES_OPERATION_SKIPS = {
+    "transaction_commit_small": _ONE_DML_PER_TABLE,
+    "transaction_rollback_small": _ONE_DML_PER_TABLE,
+    "transaction_isolation_read_committed": _ONE_DML_PER_TABLE,
+    "transaction_isolation_repeatable_read": _ONE_DML_PER_TABLE,
+    "transaction_isolation_serializable": _ONE_DML_PER_TABLE,
+    "transaction_multi_table_writes": _ONE_DML_PER_TABLE,
     "transaction_commit_large": _NO_UPDATE_DELETE,
     "transaction_savepoint_nested": _NO_SAVEPOINT,
     "transaction_savepoint_deep_nesting": _NO_SAVEPOINT,
