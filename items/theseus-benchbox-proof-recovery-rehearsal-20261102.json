@@ -5,7 +5,8 @@
     "Both incompatible branch/base pairings refuse with rebase instructions; compatible paths complete without embedded code imports.",
     "Sandbox first-cutover revert returns to the named known-good embedded evaluator; owner full-diff review and evaluator-unavailable runbook applicability are recorded.",
     "Drain rehearsal observes no in-progress verdict runs at switch, records held PRs, and redispatches only approved extraction proof runs afterward; no observation acceptance is manufactured.",
-    "Proof/recovery docs and focused regressions merge; live cutover conditions are rechecked in T9, not inferred from rehearsal."
+    "Proof/recovery docs and focused regressions merge; live cutover conditions are rechecked in T9, not inferred from rehearsal.",
+    "Owner-run sandbox rehearsal includes a genuinely broken gate (not just a healthy revert), restoration/readback, successful pr-arm after restoration and rollback finding/dispute/state readability. No alternate permanent writer is introduced."
   ],
   "context": "T8, P5/R5. Rehearsal pairing uses sandbox commits because the real post-cutover base does not exist yet; T9 repeats exact-head checks.",
   "description": "T8: exercise BenchBox's full inventory against the released candidate using sandbox/throwaway consumer trees without switching production authority. Name the known-good pre-cutover BenchBox commit. Rehearse reverting the complete T9 change in a sandbox, including owner full-diff review, since there is no earlier lock to revert to on first cutover. Cover cold hosted runner without warm cache, primary artifact outage, tampered retained artifact, unavailable evaluator, invalid package, and trusted fetch failure.\nCover old-branch/new-base and new-branch/reverted-base pairs for Makefile launcher, oracle_local_review.py and pr_arm.py; incompatible pairs must fail closed with clear rebase guidance rather than stale exports/ambient fallback. Rehearse a verdict run spanning cutover and the drain/re-dispatch procedure. Existing docs/agent/emergency-merge.md is the only broken-gate authority; evaluator-unavailable scope requires owner confirmation/runbook update at T9, not an agent bypass.\nGuardrails: heavy runs only through lock-taking entrypoints after make heavy-status; use actual CLI outputs for smoke, not tests alone. No live settings changes, shared gateway restart, synthetic natural events, default-branch pushes or activation. Preserve local-claim non-authority and required gate source binding.",
@@ -23,6 +24,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "ccbc6eabb43d46d5b91067237239ca7e",
+      "session_id": "8cfcc9dbcab5419a91fc8b650901f36b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4c6f341b7f4b66f30a37a2f1",
+      "at": "2026-11-02T13:53:56Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "42b152e63e69427b813d0496ec132c39",
       "session_id": "8cfcc9dbcab5419a91fc8b650901f36b"
     }
   ]
