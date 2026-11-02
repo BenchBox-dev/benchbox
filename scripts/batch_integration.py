@@ -247,8 +247,10 @@ def read_tracker(repo: Path, batch_id: str) -> dict:
     if not isinstance(capability, dict) or int(capability.get("version") or 0) < 2:
         raise BatchError("the todo-db runtime lacks the batch-v2 capability; use the pinned runtime")
     revision = summary.get("rev")
+    if summary.get("stale") or summary.get("cached_rev") is not None or not revision:
+        raise BatchError("tracker read is stale or carries no revision (offline cache); reconnect and retry")
     sections = summary.get("sections") if isinstance(summary.get("sections"), dict) else {}
-    tracker = {key: value for key, value in summary.items() if key not in ("sections", "rev", "stale", "cached_rev")}
+    tracker = {key: value for key, value in summary.items() if key not in ("sections", "rev")}
     for name, info in sections.items():
         if name in summary:
             tracker[name] = summary[name]
@@ -348,7 +350,7 @@ def start_batch(
         raise BatchError("scope must map every member, and only members, to a non-empty list of path patterns")
     dependencies = _validate_dependencies(members, dependencies or {})
     follow_up = _member_metadata_steps(repo, batch_id, members, dependencies)
-    _rev(repo, DEVELOP_REF)
+    _trusted_develop(repo)
     origin = _git(repo, "remote", "get-url", "origin")
     branch = integration_branch_name(batch_id)
     path = (worktree_path or repo.resolve().parent / f"{_primary_name(repo)}.wt-{batch_id}").resolve()
@@ -619,6 +621,7 @@ def check_member(
         "member": member,
         "member_head": member_head,
         "integration_head": integration_head,
+        "preflight": preflight,
         "trusted_sha": trusted,
         "review_outcome": result["outcome"],
         "verification": {"suite": suite, "command": command},
@@ -808,6 +811,15 @@ def _member_landing_facts(repo: Path, ledger: dict, member: str) -> dict:
     return {"branch": branch, "worktree": worktree, "member_head": member_head}
 
 
+def _failed_overlaps(ledger: dict, member: str, merge_head: str) -> list[str]:
+    failed = []
+    for other, entries in ledger.get("acceptance", {}).items():
+        latest = [e for e in entries if e.get("reason") == f"overlap:{member}" and e.get("revision") == merge_head]
+        if latest and latest[-1].get("status") != "passed":
+            failed.append(other)
+    return failed
+
+
 def _already_merged(
     repo: Path, ledger: dict, member: str, facts: dict, head: str, dependencies: list[str]
 ) -> dict | None:
@@ -820,6 +832,13 @@ def _already_merged(
         return None
     ledger["landings"][member] = landing
     save_ledger(repo, ledger)
+    failed = _failed_overlaps(ledger, member, landing["merge_head"])
+    if failed:
+        raise BatchError(
+            f"member {member!r} is merged at {landing['merge_head']} but the overlap rerun failed for {failed}; "
+            f"reset the integration branch to {landing.get('source_base')} and land again once the combination "
+            f"passes; do not prepare {member!r} until the reruns pass"
+        )
     return {
         "status": "already-merged",
         "message": (
@@ -870,6 +889,7 @@ def _landing_preconditions(repo: Path, ledger: dict, tracker: dict, member: str,
         "trusted": trusted,
         "review": review,
         "changed": changed,
+        "preflight": [str(part) for part in check.get("preflight", [])],
         "verification": {
             "suite": check["verification"]["suite"],
             "command": _validate_verification_command(check["verification"]["command"]),
@@ -940,7 +960,9 @@ def land_member(repo: Path, member: str, dependencies: list[str] | None = None, 
         )
     gate = _landing_preconditions(repo, ledger, tracker, member, facts, head)
     warnings = _brief_gate(repo, head, facts["member_head"])
-    merged = _git_merge(repo, member, facts["branch"], head, facts["member_head"], ledger)
+    if gate["preflight"] != [*DEFAULT_PREFLIGHT_COMMAND, f"BASE={head}"]:
+        warnings.append(f"member preflight was not the default: {' '.join(gate['preflight']) or 'not recorded'}")
+    merged = _git_merge(repo, member, head, facts["member_head"], ledger)
     landing = {
         "member_branch": facts["branch"],
         "member_worktree": str(facts["worktree"]),
@@ -959,13 +981,13 @@ def land_member(repo: Path, member: str, dependencies: list[str] | None = None, 
     warnings.extend(hunk_warnings(repo, {**ledger, "landings": earlier}, member))
     reruns, failures = _overlap_reruns(repo, ledger, receipts, earlier, member, gate["changed"])
     save_ledger(repo, ledger)
-    backup = _push_backup(repo, ledger["integration_branch"]) if push else "skipped"
     if failures:
         raise BatchError(
             f"merged {member!r} at {merged} but the overlap rerun failed for {failures}; "
-            "fix the combination with a recorded batch-advance or reset the integration branch to "
-            f"{head}; do not prepare {member!r} until the reruns pass"
+            f"reset the integration branch to {head} and land again once the combination passes; "
+            f"do not prepare {member!r} until the reruns pass"
         )
+    backup = _push_backup(repo, ledger["integration_branch"]) if push else "skipped"
     return {
         "status": "merged",
         "merge_head": merged,
@@ -1003,9 +1025,10 @@ def _reconstruct_landing(repo: Path, ledger: dict, member: str, facts: dict, mer
     }
 
 
-def _git_merge(repo: Path, member: str, branch: str, head: str, member_head: str, ledger: dict) -> str:
+def _git_merge(repo: Path, member: str, head: str, member_head: str, ledger: dict) -> str:
+    message = f"Merge {member} into {ledger['integration_branch']}"
     proc = subprocess.run(
-        ["git", "merge", "--no-ff", "--no-edit", "-m", f"Merge {member} into {ledger['integration_branch']}", branch],
+        ["git", "merge", "--no-ff", "--no-edit", "-m", message, member_head],
         cwd=repo,
         check=False,
         encoding="utf-8",
