@@ -96,6 +96,15 @@ class EvidenceRules:
 
 
 @dataclass(frozen=True)
+class PromotionRules:
+    package: str = "theseus-reviewer"
+    repository: str = "BenchBox-dev/theseus"
+    bootstrap_baseline_commit: str | None = None
+    bootstrap_path_map: Mapping[str, str] = field(default_factory=dict)
+    bootstrap_reviewers: tuple[str, ...] = ("joeharris76",)
+
+
+@dataclass(frozen=True)
 class Policy:
     mode: str
     status_context: str
@@ -111,6 +120,7 @@ class Policy:
     classifier: ClassifierRules
     omp_sha256: Mapping[str, str] = field(default_factory=dict)
     evidence: EvidenceRules = EvidenceRules()
+    promotion: PromotionRules = PromotionRules()
 
     def chain(self, bucket: str) -> list[Reviewer]:
         return [self.reviewers[self.buckets[bucket]]]
@@ -188,6 +198,46 @@ def parse_policy(data: Mapping[str, Any]) -> Policy:
         except omp_pin.PinError as exc:
             raise PolicyError(str(exc)) from exc
     evidence = data.get("evidence") or {}
+    promotion_raw = data.get("promotion") or {}
+    _require(isinstance(promotion_raw, Mapping), "promotion must be a mapping")
+    promo_package = promotion_raw.get("package", "theseus-reviewer")
+    promo_repository = promotion_raw.get("repository", "BenchBox-dev/theseus")
+    _require(
+        isinstance(promo_package, str) and re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,127}", promo_package) is not None,
+        "promotion package must be a valid package name",
+    )
+    _require(
+        isinstance(promo_repository, str)
+        and re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", promo_repository) is not None,
+        "promotion repository must be owner/name",
+    )
+    baseline_commit = promotion_raw.get("bootstrap_baseline_commit")
+    _require(
+        baseline_commit is None
+        or (isinstance(baseline_commit, str) and re.fullmatch(r"[0-9a-f]{40}", baseline_commit) is not None),
+        "promotion bootstrap_baseline_commit must be a 40-char lowercase hex sha",
+    )
+    raw_path_map = promotion_raw.get("bootstrap_path_map") or {}
+    _require(isinstance(raw_path_map, Mapping), "promotion bootstrap_path_map must be a mapping")
+    parsed_path_map: dict[str, str] = {}
+    for src_key, dst_val in raw_path_map.items():
+        _require(
+            isinstance(src_key, str)
+            and isinstance(dst_val, str)
+            and bool(src_key.strip("/"))
+            and bool(dst_val.strip("/")),
+            "promotion bootstrap_path_map entries must be non-empty relative paths",
+        )
+        clean_src = src_key.strip("/")
+        _require(clean_src not in parsed_path_map, "promotion bootstrap_path_map has duplicate source paths")
+        parsed_path_map[clean_src] = dst_val.strip("/")
+    promo_reviewers = _str_tuple(
+        promotion_raw.get("bootstrap_reviewers") or ["joeharris76"],
+        "promotion bootstrap_reviewers",
+    )
+    _require(
+        bool(promo_reviewers) and all(item.strip() for item in promo_reviewers), "bootstrap_reviewers cannot be empty"
+    )
     policy = Policy(
         mode=data.get("mode", ""),
         status_context=data.get("status_context", ""),
@@ -216,6 +266,13 @@ def parse_policy(data: Mapping[str, Any]) -> Policy:
         omp_sha256=omp_sha256,
         evidence=EvidenceRules(
             exempt_paths=_str_tuple(evidence.get("exempt_paths") or [], "evidence exempt_paths"),
+        ),
+        promotion=PromotionRules(
+            package=promo_package,
+            repository=promo_repository,
+            bootstrap_baseline_commit=baseline_commit,
+            bootstrap_path_map=parsed_path_map,
+            bootstrap_reviewers=promo_reviewers,
         ),
     )
     _require(policy.mode in ("shadow", "enforce"), "mode must be shadow or enforce")

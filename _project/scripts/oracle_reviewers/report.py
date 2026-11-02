@@ -142,6 +142,7 @@ def _record(
     escalated: Sequence[str] = (),
     adjudicated: Sequence[Mapping[str, str]] = (),
     disputed: Sequence[str] = (),
+    promotion_record: Mapping[str, Any] | None = None,
 ) -> str:
     rules = plan["protocol"]
     record = {
@@ -168,6 +169,8 @@ def _record(
         record["disputed"] = list(disputed)
     if adjudicated:
         record["adjudicated"] = [dict(item) for item in adjudicated]
+    if promotion_record is not None and not carried and decision == protocol.SHIP and not open_defects:
+        record["promotion"] = dict(promotion_record)
     if bound_run(plan):
         record["run_uuid"] = bound_run(plan)
     return protocol.encode_marker(redaction_check.redact(record, secrets), rules.get("patch_map"))
@@ -298,6 +301,9 @@ def _marked(
             disputed=disputed,
             summary=judgement.summary,
             secrets=secrets,
+            promotion_record=plan.get("promotion")
+            if isinstance(plan.get("promotion"), Mapping) and judgement.decision == protocol.SHIP and not open_defects
+            else None,
         )
     except protocol.MarkerError:
         return None

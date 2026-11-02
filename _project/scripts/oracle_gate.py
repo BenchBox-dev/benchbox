@@ -26,9 +26,11 @@ from oracle_review_check import (
     fetch_comments,
     fetch_files,
     fetch_head_oid,
+    fetch_promotion_refusals,
     fetch_pull,
     fetch_reviews,
     fetch_statuses,
+    fetch_text,
     path_matcher,
 )
 
@@ -130,6 +132,26 @@ def load_policy_rules() -> tuple[tuple[str, ...], tuple[str, ...]]:
         raise CheckError(f"cannot load the review policy: {exc}") from exc
 
 
+def load_promotion_policy(
+    token: str, repo: str, base_ref: str
+) -> tuple[str, str, str | None, dict[str, str], tuple[str, ...]]:
+    try:
+        import yaml
+        from oracle_reviewers.policy import parse_policy
+
+        raw = fetch_text(token, repo, ".github/oracle-reviewers.yml", base_ref)
+        promo = parse_policy(yaml.safe_load(raw)).promotion
+        return (
+            promo.package,
+            promo.repository,
+            promo.bootstrap_baseline_commit,
+            dict(promo.bootstrap_path_map),
+            promo.bootstrap_reviewers,
+        )
+    except Exception as exc:
+        raise CheckError(f"cannot load the base review policy: {exc}") from exc
+
+
 def read_pull(repo: str, pr: int, token: str) -> tuple[dict[str, Any], str, str]:
     last: Exception | None = None
     for attempt in range(PULL_READ_ATTEMPTS):
@@ -157,8 +179,43 @@ def evaluate(repo: str, pr: int, token: str) -> tuple[str, int, str]:
         reviews = fetch_reviews(token, repo, pr)
         annotate_receipt(token, reviews, head_sha, base_date)
         bump = fetch_bump_refusals(token, repo, pull, files, len(items), comments)
+        from oracle_reviewers import promotion
+
+        promo_policy = (
+            load_promotion_policy(token, repo, pull["base"].get("sha") or pull["base"]["ref"])
+            if (
+                promotion.LOCK_PATH in files
+                or promotion.has_planted_promotion_path(files)
+                or len(items) < pull["changed_files"]
+            )
+            else ("theseus-reviewer", "BenchBox-dev/theseus", None, {}, ("joeharris76",))
+        )
+        is_promotion, promo = fetch_promotion_refusals(
+            token,
+            repo,
+            pull,
+            files,
+            len(items),
+            reviews,
+            base_date,
+            statuses=statuses,
+            expected_package=promo_policy[0],
+            expected_repository=promo_policy[1],
+            bootstrap_baseline_commit=promo_policy[2],
+            bootstrap_path_map=promo_policy[3],
+            bootstrap_reviewers=promo_policy[4],
+        )
         status, message = decide(
-            head_sha, files, statuses, matcher, base_date, comments, reviews=reviews, bump_refusals=bump
+            head_sha,
+            files,
+            statuses,
+            matcher,
+            base_date,
+            comments,
+            reviews=reviews,
+            bump_refusals=bump,
+            promotion_refusals=promo,
+            is_promotion=is_promotion,
         )
     except Exception as exc:
         raise EvaluationFailed(head_sha, exc) from exc

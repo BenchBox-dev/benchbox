@@ -103,6 +103,8 @@ classifier:
   gate_paths:
     - .github/oracle-reviewers.yml
     - .github/oracle-omp-config.yml
+    - .github/theseus-lock.json
+    - _project/scripts/theseus_bootstrap.py
     - _project/scripts/oracle_gateway_host.sh
     - .github/soundness-paths.txt
     - .github/workflows/oracle-gate.yml
