@@ -144,7 +144,7 @@ def _flush_inserts(cursor: Any, qualified_table: str, column_types: Sequence[str
 
 def _iter_delimited_rows(
     file_path: Path, column_count: int, dialect: CsvDialect, delimiter: str
-) -> Iterator[list[list[Any]]]:
+) -> Iterator[list[tuple[Any, ...]]]:
     from benchbox.platforms.base.data_loading import FileFormatRegistry, RowBatchProcessor
 
     compression_handler = FileFormatRegistry.get_compression_handler(file_path)
@@ -190,6 +190,7 @@ def load_file_batches(
         column_types = fetch_column_types(cursor, qualified_table)
     column_count = len(column_types)
     rows_loaded = 0
+    batches: Iterator[Sequence[Sequence[Any]]]
 
     if get_data_extension(file_path) == ".parquet":
         batches = _iter_parquet_rows(file_path, column_count)
