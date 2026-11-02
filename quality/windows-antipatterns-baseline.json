@@ -504,7 +504,7 @@
       "WA007": 1
     },
     "tests/unit/scripts/test_pr_landing.py": {
-      "WA007": 21
+      "WA007": 8
     },
     "tests/unit/scripts/test_pr_ready_make.py": {
       "WA003": 2

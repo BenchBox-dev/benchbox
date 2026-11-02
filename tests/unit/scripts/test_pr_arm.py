@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 from _project.scripts.oracle_reviewers import omp_pin
+from tests.utilities import batch_evidence as fx
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
@@ -77,6 +78,10 @@ class FakeGh:
         self.extra_runs = kwargs.get("extra_runs", [])
         self.policies = kwargs.get("policies", {})
         self.comments = kwargs.get("comments", [])
+        self.worktree_config = {
+            "benchbox.batch.role": kwargs.get("batch_role"),
+            "benchbox.batch.id": kwargs.get("batch_id"),
+        }
 
     def __call__(self, cmd: Sequence[str]) -> tuple[int, str]:
         cmd = list(cmd)
@@ -132,6 +137,9 @@ class FakeGh:
         raise AssertionError(f"unexpected command {cmd}")
 
     def _bump_call(self, cmd: list[str]) -> tuple[int, str] | None:
+        if cmd[:3] == ["git", "config", "--worktree"]:
+            value = self.worktree_config[cmd[3]]
+            return (0, value + "\n") if value else (1, "")
         if cmd[:2] == ["gh", "api"] and "/contents/" in cmd[-1]:
             ref = "origin/develop"
             return (0, self.policies[ref]) if ref in self.policies else (1, "HTTP 404")
@@ -1073,3 +1081,135 @@ def test_gate_refusals_map_the_evaluation_exit_code(exit_code: int, expected: ob
     assert "--no-post" in seen[0][2]
     assert "git archive origin/develop" in seen[0][2]
     assert found == [] if exit_code == 0 else expected in found[0]
+
+
+def _batch_arm(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    mutate=None,
+    overlap: bool = False,
+    role: str | None = "integration",
+    batch_id: str | None = "b",
+    write_evidence: bool = True,
+    tracker_error: Exception | None = None,
+) -> tuple[int, FakeGh, list[str]]:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    for args in (["init", "-q", "-b", "main"], ["config", "user.email", "t@example.com"], ["config", "user.name", "T"]):
+        fx.git(repo, *args)
+    fx.write_commit(repo, {"f.txt": "v1"}, "init")
+    batch = fx.BatchFixture(repo, {"a": ["a/**"], "b": ["b/**"]})
+    batch.land("a", {"a/x.txt": "a"})
+    batch.land("b", {"b/y.txt": "b"})
+    if overlap:
+        batch.overlap("b", "a", ["a/x.txt"])
+    tracker = batch.tracker()
+    evidence = batch.evidence()
+    if mutate is not None:
+        mutate(tracker, evidence)
+    head = fx.head_of(repo)
+    if write_evidence:
+        target = repo / ".todo-batch" / "b" / "final-evidence.json"
+        target.parent.mkdir(parents=True)
+        target.write_text(json.dumps(evidence), encoding="utf-8")
+    reads: list[str] = []
+
+    def read(requested: str) -> dict:
+        reads.append(requested)
+        if tracker_error is not None:
+            raise tracker_error
+        return tracker
+
+    monkeypatch.setattr(pr_arm.pr_landing, "read_batch_tracker", read)
+    gh = FakeGh(view=_view(headRefOid=head), local_head=head, batch_role=role, batch_id=batch_id)
+    code = pr_arm.arm(
+        "7",
+        None,
+        run=gh,
+        checkout=repo,
+        unpublished=lambda _checkout: [],
+        threads=lambda _run, _repo, _number: False,
+        suites=lambda _run, _repo, _base, _head: [],
+        bump=lambda _run, _repo, _number, _head: [],
+        gate=lambda _run, _repo, _number, _head: [],
+    )
+    return code, gh, reads
+
+
+def test_an_integration_worktree_arms_a_pr_whose_batch_evidence_holds(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    code, gh, reads = _batch_arm(tmp_path, monkeypatch, overlap=True)
+
+    assert code == 0
+    assert reads == ["b"]
+    assert len(gh.merged()) == 1
+
+
+def _drop_acceptance(tracker: dict, evidence: dict) -> None:
+    del evidence["current_acceptance"]["a"]
+
+
+def _move_tracker_head(tracker: dict, evidence: dict) -> None:
+    tracker["final_pr"]["head"] = "f" * 40
+
+
+def _other_pr(tracker: dict, evidence: dict) -> None:
+    tracker["final_pr"]["number"] = 8
+    evidence["tracker"]["final_pr"]["number"] = 8
+
+
+def _finished_batch(tracker: dict, evidence: dict) -> None:
+    tracker["lifecycle"] = "aborted"
+
+
+def _reviewed_with_findings(tracker: dict, evidence: dict) -> None:
+    evidence["member_reviews"]["b"]["outcome"] = "findings"
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [_drop_acceptance, _move_tracker_head, _other_pr, _finished_batch, _reviewed_with_findings],
+)
+def test_an_integration_worktree_refuses_a_pr_whose_batch_evidence_does_not_hold(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mutate
+) -> None:
+    code, gh, _ = _batch_arm(tmp_path, monkeypatch, overlap=True, mutate=mutate)
+
+    assert code == 2
+    assert gh.merged() == []
+
+
+def test_an_integration_worktree_without_a_batch_id_refuses(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    code, gh, reads = _batch_arm(tmp_path, monkeypatch, batch_id=None)
+
+    assert code == 2
+    assert reads == []
+    assert gh.merged() == []
+
+
+@pytest.mark.parametrize("failure", ["no-evidence-file", "tracker-unreachable"])
+def test_an_integration_worktree_fails_closed_when_the_evidence_or_tracker_cannot_be_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    code, gh, _ = _batch_arm(
+        tmp_path,
+        monkeypatch,
+        write_evidence=failure != "no-evidence-file",
+        tracker_error=LandingError("tracker offline") if failure == "tracker-unreachable" else None,
+    )
+
+    assert code == 1
+    assert gh.merged() == []
+
+
+@pytest.mark.parametrize("role", [None, "member"])
+def test_an_ordinary_or_member_worktree_never_reads_the_tracker(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, role: str | None
+) -> None:
+    code, gh, reads = _batch_arm(tmp_path, monkeypatch, role=role, tracker_error=LandingError("tracker offline"))
+
+    assert code == 0
+    assert reads == []
+    assert len(gh.merged()) == 1
