@@ -1835,13 +1835,18 @@
       "title": "Prove the batch loop end to end in a disposable repository with an isolated tracker"
     },
     "batch-loop-docs-and-agents-20261101": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-03T06:34:44Z",
+        "generation": "8d8ce6b68a594b819df91822399a1e57",
+        "renewals": 0,
+        "worker": "benchbox-batch-pilot-leader"
+      },
       "needs": [
         "batch-land-and-status-20261101",
         "pr-landing-arm-batch-evidence-20261101"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Document the integration batch loop in AGENTS.md and docs/agent, keeping it opt-in until the pilot passes"
     },
     "batch-loop-pilot-20261101": {
