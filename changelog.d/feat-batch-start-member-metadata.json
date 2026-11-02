@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Developer tooling: make batch-start accepts DEPENDENCIES and prints the update_item steps that attach batch metadata and merged needs to each member after register_batch, with a reminder to take dependent members before batch-land"
+}

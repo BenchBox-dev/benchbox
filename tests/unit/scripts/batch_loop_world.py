@@ -58,6 +58,8 @@ class FakeTracker:
         self.window_cap = 100000
         self.paged_sections: set[str] = set()
         self.unreadable = False
+        self.claims: dict[str, str] = {}
+        self.item_needs: dict[str, list[str]] = {}
 
     def register(self, arguments: dict) -> None:
         self.batch = dict(arguments)
@@ -150,7 +152,10 @@ class FakeTracker:
     def sections(self) -> dict:
         assert self.batch is not None
         return {
-            "members": [{"id": m, "status": "open", "prepared": m in self.receipts} for m in self.batch["members"]],
+            "members": [
+                {"id": m, "status": "open", "claim_worker": self.claims.get(m), "prepared": m in self.receipts}
+                for m in self.batch["members"]
+            ],
             "scope": self.batch["scope"],
             "receipts": self.receipts,
             "integration_log": self.log,
@@ -161,6 +166,9 @@ class FakeTracker:
         }
 
     def show(self, args: list[str]) -> SimpleNamespace:
+        if args[0] == "show":
+            needs = self.item_needs.get(args[1], [])
+            return ok({"id": args[1], "needs": {"total": len(needs), "values": needs}})
         if self.unreadable or self.batch is None:
             return SimpleNamespace(
                 returncode=2,
@@ -306,10 +314,17 @@ class World:
     def calls_matching(self, word: str) -> list[tuple[list[str], Path]]:
         return [call for call in self.calls if word in call[0]]
 
-    def start(self, members: list[str] | None = None, scope: dict | None = None) -> Path:
+    def start(
+        self, members: list[str] | None = None, scope: dict | None = None, dependencies: dict | None = None
+    ) -> Path:
         members = members or list(MEMBERS)
         payload = bi.start_batch(
-            self.primary, BATCH, members, scope or {m: SCOPE[m] for m in members}, project_id=PROJECT
+            self.primary,
+            BATCH,
+            members,
+            scope or {m: SCOPE[m] for m in members},
+            project_id=PROJECT,
+            dependencies=dependencies,
         )
         self.tracker.register(payload["arguments"])
         self.integration = Path(payload["worktree"])

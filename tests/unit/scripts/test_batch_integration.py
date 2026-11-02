@@ -68,6 +68,45 @@ def test_start_refuses_a_bad_member_set_or_scope_before_creating_anything(
     assert not world.calls_matching("worktree-create")
 
 
+def test_start_prints_one_update_item_step_per_member_merging_needs_with_dependencies(world: World) -> None:
+    world.tracker.item_needs = {"alpha": ["external", "zeta"], "mid": ["external"]}
+    world.start(dependencies={"alpha": ["zeta"], "mid": ["zeta", "alpha"]})
+    after = world.payload["after_register"]
+    assert [step["arguments"]["id"] for step in after["steps"]] == MEMBERS
+    by_id = {step["arguments"]["id"]: step["arguments"] for step in after["steps"]}
+    assert by_id["zeta"] == {
+        "id": "zeta",
+        "needs": [],
+        "batch": {"batch_id": BATCH, "member_id": "zeta", "implementation_dependencies": []},
+    }
+    assert by_id["alpha"]["needs"] == ["external", "zeta"]
+    assert by_id["alpha"]["batch"]["implementation_dependencies"] == ["zeta"]
+    assert by_id["mid"]["needs"] == ["external", "zeta", "alpha"]
+    assert all(step["tool"] == "update_item" for step in after["steps"])
+    assert "after register_batch" in after["label"]
+    assert len(after["reminders"]) == 2 and all("take it before batch-land" in text for text in after["reminders"])
+
+
+@pytest.mark.parametrize(
+    "dependencies",
+    [{"alpha": ["ghost"]}, {"ghost": ["zeta"]}, {"alpha": ["alpha"]}, {"zeta": ["alpha"], "alpha": ["zeta"]}],
+)
+def test_start_refuses_unknown_self_or_cyclic_dependencies_before_creating_anything(
+    world: World, dependencies: dict
+) -> None:
+    with _raises("registered members|itself|cycle"):
+        world.start(dependencies=dependencies)
+    assert not world.calls_matching("worktree-create")
+
+
+def test_dependency_input_parses_members_and_refuses_malformed_entries() -> None:
+    assert bi.parse_dependencies("alpha=zeta+mid,mid=zeta") == {"alpha": ["zeta", "mid"], "mid": ["zeta"]}
+    assert bi.parse_dependencies("") == {}
+    for bad in ("alpha", "alpha=", "alpha=zeta,alpha=mid"):
+        with _raises("must read member|names no dependency"):
+            bi.parse_dependencies(bad)
+
+
 def test_member_create_starts_at_the_current_integration_head_and_records_identity(world: World) -> None:
     integration = world.start()
     first = world.member("zeta")
@@ -209,6 +248,34 @@ def test_land_merges_checks_the_tree_and_prints_the_prepare_payload(world: World
     assert ledger["landings"]["zeta"]["merge_head"] == merged
     world.submit(result)
     assert world.tracker.head == merged and bi._is_clean(integration)
+
+
+def test_a_dependent_member_is_not_landed_until_the_owner_holds_its_claim(world: World) -> None:
+    world.start()
+    world.deliver("zeta", {"src/a.py": "member\n"})
+    world.land_and_prepare("zeta")
+    world.deliver("alpha", {"src/b.py": "member\n"})
+    before = world.head()
+    with _raises("take it now, before landing"):
+        world.land("alpha", dependencies=["zeta"])
+    assert world.head() == before
+    world.tracker.claims["alpha"] = "leader"
+    result = world.land("alpha", dependencies=["zeta"])
+    (prepare,) = result["payload"]["steps"]
+    assert prepare["tool"] == "prepare" and prepare["arguments"]["implementation_dependencies"] == ["zeta"]
+
+
+def test_a_member_whose_receipt_was_invalidated_is_prepared_again_at_the_current_head(world: World) -> None:
+    world.start()
+    world.deliver("zeta", {"src/a.py": "zeta\n"})
+    zeta_merge = world.land_and_prepare("zeta")["merge_head"]
+    world.deliver("alpha", {"src/b.py": "alpha\n"})
+    world.land_and_prepare("alpha")
+    world.tracker.receipts.pop("zeta")
+    again = world.land("zeta")
+    arguments = again["payload"]["steps"][-1]["arguments"]
+    assert again["status"] == "already-merged"
+    assert arguments["integration_head"] == world.head() != zeta_merge
 
 
 def test_land_refuses_a_member_that_synced_before_the_integration_head_moved(world: World) -> None:
@@ -518,6 +585,24 @@ def test_a_develop_merge_is_recorded_without_any_member_rerun(world: World) -> N
     assert len(git(integration, "rev-list", "--parents", "-n", "1", "HEAD").split()) == 3
     ledger = _ledger(integration)
     assert ledger["advances"][-1]["kind"] == "develop-merge"
+
+
+def test_a_develop_merge_is_recorded_after_a_fix_advance_has_already_been_recorded(world: World) -> None:
+    integration = _landed_pair(world)
+    world.commit(integration, {"src/a.py": "fixed\n"}, "fix")
+    fix = bi.advance_head(integration, "fix")
+    world.tracker.advance(fix["payload"]["arguments"])
+    (world.seed / "other").mkdir()
+    (world.seed / "other" / "dev.txt").write_text("develop moved\n")
+    git(world.seed, "add", "other/dev.txt")
+    git(world.seed, "commit", "-qm", "develop moves")
+    git(world.seed, "push", "-q", "origin", "develop")
+    result = bi.advance_head(integration, "develop-merge")
+    assert result["expected_head"] == fix["head"] and result["head"] == world.head() != fix["head"]
+    assert result["payload"]["arguments"]["reason"] == "develop-merge"
+    world.tracker.advance(result["payload"]["arguments"])
+    with _raises("nothing to record"):
+        bi.advance_head(integration, "fix")
 
 
 def test_advance_retry_after_the_tracker_recorded_it_reuses_the_recorded_expected_head(world: World) -> None:
