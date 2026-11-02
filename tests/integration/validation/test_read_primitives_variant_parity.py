@@ -352,6 +352,26 @@ def test_clickhouse_variants_match_duckdb_reference(
     assert _canonical_rows(comparison_rows, contract) == _canonical_rows(reference_rows, contract)
 
 
+def test_clickhouse_map_access_missing_key_is_null_like_duckdb(
+    read_primitives_duckdb_conn,
+    clickhouse_session,
+    read_primitives_queries_by_dialect,
+    read_primitives_contracts,
+):
+    reference_rows = _duckdb_rows(
+        read_primitives_duckdb_conn, read_primitives_queries_by_dialect["duckdb"]["map_access"]
+    )
+    comparison_rows = _clickhouse_rows(
+        clickhouse_session, read_primitives_queries_by_dialect["clickhouse"]["map_access"]
+    )
+    contract = read_primitives_contracts["map_access"]
+
+    assert any(cell is None for row in reference_rows for cell in row[1:]), (
+        "fixture must contain a missing map key or the test proves nothing"
+    )
+    assert _canonical_rows_in_order(comparison_rows, contract) == _canonical_rows_in_order(reference_rows, contract)
+
+
 def _flatten_named_struct(cell: Any) -> Any:
     if isinstance(cell, dict) and cell and all(key.isdigit() for key in cell):
         return tuple(cell[str(index)] for index in range(1, len(cell) + 1))

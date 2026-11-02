@@ -1,6 +1,6 @@
 services:
   questdb:
-    image: questdb/questdb:9.3.5
+    image: ${QUESTDB_IMAGE:-questdb/questdb:10.0.1@sha256:67eaed863ebb2383227919ea9a5499a4a39ceca3862c20b974c84a10e11cdf89}
     ports:
       - "19000:9000"
       - "8812:8812"

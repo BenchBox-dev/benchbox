@@ -1,4 +1,0 @@
-{
-  "schema": 1,
-  "internal": "Cloud gateway setup refuses a socket directory owned by another user; the gateway host check verifies each client's token hash"
-}

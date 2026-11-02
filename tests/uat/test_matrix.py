@@ -99,6 +99,22 @@ def test_clickhouse_local_metadata_acl_is_fail_closed():
     assert "clickhouse-local-mode.md" in rule.evidence or "benchmark_gate" in rule.evidence
 
 
+def test_clickhouse_server_transaction_primitives_is_gated_and_write_primitives_runs():
+    benchmarks = matrix.load_benchmarks()
+
+    gated = compatibility.compatibility_rule_for(
+        "clickhouse-server", "transaction_primitives", benchmarks["transaction_primitives"]
+    )
+    assert gated is not None
+    assert gated.rule_id == "uat.compat.clickhouse-server.transaction_primitives.benchmark_gate"
+    assert "Code 48" in gated.reason
+
+    assert (
+        compatibility.compatibility_rule_for("clickhouse-server", "write_primitives", benchmarks["write_primitives"])
+        is None
+    )
+
+
 def test_postgresql_write_primitives_is_a_supported_uat_cell():
     benchmarks = matrix.load_benchmarks()
     assert "postgresql" in matrix.DOCKER_PLATFORMS

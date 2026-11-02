@@ -3,9 +3,11 @@ from __future__ import annotations
 import logging
 import os
 import re
+import time
 from typing import Any
 
 from benchbox.platforms.base.mysql_wire import MySqlWireConnectionWrapper, build_database_config, split_sql_statements
+from benchbox.utils.clock import mono_time
 
 from ._dependencies import PYMYSQL_AVAILABLE, pymysql
 
@@ -13,12 +15,50 @@ _VALID_IDENTIFIER_PATTERN = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 
 logger = logging.getLogger(__name__)
 
+_PIPES_AS_CONCAT_SQL = "SET sql_mode = CONCAT(@@sql_mode, ',PIPES_AS_CONCAT')"
+
 
 _split_sql_statements = split_sql_statements
 
 
+_SCHEMA_CHANGE_STATEMENT_RE = re.compile(r"^\s*(?:CREATE\s+INDEX|DROP\s+INDEX|ALTER\s+TABLE)\b", re.IGNORECASE)
+_DROP_TABLE_RE = re.compile(r"^\s*DROP\s+TABLE\b(?!.*\bFORCE\s*;?\s*$)", re.IGNORECASE | re.DOTALL)
+_SCHEMA_CHANGE_ACTIVE_STATES = frozenset({"PENDING", "WAITING_TXN", "RUNNING"})
+_SCHEMA_CHANGE_TIMEOUT_S = 300.0
+_SCHEMA_CHANGE_POLL_S = 0.2
+
+
 class _StarRocksConnectionWrapper(MySqlWireConnectionWrapper):
     reject_create_or_replace = True
+
+    def _optimize_if_create(self, stmt: str) -> str:
+        if _DROP_TABLE_RE.match(stmt):
+            return f"{stmt.rstrip().rstrip(';')} FORCE"
+        return super()._optimize_if_create(stmt)
+
+    def execute(self, sql: str, params: Any = None) -> Any:
+        statements = split_sql_statements(sql) if sql else []
+        if not any(_SCHEMA_CHANGE_STATEMENT_RE.match(statement) for statement in statements):
+            return super().execute(sql, params)
+        cursor = None
+        for statement in statements:
+            self._await_schema_changes()
+            cursor = super().execute(statement)
+        self._await_schema_changes()
+        return cursor
+
+    def _await_schema_changes(self) -> None:
+        deadline = mono_time() + _SCHEMA_CHANGE_TIMEOUT_S
+        while True:
+            cursor = self._conn.cursor()
+            try:
+                cursor.execute("SHOW ALTER TABLE COLUMN")
+                active = any(str(row[9]).upper() in _SCHEMA_CHANGE_ACTIVE_STATES for row in cursor.fetchall())
+            finally:
+                cursor.close()
+            if not active or mono_time() >= deadline:
+                return
+            time.sleep(_SCHEMA_CHANGE_POLL_S)
 
 
 class StarRocksSetupMixin:
@@ -89,6 +129,7 @@ class StarRocksSetupMixin:
                 write_timeout=86400,
                 charset="utf8mb4",
                 autocommit=True,
+                init_command=_PIPES_AS_CONCAT_SQL,
             )
 
             cursor = conn.cursor()
@@ -157,7 +198,7 @@ class StarRocksSetupMixin:
             try:
                 cursor = admin_conn.cursor()
                 try:
-                    cursor.execute(f"DROP DATABASE IF EXISTS `{db_name}`")
+                    cursor.execute(f"DROP DATABASE IF EXISTS `{db_name}` FORCE")
                 finally:
                     cursor.close()
             finally:

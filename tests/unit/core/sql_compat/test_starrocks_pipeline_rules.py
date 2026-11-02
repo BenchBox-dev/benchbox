@@ -18,7 +18,9 @@ from benchbox.sql_compat.registry import REGISTRY
 
 def test_starrocks_query_adapter_rule_registered():
     rules = [
-        (key, entry) for key, entry in REGISTRY.all_rules() if key[0] is Phase.QUERY_ADAPTER and key[1] == "starrocks"
+        (key, entry)
+        for key, entry in REGISTRY.all_rules()
+        if key[0] is Phase.QUERY_ADAPTER and key[1] == "starrocks" and key[2] is None
     ]
     assert len(rules) == 1, (
         f"Expected 1 starrocks query_adapter rule, got {len(rules)}: {[e.rule_id for _, e in rules]}"

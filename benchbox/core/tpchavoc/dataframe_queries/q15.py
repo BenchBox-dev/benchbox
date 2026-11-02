@@ -16,6 +16,11 @@ from benchbox.core.tpchavoc.dataframe_queries._delegating_variants import make_v
 from benchbox.core.tpchavoc.dataframe_queries.loader import JOIN_AGG_SUBQUERY, build_yaml_variants
 
 
+def _revenue_is_max(ctx: DataFrameContext, max_revenue: Any) -> Any:
+    tolerance = abs(max_revenue) * 1e-9 if max_revenue else 1e-9
+    return (ctx.col("total_revenue") - ctx.lit(max_revenue)).abs() <= ctx.lit(tolerance)
+
+
 def q15_v1_expression_impl(ctx: DataFrameContext) -> Any:
     return _q15_expr_base(ctx)
 
@@ -43,7 +48,7 @@ def q15_v2_expression_impl(ctx: DataFrameContext) -> Any:
 
     return (
         supplier.join(revenue, left_on="s_suppkey", right_on="supplier_no")
-        .filter(col("total_revenue") == lit(max_revenue))
+        .filter(_revenue_is_max(ctx, max_revenue))
         .select("s_suppkey", "s_name", "s_address", "s_phone", "total_revenue")
         .sort("s_suppkey")
     )
@@ -97,7 +102,7 @@ def q15_v3_expression_impl(ctx: DataFrameContext) -> Any:
     return (
         supplier.select("s_suppkey", "s_name", "s_address", "s_phone")
         .join(revenue, left_on="s_suppkey", right_on="supplier_no")
-        .filter(col("total_revenue") == lit(max_revenue))
+        .filter(_revenue_is_max(ctx, max_revenue))
         .select("s_suppkey", "s_name", "s_address", "s_phone", "total_revenue")
         .sort("s_suppkey")
     )
@@ -147,7 +152,7 @@ def q15_v4_expression_impl(ctx: DataFrameContext) -> Any:
         (col("l_extendedprice") * (lit(1) - col("l_discount"))).sum().alias("total_revenue")
     )
     max_revenue = ctx.scalar(revenue.select(col("total_revenue").max().alias("max_rev")))
-    top_revenue = revenue.filter(col("total_revenue") == lit(max_revenue))
+    top_revenue = revenue.filter(_revenue_is_max(ctx, max_revenue))
     return (
         supplier.join(top_revenue, left_on="s_suppkey", right_on="supplier_no")
         .select("s_suppkey", "s_name", "s_address", "s_phone", "total_revenue")
@@ -182,7 +187,7 @@ def q15_v5_expression_impl(ctx: DataFrameContext) -> Any:
 
     return (
         supplier.join(revenue, left_on="s_suppkey", right_on="supplier_no")
-        .filter(col("total_revenue") == lit(max_revenue))
+        .filter(_revenue_is_max(ctx, max_revenue))
         .select("s_suppkey", "s_name", "s_address", "s_phone", "total_revenue")
         .sort("s_suppkey")
     )
@@ -208,7 +213,7 @@ def q15_v6_expression_impl(ctx: DataFrameContext) -> Any:
     return (
         ctx.get_table("supplier")
         .join(revenue, left_on="s_suppkey", right_on="supplier_no")
-        .filter(col("total_revenue") == lit(max_revenue))
+        .filter(_revenue_is_max(ctx, max_revenue))
         .select("s_suppkey", "s_name", "s_address", "s_phone", "total_revenue")
         .sort("s_suppkey")
     )
@@ -237,7 +242,7 @@ def q15_v7_expression_impl(ctx: DataFrameContext) -> Any:
     max_revenue = ctx.scalar(revenue.select(col("total_revenue").max().alias("max_rev")))
 
     return (
-        revenue.filter(col("total_revenue") == lit(max_revenue))
+        revenue.filter(_revenue_is_max(ctx, max_revenue))
         .join(supplier, left_on="supplier_no", right_on="s_suppkey")
         .select(col("supplier_no").alias("s_suppkey"), "s_name", "s_address", "s_phone", "total_revenue")
         .sort("s_suppkey")
@@ -268,7 +273,7 @@ def q15_v8_expression_impl(ctx: DataFrameContext) -> Any:
 
     return (
         supplier.join(revenue, left_on="s_suppkey", right_on="supplier_no")
-        .filter(col("total_revenue") == lit(max_revenue))
+        .filter(_revenue_is_max(ctx, max_revenue))
         .select("s_suppkey", "s_name", "s_address", "s_phone", "total_revenue")
         .sort("s_suppkey")
     )
@@ -321,7 +326,7 @@ def q15_v9_expression_impl(ctx: DataFrameContext) -> Any:
 
     return (
         supplier.join(revenue, left_on="s_suppkey", right_on="supplier_no")
-        .filter(col("total_revenue") == lit(max_revenue))
+        .filter(_revenue_is_max(ctx, max_revenue))
         .select("s_suppkey", "s_name", "s_address", "s_phone", "total_revenue")
         .sort(["s_suppkey"], descending=[False])
     )
@@ -373,7 +378,7 @@ def q15_v10_expression_impl(ctx: DataFrameContext) -> Any:
 
     return (
         supplier.join(revenue, left_on="s_suppkey", right_on="supplier_no")
-        .filter(col("total_revenue") == lit(max_revenue))
+        .filter(_revenue_is_max(ctx, max_revenue))
         .select("s_suppkey", "s_name", "s_address", "s_phone", "total_revenue")
         .sort("s_suppkey")
     )

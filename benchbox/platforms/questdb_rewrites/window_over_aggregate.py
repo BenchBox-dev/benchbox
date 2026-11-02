@@ -4,6 +4,7 @@ import re
 
 from benchbox.platforms.questdb_rewrites import exp
 
+from ._select_walk import replace_selects
 from .grouping_sets import _own_nodes, _scope_roots, has_grouping_syntax, resolve_ordinals, stage_aggregation
 
 ORDER = 210
@@ -27,12 +28,4 @@ def _rewrite_select(select: exp.Select) -> exp.Expr | None:
 
 
 def transform(expression: exp.Expr) -> exp.Expr:
-    for select in reversed(list(expression.find_all(exp.Select))):
-        replacement = _rewrite_select(select)
-        if replacement is None:
-            continue
-        if select is expression:
-            expression = replacement
-        else:
-            select.replace(replacement)
-    return expression
+    return replace_selects(expression, _rewrite_select)

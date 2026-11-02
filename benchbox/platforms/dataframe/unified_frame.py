@@ -31,6 +31,26 @@ Expr = TypeVar("Expr")
 _DATAFUSION_TYPE_MAPPING: dict[str, Any] | None = None
 _NO_LITERAL_VALUE = object()
 _DATAFUSION_DISTINCT_ARGUMENT = "__distinct_argument__"
+_DATAFUSION_AGGREGATE_PATTERNS = (
+    "sum(",
+    "avg(",
+    "count(",
+    "min(",
+    "max(",
+    "first_value(",
+    "last_value(",
+    "stddev(",
+    "approx_distinct(",
+)
+_TRUNCATE_UNITS = {
+    "1s": "second",
+    "1m": "minute",
+    "1h": "hour",
+    "1d": "day",
+    "1w": "week",
+    "1mo": "month",
+    "1y": "year",
+}
 
 
 def _get_datafusion_type_mapping() -> dict[str, Any]:
@@ -486,7 +506,7 @@ class UnifiedMapExpr(_DataFusionDeferredOperations):
             from datafusion import functions as df_f, lit as df_lit
 
             lit_key = df_lit(key_val) if not _is_datafusion_expr(key_val) else key_val
-            return UnifiedExpr(df_f.map_extract(self._expr, lit_key))
+            return UnifiedExpr(df_f.array_element(df_f.map_extract(self._expr, lit_key), df_lit(1)))
         raise NotImplementedError("Map operations not supported on Polars (no native Map dtype)")
 
     def keys(self) -> UnifiedExpr:
@@ -559,14 +579,12 @@ class UnifiedDtExpr(_DataFusionDeferredOperations):
         if self._is_pyspark:
             from pyspark.sql import functions as F
 
-            fmt_map = {"1m": "minute", "1h": "hour", "1d": "day", "1w": "week", "1mo": "month", "1y": "year"}
-            fmt = fmt_map.get(every, every)
+            fmt = _TRUNCATE_UNITS.get(every, every)
             return UnifiedExpr(F.date_trunc(fmt, self._expr))
         if self._is_datafusion:
             from datafusion import functions as df_f
 
-            fmt_map = {"1m": "minute", "1h": "hour", "1d": "day", "1w": "week", "1mo": "month", "1y": "year"}
-            fmt = fmt_map.get(every, every)
+            fmt = _TRUNCATE_UNITS.get(every, every)
             return UnifiedExpr(df_f.date_trunc(fmt, self._expr))
         return UnifiedExpr(self._expr.dt.truncate(every))
 
@@ -585,10 +603,25 @@ class UnifiedDtExpr(_DataFusionDeferredOperations):
 
             return UnifiedExpr((self._expr.cast("long") / F.lit(86400)).cast("long"))
         if self._is_datafusion:
+            return self._datafusion_total_days()
+        return UnifiedExpr(self._expr.dt.total_days())
+
+    def _datafusion_total_days(self) -> UnifiedExpr:
+        def build(frame: Any = None) -> UnifiedExpr:
+            import pyarrow as pa
             from datafusion import functions as df_f, lit as df_lit
 
-            return UnifiedExpr(df_f.extract("epoch", self._expr) / df_lit(86400))
-        return UnifiedExpr(self._expr.dt.total_days())
+            subject = self if frame is None else _resolve_datafusion_value(self, frame)
+            expr = subject._expr
+            if frame is not None and pa.types.is_integer(
+                frame.select(expr.alias("__total_days_type__")).schema()[0].type
+            ):
+                return UnifiedExpr(expr)
+            return UnifiedExpr((df_f.extract("epoch", expr) / df_lit(86400)).cast(pa.int64()))
+
+        result = build()
+        result._datafusion_resolver = build
+        return result
 
 
 class UnifiedStructExpr(_DataFusionDeferredOperations):
@@ -1355,7 +1388,7 @@ class UnifiedWhenThen(_DataFusionDeferredOperations):
         cond = condition._expr if isinstance(condition, UnifiedExpr) else condition
 
         if self._platform == "PySpark":
-            return UnifiedWhen(self._when_builder.when(cond), platform="PySpark")
+            return UnifiedWhen(cond, platform="PySpark", chain=self._when_builder)
         if self._platform == "DataFusion":
             return UnifiedWhen(cond, platform="DataFusion", when_pairs=self._when_pairs)
         return UnifiedWhen(self._when_builder.when(cond), platform="Polars")
@@ -1388,10 +1421,13 @@ class UnifiedWhenThen(_DataFusionDeferredOperations):
 
 
 class UnifiedWhen(_DataFusionDeferredOperations):
-    def __init__(self, when_builder: Any, platform: str, when_pairs: list | None = None) -> None:
+    def __init__(
+        self, when_builder: Any, platform: str, when_pairs: list | None = None, chain: Any | None = None
+    ) -> None:
         self._when_builder = when_builder
         self._platform = platform
         self._when_pairs = when_pairs or []
+        self._chain = chain
 
     def then(self, value: Any) -> UnifiedWhenThen:
         val = value._expr if isinstance(value, UnifiedExpr) else value
@@ -1399,7 +1435,10 @@ class UnifiedWhen(_DataFusionDeferredOperations):
         if self._platform == "PySpark":
             from pyspark.sql import functions as F
 
-            when_expr = F.when(self._when_builder, val)
+            if self._chain is not None:
+                when_expr = self._chain.when(self._when_builder, val)
+            else:
+                when_expr = F.when(self._when_builder, val)
             return UnifiedWhenThen(when_expr, platform="PySpark")
 
         if self._platform == "DataFusion":
@@ -2193,30 +2232,7 @@ class UnifiedLazyFrame(Generic[DF, Expr]):
         if not _is_datafusion_df(self._df):
             return False
 
-        for expr in exprs:
-            expr_str = str(expr)
-            agg_patterns = [
-                "sum(",
-                "avg(",
-                "count(",
-                "min(",
-                "max(",
-                "SUM(",
-                "AVG(",
-                "COUNT(",
-                "MIN(",
-                "MAX(",
-                "first_value(",
-                "last_value(",
-                "stddev(",
-                "FIRST_VALUE(",
-                "LAST_VALUE(",
-                "STDDEV(",
-            ]
-            for pattern in agg_patterns:
-                if pattern in expr_str:
-                    return True
-        return False
+        return any(pattern in str(expr).lower() for expr in exprs for pattern in _DATAFUSION_AGGREGATE_PATTERNS)
 
     @_bind_datafusion_arguments
     def with_columns(self, *exprs: Expr | list) -> UnifiedLazyFrame:
@@ -2361,7 +2377,9 @@ class UnifiedLazyFrame(Generic[DF, Expr]):
                 raise NotImplementedError("UnifiedLazyFrame.slice without a length is not supported for DataFusion")
             result = self._df.limit(length, offset=offset)
         elif _is_pyspark_df(self._df):
-            raise NotImplementedError("UnifiedLazyFrame.slice is not implemented for PySpark")
+            result = self._df.offset(offset) if offset else self._df
+            if length is not None:
+                result = result.limit(length)
         else:
             result = self._df.slice(offset, length)
         return UnifiedLazyFrame(result, self._adapter)

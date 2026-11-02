@@ -24,7 +24,11 @@ from benchbox.core.dataframe import (
     validate_scale_factor,
 )
 from benchbox.core.dataframe.data_loader import DataFrameDataLoader, get_tpch_column_names
-from benchbox.core.dataframe.load_validation import combine_dataframe_validation, validate_dataframe_loaded_tables
+from benchbox.core.dataframe.load_validation import (
+    combine_dataframe_validation,
+    validate_dataframe_loaded_tables,
+    validate_managed_dataframe_tables,
+)
 from benchbox.core.dataframe.profiling import PlanCaptureSupport, plan_capture_support
 from benchbox.core.dataframe.query_resolution import (
     benchmark_provides_dataframe_queries,
@@ -438,6 +442,9 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
                     validation_mode=options_map.get("validation_mode"),
                     seed=options_map.get("seed"),
                 )
+                load_validation = self._managed_load_validation(
+                    load_validation, benchmark, ctx, options_map, managed=skip_data_loading and phases.load
+                )
                 validation_summary = combine_dataframe_validation(validation_summary, load_validation)
                 builder.set_validation_status(validation_summary.status, validation_summary.details)
                 if (
@@ -479,6 +486,15 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
             self._attach_applied_tuning_ledger(builder)
             builder.mark_completed()
             return builder.build()
+
+    def _managed_load_validation(
+        self, load_validation: Any, benchmark: Any, ctx: Any, options_map: Any, *, managed: bool
+    ) -> Any:
+        if load_validation is not None or not managed:
+            return load_validation
+        if str(options_map.get("validation_mode") or "exact").strip().lower() == "disabled":
+            return None
+        return validate_managed_dataframe_tables(benchmark, ctx, self)
 
     def _attach_applied_tuning_ledger(self, builder: Any) -> None:
         writer = getattr(self, "_write_applied_tuning_ledger", None)

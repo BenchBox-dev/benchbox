@@ -99,6 +99,10 @@ def _is_dask_context(ctx: DataFrameContext) -> bool:
     return platform in {"dask", "dask-df"}
 
 
+def _is_datafusion_context(ctx: DataFrameContext) -> bool:
+    return ctx.platform.lower().replace("_", "-") in {"datafusion", "datafusion-df"}
+
+
 SKIP_FOR_DATAFRAME = [
     "optimizer_exists_to_semijoin",
     "optimizer_in_to_exists",
@@ -256,8 +260,12 @@ def _partsupp_map_expression(ctx: DataFrameContext, max_suppkey: int) -> Any:
         ctx.get_table("partsupp")
         .filter(col("ps_suppkey") <= lit(max_suppkey))
         .group_by("ps_suppkey")
-        .agg(ctx.struct(col("ps_partkey").cast_string(), col("ps_supplycost")).list().alias("entries"))
-        .with_columns(ctx.map_from_entries("entries").alias("part_costs"))
+        .agg(
+            col("ps_partkey").cast_string().sort_by("ps_partkey").alias("part_ids"),
+            col("ps_supplycost").sort_by("ps_partkey").alias("part_prices"),
+        )
+        .with_columns(ctx.map_from_arrays("part_ids", "part_prices").alias("part_costs"))
+        .sort("ps_suppkey")
     )
 
 
@@ -1463,6 +1471,11 @@ def window_lead_lag_pandas_impl(ctx: DataFrameContext) -> Any:
 
 
 def window_dense_rank_expression_impl(ctx: DataFrameContext) -> Any:
+    if _is_datafusion_context(ctx):
+        from benchbox.core.read_primitives.datafusion_queries import window_multiple_orderings
+
+        return window_multiple_orderings(ctx)
+
     import polars as pl
 
     n = pl.len().over("l_orderkey")
@@ -1661,6 +1674,11 @@ def exchange_shuffle_pandas_impl(ctx: DataFrameContext) -> Any:
 
 
 def statistical_correlation_expression_impl(ctx: DataFrameContext) -> Any:
+    if _is_datafusion_context(ctx):
+        from benchbox.core.read_primitives.datafusion_queries import statistical_correlation
+
+        return statistical_correlation(ctx)
+
     import polars as pl
 
     lf = ctx.get_table("lineitem").native.filter(
@@ -1701,6 +1719,11 @@ def statistical_correlation_pandas_impl(ctx: DataFrameContext) -> Any:
 
 
 def statistical_variance_expression_impl(ctx: DataFrameContext) -> Any:
+    if _is_datafusion_context(ctx):
+        from benchbox.core.read_primitives.datafusion_queries import statistical_variance
+
+        return statistical_variance(ctx)
+
     import polars as pl
 
     return (
@@ -2020,6 +2043,11 @@ def shuffle_union_all_groupby_pandas_impl(ctx: DataFrameContext) -> Any:
 
 
 def window_moving_frame_expression_impl(ctx: DataFrameContext) -> Any:
+    if _is_datafusion_context(ctx):
+        from benchbox.core.read_primitives.datafusion_queries import window_moving_frame
+
+        return window_moving_frame(ctx)
+
     import polars as pl
 
     lf = (
@@ -2176,6 +2204,11 @@ def fulltext_phrase_search_pandas_impl(ctx: DataFrameContext) -> Any:
 
 
 def olap_cube_analysis_expression_impl(ctx: DataFrameContext) -> Any:
+    if _is_datafusion_context(ctx):
+        from benchbox.core.read_primitives.datafusion_queries import olap_cube_analysis
+
+        return olap_cube_analysis(ctx)
+
     orders, customer, nation, region = _tables(ctx, "orders", "customer", "nation", "region")
     col = ctx.col
     lit = ctx.lit
@@ -2256,6 +2289,11 @@ def olap_cube_analysis_pandas_impl(ctx: DataFrameContext) -> Any:
 
 
 def olap_rollup_analysis_expression_impl(ctx: DataFrameContext) -> Any:
+    if _is_datafusion_context(ctx):
+        from benchbox.core.read_primitives.datafusion_queries import olap_rollup_analysis
+
+        return olap_rollup_analysis(ctx)
+
     orders, customer, nation, region = _tables(ctx, "orders", "customer", "nation", "region")
     col = ctx.col
     lit = ctx.lit
@@ -2440,6 +2478,11 @@ def optimizer_distinct_elimination_pandas_impl(ctx: DataFrameContext) -> Any:
 
 
 def optimizer_common_subexpression_expression_impl(ctx: DataFrameContext) -> Any:
+    if _is_datafusion_context(ctx):
+        from benchbox.core.read_primitives.datafusion_queries import optimizer_common_subexpression
+
+        return optimizer_common_subexpression(ctx)
+
     import polars as pl
 
     revenue = pl.col("l_quantity") * pl.col("l_extendedprice") * (1 - pl.col("l_discount")) * (1 + pl.col("l_tax"))
@@ -3067,6 +3110,11 @@ def qualify_lag_lead_pandas_impl(ctx: DataFrameContext) -> Any:
 
 
 def struct_construction_expression_impl(ctx: DataFrameContext) -> Any:
+    if _is_datafusion_context(ctx):
+        from benchbox.core.read_primitives.datafusion_queries import struct_construction
+
+        return struct_construction(ctx)
+
     import polars as pl
 
     return (
@@ -3546,6 +3594,11 @@ def json_aggregates_pandas_impl(ctx: DataFrameContext) -> Any:
 
 
 def timeseries_trend_analysis_expression_impl(ctx: DataFrameContext) -> Any:
+    if _is_datafusion_context(ctx):
+        from benchbox.core.read_primitives.datafusion_queries import timeseries_trend_analysis
+
+        return timeseries_trend_analysis(ctx)
+
     import polars as pl
 
     monthly = (

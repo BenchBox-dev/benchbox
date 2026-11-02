@@ -13,6 +13,7 @@ import json
 import logging
 import random
 import shutil
+import time
 import urllib.error
 import urllib.request
 import zipfile
@@ -132,6 +133,15 @@ def _months_sequence(
 
 
 BTS_PREFETCH_WORKERS = 4
+BTS_FETCH_ATTEMPTS = 3
+BTS_FETCH_BACKOFF_S = 2.0
+_sleep = time.sleep
+
+
+def _is_transient_fetch_error(exc: BaseException) -> bool:
+    if isinstance(exc, urllib.error.HTTPError):
+        return exc.code >= 500
+    return isinstance(exc, (urllib.error.URLError, OSError))
 
 
 class _ZipPrefetcher:
@@ -749,8 +759,16 @@ class FlightDataDownloader(CompressionMixin, VerbosityMixin):
         req = urllib.request.Request(
             url, headers={"User-Agent": "BenchBox/1.0 (https://github.com/BenchBox-dev/BenchBox)"}
         )
-        with tls.urlopen(req, timeout=120) as response:
-            zip_bytes = response.read()
+        for attempt in range(1, BTS_FETCH_ATTEMPTS + 1):
+            try:
+                with tls.urlopen(req, timeout=120) as response:
+                    zip_bytes = response.read()
+                break
+            except Exception as exc:
+                if attempt == BTS_FETCH_ATTEMPTS or not _is_transient_fetch_error(exc):
+                    raise
+                logger.warning(f"BTS fetch {url} failed (attempt {attempt}/{BTS_FETCH_ATTEMPTS}): {exc}; retrying")
+                _sleep(BTS_FETCH_BACKOFF_S * attempt)
         expected_sha256 = PINNED_SOURCE_SHA256.get(url)
         if expected_sha256 is not None:
             actual_sha256 = hashlib.sha256(zip_bytes).hexdigest()
