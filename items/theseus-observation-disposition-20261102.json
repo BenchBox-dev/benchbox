@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "A table in this item's context lists every in-scope item with: status, observation window (UTC start/end), event or attempt count, provenance (run IDs or artifact paths), and outcome or next check.",
+    "No in-scope item is missing; none shows a provoked event.",
+    "The reliability row matches the recorded owner decision exactly.",
+    "The epoch boundary (UTC time production-connected steps may begin) is written in context."
+  ],
+  "context": "not_before set to the latest in-scope hold (stale-pending, 2026-11-13T00:00Z).",
+  "description": "Gate for production-connected Theseus steps (a new gateway client, any shared gateway change, any live review through it). These steps start a new measurement epoch, so pending observations of the current system need a recorded disposition first.\n\nItems in scope: oracle-cloud-review-reachability-smoke-20261030, oracle-dispute-and-rerun-live-observation-20261030, oracle-gateway-cloud-builder-smoke-20261031, oracle-gate-in-run-latency-observation-20261031, oracle-gate-sweep-cadence-observation-20261101, oracle-local-findings-mac-smoke-20261101, oracle-sweep-stale-pending-live-observation-20261030, oracle-response-reliability-observation-20261021.\n\nRules: natural-event items close by their own acceptance or stay open with a recorded window, event count and next check. Never provoke the observed events. The reliability item follows theseus-decision-reliability-observation-20261102: under 'wait' it must be done (targets met or residual causes in owned items); under 'waive' it stays open, its partial counts are recorded and it is not reported as met.\n\nGuardrails: read-only observation; no workflow dispatches, comments or pushes to create events; no edits to the observed items beyond context_append notes and their own lifecycle.",
+  "links": [
+    "oracle-response-reliability-observation-20261021",
+    "oracle-sweep-stale-pending-live-observation-20261030",
+    "oracle-local-findings-mac-smoke-20261101"
+  ],
+  "not_before": "2026-11-13T00:00:00Z",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4c6f341b7f4b66f30a37a2f1",
+      "at": "2026-11-02T13:45:51Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "05a31daa176043d5b8302393bd412cad",
+      "session_id": "8cfcc9dbcab5419a91fc8b650901f36b"
+    }
+  ]
+}

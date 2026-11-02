@@ -27740,6 +27740,15 @@
       "status": "blocked",
       "title": "Owner decision: approve one vendored soundness-path matcher module as the only embedded exception"
     },
+    "theseus-observation-disposition-20261102": {
+      "claim": null,
+      "needs": [
+        "theseus-decision-reliability-observation-20261102"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Record a disposition for every pending oracle observation before production-connected extraction steps"
+    },
     "throughput-adapter-session-capability-contract": {
       "claim": null,
       "needs": [
