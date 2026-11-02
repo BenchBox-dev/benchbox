@@ -157,6 +157,7 @@ help:
 	@echo "  make batch-status                                    Reconcile the ledger with the tracker and Git; names the next step"
 	@echo "  make batch-verify                                    Check first-parent history, recorded heads and member ancestry"
 	@echo "  make batch-evidence [SUITE=name]                     Write .todo-batch/<batch>/final-evidence.json and print the finish payloads"
+	@echo "  make batch-finish [EXECUTE=1]                        Leader, after the final PR merged: dry run, or remove clean member worktrees and delete member branches whose tip is the accepted head contained in refs/pull/<N>/head"
 	@echo ""
 	@echo "Blind-Spot Findings (see _project/blind-spots/README.md):"
 	@echo "  make blind-spots-list   List open findings (one row each)"

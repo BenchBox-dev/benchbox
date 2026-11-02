@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Developer tooling: make batch-finish removes clean batch member worktrees and deletes member branches whose tip equals the tracker's accepted head contained in the merged final PR's refs/pull/<N>/head (dry run unless EXECUTE=1), under a new deletion basis in the worktree lifecycle evidence contract"
+}

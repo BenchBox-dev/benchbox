@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CLI_DESCRIPTION = (
     "Integration-branch batch loop: leader and member steps behind the batch-* make targets.\n"
     "\n"
-    "Leader (role=integration worktree): start, member-create, land, advance, status, verify, evidence.\n"
+    "Leader (role=integration worktree): start, member-create, land, advance, status, verify, evidence, finish.\n"
     "Member (role=member worktree): member-check.\n"
     "\n"
     "The todo-db tracker is the authority for recorded heads, receipts and acceptance requirements;\n"
@@ -1254,6 +1254,149 @@ def verify_integration(repo: Path) -> dict:
     }
 
 
+def _ref_oid(repo: Path, ref: str) -> str | None:
+    proc = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"],
+        cwd=repo,
+        check=False,
+        encoding="utf-8",
+        capture_output=True,
+        timeout=60,
+    )
+    return proc.stdout.strip() if proc.returncode == 0 and proc.stdout.strip() else None
+
+
+def _remote_branch_oid(repo: Path, branch: str) -> str | None:
+    out = _git(repo, "ls-remote", "origin", f"refs/heads/{branch}")
+    for line in out.splitlines():
+        sha, _, ref = line.partition("\t")
+        if ref == f"refs/heads/{branch}":
+            return sha
+    return None
+
+
+def _merged_final_pr(repo: Path, tracker: dict) -> tuple[str, int]:
+    if tracker.get("lifecycle") != "completed":
+        raise BatchError(f"the batch lifecycle is {tracker.get('lifecycle')!r}, not 'completed'; finish it first")
+    final_pr = tracker.get("final_pr")
+    if not isinstance(final_pr, dict) or not isinstance(final_pr.get("number"), int):
+        raise BatchError("the tracker records no final PR for this batch")
+    number = final_pr["number"]
+    repository = str(final_pr.get("repository") or "")
+    origin = _repo_slug(_git(repo, "remote", "get-url", "origin"))
+    if repository != origin:
+        raise BatchError(f"the final PR belongs to {repository!r} but origin is {origin!r}")
+    proc = _run(["gh", "pr", "view", str(number), "--repo", repository, "--json", "number,state"], repo, timeout=120)
+    try:
+        view = json.loads(proc.stdout)
+    except ValueError:
+        view = None
+    if proc.returncode != 0 or not isinstance(view, dict):
+        raise BatchError(f"gh could not read PR #{number}: {(proc.stderr or proc.stdout).strip()[:300]}")
+    if view.get("number") != number or view.get("state") != "MERGED":
+        raise BatchError(f"final PR #{number} is {view.get('state')!r}, not merged")
+    return repository, number
+
+
+def _fetch_pull_head(repo: Path, number: int) -> str:
+    try:
+        _git(repo, "fetch", "--no-tags", "--quiet", "origin", f"refs/pull/{number}/head")
+    except BatchError as exc:
+        raise BatchError(f"refs/pull/{number}/head could not be fetched from origin: {exc}") from exc
+    return _rev(repo, "FETCH_HEAD")
+
+
+def _member_worktree_problem(repo: Path, batch_id: str, member: str, branch: str) -> tuple[Path | None, str | None]:
+    worktree = _worktree_for_branch(repo, branch)
+    if worktree is None:
+        return None, None
+    if worktree.resolve() == repo.resolve():
+        return worktree, "the branch is checked out in the integration worktree"
+    identity = (_config_get(worktree, "role"), _config_get(worktree, "id"), _config_get(worktree, "member"))
+    if identity != (ROLE_MEMBER, batch_id, member):
+        return worktree, f"the branch is checked out in {worktree}, which is not this batch's member worktree"
+    if not _is_clean(worktree):
+        return worktree, f"member worktree {worktree} has uncommitted or untracked changes"
+    return worktree, None
+
+
+def _plan_member_cleanup(repo: Path, batch_id: str, pull_head: str, member: str, receipts: dict[str, dict]) -> dict:
+    branch = member_branch_name(batch_id, member)
+    local = _ref_oid(repo, f"refs/heads/{branch}")
+    remote = _remote_branch_oid(repo, branch)
+    accepted = receipts.get(member, {}).get("accepted_head")
+    entry: dict = {
+        "member": member,
+        "branch": branch,
+        "accepted_head": accepted,
+        "local_tip": local,
+        "remote_tip": remote,
+        "worktree": None,
+        "status": "refused",
+        "reason": None,
+    }
+    if local is None and remote is None:
+        entry["status"] = "absent"
+        return entry
+    if not accepted:
+        entry["reason"] = "the tracker holds no receipt for this member, so nothing proves what the branch must contain"
+        return entry
+    if local is not None and local != accepted:
+        entry["reason"] = f"branch tip {local} differs from the accepted head {accepted}"
+        return entry
+    if not _is_ancestor(repo, str(accepted), pull_head):
+        entry["reason"] = f"accepted head {accepted} is not an ancestor of the final PR head {pull_head}"
+        return entry
+    worktree, problem = _member_worktree_problem(repo, batch_id, member, branch)
+    entry["worktree"] = str(worktree) if worktree else None
+    if problem:
+        entry["reason"] = problem
+        return entry
+    entry["status"] = "would-delete"
+    entry["delete_local"] = local is not None
+    entry["delete_remote"] = remote is not None and remote == accepted
+    if remote is not None and remote != accepted:
+        entry["remote_kept"] = f"remote tip {remote} differs from the accepted head {accepted}"
+    return entry
+
+
+def _execute_member_cleanup(repo: Path, entry: dict) -> None:
+    branch, accepted = entry["branch"], entry["accepted_head"]
+    lease = f"--force-with-lease=refs/heads/{branch}:{accepted}"
+    try:
+        if entry["worktree"]:
+            _git(repo, "worktree", "remove", entry["worktree"])
+        if entry["delete_local"]:
+            _git(repo, "update-ref", "-d", f"refs/heads/{branch}", accepted)
+        if entry["delete_remote"]:
+            _git(repo, "push", "--no-verify", lease, "origin", f":refs/heads/{branch}")
+    except BatchError as exc:
+        entry["status"] = "refused"
+        entry["reason"] = str(exc)
+        return
+    entry["status"] = "deleted"
+
+
+def finish_batch(repo: Path, *, execute: bool = False) -> dict:
+    batch_id = require_role(repo, ROLE_INTEGRATION)
+    tracker = read_tracker(repo, batch_id)
+    repository, number = _merged_final_pr(repo, tracker)
+    pull_head = _fetch_pull_head(repo, number)
+    receipts = _receipts(tracker)
+    members = [_plan_member_cleanup(repo, batch_id, pull_head, m, receipts) for m in _members_in_order(tracker)]
+    if execute:
+        for entry in members:
+            if entry["status"] == "would-delete":
+                _execute_member_cleanup(repo, entry)
+    return {
+        "batch_id": batch_id,
+        "mode": "execute" if execute else "dry-run",
+        "final_pr": {"repository": repository, "number": number, "head": pull_head},
+        "members": members,
+        "ok": all(entry["status"] != "refused" for entry in members),
+    }
+
+
 def rebuild_ledger(repo: Path, batch_id: str, tracker: dict) -> dict:
     scope = tracker.get("scope") if isinstance(tracker.get("scope"), dict) else {}
     ledger = {
@@ -1566,6 +1709,9 @@ def main(argv: list[str] | None = None) -> int:
     advance.add_argument("--reason", required=True, choices=("fix", "develop-merge"))
     advance.add_argument("--no-push", action="store_true")
 
+    finish = sub.add_parser("finish", help="remove member worktrees and branches that lose nothing (dry run default)")
+    finish.add_argument("--execute", action="store_true")
+
     sub.add_parser("status", help="reconcile the ledger with the tracker and Git")
     sub.add_parser("verify", help="check first-parent history, recorded heads and member ancestry")
 
@@ -1606,6 +1752,10 @@ def main(argv: list[str] | None = None) -> int:
             _print(land_member(repo, args.member, _parse_csv(args.dependencies), push=not args.no_push))
         elif args.command == "advance":
             _print(advance_head(repo, args.reason, push=not args.no_push))
+        elif args.command == "finish":
+            report = finish_batch(repo, execute=args.execute)
+            _print(report)
+            return 0 if report["ok"] else 1
         elif args.command == "status":
             _print(batch_status(repo))
         elif args.command == "verify":
