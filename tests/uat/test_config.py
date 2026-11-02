@@ -516,6 +516,7 @@ _DOCKER_SF1_TIMEOUT_PRUNED_CELLS = {
             ("questdb", "joinorder", 0.01),
             ("questdb", "tpcds_obt", 0.01),
             ("timescaledb", "tpcds_obt", 0.01),
+            ("timescaledb", "joinorder", 0.01),
             ("velox", "joinorder", 0.01),
         }
     ),

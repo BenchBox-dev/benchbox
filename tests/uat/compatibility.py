@@ -269,6 +269,10 @@ _LATER_SF1_TIMEOUT_PRUNED_CELLS = (
             ("velox", ("joinorder",)),
         ),
     ),
+    (
+        "release UAT dry run 7 (run 41364936974) SF1 timing: terminal=timeout at 1200s",
+        (("timescaledb", ("joinorder",)),),
+    ),
 )
 
 _LATER_SF1_TIMEOUT_CELL_EVIDENCE = {
