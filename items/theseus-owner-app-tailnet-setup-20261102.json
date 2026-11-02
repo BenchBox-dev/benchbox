@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Owner records Theseus App login/integration ID, allowed repositories, required-check source binding, attesters and gated main branch; these match consumer-configured identities.",
+    "Environment protection and workflow separation demonstrably prevent fork/candidate builds from accessing App, tailnet and publisher secrets; no secret value is captured in tracker evidence.",
+    "Named Theseus tailnet identity and activation procedure are ready but not activated against shared gateway before observation disposition.",
+    "Owner records completed settings/secret administration and explicit approval for the later first live gate."
+  ],
+  "context": "Owner-only administrative boundary. Stop with exact requested owner operation if not authorized/available; ordinary repository implementation permission is not authority to change secrets or hosted settings.",
+  "description": "Owner-controlled setup for Theseus PR governance, not reuse of benchbox-oracle. Define the distinct Theseus App login and integration ID, installations, attesters, required-check source binding, secret-bearing environment and least-privilege token permissions. Provision a named Theseus tailnet identity/client credential, but do not add a shared gateway client or execute live reviews until observation disposition and the first-live-gate item permit activation.\nDecision gate: owner must approve and perform App, branch-protection, environment, secret and tailnet administration that agents cannot authorize or access. Record public identifiers, settings evidence and validation results only; never secret values. No App key in a wheel, release build, PR artifact, log or candidate workflow; no secrets:inherit across an untrusted boundary.\nGuardrails: BenchBox App, settings, gateway and credential caches stay unchanged. No weakening required checks or bootstrap stand-ins. Missing owner credentials/settings permission is a blocker, not a fallback to BenchBox identity.",
+  "links": [
+    "https://github.com/BenchBox-dev/theseus",
+    "theseus-hosted-workflows-offline-20261102"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4c6f341b7f4b66f30a37a2f1",
+      "at": "2026-11-02T13:48:32Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e15f3d2f746a4574bdb1d670930f9b2f",
+      "session_id": "8cfcc9dbcab5419a91fc8b650901f36b"
+    }
+  ]
+}

@@ -27767,6 +27767,15 @@
       "status": "open",
       "title": "Record a disposition for every pending oracle observation before production-connected extraction steps"
     },
+    "theseus-owner-app-tailnet-setup-20261102": {
+      "claim": null,
+      "needs": [
+        "theseus-hosted-workflows-offline-20261102"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Provision Theseus-owned App, protected secrets and tailnet identity without exposing candidate builds"
+    },
     "theseus-package-identity-install-20261102": {
       "claim": null,
       "needs": [
