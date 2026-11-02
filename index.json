@@ -14361,15 +14361,10 @@
       "title": "Ensure local equivalents exist for all CI workflow steps"
     },
     "local-oracle-member-review-20261101": {
-      "claim": {
-        "expires_at": "2026-11-03T06:26:57Z",
-        "generation": "8358ccf877094f2595b2bc7359acd3d9",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d680f2b9a00523ec18de3879"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Produce a bound member-review result from the local oracle reviewer, recording exempt-only changes as not reviewed"
     },
     "local-platform-cost-tracking": {
