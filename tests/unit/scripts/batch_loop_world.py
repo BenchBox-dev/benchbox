@@ -58,6 +58,7 @@ class FakeTracker:
         self.window_cap = 100000
         self.paged_sections: set[str] = set()
         self.unreadable = False
+        self.stale = False
         self.claims: dict[str, str] = {}
         self.item_needs: dict[str, list[str]] = {}
 
@@ -216,6 +217,10 @@ class FakeTracker:
             else:
                 summary[name] = value
         summary["sections"] = described
+        if self.stale:
+            del summary["rev"]
+            summary["stale"] = True
+            summary["cached_rev"] = str(self.rev)
         return ok(summary)
 
 

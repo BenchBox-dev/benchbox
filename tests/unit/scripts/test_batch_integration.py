@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -210,6 +211,66 @@ def test_member_check_uses_an_overridden_preflight_command(world: World) -> None
     world.commit(member, {"src/a.py": "member\n"})
     bi.check_member(member, ["tests/test_zeta.py"], preflight_command=["make", "pr-preflight", "SCOPE=fast"])
     assert any(call[0][:3] == ["make", "pr-preflight", "SCOPE=fast"] for call in world.calls)
+    record = bi._read_check(member, git(member, "rev-parse", "HEAD"), world.head())
+    assert record is not None and record["preflight"] == ["make", "pr-preflight", "SCOPE=fast", f"BASE={world.head()}"]
+
+
+def test_land_prints_a_warning_when_the_recorded_preflight_was_not_the_default(world: World) -> None:
+    world.start()
+    member = world.member("zeta")
+    world.commit(member, {"src/a.py": "member\n"})
+    bi.check_member(member, ["tests/test_zeta.py"], preflight_command=["make", "pr-preflight", "SCOPE=fast"])
+    warnings = world.land("zeta")["warnings"]
+    assert any("preflight was not the default" in warning and "SCOPE=fast" in warning for warning in warnings)
+
+
+def test_land_prints_no_preflight_warning_for_the_default_preflight(world: World) -> None:
+    world.start()
+    world.deliver("zeta", {"src/a.py": "member\n"})
+    assert not [w for w in world.land("zeta")["warnings"] if "preflight" in w]
+
+
+def test_start_fetches_develop_before_resolving_the_start_head(world: World) -> None:
+    (world.seed / "other").mkdir(exist_ok=True)
+    (world.seed / "other" / "dev.txt").write_text("develop moved\n")
+    git(world.seed, "add", "other/dev.txt")
+    git(world.seed, "commit", "-qm", "develop moves")
+    git(world.seed, "push", "-q", "origin", "develop")
+    moved = git(world.seed, "rev-parse", "HEAD")
+    assert git(world.primary, "rev-parse", "refs/remotes/origin/develop") != moved
+    integration = world.start()
+    assert world.payload["arguments"]["start_head"] == moved == git(integration, "rev-parse", "HEAD")
+
+
+def test_land_merges_the_checked_member_head_even_if_the_member_branch_moves_during_landing(
+    world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    world.start()
+    member = world.deliver("zeta", {"src/a.py": "member\n"})
+    checked = git(member, "rev-parse", "HEAD")
+    original = bi._brief_gate
+
+    def move_member_branch(*args, **kwargs):
+        git(member, "commit", "-q", "--allow-empty", "-m", "late")
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(bi, "_brief_gate", move_member_branch)
+    world.land("zeta")
+    assert git(world.integration, "rev-parse", "HEAD^2") == checked
+
+
+def test_a_stale_or_unrevisioned_tracker_read_is_refused_before_anything_lands(world: World) -> None:
+    integration = world.start()
+    world.deliver("zeta", {"src/a.py": "member\n"})
+    world.tracker.stale = True
+    for action in (
+        lambda: world.land("zeta"),
+        lambda: bi.batch_status(integration),
+        lambda: bi.build_evidence(integration),
+    ):
+        with _raises("stale or carries no revision"):
+            action()
+    assert git(integration, "rev-list", "--merges", "--count", "HEAD") == "0"
 
 
 def test_land_refuses_outside_an_integration_worktree(world: World) -> None:
@@ -449,6 +510,42 @@ def test_a_failing_overlap_rerun_blocks_the_prepare_payload_and_is_recorded(worl
         world.land("alpha")
     ledger = _ledger(integration)
     assert ledger["acceptance"]["zeta"][-1]["status"] == "failed"
+
+
+def _land_with_a_failing_overlap(world: World) -> tuple[Path, str]:
+    integration = world.start()
+    world.deliver("zeta", {"src/a.py": "zeta change\n"})
+    world.land_and_prepare("zeta")
+    world.deliver("alpha", {"src/a.py": "alpha change\n"})
+    before = world.head()
+    world.failing_tests.add("tests/test_zeta.py")
+    with _raises("overlap rerun failed for \\['zeta'\\]"):
+        world.land("alpha")
+    return integration, before
+
+
+def test_a_failed_overlap_rerun_is_not_pushed_to_the_backup_branch(world: World) -> None:
+    integration, before = _land_with_a_failing_overlap(world)
+    assert git(world.origin, "rev-parse", f"refs/heads/feat/{BATCH}") == before
+    assert world.head() != before and bi._is_clean(integration)
+
+
+def test_landing_again_after_a_failed_overlap_rerun_is_refused_and_never_offers_a_payload(world: World) -> None:
+    _, _ = _land_with_a_failing_overlap(world)
+    merged = world.head()
+    with _raises("overlap rerun failed for \\['zeta'\\].*reset the integration branch"):
+        world.land("alpha")
+    assert world.head() == merged
+
+
+def test_resetting_after_a_failed_overlap_rerun_allows_landing_again_once_it_passes(world: World) -> None:
+    integration, before = _land_with_a_failing_overlap(world)
+    git(integration, "reset", "--hard", before)
+    world.failing_tests.clear()
+    result = world.land("alpha")
+    assert result["status"] == "merged" and result["reruns"][0]["status"] == "passed"
+    assert world.land("alpha")["status"] == "already-merged"
+    assert result["merge_head"] == world.head()
 
 
 def test_a_silent_revert_prints_the_hunk_warning_and_still_lands(world: World) -> None:
@@ -847,3 +944,47 @@ def test_cli_prints_the_register_payload_for_start(world: World, capsys: pytest.
     assert subprocess.run(
         ["git", "worktree", "list"], cwd=world.primary, capture_output=True, encoding="utf-8"
     ).stdout.count(f"feat/{BATCH}")
+
+
+@pytest.mark.parametrize(
+    ("target", "variables"),
+    [
+        (
+            "batch-land",
+            {"MEMBER": '$(touch pwned) `touch pwned` "; touch pwned; "', "DEPENDENCIES": "a`touch pwned`"},
+        ),
+        ("batch-advance", {"REASON": 'x"; touch pwned; echo "'}),
+        ("batch-member-create", {"MEMBER": "m`touch pwned`", "WORKTREE_PATH": "$(touch pwned)"}),
+        (
+            "batch-member-check",
+            {"TESTS": "t`touch pwned`", "PREFLIGHT_CMD": 'p"; touch pwned; "', "REVIEW_CMD": "$(touch pwned)"},
+        ),
+        ("batch-evidence", {"SUITE": "s`touch pwned`"}),
+    ],
+)
+def test_make_targets_pass_user_variables_to_the_script_verbatim_and_never_through_the_shell(
+    tmp_path: Path, target: str, variables: dict[str, str]
+) -> None:
+    recorder = tmp_path / "record.py"
+    recorder.write_text(
+        "import json, sys\nfrom pathlib import Path\nPath('argv.json').write_text(json.dumps(sys.argv[1:]))\n"
+    )
+    makefile = Path(bi.__file__).resolve().parents[1] / "make" / "batch.mk"
+    proc = subprocess.run(
+        [
+            "make",
+            "-f",
+            str(makefile),
+            target,
+            f"BATCH_SCRIPT={sys.executable} {recorder}",
+            *(f"{k}={v}" for k, v in variables.items()),
+        ],
+        cwd=tmp_path,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert not (tmp_path / "pwned").exists()
+    argv = json.loads((tmp_path / "argv.json").read_text(encoding="utf-8"))
+    assert all(value in argv for value in variables.values())

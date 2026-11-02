@@ -265,7 +265,9 @@ def test_members_land_bind_rebind_and_finish(world: World, leader: McpServer, ou
     assert loop.tracker()["lifecycle"] == "completed"
 
 
-def test_silent_revert_cannot_reach_passing_evidence(world: World, leader: McpServer) -> None:
+def test_silent_revert_is_stopped_at_landing_and_only_a_repaired_member_reaches_evidence(
+    world: World, leader: McpServer
+) -> None:
     loop = Loop(
         world,
         leader,
@@ -294,32 +296,25 @@ def test_silent_revert_cannot_reach_passing_evidence(world: World, leader: McpSe
     )
     loop.check("m2", "tests/test_m2.py")
     loop.claim("m2")
+    before = loop.head()
     refused = world.refused(loop.integration, "batch-land", MEMBER=m2, DEPENDENCIES=m1)
     assert f"overlap rerun failed for ['{m1}']" in refused
     assert loop.ledger()["acceptance"][m1][-1]["status"] == "failed"
+    assert world.git(world.code_remote, "rev-parse", f"refs/heads/{loop.branch}") == before
 
-    resumed = loop.land("m2")
-    assert resumed["status"] == "already-merged"
-    loop.prepare("m2", resumed)
-    assert m1 in loop.tracker()["acceptance_required"]
+    again = world.refused(loop.integration, "batch-land", MEMBER=m2, DEPENDENCIES=m1)
+    assert f"overlap rerun failed for ['{m1}']" in again and "reset the integration branch" in again
+    assert m2 not in loop.tracker()["receipts"]
 
+    world.git(loop.integration, "reset", "--hard", before)
+    loop.implement("m2", {"src/shared.py": shared(alpha="1", gamma="2")})
+    loop.check("m2", "tests/test_m2.py")
+    repaired = loop.land("m2")
+    assert repaired["status"] == "merged" and repaired["reruns"][0]["status"] == "passed"
+    loop.prepare("m2", repaired)
     loop.publish()
-    reverted_head = loop.head()
-    loop.bind(reverted_head)
-    failed = world.refused(loop.integration, "batch-evidence")
-    assert f"rerun of '{m1}' failed at the final head" in failed
-    assert not (loop.integration / ".todo-batch" / loop.batch / "final-evidence.json").exists()
-    assert any("evidence" in failure for failure in readiness(world, loop, None))
-    with pytest.raises(landing.LandingError, match="unreadable batch evidence"):
-        arm_refusals(world, loop)
-
-    world.commit_files(loop.integration, {"src/shared.py": shared(alpha="1")}, "fix: restore alpha")
-    fix = loop.advance("fix")
-    assert sorted(fix["requires_acceptance"]) == [m1, m2]
-    loop.bind(loop.head(), previous=reverted_head)
-    loop.publish()
-    repaired = loop.evidence()
-    assert readiness(world, loop, repaired["evidence"]) == []
+    loop.bind(loop.head())
+    assert readiness(world, loop, loop.evidence()["evidence"]) == []
 
 
 def test_receipt_survives_context_edit_and_resets_on_acceptance_edit(
