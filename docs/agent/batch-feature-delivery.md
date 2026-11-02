@@ -77,7 +77,7 @@ Rules that hold for the whole batch:
 | `make batch-status` | Leader | Reconciles the ledger with the tracker and Git (rebuilding a missing ledger) and names the next step |
 | `make batch-verify` | Leader | Checks first-parent history, recorded heads, and member ancestry |
 | `make batch-evidence [SUITE=name]` | Leader | Reruns each required acceptance on the final head, writes `.todo-batch/<batch>/final-evidence.json`, and prints the `finish` payloads |
-| `make batch-finish [EXECUTE=1]` | Leader, integration worktree | After the batch is completed and the final PR merged: a dry run by default; with `EXECUTE=1` removes clean member worktrees and deletes member branches that meet the deletion basis |
+| `make batch-finish [EXECUTE=1]` | Leader, integration worktree | After the batch is completed and final PR merged: dry run by default; execute removes qualifying member worktrees/branches, then finishes the integration worktree and local branch last |
 
 The scripts only read the tracker. Every tracker write is printed as a payload
 and submitted by the leader through the todo-db MCP tools.
@@ -223,8 +223,12 @@ branch (and its remote branch if it matches) only when the branch tip equals the
 accepted head in the member's receipt and that head is an ancestor of the merged
 final PR's `refs/pull/<N>/head`, fetched in the same run; otherwise the branch is
 kept and the reason printed. This basis proves nothing is lost, not integration
-(`_project/specs/worktree-lifecycle-evidence-contract.md`, section 7.1). Remove
-the integration worktree and branch through the normal worktree finish.
+(`_project/specs/worktree-lifecycle-evidence-contract.md`, section 7.1).
+Last, only after the final PR has merged and every member branch is deleted or
+already gone, batch-finish invokes the normal section 7 worktree finish for the
+integration worktree and local branch. It reports the finish status in dry runs
+and freshly revalidates the completed batch, merged PR and finish evidence before
+applying. Refused members or a held integration worktree block this final step.
 
 ## Sizing: the hosted brief cap
 

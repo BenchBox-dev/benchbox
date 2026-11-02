@@ -112,16 +112,20 @@ The first gives up your claim; the second takes over a worktree whose owner is l
 
 ## Batch delivery choice
 
-Use serial mode for independent, cross-repository, review-separated, or
-approval-separated work. Feature delivery mode is available only for related
-items after the active todo-db MCP server has advertised the registered-batch
-v2 capability. The prerequisite runtime, catalog pin, and workflow rollout
-cannot use feature mode to prove their own installation; an unavailable
-capability is an owned blocker and keeps work in serial mode.
+Use the ordinary serial flow for standalone, unrelated, cross-repository,
+review-separated, or approval-separated work. An explicitly assigned cohesive
+batch defaults to feature delivery mode only after the installed, compatible
+registered-batch capability and its prerequisites have been verified against the
+active todo-db MCP server. Prerequisite runtime, catalog pin, and workflow rollout
+changes remain serial: changes enabling the loop cannot certify themselves.
+An unavailable capability is an owned blocker and keeps work in serial mode.
+See [Batch delivery modes](../agent/batch-feature-delivery.md) for the
+authoritative capability checks and delivery protocol.
 
-Feature mode uses one shared integration branch/worktree and one integrator
-(the leader), with each member in its own worktree
-(`docs/agent/batch-feature-delivery.md`). The branch layout:
+Feature mode has one leader who owns the integration branch/worktree, tracker,
+ledger, and one final PR to `develop`. Each member owns its worktree,
+implementation, scoped checks, local review, and landing report; members never
+open PRs or write to the tracker. The branch layout:
 
 | Worktree | Branch | Created by | Started at |
 | --- | --- | --- | --- |
@@ -136,6 +140,20 @@ final PR reaches `develop`. It does not skip CI or weaken hosted/native review,
 merge, deployment, or authority gates. Revalidate after base, member, scope,
 dependency, head, or conflict movement; use only reversible rollback/previews
 for recovery.
+
+### Post-final-merge cleanup
+
+Ordinary worktree cleanup does not finish an active batch. Only after every
+member is `done`, the batch is completed, and the final PR has actually merged,
+the leader runs `make batch-finish` from the integration worktree. It is a dry
+run by default; `EXECUTE=1` removes eligible member worktrees and branches first,
+then finishes the integration worktree and local branch last.
+
+Execution freshly revalidates the completed batch, merged final PR, and cleanup
+evidence. A refused member or held integration worktree blocks the final step.
+Use [Finish (leader)](../agent/batch-feature-delivery.md#6-finish-leader) for the
+receipt, ancestry, and normal worktree-finish requirements; do not bypass them
+with the single-worktree cleanup commands below.
 
 ## Finish a task
 

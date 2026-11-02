@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Finish the batch integration worktree last, after member cleanup and fresh merged-final-PR verification, using the existing worktree finish safety checks."
+}
