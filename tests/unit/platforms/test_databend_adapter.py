@@ -1013,3 +1013,108 @@ def test_databend_compose_pins_the_image_to_a_digest():
     compose = (Path(__file__).resolve().parents[3] / "docker/databend/docker-compose.yml").read_text(encoding="utf-8")
     assert re.search(r"image: \$\{DATABEND_IMAGE:-datafuselabs/databend:v[\d.]+@sha256:[0-9a-f]{64}\}", compose)
     assert ":latest" not in compose
+
+
+class _CursorlessConnection:
+    def __init__(self, tables):
+        self.tables = tables
+        self.statements = []
+
+    def exec(self, sql):
+        self.statements.append(sql)
+
+    def query_row(self, sql):
+        return (1,)
+
+    def query_iter(self, sql):
+        self.statements.append(sql)
+        if "system.tables" in sql:
+            return [_Row((name,)) for name in self.tables]
+        if "benchbox_tuning_metadata" in sql:
+            raise RuntimeError("Unknown table 'benchbox_tuning_metadata'")
+        if "COUNT(*)" in sql:
+            return [_Row((7,))]
+        return [_Row((1,))]
+
+    def close(self):
+        pass
+
+
+class _Row:
+    def __init__(self, values):
+        self._values = values
+
+    def values(self):
+        return self._values
+
+
+class TestDatabendCursorlessConnection:
+    def _adapter(self):
+        return DatabendAdapter(host="localhost", ssl=False, password="")
+
+    def test_tuning_metadata_load_does_not_touch_cursor(self):
+        from benchbox.core.tuning.metadata import TuningMetadataManager
+
+        adapter = self._adapter()
+        connection = _CursorlessConnection(["lineitem"])
+        manager = TuningMetadataManager(adapter, connection=connection)
+
+        assert manager.load_unified_tunings() is None
+        assert manager.last_load_error is None
+
+    def test_tuning_metadata_reads_existing_table_rows(self):
+        from benchbox.core.tuning.metadata import TuningMetadataManager
+
+        adapter = self._adapter()
+        connection = _CursorlessConnection(["lineitem"])
+        manager = TuningMetadataManager(adapter, connection=connection)
+
+        assert manager._fetch_all(connection, "SELECT name FROM system.tables") == [("lineitem",)]
+        assert manager._fetch_one(connection, "SELECT name FROM system.tables") == ("lineitem",)
+
+    def test_post_load_validation_passes_without_cursor(self):
+        adapter = self._adapter()
+        benchmark = Mock()
+        benchmark.get_schema.return_value = {"LINEITEM": {}, "ORDERS": {}}
+        connection = _CursorlessConnection(["lineitem", "orders"])
+
+        phase = adapter._create_enhanced_validation_phase(
+            benchmark=benchmark, connection=connection, table_stats={"lineitem": 5, "orders": 3}
+        )
+
+        assert phase.schema_validation == "PASSED"
+        assert phase.data_integrity_checks == "PASSED"
+        assert phase.validation_details["schema_valid"] is True
+
+    def test_table_row_count_uses_query_iter(self):
+        adapter = self._adapter()
+        assert adapter.get_table_row_count(_CursorlessConnection([]), "LINEITEM") == 7
+
+    def test_integrity_flags_unreadable_table(self):
+        adapter = self._adapter()
+        connection = _CursorlessConnection([])
+        connection.query_iter = Mock(side_effect=RuntimeError("no such table"))
+
+        status, details = adapter._validate_data_integrity(Mock(), connection, {"lineitem": 5})
+
+        assert status == "FAILED"
+        assert details["inaccessible_tables"] == ["lineitem"]
+
+
+class TestDatabendIntervalLiterals:
+    def test_quoted_interval_with_unit_is_split_before_execution(self):
+        adapter = DatabendAdapter(host="localhost", ssl=False, password="")
+        connection = Mock()
+        connection.query_iter.return_value = [(1,)]
+        query = (
+            "SELECT 1 FROM t WHERE d < CAST('1994-01-01' AS DATE) + INTERVAL '1 YEAR' AND x < 3 "
+            "AND e < d + INTERVAL '3 MONTH' AND note = 'interval'"
+        )
+
+        adapter.execute_query(connection, query, "q6")
+
+        sent = connection.query_iter.call_args.args[0]
+        assert "INTERVAL '1' YEAR AND" in sent
+        assert "INTERVAL '3' MONTH AND" in sent
+        assert "'1 YEAR'" not in sent
+        assert "note = 'interval'" in sent
