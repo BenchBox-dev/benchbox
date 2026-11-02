@@ -481,6 +481,48 @@ class DatabendAdapter(PlatformAdapter):
 
         return result_dict
 
+    @staticmethod
+    def _row_tuple(row: Any) -> tuple:
+        values = row.values() if hasattr(row, "values") else row
+        return tuple(values)
+
+    def fetch_rows(self, connection: Any, sql: str) -> list[tuple]:
+        return [self._row_tuple(row) for row in connection.query_iter(sql)]
+
+    def _get_existing_tables(self, connection: Any) -> list[str]:
+        try:
+            database = self.database.replace("'", "''")
+            rows = self.fetch_rows(connection, f"SELECT name FROM system.tables WHERE database = '{database}'")
+            return [str(row[0]).lower() for row in rows]
+        except Exception as e:
+            self.logger.debug(f"Failed to list Databend tables: {e}")
+            return []
+
+    def get_table_row_count(self, connection: Any, table: str) -> int:
+        try:
+            rows = self.fetch_rows(connection, f"SELECT COUNT(*) FROM {self._quote_identifier(table.lower())}")
+            return int(rows[0][0]) if rows else 0
+        except Exception as e:
+            self.logger.debug(f"Failed to get row count for {table}: {e}")
+            return 0
+
+    def _validate_data_integrity(
+        self, benchmark: Any, connection: Any, table_stats: dict[str, int]
+    ) -> tuple[str, dict[str, Any]]:
+        accessible_tables = []
+        inaccessible_tables = []
+        for table_name in table_stats:
+            try:
+                self.fetch_rows(connection, f"SELECT 1 FROM {self._quote_identifier(table_name.lower())} LIMIT 1")
+                accessible_tables.append(table_name)
+            except Exception as e:
+                self.logger.debug(f"Table {table_name} inaccessible: {e}")
+                inaccessible_tables.append(table_name)
+
+        if inaccessible_tables:
+            return "FAILED", {"inaccessible_tables": inaccessible_tables, "constraints_enabled": False}
+        return "PASSED", {"accessible_tables": accessible_tables, "constraints_enabled": True}
+
     def get_query_plan(self, connection: Any, query: str) -> str | None:
         try:
             rows = connection.query_iter(f"EXPLAIN {query}")
