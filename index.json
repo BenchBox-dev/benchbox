@@ -27922,10 +27922,10 @@
     },
     "todo-db-batch-v2-contract-20261101": {
       "claim": {
-        "expires_at": "2026-11-02T15:55:34Z",
-        "generation": "50a3527931b842fead47624e92e203c2",
+        "expires_at": "2026-11-03T02:50:08Z",
+        "generation": "a2aa0b93000b4d4a940c5b0f1eb8755c",
         "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:53a3b48ce5c94efdbf857652"
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d680f2b9a00523ec18de3879"
       },
       "needs": [],
       "priority": "high",

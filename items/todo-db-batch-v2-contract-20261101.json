@@ -61,6 +61,17 @@
       "op": "update",
       "op_id": "ed5c23ad0de642dfb211a082756ff1b1",
       "session_id": "3dd2b4a046904511bb5ce7edcc3205fd"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d680f2b9a00523ec18de3879",
+      "at": "2026-11-02T02:50:08Z",
+      "client": "omp-coding-agent",
+      "displaced": "mcp:omp-coding-agent:joe@joe-mac-mini.local:53a3b48ce5c94efdbf857652",
+      "generation": "a2aa0b93000b4d4a940c5b0f1eb8755c",
+      "op": "takeover",
+      "op_id": "78280e92073b4456812e4a947eaf3cfc",
+      "reason": "Same BenchBox session 01a19729; its earlier todo-db-mcp server process ended when the session restarted, so that worker identity cannot resume. Taking over only to finish the item with its recorded evidence.",
+      "session_id": "3dd2b4a046904511bb5ce7edcc3205fd"
     }
   ]
 }
