@@ -27749,6 +27749,15 @@
       "status": "open",
       "title": "Record a disposition for every pending oracle observation before production-connected extraction steps"
     },
+    "theseus-repository-governance-bootstrap-20261102": {
+      "claim": null,
+      "needs": [
+        "theseus-adr-inventory-baseline-20261102"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Bootstrap Theseus repository governance and preserve the BenchBox source provenance"
+    },
     "throughput-adapter-session-capability-contract": {
       "claim": null,
       "needs": [

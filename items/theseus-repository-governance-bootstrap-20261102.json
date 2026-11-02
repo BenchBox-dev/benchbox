@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "Live repository identity is BenchBox-dev/theseus; intended visibility and license have owner approval; branch and review policies have recorded owner-approved settings.",
+    "Source inventory has a path-by-path seed mapping from the named BenchBox baseline, normalized diff, notices, and initial source hash; independent reviewer and final approved head are required before first promotion.",
+    "Owner full-diff review governs bootstrap merges; fork PRs and candidate builds cannot access App credentials, tailnet credentials, trusted publisher credentials, or a secret-bearing environment.",
+    "CI can build the seed offline from gateway credentials and reports genuine package failures rather than fake/no-op success; repository changes are merged under its approved governance."
+  ],
+  "context": "T2. Owner must perform settings/creation operations when permissions or explicit service authorization are unavailable. Package name plan: distribution theseus-reviewer; import theseus_reviewer; CLI theseus. Do not claim the repository exists until checked.",
+  "description": "Create or reconcile BenchBox-dev/theseus, using main as its configurable gated default branch. Deliver license compatible with extracted code and dependencies, contributor/security/release docs, CODEOWNERS, CI, and the source seed described by the ADR. Before adding source, record the BenchBox commit and complete path map; retain notices and establish redistribution rights. Capture an initial normalized tree diff and source hash for the later independent bootstrap review. Until a separately authenticated Theseus oracle gate is live, only owner full-diff-reviewed merges are allowed.\nDecision gates: repository creation/visibility/license, protection settings, and any unavailable owner permission must be explicitly resolved by the owner; do not weaken protection to bootstrap.\nGuardrails: no BenchBox code removal; no default-branch direct push; no copied private tracker/session data or secrets; no unreviewed template pin; no production deployment or live gateway changes. Use independent worktrees and narrow PRs for both named repositories. Preserve protocol/status/artifact identifiers; App identity is consumer config.",
+  "links": [
+    "https://github.com/BenchBox-dev/theseus",
+    "_project/scripts/oracle_reviewers/",
+    "theseus-adr-inventory-baseline-20261102"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4c6f341b7f4b66f30a37a2f1",
+      "at": "2026-11-02T13:46:47Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "71f2eee2c93840e69459fb85d090dff7",
+      "session_id": "8cfcc9dbcab5419a91fc8b650901f36b"
+    }
+  ]
+}
