@@ -1,4 +1,0 @@
-{
-  "schema": 1,
-  "internal": "Developer test tooling: heavy serial pytest sessions and UAT commands take the host lock with admission and watchdog"
-}

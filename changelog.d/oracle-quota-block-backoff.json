@@ -1,1 +1,0 @@
-{"schema":1,"internal":"The oracle reviewer no longer hides a provider pool for up to a day after a quota error: every pool block lasts at most one hour, then the next review tries the pool again."}
