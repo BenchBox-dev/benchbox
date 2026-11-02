@@ -135,6 +135,7 @@ def _months_sequence(
 BTS_PREFETCH_WORKERS = 4
 BTS_FETCH_ATTEMPTS = 3
 BTS_FETCH_BACKOFF_S = 2.0
+_sleep = time.sleep
 
 
 def _is_transient_fetch_error(exc: BaseException) -> bool:
@@ -767,7 +768,7 @@ class FlightDataDownloader(CompressionMixin, VerbosityMixin):
                 if attempt == BTS_FETCH_ATTEMPTS or not _is_transient_fetch_error(exc):
                     raise
                 logger.warning(f"BTS fetch {url} failed (attempt {attempt}/{BTS_FETCH_ATTEMPTS}): {exc}; retrying")
-                time.sleep(BTS_FETCH_BACKOFF_S * attempt)
+                _sleep(BTS_FETCH_BACKOFF_S * attempt)
         expected_sha256 = PINNED_SOURCE_SHA256.get(url)
         if expected_sha256 is not None:
             actual_sha256 = hashlib.sha256(zip_bytes).hexdigest()
