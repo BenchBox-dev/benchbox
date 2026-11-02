@@ -1923,15 +1923,10 @@
       "title": "Integrate verified batch commits through one owned feature branch"
     },
     "batch-finish-integration-worktree-20261102": {
-      "claim": {
-        "expires_at": "2026-11-03T12:59:58Z",
-        "generation": "5dd04b3a23f04caaad601c007300fe37",
-        "renewals": 0,
-        "worker": "benchbox-batch-pilot-leader"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Make batch-finish finish the leader's integration worktree through the existing worktree-finish proof"
     },
     "batch-integration-loop-20261101": {
