@@ -1814,19 +1814,14 @@
       "title": "Delete batch member branches only when nothing would be lost, after amending the lifecycle contract"
     },
     "batch-member-side-tooling-20261101": {
-      "claim": {
-        "expires_at": "2026-11-03T06:27:06Z",
-        "generation": "0d9d7f5569844a4b974f6d63459643a9",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d680f2b9a00523ec18de3879"
-      },
+      "claim": null,
       "needs": [
         "benchbox-todo-db-batch-v2-runtime-20261101",
         "worktree-create-base-ref-20261101",
         "local-oracle-member-review-20261101"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Add batch-start, batch-member-create and batch-member-check, and refuse pr-open and pr-fanout in member worktrees"
     },
     "batch-prepared-delivery-tracker-and-skill": {
