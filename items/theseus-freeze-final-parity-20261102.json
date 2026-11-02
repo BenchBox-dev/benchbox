@@ -6,7 +6,8 @@
     "Independent reviewer approves extraction-only normalized source diff and candidate hash; every safety prerequisite and observation disposition is live-verified complete.",
     "Performance/cost comparison includes cold install and failure path, with any material regression explicitly adjudicated before approval. Any later changed source returns to this acceptance.",
     "Owner approves a bounded affected-surface freeze with start/end and urgent-fix escape. Expiry stops cutover, resumes synchronization and invalidates stale evidence. BenchBox remains behavioural source of truth until cutover.",
-    "Reconcile overlapping local-oracle-member-review-20261101 work and current Linux/macOS verification without taking over claims or discharging unrelated acceptance. Delta replay uses deterministic captured inputs."
+    "Reconcile overlapping local-oracle-member-review-20261101 work and current Linux/macOS verification without taking over claims or discharging unrelated acceptance. Delta replay uses deterministic captured inputs.",
+    "Own and complete the Theseus port of the merged BenchBox promotion-input and gate-refusal implementation: record BenchBox merge commit, reviewed Theseus port commit, and actual installed differential smoke covering omitted reads, wrong head/hash/identity, stand-in and same-patch rebase refusal. A pending port blocks parity."
   ],
   "context": "P3/R3. Do not implement new evaluator behaviour in T7 after this acceptance. Freeze is scoped and measured; urgent OMP watcher reverts continue through the existing owner-safe path and invalidate/resync candidate as needed.",
   "description": "T6 freezes a named candidate source tree only after all BenchBox oracle changes since the inventory baseline have a reviewed Theseus port or explicit no-op rationale. Include the BenchBox-first promotion path and gate refusal. Build the candidate wheel once, name its SHA-256, and exercise those installed bytes versus the synchronized embedded baseline. Publish exactly these bytes later; any subsequent source/build input change invalidates parity and requires a new candidate, rerun and bootstrap approval before release/cutover.\nVerify semantic parity for reviewer decisions/evidence/classification, carry/disputes/withdrawals/stand-ins/retries/absence, current gate decisions, local findings and cache invalidation, manifest matcher, and gateway commands. Use genuine retained corpus where available; synthetic fixtures must be labelled. Preserve critical-path performance and compare runner/wall/install/review cost against T1 baseline without claiming an unstated performance budget.\nGuardrails: no waiver of high-priority safety prerequisites; owner may resolve overlapping safety items through their own tracker process, never by marking them done on extraction evidence alone. No false freeze enforcement claim: source-sync audit must rerun before T9 arming and after merge. Keep existing production running; no release here.",
@@ -31,6 +32,14 @@
       "op": "update",
       "op_id": "f7c86d67bef94be3bfe8f85242368cf5",
       "session_id": "8cfcc9dbcab5419a91fc8b650901f36b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b58f5aa5b2bb5e33c84a53cb",
+      "at": "2026-11-02T14:07:43Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8231bf82914e492195b8ccfc01137738",
+      "session_id": "c4d4cd94bd464a16a29b8b24353d6e06"
     }
   ]
 }
