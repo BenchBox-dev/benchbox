@@ -14,7 +14,7 @@ import sys
 from collections.abc import Callable, Iterator
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
-from typing import BinaryIO, cast
+from typing import BinaryIO
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 for _path in (REPO_ROOT, Path(__file__).resolve().parent):
@@ -44,9 +44,11 @@ CLI_DESCRIPTION = (
     "  unpublished work, completed review evidence on that head, required checks\n"
     "  green at that head, and no durable hold. Enqueue re-checks the remote head\n"
     "  immediately before arming; a head change invalidates readiness.\n"
-    "* Feature-batch readiness additionally binds batch id/version, member set,\n"
-    "  owner generation, and integration head; late members or content edits\n"
-    "  invalidate it. Member SHAs must be ancestors of the integration head.\n"
+    "* Feature-batch readiness reads the batch evidence file (batch_evidence_path)\n"
+    "  and a fresh tracker read: it binds the final head to the tracker, every\n"
+    "  member receipt to an ancestor of that head, current acceptance to the final\n"
+    "  head, the changed files to the recomputed diff and the member scopes, and\n"
+    "  every member to a usable local review.\n"
     "* Follow-up state (pre-PR assembly through post-merge) persists with an\n"
     "  explicit owner and next action; retries are bounded to evidenced transient\n"
     "  failures on unchanged heads; terminal state is explicit, never inferred\n"
@@ -70,16 +72,21 @@ STATUS_CONTEXTS_JQ = (
 )
 ORACLE_GATE_CONTEXT = "oracle-gate"
 ORACLE_APP_LOGIN = "benchbox-oracle"
-REQUIRED_BATCH_TOOLS = frozenset({"register_batch", "prepare", "bind_batch_pr", "abort_batch"})
 MAX_RERUNS_PER_JOB = 1
 MAX_REENTRIES_PER_HEAD = 1
-PREPARED_RECEIPT_SCHEMA = "prepared_work_v1"
+PREPARED_RECEIPT_SCHEMA = "prepared_work_v2"
+BATCH_CAPABILITY_VERSION = 2
+BATCH_STORE_SCHEMA_VERSION = 4
 FULL_REVISION_RE = re.compile(r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
-SCOPE_HASH_RE = re.compile(r"^[0-9a-f]{64}$")
 REPOSITORY_PART_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 TODO_ID_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$")
 MAX_TODO_ID_LEN = 128
-VALID_REVIEW_DISPOSITIONS = frozenset({"approved"})
+BATCH_EVIDENCE_SCHEMA = "benchbox_batch_evidence_v2"
+MEMBER_REVIEW_SCHEMA = "benchbox_member_review_v1"
+MEMBER_REVIEW_OUTCOMES = frozenset({"clear", "not-reviewed", "override"})
+TRACKER_SHOW_COMMAND = ("uv", "run", "--project", "_project/scripts", "--locked", "--", "todo-db", "batch", "show")
+TRACKER_WINDOW_BUDGET = 6000
+MAX_TRACKER_WINDOWS = 4096
 FOLLOWUP_SCHEMA = "pr_followup_v2"
 START_RECORD_SCHEMA = "pr_landing_start_v1"
 FOLLOWUP_PHASES = frozenset(
@@ -195,39 +202,69 @@ def batch_runtime_capability_available(repo: Path) -> bool:
         evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return False
-    if not isinstance(evidence, dict):
+    runtime = evidence.get("runtime") if isinstance(evidence, dict) else None
+    if not isinstance(runtime, dict):
         return False
-    runtime = evidence.get("runtime")
-    active = runtime.get("active_benchbox") if isinstance(runtime, dict) else None
-    if not isinstance(active, dict):
+    capability = runtime.get("todo_db_batch")
+    handshake = runtime.get("mcp_handshake")
+    if not isinstance(capability, dict) or not isinstance(handshake, dict):
         return False
-    schema_version = active.get("schema_version")
-    supported = active.get("supported_schema_versions")
-    tools = active.get("registered_batch_tools")
-    handshake = active.get("mcp_handshake")
+    version = capability.get("version")
+    store_version = capability.get("store_schema_version")
+    supported = capability.get("supported_schema_versions")
     return (
-        isinstance(schema_version, int)
-        and not isinstance(schema_version, bool)
-        and schema_version >= 3
+        isinstance(version, int)
+        and not isinstance(version, bool)
+        and version >= BATCH_CAPABILITY_VERSION
+        and capability.get("receipt_schema") == PREPARED_RECEIPT_SCHEMA
+        and isinstance(store_version, int)
+        and not isinstance(store_version, bool)
+        and store_version >= BATCH_STORE_SCHEMA_VERSION
         and isinstance(supported, list)
-        and 3 in supported
-        and isinstance(tools, list)
-        and REQUIRED_BATCH_TOOLS.issubset(tools)
-        and isinstance(handshake, dict)
+        and BATCH_STORE_SCHEMA_VERSION in supported
         and handshake.get("result") == "pass"
     )
 
 
-def batch_mode_failures(evidence: ReadyEvidence, repo: Path) -> list[str]:
+def batch_mode_failures(
+    evidence: ReadyEvidence,
+    repo: Path,
+    identity: GitIdentity,
+    head: str | None,
+    tracker: Callable[[str], dict],
+) -> list[str]:
     if not evidence.require_batch:
         return []
     failures: list[str] = []
-    if not isinstance(evidence.batch, dict):
-        failures.append("batch evidence is required for batch-mode readiness")
     if not batch_runtime_capability_available(repo):
         failures.append(
-            "batch delivery requires the active todo-db runtime to advertise schema 3 and registered-batch tools"
+            "batch delivery requires the active todo-db runtime to advertise capability todo_db_batch version 2, "
+            f"receipt schema {PREPARED_RECEIPT_SCHEMA} and store schema {BATCH_STORE_SCHEMA_VERSION}"
         )
+    batch = evidence.batch_evidence
+    if not isinstance(batch, dict):
+        failures.append("batch evidence is required for batch-mode readiness")
+        return failures
+    if head is None:
+        return failures
+    if batch.get("repository") != evidence.repository:
+        failures.append("batch repository does not match the current checkout")
+    if batch.get("integration_branch") != evidence.branch:
+        failures.append("batch integration branch does not match the current checkout")
+    if not isinstance(batch.get("integration_worktree"), str) or not _same_path(
+        batch["integration_worktree"], identity.worktree
+    ):
+        failures.append("batch integration worktree does not match the current checkout")
+    batch_id = batch.get("batch_id")
+    if not isinstance(batch_id, str):
+        failures.append("batch evidence lacks a batch_id")
+        return failures
+    try:
+        fresh = tracker(batch_id)
+    except LandingError as exc:
+        failures.append(str(exc))
+        return failures
+    failures.extend(check_batch_evidence(repo, batch, head, fresh))
     return failures
 
 
@@ -537,7 +574,7 @@ class ReadyEvidence:
     soundness_paths_changed: bool = False
     maintainer_approved: bool = False
     oracle_gate_state: str | None = None
-    batch: dict | None = None
+    batch_evidence: dict | None = None
     require_batch: bool = False
     repository: str | None = None
     branch: str | None = None
@@ -780,500 +817,275 @@ def checks_green_at_head(check_runs: list, required: tuple, head: str) -> list[s
     return failures
 
 
-def _canonical_member_ids(value: object) -> list[str] | None:
-    if (
-        not isinstance(value, list)
-        or not value
-        or any(
-            not isinstance(item, str) or not item or len(item) > MAX_TODO_ID_LEN or not TODO_ID_RE.fullmatch(item)
-            for item in value
-        )
-    ):
-        return None
-    member_ids = cast(list[str], value)
-    if len(set(member_ids)) != len(member_ids):
-        return None
-    return member_ids
+def _revision(value: object) -> str | None:
+    return value if isinstance(value, str) and FULL_REVISION_RE.fullmatch(value) else None
 
 
-def _canonical_files(value: object) -> list[str] | None:
-    if not isinstance(value, list) or any(
-        not isinstance(path, str)
-        or not path
-        or os.path.isabs(path)
-        or any(part in {"", ".", ".."} for part in Path(path).parts)
-        or any(ord(char) < 32 for char in path)
-        for path in value
-    ):
-        return None
-    files = cast(list[str], value)
-    if files != sorted(set(files)):
-        return None
-    return files
+def _strings(value: object) -> set[str]:
+    return {item for item in value if isinstance(item, str)} if isinstance(value, list) else set()
 
 
-def _git_changed_files(repo: Path, base: str, head: str) -> set[str]:
-    return set(_git(repo, "diff", "--name-only", "--no-renames", f"{base}..{head}").splitlines())
-
-
-def _git_blob(repo: Path, revision: str, path: str) -> bytes | None:
+def _changed_paths(repo: Path, base: str, head: str) -> set[str]:
     proc = subprocess.run(
-        ["git", "show", f"{revision}:{path}"],
+        ["git", "diff", "--no-renames", "--name-only", "-z", f"{base}..{head}"],
         cwd=repo,
-        check=False,
+        check=True,
         capture_output=True,
         timeout=60,
     )
-    if proc.returncode != 0:
-        return None
-    return proc.stdout
+    return {path.decode("utf-8", "surrogateescape") for path in proc.stdout.split(b"\0") if path}
 
 
-def _scope_digest(scope: dict[str, list[str]]) -> str:
-    blob = json.dumps(scope, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
-
-
-def _check_receipt_verification(member_id: str, receipt: dict) -> list[str]:
-    verification = receipt.get("verification")
-    if not isinstance(verification, dict):
-        return [f"member {member_id} receipt has invalid verification evidence"]
-    failures: list[str] = []
-    if verification.get("status") != "passed":
-        failures.append(f"member {member_id} receipt verification did not pass")
-    if verification.get("revision") != receipt.get("source_revision"):
-        failures.append(f"member {member_id} receipt verification has a stale revision")
-    if verification.get("clean") is not True:
-        failures.append(f"member {member_id} receipt verification is not clean")
-    if not isinstance(verification.get("suite"), str) or not verification["suite"].strip():
-        failures.append(f"member {member_id} receipt verification lacks a suite")
-    command = verification.get("command")
-    if not isinstance(command, list) or not command or any(not isinstance(part, str) or not part for part in command):
-        failures.append(f"member {member_id} receipt verification lacks a command")
-    return failures
-
-
-def _check_receipt_git_scope(repo: Path, member_id: str, receipt: dict, files: list[str]) -> list[str]:
-    source_base = receipt.get("source_base")
-    accepted_head = receipt.get("accepted_head")
-    if not isinstance(source_base, str) or not isinstance(accepted_head, str):
-        return []
+def _is_ancestor(repo: Path, ancestor: str, descendant: str) -> bool:
     try:
-        actual_files = _git_changed_files(repo, source_base, accepted_head)
+        subprocess.run(
+            ["git", "merge-base", "--is-ancestor", ancestor, descendant],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+            timeout=60,
+        )
     except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
-        return [f"member {member_id} source changed files could not be read from Git"]
-    if actual_files != set(files):
-        return [f"member {member_id} receipt changed_files differ from the accepted Git diff"]
-    return []
+        return False
+    return True
 
 
-def _check_prepared_receipt(
-    repo: Path, batch: dict, member_id: str, receipt: object, accepted_head: str, integration_head: str
-) -> list[str]:
-    failures: list[str] = []
-    if not isinstance(receipt, dict):
-        return [f"member {member_id} lacks a canonical prepared receipt"]
-    required = (
-        "schema",
-        "batch_id",
-        "member_id",
-        "owner_generation",
-        "source_worktree",
-        "source_revision",
-        "source_base",
-        "accepted_head",
-        "integration_head",
-        "scope_hash",
-        "changed_files",
-        "verification",
-    )
-    failures.extend(f"member {member_id} receipt lacks {key}" for key in required if key not in receipt)
-    if receipt.get("schema") != PREPARED_RECEIPT_SCHEMA:
-        failures.append(f"member {member_id} receipt has an unsupported schema")
-    if receipt.get("batch_id") != batch.get("batch_id"):
-        failures.append(f"member {member_id} receipt is bound to a different batch")
-    if receipt.get("member_id") != member_id:
-        failures.append(f"member {member_id} receipt identifies a different member")
-    generation = receipt.get("owner_generation")
-    if not isinstance(generation, str) or not re.fullmatch(r"[0-9a-f]{32}", generation):
-        failures.append(f"member {member_id} receipt has an invalid owner generation")
-    elif generation != batch.get("owner_generation"):
-        failures.append(f"member {member_id} receipt has a stale owner generation")
-    source_worktree = receipt.get("source_worktree")
-    if not isinstance(source_worktree, str) or not os.path.isabs(source_worktree):
-        failures.append(f"member {member_id} receipt requires an absolute source_worktree")
-    revisions = ("source_revision", "source_base", "accepted_head", "integration_head")
-    for key in revisions:
-        revision = receipt.get(key)
-        if not isinstance(revision, str) or not FULL_REVISION_RE.fullmatch(revision):
-            failures.append(f"member {member_id} receipt has an invalid {key}")
-    if receipt.get("source_revision") != receipt.get("accepted_head"):
-        failures.append(f"member {member_id} receipt does not bind accepted_head to source_revision")
-    if receipt.get("accepted_head") != accepted_head:
-        failures.append(f"member {member_id} receipt is not bound to its accepted head")
-    if receipt.get("integration_head") != integration_head:
-        failures.append(f"member {member_id} receipt is not bound to the integration head")
-    if receipt.get("scope_hash") != batch.get("scope_hash") or not SCOPE_HASH_RE.fullmatch(
-        str(receipt.get("scope_hash"))
-    ):
-        failures.append(f"member {member_id} receipt has a foreign scope_hash")
-    integrated_members = batch.get("integrated_members")
-    integrated = integrated_members.get(member_id) if isinstance(integrated_members, dict) else None
-    if not isinstance(integrated, dict) or receipt.get("integration_head") != integrated.get("integration_head"):
-        failures.append(f"member {member_id} receipt has an unregistered integration head")
-    files = _canonical_files(receipt.get("changed_files"))
-    if files is None:
-        failures.append(f"member {member_id} receipt changed_files are not canonical")
-    else:
-        failures.extend(_check_receipt_git_scope(repo, member_id, receipt, files))
-    failures.extend(_check_receipt_verification(member_id, receipt))
-    return failures
+def _tracker_stdout(cmd: list[str]) -> tuple[int, str]:
+    proc = subprocess.run(cmd, text=True, capture_output=True, timeout=120, check=False)
+    return proc.returncode, (proc.stdout or "") if proc.returncode == 0 else (proc.stdout or "") + (proc.stderr or "")
 
 
-def _check_member_disposition(batch: dict, member_id: str, disposition: object, accepted_head: str) -> list[str]:
-    if not isinstance(disposition, dict):
-        return [f"member {member_id} review disposition is missing or not an object"]
-    failures: list[str] = []
-    if disposition.get("status") not in VALID_REVIEW_DISPOSITIONS:
-        failures.append(f"member {member_id} review disposition is not passing")
-    if disposition.get("current") is not True:
-        failures.append(f"member {member_id} review disposition is stale")
-    if disposition.get("resolved") is not True:
-        failures.append(f"member {member_id} review disposition is unresolved")
-    if disposition.get("member_id") != member_id:
-        failures.append(f"member {member_id} review disposition names a different member")
-    if disposition.get("head") != accepted_head:
-        failures.append(f"member {member_id} review disposition has a stale head")
-    if disposition.get("integration_head") != batch.get("integration_head"):
-        failures.append(f"member {member_id} review disposition has a stale integration head")
-    return failures
-
-
-def _check_final_metadata(repo: Path, batch: dict, evidence: dict) -> list[str]:
-    failures: list[str] = []
-    required = (
-        "batch_id",
-        "project_id",
-        "repository",
-        "tree_worktree",
-        "tree_revision",
-        "integration_branch",
-        "integration_head",
-        "scope_hash",
-        "member_heads",
-        "member_ranges",
-        "changed_files",
-        "final_pr",
-        "suite",
-        "clean",
-    )
-    failures.extend(f"final evidence lacks {key}" for key in required if key not in evidence)
-    if evidence.get("batch_id") != batch.get("batch_id"):
-        failures.append("final evidence is bound to a different batch")
-    if evidence.get("project_id") != batch.get("project_id") or evidence.get("repository") != batch.get("repository"):
-        failures.append("final evidence names a different project or repository")
-    if evidence.get("integration_branch") != batch.get("integration_branch"):
-        failures.append("final evidence names a different integration branch")
-    if evidence.get("integration_head") != batch.get("integration_head"):
-        failures.append("final evidence is not at the current integration head")
-    if evidence.get("scope_hash") != batch.get("scope_hash"):
-        failures.append("final evidence has a foreign scope_hash")
-    tree_worktree = evidence.get("tree_worktree")
-    if not isinstance(tree_worktree, str) or not os.path.isabs(tree_worktree):
-        failures.append("final evidence requires an absolute tree_worktree")
-    elif not _same_path(tree_worktree, str(repo)) or not _same_path(
-        tree_worktree, str(batch.get("integration_worktree", ""))
-    ):
-        failures.append("final evidence tree_worktree is not the current integration worktree")
-    for key in ("tree_revision", "integration_head"):
-        if not isinstance(evidence.get(key), str) or not FULL_REVISION_RE.fullmatch(evidence[key]):
-            failures.append(f"final evidence has an invalid {key}")
-    if evidence.get("tree_revision") != evidence.get("integration_head"):
-        failures.append("final evidence tree_revision does not equal integration_head")
-    if not isinstance(evidence.get("suite"), str) or not evidence["suite"].strip():
-        failures.append("final evidence lacks a suite")
-    if evidence.get("clean") is not True:
-        failures.append("final evidence does not certify a clean tree")
-    final_pr = evidence.get("final_pr")
-    if (
-        not isinstance(final_pr, dict)
-        or not isinstance(final_pr.get("number"), int)
-        or isinstance(final_pr.get("number"), bool)
-        or final_pr.get("number") <= 0
-    ):
-        failures.append("final evidence has an invalid final PR number")
-    if not isinstance(final_pr, dict) or not isinstance(final_pr.get("node_id"), str) or not final_pr.get("node_id"):
-        failures.append("final evidence has an invalid final PR node id")
-    if not isinstance(final_pr, dict) or final_pr.get("head") != evidence.get("integration_head"):
-        failures.append("final evidence final PR is not bound to the integration head")
-    if final_pr != batch.get("final_pr"):
-        failures.append("final evidence is not bound to the declared final PR")
-    return failures
-
-
-def _check_final_members(
-    repo: Path, batch: dict, evidence: dict, members: list[str], receipts: dict[str, object]
-) -> list[str]:
-    failures: list[str] = []
-    heads = evidence.get("member_heads")
-    ranges = evidence.get("member_ranges")
-    if not isinstance(heads, dict) or set(heads) != set(members):
-        failures.append("final evidence member_heads do not exactly match the declared members")
-    if not isinstance(ranges, dict) or set(ranges) != set(members):
-        failures.append("final evidence member_ranges do not exactly match the declared members")
-    expected_files: set[str] = set()
-    accepted_members = batch.get("accepted_members")
-    accepted = accepted_members if isinstance(accepted_members, dict) else {}
-    for member in members:
-        receipt = receipts.get(member)
-        receipt_data = receipt if isinstance(receipt, dict) else {}
-        receipt_files = _canonical_files(receipt_data.get("changed_files"))
-        if receipt_files is not None:
-            expected_files.update(receipt_files)
-        accepted_head = accepted.get(member)
-        if isinstance(heads, dict) and heads.get(member) != accepted_head:
-            failures.append(f"final evidence member {member} is not bound to its accepted head")
-        member_range = ranges.get(member) if isinstance(ranges, dict) else None
-        if (
-            not isinstance(member_range, dict)
-            or member_range.get("base") != receipt_data.get("source_base")
-            or member_range.get("head") != accepted_head
-        ):
-            failures.append(f"final evidence member {member} range is not bound to its prepared receipt")
-        if isinstance(accepted_head, str) and FULL_REVISION_RE.fullmatch(accepted_head):
-            for path in receipt_files or []:
-                try:
-                    accepted_blob = _git_blob(repo, accepted_head, path)
-                    final_blob = _git_blob(repo, str(evidence.get("integration_head") or ""), path)
-                except (OSError, subprocess.TimeoutExpired):
-                    failures.append(f"member {member} accepted content could not be read for {path}")
-                    continue
-                if accepted_blob != final_blob:
-                    failures.append(f"member {member} accepted content was overwritten for {path}")
-    final_files = _canonical_files(evidence.get("changed_files"))
-    if final_files is None:
-        failures.append("final evidence changed_files are not canonical")
-    else:
-        if set(final_files) != expected_files:
-            failures.append("final evidence changed_files differ from the prepared member content")
-        start_head = batch.get("start_head")
-        integration_head = evidence.get("integration_head")
-        if (
-            isinstance(start_head, str)
-            and FULL_REVISION_RE.fullmatch(start_head)
-            and isinstance(integration_head, str)
-            and FULL_REVISION_RE.fullmatch(integration_head)
-        ):
-            try:
-                actual_final_files = _git_changed_files(repo, start_head, integration_head)
-            except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
-                failures.append("final evidence changed files could not be read from Git")
-            else:
-                if actual_final_files != set(final_files):
-                    failures.append("final evidence changed_files differ from the actual integration Git diff")
-        scope = batch.get("scope")
-        allowed = (
-            [pattern for member in members for pattern in scope.get(member, [])] if isinstance(scope, dict) else []
-        )
-        if any(not any(fnmatch.fnmatch(path, pattern) for pattern in allowed) for path in final_files):
-            failures.append("final evidence changed_files exceed the frozen batch scope")
-    return failures
-
-
-def _check_final_evidence(repo: Path, batch: dict, members: list[str], receipts: dict[str, object]) -> list[str]:
-    evidence = batch.get("final_evidence")
-    if not isinstance(evidence, dict) or evidence.get("status") != "passed":
-        return ["batch final evidence is missing or does not have status passed"]
-    failures = _check_final_metadata(repo, batch, evidence)
-    failures.extend(_check_final_members(repo, batch, evidence, members, receipts))
-    if evidence.get("conflict_resolution"):
-        failures.append("final evidence contains conflict-resolution markers")
-    return failures
-
-
-def _check_batch_header(repo: Path, batch: dict, members: list[str], integration_head: str) -> list[str]:
-    failures: list[str] = []
-    batch_id = batch.get("batch_id")
-    if (
-        not isinstance(batch_id, str)
-        or not batch_id
-        or len(batch_id) > MAX_TODO_ID_LEN
-        or not TODO_ID_RE.fullmatch(batch_id)
-    ):
-        failures.append("batch_id must be a canonical todo-db ID")
-    for key in ("project_id", "repository", "owner", "integration_branch", "delivery_boundary", "terminal_outcome"):
-        value = batch.get(key)
-        if not isinstance(value, str) or not value.strip() or any(ord(char) < 32 for char in value):
-            failures.append(f"batch {key} must be a non-empty single-line string")
-    generation = batch.get("owner_generation")
-    if not isinstance(generation, str) or not re.fullmatch(r"[0-9a-f]{32}", generation):
-        failures.append("batch owner_generation must be a 32-hex value")
-    worktree = batch.get("integration_worktree")
-    if not isinstance(worktree, str) or not os.path.isabs(worktree):
-        failures.append("batch integration_worktree must be absolute")
-    elif not _same_path(worktree, str(repo)):
-        failures.append("batch integration_worktree is not the current checkout")
-    for key in ("start_head", "integration_head"):
-        if not isinstance(batch.get(key), str) or not FULL_REVISION_RE.fullmatch(batch[key]):
-            failures.append(f"batch {key} must be a full lowercase commit SHA")
-    if batch.get("integration_head") != integration_head:
-        failures.append("batch integration head moved since readiness was evaluated")
-    scope = batch.get("scope")
-    valid_scope = (
-        isinstance(scope, dict)
-        and set(scope) == set(members)
-        and all(
-            isinstance(paths, list) and bool(paths) and all(isinstance(path, str) and path for path in paths)
-            for paths in scope.values()
-        )
-    )
-    if not valid_scope:
-        failures.append("batch scope must cover exactly the declared members")
-    scope_hash = batch.get("scope_hash")
-    if (
-        not isinstance(scope_hash, str)
-        or not SCOPE_HASH_RE.fullmatch(scope_hash)
-        or (isinstance(scope, dict) and scope_hash != _scope_digest(scope))
-    ):
-        failures.append("batch scope_hash does not match the frozen scope")
-    return failures
-
-
-def _check_batch_maps(
-    batch: dict, members: list[str]
-) -> tuple[list[str], dict[str, object], dict[str, object], dict[str, object], dict[str, object]]:
-    failures: list[str] = []
-    member_set = set(members)
-    maps: list[tuple[str, object]] = [
-        ("accepted_members", batch.get("accepted_members")),
-        ("integrated_members", batch.get("integrated_members")),
-        ("prepared_receipts", batch.get("prepared_receipts")),
-        ("review_dispositions", batch.get("review_dispositions")),
-    ]
-    result: list[dict[str, object]] = []
-    for name, value in maps:
-        if not isinstance(value, dict) or set(value) != member_set:
-            failures.append(f"{name} do not exactly match the declared members")
-            result.append({})
-        else:
-            result.append(value)
-    return failures, result[0], result[1], result[2], result[3]
-
-
-def _check_batch_member_maps(
-    repo: Path,
-    batch: dict,
-    members: list[str],
-    accepted: dict[str, object],
-    integrated: dict[str, object],
-    receipts: dict[str, object],
-    dispositions: dict[str, object],
-    integration_head: str,
-) -> list[str]:
-    failures: list[str] = []
-    for member in members:
-        accepted_head = accepted.get(member)
-        if (
-            not isinstance(accepted_head, str)
-            or not FULL_REVISION_RE.fullmatch(accepted_head)
-            or not isinstance(integration_head, str)
-            or not FULL_REVISION_RE.fullmatch(integration_head)
-        ):
-            failures.append(f"accepted head for member {member} is invalid")
-        integration = integrated.get(member)
-        if (
-            not isinstance(integration, dict)
-            or integration.get("accepted_head") != accepted_head
-            or integration.get("integration_head") != integration_head
-        ):
-            failures.append(f"integration evidence for member {member} is stale")
-        failures.extend(
-            _check_prepared_receipt(repo, batch, member, receipts.get(member), accepted_head or "", integration_head)
-        )
-        if not isinstance(accepted_head, str) or not FULL_REVISION_RE.fullmatch(accepted_head):
-            failures.append(f"member {member} accepted head is not in the integration head")
-        else:
-            try:
-                subprocess.run(
-                    ["git", "merge-base", "--is-ancestor", accepted_head, integration_head],
-                    cwd=repo,
-                    check=True,
-                    capture_output=True,
-                    timeout=60,
-                )
-            except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-                failures.append(f"member {member} accepted head is not in the integration head")
-        failures.extend(_check_member_disposition(batch, member, dispositions.get(member), accepted_head or ""))
-    return failures
-
-
-def check_batch_binding(repo: Path, batch: dict, integration_head: str) -> list[str]:
-    if not isinstance(batch, dict):
-        return ["batch binding must be an object"]
-    failures: list[str] = []
+def _tracker_call(run: Runner, batch_id: str, *options: str) -> dict:
+    code, out = run([*TRACKER_SHOW_COMMAND, batch_id, *options])
     try:
-        current_head = _git(repo, "rev-parse", "HEAD")
+        envelope = json.loads(out)
+    except ValueError as exc:
+        raise LandingError(f"cannot read tracker batch {batch_id}: unparseable output (exit {code})") from exc
+    if not isinstance(envelope, dict):
+        raise LandingError(f"cannot read tracker batch {batch_id}: unexpected output (exit {code})")
+    if code != 0 or envelope.get("ok") is not True or not isinstance(envelope.get("data"), dict):
+        raise LandingError(f"cannot read tracker batch {batch_id}: {str(envelope.get('error') or out)[:200]}")
+    return envelope["data"]
+
+
+def _tracker_section(run: Runner, batch_id: str, name: str, rev: str) -> object:
+    windows: list[str] = []
+    offset = 0
+    for _ in range(MAX_TRACKER_WINDOWS):
+        options = ("--field", name, "--offset", str(offset), "--budget", str(TRACKER_WINDOW_BUDGET), "--rev", rev)
+        data = _tracker_call(run, batch_id, *options)
+        window = data.get("window")
+        if not isinstance(window, str):
+            raise LandingError(f"tracker batch {batch_id} section {name} returned no window")
+        windows.append(window)
+        continuation = data.get("continuation")
+        if continuation is None:
+            try:
+                return json.loads("".join(windows))
+            except ValueError as exc:
+                raise LandingError(f"tracker batch {batch_id} section {name} is not valid JSON") from exc
+        next_offset = continuation.get("offset") if isinstance(continuation, dict) else None
+        if not isinstance(next_offset, int) or isinstance(next_offset, bool) or next_offset <= offset:
+            raise LandingError(f"tracker batch {batch_id} section {name} did not advance")
+        offset = next_offset
+    raise LandingError(f"tracker batch {batch_id} section {name} exceeds the read bound")
+
+
+def read_batch_tracker(batch_id: str, run: Runner = _tracker_stdout) -> dict:
+    if len(batch_id) > MAX_TODO_ID_LEN or not TODO_ID_RE.fullmatch(batch_id):
+        raise LandingError(f"batch id {batch_id!r} is not a tracker batch id")
+    summary = _tracker_call(run, batch_id)
+    sections = summary.get("sections")
+    rev = summary.get("rev") or summary.get("cached_rev")
+    if not isinstance(sections, dict) or not isinstance(rev, str) or not rev:
+        raise LandingError(f"tracker batch {batch_id} read has no sections or revision")
+    tracker = {key: value for key, value in summary.items() if key != "sections"}
+    for name in sections:
+        if name not in tracker:
+            tracker[name] = _tracker_section(run, batch_id, name, rev)
+    return tracker
+
+
+def _load_batch_evidence(repo: Path, path_value: object) -> dict | None:
+    if path_value is None:
+        return None
+    if not isinstance(path_value, str) or not path_value:
+        raise LandingError("batch_evidence_path must be a non-empty path")
+    path = Path(path_value)
+    try:
+        data = json.loads((path if path.is_absolute() else repo / path).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise LandingError(f"unreadable batch evidence file: {exc}") from exc
+    if not isinstance(data, dict):
+        raise LandingError("batch evidence must be a JSON object")
+    return data
+
+
+def _tracker_members(tracker: dict) -> list[str]:
+    rows = tracker.get("members")
+    if not isinstance(rows, list):
+        return []
+    return [member for row in rows if isinstance(member := row.get("id") if isinstance(row, dict) else row, str)]
+
+
+def _tracker_map(tracker: dict, key: str) -> dict:
+    value = tracker.get(key)
+    return value if isinstance(value, dict) else {}
+
+
+def _develop_excluded_paths(tracker: dict, receipts: dict) -> set[str]:
+    develop: set[str] = set()
+    owned: set[str] = set()
+    log = tracker.get("integration_log")
+    for entry in log if isinstance(log, list) else []:
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("kind") == "develop-merge":
+            develop |= _strings(entry.get("changed_files"))
+        elif entry.get("kind") == "fix":
+            owned |= _strings(entry.get("changed_files"))
+    for receipt in receipts.values():
+        if isinstance(receipt, dict):
+            owned |= _strings(receipt.get("changed_files"))
+    return develop - owned
+
+
+def _check_evidence_binding(repo: Path, evidence: dict, head: str, tracker: dict) -> list[str]:
+    failures: list[str] = []
+    if evidence.get("schema") != BATCH_EVIDENCE_SCHEMA:
+        failures.append(f"batch evidence schema is not {BATCH_EVIDENCE_SCHEMA}")
+    if evidence.get("batch_id") != tracker.get("batch_id"):
+        failures.append("batch evidence names a different batch than the tracker")
+    if _revision(head) is None:
+        failures.append("batch evidence check requires a full head revision")
+    if evidence.get("final_head") != head:
+        failures.append("batch evidence final_head is not the PR head")
+    if tracker.get("integration_head") != head:
+        failures.append("tracker integration head is not the PR head")
+    final_pr = tracker.get("final_pr")
+    if not isinstance(final_pr, dict) or final_pr.get("head") != head:
+        failures.append("tracker final PR binding is not at the PR head")
+    recorded = evidence.get("tracker")
+    if not isinstance(recorded, dict):
+        failures.append("batch evidence lacks the tracker read it was built from")
+    else:
+        failures.extend(
+            f"tracker {key} changed since the batch evidence was built"
+            for key in ("integration_head", "final_pr", "members", "receipts")
+            if recorded.get(key) != tracker.get(key)
+        )
+    worktree = tracker.get("integration_worktree")
+    if not isinstance(worktree, str) or not _same_path(worktree, str(repo)):
+        failures.append("tracker integration worktree is not the current checkout")
+    try:
+        if _git(repo, "rev-parse", "HEAD") != head:
+            failures.append("current integration checkout HEAD is not the PR head")
     except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
         failures.append("could not read the current integration checkout HEAD")
-    else:
-        if current_head != integration_head:
-            failures.append("current integration checkout HEAD does not match integration_head")
-    try:
-        if _git(repo, "status", "--porcelain"):
-            failures.append("current integration checkout is dirty")
-    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
-        failures.append("could not verify that the current integration checkout is clean")
-    required = (
-        "batch_id",
-        "project_id",
-        "repository",
-        "owner",
-        "owner_generation",
-        "integration_branch",
-        "integration_worktree",
-        "start_head",
-        "members",
-        "scope",
-        "scope_hash",
-        "delivery_boundary",
-        "terminal_outcome",
-        "integration_head",
-        "accepted_members",
-        "integrated_members",
-        "prepared_receipts",
-        "review_dispositions",
-        "final_pr",
-        "final_evidence",
-    )
-    failures.extend(f"batch binding lacks {key}" for key in required if key not in batch)
-    members = _canonical_member_ids(batch.get("members"))
-    if members is None:
-        failures.append("batch members must be a unique non-empty ordered list")
-        members = []
-    failures.extend(_check_batch_header(repo, batch, members, integration_head))
-    map_failures, accepted, integrated, receipts, dispositions = _check_batch_maps(batch, members)
-    failures.extend(map_failures)
+    return failures
+
+
+def _check_evidence_receipts(repo: Path, members: list[str], receipts: dict, head: str) -> list[str]:
+    failures: list[str] = []
+    for member in members:
+        receipt = receipts.get(member)
+        if not isinstance(receipt, dict) or receipt.get("schema") != PREPARED_RECEIPT_SCHEMA:
+            failures.append(f"member {member} lacks a {PREPARED_RECEIPT_SCHEMA} receipt")
+            continue
+        accepted = _revision(receipt.get("accepted_head"))
+        if accepted is None or not _is_ancestor(repo, accepted, head):
+            failures.append(f"member {member} accepted head is not an ancestor of the PR head")
+    return failures
+
+
+def _check_evidence_acceptance(repo: Path, evidence: dict, head: str, tracker: dict, receipts: dict) -> list[str]:
+    failures: list[str] = []
+    acceptance = evidence.get("current_acceptance")
+    if not isinstance(acceptance, dict):
+        return ["batch evidence lacks current_acceptance"]
     failures.extend(
-        _check_batch_member_maps(repo, batch, members, accepted, integrated, receipts, dispositions, integration_head)
+        f"current acceptance is missing for member {member}"
+        for member in sorted(_tracker_map(tracker, "acceptance_required"))
+        if member not in acceptance
     )
-    final_pr = batch.get("final_pr")
-    if (
-        not isinstance(final_pr, dict)
-        or not isinstance(final_pr.get("number"), int)
-        or isinstance(final_pr.get("number"), bool)
-        or not isinstance(final_pr.get("node_id"), str)
-        or not final_pr.get("node_id")
-        or not isinstance(final_pr.get("head"), str)
-        or not FULL_REVISION_RE.fullmatch(final_pr["head"])
-        or final_pr.get("number") <= 0
-        or final_pr.get("head") != integration_head
-    ):
-        failures.append("batch final_pr is invalid or stale")
-    if any(batch.get(key) for key in ("active_writers", "pending_writers")):
-        failures.append("batch has active or pending writers or conflict resolution markers")
-    if batch.get("conflict_resolution"):
-        failures.append("batch has active or pending writers or conflict resolution markers")
-    failures.extend(_check_final_evidence(repo, batch, members, receipts))
+    worktree = tracker.get("integration_worktree")
+    for member, row in sorted(acceptance.items()):
+        receipt = receipts.get(member)
+        verification = receipt.get("verification") if isinstance(receipt, dict) else None
+        if not isinstance(verification, dict):
+            failures.append(f"current acceptance names member {member} without a prepared receipt")
+            continue
+        if not isinstance(row, dict):
+            failures.append(f"current acceptance for member {member} is not an object")
+            continue
+        if row.get("status") != "passed" or row.get("clean") is not True:
+            failures.append(f"current acceptance for member {member} is not passed and clean")
+        if row.get("revision") != head:
+            failures.append(f"current acceptance for member {member} is not at the PR head")
+        if not isinstance(row.get("worktree"), str) or not isinstance(worktree, str):
+            failures.append(f"current acceptance for member {member} names no worktree")
+        elif not _same_path(row["worktree"], worktree):
+            failures.append(f"current acceptance for member {member} ran outside the integration worktree")
+        if row.get("suite") != verification.get("suite") or row.get("command") != verification.get("command"):
+            failures.append(f"current acceptance for member {member} is not its own receipt verification")
+    return failures
+
+
+def _check_evidence_changed_files(repo: Path, evidence: dict, head: str, tracker: dict, receipts: dict) -> list[str]:
+    start_head = _revision(tracker.get("start_head"))
+    if start_head is None:
+        return ["tracker start head is not a full revision"]
+    try:
+        actual = _changed_paths(repo, start_head, head) - _develop_excluded_paths(tracker, receipts)
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        return ["changed files could not be read from Git"]
+    failures: list[str] = []
+    claimed = evidence.get("changed_files")
+    if not isinstance(claimed, list) or not all(isinstance(path, str) for path in claimed) or set(claimed) != actual:
+        failures.append("batch evidence changed_files differ from the recomputed integration diff")
+    scope = _tracker_map(tracker, "scope")
+    allowed = [pattern for patterns in scope.values() if isinstance(patterns, list) for pattern in patterns]
+    outside = sorted(
+        path for path in actual if not any(isinstance(p, str) and fnmatch.fnmatch(path, p) for p in allowed)
+    )
+    failures.extend(f"changed path {path} matches no member scope" for path in outside)
+    return failures
+
+
+def _check_evidence_reviews(evidence: dict, members: list[str], receipts: dict) -> list[str]:
+    failures: list[str] = []
+    reviews = evidence.get("member_reviews")
+    reviews = reviews if isinstance(reviews, dict) else {}
+    for member in members:
+        review = reviews.get(member)
+        receipt = receipts.get(member)
+        if not isinstance(review, dict) or review.get("schema") != MEMBER_REVIEW_SCHEMA:
+            failures.append(f"member {member} has no stored member review")
+            continue
+        if not isinstance(receipt, dict):
+            continue
+        if review.get("base_sha") != receipt.get("source_base") or review.get("head_sha") != receipt.get(
+            "accepted_head"
+        ):
+            failures.append(f"member {member} review is bound to another range than its receipt")
+        if review.get("outcome") not in MEMBER_REVIEW_OUTCOMES:
+            failures.append(f"member {member} review outcome {review.get('outcome')!r} does not allow landing")
+    return failures
+
+
+def check_batch_evidence(repo: Path, evidence: dict, head: str, tracker: dict) -> list[str]:
+    if not isinstance(evidence, dict):
+        return ["batch evidence must be an object"]
+    if not isinstance(tracker, dict):
+        return ["tracker read must be an object"]
+    members = _tracker_members(tracker)
+    receipts = _tracker_map(tracker, "receipts")
+    failures = [] if members else ["tracker batch has no members"]
+    failures.extend(_check_evidence_binding(repo, evidence, head, tracker))
+    failures.extend(_check_evidence_receipts(repo, members, receipts, head))
+    failures.extend(_check_evidence_acceptance(repo, evidence, head, tracker, receipts))
+    failures.extend(_check_evidence_changed_files(repo, evidence, head, tracker, receipts))
+    failures.extend(_check_evidence_reviews(evidence, members, receipts))
     return failures
 
 
@@ -1282,6 +1094,7 @@ def ready_failures(
     remote_head: str,
     evidence: ReadyEvidence,
     repo: Path,
+    tracker: Callable[[str], dict] = read_batch_tracker,
 ) -> list[str]:
     failures: list[str] = []
     expected_head = evidence.expected_head if isinstance(evidence.expected_head, str) else ""
@@ -1317,22 +1130,12 @@ def ready_failures(
     holds = evidence.hold_labels or []
     if HOLD_LABEL in holds:
         failures.append(f"durable hold label {HOLD_LABEL!r} present; a human removes it, never this helper")
-    failures.extend(batch_mode_failures(evidence, repo))
+    failures.extend(batch_mode_failures(evidence, repo, identity, expected_head if head_valid else None, tracker))
     if soundness_changed and evidence.oracle_gate_state != "success":
         failures.append(
             f"soundness paths changed and the required {ORACLE_GATE_CONTEXT!r} status at {expected_head[:12]} "
             f"is {evidence.oracle_gate_state or 'absent'}, not success"
         )
-    if head_valid and evidence.batch is not None:
-        if evidence.batch.get("repository") != evidence.repository:
-            failures.append("batch repository does not match the current checkout")
-        if evidence.batch.get("integration_branch") != evidence.branch:
-            failures.append("batch integration branch does not match the current checkout")
-        if evidence.batch.get("integration_worktree") and not _same_path(
-            str(evidence.batch["integration_worktree"]), identity.worktree
-        ):
-            failures.append("batch integration worktree does not match the current checkout")
-        failures.extend(check_batch_binding(repo, evidence.batch, expected_head))
     return failures
 
 
@@ -2000,7 +1803,9 @@ def _run_ready(args: argparse.Namespace, identity: GitIdentity, branch: str, rep
         soundness_paths_changed=bool(evidence_data.get("soundness_paths_changed")),
         maintainer_approved=bool(evidence_data.get("maintainer_approved")),
         oracle_gate_state=live_commit_statuses(live_run, args.repo, args.expected_head).get(ORACLE_GATE_CONTEXT),
-        batch=evidence_data.get("batch"),
+        batch_evidence=_load_batch_evidence(repo, evidence_data.get("batch_evidence_path"))
+        if delivery_mode == "batch" or args.require_batch
+        else None,
         require_batch=args.require_batch or delivery_mode == "batch",
         repository=identity.repository,
         branch=branch,
