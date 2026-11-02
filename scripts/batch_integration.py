@@ -1361,17 +1361,17 @@ def _unprepared_state(repo: Path, ledger: dict, member: str) -> tuple[str, dict 
         return "merged-unprepared", {"merge_head": merge_head, "member_head": member_head}
 
 
-def _excluded_paths(tracker: dict) -> set[str]:
-    develop: set[str] = set()
-    owned: set[str] = set()
-    for entry in tracker.get("integration_log", []):
-        if entry.get("kind") == "develop-merge":
-            develop.update(entry.get("changed_files", []))
-        elif entry.get("kind") == "fix":
-            owned.update(entry.get("changed_files", []))
-    for receipt in _receipts(tracker).values():
-        owned.update(receipt.get("changed_files", []))
-    return develop - owned
+def _excluded_paths(repo: Path, final_head: str, tracker: dict) -> set[str]:
+    scripts = str(Path(__file__).resolve().parent)
+    if scripts not in sys.path:
+        sys.path.insert(0, scripts)
+    _checkout_root_modules()
+    import pr_landing
+
+    excluded, problems = pr_landing.develop_exclusions(repo, final_head, tracker, _receipts(tracker))
+    if problems:
+        raise BatchError("develop merges cannot be verified from Git: " + "; ".join(problems))
+    return excluded
 
 
 def build_evidence(repo: Path, *, suite: str = "batch-final-tree") -> dict:
@@ -1441,7 +1441,7 @@ def build_evidence(repo: Path, *, suite: str = "batch-final-tree") -> dict:
         ):
             raise BatchError(f"member {member!r} has no accepted stored review for its receipt range")
         reviews[member] = result
-    excluded = _excluded_paths(tracker)
+    excluded = _excluded_paths(repo, final_head, tracker)
     changed = [p for p in _changed_files(repo, ledger["start_head"], final_head) if p not in excluded]
     tracker_view = {key: value for key, value in tracker.items() if key != "_rev"}
     origin = _git(repo, "remote", "get-url", "origin")

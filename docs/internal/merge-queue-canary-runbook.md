@@ -41,13 +41,13 @@ This runbook provides the operational procedure and scenario checklist for condu
      - `explorer`, `results-data`, `docs`, and `landing` report success for unaffected paths.
   4. Verify atomic squash merge completes.
 
-### Scenario 3: Soundness PR Negative Control (Review Withholding)
+### Scenario 3: Soundness PR Negative Control (Missing or Failing Gate)
 - **Action:** Open PR modifying a soundness-critical path (e.g. `benchbox/core/expected_results/` or `_project/scripts/soundness_paths.py`).
 - **Execution:**
-  1. Attempt to open with auto-merge and exact readiness evidence: `make pr-open READY=1 EVIDENCE=<readiness.json>`
-  2. Assert that the readiness transaction reports: `soundness paths changed; auto-enqueue is forbidden and requires manual maintainer merge`.
+  1. With no `oracle-gate` status on the PR head (or a failing one), attempt to open with auto-merge and exact readiness evidence: `make pr-open READY=1 EVIDENCE=<readiness.json>`
+  2. Assert that the readiness transaction refuses with: `soundness paths changed and the required 'oracle-gate' status at <head> is absent, not success` (or `failure`/`pending` for a failing gate), and that `make pr-arm` refuses the same head.
   3. Verify on GitHub that `autoMergeRequest` is `null` (auto-merge withheld).
-  4. Confirm PR **does not enter the merge queue** without a passing `oracle-gate` check and explicit manual enqueue.
+  4. Positive control: once the `benchbox-oracle` App posts a passing `oracle-gate` status on the same head, `make pr-open READY=1` and `make pr-arm` arm the PR; a soundness PR arms only with that passing status on the head.
 
 ---
 

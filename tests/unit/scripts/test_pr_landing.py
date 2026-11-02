@@ -42,6 +42,14 @@ class FakeRun:
         return rc, payload if isinstance(payload, str) else json.dumps(payload)
 
 
+@pytest.fixture(autouse=True)
+def _trusted_review_store(monkeypatch: pytest.MonkeyPatch):
+    fx.REVIEW_STORE.clear()
+    monkeypatch.setattr(landing, "_stored_member_review", fx.stored_review)
+    yield
+    fx.REVIEW_STORE.clear()
+
+
 def _repo(path: Path) -> Path:
     path.mkdir(parents=True, exist_ok=True)
     for args in (
@@ -1706,6 +1714,9 @@ def test_batch_evidence_accepts_every_landable_review_outcome(tmp_path: Path, ou
     batch = _batch(tmp_path)
     evidence = batch.evidence()
     evidence["member_reviews"]["a"]["outcome"] = outcome
+    fx.REVIEW_STORE[(batch.receipts["a"]["source_base"], batch.receipts["a"]["accepted_head"], batch.start)][
+        "outcome"
+    ] = outcome
 
     assert _verdict(batch, evidence=evidence) == []
 
@@ -1826,17 +1837,14 @@ def test_read_batch_tracker_refuses_a_read_without_a_revision(tmp_path: Path) ->
     assert tracker["batch_id"] == "b"
 
 
-@pytest.mark.parametrize("failure", [subprocess.TimeoutExpired(["todo-db"], 120), FileNotFoundError("uv")])
-def test_the_tracker_subprocess_failing_to_run_is_a_landing_error(
-    monkeypatch: pytest.MonkeyPatch, failure: Exception
-) -> None:
-    def broken(*_args: object, **_kwargs: object) -> object:
-        raise failure
-
-    monkeypatch.setattr(landing.subprocess, "run", broken)
-
+def test_a_tracker_command_that_cannot_start_is_a_landing_error() -> None:
     with pytest.raises(landing.LandingError, match="cannot run the tracker read"):
-        landing.read_batch_tracker("b")
+        landing._tracker_stdout(["/nonexistent/todo-db"])
+
+
+def test_a_tracker_command_that_outlives_its_timeout_is_a_landing_error() -> None:
+    with pytest.raises(landing.LandingError, match="cannot run the tracker read"):
+        landing._tracker_stdout([sys.executable, "-c", "import time; time.sleep(30)"], timeout=0.2)
 
 
 def _capability(**overrides: object) -> dict:
@@ -1962,3 +1970,78 @@ def test_batch_ready_refuses_a_tracker_that_does_not_describe_this_pr(tmp_path: 
     failures = _ready_with(tmp_path, mutate)
 
     assert any(message in failure for failure in failures)
+
+
+def _smuggle_into_a_develop_merge(batch: fx.BatchFixture, path: str, text: str) -> None:
+    batch.develop_merge({"docs/dev.txt": "from develop"})
+    fx.write_commit(batch.repo, {path: text}, "leader edit")
+    batch.log[-1]["head"] = fx.head_of(batch.repo)
+    batch.log[-1]["changed_files"] = sorted([*batch.log[-1]["changed_files"], path])
+
+
+def test_batch_evidence_refuses_a_leader_edit_labelled_as_a_develop_merge(tmp_path: Path) -> None:
+    batch = _batch(tmp_path)
+    _smuggle_into_a_develop_merge(batch, "z/smuggled.txt", "not from develop")
+
+    failures = _verdict(batch)
+
+    assert any("not a two-parent merge" in failure for failure in failures)
+    assert any("differ from the recomputed" in failure or "matches no member scope" in failure for failure in failures)
+
+
+def test_batch_evidence_keeps_a_later_leader_edit_of_a_develop_path_subject_to_scope(tmp_path: Path) -> None:
+    batch = _batch(tmp_path)
+    batch.develop_merge({"docs/dev.txt": "from develop"})
+    fx.write_commit(batch.repo, {"docs/dev.txt": "edited by the leader"}, "leader edit")
+    batch.log.append(
+        {"seq": len(batch.log), "kind": "fix", "head": fx.head_of(batch.repo), "changed_files": [], "previous_head": ""}
+    )
+    batch.tracker()
+
+    failures = _verdict(batch, evidence={**batch.evidence(), "changed_files": batch.changed_files()})
+
+    assert any("docs/dev.txt matches no member scope" in failure for failure in failures)
+
+
+def test_batch_evidence_refuses_a_develop_merge_whose_parent_is_not_on_develop(tmp_path: Path) -> None:
+    batch = _batch(tmp_path)
+    batch.develop_merge({"docs/dev.txt": "from develop"})
+    fx.git(batch.repo, "update-ref", "refs/remotes/origin/develop", batch.start)
+
+    failures = _verdict(batch)
+
+    assert any("merged parent is not an ancestor of origin/develop" in failure for failure in failures)
+
+
+def test_batch_evidence_refuses_a_review_outcome_the_trusted_store_does_not_hold(tmp_path: Path) -> None:
+    batch = _batch(tmp_path)
+    evidence = batch.evidence()
+    fx.REVIEW_STORE[(batch.receipts["a"]["source_base"], batch.receipts["a"]["accepted_head"], batch.start)][
+        "outcome"
+    ] = "findings"
+
+    failures = _verdict(batch, evidence=evidence)
+
+    assert any("member a review outcome 'clear' differs from the stored outcome 'findings'" in f for f in failures)
+
+
+@pytest.mark.parametrize("outcome", ["clear", "override"])
+def test_batch_evidence_refuses_a_review_that_is_only_in_the_evidence_file(tmp_path: Path, outcome: str) -> None:
+    batch = _batch(tmp_path)
+    evidence = batch.evidence()
+    evidence["member_reviews"]["b"]["outcome"] = outcome
+    fx.REVIEW_STORE.pop((batch.receipts["b"]["source_base"], batch.receipts["b"]["accepted_head"], batch.start))
+
+    failures = _verdict(batch, evidence=evidence)
+
+    assert any("member b review is not in the trusted review store" in failure for failure in failures)
+
+
+def test_batch_evidence_refuses_a_review_bound_to_an_untrusted_commit(tmp_path: Path) -> None:
+    batch = _batch(tmp_path)
+    evidence = batch.evidence()
+    evidence["member_reviews"]["a"]["trusted_sha"] = batch.receipts["a"]["integration_head"]
+
+    failures = _verdict(batch, evidence=evidence)
+
+    assert any("member a review names no trusted commit" in failure for failure in failures)
