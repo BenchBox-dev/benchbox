@@ -71,7 +71,7 @@
         }
       },
       "integration_branch": "feat/batch-loop-pilot",
-      "integration_head": "5ba51438932c2751cda955c04d2ada672c1cd9dd",
+      "integration_head": "f748ea6d5de64ca106ae4878602b7e1ef0a5fc3e",
       "integration_log": [
         {
           "at": "2026-11-02T06:29:18Z",
@@ -113,6 +113,27 @@
             "batch-loop-docs-and-agents-20261101"
           ],
           "seq": 3
+        },
+        {
+          "at": "2026-11-02T06:58:28Z",
+          "changed_files": [
+            ".claude/skills/skill-sync.manifest",
+            ".claude/skills/skill-sync.receipt",
+            ".claude/skills/todo/references/batch.md",
+            "_project/analysis/batch-rollout-evidence.json",
+            "docs/agent/batch-feature-delivery.md",
+            "skill-sync.conf",
+            "tests/integration/worktree/test_batch_skill_delivery.py"
+          ],
+          "head": "f748ea6d5de64ca106ae4878602b7e1ef0a5fc3e",
+          "kind": "fix",
+          "op_id": "755ba00c220b48a0be1118cf204a9603",
+          "previous_head": "5ba51438932c2751cda955c04d2ada672c1cd9dd",
+          "requires_acceptance": [
+            "batch-loop-docs-and-agents-20261101",
+            "skill-catalog-batch-loop-20261101"
+          ],
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-batch-loop-pilot",
