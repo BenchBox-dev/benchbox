@@ -27717,6 +27717,13 @@
       "status": "open",
       "title": "Owner decision: confirm a separate Theseus repository is worth its added obligations"
     },
+    "theseus-decision-vendored-matcher-20261102": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Owner decision: approve one vendored soundness-path matcher module as the only embedded exception"
+    },
     "throughput-adapter-session-capability-contract": {
       "claim": null,
       "needs": [

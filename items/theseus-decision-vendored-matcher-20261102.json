@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Context records the owner's option, date and quoted message.",
+    "theseus-package-identity-install-20261102 becomes ready only after this item is done."
+  ],
+  "context": "Status blocked until the owner answers.",
+  "description": "Owner-only decision gate. Three BenchBox consumers read the soundness matcher as a file at a git ref with no package install: .github/workflows/ci.yml (git show $EVENT_BASE_SHA:_project/scripts/soundness_paths.py, two places), scripts/heavy_tier_needed.py (PREDICATE_REPO_PATH, runs base and PR copies with -I -S, fails closed to heavy_needed), scripts/changelog_fragments.py (_load_rules), plus coverage selection run with bare python.\n\nProposed: Theseus owns one stdlib-only matcher module; BenchBox keeps a single verbatim, hash-pinned copy recorded in the lock and updated only by promotion PRs, with a CI drift check against the pinned release.\n\nRejected alternatives (record if owner overrides): a wheel-extraction CI stage in each consumer (adds a network dependency to core CI units); a BenchBox-owned matcher plus a second Theseus parser (repeats the ship-no-ship gate-parity drift).\n\nOptions: (a) approve vendored copy; (b) wheel-extraction stage; (c) another arrangement the owner names.\n\nGuardrails: agents must not choose.",
+  "links": [
+    "_project/scripts/soundness_paths.py",
+    "scripts/heavy_tier_needed.py",
+    "scripts/changelog_fragments.py",
+    ".github/workflows/ci.yml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4c6f341b7f4b66f30a37a2f1",
+      "at": "2026-11-02T13:45:04Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "4daeae71877d4dc7a50caab1873bdc10",
+      "session_id": "8cfcc9dbcab5419a91fc8b650901f36b"
+    }
+  ]
+}
