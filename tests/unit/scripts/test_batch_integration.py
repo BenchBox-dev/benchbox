@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
-from tests.unit.scripts.batch_loop_world import BATCH, MEMBERS, PROJECT, SCOPE, World, bi, git
+from tests.unit.scripts.batch_loop_world import BATCH, MEMBERS, PROJECT, SCOPE, World, bi, build_world, git
 
 TRACKER_SCOPE_HASH = "19ccf864114b7650486e01283d3af3b20d383cb3eb266699654ed626a849e624"
 
@@ -21,17 +20,7 @@ def _ledger(integration: Path) -> dict:
 
 @pytest.fixture
 def world(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> World:
-    for key, value in {
-        "GIT_AUTHOR_NAME": "Leader",
-        "GIT_AUTHOR_EMAIL": "leader@example.com",
-        "GIT_COMMITTER_NAME": "Leader",
-        "GIT_COMMITTER_EMAIL": "leader@example.com",
-        "GIT_CONFIG_GLOBAL": os.devnull,
-        "GIT_CONFIG_SYSTEM": os.devnull,
-        "HOME": str(tmp_path),
-    }.items():
-        monkeypatch.setenv(key, value)
-    return World(tmp_path, monkeypatch)
+    return build_world(tmp_path, monkeypatch)
 
 
 def _raises(match: str):
@@ -450,6 +439,104 @@ def test_a_crash_between_merge_and_prepare_is_reported_and_never_merges_twice(wo
     assert world.land("alpha")["status"] == "merged"
 
 
+def _merge_by_hand(integration: Path, member: Path, extra: dict[str, str] | None = None) -> str:
+    member_head = git(member, "rev-parse", "HEAD")
+    git(integration, "merge", "--no-ff", "--no-commit", member_head)
+    for name, text in (extra or {}).items():
+        (integration / name).write_text(text)
+        git(integration, "add", "--", name)
+    git(integration, "commit", "-qm", "Merge by hand")
+    return git(integration, "rev-parse", "HEAD")
+
+
+def test_a_hand_made_merge_carrying_an_extra_edit_is_refused_and_never_prepared(world: World) -> None:
+    integration = world.start()
+    member = world.deliver("zeta", {"src/a.py": "member\n"})
+    merged = _merge_by_hand(integration, member, {"src/b.py": "smuggled\n"})
+    with _raises("carries edits the member never checked"):
+        world.land("zeta")
+    assert world.head() == merged
+    status = bi.batch_status(integration)
+    assert any("cannot be verified" in step for step in status["next"])
+    with _raises("carries edits the member never checked"):
+        world.land("zeta")
+
+
+def test_a_hand_made_merge_of_a_member_with_no_stored_review_is_refused(world: World) -> None:
+    integration = world.start()
+    member = world.deliver("zeta", {"src/a.py": "member\n"})
+    stored = bi._read_check(member, git(member, "rev-parse", "HEAD"), world.head())
+    assert stored["review_outcome"] == "clear"
+    world.review_cache.clear()
+    _merge_by_hand(integration, member)
+    with _raises("no result for this member's patch"):
+        world.land("zeta")
+
+
+def test_a_hand_made_merge_whose_check_trusted_a_non_develop_commit_is_refused(world: World) -> None:
+    integration = world.start()
+    member = world.deliver("zeta", {"src/a.py": "member\n"})
+    git(integration, "update-ref", "-d", "refs/remotes/origin/develop")
+    _merge_by_hand(integration, member)
+    with _raises("not an ancestor of origin/develop"):
+        world.land("zeta")
+
+
+def test_an_interrupted_landing_binds_the_prepare_payload_to_the_merge_commit_not_the_later_head(
+    world: World,
+) -> None:
+    integration = world.start()
+    member = world.deliver("zeta", {"src/a.py": "member\n"})
+    merged = _merge_by_hand(integration, member)
+    world.commit(integration, {"src/b.py": "leader fix\n"}, "fix: leader commit")
+    assert world.head() != merged
+    again = world.land("zeta")
+    assert again["status"] == "already-merged"
+    assert again["payload"]["steps"][-1]["arguments"]["integration_head"] == merged
+
+
+def test_a_genuinely_interrupted_landing_with_no_ledger_entry_resumes_from_git(world: World) -> None:
+    integration = world.start()
+    member = world.deliver("zeta", {"src/a.py": "member\n"})
+    merged = _merge_by_hand(integration, member)
+    resumed = world.land("zeta")
+    assert resumed["status"] == "already-merged"
+    assert resumed["payload"]["steps"][-1]["arguments"]["integration_head"] == merged
+    assert git(integration, "rev-list", "--merges", "--count", "HEAD") == "1"
+
+
+def test_make_member_check_accepts_no_review_override_variable(tmp_path: Path) -> None:
+    recorder = tmp_path / "record.py"
+    recorder.write_text(
+        "import json, sys\nfrom pathlib import Path\nPath('argv.json').write_text(json.dumps(sys.argv[1:]))\n"
+    )
+    makefile = Path(bi.__file__).resolve().parents[1] / "make" / "batch.mk"
+    proc = subprocess.run(
+        [
+            "make",
+            "-f",
+            str(makefile),
+            "batch-member-check",
+            f"BATCH_SCRIPT={sys.executable} {recorder}",
+            "REVIEW_CMD=true",
+        ],
+        cwd=tmp_path,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert "--review-command" not in json.loads((tmp_path / "argv.json").read_text(encoding="utf-8"))
+
+
+def test_the_member_check_command_line_refuses_a_review_command_option() -> None:
+    with pytest.raises(SystemExit) as raised:
+        bi.main(["member-check", "--review-command", "true"])
+    assert raised.value.code == 2
+    with pytest.raises(TypeError):
+        bi.check_member(Path("."), [], review_command=["true"])
+
+
 def test_a_deleted_ledger_is_rebuilt_from_the_tracker_and_git(world: World) -> None:
     integration = world.start()
     world.deliver("zeta", {"src/a.py": "member\n"})
@@ -812,103 +899,6 @@ def test_an_unreadable_tracker_fails_closed(world: World) -> None:
     assert git(integration, "rev-list", "--merges", "--count", "HEAD") == "0"
 
 
-def _ready_for_evidence(world: World) -> Path:
-    integration = world.start()
-    world.deliver("zeta", {"src/a.py": "zeta change\n"})
-    world.land_and_prepare("zeta")
-    world.deliver("alpha", {"src/a.py": "alpha change\n"})
-    world.land_and_prepare("alpha")
-    world.deliver("mid", {"config/app.yaml": "k: v\n"}, tests=["tests/test_mid.py"])
-    world.land_and_prepare("mid")
-    (world.seed / "other").mkdir(exist_ok=True)
-    (world.seed / "other" / "dev.txt").write_text("develop moved\n")
-    git(world.seed, "add", "other/dev.txt")
-    git(world.seed, "commit", "-qm", "develop moves")
-    git(world.seed, "push", "-q", "origin", "develop")
-    advanced = bi.advance_head(integration, "develop-merge")
-    world.tracker.advance(advanced["payload"]["arguments"])
-    world.tracker.bind(world.head())
-    return integration
-
-
-def test_evidence_reruns_required_members_at_the_final_head_and_writes_the_contract(world: World) -> None:
-    integration = _ready_for_evidence(world)
-    final = world.head()
-    world.calls.clear()
-    built = bi.build_evidence(integration)
-    evidence = json.loads(Path(built["path"]).read_text(encoding="utf-8"))
-    assert Path(built["path"]) == integration / ".todo-batch" / BATCH / "final-evidence.json"
-    assert evidence["schema"] == "benchbox_batch_evidence_v2" and evidence["final_head"] == final
-    assert evidence["integration_branch"] == f"feat/{BATCH}" and evidence["integration_worktree"] == str(integration)
-    assert evidence["repository"] == "owner/name" and evidence["tracker_rev"] == str(world.tracker.rev)
-    assert set(evidence["current_acceptance"]) == {"zeta"}
-    zeta = evidence["current_acceptance"]["zeta"]
-    assert zeta == {
-        "status": "passed",
-        "revision": final,
-        "clean": True,
-        "suite": "member-tests",
-        "command": world.tracker.receipts["zeta"]["verification"]["command"],
-        "worktree": str(integration),
-    }
-    assert [call for call in world.calls if "pytest" in call[0]] == [(zeta["command"], integration)]
-    assert evidence["changed_files"] == ["config/app.yaml", "src/a.py"]
-    assert set(evidence["member_reviews"]) == set(MEMBERS)
-    assert evidence["tracker"]["receipts"].keys() == world.tracker.receipts.keys()
-    finishes = built["finish_payloads"]
-    assert [item["arguments"]["id"] for item in finishes] == MEMBERS
-    final_evidence = finishes[0]["arguments"]["final_evidence"]
-    assert final_evidence["current_acceptance"] == evidence["current_acceptance"]
-    assert final_evidence["final_pr"] == world.tracker.final_pr and final_evidence["tree_revision"] == final
-    assert final_evidence["member_ranges"]["alpha"] == {
-        "base": world.tracker.receipts["alpha"]["source_base"],
-        "head": world.tracker.receipts["alpha"]["accepted_head"],
-    }
-
-
-def test_evidence_refuses_when_a_required_rerun_fails_even_if_an_older_run_passed(world: World) -> None:
-    integration = _ready_for_evidence(world)
-    ledger = _ledger(integration)
-    assert ledger["acceptance"]["zeta"][-1]["status"] == "passed"
-    assert ledger["acceptance"]["zeta"][-1]["revision"] != world.head()
-    world.failing_tests.add("tests/test_zeta.py")
-    with _raises("rerun of 'zeta' failed"):
-        bi.build_evidence(integration)
-    assert not (integration / ".todo-batch" / BATCH / "final-evidence.json").exists()
-
-
-def test_evidence_reuses_a_recorded_rerun_that_already_covers_the_final_head(world: World) -> None:
-    integration = _ready_for_evidence(world)
-    bi.build_evidence(integration)
-    world.calls.clear()
-    bi.build_evidence(integration)
-    assert not [call for call in world.calls if "pytest" in call[0]]
-
-
-def test_evidence_refuses_without_a_final_pr_bound_at_the_integration_head(world: World) -> None:
-    integration = _ready_for_evidence(world)
-    world.tracker.final_pr = None
-    with _raises("final PR is not bound"):
-        bi.build_evidence(integration)
-    world.tracker.bind("0" * 40)
-    with _raises("final PR is not bound"):
-        bi.build_evidence(integration)
-
-
-def test_evidence_refuses_when_a_member_has_no_accepted_review_for_its_receipt_range(world: World) -> None:
-    integration = _ready_for_evidence(world)
-    world.review_cache.clear()
-    with _raises("no accepted stored review"):
-        bi.build_evidence(integration)
-
-
-def test_evidence_refuses_when_a_member_is_not_prepared(world: World) -> None:
-    integration = _ready_for_evidence(world)
-    del world.tracker.receipts["mid"]
-    with _raises("lacks a prepared_work_v2 receipt"):
-        bi.build_evidence(integration)
-
-
 def test_cli_verify_reports_the_exit_status(world: World, capsys: pytest.CaptureFixture[str]) -> None:
     integration = _landed_pair(world)
     assert bi.main(["--worktree", str(integration), "verify"]) == 0
@@ -957,7 +947,7 @@ def test_cli_prints_the_register_payload_for_start(world: World, capsys: pytest.
         ("batch-member-create", {"MEMBER": "m`touch pwned`", "WORKTREE_PATH": "$(touch pwned)"}),
         (
             "batch-member-check",
-            {"TESTS": "t`touch pwned`", "PREFLIGHT_CMD": 'p"; touch pwned; "', "REVIEW_CMD": "$(touch pwned)"},
+            {"TESTS": "t`touch pwned`", "PREFLIGHT_CMD": 'p"; touch pwned; "'},
         ),
         ("batch-evidence", {"SUITE": "s`touch pwned`"}),
     ],
