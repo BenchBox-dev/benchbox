@@ -27867,7 +27867,7 @@
         "theseus-decision-promotion-evidence-form-20261102"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "Enforce full-delta Theseus promotion review in BenchBox before extracting the reviewer"
     },
     "theseus-release-bootstrap-evidence-20261102": {
