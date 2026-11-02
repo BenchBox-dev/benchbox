@@ -10,7 +10,6 @@ override DEPENDENCIES := $(value DEPENDENCIES)
 override CONFIRM_CUTOVER := $(value CONFIRM_CUTOVER)
 override TESTS := $(value TESTS)
 override PREFLIGHT_CMD := $(value PREFLIGHT_CMD)
-override REVIEW_CMD := $(value REVIEW_CMD)
 override REASON := $(value REASON)
 override SUITE := $(value SUITE)
 
@@ -40,11 +39,9 @@ batch-member-create:
 .PHONY: batch-member-check
 batch-member-check: export BATCH_ARG_TESTS := $(TESTS)
 batch-member-check: export BATCH_ARG_PREFLIGHT_CMD := $(PREFLIGHT_CMD)
-batch-member-check: export BATCH_ARG_REVIEW_CMD := $(REVIEW_CMD)
 batch-member-check:
 	@$(BATCH_SCRIPT) member-check --tests "$$BATCH_ARG_TESTS" \
-		$${BATCH_ARG_PREFLIGHT_CMD:+--preflight-command "$$BATCH_ARG_PREFLIGHT_CMD"} \
-		$${BATCH_ARG_REVIEW_CMD:+--review-command "$$BATCH_ARG_REVIEW_CMD"}
+		$${BATCH_ARG_PREFLIGHT_CMD:+--preflight-command "$$BATCH_ARG_PREFLIGHT_CMD"}
 
 .PHONY: batch-land
 batch-land: export BATCH_ARG_MEMBER := $(MEMBER)

@@ -545,7 +545,6 @@ def check_member(
     tests: list[str],
     *,
     preflight_command: list[str] | None = None,
-    review_command: list[str] | None = None,
 ) -> dict:
     batch_id = require_role(repo, ROLE_MEMBER)
     member = _config_get(repo, "member")
@@ -584,7 +583,7 @@ def check_member(
     with tempfile.TemporaryDirectory() as scratch:
         result_path = Path(scratch) / "member-review.json"
         review = [
-            *(review_command or DEFAULT_REVIEW_COMMAND),
+            *DEFAULT_REVIEW_COMMAND,
             "--policy",
             POLICY_PATH,
             "--member",
@@ -821,13 +820,13 @@ def _failed_overlaps(ledger: dict, member: str, merge_head: str) -> list[str]:
 
 
 def _already_merged(
-    repo: Path, ledger: dict, member: str, facts: dict, head: str, dependencies: list[str]
+    repo: Path, ledger: dict, tracker: dict, member: str, facts: dict, head: str, dependencies: list[str]
 ) -> dict | None:
     existing = ledger["landings"].get(member)
     pending = _pending_mergecommit(repo, facts["member_head"])
     if existing is None and pending is None:
         return None
-    landing = existing or _reconstruct_landing(repo, ledger, member, facts, pending)
+    landing = existing or _reconstruct_landing(repo, ledger, tracker, member, facts, pending)
     if not landing.get("merge_head") or not _is_ancestor(repo, landing["merge_head"], head):
         return None
     ledger["landings"][member] = landing
@@ -839,16 +838,32 @@ def _already_merged(
             f"reset the integration branch to {landing.get('source_base')} and land again once the combination "
             f"passes; do not prepare {member!r} until the reruns pass"
         )
+    bound = landing if landing.get("landed_at") is None else {**landing, "merge_head": head}
     return {
         "status": "already-merged",
         "message": (
             f"member {member!r} is already merged at {landing['merge_head']} but has no prepared receipt; "
             "submit the prepare payload below (do not merge again)"
         ),
-        "payload": _prepare_payload(
-            ledger, member, {**landing, "merge_head": head}, str(facts["worktree"]), dependencies
-        ),
+        "payload": _prepare_payload(ledger, member, bound, str(facts["worktree"]), dependencies),
     }
+
+
+def _review_and_scope(
+    repo: Path, ledger: dict, member: str, base: str, member_head: str, trusted: str
+) -> tuple[dict, list[str]]:
+    review = lookup_member_review(repo, base, member_head, trusted)
+    if review is None:
+        raise BatchError("the local review cache holds no result for this member's patch; run batch-member-check")
+    if review.get("outcome") not in ACCEPTED_REVIEW_OUTCOMES:
+        raise BatchError(f"member review outcome {review.get('outcome')!r} blocks landing")
+    changed = _changed_files(repo, base, member_head)
+    if not changed:
+        raise BatchError("member has no changes over the integration head")
+    outside = [path for path in changed if not _matches_scope(path, ledger["scope"][member])]
+    if outside:
+        raise BatchError(f"member changes paths outside its frozen scope: {', '.join(outside[:5])}")
+    return review, changed
 
 
 def _landing_preconditions(repo: Path, ledger: dict, tracker: dict, member: str, facts: dict, head: str) -> dict:
@@ -874,17 +889,7 @@ def _landing_preconditions(repo: Path, ledger: dict, tracker: dict, member: str,
     trusted = str(check.get("trusted_sha", ""))
     if not _develop_is_trusted(repo, trusted):
         raise BatchError("the recorded trusted commit is not an ancestor of origin/develop")
-    review = lookup_member_review(repo, head, facts["member_head"], trusted)
-    if review is None:
-        raise BatchError("the local review cache holds no result for this member's patch; run batch-member-check")
-    if review.get("outcome") not in ACCEPTED_REVIEW_OUTCOMES:
-        raise BatchError(f"member review outcome {review.get('outcome')!r} blocks landing")
-    changed = _changed_files(repo, head, facts["member_head"])
-    if not changed:
-        raise BatchError("member has no changes over the integration head")
-    outside = [path for path in changed if not _matches_scope(path, ledger["scope"][member])]
-    if outside:
-        raise BatchError(f"member changes paths outside its frozen scope: {', '.join(outside[:5])}")
+    review, changed = _review_and_scope(repo, ledger, member, head, facts["member_head"], trusted)
     return {
         "trusted": trusted,
         "review": review,
@@ -949,7 +954,7 @@ def land_member(repo: Path, member: str, dependencies: list[str] | None = None, 
         raise BatchError("integration worktree is not clean")
     facts = _member_landing_facts(repo, ledger, member)
     head = _rev(repo, "HEAD")
-    merged_already = _already_merged(repo, ledger, member, facts, head, dependencies)
+    merged_already = _already_merged(repo, ledger, tracker, member, facts, head, dependencies)
     if merged_already is not None:
         return merged_already
     if dependencies and not _claimed_by_owner(tracker, member):
@@ -998,11 +1003,24 @@ def land_member(repo: Path, member: str, dependencies: list[str] | None = None, 
     }
 
 
-def _reconstruct_landing(repo: Path, ledger: dict, member: str, facts: dict, merge_head: str | None) -> dict:
+def _reconstruct_landing(
+    repo: Path, ledger: dict, tracker: dict, member: str, facts: dict, merge_head: str | None
+) -> dict:
     if merge_head is None:
         return {}
     parents = _git(repo, "rev-list", "--parents", "-n", "1", merge_head).split()
+    if len(parents) != 3 or parents[2] != facts["member_head"]:
+        raise BatchError(f"commit {merge_head} is not a two-parent merge of the member head")
     source_base = parents[1]
+    merged_tree = _git(repo, "rev-parse", f"{merge_head}^{{tree}}")
+    member_tree = _git(repo, "rev-parse", f"{facts['member_head']}^{{tree}}")
+    if merged_tree != member_tree:
+        raise BatchError(
+            f"merge {merge_head} has tree {merged_tree}, not the member tree {member_tree}; it carries edits "
+            "the member never checked"
+        )
+    if source_base not in tracker_heads(tracker):
+        raise BatchError(f"merge {merge_head} was made on {source_base}, which is not a recorded integration head")
     check = _read_check(facts["worktree"], facts["member_head"], source_base)
     if check is None:
         raise BatchError(
@@ -1010,17 +1028,23 @@ def _reconstruct_landing(repo: Path, ledger: dict, member: str, facts: dict, mer
             "rerun batch-member-check from the member worktree is not possible after merging; "
             "prepare it with the verification command recorded in the member worktree config"
         )
-    review = lookup_member_review(repo, source_base, facts["member_head"], str(check.get("trusted_sha", "")))
+    trusted = str(check.get("trusted_sha", ""))
+    if not _develop_is_trusted(repo, trusted):
+        raise BatchError("the recorded trusted commit is not an ancestor of origin/develop")
+    review, changed = _review_and_scope(repo, ledger, member, source_base, facts["member_head"], trusted)
     return {
         "member_branch": facts["branch"],
         "member_worktree": str(facts["worktree"]),
         "member_head": facts["member_head"],
         "source_base": source_base,
         "merge_head": merge_head,
-        "changed_files": _changed_files(repo, source_base, facts["member_head"]),
-        "trusted_sha": check.get("trusted_sha"),
-        "review_outcome": (review or {}).get("outcome", check.get("review_outcome")),
-        "verification": check["verification"],
+        "changed_files": changed,
+        "trusted_sha": trusted,
+        "review_outcome": review["outcome"],
+        "verification": {
+            "suite": check["verification"]["suite"],
+            "command": _validate_verification_command(check["verification"]["command"]),
+        },
         "landed_at": None,
     }
 
@@ -1102,7 +1126,7 @@ def _resolve_advance(repo: Path, ledger: dict, tracker: dict, reason: str) -> tu
         stuck = [
             m
             for m in ledger["members"]
-            if m not in receipts and _unprepared_state(repo, ledger, m)[0] == "merged-unprepared"
+            if m not in receipts and _unprepared_state(repo, ledger, tracker, m)[0] == "merged-unprepared"
         ]
         if stuck:
             raise BatchError(f"members {stuck} are merged but not prepared; prepare them before recording an advance")
@@ -1299,12 +1323,16 @@ def batch_status(repo: Path) -> dict:
             ledger["landings"].setdefault(member, {})
             state = "prepared"
         else:
-            state, landing = _unprepared_state(repo, ledger, member)
+            state, landing, problem = _unprepared_state(repo, ledger, tracker, member)
             if state == "merged-unprepared" and landing is not None:
                 ledger["landings"][member] = landing
                 next_steps.append(
                     f"member {member!r} is merged at {landing['merge_head']} but not prepared: take it and submit the "
                     "prepare payload from batch-land (running batch-land again prints it without merging)"
+                )
+            elif state == "merged-unprepared":
+                next_steps.append(
+                    f"member {member!r} has a merge that cannot be verified, do not prepare it: {problem}"
                 )
             elif ledger["landings"].get(member) and not _is_ancestor(
                 repo, ledger["landings"][member]["merge_head"], head
@@ -1340,25 +1368,25 @@ def batch_status(repo: Path) -> dict:
     }
 
 
-def _unprepared_state(repo: Path, ledger: dict, member: str) -> tuple[str, dict | None]:
+def _unprepared_state(repo: Path, ledger: dict, tracker: dict, member: str) -> tuple[str, dict | None, str | None]:
     branch = member_branch_name(ledger["batch_id"], member)
     if not _git_ok(repo, "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"):
-        return "pending", None
+        return "pending", None, None
     member_head = _rev(repo, f"refs/heads/{branch}")
     merge_head = _pending_mergecommit(repo, member_head)
     if merge_head is None:
-        return "pending", None
+        return "pending", None, None
     landing = ledger["landings"].get(member)
     if landing and landing.get("merge_head") == merge_head:
-        return "merged-unprepared", landing
+        return "merged-unprepared", landing, None
     worktree = _worktree_for_branch(repo, branch)
     if worktree is None:
-        return "merged-unprepared", {"merge_head": merge_head, "member_head": member_head}
+        return "merged-unprepared", None, f"no worktree has branch {branch} checked out"
     facts = {"branch": branch, "worktree": worktree, "member_head": member_head}
     try:
-        return "merged-unprepared", _reconstruct_landing(repo, ledger, member, facts, merge_head)
-    except BatchError:
-        return "merged-unprepared", {"merge_head": merge_head, "member_head": member_head}
+        return "merged-unprepared", _reconstruct_landing(repo, ledger, tracker, member, facts, merge_head), None
+    except BatchError as exc:
+        return "merged-unprepared", None, str(exc)
 
 
 def _excluded_paths(repo: Path, final_head: str, tracker: dict) -> set[str]:
@@ -1526,7 +1554,6 @@ def main(argv: list[str] | None = None) -> int:
     check = sub.add_parser("member-check", help="check a synced member and record the result")
     check.add_argument("--tests", default="")
     check.add_argument("--preflight-command")
-    check.add_argument("--review-command")
 
     land = sub.add_parser("land", help="merge a checked member into the integration branch")
     land.add_argument("--member", required=True)
@@ -1571,7 +1598,6 @@ def main(argv: list[str] | None = None) -> int:
                     repo,
                     _parse_csv(args.tests),
                     preflight_command=shlex.split(args.preflight_command) if args.preflight_command else None,
-                    review_command=shlex.split(args.review_command) if args.review_command else None,
                 )
             )
         elif args.command == "land":

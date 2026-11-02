@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -377,3 +378,17 @@ class World:
     def head(self) -> str:
         assert self.integration is not None
         return git(self.integration, "rev-parse", "HEAD")
+
+
+def build_world(tmp_path: Path, monkeypatch) -> World:
+    for key, value in {
+        "GIT_AUTHOR_NAME": "Leader",
+        "GIT_AUTHOR_EMAIL": "leader@example.com",
+        "GIT_COMMITTER_NAME": "Leader",
+        "GIT_COMMITTER_EMAIL": "leader@example.com",
+        "GIT_CONFIG_GLOBAL": os.devnull,
+        "GIT_CONFIG_SYSTEM": os.devnull,
+        "HOME": str(tmp_path),
+    }.items():
+        monkeypatch.setenv(key, value)
+    return World(tmp_path, monkeypatch)
