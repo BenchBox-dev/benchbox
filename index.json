@@ -6235,7 +6235,7 @@
       "needs": [
         "datafusion-tpch-money-columns-double-20261017"
       ],
-      "priority": "medium",
+      "priority": "high",
       "status": "open",
       "title": "Published DataFusion TPC-H bundles record Q15 with 0 rows yet validation passed"
     },

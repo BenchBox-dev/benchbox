@@ -5,6 +5,7 @@
     "The reason the SF 1 bundle passed validation with a wrong Q15 count is recorded",
     "validate_corpus.py and the Explorer agree on the outcome"
   ],
+  "context": "2026-11-01 prioritization (SQL translation and query correctness ranking): priority raised to high. Published DataFusion TPC-H bundles carry a wrong Q15 answer (0 rows, correct is 1) still marked validation=passed.",
   "description": "Defect: some published DataFusion TPC-H bundles contain measurement Q15 rows with 0 rows (the correct answer is 1) and still carry summary.validation=passed, so a wrong answer is in the published corpus marked clean. Found 2026-10-16 by scanning results-data bundles for Q15 counts: results-data/bundles/tpch_sf1_datafusion_sql_20260825_172912_1d62bd4f.json (SF 1, Q15 0/SUCCESS and 1/SUCCESS, validation passed), tpch_sf001_datafusion_sql_20260826_110608_e8a7d048.json and tpch_sf01_datafusion_sql_20260824_082755_adcfb35e.json (Q15 [0,1]). Root cause is datafusion-tpch-money-columns-double-20261017. The SF 1 case should already fail the answer-file check, so also find out why it passed (likely validation was not enforced when recorded).",
   "sessions": [
     {
@@ -14,6 +15,14 @@
       "op": "create",
       "op_id": "6dbec77133544061b05f33dd1fb6779e",
       "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e275448d846640d27249a6f8",
+      "at": "2026-11-02T01:57:11Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a17a9fa67e3a4bbba30e64346fcbb333",
+      "session_id": "a36a04b6bc394082b5008f654e1bf00b"
     }
   ]
 }
