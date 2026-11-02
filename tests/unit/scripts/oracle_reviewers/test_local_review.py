@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import subprocess
@@ -657,3 +658,194 @@ def test_a_secret_left_in_the_environment_is_still_withheld_when_a_handover_arri
     report = json.loads(result.stdout.strip().splitlines()[-1])
     assert report["env"] == []
     assert report["held"] == {"TS_AUTHKEY": "a" * 16, "TYPESAFE_API_KEY": "k" * 16}
+
+
+CHECKER = "benchbox/core/equivalence/checker.py"
+
+
+def _member_repo(path: Path, changed: str = CHECKER) -> Path:
+    path.mkdir()
+    _git(path, "init", "--quiet", "--initial-branch=develop")
+    for relative, text in (
+        (local.DEFAULT_POLICY, POLICY_TEXT),
+        (local.SOUNDNESS_MANIFEST, MANIFEST_TEXT),
+        (local.INERT_MANIFEST, INERT_TEXT),
+        ("README.md", "seed\n"),
+    ):
+        seeded = path / relative
+        seeded.parent.mkdir(parents=True, exist_ok=True)
+        seeded.write_text(text, encoding="utf-8")
+        _git(path, "add", relative)
+    _git(path, "commit", "--quiet", "-m", "seed")
+    _git(path, "switch", "--quiet", "-c", "feat/x")
+    target = path / changed
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("value = 1\n", encoding="utf-8")
+    _git(path, "add", changed)
+    _git(path, "commit", "--quiet", "-m", "feat: add it")
+    return path
+
+
+def _member_args(repo: Path, result: Path, **overrides: str) -> argparse.Namespace:
+    values = {
+        "policy": local.DEFAULT_POLICY,
+        "base_ref": _git(repo, "rev-parse", "develop"),
+        "trusted_ref": _git(repo, "rev-parse", "develop"),
+        "head": _git(repo, "rev-parse", "HEAD"),
+        "rebuttals": "",
+        "adjudicate": "",
+        "member": True,
+        "result_json": str(result),
+        **overrides,
+    }
+    return argparse.Namespace(**values)
+
+
+def _stored(repo: Path, outcome: str, reason: str = "r") -> dict[str, Any]:
+    base, head, trusted = (_git(repo, "rev-parse", ref) for ref in ("develop", "HEAD", "develop"))
+    record = local._member_record(repo, base, head, trusted, outcome, reason)
+    key = local._member_key(base, head, trusted, local.Trusted.read(repo, trusted, local.DEFAULT_POLICY))
+    local._write_json_atomic(local._member_path(local.state_dir(), key), record)
+    return record
+
+
+def test_a_member_result_binds_the_patch_tree_and_trusted_commit(home: Path, tmp_path: Path) -> None:
+    repo = _member_repo(tmp_path / "repo")
+    base, head = _git(repo, "rev-parse", "develop"), _git(repo, "rev-parse", "HEAD")
+
+    record = local._member_record(repo, base, head, base, "clear", "ok")
+
+    assert record["schema"] == "benchbox_member_review_v1"
+    assert (record["base_sha"], record["head_sha"], record["trusted_sha"]) == (base, head, base)
+    assert record["head_tree"] == _git(repo, "rev-parse", "HEAD^{tree}")
+    assert record["patch_digest"] == local._patch_digest(repo, base, head)
+
+
+def test_a_stored_member_result_is_returned_only_for_exactly_that_patch(home: Path, tmp_path: Path) -> None:
+    repo = _member_repo(tmp_path / "repo")
+    base, head, trusted = (_git(repo, "rev-parse", ref) for ref in ("develop", "HEAD", "develop"))
+    assert local.member_review_result(repo, base, head, trusted) is None
+
+    record = _stored(repo, "findings")
+
+    assert local.member_review_result(repo, base, head, trusted) == record
+    (repo / CHECKER).write_text("value = 2\n", encoding="utf-8")
+    _git(repo, "commit", "--quiet", "-am", "feat: change it")
+    assert local.member_review_result(repo, base, _git(repo, "rev-parse", "HEAD"), trusted) is None
+
+
+def test_a_stored_member_result_is_not_reused_under_another_trusted_commit_or_manifest(
+    home: Path, tmp_path: Path
+) -> None:
+    repo = _member_repo(tmp_path / "repo")
+    base, head = _git(repo, "rev-parse", "develop"), _git(repo, "rev-parse", "HEAD")
+    _stored(repo, "clear")
+    _git(repo, "switch", "--quiet", "-c", "same-manifests", "develop")
+    _git(repo, "commit", "--quiet", "--allow-empty", "-m", "another trusted commit")
+    _git(repo, "switch", "--quiet", "-c", "changed-manifest", "develop")
+    (repo / local.SOUNDNESS_MANIFEST).write_text(MANIFEST_TEXT + "file\textra.txt\n", encoding="utf-8")
+    _git(repo, "commit", "--quiet", "-am", "extend the manifest")
+    _git(repo, "switch", "--quiet", "feat/x")
+
+    assert local.member_review_result(repo, base, head, _git(repo, "rev-parse", "same-manifests")) is None
+    assert local.member_review_result(repo, base, head, _git(repo, "rev-parse", "changed-manifest")) is None
+
+
+def test_a_tampered_member_result_is_not_returned(home: Path, tmp_path: Path) -> None:
+    repo = _member_repo(tmp_path / "repo")
+    base, head, trusted = (_git(repo, "rev-parse", ref) for ref in ("develop", "HEAD", "develop"))
+    key = local._member_key(base, head, trusted, local.Trusted.read(repo, trusted, local.DEFAULT_POLICY))
+    record = _stored(repo, "findings")
+    path = local._member_path(local.state_dir(), key)
+
+    path.write_text(json.dumps({**record, "patch_digest": "0" * 64}), encoding="utf-8")
+    assert local.member_review_result(repo, base, head, trusted) is None
+    path.write_text(json.dumps({**record, "outcome": "approved"}), encoding="utf-8")
+    assert local.member_review_result(repo, base, head, trusted) is None
+
+
+@pytest.mark.parametrize("moving", ["develop", "origin/develop", "HEAD", "feat/x", "", "abc1234"])
+@pytest.mark.parametrize("slot", ["base_ref", "trusted_ref", "head"])
+def test_member_mode_refuses_anything_but_a_full_commit_sha(
+    home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, slot: str, moving: str
+) -> None:
+    repo = _member_repo(tmp_path / "repo")
+    monkeypatch.chdir(repo)
+    result = tmp_path / "member.json"
+    result.write_text("{}", encoding="utf-8")
+
+    code = local.command_review(_member_args(repo, result, **{slot: moving}))
+
+    assert code == local.EXIT_REFUSED
+    assert not result.exists()
+
+
+def test_member_mode_refuses_a_base_that_is_not_the_merge_base_of_the_head(
+    home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = _member_repo(tmp_path / "repo")
+    _git(repo, "switch", "--quiet", "develop")
+    (repo / "README.md").write_text("moved\n", encoding="utf-8")
+    _git(repo, "commit", "--quiet", "-am", "develop moves")
+    moved = _git(repo, "rev-parse", "develop")
+    _git(repo, "switch", "--quiet", "feat/x")
+    monkeypatch.chdir(repo)
+
+    assert local.command_review(_member_args(repo, tmp_path / "member.json", base_ref=moved)) == local.EXIT_REFUSED
+    assert not (tmp_path / "member.json").exists()
+
+
+@pytest.mark.parametrize("flags", [{"member": False}, {"result_json": ""}])
+def test_the_member_flags_are_given_together_or_not_at_all(
+    home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, flags: dict[str, Any]
+) -> None:
+    repo = _member_repo(tmp_path / "repo")
+    monkeypatch.chdir(repo)
+    args = _member_args(repo, tmp_path / "member.json")
+    for name, value in flags.items():
+        setattr(args, name, value)
+
+    assert local.command_review(args) == local.EXIT_REFUSED
+    assert not (tmp_path / "member.json").exists()
+
+
+@pytest.mark.parametrize("changed", ["NOTES.md", None])
+def test_an_exempt_only_or_empty_member_is_not_reviewed_rather_than_clear(
+    home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, changed: str | None
+) -> None:
+    repo = _member_repo(tmp_path / "repo", changed or "NOTES.md")
+    if changed is None:
+        _git(repo, "switch", "--quiet", "develop")
+    monkeypatch.chdir(repo)
+    monkeypatch.setattr(local, "classifier_key", lambda: TYPESAFE_KEY)
+    result = tmp_path / "out" / "member.json"
+    args = _member_args(repo, result, head=_git(repo, "rev-parse", "HEAD"))
+
+    assert local.command_review(args) == local.EXIT_PROCEED
+
+    written = json.loads(result.read_text(encoding="utf-8"))
+    assert written["outcome"] == "not-reviewed" and written["reason"]
+    base, head = args.base_ref, args.head
+    assert local.member_review_result(repo, base, head, args.trusted_ref) == written
+
+
+def test_member_outcomes_keep_not_reviewed_clear_findings_and_override_apart() -> None:
+    blocking = ({"severity": "High", "file": "a", "line": 1, "title": "t", "detail": "d"},)
+
+    assert local._member_outcome(local.Outcome(False, "SHIP", "", "", (), skipped="only exempt paths changed"), "")[
+        0
+    ] == ("not-reviewed")
+    assert local._member_outcome(local.Outcome(False, "SHIP", "medium", "", ()), "")[0] == "clear"
+    assert local._member_outcome(local.Outcome(True, "DO NOT SHIP", "medium", "", blocking), "")[0] == "findings"
+    assert local._member_outcome(local.Outcome(False, "SHIP", "medium", "", ()), "owner ruling")[0] == "override"
+    assert local._member_outcome(local.Outcome(True, "DO NOT SHIP", "medium", "", blocking), "owner ruling")[0] == (
+        "findings"
+    )
+
+
+def test_the_default_review_shows_no_member_marker_on_a_skipped_outcome(capsys: pytest.CaptureFixture[str]) -> None:
+    skipped = local.Outcome(False, "SHIP", "", "", (), skipped="only exempt paths changed")
+
+    assert local._decide(skipped, local.Reporter()) == local.EXIT_PROCEED
+    assert local.Outcome.from_json(skipped.to_json()) == local.Outcome(False, "SHIP", "", "", ())
+    assert "pr-open may proceed" in capsys.readouterr().out

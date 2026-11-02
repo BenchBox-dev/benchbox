@@ -2223,6 +2223,8 @@ def _parser() -> argparse.ArgumentParser:
     local_review.add_argument("--head", default="HEAD")
     local_review.add_argument("--rebuttals", default="")
     local_review.add_argument("--adjudicate", default="")
+    local_review.add_argument("--member", action="store_true")
+    local_review.add_argument("--result-json", default="")
     local_review.set_defaults(handler=command_local_review)
     install_omp = commands.add_parser("install-omp")
     install_omp.add_argument("--policy", required=True)
