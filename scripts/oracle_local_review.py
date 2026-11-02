@@ -139,6 +139,8 @@ def review_command(args: argparse.Namespace) -> list[str]:
         "--head",
         args.head,
     ]
+    if args.member:
+        command += ["--member", "--result-json", args.result_json]
     if args.rebuttals:
         command += ["--rebuttals", args.rebuttals]
     if args.adjudicate:
@@ -182,6 +184,8 @@ def parser() -> argparse.ArgumentParser:
     built.add_argument("--adjudicate", default="")
     built.add_argument("--record-out", default="")
     built.add_argument("--reviewer-ref", default=DEVELOP_REF)
+    built.add_argument("--member", action="store_true")
+    built.add_argument("--result-json", default="")
     return built
 
 
