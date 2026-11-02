@@ -25,6 +25,13 @@ SECTION_NAMES = frozenset(
 )
 
 
+REVIEW_STORE: dict[tuple[str, str, str], dict] = {}
+
+
+def stored_review(_repo: Path, base: str, head: str, trusted: str) -> dict | None:
+    return REVIEW_STORE.get((base, head, trusted))
+
+
 def git(repo: Path, *args: str) -> str:
     proc = subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True, encoding="utf-8")
     return proc.stdout.strip()
@@ -52,6 +59,7 @@ class BatchFixture:
         self.repo = repo
         self.scope = scope
         self.start = head_of(repo)
+        git(repo, "update-ref", "refs/remotes/origin/develop", self.start)
         self.receipts: dict[str, dict] = {}
         self.log: list[dict] = [{"seq": 0, "head": self.start, "kind": "start"}]
         self.required: dict[str, list[dict]] = {}
@@ -90,6 +98,14 @@ class BatchFixture:
                 "command": ["pytest", "-q", member],
             },
         }
+        REVIEW_STORE[(source_base, accepted, self.start)] = {
+            "schema": REVIEW_SCHEMA,
+            "outcome": "clear",
+            "reason": "",
+            "base_sha": source_base,
+            "head_sha": accepted,
+            "trusted_sha": self.start,
+        }
         self._append({"kind": "prepare", "head": merged, "member": member, "changed_files": sorted(files)})
         return merged
 
@@ -118,8 +134,9 @@ class BatchFixture:
     def develop_merge(self, files: dict[str, str | None]) -> str:
         self._counter += 1
         branch = f"develop-{self._counter}"
-        git(self.repo, "checkout", "-q", "-b", branch, self.start)
-        write_commit(self.repo, files, "develop change")
+        git(self.repo, "checkout", "-q", "-b", branch, "refs/remotes/origin/develop")
+        develop_tip = write_commit(self.repo, files, "develop change")
+        git(self.repo, "update-ref", "refs/remotes/origin/develop", develop_tip)
         git(self.repo, "checkout", "-q", "main")
         git(self.repo, "merge", "--no-ff", "-q", "-m", "refresh from develop", branch)
         merged = head_of(self.repo)
@@ -198,6 +215,7 @@ class BatchFixture:
                     "reason": "",
                     "base_sha": receipt["source_base"],
                     "head_sha": receipt["accepted_head"],
+                    "trusted_sha": self.start,
                 }
                 for member, receipt in self.receipts.items()
             },

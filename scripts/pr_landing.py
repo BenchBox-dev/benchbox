@@ -83,6 +83,7 @@ TODO_ID_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$")
 MAX_TODO_ID_LEN = 128
 BATCH_EVIDENCE_SCHEMA = "benchbox_batch_evidence_v2"
 MEMBER_REVIEW_SCHEMA = "benchbox_member_review_v1"
+DEVELOP_TRACKING_REF = "refs/remotes/origin/develop"
 MEMBER_REVIEW_OUTCOMES = frozenset({"clear", "not-reviewed", "override"})
 TRACKER_SHOW_COMMAND = ("uv", "run", "--project", "_project/scripts", "--locked", "--", "todo-db", "batch", "show")
 TRACKER_WINDOW_BUDGET = 6000
@@ -860,9 +861,9 @@ def _is_ancestor(repo: Path, ancestor: str, descendant: str) -> bool:
     return True
 
 
-def _tracker_stdout(cmd: list[str]) -> tuple[int, str]:
+def _tracker_stdout(cmd: list[str], timeout: float = 120) -> tuple[int, str]:
     try:
-        proc = subprocess.run(cmd, text=True, capture_output=True, timeout=120, check=False)
+        proc = subprocess.run(cmd, text=True, capture_output=True, timeout=timeout, check=False)
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise LandingError(f"cannot run the tracker read: {exc}") from exc
     return proc.returncode, (proc.stdout or "") if proc.returncode == 0 else (proc.stdout or "") + (proc.stderr or "")
@@ -948,21 +949,45 @@ def _tracker_map(tracker: dict, key: str) -> dict:
     return value if isinstance(value, dict) else {}
 
 
-def _develop_excluded_paths(tracker: dict, receipts: dict) -> set[str]:
-    develop: set[str] = set()
+def develop_exclusions(repo: Path, head: str, tracker: dict, receipts: dict) -> tuple[set[str], list[str]]:
+    excluded: set[str] = set()
+    failures: list[str] = []
     owned: set[str] = set()
     log = tracker.get("integration_log")
     for entry in log if isinstance(log, list) else []:
         if not isinstance(entry, dict):
             continue
-        if entry.get("kind") == "develop-merge":
-            develop |= _strings(entry.get("changed_files"))
-        elif entry.get("kind") == "fix":
+        if entry.get("kind") == "fix":
             owned |= _strings(entry.get("changed_files"))
+            continue
+        if entry.get("kind") != "develop-merge":
+            continue
+        merge = _revision(entry.get("head"))
+        label = f"develop-merge entry {entry.get('seq')}"
+        if merge is None or not _is_ancestor(repo, merge, head):
+            failures.append(f"{label} head is not an ancestor of the PR head")
+            continue
+        try:
+            parents = _git(repo, "rev-list", "--parents", "-n", "1", merge).split()[1:]
+        except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            failures.append(f"{label} head could not be read from Git")
+            continue
+        if len(parents) != 2:
+            failures.append(f"{label} head is not a two-parent merge")
+            continue
+        if not _is_ancestor(repo, parents[1], DEVELOP_TRACKING_REF):
+            failures.append(f"{label} merged parent is not an ancestor of origin/develop")
+            continue
+        try:
+            differing = _changed_paths(repo, parents[1], head)
+        except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            failures.append(f"{label} paths could not be compared in Git")
+            continue
+        excluded |= _strings(entry.get("changed_files")) - differing
     for receipt in receipts.values():
         if isinstance(receipt, dict):
             owned |= _strings(receipt.get("changed_files"))
-    return develop - owned
+    return excluded - owned, failures
 
 
 def _check_evidence_binding(repo: Path, evidence: dict, head: str, tracker: dict) -> list[str]:
@@ -1050,11 +1075,11 @@ def _check_evidence_changed_files(repo: Path, evidence: dict, head: str, tracker
     start_head = _revision(tracker.get("start_head"))
     if start_head is None:
         return ["tracker start head is not a full revision"]
+    excluded, failures = develop_exclusions(repo, head, tracker, receipts)
     try:
-        actual = _changed_paths(repo, start_head, head) - _develop_excluded_paths(tracker, receipts)
+        actual = _changed_paths(repo, start_head, head) - excluded
     except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
-        return ["changed files could not be read from Git"]
-    failures: list[str] = []
+        return [*failures, "changed files could not be read from Git"]
     claimed = evidence.get("changed_files")
     if not isinstance(claimed, list) or not all(isinstance(path, str) for path in claimed) or set(claimed) != actual:
         failures.append("batch evidence changed_files differ from the recomputed integration diff")
@@ -1067,7 +1092,13 @@ def _check_evidence_changed_files(repo: Path, evidence: dict, head: str, tracker
     return failures
 
 
-def _check_evidence_reviews(evidence: dict, members: list[str], receipts: dict) -> list[str]:
+def _stored_member_review(repo: Path, base: str, head: str, trusted: str) -> dict | None:
+    from _project.scripts.oracle_reviewers import local
+
+    return local.member_review_result(repo, base, head, trusted)
+
+
+def _check_evidence_reviews(repo: Path, evidence: dict, members: list[str], receipts: dict) -> list[str]:
     failures: list[str] = []
     reviews = evidence.get("member_reviews")
     reviews = reviews if isinstance(reviews, dict) else {}
@@ -1085,6 +1116,24 @@ def _check_evidence_reviews(evidence: dict, members: list[str], receipts: dict) 
             failures.append(f"member {member} review is bound to another range than its receipt")
         if review.get("outcome") not in MEMBER_REVIEW_OUTCOMES:
             failures.append(f"member {member} review outcome {review.get('outcome')!r} does not allow landing")
+            continue
+        trusted = _revision(review.get("trusted_sha"))
+        if trusted is None or not _is_ancestor(repo, trusted, DEVELOP_TRACKING_REF):
+            failures.append(f"member {member} review names no trusted commit that is an ancestor of origin/develop")
+            continue
+        stored = _stored_member_review(
+            repo, str(receipt.get("source_base")), str(receipt.get("accepted_head")), trusted
+        )
+        if stored is None:
+            failures.append(
+                f"member {member} review is not in the trusted review store; "
+                "an outcome recorded only in the evidence file is refused, override included"
+            )
+        elif stored.get("outcome") != review.get("outcome"):
+            failures.append(
+                f"member {member} review outcome {review.get('outcome')!r} differs from the stored outcome "
+                f"{stored.get('outcome')!r}"
+            )
     return failures
 
 
@@ -1100,7 +1149,7 @@ def check_batch_evidence(repo: Path, evidence: dict, head: str, tracker: dict) -
     failures.extend(_check_evidence_receipts(repo, members, receipts, head))
     failures.extend(_check_evidence_acceptance(repo, evidence, head, tracker, receipts))
     failures.extend(_check_evidence_changed_files(repo, evidence, head, tracker, receipts))
-    failures.extend(_check_evidence_reviews(evidence, members, receipts))
+    failures.extend(_check_evidence_reviews(repo, evidence, members, receipts))
     return failures
 
 

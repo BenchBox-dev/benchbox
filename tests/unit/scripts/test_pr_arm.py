@@ -38,6 +38,14 @@ pr_arm = _load()
 LandingError = pr_arm.pr_landing.LandingError
 
 
+@pytest.fixture(autouse=True)
+def _trusted_review_store(monkeypatch: pytest.MonkeyPatch):
+    fx.REVIEW_STORE.clear()
+    monkeypatch.setattr(pr_arm.pr_landing, "_stored_member_review", fx.stored_review)
+    yield
+    fx.REVIEW_STORE.clear()
+
+
 def _view(**overrides) -> dict:
     view = {
         "number": 7,

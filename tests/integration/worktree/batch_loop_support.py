@@ -14,6 +14,9 @@ TRACKED_COPY = (
     "Makefile",
     "make",
     "scripts/batch_integration.py",
+    "scripts/pr_landing.py",
+    "scripts/pr_arm_omp_bump.py",
+    "_project/scripts/check_suites.py",
     "scripts/worktree_lifecycle.sh",
     "scripts/make_timing_shell.sh",
     "scripts/set_worktree_identity.sh",
@@ -39,8 +42,13 @@ SHARED_SOURCE = "ALPHA = None\nGAMMA = None\n\n\ndef unrelated() -> int:\n    re
 FAKE_REVIEW = """\
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
+
+if "FAKE_REVIEW_UV" not in os.environ:
+    os.environ["FAKE_REVIEW_UV"] = "1"
+    os.execvp("uv", ["uv", "run", "--", "python", __file__, *sys.argv[1:]])
 
 sys.path.insert(0, str(Path.cwd()))
 from _project.scripts.oracle_reviewers import local
@@ -53,7 +61,7 @@ parser.add_argument("--base-ref", required=True)
 parser.add_argument("--trusted-ref", required=True)
 parser.add_argument("--head", required=True)
 args = parser.parse_args()
-outcome_file = Path(__import__("os").environ["FAKE_REVIEW_OUTCOME_FILE"])
+outcome_file = Path(os.environ["FAKE_REVIEW_OUTCOME_FILE"])
 outcome = outcome_file.read_text().strip() if outcome_file.exists() else "clear"
 root = Path.cwd()
 record = local._member_record(root, args.base_ref, args.head, args.trusted_ref, outcome, "fake reviewer verdict")
@@ -88,6 +96,7 @@ DEVELOP_FILES = {
         'dependencies = ["pytest", "pytest-xdist", "pyyaml"]\n'
     ),
     "pytest.ini": "[pytest]\npythonpath = .\n",
+    "scripts/oracle_local_review.py": FAKE_REVIEW,
     ".gitignore": ".venv/\n__pycache__/\n.pytest_cache/\n.todo-batch/\n*.pyc\n",
     "src/__init__.py": "",
     "src/shared.py": SHARED_SOURCE,
@@ -281,7 +290,6 @@ class World:
         self.run(["git", "push", "-q", "origin", "develop"], self.primary)
         self.run(["git", "fetch", "-q", "origin"], self.primary)
         self.run(["git", "branch", "--set-upstream-to=origin/develop", "develop"], self.primary)
-        (self.tools / "fake_review.py").write_text(FAKE_REVIEW)
         (self.tools / "fake_preflight.py").write_text(FAKE_PREFLIGHT)
         gh = self.tools / "gh"
         gh.write_text(FAKE_GH)
@@ -327,10 +335,6 @@ class World:
         return proc.stderr + proc.stdout
 
     @property
-    def review_command(self) -> str:
-        return f"uv run -- python {self.tools / 'fake_review.py'}"
-
-    @property
     def preflight_command(self) -> str:
         return f"python3 {self.tools / 'fake_preflight.py'}"
 
@@ -354,7 +358,6 @@ class World:
             "batch-member-check",
             TESTS=tests,
             PREFLIGHT_CMD=self.preflight_command,
-            REVIEW_CMD=self.review_command,
         )
 
 
