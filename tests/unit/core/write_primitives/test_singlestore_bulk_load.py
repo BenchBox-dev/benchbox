@@ -1,14 +1,14 @@
-import bz2
 import gzip
 import re
-from contextlib import ExitStack
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from benchbox.core.write_primitives.benchmark import WritePrimitivesBenchmark
-from benchbox.platforms.singlestore import SingleStoreConnectionWrapper, _stage_local_infiles
+from benchbox.platforms.base.mysql_wire import MySqlWireConnectionWrapper
+from benchbox.sql_compat.rules.execution_filter.singlestore_write_primitives import (
+    SINGLESTORE_WRITE_PRIMITIVES_OPERATION_SKIPS,
+)
 
 pytestmark = [
     pytest.mark.unit,
@@ -30,12 +30,17 @@ def bulk_load_ids(fast_bench):
     return sorted(op_id for op_id in fast_bench.get_all_operations() if op_id.startswith("bulk_load_"))
 
 
-def test_every_bulk_load_operation_has_a_native_singlestore_form(fast_bench, bulk_load_ids):
+def test_every_bulk_load_operation_has_a_native_singlestore_form_or_a_documented_skip(fast_bench, bulk_load_ids):
     assert len(bulk_load_ids) == 36
     for operation_id in bulk_load_ids:
         operation = fast_bench.get_operation(operation_id)
+        sql, skip_reason = fast_bench._get_effective_write_sql(operation, "singlestore")
+        if operation_id in SINGLESTORE_WRITE_PRIMITIVES_OPERATION_SKIPS:
+            assert sql is None, operation_id
+            assert skip_reason.startswith(f"Operation '{operation_id}' is skipped on SingleStore: SingleStore 10.8.1")
+            continue
+        assert skip_reason is None, operation_id
         override = operation.platform_overrides["singlestore"]
-        assert override is not None, operation_id
         assert "LOAD DATA LOCAL INFILE" in override, operation_id
         assert not re.search(r"\bCOPY\b|read_csv_auto|MERGE INTO|IGNORE 1 ROWS", override, re.IGNORECASE), operation_id
 
@@ -45,8 +50,6 @@ def test_every_bulk_load_operation_has_a_native_singlestore_form(fast_bench, bul
     [
         ("bulk_load_csv_small_uncompressed", "csv_small_1k.csv"),
         ("bulk_load_csv_medium_gzip", "csv_medium_100k.csv.gz"),
-        ("bulk_load_csv_large_zstd", "csv_large_1m.csv.zst"),
-        ("bulk_load_csv_small_bzip2", "csv_small_1k.csv.bz2"),
         ("bulk_load_parquet_medium_snappy", "parquet_medium_100k_snappy.parquet"),
     ],
 )
@@ -62,11 +65,12 @@ def test_csv_loads_use_crlf_terminator_and_header_skip(fast_bench):
     assert "IGNORE 1 LINES" in sql
 
 
-def test_parquet_loads_use_staged_text_format(fast_bench):
+def test_parquet_loads_use_native_parquet_format(fast_bench):
     sql = fast_bench.get_operation("bulk_load_parquet_small_zstd").platform_overrides["singlestore"]
 
-    assert "FIELDS TERMINATED BY '\\t' ESCAPED BY '\\\\'" in sql
-    assert "IGNORE" not in sql
+    assert sql.rstrip().endswith("FORMAT PARQUET")
+    assert "o_orderkey <- o_orderkey" in sql
+    assert "FIELDS TERMINATED BY" not in sql
 
 
 def test_transformation_and_subset_use_load_data_column_mapping(fast_bench):
@@ -106,114 +110,51 @@ def test_upsert_loads_stage_then_updates_and_inserts(fast_bench):
     assert "WHERE target.o_orderkey IS NULL" in statements[4]
 
 
+@pytest.fixture()
+def ready_bench(fast_bench, tmp_path, monkeypatch):
+    files_dir = tmp_path / "write_primitives_auxiliary"
+    files_dir.mkdir()
+    fast_bench.data_generator.files_dir = files_dir
+    monkeypatch.setattr(fast_bench, "is_setup", lambda conn: True)
+    return fast_bench
+
+
+def _executed_statements(raw):
+    return [call.args[0] for call in raw.cursor.return_value.execute.call_args_list]
+
+
 @pytest.mark.parametrize(
-    "name,opener",
-    [("data.csv.gz", gzip.open), ("data.csv.bz2", bz2.open)],
+    "operation_id,filename",
+    [
+        ("bulk_load_csv_small_gzip", "csv_small_1k.csv.gz"),
+        ("bulk_load_parquet_small_zstd", "parquet_small_1k_zstd.parquet"),
+        ("bulk_load_parquet_small_snappy", "parquet_small_1k_snappy.parquet"),
+    ],
 )
-def test_compressed_infile_is_staged_verbatim_and_removed(tmp_path, name, opener):
-    source = tmp_path / name
-    with opener(source, "wb") as handle:
-        handle.write(CSV_BYTES)
-    sql = f"LOAD DATA LOCAL INFILE '{source}' INTO TABLE t"
-
-    with ExitStack() as stack:
-        staged_sql = _stage_local_infiles(sql, stack)
-        staged_path = Path(re.search(r"INFILE '([^']+)'", staged_sql).group(1))
-
-        assert staged_path != source
-        assert staged_path.read_bytes() == CSV_BYTES
-
-    assert not staged_path.exists()
-    assert source.exists()
-
-
-def test_plain_infile_is_left_untouched(tmp_path):
-    source = tmp_path / "data.csv"
-    source.write_bytes(CSV_BYTES)
-    sql = f"LOAD DATA LOCAL INFILE '{source}' INTO TABLE t"
-
-    with ExitStack() as stack:
-        assert _stage_local_infiles(sql, stack) == sql
-
-
-def test_parquet_infile_is_converted_to_escaped_text(tmp_path):
-    pa = pytest.importorskip("pyarrow")
-    pq = pytest.importorskip("pyarrow.parquet")
-    source = tmp_path / "data.parquet"
-    pq.write_table(pa.table({"id": [1, None], "name": ["a\tb", "c"]}), source)
-    sql = f"LOAD DATA LOCAL INFILE '{source}' INTO TABLE t"
-
-    with ExitStack() as stack:
-        staged_sql = _stage_local_infiles(sql, stack)
-        staged_path = Path(re.search(r"INFILE '([^']+)'", staged_sql).group(1))
-
-        assert staged_path.read_text(encoding="utf-8") == "1\ta\\tb\n\\N\tc\n"
-
-    assert not staged_path.exists()
-
-
-def test_singlestore_connection_stages_compressed_file_for_the_load_and_removes_it(tmp_path):
-    source = tmp_path / "csv_small_1k.csv.gz"
-    with gzip.open(source, "wb") as handle:
-        handle.write(CSV_BYTES)
-    seen: list[tuple[str, bool, bytes]] = []
-
-    def record(statement, *args, **kwargs):
-        match = re.search(r"LOAD DATA LOCAL INFILE '([^']+)'", statement)
-        staged = Path(match.group(1))
-        seen.append((statement, staged.exists(), staged.read_bytes()))
-        return MagicMock()
-
+def test_native_bulk_load_sends_the_original_file_to_the_engine(ready_bench, tmp_path, operation_id, filename):
+    files_dir = tmp_path / "write_primitives_auxiliary"
+    source = files_dir / filename
+    source.write_bytes(gzip.compress(b"a\n") if filename.endswith(".gz") else b"PAR1")
+    before = sorted(path.name for path in files_dir.iterdir())
     raw = MagicMock()
-    raw.cursor.return_value.execute.side_effect = record
-    wrapper = SingleStoreConnectionWrapper(raw)
+    connection = MySqlWireConnectionWrapper(raw)
 
-    load_sql = f"LOAD DATA LOCAL INFILE '{source}' INTO TABLE t FIELDS TERMINATED BY ','"
-    with wrapper.prepare_write(load_sql) as prepared:
-        wrapper.execute(prepared)
+    ready_bench.execute_operation(operation_id, connection, platform_key="singlestore")
 
-    ((statement, existed, content),) = seen
-    assert existed
-    assert content == CSV_BYTES
-    assert ".csv.gz" not in statement
-    assert not list(tmp_path.glob("tmp*"))
+    loads = [sql for sql in _executed_statements(raw) if sql.startswith("LOAD DATA")]
+    assert len(loads) == 1
+    assert f"INFILE '{source}'" in loads[0]
+    assert sorted(path.name for path in files_dir.iterdir()) == before
 
 
-def test_singlestore_connection_leaves_other_statements_untouched():
+@pytest.mark.parametrize("operation_id", sorted(SINGLESTORE_WRITE_PRIMITIVES_OPERATION_SKIPS))
+def test_codecs_the_engine_cannot_ingest_are_skipped_without_a_timing(ready_bench, tmp_path, operation_id):
     raw = MagicMock()
-    wrapper = SingleStoreConnectionWrapper(raw)
+    connection = MySqlWireConnectionWrapper(raw)
 
-    wrapper.execute("SELECT 1")
+    result = ready_bench.execute_operation(operation_id, connection, platform_key="singlestore")
 
-    raw.cursor.return_value.execute.assert_called_once_with("SELECT 1", None)
-
-
-def test_write_timing_excludes_infile_staging(tmp_path, fast_bench):
-    import time
-
-    source = tmp_path / "csv_small_1k.csv.gz"
-    with gzip.open(source, "wb") as handle:
-        handle.write(CSV_BYTES)
-    delay = 0.3
-    original = _stage_local_infiles
-    timed: dict[str, float] = {}
-
-    def slow_stage(sql, stack):
-        time.sleep(delay)
-        return original(sql, stack)
-
-    raw = MagicMock()
-    wrapper = SingleStoreConnectionWrapper(raw)
-    sql = f"LOAD DATA LOCAL INFILE '{source}' INTO TABLE t FIELDS TERMINATED BY ','"
-    with patch("benchbox.platforms.singlestore._stage_local_infiles", slow_stage):
-        start = time.perf_counter()
-        with fast_bench._untimed_write_preparation(wrapper, sql) as prepared:
-            prep_elapsed = time.perf_counter() - start
-            t0 = time.perf_counter()
-            wrapper.execute(prepared)
-            timed["write"] = time.perf_counter() - t0
-
-    assert prep_elapsed >= delay
-    assert timed["write"] < delay
-    assert ".csv.gz" not in raw.cursor.return_value.execute.call_args.args[0]
-    assert not list(tmp_path.glob("tmp*"))
+    assert result.status == "SKIPPED"
+    assert result.write_duration_ms == 0.0
+    assert "LOAD DATA" not in " ".join(_executed_statements(raw))
+    assert "SingleStore 10.8.1" in result.skip_reason
