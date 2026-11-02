@@ -1757,12 +1757,17 @@
       "title": "Deliver the two-layer integration-branch batch loop: parallel member worktrees, leader landing, one final PR"
     },
     "batch-land-and-status-20261101": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-03T06:27:15Z",
+        "generation": "1b0aefed4d224728bff64368d4470169",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d680f2b9a00523ec18de3879"
+      },
       "needs": [
         "batch-member-side-tooling-20261101"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Add leader-only batch-land, recorded head advances and batch-status reconciliation"
     },
     "batch-loop-default-mode-20261101": {
