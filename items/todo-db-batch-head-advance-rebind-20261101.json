@@ -6,7 +6,7 @@
     "context and context_append edits on a prepared member keep its receipt; an acceptance edit, a needs edit, a description edit and a links edit each invalidate it and its dependents (one test each); scope has no edit path and a registered batch-metadata edit is refused with the receipt untouched (one test each).",
     "Merged on joeharris76/todo-db main."
   ],
-  "context": "Decision gate: start only after todo-db-batch-dispatch-base-overlap-20261101 is done, because advances add to the recorded heads that dispatch bases use. Guardrails: work in joeharris76/todo-db under its own repository rules, on a branch and PR, never directly on main; never patch the vendored wheel in BenchBox; one server stays one worker identity (todo-db ADRs 0003 and 0006); every new refusal fails closed with a gate code and recovery steps; BenchBox line citations refer to the vendored 0.12.0 wheel (_project/scripts/vendor/todo_db-0.12.0-py3-none-any.whl), so re-read todo-db main before editing; tests prove behaviour, never wiring.\n\nLands in the single todo-db PR (branch feat/batch-v2) with the ADR and the release, per the owner's consolidation instruction of 2026-11-01.",
+  "context": "Decision gate: start only after todo-db-batch-dispatch-base-overlap-20261101 is done, because advances add to the recorded heads that dispatch bases use. Guardrails: work in joeharris76/todo-db under its own repository rules, on a branch and PR, never directly on main; never patch the vendored wheel in BenchBox; one server stays one worker identity (todo-db ADRs 0003 and 0006); every new refusal fails closed with a gate code and recovery steps; BenchBox line citations refer to the vendored 0.12.0 wheel (_project/scripts/vendor/todo_db-0.12.0-py3-none-any.whl), so re-read todo-db main before editing; tests prove behaviour, never wiring.\n\nLands in the single todo-db PR (branch feat/batch-v2) with the ADR and the release, per the owner's consolidation instruction of 2026-11-01.\n\nClosed 2026-11-02: delivered in https://github.com/joeharris76/todo-db/pull/64 (todo-db 0.14.0). advance_batch_head (owner-only, expected head, reason fix|develop-merge, changed files, develop ref fixed at registration, idempotent retry); bind_batch_pr revisable with expected_previous_head and pr_repository, different PR refused; context and context_append keep receipts, acceptance/needs/description/links edits invalidate transitively, registered batch metadata edits refused, any edit of a done prepared member refused. Gate 1 ran two fix advances and a rebind with real servers.",
   "description": "Implement the lifecycle parts of the batch v2 ADR. Add an owner-only operation that advances the registered integration head with an expected previous head, a reason (fix or develop-merge) and the changed files; the new head must descend from the current one and becomes a valid dispatch base. A fix that touches an earlier member's files marks that member as needing current-acceptance evidence at final; a develop-merge is excluded from member scope and union accounting. Make bind_batch_pr revisable: same repository, PR number and node id; a head change needs the expected previous head and invalidates final evidence; an exact retry is idempotent; a different PR is refused. Stop invalidating receipts on context and context_append edits; acceptance, needs, description and links edits still invalidate transitively; scope has no edit path and registered batch metadata cannot be edited.",
   "sessions": [
     {
@@ -56,6 +56,14 @@
       "generation": "5d1ca5f368c34a558103629e04aa823b",
       "op": "take",
       "op_id": "374f1ed918614341a55d17f02e333550",
+      "session_id": "3dd2b4a046904511bb5ce7edcc3205fd"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d680f2b9a00523ec18de3879",
+      "at": "2026-11-02T02:49:40Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f59341bae0c5439ea59bc3b1de1c8520",
       "session_id": "3dd2b4a046904511bb5ce7edcc3205fd"
     }
   ]
