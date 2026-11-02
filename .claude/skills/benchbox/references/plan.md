@@ -8,7 +8,8 @@ Use for benchmark/platform features that need research, implementation, and veri
 2. State goal, scope, constraints, public interfaces, and success criteria.
 3. Apply `shared-change-framework/SKILL.md` Section 1 before source-code edits,
    then slice vertically, implement one working path, test, verify, commit, and
-   submit the approved plan as a draft PR.
+   submit the approved plan as a draft PR (a delegated batch member does not
+   open one: it hands its change to the batch leader as a landing request).
 4. Preserve phase propagation, validation, timing policy, artifact paths, and lazy optional deps.
 5. Update docs/tests only where the behavior changes.
 
