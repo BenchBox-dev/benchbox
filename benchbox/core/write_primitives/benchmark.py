@@ -4,11 +4,9 @@
 
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
-import contextlib
 import importlib
 import re
 import time
-from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
@@ -54,6 +52,9 @@ from benchbox.sql_compat.rules.execution_filter.postgres_write_primitives import
     POSTGRES_WRITE_PRIMITIVES_OPERATION_SKIPS,
 )
 from benchbox.sql_compat.rules.execution_filter.questdb_write_primitives import questdb_write_primitive_skip_reason
+from benchbox.sql_compat.rules.execution_filter.singlestore_write_primitives import (
+    singlestore_write_primitive_skip_reason,
+)
 from benchbox.sql_compat.rules.execution_filter.starrocks_write_primitives import (
     starrocks_write_primitive_skip_reason,
 )
@@ -181,6 +182,7 @@ _SUMMED_ROWCOUNT_DIALECTS = frozenset({"sqlite"})
 
 _ENGINE_WRITE_PRIMITIVE_SKIPS = (
     ("doris", "Doris", doris_write_primitive_skip_reason),
+    ("singlestore", "SingleStore", singlestore_write_primitive_skip_reason),
     ("starrocks", "StarRocks", starrocks_write_primitive_skip_reason),
     ("questdb", "QuestDB", questdb_write_primitive_skip_reason),
     ("clickhouse", "ClickHouse", clickhouse_write_primitive_skip_reason),
@@ -893,15 +895,6 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
             if op.aggregate_state is None and op.category.lower() != "sketch"
         }
 
-    @staticmethod
-    @contextlib.contextmanager
-    def _untimed_write_preparation(connection: Any, sql: str) -> Iterator[str]:
-        if callable(getattr(type(connection), "prepare_write", None)):
-            with connection.prepare_write(sql) as prepared_sql:
-                yield prepared_sql
-        else:
-            yield sql
-
     def execute_operation(
         self,
         operation_id: str,
@@ -946,13 +939,12 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
                 if operation.category == "merge" and (platform_key or "").lower() in _SUMMED_ROWCOUNT_DIALECTS
                 else None
             )
-            with self._untimed_write_preparation(connection, write_sql) as timed_sql:
-                write_start = time.perf_counter()
-                if summed_statements is not None:
-                    write_result = self._execute_summing_rowcounts(connection, summed_statements)
-                else:
-                    write_result = connection.execute(timed_sql)
-                write_duration_ms = (time.perf_counter() - write_start) * 1000
+            write_start = time.perf_counter()
+            if summed_statements is not None:
+                write_result = self._execute_summing_rowcounts(connection, summed_statements)
+            else:
+                write_result = connection.execute(write_sql)
+            write_duration_ms = (time.perf_counter() - write_start) * 1000
             if (write_error := failed_platform_error(write_result)) is not None:
                 raise RuntimeError(f"Write SQL failed on platform: {write_error}")
 

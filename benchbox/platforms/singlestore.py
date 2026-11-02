@@ -6,8 +6,6 @@ from __future__ import annotations
 
 import contextlib
 import os
-import re
-import shutil
 import tempfile
 from collections.abc import Iterator
 from pathlib import Path
@@ -24,8 +22,6 @@ from .base import DriverIsolationCapability, PlatformAdapter
 from .base.data_loading import (
     CsvDialect,
     DataSourceResolver as DataSourceResolver,
-    FileFormatRegistry,
-    NoCompressionHandler,
     prepare_local_load_file,
     resolve_csv_dialect,
 )
@@ -105,53 +101,6 @@ def _parquet_as_load_file(data_file: Path) -> Iterator[Path]:
         yield tmp_path
     finally:
         tmp_path.unlink(missing_ok=True)
-
-
-@contextlib.contextmanager
-def _decompressed_load_file(data_file: Path) -> Iterator[Path]:
-    tmp_fd, tmp_name = tempfile.mkstemp(suffix=".csv", dir=data_file.parent)
-    os.close(tmp_fd)
-    tmp_path = Path(tmp_name)
-    try:
-        with (
-            FileFormatRegistry.get_compression_handler(data_file).open(data_file, newline="") as src,
-            tmp_path.open("w", encoding="utf-8", newline="") as dst,
-        ):
-            shutil.copyfileobj(src, dst)
-        yield tmp_path
-    finally:
-        tmp_path.unlink(missing_ok=True)
-
-
-@contextlib.contextmanager
-def stage_local_infile(data_file: Path) -> Iterator[Path]:
-    if data_file.suffix.lower() in _PARQUET_EXTENSIONS:
-        with _parquet_as_load_file(data_file) as load_path:
-            yield load_path
-    elif isinstance(FileFormatRegistry.get_compression_handler(data_file), NoCompressionHandler):
-        yield data_file
-    else:
-        with _decompressed_load_file(data_file) as load_path:
-            yield load_path
-
-
-_LOCAL_INFILE_PATH = re.compile(r"(LOAD DATA LOCAL INFILE ')((?:[^']|'')*)(')", re.IGNORECASE)
-
-
-def _stage_local_infiles(sql: str, stack: contextlib.ExitStack) -> str:
-    def stage(match: re.Match[str]) -> str:
-        source = Path(match.group(2).replace("''", "'"))
-        staged = str(stack.enter_context(stage_local_infile(source))).replace("'", "''")
-        return f"{match.group(1)}{staged}{match.group(3)}"
-
-    return _LOCAL_INFILE_PATH.sub(stage, sql)
-
-
-class SingleStoreConnectionWrapper(MySqlWireConnectionWrapper):
-    @contextlib.contextmanager
-    def prepare_write(self, sql: str) -> Iterator[str]:
-        with contextlib.ExitStack() as staging:
-            yield _stage_local_infiles(sql, staging)
 
 
 class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapter):
@@ -288,7 +237,7 @@ class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, Platform
         )
 
     def _wrap_database_connection(self, conn: Any) -> Any:
-        return SingleStoreConnectionWrapper(conn)
+        return MySqlWireConnectionWrapper(conn)
 
     def _schema_statements(self, benchmark: Any) -> list[str]:
         schema_sql = self._create_schema_with_tuning(benchmark, source_dialect=self.get_target_dialect())
