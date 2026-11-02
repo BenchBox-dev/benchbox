@@ -7,7 +7,7 @@
     "The same batch read is available as a read-only CLI command that returns the same data and never writes state.",
     "Merged on joeharris76/todo-db main."
   ],
-  "context": "Decision gate: start only after todo-db-batch-v2-contract-20261101 is done; implement the merged ADR, and amend the ADR first if implementation shows it is wrong. Guardrails: work in joeharris76/todo-db under its own repository rules, on a branch and PR, never directly on main; never patch the vendored wheel in BenchBox; one server stays one worker identity (todo-db ADRs 0003 and 0006); every new refusal fails closed with a gate code and recovery steps; BenchBox line citations refer to the vendored 0.12.0 wheel (_project/scripts/vendor/todo_db-0.12.0-py3-none-any.whl), so re-read todo-db main before editing; tests prove behaviour, never wiring.\n\nLands in the single todo-db PR (branch feat/batch-v2) with the ADR and the release, per the owner's consolidation instruction of 2026-11-01.",
+  "context": "Decision gate: start only after todo-db-batch-v2-contract-20261101 is done; implement the merged ADR, and amend the ADR first if implementation shows it is wrong. Guardrails: work in joeharris76/todo-db under its own repository rules, on a branch and PR, never directly on main; never patch the vendored wheel in BenchBox; one server stays one worker identity (todo-db ADRs 0003 and 0006); every new refusal fails closed with a gate code and recovery steps; BenchBox line citations refer to the vendored 0.12.0 wheel (_project/scripts/vendor/todo_db-0.12.0-py3-none-any.whl), so re-read todo-db main before editing; tests prove behaviour, never wiring.\n\nLands in the single todo-db PR (branch feat/batch-v2) with the ADR and the release, per the owner's consolidation instruction of 2026-11-01.\n\nClosed 2026-11-02: delivered in https://github.com/joeharris76/todo-db/pull/64 (released as todo-db 0.14.0). Owner-only take/takeover/prepare/finish for active-batch members (E_BATCH_OWNER, membership = item in batch.members); recover_batch_owner with caller-generated new_owner_generation, idempotent retry and audit records; show_batch MCP tool and read-only `todo-db batch show` CLI, paged under 16 KiB (member-count sweep test 1-40). Release Gate 1 proved the outsider take refusal with two real servers. Independent implementation review: 2 High fixed (silent revert after re-prepare; show_batch overflow), verdict no open Critical or High.",
   "description": "Implement the ownership parts of the batch v2 ADR in joeharris76/todo-db. take and takeover of a member of an active batch by anyone but the registered owner are refused. A new session can recover batch ownership after the leader dies by naming the exact current owner and generation and a reason, audited on the batch and its members. A read tool returns the batch registry, receipts, advances and final-PR binding within the 16 KiB response cap. Today an unrelated session can take a registered member, after which the leader's take fails with 'claimed by' (fixture, 2026-11-01); abort and bind need the original owner, so a dead leader strands the batch. The batch read is also exposed as a read-only todo-db CLI command, because BenchBox scripts (the batch-evidence check that pr_arm runs) cannot call MCP tools.",
   "sessions": [
     {
@@ -41,6 +41,14 @@
       "generation": "28b52715b30c40b68ac02119433af2a5",
       "op": "take",
       "op_id": "5da16333f86f4e928537846823d59b97",
+      "session_id": "3dd2b4a046904511bb5ce7edcc3205fd"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d680f2b9a00523ec18de3879",
+      "at": "2026-11-02T02:49:11Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a77a6ee584a8442d8d16dc7aa887d04c",
       "session_id": "3dd2b4a046904511bb5ce7edcc3205fd"
     }
   ]
