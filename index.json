@@ -27749,6 +27749,15 @@
       "status": "open",
       "title": "Prove trusted hosted review and separate gate resolution without live gateway access"
     },
+    "theseus-local-gateway-tooling-20261102": {
+      "claim": null,
+      "needs": [
+        "theseus-package-identity-install-20261102"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Prepare pinned local review and gateway-host tooling and track every upstream port"
+    },
     "theseus-observation-disposition-20261102": {
       "claim": null,
       "needs": [

@@ -1,0 +1,28 @@
+{
+  "acceptance": [
+    "Offline actual local CLI smoke runs from a clean non-repo directory against installed bytes and exercises findings, dispute and withheld-secrets behaviour.",
+    "Trusted-fetch or lock verification failure cannot use an old export/ambient package. Cache cannot substitute a different source hash.",
+    "Gateway-host fixture invokes installed install-omp and gateway-clients rather than _project.scripts.oracle_reviewers.cli; existing OMP cache/client identity remains stable.",
+    "Every source change since baseline is mapped with port/no-op evidence; ledger refresh command and invalidation rule are documented.",
+    "Reviewed implementation and docs merge without activating any production-connected consumer; atomic cutover owns remaining live callsite switches."
+  ],
+  "context": "T5, R2. New package APIs should follow existing CLI mechanisms rather than introduce a second credential/config service.",
+  "description": "Prepare offline-proven installed Theseus entrypoints for local review, pr-arm/gate invocation and the gateway host. Inventory scripts/oracle_local_review.py, scripts/pr_arm.py, Makefile launchers, _project/scripts/oracle_gateway_host.sh install-omp/gateway-clients commands and trusted export code. Preserve local findings/dispute behaviour, credential scrubbing, cache/trusted-input digest and fetch-failure fail-closed handling. Gateway host first-stage verification remains consumer-owned and uses the trusted lock. Preserve ~/.cache/benchbox/omp, existing gateway client IDs and run/plist paths unless an owner-approved quiet-time restart replaces them.\nMaintain a source-sync ledger: each BenchBox commit touching extraction inventory since baseline maps to a Theseus port commit, explicit no-op rationale, or pending port. Include promotion-path changes. Ledger is reviewed migration evidence, not session scratch. No source-freeze claim while it has pending entries.\nGuardrails: install/export helpers may be staged outside active launchers until cutover; no dual authority or fallback to embedded engine. No running host, shared clients.json regeneration, agent restart or live gateway use here. Stage exact authorized paths, preserve user work and normal PR checks.",
+  "links": [
+    "scripts/oracle_local_review.py",
+    "scripts/pr_arm.py",
+    "Makefile",
+    "_project/scripts/oracle_gateway_host.sh",
+    "_project/scripts/oracle_reviewers/local.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4c6f341b7f4b66f30a37a2f1",
+      "at": "2026-11-02T13:48:07Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "84f70769740e4db8aff6d5515176648a",
+      "session_id": "8cfcc9dbcab5419a91fc8b650901f36b"
+    }
+  ]
+}
