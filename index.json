@@ -27831,6 +27831,15 @@
       "status": "open",
       "title": "Package Theseus with consumer-configured identity and a hash-verified isolated installer"
     },
+    "theseus-post-cutover-observation-closeout-20261102": {
+      "claim": null,
+      "needs": [
+        "theseus-atomic-benchbox-cutover-20261102"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Complete unpooled Theseus observations and verify end-to-end extraction closeout"
+    },
     "theseus-promotion-review-path-benchbox-20261102": {
       "claim": null,
       "needs": [

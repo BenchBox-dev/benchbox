@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "Owner-approved deployment/activation timestamp, exact source/artifact/version and sample start are recorded; runtime reads prove installed Theseus is the active single evaluator.",
+    "At least 7 days AND 60 unpooled post-change attempts have provenance and retained artifacts; report denominators, invalid verdicts, all-absent endings, follow-up absences, elisions, retries/spend and runtime. Meet existing targets or link owned residual-cause remediation items.",
+    "Closure table includes all prior observation obligations, platform-specific local/cloud smoke, new launcher/install reachability and latency/cadence samples without mixing epochs or claiming synthetic events as observations.",
+    "Final source-sync audit, all intended consumer migrations, source/artifact trust enforcement, state/finding/dispute readability, enforced Theseus governance and owner-run genuinely broken-gate recovery are verified with live evidence.",
+    "Published OSS source and installable hash-bound release exist; no obsolete active evaluator or unauthorized shim remains except the approved verbatim matcher. All mandatory implementation items reached their actual merge/deployment/measurement boundaries."
+  ],
+  "context": "T10. Set a not_before of activation + 7 days when actual activation happens, not a guessed calendar date today; the attempt threshold and own-item holds still apply. Collection cadence must beat retention (existing reliability item requires collecting at least every 6 days).",
+  "description": "T10 is measured completion, not code merge. After owner-approved activation, start a new versioned epoch for installed Theseus. Retain artifacts before expiry and collect an unpooled post-change reliability sample of at least 7 days AND 60 actual attempts on the remediated deployed version. Targets follow the existing reliability item; either meet them or identify concrete residual causes in owned remediation TODOs. Never project success or pool pre/post samples. Ordinary traffic only; naturally observed disputes/reruns/stale-pending events must not be provoked.\nCreate the final closure table for every retained observation: item, implementation/version/hash, UTC window, attempt/event count, artifact/run provenance, outcome and next check if permitted to stay open. Natural-event obligations may remain open by their own acceptance with recorded window/count/next-check; old evidence retains old implementation identity. Reliability cannot be merely left open at extraction closure. Separate unchanged transport evidence from new installer/launcher reachability evidence and separately report latency/cadence epochs.\nGuardrails: dates alone never establish completion. On a remediation source change restart/requalify the affected sample under existing acceptance; preserve retained prior epoch data. No production claims from focused tests. A1 external-adopter onboarding stays optional and outside this task and completion bar.",
+  "links": [
+    "oracle-response-reliability-observation-20261021",
+    "oracle-response-live-verification-20261021",
+    "theseus-observation-disposition-20261102",
+    "theseus-atomic-benchbox-cutover-20261102"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4c6f341b7f4b66f30a37a2f1",
+      "at": "2026-11-02T13:51:39Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1f7c0b56be3243a3ab69322b2b7c6160",
+      "session_id": "8cfcc9dbcab5419a91fc8b650901f36b"
+    }
+  ]
+}
