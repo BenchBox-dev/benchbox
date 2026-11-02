@@ -7,7 +7,7 @@
     "Default pr-open local review behaviour is unchanged (test).",
     "Merged to develop, after a benchbox-oracle success review of its head if it touches soundness paths."
   ],
-  "context": "Owner decision 2026-11-01 (owner answer in the choice dialog, BenchBox session 01a19729, 2026-11-01): \"Same bar as a standalone PR\" [option text: an exempt-only member is recorded as not reviewed, distinct from a pass; the final PR's hosted oracle-gate reviews the combined change]. Do not force model reviews of exempt paths. No other decision gate: independent of todo-db. Guardrails: deliver as an ordinary serial PR to develop (AGENTS.md: feature delivery cannot deliver the changes that make it possible); write only from a linked worktree made with make worktree-create and checked with make agent-write-preflight, never the primary clone; stage explicit paths, never git add -A; no explanatory comments or docstrings (COMMENT-POLICY-001, make comment-policy-check); heavy test runs only through lock-taking entry points, never BENCHBOX_SKIP_TEST_LOCK; never weaken hold labels, the unresolved-thread refusal, oracle-gate, duration or suite gates; add a changelog.d fragment (CHANGELOG_INTERNAL when nothing is user-visible); durable artifacts carry no session or phase labels; cited line numbers are leads, so re-read the code before editing; tests prove behaviour, never wiring or wording.\n\nLands in the BenchBox core PR (branch feat/batch-integration-loop-core). In progress in session 01a19729; do not take.",
+  "context": "Owner decision 2026-11-01 (owner answer in the choice dialog, BenchBox session 01a19729, 2026-11-01): \"Same bar as a standalone PR\" [option text: an exempt-only member is recorded as not reviewed, distinct from a pass; the final PR's hosted oracle-gate reviews the combined change]. Do not force model reviews of exempt paths. No other decision gate: independent of todo-db. Guardrails: deliver as an ordinary serial PR to develop (AGENTS.md: feature delivery cannot deliver the changes that make it possible); write only from a linked worktree made with make worktree-create and checked with make agent-write-preflight, never the primary clone; stage explicit paths, never git add -A; no explanatory comments or docstrings (COMMENT-POLICY-001, make comment-policy-check); heavy test runs only through lock-taking entry points, never BENCHBOX_SKIP_TEST_LOCK; never weaken hold labels, the unresolved-thread refusal, oracle-gate, duration or suite gates; add a changelog.d fragment (CHANGELOG_INTERNAL when nothing is user-visible); durable artifacts carry no session or phase labels; cited line numbers are leads, so re-read the code before editing; tests prove behaviour, never wiring or wording.\n\nLands in the BenchBox core PR (branch feat/batch-integration-loop-core). In progress in session 01a19729; do not take.\n\n2026-11-02: implemented on branch feat/batch-integration-loop-core (head fdd09e09df) of BenchBox-dev/BenchBox together with the other core items; targeted tests pass; independent pre-publication review in progress; the core PR is not open yet. Close after that PR merges.",
   "description": "Batch members are reviewed with the existing no-PR local reviewer (_project/scripts/oracle_reviewers/cli.py local-review and local.py). Make it write a machine-readable result bound to the member's base commit, head tree, patch digest and a pinned trusted develop commit. Outcomes are clear, findings, not-reviewed (exempt-only or no changes) and override; exempt-only changes give not-reviewed, never clear (local.py:651-653 prints 'no review needed' today). In member mode the trusted ref must be a full commit SHA, because trusted_ref falls back to the diff base when omitted (local.py:199). Check whether the cache key omits the trusted manifests (local.py:478-491); if it does, add them so a manifest change invalidates the cached result.",
   "links": [
     "_project/scripts/oracle_reviewers/local.py",
@@ -29,6 +29,14 @@
       "op": "update",
       "op_id": "5d0a6f97615f4684bc0f629c10305a45",
       "session_id": "fe251e187e814d5cb1baf53870326a77"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d680f2b9a00523ec18de3879",
+      "at": "2026-11-02T03:28:35Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a085a67237024dd0a4da9d0c7d7accbb",
+      "session_id": "3dd2b4a046904511bb5ce7edcc3205fd"
     }
   ]
 }
