@@ -135,12 +135,14 @@ def review_command(args: argparse.Namespace) -> list[str]:
         "--base-ref",
         args.base_ref,
         "--trusted-ref",
-        args.trusted_ref or args.base_ref,
+        args.trusted_ref if args.member else args.trusted_ref or args.base_ref,
         "--head",
         args.head,
     ]
     if args.member:
-        command += ["--member", "--result-json", args.result_json]
+        command.append("--member")
+    if args.result_json:
+        command += ["--result-json", args.result_json]
     if args.rebuttals:
         command += ["--rebuttals", args.rebuttals]
     if args.adjudicate:

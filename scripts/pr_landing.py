@@ -264,6 +264,13 @@ def batch_mode_failures(
     except LandingError as exc:
         failures.append(str(exc))
         return failures
+    if fresh.get("lifecycle") != "active":
+        failures.append(f"batch {batch_id} is not active in the tracker")
+    final_pr = fresh.get("final_pr")
+    if not isinstance(final_pr, dict) or final_pr.get("number") != evidence.pr_number:
+        failures.append(f"batch {batch_id} is not bound to PR #{evidence.pr_number} in the tracker")
+    if fresh.get("integration_branch") != evidence.branch:
+        failures.append("tracker integration branch does not match the current checkout")
     failures.extend(check_batch_evidence(repo, batch, head, fresh))
     return failures
 
@@ -318,7 +325,10 @@ Runner = Callable[[list[str]], tuple[int, str]]
 
 
 def live_run(cmd: list[str]) -> tuple[int, str]:
-    proc = subprocess.run(cmd, text=True, capture_output=True, timeout=120, check=False)
+    try:
+        proc = subprocess.run(cmd, text=True, capture_output=True, timeout=120, check=False)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise LandingError(f"cannot run the tracker read: {exc}") from exc
     return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
 
 
@@ -851,7 +861,10 @@ def _is_ancestor(repo: Path, ancestor: str, descendant: str) -> bool:
 
 
 def _tracker_stdout(cmd: list[str]) -> tuple[int, str]:
-    proc = subprocess.run(cmd, text=True, capture_output=True, timeout=120, check=False)
+    try:
+        proc = subprocess.run(cmd, text=True, capture_output=True, timeout=120, check=False)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise LandingError(f"cannot run the tracker read: {exc}") from exc
     return proc.returncode, (proc.stdout or "") if proc.returncode == 0 else (proc.stdout or "") + (proc.stderr or "")
 
 
@@ -896,9 +909,11 @@ def read_batch_tracker(batch_id: str, run: Runner = _tracker_stdout) -> dict:
         raise LandingError(f"batch id {batch_id!r} is not a tracker batch id")
     summary = _tracker_call(run, batch_id)
     sections = summary.get("sections")
-    rev = summary.get("rev") or summary.get("cached_rev")
-    if not isinstance(sections, dict) or not isinstance(rev, str) or not rev:
-        raise LandingError(f"tracker batch {batch_id} read has no sections or revision")
+    rev = summary.get("rev")
+    if summary.get("stale") or not isinstance(rev, str) or not rev:
+        raise LandingError(f"tracker batch {batch_id} read is stale or unrevisioned; refusing")
+    if not isinstance(sections, dict):
+        raise LandingError(f"tracker batch {batch_id} read has no sections")
     tracker = {key: value for key, value in summary.items() if key != "sections"}
     for name in sections:
         if name not in tracker:
