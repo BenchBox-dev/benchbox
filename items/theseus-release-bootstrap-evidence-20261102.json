@@ -7,7 +7,7 @@
     "No source/build input changed after parity; if any changed, T6 is re-proven before this item can finish."
   ],
   "context": "T7. Normal merged-code authorization does not independently authorize package production publication. Stop for owner action if release rights/approval are absent.",
-  "description": "T7: after explicit owner authorization for release/publication, publish the exact wheel bytes T6 tested under theseus-reviewer, with immutable source association, dependency closure/hashes and a retained identical-hash independent recovery copy. Do not rebuild or introduce evaluator behaviour here. Complete the bootstrap record: BenchBox baseline commit, path map, normalized full-tree diff, named independent reviewer, approved head and resulting source/artifact hashes. First promotion uses this baseline as its old side because no previous Theseus lock exists.\nAssemble full upstream-delta promotion evidence and the gate-readable record form chosen by the owner; its exact-head attachment occurs against the real cutover PR after creation, not an invented future head. Subsequent promotions compare prior locked source to candidate source.\nDecision gate: package/asset production publication, publisher identity and credentials need owner approval; unavailable rights or naming conflict is a blocker. Guardrails: no latest refs, unverified fallback, secret-bearing candidate build, owner-attestation forgery, artefact rebuild, silent source change, fabricated provenance, or reusing a stale parity hash.",
+  "description": "T7: after explicit owner authorization for release/publication, publish the exact wheel bytes T6 tested under theseus-reviewer, with immutable source association, dependency closure/hashes and a retained identical-hash independent recovery copy. Do not rebuild or introduce evaluator behaviour here. Complete the bootstrap record: BenchBox baseline commit, path map, normalized full-tree diff, named independent reviewer, approved head and resulting source/artifact hashes. First promotion uses this baseline as its old side because no previous Theseus lock exists.\nAssemble full upstream-delta promotion evidence and the gate-readable record form chosen by the owner; its exact-head attachment occurs against the real cutover PR after creation, not an invented future head. Subsequent promotions compare prior locked source to candidate source.\nDecision gate: package/asset production publication, publisher identity and credentials need owner approval; unavailable rights or naming conflict is a blocker. Guardrails: no latest refs, unverified fallback, secret-bearing candidate build, owner-attestation forgery, artefact rebuild, silent source change, fabricated provenance, or reusing a stale parity hash.\nDistribution decision: GitHub Releases are sufficient initially. PyPI publication is optional, not a completion/cutover prerequisite. theseus-reviewer is the intended distribution name, not authorization or a requirement to publish on PyPI.",
   "links": [
     "theseus-freeze-final-parity-20261102",
     "theseus-decision-promotion-evidence-form-20261102"
@@ -19,6 +19,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "d0c959230eda4690b44ab256605e399d",
+      "session_id": "8cfcc9dbcab5419a91fc8b650901f36b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4c6f341b7f4b66f30a37a2f1",
+      "at": "2026-11-02T13:53:49Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9caf071d81cd49a9a83c66a2bfb148c1",
       "session_id": "8cfcc9dbcab5419a91fc8b650901f36b"
     }
   ]
