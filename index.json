@@ -31914,10 +31914,15 @@
       "title": "Stop two agent sessions from editing and committing in the same worktree"
     },
     "worktree-create-base-ref-20261101": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-03T06:26:49Z",
+        "generation": "8fe0bf8a6c014f849528abdf5c5e378d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d680f2b9a00523ec18de3879"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Let worktree-create start from a resolved BASE commit and pr-preflight scope its checks to BASE"
     },
     "worktree-create-type-prefix-mismatch-20261020": {
