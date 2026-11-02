@@ -27903,12 +27903,17 @@
       "title": "Accept members started from any recorded integration head and record same-file overlap instead of byte equality in todo-db"
     },
     "todo-db-batch-head-advance-rebind-20261101": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-03T02:49:37Z",
+        "generation": "5d1ca5f368c34a558103629e04aa823b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d680f2b9a00523ec18de3879"
+      },
       "needs": [
         "todo-db-batch-dispatch-base-overlap-20261101"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Add a guarded integration-head advance and a revisable final-PR binding, and keep receipts across context edits in todo-db"
     },
     "todo-db-batch-owner-claims-recovery-20261101": {
