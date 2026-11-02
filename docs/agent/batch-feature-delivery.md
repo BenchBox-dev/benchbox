@@ -6,7 +6,7 @@ Feature delivery mode is opt-in for related items whose prerequisites are
 already installed and verified. A source PR, catalog revision, or local mirror
 does not by itself install the capability required for feature mode. The
 decision to use two layers is recorded in
-[`adr-batch-integration-loop.md`](../internal/adr/adr-batch-integration-loop.md);
+[`batch-integration-loop-2026-11-01.md`](../../_project/decisions/batch-integration-loop-2026-11-01.md);
 the tracker side is in [`batch-tracker-contract.md`](batch-tracker-contract.md).
 
 ## Serial mode

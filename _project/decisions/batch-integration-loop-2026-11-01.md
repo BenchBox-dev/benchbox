@@ -4,9 +4,9 @@
 
 Accepted (2026-11-01). The loop is opt-in; serial mode stays the default until a
 separate decision changes it. It refines the batch contract in
-[`docs/agent/batch-tracker-contract.md`](../../agent/batch-tracker-contract.md)
+[`docs/agent/batch-tracker-contract.md`](../../docs/agent/batch-tracker-contract.md)
 and the protocol in
-[`docs/agent/batch-feature-delivery.md`](../../agent/batch-feature-delivery.md),
+[`docs/agent/batch-feature-delivery.md`](../../docs/agent/batch-feature-delivery.md),
 and builds on todo-db's batch v2 design (todo-db ADR 0012).
 
 ## Context

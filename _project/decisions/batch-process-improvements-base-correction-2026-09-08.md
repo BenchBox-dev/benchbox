@@ -3,7 +3,7 @@
 Date: 2026-09-08
 Status: Historical record of one batch run under the earlier shared-worktree
 protocol, which the integration-branch loop replaced
-(`docs/internal/adr/adr-batch-integration-loop.md`).
+(`_project/decisions/batch-integration-loop-2026-11-01.md`).
 
 ## Record
 
