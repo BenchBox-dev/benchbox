@@ -58,6 +58,7 @@ class FakeTracker:
         self.window_cap = 100000
         self.paged_sections: set[str] = set()
         self.unreadable = False
+        self.claims: dict[str, str] = {}
 
     def register(self, arguments: dict) -> None:
         self.batch = dict(arguments)
@@ -150,7 +151,10 @@ class FakeTracker:
     def sections(self) -> dict:
         assert self.batch is not None
         return {
-            "members": [{"id": m, "status": "open", "prepared": m in self.receipts} for m in self.batch["members"]],
+            "members": [
+                {"id": m, "status": "open", "claim_worker": self.claims.get(m), "prepared": m in self.receipts}
+                for m in self.batch["members"]
+            ],
             "scope": self.batch["scope"],
             "receipts": self.receipts,
             "integration_log": self.log,

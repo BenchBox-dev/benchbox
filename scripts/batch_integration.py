@@ -668,14 +668,18 @@ def hunk_warnings(repo: Path, ledger: dict, exclude: str) -> list[str]:
 
 
 def _prepare_payload(ledger: dict, member: str, landing: dict, member_worktree: str, dependencies: list[str]) -> dict:
+    take = [] if dependencies else [{"tool": "take", "arguments": {"id": member}}]
+    generation = (
+        "<generation returned by the take made before landing>" if dependencies else "<generation returned by take>"
+    )
     return {
         "steps": [
-            {"tool": "take", "arguments": {"id": member}},
+            *take,
             {
                 "tool": "prepare",
                 "arguments": {
                     "id": member,
-                    "generation": "<generation returned by take>",
+                    "generation": generation,
                     "batch_id": ledger["batch_id"],
                     "member_id": member,
                     "source_worktree": member_worktree,
@@ -700,6 +704,14 @@ def _prepare_payload(ledger: dict, member: str, landing: dict, member_worktree: 
             },
         ]
     }
+
+
+def _claimed_by_owner(tracker: dict, member: str) -> bool:
+    owner = tracker.get("owner")
+    for row in tracker.get("members", []):
+        if isinstance(row, dict) and row.get("id") == member:
+            return owner is not None and row.get("claim_worker") == owner
+    return False
 
 
 def _member_landing_facts(repo: Path, ledger: dict, member: str) -> dict:
@@ -738,7 +750,9 @@ def _already_merged(
             f"member {member!r} is already merged at {landing['merge_head']} but has no prepared receipt; "
             "submit the prepare payload below (do not merge again)"
         ),
-        "payload": _prepare_payload(ledger, member, landing, str(facts["worktree"]), dependencies),
+        "payload": _prepare_payload(
+            ledger, member, {**landing, "merge_head": head}, str(facts["worktree"]), dependencies
+        ),
     }
 
 
@@ -842,6 +856,12 @@ def land_member(repo: Path, member: str, dependencies: list[str] | None = None, 
     merged_already = _already_merged(repo, ledger, member, facts, head, dependencies)
     if merged_already is not None:
         return merged_already
+    if dependencies and not _claimed_by_owner(tracker, member):
+        raise BatchError(
+            f"member {member!r} has implementation dependencies, so the tracker refuses to take it once the "
+            "integration head moves past the recorded head: take it now, before landing, and keep the generation "
+            "for the prepare step"
+        )
     gate = _landing_preconditions(repo, ledger, tracker, member, facts, head)
     warnings = _brief_gate(repo, head, facts["member_head"])
     merged = _git_merge(repo, member, facts["branch"], head, facts["member_head"], ledger)
@@ -975,7 +995,9 @@ def _resolve_advance(repo: Path, ledger: dict, tracker: dict, reason: str) -> tu
     recorded_head = str(tracker.get("integration_head"))
     head = _rev(repo, "HEAD")
     entry = next((e for e in tracker.get("integration_log", []) if e.get("head") == head), None)
-    if entry is not None and entry.get("kind") not in ("fix", "develop-merge"):
+    if entry is not None and (
+        entry.get("kind") not in ("fix", "develop-merge") or (entry.get("kind") != reason and head == recorded_head)
+    ):
         entry = None
     if entry is None and head != recorded_head:
         stuck = [
