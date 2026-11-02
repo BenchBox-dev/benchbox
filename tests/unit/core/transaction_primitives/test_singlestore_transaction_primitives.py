@@ -67,3 +67,22 @@ def test_no_remaining_begin_transaction_or_series_in_singlestore_operations(txn,
     sql = txn._rewrite_transactional_sql_for_platform(operation.write_sql, "singlestore")
     assert "BEGIN TRANSACTION" not in sql
     assert "generate_series" not in sql
+
+
+def test_ansi_date_literals_are_rewritten_to_quoted_strings_on_singlestore(txn):
+    sql = txn._rewrite_transactional_sql_for_platform(
+        "INSERT INTO t VALUES (1, DATE '1998-01-01', date '1998-01-15');\nSELECT DATE '1998-01-01' AS o_orderdate;",
+        "singlestore",
+    )
+    assert sql == "INSERT INTO t VALUES (1, '1998-01-01', '1998-01-15');\nSELECT '1998-01-01' AS o_orderdate;"
+
+
+def test_ansi_date_literals_are_preserved_on_other_platforms(txn):
+    sql = txn._rewrite_transactional_sql_for_platform("SELECT DATE '1998-01-01'", "postgresql")
+    assert sql == "SELECT DATE '1998-01-01'"
+
+
+def test_no_ansi_date_literals_remain_in_any_singlestore_operation(txn):
+    for operation_id, operation in txn.operations_manager.get_all_operations().items():
+        sql = txn._rewrite_transactional_sql_for_platform(operation.write_sql, "singlestore")
+        assert "DATE '" not in sql.upper(), operation_id

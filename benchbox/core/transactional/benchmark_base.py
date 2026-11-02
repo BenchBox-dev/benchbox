@@ -41,6 +41,7 @@ _SET_THEN_BEGIN_ISOLATION_RE = re.compile(
 _BEGIN_TRANSACTION_RE = re.compile(r"\bBEGIN\s+TRANSACTION\s*;", re.IGNORECASE)
 _SET_READ_COMMITTED_RE = re.compile(r"SET\s+TRANSACTION\s+ISOLATION\s+LEVEL\s+READ\s+COMMITTED\s*;\s*", re.IGNORECASE)
 _DIGIT_ROWS = " UNION ALL ".join(f"SELECT {digit} AS d" for digit in range(10))
+_DATE_LITERAL_RE = re.compile(r"\bDATE\s+('\d{4}-\d{2}-\d{2}')", re.IGNORECASE)
 _CREATE_TEMP_TABLE_RE = re.compile(r"\bCREATE\s+TEMP\s+TABLE\b", re.IGNORECASE)
 _SINGLESTORE_SERIES_TEMPLATE = (
     "SELECT n AS {alias} FROM (SELECT a.d + 10 * b.d + 100 * c.d + 1000 * e.d AS n FROM "
@@ -240,6 +241,7 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
                 ),
                 sql,
             )
+            sql = _DATE_LITERAL_RE.sub(r"\1", sql)
             sql = _CREATE_TEMP_TABLE_RE.sub("CREATE TEMPORARY TABLE", _SET_READ_COMMITTED_RE.sub("", sql))
             return _BEGIN_TRANSACTION_RE.sub("BEGIN;", sql)
         template = _SERIES_SELECT_TEMPLATES.get(dialect)

@@ -729,7 +729,7 @@ class ClickHouseWorkloadMixin:
             elif (
                 self.deployment_mode == "server"
                 and (benchmark_type or "").lower() in {"datavault", "data_vault"}
-                and str(query_id).lower().removeprefix("q") == "21"
+                and str(query_id).lower().removeprefix("q") in {"5", "21"}
             ):
                 additional_settings = {"join_algorithm": "grace_hash", "grace_hash_join_initial_buckets": 8}
             transformed_query = rewrite_query_for_clickhouse(query, additional_settings)
