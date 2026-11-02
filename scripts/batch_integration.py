@@ -838,7 +838,9 @@ def _already_merged(
             f"reset the integration branch to {landing.get('source_base')} and land again once the combination "
             f"passes; do not prepare {member!r} until the reruns pass"
         )
-    bound = landing if landing.get("landed_at") is None else {**landing, "merge_head": head}
+    if head != landing["merge_head"] and head != tracker.get("integration_head"):
+        raise BatchError(f"unrecorded commits after the merge of {member}; record them with batch-advance first")
+    bound = {**landing, "merge_head": head}
     return {
         "status": "already-merged",
         "message": (

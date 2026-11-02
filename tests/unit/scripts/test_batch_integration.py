@@ -482,14 +482,19 @@ def test_a_hand_made_merge_whose_check_trusted_a_non_develop_commit_is_refused(w
         world.land("zeta")
 
 
-def test_an_interrupted_landing_binds_the_prepare_payload_to_the_merge_commit_not_the_later_head(
-    world: World,
-) -> None:
+def test_a_leader_commit_after_a_merge_that_is_not_recorded_refuses_the_prepare_payload(world: World) -> None:
+    integration = world.start()
+    world.deliver("zeta", {"src/a.py": "member\n"})
+    world.land("zeta")
+    world.commit(integration, {"src/b.py": "leader fix\n"}, "fix: leader commit")
+    with _raises("unrecorded commits after the merge of zeta"):
+        world.land("zeta")
+
+
+def test_an_interrupted_hand_made_merge_binds_the_prepare_payload_to_the_merge_commit(world: World) -> None:
     integration = world.start()
     member = world.deliver("zeta", {"src/a.py": "member\n"})
     merged = _merge_by_hand(integration, member)
-    world.commit(integration, {"src/b.py": "leader fix\n"}, "fix: leader commit")
-    assert world.head() != merged
     again = world.land("zeta")
     assert again["status"] == "already-merged"
     assert again["payload"]["steps"][-1]["arguments"]["integration_head"] == merged
