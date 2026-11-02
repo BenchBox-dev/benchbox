@@ -2015,6 +2015,15 @@
       "status": "done",
       "title": "Deliver canonical tracker and batch skill support for prepared feature work"
     },
+    "batch-remediation-benchbox-20261102": {
+      "claim": null,
+      "needs": [
+        "batch-remediation-todo-db-runtime-20261102"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Replace batch cache replay with executed final-tree verification and complete safe delivery"
+    },
     "batch-remediation-skill-contract-20261102": {
       "claim": null,
       "needs": [],
