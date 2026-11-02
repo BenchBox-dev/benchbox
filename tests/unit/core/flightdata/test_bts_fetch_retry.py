@@ -33,7 +33,7 @@ def _script(monkeypatch, outcomes):
         return _Response(outcome)
 
     monkeypatch.setattr(dl.tls, "urlopen", fake_urlopen)
-    monkeypatch.setattr(dl.time, "sleep", lambda _s: None)
+    monkeypatch.setattr(dl, "_sleep", lambda _s: None)
     return calls
 
 
