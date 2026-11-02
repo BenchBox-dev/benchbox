@@ -2015,6 +2015,13 @@
       "status": "done",
       "title": "Deliver canonical tracker and batch skill support for prepared feature work"
     },
+    "batch-remediation-skill-contract-20261102": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Define the simplified integration-batch contract in the shared skill catalog"
+    },
     "batch-skill-pinned-rollout": {
       "claim": null,
       "needs": [
