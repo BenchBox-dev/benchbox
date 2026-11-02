@@ -27823,6 +27823,15 @@
       "status": "open",
       "title": "Enforce full-delta Theseus promotion review in BenchBox before extracting the reviewer"
     },
+    "theseus-release-bootstrap-evidence-20261102": {
+      "claim": null,
+      "needs": [
+        "theseus-freeze-final-parity-20261102"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Publish the parity-proven Theseus bytes and assemble independently approved first-promotion evidence"
+    },
     "theseus-repository-governance-bootstrap-20261102": {
       "claim": null,
       "needs": [
