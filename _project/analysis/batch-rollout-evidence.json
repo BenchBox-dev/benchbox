@@ -22,13 +22,13 @@
   "catalog": {
     "repository": "https://github.com/joeharris76/skill-sync-skills",
     "canonical_branch": "main",
-    "merge_revision": "cd8620d9a1395fc91427f86a14794d0e926da113",
-    "parent_revision": "fca81f0a6bd37633a32c75f3385f83d4e7eab1da",
+    "merge_revision": "8358bf167eda32f5b25d30103af9ff977eddbe12",
+    "parent_revision": "cd8620d9a1395fc91427f86a14794d0e926da113",
     "canonical_path": "skills/todo",
     "pr": {
-      "number": 103,
-      "url": "https://github.com/joeharris76/skill-sync-skills/pull/103",
-      "merge_revision": "cd8620d9a1395fc91427f86a14794d0e926da113"
+      "number": 104,
+      "url": "https://github.com/joeharris76/skill-sync-skills/pull/104",
+      "merge_revision": "8358bf167eda32f5b25d30103af9ff977eddbe12"
     }
   },
   "artifact": {
@@ -124,17 +124,17 @@
   },
   "benchbox_pin": {
     "before": "e7b7fd91d6419ebecc18646c63ef686d499ef026",
-    "after": "cd8620d9a1395fc91427f86a14794d0e926da113",
+    "after": "8358bf167eda32f5b25d30103af9ff977eddbe12",
     "config": "skill-sync.conf",
     "apply": "./tools/skill-sync apply"
   },
   "mirrors": {
     "tracked_target": {
       "root": ".claude/skills/todo",
-      "receipt_revision": "cd8620d9a1395fc91427f86a14794d0e926da113",
+      "receipt_revision": "8358bf167eda32f5b25d30103af9ff977eddbe12",
       "files": {
         "SKILL.md": "318415959c88b77e5fd50c9ab36742027e07549c94dc759ebf472d742f8dc2e8",
-        "references/batch.md": "1e78a10521ffc248680c1a4483defbba321074481535236eeca6d64bbbc9bba1",
+        "references/batch.md": "9bfa615512d692c1de1af33ba7559e174a19491202d7bbf81095c6938aed07a1",
         "references/bootstrap.md": "6cd0769170d8c78c0d12c1bca977cf0f2cf382684b38d14055609022b90e4529",
         "references/closeout.md": "c44ac949a44f419844fa9997e74e6fd889954d8d90a6847199a1b0c4ebc887c2",
         "references/handoff.md": "585b160d8cd93fbf03f43a8f71a111f5fb187f3687d79cab2ad8a0c79f992ba8",
@@ -151,10 +151,10 @@
     "agents_target": {
       "root": ".agents/skills/todo",
       "materialized": true,
-      "receipt_revision": "cd8620d9a1395fc91427f86a14794d0e926da113",
+      "receipt_revision": "8358bf167eda32f5b25d30103af9ff977eddbe12",
       "files": {
         "SKILL.md": "318415959c88b77e5fd50c9ab36742027e07549c94dc759ebf472d742f8dc2e8",
-        "references/batch.md": "1e78a10521ffc248680c1a4483defbba321074481535236eeca6d64bbbc9bba1",
+        "references/batch.md": "9bfa615512d692c1de1af33ba7559e174a19491202d7bbf81095c6938aed07a1",
         "references/bootstrap.md": "6cd0769170d8c78c0d12c1bca977cf0f2cf382684b38d14055609022b90e4529",
         "references/closeout.md": "c44ac949a44f419844fa9997e74e6fd889954d8d90a6847199a1b0c4ebc887c2",
         "references/handoff.md": "585b160d8cd93fbf03f43a8f71a111f5fb187f3687d79cab2ad8a0c79f992ba8",

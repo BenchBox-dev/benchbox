@@ -182,9 +182,12 @@ concrete commands; this guide names only the tracker calls and the contract.
   identity: a member must not use the leader's server instance or actor
   (`--actor`/`TODO_DB_ACTOR`). A member that needs a tracker fact asks
   the leader or reads it (`show_item`, `show_batch`).
-- The leader claims a member (`take`) only at the moment it prepares or finishes
-  that member, and releases or prepares it immediately. Do not hold member
-  claims while members are being implemented: one live claim per worker, and
+- The leader claims a member (`take`) only around its own landing, prepare,
+  or finish, and releases or prepares it immediately. A member with
+  implementation edges is taken just before its landing, because the tracker
+  refuses that `take` once the integration head moves past the recorded head;
+  every other member is taken after its landing. Do not hold member claims
+  while members are being implemented: one live claim per worker, and
   `abort_batch` needs every claim released.
 - Members work in parallel. Independence is declared by the registered
   implementation edges and frozen scopes, not discovered at merge time.
@@ -251,14 +254,17 @@ tracker. Its final report is the landing request.
 
 For each landing request, one member at a time, in dependency order:
 
-1. Revalidate the member head is unchanged since the request, its review
+1. For a member with implementation edges, `take` it now and keep the
+   generation for step 3. Then revalidate the member head is unchanged since
+   the request, its review
    result matches that exact patch, and its changed files stay inside the
    frozen scope.
 2. Merge the member into the integration branch with a merge commit and confirm
    the merged tree equals the member tree (the member already merged the
    integration head; anything else means the integration head moved: send the
    member back to merge it again).
-3. `take` the member, then `prepare` with the integration worktree, the
+3. `take` the member if step 1 did not, then `prepare` with the integration
+   worktree, the
    source base (the latest recorded integration head merged into the member
    branch, which is also the base its review is bound to), accepted head, new
    integration head, frozen scope hash, implementation edges (the changed files

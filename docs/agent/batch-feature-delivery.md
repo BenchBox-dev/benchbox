@@ -145,9 +145,12 @@ A member:
    integration branch.
 3. For an independent member, the leader then calls `take` and `prepare` with
    the printed payload. A member with implementation dependencies must be taken
-   before `batch-land` (land refuses otherwise, because the tracker refuses a
-   take once the integration head moves past the recorded head); the printed
-   payload is then `prepare` only, using the generation from that take.
+   before `batch-land` and landed with `DEPENDENCIES=<its registered
+   implementation dependencies>` (land refuses an untaken dependent, because
+   the tracker refuses a take once the integration head moves past the recorded
+   head, and `prepare` refuses dependencies that differ from the registered
+   ones); the printed payload is then `prepare` only, using the generation from
+   that take.
    `prepare` records the receipt, releases the claim, and leaves the member
    `open`. Claims are held only for this moment.
 4. `make batch-status` names the next step. If a merge succeeded but `prepare`
