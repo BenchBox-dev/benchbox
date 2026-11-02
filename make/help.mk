@@ -152,7 +152,7 @@ help:
 	@echo "  make batch-start BATCH=id MEMBERS=a,b SCOPE_JSON=file PROJECT_ID=id [WORKTREE_PATH=path] [DEPENDENCIES=m=a+b,...] [CONFIRM_CUTOVER=1]  Create the integration worktree and print the register_batch payload"
 	@echo "  make batch-member-create MEMBER=id [WORKTREE_PATH=path]  Create feat/<batch>--<member> at the integration head"
 	@echo "  make batch-member-check [TESTS=a,b]                  Member: require clean and synced, run preflight, changelog check and member review, record the result"
-	@echo "  make batch-land MEMBER=id [DEPENDENCIES=a,b]         Leader: merge a checked member with --no-ff and print the take/prepare payload"
+	@echo "  make batch-land MEMBER=id                             Leader: merge a checked member with --no-ff and print the take/prepare payload"
 	@echo "  make batch-advance REASON=fix|develop-merge           Leader: record a fix commit or develop merge and print the advance_batch_head payload"
 	@echo "  make batch-status                                    Reconcile the ledger with the tracker and Git; names the next step"
 	@echo "  make batch-verify                                    Check first-parent history, recorded heads and member ancestry"

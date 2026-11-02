@@ -940,12 +940,22 @@ def _overlap_reruns(
     return reruns, failures
 
 
-def land_member(repo: Path, member: str, dependencies: list[str] | None = None, *, push: bool = True) -> dict:
+def registered_dependencies(repo: Path, batch_id: str, member: str) -> list[str]:
+    batch = _todo_db_json(repo, ["show", member]).get("batch")
+    if not isinstance(batch, dict) or batch.get("batch_id") != batch_id or batch.get("member_id") != member:
+        raise BatchError(f"the tracker carries no batch metadata for member {member!r} of batch {batch_id!r}")
+    dependencies = batch.get("implementation_dependencies")
+    if not isinstance(dependencies, list) or not all(isinstance(dep, str) for dep in dependencies):
+        raise BatchError(f"the tracker returned no implementation dependency list for member {member!r}")
+    return list(dependencies)
+
+
+def land_member(repo: Path, member: str, *, push: bool = True) -> dict:
     batch_id = require_role(repo, ROLE_INTEGRATION)
     ledger = _require_ledger(repo, batch_id)
     if member not in ledger["members"]:
         raise BatchError(f"{member!r} is not a registered member of batch {batch_id!r}")
-    dependencies = list(dependencies or [])
+    dependencies = registered_dependencies(repo, batch_id, member)
     tracker = read_tracker(repo, batch_id)
     receipts = _receipts(tracker)
     if member in receipts:
@@ -1702,7 +1712,6 @@ def main(argv: list[str] | None = None) -> int:
 
     land = sub.add_parser("land", help="merge a checked member into the integration branch")
     land.add_argument("--member", required=True)
-    land.add_argument("--dependencies", default="")
     land.add_argument("--no-push", action="store_true")
 
     advance = sub.add_parser("advance", help="record a leader fix commit or develop merge")
@@ -1749,7 +1758,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
             )
         elif args.command == "land":
-            _print(land_member(repo, args.member, _parse_csv(args.dependencies), push=not args.no_push))
+            _print(land_member(repo, args.member, push=not args.no_push))
         elif args.command == "advance":
             _print(advance_head(repo, args.reason, push=not args.no_push))
         elif args.command == "finish":

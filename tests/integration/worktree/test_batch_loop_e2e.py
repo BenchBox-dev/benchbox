@@ -165,7 +165,7 @@ def test_members_land_bind_rebind_and_finish(world: World, leader: McpServer, ou
         "m3", {"src/shared.py": shared(alpha="1", gamma="3"), "tests/test_m3.py": attribute_test("GAMMA", "3")}
     )
     loop.check("m3", "tests/test_m3.py")
-    claim_first = world.refused(loop.integration, "batch-land", MEMBER=m3, DEPENDENCIES=m1)
+    claim_first = world.refused(loop.integration, "batch-land", MEMBER=m3)
     assert "take it now, before landing" in claim_first
     loop.claim("m3")
     landed = loop.land("m3")
@@ -298,12 +298,12 @@ def test_silent_revert_is_stopped_at_landing_and_only_a_repaired_member_reaches_
     loop.check("m2", "tests/test_m2.py")
     loop.claim("m2")
     before = loop.head()
-    refused = world.refused(loop.integration, "batch-land", MEMBER=m2, DEPENDENCIES=m1)
+    refused = world.refused(loop.integration, "batch-land", MEMBER=m2)
     assert f"overlap rerun failed for ['{m1}']" in refused
     assert loop.ledger()["acceptance"][m1][-1]["status"] == "failed"
     assert world.git(world.code_remote, "rev-parse", f"refs/heads/{loop.branch}") == before
 
-    again = world.refused(loop.integration, "batch-land", MEMBER=m2, DEPENDENCIES=m1)
+    again = world.refused(loop.integration, "batch-land", MEMBER=m2)
     assert f"overlap rerun failed for ['{m1}']" in again and "reset the integration branch" in again
     assert m2 not in loop.tracker()["receipts"]
 

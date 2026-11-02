@@ -45,10 +45,9 @@ batch-member-check:
 
 .PHONY: batch-land
 batch-land: export BATCH_ARG_MEMBER := $(MEMBER)
-batch-land: export BATCH_ARG_DEPENDENCIES := $(DEPENDENCIES)
 batch-land:
-	@test -n "$$BATCH_ARG_MEMBER" || { echo "Usage: make batch-land MEMBER=<id> [DEPENDENCIES=<a,b>]" >&2; exit 2; }
-	@$(BATCH_SCRIPT) land --member "$$BATCH_ARG_MEMBER" $${BATCH_ARG_DEPENDENCIES:+--dependencies "$$BATCH_ARG_DEPENDENCIES"}
+	@test -n "$$BATCH_ARG_MEMBER" || { echo "Usage: make batch-land MEMBER=<id>" >&2; exit 2; }
+	@$(BATCH_SCRIPT) land --member "$$BATCH_ARG_MEMBER"
 
 .PHONY: batch-advance
 batch-advance: export BATCH_ARG_REASON := $(REASON)
