@@ -27745,15 +27745,10 @@
       "title": "Owner decision: wait for or waive the oracle reliability observation before production-connected extraction steps"
     },
     "theseus-decision-separate-repo-20261102": {
-      "claim": {
-        "expires_at": "2026-11-03T13:59:58Z",
-        "generation": "7862bff82237486a9387783cf1c2d8cf",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b58f5aa5b2bb5e33c84a53cb"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Record the authorized separate Theseus repository and its cost tradeoff"
     },
     "theseus-decision-vendored-matcher-20261102": {
