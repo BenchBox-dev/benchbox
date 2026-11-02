@@ -404,6 +404,7 @@ class Loop:
         self.integration: Path = world.primary
         self.worktrees: dict[str, Path] = {}
         self.claims: dict[str, str] = {}
+        self.reminders: list[str] = []
 
     def mid(self, name: str) -> str:
         return f"{self.batch}-{name}"
@@ -413,13 +414,11 @@ class Loop:
         return f"feat/{self.batch}"
 
     def register(self) -> dict:
-        for member, patterns in self.scope.items():
-            deps = self.dependencies.get(member, [])
+        for member in self.scope:
             self.leader.ok(
                 "create_item",
                 id=member,
                 title=f"member {member}",
-                needs=deps,
                 acceptance=[f"{member} behaves as specified"],
             )
         scope_file = self.world.root / f"{self.batch}-scope.json"
@@ -431,20 +430,17 @@ class Loop:
             "PROJECT_ID": "disposable",
             "CONFIRM_CUTOVER": "1",
         }
+        if self.dependencies:
+            variables["DEPENDENCIES"] = ",".join(
+                f"{member}={'+'.join(deps)}" for member, deps in self.dependencies.items()
+            )
         start = self.world.make_json(self.world.primary, "batch-start", **variables)
         self.integration = Path(start["worktree"])
         self.generation = start["arguments"]["owner_generation"]
         registered = self.leader.ok("register_batch", **start["arguments"])
-        for member in self.scope:
-            self.leader.ok(
-                "update_item",
-                id=member,
-                batch={
-                    "batch_id": self.batch,
-                    "member_id": member,
-                    "implementation_dependencies": self.dependencies.get(member, []),
-                },
-            )
+        for step in start["after_register"]["steps"]:
+            self.leader.ok(step["tool"], **step["arguments"])
+        self.reminders = start["after_register"]["reminders"]
         return registered
 
     def member(self, name: str) -> Path:

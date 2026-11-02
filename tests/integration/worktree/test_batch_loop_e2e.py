@@ -117,6 +117,8 @@ def test_members_land_bind_rebind_and_finish(world: World, leader: McpServer, ou
     )
     loop.register()
     m1, m2, m3 = (loop.mid(name) for name in ("m1", "m2", "m3"))
+    assert len(loop.reminders) == 1 and m3 in loop.reminders[0]
+    assert m1 in leader.ok("show_item", id=m3)["needs"]["values"]
 
     refused = outsider.refused("take", "E_BATCH_OWNER", id=m1)
     assert "leader" in refused["error"]

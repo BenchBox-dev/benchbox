@@ -68,6 +68,45 @@ def test_start_refuses_a_bad_member_set_or_scope_before_creating_anything(
     assert not world.calls_matching("worktree-create")
 
 
+def test_start_prints_one_update_item_step_per_member_merging_needs_with_dependencies(world: World) -> None:
+    world.tracker.item_needs = {"alpha": ["external", "zeta"], "mid": ["external"]}
+    world.start(dependencies={"alpha": ["zeta"], "mid": ["zeta", "alpha"]})
+    after = world.payload["after_register"]
+    assert [step["arguments"]["id"] for step in after["steps"]] == MEMBERS
+    by_id = {step["arguments"]["id"]: step["arguments"] for step in after["steps"]}
+    assert by_id["zeta"] == {
+        "id": "zeta",
+        "needs": [],
+        "batch": {"batch_id": BATCH, "member_id": "zeta", "implementation_dependencies": []},
+    }
+    assert by_id["alpha"]["needs"] == ["external", "zeta"]
+    assert by_id["alpha"]["batch"]["implementation_dependencies"] == ["zeta"]
+    assert by_id["mid"]["needs"] == ["external", "zeta", "alpha"]
+    assert all(step["tool"] == "update_item" for step in after["steps"])
+    assert "after register_batch" in after["label"]
+    assert len(after["reminders"]) == 2 and all("take it before batch-land" in text for text in after["reminders"])
+
+
+@pytest.mark.parametrize(
+    "dependencies",
+    [{"alpha": ["ghost"]}, {"ghost": ["zeta"]}, {"alpha": ["alpha"]}, {"zeta": ["alpha"], "alpha": ["zeta"]}],
+)
+def test_start_refuses_unknown_self_or_cyclic_dependencies_before_creating_anything(
+    world: World, dependencies: dict
+) -> None:
+    with _raises("registered members|itself|cycle"):
+        world.start(dependencies=dependencies)
+    assert not world.calls_matching("worktree-create")
+
+
+def test_dependency_input_parses_members_and_refuses_malformed_entries() -> None:
+    assert bi.parse_dependencies("alpha=zeta+mid,mid=zeta") == {"alpha": ["zeta", "mid"], "mid": ["zeta"]}
+    assert bi.parse_dependencies("") == {}
+    for bad in ("alpha", "alpha=", "alpha=zeta,alpha=mid"):
+        with _raises("must read member|names no dependency"):
+            bi.parse_dependencies(bad)
+
+
 def test_member_create_starts_at_the_current_integration_head_and_records_identity(world: World) -> None:
     integration = world.start()
     first = world.member("zeta")

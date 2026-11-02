@@ -334,6 +334,7 @@ def start_batch(
     delivery_boundary: str = "final-pr",
     terminal_outcome: str = "deliver",
     confirm_cutover: bool = False,
+    dependencies: dict[str, list[str]] | None = None,
 ) -> dict:
     _validate_id(batch_id, "batch")
     if not members or len(set(members)) != len(members):
@@ -345,6 +346,8 @@ def start_batch(
         for patterns in scope.values()
     ):
         raise BatchError("scope must map every member, and only members, to a non-empty list of path patterns")
+    dependencies = _validate_dependencies(members, dependencies or {})
+    follow_up = _member_metadata_steps(repo, batch_id, members, dependencies)
     _rev(repo, DEVELOP_REF)
     origin = _git(repo, "remote", "get-url", "origin")
     branch = integration_branch_name(batch_id)
@@ -400,7 +403,80 @@ def start_batch(
     }
     if confirm_cutover:
         arguments["confirm_schema3_cutover"] = True
-    return {"worktree": str(path), "tool": "register_batch", "arguments": arguments}
+    return {
+        "worktree": str(path),
+        "tool": "register_batch",
+        "arguments": arguments,
+        "after_register": follow_up,
+    }
+
+
+def parse_dependencies(text: str | None) -> dict[str, list[str]]:
+    result: dict[str, list[str]] = {}
+    for entry in _parse_csv(text):
+        member, separator, deps = entry.partition("=")
+        member = member.strip()
+        if not separator or not member or member in result:
+            raise BatchError(f"dependency entry {entry!r} must read member=dep1+dep2 and name each member once")
+        result[member] = [dep.strip() for dep in deps.split("+") if dep.strip()]
+        if not result[member]:
+            raise BatchError(f"dependency entry {entry!r} names no dependency")
+    return result
+
+
+def _validate_dependencies(members: list[str], dependencies: dict[str, list[str]]) -> dict[str, list[str]]:
+    for member, deps in dependencies.items():
+        if member not in members or any(dep not in members for dep in deps):
+            raise BatchError(f"dependencies of {member!r} must name registered members only: {deps}")
+        if member in deps or len(set(deps)) != len(deps):
+            raise BatchError(f"dependencies of {member!r} must be unique and not include the member itself")
+    state: dict[str, int] = {}
+
+    def visit(node: str) -> None:
+        if state.get(node) == 1:
+            raise BatchError(f"implementation dependencies form a cycle through {node!r}")
+        if state.get(node) == 2:
+            return
+        state[node] = 1
+        for dep in dependencies.get(node, []):
+            visit(dep)
+        state[node] = 2
+
+    for member in members:
+        visit(member)
+    return dependencies
+
+
+def _member_metadata_steps(repo: Path, batch_id: str, members: list[str], dependencies: dict[str, list[str]]) -> dict:
+    steps = []
+    reminders = []
+    for member in members:
+        shown = _todo_db_json(repo, ["show", member]).get("needs")
+        current = shown.get("values") if isinstance(shown, dict) else None
+        if not isinstance(current, list) or shown.get("total") != len(current):
+            raise BatchError(f"the tracker returned no complete needs list for {member!r}")
+        deps = dependencies.get(member, [])
+        needs = list(dict.fromkeys([*(str(need) for need in current), *deps]))
+        steps.append(
+            {
+                "tool": "update_item",
+                "arguments": {
+                    "id": member,
+                    "needs": needs,
+                    "batch": {"batch_id": batch_id, "member_id": member, "implementation_dependencies": deps},
+                },
+            }
+        )
+        if deps:
+            reminders.append(
+                f"member {member!r} depends on {deps}: take it before batch-land, because the tracker refuses "
+                "to take it once the integration head moves past the recorded head"
+            )
+    return {
+        "label": "run these update_item steps after register_batch, in this order",
+        "steps": steps,
+        "reminders": reminders,
+    }
 
 
 def create_member(repo: Path, member: str, worktree_path: Path | None = None) -> dict:
@@ -1418,6 +1494,7 @@ def main(argv: list[str] | None = None) -> int:
     start.add_argument("--delivery-boundary", default="final-pr")
     start.add_argument("--terminal-outcome", default="deliver")
     start.add_argument("--confirm-cutover", action="store_true")
+    start.add_argument("--dependencies", default="", help="member=dep1+dep2,member2=dep3")
 
     create = sub.add_parser("member-create", help="create a member worktree at the integration head")
     create.add_argument("--member", required=True)
@@ -1460,6 +1537,7 @@ def main(argv: list[str] | None = None) -> int:
                     delivery_boundary=args.delivery_boundary,
                     terminal_outcome=args.terminal_outcome,
                     confirm_cutover=args.confirm_cutover,
+                    dependencies=parse_dependencies(args.dependencies),
                 )
             )
         elif args.command == "member-create":
