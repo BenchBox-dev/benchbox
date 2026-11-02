@@ -1,4 +1,11 @@
 {
   "schema": 1,
-  "waivers": []
+  "waivers": [
+    {
+      "tag": "v30.28.0",
+      "reason": "Complete BenchBox 0.5.0 release validation with the bundled SQLGlot runtime based on upstream v30.27.0 before adopting v30.28.0.",
+      "approved": "2026-11-02",
+      "expires": "2026-11-09"
+    }
+  ]
 }
