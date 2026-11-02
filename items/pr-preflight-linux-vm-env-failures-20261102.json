@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Both tests pass, or skip with a stated reason, in make pr-preflight's Linux VM leg on develop.",
+    "The fix does not weaken either test on macOS or in CI."
+  ],
+  "context": "Found while running make pr-preflight for the integration-branch batch loop core PR (batch-integration-loop-20261101). Evidence: /tmp logs are not durable; reproduce with `make ci-linux CI_LINUX_CMD='uv run -- python -m pytest <both node ids> -n 0 -q'` from a develop worktree.",
+  "description": "On 2026-11-02 make pr-preflight's Linux VM leg (container machine benchbox-agent, ~/.cache/benchbox-linux-venv, Python 3.14) failed two tests on the batch-loop core branch, and `make ci-linux` reproduced both on an unmodified origin/develop checkout (73af494718):\n\n1. tests/integration/worktree/test_batch_skill_delivery.py::test_installed_runtime_handshake_exposes_registered_batch_tools: `uv run --project _project/scripts --locked --offline -- todo-db bootstrap` exits 1 because the VM's uv cache has no packages for the _project/scripts project, so the offline install cannot resolve todo-db's dependencies. CI syncs that project first (`uv sync --project _project/scripts --locked`), so CI passes.\n2. tests/unit/test_standardized_test_commands.py::TestMakefileCommands::test_makefile_test_unlock_expands_user_lock_dir_without_uv: `make test-unlock` fails with `make: python3: No such file or directory` because the VM PATH the test builds has no python3.\n\nEither make the VM environment match what the tests assume (sync the scripts project before the run; provide python3), or make the tests state their prerequisite and skip with a reason when it is absent.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d680f2b9a00523ec18de3879",
+      "at": "2026-11-02T04:34:00Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "bd4424717ef1466384ff22bddc8f83de",
+      "session_id": "3dd2b4a046904511bb5ce7edcc3205fd"
+    }
+  ]
+}
