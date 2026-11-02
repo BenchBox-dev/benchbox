@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Context records option (i) or (ii), the date, and the quoted owner message.",
+    "theseus-promotion-review-path-benchbox-20261102 becomes ready only after this item is done."
+  ],
+  "context": "Status blocked until the owner answers.",
+  "description": "Owner-only decision gate. After cutover BenchBox pins Theseus by a reviewed lock. A promotion PR (lock bump) must be refused by oracle-gate unless a record proves the upstream source delta was reviewed. The refusal sits beside the existing omp-bump refusal (_project/scripts/oracle_review_check.py decide(), evaluated before stand-ins) and may read only what the gate already reads: PR files, comments, reviews and statuses. No Actions-artifact read and no new App permission.\n\nOptions:\n(i) An attester evidence comment bound to the head, as omp bumps use (_project/scripts/omp_bump_gate.py). Cost: one owner action per promotion; oracle source changes about nine times a day today.\n(ii) A field in the oracle's own review or status for that head, written only when the promotion evidence check passed.\n\nEither way no existing marker or status changes meaning without a versioned compatibility test.\n\nGuardrails: agents must not choose; record only the owner's answer.",
+  "links": [
+    "_project/scripts/oracle_review_check.py",
+    "_project/scripts/omp_bump_gate.py",
+    "_project/scripts/oracle_reviewers/protocol.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4c6f341b7f4b66f30a37a2f1",
+      "at": "2026-11-02T13:45:01Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0cd4bfe480e947a3ba9a563a915083e8",
+      "session_id": "8cfcc9dbcab5419a91fc8b650901f36b"
+    }
+  ]
+}

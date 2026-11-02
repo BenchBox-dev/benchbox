@@ -27703,6 +27703,13 @@
       "status": "done",
       "title": "PlatformHookRegistry.build_database_config loads the user's real saved credentials when called from tests and probes"
     },
+    "theseus-decision-promotion-evidence-form-20261102": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Owner decision: choose the record the gate reads to accept a Theseus promotion PR"
+    },
     "theseus-decision-separate-repo-20261102": {
       "claim": null,
       "needs": [],
