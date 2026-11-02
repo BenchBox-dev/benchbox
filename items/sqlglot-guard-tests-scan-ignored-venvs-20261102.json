@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Both tests pass with a populated _project/scripts/.venv present.",
+    "Both still fail on a tracked file that violates their rule (existing negative cases keep working)."
+  ],
+  "context": "Found while running the leader's fast tier for batch-loop-pilot (batch-integration-loop-20261101).",
+  "description": "tests/unit/sql_compat/test_sqlglot_overlay_guard.py::test_repo_has_no_vacuous_sqlglot_overlays and tests/unit/sql_compat/test_vendored_sqlglot_bypass.py::test_upstream_sqlglot_imports_are_exactly_the_allowlisted_project_tools walk the filesystem, so a git-ignored `_project/scripts/.venv` (created by any `uv run --project _project/scripts`, including the batch-* targets and the todo-db tracker CLI) puts PyPI sqlglot files into their scan and both fail. Seen 2026-11-02 in `make pr-preflight-fast-tests` on the batch-loop pilot integration worktree; removing the venv made them pass. Restrict both scans to tracked files (git ls-files) or skip git-ignored directories.",
+  "sessions": [
+    {
+      "actor": "benchbox-batch-pilot-leader",
+      "at": "2026-11-02T06:45:15Z",
+      "client": "benchbox-batch-leader",
+      "op": "create",
+      "op_id": "ca15f1f1a17e4a6fa941a87a14fe9874",
+      "session_id": "b249fb5e3b804f6fab2e27e759c8e1fb"
+    }
+  ]
+}
