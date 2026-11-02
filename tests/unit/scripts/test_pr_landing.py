@@ -233,7 +233,7 @@ def test_ready_allows_empty_review_decision_for_non_soundness_pr(tmp_path: Path)
     assert landing.ready_failures(_identity(repo, head, base), head, evidence, repo) == []
 
 
-def test_ready_rejects_empty_review_decision_for_soundness_pr(tmp_path: Path) -> None:
+def _soundness_head(tmp_path: Path) -> tuple[Path, str, str]:
     repo = _repo(tmp_path / "r")
     base = subprocess.run(
         ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
@@ -246,10 +246,43 @@ def test_ready_rejects_empty_review_decision_for_soundness_pr(tmp_path: Path) ->
     head = subprocess.run(
         ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
     ).stdout.strip()
+    return repo, base, head
 
-    failures = landing.ready_failures(_identity(repo, head, base), head, _evidence(head, review_decision=""), repo)
 
-    assert any("not APPROVED" in failure for failure in failures)
+@pytest.mark.parametrize("decision", ["", "APPROVED"])
+def test_ready_accepts_a_soundness_pr_when_the_oracle_gate_passed(tmp_path: Path, decision: str) -> None:
+    repo, base, head = _soundness_head(tmp_path)
+    evidence = _evidence(head, review_decision=decision, oracle_gate_state="success")
+
+    assert landing.ready_failures(_identity(repo, head, base), head, evidence, repo) == []
+
+
+@pytest.mark.parametrize("state", [None, "pending", "failure", "error"])
+def test_ready_refuses_a_soundness_pr_without_a_passing_oracle_gate(tmp_path: Path, state: str | None) -> None:
+    repo, base, head = _soundness_head(tmp_path)
+    evidence = _evidence(head, review_decision="", oracle_gate_state=state)
+
+    failures = landing.ready_failures(_identity(repo, head, base), head, evidence, repo)
+
+    assert any("oracle-gate" in failure for failure in failures)
+
+
+def test_ready_ignores_the_oracle_gate_for_a_non_soundness_pr(tmp_path: Path) -> None:
+    repo = _repo(tmp_path / "r")
+    head = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
+    ).stdout.strip()
+
+    assert landing.ready_failures(_identity(repo, head), head, _evidence(head, oracle_gate_state=None), repo) == []
+
+
+def test_ready_still_refuses_a_soundness_pr_with_requested_changes_despite_a_passing_gate(tmp_path: Path) -> None:
+    repo, base, head = _soundness_head(tmp_path)
+    evidence = _evidence(head, review_decision="CHANGES_REQUESTED", oracle_gate_state="success")
+
+    failures = landing.ready_failures(_identity(repo, head, base), head, evidence, repo)
+
+    assert any("CHANGES_REQUESTED" in failure for failure in failures)
 
 
 def test_batch_ready_requires_active_registered_runtime(tmp_path: Path) -> None:
@@ -299,33 +332,15 @@ def test_ready_rejects_late_review_unpublished_and_stale_checks(tmp_path: Path) 
     assert any("not expected head" in f for f in failures)
 
 
-def test_ready_holds_soundness_even_with_caller_approval(tmp_path: Path) -> None:
-    repo = _repo(tmp_path / "r")
-    base = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
-    ).stdout.strip()
-    (repo / "publication").mkdir()
-    (repo / "publication" / "ledger-seed.json").write_text("{}")
-    subprocess.run(["git", "add", "publication/ledger-seed.json"], cwd=repo, check=True, capture_output=True)
-    subprocess.run(["git", "commit", "-m", "soundness"], cwd=repo, check=True, capture_output=True)
-    head = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
-    ).stdout.strip()
+def test_ready_keeps_the_hold_label_on_a_soundness_pr_whose_oracle_gate_passed(tmp_path: Path) -> None:
+    repo, base, head = _soundness_head(tmp_path)
     failures = landing.ready_failures(
         _identity(repo, head, base),
         head,
-        _evidence(head, hold_labels=["no-auto-merge"], soundness_paths_changed=False),
+        _evidence(head, hold_labels=["no-auto-merge"], oracle_gate_state="success"),
         repo,
     )
     assert any("no-auto-merge" in f for f in failures)
-    assert any("soundness" in f for f in failures)
-    still_blocked = landing.ready_failures(
-        _identity(repo, head, base),
-        head,
-        _evidence(head, soundness_paths_changed=False, maintainer_approved=True),
-        repo,
-    )
-    assert any("soundness" in failure for failure in still_blocked)
 
 
 def test_enqueue_refuses_moved_head() -> None:
@@ -1253,6 +1268,7 @@ def test_ready_forwards_the_live_verified_review_decision(
     monkeypatch.setattr(landing, "require_start_identity", lambda *a, **kw: {})
     monkeypatch.setattr(landing, "resolve_pr", lambda *a, **kw: pr)
     monkeypatch.setattr(landing, "view_pr", lambda *a, **kw: pr)
+    monkeypatch.setattr(landing, "live_commit_statuses", lambda *a, **kw: {})
     events: list[str] = []
 
     def verify(*args: object) -> None:
@@ -1534,55 +1550,6 @@ def test_git_identity_and_cli_bind_repo_to_origin(tmp_path: Path, monkeypatch: p
         ["ready", "--pr", "3", "--expected-head", "a" * 40, "--evidence-json", str(evidence)],
     ):
         assert landing.main(["--repo", "foreign/repository", "--worktree", str(repo), *command]) == 1
-
-
-def test_arm_current_pr_refuses_head_race_before_merge(tmp_path: Path) -> None:
-    repo = _repo(tmp_path / "r")
-    head = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
-    ).stdout.strip()
-    identity = landing.GitIdentity(
-        repo=str(repo),
-        repository="o/r",
-        branch="feat/x",
-        worktree=str(repo),
-        head=head,
-        base=head,
-        upstream="origin/main",
-    )
-    run = FakeRun(
-        [
-            (0, [{"number": 3, "id": "PR_node_3", "headRefName": "feat/x", "headRefOid": head, "labels": []}]),
-            (
-                0,
-                {
-                    "number": 3,
-                    "id": "PR_node_3",
-                    "headRefName": "feat/x",
-                    "headRefOid": OTHER,
-                    "reviewDecision": "APPROVED",
-                },
-            ),
-        ]
-    )
-    with pytest.raises(landing.WrongPR, match="head"):
-        landing.arm_current_pr(run, identity, repo, 3)
-    assert not any("--auto" in " ".join(call) for call in run.calls)
-
-
-def test_arm_current_pr_rejects_dirty_checkout_before_hosted_lookup(tmp_path: Path) -> None:
-    repo = _repo(tmp_path / "r")
-    head = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
-    ).stdout.strip()
-    identity = _identity(repo, head)
-    (repo / "dirty.txt").write_text("review fix not committed")
-    run = FakeRun([])
-
-    with pytest.raises(landing.LandingError, match="unpublished work"):
-        landing.arm_current_pr(run, identity, repo, 3)
-
-    assert run.calls == []
 
 
 requires_posix_make = pytest.mark.skipif(

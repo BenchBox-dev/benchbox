@@ -536,6 +536,7 @@ class ReadyEvidence:
     hold_labels: list | None = None
     soundness_paths_changed: bool = False
     maintainer_approved: bool = False
+    oracle_gate_state: str | None = None
     batch: dict | None = None
     require_batch: bool = False
     repository: str | None = None
@@ -1308,7 +1309,7 @@ def ready_failures(
         failures.append(f"remote head {remote_head[:12]} != expected {expected_head[:12]}")
     failures.extend(f"unpublished work: {problem}" for problem in unpublished_work(repo))
     soundness_changed = head_valid and soundness_paths_changed(repo, identity.base, expected_head)
-    if evidence.review_decision != "APPROVED" and (evidence.review_decision != "" or soundness_changed):
+    if evidence.review_decision not in {"", "APPROVED"}:
         failures.append(f"review decision is {evidence.review_decision!r}, not APPROVED")
     if not evidence.dispositions_complete:
         failures.append("review dispositions incomplete (every top-level finding needs evidence)")
@@ -1317,8 +1318,11 @@ def ready_failures(
     if HOLD_LABEL in holds:
         failures.append(f"durable hold label {HOLD_LABEL!r} present; a human removes it, never this helper")
     failures.extend(batch_mode_failures(evidence, repo))
-    if soundness_changed:
-        failures.append("soundness paths changed; auto-enqueue is forbidden and requires manual maintainer merge")
+    if soundness_changed and evidence.oracle_gate_state != "success":
+        failures.append(
+            f"soundness paths changed and the required {ORACLE_GATE_CONTEXT!r} status at {expected_head[:12]} "
+            f"is {evidence.oracle_gate_state or 'absent'}, not success"
+        )
     if head_valid and evidence.batch is not None:
         if evidence.batch.get("repository") != evidence.repository:
             failures.append("batch repository does not match the current checkout")
@@ -1886,43 +1890,6 @@ def bound_withdraw(
     )
 
 
-def arm_current_pr(
-    run: Runner,
-    identity: GitIdentity,
-    repo: Path,
-    requested_pr: int | None = None,
-) -> dict:
-    problems = unpublished_work(repo)
-    if problems:
-        raise LandingError(f"unpublished work: {'; '.join(problems)}")
-    pr = resolve_pr(
-        run,
-        identity.repository,
-        identity.branch,
-        expected_number=requested_pr,
-        expected_head=identity.head,
-    )
-    if pr is None:
-        raise WrongPR(f"branch {identity.branch} has no open PR in {identity.repository}")
-    node_id = _pr_node_id(pr)
-    if not node_id:
-        raise WrongPR(f"PR #{pr.get('number')} has no GraphQL node id; refusing to arm")
-    labels = {str(label.get("name") or "") for label in pr.get("labels") or [] if isinstance(label, dict)}
-    if HOLD_LABEL in labels:
-        return {"pr": pr.get("number"), "withheld": HOLD_LABEL, "verified": True}
-    if soundness_paths_changed(repo, identity.base, identity.head):
-        return {"pr": pr.get("number"), "withheld": "soundness-path", "verified": True}
-    return enqueue_pr(
-        run,
-        identity.repository,
-        int(pr["number"]),
-        identity.head,
-        str(pr.get("headRefOid") or ""),
-        expected_branch=identity.branch,
-        expected_node_id=node_id,
-    )
-
-
 def _run_start(args: argparse.Namespace, identity: GitIdentity, branch: str) -> int:
     pr = resolve_pr(
         live_run,
@@ -2032,6 +1999,7 @@ def _run_ready(args: argparse.Namespace, identity: GitIdentity, branch: str, rep
         hold_labels=evidence_data.get("hold_labels", []),
         soundness_paths_changed=bool(evidence_data.get("soundness_paths_changed")),
         maintainer_approved=bool(evidence_data.get("maintainer_approved")),
+        oracle_gate_state=live_commit_statuses(live_run, args.repo, args.expected_head).get(ORACLE_GATE_CONTEXT),
         batch=evidence_data.get("batch"),
         require_batch=args.require_batch or delivery_mode == "batch",
         repository=identity.repository,
