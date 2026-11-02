@@ -1,11 +1,11 @@
 {
   "acceptance": [
-    "Context records the owner's choice (a/b/c), the date, and the quoted owner message.",
-    "If (b) or (c): every theseus-* item is dropped with this decision as reason and, for (b), one successor item exists for the in-repo package.",
-    "If (a): theseus-adr-inventory-baseline-20261102 becomes ready."
+    "Context records the owner's separate-repository request, named repository and implementation instruction as authority, distinguishing them from the assistant's renewed cost recommendation.",
+    "Tradeoffs and the in-repository alternative are recorded without imposing an additional demand/justification gate.",
+    "No unresolved owner choice or production authority is inferred from this architectural decision."
   ],
-  "context": "Status blocked until the owner answers. Accepted earlier owner decisions that this item must not reopen: repository BenchBox-dev/theseus; installation trust chain (consumer trusted commit -> reviewed lock -> verified bytes -> isolated install; no latest, no ambient install, a warm cache cannot substitute another version); separate measurement epochs, never provoke observed events; Theseus PRs get their own governance and separate App, secrets kept out of candidate builds; complete T9 policy-guard checklist; all extraction items medium priority; optional external-adopter onboarding (A1) is outside the completion bar and untracked.",
-  "description": "Owner-only decision gate for the Theseus extraction (move the oracle reviewer out of BenchBox into BenchBox-dev/theseus).\n\nThe reviewed proposal adds four obligations a separate repository needs and an in-BenchBox package does not: new BenchBox promotion-review behaviour, a vendored matcher module, a second gateway client and App, and two trusted resolutions (reviewer and gate) in the publish path. The alternative is a package boundary inside BenchBox (same module boundary, none of those obligations, no OSS reuse).\n\nOptions:\n(a) Proceed with BenchBox-dev/theseus.\n(b) Package inside BenchBox instead; drop every theseus-* item with this reason and create one successor item for the in-repo package.\n(c) Stop extraction entirely; drop every theseus-* item.\n\nGuardrails: an agent must not answer this item, infer an answer from earlier sessions, or finish it without the owner's answer in a current user message.",
+  "context": "Authority: user requested 'split the oracle reviewer application out of benchbox and into a separate OSS project named theseus', preserved BenchBox-dev/theseus, then instructed 'convert the change proposal and decisions into TODO items' and 'proceed fully complete the todos as a batch in the correct sequence'. These authorize the separate-repository implementation goal. Historical first-revision H1 explicitly rejected another demand/justification gate. The later assistant cost question did not revoke that user decision. Administrative settings, release/publication, activation and actual unresolved choices remain gated.",
+  "description": "Record the owner's existing separate-repository decision, not a new go/no-go gate. The owner explicitly requested a separate OSS Theseus project, preserved BenchBox-dev/theseus, and subsequently directed conversion to TODOs and implementation. A renewed cost confirmation was an assistant recommendation, not a standing requirement.\nThe cost tradeoff remains documented: promotion review, a shared matcher distribution arrangement, separate governance/App/gateway client, and trusted reviewer/gate resolution. The smaller in-BenchBox-package alternative does not meet the requested separate OSS project outcome.\nGuardrails: this record grants no settings, secret, activation, publication or observation-waiver authority; unresolved promotion-record/matcher/reliability decisions remain separate gates. Do not drop unrelated or every theseus-* item by assumption.",
   "links": [
     "_project/scripts/oracle_reviewers/",
     "docs/agent/emergency-merge.md"
@@ -25,6 +25,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "f218cc84397949ec8b958302d3be6285",
+      "session_id": "8cfcc9dbcab5419a91fc8b650901f36b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4c6f341b7f4b66f30a37a2f1",
+      "at": "2026-11-02T13:52:09Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5ba00275115e4b5eac3c2bee19c0eeff",
       "session_id": "8cfcc9dbcab5419a91fc8b650901f36b"
     }
   ]
