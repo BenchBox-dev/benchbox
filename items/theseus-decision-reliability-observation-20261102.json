@@ -4,7 +4,7 @@
     "theseus-observation-disposition-20261102 applies the chosen rule.",
     "Before finishing a WAIT decision, add oracle-response-reliability-observation-20261021 to theseus-observation-disposition-20261102 needs (preserving existing dependencies) and live-verify it is enforced. For explicit WAIVE, record the quoted waiver instead; no automatic removal of unrelated holds/dependencies or post-change sample obligations."
   ],
-  "context": "Status blocked until the owner answers.",
+  "context": "Status blocked until the owner answers.\n\nOwner decision recorded on 2026-11-02 (ask response: \"reliability-gate: Explicitly waive pre-cutover sample\"): choose option (b), explicitly waive waiting on the pre-cutover oracle-response-reliability-observation-20261021 sample before production-connected extraction steps after other gates clear; oracle-response-reliability-observation-20261021 stays open with partial counts recorded as unmet, and the post-cutover unpooled >=7-day AND >=60-attempt sample remains mandatory in T10.",
   "description": "Owner-only decision gate. oracle-response-reliability-observation-20261021 needs at least 7 days AND 60 attempts on remediated code with provenance, and waits on oracle-response-live-verification-20261021 (open). Production-connected extraction steps (a new gateway client, any shared gateway change, any live review through it: theseus-gateway-client-first-live-gate-20261102 and later) would start a new measurement epoch and could contaminate the sample.\n\nOptions:\n(a) Wait: production-connected steps start only after the reliability item meets its acceptance (targets met or residual causes in owned remediation items).\n(b) Waive explicitly: the reliability item stays open and is re-measured unpooled after cutover. No prior waiver is presumed. A waiver does not satisfy its original criterion.\n\nGuardrails: agents must not choose; a waiver never counts as the reliability criterion being met.",
   "links": [
     "oracle-response-reliability-observation-20261021",
@@ -41,6 +41,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "f63268f6c8344ad6874a68e7b4f90143",
+      "session_id": "c4d4cd94bd464a16a29b8b24353d6e06"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b58f5aa5b2bb5e33c84a53cb",
+      "at": "2026-11-02T16:57:04Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "30afa395d152407d890da003d6ea3120",
       "session_id": "c4d4cd94bd464a16a29b8b24353d6e06"
     }
   ]
