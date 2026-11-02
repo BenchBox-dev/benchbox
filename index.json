@@ -27721,7 +27721,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "Owner decision: confirm a separate Theseus repository is worth its added obligations"
     },
     "theseus-decision-vendored-matcher-20261102": {
