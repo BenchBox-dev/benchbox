@@ -27726,10 +27726,15 @@
       "title": "Prove the pinned BenchBox consumer and rehearse first-cutover recovery before activation"
     },
     "theseus-decision-promotion-evidence-form-20261102": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-03T16:56:48Z",
+        "generation": "93e317d1ca30418092e2ea0483527d6b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b58f5aa5b2bb5e33c84a53cb"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Owner decision: choose the record the gate reads to accept a Theseus promotion PR"
     },
     "theseus-decision-reliability-observation-20261102": {
