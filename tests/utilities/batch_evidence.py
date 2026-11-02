@@ -151,6 +151,7 @@ class BatchFixture:
             "batch_id": BATCH_ID,
             "lifecycle": "active",
             "repository": REPOSITORY,
+            "integration_branch": BRANCH,
             "start_head": self.start,
             "integration_head": head,
             "integration_worktree": str(self.repo),
@@ -205,9 +206,10 @@ class BatchFixture:
 
 
 class FakeBatchShow:
-    def __init__(self, tracker: dict, rev: str = "rev-1") -> None:
+    def __init__(self, tracker: dict, rev: str = "rev-1", stale: bool = False) -> None:
         self.tracker = tracker
         self.rev = rev
+        self.stale = stale
         self.calls: list[list[str]] = []
 
     def __call__(self, cmd: list[str]) -> tuple[int, str]:
@@ -219,9 +221,8 @@ class FakeBatchShow:
         sections = {key: value for key, value in self.tracker.items() if key in SECTION_NAMES}
         scalars = {key: value for key, value in self.tracker.items() if key not in SECTION_NAMES}
         if "--field" not in options:
-            return 0, json.dumps(
-                {"ok": True, "data": {**scalars, "rev": self.rev, "sections": self._sections(sections)}}
-            )
+            stamp = {"cached_rev": self.rev, "stale": True} if self.stale else {"rev": self.rev}
+            return 0, json.dumps({"ok": True, "data": {**scalars, **stamp, "sections": self._sections(sections)}})
         if options.get("--rev") != self.rev:
             return 2, json.dumps({"ok": False, "code": "E_CURSOR_STALE", "error": "revision moved"})
         blob = json.dumps(sections[options["--field"]], separators=(",", ":"))

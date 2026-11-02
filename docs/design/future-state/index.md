@@ -2,9 +2,6 @@
 
 # Future State Proposals
 
-```{tags} contributor, architecture
-```
-
 These documents describe the intended end state for high-impact cleanup and
 refactoring TODOs. Each proposal is tied to a planning item under
 `_project/TODO/main/planning/` and makes the destination architecture explicit:
@@ -74,16 +71,3 @@ Two proposals were discarded during adversarial review:
 - [Isolate experimental subsystems](isolate-experimental-core-subsystems/README.md) - **Blocked on evidence** for further extraction
 - [Gate monitoring behind optional extra](gate-monitoring-behind-optional-extra/README.md) - **Blocked on evidence**; remains in the default wheel
 - [Formalize MCP internal APIs](formalize-mcp-internal-apis/README.md) - **Medium** priority
-
-```{toctree}
-:maxdepth: 1
-:hidden:
-
-contract-index
-benchmark-family-plugin-seam/README
-prune-publishing-subsystem/README
-remove-release-tooling-from-wheel/README
-isolate-experimental-core-subsystems/README
-gate-monitoring-behind-optional-extra/README
-formalize-mcp-internal-apis/README
-```

@@ -2,9 +2,6 @@
 
 # Architecture Contract Decision Index
 
-```{tags} contributor, architecture
-```
-
 This index connects future-state proposals and compatibility registry decisions
 to the active implementation surfaces they govern. It does not replace the
 [public contracts page](https://benchbox.dev/docs/reference/public-contracts.html);

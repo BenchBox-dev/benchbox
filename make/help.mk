@@ -149,7 +149,7 @@ help:
 	@echo "  make worktree-audit [FORMAT=json]                    Read-only inventory and lifecycle audit of worktrees and branches"
 	@echo "  make branch-prune-merged [DRY_RUN=1]                 Delete worktree-less branches at a proven merge-time PR head (requires gh)"
 	@echo "Batch integration loop (leader runs these in the role=integration worktree; members only run batch-member-check):"
-	@echo "  make batch-start BATCH=id MEMBERS=a,b SCOPE_JSON=file PROJECT_ID=id [WORKTREE_PATH=path] [CONFIRM_CUTOVER=1]  Create the integration worktree and print the register_batch payload"
+	@echo "  make batch-start BATCH=id MEMBERS=a,b SCOPE_JSON=file PROJECT_ID=id [WORKTREE_PATH=path] [DEPENDENCIES=m=a+b,...] [CONFIRM_CUTOVER=1]  Create the integration worktree and print the register_batch payload"
 	@echo "  make batch-member-create MEMBER=id [WORKTREE_PATH=path]  Create feat/<batch>--<member> at the integration head"
 	@echo "  make batch-member-check [TESTS=a,b]                  Member: require clean and synced, run preflight, changelog check and member review, record the result"
 	@echo "  make batch-land MEMBER=id [DEPENDENCIES=a,b]         Leader: merge a checked member with --no-ff and print the take/prepare payload"

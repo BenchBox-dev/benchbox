@@ -78,6 +78,7 @@ class FakeGh:
         self.extra_runs = kwargs.get("extra_runs", [])
         self.policies = kwargs.get("policies", {})
         self.comments = kwargs.get("comments", [])
+        self.worktree_extension = kwargs.get("worktree_extension", True)
         self.worktree_config = {
             "benchbox.batch.role": kwargs.get("batch_role"),
             "benchbox.batch.id": kwargs.get("batch_id"),
@@ -137,7 +138,11 @@ class FakeGh:
         raise AssertionError(f"unexpected command {cmd}")
 
     def _bump_call(self, cmd: list[str]) -> tuple[int, str] | None:
+        if cmd == ["git", "config", "--get", "extensions.worktreeConfig"]:
+            return (0, "true\n") if self.worktree_extension else (1, "")
         if cmd[:3] == ["git", "config", "--worktree"]:
+            if not self.worktree_extension:
+                return 128, "fatal: --worktree cannot be used with multiple working trees unless worktreeConfig"
             value = self.worktree_config[cmd[3]]
             return (0, value + "\n") if value else (1, "")
         if cmd[:2] == ["gh", "api"] and "/contents/" in cmd[-1]:
@@ -1213,3 +1218,36 @@ def test_an_ordinary_or_member_worktree_never_reads_the_tracker(
     assert code == 0
     assert reads == []
     assert len(gh.merged()) == 1
+
+
+def test_a_clone_without_the_worktree_config_extension_arms_an_ordinary_pr() -> None:
+    gh = FakeGh(worktree_extension=False)
+
+    assert _arm(gh) == 0
+    assert len(gh.merged()) == 1
+    assert not any(call[:3] == ["git", "config", "--worktree"] for call in gh.calls)
+
+
+def test_a_worktree_config_read_failure_with_the_extension_enabled_still_fails_closed() -> None:
+    gh = FakeGh(batch_role="integration")
+    gh.worktree_config["benchbox.batch.role"] = "integration"
+    original = gh.__call__
+
+    def failing(cmd):
+        if list(cmd)[:3] == ["git", "config", "--worktree"]:
+            return 128, "fatal: broken"
+        return original(cmd)
+
+    code = pr_arm.arm(
+        "7",
+        None,
+        run=failing,
+        unpublished=lambda _checkout: [],
+        threads=lambda _run, _repo, _number: False,
+        suites=lambda _run, _repo, _base, _head: [],
+        bump=lambda _run, _repo, _number, _head: [],
+        gate=lambda _run, _repo, _number, _head: [],
+    )
+
+    assert code == 1
+    assert gh.merged() == []

@@ -2,9 +2,6 @@
 
 # Soundness-PR drain digest
 
-```{tags} contributor, operations, ci
-```
-
 ## The signal, and what it is not
 
 Soundness-path PRs (paths in `.github/soundness-paths.txt`) merge only after

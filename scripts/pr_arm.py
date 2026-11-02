@@ -290,6 +290,9 @@ def _current_branch_pr(run: Runner, repo: str) -> str:
 
 
 def _worktree_config(run: Runner, key: str) -> str | None:
+    code, out = run(["git", "config", "--get", "extensions.worktreeConfig"])
+    if code != 0 or out.strip().lower() != "true":
+        return None
     code, out = run(["git", "config", "--worktree", key])
     if code == 1:
         return None

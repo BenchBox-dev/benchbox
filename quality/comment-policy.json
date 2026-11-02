@@ -73,7 +73,7 @@
       "provenance": "_sources/README.md"
     },
     {
-      "path": "_project/scripts/vendor/todo_db-0.12.0-py3-none-any.whl",
+      "path": "_project/scripts/vendor/todo_db-0.14.0-py3-none-any.whl",
       "owner": "todo-db",
       "provenance": "_project/scripts/pyproject.toml"
     }
@@ -32867,7 +32867,7 @@
       "path": "scripts/oracle_local_review.py",
       "symbol": "launch",
       "text": "unresolved executable source: argv[0]",
-      "payload": "sha256:27e1cecfc35581a11f77757100090f5ebe099543bcc2c82f1711fa063672f3ec",
+      "payload": "sha256:0b61817c316e814c873fe1df1a0dd295ff308c47b4198c9366a1dcfb5f9f1a07",
       "finding_kind": "payload-error",
       "kind": "fixture",
       "consumer": "scripts/oracle_local_review.py",

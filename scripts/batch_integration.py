@@ -247,8 +247,10 @@ def read_tracker(repo: Path, batch_id: str) -> dict:
     if not isinstance(capability, dict) or int(capability.get("version") or 0) < 2:
         raise BatchError("the todo-db runtime lacks the batch-v2 capability; use the pinned runtime")
     revision = summary.get("rev")
+    if summary.get("stale") or summary.get("cached_rev") is not None or not revision:
+        raise BatchError("tracker read is stale or carries no revision (offline cache); reconnect and retry")
     sections = summary.get("sections") if isinstance(summary.get("sections"), dict) else {}
-    tracker = {key: value for key, value in summary.items() if key not in ("sections", "rev", "stale", "cached_rev")}
+    tracker = {key: value for key, value in summary.items() if key not in ("sections", "rev")}
     for name, info in sections.items():
         if name in summary:
             tracker[name] = summary[name]
@@ -334,6 +336,7 @@ def start_batch(
     delivery_boundary: str = "final-pr",
     terminal_outcome: str = "deliver",
     confirm_cutover: bool = False,
+    dependencies: dict[str, list[str]] | None = None,
 ) -> dict:
     _validate_id(batch_id, "batch")
     if not members or len(set(members)) != len(members):
@@ -345,7 +348,9 @@ def start_batch(
         for patterns in scope.values()
     ):
         raise BatchError("scope must map every member, and only members, to a non-empty list of path patterns")
-    _rev(repo, DEVELOP_REF)
+    dependencies = _validate_dependencies(members, dependencies or {})
+    follow_up = _member_metadata_steps(repo, batch_id, members, dependencies)
+    _trusted_develop(repo)
     origin = _git(repo, "remote", "get-url", "origin")
     branch = integration_branch_name(batch_id)
     path = (worktree_path or repo.resolve().parent / f"{_primary_name(repo)}.wt-{batch_id}").resolve()
@@ -400,7 +405,80 @@ def start_batch(
     }
     if confirm_cutover:
         arguments["confirm_schema3_cutover"] = True
-    return {"worktree": str(path), "tool": "register_batch", "arguments": arguments}
+    return {
+        "worktree": str(path),
+        "tool": "register_batch",
+        "arguments": arguments,
+        "after_register": follow_up,
+    }
+
+
+def parse_dependencies(text: str | None) -> dict[str, list[str]]:
+    result: dict[str, list[str]] = {}
+    for entry in _parse_csv(text):
+        member, separator, deps = entry.partition("=")
+        member = member.strip()
+        if not separator or not member or member in result:
+            raise BatchError(f"dependency entry {entry!r} must read member=dep1+dep2 and name each member once")
+        result[member] = [dep.strip() for dep in deps.split("+") if dep.strip()]
+        if not result[member]:
+            raise BatchError(f"dependency entry {entry!r} names no dependency")
+    return result
+
+
+def _validate_dependencies(members: list[str], dependencies: dict[str, list[str]]) -> dict[str, list[str]]:
+    for member, deps in dependencies.items():
+        if member not in members or any(dep not in members for dep in deps):
+            raise BatchError(f"dependencies of {member!r} must name registered members only: {deps}")
+        if member in deps or len(set(deps)) != len(deps):
+            raise BatchError(f"dependencies of {member!r} must be unique and not include the member itself")
+    state: dict[str, int] = {}
+
+    def visit(node: str) -> None:
+        if state.get(node) == 1:
+            raise BatchError(f"implementation dependencies form a cycle through {node!r}")
+        if state.get(node) == 2:
+            return
+        state[node] = 1
+        for dep in dependencies.get(node, []):
+            visit(dep)
+        state[node] = 2
+
+    for member in members:
+        visit(member)
+    return dependencies
+
+
+def _member_metadata_steps(repo: Path, batch_id: str, members: list[str], dependencies: dict[str, list[str]]) -> dict:
+    steps = []
+    reminders = []
+    for member in members:
+        shown = _todo_db_json(repo, ["show", member]).get("needs")
+        current = shown.get("values") if isinstance(shown, dict) else None
+        if not isinstance(current, list) or shown.get("total") != len(current):
+            raise BatchError(f"the tracker returned no complete needs list for {member!r}")
+        deps = dependencies.get(member, [])
+        needs = list(dict.fromkeys([*(str(need) for need in current), *deps]))
+        steps.append(
+            {
+                "tool": "update_item",
+                "arguments": {
+                    "id": member,
+                    "needs": needs,
+                    "batch": {"batch_id": batch_id, "member_id": member, "implementation_dependencies": deps},
+                },
+            }
+        )
+        if deps:
+            reminders.append(
+                f"member {member!r} depends on {deps}: take it before batch-land, because the tracker refuses "
+                "to take it once the integration head moves past the recorded head"
+            )
+    return {
+        "label": "run these update_item steps after register_batch, in this order",
+        "steps": steps,
+        "reminders": reminders,
+    }
 
 
 def create_member(repo: Path, member: str, worktree_path: Path | None = None) -> dict:
@@ -543,6 +621,7 @@ def check_member(
         "member": member,
         "member_head": member_head,
         "integration_head": integration_head,
+        "preflight": preflight,
         "trusted_sha": trusted,
         "review_outcome": result["outcome"],
         "verification": {"suite": suite, "command": command},
@@ -668,14 +747,18 @@ def hunk_warnings(repo: Path, ledger: dict, exclude: str) -> list[str]:
 
 
 def _prepare_payload(ledger: dict, member: str, landing: dict, member_worktree: str, dependencies: list[str]) -> dict:
+    take = [] if dependencies else [{"tool": "take", "arguments": {"id": member}}]
+    generation = (
+        "<generation returned by the take made before landing>" if dependencies else "<generation returned by take>"
+    )
     return {
         "steps": [
-            {"tool": "take", "arguments": {"id": member}},
+            *take,
             {
                 "tool": "prepare",
                 "arguments": {
                     "id": member,
-                    "generation": "<generation returned by take>",
+                    "generation": generation,
                     "batch_id": ledger["batch_id"],
                     "member_id": member,
                     "source_worktree": member_worktree,
@@ -702,6 +785,14 @@ def _prepare_payload(ledger: dict, member: str, landing: dict, member_worktree: 
     }
 
 
+def _claimed_by_owner(tracker: dict, member: str) -> bool:
+    owner = tracker.get("owner")
+    for row in tracker.get("members", []):
+        if isinstance(row, dict) and row.get("id") == member:
+            return owner is not None and row.get("claim_worker") == owner
+    return False
+
+
 def _member_landing_facts(repo: Path, ledger: dict, member: str) -> dict:
     batch_id = ledger["batch_id"]
     branch = member_branch_name(batch_id, member)
@@ -720,6 +811,15 @@ def _member_landing_facts(repo: Path, ledger: dict, member: str) -> dict:
     return {"branch": branch, "worktree": worktree, "member_head": member_head}
 
 
+def _failed_overlaps(ledger: dict, member: str, merge_head: str) -> list[str]:
+    failed = []
+    for other, entries in ledger.get("acceptance", {}).items():
+        latest = [e for e in entries if e.get("reason") == f"overlap:{member}" and e.get("revision") == merge_head]
+        if latest and latest[-1].get("status") != "passed":
+            failed.append(other)
+    return failed
+
+
 def _already_merged(
     repo: Path, ledger: dict, member: str, facts: dict, head: str, dependencies: list[str]
 ) -> dict | None:
@@ -732,13 +832,22 @@ def _already_merged(
         return None
     ledger["landings"][member] = landing
     save_ledger(repo, ledger)
+    failed = _failed_overlaps(ledger, member, landing["merge_head"])
+    if failed:
+        raise BatchError(
+            f"member {member!r} is merged at {landing['merge_head']} but the overlap rerun failed for {failed}; "
+            f"reset the integration branch to {landing.get('source_base')} and land again once the combination "
+            f"passes; do not prepare {member!r} until the reruns pass"
+        )
     return {
         "status": "already-merged",
         "message": (
             f"member {member!r} is already merged at {landing['merge_head']} but has no prepared receipt; "
             "submit the prepare payload below (do not merge again)"
         ),
-        "payload": _prepare_payload(ledger, member, landing, str(facts["worktree"]), dependencies),
+        "payload": _prepare_payload(
+            ledger, member, {**landing, "merge_head": head}, str(facts["worktree"]), dependencies
+        ),
     }
 
 
@@ -780,6 +889,7 @@ def _landing_preconditions(repo: Path, ledger: dict, tracker: dict, member: str,
         "trusted": trusted,
         "review": review,
         "changed": changed,
+        "preflight": [str(part) for part in check.get("preflight", [])],
         "verification": {
             "suite": check["verification"]["suite"],
             "command": _validate_verification_command(check["verification"]["command"]),
@@ -842,9 +952,17 @@ def land_member(repo: Path, member: str, dependencies: list[str] | None = None, 
     merged_already = _already_merged(repo, ledger, member, facts, head, dependencies)
     if merged_already is not None:
         return merged_already
+    if dependencies and not _claimed_by_owner(tracker, member):
+        raise BatchError(
+            f"member {member!r} has implementation dependencies, so the tracker refuses to take it once the "
+            "integration head moves past the recorded head: take it now, before landing, and keep the generation "
+            "for the prepare step"
+        )
     gate = _landing_preconditions(repo, ledger, tracker, member, facts, head)
     warnings = _brief_gate(repo, head, facts["member_head"])
-    merged = _git_merge(repo, member, facts["branch"], head, facts["member_head"], ledger)
+    if gate["preflight"] != [*DEFAULT_PREFLIGHT_COMMAND, f"BASE={head}"]:
+        warnings.append(f"member preflight was not the default: {' '.join(gate['preflight']) or 'not recorded'}")
+    merged = _git_merge(repo, member, head, facts["member_head"], ledger)
     landing = {
         "member_branch": facts["branch"],
         "member_worktree": str(facts["worktree"]),
@@ -863,13 +981,13 @@ def land_member(repo: Path, member: str, dependencies: list[str] | None = None, 
     warnings.extend(hunk_warnings(repo, {**ledger, "landings": earlier}, member))
     reruns, failures = _overlap_reruns(repo, ledger, receipts, earlier, member, gate["changed"])
     save_ledger(repo, ledger)
-    backup = _push_backup(repo, ledger["integration_branch"]) if push else "skipped"
     if failures:
         raise BatchError(
             f"merged {member!r} at {merged} but the overlap rerun failed for {failures}; "
-            "fix the combination with a recorded batch-advance or reset the integration branch to "
-            f"{head}; do not prepare {member!r} until the reruns pass"
+            f"reset the integration branch to {head} and land again once the combination passes; "
+            f"do not prepare {member!r} until the reruns pass"
         )
+    backup = _push_backup(repo, ledger["integration_branch"]) if push else "skipped"
     return {
         "status": "merged",
         "merge_head": merged,
@@ -907,9 +1025,10 @@ def _reconstruct_landing(repo: Path, ledger: dict, member: str, facts: dict, mer
     }
 
 
-def _git_merge(repo: Path, member: str, branch: str, head: str, member_head: str, ledger: dict) -> str:
+def _git_merge(repo: Path, member: str, head: str, member_head: str, ledger: dict) -> str:
+    message = f"Merge {member} into {ledger['integration_branch']}"
     proc = subprocess.run(
-        ["git", "merge", "--no-ff", "--no-edit", "-m", f"Merge {member} into {ledger['integration_branch']}", branch],
+        ["git", "merge", "--no-ff", "--no-edit", "-m", message, member_head],
         cwd=repo,
         check=False,
         encoding="utf-8",
@@ -975,7 +1094,9 @@ def _resolve_advance(repo: Path, ledger: dict, tracker: dict, reason: str) -> tu
     recorded_head = str(tracker.get("integration_head"))
     head = _rev(repo, "HEAD")
     entry = next((e for e in tracker.get("integration_log", []) if e.get("head") == head), None)
-    if entry is not None and entry.get("kind") not in ("fix", "develop-merge"):
+    if entry is not None and (
+        entry.get("kind") not in ("fix", "develop-merge") or (entry.get("kind") != reason and head == recorded_head)
+    ):
         entry = None
     if entry is None and head != recorded_head:
         stuck = [
@@ -1396,6 +1517,7 @@ def main(argv: list[str] | None = None) -> int:
     start.add_argument("--delivery-boundary", default="final-pr")
     start.add_argument("--terminal-outcome", default="deliver")
     start.add_argument("--confirm-cutover", action="store_true")
+    start.add_argument("--dependencies", default="", help="member=dep1+dep2,member2=dep3")
 
     create = sub.add_parser("member-create", help="create a member worktree at the integration head")
     create.add_argument("--member", required=True)
@@ -1438,6 +1560,7 @@ def main(argv: list[str] | None = None) -> int:
                     delivery_boundary=args.delivery_boundary,
                     terminal_outcome=args.terminal_outcome,
                     confirm_cutover=args.confirm_cutover,
+                    dependencies=parse_dependencies(args.dependencies),
                 )
             )
         elif args.command == "member-create":
