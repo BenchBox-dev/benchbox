@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-from benchbox.sql_compat.actions import CompatAction
-from benchbox.sql_compat.context import Phase
-from benchbox.sql_compat.decision import CompatibilityDecision, FailureMode, SkipQueryPayload, SupportLevel
-from benchbox.sql_compat.registry import REGISTRY
+from benchbox.sql_compat.rules._registration import register_write_primitive_skips
 
 QUESTDB_WRITE_PRIMITIVES_CATEGORY_SKIPS = {
     "delete": (
@@ -74,32 +71,4 @@ def questdb_write_primitive_skip_reason(operation) -> str | None:
     return QUESTDB_WRITE_PRIMITIVES_CATEGORY_SKIPS.get(getattr(operation, "category", ""))
 
 
-def _register_skips() -> None:
-    try:
-        from benchbox.core.write_primitives.catalog import load_write_primitives_catalog
-
-        catalog = load_write_primitives_catalog()
-    except Exception:
-        return
-
-    for op_id, operation in catalog.operations.items():
-        reason = questdb_write_primitive_skip_reason(operation)
-        if reason is None:
-            continue
-        REGISTRY.register(
-            CompatibilityDecision(
-                rule_id=f"execution_filter.questdb.write_primitives.{op_id}",
-                action=CompatAction.SKIP_QUERY,
-                support_level=SupportLevel.SKIPPED_QUERY,
-                failure_mode=FailureMode.UNSUPPORTED_FEATURE,
-                payload=SkipQueryPayload(reason=reason, query_id=op_id),
-                reason=reason,
-            ),
-            Phase.EXECUTION_FILTER,
-            "questdb",
-            benchmark="write_primitives",
-            query_id=op_id,
-        )
-
-
-_register_skips()
+register_write_primitive_skips("questdb", questdb_write_primitive_skip_reason)
