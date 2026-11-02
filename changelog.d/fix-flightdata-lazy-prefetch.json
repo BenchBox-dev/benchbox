@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed FlightData generation starting BTS monthly archive downloads before any month was requested; downloads now start with the first month processed."
+    }
+  ]
+}
