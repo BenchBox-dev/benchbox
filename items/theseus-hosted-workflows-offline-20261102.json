@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Execute workflow-equivalent CLI/publish smoke with reviewer pin A and trusted gate pin B; observable gate decision follows B, never imported A.",
+    "Gate subprocess failure records retry/failure state and cannot publish a success or silently swallow errors.",
+    "Fixture matrix covers new head, same-head rerun, dispute, findings/withdrawals, stand-ins, carry, absence/quota/retry and fork PR secret boundaries with unchanged current semantics.",
+    "Cold-run verification installs exact locked bytes and dependencies; candidate build receives no privileged credentials. CI/config checks and independent review pass before merge."
+  ],
+  "context": "T4 offline, P5. First live gate and required-check activation belong exclusively to theseus-gateway-client-first-live-gate-20261102. Actual BenchBox workflow cutover belongs to theseus-atomic-benchbox-cutover-20261102.",
+  "description": "Implement Theseus-hosted review/gate workflow contracts and a sandbox consumer path that preserve hosted CI plus local pre-submission operation. Reviewer uses the run's trusted base lock. Publication-time gate resolves the current trusted gated-branch lock into a separate verified process; never load two package pins in one Python interpreter. Surface gate subprocess failures through the existing GitHubError/retry-state path. Candidate checkout and untrusted build jobs get no App, gateway, publisher or production secrets. Explicitly document reusable-workflow caller context, token permission ceilings, environment secret handling and pinned workflow ref. Workflow permissions stay least-privilege.\nGuardrails: offline/fake-OMP fixtures only; no new live gateway client, shared configuration change, release publication, credential service, daemon or activation. Do not alter BenchBox workflow behaviour until atomic cutover. Keep protocol and required-check contracts stable and fork gate-path PRs fail-closed.",
+  "links": [
+    ".github/workflows/oracle-verdict.yml",
+    ".github/workflows/oracle-gate.yml",
+    "_project/scripts/oracle_reviewers/github.py",
+    "_project/scripts/oracle_reviewers/driver.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4c6f341b7f4b66f30a37a2f1",
+      "at": "2026-11-02T13:48:04Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5c7b71ddf269443c8b46b58eb433f71e",
+      "session_id": "8cfcc9dbcab5419a91fc8b650901f36b"
+    }
+  ]
+}
