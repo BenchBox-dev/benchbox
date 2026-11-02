@@ -12,7 +12,11 @@ Include these sections in order:
    the project's `owner/repo` before any write; state the state remote URL and
    the state branch from its "Bound store" section.
 3. **Current state** — live PR states, branch names, required checks, and the
-   batch ledger path. Query them while writing the handoff.
+   batch ledger path. Query them while writing the handoff. For a prepared batch,
+   a resumed session rebuilds state from the tracker (`show_batch`, `show_item`)
+   and Git (integration branch, member branches); the ledger is a rebuildable
+   cache. Never paste the batch owner generation into a handoff; it stays in the
+   leader's ledger.
 4. **Order and dependencies** — recommended sequence and the reason for each
    ordering constraint.
 5. **Rules and boundaries** — project instructions, worktree and staging

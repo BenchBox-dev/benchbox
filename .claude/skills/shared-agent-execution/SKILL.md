@@ -130,6 +130,13 @@ When selecting an external or headless harness, read
 [references/external-harnesses.md](references/external-harnesses.md), choose the
 documented command for the role, and use it directly.
 
+Run write workers in parallel only when each has its own separate worktree
+(a member worktree started from the integration head for a batch) and exactly
+one integrator, the leader, merges their results, owns the tracker and the final
+publication, and decides on conflicts. Workers never share a worktree, never
+push to the integration branch, and never write the tracker. The batch
+procedure is the `todo` skill's `references/batch.md`.
+
 Headless Worker dispatch may automate confirmations only when write scope is
 already bounded by a sandbox, workspace flag, or dedicated worktree. Never add
 flags that remove workspace, sandbox, or tool boundaries.
