@@ -18,6 +18,15 @@
       "op": "create",
       "op_id": "d560ef521c4e41169283cfcc29a233bf",
       "session_id": "fe251e187e814d5cb1baf53870326a77"
+    },
+    {
+      "actor": "benchbox-batch-pilot-leader",
+      "at": "2026-11-02T08:09:56Z",
+      "client": "benchbox-batch-leader",
+      "generation": "9a4d527ff02445d08475361eb680d739",
+      "op": "take",
+      "op_id": "4c764a71081948dba292e58766956a2e",
+      "session_id": "b249fb5e3b804f6fab2e27e759c8e1fb"
     }
   ]
 }
