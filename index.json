@@ -27714,7 +27714,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "Owner decision: wait for or waive the oracle reliability observation before production-connected extraction steps"
     },
     "theseus-decision-separate-repo-20261102": {
