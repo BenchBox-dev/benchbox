@@ -27712,6 +27712,15 @@
       "status": "open",
       "title": "Record the Theseus extraction ADR, full consumer inventory and cost baseline"
     },
+    "theseus-benchbox-proof-recovery-rehearsal-20261102": {
+      "claim": null,
+      "needs": [
+        "theseus-release-bootstrap-evidence-20261102"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Prove the pinned BenchBox consumer and rehearse first-cutover recovery before activation"
+    },
     "theseus-decision-promotion-evidence-form-20261102": {
       "claim": null,
       "needs": [],
