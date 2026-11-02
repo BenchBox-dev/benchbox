@@ -5,7 +5,7 @@
     "No fixture-only name matching is added (see pr-preflight-workflow-selection-cost-20261101 on the same file).",
     "Merged to develop."
   ],
-  "context": "Not on the batch loop's critical path: batch-member-check requires named tests for non-Python changes until this lands. Coordinate with pr-preflight-workflow-selection-cost-20261101, which changes the same file. Guardrails: deliver as an ordinary serial PR to develop (AGENTS.md: feature delivery cannot deliver the changes that make it possible); write only from a linked worktree made with make worktree-create and checked with make agent-write-preflight, never the primary clone; stage explicit paths, never git add -A; no explanatory comments or docstrings (COMMENT-POLICY-001, make comment-policy-check); heavy test runs only through lock-taking entry points, never BENCHBOX_SKIP_TEST_LOCK; never weaken hold labels, the unresolved-thread refusal, oracle-gate, duration or suite gates; add a changelog.d fragment (CHANGELOG_INTERNAL when nothing is user-visible); durable artifacts carry no session or phase labels; cited line numbers are leads, so re-read the code before editing; tests prove behaviour, never wiring or wording.\n\nLands in the BenchBox core PR: preflight_targets.py is a soundness path, so it cannot be a pilot member. In progress in session 01a19729; do not take.",
+  "context": "Not on the batch loop's critical path: batch-member-check requires named tests for non-Python changes until this lands. Coordinate with pr-preflight-workflow-selection-cost-20261101, which changes the same file. Guardrails: deliver as an ordinary serial PR to develop (AGENTS.md: feature delivery cannot deliver the changes that make it possible); write only from a linked worktree made with make worktree-create and checked with make agent-write-preflight, never the primary clone; stage explicit paths, never git add -A; no explanatory comments or docstrings (COMMENT-POLICY-001, make comment-policy-check); heavy test runs only through lock-taking entry points, never BENCHBOX_SKIP_TEST_LOCK; never weaken hold labels, the unresolved-thread refusal, oracle-gate, duration or suite gates; add a changelog.d fragment (CHANGELOG_INTERNAL when nothing is user-visible); durable artifacts carry no session or phase labels; cited line numbers are leads, so re-read the code before editing; tests prove behaviour, never wiring or wording.\n\nLands in the BenchBox core PR: preflight_targets.py is a soundness path, so it cannot be a pilot member. In progress in session 01a19729; do not take.\n\n2026-11-02: implemented on branch feat/batch-integration-loop-core (head fdd09e09df) of BenchBox-dev/BenchBox together with the other core items; targeted tests pass; independent pre-publication review in progress; the core PR is not open yet. Close after that PR merges.",
   "description": "_project/scripts/preflight_targets.py skips non-Python paths before applying EXTRA_TEST_MAP (:279-281 versus :303), so a change to Makefile, make/*.mk or a worktree shell script selects only guard tests. Batch members routinely change these shared files. Apply the explicit map before the non-Python early return and map the worktree lifecycle scripts and Make files to the tests that exercise them.",
   "links": [
     "_project/scripts/preflight_targets.py"
@@ -26,6 +26,14 @@
       "op": "update",
       "op_id": "35785578baab4d37837b2291597e4941",
       "session_id": "fe251e187e814d5cb1baf53870326a77"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d680f2b9a00523ec18de3879",
+      "at": "2026-11-02T03:29:01Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "680aa1d360e9491daa64edeab65447fc",
+      "session_id": "3dd2b4a046904511bb5ce7edcc3205fd"
     }
   ]
 }
