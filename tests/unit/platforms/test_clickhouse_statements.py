@@ -79,13 +79,15 @@ def test_lightweight_updates_are_enabled_at_create_not_in_the_update() -> None:
     assert client.executed[created:] == ["UPDATE t SET a = 1 WHERE b = 2", "UPDATE t SET a = 2 WHERE b = 3"]
 
 
-def test_lightweight_updates_fall_back_to_first_update_for_tables_not_created_here() -> None:
+def test_lightweight_updates_can_be_prepared_for_tables_not_created_here() -> None:
     client = _Client()
     connection = ClickHouseServerConnection(client)
 
+    connection.prepare_write("UPDATE t SET a = 1 WHERE b = 2")
     connection.execute("UPDATE t SET a = 1 WHERE b = 2")
     connection.execute("UPDATE t SET a = 2 WHERE b = 3")
     connection.execute("RENAME TABLE s TO t")
+    connection.prepare_write("UPDATE t SET a = 3 WHERE b = 4")
     connection.execute("UPDATE t SET a = 3 WHERE b = 4")
 
     assert len([q for q in client.executed if q.startswith("ALTER TABLE t MODIFY SETTING")]) == 2
@@ -105,3 +107,92 @@ def test_insert_with_rows_is_passed_through() -> None:
     connection.execute("INSERT INTO t VALUES", iter([(1,)]), settings={"insert_block_size": 8})
 
     assert client.executed == ["INSERT INTO t VALUES"]
+
+
+@pytest.mark.parametrize("benchmark_kind", ["write", "transaction"])
+@pytest.mark.parametrize(
+    "lifecycle_sql",
+    [
+        "",
+        "DROP TABLE t; CREATE TABLE t (a Int32)",
+        "RENAME TABLE t TO old_t; RENAME TABLE s TO t",
+        "EXCHANGE TABLES t AND s",
+        "DROP TABLE unrelated",
+    ],
+)
+def test_operation_update_settings_are_outside_measured_execution(
+    tmp_path, monkeypatch, benchmark_kind, lifecycle_sql
+) -> None:
+    from types import SimpleNamespace
+
+    from benchbox.core.transaction_primitives.benchmark import TransactionPrimitivesBenchmark
+    from benchbox.core.write_primitives.benchmark import WritePrimitivesBenchmark
+
+    class TimedClient:
+        def __init__(self):
+            self.now = 0.0
+            self.measuring = False
+            self.tables = {"t": False, "s": False, "unrelated": False}
+            self.measured_updates = 0
+            self.alters = 0
+
+        def clock(self):
+            self.measuring = not self.measuring
+            return self.now
+
+        def execute(self, query):
+            tokens = query.split()
+            if query.startswith("ALTER TABLE"):
+                assert not self.measuring, query
+                self.tables[tokens[2]] = True
+                self.alters += 1
+                self.now += 100.0
+            elif query.startswith("UPDATE"):
+                assert self.measuring
+                assert self.tables[tokens[1]], "UPDATE requires both lightweight-update settings"
+                self.measured_updates += 1
+                self.now += 0.01
+            elif query.startswith("CREATE TABLE"):
+                self.tables[tokens[2]] = False
+            elif query.startswith("DROP TABLE"):
+                del self.tables[tokens[2]]
+            elif query.startswith("RENAME TABLE"):
+                self.tables[tokens[4]] = self.tables.pop(tokens[2])
+            elif query.startswith("EXCHANGE TABLES"):
+                left, right = tokens[2], tokens[4]
+                self.tables[left], self.tables[right] = self.tables[right], self.tables[left]
+            else:
+                raise AssertionError(query)
+            return []
+
+    benchmark_type = WritePrimitivesBenchmark if benchmark_kind == "write" else TransactionPrimitivesBenchmark
+    benchmark = benchmark_type(output_dir=tmp_path)
+    operation = SimpleNamespace(
+        id="timed_update",
+        category="update",
+        requires_setup=False,
+        write_sql="UPDATE t SET a = 1 WHERE a = 0",
+        platform_overrides={},
+        validation_queries=[],
+        cleanup_sql=None,
+    )
+    monkeypatch.setattr(benchmark.operations_manager, "get_operation", lambda _operation_id: operation)
+    client = TimedClient()
+    connection = ClickHouseServerConnection(client)
+    monkeypatch.setattr(f"{benchmark_type.__module__}.time", SimpleNamespace(perf_counter=client.clock))
+
+    for _ in range(2):
+        result = benchmark.execute_operation(operation.id, connection, platform_key="clickhouse")
+        assert result.success, result.error
+        assert result.write_duration_ms == pytest.approx(10.0)
+
+    if lifecycle_sql:
+        connection.execute(lifecycle_sql)
+
+    for _ in range(2):
+        result = benchmark.execute_operation(operation.id, connection, platform_key="clickhouse")
+        assert result.success, result.error
+        assert result.write_duration_ms == pytest.approx(10.0)
+
+    assert client.measured_updates == 4
+    assert client.alters == (2 if lifecycle_sql else 1)

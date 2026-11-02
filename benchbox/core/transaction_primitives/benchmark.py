@@ -532,6 +532,9 @@ class TransactionPrimitivesBenchmark(TransactionalBenchmarkBase["OperationResult
             self.log_verbose(f"Executing transaction operation: {operation_id}")
             write_sql_raw = self._rewrite_transactional_sql_for_platform(write_sql_raw, platform_key)
             write_sql = self._replace_placeholders(write_sql_raw)
+            prepare_write = getattr(connection, "prepare_write", None)
+            if callable(prepare_write):
+                prepare_write(write_sql)
             write_start = time.perf_counter()
             write_result = connection.execute(write_sql)
             write_duration_ms = (time.perf_counter() - write_start) * 1000
