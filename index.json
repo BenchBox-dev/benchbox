@@ -1,4 +1,54 @@
 {
+  "batches": {
+    "batch-loop-pilot": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/batch-loop-pilot",
+      "integration_head": "5cfea582d2197ecc150d80c6125a65130c02f23a",
+      "integration_log": [
+        {
+          "at": "2026-11-02T06:29:18Z",
+          "head": "5cfea582d2197ecc150d80c6125a65130c02f23a",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-batch-loop-pilot",
+      "lifecycle": "active",
+      "members": [
+        "batch-loop-docs-and-agents-20261101",
+        "skill-catalog-batch-loop-20261101"
+      ],
+      "owner": "benchbox-batch-pilot-leader",
+      "owner_epoch": 0,
+      "owner_generation": "3877dceffe918c11547be564a977c007",
+      "project_id": "benchbox",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "batch-loop-docs-and-agents-20261101": [
+          "AGENTS.md",
+          "docs/*",
+          "_project/decisions/*",
+          "changelog.d/*"
+        ],
+        "skill-catalog-batch-loop-20261101": [
+          "skill-sync.conf",
+          ".claude/skills/*",
+          "_project/analysis/batch-rollout-evidence.json",
+          "tests/integration/worktree/test_batch_skill_delivery.py",
+          "changelog.d/*"
+        ]
+      },
+      "scope_hash": "b9c7208cbe74aa884dd245e67f0bc8e375262d11d7e3ae20e21c9154d36a04bc",
+      "start_head": "5cfea582d2197ecc150d80c6125a65130c02f23a",
+      "terminal_outcome": "deliver"
+    }
+  },
   "items": {
     "a-dedicated-dtype-asserting-cross-surface-gate-cell-compare": {
       "claim": null,
@@ -32226,5 +32276,5 @@
       "title": "Schema probe (will be dropped)"
     }
   },
-  "schema_version": 1
+  "schema_version": 4
 }
