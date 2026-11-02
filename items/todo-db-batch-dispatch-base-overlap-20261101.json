@@ -9,7 +9,7 @@
     "register_batch with the confirm flag migrates a schema-1 store directly to the new schema in one commit and refuses without the flag (test from a schema-1 fixture); a 0.12.0 client then refuses the migrated store with E_SCHEMA.",
     "Merged on joeharris76/todo-db main with a test for each case."
   ],
-  "context": "Decision gate: start only after todo-db-batch-v2-contract-20261101 is done. Guardrails: work in joeharris76/todo-db under its own repository rules, on a branch and PR, never directly on main; never patch the vendored wheel in BenchBox; one server stays one worker identity (todo-db ADRs 0003 and 0006); every new refusal fails closed with a gate code and recovery steps; BenchBox line citations refer to the vendored 0.12.0 wheel (_project/scripts/vendor/todo_db-0.12.0-py3-none-any.whl), so re-read todo-db main before editing; tests prove behaviour, never wiring.\n\nLands in the single todo-db PR (branch feat/batch-v2) with the ADR and the release, per the owner's consolidation instruction of 2026-11-01.",
+  "context": "Decision gate: start only after todo-db-batch-v2-contract-20261101 is done. Guardrails: work in joeharris76/todo-db under its own repository rules, on a branch and PR, never directly on main; never patch the vendored wheel in BenchBox; one server stays one worker identity (todo-db ADRs 0003 and 0006); every new refusal fails closed with a gate code and recovery steps; BenchBox line citations refer to the vendored 0.12.0 wheel (_project/scripts/vendor/todo_db-0.12.0-py3-none-any.whl), so re-read todo-db main before editing; tests prove behaviour, never wiring.\n\nLands in the single todo-db PR (branch feat/batch-v2) with the ADR and the release, per the owner's consolidation instruction of 2026-11-01.\n\nClosed 2026-11-02: delivered in https://github.com/joeharris76/todo-db/pull/64 (todo-db 0.14.0). prepare accepts the start head or any recorded integration head (E_BATCH_HEAD otherwise); rename-free changed-file sets measured from that base; frozen scope enforced; recorded overlaps (kind member|fix) and derived acceptance_required replace byte equality; current_acceptance required at finish; receipts prepared_work_v2; initialize advertises todo_db_batch version 2; register_batch with the confirm flag migrates schema 1 to 4 in one commit. Silent-revert counterexample covered by test_silent_revert_blocked_after_invalidate_then_reprepare. Gate 1: 0.12.0 and 0.13.0 clients refuse the migrated store with E_SCHEMA.",
   "description": "Implement the dispatch-base and overlap parts of the batch v2 ADR. prepare accepts a source base equal to the batch start head or any integration head this batch recorded (by prepare or advance) and refuses any other base. Changed files are measured from that base, so a member that merged in the current integration head lists only its own files; per-member frozen scope stays enforced. When a later member changes files an earlier member changed, prepare records the overlap (members and paths) instead of refusing, and final evidence then requires current-acceptance evidence for each overlapped earlier member at the final head. Receipts keep the integration head they were integrated at and move to a new versioned schema. This item also owns the store migration and the capability advertisement: register_batch with the confirm flag migrates the store once, from its current schema directly to the new one, and the server advertises the v2 batch capability so consumers can refuse a runtime without it.",
   "sessions": [
     {
@@ -43,6 +43,14 @@
       "generation": "506df8b39be74f4b8eddf35c4374da41",
       "op": "take",
       "op_id": "8242501e6a394dab9b1cb5d1d7f2bdbf",
+      "session_id": "3dd2b4a046904511bb5ce7edcc3205fd"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d680f2b9a00523ec18de3879",
+      "at": "2026-11-02T02:49:29Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6b1eaf656d5d47c293acd321641cf170",
       "session_id": "3dd2b4a046904511bb5ce7edcc3205fd"
     }
   ]
