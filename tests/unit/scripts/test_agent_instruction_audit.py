@@ -735,6 +735,23 @@ def test_unresolvable_git_identity_is_not_a_violation(tmp_path: Path, monkeypatc
     assert audit_git_identity(tmp_path) == []
 
 
+def test_resolved_git_identity_returns_name_and_email(tmp_path: Path) -> None:
+    project = _git_configured_repo(tmp_path, "Joe Harris", "joeharris76@gmail.com")
+    assert agent_instruction_audit._resolved_git_identity(project, "author") == ("Joe Harris", "joeharris76@gmail.com")
+    assert agent_instruction_audit._resolved_git_identity(project, "committer") == (
+        "Joe Harris",
+        "joeharris76@gmail.com",
+    )
+
+
+def test_resolved_git_identity_rejects_malformed_output(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_run(args: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(args, 0, stdout="not an identity\n", stderr="")
+
+    monkeypatch.setattr(agent_instruction_audit.subprocess, "run", fake_run)
+    assert agent_instruction_audit._resolved_git_identity(tmp_path, "author") == ("", "")
+
+
 def test_unresolvable_identity_skip_does_not_weaken_the_agent_check(tmp_path: Path) -> None:
     project = _git_configured_repo(tmp_path, "Codex", "codex@openai.com")
     errors = audit_git_identity(project)
