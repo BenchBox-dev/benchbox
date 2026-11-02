@@ -252,6 +252,7 @@
         "tests/unit/scripts/oracle_reviewers/test_runner.py",
         "tests/unit/scripts/oracle_reviewers/test_rounds.py",
         "tests/unit/scripts/oracle_reviewers/test_verdict.py",
+        "tests/unit/scripts/test_batch_finish.py",
         "tests/unit/scripts/test_batch_integration.py",
         "tests/unit/scripts/test_blind_spot_tools.py",
         "tests/unit/scripts/test_changelog_fragments.py",

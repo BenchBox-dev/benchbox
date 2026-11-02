@@ -3759,6 +3759,22 @@
    "kinds": {
     "unresolved": 1
    },
+   "occurrences": 1,
+   "path": "tests/unit/scripts/test_batch_finish.py",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "unresolved",
+     "target": "docs/late.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "unresolved": 1
+   },
    "occurrences": 2,
    "path": "tests/unit/scripts/test_batch_integration.py",
    "rule": "test-sample-data",
@@ -4741,7 +4757,7 @@
   "dispositions": {
    "contract-replaced": 1,
    "contract-tooling": 6,
-   "fixture-data": 68,
+   "fixture-data": 69,
    "governance-stays": 9,
    "historical-record": 112,
    "lock-test": 5,
@@ -4749,7 +4765,7 @@
    "site-pipeline-cutover": 4,
    "wiring-updated": 30
   },
-  "files": 247,
+  "files": 248,
   "kinds": {
    "built-url": 29037,
    "dir": 163,
@@ -4758,9 +4774,9 @@
    "generated": 3,
    "pattern": 365,
    "root": 203,
-   "unresolved": 2078
+   "unresolved": 2079
   },
-  "references": 33271,
+  "references": 33272,
   "unclassified": 0
  }
 }
