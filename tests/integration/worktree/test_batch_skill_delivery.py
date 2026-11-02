@@ -103,6 +103,15 @@ def test_project_local_wheel_and_lock_are_exact_and_sibling_free() -> None:
     assert "todo_db/database.py" not in names
 
 
+def _clean_checkout(path: Path) -> str:
+    git = ["git", "-C", str(path), "-c", "user.name=Batch Probe", "-c", "user.email=probe@example.invalid"]
+    subprocess.run(["git", "init", "--quiet", "-b", "main", str(path)], check=True, capture_output=True)
+    (path / "README").write_text("probe\n", encoding="utf-8")
+    subprocess.run([*git, "add", "README"], check=True, capture_output=True)
+    subprocess.run([*git, "commit", "--quiet", "-m", "probe"], check=True, capture_output=True)
+    return subprocess.check_output(["git", "-C", str(path), "rev-parse", "HEAD"], text=True, encoding="utf-8").strip()
+
+
 def test_installed_runtime_handshake_exposes_registered_batch_tools(tmp_path: Path) -> None:
     remote = tmp_path / "state.git"
     subprocess.run(["git", "init", "--bare", "--quiet", str(remote)], check=True, capture_output=True)
@@ -190,6 +199,34 @@ def test_installed_runtime_handshake_exposes_registered_batch_tools(tmp_path: Pa
         assert call(7, "drop", {"id": "drop-probe", "reason": reason})["payload"]["data"]["status"] == "dropped"
         shown = call(8, "show_item", {"id": "drop-probe"})["payload"]["data"]
         assert shown["status"] == "dropped" and shown["drop_reason"] == reason
+
+        checkout = tmp_path / "integration"
+        start_head = _clean_checkout(checkout)
+        scope = {"probe-member": ["probe/**"]}
+        scope_hash = hashlib.sha256(
+            json.dumps(scope, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        ).hexdigest()
+        batch = {
+            "batch_id": "batch-probe",
+            "project_id": "benchbox",
+            "repository": str(checkout),
+            "owner_generation": "1" * 32,
+            "integration_branch": "main",
+            "integration_worktree": str(checkout),
+            "start_head": start_head,
+            "members": ["probe-member"],
+            "scope": scope,
+            "scope_hash": scope_hash,
+            "delivery_boundary": "final-pr",
+            "terminal_outcome": "merged",
+            "confirm_schema3_cutover": True,
+        }
+        registered = call(9, "register_batch", batch)["payload"]
+        assert registered["ok"] is True, registered
+        duplicate = call(10, "register_batch", batch)["payload"]
+        assert duplicate["ok"] is False and duplicate["code"] == "E_CONFLICT"
+        aborted = call(11, "abort_batch", {"batch_id": "batch-probe", "owner_generation": "1" * 32})["payload"]
+        assert aborted["ok"] is True, aborted
     finally:
         proc.terminate()
         proc.wait(timeout=5)
