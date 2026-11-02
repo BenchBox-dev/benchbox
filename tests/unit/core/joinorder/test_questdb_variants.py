@@ -9,11 +9,11 @@ import pytest
 from benchbox.core.joinorder.benchmark import JoinOrderBenchmark
 from benchbox.core.joinorder.queries import JoinOrderQueryManager
 from benchbox.sql_compat.rules.query_source.joinorder_variants import QUESTDB_VARIANTS
-from tests.unit.core.joinorder.test_canonical_queries import (
-    TINY_FIXTURE,
-    TINY_REFERENCE,
-    _underlying_count_query,
-)
+
+_canonical = pytest.importorskip("tests.unit.core.joinorder.test_canonical_queries")
+TINY_FIXTURE = _canonical.TINY_FIXTURE
+TINY_REFERENCE = _canonical.TINY_REFERENCE
+_underlying_count_query = _canonical._underlying_count_query
 
 pytestmark = [
     pytest.mark.unit,
