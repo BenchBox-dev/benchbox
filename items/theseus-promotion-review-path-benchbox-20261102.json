@@ -1,0 +1,29 @@
+{
+  "acceptance": [
+    "Actual CLI smoke: a one-line lock bump with a large upstream fixture delta receives gate-tier, non-inline review; omitting any required upstream read yields a non-shipping Gap.",
+    "Gate fixtures refuse missing record, wrong head, wrong old/new hash, wrong attester/App, altered delta, unresolved finding, and a stand-in without promotion evidence; a valid exact-head record can pass only with an otherwise valid verdict.",
+    "Byte-identical rebase/new head requires a fresh promotion review; ordinary carry behaviour is unchanged.",
+    "First promotion can use the independently approved BenchBox bootstrap baseline instead of a nonexistent prior lock, without granting general bootstrap bypasses.",
+    "Focused regression plus actual staged-delta CLI/gate smoke pass; comment-policy and required CI pass; BenchBox PR merged; Theseus port commit is recorded before parity."
+  ],
+  "context": "T3b; resolves P1/P2/P3/R3. Base engine must govern the first BenchBox cutover PR. If porting cannot be delivered until repository bootstrap completes, record the merged BenchBox change here and require the port explicitly in final parity; never hold an unmerged prerequisite behind a circular port dependency.",
+  "description": "Land the new promotion-input behaviour in BenchBox's trusted base engine first, then port the accepted change into Theseus before final parity. A small lock diff is not the reviewed upstream delta: materialize trusted old/new source trees, classify using upstream delta statistics, force gate-tier/non-inline mode, and require read evidence for every changed reviewable upstream file in the staged workspace. Add the lock and installer paths to classifier.gate_paths. Reuse runner staging/evidence patterns, not a second reviewer architecture.\nGate enforcement: a head-bound promotion refusal sits alongside the omp-bump refusal and is evaluated before stand-ins. Its evidence record follows the owner's decision item and binds old/new source and artifact hashes, delta digest and exact PR head. Promotion reviews cannot carry across rebases, even with identical patch digests. Read only existing PR/comment/review/status inputs; no Actions read permission. Gate-path fork PRs remain fail-closed and require the existing owner workflow, never candidate credentials.\nGuardrails: no bypass on absent evidence; no owner attestation invented by an agent; no unsigned/local claim becoming gate authority; no marker semantics change without versioned compatibility proof. Workflow changes need explicit owner approval where required. Preserve ordinary PR behaviour and current all-severity blockers. Scope is new behaviour, not a claimed mechanical extraction.",
+  "links": [
+    "_project/scripts/oracle_reviewers/cli.py",
+    "_project/scripts/oracle_reviewers/evidence.py",
+    "_project/scripts/oracle_reviewers/classify.py",
+    "_project/scripts/oracle_reviewers/protocol.py",
+    "_project/scripts/oracle_review_check.py",
+    "_project/scripts/omp_bump_gate.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4c6f341b7f4b66f30a37a2f1",
+      "at": "2026-11-02T13:46:50Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f753547d1253461093fdcfbd2c821d73",
+      "session_id": "8cfcc9dbcab5419a91fc8b650901f36b"
+    }
+  ]
+}

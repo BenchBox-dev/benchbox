@@ -27749,6 +27749,16 @@
       "status": "open",
       "title": "Record a disposition for every pending oracle observation before production-connected extraction steps"
     },
+    "theseus-promotion-review-path-benchbox-20261102": {
+      "claim": null,
+      "needs": [
+        "theseus-adr-inventory-baseline-20261102",
+        "theseus-decision-promotion-evidence-form-20261102"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Enforce full-delta Theseus promotion review in BenchBox before extracting the reviewer"
+    },
     "theseus-repository-governance-bootstrap-20261102": {
       "claim": null,
       "needs": [
