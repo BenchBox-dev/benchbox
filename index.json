@@ -143,7 +143,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-batch-loop-pilot",
-      "lifecycle": "active",
+      "lifecycle": "completed",
       "members": [
         "batch-loop-docs-and-agents-20261101",
         "skill-catalog-batch-loop-20261101"
@@ -25138,17 +25138,12 @@
       "title": "Validate the benchbox-site tracker branch on a schedule, as core's tracker is"
     },
     "skill-catalog-batch-loop-20261101": {
-      "claim": {
-        "expires_at": "2026-11-03T07:17:46Z",
-        "generation": "b6855be1c540430fba6812fa5e1911e5",
-        "renewals": 0,
-        "worker": "benchbox-batch-pilot-leader"
-      },
+      "claim": null,
       "needs": [
         "batch-loop-docs-and-agents-20261101"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Update the canonical skills for the batch loop and sync them into BenchBox and todo-db"
     },
     "skill-integrity-ci-lane-live-validation": {
