@@ -3,7 +3,7 @@
     "batch-loop-pilot-20261101 records a pass against its rubric before this item starts.",
     "AGENTS.md states the new default and the serial exceptions; make agent-instructions-check passes; merged to develop."
   ],
-  "context": "Owner decision 2026-11-01 (owner answer in the choice dialog, BenchBox session 01a19729, 2026-11-01): \"Flip it automatically if the pilot passes\". Decision gate: if the pilot report says fail, set this item blocked with the failed criteria and leave AGENTS.md unchanged. Guardrails: deliver as an ordinary serial PR to develop (AGENTS.md: feature delivery cannot deliver the changes that make it possible); write only from a linked worktree made with make worktree-create and checked with make agent-write-preflight, never the primary clone; stage explicit paths, never git add -A; no explanatory comments or docstrings (COMMENT-POLICY-001, make comment-policy-check); heavy test runs only through lock-taking entry points, never BENCHBOX_SKIP_TEST_LOCK; never weaken hold labels, the unresolved-thread refusal, oracle-gate, duration or suite gates; add a changelog.d fragment (CHANGELOG_INTERNAL when nothing is user-visible); durable artifacts carry no session or phase labels; cited line numbers are leads, so re-read the code before editing; tests prove behaviour, never wiring or wording. On a failed pilot the owner decides whether to pilot again or drop this item; batch-integration-loop-20261101 stays open until then.",
+  "context": "Owner decision 2026-11-01 (owner answer in the choice dialog, BenchBox session 01a19729, 2026-11-01): \"Flip it automatically if the pilot passes\". Decision gate: if the pilot report says fail, set this item blocked with the failed criteria and leave AGENTS.md unchanged. Guardrails: deliver as an ordinary serial PR to develop (AGENTS.md: feature delivery cannot deliver the changes that make it possible); write only from a linked worktree made with make worktree-create and checked with make agent-write-preflight, never the primary clone; stage explicit paths, never git add -A; no explanatory comments or docstrings (COMMENT-POLICY-001, make comment-policy-check); heavy test runs only through lock-taking entry points, never BENCHBOX_SKIP_TEST_LOCK; never weaken hold labels, the unresolved-thread refusal, oracle-gate, duration or suite gates; add a changelog.d fragment (CHANGELOG_INTERNAL when nothing is user-visible); durable artifacts carry no session or phase labels; cited line numbers are leads, so re-read the code before editing; tests prove behaviour, never wiring or wording. On a failed pilot the owner decides whether to pilot again or drop this item; batch-integration-loop-20261101 stays open until then.\n\nClosed 2026-11-02: https://github.com/BenchBox-dev/benchbox/pull/3922 squash-merged to develop as b64f28fc7300 after CI passed and the hosted oracle passed head 8c58c2b5672e. AGENTS.md Delivery modes now makes an explicitly assigned cohesive batch use feature delivery by default; standalone, cross-repository, review-separated and approval-separated work stays serial; the v2 capability requirement and the self-delivery rule are unchanged; make agent-instructions-check passes (17288 of 17300 bytes). Gate: batch-loop-pilot-20261101 recorded PASS against the rubric before this change.",
   "description": "Change AGENTS.md Delivery modes so an explicitly assigned cohesive batch uses the integration loop by default, while standalone, cross-repository, review-separated and approval-separated work stays serial.",
   "sessions": [
     {
@@ -29,6 +29,14 @@
       "generation": "791bc6012f3542af84bf062289b86a68",
       "op": "take",
       "op_id": "c0745951b65a4e82a020a7ac71a0cd83",
+      "session_id": "b249fb5e3b804f6fab2e27e759c8e1fb"
+    },
+    {
+      "actor": "benchbox-batch-pilot-leader",
+      "at": "2026-11-02T08:09:50Z",
+      "client": "benchbox-batch-leader",
+      "op": "update",
+      "op_id": "36f7a47df794429e85943b171be63b32",
       "session_id": "b249fb5e3b804f6fab2e27e759c8e1fb"
     }
   ]
