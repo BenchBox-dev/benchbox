@@ -1330,6 +1330,17 @@ def _member_worktree_problem(repo: Path, batch_id: str, member: str, branch: str
     return worktree, None
 
 
+def _worktree_locked(repo: Path, worktree: Path) -> bool:
+    current: Path | None = None
+    for line in _git(repo, "worktree", "list", "--porcelain").splitlines():
+        if line.startswith("worktree "):
+            current = Path(line.removeprefix("worktree "))
+        elif (line == "locked" or line.startswith("locked ")) and current is not None:
+            if current.resolve() == worktree.resolve():
+                return True
+    return False
+
+
 def _plan_member_cleanup(repo: Path, batch_id: str, pull_head: str, member: str, receipts: dict[str, dict]) -> dict:
     branch = member_branch_name(batch_id, member)
     local = _ref_oid(repo, f"refs/heads/{branch}")
@@ -1359,23 +1370,45 @@ def _plan_member_cleanup(repo: Path, batch_id: str, pull_head: str, member: str,
         return entry
     worktree, problem = _member_worktree_problem(repo, batch_id, member, branch)
     entry["worktree"] = str(worktree) if worktree else None
+    if not problem and worktree is not None and _worktree_locked(repo, worktree):
+        problem = f"member worktree {worktree} is locked"
     if problem:
         entry["reason"] = problem
         return entry
-    entry["status"] = "would-delete"
     entry["delete_local"] = local is not None
     entry["delete_remote"] = remote is not None and remote == accepted
     if remote is not None and remote != accepted:
         entry["remote_kept"] = f"remote tip {remote} differs from the accepted head {accepted}"
+    if not entry["delete_local"] and not entry["delete_remote"]:
+        entry["reason"] = entry.get("remote_kept") or "nothing to delete"
+        return entry
+    entry["status"] = "would-delete"
     return entry
+
+
+def _recheck_before_removal(repo: Path, entry: dict) -> str | None:
+    branch, accepted = entry["branch"], entry["accepted_head"]
+    if entry["delete_local"]:
+        tip = _ref_oid(repo, f"refs/heads/{branch}")
+        if tip != accepted:
+            return f"branch tip {tip} no longer equals the accepted head {accepted}"
+    if entry["worktree"] and not _is_clean(Path(entry["worktree"])):
+        return f"member worktree {entry['worktree']} is no longer clean"
+    return None
 
 
 def _execute_member_cleanup(repo: Path, entry: dict) -> None:
     branch, accepted = entry["branch"], entry["accepted_head"]
     lease = f"--force-with-lease=refs/heads/{branch}:{accepted}"
+    problem = _recheck_before_removal(repo, entry)
+    if problem:
+        entry["status"] = "refused"
+        entry["reason"] = problem
+        return
     try:
         if entry["worktree"]:
             _git(repo, "worktree", "remove", entry["worktree"])
+            entry["worktree_removed"] = True
         if entry["delete_local"]:
             _git(repo, "update-ref", "-d", f"refs/heads/{branch}", accepted)
         if entry["delete_remote"]:

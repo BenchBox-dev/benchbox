@@ -133,6 +133,46 @@ def test_a_branch_that_moves_between_the_check_and_the_delete_survives(
     report = fin.finish()
     assert _status(report)["zeta"] == "refused"
     assert fin.tip("zeta") == moved[0]
+    assert fin.worktrees["zeta"].is_dir()
+    assert "worktree_removed" not in next(entry for entry in report["members"] if entry["member"] == "zeta")
+
+
+def test_a_worktree_that_turns_dirty_between_the_check_and_the_delete_is_kept(
+    fin: Finished, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan = bi._plan_member_cleanup
+
+    def plan_then_dirty(repo, batch_id, pull_head, member, receipts):
+        entry = plan(repo, batch_id, pull_head, member, receipts)
+        if member == "zeta":
+            (fin.worktrees["zeta"] / "scratch.txt").write_text("unsaved\n")
+        return entry
+
+    monkeypatch.setattr(bi, "_plan_member_cleanup", plan_then_dirty)
+    zeta_tip = fin.tip("zeta")
+    report = fin.finish()
+    assert _status(report)["zeta"] == "refused"
+    assert fin.tip("zeta") == zeta_tip and (fin.worktrees["zeta"] / "scratch.txt").is_file()
+
+
+def test_a_locked_member_worktree_is_refused_in_the_dry_run(fin: Finished) -> None:
+    git(fin.integration, "worktree", "lock", str(fin.worktrees["zeta"]))
+    report = fin.finish(execute=False)
+    assert _status(report)["zeta"] == "refused"
+    assert "locked" in next(entry for entry in report["members"] if entry["member"] == "zeta")["reason"]
+    assert _status(report)["alpha"] == "would-delete"
+
+
+def test_a_member_with_nothing_deletable_is_refused_not_reported_deleted(fin: Finished) -> None:
+    alpha_tip = fin.tip("alpha")
+    git(fin.integration, "worktree", "remove", str(fin.worktrees["alpha"]))
+    git(fin.integration, "branch", "-q", "-D", fin.branches["alpha"])
+    git(fin.integration, "push", "-q", "origin", f"{alpha_tip}~1:refs/heads/{fin.branches['alpha']}")
+    report = fin.finish()
+    alpha = next(entry for entry in report["members"] if entry["member"] == "alpha")
+    assert alpha["status"] == "refused" and "differs" in alpha["reason"]
+    assert report["ok"] is False
+    assert f"refs/heads/{fin.branches['alpha']}" in git(fin.world.origin, "for-each-ref")
 
 
 def test_a_missing_pull_request_head_ref_is_refused_before_anything_is_deleted(fin: Finished) -> None:

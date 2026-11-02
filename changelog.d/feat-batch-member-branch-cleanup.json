@@ -1,4 +1,4 @@
 {
   "schema": 1,
-  "internal": "Agent delivery tooling and instructions: an explicitly assigned cohesive batch now uses the integration loop by default after the pilot passed; batch-land reads a member's implementation dependencies from the tracker instead of a DEPENDENCIES argument; make batch-finish removes clean member worktrees and deletes member branches that lose nothing (dry run unless EXECUTE=1) under a new deletion basis in the worktree lifecycle evidence contract"
+  "internal": "Agent delivery: assigned cohesive batches default to the integration loop; batch-land reads member dependencies from the tracker; make batch-finish deletes member branches and worktrees that lose nothing (dry run unless EXECUTE=1)"
 }
