@@ -1775,13 +1775,18 @@
       "title": "Make integration mode the AGENTS.md default for explicitly assigned cohesive batches after a passing pilot"
     },
     "batch-loop-disposable-e2e-20261101": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-03T06:27:34Z",
+        "generation": "4fe7a67eecfc4711b876e4cd3993f7d4",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d680f2b9a00523ec18de3879"
+      },
       "needs": [
         "batch-land-and-status-20261101",
         "pr-landing-arm-batch-evidence-20261101"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Prove the batch loop end to end in a disposable repository with an isolated tracker"
     },
     "batch-loop-docs-and-agents-20261101": {
