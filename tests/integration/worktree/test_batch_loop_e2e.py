@@ -85,6 +85,7 @@ def readiness(world: World, loop: Loop, evidence: dict | None) -> list[str]:
             repository="owner/repo",
             branch=loop.branch,
             worktree=str(loop.integration),
+            pr_number=42,
         )
         return landing.ready_failures(identity, head, ready, loop.integration)
 
