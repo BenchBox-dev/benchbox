@@ -176,6 +176,7 @@ def _resolve_validation_sql(
 
 _SINGLE_STATEMENT_SETUP_DIALECTS = frozenset({"sqlite", "databricks", "questdb", "presto", "trino", "clickhouse"})
 _NO_TRUNCATE_DIALECTS = frozenset({"sqlite"})
+_COUNT_PROBE_DIALECTS = frozenset({"clickhouse"})
 _SUMMED_ROWCOUNT_DIALECTS = frozenset({"sqlite"})
 
 _ENGINE_WRITE_PRIMITIVE_SKIPS = (
@@ -733,6 +734,11 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
         self._populate_staging_tables(connection, reset_map)
         self.log_verbose("Reset complete")
 
+    def _staging_nonempty_probe_sql(self, quoted_table: str) -> str:
+        if self._setup_dialect.lower() in _COUNT_PROBE_DIALECTS:
+            return f"SELECT COUNT(*) FROM {quoted_table}"
+        return f"SELECT 1 FROM {quoted_table} LIMIT 1"
+
     def is_setup(self, connection: DatabaseConnection) -> bool:
         try:
             required_tables = [
@@ -749,8 +755,11 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
                 if not self._table_exists(connection, table_name):
                     return False
                 quoted = self._quote_identifier(table_name)
-                probe = connection.execute(f"SELECT 1 FROM {quoted} LIMIT 1")
-                if failed_platform_error(probe) is not None or probe.fetchone() is None:
+                probe = connection.execute(self._staging_nonempty_probe_sql(quoted))
+                if failed_platform_error(probe) is not None:
+                    return False
+                row = probe.fetchone()
+                if row is None or (self._setup_dialect.lower() in _COUNT_PROBE_DIALECTS and not row[0]):
                     return False
             if self._manifest_verified_connection is connection:
                 return True
