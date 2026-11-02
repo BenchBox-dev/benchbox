@@ -286,9 +286,35 @@ def date_column_integer_arithmetic(expression, *, copy: bool = True):
     return tree
 
 
+def _empty_input_projection(select, keys: set[str]):
+    exp = sql_expressions()
+    empty = select.copy()
+    for clause in ("from_", "joins", "laterals", "where", "group", "order", "limit", "offset", "with_"):
+        empty.set(clause, None)
+    for index, projection in enumerate(list(empty.expressions)):
+        if isinstance(projection, exp.Column) and projection.sql() in keys:
+            empty.expressions[index] = exp.alias_(exp.Null(), projection.name)
+            continue
+        if isinstance(projection, exp.Alias) and isinstance(projection.this, exp.Column):
+            if projection.this.sql() in keys:
+                projection.set("this", exp.Null())
+                continue
+        for aggregate in list(projection.find_all(exp.AggFunc)):
+            aggregate.replace(
+                exp.Cast(this=exp.Literal.number(0), to=exp.DataType.build("bigint"))
+                if isinstance(aggregate, exp.Count)
+                else exp.Null()
+            )
+        for column in list(projection.find_all(exp.Column)):
+            column.replace(exp.Null())
+    return empty
+
+
 def rollup_empty_input_row(expression, *, copy: bool = True):
     exp = sql_expressions()
     tree = expression.copy() if copy else expression
+    taken = {name.lower() for name in (cte.alias for cte in tree.find_all(exp.CTE))}
+    taken |= {table.name.lower() for table in tree.find_all(exp.Table)}
     for select in reversed(list(tree.find_all(exp.Select))):
         group = select.args.get("group")
         if group is None or len(group.expressions) != 1 or not isinstance(group.expressions[0], exp.Rollup):
@@ -299,27 +325,34 @@ def rollup_empty_input_row(expression, *, copy: bool = True):
         if order is not None and any(column.table for column in order.find_all(exp.Column)):
             continue
         keys = {key.sql() for key in group.expressions[0].expressions}
-        branch = select.copy()
-        for clause in ("group", "order", "limit", "offset"):
-            branch.set(clause, None)
-        for index, projection in enumerate(list(branch.expressions)):
-            if isinstance(projection, exp.Column) and projection.sql() in keys:
-                branch.expressions[index] = exp.alias_(exp.Null(), projection.name)
-                continue
-            for column in list(projection.find_all(exp.Column)):
-                if column.sql() in keys and column.find_ancestor(exp.AggFunc) is None:
-                    column.replace(exp.Null())
-        branch.set("having", exp.Having(this=exp.EQ(this=exp.Count(this=exp.Star()), expression=exp.Literal.number(0))))
+        empty = _empty_input_projection(select, keys)
+        name = "rollup_rows"
+        while name in taken:
+            name += "_"
+        taken.add(name)
         limit, offset = select.args.get("limit"), select.args.get("offset")
         with_clause = select.args.get("with_")
         for clause in ("order", "limit", "offset", "with_"):
             select.set(clause, None)
-        branch.set("with_", None)
-        union = exp.Union(this=select.copy(), expression=branch, distinct=False)
-        wrapper = exp.select("*").from_(union.subquery("rollup_rows"))
-        for clause, value in (("with_", with_clause), ("order", order), ("limit", limit), ("offset", offset)):
+        empty.set(
+            "from_",
+            exp.From(
+                this=exp.Subquery(this=exp.select("1"), alias=exp.TableAlias(this=exp.to_identifier("rollup_dual")))
+            ),
+        )
+        empty.set(
+            "where",
+            exp.Where(this=exp.Not(this=exp.Exists(this=exp.select("1").from_(exp.to_table(name))))),
+        )
+        union = exp.Union(this=exp.select("*").from_(exp.to_table(name)), expression=empty, distinct=False)
+        wrapper = exp.select("*").from_(union.subquery("rollup_union"))
+        for clause, value in (("order", order), ("limit", limit), ("offset", offset)):
             if value is not None:
                 wrapper.set(clause, value)
+        wrapper = wrapper.with_(name, as_=select.copy())
+        if with_clause is not None:
+            for cte in reversed(with_clause.expressions):
+                wrapper.args["with_"].expressions.insert(0, cte.copy())
         if select is tree:
             return wrapper
         select.replace(wrapper)
