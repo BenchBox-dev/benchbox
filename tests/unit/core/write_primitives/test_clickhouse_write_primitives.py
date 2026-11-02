@@ -51,3 +51,52 @@ def test_staging_ddl_declares_a_merge_tree_and_nullable_columns():
     assert "file_path Nullable(VARCHAR(500))" in sql
     assert "operation_id VARCHAR(100) NOT NULL" in sql
     assert "ENGINE" not in get_create_table_sql("batch_metadata", "duckdb")
+
+
+class _ProbeConnection:
+    def __init__(self, counts):
+        self.counts = counts
+        self.executed = []
+
+    def execute(self, sql, *args, **kwargs):
+        self.executed.append(sql)
+        for table, count in self.counts.items():
+            if f'"{table}"' in sql and "COUNT(*)" in sql:
+                return _Rows([(count,)])
+        return _Rows([(1,)])
+
+
+class _Rows:
+    def __init__(self, rows):
+        self.rows = list(rows)
+
+    def fetchone(self):
+        return self.rows.pop(0) if self.rows else None
+
+
+def test_staging_probe_counts_rows_instead_of_scanning_for_one_on_clickhouse(wp, monkeypatch):
+    wp._setup_dialect = "clickhouse"
+    monkeypatch.setattr(wp, "_table_exists", lambda _c, _t: True)
+    monkeypatch.setattr(wp, "_staging_manifest_matches", lambda _c, _t: True)
+    conn = _ProbeConnection({})
+    assert wp.is_setup(conn) is True
+    probes = [sql for sql in conn.executed if "_ops_" in sql or "ddl_truncate_target" in sql]
+    assert probes
+    assert all(sql.startswith("SELECT COUNT(*) FROM") for sql in probes)
+    assert not any("LIMIT 1" in sql for sql in probes)
+
+
+def test_staging_probe_reports_an_emptied_clickhouse_table_as_not_setup(wp, monkeypatch):
+    wp._setup_dialect = "clickhouse"
+    monkeypatch.setattr(wp, "_table_exists", lambda _c, _t: True)
+    monkeypatch.setattr(wp, "_staging_manifest_matches", lambda _c, _t: True)
+    assert wp.is_setup(_ProbeConnection({"delete_ops_lineitem": 0})) is False
+
+
+def test_staging_probe_keeps_limit_one_on_other_dialects(wp, monkeypatch):
+    wp._setup_dialect = "duckdb"
+    monkeypatch.setattr(wp, "_table_exists", lambda _c, _t: True)
+    monkeypatch.setattr(wp, "_staging_manifest_matches", lambda _c, _t: True)
+    conn = _ProbeConnection({})
+    assert wp.is_setup(conn) is True
+    assert any(sql.endswith("LIMIT 1") for sql in conn.executed)
