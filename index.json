@@ -27747,10 +27747,15 @@
       "title": "Record the authorized separate Theseus repository and its cost tradeoff"
     },
     "theseus-decision-vendored-matcher-20261102": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-03T16:56:57Z",
+        "generation": "f41aaddcc38d45a29b0462d9596432ef",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b58f5aa5b2bb5e33c84a53cb"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Owner decision: approve one vendored soundness-path matcher module as the only embedded exception"
     },
     "theseus-freeze-final-parity-20261102": {
