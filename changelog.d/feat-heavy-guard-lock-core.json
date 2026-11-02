@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Developer test-harness locking moved into a shared module; no change for package users."
+}

@@ -228,8 +228,7 @@ before depending on an experimental or beta interface.
 See [PyPI](https://pypi.org/project/benchbox/) for published releases and
 [DISCLAIMER.md](DISCLAIMER.md) for project limitations. Release and versioning
 details live in the
-[backward-compatibility policy](https://benchbox.dev/docs/reference/backward-compatibility.html) and
-[release guide](docs/internal/release-guide.md).
+[backward-compatibility policy](https://benchbox.dev/docs/reference/backward-compatibility.html).
 
 ## Contributing
 

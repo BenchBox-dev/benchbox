@@ -67,6 +67,7 @@ test-docker-up-pg-extensions:
 		mkdir -p "$$state_dir"; \
 		project_name="$$(cat "$$project_file" 2>/dev/null || true)"; \
 		if [ -z "$$project_name" ]; then \
+			$(COMPOSE_ADMIT) \
 			project_name="benchbox-pg-extensions-test-$$(date +%s)-$$RANDOM"; \
 		fi; \
 		status=1; \
@@ -96,6 +97,7 @@ test-docker-down-pg-extensions:
 test-docker-pg-extensions:
 	@echo "Running pg_duckdb and pg_mooncake Docker integration tests"
 	@set -e; \
+		$(COMPOSE_ADMIT) \
 		project_name="benchbox-pg-extensions-test-$$(date +%s)-$$RANDOM"; \
 		cleanup() { docker compose -p "$$project_name" -f docker/postgres-extensions/docker-compose.yml down -v || true; }; \
 		trap cleanup EXIT INT TERM; \
@@ -107,6 +109,8 @@ DOCKER_TEST_STATE_DIR ?= /tmp/benchbox-docker-projects
 
 CONTAINER_ENGINE ?= docker
 COMPOSE := $(CONTAINER_ENGINE) compose
+COMPOSE_UP_NEED_GIB ?= 2
+COMPOSE_ADMIT = $(HOST_LOCK_CLI) admit --need-gib $(COMPOSE_UP_NEED_GIB) >&2 || exit $$?;
 
 define require_data_dir_if_mounted
 case " lakesail velox " in *" $(1) "*) case "$$BENCHBOX_DATA_DIR" in "") echo "ERROR: BENCHBOX_DATA_DIR must be exported before bringing up docker/$(1) -- its compose file binds the data directory at the SAME absolute path inside the container as on the host, because the server resolves client-sent file paths server-side; an unset value is silently accepted as an empty mount by both docker compose and mocker. Example: export BENCHBOX_DATA_DIR=$$HOME/benchbox-data" >&2; exit 1 ;; /*) : ;; *) echo "ERROR: BENCHBOX_DATA_DIR must be an ABSOLUTE path (got '$$BENCHBOX_DATA_DIR') -- docker/$(1)'s compose file binds it at the SAME path inside the container as on the host, so a relative value can never match. Example: export BENCHBOX_DATA_DIR=$$HOME/benchbox-data" >&2; exit 1 ;; esac ;; esac
@@ -124,6 +128,7 @@ test-docker-up-%:
 		mkdir -p "$$state_dir"; \
 		project_name="$$(cat "$$project_file" 2>/dev/null || true)"; \
 		if [ -z "$$project_name" ]; then \
+			$(COMPOSE_ADMIT) \
 			project_name="benchbox-$*-test-$$(date +%s)-$$RANDOM"; \
 		fi; \
 		status=1; \
@@ -153,6 +158,7 @@ test-docker-down-%:
 test-docker-firebolt:
 	@echo "Running Firebolt Core Docker integration tests"
 	@set -e; \
+		$(COMPOSE_ADMIT) \
 		project_name="benchbox-firebolt-test-$$(date +%s)-$$RANDOM"; \
 		cleanup() { { $(call compose_down_fresh,$$project_name,docker/firebolt/docker-compose.yml) ; } || true; }; \
 		trap cleanup EXIT INT TERM; \
@@ -162,6 +168,7 @@ test-docker-firebolt:
 test-docker-%:
 	@echo "Running $* Docker integration tests"
 	@set -e; \
+		$(COMPOSE_ADMIT) \
 		project_name="benchbox-$*-test-$$(date +%s)-$$RANDOM"; \
 		cleanup() { { $(call compose_down_fresh,$$project_name,docker/$*/docker-compose.yml) ; } || true; }; \
 		trap cleanup EXIT INT TERM; \
@@ -193,6 +200,9 @@ test-docker-up-all:
 			project_file="$$state_dir/$$p.project"; \
 			project_name="$$(cat "$$project_file" 2>/dev/null || true)"; \
 			if [ -z "$$project_name" ]; then \
+				status=0; \
+				$(COMPOSE_ADMIT) \
+				status=1; \
 				project_name="benchbox-$$p-test-$$run_id"; \
 				printf '%s\n' "$$project_name" > "$$project_file"; \
 			fi; \

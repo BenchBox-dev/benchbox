@@ -299,9 +299,9 @@ CHECKER = "benchbox/core/equivalence/checker.py"
 CAPTURE = "benchbox/core/expected_results/registry.py"
 
 
-def test_plan_records_the_run_uuid_for_binding(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_plan_records_one_run_id_for_binding(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     _, values, plan = _plan(monkeypatch, tmp_path, _fake(files=SOUNDNESS))
-    assert values["decision"] == "review" and plan["run_uuid"] == plan["run_id"] and plan["run_uuid"]
+    assert values["decision"] == "review" and plan["run_id"] and "run_uuid" not in plan
 
 
 def test_soundness_pr_plans_a_review_over_the_bucket_chain(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -509,7 +509,7 @@ def _block(provider: str, *, recorded: timedelta, remaining: timedelta) -> PoolB
 def test_a_primary_provider_pool_block_is_carried_to_a_new_head(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    block = _block("anthropic", recorded=timedelta(hours=1), remaining=timedelta(hours=2))
+    block = _block("anthropic", recorded=timedelta(minutes=20), remaining=timedelta(minutes=30))
     state = State(7, "c" * 40, "pending", block.recorded_at, (), {"claude": block})
     _, _, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), SOUNDNESS, state))
     assert plan["pool_blocked_until"] == {"claude": block.to_json()}
@@ -540,10 +540,10 @@ def test_a_fallback_provider_block_older_than_one_hour_is_dropped_for_the_same_h
     assert plan["pool_blocked_until"] == {}
 
 
-def test_a_primary_provider_block_older_than_the_cap_is_dropped(
+def test_a_primary_provider_block_older_than_the_backoff_is_dropped(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    block = _block("anthropic", recorded=timedelta(hours=25), remaining=timedelta(days=6))
+    block = _block("anthropic", recorded=timedelta(minutes=61), remaining=timedelta(days=6))
     state = State(7, HEAD, "pending", block.recorded_at, (), {"claude": block})
     _, _, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), SOUNDNESS, state))
     assert plan["pool_blocked_until"] == {}
@@ -1782,7 +1782,7 @@ def test_comment_without_a_dispute_leaves_the_decided_head_in_place(
     _, values, plan = _plan(
         monkeypatch, tmp_path, _thread_fake(_decided_head(), [_acked_thread()]), event_name="issue_comment", event=event
     )
-    assert values["decision"] == "skip" and values["post"] == "false"
+    assert values["decision"] == "carry" and values["post"] == "true"
     assert plan["manual"] is True
 
 
@@ -1980,7 +1980,7 @@ def test_a_byte_identical_rebase_keeps_the_strike_count_and_the_forced_round_all
     forced = {"kind": "follow-up", "forced": True, "round": 2}
     spent = [_record(TWO_FILE_DIFF, "SHIP"), *(_record(TWO_FILE_DIFF, "SHIP", **forced) for _ in range(2))]
     refused = _round(spent, force=True)
-    assert refused.kind == protocol.SKIP and "already had 2 forced re-reviews" in refused.reason
+    assert refused.kind == protocol.SKIP and "already had 2 dispute re-reviews" in refused.reason
 
 
 def test_a_rebase_onto_changed_files_is_a_new_digest_with_its_own_strike_and_forced_allowance() -> None:

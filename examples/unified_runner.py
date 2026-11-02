@@ -31,6 +31,7 @@ from benchbox.core.schemas import BenchmarkConfig, DatabaseConfig
 from benchbox.core.system import SystemProfiler
 from benchbox.examples import ensure_output_directory, execute_example_dry_run
 from benchbox.utils.cloud_storage import is_cloud_path
+from benchbox.utils.path_utils import resolve_benchmark_runs_dir
 from benchbox.utils.printing import (
     error as perror,
     info as pinfo,
@@ -405,7 +406,7 @@ def _handle_compare_only(args) -> int:
     results_dir = (
         Path(getattr(args, "output_dir", None))
         if getattr(args, "output_dir", None)
-        else Path("_project/runner_results")
+        else resolve_benchmark_runs_dir() / "results"
     )
     exporter = ResultExporter(output_dir=results_dir, anonymize=getattr(args, "anonymize", False))
     comparison = exporter.compare_results(Path(args.compare_baseline), Path(args.compare_current))
@@ -741,7 +742,7 @@ def _execute_main_benchmark(
 
     formats = [f.strip() for f in (args.formats or "json").split(",") if f.strip()]
 
-    results_dir = Path(args.output_dir) if args.output_dir else Path("_project/runner_results")
+    results_dir = Path(args.output_dir) if args.output_dir else resolve_benchmark_runs_dir() / "results"
     from io import StringIO
 
     from rich.console import Console

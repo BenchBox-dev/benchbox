@@ -528,6 +528,7 @@ def evaluate(
                 *pr_landing.hidden_failed_suites(run, repo, BASE_BRANCH, head),
                 *pr_arm.duration_verdict_refusals(run, repo, number, head, "pr-arm-remote"),
                 *pr_arm.pr_arm_omp_bump.bump_refusals(run, repo, number, head),
+                *pr_arm.gate_refusals(run, repo, number, head, "pr-arm-remote"),
             ],
             pr_landing.ruleset_required_contexts(run, repo, BASE_BRANCH),
             pr_landing.live_commit_statuses(run, repo, head),
@@ -582,7 +583,6 @@ def _arm(
         print(f"reviewer family: {family}; model: {reviewer['model']}; run: {reviewer['run_id']}")
         if family == "anthropic":
             print("Claude-family review: less independent when the builder is also Claude-family.")
-        pr_arm.refresh_oracle_gate(run, repo, number, head, "pr-arm-remote")
         code, out = run(
             ["gh", "pr", "merge", str(number), "--repo", repo, "--squash", "--auto", "--match-head-commit", head]
         )

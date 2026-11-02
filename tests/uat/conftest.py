@@ -5,8 +5,8 @@ from unittest.mock import patch
 
 import pytest
 
+from benchbox.utils.resource_limits import MemorySnapshot
 from tests.uat import docker_assets, matrix
-from tests.uat.preflight_budget import MemorySnapshot
 
 HERMETIC_FREE_MEMORY_GIB = 64.0
 
@@ -71,6 +71,6 @@ def isolate_free_space_reading(monkeypatch):
         lambda _path: HERMETIC_FREE_SPACE_GIB,
     )
     monkeypatch.setattr(
-        "tests.uat.preflight_budget.free_space_gib",
+        "tests.uat.orchestrator.free_space_gib",
         lambda _path: HERMETIC_FREE_SPACE_GIB,
     )

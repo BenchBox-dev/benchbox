@@ -391,3 +391,47 @@ Scenarios:
 
 💡 Note: Add 'Alternative: uv pip install "benchbox[...]"' for pip-compatible syntax
 """
+
+
+INSTALLATION_GUIDE_URL = "https://benchbox.dev/docs/usage/installation.html"
+
+
+def find_missing_module(error: BaseException | None) -> str | None:
+    seen: set[int] = set()
+    pending: list[BaseException | None] = [error]
+    while pending:
+        current = pending.pop()
+        if current is None or id(current) in seen:
+            continue
+        seen.add(id(current))
+        if isinstance(current, ModuleNotFoundError) and current.name:
+            if current.name != "benchbox" and not current.name.startswith("benchbox."):
+                return current.name
+        pending.append(getattr(current, "original_error", None))
+        pending.append(current.__cause__)
+    return None
+
+
+class BenchmarkDependencyError(ImportError):
+    def __init__(self, benchmark: str, module: str, extras: Sequence[str] = ()):
+        self.benchmark = benchmark
+        self.module = module
+        self.extras = tuple(extras)
+        self.summary = f"Benchmark '{benchmark}' requires the Python package '{module}', which is not installed."
+        if self.extras:
+            self.remedy = f"Install the '{','.join(self.extras)}' extra: {get_install_command(','.join(self.extras))}"
+        else:
+            self.remedy = (
+                f"Install '{module}' in this environment. See the installation guide: {INSTALLATION_GUIDE_URL}"
+            )
+        super().__init__(f"{self.summary} {self.remedy}", name=module)
+
+
+class BenchmarkLoadError(RuntimeError):
+    def __init__(self, benchmark: str, reason: str):
+        self.benchmark = benchmark
+        self.reason = reason
+        super().__init__(f"Benchmark '{benchmark}' could not be loaded: {reason}")
+
+
+BENCHMARK_LOAD_ERRORS = (BenchmarkDependencyError, BenchmarkLoadError)

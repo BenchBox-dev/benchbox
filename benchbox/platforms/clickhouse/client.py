@@ -265,7 +265,7 @@ class ClickHouseLocalClient:
         return _ResultProxy([])
 
     def disconnect(self):
-        pass
+        self.close()
 
     def commit(self):
         pass

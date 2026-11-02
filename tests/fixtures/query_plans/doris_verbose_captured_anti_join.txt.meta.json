@@ -1,0 +1,5 @@
+{
+  "provenance": "captured",
+  "models": "Apache Doris 4.0.3 EXPLAIN VERBOSE (OLAP tables), captured",
+  "validated_against_live": true
+}

@@ -135,7 +135,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `omp-pin-bump.yml` | tooling | Scheduled omp pin bump: a read-only job builds and proves the candidate, and a separate job holding the write token opens the bump pull request, which `oracle-gate` holds until the owner posts the Mac evidence line |
 | `omp-pin-watch.yml` | tooling | Scheduled comparison of the first reviews after an omp pin bump with the previous week, with a read-only job that keeps the attempt ledger and a separate job holding the write token that opens a revert pull request, which `oracle-gate` holds until the owner posts the Mac evidence line for the restored pin |
 | `oracle-gate.yml` | product-safety | Required gate from trusted code: result-affecting changes need a success review of the head from the `benchbox-oracle` App, whose Bot identity only the owner controls, or a stand-in approval comment from an attester account posted after the oracle's latest review; that account is also the one local automation uses, so the stand-in records who vouched, not that a human read it. Posted as `oracle-gate` for the head from develop code with the App token on stand-in comments, head and base changes and the scheduled sweep, and one of two in-tree writers (the other is the verdict publish step); every head change gets a pending `oracle-gate` before evaluation so a push back to an earlier green head cannot keep a stale green. Open review threads are enforced by the ruleset's required thread resolution, not by this gate; the required check is scoped to the oracle App in the ruleset |
-| `oracle-review.yml` | product-safety | Review-event notification, not a check: a no-op job on review submitted, edited and dismissed whose completion makes `oracle-gate` re-evaluate |
+| `oracle-review.yml` | product-safety | Review-event notification, not a check: a no-op job on oracle review edited and dismissed events only, whose completion makes `oracle-gate` re-evaluate that head |
 | `oracle-verdict.yml` | product-safety | Self-hosted soundness review: reviewers chosen by tier and availability in one review job, each holding only the gateway client token, and a review and non-required `oracle-verdict` status posted by the owner's App, followed in the same publish step by the required `oracle-gate` status for the exact head, evaluated from the trusted develop checkout with the same decision the gate workflow uses and posted with the App token |
 | `perf-smoke.yml` | product-safety | Performance smoke |
 | `pr-hold.yml` | product-safety | Required `hold` check: fails while the `no-auto-merge` label is present, on every label change |
@@ -175,7 +175,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_omp_pin_bump_workflow.py` | tooling | The omp pin bump workflow splits a read-only build job from the write-token pull request job and checks out no credentials |
 | `test_omp_pin_watch_workflow.py` | tooling | The omp pin watch workflow splits a read-only evaluation job from the write-token revert job, checks out no credentials and opens a revert only for an anomalous state and never twice for one version |
 | `test_oracle_gate_workflow.py` | product-safety | Trusted triggers, develop-only checkout, single per-PR concurrency group, App-only posting and no other workflow posting the gate context |
-| `test_oracle_review_workflow.py` | product-safety | The notification-only shape of the oracle-review workflow: review triggers, empty permissions, one `review-event` job, no checkout, secrets or tools |
+| `test_oracle_review_workflow.py` | product-safety | The notification-only shape of the oracle-review workflow: edited and dismissed review triggers, empty permissions, one `review-event` job, no checkout, secrets or tools |
 | `test_oracle_verdict_workflow.py` | product-safety | Oracle review triggers, guards, the single review job's step order and secret scoping, and App-only posting |
 | `test_t2_partition_workflow.py` | product-safety | Complete medium selection, correctness gate conservation, and binary framing placement |
 | `test_comment_policy_nightly_workflow.py` | tooling | Nightly comment-policy workflow triggers, develop checkout, read-only permissions, whole-tree launcher call and shared action pins |
@@ -247,7 +247,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_generate_corpus_inventory.py` | product-safety |
 | `test_guard_messages.py` | tooling |
 | `test_inline_applied_ledger_bounds.py` | product-safety |
-| `test_local_validation.py` | pure-process |
+| `test_host_lock.py` | pure-process |
 | `test_migrate_clickhouse_labels.py` | product-safety |
 | `test_mirror_partial_validation_policy.py` | pure-process |
 | `test_oracle_gate.py` | product-safety | Gate decision parity with the shared checker decision, status mapping and App posting |
@@ -376,7 +376,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `trunk_revert.py` | pure-process | Revert of a merged PR and the red-trunk gate on `make pr-open` |
 | `trunk_red_disarm.py` | pure-process | Disables auto-merge on armed PRs the arm gate would refuse when a develop Trunk run is red |
 | `pr_refresh_certification.py` | pure-process | Refresh mechanics |
-| `local_validation.py` | pure-process | Shared test-lock mechanics |
+| `benchbox/utils/host_lock.py` | pure-process | Shared test-lock mechanics |
 | `trunk_duration_trend.py` | tooling | Trunk job p50 comparison, run-timestamp windows, API-call budget and the single trend issue |
 | `bundled_binary_manifest.py` | product-safety | Deterministic hashes of the shipped generator tree |
 | `verify_distribution_binaries.py` | product-safety | Distribution membership, archive safety, and source-bound generator hashes |
@@ -394,7 +394,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `timing_policy_check.py` | product-safety | Monotonic-clock policy (KEEP trap) |
 | `fast_lane_ceiling_check.py` | pure-process | Fast-lane marker and path guards; retires with the fast lane |
 | `soundness_paths.py` | product-safety | Soundness path manifest |
-| `oracle_review_check.py` | product-safety | Oracle review or stand-in approval check for soundness-path changes; the attester account is the one local automation also uses |
+| `oracle_review_check.py` | product-safety | Oracle review or stand-in approval decision and GitHub readers shared by the gate and the verdict run, for soundness-path changes; the attester account is the one local automation also uses |
 | `oracle_reviewers/cli.py` | product-safety | Shadow review entry point; its package holds the classifier, reviewer selection, absence classification and verdict validation |
 | `ruleset_review_enforcement.py` | product-safety | Ruleset review enforcement |
 | `soundness_drain_report.py` | pure-process | Drain digest mechanics |

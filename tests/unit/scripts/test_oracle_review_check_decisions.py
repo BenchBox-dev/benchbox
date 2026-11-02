@@ -14,6 +14,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT / "_project/scripts"))
 gate = importlib.import_module("_project.scripts.oracle_review_check")
 sys.modules["oracle_review_check"] = gate
+oracle_gate = importlib.import_module("_project.scripts.oracle_gate")
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -97,7 +98,7 @@ def _decide(**kwargs: Any) -> tuple[int, str]:
         HEAD,
         kwargs.pop("files", SOUNDNESS),
         kwargs.pop("statuses", [_status()]),
-        gate.path_matcher(2, 2, *gate._review_rules()),
+        gate.path_matcher(2, 2, *oracle_gate.load_policy_rules()),
         kwargs.pop("base_date", None),
         kwargs.pop("comments", []),
         reviews=kwargs.pop("reviews", [_receipt()]),
@@ -191,25 +192,6 @@ def test_a_gate_path_that_is_also_inert_needs_review_and_an_exempt_pattern_skips
     assert gate.path_matcher(1, 1, ("zz_exempt/*",), ())(["zz_other/a.txt"]) is True
 
 
-def test_the_review_rules_are_read_from_the_reviewer_policy_file(monkeypatch: pytest.MonkeyPatch) -> None:
-    seen: list[Path] = []
-
-    class Classifier:
-        exempt_paths = ("e/*",)
-        gate_paths = ("g/*",)
-
-    class Policy:
-        classifier = Classifier()
-
-    def load(path: Path) -> Policy:
-        seen.append(path)
-        return Policy()
-
-    monkeypatch.setattr("oracle_reviewers.policy.load_policy", load)
-    assert gate._review_rules() == (("e/*",), ("g/*",))
-    assert seen == [Path(".github/oracle-reviewers.yml")]
-
-
 def test_annotate_receipt_ignores_reviews_before_the_retarget(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
     monkeypatch.setattr(gate, "fetch_review_edit", lambda token, node_id: calls.append(node_id) or (None, False))
@@ -248,15 +230,15 @@ def test_a_receipt_that_cannot_be_checked_is_recorded_as_edited(node_id: str | N
     assert reviews[0]["includes_created_edit"] is True
 
 
-def test_a_failed_edit_check_is_recorded_as_edited(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_failed_edit_check_raises_instead_of_recording_an_edit(monkeypatch: pytest.MonkeyPatch) -> None:
     def broken(token: str, node_id: str) -> tuple[str | None, bool]:
         raise gate.CheckError("down")
 
     monkeypatch.setattr(gate, "fetch_review_edit", broken)
     reviews = [_receipt(node_id="node_1")]
-    gate.annotate_receipt("t", reviews, HEAD)
-    assert reviews[0]["last_edited_at"] is not None
-    assert reviews[0]["includes_created_edit"] is True
+    with pytest.raises(gate.CheckError, match="down"):
+        gate.annotate_receipt("t", reviews, HEAD)
+    assert reviews[0]["includes_created_edit"] is False
 
 
 class Network:
@@ -430,7 +412,6 @@ def test_fetch_pull_and_files_read_this_pull_request(net: Network) -> None:
     net.rest["/repos/o/r/pulls/7/files"] = {"pages": {1: [{"filename": "a.py"}]}}
     assert gate.fetch_pull("tok", "o/r", 7) == {"head": {"sha": HEAD}}
     assert gate.fetch_files("tok", "o/r", 7) == [{"filename": "a.py"}]
-    assert net.paths() == ["/repos/o/r/pulls/7", "/repos/o/r/pulls/7/files?per_page=100&page=1"]
     _authorized(net)
 
 
@@ -536,19 +517,10 @@ def test_the_head_commit_is_read_from_graphql(net: Network) -> None:
         gate.fetch_head_oid("tok", "o/r", 7)
 
 
-def test_the_arguments_default_to_the_oracle_and_require_a_repository_and_pull_request() -> None:
-    args = gate._parse_args(["--repo", "o/r", "--pr", "7"])
-    assert (args.repo, args.pr, args.signal) == ("o/r", 7, "oracle")
-    for argv in (["--pr", "7"], ["--repo", "o/r"], ["--repo", "o/r", "--pr", "x"]):
-        with pytest.raises(SystemExit) as exit_info:
-            gate._parse_args(argv)
-        assert exit_info.value.code == 2
-
-
 def _wire(
     net: Network, *, files: list[str], statuses: list[dict[str, Any]], reviews: list[dict[str, Any]], **extra: Any
 ) -> None:
-    net.rest["/repos/o/r/pulls/7"] = {"head": {"sha": HEAD}, "changed_files": len(files)}
+    net.rest["/repos/o/r/pulls/7"] = {"head": {"sha": HEAD}, "base": {"ref": "develop"}, "changed_files": len(files)}
     net.rest["/repos/o/r/pulls/7/files"] = {"pages": {1: [{"filename": name} for name in files]}}
     net.rest[f"/repos/o/r/commits/{HEAD}/statuses"] = {
         "pages": {
@@ -589,7 +561,8 @@ def _wire(
 
 def _run(monkeypatch: pytest.MonkeyPatch) -> int:
     monkeypatch.setenv("GITHUB_TOKEN", "tok")
-    return gate.main(["--repo", "o/r", "--pr", "7"])
+    monkeypatch.setattr(oracle_gate, "PULL_READ_BACKOFF_SECONDS", 0)
+    return oracle_gate.main(["--repo", "o/r", "--pr", "7", "--no-post"])
 
 
 def test_a_reviewed_pull_request_passes_and_every_call_uses_the_token_and_target(
@@ -614,13 +587,10 @@ def test_a_reviewed_pull_request_passes_and_every_call_uses_the_token_and_target
     assert [body["variables"] for body in bodies] == [{"id": "N1"}]
 
 
-def test_only_exempt_paths_stop_before_any_status_is_read(
-    net: Network, monkeypatch: pytest.MonkeyPatch, capsys: Any
-) -> None:
+def test_only_exempt_paths_pass_without_a_verdict(net: Network, monkeypatch: pytest.MonkeyPatch, capsys: Any) -> None:
     _wire(net, files=["NOTES.md"], statuses=[], reviews=[])
     assert _run(monkeypatch) == gate.PASS
     assert capsys.readouterr().out == "oracle-review: only exempt paths changed\n"
-    assert net.paths() == ["/repos/o/r/pulls/7", "/repos/o/r/pulls/7/files?per_page=100&page=1"]
 
 
 def test_the_reviewer_policy_gate_paths_keep_an_otherwise_exempt_change_under_review(
@@ -672,26 +642,6 @@ def test_a_standin_attestation_is_read_from_the_pull_request_comments(
     _authorized(net)
 
 
-def test_a_missing_token_is_an_error(monkeypatch: pytest.MonkeyPatch, capsys: Any) -> None:
-    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
-    assert gate.main(["--repo", "o/r", "--pr", "7"]) == gate.ERROR
-    captured = capsys.readouterr()
-    assert captured.out == ""
-    assert captured.err == "oracle-review: error: GITHUB_TOKEN is not set\n"
-
-
-def test_a_repository_that_is_not_owner_slash_name_is_an_error(
-    net: Network, monkeypatch: pytest.MonkeyPatch, capsys: Any
-) -> None:
-    monkeypatch.setenv("GITHUB_TOKEN", "tok")
-    for repo in ("o", "o/r/x"):
-        assert gate.main(["--repo", repo, "--pr", "7"]) == gate.ERROR
-        captured = capsys.readouterr()
-        assert captured.out == ""
-        assert captured.err == "oracle-review: error: --repo must be OWNER/NAME\n"
-    assert net.requests == []
-
-
 def test_a_github_failure_is_reported_on_stderr_as_an_error(
     net: Network, monkeypatch: pytest.MonkeyPatch, capsys: Any
 ) -> None:
@@ -699,24 +649,78 @@ def test_a_github_failure_is_reported_on_stderr_as_an_error(
     assert _run(monkeypatch) == gate.ERROR
     captured = capsys.readouterr()
     assert captured.out == ""
-    assert captured.err.startswith("oracle-review: error: ")
+    assert captured.err.startswith("oracle-gate: error: ")
     assert "500" in captured.err
-
-
-def test_the_command_line_defaults_to_the_process_arguments(
-    net: Network, monkeypatch: pytest.MonkeyPatch, capsys: Any
-) -> None:
-    _wire(net, files=["NOTES.md"], statuses=[], reviews=[])
-    monkeypatch.setenv("GITHUB_TOKEN", "tok")
-    monkeypatch.setattr(sys, "argv", ["oracle_review_check.py", "--repo", "o/r", "--pr", "7"])
-    assert gate.main() == gate.PASS
-    assert capsys.readouterr().out == "oracle-review: only exempt paths changed\n"
 
 
 def test_the_policy_exempt_paths_are_applied_to_the_pull_request_files(
     net: Network, monkeypatch: pytest.MonkeyPatch, capsys: Any
 ) -> None:
-    monkeypatch.setattr(gate, "_review_rules", lambda: (("zz_exempt/*",), ()))
+    monkeypatch.setattr(oracle_gate, "load_policy_rules", lambda: (("zz_exempt/*",), ()))
     _wire(net, files=["zz_exempt/a.txt"], statuses=[], reviews=[])
     assert _run(monkeypatch) == gate.PASS
     assert capsys.readouterr().out == "oracle-review: only exempt paths changed\n"
+
+
+def _open_findings_status(description: str = "large: SHIP WITH FIXES, 2 defect(s) to fix") -> dict[str, Any]:
+    return _status("failure", created_at=RETARGETED, description=description)
+
+
+def test_a_standin_is_rejected_on_a_head_whose_latest_decisive_verdict_lists_open_findings() -> None:
+    code, message = _decide(statuses=[_open_findings_status()], comments=[_standin(AFTER_RETARGET)])
+    assert code == gate.WAITING
+    assert "cannot waive" in message and "stand-in attestation" not in message
+
+
+def test_a_carried_ship_with_fixes_verdict_also_rejects_a_standin() -> None:
+    carried = _open_findings_status("carried from aaaaaaaaaaaa: SHIP WITH FIXES")
+    assert _decide(statuses=[carried], comments=[_standin(AFTER_RETARGET)])[0] == gate.WAITING
+
+
+@pytest.mark.parametrize(
+    "description",
+    [
+        "large: DO NOT SHIP",
+        "pending: too large for the oracle",
+        "refused after 3 DO NOT SHIP decisions: open a new one",
+    ],
+)
+def test_a_standin_still_covers_a_head_without_open_findings(description: str) -> None:
+    status = _status("failure", created_at=RETARGETED, description=description)
+    assert _decide(statuses=[status], comments=[_standin(AFTER_RETARGET)])[0] == gate.PASS
+
+
+def test_a_standin_still_covers_absence() -> None:
+    assert _decide(statuses=[], comments=[_standin(AFTER_RETARGET)])[0] == gate.PASS
+
+
+def test_a_standin_still_covers_an_edit_hold_even_with_open_findings() -> None:
+    hold = _status("pending", created_at=AFTER_RETARGET, description="an oracle review was edited")
+    standin = _standin("2026-10-01T16:00:00Z")
+    assert _decide(statuses=[_open_findings_status(), hold], comments=[standin])[0] == gate.PASS
+
+
+def test_a_later_non_hold_pending_status_does_not_lift_the_open_findings_rejection() -> None:
+    later = _status("pending", created_at=AFTER_RETARGET, description="pending: no reviewer available")
+    standin = _standin("2026-10-01T16:00:00Z")
+    assert _decide(statuses=[_open_findings_status(), later], comments=[standin])[0] == gate.WAITING
+
+
+def test_an_escalated_finding_names_the_exact_owner_action() -> None:
+    escalated = _open_findings_status("large: SHIP WITH FIXES, 2 defect(s) to fix; escalated D1,D3")
+    code, message = _decide(statuses=[escalated], comments=[_standin(AFTER_RETARGET)])
+    assert code == gate.WAITING
+    assert "D1,D3" in message and "Oracle adjudication: WITHDRAW|MAINTAIN D<n> - <reason>" in message
+
+
+def test_a_reposted_status_does_not_invalidate_a_standin_posted_before_it() -> None:
+    failing = _status("failure", created_at=RETARGETED, description="large: DO NOT SHIP")
+    reposted = _status("failure", created_at="2026-10-01T16:00:00Z", description="large: DO NOT SHIP (reposted)")
+    standin = _standin(AFTER_RETARGET)
+    assert _decide(statuses=[failing, reposted], comments=[standin])[0] == gate.PASS
+
+
+def test_a_genuinely_new_decisive_status_still_invalidates_an_earlier_standin() -> None:
+    failing = _status("failure", created_at=RETARGETED, description="large: DO NOT SHIP")
+    newer = _status("failure", created_at="2026-10-01T16:00:00Z", description="large: DO NOT SHIP")
+    assert _decide(statuses=[failing, newer], comments=[_standin(AFTER_RETARGET)])[0] == gate.WAITING

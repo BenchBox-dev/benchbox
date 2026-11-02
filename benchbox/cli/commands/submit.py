@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import json
+import secrets
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import click
+from rich.markup import escape
 
 import benchbox
+from benchbox.cli.pseudonym_salt import ensure_publication_salt
 from benchbox.cli.shared import console
 from benchbox.cli.submit_auth import (
     DEFAULT_SERVICE_URL as _DEFAULT_SERVICE_URL,
@@ -28,7 +31,9 @@ from benchbox.core.results.anonymization import (
     MissingPublicPseudonymSaltError,
     anonymize_applied_tuning_payload,
     anonymize_plans_payload,
+    public_pseudonym_salt_path,
     require_public_pseudonym_salt,
+    resolve_public_pseudonym_salt,
 )
 from benchbox.core.results.canonical_json import canonical_json_file_bytes, canonical_json_text
 from benchbox.core.results.loader import (
@@ -175,12 +180,22 @@ def _build_submission_manifest(
     return manifest
 
 
-def _require_public_pseudonym_salt(ctx: click.Context) -> str:
+def _resolve_submission_salt(ctx: click.Context, *, dry_run: bool) -> str:
     try:
+        if not dry_run:
+            return ensure_publication_salt()
+        path = public_pseudonym_salt_path()
+        if resolve_public_pseudonym_salt() is None and not path.exists():
+            console.print(
+                "[dim]--dry-run: no pseudonym salt exists yet; previewing with a temporary one. "
+                f"A real submit creates {escape(str(path))}.[/dim]"
+            )
+            return secrets.token_hex(32)
         return require_public_pseudonym_salt()
     except MissingPublicPseudonymSaltError as exc:
-        console.print(f"\n[red]❌ Submission refused: {exc}[/red]")
+        console.print(f"\n[red]❌ Submission refused: {escape(str(exc))}[/red]")
         ctx.exit(1)
+        raise
 
 
 def _inline_requested_tuning(payload: dict[str, object]) -> dict[str, object] | None:
@@ -521,12 +536,12 @@ def _print_submission_summary(
         "\n"
         "Two modes, selected by the flag set:\n"
         "\n"
-        "  --output PATH (Phase 2, default)\n"
+        "  --output PATH (default)\n"
         "    Package the canonical bundle + submission manifest into PATH ready\n"
         "    for opening a PR against the BenchBox repository's results-data/\n"
-        "    directory. No network. No credentials. Existing v0.2.x behavior.\n"
+        "    directory. No network. No credentials.\n"
         "\n"
-        "  --service [URL] (Phase 3)\n"
+        "  --service [URL]\n"
         "    Upload the canonical bundle to a hosted ingest API. Requires\n"
         "    authentication via 'benchbox auth login'. With --dry-run, validates\n"
         "    the bundle and prints what would be uploaded - no credentials\n"
@@ -537,7 +552,7 @@ def _print_submission_summary(
         "\n"
         "\b\n"
         "Examples:\n"
-        "    # Package most recent result for PR contribution (Phase 2; default)\n"
+        "    # Package most recent result for PR contribution (default)\n"
         "    benchbox submit --last\n"
         "\n"
         "\b\n"
@@ -546,7 +561,7 @@ def _print_submission_summary(
         "    benchbox submit benchmark_runs/results/tpch_sf001_duckdb_20260401_120000.json --output ./submission\n"
         "\n"
         "\b\n"
-        "    # Submit most recent result to the hosted platform (Phase 3)\n"
+        "    # Submit most recent result to the hosted platform\n"
         "    benchbox submit --last --service\n"
         "\n"
         "\b\n"
@@ -583,7 +598,7 @@ def _print_submission_summary(
     type=click.Path(),
     default="submission",
     show_default=True,
-    help="Phase 2 mode: output directory for the PR-package",
+    help="Package mode: output directory for the PR-package",
 )
 @click.option(
     "--service",
@@ -592,7 +607,7 @@ def _print_submission_summary(
     flag_value=_DEFAULT_SERVICE_URL,
     default=None,
     help=(
-        "Phase 3 mode: submit to the hosted ingest API. Without a value, "
+        "Hosted mode: submit to the hosted ingest API. Without a value, "
         f"uses {_DEFAULT_SERVICE_URL}. Without this flag, --output runs."
     ),
 )
@@ -601,18 +616,18 @@ def _print_submission_summary(
     type=click.Choice(_VISIBILITY_CHOICES),
     default="public",
     show_default=True,
-    help="Phase 3 only: visibility of the submitted result.",
+    help="Hosted mode only: visibility of the submitted result.",
 )
 @click.option(
     "--idempotency-key",
     type=str,
     default=None,
-    help="Phase 3 only: override the auto-generated key. Useful for resumable retries.",
+    help="Hosted mode only: override the auto-generated key. Useful for resumable retries.",
 )
 @click.option(
     "--wait/--no-wait",
     default=True,
-    help="Phase 3 only: wait for ingest to finish and print the public URL. [default: --wait]",
+    help="Hosted mode only: wait for ingest to finish and print the public URL. [default: --wait]",
 )
 @click.option(
     "--dry-run",
@@ -728,7 +743,6 @@ def submit(
         ctx.exit(1)
         return
 
-    salt = _require_public_pseudonym_salt(ctx)
     submit_state = classify_loaded_result(result)
 
     if submit_state is SubmitTerminalState.unofficial:
@@ -750,6 +764,7 @@ def submit(
     companions = [
         p for suffix in COMPANION_SUFFIXES if (p := source_path.with_name(source_path.stem + suffix)).exists()
     ]
+    salt = _resolve_submission_salt(ctx, dry_run=dry_run)
     manager = AnonymizationManager(AnonymizationConfig(machine_id_salt=salt))
 
     with TemporaryDirectory(prefix="benchbox-submit-staging-") as tmpdir:

@@ -84,6 +84,7 @@ A disposable clone (remote session, CI runner) declares `BENCHBOX_EPHEMERAL_CLON
 - No credentials in Git; redact logs and use environment variables.
 - Live cloud tests and broad/destructive cleanup require explicit approval.
 - `[CHANGELOG-001]` User-facing PRs add a `changelog.d/` fragment; never edit `CHANGELOG.md`.
+- `[HEAVY-LOCK-001]` Heavy work (benchmarks, test tiers, UAT, hand-started servers) runs only via lock-taking entry points or `make heavy-run CMD='...'`; check `make heavy-status` first and stop hand-started servers after. Never move, delete, or recreate the lock file, or set `BENCHBOX_SKIP_TEST_LOCK`, `BENCHBOX_HEAVY_ADMIT=force`, or `BENCHBOX_HEAVY_WATCHDOG=off` without owner approval in the current task (`docs/agent/heavy-work.md`).
 
 For long output, write `/tmp/<slug>.log` (report status + short tail). UAT/stress runs use `BENCHBOX_OUTPUT_DIR=~/Developer/benchmark_runs` (announce command, max runtime, log path, and stop condition). Do not commit raw logs, screenshots, browser reports, or generated binaries.
 
@@ -93,7 +94,7 @@ For long output, write `/tmp/<slug>.log` (report status + short tail). UAT/stres
 
 Before publication, self-review with the `code` review action and fix all Critical and Required findings; nits and considerations are optional. Run `make pr-preflight` once, then `make pr-open`. Low-effort subagents may handle boilerplate gates; you choose commands and interpret failures. Check CI on a schedule, never in a loop. Wait on pending checks.
 
-Dev PRs target `develop` (or `release` / `published-results`); squash-merge, never direct-push protected branches. Force-push feature branches only with `--force-with-lease`. Soundness paths need oracle review: resolve `benchbox-oracle` threads; arm only on its success review of the current head (`/oracle-review` reruns). Land drift/pinning guards with required-CI wiring. Five `ci.yml` unit checks pass even when untouched. Stacks: one agent, one tracker item, 3 PRs max; no other agent's unmerged branch. Upper PRs are parent-based drafts. After parent squash-merge, retarget to `develop`, `git rebase --onto origin/develop <old parent tip>`, mark ready, pass CI and review on that head, then arm.
+Dev PRs target `develop` (or `release` / `published-results`); squash-merge, never direct-push protected branches. Force-push feature branches only with `--force-with-lease`. Soundness paths need oracle review: resolve `benchbox-oracle` threads; arm only on its success review of the current head (rerun if pending/absent). Land drift/pinning guards with required-CI wiring. Five `ci.yml` unit checks pass even when untouched. Stacks: one agent, one tracker item, 3 PRs max; no other agent's unmerged branch. Upper PRs are parent-based drafts. After parent squash-merge, retarget to `develop`, `git rebase --onto origin/develop <old parent tip>`, mark ready, pass CI and review on that head, then arm.
 
 ## TODO tracker
 
@@ -134,6 +135,7 @@ Stable wrappers are `code`, `test`, `todo`, `docs`, `blog`, `benchbox`, `skill-s
 
 ## Operational references
 
-- Unpublished: `docs/agent/`; `docs/internal/` holds internal docs and runbooks (CI, release, repo admin, evidence, plans). List `development/` and `operations/` pages in `docs/publish-allowlist.txt` only for users.
-- Site: the site, Explorer app, landing page and blog live in `BenchBox-dev/benchbox-site`; change them there by PR.
+- Unpublished: `docs/agent/`; `docs/internal/`: runbooks (CI, release, repo admin, evidence, plans). List `development/` and `operations/` pages in `docs/publish-allowlist.txt` only for users.
+- Site, Explorer, landing, blog: `BenchBox-dev/benchbox-site`; change by PR.
 - SQL compatibility: `benchbox/sql_compat/README.md`; tests: `tests/README.md`
+- Salt is automatic, never a blocker: `docs/agent/maintainer-bundles.md`.

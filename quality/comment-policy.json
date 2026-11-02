@@ -73,7 +73,7 @@
       "provenance": "_sources/README.md"
     },
     {
-      "path": "_project/scripts/vendor/todo_db-0.11.0-py3-none-any.whl",
+      "path": "_project/scripts/vendor/todo_db-0.13.0-py3-none-any.whl",
       "owner": "todo-db",
       "provenance": "_project/scripts/pyproject.toml"
     }
@@ -32849,6 +32849,32 @@
       "alternative": "A literal binary path would stop the test from exercising the binary the package ships for the host.",
       "owner": "BenchBox maintainers",
       "removal": "Remove when the executable-payload adapter can resolve the bundled binary path statically."
+    },
+    {
+      "path": "_project/scripts/oracle_reviewers/local.py",
+      "symbol": "withhold_secrets",
+      "text": "unresolved executable source: sys.executable",
+      "payload": "sha256:91db1c59dcdc4b0d038db05770bf365f9401ddd13eda04467ec23ce7e8937976",
+      "finding_kind": "payload-error",
+      "kind": "fixture",
+      "consumer": "_project/scripts/oracle_reviewers/local.py",
+      "necessity": "The local review must drop the secret environment variables from its own process image so no ancestor of the reviewer holds them. Replacing the process with itself is the only way to discard the initial environment block; the arguments are the interpreter's own original argument vector.",
+      "alternative": "Spawning a child leaves the parent, with the secrets in its environment, as an ancestor of the reviewer.",
+      "owner": "BenchBox maintainers",
+      "removal": "Remove when the executable-payload adapter can resolve process replacement calls statically."
+    },
+    {
+      "path": "scripts/oracle_local_review.py",
+      "symbol": "launch",
+      "text": "unresolved executable source: argv[0]",
+      "payload": "sha256:0922a202991b14ea58df9a4b1a030ea522b19d19617ba884d3173c1036dba616",
+      "finding_kind": "payload-error",
+      "kind": "fixture",
+      "consumer": "scripts/oracle_local_review.py",
+      "necessity": "The bootstrap hands the process to the pinned uv launcher so no extra Python process stays in the reviewer's ancestry. argv is built by review_command() from fixed tokens and the review options, with no inline source.",
+      "alternative": "Running uv as a child would keep the bootstrap process, with the caller's environment, as an ancestor of the reviewer.",
+      "owner": "BenchBox maintainers",
+      "removal": "Remove when the executable-payload adapter can resolve process replacement calls statically."
     }
   ]
 }

@@ -150,5 +150,5 @@ The framework imports registry truth directly from `benchbox.core.*`
 helpers and validates result bundles in-process through
 `benchbox.validation.bundle`. It does not shell out to validator scripts.
 Package stages local results through `benchbox publish run` (the maintainer
-redacted form, no pseudonym salt) and delegates `cloud-uploaded` to
+redacted form, pseudonymized with the automatic salt in `~/.benchbox/submission_salt`) and delegates `cloud-uploaded` to
 `benchbox submit --service`.

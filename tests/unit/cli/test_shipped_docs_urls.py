@@ -243,3 +243,103 @@ def test_repo_path_matcher_covers_every_site_owned_page() -> None:
     assert site_owned
     for page in sorted(site_owned):
         assert _repo_path_citations(f"[x](../{page}#a)", site_owned) == [page]
+
+
+_CONTRIBUTOR_REFERENCE_RE = re.compile(
+    r"\badr-[a-z0-9]"
+    r"|/adr/"
+    r"|\bPR\s*#\d+"
+    r"|docs/internal/"
+    r"|docs/agent/"
+    r"|(?<![\w.-])_project/",
+    re.IGNORECASE,
+)
+_CONTRIBUTOR_DOCS = frozenset(
+    {
+        "CONTRIBUTING.md",
+        "examples/CONTRIBUTING.md",
+        "results-data/README.md",
+        "results-data/SEED_CORPUS_SPEC.md",
+    }
+)
+_CONTRIBUTOR_REFERENCE_ALLOWED_FILES = frozenset(
+    {
+        "benchbox/core/tuning/policy_generation.py",
+        "benchbox/sql_compat/baseline_tool.py",
+        "benchbox/sql_compat/inventory.py",
+        "benchbox/core/expected_results/reference_digests/tpch_value_digests_sf1.json",
+        "benchbox/core/expected_results/reference_digests/tpcds_subscale_row_counts.json",
+        "benchbox/core/tuning/profiles/template_evidence.yaml",
+    }
+)
+
+
+def _contributor_reference_files() -> list[Path]:
+    paths = set(_link_surface_files()) | set(_shipped_text_files())
+    return sorted(path for path in paths if path.relative_to(REPO_ROOT).as_posix() not in _CONTRIBUTOR_DOCS)
+
+
+def _contributor_references(text: str) -> list[str]:
+    return [match.group(0) for match in _CONTRIBUTOR_REFERENCE_RE.finditer(text)]
+
+
+def test_user_surfaces_do_not_cite_contributor_material() -> None:
+    hits: list[str] = []
+    for path in _contributor_reference_files():
+        rel = path.relative_to(REPO_ROOT).as_posix()
+        if rel in _CONTRIBUTOR_REFERENCE_ALLOWED_FILES:
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for number, line in enumerate(text.splitlines(), start=1):
+            for cited in _contributor_references(line):
+                hits.append(f"{rel}:{number}: {cited}")
+    assert hits == [], f"user-facing text cites contributor material; state the user-relevant fact instead: {hits}"
+
+
+def test_contributor_reference_allowlist_names_existing_files() -> None:
+    for rel in sorted(_CONTRIBUTOR_REFERENCE_ALLOWED_FILES):
+        assert (REPO_ROOT / rel).is_file(), rel
+
+
+def test_contributor_reference_allowlisted_files_are_scanned() -> None:
+    scanned = {path.relative_to(REPO_ROOT).as_posix() for path in _contributor_reference_files()}
+    assert scanned >= _CONTRIBUTOR_REFERENCE_ALLOWED_FILES
+
+
+def test_contributor_reference_scan_excludes_contributor_docs() -> None:
+    scanned = {path.relative_to(REPO_ROOT).as_posix() for path in _contributor_reference_files()}
+    assert "README.md" in scanned
+    assert scanned.isdisjoint(_CONTRIBUTOR_DOCS)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "default PR #980 behavior",
+        "PR#12",
+        "see adr-concurrency-public-api-reconciliation",
+        "see ADR-3 baseline policy",
+        "https://benchbox.dev/docs/development/adr/adr-x.html",
+        "[guide](docs/internal/release-guide.md)",
+        "see docs/agent/notes.md",
+        "uv run -- python _project/scripts/check.py",
+        "Path('_project/runner_results')",
+    ],
+)
+def test_contributor_reference_matcher_flags_each_pattern(text: str) -> None:
+    assert _contributor_references(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "adrenaline",
+        "address-book",
+        "pull request 12",
+        "PR numbers are not shown",
+        "my_project/data",
+        "https://benchbox.dev/docs/reference/backward-compatibility.html",
+    ],
+)
+def test_contributor_reference_matcher_ignores_other_text(text: str) -> None:
+    assert _contributor_references(text) == []

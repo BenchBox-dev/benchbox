@@ -1,0 +1,74 @@
+PLAN FRAGMENT 0
+  OUTPUT EXPRS:
+    o_id[#7]
+    running[#8]
+  PARTITION: HASH_PARTITIONED: o_cust[#1]
+
+  HAS_COLO_PLAN_NODE: false
+
+  VRESULT SINK
+     MYSQL_PROTOCOL
+
+  3:VANALYTIC(95)
+  |  functions: [sum(o_total[#5])]
+  |  partition by: o_cust[#4]
+  |  order by: o_id[#3] ASC NULLS FIRST
+  |  window: RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+  |  final projections: o_id[#3], running[#6]
+  |  final project output tuple id: 3
+  |  distribute expr lists: o_cust[#4]
+  |  tuple ids: 1 2
+  |
+  2:VSORT(91)
+  |  order by: o_cust[#4] ASC, o_id[#3] ASC
+  |  algorithm: full sort
+  |  offset: 0
+  |  distribute expr lists: o_cust[#1]
+  |  tuple ids: 1
+  |
+  1:VEXCHANGE
+     offset: 0
+     distribute expr lists: o_id[#0]
+     tuple ids: 0
+
+PLAN FRAGMENT 1
+
+  PARTITION: HASH_PARTITIONED: o_id[#0]
+
+  HAS_COLO_PLAN_NODE: false
+
+  STREAM DATA SINK
+    EXCHANGE ID: 01
+    HASH_PARTITIONED: o_cust[#1]
+
+  0:VOlapScanNode(83)
+     TABLE: pv_plan_validation.orders(orders), PREAGGREGATION: ON
+     partitions=1/1 (orders)
+     tablets=1/1, tabletList=1793479381837
+     cardinality=1, avgRowSize=0.0, numNodes=1
+     pushAggOp=NONE
+     tuple ids: 0
+
+Tuples:
+TupleDescriptor{id=0, tbl=orders}
+  SlotDescriptor{id=0, col=o_id, colUniqueId=0, type=bigint, nullable=true, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+  SlotDescriptor{id=1, col=o_cust, colUniqueId=1, type=bigint, nullable=true, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+  SlotDescriptor{id=2, col=o_total, colUniqueId=2, type=double, nullable=true, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+
+TupleDescriptor{id=1, tbl=null}
+  SlotDescriptor{id=3, col=o_id, colUniqueId=0, type=bigint, nullable=true, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+  SlotDescriptor{id=4, col=o_cust, colUniqueId=1, type=bigint, nullable=true, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+  SlotDescriptor{id=5, col=o_total, colUniqueId=2, type=double, nullable=true, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+
+TupleDescriptor{id=2, tbl=null}
+  SlotDescriptor{id=6, col=null, colUniqueId=null, type=double, nullable=true, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+
+TupleDescriptor{id=3, tbl=null}
+  SlotDescriptor{id=7, col=o_id, colUniqueId=0, type=bigint, nullable=true, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+  SlotDescriptor{id=8, col=null, colUniqueId=null, type=double, nullable=true, isAutoIncrement=false, subColPath=null, virtualColumn=null}
+
+
+
+
+========== STATISTICS ==========
+planned with unknown column statistics

@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "When a benchmark cannot load because a Python package is missing, the MCP tools, the CLI and the Python API now name the missing package and the install command (the benchbox extra when one exists) instead of 'requires additional dependencies' or 'not supported yet'. Other load failures are reported as internal errors, and benchmark extras that do not exist are no longer suggested."
+    }
+  ]
+}

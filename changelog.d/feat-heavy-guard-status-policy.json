@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "lead": "Heavy-work status and run targets",
+      "text": "make heavy-status shows the host lock holder, waiters, memory pressure, VM inventory, top processes by footprint and orphaned servers without taking the lock; make heavy-run CMD='...' runs a hand-started command under the host lock with admission."
+    }
+  ]
+}

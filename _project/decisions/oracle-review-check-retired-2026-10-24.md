@@ -55,7 +55,10 @@ merged head had both contexts passing, as both were required.
   It reports no `oracle-review` check. Its completion is how `oracle-gate`
   learns of review events, which have no trusted trigger of their own.
   Retiring the workflow needs a replacement for that trigger.
-- Gate refresh is `gh workflow run oracle-gate.yml --ref develop -f pr=<number>`; CI rerun is `make pr-rerun`.
+  Owner decision 2026-10-31: the notifier narrows to `edited` and `dismissed`
+  review events, and the gate's push sweep narrows to `develop` pushes that
+  change the gate code or policy.
+- Gate refresh is `gh workflow run oracle-gate.yml --ref develop -f pr=<number>` or the narrowed triggers; CI rerun is `make pr-rerun`.
   `make oracle-review-recover` was retired because it refreshed no required check.
 
 ## Owner step

@@ -99,7 +99,7 @@ def _attestation(body: str | None = None) -> dict[str, Any]:
 
 
 def _matcher() -> Any:
-    return oracle_review_check.path_matcher(2, 2, *oracle_review_check._review_rules())
+    return oracle_review_check.path_matcher(2, 2, *oracle_gate.load_policy_rules())
 
 
 def test_gate_reuses_the_checker_decision_and_helpers() -> None:
@@ -111,10 +111,6 @@ def test_gate_reuses_the_checker_decision_and_helpers() -> None:
         oracle_review_check.WAITING,
         oracle_review_check.ERROR,
     )
-
-
-def test_policy_rules_match_the_checker_rules() -> None:
-    assert oracle_gate.load_policy_rules() == oracle_review_check._review_rules()
 
 
 def test_policy_rules_fail_when_the_policy_file_is_missing(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -562,14 +558,16 @@ def test_pull_read_that_fails_twice_then_succeeds_evaluates_normally(
     assert [head for head, _, _ in posts] == [HEAD]
 
 
-def test_pull_read_failing_three_times_posts_failure_to_the_given_head(
+def test_pull_read_failing_three_times_posts_failure_to_the_given_head_when_the_pull_request_owns_it(
     monkeypatch: pytest.MonkeyPatch, sleeps: list[float]
 ) -> None:
     calls = _stub_unreadable_pull(monkeypatch, failures=99)
+    graphql = _stub_graphql_head(monkeypatch, OTHER_HEAD)
     posts = _record_posts(monkeypatch)
     assert oracle_gate.main(["--repo", "o/r", "--pr", "7", "--head-sha", OTHER_HEAD]) == oracle_gate.ERROR
     assert len(calls) == 3
     assert sleeps == [2, 4]
+    assert graphql == [("o/r", 7)]
     assert [(head, oracle_gate.gate_state(status)) for head, status, _ in posts] == [(OTHER_HEAD, "failure")]
 
 
@@ -617,13 +615,21 @@ def test_an_unusable_graphql_head_posts_nothing(monkeypatch: pytest.MonkeyPatch,
     assert posts == []
 
 
-def test_a_given_head_is_used_without_the_graphql_read(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_given_head_that_the_pull_request_does_not_own_posts_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
     _stub_unreadable_pull(monkeypatch, failures=99)
     graphql = _stub_graphql_head(monkeypatch, HEAD)
     posts = _record_posts(monkeypatch)
     assert oracle_gate.main(["--repo", "o/r", "--pr", "7", "--head-sha", OTHER_HEAD]) == oracle_gate.ERROR
-    assert graphql == []
-    assert [head for head, _, _ in posts] == [OTHER_HEAD]
+    assert graphql == [("o/r", 7)]
+    assert posts == []
+
+
+def test_a_bogus_pull_request_number_posts_nothing_on_a_foreign_head(monkeypatch: pytest.MonkeyPatch) -> None:
+    _stub_unreadable_pull(monkeypatch, failures=99)
+    _stub_graphql_head(monkeypatch, oracle_gate.CheckError("Could not resolve to a PullRequest"))
+    posts = _record_posts(monkeypatch)
+    assert oracle_gate.main(["--repo", "o/r", "--pr", "999999", "--head-sha", OTHER_HEAD]) == oracle_gate.ERROR
+    assert posts == []
 
 
 def test_no_post_never_reads_the_graphql_head(monkeypatch: pytest.MonkeyPatch) -> None:

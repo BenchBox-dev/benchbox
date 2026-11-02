@@ -80,7 +80,12 @@ def omp_env() -> dict[str, str]:
     names = (*OMP_BASE_ENV, *GATEWAY_ENV)
     env = {name: value for name in names if (value := os.environ.get(name))}
     if _gateway_proxy:
-        env.update(HTTPS_PROXY=_gateway_proxy, HTTP_PROXY=_gateway_proxy, NO_PROXY=GATEWAY_NO_PROXY)
+        env.update(
+            HTTPS_PROXY=_gateway_proxy,
+            HTTP_PROXY=_gateway_proxy,
+            PI_PROXY=_gateway_proxy,
+            NO_PROXY=GATEWAY_NO_PROXY,
+        )
     return env
 
 

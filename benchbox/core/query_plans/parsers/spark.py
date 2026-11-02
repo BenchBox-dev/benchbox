@@ -22,6 +22,7 @@ class SparkQueryPlanParser(QueryPlanParser):
         ("batchscan", LogicalOperatorType.SCAN),
         ("rowdatasourcescan", LogicalOperatorType.SCAN),
         ("datasourcescan", LogicalOperatorType.SCAN),
+        ("datasourceexec", LogicalOperatorType.SCAN),
         ("datasourcev2scan", LogicalOperatorType.SCAN),
         ("scan", LogicalOperatorType.SCAN),
         ("broadcasthashjoin", LogicalOperatorType.JOIN),
@@ -51,6 +52,9 @@ class SparkQueryPlanParser(QueryPlanParser):
     _PHYSICAL_HEADER = "== Physical Plan =="
     _PREFIX_RE = re.compile(r"^((?:\+- |:- |:  |   )*)(.*)$")
     _CODEGEN_RE = re.compile(r"^\*(?:\(\d+\))?\s*")
+    _TREE_MARKER_RE = re.compile(r"^(?:[+:]- |:  )", re.MULTILINE)
+    _PART_FILE_RE = re.compile(r"^(?:part|chunk|data|file|\d+)(?:[-_.].*)?$|^[0-9a-f]{8}-[0-9a-f]{4}-", re.IGNORECASE)
+    _FILE_GROUPS_RE = re.compile(r"file_groups=\{[^\[]*\[\[([^\],]+)")
 
     def __init__(self):
         super().__init__("spark")
@@ -67,6 +71,7 @@ class SparkQueryPlanParser(QueryPlanParser):
             raise ValueError("No operators found in Spark physical plan")
 
         root = self._build_tree(parsed_nodes)
+        self._name_file_scans(root, self._logical_table_names(explain_output))
         return QueryPlanDAG(
             query_id=query_id,
             platform=self.platform_name,
@@ -82,6 +87,7 @@ class SparkQueryPlanParser(QueryPlanParser):
 
     def _parse_lines(self, physical_text: str) -> list[dict[str, Any]]:
         parsed: list[dict[str, Any]] = []
+        indented = not self._TREE_MARKER_RE.search(physical_text)
         for raw_line in physical_text.splitlines():
             if not raw_line.strip():
                 continue
@@ -89,7 +95,7 @@ class SparkQueryPlanParser(QueryPlanParser):
             rest = rest.strip()
             if rest.startswith("==") and rest.endswith("=="):
                 continue
-            depth = len(prefix) // 3
+            depth = (len(raw_line) - len(raw_line.lstrip())) // 2 if indented else len(prefix) // 3
             node_text = self._CODEGEN_RE.sub("", rest).strip()
             name_match = re.match(r"([A-Za-z][\w]*)", node_text)
             if not name_match:
@@ -150,7 +156,66 @@ class SparkQueryPlanParser(QueryPlanParser):
         return LogicalOperatorType.OTHER
 
     @staticmethod
+    def _logical_table_names(explain_output: str) -> set[str]:
+        names: set[str] = set()
+        section = explain_output.split("== Optimized Logical Plan ==", 1)[-1].split("== Physical Plan ==", 1)[0]
+        lines = section.splitlines()
+        for index, line in enumerate(lines):
+            scan = re.match(r"(\s*)TableScan: (\S+)", line)
+            if not scan:
+                continue
+            if re.fullmatch(r"[A-Za-z_]\w*", scan.group(2)):
+                names.add(scan.group(2))
+                continue
+            indent = len(scan.group(1))
+            for earlier in reversed(lines[:index]):
+                alias = re.match(r"(\s*)SubqueryAlias: ([A-Za-z_]\w*)\s*$", earlier)
+                if alias and len(alias.group(1)) < indent:
+                    names.add(alias.group(2))
+                    break
+        return names
+
+    @classmethod
+    def _name_file_scans(cls, root: LogicalOperator, logical_tables: set[str]) -> None:
+        scans: list[tuple[LogicalOperator, str | None, str]] = []
+        stack = [root]
+        while stack:
+            node = stack.pop()
+            stack.extend(node.children)
+            if node.operator_type != LogicalOperatorType.SCAN or node.table_name or node.physical_operator is None:
+                continue
+            files = cls._FILE_GROUPS_RE.search(node.physical_operator.platform_metadata.get("details") or "")
+            if not files:
+                continue
+            *directories, filename = files.group(1).split("/")
+            stem = re.sub(r"\.\d+$", "", filename.rsplit(".", 1)[0])
+            directory = next((part for part in reversed(directories) if part and "=" not in part), None)
+            scans.append((node, directory, stem))
+        if not scans:
+            return
+        unmatched = []
+        for node, directory, stem in scans:
+            matched = next((name for name in (directory, stem) if name in logical_tables), None)
+            if matched:
+                node.table_name = matched
+            else:
+                unmatched.append((node, directory, stem))
+        unused = logical_tables - {node.table_name for node, _, _ in scans}
+        if len(unmatched) == 1 and len(unused) == 1:
+            unmatched[0][0].table_name = next(iter(unused))
+            return
+        directories_seen = {directory for _, directory, _ in scans}
+        per_table_directories = len(scans) > 1 and len(directories_seen) == len(scans)
+        for node, directory, stem in unmatched:
+            if directory and (per_table_directories or not stem or cls._PART_FILE_RE.match(stem)):
+                node.table_name = directory
+            else:
+                node.table_name = stem or None
+
+    @staticmethod
     def _extract_table(details: str) -> str | None:
+        if SparkQueryPlanParser._FILE_GROUPS_RE.search(details):
+            return None
         match = re.search(r"(?:FileScan|Scan)\s+\w+\s+([A-Za-z_][\w.]*)", details)
         if match:
             return match.group(1)

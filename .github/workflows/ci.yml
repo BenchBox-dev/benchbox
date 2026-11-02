@@ -4,6 +4,8 @@ run-name: ${{ (github.event.action == 'edited' && !github.event.changes.base) &&
 
 env:
   BENCHBOX_TEST_LOCK_WAIT_SECONDS: "0"
+  BENCHBOX_HEAVY_ADMIT_MIN_GIB: "1.5"
+  BENCHBOX_HEAVY_MIN_FREE_DISK_GIB: "5"
 
 on:
   pull_request:
@@ -1663,6 +1665,9 @@ jobs:
 
       - name: Validate examples and docs references
         run: make docs-validate
+
+      - name: Check user-facing text for contributor references
+        run: uv run -- python -m pytest tests/unit/cli/test_shipped_docs_urls.py -q -p no:cacheprovider
 
       - name: Generate documentation inputs
         run: make docs-generate

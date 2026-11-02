@@ -135,3 +135,11 @@ def test_sanitize_finds_a_secret_in_a_deeply_nested_marker(tmp_path: Path, monke
     path.write_text(json.dumps({"body": f"<!-- oracle-protocol: v1 {packed} -->"}), encoding="utf-8")
     with pytest.raises(redaction_check.Unredactable):
         redaction_check.sanitize(path, ())
+
+
+def test_sanitize_refuses_a_non_utf8_file_cleanly(tmp_path: Path) -> None:
+    path = tmp_path / "capture.json"
+    path.write_bytes(b'{"message": "\xff\xfe"}')
+    with pytest.raises(redaction_check.Unredactable, match="not valid UTF-8") as raised:
+        redaction_check.sanitize(path, ())
+    assert raised.value.path == path

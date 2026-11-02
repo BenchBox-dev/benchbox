@@ -218,6 +218,18 @@ def test_a_second_pull_request_at_the_same_head_does_not_strand_the_first(harnes
     assert second.code == 0, second.stderr
 
 
+def test_a_gate_dispatch_naming_an_unknown_pull_request_posts_nothing_on_another_pull_requests_head(
+    harness: Harness,
+) -> None:
+    head = harness.branch("feat/checker", {CHECKER: FIXED_CHECKER}, "guard None operands")
+    harness.github.open_pull(61, "feat/checker")
+
+    step = harness.gate(999, head)
+
+    assert step.code != 0
+    assert harness.github.gate_statuses(head) == []
+
+
 @pytest.mark.parametrize("damage", [b"{not json", b"\xff\xfe\x00 not utf-8"], ids=["corrupt-json", "non-utf8"])
 def test_an_attempt_artifact_that_cannot_be_redaction_checked_fails_the_finalize_step_and_posts_nothing(
     harness: Harness, damage: bytes

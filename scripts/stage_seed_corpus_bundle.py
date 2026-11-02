@@ -12,7 +12,9 @@ from benchbox.core.results.anonymization import (
     AnonymizationConfig,
     AnonymizationManager,
     MissingPublicPseudonymSaltError,
+    public_pseudonym_salt_path,
     require_public_pseudonym_salt,
+    resolve_public_pseudonym_salt,
 )
 from benchbox.core.results.canonical_json import canonical_json_text
 from benchbox.validation.bundle import (
@@ -57,6 +59,11 @@ def _anonymization_manager() -> AnonymizationManager:
         salt = require_public_pseudonym_salt()
     except MissingPublicPseudonymSaltError as exc:
         raise StagingError(str(exc)) from exc
+    if resolve_public_pseudonym_salt() is None:
+        print(
+            f"Using the pseudonym salt file {public_pseudonym_salt_path()}; set BENCHBOX_MACHINE_ID_SALT to override.",
+            file=sys.stderr,
+        )
     return AnonymizationManager(AnonymizationConfig(machine_id_salt=salt))
 
 

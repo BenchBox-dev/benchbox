@@ -49,6 +49,19 @@ KNOWN_SHAS = {
 }
 
 
+PUSH_PATHS = [
+    ".github/workflows/oracle-gate.yml",
+    ".github/oracle-reviewers.yml",
+    ".github/soundness-paths.txt",
+    ".github/inert-paths.txt",
+    "_project/scripts/oracle_gate.py",
+    "_project/scripts/oracle_review_check.py",
+    "_project/scripts/oracle_reviewers/**",
+    "_project/scripts/inert_paths.py",
+    "_project/scripts/soundness_paths.py",
+]
+
+
 def _load() -> dict[str, Any]:
     return yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
 
@@ -81,14 +94,15 @@ def test_triggers_are_trusted_only() -> None:
         "schedule",
     }
     assert triggers["push"]["branches"] == ["develop"]
-    assert set(triggers["push"]) == {"branches"}
+    assert set(triggers["push"]) == {"branches", "paths"}
+    assert triggers["push"]["paths"] == PUSH_PATHS
     assert "pull_request" not in triggers
     assert "pull_request_review" not in triggers
 
 
 def test_every_develop_push_runs_only_the_sweep_in_the_uncancelled_push_group() -> None:
     push = _triggers()["push"]
-    assert push == {"branches": ["develop"]}
+    assert push == {"branches": ["develop"], "paths": PUSH_PATHS}
     jobs = _jobs()
     assert "github.event_name == 'push'" in jobs["sweep"]["if"]
     assert "github.event_name != 'push'" in jobs["gate"]["if"]
@@ -117,7 +131,7 @@ def test_issue_comment_covers_created_edited_and_deleted_comments() -> None:
 def test_workflow_run_bridges_both_posting_workflows() -> None:
     bridge = _triggers()["workflow_run"]
     assert bridge["types"] == ["completed"]
-    assert set(bridge["workflows"]) == {"oracle-verdict", "oracle-review"}
+    assert bridge["workflows"] == ["oracle-review"]
 
 
 def test_dispatch_takes_a_pr_number_and_one_schedule_is_declared() -> None:
@@ -553,6 +567,17 @@ def test_deleted_marker_comment_runs_the_gate_in_the_pull_request_group() -> Non
 
 def test_an_omp_evidence_comment_runs_the_gate_in_the_pull_request_group() -> None:
     line = "Omp candidate check: version=1.0.0 platform=darwin-arm64"
+    for event in (
+        _comment_event("created", line),
+        _comment_event("edited", "withdrawn", line),
+        _comment_event("deleted", line),
+    ):
+        assert _gate_runs(event)
+        assert _group(event) == "oracle-gate-8"
+
+
+def test_an_adjudication_comment_runs_the_gate_in_the_pull_request_group() -> None:
+    line = "Oracle adjudication: WITHDRAW D1 - the helper keeps the row"
     for event in (
         _comment_event("created", line),
         _comment_event("edited", "withdrawn", line),

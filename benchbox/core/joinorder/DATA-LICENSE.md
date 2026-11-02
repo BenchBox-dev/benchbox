@@ -24,11 +24,7 @@ clearly permitted for broad commercial redistribution. The project-owner
 decision accepts the remaining redistribution risk for this 2013 academic
 benchmark dataset and keeps the verified BenchBox-hosted Parquet archive as the
 default data path because direct Dataverse restore/conversion would make first
-use substantially heavier. The engineering decision record is:
-
-```text
-_project/decisions/joinorder-canonical-data-licensing-2026-05-12.md
-```
+use substantially heavier.
 
 Use this dataset only under the IMDb and Dataverse terms. Do not treat
 BenchBox's converted archive as BenchBox-cleared for broad commercial
@@ -51,7 +47,7 @@ running and does not download the hosted archive when every table file is
 already present with the expected sha256.
 
 Maintainers who need to rebuild those Parquet files from Dataverse should use
-`_project/scripts/build_joinorder_data.py`. That script downloads the
+the `build_joinorder_data.py` maintainer script in the BenchBox source repository. That script downloads the
 `imdb_pg11` file from DOI `10.7910/DVN/2QYZBT`, verifies the Dataverse MD5 and
 records the pg_dump SHA256, restores the source into PostgreSQL, converts the 21
 tables to Parquet, and runs the logical-content and manifest checks. This is an

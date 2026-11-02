@@ -36,6 +36,7 @@ from benchbox.cli.exceptions import (
     create_error_handler,
 )
 from benchbox.cli.help import BenchBoxCommand, advanced_option
+from benchbox.cli.host_lock_optin import host_guarded
 from benchbox.cli.logo import rich_logo
 from benchbox.cli.orchestrator import BenchmarkOrchestrator, resolved_deployment_mode
 from benchbox.cli.output import ResultExporter
@@ -2624,7 +2625,7 @@ def _interactive_handle_result(s: types.SimpleNamespace, result: Any, orchestrat
         "cold-stats measurement (adapters with no drop-stats primitive fall "
         "back to a safe no-op and record that in the result); --no-stats-reset "
         "explicitly records a warm-stats/persist run. Omit entirely for the "
-        "default PR #980 behavior (bundle stays byte-identical when unset)."
+        "default behavior (the result bundle is unchanged when unset)."
     ),
 )
 @advanced_option(
@@ -2818,6 +2819,7 @@ def _interactive_handle_result(s: types.SimpleNamespace, result: Any, orchestrat
     help="Disable post-benchmark statement overhead probe.",
 )
 @click.pass_context
+@host_guarded("run", skip=lambda kwargs: bool(kwargs.get("dry_run")))
 def run(
     ctx: click.Context,
     platform: str | None,

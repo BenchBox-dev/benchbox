@@ -138,7 +138,7 @@ class TestLazyImports:
         if had_existing_attr:
             del module_dict["TPCDI"]
 
-        simulated_error = ImportError("No module named benchbox.tpcdi")
+        simulated_error = ModuleNotFoundError("No module named 'pandas'", name="pandas")
         lazy_cache["TPCDI"] = simulated_error
         assert lazy_cache["TPCDI"] is simulated_error
 
@@ -147,9 +147,9 @@ class TestLazyImports:
                 _ = benchbox.TPCDI
 
             message = str(excinfo.value)
-            assert "uv add" in message
-            assert "Suggested installs" in message
-            assert "benchbox" in message
+            assert "'pandas'" in message
+            assert "tpcdi" in message
+            assert "benchbox[tpcdi]" in message or "--extra tpcdi" in message
             assert "Version Information" in message
             assert "Original error" in message
         finally:

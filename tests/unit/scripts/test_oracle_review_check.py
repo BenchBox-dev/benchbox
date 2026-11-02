@@ -12,6 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT / "_project/scripts"))
 oracle_review_check = importlib.import_module("_project.scripts.oracle_review_check")
 sys.modules["oracle_review_check"] = oracle_review_check
+oracle_gate = importlib.import_module("_project.scripts.oracle_gate")
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -97,7 +98,7 @@ def _oracle(**kwargs: Any) -> tuple[int, str]:
         HEAD,
         kwargs.pop("files", SOUNDNESS_FILES),
         kwargs.pop("statuses", [_verdict()]),
-        kwargs.pop("paths", oracle_review_check.path_matcher(2, 2, *oracle_review_check._review_rules())),
+        kwargs.pop("paths", oracle_review_check.path_matcher(2, 2, *oracle_gate.load_policy_rules())),
         kwargs.pop("base_date", None),
         kwargs.pop("comments", []),
         reviews=kwargs.pop("reviews", [_receipt_review()]),
@@ -171,7 +172,7 @@ def test_no_verdict_waits_and_names_the_standin_marker() -> None:
     assert _decide() == (
         1,
         f"oracle-review: waiting for the oracle's verdict on {HEAD}, or a stand-in attestation "
-        f"'Stand-in oracle review: APPROVE {HEAD}' from a listed attester; rerun this check after it lands",
+        f"'Stand-in oracle review: APPROVE {HEAD}' from a listed attester",
     )
 
 
@@ -284,21 +285,6 @@ def test_gate_paths_beat_the_exemption() -> None:
     )
     assert matcher(["gate/policy.md"]) is True
     assert matcher(["docs/notes.md"]) is False
-
-
-def test_review_rules_come_from_the_reviewer_policy() -> None:
-    exempt, gate = oracle_review_check._review_rules()
-    assert exempt == ()
-    assert "_project/scripts/oracle_reviewers/*" in gate
-
-
-def test_unreadable_policy_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
-    def broken(path: object) -> object:
-        raise ValueError("bad policy")
-
-    monkeypatch.setattr("oracle_reviewers.policy.load_policy", broken)
-    assert oracle_review_check._review_rules() == ((), ())
-    assert oracle_review_check.path_matcher(1, 1)(["README.md"]) is True
 
 
 def test_verdict_before_a_retarget_waits() -> None:
@@ -616,8 +602,10 @@ def _stub_main(
     statuses: list[dict[str, Any]],
     reviews: list[dict[str, Any]] | None = None,
     edited: tuple[str | None, bool] | None = None,
+    files: list[str] | None = None,
 ) -> list[str]:
     check = oracle_review_check
+    files = files or SOUNDNESS_FILES
     requested: list[str] = []
     raw_statuses = [
         {
@@ -640,13 +628,18 @@ def _stub_main(
         raise AssertionError(path)
 
     monkeypatch.setenv("GITHUB_TOKEN", "token")
-    monkeypatch.setattr(check, "fetch_pull", lambda token, repo, pr: {"head": {"sha": HEAD}, "changed_files": 1})
-    monkeypatch.setattr(check, "fetch_files", lambda token, repo, pr: [{"filename": SOUNDNESS_FILES[0]}])
+    pull = {"head": {"sha": HEAD}, "base": {"ref": "develop"}, "changed_files": 1}
+    monkeypatch.setattr(oracle_gate, "fetch_pull", lambda token, repo, pr: pull)
+    monkeypatch.setattr(oracle_gate, "fetch_files", lambda token, repo, pr: [{"filename": files[0]}])
     monkeypatch.setattr(check, "_paginate", paginate)
-    monkeypatch.setattr(check, "fetch_base_change_date", lambda token, repo, pr: None)
-    monkeypatch.setattr(check, "fetch_comments", lambda token, repo, pr: [])
+    monkeypatch.setattr(oracle_gate, "fetch_base_change_date", lambda token, repo, pr: None)
+    monkeypatch.setattr(oracle_gate, "fetch_comments", lambda token, repo, pr: [])
     monkeypatch.setattr(check, "fetch_review_edit", lambda token, node_id: (None, False) if edited is None else edited)
     return requested
+
+
+def _gate() -> int:
+    return oracle_gate.main(["--repo", "o/r", "--pr", "7", "--no-post"])
 
 
 def _review(body: str, **over: Any) -> dict[str, Any]:
@@ -661,12 +654,12 @@ def _review(body: str, **over: Any) -> dict[str, Any]:
     }
 
 
-def test_main_requires_the_oracle_and_prints_no_parity(monkeypatch: pytest.MonkeyPatch, capsys: Any) -> None:
+def test_the_gate_requires_the_oracle_and_prints_no_parity(monkeypatch: pytest.MonkeyPatch, capsys: Any) -> None:
     _stub_main(monkeypatch, [_verdict()])
-    assert oracle_review_check.main(["--repo", "o/r", "--pr", "7", "--signal", "oracle"]) == 0
+    assert _gate() == 0
     assert capsys.readouterr().out.splitlines() == [f"oracle-review: pass (oracle verdict for {HEAD})"]
     _stub_main(monkeypatch, [_verdict(login=CONNECTOR)])
-    assert oracle_review_check.main(["--repo", "o/r", "--pr", "7"]) == 1
+    assert _gate() == 1
 
 
 @pytest.mark.parametrize(
@@ -679,16 +672,11 @@ def test_main_requires_the_oracle_and_prints_no_parity(monkeypatch: pytest.Monke
     ],
     ids=["absent", "pending", "failure", "success"],
 )
-def test_main_requires_an_oracle_decision_for_verdict_workflow_only(
+def test_the_gate_requires_an_oracle_decision_for_verdict_workflow_only(
     monkeypatch: pytest.MonkeyPatch, statuses: list[dict[str, Any]], expected_status: int
 ) -> None:
-    _stub_main(monkeypatch, statuses)
-    monkeypatch.setattr(
-        oracle_review_check,
-        "fetch_files",
-        lambda token, repo, pr: [{"filename": ".github/workflows/oracle-verdict.yml"}],
-    )
-    assert oracle_review_check.main(["--repo", "o/r", "--pr", "7"]) == expected_status
+    _stub_main(monkeypatch, statuses, files=[".github/workflows/oracle-verdict.yml"])
+    assert _gate() == expected_status
 
 
 SHIP_BODY = _marked_body()
@@ -697,7 +685,7 @@ EDITED_REVIEW = _review(SHIP_BODY, last_edited_at="2026-10-02T09:00:00Z", includ
 
 def test_an_edited_ship_review_over_a_failure_verdict_does_not_pass(monkeypatch: pytest.MonkeyPatch) -> None:
     requested = _stub_main(monkeypatch, [_verdict("failure")], reviews=[EDITED_REVIEW])
-    assert oracle_review_check.main(["--repo", "o/r", "--pr", "7"]) == oracle_review_check.WAITING
+    assert _gate() == oracle_review_check.WAITING
     assert any(path.endswith("/reviews") for path in requested)
 
 
@@ -705,33 +693,40 @@ def test_deleting_a_later_do_not_ship_review_does_not_revive_an_earlier_ship(mon
     earlier_ship = _review(SHIP_BODY, submitted_at=BEFORE_HEAD)
     statuses = [_verdict("success", created_at=BEFORE_HEAD, id=1), _verdict("failure", created_at=AFTER_HEAD, id=2)]
     _stub_main(monkeypatch, statuses, reviews=[earlier_ship])
-    assert oracle_review_check.main(["--repo", "o/r", "--pr", "7"]) == oracle_review_check.WAITING
+    assert _gate() == oracle_review_check.WAITING
 
 
 def test_a_ship_review_with_no_app_verdict_does_not_pass(monkeypatch: pytest.MonkeyPatch) -> None:
     _stub_main(monkeypatch, [], reviews=[_review(SHIP_BODY)])
-    assert oracle_review_check.main(["--repo", "o/r", "--pr", "7"]) == oracle_review_check.WAITING
+    assert _gate() == oracle_review_check.WAITING
 
 
 def test_a_ship_review_with_a_non_app_verdict_status_does_not_pass(monkeypatch: pytest.MonkeyPatch) -> None:
     forged = _verdict("success", login="joeharris76", user_type="User")
     _stub_main(monkeypatch, [forged], reviews=[_review(SHIP_BODY)])
-    assert oracle_review_check.main(["--repo", "o/r", "--pr", "7"]) == oracle_review_check.WAITING
+    assert _gate() == oracle_review_check.WAITING
 
 
 def test_an_edited_receipt_over_a_success_verdict_does_not_pass(monkeypatch: pytest.MonkeyPatch) -> None:
     raw = _review(SHIP_BODY, node_id="node_9", submitted_at=AFTER_HEAD)
     _stub_main(monkeypatch, [_verdict("success")], reviews=[raw], edited=("2026-10-02T09:00:00Z", True))
-    assert oracle_review_check.main(["--repo", "o/r", "--pr", "7"]) == oracle_review_check.WAITING
+    assert _gate() == oracle_review_check.WAITING
 
 
-def test_an_unreadable_receipt_check_waits_instead_of_erroring(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_an_unreadable_receipt_check_is_an_error_not_an_edited_receipt(monkeypatch: pytest.MonkeyPatch) -> None:
     def broken(_token: str, _node_id: str) -> tuple[None, bool]:
         raise oracle_review_check.CheckError("GraphQL down")
 
     _stub_main(monkeypatch, [_verdict("success")], reviews=[_review(SHIP_BODY, node_id="node_9")])
     monkeypatch.setattr(oracle_review_check, "fetch_review_edit", broken)
-    assert oracle_review_check.main(["--repo", "o/r", "--pr", "7"]) == oracle_review_check.WAITING
+    posts: list[tuple[str, int, str]] = []
+    monkeypatch.setattr(
+        oracle_gate, "post_status", lambda token, repo, head, status, message: posts.append((head, status, message))
+    )
+    assert oracle_gate.main(["--repo", "o/r", "--pr", "7"]) == oracle_review_check.ERROR
+    assert [(head, status) for head, status, _ in posts] == [(HEAD, oracle_review_check.ERROR)]
+    assert "GraphQL down" in posts[0][2]
+    assert _gate() == oracle_review_check.ERROR
 
 
 def test_fetch_review_edit_reads_the_graphql_edit_flags(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -848,7 +843,7 @@ def test_a_success_with_no_matching_receipt_here_still_waits() -> None:
     assert _oracle(statuses=[_other_pr_success()])[0] == oracle_review_check.WAITING
 
 
-def test_annotate_receipt_marks_an_unreadable_edit_check_as_edited(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_annotate_receipt_raises_when_the_edit_check_is_unreadable(monkeypatch: pytest.MonkeyPatch) -> None:
     reviews = [_receipt_review()]
     reviews[0]["node_id"] = "node_9"
 
@@ -856,8 +851,8 @@ def test_annotate_receipt_marks_an_unreadable_edit_check_as_edited(monkeypatch: 
         raise oracle_review_check.CheckError("GraphQL down")
 
     monkeypatch.setattr(oracle_review_check, "fetch_review_edit", broken)
-    oracle_review_check.annotate_receipt("t", reviews, HEAD)
-    assert _oracle(statuses=[_verdict()], reviews=reviews)[0] == 1
+    with pytest.raises(oracle_review_check.CheckError, match="GraphQL down"):
+        oracle_review_check.annotate_receipt("t", reviews, HEAD)
 
 
 def test_a_standin_still_counts_against_an_exempt_success_verdict() -> None:
@@ -867,27 +862,22 @@ def test_a_standin_still_counts_against_an_exempt_success_verdict() -> None:
     assert "stand-in review attested" in message
 
 
-def test_main_rejects_an_exempt_success_verdict_when_a_review_is_required(
+def test_the_gate_rejects_an_exempt_success_verdict_when_a_review_is_required(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     exempt = _verdict("success", description=oracle_review_check.EXEMPT_SUCCESS_DESCRIPTION)
     _stub_main(monkeypatch, [exempt])
-    assert oracle_review_check.main(["--repo", "o/r", "--pr", "7"]) == oracle_review_check.WAITING
+    assert _gate() == oracle_review_check.WAITING
     _stub_main(monkeypatch, [_verdict("success")])
-    assert oracle_review_check.main(["--repo", "o/r", "--pr", "7"]) == oracle_review_check.PASS
+    assert _gate() == oracle_review_check.PASS
 
 
 def test_a_shadow_header_review_does_not_pass(monkeypatch: pytest.MonkeyPatch) -> None:
     shadow = _review(f"### oracle-review-shadow: success for `{HEAD}`\n\nDecision: **SHIP**.\n")
     _stub_main(monkeypatch, [], reviews=[shadow])
-    assert oracle_review_check.main(["--repo", "o/r", "--pr", "7"]) == oracle_review_check.WAITING
+    assert _gate() == oracle_review_check.WAITING
     _stub_main(monkeypatch, [_verdict(context="oracle-review-shadow")], reviews=[shadow])
-    assert oracle_review_check.main(["--repo", "o/r", "--pr", "7"]) == oracle_review_check.WAITING
-
-
-def test_the_connector_signal_is_no_longer_accepted() -> None:
-    with pytest.raises(SystemExit):
-        oracle_review_check.main(["--repo", "o/r", "--pr", "7", "--signal", "connector"])
+    assert _gate() == oracle_review_check.WAITING
 
 
 def test_fetch_statuses_reads_the_head_commit_and_keeps_the_creator_type(monkeypatch: pytest.MonkeyPatch) -> None:

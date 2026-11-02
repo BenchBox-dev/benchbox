@@ -2,9 +2,6 @@
 
 # Self-hosted oracle review
 
-```{tags} contributor, operations, ci
-```
-
 `.github/workflows/oracle-verdict.yml` reviews every pull request (PR) with
 agent CLIs, except changes confined to inert paths (see Inert-path manifest),
 and posts a non-required `oracle-verdict` status and a review through the
@@ -146,7 +143,8 @@ a manual dispatch, a `pull_request_target` event other than a plain edit, and a
    is the receipt: a failed findings post leaves no decisive status, so the
    sweep retries the head. It then evaluates and posts `oracle-gate` for the
    exact head. The retry state is uploaded only if every post
-   succeeded, then the attempt artifacts and the captured event streams, and
+   succeeded (a separate attempt record of the same state is kept either way, so
+   a failed post still counts against the retry budget), then the attempt artifacts and the captured event streams, and
    last `drive dispatch` dispatches `oracle-gate`. `findings_delivery` in
    `.github/oracle-reviewers.yml`
    chooses the findings form:
@@ -182,11 +180,11 @@ one-time inspection:
 | C2 total exit | After each reviewer exit, `runner.execute` lists the harness process group and, on Linux, every orphan the loop adopts as child subreaper. Survivors are killed and the run fails closed: slot absent, loop stops, job fails, nothing posts. |
 | C3 no secret in a script | The workflow test fails if any `run:` block names `secrets.*` or `github.token`; secrets reach steps only via `env:` or `with:`. |
 | C4 disk scan | Before the reviewer, after the tailnet join and after the last exit, `drive scan` searches `$HOME`, `$RUNNER_TEMP`, both checkouts, `/tmp`, `/var/tmp`, `/dev/shm` and `${TMPDIR:-/tmp}` for the exact TypeSafe key, Tailscale OAuth secret and job token, deduplicating nested roots and following no file or directory symlinks. It covers the declared readable scratch roots, not every readable file. Values come from the step's own `env:`. A hit fails the job. |
-| C5 redaction completeness | The `finalize` phase holds every secret the job held (gateway token, TypeSafe key, gateway URL, Tailscale OAuth client ID and secret, job token). It redacts the protocol record before it encodes the marker, then runs the redaction check, which redacts attempt, verdict, diagnostic, absence and result text across control-character splits, decodes the trailing protocol marker of each text, and fails the phase if a value remains in the text or in a decoded marker. Finalize and the loop defer their step-summary lines to files that the check writes to the step summary only after it succeeds. The loop step cannot hold these: a same-user child can read its parent's environment. |
+| C5 redaction completeness | The `finalize` phase holds every secret the job held (gateway token, TypeSafe key, gateway URL, Tailscale OAuth client ID and secret, job token). It redacts the protocol record before it encodes the marker, then runs the redaction check, which rewrites every JSON file in the attempt and final directories (attempt, verdict, diagnostic, absence, status, comment, review, state and deferred-summary files) so no secret value survives, including one split by ASCII control characters, decodes the trailing protocol marker of each text, and fails the phase if a file is not valid JSON or a value remains in a text, a key or a decoded marker. Finalize and the attempt loop defer their per-slot and verdict summary lines to `summary.json` files (one newline-joined string, so redacting a secret cannot merge lines) that the check writes to the step summary only after it succeeds; the lines are also printed to the step log, and a few fixed status lines (selection failures, the recover step's choice) go straight to the step summary. The loop step cannot hold these: a same-user child can read its parent's environment. |
 | C6 fresh `HOME` | Each attempt gets a new `mkdtemp` directory; the previous one is deleted first and the checkout reset. |
 | C7 token scope | Job permissions are exactly `actions: write`, `contents: read`, `pull-requests: read`; no `id-token`, and the isolation step fails if `ACTIONS_ID_TOKEN_REQUEST_TOKEN` is present. `github.token` appears only in the `env:` of steps before or after the loop; both checkouts use `persist-credentials: false`. |
 | C8 timeout budget | The job's `timeout-minutes` is `max_attempts` times the longest reviewer `timeout_minutes` plus setup, under 360; the harness timeout fires first and becomes an absence. Every phase step also carries its own `timeout-minutes`: attempt-loop steps the `max_attempts` times longest reviewer budget, every other phase at most 30. A workflow test recomputes both from the policy. |
-| C9 cancellation | `cancel-in-progress` is true only for `pull_request_target`; comment, dispatch and sweep runs wait behind a run in flight, one waiting run per concurrency group, and a newer waiting run replaces the older one, which GitHub cancels. The publish and dispatch steps keep the default success condition, so a cancelled run posts nothing. |
+| C9 cancellation | `cancel-in-progress` is true only for `pull_request_target`. Push and schedule runs share one `sweep` group; owner `/oracle-review` and adjudication comments and dispatches share the pull request's group with its `pull_request_target` runs; every other event gets a group of its own. A run that waits behind one in flight is held as the group's single pending run, and a newer pending run replaces the older one, which GitHub cancels. The publish and dispatch steps keep the default success condition, so a cancelled run posts nothing. |
 | C10 App mint last | `ORACLE_APP_PRIVATE_KEY` is referenced by the review job's posting mint, after the loop, last disk scan and the finalize phase's redaction check, and by the sweep job's failure-status mint; the sweep job runs no reviewer, so its mint cannot leak to one. |
 
 Redaction is accident hygiene, not a control: it matches literal and
@@ -324,8 +322,8 @@ three tries, instead of posting unconfirmed.
 Before a carry is planned, the recorded decision is checked against the App's
 own `oracle-verdict` status for the reviewed head: only statuses created by the
 App's Bot account count, the one whose description carries the record's
-`[run <uuid>]` is chosen, and when several qualify the one created nearest the
-review's submission wins (a record with no run uuid considers every App success
+`[run <run id>]` is chosen, and when several qualify the one created nearest the
+review's submission wins (the run id is the workflow run's `GITHUB_RUN_ID`, which a re-run attempt keeps; a record with no run id considers every App success
 or failure, and a non-`SHIP` record falls back to the App statuses without a run
 uuid, because only success statuses carry one). The status must be `success`
 exactly when the decision is `SHIP`; `SHIP WITH FIXES`, `DO NOT SHIP` and
@@ -421,10 +419,34 @@ marker. Other accounts' replies never reach the brief or force a re-review. A
 plain acknowledgement such as `done` is not a dispute.
 
 Forced re-reviews run only after SHIP or SHIP WITH FIXES, never after DO NOT
-SHIP. The third for one patch is refused with a message to change the patch or
-ask the owner for a stand-in; empty commits and byte-identical rebases keep the
-digest and so share its budget. Ordinary follow-ups never consume it, and a push
-disputing nothing is carried, not rejudged.
+SHIP. A `/oracle-review` comment on the same head with an open, keyed `Dispute:`
+reply takes this path through the verdict workflow, and the hourly sweep
+re-dispatches a head whose open `Dispute:` reply is newer than every verdict run
+on that head. No workflow runs on review-comment events themselves. Up to two
+dispute rounds per patch digest are exempt from the daily retry budget and the
+doubling backoff and are not counted against them; a third is refused with a
+message naming the escalated findings and the owner adjudication grammar. Empty
+commits and byte-identical rebases keep the digest and so share its allowance.
+Ordinary follow-ups never consume it, and a push disputing nothing is carried,
+not rejudged.
+
+A finding that stays open in both dispute rounds of one patch digest is
+escalated: the verdict record lists it under `escalated` and the status
+description ends `; escalated D<n>`. The gate's waiting message then names the
+owner action. The owner (an attester account, as for stand-ins) resolves it with
+a top-level PR comment that is exactly `Oracle adjudication: WITHDRAW D<n> -
+<reason>` or `Oracle adjudication: MAINTAIN D<n> - <reason>`, unedited, posted
+after the oracle review that escalated it and while that review's head is still
+the PR head. The verdict workflow admits the comment, runs `plan` with no
+reviewer attempt, and posts a carry-kind review and status with an
+`adjudicated` entry. `WITHDRAW` removes the finding from the open set (SHIP when
+none remain); `MAINTAIN` keeps it open, closes its dispute, and leaves the head
+blocked until a fix. Like stand-ins the control is audit-only because agents
+share the owner account, so an agent posts an adjudication only when the owner
+names the PR, head, finding and decision in the current request, after an
+`Owner instruction` comment. The merge digest lists adjudications and flags one
+with no preceding `Owner instruction` comment. `oracle-gate` never parses
+findings.
 
 The oracle never resolves a thread: a follow-up lists defects it verified fixed,
 and the author resolves those. Each new thread carries a hidden `oracle-defect:
@@ -514,8 +536,9 @@ The review body lists every absent attempt under "Reviewers not available" as `-
 attempt by `; recovery: <choice> (Jev, probability, confidence)` or
 `; recovery: <choice> (fallback, <reason>)`. The detail is the
 attempt artifact's, credentials redacted, whitespace collapsed, at most 160
-characters, and omitted when absent. Raw reviewer responses are never published
-there.
+characters, and omitted when absent. A reviewer's raw response is never published
+there; the detail can carry the reviewer's own `incomplete_reason` or the text of a
+contradiction, redacted and clipped like any other detail.
 
 ## Decisions
 
@@ -613,8 +636,9 @@ fallback over family exclusion.
 ## Evidence that a review happened
 
 A defect-free verdict can be hollow: a reviewer that could not read the files
-may still answer. The job checks each verdict against the head checkout before
-recording it; a failure records the reviewer absent (`incomplete`) and the
+may still answer. For a file-list brief the job checks a verdict that would ship
+against the head checkout before recording it: the trace must show a successful
+read of each required file and `files_examined` must name it; a failure records the reviewer absent (`incomplete`) and the
 required files it left unread on the attempt artifact (`absence.unread`). The
 same reviewer then runs once more. Its brief marks those files in the fenced
 "Required reads" list, taken from the plan's required list intersected with the
@@ -622,7 +646,9 @@ recorded list, never from reviewer text, and carries a fixed "Earlier attempt
 feedback" note that holds only their count, so author-chosen file names stay
 inside the data fences. If the retry also fails the check, the chain advances
 and the next reviewer's brief carries neither mark nor note. With no verdict the
-run stays pending. A hollow answer never passes.
+run stays pending. The check is an exposure check, not a quality check: it
+confirms the required files were read and named, not that the review of them was
+sound, and it does not apply to an inline brief or to a verdict that does not ship.
 
 - Every defect must cite a head-commit file and a line within it. One that does
   not is kept, noted as citation not found, so it still fails the change;
@@ -663,10 +689,11 @@ run stays pending. A hollow answer never passes.
   sibling or outside path credits nothing. Out-of-bounds line reads and
   notice-only reads stay with `oracle-verdict-labels-unreviewed-bytes` and
   `oracle-read-evidence-tightening-20261008`.
-- The evidence check is an exposure check: it confirms that changed files were
-  exposed to the reviewer, not whole-file or semantic proof of review. Two classes
+- The evidence check is an exposure check: it confirms that the required files (the plan's
+  in-scope, non-deleted reviewed files) were exposed to the reviewer, not whole-file or semantic proof of review. Two classes
   of files are exempt from the per-file read requirement while staying in the
-  reviewed diff and in scope for findings:
+  diff the reviewer is given; in a follow-up round, prose files outside the scope
+  leave the reviewed-files list, though a non-partial inline diff still carries them:
   1. Binary files: a diff `Binary files ... differ` or `GIT binary patch` notice, taken from the
      plan's diff, only nominates a file. The exemption applies only to font files (`.eot`, `.otf`,
      `.ttf`, `.woff`, `.woff2`), which the harness cannot read, when the head checkout holds a
@@ -735,13 +762,24 @@ nothing.
 
 - `/oracle-review` at the start of a top-level PR comment from an owner, member
   or collaborator reruns the review on the current head. Thread replies and line
-  comments do not trigger it (they are review comments, not issue comments). A
-  manual rerun may re-review a head after a decisive result, within the daily
-  retry budget and doubling backoff, so an author can dispute a finding with a
-  `Dispute:` thread reply without a new commit; with no `Dispute:` reply the
-  decision stands. The brief carries unresolved thread replies as disputed
-  findings keyed by finding id (see Rounds), and the reviewer checks any claimed
-  grammar or documented behaviour.
+  comments do not trigger it (they are review comments, not issue comments). On
+  a head that already has a decisive verdict and no open `Dispute:` reply, the
+  rerun runs no reviewer: it posts the existing decision again (the
+  `oracle-verdict` status, marked `(reposted)`, then `oracle-gate`) and replies
+  with how to get a re-judgement. It uses no retry budget. A repost does not
+  move the window a stand-in must follow, and a stand-in posted before it stays
+  valid. A record with no run id is carried instead, which posts a review and a
+  status bound to the new run. A pending or absent head reruns normally, within
+  the daily retry budget and doubling backoff. With a keyed `Dispute:` thread
+  reply (two such dispute rounds per patch are exempt from the budget and
+  backoff) the rerun re-judges the disputed finding. The brief carries
+  unresolved thread replies as disputed findings keyed by finding id (see
+  Rounds), and the reviewer checks any claimed grammar or documented behaviour.
+- A top-level PR comment from an owner, member or collaborator that starts with
+  `Oracle adjudication:` runs the same `review` job. `plan` accepts it only in
+  the exact grammar and only from an attester (see Rounds); any other comment
+  with that prefix plans nothing. An accepted ruling runs no reviewer and does
+  not touch the retry budget.
 - `gh workflow run oracle-verdict.yml --ref develop -f pr=<number>` does the
   same; other refs are refused. The optional `-f head=<sha>` names the head the
   dispatch targets: the run title records it, and a run whose pull request has
@@ -830,29 +868,62 @@ retried; a new push plans again.
 ## Local pre-PR review
 
 `make pr-open` reviews the committed `HEAD` before pushing, catching Critical or
-High defects before a PR exists. The command is `cli.py local-review`; `make
-trunk-revert` opens its PR through `gh pr create` without it. The review is
-advisory, labelled as possibly differing from the CI oracle, and posts nothing
-to GitHub.
+High defects before a PR exists. It runs the same driver as the hosted job
+(`cli.py drive`, below), from a trusted export of `origin/develop`, through a
+local adapter. `make trunk-revert` opens its PR through `gh pr create` without
+it. The review is advisory, labelled as possibly differing from the CI oracle,
+and posts nothing to GitHub.
 
-- **Scope.** `cli.py plan --local` builds the plan from git: base is the merge
-  base of `origin/develop` and the pinned head; no PR number, prior reviews or
-  retry state. Uncommitted and untracked changes are never reviewed: the
-  reviewer works in a clean clone at that head. The policy
-  (`.github/oracle-reviewers.yml`), soundness manifest
-  (`.github/soundness-paths.txt`) and workflow pin come from `origin/develop`,
-  as the hosted job reads them from the base branch, so a branch cannot widen
-  its own exempt paths. Reviewer code and templates come from the checked-out
-  tree. Soundness scope, chain, brief and templates are CI's (the template calls
-  the change "unopened"), run through the same `cli.py attempts` loop and
-  redaction as the `review` job. The hosted Linux isolation check and disk scans
-  do not run locally.
+- **Trusted copy.** `scripts/oracle_local_review.py` runs `git fetch origin
+  develop`, then exports the reviewer package (`_project/scripts/oracle_reviewers`,
+  the soundness and inert path predicates, the policy, OMP config and both
+  manifests) from that commit with `git archive` into
+  `~/.cache/benchbox/local-oracle/export/<commit>`, and runs `cli.py
+  local-review` from the export under isolated `uv` with `pyyaml==6.0.3`, as the
+  hosted job does. The branch's working tree is never part of the export, so a
+  branch cannot change the machinery that clears it. The three newest exports are
+  kept. When `origin/develop` cannot be fetched or exported the review refuses
+  (exit 2) and nothing runs. A process of the same user can still alter the cache
+  files; CI remains the control. The script's `--reviewer-ref REF` option exports
+  another ref for a pre-merge smoke of the reviewer package itself; the script
+  only reviews, it cannot push or open a PR, and `make pr-open` never passes it.
+  Only the thin caller (the Makefile target and that script) comes from the
+  branch; the policy, manifests and omp pin are read from `origin/develop` as the
+  hosted job reads them from the base branch, so a branch cannot widen its own
+  exempt paths.
+- **Same driver.** `local-review` is the orchestrator the workflow YAML is for CI:
+  it runs `cli.py drive --environment local` phases as separate processes,
+  `prepare`, `scan`, `harness`, `isolation`, `attempts` and `recover` (repeated as
+  the CI job repeats them), `scan` and `finalize`, each given only the secrets its
+  CI step names. Plan, soundness scope, reviewer chain, brief, templates, the
+  attempt loop, evidence gate, protocol rounds, redaction and the judgement are
+  CI's code; the local adapter supplies only the change source (the git merge-base
+  diff of the pinned head, so uncommitted and untracked changes are never
+  reviewed: the reviewer works in a clean clone at that head), the gateway
+  credentials, the scan roots, the isolation capability and the sink (none). The
+  template calls the change "unopened" until a PR exists. Once the branch has an
+  open PR the plan also reads its history read-only: prior oracle reviews,
+  carried defects, open threads and disputes, and the base-change time. An edited
+  oracle review, or a history that cannot be read, holds the plan and the review
+  refuses. Without a PR the history is empty.
 - **Classifier key.** `TYPESAFE_API_KEY` comes from the environment or, on
   macOS, keychain service `TYPESAFE_API_KEY`, added once with `security
   add-generic-password -s TYPESAFE_API_KEY -a "$USER" -w` (it prompts for the
-  value). Without a key, including in cloud sessions, the review says it uses a
-  fixed default: the policy's `medium` bucket reviewer with the `standard`
-  template, or `gate` when review-machinery files change.
+  value). Without a key the review cannot classify, so it refuses (exit 2) and
+  names that step; there is no fixed default. A change that needs no review
+  (only exempt paths) needs no key. The classifier key stays out of the
+  processes that `make pr-open` starts for the review: the launcher script takes
+  `TYPESAFE_API_KEY`, `TS_AUTHKEY`, the gateway values and the GitHub tokens out
+  of the environment it passes to `uv` and `local-review`, hands them to
+  `local-review` over an inherited pipe, and `local-review` holds them in memory,
+  then grants them to the phase processes that need them (`prepare` and `recover`
+  the key; both scans the key, the Tailscale auth key and the gateway client
+  tokens; `finalize` those and the gateway pair; `attempts` only the gateway
+  pair). The recipe starts the launcher with `python3` directly, not under `uv`, so
+  no `uv` process holds them above the review. Processes that started before
+  the launcher, such as `make`, the recipe shell and the session that ran it, keep the environment the session gave them;
+  the review cannot change that, so a same-user process can still read what the
+  session itself holds.
 - **Credentials.** Local sessions use the `oracle-local` gateway client at
   `http://127.0.0.1:4000` with the token in
   `~/.omp/oracle-gateway/local-client.token`. Cloud sessions
@@ -861,13 +932,22 @@ to GitHub.
   `ORACLE_CLOUD_GATEWAY_TOKEN`, refusing if either is missing.
   The tailnet is reachable only through the local proxy that `make cloud-gateway`
   records as `gateway_proxy=` in `<git dir>/benchbox-cloud-gateway.status`: the
-  health check uses it, and the reviewer gets `HTTPS_PROXY`, `HTTP_PROXY` and a
-  loopback-only `NO_PROXY` for the cloud client alone, never for local or CI.
-  `write_reviewer_home` accepts `http://` on a loopback host only for local
-  review; the CI loop still requires `https://`. Token, key and URL values are
-  never printed: every line passes the redaction that covers the stored result.
-  The hosted accepted risk applies: the reviewer can read the user's files,
-  including that token.
+  health check uses it (and never an ambient proxy variable), and the reviewer
+  gets `HTTPS_PROXY`, `HTTP_PROXY`,
+  `PI_PROXY` and a loopback-only `NO_PROXY` for the cloud
+  client alone, never for local or CI. `write_reviewer_home` accepts `http://` on
+  a loopback host only for local review; the CI loop still requires `https://`.
+  Token, key and URL values are never printed: every line passes the redaction
+  that covers the stored result, which also covers `TS_AUTHKEY` and the host's
+  gateway token values. The hosted accepted risk applies: the reviewer can read
+  the user's files, including that token.
+- **Disk scan and isolation.** The scan CI runs before and after the reviewer
+  runs here too, over this machine's roots: the review's work directory, the
+  cache directory and `~/.omp/oracle-gateway` (the canonical token files there are
+  skipped, so a stray copy of a token fails the run), plus the home directory in a
+  cloud session. It looks for the classifier key, `TS_AUTHKEY` and the gateway
+  token values; a hit refuses the review (exit 2). The Linux isolation check
+  reports and continues: it is skipped on macOS and informational on Linux.
 - **Harness pin.** The `omp:` section of `.github/oracle-reviewers.yml` holds the
   one pin: the version and, per platform (`linux-x64`, `linux-arm64`,
   `darwin-arm64`), the download URL and SHA-256. One installer (`omp_pin.py`,
@@ -963,33 +1043,84 @@ to GitHub.
   `tests/integration/oracle/test_curated_capture_fixtures.py` fails when a
   fixture is unlisted, a listing is stale, or a fixture carries a credential, a
   tailnet name, a foreign host or an operator home path.
-- **Blocking.** A Critical or High finding, or DO NOT SHIP, makes `pr-open`
-  refuse before pushing (exit 1). A `Local oracle override: <reason>` line with
-  a non-empty reason in the PR body file (`PR_BODY_FILE`) lets it proceed and
-  stays in the body; an empty or `<placeholder>` reason, or a line inside an
-  HTML comment or code fence, is refused. Nothing else overrides, not even a
-  commit message. An unreachable gateway, timeout, quota exhaustion, no verdict,
-  missing credential, or an `omp` build that fails its checksum or has no pin for
-  this platform also refuses (exit 2), and the override does not apply.
-- **Pinned head.** `pr-open` records `HEAD` before the review, passes it as
-  `--head`, and refuses to push if `HEAD` moved during the review or lock wait,
-  so the pushed head is the reviewed one.
+- **Blocking.** `pr-open` refuses before pushing (exit 1) when the shared
+  judgement of the verdict is DO NOT SHIP, including the forced DO NOT SHIP when
+  more than `max_defects` defects stay open, or when any open defect, new or
+  carried from the PR's earlier reviews, is Critical or High. A SHIP WITH FIXES
+  whose open defects are all Medium or Low proceeds. On a PR that already has a
+  decision for this head, or an unchanged patch, the recorded decision and its open
+  defects are judged by the same rule, so a carried Critical blocks even when the
+  new diff is clean. Nothing in the PR body overrides a block, and no commit message does.
+  A review that cannot run also refuses (exit 2): unreachable gateway, timeout,
+  quota exhaustion, no verdict, no classifier key, a held PR (an edited oracle
+  review, an unreadable history, the strike limit), a secret value found on disk,
+  a classification that failed, an `omp` build that fails its checksum or has no
+  pin for this platform, the reviewer that raised a finding being absent from the
+  policy or unable to answer a rebuttal, or an `origin/develop` that cannot be
+  fetched.
+- **Findings record and local disputes.** The driver keeps one findings record per
+  patch digest under `~/.cache/benchbox/local-oracle/records/`. It holds the
+  CI-shaped protocol records of every local round (so the same planner, round
+  limits and escalation rules apply) and, per finding, the CI-identical id
+  (`c<cycle>-D<n>`, assigned by the same id function as CI), severity, location,
+  title, fingerprint, the reviewer that raised it, its status (`open`,
+  `withdrawn`, `fixed`, `adjudicated-withdrawn`, `adjudicated-maintained`), the
+  dispute round count, every rebuttal and the reviewer's dispositions. A rebuttal
+  comes from `REBUTTALS_FILE`, a JSON object of finding id to rebuttal text; the
+  text needs a line that starts `Dispute:`, exactly as a CI thread reply does. Only
+  a rebuttal not yet recorded for the finding starts a round. The round is the CI
+  forced re-review of the unchanged patch: the dispute rules, evidence rules and
+  the limit of 2 dispute re-reviews apply unchanged, and only the reviewer that raised
+  the findings may answer (the chain is pinned to it, and a different answering
+  reviewer is refused). A finding still open after the second re-review is
+  escalated. A local owner adjudication is `ADJUDICATE='WITHDRAW|MAINTAIN D<n> -
+  <instruction>'` on the same invocation; it needs an escalated finding, records
+  the instruction text in the finding and in the CI-shaped record, and removes a
+  withdrawn finding from the open set. Agents pass it only when the owner names
+  the head, the finding and the decision in the current request.
+- **Findings record in the PR body.** `pr-open` writes the record of the reviewed
+  patch as one hidden `<!-- oracle-local-record: v1 ... -->` marker at the end of
+  the PR body (`scripts/pr_open_rest.py --record-file`), replacing any earlier
+  marker and keeping the rest of the body. CI's first plan of a PR with no
+  recorded oracle review reads that marker as claims only. A record is ignored
+  when its patch digest differs from the PR's patch digest, when the marker is
+  repeated or malformed, or when the PR already has an oracle review. Otherwise
+  every finding becomes a prior defect of that first round with the id it had
+  locally, and every finding with a rebuttal, a local withdrawal or an adjudication
+  becomes a disputed finding, so the CI verdict needs an explicit disposition for it
+  and must restate the claim. Rebuttal text and the adjudication instruction carry as claims. A finding
+  the owner maintained, or that was maintained in the escalation limit of local
+  rounds, stays a prior defect but is not replayed as a dispute, so it cannot be
+  re-argued to a new CI reviewer. The record's status never closes a
+  finding, never withdraws one and never counts as a strike: the claimed priors the reviewer
+  confirms count toward the defect-count overflow up to one short of the limit, so they never force a
+  DO NOT SHIP alone, the record carries no strike data, and the
+  CI id counter starts above the claimed ids, so a forged or edited record can only
+  create work. A local adjudication does not clear a finding in CI; CI escalation
+  still needs the owner's `Oracle adjudication:` comment on the PR.
+- **Pinned head.** `pr-open` records `HEAD` before the review and passes it as
+  `--head`. It pushes exactly that commit (`git push origin <reviewed>:refs/heads/<branch>`)
+  and arms that commit, even when the branch ref moved while the review ran; the
+  next `pr-open` reviews the moved ref.
 - **Cache and lock.** Results are cached under `~/.cache/benchbox/local-oracle`
-  (`BENCHBOX_LOCAL_ORACLE_DIR` overrides), keyed by patch digest, base commit,
-  head tree, policy hash, `omp` version, whether a classifier key was present,
-  and a hash of the review machinery (the `oracle_reviewers` package, its
-  templates, the OMP config). An unchanged patch reuses the result, even after
-  an override; a keyless default result is not reused once a key exists, and
-  machinery changes are reviewed again. Only verdicts are cached. The lock is per
-  patch: each cache key has its own lock file (`cache/<key>.lock`), so reviews
-  of different patches run in parallel, and a second review of the same patch
-  waits for the first (up to an hour per key, then it refuses), re-checks the
-  cache under the lock and reuses the result without running the reviewers. A
-  review's state is
-  private (its own work directory, reviewer homes and workspace clone, survivor
-  checks scoped to its own process group, atomic cache writes), and CI already
-  reviews different PRs concurrently on the same gateway, so a machine-wide lock
-  only made one slow review block every other PR without saving quota.
+  (fixed per user; no environment variable moves it), keyed by the plan the shared
+  planner produced (which carries the patch digest, base commit, prior-review
+  context and chain), the head tree, and a hash of every trusted input: the
+  policy (which holds the `omp` pin), the soundness and inert manifests, the
+  `oracle_reviewers` package and templates, and the OMP config that fixes the
+  gateway model mapping. An unchanged patch reuses the result, even after an
+  override; any change to those inputs is reviewed again. Only decided results are
+  cached. The lock is per patch: each cache key has its own lock file
+  (`cache/<key>.lock`) that records the holder's branch and start time, so
+  reviews of different patches run in parallel, and a second review of the same
+  patch announces that holder, waits for the first (up to an hour per key, then
+  it refuses), re-checks the cache under the lock and reuses the result without
+  running the reviewers. A quota absence writes `pool-blocks.json` beside the
+  cache, and the next plan reads it, so a blocked pool waits for its reset the
+  way the CI retry state makes it wait. A review's state is private (its own
+  work directory, reviewer homes and workspace clone, survivor checks scoped to
+  its own process group, atomic cache writes), and CI already reviews different
+  PRs concurrently on the same gateway.
 - **Captures.** Every reviewer attempt that ran also keeps its captured event
   stream, as described under P4, in a `captures/<time>-<head>` directory of
   the same cache directory, with the local client token and gateway URL
@@ -1028,14 +1159,15 @@ and an authentication failure is `errorStatus` 401; the message text of that
 event never classifies a failure, and the `CALIBRATED_*_PATTERNS` tables apply
 to stderr only. A quota absence records the `provider` of the terminal event,
 which may be a fallback provider. It skips the reviewer's whole pool for the rest
-of the run. In later runs the block lasts one hour (`QUOTA_BACKOFF` in
-`selection.py`) unless the provider is the pool's own primary provider
-(`POOL_PROVIDERS`) and the reset time was parsed from that error's own message;
-such a block lasts until the reset but at most 24 hours (`PRIMARY_BLOCK_CAP`),
-long enough to cover a daily or session limit without letting one stale reset
-hide a pool for days. A new head carries only primary-provider blocks, and an
-owner backoff reset carries none. A pending reason names the provider that
-returned the quota error and when the block was recorded.
+of the run. In later runs the block lasts at most one hour (`QUOTA_BACKOFF` in
+`selection.py`), and a parsed reset time from the pool's own primary provider
+(`POOL_PROVIDERS`) ends it sooner. Once the hour has passed the next review
+tries the pool again: a quota error records a new block from that moment, and
+any other outcome leaves no block, so a provider that serves again is used again
+instead of staying hidden until a long reset time passes. A new head carries
+only primary-provider blocks, and an owner backoff reset carries none. A pending
+reason names the provider that returned the quota error and when the block was
+recorded.
 
 ## Changing the reviewer harness
 
@@ -1238,25 +1370,27 @@ Done: `.github/oracle-reviewers.yml` sets `mode: enforce`, and the checker
   App's Bot account, state `success`, posted after any retarget;
 - no unresolved review thread from the App.
 
-The verdict comes from the App's commit status, never a review body: the account
-every agent uses can edit or delete reviews, while a status cannot be edited or
-deleted and records its creator. Statuses from other accounts or contexts,
+The verdict state comes from the App's commit status: the account every agent
+uses can edit or delete reviews, while a status cannot be edited or deleted and
+records its creator. A success counts only when it is bound to an unedited App
+review of the same head (below), whose body the gate reads for its marker and header. Statuses from other accounts or contexts,
 including legacy `oracle-review-shadow`, are ignored. A status belongs to a
-commit, not a PR, so the gate binds it by run: each verdict run mints a run
-uuid, writes it into the review marker and appends `[run <uuid>]` to the success
-status description (within the 140-character limit). The gate passes on a
+commit, not a PR, so the gate binds it by run: each verdict run writes its
+workflow run id (`GITHUB_RUN_ID`, kept by a re-run attempt; local reviews use a
+random uuid instead) into the review marker as `run_uuid` and appends
+`[run <run id>]` to the success status description (within the 140-character limit). The gate passes on a
 success status only when this PR has its own unedited oracle review of that head
 whose marker carries the same uuid and whose header agrees with the status.
-Unedited is verified through the review API; an unverifiable edit state never
-authorizes. A status from another PR at the same head, or an earlier policy,
-never authorizes: any success status without a run uuid, including evidence
+Unedited is verified through the GraphQL `lastEditedAt` and `includesCreatedEdit`
+fields; an unverifiable edit state errors the gate and never authorizes. A status from another PR at the same head, or an earlier policy,
+never authorizes: any success status without a run id, including evidence
 predating the requirement, fails closed and waits for a fresh verdict run.
 Merged PRs predate this and never re-run the gate. The oracle signal needs
 `findings_delivery: review`, under which every run reaching a result, pending
 included, posts a review then a status in the same state.
 
 The `oracle-review` workflow is a notification, not a check: it triggers only on
-`pull_request_review` submitted, edited and dismissed, holds no token
+`pull_request_review` edited and dismissed (never submitted), holds no token
 permissions, and runs one `review-event` job with a single no-op step (no
 checkout, secrets or API calls), producing no check run named `oracle-review`.
 `edited` keeps edits to oracle reviews visible in run history; the gate never
@@ -1273,7 +1407,7 @@ be mapped to the PR by the gate's bridge. The step runs only with the App
 configured and the head not skipped by the guard, so never before the post; it
 uses the job's `actions: write` for this dispatch alone and posts no status; the
 gate re-reads everything. Remaining trusted fallbacks: the `oracle-gate` sweep
-(every push to `develop`, plus schedule) and the gate's own triggers
+(a `develop` push that changes gate code or policy, plus schedule) and the gate's own triggers
 (`pull_request_target`, stand-in comments, dispatch).
 
 The verdict run also posts `oracle-gate` itself: after the review is posted,
@@ -1293,13 +1427,23 @@ Resolving a thread has no Actions event and the gate does not read threads: the
 ruleset's `required_review_thread_resolution` on `develop` blocks the merge
 while any thread is open, so resolving the oracle's last thread needs no
 refresh of `oracle-gate`. `make pr-arm` and `make pr-arm-remote` dispatch
-`oracle-gate` for the PR and head when its `oracle-gate` status is not
-`success`. `make pr-rerun` re-runs failed CI jobs and does not refresh
+nothing; they re-evaluate the gate decision read-only for the exact head with
+the gate code and policy of `origin/develop` (never the PR checkout) and refuse
+to arm unless it passes. An oracle review edit or dismissal re-evaluates the
+gate through the notification and bridge, and a `develop` push that changes the
+gate code or policy re-runs the sweep. `make pr-rerun` re-runs failed CI jobs and does not refresh
 `oracle-gate`.
 
 A stand-in attestation must follow the oracle's latest decisive verdict
 (`success` or `failure`) on the head, so overriding a failure is deliberate; a
 later non-decisive review such as `pending` does not void it.
+
+A stand-in cannot cover open findings. `oracle-gate` rejects a stand-in on a
+head whose latest decisive `oracle-verdict` status reports SHIP WITH FIXES
+(including a carried or adjudicated decision), so the findings must be fixed,
+withdrawn by the oracle, or adjudicated by the owner. Stand-ins still cover
+absence, an oversize brief, a refusal, and a head held because an App review
+was edited, even if that head's earlier verdict had open findings.
 
 The merge digest applies the same window to merged history and files a
 `soundness-review-gap` issue for any commit it cannot account for. An attester's
@@ -1348,15 +1492,17 @@ success would count and the gate property would not hold.
   previous body) contains the stand-in marker anywhere, so leading whitespace,
   which the checker strips, still triggers; the checker decides on the exact
   text;
-- completion of `oracle-verdict` and `oracle-review` (the bridge for review and
-  thread events, which have no trusted trigger);
+- completion of `oracle-review` (the bridge for oracle review edits and
+  dismissals, which have no trusted trigger; verdict runs post the gate
+  themselves);
 - `workflow_dispatch` with a `pr` input;
 - a `schedule` sweep over open PRs targeting `develop`;
-- every `push` to `develop`, so a merge re-evaluates open PRs without waiting
-  for the schedule.
+- a `push` to `develop` that changes the gate workflow, the gate or checker
+  scripts, or the oracle, soundness or inert path policy, so a gate or policy
+  change re-evaluates open PRs without waiting for the schedule.
 
-GitHub delays and drops scheduled runs, so pushes bound latency while `develop`
-is active and the schedule covers quiet hours. Only the sweep job runs on
+GitHub delays and drops scheduled runs, so those pushes bound latency for gate
+and policy changes and the schedule covers everything else. Only the sweep job runs on
 `push`; the gate and bridge jobs exclude it. Push sweeps share one concurrency
 group, separate from every PR's, and queue rather than cancel, so a running
 sweep finishes before the next starts.
@@ -1379,14 +1525,20 @@ with a short error description and exits with the error code, so an earlier
 `success` cannot outlive a gate that can no longer evaluate. This is
 deliberately fail-closed: an API outage turns every touched PR to `failure`
 until its next successful evaluation. The PR read is retried three times,
-waiting 2 then 4 seconds. If it still fails, the script posts `failure` to the
-optional `--head-sha` if given; otherwise it makes one GraphQL read of the PR's
-`headRefOid` and posts there if it is a 40-character lowercase hex SHA. A live
-REST read always wins over both. Sweep and bridge dispatches pass a head;
+waiting 2 then 4 seconds. If it still fails, the script makes one GraphQL read of
+the PR's `headRefOid` and posts `failure` there if it is a 40-character
+lowercase hex SHA. An optional `--head-sha` is only a claim: when it differs from
+the head GraphQL reports for that PR, or the PR does not exist, nothing posts,
+so a dispatch naming another PR cannot paint a foreign head red. A live REST
+read always wins. Sweep runs and dispatches pass a head;
 `pull_request_target` runs pass the event payload's head, validated by the
-resolve step; `issue_comment` payloads carry none, so those runs rely on
-GraphQL. The remaining gap: if REST and GraphQL both fail with no head supplied,
-nothing posts and the prior status stands until the next sweep carries the head.
+resolve step. The remaining gap: if REST and GraphQL both fail, nothing posts
+and the prior status stands until the next sweep.
+Every reader of `oracle-gate` (the merge landing checks, the remote closeout and
+the comment-cleanup scope check) ignores a status whose creator is not the
+`benchbox-oracle` App.
+When the GraphQL read of a receipt's edit state fails, the evaluation errors and
+the gate posts `failure` rather than treating the receipt as edited.
 PRs not based on `develop` and `--no-post` runs never post, errors included. The
 sweep lists open `develop` PRs with `gh api --paginate`, with a 45-minute
 timeout.

@@ -10,12 +10,15 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import click
+from rich.markup import escape
 
 from benchbox.cli.output import ResultExporter
+from benchbox.cli.pseudonym_salt import ensure_publication_salt
 from benchbox.cli.shared import console
 from benchbox.core.publishing.admission import publish_admission
 from benchbox.core.publishing.bundle_publisher import COMPANION_SUFFIXES, VALID_LABELS, BundlePublisher
 from benchbox.core.publishing.store import PublicationStore
+from benchbox.core.results.anonymization import AnonymizationConfig, MissingPublicPseudonymSaltError
 from benchbox.core.results.loader import ResultLoadError, UnsupportedSchemaError, load_result_file
 from benchbox.validation.bundle import OVERRIDE_SUFFIX, unanonymized_plans_findings, unanonymized_tuning_findings
 
@@ -333,10 +336,20 @@ def _redacted_publish_source(source_bundle: Path) -> tuple[Path | None, Temporar
         loaded, _ = load_result_file(source_bundle)
     except (ResultLoadError, UnsupportedSchemaError, FileNotFoundError, OSError, ValueError):
         return None, None
+    try:
+        salt = ensure_publication_salt()
+    except MissingPublicPseudonymSaltError as exc:
+        console.print(f"[red]Publish refused:[/red] {escape(str(exc))}")
+        return None, None
     scratch = TemporaryDirectory(prefix="benchbox-publish-")
     try:
         loaded.output_filename = Path(source_bundle).name
-        exported = ResultExporter(output_dir=scratch.name, anonymize=True).export_result(loaded, ["json"])
+        exporter = ResultExporter(
+            output_dir=scratch.name,
+            anonymize=True,
+            anonymization_config=AnonymizationConfig(machine_id_salt=salt),
+        )
+        exported = exporter.export_result(loaded, ["json"])
     except Exception:
         scratch.cleanup()
         return None, None

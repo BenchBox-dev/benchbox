@@ -34,6 +34,7 @@ class Engine:
     parser_factory: type
     extension: str
     union_node: bool = True
+    named_scans: bool = True
 
 
 _ENGINES = (
@@ -44,7 +45,13 @@ _ENGINES = (
     Engine("questdb", QuestDBQueryPlanParser, "txt"),
     Engine("doris", DorisQueryPlanParser, "txt"),
     Engine("singlestore", SingleStoreQueryPlanParser, "txt"),
+    Engine("presto", PrestoTrinoQueryPlanParser, "json", union_node=False),
+    Engine("clickhouse_chdb", ClickHouseQueryPlanParser, "txt"),
+    Engine("clickhouse_pipeline", ClickHouseQueryPlanParser, "txt", named_scans=False),
+    Engine("doris_verbose", DorisQueryPlanParser, "txt"),
+    Engine("lakesail", SparkQueryPlanParser, "txt"),
 )
+_PRESTO, _CHDB, _PIPELINE, _DORIS_VERBOSE, _LAKESAIL = _ENGINES[7:]
 
 
 def _fixture_path(engine: Engine, shape: str) -> Path:
@@ -83,6 +90,8 @@ def _of_type(op: LogicalOperator, operator_type: LogicalOperatorType) -> list[Lo
 
 
 _ids = [e.name for e in _ENGINES]
+_NAMED = tuple(e for e in _ENGINES if e.named_scans)
+_named_ids = [e.name for e in _NAMED]
 
 
 @pytest.mark.parametrize("engine", _ENGINES, ids=_ids)
@@ -103,7 +112,7 @@ class TestCapturedFixtureMetadata:
         assert restored.compute_plan_fingerprint() == dag.plan_fingerprint
 
 
-@pytest.mark.parametrize("engine", _ENGINES, ids=_ids)
+@pytest.mark.parametrize("engine", _NAMED, ids=_named_ids)
 class TestCapturedSemanticShapes:
     def test_scan_filter_has_filter_over_single_orders_scan(self, engine):
         root = _parse(engine, "scan_filter").logical_root
@@ -311,3 +320,209 @@ class TestDatabendCompositeJoinKeys:
     def test_commas_inside_function_arguments_do_not_split_keys(self):
         pairs = DatabendQueryPlanParser._pair_join_keys("[concat(a, b) (#1)]", "[c (#3)]")
         assert pairs == ["concat(a, b) (#1) = c (#3)"]
+
+
+class TestPrestoCapturedPlans:
+    def test_scan_filter_predicate_and_table_come_from_identifier(self):
+        scan = _scans(_parse(_PRESTO, "scan_filter").logical_root)[0]
+        assert scan.physical_operator.operator_type == "ScanFilter"
+        assert scan.table_name == "default.orders"
+        assert scan.filter_expressions == ["(o_total) > (DOUBLE'100.0')"]
+
+    def test_project_locality_suffix_is_not_part_of_predicate(self):
+        scans = _scans(_parse(_PRESTO, "union").logical_root)
+        assert sorted(s.filter_expressions[0] for s in scans) == [
+            "(c_region) = (VARCHAR'EU')",
+            "(o_total) > (DOUBLE'100.0')",
+        ]
+
+    def test_join_condition_and_type(self):
+        join = _of_type(_parse(_PRESTO, "join").logical_root, LogicalOperatorType.JOIN)[0]
+        assert join.join_type == JoinType.INNER
+        assert join.join_conditions == ['"o_cust" = "c_id"']
+
+    def test_aggregate_is_final_over_partial_with_group_keys(self):
+        aggregates = _of_type(_parse(_PRESTO, "aggregate").logical_root, LogicalOperatorType.AGGREGATE)
+        assert [a.physical_operator.operator_type for a in aggregates] == [
+            "Aggregate(FINAL)[o_cust]",
+            "Aggregate(PARTIAL)[o_cust]",
+        ]
+        assert all(a.group_by_keys == ["o_cust"] for a in aggregates)
+
+    def test_union_is_flattened_into_exchange_over_two_scans(self):
+        root = _parse(_PRESTO, "union").logical_root
+        assert not _of_type(root, LogicalOperatorType.UNION)
+        exchange = root.children[0]
+        assert exchange.physical_operator.operator_type == "RemoteStreamingExchange"
+        assert [_scanned_tables(c) for c in exchange.children] == [["orders"], ["customers"]]
+
+
+class TestChdbCapturedPlans:
+    @pytest.mark.parametrize("shape", _SHAPES)
+    def test_plan_matches_server_mode_structure(self, shape):
+        def shape_of(op):
+            return (op.operator_type, [shape_of(c) for c in op.children])
+
+        server = _parse(_ENGINES[1], shape).logical_root
+        local = _parse(_CHDB, shape).logical_root
+        assert shape_of(local) == shape_of(server)
+
+    def test_scan_is_database_qualified(self):
+        scans = _scans(_parse(_CHDB, "scan_filter").logical_root)
+        assert [s.table_name for s in scans] == ["default.orders"]
+
+
+class TestClickHousePipelineCapturedPlans:
+    @pytest.mark.parametrize("shape", _SHAPES)
+    def test_processor_names_are_not_truncated_at_arguments(self, shape):
+        names = {n.physical_operator.operator_type for n in _collect(_parse(_PIPELINE, shape).logical_root)}
+        assert "MergeTreeSelect" in names
+        assert not [n for n in names if "(" in n or n.endswith(":")]
+
+    @pytest.mark.parametrize("shape", _SHAPES)
+    def test_every_read_step_is_a_scan(self, shape):
+        root = _parse(_PIPELINE, shape).logical_root
+        reads = [n for n in _collect(root) if n.physical_operator.operator_type == "ReadFromMergeTree"]
+        assert reads
+        assert all(n.operator_type == LogicalOperatorType.SCAN for n in reads)
+        assert len(reads) == (2 if shape in ("join", "union") else 1)
+
+    def test_join_processor_has_one_input_per_table(self):
+        root = _parse(_PIPELINE, "join").logical_root
+        joining = [n for n in _collect(root) if n.physical_operator.operator_type == "JoiningTransform"]
+        assert len(joining) == 1
+        assert joining[0].operator_type == LogicalOperatorType.JOIN
+        assert len(_scans(joining[0])) == 2
+
+    def test_aggregating_transform_sits_above_the_scan(self):
+        root = _parse(_PIPELINE, "aggregate").logical_root
+        aggregating = [n for n in _collect(root) if n.physical_operator.operator_type == "AggregatingTransform"]
+        assert len(aggregating) == 1
+        assert len(_scans(aggregating[0])) == 1
+
+    def test_union_step_fans_out_to_two_read_branches(self):
+        root = _parse(_PIPELINE, "union").logical_root
+        assert root.operator_type == LogicalOperatorType.UNION
+        assert len(root.children) == 4
+        assert len(_scans(root)) == 2
+
+
+class TestDorisVerboseCapturedPlans:
+    def test_fragments_are_linked_through_exchange_ids(self):
+        join = _of_type(_parse(_DORIS_VERBOSE, "join").logical_root, LogicalOperatorType.JOIN)[0]
+        exchange = [c for c in join.children if c.operator_type == LogicalOperatorType.OTHER]
+        assert len(exchange) == 1
+        assert exchange[0].physical_operator.operator_type == "VEXCHANGE"
+        assert _scanned_tables(exchange[0]) == ["customers"]
+
+    def test_join_condition_and_type(self):
+        join = _of_type(_parse(_DORIS_VERBOSE, "join").logical_root, LogicalOperatorType.JOIN)[0]
+        assert join.join_type == JoinType.INNER
+        assert join.join_conditions == ["(o_cust[#8] = c_id[#3])"]
+
+    def test_scan_predicates_are_retained(self):
+        scans = _scans(_parse(_DORIS_VERBOSE, "union").logical_root)
+        assert sorted(s.filter_expressions[0] for s in scans) == ["(c_region[#6] = 'EU')", "(o_total[#2] > 100)"]
+
+    def test_aggregate_is_merge_over_exchange_over_update(self):
+        aggregates = _of_type(_parse(_DORIS_VERBOSE, "aggregate").logical_root, LogicalOperatorType.AGGREGATE)
+        assert len(aggregates) == 2
+        assert aggregates[0].children[0].physical_operator.operator_type == "VEXCHANGE"
+        assert aggregates[1].children[0].operator_type == LogicalOperatorType.SCAN
+
+    def test_scan_tables_are_database_qualified(self):
+        scans = _scans(_parse(_DORIS_VERBOSE, "scan_filter").logical_root)
+        assert [s.table_name for s in scans] == ["pv_plan_validation.orders"]
+
+
+class TestDorisVerboseOperatorMapping:
+    @staticmethod
+    def _root(name):
+        text = (_FIXTURES / f"doris_verbose_captured_{name}.txt").read_text(encoding="utf-8")
+        return DorisQueryPlanParser().parse_explain_output(name, text).logical_root
+
+    @pytest.mark.parametrize(
+        ("name", "expected"),
+        [("semi_join", JoinType.SEMI), ("anti_join", JoinType.ANTI), ("left_join", JoinType.LEFT)],
+    )
+    def test_join_type_is_not_collapsed_to_left_or_right(self, name, expected):
+        joins = _of_type(self._root(name), LogicalOperatorType.JOIN)
+        assert [j.join_type for j in joins] == [expected]
+
+    @pytest.mark.parametrize(
+        ("name", "operator_type", "physical"),
+        [
+            ("topn", LogicalOperatorType.SORT, "VTOP-N"),
+            ("window", LogicalOperatorType.WINDOW, "VANALYTIC"),
+            ("intersect", LogicalOperatorType.INTERSECT, "VINTERSECT"),
+            ("except", LogicalOperatorType.EXCEPT, "VEXCEPT"),
+        ],
+    )
+    def test_node_names_map_to_logical_operator_types(self, name, operator_type, physical):
+        nodes = [n for n in _collect(self._root(name)) if n.operator_type == operator_type]
+        assert [n.physical_operator.operator_type for n in nodes][0] == physical
+
+    @pytest.mark.parametrize("name", ["intersect", "except"])
+    def test_set_operator_has_both_table_branches(self, name):
+        node = _of_type(
+            self._root(name), LogicalOperatorType.INTERSECT if name == "intersect" else LogicalOperatorType.EXCEPT
+        )[0]
+        assert _scanned_tables(node) == ["customers", "orders"]
+
+
+class TestLakeSailCapturedPlans:
+    def test_view_alias_in_logical_plan_names_scan_with_unrelated_file_name(self):
+        text = (_FIXTURES / "lakesail_flat_captured_join.txt").read_text(encoding="utf-8")
+        text = text.replace("tpch_sf1/orders.parquet", "tpch_sf1/p.parquet")
+        root = SparkQueryPlanParser().parse_explain_output("join", text).logical_root
+        assert _scanned_tables(root) == ["customers", "orders"]
+
+    def test_distinct_directories_per_scan_name_scans_after_directory_without_logical_names(self):
+        text = (_FIXTURES / "lakesail_captured_join.txt").read_text(encoding="utf-8")
+        text = text.replace("TableScan: orders", "TableScan: ?table?").replace(
+            "TableScan: customers", "TableScan: ?table?"
+        )
+        root = SparkQueryPlanParser().parse_explain_output("join", text).logical_root
+        assert _scanned_tables(root) == ["customers", "orders"]
+
+    def test_part_files_in_table_directories_name_scans_after_directory_without_logical_names(self):
+        text = (_FIXTURES / "lakesail_captured_join.txt").read_text(encoding="utf-8")
+        text = text.replace("TableScan: orders", "TableScan: ?table?").replace(
+            "TableScan: customers", "TableScan: ?table?"
+        )
+        text = text.replace("/p.parquet", "/part-00000-1b2c.parquet")
+        root = SparkQueryPlanParser().parse_explain_output("join", text).logical_root
+        assert _scanned_tables(root) == ["customers", "orders"]
+
+    @pytest.mark.parametrize("shape", ["join", "union"])
+    def test_flat_parquet_files_name_scans_after_file_stem(self, shape):
+        text = (_FIXTURES / f"lakesail_flat_captured_{shape}.txt").read_text(encoding="utf-8")
+        root = SparkQueryPlanParser().parse_explain_output(shape, text).logical_root
+        assert _scanned_tables(root) == ["customers", "orders"]
+
+    def test_scans_are_datasource_exec_named_after_table_directory(self):
+        scans = _scans(_parse(_LAKESAIL, "join").logical_root)
+        assert {s.physical_operator.operator_type for s in scans} == {"DataSourceExec"}
+        assert sorted(s.table_name for s in scans) == ["customers", "orders"]
+
+    def test_filter_exec_sits_directly_above_scan(self):
+        root = _parse(_LAKESAIL, "scan_filter").logical_root
+        filters = _of_type(root, LogicalOperatorType.FILTER)
+        assert len(filters) == 1
+        assert filters[0].children[0].operator_type == LogicalOperatorType.SCAN
+
+    def test_hash_join_has_two_scan_inputs(self):
+        join = _of_type(_parse(_LAKESAIL, "join").logical_root, LogicalOperatorType.JOIN)[0]
+        assert join.physical_operator.operator_type == "HashJoinExec"
+        assert [c.operator_type for c in join.children] == [LogicalOperatorType.SCAN] * 2
+
+    def test_aggregate_is_final_over_repartition_over_partial(self):
+        aggregates = _of_type(_parse(_LAKESAIL, "aggregate").logical_root, LogicalOperatorType.AGGREGATE)
+        assert len(aggregates) == 2
+        assert aggregates[0].children[0].physical_operator.operator_type == "RepartitionExec"
+        assert aggregates[1].children[0].operator_type == LogicalOperatorType.SCAN
+
+    def test_union_exec_branches_are_filtered_scans(self):
+        union = _of_type(_parse(_LAKESAIL, "union").logical_root, LogicalOperatorType.UNION)[0]
+        assert [_scanned_tables(b) for b in union.children] == [["orders"], ["customers"]]
+        assert all(_of_type(b, LogicalOperatorType.FILTER) for b in union.children)

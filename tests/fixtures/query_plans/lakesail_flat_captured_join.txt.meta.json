@@ -1,0 +1,5 @@
+{
+  "provenance": "captured",
+  "models": "LakeSail Sail (pysail 0.7.3) Spark Connect DataFrame explain(extended=True) (read.parquet temp views over flat <table>.parquet files), captured",
+  "validated_against_live": true
+}

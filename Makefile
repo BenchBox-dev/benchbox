@@ -31,7 +31,7 @@ DEVELOPMENT_TREE_ONLY_TARGETS := \
 	agent-commit-range-check skill-integrity-check ci-lint pr-preflight pr-arm-auto-merge shrink-rollup \
 	pr-review-followups-list pr-review-followups dev-loop-metrics ci-usage-report platform-manifest \
 	platform-manifest-check test-docker-parity blind-spots-list blind-spots-report \
-	soundness-drain-report soundness-drain-self-test worktree-audit worktree-finish worktree-reap oracle-mutation-test
+	soundness-drain-report soundness-drain-self-test worktree-audit worktree-finish worktree-reap oracle-mutation-test corpus-stage-local
 
 .PHONY: coverage-check
 
@@ -90,13 +90,28 @@ test-fast:
 
 .PHONY: test-unlock
 test-unlock:
-	@LOCK_DIR="$${BENCHBOX_TEST_LOCK_DIR:-$$HOME/.benchbox}"; \
-	case "$$LOCK_DIR" in \
-		"~") LOCK_DIR="$$HOME" ;; \
-		"~/"*) LOCK_DIR="$$HOME/$${LOCK_DIR#\~/}" ;; \
-	esac; \
-	LOCK_PATH="$$LOCK_DIR/test.lock"; \
-	python3 scripts/local_validation.py clear-test-lock "$$LOCK_PATH"
+	@python3 -I benchbox/utils/host_lock.py clear
+
+.PHONY: heavy-status
+heavy-status:
+	@uv run -- python -m benchbox.utils.host_lock status
+
+.PHONY: heavy-sentinel
+heavy-sentinel:
+	@uv run -- python -m benchbox.utils.host_lock sentinel $(SENTINEL_ARGS)
+
+.PHONY: heavy-sentinel-install
+heavy-sentinel-install:
+	@uv run -- python -m benchbox.utils.host_lock sentinel install $(SENTINEL_ARGS)
+
+.PHONY: heavy-sentinel-uninstall
+heavy-sentinel-uninstall:
+	@uv run -- python -m benchbox.utils.host_lock sentinel uninstall $(SENTINEL_ARGS)
+
+.PHONY: heavy-run
+heavy-run:
+	@test -n "$$CMD" || { echo "usage: make heavy-run CMD='<command>'"; exit 2; }
+	@uv run -- python -m benchbox.utils.host_lock run --admit --guard -- sh -c "$$CMD"
 
 .PHONY: test-medium
 test-medium:
@@ -856,9 +871,14 @@ ci-local:
 	@echo "✅ All CI checks passed!"
 	@echo "========================================"
 
-CI_LINUX_MACHINE ?= benchbox-agent
+CI_LINUX_MACHINE ?= $(or $(BENCHBOX_HEAVY_LINUX_MACHINE),benchbox-agent)
 CI_LINUX_CMD ?= make test-correctness-gate
+CI_LINUX_NEED_GIB ?= 2
+HOST_LOCK_CLI = uv run -- python -m benchbox.utils.host_lock
+CI_LINUX_ENV = -e BENCHBOX_TEST_LOCK_DIR=/tmp/benchbox-lock -e BENCHBOX_HEAVY_ADMIT_MIN_GIB=1.5 -e BENCHBOX_HEAVY_MIN_FREE_DISK_GIB=2
 .PHONY: ci-linux
+ci-linux: export CI_LINUX_CMD := $(CI_LINUX_CMD)
+ci-linux: export BENCHBOX_HEAVY_LINUX_MACHINE := $(CI_LINUX_MACHINE)
 ci-linux:
 	@if [ "$$(uname -s)" != "Darwin" ] || [ "$$(uname -m)" != "arm64" ]; then \
 		echo "ci-linux: skipped -- Apple silicon macOS only (host $$(uname -s)/$$(uname -m)); no-op."; \
@@ -876,11 +896,19 @@ ci-linux:
 		echo "ci-linux: machine '$(CI_LINUX_MACHINE)' not found. One-time setup:"; \
 		echo "  container system start"; \
 		echo "  container build --arch arm64 --tag local/benchbox-agent docker/benchbox-agent"; \
-		echo "  container machine create local/benchbox-agent --name $(CI_LINUX_MACHINE) --home-mount rw --cpus 4 --memory 8G"; \
+		echo "  container machine create local/benchbox-agent --name $(CI_LINUX_MACHINE) --home-mount rw --cpus 4 --memory 6G"; \
+		echo "  container machine stop $(CI_LINUX_MACHINE)"; \
 		exit 1; \
 	fi; \
 	echo "==> ci-linux: '$(CI_LINUX_CMD)' inside container machine '$(CI_LINUX_MACHINE)'"; \
-	container machine run -n $(CI_LINUX_MACHINE) -- bash -lc 'cd "$(CURDIR)" && $(CI_LINUX_CMD)'
+	mkdir -p "$$HOME/.cache"; \
+	CMD_FILE=$$(mktemp "$$HOME/.cache/benchbox-ci-linux-cmd.XXXXXX"); \
+	trap 'rm -f "$$CMD_FILE"' EXIT; \
+	printf 'cd "%s"\nexport UV_PROJECT_ENVIRONMENT="$${UV_PROJECT_ENVIRONMENT:-$$HOME/.cache/benchbox-linux-venv}"\n%s\n' "$(CURDIR)" "$$CI_LINUX_CMD" > "$$CMD_FILE"; \
+	echo "==> ci-linux: the host lock and watchdog cover host memory pressure and disk; the VM footprint is reported separately and bounded by its own allowance (BENCHBOX_HEAVY_VM_ALLOWANCE_GIB); the machine is stopped after the run unless BENCHBOX_KEEP_LINUX_MACHINE=1 or another run uses it, and the sentinel stops it when idle" >&2; \
+	NEED_GIB=$$($(HOST_LOCK_CLI) machine-need --machine $(CI_LINUX_MACHINE) --fallback-gib $(CI_LINUX_NEED_GIB)) || NEED_GIB=""; \
+	NEED_GIB=$${NEED_GIB:-$(CI_LINUX_NEED_GIB)}; \
+	$(HOST_LOCK_CLI) run --phase ci-linux --gate ci-linux --admit --need-gib "$$NEED_GIB" --guard -- bash scripts/linux_machine_run.sh $(CI_LINUX_MACHINE) $(CI_LINUX_ENV) -- bash -l "$$CMD_FILE"
 
 .PHONY: typecheck
 typecheck:
@@ -1025,6 +1053,11 @@ changelog-preview:
 .PHONY: changelog-check
 changelog-check:
 	uv run -- python scripts/changelog_fragments.py check --require-empty-unreleased
+
+.PHONY: corpus-stage-local
+corpus-stage-local:
+	@test -n "$(RESULT)" -a -n "$(OUT)" || { echo "Usage: make corpus-stage-local RESULT=<run result json> OUT=<staging dir>" >&2; exit 1; }
+	uv run -- python scripts/stage_seed_corpus_bundle.py --internal-manifest "$(RESULT)" "$(OUT)"
 
 
 MAKE_TIMING_SHELL := $(BENCHBOX_MAKEFILE_ROOT)scripts/make_timing_shell.sh
@@ -1189,6 +1222,10 @@ pr-open: override PR_BODY_FILE := $(value PR_BODY_FILE)
 pr-open: export PR_OPEN_BODY_FILE := $(PR_BODY_FILE)
 pr-open: override PARENT := $(value PARENT)
 pr-open: export PR_OPEN_PARENT := $(PARENT)
+pr-open: override REBUTTALS_FILE := $(value REBUTTALS_FILE)
+pr-open: export PR_OPEN_REBUTTALS := $(REBUTTALS_FILE)
+pr-open: override ADJUDICATE := $(value ADJUDICATE)
+pr-open: export PR_OPEN_ADJUDICATE := $(ADJUDICATE)
 pr-open:
 	@set -eu; \
 	$(MAKE) -s agent-write-preflight; \
@@ -1254,12 +1291,14 @@ pr-open:
 	DRAFT_FLAG=; \
 	if [ "$$TRUNK_MODE" = "draft" ] || [ -n "$$PR_OPEN_PARENT" ]; then DRAFT_FLAG=--draft; fi; \
 	REVIEWED=$$(git rev-parse HEAD); \
-	uv run -- python -m _project.scripts.oracle_reviewers.cli local-review --policy .github/oracle-reviewers.yml --base-ref "$$STACK_BASE" --trusted-ref origin/develop --head "$$REVIEWED" --body-file "$$PR_OPEN_BODY_FILE" || { echo "Refusing to open PR: the local oracle review did not clear this head. Nothing was pushed." >&2; exit 1; }; \
-	[ "$$(git rev-parse HEAD)" = "$$REVIEWED" ] || { echo "Refusing to open PR: HEAD moved during the local oracle review, so the pushed head would not be the reviewed one. Nothing was pushed." >&2; exit 1; }; \
+	RECORD_FILE=$$(mktemp); \
+	trap 'rm -f "$$RECORD_FILE"' EXIT; \
+	python3 scripts/oracle_local_review.py --policy .github/oracle-reviewers.yml --base-ref "$$STACK_BASE" --trusted-ref origin/develop --head "$$REVIEWED" --rebuttals "$$PR_OPEN_REBUTTALS" --adjudicate "$$PR_OPEN_ADJUDICATE" --record-out "$$RECORD_FILE" || { echo "Refusing to open PR: the local oracle review did not clear this head. Nothing was pushed." >&2; exit 1; }; \
 	$(MAKE) -s pr-conflict-scan BRANCH="$$CURRENT" REPO="$$REPOSITORY" || true; \
-	git push -u origin "$$CURRENT" || { echo "Push failed for $$CURRENT — aborting before opening a PR (remote branch may be stale)." >&2; exit 1; }; \
+	git push origin "$$REVIEWED:refs/heads/$$CURRENT" || { echo "Push failed for $$CURRENT — aborting before opening a PR (remote branch may be stale)." >&2; exit 1; }; \
+	git branch --set-upstream-to="origin/$$CURRENT" "$$CURRENT" >/dev/null 2>&1 || true; \
 	PUBLISHED=$$(uv run -- python scripts/pr_open_rest.py --repo "$$REPOSITORY" --head-owner "$$ORIGIN_OWNER" \
-		--branch "$$CURRENT" --head-spec "$$HEAD_SPEC" --title "$$PR_OPEN_TITLE" --body-file "$$PR_OPEN_BODY_FILE" $$DRAFT_FLAG $$PARENT_ARGS); \
+		--branch "$$CURRENT" --head-spec "$$HEAD_SPEC" --title "$$PR_OPEN_TITLE" --body-file "$$PR_OPEN_BODY_FILE" --record-file "$$RECORD_FILE" $$DRAFT_FLAG $$PARENT_ARGS); \
 	PR_STATUS="$${PUBLISHED%% *}"; \
 	PR_NUMBER="$${PUBLISHED#* }"; \
 	URL="$${PR_NUMBER#* }"; \
@@ -1277,12 +1316,12 @@ pr-open:
 	elif [ -n "$(EVIDENCE)$(BATCH)" ]; then \
 		if [ "$$REUSED_PR" != "1" ]; then \
 			echo "READY=1 with EVIDENCE or BATCH applies to a reused PR, so this new PR is not armed."; \
-			echo "Arm it after review with make pr-arm, or with the evidence transaction: make pr-ready REPO=\"$$REPOSITORY\" URL=\"$$URL\" HEAD=\"$$(git rev-parse HEAD)\" EVIDENCE=\"<readiness-evidence.json>\""; \
+			echo "Arm it after review with make pr-arm, or with the evidence transaction: make pr-ready REPO=\"$$REPOSITORY\" URL=\"$$URL\" HEAD=\"$$REVIEWED\" EVIDENCE=\"<readiness-evidence.json>\""; \
 		else \
-			$(MAKE) -s pr-ready REPO="$$REPOSITORY" URL="$$URL" HEAD="$$(git rev-parse HEAD)" EVIDENCE="$(EVIDENCE)" BATCH="$(BATCH)"; \
+			$(MAKE) -s pr-ready REPO="$$REPOSITORY" URL="$$URL" HEAD="$$REVIEWED" EVIDENCE="$(EVIDENCE)" BATCH="$(BATCH)"; \
 		fi; \
 	else \
-		$(MAKE) -s pr-arm PR="$$PR_NUMBER" REPO="$$REPOSITORY" HEAD="$$(git rev-parse HEAD)"; \
+		$(MAKE) -s pr-arm PR="$$PR_NUMBER" REPO="$$REPOSITORY" HEAD="$$REVIEWED"; \
 	fi
 
 .PHONY: pr-arm-auto-merge

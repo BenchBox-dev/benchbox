@@ -1,8 +1,5 @@
 # Dependency Inventory
 
-```{tags} contributor, reference
-```
-
 Evidence-backed inventory of every dependency declared in `pyproject.toml`.
 Built for the `audit-imported-dependencies-for-elimination` TODO and intended
 to be the entry point when a contributor needs to know *why* a dep is in the

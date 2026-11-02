@@ -2,9 +2,6 @@
 
 # Develop push gaps
 
-```{tags} contributor, operations, ci
-```
-
 ## What failed
 
 GitHub has **dropped push delivery** for consecutive `develop` merges. In

@@ -3,12 +3,14 @@ from __future__ import annotations
 import hashlib
 import importlib
 import json
+import re
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 from click.testing import CliRunner
 
+from benchbox.core.results.anonymization import public_pseudonym_salt_path
 from benchbox.core.results.canonical_json import canonical_json_bytes
 
 sub = importlib.import_module("benchbox.cli.commands.submit")
@@ -87,15 +89,160 @@ def _canonical_file_bytes(path: Path) -> bytes:
     return canonical_json_bytes(json.loads(path.read_text(encoding="utf-8")))
 
 
-def test_submit_refuses_without_public_pseudonym_salt(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def _hostname_bundle(path: Path) -> None:
+    raw_bundle = _valid_submission_bundle()
+    raw_bundle["environment"] = {"hostname": "developer-macbook-pro.local"}
+    path.write_text(json.dumps(raw_bundle), encoding="utf-8")
+
+
+def _salted_token(salt: str, prefix: str, value: str) -> str:
+    return f"{prefix}_{hashlib.sha256(f'{salt}|{prefix}|{value}'.encode()).hexdigest()[:12]}"
+
+
+def _clean_env(monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.delenv("BENCHBOX_MACHINE_ID_SALT", raising=False)
+    return public_pseudonym_salt_path()
+
+
+def test_submit_generates_salt_once_and_keeps_it_out_of_all_output(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    salt_path = _clean_env(monkeypatch)
+    src = tmp_path / "tpch_duckdb.json"
+    _hostname_bundle(src)
+    monkeypatch.setattr(sub, "load_result_file", lambda *_a, **_k: (_fake_result(), {}))
+    assert not salt_path.exists()
+
+    first_dir = tmp_path / "first"
+    first = CliRunner().invoke(sub.submit, [str(src), "--output", str(first_dir)])
+    assert first.exit_code == 0, first.output
+    salt = salt_path.read_text(encoding="utf-8").strip()
+    assert re.fullmatch(r"[0-9a-f]{64}", salt)
+    assert first.output.count("Created a private pseudonym salt") == 1
+    assert "BENCHBOX_MACHINE_ID_SALT" in first.output
+
+    second_dir = tmp_path / "second"
+    second = CliRunner().invoke(sub.submit, [str(src), "--output", str(second_dir)])
+    assert second.exit_code == 0, second.output
+    assert "Created a private pseudonym salt" not in second.output
+    assert salt_path.read_text(encoding="utf-8").strip() == salt
+
+    for output_dir, text in ((first_dir, first.output), (second_dir, second.output)):
+        assert salt not in text
+        for produced in output_dir.rglob("*"):
+            if produced.is_file():
+                assert salt not in produced.read_text(encoding="utf-8")
+        packaged = json.loads((output_dir / "bundle" / src.name).read_text(encoding="utf-8"))
+        assert packaged["environment"]["hostname"] == _salted_token(salt, "host", "developer-macbook-pro.local")
+
+
+def test_submit_env_override_creates_no_salt_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    salt_path = _clean_env(monkeypatch)
+    monkeypatch.setenv("BENCHBOX_MACHINE_ID_SALT", "explicit-override-salt")
+    src = tmp_path / "tpch_duckdb.json"
+    _hostname_bundle(src)
+    monkeypatch.setattr(sub, "load_result_file", lambda *_a, **_k: (_fake_result(), {}))
+
+    result = CliRunner().invoke(sub.submit, [str(src), "--output", str(tmp_path / "out")])
+
+    assert result.exit_code == 0, result.output
+    assert not salt_path.exists()
+    assert "Created a private pseudonym salt" not in result.output
+    packaged = json.loads((tmp_path / "out" / "bundle" / src.name).read_text(encoding="utf-8"))
+    assert packaged["environment"]["hostname"] == _salted_token(
+        "explicit-override-salt", "host", "developer-macbook-pro.local"
+    )
+
+
+def test_submit_dry_run_never_creates_the_salt_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    salt_path = _clean_env(monkeypatch)
+    src = tmp_path / "tpch_duckdb.json"
+    _hostname_bundle(src)
+    monkeypatch.setattr(sub, "load_result_file", lambda *_a, **_k: (_fake_result(), {}))
+
+    result = CliRunner().invoke(sub.submit, [str(src), "--dry-run", "--output", str(tmp_path / "out")])
+
+    assert result.exit_code == 0, result.output
+    assert not salt_path.exists()
+    assert not salt_path.parent.exists()
+    assert "no pseudonym salt exists yet" in result.output
+
+
+def test_submit_dry_run_uses_the_existing_salt_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    salt_path = _clean_env(monkeypatch)
+    salt_path.parent.mkdir(parents=True)
+    salt_path.write_text("existing-file-salt", encoding="utf-8")
+    src = tmp_path / "tpch_duckdb.json"
+    _hostname_bundle(src)
+    monkeypatch.setattr(sub, "load_result_file", lambda *_a, **_k: (_fake_result(), {}))
+
+    result = CliRunner().invoke(sub.submit, [str(src), "--dry-run", "--output", str(tmp_path / "out")])
+
+    assert result.exit_code == 0, result.output
+    assert "no pseudonym salt exists yet" not in result.output
+    assert salt_path.read_text(encoding="utf-8") == "existing-file-salt"
+
+
+def test_submit_refusals_happen_before_any_salt_file_is_created(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    salt_path = _clean_env(monkeypatch)
+    src = tmp_path / "tpch_duckdb_partial.json"
+    src.write_text('{"schema_version": "2.0"}', encoding="utf-8")
+    partial = _fake_result()
+    partial.total_queries = 2
+    partial.successful_queries = 1
+    partial.failed_queries = 1
+    partial.validation_status = "PARTIAL"
+    monkeypatch.setattr(sub, "load_result_file", lambda *_a, **_k: (partial, {}))
+
+    result = CliRunner().invoke(sub.submit, [str(src), "--output", str(tmp_path / "out")])
+
+    assert result.exit_code == 1
+    assert not salt_path.exists()
+    assert not salt_path.parent.exists()
+
+
+def test_submit_refuses_when_the_salt_store_is_unusable(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    salt_path = _clean_env(monkeypatch)
+    salt_path.parent.mkdir(parents=True)
+    salt_path.write_text("", encoding="utf-8")
     src = tmp_path / "ok.json"
     _write_valid_submission_bundle(src)
     monkeypatch.setattr(sub, "load_result_file", lambda *_a, **_k: (_fake_result(), {}))
-    result = CliRunner().invoke(sub.submit, [str(src), "--dry-run", "--output", str(tmp_path / "out")])
+
+    result = CliRunner().invoke(sub.submit, [str(src), "--output", str(tmp_path / "out")])
+
     assert result.exit_code == 1
     assert "Submission refused" in result.output
     assert "BENCHBOX_MACHINE_ID_SALT" in result.output
+    assert "delete" in result.output
+    assert not (tmp_path / "out").exists()
+
+
+def test_submit_same_home_gives_the_same_hosted_bundle_hash_and_new_home_a_new_one(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    salt_path = _clean_env(monkeypatch)
+    src = tmp_path / "tpch_duckdb.json"
+    _hostname_bundle(src)
+    monkeypatch.setattr(sub, "load_result_file", lambda *_a, **_k: (_fake_result(), {}))
+    monkeypatch.setattr(sub, "resolve_submission_token", lambda _url: SimpleNamespace(token="t", source="keyring"))
+    hashes: list[str] = []
+
+    def fake_upload(**kwargs):
+        hashes.append(kwargs["bundle_hash"])
+        return sub.HostedSubmitResult(status="published", idempotency_key="key")
+
+    monkeypatch.setattr(sub, "submit_hosted_bundle", fake_upload)
+
+    for _ in range(2):
+        assert CliRunner().invoke(sub.submit, [str(src), "--service"]).exit_code == 0
+    salt_path.unlink()
+    assert CliRunner().invoke(sub.submit, [str(src), "--service"]).exit_code == 0
+
+    assert hashes[0] == hashes[1]
+    assert hashes[2] != hashes[0]
 
 
 def test_submit_requires_file_or_last(monkeypatch: pytest.MonkeyPatch) -> None:

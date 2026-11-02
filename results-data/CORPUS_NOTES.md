@@ -1139,6 +1139,13 @@ belongs to the CI seed-corpus lane, which holds the salt as the `BENCHBOX_MACHIN
 and is not the maintainer path. Re-running the anonymiser on the raw results reproduces all 58
 bundle files byte for byte. Bundle JSON is not modified.
 
+Update 2026-10-31: `_project/scripts/results_explorer_corpus_migrate.py` has required a pseudonym
+salt since #3672, so the paragraph above describes how those 58 bundles were produced, not how the
+script runs today. The script and `scripts/stage_seed_corpus_bundle.py` now read
+`BENCHBOX_MACHINE_ID_SALT` or an existing `~/.benchbox/submission_salt` automatically and refuse only
+when neither exists; they never generate a salt. Already-public pseudonyms pass through unchanged
+under any salt, so the 58 bundles are unaffected. `make corpus-stage-local` stages a local run.
+
 ### Submission validation refusal path
 
 Without `--trust-internal-source`, `scripts/validate_submission.py --require-manifest`

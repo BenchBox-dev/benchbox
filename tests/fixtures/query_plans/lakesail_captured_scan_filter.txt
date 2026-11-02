@@ -1,0 +1,23 @@
+== Parsed Logical Plan ==
+Projection: orders.#0 AS #3, orders.#2 AS #4
+  Filter: orders.#2 > Int32(100)
+    Projection: orders.o_id AS #0, orders.o_cust AS #1, orders.o_total AS #2
+      TableScan: orders
+
+== Analyzed Logical Plan ==
+#3: Int64, #4: Float64
+Projection: orders.#0 AS #3, orders.#2 AS #4
+  Filter: orders.#2 > CAST(Int32(100) AS Float64)
+    Projection: orders.o_id AS #0, orders.o_cust AS #1, orders.o_total AS #2
+      TableScan: orders
+
+== Optimized Logical Plan ==
+Projection: orders.o_id AS #3, orders.o_total AS #4
+  Filter: orders.o_total > Float64(100)
+    TableScan: orders projection=[o_id, o_total], partial_filters=[orders.o_total > Float64(100)]
+
+== Physical Plan ==
+ProjectionExec: expr=[#3@0 as o_id, #4@1 as o_total]
+  ProjectionExec: expr=[o_id@0 as #3, o_total@1 as #4]
+    FilterExec: o_total@1 > 100
+      DataSourceExec: file_groups={1 group: [[tmp/pv/sail/orders/p.parquet]]}, projection=[o_id, o_total], file_type=parquet, predicate=o_total@2 > 100, pruning_predicate=o_total_null_count@1 != row_count@2 AND o_total_max@0 > 100, required_guarantees=[]

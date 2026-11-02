@@ -2342,3 +2342,107 @@ def test_a_resolved_edited_oracle_thread_stays_an_override_in_the_gap_class():
         digest.CLASS_OVERRIDE
         in digest.classify("f" * 40, "change", ["AGENTS.md"], evidence(threads=(thread,))).reason_classes
     )
+
+
+def adjudication_comment(body="Oracle adjudication: WITHDRAW D2 - the helper keeps the row", at=AFTER, **overrides):
+    fields = {"login": "joeharris76", "user_type": "User", "updated_at": None, **overrides}
+    return digest.Comment(fields["login"], body, at, fields["user_type"], fields["updated_at"])
+
+
+def test_the_digest_lists_an_adjudication_with_the_gap_to_its_owner_instruction():
+    pull = evidence(comments=(instruction(BEFORE), adjudication_comment()))
+    found = digest.adjudication_records([pull])
+    assert [(record.number, record.action, record.defect_id) for record in found] == [(7, "WITHDRAW", "D2")]
+    assert found[0].instruction_gap_seconds == 7200
+    text = digest.render_adjudications(found)
+    assert "#7" in text and "WITHDRAW D2" in text and "NO OWNER INSTRUCTION" not in text
+
+
+def test_the_digest_flags_an_adjudication_without_a_prior_owner_instruction():
+    found = digest.adjudication_records([evidence(comments=(adjudication_comment(), instruction(LATER)))])
+    assert found[0].instruction_gap_seconds is None
+    assert "NO OWNER INSTRUCTION COMMENT" in digest.render_adjudications(found)
+
+
+@pytest.mark.parametrize(
+    "comment",
+    [
+        adjudication_comment(login="someone"),
+        adjudication_comment(user_type="Bot"),
+        adjudication_comment(at=LATER),
+        adjudication_comment("Oracle adjudication: WITHDRAW D2"),
+    ],
+    ids=["not an attester", "bot", "after the merge", "malformed"],
+)
+def test_the_digest_ignores_comments_that_are_not_valid_adjudications(comment):
+    assert digest.adjudication_records([evidence(comments=(comment,))]) == []
+    assert digest.render_adjudications([]) == ""
+
+
+def test_an_edited_adjudication_comment_is_still_listed_and_noted():
+    found = digest.adjudication_records([evidence(comments=(adjudication_comment(updated_at=LATER),))])
+    assert [record.note for record in found] == ["comment edited after posting"]
+    assert "comment edited after posting" in digest.render_adjudications(found)
+
+
+def test_a_ruling_recorded_by_the_oracle_is_listed_when_its_comment_is_gone():
+    from oracle_reviewers import protocol
+
+    record = {
+        "v": 1,
+        "cycle": 1,
+        "round": 1,
+        "kind": "carry",
+        "decision": "SHIP",
+        "head_sha": HEAD,
+        "base_ref": "develop",
+        "reviewer": "",
+        "tier": "",
+        "strikes_after": 0,
+        "open_defects": [],
+        "next_id": 2,
+        "patch_digest": "d" * 32,
+        "carried": True,
+        "summary": "",
+        "adjudicated": [{"id": "D2", "action": "WITHDRAW"}],
+    }
+    body = f"{oracle_verdict(HEAD, 'success')}\n\n{protocol.encode_marker(record)}"
+    pull = evidence(reviews=(review(ORACLE_BOT, HEAD, AFTER, user_type="Bot", body=body),))
+    found = digest.adjudication_records([pull])
+    assert [(r.action, r.defect_id) for r in found] == [("WITHDRAW", "D2")]
+    assert "NO OWNER INSTRUCTION" in digest.render_adjudications(found)
+    assert "comment is missing" in digest.render_adjudications(found)
+
+
+def test_a_recovered_ruling_needs_an_instruction_before_the_review_that_preceded_it():
+    from oracle_reviewers import protocol
+
+    base = {
+        "v": 1,
+        "cycle": 1,
+        "round": 1,
+        "kind": "first",
+        "decision": "SHIP_WITH_FIXES",
+        "head_sha": HEAD,
+        "base_ref": "develop",
+        "reviewer": "",
+        "tier": "",
+        "strikes_after": 0,
+        "open_defects": [],
+        "next_id": 2,
+        "patch_digest": "d" * 32,
+        "carried": False,
+        "summary": "",
+    }
+    ruled = {**base, "kind": "carry", "decision": "SHIP", "carried": True}
+    ruled["adjudicated"] = [{"id": "D2", "action": "WITHDRAW"}]
+
+    def posted(record, at):
+        body = f"{oracle_verdict(HEAD, 'success')}\n\n{protocol.encode_marker(record)}"
+        return review(ORACLE_BOT, HEAD, at, user_type="Bot", body=body)
+
+    reviews = (posted(base, "2026-10-02T10:30:00Z"), posted(ruled, AFTER))
+    late = digest.adjudication_records([evidence(reviews=reviews, comments=(instruction("2026-10-02T10:45:00Z"),))])
+    early = digest.adjudication_records([evidence(reviews=reviews, comments=(instruction("2026-10-02T10:15:00Z"),))])
+    assert late[0].instruction_gap_seconds is None
+    assert early[0].instruction_gap_seconds is not None

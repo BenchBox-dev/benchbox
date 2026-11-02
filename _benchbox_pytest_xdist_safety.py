@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import sys
 from typing import Optional
 
@@ -165,3 +166,115 @@ def pytest_configure(config) -> None:
             f"(set BENCHBOX_MAX_XDIST_WORKERS to override).\n"
         )
         sys.stderr.flush()
+
+    if _heavy_parallel_session(config):
+        _hold_heavy_session(config, "heavy-parallel")
+
+
+HEAVY_MARKERS = frozenset({"slow", "stress", "resource_heavy", "live_integration", "docker_integration"})
+LIVE_PREFIX = "live_"
+
+
+def _is_heavy_marker(name: str) -> bool:
+    return name in HEAVY_MARKERS or name.startswith(LIVE_PREFIX)
+
+
+def _items_select_heavy(items) -> bool:
+    return any(_is_heavy_marker(marker.name) for item in items for marker in item.iter_markers())
+
+
+MAX_FREE_EXPRESSION_NAMES = 12
+GENERIC_LIVE_MARKER = "live_x"
+IMPLIES_LIVE = "live_integration"
+
+
+def _implied_marker_sets(marker: str, named: bool) -> list[frozenset[str]]:
+    plain = frozenset({marker})
+    if marker == IMPLIES_LIVE or not (marker == "docker_integration" or marker.startswith(LIVE_PREFIX)):
+        return [plain]
+    with_live = frozenset({marker, IMPLIES_LIVE})
+    return [with_live, plain] if named else [with_live]
+
+
+def _expression_selects_heavy(expression: str | None) -> bool:
+    if expression is None:
+        return False
+    if not expression.strip():
+        return True
+    try:
+        from itertools import product
+
+        from _pytest.mark.expression import Expression
+
+        compiled = Expression.compile(expression)
+        names = {word for word in re.findall(r"[A-Za-z_][A-Za-z0-9_]*", expression) if word not in {"and", "or", "not"}}
+        named_heavy = {name for name in names if _is_heavy_marker(name)}
+        free = sorted(names - named_heavy)
+        if len(free) > MAX_FREE_EXPRESSION_NAMES:
+            return True
+        candidates = [(marker, marker in named_heavy) for marker in sorted(HEAVY_MARKERS | named_heavy)]
+        candidates.append((GENERIC_LIVE_MARKER, False))
+        for marker, named in candidates:
+            for heavy_set in _implied_marker_sets(marker, named):
+                assignments = product((False, True), repeat=len(free)) if named else [(False,) * len(free)]
+                for values in assignments:
+                    truth = dict(zip(free, values, strict=True))
+                    if compiled.evaluate(lambda name, _t=truth, _h=heavy_set: name in _h or _t.get(name, False)):
+                        return True
+        return False
+    except Exception:
+        return True
+
+
+def _option(config, name: str, default):
+    return getattr(getattr(config, "option", None), name, default)
+
+
+def _is_session_controller(config) -> bool:
+    return not (
+        hasattr(config, "workerinput")
+        or os.environ.get("PYTEST_XDIST_WORKER")
+        or os.environ.get("BENCHBOX_SKIP_TEST_LOCK")
+        or _option(config, "collectonly", False)
+    )
+
+
+def _hold_heavy_session(config, gate: str) -> None:
+    host_lock = session_isolation.host_lock
+    owner_key = host_lock.OWNER_ENV
+    previous_owner = os.environ.get(owner_key)
+    try:
+        handle = host_lock.acquire(host_lock.lock_path(), phase="pytest-session", gate=gate, admit=True, guard=True)
+    except host_lock.LockUnavailable as exc:
+        pytest.exit(
+            f"[benchbox] BLOCKED: a heavy test session needs the host lock: {exc}", returncode=host_lock.EXIT_REFUSED
+        )
+    except host_lock.AdmissionRefused as exc:
+        pytest.exit(
+            f"[benchbox] REFUSED: host is not ready for heavy tests\n{exc.report}", returncode=host_lock.EXIT_ADMISSION
+        )
+    if not handle.inherited:
+        os.environ[owner_key] = host_lock.process_identity()
+
+    def release() -> None:
+        if previous_owner is None:
+            os.environ.pop(owner_key, None)
+        else:
+            os.environ[owner_key] = previous_owner
+        handle.release()
+
+    config.add_cleanup(release)
+
+
+def _heavy_parallel_session(config) -> bool:
+    if not _is_session_controller(config) or not _option(config, "numprocesses", 0):
+        return False
+    return _expression_selects_heavy(_option(config, "markexpr", None))
+
+
+def pytest_collection_finish(session) -> None:
+    config = session.config
+    if not _is_session_controller(config) or _option(config, "numprocesses", 0):
+        return
+    if _items_select_heavy(session.items):
+        _hold_heavy_session(config, "heavy-serial")

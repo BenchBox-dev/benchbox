@@ -207,7 +207,7 @@ def _parse_plat_bench_options(s: types.SimpleNamespace) -> None:
             from benchbox.core.benchmark_loader import get_core_benchmark_class
 
             get_core_benchmark_class(s.benchmark)
-        except ValueError:
+        except (ValueError, ImportError):
             pass
         try:
             s.parsed_benchmark_options = BenchmarkHookRegistry.parse_options(s.benchmark, s.benchmark_option_pairs)

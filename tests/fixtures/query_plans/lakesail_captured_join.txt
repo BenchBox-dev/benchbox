@@ -1,0 +1,37 @@
+== Parsed Logical Plan ==
+Projection: c.#4 AS #6, o.#2 AS #7
+  Inner Join:  Filter: o.#1 = c.#3
+    SubqueryAlias: o
+      Projection: orders.o_id AS #0, orders.o_cust AS #1, orders.o_total AS #2
+        TableScan: orders
+    SubqueryAlias: c
+      Projection: customers.c_id AS #3, customers.c_name AS #4, customers.c_region AS #5
+        TableScan: customers
+
+== Analyzed Logical Plan ==
+#6: Utf8, #7: Float64
+Projection: c.#4 AS #6, o.#2 AS #7
+  Inner Join:  Filter: o.#1 = c.#3
+    SubqueryAlias: o
+      Projection: orders.o_id AS #0, orders.o_cust AS #1, orders.o_total AS #2
+        TableScan: orders
+    SubqueryAlias: c
+      Projection: customers.c_id AS #3, customers.c_name AS #4, customers.c_region AS #5
+        TableScan: customers
+
+== Optimized Logical Plan ==
+Projection: c.#4 AS #6, o.#2 AS #7
+  Inner Join: o.#1 = c.#3
+    SubqueryAlias: o
+      Projection: orders.o_cust AS #1, orders.o_total AS #2
+        TableScan: orders projection=[o_cust, o_total]
+    SubqueryAlias: c
+      Projection: customers.c_id AS #3, customers.c_name AS #4
+        TableScan: customers projection=[c_id, c_name]
+
+== Physical Plan ==
+ProjectionExec: expr=[#6@0 as c_name, #7@1 as o_total]
+  ProjectionExec: expr=[#4@0 as #6, #2@1 as #7]
+    HashJoinExec: mode=CollectLeft, join_type=Inner, on=[(#3@0, #1@0)], projection=[#4@1, #2@3]
+      DataSourceExec: file_groups={1 group: [[tmp/pv/sail/customers/p.parquet]]}, projection=[c_id@0 as #3, c_name@1 as #4], file_type=parquet
+      DataSourceExec: file_groups={1 group: [[tmp/pv/sail/orders/p.parquet]]}, projection=[o_cust@1 as #1, o_total@2 as #2], file_type=parquet, predicate=DynamicFilter [ empty ], dynamic_rg_pruning=eligible

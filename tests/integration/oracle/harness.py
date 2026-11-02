@@ -373,16 +373,35 @@ class Harness:
         argv = [sys.executable, str(REPO_ROOT / "scripts" / "pr_arm.py"), "--pr", str(pr), "--head", head]
         return self.run("arm", [*argv, "--repo", SLUG], env, cwd=checkout)
 
-    def local_review(self, branch: str, body: str | None = None) -> Step:
-        argv, env, checkout = self._local_review_command(branch)
-        if body is not None:
-            body_file = self.root / "pr-body.md"
-            body_file.write_text(body, encoding="utf-8")
-            argv = [*argv, "--body-file", str(body_file)]
-        return self.run("local-review", argv, env, cwd=checkout)
+    def local_review(
+        self,
+        branch: str,
+        *,
+        rebuttals: dict[str, str] | None = None,
+        adjudicate: str | None = None,
+        relative_path: bool = False,
+        **options: Any,
+    ) -> Step:
+        argv, env, checkout = self._local_review_command(branch, **options)
+        if rebuttals is not None:
+            rebuttal_file = (checkout if relative_path else self.root) / "rebuttals.json"
+            rebuttal_file.write_text(json.dumps(rebuttals), encoding="utf-8")
+            argv = [*argv, "--rebuttals", rebuttal_file.name if relative_path else str(rebuttal_file)]
+        if adjudicate is not None:
+            argv = [*argv, "--adjudicate", adjudicate]
+        self.record_out.unlink(missing_ok=True)
+        return self.run("local-review", argv, {**env, "ORACLE_LOCAL_RECORD_OUT": str(self.record_out)}, cwd=checkout)
 
-    def start_local_review(self, branch: str) -> subprocess.Popen[str]:
-        argv, env, checkout = self._local_review_command(branch)
+    @property
+    def record_out(self) -> Path:
+        return self.root / "record-out.txt"
+
+    def local_records(self) -> list[dict[str, Any]]:
+        paths = sorted((self.local_state / "records").glob("*.json"))
+        return [json.loads(path.read_text(encoding="utf-8")) for path in paths]
+
+    def start_local_review(self, branch: str, **options: Any) -> subprocess.Popen[str]:
+        argv, env, checkout = self._local_review_command(branch, **options)
         return subprocess.Popen(argv, cwd=checkout, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     def finish_local_review(self, process: subprocess.Popen[str]) -> Step:
@@ -394,25 +413,31 @@ class Harness:
             raise
         return Step("local-review", process.returncode, stdout, stderr, {})
 
-    def _local_review_command(self, branch: str) -> tuple[list[str], dict[str, str], Path]:
+    def _local_review_command(
+        self, branch: str, key: bool = True, env: dict[str, str] | None = None
+    ) -> tuple[list[str], dict[str, str], Path]:
         checkout = self.root / f"local-{branch.replace('/', '-')}"
         if not checkout.exists():
             git(self.root, "clone", "--quiet", str(self.repo), str(checkout))
             git(checkout, "switch", "--quiet", branch)
             git(checkout, "branch", "--quiet", "-f", "develop", "origin/develop")
-        env = {
+        values = {
             **self.base_env(),
             "PYTHONPATH": str(REPO_ROOT),
             "ORACLE_GATEWAY_URL": self.github.url,
             "ORACLE_CLOUD_GATEWAY_TOKEN": GATEWAY_TOKEN,
-            "BENCHBOX_LOCAL_ORACLE_DIR": str(self.local_state),
+            "GH_TOKEN": OWNER_TOKEN,
+            "GH_ENTERPRISE_TOKEN": OWNER_TOKEN,
+            "TYPESAFE_BASE_URL": self.jev.url,
+            **({"TYPESAFE_API_KEY": JEV_KEY} if key else {}),
+            **(env or {}),
         }
         argv = [sys.executable, "-m", "_project.scripts.oracle_reviewers.cli", "local-review", "--policy", POLICY]
-        return [*argv, "--base-ref", "develop"], env, checkout
+        return [*argv, "--base-ref", "develop"], values, checkout
 
     @property
     def local_state(self) -> Path:
-        return self.root / "local-oracle"
+        return self.home / ".cache" / "benchbox" / "local-oracle"
 
     def local_captures(self) -> list[dict[str, Any]]:
         paths = sorted((self.local_state / "captures").glob("*/capture-*.json"))

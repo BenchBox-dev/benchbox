@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from . import absence, credentials, dedup, protocol, recovery, redaction_check, selection
+from . import absence, adjudication, credentials, dedup, protocol, recovery, redaction_check, selection
 from .retry import (
     ALL_ABSENT,
     FAILURE,
@@ -29,6 +29,7 @@ from .verdict import (
     comment_span,
     display_path,
     place,
+    sanitize,
 )
 
 DESCRIPTION_LIMIT = 140
@@ -60,6 +61,8 @@ class Final:
     reviewer: str | None
     pending_cause: str | None = None
     strikes: int | None = None
+    judgement: protocol.Judgement | None = None
+    marker: str | None = None
 
 
 def _clip(text: str, limit: int = DESCRIPTION_LIMIT) -> str:
@@ -136,6 +139,9 @@ def _record(
     summary: str = "",
     carried: bool = False,
     secrets: tuple[str, ...] = (),
+    escalated: Sequence[str] = (),
+    adjudicated: Sequence[Mapping[str, str]] = (),
+    disputed: Sequence[str] = (),
 ) -> str:
     rules = plan["protocol"]
     record = {
@@ -156,8 +162,14 @@ def _record(
         "forced": bool(rules.get("forced", False)),
         "summary": summary if decision == protocol.DO_NOT_SHIP else "",
     }
-    if plan.get("run_uuid"):
-        record["run_uuid"] = plan["run_uuid"]
+    if escalated:
+        record["escalated"] = list(escalated)
+    if disputed:
+        record["disputed"] = list(disputed)
+    if adjudicated:
+        record["adjudicated"] = [dict(item) for item in adjudicated]
+    if bound_run(plan):
+        record["run_uuid"] = bound_run(plan)
     return protocol.encode_marker(redaction_check.redact(record, secrets), rules.get("patch_map"))
 
 
@@ -269,6 +281,8 @@ def _marked(
     next_id: int,
     strikes: int,
     secrets: tuple[str, ...],
+    escalated: Sequence[str] = (),
+    disputed: Sequence[str] = (),
 ) -> str | None:
     open_defects = [*judgement.carried, *(protocol.defect_entry(ids[item], item) for item in judgement.defects)]
     try:
@@ -280,6 +294,8 @@ def _marked(
             open_defects=open_defects,
             next_id=next_id + len(judgement.defects),
             strikes_after=strikes,
+            escalated=escalated,
+            disputed=disputed,
             summary=judgement.summary,
             secrets=secrets,
         )
@@ -287,13 +303,28 @@ def _marked(
         return None
 
 
-def _description(step: Step, judgement: protocol.Judgement | None, reviewer: str | None, cause: str) -> str:
+def defect_ids(plan: Mapping[str, Any], defects: Sequence[Finding]) -> dict[Finding, str]:
+    next_id = int((plan.get("protocol") or {}).get("next_id", 1))
+    return {finding: f"D{next_id + index}" for index, finding in enumerate(defects)}
+
+
+def escalation_suffix(escalated: Sequence[str]) -> str:
+    return f"; escalated {','.join(escalated)}" if escalated else ""
+
+
+def _description(
+    step: Step,
+    judgement: protocol.Judgement | None,
+    reviewer: str | None,
+    cause: str,
+    escalated: Sequence[str] = (),
+) -> str:
     if cause == OVERSIZE:
         return OVERSIZE_DESCRIPTION
     if judgement is None:
         return "pending: " + "; ".join(step.reasons or ("no reviewer available",))
     if judgement.decision == protocol.SHIP_WITH_FIXES:
-        return f"{reviewer}: {judgement.label}, {judgement.open_count} defect(s) to fix"
+        return f"{reviewer}: {judgement.label}, {judgement.open_count} defect(s) to fix{escalation_suffix(escalated)}"
     return f"{reviewer}: {judgement.label}"
 
 
@@ -314,11 +345,11 @@ def _judgement_notes(judgement: protocol.Judgement | None) -> list[str]:
     return lines + _section("Still open from earlier reviews", [_entry_line(entry) for entry in judgement.carried])
 
 
-def _disposition_label(status: str) -> str:
+def disposition_label(status: str) -> str:
     return {"not_fixed": "maintained", "withdrawn": "withdrawn", "fixed": "fixed"}.get(status, status)
 
 
-def _effective_status(plan: Mapping[str, Any], entry: PriorDefect) -> str:
+def effective_status(plan: Mapping[str, Any], entry: PriorDefect) -> str:
     forced = bool((plan.get("protocol") or {}).get("forced"))
     if forced and entry.status == protocol.FIXED:
         return protocol.NOT_FIXED
@@ -345,7 +376,7 @@ def _dispositions(plan: Mapping[str, Any], verdict: Verdict | None, evidence_cap
         else:
             shown = entry.evidence if evidence_cap is None else _cut(entry.evidence, evidence_cap)
             suffix = f": {shown}" if shown else ""
-            lines.append(f"- {dispute['id']} ({_disposition_label(_effective_status(plan, entry))}){suffix}")
+            lines.append(f"- {dispute['id']} ({disposition_label(effective_status(plan, entry))}){suffix}")
     return _section("Dispute dispositions", lines)
 
 
@@ -382,11 +413,17 @@ def finalize(
     rules = plan.get("protocol") or {}
     defects = judgement.defects if judgement is not None else ()
     next_id = int(rules.get("next_id", 1))
-    ids = {finding: f"D{next_id + index}" for index, finding in enumerate(defects)}
+    ids = defect_ids(plan, defects)
     cycle = rules.get("cycle", 1)
     markers = {finding: f"<!-- oracle-defect: c{cycle}-{defect_id} -->" for finding, defect_id in ids.items()}
     fresh, repeated = dedup.split(defects, plan.get("open_findings", ()))
     placement = place(fresh, commentable)
+    disputed = sorted(item["id"] for item in protocol.bound_disputes(plan)) if rules.get("forced") else []
+    escalated = (
+        protocol.escalated_ids(rules.get("maintained") or {}, judgement.carried, disputed)
+        if judgement is not None and rules.get("forced") and judgement.decision == protocol.SHIP_WITH_FIXES
+        else []
+    )
     strikes = int(rules.get("strikes", 0))
     if (
         judgement is not None
@@ -394,12 +431,18 @@ def finalize(
         and rules.get("patch_digest") not in rules.get("struck_digests", ())
     ):
         strikes += 1
-    marker = _marked(plan, judgement, reviewer or "", ids, next_id, strikes, secrets) if judgement and rules else None
+    marker = (
+        _marked(plan, judgement, reviewer or "", ids, next_id, strikes, secrets, escalated, disputed)
+        if judgement and rules
+        else None
+    )
     unrecorded = bool(judgement and rules and marker is None)
     if unrecorded:
         ids, markers = {}, {}
         state, pending_cause = PENDING, MARKER_LIMIT
-    description = MARKER_LIMIT_DESCRIPTION if unrecorded else _description(step, judgement, reviewer, pending_cause)
+    description = (
+        MARKER_LIMIT_DESCRIPTION if unrecorded else _description(step, judgement, reviewer, pending_cause, escalated)
+    )
     delivery = plan.get("findings_delivery", "comment")
     listed = [*placement.inline, *placement.summary, *(judgement.not_counted if judgement is not None else ())]
 
@@ -419,6 +462,12 @@ def finalize(
             lines += [_size_notice(listed, cap), ""]
         lines += _judgement_notes(judgement)
         lines += _dispositions(plan, verdict, evidence_cap)
+        if escalated:
+            lines += [
+                f"Escalated to the owner: {', '.join(escalated)} stayed open through {protocol.ESCALATION_ROUNDS}"
+                f" dispute re-reviews of this patch. The owner may post `{adjudication.GRAMMAR}`.",
+                "",
+            ]
         if delivery == "comment":
             lines += _section("Defects on diff lines", findings_lines)
         lines += _section(
@@ -459,7 +508,17 @@ def finalize(
     review = _review_payload(plan, body, placement, commentable, markers) if delivery == "review" else None
     cause = pending_cause if state == PENDING else None
     final_strikes = strikes if judgement is not None and not unrecorded else None
-    return Final(state, _clip(description), body if has_content else "", review, reviewer, cause, final_strikes)
+    return Final(
+        state,
+        _clip(description),
+        body if has_content else "",
+        review,
+        reviewer,
+        cause,
+        final_strikes,
+        judgement,
+        marker,
+    )
 
 
 def carried(plan: Mapping[str, Any]) -> Final:
@@ -469,13 +528,15 @@ def carried(plan: Mapping[str, Any]) -> Final:
     outcome = SUCCESS if decision == protocol.SHIP else FAILURE
     reviewed_head = plan["reviewed_head"]
     label = protocol.LABELS[decision]
-    description = f"carried from {reviewed_head[:12]}: {label}"
+    description = f"carried from {reviewed_head[:12]}: {label}{escalation_suffix(previous.get('escalated', ()))}"
     lines = [
         *_header(plan, outcome),
         f"Decision: **{label}**, carried from head `{reviewed_head}`.",
         "",
         f"The patch is unchanged since head `{reviewed_head}` was reviewed, so its decision is carried to this head"
-        " without running a reviewer. Its open review threads still apply.",
+        " without running a reviewer. Its open review threads still apply."
+        if reviewed_head != plan["head_sha"]
+        else "The decision on this head is posted again bound to this run without running a reviewer.",
         "",
         *_section("Still open", [_entry_line(entry) for entry in protocol.unique_defects(previous["open_defects"])]),
         *_strike_line(plan, int(previous["strikes_after"])),
@@ -493,11 +554,87 @@ def carried(plan: Mapping[str, Any]) -> Final:
             strikes_after=int(previous["strikes_after"]),
             summary=previous["summary"],
             carried=True,
+            escalated=previous.get("escalated", ()),
+            adjudicated=previous.get("adjudicated", ()),
         )
     )
     review = {"commit_id": plan["head_sha"], "event": "COMMENT", "body": body, "comments": []}
     delivered = review if plan.get("findings_delivery") == "review" else None
     return Final(outcome, _clip(description), body, delivered, None, None, int(previous["strikes_after"]))
+
+
+def adjudicated(plan: Mapping[str, Any]) -> Final:
+    rules = plan["protocol"]
+    previous = rules["previous"]
+    ruling = plan["adjudication"]
+    action, defect_id = ruling["action"], ruling["id"]
+    open_defects = [
+        item
+        for item in protocol.unique_defects(previous["open_defects"])
+        if not (action == adjudication.WITHDRAW and item["id"] == defect_id)
+    ]
+    decision = previous["decision"] if open_defects else protocol.SHIP
+    outcome = SUCCESS if decision == protocol.SHIP else FAILURE
+    label = protocol.LABELS[decision]
+    escalated = [item for item in previous.get("escalated", ()) if item != defect_id]
+    settled = [item for item in previous.get("adjudicated", ()) if item["id"] != defect_id]
+    settled.append({"id": defect_id, "action": action})
+    effect = (
+        "The finding no longer blocks this head."
+        if action == adjudication.WITHDRAW
+        else "The finding stands and its dispute is closed; push a fix to clear it."
+    )
+    lines = [
+        *_header(plan, outcome),
+        f"Decision: **{label}**.",
+        "",
+        f"Owner adjudication: **{action} {defect_id}** - {sanitize(ruling['reason'], adjudication.REASON_LIMIT)}",
+        "",
+        effect,
+        "",
+        *_section("Still open", [_entry_line(entry) for entry in open_defects]),
+        *_strike_line(plan, int(previous["strikes_after"])),
+    ]
+    body = (
+        "\n".join(lines).rstrip()
+        + "\n\n"
+        + _record(
+            plan,
+            kind=protocol.CARRY,
+            decision=decision,
+            reviewer=previous["reviewer"],
+            open_defects=open_defects,
+            next_id=int(previous["next_id"]),
+            strikes_after=int(previous["strikes_after"]),
+            carried=True,
+            escalated=escalated,
+            adjudicated=settled,
+        )
+    )
+    review = {"commit_id": plan["head_sha"], "event": "COMMENT", "body": body, "comments": []}
+    delivered = review if plan.get("findings_delivery") == "review" else None
+    description = f"owner adjudication: {action} {defect_id}; {label}{escalation_suffix(escalated)}"
+    return Final(outcome, _clip(description), body, delivered, None, None, int(previous["strikes_after"]))
+
+
+REPOST_NOTE = (
+    "No reviewer ran: this head already has a decision, so it is posted again unchanged. A rerun does not "
+    "re-judge an unchanged head. To get a new judgement, push a change, or reply `Dispute:` with file:line "
+    "counter-evidence on the finding's review thread and then comment `/oracle-review`."
+)
+
+
+REPOSTED_MARK = " (reposted)"
+RUN_SUFFIX_RESERVE = 45
+
+
+def reposted(plan: Mapping[str, Any]) -> Final:
+    repost = plan["repost"]
+    body = f"oracle-verdict for `{plan['head_sha']}`: **{repost['label']}** ({repost['state']}).\n\n{REPOST_NOTE}\n"
+    base = repost["description"].removesuffix(REPOSTED_MARK)
+    reserve = RUN_SUFFIX_RESERVE if repost["state"] == SUCCESS else 0
+    description = _clip(base, DESCRIPTION_LIMIT - len(REPOSTED_MARK) - reserve) + REPOSTED_MARK
+    return Final(repost["state"], description, body, None, None, None, None)
 
 
 def refused(plan: Mapping[str, Any]) -> Final:
@@ -540,11 +677,15 @@ def omp_install_failed() -> Final:
     return Final(PENDING, "the pinned omp build could not be installed; no reviewer ran", "", None, None, OMP_INSTALL)
 
 
+def bound_run(plan: Mapping[str, Any]) -> Any:
+    return plan.get("run_uuid") or plan.get("run_id")
+
+
 def status_payload(plan: Mapping[str, Any], final: Final, target_url: str) -> dict[str, Any]:
     description = final.description
-    run_uuid = plan.get("run_uuid")
-    if final.state == SUCCESS and run_uuid:
-        suffix = f" [run {run_uuid}]"
+    run_id = bound_run(plan)
+    if final.state == SUCCESS and run_id:
+        suffix = f" [run {run_id}]"
         if len(description) + len(suffix) > DESCRIPTION_LIMIT:
             description = _clip(description, DESCRIPTION_LIMIT - len(suffix))
         description += suffix

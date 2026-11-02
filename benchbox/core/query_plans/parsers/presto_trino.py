@@ -115,7 +115,9 @@ class PrestoTrinoQueryPlanParser(QueryPlanParser):
             table = self._extract_table(node, details)
             if table:
                 kwargs["table_name"] = table
-            predicate = self._extract_descriptor_field(node, ("filterPredicate",))
+            predicate = self._extract_descriptor_field(
+                node, ("filterPredicate",)
+            ) or self._extract_identifier_predicate(node)
             if predicate and predicate.strip():
                 kwargs["filter_expressions"] = [predicate.strip()]
         elif logical_type == LogicalOperatorType.JOIN:
@@ -125,6 +127,9 @@ class PrestoTrinoQueryPlanParser(QueryPlanParser):
                 kwargs["join_conditions"] = [condition]
         elif logical_type == LogicalOperatorType.AGGREGATE:
             keys = self._extract_descriptor_field(node, ("keys", "groupingKeys", "group_by"))
+            if not keys:
+                name_keys = re.search(r"\)\[([^\]]*)\]\s*$", name)
+                keys = name_keys.group(1) if name_keys else None
             if keys:
                 kwargs["group_by_keys"] = [k.strip() for k in re.split(r"[,\s]+", keys.strip("[] ")) if k.strip()]
 
@@ -214,6 +219,9 @@ class PrestoTrinoQueryPlanParser(QueryPlanParser):
             return table.strip("[]")
         identifier = node.get("identifier")
         if isinstance(identifier, str):
+            handle = re.search(r"schemaName=([\w.-]+),\s*tableName=([\w.-]+)", identifier)
+            if handle:
+                return f"{handle.group(1)}.{handle.group(2)}"
             match = re.search(r"table\s*=\s*([\w.:\"-]+)", identifier) or re.search(
                 r"\[?([\w.-]+(?::[\w.-]+)+)\]?", identifier
             )
@@ -223,6 +231,18 @@ class PrestoTrinoQueryPlanParser(QueryPlanParser):
         if match:
             return match.group(1).strip('[]"')
         return None
+
+    @staticmethod
+    def _extract_identifier_predicate(node: dict[str, Any]) -> str | None:
+        identifier = node.get("identifier")
+        if not isinstance(identifier, str):
+            return None
+        marker = identifier.rfind("filterPredicate = ")
+        if marker < 0:
+            return None
+        predicate = identifier[marker + len("filterPredicate = ") :].rstrip()
+        predicate = re.sub(r",\s*projectLocality = \w+\]?$", "", predicate)
+        return predicate.removesuffix("]").strip() or None
 
     @staticmethod
     def _classify_join_type(name: str, details: str, node: dict[str, Any]) -> JoinType:

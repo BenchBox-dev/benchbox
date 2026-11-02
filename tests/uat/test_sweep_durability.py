@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 import pytest
 
+from benchbox.utils.resource_limits import MemorySnapshot
 from tests.uat import (
     _cli as uat_cli,
     cells_io,
@@ -22,7 +23,6 @@ from tests.uat import (
 from tests.uat.config import validate_config
 from tests.uat.conftest import docker_verb, healthy_ps_stdout, platform_reachability
 from tests.uat.phases import execute as exec_phase
-from tests.uat.preflight_budget import MemorySnapshot
 from tests.uat.runner import CellResult
 
 pytestmark = pytest.mark.medium

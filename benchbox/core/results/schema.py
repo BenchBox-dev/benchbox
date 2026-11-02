@@ -1294,6 +1294,23 @@ def _build_plan_entry(qr: dict[str, Any], *, max_depth: int = DEFAULT_PLAN_MAX_D
     return plan_entry
 
 
+def _distinct_fingerprint_variants(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    variants: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for qr in rows:
+        fingerprint = qr.get("plan_fingerprint")
+        if not fingerprint or fingerprint in seen:
+            continue
+        seen.add(fingerprint)
+        variant: dict[str, Any] = {"fingerprint": fingerprint}
+        if qr.get("iteration") is not None:
+            variant["iteration"] = qr["iteration"]
+        if qr.get("run_type"):
+            variant["run_type"] = qr["run_type"]
+        variants.append(variant)
+    return variants
+
+
 def build_plans_payload(result: BenchmarkResults) -> dict[str, Any] | None:
     if not result.query_plans_captured and not result.plan_capture_errors:
         return None
@@ -1314,6 +1331,7 @@ def build_plans_payload(result: BenchmarkResults) -> dict[str, Any] | None:
         multi_stream = len(rows) > 1
         stream_ids = [qr.get("stream_id", 0) for qr in rows]
         stream_id_disambiguates = len(set(stream_ids)) == len(stream_ids)
+        rows_by_key: dict[str, list[dict[str, Any]]] = {}
         for qr in rows:
             if not multi_stream:
                 key = query_id
@@ -1321,7 +1339,15 @@ def build_plans_payload(result: BenchmarkResults) -> dict[str, Any] | None:
                 key = f"{query_id}#{qr.get('stream_id', 0)}"
             else:
                 key = f"{query_id}#{qr.get('stream_id', 0)}:{qr.get('test_type', '')}"
-            plans_by_query[key] = _build_plan_entry(qr, max_depth=max_depth)
+            rows_by_key.setdefault(key, []).append(qr)
+
+        for key, key_rows in rows_by_key.items():
+            entry = _build_plan_entry(key_rows[-1], max_depth=max_depth)
+            variants = _distinct_fingerprint_variants(key_rows)
+            if len(variants) > 1:
+                entry["fingerprint_varied"] = True
+                entry["fingerprint_variants"] = variants
+            plans_by_query[key] = entry
 
     for error in result.plan_capture_errors or []:
         entry = {

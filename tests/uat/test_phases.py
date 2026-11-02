@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
+from benchbox.utils.resource_limits import MemorySnapshot
 from tests.uat import docker_assets, managed_runtime, matrix
 from tests.uat.config import ExecuteConfig, UATConfig, validate_config
 from tests.uat.conftest import docker_verb as _docker_verb, healthy_ps_stdout, platform_reachability
@@ -19,7 +20,6 @@ from tests.uat.phases import (
     report as report_phase,
 )
 from tests.uat.preflight_budget import (
-    MemorySnapshot,
     check_memory_headroom,
     format_memory_headroom_failure,
 )

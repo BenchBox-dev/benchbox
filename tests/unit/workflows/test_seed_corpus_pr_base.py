@@ -13,6 +13,8 @@ from typing import Any
 import pytest
 import yaml
 
+from benchbox.core.results.anonymization import public_pseudonym_salt_path
+
 pytestmark = [
     pytest.mark.unit,
     pytest.mark.medium,
@@ -232,9 +234,26 @@ def test_seed_staging_fails_closed_without_the_salt(tmp_path: Path) -> None:
 
     assert process.returncode != 0
     assert "BENCHBOX_MACHINE_ID_SALT" in process.stderr
+    assert str(public_pseudonym_salt_path()) in process.stderr
     assert (tmp_path / "github-output").read_text(encoding="utf-8") == "eligible=false\n"
     assert "\tstaging_failed: " in (tmp_path / "seed-status.txt").read_text(encoding="utf-8")
     assert not destination.exists()
+    assert not public_pseudonym_salt_path().exists()
+    assert not public_pseudonym_salt_path().parent.exists()
+
+
+def test_seed_staging_uses_an_existing_salt_file_without_env(tmp_path: Path) -> None:
+    salt_path = public_pseudonym_salt_path()
+    salt_path.parent.mkdir(parents=True)
+    salt_path.write_text("seed-file-salt", encoding="utf-8")
+    from_file, from_file_destination = _stage_bundle(tmp_path / "file", _clean_payload(), salt=None)
+    from_env, from_env_destination = _stage_bundle(tmp_path / "env", _clean_payload(), salt="seed-file-salt")
+
+    assert from_file.returncode == from_env.returncode == 0, from_file.stderr
+    assert (from_file_destination / "bundle.json").read_bytes() == (from_env_destination / "bundle.json").read_bytes()
+    assert salt_path.read_text(encoding="utf-8") == "seed-file-salt"
+    assert str(salt_path) in from_file.stderr
+    assert "salt file" not in from_env.stderr
 
 
 def test_seed_staging_anonymizes_plans_companions(tmp_path: Path) -> None:

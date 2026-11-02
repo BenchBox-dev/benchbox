@@ -16,4 +16,4 @@ managed = true
 required-version = ">=0.13.4"
 
 [tool.uv.sources]
-todo-db = { path = "vendor/todo_db-0.11.0-py3-none-any.whl" }
+todo-db = { path = "vendor/todo_db-0.13.0-py3-none-any.whl" }

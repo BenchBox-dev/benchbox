@@ -17,6 +17,7 @@ from benchbox.core.benchmark_registry import (
     get_benchmark_default_scale,
     get_public_benchmark_class,
 )
+from benchbox.utils.dependencies import BENCHMARK_LOAD_ERRORS
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,11 @@ class DataFrameRender:
 
 @cache
 def _benchmark_instance(benchmark_id: str) -> Any | None:
-    cls = get_public_benchmark_class(benchmark_id)
+    try:
+        cls = get_public_benchmark_class(benchmark_id)
+    except BENCHMARK_LOAD_ERRORS:
+        logger.debug("query_catalog: cannot load benchmark %r", benchmark_id, exc_info=True)
+        return None
     if cls is None:
         return None
     scale = get_benchmark_default_scale(benchmark_id)

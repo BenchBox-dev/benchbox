@@ -1,25 +1,21 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import argparse
 import fnmatch
 import json
 import os
 import re
-import sys
 import urllib.error
 import urllib.parse
 import urllib.request
 from collections.abc import Callable, Iterable
 from datetime import datetime
-from pathlib import Path
 from typing import Any, TypeVar
 
 from inert_paths import is_inert_path
 from soundness_paths import is_soundness_path
 
 ORACLE_LOGIN = "benchbox-oracle"
-ORACLE = "oracle"
 ORACLE_CONTEXT = "oracle-verdict"
 _ORACLE_VERDICT = re.compile(rf"### {ORACLE_CONTEXT}: (?P<state>[a-z]+) for `(?P<sha>[0-9a-f]{{40}})`")
 _RUN_SUFFIX = re.compile(r" \[run (?P<run>[0-9a-z]+)\]$")
@@ -27,6 +23,9 @@ EXEMPT_SUCCESS_DESCRIPTION = "only exempt paths changed"
 STANDIN_ATTESTERS = frozenset({"joeharris76"})
 REFUSED_DESCRIPTION_PREFIX = "refused after"
 _STANDIN_MARKER = re.compile(r"Stand-in oracle review: APPROVE ([0-9a-f]{40})")
+OPEN_FINDINGS_LABEL = "SHIP WITH FIXES"
+REPOSTED_MARK = " (reposted)"
+_ESCALATED = re.compile(r"escalated (?P<ids>D[0-9]+(?:,D[0-9]+)*)")
 
 
 def _attested_shas(comment: dict[str, Any]) -> list[str]:
@@ -184,6 +183,46 @@ def _parse_time(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
+def _is_repost(status: dict[str, Any]) -> bool:
+    return _strip_run_suffix(status.get("description")).endswith(REPOSTED_MARK)
+
+
+def _latest_decisive(verdicts: list[dict[str, Any]]) -> dict[str, Any] | None:
+    return next((status for status in reversed(verdicts) if status["state"] in DECISIVE_VERDICTS), None)
+
+
+def _edit_hold(status: dict[str, Any]) -> bool:
+    from oracle_reviewers.edits import EDITED_REASON
+
+    return status["state"] == "pending" and (status.get("description") or "").startswith(EDITED_REASON)
+
+
+def _open_findings(verdicts: list[dict[str, Any]]) -> bool:
+    decisive = _latest_decisive(verdicts)
+    return (
+        decisive is not None
+        and not _edit_hold(verdicts[-1])
+        and OPEN_FINDINGS_LABEL in (decisive.get("description") or "")
+    )
+
+
+def _open_findings_message(verdicts: list[dict[str, Any]], head_sha: str) -> str:
+    from oracle_reviewers.adjudication import GRAMMAR
+
+    decisive = _latest_decisive(verdicts)
+    match = _ESCALATED.search((decisive or {}).get("description") or "")
+    if match:
+        return (
+            f"oracle-review: {match.group('ids')} on {head_sha} stayed open through repeated dispute re-reviews and "
+            f"need the owner's ruling: post '{GRAMMAR}' for each after an Owner instruction comment naming this "
+            "pull request, head and finding, or push a fix"
+        )
+    return (
+        f"oracle-review: the oracle's latest verdict for {head_sha} lists open findings, which a stand-in cannot "
+        "waive: fix them, or dispute a finding with file:line counter-evidence in its review thread"
+    )
+
+
 def decide(
     head_sha: str,
     files: Iterable[str],
@@ -206,24 +245,31 @@ def decide(
     latest = verdicts[-1] if verdicts else None
     verdict = latest["state"] if latest else None
     standin_after = standin_not_before(
-        base_time, ((_parse_time(status["created_at"]), status["state"]) for status in verdicts)
+        base_time,
+        ((_parse_time(status["created_at"]), status["state"]) for status in verdicts if not _is_repost(status)),
     )
-    standin = next((comment for comment in comments if _is_standin(comment, head_sha, standin_after)), None)
+    findings_open = _open_findings(verdicts)
+    standin = (
+        None
+        if findings_open
+        else next((comment for comment in comments if _is_standin(comment, head_sha, standin_after)), None)
+    )
     if latest and verdict != "success" and not standin:
         if (latest.get("description") or "").startswith(REFUSED_DESCRIPTION_PREFIX):
             return WAITING, (
                 f"oracle-review: the oracle refused to review {head_sha} after repeated DO NOT SHIP decisions; "
-                "close this pull request and open a new one, or post a stand-in attestation after that verdict, "
-                "then rerun this check"
+                "close this pull request and open a new one, or post a stand-in attestation after that verdict"
             )
+        if findings_open:
+            return WAITING, _open_findings_message(verdicts, head_sha)
         return WAITING, (
             f"oracle-review: the oracle's latest verdict for {head_sha} is {verdict}, not success; fix the "
-            "findings, or post a stand-in attestation after that verdict, then rerun this check"
+            "findings, or post a stand-in attestation after that verdict"
         )
     if not (latest or standin):
         return WAITING, (
             f"oracle-review: waiting for the oracle's verdict on {head_sha}, or a stand-in attestation "
-            f"'Stand-in oracle review: APPROVE {head_sha}' from a listed attester; rerun this check after it lands"
+            f"'Stand-in oracle review: APPROVE {head_sha}' from a listed attester"
         )
 
     if verdict == "success":
@@ -242,7 +288,7 @@ def decide(
                     f"oracle-review: the oracle-verdict status for {head_sha} is success, but this pull request "
                     f"has no unedited oracle review of {head_sha} from the same verdict run agreeing with it; "
                     "push a new head (a byte-identical rebase is enough) so the verdict runs again, or have the "
-                    "owner stand-in post an attestation, then rerun this check"
+                    "owner stand-in post an attestation"
                 )
     assert standin is not None
     return PASS, f"oracle-review: pass (stand-in review attested by {standin.get('login')} for {head_sha})"
@@ -295,16 +341,6 @@ def changed_paths(items: Iterable[dict[str, Any]]) -> list[str]:
 
 def fetch_files(token: str, repo: str, pr: int) -> list[dict[str, Any]]:
     return _paginate(token, f"/repos/{repo}/pulls/{pr}/files")
-
-
-def _review_rules() -> tuple[tuple[str, ...], tuple[str, ...]]:
-    try:
-        from oracle_reviewers.policy import load_policy
-
-        classifier = load_policy(Path(".github/oracle-reviewers.yml")).classifier
-        return classifier.exempt_paths, classifier.gate_paths
-    except Exception:
-        return (), ()
 
 
 def _path_needs_review(path: str, exempt: tuple[str, ...], gate: tuple[str, ...]) -> bool:
@@ -383,10 +419,7 @@ def _annotate_one(token: str, receipt: dict[str, Any]) -> None:
         receipt["last_edited_at"] = ""
         receipt["includes_created_edit"] = True
         return
-    try:
-        last_edited_at, includes_created_edit = fetch_review_edit(token, receipt["node_id"])
-    except (CheckError, KeyError, ValueError):
-        last_edited_at, includes_created_edit = "", True
+    last_edited_at, includes_created_edit = fetch_review_edit(token, receipt["node_id"])
     receipt["last_edited_at"] = last_edited_at
     receipt["includes_created_edit"] = includes_created_edit
 
@@ -484,55 +517,3 @@ def fetch_head_oid(token: str, repo: str, pr: int) -> str:
     if payload.get("errors"):
         raise CheckError(f"GitHub GraphQL returned errors: {payload['errors']}")
     return payload["data"]["repository"]["pullRequest"]["headRefOid"]
-
-
-def _parse_args(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description=(
-            "Require the oracle's review of the head commit on result-affecting pull requests, or a stand-in "
-            "attestation for the exact head commit from a listed attester."
-        )
-    )
-    parser.add_argument("--repo", required=True, help="Repository as OWNER/NAME.")
-    parser.add_argument("--pr", required=True, type=int, help="Pull request number.")
-    parser.add_argument("--signal", choices=[ORACLE], default=ORACLE, help="Reviewer whose review this check requires.")
-    return parser.parse_args(argv)
-
-
-def main(argv: list[str] | None = None) -> int:
-    args = _parse_args(sys.argv[1:] if argv is None else argv)
-    token = os.environ.get("GITHUB_TOKEN", "")
-    if not token:
-        print("oracle-review: error: GITHUB_TOKEN is not set", file=sys.stderr)
-        return ERROR
-    if args.repo.count("/") != 1:
-        print("oracle-review: error: --repo must be OWNER/NAME", file=sys.stderr)
-        return ERROR
-    try:
-        pull = fetch_pull(token, args.repo, args.pr)
-        head_sha = pull["head"]["sha"]
-        items = fetch_files(token, args.repo, args.pr)
-        files = changed_paths(items)
-        matcher = path_matcher(len(items), pull["changed_files"], *_review_rules())
-        if not matcher(files):
-            print("oracle-review: only exempt paths changed")
-            return PASS
-        statuses = fetch_statuses(token, args.repo, head_sha)
-        base_date = fetch_base_change_date(token, args.repo, args.pr)
-        comments = fetch_comments(token, args.repo, args.pr)
-        reviews = fetch_reviews(token, args.repo, args.pr)
-        annotate_receipt(token, reviews, head_sha, base_date)
-
-        bump = fetch_bump_refusals(token, args.repo, pull, files, len(items), comments)
-        status, message = decide(
-            head_sha, files, statuses, matcher, base_date, comments, reviews=reviews, bump_refusals=bump
-        )
-    except (CheckError, KeyError, ValueError) as exc:
-        print(f"oracle-review: error: {exc}", file=sys.stderr)
-        return ERROR
-    print(message)
-    return status
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

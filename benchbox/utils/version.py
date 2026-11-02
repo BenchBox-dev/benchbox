@@ -457,16 +457,12 @@ class ImportErrorWithVersion(ImportError):
 def create_import_error(
     benchmark_name: str, missing_dependencies: Optional[list] = None, original_error: Optional[Exception] = None
 ) -> ImportErrorWithVersion:
-    message = f"Could not import benchmark '{benchmark_name}'"
+    from benchbox.utils.dependencies import BenchmarkDependencyError, find_missing_module
 
-    if missing_dependencies:
-        deps_str = ", ".join(sorted(missing_dependencies))
-        message += f". Optional dependency extras required: {deps_str}"
-        suggestions = [f"uv add benchbox --extra {extra}" for extra in missing_dependencies]
-        combined_extras = " ".join(f"--extra {extra}" for extra in sorted(missing_dependencies))
-        combined = f"uv add benchbox {combined_extras}"
-        if len(missing_dependencies) > 1:
-            suggestions.append(combined)
-        message += "\n\nSuggested installs:\n  " + "\n  ".join(sorted(set(suggestions)))
+    missing_module = find_missing_module(original_error)
+    if missing_module is not None:
+        message = str(BenchmarkDependencyError(benchmark_name, missing_module, missing_dependencies or ()))
+    else:
+        message = f"Could not import benchmark '{benchmark_name}'"
 
     return ImportErrorWithVersion(message, original_error)

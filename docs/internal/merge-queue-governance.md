@@ -133,6 +133,20 @@ job builds and verifies the release wheel and sdist. The marker and
 forbidden-path guards run in the PR `lint` job (`guard-fast-lane-markers`);
 the test-count ceiling is retired.
 
+`.github/workflows/fast-duration-baseline-refresh.yml` also refreshes
+`tests/fixtures/medium_shard_durations.json` weekly, in a `medium` job
+independent of the fast-baseline job, so a failure in one never stops the other.
+It scans the 30 newest successful `trunk.yml` push runs on `develop`, keeps the
+first five that still have all four `t2-medium-shard-*` artifacts and the
+`t2-medium-nodeids-*` artifact, and rebuilds the per-test p95 weights from their
+shard junit, keeping only ids in the newest run's `medium-nodeids.txt` so
+deleted tests drop out. When the file changes it regenerates
+`quality/docs-reference-inventory.json` and opens one `chore/medium-durations-*`
+PR whose body carries the drift report (stale ids, unrecorded ids and their
+measured seconds, busiest-shard-to-average ratio) and the ratio projected with
+the refreshed weights. The PR goes through the normal pre-merge trunk lane
+because the file is a trunk-lane path.
+
 `.github/workflows/trunk-coverage.yml` runs on a schedule (six producer runs a
 day at `17 1,5,9,13,17,21 * * *` UTC) and on `workflow_dispatch`, not on every
 push to `develop`, and publishes the coverage map that PR selection reads; it

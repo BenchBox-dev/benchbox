@@ -61,7 +61,7 @@ def _assert_shape(text: str) -> None:
             assert not following or listing(following), (current, following)
         else:
             assert following == "", (current, following)
-    assert "None" not in text and "XX" not in text
+    assert "None" not in "\n".join(lines) and "XX" not in "\n".join(lines)
 
 
 def _kitchen_plan(policy: Policy, **over: Any) -> dict[str, Any]:
@@ -145,7 +145,7 @@ def test_a_follow_up_body_lists_every_part_of_the_decision_in_order(policy: Poli
 
 
 def test_a_follow_up_records_every_open_defect_with_its_next_id(policy: Policy) -> None:
-    plan = {**_kitchen_plan(policy), "findings_delivery": "review", "run_uuid": "a" * 32}
+    plan = {**_kitchen_plan(policy), "findings_delivery": "review", "run_id": "a" * 32}
     final = _finalize(policy, plan, _kitchen_verdict(), kind=selection.FAIL)
     record = _record(final)
     assert [item["id"] for item in record["open_defects"]] == ["D5", "D6", "D7", "D8", "D9"]
@@ -159,7 +159,7 @@ def test_a_forced_round_records_that_it_was_forced(policy: Policy) -> None:
     plan = {**_protocol_plan(policy, forced=True), "disputes": []}
     final = _finalize(policy, plan, _v("fine"))
     record = _record(final)
-    assert record["forced"] is True and "run_uuid" not in record
+    assert record["forced"] is True and record["run_uuid"] == plan["run_id"]
     assert _record(_finalize(policy, _protocol_plan(policy), _v("fine")))["forced"] is False
 
 
@@ -678,7 +678,7 @@ def test_a_refusal_states_the_strike_count_and_records_no_reviewer(policy: Polic
 
 
 def test_the_success_status_carries_the_run_identity_inside_the_description_limit() -> None:
-    plan = {"status_context": "oracle-verdict", "run_uuid": "a" * 32}
+    plan = {"status_context": "oracle-verdict", "run_id": "a" * 32}
     suffix = f" [run {'a' * 32}]"
     room = report.DESCRIPTION_LIMIT - len(suffix)
     exact = report.Final("success", "d" * room, "", None, None)
@@ -690,7 +690,7 @@ def test_the_success_status_carries_the_run_identity_inside_the_description_limi
 
 @pytest.mark.parametrize(
     ("state", "plan"),
-    [("failure", {"run_uuid": "u"}), ("pending", {"run_uuid": "u"}), ("success", {"run_uuid": ""})],
+    [("failure", {"run_id": "u"}), ("pending", {"run_id": "u"}), ("success", {"run_id": ""})],
 )
 def test_only_a_success_with_a_run_identity_gets_the_run_suffix(state: str, plan: dict[str, str]) -> None:
     payload = report.status_payload({"status_context": "ctx", **plan}, report.Final(state, "desc", "", None, None), "t")

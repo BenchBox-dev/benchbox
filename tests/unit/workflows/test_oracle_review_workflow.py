@@ -36,7 +36,7 @@ def test_workflow_name_is_kept_for_the_gate_bridge() -> None:
 def test_only_review_events_trigger_the_workflow() -> None:
     triggers = _triggers()
     assert set(triggers) == {"pull_request_review"}
-    assert triggers["pull_request_review"]["types"] == ["submitted", "edited", "dismissed"]
+    assert triggers["pull_request_review"]["types"] == ["edited", "dismissed"]
 
 
 def test_workflow_has_no_token_permissions() -> None:
