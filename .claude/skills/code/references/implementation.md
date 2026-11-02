@@ -7,7 +7,10 @@ Follow configured project conventions and checks.
 ## Commit
 
 Discover session files, inspect `git status --porcelain` and the diff, verify,
-make a conventional commit, and push through the commit framework.
+make a conventional commit, and push through the commit framework. A delegated
+batch member instead stops at the committed, checked change and hands it to its
+leader: see the delegated batch member exception in
+`shared-change-framework/SKILL.md` §4.
 
 ## Fix
 

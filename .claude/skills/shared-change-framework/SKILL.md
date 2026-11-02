@@ -96,7 +96,8 @@ capture remains local under `shared-review-protocol/SKILL.md`.
    Inspect `git status --porcelain {files}` and `git diff {files}`.
 4. Run Section 3. Fix failures or stop without committing.
 5. Stage and commit the explicit files in one shell command.
-6. Unless a direct user instruction requires local-only work, confirm the
+6. Unless a direct user instruction requires local-only work, or the exception
+   below for a delegated batch member applies, confirm the
    remote host, owner, and repository match an authorized repository or an
    authorized fork of it, then push the branch. Use `-u origin {branch}` when it
    has no upstream. Stop on an unknown remote, a push to a default or protected
@@ -104,7 +105,20 @@ capture remains local under `shared-review-protocol/SKILL.md`.
    and is not a stop.
 7. Create the branch's draft PR, or update the existing PR for that branch, as
    part of the same repository-write authorization unless the user explicitly
-   requires local-only work or another publication mode.
+   requires local-only work, another publication mode, or the exception below
+   applies.
+
+**Exception: delegated batch member.** A worker delegated one member of an
+active integration-branch batch (the `todo` skill's prepared delivery) ends at
+step 5: a committed, checked change in its own member worktree, handed to the
+batch leader as a landing request. It does not push for publication and does
+not create or update a PR; the leader lands the member and publishes the one
+final PR. This narrows steps 6-7 only for that delegation; the steps above 6,
+the Section 3 gate rules (including the delegated gate-runner rules), and every
+other rule here still apply to the member, except that its terminal state is the
+landing request, not the repository's terminal state or a pushed branch and PR;
+the leader follows steps 6-7 for
+the final branch.
 
 ### Rules
 
