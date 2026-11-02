@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Developer tooling: make batch-start, batch-member-create, batch-member-check, batch-land, batch-advance, batch-status, batch-verify and batch-evidence drive an integration-branch batch loop from scripts/batch_integration.py, and pr-open and pr-fanout refuse in a batch member worktree"
+}

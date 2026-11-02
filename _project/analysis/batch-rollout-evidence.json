@@ -32,33 +32,34 @@
     }
   },
   "artifact": {
-    "filename": "todo_db-0.13.0-py3-none-any.whl",
-    "project_path": "_project/scripts/vendor/todo_db-0.13.0-py3-none-any.whl",
-    "sha256": "edeff52e66d1369955844c8705bcc029928c4af614565dfaeb6f6be225ee00b0",
-    "origin": "GitHub release v0.13.0 asset, checked against the release SHA256SUMS",
+    "filename": "todo_db-0.14.0-py3-none-any.whl",
+    "project_path": "_project/scripts/vendor/todo_db-0.14.0-py3-none-any.whl",
+    "sha256": "63aae9474551d7b975d8173837cb21937d95910eb24b6f3bbcaa338e3721844a",
+    "origin": "GitHub release v0.14.0 asset, checked against the release SHA256SUMS",
     "build": {
-      "source_input": "git archive --format=tar v0.13.0 (b4aaa714b00f0d3cf7d47be30ea2534ce4993490)",
+      "source_input": "git archive --format=tar v0.14.0 (7b9d4749a8cde7c4f045b7f9716ec9cc2a41fd41)",
       "source_date_epoch": null,
       "command": "uv build --wheel --out-dir <dist> <git-archive-directory>",
       "reproducibility": {
         "independent_builds": 2,
-        "matching_sha256": "edeff52e66d1369955844c8705bcc029928c4af614565dfaeb6f6be225ee00b0"
+        "matching_sha256": "63aae9474551d7b975d8173837cb21937d95910eb24b6f3bbcaa338e3721844a"
       },
       "sibling_checkout_used_for_install": false
     }
   },
   "runtime": {
     "project_command": "uv run --project _project/scripts --locked -- todo-db-mcp",
-    "dependency_metadata_version": "0.13.0",
-    "reported_tool_version": "0.13.0",
-    "schema_version": 3,
+    "dependency_metadata_version": "0.14.0",
+    "reported_tool_version": "0.14.0",
+    "schema_version": 4,
     "supported_schema_versions": [
       1,
       2,
-      3
+      3,
+      4
     ],
-    "prepared_receipt_schema": "prepared_work_v1",
-    "tool_count": 19,
+    "prepared_receipt_schema": "prepared_work_v2",
+    "tool_count": 22,
     "registered_batch_tools": [
       "register_batch",
       "prepare",
@@ -67,6 +68,7 @@
     ],
     "tool_names": [
       "abort_batch",
+      "advance_batch_head",
       "bind_batch_pr",
       "create_item",
       "defer",
@@ -78,14 +80,33 @@
       "list_items",
       "prepare",
       "promote_deferral",
+      "recover_batch_owner",
       "register_batch",
       "release",
       "renew",
+      "show_batch",
       "show_item",
       "take",
       "takeover",
       "update_item"
     ],
+    "todo_db_batch": {
+      "version": 2,
+      "receipt_schema": "prepared_work_v2",
+      "store_schema_version": 4,
+      "supported_schema_versions": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "tool_version": "0.14.0",
+      "tools": [
+        "advance_batch_head",
+        "recover_batch_owner",
+        "show_batch"
+      ]
+    },
     "mcp_handshake": {
       "sequence": [
         "initialize",
@@ -95,7 +116,7 @@
       "protocol_version": "2024-11-05",
       "server_info": {
         "name": "todo-db",
-        "version": "0.13.0"
+        "version": "0.14.0"
       },
       "result": "pass",
       "state_remote": "local throwaway bare Git remote; no hosted state touched"
@@ -150,9 +171,9 @@
   },
   "verification": {
     "clean_install": "uv sync --project _project/scripts --locked --offline passed",
-    "standalone_metadata": "wheel metadata and entry points identify todo-db 0.13.0",
+    "standalone_metadata": "wheel metadata and entry points identify todo-db 0.14.0",
     "no_sibling_path": "project source and lock paths resolve only under _project/scripts/vendor",
-    "batch_delivery_integration": "full JSON-RPC handshake passed with schema 3 and 19 tools",
+    "batch_delivery_integration": "full JSON-RPC handshake passed with schema 4, 22 tools and the todo_db_batch capability",
     "skill_integrity": "make skill-integrity-check passed against the pinned catalog and tracked mirror",
     "active_runtime_blocker": null,
     "hosted_publication": "not performed; local verification is not merge or deployment evidence"

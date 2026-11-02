@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "make pr-ready with EVIDENCE now arms a soundness PR once the required oracle-gate status passes on its head, instead of demanding an APPROVED review that the zero-approval ruleset cannot produce; the unreachable direct-arm soundness branch is removed"
+}

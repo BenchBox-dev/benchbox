@@ -289,6 +289,38 @@ def _current_branch_pr(run: Runner, repo: str) -> str:
     return str(numbers[0])
 
 
+def _worktree_config(run: Runner, key: str) -> str | None:
+    code, out = run(["git", "config", "--get", "extensions.worktreeConfig"])
+    if code != 0 or out.strip().lower() != "true":
+        return None
+    code, out = run(["git", "config", "--worktree", key])
+    if code == 1:
+        return None
+    if code != 0:
+        raise pr_landing.LandingError(f"cannot read the worktree setting {key}: {out.strip()[:200]}")
+    return out.strip() or None
+
+
+def batch_refusals(run: Runner, checkout: Path, head: str, number: int) -> list[str]:
+    if _worktree_config(run, "benchbox.batch.role") != "integration":
+        return []
+    batch_id = _worktree_config(run, "benchbox.batch.id")
+    if batch_id is None:
+        return ["the integration worktree names no batch (benchbox.batch.id is unset)"]
+    evidence = pr_landing._load_batch_evidence(
+        checkout, str(checkout / ".todo-batch" / batch_id / "final-evidence.json")
+    )
+    tracker = pr_landing.read_batch_tracker(batch_id)
+    reasons: list[str] = []
+    if tracker.get("lifecycle") != "active":
+        reasons.append(f"batch {batch_id} is not active in the tracker")
+    final_pr = tracker.get("final_pr")
+    if not isinstance(final_pr, dict) or final_pr.get("number") != number:
+        reasons.append(f"batch {batch_id} is not bound to PR #{number}")
+    reasons.extend(pr_landing.check_batch_evidence(checkout, evidence or {}, head, tracker))
+    return reasons
+
+
 def _outcome(line: str, code: int) -> int:
     sys.stderr.flush()
     print(f"pr-arm: outcome: {line}", flush=True)
@@ -313,6 +345,7 @@ def arm(
     visible: Callable[[Runner, str, str, str], list[str]] = visible_refusals,
     bump: Callable[[Runner, str, int, str], list[str]] = pr_arm_omp_bump.bump_refusals,
     gate: Callable[[Runner, str, int, str], list[str]] = gate_refusals,
+    batch: Callable[[Runner, Path, str, int], list[str]] = batch_refusals,
 ) -> int:
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
         return _refused(f"--repo must be owner/name, got {repo!r}", 2)
@@ -343,6 +376,11 @@ def arm(
                 *(bump(run, repo, int(view["number"]), local_head) if view.get("headRefOid") == local_head else []),
                 *visible(run, repo, BASE_BRANCH, local_head),
                 *(gate(run, repo, int(view["number"]), local_head) if view.get("headRefOid") == local_head else []),
+                *(
+                    batch(run, checkout, local_head, int(view["number"]))
+                    if view.get("headRefOid") == local_head
+                    else []
+                ),
             ],
         )
         if reasons:

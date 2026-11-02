@@ -127,11 +127,32 @@ on_signal() {
   exit "$status"
 }
 
+resolve_base() {
+  base_ref=${BASE:-origin/develop}
+  case "$base_ref" in
+    -*) die "Invalid BASE: $base_ref" ;;
+  esac
+  base_is_remote_tracking=no
+  base_remote=${base_ref%%/*}
+  if [ "$base_remote" != "$base_ref" ] &&
+    git remote | grep -Fxq -- "$base_remote" &&
+    ! git show-ref --verify --quiet "refs/heads/$base_ref"; then
+    base_is_remote_tracking=yes
+    base_branch=${base_ref#*/}
+    case "$base_branch" in
+      -*) die "Invalid BASE: $base_ref" ;;
+    esac
+    git check-ref-format --branch "$base_branch" >/dev/null 2>&1 || die "Invalid BASE: $base_ref"
+    git fetch "$base_remote" "${base_ref#*/}" --quiet || die "Could not fetch $base_ref"
+  fi
+  base_oid=$(git rev-parse --verify --quiet "$base_ref^{commit}") || die "Could not resolve BASE to a commit: $base_ref"
+}
+
 create_worktree() {
   branch=${BRANCH:-}
   worktree_input=${WORKTREE_PATH:-}
-  [ -n "$branch" ] || die "Usage: make worktree-create BRANCH=<branch> WORKTREE_PATH=<path>"
-  [ -n "$worktree_input" ] || die "Usage: make worktree-create BRANCH=<branch> WORKTREE_PATH=<path>"
+  [ -n "$branch" ] || die "Usage: make worktree-create BRANCH=<branch> WORKTREE_PATH=<path> [BASE=<ref>]"
+  [ -n "$worktree_input" ] || die "Usage: make worktree-create BRANCH=<branch> WORKTREE_PATH=<path> [BASE=<ref>]"
 
   case "$branch" in
     develop|main|release) die "Refusing to create a worktree for protected branch: $branch" ;;
@@ -157,10 +178,12 @@ create_worktree() {
   [ -z "$remote_ref" ] || die "Remote branch already exists: $branch"
   [ ! -e "$worktree_path" ] && [ ! -L "$worktree_path" ] || die "Worktree path already exists: $worktree_path"
 
-  git fetch origin develop --quiet
-  base_oid=$(git rev-parse origin/develop^{commit}) || die "Could not resolve fetched origin/develop"
+  resolve_base
   creation_started=yes
-  git worktree add -b "$branch" "$worktree_path" origin/develop
+  git worktree add -b "$branch" "$worktree_path" "$base_oid"
+  if [ "$base_is_remote_tracking" = yes ]; then
+    git -C "$worktree_path" branch --set-upstream-to="$base_ref" "$branch" >/dev/null
+  fi
   worktree_config_file=$(git -C "$worktree_path" rev-parse --absolute-git-dir)/config.worktree
   if [ -f "$worktree_config_file" ]; then
     git config --file "$worktree_config_file" --name-only --get-regexp '^benchbox\.' 2>/dev/null |
@@ -179,7 +202,7 @@ create_worktree() {
   set -- "$script_dir/worktree_lifecycle_metadata.py" init \
     --worktree-path "$worktree_path" \
     --branch "$branch" \
-    --base-ref "origin/develop" \
+    --base-ref "$base_ref" \
     --base-oid "$base_oid"
   if [ -n "${CONTROLLER_KIND:-}" ]; then
     set -- "$@" --controller-kind "$CONTROLLER_KIND"

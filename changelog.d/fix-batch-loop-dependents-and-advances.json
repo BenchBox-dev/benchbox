@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Developer tooling: batch-land now requires the leader to hold a dependent member's claim before merging it and prints a prepare-only payload for it, a member whose receipt was invalidated is prepared again at the current integration head, and batch-advance records a develop merge after a fix advance"
+}

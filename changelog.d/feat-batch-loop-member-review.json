@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Developer tooling: local-review --member writes a result bound to the base, head tree, patch digest and a pinned trusted commit, records exempt-only members as not reviewed, and the review cache now keys on the trusted manifests"
+}

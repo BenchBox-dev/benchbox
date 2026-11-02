@@ -3363,6 +3363,22 @@
   {
    "disposition": "fixture-data",
    "kinds": {
+    "unresolved": 1
+   },
+   "occurrences": 1,
+   "path": "tests/integration/oracle/test_pr_landing_soundness_scenario.py",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "unresolved",
+     "target": "docs/tooling/hold"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
     "root": 1,
     "unresolved": 1
    },
@@ -3478,6 +3494,32 @@
     {
      "kind": "root",
      "target": "docs/"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "pattern": 1,
+    "root": 1,
+    "unresolved": 1
+   },
+   "occurrences": 5,
+   "path": "tests/unit/scripts/batch_loop_world.py",
+   "rule": "test-sample-data",
+   "target_count": 3,
+   "targets": [
+    {
+     "kind": "root",
+     "target": "docs/"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/*"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/note.md"
     }
    ]
   },
@@ -3709,6 +3751,22 @@
     {
      "kind": "file",
      "target": "docs/publish-exclusions.txt"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "unresolved": 1
+   },
+   "occurrences": 2,
+   "path": "tests/unit/scripts/test_batch_integration.py",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "unresolved",
+     "target": "docs/note.md"
     }
    ]
   },
@@ -4381,16 +4439,20 @@
    "disposition": "fixture-data",
    "kinds": {
     "root": 1,
-    "unresolved": 1
+    "unresolved": 2
    },
-   "occurrences": 4,
+   "occurrences": 12,
    "path": "tests/unit/scripts/test_pr_landing.py",
    "rule": "test-sample-data",
-   "target_count": 2,
+   "target_count": 3,
    "targets": [
     {
      "kind": "root",
      "target": "docs/"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/dev.txt"
     },
     {
      "kind": "unresolved",
@@ -4679,7 +4741,7 @@
   "dispositions": {
    "contract-replaced": 1,
    "contract-tooling": 6,
-   "fixture-data": 65,
+   "fixture-data": 68,
    "governance-stays": 9,
    "historical-record": 112,
    "lock-test": 5,
@@ -4687,18 +4749,18 @@
    "site-pipeline-cutover": 4,
    "wiring-updated": 30
   },
-  "files": 244,
+  "files": 247,
   "kinds": {
    "built-url": 29037,
    "dir": 163,
    "extra": 37,
    "file": 1385,
    "generated": 3,
-   "pattern": 362,
-   "root": 202,
-   "unresolved": 2066
+   "pattern": 365,
+   "root": 203,
+   "unresolved": 2078
   },
-  "references": 33255,
+  "references": 33271,
   "unclassified": 0
  }
 }
