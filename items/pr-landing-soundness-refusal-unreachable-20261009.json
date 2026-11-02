@@ -5,7 +5,7 @@
     "The oracle-review requirement is not weakened: a soundness PR without a passing oracle-review check is still refused.",
     "Adds or updates the matching scenario in tests/integration/oracle (registered in ORACLE_SCENARIO_TESTS), proven to fail with this item's defect reintroduced; the scenario runs only the fake omp executable and fake servers, never a real omp or model-provider call."
   ],
-  "context": "Split out of review-soundness-merge-ceremony in the 2026-10-09 tracker review. pr_landing.py is kept by ADR D5 (docs/development/adr/adr-dev-loop-v2.md:163-167).\n\n2026-11-01: pr-landing-arm-batch-evidence-20261101 depends on this item. The required oracle check is now oracle-gate; oracle-review left the required checks on 2026-10-24 (_project/decisions/oracle-review-check-retired-2026-10-24.md), so read 'oracle-review' in this item as the required oracle-gate check.\n\n2026-11-01: lands in the BenchBox core PR (branch feat/batch-integration-loop-core) for the integration-branch batch loop program. In progress in session 01a19729; do not take.",
+  "context": "Split out of review-soundness-merge-ceremony in the 2026-10-09 tracker review. pr_landing.py is kept by ADR D5 (docs/development/adr/adr-dev-loop-v2.md:163-167).\n\n2026-11-01: pr-landing-arm-batch-evidence-20261101 depends on this item. The required oracle check is now oracle-gate; oracle-review left the required checks on 2026-10-24 (_project/decisions/oracle-review-check-retired-2026-10-24.md), so read 'oracle-review' in this item as the required oracle-gate check.\n\n2026-11-01: lands in the BenchBox core PR (branch feat/batch-integration-loop-core) for the integration-branch batch loop program. In progress in session 01a19729; do not take.\n\n2026-11-02: implemented on branch feat/batch-integration-loop-core (head fdd09e09df) of BenchBox-dev/BenchBox together with the other core items; targeted tests pass; independent pre-publication review in progress; the core PR is not open yet. Close after that PR merges.",
   "description": "The `make pr-ready ... EVIDENCE=...` path arms auto-merge through scripts/pr_landing.py (Makefile:1220-1224, 1179-1195, 1041-1051; enqueue_pr at pr_landing.py:1293-1306 runs `gh pr merge --auto --squash --match-head-commit`). For a soundness PR it refuses twice: it requires APPROVED (pr_landing.py:1208-1209), which cannot happen because the develop ruleset requires 0 approvals and an author cannot approve their own PR, and it refuses outright (:1217-1218). `make pr-ready` without EVIDENCE routes to pr_arm.py, which defers to the required oracle-review check. arm_current_pr (:1783, soundness refusal at :1807) is reachable only from tests, because _run_arm raises (:1861-1862).\n\nMake ready_failures defer to the required oracle-review check as pr_arm.py does, and remove the unreachable arm_current_pr soundness branch (or the function).",
   "sessions": [
     {
@@ -39,6 +39,14 @@
       "op": "update",
       "op_id": "898f050faba04ed49911b52da4d06f8b",
       "session_id": "fe251e187e814d5cb1baf53870326a77"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d680f2b9a00523ec18de3879",
+      "at": "2026-11-02T03:29:04Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1e470f4d228d4b61bb698a0406db5931",
+      "session_id": "3dd2b4a046904511bb5ce7edcc3205fd"
     }
   ]
 }
