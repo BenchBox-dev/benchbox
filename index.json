@@ -2,7 +2,8 @@
   "batches": {
     "batch-loop-pilot": {
       "accepted_members": {
-        "batch-loop-docs-and-agents-20261101": "cc5125da2ec55865371bcbd626f267c7c2b4bd91"
+        "batch-loop-docs-and-agents-20261101": "cc5125da2ec55865371bcbd626f267c7c2b4bd91",
+        "skill-catalog-batch-loop-20261101": "67bf5c48e675e4184ad422e4ff5e716ef7dbbd31"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -30,10 +31,34 @@
           ],
           "integration_head": "b9d055b310144656386193cead5701d1d09e98f9",
           "integration_seq": 1
+        },
+        "skill-catalog-batch-loop-20261101": {
+          "accepted_head": "67bf5c48e675e4184ad422e4ff5e716ef7dbbd31",
+          "changed_files": [
+            ".claude/skills/benchbox/references/plan.md",
+            ".claude/skills/code/references/implementation.md",
+            ".claude/skills/shared-agent-execution/SKILL.md",
+            ".claude/skills/shared-change-framework/SKILL.md",
+            ".claude/skills/shared-review-protocol/SKILL.md",
+            ".claude/skills/skill-sync.manifest",
+            ".claude/skills/skill-sync.receipt",
+            ".claude/skills/todo/SKILL.md",
+            ".claude/skills/todo/references/batch.md",
+            ".claude/skills/todo/references/closeout.md",
+            ".claude/skills/todo/references/handoff.md",
+            ".claude/skills/todo/references/implement.md",
+            ".claude/skills/todo/references/recovery.md",
+            "_project/analysis/batch-rollout-evidence.json",
+            "changelog.d/feat-batch-loop-pilot--skill-catalog-batch-loop-20261101.json",
+            "skill-sync.conf",
+            "tests/integration/worktree/test_batch_skill_delivery.py"
+          ],
+          "integration_head": "45e6fd342d5378955c25f56530dcf372520b5964",
+          "integration_seq": 2
         }
       },
       "integration_branch": "feat/batch-loop-pilot",
-      "integration_head": "b9d055b310144656386193cead5701d1d09e98f9",
+      "integration_head": "45e6fd342d5378955c25f56530dcf372520b5964",
       "integration_log": [
         {
           "at": "2026-11-02T06:29:18Z",
@@ -49,6 +74,15 @@
           "op_id": "beec3e91940d4434a6920b46e0f12eef",
           "previous_head": "5cfea582d2197ecc150d80c6125a65130c02f23a",
           "seq": 1
+        },
+        {
+          "at": "2026-11-02T06:38:42Z",
+          "head": "45e6fd342d5378955c25f56530dcf372520b5964",
+          "kind": "prepare",
+          "member": "skill-catalog-batch-loop-20261101",
+          "op_id": "4938c4cba2e7405e80edf6bcb1822028",
+          "previous_head": "b9d055b310144656386193cead5701d1d09e98f9",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-batch-loop-pilot",
@@ -25047,17 +25081,12 @@
       "title": "Validate the benchbox-site tracker branch on a schedule, as core's tracker is"
     },
     "skill-catalog-batch-loop-20261101": {
-      "claim": {
-        "expires_at": "2026-11-03T06:35:00Z",
-        "generation": "bf6751dbff5c41c39b0f0ecb440fd675",
-        "renewals": 0,
-        "worker": "benchbox-batch-pilot-leader"
-      },
+      "claim": null,
       "needs": [
         "batch-loop-docs-and-agents-20261101"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Update the canonical skills for the batch loop and sync them into BenchBox and todo-db"
     },
     "skill-integrity-ci-lane-live-validation": {
