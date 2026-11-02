@@ -27912,12 +27912,17 @@
       "title": "Add a guarded integration-head advance and a revisable final-PR binding, and keep receipts across context edits in todo-db"
     },
     "todo-db-batch-owner-claims-recovery-20261101": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-03T02:49:01Z",
+        "generation": "28b52715b30c40b68ac02119433af2a5",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d680f2b9a00523ec18de3879"
+      },
       "needs": [
         "todo-db-batch-v2-contract-20261101"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Reserve active batch members to the batch owner, and add owner recovery and a batch read path in todo-db"
     },
     "todo-db-batch-v2-contract-20261101": {
