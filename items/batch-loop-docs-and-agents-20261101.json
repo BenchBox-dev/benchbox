@@ -13,6 +13,118 @@
   },
   "context": "Decision gate: start only after batch-land-and-status-20261101 and pr-landing-arm-batch-evidence-20261101 are done, so the docs describe shipped commands. Owner decision 2026-11-01 (owner answer in the choice dialog, BenchBox session 01a19729, 2026-11-01): \"Flip it automatically if the pilot passes\". This item keeps the mode opt-in; batch-loop-default-mode-20261101 flips it. Size-limit facts: brief_max_bytes is 100000 (.github/oracle-reviewers.yml); a diff over the cap switches to file-list mode, where only hard read-only reviewers that read files run, and a file list over the cap skips reviewers (_project/scripts/oracle_reviewers/selection.py:157-160). Guardrails: deliver as an ordinary serial PR to develop (AGENTS.md: feature delivery cannot deliver the changes that make it possible); write only from a linked worktree made with make worktree-create and checked with make agent-write-preflight, never the primary clone; stage explicit paths, never git add -A; no explanatory comments or docstrings (COMMENT-POLICY-001, make comment-policy-check); heavy test runs only through lock-taking entry points, never BENCHBOX_SKIP_TEST_LOCK; never weaken hold labels, the unresolved-thread refusal, oracle-gate, duration or suite gates; add a changelog.d fragment (CHANGELOG_INTERNAL when nothing is user-visible); durable artifacts carry no session or phase labels; cited line numbers are leads, so re-read the code before editing; tests prove behaviour, never wiring or wording.\n\nOwner instruction 2026-11-01 (BenchBox session 01a19729): \"fully complete the proposal todos as a batch in the correct sequence (working in parallel when possible). Consolidate the steps into a single (or fewest) PR if possible. Use your implementation of this chagne to pilot the new changes if possible\". This item is a pilot member delivered through the new loop. make/help.mk changes moved to batch-member-side-tooling-20261101 because make/ is a soundness path.\n\nClosed 2026-11-02: delivered as a member of batch batch-loop-pilot through the final PR https://github.com/BenchBox-dev/benchbox/pull/3921, squash-merged to develop as 1fcebd89ab17 after CI passed and the hosted oracle returned SHIP on head f748ea6d5de6. Finished with final evidence bound to that head, including a current-acceptance rerun required by the leader fix advances.",
   "description": "Describe the loop as built. AGENTS.md: the two-layer loop under Delivery modes, still opt-in; a WRITE-CLOSEOUT-001 member exception; BASE= in the worktree section; integration worktrees leader-only; members based on their leader's integration branch exempt from the stack rule. docs/agent/batch-feature-delivery.md: rewrite the protocol and remove the 'no starting-ref option' text. batch-tracker-contract.md: remove the stale runtime-unavailable claim and the check_scope/progress verbs; describe the v2 contract and the leader as sole tracker writer. handoffs.md: the tracker is authoritative, the .todo-batch ledger is a rebuildable cache, batch notes go on the batch's umbrella item. Also heavy-work.md, review-protocol.md, docs/internal/oracle-review-v2.md, cloud-builder.md, docs/internal/pr-base-branch-policy.md, changelog.d/README.md with make/help.mk, docs/internal/dev-loop-worktrees.md, and an ADR in docs/internal/adr for the two-layer decision.",
+  "final_evidence": {
+    "batch_id": "batch-loop-pilot",
+    "changed_files": [
+      ".claude/skills/benchbox/references/plan.md",
+      ".claude/skills/code/references/implementation.md",
+      ".claude/skills/shared-agent-execution/SKILL.md",
+      ".claude/skills/shared-change-framework/SKILL.md",
+      ".claude/skills/shared-review-protocol/SKILL.md",
+      ".claude/skills/skill-sync.manifest",
+      ".claude/skills/skill-sync.receipt",
+      ".claude/skills/todo/SKILL.md",
+      ".claude/skills/todo/references/batch.md",
+      ".claude/skills/todo/references/closeout.md",
+      ".claude/skills/todo/references/handoff.md",
+      ".claude/skills/todo/references/implement.md",
+      ".claude/skills/todo/references/recovery.md",
+      "AGENTS.md",
+      "_project/analysis/batch-rollout-evidence.json",
+      "_project/decisions/batch-integration-loop-2026-11-01.md",
+      "_project/decisions/batch-process-improvements-base-correction-2026-09-08.md",
+      "changelog.d/README.md",
+      "changelog.d/feat-batch-loop-pilot--batch-loop-docs-and-agents-20261101.json",
+      "changelog.d/feat-batch-loop-pilot--skill-catalog-batch-loop-20261101.json",
+      "docs/agent/README.md",
+      "docs/agent/batch-feature-delivery.md",
+      "docs/agent/batch-tracker-contract.md",
+      "docs/agent/cloud-builder.md",
+      "docs/agent/handoffs.md",
+      "docs/agent/heavy-work.md",
+      "docs/agent/review-protocol.md",
+      "docs/internal/dev-loop-worktrees.md",
+      "docs/internal/oracle-review-v2.md",
+      "docs/internal/pr-base-branch-policy.md",
+      "skill-sync.conf",
+      "tests/integration/worktree/test_batch_skill_delivery.py"
+    ],
+    "clean": true,
+    "current_acceptance": {
+      "batch-loop-docs-and-agents-20261101": {
+        "clean": true,
+        "command": [
+          "uv",
+          "run",
+          "--",
+          "python",
+          "-m",
+          "pytest",
+          "-n",
+          "0",
+          "-q",
+          "tests/unit/scripts/test_inert_paths.py",
+          "tests/unit/scripts/test_agent_instruction_audit.py",
+          "tests/unit/workflows/test_stacked_pr_base_guard.py",
+          "tests/unit/docs/test_architecture_decision_surfaces.py",
+          "tests/unit/scripts/test_check_project_references.py",
+          "tests/unit/scripts/test_check_untracked_handoffs.py"
+        ],
+        "revision": "f748ea6d5de64ca106ae4878602b7e1ef0a5fc3e",
+        "status": "passed",
+        "suite": "member-tests",
+        "worktree": "/Users/joe/Developer/BenchBox.wt-batch-loop-pilot"
+      },
+      "skill-catalog-batch-loop-20261101": {
+        "clean": true,
+        "command": [
+          "uv",
+          "run",
+          "--",
+          "python",
+          "-m",
+          "pytest",
+          "-n",
+          "0",
+          "-q",
+          "tests/integration/worktree/test_batch_skill_delivery.py"
+        ],
+        "revision": "f748ea6d5de64ca106ae4878602b7e1ef0a5fc3e",
+        "status": "passed",
+        "suite": "member-tests",
+        "worktree": "/Users/joe/Developer/BenchBox.wt-batch-loop-pilot"
+      }
+    },
+    "final_pr": {
+      "head": "f748ea6d5de64ca106ae4878602b7e1ef0a5fc3e",
+      "node_id": "PR_kwDOQ7J64c8AAAABMPRjrA",
+      "number": 3921,
+      "repository": "BenchBox-dev/BenchBox"
+    },
+    "integration_branch": "feat/batch-loop-pilot",
+    "integration_head": "f748ea6d5de64ca106ae4878602b7e1ef0a5fc3e",
+    "member_heads": {
+      "batch-loop-docs-and-agents-20261101": "cc5125da2ec55865371bcbd626f267c7c2b4bd91",
+      "skill-catalog-batch-loop-20261101": "67bf5c48e675e4184ad422e4ff5e716ef7dbbd31"
+    },
+    "member_ranges": {
+      "batch-loop-docs-and-agents-20261101": {
+        "base": "5cfea582d2197ecc150d80c6125a65130c02f23a",
+        "head": "cc5125da2ec55865371bcbd626f267c7c2b4bd91"
+      },
+      "skill-catalog-batch-loop-20261101": {
+        "base": "b9d055b310144656386193cead5701d1d09e98f9",
+        "head": "67bf5c48e675e4184ad422e4ff5e716ef7dbbd31"
+      }
+    },
+    "project_id": "benchbox",
+    "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+    "scope_hash": "b9c7208cbe74aa884dd245e67f0bc8e375262d11d7e3ae20e21c9154d36a04bc",
+    "status": "passed",
+    "suite": "batch-final-tree",
+    "tree_revision": "f748ea6d5de64ca106ae4878602b7e1ef0a5fc3e",
+    "tree_worktree": "/Users/joe/Developer/BenchBox.wt-batch-loop-pilot"
+  },
   "links": [
     "AGENTS.md",
     "docs/agent/batch-feature-delivery.md",
@@ -143,6 +255,15 @@
       "client": "benchbox-batch-leader",
       "op": "update",
       "op_id": "3e38d4591de44edd91459be30c159d84",
+      "session_id": "b249fb5e3b804f6fab2e27e759c8e1fb"
+    },
+    {
+      "actor": "benchbox-batch-pilot-leader",
+      "at": "2026-11-02T07:17:43Z",
+      "client": "benchbox-batch-leader",
+      "generation": "c22d9e087cde4ac38be4d884d4f7de16",
+      "op": "finish",
+      "op_id": "044c80edc7ff49d38bda5f813cf50cbe",
       "session_id": "b249fb5e3b804f6fab2e27e759c8e1fb"
     }
   ]
