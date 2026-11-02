@@ -1941,17 +1941,12 @@
       "title": "Add leader-only batch-land, recorded head advances and batch-status reconciliation"
     },
     "batch-loop-default-mode-20261101": {
-      "claim": {
-        "expires_at": "2026-11-03T08:09:46Z",
-        "generation": "791bc6012f3542af84bf062289b86a68",
-        "renewals": 0,
-        "worker": "benchbox-batch-pilot-leader"
-      },
+      "claim": null,
       "needs": [
         "batch-loop-pilot-20261101"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Make integration mode the AGENTS.md default for explicitly assigned cohesive batches after a passing pilot"
     },
     "batch-loop-disposable-e2e-20261101": {
