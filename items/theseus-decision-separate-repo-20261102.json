@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Context records the owner's choice (a/b/c), the date, and the quoted owner message.",
+    "If (b) or (c): every theseus-* item is dropped with this decision as reason and, for (b), one successor item exists for the in-repo package.",
+    "If (a): theseus-adr-inventory-baseline-20261102 becomes ready."
+  ],
+  "context": "Status blocked until the owner answers. Accepted earlier owner decisions that this item must not reopen: repository BenchBox-dev/theseus; installation trust chain (consumer trusted commit -> reviewed lock -> verified bytes -> isolated install; no latest, no ambient install, a warm cache cannot substitute another version); separate measurement epochs, never provoke observed events; Theseus PRs get their own governance and separate App, secrets kept out of candidate builds; complete T9 policy-guard checklist; all extraction items medium priority; optional external-adopter onboarding (A1) is outside the completion bar and untracked.",
+  "description": "Owner-only decision gate for the Theseus extraction (move the oracle reviewer out of BenchBox into BenchBox-dev/theseus).\n\nThe reviewed proposal adds four obligations a separate repository needs and an in-BenchBox package does not: new BenchBox promotion-review behaviour, a vendored matcher module, a second gateway client and App, and two trusted resolutions (reviewer and gate) in the publish path. The alternative is a package boundary inside BenchBox (same module boundary, none of those obligations, no OSS reuse).\n\nOptions:\n(a) Proceed with BenchBox-dev/theseus.\n(b) Package inside BenchBox instead; drop every theseus-* item with this reason and create one successor item for the in-repo package.\n(c) Stop extraction entirely; drop every theseus-* item.\n\nGuardrails: an agent must not answer this item, infer an answer from earlier sessions, or finish it without the owner's answer in a current user message.",
+  "links": [
+    "_project/scripts/oracle_reviewers/",
+    "docs/agent/emergency-merge.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4c6f341b7f4b66f30a37a2f1",
+      "at": "2026-11-02T13:44:58Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "63e4c9ed21184022b1d6fa3aecdc8969",
+      "session_id": "8cfcc9dbcab5419a91fc8b650901f36b"
+    }
+  ]
+}

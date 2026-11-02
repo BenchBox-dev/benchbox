@@ -27703,6 +27703,13 @@
       "status": "done",
       "title": "PlatformHookRegistry.build_database_config loads the user's real saved credentials when called from tests and probes"
     },
+    "theseus-decision-separate-repo-20261102": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Owner decision: confirm a separate Theseus repository is worth its added obligations"
+    },
     "throughput-adapter-session-capability-contract": {
       "claim": null,
       "needs": [
