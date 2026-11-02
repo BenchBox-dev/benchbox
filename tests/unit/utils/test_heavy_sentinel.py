@@ -521,6 +521,7 @@ def start_sentinel(tmp_path: Path, worktree: Path, mode: str, spawned: list[subp
         "BENCHBOX_HEAVY_WATCHDOG": mode,
         "BENCHBOX_HEAVY_MEMORY_BUDGET_GIB": "0.1",
         "BENCHBOX_HEAVY_WATCHDOG_GRACE_SECONDS": "3",
+        "BENCHBOX_HEAVY_LINUX_MACHINE": "benchbox-test-absent-machine",
         hl.LOCK_DIR_ENV: str(tmp_path / "locks"),
     }
     spawned.append(

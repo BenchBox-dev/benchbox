@@ -401,6 +401,14 @@ same module, so it honors the override and the real-home default.
   `BENCHBOX_TEST_LOCK_DIR=/tmp/benchbox-lock` on guest-local storage and guest-sized floors, so guest sessions
   serialize among themselves and never write the host holder file. The guest therefore prints the
   non-default-lock-dir bypass warning; that is expected.
+- `scripts/linux_machine_run.sh` stops the machine after every run (any prior state) unless
+  `BENCHBOX_KEEP_LINUX_MACHINE=1` (prior state kept) or another same-user `container machine run`/`create`
+  against it, or another `linux_machine_run.sh <machine>`, is live (logged as `left running: in use by pid N`).
+  The sentinel stops it when it is running, no matching `container machine run`/`create` or wrapper process has
+  been seen for `BENCHBOX_HEAVY_VM_IDLE_MINUTES` (default 10), and no live lock holder's tree contains the wrapper
+  or a `container machine run` for it; `make heavy-status` flags an idle running VM and any `UNGUARDED VM RUN`.
+  The machine name comes from `BENCHBOX_HEAVY_LINUX_MACHINE` (default `benchbox-agent`).
+  Tests use stub `container` executables and injected readings, never a real VM.
 - Lock path defaults to `<real home>/.benchbox/test.lock`, where the real home
   comes from the user database rather than `$HOME`, so a session that rewrites
   `$HOME` still contends on the same file. `BENCHBOX_TEST_LOCK_DIR` changes only
@@ -448,6 +456,14 @@ and `container`/`container machine` VM reservations are reported itemized but ne
 already missing from available memory. Unmeasured signals (failed or >5 s external commands) never refuse. A
 refusing reading is re-sampled every 5 s for up to 30 s before the refusal stands.
 
+Linux VM sizing: `make ci-linux` and `scripts/linux_preflight_pytest.sh` pass `python -m benchbox.utils.host_lock
+machine-need --machine <m> --fallback-gib $CI_LINUX_NEED_GIB` as `--need-gib`. For a stopped machine it prints 50% of
+the configured memory (3 GiB at 6G), because guest pages fault in gradually and the full size is rarely resident at
+boot; with the VM stopped, a 16 GiB Mac showed 4.2-4.4 GiB available at pressure 1, so neither the full 8 nor 6 GiB
+would admit. It prints the fallback (default 2) when the machine is already running, absent, unmeasured or
+`container` is missing. The documented machine is `--memory 6G`. `make pr-preflight` reports a Linux admission
+refusal (exit 76) as `Linux not verified -- admission refused` and does not fail; `make ci-linux` still exits 76.
+
 | Setting | Default | Meaning |
 | --- | --- | --- |
 | `BENCHBOX_HEAVY_ADMIT_MIN_GIB` | 2 | Available memory needed to admit |
@@ -481,7 +497,14 @@ acquired with `guard=True` exits 79 only when the watcher terminates it while th
 warning only. On normal release, surviving descendants are listed and left running.
 
 VMs and containers started through the Apple `container` runtime are children of launchd, not of the holder, so
-their footprint is not tree-attributed; VM memory is bounded by machine size and admission.
+they are not in the tree footprint and never count toward the shared budget. One exception is attributed separately:
+the Linux machine named by `BENCHBOX_HEAVY_LINUX_MACHINE` (default `benchbox-agent`), only for the holder whose tree
+contains `scripts/linux_machine_run.sh <machine>`. The `com.apple.Virtualization.VirtualMachine` process of the same
+user is mapped to the machine by `lsof -p <pid> -Fn` (5 s timeout) and the exact
+`machine-apiserver/machines/<machine>/` path segment; prefix-similar names, a process naming two machines or an
+unreadable `lsof` match nothing. Its footprint is reported as a separate line in breach reports and counts toward a
+breach only above `BENCHBOX_HEAVY_VM_ALLOWANCE_GIB` (default the machine's configured memory plus 10%; unknown
+memory never breaches). A VM breach SIGTERMs the holder tree so the wrapper's EXIT trap stops the machine.
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
@@ -489,6 +512,7 @@ their footprint is not tree-attributed; VM memory is bounded by machine size and
 | `BENCHBOX_HEAVY_KILL_FREE_DISK_GIB` | 20, or 40% of `BENCHBOX_HEAVY_MIN_FREE_DISK_GIB` when that is set and lower | Free-disk floor per root that counts as a breach; always below the admission floor unless set explicitly |
 | `BENCHBOX_HEAVY_WATCHDOG_INTERVAL_SECONDS` | 2 | Sampling interval of the watcher |
 | `BENCHBOX_HEAVY_WATCHDOG_GRACE_SECONDS` | 10 | Wait between SIGTERM and SIGKILL of descendants |
+| `BENCHBOX_HEAVY_VM_ALLOWANCE_GIB` | configured machine memory + 10% | Footprint of the attributed Linux VM above which the watcher treats it as a breach |
 
 ### macOS-specific conftest branch (`tests/conftest.py:109-122`)
 

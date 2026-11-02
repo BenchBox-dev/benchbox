@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "lead": "Linux VM memory is reported and bounded",
+      "text": "The heavy-work watchdog, make heavy-status and the sentinel now report the Linux VM's memory as its own line, attributed to the run that booted it. It is never added to the shared budget, but a run whose VM exceeds BENCHBOX_HEAVY_VM_ALLOWANCE_GIB (default the machine's configured memory plus 10%) is stopped so the wrapper stops the machine."
+    }
+  ]
+}
