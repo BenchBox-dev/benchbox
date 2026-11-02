@@ -6,9 +6,6 @@
     "benchbox/core/tpcds/qualification/runner.py": {
       "WA007": 1
     },
-    "scripts/batch_integration.py": {
-      "WA007": 3
-    },
     "scripts/canary_impact.py": {
       "WA007": 1
     },
@@ -427,9 +424,6 @@
     },
     "tests/unit/scripts/publication/test_reconciler.py": {
       "WA007": 6
-    },
-    "tests/unit/scripts/test_batch_integration.py": {
-      "WA007": 5
     },
     "tests/unit/scripts/test_branch_prune_merged.py": {
       "WA007": 1

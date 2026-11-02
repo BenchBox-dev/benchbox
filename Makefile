@@ -1229,6 +1229,7 @@ pr-open: override ADJUDICATE := $(value ADJUDICATE)
 pr-open: export PR_OPEN_ADJUDICATE := $(ADJUDICATE)
 pr-open:
 	@set -eu; \
+	$(BATCH_REFUSE_MEMBER); \
 	$(MAKE) -s agent-write-preflight; \
 	CURRENT=$$(git branch --show-current); \
 	case "$$CURRENT" in \
@@ -1438,12 +1439,14 @@ shrink-rollup:
 
 .PHONY: pr-fanout
 pr-fanout:
-	@MAIN_CLONE=$$(dirname "$$(realpath "$$(git rev-parse --git-common-dir)")"); \
+	@$(BATCH_REFUSE_MEMBER); \
+	MAIN_CLONE=$$(dirname "$$(realpath "$$(git rev-parse --git-common-dir)")"); \
 	TMP=$$(mktemp); \
 	LOGDIR=$$(mktemp -d); \
 	trap 'rm -f "$$TMP"; rm -rf "$$LOGDIR"' EXIT; \
 	git worktree list --porcelain | sed -n 's/^worktree //p' | while IFS= read -r wt; do \
 		[ "$$(realpath "$$wt")" = "$$MAIN_CLONE" ] && { echo "(skip $$wt: main clone)"; continue; }; \
+		[ "$$(git -C "$$wt" config --worktree --get benchbox.batch.role 2>/dev/null || true)" = member ] && { echo "(skip $$wt: batch member)"; continue; }; \
 		BR=$$(git -C "$$wt" branch --show-current 2>/dev/null); \
 		case "$$BR" in develop|main|release|"") echo "(skip $$wt: branch=$$BR)"; continue ;; esac; \
 		IDX=$$(($${IDX:-0} + 1)); \
@@ -1579,6 +1582,8 @@ ci-usage-report:
 include $(BENCHBOX_MAKEFILE_ROOT)make/worktrees.mk
 
 include $(BENCHBOX_MAKEFILE_ROOT)make/worktree-maintenance.mk
+
+include $(BENCHBOX_MAKEFILE_ROOT)make/batch.mk
 
 .PHONY: branch-prune-merged
 branch-prune-merged:
