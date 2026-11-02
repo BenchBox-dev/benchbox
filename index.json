@@ -27837,9 +27837,9 @@
     },
     "theseus-promotion-review-path-benchbox-20261102": {
       "claim": {
-        "expires_at": "2026-11-03T16:57:22Z",
-        "generation": "9c62001147364a63ba52e4e95036501d",
-        "renewals": 0,
+        "expires_at": "2026-11-03T19:43:43Z",
+        "generation": "97f5e210fb05448f9c67d202b9ee032e",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b58f5aa5b2bb5e33c84a53cb"
       },
       "needs": [
