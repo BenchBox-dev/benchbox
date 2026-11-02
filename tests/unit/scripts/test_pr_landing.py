@@ -1808,6 +1808,37 @@ def test_read_batch_tracker_refuses_a_section_read_after_the_revision_moved(tmp_
         landing.read_batch_tracker("b", moving)
 
 
+def test_read_batch_tracker_refuses_a_stale_cached_read(tmp_path: Path) -> None:
+    show = fx.FakeBatchShow(_batch(tmp_path).tracker(), stale=True)
+
+    with pytest.raises(landing.LandingError, match="stale or unrevisioned"):
+        landing.read_batch_tracker("b", show)
+
+
+def test_read_batch_tracker_refuses_a_read_without_a_revision(tmp_path: Path) -> None:
+    tracker = _batch(tmp_path).tracker()
+
+    def unrevisioned(_cmd: list[str]) -> tuple[int, str]:
+        return 0, json.dumps({"ok": True, "data": {"batch_id": "b", "sections": {}}})
+
+    with pytest.raises(landing.LandingError, match="stale or unrevisioned"):
+        landing.read_batch_tracker("b", unrevisioned)
+    assert tracker["batch_id"] == "b"
+
+
+@pytest.mark.parametrize("failure", [subprocess.TimeoutExpired(["todo-db"], 120), FileNotFoundError("uv")])
+def test_the_tracker_subprocess_failing_to_run_is_a_landing_error(
+    monkeypatch: pytest.MonkeyPatch, failure: Exception
+) -> None:
+    def broken(*_args: object, **_kwargs: object) -> object:
+        raise failure
+
+    monkeypatch.setattr(landing.subprocess, "run", broken)
+
+    with pytest.raises(landing.LandingError, match="cannot run the tracker read"):
+        landing.read_batch_tracker("b")
+
+
 def _capability(**overrides: object) -> dict:
     batch_capability = {
         "version": 2,
@@ -1836,6 +1867,7 @@ def _ready(batch: fx.BatchFixture, tracker: object, evidence: dict | None) -> li
         head,
         repository="o/r",
         branch="feat/x",
+        pr_number=7,
         worktree=str(batch.repo),
         require_batch=True,
         batch_evidence=evidence,
@@ -1909,3 +1941,24 @@ def test_batch_evidence_file_is_loaded_relative_to_the_checkout(tmp_path: Path) 
     assert landing._load_batch_evidence(tmp_path, None) is None
     with pytest.raises(landing.LandingError, match="unreadable batch evidence"):
         landing._load_batch_evidence(tmp_path, "missing.json")
+
+
+def _ready_with(tmp_path: Path, mutate) -> list[str]:
+    batch = _ready_batch(tmp_path, _capability())
+    tracker = batch.tracker()
+    mutate(tracker)
+    return _ready(batch, tracker, batch.evidence())
+
+
+@pytest.mark.parametrize(
+    ("mutate", "message"),
+    [
+        (lambda tracker: tracker.update(lifecycle="aborted"), "not active"),
+        (lambda tracker: tracker["final_pr"].update(number=99), "is not bound to PR"),
+        (lambda tracker: tracker.update(integration_branch="feat/other"), "integration branch"),
+    ],
+)
+def test_batch_ready_refuses_a_tracker_that_does_not_describe_this_pr(tmp_path: Path, mutate, message: str) -> None:
+    failures = _ready_with(tmp_path, mutate)
+
+    assert any(message in failure for failure in failures)

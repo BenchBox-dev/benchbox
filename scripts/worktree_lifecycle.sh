@@ -138,6 +138,11 @@ resolve_base() {
     git remote | grep -Fxq -- "$base_remote" &&
     ! git show-ref --verify --quiet "refs/heads/$base_ref"; then
     base_is_remote_tracking=yes
+    base_branch=${base_ref#*/}
+    case "$base_branch" in
+      -*) die "Invalid BASE: $base_ref" ;;
+    esac
+    git check-ref-format --branch "$base_branch" >/dev/null 2>&1 || die "Invalid BASE: $base_ref"
     git fetch "$base_remote" "${base_ref#*/}" --quiet || die "Could not fetch $base_ref"
   fi
   base_oid=$(git rev-parse --verify --quiet "$base_ref^{commit}") || die "Could not resolve BASE to a commit: $base_ref"

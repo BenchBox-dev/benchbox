@@ -178,7 +178,7 @@ def test_ref_moving_after_resolution_does_not_change_the_created_commit(
     assert sandbox.metadata(target, "base-oid") == resolved
 
 
-@pytest.mark.parametrize("base", ["no/such-ref", "--upload-pack=x"])
+@pytest.mark.parametrize("base", ["no/such-ref", "--upload-pack=x", "origin/--upload-pack=x", "origin/bad..ref"])
 def test_unresolvable_base_is_refused_without_leaving_a_branch(sandbox: Sandbox, base: str) -> None:
     target = sandbox.tmp / "wt"
 
