@@ -1229,7 +1229,11 @@ pr-open: override ADJUDICATE := $(value ADJUDICATE)
 pr-open: export PR_OPEN_ADJUDICATE := $(ADJUDICATE)
 pr-open:
 	@set -eu; \
-	$(BATCH_REFUSE_MEMBER); \
+	ROLE=$$(git config --worktree --get benchbox.batch.role 2>/dev/null || true); \
+	if [ "$$ROLE" = member ]; then \
+		echo "Refusing: this is a batch member worktree. Members never open pull requests; the leader lands the member with batch-land and opens the final PR." >&2; \
+		exit 1; \
+	fi; \
 	$(MAKE) -s agent-write-preflight; \
 	CURRENT=$$(git branch --show-current); \
 	case "$$CURRENT" in \
@@ -1439,7 +1443,11 @@ shrink-rollup:
 
 .PHONY: pr-fanout
 pr-fanout:
-	@$(BATCH_REFUSE_MEMBER); \
+	@ROLE=$$(git config --worktree --get benchbox.batch.role 2>/dev/null || true); \
+	if [ "$$ROLE" = member ]; then \
+		echo "Refusing: this is a batch member worktree. Members never open pull requests; the leader lands the member with batch-land and opens the final PR." >&2; \
+		exit 1; \
+	fi; \
 	MAIN_CLONE=$$(dirname "$$(realpath "$$(git rev-parse --git-common-dir)")"); \
 	TMP=$$(mktemp); \
 	LOGDIR=$$(mktemp -d); \

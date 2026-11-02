@@ -7,7 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from tests.unit.scripts.batch_loop_world import BATCH, MEMBERS, PROJECT, SCOPE, World, bi, git, pr_landing
+from tests.unit.scripts.batch_loop_world import BATCH, MEMBERS, PROJECT, SCOPE, World, bi, git
+
+TRACKER_SCOPE_HASH = "19ccf864114b7650486e01283d3af3b20d383cb3eb266699654ed626a849e624"
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
@@ -41,7 +43,7 @@ def test_start_creates_a_role_integration_worktree_and_a_registrable_payload(wor
     assert bi.role_of(worktree) == "integration" and bi._config_get(worktree, "id") == BATCH
     assert git(worktree, "branch", "--show-current") == f"feat/{BATCH}"
     assert arguments["members"] == MEMBERS
-    assert arguments["scope_hash"] == pr_landing._scope_digest(arguments["scope"])
+    assert arguments["scope"] == SCOPE and arguments["scope_hash"] == TRACKER_SCOPE_HASH
     assert arguments["develop_ref"] == "refs/remotes/origin/develop"
     assert arguments["start_head"] == git(world.primary, "rev-parse", "refs/remotes/origin/develop")
     assert arguments["integration_worktree"] == str(worktree) and arguments["project_id"] == "proj"

@@ -1,11 +1,5 @@
 BATCH_SCRIPT = uv run -- python scripts/batch_integration.py
 
-BATCH_REFUSE_MEMBER = ROLE=$$(git config --worktree --get benchbox.batch.role 2>/dev/null || true); \
-	if [ "$$ROLE" = member ]; then \
-		echo "Refusing: this is a batch member worktree. Members never open pull requests; the leader lands the member with batch-land and opens the final PR." >&2; \
-		exit 1; \
-	fi
-
 .PHONY: batch-start
 batch-start:
 	@test -n "$(BATCH)" -a -n "$(MEMBERS)" -a -n "$(SCOPE_JSON)" -a -n "$(PROJECT_ID)" || { echo "Usage: make batch-start BATCH=<id> MEMBERS=<a,b,c> SCOPE_JSON=<member-to-patterns.json> PROJECT_ID=<id> [WORKTREE_PATH=<path>] [CONFIRM_CUTOVER=1]" >&2; exit 2; }

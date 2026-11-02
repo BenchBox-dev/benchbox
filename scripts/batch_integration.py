@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import hashlib
 import json
 import os
 import re
@@ -179,12 +180,8 @@ def require_role(repo: Path, role: str) -> str:
 
 
 def scope_digest(scope: dict[str, list[str]]) -> str:
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
-    try:
-        import pr_landing
-    finally:
-        sys.path.pop(0)
-    return pr_landing._scope_digest(scope)
+    blob = json.dumps(scope, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
 
 def _matches_scope(path: str, patterns: list[str]) -> bool:

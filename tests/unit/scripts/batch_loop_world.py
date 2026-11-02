@@ -23,7 +23,6 @@ def load(name: str):
 
 
 bi = load("batch_integration")
-pr_landing = load("pr_landing")
 
 MEMBERS = ["zeta", "alpha", "mid"]
 SCOPE = {
