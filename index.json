@@ -27704,12 +27704,17 @@
       "title": "PlatformHookRegistry.build_database_config loads the user's real saved credentials when called from tests and probes"
     },
     "theseus-adr-inventory-baseline-20261102": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-03T14:00:48Z",
+        "generation": "1aaf61a8992e4ac8b702975dafa2cd4b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b58f5aa5b2bb5e33c84a53cb"
+      },
       "needs": [
         "theseus-decision-separate-repo-20261102"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Record the Theseus extraction ADR, full consumer inventory and cost baseline"
     },
     "theseus-atomic-benchbox-cutover-20261102": {
