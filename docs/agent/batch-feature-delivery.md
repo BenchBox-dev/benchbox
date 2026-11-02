@@ -71,7 +71,7 @@ Rules that hold for the whole batch:
 |---|---|---|
 | `make batch-start BATCH= MEMBERS= SCOPE_JSON= PROJECT_ID= [WORKTREE_PATH=] [DEPENDENCIES=member=dep1+dep2,...] [CONFIRM_CUTOVER=1]` | Leader, any worktree | Creates `feat/<batch>` and its worktree from `refs/remotes/origin/develop`, writes the ledger and owner generation, and prints the `register_batch` arguments and an `after_register` block of `update_item` steps |
 | `make batch-member-create MEMBER= [WORKTREE_PATH=]` | Leader, integration worktree | Creates `feat/<batch>--<member>` at the current integration head; refuses an existing branch |
-| `make batch-member-check [TESTS=a,b]` | Member | Requires a clean branch that contains the integration head and has changes; runs `make pr-preflight` against that head (or the command given as `PREFLIGHT_CMD`, which is recorded), the changelog check, and the member review; records the result bound to the base and head |
+| `make batch-member-check [TESTS=a,b]` | Member | Requires a clean branch that contains the integration head and has changes; runs `make pr-preflight` against that head (or the command given as `PREFLIGHT_CMD`, which is recorded and warned about at landing); the member review always runs through `scripts/oracle_local_review.py`, the changelog check, and the member review; records the result bound to the base and head |
 | `make batch-land MEMBER= [DEPENDENCIES=a,b]` | Leader | Merges a checked member with `--no-ff` and prints the `take`/`prepare` payload (`prepare` only for a dependent member, which must already be taken) |
 | `make batch-advance REASON=fix\|develop-merge` | Leader | Records a leader commit or a develop merge and prints the `advance_batch_head` payload |
 | `make batch-status` | Leader | Reconciles the ledger with the tracker and Git (rebuilding a missing ledger) and names the next step |
@@ -152,7 +152,12 @@ A member:
    `open`. Claims are held only for this moment.
 4. `make batch-status` names the next step. If a merge succeeded but `prepare`
    did not, `batch-status` reports `merged-unprepared`; running `batch-land`
-   again prints the payload without merging.
+   again prints the payload without merging. A member merge that `batch-land`
+   did not make, or whose ledger entry was lost, is prepared only after the
+   same checks as a normal landing (merged tree equals the member tree, scope,
+   recorded base, trusted commit on `develop`, stored review), and the receipt
+   binds to that merge commit. `batch-status` reports an unverifiable merge as
+   "do not prepare it".
 5. If an overlap rerun fails, landing stops with the merge in place and nothing
    pushed. Landing the member again is refused. The only recovery is to reset
    the integration branch to the pre-merge head the error prints, repair the
