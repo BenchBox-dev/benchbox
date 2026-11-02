@@ -7947,10 +7947,15 @@
       "title": "Design results ingest, storage, and derived read-model architecture"
     },
     "dev-host-disk-below-heavy-work-floor-20261101": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-03T04:46:21Z",
+        "generation": "167fe5807567476dad729820a883fcbf",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d680f2b9a00523ec18de3879"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Recover dev host disk so make pr-preflight runs without lowering the floor"
     },
     "dev-loop-metrics-ci-failure-baseline": {
