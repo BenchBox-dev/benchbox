@@ -29223,7 +29223,7 @@
     "tpch-refresh-precheck-timing-decision-20261103": {
       "claim": null,
       "needs": [],
-      "priority": "medium-high",
+      "priority": "high",
       "status": "open",
       "title": "Owner decision: where the RF1/RF2 database checks on refresh data run relative to the refresh timer"
     },
