@@ -315,6 +315,8 @@ def issue_body(state: Mapping[str, Any], opened: Mapping[str, Any], run_url: str
 
 
 def signature(state: Mapping[str, Any], opened: Mapping[str, Any]) -> str:
+    if state["state"] == CHECK_FAILED:
+        return hashlib.sha256(CHECK_FAILED.encode()).hexdigest()[:16]
     keys = ("state", "tag", "entry", "paths", "step", "failing", "merged", "sha")
     material = {key: state.get(key) for key in keys} | {"reason": opened.get("reason")}
     if state["state"] == "conflict":
