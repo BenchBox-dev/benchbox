@@ -8,7 +8,7 @@
     "job_workflow_sha is an OIDC claim, not ambient context; any needed diagnostic uses a separate no-secret job and adds no reviewer id-token:write. Preserve one review job, phase-specific secrets, Linux isolation/process cleanup/scans/redaction, token minting only after reviewer execution and exact-head posting.",
     "Coverage includes partial-post failures, cancellation recovery, same-head/dispute/carry/retry-budget behaviour, finding IDs and attempt formats; replay deterministic identical inputs, not independently sampled model judgments."
   ],
-  "context": "T4 offline, P5. First live gate and required-check activation belong exclusively to theseus-gateway-client-first-live-gate-20261102. Actual BenchBox workflow cutover belongs to theseus-atomic-benchbox-cutover-20261102.",
+  "context": "T4 offline, P5. First live gate and required-check activation belong exclusively to theseus-gateway-client-first-live-gate-20261102. Actual BenchBox workflow cutover belongs to theseus-atomic-benchbox-cutover-20261102.\n\nDelivery: one Theseus PR (Theseus PR 1) carries governance bootstrap, package/installer, hosted workflows, local tooling, frozen source and parity proof. The release tag and first-promotion evidence come from that merged head, not from a separate PR.",
   "description": "Implement Theseus-hosted review/gate workflow contracts and a sandbox consumer path that preserve hosted CI plus local pre-submission operation. Reviewer uses the run's trusted base lock. Publication-time gate resolves the current trusted gated-branch lock into a separate verified process; never load two package pins in one Python interpreter. Surface gate subprocess failures through the existing GitHubError/retry-state path. Candidate checkout and untrusted build jobs get no App, gateway, publisher or production secrets. Explicitly document reusable-workflow caller context, token permission ceilings, environment secret handling and pinned workflow ref. Workflow permissions stay least-privilege.\nGuardrails: offline/fake-OMP fixtures only; no new live gateway client, shared configuration change, release publication, credential service, daemon or activation. Do not alter BenchBox workflow behaviour until atomic cutover. Keep protocol and required-check contracts stable and fork gate-path PRs fail-closed.",
   "links": [
     ".github/workflows/oracle-verdict.yml",
@@ -32,6 +32,14 @@
       "op": "update",
       "op_id": "4d5db29e0c1545d884fc9cc0a6a18b43",
       "session_id": "8cfcc9dbcab5419a91fc8b650901f36b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b58f5aa5b2bb5e33c84a53cb",
+      "at": "2026-11-03T13:33:38Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "de3b62447dbb4a9990cb30129dead815",
+      "session_id": "c4d4cd94bd464a16a29b8b24353d6e06"
     }
   ]
 }
