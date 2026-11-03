@@ -1,6 +1,6 @@
 {
   "acceptance": [
-    "Two throughput tests and two maintenance runs execute in spec order: a unit test with stubbed phases asserts the recorded phase order (power, throughput 1, maintenance 1, throughput 2, maintenance 2).",
+    "Two throughput tests and two maintenance runs execute in the TPC-DS 4.0.0 clause 7.4.2 order: a unit test with stubbed phases asserts the recorded order (load, power, throughput 1, maintenance 1, throughput 2, maintenance 2).",
     "Load time is captured and used as T_LD",
     "QphDS@Size uses the spec formula and is exported as official only when every input is valid",
     "Every documentation page in this repository that describes QphDS (found with grep -rln QphDS docs) states the spec formula and the official-export rule, and make docs-validate passes."
@@ -34,6 +34,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "3fc0763c85784aa7814b98d39b592a3a",
+      "session_id": "ada67604a2174486ada6b7b9a8c4f586"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a561db75579ad3167de9da38",
+      "at": "2026-11-03T15:48:22Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "62f8767d18e84453a32d9672e8c5c434",
       "session_id": "ada67604a2174486ada6b7b9a8c4f586"
     }
   ]
