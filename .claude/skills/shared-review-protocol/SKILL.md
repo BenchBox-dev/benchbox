@@ -90,12 +90,17 @@ convert the completed review, or an Independent Reviewer dispatched inside the
 authorized work, into a writer.
 
 In an integration-branch batch (the `todo` skill's prepared delivery), review
-happens at two points inside the authorized write. Each member is reviewed
-before the leader lands it, against that member's exact patch against its base;
-a review result bound to a different patch does not count. The combined
-integration diff is reviewed once before the final PR is published, and again
-only for leader fix commits made afterward. These are stages of authorized
-work, not separate review-shaped actions.
+happens at two points inside the authorized write. Members run scoped checks and
+local review; before landing, the leader invokes the trusted reviewer against
+the exact captured base/head with executable and policy pinned to the same full
+trusted revision.
+Consume that invocation's accepted result and retain it in the prepared receipt;
+a member's claimed outcome or another range does not count. Later acceptance
+validates that historical receipt binding, not a separate member-result cache.
+Ordinary findings/disputes and reviewer carry/cache rules remain; acceptance is
+not necessarily a fresh model call. Review the combined integration diff before
+publication, then the complete leader-fix intervals made afterward. These are
+stages of authorized work, not separate review-shaped actions.
 
 Capture authorizes only the local file write. End with `Recorded: <path>`; the
 user decides whether to open a PR.

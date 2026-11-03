@@ -146,6 +146,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `seed-corpus.yml` | product-safety | Corpus seeding |
 | `site-inputs.yml` | product-safety | Versioned site-inputs bundle build, attestation, artifact upload and site dispatch |
 | `soundness-merge-digest.yml` | product-safety | Post-merge soundness review digest |
+| `sqlglot-fork-refresh.yml` | tooling | Nightly SQLGlot fork refresh: an unprivileged job refreshes a fork checkout onto a new upstream tag, a job holding only the fork token pushes it and opens the fork pull request, and an issue-only job raises or closes the follow-up issue; it never merges or releases |
 | `submission-validator-drift-check.yml` | product-safety | Submission validator sync |
 | `sync-results-data-to-published.yml` | product-safety | Corpus trust boundary sync |
 | `test.yml` | product-safety | Test tiers; replaced by ci.yml units |
@@ -177,6 +178,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_oracle_gate_workflow.py` | product-safety | Trusted triggers, develop-only checkout, single per-PR concurrency group, App-only posting and no other workflow posting the gate context |
 | `test_oracle_review_workflow.py` | product-safety | The notification-only shape of the oracle-review workflow: edited and dismissed review triggers, empty permissions, one `review-event` job, no checkout, secrets or tools |
 | `test_oracle_verdict_workflow.py` | product-safety | Oracle review triggers, guards, the single review job's step order and secret scoping, and App-only posting |
+| `test_sqlglot_fork_refresh_workflow.py` | tooling | The refresh workflow checks out no credentials, scopes the fork token to the push step, grants issue write only to the follow-up job and pins every action |
 | `test_t2_partition_workflow.py` | product-safety | Complete medium selection, correctness gate conservation, and binary framing placement |
 | `test_comment_policy_nightly_workflow.py` | tooling | Nightly comment-policy workflow triggers, develop checkout, read-only permissions, whole-tree launcher call and shared action pins |
 | `test_trunk_coverage_workflow.py` | product-safety | Coverage workflow triggers, instrumented shards, map combine with self-fetch, schedule-only staleness issue |
@@ -297,6 +299,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_soundness_merge_digest.py` | product-safety | Post-merge soundness review digest |
 | `test_sqlglot_generator.py` | product-safety |
 | `test_sqlglot_generator_known_failures.py` | product-safety |
+| `test_sqlglot_fork_refresh.py` | tooling |
 | `test_sqlite_extract_repro.py` | product-safety |
 | `test_submission_workflow_waiver.py` | product-safety |
 | `test_timing_policy_check.py` | product-safety |
@@ -365,6 +368,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `changelog_fragments.py` | tooling | Changelog fragment validation, rendering, required-entry decision and Unreleased guard |
 | `check_sqlglot_upstream_freshness.py` | product-safety | Bundled SQLGlot freshness release gate |
 | `check_sqlglot_advisories.py` | product-safety | Bundled SQLGlot published-advisory release gate |
+| `sqlglot_fork_refresh.py` | tooling | Decides whether a new upstream tag refreshes mechanically, pushes the refresh, and syncs the follow-up issue |
 | `generate_landing_quickstarts.py` | product-safety | Landing quickstart generation |
 | `site_inputs.py` | product-safety | Site-inputs bundle build and verify |
 | `site_inputs_parent.py` | product-safety | Site-inputs parent resolution by SHA |

@@ -38,14 +38,6 @@ pr_arm = _load()
 LandingError = pr_arm.pr_landing.LandingError
 
 
-@pytest.fixture(autouse=True)
-def _trusted_review_store(monkeypatch: pytest.MonkeyPatch):
-    fx.REVIEW_STORE.clear()
-    monkeypatch.setattr(pr_arm.pr_landing, "_stored_member_review", fx.stored_review)
-    yield
-    fx.REVIEW_STORE.clear()
-
-
 def _view(**overrides) -> dict:
     view = {
         "number": 7,
@@ -91,6 +83,8 @@ class FakeGh:
             "benchbox.batch.role": kwargs.get("batch_role"),
             "benchbox.batch.id": kwargs.get("batch_id"),
         }
+        self.registry = kwargs.get("registry", {})
+        self.tracker_tip = "d" * 40
 
     def __call__(self, cmd: Sequence[str]) -> tuple[int, str]:
         cmd = list(cmd)
@@ -140,10 +134,17 @@ class FakeGh:
             return 0, "\n".join(self.changed_files)
         if cmd[:3] == ["gh", "workflow", "run"]:
             return self.dispatch_code, "" if self.dispatch_code == 0 else "gh: HTTP 403"
-        bump = self._bump_call(cmd)
-        if bump is not None:
-            return bump
+        handled = self._tracker_call(cmd) or self._bump_call(cmd)
+        if handled is not None:
+            return handled
         raise AssertionError(f"unexpected command {cmd}")
+
+    def _tracker_call(self, cmd: list[str]) -> tuple[int, str] | None:
+        if cmd[:2] == ["gh", "api"] and cmd[2].endswith("/git/ref/heads/todo-state"):
+            return 0, self.tracker_tip + "\n"
+        if cmd[:2] == ["gh", "api"] and cmd[-1].endswith(f"/contents/index.json?ref={self.tracker_tip}"):
+            return 0, json.dumps({"schema_version": 4, "items": {}, "batches": self.registry})
+        return None
 
     def _bump_call(self, cmd: list[str]) -> tuple[int, str] | None:
         if cmd == ["git", "config", "--get", "extensions.worktreeConfig"]:
@@ -1106,6 +1107,8 @@ def _batch_arm(
     batch_id: str | None = "b",
     write_evidence: bool = True,
     tracker_error: Exception | None = None,
+    registry: dict | None = None,
+    view: dict | None = None,
 ) -> tuple[int, FakeGh, list[str]]:
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -1135,7 +1138,15 @@ def _batch_arm(
         return tracker
 
     monkeypatch.setattr(pr_arm.pr_landing, "read_batch_tracker", read)
-    gh = FakeGh(view=_view(headRefOid=head), local_head=head, batch_role=role, batch_id=batch_id)
+    if registry is None:
+        monkeypatch.setattr(
+            pr_arm.pr_landing,
+            "discover_batch",
+            lambda *args, **kwargs: (batch_id if role == "integration" else None, "rev-1"),
+        )
+    else:
+        monkeypatch.setattr(pr_arm.pr_landing, "pinned_tracker_batches", lambda *args, **kwargs: (registry, "d" * 40))
+    gh = FakeGh(view=_view(headRefOid=head, **(view or {})), local_head=head, batch_role=role, batch_id=batch_id)
     code = pr_arm.arm(
         "7",
         None,
@@ -1158,6 +1169,47 @@ def test_an_integration_worktree_arms_a_pr_whose_batch_evidence_holds(
     assert code == 0
     assert reads == ["b"]
     assert len(gh.merged()) == 1
+
+
+@pytest.mark.parametrize("registered_repository", ["BenchBox-dev/BenchBox", "benchbox-dev/benchbox"])
+def test_a_markerless_checkout_still_applies_batch_evidence_to_a_registered_pr(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, registered_repository: str
+) -> None:
+    registry = {
+        "b": {
+            "lifecycle": "active",
+            "repository": registered_repository,
+            "integration_branch": "feat/b",
+            "final_pr": {"number": 7, "node_id": "PR_b", "head": "0" * 40},
+        }
+    }
+
+    code, gh, reads = _batch_arm(tmp_path, monkeypatch, role=None, batch_id=None, registry=registry)
+    assert reads == ["b"] and code == 0 and len(gh.merged()) == 1
+
+    (tmp_path / "forged").mkdir()
+    forged, forged_gh, _ = _batch_arm(
+        tmp_path / "forged",
+        monkeypatch,
+        role=None,
+        batch_id=None,
+        registry=registry,
+        mutate=lambda _tracker, evidence: evidence["member_reviews"]["b"].update(outcome="override"),
+    )
+    assert forged == 2 and forged_gh.merged() == []
+
+
+def test_a_pr_from_a_registered_member_branch_is_refused_instead_of_armed_as_ordinary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    registry = {"b": {"lifecycle": "active", "repository": "BenchBox-dev/BenchBox", "integration_branch": "feat/b"}}
+
+    code, gh, reads = _batch_arm(
+        tmp_path, monkeypatch, role=None, batch_id=None, registry=registry, view={"headRefName": "feat/b--a"}
+    )
+
+    assert code == 1 and reads == [] and gh.merged() == []
+    assert "is a member branch of batch 'b'" in capsys.readouterr().err
 
 
 def _drop_acceptance(tracker: dict, evidence: dict) -> None:

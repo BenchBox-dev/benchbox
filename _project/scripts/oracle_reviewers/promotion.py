@@ -90,7 +90,7 @@ PROMOTION_RECORD_KEYS = frozenset(
     }
 )
 
-SourceLoader = Callable[[str, str], dict[str, bytes]]
+SourceLoader = Callable[[str, str, tuple[str, ...] | None], dict[str, bytes]]
 ArtifactLoader = Callable[[str], bytes]
 AncestorCheck = Callable[[str, str], bool]
 
@@ -508,7 +508,13 @@ def compute_upstream_delta(
     return tuple(changed), "".join(chunks), delta_digest
 
 
-def extract_tar_tree(archive_bytes: bytes, *, strip_single_root: bool = False) -> dict[str, bytes]:
+def _within(path: str, prefixes: tuple[str, ...] | None) -> bool:
+    return prefixes is None or any(path == prefix or path.startswith(f"{prefix}/") for prefix in prefixes)
+
+
+def extract_tar_tree(
+    archive_bytes: bytes, *, strip_single_root: bool = False, prefixes: tuple[str, ...] | None = None
+) -> dict[str, bytes]:
     raw_entries: list[tuple[str, bytes]] = []
     total_bytes = 0
     try:
@@ -516,10 +522,13 @@ def extract_tar_tree(archive_bytes: bytes, *, strip_single_root: bool = False) -
             for member in bundle.getmembers():
                 if member.isdir() or member.name == "pax_global_header":
                     continue
+                cleaned = member.name.removeprefix("./")
+                relative = cleaned.split("/", 1)[1] if strip_single_root and "/" in cleaned else cleaned
+                if not _within(relative, prefixes):
+                    continue
                 _require(member.isfile(), f"upstream archive contains non-regular entry {member.name!r}")
                 _require(member.size >= 0, f"upstream archive entry {member.name!r} has negative size")
                 _require(len(raw_entries) < MAX_TREE_FILES, "upstream archive exceeds maximum file count")
-                cleaned = member.name.lstrip("./")
                 _require(valid_path(cleaned), f"upstream archive entry {member.name!r} has invalid path")
                 extracted = bundle.extractfile(member)
                 _require(extracted is not None, f"cannot read upstream archive entry {member.name!r}")
@@ -548,7 +557,7 @@ def extract_tar_tree(archive_bytes: bytes, *, strip_single_root: bool = False) -
     return files
 
 
-def load_tree_from_dir(directory: Path) -> dict[str, bytes]:
+def load_tree_from_dir(directory: Path, prefixes: tuple[str, ...] | None = None) -> dict[str, bytes]:
     _require(directory.is_dir() and not directory.is_symlink(), f"source directory {directory} is not a directory")
     root = directory.resolve()
     files: dict[str, bytes] = {}
@@ -563,6 +572,8 @@ def load_tree_from_dir(directory: Path) -> dict[str, bytes]:
             _require(not target.is_symlink() and target.is_file(), f"non-regular file {filename!r} is not allowed")
             rel = target.relative_to(root).as_posix()
             _require(valid_path(rel), f"invalid relative path {rel!r}")
+            if not _within(rel, prefixes):
+                continue
             data = target.read_bytes()
             total_bytes += len(data)
             _require(total_bytes <= MAX_TREE_BYTES, "source directory exceeds maximum size")
@@ -571,7 +582,7 @@ def load_tree_from_dir(directory: Path) -> dict[str, bytes]:
     return files
 
 
-def _git_archive_tree(git_root: Path, commit_sha: str) -> dict[str, bytes]:
+def _git_archive_tree(git_root: Path, commit_sha: str, prefixes: tuple[str, ...] | None = None) -> dict[str, bytes]:
     result = subprocess.run(
         ["git", "-C", str(git_root), "archive", "--format=tar", commit_sha],
         capture_output=True,
@@ -580,7 +591,7 @@ def _git_archive_tree(git_root: Path, commit_sha: str) -> dict[str, bytes]:
     if result.returncode != 0:
         detail = result.stderr.decode("utf-8", errors="replace").strip()[:300]
         raise PromotionError(f"git archive {commit_sha[:12]} failed: {detail}")
-    return extract_tar_tree(result.stdout, strip_single_root=False)
+    return extract_tar_tree(result.stdout, strip_single_root=False, prefixes=prefixes)
 
 
 def default_source_loader(
@@ -588,28 +599,28 @@ def default_source_loader(
 ) -> SourceLoader:
     configured = os.environ.get(SOURCES_ENV, "").strip()
 
-    def load(repo_slug: str, commit_sha: str) -> dict[str, bytes]:
+    def load(repo_slug: str, commit_sha: str, prefixes: tuple[str, ...] | None = None) -> dict[str, bytes]:
         if configured:
             base = Path(configured)
             folder = base / commit_sha
             tar_file = base / f"{commit_sha}.tar"
             tgz_file = base / f"{commit_sha}.tar.gz"
             if folder.is_dir():
-                return load_tree_from_dir(folder)
+                return load_tree_from_dir(folder, prefixes)
             if tar_file.is_file():
-                return extract_tar_tree(tar_file.read_bytes(), strip_single_root=False)
+                return extract_tar_tree(tar_file.read_bytes(), strip_single_root=False, prefixes=prefixes)
             if tgz_file.is_file():
-                return extract_tar_tree(tgz_file.read_bytes(), strip_single_root=True)
+                return extract_tar_tree(tgz_file.read_bytes(), strip_single_root=True, prefixes=prefixes)
             if (base / ".git").exists():
-                return _git_archive_tree(base, commit_sha)
+                return _git_archive_tree(base, commit_sha, prefixes)
             raise PromotionError(f"promotion source {commit_sha} was not found under {SOURCES_ENV}")
         if local_git_root is not None and local_consumer_repo == repo_slug:
-            return _git_archive_tree(local_git_root, commit_sha)
+            return _git_archive_tree(local_git_root, commit_sha, prefixes)
         try:
             archive = github._gh_bytes(f"repos/{repo_slug}/tarball/{commit_sha}")
         except github.GitHubError as exc:
             raise PromotionError(f"cannot fetch {repo_slug}@{commit_sha[:12]}: {exc}") from exc
-        return extract_tar_tree(archive, strip_single_root=True)
+        return extract_tar_tree(archive, strip_single_root=True, prefixes=prefixes)
 
     return load
 
@@ -950,7 +961,7 @@ def prepare_promotion(
         )
         if lock_digest(base_lock) == lock_digest(head_lock):
             return None
-        old_tree = source_loader(base_lock.repository, base_lock.source_commit)
+        old_tree = source_loader(base_lock.repository, base_lock.source_commit, None)
         _require(
             tree_sha256(old_tree) == base_lock.source_sha256,
             "prior locked theseus source tree does not match base lock source_sha256",
@@ -971,7 +982,7 @@ def prepare_promotion(
         _require(not bootstrap_errors, "; ".join(bootstrap_errors))
         bootstrap = head_lock.bootstrap
         assert bootstrap is not None
-        raw_baseline = source_loader(bootstrap.baseline_repo, bootstrap.baseline_commit)
+        raw_baseline = source_loader(bootstrap.baseline_repo, bootstrap.baseline_commit, tuple(bootstrap.path_map))
         old_tree = apply_path_map(raw_baseline, bootstrap.path_map)
         _require(
             tree_sha256(old_tree) == bootstrap.baseline_source_sha256,
@@ -980,7 +991,7 @@ def prepare_promotion(
         old_source_sha256 = bootstrap.baseline_source_sha256
         old_artifact_sha256 = BOOTSTRAP_ARTIFACT_SHA256
         is_bootstrap = True
-    new_tree = source_loader(head_lock.repository, head_lock.source_commit)
+    new_tree = source_loader(head_lock.repository, head_lock.source_commit, None)
     _require(
         tree_sha256(new_tree) == head_lock.source_sha256,
         "promoted theseus source tree does not match head lock source_sha256",

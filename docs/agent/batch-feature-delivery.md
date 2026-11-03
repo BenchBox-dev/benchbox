@@ -71,12 +71,12 @@ Rules that hold for the whole batch:
 |---|---|---|
 | `make batch-start BATCH= MEMBERS= SCOPE_JSON= PROJECT_ID= [WORKTREE_PATH=] [DEPENDENCIES=member=dep1+dep2,...] [CONFIRM_CUTOVER=1]` | Leader, any worktree | Creates `feat/<batch>` and its worktree from `refs/remotes/origin/develop`, writes the ledger and owner generation, and prints the `register_batch` arguments and an `after_register` block of `update_item` steps |
 | `make batch-member-create MEMBER= [WORKTREE_PATH=]` | Leader, integration worktree | Creates `feat/<batch>--<member>` at the current integration head; refuses an existing branch |
-| `make batch-member-check [TESTS=a,b]` | Member | Requires a clean branch that contains the integration head and has changes; runs `make pr-preflight` against that head (or the command given as `PREFLIGHT_CMD`, which is recorded and warned about at landing); the member review always runs through `scripts/oracle_local_review.py`, the changelog check, and the member review; records the result bound to the base and head |
+| `make batch-member-check [TESTS=a,b]` | Member | Requires a clean branch that contains the integration head and has changes; runs `make pr-preflight` against that head (or the command given as `PREFLIGHT_CMD`, which is recorded and warned about at landing) and the changelog check, then executes the union of the mapped and named tests and records success only if that command passes and the checkout stays clean at the same head; runs the member review as early feedback |
 | `make batch-land MEMBER=` | Leader | Merges a checked member with `--no-ff` and prints the `take`/`prepare` payload (`prepare` only for a dependent member, which must already be taken); the member's implementation dependencies are read from its registered tracker metadata |
 | `make batch-advance REASON=fix\|develop-merge` | Leader | Records a leader commit or a develop merge and prints the `advance_batch_head` payload |
 | `make batch-status` | Leader | Reconciles the ledger with the tracker and Git (rebuilding a missing ledger) and names the next step |
 | `make batch-verify` | Leader | Checks first-parent history, recorded heads, and member ancestry |
-| `make batch-evidence [SUITE=name]` | Leader | Reruns each required acceptance on the final head, writes `.todo-batch/<batch>/final-evidence.json`, and prints the `finish` payloads |
+| `make batch-evidence` | Leader | Executes every member's receipt command afresh on the clean final head, writes `.todo-batch/<batch>/final-evidence.json` only after all pass, and prints the `finish` payloads with suite `member-reruns` |
 | `make batch-finish [EXECUTE=1]` | Leader, integration worktree | After the batch is completed and final PR merged: dry run by default; execute removes qualifying member worktrees/branches, then finishes the integration worktree and local branch last |
 
 The scripts only read the tracker. Every tracker write is printed as a payload
@@ -121,11 +121,13 @@ A member:
 - implements inside its scope and writes one changelog fragment for its change
   (see `changelog.d/README.md`);
 - merges the current integration branch into its branch whenever the head moved;
-- runs the mapped tests plus any it names, through `make batch-member-check
-  TESTS=...` (non-Python changes must name tests); it does not run the fast tier;
-- runs the member review as part of the check. A change that touches only
-  exempt paths is recorded `not-reviewed`, the same bar as a standalone PR
-  (`docs/internal/oracle-review-v2.md`);
+- runs the union of mapped tests and any it names, through `make batch-member-check
+  TESTS=...` (non-Python changes must name tests); a named test that fails or
+  collects nothing blocks the check; it does not run the fast tier;
+- runs the member review as early feedback. The leader does not trust that
+  result: it reviews the exact patch again before landing. A change that
+  touches only exempt paths is recorded `not-reviewed`, the same bar as a
+  standalone PR (`docs/internal/oracle-review-v2.md`);
 - stops with a landing report: branch, accepted head, base, changed files,
   tests, and review outcome. It does not push for publication, open a PR, or
   touch the tracker.
@@ -134,11 +136,16 @@ A member:
 
 1. `make batch-land MEMBER=<id>` refuses unless the member worktree is clean,
    the member contains the current integration head, the head is unchanged since
-   its check, the stored review matches that exact patch with an accepted
-   outcome (`clear`, `not-reviewed`, or `override`), and every changed path is
-   inside the frozen scope. It also refuses a landing that would push the
-   combined file list past the hosted brief cap (below).
-2. It merges with `--no-ff` and requires the merged tree to equal the member
+   its check, and every changed path is inside the frozen scope. It also refuses
+   a landing that would push the combined file list past the hosted brief cap
+   (below).
+2. The leader runs the trusted local reviewer for the exact captured base and
+   head, with the reviewer code and policy pinned to the same trusted
+   `origin/develop` commit (which must not predate the batch start). Only an
+   accepted outcome (`clear`, `not-reviewed`, or `override`) from that
+   invocation lands; the member's own result, config, or claimed outcome never
+   does. The accepted result is retained in the receipt.
+3. It merges with `--no-ff` and requires the merged tree to equal the member
    tree; anything else means the head moved and the member merges again. It
    reruns the recorded verification of every earlier member whose files
    overlap, prints warnings for suspicious hunks and for a member preflight that
@@ -155,16 +162,17 @@ A member:
    `open`. Claims are held only for this moment.
 4. `make batch-status` names the next step. If a merge succeeded but `prepare`
    did not, `batch-status` reports `merged-unprepared`; running `batch-land`
-   again prints the payload without merging. A member merge that `batch-land`
-   did not make, or whose ledger entry was lost, is prepared only after the
-   same checks as a normal landing (merged tree equals the member tree, scope,
-   recorded base, trusted commit on `develop`, stored review), and the receipt
-   binds to that merge commit. `batch-status` reports an unverifiable merge as
-   "do not prepare it".
+   again recomputes the affected overlap reruns before printing the payload,
+   without merging again. A missing ledger row is never proof that a rerun
+   passed. A member merge that `batch-land` did not make, or whose ledger entry
+   was lost, is prepared only after the same checks as a normal landing (merged
+   tree equals the member tree, scope, recorded base, trusted commit on
+   `develop`, leader review), and the receipt binds to that merge commit.
+   `batch-status` reports an unverifiable merge as "do not prepare it".
 5. If an overlap rerun fails, landing stops with the merge in place and nothing
-   pushed. Landing the member again is refused. The only recovery is to reset
-   the integration branch to the pre-merge head the error prints, repair the
-   member, and land it again; do not prepare it.
+   pushed. The only recovery is to reset the integration branch to the
+   pre-merge head the error prints, repair the member, and land it again; do not
+   prepare it.
 
 Every commit on the integration branch outside a member's own range must be
 recorded (`batch-advance`) before the next `prepare`, or the tracker refuses
@@ -180,15 +188,22 @@ recorded (`batch-advance`) before the next `prepare`, or the tracker refuses
    PR's repository, number, node id, and head.
 3. `make batch-evidence` (it refuses unless the PR is bound at the integration
    head) writes the evidence the readiness check reads.
-4. `make pr-arm` runs the batch check only in a worktree whose
-   `benchbox.batch.role` is `integration`, and only when
-   `extensions.worktreeConfig` is enabled; it refuses on any failure.
+4. `make pr-arm`, `make pr-ready` and the remote arming targets discover batch
+   membership from the tracker before every arm, reading the registry at a
+   pinned state-branch commit and matching the PR's repository, head branch,
+   number and node id. A registered batch PR needs full batch evidence whatever
+   the caller declares: worktree markers, `delivery_mode: serial`, or an
+   omitted adapter argument cannot turn it into an ordinary PR. An ordinary PR
+   skips batch evidence, but a tracker outage or an unreadable tracker
+   configuration refuses every arm rather than guessing. `BATCH=` asserts the
+   PR is a registered batch and refuses otherwise.
    `pr_landing.py ready` with `delivery_mode: batch` reads the file named by
    `batch_evidence_path`. Readiness binds the final head to the tracker, every
-   receipt to an ancestor of that head, current acceptance to the final head,
-   the changed files to the recomputed diff and the member scopes, and every
-   member to a usable review. The batch tooling, `pr_landing`, and `pr_arm`
-   refuse a stale tracker read (an offline cache or one without a revision).
+   receipt to an ancestor of that head, the fresh final-run results to the final
+   head, the changed files to the recomputed diff and the member scopes, and
+   every member to the review retained in its receipt. Every tracker page must
+   be fresh, carry the summary's revision, and advance; a stale, cached or
+   mismatched page is refused.
 
 ### 5. Review fixes and develop merges (leader)
 
@@ -245,11 +260,22 @@ exceed the cap, split it into batches that each stay under it.
 - **Batch-wide rollback.** The final PR is one squash commit on `develop`, so
   `make trunk-revert` reverts the whole batch in one PR. There is no per-member
   rollback after the squash.
-- **Dead leader.** A new session calls `recover_batch_owner` with the recorded
-  owner and generation and a new generation it wrote to its own ledger first. It
-  needs no live member claim and keeps valid receipts. `make batch-status` shows
-  `owner_generation: missing` when the ledger lacks it. Rebuild the ledger with
-  `make batch-status`, which reads the tracker and Git.
+- **Dead leader.** From a clean checkout on the integration branch at the
+  recorded integration head, run `make batch-recover EXPECTED_OWNER=<worker>
+  EXPECTED_OWNER_GENERATION=<gen> REASON=<why>`. It writes a fresh generation to
+  the local ledger first, then prints the `recover_batch_owner` payload. It needs
+  no live member claim and keeps valid receipts. `make batch-status` shows
+  `owner_generation: missing` when the ledger lacks it, and rebuilds a missing
+  ledger from the tracker and Git.
+- **Relocated leader.** If the original integration checkout is gone, add
+  `RELOCATE=1` from another clean clone whose origin matches the registered
+  repository. The tracker moves the integration worktree only when the expected
+  old path and integration head still match (runtime capability
+  `features.integration_worktree_relocation`). Recovery does not move the head,
+  reprepare members, or rebind the PR; prepared receipts and finished members
+  are unchanged, and evidence written at the old path is refused. Regenerate it
+  with `make batch-evidence` at the new path. Work that was never pushed or
+  recorded is not recoverable this way; report it rather than recreating it.
 - **Abort fallback.** If recovery is impossible (the generation is lost and
   nobody has access to the state branch) or the batch should be redone, the owner
   releases every member claim and calls `abort_batch`. Abort invalidates

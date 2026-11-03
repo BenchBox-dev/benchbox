@@ -96,6 +96,8 @@ class FakeGitHub:
         self.tarballs: dict[tuple[str, str], bytes] = {}
         self.assets: dict[str, bytes] = {}
         self.unhandled: list[str] = []
+        self.tracker_tip = "d" * 40
+        self.tracker_index: dict[str, Any] = {"schema_version": 4, "items": {}, "batches": {}}
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), self._handler())
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
 
@@ -427,6 +429,11 @@ class FakeGitHub:
                 lambda request, match: self._page(self.timeline[int(match[1])], request),
             ),
             ("GET", r"/compare/([^.]+)\.\.\.(.+)", lambda request, match: (200, self.compare(match[1], match[2]), {})),
+            (
+                "GET",
+                r"/git/ref/heads/todo-state",
+                lambda request, match: (200, {"object": {"sha": self.tracker_tip}}, {}),
+            ),
             ("GET", r"/contents/(.+)", self._contents),
             ("GET", r"/git/trees/([0-9a-f]{40})", lambda request, match: (200, self.tree(match[1]), {})),
             ("GET", r"/tarball/([0-9a-f]{40})", self._repo_tarball),
@@ -452,6 +459,8 @@ class FakeGitHub:
         ]
 
     def _contents(self, request: Request, match: re.Match[str]) -> Response:
+        if match[1] == "index.json" and request.query.get("ref") == self.tracker_tip:
+            return 200, json.dumps(self.tracker_index).encode("utf-8"), {"Content-Type": "text/plain; charset=utf-8"}
         try:
             data = self.git_bytes("show", f"{request.query['ref']}:{match[1]}")
         except subprocess.CalledProcessError:

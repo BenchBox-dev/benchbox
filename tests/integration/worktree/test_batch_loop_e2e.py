@@ -62,7 +62,7 @@ def green_checks(head: str) -> list[dict]:
     ]
 
 
-def readiness(world: World, loop: Loop, evidence: dict | None) -> list[str]:
+def readiness(world: World, loop: Loop, evidence: dict | None, pr_number: int = 42) -> list[str]:
     head = loop.head()
     with checkout(world, loop.integration):
         base = loop.world.git(loop.integration, "rev-parse", "origin/develop")
@@ -85,19 +85,19 @@ def readiness(world: World, loop: Loop, evidence: dict | None) -> list[str]:
             repository="owner/repo",
             branch=loop.branch,
             worktree=str(loop.integration),
-            pr_number=42,
+            pr_number=pr_number,
         )
         return landing.ready_failures(identity, head, ready, loop.integration)
 
 
-def arm_refusals(world: World, loop: Loop) -> list[str]:
+def arm_refusals(world: World, loop: Loop, number: int = 42) -> list[str]:
     with checkout(world, loop.integration):
 
         def run(cmd: list[str]) -> tuple[int, str]:
             proc = subprocess.run(cmd, text=True, capture_output=True, check=False)
             return proc.returncode, proc.stdout
 
-        return pr_arm.batch_refusals(run, loop.integration, loop.head(), 42)
+        return pr_arm.batch_refusals(run, loop.integration, loop.head(), number)
 
 
 def receipts(loop: Loop) -> dict:
@@ -496,3 +496,177 @@ def test_ordinary_single_item_delivery_is_unchanged(world: World, leader: McpSer
     assert role.returncode == 1
     refusal = world.refused(solo, "batch-member-check")
     assert "role=none" in refusal
+
+
+def registry_run(world: World):
+    def run(cmd: list[str]) -> tuple[int, str]:
+        if cmd[:2] == ["git", "ls-remote"]:
+            proc = subprocess.run(
+                ["git", "ls-remote", str(world.tracker_remote), cmd[3]],
+                capture_output=True,
+                encoding="utf-8",
+                errors="replace",
+                check=False,
+            )
+        elif cmd[:2] == ["gh", "api"] and "contents/index.json" in cmd[-1]:
+            sha = cmd[-1].rsplit("ref=", 1)[1]
+            proc = subprocess.run(
+                ["git", "--git-dir", str(world.tracker_remote), "show", f"{sha}:index.json"],
+                capture_output=True,
+                encoding="utf-8",
+                errors="replace",
+                check=False,
+            )
+        else:
+            return 1, "unavailable"
+        return proc.returncode, proc.stdout + proc.stderr
+
+    return run
+
+
+@pytest.mark.timeout(600)
+def test_bounded_remediation_lifecycle(world: World) -> None:
+    world.push_develop(
+        {
+            "tests/test_contract.py": "from src import shared\n\n\ndef test_unrelated_stays_zero():\n    assert shared.unrelated() == 0\n"
+        },
+        "test: pin the unrelated helper",
+    )
+    dead = world.server("be-leader-dead")
+    loop = Loop(
+        world,
+        dead,
+        "be",
+        {
+            "m1": ["src/shared.py", "tests/test_m1.py"],
+            "m2": ["src/shared.py", "tests/test_m2.py"],
+        },
+    )
+    loop.register()
+    m1, m2 = loop.mid("m1"), loop.mid("m2")
+    named = "tests/test_m1.py,tests/test_contract.py"
+
+    loop.member("m1")
+    loop.implement(
+        "m1",
+        {"src/shared.py": shared(alpha="1", unrelated="9"), "tests/test_m1.py": attribute_test("ALPHA", "1")},
+    )
+    blocked = world.refused(
+        loop.worktrees["m1"], "batch-member-check", TESTS=named, PREFLIGHT_CMD=world.preflight_command
+    )
+    assert "member verification failed" in blocked and "test_unrelated_stays_zero" in blocked
+    assert "never ran batch-member-check" in world.refused(loop.integration, "batch-land", MEMBER=m1)
+    loop.implement("m1", {"src/shared.py": shared(alpha="1")})
+    record = loop.check("m1", named)
+    assert {"tests/test_m1.py", "tests/test_contract.py"} <= set(record["verification"]["command"])
+    loop.land_and_prepare("m1")
+
+    loop.member("m2")
+    loop.implement(
+        "m2", {"src/shared.py": shared(alpha="1", gamma="3"), "tests/test_m2.py": attribute_test("GAMMA", "3")}
+    )
+    loop.check("m2", "tests/test_m2.py,tests/test_contract.py")
+    second = loop.land("m2")
+    assert second["status"] == "merged"
+    assert second["reruns"] == [{"member": m1, "paths": ["src/shared.py"], "status": "passed"}]
+    assert [e["reason"] for e in loop.ledger()["acceptance"][m1]] == [f"overlap:{m2}"]
+
+    (loop.integration / ".todo-batch" / loop.batch / "ledger.json").unlink()
+    rebuilt = loop.status()
+    assert rebuilt["ledger"] == "rebuilt from the tracker and Git"
+    assert {entry["member"]: entry["state"] for entry in rebuilt["members"]} == {
+        m1: "prepared",
+        m2: "merged-unprepared",
+    }
+    assert loop.ledger().get("acceptance", {}).get(m1, []) == []
+    ledger_path = loop.integration / ".todo-batch" / loop.batch / "ledger.json"
+    ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+    ledger["owner_generation"] = loop.generation
+    ledger_path.write_text(json.dumps(ledger))
+    resumed = loop.land("m2")
+    assert resumed["status"] == "already-merged"
+    rerun = loop.ledger()["acceptance"][m1]
+    assert [(e["reason"], e["status"]) for e in rerun] == [(f"overlap:{m2}", "passed")]
+    loop.prepare("m2", resumed)
+    assert set(receipts(loop)) == {m1, m2}
+
+    start_head = loop.head()
+    world.commit_files(
+        loop.integration, {"src/shared.py": shared(alpha="1", gamma="3") + "EXTRA = 1\n"}, "fix: first leader edit"
+    )
+    world.commit_files(
+        loop.integration, {"src/shared.py": shared(alpha="1", gamma="3") + "EXTRA = 2\n"}, "fix: second leader edit"
+    )
+    fix = loop.advance("fix")
+    assert fix["expected_head"] == start_head and fix["head"] == loop.head()
+    assert set(fix["reruns"]) == {m1, m2} and set(fix["reruns"].values()) == {"passed"}
+    assert any(e["revision"] == fix["head"] for e in loop.ledger()["acceptance"][m1])
+    assert json.loads(world.make(loop.integration, "batch-verify").stdout)["ok"] is True
+    recorded = loop.head()
+    world.commit_files(
+        loop.integration, {"src/shared.py": shared(alpha="1", gamma="3") + "EXTRA = 3\n"}, "fix: unrecorded"
+    )
+    unrecorded = world.make(loop.integration, "batch-verify", check=False)
+    assert unrecorded.returncode != 0
+    report = json.loads(unrecorded.stdout)
+    assert report["ok"] is False and report["unrecorded_first_parent_commits"] == [loop.head()]
+    world.git(loop.integration, "reset", "--hard", recorded)
+    assert json.loads(world.make(loop.integration, "batch-verify").stdout)["ok"] is True
+
+    loop.publish()
+    old_location = loop.integration
+    loop.bind(recorded)
+    old_evidence = loop.evidence()
+    assert readiness(world, loop, old_evidence["evidence"]) == []
+    old_file = Path(old_evidence["path"]).read_text(encoding="utf-8")
+
+    dead.kill()
+    successor = world.server("be-leader-successor")
+    moved = loop.relocate(successor, "be-leader-dead", world.root / "relocated-be", "the leader process was killed")
+    assert moved["payload"]["arguments"]["integration_worktree"] == str(loop.integration)
+    assert loop.integration != old_location
+    assert loop.ledger()["owner_generation"] == loop.generation
+    tracker = loop.tracker()
+    assert tracker["owner"] == "be-leader-successor"
+    assert Path(tracker["integration_worktree"]).resolve() == loop.integration
+    assert tracker["integration_head"] == recorded and tracker["final_pr"]["head"] == recorded
+
+    with pytest.raises(landing.LandingError, match="unreadable batch evidence file"):
+        arm_refusals(world, loop)
+    evidence_dir = loop.integration / ".todo-batch" / loop.batch
+    (evidence_dir / "final-evidence.json").write_text(old_file, encoding="utf-8")
+    stale_arm = arm_refusals(world, loop)
+    assert any("ran outside the integration worktree" in reason for reason in stale_arm), stale_arm
+    stale_ready = readiness(world, loop, json.loads(old_file))
+    assert any("integration worktree does not match" in failure for failure in stale_ready), stale_ready
+
+    current = loop.evidence()
+    assert Path(current["path"]).parent.resolve() == evidence_dir.resolve()
+    final_rows = {
+        member: [e for e in rows if e["reason"] == "final-evidence"]
+        for member, rows in loop.ledger()["acceptance"].items()
+    }
+    assert set(final_rows) == {m1, m2}
+    for member, rows in final_rows.items():
+        assert len(rows) == 1, member
+        assert rows[0]["status"] == "passed" and rows[0]["revision"] == recorded
+        assert Path(rows[0]["worktree"]).resolve() == loop.integration
+    assert readiness(world, loop, current["evidence"]) == []
+    assert arm_refusals(world, loop) == []
+    wrong_arm = arm_refusals(world, loop, number=43)
+    assert any("not bound to PR #43" in reason for reason in wrong_arm), wrong_arm
+    wrong_ready = readiness(world, loop, current["evidence"], pr_number=43)
+    assert any("not bound to PR #43" in failure for failure in wrong_ready), wrong_ready
+
+    config = world.root / "registry-config.json"
+    config.write_text(json.dumps({"state_remote": "git@github.com:owner/repo.git", "state_branch": "todo-state"}))
+    run = registry_run(world)
+    assert landing.discover_batch(run, "owner/repo", loop.branch, None, None, config)[0] == loop.batch
+    assert landing.discover_batch(run, "owner/repo", "feat/unrelated", 99, "PR_other", config)[0] is None
+
+    for payload in current["finish_payloads"]:
+        member = payload["arguments"]["id"]
+        claim = successor.ok("take", id=member)["claim"]["generation"]
+        done = successor.ok(payload["tool"], **{**payload["arguments"], "generation": claim})
+        assert done["status"] == "done"
+    assert loop.tracker()["lifecycle"] == "completed"

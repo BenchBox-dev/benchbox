@@ -74,7 +74,13 @@ def _identity(repo: Path, head: str):
         ["git", "rev-parse", "origin/develop"], cwd=repo, check=True, capture_output=True, text=True
     ).stdout.strip()
     return landing.GitIdentity(
-        repo=str(repo), branch="feat/x", worktree=str(repo), head=head, base=base, upstream="origin/main"
+        repo=str(repo),
+        repository="o/r",
+        branch="feat/x",
+        worktree=str(repo),
+        head=head,
+        base=base,
+        upstream="origin/main",
     )
 
 

@@ -81,8 +81,14 @@ def test_pr_ready_with_evidence_or_batch_keeps_the_readiness_transaction(tmp_pat
     record = tmp_path / "batch-only"
     record.mkdir()
     result, argv, env = _make_pr_ready(record, "PR=7", f"HEAD={HEAD}", "BATCH=1")
-    assert result.returncode != 0 and "EVIDENCE is required" in result.stderr
-    assert argv == [] and env == {}
+    assert result.returncode == 0, result.stderr
+    assert argv == ["run", "--", "python", "scripts/pr_arm.py"]
+    assert (env["PR_ARM_PR"], env["PR_ARM_REQUIRE_BATCH"]) == ("7", "1")
+
+    record = tmp_path / "ordinary"
+    record.mkdir()
+    _, _, env = _make_pr_ready(record, "PR=7", f"HEAD={HEAD}")
+    assert env["PR_ARM_REQUIRE_BATCH"] == "0"
 
 
 def test_pr_ready_still_requires_a_pr_and_a_head(tmp_path: Path) -> None:
