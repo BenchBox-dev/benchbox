@@ -246,6 +246,42 @@ def test_extract_tar_tree_rejects_symlinks_and_parent_traversal() -> None:
         promotion.extract_tar_tree(traversal_buf.getvalue(), strip_single_root=True)
 
 
+def test_baseline_archive_is_bounded_only_by_the_mapped_paths(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(promotion, "MAX_TREE_FILES", 4)
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w") as archive:
+        for name in [*(f"repo-root/benchmarks/data{index}.csv" for index in range(10)), "repo-root/tool/a.py"]:
+            payload = name.encode()
+            info = tarfile.TarInfo(name)
+            info.size = len(payload)
+            archive.addfile(info, io.BytesIO(payload))
+        link = tarfile.TarInfo("repo-root/tool/link.py")
+        link.type = tarfile.SYMTYPE
+        link.linkname = "/etc/passwd"
+        archive.addfile(link)
+    with pytest.raises(promotion.PromotionError, match="maximum file count"):
+        promotion.extract_tar_tree(buffer.getvalue(), strip_single_root=True)
+    with pytest.raises(promotion.PromotionError, match="non-regular"):
+        promotion.extract_tar_tree(buffer.getvalue(), strip_single_root=True, prefixes=("tool",))
+    assert promotion.extract_tar_tree(buffer.getvalue(), strip_single_root=True, prefixes=("tool/a.py",)) == {
+        "tool/a.py": b"repo-root/tool/a.py"
+    }
+
+
+def test_unrooted_archive_keeps_leading_dot_paths() -> None:
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w") as archive:
+        for name in [".github/oracle-reviewers.yml", "./.gitignore", "src/a.py"]:
+            info = tarfile.TarInfo(name)
+            info.size = 1
+            archive.addfile(info, io.BytesIO(b"x"))
+    assert set(promotion.extract_tar_tree(buffer.getvalue())) == {
+        ".github/oracle-reviewers.yml",
+        ".gitignore",
+        "src/a.py",
+    }
+
+
 def test_protocol_marker_preserves_legacy_v1_compatibility_and_validates_promotion() -> None:
     legacy_encoded = protocol.encode_marker(_base_record())
     legacy_decoded = protocol.decode_marker(legacy_encoded)
@@ -455,7 +491,7 @@ def _preparation_inputs(*, bootstrap: bool = False) -> dict[str, Any]:
         "head_sha": SHA_A,
         "base_lock_text": None if bootstrap else json.dumps(base),
         "head_lock_text": json.dumps(head),
-        "source_loader": lambda _repo, commit: new_tree if commit == SHA_B else old_tree,
+        "source_loader": lambda _repo, commit, _prefixes: new_tree if commit == SHA_B else old_tree,
         "is_ancestor": lambda _ancestor, _descendant: True,
         "artifact_loader": lambda url: dependency if "pyyaml" in url else wheel,
         "rules": PromotionRules(
