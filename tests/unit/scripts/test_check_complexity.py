@@ -144,6 +144,44 @@ def test_advisory_scores_remain_visible_and_hard_scores_fail(tmp_path: Path, mon
     assert "Hard failures (CC > 20): 1" in output
 
 
+def test_top_zero_prints_an_empty_top_table(tmp_path: Path, monkeypatch, capsys) -> None:
+    module = _load_module()
+    config = _write_config(tmp_path)
+    monkeypatch.setattr(
+        module,
+        "_run_ruff",
+        lambda _root: _scan(module, module.Violation("benchbox/example.py", 10, "advisory", 12)),
+    )
+
+    assert module.run(_args(module, config, "--top", "0"), today=date(2026, 8, 8)) == 0
+    output = capsys.readouterr().out
+    assert "Top 0 most complex functions:" in output
+    assert "Per-module summary:" in output
+    assert "Total functions measured (CC > 1): 1" in output
+
+
+def test_main_with_an_explicit_empty_argv_ignores_process_argv(monkeypatch) -> None:
+    module = _load_module()
+    captured = []
+    monkeypatch.setattr(module, "run", lambda args: captured.append(args) or 0)
+    monkeypatch.setattr(sys, "argv", ["check_complexity.py", "--not-a-complexity-option", "-k", "selector"])
+
+    assert module.main([]) == 0
+    assert captured[0].top == 20
+    assert captured[0].no_fail is False
+
+
+def test_main_without_argv_reads_process_argv(monkeypatch) -> None:
+    module = _load_module()
+    captured = []
+    monkeypatch.setattr(module, "run", lambda args: captured.append(args) or 0)
+    monkeypatch.setattr(sys, "argv", ["check_complexity.py", "--top", "3", "--no-fail"])
+
+    assert module.main() == 0
+    assert captured[0].top == 3
+    assert captured[0].no_fail is True
+
+
 @pytest.mark.parametrize(
     ("contents", "message"),
     [

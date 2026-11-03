@@ -442,15 +442,15 @@ def _print_report(
     print("=" * 72)
     top = sorted(scan.violations, key=lambda violation: violation.score, reverse=True)[:top_count]
     print(f"\nTop {min(top_count, len(top))} most complex functions:")
-    function_width = max(len(violation.func) for violation in top)
-    location_width = max(len(f"{violation.file}:{violation.line}") for violation in top)
+    function_width = max((len(violation.func) for violation in top), default=0)
+    location_width = max((len(f"{violation.file}:{violation.line}") for violation in top), default=0)
     for violation in top:
         location = f"{violation.file}:{violation.line}"
         status = _status_for(violation, exempt=exempt, policy=policy)
         print(f"  {violation.score:>4}  {violation.func:<{function_width}}  {location:<{location_width}}  {status}")
 
     print("\nPer-module summary:")
-    module_width = max(len(summary.module) for summary in modules.values())
+    module_width = max((len(summary.module) for summary in modules.values()), default=0)
     print(f"  {'Module':<{module_width}}  {'Count':>5}  {'Worst':>5}  {'Mean':>6}")
     print(f"  {'-' * module_width}  {'-' * 5}  {'-' * 5}  {'-' * 6}")
     for summary in sorted(modules.values(), key=lambda item: item.worst, reverse=True):
@@ -513,7 +513,7 @@ def run(args: argparse.Namespace, *, today: date | None = None) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    return run(parse_args(argv or sys.argv[1:]))
+    return run(parse_args(sys.argv[1:] if argv is None else argv))
 
 
 if __name__ == "__main__":
