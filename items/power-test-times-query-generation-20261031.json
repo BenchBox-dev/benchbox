@@ -1,10 +1,22 @@
 {
   "acceptance": [
-    "Power-test per-query timers start after query text is generated, for TPC-H and TPC-DS.",
-    "Test asserts get_query is not called inside the timed window.",
-    "Changelog notes that power-test times from earlier versions include generation."
+    "For TPC-H and TPC-DS power tests, no call to get_query (or the dsqgen path) occurs between query_start and query_end: a unit test with a get_query stub that fails if called while the timer is open passes for both benchmarks and fails against the base commit.",
+    "Text equivalence: for a fixed seed and stream 0 at SF0.01, the SQL strings executed after the change are byte-identical to those executed on the base commit (golden comparison produced in the PR from the base commit's output).",
+    "get_query (or dsqgen) is invoked exactly once per query per power run: a test counts the calls with preflight enabled.",
+    "A generation failure aborts before any query timer starts (the existing preflight failure test passes unchanged).",
+    "Smoke: DuckDB TPC-H SF0.01 power run before and after on the same host; per-query timings pasted in the PR; the per-query total drops by about the generation cost (about 5 ms per query expected; do not assert equality).",
+    "The throughput path and its tests are unchanged: uv run -- pytest tests/unit/core/throughput tests/unit/core/tpch tests/unit/core/tpcds -k 'power or throughput' passes.",
+    "docs/internal/tpc-measured-intervals.md rows for the TPC-H and TPC-DS power tests are updated; changelog fragment states that power-test times from earlier versions include query generation and are not comparable."
   ],
-  "description": "benchbox/core/tpch/power_test.py:328 starts query_start before benchmark.get_query(...) at :344, which runs a qgen subprocess (tpch/queries.py:66) plus dialect translation. tpcds/power_test.py:255-276 does the same with dsqgen. Throughput tests pregenerate text (tpch/throughput_test.py:620 _resolve_query_text), so the two tests time different work, and power numbers carry ~10-50 ms of client work per query, which skews fast engines. Generate query text before the timer starts.",
+  "context": "2026-11-03: spec clause and double-generation finding added; overlaps the fallback row-count sites in perf-arrow-aware-result-capture-20261030 (same files), so that item waits on this one. Origin: root-cause analysis of RF1 timing and its adversarial review. [INFERENCE] query generation cost may explain the uniform +1 to +2 ms per-query shifts in t3-perf-execution-variants-regression-20261010.",
+  "description": "Problem. In the TPC-H power test (benchbox/core/tpch/power_test.py) query_start is taken before benchmark.get_query(...), which runs a qgen subprocess (tpch/queries.py) plus dialect translation; the TPC-DS power test (benchbox/core/tpcds/power_test.py) does the same with dsqgen. The throughput tests pregenerate text (tpch/throughput_test.py _resolve_query_text), so the two tests time different work. Measured on one macOS host: get_query takes a median 5.1 ms per query at steady state (first call 376 ms), against perf-smoke baseline queries of 4.4 to 12.3 ms, so power numbers carry roughly the generation cost per query and skew fast engines. It affects 22 of the 24 Power@Size terms for TPC-H and the corresponding TPC-DS terms.\n\nSpec: TPC-H 3.0.1 clause 5.3.7.2 defines a query interval from submission of the query to the SUT; query generation by the driver precedes submission and is not part of it.\n\nAlso: _preflight_validate_generation in the TPC-H power test already calls get_query for every query in the permutation and discards the text, so generation runs twice per query. Generate once, keep the text, and execute that text.\n\nGuardrails: Guardrails for all code work: work only in a linked worktree (make worktree-create); never edit the primary clone. No explanatory comments or docstrings in source (make comment-policy-check). Durations use benchbox.utils.clock.mono_time()/elapsed_seconds(). Add a changelog.d/ fragment. Cited line numbers are orientation only: re-read the named symbols, docs and spec clauses before editing and treat a mismatch as a reason to stop and update this item. No live-cloud runs without owner approval; heavy runs only through make heavy-run or a lock-taking entry point. Green focused tests are not release certification. The text executed must be byte-identical to today's for the same seed, stream and dialect (power_stream_seed unchanged). A generation error must still abort the run before the first query is timed (preflight semantics). Generation time is not added to any metric input. Do not edit the perf-smoke baseline here; perf-smoke-rebaseline-after-power-query-generation-20261103 owns it. If tpc-measured-intervals-reference-20261103 stalls, the owner may drop that need rather than delay this fix.",
+  "links": [
+    "https://www.tpc.org/tpc_documents_current_versions/pdf/tpc-h_v3.0.1.pdf",
+    "https://www.tpc.org/tpc_documents_current_versions/pdf/tpc-ds_v4.0.0.pdf",
+    "benchbox/core/tpch/power_test.py",
+    "benchbox/core/tpcds/power_test.py",
+    "benchbox/core/tpch/queries.py"
+  ],
   "sessions": [
     {
       "actor": "mcp:claude-code:root@vm:cb45f246c9de058740ccbeed",
@@ -13,6 +25,14 @@
       "op": "create",
       "op_id": "52cdc2c85e6b46869179c07d3f9ee7de",
       "session_id": "d2b018a349924f4f88b746458c80b878"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a561db75579ad3167de9da38",
+      "at": "2026-11-03T15:08:30Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "58c09e45c9294b97b141a35be16a52e9",
+      "session_id": "ada67604a2174486ada6b7b9a8c4f586"
     }
   ]
 }
