@@ -29265,6 +29265,15 @@
       "status": "open",
       "title": "TPC-H RF1 native ingest for SingleStore (LOAD DATA) inside the RF1 timer"
     },
+    "tpch-rf1-native-ingest-snowflake-20261103": {
+      "claim": null,
+      "needs": [
+        "perf-tpch-rf1-bulk-load-20261031"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "TPC-H RF1 native ingest for Snowflake (PUT then COPY INTO), gated on live-run approval"
+    },
     "tpch-skew-dataframe-sql-id-mapping": {
       "claim": null,
       "needs": [],
