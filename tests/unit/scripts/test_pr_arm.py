@@ -90,6 +90,8 @@ class FakeGh:
             "benchbox.batch.role": kwargs.get("batch_role"),
             "benchbox.batch.id": kwargs.get("batch_id"),
         }
+        self.registry = kwargs.get("registry", {})
+        self.tracker_tip = "d" * 40
 
     def __call__(self, cmd: Sequence[str]) -> tuple[int, str]:
         cmd = list(cmd)
@@ -139,10 +141,17 @@ class FakeGh:
             return 0, "\n".join(self.changed_files)
         if cmd[:3] == ["gh", "workflow", "run"]:
             return self.dispatch_code, "" if self.dispatch_code == 0 else "gh: HTTP 403"
-        bump = self._bump_call(cmd)
-        if bump is not None:
-            return bump
+        handled = self._tracker_call(cmd) or self._bump_call(cmd)
+        if handled is not None:
+            return handled
         raise AssertionError(f"unexpected command {cmd}")
+
+    def _tracker_call(self, cmd: list[str]) -> tuple[int, str] | None:
+        if cmd[:2] == ["gh", "api"] and cmd[2].endswith("/git/ref/heads/todo-state"):
+            return 0, self.tracker_tip + "\n"
+        if cmd[:2] == ["gh", "api"] and cmd[-1].endswith(f"/contents/index.json?ref={self.tracker_tip}"):
+            return 0, json.dumps({"schema_version": 4, "items": {}, "batches": self.registry})
+        return None
 
     def _bump_call(self, cmd: list[str]) -> tuple[int, str] | None:
         if cmd == ["git", "config", "--get", "extensions.worktreeConfig"]:

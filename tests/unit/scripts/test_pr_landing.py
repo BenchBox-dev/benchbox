@@ -1711,11 +1711,9 @@ def test_batch_evidence_refuses_a_missing_or_unusable_member_review(tmp_path: Pa
 @pytest.mark.parametrize("outcome", ["clear", "not-reviewed", "override"])
 def test_batch_evidence_accepts_every_landable_review_outcome(tmp_path: Path, outcome: str) -> None:
     batch = _batch(tmp_path)
+    batch.receipts["a"]["verification"]["review"]["outcome"] = outcome
     evidence = batch.evidence()
-    evidence["member_reviews"]["a"]["outcome"] = outcome
-    fx.REVIEW_STORE[(batch.receipts["a"]["source_base"], batch.receipts["a"]["accepted_head"], batch.start)][
-        "outcome"
-    ] = outcome
+    evidence["member_reviews"]["a"] = dict(batch.receipts["a"]["verification"]["review"])
 
     assert _verdict(batch, evidence=evidence) == []
 
@@ -2059,8 +2057,9 @@ def test_batch_evidence_refuses_a_develop_merge_whose_parent_is_not_on_develop(t
 
 def test_batch_evidence_refuses_a_review_bound_to_an_untrusted_commit(tmp_path: Path) -> None:
     batch = _batch(tmp_path)
+    batch.receipts["a"]["verification"]["review"]["trusted_sha"] = batch.receipts["a"]["integration_head"]
     evidence = batch.evidence()
-    evidence["member_reviews"]["a"]["trusted_sha"] = batch.receipts["a"]["integration_head"]
+    evidence["member_reviews"]["a"] = dict(batch.receipts["a"]["verification"]["review"])
 
     failures = _verdict(batch, evidence=evidence)
 
