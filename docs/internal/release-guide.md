@@ -627,6 +627,25 @@ until its explicit `uv lock` step. It validates the date and every changelog
 fragment (a dry-run compile) before changing version markers; a later command
 failure can leave partial changes for inspection.
 
+The `sqlglot-fork-refresh` workflow runs nightly and starts the refresh when a
+newer final upstream tag exists. It refreshes a checkout of the fork's `main`
+with `python -m downstream.refresh auto`, which succeeds only when every carried
+patch applies without a conflict. A refresh that succeeds is pushed as
+`refresh/upstream-X.Y.Z` and opened as a pull request in
+`BenchBox-dev/benchbox-sqlglot`, where its checks run. A conflict, a failed
+step, a failing check on that pull request, or a refresh that could not be pushed
+opens one issue per tag in this repository (`SQLGlot fork refresh to vX.Y.Z needs
+follow-up`), commented again only when the reason changes, and closed when the
+fork is on the newest tag. The workflow never merges the fork pull request,
+builds or releases the wheel, or adopts it here; those steps stay with the
+maintainer, and the freshness check above keeps failing until they are done.
+Pushing needs the repository secret `SQLGLOT_FORK_REFRESH_TOKEN`, a fine-grained
+personal access token limited to `BenchBox-dev/benchbox-sqlglot` with read and
+write access to contents and pull requests. A token is required because the
+workflow's own token cannot write to another repository and pull requests it
+opens would not start the fork's checks. Without the secret the workflow still
+runs and raises the issue, naming the missing secret.
+
 ## Reference
 
 - Makefile targets: `release-cut`, `release-finalize`, `release-prep`, `release-check`.
