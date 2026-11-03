@@ -2016,12 +2016,17 @@
       "title": "Deliver canonical tracker and batch skill support for prepared feature work"
     },
     "batch-remediation-benchbox-20261102": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-04T03:32:54Z",
+        "generation": "d08db6a097174b5b9ef48f9bb4d71aae",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:140e9c7430ed920eb0a434d5"
+      },
       "needs": [
         "batch-remediation-todo-db-runtime-20261102"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Replace batch cache replay with executed final-tree verification and complete safe delivery"
     },
     "batch-remediation-skill-contract-20261102": {
