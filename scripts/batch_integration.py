@@ -15,6 +15,10 @@ import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from scripts.worktree_finish import FinishPreviewResult
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -1319,12 +1323,27 @@ def _fetch_pull_head(repo: Path, number: int) -> str:
 def _member_worktree_problem(repo: Path, batch_id: str, member: str, branch: str) -> tuple[Path | None, str | None]:
     worktree = _worktree_for_branch(repo, branch)
     if worktree is None:
+        for line in _git(repo, "worktree", "list", "--porcelain").splitlines():
+            if not line.startswith("worktree "):
+                continue
+            candidate = Path(line.removeprefix("worktree "))
+            if candidate.is_dir() and (_config_get(candidate, "id"), _config_get(candidate, "member")) == (
+                batch_id,
+                member,
+            ):
+                worktree = candidate
+                break
+    if worktree is None:
         return None, None
+    if not worktree.is_dir():
+        return worktree, f"member worktree {worktree} is still registered but missing on disk"
     if worktree.resolve() == repo.resolve():
         return worktree, "the branch is checked out in the integration worktree"
     identity = (_config_get(worktree, "role"), _config_get(worktree, "id"), _config_get(worktree, "member"))
     if identity != (ROLE_MEMBER, batch_id, member):
         return worktree, f"the branch is checked out in {worktree}, which is not this batch's member worktree"
+    if not _git_ok(worktree, "symbolic-ref", "--quiet", "HEAD") or _branch(worktree) != branch:
+        return worktree, f"member worktree {worktree} no longer holds branch {branch}"
     if not _is_clean(worktree):
         return worktree, f"member worktree {worktree} has uncommitted or untracked changes"
     return worktree, None
@@ -1347,6 +1366,7 @@ def _plan_member_cleanup(repo: Path, batch_id: str, pull_head: str, member: str,
     remote = _remote_branch_oid(repo, branch)
     accepted = receipts.get(member, {}).get("accepted_head")
     entry: dict = {
+        "batch_id": batch_id,
         "member": member,
         "branch": branch,
         "accepted_head": accepted,
@@ -1357,7 +1377,12 @@ def _plan_member_cleanup(repo: Path, batch_id: str, pull_head: str, member: str,
         "reason": None,
     }
     if local is None and remote is None:
-        entry["status"] = "absent"
+        worktree, problem = _member_worktree_problem(repo, batch_id, member, branch)
+        entry["worktree"] = str(worktree) if worktree else None
+        if worktree is not None:
+            entry["reason"] = problem or f"member worktree {worktree} remains despite absent branch refs"
+            return entry
+        entry["status"] = "already-deleted"
         return entry
     if not accepted:
         entry["reason"] = "the tracker holds no receipt for this member, so nothing proves what the branch must contain"
@@ -1378,7 +1403,8 @@ def _plan_member_cleanup(repo: Path, batch_id: str, pull_head: str, member: str,
     entry["delete_local"] = local is not None
     entry["delete_remote"] = remote is not None and remote == accepted
     if remote is not None and remote != accepted:
-        entry["remote_kept"] = f"remote tip {remote} differs from the accepted head {accepted}"
+        entry["reason"] = f"remote tip {remote} differs from the accepted head {accepted}"
+        return entry
     if not entry["delete_local"] and not entry["delete_remote"]:
         entry["reason"] = entry.get("remote_kept") or "nothing to delete"
         return entry
@@ -1392,8 +1418,13 @@ def _recheck_before_removal(repo: Path, entry: dict) -> str | None:
         tip = _ref_oid(repo, f"refs/heads/{branch}")
         if tip != accepted:
             return f"branch tip {tip} no longer equals the accepted head {accepted}"
-    if entry["worktree"] and not _is_clean(Path(entry["worktree"])):
-        return f"member worktree {entry['worktree']} is no longer clean"
+    worktree, problem = _member_worktree_problem(repo, entry["batch_id"], entry["member"], branch)
+    if problem:
+        return problem
+    if (str(worktree) if worktree else None) != entry["worktree"]:
+        return "member worktree path changed since planning"
+    if worktree is not None and _worktree_locked(repo, worktree):
+        return f"member worktree {worktree} is locked"
     return None
 
 
@@ -1420,24 +1451,96 @@ def _execute_member_cleanup(repo: Path, entry: dict) -> None:
     entry["status"] = "deleted"
 
 
+def _integration_finish_preview(
+    repo: Path, repository: str, number: int, pull_head: str
+) -> tuple[FinishPreviewResult, Path]:
+    _checkout_root_modules()
+    from scripts import worktree_finish
+
+    primary = worktree_finish.get_primary_clone_path(repo)
+    if primary is None:
+        raise BatchError("cannot resolve the primary clone for integration cleanup")
+    try:
+        preview = worktree_finish.evaluate_finish_preview(
+            target_path=repo, expected_head_oid=pull_head, repo_root=primary, repo_slug=repository
+        )
+    except worktree_finish.FinishError as exc:
+        raise BatchError(str(exc)) from exc
+    if preview.status == "actionable" and (preview.pr_number != number or preview.merged_head != pull_head):
+        raise BatchError("integration finish evidence does not match the batch's merged final PR head")
+    return preview, primary
+
+
 def finish_batch(repo: Path, *, execute: bool = False) -> dict:
     batch_id = require_role(repo, ROLE_INTEGRATION)
     tracker = read_tracker(repo, batch_id)
-    repository, number = _merged_final_pr(repo, tracker)
+    integration: dict = {"worktree": str(repo), "status": "blocked", "reason": None}
+    report = {
+        "batch_id": batch_id,
+        "mode": "execute" if execute else "dry-run",
+        "final_pr": tracker.get("final_pr"),
+        "members": [],
+        "integration": integration,
+        "ok": False,
+    }
+    try:
+        repository, number = _merged_final_pr(repo, tracker)
+    except BatchError as exc:
+        if execute:
+            raise
+        integration["reason"] = str(exc)
+        return report
     pull_head = _fetch_pull_head(repo, number)
+    report["final_pr"] = {"repository": repository, "number": number, "head": pull_head}
     receipts = _receipts(tracker)
     members = [_plan_member_cleanup(repo, batch_id, pull_head, m, receipts) for m in _members_in_order(tracker)]
+    report["members"] = members
+    try:
+        preview, primary = _integration_finish_preview(repo, repository, number, pull_head)
+        integration["preview"] = preview.to_dict()
+    except BatchError as exc:
+        integration["reason"] = str(exc)
+        return report
     if execute:
         for entry in members:
             if entry["status"] == "would-delete":
                 _execute_member_cleanup(repo, entry)
-    return {
-        "batch_id": batch_id,
-        "mode": "execute" if execute else "dry-run",
-        "final_pr": {"repository": repository, "number": number, "head": pull_head},
-        "members": members,
-        "ok": all(entry["status"] != "refused" for entry in members),
-    }
+        for entry in members:
+            if entry["status"] in {"deleted", "already-deleted"}:
+                retained, problem = _member_worktree_problem(repo, batch_id, entry["member"], entry["branch"])
+                if retained is not None:
+                    entry["status"] = "refused"
+                    entry["reason"] = problem or f"member worktree {retained} remains after cleanup"
+                    continue
+                if _ref_oid(repo, f"refs/heads/{entry['branch']}") or _remote_branch_oid(repo, entry["branch"]):
+                    entry["status"] = "refused"
+                    entry["reason"] = "member branch still exists after cleanup"
+    if any(entry["status"] == "refused" for entry in members):
+        integration["reason"] = "member cleanup is incomplete"
+        return report
+    if execute:
+        try:
+            repository, number = _merged_final_pr(repo, read_tracker(repo, batch_id))
+            pull_head = _fetch_pull_head(repo, number)
+            report["final_pr"] = {"repository": repository, "number": number, "head": pull_head}
+            preview, primary = _integration_finish_preview(repo, repository, number, pull_head)
+            integration["preview"] = preview.to_dict()
+        except BatchError as exc:
+            integration["reason"] = str(exc)
+            return report
+    if preview.status != "actionable":
+        integration["reason"] = preview.hold_reason
+        return report
+    integration["status"] = "would-finish"
+    if execute:
+        from scripts.worktree_finish import apply_finish_actions
+
+        os.chdir(primary)
+        removed, deleted, actions = apply_finish_actions(preview, primary)
+        integration["actions"] = actions
+        integration["status"] = "finished" if removed and deleted else "refused"
+    report["ok"] = integration["status"] in {"would-finish", "finished"}
+    return report
 
 
 def rebuild_ledger(repo: Path, batch_id: str, tracker: dict) -> dict:
