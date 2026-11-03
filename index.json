@@ -19194,9 +19194,7 @@
     },
     "power-test-times-query-generation-20261031": {
       "claim": null,
-      "needs": [
-        "tpc-measured-intervals-reference-20261103"
-      ],
+      "needs": [],
       "priority": "high",
       "status": "open",
       "title": "Generate TPC-H and TPC-DS power-test query text before each per-query timer starts"
