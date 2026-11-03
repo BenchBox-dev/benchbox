@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Decision brief appended to this item's context before asking: spec clause text paraphrased with number and version, the measured or inspected evidence listed under 'Evidence to prepare', and the options table. No code or docs changed by this item.",
+    "The owner's decision is recorded in context with the date and the owner's own words quoted. An agent's judgment, a default in this description, or silence does not satisfy this criterion; do not finish the item without the quote.",
+    "Each dependent (perf-arrow-aware-result-capture-20261030, perf-arrow-fetch-native-drivers-20261030, perf-spark-arrow-collect-20261030) is updated to the chosen option: needs, description and acceptance rewritten, or the item dropped with a reason. show_item on each dependent confirms it no longer assumes an option that was not chosen. Any scope removed from a dependent is re-homed to a named item or recorded as killed with a reason.",
+    "If the page docs/internal/tpc-measured-intervals.md exists, its row for the affected timer site states the decision and cites this item."
+  ],
+  "context": "Origin: 2026-11-03 root-cause analysis of TPC-H RF1 timing (5 whys) and its adversarial review. Spec clauses cited here were read from the published PDFs at the links on 2026-11-03; re-read them rather than trusting this text.\nThe decision originally sat as the first acceptance criterion of perf-arrow-aware-result-capture-20261030, which made that item look ready when it was not.",
+  "description": "Question. Query timing wraps execute plus full result receipt (base/sql_execution.py and each adapter's execute_query). Arrow-capable drivers could skip Python row building. Decide the contract for what a measured query interval contains and how results timed under the old contract stay distinguishable.\n\nFacts. TPC-H 3.0.1 clause 5.3.7.2: a query interval ends at the last output character received by the driver (or at submission of the next query), so for TPC-H and TPC-DS metrics receiving the full result is inside the interval. Row building into Python tuples is a client representation choice, not required by the spec. Digest and validation already accept a lazy row source (compute_result_digest in base/sql_execution.py; MaterializedRowsSource and apply_materialized_result_validation in base/result_capture.py), so an Arrow result needs only a lazy Arrow-to-rows converter built outside the timer.\n\nOptions.\nA. Full receipt inside the timer for all benchmarks; the driver may hand back rows or Arrow; record fetch_mode (rows|arrow) in result metadata; comparison refuses or warns across fetch modes. Recommended: keeps non-TPC results consistent with TPC results and is spec-consistent.\nB. Exclude fetch for non-TPC benchmarks only. Inconsistent with TPC results; two contracts to maintain.\nC. Exclude fetch for all benchmarks. Contradicts 5.3.7.2 for TPC metrics.\n\nEvidence to prepare (agent, read-only): re-read 5.3.7.2 and the TPC-DS 4.0.0 query-interval clause and cite both; measure fetchall versus Arrow receipt of a large result on DuckDB (throwaway script) and record numbers; identify where fetch_mode would live in the result schema and whether result-schema-2-4-producer-20261022 is the right carrier; list adapters that cannot report rows_returned and so fall back to len(cursor.fetchall()).\n\nDecision gate. Only the owner decides; the agent prepares the brief and then updates dependents.\n\nGuardrails for all code work: work only in a linked worktree (make worktree-create); never edit the primary clone. No explanatory comments or docstrings in source (make comment-policy-check). Durations use benchbox.utils.clock.mono_time()/elapsed_seconds()..",
+  "links": [
+    "https://www.tpc.org/tpc_documents_current_versions/pdf/tpc-h_v3.0.1.pdf",
+    "https://www.tpc.org/tpc_documents_current_versions/pdf/tpc-ds_v4.0.0.pdf",
+    "benchbox/platforms/base/sql_execution.py",
+    "benchbox/platforms/base/result_capture.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a561db75579ad3167de9da38",
+      "at": "2026-11-03T15:05:58Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f2a5799d74c64ce4b295cae738534937",
+      "session_id": "ada67604a2174486ada6b7b9a8c4f586"
+    }
+  ]
+}
