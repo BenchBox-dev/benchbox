@@ -465,6 +465,22 @@ def test_prep_validates_fragments_first_and_compiles_them_last(tree: Path) -> No
         assert "--since-ref" not in argv
 
 
+def test_prep_relocks_each_present_subproject_before_compiling(tree: Path) -> None:
+    present = release_flow.LOCKED_SUBPROJECTS[0]
+    (tree / present).mkdir(parents=True)
+    (tree / present / "uv.lock").write_text("version = 1\n", encoding="utf-8")
+    calls: list[list[str]] = []
+
+    def runner(argv, cwd):
+        calls.append(list(argv))
+        return 0, ""
+
+    assert release_flow.prep(tree, VERSION, None, runner) == 0
+    uv_calls = [argv for argv in calls if argv[0] == "uv"]
+    assert uv_calls == [["uv", "lock"], ["uv", "lock", "--project", present]]
+    assert calls.index(uv_calls[-1]) == len(calls) - 2
+
+
 def test_pre_tag_check_fails_while_any_fragment_is_pending(tree: Path) -> None:
     assert release_flow.run_checks(tree, VERSION, ok_runner, pre_tag=True) == []
     write_fragment(tree, "feat-pending.json")
