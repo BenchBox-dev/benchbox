@@ -26537,10 +26537,15 @@
       "title": "Refresh the bundled SQLGlot fork onto the newest upstream release (v30.27.0, superseding v30.26.0) and remove its freshness waivers"
     },
     "sqlglot-fork-refresh-v30-29-0": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-04T13:42:46Z",
+        "generation": "6a1103beb35349338b9888cc7cac4866",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:94174e100f42d91bfecdbe49"
+      },
       "needs": [],
       "priority": "critical",
-      "status": "open",
+      "status": "active",
       "title": "Refresh the bundled SQLGlot fork onto upstream v30.29.0 and adopt the wheel"
     },
     "sqlglot-fork-review-h1-governance": {
