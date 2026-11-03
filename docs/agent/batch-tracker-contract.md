@@ -49,7 +49,7 @@ anyone but the owner (`E_BATCH_OWNER`). The leader's calls, in order:
    with the same PR identity, the new head, and `expected_previous_head`.
 5. After the PR checks pass on the bound head, `take` then `finish` each member
    with cumulative current-tree evidence, including a current-acceptance rerun
-   for every member the tracker lists in `acceptance_required`.
+   of every member's receipt command on the final head.
 
 Same-file overlap is allowed and recorded; byte equality of an earlier member's
 files is not required. Every earlier member named in an overlap, and every
@@ -79,7 +79,11 @@ are the authoritative reads.
 
 - **Dead leader:** `recover_batch_owner` with the recorded owner and generation
   and a new generation the caller wrote to its own ledger first. It needs no live
-  member claim and keeps valid receipts.
+  member claim and keeps valid receipts. With the optional all-or-nothing
+  `expected_integration_worktree`, `expected_integration_head` and
+  `integration_worktree` it also relocates the integration checkout (runtime
+  0.15.0 or later advertises `features.integration_worktree_relocation`);
+  receipts are never rewritten and old-location final evidence is refused.
 - **Abort:** the owner releases every member claim and calls `abort_batch`. It
   invalidates prepared and final evidence, keeps a bound final PR as history,
   and returns recoverable members to ordinary claim and finish. It refuses once

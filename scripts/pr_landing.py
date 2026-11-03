@@ -233,10 +233,31 @@ def batch_mode_failures(
     identity: GitIdentity,
     head: str | None,
     tracker: Callable[[str], dict],
+    run: Runner | None = None,
+    discover: Callable[..., tuple[str | None, str]] | None = None,
 ) -> list[str]:
-    if not evidence.require_batch:
-        return []
     failures: list[str] = []
+    repo_slug = identity.repository
+    discovery_fn = discover or discover_batch
+    active_run = run or live_run
+    try:
+        discovered_id, _rev = discovery_fn(
+            active_run, repo_slug, identity.branch, evidence.pr_number, evidence.pr_node_id
+        )
+    except LandingError as exc:
+        failures.append(f"authoritative tracker batch discovery failed: {exc}")
+        return failures
+
+    is_batch = discovered_id is not None or evidence.require_batch
+    if not is_batch:
+        return []
+
+    if discovered_id is not None and getattr(evidence, "declared_delivery_mode", None) == "serial":
+        failures.append(f"PR is registered as batch {discovered_id} but caller declared delivery_mode=serial")
+
+    if discovered_id is None and evidence.require_batch and not evidence.batch_evidence:
+        failures.append("require-batch asserted but PR is not a registered batch PR")
+        return failures
     if not batch_runtime_capability_available(repo):
         failures.append(
             "batch delivery requires the active todo-db runtime to advertise capability todo_db_batch version 2, "
@@ -259,6 +280,9 @@ def batch_mode_failures(
     batch_id = batch.get("batch_id")
     if not isinstance(batch_id, str):
         failures.append("batch evidence lacks a batch_id")
+        return failures
+    if discovered_id is not None and batch_id != discovered_id:
+        failures.append(f"batch evidence names {batch_id!r} but PR is registered as {discovered_id!r}")
         return failures
     try:
         fresh = tracker(batch_id)
@@ -593,6 +617,7 @@ class ReadyEvidence:
     worktree_id: str | None = None
     pr_number: int | None = None
     pr_node_id: str | None = None
+    declared_delivery_mode: str | None = None
 
 
 def live_check_runs(run: Runner, repo_full: str, head: str) -> list[dict]:
@@ -888,6 +913,8 @@ def _tracker_section(run: Runner, batch_id: str, name: str, rev: str) -> object:
     for _ in range(MAX_TRACKER_WINDOWS):
         options = ("--field", name, "--offset", str(offset), "--budget", str(TRACKER_WINDOW_BUDGET), "--rev", rev)
         data = _tracker_call(run, batch_id, *options)
+        if data.get("stale") or data.get("cached_rev") or data.get("rev") != rev:
+            raise LandingError(f"tracker batch {batch_id} section {name} is stale or revision drifted from {rev}")
         window = data.get("window")
         if not isinstance(window, str):
             raise LandingError(f"tracker batch {batch_id} section {name} returned no window")
@@ -898,9 +925,14 @@ def _tracker_section(run: Runner, batch_id: str, name: str, rev: str) -> object:
                 return json.loads("".join(windows))
             except ValueError as exc:
                 raise LandingError(f"tracker batch {batch_id} section {name} is not valid JSON") from exc
-        next_offset = continuation.get("offset") if isinstance(continuation, dict) else None
+        if not isinstance(continuation, dict) or continuation.get("rev", rev) != rev or continuation.get("stale"):
+            raise LandingError(f"tracker batch {batch_id} section {name} continuation is stale or malformed")
+        next_offset = continuation.get("offset")
         if not isinstance(next_offset, int) or isinstance(next_offset, bool) or next_offset <= offset:
             raise LandingError(f"tracker batch {batch_id} section {name} did not advance")
+        total = data.get("total")
+        if isinstance(total, int) and not isinstance(total, bool) and next_offset >= total:
+            raise LandingError(f"tracker batch {batch_id} section {name} continues past its end")
         offset = next_offset
     raise LandingError(f"tracker batch {batch_id} section {name} exceeds the read bound")
 
@@ -1045,7 +1077,7 @@ def _check_evidence_acceptance(repo: Path, evidence: dict, head: str, tracker: d
         return ["batch evidence lacks current_acceptance"]
     failures.extend(
         f"current acceptance is missing for member {member}"
-        for member in sorted(_tracker_map(tracker, "acceptance_required"))
+        for member in _tracker_members(tracker)
         if member not in acceptance
     )
     worktree = tracker.get("integration_worktree")
@@ -1092,28 +1124,126 @@ def _check_evidence_changed_files(repo: Path, evidence: dict, head: str, tracker
     return failures
 
 
-def _stored_member_review(repo: Path, base: str, head: str, trusted: str) -> dict | None:
-    from _project.scripts.oracle_reviewers import local
+TRACKER_CONFIG = REPO_ROOT / ".todo-db" / "config.json"
 
-    return local.member_review_result(repo, base, head, trusted)
+
+def _same_repository(value: object, repo: str) -> bool:
+    try:
+        expected = normalize_github_repository(repo)
+    except LandingError:
+        expected = github_repository(repo)
+    for parse in (normalize_github_repository, github_repository):
+        try:
+            return parse(value) == expected
+        except LandingError:
+            continue
+    return True
+
+
+def tracker_state_revision(run: Runner = _tracker_stdout, config_path: Path = TRACKER_CONFIG) -> tuple[str, str, str]:
+    if not config_path.is_file():
+        raise LandingError(f"tracker configuration file not found: {config_path}")
+    try:
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        state_repo = github_repository(config["state_remote"])
+        branch = config["state_branch"]
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise LandingError(f"cannot read the tracker configuration {config_path}: {exc}") from exc
+    if not isinstance(branch, str) or not re.fullmatch(r"[A-Za-z0-9._/-]+", branch):
+        raise LandingError(f"tracker state branch {branch!r} is malformed")
+    code, out = run(["gh", "api", f"repos/{state_repo}/git/ref/heads/{branch}", "--jq", ".object.sha"])
+    if code != 0 or not out.strip() or len(out.strip()) != 40:
+        code, out = run(["git", "ls-remote", config["state_remote"], f"refs/heads/{branch}"])
+        if code != 0 or not out.strip():
+            raise LandingError(f"cannot resolve tracker state branch {state_repo}@{branch}: {out.strip()[:200]}")
+        tip_sha = out.split()[0].strip()
+    else:
+        tip_sha = out.strip()
+    return state_repo, branch, tip_sha
+
+
+def pinned_tracker_batches(run: Runner = _tracker_stdout, config_path: Path = TRACKER_CONFIG) -> tuple[dict, str]:
+    state_repo, branch, tip_sha = tracker_state_revision(run, config_path)
+    code, out = run(
+        [
+            "gh",
+            "api",
+            "-H",
+            "Accept: application/vnd.github.raw+json",
+            f"repos/{state_repo}/contents/index.json?ref={tip_sha}",
+        ]
+    )
+    if code != 0:
+        raise LandingError(f"cannot read tracker index from {state_repo}@{tip_sha[:12]}: {out.strip()[:200]}")
+    try:
+        data = json.loads(out)
+    except ValueError as exc:
+        raise LandingError(f"tracker index from {state_repo}@{tip_sha[:12]} is not valid JSON") from exc
+    batches = data.get("batches") if isinstance(data, dict) else None
+    if not isinstance(batches, dict):
+        raise LandingError("the tracker index has no readable batch registry")
+    return batches, tip_sha
+
+
+def discover_batch(
+    run: Runner,
+    repo_slug: str,
+    branch: str | None,
+    pr_number: int | None,
+    pr_node_id: str | None,
+    config_path: Path = TRACKER_CONFIG,
+) -> tuple[str | None, str]:
+    try:
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        tracker_repo = github_repository(config.get("state_remote", ""))
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+        raise LandingError(f"cannot read the tracker configuration {config_path}: {exc}") from exc
+    if not _same_repository(tracker_repo, repo_slug):
+        return None, ""
+    batches, rev = pinned_tracker_batches(run, config_path)
+    matches: list[str] = []
+    for batch_id, batch in sorted(batches.items()):
+        if not isinstance(batch, dict) or batch.get("lifecycle") == "aborted":
+            continue
+        if not _same_repository(batch.get("repository"), repo_slug):
+            continue
+        if branch and branch.startswith(f"feat/{batch_id}--"):
+            raise LandingError(f"branch {branch!r} is a member branch of batch {batch_id!r}; batch members open no PR")
+        final = batch.get("final_pr") if isinstance(batch.get("final_pr"), dict) else {}
+        matches_branch = bool(branch) and batch.get("integration_branch") == branch
+        matches_number = bool(final) and pr_number is not None and final.get("number") == pr_number
+        matches_node = bool(final) and bool(pr_node_id) and final.get("node_id") == pr_node_id
+        if matches_branch or matches_number or matches_node:
+            matches.append(batch_id)
+    if len(matches) > 1:
+        raise LandingError(
+            f"ambiguous batch discovery for branch {branch!r} PR #{pr_number}: matches batches {matches}"
+        )
+    return (matches[0] if matches else None, rev)
 
 
 def _check_evidence_reviews(repo: Path, evidence: dict, members: list[str], receipts: dict) -> list[str]:
     failures: list[str] = []
-    reviews = evidence.get("member_reviews")
-    reviews = reviews if isinstance(reviews, dict) else {}
+    has_reviews = isinstance(evidence.get("member_reviews"), dict)
+    reviews = evidence["member_reviews"] if has_reviews else {}
     for member in members:
-        review = reviews.get(member)
         receipt = receipts.get(member)
-        if not isinstance(review, dict) or review.get("schema") != MEMBER_REVIEW_SCHEMA:
-            failures.append(f"member {member} has no stored member review")
-            continue
         if not isinstance(receipt, dict):
+            failures.append(f"member {member} lacks a prepared receipt")
+            continue
+        verification = receipt.get("verification")
+        review = verification.get("review") if isinstance(verification, dict) else None
+        if not isinstance(review, dict) or review.get("schema") != MEMBER_REVIEW_SCHEMA:
+            failures.append(f"member {member} receipt has no valid review record")
+            continue
+        if has_reviews and reviews.get(member) != review:
+            failures.append(f"member {member} evidence review differs from the review retained in its receipt")
             continue
         if review.get("base_sha") != receipt.get("source_base") or review.get("head_sha") != receipt.get(
             "accepted_head"
         ):
             failures.append(f"member {member} review is bound to another range than its receipt")
+        failures.extend(_review_binding_failures(repo, member, review, receipt))
         if review.get("outcome") not in MEMBER_REVIEW_OUTCOMES:
             failures.append(f"member {member} review outcome {review.get('outcome')!r} does not allow landing")
             continue
@@ -1121,20 +1251,22 @@ def _check_evidence_reviews(repo: Path, evidence: dict, members: list[str], rece
         if trusted is None or not _is_ancestor(repo, trusted, DEVELOP_TRACKING_REF):
             failures.append(f"member {member} review names no trusted commit that is an ancestor of origin/develop")
             continue
-        stored = _stored_member_review(
-            repo, str(receipt.get("source_base")), str(receipt.get("accepted_head")), trusted
-        )
-        if stored is None:
-            failures.append(
-                f"member {member} review is not in the trusted review store; "
-                "an outcome recorded only in the evidence file is refused, override included"
-            )
-        elif stored.get("outcome") != review.get("outcome"):
-            failures.append(
-                f"member {member} review outcome {review.get('outcome')!r} differs from the stored outcome "
-                f"{stored.get('outcome')!r}"
-            )
     return failures
+
+
+def _review_binding_failures(repo: Path, member: str, review: dict, receipt: dict) -> list[str]:
+    from _project.scripts.oracle_reviewers import local as oracle_local
+
+    base, head = _revision(receipt.get("source_base")), _revision(receipt.get("accepted_head"))
+    if base is None or head is None:
+        return [f"member {member} receipt range is not two full revisions"]
+    try:
+        actual = oracle_local.member_binding(repo, base, head)
+    except (oracle_local.Unavailable, OSError):
+        return [f"member {member} review binding could not be recomputed from Git"]
+    if any(review.get(key) != value for key, value in actual.items()):
+        return [f"member {member} review does not match the patch and tree Git computes for its range"]
+    return []
 
 
 def check_batch_evidence(repo: Path, evidence: dict, head: str, tracker: dict) -> list[str]:
@@ -1159,8 +1291,11 @@ def ready_failures(
     evidence: ReadyEvidence,
     repo: Path,
     tracker: Callable[[str], dict] = read_batch_tracker,
+    run: Runner | None = None,
+    discover: Callable[..., tuple[str | None, str]] | None = None,
 ) -> list[str]:
     failures: list[str] = []
+    active_run = run or live_run
     expected_head = evidence.expected_head if isinstance(evidence.expected_head, str) else ""
     head_valid = bool(FULL_REVISION_RE.fullmatch(expected_head))
     try:
@@ -1194,7 +1329,11 @@ def ready_failures(
     holds = evidence.hold_labels or []
     if HOLD_LABEL in holds:
         failures.append(f"durable hold label {HOLD_LABEL!r} present; a human removes it, never this helper")
-    failures.extend(batch_mode_failures(evidence, repo, identity, expected_head if head_valid else None, tracker))
+    failures.extend(
+        batch_mode_failures(
+            evidence, repo, identity, expected_head if head_valid else None, tracker, run=active_run, discover=discover
+        )
+    )
     if soundness_changed and evidence.oracle_gate_state != "success":
         failures.append(
             f"soundness paths changed and the required {ORACLE_GATE_CONTEXT!r} status at {expected_head[:12]} "
@@ -1871,6 +2010,7 @@ def _run_ready(args: argparse.Namespace, identity: GitIdentity, branch: str, rep
         if delivery_mode == "batch" or args.require_batch
         else None,
         require_batch=args.require_batch or delivery_mode == "batch",
+        declared_delivery_mode=delivery_mode,
         repository=identity.repository,
         branch=branch,
         worktree=identity.worktree,
@@ -1879,7 +2019,7 @@ def _run_ready(args: argparse.Namespace, identity: GitIdentity, branch: str, rep
         pr_node_id=node_id,
     )
     verify_evidence_live(live_run, args.repo, pr, evidence)
-    failures = ready_failures(identity, str(pr.get("headRefOid") or ""), evidence, repo)
+    failures = ready_failures(identity, str(pr.get("headRefOid") or ""), evidence, repo, run=live_run)
     if failures:
         print("NOT READY:")
         for failure in failures:

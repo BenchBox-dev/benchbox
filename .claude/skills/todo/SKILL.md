@@ -1,7 +1,7 @@
 ---
 name: todo
 description: Use when the user asks to "ideate on an idea", "refine an idea", "brainstorm", "write a spec", "create a specification", "create a TODO", "show TODO items", "manage TODOs", "prioritize TODOs", "top N most important todos", "rank the backlog", "what should we work on", "what should I work on", "implement a TODO", "implement a batch of TODOs", "complete a TODO", "finish an item", "release my claim", "why did finish fail", "cleanup TODOs", "review TODO quality", "claim a TODO", "what's ready" / "ready queue", "block"/"unblock a TODO", "create TODOs from a spec", "create a batch handoff", or "close out a reviewed batch". Covers the lifecycle from idea to specification, implementation, and completion.
-version: 3.0.0
+version: 3.1.0
 tools: Bash, Read, Edit, Write, Task
 ---
 
@@ -47,9 +47,10 @@ the product repository.
 - **One live claim per worker.** Taking a second item without releasing or
   finishing the first is refused with `E_MULTIPLE_CLAIMS`.
 - **Only the claim holder may `renew`, `finish`, or `release` an item.** Keep
-  the `generation` returned by `take`; after a restart, `take` the same item
-  again to re-adopt it (fresh generation, refreshed lease — any earlier process
-  image holding the old generation goes stale).
+  the `generation` returned by `take`. The same stable actor may re-adopt after
+  its previous server stops. For a default-identity ordinary reconnect, checkpoint
+  and release first, confirm store/runtime after reconnect, then take again.
+  A batch leader retains its stable owner identity or uses owner recovery.
 - **Take over a foreign live claim only when its session cannot resume.**
   `takeover(item_id, expected_holder, reason)` transfers a live claim held by
   another worker: name the exact holder you inspected with `show_item` and say
@@ -61,10 +62,11 @@ the product repository.
   (`E_BATCH_OWNER`); a dead leader is handled by `recover_batch_owner`, not by
   taking over a member.
 - **Prepared work is not completion.** The prepared lifecycle is fail-closed
-  and capability-versioned. It requires todo-db 0.14.0 or later (advertises the
-  `todo_db_batch` version 2 capability); if the capability is absent, or the
-  store schema is outside the advertised `supported_schema_versions`, stop and
-  use serial mode. A store below schema 4 is cut over by the first
+  and capability-versioned. Require the installed runtime's `todo_db_batch`
+  version 2 capability, required tools and supported store/receipt schemas,
+  not a package-version string or static rollout record. Repository policy
+  selects prepared versus serial mode; unsupported runtimes stay serial.
+  A store below schema 4 is cut over by the first
   `register_batch` with `confirm_schema3_cutover=true`. Never
   treat legacy per-item receipts as valid. The first `register_batch` on an older
   store needs `confirm_schema3_cutover=true` (it confirms the one-step cutover to
@@ -81,18 +83,27 @@ the product repository.
   lands, with a clean exact checkout, actual member base (a recorded head),
   accepted head, new integration head, scope hash, and passed bounded-suite
   evidence. `prepare` releases the claim while leaving the item `open`; it does
-  not mark work done. The leader verifies the cumulative current tree, binds the
-  final PR, and only then re-takes and `finish`es members. Ordinary dependencies
-  remain done-only; prepared receipts never unlock review, approval, merge,
-  deployment, or soak gates.
+  not mark work done. Members execute mapped plus named checks; the leader
+  accepts an exact-range trusted invocation and retains its result in the
+  receipt. Final verification freshly executes every member's own command and
+  combined checks before arming. After actual merge, finish may consume that
+  successful run only while its relevant bindings still match; no separate
+  member-result-cache replay authorizes it. Ordinary dependencies remain done-only;
+  prepared receipts never unlock review, approval, merge or deployment gates.
 - **Role boundaries in a batch.** While a batch is active, only its owner (the
   leader) may `take`, `takeover`, `prepare`, or `finish` its members, and the
   leader is the only tracker and ledger writer. Member workers implement in their
   own worktrees and stop at a committed, checked change handed to the leader as
-  a landing request; they make no tracker calls and open no PR. The leader claims
+  a landing request; they make no tracker writes and open no PR. The leader claims
   a member only to prepare or finish it. The refusal holds only for a distinct
   identity: a member must not use the leader's server instance or actor
   (`--actor`/`TODO_DB_ACTOR`). Procedure: `references/batch.md`.
+- **Guarded checkout relocation.** Require
+  `todo_db_batch.features.integration_worktree_relocation=true` before using
+  the optional expected-path/expected-head/new-path tuple in owner recovery.
+  Preserve receipts/history, obtain the expected generation privately and save
+  the new generation before the call. Neither recovery nor abort works without
+  the expected generation. See `references/recovery.md`.
 - **Skill-only actions** — `ideate`, `spec`, `prioritize`, `batch`, `handoff`,
   `closeout` — are workflows, not tools. Follow their reference guides.
 - **Close-out authorization.** `closeout` is write-shaped under
@@ -154,7 +165,7 @@ first page, never skip ahead.
 | `E_UNKNOWN` | Outcome undetermined. | Reconcile with the operation ID in `recovery`; do not re-apply blindly. |
 | `E_STATE` | Malformed state or rejected request. As a `gate` from `get_instructions`, the server is bound to another project's store. | Read the message; report it if you cannot fix the request. For the `expect_store` gate, stop and write nothing. |
 | `E_SCHEMA` | State format newer than this package. On a batch call: store below schema 4 (register with the cutover first) or a legacy receipt; see `references/recovery.md`. | Stop; a human upgrades the package. For a batch call, follow `references/recovery.md`. |
-| `E_FINAL_EVIDENCE` | Prepared member lacks current final-tree proof, including a current-acceptance rerun it is named for. | Re-take the member, rerun the named acceptance on the final tree, attach exact clean combined-tree evidence, then retry `finish`. |
+| `E_FINAL_EVIDENCE` | Prepared member lacks current final-tree proof; a named acceptance identifies a missing binding. | Start a new final-verification invocation: every member's receipt command and the combined fast tier on the clean final head. Re-take the member and retry `finish` with that complete bound evidence after actual merge. |
 | `E_BATCH_OWNER` | You are not the owner of this active batch (`gate`). | Ask the owner named in the message; members hand work to the leader and never claim. A dead owner: `recover_batch_owner`. |
 | `E_BATCH_HEAD` | A head is not recorded, does not descend from the required head, or has unrecorded commits (`gate`). | `show_batch`; record the missing fix or merge with `advance_batch_head`, or re-base the member on a recorded head. |
 
@@ -221,7 +232,7 @@ the evidence it binds, invalidates affected prepared evidence transitively.
 | Create or amend work | `create_item`, `update_item` |
 | Claim, extend, close, hand back, drop | `take`, `renew`, `finish`, `release`, `drop` (`drop` needs `reason`, 0.12.0+) |
 | Take over a dead session's live claim | `takeover` (0.8.1+) |
-| Read a batch, record a head change, recover a dead leader | `show_batch`, `advance_batch_head`, `recover_batch_owner` (0.14.0+, `todo_db_batch` version 2) |
+| Read a batch, record a head change, recover a dead leader | `show_batch`, `advance_batch_head`, `recover_batch_owner` (`todo_db_batch` version 2 capability) |
 
 ## Process guides
 

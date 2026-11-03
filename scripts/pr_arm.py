@@ -11,6 +11,7 @@ import sys
 import tempfile
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ci_text_edit_verdict
@@ -22,7 +23,7 @@ CLI_DESCRIPTION = "Arm a pull request for its exact head after a live check that
 HOLD_LABEL = pr_landing.HOLD_LABEL
 REPOSITORY = "BenchBox-dev/BenchBox"
 BASE_BRANCH = "develop"
-VIEW_FIELDS = "number,state,isDraft,labels,reviewDecision,headRefOid,baseRefName"
+VIEW_FIELDS = "number,state,isDraft,labels,reviewDecision,headRefOid,baseRefName,headRefName,id"
 
 BASELINE_DIRECTORY = "tests/fixtures/fast_tier_baseline"
 VERDICT_ARTIFACT_PREFIX = "fast-duration-verdict"
@@ -301,22 +302,45 @@ def _worktree_config(run: Runner, key: str) -> str | None:
     return out.strip() or None
 
 
-def batch_refusals(run: Runner, checkout: Path, head: str, number: int) -> list[str]:
-    if _worktree_config(run, "benchbox.batch.role") != "integration":
-        return []
+def batch_refusals(
+    run: Runner,
+    checkout: Path,
+    head: str,
+    number: int,
+    view: dict | None = None,
+    require_batch: bool = False,
+    discover: Callable[..., tuple[str | None, str]] | None = None,
+    repo: str = REPOSITORY,
+) -> list[str]:
+    batch_role = _worktree_config(run, "benchbox.batch.role")
     batch_id = _worktree_config(run, "benchbox.batch.id")
-    if batch_id is None:
-        return ["the integration worktree names no batch (benchbox.batch.id is unset)"]
+    if batch_role == "integration":
+        if batch_id is None:
+            return ["the integration worktree names no batch (benchbox.batch.id is unset)"]
+        discovered_id: str | None = batch_id
+    else:
+        v = view or {}
+        discovery_fn = discover or pr_landing.discover_batch
+        discovered_id, _rev = discovery_fn(run, repo, v.get("headRefName"), number, v.get("id"))
+
+    if discovered_id is None:
+        if require_batch:
+            return ["require-batch asserted but PR is not a registered batch PR"]
+        return []
+
     evidence = pr_landing._load_batch_evidence(
-        checkout, str(checkout / ".todo-batch" / batch_id / "final-evidence.json")
+        checkout, str(checkout / ".todo-batch" / discovered_id / "final-evidence.json")
     )
-    tracker = pr_landing.read_batch_tracker(batch_id)
+    if evidence is None:
+        return [f"batch {discovered_id} has no final evidence file at .todo-batch/{discovered_id}/final-evidence.json"]
+    tracker = pr_landing.read_batch_tracker(discovered_id)
+
     reasons: list[str] = []
     if tracker.get("lifecycle") != "active":
-        reasons.append(f"batch {batch_id} is not active in the tracker")
+        reasons.append(f"batch {discovered_id} is not active in the tracker")
     final_pr = tracker.get("final_pr")
     if not isinstance(final_pr, dict) or final_pr.get("number") != number:
-        reasons.append(f"batch {batch_id} is not bound to PR #{number}")
+        reasons.append(f"batch {discovered_id} is not bound to PR #{number}")
     reasons.extend(pr_landing.check_batch_evidence(checkout, evidence or {}, head, tracker))
     return reasons
 
@@ -345,7 +369,9 @@ def arm(
     visible: Callable[[Runner, str, str, str], list[str]] = visible_refusals,
     bump: Callable[[Runner, str, int, str], list[str]] = pr_arm_omp_bump.bump_refusals,
     gate: Callable[[Runner, str, int, str], list[str]] = gate_refusals,
-    batch: Callable[[Runner, Path, str, int], list[str]] = batch_refusals,
+    batch: Callable[..., list[str]] = batch_refusals,
+    require_batch: bool = False,
+    discover: Callable[..., tuple[str | None, str]] | None = None,
 ) -> int:
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
         return _refused(f"--repo must be owner/name, got {repo!r}", 2)
@@ -377,7 +403,7 @@ def arm(
                 *visible(run, repo, BASE_BRANCH, local_head),
                 *(gate(run, repo, int(view["number"]), local_head) if view.get("headRefOid") == local_head else []),
                 *(
-                    batch(run, checkout, local_head, int(view["number"]))
+                    batch(run, checkout, local_head, int(view["number"]), view, require_batch, discover, repo)
                     if view.get("headRefOid") == local_head
                     else []
                 ),
@@ -412,10 +438,12 @@ def arm(
         return _outcome(f"refused: live state could not be verified: {exc}", 1)
 
 
-def _environment_selection(env: Mapping[str, str]) -> dict[str, str | None]:
+def _environment_selection(env: Mapping[str, str]) -> dict[str, Any]:
     return {
-        name: env.get(f"PR_ARM_{name.upper()}") if env.get(f"PR_ARM_{name.upper()}_SET") == "1" else None
-        for name in ("pr", "head", "repo")
+        "pr": env.get("PR_ARM_PR") if env.get("PR_ARM_PR_SET") == "1" else None,
+        "head": env.get("PR_ARM_HEAD") if env.get("PR_ARM_HEAD_SET") == "1" else None,
+        "repo": env.get("PR_ARM_REPO") if env.get("PR_ARM_REPO_SET") == "1" else None,
+        "require_batch": env.get("PR_ARM_REQUIRE_BATCH") == "1",
     }
 
 
@@ -425,7 +453,15 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None
     parser.add_argument("--pr", default=selected["pr"], help="pull request number; default: the current branch's PR")
     parser.add_argument("--head", default=selected["head"], help="expected head SHA; refused unless it is local HEAD")
     parser.add_argument("--repo", default=selected["repo"] if selected["repo"] is not None else REPOSITORY)
+    parser.add_argument(
+        "--require-batch",
+        action="store_true",
+        default=selected["require_batch"],
+        help="assert that the PR is a registered batch PR",
+    )
     args = parser.parse_args(argv)
+    if args.require_batch:
+        return arm(args.pr, args.head, args.repo, require_batch=True)
     return arm(args.pr, args.head, args.repo)
 
 

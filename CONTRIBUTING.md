@@ -65,6 +65,12 @@ use serial delivery; they cannot certify themselves.
 For a feature batch, one leader owns the integration branch/worktree, tracker, ledger, and
 one final PR to `develop`. Each member owns its worktree, implementation, scoped checks,
 local review, and landing report; members neither open PRs nor write to the tracker.
+A member's checks and review are early feedback only: before landing, the leader reviews
+the member's exact patch again, and before the final PR is armed, every member's recorded
+checks run again on the final tree. Arming discovers batch membership from the tracker, so
+an outage refuses every arm, including an ordinary PR's. If the leader's session dies, a new
+leader recovers ownership with `make batch-recover`, which can also move the integration
+checkout to another clean clone.
 Follow [Batch delivery modes](docs/agent/batch-feature-delivery.md) for capability checks,
 member handoff, integration, and final-PR delivery rather than applying the serial steps
 independently to each member.
@@ -151,9 +157,10 @@ independently to each member.
    withdraw it with the revision transaction (`make pr-landing-withdraw`, see `docs/agent/review-protocol.md`),
    push the correction, rerun CI and obtain the oracle's success review (or the stand-in approval) on the new head before arming:
    a later `--match-head-commit` cannot undo a merge of the old head.
-   `make pr-ready PR=<n> HEAD=<sha>` arms an open PR through `make pr-arm`. With `EVIDENCE` or `BATCH` it runs the
-   readiness evidence transaction used to deliver a prepared batch, where the evidence file must declare
-   `delivery_mode` and the complete prepared-batch binding; a single PR does not need it.
+   `make pr-ready PR=<n> HEAD=<sha>` arms an open PR through `make pr-arm`. `BATCH=1` asserts the PR is a
+   registered batch PR and refuses otherwise. With `EVIDENCE` it runs the readiness evidence transaction, where the
+   evidence file must declare `delivery_mode` and, for a batch, the complete binding; a single PR does not need it.
+   Whatever is declared, a PR the tracker registers as a batch PR needs full batch evidence.
    The `no-auto-merge` label blocks arming only; to hold an armed PR, run `gh pr merge <n> --disable-auto` or
    `make pr-landing-withdraw PR=<n> HEAD=<sha>`, then add the label.
 
