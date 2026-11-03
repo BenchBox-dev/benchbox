@@ -29253,7 +29253,7 @@
         "perf-tpch-rf1-bulk-load-20261031"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "TPC-H RF1 native ingest for Snowflake and SingleStore, gated on live-run approval"
     },
     "tpch-rf1-native-ingest-singlestore-20261103": {
