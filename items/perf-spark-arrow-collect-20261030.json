@@ -4,6 +4,7 @@
     "Digests match the collect() path.",
     "Snowpark Connect outcome recorded."
   ],
+  "context": "2026-11-03: the fetch-timing contract is decided in fetch-timing-contract-decision-20261103 and implemented by perf-arrow-aware-result-capture-20261030. Under the recommended option, full Arrow receipt (including draining streaming readers) stays inside the query timer and fetch_mode is recorded; Arrow-to-rows conversion for digests stays outside it. Re-read the recorded decision before starting; if the owner chose differently, update this item's acceptance. Origin: root-cause analysis of RF1 timing and its adversarial review.",
   "description": "base/spark_execution_mixin.py:372 uses collect(), building Python Row objects. DataFrame.toArrow exists only in pyspark 4.0+; pyproject allows pyspark>=3.5.0 and databricks-connect 16.1.7 (locked for Python <3.12) is Spark 3.5-based. Use toArrow when available, else toPandas with spark.sql.execution.arrow.pyspark.enabled, else collect(). Covers spark, pyspark, lakesail, velox, EMR/Glue/Dataproc/Fabric/Synapse Spark. snowpark_connect.py:285 is a Snowpark DataFrame (not PySpark): Snowpark 1.48 has DataFrame.to_arrow, but check whether it hits the same pandas<3 gate as the Snowflake connector.",
   "sessions": [
     {
@@ -21,6 +22,14 @@
       "op": "update",
       "op_id": "d47f9b545a0b44c88088827e364d3258",
       "session_id": "d2b018a349924f4f88b746458c80b878"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a561db75579ad3167de9da38",
+      "at": "2026-11-03T15:09:56Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "73c27dfda382498dab0e6bc102e260ae",
+      "session_id": "ada67604a2174486ada6b7b9a8c4f586"
     }
   ]
 }
