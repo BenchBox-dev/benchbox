@@ -29155,6 +29155,13 @@
       "status": "done",
       "title": "Prove TPC-H refresh functions on PostgreSQL-derived adapters"
     },
+    "tpch-refresh-precheck-timing-decision-20261103": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Owner decision: where the RF1/RF2 database checks on refresh data run relative to the refresh timer"
+    },
     "tpch-refresh-redshift-proof-20261016": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "Decision brief appended to this item's context before asking: spec clause text paraphrased with number and version, the measured or inspected evidence listed under 'Evidence to prepare', and the options table. No code or docs changed by this item.",
+    "The owner's decision is recorded in context with the date and the owner's own words quoted. An agent's judgment, a default in this description, or silence does not satisfy this criterion; do not finish the item without the quote.",
+    "Each dependent (tpch-refresh-checks-timing-per-decision-20261103) is updated to the chosen option: needs, description and acceptance rewritten, or the item dropped with a reason. show_item on each dependent confirms it no longer assumes an option that was not chosen. Any scope removed from a dependent is re-homed to a named item or recorded as killed with a reason.",
+    "If the page docs/internal/tpc-measured-intervals.md exists, its row for the affected timer site states the decision and cites this item."
+  ],
+  "context": "Origin: 2026-11-03 root-cause analysis of TPC-H RF1 timing (5 whys) and its adversarial review. Spec clauses cited here were read from the published PDFs at the links on 2026-11-03; re-read them rather than trusting this text.\nOwner: Joe Harris. Dependent implementation item: tpch-refresh-checks-timing-per-decision-20261103.",
+  "description": "Question. TPC-H 3.0.1 clause 5.3.7.10 says that before the refresh stream the dbgen data may only be generated, permuted and relocated, and that 'data formatting or database activity' on it must be inside the refresh timing. BenchBox runs database queries on the refresh keys before the RF timer starts: check_rf1_preconditions and check_rf2_preconditions (benchbox/core/tpch/refresh.py) are called before the timer in TPCHPowerTest._execute_refresh_function and in the throughput refresh stream. The RF2 check counts exactly the LINEITEM and ORDERS rows RF2 then deletes, which can warm the cache. The RF2 post-check (check_rf2_applied) runs after the timer. The pre-timer placement was deliberate ('safety checks no longer count toward Ts') and is pinned by test_throughput_runs_all_safety_checks_outside_the_refresh_measurement in tests/unit/core/tpch/test_tpch_refresh.py.\n\nOpen interpretation: whether those checks are 'database activity on these data' in the sense of 5.3.7.10. The spec text does not say. Decide and record it.\n\nOptions.\nA. Run the checks after the RF timer. RF1: duplicate-key and row-count verification after commit. RF2: use the driver-reported deleted counts plus the existing check_rf2_applied. Consequence: a failed check leaves the database mutated, but a failed precondition already means the database must be reloaded. No timed cost; spec-safe under either reading.\nB. Keep the checks before the timer and record it as a documented deviation in docs/internal/tpc-measured-intervals.md, with a flag in result metadata that makes the run ineligible for the official QphH export. Consequence: no code change; comparability with published TPC-H results is weaker.\nC. Run the checks inside the timer. Consequence: spec-safe, but [INFERENCE] about 15 scans of 1000-key IN lists at SF10 would roughly double native DuckDB RF1 time; makes RF1 cost depend on check design.\nRecommended: A.\n\nEvidence to prepare (agent, read-only, throwaway scripts not committed): (1) re-read clauses 5.3.7.3 and 5.3.7.10 and quote them in the brief; (2) on DuckDB at SF1 and SF10, time the RF1 and RF2 precondition checks and the same RF1/RF2 apply calls, to replace the inference in option C with numbers; (3) list every code path that gates official QphH eligibility on refresh evidence (benchbox/core/results/metrics.py, benchbox/core/tpch/official_benchmark.py) so option B's consequence is concrete; (4) check whether any published bundle depends on the current placement.\n\nDecision gate. Only the owner decides. An agent may prepare the brief and update dependents after the decision; it must not choose.\n\nGuardrails: read-only until the decision is recorded; no tracker priority or status changes on other items except the dependents listed in the third acceptance criterion.",
+  "links": [
+    "https://www.tpc.org/tpc_documents_current_versions/pdf/tpc-h_v3.0.1.pdf",
+    "benchbox/core/tpch/refresh.py",
+    "benchbox/core/tpch/power_test.py",
+    "benchbox/core/tpch/throughput_test.py",
+    "tests/unit/core/tpch/test_tpch_refresh.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a561db75579ad3167de9da38",
+      "at": "2026-11-03T15:05:54Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b05409e319a444b0819e1091a747f901",
+      "session_id": "ada67604a2174486ada6b7b9a8c4f586"
+    }
+  ]
+}
