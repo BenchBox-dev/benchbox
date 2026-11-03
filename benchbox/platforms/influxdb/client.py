@@ -12,6 +12,8 @@ import urllib.request
 from datetime import datetime
 from typing import Any
 
+from benchbox.utils.tls import ca_bundle_path
+
 from ._dependencies import (
     FLIGHTSQL_AVAILABLE,
     INFLUXDB3_AVAILABLE,
@@ -111,13 +113,13 @@ class InfluxDBConnection:
             headers=headers,
             method="POST",
         )
-        context = None
-        if self.ssl:
-            context = ssl_module.create_default_context(cafile=self.ca_cert_path)
-            if not self.verify_ssl:
-                context.check_hostname = False
-                context.verify_mode = ssl_module.CERT_NONE
         try:
+            context = None
+            if self.ssl:
+                context = ssl_module.create_default_context(cafile=self.ca_cert_path or ca_bundle_path())
+                if not self.verify_ssl:
+                    context.check_hostname = False
+                    context.verify_mode = ssl_module.CERT_NONE
             with urllib.request.urlopen(request, timeout=timeout_s, context=context):
                 return
         except urllib.error.HTTPError as e:

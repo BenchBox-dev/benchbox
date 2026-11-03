@@ -275,3 +275,12 @@ def test_ensure_database_surfaces_other_http_errors(loopback_server):
     status["code"] = 401
     with pytest.raises(ConnectionError, match="HTTP 401"):
         _connection(port).ensure_database()
+
+
+def test_ensure_database_verifies_tls_against_the_benchbox_ca_bundle(monkeypatch, tmp_path):
+    from benchbox.platforms.influxdb.client import InfluxDBConnection
+
+    monkeypatch.setenv("REQUESTS_CA_BUNDLE", str(tmp_path / "missing-bundle.pem"))
+    connection = InfluxDBConnection(host="127.0.0.1", token="secret", database="bench", port=9, ssl=True)
+    with pytest.raises(ConnectionError, match="missing-bundle.pem|No such file"):
+        connection.ensure_database(timeout_s=1)
