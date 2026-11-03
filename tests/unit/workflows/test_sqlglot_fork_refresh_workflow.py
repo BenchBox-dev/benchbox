@@ -46,16 +46,23 @@ def test_only_the_issue_job_can_write_to_this_repository_and_the_workflow_defaul
     assert jobs()["follow-up"]["permissions"] == {"contents": "read", "issues": "write"}
 
 
-def test_the_fork_token_reaches_only_the_job_that_pushes_and_never_a_checkout() -> None:
+def test_the_fork_token_appears_only_in_the_push_step_of_the_job_that_pushes() -> None:
+    text = WORKFLOW.read_text(encoding="utf-8")
+    assert text.count("SQLGLOT_FORK_REFRESH_TOKEN") == 2
     for name, job in jobs().items():
         for step in job["steps"]:
-            holds_token = "SQLGLOT_FORK_REFRESH_TOKEN" in str(step.get("env", {})) + str(step.get("with", {}))
+            holds_token = "SQLGLOT_FORK_REFRESH_TOKEN" in repr(step)
             assert holds_token == (name == "open-pr" and step["name"].startswith("Push the branch")), (
                 name,
                 step["name"],
             )
             if step.get("uses", "").startswith("actions/checkout@"):
                 assert step["with"]["persist-credentials"] is False
+    assert "SQLGLOT_FORK_REFRESH_TOKEN" not in repr({key: value for key, value in load().items() if key != "jobs"})
+    for name, job in jobs().items():
+        assert "SQLGLOT_FORK_REFRESH_TOKEN" not in repr({key: value for key, value in job.items() if key != "steps"}), (
+            name
+        )
 
 
 def test_the_fork_is_refreshed_from_its_main_by_trusted_develop_code_without_any_secret() -> None:
@@ -69,13 +76,14 @@ def test_the_fork_is_refreshed_from_its_main_by_trusted_develop_code_without_any
     assert "scripts/sqlglot_fork_refresh.py prepare" in run["run"]
 
 
-def test_a_pull_request_opens_only_for_a_ready_refresh_and_the_issue_job_always_runs_after_a_good_preparation() -> None:
+def test_a_pull_request_opens_only_for_a_ready_refresh_and_the_issue_job_runs_even_when_preparation_failed() -> None:
     assert "needs.prepare.outputs.state == 'ready'" in jobs()["open-pr"]["if"]
     follow_up = jobs()["follow-up"]
-    assert "always()" in follow_up["if"] and "needs.prepare.result == 'success'" in follow_up["if"]
+    assert "!cancelled()" in follow_up["if"] and "needs.prepare.result" not in follow_up["if"]
     assert follow_up["needs"] == ["prepare", "open-pr"]
-    fetch = next(s for s in follow_up["steps"] if s["name"] == "Fetch the pull request outcome")
-    assert fetch["continue-on-error"] is True
+    for step in follow_up["steps"]:
+        if step.get("uses", "").startswith("actions/download-artifact@"):
+            assert step["continue-on-error"] is True, step["name"]
 
 
 def test_runs_never_overlap_and_a_running_refresh_is_never_cancelled() -> None:
