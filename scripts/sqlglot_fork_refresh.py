@@ -20,6 +20,8 @@ ISSUE_SUFFIX = " needs follow-up"
 MONITOR_TITLE = "SQLGlot fork refresh check failed"
 TAG_PATTERN = re.compile(r"v\d+\.\d+\.\d+")
 CHECK_FAILED = "check-failed"
+HEALTHY_STATES = {"current", "pending", "awaiting-review"}
+REPORTED_STATUSES = {"conflict", "failed"}
 SIGNATURE_MARKER = "<!-- sqlglot-fork-refresh-signature: "
 BOT_NAME = "benchbox-bot"
 BOT_EMAIL = "bot@benchbox.dev"
@@ -128,6 +130,13 @@ def prepare(
             "detail": (result.stderr or result.stdout).strip()[-1500:] or f"exit {result.returncode}",
         }
     report = json.loads(report_path.read_text(encoding="utf-8"))
+    if report["status"] != "refreshed" and report["status"] not in REPORTED_STATUSES:
+        return {
+            **state,
+            "state": "failed",
+            "step": "auto",
+            "detail": f"the refresh reported an unrecognised status {report['status']!r}",
+        }
     if report["status"] != "refreshed":
         return {
             **state,
@@ -358,6 +367,9 @@ def sync_issue(out_dir: Path, run_url: str, runner: Runner = run) -> dict[str, A
     if kind == "ready":
         kind = "awaiting-review" if opened.get("status") == "opened" else "unpushed"
         state = {**state, "state": kind}
+    if kind not in ISSUE_STATES | HEALTHY_STATES | {CHECK_FAILED}:
+        state = {**state, "state": CHECK_FAILED, "detail": f"the preparation reported an unrecognised state {kind!r}"}
+        kind = CHECK_FAILED
     if kind == CHECK_FAILED:
         wanted: str | None = MONITOR_TITLE
     else:

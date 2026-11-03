@@ -432,3 +432,19 @@ def test_the_state_a_failed_preparation_really_writes_is_enough_to_raise_the_mon
     runner = FakeRunner(issue_handlers([]))
     assert sync_issue(tmp_path / "out", "https://run", runner)["action"] == "created"
     assert "no network" in runner.ran("gh issue create")[0][-1]
+
+
+def test_a_report_status_the_script_does_not_know_is_a_failure_not_a_healthy_state(tmp_path: Path) -> None:
+    report = {"status": "needs-review", "detail": "something new"}
+    state = prepare(tmp_path / "fork", tmp_path / "out", FakeRunner(refresh_handlers(LATEST, report, exit_code=3)))
+    assert (state["state"], state["step"]) == ("failed", "auto")
+    assert "needs-review" in state["detail"]
+
+
+def test_an_unknown_state_in_the_state_file_raises_the_monitor_issue_and_closes_nothing(tmp_path: Path) -> None:
+    write_state(tmp_path, state="needs-review", tag="v30.29.0")
+    per_tag = {"number": 3, "title": "SQLGlot fork refresh to v30.29.0 needs follow-up", "body": "x"}
+    runner = FakeRunner(issue_handlers([per_tag]))
+    outcome = sync_issue(tmp_path, "https://run", runner)
+    assert (outcome["state"], outcome["action"], outcome["closed"]) == ("check-failed", "created", [])
+    assert "needs-review" in runner.ran("gh issue create")[0][-1]
