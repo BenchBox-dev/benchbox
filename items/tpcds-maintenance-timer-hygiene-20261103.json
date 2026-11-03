@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "A test that records event order shows connection open and initialize() complete before the first operation interval starts and the connection closes after it ends; the test fails against the base commit.",
+    "grep -n 'time.time()' benchbox/core/tpcds/maintenance_operations.py benchbox/core/tpcds/maintenance_test.py returns no line used to compute a duration.",
+    "Two runs with the same configured seed against the same empty DuckDB at SF0.01 produce identical per-table row counts and per-column checksums after maintenance; a run with a different seed differs.",
+    "The seed used is written to the maintenance result; default behaviour no longer reads the wall clock.",
+    "Smoke: a DuckDB TPC-DS SF0.01 run with the maintenance phase completes and reports each operation's interval; paste the summary in the PR.",
+    "changelog fragment states that maintenance timings from earlier versions include connection setup and initialize() and are not comparable."
+  ],
+  "context": "Origin: 2026-11-03 analysis of TPC-H RF1 timing and its adversarial reviews; the findings are restated in this item and in tpc-measured-intervals-reference-20261103. Spec clauses cited here were read from the published PDFs at the links on 2026-11-03; re-read them rather than trusting this text.",
+  "description": "Problem (benchbox/core/tpcds/maintenance_test.py and maintenance_operations.py; re-read before editing). Each maintenance operation's timer covers opening a connection, initialize() (about 15 MIN/MAX dimension queries) and closing the connection. The inner timers use time.time(), which is a wall clock. The synthetic row generator is seeded from int(time.time()), so two runs on the same inputs insert different rows and no before/after checksum comparison is possible. These defects exist whatever data source the owner chooses in tpcds-maintenance-data-source-decision-20261103, so this item waits on no decision.\n\nTPC-DS 4.0.0 clause 7.4.9.1 starts a maintenance function's interval at the earlier of first submission or first read of the refresh data, so connection setup and initialize() are outside it.\n\nChange: open the connection and run initialize() before the interval starts and close after it ends; time with mono_time()/elapsed_seconds(); seed the generator from a configured value (default fixed) so a run is reproducible, and record the seed in the result.\n\nGuardrails: Guardrails for all code work: work only in a linked worktree (make worktree-create); never edit the primary clone. No explanatory comments or docstrings in source (make comment-policy-check). Durations use benchbox.utils.clock.mono_time()/elapsed_seconds(). Add a changelog.d/ fragment. Cited line numbers are orientation only: re-read the named symbols, docs and spec clauses before editing and treat a mismatch as a reason to stop and update this item. No live-cloud runs without owner approval; heavy runs only through make heavy-run or a lock-taking entry point. Green focused tests are not release certification. Do not change what the operations insert or the number of rows (the hardcoded 10 rows belongs to tpcds-maintenance-dsdgen-refresh-data-20261103 and the data-source decision). Do not add set-based SQL here (perf-tpcds-maintenance-set-based-20261031). If docs/internal/tpc-measured-intervals.md exists on the base branch, update its TPC-DS maintenance row; otherwise append the row text to the context of tpc-measured-intervals-reference-20261103.",
+  "links": [
+    "https://www.tpc.org/tpc_documents_current_versions/pdf/tpc-ds_v4.0.0.pdf",
+    "benchbox/core/tpcds/maintenance_test.py",
+    "benchbox/core/tpcds/maintenance_operations.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a561db75579ad3167de9da38",
+      "at": "2026-11-03T15:41:50Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "741743725d1746edb3114af7802e0ac1",
+      "session_id": "ada67604a2174486ada6b7b9a8c4f586"
+    }
+  ]
+}
