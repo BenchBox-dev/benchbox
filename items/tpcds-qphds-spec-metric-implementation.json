@@ -1,9 +1,9 @@
 {
   "acceptance": [
-    "Two throughput tests and two maintenance runs execute in spec order, with tests",
+    "Two throughput tests and two maintenance runs execute in spec order: a unit test with stubbed phases asserts the recorded phase order (power, throughput 1, maintenance 1, throughput 2, maintenance 2).",
     "Load time is captured and used as T_LD",
     "QphDS@Size uses the spec formula and is exported as official only when every input is valid",
-    "Docs match"
+    "Every documentation page in this repository that describes QphDS (found with grep -rln QphDS docs) states the spec formula and the official-export rule, and make docs-validate passes."
   ],
   "context": "2026-11-03: spec-order maintenance runs require maintenance that follows TPC-DS 4.0.0 clauses 5.2.3 to 5.3 (dsdgen refresh sets, timed staged load). Added a need on tpcds-maintenance-dsdgen-refresh-data-20261103. If the owner records option B in tpcds-maintenance-data-source-decision-20261103, this item must be dropped or re-scoped as part of closing that decision. Origin: root-cause analysis of RF1 timing and its adversarial review.",
   "description": "Scope moved here from tpcds-qphds-nonspec-formula by owner decision on 2026-10-04: suppress the non-spec QphDS first, and implement the spec later. QphDS@Size = SF x Q / (T_PT x T_TT x T_DM x T_LD)^(1/4), with Q = 99 x S, T_TT = TT1 + TT2, T_DM = DM1 + DM2, and T_LD = 0.01 x S x T_load. Needs a second throughput test (streams S+1..2S), data maintenance between the throughput tests, and captured load time.",
@@ -26,6 +26,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "b65d9f760c6040ecabf9b8a6457800a0",
+      "session_id": "ada67604a2174486ada6b7b9a8c4f586"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a561db75579ad3167de9da38",
+      "at": "2026-11-03T15:47:54Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3fc0763c85784aa7814b98d39b592a3a",
       "session_id": "ada67604a2174486ada6b7b9a8c4f586"
     }
   ]
