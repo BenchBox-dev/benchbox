@@ -2025,15 +2025,10 @@
       "title": "Replace batch cache replay with executed final-tree verification and complete safe delivery"
     },
     "batch-remediation-skill-contract-20261102": {
-      "claim": {
-        "expires_at": "2026-11-04T02:33:55Z",
-        "generation": "8633925aeaf14fe1ad823be36172741a",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:140e9c7430ed920eb0a434d5"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Define the simplified integration-batch contract in the shared skill catalog"
     },
     "batch-remediation-todo-db-runtime-20261102": {
