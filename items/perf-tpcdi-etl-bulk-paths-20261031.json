@@ -5,7 +5,7 @@
     "For the same scale factor, the TPC-DI validation and audit checks return identical results to the base commit's output (diff attached to the PR).",
     "The timer start and stop sites in benchbox/core/tpcdi/benchmark.py are unchanged in the diff, and a test shows load and ETL work runs between them.",
     "Before and after load plus ETL durations on DuckDB at one scale factor on the same host are recorded in the PR.",
-    "docs/internal/tpc-measured-intervals.md TPC-DI rows are updated; changelog fragment records the change."
+    "If docs/internal/tpc-measured-intervals.md exists on the base branch, update the rows this change affects; otherwise append the row text to the context of tpc-measured-intervals-reference-20261103. Changelog fragment records the change."
   ],
   "context": "2026-11-03: reclassified from timing integrity to plain performance work: TPC-DI measures the ETL itself. Priority unchanged. Origin: root-cause analysis of RF1 timing and its adversarial review.",
   "description": "The TPC-DI load phase is timed at benchbox/core/tpcdi/benchmark.py:1123-1129. Inside it: etl/sql_backend.py:190-200 converts DataFrames to tuples and executemany in 1000-row batches; etl/scd_processor.py loops with iterrows() at :461, :507, :725, :748, :882, :892 (one UPDATE per row at :725) and builds parameter lists at :605; etl/pipeline.py:341-655 generates facts/dimensions in Python and loads with executemany; tpcdi/benchmark.py:1263 uses pd.read_csv without the pyarrow engine. Use DataFrame/Arrow registration (DuckDB) or COPY, and set-based MERGE/UPDATE for SCD steps.\n\nSpec framing (TPC-DI 1.1.0): the ETL transformation is the measured workload, and generating data and copying it to staging are untimed. Optimizations here must therefore make BenchBox's own implementation faster while the work stays inside the timed region. Do not move transformation, parsing or loading to before the timer. This is performance work on the implementation, not a timing-contract change.\n\nGuardrails for all code work: work only in a linked worktree (make worktree-create); never edit the primary clone. No explanatory comments or docstrings in source (make comment-policy-check). Durations use benchbox.utils.clock.mono_time()/elapsed_seconds(). Add a changelog.d/ fragment. Cited line numbers are orientation only: re-read the named symbols, docs and spec clauses before editing and treat a mismatch as a reason to stop and update this item. No live-cloud runs without owner approval; heavy runs only through make heavy-run or a lock-taking entry point. Green focused tests are not release certification.",
@@ -24,6 +24,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "20ea908cd22047e580147210be04d070",
+      "session_id": "ada67604a2174486ada6b7b9a8c4f586"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a561db75579ad3167de9da38",
+      "at": "2026-11-03T15:47:17Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "67889c32165c435f969c1af2ec2e0040",
       "session_id": "ada67604a2174486ada6b7b9a8c4f586"
     }
   ]
