@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from . import adjudication
+from . import adjudication, promotion
 from .edits import EDITED_REASON, EditStateError, is_edited
 from .evidence import withdrawal_cited
 from .policy import SEVERITIES
@@ -81,7 +81,9 @@ RECORD_KEYS = frozenset(
         "summary",
     }
 )
-OPTIONAL_RECORD_KEYS = frozenset({"patch_map", "forced", "run_uuid", "escalated", "adjudicated", "disputed"})
+OPTIONAL_RECORD_KEYS = frozenset(
+    {"patch_map", "forced", "run_uuid", "escalated", "adjudicated", "disputed", "promotion"}
+)
 DEFECT_KEYS = ("id", "severity", "file", "line", "end_line", "title")
 
 
@@ -292,6 +294,7 @@ def _valid_record(record: Any) -> bool:
         and isinstance(record["open_defects"], list)
         and all(_valid_defect(item) for item in record["open_defects"])
         and (record.get("patch_map") is None or _valid_patches(record["patch_map"]))
+        and ("promotion" not in record or promotion.valid_promotion_record(record["promotion"]))
     )
 
 
@@ -451,7 +454,7 @@ def _forced_round(
     )
 
 
-def _decided_again(latest: Mapping[str, Any], head_sha: str, manual: bool) -> Round:
+def _decided_again(latest: Mapping[str, Any], head_sha: str, manual: bool, *, allow_carry: bool = True) -> Round:
     label = LABELS[latest["decision"]]
     if not manual or latest["decision"] == REFUSED:
         return Round(SKIP, f"head {head_sha} already has a {label} decision")
@@ -461,6 +464,14 @@ def _decided_again(latest: Mapping[str, Any], head_sha: str, manual: bool) -> Ro
             f"head {head_sha} already has a {label} decision; it is posted again unchanged",
             latest["cycle"],
             latest["round"],
+            latest,
+        )
+    if not allow_carry:
+        return Round(
+            FIRST,
+            f"the {label} decision on head {head_sha} has no run binding; promotion requires a fresh review",
+            latest["cycle"] + 1,
+            1,
             latest,
         )
     return Round(
@@ -486,6 +497,7 @@ def plan_round(
     base_changed_at: datetime | None = None,
     base_change_unreadable: bool = False,
     manual: bool = False,
+    is_promotion: bool = False,
 ) -> Round:
     latest = found.latest
     if strike_count >= max_do_not_ship:
@@ -511,9 +523,10 @@ def plan_round(
             base_change_unreadable
             or (base_changed_at is not None and (decided_at is None or decided_at <= base_changed_at))
         )
+        promotion_bound = is_promotion or latest.get("promotion") is not None
         if not stale:
-            return _decided_again(latest, head_sha, manual)
-        if latest["patch_digest"] == digest and not digest.startswith(UNREAD_DIGEST):
+            return _decided_again(latest, head_sha, manual, allow_carry=not promotion_bound)
+        if latest["patch_digest"] == digest and not digest.startswith(UNREAD_DIGEST) and not promotion_bound:
             return Round(
                 CARRY,
                 f"the base changed after the {LABELS[latest['decision']]} decision on head {head_sha}",
@@ -521,11 +534,20 @@ def plan_round(
                 latest["round"],
                 latest,
             )
+        if promotion_bound:
+            return Round(
+                FIRST,
+                f"the base changed after the {LABELS[latest['decision']]} promotion review on head {head_sha}",
+                latest["cycle"] + 1,
+                1,
+                latest,
+            )
     restart = latest["cycle"] + 1
     if latest["base_ref"] != base_ref:
         return Round(FIRST, f"the base changed from {latest['base_ref']} to {base_ref}", restart, 1, latest)
     if latest["decision"] == REFUSED:
         return Round(FIRST, "the strike limit no longer applies", restart, 1, latest)
+    promotion_bound = is_promotion or latest.get("promotion") is not None
     if latest["patch_digest"] == digest and not digest.startswith(UNREAD_DIGEST):
         if force and latest["decision"] in (SHIP, SHIP_WITH_FIXES):
             return _forced_round(
@@ -538,8 +560,29 @@ def plan_round(
                     " but an author rebuttal disputes an open finding: forced re-review"
                 ),
             )
+        if not promotion_bound:
+            return Round(
+                CARRY,
+                f"the patch is unchanged since head {latest['head_sha']}",
+                latest["cycle"],
+                latest["round"],
+                latest,
+            )
+        if latest["decision"] == SHIP_WITH_FIXES and latest.get("open_defects"):
+            return Round(
+                FOLLOW_UP,
+                f"promotion pull requests cannot carry across heads (since {latest['head_sha']})",
+                latest["cycle"],
+                latest["round"] + 1,
+                latest,
+                frozenset(paths),
+            )
         return Round(
-            CARRY, f"the patch is unchanged since head {latest['head_sha']}", latest["cycle"], latest["round"], latest
+            FIRST,
+            f"promotion pull requests cannot carry across heads (since {latest['head_sha']})",
+            restart,
+            1,
+            latest,
         )
     if latest["decision"] == DO_NOT_SHIP:
         return Round(FIRST, "the patch changed after DO NOT SHIP", restart, 1, latest)

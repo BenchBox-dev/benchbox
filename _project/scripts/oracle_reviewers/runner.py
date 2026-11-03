@@ -12,7 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from . import absence, credentials, evidence, omp_pin, processes, protocol, redaction_check
+from . import absence, credentials, evidence, omp_pin, processes, promotion, protocol, redaction_check
 from .commands import Invocation, build
 from .policy import Reviewer
 from .verdict import (
@@ -249,8 +249,18 @@ def review(
     scratch.mkdir(parents=True, exist_ok=True)
     invocation = build(reviewer, workspace, prompt, scratch)
     staged_before = _digest(workspace / STAGED_DIFF_NAME)
+    promotion_before = promotion.staged_tree_digest(workspace)
     result = execute(invocation, reviewer.timeout_minutes * 60)
-    outcome = _judge(reviewer, invocation, result, workspace=workspace, staged_before=staged_before, now=now, plan=plan)
+    outcome = _judge(
+        reviewer,
+        invocation,
+        result,
+        workspace=workspace,
+        staged_before=staged_before,
+        promotion_before=promotion_before,
+        now=now,
+        plan=plan,
+    )
     return replace(outcome, capture=_captured(reviewer, result))
 
 
@@ -261,6 +271,7 @@ def _judge(
     *,
     workspace: Path,
     staged_before: str | None,
+    promotion_before: str | None = None,
     now: datetime,
     plan: Mapping[str, Any],
 ) -> ReviewOutcome:
@@ -281,6 +292,10 @@ def _judge(
     if _digest(workspace / STAGED_DIFF_NAME) != staged_before:
         reason = "the reviewer changed the staged pull request diff"
         return ReviewOutcome(None, absence.Absence(absence.INVALID, reason), diagnostic)
+    if promotion.staged_tree_digest(workspace) != promotion_before:
+        return ReviewOutcome(
+            None, absence.Absence(absence.INVALID, "the reviewer changed the staged promotion tree"), diagnostic
+        )
     if missing.absent:
         return ReviewOutcome(None, missing, diagnostic)
     if reviewer.harness == "omp" and omp_stream_without_answer(output):

@@ -1565,3 +1565,66 @@ App's integration ID, alongside `oracle-review`, which stopped being required on
 (`_project/decisions/oracle-review-check-retired-2026-10-24.md`). Its workflow
 now only notifies; its completion after a review event is how `oracle-gate`
 re-evaluates without a trusted trigger of its own.
+
+## Theseus promotion trust
+
+A change to `.github/theseus-lock.json` reviews the materialized upstream delta,
+not only the consumer's lock edit. Preparation verifies the promoted wheel
+against the reviewed source tree and verifies every downloaded artifact's
+SHA-256. The hosted gate requires an unedited oracle SHIP receipt bound to the
+exact consumer head and canonical lock digest; a stand-in approval cannot
+authorize a promotion.
+
+Preparation and the hosted gate read only the canonical lock path at the exact
+base and head commits. Renaming another file into that path does not establish a
+prior trusted lock: if the base has no canonical lock, bootstrap authorization is
+required. Renaming the canonical lock away is removal and is refused. Only an
+explicit GitHub HTTP 404 or a successful local tree lookup showing no canonical
+file counts as absence; other lookup failures hold the promotion.
+
+Dependency wheel hashes in the proposed lock are not provenance. Each dependency
+must also match an independently trusted pin in the **base commit's**
+`.github/oracle-reviewers.yml`:
+
+```yaml
+promotion:
+  dependencies:
+    normalized-package-name==1.2.3: <64-character lowercase SHA-256>
+```
+
+Names use lowercase with runs of `.`, `_`, and `-` normalized to `-`. The
+mapping defaults to empty, denying every dependency until its version and hash
+have been pinned through a separate trusted policy change. An author cannot
+authorize a new dependency by changing the policy in the promotion PR.
+`allowed_artifact_hosts` still limits download locations; an allowed host does
+not authorize arbitrary wheel bytes.
+Explicit empty `bootstrap_reviewers` or `allowed_artifact_hosts` lists are
+configuration errors, not requests to restore their defaults.
+
+The lock cannot contain two dependencies whose normalized distribution names
+match, even at different versions. Base-pinned dependency wheels may contain
+native libraries and wheel `.data` files. Their downloaded bytes, archive paths,
+metadata files, and RECORD hashes and sizes are verified without executing the
+contents. The promoted Theseus wheel retains its stricter source-match and
+pure-package rules, including rejection of native libraries and `.data` files.
+
+The first promotion additionally requires `bootstrap_baseline_commit`,
+`bootstrap_path_map`, and `bootstrap_reviewers` in the trusted base policy.
+The lock's bootstrap record must match that baseline, map, reviewer, and source
+commit. Its named reviewer must post an **unedited PR issue comment** using an
+authenticated GitHub `User` account in `bootstrap_reviewers`, containing this
+exact standalone line (substitute the complete digests):
+
+```text
+Theseus bootstrap approval: source=<40-character source_commit> lock=<64-character canonical lock SHA-256>
+```
+
+`promotion.bootstrap_approval_line(promotion.parse_lock(lock_text))` produces
+the line; the lock digest is `promotion.lock_digest`, not the raw JSON file
+hash. Bot comments, another author's comments, edited comments, and approvals
+for another lock or upstream source do not count. Repost a new comment after
+changing the lock. The hosted preparation and gate both enforce this approval;
+comment-read failures do not bypass it. Request a fresh oracle run after posting
+the approval; a gate sweep or manual dispatch can also re-evaluate the gate.
+Local advisory preparation explicitly skips PR-comment authorization because
+the PR may not yet exist. Local output never grants hosted gate authority.

@@ -40,6 +40,7 @@ ORACLE_SCENARIO_TESTS = (
     "tests/integration/oracle/test_sweep_listing_scenarios.py",
     "tests/integration/oracle/test_sweep_liveness_scenarios.py",
     "tests/integration/oracle/test_sweep_scenarios.py",
+    "tests/integration/oracle/test_theseus_promotion_scenario.py",
     "tests/integration/oracle/test_trust_scenarios.py",
 )
 WORKFLOW_TESTS_ROOT = "tests/unit/workflows/"
