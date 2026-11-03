@@ -260,7 +260,7 @@ def load_state(out_dir: Path) -> dict[str, Any]:
 
 
 def issue_body(state: Mapping[str, Any], opened: Mapping[str, Any], run_url: str) -> str:
-    tag = state["tag"]
+    tag = state.get("tag")
     kind = state["state"]
     manual = (
         "Resolve it by hand following `downstream/MAINTAINING.md` (Upstream refresh) in "

@@ -422,3 +422,13 @@ def test_the_command_in_a_not_pushed_issue_has_the_arguments_it_needs(tmp_path: 
     sync_issue(tmp_path, "https://run", runner)
     body = runner.ran("gh issue create")[0][-1]
     assert "--tag v30.29.0 --work-dir" in body and "--report" in body
+
+
+def test_the_state_a_failed_preparation_really_writes_is_enough_to_raise_the_monitor_issue(tmp_path: Path) -> None:
+    prepared = FakeRunner({"downstream.refresh latest": subprocess.CompletedProcess([], 2, "", "no network")})
+    state = prepare_or_report(tmp_path / "fork", tmp_path / "out", prepared)
+    assert "tag" not in state
+    (tmp_path / "out" / STATE_FILE).write_text(json.dumps(state), encoding="utf-8")
+    runner = FakeRunner(issue_handlers([]))
+    assert sync_issue(tmp_path / "out", "https://run", runner)["action"] == "created"
+    assert "no network" in runner.ran("gh issue create")[0][-1]
