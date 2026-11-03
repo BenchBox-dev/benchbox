@@ -174,7 +174,7 @@ def _bullet_texts(body: str) -> list[str]:
         if _BULLET_RE.match(line):
             current = [line.strip()[2:]]
             bullets.append(current)
-        elif current is not None and line.startswith((" ", "\t")) and line.strip():
+        elif current is not None and line.strip() and not line.lstrip().startswith("#"):
             current.append(line.strip())
         else:
             current = None
