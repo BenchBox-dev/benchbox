@@ -9,8 +9,50 @@ TOLERANCE = "0.000001"
 _SUM = "sum"
 _MAX = "max"
 _FIXED_SCALE = "fixed-scale"
-_REVENUE_FACTORS = frozenset({"l_extendedprice", "l_discount"})
+_REVENUE_SQL = "l_extendedprice * (1 - l_discount)"
+_SCALE_PRESERVING = (exp.Alias, exp.Paren, exp.Max, exp.Sum, exp.Window, exp.Subquery, exp.Select)
 _MAX_DEPTH = 12
+
+
+def _is_zero(node: exp.Expr | None) -> bool:
+    return node is None or (isinstance(node.unnest(), exp.Literal) and node.unnest().this == "0")
+
+
+def _is_revenue(node: exp.Expr | None) -> bool:
+    if node is None:
+        return False
+    node = node.unnest()
+    if isinstance(node, exp.Case):
+        return (
+            bool(node.args.get("ifs"))
+            and all(_is_revenue(branch.args.get("true")) for branch in node.args["ifs"])
+            and _is_zero(node.args.get("default"))
+        )
+    unqualified = node.copy()
+    for column in unqualified.find_all(exp.Column):
+        column.set("table", None)
+    return unqualified.sql().lower() == _REVENUE_SQL
+
+
+def _zero_fallback(inner: exp.Expr, parent: exp.Expr) -> bool:
+    if isinstance(parent, exp.Coalesce):
+        return all(_is_zero(other) for other in [parent.this, *parent.expressions] if other is not inner)
+    if isinstance(parent, exp.If):
+        return inner is parent.args.get("true")
+    if isinstance(parent, exp.Case):
+        branches = [branch.args.get("true") for branch in parent.args.get("ifs") or []]
+        others = [branch for branch in [*branches, parent.args.get("default")] if branch is not inner.args.get("true")]
+        return isinstance(inner, exp.If) and all(_is_zero(other) for other in others)
+    return False
+
+
+def _preserves_scale(inner: exp.Expr, root: exp.Expr) -> bool:
+    parent = inner.parent
+    while parent is not None and inner is not root:
+        if not isinstance(parent, _SCALE_PRESERVING) and not _zero_fallback(inner, parent):
+            return False
+        inner, parent = parent, parent.parent
+    return True
 
 
 def applies(sql: str) -> bool:
@@ -66,19 +108,15 @@ class _Scope:
         flags: set[str] = set()
         for sum_node in node.find_all(exp.Sum):
             flags.add(_SUM)
-            products = list(sum_node.find_all(exp.Mul))
-            if (
-                products
-                and sum_node.find(exp.Div) is None
-                and all(
-                    {column.name.lower() for column in mul.find_all(exp.Column)} == _REVENUE_FACTORS for mul in products
-                )
-            ):
+            if _is_revenue(sum_node.this) and _preserves_scale(sum_node, node):
                 flags.add(_FIXED_SCALE)
         if node.find(exp.Max) is not None:
             flags.add(_MAX)
         for column in node.find_all(exp.Column):
-            flags |= self._column_flags(column, depth)
+            column_flags = self._column_flags(column, depth)
+            if not _preserves_scale(column, node):
+                column_flags -= {_FIXED_SCALE}
+            flags |= column_flags
         return frozenset(flags)
 
     def is_revenue_max(self, node: exp.Expr) -> bool:

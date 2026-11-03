@@ -23,12 +23,37 @@ def test_revenue_subquery_equal_to_max_of_revenue_uses_tolerance():
 
 @pytest.mark.parametrize(
     "summed",
-    ["a", "a * (1 - b)", "l_extendedprice * l_tax", "l_extendedprice * (1 - l_discount) / l_quantity"],
+    [
+        "a",
+        "a * (1 - b)",
+        "l_extendedprice * l_tax",
+        "l_extendedprice * (1 - l_discount) / l_quantity",
+        "(l_extendedprice * (1 - l_discount)) * 0.000001",
+        "CASE WHEN l_tax > 0 THEN l_extendedprice * (1 - l_discount) ELSE l_tax END",
+    ],
 )
 def test_sums_without_a_proven_scale_keep_exact_equality(summed):
     sql = (
         f"SELECT s FROM t WHERE (SELECT SUM({summed}) FROM lineitem WHERE l_suppkey = t.k) = "
         f"(SELECT MAX(r.v) FROM (SELECT l_suppkey, SUM({summed}) AS v FROM lineitem GROUP BY l_suppkey) AS r)"
+    )
+    assert "ABS" not in rewrite_query(sql)
+
+
+@pytest.mark.parametrize(
+    ("total", "comparison"),
+    [
+        (f"SUM({REVENUE}) * 0.000001", "r.total = m.top"),
+        (f"SUM({REVENUE})", "r.total * 2 = m.top"),
+        (f"COALESCE(SUM({REVENUE}), 0.5)", "r.total = m.top"),
+        (f"CASE WHEN COUNT(*) > 1 THEN SUM({REVENUE}) ELSE 0.5 END", "r.total = m.top"),
+    ],
+)
+def test_revenue_scaled_outside_the_sum_keeps_exact_equality(total, comparison):
+    sql = (
+        f"WITH rev AS (SELECT l_suppkey, {total} AS total FROM lineitem GROUP BY l_suppkey), "
+        "mx AS (SELECT MAX(total) AS top FROM rev) "
+        f"SELECT r.l_suppkey FROM rev AS r JOIN mx AS m ON {comparison}"
     )
     assert "ABS" not in rewrite_query(sql)
 
