@@ -4,7 +4,7 @@
     "Refresh data come from dsdgen -update, generated before the maintenance timer starts; a test asserts dsdgen is not invoked between the timer start and stop and that the run is deterministic for a fixed scale factor and refresh-set index (same inputs, same checksums across two runs).",
     "Loading the refresh files into staging or target tables happens inside the timer through the adapter's generic loading path, with a test that fails if file reading moves before the timer.",
     "Connection open, initialize() and close are outside each operation's interval, and the interval starts at the first read of the refresh data; a test records event order.",
-    "Durations use mono_time()/elapsed_seconds(); a grep of benchbox/core/tpcds/maintenance*.py finds no time.time() used for a duration; python3 _project/scripts/timing_policy_check.py --strict (the make target that runs it) passes.",
+    "Durations use mono_time()/elapsed_seconds(); a grep of benchbox/core/tpcds/maintenance*.py finds no time.time() used for a duration; uv run -- python _project/scripts/timing_policy_check.py --strict passes.",
     "Result metadata carries a maintenance method identifier; comparing a result with the old method refuses or warns, as defined in the decision item's recorded outcome.",
     "Smoke: a DuckDB TPC-DS SF0.01 run with the maintenance phase completes with the new data source and reports each function's interval; paste the output summary in the PR.",
     "docs/internal/tpc-measured-intervals.md TPC-DS maintenance rows are updated; changelog fragment states that maintenance timings before this version are not comparable."
@@ -24,6 +24,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "d27ba53745084d64abda7eb9b3212571",
+      "session_id": "ada67604a2174486ada6b7b9a8c4f586"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a561db75579ad3167de9da38",
+      "at": "2026-11-03T15:10:21Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1ce9f8d0c0664272927ae50dcf55ce3d",
       "session_id": "ada67604a2174486ada6b7b9a8c4f586"
     }
   ]
