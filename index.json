@@ -27556,7 +27556,7 @@
       ],
       "priority": "high",
       "status": "open",
-      "title": "Give the perf gate's aggregate check an absolute floor so host noise stops failing the nightly"
+      "title": "Owner decision: close the aggregate-floor item on landed evidence, or keep it waiting on the 640 ms investigation"
     },
     "t3-perf-baseline-refresh-20261008": {
       "claim": null,
