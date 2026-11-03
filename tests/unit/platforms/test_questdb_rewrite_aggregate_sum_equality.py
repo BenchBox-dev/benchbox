@@ -47,6 +47,7 @@ def test_sums_without_a_proven_scale_keep_exact_equality(summed):
         (f"SUM({REVENUE})", "r.total * 2 = m.top"),
         (f"COALESCE(SUM({REVENUE}), 0.5)", "r.total = m.top"),
         (f"CASE WHEN COUNT(*) > 1 THEN SUM({REVENUE}) ELSE 0.5 END", "r.total = m.top"),
+        (f"IF(COUNT(*) > 1, SUM({REVENUE}), 0.0000005)", "r.total = m.top"),
     ],
 )
 def test_revenue_scaled_outside_the_sum_keeps_exact_equality(total, comparison):

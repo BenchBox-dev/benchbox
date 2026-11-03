@@ -38,7 +38,8 @@ def _zero_fallback(inner: exp.Expr, parent: exp.Expr) -> bool:
     if isinstance(parent, exp.Coalesce):
         return all(_is_zero(other) for other in [parent.this, *parent.expressions] if other is not inner)
     if isinstance(parent, exp.If):
-        return inner is parent.args.get("true")
+        arms = [parent.args.get("true"), parent.args.get("false")]
+        return any(arm is inner for arm in arms) and all(_is_zero(arm) for arm in arms if arm is not inner)
     if isinstance(parent, exp.Case):
         branches = [branch.args.get("true") for branch in parent.args.get("ifs") or []]
         others = [branch for branch in [*branches, parent.args.get("default")] if branch is not inner.args.get("true")]
