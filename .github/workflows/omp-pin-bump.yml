@@ -171,7 +171,7 @@ jobs:
           fi
           older="$(gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/pulls?state=open&base=develop&per_page=100" |
             jq -r --arg repo "$GITHUB_REPOSITORY" --arg version "$VERSION" '
-              def release: capture("^(?<major>[0-9]+)\\.(?<minor>[0-9]+)\\.(?<patch>[0-9]+)$") |
+              def release: capture("^(?<major>[0-9]+)[.](?<minor>[0-9]+)[.](?<patch>[0-9]+)$") |
                 [.major, .minor, .patch] | map(tonumber);
               add[] |
               select(.user.login == "github-actions[bot]") |

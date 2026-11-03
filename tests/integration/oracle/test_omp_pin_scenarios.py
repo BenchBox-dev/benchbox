@@ -100,7 +100,7 @@ def test_a_new_bump_pull_request_is_opened_and_its_review_is_dispatched_for_its_
     ]
 
 
-def test_a_rerun_reviews_a_bump_head_only_once_and_reviews_a_moved_head(harness: Harness) -> None:
+def test_a_rerun_deduplicates_review_and_refuses_unrelated_candidate_edits(harness: Harness) -> None:
     policy = _bumped_policy(harness)
     harness.open_bump_pull(BUMP_VERSION, policy)
     [pull] = harness.github.pulls.values()
@@ -114,11 +114,12 @@ def test_a_rerun_reviews_a_bump_head_only_once_and_reviews_a_moved_head(harness:
     assert len(harness.github.dispatches) == 1
     assert len(harness.github.pulls) == 1
 
-    moved = harness.push(BUMP_BRANCH, {"NOTES.md": "adjusted\n"}, "retune the bump")
+    harness.push(BUMP_BRANCH, {"NOTES.md": "adjusted\n"}, "retune the bump")
     again = harness.open_bump_pull(BUMP_VERSION, policy)
 
-    assert again.code == 0, again.stdout + again.stderr
-    assert [item["inputs"]["head"] for item in harness.github.dispatches] == [first, moved]
+    assert again.code != 0, again.stdout + again.stderr
+    assert "differs from the validated pin-only change" in again.stderr
+    assert [item["inputs"]["head"] for item in harness.github.dispatches] == [first]
     assert len(harness.github.pulls) == 1
 
 

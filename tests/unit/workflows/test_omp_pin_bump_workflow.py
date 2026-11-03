@@ -88,25 +88,32 @@ def lifecycle(tmp_path: Path) -> tuple[Path, Path, dict[str, str]]:
     subprocess.run(["git", "clone", str(remote), str(checkout)], check=True, capture_output=True)
     git(checkout, "config", "user.name", "Fixture Owner")
     git(checkout, "config", "user.email", "fixture@example.invalid")
+    git(checkout, "config", "core.autocrlf", "false")
     git(checkout, "checkout", "-b", "develop")
     policy = checkout / ".github" / "oracle-reviewers.yml"
     policy.parent.mkdir()
-    policy.write_text("omp:\n  version: 18.13.3\nclassifier:\n  mode: previous\n")
+    policy.write_text("omp:\n  version: 18.13.3\nclassifier:\n  mode: previous\n", encoding="utf-8", newline="\n")
     git(checkout, "add", ".github/oracle-reviewers.yml")
     git(checkout, "commit", "-m", "Initial policy")
     git(checkout, "push", "origin", "develop")
     git(checkout, "checkout", "-b", "chore/omp-pin-18.16.0")
-    policy.write_text("omp:\n  version: 18.16.0\nclassifier:\n  mode: previous\n")
+    policy.write_text("omp:\n  version: 18.16.0\nclassifier:\n  mode: previous\n", encoding="utf-8", newline="\n")
     git(checkout, "commit", "-am", "Candidate")
     git(checkout, "push", "origin", "HEAD")
     git(checkout, "checkout", "develop")
     git(checkout, "branch", "-D", "chore/omp-pin-18.16.0")
-    policy.write_text("omp:\n  version: 18.13.3\nclassifier:\n  mode: current\npromotion:\n  enabled: true\n")
+    policy.write_text(
+        "omp:\n  version: 18.13.3\nclassifier:\n  mode: current\npromotion:\n  enabled: true\n",
+        encoding="utf-8",
+        newline="\n",
+    )
     git(checkout, "commit", "-am", "Update classifier and promotion")
     git(checkout, "push", "origin", "develop")
     artifacts.mkdir()
-    (artifacts / "policy.yml").write_text(policy.read_text(encoding="utf-8").replace("18.13.3", "18.16.0"))
-    (artifacts / "pr-body.md").write_text("Validated candidate")
+    (artifacts / "policy.yml").write_text(
+        policy.read_text(encoding="utf-8").replace("18.13.3", "18.16.0"), encoding="utf-8", newline="\n"
+    )
+    (artifacts / "pr-body.md").write_text("Validated candidate", encoding="utf-8", newline="\n")
     bin_dir.mkdir()
     gh = bin_dir / "gh"
     gh.write_text(
@@ -114,6 +121,7 @@ def lifecycle(tmp_path: Path) -> tuple[Path, Path, dict[str, str]]:
         "import json, os, subprocess, sys\n"
         "from pathlib import Path\n"
         "from urllib.parse import parse_qs, urlsplit\n"
+        "sys.stdout.reconfigure(encoding='utf-8', newline='\\n')\n"
         "path = Path(os.environ['GH_FIXTURE'])\n"
         "state = json.loads(path.read_text())\n"
         "args = sys.argv[1:]\n"
@@ -147,13 +155,15 @@ def lifecycle(tmp_path: Path) -> tuple[Path, Path, dict[str, str]]:
         "    state.setdefault('reviews', []).append(next(a for a in args if a.startswith('head=')))\n"
         "else:\n"
         "    raise SystemExit('Unexpected gh call: ' + repr(args))\n"
-        "path.write_text(json.dumps(state))\n"
+        "path.write_text(json.dumps(state))\n",
+        encoding="utf-8",
+        newline="\n",
     )
     gh.chmod(0o755)
     candidate = pull(3931, "18.16.0")
     candidate["head"]["sha"] = git(checkout, "rev-parse", "origin/chore/omp-pin-18.16.0")
     state_path = tmp_path / "github.json"
-    state_path.write_text(json.dumps({"pulls": [candidate], "candidate": candidate}))
+    state_path.write_text(json.dumps({"pulls": [candidate], "candidate": candidate}), encoding="utf-8", newline="\n")
     environment = {
         **os.environ,
         "PATH": str(bin_dir) + os.pathsep + os.environ["PATH"],
@@ -196,7 +206,7 @@ def test_existing_candidate_imports_current_policy_without_changing_its_pin_and_
     previous = git(checkout, "rev-parse", "origin/chore/omp-pin-18.16.0")
     state = json.loads(state_path.read_text(encoding="utf-8"))
     state["reported_head"] = previous
-    state_path.write_text(json.dumps(state))
+    state_path.write_text(json.dumps(state), encoding="utf-8", newline="\n")
     result = run_opener(lifecycle)
     assert result.returncode == 0, result.stderr
     head = git(checkout, "rev-parse", "HEAD")
@@ -206,13 +216,14 @@ def test_existing_candidate_imports_current_policy_without_changing_its_pin_and_
     assert git(checkout, "diff", "--name-only", environment["PREPARED_BASE"], "HEAD") == policy
     assert git(checkout, "merge-base", previous, head) == previous
     assert git(checkout, "ls-remote", "origin", "chore/omp-pin-18.16.0").split()[0] == head
+    assert git(checkout, "ls-remote", "origin", "develop").split()[0] == environment["PREPARED_BASE"]
     assert json.loads(state_path.read_text(encoding="utf-8"))["reviews"] == [f"head={head}"]
     git(checkout, "checkout", "develop")
     git(checkout, "branch", "-D", "chore/omp-pin-18.16.0")
     state = json.loads(state_path.read_text(encoding="utf-8"))
     state["pulls"][0]["head"]["sha"] = head
     state["verdict"] = True
-    state_path.write_text(json.dumps(state))
+    state_path.write_text(json.dumps(state), encoding="utf-8", newline="\n")
     result = run_opener(lifecycle)
     assert result.returncode == 0, result.stderr
     assert git(checkout, "rev-parse", "HEAD") == head
@@ -220,7 +231,7 @@ def test_existing_candidate_imports_current_policy_without_changing_its_pin_and_
 
 
 def test_new_candidate_closes_only_older_unheld_automation_prs_across_pages(lifecycle) -> None:
-    checkout, state_path, _ = lifecycle
+    checkout, state_path, environment = lifecycle
     git(checkout, "push", "origin", "--delete", "chore/omp-pin-18.16.0")
     state = json.loads(state_path.read_text(encoding="utf-8"))
     fork = pull(8, "18.11.0")
@@ -233,12 +244,14 @@ def test_new_candidate_closes_only_older_unheld_automation_prs_across_pages(life
         pull(5, "18.12.0", author="person"),
         fork,
     ]
-    state_path.write_text(json.dumps(state))
+    state_path.write_text(json.dumps(state), encoding="utf-8", newline="\n")
     result = run_opener(lifecycle)
     assert result.returncode == 0, result.stderr
     state = json.loads(state_path.read_text(encoding="utf-8"))
     assert state["created"] == 1
     assert state["closed"] == [1, 2]
+    assert git(checkout, "ls-remote", "origin", "develop").split()[0] == environment["PREPARED_BASE"]
+    assert git(checkout, "diff", "--name-only", environment["PREPARED_BASE"], "HEAD") == ".github/oracle-reviewers.yml"
     assert state["reviews"] == [f"head={git(checkout, 'rev-parse', 'HEAD')}"]
 
 
@@ -265,7 +278,9 @@ def test_refused_candidates_do_not_push_close_other_prs_or_start_reviews(lifecyc
             policy.write_text(
                 policy.read_text(encoding="utf-8").replace("18.16.0", "18.16.1")
                 if failure == "edited"
-                else "invalid policy\n"
+                else "invalid policy\n",
+                encoding="utf-8",
+                newline="\n",
             )
         git(checkout, "commit", "-am", "Manual candidate changes")
         git(checkout, "push", "origin", "HEAD")
@@ -274,7 +289,7 @@ def test_refused_candidates_do_not_push_close_other_prs_or_start_reviews(lifecyc
         git(checkout, "branch", "-D", "chore/omp-pin-18.16.0")
     else:
         environment["PREPARED_BASE"] = git(checkout, "rev-parse", "HEAD~1")
-    state_path.write_text(json.dumps(state))
+    state_path.write_text(json.dumps(state), encoding="utf-8", newline="\n")
     previous = git(checkout, "ls-remote", "origin", "chore/omp-pin-18.16.0").split()[0]
     result = run_opener(lifecycle)
     assert result.returncode == (0 if failure == "closed" else 1), result.stderr
