@@ -18328,10 +18328,13 @@
     },
     "perf-arrow-aware-result-capture-20261030": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "fetch-timing-contract-decision-20261103",
+        "power-test-times-query-generation-20261031"
+      ],
       "priority": "high",
       "status": "open",
-      "title": "Decide the fetch-timing contract and let execution paths use Arrow results"
+      "title": "Let execution paths receive results as Arrow and build rows lazily for digest and validation, per the recorded fetch-timing contract"
     },
     "perf-arrow-fetch-native-drivers-20261030": {
       "claim": null,
