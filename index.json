@@ -7279,6 +7279,13 @@
       "status": "done",
       "title": "A dsn platform option carrying user:password@host is exported verbatim in internal result metadata"
     },
+    "databend-release-uat-coverage": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Restore Databend to the release UAT gate"
+    },
     "databricks-adapter-correct-data-loading-approach-copy-into-unity-catalog-volumes": {
       "claim": null,
       "needs": [],

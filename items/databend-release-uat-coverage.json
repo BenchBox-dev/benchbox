@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Every intended Databend release-UAT cell passes, or has a documented skip citing a reproduced engine limitation",
+    "No scale 0.01/0.1 timeout cells pruned, validation loosened, timeouts raised or memory limits changed without owner approval",
+    "Databend re-added to release-gate-03-docker-oltp.yaml and the release-v2.yml olap shard, with the 80% eligible-pair floor recomputed",
+    "A passing stage-3 dry run with Databend included"
+  ],
+  "context": "Created 2026-11-03 from the approved capture ~/.todo-db/finding-drafts/benchbox/2026-11-02-databend-release-uat-coverage.md (owner decision 2026-11-02 during 0.5.0rc3 release UAT).",
+  "description": "The owner approved excluding Databend from the 0.5.0rc3 release UAT and creating this follow-up. Databend remains an available adapter; the exclusion removes release certification, not the adapter.\n\nEvidence: GitHub Actions run 41384413935 at commit 5bad4ba5a2, artifact dryrun-stage3-olap (local copy ~/Developer/benchmark_runs/release-uat-dryrun-9/art/dryrun-stage3-olap). Its stage-3 olap shard reports 14 Databend cells exiting without JSON, four failing primitives cells, and TPC-Havoc timing out after 1200 s at scale 0.01. Doris and SingleStore passed in the same shard.\n\nThe exclusion landed in #3902: tests/uat/configs/release-gate-03-docker-oltp.yaml excludes databend (floor 105 of 132 eligible pairs) and the release-v2.yml olap shard runs doris,singlestore.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ed3e705fb95efd658566a5ab",
+      "at": "2026-11-03T21:29:20Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b9fab5cecc644620a95ab1c8786fb614",
+      "session_id": "9b17c49206d943f8ad6f7146bd3cb25b"
+    }
+  ]
+}
