@@ -18331,8 +18331,7 @@
     "perf-arrow-aware-result-capture-20261030": {
       "claim": null,
       "needs": [
-        "fetch-timing-contract-decision-20261103",
-        "power-test-times-query-generation-20261031"
+        "fetch-timing-contract-decision-20261103"
       ],
       "priority": "high",
       "status": "open",
