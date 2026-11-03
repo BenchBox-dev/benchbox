@@ -28720,6 +28720,13 @@
       "status": "done",
       "title": "✅ TPC-Havoc Variant Modularization"
     },
+    "tpc-measured-intervals-reference-20261103": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Write one cited reference of every TPC measured-interval timer site and its known deviations"
+    },
     "tpc-official-benchmark-classes-broken": {
       "claim": null,
       "needs": [],
