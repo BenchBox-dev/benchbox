@@ -29271,7 +29271,7 @@
         "perf-tpch-rf1-bulk-load-20261031"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "TPC-H RF1 native ingest for Snowflake (PUT then COPY INTO), gated on live-run approval"
     },
     "tpch-skew-dataframe-sql-id-mapping": {
