@@ -23,6 +23,7 @@ jobs:
     outputs:
       state: ${{ steps.prepare.outputs.state }}
       version: ${{ steps.prepare.outputs.version }}
+      base: ${{ steps.prepare.outputs.base }}
 
     steps:
       - name: Checkout develop
@@ -39,10 +40,11 @@ jobs:
         id: prepare
         env:
           OUT_DIR: ${{ runner.temp }}/omp-bump
-        run: >-
-          uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 --
-          python -m _project.scripts.oracle_reviewers.omp_bump prepare
-          --policy .github/oracle-reviewers.yml --out-dir "$OUT_DIR"
+        run: |
+          echo "base=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- \
+            python -m _project.scripts.oracle_reviewers.omp_bump prepare \
+            --policy .github/oracle-reviewers.yml --out-dir "$OUT_DIR"
 
       - name: Report the candidate
         if: always() && steps.prepare.outputs.state != ''
@@ -88,7 +90,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
           ref: develop
-          fetch-depth: 1
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Fetch the prepared bump
@@ -102,6 +104,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OUT_DIR: ${{ runner.temp }}/omp-bump
           VERSION: ${{ needs.bump.outputs.version }}
+          PREPARED_BASE: ${{ needs.bump.outputs.base }}
         shell: bash
         run: |
           set -euo pipefail
@@ -109,30 +112,82 @@ jobs:
             echo "refusing a version that is not a release number: ${VERSION}" >&2
             exit 1
           fi
+          if [ "$(git rev-parse HEAD)" != "$PREPARED_BASE" ]; then
+            echo "develop changed after candidate validation; rerun preparation before publishing." >&2
+            exit 1
+          fi
           BRANCH="chore/omp-pin-${VERSION}"
-          existing="$(gh api "repos/${GITHUB_REPOSITORY}/pulls?state=all&head=${GITHUB_REPOSITORY%%/*}:${BRANCH}&per_page=100")"
-          PR="$(jq -r '[.[] | select(.state == "open")][0].number // empty' <<<"$existing")"
+          existing="$(gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/pulls?state=all&base=develop&head=${GITHUB_REPOSITORY%%/*}:${BRANCH}&per_page=100" | jq 'add')"
+          PR="$(printf '%s\n' "$existing" | jq -r '[.[] | select(.state == "open")][0].number // empty')"
+          git config user.name "benchbox-bot"
+          git config user.email "bot@benchbox.dev"
+          AUTH="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')"
           if [ -z "$PR" ]; then
-            if [ "$(jq 'length' <<<"$existing")" != 0 ]; then
+            if [ "$(printf '%s\n' "$existing" | jq 'length')" != 0 ]; then
               echo "A closed pull request for ${BRANCH} already exists; nothing to open."
               exit 0
             fi
-            git config user.name "benchbox-bot"
-            git config user.email "bot@benchbox.dev"
+            git show-ref --verify --quiet "refs/remotes/origin/${BRANCH}" && {
+              echo "Refusing to overwrite an existing branch without an open pull request." >&2
+              exit 1
+            }
             git checkout -b "$BRANCH"
             cp "$OUT_DIR/policy.yml" .github/oracle-reviewers.yml
             git add .github/oracle-reviewers.yml
             git commit -m "chore(oracle): pin omp ${VERSION}"
-            AUTH="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')"
             git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${AUTH}" push origin "$BRANCH"
             PR="$(gh api --method POST "repos/${GITHUB_REPOSITORY}/pulls" \
               -f title="chore(oracle): pin omp ${VERSION}" -F body=@"$OUT_DIR/pr-body.md" \
               -f base=develop -f head="$BRANCH" --jq .number)"
+          else
+            if ! printf '%s\n' "$existing" | jq -e --arg repo "$GITHUB_REPOSITORY" '
+              .[] | select(.state == "open") |
+              .user.login == "github-actions[bot]" and
+              (.head.repo.full_name | ascii_downcase) == ($repo | ascii_downcase) and
+              ([.labels[].name] | index("no-auto-merge") | not)
+            ' > /dev/null; then
+              echo "Refusing to refresh a held or non-automation pull request." >&2
+              exit 1
+            fi
+            EXPECTED_HEAD="$(printf '%s\n' "$existing" | jq -r '.[] | select(.state == "open") | .head.sha')"
+            git fetch origin "$BRANCH"
+            git checkout -b "$BRANCH" FETCH_HEAD
+            if [ "$(git rev-parse HEAD)" != "$EXPECTED_HEAD" ]; then
+              echo "Candidate changed during refresh; refusing to update it." >&2
+              exit 1
+            fi
+            if ! git merge-base --is-ancestor "$PREPARED_BASE" HEAD; then
+              git merge --no-commit --no-ff "$PREPARED_BASE"
+              if ! cmp -s .github/oracle-reviewers.yml "$OUT_DIR/policy.yml"; then
+                echo "Refusing to replace candidate edits or a changed pin with the prepared policy." >&2
+                exit 1
+              fi
+              git commit -m "chore(oracle): refresh omp ${VERSION} against current policy"
+              git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${AUTH}" push origin "$BRANCH"
+            elif ! cmp -s .github/oracle-reviewers.yml "$OUT_DIR/policy.yml"; then
+              echo "Existing candidate differs from the validated policy; leaving it unchanged." >&2
+              exit 1
+            fi
           fi
+          older="$(gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/pulls?state=open&base=develop&per_page=100" |
+            jq -r --arg repo "$GITHUB_REPOSITORY" --arg version "$VERSION" '
+              def release: capture("^(?<major>[0-9]+)\\.(?<minor>[0-9]+)\\.(?<patch>[0-9]+)$") |
+                [.major, .minor, .patch] | map(tonumber);
+              add[] |
+              select(.user.login == "github-actions[bot]") |
+              select((.head.repo.full_name | ascii_downcase) == ($repo | ascii_downcase)) |
+              select([.labels[].name] | index("no-auto-merge") | not) |
+              select(.head.ref | startswith("chore/omp-pin-")) |
+              select((.head.ref | ltrimstr("chore/omp-pin-") | release) < ($version | release)) |
+              .number')"
+          for OLD_PR in $older; do
+            gh pr close "$OLD_PR" --repo "$GITHUB_REPOSITORY" \
+              --comment "Superseded by #${PR}, which proposes omp ${VERSION}. The replacement still requires candidate validation and all merge gates."
+          done
           HEAD_SHA="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}" --jq .head.sha)"
           verdicts="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/statuses?per_page=100" --jq '.[] | select(.context == "oracle-verdict") | .id')"
           titles="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/oracle-verdict.yml/runs?per_page=100" --jq '.workflow_runs[].display_title')"
-          if [ -n "$verdicts" ] || grep -qF "pr=${PR} head=${HEAD_SHA}" <<<"$titles"; then
+          if [ -n "$verdicts" ] || printf '%s\n' "$titles" | grep -F "pr=${PR} head=${HEAD_SHA}" > /dev/null; then
             echo "Pull request #${PR} already has a review for ${HEAD_SHA}."
             exit 0
           fi

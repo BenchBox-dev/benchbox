@@ -1237,6 +1237,20 @@ and the `--help` difference from the previous build. A red candidate opens
 nothing: the old pin stands and the run fails with the suite output in its
 summary. `make omp-bump-prepare` runs the same preparation locally.
 
+Preparation records the `develop` commit it validated. The opener refuses to
+publish if its checkout no longer matches that commit. For an existing open
+automation candidate, it merges that base into the candidate branch without
+rewriting history, then requires the resulting policy to match the validated
+artifact exactly before pushing. Conflicts, candidate edits, changed pins,
+concurrent head changes, and the `no-auto-merge` label stop the refresh.
+Refreshing the head invalidates any previous owner evidence.
+
+Once the candidate is published or refreshed, the opener closes older stable
+`chore/omp-pin-<version>` pull requests opened by GitHub Actions in this
+repository against `develop`. It leaves held pull requests, forks, human
+pull requests, newer candidates, and previously closed candidates alone.
+Superseding a candidate does not approve or merge its replacement.
+
 GitHub does not start `pull_request_target` workflows for a pull request the
 job token opens, and the sweep never bootstraps a pull request with no state or
 prior run, so the bump job starts the review itself. Right after it opens the
