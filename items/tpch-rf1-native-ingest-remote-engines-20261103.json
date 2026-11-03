@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "G1 to G3 each have a dated owner decision quoted in context before the corresponding engine is touched.",
+    "For each engine implemented: after apply_rf1 on update set 1 at SF0.01, ORDERS and LINEITEM row counts and per-column checksums equal those from the VALUES path on an identical starting table (evidence pasted in context; live run, not a mock).",
+    "For each engine: a timer-boundary unit test shows file transfer or formatting, the COPY or LOAD statement and BEGIN/COMMIT are inside the RF1 timer, and only relocation is before it.",
+    "RF1 duration on SF1 for each implemented engine is recorded next to the VALUES path measured in the same session; if the native path is not faster, record the numbers and revert that engine to the fallback.",
+    "An engine without owner approval or without a passing live run is explicitly left on the fallback and named as such in the doc row and in a closing context note."
+  ],
+  "context": "Origin: 2026-11-03 root-cause analysis of TPC-H RF1 timing (5 whys) and its adversarial review. Spec clauses cited here were read from the published PDFs at the links on 2026-11-03; re-read them rather than trusting this text.",
+  "description": "Extend the RF1 ingest capability added by perf-tpch-rf1-bulk-load-20261031 to the two remaining refresh-capable engines that still use the VALUES fallback: Snowflake (supports_refresh_functions = True in benchbox/platforms/snowflake.py) and SingleStore (benchbox/platforms/singlestore.py).\n\nDecision gates (owner):\nG1. Owner approves live-cloud spend for Snowflake runs in this task and names the account or credentials source. Without G1, do not run any Snowflake command; ship nothing for Snowflake.\nG2. Relocation and formatting on Snowflake. Proposed: PUT with AUTO_COMPRESS=FALSE before the timer (relocation only), then COPY INTO with ON_ERROR=ABORT_STATEMENT inside the timer. Whether default auto-compression counts as 'data formatting' under TPC-H 5.3.7.10 is unresolved; the owner decides, and the choice is recorded in the doc row. Do not reuse the adapter's load_data (it truncates and uses ON_ERROR='CONTINUE').\nG3. SingleStore: confirm LOAD DATA LOCAL INFILE is permitted on the target (local_infile enabled) before relying on it; if it is not, record that and leave SingleStore on the fallback.\n\nSpec: TPC-H 3.0.1 clause 5.3.7.10; only relocation may precede the timer.\n\nGuardrails: Guardrails for all code work: work only in a linked worktree (make worktree-create); never edit the primary clone. No explanatory comments or docstrings in source (make comment-policy-check). Durations use benchbox.utils.clock.mono_time()/elapsed_seconds(). Add a changelog.d/ fragment. Cited line numbers are orientation only: re-read the named symbols, docs and spec clauses before editing and treat a mismatch as a reason to stop and update this item. No live-cloud runs without owner approval; heavy runs only through make heavy-run or a lock-taking entry point. Green focused tests are not release certification. A partial result is acceptable: each engine closes independently; an engine without proof stays on the VALUES fallback and is listed as such in docs/internal/tpc-measured-intervals.md.",
+  "links": [
+    "https://www.tpc.org/tpc_documents_current_versions/pdf/tpc-h_v3.0.1.pdf",
+    "benchbox/platforms/snowflake.py",
+    "benchbox/platforms/singlestore.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a561db75579ad3167de9da38",
+      "at": "2026-11-03T15:07:31Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "82ad2fb2896a45e8af819af6b3d41ac7",
+      "session_id": "ada67604a2174486ada6b7b9a8c4f586"
+    }
+  ]
+}

@@ -29219,6 +29219,15 @@
       "status": "open",
       "title": "Start the TPC-H refresh stream window after its connection is open, matching the query streams"
     },
+    "tpch-rf1-native-ingest-remote-engines-20261103": {
+      "claim": null,
+      "needs": [
+        "perf-tpch-rf1-bulk-load-20261031"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "TPC-H RF1 native ingest for Snowflake and SingleStore, gated on live-run approval"
+    },
     "tpch-skew-dataframe-sql-id-mapping": {
       "claim": null,
       "needs": [],
