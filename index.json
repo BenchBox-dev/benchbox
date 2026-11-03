@@ -27861,13 +27861,18 @@
       "title": "Complete unpooled Theseus observations and verify end-to-end extraction closeout"
     },
     "theseus-promotion-review-path-benchbox-20261102": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-04T02:28:21Z",
+        "generation": "4d1f0bac576149d0b5dfa06a440cc9ee",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b58f5aa5b2bb5e33c84a53cb"
+      },
       "needs": [
         "theseus-adr-inventory-baseline-20261102",
         "theseus-decision-promotion-evidence-form-20261102"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Enforce full-delta Theseus promotion review in BenchBox before extracting the reviewer"
     },
     "theseus-release-bootstrap-evidence-20261102": {
