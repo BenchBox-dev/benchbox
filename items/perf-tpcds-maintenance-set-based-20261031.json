@@ -1,10 +1,17 @@
 {
   "acceptance": [
-    "Maintenance handlers issue a bounded number of statements per operation, not per row.",
-    "Post-maintenance table row counts and checksums match the current implementation for a fixed seed.",
-    "Maintenance time at SF1 on DuckDB drops measurably."
+    "Each maintenance operation issues a bounded number of statements independent of row count: a test with a statement-counting connection shows the count is the same at 10 and 10,000 refresh rows.",
+    "For the same dsdgen refresh set, post-maintenance table row counts and per-column checksums equal those produced by the per-row implementation on the base commit, on DuckDB at SF0.01 (the earlier criterion 'for a fixed seed' is retired because the data source is no longer seeded).",
+    "Maintenance time at SF1 on DuckDB drops measurably; before and after durations on the same host are pasted in the PR.",
+    "No set-based work is moved outside the timed interval; a boundary test shows the statements run between the interval's start and stop.",
+    "docs/internal/tpc-measured-intervals.md maintenance rows updated; changelog fragment notes the performance change."
   ],
-  "description": "benchbox/core/tpcds/maintenance_operations.py:215 starts the timer before handlers run. _update_customer, _update_item, _update_inventory, _bulk_update_inventory (:498-722) send one parameterized UPDATE per row (one round trip per row on cloud warehouses). Sales inserts (:314-370) build rows with Python random and send 100-row VALUES batches. _insert_returns_generic (:371-430) fetchall()s sales rows to Python and rebuilds them. Use set-based SQL (UPDATE ... FROM (SELECT ...), INSERT ... SELECT) or a staged bulk load, keeping results deterministic.",
+  "context": "2026-11-03 re-diagnosis: the per-operation timer also covers connection open, initialize() and close, a hardcoded 10-row synthetic insert and time.time() durations; those defects and the data source are owned by tpcds-maintenance-dsdgen-refresh-data-20261103. The earlier acceptance criterion (checksums match for a fixed seed) could not hold because the generator is seeded from int(time.time()). Origin: root-cause analysis of RF1 timing and its adversarial review.",
+  "description": "Replace per-row maintenance statements with set-based SQL, after the maintenance data source is fixed by tpcds-maintenance-dsdgen-refresh-data-20261103. Do not start before that item is done: today's handlers build rows in Python with random values, so a performance rewrite of them would be rewritten again when dsdgen refresh sets arrive.\n\nFacts (benchbox/core/tpcds/maintenance_operations.py; re-read before editing): _update_customer, _update_item, _update_inventory and _bulk_update_inventory send one parameterized UPDATE per row (one round trip per row on cloud warehouses); sales inserts build rows with Python random and send 100-row VALUES batches; _insert_returns_generic fetchall()s sales rows into Python and rebuilds them. TPC-DS 4.0.0 clauses 5.2.5 and 5.2.7 keep loading and staging inside the timed maintenance interval, so set-based SQL and staged loads both stay inside the timer.\n\nChange: use set-based SQL (UPDATE ... FROM (SELECT ...), INSERT ... SELECT) or the staged load from the dsdgen item, keeping results deterministic for a fixed refresh data set.\n\nGuardrails for all code work: work only in a linked worktree (make worktree-create); never edit the primary clone. No explanatory comments or docstrings in source (make comment-policy-check). Durations use benchbox.utils.clock.mono_time()/elapsed_seconds(). Add a changelog.d/ fragment. Cited line numbers are orientation only: re-read the named symbols, docs and spec clauses before editing and treat a mismatch as a reason to stop and update this item. No live-cloud runs without owner approval; heavy runs only through make heavy-run or a lock-taking entry point. Green focused tests are not release certification.",
+  "links": [
+    "https://www.tpc.org/tpc_documents_current_versions/pdf/tpc-ds_v4.0.0.pdf",
+    "benchbox/core/tpcds/maintenance_operations.py"
+  ],
   "sessions": [
     {
       "actor": "mcp:claude-code:root@vm:cb45f246c9de058740ccbeed",
@@ -13,6 +20,14 @@
       "op": "create",
       "op_id": "cec7ab6ae6d1490e9ee0832bc66a4d73",
       "session_id": "d2b018a349924f4f88b746458c80b878"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a561db75579ad3167de9da38",
+      "at": "2026-11-03T15:09:08Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "fafb0b7dcdd141a38309aa68aa19b496",
+      "session_id": "ada67604a2174486ada6b7b9a8c4f586"
     }
   ]
 }
