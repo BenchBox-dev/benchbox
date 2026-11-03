@@ -18464,10 +18464,12 @@
     },
     "perf-tpch-rf1-bulk-load-20261031": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "tpc-measured-intervals-reference-20261103"
+      ],
       "priority": "high",
       "status": "open",
-      "title": "TPC-H RF1: replace timed Python CSV parsing and VALUES inserts with bulk load"
+      "title": "TPC-H RF1: ingest the update-set files with each engine's native reader inside the RF1 timer; keep VALUES as fallback"
     },
     "perf-trino-presto-bulk-load-20261030": {
       "claim": null,

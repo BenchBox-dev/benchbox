@@ -1,10 +1,25 @@
 {
   "acceptance": [
-    "RF1 on DuckDB and PostgreSQL loads through a native bulk path; inserted row counts match the current path.",
-    "Spec review recorded for which staging steps may sit outside the RF1 timer.",
-    "RF1 time at SF1 on DuckDB drops measurably vs current path."
+    "Parity: on DuckDB, PostgreSQL and SQLite, after apply_rf1 on update set 1 at SF0.01, ORDERS and LINEITEM row counts and a per-column checksum over every column (including DECIMAL and DATE) equal those produced by the VALUES path from an identical starting database. The test fails if any column differs. PostgreSQL uses the repo's existing PostgreSQL test fixture; if it is unavailable locally, the PR records that and CI runs it.",
+    "Timer boundary: a unit test (pattern of tests/unit/core/throughput/test_stream_timing.py) shows, in both the power and throughput refresh paths, that reading the files, parsing, BEGIN, the insert and COMMIT all happen between the RF1 timer's start and stop. The test fails if reading or parsing moves before the timer.",
+    "Fallback: an adapter without the capability (a Mock adapter) still issues the same INSERT ... VALUES statements as before; the existing tests in tests/unit/core/tpch/test_tpch_refresh.py pass without edits to their expectations.",
+    "Speed (throwaway script; numbers pasted in context, script not committed): on DuckDB on one host in one session, RF1 duration at SF1 is at least 3x lower and at SF10 at least 10x lower than the VALUES path. If not met, apply Gate G2.",
+    "Atomicity: injecting a bad row mid-ingest leaves no RF1 rows in ORDERS or LINEITEM and the connection usable afterwards, on DuckDB and PostgreSQL.",
+    "No mode guard: the diff adds no config flag, environment variable or CLI option that changes where parsing or staging runs relative to the timer, and no call to adapter.load_data from refresh code; reviewer greps the diff for both.",
+    "Architecture: the repo's import-linter contract passes, and make comment-policy-check passes.",
+    "Smoke: a DuckDB TPC-H SF0.01 run with refresh functions enabled (the existing refresh option) completes with RF1 and RF2 SUCCESS and the same RF1 row count as on the base commit.",
+    "docs/internal/tpc-measured-intervals.md rows for RF1 are updated; changelog fragment describes the native ingest and states that RF1 durations from earlier versions used VALUES insertion."
   ],
-  "description": "benchbox/core/tpch/refresh.py:232-299: _source_row_chunks reads orders.tbl.uN / lineitem.tbl.uN with csv.reader, _sql_literal converts every field (Decimal/int), and apply_rf1 sends 1000-row INSERT ... VALUES via connection.execute (:275). All of this runs inside the RF1 timer (tpch/power_test.py:439-445, tpch/throughput_test.py:447-454), so Python cost feeds Power@Size and Throughput@Size (~750k rows at SF100). Use each platform's bulk path (COPY, read_csv, Stream Load, stage) into a staging table, then INSERT ... SELECT, ideally with staging done before the timer if the spec allows. RF2 builds IN-lists from Python key chunks (:247-263); lower cost, review together.",
+  "context": "2026-11-03 rewrite. Replaced the earlier prescription ('each platform's bulk path ... Stream Load ... staging before the timer if the spec allows'): clause 5.3.7.10 forbids pre-timer staging, Stream Load is irrelevant because StarRocks and Doris do not declare refresh support, and reusing load_data is unsafe. Origin: root-cause analysis of RF1 timing and its adversarial review. Related: tpch-refresh-checks-timing-per-decision-20261103 (pre-timer checks), tpch-refresh-stream-window-excludes-connect-20261103, tpch-rf1-native-ingest-remote-engines-20261103, tpch-ducklake-refresh-support-20261103.",
+  "description": "Problem. apply_rf1 (benchbox/core/tpch/refresh.py) reads orders.tbl.uN and lineitem.tbl.uN with csv.reader, converts every field in _sql_literal, and sends 1000-row INSERT ... VALUES through connection.execute. Measured on DuckDB (in-memory, empty tables, best of 3, one macOS host): SF1, 7,322 rows: current 0.208 s, Python parse and literal build alone 0.030 s, INSERT ... SELECT FROM read_csv 0.056 s. SF10, 75,092 rows: 2.145 s, 0.283 s, 0.142 s. About 86% of RF1 time is the engine parsing VALUES text, not Python. Power@Size is a geometric mean over 24 terms, so RF1 running 15x slower than native costs about 10.7% of Power@Size at SF10 (factor^-1/24). The two paths' column values were not compared; only row counts matched.\n\nSpec constraint (TPC-H 3.0.1 clause 5.3.7.10): before the refresh stream the dbgen data 'may only be generated, permuted and relocated to the SUT'; data formatting and database activity on them must be inside the RF timing. So parsing, staging and loading all stay INSIDE the RF1 timer. Do not move any of that before the timer. Copying the files to where the server can read them may stay outside. The RF interval also includes BEGIN and COMMIT (5.3.7.3).\n\nDesign (defaults; the owner may override in context): add a capability Protocol under benchbox/core/contracts following the pattern in platform_capabilities.py (NativeTableLoader, ExternalTableLoader). apply_rf1 receives an optional ingest capability resolved from the platform adapter that the refresh connection already carries (PlatformAdapterConnection.platform_adapter in benchbox/platforms/base/connection_wrappers.py). Adapters without the capability keep today's VALUES path unchanged. There is one timing path only: no engine-only or fast mode and no option that moves parsing or staging outside the timer. Do NOT call adapter.load_data for RF1: it is built for initial load (Snowflake's version truncates and uses ON_ERROR='CONTINUE'); RF1 is an append-only insert into populated ORDERS and LINEITEM inside one transaction. core must not import benchbox.platforms (.importlinter).\n\nThis item covers the Protocol, the wiring in platform_power.py, execution.py and official_benchmark.py, and implementations for DuckDB (read_csv with explicit column types), PostgreSQL (COPY, reusing the trailing-delimiter handling in postgresql.py) and SQLite (bound executemany). Snowflake and SingleStore stay on the fallback until tpch-rf1-native-ingest-remote-engines-20261103. DuckLake is handled by tpch-ducklake-refresh-support-20261103. RF2 key parsing and IN-list building stay inside the timer under 5.3.7.10; change them only if a measurement shows they matter, and record it.\n\nDecision gates. G1 (during implementation): if column-level parity fails for any type, stop and record the failing column; do not weaken the comparison. G2 (before closing): if the speedup thresholds below are not met, record the measured numbers and ask the owner; do not lower the thresholds yourself.\n\nGuardrails for all code work: work only in a linked worktree (make worktree-create); never edit the primary clone. No explanatory comments or docstrings in source (make comment-policy-check). Durations use benchbox.utils.clock.mono_time()/elapsed_seconds(). Add a changelog.d/ fragment. Cited line numbers are orientation only: re-read the named symbols, docs and spec clauses before editing and treat a mismatch as a reason to stop and update this item. No live-cloud runs without owner approval; heavy runs only through make heavy-run or a lock-taking entry point. Green focused tests are not release certification.",
+  "links": [
+    "https://www.tpc.org/tpc_documents_current_versions/pdf/tpc-h_v3.0.1.pdf",
+    "benchbox/core/tpch/refresh.py",
+    "benchbox/core/contracts/platform_capabilities.py",
+    "benchbox/platforms/base/connection_wrappers.py",
+    "tests/unit/core/tpch/test_tpch_refresh.py",
+    "tests/unit/core/throughput/test_stream_timing.py"
+  ],
   "sessions": [
     {
       "actor": "mcp:claude-code:root@vm:cb45f246c9de058740ccbeed",
@@ -13,6 +28,14 @@
       "op": "create",
       "op_id": "b3875de41cbd4659a0f7aa34a94b50ad",
       "session_id": "d2b018a349924f4f88b746458c80b878"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a561db75579ad3167de9da38",
+      "at": "2026-11-03T15:08:26Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "44facbba826b4d19a3df9f098da52bcf",
+      "session_id": "ada67604a2174486ada6b7b9a8c4f586"
     }
   ]
 }
