@@ -6,7 +6,7 @@
     "Owner records completed settings/secret administration and explicit approval for the later first live gate.",
     "Before the first live gate, establish a distinct bootstrap artifact from owner-reviewed Theseus source: trusted committed consumer lock, wheel/dependency SHA-256 values and immutable fetch locations. Verify install from those bytes and record source/hash approval. This is not the final BenchBox release and cannot substitute for final parity/promotion."
   ],
-  "context": "Owner-only administrative boundary. Stop with exact requested owner operation if not authorized/available; ordinary repository implementation permission is not authority to change secrets or hosted settings.",
+  "context": "Owner-only administrative boundary. Stop with exact requested owner operation if not authorized/available; ordinary repository implementation permission is not authority to change secrets or hosted settings.\n\nDelivery: no PR. Owner action or tracker evidence only, recorded on this item.",
   "description": "Owner-controlled setup for Theseus PR governance, not reuse of benchbox-oracle. Define the distinct Theseus App login and integration ID, installations, attesters, required-check source binding, secret-bearing environment and least-privilege token permissions. Provision a named Theseus tailnet identity/client credential, but do not add a shared gateway client or execute live reviews until observation disposition and the first-live-gate item permit activation.\nDecision gate: owner must approve and perform App, branch-protection, environment, secret and tailnet administration that agents cannot authorize or access. Record public identifiers, settings evidence and validation results only; never secret values. No App key in a wheel, release build, PR artifact, log or candidate workflow; no secrets:inherit across an untrusted boundary.\nGuardrails: BenchBox App, settings, gateway and credential caches stay unchanged. No weakening required checks or bootstrap stand-ins. Missing owner credentials/settings permission is a blocker, not a fallback to BenchBox identity.",
   "links": [
     "https://github.com/BenchBox-dev/theseus",
@@ -27,6 +27,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "8bec8ba09dbc46dab1e8b2864b73318e",
+      "session_id": "c4d4cd94bd464a16a29b8b24353d6e06"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b58f5aa5b2bb5e33c84a53cb",
+      "at": "2026-11-03T13:34:03Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3b1c3b2afdcb49799ddced9999b84b62",
       "session_id": "c4d4cd94bd464a16a29b8b24353d6e06"
     }
   ]
