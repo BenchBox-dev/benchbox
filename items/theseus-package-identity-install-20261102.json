@@ -9,7 +9,7 @@
     "Interrupted install, hostile PR-local module/package, changed trusted manifest, corrupt installed executable and trusted-ref refresh failure all refuse or reconstruct safely from verified exact artifacts; both bytes and dependencies are verified before execution.",
     "Persisted finding/dispute state is preserved/imported explicitly; retry/attempt/cache and provenance formats keep defined compatibility. Old export directories become inert without deleting findings."
   ],
-  "context": "T3; resolves P4/R1/R5 installer obligations. Lock/schema locations are determined by the ADR and existing project patterns, not arbitrary names in this item. Existing local cache validity includes trusted package/policy/manifest/config digest; preserve that property.",
+  "context": "T3; resolves P4/R1/R5 installer obligations. Lock/schema locations are determined by the ADR and existing project patterns, not arbitrary names in this item. Existing local cache validity includes trusted package/policy/manifest/config digest; preserve that property.\n\nDelivery: one Theseus PR (Theseus PR 1) carries governance bootstrap, package/installer, hosted workflows, local tooling, frozen source and parity proof. The release tag and first-promotion evidence come from that merged head, not from a separate PR.",
   "description": "Build the real reviewer/gate package in Theseus: dist theseus-reviewer, import theseus_reviewer, CLI theseus. Include templates and all runtime files from the inventory. Configure App login, attesters, gated base and policy/manifest paths from trusted consumer policy; the wheel carries no BenchBox identity, branch, or path defaults. Gate identity must actually use configured values rather than ignore bot_login.\nImplement a minimal consumer bootstrap that resolves a lock from a trusted consumer commit, verifies downloaded bytes and the complete dependency closure, and installs into an isolated environment. Record immutable source commit, wheel/dependency hashes, runtime constraints and two independent byte sources. Verify before execution; cache identity is the exact hash/version. No latest, ambient install, source-build hooks from PRs, or cache fallback to a different version. Recovery source must be readable by clean CI without credentials and serve the identical hash. Lock-parser/verifier trust must come from the consumer base, never the candidate.\nImplement the matcher arrangement selected by its owner decision. Recommended single stdlib-only, import-pure module takes explicit manifest input; BenchBox-specific validation regex and override lookups stay outside it. If vendored, only one byte-identical copy is allowed and lock binds its digest.\nGuardrails: no compatibility shims or dual independently maintained matcher; no branding-driven marker/status/cache-schema renames; preserve notices and lazy imports; no production package publication here. No BenchBox callsite deletion until atomic cutover. Worktree, comment-policy and normal reviewed-PR rules apply.",
   "links": [
     "_project/scripts/oracle_review_check.py",
@@ -35,6 +35,14 @@
       "op": "update",
       "op_id": "0ed81bffc31e47be96a66d6fbed2eab7",
       "session_id": "8cfcc9dbcab5419a91fc8b650901f36b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b58f5aa5b2bb5e33c84a53cb",
+      "at": "2026-11-03T13:33:35Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b33ed87df7e6465fbea9ae2535c13793",
+      "session_id": "c4d4cd94bd464a16a29b8b24353d6e06"
     }
   ]
 }
