@@ -6,7 +6,7 @@ from benchbox.utils.dialect_utils import is_unfiltered_update_or_delete, split_s
 
 _NAME = r"(?:[A-Za-z_]\w*\.)?[A-Za-z_]\w*"
 _LEADING_KEYWORDS = ("UPDATE", "DELETE", "CREATE")
-_UPDATE_TARGET_RE = re.compile(r"^\s*UPDATE\s+(?P<table>[A-Za-z_]\w*)\s+SET\b", re.IGNORECASE)
+_UPDATE_TARGET_RE = re.compile(rf"^\s*UPDATE\s+(?P<table>{_NAME})\s+SET\b", re.IGNORECASE)
 _CREATE_TABLE_RE = re.compile(
     rf"^(?P<head>\s*CREATE\s+(?:OR\s+REPLACE\s+)?TABLE\s+(?P<if_missing>IF\s+NOT\s+EXISTS\s+)?(?P<table>{_NAME}))"
     r"(?P<rest>\s*[(]|\s+AS\b|\s+ENGINE\b)",
@@ -17,8 +17,13 @@ _DROP_RE = re.compile(rf"^\s*DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?P<table>{_NAME}
 _RENAME_RE = re.compile(r"^\s*RENAME\s+TABLE\s+(?P<pairs>.+)$", re.IGNORECASE | re.DOTALL)
 _RENAME_PAIR_RE = re.compile(rf"^\s*(?P<source>{_NAME})\s+TO\s+(?P<target>{_NAME})\s*$", re.IGNORECASE)
 _EXCHANGE_RE = re.compile(rf"^\s*EXCHANGE\s+TABLES\s+(?P<left>{_NAME})\s+AND\s+(?P<right>{_NAME})", re.IGNORECASE)
+_USE_RE = re.compile(r"^\s*USE\s+(?P<database>[A-Za-z_]\w*)\s*$", re.IGNORECASE)
 _DEFAULT_ENGINE = " ENGINE = MergeTree ORDER BY tuple()"
-_UPDATE_SETTINGS = "enable_block_number_column = 1, enable_block_offset_column = 1"
+_UPDATE_SETTING_KEYS = ("enable_block_number_column", "enable_block_offset_column")
+_UPDATE_SETTINGS = ", ".join(f"{key} = 1" for key in _UPDATE_SETTING_KEYS)
+_UPDATE_SETTING_RE = re.compile(
+    r"\b(?P<key>enable_block_(?:number|offset)_column)\s*=\s*(?P<value>'[^']*'|[^\s,]+)", re.IGNORECASE
+)
 _SETTINGS_RE = re.compile(r"\bSETTINGS\s+", re.IGNORECASE)
 _ENGINE_RE = re.compile(r"\bENGINE\s*=\s*(?P<name>\w+)", re.IGNORECASE)
 _GENERATE_SERIES_RE = re.compile(
@@ -30,6 +35,7 @@ CREATE_PLAIN = "create-plain"
 DROP = "drop"
 RENAME = "rename"
 EXCHANGE = "exchange"
+USE = "use"
 IF_MISSING = "if-missing"
 
 
@@ -48,16 +54,34 @@ def lightweight_update_target(statement: str) -> str | None:
     return match.group("table") if match else None
 
 
+def _bare(name: str) -> str:
+    return name.rsplit(".", 1)[-1]
+
+
+def _definition(statement: str) -> str:
+    body = _CTAS_BODY_RE.search(statement)
+    return statement[: body.start()] if body else statement
+
+
+def _enables_lightweight_updates(statement: str) -> bool:
+    values = {
+        match["key"].lower(): match["value"].strip("'").lower() for match in _UPDATE_SETTING_RE.finditer(statement)
+    }
+    return all(values.get(key) in ("1", "true") for key in _UPDATE_SETTING_KEYS)
+
+
 def table_lifecycle(statement: str) -> list[tuple[str, ...]]:
     create = _CREATE_TABLE_RE.match(statement)
     if create is not None:
-        table = create.group("table")
-        ready = merge_tree_create_target(statement) is not None and _UPDATE_SETTINGS in statement
-        return [(CREATE_READY if ready else CREATE_PLAIN, table, IF_MISSING if create.group("if_missing") else "")]
+        ready = merge_tree_create_target(statement) is not None and _enables_lightweight_updates(_definition(statement))
+        flag = IF_MISSING if create.group("if_missing") else ""
+        return [(CREATE_READY if ready else CREATE_PLAIN, create.group("table"), flag)]
     if (drop := _DROP_RE.match(statement)) is not None:
         return [(DROP, drop.group("table"))]
     if (exchange := _EXCHANGE_RE.match(statement)) is not None:
         return [(EXCHANGE, exchange.group("left"), exchange.group("right"))]
+    if (use := _USE_RE.match(statement)) is not None:
+        return [(USE, use.group("database"))]
     if (rename := _RENAME_RE.match(statement)) is not None:
         events: list[tuple[str, ...]] = []
         for pair in rename.group("pairs").split(","):
@@ -69,10 +93,11 @@ def table_lifecycle(statement: str) -> list[tuple[str, ...]]:
 
 
 def _with_merge_tree_settings(statement: str) -> str:
-    body = _CTAS_BODY_RE.search(statement)
-    head, tail = (statement[: body.start()], statement[body.start() :]) if body else (statement, "")
-    if _UPDATE_SETTINGS in head:
-        return statement
+    head = _definition(statement)
+    tail = statement[len(head) :]
+    head = _UPDATE_SETTING_RE.sub(lambda match: f"{match['key']} = 1", head)
+    if _enables_lightweight_updates(head):
+        return f"{head}{tail}"
     settings = _SETTINGS_RE.search(head)
     if settings is not None:
         position = settings.end()
@@ -92,7 +117,8 @@ def _prepare_statement(statement: str, updated_later: frozenset[str]) -> str:
             statement = f"{statement}{_DEFAULT_ENGINE}"
         else:
             statement = f"{create.group('head')}{_DEFAULT_ENGINE}{statement[create.end('head') :]}"
-    if merge_tree_create_target(statement) in updated_later:
+    target = merge_tree_create_target(statement)
+    if target is not None and _bare(target) in updated_later:
         statement = _with_merge_tree_settings(statement)
     return statement
 
@@ -110,13 +136,10 @@ def prepare_clickhouse_statements(query: str) -> list[str]:
     for statement in reversed(statements):
         prepared.append(_prepare_statement(statement, frozenset(updated_later)))
         if (table := lightweight_update_target(statement)) is not None:
-            updated_later.add(table)
+            updated_later.add(_bare(table))
         for event in reversed(table_lifecycle(statement)):
-            if event[0] == RENAME and event[2] in updated_later:
-                updated_later.discard(event[2])
-                updated_later.add(event[1])
-            elif event[0] == EXCHANGE and (event[1] in updated_later) != (event[2] in updated_later):
-                updated_later.symmetric_difference_update({event[1], event[2]})
-            elif event[0] == DROP or (event[0] in (CREATE_READY, CREATE_PLAIN) and event[2] != IF_MISSING):
-                updated_later.discard(event[1])
+            if event[0] == RENAME and _bare(event[2]) in updated_later:
+                updated_later.add(_bare(event[1]))
+            elif event[0] == EXCHANGE and {_bare(event[1]), _bare(event[2])} & updated_later:
+                updated_later.update({_bare(event[1]), _bare(event[2])})
     return prepared[::-1]
