@@ -373,7 +373,11 @@ def _resolved_git_identity(project: Path, role: str) -> tuple[str, str]:
     )
     if result.returncode != 0:
         return "", ""
-    match = re.match(r"^(.*?) <([^>]+)>", result.stdout.strip())
+    return _parse_git_identity(result.stdout.strip())
+
+
+def _parse_git_identity(text: str) -> tuple[str, str]:
+    match = re.match(r"^(.*?) <([^>]+)>", text)
     if match is None:
         return "", ""
     return match.group(1), match.group(2)

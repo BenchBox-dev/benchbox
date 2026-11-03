@@ -744,12 +744,13 @@ def test_resolved_git_identity_returns_name_and_email(tmp_path: Path) -> None:
     )
 
 
-def test_resolved_git_identity_rejects_malformed_output(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_run(args: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
-        return subprocess.CompletedProcess(args, 0, stdout="not an identity\n", stderr="")
-
-    monkeypatch.setattr(agent_instruction_audit.subprocess, "run", fake_run)
-    assert agent_instruction_audit._resolved_git_identity(tmp_path, "author") == ("", "")
+def test_parse_git_identity_handles_valid_malformed_and_empty_text() -> None:
+    assert agent_instruction_audit._parse_git_identity("Joe Harris <joeharris76@gmail.com> 123 +0000") == (
+        "Joe Harris",
+        "joeharris76@gmail.com",
+    )
+    assert agent_instruction_audit._parse_git_identity("not an identity") == ("", "")
+    assert agent_instruction_audit._parse_git_identity("") == ("", "")
 
 
 def test_unresolvable_identity_skip_does_not_weaken_the_agent_check(tmp_path: Path) -> None:
