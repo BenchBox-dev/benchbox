@@ -1207,6 +1207,8 @@ def discover_batch(
             continue
         if not _same_repository(batch.get("repository"), repo_slug):
             continue
+        if branch and branch.startswith(f"feat/{batch_id}--"):
+            raise LandingError(f"branch {branch!r} is a member branch of batch {batch_id!r}; batch members open no PR")
         final = batch.get("final_pr") if isinstance(batch.get("final_pr"), dict) else {}
         matches_branch = bool(branch) and batch.get("integration_branch") == branch
         matches_number = bool(final) and pr_number is not None and final.get("number") == pr_number

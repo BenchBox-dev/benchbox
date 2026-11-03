@@ -1115,6 +1115,7 @@ def _batch_arm(
     write_evidence: bool = True,
     tracker_error: Exception | None = None,
     registry: dict | None = None,
+    view: dict | None = None,
 ) -> tuple[int, FakeGh, list[str]]:
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -1152,7 +1153,7 @@ def _batch_arm(
         )
     else:
         monkeypatch.setattr(pr_arm.pr_landing, "pinned_tracker_batches", lambda *args, **kwargs: (registry, "d" * 40))
-    gh = FakeGh(view=_view(headRefOid=head), local_head=head, batch_role=role, batch_id=batch_id)
+    gh = FakeGh(view=_view(headRefOid=head, **(view or {})), local_head=head, batch_role=role, batch_id=batch_id)
     code = pr_arm.arm(
         "7",
         None,
@@ -1203,6 +1204,19 @@ def test_a_markerless_checkout_still_applies_batch_evidence_to_a_registered_pr(
         mutate=lambda _tracker, evidence: evidence["member_reviews"]["b"].update(outcome="override"),
     )
     assert forged == 2 and forged_gh.merged() == []
+
+
+def test_a_pr_from_a_registered_member_branch_is_refused_instead_of_armed_as_ordinary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    registry = {"b": {"lifecycle": "active", "repository": "BenchBox-dev/BenchBox", "integration_branch": "feat/b"}}
+
+    code, gh, reads = _batch_arm(
+        tmp_path, monkeypatch, role=None, batch_id=None, registry=registry, view={"headRefName": "feat/b--a"}
+    )
+
+    assert code == 1 and reads == [] and gh.merged() == []
+    assert "is a member branch of batch 'b'" in capsys.readouterr().err
 
 
 def _drop_acceptance(tracker: dict, evidence: dict) -> None:
