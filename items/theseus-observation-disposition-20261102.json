@@ -7,6 +7,7 @@
   ],
   "context": "not_before set to the latest in-scope hold (stale-pending, 2026-11-13T00:00Z).\n\nDelivery: no PR. Owner action or tracker evidence only, recorded on this item.",
   "description": "Gate for production-connected Theseus steps (a new gateway client, any shared gateway change, any live review through it). These steps start a new measurement epoch, so pending observations of the current system need a recorded disposition first.\n\nItems in scope: oracle-cloud-review-reachability-smoke-20261030, oracle-dispute-and-rerun-live-observation-20261030, oracle-gateway-cloud-builder-smoke-20261031, oracle-gate-in-run-latency-observation-20261031, oracle-gate-sweep-cadence-observation-20261101, oracle-local-findings-mac-smoke-20261101, oracle-sweep-stale-pending-live-observation-20261030, oracle-response-reliability-observation-20261021.\n\nRules: natural-event items close by their own acceptance or stay open with a recorded window, event count and next check. Never provoke the observed events. The reliability item follows theseus-decision-reliability-observation-20261102: under 'wait' it must be done (targets met or residual causes in owned items); under 'waive' it stays open, its partial counts are recorded and it is not reported as met.\n\nGuardrails: read-only observation; no workflow dispatches, comments or pushes to create events; no edits to the observed items beyond context_append notes and their own lifecycle.",
+  "drop_reason": "Owner directed cutover at the earliest possible point without long observation periods or extra ceremony (2026-11-03). Observation gating before cutover is waived.",
   "links": [
     "oracle-response-reliability-observation-20261021",
     "oracle-sweep-stale-pending-live-observation-20261030",
@@ -28,6 +29,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "132f9be80173401caa977014a640c63f",
+      "session_id": "c4d4cd94bd464a16a29b8b24353d6e06"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b58f5aa5b2bb5e33c84a53cb",
+      "at": "2026-11-03T13:36:09Z",
+      "client": "omp-coding-agent",
+      "op": "drop",
+      "op_id": "2aabb7d268ff463c8b138e0eeaec2695",
       "session_id": "c4d4cd94bd464a16a29b8b24353d6e06"
     }
   ]

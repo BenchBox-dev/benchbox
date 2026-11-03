@@ -27828,7 +27828,7 @@
         "theseus-decision-reliability-observation-20261102"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Record a disposition for every pending oracle observation before production-connected extraction steps"
     },
     "theseus-owner-app-tailnet-setup-20261102": {
