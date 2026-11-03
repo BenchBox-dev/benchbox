@@ -4,6 +4,7 @@
     "Wheel 30.29.0.1 built from merged main and verified",
     "BenchBox adoption PR merged; freshness gate passes on develop with an empty waiver list"
   ],
+  "context": "2026-11-03: fork PR BenchBox-dev/benchbox-sqlglot#80 merged (6fd92da9333e, 30.29.0.1 on v30.29.0, skipping v30.28.0); one conflict, an additive test hunk in tests/dialects/test_sqlite.py. BenchBox adoption PR #3932 merged (db4cd9da9b2f). 103,170 translations from duckdb/postgres/netezza into 38 targets: 0 differ. Freshness passes with an empty waiver list.",
   "description": "Upstream SQLGlot v30.29.0 was released 2026-11-03 (tag commit 2fe25297af5b0f44f5c9e5d03e1b296424b7acbe; v30.28.0 was skipped). The bundled runtime (30.27.0.1) is on v30.27.0, so scripts/check_sqlglot_upstream_freshness.py fails and blocks PRs. Refresh the fork directly onto v30.29.0 via downstream.refresh candidate/integrate, build and verify the wheel, and adopt it with make sqlglot-adopt-wheel.",
   "sessions": [
     {
@@ -21,6 +22,14 @@
       "generation": "6a1103beb35349338b9888cc7cac4866",
       "op": "take",
       "op_id": "6a52ec7b6fde4f13930ccfdb4642f798",
+      "session_id": "8a0b283a1eec4655ad1a33598f023c47"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:94174e100f42d91bfecdbe49",
+      "at": "2026-11-03T14:55:16Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "19030458ffb747e1ab3bcf4fc74ba166",
       "session_id": "8a0b283a1eec4655ad1a33598f023c47"
     }
   ]
