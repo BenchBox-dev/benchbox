@@ -7,6 +7,7 @@
     "Durations use mono_time()/elapsed_seconds(); a grep of benchbox/core/tpcds/maintenance*.py finds no time.time() used for a duration; uv run -- python _project/scripts/timing_policy_check.py --strict passes.",
     "Result metadata carries a maintenance method identifier; comparing a result with the old method refuses or warns, as defined in the decision item's recorded outcome.",
     "Smoke: a DuckDB TPC-DS SF0.01 run with the maintenance phase completes with the new data source and reports each function's interval; paste the output summary in the PR.",
+    "Site documentation owned by the BenchBox-dev/benchbox-site repository that describes TPC-DS maintenance is read for statements about the old synthetic method; any needed change is listed in the PR description as a follow-up for that repository. No cross-repository write is made from this item.",
     "docs/internal/tpc-measured-intervals.md TPC-DS maintenance rows are updated; changelog fragment states that maintenance timings before this version are not comparable."
   ],
   "context": "Origin: 2026-11-03 root-cause analysis of TPC-H RF1 timing (5 whys) and its adversarial review. Spec clauses cited here were read from the published PDFs at the links on 2026-11-03; re-read them rather than trusting this text.\nUnlocks tpcds-qphds-spec-metric-implementation (two maintenance runs in spec order) and perf-tpcds-maintenance-set-based-20261031.",
@@ -32,6 +33,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "1ce9f8d0c0664272927ae50dcf55ce3d",
+      "session_id": "ada67604a2174486ada6b7b9a8c4f586"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a561db75579ad3167de9da38",
+      "at": "2026-11-03T15:12:22Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7d589517e4a04c3597a9d188e2e0b0b6",
       "session_id": "ada67604a2174486ada6b7b9a8c4f586"
     }
   ]
