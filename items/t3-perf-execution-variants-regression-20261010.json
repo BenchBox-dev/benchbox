@@ -5,7 +5,7 @@
     "Evidence distinguishes code-path overhead from runner/environment variance; issue #2778 records results and unresolved caveats.",
     "If a code regression is found, a fix lands and a subsequent authorized nightly-v2 t3:perf run passes with the 82 ms floor. Otherwise, the owner records a floor/host-policy decision supported by the measured distribution, and the aggregate item proceeds only after its acceptance is resolved."
   ],
-  "context": "2026-10-10 adversarial review: the local macOS A/B does not prove the hosted Linux failure was host noise. Corrected status is not reproduced locally; hosted cause unresolved. This task remains blocked pending an owner decision and authorization for representative repeated/interleaved measurements. Owner: Joe Harris. The separate performance-gate sensitivity review is tracked as nightly-perf-gate-sensitivity-review-20261010.",
+  "context": "2026-10-10 adversarial review: the local macOS A/B does not prove the hosted Linux failure was host noise. Corrected status is not reproduced locally; hosted cause unresolved. This task remains blocked pending an owner decision and authorization for representative repeated/interleaved measurements. Owner: Joe Harris. The separate performance-gate sensitivity review is tracked as nightly-perf-gate-sensitivity-review-20261010.\n\n2026-11-03 [INFERENCE]: per-query client work of about 5 ms from query generation inside the power-test timer (power-test-times-query-generation-20261031) could explain the uniform +1 to +2 ms per-query shifts, because the baseline queries take 4.4 to 12.3 ms. Cheap discriminating test before spending any authorized nightly dispatch: after that fix, compare per-query medians of runs with pre-generated query text against the committed baseline on the same runner class. Status unchanged: blocked pending the owner's decision and authorization described above. Origin: root-cause analysis of RF1 timing and its adversarial review.",
   "description": "Nightly-v2 run 38027036252 on develop ab0c41b5 measured DuckDB TPC-H SF=0.01 at 640 ms against the 547 ms baseline (+16.97%, +93 ms), failing the aggregate gate with the 82 ms floor. The prior night (run 37944292492) measured 551 ms (+0.66%) on the same AMD EPYC 7763 runner class. Per-query data showed uniform +1-2 ms changes, but the single local macOS A/B (-6.8%) did not reproduce the hosted slowdown. Static inspection places the #2852 execution-variant recording outside the timed query path; it does not establish the hosted failure's cause. Status: not reproduced locally; cause on hosted runners unresolved. Raw A/B data from the earlier local check was not retained. Before treating the hosted result as noise or changing the floor, collect repeated, interleaved measurements on a representative hosted Linux runner, pin and record commit/runtime/dependency/runner provenance, and retain raw result artifacts. Any further nightly dispatch requires owner authorization because the handoff run budget (2/2) is exhausted. Record the evidence and decision on issue #2778. If a code regression is found, fix it and verify with an authorized nightly-v2 t3:perf run using the 82 ms floor.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/issues/2778"
@@ -60,6 +60,14 @@
       "op": "update",
       "op_id": "01200a7f2c5944e5b3a8c8f68a8fb8c0",
       "session_id": "375a0fea891d4422bf14885cd09fb269"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a561db75579ad3167de9da38",
+      "at": "2026-11-03T15:09:48Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "cde4ffb56504495db6ee54dd55f1bfcf",
+      "session_id": "ada67604a2174486ada6b7b9a8c4f586"
     }
   ]
 }
