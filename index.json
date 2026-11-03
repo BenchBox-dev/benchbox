@@ -18463,9 +18463,10 @@
     "perf-tpcds-maintenance-set-based-20261031": {
       "claim": null,
       "needs": [
-        "tpcds-maintenance-dsdgen-refresh-data-20261103"
+        "tpcds-maintenance-data-source-decision-20261103",
+        "tpcds-maintenance-timer-hygiene-20261103"
       ],
-      "priority": "high",
+      "priority": "medium-high",
       "status": "open",
       "title": "TPC-DS maintenance: replace per-row UPDATEs and Python-built inserts with set-based SQL"
     },
