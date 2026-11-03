@@ -138,7 +138,7 @@ def lifecycle(tmp_path: Path) -> tuple[Path, Path, dict[str, str]]:
         "        print(json.dumps([pulls[:2], pulls[2:]]))\n"
         "    else:\n"
         "        branch = state['candidate']['head']['ref']\n"
-        "        print(subprocess.check_output(['git', 'ls-remote', 'origin', branch], text=True).split()[0])\n"
+        "        print(state.get('reported_head') or subprocess.check_output(['git', 'ls-remote', 'origin', branch], text=True).split()[0])\n"
         "elif args[:2] == ['pr', 'close']:\n"
         "    number = int(args[2])\n"
         "    state.setdefault('closed', []).append(number)\n"
@@ -194,6 +194,9 @@ def run_opener(lifecycle: tuple[Path, Path, dict[str, str]]) -> subprocess.Compl
 def test_existing_candidate_imports_current_policy_without_changing_its_pin_and_gets_a_new_review(lifecycle) -> None:
     checkout, state_path, environment = lifecycle
     previous = git(checkout, "rev-parse", "origin/chore/omp-pin-18.16.0")
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    state["reported_head"] = previous
+    state_path.write_text(json.dumps(state))
     result = run_opener(lifecycle)
     assert result.returncode == 0, result.stderr
     head = git(checkout, "rev-parse", "HEAD")
@@ -239,7 +242,9 @@ def test_new_candidate_closes_only_older_unheld_automation_prs_across_pages(life
     assert state["reviews"] == [f"head={git(checkout, 'rev-parse', 'HEAD')}"]
 
 
-@pytest.mark.parametrize("failure", ["held", "closed", "edited", "advanced-base", "conflict", "changed-head"])
+@pytest.mark.parametrize(
+    "failure", ["held", "closed", "edited", "extra-file", "advanced-base", "conflict", "changed-head"]
+)
 def test_refused_candidates_do_not_push_close_other_prs_or_start_reviews(lifecycle, failure: str) -> None:
     checkout, state_path, environment = lifecycle
     state = json.loads(state_path.read_text(encoding="utf-8"))
@@ -250,14 +255,18 @@ def test_refused_candidates_do_not_push_close_other_prs_or_start_reviews(lifecyc
         candidate["state"] = "closed"
     elif failure == "changed-head":
         candidate["head"]["sha"] = "0" * 40
-    elif failure in {"edited", "conflict"}:
+    elif failure in {"edited", "conflict", "extra-file"}:
         git(checkout, "checkout", "chore/omp-pin-18.16.0")
-        policy = checkout / ".github" / "oracle-reviewers.yml"
-        policy.write_text(
-            policy.read_text(encoding="utf-8").replace("18.16.0", "18.16.1")
-            if failure == "edited"
-            else "invalid policy\n"
-        )
+        if failure == "extra-file":
+            (checkout / "unexpected.txt").write_text("Unrelated candidate edit\n", encoding="utf-8")
+            git(checkout, "add", "unexpected.txt")
+        else:
+            policy = checkout / ".github" / "oracle-reviewers.yml"
+            policy.write_text(
+                policy.read_text(encoding="utf-8").replace("18.16.0", "18.16.1")
+                if failure == "edited"
+                else "invalid policy\n"
+            )
         git(checkout, "commit", "-am", "Manual candidate changes")
         git(checkout, "push", "origin", "HEAD")
         candidate["head"]["sha"] = git(checkout, "rev-parse", "HEAD")

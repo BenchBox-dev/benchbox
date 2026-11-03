@@ -158,15 +158,15 @@ jobs:
             fi
             if ! git merge-base --is-ancestor "$PREPARED_BASE" HEAD; then
               git merge --no-commit --no-ff "$PREPARED_BASE"
-              if ! cmp -s .github/oracle-reviewers.yml "$OUT_DIR/policy.yml"; then
-                echo "Refusing to replace candidate edits or a changed pin with the prepared policy." >&2
-                exit 1
-              fi
+            fi
+            if ! cmp -s .github/oracle-reviewers.yml "$OUT_DIR/policy.yml" ||
+              ! git diff --quiet "$PREPARED_BASE" -- . ':!.github/oracle-reviewers.yml'; then
+              echo "Candidate differs from the validated pin-only change; leaving it unchanged." >&2
+              exit 1
+            fi
+            if git rev-parse --quiet --verify MERGE_HEAD > /dev/null; then
               git commit -m "chore(oracle): refresh omp ${VERSION} against current policy"
               git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${AUTH}" push origin "$BRANCH"
-            elif ! cmp -s .github/oracle-reviewers.yml "$OUT_DIR/policy.yml"; then
-              echo "Existing candidate differs from the validated policy; leaving it unchanged." >&2
-              exit 1
             fi
           fi
           older="$(gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/pulls?state=open&base=develop&per_page=100" |
@@ -184,7 +184,7 @@ jobs:
             gh pr close "$OLD_PR" --repo "$GITHUB_REPOSITORY" \
               --comment "Superseded by #${PR}, which proposes omp ${VERSION}. The replacement still requires candidate validation and all merge gates."
           done
-          HEAD_SHA="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}" --jq .head.sha)"
+          HEAD_SHA="$(git rev-parse HEAD)"
           verdicts="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/statuses?per_page=100" --jq '.[] | select(.context == "oracle-verdict") | .id')"
           titles="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/oracle-verdict.yml/runs?per_page=100" --jq '.workflow_runs[].display_title')"
           if [ -n "$verdicts" ] || printf '%s\n' "$titles" | grep -F "pr=${PR} head=${HEAD_SHA}" > /dev/null; then

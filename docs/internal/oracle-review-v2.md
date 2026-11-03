@@ -1241,9 +1241,10 @@ Preparation records the `develop` commit it validated. The opener refuses to
 publish if its checkout no longer matches that commit. For an existing open
 automation candidate, it merges that base into the candidate branch without
 rewriting history, then requires the resulting policy to match the validated
-artifact exactly before pushing. Conflicts, candidate edits, changed pins,
-concurrent head changes, and the `no-auto-merge` label stop the refresh.
-Refreshing the head invalidates any previous owner evidence.
+artifact exactly and all other tracked files to match that base before pushing.
+Conflicts, candidate edits, changed pins, concurrent head changes, and the
+`no-auto-merge` label stop the refresh. Refreshing the head invalidates any
+previous owner evidence.
 
 Once the candidate is published or refreshed, the opener closes older stable
 `chore/omp-pin-<version>` pull requests opened by GitHub Actions in this
@@ -1255,6 +1256,7 @@ GitHub does not start `pull_request_target` workflows for a pull request the
 job token opens, and the sweep never bootstraps a pull request with no state or
 prior run, so the bump job starts the review itself. Right after it opens the
 pull request (or finds the `chore/omp-pin-<version>` pull request still open) it
+uses the locally published Git commit, not a potentially stale API head, and
 checks whether the head already carries an `oracle-verdict` commit status or a
 recent `oracle-verdict` run title names it and, when neither does, runs
 `gh workflow run oracle-verdict.yml --ref develop -f
