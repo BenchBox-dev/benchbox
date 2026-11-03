@@ -11,59 +11,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Before you upgrade
 
-- **BREAKING: tuning the platform cannot apply now fails validation.** Earlier releases ran without it. Run `benchbox tuning validate --platform <platform>` on saved tuning files; each error names the tuning type and the reason. Unknown keys in a tuning YAML also fail.
-- **BREAKING: ParadeDB requires `pg_search`.** Use `paradedb/paradedb:0.26.2-pg18`; servers with only `pg_analytics` fail to connect.
-- **Deprecated option spellings stop working in 0.6.0.** Use `--platform name:mode` instead of `deployment_mode` and similar options, `compute_resource` and `compute_size` instead of vendor names such as `warehouse`, and `--execution-engine streaming` instead of `--polars-streaming`. Conflicting spellings now stop the run.
-- **Results from 0.4.2 are not comparable.** Throughput stream numbering, TPC-H power streams, ClickHouse, Spark, LakeSail and Velox tuning, and the SQL sent to many platforms changed. TPC-DS OBT is version 0.2, and several generated datasets changed. Rerun baselines before comparing.
-- **Some cached databases are rebuilt once.** DuckDB `auto` runs and nested tuning settings change the generated database name; drop the old databases.
-- **Options that were ignored now apply.** These include DuckDB `threads` and `temp_directory`, SQLite `database_path` and `timeout`, and a `--platform-option` equal to its default. They override saved credential profiles.
-- **BenchBox bundles its own SQLGlot.** Installing BenchBox no longer installs `sqlglot`, and expression objects from a separate `sqlglot` install cannot be passed to BenchBox.
-- **`benchbox compare` refuses mixed deployments, engines or gateways** unless you pass `--allow-heterogeneous-comparison`. Result bundles use schema 2.3; older bundles stay readable.
-- **SingleStore has no `cloud` mode**; use `--platform singlestore` for Helios and self-managed clusters. `databend:self-hosted` connects over HTTP on port 8000.
+- **BREAKING: Tuning that a platform cannot apply now fails.** Earlier releases ran without it. Check saved tuning files with `benchbox tuning validate <file> --platform <platform>`; errors name the tuning type and the reason. Unknown keys in a tuning YAML also fail.
+- **BREAKING: BenchBox bundles its own SQLGlot.** SQL translation now uses the bundled SQLGlot (`benchbox-sqlglot` 30.29.0.1, based on SQLGlot 30.29.0). BenchBox no longer installs the public `sqlglot` package or accepts its expression objects; install `sqlglot` yourself if your code uses it.
+- **BREAKING: Conflicting option spellings stop the run.** Pass one spelling. Deprecated spellings warn and stop working in 0.6.0: use `--platform name:mode` instead of `deployment_mode` and similar options, `compute_resource` and `compute_size` instead of vendor names such as `warehouse`, and `--execution-engine streaming` instead of `--polars-streaming`.
+- **BREAKING: Python API changes.** `translate_sql_query` takes named `rewrites` instead of `pre_processors` and `post_processors`. The deprecated `run_throughput_test` and `run_official_benchmark` need `adapter=` and at least 2 streams. `benchbox.mcp.create_server()` no longer sets up logging or tracing or accepts `log_level`; `run_server()` does.
+- **BREAKING: ParadeDB, SingleStore and Databend connections.** ParadeDB requires `pg_search`; use the `paradedb/paradedb:0.26.2-pg18` image. SingleStore has no `cloud` mode; use `--platform singlestore` for Helios and self-managed clusters. `databend:self-hosted` connects over HTTP on port 8000 by default.
+- **Options that were ignored now apply.** DuckDB `threads` and `temp_directory`, SQLite `database_path` and `timeout`, and `--platform-option` values equal to the default now override saved credential profiles; remove any you do not want. Dask `use_distributed=false` with `scheduler_address` fails; use `--execution-engine distributed`. Polars `--tuning auto` no longer switches to streaming on small hosts.
+- **Some databases are rebuilt once.** DuckDB `auto` runs no longer request CHECK constraints, and nested tuning settings change the generated database name. ClickHouse Server loads into `benchbox_<benchmark>_<scale>` instead of `default`; set `--platform-option database=<name>` to choose one. Drop the old databases.
+- **Certificate changes.** Databricks SQL, result submission and data downloads verify TLS against `certifi`, not the system store; behind a corporate CA, set `REQUESTS_CA_BUNDLE` or `SSL_CERT_FILE`. Source checkouts need uv 0.13.4 or newer. Rebuild local Velox and LakeSail Docker images.
+- **Comparisons and result files.** `benchbox compare` refuses results with different deployments, execution engines or gateways unless you pass `--allow-heterogeneous-comparison`, and warns when data generation or power-stream policy differs. Results use schema 2.3; update tools that read them.
+- **Rerun baselines: Throughput and Power.** Throughput streams are numbered 1 to S, TPC-H power iterations all use stream 00, and Throughput honors `--queries` and `validation_mode`; a query subset reports no Throughput@Size. A saved `stream_timeout_seconds` now applies to Throughput; remove it to keep the default.
+- **Rerun baselines: translated SQL.** With the bundled SQLGlot, many queries on SQLite, ClickHouse, Spark, Databricks, QuestDB, DataFusion, PostgreSQL, Trino, Presto, Athena and SingleStore get different SQL, as do some Read Primitives on DuckDB, BigQuery and StarRocks. `STDDEV` and `VARIANCE` use the sample form on MySQL, Doris, StarRocks and SingleStore.
+- **Rerun baselines: wrong answers fixed.** TPC-DI EQ3, EQ6 and EQ8; ClickHouse TPC-DI AQ6, CoffeeShop TM1, Read Primitives `map_access` and six TPC-Havoc variants; DataFusion TPC-DI EQ7; Doris and StarRocks TPC-DS queries such as 46 and 68; and QuestDB filters on nullable columns now return correct rows.
+- **Rerun baselines: benchmark definitions.** TPC-DS OBT 0.2 uses a wider table and runs 90 of the 99 TPC-DS queries, which now return the TPC-DS answers. `vector_search` stores 4-byte floats, and NYC Taxi and TSBS DevOps derive parameters from the seed and query id.
+- **Rerun baselines: SQLite and DataFusion loads.** The SQLite loader reads quoted fields and loads empty nullable fields as NULL, which changes SQLite TPC-DS and ClickBench. Reload DataFusion ClickBench data so empty strings stay empty.
+- **Rerun baselines: PostgreSQL family and SQLite.** PostgreSQL-family loads run `ANALYZE` on every table, and SQLite indexes TPC-Havoc and Data Vault join keys, so some queries that took minutes now finish far faster. SQLite plan fingerprints also change.
+- **Rerun baselines: ClickHouse and tuning maintenance.** Tuned ClickHouse runs wait for merges after loading and run `OPTIMIZE` only with `--platform-option optimize_after_load=true`, and the TPC-H template no longer partitions `LINEITEM` and `ORDERS`. Tuning maintenance on ClickHouse, Redshift, Databricks and Snowflake runs after each table loads.
+- **Rerun baselines: Spark, LakeSail and Velox.** Untuned runs use engine defaults for adaptive execution and shuffle, and query times no longer include clearing the session cache. Local Spark sets the driver heap to 60% of RAM unless you pass `--driver-memory`. A tuning file's `spark` map applies on Velox, not LakeSail.
 
 ### Added
 
-- **Execution engines.** `--execution-engine` chooses how a query runs: Polars `in-memory` or `streaming`, Dask `threaded` or `distributed`, pg-duckdb `duckdb` or `postgres`. Results record the requested and observed engine.
-- **Deployment selectors.** `--platform name:mode` (for example `firebolt:cloud`, `pg-duckdb:motherduck`, `timescaledb:cloud`) works in the CLI, MCP and Python, with shared `compute_resource` and `compute_size` options. Deployment variants rank separately.
-- **GizmoSQL (experimental).** Runs TPC-H and TPC-DS on GizmoSQL Core 1.37+ through the `gizmosql` extra.
-- **TPC-H refresh functions and QphH.** Power and Throughput can run RF1 and RF2 with `tpch_refresh_functions=true`, and `benchbox metrics qphh` reports QphH@Size. Maintenance runs only on DuckDB, SQLite, PostgreSQL, Snowflake and SingleStore. Every TPC-H query is checked against exact row counts at scale factors 0.01 and 0.1.
-- **Subscale results.** TPC-H and TPC-DS runs below scale factor 1 record Power@Size as unofficial and rank in their own cohort; `submit` and `publish` still refuse them.
-- **More tuning.** PostgreSQL partitioning and clustering, CedarDB partitioning, Citus distribution, and ParadeDB and pg_mooncake sorting, each verified against the catalog. Tuned results list the requests a platform ignored.
-- **Container and gateway runs.** Engines in Docker on macOS or Windows are recorded and ranked as container runs. Snowflake (`--gateway`) and Databricks (the `gateway` setting) can route connections through a gateway.
-- **Translation provenance.** Result bundles record the bundled SQLGlot runtime that translated their SQL.
-- **Disk guard.** Runs fail when the output volume has less than 5% free; set `BENCHBOX_MIN_FREE_DISK_PERCENT` to change it.
+- **Deployment selectors on more platforms.** `--platform name:mode` now covers platforms such as `firebolt:cloud` and `pg-duckdb:motherduck` and works in MCP and Python, with shared `compute_resource` and `compute_size` options. Each deployment ranks separately.
+- **Execution engines.** `--execution-engine` chooses how a query runs: Polars `in-memory` or `streaming`, Dask `threaded` or `distributed`, and pg-duckdb `duckdb` or `postgres`. Results record the requested and observed engine.
+- **TPC-H refresh, QphH and subscale results.** `--benchmark-option tpch_refresh_functions=true` adds RF1 and RF2 to Power and Throughput, and `benchbox metrics qphh` reports QphH@Size. Refresh runs only on DuckDB, SQLite, PostgreSQL, Snowflake and SingleStore; other platforms skip maintenance. TPC-H and TPC-DS runs below scale factor 1 rank in their own unofficial cohort.
+- **GizmoSQL platform (experimental).** Run TPC-H and TPC-DS on a GizmoSQL Core 1.37 or newer server with the `gizmosql` extra.
+- **More tuning.** PostgreSQL partitions, indexes and clusters tuned tables. CedarDB partitions, Citus distributes, and ParadeDB and pg_mooncake cluster and sort. Results list the tuning a platform ignored, and `--dry-run --tuning tuned` works without the platform driver.
+- **Gateways and containers.** Snowflake (`--gateway`) and Databricks (the `gateway` setting) can route connections through a gateway; such results are never official. Server engines in Docker on macOS or Windows are recorded and ranked as container runs.
+- **More run evidence.** Results record the bundled SQLGlot version that translated their SQL, the engine version on DuckDB, SQLite and DataFusion, and live Spark, LakeSail and Velox session settings.
+- **Disk space check.** Runs fail when the output volume has less than 5% free; set `BENCHBOX_MIN_FREE_DISK_PERCENT` to change the limit.
 
 ### Changed
 
-- **Publishing fails closed.** `benchbox publish` verifies anonymized files before copying them, `benchbox submit` pseudonymizes before validating, gateway-routed results are never official, and TPC results are labelled derived rather than certified.
-- **Submission salt.** `submit`, `export` and `publish` create a private salt in `~/.benchbox/submission_salt` on first use; `BENCHBOX_MACHINE_ID_SALT` still overrides it.
-- **SQL translation moved into the bundled runtime.** Adapters build DDL and rewrite queries through one SQLGlot runtime, now 30.29.0.1 on upstream SQLGlot 30.29.0. Statements differ in spelling but not meaning, and more benchmarks translate for every target.
-- **Legacy throughput APIs are deprecated.** `run_throughput_test` and `run_official_benchmark` warn and run the same drivers as `benchbox run`.
-- **TPC-DS OBT returns the TPC-DS result** for 90 of 99 queries.
-- **Faster startup.** Importing BenchBox no longer loads the SQL runtime, and `benchbox run` registers only the requested platform.
-- **`benchbox.mcp.create_server()` no longer changes process-wide logging or tracing**; `run_server()` and `benchbox-mcp` do.
-- **uv 0.13.4 or newer is required.**
+- **Safer publishing.** `benchbox publish` verifies anonymized files before copying them, `benchbox submit` pseudonymizes before validating, and TPC results are labelled derived, not certified.
+- **Faster startup.** Importing BenchBox no longer loads the bundled SQLGlot until it translates SQL, and `benchbox run` loads only the requested platform's adapter.
+- **Published rankings.** Results Explorer removes 25 results built on superseded SQL translations or wrong values from its rankings, and adds 58 replacements for ClickHouse Local, DataFusion and SQLite.
 
 ### Fixed
 
-- **Tuning.** Tuned runs on PostgreSQL, SQLite, ClickHouse, Spark, Databricks, Athena, Synapse, Fabric Warehouse and BigQuery apply their tuning and keep the tuned-run marker.
-- **Runs and data.** `--force datagen` regenerates data, load-only runs exit 0, runs that execute no queries fail, and TPC data generation, NYC Taxi and FlightData preparation no longer hang or time out.
-- **Platform options.** Options now reach EMR Serverless, Dataproc, Synapse Spark, Fabric, PySpark, Snowpark Connect, Redshift, Athena Spark, Trino, Presto, InfluxDB and CedarDB. ClickHouse Server uses one database per benchmark and scale.
-- **Safer database handling.** `--force-recreate` and validation mismatches no longer drop databases holding tables from another benchmark, and a printed `DatabaseConfig` hides secrets.
-- **Results and reports.** `report rankings` lists imported runs, `compare` and `report` no longer mix deployments, and anonymized bundles drop the compute resource name. Results built on superseded translations drop out of rankings.
-- **Query plans.** Plan capture parses real output from SQLite, ClickHouse, Trino, Presto, Databend, QuestDB, Doris, SingleStore and LakeSail, and DataFrame engines capture canonical plans where supported.
-- **Query correctness.** TPC-DI, TPC-DS, TPC-Havoc and Read Primitives queries that returned wrong rows on SQLite, ClickHouse, DataFusion, StarRocks and Spark now match DuckDB. Rerun affected SQLite TPC-DS and ClickBench results.
-- **Broader platform coverage.** SQLite, QuestDB, Doris, StarRocks, SingleStore, Presto, Trino and the PostgreSQL family run many more benchmarks. Operations an engine cannot express are reported as skipped with a reason.
-- **DataFrame runs.** Lazy-frame failures on CoffeeShop, Data Vault, ClickBench, H2O-DB, TPC-DS and TPC-Havoc are fixed, and Polars and DataFusion JoinOrder runs at scale factor 1 use about half the memory.
+- **Database safety.** On a validation mismatch, BenchBox stops instead of dropping a server database that holds tables from outside the benchmark. On Snowflake, a mismatch or `--force-recreate` drops only the benchmark's tables.
+- **Runs and data.** `--force datagen` regenerates data, load-only runs exit 0, and runs that execute no queries fail. TPC-H and TPC-DS generation no longer hang when the filesystem cannot flush, and NYC Taxi preparation no longer times out at scale factor 1.
+- **More benchmarks run.** SQLite runs NYC Taxi, Flight Data, Data Vault and all four primitives suites. QuestDB runs far more of TPC-H, TPC-DS, TPC-DI, TPC-Havoc and ClickBench. Presto and Trino load every benchmark, and SingleStore runs 36 more TPC-Havoc variants. Operations an engine cannot express are skipped with a reason.
+- **Tuned runs.** Tuned runs on PostgreSQL, Athena, Synapse, Fabric Warehouse and BigQuery no longer abort. Tuned SQLite TPC-DS runs load, and ClickHouse primary keys, Spark session settings, Databricks `z_order` and PostgreSQL-family `CLUSTER` apply as requested.
+- **Platform options.** Options now reach EMR Serverless, Dataproc, Synapse Spark, Fabric, PySpark, Snowpark Connect, Athena Spark, Redshift, InfluxDB and CedarDB, and saved credential profiles no longer block command-line compute settings.
+- **Spark, LakeSail and Velox.** TPC-DI no longer fails on Spark and Velox with a BOOLEAN/INT type mismatch, or on LakeSail with small decimals in scientific notation. Wide tables such as TPC-DS OBT load without running out of Java heap.
+- **DataFrame runs.** CoffeeShop, Data Vault, ClickBench and H2O-DB queries that failed on lazy frames now run. JoinOrder at scale factor 1 peaks near 5 GiB instead of 9 GiB on Polars, and near 3 GiB instead of over 7 GiB on DataFusion.
+- **Disk and memory use.** StarRocks and pg_mooncake no longer fill disks on repeated or large loads, TPC-DS OBT generation is capped at 6 GB of memory, and Presto in Docker no longer runs out of memory loading TPC-H.
+- **Query plans.** Plan capture parses real output from SQLite, ClickHouse, Trino, Presto, Databend, QuestDB, Doris, SingleStore and LakeSail.
 
 ### Security
 
-- **Compromised eMudhra emSign CAs are no longer trusted.** BenchBox requires `certifi` 2026.10.19 or newer, and the cloud extras require `grpcio` 1.84.1 or newer. HTTPS calls verify against the `certifi` bundle; set `REQUESTS_CA_BUNDLE` or `SSL_CERT_FILE` for a corporate CA. See the [Python advisory](https://discuss.python.org/t/information-for-python-users-regarding-emudhra-emsign-ca-certificate-security-incident/109576).
-- **Locked dependencies** move to `filelock` 4.2.4 and `tornado` 6.6 to clear published CVEs.
+- **Compromised eMudhra emSign CAs.** BenchBox requires `certifi` 2026.10.19 or newer, and its BigQuery, cloud, cloud Spark, LakeSail and Velox extras require `grpcio` 1.84.1 or newer. Older releases trust these CAs, so a network attacker could impersonate cloud endpoints and steal tokens. See the [Python advisory](https://discuss.python.org/t/information-for-python-users-regarding-emudhra-emsign-ca-certificate-security-incident/109576).
+- **Secrets and pseudonyms.** Dry-run preview files no longer include saved credentials, and a printed `DatabaseConfig` hides secrets. `submit`, `export` and `publish` create a private salt in `~/.benchbox/submission_salt` on first use, so anonymized exports no longer use an empty salt. Anonymized bundles drop the compute resource name.
+- **Locked dependencies.** The lock file moves `filelock` to 4.2.4 and `tornado` to 6.6 to clear six published CVEs.
 
 ### Documentation
 
-- **Platform reference.** A new page lists each platform's shipped templates and applied tuning types.
+- **Platform reference.** A new page lists each platform's shipped tuning templates and the tuning types it applies.
 
 ## [0.4.2] - 2026-10-05
 
