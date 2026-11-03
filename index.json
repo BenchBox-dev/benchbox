@@ -18471,9 +18471,7 @@
     },
     "perf-tpch-rf1-bulk-load-20261031": {
       "claim": null,
-      "needs": [
-        "tpc-measured-intervals-reference-20261103"
-      ],
+      "needs": [],
       "priority": "high",
       "status": "open",
       "title": "TPC-H RF1: ingest the update-set files with each engine's native reader inside the RF1 timer; keep VALUES as fallback"
