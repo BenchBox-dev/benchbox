@@ -6,6 +6,7 @@
     "Snowflake outcome recorded: works under pandas 3, or excluded with reason.",
     "A large-result query shows lower measured time on DuckDB."
   ],
+  "context": "2026-11-03: the fetch-timing contract is decided in fetch-timing-contract-decision-20261103 and implemented by perf-arrow-aware-result-capture-20261030. Under the recommended option, full Arrow receipt (including draining streaming readers) stays inside the query timer and fetch_mode is recorded; Arrow-to-rows conversion for digests stays outside it. Re-read the recorded decision before starting; if the owner chose differently, update this item's acceptance. Origin: root-cause analysis of RF1 timing and its adversarial review.",
   "description": "Replace fetchall/list() with Arrow paths in the current drivers (versions from uv.lock): DuckDB 1.5.5 duckdb.py:1049 and MotherDuck motherduck.py:222 — use to_arrow_table/to_arrow_reader (fetch_arrow_table is deprecated); Databricks databricks/adapter.py:2486 (fetchall_arrow); GizmoSQL gizmosql.py:1101 goes through base/sql_execution.py:84 fetchall — use fetch_arrow_table (wrapper at gizmosql.py:310 is only used for schema); Athena athena.py:961 (pyathena 3.36 ArrowCursor / as_arrow); ClickHouse Cloud clickhouse/client.py:257-269 (clickhouse-connect 1.8 query_arrow); chDB clickhouse/client.py:85-107 (keep pa.Table, skip to_pandas); InfluxDB influxdb/client.py:186-196 FlightSQL path only (per-cell as_py; the influxdb3 path at :166-177 is column-wise already). BigQuery bigquery.py:1561: to_arrow works but needs google-cloud-bigquery-storage (not locked) to beat REST; add the bqstorage extra. Snowflake snowflake.py:1323,1334: fetch_arrow_all is gated on the connector's pandas extra, which pins pandas<3 while the project needs pandas>=3 — verify it works or drop Snowflake from this item. Also cover CursorValidationQueryExecutionMixin (core/benchmark_mixins.py:182-189), which calls fetchall inside the timer for Presto/Trino, Redshift and Firebolt; those drivers have no Arrow path, so at minimum avoid double materialization.",
   "sessions": [
     {
@@ -23,6 +24,14 @@
       "op": "update",
       "op_id": "746dddb7df9f4e2982e5a6b22e53c43a",
       "session_id": "d2b018a349924f4f88b746458c80b878"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a561db75579ad3167de9da38",
+      "at": "2026-11-03T15:09:52Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a63949f98e2d47db9fd0318a6c635387",
+      "session_id": "ada67604a2174486ada6b7b9a8c4f586"
     }
   ]
 }
