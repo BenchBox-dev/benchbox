@@ -11884,7 +11884,7 @@
       "needs": [],
       "priority": "high",
       "status": "open",
-      "title": "Owner decision: query time includes receiving the full result, in rows or Arrow, for every benchmark"
+      "title": "Owner decision: what a measured query interval contains for result receipt, and how fetch modes are kept apart"
     },
     "finalize-monitoring-module-scope": {
       "claim": null,
