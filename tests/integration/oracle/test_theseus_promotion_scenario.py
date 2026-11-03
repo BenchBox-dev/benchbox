@@ -52,10 +52,10 @@ def _build_wheel(package: str, version: str, source_tree: dict[str, bytes]) -> t
 def _register_release(
     harness: Harness, version: str, commit: str, files: dict[str, bytes]
 ) -> tuple[str, str, list[str], str, list[dict[str, Any]]]:
-    harness.github.add_tarball("BenchBox-dev/theseus", commit, files)
+    harness.github.add_tarball("joeharris76/theseus", commit, files)
     wheel_bytes, wheel_sha = _build_wheel("theseus-reviewer", version, files)
     urls = [
-        f"https://github.com/BenchBox-dev/theseus/releases/download/v{version}/theseus_reviewer-{version}-py3-none-any.whl",
+        f"https://github.com/joeharris76/theseus/releases/download/v{version}/theseus_reviewer-{version}-py3-none-any.whl",
         f"https://files.pythonhosted.org/packages/theseus/theseus_reviewer-{version}-py3-none-any.whl",
     ]
     for url in urls:
@@ -86,7 +86,7 @@ def _lock_json(
         "schema": 1,
         "package": "theseus-reviewer",
         "version": version,
-        "repository": "BenchBox-dev/theseus",
+        "repository": "joeharris76/theseus",
         "source_commit": source_commit,
         "source_sha256": source_sha256,
         "delta_sha256": delta_sha256,
@@ -147,7 +147,7 @@ def test_one_line_lock_bump_verifies_wheel_sources_requires_every_upstream_read_
         {**new_files, "src/theseus_reviewer/verifier.py": b"BACKDOOR = True\n"},
     )
     tampered_urls = [
-        "https://github.com/BenchBox-dev/theseus/releases/download/v0.2.0/tampered.whl",
+        "https://github.com/joeharris76/theseus/releases/download/v0.2.0/tampered.whl",
         "https://files.pythonhosted.org/packages/theseus/tampered.whl",
     ]
     for url in tampered_urls:
@@ -355,7 +355,7 @@ def test_first_promotion_enforces_policy_pinned_bootstrap_baseline_and_removed_u
     policy_data = yaml.safe_load((harness.repo / ".github/oracle-reviewers.yml").read_text(encoding="utf-8"))
     policy_data["promotion"] = {
         "package": "theseus-reviewer",
-        "repository": "BenchBox-dev/theseus",
+        "repository": "joeharris76/theseus",
         "bootstrap_baseline_commit": baseline_sha,
         "bootstrap_path_map": path_map,
         "bootstrap_reviewers": ["joeharris76"],
