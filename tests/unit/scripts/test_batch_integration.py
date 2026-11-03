@@ -7,7 +7,17 @@ from pathlib import Path
 
 import pytest
 
-from tests.unit.scripts.batch_loop_world import BATCH, MEMBERS, PROJECT, SCOPE, World, bi, build_world, git
+from tests.unit.scripts.batch_loop_world import (
+    BATCH,
+    MEMBERS,
+    PROJECT,
+    SCOPE,
+    TRUSTED_REVIEW_WRAPPER,
+    World,
+    bi,
+    build_world,
+    git,
+)
 
 TRACKER_SCOPE_HASH = "19ccf864114b7650486e01283d3af3b20d383cb3eb266699654ed626a849e624"
 
@@ -178,6 +188,18 @@ def test_member_check_records_an_exempt_only_member_as_not_reviewed(world: World
     world.commit(member, {"docs/note.md": "changed\n"})
     record = world.check(member, ["tests/test_zeta.py"])
     assert record["review_outcome"] == "not-reviewed"
+
+
+def test_member_review_runs_the_wrapper_from_the_trusted_commit_not_the_checkout(world: World) -> None:
+    world.start()
+    member = world.member("zeta")
+    head = world.commit(member, {"src/a.py": "member\n", bi.REVIEW_WRAPPER: "print('tampered')\n"})
+    trusted = git(member, "rev-parse", "refs/remotes/origin/develop")
+
+    result = bi._review_member_patch(member, world.head(), head, trusted)
+
+    assert (member / bi.REVIEW_WRAPPER).read_text(encoding="utf-8") == "print('tampered')\n"
+    assert world.review_wrappers == [TRUSTED_REVIEW_WRAPPER] and result["head_sha"] == head
 
 
 def test_member_check_records_nothing_when_preflight_or_review_fails(world: World) -> None:
@@ -974,7 +996,6 @@ def test_cli_prints_the_register_payload_for_start(world: World, capsys: pytest.
             "batch-member-check",
             {"TESTS": "t`touch pwned`", "PREFLIGHT_CMD": 'p"; touch pwned; "'},
         ),
-        ("batch-evidence", {"SUITE": "s`touch pwned`"}),
         (
             "batch-recover",
             {

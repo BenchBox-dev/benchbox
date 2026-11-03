@@ -1077,7 +1077,7 @@ def _check_evidence_acceptance(repo: Path, evidence: dict, head: str, tracker: d
         return ["batch evidence lacks current_acceptance"]
     failures.extend(
         f"current acceptance is missing for member {member}"
-        for member in sorted(_tracker_map(tracker, "acceptance_required"))
+        for member in _tracker_members(tracker)
         if member not in acceptance
     )
     worktree = tracker.get("integration_worktree")
@@ -1243,6 +1243,7 @@ def _check_evidence_reviews(repo: Path, evidence: dict, members: list[str], rece
             "accepted_head"
         ):
             failures.append(f"member {member} review is bound to another range than its receipt")
+        failures.extend(_review_binding_failures(repo, member, review, receipt))
         if review.get("outcome") not in MEMBER_REVIEW_OUTCOMES:
             failures.append(f"member {member} review outcome {review.get('outcome')!r} does not allow landing")
             continue
@@ -1251,6 +1252,21 @@ def _check_evidence_reviews(repo: Path, evidence: dict, members: list[str], rece
             failures.append(f"member {member} review names no trusted commit that is an ancestor of origin/develop")
             continue
     return failures
+
+
+def _review_binding_failures(repo: Path, member: str, review: dict, receipt: dict) -> list[str]:
+    from _project.scripts.oracle_reviewers import local as oracle_local
+
+    base, head = _revision(receipt.get("source_base")), _revision(receipt.get("accepted_head"))
+    if base is None or head is None:
+        return [f"member {member} receipt range is not two full revisions"]
+    try:
+        actual = oracle_local.member_binding(repo, base, head)
+    except (oracle_local.Unavailable, OSError):
+        return [f"member {member} review binding could not be recomputed from Git"]
+    if any(review.get(key) != value for key, value in actual.items()):
+        return [f"member {member} review does not match the patch and tree Git computes for its range"]
+    return []
 
 
 def check_batch_evidence(repo: Path, evidence: dict, head: str, tracker: dict) -> list[str]:

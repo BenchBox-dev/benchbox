@@ -1136,11 +1136,14 @@ and posts nothing to GitHub.
   `findings` (Critical or High) remain it exits 1. A member runs it through
   `make batch-member-check` as early feedback; `batch-land` runs it again as the
   leader, with `--reviewer-ref` and `--trusted-ref` pinned to the same trusted
-  commit, and retains that invocation's result in the receipt. There is no
-  separate member-result store. A change that touches only exempt paths is
-  recorded `not-reviewed` with the skip reason: the same bar as a standalone PR.
-  Landing accepts `clear`, `not-reviewed`, and `override`, and refuses
-  `findings`.
+  commit, and retains that invocation's result in the receipt. Both runs launch
+  `scripts/oracle_local_review.py` as read from the trusted commit, never the
+  copy in the checkout. There is no separate member-result store. Readiness
+  recomputes `head_tree` and `patch_digest` from Git for each receipt's range
+  and refuses a review that does not match. A change that touches only exempt
+  paths is recorded `not-reviewed` with the skip reason: the same bar as a
+  standalone PR. Landing accepts `clear`, `not-reviewed`, and `override`, and
+  refuses `findings`.
 
 ## Calibration
 

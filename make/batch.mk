@@ -67,9 +67,8 @@ batch-verify:
 	@$(BATCH_SCRIPT) verify
 
 .PHONY: batch-evidence
-batch-evidence: export BATCH_ARG_SUITE := $(SUITE)
 batch-evidence:
-	@$(BATCH_SCRIPT) evidence $${BATCH_ARG_SUITE:+--suite "$$BATCH_ARG_SUITE"}
+	@$(BATCH_SCRIPT) evidence
 
 override EXECUTE := $(value EXECUTE)
 

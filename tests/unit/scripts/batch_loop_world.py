@@ -8,6 +8,8 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+from _project.scripts.oracle_reviewers import local as oracle_local
+
 ROOT = Path(__file__).resolve().parents[3]
 SCRIPTS = ROOT / "scripts"
 if str(SCRIPTS) not in sys.path:
@@ -33,6 +35,7 @@ SCOPE = {
 }
 PROJECT = "proj"
 BATCH = "b1"
+TRUSTED_REVIEW_WRAPPER = "print('trusted reviewer wrapper')\n"
 
 
 def git(cwd: Path, *args: str) -> str:
@@ -235,6 +238,7 @@ class World:
         self.tracker = FakeTracker()
         self.calls: list[tuple[list[str], Path]] = []
         self.review_cache: dict[tuple[str, str, str], dict] = {}
+        self.review_wrappers: list[str] = []
         self.failing_tests: set[str] = set()
         self.preflight_rc = 0
         self.review_rc: int | None = None
@@ -253,6 +257,7 @@ class World:
             "tests/test_mid.py": "def test_m():\n    assert True\n",
             "docs/note.md": "note\n",
             ".github/oracle-reviewers.yml": "brief_max_bytes: 100000\n",
+            bi.REVIEW_WRAPPER: TRUSTED_REVIEW_WRAPPER,
             ".gitignore": ".todo-batch/\n",
         }.items():
             (seed / name).parent.mkdir(parents=True, exist_ok=True)
@@ -287,7 +292,8 @@ class World:
             return done()
         if any("preflight_targets.py" in arg for arg in argv):
             return done(0, "\n".join(self.mapped_tests))
-        if argv[:2] == bi.DEFAULT_REVIEW_COMMAND:
+        if argv[0] == bi.REVIEW_INTERPRETER and Path(argv[1]).name == Path(bi.REVIEW_WRAPPER).name:
+            self.review_wrappers.append(Path(argv[1]).read_text(encoding="utf-8"))
             return self.review(argv, Path(cwd))
         if "pytest" in argv or "ruff" in argv:
             failing = any(item in self.failing_tests for item in argv)
@@ -316,8 +322,7 @@ class World:
             "reason": "fixture",
             "base_sha": base,
             "head_sha": head,
-            "head_tree": git(cwd, "rev-parse", f"{head}^{{tree}}"),
-            "patch_digest": "digest",
+            **oracle_local.member_binding(cwd, base, head),
             "trusted_sha": trusted,
         }
         self.review_cache[(base, head, trusted)] = result

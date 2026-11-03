@@ -157,7 +157,7 @@ help:
 	@echo "  make batch-status                                    Reconcile the ledger with the tracker and Git; names the next step"
 	@echo "  make batch-verify                                    Check first-parent history, recorded heads and member ancestry"
 	@echo "  make batch-recover EXPECTED_OWNER=w EXPECTED_OWNER_GENERATION=g REASON=text [RELOCATE=1]  Leader: from a clean checkout of the integration branch at the recorded head, mint a new owner generation and print the recover_batch_owner payload (RELOCATE=1 moves the registered worktree here)"
-	@echo "  make batch-evidence [SUITE=name]                     Write .todo-batch/<batch>/final-evidence.json and print the finish payloads"
+	@echo "  make batch-evidence                                  Rerun every member's receipt command on the final head, write .todo-batch/<batch>/final-evidence.json and print the finish payloads"
 	@echo "  make batch-finish [EXECUTE=1]                        Leader, after the final PR merged: dry run, or remove clean member worktrees and delete member branches whose tip is the accepted head contained in refs/pull/<N>/head"
 	@echo ""
 	@echo "Blind-Spot Findings (see _project/blind-spots/README.md):"

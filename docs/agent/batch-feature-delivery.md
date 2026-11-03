@@ -76,7 +76,7 @@ Rules that hold for the whole batch:
 | `make batch-advance REASON=fix\|develop-merge` | Leader | Records a leader commit or a develop merge and prints the `advance_batch_head` payload |
 | `make batch-status` | Leader | Reconciles the ledger with the tracker and Git (rebuilding a missing ledger) and names the next step |
 | `make batch-verify` | Leader | Checks first-parent history, recorded heads, and member ancestry |
-| `make batch-evidence [SUITE=name]` | Leader | Executes every member's receipt command afresh on the clean final head, writes `.todo-batch/<batch>/final-evidence.json` only after all pass, and prints the `finish` payloads |
+| `make batch-evidence` | Leader | Executes every member's receipt command afresh on the clean final head, writes `.todo-batch/<batch>/final-evidence.json` only after all pass, and prints the `finish` payloads with suite `member-reruns` |
 | `make batch-finish [EXECUTE=1]` | Leader, integration worktree | After the batch is completed and final PR merged: dry run by default; execute removes qualifying member worktrees/branches, then finishes the integration worktree and local branch last |
 
 The scripts only read the tracker. Every tracker write is printed as a payload

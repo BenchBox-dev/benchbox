@@ -42,13 +42,6 @@ class FakeRun:
         return rc, payload if isinstance(payload, str) else json.dumps(payload)
 
 
-@pytest.fixture(autouse=True)
-def _trusted_review_store(monkeypatch: pytest.MonkeyPatch):
-    fx.REVIEW_STORE.clear()
-    yield
-    fx.REVIEW_STORE.clear()
-
-
 def _repo(path: Path) -> Path:
     path.mkdir(parents=True, exist_ok=True)
     for args in (
@@ -1621,16 +1614,27 @@ def test_batch_evidence_refuses_a_receipt_whose_accepted_head_is_not_in_the_fina
     assert any("member a accepted head is not an ancestor" in failure for failure in failures)
 
 
-def test_batch_evidence_requires_a_rerun_for_every_member_the_tracker_marks(tmp_path: Path) -> None:
+@pytest.mark.parametrize("member", ["a", "b"])
+def test_batch_evidence_requires_a_rerun_for_every_member(tmp_path: Path, member: str) -> None:
     batch = _batch(tmp_path)
     batch.overlap("b", "a", ["a/x.txt"])
     evidence = batch.evidence()
     assert _verdict(batch, evidence=evidence) == []
-    del evidence["current_acceptance"]["a"]
+    del evidence["current_acceptance"][member]
 
     failures = _verdict(batch, evidence=evidence)
 
-    assert any("current acceptance is missing for member a" in failure for failure in failures)
+    assert any(f"current acceptance is missing for member {member}" in failure for failure in failures)
+
+
+@pytest.mark.parametrize("field", ["patch_digest", "head_tree"])
+def test_batch_evidence_refuses_a_review_that_does_not_match_its_range_in_git(tmp_path: Path, field: str) -> None:
+    batch = _batch(tmp_path)
+    batch.receipts["a"]["verification"]["review"][field] = "0" * 32
+
+    failures = _verdict(batch, evidence=batch.evidence())
+
+    assert any("member a review does not match the patch and tree Git computes" in failure for failure in failures)
 
 
 @pytest.mark.parametrize(

@@ -1216,6 +1216,13 @@ def _commit_sha(root: Path, label: str, value: str) -> str:
     return resolved
 
 
+def member_binding(root: Path, base: str, head: str) -> dict[str, str]:
+    return {
+        "head_tree": _git(root, "rev-parse", f"{head}^{{tree}}").strip(),
+        "patch_digest": _patch_digest(root, base, head),
+    }
+
+
 def _member_record(root: Path, base: str, head: str, trusted_sha: str, outcome: str, reason: str) -> dict[str, Any]:
     return {
         "schema": MEMBER_SCHEMA,
@@ -1223,8 +1230,7 @@ def _member_record(root: Path, base: str, head: str, trusted_sha: str, outcome: 
         "reason": reason,
         "base_sha": base,
         "head_sha": head,
-        "head_tree": _git(root, "rev-parse", f"{head}^{{tree}}").strip(),
-        "patch_digest": _patch_digest(root, base, head),
+        **member_binding(root, base, head),
         "trusted_sha": trusted_sha,
     }
 

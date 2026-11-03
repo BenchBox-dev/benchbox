@@ -49,7 +49,7 @@ anyone but the owner (`E_BATCH_OWNER`). The leader's calls, in order:
    with the same PR identity, the new head, and `expected_previous_head`.
 5. After the PR checks pass on the bound head, `take` then `finish` each member
    with cumulative current-tree evidence, including a current-acceptance rerun
-   for every member the tracker lists in `acceptance_required`.
+   of every member's receipt command on the final head.
 
 Same-file overlap is allowed and recorded; byte equality of an earlier member's
 files is not required. Every earlier member named in an overlap, and every

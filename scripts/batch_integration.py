@@ -46,7 +46,9 @@ MEMBER_REVIEW_SCHEMA = "benchbox_member_review_v1"
 ACCEPTED_REVIEW_OUTCOMES = ("clear", "not-reviewed", "override")
 TODO_DB_COMMAND = ["uv", "run", "--project", "_project/scripts", "--locked", "--", "todo-db"]
 DEFAULT_PREFLIGHT_COMMAND = ["make", "pr-preflight"]
-DEFAULT_REVIEW_COMMAND = ["python3", "scripts/oracle_local_review.py"]
+REVIEW_INTERPRETER = "python3"
+REVIEW_WRAPPER = "scripts/oracle_local_review.py"
+FINAL_SUITE = "member-reruns"
 POLICY_PATH = ".github/oracle-reviewers.yml"
 SECTION_BUDGET = 6000
 DIFF_HEADROOM_BYTES = 32768
@@ -325,9 +327,12 @@ def _validate_trusted_sha(repo: Path, trusted: str, start_head: str | None = Non
 
 def _review_member_patch(repo: Path, base: str, member_head: str, trusted: str) -> dict:
     with tempfile.TemporaryDirectory() as scratch:
+        wrapper = Path(scratch) / Path(REVIEW_WRAPPER).name
+        wrapper.write_bytes(_git_raw(repo, "show", f"{trusted}:{REVIEW_WRAPPER}"))
         result_path = Path(scratch) / "member-review.json"
         cmd = [
-            *DEFAULT_REVIEW_COMMAND,
+            REVIEW_INTERPRETER,
+            str(wrapper),
             "--policy",
             POLICY_PATH,
             "--member",
@@ -349,9 +354,9 @@ def _review_member_patch(repo: Path, base: str, member_head: str, trusted: str) 
             result = None
         if proc.returncode != 0:
             err_msg = (proc.stderr or proc.stdout).strip()
-            raise BatchError(f"leader member review did not clear this head: {err_msg[-400:]}")
+            raise BatchError(f"member review did not clear this head: {err_msg[-400:]}")
         if result is None:
-            raise BatchError("leader member review wrote no readable result")
+            raise BatchError("member review wrote no readable result")
 
     if (
         not isinstance(result, dict)
@@ -361,7 +366,7 @@ def _review_member_patch(repo: Path, base: str, member_head: str, trusted: str) 
         or result.get("head_sha") != member_head
         or result.get("trusted_sha") != trusted
     ):
-        raise BatchError("leader member review result does not bind this base and head or is not accepted")
+        raise BatchError("member review result does not bind this base and head or is not accepted")
     return result
 
 
@@ -640,40 +645,7 @@ def check_member(
     if _rev(repo, "HEAD") != member_head or not _is_clean(repo):
         raise BatchError("member worktree changed while verification ran; run batch-member-check again")
     trusted = _trusted_develop(repo)
-    with tempfile.TemporaryDirectory() as scratch:
-        result_path = Path(scratch) / "member-review.json"
-        review = [
-            *DEFAULT_REVIEW_COMMAND,
-            "--policy",
-            POLICY_PATH,
-            "--member",
-            "--result-json",
-            str(result_path),
-            "--base-ref",
-            integration_head,
-            "--reviewer-ref",
-            trusted,
-            "--trusted-ref",
-            trusted,
-            "--head",
-            member_head,
-        ]
-        proc = _run(review, repo)
-        if proc.returncode != 0:
-            raise BatchError(f"member review did not clear this head: {(proc.stderr or proc.stdout).strip()[-400:]}")
-        try:
-            result = json.loads(result_path.read_text(encoding="utf-8"))
-        except (OSError, ValueError) as exc:
-            raise BatchError("member review wrote no readable result") from exc
-    if (
-        not isinstance(result, dict)
-        or result.get("schema") != MEMBER_REVIEW_SCHEMA
-        or result.get("outcome") not in ACCEPTED_REVIEW_OUTCOMES
-        or result.get("base_sha") != integration_head
-        or result.get("head_sha") != member_head
-        or result.get("trusted_sha") != trusted
-    ):
-        raise BatchError("member review result does not bind this base and head or is not accepted")
+    result = _review_member_patch(repo, integration_head, member_head, trusted)
     if _rev(repo, "HEAD") != member_head or not _is_clean(repo):
         raise BatchError("member worktree changed while checks ran; run batch-member-check again")
     record = {
@@ -1843,7 +1815,7 @@ def _excluded_paths(repo: Path, final_head: str, tracker: dict) -> set[str]:
     return excluded
 
 
-def build_evidence(repo: Path, *, suite: str = "batch-final-tree") -> dict:
+def build_evidence(repo: Path) -> dict:
     batch_id = require_role(repo, ROLE_INTEGRATION)
     ledger = _require_ledger(repo, batch_id)
     tracker = read_tracker(repo, batch_id)
@@ -1927,7 +1899,7 @@ def build_evidence(repo: Path, *, suite: str = "batch-final-tree") -> dict:
         "integration_branch": ledger["integration_branch"],
         "integration_head": final_head,
         "scope_hash": tracker["scope_hash"],
-        "suite": suite,
+        "suite": FINAL_SUITE,
         "member_heads": {m: receipts[m]["accepted_head"] for m in members},
         "member_ranges": {
             m: {"base": receipts[m]["source_base"], "head": receipts[m]["accepted_head"]} for m in members
@@ -2003,9 +1975,7 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("status", help="reconcile the ledger with the tracker and Git")
     sub.add_parser("verify", help="check first-parent history, recorded heads and member ancestry")
-
-    evidence = sub.add_parser("evidence", help="write final-evidence.json and print finish payloads")
-    evidence.add_argument("--suite", default="batch-final-tree")
+    sub.add_parser("evidence", help="write final-evidence.json and print finish payloads")
 
     args = parser.parse_args(argv)
     repo = args.worktree.resolve()
@@ -2063,7 +2033,7 @@ def main(argv: list[str] | None = None) -> int:
             _print(report)
             return 0 if report["ok"] else 1
         elif args.command == "evidence":
-            _print(build_evidence(repo, suite=args.suite))
+            _print(build_evidence(repo))
         else:
             raise BatchError(f"unknown command {args.command}")
         return 0
