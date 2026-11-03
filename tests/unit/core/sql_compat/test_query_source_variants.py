@@ -24,7 +24,7 @@ def test_h2odb_variant_rules_registered():
     assert "query_source.clickhouse.h2odb.q9_quantile_variant" in rule_ids
     assert "query_source.starrocks.h2odb.q9_percentile_approx_variant" in rule_ids
     assert "query_source.bigquery.h2odb.q9_percentile_window_variant" in rule_ids
-    assert "query_source.doris.h2odb.q9_percentile_approx_variant" in rule_ids
+    assert "query_source.doris.h2odb.q9_exact_percentile_variant" in rule_ids
     assert "query_source.questdb.h2odb.q9_approx_percentile_variant" in rule_ids
 
 
@@ -33,7 +33,7 @@ def test_h2odb_variant_rules_registered():
     [
         ("clickhouse", "quantile"),
         ("starrocks", "PERCENTILE_APPROX"),
-        ("doris", "PERCENTILE_APPROX"),
+        ("doris", "PERCENTILE(fare_amount, 0.5)"),
         ("questdb", "approx_percentile"),
     ],
 )

@@ -43,7 +43,15 @@ GROUP BY passenger_count
 ORDER BY passenger_count;
 """
 
-DORIS_Q9_SQL = STARROCKS_Q9_SQL
+DORIS_Q9_SQL = """
+SELECT
+    passenger_count,
+    PERCENTILE(fare_amount, 0.5) as median_fare_amount,
+    PERCENTILE(fare_amount, 0.9) as p90_fare_amount
+FROM trips
+GROUP BY passenger_count
+ORDER BY passenger_count;
+"""
 
 SQLITE_Q9_SQL = """
 SELECT
@@ -154,7 +162,7 @@ REGISTRY.register(
 
 REGISTRY.register(
     CompatibilityDecision(
-        rule_id="query_source.doris.h2odb.q9_percentile_approx_variant",
+        rule_id="query_source.doris.h2odb.q9_exact_percentile_variant",
         action=CompatAction.SELECT_VARIANT,
         support_level=SupportLevel.REWRITTEN,
         failure_mode=FailureMode.SYNTAX_ERROR,
@@ -162,7 +170,7 @@ REGISTRY.register(
             variant_key="doris",
             variant_sql=DORIS_Q9_SQL,
         ),
-        reason="Doris does not parse ANSI PERCENTILE_CONT … WITHIN GROUP; use PERCENTILE_APPROX",
+        reason="Doris does not parse ANSI PERCENTILE_CONT … WITHIN GROUP; its exact PERCENTILE interpolates linearly",
     ),
     _P,
     "doris",
