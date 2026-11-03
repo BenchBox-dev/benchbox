@@ -374,6 +374,7 @@ def test_land_refuses_when_the_review_cache_has_no_result_even_if_member_config_
     member = world.deliver("zeta", {"src/a.py": "member\n"})
     stored = bi._read_check(member, git(member, "rev-parse", "HEAD"), world.head())
     assert stored["review_outcome"] == "clear"
+    world.require_cached_review = True
     world.review_cache.clear()
     before = world.head()
     with _raises("no result for this member's patch"):
@@ -485,6 +486,7 @@ def test_a_hand_made_merge_of_a_member_with_no_stored_review_is_refused(world: W
     member = world.deliver("zeta", {"src/a.py": "member\n"})
     stored = bi._read_check(member, git(member, "rev-parse", "HEAD"), world.head())
     assert stored["review_outcome"] == "clear"
+    world.require_cached_review = True
     world.review_cache.clear()
     _merge_by_hand(integration, member)
     with _raises("no result for this member's patch"):
@@ -973,6 +975,14 @@ def test_cli_prints_the_register_payload_for_start(world: World, capsys: pytest.
             {"TESTS": "t`touch pwned`", "PREFLIGHT_CMD": 'p"; touch pwned; "'},
         ),
         ("batch-evidence", {"SUITE": "s`touch pwned`"}),
+        (
+            "batch-recover",
+            {
+                "EXPECTED_OWNER": "w`touch pwned`",
+                "EXPECTED_OWNER_GENERATION": "$(touch pwned)",
+                "REASON": 'x"; touch pwned; echo "',
+            },
+        ),
     ],
 )
 def test_make_targets_pass_user_variables_to_the_script_verbatim_and_never_through_the_shell(
@@ -1001,3 +1011,201 @@ def test_make_targets_pass_user_variables_to_the_script_verbatim_and_never_throu
     assert not (tmp_path / "pwned").exists()
     argv = json.loads((tmp_path / "argv.json").read_text(encoding="utf-8"))
     assert all(value in argv for value in variables.values())
+
+
+def test_verify_accepts_every_commit_inside_a_recorded_multi_commit_fix_and_refuses_a_trailing_one(
+    world: World,
+) -> None:
+    integration = _landed_pair(world)
+    world.commit(integration, {"src/a.py": "first fix\n"}, "fix one")
+    world.commit(integration, {"src/a.py": "second fix\n"}, "fix two")
+    fix = bi.advance_head(integration, "fix")
+    world.tracker.advance(fix["payload"]["arguments"])
+    assert bi.verify_integration(integration)["ok"] is True
+    stray = world.commit(integration, {"src/a.py": "trailing\n"}, "trailing")
+    report = bi.verify_integration(integration)
+    assert report["ok"] is False and report["unrecorded_first_parent_commits"] == [stray]
+
+
+def test_verify_refuses_commits_inside_a_recorded_interval_that_is_not_a_fix(world: World) -> None:
+    integration = _landed_pair(world)
+    hidden = world.commit(integration, {"src/a.py": "hidden\n"}, "hidden")
+    head = world.commit(integration, {"src/a.py": "fix\n"}, "fix")
+    world.tracker.advance(
+        {"expected_head": world.tracker.head, "head": head, "reason": "develop-merge", "changed_files": ["src/a.py"]}
+    )
+    report = bi.verify_integration(integration)
+    assert report["ok"] is False and report["unrecorded_first_parent_commits"] == [hidden]
+
+
+def test_a_fix_advance_with_a_bound_final_pr_publishes_nothing_and_orders_the_next_steps(world: World) -> None:
+    integration = _landed_pair(world)
+    old = world.head()
+    world.tracker.bind(old)
+    fix_head = world.commit(integration, {"src/a.py": "fixed\n"}, "fix")
+    result = bi.advance_head(integration, "fix")
+    assert git(world.origin, "rev-parse", f"refs/heads/feat/{BATCH}") != fix_head
+    assert result["backup_push"].startswith("skipped")
+    steps = result["next"].splitlines()
+    assert f"make pr-landing-withdraw PR=7 HEAD={old}" in steps[0]
+    assert "advance_batch_head" in steps[1]
+    assert steps[2].split(": ", 1)[1] == f"git push origin {fix_head}:refs/heads/feat/{BATCH}"
+    assert f"bind_batch_pr head={fix_head} expected_previous_head={old}" in steps[3]
+    assert "make batch-evidence" in steps[4]
+    assert "rearm" in steps[5]
+
+
+def _overlapping_hand_merge(world: World) -> tuple[Path, str]:
+    integration = world.start()
+    world.deliver("zeta", {"src/a.py": "zeta change\n"})
+    world.land_and_prepare("zeta")
+    member = world.deliver("alpha", {"src/a.py": "alpha change\n"})
+    return integration, _merge_by_hand(integration, member)
+
+
+def test_an_interrupted_landing_executes_the_missing_overlap_rerun_instead_of_assuming_it_passed(
+    world: World,
+) -> None:
+    integration, merged = _overlapping_hand_merge(world)
+    assert "alpha" not in _ledger(integration)["landings"]
+    zeta_command = world.tracker.receipts["zeta"]["verification"]["command"]
+    world.calls.clear()
+    result = world.land("alpha")
+    assert result["status"] == "already-merged"
+    assert [call for call in world.calls if call[0] == zeta_command] == [(zeta_command, integration)]
+    entry = _ledger(integration)["acceptance"]["zeta"][-1]
+    assert entry["status"] == "passed" and entry["revision"] == merged and entry["reason"] == "overlap:alpha"
+
+
+def test_an_interrupted_landing_whose_missing_overlap_rerun_fails_offers_no_payload(world: World) -> None:
+    integration, _ = _overlapping_hand_merge(world)
+    world.failing_tests.add("tests/test_zeta.py")
+    with _raises("overlap rerun failed for \\['zeta'\\]"):
+        world.land("alpha")
+    assert _ledger(integration)["acceptance"]["zeta"][-1]["status"] == "failed"
+
+
+def test_a_ledger_with_a_landing_but_no_acceptance_row_still_reruns_the_overlap_on_retry(world: World) -> None:
+    integration = world.start()
+    world.deliver("zeta", {"src/a.py": "zeta change\n"})
+    world.land_and_prepare("zeta")
+    world.deliver("alpha", {"src/a.py": "alpha change\n"})
+    world.land("alpha")
+    ledger = _ledger(integration)
+    ledger["acceptance"] = {}
+    bi.save_ledger(integration, ledger)
+    world.failing_tests.add("tests/test_zeta.py")
+    with _raises("overlap rerun failed for \\['zeta'\\]"):
+        world.land("alpha")
+
+
+def test_a_rebuilt_ledger_carries_no_fabricated_acceptance_rows(world: World) -> None:
+    integration = world.start()
+    world.deliver("zeta", {"src/a.py": "zeta change\n"})
+    world.land_and_prepare("zeta")
+    world.deliver("alpha", {"src/a.py": "alpha change\n"})
+    world.land_and_prepare("alpha")
+    assert _ledger(integration)["acceptance"]["zeta"]
+    for path in (integration / ".todo-batch" / BATCH).iterdir():
+        path.unlink()
+    status = bi.batch_status(integration)
+    assert _ledger(integration)["acceptance"] == {}
+    assert status["acceptance_stale"] == ["zeta"]
+
+
+def _recover_args(**overrides: object) -> dict:
+    return {"expected_owner": "leader", "expected_owner_generation": "g" * 32, "reason": "leader died", **overrides}
+
+
+def test_recover_mints_a_generation_into_the_ledger_and_marks_the_checkout_before_printing(world: World) -> None:
+    integration = world.start()
+    old_generation = _ledger(integration)["owner_generation"]
+    for path in (integration / ".todo-batch" / BATCH).iterdir():
+        path.unlink()
+    git(integration, "config", "--worktree", "--unset", "benchbox.batch.role")
+    git(integration, "config", "--worktree", "--unset", "benchbox.batch.id")
+    payload = bi.recover_owner(integration, **_recover_args())
+    arguments = payload["arguments"]
+    generation = arguments["new_owner_generation"]
+    assert len(generation) == 32 and int(generation, 16) >= 0 and generation != old_generation
+    assert payload["tool"] == "recover_batch_owner"
+    assert arguments == {
+        "batch_id": BATCH,
+        "expected_owner": "leader",
+        "expected_owner_generation": "g" * 32,
+        "new_owner_generation": generation,
+        "reason": "leader died",
+    }
+    ledger = _ledger(integration)
+    assert ledger["owner_generation"] == generation and ledger["members"] == MEMBERS
+    assert bi.role_of(integration) == "integration" and bi.require_role(integration, "integration") == BATCH
+    assert generation not in json.dumps(world.calls, default=str)
+
+
+def _relocated_checkout(world: World, integration: Path) -> Path:
+    git(integration, "checkout", "-q", "--detach")
+    target = world.tmp / "relocated"
+    git(world.primary, "worktree", "add", "-q", str(target), f"feat/{BATCH}")
+    return target
+
+
+def test_recover_with_relocation_prints_the_expected_and_new_worktree_and_head(world: World) -> None:
+    integration = world.start()
+    target = _relocated_checkout(world, integration)
+    payload = bi.recover_owner(target, **_recover_args(), relocate=True)
+    arguments = payload["arguments"]
+    assert arguments["expected_integration_worktree"] == str(integration)
+    assert arguments["expected_integration_head"] == world.tracker.head
+    assert arguments["integration_worktree"] == str(target.resolve())
+    ledger = json.loads((target / ".todo-batch" / BATCH / "ledger.json").read_text(encoding="utf-8"))
+    assert ledger["owner_generation"] == arguments["new_owner_generation"]
+    assert ledger["integration_worktree"] == str(target.resolve())
+    assert bi.require_role(target, "integration") == BATCH
+
+
+def test_recover_without_relocation_refuses_a_checkout_that_is_not_the_registered_worktree(world: World) -> None:
+    integration = world.start()
+    target = _relocated_checkout(world, integration)
+    with _raises("RELOCATE=1"):
+        bi.recover_owner(target, **_recover_args())
+    assert bi.role_of(target) is None
+
+
+def test_recover_refuses_a_dirty_checkout_the_wrong_branch_head_or_repository(world: World) -> None:
+    integration = world.start()
+    (integration / "scratch.txt").write_text("dirty\n")
+    with _raises("not clean"):
+        bi.recover_owner(integration, **_recover_args())
+    (integration / "scratch.txt").unlink()
+    original = _ledger(integration)["owner_generation"]
+    git(integration, "remote", "set-url", "origin", "https://example.com/other/repo.git")
+    with _raises("not the registered repository"):
+        bi.recover_owner(integration, **_recover_args())
+    git(integration, "remote", "set-url", "origin", str(world.origin))
+    world.commit(integration, {"src/a.py": "ahead\n"}, "ahead of tracker")
+    with _raises("not the tracker integration head"):
+        bi.recover_owner(integration, **_recover_args())
+    git(integration, "checkout", "-q", "-b", "scratch")
+    with _raises("not the registered"):
+        bi.recover_owner(integration, **_recover_args(), batch_id=BATCH)
+    assert _ledger(integration)["owner_generation"] == original
+
+
+def test_cli_recover_prints_the_payload(world: World, capsys: pytest.CaptureFixture[str]) -> None:
+    integration = world.start()
+    code = bi.main(
+        [
+            "--worktree",
+            str(integration),
+            "recover",
+            "--expected-owner",
+            "leader",
+            "--expected-owner-generation",
+            "g" * 32,
+            "--reason",
+            "leader died",
+        ]
+    )
+    assert code == 0
+    printed = json.loads(capsys.readouterr().out)
+    assert printed["arguments"]["new_owner_generation"] == _ledger(integration)["owner_generation"]

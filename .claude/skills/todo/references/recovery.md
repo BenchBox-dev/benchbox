@@ -7,14 +7,16 @@ continue. Do not retry the same call unchanged.
 
 ## Lost claim or restarted session
 
-`take` the same item again: re-adopting your own claim is allowed, mints a
-fresh `generation`, and refreshes the lease. An earlier process image still
-holding the old generation goes stale — that is the protection working. If
-someone else holds the claim, you get `E_CONFLICT`; `show_item` to see who
-holds it. When the holder's session is dead and cannot resume, take it over
-deliberately with `takeover(item_id, expected_holder, reason)`: name the exact
-holder you inspected and say why that session is gone. Never take over a live,
-reachable session to skip coordination — report the conflict instead.
+Re-adopting your own claim with `take` mints a fresh generation and refreshes its
+lease. A default MCP identity changes across server restarts: before a planned
+reconnect, checkpoint and release an ordinary task's claim; confirm the intended
+store/runtime after reconnect, then take it again. A stable unique actor supports
+identity-preserving restart only after its previous server stops.
+
+If someone else holds the claim, inspect it with `show_item`. Use `takeover` only
+when that exact holder's session cannot resume, naming the holder and reason.
+Never share an actor across concurrent servers or take a live claim to avoid
+coordination.
 
 `E_MULTIPLE_CLAIMS` means you already hold a live claim on another task. Finish
 or `release` it first — one live claim per worker.
@@ -46,9 +48,10 @@ from the first page.
 
 ## Batch recovery
 
-Prepared batches need todo-db 0.14.0 or later (advertises the `todo_db_batch`
-version 2 capability). Read the live state first with `show_batch` and
-`show_item`; the leader's ledger is only a cache.
+Prepared delivery requires the actual installed runtime's `todo_db_batch` version
+2 capability and supported store/receipt schemas. Read live state with
+`show_batch`/`show_item`; ledger hints are not acceptance proof, and private
+generation material is not recoverable from the redacted batch read.
 
 - **`E_BATCH_OWNER`**: you are not the batch owner, and only the owner may
   `take`, `takeover`, `prepare`, or `finish` a member of an active batch. The
@@ -72,35 +75,37 @@ version 2 capability). Read the live state first with `show_batch` and
   re-read with `show_batch`, reconcile with Git, and retry with the current head
   as `expected_head` / `expected_previous_head`. An identical retry is
   idempotent. Send a member back to merge the current head before landing it.
-- **Interrupted land between merge and prepare**: the integration branch
-  contains the member merge but the tracker has no receipt. Do not re-merge or
-  reset. Read `show_batch`; if the integration worktree is clean at the merged
-  head, `take` the member and run `prepare` for it (the unrecorded-commit check
-  passes when the merge changed only that member's files). If the worktree is
-  dirty or the merge is unfinished, finish or abort the merge in Git first. A
-  later `prepare` for any other member cannot be accepted until this one is
-  recorded or the commit is reverted before anything else lands.
-- **Dead leader**: a new session generates a fresh 32-hex
-  `new_owner_generation`, **writes it to its own ledger first**, then calls
-  `recover_batch_owner(batch_id, expected_owner, expected_owner_generation,
-  new_owner_generation, reason)`, naming the owner it inspected and why that
-  session is gone. The server stores the new generation and never returns it, so
-  a lost reply loses nothing; an exact retry is idempotent. The call needs no
-  live member claim, leaves existing receipts valid, and makes the caller the
-  owner (the current owner may also call it to rotate a generation whose ledger
-  was lost). The old generation goes stale. A wrong generation fails
-  `E_CLAIM_STALE`; a changed owner fails `E_CONFLICT`. The
-  `expected_owner_generation` comes from the dead leader's ledger or from a human
-  with Git access to the state branch; `show_batch` never serves it. The new
-  leader rebuilds the rest of its ledger from `show_batch`, Git, and open member
-  branches, then resumes. If the generation is lost and no one can supply it,
-  abort the batch and re-run.
-- **Review revisions**: after the final PR opens, fixes are leader commits:
-  `advance_batch_head(owner_generation=<ledger>, reason="fix")`, push,
-  `bind_batch_pr(pr_repository, number, node_id, head=<new>,
-  expected_previous_head=<old>)`. If the second step is interrupted, the registered
-  head is ahead of the binding: re-push and rebind; do not commit more first.
-  Once any member is `done`, heads and bindings cannot change: resume closeout.
+- **Interrupted land between merge and prepare**: do not merge again or infer
+  success from missing ledger rows. Prove the existing merge's parents, tree and
+  exact range, repeat leader review and receipt-derived overlap checks, then
+  confirm the current owner and renew or re-take the member for a current
+  preparation generation. Failed acceptance still blocks preparation. Resolve
+  dirty/unfinished state without discarding unrelated work.
+- **Dead leader**: privately obtain the expected owner generation from the
+  leader's ledger or existing authorized Git-state recovery access. Generate and
+  save a fresh 32-hex `new_owner_generation` before calling `recover_batch_owner`
+  with the inspected owner, expected generation and reason. An exact retry
+  is idempotent; stale generation/owner checks remain. Rebuild operational hints
+  from the tracker and Git, not review approval from caches. `show_batch` never
+  returns the generation. If the expected generation cannot be obtained, report
+  that prerequisite: abort also requires it, so tokenless abort is not a fallback.
+- **Lost integration checkout**: require
+  `todo_db_batch.features.integration_worktree_relocation=true` before supplying
+  all of `expected_integration_worktree`, `expected_integration_head` and the new
+  `integration_worktree` to owner recovery. The destination must be clean, in the
+  registered repository and branch, at the recorded head with required history.
+  Owner/generation/path/head changes race through CAS; no unguarded repointing.
+  Preserve prepared receipts and historical source paths, then run new final
+  checks at the destination. An active partial closeout may relocate at unchanged
+  integration/final-PR head, but cannot advance, reprepare, reopen or rebind
+  finished work. This does not upgrade legacy review attestations.
+- **Review revisions**: withdraw auto-merge before publication. Commit and verify
+  the complete leader-fix interval, submit the expected-head tracker advance,
+  push the captured head, and CAS-rebind the same PR. A helper must not push
+  before the tracker advance. If interrupted between those steps, reconcile the
+  exact current heads and repeat only the missing operation. After a head or
+  binding change, run new final evidence/review/CI before rearming. Once any
+  member is done, heads and bindings cannot change; resume closeout.
 - **Receipt invalidated by an edit**: only `context`/`context_append` edits keep a
   receipt; any other edit of a member deletes it and its dependents' receipts.
   Registered batch metadata edits are refused, and once any member is `done`
@@ -138,7 +143,9 @@ resolution, or late member invalidates the receipt; do not reset the baseline
 or mark the member done. Re-take the member and prepare again after the
 leader records the new exact range. If closeout is interrupted, re-read the
 member and final integration evidence before retrying `finish`; stale
-generations fail closed. A retry must use the registered integration worktree
-and branch, and the tracker rechecks the current tree, every accepted member
-head, the frozen scope union, and the one bound final PR before committing each
-member's terminal transition.
+generations fail closed. A retry uses the currently registered integration
+worktree and branch, including an explicitly recovered relocation, and proves
+the current tree, accepted heads, frozen scope and final PR. Reuse a completed
+final run only while its relevant bindings still match; a new invocation reruns
+all member commands and combined checks. Missing historical evidence in a legacy
+partial closeout is a real blocker, never permission to fabricate a review.

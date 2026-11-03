@@ -41,7 +41,6 @@ LandingError = pr_arm.pr_landing.LandingError
 @pytest.fixture(autouse=True)
 def _trusted_review_store(monkeypatch: pytest.MonkeyPatch):
     fx.REVIEW_STORE.clear()
-    monkeypatch.setattr(pr_arm.pr_landing, "_stored_member_review", fx.stored_review)
     yield
     fx.REVIEW_STORE.clear()
 
@@ -1106,6 +1105,7 @@ def _batch_arm(
     batch_id: str | None = "b",
     write_evidence: bool = True,
     tracker_error: Exception | None = None,
+    registry: dict | None = None,
 ) -> tuple[int, FakeGh, list[str]]:
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -1135,6 +1135,14 @@ def _batch_arm(
         return tracker
 
     monkeypatch.setattr(pr_arm.pr_landing, "read_batch_tracker", read)
+    if registry is None:
+        monkeypatch.setattr(
+            pr_arm.pr_landing,
+            "discover_batch",
+            lambda *args, **kwargs: (batch_id if role == "integration" else None, "rev-1"),
+        )
+    else:
+        monkeypatch.setattr(pr_arm.pr_landing, "pinned_tracker_batches", lambda *args, **kwargs: (registry, "d" * 40))
     gh = FakeGh(view=_view(headRefOid=head), local_head=head, batch_role=role, batch_id=batch_id)
     code = pr_arm.arm(
         "7",
@@ -1158,6 +1166,34 @@ def test_an_integration_worktree_arms_a_pr_whose_batch_evidence_holds(
     assert code == 0
     assert reads == ["b"]
     assert len(gh.merged()) == 1
+
+
+@pytest.mark.parametrize("registered_repository", ["BenchBox-dev/BenchBox", "benchbox-dev/benchbox"])
+def test_a_markerless_checkout_still_applies_batch_evidence_to_a_registered_pr(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, registered_repository: str
+) -> None:
+    registry = {
+        "b": {
+            "lifecycle": "active",
+            "repository": registered_repository,
+            "integration_branch": "feat/b",
+            "final_pr": {"number": 7, "node_id": "PR_b", "head": "0" * 40},
+        }
+    }
+
+    code, gh, reads = _batch_arm(tmp_path, monkeypatch, role=None, batch_id=None, registry=registry)
+    assert reads == ["b"] and code == 0 and len(gh.merged()) == 1
+
+    (tmp_path / "forged").mkdir()
+    forged, forged_gh, _ = _batch_arm(
+        tmp_path / "forged",
+        monkeypatch,
+        role=None,
+        batch_id=None,
+        registry=registry,
+        mutate=lambda _tracker, evidence: evidence["member_reviews"]["b"].update(outcome="override"),
+    )
+    assert forged == 2 and forged_gh.merged() == []
 
 
 def _drop_acceptance(tracker: dict, evidence: dict) -> None:

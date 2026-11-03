@@ -59,17 +59,15 @@ parser.add_argument("--member", action="store_true")
 parser.add_argument("--result-json", required=True)
 parser.add_argument("--base-ref", required=True)
 parser.add_argument("--trusted-ref", required=True)
+parser.add_argument("--reviewer-ref", required=True)
 parser.add_argument("--head", required=True)
 args = parser.parse_args()
+if args.reviewer_ref != args.trusted_ref:
+    sys.exit(2)
 outcome_file = Path(os.environ["FAKE_REVIEW_OUTCOME_FILE"])
 outcome = outcome_file.read_text().strip() if outcome_file.exists() else "clear"
 root = Path.cwd()
 record = local._member_record(root, args.base_ref, args.head, args.trusted_ref, outcome, "fake reviewer verdict")
-trusted = local.Trusted.read(root, args.trusted_ref, args.policy)
-local._write_json_atomic(
-    local._member_path(local.state_dir(), local._member_key(args.base_ref, args.head, args.trusted_ref, trusted)),
-    record,
-)
 Path(args.result_json).write_text(json.dumps(record))
 sys.exit(1 if outcome == "findings" else 0)
 """
@@ -111,7 +109,11 @@ class ToolError(AssertionError):
 
 def _tracked(paths: tuple[str, ...]) -> list[str]:
     out = subprocess.run(
-        ["git", "ls-files", "-z", "--", *paths], cwd=ROOT, check=True, capture_output=True, encoding="utf-8"
+        ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", *paths],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        encoding="utf-8",
     ).stdout
     return [name for name in out.split("\0") if name and (ROOT / name).is_file()]
 
@@ -524,3 +526,28 @@ class Loop:
 
     def evidence(self) -> dict:
         return self.world.make_json(self.integration, "batch-evidence")
+
+    def relocate(self, successor: McpServer, expected_owner: str, destination: Path, reason: str) -> dict:
+        self.world.git(
+            self.world.root,
+            "clone",
+            "-q",
+            "--branch",
+            self.branch,
+            self.world.code_remote.as_uri(),
+            str(destination),
+        )
+        payload = self.world.make_json(
+            destination,
+            "batch-recover",
+            BATCH=self.batch,
+            EXPECTED_OWNER=expected_owner,
+            EXPECTED_OWNER_GENERATION=self.generation,
+            REASON=reason,
+            RELOCATE="1",
+        )
+        recovered = successor.ok(payload["tool"], **payload["arguments"])
+        self.leader = successor
+        self.integration = destination.resolve()
+        self.generation = payload["arguments"]["new_owner_generation"]
+        return {"payload": payload, "recovered": recovered}

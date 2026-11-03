@@ -45,7 +45,6 @@ class FakeRun:
 @pytest.fixture(autouse=True)
 def _trusted_review_store(monkeypatch: pytest.MonkeyPatch):
     fx.REVIEW_STORE.clear()
-    monkeypatch.setattr(landing, "_stored_member_review", fx.stored_review)
     yield
     fx.REVIEW_STORE.clear()
 
@@ -1837,6 +1836,44 @@ def test_read_batch_tracker_refuses_a_read_without_a_revision(tmp_path: Path) ->
     assert tracker["batch_id"] == "b"
 
 
+def _long_tracker(tmp_path: Path) -> dict:
+    tracker = _batch(tmp_path).tracker()
+    tracker["integration_log"] += [
+        {"seq": index, "kind": "fix", "head": "e" * 40, "changed_files": [f"b/f{index}.txt"]} for index in range(1, 200)
+    ]
+    return tracker
+
+
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"stale": True},
+        {"cached_rev": "rev-1"},
+        {"rev": "rev-0"},
+        {"rev": fx._DROP},
+        {"window": 7},
+        {"window": fx._DROP},
+        {"continuation": {"offset": 0, "rev": "rev-1"}},
+        {"continuation": {"offset": 10**9, "rev": "rev-1"}},
+        {"continuation": {"offset": 6000, "rev": "rev-9"}},
+        {"continuation": "next"},
+    ],
+)
+def test_read_batch_tracker_refuses_a_stale_or_malformed_continuation_page(tmp_path: Path, override: dict) -> None:
+    show = fx.FakeBatchShow(_long_tracker(tmp_path), page_overrides=override)
+
+    with pytest.raises(landing.LandingError):
+        landing.read_batch_tracker("b", show)
+
+
+def test_read_batch_tracker_refuses_a_page_that_never_ends(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(landing, "MAX_TRACKER_WINDOWS", 2)
+    show = fx.FakeBatchShow(_long_tracker(tmp_path))
+
+    with pytest.raises(landing.LandingError, match="exceeds the read bound"):
+        landing.read_batch_tracker("b", show)
+
+
 def test_a_tracker_command_that_cannot_start_is_a_landing_error() -> None:
     with pytest.raises(landing.LandingError, match="cannot run the tracker read"):
         landing._tracker_stdout(["/nonexistent/todo-db"])
@@ -1887,7 +1924,14 @@ def _ready(batch: fx.BatchFixture, tracker: object, evidence: dict | None) -> li
         assert isinstance(tracker, dict)
         return tracker
 
-    return landing.ready_failures(_identity(batch.repo, head), head, ready, batch.repo, read)
+    return landing.ready_failures(
+        _identity(batch.repo, head),
+        head,
+        ready,
+        batch.repo,
+        read,
+        discover=lambda *args, **kwargs: (fx.BATCH_ID, "rev-1"),
+    )
 
 
 def test_batch_ready_passes_with_the_v2_capability_and_a_fresh_matching_tracker(tmp_path: Path) -> None:
@@ -2013,30 +2057,6 @@ def test_batch_evidence_refuses_a_develop_merge_whose_parent_is_not_on_develop(t
     assert any("merged parent is not an ancestor of origin/develop" in failure for failure in failures)
 
 
-def test_batch_evidence_refuses_a_review_outcome_the_trusted_store_does_not_hold(tmp_path: Path) -> None:
-    batch = _batch(tmp_path)
-    evidence = batch.evidence()
-    fx.REVIEW_STORE[(batch.receipts["a"]["source_base"], batch.receipts["a"]["accepted_head"], batch.start)][
-        "outcome"
-    ] = "findings"
-
-    failures = _verdict(batch, evidence=evidence)
-
-    assert any("member a review outcome 'clear' differs from the stored outcome 'findings'" in f for f in failures)
-
-
-@pytest.mark.parametrize("outcome", ["clear", "override"])
-def test_batch_evidence_refuses_a_review_that_is_only_in_the_evidence_file(tmp_path: Path, outcome: str) -> None:
-    batch = _batch(tmp_path)
-    evidence = batch.evidence()
-    evidence["member_reviews"]["b"]["outcome"] = outcome
-    fx.REVIEW_STORE.pop((batch.receipts["b"]["source_base"], batch.receipts["b"]["accepted_head"], batch.start))
-
-    failures = _verdict(batch, evidence=evidence)
-
-    assert any("member b review is not in the trusted review store" in failure for failure in failures)
-
-
 def test_batch_evidence_refuses_a_review_bound_to_an_untrusted_commit(tmp_path: Path) -> None:
     batch = _batch(tmp_path)
     evidence = batch.evidence()
@@ -2045,3 +2065,40 @@ def test_batch_evidence_refuses_a_review_bound_to_an_untrusted_commit(tmp_path: 
     failures = _verdict(batch, evidence=evidence)
 
     assert any("member a review names no trusted commit" in failure for failure in failures)
+
+
+def _mode_evidence(**over: object) -> landing.ReadyEvidence:
+    return _evidence(repository="o/r", branch="feat/x", pr_number=7, pr_node_id="PR_7", **over)
+
+
+def _mode_failures(tmp_path: Path, evidence: landing.ReadyEvidence, discover) -> list[str]:
+    repo = _repo(tmp_path / "r")
+    head = fx.head_of(repo)
+    return landing.batch_mode_failures(evidence, repo, _identity(repo, head), head, lambda _id: {}, discover=discover)
+
+
+def test_a_serial_delivery_mode_on_a_registered_pr_fails(tmp_path: Path) -> None:
+    failures = _mode_failures(
+        tmp_path, _mode_evidence(declared_delivery_mode="serial"), lambda *a, **k: (fx.BATCH_ID, "rev-1")
+    )
+
+    assert any("delivery_mode=serial" in failure for failure in failures)
+
+
+def test_an_ordinary_pr_asserted_as_batch_is_refused(tmp_path: Path) -> None:
+    failures = _mode_failures(tmp_path, _mode_evidence(require_batch=True), lambda *a, **k: (None, "rev-1"))
+
+    assert any("not a registered batch PR" in failure for failure in failures)
+
+
+def test_an_ordinary_pr_without_the_assertion_passes_discovery_with_no_batch_evidence(tmp_path: Path) -> None:
+    assert _mode_failures(tmp_path, _mode_evidence(), lambda *a, **k: (None, "rev-1")) == []
+
+
+def test_a_tracker_outage_during_discovery_refuses_readiness(tmp_path: Path) -> None:
+    def outage(*_args: object, **_kwargs: object) -> tuple[str | None, str]:
+        raise landing.LandingError("tracker unreachable")
+
+    failures = _mode_failures(tmp_path, _mode_evidence(), outage)
+
+    assert failures == ["authoritative tracker batch discovery failed: tracker unreachable"]

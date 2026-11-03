@@ -26,6 +26,7 @@ CLI_DESCRIPTION = (
     "Integration-branch batch loop: leader and member steps behind the batch-* make targets.\n"
     "\n"
     "Leader (role=integration worktree): start, member-create, land, advance, status, verify, evidence, finish.\n"
+    "Leader recovery (clean checkout of the integration branch at the recorded head): recover.\n"
     "Member (role=member worktree): member-check.\n"
     "\n"
     "The todo-db tracker is the authority for recorded heads, receipts and acceptance requirements;\n"
@@ -310,11 +311,58 @@ def non_python_paths(files: list[str]) -> list[str]:
     return [path for path in files if not path.endswith(".py") and not path.startswith("changelog.d/")]
 
 
-def lookup_member_review(repo: Path, base: str, head: str, trusted: str) -> dict | None:
-    _checkout_root_modules()
-    from _project.scripts.oracle_reviewers import local
+def _validate_trusted_sha(repo: Path, trusted: str, start_head: str | None = None) -> str:
+    if not (
+        bool(FULL_SHA.fullmatch(trusted)) and _git_ok(repo, "rev-parse", "--verify", "--quiet", f"{trusted}^{{commit}}")
+    ):
+        raise BatchError(f"trusted ref {trusted!r} is not a valid commit SHA")
+    if not _git_ok(repo, "merge-base", "--is-ancestor", trusted, DEVELOP_REF):
+        raise BatchError("the recorded trusted commit is not an ancestor of origin/develop")
+    if start_head and not _git_ok(repo, "merge-base", "--is-ancestor", start_head, trusted):
+        raise BatchError("the recorded trusted commit predates the batch start_head")
+    return trusted
 
-    return local.member_review_result(repo, base, head, trusted)
+
+def _review_member_patch(repo: Path, base: str, member_head: str, trusted: str) -> dict:
+    with tempfile.TemporaryDirectory() as scratch:
+        result_path = Path(scratch) / "member-review.json"
+        cmd = [
+            *DEFAULT_REVIEW_COMMAND,
+            "--policy",
+            POLICY_PATH,
+            "--member",
+            "--result-json",
+            str(result_path),
+            "--base-ref",
+            base,
+            "--reviewer-ref",
+            trusted,
+            "--trusted-ref",
+            trusted,
+            "--head",
+            member_head,
+        ]
+        proc = _run(cmd, repo)
+        try:
+            result = json.loads(result_path.read_text(encoding="utf-8")) if result_path.exists() else None
+        except (OSError, ValueError):
+            result = None
+        if proc.returncode != 0:
+            err_msg = (proc.stderr or proc.stdout).strip()
+            raise BatchError(f"leader member review did not clear this head: {err_msg[-400:]}")
+        if result is None:
+            raise BatchError("leader member review wrote no readable result")
+
+    if (
+        not isinstance(result, dict)
+        or result.get("schema") != MEMBER_REVIEW_SCHEMA
+        or result.get("outcome") not in ACCEPTED_REVIEW_OUTCOMES
+        or result.get("base_sha") != base
+        or result.get("head_sha") != member_head
+        or result.get("trusted_sha") != trusted
+    ):
+        raise BatchError("leader member review result does not bind this base and head or is not accepted")
+    return result
 
 
 def _trusted_develop(repo: Path) -> str:
@@ -325,8 +373,12 @@ def _trusted_develop(repo: Path) -> str:
     return _rev(repo, DEVELOP_REF)
 
 
-def _develop_is_trusted(repo: Path, sha: str) -> bool:
-    return bool(FULL_SHA.fullmatch(sha)) and _git_ok(repo, "merge-base", "--is-ancestor", sha, DEVELOP_REF)
+def _develop_is_trusted(repo: Path, sha: str, start_head: str | None = None) -> bool:
+    try:
+        _validate_trusted_sha(repo, sha, start_head)
+        return True
+    except BatchError:
+        return False
 
 
 def start_batch(
@@ -519,14 +571,13 @@ def _require_ledger(repo: Path, batch_id: str) -> dict:
 
 
 def _verification_command(repo: Path, base: str, tests: list[str], changed: list[str]) -> tuple[str, list[str]]:
-    if tests:
-        return "member-tests", ["uv", "run", "--", "python", "-m", "pytest", "-n", "0", "-q", *tests]
     proc = _run(
         ["uv", "run", "--", "python", "_project/scripts/preflight_targets.py", "tests", "--base-ref", base], repo
     )
     mapped = sorted(line.strip() for line in proc.stdout.splitlines() if line.strip()) if proc.returncode == 0 else []
-    if mapped:
-        return "member-tests", ["uv", "run", "--", "python", "-m", "pytest", "-n", "0", "-q", *mapped]
+    all_tests = sorted(set(mapped) | set(tests))
+    if all_tests:
+        return "member-tests", ["uv", "run", "--", "python", "-m", "pytest", "-n", "0", "-q", *all_tests]
     python_files = [path for path in changed if path.endswith(".py") and (repo / path).is_file()]
     if python_files:
         return "member-lint", ["uv", "run", "--", "ruff", "check", "--force-exclude", *python_files]
@@ -583,6 +634,11 @@ def check_member(
     if proc.returncode != 0:
         raise BatchError(f"changelog check failed: {(proc.stderr or proc.stdout).strip()[-400:]}")
     suite, command = _verification_command(repo, integration_head, tests, changed)
+    v_proc = _run(command, repo)
+    if v_proc.returncode != 0:
+        raise BatchError(f"member verification failed: {(v_proc.stderr or v_proc.stdout).strip()[-400:]}")
+    if _rev(repo, "HEAD") != member_head or not _is_clean(repo):
+        raise BatchError("member worktree changed while verification ran; run batch-member-check again")
     trusted = _trusted_develop(repo)
     with tempfile.TemporaryDirectory() as scratch:
         result_path = Path(scratch) / "member-review.json"
@@ -595,6 +651,8 @@ def check_member(
             str(result_path),
             "--base-ref",
             integration_head,
+            "--reviewer-ref",
+            trusted,
             "--trusted-ref",
             trusted,
             "--head",
@@ -696,11 +754,15 @@ def brief_sizes(repo: Path, head: str) -> dict | None:
 
 def _rerun(repo: Path, ledger: dict, member: str, command: list[str], suite: str, reason: str) -> dict:
     head = _rev(repo, "HEAD")
+    clean_before = _is_clean(repo)
     proc = _run(_validate_verification_command(command), repo)
+    head_after = _rev(repo, "HEAD")
+    clean_after = _is_clean(repo)
+    passed = proc.returncode == 0 and clean_before and clean_after and head_after == head
     entry = {
-        "status": "passed" if proc.returncode == 0 else "failed",
+        "status": "passed" if passed else "failed",
         "revision": head,
-        "clean": _is_clean(repo),
+        "clean": clean_before and clean_after,
         "suite": suite,
         "command": list(command),
         "worktree": str(repo.resolve()),
@@ -709,6 +771,10 @@ def _rerun(repo: Path, ledger: dict, member: str, command: list[str], suite: str
     }
     if proc.returncode != 0:
         entry["output"] = (proc.stderr or proc.stdout).strip()[-400:]
+    elif not passed:
+        entry["output"] = (
+            f"the checkout changed during the run (HEAD {head[:12]} -> {head_after[:12]}, clean={clean_after})"
+        )
     ledger.setdefault("acceptance", {}).setdefault(member, []).append(entry)
     return entry
 
@@ -750,6 +816,9 @@ def hunk_warnings(repo: Path, ledger: dict, exclude: str) -> list[str]:
 
 
 def _prepare_payload(ledger: dict, member: str, landing: dict, member_worktree: str, dependencies: list[str]) -> dict:
+    review = landing.get("review")
+    if not isinstance(review, dict) or review.get("schema") != MEMBER_REVIEW_SCHEMA:
+        raise BatchError(f"member {member!r} landing has no accepted leader review; land it again")
     take = [] if dependencies else [{"tool": "take", "arguments": {"id": member}}]
     generation = (
         "<generation returned by the take made before landing>" if dependencies else "<generation returned by take>"
@@ -776,10 +845,7 @@ def _prepare_payload(ledger: dict, member: str, landing: dict, member_worktree: 
                         "clean": True,
                         "suite": landing["verification"]["suite"],
                         "command": landing["verification"]["command"],
-                        "review": {
-                            "outcome": landing["review_outcome"],
-                            "trusted_sha": landing["trusted_sha"],
-                        },
+                        "review": review,
                     },
                     "implementation_dependencies": dependencies,
                 },
@@ -814,15 +880,6 @@ def _member_landing_facts(repo: Path, ledger: dict, member: str) -> dict:
     return {"branch": branch, "worktree": worktree, "member_head": member_head}
 
 
-def _failed_overlaps(ledger: dict, member: str, merge_head: str) -> list[str]:
-    failed = []
-    for other, entries in ledger.get("acceptance", {}).items():
-        latest = [e for e in entries if e.get("reason") == f"overlap:{member}" and e.get("revision") == merge_head]
-        if latest and latest[-1].get("status") != "passed":
-            failed.append(other)
-    return failed
-
-
 def _already_merged(
     repo: Path, ledger: dict, tracker: dict, member: str, facts: dict, head: str, dependencies: list[str]
 ) -> dict | None:
@@ -835,10 +892,13 @@ def _already_merged(
         return None
     ledger["landings"][member] = landing
     save_ledger(repo, ledger)
-    failed = _failed_overlaps(ledger, member, landing["merge_head"])
-    if failed:
+    receipts = _receipts(tracker)
+    earlier = {key: value for key, value in ledger["landings"].items() if key != member}
+    reruns, failures = _overlap_reruns(repo, ledger, receipts, earlier, member, landing.get("changed_files", []))
+    save_ledger(repo, ledger)
+    if failures:
         raise BatchError(
-            f"member {member!r} is merged at {landing['merge_head']} but the overlap rerun failed for {failed}; "
+            f"member {member!r} is merged at {landing['merge_head']} but the overlap rerun failed for {failures}; "
             f"reset the integration branch to {landing.get('source_base')} and land again once the combination "
             f"passes; do not prepare {member!r} until the reruns pass"
         )
@@ -858,11 +918,7 @@ def _already_merged(
 def _review_and_scope(
     repo: Path, ledger: dict, member: str, base: str, member_head: str, trusted: str
 ) -> tuple[dict, list[str]]:
-    review = lookup_member_review(repo, base, member_head, trusted)
-    if review is None:
-        raise BatchError("the local review cache holds no result for this member's patch; run batch-member-check")
-    if review.get("outcome") not in ACCEPTED_REVIEW_OUTCOMES:
-        raise BatchError(f"member review outcome {review.get('outcome')!r} blocks landing")
+    review = _review_member_patch(repo, base, member_head, trusted)
     changed = _changed_files(repo, base, member_head)
     if not changed:
         raise BatchError("member has no changes over the integration head")
@@ -893,8 +949,9 @@ def _landing_preconditions(repo: Path, ledger: dict, tracker: dict, member: str,
     if not _is_ancestor(repo, head, facts["member_head"]):
         raise BatchError("member does not contain the current integration head")
     trusted = str(check.get("trusted_sha", ""))
-    if not _develop_is_trusted(repo, trusted):
-        raise BatchError("the recorded trusted commit is not an ancestor of origin/develop")
+    start_head = str(ledger.get("start_head", ""))
+    if not _develop_is_trusted(repo, trusted, start_head):
+        raise BatchError("the recorded trusted commit is not an ancestor of origin/develop or predates start_head")
     review, changed = _review_and_scope(repo, ledger, member, head, facts["member_head"], trusted)
     return {
         "trusted": trusted,
@@ -992,6 +1049,7 @@ def land_member(repo: Path, member: str, *, push: bool = True) -> dict:
         "merge_head": merged,
         "changed_files": gate["changed"],
         "trusted_sha": gate["trusted"],
+        "review": gate["review"],
         "review_outcome": gate["review"]["outcome"],
         "verification": gate["verification"],
         "landed_at": _now(),
@@ -1045,8 +1103,9 @@ def _reconstruct_landing(
             "prepare it with the verification command recorded in the member worktree config"
         )
     trusted = str(check.get("trusted_sha", ""))
-    if not _develop_is_trusted(repo, trusted):
-        raise BatchError("the recorded trusted commit is not an ancestor of origin/develop")
+    start_head = str(ledger.get("start_head", ""))
+    if not _develop_is_trusted(repo, trusted, start_head):
+        raise BatchError("the recorded trusted commit is not an ancestor of origin/develop or predates start_head")
     review, changed = _review_and_scope(repo, ledger, member, source_base, facts["member_head"], trusted)
     return {
         "member_branch": facts["branch"],
@@ -1056,6 +1115,7 @@ def _reconstruct_landing(
         "merge_head": merge_head,
         "changed_files": changed,
         "trusted_sha": trusted,
+        "review": review,
         "review_outcome": review["outcome"],
         "verification": {
             "suite": check["verification"]["suite"],
@@ -1218,7 +1278,6 @@ def advance_head(repo: Path, reason: str, *, push: bool = True) -> dict:
     save_ledger(repo, ledger)
     if failures:
         raise BatchError(f"the fix at {head} broke earlier members {failures}; fix again and rerun batch-advance")
-    result["backup_push"] = _push_backup(repo, ledger["integration_branch"]) if push else "skipped"
     result["payload"] = {
         "tool": "advance_batch_head",
         "arguments": {
@@ -1232,10 +1291,18 @@ def advance_head(repo: Path, reason: str, *, push: bool = True) -> dict:
     }
     final_pr = tracker.get("final_pr")
     if isinstance(final_pr, dict):
+        result["backup_push"] = "skipped (final PR bound; submit advance_batch_head before push)"
+        old_head = final_pr.get("head") or expected
         result["next"] = (
-            f"push {ledger['integration_branch']}, then bind_batch_pr with head={head} "
-            f"expected_previous_head={final_pr.get('head')}"
+            f"1. Withdraw auto-merge: make pr-landing-withdraw PR={final_pr.get('number')} HEAD={old_head}\n"
+            f"2. Submit the advance_batch_head payload below to the tracker.\n"
+            f"3. Push the exact head: git push origin {head}:refs/heads/{ledger['integration_branch']}\n"
+            f"4. Rebind the final PR: bind_batch_pr head={head} expected_previous_head={final_pr.get('head')}\n"
+            f"5. Run make batch-evidence.\n"
+            f"6. Verify review and CI, then rearm."
         )
+    else:
+        result["backup_push"] = _push_backup(repo, ledger["integration_branch"]) if push else "skipped"
     return result
 
 
@@ -1243,12 +1310,22 @@ def verify_integration(repo: Path) -> dict:
     batch_id = require_role(repo, ROLE_INTEGRATION)
     ledger = _require_ledger(repo, batch_id)
     tracker = read_tracker(repo, batch_id)
-    recorded = set(tracker_heads(tracker))
+    covered: set[str] = {ledger["start_head"]}
+    previous_recorded = ledger["start_head"]
+    for entry in tracker.get("integration_log", []):
+        entry_head = entry.get("head")
+        if not entry_head:
+            continue
+        if entry.get("kind") == "fix" and _is_ancestor(repo, previous_recorded, entry_head):
+            covered.update(_git(repo, "rev-list", "--first-parent", f"{previous_recorded}..{entry_head}").splitlines())
+        covered.add(entry_head)
+        previous_recorded = entry_head
+
     head = _rev(repo, "HEAD")
     unrecorded = [
         sha
         for sha in _git(repo, "rev-list", "--first-parent", f"{ledger['start_head']}..{head}").splitlines()
-        if sha not in recorded
+        if sha not in covered
     ]
     receipts = _receipts(tracker)
     ancestry: dict[str, bool | None] = {}
@@ -1596,6 +1673,79 @@ def rebuild_ledger(repo: Path, batch_id: str, tracker: dict) -> dict:
     return ledger
 
 
+def _same_repository(origin: str, registered: object) -> bool:
+    if origin == registered:
+        return True
+    try:
+        return isinstance(registered, str) and _repo_slug(origin) == _repo_slug(registered)
+    except BatchError:
+        return False
+
+
+def recover_owner(
+    repo: Path,
+    expected_owner: str,
+    expected_owner_generation: str,
+    reason: str,
+    *,
+    relocate: bool = False,
+    batch_id: str | None = None,
+) -> dict:
+    for label, value in (
+        ("expected owner", expected_owner),
+        ("expected owner generation", expected_owner_generation),
+        ("reason", reason),
+    ):
+        if not value.strip():
+            raise BatchError(f"{label} is required")
+    branch = _branch(repo)
+    marked = _config_get(repo, "id") if role_of(repo) == ROLE_INTEGRATION else None
+    if role_of(repo) not in (None, ROLE_INTEGRATION):
+        raise BatchError(f"this checkout has role={role_of(repo)}; recover from a clean integration checkout")
+    batch_id = _validate_id(batch_id or marked or branch.removeprefix("feat/"), "batch")
+    tracker = read_tracker(repo, batch_id)
+    if branch != tracker.get("integration_branch"):
+        raise BatchError(f"this checkout is on {branch}, not the registered {tracker.get('integration_branch')}")
+    origin = _git(repo, "remote", "get-url", "origin")
+    if not _same_repository(origin, tracker.get("repository")):
+        raise BatchError(f"origin {origin} is not the registered repository {tracker.get('repository')}")
+    if not _is_clean(repo):
+        raise BatchError("integration checkout is not clean")
+    head = _rev(repo, "HEAD")
+    if head != tracker.get("integration_head"):
+        raise BatchError(f"checkout head {head} is not the tracker integration head {tracker.get('integration_head')}")
+    registered_worktree = str(tracker.get("integration_worktree") or "")
+    here = str(repo.resolve())
+    if relocate and registered_worktree == here:
+        raise BatchError("this checkout is already the registered integration worktree; omit RELOCATE")
+    if not relocate and registered_worktree != here:
+        raise BatchError(
+            f"this checkout is not the registered integration worktree {registered_worktree}; "
+            "rerun with RELOCATE=1 to move the registration here"
+        )
+    ledger = load_ledger(repo, batch_id)
+    if ledger is None:
+        ledger = rebuild_ledger(repo, batch_id, tracker)
+    generation = secrets.token_hex(16)
+    ledger["owner_generation"] = generation
+    ledger["integration_worktree"] = here
+    save_ledger(repo, ledger)
+    _config_set(repo, "role", ROLE_INTEGRATION)
+    _config_set(repo, "id", batch_id)
+    arguments = {
+        "batch_id": batch_id,
+        "expected_owner": expected_owner,
+        "expected_owner_generation": expected_owner_generation,
+        "new_owner_generation": generation,
+        "reason": reason,
+    }
+    if relocate:
+        arguments["expected_integration_worktree"] = registered_worktree
+        arguments["expected_integration_head"] = head
+        arguments["integration_worktree"] = here
+    return {"worktree": here, "tool": "recover_batch_owner", "arguments": arguments}
+
+
 def batch_status(repo: Path) -> dict:
     batch_id = require_role(repo, ROLE_INTEGRATION)
     tracker = read_tracker(repo, batch_id)
@@ -1707,6 +1857,10 @@ def build_evidence(repo: Path, *, suite: str = "batch-final-tree") -> dict:
         raise BatchError("the final PR is not bound at the integration head; open the PR and bind_batch_pr first")
     if Path(str(tracker.get("integration_worktree"))).resolve() != repo.resolve():
         raise BatchError("this worktree is not the registered integration worktree")
+    path = _ledger_dir(repo, batch_id) / "final-evidence.json"
+    if path.exists():
+        path.unlink()
+
     receipts = _receipts(tracker)
     members = ledger["members"]
     for member in members:
@@ -1715,22 +1869,17 @@ def build_evidence(repo: Path, *, suite: str = "batch-final-tree") -> dict:
             raise BatchError(f"member {member!r} lacks a prepared_work_v2 receipt")
         if not _is_ancestor(repo, str(receipt.get("accepted_head")), final_head):
             raise BatchError(f"member {member!r} accepted head is not an ancestor of the final head")
-    required = tracker.get("acceptance_required") if isinstance(tracker.get("acceptance_required"), dict) else {}
+
     current: dict[str, dict] = {}
     for member in members:
-        if member not in required:
-            continue
-        entries = ledger.get("acceptance", {}).get(member, [])
-        if not (entries and entries[-1].get("revision") == final_head and entries[-1].get("status") == "passed"):
-            verification = receipts[member]["verification"]
-            command = _validate_verification_command(verification.get("command"))
-            rerun_entry = _rerun(repo, ledger, member, command, str(verification.get("suite", "")), "final-evidence")
-            save_ledger(repo, ledger)
-            if rerun_entry["status"] != "passed":
-                raise BatchError(f"rerun of {member!r} failed at the final head: {rerun_entry.get('output', '')}")
-        entry = ledger["acceptance"][member][-1]
-        if not entry["clean"]:
-            raise BatchError(f"rerun of {member!r} left the integration worktree dirty")
+        verification = receipts[member]["verification"]
+        command = _validate_verification_command(verification.get("command"))
+        rerun_entry = _rerun(repo, ledger, member, command, str(verification.get("suite", "")), "final-evidence")
+        save_ledger(repo, ledger)
+        if rerun_entry["status"] != "passed":
+            raise BatchError(f"rerun of {member!r} failed at the final head: {rerun_entry.get('output', '')}")
+        if not _is_clean(repo) or _rev(repo, "HEAD") != final_head:
+            raise BatchError(f"rerun of {member!r} left the integration worktree dirty or moved HEAD")
         current[member] = {
             "status": "passed",
             "revision": final_head,
@@ -1739,27 +1888,15 @@ def build_evidence(repo: Path, *, suite: str = "batch-final-tree") -> dict:
             "command": receipts[member]["verification"]["command"],
             "worktree": str(repo.resolve()),
         }
-    if not _is_clean(repo):
-        raise BatchError("integration worktree is not clean after the reruns")
+
     reviews: dict[str, dict] = {}
     for member in members:
         receipt = receipts[member]
-        verification = receipt["verification"]
-        review_meta = verification.get("review") if isinstance(verification.get("review"), dict) else {}
-        trusted = review_meta.get("trusted_sha") or ledger["landings"].get(member, {}).get("trusted_sha")
-        result = (
-            lookup_member_review(repo, str(receipt["source_base"]), str(receipt["accepted_head"]), str(trusted))
-            if trusted
-            else None
-        )
-        if (
-            result is None
-            or result.get("base_sha") != receipt["source_base"]
-            or result.get("head_sha") != receipt["accepted_head"]
-            or result.get("outcome") not in ACCEPTED_REVIEW_OUTCOMES
-        ):
-            raise BatchError(f"member {member!r} has no accepted stored review for its receipt range")
-        reviews[member] = result
+        verification = receipt.get("verification", {})
+        review = verification.get("review")
+        if not isinstance(review, dict) or review.get("outcome") not in ACCEPTED_REVIEW_OUTCOMES:
+            raise BatchError(f"member {member!r} receipt has no accepted review record")
+        reviews[member] = review
     excluded = _excluded_paths(repo, final_head, tracker)
     changed = [p for p in _changed_files(repo, ledger["start_head"], final_head) if p not in excluded]
     tracker_view = {key: value for key, value in tracker.items() if key != "_rev"}
@@ -1857,6 +1994,13 @@ def main(argv: list[str] | None = None) -> int:
     finish = sub.add_parser("finish", help="remove member worktrees and branches that lose nothing (dry run default)")
     finish.add_argument("--execute", action="store_true")
 
+    recover = sub.add_parser("recover", help="mint a new owner generation and print the recover_batch_owner payload")
+    recover.add_argument("--expected-owner", required=True)
+    recover.add_argument("--expected-owner-generation", required=True)
+    recover.add_argument("--reason", required=True)
+    recover.add_argument("--relocate", action="store_true")
+    recover.add_argument("--batch")
+
     sub.add_parser("status", help="reconcile the ledger with the tracker and Git")
     sub.add_parser("verify", help="check first-parent history, recorded heads and member ancestry")
 
@@ -1901,6 +2045,17 @@ def main(argv: list[str] | None = None) -> int:
             report = finish_batch(repo, execute=args.execute)
             _print(report)
             return 0 if report["ok"] else 1
+        elif args.command == "recover":
+            _print(
+                recover_owner(
+                    repo,
+                    args.expected_owner,
+                    args.expected_owner_generation,
+                    args.reason,
+                    relocate=args.relocate,
+                    batch_id=args.batch,
+                )
+            )
         elif args.command == "status":
             _print(batch_status(repo))
         elif args.command == "verify":

@@ -14,12 +14,12 @@ pytestmark = [pytest.mark.integration, pytest.mark.medium]
 ROOT = Path(__file__).resolve().parents[3]
 
 
-DELIVERY_CATALOG_REV = "8358bf167eda32f5b25d30103af9ff977eddbe12"
-SOURCE_REV = "aaad6c97632f0a36341cb670c9e1a7fe0b3a860b"
-TODO_DB_VERSION = "0.14.0"
+DELIVERY_CATALOG_REV = "6b47649eaff3ee66bca25c62c954134daf405f34"
+SOURCE_REV = "743f0173b71154b3c24e8c9b0b5ec0c712f9c32b"
+TODO_DB_VERSION = "0.15.0"
 SCRIPTS_PROJECT = ROOT / "_project/scripts"
 WHEEL = SCRIPTS_PROJECT / f"vendor/todo_db-{TODO_DB_VERSION}-py3-none-any.whl"
-WHEEL_SHA256 = "63aae9474551d7b975d8173837cb21937d95910eb24b6f3bbcaa338e3721844a"
+WHEEL_SHA256 = "9f1985ff0ff8c4d96b0b14d4f6383b1d366236f798940e73e541de5345592468"
 REQUIRED_BATCH_TOOLS = {"register_batch", "prepare", "bind_batch_pr", "abort_batch"}
 
 

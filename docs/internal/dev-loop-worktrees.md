@@ -137,9 +137,13 @@ Integration worktrees are leader-only. `make worktree-create` clears inherited
 worktree refuses `make pr-open` and `make pr-fanout`, and `make pr-fanout` skips
 member worktrees; the integration branch is never a PR base. Only the leader's
 final PR reaches `develop`. It does not skip CI or weaken hosted/native review,
-merge, deployment, or authority gates. Revalidate after base, member, scope,
-dependency, head, or conflict movement; use only reversible rollback/previews
-for recovery.
+merge, deployment, or authority gates. Worktree role keys are conveniences, not
+authority: arming discovers batch membership from the tracker for every PR, and
+a registered batch PR needs full batch evidence even from a checkout with no
+role keys. Revalidate after base, member, scope, dependency, head, or conflict
+movement; use only reversible rollback/previews for recovery. A dead leader is
+replaced with `make batch-recover` (add `RELOCATE=1` to move the integration
+checkout); receipts stay as recorded, and evidence is regenerated at the new path.
 
 ### Post-final-merge cleanup
 

@@ -264,11 +264,7 @@ class World:
         self.primary = tmp_path / "primary"
         subprocess.run(["git", "clone", "-q", str(self.origin), str(self.primary)], check=True, capture_output=True)
         monkeypatch.setattr(bi, "_run", self.run)
-        monkeypatch.setattr(bi, "lookup_member_review", self.lookup_review)
         self.integration: Path | None = None
-
-    def lookup_review(self, repo: Path, base: str, head: str, trusted: str):
-        return self.review_cache.get((base, head, trusted))
 
     def run(self, argv, cwd, **_kwargs):
         argv = list(argv)
@@ -289,7 +285,7 @@ class World:
             return done(self.preflight_rc, stderr="preflight output")
         if argv[:3] == ["make", "-s", "changelog-check"]:
             return done()
-        if "preflight_targets.py" in argv:
+        if any("preflight_targets.py" in arg for arg in argv):
             return done(0, "\n".join(self.mapped_tests))
         if argv[:2] == bi.DEFAULT_REVIEW_COMMAND:
             return self.review(argv, Path(cwd))
@@ -307,6 +303,13 @@ class World:
         outcome = "not-reviewed" if exempt else "clear"
         if self.review_rc is not None:
             outcome = "findings"
+        cached = self.review_cache.get((base, head, trusted))
+        if cached is not None:
+            outcome = cached.get("outcome", outcome)
+        elif getattr(self, "require_cached_review", False):
+            return done(
+                1, stderr="the local review cache holds no result for this member's patch; run batch-member-check"
+            )
         result = {
             "schema": "benchbox_member_review_v1",
             "outcome": outcome,
@@ -319,7 +322,9 @@ class World:
         }
         self.review_cache[(base, head, trusted)] = result
         Path(values["--result-json"]).write_text(json.dumps(result), encoding="utf-8")
-        return done(self.review_rc or 0)
+        rc = 1 if outcome == "findings" else (self.review_rc or 0)
+        err = "member review outcome 'findings' blocks landing" if outcome == "findings" else ""
+        return done(rc, stderr=err)
 
     def calls_matching(self, word: str) -> list[tuple[list[str], Path]]:
         return [call for call in self.calls if word in call[0]]

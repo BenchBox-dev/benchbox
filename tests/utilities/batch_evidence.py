@@ -96,6 +96,14 @@ class BatchFixture:
                 "clean": True,
                 "suite": f"suite-{member}",
                 "command": ["pytest", "-q", member],
+                "review": {
+                    "schema": REVIEW_SCHEMA,
+                    "outcome": "clear",
+                    "reason": "",
+                    "base_sha": source_base,
+                    "head_sha": accepted,
+                    "trusted_sha": self.start,
+                },
             },
         }
         REVIEW_STORE[(source_base, accepted, self.start)] = {
@@ -223,11 +231,17 @@ class BatchFixture:
         }
 
 
+_DROP = object()
+
+
 class FakeBatchShow:
-    def __init__(self, tracker: dict, rev: str = "rev-1", stale: bool = False) -> None:
+    def __init__(
+        self, tracker: dict, rev: str = "rev-1", stale: bool = False, page_overrides: dict | None = None
+    ) -> None:
         self.tracker = tracker
         self.rev = rev
         self.stale = stale
+        self.page_overrides = page_overrides or {}
         self.calls: list[list[str]] = []
 
     def __call__(self, cmd: list[str]) -> tuple[int, str]:
@@ -250,6 +264,7 @@ class FakeBatchShow:
             "offset": offset,
             "total": len(blob),
             "window": blob[offset : offset + budget],
+            "rev": self.rev,
         }
         if offset + budget < len(blob):
             data["continuation"] = {
@@ -258,6 +273,10 @@ class FakeBatchShow:
                 "budget": budget,
                 "rev": self.rev,
             }
+        if offset > 0:
+            data.update(self.page_overrides)
+        for key in [key for key, value in data.items() if value is _DROP]:
+            del data[key]
         return 0, json.dumps({"ok": True, "data": data})
 
     @staticmethod

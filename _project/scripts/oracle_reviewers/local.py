@@ -73,7 +73,6 @@ EXIT_PROCEED = 0
 EXIT_REFUSED = 1
 EXIT_UNAVAILABLE = 2
 MEMBER_SCHEMA = "benchbox_member_review_v1"
-MEMBER_DIR = "member"
 MEMBER_CLEAR = "clear"
 MEMBER_FINDINGS = "findings"
 MEMBER_NOT_REVIEWED = "not-reviewed"
@@ -1217,15 +1216,6 @@ def _commit_sha(root: Path, label: str, value: str) -> str:
     return resolved
 
 
-def _member_key(base: str, head: str, trusted_sha: str, trusted: Trusted) -> str:
-    parts = (MEMBER_SCHEMA, base, head, trusted_sha, trusted.digest())
-    return hashlib.sha256("\0".join(parts).encode("utf-8")).hexdigest()
-
-
-def _member_path(directory: Path, key: str) -> Path:
-    return directory / MEMBER_DIR / f"{key}.json"
-
-
 def _member_record(root: Path, base: str, head: str, trusted_sha: str, outcome: str, reason: str) -> dict[str, Any]:
     return {
         "schema": MEMBER_SCHEMA,
@@ -1257,21 +1247,6 @@ def _member_outcome(outcome: Outcome, adjudicate: str) -> tuple[str, str]:
     return MEMBER_CLEAR, f"decided {outcome.label} with no Critical or High findings"
 
 
-def member_review_result(root: Path, base_sha: str, head_sha: str, trusted_sha: str) -> dict[str, Any] | None:
-    try:
-        for label, value in (("base", base_sha), ("head", head_sha), ("trusted", trusted_sha)):
-            _commit_sha(root, label, value)
-        trusted = Trusted.read(root, trusted_sha, DEFAULT_POLICY)
-        data = json.loads(
-            _member_path(state_dir(), _member_key(base_sha, head_sha, trusted_sha, trusted)).read_text("utf-8")
-        )
-        expected = _member_record(root, base_sha, head_sha, trusted_sha, data["outcome"], data["reason"])
-    except (Refused, Unavailable, OSError, ValueError, KeyError, TypeError):
-        return None
-    ok = data == expected and data["outcome"] in (MEMBER_CLEAR, MEMBER_FINDINGS, MEMBER_NOT_REVIEWED, MEMBER_OVERRIDE)
-    return data if ok else None
-
-
 def _member_review(args: argparse.Namespace, reporter: Reporter) -> int:
     root = Path.cwd()
     result_path = Path(args.result_json)
@@ -1289,8 +1264,6 @@ def _member_review(args: argparse.Namespace, reporter: Reporter) -> int:
         _show(outcome, reporter)
     _escalated(record, outcome, reporter)
     result = _member_record(root, base, head, trusted_sha, kind, reason)
-    trusted = Trusted.read(root, trusted_sha, args.policy)
-    _write_json_atomic(_member_path(state_dir(), _member_key(base, head, trusted_sha, trusted)), result)
     _write_json_atomic(result_path, result)
     if kind == MEMBER_FINDINGS:
         reporter.say(

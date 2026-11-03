@@ -70,10 +70,12 @@ and work that installs or changes the loop is delivered serially.
 - **One tier of tests per layer.** Members run mapped and named tests; the
   leader runs the fast tier once on the integration tree. Concurrent members then
   do not multiply heavy work on one host.
-- **Member review is local and exact.** A member's review result binds its base
-  and head and is stored in the local review cache; the leader trusts the cache,
-  not the member's report. A member that changes only exempt paths is recorded
-  `not-reviewed`, the same bar a standalone PR meets.
+- **Member review is exact and leader-run.** Before landing, the leader runs the
+  trusted reviewer for the member's exact base and head and retains the
+  accepted result in the receipt; a member's own result is feedback only. A
+  member that changes only exempt paths is recorded `not-reviewed`, the same
+  bar a standalone PR meets. Final evidence executes every member's checks
+  again on the final tree rather than replaying earlier results.
 - **Size is bounded by the hosted review.** `brief_max_bytes` (100000) is a hard
   limit: a diff over it reviews in file-list mode, and a file list over it skips
   the hosted reviewers. A landing that would exceed the file-list cap is refused;

@@ -12,6 +12,9 @@ override TESTS := $(value TESTS)
 override PREFLIGHT_CMD := $(value PREFLIGHT_CMD)
 override REASON := $(value REASON)
 override SUITE := $(value SUITE)
+override EXPECTED_OWNER := $(value EXPECTED_OWNER)
+override EXPECTED_OWNER_GENERATION := $(value EXPECTED_OWNER_GENERATION)
+override RELOCATE := $(value RELOCATE)
 
 .PHONY: batch-start
 batch-start: export BATCH_ARG_BATCH := $(BATCH)
@@ -75,3 +78,15 @@ batch-finish: export BATCH_ARG_EXECUTE := $(EXECUTE)
 batch-finish:
 	@FLAG=""; case "$$BATCH_ARG_EXECUTE" in 1|true|yes) FLAG="--execute";; esac; \
 	$(BATCH_SCRIPT) finish $$FLAG
+
+.PHONY: batch-recover
+batch-recover: export BATCH_ARG_BATCH := $(BATCH)
+batch-recover: export BATCH_ARG_EXPECTED_OWNER := $(EXPECTED_OWNER)
+batch-recover: export BATCH_ARG_EXPECTED_OWNER_GENERATION := $(EXPECTED_OWNER_GENERATION)
+batch-recover: export BATCH_ARG_REASON := $(REASON)
+batch-recover: export BATCH_ARG_RELOCATE := $(RELOCATE)
+batch-recover:
+	@test -n "$$BATCH_ARG_EXPECTED_OWNER" -a -n "$$BATCH_ARG_EXPECTED_OWNER_GENERATION" -a -n "$$BATCH_ARG_REASON" || { echo "Usage: make batch-recover EXPECTED_OWNER=<worker> EXPECTED_OWNER_GENERATION=<generation> REASON=<why> [RELOCATE=1] [BATCH=<id>]" >&2; exit 2; }
+	@FLAG=""; case "$$BATCH_ARG_RELOCATE" in 1|true|yes) FLAG="--relocate";; esac; \
+	$(BATCH_SCRIPT) recover --expected-owner "$$BATCH_ARG_EXPECTED_OWNER" --expected-owner-generation "$$BATCH_ARG_EXPECTED_OWNER_GENERATION" --reason "$$BATCH_ARG_REASON" \
+		$${BATCH_ARG_BATCH:+--batch "$$BATCH_ARG_BATCH"} $$FLAG

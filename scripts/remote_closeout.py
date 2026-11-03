@@ -293,10 +293,7 @@ def _tracker_file(run: Runner, name: str, config_path: Path) -> object:
 
 
 def tracker_batches(run: Runner, config_path: Path = TRACKER_CONFIG) -> dict:
-    index = _tracker_file(run, "index.json", config_path)
-    batches = index.get("batches", {}) if isinstance(index, dict) else None
-    if not isinstance(batches, dict):
-        raise LandingError("the tracker index has no readable batch registry")
+    batches, _rev = pr_landing.pinned_tracker_batches(run, config_path)
     return batches
 
 
@@ -334,6 +331,12 @@ def batch_refusals(batches: Mapping[str, object], repo: str, view: dict, item: s
             reasons.append(f"condition 1: batch PR: its head branch is the integration branch of batch {batch_id!r}")
         if final and (final.get("number") == view.get("number") or final.get("node_id") == view.get("id")):
             reasons.append(f"condition 1: batch PR: it is the final PR of batch {batch_id!r}")
+        if batch.get("lifecycle", "active") != "aborted" and any(
+            isinstance(member, str)
+            and view.get("headRefName") == batch_integration.member_branch_name(batch_id, member)
+            for member in members
+        ):
+            reasons.append(f"condition 1: batch PR: its head branch is a member branch of batch {batch_id!r}")
         if item and item in members and batch.get("lifecycle", "active") != "aborted":
             reasons.append(f"condition 1: batch PR: its tracker item {item!r} is a member of batch {batch_id!r}")
     return reasons

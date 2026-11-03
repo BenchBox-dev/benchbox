@@ -701,14 +701,6 @@ def _member_args(repo: Path, result: Path, **overrides: str) -> argparse.Namespa
     return argparse.Namespace(**values)
 
 
-def _stored(repo: Path, outcome: str, reason: str = "r") -> dict[str, Any]:
-    base, head, trusted = (_git(repo, "rev-parse", ref) for ref in ("develop", "HEAD", "develop"))
-    record = local._member_record(repo, base, head, trusted, outcome, reason)
-    key = local._member_key(base, head, trusted, local.Trusted.read(repo, trusted, local.DEFAULT_POLICY))
-    local._write_json_atomic(local._member_path(local.state_dir(), key), record)
-    return record
-
-
 def test_a_member_result_binds_the_patch_tree_and_trusted_commit(home: Path, tmp_path: Path) -> None:
     repo = _member_repo(tmp_path / "repo")
     base, head = _git(repo, "rev-parse", "develop"), _git(repo, "rev-parse", "HEAD")
@@ -719,49 +711,6 @@ def test_a_member_result_binds_the_patch_tree_and_trusted_commit(home: Path, tmp
     assert (record["base_sha"], record["head_sha"], record["trusted_sha"]) == (base, head, base)
     assert record["head_tree"] == _git(repo, "rev-parse", "HEAD^{tree}")
     assert record["patch_digest"] == local._patch_digest(repo, base, head)
-
-
-def test_a_stored_member_result_is_returned_only_for_exactly_that_patch(home: Path, tmp_path: Path) -> None:
-    repo = _member_repo(tmp_path / "repo")
-    base, head, trusted = (_git(repo, "rev-parse", ref) for ref in ("develop", "HEAD", "develop"))
-    assert local.member_review_result(repo, base, head, trusted) is None
-
-    record = _stored(repo, "findings")
-
-    assert local.member_review_result(repo, base, head, trusted) == record
-    (repo / CHECKER).write_text("value = 2\n", encoding="utf-8")
-    _git(repo, "commit", "--quiet", "-am", "feat: change it")
-    assert local.member_review_result(repo, base, _git(repo, "rev-parse", "HEAD"), trusted) is None
-
-
-def test_a_stored_member_result_is_not_reused_under_another_trusted_commit_or_manifest(
-    home: Path, tmp_path: Path
-) -> None:
-    repo = _member_repo(tmp_path / "repo")
-    base, head = _git(repo, "rev-parse", "develop"), _git(repo, "rev-parse", "HEAD")
-    _stored(repo, "clear")
-    _git(repo, "switch", "--quiet", "-c", "same-manifests", "develop")
-    _git(repo, "commit", "--quiet", "--allow-empty", "-m", "another trusted commit")
-    _git(repo, "switch", "--quiet", "-c", "changed-manifest", "develop")
-    (repo / local.SOUNDNESS_MANIFEST).write_text(MANIFEST_TEXT + "file\textra.txt\n", encoding="utf-8")
-    _git(repo, "commit", "--quiet", "-am", "extend the manifest")
-    _git(repo, "switch", "--quiet", "feat/x")
-
-    assert local.member_review_result(repo, base, head, _git(repo, "rev-parse", "same-manifests")) is None
-    assert local.member_review_result(repo, base, head, _git(repo, "rev-parse", "changed-manifest")) is None
-
-
-def test_a_tampered_member_result_is_not_returned(home: Path, tmp_path: Path) -> None:
-    repo = _member_repo(tmp_path / "repo")
-    base, head, trusted = (_git(repo, "rev-parse", ref) for ref in ("develop", "HEAD", "develop"))
-    key = local._member_key(base, head, trusted, local.Trusted.read(repo, trusted, local.DEFAULT_POLICY))
-    record = _stored(repo, "findings")
-    path = local._member_path(local.state_dir(), key)
-
-    path.write_text(json.dumps({**record, "patch_digest": "0" * 64}), encoding="utf-8")
-    assert local.member_review_result(repo, base, head, trusted) is None
-    path.write_text(json.dumps({**record, "outcome": "approved"}), encoding="utf-8")
-    assert local.member_review_result(repo, base, head, trusted) is None
 
 
 @pytest.mark.parametrize("moving", ["develop", "origin/develop", "HEAD", "feat/x", "", "abc1234"])
@@ -825,8 +774,6 @@ def test_an_exempt_only_or_empty_member_is_not_reviewed_rather_than_clear(
 
     written = json.loads(result.read_text(encoding="utf-8"))
     assert written["outcome"] == "not-reviewed" and written["reason"]
-    base, head = args.base_ref, args.head
-    assert local.member_review_result(repo, base, head, args.trusted_ref) == written
 
 
 def test_member_outcomes_keep_not_reviewed_clear_findings_and_override_apart() -> None:
