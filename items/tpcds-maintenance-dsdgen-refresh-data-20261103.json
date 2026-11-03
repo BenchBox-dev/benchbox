@@ -1,0 +1,30 @@
+{
+  "acceptance": [
+    "Slice plan recorded in context before the first code commit, and each slice beyond the first exists as its own tracker item with needs; show_item on those items lists them.",
+    "Refresh data come from dsdgen -update, generated before the maintenance timer starts; a test asserts dsdgen is not invoked between the timer start and stop and that the run is deterministic for a fixed scale factor and refresh-set index (same inputs, same checksums across two runs).",
+    "Loading the refresh files into staging or target tables happens inside the timer through the adapter's generic loading path, with a test that fails if file reading moves before the timer.",
+    "Connection open, initialize() and close are outside each operation's interval, and the interval starts at the first read of the refresh data; a test records event order.",
+    "Durations use mono_time()/elapsed_seconds(); a grep of benchbox/core/tpcds/maintenance*.py finds no time.time() used for a duration; python3 _project/scripts/timing_policy_check.py --strict (the make target that runs it) passes.",
+    "Result metadata carries a maintenance method identifier; comparing a result with the old method refuses or warns, as defined in the decision item's recorded outcome.",
+    "Smoke: a DuckDB TPC-DS SF0.01 run with the maintenance phase completes with the new data source and reports each function's interval; paste the output summary in the PR.",
+    "docs/internal/tpc-measured-intervals.md TPC-DS maintenance rows are updated; changelog fragment states that maintenance timings before this version are not comparable."
+  ],
+  "context": "Origin: 2026-11-03 root-cause analysis of TPC-H RF1 timing (5 whys) and its adversarial review. Spec clauses cited here were read from the published PDFs at the links on 2026-11-03; re-read them rather than trusting this text.\nUnlocks tpcds-qphds-spec-metric-implementation (two maintenance runs in spec order) and perf-tpcds-maintenance-set-based-20261031.",
+  "description": "Implement the option the owner recorded in tpcds-maintenance-data-source-decision-20261103. Do not start until that item is done and its context quotes the choice. This description assumes option A (dsdgen refresh sets); if the owner chose B or C, rewrite this item first as part of closing the decision item.\n\nSpec (TPC-DS 4.0.0): refresh data must be generated with dsdgen and that execution is not timed (5.2.3); loading the refresh data, including into a staging area, is timed and must use generic or vendor loaders, not a TPC-DS-specific loader (5.2.5, 5.2.7); a maintenance function's interval starts at the first read of the refresh file (7.4.9.1). Re-read 5.3 for the function definitions.\n\nDefects in the current code (benchbox/core/tpcds/maintenance_operations.py, maintenance_test.py), each to be fixed or explicitly deferred to a named item: the per-operation timer covers connection open, initialize() and close; inserted data are 10 hardcoded synthetic rows from a generator seeded with int(time.time()); inner durations use time.time() instead of mono_time().\n\nDecision gate inside this item. Before any code, append a slice plan to context: the PR slices (for example: dsdgen -update generation outside the timer; timed staged load through the adapter's generic loader; spec-defined maintenance functions; timer boundaries and clocks), what each changes, and the order. If the work needs more than one PR, create one tracker item per slice with needs between them and then reduce this item to the first slice; do not land a partial maintenance rewrite as complete.\n\nGuardrails: Guardrails for all code work: work only in a linked worktree (make worktree-create); never edit the primary clone. No explanatory comments or docstrings in source (make comment-policy-check). Durations use benchbox.utils.clock.mono_time()/elapsed_seconds(). Add a changelog.d/ fragment. Cited line numbers are orientation only: re-read the named symbols, docs and spec clauses before editing and treat a mismatch as a reason to stop and update this item. No live-cloud runs without owner approval; heavy runs only through make heavy-run or a lock-taking entry point. Green focused tests are not release certification. Maintenance results from the new method carry a method identifier so older and newer results are never compared silently. Do not add set-based performance rewrites here; they belong to perf-tpcds-maintenance-set-based-20261031, which waits on this item. Official export of QphDS stays off until tpcds-qphds-spec-metric-implementation says otherwise.",
+  "links": [
+    "https://www.tpc.org/tpc_documents_current_versions/pdf/tpc-ds_v4.0.0.pdf",
+    "benchbox/core/tpcds/maintenance_operations.py",
+    "benchbox/core/tpcds/maintenance_test.py",
+    "benchbox/core/results/metrics.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a561db75579ad3167de9da38",
+      "at": "2026-11-03T15:06:53Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "d27ba53745084d64abda7eb9b3212571",
+      "session_id": "ada67604a2174486ada6b7b9a8c4f586"
+    }
+  ]
+}
