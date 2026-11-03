@@ -8,8 +8,6 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
-from _project.scripts.oracle_reviewers import local as oracle_local
-
 ROOT = Path(__file__).resolve().parents[3]
 SCRIPTS = ROOT / "scripts"
 if str(SCRIPTS) not in sys.path:
@@ -322,7 +320,8 @@ class World:
             "reason": "fixture",
             "base_sha": base,
             "head_sha": head,
-            **oracle_local.member_binding(cwd, base, head),
+            "head_tree": git(cwd, "rev-parse", f"{head}^{{tree}}"),
+            "patch_digest": "digest",
             "trusted_sha": trusted,
         }
         self.review_cache[(base, head, trusted)] = result
