@@ -21,7 +21,7 @@ BOT_EMAIL = "bot@benchbox.dev"
 REFRESH_COMMAND = ["uv", "run", "--no-project", "--python", "3.12", "--", "python", "-m", "downstream.refresh"]
 FOLLOW_UP_EXIT = 3
 FAILING_CONCLUSIONS = {"failure", "timed_out", "cancelled", "action_required", "startup_failure"}
-ISSUE_STATES = {"conflict", "failed", "ci-failing", "unpushed"}
+ISSUE_STATES = {"conflict", "failed", "ci-failing", "declined", "unpushed"}
 UNKNOWN_TAG = "the newest upstream tag"
 STATE_FILE = "state.json"
 OPEN_FILE = "open.json"
@@ -240,6 +240,11 @@ def issue_body(state: Mapping[str, Any], opened: Mapping[str, Any], run_url: str
             + ", ".join(f"`{name}`" for name in state["failing"])
             + "."
         )
+    elif kind == "declined":
+        what = (
+            f"The refresh pull request {state['pull_request']} was closed without merging, and the fork is still on "
+            f"upstream {state['current']}."
+        )
     else:
         reason = opened.get("reason", "the pull request job did not complete")
         what = (
@@ -258,7 +263,7 @@ def issue_body(state: Mapping[str, Any], opened: Mapping[str, Any], run_url: str
 
 def signature(state: Mapping[str, Any], opened: Mapping[str, Any]) -> str:
     material = json.dumps(
-        {key: state.get(key) for key in ("state", "tag", "entry", "paths", "step", "detail", "failing")}
+        {key: state.get(key) for key in ("state", "tag", "entry", "paths", "step", "failing")}
         | {"reason": opened.get("reason")},
         sort_keys=True,
     )
@@ -312,8 +317,10 @@ def sync_issue(out_dir: Path, run_url: str, runner: Runner = run) -> dict[str, A
         checked(runner(["gh", "issue", "create", "--title", wanted, "--body", f"{body}\n{marker}\n"], None))
         outcome["action"] = "created"
     elif marker not in current["body"]:
-        checked(runner(["gh", "issue", "comment", str(current["number"]), "--body", f"{body}\n{marker}\n"], None))
-        outcome["action"] = "commented"
+        number = str(current["number"])
+        checked(runner(["gh", "issue", "edit", number, "--body", f"{body}\n{marker}\n"], None))
+        checked(runner(["gh", "issue", "comment", number, "--body", f"The reason changed.\n\n{body}"], None))
+        outcome["action"] = "updated"
     return outcome
 
 

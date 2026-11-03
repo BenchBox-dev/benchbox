@@ -240,19 +240,35 @@ def test_a_conflict_opens_one_issue_naming_the_patch_and_files(tmp_path: Path) -
     assert "sqlite-date-day-arithmetic" in body and "tests/dialects/test_sqlite.py" in body
 
 
-def test_an_unchanged_failure_does_not_comment_again_but_a_changed_one_does(tmp_path: Path) -> None:
+def test_a_changed_reason_updates_the_issue_once_and_later_nights_stay_quiet(tmp_path: Path) -> None:
     write_state(tmp_path, **CONFLICT)
     created = FakeRunner(issue_handlers([]))
     sync_issue(tmp_path, "https://run", created)
     body = next(c for c in created.calls if "issue" in c and "create" in c)[-1]
     title = "SQLGlot fork refresh to v30.29.0 needs follow-up"
-    existing = [{"number": 7, "title": title, "body": body}]
-    same = FakeRunner(issue_handlers(existing))
+    same = FakeRunner(issue_handlers([{"number": 7, "title": title, "body": body}]))
     assert sync_issue(tmp_path, "https://run/2", same)["action"] == "none"
     write_state(tmp_path, **{**CONFLICT, "entry": "another-patch"})
-    changed = FakeRunner(issue_handlers(existing))
-    assert sync_issue(tmp_path, "https://run/3", changed)["action"] == "commented"
+    changed = FakeRunner(issue_handlers([{"number": 7, "title": title, "body": body}]))
+    assert sync_issue(tmp_path, "https://run/3", changed)["action"] == "updated"
+    (edit,) = changed.ran("gh issue edit 7")
     assert changed.ran("gh issue comment 7")
+    next_night = FakeRunner(issue_handlers([{"number": 7, "title": title, "body": edit[-1]}]))
+    assert sync_issue(tmp_path, "https://run/4", next_night)["action"] == "none"
+    assert not next_night.ran("gh issue comment")
+
+
+def test_a_refresh_pull_request_closed_without_merging_still_asks_for_follow_up(tmp_path: Path) -> None:
+    write_state(
+        tmp_path,
+        state="declined",
+        tag="v30.29.0",
+        current="v30.27.0",
+        pull_request="https://example.test/pull/81",
+    )
+    runner = FakeRunner(issue_handlers([]))
+    assert sync_issue(tmp_path, "https://run", runner)["action"] == "created"
+    assert "closed without merging" in runner.ran("gh issue create")[0][-1]
 
 
 def test_issues_for_other_tags_close_when_the_target_moves_on(tmp_path: Path) -> None:
@@ -263,7 +279,7 @@ def test_issues_for_other_tags_close_when_the_target_moves_on(tmp_path: Path) ->
     assert outcome["closed"] == [4] and outcome["action"] == "created"
 
 
-@pytest.mark.parametrize("state", ["current", "pending", "awaiting-review", "declined"])
+@pytest.mark.parametrize("state", ["current", "pending", "awaiting-review"])
 def test_a_healthy_state_closes_every_open_refresh_issue(tmp_path: Path, state: str) -> None:
     write_state(tmp_path, state=state, tag="v30.29.0")
     existing = [{"number": 9, "title": "SQLGlot fork refresh to v30.29.0 needs follow-up", "body": ""}]

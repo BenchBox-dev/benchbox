@@ -633,9 +633,10 @@ with `python -m downstream.refresh auto`, which succeeds only when every carried
 patch applies without a conflict. A refresh that succeeds is pushed as
 `refresh/upstream-X.Y.Z` and opened as a pull request in
 `BenchBox-dev/benchbox-sqlglot`, where its checks run. A conflict, a failed
-step, a failing check on that pull request, or a refresh that could not be pushed
-opens one issue per tag in this repository (`SQLGlot fork refresh to vX.Y.Z needs
-follow-up`), commented again only when the reason changes, and closed when the
+step, a failing check on that pull request, that pull request closed without
+merging, or a refresh that could not be pushed opens one issue per tag in this
+repository (`SQLGlot fork refresh to vX.Y.Z needs follow-up`). The issue is
+updated, with one comment, only when the reason changes, and is closed when the
 fork is on the newest tag. The workflow never merges the fork pull request,
 builds or releases the wheel, or adopts it here; those steps stay with the
 maintainer, and the freshness check above keeps failing until they are done.
