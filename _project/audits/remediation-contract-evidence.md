@@ -707,28 +707,3 @@ zero violations.
 
 The checker, tests and workflow are registered soundness paths and require
 independent review.
-
-## ClickHouse primitive measurement boundaries
-
-`ClickHouseServerConnection.prepare_write` enables lightweight updates before
-the primitive runners start their write interval. `execute` does not add an
-ALTER after CREATE or before UPDATE. CREATE therefore measures its own DDL,
-not unrelated setup for a later UPDATE. Both runners use the owned
-`mono_time` and `elapsed_seconds` helpers for the write interval.
-
-`tests/unit/platforms/test_clickhouse_statements.py` exercises both runners:
-
-- `test_operation_update_settings_are_outside_measured_execution` covers
-  initial and repeated updates, recreation, rename, exchange and an unrelated
-  table drop.
-- `test_operation_create_does_not_time_additional_update_setup` covers plain
-  CREATE, explicit MergeTree CREATE and CTAS. Injecting the old post-CREATE
-  ALTER makes all six cases fail; the fixed implementation passes.
-
-The producer is the runner's write interval; `OperationResult.write_duration_ms`
-stores it for benchmark result consumers. The regression clock controls the
-owned clock helpers, not the standard-library time module. A separate guarded
-Linux chDB 26.1.2.1 smoke executed six CREATEs and twelve UPDATEs through the
-real runners, verified the stored row values, and observed every setup ALTER
-outside the write interval. That smoke did not exercise network-server
-transport.
