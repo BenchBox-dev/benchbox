@@ -5,6 +5,7 @@
     "QphDS@Size uses the spec formula and is exported as official only when every input is valid",
     "Docs match"
   ],
+  "context": "2026-11-03: spec-order maintenance runs require maintenance that follows TPC-DS 4.0.0 clauses 5.2.3 to 5.3 (dsdgen refresh sets, timed staged load). Added a need on tpcds-maintenance-dsdgen-refresh-data-20261103. If the owner records option B in tpcds-maintenance-data-source-decision-20261103, this item must be dropped or re-scoped as part of closing that decision. Origin: root-cause analysis of RF1 timing and its adversarial review.",
   "description": "Scope moved here from tpcds-qphds-nonspec-formula by owner decision on 2026-10-04: suppress the non-spec QphDS first, and implement the spec later. QphDS@Size = SF x Q / (T_PT x T_TT x T_DM x T_LD)^(1/4), with Q = 99 x S, T_TT = TT1 + TT2, T_DM = DM1 + DM2, and T_LD = 0.01 x S x T_load. Needs a second throughput test (streams S+1..2S), data maintenance between the throughput tests, and captured load time.",
   "links": [
     "benchbox/core/tpcds/official_benchmark.py",
@@ -18,6 +19,14 @@
       "op": "create",
       "op_id": "49753ae7ec1e4cebbd64569c591190f3",
       "session_id": "a33f303e25d74b4284982579345d9fdb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a561db75579ad3167de9da38",
+      "at": "2026-11-03T15:10:00Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b65d9f760c6040ecabf9b8a6457800a0",
+      "session_id": "ada67604a2174486ada6b7b9a8c4f586"
     }
   ]
 }

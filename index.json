@@ -29040,7 +29040,8 @@
     "tpcds-qphds-spec-metric-implementation": {
       "claim": null,
       "needs": [
-        "tpcds-qphds-nonspec-formula"
+        "tpcds-qphds-nonspec-formula",
+        "tpcds-maintenance-dsdgen-refresh-data-20261103"
       ],
       "priority": "medium",
       "status": "open",
