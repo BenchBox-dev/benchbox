@@ -28900,7 +28900,7 @@
       "claim": null,
       "needs": [
         "tpcds-maintenance-data-source-decision-20261103",
-        "tpc-measured-intervals-reference-20261103"
+        "tpcds-maintenance-timer-hygiene-20261103"
       ],
       "priority": "medium-high",
       "status": "open",
