@@ -5,7 +5,7 @@
     "Owner full-diff review governs bootstrap merges; fork PRs and candidate builds cannot access App credentials, tailnet credentials, trusted publisher credentials, or a secret-bearing environment.",
     "CI can build the seed offline from gateway credentials and reports genuine package failures rather than fake/no-op success; repository changes are merged under its approved governance."
   ],
-  "context": "T2. Owner must perform settings/creation operations when permissions or explicit service authorization are unavailable. Package name plan: distribution theseus-reviewer; import theseus_reviewer; CLI theseus. Do not claim the repository exists until checked.\n\nLive prerequisite check: gh api repos/BenchBox-dev/theseus returned HTTP 404 with the current credentials. This proves neither existence nor absence (private/inaccessible can also return 404). Owner must create or grant access to the named repository and approve bootstrap license/visibility/settings before this task can proceed. Do not silently choose a different owner/repository. No repository or settings were created/changed.\n\nDelivery: one Theseus PR (Theseus PR 1) carries governance bootstrap, package/installer, hosted workflows, local tooling, frozen source and parity proof. The release tag and first-promotion evidence come from that merged head, not from a separate PR.",
+  "context": "T2. Owner must perform settings/creation operations when permissions or explicit service authorization are unavailable. Package name plan: distribution theseus-reviewer; import theseus_reviewer; CLI theseus. Do not claim the repository exists until checked.\n\nLive prerequisite check: gh api repos/BenchBox-dev/theseus returned HTTP 404 with the current credentials. This proves neither existence nor absence (private/inaccessible can also return 404). Owner must create or grant access to the named repository and approve bootstrap license/visibility/settings before this task can proceed. Do not silently choose a different owner/repository. No repository or settings were created/changed.\n\nDelivery: one Theseus PR (Theseus PR 1) carries governance bootstrap, package/installer, hosted workflows, local tooling, frozen source and parity proof. The release tag and first-promotion evidence come from that merged head, not from a separate PR.\n\nOwner (2026-11-03): the Theseus repository is https://github.com/joeharris76/theseus, replacing the planned BenchBox-dev/theseus. Live check: exists, private, MIT, default branch main, one initial commit 392e84d (LICENSE, README.md, .gitignore); admin access confirmed.",
   "description": "Create or reconcile BenchBox-dev/theseus, using main as its configurable gated default branch. Deliver license compatible with extracted code and dependencies, contributor/security/release docs, CODEOWNERS, CI, and the source seed described by the ADR. Before adding source, record the BenchBox commit and complete path map; retain notices and establish redistribution rights. Capture an initial normalized tree diff and source hash for the later independent bootstrap review. Until a separately authenticated Theseus oracle gate is live, only owner full-diff-reviewed merges are allowed.\nDecision gates: repository creation/visibility/license, protection settings, and any unavailable owner permission must be explicitly resolved by the owner; do not weaken protection to bootstrap.\nGuardrails: no BenchBox code removal; no default-branch direct push; no copied private tracker/session data or secrets; no unreviewed template pin; no production deployment or live gateway changes. Use independent worktrees and narrow PRs for both named repositories. Preserve protocol/status/artifact identifiers; App identity is consumer config.",
   "links": [
     "https://github.com/BenchBox-dev/theseus",
@@ -35,6 +35,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "284d9916cd7d4c568a71fbf31412672b",
+      "session_id": "c4d4cd94bd464a16a29b8b24353d6e06"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b58f5aa5b2bb5e33c84a53cb",
+      "at": "2026-11-03T15:04:46Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "bcd64d9a1c31491e84192e1e2d05d48a",
       "session_id": "c4d4cd94bd464a16a29b8b24353d6e06"
     }
   ]
