@@ -8,7 +8,7 @@ _NAME = r"(?:[A-Za-z_]\w*\.)?[A-Za-z_]\w*"
 _LEADING_KEYWORDS = ("UPDATE", "DELETE", "CREATE")
 _UPDATE_TARGET_RE = re.compile(r"^\s*UPDATE\s+(?P<table>[A-Za-z_]\w*)\s+SET\b", re.IGNORECASE)
 _CREATE_TABLE_RE = re.compile(
-    rf"^(?P<head>\s*CREATE\s+(?:OR\s+REPLACE\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?P<table>{_NAME}))"
+    rf"^(?P<head>\s*CREATE\s+(?:OR\s+REPLACE\s+)?TABLE\s+(?P<if_missing>IF\s+NOT\s+EXISTS\s+)?(?P<table>{_NAME}))"
     r"(?P<rest>\s*[(]|\s+AS\b|\s+ENGINE\b)",
     re.IGNORECASE,
 )
@@ -30,6 +30,7 @@ CREATE_PLAIN = "create-plain"
 DROP = "drop"
 RENAME = "rename"
 EXCHANGE = "exchange"
+IF_MISSING = "if-missing"
 
 
 def merge_tree_create_target(statement: str) -> str | None:
@@ -52,7 +53,7 @@ def table_lifecycle(statement: str) -> list[tuple[str, ...]]:
     if create is not None:
         table = create.group("table")
         ready = merge_tree_create_target(statement) is not None and _UPDATE_SETTINGS in statement
-        return [(CREATE_READY if ready else CREATE_PLAIN, table)]
+        return [(CREATE_READY if ready else CREATE_PLAIN, table, IF_MISSING if create.group("if_missing") else "")]
     if (drop := _DROP_RE.match(statement)) is not None:
         return [(DROP, drop.group("table"))]
     if (exchange := _EXCHANGE_RE.match(statement)) is not None:
@@ -116,6 +117,6 @@ def prepare_clickhouse_statements(query: str) -> list[str]:
                 updated_later.add(event[1])
             elif event[0] == EXCHANGE and (event[1] in updated_later) != (event[2] in updated_later):
                 updated_later.symmetric_difference_update({event[1], event[2]})
-            elif event[0] in (DROP, CREATE_READY, CREATE_PLAIN):
+            elif event[0] == DROP or (event[0] in (CREATE_READY, CREATE_PLAIN) and event[2] != IF_MISSING):
                 updated_later.discard(event[1])
     return prepared[::-1]

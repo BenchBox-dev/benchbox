@@ -94,6 +94,11 @@ class _TimedClient:
             assert self.tables[tokens[1]], "UPDATE requires both lightweight-update settings"
             self.measured_updates += 1
             self.now += 0.01
+        elif query.startswith("CREATE TABLE IF NOT EXISTS"):
+            has_settings = "enable_block_number_column" in query and "enable_block_offset_column" in query
+            self.tables.setdefault(tokens[5], has_settings)
+        elif query.startswith("EXISTS TABLE"):
+            return [(int(tokens[2] in self.tables),)]
         elif query.startswith("CREATE TABLE"):
             has_settings = "enable_block_number_column" in query and "enable_block_offset_column" in query
             self.tables[tokens[2]] = has_settings
@@ -196,6 +201,8 @@ def test_operation_create_does_not_time_additional_update_setup(timed_primitive,
         ("CREATE TABLE t2 AS SELECT * FROM s; UPDATE t2 SET a = 1 WHERE a = 0", 0),
         ("EXCHANGE TABLES t AND s; UPDATE t SET a = 1 WHERE a = 0", 1),
         ("CREATE TABLE t3 (a Int32); RENAME TABLE t3 TO t4; UPDATE t4 SET a = 1 WHERE a = 0", 0),
+        ("CREATE TABLE IF NOT EXISTS s (a Int32); UPDATE s SET a = 1 WHERE a = 0", 1),
+        ("CREATE TABLE IF NOT EXISTS t5 (a Int32); UPDATE t5 SET a = 1 WHERE a = 0", 0),
     ],
 )
 def test_updates_after_in_script_lifecycle_are_prepared_against_the_table_they_reach(
@@ -207,6 +214,15 @@ def test_updates_after_in_script_lifecycle_are_prepared_against_the_table_they_r
     result = execute(script, "update")
     assert result.success, result.error
     assert client.alters == expected_alters
+
+
+def test_no_op_create_if_not_exists_does_not_mark_an_existing_table_ready(timed_primitive) -> None:
+    execute, connection, client = timed_primitive
+    connection.execute("CREATE TABLE IF NOT EXISTS s (a Int32)")
+    assert "s" not in connection._lightweight_update_tables
+    result = execute("UPDATE s SET a = 1 WHERE a = 0", "update")
+    assert result.success, result.error
+    assert client.alters == 1
 
 
 def test_table_created_in_an_earlier_script_gets_settings_before_its_timed_update(timed_primitive) -> None:

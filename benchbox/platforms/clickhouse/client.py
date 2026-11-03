@@ -13,6 +13,7 @@ from .statements import (
     CREATE_READY,
     DROP,
     EXCHANGE,
+    IF_MISSING,
     RENAME,
     lightweight_update_target,
     prepare_clickhouse_statements,
@@ -22,7 +23,7 @@ from .statements import (
 _ABSENT = object()
 
 
-def _apply_lifecycle(state: dict, statement: str, resolve) -> None:
+def _apply_lifecycle(state: dict, statement: str, resolve, uncertain: set[str] | None = None) -> None:
     for event in table_lifecycle(statement):
         kind = event[0]
         if kind == RENAME:
@@ -34,7 +35,11 @@ def _apply_lifecycle(state: dict, statement: str, resolve) -> None:
         elif kind == DROP:
             state[event[1]] = _ABSENT
         else:
-            state[event[1]] = True if kind == CREATE_READY else _ABSENT
+            created = True if kind == CREATE_READY else _ABSENT
+            prior = resolve(event[1]) if event[2] == IF_MISSING else _ABSENT
+            if isinstance(prior, str) and uncertain is not None:
+                uncertain.add(prior)
+            state[event[1]] = created if prior is _ABSENT else prior
 
 
 logger = logging.getLogger(__name__)
@@ -140,13 +145,22 @@ class ClickHouseServerConnection:
 
     def prepare_write(self, query: str) -> None:
         state: dict = {}
+        uncertain: set[str] = set()
         for statement in prepare_clickhouse_statements(query):
             table = lightweight_update_target(statement)
             if table is not None:
                 origin = state.get(table, table)
-                if isinstance(origin, str) and origin not in self._lightweight_update_tables:
+                if (
+                    isinstance(origin, str)
+                    and origin not in self._lightweight_update_tables
+                    and (origin not in uncertain or self._table_exists(origin))
+                ):
                     self._apply_lightweight_update_settings(origin)
-            _apply_lifecycle(state, statement, lambda name: state.get(name, name))
+            _apply_lifecycle(state, statement, lambda name: state.get(name, name), uncertain)
+
+    def _table_exists(self, table: str) -> bool:
+        rows = self._client.execute(f"EXISTS TABLE {table}")
+        return bool(rows) and str(rows[0][0]) == "1"
 
     def _apply_lightweight_update_settings(self, table: str) -> None:
         self._client.execute(
