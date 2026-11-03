@@ -6,7 +6,7 @@
     "Promotion evidence generation succeeds against the current candidate without granting Actions read permission; real PR-head attestation remains mandatory at cutover.",
     "No source/build input changed after parity; if any changed, T6 is re-proven before this item can finish."
   ],
-  "context": "T7. Normal merged-code authorization does not independently authorize package production publication. Stop for owner action if release rights/approval are absent.\n\nDelivery: one Theseus PR (Theseus PR 1) carries governance bootstrap, package/installer, hosted workflows, local tooling, frozen source and parity proof. The release tag and first-promotion evidence come from that merged head, not from a separate PR.\n\nOwner (2026-11-03): the Theseus repository is https://github.com/joeharris76/theseus, replacing the planned BenchBox-dev/theseus. Live check: exists, private, MIT, default branch main, one initial commit 392e84d (LICENSE, README.md, .gitignore); admin access confirmed.",
+  "context": "T7. Normal merged-code authorization does not independently authorize package production publication. Stop for owner action if release rights/approval are absent.\n\nDelivery: one Theseus PR (Theseus PR 1) carries governance bootstrap, package/installer, hosted workflows, local tooling, frozen source and parity proof. The release tag and first-promotion evidence come from that merged head, not from a separate PR.\n\nOwner (2026-11-03): the Theseus repository is https://github.com/joeharris76/theseus, replacing the planned BenchBox-dev/theseus. Live check: exists, private, MIT, default branch main, one initial commit 392e84d (LICENSE, README.md, .gitignore); admin access confirmed.\n\nBase-side prerequisite merged: BenchBox PR https://github.com/BenchBox-dev/benchbox/pull/3936 (ef52509983e1e3e345ec0b76b8c0f79c7d863867) adds the promotion policy (repository joeharris76/theseus, baseline 95c423c35efd3fb4962145bdc628006d5aaaad26, 199-entry seed path map, reviewer joeharris76, no dependencies) and fixes the first-promotion baseline loader (path-map-filtered read before limits; leading-dot path bug). Mapped baseline_source_sha256 = 697b1d3e90b45d6ce4af2842ad0b4728e4002ce87aa9f8f1621e78ce20e61140 from both git archive and GitHub tarball. Oracle SHIP on head 8cebb190e.",
   "description": "T7: after explicit owner authorization for release/publication, publish the exact wheel bytes T6 tested under theseus-reviewer, with immutable source association, dependency closure/hashes and a retained identical-hash independent recovery copy. Do not rebuild or introduce evaluator behaviour here. Complete the bootstrap record: BenchBox baseline commit, path map, normalized full-tree diff, named independent reviewer, approved head and resulting source/artifact hashes. First promotion uses this baseline as its old side because no previous Theseus lock exists.\nAssemble full upstream-delta promotion evidence and the gate-readable record form chosen by the owner; its exact-head attachment occurs against the real cutover PR after creation, not an invented future head. Subsequent promotions compare prior locked source to candidate source.\nDecision gate: package/asset production publication, publisher identity and credentials need owner approval; unavailable rights or naming conflict is a blocker. Guardrails: no latest refs, unverified fallback, secret-bearing candidate build, owner-attestation forgery, artefact rebuild, silent source change, fabricated provenance, or reusing a stale parity hash.\nDistribution decision: GitHub Releases are sufficient initially. PyPI publication is optional, not a completion/cutover prerequisite. theseus-reviewer is the intended distribution name, not authorization or a requirement to publish on PyPI.",
   "links": [
     "theseus-freeze-final-parity-20261102",
@@ -43,6 +43,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "da4920f65af9487eb89f9ccac0a9a745",
+      "session_id": "c4d4cd94bd464a16a29b8b24353d6e06"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b58f5aa5b2bb5e33c84a53cb",
+      "at": "2026-11-03T17:50:20Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ec2f6bbb90f2456db8c373815026251f",
       "session_id": "c4d4cd94bd464a16a29b8b24353d6e06"
     }
   ]
