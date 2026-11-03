@@ -27752,7 +27752,7 @@
         "theseus-release-bootstrap-evidence-20261102"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Prove the pinned BenchBox consumer and rehearse first-cutover recovery before activation"
     },
     "theseus-decision-promotion-evidence-form-20261102": {
