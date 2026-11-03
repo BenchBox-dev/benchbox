@@ -27740,7 +27740,7 @@
     "theseus-atomic-benchbox-cutover-20261102": {
       "claim": null,
       "needs": [
-        "theseus-benchbox-proof-recovery-rehearsal-20261102"
+        "theseus-release-bootstrap-evidence-20261102"
       ],
       "priority": "medium",
       "status": "open",
