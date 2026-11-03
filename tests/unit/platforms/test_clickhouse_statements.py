@@ -24,7 +24,8 @@ def test_update_and_delete_without_where_get_a_true_predicate() -> None:
 
 def test_create_table_without_engine_gets_a_merge_tree() -> None:
     assert prepare_clickhouse_statements("CREATE TABLE t (a Int32)") == [
-        "CREATE TABLE t (a Int32) ENGINE = MergeTree ORDER BY tuple()"
+        "CREATE TABLE t (a Int32) ENGINE = MergeTree ORDER BY tuple() "
+        "SETTINGS enable_block_number_column = 1, enable_block_offset_column = 1"
     ]
     assert prepare_clickhouse_statements("CREATE TABLE t AS SELECT * FROM s") == [
         "CREATE TABLE t ENGINE = MergeTree ORDER BY tuple() AS SELECT * FROM s"
@@ -71,7 +72,8 @@ class _TimedClient:
             self.measured_updates += 1
             self.now += 0.01
         elif query.startswith("CREATE TABLE"):
-            self.tables[tokens[2]] = False
+            has_settings = "enable_block_number_column" in query and "enable_block_offset_column" in query
+            self.tables[tokens[2]] = has_settings
             if self.measuring:
                 self.measured_creates += 1
                 self.now += 0.01
@@ -142,8 +144,8 @@ def test_operation_update_settings_are_outside_measured_execution(timed_primitiv
         assert result.success, result.error
         assert result.write_duration_ms == pytest.approx(10.0)
 
-    assert client.measured_updates == 4
-    assert client.alters == (2 if lifecycle_sql else 1)
+    expected_alters = 1 if lifecycle_sql in ("", "DROP TABLE t; CREATE TABLE t (a Int32)") else 2
+    assert client.alters == expected_alters
 
 
 @pytest.mark.parametrize(

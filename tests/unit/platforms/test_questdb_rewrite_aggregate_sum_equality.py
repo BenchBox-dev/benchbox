@@ -10,13 +10,21 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 def test_sum_subquery_equal_to_max_of_sums_uses_tolerance():
     sql = (
+        "SELECT s FROM t WHERE (SELECT SUM(a * (1 - b)) FROM u WHERE u.k = t.k) = "
+        "(SELECT MAX(r.v) FROM (SELECT k, SUM(a * (1 - b)) AS v FROM u GROUP BY k) AS r)"
+    )
+    rewritten = rewrite_query(sql)
+    assert "ABS((SELECT SUM(a * (1 - b))" in rewritten
+    assert "<= 0.000001" in rewritten
+    assert ") = (" not in rewritten
+
+
+def test_exact_decimal_sum_equality_is_not_loosened():
+    sql = (
         "SELECT s FROM t WHERE (SELECT SUM(a) FROM u WHERE u.k = t.k) = "
         "(SELECT MAX(r.v) FROM (SELECT k, SUM(a) AS v FROM u GROUP BY k) AS r)"
     )
-    rewritten = rewrite_query(sql)
-    assert "ABS((SELECT SUM(a)" in rewritten
-    assert "<= 0.0001" in rewritten
-    assert ") = (" not in rewritten
+    assert "ABS" not in rewrite_query(sql)
 
 
 def test_equality_without_summed_subqueries_is_left_alone():
@@ -27,7 +35,7 @@ def test_equality_without_summed_subqueries_is_left_alone():
 def test_tpchavoc_q15_scalar_subquery_variant_has_no_float_equality():
     rewritten = rewrite_query(Q15_VARIANTS[1]._sql)
     assert "ABS(" in rewritten
-    assert "<= 0.0001" in rewritten
+    assert "<= 0.000001" in rewritten
 
 
 REVENUE_NAMES = {"total_revenue", "_col_0", "max_revenue", "max_total_revenue", "_qx_agg_1"}
@@ -55,32 +63,32 @@ def test_tpchavoc_q15_variants_have_no_float_revenue_equality(variant_id):
 
 def test_cte_alias_joined_to_max_cte_uses_tolerance():
     sql = (
-        "WITH rev AS (SELECT k, SUM(a) AS total FROM u GROUP BY k), "
+        "WITH rev AS (SELECT k, SUM(a * (1 - b)) AS total FROM u GROUP BY k), "
         "mx AS (SELECT MAX(total) AS top FROM rev) "
         "SELECT r.k FROM rev AS r JOIN mx AS m ON r.total = m.top"
     )
     rewritten = rewrite_query(sql)
-    assert "ABS(r.total - m.top) <= 0.0001" in rewritten
+    assert "ABS(r.total - m.top) <= 0.000001" in rewritten
     assert "r.total = m.top" not in rewritten
 
 
 def test_column_equal_to_windowed_max_of_sums_uses_tolerance():
     sql = (
-        "WITH rev AS (SELECT k, SUM(a) AS total FROM u GROUP BY k) "
+        "WITH rev AS (SELECT k, SUM(a * (1 - b)) AS total FROM u GROUP BY k) "
         "SELECT r.k FROM (SELECT total, k, MAX(total) OVER () AS peak FROM rev) AS r WHERE r.total = r.peak"
     )
     rewritten = rewrite_query(sql)
-    assert "ABS(r.total - r.peak) <= 0.0001" in rewritten
+    assert "ABS(r.total - r.peak) <= 0.000001" in rewritten
 
 
 def test_sum_in_having_compared_to_max_of_sums_gets_tolerance_floor():
     sql = (
-        "SELECT t.k, SUM(t.a) AS total FROM t CROSS JOIN "
-        "(SELECT MAX(x.total) AS top FROM (SELECT SUM(a) AS total FROM u GROUP BY k) AS x) AS m "
-        "GROUP BY t.k HAVING SUM(t.a) >= MAX(m.top)"
+        "SELECT t.k, SUM(t.a * (1 - t.b)) AS total FROM t CROSS JOIN "
+        "(SELECT MAX(x.total) AS top FROM (SELECT SUM(a * (1 - b)) AS total FROM u GROUP BY k) AS x) AS m "
+        "GROUP BY t.k HAVING SUM(t.a * (1 - t.b)) >= MAX(m.top)"
     )
     rewritten = rewrite_query(sql)
-    assert "(qdb_agg_3 - 0.0001)" in rewritten
+    assert "(qdb_agg_3 - 0.000001)" in rewritten
 
 
 def test_max_equality_without_sums_is_left_alone():

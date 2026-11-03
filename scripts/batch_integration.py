@@ -583,6 +583,9 @@ def check_member(
     if proc.returncode != 0:
         raise BatchError(f"changelog check failed: {(proc.stderr or proc.stdout).strip()[-400:]}")
     suite, command = _verification_command(repo, integration_head, tests, changed)
+    proc = _run(command, repo)
+    if proc.returncode != 0:
+        raise BatchError(f"member verification {suite} failed: {(proc.stderr or proc.stdout).strip()[-400:]}")
     trusted = _trusted_develop(repo)
     with tempfile.TemporaryDirectory() as scratch:
         result_path = Path(scratch) / "member-review.json"

@@ -180,7 +180,7 @@ def test_member_check_records_an_exempt_only_member_as_not_reviewed(world: World
     assert record["review_outcome"] == "not-reviewed"
 
 
-def test_member_check_records_nothing_when_preflight_or_review_fails(world: World) -> None:
+def test_member_check_records_nothing_when_preflight_review_or_verification_fails(world: World) -> None:
     integration = world.start()
     member = world.member("zeta")
     head = world.commit(member, {"src/a.py": "member\n"})
@@ -188,6 +188,10 @@ def test_member_check_records_nothing_when_preflight_or_review_fails(world: Worl
     with _raises("preflight failed"):
         world.check(member, ["tests/test_zeta.py"])
     world.preflight_rc = 0
+    world.failing_tests = {"tests/test_zeta.py"}
+    with _raises("member verification member-tests failed"):
+        world.check(member, ["tests/test_zeta.py"])
+    world.failing_tests = set()
     world.review_rc = 1
     with _raises("did not clear"):
         world.check(member, ["tests/test_zeta.py"])

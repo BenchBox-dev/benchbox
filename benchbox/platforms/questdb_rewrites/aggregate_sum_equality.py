@@ -4,10 +4,14 @@ from benchbox.platforms.questdb_rewrites import exp
 
 ORDER = 240
 
-TOLERANCE = "0.0001"
+TOLERANCE = "0.000001"
 
 _SUM = "sum"
 _MAX = "max"
+_FLOAT = "float"
+_REVENUE_NAMES = frozenset(
+    {"total_revenue", "revenue", "max_revenue", "max_total_revenue", "_col_0", "_qx_agg_1", "peak", "top"}
+)
 _MAX_DEPTH = 12
 
 
@@ -62,19 +66,23 @@ class _Scope:
         if isinstance(node, exp.Subquery) and isinstance(node.this, exp.Select) and len(node.this.expressions) == 1:
             return self.flags(node.this.expressions[0], depth + 1)
         flags: set[str] = set()
-        if node.find(exp.Sum) is not None:
+        for sum_node in node.find_all(exp.Sum):
             flags.add(_SUM)
+            if sum_node.find(exp.Mul) is not None or any("." in lit.this for lit in sum_node.find_all(exp.Literal)):
+                flags.add(_FLOAT)
         if node.find(exp.Max) is not None:
             flags.add(_MAX)
         for column in node.find_all(exp.Column):
+            if column.name.lower() in _REVENUE_NAMES:
+                flags.add(_FLOAT)
             flags |= self._column_flags(column, depth)
         return frozenset(flags)
 
     def is_revenue_max(self, node: exp.Expr) -> bool:
-        return self.flags(node) >= {_SUM, _MAX}
+        return self.flags(node) >= {_SUM, _MAX, _FLOAT}
 
     def is_revenue(self, node: exp.Expr) -> bool:
-        return _SUM in self.flags(node)
+        return self.flags(node) >= {_SUM, _FLOAT}
 
 
 def _tolerance() -> exp.Expr:

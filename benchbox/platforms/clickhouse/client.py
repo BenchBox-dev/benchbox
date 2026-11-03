@@ -9,7 +9,7 @@ from collections.abc import Sequence
 
 import pyarrow as pa
 
-from .statements import lightweight_update_target, prepare_clickhouse_statements
+from .statements import lightweight_update_target, merge_tree_create_target, prepare_clickhouse_statements
 
 logger = logging.getLogger(__name__)
 
@@ -94,9 +94,13 @@ class ClickHouseServerConnection:
             return self._run(query, *args, **kwargs)
         result = None
         for statement in prepare_clickhouse_statements(query):
-            if statement.lstrip().upper().startswith(("DROP", "RENAME", "EXCHANGE")):
+            upper = statement.lstrip().upper()
+            if upper.startswith(("DROP", "RENAME", "EXCHANGE", "CREATE", "TRUNCATE")):
                 self._lightweight_update_tables.clear()
             result = self._run(statement, **kwargs)
+            created = merge_tree_create_target(statement)
+            if created is not None:
+                self._lightweight_update_tables.add(created)
         return result
 
     def _run(self, query, *args, **kwargs):
@@ -104,9 +108,13 @@ class ClickHouseServerConnection:
         return _ListResult(result) if isinstance(result, list) else result
 
     def prepare_write(self, query: str) -> None:
+        created_in_query: set[str] = set()
         for statement in prepare_clickhouse_statements(query):
+            created = merge_tree_create_target(statement)
+            if created is not None:
+                created_in_query.add(created)
             table = lightweight_update_target(statement)
-            if table is not None and table not in self._lightweight_update_tables:
+            if table is not None and table not in self._lightweight_update_tables and table not in created_in_query:
                 self._apply_lightweight_update_settings(table)
 
     def _apply_lightweight_update_settings(self, table: str) -> None:
