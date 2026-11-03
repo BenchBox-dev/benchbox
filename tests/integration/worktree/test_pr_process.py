@@ -190,4 +190,7 @@ def test_all_green_control_arms_exactly_once(tmp_path: Path) -> None:
     run = FakeRun([(0, ""), (0, "")])
     assert landing.ready_failures(_identity(repo, head), head, _evidence(head), repo) == []
     assert landing.enqueue_pr(run, "o/r", 1, head, head)["enqueued"] is True
-    assert [call[:3] for call in run.calls] == [["gh", "api", "--paginate"], ["gh", "pr", "merge"]]
+    gate_call, merge_call = run.calls
+    assert gate_call[:2] == ["sh", "-c"]
+    assert gate_call[-7:] == ["gate", "--repo", "o/r", "--pr", "1", "--head-sha", head]
+    assert merge_call[:3] == ["gh", "pr", "merge"]

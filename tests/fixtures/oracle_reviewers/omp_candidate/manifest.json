@@ -1,7 +1,7 @@
 {
   "streams": {
     "production-review": {
-      "file": "../omp_multi_turn_review.jsonl",
+      "file": "omp_multi_turn_review.jsonl",
       "kind": "review",
       "rows": [
         6,

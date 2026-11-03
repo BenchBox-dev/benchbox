@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import copy
 import re
 from pathlib import Path
@@ -15,7 +14,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 ROOT = Path(__file__).resolve().parents[3]
 WORKFLOW = ROOT / ".github/workflows/ci.yml"
-GATE_SCRIPT = ROOT / "_project/scripts/oracle_gate.py"
+GATE_CONTEXT = "oracle-gate"
 ADMIN_SETTINGS = ROOT / "docs/internal/repo-admin-settings.md"
 TEXT_EDIT = "github.event.action == 'edited' && !github.event.changes.base"
 ROOT_JOBS = ("comment-policy", "ci-paths")
@@ -170,16 +169,7 @@ def _workflow() -> dict[str, Any]:
 
 
 def _gate_context() -> str:
-    if not GATE_SCRIPT.exists():
-        pytest.skip("_project scripts are not in this checkout (release tree)")
-    tree = ast.parse(GATE_SCRIPT.read_text(encoding="utf-8"))
-    return next(
-        node.value.value
-        for node in tree.body
-        if isinstance(node, ast.Assign)
-        and any(isinstance(target, ast.Name) and target.id == "GATE_CONTEXT" for target in node.targets)
-        and isinstance(node.value, ast.Constant)
-    )
+    return GATE_CONTEXT
 
 
 def _required_names() -> set[str]:

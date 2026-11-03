@@ -613,29 +613,8 @@
     "tests/integration/oracle/test_curated_capture_fixtures.py::test_an_allowed_host_is_not_a_foreign_host[see https://github.com.]": {
       "p95_seconds": 0.003
     },
-    "tests/integration/oracle/test_curated_capture_fixtures.py::test_ci_run_fixtures_name_the_run_that_produced_them": {
-      "p95_seconds": 0.003
-    },
     "tests/integration/oracle/test_curated_capture_fixtures.py::test_every_fixture_states_its_source_and_redaction_result_and_none_is_stale": {
       "p95_seconds": 0.005
-    },
-    "tests/integration/oracle/test_curated_capture_fixtures.py::test_no_fixture_carries_a_secret_or_a_private_host_or_path[captures/ci_attempt.json]": {
-      "p95_seconds": 0.045
-    },
-    "tests/integration/oracle/test_curated_capture_fixtures.py::test_no_fixture_carries_a_secret_or_a_private_host_or_path[captures/local_review.json]": {
-      "p95_seconds": 0.0548
-    },
-    "tests/integration/oracle/test_curated_capture_fixtures.py::test_no_fixture_carries_a_secret_or_a_private_host_or_path[check_runs_full_ci_in_progress.json]": {
-      "p95_seconds": 0.2022
-    },
-    "tests/integration/oracle/test_curated_capture_fixtures.py::test_no_fixture_carries_a_secret_or_a_private_host_or_path[dispute_3407.json]": {
-      "p95_seconds": 0.0068
-    },
-    "tests/integration/oracle/test_curated_capture_fixtures.py::test_no_fixture_carries_a_secret_or_a_private_host_or_path[dispute_3465.json]": {
-      "p95_seconds": 0.0086
-    },
-    "tests/integration/oracle/test_curated_capture_fixtures.py::test_no_fixture_carries_a_secret_or_a_private_host_or_path[jev_recovery_answers.json]": {
-      "p95_seconds": 0.0126
     },
     "tests/integration/oracle/test_curated_capture_fixtures.py::test_no_fixture_carries_a_secret_or_a_private_host_or_path[omp_candidate/build_api_latest.json]": {
       "p95_seconds": 0.0088
@@ -666,33 +645,6 @@
     },
     "tests/integration/oracle/test_curated_capture_fixtures.py::test_no_fixture_carries_a_secret_or_a_private_host_or_path[omp_candidate/upstream_auth.jsonl]": {
       "p95_seconds": 0.013
-    },
-    "tests/integration/oracle/test_curated_capture_fixtures.py::test_no_fixture_carries_a_secret_or_a_private_host_or_path[omp_multi_turn_review.jsonl]": {
-      "p95_seconds": 0.0778
-    },
-    "tests/integration/oracle/test_curated_capture_fixtures.py::test_no_fixture_carries_a_secret_or_a_private_host_or_path[omp_watch/attempts.json]": {
-      "p95_seconds": 0.3002
-    },
-    "tests/integration/oracle/test_curated_capture_fixtures.py::test_no_fixture_carries_a_secret_or_a_private_host_or_path[pr2769_history.json]": {
-      "p95_seconds": 0.0204
-    },
-    "tests/integration/oracle/test_curated_capture_fixtures.py::test_no_fixture_carries_a_secret_or_a_private_host_or_path[pr3222_replay.json]": {
-      "p95_seconds": 0.0084
-    },
-    "tests/integration/oracle/test_curated_capture_fixtures.py::test_no_fixture_carries_a_secret_or_a_private_host_or_path[pr3237_missing_text_fields.json]": {
-      "p95_seconds": 0.007
-    },
-    "tests/integration/oracle/test_curated_capture_fixtures.py::test_no_fixture_carries_a_secret_or_a_private_host_or_path[pr3585_attempt-1.json]": {
-      "p95_seconds": 0.005
-    },
-    "tests/integration/oracle/test_curated_capture_fixtures.py::test_no_fixture_carries_a_secret_or_a_private_host_or_path[pr3585_attempt-2.json]": {
-      "p95_seconds": 0.005
-    },
-    "tests/integration/oracle/test_curated_capture_fixtures.py::test_the_curated_ci_capture_is_the_recorded_run_and_carries_a_shippable_answer": {
-      "p95_seconds": 0.005
-    },
-    "tests/integration/oracle/test_curated_capture_fixtures.py::test_the_curated_local_review_capture_is_the_recorded_review_and_carries_a_shippable_answer": {
-      "p95_seconds": 0.005
     },
     "tests/integration/oracle/test_evidence_scenarios.py::test_a_binary_that_is_not_a_confirmed_font_still_needs_a_read[image]": {
       "p95_seconds": 5.5074
