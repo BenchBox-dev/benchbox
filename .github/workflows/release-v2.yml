@@ -212,6 +212,7 @@ jobs:
           UV_NO_SYNC: '1'
           UAT_CONFIG: tests/uat/configs/release-gate-01-native-dataframe.yaml
           SHARD_PLATFORMS: ${{ matrix.platforms }}
+          BENCHBOX_HEAVY_MEMORY_BUDGET_GIB: '13'
         run: |
           set -euo pipefail
           .venv/bin/python -c "import benchbox, pathlib; path = pathlib.Path(benchbox.__file__).resolve(); assert 'site-packages' in path.parts, path"
