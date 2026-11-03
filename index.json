@@ -2032,12 +2032,17 @@
       "title": "Define the simplified integration-batch contract in the shared skill catalog"
     },
     "batch-remediation-todo-db-runtime-20261102": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-04T03:04:07Z",
+        "generation": "27a84294ac7b4e0f9611e8fc1cff710f",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:140e9c7430ed920eb0a434d5"
+      },
       "needs": [
         "batch-remediation-skill-contract-20261102"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Release guarded batch-checkout recovery and revision-complete CLI reads in todo-db"
     },
     "batch-skill-pinned-rollout": {
