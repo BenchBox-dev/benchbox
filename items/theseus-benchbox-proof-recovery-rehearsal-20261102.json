@@ -9,7 +9,7 @@
     "Owner-run sandbox rehearsal includes a genuinely broken gate (not just a healthy revert), restoration/readback, successful pr-arm after restoration and rollback finding/dispute/state readability. No alternate permanent writer is introduced.",
     "Owner-approved drain covers queued and in-progress verdict runs and prevents new old-pin admissions throughout switch, without weakening required checks or inventing gate statuses. Rehearse/read back that no old-pin run can publish after switch, then redispatch affected PRs using the approved current-pin procedure. A point-in-time empty running list is insufficient."
   ],
-  "context": "T8, P5/R5. Rehearsal pairing uses sandbox commits because the real post-cutover base does not exist yet; T9 repeats exact-head checks.",
+  "context": "T8, P5/R5. Rehearsal pairing uses sandbox commits because the real post-cutover base does not exist yet; T9 repeats exact-head checks.\n\nDelivery: one BenchBox PR carries the pinned consumer proof, the recovery rehearsal, the first live gate and the atomic cutover. It opens after the Theseus release and the observation disposition; rehearsal and live-gate evidence attach to its head before merge.",
   "description": "T8: exercise BenchBox's full inventory against the released candidate using sandbox/throwaway consumer trees without switching production authority. Name the known-good pre-cutover BenchBox commit. Rehearse reverting the complete T9 change in a sandbox, including owner full-diff review, since there is no earlier lock to revert to on first cutover. Cover cold hosted runner without warm cache, primary artifact outage, tampered retained artifact, unavailable evaluator, invalid package, and trusted fetch failure.\nCover old-branch/new-base and new-branch/reverted-base pairs for Makefile launcher, oracle_local_review.py and pr_arm.py; incompatible pairs must fail closed with clear rebase guidance rather than stale exports/ambient fallback. Rehearse a verdict run spanning cutover and the drain/re-dispatch procedure. Existing docs/agent/emergency-merge.md is the only broken-gate authority; evaluator-unavailable scope requires owner confirmation/runbook update at T9, not an agent bypass.\nGuardrails: heavy runs only through lock-taking entrypoints after make heavy-status; use actual CLI outputs for smoke, not tests alone. No live settings changes, shared gateway restart, synthetic natural events, default-branch pushes or activation. Preserve local-claim non-authority and required gate source binding.",
   "links": [
     "scripts/pr_arm.py",
@@ -41,6 +41,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "eafd93a36d8d44fcae7b89ea547c7880",
+      "session_id": "c4d4cd94bd464a16a29b8b24353d6e06"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b58f5aa5b2bb5e33c84a53cb",
+      "at": "2026-11-03T13:33:52Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3134e7d0f3334922aa93d554b2e8599f",
       "session_id": "c4d4cd94bd464a16a29b8b24353d6e06"
     }
   ]
