@@ -9,7 +9,33 @@ from collections.abc import Sequence
 
 import pyarrow as pa
 
-from .statements import lightweight_update_target, merge_tree_create_target, prepare_clickhouse_statements
+from .statements import (
+    CREATE_READY,
+    DROP,
+    EXCHANGE,
+    RENAME,
+    lightweight_update_target,
+    prepare_clickhouse_statements,
+    table_lifecycle,
+)
+
+_ABSENT = object()
+
+
+def _apply_lifecycle(state: dict, statement: str, resolve) -> None:
+    for event in table_lifecycle(statement):
+        kind = event[0]
+        if kind == RENAME:
+            state[event[2]] = resolve(event[1])
+            state[event[1]] = _ABSENT
+        elif kind == EXCHANGE:
+            left, right = resolve(event[1]), resolve(event[2])
+            state[event[1]], state[event[2]] = right, left
+        elif kind == DROP:
+            state[event[1]] = _ABSENT
+        else:
+            state[event[1]] = True if kind == CREATE_READY else _ABSENT
+
 
 logger = logging.getLogger(__name__)
 
@@ -94,28 +120,33 @@ class ClickHouseServerConnection:
             return self._run(query, *args, **kwargs)
         result = None
         for statement in prepare_clickhouse_statements(query):
-            upper = statement.lstrip().upper()
-            if upper.startswith(("DROP", "RENAME", "EXCHANGE", "CREATE", "TRUNCATE")):
-                self._lightweight_update_tables.clear()
             result = self._run(statement, **kwargs)
-            created = merge_tree_create_target(statement)
-            if created is not None:
-                self._lightweight_update_tables.add(created)
+            self._track(statement)
         return result
+
+    def _track(self, statement: str) -> None:
+        ready = self._lightweight_update_tables
+        state: dict = {}
+        _apply_lifecycle(state, statement, lambda name: state.get(name, name in ready))
+        for name, value in state.items():
+            if value is True:
+                ready.add(name)
+            else:
+                ready.discard(name)
 
     def _run(self, query, *args, **kwargs):
         result = self._client.execute(query, *args, **kwargs)
         return _ListResult(result) if isinstance(result, list) else result
 
     def prepare_write(self, query: str) -> None:
-        created_in_query: set[str] = set()
+        state: dict = {}
         for statement in prepare_clickhouse_statements(query):
-            created = merge_tree_create_target(statement)
-            if created is not None:
-                created_in_query.add(created)
             table = lightweight_update_target(statement)
-            if table is not None and table not in self._lightweight_update_tables and table not in created_in_query:
-                self._apply_lightweight_update_settings(table)
+            if table is not None:
+                origin = state.get(table, table)
+                if isinstance(origin, str) and origin not in self._lightweight_update_tables:
+                    self._apply_lightweight_update_settings(origin)
+            _apply_lifecycle(state, statement, lambda name: state.get(name, name))
 
     def _apply_lightweight_update_settings(self, table: str) -> None:
         self._client.execute(

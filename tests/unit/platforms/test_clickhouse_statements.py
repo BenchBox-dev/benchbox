@@ -24,14 +24,37 @@ def test_update_and_delete_without_where_get_a_true_predicate() -> None:
 
 def test_create_table_without_engine_gets_a_merge_tree() -> None:
     assert prepare_clickhouse_statements("CREATE TABLE t (a Int32)") == [
-        "CREATE TABLE t (a Int32) ENGINE = MergeTree ORDER BY tuple() "
-        "SETTINGS enable_block_number_column = 1, enable_block_offset_column = 1"
+        "CREATE TABLE t (a Int32) ENGINE = MergeTree ORDER BY tuple()"
     ]
     assert prepare_clickhouse_statements("CREATE TABLE t AS SELECT * FROM s") == [
         "CREATE TABLE t ENGINE = MergeTree ORDER BY tuple() AS SELECT * FROM s"
     ]
     explicit = "CREATE TABLE t (a Int32) ENGINE = Memory"
     assert prepare_clickhouse_statements(explicit) == [explicit]
+
+
+def test_only_tables_updated_later_in_the_script_get_update_settings() -> None:
+    settings = "enable_block_number_column = 1, enable_block_offset_column = 1"
+    assert prepare_clickhouse_statements(
+        "CREATE TABLE t AS SELECT * FROM s; CREATE TABLE u (a Int32); UPDATE t SET a = 1"
+    ) == [
+        f"CREATE TABLE t ENGINE = MergeTree ORDER BY tuple() SETTINGS {settings} AS SELECT * FROM s",
+        "CREATE TABLE u (a Int32) ENGINE = MergeTree ORDER BY tuple()",
+        "UPDATE t SET a = 1 WHERE 1",
+    ]
+    assert (
+        prepare_clickhouse_statements(
+            "CREATE TABLE t ENGINE = MergeTree ORDER BY a SETTINGS index_granularity = 64; "
+            "RENAME TABLE t TO v; UPDATE v SET a = 1 WHERE a = 0"
+        )[0]
+        == f"CREATE TABLE t ENGINE = MergeTree ORDER BY a SETTINGS {settings}, index_granularity = 64"
+    )
+    assert (
+        "SETTINGS"
+        not in prepare_clickhouse_statements(
+            "CREATE TABLE t (a Int32); DROP TABLE t; CREATE TABLE t (a Int32); UPDATE t SET a = 1"
+        )[0]
+    )
 
 
 def test_series_unnest_becomes_range() -> None:
@@ -144,7 +167,7 @@ def test_operation_update_settings_are_outside_measured_execution(timed_primitiv
         assert result.success, result.error
         assert result.write_duration_ms == pytest.approx(10.0)
 
-    expected_alters = 1 if lifecycle_sql in ("", "DROP TABLE t; CREATE TABLE t (a Int32)") else 2
+    expected_alters = 1 if lifecycle_sql in ("", "DROP TABLE unrelated") else 2
     assert client.alters == expected_alters
 
 
@@ -163,3 +186,34 @@ def test_operation_create_does_not_time_additional_update_setup(timed_primitive,
     assert result.write_duration_ms == pytest.approx(10.0)
     assert client.measured_creates == 1
     assert client.alters == 0
+
+
+@pytest.mark.parametrize(
+    ("script", "expected_alters"),
+    [
+        ("RENAME TABLE s TO t2; UPDATE t2 SET a = 1 WHERE a = 0", 1),
+        ("CREATE TABLE t2 (a Int32); UPDATE t2 SET a = 1 WHERE a = 0", 0),
+        ("CREATE TABLE t2 AS SELECT * FROM s; UPDATE t2 SET a = 1 WHERE a = 0", 0),
+        ("EXCHANGE TABLES t AND s; UPDATE t SET a = 1 WHERE a = 0", 1),
+        ("CREATE TABLE t3 (a Int32); RENAME TABLE t3 TO t4; UPDATE t4 SET a = 1 WHERE a = 0", 0),
+    ],
+)
+def test_updates_after_in_script_lifecycle_are_prepared_against_the_table_they_reach(
+    timed_primitive, script, expected_alters
+) -> None:
+    execute, connection, client = timed_primitive
+    client.tables["t"] = True
+    connection._lightweight_update_tables.add("t")
+    result = execute(script, "update")
+    assert result.success, result.error
+    assert client.alters == expected_alters
+
+
+def test_table_created_in_an_earlier_script_gets_settings_before_its_timed_update(timed_primitive) -> None:
+    execute, connection, client = timed_primitive
+    connection.execute("CREATE TABLE copied AS SELECT * FROM t")
+    for _ in range(2):
+        result = execute("UPDATE copied SET a = 1 WHERE a = 0", "update")
+        assert result.success, result.error
+        assert result.write_duration_ms == pytest.approx(10.0)
+    assert client.alters == 1
