@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Oracle tooling refreshes existing OMP candidate branches and closes superseded automated pin requests; shipped benchmark behavior is unchanged."
+}
