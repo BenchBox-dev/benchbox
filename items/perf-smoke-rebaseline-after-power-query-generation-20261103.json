@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "The baseline is the per-query median of at least five post-change nightly-v2 results on the current runner class; source run ids and method are recorded in the sources file and in docs/internal/perf-smoke.md.",
+    "Replaying every retained post-change result against the new baseline with the nightly gate options (--fail-on-regression 10% --min-regression-delta 7ms --min-aggregate-regression-delta 82ms) passes, except any run that carries a real slowdown, which is named.",
+    "A synthetic check shows a query that doubles from its new median fails the per-query gate and a uniform slowdown above the floor fails the aggregate gate.",
+    "The owner's decision on keeping or changing the 7 ms and 82 ms floors is quoted in context with the measured same-class spread beside it.",
+    "t3:perf passes in a nightly-v2 verification dispatch on develop after merge, with the dispatch authorized by the owner if it exceeds the existing dispatch budget."
+  ],
+  "context": "Origin: 2026-11-03 root-cause analysis of TPC-H RF1 timing (5 whys) and its adversarial review. Spec clauses cited here were read from the published PDFs at the links on 2026-11-03; re-read them rather than trusting this text.\nThe hosted 640 ms nightly (t3-perf-execution-variants-regression-20261010) showed uniform +1 to +2 ms per-query shifts; [INFERENCE] query generation overhead may contribute. The baseline rebuild is how that inference is tested with real data.",
+  "description": "Problem. _project/baselines/perf_smoke_duckdb_tpch_001.json holds per-query medians measured while qgen and dialect translation were inside the per-query timer (about 5 ms per query against baseline queries of 4.4 to 12.3 ms). After power-test-times-query-generation-20261031 lands, nightly measurements shift down by roughly that cost, which weakens the gate's sensitivity for queries the gate previously watched and invalidates the floor derivation (7 ms per query, 82 ms aggregate) that used the old noise.\n\nMethod (existing, from the earlier baseline rebuild): per-query medians over at least five retained t3-perf-result artifacts from scheduled nightly-v2 runs on develop on the same runner class, recorded with source run ids next to the file (perf_smoke_duckdb_tpch_001.sources.json) and the method in docs/internal/perf-smoke.md.\n\nDecision gate (owner, after the new baseline exists): whether the 7 ms and 82 ms floors remain right under the new noise, using the measured same-class spread of the post-change runs. The agent presents the numbers; only the owner changes the floors. If the owner keeps them, record that; if not, the floor change goes to nightly-perf-gate-sensitivity-review-20261010.\n\nSources do not exist until the change has run on develop for at least five nights; do not fabricate or locally substitute runner results. Use not_before or wait for the artifacts.\n\nGuardrails: Guardrails for all code work: work only in a linked worktree (make worktree-create); never edit the primary clone. No explanatory comments or docstrings in source (make comment-policy-check). Durations use benchbox.utils.clock.mono_time()/elapsed_seconds(). Add a changelog.d/ fragment. Cited line numbers are orientation only: re-read the named symbols, docs and spec clauses before editing and treat a mismatch as a reason to stop and update this item. No live-cloud runs without owner approval; heavy runs only through make heavy-run or a lock-taking entry point. Green focused tests are not release certification. Do not edit the baseline from a local macOS run; the earlier baseline was rebuilt precisely because a single local run moved the noise problem.",
+  "links": [
+    "_project/baselines/perf_smoke_duckdb_tpch_001.json",
+    "docs/internal/perf-smoke.md",
+    "docs/internal/nightly-perf-gate-review.md",
+    "https://github.com/BenchBox-dev/BenchBox/issues/2778"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a561db75579ad3167de9da38",
+      "at": "2026-11-03T15:07:35Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f3e164b7384040448b0f72fbbf593a85",
+      "session_id": "ada67604a2174486ada6b7b9a8c4f586"
+    }
+  ]
+}

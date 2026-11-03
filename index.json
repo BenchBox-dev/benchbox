@@ -18421,6 +18421,15 @@
       "status": "open",
       "title": "Remove pandas/Python row steps in QuestDB and InfluxDB loading"
     },
+    "perf-smoke-rebaseline-after-power-query-generation-20261103": {
+      "claim": null,
+      "needs": [
+        "power-test-times-query-generation-20261031"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Rebuild the perf-smoke baseline after power-test query generation leaves the timer"
+    },
     "perf-spark-arrow-collect-20261030": {
       "claim": null,
       "needs": [
