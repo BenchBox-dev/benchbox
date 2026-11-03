@@ -942,12 +942,12 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
             prepare_write = getattr(connection, "prepare_write", None)
             if callable(prepare_write):
                 prepare_write(write_sql)
-            write_start = time.perf_counter()
+            write_start = mono_time()
             if summed_statements is not None:
                 write_result = self._execute_summing_rowcounts(connection, summed_statements)
             else:
                 write_result = connection.execute(write_sql)
-            write_duration_ms = (time.perf_counter() - write_start) * 1000
+            write_duration_ms = elapsed_seconds(write_start) * 1000
             if (write_error := failed_platform_error(write_result)) is not None:
                 raise RuntimeError(f"Write SQL failed on platform: {write_error}")
 

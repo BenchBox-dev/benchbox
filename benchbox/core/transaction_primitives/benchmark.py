@@ -535,9 +535,9 @@ class TransactionPrimitivesBenchmark(TransactionalBenchmarkBase["OperationResult
             prepare_write = getattr(connection, "prepare_write", None)
             if callable(prepare_write):
                 prepare_write(write_sql)
-            write_start = time.perf_counter()
+            write_start = mono_time()
             write_result = connection.execute(write_sql)
-            write_duration_ms = (time.perf_counter() - write_start) * 1000
+            write_duration_ms = elapsed_seconds(write_start) * 1000
             if (write_error := failed_platform_error(write_result)) is not None:
                 raise RuntimeError(f"Transaction SQL failed on platform: {write_error}")
 

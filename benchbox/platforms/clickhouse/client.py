@@ -9,7 +9,7 @@ from collections.abc import Sequence
 
 import pyarrow as pa
 
-from .statements import lightweight_update_target, merge_tree_create_target, prepare_clickhouse_statements
+from .statements import lightweight_update_target, prepare_clickhouse_statements
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +97,6 @@ class ClickHouseServerConnection:
             if statement.lstrip().upper().startswith(("DROP", "RENAME", "EXCHANGE")):
                 self._lightweight_update_tables.clear()
             result = self._run(statement, **kwargs)
-            self._enable_lightweight_updates_after_create(statement)
         return result
 
     def _run(self, query, *args, **kwargs):
@@ -115,11 +114,6 @@ class ClickHouseServerConnection:
             f"ALTER TABLE {table} MODIFY SETTING enable_block_number_column = 1, enable_block_offset_column = 1"
         )
         self._lightweight_update_tables.add(table)
-
-    def _enable_lightweight_updates_after_create(self, statement: str) -> None:
-        table = merge_tree_create_target(statement)
-        if table is not None:
-            self._apply_lightweight_update_settings(table)
 
     def __getattr__(self, name):
         return getattr(self._client, name)
