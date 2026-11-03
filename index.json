@@ -28866,6 +28866,13 @@
       "status": "blocked",
       "title": "Audit whether Redshift, Snowflake and Databricks planners exploit the TPC-DS informational keys (needs live-cloud approval)"
     },
+    "tpcds-maintenance-data-source-decision-20261103": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Owner decision: TPC-DS data maintenance uses dsdgen refresh sets with timed loading, or stays synthetic and non-official"
+    },
     "tpcds-maintenance-delete-limit-syntax-error-swallowed-20261004": {
       "claim": null,
       "needs": [],
