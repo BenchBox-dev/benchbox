@@ -5,6 +5,8 @@ import json
 import subprocess
 from pathlib import Path
 
+from _project.scripts.oracle_reviewers import local as oracle_local
+
 RECEIPT_SCHEMA = "prepared_work_v2"
 EVIDENCE_SCHEMA = "benchbox_batch_evidence_v2"
 REVIEW_SCHEMA = "benchbox_member_review_v1"
@@ -23,13 +25,6 @@ SECTION_NAMES = frozenset(
         "final_evidence",
     }
 )
-
-
-REVIEW_STORE: dict[tuple[str, str, str], dict] = {}
-
-
-def stored_review(_repo: Path, base: str, head: str, trusted: str) -> dict | None:
-    return REVIEW_STORE.get((base, head, trusted))
 
 
 def git(repo: Path, *args: str) -> str:
@@ -96,15 +91,16 @@ class BatchFixture:
                 "clean": True,
                 "suite": f"suite-{member}",
                 "command": ["pytest", "-q", member],
+                "review": {
+                    "schema": REVIEW_SCHEMA,
+                    "outcome": "clear",
+                    "reason": "",
+                    "base_sha": source_base,
+                    "head_sha": accepted,
+                    **oracle_local.member_binding(self.repo, source_base, accepted),
+                    "trusted_sha": self.start,
+                },
             },
-        }
-        REVIEW_STORE[(source_base, accepted, self.start)] = {
-            "schema": REVIEW_SCHEMA,
-            "outcome": "clear",
-            "reason": "",
-            "base_sha": source_base,
-            "head_sha": accepted,
-            "trusted_sha": self.start,
         }
         self._append({"kind": "prepare", "head": merged, "member": member, "changed_files": sorted(files)})
         return merged
@@ -205,29 +201,27 @@ class BatchFixture:
                     "command": self.receipts[member]["verification"]["command"],
                     "worktree": str(self.repo),
                 }
-                for member in self.required
+                for member in self.receipts
             },
             "changed_files": self.changed_files(),
             "member_reviews": {
-                member: {
-                    "schema": REVIEW_SCHEMA,
-                    "outcome": "clear",
-                    "reason": "",
-                    "base_sha": receipt["source_base"],
-                    "head_sha": receipt["accepted_head"],
-                    "trusted_sha": self.start,
-                }
-                for member, receipt in self.receipts.items()
+                member: copy.deepcopy(receipt["verification"]["review"]) for member, receipt in self.receipts.items()
             },
             "generated_at": "2026-11-01T00:00:00Z",
         }
 
 
+_DROP = object()
+
+
 class FakeBatchShow:
-    def __init__(self, tracker: dict, rev: str = "rev-1", stale: bool = False) -> None:
+    def __init__(
+        self, tracker: dict, rev: str = "rev-1", stale: bool = False, page_overrides: dict | None = None
+    ) -> None:
         self.tracker = tracker
         self.rev = rev
         self.stale = stale
+        self.page_overrides = page_overrides or {}
         self.calls: list[list[str]] = []
 
     def __call__(self, cmd: list[str]) -> tuple[int, str]:
@@ -250,6 +244,7 @@ class FakeBatchShow:
             "offset": offset,
             "total": len(blob),
             "window": blob[offset : offset + budget],
+            "rev": self.rev,
         }
         if offset + budget < len(blob):
             data["continuation"] = {
@@ -258,6 +253,10 @@ class FakeBatchShow:
                 "budget": budget,
                 "rev": self.rev,
             }
+        if offset > 0:
+            data.update(self.page_overrides)
+        for key in [key for key, value in data.items() if value is _DROP]:
+            del data[key]
         return 0, json.dumps({"ok": True, "data": data})
 
     @staticmethod

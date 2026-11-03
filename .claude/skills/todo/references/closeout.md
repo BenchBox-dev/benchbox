@@ -48,17 +48,21 @@ a verification item, not a dismissal.
 
 ## Phase 3 — close tracker state
 
-Prepared feature members remain open until the leader has landed them on the
-integration branch, bound the one final PR to the current integration head, and
-the member's final-tree verification passes. Closeout fixes for a prepared batch
-are leader commits recorded with `advance_batch_head`, and the final PR binding
-moves with them via `bind_batch_pr` (see `references/batch.md`); they are not
-member PRs. Members named in the derived `acceptance_required` list
-(`show_batch`) must rerun their own verification on the final tree first. Then
-the leader re-takes each member and calls `finish` with that evidence. Never
-close a member solely because its prepared receipt exists, its member branch is
-an ancestor, or the final PR is green. Heads cannot change once any member is
-`done`.
+Prepared feature members remain open until they are landed, the final PR is
+bound to the current integration head, and that bound PR has **actually merged**.
+Closeout fixes are leader commits followed by the head advance and CAS binding
+move, not member PRs; withdraw auto-merge before publishing them.
+
+Validate the completed successful final run against its current relevant
+head/checkout/receipt-command/ownership/PR bindings. If drift requires a new
+invocation, execute every member's receipt command and the combined fast tier
+afresh, invalidating old success first. The derived `acceptance_required` list
+is a tracker minimum, not the consumer's verification set. Then the leader
+re-takes each member and calls `finish` with complete bound final evidence.
+Never close solely because a receipt exists, a branch is an ancestor, or the PR
+is green. Heads cannot change once any member is done. After all members finish,
+follow merged-only member cleanup and leader-last worktree finish in
+`references/batch.md`.
 
 1. If you hold the claim, call `finish(id=..., generation=...)`.
 2. To close externally merged work without a live claim, `take` the item first,

@@ -4,6 +4,7 @@ import gzip
 import io
 import json
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
@@ -139,6 +140,34 @@ def test_clickhouse_delimited_loader_skips_empty_first_shard(tmp_path: Path) -> 
         == 1
     )
     assert connection.rows == [("1", "alpha")]
+
+
+class _KeyedColumnsBenchmark:
+    def get_schema(self):
+        return {
+            "zones": {
+                "columns": {
+                    "location_id": {"type": "INTEGER"},
+                    "name": {"type": "VARCHAR(10)"},
+                    "latitude": {"type": "DOUBLE"},
+                    "seen_at": {"type": "TIMESTAMP"},
+                }
+            }
+        }
+
+
+def test_clickhouse_delimited_loader_converts_keyed_column_schemas(tmp_path: Path) -> None:
+    path = tmp_path / "zones.tbl"
+    path.write_text("7|north|1.5|2024-01-01 00:00:10\n8|||\n", encoding="utf-8")
+    connection = _ServerConnection()
+    benchmark = _KeyedColumnsBenchmark()
+    handler = ClickHouseNativeHandler("|", _ServerAdapter(), benchmark)
+
+    assert handler._load_delimited_via_client_insert("zones", [path], connection, benchmark, logging.getLogger()) == 2
+    assert connection.rows == [
+        (7, "north", 1.5, datetime(2024, 1, 1, 0, 0, 10)),
+        (8, "", None, None),
+    ]
 
 
 def test_clickhouse_parquet_loader_uses_logical_nested_names(tmp_path: Path) -> None:

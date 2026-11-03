@@ -250,7 +250,7 @@ class TestPlatformKeyDispatch:
         bench.execute_operation("op1", conn, platform_key="postgres")
 
         executed_sql = conn.execute.call_args.args[0]
-        assert "BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;" in executed_sql
+        assert "COMMIT;\nBEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;" in executed_sql
         assert "SET TRANSACTION ISOLATION LEVEL" not in executed_sql
 
 

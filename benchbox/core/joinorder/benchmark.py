@@ -144,11 +144,40 @@ class JoinOrderBenchmark(TranslatableQueryMixin, BaseBenchmark):
             raise ValueError("JoinOrder queries are static and don't accept parameters")
         query = self._query_manager.get_query(query_id)
         if dialect:
-            return self.translate_query_text(query, dialect)
+            return self._source_variant(query_id, dialect) or self.translate_query_text(query, dialect)
         return query
 
     def get_queries(self, dialect: str | None = None) -> dict[str, str]:
-        return get_queries_with_translation(self._query_manager, dialect, self.translate_query_text)
+        queries = get_queries_with_translation(self._query_manager, dialect, self.translate_query_text)
+        if dialect:
+            for query_id in queries:
+                variant = self._source_variant(query_id, dialect)
+                if variant:
+                    queries[query_id] = variant
+        return queries
+
+    def _source_variant(self, query_id: str, dialect: str) -> str | None:
+        from benchbox.sql_compat.actions import CompatAction
+        from benchbox.sql_compat.context import CompatibilityContext, Phase
+        from benchbox.sql_compat.registry import REGISTRY
+        from benchbox.sql_compat.rules.query_source import joinorder_variants
+
+        if "questdb" not in dialect.lower() or query_id not in joinorder_variants.QUESTDB_VARIANTS:
+            return None
+        decision = REGISTRY.resolve(
+            CompatibilityContext(
+                platform="questdb",
+                platform_version=None,
+                benchmark="joinorder",
+                query_id=query_id,
+                phase=Phase.QUERY_SOURCE,
+                mode="sql",
+                dialect=dialect,
+            )
+        )
+        if decision is None or decision.action is not CompatAction.SELECT_VARIANT:
+            return None
+        return decision.payload.variant_sql
 
     @property
     def query_manager(self) -> JoinOrderQueryManager:

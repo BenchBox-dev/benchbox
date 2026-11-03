@@ -5,6 +5,7 @@ import itertools
 import json
 import re
 import subprocess
+import tarfile
 import threading
 import zipfile
 from collections import defaultdict
@@ -92,7 +93,11 @@ class FakeGitHub:
         self.annotations: dict[int, list[dict[str, Any]]] = {}
         self.auto_merges: list[dict[str, Any]] = []
         self.failures: list[Failure] = []
+        self.tarballs: dict[tuple[str, str], bytes] = {}
+        self.assets: dict[str, bytes] = {}
         self.unhandled: list[str] = []
+        self.tracker_tip = "d" * 40
+        self.tracker_index: dict[str, Any] = {"schema_version": 4, "items": {}, "batches": {}}
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), self._handler())
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
 
@@ -123,6 +128,23 @@ class FakeGitHub:
         return subprocess.run(
             ["git", "-c", "core.quotepath=false", "-C", str(self.git_dir), *args], capture_output=True, check=True
         ).stdout
+
+    def add_tarball(self, repo_slug: str, commit_sha: str, files: dict[str, bytes]) -> None:
+        buffer = io.BytesIO()
+        prefix = f"{repo_slug.replace('/', '-')}-{commit_sha[:7]}"
+        with tarfile.open(fileobj=buffer, mode="w:gz") as archive:
+            for rel, content in sorted(files.items()):
+                info = tarfile.TarInfo(f"{prefix}/{rel}")
+                info.size = len(content)
+                archive.addfile(info, io.BytesIO(content))
+        with self.lock:
+            self.tarballs[(repo_slug.lower(), commit_sha)] = buffer.getvalue()
+
+    def add_https_asset(self, https_url: str, content: bytes) -> None:
+        parts = urlsplit(https_url)
+        host = (parts.hostname or "").lower()
+        with self.lock:
+            self.assets[f"/{host}{parts.path}"] = content
 
     def open_pull(self, number: int, head_ref: str, base_ref: str = "develop", **extra: Any) -> dict[str, Any]:
         with self.lock:
@@ -382,6 +404,8 @@ class FakeGitHub:
             ("GET", "/healthz", lambda request, match: (200, {"ok": True}, {})),
             ("POST", "/graphql", lambda request, match: (200, self.graphql(request.json(), request.token), {})),
             ("GET", "/user", lambda request, match: (200, {**ACCOUNTS[request.token], "id": 1}, {})),
+            ("GET", r"/repos/([^/]+/[^/]+)/tarball/([0-9a-f]{40})", self._external_tarball),
+            ("GET", r"/_assets(/.+)", self._mirrored_asset),
         ]
 
     def _repo_routes(self) -> list[tuple[str, str, Route]]:
@@ -405,8 +429,14 @@ class FakeGitHub:
                 lambda request, match: self._page(self.timeline[int(match[1])], request),
             ),
             ("GET", r"/compare/([^.]+)\.\.\.(.+)", lambda request, match: (200, self.compare(match[1], match[2]), {})),
+            (
+                "GET",
+                r"/git/ref/heads/todo-state",
+                lambda request, match: (200, {"object": {"sha": self.tracker_tip}}, {}),
+            ),
             ("GET", r"/contents/(.+)", self._contents),
             ("GET", r"/git/trees/([0-9a-f]{40})", lambda request, match: (200, self.tree(match[1]), {})),
+            ("GET", r"/tarball/([0-9a-f]{40})", self._repo_tarball),
             ("GET", r"/commits/([0-9a-f]{40})", self._commit),
             ("GET", r"/commits/([0-9a-f]{40})/statuses", self._status_list),
             ("GET", r"/commits/([0-9a-f]{40})/status", self._combined_status),
@@ -429,8 +459,37 @@ class FakeGitHub:
         ]
 
     def _contents(self, request: Request, match: re.Match[str]) -> Response:
-        data = self.git_bytes("show", f"{request.query['ref']}:{match[1]}")
+        if match[1] == "index.json" and request.query.get("ref") == self.tracker_tip:
+            return 200, json.dumps(self.tracker_index).encode("utf-8"), {"Content-Type": "text/plain; charset=utf-8"}
+        try:
+            data = self.git_bytes("show", f"{request.query['ref']}:{match[1]}")
+        except subprocess.CalledProcessError:
+            return 404, {"message": "Not Found"}, {}
         return 200, data, {"Content-Type": "text/plain; charset=utf-8"}
+
+    def _external_tarball(self, _request: Request, match: re.Match[str]) -> Response:
+        key = (match[1].lower(), match[2])
+        if key not in self.tarballs:
+            return 404, {"message": "Not Found"}, {}
+        return 200, self.tarballs[key], {"Content-Type": "application/gzip"}
+
+    def _repo_tarball(self, _request: Request, match: re.Match[str]) -> Response:
+        sha = match[1]
+        key = (self.slug.lower(), sha)
+        if key in self.tarballs:
+            return 200, self.tarballs[key], {"Content-Type": "application/gzip"}
+        try:
+            prefix = f"{self.slug.replace('/', '-')}-{sha[:7]}/"
+            data = self.git_bytes("archive", "--format=tar.gz", f"--prefix={prefix}", sha)
+        except subprocess.CalledProcessError:
+            return 404, {"message": "Not Found"}, {}
+        return 200, data, {"Content-Type": "application/gzip"}
+
+    def _mirrored_asset(self, _request: Request, match: re.Match[str]) -> Response:
+        asset = self.assets.get(match[1])
+        if asset is None:
+            return 404, {"message": "Not Found"}, {}
+        return 200, asset, {"Content-Type": "application/octet-stream"}
 
     def _pull(self, request: Request, match: re.Match[str]) -> Response:
         number = int(match[1])

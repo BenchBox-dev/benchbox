@@ -35,14 +35,26 @@ from benchbox.sql_compat.rules.execution_filter.cloud_transaction_primitives imp
 from benchbox.sql_compat.rules.execution_filter.databricks_transaction_primitives import (
     DATABRICKS_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
 )
+from benchbox.sql_compat.rules.execution_filter.doris_transaction_primitives import (
+    DORIS_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
+)
 from benchbox.sql_compat.rules.execution_filter.duckdb_transaction_primitives import (
     DUCKDB_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
 )
 from benchbox.sql_compat.rules.execution_filter.pg_duckdb_transaction_primitives import (
     PG_DUCKDB_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
 )
+from benchbox.sql_compat.rules.execution_filter.questdb_transaction_primitives import (
+    QUESTDB_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
+)
+from benchbox.sql_compat.rules.execution_filter.singlestore_transaction_primitives import (
+    SINGLESTORE_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
+)
 from benchbox.sql_compat.rules.execution_filter.sqlite_transaction_primitives import (
     SQLITE_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
+)
+from benchbox.sql_compat.rules.execution_filter.starrocks_transaction_primitives import (
+    STARROCKS_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
 )
 from benchbox.sql_compat.rules.execution_filter.timescaledb_transaction_primitives import (
     TIMESCALEDB_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
@@ -463,10 +475,14 @@ class TransactionPrimitivesBenchmark(TransactionalBenchmarkBase["OperationResult
             platform_operation_skips = {
                 "bigquery": BIGQUERY_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
                 "databricks": DATABRICKS_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
+                "apache doris": DORIS_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
                 "duckdb": DUCKDB_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
+                "singlestore": SINGLESTORE_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
                 "snowflake": SNOWFLAKE_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
                 "sqlite": SQLITE_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
+                "starrocks": STARROCKS_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
                 "pg_duckdb": PG_DUCKDB_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
+                "questdb": QUESTDB_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
                 "timescaledb": TIMESCALEDB_TRANSACTION_PRIMITIVES_OPERATION_SKIPS,
             }
             if operation_id in platform_operation_skips.get(platform_name, {}):
@@ -516,9 +532,12 @@ class TransactionPrimitivesBenchmark(TransactionalBenchmarkBase["OperationResult
             self.log_verbose(f"Executing transaction operation: {operation_id}")
             write_sql_raw = self._rewrite_transactional_sql_for_platform(write_sql_raw, platform_key)
             write_sql = self._replace_placeholders(write_sql_raw)
-            write_start = time.perf_counter()
+            prepare_write = getattr(connection, "prepare_write", None)
+            if callable(prepare_write):
+                prepare_write(write_sql)
+            write_start = mono_time()
             write_result = connection.execute(write_sql)
-            write_duration_ms = (time.perf_counter() - write_start) * 1000
+            write_duration_ms = elapsed_seconds(write_start) * 1000
             if (write_error := failed_platform_error(write_result)) is not None:
                 raise RuntimeError(f"Transaction SQL failed on platform: {write_error}")
 
@@ -586,9 +605,7 @@ class TransactionPrimitivesBenchmark(TransactionalBenchmarkBase["OperationResult
 
             if operation.cleanup_sql:
                 try:
-                    cleanup_res = connection.execute(operation.cleanup_sql)
-                    if (cleanup_err := failed_platform_error(cleanup_res)) is not None:
-                        raise RuntimeError(cleanup_err)
+                    self._execute_cleanup_sql(connection, operation.cleanup_sql, platform_key or fallback_key)
                 except Exception as e:
                     cleanup_error = str(e)
                     self.log_verbose(f"Cleanup SQL failed for {operation_id}: {cleanup_error}")

@@ -627,6 +627,36 @@ until its explicit `uv lock` step. It validates the date and every changelog
 fragment (a dry-run compile) before changing version markers; a later command
 failure can leave partial changes for inspection.
 
+The `sqlglot-fork-refresh` workflow runs nightly and starts the refresh when a
+newer final upstream tag exists. It refreshes a checkout of the fork's `main`
+with `python -m downstream.refresh auto`, which succeeds only when every carried
+patch applies without a conflict, none is already contained upstream, and the
+refresh leaves the active workflows under `.github/workflows/` unchanged. A
+refresh that succeeds is pushed as `refresh/upstream-X.Y.Z` and opened as a pull
+request in `BenchBox-dev/benchbox-sqlglot`, where its checks run.
+
+One issue per tag, `SQLGlot fork refresh to vX.Y.Z needs follow-up`, opens in
+this repository when a patch conflicts, a step fails, the refresh pull request
+has failing checks or was closed without merging, a `refresh/upstream-X.Y.Z`
+branch exists with no pull request, or the refresh could not be pushed. The issue
+is updated, with one comment, only when the reason changes. It closes when the
+fork is on the newest tag, when a healthy refresh pull request is open, or when
+a newer tag supersedes it. A refresh pull request that stays open and healthy
+raises no issue; GitHub's pull request notifications and the freshness check
+above are the signals for it. A separate issue, `SQLGlot fork refresh check
+failed`, covers the check itself failing (for example a GitHub API error or a
+failed preparation job); it leaves the per-tag issues as they were and closes on
+the next good run.
+
+The workflow never merges the fork pull request, builds or releases the wheel, or
+adopts it here; those steps stay with the maintainer. Pushing needs the
+repository secret `SQLGLOT_FORK_REFRESH_TOKEN`, a fine-grained personal access
+token limited to `BenchBox-dev/benchbox-sqlglot` with read and write access to
+contents and pull requests. A token is required because the workflow's own token
+cannot write to another repository and pull requests it opens would not start the
+fork's checks. Without the secret the workflow still runs and raises the issue,
+naming the missing secret.
+
 ## Reference
 
 - Makefile targets: `release-cut`, `release-finalize`, `release-prep`, `release-check`.

@@ -9,6 +9,57 @@ from collections.abc import Sequence
 
 import pyarrow as pa
 
+from .statements import (
+    CREATE_READY,
+    DROP,
+    EXCHANGE,
+    IF_MISSING,
+    RENAME,
+    USE,
+    lightweight_update_target,
+    prepare_clickhouse_statements,
+    table_lifecycle,
+)
+
+_ABSENT = object()
+
+
+class _Lifecycle:
+    def __init__(self, database: str, known) -> None:
+        self.database = database
+        self.state: dict[str, object] = {}
+        self.uncertain: set[str] = set()
+        self._known = known
+
+    def qualify(self, name: str) -> str:
+        return name if "." in name else f"{self.database}.{name}"
+
+    def resolve(self, name: str) -> object:
+        return self.state.get(name, self._known(name))
+
+    def apply(self, statement: str) -> None:
+        for event in table_lifecycle(statement):
+            kind = event[0]
+            if kind == USE:
+                self.database = event[1]
+            elif kind == RENAME:
+                source, target = self.qualify(event[1]), self.qualify(event[2])
+                self.state[target] = self.resolve(source)
+                self.state[source] = _ABSENT
+            elif kind == EXCHANGE:
+                left, right = self.qualify(event[1]), self.qualify(event[2])
+                self.state[left], self.state[right] = self.resolve(right), self.resolve(left)
+            elif kind == DROP:
+                self.state[self.qualify(event[1])] = _ABSENT
+            else:
+                table = self.qualify(event[1])
+                created = True if kind == CREATE_READY else _ABSENT
+                prior = self.resolve(table) if event[2] == IF_MISSING else _ABSENT
+                if isinstance(prior, str):
+                    self.uncertain.add(prior)
+                self.state[table] = created if prior is _ABSENT else prior
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -64,6 +115,91 @@ class _ResultProxy(Sequence):
         if isinstance(other, list):
             return self._ensure_rows() == other
         return NotImplemented
+
+
+class _ListResult(list):
+    _pos = 0
+
+    def fetchone(self):
+        if self._pos < len(self):
+            row = self[self._pos]
+            self._pos += 1
+            return row
+        return None
+
+    def fetchall(self):
+        remaining = self[self._pos :]
+        self._pos = len(self)
+        return remaining
+
+
+class ClickHouseServerConnection:
+    def __init__(self, client) -> None:
+        self._client = client
+        self._lightweight_update_tables: set[str] = set()
+        self._database: str | None = None
+
+    def execute(self, query, *args, **kwargs):
+        if args or not isinstance(query, str):
+            return self._run(query, *args, **kwargs)
+        result = None
+        for statement in prepare_clickhouse_statements(query):
+            result = self._run(statement, **kwargs)
+            self._track(statement)
+        return result
+
+    def _track(self, statement: str) -> None:
+        events = table_lifecycle(statement)
+        ready = self._lightweight_update_tables
+        if events and all(event[0] == USE for event in events):
+            self._database = events[-1][1]
+            return
+        if not ready and all(event[0] != CREATE_READY for event in events):
+            return
+        lifecycle = _Lifecycle(self._current_database(), lambda name: name in ready)
+        lifecycle.apply(statement)
+        for name, value in lifecycle.state.items():
+            if value is True:
+                ready.add(name)
+            else:
+                ready.discard(name)
+        self._database = lifecycle.database
+
+    def _current_database(self) -> str:
+        if self._database is None:
+            self._database = str(self._client.execute("SELECT currentDatabase()")[0][0])
+        return self._database
+
+    def _run(self, query, *args, **kwargs):
+        result = self._client.execute(query, *args, **kwargs)
+        return _ListResult(result) if isinstance(result, list) else result
+
+    def prepare_write(self, query: str) -> None:
+        lifecycle = _Lifecycle(self._current_database(), lambda name: name)
+        for statement in prepare_clickhouse_statements(query):
+            table = lightweight_update_target(statement)
+            if table is not None:
+                origin = lifecycle.resolve(lifecycle.qualify(table))
+                if (
+                    isinstance(origin, str)
+                    and origin not in self._lightweight_update_tables
+                    and (origin not in lifecycle.uncertain or self._table_exists(origin))
+                ):
+                    self._apply_lightweight_update_settings(origin)
+            lifecycle.apply(statement)
+
+    def _table_exists(self, table: str) -> bool:
+        rows = self._client.execute(f"EXISTS TABLE {table}")
+        return bool(rows) and str(rows[0][0]) == "1"
+
+    def _apply_lightweight_update_settings(self, table: str) -> None:
+        self._client.execute(
+            f"ALTER TABLE {table} MODIFY SETTING enable_block_number_column = 1, enable_block_offset_column = 1"
+        )
+        self._lightweight_update_tables.add(table)
+
+    def __getattr__(self, name):
+        return getattr(self._client, name)
 
 
 class ClickHouseLocalClient:
@@ -301,4 +437,4 @@ class ClickHouseCloudClient:
         return self._database
 
 
-__all__ = ["ClickHouseLocalClient", "ClickHouseCloudClient"]
+__all__ = ["ClickHouseLocalClient", "ClickHouseCloudClient", "ClickHouseServerConnection"]

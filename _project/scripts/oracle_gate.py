@@ -26,11 +26,14 @@ from oracle_review_check import (
     fetch_comments,
     fetch_files,
     fetch_head_oid,
+    fetch_promotion_refusals,
     fetch_pull,
     fetch_reviews,
     fetch_statuses,
+    fetch_text,
     path_matcher,
 )
+from oracle_reviewers.policy import PromotionRules
 
 GATE_CONTEXT = "oracle-gate"
 GATED_BASE = "develop"
@@ -130,6 +133,17 @@ def load_policy_rules() -> tuple[tuple[str, ...], tuple[str, ...]]:
         raise CheckError(f"cannot load the review policy: {exc}") from exc
 
 
+def load_promotion_policy(token: str, repo: str, base_ref: str) -> PromotionRules:
+    try:
+        import yaml
+        from oracle_reviewers.policy import parse_policy
+
+        raw = fetch_text(token, repo, ".github/oracle-reviewers.yml", base_ref)
+        return parse_policy(yaml.safe_load(raw)).promotion
+    except Exception as exc:
+        raise CheckError(f"cannot load the base review policy: {exc}") from exc
+
+
 def read_pull(repo: str, pr: int, token: str) -> tuple[dict[str, Any], str, str]:
     last: Exception | None = None
     for attempt in range(PULL_READ_ATTEMPTS):
@@ -157,8 +171,40 @@ def evaluate(repo: str, pr: int, token: str) -> tuple[str, int, str]:
         reviews = fetch_reviews(token, repo, pr)
         annotate_receipt(token, reviews, head_sha, base_date)
         bump = fetch_bump_refusals(token, repo, pull, files, len(items), comments)
+        from oracle_reviewers import promotion
+
+        promo_policy = (
+            load_promotion_policy(token, repo, pull["base"].get("sha") or pull["base"]["ref"])
+            if (
+                promotion.LOCK_PATH in files
+                or promotion.has_planted_promotion_path(files)
+                or len(items) < pull["changed_files"]
+            )
+            else PromotionRules()
+        )
+        is_promotion, promo = fetch_promotion_refusals(
+            token,
+            repo,
+            pull,
+            files,
+            len(items),
+            reviews,
+            base_date,
+            statuses=statuses,
+            rules=promo_policy,
+            comments=comments,
+        )
         status, message = decide(
-            head_sha, files, statuses, matcher, base_date, comments, reviews=reviews, bump_refusals=bump
+            head_sha,
+            files,
+            statuses,
+            matcher,
+            base_date,
+            comments,
+            reviews=reviews,
+            bump_refusals=bump,
+            promotion_refusals=promo,
+            is_promotion=is_promotion,
         )
     except Exception as exc:
         raise EvaluationFailed(head_sha, exc) from exc

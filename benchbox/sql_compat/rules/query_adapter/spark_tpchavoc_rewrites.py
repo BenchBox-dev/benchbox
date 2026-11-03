@@ -25,6 +25,31 @@ _REWRITES = [
         "Spark rejects the correlated scalar subquery in this aggregated SELECT list; wrap it in first()",
     ),
     (
+        "2_v7",
+        "q02_window_filter_to_if",
+        "Velox rejects FILTER on window aggregates; move the condition into the aggregate argument",
+    ),
+    (
+        "2_v10",
+        "q02_char_case_trim",
+        "Spark pads CHAR columns on read but compares a CASE result as an unpadded string; trim both sides",
+    ),
+    (
+        "5_v10",
+        "q05_char_case_trim",
+        "Spark pads CHAR columns on read but compares a CASE result as an unpadded string; trim both sides",
+    ),
+    (
+        "8_v10",
+        "q08_char_case_trim",
+        "Spark pads CHAR columns on read but compares a CASE result as an unpadded string; trim both sides",
+    ),
+    (
+        "11_v10",
+        "q11_char_case_trim",
+        "Spark pads CHAR columns on read but compares a CASE result as an unpadded string; trim both sides",
+    ),
+    (
         "6_v2",
         "q06_group_by_empty_drop",
         "Spark parser rejects the empty GROUP BY () in this variant; drop it",
@@ -75,6 +100,8 @@ _TRANSFORMERS = {
     "scalar_group_by_first": "wrap_grouped_scalar_subqueries",
     "group_by_empty_drop": "translate_sql_query",
     "dual_column_alias": "name_literal_subquery_columns",
+    "window_filter_to_if": "filtered_aggregates_to_conditional",
+    "char_case_trim": "trim_char_case_comparisons",
 }
 
 for _platform in ("spark", "velox", "lakesail", "databricks"):

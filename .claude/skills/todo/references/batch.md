@@ -22,47 +22,28 @@ Git, PR service, CI, artifacts, and human decisions remain authoritative.
    claims, branches, worktrees, and PRs. Reconcile rather than duplicate work.
 4. Run any required repository write preflight; fix or report failure and stop.
 
-## Local handoff ledger
+## State and recovery material
 
-Keep one ledger at a stable ignored path outside disposable worktrees, such as
-`.todo-batch/<slug>.txt` in the orchestration worktree. Verify it once with
-`git check-ignore`; use `.git/info/exclude`, not a committed rule. Never commit it.
+Record the exact named TODO set and current delivery state in the owning tracker
+items before claiming work. Follow the repository's state-storage policy; a local
+handoff file is not required. For a registered feature batch, use its designated
+umbrella item for batch-wide progress.
 
-Before the first claim or source mutation, initialize the exact named TODO IDs.
-Store one latest envelope per item, separated by `---`, and atomically replace
-the complete file. Only the controller (the leader, in prepared delivery) writes
-it. Members never write it, and it is a rebuildable cache: tracker state and Git
-are authoritative, and a lost ledger is rebuilt from `show_batch`, `show_item`,
-and the integration branch.
+Repository tooling may maintain an ignored operational ledger. Use that tooling's
+path and JSON schema rather than inventing a second text ledger. Only the leader
+writes it. Git and the tracker remain authoritative for heads, receipts, scope,
+PRs and lifecycle; cached run rows never authorize preparation or acceptance.
 
-```text
-TODO: <id>
-STATUS: pending|in_progress|pr_open|waiting|done|blocked
-TRACKER_STATE: <observed state>
-GENERATION: <claim generation or none>
-BRANCH: <branch or none>
-WORKTREE: <path or none>
-PR: <number or none>
-PR_STATE: <open|merged|closed|none>
-HEAD: <sha or none>
-LANDED: <yes|no>
-INTEGRATION_HEAD: <integration head after landing, or none>
-VERIFICATION: <concise result>
-GATE_SNAPSHOT: <gate, concise result/link, or none>
-BLOCKER: <owner/reason or none>
-NEXT_ACTION: <exact action>
----
-```
+Keep claim and batch-owner generations private. Save a new owner generation
+before registration or recovery. `show_batch` does not return it, so do not claim
+that a deleted credential can be rebuilt from that read. Recover it only through
+the existing authorized private ledger or Git-state access; never put generations
+or raw registry contents into public progress notes.
 
-In prepared delivery a member's envelope has no PR of its own: record `PR: none`
-and use `LANDED` and `INTEGRATION_HEAD`; the final PR and its bound head belong
-to the batch header. The ledger also holds the batch owner generation, which
-`show_batch` never serves. Standalone
-(serial) items keep `PR` and `PR_STATE`.
-
-These are cached observations, not authority for a mutation. Before acting,
-revalidate the facts required by `NEXT_ACTION` under the implementation guide,
-change framework, and repository policy.
+A progress checkpoint names the item, tracker state, branch/worktree, PR/head,
+verification actually exercised, blocker and exact next action. A member has no
+PR of its own; its landing and integration head replace that field. Revalidate
+the relevant live facts before acting on a checkpoint.
 
 ## Schedule bounded work
 
@@ -73,9 +54,9 @@ trivial items may share a context while their combined history remains small.
 
 At each scheduler boundary:
 
-1. Read the ledger once and refresh only state needed to select the next item.
-2. Mark missing, malformed, or cyclic items `blocked` with a reason:
-   `update_item(id=..., status="blocked", reason=...)`.
+1. Read the owning tracker checkpoint and refresh the state needed to select work.
+2. Record missing or inconsistent prerequisites as a concrete blocker in the item.
+   Use only supported `update_item` fields; put the reason in its context.
 3. Select an item only when its dependencies, including required integration
    merges, are satisfied, tracker state permits claim or resume, and no existing
    branch, worktree, or PR must be reconciled first.
@@ -85,9 +66,9 @@ At each scheduler boundary:
 5. After one focused retry, classify externally resolvable failures as waiting
    and non-resolvable failures as blocked; record the owner and next action.
 
-If no item is eligible and the remainder waits on external gates, checkpoint,
-report, and end the batch invocation. Resumption is a new invocation; do not
-turn repeated invocations into an implicit polling loop.
+When all eligible work waits on external gates, follow the repository's closeout
+contract. Use scheduled checks or a bounded blocking watcher, not a busy polling
+loop. Pending CI alone is not permission to abandon a required merged-PR closeout.
 
 ## Worker closeout
 
@@ -99,49 +80,43 @@ under repository policy, and re-verify substantive fixes.
 
 Do not return full task bodies, diffs, logs, or source dumps. Keep long output
 in a temporary artifact and return only its result, short tail, link, or digest.
-Return the envelope above:
+Return the checkpoint described above:
 
 - after successful item closeout;
 - before intentionally ending or compacting a worker context; or
 - after a failure that requires later resumption.
 
-Store the envelope before selecting more work; add no per-operation
+Record the checkpoint before selecting more work; add no per-operation
 acknowledgements. After an unexpected end, inspect authoritative live state
 before retrying an operation with an unknown outcome.
 
-For standalone serial items, when another item depends on the PR, leave it `pr_open` or `waiting` until
-verified merged. Otherwise close it with `finish(id=..., generation=...)` after
-PR creation and completion. An open or green PR is not proof of merge.
+For serial items, close only at the repository's authorized terminal state. A
+dependent item waits for the prerequisite's actual required merge or release;
+an open or green PR is not proof of either.
 
 ## CI and external waits
 
-Before querying a gate, reuse its snapshot from this invocation. Take at most
-one concise snapshot per gate, store it in the item envelope, and do not query it
-again before the invocation ends. Use bounded fields; keep verbose output
-outside context and retain only pending/failing names, links, and next action.
+Reuse recent gate observations and query only the state needed for the next
+action. Monitor pending checks through the repository's supported watcher or
+schedule. Fix real failures and retry spurious ejections without bypassing a gate.
+Keep verbose output outside context and checkpoint pending/failing names, links
+and next actions in the tracker.
 
-If a gate remains pending, record `waiting`. If the claim lease might expire
-first, `renew(id=..., generation=...)`, or `release` it so other workers are
-not blocked. Checkpoint and end the worker. Continue independent eligible work
-without retaining that history; if all work waits, end the invocation. Never
-sleep or poll in an implementation context.
+Renew a claim when necessary. Before an ordinary task's default-identity MCP
+server reconnects, checkpoint and release its claim; after reconnect, confirm the
+bound store and runtime, then take the item again. An identity-preserving restart
+requires a unique stable actor and stopping its previous server first. Never
+share an actor across concurrent servers or terminate unrelated clients.
 
 ## Context rotation and resume
 
-At every substantial-item boundary, persist the envelope and discard the worker
-transcript. Rotate or compact the controller too; its handoff preserves the
-exact TODO set and ledger path, not logs, readiness output, or discussion.
+At a substantial-item boundary, checkpoint the tracker and use a fresh worker
+context when supported. Preserve the exact TODO set and authoritative references,
+not source dumps or a second session-state document.
 
-If fresh contexts are unavailable, checkpoint and compact at a safe item
-boundary. Do not measure occupancy or compact uncheckpointed work. If neither
-option exists and history grows large, stop with the ledger and resume action.
-
-A resumed context must:
-
-1. confirm that the requested TODO set exactly matches the ledger;
-2. read the ledger once and select its current item and `NEXT_ACTION`;
-3. revalidate only the live facts required by that action; and
-4. continue without replaying completed items, logs, or discussion.
+A resumed context reads that checkpoint, confirms the requested set, revalidates
+the live facts required by the next action, and continues. Do not replay completed
+items or treat an old gate snapshot as current evidence.
 
 ## Final report
 
@@ -151,21 +126,23 @@ Report one concise row per item:
 TODO | tracker state | PR/state | head | verification | blocker | next action
 ```
 
-Include the ledger path and distinguish open, merged, tracker-complete, waiting,
-and blocked work. If anything remains non-terminal, provide the exact resume
-action rather than waiting in the current context.
+Include tracker references and any repository-permitted private ledger path.
+Distinguish merged, released, activated and tracker-complete work. A genuine
+blocker needs its owner and exact recovery action, not an invented pass.
 
 ## Prepared feature delivery
 
-Prepared mode is opt-in. It requires todo-db 0.14.0 or later. Confirm
-`show_batch`, `advance_batch_head` and `recover_batch_owner` are in the tool
-registry, and after registration that `show_batch` `capability.version >= 2`;
-key on the capability, not on a package version string. If the capability is
-absent, or the store schema is outside the advertised
-`supported_schema_versions`, stop and use serial mode. A store below schema 4 is
-cut over by the first `register_batch` with `confirm_schema3_cutover=true`.
-Never reinterpret a
-legacy receipt under the new rules.
+Repository policy selects prepared delivery; it is not inherently opt-in.
+Unrelated, cross-repository and approval-separated work remains serial. Changes
+that install or repair the batch mechanism cannot certify themselves through it.
+
+Before registration, require the installed runtime's `todo_db_batch` version 2
+capability, the expected receipt schema, the required tools, and a supported store
+schema. Inspect actual initialize/read responses, not a package-version string
+or a static rollout document. If unsupported, use serial mode. An older store's
+first registration needs the confirmed schema cutover under the existing
+quiescence rules; never reinterpret legacy receipts or create another cutover
+merely to adopt a consumer change.
 
 The loop has two layers. The **leader** registers the batch, owns the one
 integration branch and worktree, lands each member, records it in the tracker,
@@ -224,54 +201,69 @@ concrete commands; this guide names only the tracker calls and the contract.
    merges a newer integration head. Dispatch the member with its item,
    frozen scope, base, and the repository's member-closeout rules.
 
-### Same-file overlap
+### Verification and same-file overlap
 
-Two members may legitimately change the same file. Declare that in the frozen
-scope when registering; do not rely on a later surprise. Byte-equality of an
-earlier member's files is not required. Instead, `prepare` records each overlap
-in the receipt (against earlier members, and against leader fix commits made
-after the member's base), and every earlier member named in an overlap, every
-member touched by a leader fix, and every member whose own receipt records a
-fix overlap must re-prove its own acceptance on the **final tree**:
-rerun that member's own recorded verification (same suite and command) in the
-integration worktree at the final integration head. `finish` refuses without
-that current-acceptance evidence (`E_FINAL_EVIDENCE` names the member and the
-reason). `show_batch` lists the derived requirement under `acceptance_required`.
-A merge from the integration base never adds to it; its files are base content
-covered by the final PR's checks. The rerun is attested by the leader; the
-tracker checks shape and binding, not execution.
+Members execute the union of mapped and explicitly named checks on their captured
+clean base/head before recording success. Named checks supplement mapped checks.
+A command or suite label is not execution evidence; failures and unexecuted
+requested acceptance cannot become a test pass. Label any permitted lint-only
+verification accurately.
+
+Declare legitimate same-file overlap in the frozen scope. `prepare` records
+overlaps against earlier members and intervening fixes, and the tracker derives
+its minimum `acceptance_required` set from those receipts and the integration
+log. It validates current-acceptance bindings, not command execution.
+
+The consumer runs affected earlier members' own recorded commands before
+preparing a normal or reconstructed landing, and reruns touched members for
+leader fixes. Derive these checks from receipts, never from the presence or
+absence of saved ledger failures. Repeat them after interruption.
+
+Final verification is stronger than the tracker's overlap minimum: execute
+**every** member's own receipt command on the final integration tree, plus the
+combined checks. Preserve the overlap metadata; no byte-equality rule may reject
+legitimate later evolution or substitute for behavioral acceptance.
 
 ### Member closeout
 
-A member's closeout ends in a **landing request**, not a PR: the member merges
-the current integration head into its branch, resolves conflicts, runs its
-scoped checks and the local review required by `shared-review-protocol`, commits,
-and reports the branch, accepted head, base (the latest recorded integration head merged into the branch), changed files, and verification to
-the leader. The member does not push for publication, open a PR, or touch the
-tracker. Its final report is the landing request.
+A member commits its implementation and merges the latest recorded integration
+head, resolves conflicts and commits before checking the clean captured range.
+It runs scoped checks and local review against that exact post-merge base/head,
+then reports branch, base, accepted head, changed files and actual verification.
+It neither publishes a PR nor writes the tracker.
 
 ### Landing (leader)
 
 For each landing request, one member at a time, in dependency order:
 
-1. For a member with implementation edges, `take` it now and keep the
-   generation for step 3. Then revalidate the member head is unchanged since
-   the request, its review
-   result matches that exact patch, and its changed files stay inside the
-   frozen scope.
-2. Merge the member into the integration branch with a merge commit and confirm
-   the merged tree equals the member tree (the member already merged the
-   integration head; anything else means the integration head moved: send the
-   member back to merge it again).
-3. `take` the member if step 1 did not, then `prepare` with the integration
-   worktree, the
-   source base (the latest recorded integration head merged into the member
-   branch, which is also the base its review is bound to), accepted head, new
-   integration head, frozen scope hash, implementation edges (the changed files
-   are computed by the tracker), and
-   passed bounded-suite evidence. `prepare` records the receipt, releases the
-   claim, and leaves the member `open`.
-4. Record `LANDED: yes` and `INTEGRATION_HEAD` in the ledger.
+1. For a member with implementation edges, `take` it now and keep its claim
+   generation for preparation. Independently capture its base and accepted head;
+   check cleanliness, unchanged head and frozen scope before expensive review.
+2. The leader invokes the trusted reviewer for that exact range. Pin executable
+   and policy to the same full trusted revision, bounded by the registered start
+   and fetched integration-base history. Consume that invocation's fresh result;
+   a member's config or claimed `clear` is not authorization. Require matching
+   base/head/trusted revision and an accepted outcome. Existing history/cache
+   carry and adjudication remain valid; exempt-only `not-reviewed` is not a claim
+   that a model reviewed the patch.
+3. Merge the captured accepted OID, never a moving branch name, with a merge
+   commit whose tree equals the member tree. A moved integration base requires
+   the member to merge and recheck it first.
+4. Execute the receipt-derived overlap checks. Only after they pass, `take` an
+   independent member if needed and `prepare` its real source checkout/range,
+   accepted and integration heads, scope, dependencies and passed verification.
+   Retain the leader-accepted structured review in `verification.review`.
+   Preparation releases the claim and leaves the member `open`.
+5. For a merge interrupted before preparation, prove its parents/tree/range and
+   repeat leader review and overlap checks. Confirm the current owner and renew
+   or re-take the member, retaining its current generation for `prepare`, without
+   merging again. A missing ledger row is never proof that a check passed.
+
+The receipt is the historical review record. Final evidence and arming validate
+its binding without reopening a separate member-result cache or recomputing the
+old review environment from the current checkout. Keep ordinary review findings,
+disputes and outcome caching; do not introduce signatures or a second attestation
+store under the cooperative same-user trust model.
 
 Every commit on the integration branch outside a member's own range (a leader
 fix, a merge of the integration base) must be recorded first with
@@ -281,55 +273,86 @@ Interruption between the merge and `prepare` is recovered in
 
 ### Publish and review
 
-When every member has landed, publish the integration branch as the one final
-PR through the repository's batch protocol, and bind it with `bind_batch_pr`
-(`pr_repository` is the PR's own `owner/repo`, `head` equals the registered
-integration head). Review the combined diff under
-`shared-review-protocol` before publishing; members were reviewed individually
-before landing.
+Use one canonical sequence:
 
-Review fixes after the PR opens are **leader commits** on the integration
-branch, never member re-landings:
+1. On the combined clean head, run repository-required prepublication preflight
+   and combined local review. Do not add a separate full fast-tier ritual when
+   final verification owns that run.
+2. Publish the one final PR and bind its repository, number, node ID and exact
+   integration head with `bind_batch_pr`.
+3. Run final verification: every member's receipt command and the combined fast
+   tier execute on the captured clean head. Check HEAD and cleanliness before
+   and after commands, then revalidate relevant receipt/ownership/PR bindings.
+   Invalidate an earlier usable success at the start of every new invocation;
+   publish success atomically only after all required commands pass. Keep
+   prepublication preflight separate rather than claiming or repeating it here.
+4. Before every arming route, discover registered batch membership from an
+   authoritative snapshot independent of local markers or caller delivery mode.
+   A true ordinary PR skips full batch evidence, not discovery. Offline,
+   malformed or ambiguous discovery refuses. Validate every summary and
+   continuation page as authoritative at the same revision, with bounded
+   advancing continuations. Never relabel cached data as live.
+5. For a batch, require the successful final run, every receipt/review binding,
+   scope/ancestry and the current final-PR identity/head, plus unchanged hosted
+   review, CI, oracle and authority gates.
 
-1. commit the fix in the integration worktree;
-2. `advance_batch_head(owner_generation=<ledger>, reason="fix",
-   expected_head=<old>, head=<new>, changed_files=[...])` (`changed_files` must
-   equal the exact rename-free diff `expected_head..head`; a fix stays inside the
-   union of member scopes. A merge of the integration base uses
-   `reason="develop-merge"` with a real `--no-ff` merge commit whose second
-   parent is under the batch's registered `develop_ref`; the call has no ref of
-   its own, and a batch registered without `develop_ref` refuses it);
-3. push, then `bind_batch_pr(pr_repository=..., number=..., node_id=...,
-   head=<new>, expected_previous_head=<old>)` for the same PR identity. The
-   binding moves with the head; evidence built for the old head is stale.
+Review fixes are leader commits, never member re-landings. Withdraw auto-merge
+through the existing PR lifecycle before publishing any advance. Commit and
+verify the full fix interval; submit `advance_batch_head` with exact endpoint
+diff and expected head; only then push the captured head, CAS-rebind the same PR,
+run new evidence/review/CI and rearm. Recorded multi-commit fix intervals are
+valid; unrecorded gaps or trailing commits are not. Integration-base merges keep
+their real two-parent topology and registered `develop_ref` checks.
 
 An exact retry of either call is idempotent. Heads cannot move once any member
 is `done`; resume closeout instead.
 
 ### Finish
 
-After the final PR checks pass on the bound head, run each required
-current-acceptance rerun in the integration worktree, then for each member
-`take` and `finish` with cumulative current-tree evidence that maps every
-member's accepted head and base-to-head range, the frozen scope union, the final
-PR (repository, number, node id, head), and the integration head. Once every
-member finishes, the batch is durably `completed`. Finishing is the leader's act
-and follows the PR's merge decision under repository policy; an open or green PR
-is not proof of merge. Interrupted closeout is retryable and cannot create a
-false done.
+After the bound final PR has **actually merged**, validate the existing successful
+final run against current head, checkout, receipt commands, owner epoch and PR
+identity/head. If these bindings still match, use that completed run rather than
+unconditionally invoking final verification again. Relevant drift or relocation
+requires a new invocation, which executes all commands afresh; selective old
+member-time cache rows are never sufficient.
+
+For each member, `take` and `finish` with cumulative current-tree evidence mapping
+every accepted head/range, frozen scope, integration head and final PR. An open
+or green PR is not merge proof. Once all members finish, the batch is completed.
+Interrupted closeout remains retryable.
+
+Only after that completed state and fresh merged-PR proof may cleanup remove
+member worktrees/branches with clean, nonforeign, unlocked worktrees, accepted
+tips proven contained in the merged final PR head, and expected-OID/remote-lease
+protection. Remove the leader's integration worktree and local branch **last**,
+after member cleanup, using normal worktree-finish proof and the same safety
+checks. Never use the member deletion basis or source-tip ancestry alone for
+leader cleanup.
 
 ### Owner recovery and abort
 
-If the leader's session is dead, a new session calls `recover_batch_owner`
-(see `references/recovery.md`) with the recorded owner and its generation and a
-new generation it generated and wrote to its own ledger first; the call needs no
-live member claim and keeps valid receipts. If work must stop, the
-owner calls `abort_batch` after releasing all member claims. Abort is durable
-and idempotent: it invalidates prepared and final evidence, retains an already
-bound final PR as history, detaches recoverable members from the archived batch,
-and returns them to ordinary claim/finish. It refuses once any member is `done`.
-Use abort as the fallback when recovery is impossible (generation lost with no
-Git access to the state branch) or the batch should be redone.
+Recover a dead owner with its privately obtained expected generation and a new
+generation saved before the call. Without the expected generation, neither
+recovery nor abort is possible; use existing authorized private recovery access
+or report that exact missing prerequisite, never invent a token.
+
+Checkout relocation additionally requires
+`todo_db_batch.features.integration_worktree_relocation=true` and the complete
+tuple `expected_integration_worktree`, `expected_integration_head`,
+`integration_worktree`. CAS owner/generation/path/head together; prove a clean
+destination in the registered repository/branch at that head. Audit the change,
+preserve historical receipts and source paths, and produce fresh new-path final
+evidence. A same-head active partial closeout can relocate without reopening
+finished members or gaining advance, reprepare or rebind rights.
+
+Do not retrofit legacy review metadata into a new historical result. A partially
+closed legacy batch needs pinned pre-switch closeout at its frozen head before
+replacement, or an honest missing-evidence blocker.
+
+An owner with the required generation may abort after releasing every member
+claim, but never after any member is done. Abort invalidates prepared/final
+evidence, keeps the bound PR as history and returns nonterminal members to the
+ordinary lifecycle; it is not a tokenless recovery bypass.
 
 A non-`context` edit of a member (`description`, `acceptance`, `links`, `needs`,
 `title`, `priority`, `status`, `not_before`, or any mix with `context`) deletes

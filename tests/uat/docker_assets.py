@@ -12,7 +12,7 @@ import subprocess
 import sys
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Sequence
 
 import yaml
 
@@ -243,7 +243,10 @@ _DOCKER_PLATFORM_SPECS: dict[str, DockerPlatformSpec] = {
     ),
     "postgresql": DockerPlatformSpec(
         platform="postgresql",
-        compose_files=(_repo_path("docker/postgresql/docker-compose.yml"),),
+        compose_files=(
+            _repo_path("docker/postgresql/docker-compose.yml"),
+            _repo_path("docker/postgresql/docker-compose.pgvector.yml"),
+        ),
         services=("postgresql",),
     ),
     "presto": DockerPlatformSpec(
@@ -259,7 +262,7 @@ _DOCKER_PLATFORM_SPECS: dict[str, DockerPlatformSpec] = {
     "databend": DockerPlatformSpec(
         platform="databend",
         compose_files=(_repo_path("docker/databend/docker-compose.yml"),),
-        services=("minio", "minio-setup", "databend"),
+        services=("databend",),
     ),
     "doris": DockerPlatformSpec(
         platform="doris",
@@ -331,7 +334,23 @@ PLATFORM_SERVICE_PORT: dict[str, int] = _adapter_service_ports()
 
 _PLATFORM_STATIC_OPTS: dict[str, list[str]] = {
     "velox": ["--platform-option", "deployment=remote"],
+    "databend": ["--platform-option", "deployment_mode=self-hosted", "--platform-option", "host=localhost"],
+    "influxdb": [
+        "--platform-option",
+        "host=localhost",
+        "--platform-option",
+        "ssl=false",
+    ],
 }
+
+_PLATFORM_CLI_SELECTORS: dict[str, str] = {
+    "influxdb": "influxdb:core",
+}
+
+
+def platform_cli_selector(platform: str) -> str:
+    return _PLATFORM_CLI_SELECTORS.get(platform, platform)
+
 
 _PLATFORM_SECONDARY_PORTS: dict[str, dict[str, int]] = {
     "questdb": {"http_port": 9000},
@@ -347,10 +366,13 @@ _PLATFORM_PASSWORD_ENV_KEYS: dict[str, str] = {
     "timescaledb": "POSTGRES_PASSWORD",
     "postgresql": "POSTGRES_PASSWORD",
     "singlestore": "ROOT_PASSWORD",
+    "databend": "QUERY_DEFAULT_PASSWORD",
 }
 
+_PLATFORM_COMPOSE_PASSWORD_OPT: frozenset[str] = frozenset({"databend", "singlestore"})
+
 _PLATFORM_INJECT_HOST_PORT_OPT: frozenset[str] = frozenset(
-    {"cedardb", "clickhouse-server", "doris", "presto", "singlestore", "starrocks", "trino"}
+    {"cedardb", "clickhouse-server", "databend", "doris", "influxdb", "presto", "singlestore", "starrocks", "trino"}
 )
 
 _PLATFORM_INJECT_SPARK_CONNECT_ENDPOINT_OPT: frozenset[str] = frozenset({"lakesail", "velox"})
@@ -484,7 +506,7 @@ def platform_extra_opts(platform: str, *, env: dict[str, str] | None = None) -> 
         host_port = resolve_published_host_port_for_container(platform, container_port, env=env)
         if host_port is not None:
             opts += ["--platform-option", f"{option}={host_port}"]
-    if platform == "singlestore":
+    if platform in _PLATFORM_COMPOSE_PASSWORD_OPT:
         password = _compose_service_environment_value(platform, _PLATFORM_PASSWORD_ENV_KEYS[platform], env=env)
         if password is not None:
             opts += ["--platform-option", f"password={password}"]
@@ -606,6 +628,23 @@ def compose_logs_command(spec: DockerPlatformSpec, project_name: str, *, tail: i
     argv.extend(["logs", "--no-color", "--tail", str(tail)])
     argv.extend(spec.services)
     return argv
+
+
+def compose_container_ids_command(spec: DockerPlatformSpec, project_name: str) -> list[str]:
+    argv = _compose_base_command(spec, project_name)
+    argv.extend(["ps", "-a", "-q"])
+    argv.extend(spec.services)
+    return argv
+
+
+CONTAINER_STATE_FORMAT = (
+    "{{.Name}} Status={{.State.Status}} OOMKilled={{.State.OOMKilled}} ExitCode={{.State.ExitCode}} "
+    "Error={{.State.Error}} StartedAt={{.State.StartedAt}} FinishedAt={{.State.FinishedAt}}"
+)
+
+
+def container_inspect_command(container_ids: Sequence[str]) -> list[str]:
+    return [resolve_container_cli(), "inspect", "--format", CONTAINER_STATE_FORMAT, *container_ids]
 
 
 _UNHEALTHY_PS_STATE_RE = re.compile(r"\b(?:Exited|Restarting|Created|Dead|Paused)\b|\bExit\s+\d+|\(unhealthy\)")
@@ -730,14 +769,14 @@ def compose_environment(
     *,
     benchmark_runs_dir: Path | str | None = None,
     memory_limit: str | None = None,
-    starrocks_memory_limit: str | None = "4g",
+    starrocks_memory_limit: str | None = "8g",
 ) -> dict[str, str]:
     environment: dict[str, str] = {}
     if spec.platform == "clickhouse-server":
         resolved, _ = resolve_clickhouse_memory_limit(memory_limit)
         environment[CLICKHOUSE_MEMORY_LIMIT_ENV_VAR] = resolved
     if spec.platform == "starrocks":
-        environment["STARROCKS_MEMORY_LIMIT"] = os.environ.get("STARROCKS_MEMORY_LIMIT", starrocks_memory_limit or "4g")
+        environment["STARROCKS_MEMORY_LIMIT"] = os.environ.get("STARROCKS_MEMORY_LIMIT", starrocks_memory_limit or "8g")
     if spec.platform not in {"lakesail", "velox"}:
         return environment
     if benchmark_runs_dir is None:

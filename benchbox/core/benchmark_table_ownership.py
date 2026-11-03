@@ -4,6 +4,9 @@ from collections.abc import Callable
 from functools import cache
 
 MOONCAKE_STAGING_PREFIX = "__bb_moon_src_"
+STAGING_MANIFEST_TABLES = frozenset(
+    {"benchbox_staging_manifest", "benchbox_staging_manifest_v2", "benchbox_staging_manifest_v3"}
+)
 WRITE_PRIMITIVES_SETUP_LOCK_TABLE = "write_primitives_setup_lock"
 _PRIMITIVES_LOADED_STAGE_TABLES = ("orders_stage", "lineitem_stage")
 
@@ -82,7 +85,8 @@ def tables_owned_by_benchmark_family(family: str) -> frozenset[str]:
 
 
 def is_benchbox_staging_table(table_name: str) -> bool:
-    return table_name.lower().startswith(MOONCAKE_STAGING_PREFIX)
+    name = table_name.lower()
+    return name.startswith(MOONCAKE_STAGING_PREFIX) or name in STAGING_MANIFEST_TABLES
 
 
 def benchmark_family_of(benchmark: object) -> str | None:

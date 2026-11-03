@@ -16,6 +16,8 @@ from benchbox.core.primitives_benchmark_utils import (
     table_exists,
 )
 from benchbox.core.transactional.operations_registry_base import OperationsRegistryBase
+from benchbox.core.transactional.questdb_sql import questdb_cleanup_statements, rewrite_questdb_operation_sql
+from benchbox.core.transactional.staging_types import staging_table_suffix
 
 ResultT = TypeVar("ResultT")
 _POSTGRES_SERIES_DIALECTS = frozenset({"postgres", "postgresql"})
@@ -28,12 +30,41 @@ _UNNEST_SERIES_SELECT_RE = re.compile(
 _SERIES_SELECT_TEMPLATES = {
     "snowflake": "SELECT value::INT AS {alias} FROM TABLE(FLATTEN(ARRAY_GENERATE_RANGE({lo}, {hi} + 1)))",
     "bigquery": "SELECT {alias} FROM UNNEST(GENERATE_ARRAY({lo}, {hi})) AS {alias}",
+    "questdb": "SELECT generate_series AS {alias} FROM generate_series({lo}, {hi})",
+    "starrocks": "SELECT {alias} FROM TABLE(generate_series({lo}, {hi})) AS series({alias})",
 }
 _SET_THEN_BEGIN_ISOLATION_RE = re.compile(
     r"SET\s+TRANSACTION\s+ISOLATION\s+LEVEL\s+(?P<level>REPEATABLE\s+READ|SERIALIZABLE|READ\s+COMMITTED)\s*;\s*"
     r"BEGIN\s+TRANSACTION\s*;",
     re.IGNORECASE,
 )
+_BEGIN_TRANSACTION_RE = re.compile(r"\bBEGIN\s+TRANSACTION\s*;", re.IGNORECASE)
+_SET_READ_COMMITTED_RE = re.compile(r"SET\s+TRANSACTION\s+ISOLATION\s+LEVEL\s+READ\s+COMMITTED\s*;\s*", re.IGNORECASE)
+_DIGIT_ROWS = " UNION ALL ".join(f"SELECT {digit} AS d" for digit in range(10))
+_DATE_LITERAL_RE = re.compile(r"\bDATE\s+('\d{4}-\d{2}-\d{2}')", re.IGNORECASE)
+_CREATE_TEMP_TABLE_RE = re.compile(r"\bCREATE\s+TEMP\s+TABLE\b", re.IGNORECASE)
+_SINGLESTORE_SERIES_TEMPLATE = (
+    "SELECT n AS {alias} FROM (SELECT a.d + 10 * b.d + 100 * c.d + 1000 * e.d AS n FROM "
+    f"({_DIGIT_ROWS}) a, ({_DIGIT_ROWS}) b, ({_DIGIT_ROWS}) c, ({_DIGIT_ROWS}) e) series "
+    "WHERE n BETWEEN {lo} AND {hi}"
+)
+
+
+def _doris_numbers_select(match: re.Match[str]) -> str:
+    lo, hi = int(match.group("lo")), int(match.group("hi"))
+    return f'SELECT number + {lo} AS {match.group("alias")} FROM numbers("number" = {hi - lo + 1})'
+
+
+_STARROCKS_BETWEEN_RE = re.compile(r"(?P<column>\w+)\s+BETWEEN\s+(?P<lo>\S+)\s+AND\s+(?P<hi>\S+)", re.IGNORECASE)
+_STARROCKS_UNCONDITIONAL_DELETE_RE = re.compile(r"^\s*DELETE\s+FROM\s+\S+\s*$", re.IGNORECASE)
+
+
+def _starrocks_cleanup_statement(statement: str) -> str:
+    if not statement.lstrip().upper().startswith("DELETE"):
+        return statement
+    if _STARROCKS_UNCONDITIONAL_DELETE_RE.match(statement):
+        return f"{statement.strip()} WHERE 1 = 1"
+    return _STARROCKS_BETWEEN_RE.sub(r"\g<column> >= \g<lo> AND \g<column> <= \g<hi>", statement)
 
 
 def _sql_escape(value: Any) -> str:
@@ -178,15 +209,45 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
 
     def _rewrite_transactional_sql_for_platform(self, sql: str, platform_key: str | None) -> str:
         dialect = (platform_key or "").lower()
+        if dialect == "doris":
+            sql = _UNNEST_SERIES_SELECT_RE.sub(_doris_numbers_select, sql)
+            return _BEGIN_TRANSACTION_RE.sub("BEGIN;", sql)
+        if dialect == "singlestore":
+            sql = _UNNEST_SERIES_SELECT_RE.sub(
+                lambda m: _SINGLESTORE_SERIES_TEMPLATE.format(
+                    lo=m.group("lo"), hi=m.group("hi"), alias=m.group("alias")
+                ),
+                sql,
+            )
+            sql = _DATE_LITERAL_RE.sub(r"\1", sql)
+            sql = _CREATE_TEMP_TABLE_RE.sub("CREATE TEMPORARY TABLE", _SET_READ_COMMITTED_RE.sub("", sql))
+            return _BEGIN_TRANSACTION_RE.sub("BEGIN;", sql)
         template = _SERIES_SELECT_TEMPLATES.get(dialect)
         if template is not None:
-            return _UNNEST_SERIES_SELECT_RE.sub(
+            sql = _UNNEST_SERIES_SELECT_RE.sub(
                 lambda m: template.format(lo=m.group("lo"), hi=m.group("hi"), alias=m.group("alias")), sql
             )
+            if dialect == "starrocks":
+                return _BEGIN_TRANSACTION_RE.sub("BEGIN;", sql)
+            return rewrite_questdb_operation_sql(sql) if dialect == "questdb" else sql
         if dialect not in _POSTGRES_SERIES_DIALECTS:
             return sql
         sql = _UNNEST_GENERATE_SERIES_RE.sub(r"generate_series(\g<args>)", sql)
-        return _SET_THEN_BEGIN_ISOLATION_RE.sub(r"BEGIN TRANSACTION ISOLATION LEVEL \g<level>;", sql)
+        return _SET_THEN_BEGIN_ISOLATION_RE.sub(r"COMMIT;\nBEGIN TRANSACTION ISOLATION LEVEL \g<level>;", sql)
+
+    def _execute_cleanup_sql(self, connection: DatabaseConnection, cleanup_sql: str, platform_key: str | None) -> None:
+        if (platform_key or "").lower() == "questdb":
+            statements = questdb_cleanup_statements(rewrite_questdb_operation_sql(cleanup_sql))
+        elif (platform_key or "").lower() == "starrocks":
+            statements = [
+                _starrocks_cleanup_statement(statement) for statement in cleanup_sql.split(";") if statement.strip()
+            ]
+        else:
+            statements = [cleanup_sql]
+        for statement in statements:
+            cleanup_res = connection.execute(statement)
+            if (cleanup_err := failed_platform_error(cleanup_res)) is not None:
+                raise RuntimeError(cleanup_err)
 
     def _rollback_connection_after_error(self, connection: DatabaseConnection) -> None:
         try:
@@ -247,7 +308,7 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
 
     def _manifest_text_type(self) -> str:
         dialect = (getattr(self, "_setup_dialect", None) or "standard").lower()
-        if dialect in ("databricks", "bigquery"):
+        if dialect in ("databricks", "bigquery", "starrocks"):
             return "STRING"
         return "TEXT" if dialect == "singlestore" else "VARCHAR"
 
@@ -258,9 +319,16 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
             f"CREATE TABLE IF NOT EXISTS {quoted_table} ("
             f"benchmark {text_type}, scale {text_type}, spec_version {text_type}, "
             f"source_digest {text_type}, created_at {text_type})"
+            f"{staging_table_suffix(getattr(self, '_setup_dialect', None) or 'standard', {'columns': []})}"
         )
         if (err := failed_platform_error(res)) is not None:
             raise RuntimeError(f"Failed to create staging manifest table: {err}")
+
+    def _delete_staging_manifest_entry(self, connection: DatabaseConnection, benchmark_id: str) -> Any:
+        quoted_table = self._quote_identifier(self._STAGING_MANIFEST_TABLE)
+        if (getattr(self, "_setup_dialect", None) or "").lower() == "questdb":
+            return connection.execute(f"TRUNCATE TABLE {quoted_table}")
+        return connection.execute(f"DELETE FROM {quoted_table} WHERE benchmark = '{_sql_escape(benchmark_id)}'")
 
     def _write_staging_manifest(self, connection: DatabaseConnection, source_tables: list[str]) -> None:
         benchmark_id, scale, spec_version = self._staging_provenance_key()
@@ -269,7 +337,7 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
 
         self._ensure_staging_manifest_table(connection)
 
-        res2 = connection.execute(f"DELETE FROM {quoted_table} WHERE benchmark = '{_sql_escape(benchmark_id)}'")
+        res2 = self._delete_staging_manifest_entry(connection, benchmark_id)
         if (err := failed_platform_error(res2)) is not None:
             raise RuntimeError(f"Failed to delete previous staging manifest entry: {err}")
 
@@ -284,9 +352,8 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
 
     def _invalidate_staging_manifest(self, connection: DatabaseConnection) -> None:
         benchmark_id, _scale, _spec = self._staging_provenance_key()
-        quoted_table = self._quote_identifier(self._STAGING_MANIFEST_TABLE)
         try:
-            connection.execute(f"DELETE FROM {quoted_table} WHERE benchmark = '{_sql_escape(benchmark_id)}'")
+            self._delete_staging_manifest_entry(connection, benchmark_id)
         except Exception as e:
             self.log_verbose(f"Staging manifest not cleared ({e})")
 

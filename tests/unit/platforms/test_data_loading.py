@@ -307,3 +307,15 @@ class _FakeClickHouseConnection:
         if "COUNT(*)" in query:
             return [(0,)]
         return []
+
+
+def test_bzip2_handler_decodes_with_requested_encoding(tmp_path: Path) -> None:
+    import bz2
+
+    from benchbox.platforms.base.data_loading import Bzip2Handler
+
+    path = tmp_path / "data.csv.bz2"
+    path.write_bytes(bz2.compress("na\u00efve|1\n".encode("cp1252")))
+
+    with Bzip2Handler().open(path, newline="", encoding="cp1252") as f:
+        assert f.read() == "na\u00efve|1\n"

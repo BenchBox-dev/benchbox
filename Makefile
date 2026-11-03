@@ -1320,15 +1320,15 @@ pr-open:
 		echo "Opened as a draft because develop is red: mark it ready and arm it only after the owner authorizes this head (see docs/agent/merge-authority.md), or after develop is green."; \
 	elif [ "$(READY)" != "1" ]; then \
 		echo "Next: make pr-arm once the review fixes are pushed; auto-merge merges it when the required checks pass."; \
-	elif [ -n "$(EVIDENCE)$(BATCH)" ]; then \
+	elif [ -n "$(EVIDENCE)" ]; then \
 		if [ "$$REUSED_PR" != "1" ]; then \
-			echo "READY=1 with EVIDENCE or BATCH applies to a reused PR, so this new PR is not armed."; \
+			echo "READY=1 with EVIDENCE applies to a reused PR, so this new PR is not armed."; \
 			echo "Arm it after review with make pr-arm, or with the evidence transaction: make pr-ready REPO=\"$$REPOSITORY\" URL=\"$$URL\" HEAD=\"$$REVIEWED\" EVIDENCE=\"<readiness-evidence.json>\""; \
 		else \
-			$(MAKE) -s pr-ready REPO="$$REPOSITORY" URL="$$URL" HEAD="$$REVIEWED" EVIDENCE="$(EVIDENCE)" BATCH="$(BATCH)"; \
+			$(MAKE) -s pr-ready REPO="$$REPOSITORY" URL="$$URL" HEAD="$$REVIEWED" EVIDENCE="$(EVIDENCE)" $(if $(BATCH),BATCH=1,); \
 		fi; \
 	else \
-		$(MAKE) -s pr-arm PR="$$PR_NUMBER" REPO="$$REPOSITORY" HEAD="$$REVIEWED"; \
+		$(MAKE) -s pr-arm PR="$$PR_NUMBER" REPO="$$REPOSITORY" HEAD="$$REVIEWED" $(if $(BATCH),BATCH=1,); \
 	fi
 
 .PHONY: pr-arm-auto-merge
@@ -1348,7 +1348,7 @@ pr-arm-auto-merge:
 	EXPECTED_HEAD="$(HEAD)"; \
 	if [ -z "$$EXPECTED_HEAD" ]; then EXPECTED_HEAD=$$(git rev-parse HEAD); fi; \
 	$(MAKE) -s pr-landing-ready REPO="$$REPOSITORY" PR="$$PR_NUMBER" HEAD="$$EXPECTED_HEAD" \
-		EVIDENCE="$(EVIDENCE)" BATCH="$(BATCH)" ARM=1
+		EVIDENCE="$(EVIDENCE)" $(if $(BATCH),BATCH=1,) ARM=1
 
 PR_ARM_PR_SET := $(if $(filter undefined,$(origin PR)),,1)
 PR_ARM_HEAD_SET := $(if $(filter undefined,$(origin HEAD)),,1)
@@ -1371,6 +1371,7 @@ pr-arm: export PR_ARM_HEAD := $(HEAD)
 pr-arm: export PR_ARM_HEAD_SET := $(PR_ARM_HEAD_SET)
 pr-arm: export PR_ARM_REPO := $(REPO)
 pr-arm: export PR_ARM_REPO_SET := $(PR_ARM_REPO_SET)
+pr-arm: export PR_ARM_REQUIRE_BATCH := $(if $(BATCH),1,0)
 pr-arm:
 	@set -eu; \
 	if [ -n "$${PR_ARM_PR:-}" ]; then \
@@ -1423,8 +1424,8 @@ trunk-status:
 pr-ready:
 	@[ -n "$(PR)" ] || [ -n "$(URL)" ] || { echo "PR or URL is required" >&2; exit 2; }
 	@[ -n "$(HEAD)" ] || { echo "HEAD is required" >&2; exit 2; }
-	@if [ -n "$(EVIDENCE)$(BATCH)" ]; then \
-		$(MAKE) -s pr-arm-auto-merge REPO="$(or $(REPO),BenchBox-dev/BenchBox)" PR="$(PR)" URL="$(URL)" HEAD="$(HEAD)" EVIDENCE="$(EVIDENCE)" BATCH="$(BATCH)"; \
+	@if [ -n "$(EVIDENCE)" ]; then \
+		$(MAKE) -s pr-arm-auto-merge REPO="$(or $(REPO),BenchBox-dev/BenchBox)" PR="$(PR)" URL="$(URL)" HEAD="$(HEAD)" EVIDENCE="$(EVIDENCE)" $(if $(BATCH),BATCH=1,); \
 	elif [ -n "$(URL)" ]; then \
 		[ -z "$(PR)" ] || { echo "PR and URL are mutually exclusive" >&2; exit 2; }; \
 		REPOSITORY="$(or $(REPO),BenchBox-dev/BenchBox)"; \
@@ -1432,9 +1433,9 @@ pr-ready:
 		PR_NUMBER="$${PR_INFO%% *}"; PR_URL=$$(printf '%s' "$${PR_INFO#* }" | tr 'A-Z' 'a-z'); \
 		WANT=$$(printf '%s' "$$REPOSITORY" | tr 'A-Z' 'a-z'); \
 		case "$$PR_URL" in "https://github.com/$$WANT/pull/"*) ;; *) echo "URL names a PR outside $$REPOSITORY; refusing to arm it" >&2; exit 2 ;; esac; \
-		$(MAKE) -s pr-arm PR="$$PR_NUMBER" REPO="$$REPOSITORY" HEAD="$(HEAD)"; \
+		$(MAKE) -s pr-arm PR="$$PR_NUMBER" REPO="$$REPOSITORY" HEAD="$(HEAD)" $(if $(BATCH),BATCH=1,); \
 	else \
-		$(MAKE) -s pr-arm PR="$(PR)" REPO="$(or $(REPO),BenchBox-dev/BenchBox)" HEAD="$(HEAD)"; \
+		$(MAKE) -s pr-arm PR="$(PR)" REPO="$(or $(REPO),BenchBox-dev/BenchBox)" HEAD="$(HEAD)" $(if $(BATCH),BATCH=1,); \
 	fi
 
 .PHONY: shrink-rollup

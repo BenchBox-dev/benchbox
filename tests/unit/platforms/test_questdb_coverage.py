@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import threading
+import time
 from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 
@@ -251,6 +253,77 @@ class TestLoadDataBranches:
         assert mock_rest.call_args.args[:2] == ("lineitem", data_file)
         assert stats["lineitem"] == 100
 
+    def test_load_data_keeps_boolean_literals_for_questdb(self, questdb_stubs, tmp_path):
+        data_file = tmp_path / "dimbroker.csv"
+        data_file.write_text("1|True\n", encoding="utf-8")
+
+        adapter = QuestDBAdapter(loading_method="rest")
+        mock_benchmark = self._make_benchmark({"dimbroker": str(data_file)})
+        mock_benchmark.csv_normalize_booleans = True
+
+        with patch.object(adapter, "_load_table_via_rest_api", return_value=1) as mock_rest:
+            adapter.load_data(mock_benchmark, Mock(), tmp_path)
+
+        assert mock_rest.call_args.args[2].normalize_booleans is False
+
+    def test_load_data_ilp_keeps_the_resolved_boolean_normalization(self, questdb_stubs, tmp_path):
+        data_file = tmp_path / "dimbroker.csv"
+        data_file.write_text("1|True\n", encoding="utf-8")
+
+        adapter = QuestDBAdapter(loading_method="ilp")
+        mock_benchmark = self._make_benchmark({"dimbroker": str(data_file)})
+        mock_benchmark.csv_normalize_booleans = True
+
+        with patch.object(adapter, "_load_table_via_ilp", return_value=1) as mock_ilp:
+            adapter.load_data(mock_benchmark, Mock(), tmp_path)
+
+        assert mock_ilp.call_args.args[2].normalize_booleans is True
+
+    def test_load_data_pings_the_connection_while_a_slow_load_runs(self, questdb_stubs, tmp_path):
+        data_file = tmp_path / "lineitem.csv"
+        data_file.write_text("col1\n1\n", encoding="utf-8")
+
+        adapter = QuestDBAdapter(loading_method="rest")
+        adapter.CONNECTION_KEEPALIVE_SECONDS = 0.01
+        mock_benchmark = self._make_benchmark({"lineitem": str(data_file)})
+        connection = Mock()
+        pinged = threading.Event()
+        connection.execute.side_effect = lambda sql: pinged.set() or Mock()
+
+        def slow_load(*args: Any) -> int:
+            assert pinged.wait(timeout=5)
+            return 100
+
+        with patch.object(adapter, "_load_table_via_rest_api", side_effect=slow_load):
+            stats, _, _ = adapter.load_data(mock_benchmark, connection, tmp_path)
+
+        assert stats["lineitem"] == 100
+        assert connection.execute.call_args.args == ("SELECT 1",)
+
+    def test_keepalive_stops_pinging_after_the_load(self, questdb_stubs):
+        adapter = QuestDBAdapter()
+        adapter.CONNECTION_KEEPALIVE_SECONDS = 0.01
+        connection = Mock()
+
+        with adapter._keep_connection_alive(connection):
+            while not connection.execute.called:
+                time.sleep(0.005)
+        calls = connection.execute.call_count
+        time.sleep(0.1)
+
+        assert connection.execute.call_count == calls
+
+    def test_keepalive_stops_after_a_failed_ping(self, questdb_stubs):
+        adapter = QuestDBAdapter()
+        adapter.CONNECTION_KEEPALIVE_SECONDS = 0.01
+        connection = Mock()
+        connection.execute.side_effect = RuntimeError("connection closed")
+
+        with adapter._keep_connection_alive(connection):
+            time.sleep(0.1)
+
+        assert connection.execute.call_count == 1
+
     def test_load_data_ilp_method_success(self, questdb_stubs, tmp_path):
         data_file = tmp_path / "lineitem.csv"
         data_file.write_text("col1\n1\n", encoding="utf-8")
@@ -366,6 +439,11 @@ class TestPopulateTransactionalStagingTables:
 
 
 class TestLoadTableViaRestApi:
+    @pytest.fixture(autouse=True)
+    def _no_import_schema(self):
+        with patch.object(QuestDBAdapter, "_import_schema", return_value=None):
+            yield
+
     def test_rest_api_rows_imported_from_text_response(self, questdb_stubs, tmp_path):
         data_file = tmp_path / "test.csv"
         data_file.write_text("col1\n1\n2\n", encoding="utf-8")
@@ -383,10 +461,8 @@ class TestLoadTableViaRestApi:
         mock_response = Mock()
         mock_response.headers = {"content-type": "text/plain"}
         mock_response.text = questdb_text_response
-        mock_requests = Mock()
-        mock_requests.post.return_value = mock_response
 
-        with patch.dict("sys.modules", {"requests": mock_requests}):
+        with patch.object(questdb_module, "_http_post", return_value=mock_response):
             count = adapter._load_table_via_rest_api("test_table", data_file, dialect)
 
         assert count == 42
@@ -401,11 +477,9 @@ class TestLoadTableViaRestApi:
         mock_response = Mock()
         mock_response.headers = {"content-type": "text/plain"}
         mock_response.text = "unexpected response format"
-        mock_requests = Mock()
-        mock_requests.post.return_value = mock_response
 
         with (
-            patch.dict("sys.modules", {"requests": mock_requests}),
+            patch.object(questdb_module, "_http_post", return_value=mock_response),
             patch.object(adapter, "_count_table_rows_via_http", return_value=5) as mock_count,
         ):
             count = adapter._load_table_via_rest_api("test_table", data_file, dialect)
@@ -420,10 +494,8 @@ class TestCountTableRowsViaHttp:
 
         mock_response = Mock()
         mock_response.json.return_value = {"dataset": [[123]]}
-        mock_requests = Mock()
-        mock_requests.get.return_value = mock_response
 
-        with patch.dict("sys.modules", {"requests": mock_requests}):
+        with patch.object(questdb_module, "_http_get", return_value=mock_response):
             count = adapter._count_table_rows_via_http("lineitem")
 
         assert count == 123
@@ -433,10 +505,8 @@ class TestCountTableRowsViaHttp:
 
         mock_response = Mock()
         mock_response.json.return_value = {"dataset": []}
-        mock_requests = Mock()
-        mock_requests.get.return_value = mock_response
 
-        with patch.dict("sys.modules", {"requests": mock_requests}):
+        with patch.object(questdb_module, "_http_get", return_value=mock_response):
             count = adapter._count_table_rows_via_http("lineitem")
 
         assert count == 0
@@ -449,10 +519,7 @@ class TestCountTableRowsViaHttp:
     def test_count_rows_request_exception(self, questdb_stubs):
         adapter = QuestDBAdapter(host="myhost", http_port=9000)
 
-        mock_requests = Mock()
-        mock_requests.get.side_effect = Exception("Connection refused")
-
-        with patch.dict("sys.modules", {"requests": mock_requests}):
+        with patch.object(questdb_module, "_http_get", side_effect=Exception("Connection refused")):
             count = adapter._count_table_rows_via_http("lineitem")
 
         assert count == 0
@@ -464,10 +531,8 @@ class TestGetTableColumns:
 
         mock_response = Mock()
         mock_response.json.return_value = {"dataset": [["col1", "INT"], ["col2", "VARCHAR"]]}
-        mock_requests = Mock()
-        mock_requests.get.return_value = mock_response
 
-        with patch.dict("sys.modules", {"requests": mock_requests}):
+        with patch.object(questdb_module, "_http_get", return_value=mock_response):
             cols = adapter._get_table_columns("lineitem")
 
         assert cols == ["col1", "col2"]
@@ -480,10 +545,7 @@ class TestGetTableColumns:
     def test_get_table_columns_request_failure(self, questdb_stubs):
         adapter = QuestDBAdapter(host="myhost", http_port=9000)
 
-        mock_requests = Mock()
-        mock_requests.get.side_effect = Exception("Connection refused")
-
-        with patch.dict("sys.modules", {"requests": mock_requests}):
+        with patch.object(questdb_module, "_http_get", side_effect=Exception("Connection refused")):
             cols = adapter._get_table_columns("lineitem")
 
         assert cols == []
@@ -493,14 +555,11 @@ class TestGetTableColumns:
 
         mock_response = Mock()
         mock_response.json.return_value = {"dataset": []}
-        mock_requests = Mock()
-        mock_requests.get.return_value = mock_response
 
-        with patch.dict("sys.modules", {"requests": mock_requests}):
+        with patch.object(questdb_module, "_http_get", return_value=mock_response) as http_get:
             adapter._get_table_columns("test_table")
 
-        url = mock_requests.get.call_args[0][0]
-        assert url.startswith("https://")
+        assert http_get.call_args[0][0].startswith("https://")
 
 
 class TestLoadTableViaIlp:
@@ -716,6 +775,11 @@ class TestRowToIlpLine:
 
 
 class TestPrepareLocalLoadFileForQuestDB:
+    @pytest.fixture(autouse=True)
+    def _no_import_schema(self):
+        with patch.object(QuestDBAdapter, "_import_schema", return_value=None):
+            yield
+
     def test_csv_file_no_transform_yields_original_path(self, questdb_stubs, tmp_path):
         from benchbox.platforms.base.data_loading import prepare_local_load_file
 
@@ -753,13 +817,11 @@ class TestPrepareLocalLoadFileForQuestDB:
             def raise_for_status(self):
                 pass
 
-        class _FakeRequests:
-            def post(self, url, *, params=None, files=None, timeout=None):
-                f = files["data"][1]
-                captured.append(f.read())
-                return _FakeResp()
+        def _post(url, *, params=None, files=None, timeout=None):
+            captured.append(files["data"][1].read())
+            return _FakeResp()
 
-        with patch.dict("sys.modules", {"requests": _FakeRequests()}):
+        with patch.object(questdb_module, "_http_post", side_effect=_post):
             adapter._load_table_via_rest_api("lineitem", data_file, dialect)
 
         assert b"1|2\n" in captured[0]
@@ -781,13 +843,11 @@ class TestPrepareLocalLoadFileForQuestDB:
             def raise_for_status(self):
                 pass
 
-        class _FakeRequests:
-            def post(self, url, *, params=None, files=None, timeout=None):
-                f = files["data"][1]
-                captured.append(f.read())
-                return _FakeResp()
+        def _post(url, *, params=None, files=None, timeout=None):
+            captured.append(files["data"][1].read())
+            return _FakeResp()
 
-        with patch.dict("sys.modules", {"requests": _FakeRequests()}):
+        with patch.object(questdb_module, "_http_post", side_effect=_post):
             adapter._load_table_via_rest_api("title", data_file, dialect)
 
         assert b"1,Comedy Adventure,,4,1957,,,,,,,\n" in captured[0]
@@ -1425,6 +1485,11 @@ class TestLoadParquetViaChunkedCsv:
         server = _UploadServer()
         yield server
         server.close()
+
+    @pytest.fixture(autouse=True)
+    def _no_import_schema(self):
+        with patch.object(QuestDBAdapter, "_import_schema", return_value=None):
+            yield
 
     @staticmethod
     def _parquet(tmp_path, rows, name="obt.parquet"):

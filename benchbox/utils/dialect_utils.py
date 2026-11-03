@@ -12,13 +12,56 @@ from typing import Any, Callable
 
 from benchbox.utils.query_shape_rewrites import (
     add_dual_source_to_filtered_selects,
+    alias_order_by_projections,
+    date_column_integer_arithmetic,
     drop_correlated_scalar_group_by,
     drop_empty_group_by,
+    exists_to_derived_join,
+    fold_scalar_having_into_case,
     hoist_aggregate_subqueries,
+    inline_named_windows,
+    inline_sourceless_exists,
     qualify_aggregated_columns,
+    rollup_empty_input_row,
     unwrap_single_grouping_set,
     wrap_order_by_subquery_aliases,
 )
+
+_SELECT_TRANSFORMS_MARKER = "_benchbox_select_transforms"
+
+
+def _install_select_transforms(generator: type, steps: tuple[str, ...]) -> None:
+    if generator.__dict__.get(_SELECT_TRANSFORMS_MARKER) == steps:
+        return
+    from benchbox._vendor.sqlglot import exp, generator as sqlglot_generator, transforms
+
+    generator.TRANSFORMS[exp.Select] = transforms.preprocess([getattr(transforms, step) for step in steps])
+    sqlglot_generator._DISPATCH_CACHE.pop(generator, None)
+    setattr(generator, _SELECT_TRANSFORMS_MARKER, steps)
+
+
+def _keep_doris_full_outer_join() -> None:
+    from benchbox._vendor.sqlglot.generators.doris import DorisGenerator
+
+    _install_select_transforms(
+        DorisGenerator,
+        (
+            "eliminate_distinct_on",
+            "eliminate_semi_and_anti_joins",
+            "eliminate_qualify",
+            "unnest_generate_date_array_using_recursive_cte",
+        ),
+    )
+
+
+def _eliminate_starrocks_qualify() -> None:
+    from benchbox._vendor.sqlglot.generators.starrocks import StarRocksGenerator
+
+    _install_select_transforms(
+        StarRocksGenerator,
+        ("eliminate_distinct_on", "eliminate_qualify", "unnest_generate_date_array_using_recursive_cte"),
+    )
+
 
 SCHEMA_DDL_SCOPE = "schema_ddl"
 WORKLOAD_QUERY_SCOPE = "workload_query"
@@ -366,10 +409,25 @@ def translate_sql_query(
             for rewrite_name, rewrite_args in rewrites or ():
                 rewrite_args = dict(rewrite_args)
                 expression = apply_rewrite(rewrite_name, expression, rewrite_args.pop("dialect", src), **rewrite_args)
+            if tgt == "questdb":
+                from benchbox.utils.questdb_subqueries import rewrite_subqueries
+
+                expression = rewrite_subqueries(expression.copy())
+
+            if tgt == "doris":
+                _keep_doris_full_outer_join()
+                for doris_rewrite in (
+                    "alias_derived_tables",
+                    "date_column_integer_arithmetic",
+                    "rollup_empty_input_row",
+                ):
+                    expression = apply_rewrite(doris_rewrite, expression, tgt)
             if tgt == "sqlite":
                 expression = apply_rewrite("fold_between_literal_arithmetic", expression, tgt)
                 if date_columns:
                     expression = apply_rewrite("mark_date_columns", expression, tgt, date_columns=date_columns)
+            if tgt == "starrocks":
+                _eliminate_starrocks_qualify()
             statement_sql = expression.sql(dialect=tgt, identify=should_identify, pretty=pretty)
             if tgt == "starrocks":
                 statement_sql = _starrocks_order_by_projection_aliases(statement_sql, should_identify, pretty)
@@ -496,6 +554,26 @@ def alias_outer_table_references(expression, table: str, alias: str, *, copy: bo
     return tree
 
 
+def alias_derived_tables(expression, *, prefix: str = "_dt", copy: bool = True):
+    from benchbox._vendor.sqlglot import exp
+
+    tree = expression.copy() if copy else expression
+    taken = {node.alias for node in tree.find_all(exp.Subquery) if node.alias}
+    taken.update(node.alias for node in tree.find_all(exp.Table) if node.alias)
+    counter = 0
+    for subquery in tree.find_all(exp.Subquery):
+        if subquery.alias or not isinstance(subquery.parent, (exp.From, exp.Join)):
+            continue
+        if not isinstance(subquery.this, exp.Query):
+            continue
+        counter += 1
+        while f"{prefix}{counter}" in taken:
+            counter += 1
+        subquery.set("alias", exp.TableAlias(this=exp.to_identifier(f"{prefix}{counter}")))
+        taken.add(f"{prefix}{counter}")
+    return tree
+
+
 def coalesce_count_subqueries(expression, *, copy: bool = True):
     from benchbox._vendor.sqlglot import exp
 
@@ -511,14 +589,171 @@ def coalesce_count_subqueries(expression, *, copy: bool = True):
     return tree
 
 
+def trim_char_case_comparisons(expression, *, copy: bool = True):
+    from benchbox._vendor.sqlglot import exp
+
+    tree = expression.copy() if copy else expression
+    for node in list(tree.find_all(exp.EQ)):
+        column, case = node.this, node.expression
+        if isinstance(column, exp.Case):
+            column, case = case, column
+        if not isinstance(case, exp.Case):
+            continue
+        self_defaulting = isinstance(column, exp.Column) and case.args.get("default") == column
+        column_guarded_literal = (
+            isinstance(column, exp.Literal)
+            and column.is_string
+            and any(isinstance(branch.args.get("true"), exp.Column) for branch in case.args.get("ifs") or [])
+        )
+        if not self_defaulting and not column_guarded_literal:
+            continue
+        node.replace(
+            exp.EQ(
+                this=exp.Trim(this=column.copy(), position="TRAILING"),
+                expression=exp.Trim(this=case.copy(), position="TRAILING"),
+            )
+        )
+    return tree
+
+
+def in_subquery_or_to_left_join(expression, *, copy: bool = True):
+    from benchbox._vendor.sqlglot import exp
+
+    tree = expression.copy() if copy else expression
+    select = tree if isinstance(tree, exp.Select) else tree.find(exp.Select)
+    if select is None or select.args.get("joins"):
+        return tree
+    source = select.args.get("from_")
+    source_table = source.this if source is not None else None
+    outer_names = {source_table.alias_or_name} if isinstance(source_table, exp.Table) else set()
+    position = 0
+    for node in list(select.find_all(exp.In)):
+        query = node.args.get("query")
+        if (
+            not isinstance(query, exp.Subquery)
+            or not isinstance(query.this, exp.Select)
+            or len(query.this.expressions) != 1
+            or node.parent_select is not select
+            or node.find_ancestor(exp.Not)
+            or not node.find_ancestor(exp.Or)
+        ):
+            continue
+        inner = query.this.copy()
+        inner_names = {table.alias_or_name for table in inner.find_all(exp.Table)}
+        if any(column.table in outer_names - inner_names for column in inner.find_all(exp.Column)):
+            continue
+        position += 1
+        table_alias = f"in_subquery_{position}"
+        value_alias = f"in_value_{position}"
+        inner.set("distinct", exp.Distinct())
+        inner.set("expressions", [exp.alias_(inner.expressions[0], value_alias)])
+        select.append(
+            "joins",
+            exp.Join(
+                this=exp.Subquery(this=inner, alias=exp.TableAlias(this=exp.to_identifier(table_alias))),
+                side="LEFT",
+                on=exp.EQ(this=node.this.copy(), expression=exp.column(value_alias, table_alias)),
+            ),
+        )
+        node.replace(exp.Not(this=exp.Is(this=exp.column(value_alias, table_alias), expression=exp.Null())))
+    return tree
+
+
+def factor_common_conjuncts(expression, *, copy: bool = True):
+    from benchbox._vendor.sqlglot import exp
+
+    tree = expression.copy() if copy else expression
+
+    def disjuncts(node):
+        if isinstance(node, exp.Or):
+            return disjuncts(node.this) + disjuncts(node.expression)
+        return [node]
+
+    def conjuncts(node):
+        if isinstance(node, exp.Paren) and isinstance(node.this, exp.And):
+            return conjuncts(node.this)
+        if isinstance(node, exp.And):
+            return conjuncts(node.this) + conjuncts(node.expression)
+        return [node]
+
+    def conjoin(parts):
+        result = parts[0]
+        for part in parts[1:]:
+            result = exp.And(this=result, expression=part)
+        return result
+
+    def disjoin(parts):
+        result = parts[0]
+        for part in parts[1:]:
+            result = exp.Or(this=result, expression=part)
+        return result
+
+    for node in list(tree.find_all(exp.Or)):
+        if isinstance(node.parent, exp.Or):
+            continue
+        terms = [conjuncts(term.this if isinstance(term, exp.Paren) else term) for term in disjuncts(node)]
+        if len(terms) < 2:
+            continue
+        common = [part for part in terms[0] if all(part in other for other in terms[1:])]
+        if not common:
+            continue
+        remainders = []
+        for term in terms:
+            rest = [part for part in term if part not in common]
+            remainders.append(conjoin([part.copy() for part in rest]) if rest else None)
+        if any(rest is None for rest in remainders):
+            replacement = conjoin([part.copy() for part in common])
+        else:
+            residual = exp.Paren(this=disjoin([exp.Paren(this=rest) for rest in remainders]))
+            replacement = conjoin([*(part.copy() for part in common), residual])
+        node.replace(replacement if isinstance(node.parent, (exp.Where, exp.Paren)) else exp.Paren(this=replacement))
+    return tree
+
+
+def positive_count_subquery_to_exists(expression, *, copy: bool = True):
+    from benchbox._vendor.sqlglot import exp
+
+    tree = expression.copy() if copy else expression
+    for node in list(tree.find_all(exp.GT)):
+        subquery, zero = node.this, node.expression
+        if not isinstance(subquery, exp.Subquery) or not isinstance(zero, exp.Literal) or zero.name != "0":
+            continue
+        inner = subquery.this
+        if (
+            not isinstance(inner, exp.Select)
+            or len(inner.expressions) != 1
+            or any(inner.args.get(key) for key in ("distinct", "group", "having", "qualify", "limit", "offset"))
+        ):
+            continue
+        projection = inner.expressions[0]
+        count = projection.this if isinstance(projection, exp.Alias) else projection
+        if not isinstance(count, exp.Count) or not isinstance(count.this, exp.Star):
+            continue
+        inner.set("expressions", [exp.Literal.number(1)])
+        node.replace(exp.Exists(this=inner.copy()))
+    return tree
+
+
 _LOCAL_REWRITES: dict[str, Callable[..., object]] = {
     "add_dual_source_to_filtered_selects": add_dual_source_to_filtered_selects,
+    "alias_derived_tables": alias_derived_tables,
+    "alias_order_by_projections": alias_order_by_projections,
+    "date_column_integer_arithmetic": date_column_integer_arithmetic,
     "alias_outer_table_references": alias_outer_table_references,
     "coalesce_count_subqueries": coalesce_count_subqueries,
     "drop_correlated_scalar_group_by": drop_correlated_scalar_group_by,
     "drop_empty_group_by": drop_empty_group_by,
+    "exists_to_derived_join": exists_to_derived_join,
+    "factor_common_conjuncts": factor_common_conjuncts,
+    "fold_scalar_having_into_case": fold_scalar_having_into_case,
     "hoist_aggregate_subqueries": hoist_aggregate_subqueries,
+    "in_subquery_or_to_left_join": in_subquery_or_to_left_join,
+    "inline_named_windows": inline_named_windows,
+    "inline_sourceless_exists": inline_sourceless_exists,
+    "positive_count_subquery_to_exists": positive_count_subquery_to_exists,
     "qualify_aggregated_columns": qualify_aggregated_columns,
+    "rollup_empty_input_row": rollup_empty_input_row,
+    "trim_char_case_comparisons": trim_char_case_comparisons,
     "unwrap_single_grouping_set": unwrap_single_grouping_set,
     "wrap_order_by_subquery_aliases": wrap_order_by_subquery_aliases,
 }
@@ -800,6 +1035,17 @@ def contains_division(sql: str, dialect: str) -> bool:
 def is_create_table(ddl: str) -> bool:
     body = "\n".join(line for line in ddl.splitlines() if not line.lstrip().startswith("--"))
     return body.lstrip().upper().startswith("CREATE TABLE")
+
+
+def is_unfiltered_update_or_delete(sql: str, dialect: str) -> bool:
+    from benchbox._vendor import sqlglot
+    from benchbox._vendor.sqlglot import exp
+
+    try:
+        tree = sqlglot.parse_one(sql, read=resolve_sql_dialect(dialect))
+    except Exception:
+        return False
+    return isinstance(tree, (exp.Update, exp.Delete)) and not tree.args.get("where")
 
 
 def create_table_shape(ddl: str, source_dialect: str = "standard") -> tuple[str, list[str], list[str]]:

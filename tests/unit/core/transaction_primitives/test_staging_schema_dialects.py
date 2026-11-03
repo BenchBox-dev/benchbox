@@ -74,3 +74,19 @@ def test_rollback_after_error_issues_sql_rollback_only_where_needed(tmp_path, di
         connection.execute.assert_called_once_with("ROLLBACK")
     else:
         connection.execute.assert_not_called()
+
+
+@pytest.mark.parametrize("table_name", sorted(STAGING_TABLES))
+def test_questdb_staging_tables_use_parameterless_types(table_name: str):
+    sql = get_create_table_sql(table_name, dialect="questdb", if_not_exists=True)
+
+    assert "VARCHAR(" not in sql
+    assert "DECIMAL" not in sql
+    assert "VARCHAR" in sql
+
+
+def test_other_dialects_keep_parameterized_types():
+    sql = get_create_table_sql("txn_orders", dialect="postgres")
+
+    assert "VARCHAR(" in sql
+    assert "DECIMAL(15,2)" in sql

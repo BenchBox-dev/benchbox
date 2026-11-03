@@ -112,3 +112,79 @@ def test_statement_inline_pk_on_nullable_column_keeps_existing_rendering() -> No
     rendered = _optimize(statement, tunings, {"b"}, primary_keys_enabled=False)
     assert "ORDER BY (a)" in rendered
     assert "Nullable(" not in rendered
+
+
+class _Benchmark:
+    def __init__(self, ddl: str, schema=None) -> None:
+        self._ddl = ddl
+        self._schema = schema
+
+    def get_create_tables_sql(self, dialect="standard", tuning_config=None):
+        return self._ddl
+
+    def get_schema(self):
+        return self._schema
+
+
+def _created_ddl(benchmark: _Benchmark) -> str:
+    from unittest.mock import Mock
+
+    mixin = ClickHouseWorkloadMixin()
+    mixin.logger = Mock()
+    mixin.tuning_enabled = False
+    mixin.get_effective_tuning_configuration = lambda: None
+    mixin._get_constraint_configuration = lambda: (True, False)
+    mixin._log_constraint_configuration = lambda *args: None
+    mixin._record_tuned_sort_key_op = lambda *args: None
+    mixin._record_primary_key_order_op = lambda *args: None
+    executed: list[str] = []
+    connection = Mock()
+    connection.execute = executed.append
+    mixin.create_schema(benchmark, connection)
+    return "\n".join(executed)
+
+
+def test_schema_without_structure_derives_nullability_from_the_ddl() -> None:
+    ddl = "CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT NOT NULL, note VARCHAR(5), amount INTEGER);"
+    rendered = _created_ddl(_Benchmark(ddl, schema="CREATE TABLE t (...)"))
+    assert "name String" in rendered and "name Nullable" not in rendered
+    assert "note Nullable(String)" in rendered
+    assert "amount Nullable(Int32)" in rendered
+    assert "id Nullable" not in rendered
+
+
+def test_keyed_schema_columns_defer_to_ddl_not_null() -> None:
+    ddl = "CREATE TABLE t (id INTEGER PRIMARY KEY, op VARCHAR(10) NOT NULL, note VARCHAR(5));"
+    schema = {
+        "t": {"columns": {"id": {"type": "INTEGER"}, "op": {"type": "VARCHAR(10)"}, "note": {"type": "VARCHAR(5)"}}}
+    }
+    rendered = _created_ddl(_Benchmark(ddl, schema))
+    assert "op String" in rendered and "op Nullable" not in rendered
+    assert "note Nullable(String)" in rendered
+
+
+def test_string_column_specs_defer_to_the_ddl() -> None:
+    ddl = "CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT NOT NULL, note VARCHAR(5));"
+    schema = {"t": {"columns": ["id INTEGER PRIMARY KEY", "name TEXT NOT NULL", "note VARCHAR(5)"]}}
+    rendered = _created_ddl(_Benchmark(ddl, schema))
+    assert "name String" in rendered and "name Nullable" not in rendered
+    assert "note Nullable(String)" in rendered
+
+
+def test_structured_schema_without_nullable_columns_stays_non_nullable() -> None:
+    ddl = "CREATE TABLE t (name STRING);"
+    schema = {"t": {"columns": {"name": {"type": "STRING", "nullable": False}}}}
+    assert "Nullable" not in _created_ddl(_Benchmark(ddl, schema))
+
+
+def test_ddl_not_null_columns_ignore_constraints_and_quotes() -> None:
+    statement = 'CREATE TABLE t (a INTEGER NOT NULL, "b" TEXT, c DECIMAL(10, 2) NOT NULL, PRIMARY KEY (a))'
+    assert ClickHouseWorkloadMixin._ddl_not_null_columns(statement) == {"a", "c"}
+
+
+def test_very_wide_tables_use_compact_parts() -> None:
+    columns = ", ".join(f"c{i} INTEGER" for i in range(500))
+    rendered = ClickHouseWorkloadMixin()._translate_schema_statement(f"CREATE TABLE wide ({columns})")
+    assert "SETTINGS min_bytes_for_wide_part = 10000000000, min_rows_for_wide_part = 100000000" in rendered
+    narrow = ClickHouseWorkloadMixin()._translate_schema_statement("CREATE TABLE narrow (a INTEGER)")
+    assert "SETTINGS" not in narrow

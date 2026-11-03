@@ -2066,6 +2066,7 @@ class TestSubmissionDeterministicGates:
         )
         from benchbox.sql_compat.rules.execution_filter.postgres_tpchavoc import POSTGRES_TPCHAVOC_SKIPS
         from benchbox.sql_compat.rules.execution_filter.sqlite_tpchavoc import SQLITE_TPCHAVOC_SKIPS
+        from benchbox.sql_compat.rules.execution_filter.starrocks_tpchavoc import STARROCKS_TPCHAVOC_SKIPS
         from benchbox.validation.bundle import (
             TPCHAVOC_CANONICAL_VARIANTS,
             TPCHAVOC_DOCUMENTED_SKIPS,
@@ -2085,6 +2086,7 @@ class TestSubmissionDeterministicGates:
             "databricks": frozenset(CLOUD_TPCHAVOC_SKIPS["databricks"]),
             "bigquery": frozenset(CLOUD_TPCHAVOC_SKIPS["bigquery"]),
             "sqlite": frozenset(SQLITE_TPCHAVOC_SKIPS),
+            "starrocks": frozenset(STARROCKS_TPCHAVOC_SKIPS) | {"1_v7"},
         } == TPCHAVOC_DOCUMENTED_SKIPS
         assert frozenset(LIST_AGGREGATE_TPCHAVOC_SKIPS) == TPCHAVOC_LIST_AGGREGATE_SKIP_PLATFORMS
         from benchbox.validation.bundle import TPCHAVOC_LIST_AGGREGATE_PLATFORM_ALIASES
