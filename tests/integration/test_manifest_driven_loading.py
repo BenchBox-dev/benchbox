@@ -260,6 +260,7 @@ def test_questdb_uses_manifest_delimiter(monkeypatch: Any, manifest_data_dir: Pa
 
     from benchbox.platforms.questdb import QuestDBAdapter
 
+    monkeypatch.setattr(QuestDBAdapter, "_import_schema", lambda *args, **kwargs: None)
     adapter = QuestDBAdapter(host="localhost", loading_method="rest")
     benchmark = _Benchmark(tables={_TABLE: manifest_data_dir / f"{_TABLE}.csv"})
 

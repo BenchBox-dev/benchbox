@@ -290,31 +290,28 @@ def test_enumerate_records_pg_family_release_gate_compatibility_pruning():
         ("pg-duckdb", "tpcds"),
         ("pg-mooncake", "tpch"),
         ("pg-mooncake", "datavault"),
+        ("pg-mooncake", "joinorder"),
         ("timescaledb", "tpch"),
         ("timescaledb", "tpcds"),
+        ("timescaledb", "datavault"),
     }
-    assert len(result.compatibility_pruned) == 17
+    assert len(result.compatibility_pruned) == 15
     pruned = {(c.platform, c.benchmark): c for c in result.compatibility_pruned}
     assert pruned[("pg-mooncake", "tpcds")].rule_id == "uat.compat.pg-mooncake.tpcds.benchmark_gate"
-    assert pruned[("timescaledb", "datavault")].rule_id == (
-        "uat.compat.timescaledb.datavault.release_gate_runtime_envelope"
-    )
     for platform in ("pg-duckdb", "pg-mooncake", "timescaledb"):
         caps = PlatformRegistry.get_platform_capabilities(platform)
         assert caps is not None
         assert "joinorder" not in caps.unsupported_benchmarks
         assert "tpcds_obt" not in caps.unsupported_benchmarks
         assert pruned[(platform, "ai_primitives")].rule_id == f"uat.compat.{platform}.ai_primitives.benchmark_gate"
-        assert pruned[(platform, "joinorder")].rule_id == (
-            f"uat.compat.{platform}.joinorder.release_gate_runtime_envelope"
-        )
         assert pruned[(platform, "read_primitives")].rule_id == (
             f"uat.compat.{platform}.read_primitives.benchmark_gate"
         )
-        assert pruned[(platform, "tpcds_obt")].rule_id == (
-            f"uat.compat.{platform}.tpcds_obt.release_gate_runtime_envelope"
-        )
         assert pruned[(platform, "vector_search")].rule_id == f"uat.compat.{platform}.vector_search.benchmark_gate"
+    for platform, benchmark in (("pg-duckdb", "joinorder"), ("pg-duckdb", "tpcds_obt"), ("pg-mooncake", "tpcds_obt")):
+        assert pruned[(platform, benchmark)].rule_id == (
+            f"uat.compat.{platform}.{benchmark}.release_gate_runtime_envelope"
+        )
     timescaledb_caps = PlatformRegistry.get_platform_capabilities("timescaledb")
     assert timescaledb_caps is not None
     assert "datavault" not in timescaledb_caps.unsupported_benchmarks
@@ -584,7 +581,7 @@ def _healthy_ps_result(argv: list[str]) -> docker_assets.DockerCommandResult:
     return docker_assets.DockerCommandResult(tuple(argv), 0, healthy_ps_stdout(), "")
 
 
-def _healthy_stats_result(argv: list[str], *, limit: str = "5.25GiB") -> docker_assets.DockerCommandResult:
+def _healthy_stats_result(argv: list[str], *, limit: str = "8GiB") -> docker_assets.DockerCommandResult:
     return docker_assets.DockerCommandResult(
         tuple(argv),
         0,
@@ -1205,13 +1202,13 @@ def test_execute_starrocks_requires_backend_liveness_and_runtime_memory(monkeypa
             first_application_probe = False
             return docker_assets.DockerCommandResult(call, 1, "", "BE heartbeat pending")
         if "stats" in call:
-            return _healthy_stats_result(argv, limit="4GB")
+            return _healthy_stats_result(argv, limit="8GiB")
         return docker_assets.DockerCommandResult(call, 0, "", "")
 
     cfg = _managed_docker_cfg(
         "starrocks readiness",
         platforms={"include": ["starrocks"]},
-        preflight={"starrocks_memory_limit": "4g"},
+        preflight={"starrocks_memory_limit": "8g"},
     )
     with platform_reachability(True):
         outcome = exec_phase.run_execute(
@@ -1250,13 +1247,13 @@ def test_execute_starrocks_reconciles_mismatched_mocker_runtime(monkeypatch, tmp
             return _healthy_ps_result(argv) if "ps" in call else docker_assets.DockerCommandResult(call, 0, "", "")
         if "stats" in call:
             stats_calls += 1
-            return _healthy_stats_result(argv, limit="1GB" if stats_calls == 1 else "4GB")
+            return _healthy_stats_result(argv, limit="1GB" if stats_calls == 1 else "8GiB")
         return docker_assets.DockerCommandResult(call, 0, "", "")
 
     cfg = _managed_docker_cfg(
         "starrocks resource reconcile",
         platforms={"include": ["starrocks"]},
-        preflight={"starrocks_memory_limit": "4g"},
+        preflight={"starrocks_memory_limit": "8g"},
     )
     with platform_reachability(True):
         outcome = exec_phase.run_execute(
@@ -1416,7 +1413,7 @@ def test_execute_starrocks_application_liveness_stops_after_runtime_wedge(monkey
             if application_calls >= 3:
                 return docker_assets.DockerCommandResult(call, 1, "", "SQL listener wedged")
         if "stats" in call:
-            return _healthy_stats_result(argv, limit="4GB")
+            return _healthy_stats_result(argv, limit="8GiB")
         return docker_assets.DockerCommandResult(call, 0, "", "")
 
     cfg = _managed_docker_cfg(
@@ -1547,7 +1544,7 @@ def test_execute_clickhouse_default_admission_uses_measured_request_without_unva
             databases_root=tmp_path / "databases",
             runner=_stub_runner_factory({0.01: 1.0}, {0.01: True}),
             docker_runner=_healthy_fake_docker,
-            memory_reader=_memory_reader(5.25),
+            memory_reader=_memory_reader(8.0),
             sleep_fn=lambda _s: None,
         )
 
@@ -2554,6 +2551,59 @@ def test_execute_stack_dying_mid_platform_records_remaining_cells_as_died_not_fa
     lifecycle = (tmp_path / "uat_lifecycle.log").read_text(encoding="utf-8")
     assert "[liveness]" in lifecycle
     assert "died-mid-platform" in lifecycle
+
+
+def test_execute_stack_dying_mid_platform_captures_container_state_and_log_tail(tmp_path):
+    cfg = validate_config(
+        {
+            "name": "mid platform death diagnostics",
+            "platforms": {"include": ["clickhouse-server"]},
+            "benchmarks": {"include": ["tpch"]},
+            "scales": {"rungs": [0.01, 0.1]},
+            "cleanup": {"docker_manage_platforms": True, "docker_platform_switch": "volumes"},
+        }
+    )
+    seen: list[list[str]] = []
+
+    def fake_docker(argv, **kwargs):
+        seen.append(list(argv))
+        if "-q" in argv:
+            return docker_assets.DockerCommandResult(tuple(argv), 0, "abc123\n", "")
+        if argv[1] == "inspect":
+            return docker_assets.DockerCommandResult(
+                tuple(argv), 0, "/ch Status=exited OOMKilled=true ExitCode=137 Error= \n", ""
+            )
+        if _docker_verb(argv) == "logs":
+            return docker_assets.DockerCommandResult(tuple(argv), 0, "Code: 241 memory limit exceeded\n", "")
+        return _healthy_fake_docker(argv, **kwargs)
+
+    def passing_runner(platform, benchmark, scale, **kwargs):
+        return CellResult(
+            platform=platform,
+            benchmark=benchmark,
+            scale=scale,
+            status="passed",
+            exit_code=0,
+            elapsed_s=1.0,
+            log_path=tmp_path / f"{platform}-{scale}.log",
+            result_path=None,
+        )
+
+    with platform_reachability(True, probe=_probe_dying_after(3)):
+        outcome = exec_phase.run_execute(
+            cfg,
+            log_dir=tmp_path,
+            databases_root=tmp_path / "databases",
+            runner=passing_runner,
+            docker_runner=fake_docker,
+            sleep_fn=lambda _s: None,
+        )
+
+    assert [c.scale for c in outcome.died_mid_platform] == [0.1]
+    artifact = (tmp_path / "container-logs-clickhouse-server.log").read_text(encoding="utf-8")
+    assert "OOMKilled=true ExitCode=137" in artifact
+    assert "Code: 241 memory limit exceeded" in artifact
+    assert any(argv[1] == "inspect" for argv in seen)
 
 
 def test_execute_stack_death_also_claims_the_platforms_later_benchmarks(tmp_path):

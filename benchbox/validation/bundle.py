@@ -206,6 +206,7 @@ CANONICAL_LOGICAL_QUERY_IDS: dict[str, frozenset[str]] = {
 TPCHAVOC_CANONICAL_VARIANTS = frozenset(f"{query}_v{variant}" for query in range(1, 23) for variant in range(1, 11))
 TPCHAVOC_DOCUMENTED_SKIPS: dict[str, frozenset[str]] = {
     "sqlite": frozenset(["5_v8"]),
+    "starrocks": frozenset(["1_v7", "8_v1"]),
     "datafusion": frozenset(
         [
             "12_v1",
@@ -460,6 +461,21 @@ KNOWN_PLATFORMS = {
     "fabric_dw",
     "fabric-lakehouse",
     "fabric-spark",
+    "apache-doris",
+    "singlestore",
+    "velox",
+    "paradedb",
+    "citus",
+    "gizmosql",
+    "databricks-df",
+    "glue",
+    "emr-serverless",
+    "athena-spark",
+    "dataproc",
+    "dataproc-serverless",
+    "synapse-spark",
+    "snowpark-connect",
+    "quanton",
 }
 
 MAX_QUERY_DURATION_MS = 7_200_000

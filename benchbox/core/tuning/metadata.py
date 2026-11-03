@@ -1030,6 +1030,9 @@ class TuningMetadataManager:
             query_fn = getattr(connection, "query", None)
             if callable(query_fn):
                 return list(query_fn(self._qualify_metadata_read_sql(sql)).result())
+            fetch_rows = getattr(self.platform_adapter, "fetch_rows", None)
+            if callable(fetch_rows):
+                return fetch_rows(connection, sql)
 
         cursor = connection.cursor()
         cursor.execute(sql)
@@ -1049,6 +1052,10 @@ class TuningMetadataManager:
             query_fn = getattr(connection, "query", None)
             if callable(query_fn):
                 rows = list(query_fn(self._qualify_metadata_read_sql(sql)).result())
+                return rows[0] if rows else None
+            fetch_rows = getattr(self.platform_adapter, "fetch_rows", None)
+            if callable(fetch_rows):
+                rows = fetch_rows(connection, sql)
                 return rows[0] if rows else None
 
         cursor = connection.cursor()

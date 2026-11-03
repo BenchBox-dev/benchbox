@@ -14,6 +14,11 @@ from benchbox.core.tpch.schema import (
     REGION,
     SUPPLIER,
 )
+from benchbox.core.transactional.staging_types import (
+    staging_nullable_type,
+    staging_table_suffix,
+    translate_staging_column_type,
+)
 
 
 def _load_schema_specs() -> dict[str, Any]:
@@ -103,7 +108,12 @@ def get_create_table_sql(table_name: str, dialect: str = "standard", if_not_exis
     columns: list[str] = []
 
     for col in table["columns"]:
-        col_def = f"{col['name']} {col['type']}"
+        column_type = staging_nullable_type(
+            translate_staging_column_type(col["type"], dialect),
+            dialect,
+            bool(col.get("nullable", False)) and not col.get("primary_key"),
+        )
+        col_def = f"{col['name']} {column_type}"
         if supports_pk and col.get("primary_key"):
             col_def += " PRIMARY KEY"
         if not col.get("nullable", False) and not col.get("primary_key"):
@@ -118,6 +128,7 @@ def get_create_table_sql(table_name: str, dialect: str = "standard", if_not_exis
     sql = f"CREATE TABLE{if_not_exists_clause} {table['name']} (\n"
     sql += ",\n".join(f"  {col}" for col in columns)
     sql += "\n)"
+    sql += staging_table_suffix(dialect, table)
     if _requires_catalog_managed_staging(dialect):
         sql += " USING DELTA TBLPROPERTIES ('delta.feature.catalogManaged' = 'supported')"
     sql += ";"

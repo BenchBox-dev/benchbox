@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Callable, cast
 from urllib.parse import urlparse, urlunparse
 
+from benchbox.core.transactional.staging_keys import leading_key_columns
 from benchbox.utils.dialect_utils import create_table_shape, is_create_table, translate_ddl
 
 from ..utils.dependencies import (
@@ -55,30 +56,17 @@ _DEFAULT_STREAM_LOAD_CHUNK_SIZE = 10 * 1024 * 1024
 _DEFAULT_STREAM_LOAD_MAX_FILTER_RATIO = "0"
 
 _DEFAULT_BUCKETS = 10
-
-_TPCDS_DECIMAL_NULL_POSITIONS: dict[str, list[int]] = {
-    "call_center": [29, 30],
-    "catalog_returns": list(range(18, 27)),
-    "catalog_sales": list(range(19, 34)),
-    "customer_address": [11],
-    "item": [5, 6],
-    "promotion": [5],
-    "store": [27, 28],
-    "store_returns": list(range(11, 20)),
-    "store_sales": list(range(11, 22)),
-    "warehouse": [13],
-    "web_returns": list(range(15, 24)),
-    "web_sales": list(range(19, 34)),
-    "web_site": [24, 25],
-}
+_BACKEND_READY_TIMEOUT_S = 120.0
+_BACKEND_READY_POLL_S = 2.0
 
 
-def _fix_tpcds_decimal_nulls(line: str, delimiter: str, positions: list[int]) -> str:
+def _empty_fields_to_null(line: str, delimiter: str) -> str:
+    trailing = line.endswith(delimiter)
     fields = line.split(delimiter)
-    for pos in positions:
-        if pos < len(fields) and fields[pos] == "":
-            fields[pos] = r"\N"
-    return delimiter.join(fields)
+    if trailing:
+        fields.pop()
+    joined = delimiter.join(r"\N" if field == "" else field for field in fields)
+    return joined + delimiter if trailing else joined
 
 
 def _format_filter_ratio(value: Any) -> str:
@@ -126,6 +114,11 @@ _TPCH_BITMAP_COLUMNS: dict[str, list[str]] = {
 }
 
 
+_CTAS_RE = re.compile(r"^(?P<head>\s*CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?\S+)\s+AS\b(?P<rest>.*)$", re.I | re.S)
+
+_PIPES_AS_CONCAT_SQL = "SET sql_mode = CONCAT(@@sql_mode, ',PIPES_AS_CONCAT')"
+
+
 def _normalize_doris_engine_version(
     mysql_protocol_version: object | None,
     version_comment: object | None,
@@ -169,6 +162,15 @@ def _read_doris_version_details(cursor: Any) -> tuple[str | None, str | None, st
     mysql_protocol_version_str = str(mysql_protocol_version) if mysql_protocol_version is not None else None
     version_comment_str = str(version_comment) if version_comment is not None else None
     return platform_version, mysql_protocol_version_str, version_comment_str
+
+
+def _backend_is_ready(alive: object, total_capacity: object) -> bool:
+    if str(alive).strip().lower() not in {"true", "1"}:
+        return False
+    try:
+        return float(cast(Any, total_capacity)) > 0
+    except (TypeError, ValueError):
+        return False
 
 
 class _DorisConnectionWrapper(MySqlWireConnectionWrapper):
@@ -360,7 +362,55 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
             read_timeout=300,
             write_timeout=300,
             charset="utf8mb4",
+            init_command=_PIPES_AS_CONCAT_SQL,
         )
+
+    def _ready_backend_count(self, conn: Any) -> int:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT Alive, TotalCapacity FROM backends()")
+            return sum(1 for alive, capacity in cursor.fetchall() if _backend_is_ready(alive, capacity))
+        finally:
+            cursor.close()
+
+    def _await_backends_ready(
+        self,
+        *,
+        clock: Callable[[], float] = time.monotonic,
+        sleep: Callable[[float], None] = time.sleep,
+    ) -> None:
+        deadline = clock() + _BACKEND_READY_TIMEOUT_S
+        required = max(1, self.replication_num)
+        ready = 0
+        while True:
+            try:
+                conn = self._admin_connect()
+            except Exception as exc:
+                self.logger.debug(f"Skipping Doris backend readiness wait: {exc}")
+                return
+            try:
+                ready = self._ready_backend_count(conn)
+            except Exception as exc:
+                self.logger.debug(f"Skipping Doris backend readiness wait: {exc}")
+                return
+            finally:
+                conn.close()
+            if ready >= required:
+                return
+            if clock() >= deadline:
+                self.logger.warning(
+                    f"Doris reports {ready} of {required} required backends alive with disk capacity after "
+                    f"{_BACKEND_READY_TIMEOUT_S:.0f}s; table creation may fail"
+                )
+                return
+            sleep(_BACKEND_READY_POLL_S)
+
+    def create_connection(self, **connection_config: Any) -> Any:
+        self._await_backends_ready()
+        return super().create_connection(**connection_config)
+
+    def _apply_stream_session_state(self, connection: Any) -> None:
+        del connection
 
     def _wrap_database_connection(self, conn: Any) -> Any:
         return _DorisConnectionWrapper(conn, ddl_optimizer=self._translate_create_table)
@@ -500,6 +550,7 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         format_name: str,
         delimiter: str | None = None,
         is_tpc: bool = False,
+        skip_header: bool = False,
     ) -> dict[str, str]:
         headers = {
             "Expect": "100-continue",
@@ -510,6 +561,8 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
             headers["column_separator"] = delimiter
         if is_tpc:
             headers["trim_double_quotes"] = "true"
+        if skip_header:
+            headers["skip_lines"] = "1"
         return headers
 
     def _handle_stream_load_response(self, resp: Any, *, context: str) -> dict[str, Any]:
@@ -551,15 +604,14 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         scheme = "https" if self.use_tls else "http"
         url = f"{scheme}://{self.host}:{self.http_port}/api/{self.database}/{table_name}/_stream_load"
 
-        headers = self._stream_load_headers(format_name="csv", delimiter=delimiter, is_tpc=is_tpc)
-
-        decimal_positions = _TPCDS_DECIMAL_NULL_POSITIONS.get(table_name, [])
+        headers = self._stream_load_headers(
+            format_name="csv", delimiter=delimiter, is_tpc=is_tpc, skip_header=dialect.has_header
+        )
 
         if is_tpc:
             with self._open_data_file_text(data_file) as f:
                 lines = f.read().splitlines()
-            if decimal_positions:
-                lines = [_fix_tpcds_decimal_nulls(line, delimiter, decimal_positions) for line in lines]
+            lines = [_empty_fields_to_null(line, delimiter) for line in lines]
             data = "\n".join(lines).encode("utf-8")
         else:
             with self._open_data_file_binary(data_file) as f:
@@ -587,12 +639,12 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
 
         headers = self._stream_load_headers(format_name="csv", delimiter=delimiter, is_tpc=is_tpc)
 
-        decimal_positions = _TPCDS_DECIMAL_NULL_POSITIONS.get(table_name, [])
-
         total_rows = 0
         chunk_num = 0
 
         with self._open_data_file_text(data_file) as f:
+            if dialect.has_header:
+                next(f, None)
             while True:
                 chunk_lines: list[str] = []
                 chunk_bytes = 0
@@ -602,8 +654,8 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
                     if not line:
                         continue
 
-                    if decimal_positions:
-                        line = _fix_tpcds_decimal_nulls(line, delimiter, decimal_positions)
+                    if is_tpc:
+                        line = _empty_fields_to_null(line, delimiter)
 
                     chunk_lines.append(line)
                     chunk_bytes += len(line.encode("utf-8", errors="replace")) + 1
@@ -639,6 +691,8 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         cursor = connection.cursor()
 
         with open(data_file, encoding="utf-8") as f:
+            if dialect.has_header:
+                next(f, None)
             batch = []
             for line in f:
                 line = line.strip()
@@ -798,12 +852,22 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
             "strip_primary_keys": True,
             "type_map": "doris",
         }
-        table_name, columns, _ = create_table_shape(stmt)
+        source_dialect = DORIS_DIALECT if "`" in stmt else "standard"
+        table_name, columns, _ = create_table_shape(stmt, source_dialect)
         if not columns:
-            return stmt
+            return _CTAS_RE.sub(
+                lambda match: (
+                    f"{match['head']} PROPERTIES ('replication_num' = '{self.replication_num}') AS{match['rest']}"
+                ),
+                stmt,
+                count=1,
+            )
         key_model = self.table_model if self.table_model in {"duplicate", "aggregate", "unique"} else "duplicate"
         tpch_keys = _TPCH_TABLE_KEYS.get(table_name, [])
         key_columns = tpch_keys if tpch_keys and set(tpch_keys) <= set(columns) else []
+        if staging_columns := leading_key_columns(table_name, columns):
+            key_model = "unique"
+            key_columns = staging_columns
         distribution_key = _TPCH_DISTRIBUTION_KEYS.get(table_name)
         if distribution_key not in columns:
             distribution_key = None
@@ -816,7 +880,7 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
             "buckets": self._compute_bucket_count(table_name, scale_factor),
             "properties": {"replication_num": str(self.replication_num), "storage_medium": "HDD"},
         }
-        return "; ".join(translate_ddl(stmt, "doris", source_dialect="standard", **options))
+        return "; ".join(translate_ddl(stmt, "doris", source_dialect=source_dialect, **options))
 
     def _compute_bucket_count(self, table_name: str, scale_factor: float | None = None) -> int:
         if not isinstance(scale_factor, (int, float)) or scale_factor <= 0:

@@ -856,3 +856,42 @@ class TestQ14v8Regression:
         v1 = _collect_scalar(get_query("Q14v1").expression_impl(q14_context))
         v8 = _collect_scalar(get_query("Q14v8").expression_impl(q14_context))
         assert_frame_equal(v8, v1, check_exact=False, atol=1e-6)
+
+
+class TestQ15MaxRevenueTolerance:
+    @pytest.fixture
+    def q15_context(self):
+        ctx = PolarsDataFrameAdapter().create_context()
+        ctx.register_table(
+            "supplier",
+            pl.DataFrame(
+                {
+                    "s_suppkey": [1, 2, 3],
+                    "s_name": ["a", "b", "c"],
+                    "s_address": ["x", "y", "z"],
+                    "s_phone": ["1", "2", "3"],
+                }
+            ).lazy(),
+        )
+        ctx.register_table(
+            "lineitem",
+            pl.DataFrame(
+                {
+                    "l_suppkey": [1, 2, 3],
+                    "l_extendedprice": [100.0, 400.0, 250.0],
+                    "l_discount": [0.0, 0.0, 0.0],
+                    "l_shipdate": [date(1996, 2, 1)] * 3,
+                }
+            ).lazy(),
+        )
+        return ctx
+
+    @pytest.mark.parametrize("variant_id", range(2, 11))
+    def test_expression_variants_keep_top_supplier_when_max_differs_by_rounding(self, q15_context, variant_id) -> None:
+        exact_scalar = q15_context.scalar
+        q15_context.scalar = lambda df, column=None: exact_scalar(df, column) * (1 + 5e-13)
+
+        result = _collect_frame(get_query(f"Q15v{variant_id}").expression_impl(q15_context))
+
+        assert result.height == 1
+        assert result["s_suppkey"][0] == 2

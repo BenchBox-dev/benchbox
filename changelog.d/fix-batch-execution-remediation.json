@@ -1,4 +1,0 @@
-{
-  "schema": 1,
-  "internal": "Batch delivery now executes member checks and the leader's exact-patch review instead of replaying cached results, reruns every member's checks on the final tree, discovers batch PRs from the tracker before every arm, and supports relocating a dead leader's integration checkout with todo-db 0.15.0."
-}

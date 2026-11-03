@@ -22,11 +22,13 @@ class VariantContractIssue:
 _DIALECT_READ = {
     "bigquery": "bigquery",
     "clickhouse": "clickhouse",
+    "doris": "doris",
     "duckdb": "duckdb",
     "redshift": "redshift",
     "singlestore": "singlestore",
     "snowflake": "snowflake",
     "spark": "spark",
+    "starrocks": "starrocks",
 }
 
 _HIGH_RISK_CATEGORIES = {

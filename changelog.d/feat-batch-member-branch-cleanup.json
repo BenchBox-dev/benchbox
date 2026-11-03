@@ -1,4 +1,0 @@
-{
-  "schema": 1,
-  "internal": "Agent delivery: assigned cohesive batches default to the integration loop; batch-land reads member dependencies from the tracker; make batch-finish deletes member branches and worktrees that lose nothing (dry run unless EXECUTE=1)"
-}

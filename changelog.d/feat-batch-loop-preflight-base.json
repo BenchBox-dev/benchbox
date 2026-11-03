@@ -1,4 +1,0 @@
-{
-  "schema": 1,
-  "internal": "worktree-create and pr-preflight accept BASE=, and the preflight test mapper applies its explicit map to Make and shell paths"
-}

@@ -5,6 +5,7 @@ from benchbox.core.tpchavoc.dialect_compat import (
     SINGLESTORE_AGGREGATE_SUBQUERY_VARIANT_IDS,
     SINGLESTORE_ALIAS_QUALIFIED_COLUMNS,
     SINGLESTORE_CORRELATED_GROUP_VARIANTS,
+    SINGLESTORE_EXISTS_JOIN_VARIANT_IDS,
     SINGLESTORE_FILTER_VARIANT_IDS,
     SINGLESTORE_GROUPING_SET_VARIANT_IDS,
     SINGLESTORE_ORDER_SUBQUERY_VARIANT_IDS,
@@ -63,6 +64,12 @@ _RULES = (
         "drop_correlated_scalar_group_by",
         frozenset(SINGLESTORE_CORRELATED_GROUP_VARIANTS),
         "SingleStore cannot decorrelate a scalar subselect with GROUP BY on a correlated key; the key is a single group",
+    ),
+    (
+        "correlated_exists",
+        "exists_to_derived_join",
+        SINGLESTORE_EXISTS_JOIN_VARIANT_IDS,
+        "SingleStore exhausts leaf memory evaluating a correlated EXISTS over the self-joined fact table; join a derived table of the matching keys instead",
     ),
 )
 

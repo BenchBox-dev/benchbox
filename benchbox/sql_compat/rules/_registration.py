@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import TYPE_CHECKING
+
 from benchbox.sql_compat.actions import CompatAction
 from benchbox.sql_compat.context import Phase
 from benchbox.sql_compat.decision import (
@@ -7,9 +10,41 @@ from benchbox.sql_compat.decision import (
     FailureMode,
     PKCapabilityPayload,
     RewriteDDLPayload,
+    SkipQueryPayload,
     SupportLevel,
 )
 from benchbox.sql_compat.registry import REGISTRY
+
+if TYPE_CHECKING:
+    from benchbox.core.write_primitives.catalog.loader import WriteOperation
+
+
+def register_write_primitive_skips(platform: str, skip_reason: Callable[[WriteOperation], str | None]) -> None:
+    try:
+        from benchbox.core.write_primitives.catalog import load_write_primitives_catalog
+
+        catalog = load_write_primitives_catalog()
+    except Exception:
+        return
+
+    for op_id, operation in catalog.operations.items():
+        reason = skip_reason(operation)
+        if reason is None:
+            continue
+        REGISTRY.register(
+            CompatibilityDecision(
+                rule_id=f"execution_filter.{platform}.write_primitives.{op_id}",
+                action=CompatAction.SKIP_QUERY,
+                support_level=SupportLevel.SKIPPED_QUERY,
+                failure_mode=FailureMode.UNSUPPORTED_FEATURE,
+                payload=SkipQueryPayload(reason=reason, query_id=op_id),
+                reason=reason,
+            ),
+            Phase.EXECUTION_FILTER,
+            platform,
+            benchmark="write_primitives",
+            query_id=op_id,
+        )
 
 
 def register_ddl_rewrite(

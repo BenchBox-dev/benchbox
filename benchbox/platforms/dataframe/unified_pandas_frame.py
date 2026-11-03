@@ -20,6 +20,10 @@ def _is_dask_df(df: Any) -> bool:
     return "dask" in type_module
 
 
+def _identity_partition(df: Any) -> Any:
+    return df
+
+
 def _is_dataframe(obj: Any) -> bool:
     if not hasattr(obj, "columns"):
         return False
@@ -145,7 +149,8 @@ class UnifiedPandasFrame(Generic[DF]):
 
     def head(self, n: int = 5) -> UnifiedPandasFrame[DF]:
         if _is_dask_df(self._df):
-            result = self._df.head(n, npartitions=-1, compute=False)
+            fenced = self._df.map_partitions(_identity_partition, meta=self._df._meta)
+            result = fenced.head(n, npartitions=-1, compute=False)
         else:
             result = self._df.head(n)
         return UnifiedPandasFrame(result, self._adapter)

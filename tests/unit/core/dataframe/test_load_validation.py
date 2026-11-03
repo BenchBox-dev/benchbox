@@ -4,7 +4,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from benchbox.core.dataframe.load_validation import combine_dataframe_validation, validate_dataframe_loaded_tables
+from benchbox.core.dataframe.load_validation import (
+    combine_dataframe_validation,
+    validate_dataframe_loaded_tables,
+    validate_managed_dataframe_tables,
+)
 from benchbox.core.dataframe.query_validation import DataFrameQueryValidationSummary
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -127,3 +131,36 @@ def test_missing_load_validation_leaves_query_summary_unchanged() -> None:
     query_summary = _query_summary("NOT_RUN")
 
     assert combine_dataframe_validation(query_summary, None) is query_summary
+
+
+class _ManagedBenchmark(_Benchmark):
+    def __init__(self, loaded: tuple[dict[str, int], list[str]] | None) -> None:
+        super().__init__(["orders", "lineitem", "staging"])
+        self._loaded = loaded
+
+    def dataframe_loaded_tables(self, *, ctx: object, adapter: object):
+        return self._loaded
+
+
+def test_managed_tables_validate_against_hook_expected_tables() -> None:
+    benchmark = _ManagedBenchmark(({"orders": 3, "lineitem": 9}, ["orders", "lineitem"]))
+
+    summary = validate_managed_dataframe_tables(benchmark, None, None)
+
+    assert summary is not None
+    assert summary.status == "PASSED"
+
+
+def test_managed_tables_missing_expected_table_fails() -> None:
+    benchmark = _ManagedBenchmark(({"orders": 3}, ["orders", "lineitem"]))
+
+    summary = validate_managed_dataframe_tables(benchmark, None, None)
+
+    assert summary is not None
+    assert summary.status == "FAILED"
+    assert summary.details["missing_tables"] == ["lineitem"]
+
+
+def test_managed_tables_without_loaded_evidence_returns_none() -> None:
+    assert validate_managed_dataframe_tables(_ManagedBenchmark(None), None, None) is None
+    assert validate_managed_dataframe_tables(_Benchmark(["orders"]), None, None) is None

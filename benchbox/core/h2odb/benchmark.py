@@ -67,6 +67,7 @@ class H2OBenchmark(GeneratorOutputDirMixin, TranslatableQueryMixin, DataGenerati
         from benchbox.sql_compat.rules.query_source.h2odb_variants import (
             BIGQUERY_Q9_SQL,
             CLICKHOUSE_Q9_SQL,
+            DORIS_Q9_SQL,
             QUESTDB_Q9_SQL,
             SQLITE_Q9_SQL,
             STARROCKS_Q9_SQL,
@@ -81,6 +82,7 @@ class H2OBenchmark(GeneratorOutputDirMixin, TranslatableQueryMixin, DataGenerati
         _q9_variants: dict[str, str] = {
             "bigquery": BIGQUERY_Q9_SQL,
             "clickhouse": CLICKHOUSE_Q9_SQL,
+            "doris": DORIS_Q9_SQL,
             "questdb": QUESTDB_Q9_SQL,
             "sqlite": SQLITE_Q9_SQL,
             "starrocks": STARROCKS_Q9_SQL,

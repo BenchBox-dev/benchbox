@@ -4,9 +4,15 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import ssl as ssl_module
+import urllib.error
+import urllib.request
 from datetime import datetime
 from typing import Any
+
+from benchbox.utils.tls import ca_bundle_path
 
 from ._dependencies import (
     FLIGHTSQL_AVAILABLE,
@@ -96,6 +102,32 @@ class InfluxDBConnection:
 
         protocol = "https" if ssl else "http"
         self._url = f"{protocol}://{host}:{port}"
+
+    def ensure_database(self, timeout_s: float = 30.0) -> None:
+        headers = {"Content-Type": "application/json"}
+        if self.token:
+            headers["Authorization"] = f"Bearer {self.token}"
+        request = urllib.request.Request(
+            f"{self._url}/api/v3/configure/database",
+            data=json.dumps({"db": self.database}).encode("utf-8"),
+            headers=headers,
+            method="POST",
+        )
+        try:
+            context = None
+            if self.ssl:
+                context = ssl_module.create_default_context(cafile=self.ca_cert_path or ca_bundle_path())
+                if not self.verify_ssl:
+                    context.check_hostname = False
+                    context.verify_mode = ssl_module.CERT_NONE
+            with urllib.request.urlopen(request, timeout=timeout_s, context=context):
+                return
+        except urllib.error.HTTPError as e:
+            if e.code == 409:
+                return
+            raise ConnectionError(f"Failed to create InfluxDB database '{self.database}': HTTP {e.code}") from e
+        except OSError as e:
+            raise ConnectionError(f"Failed to create InfluxDB database '{self.database}': {e}") from e
 
     def connect(self) -> None:
         if INFLUXDB3_AVAILABLE:

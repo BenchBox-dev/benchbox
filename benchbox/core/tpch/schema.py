@@ -6,6 +6,7 @@ import yaml
 
 from benchbox.core.schema_primitives import BaseSchemaTable, get_fk_ordered_table_names
 from benchbox.core.tuning import BenchmarkTunings, TableTuning, TuningColumn
+from benchbox.utils.questdb_subquery_schemas import register_benchmark_schema
 
 
 class DataType(Enum):
@@ -81,6 +82,8 @@ TABLES = [
 ]
 
 TABLES_BY_NAME = {table.name: table for table in TABLES}
+
+register_benchmark_schema(TABLES)
 
 
 def get_table(name: str) -> Table:
