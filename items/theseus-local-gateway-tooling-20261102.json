@@ -6,7 +6,7 @@
     "Every source change since baseline is mapped with port/no-op evidence; ledger refresh command and invalidation rule are documented.",
     "Reviewed implementation and docs merge without activating any production-connected consumer; atomic cutover owns remaining live callsite switches."
   ],
-  "context": "T5, R2. New package APIs should follow existing CLI mechanisms rather than introduce a second credential/config service.\n\nRelated high-priority source change planned: batch-remediation-benchbox-20261102 (after batch-remediation-skill-contract-20261102 and batch-remediation-todo-db-runtime-20261102) removes the separate member-result store/cache replay, retains ordinary finding/dispute/adjudication history, pins leader reviewer executable/policy together and changes batch consumer evidence. Under the existing source-sync rule, record each affected BenchBox source commit and its interface/cache effects as a Theseus port obligation or reviewed no-op; refresh pending entries before any extraction parity/freeze claim. The batch repair remains in the current BenchBox source of truth and is NOT gated on this extraction or its observation windows. No Theseus implementation, activation, priority, needs, hold or observation requirement is changed by this cross-reference.",
+  "context": "T5, R2. New package APIs should follow existing CLI mechanisms rather than introduce a second credential/config service.\n\nRelated high-priority source change planned: batch-remediation-benchbox-20261102 (after batch-remediation-skill-contract-20261102 and batch-remediation-todo-db-runtime-20261102) removes the separate member-result store/cache replay, retains ordinary finding/dispute/adjudication history, pins leader reviewer executable/policy together and changes batch consumer evidence. Under the existing source-sync rule, record each affected BenchBox source commit and its interface/cache effects as a Theseus port obligation or reviewed no-op; refresh pending entries before any extraction parity/freeze claim. The batch repair remains in the current BenchBox source of truth and is NOT gated on this extraction or its observation windows. No Theseus implementation, activation, priority, needs, hold or observation requirement is changed by this cross-reference.\n\nDelivery: one Theseus PR (Theseus PR 1) carries governance bootstrap, package/installer, hosted workflows, local tooling, frozen source and parity proof. The release tag and first-promotion evidence come from that merged head, not from a separate PR.",
   "description": "Prepare offline-proven installed Theseus entrypoints for local review, pr-arm/gate invocation and the gateway host. Inventory scripts/oracle_local_review.py, scripts/pr_arm.py, Makefile launchers, _project/scripts/oracle_gateway_host.sh install-omp/gateway-clients commands and trusted export code. Preserve local findings/dispute behaviour, credential scrubbing, cache/trusted-input digest and fetch-failure fail-closed handling. Gateway host first-stage verification remains consumer-owned and uses the trusted lock. Preserve ~/.cache/benchbox/omp, existing gateway client IDs and run/plist paths unless an owner-approved quiet-time restart replaces them.\nMaintain a source-sync ledger: each BenchBox commit touching extraction inventory since baseline maps to a Theseus port commit, explicit no-op rationale, or pending port. Include promotion-path changes. Ledger is reviewed migration evidence, not session scratch. No source-freeze claim while it has pending entries.\nGuardrails: install/export helpers may be staged outside active launchers until cutover; no dual authority or fallback to embedded engine. No running host, shared clients.json regeneration, agent restart or live gateway use here. Stage exact authorized paths, preserve user work and normal PR checks.",
   "links": [
     "scripts/oracle_local_review.py",
@@ -31,6 +31,14 @@
       "op": "update",
       "op_id": "1fda6148e17d451fa730788758710eeb",
       "session_id": "c2f612a6ed764f278b1b73c78d3b550c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b58f5aa5b2bb5e33c84a53cb",
+      "at": "2026-11-03T13:33:41Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d657a00a99bb41f2b73719d48b48b96f",
+      "session_id": "c4d4cd94bd464a16a29b8b24353d6e06"
     }
   ]
 }
