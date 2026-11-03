@@ -16380,7 +16380,9 @@
     },
     "nightly-perf-gate-sensitivity-review-20261010": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "perf-smoke-rebaseline-after-power-query-generation-20261103"
+      ],
       "priority": "medium-high",
       "status": "open",
       "title": "Evaluate and document blind spots in nightly performance regression detection"

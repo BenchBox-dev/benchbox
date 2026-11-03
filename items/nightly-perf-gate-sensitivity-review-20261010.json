@@ -1,11 +1,12 @@
 {
   "acceptance": [
-    "Quantify and record the current gate's false-negative envelope with reproducible representative examples, including the 4.4 ms to 8.8 ms query case and aggregate floor interaction.",
-    "Assess runner-class baseline matching and the omission of run.total_duration_ms; distinguish intentional scope from missed regression coverage.",
-    "Record an owner decision on whether current limits are acceptable or need a relative/per-runner/orchestration signal, supported by measured noise and sensitivity evidence.",
-    "Update docs/development/perf-smoke.md and issue #2778 with the decision, examples and limits; if behavior changes are warranted, create a linked implementation TODO before closing this assessment."
+    "docs/internal/nightly-perf-gate-review.md records the measured false-negative envelope with the reproducible 4.4 ms to 8.8 ms and aggregate-floor examples (already present from #3471); the page is re-checked after the post-change baseline exists and any figure that changed is updated.",
+    "The page's assessment of runner-class baseline matching and the omission of run.total_duration_ms is re-derived with post-change noise data (the earlier noise included query generation inside the timer).",
+    "The owner confirms or amends the recommended decision on that page (keep the 7 ms and 82 ms floors; a guard failing compare when a baseline query is missing or a current query failed; collect run.total_duration_ms and phase durations for about two weeks before choosing an orchestration floor; no per-runner baseline yet; record the CPU model in the failing-job summary). The decision is quoted in context with the date.",
+    "Each recommended change that the owner accepts has its own linked implementation TODO created before this item is closed (the page names items 2, 3 and 5); each one has acceptance criteria and its needs.",
+    "docs/internal/perf-smoke.md and issue #2778 carry the decision, examples and limits; no reference to docs/development/perf-smoke.md remains in this item."
   ],
-  "context": "Origin: 2026-10-10 adversarial review of the nightly-red handoff, Solution fit L2/L3. This assessment is separate from t3-perf-execution-variants-regression-20261010, which investigates the unresolved hosted 640 ms result. Owner: Joe Harris (same owner recorded for the linked performance-gate decision); next action: evaluate the blind spots and decide/document policy.",
+  "context": "Origin: 2026-10-10 adversarial review of the nightly-red handoff, Solution fit L2/L3. This assessment is separate from t3-perf-execution-variants-regression-20261010, which investigates the unresolved hosted 640 ms result. Owner: Joe Harris (same owner recorded for the linked performance-gate decision); next action: evaluate the blind spots and decide/document policy.\n\n2026-11-03: evidence work was done in #3471 (docs/internal/nightly-perf-gate-review.md); what remains is owner confirmation plus a re-derivation after the power-test timer fix, so the item waits on perf-smoke-rebaseline-after-power-query-generation-20261103. Owner-gated: an agent may refresh the evidence, only the owner confirms. Stale doc path corrected from docs/development to docs/internal. Origin: root-cause analysis of RF1 timing and its adversarial review.",
   "description": "The adversarial review identified performance-gate detection limits that remain after the decimal-boundary fix: a query can double from 4.4 ms to 8.8 ms yet stay below the 7 ms per-query floor, while the +13.2 ms total increase stays below the 82 ms aggregate floor. A baseline measured on a slower runner class can also weaken sensitivity, and the current comparison does not include run.total_duration_ms, so orchestration overhead is outside its signal. The review called these explicit detection limits, not patch-introduced defects. Assess and record whether these omissions are accepted policy or product gaps requiring additional signals; preserve protection against host-noise false positives.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/issues/2778"
@@ -18,6 +19,14 @@
       "op": "create",
       "op_id": "c084a811798a4512a09893249f488acc",
       "session_id": "375a0fea891d4422bf14885cd09fb269"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a561db75579ad3167de9da38",
+      "at": "2026-11-03T15:09:45Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "595e9184b97441ec864f06314550f149",
+      "session_id": "ada67604a2174486ada6b7b9a8c4f586"
     }
   ]
 }
