@@ -6,7 +6,7 @@
     "Owner records completed settings/secret administration and explicit approval for the later first live gate.",
     "Before the first live gate, establish a distinct bootstrap artifact from owner-reviewed Theseus source: trusted committed consumer lock, wheel/dependency SHA-256 values and immutable fetch locations. Verify install from those bytes and record source/hash approval. This is not the final BenchBox release and cannot substitute for final parity/promotion."
   ],
-  "context": "Owner-only administrative boundary. Stop with exact requested owner operation if not authorized/available; ordinary repository implementation permission is not authority to change secrets or hosted settings.\n\nDelivery: no PR. Owner action or tracker evidence only, recorded on this item.\n\nOwner directed cutover at the earliest possible point without long observation periods or extra ceremony (2026-11-03). Only Theseus's own repository gate needs this; it no longer blocks BenchBox cutover.",
+  "context": "Owner-only administrative boundary. Stop with exact requested owner operation if not authorized/available; ordinary repository implementation permission is not authority to change secrets or hosted settings.\n\nDelivery: no PR. Owner action or tracker evidence only, recorded on this item.\n\nOwner directed cutover at the earliest possible point without long observation periods or extra ceremony (2026-11-03). Only Theseus's own repository gate needs this; it no longer blocks BenchBox cutover.\n\nOwner decisions (2026-11-04): (1) Release Theseus f2af0d8 as v0.1.0 now; Dependabot PRs #2-#5 batch into v0.1.1 after cutover. (2) Agent posts the first-promotion bootstrap approval comment from the owner's account; it records the owner's advance approval in chat. (3) Agent iterates on cutover defects without asking: fix in Theseus, independent review, merge own Theseus PR after CI, release v0.1.x, re-lock. (4) If the first live run after cutover fails, fix forward without reverting. (5) Apply the documented Theseus branch protection now. (6) Do the Theseus-owned App/secrets/tailnet and live self-gate right after cutover.",
   "description": "Owner-controlled setup for Theseus PR governance, not reuse of benchbox-oracle. Define the distinct Theseus App login and integration ID, installations, attesters, required-check source binding, secret-bearing environment and least-privilege token permissions. Provision a named Theseus tailnet identity/client credential, but do not add a shared gateway client or execute live reviews until observation disposition and the first-live-gate item permit activation.\nDecision gate: owner must approve and perform App, branch-protection, environment, secret and tailnet administration that agents cannot authorize or access. Record public identifiers, settings evidence and validation results only; never secret values. No App key in a wheel, release build, PR artifact, log or candidate workflow; no secrets:inherit across an untrusted boundary.\nGuardrails: BenchBox App, settings, gateway and credential caches stay unchanged. No weakening required checks or bootstrap stand-ins. Missing owner credentials/settings permission is a blocker, not a fallback to BenchBox identity.",
   "links": [
     "https://github.com/BenchBox-dev/theseus",
@@ -44,6 +44,14 @@
       "op": "update",
       "op_id": "208250f679af46d3bd668de771da18fd",
       "session_id": "c4d4cd94bd464a16a29b8b24353d6e06"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-03T22:52:02Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4aca5925a8ff40c29b9d6b6befe3b5e7",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
     }
   ]
 }
