@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Fork PR merged with all 54 entries retained",
+    "Wheel 30.29.0.1 built from merged main and verified",
+    "BenchBox adoption PR merged; freshness gate passes on develop with an empty waiver list"
+  ],
+  "description": "Upstream SQLGlot v30.29.0 was released 2026-11-03 (tag commit 2fe25297af5b0f44f5c9e5d03e1b296424b7acbe; v30.28.0 was skipped). The bundled runtime (30.27.0.1) is on v30.27.0, so scripts/check_sqlglot_upstream_freshness.py fails and blocks PRs. Refresh the fork directly onto v30.29.0 via downstream.refresh candidate/integrate, build and verify the wheel, and adopt it with make sqlglot-adopt-wheel.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:94174e100f42d91bfecdbe49",
+      "at": "2026-11-03T13:42:42Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0a522b62d47c47fbbf746a60b1dc2c87",
+      "session_id": "8a0b283a1eec4655ad1a33598f023c47"
+    }
+  ]
+}
