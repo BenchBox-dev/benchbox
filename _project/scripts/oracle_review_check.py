@@ -2,17 +2,19 @@
 from __future__ import annotations
 
 import fnmatch
+import hashlib
 import json
 import os
 import re
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from datetime import datetime
 from typing import Any, TypeVar
 
 from inert_paths import is_inert_path
+from oracle_reviewers.policy import PromotionRules
 from soundness_paths import is_soundness_path
 
 ORACLE_LOGIN = "benchbox-oracle"
@@ -233,13 +235,17 @@ def decide(
     *,
     reviews: Iterable[dict[str, Any]] = (),
     bump_refusals: Iterable[str] = (),
+    promotion_refusals: Iterable[str] = (),
+    is_promotion: bool = False,
 ) -> tuple[int, str]:
-    if not paths(files):
-        return PASS, "oracle-review: only exempt paths changed"
     refused = list(bump_refusals)
     if refused:
         return WAITING, f"oracle-review: omp pin bump refused: {'; '.join(refused)}"
-
+    promo_refused = list(promotion_refusals)
+    if promo_refused:
+        return WAITING, f"oracle-review: theseus promotion refused: {'; '.join(promo_refused)}"
+    if not is_promotion and not paths(files):
+        return PASS, "oracle-review: only exempt paths changed"
     base_time = _parse_time(base_date) if base_date else None
     verdicts = _verdict_statuses(statuses, base_time)
     latest = verdicts[-1] if verdicts else None
@@ -251,7 +257,7 @@ def decide(
     findings_open = _open_findings(verdicts)
     standin = (
         None
-        if findings_open
+        if findings_open or is_promotion
         else next((comment for comment in comments if _is_standin(comment, head_sha, standin_after)), None)
     )
     if latest and verdict != "success" and not standin:
@@ -456,6 +462,35 @@ def fetch_text(token: str, repo: str, path: str, ref: str) -> str:
         raise CheckError(f"GitHub request to {url} failed: {exc}") from exc
 
 
+def fetch_optional_bytes(token: str, repo: str, path: str, ref: str) -> bytes | None:
+    url = f"{API_ROOT}/repos/{repo}/contents/{path}?ref={urllib.parse.quote(ref, safe='')}"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github.raw",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "benchbox-oracle-review-check",
+    }
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=30) as response:
+            return response.read()
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return None
+        raise CheckError(f"GitHub returned HTTP {exc.code} for {url}") from exc
+    except (urllib.error.URLError, TimeoutError) as exc:
+        raise CheckError(f"GitHub request to {url} failed: {exc}") from exc
+
+
+def fetch_optional_text(token: str, repo: str, path: str, ref: str) -> str | None:
+    raw = fetch_optional_bytes(token, repo, path, ref)
+    if raw is None:
+        return None
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise CheckError(f"GitHub contents for {path} at {ref} are not UTF-8: {exc}") from exc
+
+
 def fetch_bump_refusals(
     token: str,
     repo: str,
@@ -483,6 +518,80 @@ def fetch_bump_refusals(
         )
     except omp_bump_gate.BumpEvidenceError as exc:
         return [f"omp pin bump evidence could not be verified: {exc}"]
+
+
+def _token_ancestor_check(token: str, repo: str) -> Callable[[str, str], bool]:
+    def check(ancestor: str, descendant: str) -> bool:
+        if ancestor == descendant:
+            return True
+        comparison = _request(
+            token,
+            f"{API_ROOT}/repos/{repo}/compare/{urllib.parse.quote(ancestor, safe='')}...{urllib.parse.quote(descendant, safe='')}",
+        )
+        return isinstance(comparison, dict) and comparison.get("status") in ("ahead", "identical")
+
+    return check
+
+
+def fetch_promotion_refusals(
+    token: str,
+    repo: str,
+    pull: dict[str, Any],
+    files: list[str],
+    listed_files: int,
+    reviews: list[dict[str, Any]],
+    base_date: str | None = None,
+    *,
+    statuses: Iterable[dict[str, Any]] = (),
+    oracle_login: str = ORACLE_LOGIN,
+    rules: PromotionRules,
+    comments: Sequence[dict[str, Any]] = (),
+) -> tuple[bool, list[str]]:
+    from oracle_reviewers import promotion
+
+    complete = listed_files >= pull["changed_files"]
+    if promotion.has_planted_promotion_path(files):
+        return True, [f"pull request cannot touch {promotion.STAGED_PROMOTION_DIR}"]
+    if promotion.LOCK_PATH not in files and complete:
+        return False, []
+    head_repo = ((pull["head"].get("repo") or {}).get("full_name")) or repo
+    if head_repo != repo and promotion.LOCK_PATH in files:
+        return True, ["fork pull requests cannot promote theseus; open the promotion from a repository branch"]
+    base_ref = pull["base"].get("sha") or pull["base"]["ref"]
+    head_sha = pull["head"]["sha"]
+    base_text = fetch_optional_text(token, repo, promotion.LOCK_PATH, base_ref)
+    head_text = fetch_optional_text(token, head_repo, promotion.LOCK_PATH, head_sha)
+    matcher_sha256: str | None = None
+    if head_text is not None:
+        try:
+            parsed_head = promotion.parse_lock(head_text)
+        except promotion.PromotionError as exc:
+            return True, [str(exc)]
+        if parsed_head.matcher is not None:
+            matcher_raw = fetch_optional_bytes(token, head_repo, parsed_head.matcher.path, head_sha)
+            matcher_sha256 = hashlib.sha256(matcher_raw).hexdigest() if matcher_raw is not None else None
+    base_time = _parse_time(base_date) if base_date else None
+    verdict_list = _verdict_statuses(statuses, base_time)
+    expected_uuid = (
+        _status_run_uuid(verdict_list[-1]) if verdict_list and verdict_list[-1].get("state") == "success" else None
+    )
+    return promotion.refusals(
+        [*files, promotion.LOCK_PATH] if not complete else files,
+        base_text,
+        head_text,
+        reviews,
+        head_sha,
+        repo=repo,
+        complete=complete,
+        base_time=base_time,
+        oracle_login=oracle_login,
+        rules=rules,
+        comments=comments,
+        is_ancestor=_token_ancestor_check(token, repo),
+        base_sha=pull["base"].get("sha"),
+        matcher_sha256_at_head=matcher_sha256,
+        expected_run_uuid=expected_uuid,
+    )
 
 
 def fetch_comments(token: str, repo: str, pr: int) -> list[dict[str, Any]]:

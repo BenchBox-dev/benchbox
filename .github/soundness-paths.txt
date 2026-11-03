@@ -105,6 +105,8 @@ file	.github/workflows/oracle-gate.yml
 file	_project/scripts/check_soundness_review.py
 file	.github/oracle-reviewers.yml
 file	.github/oracle-omp-config.yml
+file	.github/theseus-lock.json
+file	_project/scripts/theseus_bootstrap.py
 file	_project/scripts/oracle_gateway_host.sh
 prefix	_project/scripts/oracle_reviewers/
 prefix	tests/integration/oracle/

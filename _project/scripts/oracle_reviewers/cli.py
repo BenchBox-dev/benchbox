@@ -31,6 +31,7 @@ from . import (
     github,
     omp_pin,
     processes,
+    promotion,
     protocol,
     recovery,
     redaction_check,
@@ -46,7 +47,7 @@ from .brief import write_private
 from .classifier import ChangedFile, matching, soundness_scope
 from .classify import Classification, classify_diff
 from .diff import binary_files, binary_notice_count, commentable_lines, select_files
-from .evidence import is_binary_candidate
+from .evidence import glob_match, is_binary_candidate
 from .jev import JevError, JevSession
 from .policy import SIZE_BUCKETS, Policy, RetryRules, Reviewer, load_policy
 from .render import (
@@ -276,6 +277,7 @@ def _dispute_step(
     base_changed_at: datetime | None = None,
     base_change_unreadable: bool = False,
     local: Sequence[Mapping[str, Any]] | None = None,
+    is_promotion: bool = False,
 ) -> tuple[list[dict[str, Any]] | None, protocol.Round]:
     if step.kind not in (protocol.SKIP, protocol.CARRY, protocol.REPOST):
         return None, step
@@ -291,6 +293,7 @@ def _dispute_step(
                 force=True,
                 base_changed_at=base_changed_at,
                 base_change_unreadable=base_change_unreadable,
+                is_promotion=is_promotion,
             )
         return None, step
     if not manual and event_name != "pull_request_target":
@@ -311,6 +314,7 @@ def _dispute_step(
             force=True,
             base_changed_at=base_changed_at,
             base_change_unreadable=base_change_unreadable,
+            is_promotion=is_promotion,
         )
     return threads, step
 
@@ -559,6 +563,80 @@ def _status_mismatch(previous: Mapping[str, Any]) -> str:
     )
 
 
+def _ci_lock_text(repo: str, ref: str) -> str | None:
+    try:
+        return github._gh(
+            f"repos/{repo}/contents/{promotion.LOCK_PATH}?ref={ref}",
+            accept="application/vnd.github.raw",
+        )
+    except github.GitHubError as exc:
+        if re.search(r"\(HTTP 404\)\s*$", str(exc)):
+            return None
+        raise
+
+
+def _load_ci_promotion(
+    repo: str,
+    plan: Mapping[str, Any],
+    policy: Policy,
+    files: Sequence[ChangedFile],
+) -> tuple[promotion.PromotionBundle | None, str | None]:
+    pr_paths = [path for item in files for path in item.paths]
+    lock_item = next((item for item in files if promotion.LOCK_PATH in item.paths), None)
+    if lock_item is None and not promotion.has_planted_promotion_path(pr_paths):
+        return None, None
+    try:
+        base_lock_text = _ci_lock_text(repo, plan["base_sha"])
+        head_lock_text = _ci_lock_text(repo, plan["head_sha"])
+        approval_comments = (
+            [
+                _comment_view(item)
+                for item in github.get_paginated(f"repos/{repo}/issues/{plan['pr']}/comments?per_page=100")
+            ]
+            if base_lock_text is None and head_lock_text is not None
+            else []
+        )
+        bundle = promotion.prepare_promotion(
+            repo=repo,
+            base_sha=plan["base_sha"],
+            head_sha=plan["head_sha"],
+            base_lock_text=base_lock_text,
+            head_lock_text=head_lock_text,
+            source_loader=promotion.default_source_loader(),
+            is_ancestor=promotion.ci_ancestor_check(repo),
+            pr_paths=pr_paths,
+            rules=policy.promotion,
+            approval_comments=approval_comments,
+        )
+        return bundle, None
+    except (github.GitHubError, promotion.PromotionError) as exc:
+        return None, f"theseus promotion hold: {exc}"
+
+
+def _initial_scope_stop(
+    plan: dict[str, Any], pull: Mapping[str, Any], files: list[ChangedFile], policy: Policy, repo: str
+) -> tuple[set[str] | None, bool]:
+    scope = soundness_scope(files, policy.classifier, _soundness_predicate())
+    if len(files) < int(pull.get("changed_files") or 0):
+        plan["decision"] = HOLD
+        plan["decision_reason"] = (
+            f"the changed-file listing is incomplete ({len(files)} of {pull['changed_files']} files): owner review"
+        )
+        return None, True
+    plan["scope_paths"] = list(scope.paths)
+    plan["gate_paths"] = list(scope.gate_paths)
+    plan["scope_reasons"] = list(scope.reasons)
+    if not scope.soundness:
+        plan["decision"] = SUCCESS
+        plan["decision_reason"] = "only exempt paths changed"
+        return None, True
+    if (pull["head"].get("repo") or {}).get("full_name") != repo:
+        plan["decision"] = FORK
+        plan["decision_reason"] = "fork: owner review"
+        return None, True
+    return set(scope.paths), False
+
+
 def command_plan(args: argparse.Namespace) -> int:
     policy = load_policy(Path(args.policy))
     repo = os.environ["GITHUB_REPOSITORY"]
@@ -583,23 +661,8 @@ def command_plan(args: argparse.Namespace) -> int:
     if github.get_json(f"repos/{repo}/pulls/{pr}")["head"]["sha"] != plan["head_sha"]:
         plan["decision_reason"] = "the head moved while the plan read it; its own run reviews it"
         return _finish_plan(out_dir, plan)
-    scope = soundness_scope(files, policy.classifier, _soundness_predicate())
-    if len(files) < int(pull.get("changed_files") or 0):
-        plan["decision"] = HOLD
-        plan["decision_reason"] = (
-            f"the changed-file listing is incomplete ({len(files)} of {pull['changed_files']} files): owner review"
-        )
-        return _finish_plan(out_dir, plan)
-    plan["scope_paths"] = list(scope.paths)
-    plan["gate_paths"] = list(scope.gate_paths)
-    plan["scope_reasons"] = list(scope.reasons)
-    if not scope.soundness:
-        plan["decision"] = SUCCESS
-        plan["decision_reason"] = "only exempt paths changed"
-        return _finish_plan(out_dir, plan)
-    if (pull["head"].get("repo") or {}).get("full_name") != repo:
-        plan["decision"] = FORK
-        plan["decision_reason"] = "fork: owner review"
+    in_scope_initial, stopped = _initial_scope_stop(plan, pull, files, policy, repo)
+    if stopped or in_scope_initial is None:
         return _finish_plan(out_dir, plan)
     manual = event_name in ("issue_comment", "workflow_dispatch")
     action = event.get("action", "")
@@ -638,7 +701,7 @@ def command_plan(args: argparse.Namespace) -> int:
             plan["decision_reason"] = rerun.reason
             return _refused_marked(_finish_plan(out_dir, plan), marked, plan)
         deferred = rerun
-    in_scope = set(scope.paths)
+    in_scope = in_scope_initial
     plan["manual"] = manual
     plan["previous_state"] = previous.to_json() if previous else None
     try:
@@ -658,6 +721,10 @@ def command_plan(args: argparse.Namespace) -> int:
     states = _file_states(plan, files) if complete else None
     base_changed_at, base_change_unreadable = _base_changed_at(repo, pr, event_name, event)
     owner_reset = retry.reset_applies(previous, plan["head_sha"], reset_at)
+    promotion_bundle, promotion_hold = _load_ci_promotion(repo, plan, policy, files)
+    if promotion_hold is not None:
+        plan.update({"decision": HOLD, "decision_reason": promotion_hold})
+        return _finish_plan(out_dir, plan)
     return plan_decision(
         plan,
         policy,
@@ -678,6 +745,7 @@ def command_plan(args: argparse.Namespace) -> int:
             deferred=deferred,
             marked=marked,
             body=pull.get("body") or "",
+            promotion=promotion_bundle,
         ),
     )
 
@@ -700,10 +768,95 @@ class RoundInputs:
     marked: bool = False
     body: str = ""
     disputes: Sequence[Mapping[str, Any]] | None = None
+    promotion: promotion.PromotionBundle | None = None
+
+
+def _upstream_exempt(staged_path: str, exempt_paths: Sequence[str]) -> bool:
+    for sub in ("new", "old"):
+        prefix = f"{promotion.STAGED_PROMOTION_DIR}/{sub}/"
+        if staged_path.startswith(prefix):
+            return any(glob_match(staged_path.removeprefix(prefix), pattern) for pattern in exempt_paths)
+    return False
+
+
+def _git_show_text(root: Path, ref: str, path: str) -> str:
+    import subprocess
+
+    result = subprocess.run(
+        ["git", "-C", str(root), "show", f"{ref}:{path}"],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+    if result.returncode != 0:
+        raise promotion.PromotionError(f"git show {ref[:12]}:{path} failed")
+    return result.stdout
+
+
+def _git_lock_text(root: Path, ref: str) -> str | None:
+    import subprocess
+
+    result = subprocess.run(
+        ["git", "-C", str(root), "ls-tree", "-z", ref, "--", promotion.LOCK_PATH],
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise promotion.PromotionError(f"git ls-tree {ref[:12]}:{promotion.LOCK_PATH} failed")
+    if not result.stdout:
+        return None
+    return _git_show_text(root, ref, promotion.LOCK_PATH)
+
+
+def _resolve_promotion_bundle(
+    plan: Mapping[str, Any], policy: Policy, inputs: RoundInputs
+) -> tuple[promotion.PromotionBundle | None, str | None]:
+    if inputs.promotion is not None:
+        return inputs.promotion, None
+    local_root_raw = os.environ.get("ORACLE_LOCAL_ROOT", "").strip()
+    pr_paths = [path for item in inputs.files for path in item.paths]
+    lock_item = next((item for item in inputs.files if promotion.LOCK_PATH in item.paths), None)
+    if not local_root_raw or (lock_item is None and not promotion.has_planted_promotion_path(pr_paths)):
+        return None, None
+    local_root = Path(local_root_raw)
+    try:
+        base_lock_text = _git_lock_text(local_root, plan["base_sha"])
+        head_lock_text = _git_lock_text(local_root, plan["head_sha"])
+        bundle = promotion.prepare_promotion(
+            repo=plan["repo"],
+            base_sha=plan["base_sha"],
+            head_sha=plan["head_sha"],
+            base_lock_text=base_lock_text,
+            head_lock_text=head_lock_text,
+            source_loader=promotion.default_source_loader(local_git_root=local_root, local_consumer_repo=plan["repo"]),
+            is_ancestor=promotion.local_ancestor_check(local_root),
+            pr_paths=pr_paths,
+            rules=policy.promotion,
+            approval_comments=None,
+        )
+        return bundle, None
+    except promotion.PromotionError as exc:
+        return None, f"theseus promotion hold: {exc}"
 
 
 def plan_decision(plan: dict[str, Any], policy: Policy, out_dir: Path, inputs: RoundInputs) -> int:
-    scoped = _scoped_files(inputs.files, inputs.in_scope, policy)
+    active_promotion, hold_reason = _resolve_promotion_bundle(plan, policy, inputs)
+    if hold_reason is not None:
+        plan.update({"decision": HOLD, "decision_reason": hold_reason})
+        return _finish_plan(out_dir, plan)
+    is_promotion = active_promotion is not None
+    upstream_files = list(active_promotion.changed_files) if active_promotion is not None else []
+    upstream_in_scope = {
+        item.path for item in upstream_files if not _upstream_exempt(item.path, policy.evidence.exempt_paths)
+    }
+    all_files = [*inputs.files, *upstream_files]
+    in_scope = set(inputs.in_scope) | upstream_in_scope
+    scoped = [
+        *_scoped_files(inputs.files, inputs.in_scope, policy),
+        *[item for item in upstream_files if item.path in upstream_in_scope or not item.path.endswith(PROSE_SUFFIXES)],
+    ]
     found = inputs.found
     strike_count = max(protocol.strikes(found.records), inputs.previous_strikes)
     step = _protocol_round(
@@ -716,6 +869,7 @@ def plan_decision(plan: dict[str, Any], policy: Policy, out_dir: Path, inputs: R
         base_changed_at=inputs.base_changed_at,
         base_change_unreadable=inputs.base_change_unreadable,
         manual=inputs.manual,
+        is_promotion=is_promotion,
     )
     threads, step = _dispute_step(
         plan,
@@ -730,6 +884,7 @@ def plan_decision(plan: dict[str, Any], policy: Policy, out_dir: Path, inputs: R
         inputs.base_changed_at,
         inputs.base_change_unreadable,
         inputs.disputes,
+        is_promotion=is_promotion,
     )
     settled = _settled_round(out_dir, plan, policy, step, found, inputs.deferred, inputs.marked)
     if settled is not None:
@@ -756,17 +911,21 @@ def plan_decision(plan: dict[str, Any], policy: Policy, out_dir: Path, inputs: R
     if claims is not None:
         plan["protocol"].update(claims.rules())
         plan["disputes"] = [*claims.disputes, *plan["disputes"]]
+    if active_promotion is not None:
+        promotion.write_materialized_bundle(active_promotion, out_dir)
     _plan_review(
         plan,
         out_dir,
         policy,
         step,
-        inputs.files,
+        all_files,
         scoped,
-        inputs.in_scope,
+        in_scope,
         inputs.full_diff,
         inputs.pool_blocks,
         _soundness_predicate(),
+        promotion_record=active_promotion.record.to_json() if active_promotion is not None else None,
+        upstream_protected=upstream_in_scope,
     )
     plan["decision_reason"] = step.reason if reason is None else f"{step.reason}; {reason}"
     return _finish_plan(out_dir, plan)
@@ -873,6 +1032,7 @@ def _protocol_round(
     base_changed_at: datetime | None = None,
     base_change_unreadable: bool = False,
     manual: bool = False,
+    is_promotion: bool = False,
 ) -> protocol.Round:
     paths = sorted(item.path for item in scoped)
     prints = protocol.fingerprints(states or ())
@@ -892,6 +1052,7 @@ def _protocol_round(
         base_changed_at=base_changed_at,
         base_change_unreadable=base_change_unreadable,
         manual=manual,
+        is_promotion=is_promotion,
     )
     latest = step.previous or {}
     follow_up = step.kind == protocol.FOLLOW_UP
@@ -937,6 +1098,9 @@ def _plan_review(
     pool_blocks: Mapping[str, selection.PoolBlock],
     is_soundness: Callable[[str], bool],
     is_machine_read: Callable[[str], bool] = is_machine_read_doc,
+    *,
+    promotion_record: Mapping[str, Any] | None = None,
+    upstream_protected: frozenset[str] | set[str] = frozenset(),
 ) -> None:
     latest = step.previous or {}
     follow_up = step.kind == protocol.FOLLOW_UP
@@ -961,18 +1125,24 @@ def _plan_review(
             chain.append(reviewer)
     names = {reviewer.name for reviewer in chain}
     follow_up_reviewer = latest.get("reviewer") if follow_up and latest.get("reviewer") in names else None
-    evidence_files = sorted(item.path for item in reviewed_now if item.path in in_scope and not item.removed)
+    old_staged_prefix = f"{promotion.STAGED_PROMOTION_DIR}/old/"
+    evidence_files = sorted(
+        item.path
+        for item in reviewed_now
+        if item.path in in_scope and (not item.removed or item.path.startswith(old_staged_prefix))
+    )
     held = (*policy.classifier.gate_paths, *policy.classifier.logic_paths, *policy.classifier.data_paths)
 
     def _protected(path: str) -> bool:
-        return is_soundness(path) or is_machine_read(path) or bool(matching([path], held))
+        return path in upstream_protected or is_soundness(path) or is_machine_read(path) or bool(matching([path], held))
 
     listing_bytes = len(file_listing(changed).encode("utf-8"))
     diff_bytes = len((diff_text or "").encode("utf-8"))
     if listing_bytes > policy.brief_max_bytes:
         brief_mode = "oversize"
     elif (
-        diff_text is not None
+        promotion_record is None
+        and diff_text is not None
         and diff_bytes <= policy.brief_max_bytes - DIFF_HEADROOM_BYTES
         and not _opaque_in_diff(diff_text, _protected)
     ):
@@ -1017,6 +1187,8 @@ def _plan_review(
             "pool_blocked_until": {pool: block.to_json() for pool, block in pool_blocks.items()},
         }
     )
+    if promotion_record is not None:
+        plan["promotion"] = dict(promotion_record)
 
 
 def _same_model(left: Reviewer, right: Reviewer) -> bool:
@@ -1140,6 +1312,14 @@ def _assemble_prompt(
         if file_list
         else f"Changed files:\n{file_listing(reviewed)}\n"
     )
+    if plan.get("promotion"):
+        files_block = (
+            "Theseus promotion review: materialized upstream source trees and unified diff are staged in the working"
+            f" directory under {promotion.STAGED_PROMOTION_DIR}/old/, {promotion.STAGED_PROMOTION_DIR}/new/, and"
+            f" {promotion.STAGED_PROMOTION_DIR}/{promotion.UPSTREAM_DIFF_NAME}. Read every required staged file"
+            f" ({promotion.STAGED_PROMOTION_DIR}/new/ for added/modified files and {promotion.STAGED_PROMOTION_DIR}/old/"
+            f" for removed files) directly.\n\n{files_block}"
+        )
     if plan.get("scope") == "changed":
         unchanged = "\n".join(plan.get("unchanged_files", []))
         files_block += (
@@ -1177,6 +1357,8 @@ def _assemble_prompt(
         staged = runner.stage_pull_request_diff(source, workspace)
         if staged is None and source.is_file() and source.read_text(encoding="utf-8").strip():
             raise DiffNotStagedError(DIFF_NOT_STAGED_DETAIL)
+        if plan.get("promotion") and promotion.stage_promotion_workspace(plan_dir, workspace) is None:
+            raise DiffNotStagedError("the staged promotion tree could not be written into the workspace")
     return render_review(
         template_name=classification.template,
         retry_note=retry_note(len(marked)),
@@ -1304,6 +1486,12 @@ def decided_attempts(
     classification_path: str | Path | None,
     workspace: str | Path | None,
 ) -> tuple[SelectionInput, attempt_files.LoadedAttempts, selection.Step, list[str]]:
+    if plan.get("promotion") and workspace is not None:
+        for sibling in ("plan", "oracle-plan"):
+            candidate = attempts_dir.parent / sibling
+            if (candidate / promotion.PROMOTION_PLAN_DIR).is_dir():
+                promotion.stage_promotion_workspace(candidate, Path(workspace))
+                break
     classification = _read_classification(Path(classification_path)) if classification_path else None
     selection_input = _selection(plan, classification)
     loaded = attempt_files.load(attempts_dir, plan, os.environ["GITHUB_RUN_ID"], workspace=workspace)
@@ -1361,11 +1549,12 @@ def command_finalize(args: argparse.Namespace) -> int:
             strikes=final.strikes,
         )
     else:
-        selection_input, loaded, step, errors = decided_attempts(
-            plan, Path(args.attempts_dir), args.classification, getattr(args, "workspace", None)
-        )
         ws = Path(args.workspace) if getattr(args, "workspace", None) else None
-        diff_path = Path(args.plan).parent / DIFF_FILE
+        plan_parent = Path(args.plan).parent
+        if plan.get("promotion") and ws is not None:
+            promotion.stage_promotion_workspace(plan_parent, ws)
+        selection_input, loaded, step, errors = decided_attempts(plan, Path(args.attempts_dir), args.classification, ws)
+        diff_path = plan_parent / DIFF_FILE
         commentable = commentable_lines(diff_path.read_bytes().decode("utf-8")) if diff_path.is_file() else {}
         final = report.finalize(
             plan,
