@@ -15,6 +15,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
+import zlib
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -22,6 +23,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from . import github, omp_pin
+from .policy import PromotionRules
 from .verdict import valid_path
 
 if TYPE_CHECKING:
@@ -39,12 +41,7 @@ RECORD_VERSION = 1
 MAX_TREE_FILES = 5000
 MAX_TREE_BYTES = 64 << 20
 DOWNLOAD_TIMEOUT_SECONDS = 30
-DEFAULT_ALLOWED_ARTIFACT_HOSTS = (
-    "github.com",
-    "objects.githubusercontent.com",
-    "release-assets.githubusercontent.com",
-    "files.pythonhosted.org",
-)
+BOOTSTRAP_APPROVAL_PREFIX = "Theseus bootstrap approval:"
 FORBIDDEN_WHEEL_SUFFIXES = (".pth", ".so", ".pyd", ".dll", ".dylib")
 _COMMIT_SHA = re.compile(r"[0-9a-f]{40}")
 _SHA256 = re.compile(r"[0-9a-f]{64}")
@@ -365,8 +362,8 @@ def parse_lock(text: str) -> TheseusLock:
     artifact_urls = _https_urls(artifact.get("urls"), "theseus artifact", minimum=2)
     _require(isinstance(dependencies_raw, list), "theseus lock dependencies must be a list")
     dependencies = tuple(_parse_dependency(item) for item in dependencies_raw)
-    seen_deps = [dep.name for dep in dependencies]
-    _require(len(set(seen_deps)) == len(seen_deps), "theseus lock lists duplicate dependencies")
+    seen_deps = [re.sub(r"[-_.]+", "-", dep.name).lower() for dep in dependencies]
+    _require(len(set(seen_deps)) == len(seen_deps), "theseus lock lists duplicate normalized dependencies")
     matcher = _parse_matcher(data["matcher"]) if "matcher" in data and data["matcher"] is not None else None
     bootstrap = _parse_bootstrap(data["bootstrap"]) if "bootstrap" in data and data["bootstrap"] is not None else None
     return TheseusLock(
@@ -633,14 +630,44 @@ def _check_https_host(url: str, allowed_hosts: frozenset[str], *, github_prefix:
         )
 
 
-def validate_lock_urls(lock: TheseusLock, allowed_hosts: Sequence[str] = DEFAULT_ALLOWED_ARTIFACT_HOSTS) -> None:
-    hosts = frozenset(item.lower() for item in allowed_hosts)
+def validate_lock_policy(lock: TheseusLock, rules: PromotionRules) -> None:
+    hosts = frozenset(item.lower() for item in rules.allowed_artifact_hosts)
     gh_prefix = f"/{lock.repository}/releases/download/"
     for url in lock.artifact_urls:
         _check_https_host(url, hosts, github_prefix=gh_prefix)
     for dep in lock.dependencies:
         for url in dep.urls:
             _check_https_host(url, hosts)
+        pinned = rules.dependencies.get(f"{re.sub(r'[-_.]+', '-', dep.name).lower()}=={dep.version}")
+        _require(
+            pinned == dep.sha256,
+            f"dependency {dep.name} {dep.version} with sha256 {dep.sha256} is not pinned in the base review "
+            "policy's promotion.dependencies",
+        )
+
+
+def bootstrap_approval_line(lock: TheseusLock) -> str:
+    return f"{BOOTSTRAP_APPROVAL_PREFIX} source={lock.source_commit} lock={lock_digest(lock)}"
+
+
+def bootstrap_approval_refusals(
+    comments: Iterable[Mapping[str, Any]], lock: TheseusLock, reviewers: Sequence[str]
+) -> list[str]:
+    bootstrap = lock.bootstrap
+    assert bootstrap is not None
+    expected = bootstrap_approval_line(lock)
+    for comment in comments:
+        if comment.get("login") != bootstrap.reviewer or bootstrap.reviewer not in reviewers:
+            continue
+        created_at = comment.get("created_at")
+        if comment.get("user_type") != "User" or not created_at or comment.get("updated_at") != created_at:
+            continue
+        if expected in (line.strip() for line in str(comment.get("body") or "").splitlines()):
+            return []
+    return [
+        f"first theseus promotion needs an unedited pull request comment from {bootstrap.reviewer} "
+        f"containing the line: {expected}"
+    ]
 
 
 def default_artifact_loader() -> ArtifactLoader:
@@ -700,7 +727,7 @@ def _read_wheel_entries(wheel_bytes: bytes) -> dict[str, bytes]:
                 total_bytes += len(data)
                 _require(total_bytes <= MAX_TREE_BYTES, "wheel exceeds maximum uncompressed size")
                 entries[name] = data
-    except (zipfile.BadZipFile, OSError, EOFError) as exc:
+    except (zipfile.BadZipFile, OSError, EOFError, RuntimeError, NotImplementedError, zlib.error) as exc:
         raise PromotionError(f"invalid wheel archive: {exc}") from exc
     _require(bool(entries), "wheel archive is empty")
     return entries
@@ -711,29 +738,22 @@ def verify_wheel_record(entries: Mapping[str, bytes], package: str, version: str
     dist_info = f"{norm_pkg}-{version}.dist-info"
     for required_meta in ("METADATA", "WHEEL", "RECORD"):
         _require(f"{dist_info}/{required_meta}" in entries, f"wheel missing {dist_info}/{required_meta}")
-    for name in entries:
-        lower = name.lower()
-        _require(
-            not lower.endswith(FORBIDDEN_WHEEL_SUFFIXES),
-            f"wheel contains forbidden executable or hook entry {name!r}",
-        )
-        _require(
-            not any(seg.endswith(".data") for seg in name.split("/")[:-1]),
-            f"wheel contains forbidden .data directory entry {name!r}",
-        )
     record_path = f"{dist_info}/RECORD"
     try:
         record_text = entries[record_path].decode("utf-8")
     except UnicodeDecodeError as exc:
         raise PromotionError("wheel RECORD is not valid UTF-8") from exc
     recorded: dict[str, tuple[str, str]] = {}
-    for row in csv.reader(io.StringIO(record_text)):
-        if not row:
-            continue
-        _require(len(row) == 3, f"malformed wheel RECORD row {row!r}")
-        rec_file, rec_hash, rec_size = row
-        _require(rec_file not in recorded, f"duplicate wheel RECORD entry {rec_file!r}")
-        recorded[rec_file] = (rec_hash, rec_size)
+    try:
+        for row in csv.reader(io.StringIO(record_text)):
+            if not row:
+                continue
+            _require(len(row) == 3, f"malformed wheel RECORD row {row!r}")
+            rec_file, rec_hash, rec_size = row
+            _require(rec_file not in recorded, f"duplicate wheel RECORD entry {rec_file!r}")
+            recorded[rec_file] = (rec_hash, rec_size)
+    except csv.Error as exc:
+        raise PromotionError(f"invalid wheel RECORD: {exc}") from exc
     _require(set(recorded) == set(entries), "wheel RECORD file set does not match wheel archive entries")
     for name, content in entries.items():
         rec_hash, rec_size = recorded[name]
@@ -755,6 +775,16 @@ def verify_wheel_matches_source(
     version: str,
 ) -> None:
     entries = _read_wheel_entries(wheel_bytes)
+    for name in entries:
+        lower = name.lower()
+        _require(
+            not lower.endswith(FORBIDDEN_WHEEL_SUFFIXES),
+            f"wheel contains forbidden executable or hook entry {name!r}",
+        )
+        _require(
+            not any(seg.endswith(".data") for seg in name.split("/")[:-1]),
+            f"wheel contains forbidden .data directory entry {name!r}",
+        )
     norm_pkg = verify_wheel_record(entries, package, version)
     dist_prefix = f"{norm_pkg}-{version}.dist-info/"
     pkg_prefix = f"{norm_pkg}/"
@@ -791,9 +821,9 @@ def verify_lock_artifacts(
     head_lock: TheseusLock,
     new_tree: Mapping[str, bytes],
     artifact_loader: ArtifactLoader,
-    allowed_hosts: Sequence[str] = DEFAULT_ALLOWED_ARTIFACT_HOSTS,
+    rules: PromotionRules,
 ) -> None:
-    validate_lock_urls(head_lock, allowed_hosts)
+    validate_lock_policy(head_lock, rules)
     verified_wheel: bytes | None = None
     for url in head_lock.artifact_urls:
         raw = artifact_loader(url)
@@ -858,13 +888,12 @@ def _validate_bootstrap_against_policy(
     repo: str,
     base_sha: str | None,
     is_ancestor: AncestorCheck | None,
-    bootstrap_baseline_commit: str | None,
-    bootstrap_path_map: Mapping[str, str] | None,
-    bootstrap_reviewers: Sequence[str],
+    rules: PromotionRules,
+    approval_comments: Iterable[Mapping[str, Any]] | None,
 ) -> list[str]:
     if bootstrap is None:
         return ["first theseus promotion requires a bootstrap baseline record"]
-    if bootstrap_baseline_commit is None or not bootstrap_path_map:
+    if rules.bootstrap_baseline_commit is None or not rules.bootstrap_path_map:
         return [
             "first theseus promotion requires bootstrap_baseline_commit and bootstrap_path_map in the review policy"
         ]
@@ -873,14 +902,16 @@ def _validate_bootstrap_against_policy(
         reasons.append("bootstrap baseline_repo does not match this repository")
     if bootstrap.approved_head != head_lock.source_commit:
         reasons.append("bootstrap approved_head does not match the promoted source_commit")
-    if bootstrap.baseline_commit != bootstrap_baseline_commit:
+    if bootstrap.baseline_commit != rules.bootstrap_baseline_commit:
         reasons.append("bootstrap baseline_commit does not match the configured baseline commit")
-    if dict(bootstrap.path_map) != dict(bootstrap_path_map):
+    if dict(bootstrap.path_map) != dict(rules.bootstrap_path_map):
         reasons.append("bootstrap path_map does not match the configured bootstrap_path_map")
-    if bootstrap.reviewer not in bootstrap_reviewers:
+    if bootstrap.reviewer not in rules.bootstrap_reviewers:
         reasons.append("bootstrap reviewer is not in the configured bootstrap_reviewers")
     if is_ancestor is not None and base_sha is not None and not is_ancestor(bootstrap.baseline_commit, base_sha):
         reasons.append("bootstrap baseline_commit is not an ancestor of the base branch")
+    if approval_comments is not None and not reasons:
+        reasons.extend(bootstrap_approval_refusals(approval_comments, head_lock, rules.bootstrap_reviewers))
     return reasons
 
 
@@ -895,12 +926,8 @@ def prepare_promotion(
     is_ancestor: AncestorCheck,
     artifact_loader: ArtifactLoader | None = None,
     pr_paths: Iterable[str] = (),
-    expected_package: str = "theseus-reviewer",
-    expected_repository: str = "BenchBox-dev/theseus",
-    allowed_artifact_hosts: Sequence[str] = DEFAULT_ALLOWED_ARTIFACT_HOSTS,
-    bootstrap_baseline_commit: str | None = None,
-    bootstrap_path_map: Mapping[str, str] | None = None,
-    bootstrap_reviewers: Sequence[str] = ("joeharris76",),
+    rules: PromotionRules,
+    approval_comments: Iterable[Mapping[str, Any]] | None,
 ) -> PromotionBundle | None:
     _require(not has_planted_promotion_path(pr_paths), f"pull request cannot touch {STAGED_PROMOTION_DIR}")
     if head_lock_text is None:
@@ -908,9 +935,9 @@ def prepare_promotion(
             raise PromotionError("theseus lock cannot be removed")
         return None
     head_lock = parse_lock(head_lock_text)
-    _require(head_lock.package == expected_package, "theseus lock package does not match consumer policy")
-    _require(head_lock.repository == expected_repository, "theseus lock repository does not match consumer policy")
-    validate_lock_urls(head_lock, allowed_artifact_hosts)
+    _require(head_lock.package == rules.package, "theseus lock package does not match consumer policy")
+    _require(head_lock.repository == rules.repository, "theseus lock repository does not match consumer policy")
+    validate_lock_policy(head_lock, rules)
     if base_lock_text is not None:
         base_lock = parse_lock(base_lock_text)
         _require(
@@ -938,9 +965,8 @@ def prepare_promotion(
             repo=repo,
             base_sha=base_sha,
             is_ancestor=is_ancestor,
-            bootstrap_baseline_commit=bootstrap_baseline_commit,
-            bootstrap_path_map=bootstrap_path_map,
-            bootstrap_reviewers=bootstrap_reviewers,
+            rules=rules,
+            approval_comments=approval_comments,
         )
         _require(not bootstrap_errors, "; ".join(bootstrap_errors))
         bootstrap = head_lock.bootstrap
@@ -963,7 +989,7 @@ def prepare_promotion(
         head_lock,
         new_tree,
         artifact_loader or default_artifact_loader(),
-        allowed_artifact_hosts,
+        rules,
     )
     changed_files, diff_text, actual_delta_sha256 = compute_upstream_delta(old_tree, new_tree)
     _require(
@@ -1141,18 +1167,15 @@ def _baseline_expectations(
     head_lock: TheseusLock,
     *,
     repo: str,
-    expected_package: str,
-    expected_repository: str,
-    bootstrap_baseline_commit: str | None,
-    bootstrap_path_map: Mapping[str, str] | None,
-    bootstrap_reviewers: Sequence[str],
+    rules: PromotionRules,
+    approval_comments: Iterable[Mapping[str, Any]],
     is_ancestor: AncestorCheck | None,
     base_sha: str | None,
 ) -> tuple[tuple[str, str, bool] | None, list[str]]:
     reasons: list[str] = []
-    if head_lock.package != expected_package:
+    if head_lock.package != rules.package:
         reasons.append("theseus lock package does not match consumer policy")
-    if head_lock.repository != expected_repository:
+    if head_lock.repository != rules.repository:
         reasons.append("theseus lock repository does not match consumer policy")
     if base_lock is not None:
         if head_lock.bootstrap is not None:
@@ -1166,9 +1189,8 @@ def _baseline_expectations(
         repo=repo,
         base_sha=base_sha,
         is_ancestor=is_ancestor,
-        bootstrap_baseline_commit=bootstrap_baseline_commit,
-        bootstrap_path_map=bootstrap_path_map,
-        bootstrap_reviewers=bootstrap_reviewers,
+        rules=rules,
+        approval_comments=approval_comments,
     )
     reasons.extend(bootstrap_reasons)
     if head_lock.bootstrap is None:
@@ -1235,12 +1257,8 @@ def refusals(
     complete: bool = True,
     base_time: datetime | None = None,
     oracle_login: str = "benchbox-oracle",
-    expected_package: str = "theseus-reviewer",
-    expected_repository: str = "BenchBox-dev/theseus",
-    allowed_artifact_hosts: Sequence[str] = DEFAULT_ALLOWED_ARTIFACT_HOSTS,
-    bootstrap_baseline_commit: str | None = None,
-    bootstrap_path_map: Mapping[str, str] | None = None,
-    bootstrap_reviewers: Sequence[str] = ("joeharris76",),
+    rules: PromotionRules,
+    comments: Sequence[Mapping[str, Any]] = (),
     is_ancestor: AncestorCheck | None = None,
     base_sha: str | None = None,
     matcher_sha256_at_head: str | None = None,
@@ -1261,18 +1279,15 @@ def refusals(
         return False, []
     reasons = [] if complete else ["the pull request's file list is incomplete, so promotion scope cannot be verified"]
     try:
-        validate_lock_urls(head_lock, allowed_artifact_hosts)
+        validate_lock_policy(head_lock, rules)
     except PromotionError as exc:
         reasons.append(str(exc))
     expected, baseline_reasons = _baseline_expectations(
         base_lock,
         head_lock,
         repo=repo,
-        expected_package=expected_package,
-        expected_repository=expected_repository,
-        bootstrap_baseline_commit=bootstrap_baseline_commit,
-        bootstrap_path_map=bootstrap_path_map,
-        bootstrap_reviewers=bootstrap_reviewers,
+        rules=rules,
+        approval_comments=comments,
         is_ancestor=is_ancestor,
         base_sha=base_sha,
     )

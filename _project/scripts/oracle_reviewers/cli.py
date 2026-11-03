@@ -563,6 +563,18 @@ def _status_mismatch(previous: Mapping[str, Any]) -> str:
     )
 
 
+def _ci_lock_text(repo: str, ref: str) -> str | None:
+    try:
+        return github._gh(
+            f"repos/{repo}/contents/{promotion.LOCK_PATH}?ref={ref}",
+            accept="application/vnd.github.raw",
+        )
+    except github.GitHubError as exc:
+        if re.search(r"\(HTTP 404\)\s*$", str(exc)):
+            return None
+        raise
+
+
 def _load_ci_promotion(
     repo: str,
     plan: Mapping[str, Any],
@@ -574,21 +586,15 @@ def _load_ci_promotion(
     if lock_item is None and not promotion.has_planted_promotion_path(pr_paths):
         return None, None
     try:
-        base_lock_text = (
-            None
-            if lock_item is None or lock_item.status == "added"
-            else github._gh(
-                f"repos/{repo}/contents/{lock_item.previous_path or promotion.LOCK_PATH}?ref={plan['base_sha']}",
-                accept="application/vnd.github.raw",
-            )
-        )
-        head_lock_text = (
-            None
-            if lock_item is None or lock_item.removed or lock_item.path != promotion.LOCK_PATH
-            else github._gh(
-                f"repos/{repo}/contents/{promotion.LOCK_PATH}?ref={plan['head_sha']}",
-                accept="application/vnd.github.raw",
-            )
+        base_lock_text = _ci_lock_text(repo, plan["base_sha"])
+        head_lock_text = _ci_lock_text(repo, plan["head_sha"])
+        approval_comments = (
+            [
+                _comment_view(item)
+                for item in github.get_paginated(f"repos/{repo}/issues/{plan['pr']}/comments?per_page=100")
+            ]
+            if base_lock_text is None and head_lock_text is not None
+            else []
         )
         bundle = promotion.prepare_promotion(
             repo=repo,
@@ -599,12 +605,8 @@ def _load_ci_promotion(
             source_loader=promotion.default_source_loader(),
             is_ancestor=promotion.ci_ancestor_check(repo),
             pr_paths=pr_paths,
-            expected_package=policy.promotion.package,
-            expected_repository=policy.promotion.repository,
-            allowed_artifact_hosts=policy.promotion.allowed_artifact_hosts,
-            bootstrap_baseline_commit=policy.promotion.bootstrap_baseline_commit,
-            bootstrap_path_map=policy.promotion.bootstrap_path_map,
-            bootstrap_reviewers=policy.promotion.bootstrap_reviewers,
+            rules=policy.promotion,
+            approval_comments=approval_comments,
         )
         return bundle, None
     except (github.GitHubError, promotion.PromotionError) as exc:
@@ -793,6 +795,21 @@ def _git_show_text(root: Path, ref: str, path: str) -> str:
     return result.stdout
 
 
+def _git_lock_text(root: Path, ref: str) -> str | None:
+    import subprocess
+
+    result = subprocess.run(
+        ["git", "-C", str(root), "ls-tree", "-z", ref, "--", promotion.LOCK_PATH],
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise promotion.PromotionError(f"git ls-tree {ref[:12]}:{promotion.LOCK_PATH} failed")
+    if not result.stdout:
+        return None
+    return _git_show_text(root, ref, promotion.LOCK_PATH)
+
+
 def _resolve_promotion_bundle(
     plan: Mapping[str, Any], policy: Policy, inputs: RoundInputs
 ) -> tuple[promotion.PromotionBundle | None, str | None]:
@@ -805,16 +822,8 @@ def _resolve_promotion_bundle(
         return None, None
     local_root = Path(local_root_raw)
     try:
-        base_lock_text = (
-            None
-            if lock_item is None or lock_item.status == "added"
-            else _git_show_text(local_root, plan["base_sha"], lock_item.previous_path or promotion.LOCK_PATH)
-        )
-        head_lock_text = (
-            None
-            if lock_item is None or lock_item.removed or lock_item.path != promotion.LOCK_PATH
-            else _git_show_text(local_root, plan["head_sha"], promotion.LOCK_PATH)
-        )
+        base_lock_text = _git_lock_text(local_root, plan["base_sha"])
+        head_lock_text = _git_lock_text(local_root, plan["head_sha"])
         bundle = promotion.prepare_promotion(
             repo=plan["repo"],
             base_sha=plan["base_sha"],
@@ -824,12 +833,8 @@ def _resolve_promotion_bundle(
             source_loader=promotion.default_source_loader(local_git_root=local_root, local_consumer_repo=plan["repo"]),
             is_ancestor=promotion.local_ancestor_check(local_root),
             pr_paths=pr_paths,
-            expected_package=policy.promotion.package,
-            expected_repository=policy.promotion.repository,
-            allowed_artifact_hosts=policy.promotion.allowed_artifact_hosts,
-            bootstrap_baseline_commit=policy.promotion.bootstrap_baseline_commit,
-            bootstrap_path_map=policy.promotion.bootstrap_path_map,
-            bootstrap_reviewers=policy.promotion.bootstrap_reviewers,
+            rules=policy.promotion,
+            approval_comments=None,
         )
         return bundle, None
     except promotion.PromotionError as exc:

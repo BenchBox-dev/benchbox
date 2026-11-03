@@ -198,3 +198,50 @@ def test_a_plan_carries_the_hash_pinned_for_the_running_platform(
     assert cli._base_plan(policy, "o/r", 7, "x")["omp_sha256"] == _raw()["omp"]["builds"]["linux-x64"]["sha256"]
     monkeypatch.setattr(omp_pin, "current_platform", lambda: "plan9-mips")
     assert cli._base_plan(policy, "o/r", 7, "x")["omp_sha256"] == ""
+
+
+def test_promotion_dependency_pins_default_to_deny_all_and_parse_exact_hashes() -> None:
+    raw = _raw()
+    raw["promotion"] = {}
+    assert parse_policy(raw).promotion.dependencies == {}
+    raw["promotion"]["dependencies"] = {"my-package==1.2.3": "a" * 64}
+    assert parse_policy(raw).promotion.dependencies == {"my-package==1.2.3": "a" * 64}
+
+
+@pytest.mark.parametrize(
+    "dependencies",
+    [
+        None,
+        [],
+        {"PyYAML==6.0.3": "a" * 64},
+        {"my_package==1.2.3": "a" * 64},
+        {"my.package==1.2.3": "a" * 64},
+        {"pyyaml>=6": "a" * 64},
+        {"pyyaml==": "a" * 64},
+        {"pyyaml==6.0.3": "A" * 64},
+        {"pyyaml==6.0.3": "a" * 63},
+        {"pyyaml==6.0.3": 123},
+    ],
+)
+def test_invalid_promotion_dependency_pins_are_rejected(dependencies: Any) -> None:
+    raw = _raw()
+    raw["promotion"] = {"dependencies": dependencies}
+    with pytest.raises(PolicyError, match="promotion dependencies"):
+        parse_policy(raw)
+
+
+@pytest.mark.parametrize("key", ["bootstrap_reviewers", "allowed_artifact_hosts"])
+@pytest.mark.parametrize("value", [[], None, ""])
+def test_explicit_empty_promotion_allowlists_do_not_restore_defaults(key: str, value: Any) -> None:
+    raw = _raw()
+    raw["promotion"] = {key: value}
+    with pytest.raises(PolicyError, match=key):
+        parse_policy(raw)
+
+
+def test_missing_promotion_allowlists_keep_defaults() -> None:
+    raw = _raw()
+    raw["promotion"] = {}
+    rules = parse_policy(raw).promotion
+    assert rules.bootstrap_reviewers == ("joeharris76",)
+    assert "github.com" in rules.allowed_artifact_hosts

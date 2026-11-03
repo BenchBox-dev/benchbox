@@ -9,11 +9,12 @@ import re
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from datetime import datetime
 from typing import Any, TypeVar
 
 from inert_paths import is_inert_path
+from oracle_reviewers.policy import PromotionRules
 from soundness_paths import is_soundness_path
 
 ORACLE_LOGIN = "benchbox-oracle"
@@ -543,17 +544,8 @@ def fetch_promotion_refusals(
     *,
     statuses: Iterable[dict[str, Any]] = (),
     oracle_login: str = ORACLE_LOGIN,
-    expected_package: str = "theseus-reviewer",
-    expected_repository: str = "BenchBox-dev/theseus",
-    allowed_artifact_hosts: tuple[str, ...] = (
-        "github.com",
-        "objects.githubusercontent.com",
-        "release-assets.githubusercontent.com",
-        "files.pythonhosted.org",
-    ),
-    bootstrap_baseline_commit: str | None = None,
-    bootstrap_path_map: dict[str, str] | None = None,
-    bootstrap_reviewers: tuple[str, ...] = ("joeharris76",),
+    rules: PromotionRules,
+    comments: Sequence[dict[str, Any]] = (),
 ) -> tuple[bool, list[str]]:
     from oracle_reviewers import promotion
 
@@ -593,12 +585,8 @@ def fetch_promotion_refusals(
         complete=complete,
         base_time=base_time,
         oracle_login=oracle_login,
-        expected_package=expected_package,
-        expected_repository=expected_repository,
-        allowed_artifact_hosts=allowed_artifact_hosts,
-        bootstrap_baseline_commit=bootstrap_baseline_commit,
-        bootstrap_path_map=bootstrap_path_map,
-        bootstrap_reviewers=bootstrap_reviewers,
+        rules=rules,
+        comments=comments,
         is_ancestor=_token_ancestor_check(token, repo),
         base_sha=pull["base"].get("sha"),
         matcher_sha256_at_head=matcher_sha256,

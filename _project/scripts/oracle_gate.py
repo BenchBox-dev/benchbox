@@ -33,6 +33,7 @@ from oracle_review_check import (
     fetch_text,
     path_matcher,
 )
+from oracle_reviewers.policy import PromotionRules
 
 GATE_CONTEXT = "oracle-gate"
 GATED_BASE = "develop"
@@ -132,23 +133,13 @@ def load_policy_rules() -> tuple[tuple[str, ...], tuple[str, ...]]:
         raise CheckError(f"cannot load the review policy: {exc}") from exc
 
 
-def load_promotion_policy(
-    token: str, repo: str, base_ref: str
-) -> tuple[str, str, tuple[str, ...], str | None, dict[str, str], tuple[str, ...]]:
+def load_promotion_policy(token: str, repo: str, base_ref: str) -> PromotionRules:
     try:
         import yaml
         from oracle_reviewers.policy import parse_policy
 
         raw = fetch_text(token, repo, ".github/oracle-reviewers.yml", base_ref)
-        promo = parse_policy(yaml.safe_load(raw)).promotion
-        return (
-            promo.package,
-            promo.repository,
-            promo.allowed_artifact_hosts,
-            promo.bootstrap_baseline_commit,
-            dict(promo.bootstrap_path_map),
-            promo.bootstrap_reviewers,
-        )
+        return parse_policy(yaml.safe_load(raw)).promotion
     except Exception as exc:
         raise CheckError(f"cannot load the base review policy: {exc}") from exc
 
@@ -182,12 +173,6 @@ def evaluate(repo: str, pr: int, token: str) -> tuple[str, int, str]:
         bump = fetch_bump_refusals(token, repo, pull, files, len(items), comments)
         from oracle_reviewers import promotion
 
-        default_hosts = (
-            "github.com",
-            "objects.githubusercontent.com",
-            "release-assets.githubusercontent.com",
-            "files.pythonhosted.org",
-        )
         promo_policy = (
             load_promotion_policy(token, repo, pull["base"].get("sha") or pull["base"]["ref"])
             if (
@@ -195,7 +180,7 @@ def evaluate(repo: str, pr: int, token: str) -> tuple[str, int, str]:
                 or promotion.has_planted_promotion_path(files)
                 or len(items) < pull["changed_files"]
             )
-            else ("theseus-reviewer", "BenchBox-dev/theseus", default_hosts, None, {}, ("joeharris76",))
+            else PromotionRules()
         )
         is_promotion, promo = fetch_promotion_refusals(
             token,
@@ -206,12 +191,8 @@ def evaluate(repo: str, pr: int, token: str) -> tuple[str, int, str]:
             reviews,
             base_date,
             statuses=statuses,
-            expected_package=promo_policy[0],
-            expected_repository=promo_policy[1],
-            allowed_artifact_hosts=promo_policy[2],
-            bootstrap_baseline_commit=promo_policy[3],
-            bootstrap_path_map=promo_policy[4],
-            bootstrap_reviewers=promo_policy[5],
+            rules=promo_policy,
+            comments=comments,
         )
         status, message = decide(
             head_sha,

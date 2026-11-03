@@ -44,7 +44,7 @@ def _build_wheel(package: str, version: str, source_tree: dict[str, bytes]) -> t
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
         for name, content in sorted(entries.items()):
-            zf.writestr(name, content)
+            zf.writestr(zipfile.ZipInfo(name), content)
     raw = buf.getvalue()
     return raw, hashlib.sha256(raw).hexdigest()
 
@@ -119,10 +119,15 @@ def test_one_line_lock_bump_verifies_wheel_sources_requires_every_upstream_read_
     old_hash, old_art, old_urls, _, deps = _register_release(harness, "0.1.0", OLD_COMMIT, old_files)
     new_hash, new_art, new_urls, _, _ = _register_release(harness, "0.2.0", NEW_COMMIT, new_files)
     delta_hash = promotion.compute_delta_sha256(old_files, new_files)
+    policy_data = yaml.safe_load(harness.policy_file.read_text(encoding="utf-8"))
+    policy_data.setdefault("promotion", {})["dependencies"] = {"pyyaml==6.0.3": deps[0]["sha256"]}
+    dumped_policy = yaml.safe_dump(policy_data, sort_keys=False)
+    harness.policy_file.write_text(dumped_policy, encoding="utf-8")
 
     initial_delta = promotion.compute_delta_sha256({}, old_files)
     harness.write(
         {
+            ".github/oracle-reviewers.yml": dumped_policy,
             promotion.LOCK_PATH: _lock_json(
                 version="0.1.0",
                 source_commit=OLD_COMMIT,
@@ -131,7 +136,7 @@ def test_one_line_lock_bump_verifies_wheel_sources_requires_every_upstream_read_
                 artifact_urls=old_urls,
                 dependencies=deps,
                 delta_sha256=initial_delta,
-            )
+            ),
         },
         "seed theseus lock",
     )
@@ -162,6 +167,36 @@ def test_one_line_lock_bump_verifies_wheel_sources_requires_every_upstream_read_
     assert tampered_run.plan["decision"] == "hold"
     assert "bytes do not match the reviewed upstream source tree" in tampered_run.plan["decision_reason"]
     assert harness.gate(10, tampered_head).code == 3
+
+    malicious_dependency, malicious_digest = _build_wheel(
+        "pyyaml", "6.0.3", {"src/pyyaml/__init__.py": b"BACKDOOR = True\n"}
+    )
+    malicious_url = "https://files.pythonhosted.org/packages/pyyaml/malicious.whl"
+    harness.github.add_https_asset(malicious_url, malicious_dependency)
+    malicious_lock = _lock_json(
+        version="0.2.0",
+        source_commit=NEW_COMMIT,
+        source_sha256=new_hash,
+        artifact_sha256=new_art,
+        artifact_urls=new_urls,
+        dependencies=[{"name": "pyyaml", "version": "6.0.3", "sha256": malicious_digest, "urls": [malicious_url]}],
+        delta_sha256=delta_hash,
+    )
+    attacker_policy = yaml.safe_load(dumped_policy)
+    attacker_policy["promotion"]["dependencies"]["pyyaml==6.0.3"] = malicious_digest
+    malicious_head = harness.branch(
+        "feat/untrusted-dependency",
+        {
+            promotion.LOCK_PATH: malicious_lock,
+            ".github/oracle-reviewers.yml": yaml.safe_dump(attacker_policy, sort_keys=False),
+        },
+        "attempt dependency pin self-authorization",
+    )
+    harness.github.open_pull(11, "feat/untrusted-dependency")
+    malicious_run = harness.review(11)
+    assert malicious_run.plan["decision"] == "hold"
+    assert "not pinned in the base review policy" in malicious_run.plan["decision_reason"]
+    assert harness.gate(11, malicious_head).code == 3
 
     updated_lock = _lock_json(
         version="0.2.0",
@@ -278,7 +313,7 @@ def test_one_line_lock_bump_verifies_wheel_sources_requires_every_upstream_read_
     assert harness.github.statuses[shipped_head][-1]["context"] == "oracle-gate"
     assert harness.github.statuses[shipped_head][-1]["state"] == "success"
 
-    harness.write({"docs/note.md": "advance develop\n"}, "advance develop")
+    harness.write({"notes/develop.md": "advance develop\n"}, "advance develop")
     git(harness.repo, "switch", "--quiet", "feat/promote-theseus")
     git(harness.repo, "rebase", "--quiet", "develop")
     rebased_head = git(harness.repo, "rev-parse", "HEAD")
@@ -315,7 +350,7 @@ def test_first_promotion_enforces_policy_pinned_bootstrap_baseline_and_removed_u
         },
         "record benchbox baseline",
     )
-    wrong_baseline_sha = harness.write({"docs/other.md": "later\n"}, "advance develop")
+    wrong_baseline_sha = harness.write({"notes/other.md": "later\n"}, "advance develop")
     path_map = {"_project/scripts/oracle_reviewers": "src/theseus_reviewer"}
     policy_data = yaml.safe_load((harness.repo / ".github/oracle-reviewers.yml").read_text(encoding="utf-8"))
     policy_data["promotion"] = {
@@ -325,9 +360,6 @@ def test_first_promotion_enforces_policy_pinned_bootstrap_baseline_and_removed_u
         "bootstrap_path_map": path_map,
         "bootstrap_reviewers": ["joeharris76"],
     }
-    dumped_policy = yaml.safe_dump(policy_data, sort_keys=False)
-    harness.policy_file.write_text(dumped_policy, encoding="utf-8")
-    harness.write({".github/oracle-reviewers.yml": dumped_policy}, "pin bootstrap")
 
     baseline_tree = promotion._git_archive_tree(harness.repo, baseline_sha)
     mapped_baseline = promotion.apply_path_map(baseline_tree, path_map)
@@ -338,6 +370,10 @@ def test_first_promotion_enforces_policy_pinned_bootstrap_baseline_and_removed_u
         "src/theseus_reviewer/added.py": b"EXTRA = True\n",
     }
     new_hash, new_art, new_urls, _, deps = _register_release(harness, "0.1.0", NEW_COMMIT, new_files)
+    policy_data["promotion"]["dependencies"] = {"pyyaml==6.0.3": deps[0]["sha256"]}
+    dumped_policy = yaml.safe_dump(policy_data, sort_keys=False)
+    harness.policy_file.write_text(dumped_policy, encoding="utf-8")
+    harness.write({".github/oracle-reviewers.yml": dumped_policy}, "pin bootstrap and dependency")
     delta_hash = promotion.compute_delta_sha256(mapped_baseline, new_files)
 
     forged_lock = _lock_json(
@@ -383,6 +419,23 @@ def test_first_promotion_enforces_policy_pinned_bootstrap_baseline_and_removed_u
     )
     head = harness.branch("feat/first-theseus-cutover", {promotion.LOCK_PATH: first_lock}, "add first lock")
     harness.github.open_pull(3, "feat/first-theseus-cutover")
+    unapproved = harness.review(3)
+    assert unapproved.plan["decision"] == "hold"
+    assert "unedited pull request comment" in unapproved.plan["decision_reason"]
+    assert harness.gate(3, head).code == 3
+    harness.gh(
+        "bootstrap-approval",
+        [
+            "api",
+            "--method",
+            "POST",
+            f"repos/{SLUG}/issues/3/comments",
+            "-f",
+            f"body={promotion.bootstrap_approval_line(promotion.parse_lock(first_lock))}",
+        ],
+        harness.base_env(),
+        OWNER_TOKEN,
+    )
 
     reads_without_removed = [
         promotion.LOCK_PATH,

@@ -9,17 +9,30 @@ from typing import Any
 
 import pytest
 
-from _project.scripts.oracle_reviewers import promotion, protocol
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
-if str(REPO_ROOT / "_project/scripts") not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT / "_project/scripts"))
-gate = importlib.import_module("_project.scripts.oracle_review_check")
-sys.modules["oracle_review_check"] = gate
-oracle_gate = importlib.import_module("_project.scripts.oracle_gate")
+try:
+    from _project.scripts.oracle_reviewers import promotion, protocol
+    from _project.scripts.oracle_reviewers.policy import PromotionRules
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+    if str(REPO_ROOT / "_project/scripts") not in sys.path:
+        sys.path.insert(0, str(REPO_ROOT / "_project/scripts"))
+    gate = importlib.import_module("_project.scripts.oracle_review_check")
+    sys.modules["oracle_review_check"] = gate
+    oracle_gate = importlib.import_module("_project.scripts.oracle_gate")
+    HAVE_ORACLE = True
+except (ImportError, ModuleNotFoundError):
+    HAVE_ORACLE = False
+    promotion: Any = None
+    protocol: Any = None
+    PromotionRules: Any = None
+    gate: Any = None
+    oracle_gate: Any = None
 
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.fast,
+    pytest.mark.skipif(not HAVE_ORACLE, reason="_project scripts are not in this checkout (release tree)"),
+]
 BASE_SHA = "1" * 40
 HEAD = "a" * 40
 OTHER_HEAD = "b" * 40
@@ -96,7 +109,7 @@ HEAD_LOCK = _lock_text(
     artifact_sha256=NEW_ART_HASH,
     delta_sha256=DELTA_HASH,
 )
-HEAD_LOCK_DIGEST = promotion.lock_digest(promotion.parse_lock(HEAD_LOCK))
+HEAD_LOCK_DIGEST = promotion.lock_digest(promotion.parse_lock(HEAD_LOCK)) if promotion is not None else ""
 
 
 def _promo_dict(lock_text: str = HEAD_LOCK, **overrides: Any) -> dict[str, Any]:
@@ -108,7 +121,7 @@ def _promo_dict(lock_text: str = HEAD_LOCK, **overrides: Any) -> dict[str, Any]:
         "old_artifact_sha256": OLD_ART_HASH,
         "new_artifact_sha256": NEW_ART_HASH,
         "delta_sha256": DELTA_HASH,
-        "lock_sha256": promotion.lock_digest(promotion.parse_lock(lock_text)),
+        "lock_sha256": promotion.lock_digest(promotion.parse_lock(lock_text)) if promotion is not None else "",
         "bootstrap": False,
     }
     return {**base, **overrides}
@@ -117,11 +130,11 @@ def _promo_dict(lock_text: str = HEAD_LOCK, **overrides: Any) -> dict[str, Any]:
 def _review(
     *,
     head_sha: str = HEAD,
-    decision: str = protocol.SHIP,
+    decision: str = protocol.SHIP if protocol is not None else "SHIP",
     open_defects: list[dict[str, Any]] | None = None,
     promo: dict[str, Any] | None = None,
     carried: bool = False,
-    kind: str = protocol.FIRST,
+    kind: str = protocol.FIRST if protocol is not None else "FIRST",
     run_uuid: str = RUN,
     login: str = ORACLE,
     user_type: str = "Bot",
@@ -130,7 +143,7 @@ def _review(
     state_header: str = "success",
 ) -> dict[str, Any]:
     record: dict[str, Any] = {
-        "v": protocol.MARKER_VERSION,
+        "v": protocol.MARKER_VERSION if protocol is not None else 1,
         "cycle": 1,
         "round": 1,
         "kind": kind,
@@ -152,7 +165,7 @@ def _review(
     body = (
         f"### oracle-verdict: {state_header} for `{head_sha}`\n\n"
         f"Decision: **{decision}**.\n\n"
-        f"{protocol.encode_marker(record)}"
+        f"{protocol.encode_marker(record) if protocol is not None else ''}"
     )
     return {
         "id": 10,
@@ -215,6 +228,7 @@ def _evaluate_gate(
     bootstrap_baseline_commit: str | None = None,
     bootstrap_path_map: dict[str, str] | None = None,
     bootstrap_reviewers: tuple[str, ...] = ("joeharris76",),
+    dependencies: dict[str, str] | None = None,
     force_exempt_matcher: bool = False,
 ) -> tuple[int, str]:
     chosen_files = [promotion.LOCK_PATH] if files is None else files
@@ -242,9 +256,13 @@ def _evaluate_gate(
         len(chosen_files),
         used_reviews,
         statuses=used_statuses,
-        bootstrap_baseline_commit=bootstrap_baseline_commit,
-        bootstrap_path_map=bootstrap_path_map,
-        bootstrap_reviewers=bootstrap_reviewers,
+        rules=PromotionRules(
+            bootstrap_baseline_commit=bootstrap_baseline_commit,
+            bootstrap_path_map=bootstrap_path_map or {},
+            bootstrap_reviewers=bootstrap_reviewers,
+            dependencies={"pyyaml==6.0.3": "f" * 64} if dependencies is None else dependencies,
+        ),
+        comments=[] if comments is None else comments,
     )
     matcher = (
         (lambda _f: False)
@@ -330,7 +348,10 @@ def test_standin_without_oracle_review_cannot_bypass_promotion(monkeypatch: pyte
         ({"login": "other-app[bot]", "promo": _promo_dict()}, "no unedited oracle promotion review"),
         ({"login": "joeharris76", "user_type": "User", "promo": _promo_dict()}, "no unedited oracle promotion review"),
         ({"last_edited_at": STATUS_AT, "promo": _promo_dict()}, "edited after submission"),
-        ({"carried": True, "kind": protocol.CARRY, "promo": _promo_dict()}, "cannot be carried"),
+        (
+            {"carried": True, "kind": protocol.CARRY if protocol is not None else "carry", "promo": _promo_dict()},
+            "cannot be carried",
+        ),
     ],
 )
 def test_wrong_head_hashes_attester_edit_or_carry_is_refused(
@@ -454,6 +475,15 @@ def test_first_promotion_accepts_approved_bootstrap_baseline_and_forbids_later_b
         base_lock=None,
         head_lock=first_lock,
         reviews=[_review(promo=first_promo)],
+        comments=[
+            {
+                "login": "joeharris76",
+                "user_type": "User",
+                "created_at": SUBMITTED_AT,
+                "updated_at": SUBMITTED_AT,
+                "body": promotion.bootstrap_approval_line(promotion.parse_lock(first_lock)),
+            }
+        ],
         ancestor=True,
         bootstrap_baseline_commit=BASELINE_COMMIT,
         bootstrap_path_map=approved_map,
@@ -528,3 +558,97 @@ def test_fork_promotion_and_vendored_matcher_drift_are_refused(monkeypatch: pyte
     )
     assert drift_status == gate.WAITING
     assert "vendored matcher" in drift_msg
+
+
+@pytest.mark.parametrize("pins", [{}, {"pyyaml==6.0.3": "0" * 64}, {"pyyaml==6.0.2": "f" * 64}])
+def test_ship_receipt_cannot_authorize_untrusted_dependency(
+    monkeypatch: pytest.MonkeyPatch, pins: dict[str, str]
+) -> None:
+    status, message = _evaluate_gate(
+        monkeypatch,
+        dependencies=pins,
+        reviews=[_review(promo=_promo_dict())],
+    )
+    assert status == gate.WAITING
+    assert "not pinned in the base review policy" in message
+
+
+@pytest.mark.parametrize(
+    "override",
+    [
+        None,
+        {"login": "attacker"},
+        {"user_type": "Bot"},
+        {"updated_at": STATUS_AT},
+        {"updated_at": None},
+        {"created_at": None},
+        {"body": "Theseus bootstrap approval: source=" + OTHER_HEAD + " lock=" + "0" * 64},
+        {"wrong_source": True},
+        {"wrong_lock": True},
+    ],
+)
+def test_bootstrap_ship_receipt_cannot_replace_authenticated_exact_lock_approval(
+    monkeypatch: pytest.MonkeyPatch, override: dict[str, Any] | None
+) -> None:
+    path_map = {"_project/scripts/oracle_reviewers": "src/theseus_reviewer"}
+    payload = json.loads(HEAD_LOCK)
+    payload["bootstrap"] = {
+        "baseline_repo": "BenchBox-dev/BenchBox",
+        "baseline_commit": BASELINE_COMMIT,
+        "baseline_source_sha256": OLD_SRC_HASH,
+        "path_map": path_map,
+        "reviewer": "joeharris76",
+        "approved_head": NEW_SRC_COMMIT,
+    }
+    lock_text = json.dumps(payload)
+    approval = {
+        "login": "joeharris76",
+        "user_type": "User",
+        "created_at": SUBMITTED_AT,
+        "updated_at": SUBMITTED_AT,
+        "body": promotion.bootstrap_approval_line(promotion.parse_lock(lock_text)),
+    }
+    if override is not None:
+        approval.update(override)
+        if override.get("wrong_source"):
+            approval["body"] = approval["body"].replace(NEW_SRC_COMMIT, OTHER_HEAD)
+        if override.get("wrong_lock"):
+            approval["body"] = approval["body"].replace(
+                promotion.lock_digest(promotion.parse_lock(lock_text)), "0" * 64
+            )
+    status, message = _evaluate_gate(
+        monkeypatch,
+        base_lock=None,
+        head_lock=lock_text,
+        reviews=[
+            _review(
+                promo=_promo_dict(
+                    lock_text=lock_text,
+                    old_artifact_sha256=promotion.BOOTSTRAP_ARTIFACT_SHA256,
+                    bootstrap=True,
+                )
+            )
+        ],
+        comments=[] if override is None else [approval],
+        bootstrap_baseline_commit=BASELINE_COMMIT,
+        bootstrap_path_map=path_map,
+    )
+    assert status == gate.WAITING
+    assert "unedited pull request comment" in message
+
+
+def test_hosted_promotion_policy_comes_from_exact_base_commit(monkeypatch: pytest.MonkeyPatch) -> None:
+    import yaml
+
+    raw = yaml.safe_load((REPO_ROOT / ".github/oracle-reviewers.yml").read_text(encoding="utf-8"))
+    raw["promotion"] = {"dependencies": {"pyyaml==6.0.3": "f" * 64}}
+    requests: list[tuple[str, str, str]] = []
+
+    def trusted_policy(_token: str, repo: str, path: str, ref: str) -> str:
+        requests.append((repo, path, ref))
+        return yaml.safe_dump(raw)
+
+    monkeypatch.setattr(oracle_gate, "fetch_text", trusted_policy)
+    rules = oracle_gate.load_promotion_policy("tok", "BenchBox-dev/BenchBox", BASE_SHA)
+    assert rules.dependencies == {"pyyaml==6.0.3": "f" * 64}
+    assert requests == [("BenchBox-dev/BenchBox", ".github/oracle-reviewers.yml", BASE_SHA)]

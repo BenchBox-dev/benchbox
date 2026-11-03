@@ -111,6 +111,7 @@ class PromotionRules:
     bootstrap_path_map: Mapping[str, str] = field(default_factory=dict)
     bootstrap_reviewers: tuple[str, ...] = ("joeharris76",)
     allowed_artifact_hosts: tuple[str, ...] = DEFAULT_ALLOWED_ARTIFACT_HOSTS
+    dependencies: Mapping[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -241,20 +242,34 @@ def parse_policy(data: Mapping[str, Any]) -> Policy:
         _require(clean_src not in parsed_path_map, "promotion bootstrap_path_map has duplicate source paths")
         parsed_path_map[clean_src] = dst_val.strip("/")
     promo_reviewers = _str_tuple(
-        promotion_raw.get("bootstrap_reviewers") or ["joeharris76"],
+        promotion_raw.get("bootstrap_reviewers", ["joeharris76"]),
         "promotion bootstrap_reviewers",
     )
     _require(
         bool(promo_reviewers) and all(item.strip() for item in promo_reviewers), "bootstrap_reviewers cannot be empty"
     )
     allowed_hosts = _str_tuple(
-        promotion_raw.get("allowed_artifact_hosts") or list(DEFAULT_ALLOWED_ARTIFACT_HOSTS),
+        promotion_raw.get("allowed_artifact_hosts", list(DEFAULT_ALLOWED_ARTIFACT_HOSTS)),
         "promotion allowed_artifact_hosts",
     )
     _require(
         bool(allowed_hosts) and all(re.fullmatch(r"[a-z0-9][a-z0-9.-]*", host) is not None for host in allowed_hosts),
         "promotion allowed_artifact_hosts must be lowercase hostnames",
     )
+    raw_dependencies = promotion_raw.get("dependencies", {})
+    _require(isinstance(raw_dependencies, Mapping), "promotion dependencies must be a mapping")
+    dependencies: dict[str, str] = {}
+    for requirement, digest in raw_dependencies.items():
+        _require(
+            isinstance(requirement, str)
+            and re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*==[A-Za-z0-9][A-Za-z0-9.!+_-]*", requirement) is not None,
+            "promotion dependencies keys must be normalized-name==version",
+        )
+        _require(
+            isinstance(digest, str) and re.fullmatch(r"[0-9a-f]{64}", digest) is not None,
+            "promotion dependencies values must be lowercase sha256 digests",
+        )
+        dependencies[requirement] = digest
     policy = Policy(
         mode=data.get("mode", ""),
         status_context=data.get("status_context", ""),
@@ -291,6 +306,7 @@ def parse_policy(data: Mapping[str, Any]) -> Policy:
             bootstrap_path_map=parsed_path_map,
             bootstrap_reviewers=promo_reviewers,
             allowed_artifact_hosts=allowed_hosts,
+            dependencies=dependencies,
         ),
     )
     _require(policy.mode in ("shadow", "enforce"), "mode must be shadow or enforce")
