@@ -170,12 +170,21 @@ def _section_words(body: str) -> int:
 def _bullet_texts(body: str) -> list[str]:
     bullets: list[list[str]] = []
     current: list[str] | None = None
+    after_blank = False
     for line in body.splitlines():
         if _BULLET_RE.match(line):
             current = [line.strip()[2:]]
             bullets.append(current)
-        elif current is not None and line.strip() and not line.lstrip().startswith("#"):
+            after_blank = False
+        elif not line.strip():
+            after_blank = True
+        elif (
+            current is not None
+            and not line.lstrip().startswith("#")
+            and (line.startswith((" ", "\t")) or not after_blank)
+        ):
             current.append(line.strip())
+            after_blank = False
         else:
             current = None
     return [" ".join(parts) for parts in bullets]

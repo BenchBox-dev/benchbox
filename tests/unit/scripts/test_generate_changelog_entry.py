@@ -270,6 +270,19 @@ class TestChangelogCurationGuard:
         assert not ok
         assert problems[0].startswith("1 bullet(s) exceed")
 
+    def test_indented_paragraph_after_a_blank_line_counts_toward_its_bullet(self, tmp_path: Path) -> None:
+        half = " ".join(["word"] * (generate_changelog_entry.MAX_BULLET_WORDS // 2 + 1))
+        self._write(tmp_path, f"## [0.5.1] - 2026-11-20\n\n### Fixed\n\n- {half}\n\n  {half}\n\n- A short fix.\n")
+        ok, problems = generate_changelog_entry.check_changelog_curation(tmp_path, "0.5.1")
+        assert not ok
+        assert problems[0].startswith("1 bullet(s) exceed")
+
+    def test_unindented_paragraph_after_a_blank_line_ends_the_bullet(self, tmp_path: Path) -> None:
+        half = " ".join(["word"] * (generate_changelog_entry.MAX_BULLET_WORDS // 2 + 1))
+        self._write(tmp_path, f"## [0.5.1] - 2026-11-20\n\n### Fixed\n\n- {half}\n\n{half}\n")
+        ok, problems = generate_changelog_entry.check_changelog_curation(tmp_path, "0.5.1")
+        assert ok, problems
+
     @pytest.mark.parametrize("version", ["0.4.2", "0.5.0rc3"])
     def test_word_ceilings_do_not_apply_before_0_5_0(self, tmp_path: Path, version: str) -> None:
         long_bullet = " ".join(["word"] * (generate_changelog_entry.MAX_BULLET_WORDS + 40))
