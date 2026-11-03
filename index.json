@@ -29153,6 +29153,16 @@
       "status": "done",
       "title": "Stop exporting TPC-H QphH@Size as official while refresh functions are missing"
     },
+    "tpch-refresh-checks-timing-per-decision-20261103": {
+      "claim": null,
+      "needs": [
+        "tpch-refresh-precheck-timing-decision-20261103",
+        "perf-tpch-rf1-bulk-load-20261031"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Apply the recorded decision on where RF1/RF2 database checks run relative to the refresh timer"
+    },
     "tpch-refresh-functions-in-power-and-throughput": {
       "claim": null,
       "needs": [
