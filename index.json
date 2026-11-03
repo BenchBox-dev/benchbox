@@ -29193,6 +29193,15 @@
       "status": "blocked",
       "title": "Prove TPC-H refresh functions on Redshift before re-enabling them"
     },
+    "tpch-refresh-stream-window-excludes-connect-20261103": {
+      "claim": null,
+      "needs": [
+        "tpc-measured-intervals-reference-20261103"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Start the TPC-H refresh stream window after its connection is open, matching the query streams"
+    },
     "tpch-skew-dataframe-sql-id-mapping": {
       "claim": null,
       "needs": [],
