@@ -19,6 +19,9 @@ _TRUE_VALUES = frozenset({"1", "true", "yes", "on"})
 
 MAX_CURATED_BULLETS = 45
 MAX_CURATED_LINES = 160
+MAX_CURATED_WORDS = 1500
+MAX_BULLET_WORDS = 60
+WORD_CEILINGS_FROM = "0.5.0"
 _PR_SUFFIX_RE = re.compile(r"\(#\d+\)\s*$")
 _BULLET_RE = re.compile(r"^\s*- \S")
 
@@ -136,7 +139,46 @@ def check_changelog_curation(source: Path, version: str) -> tuple[bool, list[str
     body_lines = len(body.splitlines())
     if body_lines > MAX_CURATED_LINES:
         problems.append(f"{body_lines} lines exceeds the {MAX_CURATED_LINES}-line curated ceiling")
+    if _word_ceilings_apply(version):
+        words = _section_words(body)
+        if words > MAX_CURATED_WORDS:
+            problems.append(f"{words} words exceeds the {MAX_CURATED_WORDS}-word curated ceiling")
+        long_bullets = [b for b in _bullet_texts(body) if len(b.split()) > MAX_BULLET_WORDS]
+        if long_bullets:
+            problems.append(
+                f"{len(long_bullets)} bullet(s) exceed the {MAX_BULLET_WORDS}-word bullet ceiling, "
+                f"e.g. {long_bullets[0][:70]!r} ({len(long_bullets[0].split())} words)"
+            )
     return (not problems), problems
+
+
+def _word_ceilings_apply(version: str) -> bool:
+    from packaging.version import InvalidVersion, Version
+
+    try:
+        return Version(version) >= Version(WORD_CEILINGS_FROM)
+    except InvalidVersion:
+        return True
+
+
+def _section_words(body: str) -> int:
+    return sum(len(line.split()) for line in body.splitlines() if not line.startswith("#")) - sum(
+        1 for line in body.splitlines() if _BULLET_RE.match(line)
+    )
+
+
+def _bullet_texts(body: str) -> list[str]:
+    bullets: list[list[str]] = []
+    current: list[str] | None = None
+    for line in body.splitlines():
+        if _BULLET_RE.match(line):
+            current = [line.strip()[2:]]
+            bullets.append(current)
+        elif current is not None and line.startswith((" ", "\t")) and line.strip():
+            current.append(line.strip())
+        else:
+            current = None
+    return [" ".join(parts) for parts in bullets]
 
 
 def _duplicate_headings(body: str) -> list[str]:
@@ -676,7 +718,8 @@ def compile_fragments(source: Path, version: str, release_date: str, dry_run: bo
     bullets = len([line for line in body.splitlines() if _BULLET_RE.match(line)])
     lines = len(body.splitlines())
     print(
-        f"  Updated {changelog}: [{version}] has {bullets}/{MAX_CURATED_BULLETS} bullets, {lines}/{MAX_CURATED_LINES} lines"
+        f"  Updated {changelog}: [{version}] has {bullets}/{MAX_CURATED_BULLETS} bullets, "
+        f"{lines}/{MAX_CURATED_LINES} lines, {_section_words(body)}/{MAX_CURATED_WORDS} words"
     )
     _print_coverage_report(source, previous_final)
     return True
@@ -746,7 +789,8 @@ def main() -> int:
         action="store_true",
         help=(
             "Check that the '## [VERSION]' section is curated (no raw commit subjects, "
-            f"no duplicate headings, at most {MAX_CURATED_BULLETS} bullets and {MAX_CURATED_LINES} lines), "
+            f"no duplicate headings, at most {MAX_CURATED_BULLETS} bullets, {MAX_CURATED_LINES} lines and "
+            f"{MAX_CURATED_WORDS} words, and no bullet over {MAX_BULLET_WORDS} words), "
             "then exit. Requires --version. Override with RELEASE_ALLOW_RAW_CHANGELOG=1."
         ),
     )
