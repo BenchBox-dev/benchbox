@@ -109,9 +109,6 @@
   "docs/reference/threat-model.md": [
     "tests/unit/docs/test_publication_architecture.py"
   ],
-  "tests/README.md": [
-    "tests/unit/test_standardized_test_commands.py"
-  ],
   "tests/fixtures/dev_loop_metrics/refresh_audit_sample.md": [
     "tests/unit/scripts/test_dev_loop_pr_metrics.py"
   ],
