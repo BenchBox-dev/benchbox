@@ -136,6 +136,22 @@ stage into shard jobs that run in parallel:
   source commit and the admitted distribution digest, the cross-scale floor is
   met by the summed clean pairs of the stage's shards, and the Docker start
   ordering holds against the latest shard completion of the previous stage.
+- A final tag may reuse its newest release candidate's UAT evidence. The
+  `uat-reuse` job (final tags only) checks, and records in its job summary,
+  that the candidate's `release-uat` job succeeded with green evidence for the
+  candidate commit and admitted digest, that the candidate commit is an
+  ancestor of the final tag commit, that `tests/uat`, `docker`, and
+  `.github/actions/release-uat-env` are unchanged and `uv.lock` differs only
+  in the `benchbox` version line, and that the candidate's wheel and sdist match
+  the final's member by member apart from `RECORD` and the lines that hold only
+  the version (see `docs/internal/release-artifacts.md`). When all hold the
+  stage jobs are skipped and `release-uat` re-runs `make uat-gate-check` over
+  the candidate's downloaded shard artifacts with the candidate's admitted
+  digest; if any condition fails the final runs the full stages. `publish` and
+  `install-matrix` are unchanged. The candidate's shard artifacts are kept 30
+  days, so tag the final within that window or expect a full UAT run; freeze
+  `tests/uat`, `docker`, and the environment action between the candidate and
+  the final.
 
 The shard assignment is the `matrix.include` list of each `uat-stage` job.
 `tests/uat/test_release_gate_shards.py` fails when a config's platform set and
