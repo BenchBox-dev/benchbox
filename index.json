@@ -19236,10 +19236,15 @@
       "title": "Load StarRocks Parquet via Stream Load, not executemany"
     },
     "perf-tpcdi-etl-bulk-paths-20261031": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-05T18:30:57Z",
+        "generation": "6c3471cc733944a4ad271f57b51c5ce3",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "TPC-DI ETL: replace executemany and iterrows row loops in the timed load and SCD phases"
     },
     "perf-tpcds-maintenance-set-based-20261031": {
