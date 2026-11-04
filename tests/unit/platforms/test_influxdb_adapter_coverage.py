@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -49,7 +48,7 @@ class TestInfluxAdapterCoverage:
         assert duration == 0.0
         assert meta and meta["skipped"] is True
 
-    def test_load_data_skips_without_write_batch(self, adapter, tmp_path):
+    def test_load_data_skips_without_write_table(self, adapter, tmp_path):
         conn = object()
         rows, duration, meta = adapter.load_data(benchmark=None, connection=conn, data_dir=tmp_path)
         assert rows == {}
@@ -59,21 +58,24 @@ class TestInfluxAdapterCoverage:
     def test_load_data_happy_path_parses_and_writes(self, adapter, tmp_path):
         csv_content = "time,hostname,usage_user,usage_system\n2026-01-01T00:00:00Z,h1,1.5,2\n"
         (tmp_path / "cpu.csv").write_text(csv_content)
+        seen = []
 
         class Conn:
-            def write_batch(
-                self, measurement, records, tag_columns, field_columns, timestamp_column, precision, batch_size
-            ):
-                assert measurement == "cpu"
-                assert tag_columns == ["hostname"]
-                assert records[0]["time"] == datetime(2026, 1, 1, 0, 0, tzinfo=records[0]["time"].tzinfo)
-                assert records[0]["usage_user"] == 1.5
-                assert records[0]["usage_system"] == 2.0
-                return len(records)
+            def write_table(self, measurement, table, tag_columns, field_columns, timestamp_column, **kwargs):
+                seen.append((measurement, table.to_pydict(), tag_columns, timestamp_column))
+                return table.num_rows
 
         with patch("benchbox.platforms.influxdb._dependencies.INFLUXDB3_AVAILABLE", True):
             rows, duration, meta = adapter.load_data(benchmark=None, connection=Conn(), data_dir=tmp_path)
 
+        assert seen == [
+            (
+                "cpu",
+                {"time": ["2026-01-01T00:00:00Z"], "hostname": ["h1"], "usage_user": ["1.5"], "usage_system": ["2"]},
+                ["hostname"],
+                "time",
+            )
+        ]
         assert rows["cpu"] == 1
         assert duration >= 0.0
         assert "cpu" in meta["tables_loaded"]
