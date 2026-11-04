@@ -28614,12 +28614,17 @@
       "title": "Enforce full-delta Theseus promotion review in BenchBox before extracting the reviewer"
     },
     "theseus-release-bootstrap-evidence-20261102": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-05T18:11:35Z",
+        "generation": "236a361911414b04af7ed747fe6c28ea",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f"
+      },
       "needs": [
         "theseus-freeze-final-parity-20261102"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Publish the parity-proven Theseus bytes and assemble independently approved first-promotion evidence"
     },
     "theseus-repository-governance-bootstrap-20261102": {
