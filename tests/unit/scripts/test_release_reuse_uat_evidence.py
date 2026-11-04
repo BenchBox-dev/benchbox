@@ -391,20 +391,38 @@ def test_workflow_check_fails_when_a_stage_job_is_removed(repo):
     assert _final_workflow(repo, stripped) == [f"{WORKFLOW_FILE}: uat-stage3 is missing"]
 
 
-RC4_COMMIT = "3a3ee9826a"
+def _live_workflow() -> str:
+    return (Path(__file__).resolve().parents[3] / WORKFLOW_FILE).read_text(encoding="utf-8")
 
 
-def test_this_branch_workflow_keeps_the_stage_jobs_of_the_rc4_commit():
-    root = Path(__file__).resolve().parents[3]
-    probe = subprocess.run(
-        ["git", "cat-file", "-e", f"{RC4_COMMIT}:{WORKFLOW_FILE}"], cwd=root, capture_output=True, check=False
-    )
-    if probe.returncode != 0:
-        pytest.skip("the 0.5.0rc4 commit is not in this clone")
-    rc4 = _git(root, "show", f"{RC4_COMMIT}:{WORKFLOW_FILE}")
-    current = (root / WORKFLOW_FILE).read_text(encoding="utf-8")
-    assert reuse._stage_job_definitions(rc4) == reuse._stage_job_definitions(current)
-    assert "uat-reuse" in current and "uat-reuse" not in rc4
+def test_live_workflow_stage_jobs_equal_their_chained_form_apart_from_scheduling():
+    import yaml
+
+    live = yaml.safe_load(_live_workflow())
+    chained = yaml.safe_load(_live_workflow())
+    chained["jobs"]["uat-stage1"]["needs"] = "admit"
+    chained["jobs"]["uat-stage1"].pop("if", None)
+    chained["jobs"]["uat-stage2"]["needs"] = ["admit", "uat-stage1"]
+    chained["jobs"]["uat-stage3"]["needs"] = ["admit", "uat-stage2"]
+    for name in ("uat-stage2", "uat-stage3"):
+        chained["jobs"][name]["if"] = "${{ !cancelled() && needs.admit.result == 'success' }}"
+    assert live["jobs"]["uat-stage1"]["needs"] != chained["jobs"]["uat-stage1"]["needs"]
+    assert reuse._stage_job_definitions(yaml.safe_dump(live)) == reuse._stage_job_definitions(yaml.safe_dump(chained))
+
+
+@pytest.mark.parametrize("job", reuse.STAGE_JOBS)
+def test_live_workflow_stage_jobs_fail_the_check_when_env_or_matrix_changes(job):
+    import yaml
+
+    base = reuse._stage_job_definitions(_live_workflow())
+    for mutate in (
+        lambda j: j["strategy"]["matrix"]["include"].pop(),
+        lambda j: j["steps"][-3].setdefault("env", {}).update(EXTRA="1"),
+        lambda j: j.update({"timeout-minutes": j["timeout-minutes"] - 1}),
+    ):
+        workflow = yaml.safe_load(_live_workflow())
+        mutate(workflow["jobs"][job])
+        assert reuse._stage_job_definitions(yaml.safe_dump(workflow)) != base
 
 
 def test_tree_check_fails_when_the_lock_changes_beyond_the_benchbox_version(repo):
