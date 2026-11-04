@@ -242,9 +242,9 @@ class TestIcebergMaintenanceCoverage:
         )
 
         assert affected == 2
-        merged = ops.catalog.load_table("default.merge_schema_tbl").scan().to_arrow()
+        merged = ops.catalog.load_table("default.merge_schema_tbl").scan().to_arrow().sort_by("id")
         assert merged.schema.field("amt").type == pa.decimal128(15, 2)
-        assert sorted(merged.column("id").to_pylist()) == [1, 2, 3, 4]
+        assert merged.column("id").to_pylist() == [1, 2, 3, 4]
         assert merged.column("amt").to_pylist() == [
             decimal.Decimal("10.50"),
             decimal.Decimal("20.25"),
