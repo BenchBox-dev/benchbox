@@ -19239,10 +19239,15 @@
       "title": "Native file loading for Firebolt Core and local runs"
     },
     "perf-library-loaders-and-datagen-rows-20261031": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-05T18:43:21Z",
+        "generation": "2f17fbf8aeb044909a0cc7471ea7e1c0",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Library-only loaders and data-gen post-processing use Python row loops"
     },
     "perf-pandas-df-loader-date-objects-20261031": {
