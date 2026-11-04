@@ -27441,6 +27441,15 @@
       "status": "open",
       "title": "Advance mechanical SQLGlot refreshes through protected fork and BenchBox merges"
     },
+    "sqlglot-e2e-reviewer-package-adoption": {
+      "claim": null,
+      "needs": [
+        "sqlglot-e2e-source-aware-adoption-review"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Deploy the source-aware SQLGlot reviewer through a verified Theseus package pin"
+    },
     "sqlglot-e2e-source-aware-adoption-review": {
       "claim": {
         "expires_at": "2026-11-05T21:09:53Z",

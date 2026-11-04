@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Owner-reviewed merged Theseus source is bound to exact version/source/workflow SHA; full suite/build/source-hash/parity and reproducibility evidence recorded.",
+    "Published wheel/retained URLs have identical verified bytes and declared SHA256 after explicit owner release approval; no candidate code received publishing credential.",
+    "BenchBox .github/theseus-lock.json and reusable workflow refs updated coherently with complete source/delta/hash evidence through normal independently reviewed PR.",
+    "Live deployed reviewer version supports SQLGlot source review; absent release/approval stays blocked with exact owner action, not falsely done."
+  ],
+  "context": "Approved 2026-11-04 by owner: create/review TODOs then fully implement the reviewed end-to-end SQLGlot proposal in dependency order. Delivery mode serial: cross-repository and review-policy-deployment boundaries cannot be certified by one integration batch. Fork CI only; independent semantics reviewed at BenchBox adoption (owner 2026-10-23, sqlglot-fork-review-h1-governance). No required fork review/App/auto-merge setting changes. Never bypass protection, hold, oracle, current-head CI or identity rules. No source execution with write/reviewer credentials; pin trusted controller code. No public release/PyPI, cloud spend, published bundle changes, waiver generation, automatic semantic repairs, golden/expected-difference edits or patch retirement. Merge commit for fork, existing pr-arm squash path for BenchBox. Each item closes only at its named merged/operational outcome; assertions, mocks or no-op dispatch do not substitute runtime proof. Named decision gates are hard stops, not discretionary skips.\nDiscovered during own-edit freshness TODO review: BenchBox #3942 removed local reviewer runtime. This explicit deployment dependency avoids concealing a third-repo release/pin prerequisite inside source implementation. Serial delivery. Source adapter currently being implemented in /Users/joe/Developer/theseus.wt-sqlglot-source-review; no release authorized yet.",
+  "description": "BenchBox now consumes hash-pinned Theseus rather than local reviewer sources. After the source-aware adapter merges under Theseus owner-review policy, deploy it by the existing reviewed package/release and BenchBox lock/workflow pin promotion, never patch an installed package or copy reviewer code back into BenchBox. Need exact merged source/workflow SHA, reproducible wheel/sdist, primary+retained immutable identical wheel assets, source/delta/wheel hashes and consumer lock binding.\n\nHard gates: Theseus CONTRIBUTING.md requires owner review of full source diff before merge while separate oracle absent; RELEASING.md requires merged main and owner-controlled public package publication. User approved prerequisite repository source work but explicitly retained package publication as an explicit release gate. Obtain exact-artifact publication approval only once artifacts/commit/version are known, or owner publishes; do not infer it from implementing batch. Consumer pin must land through existing source-promotion/current-head review, then live workflow uses correct package. Preserve all self-governance protections; no package revision can certify its own installation.",
+  "links": [
+    "https://github.com/joeharris76/theseus/blob/main/CONTRIBUTING.md",
+    "https://github.com/joeharris76/theseus/blob/main/RELEASING.md",
+    ".github/theseus-lock.json",
+    ".github/workflows/oracle-verdict.yml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ba4923b65d2bea2a5584a721",
+      "at": "2026-11-04T21:11:09Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "537259bca8a1488da0baac5a01497df7",
+      "session_id": "cf3fdc0e8210426f8ab8cc6664c384cd"
+    }
+  ]
+}
