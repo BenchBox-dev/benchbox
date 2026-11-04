@@ -368,20 +368,46 @@
       "terminal_outcome": "deliver"
     },
     "native-bulk-load-remainder": {
-      "accepted_members": {},
+      "accepted_members": {
+        "perf-tpcdi-etl-bulk-paths-20261031": "7752d3433d91797999e4ef87009805e74b841a84"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "perf-tpcdi-etl-bulk-paths-20261031": {
+          "accepted_head": "7752d3433d91797999e4ef87009805e74b841a84",
+          "changed_files": [
+            "benchbox/core/tpcdi/benchmark.py",
+            "benchbox/core/tpcdi/etl/pipeline.py",
+            "benchbox/core/tpcdi/etl/scd_processor.py",
+            "benchbox/core/tpcdi/etl/sql_backend.py",
+            "changelog.d/feat-native-bulk-load-remainder--perf-tpcdi-etl-bulk-paths-20261031.json",
+            "tests/unit/core/tpcdi/test_etl_scd_processor.py",
+            "tests/unit/core/tpcdi/test_tpcdi_bulk_load_parity.py"
+          ],
+          "integration_head": "e747b8f49e74fd6cd475854514156252e992918c",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/native-bulk-load-remainder",
-      "integration_head": "dff1efde16aed3e2c5f14ba539267f4ea2e59013",
+      "integration_head": "e747b8f49e74fd6cd475854514156252e992918c",
       "integration_log": [
         {
           "at": "2026-11-04T18:14:25Z",
           "head": "dff1efde16aed3e2c5f14ba539267f4ea2e59013",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-04T18:31:15Z",
+          "head": "e747b8f49e74fd6cd475854514156252e992918c",
+          "kind": "prepare",
+          "member": "perf-tpcdi-etl-bulk-paths-20261031",
+          "op_id": "11470381ade94a12af6e67deae8c3ab1",
+          "previous_head": "dff1efde16aed3e2c5f14ba539267f4ea2e59013",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-native-bulk-load-remainder",
@@ -19236,15 +19262,10 @@
       "title": "Load StarRocks Parquet via Stream Load, not executemany"
     },
     "perf-tpcdi-etl-bulk-paths-20261031": {
-      "claim": {
-        "expires_at": "2026-11-05T18:30:57Z",
-        "generation": "6c3471cc733944a4ad271f57b51c5ce3",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "TPC-DI ETL: replace executemany and iterrows row loops in the timed load and SCD phases"
     },
     "perf-tpcds-maintenance-set-based-20261031": {
