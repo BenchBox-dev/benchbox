@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -276,6 +277,7 @@ class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
     driver_isolation_capability = DriverIsolationCapability.FEASIBLE_CLIENT_ONLY
     plan_capture_phase_eligible = True
     supports_refresh_functions = True
+    supports_native_refresh_ingest = True
     default_service_port = 5432
     configure_session_is_tuning = True
 
@@ -661,6 +663,25 @@ class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
                 order.append(key)
             groups[key][2].append((data_file, strip_trailing))
         return [groups[key] for key in order]
+
+    def ingest_refresh_file(
+        self,
+        connection: Any,
+        table_name: str,
+        columns: Sequence[tuple[str, str]],
+        path: Path,
+    ) -> int:
+        dialect = CsvDialect(delimiter="|", has_header=False, null_marker=None, normalize_booleans=False, quote=None)
+        column_names = ", ".join(name for name, _ in columns)
+        copy_sql = _postgres_copy_sql(f"{table_name} ({column_names})", dialect, force_csv=True)
+        raw_connection = getattr(connection, "connection", connection)
+        with raw_connection.cursor() as cursor:
+            with prepare_local_load_file(path, dialect=dialect, strip_trailing_delim=True) as load_path:
+                with cursor.copy(copy_sql) as copy:
+                    with open(load_path, encoding="utf-8") as source:
+                        while chunk := source.read(65536):
+                            copy.write(chunk)
+            return max(cursor.rowcount, 0)
 
     def load_data(
         self,
