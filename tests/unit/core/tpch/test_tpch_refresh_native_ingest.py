@@ -176,6 +176,26 @@ def test_adapter_without_capability_keeps_values_statements(tmp_path: Path) -> N
     connection.commit.assert_called_once_with()
 
 
+def test_singlestore_stays_on_values_fallback(tmp_path: Path) -> None:
+    from benchbox.platforms.singlestore import SingleStoreAdapter
+
+    adapter = SingleStoreAdapter.__new__(SingleStoreAdapter)
+    assert SingleStoreAdapter.supports_refresh_functions is True
+    assert "supports_native_refresh_ingest" not in SingleStoreAdapter.__dict__
+    assert resolve_refresh_ingester(adapter) is None
+
+    connection = MagicMock()
+    connection.platform_adapter = adapter
+
+    assert apply_rf1(connection, _update_set(tmp_path)) == 2
+
+    statements = [call.args[0] for call in connection.execute.call_args_list]
+    assert statements[0] == "BEGIN"
+    assert statements[1].startswith("INSERT INTO orders (") and " VALUES (" in statements[1]
+    assert statements[2].startswith("INSERT INTO lineitem (") and " VALUES (" in statements[2]
+    assert not any("LOAD DATA" in statement.upper() for statement in statements)
+
+
 def test_native_rows_failure_rolls_back_and_raises(tmp_path: Path) -> None:
     update_set = _update_set(tmp_path)
     log: list[str] = []
