@@ -65,6 +65,32 @@ def _load_sf001_base(connection: TPCHConnection) -> dict[str, int]:
         shutil.rmtree(staging, ignore_errors=True)
 
 
+def _load_sf001_base_read_csv(connection: Any) -> dict[str, int]:
+    import shutil
+    import tempfile
+
+    from benchbox.core.tpch.generator import TPCHDataGenerator
+
+    staging = Path(tempfile.mkdtemp(prefix="tpch-base-"))
+    try:
+        TPCHDataGenerator(scale_factor=0.01, output_dir=staging, quiet=True).generate()
+        counts = {}
+        for table, filename in ((ORDERS, "orders.tbl"), (LINEITEM, "lineitem.tbl")):
+            columns = ", ".join(f"{column.name} {column.get_sql_type()}" for column in table.columns)
+            connection.execute(f"CREATE TABLE {table.name} ({columns})")
+            names = ", ".join(column.name for column in table.columns)
+            typed = ", ".join(f"'{column.name}': 'VARCHAR'" for column in table.columns)
+            connection.execute(
+                f"INSERT INTO {table.name} ({names}) SELECT {names} FROM read_csv('{staging / filename}', "
+                f"delim='|', header=false, auto_detect=false, null_padding=true, columns={{{typed}, '_trailing': 'VARCHAR'}})"
+            )
+            counts[table.name] = connection.execute(f"SELECT COUNT(*) FROM {table.name}").fetchone()[0]
+        connection.commit()
+        return counts
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
+
+
 def _file_row_count(path: Path) -> int:
     with path.open(encoding="utf-8") as handle:
         return sum(1 for _ in handle)
@@ -83,8 +109,10 @@ def _table_count(connection: TPCHConnection, table_name: str, where: str = "") -
     return connection.execute(query).fetchone()[0]
 
 
-def _check_rf1_rf2_with_expected_counts(connection: TPCHConnection, tmp_path: Path) -> None:
-    base_counts = _load_sf001_base(connection)
+def _check_rf1_rf2_with_expected_counts(
+    connection: TPCHConnection, tmp_path: Path, load_base: Any = _load_sf001_base
+) -> None:
+    base_counts = load_base(connection)
     update_set = _make_update_set(tmp_path)
     delete_keys = _delete_keys(update_set)
     update_orders = _file_row_count(update_set.orders_path)
