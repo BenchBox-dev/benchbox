@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Live permission/access probes validate required fork artifact reads and BenchBox App installation identity/scopes without exposing secrets.",
+    "Historical exact artifact replay proves source/hash/provenance/adopter/real-engine/installed package behavior; malformed artifact/identity fails.",
+    "Dry-run workflow on deployed code makes no hosted mutations, returns truthful current or planned state, and credential/App PR event-trigger behavior is exercised by approved narrow probe.",
+    "Kill switch tested; owner configuration complete; workflow enabled only after source review/reliability/controller merged; live operational readback recorded.",
+    "If owner-only gate is unavailable, item stays blocked with exact owner, needed action, and reachable work completed; never finish as activated."
+  ],
+  "context": "Approved 2026-11-04 by owner: create/review TODOs then fully implement the reviewed end-to-end SQLGlot proposal in dependency order. Delivery mode serial: cross-repository and review-policy-deployment boundaries cannot be certified by one integration batch. Fork CI only; independent semantics reviewed at BenchBox adoption (owner 2026-10-23, sqlglot-fork-review-h1-governance). No required fork review/App/auto-merge setting changes. Never bypass protection, hold, oracle, current-head CI or identity rules. No source execution with write/reviewer credentials; pin trusted controller code. No public release/PyPI, cloud spend, published bundle changes, waiver generation, automatic semantic repairs, golden/expected-difference edits or patch retirement. Merge commit for fork, existing pr-arm squash path for BenchBox. Each item closes only at its named merged/operational outcome; assertions, mocks or no-op dispatch do not substitute runtime proof. Named decision gates are hard stops, not discretionary skips.\nUmbrella sqlglot-e2e-automated-delivery. P9/P10/P11/P17. Delivered capability vs future empirical certification intentionally separate. At plan time no BenchBox adoption App credential or enabled variable exists; verify live rather than repeat stale blocker. No raw secret reads/transcript values.",
+  "description": "Before enabling mutations, prove deployed gate/controller/reliability and operational credentials. Reuse fork-scoped SQLGLOT_FORK_REFRESH_TOKEN; verify Actions artifact-read access with narrow reader if needed. Owner creates BenchBox App installation credential Contents+PR-write only (metadata read), no statuses/checks/actions/workflows write; separate workflow token Actions-write only if trusted dispatch needed. Never print credentials, broaden fork token, repurpose unrelated credentials, modify protection or forge author. Confirm configured authorized machine identity, App-created PR starts CI+oracle without manual approval. No new fork reviewer App or auto-merge setting.\n\nUse current/no-op production dry-run, real historical #80 artifact run/merge/digest/source replay plus disposable lower-version adoption/local-engine/installed-package proof. Reuse existing conflict tests; no throwaway full reviewer/gateway infrastructure. Owner-only credential/config action is a hard decision gate: record exact owner command/action and keep disabled until supplied. User authorizes implementing/activation after gates, not creating secrets or bypassing approval. Enable via kill-switch variable only through allowed approved configuration route and observe it. First real eligible-release certification separate, no fabricated upstream tag/no-op certification.",
+  "links": [
+    ".github/workflows/sqlglot-fork-refresh.yml",
+    ".github/theseus-lock.json",
+    "docs/internal/release-guide.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ba4923b65d2bea2a5584a721",
+      "at": "2026-11-04T21:06:35Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "3a0eedcb3d18455ea2b458d4285b50db",
+      "session_id": "cf3fdc0e8210426f8ab8cc6664c384cd"
+    }
+  ]
+}

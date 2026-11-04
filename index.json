@@ -27390,6 +27390,19 @@
       "status": "done",
       "title": "✅ SQLGlot Dialect Translation Code Review Implementation"
     },
+    "sqlglot-e2e-activation-proof": {
+      "claim": null,
+      "needs": [
+        "sqlglot-e2e-source-aware-adoption-review",
+        "sql-execution-gate-sqlite-q19-timeout",
+        "sqlglot-e2e-verified-wheel-adoption",
+        "sqlglot-e2e-lifecycle-controller",
+        "sqlglot-e2e-fork-maintainer-docs"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Prove and activate end-to-end SQLGlot delivery with scoped credentials"
+    },
     "sqlglot-e2e-automated-delivery": {
       "claim": null,
       "needs": [],
