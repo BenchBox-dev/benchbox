@@ -51,7 +51,7 @@
         }
       },
       "integration_branch": "feat/arrow-dataframe-roundtrips",
-      "integration_head": "298c080b24166662fd0e4e8c9e58172a6e4eb55d",
+      "integration_head": "fb0e3094013db632ca23f62f804e7fa105410f47",
       "integration_log": [
         {
           "at": "2026-11-04T13:52:39Z",
@@ -85,6 +85,24 @@
           "op_id": "96867b6079e346a1ae70488b0cde5687",
           "previous_head": "b171b7fe34c439b5a7fa6ddcd0d826c0bb63f3f0",
           "seq": 3
+        },
+        {
+          "at": "2026-11-04T15:45:58Z",
+          "changed_files": [
+            "benchbox/platforms/base/data_loading.py",
+            "benchbox/platforms/dataframe/hudi_maintenance.py",
+            "benchbox/platforms/dataframe/iceberg_maintenance.py",
+            "benchbox/platforms/dataframe/pyspark_maintenance.py"
+          ],
+          "head": "fb0e3094013db632ca23f62f804e7fa105410f47",
+          "kind": "fix",
+          "op_id": "0cdda4f5ac1b40d6912aa7e63a2f7aae",
+          "previous_head": "298c080b24166662fd0e4e8c9e58172a6e4eb55d",
+          "requires_acceptance": [
+            "perf-dataframe-maintenance-arrow-20261031",
+            "perf-duckdb-wire-native-handlers-20261030"
+          ],
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-arrow-dataframe-roundtrips",
