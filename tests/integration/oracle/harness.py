@@ -7,6 +7,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -272,9 +273,6 @@ class Harness:
         workflow = yaml.safe_load((REPO_ROOT / BUMP_WORKFLOW).read_text(encoding="utf-8"))
         steps = workflow["jobs"]["open-pr"]["steps"]
         script = next(step["run"] for step in steps if step.get("name") == BUMP_STEP)
-        checkout = self.root / "bump-checkout"
-        if not checkout.exists():
-            git(self.root, "clone", "--quiet", str(self.repo), str(checkout))
         out_dir = self.root / "omp-bump"
         out_dir.mkdir(exist_ok=True)
         (out_dir / "policy.yml").write_text(policy, encoding="utf-8")
@@ -286,7 +284,11 @@ class Harness:
             "OUT_DIR": str(out_dir),
             "VERSION": version,
         }
-        return self.run("bump", ["bash", "-e", "-c", script], env, cwd=checkout)
+        with tempfile.TemporaryDirectory(prefix="bump-checkout-", dir=self.root) as directory:
+            checkout = Path(directory)
+            git(self.root, "clone", "--quiet", str(self.repo), str(checkout))
+            env["PREPARED_BASE"] = git(checkout, "rev-parse", "HEAD")
+            return self.run("bump", ["bash", "-e", "-c", script], env, cwd=checkout)
 
     def cli(self, name: str, args: list[str], env: dict[str, str]) -> Step:
         return self.run(name, [sys.executable, "-m", "_project.scripts.oracle_reviewers.cli", *args], env)
