@@ -20,6 +20,55 @@
     "benchbox/platforms/duckdb.py",
     "tests/unit/platforms/test_base_adapter.py"
   ],
+  "prepared": {
+    "accepted_head": "51c2021772fe7cd0915fddf14a6a943637c04863",
+    "batch_id": "tpch-refresh-path",
+    "changed_files": [
+      "changelog.d/feat-tpch-refresh-path--tpch-ducklake-refresh-support-20261103.json",
+      "tests/integration/test_ducklake_integration.py",
+      "tests/unit/platforms/test_base_adapter.py"
+    ],
+    "integration_head": "9704727a7fedc581cb013d41e14215d6a15eb34a",
+    "integration_seq": 4,
+    "member_id": "tpch-ducklake-refresh-support-20261103",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "95f9d1c071f4d57df7ecb3cb56232dc23a8d8d56bcbbbdcd5eed995736304d71",
+    "source_base": "360de0e761a344df24e7ab43470d2af48d6fa755",
+    "source_revision": "51c2021772fe7cd0915fddf14a6a943637c04863",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-tpch-refresh-path--tpch-ducklake-refresh-support-20261103",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/test_ducklake_integration.py",
+        "tests/unit/core/tpch/test_tpch_refresh_native_ingest.py",
+        "tests/unit/platforms/test_base_adapter.py"
+      ],
+      "review": {
+        "base_sha": "360de0e761a344df24e7ab43470d2af48d6fa755",
+        "head_sha": "51c2021772fe7cd0915fddf14a6a943637c04863",
+        "head_tree": "75ad392bb7f74e33f1cbd4622dba60c8ceeafcf3",
+        "outcome": "clear",
+        "patch_digest": "31e16e67e300f740e3222c48d4249c79",
+        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "3a3ee9826a6ab939d6235d31e69056c789ac365e"
+      },
+      "revision": "51c2021772fe7cd0915fddf14a6a943637c04863",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a561db75579ad3167de9da38",
@@ -52,6 +101,15 @@
       "generation": "2d1034d407c949909e5c2cdc49525e8c",
       "op": "take",
       "op_id": "685927725a4747b0b06edde8058c46e2",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-04T14:42:10Z",
+      "client": "omp-coding-agent",
+      "generation": "2d1034d407c949909e5c2cdc49525e8c",
+      "op": "prepare",
+      "op_id": "6ad5b4ba03f54f7991f59266eac46002",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
