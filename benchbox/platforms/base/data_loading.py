@@ -1239,8 +1239,6 @@ class DuckDBDuckLakeHandler(FileFormatHandler):
         except Exception:
             pass
 
-        import uuid
-
         catalog_alias = f"ducklake_{uuid.uuid4().hex[:8]}"
 
         escaped_metadata = escape_sql_string_literal(str(metadata_path))

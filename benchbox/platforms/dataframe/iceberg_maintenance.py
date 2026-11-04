@@ -453,7 +453,7 @@ class IcebergMaintenanceOperations(BaseDataFrameMaintenanceOperations):
         unique_keys = pc.unique(keys)
         group_ids = pc.index_in(keys, value_set=unique_keys).to_numpy(zero_copy_only=False)
         last = np.zeros(len(unique_keys), dtype=np.int64)
-        last[group_ids] = np.arange(len(group_ids), dtype=np.int64)
+        np.maximum.at(last, group_ids, np.arange(len(group_ids), dtype=np.int64))
         return unique_keys, pa.array(last)
 
     def _parse_merge_key(self, merge_condition: str) -> str:

@@ -153,14 +153,14 @@ class PySparkMaintenanceOperations(BaseDataFrameMaintenanceOperations):
         if isinstance(dataframe, SparkDataFrame):
             return dataframe
 
-        if hasattr(dataframe, "to_dict") and hasattr(dataframe, "columns"):
-            return create_spark_dataframe_from_pandas(self.spark, dataframe)
-
         if _is_arrow_table(dataframe):
             return create_spark_dataframe_from_arrow(self.spark, dataframe)
 
         if hasattr(dataframe, "to_arrow"):
             return create_spark_dataframe_from_arrow(self.spark, dataframe.to_arrow())
+
+        if hasattr(dataframe, "to_dict") and hasattr(dataframe, "columns"):
+            return create_spark_dataframe_from_pandas(self.spark, dataframe)
 
         if hasattr(dataframe, "to_pandas"):
             return create_spark_dataframe_from_pandas(self.spark, dataframe.to_pandas())
