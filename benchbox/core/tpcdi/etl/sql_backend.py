@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import re
 from datetime import date, datetime, timedelta
 from typing import Any, Callable
@@ -7,6 +8,41 @@ from typing import Any, Callable
 import pandas as pd
 
 from benchbox.core.tpcdi.schema import TABLES
+
+_STAGING_VIEW = "benchbox_tpcdi_stage"
+_COPY_NULL = "\\N"
+_DUCKDB_DRIVERS = frozenset({"duckdb", "_duckdb"})
+_POSTGRES_DRIVERS = frozenset({"psycopg2", "psycopg"})
+
+
+def _driver_family(obj: Any) -> str:
+    return type(obj).__module__.split(".", 1)[0]
+
+
+def bulk_insert_dataframe(cursor: Any, quoted_table: str, quoted_columns: list[str], dataframe: pd.DataFrame) -> bool:
+    column_sql = ",".join(quoted_columns)
+    if _driver_family(cursor) in _DUCKDB_DRIVERS and hasattr(cursor, "register"):
+        cursor.register(_STAGING_VIEW, dataframe)
+        try:
+            cursor.execute(f"INSERT INTO {quoted_table} ({column_sql}) SELECT * FROM {_STAGING_VIEW}")
+        finally:
+            cursor.unregister(_STAGING_VIEW)
+        return True
+
+    if _driver_family(cursor) in _POSTGRES_DRIVERS:
+        if not (hasattr(cursor, "copy_expert") or hasattr(cursor, "copy")):
+            cursor = cursor.cursor()
+        buffer = io.StringIO()
+        dataframe.to_csv(buffer, index=False, header=False, na_rep=_COPY_NULL)
+        copy_sql = f"COPY {quoted_table} ({column_sql}) FROM STDIN WITH (FORMAT csv, NULL '{_COPY_NULL}')"
+        if hasattr(cursor, "copy_expert"):
+            buffer.seek(0)
+            cursor.copy_expert(copy_sql, buffer)
+        else:
+            with cursor.copy(copy_sql) as copy:
+                copy.write(buffer.getvalue())
+        return True
+    return False
 
 
 class SQLETLBackend:
@@ -189,6 +225,13 @@ class SQLETLBackend:
         placeholders = ",".join("?" for _ in validated_headers)
         quoted_columns = ",".join(self._quote_identifier(column) for column in validated_headers)
         insert_sql = f"INSERT INTO {self._quote_identifier(validated_table)} ({quoted_columns}) VALUES ({placeholders})"
+        if bulk_insert_dataframe(
+            cursor,
+            self._quote_identifier(validated_table),
+            [self._quote_identifier(c) for c in validated_headers],
+            dataframe,
+        ):
+            return len(dataframe)
         loaded = 0
         for start_idx in range(0, len(dataframe), 1000):
             batch_rows = [tuple(row) for row in dataframe.iloc[start_idx : start_idx + 1000].values]

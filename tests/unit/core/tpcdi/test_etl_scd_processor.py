@@ -367,7 +367,7 @@ def test_dml_uses_bound_parameters(dim_customer) -> None:
     expire_sql, expire_params = next((s, p) for s, p in dml if "IsCurrent = 0" in s)
     assert expire_params[0] == EFFECTIVE
     assert 10 in expire_params
-    batch_params = next(p for s, p in dml if s.lstrip().upper().startswith("UPDATE") and "BatchID = ?" in s)
+    batch_params = next(p for s, p in dml if s.lstrip().upper().startswith("UPDATE") and "BatchID = u.bid" in s)
     assert batch_params[0] == 2
     assert 20 in batch_params
 

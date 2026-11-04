@@ -1258,10 +1258,22 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         self._materialize_staged_data(transformation_results)
         return transformation_results
 
+    @staticmethod
+    def _read_source_csv(file_path: str) -> pd.DataFrame:
+        df = pd.read_csv(file_path, engine="pyarrow")
+        temporal = [
+            column
+            for column in df.columns
+            if df[column].dtype == object or pd.api.types.is_datetime64_any_dtype(df[column])
+        ]
+        if temporal:
+            df[temporal] = pd.read_csv(file_path, usecols=temporal, dtype=str)[temporal]
+        return df
+
     def _transform_csv_file(self, file_path: str, batch_type: str) -> dict[str, Any]:
         transformations = ["csv_to_staging", "data_type_conversion", "null_handling"]
 
-        df = pd.read_csv(file_path)
+        df = self._read_source_csv(file_path)
 
         file_name = Path(file_path).name.lower()
         if "customer" in file_name:
