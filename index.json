@@ -27445,7 +27445,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "blocked",
+      "status": "open",
       "title": "Review SQLGlot wheel adoptions against their actual fork source changes"
     },
     "sqlglot-e2e-verified-wheel-adoption": {
