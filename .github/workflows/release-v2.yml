@@ -285,6 +285,7 @@ jobs:
           UV_NO_SYNC: '1'
           UAT_CONFIG: tests/uat/configs/release-gate-02-docker-nonoltp.yaml
           SHARD_PLATFORMS: ${{ matrix.platforms }}
+          CLICKHOUSE_MEMORY_LIMIT: 12g
         run: |
           set -euo pipefail
           .venv/bin/python -c "import benchbox, pathlib; path = pathlib.Path(benchbox.__file__).resolve(); assert 'site-packages' in path.parts, path"
