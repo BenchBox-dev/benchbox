@@ -19,10 +19,12 @@ try:
         EqualTo,
         GreaterThan,
         GreaterThanOrEqual,
+        In,
         IsNull,
         LessThan,
         LessThanOrEqual,
         NotEqualTo,
+        Or,
     )
     from pyiceberg.table import Table
 
@@ -34,11 +36,15 @@ except ImportError:
     ICEBERG_AVAILABLE = False
 
 try:
+    import numpy as np
     import pyarrow as pa
+    import pyarrow.compute as pc
 
     PYARROW_AVAILABLE = True
 except ImportError:
+    np = None
     pa = None
+    pc = None
     PYARROW_AVAILABLE = False
 
 from benchbox.core.dataframe.maintenance_interface import (
@@ -286,18 +292,16 @@ class IcebergMaintenanceOperations(BaseDataFrameMaintenanceOperations):
             self.logger.info("No rows match update condition")
             return 0
 
-        df = matching_rows.to_pandas()
+        updated_arrow = matching_rows
         for column, value in updates.items():
             if isinstance(value, str):
                 if (value.startswith("'") and value.endswith("'")) or (value.startswith('"') and value.endswith('"')):
                     value = value[1:-1]
-            df[column] = value
+            updated_arrow = self._set_column(
+                updated_arrow, column, self._constant_array(value, row_count, self._column_type(updated_arrow, column))
+            )
 
-        updated_arrow = pa.Table.from_pandas(df)
-
-        iceberg_table.delete(delete_filter=update_filter)
-
-        iceberg_table.append(updated_arrow)
+        iceberg_table.overwrite(updated_arrow, overwrite_filter=update_filter)
 
         self.logger.info(f"Updated {row_count} rows in Iceberg table {table_identifier}")
         return row_count
@@ -319,69 +323,138 @@ class IcebergMaintenanceOperations(BaseDataFrameMaintenanceOperations):
         except Exception as e:
             raise RuntimeError(f"Could not load Iceberg table {table_identifier}: {e}") from e
 
-        target_arrow = iceberg_table.scan().to_arrow()
-
-        target_df = target_arrow.to_pandas()
-        source_df = source_arrow.to_pandas()
-
         merge_key = self._parse_merge_key(merge_condition)
+        target_schema = iceberg_table.schema().as_arrow()
+        source_keys = source_arrow.column(merge_key)
+        unique_keys, last_positions = self._last_source_positions(source_keys)
+
+        key_filter = self._key_filter(merge_key, unique_keys)
+        candidate_rows = target_schema.empty_table()
+        if key_filter is not None:
+            selected = ("*",) if when_matched else (merge_key,)
+            candidate_rows = iceberg_table.scan(row_filter=key_filter, selected_fields=selected).to_arrow()
+
+        candidate_keys = candidate_rows.column(merge_key)
+        key_type = candidate_keys.type
+        matched_mask = pc.is_in(candidate_keys, value_set=unique_keys.cast(key_type))
+        matched_count = pc.sum(matched_mask.cast(pa.int64())).as_py() or 0
 
         rows_updated = 0
         rows_inserted = 0
+        updated_candidates: pa.Table | None = None
 
-        if when_matched:
-            matched_mask = target_df[merge_key].isin(source_df[merge_key])
+        if when_matched and matched_count > 0:
+            rows_updated = matched_count
+            updated_candidates = candidate_rows
+            source_row_index = pc.index_in(candidate_keys, value_set=unique_keys.cast(key_type))
             for col, val in when_matched.items():
+                col_type = self._column_type(updated_candidates, col)
                 if isinstance(val, str) and val.startswith("source."):
-                    source_col = val[7:]
-                    source_mapping = dict(zip(source_df[merge_key], source_df[source_col]))
-                    target_df.loc[matched_mask, col] = target_df.loc[matched_mask, merge_key].map(source_mapping)
+                    source_values = source_arrow.column(val[7:]).take(last_positions)
+                    values = source_values.take(source_row_index)
+                    if col_type is not None:
+                        values = values.cast(col_type)
                 else:
-                    target_df.loc[matched_mask, col] = val
-            rows_updated = matched_mask.sum()
+                    values = self._constant_array(val, candidate_rows.num_rows, col_type)
+                if col_type is not None:
+                    existing = updated_candidates.column(col)
+                    values = pc.if_else(matched_mask, values, existing)
+                updated_candidates = self._set_column(updated_candidates, col, values)
 
+        new_rows: pa.Table | None = None
         if when_not_matched:
-            not_matched_mask = ~source_df[merge_key].isin(target_df[merge_key])
-            new_rows = source_df[not_matched_mask]
-            rows_inserted = len(new_rows)
+            matched_keys = candidate_keys.filter(matched_mask).cast(source_keys.type)
+            not_matched_mask = pc.invert(pc.is_in(source_keys, value_set=matched_keys.combine_chunks()))
+            source_new = source_arrow.filter(not_matched_mask)
+            rows_inserted = source_new.num_rows
 
             if rows_inserted > 0:
-                import pandas as pd
-
-                insert_data: dict[str, Any] = {}
-                for column in target_arrow.schema.names:
+                columns = []
+                for field in target_schema:
+                    column = field.name
                     if column in when_not_matched:
                         mapping = when_not_matched[column]
                         if isinstance(mapping, str) and mapping.startswith("source."):
                             source_column = mapping[len("source.") :]
-                            if source_column not in new_rows.columns:
+                            if source_column not in source_new.column_names:
                                 raise ValueError(
                                     f"Merge insert mapping for {column!r} references "
                                     f"missing source column {source_column!r}"
                                 )
-                            insert_data[column] = new_rows[source_column].reset_index(drop=True)
+                            columns.append(source_new.column(source_column).cast(field.type))
                         else:
-                            insert_data[column] = mapping
-                    elif column in new_rows.columns:
-                        insert_data[column] = new_rows[column].reset_index(drop=True)
+                            columns.append(self._constant_array(mapping, rows_inserted, field.type))
+                    elif column in source_new.column_names:
+                        columns.append(source_new.column(column).cast(field.type))
                     else:
-                        insert_data[column] = None
-                new_rows = pd.DataFrame(insert_data)
-                target_df = pa.concat_tables(
-                    [
-                        pa.Table.from_pandas(target_df, schema=target_arrow.schema),
-                        pa.Table.from_pandas(new_rows, schema=target_arrow.schema),
-                    ]
-                ).to_pandas()
+                        columns.append(pa.nulls(rows_inserted, type=field.type))
+                new_rows = pa.Table.from_arrays(columns, schema=target_schema)
 
-        result_arrow = pa.Table.from_pandas(target_df, schema=target_arrow.schema)
-        iceberg_table.overwrite(result_arrow)
+        if updated_candidates is not None or new_rows is not None:
+            with iceberg_table.transaction() as transaction:
+                if updated_candidates is not None:
+                    transaction.overwrite(updated_candidates.cast(target_schema), overwrite_filter=key_filter)
+                if new_rows is not None:
+                    transaction.append(new_rows)
 
         total_affected = int(rows_updated) + int(rows_inserted)
         self.logger.info(
             f"Merged into Iceberg table {table_identifier}: {int(rows_updated)} updated, {int(rows_inserted)} inserted"
         )
         return total_affected
+
+    @staticmethod
+    def _column_type(table: pa.Table, column: str) -> pa.DataType | None:
+        index = table.schema.get_field_index(column)
+        return table.schema.field(index).type if index >= 0 else None
+
+    @staticmethod
+    def _constant_array(value: Any, length: int, arrow_type: pa.DataType | None) -> pa.Array:
+        if arrow_type is None:
+            return pa.array([value] * length)
+        try:
+            scalar = pa.scalar(value, type=arrow_type)
+        except (pa.ArrowInvalid, pa.ArrowTypeError):
+            scalar = pa.scalar(value).cast(arrow_type)
+        return pa.repeat(scalar, length)
+
+    @staticmethod
+    def _set_column(table: pa.Table, column: str, values: pa.Array) -> pa.Table:
+        index = table.schema.get_field_index(column)
+        if index >= 0:
+            return table.set_column(index, table.schema.field(index), values)
+        return table.append_column(column, values)
+
+    _KEY_IN_LIMIT = 1000
+
+    @classmethod
+    def _key_filter(cls, key: str, unique_keys: pa.Array) -> Any | None:
+        values = unique_keys.drop_null()
+        predicates: list[Any] = []
+        if len(values) > 0:
+            if len(values) <= cls._KEY_IN_LIMIT:
+                predicates.append(In(key, values.to_pylist()))
+            else:
+                bounds = pc.min_max(values)
+                predicates.append(
+                    And(
+                        GreaterThanOrEqual(key, bounds["min"].as_py()),
+                        LessThanOrEqual(key, bounds["max"].as_py()),
+                    )
+                )
+        if unique_keys.null_count > 0:
+            predicates.append(IsNull(key))
+        if not predicates:
+            return None
+        return predicates[0] if len(predicates) == 1 else Or(*predicates)
+
+    @staticmethod
+    def _last_source_positions(keys: pa.ChunkedArray) -> tuple[pa.Array, pa.Array]:
+        unique_keys = pc.unique(keys)
+        group_ids = pc.index_in(keys, value_set=unique_keys).to_numpy(zero_copy_only=False)
+        last = np.zeros(len(unique_keys), dtype=np.int64)
+        last[group_ids] = np.arange(len(group_ids), dtype=np.int64)
+        return unique_keys, pa.array(last)
 
     def _parse_merge_key(self, merge_condition: str) -> str:
         condition = str(merge_condition).strip()

@@ -296,6 +296,122 @@ class TestIcebergMaintenanceCoverage:
         assert sorted(merged.column("id").to_pylist()) == [1, 2]
         assert sorted(merged.column("value").to_pylist()) == [10, 20]
 
+    def test_do_update_preserves_nulls_dates_and_decimals(self, tmp_path):
+        import datetime
+        import decimal
+
+        import pyarrow as pa
+
+        ops = im.IcebergMaintenanceOperations(working_dir=tmp_path)
+        target = pa.table(
+            {
+                "id": pa.array([1, 2, 3], type=pa.int64()),
+                "name": pa.array(["a", None, "c"]),
+                "amt": pa.array([decimal.Decimal("1.50"), None, decimal.Decimal("3.25")], type=pa.decimal128(15, 2)),
+                "d": pa.array([datetime.date(2024, 1, 1), None, datetime.date(2024, 3, 3)], type=pa.date32()),
+            }
+        )
+        ops._do_insert("default.upd_parity", target, None, "append")
+
+        count = ops._do_update("default.upd_parity", "id <= 2", {"name": "'zz'", "amt": decimal.Decimal("9.99")})
+
+        assert count == 2
+        out = ops.catalog.load_table("default.upd_parity").scan().to_arrow().sort_by("id")
+        assert out.schema.field("amt").type == pa.decimal128(15, 2)
+        assert out.column("name").to_pylist() == ["zz", "zz", "c"]
+        assert out.column("amt").to_pylist() == [
+            decimal.Decimal("9.99"),
+            decimal.Decimal("9.99"),
+            decimal.Decimal("3.25"),
+        ]
+        assert out.column("d").to_pylist() == [datetime.date(2024, 1, 1), None, datetime.date(2024, 3, 3)]
+
+    def test_do_merge_matched_and_not_matched_parity_without_full_scan(self, tmp_path):
+        import datetime
+        import decimal
+
+        import pyarrow as pa
+
+        ops = im.IcebergMaintenanceOperations(working_dir=tmp_path)
+        target = pa.table(
+            {
+                "id": pa.array([1, 2, 3, 4], type=pa.int64()),
+                "name": pa.array(["a", "b", None, "d"]),
+                "amt": pa.array(
+                    [decimal.Decimal("1.00"), None, decimal.Decimal("3.00"), decimal.Decimal("4.00")],
+                    type=pa.decimal128(15, 2),
+                ),
+                "d": pa.array([datetime.date(2024, 1, i) for i in (1, 2, 3, 4)], type=pa.date32()),
+            }
+        )
+        ops._do_insert("default.merge_parity", target, None, "append")
+
+        source = pa.table(
+            {
+                "id": pa.array([2, 3, 3, 7], type=pa.int64()),
+                "name": pa.array(["B", "C1", "C2", None]),
+                "amt": pa.array(
+                    [decimal.Decimal("20.00"), None, decimal.Decimal("30.00"), decimal.Decimal("70.00")],
+                    type=pa.decimal128(15, 2),
+                ),
+                "d": pa.array([None, datetime.date(2025, 1, 1), datetime.date(2025, 1, 2), None], type=pa.date32()),
+            }
+        )
+
+        table = ops.catalog.load_table("default.merge_parity")
+        scans: list[Any] = []
+        original_scan = type(table).scan
+
+        def recording_scan(self, *args, **kwargs):
+            scans.append(kwargs.get("row_filter"))
+            return original_scan(self, *args, **kwargs)
+
+        with patch.object(type(table), "scan", recording_scan):
+            affected = ops._do_merge(
+                "default.merge_parity",
+                source,
+                "target.id = source.id",
+                when_matched={"name": "source.name", "amt": "source.amt", "d": "source.d"},
+                when_not_matched={"id": "source.id", "name": "source.name", "amt": "source.amt"},
+            )
+
+        assert affected == 3
+        assert scans and all(f is not None for f in scans)
+        out = ops.catalog.load_table("default.merge_parity").scan().to_arrow().sort_by("id")
+        assert out.schema.field("amt").type == pa.decimal128(15, 2)
+        assert out.column("id").to_pylist() == [1, 2, 3, 4, 7]
+        assert out.column("name").to_pylist() == ["a", "B", "C2", "d", None]
+        assert out.column("amt").to_pylist() == [
+            decimal.Decimal("1.00"),
+            decimal.Decimal("20.00"),
+            decimal.Decimal("30.00"),
+            decimal.Decimal("4.00"),
+            decimal.Decimal("70.00"),
+        ]
+        assert out.column("d").to_pylist() == [
+            datetime.date(2024, 1, 1),
+            None,
+            datetime.date(2025, 1, 2),
+            datetime.date(2024, 1, 4),
+            None,
+        ]
+
+    def test_do_merge_constant_matched_value_and_no_overlap(self, tmp_path):
+        import pyarrow as pa
+
+        ops = im.IcebergMaintenanceOperations(working_dir=tmp_path)
+        target = pa.table({"id": pa.array([1, 2], type=pa.int64()), "val": pa.array([10, 20], type=pa.int64())})
+        ops._do_insert("default.merge_const", target, None, "append")
+        source = pa.table({"id": pa.array([2, 5], type=pa.int64()), "val": pa.array([0, 50], type=pa.int64())})
+
+        affected = ops._do_merge(
+            "default.merge_const", source, "id = id", when_matched={"val": -1}, when_not_matched=None
+        )
+
+        assert affected == 1
+        out = ops.catalog.load_table("default.merge_const").scan().to_arrow().sort_by("id")
+        assert out.column("val").to_pylist() == [10, -1]
+
     def test_default_catalog_config(self, tmp_path):
 
         ops = im.IcebergMaintenanceOperations(working_dir=tmp_path)
