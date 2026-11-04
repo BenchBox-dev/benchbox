@@ -3,6 +3,11 @@
     "Dead loaders removed or library loaders delegate to adapter load_data.",
     "Generated files are byte-identical (or row-identical) to current output."
   ],
+  "batch": {
+    "batch_id": "native-bulk-load-remainder",
+    "implementation_dependencies": [],
+    "member_id": "perf-library-loaders-and-datagen-rows-20261031"
+  },
   "description": "Not on the CLI path (which uses adapter load_data), but public API: benchmark-level load_data_to_database/_load_table_data use csv.reader plus per-row execute/executemany in core/benchmark_mixins.py:68-95, simple_benchmark_mixin.py:163-182 (SSB, AMPLab, ClickBench), tpcds/benchmark/runner.py:555-591 (possibly dead), tsbs_devops/benchmark.py:234-241, coffeeshop/benchmark.py:240-247, tpcdi/benchmark.py:447-478, tpcdi/loader.py:103,306. Data generation: core/primitives/generator_base.py:168-174,459-519 re-reads up to 1M lineitem rows with csv.reader and rewrites with join; SSB/AMPLab/TSBS/TPC-DI generators write one csv.writer row at a time. Route library loaders through adapter load_data or remove dead ones; use pyarrow.csv or DuckDB COPY in generation.",
   "sessions": [
     {
@@ -12,6 +17,14 @@
       "op": "create",
       "op_id": "01a67a35f83b49b682b74c3b00f3ffde",
       "session_id": "d2b018a349924f4f88b746458c80b878"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-04T18:14:42Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "631ec93da16f421b937678f65f53f964",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
 }
