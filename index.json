@@ -421,7 +421,7 @@
         }
       },
       "integration_branch": "feat/native-bulk-load-sql",
-      "integration_head": "0589d3027022690e76321aecd17bb671f84fd6fa",
+      "integration_head": "152bf402547aed8d9a1f2ea733fc6bd245278e04",
       "integration_log": [
         {
           "at": "2026-11-04T13:52:23Z",
@@ -528,6 +528,20 @@
             "perf-prepare-local-load-file-streaming-20261031"
           ],
           "seq": 7
+        },
+        {
+          "at": "2026-11-04T16:30:22Z",
+          "changed_files": [
+            "tests/unit/platforms/test_databend_bulk_load.py"
+          ],
+          "head": "152bf402547aed8d9a1f2ea733fc6bd245278e04",
+          "kind": "fix",
+          "op_id": "3241637680724e51b7ae9ed480869752",
+          "previous_head": "0589d3027022690e76321aecd17bb671f84fd6fa",
+          "requires_acceptance": [
+            "perf-databend-bulk-load-20261030"
+          ],
+          "seq": 8
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-native-bulk-load-sql",
