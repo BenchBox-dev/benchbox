@@ -2291,6 +2291,13 @@
       "status": "done",
       "title": "Deploy the branch-delivery batch skill with compatible tracker and BenchBox bindings"
     },
+    "batch-tpch-refresh-path-umbrella-20261104": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Batch tpch-refresh-path: umbrella notes (not a member)"
+    },
     "behind-pr-occurrence-00-policy": {
       "claim": null,
       "needs": [],
