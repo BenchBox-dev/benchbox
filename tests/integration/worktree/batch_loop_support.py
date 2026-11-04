@@ -15,7 +15,8 @@ TRACKED_COPY = (
     "make",
     "scripts/batch_integration.py",
     "scripts/pr_landing.py",
-    "scripts/pr_arm_omp_bump.py",
+    "scripts/theseus_cli.py",
+    "_project/scripts/soundness_manifest.py",
     "_project/scripts/check_suites.py",
     "scripts/worktree_lifecycle.sh",
     "scripts/make_timing_shell.sh",
@@ -25,7 +26,6 @@ TRACKED_COPY = (
     "_project/scripts/pyproject.toml",
     "_project/scripts/uv.lock",
     "_project/scripts/vendor",
-    "_project/scripts/oracle_reviewers",
     "_project/scripts/inert_paths.py",
     "_project/scripts/soundness_paths.py",
     "_project/analysis/batch-rollout-evidence.json",
@@ -41,17 +41,12 @@ SHARED_SOURCE = "ALPHA = None\nGAMMA = None\n\n\ndef unrelated() -> int:\n    re
 
 FAKE_REVIEW = """\
 import argparse
+import hashlib
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
-
-if "FAKE_REVIEW_UV" not in os.environ:
-    os.environ["FAKE_REVIEW_UV"] = "1"
-    os.execvp("uv", ["uv", "run", "--", "python", __file__, *sys.argv[1:]])
-
-sys.path.insert(0, str(Path.cwd()))
-from _project.scripts.oracle_reviewers import local
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--policy", required=True)
@@ -59,15 +54,26 @@ parser.add_argument("--member", action="store_true")
 parser.add_argument("--result-json", required=True)
 parser.add_argument("--base-ref", required=True)
 parser.add_argument("--trusted-ref", required=True)
-parser.add_argument("--reviewer-ref", required=True)
 parser.add_argument("--head", required=True)
 args = parser.parse_args()
-if args.reviewer_ref != args.trusted_ref:
-    sys.exit(2)
 outcome_file = Path(os.environ["FAKE_REVIEW_OUTCOME_FILE"])
 outcome = outcome_file.read_text().strip() if outcome_file.exists() else "clear"
-root = Path.cwd()
-record = local._member_record(root, args.base_ref, args.head, args.trusted_ref, outcome, "fake reviewer verdict")
+
+
+def git(*command):
+    return subprocess.run(["git", *command], check=True, capture_output=True, text=True).stdout
+
+
+record = {
+    "schema": "benchbox_member_review_v1",
+    "outcome": outcome,
+    "reason": "fake reviewer verdict",
+    "base_sha": args.base_ref,
+    "head_sha": args.head,
+    "head_tree": git("rev-parse", f"{args.head}^{{tree}}").strip(),
+    "patch_digest": hashlib.sha256(git("diff", args.base_ref, args.head).encode()).hexdigest(),
+    "trusted_sha": args.trusted_ref,
+}
 Path(args.result_json).write_text(json.dumps(record))
 sys.exit(1 if outcome == "findings" else 0)
 """

@@ -325,9 +325,9 @@ def load_rules(path: Path = DEFAULT_MANIFEST) -> tuple[Any, ...]:
     root = str(REPO_ROOT)
     if root not in sys.path:
         sys.path.insert(0, root)
-    from _project.scripts.soundness_paths import _load_rules
+    from _project.scripts.soundness_paths import load_rules as load_manifest_rules
 
-    return _load_rules(path, MANIFEST_KINDS)
+    return load_manifest_rules(path, MANIFEST_KINDS, "path")
 
 
 def matches_manifest(path: str, rules: Sequence[Any]) -> bool:

@@ -269,7 +269,7 @@ def test_enqueue_refuses_moved_head() -> None:
 
 
 def test_enqueue_arms_on_stable_head() -> None:
-    run = FakeRun([(0, "x.py\n"), (0, "")])
+    run = FakeRun([(0, ""), (0, "")])
     assert landing.enqueue_pr(run, "o/r", 3, HEAD, HEAD)["enqueued"] is True
     assert "--auto" in run.calls[1]
 
@@ -668,42 +668,24 @@ def test_followup_blocked_reason_remains_the_owned_next_action() -> None:
 
 
 def test_enqueue_arms_with_match_head_commit() -> None:
-    run = FakeRun([(0, "x.py\n"), (0, "")])
+    run = FakeRun([(0, ""), (0, "")])
     assert landing.enqueue_pr(run, "o/r", 3, HEAD, HEAD)["enqueued"] is True
     assert "--match-head-commit" in run.calls[1]
     assert HEAD in run.calls[1]
 
 
-def test_enqueue_refuses_an_unreadable_pin_bump_check_without_arming() -> None:
-    run = FakeRun([(1, "boom")])
-    with pytest.raises(landing.LandingError, match="omp pin bump evidence could not be verified"):
+def test_enqueue_refuses_a_gate_evaluation_that_cannot_run_without_arming() -> None:
+    run = FakeRun([(2, "theseus: the verified Theseus install was refused")])
+    with pytest.raises(landing.LandingError, match="failed \\(exit 2\\)"):
         landing.enqueue_pr(run, "o/r", 3, HEAD, HEAD)
     assert all("--auto" not in call for call in run.calls)
 
 
-def test_enqueue_refuses_a_pin_bump_without_owner_evidence_without_arming() -> None:
-    policy = "omp:\n  version: {v}\n  builds:\n    darwin-arm64:\n      url: https://b.example/d\n      sha256: {h}\n"
-    shown = {
-        "origin/develop:": policy.format(v="1.0.0", h="ab" * 32),
-        f"{HEAD}:": policy.format(v="1.0.1", h="cd" * 32),
-    }
-
-    def run(args: list[str]) -> tuple[int, str]:
-        calls.append(args)
-        if args[:2] == ["git", "show"]:
-            return 0, shown[f"{HEAD}:"]
-        if args[:2] == ["gh", "api"] and "/contents/" in args[-1]:
-            return 0, shown["origin/develop:"]
-        if "--jq" in args and args[-1].endswith("/files"):
-            return 0, ".github/oracle-reviewers.yml\n"
-        if args[-1].endswith("/comments"):
-            return 0, ""
-        return 0, ""
-
-    calls: list[list[str]] = []
-    with pytest.raises(landing.LandingError, match="has no owner evidence"):
+def test_enqueue_refuses_a_gate_evaluation_that_does_not_pass_without_arming() -> None:
+    run = FakeRun([(3, "oracle-gate: waiting for omp bump evidence")])
+    with pytest.raises(landing.LandingError, match="does not pass"):
         landing.enqueue_pr(run, "o/r", 3, HEAD, HEAD)
-    assert all("--auto" not in call for call in calls)
+    assert all("--auto" not in call for call in run.calls)
 
 
 def test_bound_withdraw_refuses_foreign_pr() -> None:

@@ -7,10 +7,9 @@ from typing import Any
 import pytest
 import yaml
 
-from _project.scripts.oracle_reviewers import omp_watch
-
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
+BOT_AUTHOR_EMAIL = "41898282+github-actions[bot]@users.noreply.github.com"
 WORKFLOW = Path(__file__).resolve().parents[3] / ".github" / "workflows" / "omp-pin-watch.yml"
 
 
@@ -61,13 +60,16 @@ def test_every_action_is_pinned_to_a_commit_and_develop_is_what_gets_checked_out
     assert steps(watch_job())["Checkout develop"]["with"]["fetch-depth"] == 0
 
 
-def test_the_evaluation_runs_trusted_develop_code_with_only_the_policy_parser_installed() -> None:
+def test_the_evaluation_runs_the_verified_theseus_install_from_the_checked_out_develop_commit() -> None:
     command = " ".join(
         str(steps(watch_job())["Compare the first reviews on the pin with the previous week"]["run"]).split()
     )
-    assert "--isolated --no-project" in command and "--with pyyaml==6.0.3" in command
-    assert "_project.scripts.oracle_reviewers.omp_watch evaluate" in command
+    assert 'THESEUS="$(python3 scripts/theseus_cli.py --trusted-ref "$(git rev-parse HEAD)" path)"' in command
+    assert '"$THESEUS" omp-watch evaluate' in command
     assert '--repo "$GITHUB_REPOSITORY"' in command
+    assert "--policy .github/oracle-reviewers.yml" in command
+    assert "--watch-workflow .github/workflows/omp-pin-watch.yml" in command
+    assert "uv run" not in WORKFLOW.read_text(encoding="utf-8")
 
 
 def test_the_ledger_outlives_the_seven_day_attempt_artifacts_and_is_kept_for_every_watched_state() -> None:
@@ -121,7 +123,7 @@ def test_the_only_secret_the_workflow_reads_is_the_job_token_and_the_evaluation_
         "${{ github.token }}"
     )
     assert "secrets.GITHUB_TOKEN" not in str(watch_job())
-    assert "omp_watch" not in run_text(opener_job())
+    assert "omp-watch" not in run_text(opener_job())
 
 
 def test_the_run_summary_reports_the_watch_even_when_the_evaluation_fails() -> None:
@@ -133,5 +135,5 @@ def test_the_run_summary_reports_the_watch_even_when_the_evaluation_fails() -> N
 
 def test_the_revert_commit_carries_the_author_the_watch_uses_to_recognise_its_own_revert() -> None:
     text = run_text(opener_job())
-    assert f'git config user.email "{omp_watch.BOT_AUTHOR_EMAIL}"' in text
+    assert f'git config user.email "{BOT_AUTHOR_EMAIL}"' in text
     assert 'git config user.name "github-actions[bot]"' in text

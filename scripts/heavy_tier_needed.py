@@ -5,13 +5,13 @@ import argparse
 import json
 import os
 import subprocess
-import sys
 import tempfile
 from pathlib import Path, PurePosixPath
 from typing import Any, Callable, Iterable
 
 PREDICATE_REPO_PATH = "_project/scripts/soundness_paths.py"
-POLICY_PATHS = (PREDICATE_REPO_PATH, ".github/soundness-paths.txt")
+MANIFEST_REPO_PATH = ".github/soundness-paths.txt"
+POLICY_PATHS = (PREDICATE_REPO_PATH, MANIFEST_REPO_PATH)
 BROAD_CONFTEST_MODULES = 200
 SELECTION_LOGIC_PATHS = frozenset(
     {
@@ -44,10 +44,19 @@ def _load_predicate_copy(name: str, sources: dict[str, str], paths: list[str]) -
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text(source, encoding="utf-8")
             result = subprocess.run(
-                [sys.executable, "-I", "-S", str(root / PREDICATE_REPO_PATH), "--stdin", "--format", "github-output"],
+                [
+                    "python3",
+                    "-I",
+                    "-S",
+                    PREDICATE_REPO_PATH,
+                    "--manifest",
+                    MANIFEST_REPO_PATH,
+                    "--stdin",
+                    "--format",
+                    "github-output",
+                ],
                 input="\n".join(paths),
                 cwd=root,
-                env={**os.environ, "SOUNDNESS_PATH_MANIFEST": str(root / POLICY_PATHS[1])},
                 capture_output=True,
                 text=True,
                 timeout=15,

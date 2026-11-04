@@ -237,6 +237,7 @@ class World:
         self.calls: list[tuple[list[str], Path]] = []
         self.review_cache: dict[tuple[str, str, str], dict] = {}
         self.review_wrappers: list[str] = []
+        self.review_support: list[dict[str, str]] = []
         self.failing_tests: set[str] = set()
         self.preflight_rc = 0
         self.review_rc: int | None = None
@@ -256,6 +257,7 @@ class World:
             "docs/note.md": "note\n",
             ".github/oracle-reviewers.yml": "brief_max_bytes: 100000\n",
             bi.REVIEW_WRAPPER: TRUSTED_REVIEW_WRAPPER,
+            **dict.fromkeys(bi.REVIEW_SUPPORT, "TRUSTED_SUPPORT = 1\n"),
             ".gitignore": ".todo-batch/\n",
         }.items():
             (seed / name).parent.mkdir(parents=True, exist_ok=True)
@@ -292,6 +294,12 @@ class World:
             return done(0, "\n".join(self.mapped_tests))
         if argv[0] == bi.REVIEW_INTERPRETER and Path(argv[1]).name == Path(bi.REVIEW_WRAPPER).name:
             self.review_wrappers.append(Path(argv[1]).read_text(encoding="utf-8"))
+            self.review_support.append(
+                {
+                    Path(path).name: (Path(argv[1]).parent / Path(path).name).read_text(encoding="utf-8")
+                    for path in bi.REVIEW_SUPPORT
+                }
+            )
             return self.review(argv, Path(cwd))
         if "pytest" in argv or "ruff" in argv:
             failing = any(item in self.failing_tests for item in argv)

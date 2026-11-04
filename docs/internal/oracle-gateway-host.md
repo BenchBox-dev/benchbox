@@ -12,7 +12,7 @@ scratch. The design and its accepted risks are in
 
 | Piece | Detail |
 | --- | --- |
-| omp build | The pinned `darwin-arm64` build from the `omp:` section of `.github/oracle-reviewers.yml` on `origin/develop`, installed by `cli.py install-omp` into `~/.cache/benchbox/omp/<version>/darwin-arm64/omp` after its SHA-256 and version check, the same cache local reviews use. The script runs both agents from that path. It never looks up `omp` on `PATH` and ignores an `OMP` environment variable, so the omp you run day to day is untouched. |
+| omp build | The pinned `darwin-arm64` build from the `omp:` section of `.github/oracle-reviewers.yml` on `origin/develop`, installed by `theseus install-omp` (the verified Theseus install of `origin/develop`) into `~/.cache/benchbox/omp/<version>/darwin-arm64/omp` after its SHA-256 and version check, the same cache local reviews use. The script runs both agents from that path. It never looks up `omp` on `PATH` and ignores an `OMP` environment variable, so the omp you run day to day is untouched. |
 | Credential broker | launchd agent `dev.omp.auth-broker`: `<pinned omp> auth-broker serve --bind=127.0.0.1:8765 --trust-proxy-headers`. Provider logins live in `~/.omp/agent/agent.db`; its bearer token is `~/.omp/auth-broker.token`. Log: `~/.omp/logs/auth-broker.log`. |
 | Gateway | launchd agent `dev.omp.auth-gateway`, which runs `~/.omp/oracle-gateway/run.sh`: `<pinned omp> auth-gateway serve --bind=127.0.0.1:4000 --clients=~/.omp/oracle-gateway/clients.json`, with `HOME=~/.omp/oracle-gateway/home` and the broker's URL and token. Log: `~/.omp/logs/auth-gateway.log`. |
 | Client scope | `~/.omp/oracle-gateway/clients.json` (0600) admits `oracle-ci` and one client per [named client](#named-clients) token file. Each entry holds the SHA-256 of that client's token, every model `.github/oracle-omp-config.yml` on `origin/develop` lets a reviewer request, and every broker account logged in for those providers; `oracle-ci`'s token is `client.token`. `accounts` is also an allow-list: stored or environment API keys are never used for those providers. The gateway re-reads the file every 10 seconds. |
@@ -107,7 +107,7 @@ Then:
    prints the pinned binary's path.
 5. Start the gateway: `_project/scripts/oracle_gateway_host.sh gateway`.
    - It creates `client.token` if there is none.
-   - It generates `clients.json` through `cli.py gateway-clients`, which
+   - It generates `clients.json` through `theseus gateway-clients`, which
      prints the model count and the pinned accounts per provider, one line
      per client (`oracle-ci`, plus one for each
      [named client](#named-clients) token file).

@@ -1,9 +1,12 @@
 # PR base branch policy
 
-Ready PRs target an integration branch. Stacking is allowed narrowly:
+Ready PRs target an integration branch. A stack is a chain of PRs where each
+upper PR is a draft on its parent's branch. Stacking is allowed narrowly:
 
-1. A stack belongs to one agent and one tracker item and is at most three PRs
-   deep. Agents must not build on another agent's unmerged branch.
+1. A stack is at most three PRs deep, for one agent and one tracker item. The
+   limit applies to each stack, not to how many PRs an agent opens. Never build
+   on another agent's unmerged branch. For deeper or multi-item work, use a
+   feature batch.
 2. Every PR above the bottom one is a **draft** that targets its parent
    branch, so it gets CI there. Open it with
    `make pr-open PARENT=<parent branch>`: the parent must be an open PR branch
@@ -138,9 +141,8 @@ conflicts, or a filter bug, from an empty or partial check list alone.
 - `make pr-open` is the only way to create a PR. Without `PARENT` it targets
   `develop`, unless the change is explicitly for `release` or
   `published-results`. Parent-based drafts follow the exception below.
-- Set `PARENT` to another feature branch only for a draft in a stack (one
-  agent, one tracker item, depth 3 or less). Never arm it before it is
-  retargeted at `develop`.
+- Set `PARENT` only for a draft in your own stack (at most 3 deep). Never arm
+  it before it is retargeted at `develop`.
 - If the base check in `ci-paths` fails on a ready PR, fix the base. Do not try to "add CI" to
   the stacked base by editing branch filters.
 - Short agent-facing summary: `AGENTS.md` → section **Verification and
