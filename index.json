@@ -318,20 +318,43 @@
       "terminal_outcome": "deliver"
     },
     "tpch-refresh-path": {
-      "accepted_members": {},
+      "accepted_members": {
+        "tpch-refresh-stream-window-excludes-connect-20261103": "7be817e38ec725a582e3c002243d9eb2b7a9b614"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "tpch-refresh-stream-window-excludes-connect-20261103": {
+          "accepted_head": "7be817e38ec725a582e3c002243d9eb2b7a9b614",
+          "changed_files": [
+            "benchbox/core/tpch/throughput_test.py",
+            "changelog.d/feat-tpch-refresh-path--tpch-refresh-stream-window-excludes-connect-20261103.json",
+            "docs/internal/throughput-result-alignment.md",
+            "tests/unit/core/throughput/test_tpch_refresh_timing.py"
+          ],
+          "integration_head": "7a9bb7b6055e6067b1d8353ad2fc1f8107c6e7b0",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/tpch-refresh-path",
-      "integration_head": "3a3ee9826a6ab939d6235d31e69056c789ac365e",
+      "integration_head": "7a9bb7b6055e6067b1d8353ad2fc1f8107c6e7b0",
       "integration_log": [
         {
           "at": "2026-11-04T13:53:00Z",
           "head": "3a3ee9826a6ab939d6235d31e69056c789ac365e",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-04T14:01:22Z",
+          "head": "7a9bb7b6055e6067b1d8353ad2fc1f8107c6e7b0",
+          "kind": "prepare",
+          "member": "tpch-refresh-stream-window-excludes-connect-20261103",
+          "op_id": "8ef8a2d65b5f440ebfe7cc7a963e4ffd",
+          "previous_head": "3a3ee9826a6ab939d6235d31e69056c789ac365e",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpch-refresh-path",
@@ -29492,15 +29515,10 @@
       "title": "Prove TPC-H refresh functions on Redshift before re-enabling them"
     },
     "tpch-refresh-stream-window-excludes-connect-20261103": {
-      "claim": {
-        "expires_at": "2026-11-05T14:01:16Z",
-        "generation": "df7ae426ce644a4a9f601793d6afda78",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "Start the TPC-H refresh stream window after its connection is open, matching the query streams"
     },
     "tpch-rf1-native-ingest-remote-engines-20261103": {

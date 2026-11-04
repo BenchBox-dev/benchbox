@@ -20,6 +20,81 @@
     "benchbox/core/throughput/runner.py",
     "tests/unit/core/throughput/test_stream_timing.py"
   ],
+  "prepared": {
+    "accepted_head": "7be817e38ec725a582e3c002243d9eb2b7a9b614",
+    "batch_id": "tpch-refresh-path",
+    "changed_files": [
+      "benchbox/core/tpch/throughput_test.py",
+      "changelog.d/feat-tpch-refresh-path--tpch-refresh-stream-window-excludes-connect-20261103.json",
+      "docs/internal/throughput-result-alignment.md",
+      "tests/unit/core/throughput/test_tpch_refresh_timing.py"
+    ],
+    "integration_head": "7a9bb7b6055e6067b1d8353ad2fc1f8107c6e7b0",
+    "integration_seq": 1,
+    "member_id": "tpch-refresh-stream-window-excludes-connect-20261103",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "95f9d1c071f4d57df7ecb3cb56232dc23a8d8d56bcbbbdcd5eed995736304d71",
+    "source_base": "3a3ee9826a6ab939d6235d31e69056c789ac365e",
+    "source_revision": "7be817e38ec725a582e3c002243d9eb2b7a9b614",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-tpch-refresh-path--tpch-refresh-stream-window-excludes-connect-20261103",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/test_throughput_corrections.py",
+        "tests/integration/test_throughput_strict_engine.py",
+        "tests/integration/test_tpc_compliance_integration.py",
+        "tests/integration/test_tpch_throughput_test.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/test_benchbox.py",
+        "tests/unit/core/ai_primitives/test_benchmark.py",
+        "tests/unit/core/test_greybeam_lifecycle.py",
+        "tests/unit/core/test_tpc_reporting_execution.py",
+        "tests/unit/core/test_tpch_benchmark_fakes.py",
+        "tests/unit/core/throughput",
+        "tests/unit/core/throughput/test_containment.py",
+        "tests/unit/core/throughput/test_stream_numbering.py",
+        "tests/unit/core/throughput/test_stream_timing.py",
+        "tests/unit/core/throughput/test_throughput_query_correctness.py",
+        "tests/unit/core/throughput/test_tpch_refresh_timing.py",
+        "tests/unit/core/tpch/test_tpch_refresh.py",
+        "tests/unit/platforms/base/test_adapter_query_skips.py",
+        "tests/unit/platforms/base/test_result_capture.py",
+        "tests/unit/platforms/test_adapter_lifecycle.py",
+        "tests/unit/platforms/test_base_adapter.py",
+        "tests/unit/platforms/test_enhanced_benchmark_results.py",
+        "tests/unit/platforms/test_generic_power_test.py",
+        "tests/unit/platforms/test_power_test_fail_fast.py",
+        "tests/unit/platforms/test_throughput_run_options.py",
+        "tests/unit/test_connection_interface_consistency.py",
+        "tests/unit/test_database_reuse_optimization.py",
+        "tests/unit/tpch/test_tpch_compliance.py"
+      ],
+      "review": {
+        "base_sha": "3a3ee9826a6ab939d6235d31e69056c789ac365e",
+        "head_sha": "7be817e38ec725a582e3c002243d9eb2b7a9b614",
+        "head_tree": "6ea73f3ccad404e2165c7f7cc94c703d78b40157",
+        "outcome": "clear",
+        "patch_digest": "f5e0a0bf8f426dacb1dcc23d6cefa85c",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "3a3ee9826a6ab939d6235d31e69056c789ac365e"
+      },
+      "revision": "7be817e38ec725a582e3c002243d9eb2b7a9b614",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a561db75579ad3167de9da38",
@@ -52,6 +127,15 @@
       "generation": "df7ae426ce644a4a9f601793d6afda78",
       "op": "take",
       "op_id": "701674c3d3454d19b87450916f228590",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-04T14:01:22Z",
+      "client": "omp-coding-agent",
+      "generation": "df7ae426ce644a4a9f601793d6afda78",
+      "op": "prepare",
+      "op_id": "8ef8a2d65b5f440ebfe7cc7a963e4ffd",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
