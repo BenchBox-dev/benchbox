@@ -219,7 +219,7 @@ Gates, in order:
      three stages.
    - The candidate commit is an ancestor of the final tag commit.
    - `git diff` of `tests/uat`, `tests/utilities`, `tests/__init__.py`,
-     `docker`, `.github/actions/release-uat-env`, and the `Makefile` between
+     `docker`, `.github/actions/release-uat-env`, `scripts/uat-bring-up`, and the `Makefile` between
      the two commits is empty. In `release-v2.yml`, the workflow-level `env` and
      the `uat-stage1`, `uat-stage2`, and `uat-stage3` jobs are equal at both
      commits once only their `needs` and `if` keys are ignored, so the shard

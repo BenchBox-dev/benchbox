@@ -141,7 +141,7 @@ stage into shard jobs that run in parallel:
   that the candidate's `release-uat` job succeeded with green evidence for the
   candidate commit and admitted digest, that the candidate commit is an
   ancestor of the final tag commit, that `tests/uat`, `tests/utilities`,
-  `docker`, `.github/actions/release-uat-env`, and the `Makefile` are unchanged,
+  `docker`, `.github/actions/release-uat-env`, `scripts/uat-bring-up`, and the `Makefile` are unchanged,
   that the `release-v2.yml` stage jobs and workflow `env` are unchanged apart
   from `needs` and `if`, and that `uv.lock` differs only
   in the `benchbox` version line, and that the candidate's wheel and sdist match
