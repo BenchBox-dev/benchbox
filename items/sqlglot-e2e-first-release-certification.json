@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Record actual upstream tag/SHA, fork PR/head/merge, all merged-head required check runs, exact artifact/digest and wheel source mapping.",
+    "Record actual BenchBox adoption PR/base/head, substantive independent source review, required CI gates and squash merge.",
+    "Live develop pin/archive/runtime identity verified; no routine manual merge/build/adoption intervention was needed.",
+    "If no eligible release exists, remain open/blocked with objective external wait and do not claim all empirical acceptance complete."
+  ],
+  "context": "Approved 2026-11-04 by owner: create/review TODOs then fully implement the reviewed end-to-end SQLGlot proposal in dependency order. Delivery mode serial: cross-repository and review-policy-deployment boundaries cannot be certified by one integration batch. Fork CI only; independent semantics reviewed at BenchBox adoption (owner 2026-10-23, sqlglot-fork-review-h1-governance). No required fork review/App/auto-merge setting changes. Never bypass protection, hold, oracle, current-head CI or identity rules. No source execution with write/reviewer credentials; pin trusted controller code. No public release/PyPI, cloud spend, published bundle changes, waiver generation, automatic semantic repairs, golden/expected-difference edits or patch retirement. Merge commit for fork, existing pr-arm squash path for BenchBox. Each item closes only at its named merged/operational outcome; assertions, mocks or no-op dispatch do not substitute runtime proof. Named decision gates are hard stops, not discretionary skips.\nUmbrella sqlglot-e2e-automated-delivery but intentionally not its delivery prerequisite. P11: unknown future release does not hold implementation session indefinitely. User now requests tracker conversion, so this named milestone is explicitly tracked.",
+  "description": "Separate empirical milestone after delivered capability. Observe first real eligible mechanically clean upstream final release through protected fork merge, all required post-merge checks, exact merged-source artifact, actual source-aware independent adoption review, consumer execution/installed-package checks and protected BenchBox squash merge. Verify develop runtime identity/hash matches expected or newer accepted target. Current/no-op dry-run cannot certify this. A real conflict/failed gate proves exception behavior only; keep success certification open until eligible success. No fabrication of upstream releases, no test PRs altering production pins solely for certification, no hidden waiver or rerun-until-green.",
+  "links": [
+    ".github/workflows/sqlglot-fork-refresh.yml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ba4923b65d2bea2a5584a721",
+      "at": "2026-11-04T21:06:38Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "d50b88122c51453391e7179b1c544c3a",
+      "session_id": "cf3fdc0e8210426f8ab8cc6664c384cd"
+    }
+  ]
+}
