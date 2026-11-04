@@ -3,6 +3,11 @@
     "DuckDB loads Vortex, DuckLake and Iceberg without to_pylist.",
     "Test asserts the factory returns the native handler for each format."
   ],
+  "batch": {
+    "batch_id": "arrow-dataframe-roundtrips",
+    "implementation_dependencies": [],
+    "member_id": "perf-duckdb-wire-native-handlers-20261030"
+  },
   "description": "DuckDB's handler factory (duckdb.py:893-923) only routes Delta, CSV and Parquet. When it returns None, FileFormatRegistry (base/data_loading.py:1831-1859, fallback at :2062/:2100) picks generic Delta/DuckLake/Iceberg/Vortex handlers (base/data_loading.py:1080-1390) that read the full table to Arrow, call to_pylist(), then executemany. DuckDBVortexHandler (base/data_loading.py:1395) and DuckDBDuckLakeHandler (base/data_loading.py:1206) exist but are not returned by the factory (DuckLake is used only in tests/integration/test_open_table_formats.py:909). Wire them in; for generic handlers on engines that accept Arrow, use INSERT ... SELECT FROM the Arrow table.",
   "sessions": [
     {
@@ -20,6 +25,14 @@
       "op": "update",
       "op_id": "611da31435e14804ad3641345e21c788",
       "session_id": "d2b018a349924f4f88b746458c80b878"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-04T13:52:43Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6426131e69f942088b84b3a7d60b21f3",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
 }
