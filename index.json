@@ -2238,6 +2238,13 @@
       "status": "done",
       "title": "Add batch-start, batch-member-create and batch-member-check, and refuse pr-open and pr-fanout in member worktrees"
     },
+    "batch-native-bulk-load-sql-umbrella-20261104": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Batch native-bulk-load-sql: leader notes (umbrella, not a member)"
+    },
     "batch-prepared-delivery-tracker-and-skill": {
       "claim": null,
       "needs": [

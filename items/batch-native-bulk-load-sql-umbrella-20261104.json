@@ -1,0 +1,14 @@
+{
+  "context": "2026-11-04 sizing: enrolled the first four of seven stated members in order. Not enrolled: perf-tpcdi-etl-bulk-paths-20261031, perf-questdb-influxdb-load-20261030, perf-library-loaders-and-datagen-rows-20261031 — combined diff of all seven plausibly exceeds the hosted brief cap (brief_max_bytes 100000; TPC-DI ETL/SCD rewrite and library-loader/data-gen changes span a dozen+ files each). Not enrolled: perf-fallback-values-loaders-20261030 (live cloud) and ClickHouse/StarRocks/Trino/Presto items (blocked on UAT fixes). Leader implements members itself if task tool unavailable.",
+  "description": "Umbrella for feature-delivery batch native-bulk-load-sql. Members: perf-prepare-local-load-file-streaming-20261031, perf-doris-stream-load-line-rewrite-20261031, perf-databend-bulk-load-20261030, perf-firebolt-core-bulk-load-20261030. Final PR is held with no-auto-merge until v0.5.0 is released.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-04T13:53:04Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f91a5202c2724428a00894f1bc1eb1a3",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}
