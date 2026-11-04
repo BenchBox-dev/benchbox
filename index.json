@@ -27397,6 +27397,17 @@
       "status": "open",
       "title": "Deliver automatic SQLGlot refresh through a verified merged BenchBox adoption"
     },
+    "sqlglot-e2e-lifecycle-controller": {
+      "claim": null,
+      "needs": [
+        "sqlglot-e2e-source-aware-adoption-review",
+        "sql-execution-gate-sqlite-q19-timeout",
+        "sqlglot-e2e-verified-wheel-adoption"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Advance mechanical SQLGlot refreshes through protected fork and BenchBox merges"
+    },
     "sqlglot-e2e-source-aware-adoption-review": {
       "claim": null,
       "needs": [],

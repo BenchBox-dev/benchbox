@@ -1,0 +1,28 @@
+{
+  "acceptance": [
+    "State-transition tests cover full clean lifecycle, fork-current/consumer-stale, tool-only source movement, duplicates, unchanged conflict fingerprint, burst releases, green/armed preservation and supersession.",
+    "Every mutation revalidates expected head/ownership/allowlist; wrong actor/head/paths, hold, failed/missing required checks, review nonapproval, missing/expired credential and malformed status refuse.",
+    "No candidate source/uv build/import/hook execution occurs in write/reviewer credential jobs; publisher lacks status/check-writing permissions and candidate artifacts cannot forge merge authority.",
+    "Replay interruption at push success/PR failure, merge success/API timeout, artifact missing, adoption fail and final pin read; one adoption PR, truthful issue updates and no force overwrite user edits.",
+    "Production no-write dry-run reports exact proposed mutations and kill switch halts mutations while preserving open PRs; normal current-head review+CI; merged BenchBox PR."
+  ],
+  "context": "Approved 2026-11-04 by owner: create/review TODOs then fully implement the reviewed end-to-end SQLGlot proposal in dependency order. Delivery mode serial: cross-repository and review-policy-deployment boundaries cannot be certified by one integration batch. Fork CI only; independent semantics reviewed at BenchBox adoption (owner 2026-10-23, sqlglot-fork-review-h1-governance). No required fork review/App/auto-merge setting changes. Never bypass protection, hold, oracle, current-head CI or identity rules. No source execution with write/reviewer credentials; pin trusted controller code. No public release/PyPI, cloud spend, published bundle changes, waiver generation, automatic semantic repairs, golden/expected-difference edits or patch retirement. Merge commit for fork, existing pr-arm squash path for BenchBox. Each item closes only at its named merged/operational outcome; assertions, mocks or no-op dispatch do not substitute runtime proof. Named decision gates are hard stops, not discretionary skips.\nUmbrella sqlglot-e2e-automated-delivery. Implements P4/P6/P8/P9/P10/P16/P17/P18. Existing guarded refresh code/fork #82 must be preserved. Disclose non-atomic fork label-read vs merge API race, no new hold infrastructure. Receipt in PR+summary traceability only; authoritative live GitHub gates remain. Source-aware review and Q19 must actually deploy first.",
+  "description": "Extend existing script/workflow, hourly+dispatch, pinned trusted develop code and concurrency, stateless reconciliation from GitHub PRs/refs/runs, no DB/webhook/sleeping runner. Fork-current/consumer-stale must continue. Ignore tooling-only fork-main movement at already adopted runtime version. Skip unchanged failed input fingerprints until changed inputs or explicit retry. Validate controller-owned PR repo/base/author/branch/head, all required trusted CI and holds/requests; protected PUT merge with exact sha and merge method, no fork auto-merge setting change. Require all merged-SHA checks before wheel acquisition.\n\nPrepare adoption read-only with local QuestDB, changelog, identity/evidence receipt and git bundle. Allowed paths only archive/pin/notice/baseline identity/changelog, never test/golden/outcome changes. Publish with BenchBox App Contents/PR-write only; isolated from source execution and reviewer credentials. REST bot publication is narrowly documented, not a bypass of ordinary agent policy. Confirm App PR triggers actual CI/oracle. Link exact CI gate report rather than duplicate gate run. Use existing pr-arm exact HEAD/trunk/hold/oracle/five-CI/thread/duration/squash controls; no local pr-open/gateway/pr-ready in CI or parallel raw BenchBox merge.\n\nOne active consumer adoption; preserve green/armed work on newer release; supersede only unopened/unarmed stale work or freshness-failed work. Resume every push/PR/merge partial failure without duplicate/destructive updates; closed PRs owner exceptions. Done live develop pin/hash matches intended/newer accepted identity. Exceptions only, separate monitor issue for check failure without closing real issues; bounded waits and source-review nonapproval issues. Kill switch every mutation, dry-run truly no writes; disabled by default until activation item.",
+  "links": [
+    "scripts/sqlglot_fork_refresh.py",
+    ".github/workflows/sqlglot-fork-refresh.yml",
+    "scripts/pr_arm.py",
+    "Makefile",
+    ".github/workflows/omp-pin-bump.yml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ba4923b65d2bea2a5584a721",
+      "at": "2026-11-04T21:06:29Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "8098c2b3c5d54dae92e3ad5cf5e30209",
+      "session_id": "cf3fdc0e8210426f8ab8cc6664c384cd"
+    }
+  ]
+}
