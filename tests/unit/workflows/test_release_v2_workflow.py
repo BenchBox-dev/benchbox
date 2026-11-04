@@ -346,6 +346,14 @@ def test_stage_one_bounds_per_cell_memory_below_the_hosted_runner():
     assert 0 < config.execute.per_cell_memory_limit_gib <= RUNNER_MEMORY_GIB - 2
 
 
+def test_stage_one_watchdog_budget_matches_the_per_cell_memory_limit():
+    from tests.uat.config import load_config
+
+    config = load_config(_stage_configs()["uat-stage1"])
+    step = next(s for s in _jobs()["uat-stage1"]["steps"] if "UAT_CONFIG" in s.get("env", {}))
+    assert float(step["env"]["BENCHBOX_HEAVY_MEMORY_BUDGET_GIB"]) == config.execute.per_cell_memory_limit_gib
+
+
 def test_every_uat_job_frees_runner_disk_through_the_shared_environment_action():
     action = yaml.safe_load(
         (WORKFLOW.parents[1] / "actions" / "release-uat-env" / "action.yml").read_text(encoding="utf-8")
