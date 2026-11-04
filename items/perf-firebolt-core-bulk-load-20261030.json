@@ -10,6 +10,65 @@
     "member_id": "perf-firebolt-core-bulk-load-20261030"
   },
   "description": "firebolt.py:762-845,1012-1019 splits lines and calls executemany in 500-row batches whenever S3 staging is absent (all Core/local runs). S3 mode already uses s3() table functions. Evaluate READ_CSV/READ_PARQUET on mounted files or COPY FROM for Core.",
+  "prepared": {
+    "accepted_head": "70f17889b6e1db9fe4c82f7360b122383f682308",
+    "batch_id": "native-bulk-load-sql",
+    "changed_files": [
+      "benchbox/platforms/firebolt.py",
+      "changelog.d/feat-native-bulk-load-sql--perf-firebolt-core-bulk-load-20261030.json",
+      "tests/unit/platforms/test_firebolt_core_native_load.py"
+    ],
+    "integration_head": "16e0a5eb8908565efc6cf9bef412e616af272038",
+    "integration_seq": 3,
+    "member_id": "perf-firebolt-core-bulk-load-20261030",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "a99ebca08b62e5b80b87e98567b925e26f9bbe65609c28fa5e5a6d4c81c0eebb",
+    "source_base": "2005772605e245af4f228267984d847c5c546396",
+    "source_revision": "70f17889b6e1db9fe4c82f7360b122383f682308",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-native-bulk-load-sql--perf-firebolt-core-bulk-load-20261030",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/uat/test_connection_registry_drift.py",
+        "tests/unit/core/results/test_anonymization_compute_resource.py",
+        "tests/unit/core/test_compute_resource_unification.py",
+        "tests/unit/core/test_deployment_selection.py",
+        "tests/unit/platforms/base/test_client_link_wiring.py",
+        "tests/unit/platforms/test_firebolt_adapter.py",
+        "tests/unit/platforms/test_firebolt_cloud.py",
+        "tests/unit/platforms/test_firebolt_core_native_load.py",
+        "tests/unit/platforms/test_firebolt_coverage.py",
+        "tests/unit/platforms/test_firebolt_ddl_optimizer.py",
+        "tests/unit/platforms/test_firebolt_error_capture.py",
+        "tests/unit/platforms/test_force_recreate_fail_closed.py"
+      ],
+      "review": {
+        "base_sha": "2005772605e245af4f228267984d847c5c546396",
+        "head_sha": "70f17889b6e1db9fe4c82f7360b122383f682308",
+        "head_tree": "eaab8958a6ef131ce0242a70df142f17dbb0c1ec",
+        "outcome": "clear",
+        "patch_digest": "421a3f584ae95c5a023fbf6946f16015",
+        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "3a3ee9826a6ab939d6235d31e69056c789ac365e"
+      },
+      "revision": "70f17889b6e1db9fe4c82f7360b122383f682308",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:claude-code:root@vm:2d53e6a98f44f4f4a8a4dedd",
@@ -34,6 +93,15 @@
       "generation": "b21012ec50824f509a323a87d28b7a06",
       "op": "take",
       "op_id": "b09c7903a7654d34954d928c4b7ae719",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-04T14:42:54Z",
+      "client": "omp-coding-agent",
+      "generation": "b21012ec50824f509a323a87d28b7a06",
+      "op": "prepare",
+      "op_id": "a87466b4167243faab2c12eeaed9ef14",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
