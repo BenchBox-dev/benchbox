@@ -123,6 +123,24 @@ class TestNativeLoadPath:
         assert options["field_delimiter"] == ","
         assert "quote" not in options
 
+    def test_crlf_and_blank_lines_are_normalised_before_load(self, adapter, tmp_path):
+        benchmark = _benchmark(tmp_path, "t", "1,a\n", ".csv")
+        (tmp_path / "t.csv").write_bytes(b"1,a\r\n\r\n2,b\r\n")
+        uploaded: list[bytes] = []
+
+        class _Capturing(_NativeConnection):
+            def load_file(self, sql, file, format_options, copy_options=None):
+                uploaded.append(Path(file).read_bytes())
+                return super().load_file(sql, file, format_options, copy_options)
+
+        connection = _Capturing()
+
+        stats, _, _ = _run(adapter, connection, benchmark, tmp_path)
+
+        assert stats["t"] == 2
+        assert uploaded == [b"1,a\n2,b\n"]
+        assert connection.rows == [("1", "a"), ("2", "b")]
+
     def test_gzip_is_decompressed_locally_before_load(self, adapter, tmp_path):
         benchmark = _benchmark(tmp_path, "t", "1,a\n2,b\n", ".csv.gz", opener=gzip.open)
         connection = _NativeConnection()

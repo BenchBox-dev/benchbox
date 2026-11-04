@@ -394,7 +394,10 @@ class DatabendAdapter(PlatformAdapter):
 
         before = self._count_rows_or_none(connection, table_name_quoted)
         with prepare_local_load_file(
-            file_path, dialect=dialect, strip_trailing_delim=self._has_trailing_delimiter(file_path, dialect)
+            file_path,
+            dialect=dialect,
+            strip_trailing_delim=self._has_trailing_delimiter(file_path, dialect),
+            normalize_line_endings=True,
         ) as load_path:
             stats = connection.load_file(f"INSERT INTO {table_name_quoted} VALUES", str(load_path), format_options)
         after = self._count_rows_or_none(connection, table_name_quoted)

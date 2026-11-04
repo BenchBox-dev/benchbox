@@ -31,6 +31,7 @@ from .base.data_loading import (
     GzipHandler,
     NoCompressionHandler,
     ZstdHandler,
+    normalize_line_breaks,
     resolve_csv_dialect,
 )
 from .base.mysql_wire import (
@@ -70,8 +71,8 @@ def _empty_fields_to_null(line: str, delimiter: str) -> str:
     return joined + delimiter if trailing else joined
 
 
-def _latin1_to_utf8(data: bytes) -> bytes:
-    return data if data.isascii() else data.decode("latin-1").encode("utf-8")
+def _stream_load_text_body(data: bytes) -> bytes:
+    return normalize_line_breaks(data if data.isascii() else data.decode("latin-1").encode("utf-8"))
 
 
 def _null_mapped_columns_header(columns: list[str]) -> str:
@@ -646,7 +647,7 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
 
         if is_tpc:
             with self._open_data_file_binary(data_file) as f:
-                body: Any = _latin1_to_utf8(f.read())
+                body: Any = _stream_load_text_body(f.read())
         elif isinstance(FileFormatRegistry.get_compression_handler(data_file), NoCompressionHandler):
             body = functools.partial(self._open_data_file_binary, data_file)
         else:
@@ -680,7 +681,7 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
 
         with self._open_data_file_binary(data_file) as f:
             for raw in self._iter_line_aligned_chunks(f, self.stream_load_chunk_size, dialect.has_header):
-                data = _latin1_to_utf8(raw)
+                data = _stream_load_text_body(raw)
                 chunk_num += 1
                 self.log_verbose(f"Stream Load chunk {chunk_num} for {table_name}: {len(data):,} bytes")
 

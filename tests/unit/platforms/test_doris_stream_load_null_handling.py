@@ -141,6 +141,17 @@ class TestStreamLoadSendsFileBytes:
 
         assert sent == raw
 
+    @pytest.mark.parametrize("chunk_size", [10 * 1024 * 1024, 20])
+    def test_crlf_and_blank_lines_are_removed_from_tpc_bodies(self, tmp_path, chunk_size):
+        data_file = tmp_path / "web_sales.dat"
+        data_file.write_bytes(b"1|12.50|alpha|3|\r\n\r\n2||beta|4|\r\n3|7.25||5|\r\n")
+
+        sent, _, _ = _capture(_adapter(stream_load_chunk_size=chunk_size), data_file, COLUMNS)
+
+        assert b"\r" not in sent
+        assert b"\n\n" not in sent
+        assert sent.replace(b"\n", b"") == b"1|12.50|alpha|3|2||beta|4|3|7.25||5|"
+
     def test_non_tpc_compressed_file_is_sent_as_chunk_stream(self, tmp_path):
         data_file = tmp_path / "events.csv.gz"
         raw = ("\n".join(f"{i},name{i}" for i in range(5000)) + "\n").encode("utf-8")

@@ -1945,11 +1945,16 @@ def _replace_boolean_fields(segment: bytes, delim: bytes) -> bytes:
     return padded[len(delim) :].replace(delim + b"\n" + delim, b"\n")
 
 
-def _normalize_segment(segment: bytes, delim: bytes, strip_trailing_delim: bool, normalize_booleans: bool) -> bytes:
+def normalize_line_breaks(segment: bytes) -> bytes:
     if b"\r" in segment:
         segment = _CR_RE.sub(b"\n", segment)
     if b"\n\n" in segment or segment.startswith(b"\n"):
         segment = _BLANK_LINES_RE.sub(b"\n", segment).lstrip(b"\n")
+    return segment
+
+
+def _normalize_segment(segment: bytes, delim: bytes, strip_trailing_delim: bool, normalize_booleans: bool) -> bytes:
+    segment = normalize_line_breaks(segment)
     if strip_trailing_delim:
         segment = segment.replace(delim + b"\n", b"\n")
     if normalize_booleans:
@@ -1977,10 +1982,11 @@ def prepare_local_load_file(
     *,
     dialect: CsvDialect,
     strip_trailing_delim: bool,
+    normalize_line_endings: bool = False,
 ) -> Iterator[Path]:
     compression_handler = FileFormatRegistry.get_compression_handler(file_path)
     is_compressed = not isinstance(compression_handler, NoCompressionHandler)
-    needs_transform = is_compressed or strip_trailing_delim or dialect.normalize_booleans
+    needs_transform = is_compressed or strip_trailing_delim or dialect.normalize_booleans or normalize_line_endings
 
     if not needs_transform:
         yield file_path

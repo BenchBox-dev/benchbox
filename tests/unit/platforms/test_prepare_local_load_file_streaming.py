@@ -182,3 +182,17 @@ def test_no_per_line_python_loop_in_rewrite(tmp_path: Path, monkeypatch) -> None
     monkeypatch.setattr(data_loading, "_normalize_segment", spy)
     _run(data_file, dialect=_dialect(normalize_booleans=True), strip_trailing_delim=True)
     assert len(calls) == 1
+
+
+def test_normalize_line_endings_rewrites_plain_file(tmp_path: Path) -> None:
+    data_file = tmp_path / "events.csv"
+    data_file.write_bytes(b"1|a\r\n\r\n2|b\r\n")
+
+    with prepare_local_load_file(
+        data_file, dialect=_dialect(), strip_trailing_delim=False, normalize_line_endings=True
+    ) as prepared:
+        assert prepared != data_file
+        assert prepared.read_bytes() == b"1|a\n2|b\n"
+
+    with prepare_local_load_file(data_file, dialect=_dialect(), strip_trailing_delim=False) as untouched:
+        assert untouched == data_file
