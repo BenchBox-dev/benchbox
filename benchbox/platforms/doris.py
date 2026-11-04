@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import functools
 import gzip
 import math
@@ -503,8 +504,6 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
 
     @staticmethod
     def _open_data_file_binary(path: Path):
-        import contextlib
-
         handler = FileFormatRegistry.get_compression_handler(path)
 
         @contextlib.contextmanager
@@ -523,6 +522,11 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
                 raise ValueError(f"Unsupported compression handler {type(handler).__name__} for {path}")
 
         return _ctx()
+
+    @contextlib.contextmanager
+    def _open_data_file_chunks(self, path: Path):
+        with self._open_data_file_binary(path) as f:
+            yield iter(lambda: f.read(1 << 20), b"")
 
     def _stream_load_put(self, url: str, data: bytes | Callable[[], Any], headers: dict):
         kwargs = {
@@ -643,8 +647,10 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         if is_tpc:
             with self._open_data_file_binary(data_file) as f:
                 body: Any = _latin1_to_utf8(f.read())
-        else:
+        elif isinstance(FileFormatRegistry.get_compression_handler(data_file), NoCompressionHandler):
             body = functools.partial(self._open_data_file_binary, data_file)
+        else:
+            body = functools.partial(self._open_data_file_chunks, data_file)
         resp = self._stream_load_put(url, body, headers)
         result = self._handle_stream_load_response(resp, context="Stream Load")
         return int(result.get("NumberLoadedRows", 0))

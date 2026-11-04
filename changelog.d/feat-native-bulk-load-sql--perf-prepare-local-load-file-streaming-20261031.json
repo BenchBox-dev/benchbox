@@ -4,7 +4,7 @@
     {
       "category": "changed",
       "breaking": false,
-      "text": "Local load-file preparation for PostgreSQL, SingleStore and DataFusion now strips trailing delimiters, normalises booleans and decompresses gzip/bz2/zstd input in bulk byte chunks instead of rewriting files one line at a time in Python."
+      "text": "Local load-file preparation (used by PostgreSQL, SingleStore, DataFusion and Databend loads) now strips trailing delimiters, normalises booleans and decompresses gzip/bz2/zstd input in bulk byte chunks instead of rewriting files one line at a time in Python."
     }
   ]
 }

@@ -141,6 +141,24 @@ class TestStreamLoadSendsFileBytes:
 
         assert sent == raw
 
+    def test_non_tpc_compressed_file_is_sent_as_chunk_stream(self, tmp_path):
+        data_file = tmp_path / "events.csv.gz"
+        raw = ("\n".join(f"{i},name{i}" for i in range(5000)) + "\n").encode("utf-8")
+        data_file.write_bytes(gzip.compress(raw))
+        sent: list[bytes] = []
+
+        def _put(url, data, headers, **kwargs):
+            assert not hasattr(data, "read")
+            sent.append(b"".join(data))
+            return _ok(5000)
+
+        with patch("benchbox.platforms.doris._requests") as mock_requests:
+            mock_requests.put.side_effect = _put
+            loaded = _adapter()._stream_load_single("events", data_file, CsvDialect(",", False, None, False, None))
+
+        assert loaded == 5000
+        assert b"".join(sent) == raw
+
     def test_header_line_dropped_once_in_chunked_load(self, tmp_path):
         data_file = tmp_path / "web_sales.dat"
         data_file.write_bytes(("ws_id|ws_price|ws_note|ws_qty\n" + "\n".join(ROWS * 3) + "\n").encode("latin-1"))
