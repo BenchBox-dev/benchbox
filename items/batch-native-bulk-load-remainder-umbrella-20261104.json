@@ -1,0 +1,14 @@
+{
+  "context": "2026-11-04: leader started; members in landing order: perf-tpcdi-etl-bulk-paths-20261031, perf-questdb-influxdb-load-20261030, perf-library-loaders-and-datagen-rows-20261031. Scope pre-sizing pending.",
+  "description": "Batch notes for feature batch native-bulk-load-remainder (integration branch feat/native-bulk-load-remainder). Not a batch member. Holds the three members that native-bulk-load-sql (umbrella batch-native-bulk-load-sql-umbrella-20261104) could not enroll under the hosted brief cap. Final PR is held with no-auto-merge until v0.5.0 is released (owner instruction 2026-11-04).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-04T18:13:40Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "085509ab8e9442d28d8851f784dfbd6e",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}
