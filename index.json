@@ -426,7 +426,7 @@
         }
       },
       "integration_branch": "feat/native-bulk-load-remainder",
-      "integration_head": "912e83a3791bd8845e1a6b24f4bec2166d8f7197",
+      "integration_head": "97606cfaa901128d44b005eed27bf0b09403a350",
       "integration_log": [
         {
           "at": "2026-11-04T18:14:25Z",
@@ -460,6 +460,25 @@
           "op_id": "395aff1248df4f519f9a382ec3802eec",
           "previous_head": "e80907f8146e8d0d10ca6a58495977b29f4f2971",
           "seq": 3
+        },
+        {
+          "at": "2026-11-04T19:47:25Z",
+          "changed_files": [
+            "benchbox/core/tpcdi/etl/scd_processor.py",
+            "benchbox/platforms/influxdb/client.py",
+            "tests/unit/core/tpcdi/test_etl_scd_processor.py",
+            "tests/unit/core/tpcdi/test_tpcdi_bulk_load_parity.py",
+            "tests/unit/platforms/test_influxdb_arrow_load.py"
+          ],
+          "head": "97606cfaa901128d44b005eed27bf0b09403a350",
+          "kind": "fix",
+          "op_id": "5781d507f23f4cc684a0f47a6a854450",
+          "previous_head": "912e83a3791bd8845e1a6b24f4bec2166d8f7197",
+          "requires_acceptance": [
+            "perf-questdb-influxdb-load-20261030",
+            "perf-tpcdi-etl-bulk-paths-20261031"
+          ],
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-native-bulk-load-remainder",
