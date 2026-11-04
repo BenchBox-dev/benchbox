@@ -217,6 +217,32 @@ class TestNativeLoadPath:
         assert options["empty_field_as"] == "null"
         assert "quote" not in options
 
+    def test_null_text_in_any_case_loads_as_null_like_values_path(self, adapter, tmp_path):
+        content = "1|NULL|x|\n2|null|Null|\n3||nullable|\n4|nul|NULLS|\n"
+        native, values = _NativeConnection(), _ValuesConnection()
+
+        _run(adapter, native, _benchmark(tmp_path, "t", content, ".tbl"), tmp_path)
+        _run(adapter, values, _benchmark(tmp_path, "t", content, ".tbl"), tmp_path)
+
+        assert native.rows == [
+            ("1", None, "x"),
+            ("2", None, None),
+            ("3", None, "nullable"),
+            ("4", "nul", "NULLS"),
+        ]
+        assert native.rows == values.rows
+
+    def test_double_quote_in_unquoted_data_uses_values_path(self, adapter, tmp_path):
+        benchmark = _benchmark(tmp_path, "t", '1|say "hi"|\n2|plain|\n', ".tbl")
+        connection = Mock(spec=["exec", "query_iter", "load_file"])
+        connection.query_iter.return_value = iter([(0,)])
+
+        stats, _, _ = _run(adapter, connection, benchmark, tmp_path)
+
+        assert stats["t"] == 2
+        connection.load_file.assert_not_called()
+        assert any('say "hi"' in str(c) for c in connection.exec.call_args_list)
+
     def test_dialect_quote_is_passed(self, adapter, tmp_path):
         benchmark = _benchmark(tmp_path, "t", "1,a\n", ".csv")
         benchmark.csv_quote = "'"

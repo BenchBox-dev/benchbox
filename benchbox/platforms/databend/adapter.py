@@ -368,10 +368,15 @@ class DatabendAdapter(PlatformAdapter):
                     connection, table_name_quoted, [file_path], table_name, data_source, benchmark
                 )
                 continue
-            total_rows_loaded += self._load_file_native(connection, table_name_quoted, file_path, dialect)
+            loaded = self._load_file_native(connection, table_name_quoted, file_path, dialect)
+            if loaded is None:
+                loaded = self._insert_files_values(
+                    connection, table_name_quoted, [file_path], table_name, data_source, benchmark
+                )
+            total_rows_loaded += loaded
         return total_rows_loaded
 
-    def _load_file_native(self, connection: Any, table_name_quoted: str, file_path: Path, dialect: Any) -> int:
+    def _load_file_native(self, connection: Any, table_name_quoted: str, file_path: Path, dialect: Any) -> int | None:
         from benchbox.platforms.base.data_loading import prepare_local_load_file
 
         delimiter = dialect.delimiter
@@ -384,13 +389,12 @@ class DatabendAdapter(PlatformAdapter):
             "record_delimiter": "\n",
             "skip_header": "1" if dialect.has_header else "0",
             "compression": "NONE",
+            "empty_field_as": "null",
         }
         if dialect.quote:
             format_options["quote"] = dialect.quote
         if dialect.null_marker:
             format_options["null_display"] = dialect.null_marker
-        else:
-            format_options["empty_field_as"] = "null"
 
         before = self._count_rows_or_none(connection, table_name_quoted)
         with prepare_local_load_file(
@@ -398,7 +402,11 @@ class DatabendAdapter(PlatformAdapter):
             dialect=dialect,
             strip_trailing_delim=self._has_trailing_delimiter(file_path, dialect),
             normalize_line_endings=True,
+            blank_null_text=True,
         ) as load_path:
+            if not dialect.quote and self._file_contains_byte(load_path, b'"'):
+                self.logger.warning(f"{file_path.name} contains quote characters, using INSERT VALUES")
+                return None
             stats = connection.load_file(f"INSERT INTO {table_name_quoted} VALUES", str(load_path), format_options)
         after = self._count_rows_or_none(connection, table_name_quoted)
         if before is not None and after is not None:
@@ -407,6 +415,14 @@ class DatabendAdapter(PlatformAdapter):
         if isinstance(written, int) and not isinstance(written, bool) and written > 0:
             return written
         raise RuntimeError(f"Could not determine rows loaded from {file_path.name}")
+
+    @staticmethod
+    def _file_contains_byte(path: Path, needle: bytes) -> bool:
+        with path.open("rb") as handle:
+            while chunk := handle.read(1 << 20):
+                if needle in chunk:
+                    return True
+        return False
 
     def _has_trailing_delimiter(self, file_path: Path, dialect: Any) -> bool:
         from benchbox.utils.file_format import get_data_extension

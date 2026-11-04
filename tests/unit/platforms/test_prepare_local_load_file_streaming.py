@@ -196,3 +196,22 @@ def test_normalize_line_endings_rewrites_plain_file(tmp_path: Path) -> None:
 
     with prepare_local_load_file(data_file, dialect=_dialect(), strip_trailing_delim=False) as untouched:
         assert untouched == data_file
+
+
+@pytest.mark.parametrize("chunk", [1, 3, 8, 1 << 20])
+def test_blank_null_text_matches_per_field_reference(tmp_path: Path, monkeypatch, chunk: int) -> None:
+    monkeypatch.setattr(data_loading, "_REWRITE_CHUNK_BYTES", chunk)
+    raw = b"1|NULL|x|\n2|null|Null|\n3||nullable|\n4|nul|NULLS|\n5|NULL|NULL|\r\nnull|a|b|"
+    expected = []
+    for line in raw.replace(b"\r\n", b"\n").split(b"\n"):
+        if not line:
+            continue
+        fields = [b"" if f.lower() == b"null" else f for f in line.split(b"|")]
+        expected.append(b"|".join(fields))
+    data_file = tmp_path / "t.tbl"
+    data_file.write_bytes(raw)
+
+    with prepare_local_load_file(
+        data_file, dialect=_dialect(), strip_trailing_delim=False, blank_null_text=True
+    ) as out:
+        assert out.read_bytes() == b"\n".join(expected) + b"\n"

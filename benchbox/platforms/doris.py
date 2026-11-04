@@ -516,9 +516,11 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
                 with open(path, "rb") as raw:
                     yield dctx.stream_reader(raw)
             elif isinstance(handler, GzipHandler):
-                yield gzip.open(path, "rb")
+                with gzip.open(path, "rb") as stream:
+                    yield stream
             elif isinstance(handler, NoCompressionHandler):
-                yield open(path, "rb")
+                with open(path, "rb") as stream:
+                    yield stream
             else:
                 raise ValueError(f"Unsupported compression handler {type(handler).__name__} for {path}")
 

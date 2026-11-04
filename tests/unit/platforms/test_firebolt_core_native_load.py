@@ -200,7 +200,7 @@ class TestParity:
 
     def test_post_core_upload_sends_multipart_to_server(self, tmp_path):
         f = tmp_path / "t.tbl"
-        f.write_text("1|a|\n")
+        f.write_bytes(b"1|a|\n")
         captured = {}
 
         class Handler(BaseHTTPRequestHandler):
@@ -269,6 +269,21 @@ class TestSafetyChecks:
         assert rows is None
         assert not post.called
 
+    @pytest.mark.parametrize("content", ["1|a|b|\n", "1|\n"])
+    def test_field_count_mismatch_falls_back_without_upload(self, tmp_path, content):
+        f = tmp_path / "t.tbl"
+        f.write_text(content)
+        cursor = _cursor(["integer", "text"], [])
+        with patch.object(FireboltAdapter, "_post_core_upload") as post:
+            rows = _adapter()._load_file_via_core_upload(cursor, "t", '"t"', f, TBL_DIALECT)
+        assert rows is None
+        assert not post.called
+
+    def test_scan_handles_crlf_and_missing_final_newline(self, tmp_path):
+        f = tmp_path / "t.tbl"
+        f.write_bytes(b"\r\n1|a|\r\n\r\n2|b|")
+        assert FireboltAdapter._scan_core_upload_file(f) == (2, False, "1|a|")
+
     def test_no_fallback_when_failed_upload_changed_table(self, tmp_path):
         f = tmp_path / "t.tbl"
         f.write_text("1|a|\n")
@@ -292,4 +307,4 @@ class TestSafetyChecks:
     def test_scan_counts_non_blank_rows(self, tmp_path):
         f = tmp_path / "t.tbl"
         f.write_text("1|a|\n\n2|b|\n")
-        assert FireboltAdapter._scan_core_upload_file(f) == (2, False)
+        assert FireboltAdapter._scan_core_upload_file(f) == (2, False, "1|a|")

@@ -4,6 +4,7 @@ import ast
 import bz2
 import contextlib
 import csv
+import functools
 import gzip
 import hashlib
 import inspect
@@ -1945,6 +1946,21 @@ def _replace_boolean_fields(segment: bytes, delim: bytes) -> bytes:
     return padded[len(delim) :].replace(delim + b"\n" + delim, b"\n")
 
 
+@functools.lru_cache(maxsize=8)
+def _null_text_field_re(delim: bytes) -> re.Pattern[bytes]:
+    escaped = re.escape(delim)
+    return re.compile(escaped + rb"null(?=" + escaped + rb")", re.IGNORECASE)
+
+
+def _blank_null_text_fields(segment: bytes, delim: bytes) -> bytes:
+    pattern = _null_text_field_re(delim)
+    padded = delim + segment.replace(b"\n", delim + b"\n" + delim)
+    if pattern.search(padded) is None:
+        return segment
+    padded = pattern.sub(delim, padded)
+    return padded[len(delim) :].replace(delim + b"\n" + delim, b"\n")
+
+
 def normalize_line_breaks(segment: bytes) -> bytes:
     if b"\r" in segment:
         segment = _CR_RE.sub(b"\n", segment)
@@ -1953,16 +1969,32 @@ def normalize_line_breaks(segment: bytes) -> bytes:
     return segment
 
 
-def _normalize_segment(segment: bytes, delim: bytes, strip_trailing_delim: bool, normalize_booleans: bool) -> bytes:
+def _normalize_segment(
+    segment: bytes,
+    delim: bytes,
+    strip_trailing_delim: bool,
+    normalize_booleans: bool,
+    blank_null_text: bool = False,
+) -> bytes:
     segment = normalize_line_breaks(segment)
     if strip_trailing_delim:
         segment = segment.replace(delim + b"\n", b"\n")
     if normalize_booleans:
         segment = _replace_boolean_fields(segment, delim)
+    if blank_null_text:
+        segment = _blank_null_text_fields(segment, delim)
     return segment
 
 
-def _rewrite_stream(src: Any, dst: Any, *, delim: bytes, strip_trailing_delim: bool, normalize_booleans: bool) -> None:
+def _rewrite_stream(
+    src: Any,
+    dst: Any,
+    *,
+    delim: bytes,
+    strip_trailing_delim: bool,
+    normalize_booleans: bool,
+    blank_null_text: bool = False,
+) -> None:
     carry = b""
     while chunk := src.read(_REWRITE_CHUNK_BYTES):
         buffer = carry + chunk
@@ -1971,9 +2003,11 @@ def _rewrite_stream(src: Any, dst: Any, *, delim: bytes, strip_trailing_delim: b
             carry = buffer
             continue
         carry = buffer[cut + 1 :]
-        dst.write(_normalize_segment(buffer[: cut + 1], delim, strip_trailing_delim, normalize_booleans))
+        dst.write(
+            _normalize_segment(buffer[: cut + 1], delim, strip_trailing_delim, normalize_booleans, blank_null_text)
+        )
     if carry:
-        dst.write(_normalize_segment(carry + b"\n", delim, strip_trailing_delim, normalize_booleans))
+        dst.write(_normalize_segment(carry + b"\n", delim, strip_trailing_delim, normalize_booleans, blank_null_text))
 
 
 @contextmanager
@@ -1983,10 +2017,13 @@ def prepare_local_load_file(
     dialect: CsvDialect,
     strip_trailing_delim: bool,
     normalize_line_endings: bool = False,
+    blank_null_text: bool = False,
 ) -> Iterator[Path]:
     compression_handler = FileFormatRegistry.get_compression_handler(file_path)
     is_compressed = not isinstance(compression_handler, NoCompressionHandler)
-    needs_transform = is_compressed or strip_trailing_delim or dialect.normalize_booleans or normalize_line_endings
+    needs_transform = (
+        is_compressed or strip_trailing_delim or dialect.normalize_booleans or normalize_line_endings or blank_null_text
+    )
 
     if not needs_transform:
         yield file_path
@@ -2006,6 +2043,7 @@ def prepare_local_load_file(
                 delim=delim,
                 strip_trailing_delim=strip_trailing_delim,
                 normalize_booleans=dialect.normalize_booleans,
+                blank_null_text=blank_null_text,
             )
         yield tmp_path
     finally:

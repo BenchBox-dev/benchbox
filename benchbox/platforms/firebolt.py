@@ -32,7 +32,7 @@ from ..utils.dependencies import (
     get_dependency_error_message,
 )
 from .base import DriverIsolationCapability, PlatformAdapter
-from .base.data_loading import FileFormatRegistry, NoCompressionHandler
+from .base.data_loading import FileFormatRegistry, NoCompressionHandler, normalize_line_breaks
 
 try:
     from firebolt.client.auth import ClientCredentials
@@ -914,9 +914,18 @@ class FireboltAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
         column_types = self._core_table_column_types(cursor, table_name_lower)
         if column_types is None:
             return None
-        expected_rows, has_quote = self._scan_core_upload_file(file_path)
+        expected_rows, has_quote, first_row = self._scan_core_upload_file(file_path)
         if has_quote:
             self.logger.warning(f"{file_path.name} contains quote characters, using INSERT batching")
+            return None
+        field_count = len(first_row.split(dialect.delimiter))
+        if dialect.null_marker is not None and first_row.endswith(dialect.delimiter):
+            field_count -= 1
+        if field_count != len(column_types):
+            self.logger.warning(
+                f"{file_path.name} has {field_count} fields but {table_name_lower} has {len(column_types)} columns, "
+                "using INSERT batching"
+            )
             return None
         part_name = CORE_UPLOAD_PART_NAME
         sql = self._build_core_upload_sql(table_name_quoted, column_types, part_name, dialect)
@@ -946,16 +955,29 @@ class FireboltAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
         return rows_loaded
 
     @staticmethod
-    def _scan_core_upload_file(file_path: Path) -> tuple[int, bool]:
+    def _scan_core_upload_file(file_path: Path) -> tuple[int, bool, str]:
         rows = 0
         has_quote = False
+        first_row = ""
+        carry = b""
         with file_path.open("rb") as handle:
-            for line in handle:
-                if line.strip(b"\r\n"):
-                    rows += 1
-                if not has_quote and b'"' in line:
-                    has_quote = True
-        return rows, has_quote
+            while chunk := handle.read(1 << 20):
+                has_quote = has_quote or b'"' in chunk
+                buffer = carry + chunk
+                cut = buffer.rfind(b"\n")
+                if cut < 0:
+                    carry = buffer
+                    continue
+                carry = buffer[cut + 1 :]
+                segment = normalize_line_breaks(buffer[: cut + 1])
+                rows += segment.count(b"\n")
+                if not first_row and segment:
+                    first_row = segment.split(b"\n", 1)[0].decode("utf-8", errors="replace")
+        tail = normalize_line_breaks(carry + b"\n")
+        rows += tail.count(b"\n")
+        if not first_row and tail:
+            first_row = tail.split(b"\n", 1)[0].decode("utf-8", errors="replace")
+        return rows, has_quote, first_row
 
     def _load_file_via_insert(
         self,
