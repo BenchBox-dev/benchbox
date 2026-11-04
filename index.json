@@ -10,7 +10,7 @@
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr": {
-        "head": "fb0e3094013db632ca23f62f804e7fa105410f47",
+        "head": "83489483a6b2758cfde0abc10089eecc703d2304",
         "node_id": "PR_kwDOQ7J64c8AAAABM2VxMw",
         "number": 3950,
         "repository": "BenchBox-dev/BenchBox"
@@ -21,6 +21,12 @@
           "head": "fb0e3094013db632ca23f62f804e7fa105410f47",
           "op_id": "b3c7a2f9f5634a8eb686815b534fc99f",
           "previous_head": null
+        },
+        {
+          "at": "2026-11-04T16:42:09Z",
+          "head": "83489483a6b2758cfde0abc10089eecc703d2304",
+          "op_id": "6b154b6358824dae9cd37cfab8d33d3b",
+          "previous_head": "fb0e3094013db632ca23f62f804e7fa105410f47"
         }
       ],
       "integrated_members": {
