@@ -363,6 +363,7 @@
     },
     "tpch-refresh-path": {
       "accepted_members": {
+        "perf-tpch-rf1-bulk-load-20261031": "5e88433033745c63876856eec5cf25b1efbe8453",
         "tpch-refresh-stream-window-excludes-connect-20261103": "7be817e38ec725a582e3c002243d9eb2b7a9b614"
       },
       "batch_schema": 2,
@@ -370,6 +371,23 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "perf-tpch-rf1-bulk-load-20261031": {
+          "accepted_head": "5e88433033745c63876856eec5cf25b1efbe8453",
+          "changed_files": [
+            "benchbox/core/contracts/__init__.py",
+            "benchbox/core/contracts/platform_capabilities.py",
+            "benchbox/core/tpch/refresh.py",
+            "benchbox/platforms/duckdb.py",
+            "benchbox/platforms/postgresql.py",
+            "changelog.d/feat-tpch-refresh-path--perf-tpch-rf1-bulk-load-20261031.json",
+            "tests/integration/_tpch_refresh_utils.py",
+            "tests/integration/platforms/test_postgresql_live.py",
+            "tests/integration/test_tpch_refresh_integration.py",
+            "tests/unit/core/tpch/test_tpch_refresh_native_ingest.py"
+          ],
+          "integration_head": "a7f3dff00eaf3a4221b2359e1f69ea8dcd8d66b5",
+          "integration_seq": 2
+        },
         "tpch-refresh-stream-window-excludes-connect-20261103": {
           "accepted_head": "7be817e38ec725a582e3c002243d9eb2b7a9b614",
           "changed_files": [
@@ -383,7 +401,7 @@
         }
       },
       "integration_branch": "feat/tpch-refresh-path",
-      "integration_head": "7a9bb7b6055e6067b1d8353ad2fc1f8107c6e7b0",
+      "integration_head": "a7f3dff00eaf3a4221b2359e1f69ea8dcd8d66b5",
       "integration_log": [
         {
           "at": "2026-11-04T13:53:00Z",
@@ -399,6 +417,15 @@
           "op_id": "8ef8a2d65b5f440ebfe7cc7a963e4ffd",
           "previous_head": "3a3ee9826a6ab939d6235d31e69056c789ac365e",
           "seq": 1
+        },
+        {
+          "at": "2026-11-04T14:31:54Z",
+          "head": "a7f3dff00eaf3a4221b2359e1f69ea8dcd8d66b5",
+          "kind": "prepare",
+          "member": "perf-tpch-rf1-bulk-load-20261031",
+          "op_id": "ddadbc8c49bb4ecf97855a7aa45c43a3",
+          "previous_head": "7a9bb7b6055e6067b1d8353ad2fc1f8107c6e7b0",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpch-refresh-path",
@@ -18785,15 +18812,10 @@
       "title": "TPC-DS maintenance: replace per-row UPDATEs and Python-built inserts with set-based SQL"
     },
     "perf-tpch-rf1-bulk-load-20261031": {
-      "claim": {
-        "expires_at": "2026-11-05T14:31:49Z",
-        "generation": "e14bc3f126a944ea9a0671f013d4c302",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "TPC-H RF1: ingest the update-set files with each engine's native reader inside the RF1 timer; keep VALUES as fallback"
     },
     "perf-trino-presto-bulk-load-20261030": {
