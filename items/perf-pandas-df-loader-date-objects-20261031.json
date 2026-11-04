@@ -4,6 +4,11 @@
     "Column dtypes and TPC-H query answers on pandas are unchanged.",
     "pandas load time at SF1 drops measurably."
   ],
+  "batch": {
+    "batch_id": "arrow-dataframe-roundtrips",
+    "implementation_dependencies": [],
+    "member_id": "perf-pandas-df-loader-date-objects-20261031"
+  },
   "description": "benchbox/platforms/dataframe/pandas_df.py:41 does parsed.dt.date.astype(object), then pd.array(..., ArrowDtype(date32)) at :126, creating one Python date per cell (~18M for lineitem at SF1). Use parsed.astype('date32[pyarrow]') or pyarrow.compute.cast. Also pd.read_csv at :241 uses the C engine with dtype=object strings; evaluate engine='pyarrow' and string[pyarrow]. Same read_csv pattern in write_primitives/dataframe_operations.py:543.",
   "sessions": [
     {
@@ -13,6 +18,14 @@
       "op": "create",
       "op_id": "81761cb2f1fc4c78a1fe6aaf67116d0f",
       "session_id": "d2b018a349924f4f88b746458c80b878"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-04T13:52:50Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b2651f93096b4e8eb55ae49c40c86fe1",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
 }
