@@ -1191,16 +1191,17 @@ class TestDorisChunkedLoading:
         try:
             with patch("benchbox.platforms.doris._requests") as mock_requests:
                 mock_requests.put.return_value = mock_response
-                adapter._stream_load_file("test_table", temp_path, CsvDialect("|", False, "", False, None))
+                adapter._stream_load_file(
+                    "test_table", temp_path, CsvDialect("|", False, "", False, None), ["a", "b", "c"]
+                )
 
             sent = b"".join(call.kwargs["data"] for call in mock_requests.put.call_args_list)
-            lines = sent.decode("utf-8").split("\n")
-            assert lines == ["1|val1|", "2|val2|"], f"Rows were modified before sending - got: {lines}"
+            assert sent == b"1|val1|\n2|val2|\n", f"Rows were modified before sending - got: {sent!r}"
         finally:
             temp_path.unlink()
 
     def test_chunked_load_preserves_rows_without_trailing_separator(self):
-        adapter = DorisAdapter(database="test_db", stream_load_chunk_size=50)
+        adapter = DorisAdapter(database="test_db", stream_load_chunk_size=10)
 
         mock_response = Mock()
         mock_response.status_code = 200
@@ -1213,12 +1214,12 @@ class TestDorisChunkedLoading:
         try:
             with patch("benchbox.platforms.doris._requests") as mock_requests:
                 mock_requests.put.return_value = mock_response
-                adapter._stream_load_file("test_table", temp_path, CsvDialect("|", False, "", False, None))
+                adapter._stream_load_file(
+                    "test_table", temp_path, CsvDialect("|", False, "", False, None), ["a", "b", "c"]
+                )
 
             sent = b"".join(call.kwargs["data"] for call in mock_requests.put.call_args_list)
-            lines = sent.decode("utf-8").split("\n")
-            assert "1|val1|" in lines, "Trailing | stripped from NULL-last-column row"
-            assert "2|val2" in lines, "Non-trailing-| row was modified"
+            assert sent == b"1|val1|\n2|val2\n", f"Rows were modified before sending - got: {sent!r}"
         finally:
             temp_path.unlink()
 
