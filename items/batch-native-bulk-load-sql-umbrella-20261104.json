@@ -1,5 +1,5 @@
 {
-  "context": "2026-11-04 sizing: enrolled the first four of seven stated members in order. Not enrolled: perf-tpcdi-etl-bulk-paths-20261031, perf-questdb-influxdb-load-20261030, perf-library-loaders-and-datagen-rows-20261031 — combined diff of all seven plausibly exceeds the hosted brief cap (brief_max_bytes 100000; TPC-DI ETL/SCD rewrite and library-loader/data-gen changes span a dozen+ files each). Not enrolled: perf-fallback-values-loaders-20261030 (live cloud) and ClickHouse/StarRocks/Trino/Presto items (blocked on UAT fixes). Leader implements members itself if task tool unavailable.",
+  "context": "2026-11-04 sizing: enrolled the first four of seven stated members in order. Not enrolled: perf-tpcdi-etl-bulk-paths-20261031, perf-questdb-influxdb-load-20261030, perf-library-loaders-and-datagen-rows-20261031 — combined diff of all seven plausibly exceeds the hosted brief cap (brief_max_bytes 100000; TPC-DI ETL/SCD rewrite and library-loader/data-gen changes span a dozen+ files each). Not enrolled: perf-fallback-values-loaders-20261030 (live cloud) and ClickHouse/StarRocks/Trino/Presto items (blocked on UAT fixes). Leader implements members itself if task tool unavailable.\n\n2026-11-04 leader state: 4 members landed+prepared (prepare-local-load-file, doris, databend, firebolt). Leader fix commits recorded (batch-advance fix): Doris gzip chunk iterator + changelog text; CRLF/blank-line normalisation for Doris/Databend (shared normalize_line_breaks, prepare_local_load_file normalize_line_endings flag). Final PR BenchBox-dev/BenchBox#3949, bound head a14a32614095, label no-auto-merge applied, batch-evidence written (.todo-batch/native-bulk-load-sql/final-evidence.json in /Users/joe/Developer/BenchBox.wt-native-bulk-load-sql). Live checks (Doris/Databend/Firebolt Core/PostgreSQL) NOT run: docker not installed on host. Brief mode file-list (diff 81443 bytes). Leader and members were separate sessions. Known: _empty_fields_to_null dead helper in doris.py kept (test outside scope imports it). Owner after v0.5.0 release: name PR 3949 to lift hold; then make batch-advance REASON=develop-merge, rebind, fresh make batch-evidence, make pr-arm, finish members after merge, make batch-finish.",
   "description": "Umbrella for feature-delivery batch native-bulk-load-sql. Members: perf-prepare-local-load-file-streaming-20261031, perf-doris-stream-load-line-rewrite-20261031, perf-databend-bulk-load-20261030, perf-firebolt-core-bulk-load-20261030. Final PR is held with no-auto-merge until v0.5.0 is released.",
   "sessions": [
     {
@@ -8,6 +8,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "f91a5202c2724428a00894f1bc1eb1a3",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-04T15:21:34Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "508287dc9789438d80e477ac42ec7a8d",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
