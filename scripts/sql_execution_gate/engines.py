@@ -57,9 +57,12 @@ class SqliteEngine:
         self.connection = sqlite3.connect(":memory:")
         self.connection.executescript(dataset.ddl)
         for table, path in dataset.tables.items():
-            columns = len(self.connection.execute(f"PRAGMA table_info({table})").fetchall())
+            info = self.connection.execute(f"PRAGMA table_info({table})").fetchall()
+            columns = len(info)
             marks = ",".join("?" * columns)
             self.connection.executemany(f"INSERT INTO {table} VALUES ({marks})", _data_lines(path, columns))
+            if info:
+                self.connection.execute(f'CREATE INDEX "{table}_leading_key" ON {table} ("{info[0][1]}")')
         self.connection.commit()
 
     def execute(self, sql: str) -> list[tuple]:
