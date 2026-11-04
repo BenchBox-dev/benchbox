@@ -15,6 +15,14 @@
       "reason": "At v0.1.6 (6e5765e), the empty-secret refusal step tells callers to pass secrets: inherit. inherit does not cross owners, so the message misleads. Since v0.1.6 declares required secrets, the step now fires only when the caller's environment lacks a secret. Fix it in the next Theseus release.",
       "resolution": "open",
       "summary": "Theseus gate.yml/review.yml App-secret refusal message still says callers must pass secrets: inherit; should say map by name"
+    },
+    {
+      "created_at": "2026-11-04T21:37:47Z",
+      "from_item": "theseus-atomic-benchbox-cutover-20261102-deferral-1",
+      "id": 3,
+      "reason": "P3 findings from the independent review of #3951 head 37baa2f. They were left out to avoid restarting CI and the local review before the emergency merge. Fix them in the next re-lock PR.",
+      "resolution": "open",
+      "summary": "oracle-review-v2.md: drop \"first-promotion bootstrap record\" wording (lines 42-44); inherit into required-secret callee fails at startup (39-41)"
     }
   ],
   "description": "Promoted from deferral 1 on theseus-atomic-benchbox-cutover-20261102: The cutover head 4cbb820 received a hosted SHIP. A local review then found a Medium: the Theseus gate posts no status when the trusted policy or a manifest fails to load. That is fail-open only if develop's own policy is broken. Merging now and fixing in one small re-lock PR beats restarting a 1–2 h review cycle. The local review also rejects the canonical lowercase slug against the origin URL case; check whether Theseus has the same case-sensitivity bug.",
@@ -41,6 +49,14 @@
       "client": "omp-coding-agent",
       "op": "defer",
       "op_id": "85b584ac93f44eaf8cb0e9b115c4150a",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-04T21:37:47Z",
+      "client": "omp-coding-agent",
+      "op": "defer",
+      "op_id": "71ae86929e0046f6b886ec6397af90ae",
       "session_id": "8d9ba932107b4322b2417b8af61c160c"
     }
   ]
