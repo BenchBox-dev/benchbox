@@ -19235,10 +19235,15 @@
       "title": "Stop line-by-line Python rewrites in prepare_local_load_file before COPY"
     },
     "perf-questdb-influxdb-load-20261030": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-05T18:35:32Z",
+        "generation": "428c6a97692c426780f011d3dfc21fd5",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Remove pandas/Python row steps in QuestDB and InfluxDB loading"
     },
     "perf-smoke-rebaseline-after-power-query-generation-20261103": {
