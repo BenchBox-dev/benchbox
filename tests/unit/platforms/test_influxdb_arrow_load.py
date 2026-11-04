@@ -146,3 +146,11 @@ class TestInfluxArrowLoadParity:
         stamps = [_split(line)[2] for line in lines]
         assert rows["cpu"] == 4
         assert stamps == [("1767225600000000000",), ("1767225601000000000",), ("1767225602000000000",), ()]
+
+    def test_unparseable_timestamp_only_drops_its_own_row(self, adapter, tmp_path):
+        csv_text = "time,hostname,usage_user\n2026-02-30 00:00:00,a,1\n2026-01-01 00:00:01,b,2\n"
+
+        rows, _, lines, _ = _load(adapter, tmp_path, "cpu", csv_text)
+
+        assert rows["cpu"] == 2
+        assert [_split(line)[2] for line in lines] == [(), ("1767225601000000000",)]

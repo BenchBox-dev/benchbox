@@ -728,14 +728,13 @@ class EnhancedSCDType2Processor:
         update_rows = [
             [batch_id, *(_to_db_value(value) for value in row)] for row in updates.itertuples(index=False, name=None)
         ]
-        row_placeholder = "(" + ",".join(["?"] * len(join_columns)) + ")"
+        first_select = "SELECT " + ", ".join(f"? AS {alias}" for alias in join_columns)
+        next_select = "SELECT " + ", ".join(["?"] * len(join_columns))
         rows_per_statement = max(1, _PARAMETER_CHUNK // len(join_columns))
 
         for chunk in _chunks(update_rows, rows_per_statement):
-            sql = (
-                f"UPDATE {table} SET {assignments} FROM (VALUES {', '.join([row_placeholder] * len(chunk))}) "
-                f"AS u({', '.join(join_columns)}) WHERE {table}.{sk_name} = u.sk"
-            )
+            source = " UNION ALL ".join([first_select, *([next_select] * (len(chunk) - 1))])
+            sql = f"UPDATE {table} SET {assignments} FROM ({source}) AS u WHERE {table}.{sk_name} = u.sk"
             updated = self._execute_dml(sql, [value for row in chunk for value in row])
             if updated != len(chunk):
                 raise RuntimeError(f"Non-SCD update on {table_name} changed {updated} rows for {len(chunk)} keys")

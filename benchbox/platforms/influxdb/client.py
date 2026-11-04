@@ -99,7 +99,14 @@ def _timestamp_ns(values: Any) -> Any:
         try:
             return pc.cast(pc.cast(selected, target), pa.int64())
         except pa.ArrowInvalid:
-            return pa.nulls(len(values), pa.int64())
+            distinct = pc.unique(selected).drop_null()
+            parsed = []
+            for value in distinct.to_pylist():
+                try:
+                    parsed.append(pc.cast(pc.cast(pa.array([value]), target), pa.int64())[0].as_py())
+                except pa.ArrowInvalid:
+                    parsed.append(None)
+            return pc.take(pa.array(parsed, pa.int64()), pc.index_in(selected, value_set=distinct))
 
     seconds = pc.if_else(pc.match_substring_regex(values, _TS_EPOCH_SECONDS), values, None)
     epoch = pc.cast(pc.multiply(pc.cast(seconds, pa.float64()), 1_000_000_000), pa.int64())

@@ -296,7 +296,7 @@ def test_scd_batch_matches_per_row_reference_and_uses_set_based_updates() -> Non
     assert (stats["new_records"], stats["scd_type2_changes"], stats["updated_records"]) == (2, 300, 300)
     assert _snapshot(actual, ["DimCustomer"]) == _snapshot(reference, ["DimCustomer"])
     updates = [sql for sql in recorder.sql if sql.lstrip().upper().startswith("UPDATE")]
-    assert sum("FROM (VALUES" in sql for sql in updates) == 3
+    assert sum("UNION ALL" in sql for sql in updates) == 3
     assert len(updates) == 4
     assert actual.execute("SELECT COUNT(*) FROM DimCustomer WHERE BatchID = 2").fetchone() == (602,)
 

@@ -535,3 +535,28 @@ def test_failed_insert_in_caller_transaction_rolls_back_to_savepoint() -> None:
     raw.execute("COMMIT")
     assert raw.execute("SELECT COUNT(*) FROM DimCustomer").fetchone() == (3,)
     raw.close()
+
+
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
+def test_non_scd_update_runs_on_sqlite() -> None:
+    sqlite3 = pytest.importorskip("sqlite3")
+    raw = sqlite3.connect(":memory:")
+    raw.execute(DIM_CUSTOMER_DDL)
+    raw.execute(
+        "INSERT INTO DimCustomer VALUES (10, 1, 'A', 5, 1, 1, '2024-01-01', '9999-12-31'),"
+        "(20, 2, 'A', 7, 1, 1, '2024-01-01', '9999-12-31')"
+    )
+    stats = EnhancedSCDType2Processor(connection=raw).process_scd_changes(
+        new_data=pd.DataFrame({"CustomerID": [1, 2], "Status": ["A", "A"], "Attr": [6, 7]}),
+        table_name="DimCustomer",
+        business_keys=["CustomerID"],
+        scd_columns=["Status"],
+        batch_id=2,
+        effective_date=EFFECTIVE,
+        non_scd_columns=["Attr"],
+    )
+
+    assert stats["success"] is True, stats["error_message"]
+    assert stats["updated_records"] == 1
+    assert raw.execute("SELECT SK_CustomerID, Attr FROM DimCustomer ORDER BY 1").fetchall() == [(10, 6), (20, 7)]
+    raw.close()
