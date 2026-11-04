@@ -444,6 +444,18 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         _path = self.tables[table_name]
         table_schema = TABLES[table_name]
 
+        from benchbox.core.benchmark_mixins import duckdb_insert_from_csv
+
+        numeric_types = ("INT", "BIGINT", "SMALLINT", "TINYINT", "DECIMAL", "DOUBLE", "FLOAT", "REAL")
+        null_flags = [cast(str, col["type"]).upper().startswith(numeric_types) for col in table_schema["columns"]]
+        if (
+            duckdb_insert_from_csv(
+                connection, table_name, _path, len(null_flags), null_if_empty=null_flags, skip_malformed=False
+            )
+            is not None
+        ):
+            return
+
         with open(_path, encoding="utf-8") as f:
             reader = csv.reader(f, delimiter="|")
 

@@ -8,6 +8,43 @@ from typing import Any, Optional, Union
 
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
+_NO_NULL_SENTINEL = "<<benchbox-no-null>>"
+
+
+def duckdb_insert_from_csv(
+    connection: Any,
+    table_name: str,
+    file_path: Any,
+    num_columns: int,
+    *,
+    delimiter: str = "|",
+    skip_header: bool = False,
+    null_if_empty: bool | list[bool] = False,
+    trailing_delimiter: bool = False,
+    skip_malformed: bool = True,
+) -> int | None:
+    try:
+        import duckdb
+    except ImportError:
+        return None
+    if not isinstance(connection, duckdb.DuckDBPyConnection):
+        return None
+
+    flags = null_if_empty if isinstance(null_if_empty, list) else [null_if_empty] * num_columns
+    read_columns = num_columns + 1 if trailing_delimiter else num_columns
+    columns = ", ".join(f"'c{i}': 'VARCHAR'" for i in range(read_columns))
+    select = ", ".join(f"NULLIF(c{i}, '')" if flags[i] else f"c{i}" for i in range(num_columns))
+    path = str(file_path).replace("'", "''")
+    delim = delimiter.replace("'", "''")
+    sql = (
+        f"INSERT INTO {table_name} SELECT {select} FROM read_csv('{path}', delim='{delim}', "
+        f"header={str(skip_header).lower()}, columns={{{columns}}}, auto_detect=false, "
+        f"nullstr='{_NO_NULL_SENTINEL}', quote='\"', escape='\"', "
+        f"null_padding={str(trailing_delimiter).lower()}, ignore_errors={str(skip_malformed).lower()})"
+    )
+    row = connection.execute(sql).fetchone()
+    return int(row[0]) if row else 0
+
 
 class DataGenerationMixin:
     tables: dict[str, Any]
@@ -69,6 +106,12 @@ class DataGenerationMixin:
         import csv
 
         file_path = self.tables[table_name]
+
+        if (
+            duckdb_insert_from_csv(connection, table_name, file_path, len(table_def["columns"]), skip_malformed=False)
+            is not None
+        ):
+            return
 
         with open(file_path, encoding="utf-8") as handle:
             reader = csv.reader(handle, delimiter="|")

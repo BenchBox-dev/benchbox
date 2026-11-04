@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
-from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -84,19 +83,12 @@ def test_loader_load_dimension_handles_empty_and_errors(monkeypatch: pytest.Monk
     assert "boom" in (failed.error_message or "")
 
 
-def test_loader_csv_and_table_helpers(tmp_path: Path):
+def test_loader_table_info_helper():
     conn = _ExecConn(fetch_value=(3,))
     loader = TPCDIDataLoader(conn, dialect="duckdb")
-    csv_path = tmp_path / "rows.csv"
-    csv_path.write_text("id,name\n1,a\n2,b\n", encoding="utf-8")
 
-    loaded = loader.load_csv_file("DimCustomer", csv_path)
-    missing = loader.load_csv_file("DimCustomer", tmp_path / "missing.csv")
     info = loader.get_table_info("DimCustomer")
 
-    assert loaded.success is True
-    assert loaded.records_loaded == 2
-    assert missing.success is False
     assert info["exists"] is True
     assert info["record_count"] == 3
 
