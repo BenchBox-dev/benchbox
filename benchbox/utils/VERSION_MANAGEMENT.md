@@ -4,7 +4,7 @@
 
 This document outlines the version management strategy for BenchBox, ensuring consistency across all version references and providing clear guidelines for version updates.
 
-Current release: `v0.5.0rc4`.
+Current release: `v0.5.0rc5`.
 
 ## Version Sources
 
