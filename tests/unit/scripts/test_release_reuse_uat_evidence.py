@@ -4,6 +4,7 @@ import argparse
 import importlib.util
 import io
 import json
+import os
 import subprocess
 import tarfile
 import zipfile
@@ -232,9 +233,18 @@ def test_newest_release_candidate_is_numeric_and_same_version_only():
     assert reuse.newest_release_candidate("v0.5.0rc4", tags) is None
 
 
+GIT_IDENTITY = {
+    "GIT_AUTHOR_NAME": "t",
+    "GIT_AUTHOR_EMAIL": "t@example.com",
+    "GIT_COMMITTER_NAME": "t",
+    "GIT_COMMITTER_EMAIL": "t@example.com",
+}
+
+
 def _git(repo: Path, *args: str) -> str:
+    env = {**os.environ, **GIT_IDENTITY}
     return subprocess.run(
-        ["git", *args], cwd=repo, check=True, capture_output=True, text=True, encoding="utf-8"
+        ["git", *args], cwd=repo, check=True, capture_output=True, text=True, encoding="utf-8", env=env
     ).stdout.strip()
 
 
