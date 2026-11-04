@@ -9,6 +9,79 @@
     "member_id": "perf-questdb-influxdb-load-20261030"
   },
   "description": "QuestDB questdb.py:586-623 converts Parquet via to_pandas().to_csv() before REST /imp (use pyarrow.csv.write_csv or server read_parquet); the ILP path :625-660 builds lines by hand (use questdb Sender.dataframe). InfluxDB influxdb/adapter.py:148-151 reads TSBS CSV into Python records (use write_file or a DataFrame write).",
+  "prepared": {
+    "accepted_head": "c4efcc2bd3b02e78aebce3d30c753958ed9d13b7",
+    "batch_id": "native-bulk-load-remainder",
+    "changed_files": [
+      "benchbox/platforms/influxdb/adapter.py",
+      "benchbox/platforms/influxdb/client.py",
+      "benchbox/platforms/questdb.py",
+      "changelog.d/feat-native-bulk-load-remainder--perf-questdb-influxdb-load-20261030.json",
+      "tests/unit/platforms/test_influxdb_adapter_coverage.py",
+      "tests/unit/platforms/test_influxdb_arrow_load.py",
+      "tests/unit/platforms/test_questdb_coverage.py",
+      "tests/unit/platforms/test_questdb_ilp_arrow.py"
+    ],
+    "integration_head": "e80907f8146e8d0d10ca6a58495977b29f4f2971",
+    "integration_seq": 2,
+    "member_id": "perf-questdb-influxdb-load-20261030",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "80d0f814e173c384bd9130d4b1174be7e6923de8d4febbf21bd2e6a9c1eb64d8",
+    "source_base": "e747b8f49e74fd6cd475854514156252e992918c",
+    "source_revision": "c4efcc2bd3b02e78aebce3d30c753958ed9d13b7",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-native-bulk-load-remainder--perf-questdb-influxdb-load-20261030",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/platforms/test_influxdb_live.py",
+        "tests/integration/platforms/test_influxdb_smoke.py",
+        "tests/integration/test_manifest_driven_loading.py",
+        "tests/integration/test_misc_plan_capture_live.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/uat/test_connection_registry_drift.py",
+        "tests/unit/core/test_deployment_selection.py",
+        "tests/unit/core/tuning/test_capability_registry_parity.py",
+        "tests/unit/platforms/influxdb/test_setup_mixin.py",
+        "tests/unit/platforms/test_influxdb_adapter.py",
+        "tests/unit/platforms/test_influxdb_adapter_coverage.py",
+        "tests/unit/platforms/test_influxdb_arrow_load.py",
+        "tests/unit/platforms/test_misc_plan_capture.py",
+        "tests/unit/platforms/test_platform_adapter_init_and_loading.py",
+        "tests/unit/platforms/test_questdb_adapter.py",
+        "tests/unit/platforms/test_questdb_coverage.py",
+        "tests/unit/platforms/test_questdb_ilp_arrow.py",
+        "tests/unit/platforms/test_questdb_join_scope.py",
+        "tests/unit/platforms/test_questdb_rewrites.py",
+        "tests/unit/platforms/test_questdb_schema_enhancement.py",
+        "tests/unit/platforms/test_throughput_session_capability.py",
+        "tests/unit/utils/test_dialect_utils.py"
+      ],
+      "review": {
+        "base_sha": "e747b8f49e74fd6cd475854514156252e992918c",
+        "head_sha": "c4efcc2bd3b02e78aebce3d30c753958ed9d13b7",
+        "head_tree": "28f3c5e77ec0cde228fbfa3e005868dd175dd920",
+        "outcome": "clear",
+        "patch_digest": "c86052b93517058f0664fb458b798002",
+        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "dff1efde16aed3e2c5f14ba539267f4ea2e59013"
+      },
+      "revision": "c4efcc2bd3b02e78aebce3d30c753958ed9d13b7",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:claude-code:root@vm:2d53e6a98f44f4f4a8a4dedd",
@@ -33,6 +106,15 @@
       "generation": "428c6a97692c426780f011d3dfc21fd5",
       "op": "take",
       "op_id": "b8245b435edb4b618db187e52a6e0275",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-04T18:35:48Z",
+      "client": "omp-coding-agent",
+      "generation": "428c6a97692c426780f011d3dfc21fd5",
+      "op": "prepare",
+      "op_id": "a9626e0e38c7492a9423beff5abb3a78",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
