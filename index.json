@@ -9,7 +9,20 @@
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
-      "final_pr_history": [],
+      "final_pr": {
+        "head": "fb0e3094013db632ca23f62f804e7fa105410f47",
+        "node_id": "PR_kwDOQ7J64c8AAAABM2VxMw",
+        "number": 3950,
+        "repository": "BenchBox-dev/BenchBox"
+      },
+      "final_pr_history": [
+        {
+          "at": "2026-11-04T15:49:54Z",
+          "head": "fb0e3094013db632ca23f62f804e7fa105410f47",
+          "op_id": "b3c7a2f9f5634a8eb686815b534fc99f",
+          "previous_head": null
+        }
+      ],
       "integrated_members": {
         "perf-dataframe-maintenance-arrow-20261031": {
           "accepted_head": "ee35e987c1539b59c1e0d622b53f9aadf7055288",
