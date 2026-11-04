@@ -17765,7 +17765,7 @@
       "claim": null,
       "needs": [],
       "priority": "critical",
-      "status": "open",
+      "status": "blocked",
       "title": "Oracle review and gate cannot read environment secrets after the Theseus cutover (all PRs blocked)"
     },
     "oracle-carry-byte-identical-20261026": {
