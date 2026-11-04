@@ -26,7 +26,10 @@ from benchbox.platforms.base.data_loading import (
     insert_arrow_table,
 )
 
-pytestmark = pytest.mark.fast
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.fast,
+]
 
 DDL = "CREATE TABLE t (id INTEGER, name VARCHAR, d DATE, amt DECIMAL(12,2), note VARCHAR)"
 COLUMNS = ["id", "name", "d", "amt", "note"]

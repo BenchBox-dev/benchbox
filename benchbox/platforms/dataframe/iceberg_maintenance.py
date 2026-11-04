@@ -433,17 +433,17 @@ class IcebergMaintenanceOperations(BaseDataFrameMaintenanceOperations):
         predicates: list[Any] = []
         if len(values) > 0:
             if len(values) <= cls._KEY_IN_LIMIT:
-                predicates.append(In(key, values.to_pylist()))
+                predicates.append(In(term=key, literals=values.to_pylist()))
             else:
                 bounds = pc.min_max(values)
                 predicates.append(
                     And(
-                        GreaterThanOrEqual(key, bounds["min"].as_py()),
-                        LessThanOrEqual(key, bounds["max"].as_py()),
+                        GreaterThanOrEqual(term=key, literal=bounds["min"].as_py()),
+                        LessThanOrEqual(term=key, literal=bounds["max"].as_py()),
                     )
                 )
         if unique_keys.null_count > 0:
-            predicates.append(IsNull(key))
+            predicates.append(IsNull(term=key))
         if not predicates:
             return None
         return predicates[0] if len(predicates) == 1 else Or(*predicates)
