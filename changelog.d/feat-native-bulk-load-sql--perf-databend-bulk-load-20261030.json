@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "Databend data loading now streams each file through the driver's stage-backed load_file path (server-side CSV parsing, compression and trailing-delimiter handling) instead of building INSERT VALUES literals in Python; the VALUES path remains only as a fallback for connections without load_file or non-UTF-8 inputs."
+    }
+  ]
+}
