@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Every implementation and activation item below is merged or operationally verified; no unowned deferred scope.",
+    "Source-aware adoption review derives old/new source from pins, verifies relocated wheel correspondence, reviews substantive source and fails closed on missing/oversize evidence.",
+    "Controller is enabled only after prerequisites and proves idempotent guarded progress, exact merged-artifact binding, protected landing and fail-closed exceptions.",
+    "Historical real-artifact/local-engine replay and production no-write dry-run exercised; delivered capability is not falsely claimed to certify a future release."
+  ],
+  "context": "Approved 2026-11-04 by owner: create/review TODOs then fully implement the reviewed end-to-end SQLGlot proposal in dependency order. Delivery mode serial: cross-repository and review-policy-deployment boundaries cannot be certified by one integration batch. Fork CI only; independent semantics reviewed at BenchBox adoption (owner 2026-10-23, sqlglot-fork-review-h1-governance). No required fork review/App/auto-merge setting changes. Never bypass protection, hold, oracle, current-head CI or identity rules. No source execution with write/reviewer credentials; pin trusted controller code. No public release/PyPI, cloud spend, published bundle changes, waiver generation, automatic semantic repairs, golden/expected-difference edits or patch retirement. Merge commit for fork, existing pr-arm squash path for BenchBox. Each item closes only at its named merged/operational outcome; assertions, mocks or no-op dispatch do not substitute runtime proof. Named decision gates are hard stops, not discretionary skips.\nExact set: sqlglot-e2e-source-aware-adoption-review; existing sql-execution-gate-sqlite-q19-timeout; sqlglot-e2e-verified-wheel-adoption; sqlglot-e2e-lifecycle-controller; sqlglot-e2e-fork-maintainer-docs; sqlglot-e2e-activation-proof; sqlglot-e2e-first-release-certification. Last item is a separate post-delivery milestone, not an implementation-session wait. Current baseline changed: BenchBox #3942 moved reviewer runtime into pinned joeharris76/theseus; source-review item must resolve scope before writing there. Relevant unrelated work stays independent: translation-runtime-unrecorded-for-unlogged-rewrites, sqlglot-guard-tests-scan-ignored-venvs-20261102, ML/Polyglot.",
+  "description": "Implement the approved full lifecycle: discover upstream final releases; mechanically prepare/resume fork PR; protected exact-head fork merge after required CI; require all canonical push-main checks at merge SHA; consume exact verified wheel artifact; transactionally prepare restricted BenchBox adoption; substantively review actual upstream/fork source delta at consumer adoption; run execution/installed-package gates; land through existing pr-arm; confirm develop pin/hash. Stateless hourly/manual reconciliation, one active consumer adoption, fresh checks before mutations, explicit failure fingerprints and actionable exception issues, no routine human merge/build/adopt commands.\n\nPrior art: scripts/sqlglot_fork_refresh.py; scripts/adopt_sqlglot_wheel.py; .github/workflows/sqlglot-fork-refresh.yml; fork downstream.refresh auto and three push-main workflows; existing source promotion primitives now owned by the pinned Theseus reviewer; existing make pr-arm and bot REST publication. Extend these, no new service/database/reviewer clone.\n\nDecision gates: source-aware reviewer must be deployed before activation; Q19 reliability fixed; App/write credential provenance/permissions verified; owner-only credentials and enable variable cannot be invented; actual first eligible release remains separate empirical certification.",
+  "links": [
+    "docs/internal/sql-execution-evidence-gate.md",
+    "_project/decisions/sqlglot-maintenance-decision-record.md",
+    "_project/decisions/sqlglot-fork-transpilation-plan.md",
+    "docs/agent/merge-queue-governance.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ba4923b65d2bea2a5584a721",
+      "at": "2026-11-04T21:06:19Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "88d423dd1962429dbc5a1ca94e786bdb",
+      "session_id": "cf3fdc0e8210426f8ab8cc6664c384cd"
+    }
+  ]
+}

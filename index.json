@@ -27390,6 +27390,13 @@
       "status": "done",
       "title": "✅ SQLGlot Dialect Translation Code Review Implementation"
     },
+    "sqlglot-e2e-automated-delivery": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Deliver automatic SQLGlot refresh through a verified merged BenchBox adoption"
+    },
     "sqlglot-fork-a1-adopt-wrapper-wheel": {
       "claim": null,
       "needs": [
