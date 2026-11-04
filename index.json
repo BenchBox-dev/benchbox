@@ -369,6 +369,7 @@
     },
     "native-bulk-load-remainder": {
       "accepted_members": {
+        "perf-library-loaders-and-datagen-rows-20261031": "353cbb9f028e232a416001c2886779b3c1e98974",
         "perf-questdb-influxdb-load-20261030": "c4efcc2bd3b02e78aebce3d30c753958ed9d13b7",
         "perf-tpcdi-etl-bulk-paths-20261031": "7752d3433d91797999e4ef87009805e74b841a84"
       },
@@ -377,6 +378,23 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "perf-library-loaders-and-datagen-rows-20261031": {
+          "accepted_head": "353cbb9f028e232a416001c2886779b3c1e98974",
+          "changed_files": [
+            "benchbox/core/benchmark_mixins.py",
+            "benchbox/core/coffeeshop/benchmark.py",
+            "benchbox/core/simple_benchmark_mixin.py",
+            "benchbox/core/tpcdi/benchmark.py",
+            "benchbox/core/tpcdi/loader.py",
+            "benchbox/core/tpcds/benchmark/runner.py",
+            "benchbox/core/tsbs_devops/benchmark.py",
+            "changelog.d/feat-native-bulk-load-remainder--perf-library-loaders-and-datagen-rows-20261031.json",
+            "tests/unit/core/test_benchmark_mixins.py",
+            "tests/unit/core/tpcdi/test_loader_validation_metrics_coverage.py"
+          ],
+          "integration_head": "912e83a3791bd8845e1a6b24f4bec2166d8f7197",
+          "integration_seq": 3
+        },
         "perf-questdb-influxdb-load-20261030": {
           "accepted_head": "c4efcc2bd3b02e78aebce3d30c753958ed9d13b7",
           "changed_files": [
@@ -408,7 +426,7 @@
         }
       },
       "integration_branch": "feat/native-bulk-load-remainder",
-      "integration_head": "e80907f8146e8d0d10ca6a58495977b29f4f2971",
+      "integration_head": "912e83a3791bd8845e1a6b24f4bec2166d8f7197",
       "integration_log": [
         {
           "at": "2026-11-04T18:14:25Z",
@@ -433,6 +451,15 @@
           "op_id": "a9626e0e38c7492a9423beff5abb3a78",
           "previous_head": "e747b8f49e74fd6cd475854514156252e992918c",
           "seq": 2
+        },
+        {
+          "at": "2026-11-04T18:43:43Z",
+          "head": "912e83a3791bd8845e1a6b24f4bec2166d8f7197",
+          "kind": "prepare",
+          "member": "perf-library-loaders-and-datagen-rows-20261031",
+          "op_id": "395aff1248df4f519f9a382ec3802eec",
+          "previous_head": "e80907f8146e8d0d10ca6a58495977b29f4f2971",
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-native-bulk-load-remainder",
@@ -19239,15 +19266,10 @@
       "title": "Native file loading for Firebolt Core and local runs"
     },
     "perf-library-loaders-and-datagen-rows-20261031": {
-      "claim": {
-        "expires_at": "2026-11-05T18:43:21Z",
-        "generation": "2f17fbf8aeb044909a0cc7471ea7e1c0",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "open",
       "title": "Library-only loaders and data-gen post-processing use Python row loops"
     },
     "perf-pandas-df-loader-date-objects-20261031": {
