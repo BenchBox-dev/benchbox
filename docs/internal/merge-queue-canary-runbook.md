@@ -57,7 +57,7 @@ This runbook provides the operational procedure and scenario checklist for condu
 |---|---|---|
 | 1. Workflow YAML Validity | Pass with zero syntax errors | `python -c "import yaml; [yaml.safe_load(open(f)) for f in ['.github/workflows/ci.yml', '.github/workflows/nightly-v2.yml']]"` |
 | 2. Unit Tests Passing | All workflow tests green | `uv run -- python -m pytest tests/unit/workflows/ -q` |
-| 3. Soundness Tests Passing | All soundness tests green | `uv run -- python -m pytest tests/unit/scripts/test_soundness_paths.py -q` |
+| 3. Soundness Tests Passing | All soundness tests green | `uv run -- python -m pytest tests/unit/scripts/test_heavy_tier_needed.py -q` |
 | 4. Status Check Match | Exact required check names match ruleset | `rg -n '^  (core|explorer|results-data|docs|landing|tooling):$' .github/workflows/ci.yml` |
 | 5. Trusted Base Drift | Checkout uses `merge_group.base_sha` | `rg -n 'merge_group.base_sha' .github/workflows/ci.yml` |
 

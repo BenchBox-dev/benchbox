@@ -253,7 +253,7 @@ when any of these holds:
   `benchbox-oracle` App after any retarget, is success. Review bodies are not read, so editing or
   deleting a review cannot change the result; statuses from any other creator
   and the legacy `oracle-review-shadow` context are ignored.
-- An account in `STANDIN_ATTESTERS` (`_project/scripts/oracle_review_check.py`)
+- An account in `consumer.attesters` (`.github/oracle-reviewers.yml`)
   posted `Stand-in oracle review: APPROVE <full head SHA>` for the exact head,
   after any retarget and after the oracle's latest verdict status on that head. Per
   `docs/agent/merge-authority.md`, an agent posts a stand-in only when the owner
@@ -282,8 +282,9 @@ had gone stale, and two heads were replaced before the gate ran.
 
 `.github/workflows/oracle-gate.yml` runs only `develop` code and posts
 `oracle-gate` for the pull request head as a commit status through the same
-oracle App. The unit test fails when any other workflow could post that
-context, but a same-repo pull request with `statuses: write` could still post
+oracle App. `test_only_the_theseus_caller_jobs_can_post_the_gate_context` fails when any
+other workflow, or any caller job not pinned to the Theseus gate workflow, could
+post that context, but a same-repo pull request with `statuses: write` could still post
 a status with that name, so the workflow alone is not the enforcement; the
 integration-ID binding is (see the residual-risk note below). It applies the
 checker's rule unchanged: success when only exempt paths changed, when the

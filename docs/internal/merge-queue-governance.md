@@ -433,7 +433,7 @@ comment records the evidence and opens with a `soundness-gap-closed` marker.
 Two things close an issue, and nothing else does:
 
 - A comment on the issue from a listed attester (`STANDIN_ATTESTERS` in
-  `_project/scripts/oracle_review_check.py`, a `User` account) closes any gap
+  Theseus `review_check` with `consumer.attesters`, a `User` account) closes any gap
   issue. The comment must start with `External review: codex`, `muse` or
   `agy`, have a line beginning `Verified clean`, and contain no line with a
   `**Critical**: `, `**High**: `, `**Medium**: ` or `**Low**: ` finding. A

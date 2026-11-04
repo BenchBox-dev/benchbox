@@ -69,7 +69,6 @@ def test_ambient_imports_and_manifest_cannot_replace_either_policy(
 ) -> None:
     (tmp_path / "soundness_paths.py").write_text("raise RuntimeError('ambient module used')\n", encoding="utf-8")
     monkeypatch.setenv("PYTHONPATH", str(tmp_path))
-    monkeypatch.setenv("SOUNDNESS_PATH_MANIFEST", str(tmp_path / "absent"))
     monkeypatch.setitem(sys.modules, "soundness_paths", object())
     assert _classify(["scripts/pr_arm.py"], policy_sources, policy_sources)["heavy_needed"] is True
     result = _classify(["ordinary.py"], policy_sources, policy_sources)
@@ -90,7 +89,9 @@ def test_installed_startup_hook_cannot_replace_the_snapshot_helper(
             environment / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages"
         )
     original = policy_sources[POLICY_FILES[HELPER]]
-    hostile = original.replace("return any(is_soundness_path(path) for path in paths)", "return False")
+    hostile = original.replace(
+        'value = "true" if any(union_matches(path, matchers) for path in paths) else "false"', 'value = "false"'
+    )
     assert hostile != original
     (site_packages / "soundness_paths.py").write_text(hostile, encoding="utf-8")
     (site_packages / "policy-startup.pth").write_text("import soundness_paths\n", encoding="utf-8")
@@ -98,7 +99,7 @@ def test_installed_startup_hook_cannot_replace_the_snapshot_helper(
         **policy_sources,
         POLICY_FILES[MANIFEST]: policy_sources[POLICY_FILES[MANIFEST]].replace("file\tscripts/pr_arm.py\n", ""),
     }
-    monkeypatch.setattr(heavy.sys, "executable", str(interpreter))
+    monkeypatch.setenv("PATH", f"{interpreter.parent}{os.pathsep}{os.environ['PATH']}")
     result = _classify(["scripts/pr_arm.py"], policy_sources, pr)
     assert result["heavy_needed"] is True, result["reason"]
     assert "soundness path touched" in result["reason"]

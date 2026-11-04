@@ -35,7 +35,8 @@ host_lock = _load_host_lock()
 _OWNER = host_lock.OWNER_ENV
 _OUTPUT_DIR = "BENCHBOX_OUTPUT_DIR"
 _OWNED_OUTPUT_DIR = "BENCHBOX_TEST_SESSION_OUTPUT_DIR"
-_ENV_KEYS = ("HOME", "USERPROFILE", "BENCHBOX_TEST_LOCK_DIR", _OUTPUT_DIR, _OWNER, _OWNED_OUTPUT_DIR)
+HOST_HOME_ENV = "BENCHBOX_TEST_HOST_HOME"
+_ENV_KEYS = ("HOME", "USERPROFILE", "BENCHBOX_TEST_LOCK_DIR", _OUTPUT_DIR, _OWNER, _OWNED_OUTPUT_DIR, HOST_HOME_ENV)
 _state: dict[str, Any] | None = None
 _SKIP_LOCK = "BENCHBOX_SKIP_TEST_LOCK"
 _LOCK_DIR = host_lock.LOCK_DIR_ENV
@@ -96,6 +97,9 @@ def start(acquire_lock: bool = True) -> bool:
         if handle is not None:
             handle.release()
         raise
+    host_home = previous["USERPROFILE" if sys.platform == "win32" else "HOME"]
+    if host_home and not os.environ.get(HOST_HOME_ENV):
+        os.environ[HOST_HOME_ENV] = host_home
     os.environ["HOME"] = home.name
     os.environ["USERPROFILE"] = home.name
     os.environ["BENCHBOX_TEST_LOCK_DIR"] = str(lock_dir)

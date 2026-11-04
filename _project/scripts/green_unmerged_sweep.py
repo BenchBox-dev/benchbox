@@ -26,7 +26,7 @@ from required_lane import (
     is_required_lane_green,
     latest_check_run as latest_check_run,
 )
-from soundness_paths import any_soundness_path
+from soundness_manifest import any_soundness_path
 
 FIXTURE_PATH = SCRIPT_DIR / "fixtures" / "green_unmerged_fixture.json"
 
