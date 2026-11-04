@@ -29423,7 +29423,9 @@
     },
     "tpch-ducklake-refresh-support-20261103": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "perf-tpch-rf1-bulk-load-20261031"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Prove TPC-H refresh functions on DuckLake or stop declaring support"
