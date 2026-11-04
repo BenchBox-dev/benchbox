@@ -28623,12 +28623,17 @@
       "title": "Publish the parity-proven Theseus bytes and assemble independently approved first-promotion evidence"
     },
     "theseus-repository-governance-bootstrap-20261102": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-05T18:09:43Z",
+        "generation": "cc62de9a6f454a5d80e2aa78f4ac89e9",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f"
+      },
       "needs": [
         "theseus-adr-inventory-baseline-20261102"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Bootstrap Theseus repository governance and preserve the BenchBox source provenance"
     },
     "throughput-adapter-session-capability-contract": {
