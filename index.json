@@ -28549,12 +28549,17 @@
       "title": "Activate the named Theseus gateway client and prove its first App-bound gate after observation disposition"
     },
     "theseus-hosted-workflows-offline-20261102": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-05T18:10:18Z",
+        "generation": "def4fc2b261041f2b70822c76db1f21b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f"
+      },
       "needs": [
         "theseus-package-identity-install-20261102"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Prove trusted hosted review and separate gate resolution without live gateway access"
     },
     "theseus-local-gateway-tooling-20261102": {
