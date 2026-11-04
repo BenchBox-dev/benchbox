@@ -15,7 +15,9 @@
       "from_item": "theseus-atomic-benchbox-cutover-20261102",
       "id": 1,
       "reason": "The cutover head 4cbb820 received a hosted SHIP. A local review then found a Medium: the Theseus gate posts no status when the trusted policy or a manifest fails to load. That is fail-open only if develop's own policy is broken. Merging now and fixing in one small re-lock PR beats restarting a 1–2 h review cycle. The local review also rejects the canonical lowercase slug against the origin URL case; check whether Theseus has the same case-sensitivity bug.",
-      "resolution": "open",
+      "resolution": "promoted",
+      "resolved_at": "2026-11-04T18:09:06Z",
+      "resolved_item": "theseus-atomic-benchbox-cutover-20261102-deferral-1",
       "summary": "Re-lock BenchBox to Theseus v0.1.5: gate fails closed on unloadable policy/manifest (theseus#13) plus Dependabot batch; local-review case-sensitive slug"
     }
   ],
@@ -99,6 +101,14 @@
       "client": "omp-coding-agent",
       "op": "defer",
       "op_id": "de9de7602f974ac6b162f97c4c6f1753",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-04T18:09:07Z",
+      "client": "omp-coding-agent",
+      "op": "promote",
+      "op_id": "5c044037b74641b8bc3ea2eab2dae028",
       "session_id": "8d9ba932107b4322b2417b8af61c160c"
     }
   ]

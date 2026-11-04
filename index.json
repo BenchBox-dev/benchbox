@@ -28483,6 +28483,13 @@
       "status": "open",
       "title": "Cut BenchBox over atomically to the approved Theseus artifact and remove obsolete evaluator paths"
     },
+    "theseus-atomic-benchbox-cutover-20261102-deferral-1": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Re-lock BenchBox to Theseus v0.1.5: gate fail-closed, slug case, tailscale tag input, Dependabot batch"
+    },
     "theseus-benchbox-proof-recovery-rehearsal-20261102": {
       "claim": null,
       "needs": [
