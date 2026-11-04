@@ -1183,8 +1183,10 @@ class DuckDBAdapter(PlatformAdapter):
         columns: Sequence[tuple[str, str]],
         path: Path,
     ) -> int:
-        csv_types = {"DECIMAL(15,2)": "DECIMAL(15,2)", "INTEGER": "INTEGER", "DATE": "DATE"}
-        typed_columns = [f"'{name}': '{csv_types.get(sql_type, 'VARCHAR')}'" for name, sql_type in columns]
+        typed_columns = [
+            f"'{name}': '{sql_type if sql_type in {'DECIMAL(15,2)', 'INTEGER', 'DATE'} else 'VARCHAR'}'"
+            for name, sql_type in columns
+        ]
         with path.open(encoding="utf-8") as source:
             has_trailing_delimiter = source.readline().rstrip("\r\n").endswith("|")
         if has_trailing_delimiter:

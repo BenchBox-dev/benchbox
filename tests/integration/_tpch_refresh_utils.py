@@ -120,7 +120,6 @@ def _load_sf001_base_postgres(connection: Any) -> dict[str, int]:
         counts = {}
         for table, filename in ((ORDERS, "orders.tbl"), (LINEITEM, "lineitem.tbl")):
             columns = ", ".join(f"{column.name} {column.get_sql_type()}" for column in table.columns)
-            connection.execute(f"DROP TABLE IF EXISTS {table.name}")
             connection.execute(f"CREATE TABLE {table.name} ({columns})")
             names = ", ".join(column.name for column in table.columns)
             rows = 0

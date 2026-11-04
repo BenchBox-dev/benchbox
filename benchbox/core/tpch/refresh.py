@@ -10,7 +10,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
-from benchbox.core.contracts.platform_capabilities import resolve_refresh_ingester
+from benchbox.core.contracts.platform_capabilities import TPCHRefreshIngester, resolve_refresh_ingester
 from benchbox.core.tpch.generator import TPCHDataGenerator
 from benchbox.core.tpch.schema import LINEITEM, ORDERS, DataType
 
@@ -283,9 +283,9 @@ def _insert_source_rows(connection: Any, path: Path, table: Any, chunk_size: int
     return inserted
 
 
-def _ingest_source_file(ingester: Any, connection: Any, path: Path, table: Any) -> int:
+def _ingest_source_file(ingester: TPCHRefreshIngester, connection: Any, path: Path, table: Any) -> int:
     columns = [(column.name, column.data_type.value) for column in table.columns]
-    return int(ingester.ingest_refresh_file(connection, table.name, columns, path))
+    return ingester.ingest_refresh_file(connection, table.name, columns, path)
 
 
 def _sql_literal(value: str, data_type: DataType) -> str:

@@ -681,7 +681,9 @@ class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
                     with open(load_path, encoding="utf-8") as source:
                         while chunk := source.read(65536):
                             copy.write(chunk)
-            return max(cursor.rowcount, 0)
+            if cursor.rowcount < 0:
+                raise RuntimeError(f"PostgreSQL did not report the rows copied into {table_name}")
+            return cursor.rowcount
 
     def load_data(
         self,
