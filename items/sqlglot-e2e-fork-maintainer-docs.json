@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Runbook accurately names implemented schedule, controller, review-at-adoption, merged-commit checks/artifact, guarded landing, kill switch and credentials without values.",
+    "Existing fork contract/doc checks pass; no workflow/source behavior changed in documentation item unless separately reviewed scope gate.",
+    "Fork documentation PR merged; BenchBox evidence conventions and permanent-fork/rollback/publication decisions remain consistent."
+  ],
+  "context": "Approved 2026-11-04 by owner: create/review TODOs then fully implement the reviewed end-to-end SQLGlot proposal in dependency order. Delivery mode serial: cross-repository and review-policy-deployment boundaries cannot be certified by one integration batch. Fork CI only; independent semantics reviewed at BenchBox adoption (owner 2026-10-23, sqlglot-fork-review-h1-governance). No required fork review/App/auto-merge setting changes. Never bypass protection, hold, oracle, current-head CI or identity rules. No source execution with write/reviewer credentials; pin trusted controller code. No public release/PyPI, cloud spend, published bundle changes, waiver generation, automatic semantic repairs, golden/expected-difference edits or patch retirement. Merge commit for fork, existing pr-arm squash path for BenchBox. Each item closes only at its named merged/operational outcome; assertions, mocks or no-op dispatch do not substitute runtime proof. Named decision gates are hard stops, not discretionary skips.\nUmbrella sqlglot-e2e-automated-delivery. P15: maintainer remains accountable, routine commands automated, exceptions human. Fork repo remains read-only CI workflows; no unnecessary infrastructure. Publication terminal merged PR.",
+  "description": "Update canonical BenchBox-dev/benchbox-sqlglot downstream/MAINTAINING.md through a fork PR to match implemented lifecycle. Amend manual-only execution wording but preserve maintainer accountability, CI-only fork review boundary, merge ancestry, private wheel-only shipping, no fork publishing/mutating workflows and owner-controlled BenchBox release. Cite controller location and exact exception recovery/artifact expiry/closed PR/hold handling. Keep no required fork review/App/native-auto-merge-setting changes. Amend BenchBox release/evidence/decision docs in corresponding implementation PRs; do not retain contradictory paste-only/manual workflow promises.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-sqlglot/blob/main/downstream/MAINTAINING.md",
+    "docs/internal/release-guide.md",
+    "docs/internal/sql-execution-evidence-gate.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ba4923b65d2bea2a5584a721",
+      "at": "2026-11-04T21:06:32Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "11f39485911c4911a28c4c11fb364e28",
+      "session_id": "cf3fdc0e8210426f8ab8cc6664c384cd"
+    }
+  ]
+}

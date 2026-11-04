@@ -27397,6 +27397,15 @@
       "status": "open",
       "title": "Deliver automatic SQLGlot refresh through a verified merged BenchBox adoption"
     },
+    "sqlglot-e2e-fork-maintainer-docs": {
+      "claim": null,
+      "needs": [
+        "sqlglot-e2e-lifecycle-controller"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Document automated fork refresh and BenchBox adoption with maintainer-owned exceptions"
+    },
     "sqlglot-e2e-lifecycle-controller": {
       "claim": null,
       "needs": [
