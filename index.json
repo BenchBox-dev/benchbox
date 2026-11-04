@@ -27404,6 +27404,15 @@
       "status": "open",
       "title": "Review SQLGlot wheel adoptions against their actual fork source changes"
     },
+    "sqlglot-e2e-verified-wheel-adoption": {
+      "claim": null,
+      "needs": [
+        "sqlglot-e2e-source-aware-adoption-review"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Bind SQLGlot adoption to the merged wheel identity and verify installed packages before merge"
+    },
     "sqlglot-fork-a1-adopt-wrapper-wheel": {
       "claim": null,
       "needs": [

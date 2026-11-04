@@ -1,0 +1,29 @@
+{
+  "acceptance": [
+    "Adoption refuses valid-looking wheel for wrong expected fork/upstream SHA or version and restores prior files on failure.",
+    "Required-context absence/skipped/failure/wrong publisher, wrong run event/head/attempt, checksum or provenance mismatch and expired artifact fail closed.",
+    "_vendor-only adoption selects package-smoke and executes distribution integrity plus installed-runtime smoke before merge.",
+    "Real v30.29.0 canonical artifact at 6fd92da9333eb5c9920306237d8c4e4893012c60 validates and adopts transactionally in disposable lower-version checkout with real QuestDB; wrong-identity negative case refuses.",
+    "Narrow tests plus package build/install smoke and normal independent review/required CI pass; merged BenchBox PR."
+  ],
+  "context": "Approved 2026-11-04 by owner: create/review TODOs then fully implement the reviewed end-to-end SQLGlot proposal in dependency order. Delivery mode serial: cross-repository and review-policy-deployment boundaries cannot be certified by one integration batch. Fork CI only; independent semantics reviewed at BenchBox adoption (owner 2026-10-23, sqlglot-fork-review-h1-governance). No required fork review/App/auto-merge setting changes. Never bypass protection, hold, oracle, current-head CI or identity rules. No source execution with write/reviewer credentials; pin trusted controller code. No public release/PyPI, cloud spend, published bundle changes, waiver generation, automatic semantic repairs, golden/expected-difference edits or patch retirement. Merge commit for fork, existing pr-arm squash path for BenchBox. Each item closes only at its named merged/operational outcome; assertions, mocks or no-op dispatch do not substitute runtime proof. Named decision gates are hard stops, not discretionary skips.\nUmbrella sqlglot-e2e-automated-delivery. P7/P12/P13(REBUT)/P16/P18: pre-merge package proof is required, post-merge trunk cannot replace it. Existing historical wheel digest a1e6db73e85499a33e047e797b2d497b539ad89721b514e663937c8f49f45661; availability must be live verified. No changes to golden/expected-difference files.",
+  "description": "Extend existing adopter with explicit expected fork SHA/upstream SHA/version and verified artifact inputs; preserve atomic restore and strictly newer versions, baseline outcomes and lazy private zipimport. Select canonical successful push-main distribution artifact at actual refresh merge SHA only after ALL required engine/test/distribution contexts at that SHA pass from trusted publishers. Verify repo/event/workflow/run/attempt/artifact/digests/clean provenance/upstream ancestry and wheel source correspondence. No PR artifact, arbitrary latest-main artifact, self-attestation-only trust or parallel normal build. Expired/missing artifact => issue naming exact run to rerun, not alternate automatic rebuild.\n\nFix .github/path-filters.yml so _vendor changes select existing package-smoke. Before consumer merge verify BenchBox wheel and sdist contain only exact pinned runtime and exercise installed-runtime coexistence/zipimport via existing scripts. Do not add duplicate matrix or move OBT nightly scope into PRs. Preparation uses existing adopter and local QuestDB narrow checks, not full executed gate twice.",
+  "links": [
+    "scripts/adopt_sqlglot_wheel.py",
+    "scripts/sync_sqlglot_runtime.py",
+    "scripts/verify_sqlglot_runtime_distribution.py",
+    "scripts/smoke_sqlglot_runtime_install.py",
+    ".github/path-filters.yml",
+    ".github/workflows/ci.yml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ba4923b65d2bea2a5584a721",
+      "at": "2026-11-04T21:06:25Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0c947aac98ef422c9ae2345abe6acc49",
+      "session_id": "cf3fdc0e8210426f8ab8cc6664c384cd"
+    }
+  ]
+}
