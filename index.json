@@ -384,7 +384,7 @@
         }
       },
       "integration_branch": "feat/native-bulk-load-sql",
-      "integration_head": "a14a32614095b2ae2dda7bb0a5ad1fb4014d0d8e",
+      "integration_head": "0589d3027022690e76321aecd17bb671f84fd6fa",
       "integration_log": [
         {
           "at": "2026-11-04T13:52:23Z",
@@ -468,6 +468,29 @@
             "perf-prepare-local-load-file-streaming-20261031"
           ],
           "seq": 6
+        },
+        {
+          "at": "2026-11-04T15:41:10Z",
+          "changed_files": [
+            "benchbox/platforms/base/data_loading.py",
+            "benchbox/platforms/databend/adapter.py",
+            "benchbox/platforms/doris.py",
+            "benchbox/platforms/firebolt.py",
+            "tests/unit/platforms/test_databend_bulk_load.py",
+            "tests/unit/platforms/test_firebolt_core_native_load.py",
+            "tests/unit/platforms/test_prepare_local_load_file_streaming.py"
+          ],
+          "head": "0589d3027022690e76321aecd17bb671f84fd6fa",
+          "kind": "fix",
+          "op_id": "4c517eeeab744618bae6910553ccf547",
+          "previous_head": "a14a32614095b2ae2dda7bb0a5ad1fb4014d0d8e",
+          "requires_acceptance": [
+            "perf-databend-bulk-load-20261030",
+            "perf-doris-stream-load-line-rewrite-20261031",
+            "perf-firebolt-core-bulk-load-20261030",
+            "perf-prepare-local-load-file-streaming-20261031"
+          ],
+          "seq": 7
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-native-bulk-load-sql",
