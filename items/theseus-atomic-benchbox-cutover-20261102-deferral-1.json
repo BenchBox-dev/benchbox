@@ -1,4 +1,14 @@
 {
+  "deferrals": [
+    {
+      "created_at": "2026-11-04T19:50:53Z",
+      "from_item": "theseus-atomic-benchbox-cutover-20261102-deferral-1",
+      "id": 1,
+      "reason": "On Theseus PRs #5 and #16, test (windows, py3.12) failed test_concurrent_cold_installs_of_one_key_all_succeed_and_leave_a_valid_install, then passed on rerun. The test covers the msvcrt install-key lock in bootstrap.py, which BenchBox vendors as _project/scripts/theseus_bootstrap.py. It has not been investigated: this may be a real race on Windows, not just test timing.",
+      "resolution": "open",
+      "summary": "Investigate Windows flake: concurrent cold installs of one key (test_bootstrap.py) may be a real race in the vendored bootstrap lock"
+    }
+  ],
   "description": "Promoted from deferral 1 on theseus-atomic-benchbox-cutover-20261102: The cutover head 4cbb820 received a hosted SHIP. A local review then found a Medium: the Theseus gate posts no status when the trusted policy or a manifest fails to load. That is fail-open only if develop's own policy is broken. Merging now and fixing in one small re-lock PR beats restarting a 1–2 h review cycle. The local review also rejects the canonical lowercase slug against the origin URL case; check whether Theseus has the same case-sensitivity bug.",
   "sessions": [
     {
@@ -7,6 +17,14 @@
       "client": "omp-coding-agent",
       "op": "promote",
       "op_id": "5c044037b74641b8bc3ea2eab2dae028",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-04T19:50:53Z",
+      "client": "omp-coding-agent",
+      "op": "defer",
+      "op_id": "9b50b5eb327940c8bc6e08fce099c4b4",
       "session_id": "8d9ba932107b4322b2417b8af61c160c"
     }
   ]
