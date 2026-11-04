@@ -1,5 +1,5 @@
 {
-  "context": "2026-11-04: leader started; members in landing order: perf-tpcdi-etl-bulk-paths-20261031, perf-questdb-influxdb-load-20261030, perf-library-loaders-and-datagen-rows-20261031. Scope pre-sizing pending.",
+  "context": "Batch native-bulk-load-remainder; integration branch feat/native-bulk-load-remainder, worktree /Users/joe/Developer/BenchBox.wt-native-bulk-load-remainder. All three members landed and prepared (tpcdi-etl, questdb-influxdb, library-loaders; members dispatched as separate member sessions). Final PR #3952 (BenchBox-dev/BenchBox) bound at head 97606cfaa9 (one leader fix after open: SQLite-portable non-SCD UPDATE, per-row bad InfluxDB timestamp handling), labelled no-auto-merge (owner hold until v0.5.0 is released; v0.5.0rc3 is latest tag). Fresh batch-evidence written for that head. Fast tier on the integration tree: 36065 passed, 2 failed only because the leader's _project/scripts/.venv sits inside the worktree (sqlglot scans); both pass with that venv moved aside; make pr-preflight passed. Brief size 95,672 diff bytes (file-list mode, under the 100,000 cap). Not done in member 3: generator post-processing and per-row csv.writer generators (SSB, AMPLab, TSBS, TPC-DI) and generator_base staging rewrite were left unchanged to fit the cap; DuckDB loader helper and dead load_csv_file removal landed. Not run: PostgreSQL COPY, QuestDB, InfluxDB servers, Docker engines. Row text for tpc-measured-intervals-reference-20261103: TPC-DI ETL load - load_start to elapsed_seconds around _load_transformed_data in benchmark.py - schema creation plus DataFrame bulk insert (DuckDB registration or PostgreSQL COPY, otherwise executemany) and the customer SCD2 batch; staging and source generation stay untimed. Owner actions: wait for v0.5.0, then arm/merge PR #3952 and finish members.",
   "description": "Batch notes for feature batch native-bulk-load-remainder (integration branch feat/native-bulk-load-remainder). Not a batch member. Holds the three members that native-bulk-load-sql (umbrella batch-native-bulk-load-sql-umbrella-20261104) could not enroll under the hosted brief cap. Final PR is held with no-auto-merge until v0.5.0 is released (owner instruction 2026-11-04).",
   "sessions": [
     {
@@ -8,6 +8,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "085509ab8e9442d28d8851f784dfbd6e",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-04T19:50:05Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e7d0a74f117c4712ab9acc5343a330c9",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
