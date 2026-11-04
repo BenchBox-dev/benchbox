@@ -48,6 +48,7 @@ TODO_DB_COMMAND = ["uv", "run", "--project", "_project/scripts", "--locked", "--
 DEFAULT_PREFLIGHT_COMMAND = ["make", "pr-preflight"]
 REVIEW_INTERPRETER = "python3"
 REVIEW_WRAPPER = "scripts/oracle_local_review.py"
+REVIEW_SUPPORT = ("scripts/theseus_cli.py",)
 FINAL_SUITE = "member-reruns"
 POLICY_PATH = ".github/oracle-reviewers.yml"
 SECTION_BUDGET = 6000
@@ -329,6 +330,8 @@ def _review_member_patch(repo: Path, base: str, member_head: str, trusted: str) 
     with tempfile.TemporaryDirectory() as scratch:
         wrapper = Path(scratch) / Path(REVIEW_WRAPPER).name
         wrapper.write_bytes(_git_raw(repo, "show", f"{trusted}:{REVIEW_WRAPPER}"))
+        for support in REVIEW_SUPPORT:
+            (Path(scratch) / Path(support).name).write_bytes(_git_raw(repo, "show", f"{trusted}:{support}"))
         result_path = Path(scratch) / "member-review.json"
         cmd = [
             REVIEW_INTERPRETER,
@@ -340,8 +343,6 @@ def _review_member_patch(repo: Path, base: str, member_head: str, trusted: str) 
             str(result_path),
             "--base-ref",
             base,
-            "--reviewer-ref",
-            trusted,
             "--trusted-ref",
             trusted,
             "--head",

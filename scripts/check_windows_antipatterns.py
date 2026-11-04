@@ -65,9 +65,6 @@ _DEFAULT_ROOTS = ["benchbox", "tests", "scripts", "_project"]
 
 _DEFAULT_EXCLUDES = {
     "_project/sql-translation-ml",
-    "_project/scripts/oracle_reviewers/omp_pin.py",
-    "_project/scripts/oracle_reviewers/processes.py",
-    "_project/scripts/oracle_reviewers/runner.py",
 }
 
 _DEFAULT_BASELINE = "quality/windows-antipatterns-baseline.json"

@@ -146,6 +146,24 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
         "standalone Make target invokes scripts/release_curation_dry_run.py, and "
         "its logic is pinned by tests/unit/scripts/test_release_curation_dry_run.py."
     ),
+    ("ci.yml", "medium-test", "Verify the locked Theseus commit passed its required checks"): (
+        "Hosted check; it queries the check runs of the locked Theseus commit through the Actions "
+        "token, which has no local equivalent, and its logic is pinned by "
+        "tests/unit/scripts/test_theseus_release_check.py."
+    ),
+    ("ci.yml", "medium-test", "Verify every upstream-port ledger entry is covered at the PR base"): (
+        "Hosted check; it clones the locked Theseus source from GitHub and needs the PR base history, "
+        "and its decision logic is pinned by tests/unit/scripts/test_theseus_ledger_check.py."
+    ),
+    ("test.yml", "medium", "Verify every upstream-port ledger entry is covered at the PR base"): (
+        "Hosted check; it clones the locked Theseus source from GitHub and needs the base history, "
+        "and its decision logic is pinned by tests/unit/scripts/test_theseus_ledger_check.py."
+    ),
+    ("test.yml", "medium", "Verify the locked Theseus commit passed its required checks"): (
+        "Hosted check; it queries the check runs of the locked Theseus commit through the Actions "
+        "token, which has no local equivalent, and its logic is pinned by "
+        "tests/unit/scripts/test_theseus_release_check.py."
+    ),
     ("ci.yml", "ci-paths", "Validate TODO JSON/Git state contract"): (
         "Hosted classifier bootstrap; it runs before dependency installation and "
         "has no standalone Make target. The local preflight consumes the same "

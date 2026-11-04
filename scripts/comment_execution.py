@@ -72,10 +72,6 @@ REVIEWED_PROCESS_ARGV: dict[tuple[str, str], str] = {
         "[str(qgen_exe), '-p', str(stream_id % len(self.PERMUTATION_MATRIX)), '-s', str(self.scale_factor), '-r', str(self.rng_seed + stream_id), '-o', str(work_dir)]",
     ): "qgen_exe is the bundled TPC-H qgen query generator binary",
     (
-        "scripts/heavy_tier_needed.py",
-        "[sys.executable, '-I', '-S', str(root / PREDICATE_REPO_PATH), '--stdin', '--format', 'github-output']",
-    ): "Python runs the soundness predicate script file; no -c or -m source",
-    (
         "scripts/validate_todo_indexes.py",
         "[sys.executable, str(repo_root / '_project' / 'scripts' / script), '--strict']",
     ): "Python runs the named index-check script files; no -c or -m source",

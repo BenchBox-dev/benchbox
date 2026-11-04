@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import subprocess
 from pathlib import Path
-
-from _project.scripts.oracle_reviewers import local as oracle_local
 
 RECEIPT_SCHEMA = "prepared_work_v2"
 EVIDENCE_SCHEMA = "benchbox_batch_evidence_v2"
@@ -25,6 +24,13 @@ SECTION_NAMES = frozenset(
         "final_evidence",
     }
 )
+
+
+def member_binding(repo: Path, base: str, head: str, ref: str = "") -> dict[str, str]:
+    return {
+        "head_tree": git(repo, "rev-parse", f"{head}^{{tree}}"),
+        "patch_digest": hashlib.sha256(git(repo, "diff", base, head).encode("utf-8")).hexdigest()[:32],
+    }
 
 
 def git(repo: Path, *args: str) -> str:
@@ -97,7 +103,7 @@ class BatchFixture:
                     "reason": "",
                     "base_sha": source_base,
                     "head_sha": accepted,
-                    **oracle_local.member_binding(self.repo, source_base, accepted),
+                    **member_binding(self.repo, source_base, accepted),
                     "trusted_sha": self.start,
                 },
             },
