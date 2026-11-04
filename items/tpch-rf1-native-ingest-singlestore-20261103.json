@@ -7,6 +7,13 @@
     "Atomicity: an injected bad row leaves no RF1 rows and the connection usable.",
     "docs/internal/tpc-measured-intervals.md (or the context of tpc-measured-intervals-reference-20261103 if the page is not yet on the base) records SingleStore's RF1 path."
   ],
+  "batch": {
+    "batch_id": "tpch-refresh-path",
+    "implementation_dependencies": [
+      "perf-tpch-rf1-bulk-load-20261031"
+    ],
+    "member_id": "tpch-rf1-native-ingest-singlestore-20261103"
+  },
   "context": "Origin: 2026-11-03 analysis of TPC-H RF1 timing and its adversarial reviews; the findings are restated in this item and in tpc-measured-intervals-reference-20261103. Spec clauses cited here were read from the published PDFs at the links on 2026-11-03; re-read them rather than trusting this text.",
   "description": "Extend the RF1 ingest capability from perf-tpch-rf1-bulk-load-20261031 to SingleStore (benchbox/platforms/singlestore.py, supports_refresh_functions = True). SingleStore refresh was proven on local containers (see tpch-refresh-functions-in-power-and-throughput), and the adapter sets local_infile=True, so no live-cloud spend is involved.\n\nSpec: TPC-H 3.0.1 clause 5.3.7.10: parsing, formatting and database activity on the refresh data stay inside the RF1 timer; nothing precedes the timer except relocation. For SingleStore nothing precedes the timer.\n\nCheck (agent-actionable, record the result): the server accepts LOAD DATA LOCAL INFILE on the target container (server-side local_infile enabled). If it does not and cannot be enabled by the existing container configuration, record that and leave SingleStore on the VALUES fallback; close this item as not applicable with that evidence.\n\nGuardrails for all code work: work only in a linked worktree (make worktree-create); never edit the primary clone. No explanatory comments or docstrings in source (make comment-policy-check). Durations use benchbox.utils.clock.mono_time()/elapsed_seconds(). Add a changelog.d/ fragment. Cited line numbers are orientation only: re-read the named symbols, docs and spec clauses before editing and treat a mismatch as a reason to stop and update this item. No live-cloud runs without owner approval; heavy runs only through make heavy-run or a lock-taking entry point. Green focused tests are not release certification. Do not call adapter.load_data. Do not add a mode that moves any step before the timer. Stays on the fallback unless the parity and speed criteria pass.",
   "links": [
@@ -21,6 +28,14 @@
       "op": "create",
       "op_id": "d89b613095d44997824e2712e1b24b60",
       "session_id": "ada67604a2174486ada6b7b9a8c4f586"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-04T13:53:18Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8e5acae93a9142e7ac4e39e1650f1dfe",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
 }
