@@ -27177,10 +27177,15 @@
       "title": "Extend the SQL execution gate to TPC-Havoc (220 variants) and TPC-DS OBT (90 queries) on every gate engine"
     },
     "sql-execution-gate-sqlite-q19-timeout": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-05T21:18:45Z",
+        "generation": "030304a7e8f0470bbc6cb9a51fa3a410",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ba4923b65d2bea2a5584a721"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Stop the executed SQL comparison gate failing on SQLite q19 timeouts"
     },
     "sql-execution-gate-vacuous-empty-results-20261025": {
