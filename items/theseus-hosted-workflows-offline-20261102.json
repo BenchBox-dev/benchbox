@@ -8,7 +8,7 @@
     "job_workflow_sha is an OIDC claim, not ambient context; any needed diagnostic uses a separate no-secret job and adds no reviewer id-token:write. Preserve one review job, phase-specific secrets, Linux isolation/process cleanup/scans/redaction, token minting only after reviewer execution and exact-head posting.",
     "Coverage includes partial-post failures, cancellation recovery, same-head/dispute/carry/retry-budget behaviour, finding IDs and attempt formats; replay deterministic identical inputs, not independently sampled model judgments."
   ],
-  "context": "T4 offline, P5. First live gate and required-check activation belong exclusively to theseus-gateway-client-first-live-gate-20261102. Actual BenchBox workflow cutover belongs to theseus-atomic-benchbox-cutover-20261102.\n\nDelivery: one Theseus PR (Theseus PR 1) carries governance bootstrap, package/installer, hosted workflows, local tooling, frozen source and parity proof. The release tag and first-promotion evidence come from that merged head, not from a separate PR.",
+  "context": "T4 offline, P5. First live gate and required-check activation belong exclusively to theseus-gateway-client-first-live-gate-20261102. Actual BenchBox workflow cutover belongs to theseus-atomic-benchbox-cutover-20261102.\n\nDelivery: one Theseus PR (Theseus PR 1) carries governance bootstrap, package/installer, hosted workflows, local tooling, frozen source and parity proof. The release tag and first-promotion evidence come from that merged head, not from a separate PR.\n\nDelivered: the reusable review.yml and gate.yml resolve their pins from the trusted base lock, and the gate runs in a separate verified process. Proven offline against a loopback GitHub (theseus PR #10) and by consumer integration tests. Live on BenchBox through PR #3942, merged as dff1efde16 on 2026-11-04.",
   "description": "Implement Theseus-hosted review/gate workflow contracts and a sandbox consumer path that preserve hosted CI plus local pre-submission operation. Reviewer uses the run's trusted base lock. Publication-time gate resolves the current trusted gated-branch lock into a separate verified process; never load two package pins in one Python interpreter. Surface gate subprocess failures through the existing GitHubError/retry-state path. Candidate checkout and untrusted build jobs get no App, gateway, publisher or production secrets. Explicitly document reusable-workflow caller context, token permission ceilings, environment secret handling and pinned workflow ref. Workflow permissions stay least-privilege.\nGuardrails: offline/fake-OMP fixtures only; no new live gateway client, shared configuration change, release publication, credential service, daemon or activation. Do not alter BenchBox workflow behaviour until atomic cutover. Keep protocol and required-check contracts stable and fork gate-path PRs fail-closed.",
   "links": [
     ".github/workflows/oracle-verdict.yml",
@@ -66,6 +66,14 @@
       "generation": "29ef7225587f4bfd9c3348253f31ae53",
       "op": "finish",
       "op_id": "f0cbf4f0ccf34ff9a84e197c2f761057",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-04T18:10:48Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "2e5e8ce4a58c4fbdab69ecd33cacf00b",
       "session_id": "8d9ba932107b4322b2417b8af61c160c"
     }
   ]
