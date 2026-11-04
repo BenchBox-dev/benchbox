@@ -525,7 +525,7 @@
         }
       },
       "integration_branch": "feat/tpch-refresh-path",
-      "integration_head": "9704727a7fedc581cb013d41e14215d6a15eb34a",
+      "integration_head": "0149b46967c41125400db3a95c1fd022bf9d9e27",
       "integration_log": [
         {
           "at": "2026-11-04T13:53:00Z",
@@ -568,6 +568,24 @@
           "op_id": "6ad5b4ba03f54f7991f59266eac46002",
           "previous_head": "360de0e761a344df24e7ab43470d2af48d6fa755",
           "seq": 4
+        },
+        {
+          "at": "2026-11-04T14:57:18Z",
+          "changed_files": [
+            "benchbox/core/tpch/refresh.py",
+            "benchbox/platforms/duckdb.py",
+            "benchbox/platforms/postgresql.py",
+            "tests/integration/_tpch_refresh_utils.py",
+            "tests/integration/platforms/test_postgresql_live.py"
+          ],
+          "head": "0149b46967c41125400db3a95c1fd022bf9d9e27",
+          "kind": "fix",
+          "op_id": "8110cd826672423b9245be7b8d82e6af",
+          "previous_head": "9704727a7fedc581cb013d41e14215d6a15eb34a",
+          "requires_acceptance": [
+            "perf-tpch-rf1-bulk-load-20261031"
+          ],
+          "seq": 5
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpch-refresh-path",
