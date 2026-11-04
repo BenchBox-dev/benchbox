@@ -18663,10 +18663,15 @@
       "title": "Iceberg/Hudi/PySpark maintenance and DataFusion cursor: avoid pandas and to_pylist round trips"
     },
     "perf-doris-stream-load-line-rewrite-20261031": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-05T14:30:08Z",
+        "generation": "24fed10fc3cd4f4392c1a931ac729877",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Doris Stream Load: drop per-line Python decimal-null rewrite"
     },
     "perf-duckdb-wire-native-handlers-20261030": {
