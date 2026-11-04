@@ -17,6 +17,9 @@ from benchbox.utils.clock import elapsed_seconds, mono_time
 
 logger = logging.getLogger(__name__)
 
+CORE_UPLOAD_MAX_BYTES = 1_000_000_000
+CORE_UPLOAD_PART_NAME = "benchbox_load"
+
 if TYPE_CHECKING:
     from benchbox.core.tuning.interface import (
         PlatformOptimizationConfiguration,
@@ -29,7 +32,7 @@ from ..utils.dependencies import (
     get_dependency_error_message,
 )
 from .base import DriverIsolationCapability, PlatformAdapter
-from .base.data_loading import FileFormatRegistry
+from .base.data_loading import FileFormatRegistry, NoCompressionHandler
 
 try:
     from firebolt.client.auth import ClientCredentials
@@ -173,6 +176,7 @@ class FireboltAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
                 self.s3_staging_url += "/"
 
         self.disable_result_cache = self._coerce_bool(config.get("disable_result_cache"), True)
+        self.core_native_load = self._coerce_bool(config.get("core_native_load"), True)
         self.strict_validation = self._coerce_bool(config.get("strict_validation"), False)
 
     @property
@@ -279,6 +283,7 @@ class FireboltAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
                 "deployment_mode",
                 "s3_staging_url",
                 "s3_region",
+                "core_native_load",
                 "disable_result_cache",
                 "strict_validation",
             ],
@@ -796,54 +801,17 @@ class FireboltAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
                         file_path = Path(file_path)
 
                         dialect = resolve_csv_dialect(data_source, table_name, file_path, benchmark)
-                        delimiter = dialect.delimiter
 
-                        compression_handler = FileFormatRegistry.get_compression_handler(file_path)
-
-                        with compression_handler.open(file_path) as f:
-                            batch_size = 500
-                            batch_rows: list[tuple[Any, ...]] = []
-                            insert_sql: str | None = None
-                            column_count: int | None = None
-
-                            for raw_line in f:
-                                line = raw_line.rstrip("\n")
-                                if dialect.null_marker is not None and line and line.endswith(delimiter):
-                                    line = line[:-1]
-
-                                if not line:
-                                    continue
-
-                                values = line.split(delimiter)
-
-                                if column_count is None:
-                                    column_count = len(values)
-                                    insert_sql = (
-                                        f"INSERT INTO {table_name_quoted} VALUES "
-                                        f"({', '.join([placeholder for _ in range(column_count)])})"
-                                    )
-                                elif len(values) != column_count:
-                                    raise ValueError(
-                                        f"Inconsistent column count in {file_path}: "
-                                        f"expected {column_count}, got {len(values)}"
-                                    )
-
-                                if dialect.null_marker is None:
-                                    converted_values = tuple(values)
-                                else:
-                                    converted_values = tuple(
-                                        None if v == dialect.null_marker or v.lower() == "null" else v for v in values
-                                    )
-                                batch_rows.append(converted_values)
-
-                                if len(batch_rows) >= batch_size:
-                                    self._execute_batch_insert(cursor, insert_sql, batch_rows)
-                                    total_rows_loaded += len(batch_rows)
-                                    batch_rows = []
-
-                            if batch_rows:
-                                self._execute_batch_insert(cursor, insert_sql, batch_rows)
-                                total_rows_loaded += len(batch_rows)
+                        rows_loaded = None
+                        if self._core_native_load_eligible(file_path, dialect):
+                            rows_loaded = self._load_file_via_core_upload(
+                                cursor, table_name_lower, table_name_quoted, file_path, dialect
+                            )
+                        if rows_loaded is None:
+                            rows_loaded = self._load_file_via_insert(
+                                cursor, placeholder, table_name_quoted, file_path, dialect
+                            )
+                        total_rows_loaded += rows_loaded
 
                     table_stats[table_name_lower] = total_rows_loaded
 
@@ -868,6 +836,184 @@ class FireboltAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
             cursor.close()
 
         return table_stats, total_time, None
+
+    def _core_native_load_eligible(self, file_path: Path, dialect: Any) -> bool:
+        if self.deployment_mode != "core" or not self.core_native_load or not self.url:
+            return False
+        if len(dialect.delimiter) != 1 or dialect.quote is not None:
+            return False
+        if not isinstance(FileFormatRegistry.get_compression_handler(file_path), NoCompressionHandler):
+            return False
+        try:
+            return file_path.stat().st_size <= CORE_UPLOAD_MAX_BYTES
+        except OSError:
+            return False
+
+    def _core_table_column_types(self, cursor: Any, table_name_lower: str) -> list[str] | None:
+        safe_name = table_name_lower.replace("'", "''")
+        try:
+            cursor.execute(
+                "SELECT data_type FROM information_schema.columns "
+                f"WHERE table_name = '{safe_name}' AND table_schema = 'public' ORDER BY ordinal_position"
+            )
+            types = [str(row[0]) for row in cursor.fetchall() if row and row[0]]
+        except Exception as e:
+            self.logger.warning(f"Could not read column types for {table_name_lower}: {e}")
+            return None
+        return types or None
+
+    @staticmethod
+    def _build_core_upload_sql(table_name_quoted: str, column_types: list[str], part_name: str, dialect: Any) -> str:
+        delimiter = dialect.delimiter.replace("'", "''")
+        null_marker = dialect.null_marker
+        options = [f"URL => 'upload://{part_name}'", f"DELIMITER => '{delimiter}'", "HEADER => FALSE"]
+        if null_marker is None:
+            options.append("EMPTY_FIELD_AS_NULL => FALSE")
+        elif null_marker == "":
+            options.append("EMPTY_FIELD_AS_NULL => TRUE")
+        else:
+            options.append(f"NULL_STRING => '{null_marker.replace(chr(39), chr(39) * 2)}'")
+            options.append("EMPTY_FIELD_AS_NULL => FALSE")
+        projections = []
+        for index, column_type in enumerate(column_types):
+            source = f"f{index}"
+            if null_marker is not None:
+                source = f"CASE WHEN LOWER({source}) = 'null' THEN NULL ELSE {source} END"
+            projections.append(f"CAST({source} AS {column_type})")
+        return f"INSERT INTO {table_name_quoted} SELECT {', '.join(projections)} FROM READ_CSV({', '.join(options)})"
+
+    def _count_rows(self, cursor: Any, table_name_quoted: str) -> int:
+        cursor.execute(f"SELECT COUNT(*) FROM {table_name_quoted}")
+        result = cursor.fetchone()
+        return int(result[0]) if result else 0
+
+    def _post_core_upload(self, sql: str, part_name: str, file_path: Path) -> None:
+        import httpx
+
+        with file_path.open("rb") as handle:
+            response = httpx.post(
+                self.url,
+                params={"database": self.database},
+                files={
+                    "sql": (None, sql),
+                    part_name: (file_path.name, handle, "application/octet-stream"),
+                },
+                timeout=None,
+            )
+        if response.status_code >= 400:
+            raise RuntimeError(f"Firebolt Core upload load failed (HTTP {response.status_code}): {response.text[:500]}")
+
+    def _load_file_via_core_upload(
+        self,
+        cursor: Any,
+        table_name_lower: str,
+        table_name_quoted: str,
+        file_path: Path,
+        dialect: Any,
+    ) -> int | None:
+        column_types = self._core_table_column_types(cursor, table_name_lower)
+        if column_types is None:
+            return None
+        expected_rows, has_quote = self._scan_core_upload_file(file_path)
+        if has_quote:
+            self.logger.warning(f"{file_path.name} contains quote characters, using INSERT batching")
+            return None
+        part_name = CORE_UPLOAD_PART_NAME
+        sql = self._build_core_upload_sql(table_name_quoted, column_types, part_name, dialect)
+        try:
+            rows_before = self._count_rows(cursor, table_name_quoted)
+        except Exception as e:
+            self.logger.warning(f"Native Core upload load skipped for {file_path.name}: {e}")
+            return None
+        start = mono_time()
+        try:
+            self._post_core_upload(sql, part_name, file_path)
+        except Exception as e:
+            if self._count_rows(cursor, table_name_quoted) != rows_before:
+                raise RuntimeError(
+                    f"Native Core upload load of {file_path.name} failed after modifying {table_name_lower}: {e}"
+                ) from e
+            self.logger.warning(f"Native Core upload load failed for {file_path.name}, using INSERT batching: {e}")
+            return None
+        rows_loaded = self._count_rows(cursor, table_name_quoted) - rows_before
+        if rows_loaded != expected_rows:
+            raise RuntimeError(
+                f"Native Core upload load of {file_path.name} inserted {rows_loaded} rows, expected {expected_rows}"
+            )
+        self.log_verbose(
+            f"Loaded {rows_loaded:,} rows from {file_path.name} via Core upload in {elapsed_seconds(start):.2f}s"
+        )
+        return rows_loaded
+
+    @staticmethod
+    def _scan_core_upload_file(file_path: Path) -> tuple[int, bool]:
+        rows = 0
+        has_quote = False
+        with file_path.open("rb") as handle:
+            for line in handle:
+                if line.strip(b"\r\n"):
+                    rows += 1
+                if not has_quote and b'"' in line:
+                    has_quote = True
+        return rows, has_quote
+
+    def _load_file_via_insert(
+        self,
+        cursor: Any,
+        placeholder: str,
+        table_name_quoted: str,
+        file_path: Path,
+        dialect: Any,
+    ) -> int:
+        delimiter = dialect.delimiter
+        compression_handler = FileFormatRegistry.get_compression_handler(file_path)
+        total_rows_loaded = 0
+
+        with compression_handler.open(file_path) as f:
+            batch_size = 500
+            batch_rows: list[tuple[Any, ...]] = []
+            insert_sql: str | None = None
+            column_count: int | None = None
+
+            for raw_line in f:
+                line = raw_line.rstrip("\n")
+                if dialect.null_marker is not None and line and line.endswith(delimiter):
+                    line = line[:-1]
+
+                if not line:
+                    continue
+
+                values = line.split(delimiter)
+
+                if column_count is None:
+                    column_count = len(values)
+                    insert_sql = (
+                        f"INSERT INTO {table_name_quoted} VALUES "
+                        f"({', '.join([placeholder for _ in range(column_count)])})"
+                    )
+                elif len(values) != column_count:
+                    raise ValueError(
+                        f"Inconsistent column count in {file_path}: expected {column_count}, got {len(values)}"
+                    )
+
+                if dialect.null_marker is None:
+                    converted_values = tuple(values)
+                else:
+                    converted_values = tuple(
+                        None if v == dialect.null_marker or v.lower() == "null" else v for v in values
+                    )
+                batch_rows.append(converted_values)
+
+                if len(batch_rows) >= batch_size:
+                    self._execute_batch_insert(cursor, insert_sql, batch_rows)
+                    total_rows_loaded += len(batch_rows)
+                    batch_rows = []
+
+            if batch_rows:
+                self._execute_batch_insert(cursor, insert_sql, batch_rows)
+                total_rows_loaded += len(batch_rows)
+
+        return total_rows_loaded
 
     def _load_data_via_s3(
         self, benchmark, connection: Any, data_dir: Path
@@ -1300,6 +1446,7 @@ _build_firebolt_config = make_registered_platform_config_builder(
         "deployment_mode",
         "s3_staging_url",
         "s3_region",
+        "core_native_load",
         "disable_result_cache",
         "strict_validation",
     ],
