@@ -1,5 +1,76 @@
 {
   "batches": {
+    "arrow-dataframe-roundtrips": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/arrow-dataframe-roundtrips",
+      "integration_head": "3a3ee9826a6ab939d6235d31e69056c789ac365e",
+      "integration_log": [
+        {
+          "at": "2026-11-04T13:52:39Z",
+          "head": "3a3ee9826a6ab939d6235d31e69056c789ac365e",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-arrow-dataframe-roundtrips",
+      "lifecycle": "active",
+      "members": [
+        "perf-duckdb-wire-native-handlers-20261030",
+        "perf-pandas-df-loader-date-objects-20261031",
+        "perf-dataframe-maintenance-arrow-20261031"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "owner_epoch": 0,
+      "owner_generation": "1247c9614c1fd616c33d5669bbb4cbc5",
+      "project_id": "benchbox",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "perf-dataframe-maintenance-arrow-20261031": [
+          "benchbox/platforms/dataframe/iceberg_maintenance.py",
+          "benchbox/platforms/dataframe/hudi_maintenance.py",
+          "benchbox/platforms/dataframe/pyspark_maintenance.py",
+          "benchbox/platforms/datafusion.py",
+          "tests/unit/platforms/dataframe/test_iceberg_maintenance*.py",
+          "tests/unit/platforms/dataframe/test_hudi_maintenance*.py",
+          "tests/unit/platforms/dataframe/test_pyspark_maintenance*.py",
+          "tests/unit/platforms/dataframe/test_datafusion*.py",
+          "tests/unit/platforms/test_datafusion*.py",
+          "tests/unit/platforms/dataframe/test_lakehouse_optimization.py",
+          "tests/integration/test_dataframe_maintenance_operations.py",
+          "changelog.d/perf-dataframe-maintenance-arrow-20261031.json"
+        ],
+        "perf-duckdb-wire-native-handlers-20261030": [
+          "benchbox/platforms/duckdb.py",
+          "benchbox/platforms/base/data_loading.py",
+          "tests/unit/platforms/test_data_loading*.py",
+          "tests/unit/platforms/test_duckdb*.py",
+          "tests/unit/platforms/test_platform_adapter_init_and_loading.py",
+          "tests/integration/test_open_table_formats.py",
+          "changelog.d/perf-duckdb-wire-native-handlers-20261030.json"
+        ],
+        "perf-pandas-df-loader-date-objects-20261031": [
+          "benchbox/platforms/dataframe/pandas_df.py",
+          "benchbox/platforms/dataframe/pandas_family.py",
+          "benchbox/platforms/dataframe/shared_loading.py",
+          "benchbox/core/write_primitives/dataframe_operations.py",
+          "tests/unit/platforms/dataframe/test_pandas*.py",
+          "tests/unit/platforms/dataframe/test_unified_pandas_frame.py",
+          "tests/unit/benchmarks/test_write_primitives_dataframe.py",
+          "tests/integration/test_dataframe_csv_empty_string_null_semantics.py",
+          "tests/fixtures/dataframe_parity.py",
+          "changelog.d/perf-pandas-df-loader-date-objects-20261031.json"
+        ]
+      },
+      "scope_hash": "ffe85b779d4d8a1f8e8bc7a8b621437ced6dcab36cde5a6f98597b106132a652",
+      "start_head": "3a3ee9826a6ab939d6235d31e69056c789ac365e",
+      "terminal_outcome": "deliver"
+    },
     "batch-loop-pilot": {
       "accepted_members": {
         "batch-loop-docs-and-agents-20261101": "cc5125da2ec55865371bcbd626f267c7c2b4bd91",
