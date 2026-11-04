@@ -1,5 +1,5 @@
 {
-  "context": "2026-11-04 leader session started. Order: 1 tpch-refresh-stream-window-excludes-connect-20261103; 2 perf-tpch-rf1-bulk-load-20261031; 3 tpch-rf1-native-ingest-singlestore-20261103 (dep 2); 4 tpch-ducklake-refresh-support-20261103 (dep 2). Not enrolled: tpch-refresh-checks-timing-per-decision-20261103 (owner decision tpch-refresh-precheck-timing-decision-20261103 unanswered), Snowflake items. Owner instruction 2026-11-04: complete all work to arming the final PR, hold with no-auto-merge until v0.5.0 is released. Integration worktree /Users/joe/Developer/BenchBox.wt-tpch-refresh-path.",
+  "context": "2026-11-04 leader session started. Order: 1 tpch-refresh-stream-window-excludes-connect-20261103; 2 perf-tpch-rf1-bulk-load-20261031; 3 tpch-rf1-native-ingest-singlestore-20261103 (dep 2); 4 tpch-ducklake-refresh-support-20261103 (dep 2). Not enrolled: tpch-refresh-checks-timing-per-decision-20261103 (owner decision tpch-refresh-precheck-timing-decision-20261103 unanswered), Snowflake items. Owner instruction 2026-11-04: complete all work to arming the final PR, hold with no-auto-merge until v0.5.0 is released. Integration worktree /Users/joe/Developer/BenchBox.wt-tpch-refresh-path.\n\nMember 1 tpch-refresh-stream-window-excludes-connect-20261103 landed (accepted head 7be817e38e, integration 7a9bb7b605) and prepared; leader review clear. Same-session note: members dispatched via task tool.",
   "description": "Umbrella for feature-delivery batch tpch-refresh-path. Batch notes and state only; never a batch member.",
   "sessions": [
     {
@@ -8,6 +8,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "9c173b7d606e488d8cff9744e8f95cf6",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-04T14:01:30Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "bb0e4c21c1314439af1739edb4ef3474",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
