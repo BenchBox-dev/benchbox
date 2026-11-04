@@ -17736,6 +17736,13 @@
       "status": "open",
       "title": "Remove the oracle's author-family label lookup and hard-code the claude author default"
     },
+    "oracle-callers-env-secrets-unreachable-20261104": {
+      "claim": null,
+      "needs": [],
+      "priority": "critical",
+      "status": "open",
+      "title": "Oracle review and gate cannot read environment secrets after the Theseus cutover (all PRs blocked)"
+    },
     "oracle-carry-byte-identical-20261026": {
       "claim": null,
       "needs": [
