@@ -9,7 +9,7 @@
     "Interrupted install, hostile PR-local module/package, changed trusted manifest, corrupt installed executable and trusted-ref refresh failure all refuse or reconstruct safely from verified exact artifacts; both bytes and dependencies are verified before execution.",
     "Persisted finding/dispute state is preserved/imported explicitly; retry/attempt/cache and provenance formats keep defined compatibility. Old export directories become inert without deleting findings."
   ],
-  "context": "T3; resolves P4/R1/R5 installer obligations. Lock/schema locations are determined by the ADR and existing project patterns, not arbitrary names in this item. Existing local cache validity includes trusted package/policy/manifest/config digest; preserve that property.\n\nDelivery: one Theseus PR (Theseus PR 1) carries governance bootstrap, package/installer, hosted workflows, local tooling, frozen source and parity proof. The release tag and first-promotion evidence come from that merged head, not from a separate PR.\n\nOwner (2026-11-03): the Theseus repository is https://github.com/joeharris76/theseus, replacing the planned BenchBox-dev/theseus. Live check: exists, private, MIT, default branch main, one initial commit 392e84d (LICENSE, README.md, .gitignore); admin access confirmed.",
+  "context": "T3; resolves P4/R1/R5 installer obligations. Lock/schema locations are determined by the ADR and existing project patterns, not arbitrary names in this item. Existing local cache validity includes trusted package/policy/manifest/config digest; preserve that property.\n\nDelivery: one Theseus PR (Theseus PR 1) carries governance bootstrap, package/installer, hosted workflows, local tooling, frozen source and parity proof. The release tag and first-promotion evidence come from that merged head, not from a separate PR.\n\nOwner (2026-11-03): the Theseus repository is https://github.com/joeharris76/theseus, replacing the planned BenchBox-dev/theseus. Live check: exists, private, MIT, default branch main, one initial commit 392e84d (LICENSE, README.md, .gitignore); admin access confirmed.\n\nDelivered: theseus-reviewer package with consumer-configured identity (bot_login, gated_base, attesters from trusted policy) and hash-verified isolated installer (theseus PRs #1, #6, #8 pin bound to lock, #9 Windows bootstrap, #11 code-owned seams). Vendored into BenchBox as _project/scripts/theseus_bootstrap.py, byte-identical to v0.1.4.",
   "description": "Build the real reviewer/gate package in Theseus: dist theseus-reviewer, import theseus_reviewer, CLI theseus. Include templates and all runtime files from the inventory. Configure App login, attesters, gated base and policy/manifest paths from trusted consumer policy; the wheel carries no BenchBox identity, branch, or path defaults. Gate identity must actually use configured values rather than ignore bot_login.\nImplement a minimal consumer bootstrap that resolves a lock from a trusted consumer commit, verifies downloaded bytes and the complete dependency closure, and installs into an isolated environment. Record immutable source commit, wheel/dependency hashes, runtime constraints and two independent byte sources. Verify before execution; cache identity is the exact hash/version. No latest, ambient install, source-build hooks from PRs, or cache fallback to a different version. Recovery source must be readable by clean CI without credentials and serve the identical hash. Lock-parser/verifier trust must come from the consumer base, never the candidate.\nImplement the matcher arrangement selected by its owner decision. Recommended single stdlib-only, import-pure module takes explicit manifest input; BenchBox-specific validation regex and override lookups stay outside it. If vendored, only one byte-identical copy is allowed and lock binds its digest.\nGuardrails: no compatibility shims or dual independently maintained matcher; no branding-driven marker/status/cache-schema renames; preserve notices and lazy imports; no production package publication here. No BenchBox callsite deletion until atomic cutover. Worktree, comment-policy and normal reviewed-PR rules apply.",
   "links": [
     "_project/scripts/oracle_review_check.py",
@@ -59,6 +59,14 @@
       "generation": "ac8fbab280e94b5c99833614c5eb65bd",
       "op": "take",
       "op_id": "fad66c89c25142768b08f87b99d676b9",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-04T18:10:08Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "de26930c86fc47d184fb51d640b1e243",
       "session_id": "8d9ba932107b4322b2417b8af61c160c"
     }
   ]
