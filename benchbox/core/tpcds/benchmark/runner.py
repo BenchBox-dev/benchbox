@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from benchbox.core.tuning.interface import UnifiedTuningConfiguration
 
 from benchbox.base import BaseBenchmark, GeneratorOutputDirMixin
+from benchbox.core.benchmark_mixins import duckdb_insert_from_csv
 from benchbox.core.connection import DatabaseConnection as _DatabaseConnection
 from benchbox.core.throughput.containment import check_phase_boundary
 from benchbox.core.throughput.entrypoints import (
@@ -564,12 +565,24 @@ class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
 
         num_columns = len(table_schema.columns)
 
+        delimiter = get_delimiter_for_file(data_file)
+        copied = duckdb_insert_from_csv(
+            connection,
+            table_name_upper,
+            data_file,
+            num_columns,
+            delimiter=delimiter,
+            null_if_empty=True,
+            trailing_delimiter=True,
+            skip_malformed=False,
+        )
+        if copied is not None:
+            return copied
+
         placeholders = ", ".join(["?" for _ in range(num_columns)])
         insert_sql = f"INSERT INTO {table_name_upper} VALUES ({placeholders})"
 
         rows_loaded = 0
-
-        delimiter = get_delimiter_for_file(data_file)
 
         with open(data_file, encoding="utf-8") as f:
             reader = csv.reader(f, delimiter=delimiter)

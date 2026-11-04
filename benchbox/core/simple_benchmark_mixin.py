@@ -10,6 +10,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from benchbox.core.benchmark_mixins import duckdb_insert_from_csv
 from benchbox.core.connection import DatabaseConnection
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
@@ -163,6 +164,10 @@ class SimpleBenchmarkMixin:
     def _load_table_data(self, connection: DatabaseConnection, table_name: str, data_file: Path) -> int:
         table_schema = self._get_table_schema()[table_name]
         num_columns = len(table_schema["columns"])
+
+        copied = duckdb_insert_from_csv(connection, table_name, data_file, num_columns)
+        if copied is not None:
+            return copied
 
         placeholders = ", ".join(["?" for _ in range(num_columns)])
         insert_sql = f"INSERT INTO {table_name} VALUES ({placeholders})"

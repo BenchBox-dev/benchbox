@@ -5,10 +5,8 @@
 
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
-import csv
 import logging
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Callable, Optional, Union, cast
 
 import pandas as pd
@@ -86,43 +84,6 @@ class TPCDIDataLoader:
             table_kind="fact",
             insert_fn=self._batch_insert_fact_data,
         )
-
-    def load_csv_file(self, table_name: str, file_path: Path, delimiter: str = ",") -> LoadResult:
-        logger.info(f"Loading CSV file {file_path} into {table_name}")
-
-        result = LoadResult(table_name=table_name)
-        start_time = mono_time()
-
-        try:
-            if not file_path.exists():
-                raise FileNotFoundError(f"CSV file not found: {file_path}")
-
-            data = []
-            with open(file_path, newline="", encoding="utf-8") as csvfile:
-                reader = csv.DictReader(csvfile, delimiter=delimiter)
-                for row in reader:
-                    data.append(row)
-
-            if not data:
-                logger.warning(f"No data found in CSV file {file_path}")
-                result.success = True
-                return result
-
-            load_result = self.load_dimension_data(table_name, data)
-
-            result.records_loaded = load_result.records_loaded
-            result.success = load_result.success
-            result.error_message = load_result.error_message
-            result.pre_load_count = load_result.pre_load_count
-            result.post_load_count = load_result.post_load_count
-            result.load_time = elapsed_seconds(start_time)
-
-        except Exception as e:
-            result.error_message = str(e)
-            result.load_time = elapsed_seconds(start_time)
-            logger.error(f"Failed to load CSV file {file_path}: {e}")
-
-        return result
 
     def create_indexes(self, connection: Any) -> dict[str, bool]:
         logger.info("Creating performance indexes for TPC-DI tables")
