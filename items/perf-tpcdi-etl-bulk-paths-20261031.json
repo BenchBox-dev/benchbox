@@ -7,6 +7,11 @@
     "Before and after load plus ETL durations on DuckDB at one scale factor on the same host are recorded in the PR.",
     "If docs/internal/tpc-measured-intervals.md exists on the base branch, update the rows this change affects; otherwise append the row text to the context of tpc-measured-intervals-reference-20261103. Changelog fragment records the change."
   ],
+  "batch": {
+    "batch_id": "native-bulk-load-remainder",
+    "implementation_dependencies": [],
+    "member_id": "perf-tpcdi-etl-bulk-paths-20261031"
+  },
   "context": "2026-11-03: reclassified from timing integrity to plain performance work: TPC-DI measures the ETL itself. Priority unchanged. Origin: root-cause analysis of RF1 timing and its adversarial review.",
   "description": "The TPC-DI load phase is timed at benchbox/core/tpcdi/benchmark.py:1123-1129. Inside it: etl/sql_backend.py:190-200 converts DataFrames to tuples and executemany in 1000-row batches; etl/scd_processor.py loops with iterrows() at :461, :507, :725, :748, :882, :892 (one UPDATE per row at :725) and builds parameter lists at :605; etl/pipeline.py:341-655 generates facts/dimensions in Python and loads with executemany; tpcdi/benchmark.py:1263 uses pd.read_csv without the pyarrow engine. Use DataFrame/Arrow registration (DuckDB) or COPY, and set-based MERGE/UPDATE for SCD steps.\n\nSpec framing (TPC-DI 1.1.0): the ETL transformation is the measured workload, and generating data and copying it to staging are untimed. Optimizations here must therefore make BenchBox's own implementation faster while the work stays inside the timed region. Do not move transformation, parsing or loading to before the timer. This is performance work on the implementation, not a timing-contract change.\n\nGuardrails for all code work: work only in a linked worktree (make worktree-create); never edit the primary clone. No explanatory comments or docstrings in source (make comment-policy-check). Durations use benchbox.utils.clock.mono_time()/elapsed_seconds(). Add a changelog.d/ fragment. Cited line numbers are orientation only: re-read the named symbols, docs and spec clauses before editing and treat a mismatch as a reason to stop and update this item. No live-cloud runs without owner approval; heavy runs only through make heavy-run or a lock-taking entry point. Green focused tests are not release certification.",
   "sessions": [
@@ -33,6 +38,14 @@
       "op": "update",
       "op_id": "67889c32165c435f969c1af2ec2e0040",
       "session_id": "ada67604a2174486ada6b7b9a8c4f586"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-04T18:14:34Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c6dcdc100587440fa17f3d6075427490",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
 }
