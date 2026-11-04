@@ -354,6 +354,15 @@ def test_stage_one_watchdog_budget_matches_the_per_cell_memory_limit():
     assert float(step["env"]["BENCHBOX_HEAVY_MEMORY_BUDGET_GIB"]) == config.execute.per_cell_memory_limit_gib
 
 
+def test_stage_two_clickhouse_memory_leaves_runner_headroom():
+    from tests.uat import docker_assets
+
+    assert _jobs()["uat-stage2"]["runs-on"] == "ubuntu-latest"
+    step = next(s for s in _jobs()["uat-stage2"]["steps"] if "UAT_CONFIG" in s.get("env", {}))
+    limit = docker_assets.parse_memory_bytes(step["env"]["CLICKHOUSE_MEMORY_LIMIT"]) / 1024**3
+    assert 8 < limit <= RUNNER_MEMORY_GIB - 4
+
+
 def test_every_uat_job_frees_runner_disk_through_the_shared_environment_action():
     action = yaml.safe_load(
         (WORKFLOW.parents[1] / "actions" / "release-uat-env" / "action.yml").read_text(encoding="utf-8")
