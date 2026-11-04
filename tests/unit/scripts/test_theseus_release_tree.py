@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 import theseus_cli
-import theseus_ledger_check
 import theseus_release_check
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -38,17 +37,15 @@ def test_either_file_present_is_not_a_release_tree(tmp_path: Path, lock: bool, p
     root = _tree(tmp_path, lock=lock, policy=policy)
 
     assert not theseus_release_check._release_tree(root)
-    assert not theseus_ledger_check._release_tree(root)
     assert not theseus_cli._release_tree(root)
 
 
-def test_release_tree_skips_all_three_steps(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_release_tree_skips_both_steps(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     root = _tree(tmp_path, lock=False, policy=False)
 
     assert theseus_release_check.main(["x", str(root)], _never) == 0
-    assert theseus_ledger_check.main(["x", str(root)], {}, _never) == 0
     assert _run_cli(root) == 0
-    assert capsys.readouterr().err.count("release tree: no Theseus lock") == 3
+    assert capsys.readouterr().err.count("release tree: no Theseus lock") == 2
 
 
 def test_policy_without_lock_still_fails(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -58,6 +55,5 @@ def test_policy_without_lock_still_fails(tmp_path: Path, capsys: pytest.CaptureF
         raise theseus_release_check.ReleaseCheckError("offline")
 
     assert theseus_release_check.main(["x", str(root)], down) == 1
-    assert theseus_ledger_check.main(["x", str(root), "a" * 40], {}) == 1
     assert _run_cli(root) != 0
     assert "release tree" not in capsys.readouterr().err

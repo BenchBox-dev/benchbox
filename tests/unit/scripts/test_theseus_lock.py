@@ -25,7 +25,7 @@ def test_the_vendored_matcher_is_the_copy_the_lock_pins() -> None:
 def test_the_lock_names_one_reviewed_commit_for_the_source_and_the_workflows() -> None:
     assert COMMIT.fullmatch(LOCK["source_commit"])
     assert LOCK["workflow_sha"] == LOCK["source_commit"]
-    assert LOCK["bootstrap"]["approved_head"] == LOCK["source_commit"]
+    assert "bootstrap" not in LOCK
 
 
 def test_the_artifact_has_two_distinct_https_sources() -> None:
@@ -44,13 +44,10 @@ def test_each_caller_workflow_is_pinned_to_the_locked_commit_in_both_places(name
     assert pins == refs == [LOCK["workflow_sha"]]
 
 
-def test_the_policy_promotion_rules_match_the_lock_bootstrap_record() -> None:
+def test_the_policy_promotion_rules_name_the_locked_repository() -> None:
     policy = (ROOT / ".github" / "oracle-reviewers.yml").read_text(encoding="utf-8")
 
     assert f"repository: {LOCK['repository']}" in policy
-    assert f"bootstrap_baseline_commit: {LOCK['bootstrap']['baseline_commit']}" in policy
-    for source, target in LOCK["bootstrap"]["path_map"].items():
-        assert f"    {source}: {target}\n" in policy
 
 
 def test_the_installed_matcher_is_byte_identical_to_the_vendored_copy_and_the_lock(theseus_engine) -> None:

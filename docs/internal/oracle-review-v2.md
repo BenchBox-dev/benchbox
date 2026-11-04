@@ -57,23 +57,6 @@ BenchBox keeps the consumer side:
   refused. This keeps Theseus's own deterministic suite gating every promotion,
   since BenchBox no longer runs it. A byte-identity test compares the installed
   `theseus_reviewer/soundness_paths.py` with the vendored matcher and the lock hash.
-- `scripts/theseus_ledger_check.py`: runs in `medium-test` right after the release
-  check, in a full-history checkout. It fetches the Theseus source at the lock's
-  `source_commit` with a blobless `git fetch` (git verifies the commit id; the script
-  also refuses a checkout whose `HEAD` differs), requires the ledger's `baseline` to
-  equal the lock's `bootstrap.baseline_commit`, and runs the fetched
-  `tools/upstream_ledger.py check --benchbox-repo . --ref <base>` where `<base>` is
-  `github.event.pull_request.base.sha` (else `origin/develop`). The job fails when
-  any BenchBox commit since the baseline that touches the extraction inventory is
-  pending, malformed or unrecorded, so a stale baseline cannot silently revert a fix
-  that landed on `develop` but was never ported. The check guards only the cutover
-  window: when the base ref's tree has no `_project/scripts/oracle_reviewers/` directory
-  (`git ls-tree <base> _project/scripts/oracle_reviewers` prints nothing) the in-tree
-  engine is already gone, nothing remains to port, and the script exits 0 with a message
-  instead of failing every later pull request; an unresolvable base still runs and fails.
-  Its decision logic is pinned
-  offline by `tests/unit/scripts/test_theseus_ledger_check.py`; the live policy is
-  pinned by `tests/unit/scripts/test_oracle_policy_pin.py`.
 - Policy and manifests (`.github/oracle-reviewers.yml` with its `consumer:` and
   `promotion:` sections, `.github/oracle-omp-config.yml`, `.github/soundness-paths.txt`,
   `.github/inert-paths.txt`), the thin caller workflows `oracle-verdict.yml`,

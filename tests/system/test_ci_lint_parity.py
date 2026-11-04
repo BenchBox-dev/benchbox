@@ -151,14 +151,6 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
         "token, which has no local equivalent, and its logic is pinned by "
         "tests/unit/scripts/test_theseus_release_check.py."
     ),
-    ("ci.yml", "medium-test", "Verify every upstream-port ledger entry is covered at the PR base"): (
-        "Hosted check; it clones the locked Theseus source from GitHub and needs the PR base history, "
-        "and its decision logic is pinned by tests/unit/scripts/test_theseus_ledger_check.py."
-    ),
-    ("test.yml", "medium", "Verify every upstream-port ledger entry is covered at the PR base"): (
-        "Hosted check; it clones the locked Theseus source from GitHub and needs the base history, "
-        "and its decision logic is pinned by tests/unit/scripts/test_theseus_ledger_check.py."
-    ),
     ("test.yml", "medium", "Verify the locked Theseus commit passed its required checks"): (
         "Hosted check; it queries the check runs of the locked Theseus commit through the Actions "
         "token, which has no local equivalent, and its logic is pinned by "

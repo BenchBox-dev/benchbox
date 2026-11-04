@@ -47,11 +47,9 @@ def test_the_promotion_block_names_the_locked_repository_baseline_and_reviewers(
 
     assert promotion["package"] == LOCK["package"] == "theseus-reviewer"
     assert promotion["repository"] == LOCK["repository"] == "joeharris76/theseus"
-    assert promotion["bootstrap_baseline_commit"] == LOCK["bootstrap"]["baseline_commit"]
     assert promotion["bootstrap_baseline_commit"] == "95c423c35efd3fb4962145bdc628006d5aaaad26"
     assert promotion["bootstrap_reviewers"] == ["joeharris76"]
     assert promotion["dependencies"] == {}
-    assert promotion["bootstrap_path_map"] == LOCK["bootstrap"]["path_map"]
 
 
 def test_live_reviewers_match_buckets_one_to_one() -> None:
@@ -98,9 +96,7 @@ def test_the_gate_paths_cover_the_theseus_wiring() -> None:
         "_project/scripts/theseus_bootstrap.py",
         "scripts/theseus_cli.py",
         "scripts/theseus_release_check.py",
-        "scripts/theseus_ledger_check.py",
         "tests/unit/scripts/test_theseus_release_check.py",
-        "tests/unit/scripts/test_theseus_ledger_check.py",
         "tests/unit/scripts/test_oracle_gateway_host.py",
         "tests/integration/oracle/test_curated_capture_fixtures.py",
         "tests/fixtures/oracle_reviewers/provenance.json",

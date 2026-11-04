@@ -106,10 +106,8 @@ file	.github/theseus-lock.json
 file	_project/scripts/theseus_bootstrap.py
 file	scripts/theseus_cli.py
 file	scripts/theseus_release_check.py
-file	scripts/theseus_ledger_check.py
 file	tests/unit/scripts/test_theseus_lock.py
 file	tests/unit/scripts/test_theseus_release_check.py
-file	tests/unit/scripts/test_theseus_ledger_check.py
 file	tests/unit/scripts/test_oracle_gateway_host.py
 file	tests/integration/oracle/test_curated_capture_fixtures.py
 file	tests/fixtures/oracle_reviewers/provenance.json

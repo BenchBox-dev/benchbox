@@ -333,11 +333,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
-      - name: Verify every upstream-port ledger entry is covered at the PR base
-        run: python3 scripts/theseus_ledger_check.py
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-
       - name: Download medium collection evidence
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
