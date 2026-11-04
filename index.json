@@ -28528,7 +28528,12 @@
       "title": "Owner decision: approve one vendored soundness-path matcher module as the only embedded exception"
     },
     "theseus-freeze-final-parity-20261102": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-05T18:11:17Z",
+        "generation": "12d7d85c5ebd4fdc8953d96d87dc8084",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f"
+      },
       "needs": [
         "theseus-promotion-review-path-benchbox-20261102",
         "theseus-package-identity-install-20261102",
@@ -28536,7 +28541,7 @@
         "theseus-local-gateway-tooling-20261102"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Freeze the synchronized Theseus source and prove installed-artifact parity before release"
     },
     "theseus-gateway-client-first-live-gate-20261102": {
