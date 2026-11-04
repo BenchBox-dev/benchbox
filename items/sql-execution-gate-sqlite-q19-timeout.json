@@ -1,10 +1,11 @@
 {
   "acceptance": [
-    "Cause of the q19 timeout established (slow runner versus plan regression), with evidence",
-    "The gate no longer fails on it: either the timeout is classified with a reason like q21, the query is made to finish reliably, or the budget is justified",
-    "A rerun of the job passes on an unchanged tree"
+    "Establish the SQLite Q19 timeout root cause with query-plan/workload/runner evidence, distinguishing slow runner, plan regression and harness scheduling.",
+    "Fix the cause without suppressing wrong results, marking an unexplained timeout expected, blanket timeout inflation or retry-until-green; preserve correctness/reference checks.",
+    "Add deterministic behavioral regression proof for the causal mechanism and exercise actual emitted TPC-H Q19/Havoc variants on SQLite with the existing gate budget.",
+    "Focused tests plus executed SQL gate on unchanged inputs pass without manual rerun; merge through normal review/CI; this item gates end-to-end activation."
   ],
-  "context": "Logs: run 40590583534 job 122494308893 (step 'Run the executed SQL comparison gate', make sql-execution-gate, Makefile:479) and run 40497564501 job 122167420044 (PR 3547). The same job also lists many datafusion and postgres tpchavoc errors classified as expected. It is path-gated (skipped on most PRs) but ran for a docs-only change, which may be worth a separate look. Filed from session review 2026-10-27.\n\nMoved from the todo-db tracker on 2026-10-28; the item was filed there by mistake.\n\n2026-11-01 evidence from this session: (1) #3823 (wheel 30.27.0.1) sql-execution-evidence job 124357315302 failed with 10 unexplained differences, all `sqlite tpchavoc q19_v1..v10 timeout: exceeded 15s`; the SQL sent to SQLite was identical for all 220 Havoc queries under 30.25.0.2 and 30.27.0.1, q19 took ~4s locally, and the rerun passed. (2) On an earlier #3878 head the same job flagged an unexplained tpch/sqlite difference that later runs did not repeat; it was not investigated.\n\n2026-11-03: the sqlite tpch q19 'timeout: exceeded 15s' failed the sql-execution-evidence job again on #3932 (a wheel-only adoption, no translation change) and passed on rerun of the failed job. verify-fast-duration also returned would-block once (summed ratio 1.359, runner speed factor 1.831) and passed on a full rerun.",
+  "context": "Logs: run 40590583534 job 122494308893 (step 'Run the executed SQL comparison gate', make sql-execution-gate, Makefile:479) and run 40497564501 job 122167420044 (PR 3547). The same job also lists many datafusion and postgres tpchavoc errors classified as expected. It is path-gated (skipped on most PRs) but ran for a docs-only change, which may be worth a separate look. Filed from session review 2026-10-27.\n\nMoved from the todo-db tracker on 2026-10-28; the item was filed there by mistake.\n\n2026-11-01 evidence from this session: (1) #3823 (wheel 30.27.0.1) sql-execution-evidence job 124357315302 failed with 10 unexplained differences, all `sqlite tpchavoc q19_v1..v10 timeout: exceeded 15s`; the SQL sent to SQLite was identical for all 220 Havoc queries under 30.25.0.2 and 30.27.0.1, q19 took ~4s locally, and the rerun passed. (2) On an earlier #3878 head the same job flagged an unexplained tpch/sqlite difference that later runs did not repeat; it was not investigated.\n\n2026-11-03: the sqlite tpch q19 'timeout: exceeded 15s' failed the sql-execution-evidence job again on #3932 (a wheel-only adoption, no translation change) and passed on rerun of the failed job. verify-fast-duration also returned would-block once (summed ratio 1.359, runner speed factor 1.831) and passed on a full rerun.\n\n2026-11-04 owner-authorized SQLGlot end-to-end delivery batch: reuse this item as reliability prerequisite for sqlglot-e2e-lifecycle-controller and sqlglot-e2e-activation-proof, not a duplicate. Strengthened rubrics replace classification-as-expected or arbitrary budget workaround; underlying diagnosis remains open. Guardrails and dependency sequence in sqlglot-e2e-automated-delivery. Source-aware review is independently implementable; serial merged delivery across review-policy/reliability/controller boundaries.",
   "description": "The sql-execution-evidence job failed on PR 3577 (head b7ec8a9f4) and PR 3547 with 11 UNEXPLAINED DIFFERENCES, all 'sqlite ... [error] timeout: exceeded 15s': tpch q19 and tpchavoc q19_v1 to q19_v10. SQLite q21 and its variants time out as well but are classified as expected differences; q19 is not. The failing code is outside both PRs (a docs-only PR hit it too), so a runner-speed difference seems the likely cause, but the cause was not confirmed. The job ran 3m26s and fails the required check.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3577",
@@ -34,6 +35,14 @@
       "op": "update",
       "op_id": "2d3e1829c019462f82486b8c932fb2ea",
       "session_id": "8a0b283a1eec4655ad1a33598f023c47"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ba4923b65d2bea2a5584a721",
+      "at": "2026-11-04T21:06:41Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a2e62019510341ecacf585733ec69680",
+      "session_id": "cf3fdc0e8210426f8ab8cc6664c384cd"
     }
   ]
 }
