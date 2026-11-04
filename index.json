@@ -344,7 +344,7 @@
         }
       },
       "integration_branch": "feat/native-bulk-load-sql",
-      "integration_head": "168f8d51a3f02bb6c1c1ce1c1bf260125972edba",
+      "integration_head": "87ce1bc78448186aede0e1783ee52ad0d3168d0c",
       "integration_log": [
         {
           "at": "2026-11-04T13:52:23Z",
@@ -387,6 +387,26 @@
           "op_id": "e147776972ad4d029567e8944c548d95",
           "previous_head": "16e0a5eb8908565efc6cf9bef412e616af272038",
           "seq": 4
+        },
+        {
+          "at": "2026-11-04T14:56:08Z",
+          "changed_files": [
+            "benchbox/platforms/doris.py",
+            "changelog.d/feat-native-bulk-load-sql--perf-databend-bulk-load-20261030.json",
+            "changelog.d/feat-native-bulk-load-sql--perf-doris-stream-load-line-rewrite-20261031.json",
+            "changelog.d/feat-native-bulk-load-sql--perf-prepare-local-load-file-streaming-20261031.json",
+            "tests/unit/platforms/test_doris_stream_load_null_handling.py"
+          ],
+          "head": "87ce1bc78448186aede0e1783ee52ad0d3168d0c",
+          "kind": "fix",
+          "op_id": "e556975266264ba198f1951454b16db5",
+          "previous_head": "168f8d51a3f02bb6c1c1ce1c1bf260125972edba",
+          "requires_acceptance": [
+            "perf-databend-bulk-load-20261030",
+            "perf-doris-stream-load-line-rewrite-20261031",
+            "perf-prepare-local-load-file-streaming-20261031"
+          ],
+          "seq": 5
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-native-bulk-load-sql",
