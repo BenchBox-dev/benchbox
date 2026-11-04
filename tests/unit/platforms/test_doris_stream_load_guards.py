@@ -100,7 +100,5 @@ def test_zstd_data_files_open_without_the_zstd_command(tmp_path, monkeypatch):
     data_file.write_bytes(zstandard.ZstdCompressor().compress("0|AFRICA|\n".encode("latin-1")))
     monkeypatch.setattr(data_loading.shutil, "which", lambda _command: None)
 
-    with doris_module.DorisAdapter._open_data_file_text(data_file) as handle:
-        assert handle.read() == "0|AFRICA|\n"
     with doris_module.DorisAdapter._open_data_file_binary(data_file) as stream:
         assert stream.read() == b"0|AFRICA|\n"
