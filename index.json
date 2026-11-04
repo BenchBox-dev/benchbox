@@ -24952,6 +24952,13 @@
       "status": "done",
       "title": "SingleStore setup saves the plaintext password to credentials.yaml even when validation fails"
     },
+    "singlestore-tpchavoc-10v8-memory": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "SingleStore TPC-Havoc 10_v8 intermittently exhausts leaf memory at SF0.01"
+    },
     "singlestore-uat-failures-20261030": {
       "claim": null,
       "needs": [],
