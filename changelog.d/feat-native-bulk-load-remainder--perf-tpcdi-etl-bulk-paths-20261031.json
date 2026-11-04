@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "TPC-DI ETL loads now bulk-insert DataFrames through DuckDB registration or PostgreSQL COPY, and the SCD Type 2 processor applies non-SCD updates with set-based statements instead of per-row loops.",
+      "details": [
+        "Measured on DuckDB at scale factor 10, the historical load phase dropped from about 1.6s to about 0.02s with identical table contents and validation results.",
+        "Missing string values in loaded DataFrames are now stored as NULL on DuckDB instead of the text 'nan'."
+      ],
+      "platforms": ["duckdb", "postgresql"],
+      "benchmarks": ["tpcdi"]
+    }
+  ]
+}
