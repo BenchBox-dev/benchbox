@@ -1,5 +1,5 @@
 {
-  "context": "2026-11-04 leader session started; owner hold on final PR until v0.5.0 released (latest tag v0.5.0rc3).\n\n2026-11-04: Leader and members were separate sessions (task tool). Landed+prepared in order: duckdb-wire (f9ee428), pandas-loader (c1277f5), maintenance-arrow (ee35e98); integration head 298c080. Not enrolled: perf-arrow-* fetch items (owner decision fetch-timing-contract-decision-20261103). Not run: real PySpark/Hudi (local JVM openjdk 27 cannot start pyspark 4.2), Iceberg-on-DuckDB e2e, real Vortex/DuckLake e2e, pandas SF1 timing (SF0.1 lineitem measured: 0.805s->0.564s). Next: fast tier, pr-preflight, review, pr-open, hold label.",
+  "context": "2026-11-04 leader session started; owner hold on final PR until v0.5.0 released (latest tag v0.5.0rc3).\n\n2026-11-04: Leader and members were separate sessions (task tool). Landed+prepared in order: duckdb-wire (f9ee428), pandas-loader (c1277f5), maintenance-arrow (ee35e98); integration head 298c080. Not enrolled: perf-arrow-* fetch items (owner decision fetch-timing-contract-decision-20261103). Not run: real PySpark/Hudi (local JVM openjdk 27 cannot start pyspark 4.2), Iceberg-on-DuckDB e2e, real Vortex/DuckLake e2e, pandas SF1 timing (SF0.1 lineitem measured: 0.805s->0.564s). Next: fast tier, pr-preflight, review, pr-open, hold label.\n\n2026-11-04 FINAL STATE: PR #3950 (https://github.com/BenchBox-dev/benchbox/pull/3950), ready for review, label no-auto-merge applied right after pr-open, not armed. Bound head 83489483a6b2758cfde0abc10089eecc703d2304 (two leader fix commits: Iceberg merge determinism + Spark Arrow routing; ty/marker fixes). Required CI green on the bound head, oracle verdict SHIP (oracle-gate success); only the intentional `hold` check fails. Fresh evidence: /Users/joe/Developer/BenchBox.wt-arrow-dataframe-roundtrips/.todo-batch/arrow-dataframe-roundtrips/final-evidence.json. Members stay prepared. Known: textual conflict noted by pr-open with PR #3911 in benchbox/core/transactional/benchmark_base.py (not touched by this batch). Owner actions: after v0.5.0 is released, lift hold by naming PR 3950; then make batch-advance REASON=develop-merge, rebind, fresh make batch-evidence, make pr-arm, finish members after merge, make batch-finish.",
   "description": "Umbrella (non-member) item for batch arrow-dataframe-roundtrips. Holds batch order, decisions and state. Members: perf-duckdb-wire-native-handlers-20261030, perf-pandas-df-loader-date-objects-20261031, perf-dataframe-maintenance-arrow-20261031. Not enrolled: perf-arrow-* fetch items (wait on fetch-timing-contract-decision-20261103).",
   "sessions": [
     {
@@ -16,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "9a0230673d604265b85f7a94a8b1ec84",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-04T17:08:56Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d7cb0847531f49a083c36f18f6411523",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
