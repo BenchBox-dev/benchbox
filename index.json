@@ -27455,10 +27455,15 @@
       "title": "Deploy the source-aware SQLGlot reviewer through a verified Theseus package pin"
     },
     "sqlglot-e2e-source-aware-adoption-review": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-05T21:52:56Z",
+        "generation": "4cd1b1c737a64376bbe61f92831c7fbf",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ba4923b65d2bea2a5584a721"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Review SQLGlot wheel adoptions against their actual fork source changes"
     },
     "sqlglot-e2e-verified-wheel-adoption": {
