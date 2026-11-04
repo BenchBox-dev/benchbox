@@ -27183,7 +27183,9 @@
         "renewals": 0,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ba4923b65d2bea2a5584a721"
       },
-      "needs": [],
+      "needs": [
+        "oracle-callers-env-secrets-unreachable-20261104"
+      ],
       "priority": "medium",
       "status": "active",
       "title": "Stop the executed SQL comparison gate failing on SQLite q19 timeouts"
