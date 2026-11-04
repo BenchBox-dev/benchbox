@@ -439,7 +439,7 @@
         }
       },
       "integration_branch": "feat/native-bulk-load-remainder",
-      "integration_head": "97606cfaa901128d44b005eed27bf0b09403a350",
+      "integration_head": "fdaaafe7233ffc5cc1c559d95a08316adae662e7",
       "integration_log": [
         {
           "at": "2026-11-04T18:14:25Z",
@@ -492,6 +492,20 @@
             "perf-tpcdi-etl-bulk-paths-20261031"
           ],
           "seq": 4
+        },
+        {
+          "at": "2026-11-04T20:16:26Z",
+          "changed_files": [
+            "benchbox/core/tpcdi/etl/sql_backend.py"
+          ],
+          "head": "fdaaafe7233ffc5cc1c559d95a08316adae662e7",
+          "kind": "fix",
+          "op_id": "1d2626dfd74c4754aeaa3056b67c9a99",
+          "previous_head": "97606cfaa901128d44b005eed27bf0b09403a350",
+          "requires_acceptance": [
+            "perf-tpcdi-etl-bulk-paths-20261031"
+          ],
+          "seq": 5
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-native-bulk-load-remainder",
