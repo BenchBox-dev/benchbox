@@ -41,7 +41,7 @@ GIT_IDENTITY = {
     "GIT_COMMITTER_NAME": "Test",
     "GIT_COMMITTER_EMAIL": "test@example.com",
 }
-WHEEL_PATH = "/_assets/github.com/joeharris76/theseus/releases/download/v0.1.4/theseus_reviewer-0.1.4-py3-none-any.whl"
+WHEEL_PATH = "/_assets/github.com/joeharris76/theseus/releases/download/v0.1.6/theseus_reviewer-0.1.6-py3-none-any.whl"
 RETAINED_PATH = WHEEL_PATH.replace(".whl", ".retained.whl")
 
 FAKE_THESEUS = """\
@@ -142,11 +142,11 @@ def _executable(path: Path, text: str) -> Path:
 
 
 def _wheel() -> bytes:
-    dist = "theseus_reviewer-0.1.4.dist-info"
+    dist = "theseus_reviewer-0.1.6.dist-info"
     files = {
         "theseus_reviewer/__init__.py": b"",
         "theseus_reviewer/cli.py": FAKE_THESEUS.encode(),
-        f"{dist}/METADATA": b"Metadata-Version: 2.1\nName: theseus-reviewer\nVersion: 0.1.4\n",
+        f"{dist}/METADATA": b"Metadata-Version: 2.1\nName: theseus-reviewer\nVersion: 0.1.6\n",
         f"{dist}/WHEEL": b"Wheel-Version: 1.0\nGenerator: test\nRoot-Is-Purelib: true\nTag: py3-none-any\n",
         f"{dist}/entry_points.txt": b"[console_scripts]\ntheseus = theseus_reviewer.cli:main\n",
     }
@@ -173,7 +173,7 @@ def _lock(sha256: str = WHEEL_SHA256) -> str:
         {
             "schema": 1,
             "package": "theseus-reviewer",
-            "version": "0.1.4",
+            "version": "0.1.6",
             "repository": "joeharris76/theseus",
             "source_commit": commit,
             "source_sha256": "1" * 64,

@@ -30,10 +30,21 @@ live there.
 
 BenchBox keeps the consumer side:
 
+- `.github/workflows/oracle-verdict.yml` and `oracle-gate.yml`: thin callers of
+  the SHA-pinned Theseus reusable workflows. Each caller job passes every
+  `oracle` environment secret the callee uses by name (`NAME: ${{ secrets.NAME }}`):
+  seven for the review workflow, `ORACLE_APP_ID` and `ORACLE_APP_PRIVATE_KEY` for
+  the gate. The callee declares them under `on.workflow_call.secrets` as
+  required, so a missing mapping fails at startup instead of resolving empty.
+  `secrets: inherit` is not used: it does not cross owners (this repository is
+  owned by an organization, Theseus by a user), and against these callees,
+  which declare the secrets as required, it fails at startup with "Secret … is
+  required, but not provided" (https://github.com/actions/runner/issues/4453).
 - `.github/theseus-lock.json`: the reviewed lock (package, version, source
-  commit, artifact sha256 and two distinct https URLs, dependency hashes, the
-  `matcher` entry and the first-promotion `bootstrap` record). Only a promotion
-  pull request changes it, and the gate refuses any change that lacks the
+  commit, artifact sha256 and two distinct https URLs, dependency hashes and
+  the `matcher` entry; only the first promotion's lock carried a `bootstrap`
+  record, later locks have none). Only a promotion pull request changes it,
+  and the gate refuses any change that lacks the
   authenticated promotion evidence.
 - `_project/scripts/theseus_bootstrap.py`: the verbatim first-stage installer.
   `scripts/theseus_cli.py` runs the first stage read from a trusted commit
@@ -57,23 +68,6 @@ BenchBox keeps the consumer side:
   refused. This keeps Theseus's own deterministic suite gating every promotion,
   since BenchBox no longer runs it. A byte-identity test compares the installed
   `theseus_reviewer/soundness_paths.py` with the vendored matcher and the lock hash.
-- `scripts/theseus_ledger_check.py`: runs in `medium-test` right after the release
-  check, in a full-history checkout. It fetches the Theseus source at the lock's
-  `source_commit` with a blobless `git fetch` (git verifies the commit id; the script
-  also refuses a checkout whose `HEAD` differs), requires the ledger's `baseline` to
-  equal the lock's `bootstrap.baseline_commit`, and runs the fetched
-  `tools/upstream_ledger.py check --benchbox-repo . --ref <base>` where `<base>` is
-  `github.event.pull_request.base.sha` (else `origin/develop`). The job fails when
-  any BenchBox commit since the baseline that touches the extraction inventory is
-  pending, malformed or unrecorded, so a stale baseline cannot silently revert a fix
-  that landed on `develop` but was never ported. The check guards only the cutover
-  window: when the base ref's tree has no `_project/scripts/oracle_reviewers/` directory
-  (`git ls-tree <base> _project/scripts/oracle_reviewers` prints nothing) the in-tree
-  engine is already gone, nothing remains to port, and the script exits 0 with a message
-  instead of failing every later pull request; an unresolvable base still runs and fails.
-  Its decision logic is pinned
-  offline by `tests/unit/scripts/test_theseus_ledger_check.py`; the live policy is
-  pinned by `tests/unit/scripts/test_oracle_policy_pin.py`.
 - Policy and manifests (`.github/oracle-reviewers.yml` with its `consumer:` and
   `promotion:` sections, `.github/oracle-omp-config.yml`, `.github/soundness-paths.txt`,
   `.github/inert-paths.txt`), the thin caller workflows `oracle-verdict.yml`,
@@ -98,7 +92,9 @@ state are inert and never read.
    write** and **Pull requests: write**, installed on this repository only.
 2. Before the workflow first runs, create the `oracle` environment with
    deployment branches limited to `develop`; GitHub creates a missing
-   environment with no protection rules.
+   environment with no protection rules. The branch rule does not keep PR
+   runs from the secrets: for `pull_request_target` it is evaluated against
+   the default branch, so those runs reach them.
 3. Add these `oracle` environment secrets:
    - `ORACLE_APP_ID`, `ORACLE_APP_PRIVATE_KEY`: only the `review` job's `Mint
      the App token` step, after the attempt loop and the redaction check.

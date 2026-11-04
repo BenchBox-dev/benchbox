@@ -16,6 +16,15 @@ WORKFLOW = REPO_ROOT / ".github" / "workflows" / "oracle-verdict.yml"
 LOCK = REPO_ROOT / ".github" / "theseus-lock.json"
 CALLEE = re.compile(r"^joeharris76/theseus/\.github/workflows/review\.yml@([0-9a-f]{40})$")
 ENGINE_PATHS = ("oracle_reviewers", "oracle_gate", "oracle_review_check", "uv run", "setup-uv")
+EXPECTED_SECRETS = (
+    "ORACLE_APP_ID",
+    "ORACLE_APP_PRIVATE_KEY",
+    "ORACLE_GATEWAY_TOKEN",
+    "ORACLE_GATEWAY_URL",
+    "TS_OAUTH_CI_CLIENT_ID",
+    "TS_OAUTH_CI_SECRET",
+    "TYPESAFE_API_KEY",
+)
 RUN_TITLE_PULL = re.compile(r"\bpr=(\d+)")
 SHA = "c" * 40
 
@@ -95,10 +104,12 @@ def test_the_calling_job_grants_the_documented_permission_ceiling() -> None:
     assert _job()["permissions"] == {"actions": "write", "contents": "read", "pull-requests": "read"}
 
 
-def test_the_caller_has_no_steps_secrets_or_in_tree_engine_references() -> None:
-    assert set(_job()) == {"permissions", "uses", "with"}
+def test_the_caller_has_no_steps_and_passes_named_secrets_with_no_in_tree_engine_references() -> None:
+    assert set(_job()) == {"permissions", "uses", "with", "secrets"}
     text = _text()
-    assert "secrets:" not in text and "inherit" not in text
+    assert _job()["secrets"] == {name: "${{ secrets." + name + " }}" for name in EXPECTED_SECRETS}
+    assert "inherit" not in text
+    assert text.count("secrets:") == 1
     for needle in ENGINE_PATHS:
         assert needle not in text, needle
 

@@ -38,8 +38,16 @@ jobs:
       actions: write
       contents: read
       pull-requests: read
-    uses: joeharris76/theseus/.github/workflows/review.yml@fd1355cf462c8c77c159c1635726e56562991429
+    uses: joeharris76/theseus/.github/workflows/review.yml@6e5765e56b05ca0765cdd5273a8c1215e64756a2
     with:
       environment: oracle
-      theseus_ref: fd1355cf462c8c77c159c1635726e56562991429
+      theseus_ref: 6e5765e56b05ca0765cdd5273a8c1215e64756a2
       gated_base: develop
+    secrets:
+      ORACLE_APP_ID: ${{ secrets.ORACLE_APP_ID }}
+      ORACLE_APP_PRIVATE_KEY: ${{ secrets.ORACLE_APP_PRIVATE_KEY }}
+      ORACLE_GATEWAY_TOKEN: ${{ secrets.ORACLE_GATEWAY_TOKEN }}
+      ORACLE_GATEWAY_URL: ${{ secrets.ORACLE_GATEWAY_URL }}
+      TS_OAUTH_CI_CLIENT_ID: ${{ secrets.TS_OAUTH_CI_CLIENT_ID }}
+      TS_OAUTH_CI_SECRET: ${{ secrets.TS_OAUTH_CI_SECRET }}
+      TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
