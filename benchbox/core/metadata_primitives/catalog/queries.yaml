@@ -123,6 +123,8 @@ queries:
   description: List all numeric columns
   sql: "SELECT\n    table_name,\n    column_name,\n    data_type,\n    numeric_precision,\n    numeric_scale\nFROM information_schema.columns\nWHERE table_schema NOT IN ('information_schema', 'pg_catalog')\n  AND data_type IN ('integer', 'bigint', 'smallint', 'decimal', 'numeric', 'real', 'double precision', 'float')\nORDER BY table_name, column_name;\n"
   variants:
+    presto: "SELECT\n    table_name,\n    column_name,\n    data_type,\n    TRY_CAST(REGEXP_EXTRACT(data_type, '\\((\\d+)', 1) AS INTEGER) AS numeric_precision,\n    TRY_CAST(REGEXP_EXTRACT(data_type, ',\\s*(\\d+)\\)', 1) AS INTEGER) AS numeric_scale\nFROM information_schema.columns\nWHERE table_schema NOT IN ('information_schema', 'pg_catalog')\n  AND (data_type IN ('integer', 'bigint', 'smallint', 'tinyint', 'real', 'double') OR data_type LIKE 'decimal%')\nORDER BY table_name, column_name;\n"
+    trino: "SELECT\n    table_name,\n    column_name,\n    data_type,\n    TRY_CAST(REGEXP_EXTRACT(data_type, '\\((\\d+)', 1) AS INTEGER) AS numeric_precision,\n    TRY_CAST(REGEXP_EXTRACT(data_type, ',\\s*(\\d+)\\)', 1) AS INTEGER) AS numeric_scale\nFROM information_schema.columns\nWHERE table_schema NOT IN ('information_schema', 'pg_catalog')\n  AND (data_type IN ('integer', 'bigint', 'smallint', 'tinyint', 'real', 'double') OR data_type LIKE 'decimal%')\nORDER BY table_name, column_name;\n"
     duckdb: "SELECT\n    table_name,\n    column_name,\n    data_type,\n    numeric_precision,\n    numeric_scale\nFROM information_schema.columns\nWHERE table_schema NOT IN ('information_schema', 'pg_catalog')\n  AND data_type IN ('INTEGER', 'BIGINT', 'SMALLINT', 'DECIMAL', 'DOUBLE', 'FLOAT', 'REAL', 'HUGEINT', 'UINTEGER', 'UBIGINT')\nORDER BY table_name, column_name;\n"
     clickhouse: "SELECT\n    table AS table_name,\n    name AS column_name,\n    type AS data_type,\n    0 AS numeric_precision,\n    0 AS numeric_scale\nFROM system.columns\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA')\n  AND (type LIKE 'Int%' OR type LIKE 'UInt%' OR type LIKE 'Float%' OR type LIKE 'Decimal%')\nORDER BY table, name;\n"
     bigquery: "SELECT\n    table_name,\n    column_name,\n    data_type,\n    CAST(NULL AS INT64) AS numeric_precision,\n    CAST(NULL AS INT64) AS numeric_scale\nFROM INFORMATION_SCHEMA.COLUMNS\nWHERE STARTS_WITH(data_type, 'INT64') OR STARTS_WITH(data_type, 'NUMERIC') OR STARTS_WITH(data_type, 'BIGNUMERIC') OR STARTS_WITH(data_type, 'FLOAT64')\nORDER BY table_name, column_name;\n"
@@ -133,6 +135,8 @@ queries:
   description: List all string/text columns
   sql: "SELECT\n    table_name,\n    column_name,\n    data_type,\n    character_maximum_length\nFROM information_schema.columns\nWHERE table_schema NOT IN ('information_schema', 'pg_catalog')\n  AND data_type IN ('character varying', 'varchar', 'text', 'char', 'character')\nORDER BY table_name, column_name;\n"
   variants:
+    presto: "SELECT\n    table_name,\n    column_name,\n    data_type,\n    TRY_CAST(REGEXP_EXTRACT(data_type, '\\((\\d+)\\)', 1) AS INTEGER) AS character_maximum_length\nFROM information_schema.columns\nWHERE table_schema NOT IN ('information_schema', 'pg_catalog')\n  AND (data_type = 'varchar' OR data_type LIKE 'varchar(%' OR data_type LIKE 'char(%')\nORDER BY table_name, column_name;\n"
+    trino: "SELECT\n    table_name,\n    column_name,\n    data_type,\n    TRY_CAST(REGEXP_EXTRACT(data_type, '\\((\\d+)\\)', 1) AS INTEGER) AS character_maximum_length\nFROM information_schema.columns\nWHERE table_schema NOT IN ('information_schema', 'pg_catalog')\n  AND (data_type = 'varchar' OR data_type LIKE 'varchar(%' OR data_type LIKE 'char(%')\nORDER BY table_name, column_name;\n"
     duckdb: "SELECT\n    table_name,\n    column_name,\n    data_type,\n    character_maximum_length\nFROM information_schema.columns\nWHERE table_schema NOT IN ('information_schema', 'pg_catalog')\n  AND data_type = 'VARCHAR'\nORDER BY table_name, column_name;\n"
     clickhouse: "SELECT\n    table AS table_name,\n    name AS column_name,\n    type AS data_type,\n    0 AS character_maximum_length\nFROM system.columns\nWHERE database NOT IN ('system', 'INFORMATION_SCHEMA')\n  AND (type = 'String' OR type LIKE 'FixedString%')\nORDER BY table, name;\n"
     bigquery: "SELECT\n    table_name,\n    column_name,\n    data_type,\n    CAST(NULL AS INT64) AS character_maximum_length\nFROM INFORMATION_SCHEMA.COLUMNS\nWHERE STARTS_WITH(data_type, 'STRING')\nORDER BY table_name, column_name;\n"
@@ -219,6 +223,8 @@ queries:
   - clickhouse
   - bigquery
   - datafusion
+  - presto
+  - trino
   variants:
     duckdb: "SELECT\n    schema_name AS table_schema,\n    table_name,\n    constraint_text AS constraint_name,\n    constraint_type\nFROM duckdb_constraints()\nWHERE schema_name NOT IN ('information_schema', 'pg_catalog')\nORDER BY table_name, constraint_type;\n"
     sqlite: "WITH sqlite_constraints AS (SELECT table_name, constraint_name, constraint_type FROM (SELECT m.name AS table_name, 'pk_' || m.name AS constraint_name, 'PRIMARY KEY' AS constraint_type, p.name AS column_name, p.pk AS ordinal_position FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND p.pk > 0) GROUP BY table_name, constraint_name, constraint_type UNION ALL SELECT table_name, constraint_name, constraint_type FROM (SELECT m.name AS table_name, 'fk_' || m.name || '_' || f.id AS constraint_name, 'FOREIGN KEY' AS constraint_type, f.\"from\" AS column_name, f.seq + 1 AS ordinal_position, f.\"table\" AS parent_table FROM sqlite_master m JOIN pragma_foreign_key_list(m.name) f WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%') GROUP BY table_name, constraint_name, constraint_type UNION ALL SELECT table_name, constraint_name, constraint_type FROM (SELECT m.name AS table_name, 'uq_' || m.name || '_' || i.name AS constraint_name, 'UNIQUE' AS constraint_type, ii.name AS column_name, ii.seqno + 1 AS ordinal_position FROM sqlite_master m JOIN pragma_index_list(m.name) i JOIN pragma_index_info(i.name) ii WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND i.\"unique\" = 1 AND i.origin = 'u') GROUP BY table_name, constraint_name, constraint_type) SELECT 'main' AS table_schema, table_name, constraint_name, constraint_type FROM sqlite_constraints ORDER BY table_name, constraint_type\n"
@@ -395,6 +401,8 @@ queries:
   - clickhouse
   - bigquery
   - datafusion
+  - presto
+  - trino
   variants:
     snowflake: "SELECT\n    table_name,\n    constraint_name,\n    constraint_type,\n    '' AS column_name\nFROM information_schema.table_constraints\nWHERE table_name ILIKE 'benchbox_fk_%'\n  AND constraint_type = 'FOREIGN KEY'\nORDER BY table_name, constraint_name;\n"
     duckdb: "SELECT\n    table_name,\n    constraint_text AS constraint_name,\n    constraint_type,\n    '' AS column_name\nFROM duckdb_constraints()\nWHERE table_name LIKE 'benchbox_fk_%'\n  AND constraint_type = 'FOREIGN KEY'\nORDER BY table_name;\n"
@@ -407,6 +415,8 @@ queries:
   - clickhouse
   - bigquery
   - datafusion
+  - presto
+  - trino
   variants:
     snowflake: "SELECT\n    table_name,\n    constraint_name,\n    '' AS column_name\nFROM information_schema.table_constraints\nWHERE table_name ILIKE 'benchbox_%'\n  AND constraint_type = 'PRIMARY KEY'\nORDER BY table_name, constraint_name;\n"
     duckdb: "SELECT\n    table_name,\n    constraint_text AS constraint_name,\n    '' AS column_name\nFROM duckdb_constraints()\nWHERE table_name LIKE 'benchbox_%'\n  AND constraint_type = 'PRIMARY KEY'\nORDER BY table_name;\n"
@@ -420,8 +430,11 @@ queries:
   - bigquery
   - duckdb
   - starrocks
+  - doris
   - datafusion
   - questdb
+  - presto
+  - trino
   variants:
     singlestore: "SELECT\n    table_name AS child_table,\n    unique_constraint_name,\n    referenced_table_name AS parent_table,\n    '' AS fk_column\nFROM information_schema.referential_constraints\nWHERE constraint_schema = DATABASE()\nORDER BY child_table, unique_constraint_name;\n"
     snowflake: "SELECT\n    tc.table_name AS child_table,\n    rc.unique_constraint_name,\n    ptc.table_name AS parent_table,\n    '' AS fk_column\nFROM information_schema.table_constraints tc\nJOIN information_schema.referential_constraints rc\n  ON tc.constraint_name = rc.constraint_name\n  AND tc.table_schema = rc.constraint_schema\nJOIN information_schema.table_constraints ptc\n  ON rc.unique_constraint_name = ptc.constraint_name\n  AND rc.unique_constraint_schema = ptc.table_schema\nWHERE tc.table_name ILIKE 'benchbox_fk_%'\nORDER BY child_table;\n"
@@ -434,6 +447,8 @@ queries:
   - clickhouse
   - bigquery
   - datafusion
+  - presto
+  - trino
   variants:
     duckdb: "SELECT\n    constraint_type,\n    COUNT(*) AS constraint_count,\n    COUNT(DISTINCT table_name) AS tables_with_constraint\nFROM duckdb_constraints()\nWHERE table_name LIKE 'benchbox_%'\nGROUP BY constraint_type\nORDER BY constraint_count DESC;\n"
     sqlite: "WITH sqlite_constraints AS (SELECT table_name, constraint_name, constraint_type FROM (SELECT m.name AS table_name, 'pk_' || m.name AS constraint_name, 'PRIMARY KEY' AS constraint_type, p.name AS column_name, p.pk AS ordinal_position FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND p.pk > 0) GROUP BY table_name, constraint_name, constraint_type UNION ALL SELECT table_name, constraint_name, constraint_type FROM (SELECT m.name AS table_name, 'fk_' || m.name || '_' || f.id AS constraint_name, 'FOREIGN KEY' AS constraint_type, f.\"from\" AS column_name, f.seq + 1 AS ordinal_position, f.\"table\" AS parent_table FROM sqlite_master m JOIN pragma_foreign_key_list(m.name) f WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%') GROUP BY table_name, constraint_name, constraint_type UNION ALL SELECT table_name, constraint_name, constraint_type FROM (SELECT m.name AS table_name, 'uq_' || m.name || '_' || i.name AS constraint_name, 'UNIQUE' AS constraint_type, ii.name AS column_name, ii.seqno + 1 AS ordinal_position FROM sqlite_master m JOIN pragma_index_list(m.name) i JOIN pragma_index_info(i.name) ii WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND i.\"unique\" = 1 AND i.origin = 'u') GROUP BY table_name, constraint_name, constraint_type) SELECT constraint_type, COUNT(*) AS constraint_count, COUNT(DISTINCT table_name) AS tables_with_constraint FROM sqlite_constraints WHERE table_name LIKE 'benchbox_%' GROUP BY constraint_type ORDER BY constraint_count DESC;\n"
@@ -576,6 +591,7 @@ queries:
   - trino
   - presto
   - starrocks
+  - doris
   - databricks
   variants:
     singlestore: "SELECT\n    `role` AS role_name,\n    0 AS is_superuser,\n    0 AS can_create_db,\n    0 AS can_create_role\nFROM information_schema.roles\nORDER BY `role`;\n"
@@ -604,6 +620,7 @@ queries:
   - firebolt
   - snowflake
   - starrocks
+  - doris
   - databricks
   - questdb
   variants:

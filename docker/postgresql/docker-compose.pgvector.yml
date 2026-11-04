@@ -1,0 +1,3 @@
+services:
+  postgresql:
+    image: pgvector/pgvector:pg18@sha256:c29f30688a9ad961691bdf0ec1650717cc132a5814619d80f80463d6e4c42e47

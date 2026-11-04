@@ -105,6 +105,19 @@ jobs:
       - name: Sync locked package-only runtime
         run: uv sync --project _project/scripts --locked
 
+      - name: Warm the verified Theseus install
+        run: python3 scripts/theseus_cli.py --trusted-ref "$(git rev-parse HEAD)" path
+
+      - name: Verify the locked Theseus commit passed its required checks
+        run: python3 scripts/theseus_release_check.py
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Verify every upstream-port ledger entry is covered at the PR base
+        run: python3 scripts/theseus_ledger_check.py
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+
       - name: Download medium collection evidence
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:

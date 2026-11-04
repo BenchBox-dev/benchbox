@@ -404,18 +404,6 @@
     "tests/unit/release/test_ruleset_drift_review_coverage.py": {
       "WA003": 2
     },
-    "tests/unit/scripts/oracle_reviewers/test_attempt_loop.py": {
-      "WA007": 1
-    },
-    "tests/unit/scripts/oracle_reviewers/test_carry_identity.py": {
-      "WA007": 1
-    },
-    "tests/unit/scripts/oracle_reviewers/test_local_review.py": {
-      "WA007": 1
-    },
-    "tests/unit/scripts/oracle_reviewers/test_runner.py": {
-      "WA007": 4
-    },
     "tests/unit/scripts/publication/test_ledger_seed.py": {
       "WA007": 4
     },

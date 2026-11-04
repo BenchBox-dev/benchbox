@@ -274,6 +274,49 @@ STUB_UNAME = """#!/bin/sh
 case "$1" in -m) echo x86_64 ;; *) echo Linux ;; esac
 """
 
+STUB_THESEUS = """#!{python}
+import hashlib
+import os
+import platform
+import sys
+import urllib.request
+from pathlib import Path
+
+import yaml
+
+stub_dir = Path(os.environ["STUB_DIR"])
+(stub_dir / "theseus.env").write_text("\\n".join(f"{{k}}={{v}}" for k, v in os.environ.items()), encoding="utf-8")
+args = sys.argv[1:]
+if args[:1] != ["install-omp"]:
+    sys.exit(2)
+pin = yaml.safe_load(Path(args[args.index("--policy") + 1]).read_text(encoding="utf-8"))["omp"]
+systems = {{"darwin": "darwin", "linux": "linux"}}
+machines = {{"arm64": "arm64", "aarch64": "arm64", "x86_64": "x64", "amd64": "x64"}}
+target = f"{{systems.get(platform.system().lower())}}-{{machines.get(platform.machine().lower())}}"
+build = pin["builds"].get(target)
+if build is None:
+    print(f"no omp build is pinned for {{target}}", file=sys.stderr)
+    sys.exit(1)
+destination = Path(os.environ["THESEUS_OMP_CACHE"]) / pin["version"] / target / "omp"
+if destination.is_file() and hashlib.sha256(destination.read_bytes()).hexdigest() == build["sha256"]:
+    print(destination)
+    sys.exit(0)
+mirror = os.environ["THESEUS_OMP_DOWNLOAD_MIRROR"]
+data = urllib.request.urlopen(mirror + "/omp").read()
+if hashlib.sha256(data).hexdigest() != build["sha256"]:
+    print("the downloaded omp does not match the pinned sha256", file=sys.stderr)
+    sys.exit(1)
+destination.parent.mkdir(parents=True, exist_ok=True)
+destination.write_bytes(data)
+destination.chmod(0o755)
+print(destination)
+"""
+
+STUB_BOOTSTRAP = (
+    "import os\nimport sys\n\n\ndef main(argv):\n    print(os.environ['FAKE_THESEUS'])\n    return 0\n\n\n"
+    "if __name__ == '__main__':\n    raise SystemExit(main(sys.argv[1:]))\n"
+)
+
 STUB_MAKE = "#!/bin/sh\nexit 0\n"
 STUB_NODE = "#!/bin/sh\necho v24.15.0\n"
 STUB_UV = """#!/bin/sh
@@ -298,8 +341,8 @@ def _current_platform() -> str:
 
 
 def _policy_text(url: str = FAKE_OMP_URL, content: str = FAKE_OMP) -> str:
-    if not (REPO_ROOT / "_project" / "scripts" / "oracle_reviewers").exists():
-        pytest.skip("_project scripts are not in this checkout (release tree)")
+    if not (REPO_ROOT / "scripts" / "theseus_cli.py").exists():
+        pytest.skip("Theseus launcher is not in this checkout (release tree)")
     import hashlib
 
     import yaml
@@ -316,13 +359,19 @@ def _git_in(repo: Path, *args: str) -> None:
 
 
 def _gateway_clone(tmp_path: Path, *, develop_policy: str | None = None, branch_policy: str | None = None) -> Path:
-    if not (REPO_ROOT / "_project" / "scripts" / "oracle_reviewers").exists():
-        pytest.skip("_project scripts are not in this checkout (release tree)")
+    if not (REPO_ROOT / "scripts" / "theseus_cli.py").exists():
+        pytest.skip("Theseus launcher is not in this checkout (release tree)")
     repo = _clone(tmp_path)
     policy = repo / POLICY_FILE
     policy.parent.mkdir(parents=True)
     policy.write_text(_policy_text() if develop_policy is None else develop_policy, encoding="utf-8")
-    _git_in(repo, "add", POLICY_FILE)
+    launcher = repo / "scripts" / "theseus_cli.py"
+    launcher.parent.mkdir(parents=True)
+    launcher.write_text((REPO_ROOT / "scripts" / "theseus_cli.py").read_text(encoding="utf-8"), encoding="utf-8")
+    first_stage = repo / "_project" / "scripts" / "theseus_bootstrap.py"
+    first_stage.parent.mkdir(parents=True)
+    first_stage.write_text(STUB_BOOTSTRAP, encoding="utf-8")
+    _git_in(repo, "add", POLICY_FILE, "scripts/theseus_cli.py", "_project/scripts/theseus_bootstrap.py")
     _git_in(repo, "commit", "-q", "-m", "policy")
     origin = tmp_path / "gateway-origin.git"
     subprocess.run(["git", "init", "-q", "--bare", str(origin)], check=True)
@@ -347,6 +396,7 @@ def _gateway_stubs(tmp_path: Path) -> tuple[str, Path]:
         "make": STUB_MAKE,
         "node": STUB_NODE,
         "uv": STUB_UV.format(python=sys.executable),
+        "theseus": STUB_THESEUS.format(python=sys.executable),
     }
     for name, body in bodies.items():
         stub = bin_dir / name
@@ -412,8 +462,8 @@ def _gateway_env(tmp_path: Path, *, credentials: bool = True, **overrides: str |
         "STUB_OMP_CONTENT": FAKE_OMP,
         "FAKE_KEY": FAKE_KEY,
         "HOME": str(tmp_path / "home"),
-        "PYTHONPATH": str(REPO_ROOT),
-        "BENCHBOX_OMP_DOWNLOAD_MIRROR": _omp_server(tmp_path, overrides.get("STUB_OMP_CONTENT") or FAKE_OMP).origin,
+        "FAKE_THESEUS": str(stub_dir / "bin" / "theseus"),
+        "THESEUS_OMP_DOWNLOAD_MIRROR": _omp_server(tmp_path, overrides.get("STUB_OMP_CONTENT") or FAKE_OMP).origin,
         "BENCHBOX_GATEWAY_PROXY_PORT": "1055",
         "TS_AUTHKEY": FAKE_KEY if credentials else None,
         "ORACLE_GATEWAY_URL": FAKE_URL if credentials else None,
@@ -443,7 +493,7 @@ def _installed_omp(tmp_path: Path) -> Path:
 
 
 def _status(repo: Path) -> str:
-    return (repo / ".git" / "benchbox-cloud-gateway.status").read_text(encoding="utf-8")
+    return (repo / ".git" / "theseus-cloud-gateway.status").read_text(encoding="utf-8")
 
 
 def test_gateway_without_credentials_reports_unavailable_and_succeeds(tmp_path: Path) -> None:
@@ -632,7 +682,7 @@ def test_gateway_refuses_a_platform_with_no_pin_and_names_it(tmp_path: Path) -> 
 
 def test_bootstrap_does_not_record_omp_installed_when_the_install_fails(tmp_path: Path) -> None:
     repo = _gateway_clone(tmp_path)
-    (repo / "scripts").mkdir()
+    (repo / "scripts").mkdir(exist_ok=True)
     (repo / "scripts" / "cloud_gateway.sh").write_text(GATEWAY.read_text(encoding="utf-8"), encoding="utf-8")
     env = _gateway_env(tmp_path, STUB_OMP_CONTENT="#!/bin/sh\necho omp/1.2.3\n# tampered\n")
     try:
@@ -705,14 +755,14 @@ def test_gateway_socket_path_stays_short_for_a_long_git_dir(tmp_path: Path) -> N
     assert not Path(socket_arg).exists()
 
 
-def test_gateway_never_hands_the_proxy_to_the_uv_install(tmp_path: Path) -> None:
+def test_gateway_never_hands_the_proxy_to_the_omp_install(tmp_path: Path) -> None:
     repo = _gateway_clone(tmp_path)
     env = _gateway_env(tmp_path)
     try:
         result = _run(GATEWAY, cwd=repo, env=env)
 
         assert result.returncode == 0, result.stdout + result.stderr
-        uv_env = _stub_lines(tmp_path, "uv.env")
+        uv_env = _stub_lines(tmp_path, "theseus.env")
         assert uv_env
         assert not [
             line
@@ -814,7 +864,7 @@ def test_gateway_stop_ends_the_daemon(tmp_path: Path) -> None:
 
 def test_bootstrap_without_credentials_still_succeeds_and_reports_the_gateway(tmp_path: Path) -> None:
     repo = _gateway_clone(tmp_path)
-    (repo / "scripts").mkdir()
+    (repo / "scripts").mkdir(exist_ok=True)
     (repo / "scripts" / "cloud_gateway.sh").write_text(GATEWAY.read_text(encoding="utf-8"), encoding="utf-8")
     env = _gateway_env(tmp_path, credentials=False)
 
@@ -827,7 +877,7 @@ def test_bootstrap_without_credentials_still_succeeds_and_reports_the_gateway(tm
 
 def test_bootstrap_with_credentials_records_the_gateway_in_the_marker(tmp_path: Path) -> None:
     repo = _gateway_clone(tmp_path)
-    (repo / "scripts").mkdir()
+    (repo / "scripts").mkdir(exist_ok=True)
     (repo / "scripts" / "cloud_gateway.sh").write_text(GATEWAY.read_text(encoding="utf-8"), encoding="utf-8")
     env = _gateway_env(tmp_path)
     try:
@@ -843,7 +893,7 @@ def test_bootstrap_with_credentials_records_the_gateway_in_the_marker(tmp_path: 
 
 def test_bootstrap_survives_a_failed_gateway_setup(tmp_path: Path) -> None:
     repo = _gateway_clone(tmp_path)
-    (repo / "scripts").mkdir()
+    (repo / "scripts").mkdir(exist_ok=True)
     (repo / "scripts" / "cloud_gateway.sh").write_text(GATEWAY.read_text(encoding="utf-8"), encoding="utf-8")
     env = _gateway_env(tmp_path, STUB_JOIN_FAILS="1")
 

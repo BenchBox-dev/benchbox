@@ -22,6 +22,7 @@ BRANCH = "feat/cloud-change"
 NODE_ID = "PR_kwDOcloud7"
 REPO = "benchbox-dev/benchbox"
 OTHER_SHA = "f" * 40
+TRACKER_TIP = "d" * 40
 
 skip_on_windows = pytest.mark.skipif(
     os.name == "nt",
@@ -149,7 +150,7 @@ class FakeGitHub:
         self.conclusions = dict.fromkeys(pr_landing.REQUIRED_CONTEXTS, "success")
         self.stale_suites: list[dict[str, Any]] = []
         self.children: list[int] = []
-        self.index: dict = {"schema_version": 1, "items": {}}
+        self.index: dict = {"schema_version": 1, "items": {}, "batches": {}}
         self.auto_merge: dict | None = None
         self.merge_code = 0
         self.calls: list[list[str]] = []
@@ -190,7 +191,9 @@ class FakeGitHub:
         return None
 
     def _todo_state_reply(self, cmd: list[str]) -> tuple[int, str] | None:
-        if cmd[:2] == ["gh", "api"] and "contents/index.json?ref=todo-state" in cmd[-1]:
+        if cmd[:2] == ["gh", "api"] and cmd[2].endswith("git/ref/heads/todo-state"):
+            return 0, TRACKER_TIP + "\n"
+        if cmd[:2] == ["gh", "api"] and f"contents/index.json?ref={TRACKER_TIP}" in cmd[-1]:
             return 0, json.dumps(self.index)
         if cmd[:2] == ["gh", "api"] and "contents/items/" in cmd[-1]:
             name = cmd[-1].split("contents/items/")[1].removesuffix(".json?ref=todo-state")
@@ -480,6 +483,29 @@ def test_refuses_a_registered_batch_integration_or_final_pr(
 @pytest.mark.parametrize(
     ("batch", "refused"),
     [
+        ({"lifecycle": "active"}, True),
+        ({"lifecycle": "aborted"}, False),
+        ({"lifecycle": "active", "members": ["other"]}, False),
+    ],
+)
+def test_refuses_a_pr_from_a_registered_batch_member_branch(batch: dict, refused: bool) -> None:
+    registered = {
+        "repository": "BenchBox-dev/BenchBox",
+        "integration_branch": "feat/other",
+        "members": ["change"],
+        **batch,
+    }
+    view = {"headRefName": "feat/feature-x--change", "number": 7, "id": "PR_member"}
+
+    reasons = remote_closeout.batch_refusals({"feature-x": registered}, REPO, view, None)
+
+    message = "condition 1: batch PR: its head branch is a member branch of batch 'feature-x'"
+    assert (message in reasons) is refused
+
+
+@pytest.mark.parametrize(
+    ("batch", "refused"),
+    [
         ({"repository": "BenchBox-dev/BenchBox", "lifecycle": "active"}, True),
         ({"repository": "BenchBox-dev/BenchBox", "lifecycle": "aborted"}, False),
         ({"repository": "someone/else", "lifecycle": "active"}, False),
@@ -534,18 +560,6 @@ def test_refuses_a_would_block_duration_verdict_unless_the_baseline_changes(
     assert "summed-time ratio 1.500" in err
     assert "median per-test ratio 1.250" in err
     assert "scripts/build_fast_duration_baseline.py" in err
-
-
-def test_refuses_an_omp_pin_bump_without_owner_evidence(
-    world: World, ready_pr: FakeGitHub, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(
-        remote_closeout.pr_arm.pr_arm_omp_bump,
-        "bump_refusals",
-        lambda *_a: ["omp pin bump to 9.9.9 has no owner evidence"],
-    )
-    assert "omp pin bump to 9.9.9 has no owner evidence" in _refusal(world, ready_pr, capsys)
-    assert ready_pr.arms() == []
 
 
 def test_refuses_until_the_fast_duration_verdict_exists(

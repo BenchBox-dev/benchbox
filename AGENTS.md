@@ -96,7 +96,7 @@ For long output, write `/tmp/<slug>.log` (report status + short tail). UAT/stres
 
 Before publication, self-review with the `code` review action and fix all Critical and Required findings; nits and considerations are optional. Run `make pr-preflight` once, then `make pr-open`. Low-effort subagents may handle boilerplate gates; you choose commands and interpret failures. Check CI on a schedule, never in a loop. Wait on pending checks.
 
-Dev PRs target `develop` (or `release` / `published-results`); squash-merge, never direct-push protected branches. Force-push feature branches only with `--force-with-lease`. Soundness paths need oracle review: resolve `benchbox-oracle` threads; arm only on its success review of the current head (rerun if pending/absent). Land drift/pinning guards with required-CI wiring. Five `ci.yml` unit checks pass even when untouched. Stacks: one agent, one tracker item, 3 PRs max; no other agent's unmerged branch (a member on its leader's integration branch is exempt). Upper PRs are parent-based drafts. After parent squash-merge, retarget to `develop`, `git rebase --onto origin/develop <old parent tip>`, mark ready, pass CI and review on that head, then arm.
+Dev PRs target `develop` (or `release` / `published-results`); squash-merge, never direct-push protected branches. Force-push feature branches only with `--force-with-lease`. Soundness paths need oracle review: resolve `benchbox-oracle` threads; arm only on its success review of the current head (rerun if pending/absent). Land drift/pinning guards with required-CI wiring. Five `ci.yml` unit checks pass even when untouched. Stacks: each at most 3 PRs deep, one agent and tracker item; upper PRs are parent-branch drafts. Caps chain depth, not PR count. No other agent's unmerged branch (batch members exempt); deeper work uses a batch. After parent squash-merge, retarget to `develop`, `git rebase --onto origin/develop <old parent tip>`, mark ready, pass CI and review on that head, then arm.
 
 ## TODO tracker
 
@@ -129,7 +129,7 @@ and state the next operator step.
 - CLI dry runs must propagate explicit phases; deterministic runs use a seed.
 - Green focused/fast tests are not UAT or production certification.
 
-Apple/macOS: correctness-gate digests are Linux-generated; use `make ci-linux` (`release-guide.md`). Mocker is local-only, never CI: databend's `minio` was observed to exit under it; doris/starrocks are single-service. Per-stack status: https://benchbox.dev/docs/operations/uat-framework.html. Never prune globally.
+Apple/macOS: correctness-gate digests are Linux-generated; use `make ci-linux` (`release-guide.md`). Mocker is local-only, never CI: databend, doris and starrocks are single-service stacks. Per-stack status: https://benchbox.dev/docs/operations/uat-framework.html. Never prune globally.
 
 ## Skills and generated mirrors
 

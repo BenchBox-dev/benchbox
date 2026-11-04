@@ -9,6 +9,8 @@ import importlib
 from benchbox.core.query_catalog_base import QuerySkippedError, is_native_dialect
 from benchbox.utils.dialect_utils import translate_sql_query
 
+_VARIANT_PLATFORM_ALIASES = {"postgres": "postgresql"}
+
 _QUERIES: dict[str, str] = {
     "Q1": """
 SELECT v.id,
@@ -441,7 +443,7 @@ class VectorSearchQueryManager:
             raise ValueError(f"Invalid query ID: {query_id!r}. Available: {available}")
 
         if dialect:
-            dialect_lower = dialect.lower()
+            dialect_lower = _VARIANT_PLATFORM_ALIASES.get(dialect.lower(), dialect.lower())
             legacy_sql = QUERY_VARIANTS.get(dialect_lower, {}).get(key)
 
             importlib.import_module("benchbox.sql_compat.rules.query_source.vector_search_variants")

@@ -42,14 +42,6 @@ class FakeRun:
         return rc, payload if isinstance(payload, str) else json.dumps(payload)
 
 
-@pytest.fixture(autouse=True)
-def _trusted_review_store(monkeypatch: pytest.MonkeyPatch):
-    fx.REVIEW_STORE.clear()
-    monkeypatch.setattr(landing, "_stored_member_review", fx.stored_review)
-    yield
-    fx.REVIEW_STORE.clear()
-
-
 def _repo(path: Path) -> Path:
     path.mkdir(parents=True, exist_ok=True)
     for args in (
@@ -277,7 +269,7 @@ def test_enqueue_refuses_moved_head() -> None:
 
 
 def test_enqueue_arms_on_stable_head() -> None:
-    run = FakeRun([(0, "x.py\n"), (0, "")])
+    run = FakeRun([(0, ""), (0, "")])
     assert landing.enqueue_pr(run, "o/r", 3, HEAD, HEAD)["enqueued"] is True
     assert "--auto" in run.calls[1]
 
@@ -676,42 +668,24 @@ def test_followup_blocked_reason_remains_the_owned_next_action() -> None:
 
 
 def test_enqueue_arms_with_match_head_commit() -> None:
-    run = FakeRun([(0, "x.py\n"), (0, "")])
+    run = FakeRun([(0, ""), (0, "")])
     assert landing.enqueue_pr(run, "o/r", 3, HEAD, HEAD)["enqueued"] is True
     assert "--match-head-commit" in run.calls[1]
     assert HEAD in run.calls[1]
 
 
-def test_enqueue_refuses_an_unreadable_pin_bump_check_without_arming() -> None:
-    run = FakeRun([(1, "boom")])
-    with pytest.raises(landing.LandingError, match="omp pin bump evidence could not be verified"):
+def test_enqueue_refuses_a_gate_evaluation_that_cannot_run_without_arming() -> None:
+    run = FakeRun([(2, "theseus: the verified Theseus install was refused")])
+    with pytest.raises(landing.LandingError, match="failed \\(exit 2\\)"):
         landing.enqueue_pr(run, "o/r", 3, HEAD, HEAD)
     assert all("--auto" not in call for call in run.calls)
 
 
-def test_enqueue_refuses_a_pin_bump_without_owner_evidence_without_arming() -> None:
-    policy = "omp:\n  version: {v}\n  builds:\n    darwin-arm64:\n      url: https://b.example/d\n      sha256: {h}\n"
-    shown = {
-        "origin/develop:": policy.format(v="1.0.0", h="ab" * 32),
-        f"{HEAD}:": policy.format(v="1.0.1", h="cd" * 32),
-    }
-
-    def run(args: list[str]) -> tuple[int, str]:
-        calls.append(args)
-        if args[:2] == ["git", "show"]:
-            return 0, shown[f"{HEAD}:"]
-        if args[:2] == ["gh", "api"] and "/contents/" in args[-1]:
-            return 0, shown["origin/develop:"]
-        if "--jq" in args and args[-1].endswith("/files"):
-            return 0, ".github/oracle-reviewers.yml\n"
-        if args[-1].endswith("/comments"):
-            return 0, ""
-        return 0, ""
-
-    calls: list[list[str]] = []
-    with pytest.raises(landing.LandingError, match="has no owner evidence"):
+def test_enqueue_refuses_a_gate_evaluation_that_does_not_pass_without_arming() -> None:
+    run = FakeRun([(3, "oracle-gate: waiting for omp bump evidence")])
+    with pytest.raises(landing.LandingError, match="does not pass"):
         landing.enqueue_pr(run, "o/r", 3, HEAD, HEAD)
-    assert all("--auto" not in call for call in calls)
+    assert all("--auto" not in call for call in run.calls)
 
 
 def test_bound_withdraw_refuses_foreign_pr() -> None:
@@ -1622,16 +1596,27 @@ def test_batch_evidence_refuses_a_receipt_whose_accepted_head_is_not_in_the_fina
     assert any("member a accepted head is not an ancestor" in failure for failure in failures)
 
 
-def test_batch_evidence_requires_a_rerun_for_every_member_the_tracker_marks(tmp_path: Path) -> None:
+@pytest.mark.parametrize("member", ["a", "b"])
+def test_batch_evidence_requires_a_rerun_for_every_member(tmp_path: Path, member: str) -> None:
     batch = _batch(tmp_path)
     batch.overlap("b", "a", ["a/x.txt"])
     evidence = batch.evidence()
     assert _verdict(batch, evidence=evidence) == []
-    del evidence["current_acceptance"]["a"]
+    del evidence["current_acceptance"][member]
 
     failures = _verdict(batch, evidence=evidence)
 
-    assert any("current acceptance is missing for member a" in failure for failure in failures)
+    assert any(f"current acceptance is missing for member {member}" in failure for failure in failures)
+
+
+@pytest.mark.parametrize("field", ["patch_digest", "head_tree"])
+def test_batch_evidence_refuses_a_review_that_does_not_match_its_range_in_git(tmp_path: Path, field: str) -> None:
+    batch = _batch(tmp_path)
+    batch.receipts["a"]["verification"]["review"][field] = "0" * 32
+
+    failures = _verdict(batch, evidence=batch.evidence())
+
+    assert any("member a review does not match the patch and tree Git computes" in failure for failure in failures)
 
 
 @pytest.mark.parametrize(
@@ -1712,11 +1697,9 @@ def test_batch_evidence_refuses_a_missing_or_unusable_member_review(tmp_path: Pa
 @pytest.mark.parametrize("outcome", ["clear", "not-reviewed", "override"])
 def test_batch_evidence_accepts_every_landable_review_outcome(tmp_path: Path, outcome: str) -> None:
     batch = _batch(tmp_path)
+    batch.receipts["a"]["verification"]["review"]["outcome"] = outcome
     evidence = batch.evidence()
-    evidence["member_reviews"]["a"]["outcome"] = outcome
-    fx.REVIEW_STORE[(batch.receipts["a"]["source_base"], batch.receipts["a"]["accepted_head"], batch.start)][
-        "outcome"
-    ] = outcome
+    evidence["member_reviews"]["a"] = dict(batch.receipts["a"]["verification"]["review"])
 
     assert _verdict(batch, evidence=evidence) == []
 
@@ -1837,6 +1820,44 @@ def test_read_batch_tracker_refuses_a_read_without_a_revision(tmp_path: Path) ->
     assert tracker["batch_id"] == "b"
 
 
+def _long_tracker(tmp_path: Path) -> dict:
+    tracker = _batch(tmp_path).tracker()
+    tracker["integration_log"] += [
+        {"seq": index, "kind": "fix", "head": "e" * 40, "changed_files": [f"b/f{index}.txt"]} for index in range(1, 200)
+    ]
+    return tracker
+
+
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"stale": True},
+        {"cached_rev": "rev-1"},
+        {"rev": "rev-0"},
+        {"rev": fx._DROP},
+        {"window": 7},
+        {"window": fx._DROP},
+        {"continuation": {"offset": 0, "rev": "rev-1"}},
+        {"continuation": {"offset": 10**9, "rev": "rev-1"}},
+        {"continuation": {"offset": 6000, "rev": "rev-9"}},
+        {"continuation": "next"},
+    ],
+)
+def test_read_batch_tracker_refuses_a_stale_or_malformed_continuation_page(tmp_path: Path, override: dict) -> None:
+    show = fx.FakeBatchShow(_long_tracker(tmp_path), page_overrides=override)
+
+    with pytest.raises(landing.LandingError):
+        landing.read_batch_tracker("b", show)
+
+
+def test_read_batch_tracker_refuses_a_page_that_never_ends(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(landing, "MAX_TRACKER_WINDOWS", 2)
+    show = fx.FakeBatchShow(_long_tracker(tmp_path))
+
+    with pytest.raises(landing.LandingError, match="exceeds the read bound"):
+        landing.read_batch_tracker("b", show)
+
+
 def test_a_tracker_command_that_cannot_start_is_a_landing_error() -> None:
     with pytest.raises(landing.LandingError, match="cannot run the tracker read"):
         landing._tracker_stdout(["/nonexistent/todo-db"])
@@ -1887,7 +1908,14 @@ def _ready(batch: fx.BatchFixture, tracker: object, evidence: dict | None) -> li
         assert isinstance(tracker, dict)
         return tracker
 
-    return landing.ready_failures(_identity(batch.repo, head), head, ready, batch.repo, read)
+    return landing.ready_failures(
+        _identity(batch.repo, head),
+        head,
+        ready,
+        batch.repo,
+        read,
+        discover=lambda *args, **kwargs: (fx.BATCH_ID, "rev-1"),
+    )
 
 
 def test_batch_ready_passes_with_the_v2_capability_and_a_fresh_matching_tracker(tmp_path: Path) -> None:
@@ -2013,35 +2041,49 @@ def test_batch_evidence_refuses_a_develop_merge_whose_parent_is_not_on_develop(t
     assert any("merged parent is not an ancestor of origin/develop" in failure for failure in failures)
 
 
-def test_batch_evidence_refuses_a_review_outcome_the_trusted_store_does_not_hold(tmp_path: Path) -> None:
-    batch = _batch(tmp_path)
-    evidence = batch.evidence()
-    fx.REVIEW_STORE[(batch.receipts["a"]["source_base"], batch.receipts["a"]["accepted_head"], batch.start)][
-        "outcome"
-    ] = "findings"
-
-    failures = _verdict(batch, evidence=evidence)
-
-    assert any("member a review outcome 'clear' differs from the stored outcome 'findings'" in f for f in failures)
-
-
-@pytest.mark.parametrize("outcome", ["clear", "override"])
-def test_batch_evidence_refuses_a_review_that_is_only_in_the_evidence_file(tmp_path: Path, outcome: str) -> None:
-    batch = _batch(tmp_path)
-    evidence = batch.evidence()
-    evidence["member_reviews"]["b"]["outcome"] = outcome
-    fx.REVIEW_STORE.pop((batch.receipts["b"]["source_base"], batch.receipts["b"]["accepted_head"], batch.start))
-
-    failures = _verdict(batch, evidence=evidence)
-
-    assert any("member b review is not in the trusted review store" in failure for failure in failures)
-
-
 def test_batch_evidence_refuses_a_review_bound_to_an_untrusted_commit(tmp_path: Path) -> None:
     batch = _batch(tmp_path)
+    batch.receipts["a"]["verification"]["review"]["trusted_sha"] = batch.receipts["a"]["integration_head"]
     evidence = batch.evidence()
-    evidence["member_reviews"]["a"]["trusted_sha"] = batch.receipts["a"]["integration_head"]
+    evidence["member_reviews"]["a"] = dict(batch.receipts["a"]["verification"]["review"])
 
     failures = _verdict(batch, evidence=evidence)
 
     assert any("member a review names no trusted commit" in failure for failure in failures)
+
+
+def _mode_evidence(**over: object) -> landing.ReadyEvidence:
+    return _evidence(repository="o/r", branch="feat/x", pr_number=7, pr_node_id="PR_7", **over)
+
+
+def _mode_failures(tmp_path: Path, evidence: landing.ReadyEvidence, discover) -> list[str]:
+    repo = _repo(tmp_path / "r")
+    head = fx.head_of(repo)
+    return landing.batch_mode_failures(evidence, repo, _identity(repo, head), head, lambda _id: {}, discover=discover)
+
+
+def test_a_serial_delivery_mode_on_a_registered_pr_fails(tmp_path: Path) -> None:
+    failures = _mode_failures(
+        tmp_path, _mode_evidence(declared_delivery_mode="serial"), lambda *a, **k: (fx.BATCH_ID, "rev-1")
+    )
+
+    assert any("delivery_mode=serial" in failure for failure in failures)
+
+
+def test_an_ordinary_pr_asserted_as_batch_is_refused(tmp_path: Path) -> None:
+    failures = _mode_failures(tmp_path, _mode_evidence(require_batch=True), lambda *a, **k: (None, "rev-1"))
+
+    assert any("not a registered batch PR" in failure for failure in failures)
+
+
+def test_an_ordinary_pr_without_the_assertion_passes_discovery_with_no_batch_evidence(tmp_path: Path) -> None:
+    assert _mode_failures(tmp_path, _mode_evidence(), lambda *a, **k: (None, "rev-1")) == []
+
+
+def test_a_tracker_outage_during_discovery_refuses_readiness(tmp_path: Path) -> None:
+    def outage(*_args: object, **_kwargs: object) -> tuple[str | None, str]:
+        raise landing.LandingError("tracker unreachable")
+
+    failures = _mode_failures(tmp_path, _mode_evidence(), outage)
+
+    assert failures == ["authoritative tracker batch discovery failed: tracker unreachable"]

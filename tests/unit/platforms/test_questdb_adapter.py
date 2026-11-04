@@ -6,6 +6,7 @@ import http.server
 import json
 import socket
 import threading
+import urllib.parse
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
@@ -439,23 +440,21 @@ class TestQuestDBAdapter:
 
     def test_rest_api_tbl_strips_trailing_delimiter(self, questdb_stubs, tmp_path):
         adapter = QuestDBAdapter(host="localhost", http_port=9000)
+        adapter._import_schema = lambda *args, **kwargs: None
         data_file = tmp_path / "lineitem.tbl"
         data_file.write_text("1|2|\n3|4|\n", encoding="utf-8")
 
         captured_body = {}
-        mock_requests = Mock()
         mock_response = Mock(status_code=200, text="| Rows imported | 2 |")
-        mock_requests.post.return_value = mock_response
 
         def _post(url, **kwargs):
             f = kwargs["files"]["data"][1]
             captured_body["content"] = f.read()
             return mock_response
 
-        mock_requests.post.side_effect = _post
         dialect = CsvDialect("|", False, "", False, None)
 
-        with patch.dict("sys.modules", {"requests": mock_requests}):
+        with patch.object(questdb_module, "_http_post", side_effect=_post):
             adapter._load_table_via_rest_api("lineitem", data_file, dialect)
 
         assert b"1|2\n" in captured_body["content"]
@@ -550,13 +549,111 @@ class TestQuestDBAdapter:
 
         assert expected in captured["imports"][0]
 
+    def test_rest_api_posts_a_date_schema_part_from_the_table_columns(self, questdb_stubs, schema_loopback, tmp_path):
+        port, captured = schema_loopback
+        adapter = QuestDBAdapter(host="127.0.0.1", http_port=port)
+        data_file = tmp_path / "t.csv"
+        data_file.write_bytes(b"x,d\n" + b",\n" * 2000 + b"1,1999-01-02\n")
+
+        adapter._load_table_via_rest_api("t", data_file, CsvDialect(",", True, None, False, None))
+
+        body = captured["imports"][0]
+        assert b'name="schema"' in body
+        assert b'[{"name": "d", "type": "DATE", "pattern": "yyyy-MM-dd"}]' in body
+        assert b",\n" * 2000 in body
+
+    def test_headerless_rest_load_posts_every_column_in_table_order(self, questdb_stubs, schema_loopback, tmp_path):
+        port, captured = schema_loopback
+        adapter = QuestDBAdapter(host="127.0.0.1", http_port=port)
+        data_file = tmp_path / "t.tbl"
+        data_file.write_bytes(b"1|1999-01-02|\n")
+
+        adapter._load_table_via_rest_api("t", data_file, CsvDialect("|", False, None, False, None))
+
+        assert (
+            b'[{"name": "x", "type": "INT"}, {"name": "d", "type": "DATE", "pattern": "yyyy-MM-dd"}]'
+            in captured["imports"][0]
+        )
+
+    @pytest.fixture
+    def schema_loopback(self, request):
+        captured = {"imports": []}
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)["query"][0]
+                dataset = (
+                    [["d", "DATE"], ["ts", "TIMESTAMP"]]
+                    if '"lineitem"' in query or '"events"' in query
+                    else [["x", "INT"], ["d", "DATE"]]
+                )
+                body = json.dumps({"dataset": dataset}).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def do_POST(self):
+                captured["imports"].append(self.rfile.read(int(self.headers["Content-Length"])))
+                body = b"| Rows imported | 1 |"
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *args):
+                return
+
+        server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=server.serve_forever)
+        thread.start()
+        request.addfinalizer(lambda: (server.shutdown(), thread.join(timeout=10), server.server_close()))
+        return server.server_address[1], captured
+
+    def test_import_schema_raises_when_the_column_lookup_fails(self, questdb_stubs):
+        adapter = QuestDBAdapter(host="127.0.0.1", http_port=1)
+
+        with pytest.raises(RuntimeError, match="Cannot read the column types of 't'"):
+            adapter._import_schema("t", named_only=True)
+
+    def test_import_schema_timestamp_patterns(self, questdb_stubs, schema_loopback):
+        port, _ = schema_loopback
+        adapter = QuestDBAdapter(host="127.0.0.1", http_port=port)
+
+        assert json.loads(adapter._import_schema("lineitem", named_only=True)) == [
+            {"name": "d", "type": "DATE", "pattern": "yyyy-MM-dd"},
+            {"name": "ts", "type": "TIMESTAMP", "pattern": "yyyy-MM-dd"},
+        ]
+        assert json.loads(adapter._import_schema("events", named_only=True)) == [
+            {"name": "d", "type": "DATE", "pattern": "yyyy-MM-dd"}
+        ]
+        assert json.loads(adapter._import_schema("events", named_only=False)) == [
+            {"name": "d", "type": "DATE", "pattern": "yyyy-MM-dd"},
+            {"name": "ts", "type": "TIMESTAMP", "pattern": "yyyy-MM-dd HH:mm:ss"},
+        ]
+
+    def test_parquet_chunks_post_the_date_schema(self, questdb_stubs, schema_loopback, tmp_path):
+        pa = pytest.importorskip("pyarrow")
+        pq = pytest.importorskip("pyarrow.parquet")
+        import datetime
+
+        port, captured = schema_loopback
+        adapter = QuestDBAdapter(host="127.0.0.1", http_port=port)
+        path = tmp_path / "t.parquet"
+        pq.write_table(pa.table({"x": [1, 2], "d": pa.array([None, datetime.date(1999, 1, 2)], pa.date32())}), path)
+
+        adapter._load_parquet_via_chunked_csv("t", path)
+
+        assert b'[{"name": "d", "type": "DATE", "pattern": "yyyy-MM-dd"}]' in captured["imports"][0]
+
     def test_rest_api_csv_passes_data_verbatim(self, questdb_stubs, tmp_path):
         adapter = QuestDBAdapter(host="localhost", http_port=9000)
+        adapter._import_schema = lambda *args, **kwargs: None
         data_file = tmp_path / "hits.csv"
         data_file.write_bytes(b"1,hello\n2,world\n")
 
         captured_body = {}
-        mock_requests = Mock()
         mock_response = Mock(status_code=200, text="| Rows imported | 2 |")
 
         def _post(url, **kwargs):
@@ -564,10 +661,9 @@ class TestQuestDBAdapter:
             captured_body["content"] = f.read()
             return mock_response
 
-        mock_requests.post.side_effect = _post
         dialect = CsvDialect(",", False, None, False, None)
 
-        with patch.dict("sys.modules", {"requests": mock_requests}):
+        with patch.object(questdb_module, "_http_post", side_effect=_post):
             adapter._load_table_via_rest_api("hits", data_file, dialect)
 
         assert b"1,hello\n" in captured_body["content"]
@@ -682,6 +778,22 @@ class TestQuestDBAdapter:
 
         executed_sql = mock_cursor.execute.call_args[0][0]
         assert executed_sql.upper() == "CREATE TABLE DIMTIME (ID BIGINT, TIMEVALUE VARCHAR, TM VARCHAR)"
+
+    def test_create_schema_maps_decimal_columns_to_double(self, questdb_stubs):
+        mock_conn = Mock()
+        mock_cursor = Mock()
+        mock_conn.cursor.return_value = mock_cursor
+
+        adapter = QuestDBAdapter()
+
+        with patch.object(adapter, "_create_schema_with_tuning") as mock_schema:
+            mock_schema.return_value = (
+                "CREATE TABLE lineitem (l_orderkey BIGINT, l_discount DECIMAL(15,2), l_tax DECIMAL)"
+            )
+            adapter.create_schema(Mock(), mock_conn)
+
+        executed_sql = mock_cursor.execute.call_args[0][0]
+        assert executed_sql.upper() == "CREATE TABLE LINEITEM (L_ORDERKEY BIGINT, L_DISCOUNT DOUBLE, L_TAX DOUBLE)"
 
     def test_platform_registry_requirements_include_requests(self):
         info = PlatformRegistry.get_platform_info("questdb")
@@ -859,45 +971,38 @@ class TestQuestDBTlsUrls:
 
     def test_imp_url_uses_http_by_default(self, questdb_stubs, tmp_path):
         adapter = QuestDBAdapter(host="myhost", http_port=9000)
-        mock_requests = Mock()
+        adapter._import_schema = lambda *args, **kwargs: None
         mock_response = Mock(status_code=200, text="| Rows imported | 1 |")
-        mock_requests.post.return_value = mock_response
 
         data_file = tmp_path / "data.csv"
         data_file.write_text("1,test\n", encoding="utf-8")
         dialect = CsvDialect(",", False, None, False, None)
 
-        with patch.dict("sys.modules", {"requests": mock_requests}):
+        with patch.object(questdb_module, "_http_post", return_value=mock_response) as http_post:
             adapter._load_table_via_rest_api("test_table", data_file, dialect)
-            url = mock_requests.post.call_args[0][0]
-            assert url == "http://myhost:9000/imp"
+            assert http_post.call_args[0][0] == "http://myhost:9000/imp"
 
     def test_imp_url_uses_https_when_tls_enabled(self, questdb_stubs, tmp_path):
         adapter = QuestDBAdapter(host="myhost", http_port=9000, use_tls=True)
-        mock_requests = Mock()
+        adapter._import_schema = lambda *args, **kwargs: None
         mock_response = Mock(status_code=200, text="| Rows imported | 1 |")
-        mock_requests.post.return_value = mock_response
 
         data_file = tmp_path / "data.csv"
         data_file.write_text("1,test\n", encoding="utf-8")
         dialect = CsvDialect(",", False, None, False, None)
 
-        with patch.dict("sys.modules", {"requests": mock_requests}):
+        with patch.object(questdb_module, "_http_post", return_value=mock_response) as http_post:
             adapter._load_table_via_rest_api("test_table", data_file, dialect)
-            url = mock_requests.post.call_args[0][0]
-            assert url == "https://myhost:9000/imp"
+            assert http_post.call_args[0][0] == "https://myhost:9000/imp"
 
     def test_exec_url_uses_https_when_tls_enabled(self, questdb_stubs):
         adapter = QuestDBAdapter(host="myhost", http_port=9000, use_tls=True)
-        mock_requests = Mock()
         mock_response = Mock(status_code=200)
         mock_response.json.return_value = {"dataset": [[42]]}
-        mock_requests.get.return_value = mock_response
 
-        with patch.dict("sys.modules", {"requests": mock_requests}):
+        with patch.object(questdb_module, "_http_get", return_value=mock_response) as http_get:
             adapter._count_table_rows_via_http("test_table")
-            url = mock_requests.get.call_args[0][0]
-            assert url == "https://myhost:9000/exec"
+            assert http_get.call_args[0][0] == "https://myhost:9000/exec"
 
     def test_from_config_passes_use_tls(self, questdb_stubs):
         config = {

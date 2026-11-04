@@ -3,6 +3,14 @@ mode: enforce
 status_context: oracle-verdict
 findings_delivery: review
 bot_login: benchbox-oracle
+consumer:
+  gated_base: develop
+  attesters:
+    - joeharris76
+  soundness_manifest: .github/soundness-paths.txt
+  omp_config: .github/oracle-omp-config.yml
+  inert_manifest: .github/inert-paths.txt
+  omp_fixture_prefix: tests/fixtures/oracle_reviewers/omp_candidate
 brief_max_bytes: 100000
 max_attempts: 5
 protocol:
@@ -103,6 +111,8 @@ classifier:
   gate_paths:
     - .github/oracle-reviewers.yml
     - .github/oracle-omp-config.yml
+    - .github/theseus-lock.json
+    - _project/scripts/theseus_bootstrap.py
     - _project/scripts/oracle_gateway_host.sh
     - .github/soundness-paths.txt
     - .github/workflows/oracle-gate.yml
@@ -111,9 +121,6 @@ classifier:
     - .github/workflows/omp-pin-bump.yml
     - .github/workflows/omp-pin-watch.yml
     - .github/workflows/soundness-merge-digest.yml
-    - _project/scripts/oracle_gate.py
-    - _project/scripts/oracle_review_check.py
-    - _project/scripts/oracle_reviewers/*
     - _project/scripts/soundness_paths.py
     - _project/scripts/inert_paths.py
     - .github/inert-paths.txt
@@ -123,6 +130,17 @@ classifier:
     - _project/scripts/ruleset_review_enforcement.py
     - scripts/ruleset_drift_check.py
     - scripts/oracle_local_review.py
+    - scripts/theseus_cli.py
+    - scripts/theseus_release_check.py
+    - scripts/theseus_ledger_check.py
+    - tests/unit/scripts/test_theseus_lock.py
+    - tests/unit/scripts/test_theseus_release_check.py
+    - tests/unit/scripts/test_theseus_ledger_check.py
+    - tests/unit/scripts/test_oracle_gateway_host.py
+    - tests/integration/oracle/test_curated_capture_fixtures.py
+    - tests/fixtures/oracle_reviewers/provenance.json
+    - tests/unit/scripts/test_oracle_policy_pin.py
+    - _project/scripts/soundness_manifest.py
   logic_paths:
     - benchbox/core/equivalence/*
     - benchbox/core/expected_results/*
@@ -145,3 +163,210 @@ evidence:
     - "CHANGELOG*.md"
     - "**/CHANGELOG*.md"
     - "docs/*.md"
+promotion:
+  package: theseus-reviewer
+  repository: joeharris76/theseus
+  bootstrap_baseline_commit: 95c423c35efd3fb4962145bdc628006d5aaaad26
+  bootstrap_reviewers:
+    - joeharris76
+  dependencies: {}
+  bootstrap_path_map:
+    .github/inert-paths.txt: tests/fixtures/consumer/inert-paths.txt
+    .github/oracle-omp-config.yml: tests/fixtures/consumer/oracle-omp-config.yml
+    .github/oracle-reviewers.yml: tests/fixtures/consumer/oracle-reviewers.yml
+    .github/soundness-paths.txt: tests/fixtures/consumer/soundness-paths.txt
+    _project/scripts/inert_paths.py: src/theseus_reviewer/inert_paths.py
+    _project/scripts/oracle_gate.py: src/theseus_reviewer/gate.py
+    _project/scripts/oracle_review_check.py: src/theseus_reviewer/review_check.py
+    _project/scripts/oracle_reviewers/__init__.py: src/theseus_reviewer/__init__.py
+    _project/scripts/oracle_reviewers/absence.py: src/theseus_reviewer/absence.py
+    _project/scripts/oracle_reviewers/adjudication.py: src/theseus_reviewer/adjudication.py
+    _project/scripts/oracle_reviewers/attempts.py: src/theseus_reviewer/attempts.py
+    _project/scripts/oracle_reviewers/base_change.py: src/theseus_reviewer/base_change.py
+    _project/scripts/oracle_reviewers/brief.py: src/theseus_reviewer/brief.py
+    _project/scripts/oracle_reviewers/candidate_canaries.py: src/theseus_reviewer/candidate_canaries.py
+    _project/scripts/oracle_reviewers/candidate_chain.py: src/theseus_reviewer/candidate_chain.py
+    _project/scripts/oracle_reviewers/candidate_checks.py: src/theseus_reviewer/candidate_checks.py
+    _project/scripts/oracle_reviewers/candidate_env.py: src/theseus_reviewer/candidate_env.py
+    _project/scripts/oracle_reviewers/candidate_stub.py: src/theseus_reviewer/candidate_stub.py
+    _project/scripts/oracle_reviewers/classifier.py: src/theseus_reviewer/classifier.py
+    _project/scripts/oracle_reviewers/classify.py: src/theseus_reviewer/classify.py
+    _project/scripts/oracle_reviewers/cli.py: src/theseus_reviewer/cli.py
+    _project/scripts/oracle_reviewers/commands.py: src/theseus_reviewer/commands.py
+    _project/scripts/oracle_reviewers/credentials.py: src/theseus_reviewer/credentials.py
+    _project/scripts/oracle_reviewers/dedup.py: src/theseus_reviewer/dedup.py
+    _project/scripts/oracle_reviewers/diff.py: src/theseus_reviewer/diff.py
+    _project/scripts/oracle_reviewers/disk_scan.py: src/theseus_reviewer/disk_scan.py
+    _project/scripts/oracle_reviewers/driver.py: src/theseus_reviewer/driver.py
+    _project/scripts/oracle_reviewers/edits.py: src/theseus_reviewer/edits.py
+    _project/scripts/oracle_reviewers/evidence.py: src/theseus_reviewer/evidence.py
+    _project/scripts/oracle_reviewers/findings.py: src/theseus_reviewer/findings.py
+    _project/scripts/oracle_reviewers/github.py: src/theseus_reviewer/github.py
+    _project/scripts/oracle_reviewers/isolation.py: src/theseus_reviewer/isolation.py
+    _project/scripts/oracle_reviewers/jev.py: src/theseus_reviewer/jev.py
+    _project/scripts/oracle_reviewers/local.py: src/theseus_reviewer/local.py
+    _project/scripts/oracle_reviewers/omp_bump.py: src/theseus_reviewer/omp_bump.py
+    _project/scripts/oracle_reviewers/omp_bump_gate.py: src/theseus_reviewer/omp_bump_gate.py
+    _project/scripts/oracle_reviewers/omp_candidate.py: src/theseus_reviewer/omp_candidate.py
+    _project/scripts/oracle_reviewers/omp_pin.py: src/theseus_reviewer/omp_pin.py
+    _project/scripts/oracle_reviewers/omp_watch.py: src/theseus_reviewer/omp_watch.py
+    _project/scripts/oracle_reviewers/policy.py: src/theseus_reviewer/policy.py
+    _project/scripts/oracle_reviewers/processes.py: src/theseus_reviewer/processes.py
+    _project/scripts/oracle_reviewers/promotion.py: src/theseus_reviewer/promotion.py
+    _project/scripts/oracle_reviewers/protocol.py: src/theseus_reviewer/protocol.py
+    _project/scripts/oracle_reviewers/recovery.py: src/theseus_reviewer/recovery.py
+    _project/scripts/oracle_reviewers/redaction_check.py: src/theseus_reviewer/redaction_check.py
+    _project/scripts/oracle_reviewers/render.py: src/theseus_reviewer/render.py
+    _project/scripts/oracle_reviewers/report.py: src/theseus_reviewer/report.py
+    _project/scripts/oracle_reviewers/reset.py: src/theseus_reviewer/reset.py
+    _project/scripts/oracle_reviewers/retry.py: src/theseus_reviewer/retry.py
+    _project/scripts/oracle_reviewers/runner.py: src/theseus_reviewer/runner.py
+    _project/scripts/oracle_reviewers/selection.py: src/theseus_reviewer/selection.py
+    _project/scripts/oracle_reviewers/sweep.py: src/theseus_reviewer/sweep.py
+    _project/scripts/oracle_reviewers/templates/README.md: src/theseus_reviewer/templates/README.md
+    _project/scripts/oracle_reviewers/templates/deep.md: src/theseus_reviewer/templates/deep.md
+    _project/scripts/oracle_reviewers/templates/gate.md: src/theseus_reviewer/templates/gate.md
+    _project/scripts/oracle_reviewers/templates/standard.md: src/theseus_reviewer/templates/standard.md
+    _project/scripts/oracle_reviewers/verdict.py: src/theseus_reviewer/verdict.py
+    _project/scripts/soundness_paths.py: src/theseus_reviewer/soundness_paths.py
+    tests/fixtures/oracle_golden/app_missing.json: tests/fixtures/oracle_golden/app_missing.json
+    tests/fixtures/oracle_golden/carry.json: tests/fixtures/oracle_golden/carry.json
+    tests/fixtures/oracle_golden/carry_disagrees_with_status_holds.json: tests/fixtures/oracle_golden/carry_disagrees_with_status_holds.json
+    tests/fixtures/oracle_golden/dispute_round.json: tests/fixtures/oracle_golden/dispute_round.json
+    tests/fixtures/oracle_golden/draft.json: tests/fixtures/oracle_golden/draft.json
+    tests/fixtures/oracle_golden/edited_prior_review_holds.json: tests/fixtures/oracle_golden/edited_prior_review_holds.json
+    tests/fixtures/oracle_golden/every_attempt_absent.json: tests/fixtures/oracle_golden/every_attempt_absent.json
+    tests/fixtures/oracle_golden/first_review_ships.json: tests/fixtures/oracle_golden/first_review_ships.json
+    tests/fixtures/oracle_golden/first_review_with_a_defect.json: tests/fixtures/oracle_golden/first_review_with_a_defect.json
+    tests/fixtures/oracle_golden/follow_up_after_a_fix.json: tests/fixtures/oracle_golden/follow_up_after_a_fix.json
+    tests/fixtures/oracle_golden/fork.json: tests/fixtures/oracle_golden/fork.json
+    tests/fixtures/oracle_golden/guard_gives_up.json: tests/fixtures/oracle_golden/guard_gives_up.json
+    tests/fixtures/oracle_golden/integrity_error.json: tests/fixtures/oracle_golden/integrity_error.json
+    tests/fixtures/oracle_golden/omp_install_failure.json: tests/fixtures/oracle_golden/omp_install_failure.json
+    tests/fixtures/oracle_golden/oversize_file_list.json: tests/fixtures/oracle_golden/oversize_file_list.json
+    tests/fixtures/oracle_golden/recovery_escalate.json: tests/fixtures/oracle_golden/recovery_escalate.json
+    tests/fixtures/oracle_golden/recovery_fallback.json: tests/fixtures/oracle_golden/recovery_fallback.json
+    tests/fixtures/oracle_golden/recovery_retry.json: tests/fixtures/oracle_golden/recovery_retry.json
+    tests/fixtures/oracle_golden/recovery_stop.json: tests/fixtures/oracle_golden/recovery_stop.json
+    tests/fixtures/oracle_golden/stale_same_head_state.json: tests/fixtures/oracle_golden/stale_same_head_state.json
+    tests/fixtures/oracle_golden/unreadable_edit_state_posts_nothing.json: tests/fixtures/oracle_golden/unreadable_edit_state_posts_nothing.json
+    tests/fixtures/oracle_reviewers/captures/ci_attempt.json: tests/fixtures/oracle_reviewers/captures/ci_attempt.json
+    tests/fixtures/oracle_reviewers/captures/local_review.json: tests/fixtures/oracle_reviewers/captures/local_review.json
+    tests/fixtures/oracle_reviewers/check_runs_full_ci_in_progress.json: tests/fixtures/oracle_reviewers/check_runs_full_ci_in_progress.json
+    tests/fixtures/oracle_reviewers/dispute_3407.json: tests/fixtures/oracle_reviewers/dispute_3407.json
+    tests/fixtures/oracle_reviewers/dispute_3465.json: tests/fixtures/oracle_reviewers/dispute_3465.json
+    tests/fixtures/oracle_reviewers/jev_recovery_answers.json: tests/fixtures/oracle_reviewers/jev_recovery_answers.json
+    tests/fixtures/oracle_reviewers/omp_candidate/build_api_latest.json: tests/fixtures/oracle_reviewers/omp_candidate/build_api_latest.json
+    tests/fixtures/oracle_reviewers/omp_candidate/chain_review.jsonl: tests/fixtures/oracle_reviewers/omp_candidate/chain_review.jsonl
+    tests/fixtures/oracle_reviewers/omp_candidate/elided_read.jsonl: tests/fixtures/oracle_reviewers/omp_candidate/elided_read.jsonl
+    tests/fixtures/oracle_reviewers/omp_candidate/gateway_rejection.jsonl: tests/fixtures/oracle_reviewers/omp_candidate/gateway_rejection.jsonl
+    tests/fixtures/oracle_reviewers/omp_candidate/manifest.json: tests/fixtures/oracle_reviewers/omp_candidate/manifest.json
+    tests/fixtures/oracle_reviewers/omp_candidate/quota_terminal.jsonl: tests/fixtures/oracle_reviewers/omp_candidate/quota_terminal.jsonl
+    tests/fixtures/oracle_reviewers/omp_candidate/quota_walk.jsonl: tests/fixtures/oracle_reviewers/omp_candidate/quota_walk.jsonl
+    tests/fixtures/oracle_reviewers/omp_candidate/roster_breach.jsonl: tests/fixtures/oracle_reviewers/omp_candidate/roster_breach.jsonl
+    tests/fixtures/oracle_reviewers/omp_candidate/static_outputs.json: tests/fixtures/oracle_reviewers/omp_candidate/static_outputs.json
+    tests/fixtures/oracle_reviewers/omp_candidate/upstream_auth.jsonl: tests/fixtures/oracle_reviewers/omp_candidate/upstream_auth.jsonl
+    tests/fixtures/oracle_reviewers/omp_multi_turn_review.jsonl: tests/fixtures/oracle_reviewers/omp_multi_turn_review.jsonl
+    tests/fixtures/oracle_reviewers/omp_watch/attempts.json: tests/fixtures/oracle_reviewers/omp_watch/attempts.json
+    tests/fixtures/oracle_reviewers/pr2769_history.json: tests/fixtures/oracle_reviewers/pr2769_history.json
+    tests/fixtures/oracle_reviewers/pr3222_replay.json: tests/fixtures/oracle_reviewers/pr3222_replay.json
+    tests/fixtures/oracle_reviewers/pr3237_missing_text_fields.json: tests/fixtures/oracle_reviewers/pr3237_missing_text_fields.json
+    tests/fixtures/oracle_reviewers/pr3585_attempt-1.json: tests/fixtures/oracle_reviewers/pr3585_attempt-1.json
+    tests/fixtures/oracle_reviewers/pr3585_attempt-2.json: tests/fixtures/oracle_reviewers/pr3585_attempt-2.json
+    tests/fixtures/oracle_reviewers/provenance.json: tests/fixtures/oracle_reviewers/provenance.json
+    tests/integration/oracle/__init__.py: tests/integration/__init__.py
+    tests/integration/oracle/conftest.py: tests/integration/conftest.py
+    tests/integration/oracle/fake_github.py: tests/integration/fake_github.py
+    tests/integration/oracle/fake_jev.py: tests/integration/fake_jev.py
+    tests/integration/oracle/fake_omp.py: tests/integration/fake_omp.py
+    tests/integration/oracle/golden.py: tests/integration/golden.py
+    tests/integration/oracle/harness.py: tests/integration/harness.py
+    tests/integration/oracle/runs.py: tests/integration/runs.py
+    tests/integration/oracle/test_ancestor_environment_leak.py: tests/integration/test_ancestor_environment_leak.py
+    tests/integration/oracle/test_carry_scenarios.py: tests/integration/test_carry_scenarios.py
+    tests/integration/oracle/test_cloud_review_reachability_scenario.py: tests/integration/test_cloud_review_reachability_scenario.py
+    tests/integration/oracle/test_curated_capture_fixtures.py: tests/integration/test_curated_capture_fixtures.py
+    tests/integration/oracle/test_evidence_scenarios.py: tests/integration/test_evidence_scenarios.py
+    tests/integration/oracle/test_followup_scenarios.py: tests/integration/test_followup_scenarios.py
+    tests/integration/oracle/test_golden_outputs.py: tests/integration/test_golden_outputs.py
+    tests/integration/oracle/test_invalid_recovery_scenarios.py: tests/integration/test_invalid_recovery_scenarios.py
+    tests/integration/oracle/test_local_concurrency_scenarios.py: tests/integration/test_local_concurrency_scenarios.py
+    tests/integration/oracle/test_local_driver_scenarios.py: tests/integration/test_local_driver_scenarios.py
+    tests/integration/oracle/test_local_findings_scenarios.py: tests/integration/test_local_findings_scenarios.py
+    tests/integration/oracle/test_local_review_scenario.py: tests/integration/test_local_review_scenario.py
+    tests/integration/oracle/test_omp_pin_scenarios.py: tests/integration/test_omp_pin_scenarios.py
+    tests/integration/oracle/test_pr_arm_scenario.py: tests/integration/test_pr_arm_scenario.py
+    tests/integration/oracle/test_pr_landing_soundness_scenario.py: tests/integration/test_pr_landing_soundness_scenario.py
+    tests/integration/oracle/test_quota_scenarios.py: tests/integration/test_quota_scenarios.py
+    tests/integration/oracle/test_redaction_scenarios.py: tests/integration/test_redaction_scenarios.py
+    tests/integration/oracle/test_review_scenarios.py: tests/integration/test_review_scenarios.py
+    tests/integration/oracle/test_runner_isolation_scenarios.py: tests/integration/test_runner_isolation_scenarios.py
+    tests/integration/oracle/test_sweep_listing_scenarios.py: tests/integration/test_sweep_listing_scenarios.py
+    tests/integration/oracle/test_sweep_liveness_scenarios.py: tests/integration/test_sweep_liveness_scenarios.py
+    tests/integration/oracle/test_sweep_scenarios.py: tests/integration/test_sweep_scenarios.py
+    tests/integration/oracle/test_theseus_promotion_scenario.py: tests/integration/test_theseus_promotion_scenario.py
+    tests/integration/oracle/test_trust_scenarios.py: tests/integration/test_trust_scenarios.py
+    tests/unit/scripts/oracle_reviewers/__init__.py: tests/unit/reviewer/__init__.py
+    tests/unit/scripts/oracle_reviewers/conftest.py: tests/unit/reviewer/conftest.py
+    tests/unit/scripts/oracle_reviewers/loop_process.py: tests/unit/reviewer/loop_process.py
+    tests/unit/scripts/oracle_reviewers/test_absence.py: tests/unit/reviewer/test_absence.py
+    tests/unit/scripts/oracle_reviewers/test_absence_reset_redaction.py: tests/unit/reviewer/test_absence_reset_redaction.py
+    tests/unit/scripts/oracle_reviewers/test_absence_retry.py: tests/unit/reviewer/test_absence_retry.py
+    tests/unit/scripts/oracle_reviewers/test_attempt_loop.py: tests/unit/reviewer/test_attempt_loop.py
+    tests/unit/scripts/oracle_reviewers/test_attempt_tempfiles.py: tests/unit/reviewer/test_attempt_tempfiles.py
+    tests/unit/scripts/oracle_reviewers/test_attempts.py: tests/unit/reviewer/test_attempts.py
+    tests/unit/scripts/oracle_reviewers/test_brief.py: tests/unit/reviewer/test_brief.py
+    tests/unit/scripts/oracle_reviewers/test_carry_identity.py: tests/unit/reviewer/test_carry_identity.py
+    tests/unit/scripts/oracle_reviewers/test_citation_paths.py: tests/unit/reviewer/test_citation_paths.py
+    tests/unit/scripts/oracle_reviewers/test_classifier.py: tests/unit/reviewer/test_classifier.py
+    tests/unit/scripts/oracle_reviewers/test_classify.py: tests/unit/reviewer/test_classify.py
+    tests/unit/scripts/oracle_reviewers/test_cli_plan.py: tests/unit/reviewer/test_cli_plan.py
+    tests/unit/scripts/oracle_reviewers/test_commands.py: tests/unit/reviewer/test_commands.py
+    tests/unit/scripts/oracle_reviewers/test_credentials.py: tests/unit/reviewer/test_credentials.py
+    tests/unit/scripts/oracle_reviewers/test_dedup.py: tests/unit/reviewer/test_dedup.py
+    tests/unit/scripts/oracle_reviewers/test_dispute_escalation.py: tests/unit/reviewer/test_dispute_escalation.py
+    tests/unit/scripts/oracle_reviewers/test_dispute_keyed_evidence.py: tests/unit/reviewer/test_dispute_keyed_evidence.py
+    tests/unit/scripts/oracle_reviewers/test_driver.py: tests/unit/reviewer/test_driver.py
+    tests/unit/scripts/oracle_reviewers/test_edited_reviews.py: tests/unit/reviewer/test_edited_reviews.py
+    tests/unit/scripts/oracle_reviewers/test_evidence.py: tests/unit/reviewer/test_evidence.py
+    tests/unit/scripts/oracle_reviewers/test_evidence_retry.py: tests/unit/reviewer/test_evidence_retry.py
+    tests/unit/scripts/oracle_reviewers/test_findings_record.py: tests/unit/reviewer/test_findings_record.py
+    tests/unit/scripts/oracle_reviewers/test_gateway_host.py: tests/unit/reviewer/test_gateway_host.py
+    tests/unit/scripts/oracle_reviewers/test_github.py: tests/unit/reviewer/test_github.py
+    tests/unit/scripts/oracle_reviewers/test_invalid_recovery.py: tests/unit/reviewer/test_invalid_recovery.py
+    tests/unit/scripts/oracle_reviewers/test_isolation.py: tests/unit/reviewer/test_isolation.py
+    tests/unit/scripts/oracle_reviewers/test_jev.py: tests/unit/reviewer/test_jev.py
+    tests/unit/scripts/oracle_reviewers/test_local_review.py: tests/unit/reviewer/test_local_review.py
+    tests/unit/scripts/oracle_reviewers/test_local_windows_support.py: tests/unit/reviewer/test_local_windows_support.py
+    tests/unit/scripts/oracle_reviewers/test_omp_bump.py: tests/unit/reviewer/test_omp_bump.py
+    tests/unit/scripts/oracle_reviewers/test_omp_candidate.py: tests/unit/reviewer/test_omp_candidate.py
+    tests/unit/scripts/oracle_reviewers/test_omp_harness.py: tests/unit/reviewer/test_omp_harness.py
+    tests/unit/scripts/oracle_reviewers/test_omp_pin.py: tests/unit/reviewer/test_omp_pin.py
+    tests/unit/scripts/oracle_reviewers/test_omp_watch.py: tests/unit/reviewer/test_omp_watch.py
+    tests/unit/scripts/oracle_reviewers/test_policy.py: tests/unit/reviewer/test_policy.py
+    tests/unit/scripts/oracle_reviewers/test_promotion.py: tests/unit/reviewer/test_promotion.py
+    tests/unit/scripts/oracle_reviewers/test_protocol.py: tests/unit/reviewer/test_protocol.py
+    tests/unit/scripts/oracle_reviewers/test_redaction_check.py: tests/unit/reviewer/test_redaction_check.py
+    tests/unit/scripts/oracle_reviewers/test_render.py: tests/unit/reviewer/test_render.py
+    tests/unit/scripts/oracle_reviewers/test_report_body_cap.py: tests/unit/reviewer/test_report_body_cap.py
+    tests/unit/scripts/oracle_reviewers/test_report_outcomes.py: tests/unit/reviewer/test_report_outcomes.py
+    tests/unit/scripts/oracle_reviewers/test_reset.py: tests/unit/reviewer/test_reset.py
+    tests/unit/scripts/oracle_reviewers/test_response_ingress.py: tests/unit/reviewer/test_response_ingress.py
+    tests/unit/scripts/oracle_reviewers/test_retry.py: tests/unit/reviewer/test_retry.py
+    tests/unit/scripts/oracle_reviewers/test_reviewer_home.py: tests/unit/reviewer/test_reviewer_home.py
+    tests/unit/scripts/oracle_reviewers/test_rounds.py: tests/unit/reviewer/test_rounds.py
+    tests/unit/scripts/oracle_reviewers/test_runner.py: tests/unit/reviewer/test_runner.py
+    tests/unit/scripts/oracle_reviewers/test_same_head_rerun.py: tests/unit/reviewer/test_same_head_rerun.py
+    tests/unit/scripts/oracle_reviewers/test_scan_scratch.py: tests/unit/reviewer/test_scan_scratch.py
+    tests/unit/scripts/oracle_reviewers/test_selection.py: tests/unit/reviewer/test_selection.py
+    tests/unit/scripts/oracle_reviewers/test_sweep.py: tests/unit/reviewer/test_sweep.py
+    tests/unit/scripts/oracle_reviewers/test_sweep_liveness.py: tests/unit/reviewer/test_sweep_liveness.py
+    tests/unit/scripts/oracle_reviewers/test_template_test_quality_rule.py: tests/unit/reviewer/test_template_test_quality_rule.py
+    tests/unit/scripts/oracle_reviewers/test_verdict.py: tests/unit/reviewer/test_verdict.py
+    tests/unit/scripts/test_inert_paths.py: tests/unit/test_inert_paths.py
+    tests/unit/scripts/test_oracle_gate.py: tests/unit/test_oracle_gate.py
+    tests/unit/scripts/test_oracle_review_check.py: tests/unit/test_oracle_review_check.py
+    tests/unit/scripts/test_oracle_review_check_decisions.py: tests/unit/test_oracle_review_check_decisions.py
+    tests/unit/scripts/test_oracle_review_check_omp_bump.py: tests/unit/test_oracle_review_check_omp_bump.py
+    tests/unit/scripts/test_oracle_review_check_promotion.py: tests/unit/test_oracle_review_check_promotion.py
+    tests/unit/scripts/test_soundness_paths.py: tests/unit/test_soundness_paths.py

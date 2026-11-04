@@ -10,7 +10,6 @@ from pathlib import Path
 
 import pytest
 
-from _project.scripts.oracle_reviewers import omp_pin
 from tests.utilities import batch_evidence as fx
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
@@ -36,14 +35,6 @@ def _load():
 
 pr_arm = _load()
 LandingError = pr_arm.pr_landing.LandingError
-
-
-@pytest.fixture(autouse=True)
-def _trusted_review_store(monkeypatch: pytest.MonkeyPatch):
-    fx.REVIEW_STORE.clear()
-    monkeypatch.setattr(pr_arm.pr_landing, "_stored_member_review", fx.stored_review)
-    yield
-    fx.REVIEW_STORE.clear()
 
 
 def _view(**overrides) -> dict:
@@ -84,13 +75,14 @@ class FakeGh:
         self.statuses = kwargs.get("statuses", {})
         self.status_descriptions = kwargs.get("status_descriptions", {})
         self.extra_runs = kwargs.get("extra_runs", [])
-        self.policies = kwargs.get("policies", {})
         self.comments = kwargs.get("comments", [])
         self.worktree_extension = kwargs.get("worktree_extension", True)
         self.worktree_config = {
             "benchbox.batch.role": kwargs.get("batch_role"),
             "benchbox.batch.id": kwargs.get("batch_id"),
         }
+        self.registry = kwargs.get("registry", {})
+        self.tracker_tip = "d" * 40
 
     def __call__(self, cmd: Sequence[str]) -> tuple[int, str]:
         cmd = list(cmd)
@@ -140,12 +132,19 @@ class FakeGh:
             return 0, "\n".join(self.changed_files)
         if cmd[:3] == ["gh", "workflow", "run"]:
             return self.dispatch_code, "" if self.dispatch_code == 0 else "gh: HTTP 403"
-        bump = self._bump_call(cmd)
-        if bump is not None:
-            return bump
+        handled = self._tracker_call(cmd) or self._config_call(cmd)
+        if handled is not None:
+            return handled
         raise AssertionError(f"unexpected command {cmd}")
 
-    def _bump_call(self, cmd: list[str]) -> tuple[int, str] | None:
+    def _tracker_call(self, cmd: list[str]) -> tuple[int, str] | None:
+        if cmd[:2] == ["gh", "api"] and cmd[2].endswith("/git/ref/heads/todo-state"):
+            return 0, self.tracker_tip + "\n"
+        if cmd[:2] == ["gh", "api"] and cmd[-1].endswith(f"/contents/index.json?ref={self.tracker_tip}"):
+            return 0, json.dumps({"schema_version": 4, "items": {}, "batches": self.registry})
+        return None
+
+    def _config_call(self, cmd: list[str]) -> tuple[int, str] | None:
         if cmd == ["git", "config", "--get", "extensions.worktreeConfig"]:
             return (0, "true\n") if self.worktree_extension else (1, "")
         if cmd[:3] == ["git", "config", "--worktree"]:
@@ -153,14 +152,6 @@ class FakeGh:
                 return 128, "fatal: --worktree cannot be used with multiple working trees unless worktreeConfig"
             value = self.worktree_config[cmd[3]]
             return (0, value + "\n") if value else (1, "")
-        if cmd[:2] == ["gh", "api"] and "/contents/" in cmd[-1]:
-            ref = "origin/develop"
-            return (0, self.policies[ref]) if ref in self.policies else (1, "HTTP 404")
-        if cmd[:2] == ["git", "show"]:
-            ref = cmd[2].split(":", 1)[0]
-            return (0, self.policies[ref]) if ref in self.policies else (128, "fatal: invalid object name")
-        if cmd[:3] == ["gh", "api", "--paginate"] and cmd[-1].endswith("/issues/7/comments"):
-            return 0, "\n".join(json.dumps(comment, indent=2) for comment in self.comments)
         return None
 
     def _check_runs(self) -> str:
@@ -189,7 +180,6 @@ def _arm(gh: FakeGh, pr: str | None = "7", head: str | None = None, *, unpublish
         unpublished=lambda _checkout: list(unpublished),
         threads=lambda _run, _repo, _number: threads,
         suites=lambda _run, _repo, _base, _head: list(hidden),
-        bump=lambda _run, _repo, _number, _head: [],
         gate=lambda _run, _repo, _number, _head: [],
     )
 
@@ -807,170 +797,6 @@ def test_a_real_core_failure_is_not_mistaken_for_a_placeholder_while_another_run
     assert "required check 'core' completed with conclusion 'failure'" in err
 
 
-POLICY = (
-    "version: 2\nmode: enforce\nomp:\n  version: {version}\n  builds:\n    linux-x64:\n      url: https://b.example/x\n"
-    "      sha256: {sha}\n    darwin-arm64:\n      url: https://b.example/d\n      sha256: {mac}\npools: [claude]\n"
-)
-OLD_MAC, NEW_MAC = "ab" * 32, "cd" * 32
-BUMP_FILES = [".github/oracle-reviewers.yml", "tests/fixtures/oracle_reviewers/omp_candidate/quota_terminal.jsonl"]
-
-
-def _policy(version: str = "18.13.2", mac: str = NEW_MAC, extra: str = "") -> str:
-    return POLICY.format(version=version, sha="ef" * 32, mac=mac) + extra
-
-
-def _pin_digest(policy: str) -> str:
-    return omp_pin.pin_digest(omp_pin.pin_from_text(policy))
-
-
-def _evidence(
-    version: str = "18.13.2",
-    platform: str = "darwin-arm64",
-    sha: str = NEW_MAC,
-    pin: str | None = None,
-    head: str = HEAD,
-    **fields,
-) -> dict:
-    pin = _pin_digest(_policy()) if pin is None else pin
-    line = f"Omp candidate check: version={version} platform={platform} sha256={sha} pin={pin} head={head} result=releasable"
-    return {
-        "login": "joeharris76",
-        "user_type": "User",
-        "body": f"Evidence from the owner's Mac:\n{line}\n",
-        "created_at": "2026-10-27T20:00:00Z",
-        "updated_at": "2026-10-27T20:00:00Z",
-        **fields,
-    }
-
-
-def _bump_gh(**kwargs) -> FakeGh:
-    policies = {"origin/develop": _policy("18.12.1", OLD_MAC), HEAD: kwargs.pop("head_policy", _policy())}
-    return FakeGh(changed_files=kwargs.pop("files", BUMP_FILES), policies=policies, **kwargs)
-
-
-def _arm_bump(gh: FakeGh) -> int:
-    return pr_arm.arm(
-        "7",
-        None,
-        run=gh,
-        unpublished=lambda _c: [],
-        threads=lambda *_a: False,
-        suites=lambda *_a: [],
-        duration=lambda *_a: [],
-        visible=lambda *_a: [],
-        gate=lambda *_a: [],
-    )
-
-
-def _refusals(gh: FakeGh) -> list[str]:
-    return pr_arm.pr_arm_omp_bump.bump_refusals(gh, pr_arm.REPOSITORY, 7, HEAD)
-
-
-def test_a_pull_request_that_leaves_the_pin_alone_is_not_held_for_omp_evidence() -> None:
-    gh = FakeGh(changed_files=["scripts/x.py"])
-    assert _refusals(gh) == []
-    assert not [call for call in gh.calls if call[:2] == ["git", "show"]]
-    same = FakeGh(
-        changed_files=[".github/oracle-reviewers.yml"],
-        policies={"origin/develop": _policy(), HEAD: _policy(extra="# unrelated\n")},
-    )
-    assert _refusals(same) == []
-
-
-def test_a_pin_bump_without_the_owner_evidence_is_refused_and_arming_does_not_merge() -> None:
-    gh = _bump_gh()
-    [reason] = _refusals(gh)
-    assert "make omp-candidate-check VERSION=18.13.2" in reason and "darwin-arm64" in reason
-    assert _arm_bump(gh) == 2 and gh.merged() == []
-
-
-def test_a_pin_bump_with_the_owner_evidence_for_its_own_pin_arms() -> None:
-    gh = _bump_gh(comments=[_evidence()])
-    assert _refusals(gh) == []
-    assert _arm_bump(gh) == 0 and len(gh.merged()) == 1
-
-
-@pytest.mark.parametrize(
-    "comment",
-    [
-        _evidence(version="18.13.1"),
-        _evidence(head="b" * 40),
-        _evidence(platform="linux-x64"),
-        _evidence(sha="9" * 64),
-        _evidence(pin="9" * 64),
-        _evidence(login="someone-else"),
-        _evidence(user_type="Bot"),
-        _evidence(updated_at="2026-10-27T21:00:00Z"),
-        {
-            **_evidence(),
-            "body": "Omp candidate check: version=18.13.2 platform=darwin-arm64 sha256="
-            + NEW_MAC
-            + " pin="
-            + _pin_digest(_policy())
-            + f" head={HEAD} result=red",
-        },
-        {**_evidence(), "body": "looks fine"},
-    ],
-)
-def test_evidence_that_is_not_the_owners_unedited_green_line_for_this_pin_does_not_count(comment: dict) -> None:
-    [reason] = _refusals(_bump_gh(comments=[comment]))
-    assert "has no owner evidence" in reason
-
-
-def test_a_pin_bump_that_also_changes_code_or_other_policy_is_refused_even_with_evidence() -> None:
-    wider = _bump_gh(files=[*BUMP_FILES, "scripts/pr_arm.py"], comments=[_evidence()])
-    [reason] = _refusals(wider)
-    assert "also changes scripts/pr_arm.py" in reason
-    other = _bump_gh(head_policy=_policy(extra="retry: 1\n"), comments=[_evidence()])
-    [reason] = _refusals(other)
-    assert "other reviewer policy settings" in reason
-
-
-def test_a_pin_bump_that_cannot_be_read_back_is_refused_rather_than_waved_through() -> None:
-    gh = FakeGh(changed_files=BUMP_FILES, policies={HEAD: _policy()})
-    [reason] = _refusals(gh)
-    assert "could not be verified" in reason and "develop" in reason
-
-
-@pytest.mark.parametrize(
-    "head_policy",
-    [
-        _policy().replace("sha256: " + "ef" * 32, "sha256: " + "9a" * 32),
-        _policy().replace("https://b.example/x", "https://evil.example/x"),
-    ],
-)
-def test_a_bump_whose_other_platform_differs_from_the_evidenced_pin_is_refused(head_policy: str) -> None:
-    gh = _bump_gh(head_policy=head_policy, comments=[_evidence()])
-    [reason] = _refusals(gh)
-    assert "has no owner evidence" in reason
-    assert _refusals(_bump_gh(head_policy=head_policy, comments=[_evidence(pin=_pin_digest(head_policy))])) == []
-
-
-@pytest.mark.parametrize(
-    "name",
-    [
-        "tests/fixtures/oracle_reviewers/omp_candidate/manifest.json",
-        "tests/fixtures/oracle_reviewers/omp_candidate/static_outputs.json",
-    ],
-)
-def test_only_the_jsonl_fixture_streams_may_change_with_a_pin_bump(name: str) -> None:
-    gh = _bump_gh(files=[*BUMP_FILES, name], comments=[_evidence()])
-    [reason] = _refusals(gh)
-    assert f"also changes {name}" in reason
-
-
-def test_evidence_posted_through_the_web_ui_with_crlf_line_endings_counts() -> None:
-    comment = _evidence()
-    comment["body"] = comment["body"].replace("\n", "\r\n")
-    assert _refusals(_bump_gh(comments=[comment])) == []
-
-
-def test_a_pull_request_whose_file_list_hits_the_api_cap_is_refused_rather_than_waved_through() -> None:
-    gh = FakeGh(changed_files=[f"f{index}.py" for index in range(3000)])
-    [reason] = _refusals(gh)
-    assert "could not be verified" in reason
-
-
 def _final_line(capsys: pytest.CaptureFixture[str]) -> str:
     captured = capsys.readouterr()
     lines = [line for line in captured.out.splitlines() if line.strip()]
@@ -1074,7 +900,6 @@ def test_a_fresh_gate_evaluation_that_does_not_pass_refuses_arming() -> None:
         suites=lambda *_a: [],
         duration=lambda *_a: [],
         visible=lambda *_a: [],
-        bump=lambda *_a: [],
         gate=lambda *_a: ["a fresh oracle-gate evaluation of aaaaaaaaa does not pass: waiting"],
     )
     assert code == 2
@@ -1090,9 +915,9 @@ def test_gate_refusals_map_the_evaluation_exit_code(exit_code: int, expected: ob
         return exit_code, "oracle-review: waiting for the verdict\n" if exit_code else ""
 
     found = pr_arm.gate_refusals(run, "o/r", 7, HEAD)
-    assert seen[0][-3:] == ["o/r", "7", HEAD]
-    assert "--no-post" in seen[0][2]
-    assert "git archive origin/develop" in seen[0][2]
+    assert seen[0][-6:] == ["--repo", "o/r", "--pr", "7", "--head-sha", HEAD]
+    assert "theseus_cli.py" in " ".join(seen[0])
+    assert "--post" not in seen[0]
     assert found == [] if exit_code == 0 else expected in found[0]
 
 
@@ -1106,6 +931,8 @@ def _batch_arm(
     batch_id: str | None = "b",
     write_evidence: bool = True,
     tracker_error: Exception | None = None,
+    registry: dict | None = None,
+    view: dict | None = None,
 ) -> tuple[int, FakeGh, list[str]]:
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -1135,7 +962,15 @@ def _batch_arm(
         return tracker
 
     monkeypatch.setattr(pr_arm.pr_landing, "read_batch_tracker", read)
-    gh = FakeGh(view=_view(headRefOid=head), local_head=head, batch_role=role, batch_id=batch_id)
+    if registry is None:
+        monkeypatch.setattr(
+            pr_arm.pr_landing,
+            "discover_batch",
+            lambda *args, **kwargs: (batch_id if role == "integration" else None, "rev-1"),
+        )
+    else:
+        monkeypatch.setattr(pr_arm.pr_landing, "pinned_tracker_batches", lambda *args, **kwargs: (registry, "d" * 40))
+    gh = FakeGh(view=_view(headRefOid=head, **(view or {})), local_head=head, batch_role=role, batch_id=batch_id)
     code = pr_arm.arm(
         "7",
         None,
@@ -1144,7 +979,6 @@ def _batch_arm(
         unpublished=lambda _checkout: [],
         threads=lambda _run, _repo, _number: False,
         suites=lambda _run, _repo, _base, _head: [],
-        bump=lambda _run, _repo, _number, _head: [],
         gate=lambda _run, _repo, _number, _head: [],
     )
     return code, gh, reads
@@ -1158,6 +992,47 @@ def test_an_integration_worktree_arms_a_pr_whose_batch_evidence_holds(
     assert code == 0
     assert reads == ["b"]
     assert len(gh.merged()) == 1
+
+
+@pytest.mark.parametrize("registered_repository", ["BenchBox-dev/BenchBox", "benchbox-dev/benchbox"])
+def test_a_markerless_checkout_still_applies_batch_evidence_to_a_registered_pr(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, registered_repository: str
+) -> None:
+    registry = {
+        "b": {
+            "lifecycle": "active",
+            "repository": registered_repository,
+            "integration_branch": "feat/b",
+            "final_pr": {"number": 7, "node_id": "PR_b", "head": "0" * 40},
+        }
+    }
+
+    code, gh, reads = _batch_arm(tmp_path, monkeypatch, role=None, batch_id=None, registry=registry)
+    assert reads == ["b"] and code == 0 and len(gh.merged()) == 1
+
+    (tmp_path / "forged").mkdir()
+    forged, forged_gh, _ = _batch_arm(
+        tmp_path / "forged",
+        monkeypatch,
+        role=None,
+        batch_id=None,
+        registry=registry,
+        mutate=lambda _tracker, evidence: evidence["member_reviews"]["b"].update(outcome="override"),
+    )
+    assert forged == 2 and forged_gh.merged() == []
+
+
+def test_a_pr_from_a_registered_member_branch_is_refused_instead_of_armed_as_ordinary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    registry = {"b": {"lifecycle": "active", "repository": "BenchBox-dev/BenchBox", "integration_branch": "feat/b"}}
+
+    code, gh, reads = _batch_arm(
+        tmp_path, monkeypatch, role=None, batch_id=None, registry=registry, view={"headRefName": "feat/b--a"}
+    )
+
+    assert code == 1 and reads == [] and gh.merged() == []
+    assert "is a member branch of batch 'b'" in capsys.readouterr().err
 
 
 def _drop_acceptance(tracker: dict, evidence: dict) -> None:
@@ -1253,7 +1128,6 @@ def test_a_worktree_config_read_failure_with_the_extension_enabled_still_fails_c
         unpublished=lambda _checkout: [],
         threads=lambda _run, _repo, _number: False,
         suites=lambda _run, _repo, _base, _head: [],
-        bump=lambda _run, _repo, _number, _head: [],
         gate=lambda _run, _repo, _number, _head: [],
     )
 

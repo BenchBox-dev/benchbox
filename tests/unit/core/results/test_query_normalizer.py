@@ -32,6 +32,11 @@ def test_canonical_query_run_type_constants_are_defined() -> None:
 
 
 class TestNormalizeQueryId:
+    def test_dataframe_variant_ids_match_sql_variant_ids(self) -> None:
+        assert normalize_query_id("Q1v1") == "1_v1"
+        assert normalize_query_id("Q22v10") == "22_v10"
+        assert normalize_query_id("1_v7") == "1_v7"
+
     def test_normalize_with_q_prefix(self) -> None:
 
         assert normalize_query_id("Q1") == "1"

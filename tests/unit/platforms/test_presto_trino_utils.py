@@ -1,13 +1,18 @@
 from __future__ import annotations
 
+import datetime
+import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
+import pyarrow as pa
+import pyarrow.parquet as pq
 import pytest
 
+from benchbox.platforms.base.data_loading import CsvDialect
 from benchbox.platforms.presto_trino_utils import (
-    escape_insert_value,
-    is_date_value,
+    build_insert_sql,
+    json_cell,
     load_file_batches,
     normalize_existing_files,
     show_tables_lower,
@@ -16,69 +21,58 @@ from benchbox.platforms.presto_trino_utils import (
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 
-class TestIsDateValue:
-    def test_valid_date(self) -> None:
-        assert is_date_value("2023-01-15") is True
+class TestJsonCell:
+    def test_text_column_keeps_value_verbatim(self) -> None:
+        assert json_cell("O'Brien", "varchar(25)", "") == "O'Brien"
+        assert json_cell("12345", "varchar", "") == "12345"
 
-    def test_valid_date_start_of_year(self) -> None:
-        assert is_date_value("1992-01-01") is True
+    def test_text_longer_than_the_declared_length_is_rejected(self) -> None:
+        with pytest.raises(ValueError):
+            json_cell("abcdef", "varchar(5)", "")
 
-    def test_valid_date_end_of_year(self) -> None:
-        assert is_date_value("1998-12-31") is True
+    def test_empty_text_follows_the_null_marker(self) -> None:
+        assert json_cell("", "varchar(10)", "") is None
+        assert json_cell("", "varchar(10)", None) == ""
+        assert json_cell("NA", "varchar(10)", "NA") is None
 
-    def test_empty_string(self) -> None:
-        assert is_date_value("") is False
+    def test_non_text_values_are_stripped_and_empty_is_null(self) -> None:
+        assert json_cell(" 42 ", "bigint", "") == "42"
+        assert json_cell("", "bigint", "") is None
+        assert json_cell("", "date", None) is None
+        assert json_cell("null", "double", None) is None
 
-    def test_numeric_string(self) -> None:
-        assert is_date_value("12345") is False
+    def test_boolean_spellings_are_normalised(self) -> None:
+        assert json_cell("True", "boolean", None) == "true"
+        assert json_cell("0", "boolean", None) == "false"
 
-    def test_date_with_time(self) -> None:
-        assert is_date_value("2023-01-15 10:00:00") is False
+    def test_python_values_from_parquet_become_text(self) -> None:
+        assert json_cell(datetime.date(2020, 1, 2), "date", None) == "2020-01-02"
+        assert json_cell(datetime.datetime(2020, 1, 2, 3, 4, 5), "timestamp(3)", None) == "2020-01-02 03:04:05"
+        assert json_cell(True, "boolean", None) == "true"
+        assert json_cell(b"\x00\xff", "varbinary", None) == "00ff"
 
-    def test_partial_date(self) -> None:
-        assert is_date_value("2023-01") is False
-
-    def test_slashes_not_valid(self) -> None:
-        assert is_date_value("2023/01/15") is False
-
-    def test_alpha_not_valid(self) -> None:
-        assert is_date_value("Jan-01-2023") is False
+    def test_structured_columns_keep_native_json(self) -> None:
+        assert json_cell([1.5, 2.5], "array(double)", None) == [1.5, 2.5]
+        assert json_cell("[1, 2]", "array(integer)", "") == [1, 2]
+        assert json_cell("", "array(integer)", "") is None
 
 
-class TestEscapeInsertValue:
-    def test_empty_string_returns_null(self) -> None:
-        assert escape_insert_value("") == "NULL"
+class TestBuildInsertSql:
+    def test_projects_each_column_through_its_target_type(self) -> None:
+        sql = build_insert_sql("m.s.t", ["bigint", "varchar(10)", "decimal(15,2)", "varbinary"], "[[]]")
+        assert sql == (
+            "INSERT INTO m.s.t SELECT CAST(c0 AS bigint), CAST(c1 AS varchar(10)), CAST(c2 AS decimal(15,2)), from_hex(c3) "
+            "FROM UNNEST(CAST(json_parse('[[]]') AS ARRAY(ROW(c0 varchar, c1 varchar, c2 varchar, c3 varchar)))) "
+            "AS u(c0, c1, c2, c3)"
+        )
 
-    def test_null_literal_returns_null(self) -> None:
-        assert escape_insert_value("null") == "NULL"
+    def test_structured_columns_travel_as_their_own_type(self) -> None:
+        sql = build_insert_sql("m.s.t", ["array(double)"], "[]")
+        assert "ROW(c0 array(double))" in sql
+        assert sql.startswith("INSERT INTO m.s.t SELECT c0 FROM")
 
-    def test_null_uppercase_returns_null(self) -> None:
-        assert escape_insert_value("NULL") == "NULL"
-
-    def test_date_value_wrapped_in_date_literal(self) -> None:
-        assert escape_insert_value("1995-03-14") == "DATE '1995-03-14'"
-
-    def test_integer_string_passthrough(self) -> None:
-        assert escape_insert_value("42") == "42"
-
-    def test_float_string_passthrough(self) -> None:
-        assert escape_insert_value("3.14") == "3.14"
-
-    def test_negative_number_passthrough(self) -> None:
-        assert escape_insert_value("-100") == "-100"
-
-    def test_plain_string_quoted(self) -> None:
-        assert escape_insert_value("hello") == "'hello'"
-
-    def test_string_with_single_quote_escaped(self) -> None:
-        assert escape_insert_value("O'Brien") == "'O''Brien'"
-
-    def test_string_with_multiple_quotes_escaped(self) -> None:
-        assert escape_insert_value("it's a dog's life") == "'it''s a dog''s life'"
-
-    def test_string_that_looks_like_date_but_is_not_quoted(self) -> None:
-
-        assert escape_insert_value("not-a-date") == "'not-a-date'"
+    def test_single_quotes_in_the_payload_are_escaped(self) -> None:
+        assert "json_parse('[[\"O''Brien\"]]')" in build_insert_sql("m.s.t", ["varchar"], '[["O\'Brien"]]')
 
 
 class TestNormalizeExistingFiles:
@@ -142,59 +136,99 @@ class TestShowTablesLower:
 
 
 class TestLoadFileBatches:
-    def _make_file(self, tmp_path: Path, content: str) -> Path:
+    @staticmethod
+    def _statements(cursor: MagicMock) -> list[str]:
+        return [call.args[0] for call in cursor.execute.call_args_list]
+
+    @staticmethod
+    def _payload(sql: str) -> list[list[object]]:
+        literal = sql.split("json_parse('", 1)[1].split("') AS ARRAY", 1)[0].replace("''", "'")
+        return json.loads(literal)
+
+    def test_tpc_file_rows_are_sent_as_one_json_payload(self, tmp_path: Path) -> None:
         f = tmp_path / "data.tbl"
-        f.write_text(content)
-        return f
-
-    def test_single_row_inserted(self, tmp_path: Path) -> None:
-        f = self._make_file(tmp_path, "1|Alice|1992-01-01\n")
+        f.write_text("1|Alice|1992-01-01|\n2||1993-02-02|\n")
         cursor = MagicMock()
-        with (
-            patch("benchbox.utils.file_format.get_delimiter_for_file", return_value="|"),
-            patch("benchbox.platforms.base.data_loading.FileFormatRegistry") as mock_reg,
-        ):
-            ctx = MagicMock()
-            ctx.__enter__ = lambda s: open(f, encoding="utf-8")
-            ctx.__exit__ = MagicMock(return_value=False)
-            mock_reg.get_compression_handler.return_value.open.return_value = ctx
-            rows = load_file_batches(cursor, f, "schema.table")
+        rows = load_file_batches(cursor, f, "s.t", column_types=["bigint", "varchar(10)", "date"])
+        assert rows == 2
+        (sql,) = self._statements(cursor)
+        assert sql.startswith(
+            "INSERT INTO s.t SELECT CAST(c0 AS bigint), CAST(c1 AS varchar(10)), CAST(c2 AS date) FROM UNNEST("
+        )
+        assert self._payload(sql) == [["1", "Alice", "1992-01-01"], ["2", None, "1993-02-02"]]
+
+    def test_quoted_csv_dialect_keeps_embedded_delimiters_and_skips_header(self, tmp_path: Path) -> None:
+        f = tmp_path / "data.csv"
+        f.write_text('id,name\n1,"Smith, J"\n')
+        dialect = CsvDialect(delimiter=",", has_header=True, null_marker=None, normalize_booleans=False, quote='"')
+        cursor = MagicMock()
+        rows = load_file_batches(cursor, f, "s.t", dialect=dialect, column_types=["integer", "varchar"])
         assert rows == 1
-        cursor.execute.assert_called_once()
-        sql = cursor.execute.call_args[0][0]
-        assert sql.startswith("INSERT INTO schema.table VALUES")
+        assert self._payload(self._statements(cursor)[0]) == [["1", "Smith, J"]]
 
-    def test_rows_counted_correctly(self, tmp_path: Path) -> None:
-        lines = "\n".join(f"{i}|name{i}" for i in range(5))
-        f = self._make_file(tmp_path, lines + "\n")
+    def test_declared_encoding_is_used_to_read_text(self, tmp_path: Path) -> None:
+        f = tmp_path / "data.csv"
+        f.write_bytes("1,r\xe9sum\xe9\n".encode("latin-1"))
+        dialect = CsvDialect(
+            delimiter=",", has_header=False, null_marker=None, normalize_booleans=False, quote=None, encoding="latin-1"
+        )
         cursor = MagicMock()
-        with (
-            patch("benchbox.utils.file_format.get_delimiter_for_file", return_value="|"),
-            patch("benchbox.platforms.base.data_loading.FileFormatRegistry") as mock_reg,
-        ):
-            ctx = MagicMock()
-            ctx.__enter__ = lambda s: open(f, encoding="utf-8")
-            ctx.__exit__ = MagicMock(return_value=False)
-            mock_reg.get_compression_handler.return_value.open.return_value = ctx
-            rows = load_file_batches(cursor, f, "s.t")
-        assert rows == 5
+        load_file_batches(cursor, f, "s.t", dialect=dialect, column_types=["integer", "varchar"])
+        assert self._payload(self._statements(cursor)[0]) == [["1", "r\u00e9sum\u00e9"]]
 
-    def test_explicit_delimiter_overrides_extension_heuristic(self, tmp_path: Path) -> None:
-
-        f = self._make_file(tmp_path, "1,Alice\n")
-        cursor = MagicMock()
-        with (
-            patch(
-                "benchbox.utils.file_format.get_delimiter_for_file",
-                side_effect=AssertionError("heuristic must not run"),
+    def test_parquet_is_read_with_pyarrow_not_as_text(self, tmp_path: Path) -> None:
+        f = tmp_path / "data.parquet"
+        pq.write_table(
+            pa.table(
+                {
+                    "id": pa.array([1, 2], pa.int32()),
+                    "label": pa.array(["a", None]),
+                    "day": pa.array([datetime.date(2020, 1, 2), None]),
+                }
             ),
-            patch("benchbox.platforms.base.data_loading.FileFormatRegistry") as mock_reg,
-        ):
-            ctx = MagicMock()
-            ctx.__enter__ = lambda s: open(f, encoding="utf-8")
-            ctx.__exit__ = MagicMock(return_value=False)
-            mock_reg.get_compression_handler.return_value.open.return_value = ctx
-            rows = load_file_batches(cursor, f, "s.t", delimiter=",")
-        assert rows == 1
-        sql = cursor.execute.call_args[0][0]
-        assert sql.startswith("INSERT INTO s.t VALUES (1, 'Alice')")
+            f,
+        )
+        cursor = MagicMock()
+        rows = load_file_batches(cursor, f, "s.t", column_types=["integer", "varchar", "date"])
+        assert rows == 2
+        assert self._payload(self._statements(cursor)[0]) == [["1", "a", "2020-01-02"], ["2", None, None]]
+
+    def test_parquet_lists_are_loaded_as_json_arrays(self, tmp_path: Path) -> None:
+        f = tmp_path / "vectors.parquet"
+        pq.write_table(pa.table({"id": [1], "embedding": [[0.5, 1.5]]}), f)
+        cursor = MagicMock()
+        load_file_batches(cursor, f, "s.t", column_types=["bigint", "array(double)"])
+        (sql,) = self._statements(cursor)
+        assert "ROW(c0 varchar, c1 array(double))" in sql
+        assert self._payload(sql) == [["1", [0.5, 1.5]]]
+
+    def test_statements_stay_under_query_text_limit(self, tmp_path: Path) -> None:
+        f = tmp_path / "wide.tbl"
+        payload = "x" * 20000
+        f.write_text("".join(f"{i}|{payload}|\n" for i in range(200)))
+        cursor = MagicMock()
+        rows = load_file_batches(cursor, f, "s.t", column_types=["bigint", "varchar"])
+        statements = self._statements(cursor)
+        assert rows == 200
+        assert len(statements) > 1
+        assert max(len(sql) for sql in statements) <= 500_000
+        assert sum(len(self._payload(sql)) for sql in statements) == 200
+
+    def test_every_insert_result_is_drained_so_the_server_can_release_the_query(self, tmp_path: Path) -> None:
+        f = tmp_path / "wide.tbl"
+        payload = "x" * 20000
+        f.write_text("".join(f"{i}|{payload}|\n" for i in range(100)))
+        cursor = MagicMock()
+        load_file_batches(cursor, f, "s.t", column_types=["bigint", "varchar"])
+        assert cursor.execute.call_count > 1
+        assert cursor.fetchall.call_count == cursor.execute.call_count
+
+    def test_fetches_column_types_from_describe_when_not_supplied(self, tmp_path: Path) -> None:
+        f = tmp_path / "data.tbl"
+        f.write_text("1|a|\n")
+        cursor = MagicMock()
+        cursor.fetchall.return_value = [("id", "bigint", "", ""), ("name", "varchar", "", "")]
+        load_file_batches(cursor, f, "s.t")
+        statements = self._statements(cursor)
+        assert statements[0] == "DESCRIBE s.t"
+        assert self._payload(statements[1]) == [["1", "a"]]

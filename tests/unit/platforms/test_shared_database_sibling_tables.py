@@ -108,6 +108,16 @@ def test_transaction_primitives_replaces_the_tables_write_primitives_left_in_the
     assert adapter.server_tables == set()
 
 
+def test_transaction_primitives_replaces_the_staging_manifest_write_primitives_left_behind():
+    write_tables = _tables_of("write_primitives") | {"orders_stage", "lineitem_stage", "write_primitives_setup_lock"}
+    adapter = _SharedServerAdapter(write_tables | {"benchbox_staging_manifest_v3"})
+
+    _run_on(adapter, "transaction_primitives", 0.01)
+
+    assert adapter.dropped == 1
+    assert adapter.server_tables == set()
+
+
 def test_tpcds_obt_replaces_the_tpcds_tables_in_the_shared_database():
     adapter = _SharedServerAdapter(_tables_of("tpcds") | {f"{MOONCAKE_STAGING_PREFIX}store_sales"})
 

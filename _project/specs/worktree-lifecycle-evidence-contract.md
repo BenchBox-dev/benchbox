@@ -319,13 +319,26 @@ Deletion MUST use an atomic expected-old-OID ref update
 (`git update-ref -d refs/heads/<branch> <accepted_head>`) so a concurrent
 move is refused rather than deleted. The remote branch is deleted only if it
 exists and its tip equals `accepted_head` (lease-guarded push of the
-deletion); a remote branch at any other commit is kept and reported.
+deletion); a remote branch at any other commit is kept and refused. Local and
+remote branches both absent with no retained member worktree count as
+`already-deleted`, not a refusal.
 
-Tools applying this basis MUST default to a dry run, MUST NOT touch the
-integration branch, other sessions' worktrees, `git worktree prune` or
-`git gc`, and MUST NOT use it for any branch that is not a batch member
-branch. The rule of §7 stands: source-tip ancestry against `develop` never
-proves integration, and this basis never consults it.
+Tools applying this basis MUST default to a dry run, MUST NOT touch other
+sessions' worktrees, `git worktree prune` or `git gc`, and MUST NOT use it for
+any branch that is not a batch member branch. Section 7.1 never applies to the
+integration branch. The rule of §7 stands: source-tip ancestry against
+`develop` never proves integration, and this basis never consults it.
+
+As its LAST step, `make batch-finish` invokes the existing §7 worktree finish
+evaluation and apply for the integration worktree and local branch, only after
+the final PR has merged, the batch is completed, and every member branch is
+deleted or already gone. The dry run reports that evaluation without cleanup;
+fetching fresh PR and target-ref evidence still occurs.
+Execute MUST freshly read the tracker and final PR's merged state and
+re-evaluate §7 evidence, including merge-commit reachability, immediately before
+apply. The integration tip MUST equal the final PR head; dirty, foreign or
+otherwise held worktrees and refused members block this step. Apply uses the
+existing expected-old-OID deletion, not the member deletion basis.
 
 ## 8. Controller-provider boundary
 

@@ -12,3 +12,7 @@
 
 /benchbox/_vendor/SQLGLOT_LICENSE.txt text eol=lf
 /benchbox/_vendor/*.whl.zip -text
+
+/_project/scripts/soundness_paths.py -text
+/_project/scripts/theseus_bootstrap.py -text
+/.github/theseus-lock.json -text

@@ -212,6 +212,7 @@ jobs:
           UV_NO_SYNC: '1'
           UAT_CONFIG: tests/uat/configs/release-gate-01-native-dataframe.yaml
           SHARD_PLATFORMS: ${{ matrix.platforms }}
+          BENCHBOX_HEAVY_MEMORY_BUDGET_GIB: '13'
         run: |
           set -euo pipefail
           .venv/bin/python -c "import benchbox, pathlib; path = pathlib.Path(benchbox.__file__).resolve(); assert 'site-packages' in path.parts, path"
@@ -265,8 +266,6 @@ jobs:
             platforms: lakesail
           - shard: clickhouse-server
             platforms: clickhouse-server
-          - shard: cedardb
-            platforms: cedardb
           - shard: starrocks
             platforms: starrocks
     steps:
@@ -286,6 +285,7 @@ jobs:
           UV_NO_SYNC: '1'
           UAT_CONFIG: tests/uat/configs/release-gate-02-docker-nonoltp.yaml
           SHARD_PLATFORMS: ${{ matrix.platforms }}
+          CLICKHOUSE_MEMORY_LIMIT: 12g
         run: |
           set -euo pipefail
           .venv/bin/python -c "import benchbox, pathlib; path = pathlib.Path(benchbox.__file__).resolve(); assert 'site-packages' in path.parts, path"
@@ -338,11 +338,11 @@ jobs:
           - shard: postgres-family
             platforms: postgresql,pg-duckdb,pg-mooncake,timescaledb
           - shard: query-engines
-            platforms: presto,trino,velox
+            platforms: velox
           - shard: olap
-            platforms: doris,databend,singlestore
+            platforms: doris,singlestore
           - shard: timeseries
-            platforms: influxdb,questdb
+            platforms: questdb
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:

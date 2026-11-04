@@ -52,17 +52,18 @@ def test_evidence_reruns_required_members_at_the_final_head_and_writes_the_contr
     assert evidence["schema"] == "benchbox_batch_evidence_v2" and evidence["final_head"] == final
     assert evidence["integration_branch"] == f"feat/{BATCH}" and evidence["integration_worktree"] == str(integration)
     assert evidence["repository"] == "owner/name" and evidence["tracker_rev"] == str(world.tracker.rev)
-    assert set(evidence["current_acceptance"]) == {"zeta"}
-    zeta = evidence["current_acceptance"]["zeta"]
-    assert zeta == {
-        "status": "passed",
-        "revision": final,
-        "clean": True,
-        "suite": "member-tests",
-        "command": world.tracker.receipts["zeta"]["verification"]["command"],
-        "worktree": str(integration),
-    }
-    assert [call for call in world.calls if "pytest" in call[0]] == [(zeta["command"], integration)]
+    assert set(evidence["current_acceptance"]) == set(MEMBERS)
+    for member in MEMBERS:
+        assert evidence["current_acceptance"][member] == {
+            "status": "passed",
+            "revision": final,
+            "clean": True,
+            "suite": world.tracker.receipts[member]["verification"]["suite"],
+            "command": world.tracker.receipts[member]["verification"]["command"],
+            "worktree": str(integration),
+        }
+    executed = [call for call in world.calls if "pytest" in call[0]]
+    assert executed == [(world.tracker.receipts[m]["verification"]["command"], integration) for m in MEMBERS]
     assert evidence["changed_files"] == ["config/app.yaml", "src/a.py"]
     assert set(evidence["member_reviews"]) == set(MEMBERS)
     assert evidence["tracker"]["receipts"].keys() == world.tracker.receipts.keys()
@@ -88,12 +89,21 @@ def test_evidence_refuses_when_a_required_rerun_fails_even_if_an_older_run_passe
     assert not (integration / ".todo-batch" / BATCH / "final-evidence.json").exists()
 
 
-def test_evidence_reuses_a_recorded_rerun_that_already_covers_the_final_head(world: World) -> None:
+def test_a_second_evidence_invocation_executes_every_member_check_again(world: World) -> None:
     integration = _ready_for_evidence(world)
     bi.build_evidence(integration)
     world.calls.clear()
     bi.build_evidence(integration)
-    assert not [call for call in world.calls if "pytest" in call[0]]
+    assert len([call for call in world.calls if "pytest" in call[0]]) == len(MEMBERS)
+
+
+def test_a_new_failed_attempt_leaves_no_usable_evidence_from_an_earlier_success(world: World) -> None:
+    integration = _ready_for_evidence(world)
+    bi.build_evidence(integration)
+    world.failing_tests.add("tests/test_zeta.py")
+    with _raises("rerun of 'zeta' failed"):
+        bi.build_evidence(integration)
+    assert not (integration / ".todo-batch" / BATCH / "final-evidence.json").exists()
 
 
 def test_evidence_refuses_without_a_final_pr_bound_at_the_integration_head(world: World) -> None:
@@ -106,10 +116,15 @@ def test_evidence_refuses_without_a_final_pr_bound_at_the_integration_head(world
         bi.build_evidence(integration)
 
 
-def test_evidence_refuses_when_a_member_has_no_accepted_review_for_its_receipt_range(world: World) -> None:
+@pytest.mark.parametrize("defect", ["missing", "findings"])
+def test_evidence_refuses_when_a_receipt_holds_no_accepted_review(world: World, defect: str) -> None:
     integration = _ready_for_evidence(world)
-    world.review_cache.clear()
-    with _raises("no accepted stored review"):
+    verification = world.tracker.receipts["mid"]["verification"]
+    if defect == "missing":
+        del verification["review"]
+    else:
+        verification["review"] = {**verification["review"], "outcome": "findings"}
+    with _raises("receipt has no accepted review record"):
         bi.build_evidence(integration)
 
 

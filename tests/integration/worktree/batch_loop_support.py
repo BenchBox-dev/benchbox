@@ -15,7 +15,8 @@ TRACKED_COPY = (
     "make",
     "scripts/batch_integration.py",
     "scripts/pr_landing.py",
-    "scripts/pr_arm_omp_bump.py",
+    "scripts/theseus_cli.py",
+    "_project/scripts/soundness_manifest.py",
     "_project/scripts/check_suites.py",
     "scripts/worktree_lifecycle.sh",
     "scripts/make_timing_shell.sh",
@@ -25,7 +26,6 @@ TRACKED_COPY = (
     "_project/scripts/pyproject.toml",
     "_project/scripts/uv.lock",
     "_project/scripts/vendor",
-    "_project/scripts/oracle_reviewers",
     "_project/scripts/inert_paths.py",
     "_project/scripts/soundness_paths.py",
     "_project/analysis/batch-rollout-evidence.json",
@@ -41,17 +41,12 @@ SHARED_SOURCE = "ALPHA = None\nGAMMA = None\n\n\ndef unrelated() -> int:\n    re
 
 FAKE_REVIEW = """\
 import argparse
+import hashlib
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
-
-if "FAKE_REVIEW_UV" not in os.environ:
-    os.environ["FAKE_REVIEW_UV"] = "1"
-    os.execvp("uv", ["uv", "run", "--", "python", __file__, *sys.argv[1:]])
-
-sys.path.insert(0, str(Path.cwd()))
-from _project.scripts.oracle_reviewers import local
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--policy", required=True)
@@ -63,13 +58,22 @@ parser.add_argument("--head", required=True)
 args = parser.parse_args()
 outcome_file = Path(os.environ["FAKE_REVIEW_OUTCOME_FILE"])
 outcome = outcome_file.read_text().strip() if outcome_file.exists() else "clear"
-root = Path.cwd()
-record = local._member_record(root, args.base_ref, args.head, args.trusted_ref, outcome, "fake reviewer verdict")
-trusted = local.Trusted.read(root, args.trusted_ref, args.policy)
-local._write_json_atomic(
-    local._member_path(local.state_dir(), local._member_key(args.base_ref, args.head, args.trusted_ref, trusted)),
-    record,
-)
+
+
+def git(*command):
+    return subprocess.run(["git", *command], check=True, capture_output=True, text=True).stdout
+
+
+record = {
+    "schema": "benchbox_member_review_v1",
+    "outcome": outcome,
+    "reason": "fake reviewer verdict",
+    "base_sha": args.base_ref,
+    "head_sha": args.head,
+    "head_tree": git("rev-parse", f"{args.head}^{{tree}}").strip(),
+    "patch_digest": hashlib.sha256(git("diff", args.base_ref, args.head).encode()).hexdigest(),
+    "trusted_sha": args.trusted_ref,
+}
 Path(args.result_json).write_text(json.dumps(record))
 sys.exit(1 if outcome == "findings" else 0)
 """
@@ -111,7 +115,11 @@ class ToolError(AssertionError):
 
 def _tracked(paths: tuple[str, ...]) -> list[str]:
     out = subprocess.run(
-        ["git", "ls-files", "-z", "--", *paths], cwd=ROOT, check=True, capture_output=True, encoding="utf-8"
+        ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", *paths],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        encoding="utf-8",
     ).stdout
     return [name for name in out.split("\0") if name and (ROOT / name).is_file()]
 
@@ -524,3 +532,28 @@ class Loop:
 
     def evidence(self) -> dict:
         return self.world.make_json(self.integration, "batch-evidence")
+
+    def relocate(self, successor: McpServer, expected_owner: str, destination: Path, reason: str) -> dict:
+        self.world.git(
+            self.world.root,
+            "clone",
+            "-q",
+            "--branch",
+            self.branch,
+            self.world.code_remote.as_uri(),
+            str(destination),
+        )
+        payload = self.world.make_json(
+            destination,
+            "batch-recover",
+            BATCH=self.batch,
+            EXPECTED_OWNER=expected_owner,
+            EXPECTED_OWNER_GENERATION=self.generation,
+            REASON=reason,
+            RELOCATE="1",
+        )
+        recovered = successor.ok(payload["tool"], **payload["arguments"])
+        self.leader = successor
+        self.integration = destination.resolve()
+        self.generation = payload["arguments"]["new_owner_generation"]
+        return {"payload": payload, "recovered": recovered}

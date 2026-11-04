@@ -110,6 +110,11 @@ class TestQuoteIdentifier:
         assert quote_identifier_for_dialect("orders", "databricks") == "`orders`"
         assert quote_identifier_for_dialect("orders", "standard") == '"orders"'
 
+    def test_doris_uses_backticks(self, wp_benchmark):
+        from benchbox.core.primitives_benchmark_utils import quote_identifier_for_dialect
+
+        assert quote_identifier_for_dialect("benchbox_staging_manifest_v3", "doris") == "`benchbox_staging_manifest_v3`"
+
     def test_singlestore_uses_backticks(self, wp_benchmark):
         from benchbox.core.primitives_benchmark_utils import quote_identifier_for_dialect
 
@@ -1095,6 +1100,11 @@ class TestCleanupAuxiliaryFiles:
         wp_benchmark.cleanup_auxiliary_files()
 
 
+class _CountingConnection:
+    def execute(self, _sql):
+        return SimpleNamespace(fetchone=lambda: (1,))
+
+
 class TestDataFrameSqlParity:
     @pytest.fixture
     def wp_benchmark(self, tmp_path):
@@ -1109,7 +1119,9 @@ class TestDataFrameSqlParity:
             lambda query_filter=None: operation_ids,
         )
 
-        monkeypatch.setattr("benchbox.platforms.duckdb.DuckDBAdapter.create_connection", lambda self, **_: object())
+        monkeypatch.setattr(
+            "benchbox.platforms.duckdb.DuckDBAdapter.create_connection", lambda self, **_: _CountingConnection()
+        )
         monkeypatch.setattr(
             "benchbox.platforms.duckdb.DuckDBAdapter.create_schema",
             lambda self, benchmark, connection: 0.0,
@@ -1163,7 +1175,7 @@ class TestDataFrameSqlParity:
         monkeypatch.setattr(
             wp_benchmark,
             "execute_operation",
-            lambda op_id, connection: results_by_id[op_id],
+            lambda op_id, connection, **_kwargs: results_by_id[op_id],
         )
 
         sql_results = wp_benchmark.run_benchmark(connection=object(), operation_ids=operation_ids)
@@ -1202,7 +1214,9 @@ class TestDataFrameSqlParity:
         assert all(row["rows_returned"] == 0 for row in ddl_rows)
 
     def test_dataframe_workload_query_filter_keeps_sql_subset(self, wp_benchmark, monkeypatch):
-        monkeypatch.setattr("benchbox.platforms.duckdb.DuckDBAdapter.create_connection", lambda self, **_: object())
+        monkeypatch.setattr(
+            "benchbox.platforms.duckdb.DuckDBAdapter.create_connection", lambda self, **_: _CountingConnection()
+        )
         monkeypatch.setattr(
             "benchbox.platforms.duckdb.DuckDBAdapter.create_schema",
             lambda self, benchmark, connection: 0.0,
@@ -1219,7 +1233,7 @@ class TestDataFrameSqlParity:
         monkeypatch.setattr(
             wp_benchmark,
             "execute_operation",
-            lambda op_id, connection: OperationResult(
+            lambda op_id, connection, **_kwargs: OperationResult(
                 operation_id=op_id,
                 success=True,
                 write_duration_ms=1.0,
@@ -1258,6 +1272,7 @@ class TestCheckValidationQuery:
         expected_rows_max=None,
         expected_value_min=None,
         expected_value_max=None,
+        bounds_scale_with_sf=False,
     ):
         return SimpleNamespace(
             expected_rows=expected_rows,
@@ -1265,6 +1280,7 @@ class TestCheckValidationQuery:
             expected_rows_max=expected_rows_max,
             expected_value_min=expected_value_min,
             expected_value_max=expected_value_max,
+            bounds_scale_with_sf=bounds_scale_with_sf,
         )
 
     def test_exact_match_passes(self):
@@ -1318,6 +1334,21 @@ class TestCheckValidationQuery:
 
         q = self._make_query(expected_value_min=14000, expected_value_max=16000)
         assert _check_validation_query(q, actual_rows=1, val_result=[(14836.89,)]) is True
+
+    def test_scaled_value_bounds_follow_scale_factor(self):
+        from benchbox.core.write_primitives.benchmark import _check_validation_query
+
+        q = self._make_query(expected_value_min=14500, expected_value_max=15500, bounds_scale_with_sf=True)
+        assert _check_validation_query(q, 1, [(149164.0,)], scale_factor=0.1) is True
+        assert _check_validation_query(q, 1, [(1498948.0,)], scale_factor=1.0) is True
+        assert _check_validation_query(q, 1, [(14836.0,)], scale_factor=1.0) is False
+        assert _check_validation_query(q, 1, [(1600000.0,)], scale_factor=1.0) is False
+
+    def test_unscaled_value_bounds_ignore_scale_factor(self):
+        from benchbox.core.write_primitives.benchmark import _check_validation_query
+
+        q = self._make_query(expected_value_min=1000, expected_value_max=12000)
+        assert _check_validation_query(q, 1, [(9736.0,)], scale_factor=1.0) is True
 
     def test_value_bounds_below_range_fails(self):
         from benchbox.core.write_primitives.benchmark import _check_validation_query
@@ -2264,3 +2295,144 @@ def test_setup_force_replaces_tables_in_place_on_databricks(fast_bench, fast_con
     assert manifest_clears and executed.index(manifest_clears[0]) < next(
         i for i, s in enumerate(executed) if s.startswith("CREATE OR REPLACE TABLE")
     )
+
+
+SINGLESTORE_UPSERT_OPERATIONS = [
+    "merge_simple_upsert_small",
+    "merge_upsert_with_delete",
+    "merge_overlap_10pct",
+    "merge_overlap_50pct",
+    "merge_overlap_90pct",
+    "merge_no_overlap_all_insert",
+    "merge_with_join_condition",
+    "merge_conditional_update",
+    "merge_computed_values",
+    "merge_error_handling",
+    "merge_deduplication_window_function",
+]
+
+SINGLESTORE_UPDATE_JOIN_OPERATIONS = [
+    "merge_full_overlap_all_update",
+    "merge_from_subquery_aggregated",
+    "merge_conditional_insert",
+    "merge_multi_column_update",
+    "merge_string_operations",
+    "merge_date_arithmetic",
+    "merge_with_cte_source",
+    "merge_etl_aggregation_pattern",
+]
+
+SINGLESTORE_SCD2_OPERATIONS = ["merge_scd_type2_basic", "merge_scd_type2_no_change", "merge_scd_type2_new_keys_only"]
+
+SINGLESTORE_NATIVE_OPERATIONS = [
+    *SINGLESTORE_UPSERT_OPERATIONS,
+    *SINGLESTORE_UPDATE_JOIN_OPERATIONS,
+    *SINGLESTORE_SCD2_OPERATIONS,
+    "insert_batch_values_100",
+    "insert_batch_values_1000",
+    "insert_on_conflict_ignore",
+]
+
+
+@pytest.mark.parametrize("operation_id", SINGLESTORE_NATIVE_OPERATIONS)
+def test_singlestore_native_operations_avoid_unsupported_syntax(fast_bench, operation_id):
+    operation = fast_bench.get_operation(operation_id)
+
+    sql, skip = fast_bench._get_effective_write_sql(operation, platform_key="singlestore")
+
+    assert skip is None
+    assert sql is not None
+    upper = sql.upper()
+    for unsupported in ("MERGE INTO", "GENERATE_SERIES", "UNNEST(", "ON CONFLICT", "NULLS LAST", "||", "DATE '"):
+        assert unsupported not in upper
+    assert "AS VARCHAR)" not in upper
+    assert "AS INTEGER)" not in upper
+
+
+@pytest.mark.parametrize("operation_id", SINGLESTORE_UPSERT_OPERATIONS)
+def test_singlestore_merge_upserts_use_on_duplicate_key_update(fast_bench, operation_id):
+    operation = fast_bench.get_operation(operation_id)
+
+    sql, _ = fast_bench._get_effective_write_sql(operation, platform_key="singlestore")
+
+    assert "ON DUPLICATE KEY UPDATE" in sql
+
+
+@pytest.mark.parametrize("operation_id", SINGLESTORE_UPDATE_JOIN_OPERATIONS)
+def test_singlestore_matched_branches_use_update_join(fast_bench, operation_id):
+    operation = fast_bench.get_operation(operation_id)
+
+    sql, _ = fast_bench._get_effective_write_sql(operation, platform_key="singlestore")
+
+    assert sql.lstrip().startswith("UPDATE ")
+    assert "\nJOIN (" in sql
+
+
+@pytest.mark.parametrize(
+    "operation_id", ["merge_conditional_insert", "merge_from_subquery_aggregated", "merge_with_cte_source"]
+)
+def test_singlestore_not_matched_branches_use_anti_join(fast_bench, operation_id):
+    operation = fast_bench.get_operation(operation_id)
+
+    sql, _ = fast_bench._get_effective_write_sql(operation, platform_key="singlestore")
+
+    assert "INSERT INTO" in sql
+    assert "LEFT JOIN" in sql
+    assert "IS NULL" in sql
+
+
+def test_singlestore_upsert_with_delete_removes_unmatched_target_rows_first(fast_bench):
+    operation = fast_bench.get_operation("merge_upsert_with_delete")
+
+    sql, _ = fast_bench._get_effective_write_sql(operation, platform_key="singlestore")
+
+    assert sql.lstrip().startswith("DELETE FROM merge_ops_target")
+    assert sql.index("DELETE FROM") < sql.index("ON DUPLICATE KEY UPDATE")
+
+
+def test_singlestore_insert_conflict_ignore_uses_insert_ignore(fast_bench):
+    operation = fast_bench.get_operation("insert_on_conflict_ignore")
+
+    sql, _ = fast_bench._get_effective_write_sql(operation, platform_key="singlestore")
+
+    assert sql.startswith("INSERT IGNORE INTO insert_ops_orders")
+
+
+@pytest.mark.parametrize("operation_id,rows", [("insert_batch_values_100", 100), ("insert_batch_values_1000", 1000)])
+def test_singlestore_batch_values_generate_rows_from_digit_cross_join(fast_bench, operation_id, rows):
+    operation = fast_bench.get_operation(operation_id)
+
+    sql, _ = fast_bench._get_effective_write_sql(operation, platform_key="singlestore")
+
+    assert sql.count("CROSS JOIN") == {100: 1, 1000: 2}[rows]
+    assert "CONCAT(" in sql
+
+
+@pytest.mark.parametrize("operation_id", SINGLESTORE_SCD2_OPERATIONS)
+def test_singlestore_scd2_operations_have_no_correlated_subselect_in_set(fast_bench, operation_id):
+    operation = fast_bench.get_operation(operation_id)
+
+    sql, _ = fast_bench._get_effective_write_sql(operation, platform_key="singlestore")
+
+    for statement in sql.split(";"):
+        if statement.strip().startswith("UPDATE"):
+            assert "(SELECT" not in statement.split("SET", 1)[1].split("WHERE", 1)[0]
+
+
+@pytest.mark.parametrize(
+    "operation_id",
+    ["merge_scd_type2_basic", "merge_scd_type2_new_keys_only"],
+)
+def test_singlestore_scalar_validation_queries_select_from_dual(fast_bench, operation_id):
+    from benchbox.core.write_primitives.benchmark import _resolve_validation_sql
+
+    operation = fast_bench.get_operation(operation_id)
+
+    resolved = [
+        _resolve_validation_sql(val_query, "singlestore", None)[0]
+        for val_query in operation.validation_queries
+        if val_query.sql.lstrip().upper().startswith("SELECT 1 WHERE")
+    ]
+
+    assert resolved
+    assert all(sql.lstrip().upper().startswith("SELECT 1 FROM DUAL WHERE") for sql in resolved)

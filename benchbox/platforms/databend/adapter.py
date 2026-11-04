@@ -42,6 +42,8 @@ except ImportError:
 
 DEFAULT_DEPLOYMENT = "cloud"
 
+_QUOTED_INTERVAL = re.compile(r"\bINTERVAL\s+'\s*(-?\d+)\s+([A-Za-z]+)\s*'", re.IGNORECASE)
+
 
 class DatabendAdapter(PlatformAdapter):
     physical_identifier_case = "lower"
@@ -67,6 +69,7 @@ class DatabendAdapter(PlatformAdapter):
         self.username = config.get("username") or os.environ.get("DATABEND_USER") or "benchbox"
         self.password = config.get("password") or os.environ.get("DATABEND_PASSWORD")
         self.database = config.get("database") or os.environ.get("DATABEND_DATABASE") or "benchbox"
+        self.admin_database = config.get("admin_database") or "default"
         self.dsn = config.get("dsn") or os.environ.get("DATABEND_DSN")
         self.deployment_mode = select_adapter_deployment("databend", config, DEFAULT_DEPLOYMENT)
         self.deployment_selected = self.deployment_mode
@@ -170,6 +173,7 @@ class DatabendAdapter(PlatformAdapter):
                     "compute_resource",
                     "warehouse",
                     "disable_result_cache",
+                    "admin_database",
                 ],
                 include_none=False,
             )
@@ -178,7 +182,7 @@ class DatabendAdapter(PlatformAdapter):
     def get_target_dialect(self) -> str:
         return "snowflake"
 
-    def _build_dsn(self) -> str:
+    def _build_dsn(self, database: str | None = None) -> str:
         if self.dsn:
             return self._normalize_dsn_scheme(self.dsn)
 
@@ -192,7 +196,7 @@ class DatabendAdapter(PlatformAdapter):
 
         scheme = "databend+http" if not self.ssl else "databend+https"
 
-        dsn = f"{scheme}://{user_part}@{self.host}:{port}/{self.database}"
+        dsn = f"{scheme}://{user_part}@{self.host}:{port}/{database or self.database}"
 
         params = []
         if not self.ssl:
@@ -229,7 +233,7 @@ class DatabendAdapter(PlatformAdapter):
 
         self.handle_existing_database(**connection_config)
 
-        dsn = self._build_dsn()
+        dsn = self._build_dsn(self.admin_database)
         self.log_very_verbose(f"Databend connection: host={self.host}, database={self.database}")
 
         connection = None
@@ -242,6 +246,9 @@ class DatabendAdapter(PlatformAdapter):
             row = connection.query_row("SELECT 1")
             if row is None:
                 raise ConnectionError("Databend connection test returned no result")
+
+            connection.exec(f"CREATE DATABASE IF NOT EXISTS {self._quote_identifier(self.database)}")
+            connection.exec(f"USE {self._quote_identifier(self.database)}")
 
             self.logger.info(f"Connected to Databend at {self.host}")
             self.log_operation_complete("Databend connection", details=f"Connected to {self.host}")
@@ -418,7 +425,7 @@ class DatabendAdapter(PlatformAdapter):
         start_time = mono_time()
 
         try:
-            rows = connection.query_iter(query)
+            rows = connection.query_iter(_QUOTED_INTERVAL.sub(r"INTERVAL '\1' \2", query))
             result = list(rows)
 
             execution_time = elapsed_seconds(start_time)
@@ -476,6 +483,48 @@ class DatabendAdapter(PlatformAdapter):
 
         return result_dict
 
+    @staticmethod
+    def _row_tuple(row: Any) -> tuple:
+        values = row.values() if hasattr(row, "values") else row
+        return tuple(values)
+
+    def fetch_rows(self, connection: Any, sql: str) -> list[tuple]:
+        return [self._row_tuple(row) for row in connection.query_iter(sql)]
+
+    def _get_existing_tables(self, connection: Any) -> list[str]:
+        try:
+            database = self.database.replace("'", "''")
+            rows = self.fetch_rows(connection, f"SELECT name FROM system.tables WHERE database = '{database}'")
+            return [str(row[0]).lower() for row in rows]
+        except Exception as e:
+            self.logger.debug(f"Failed to list Databend tables: {e}")
+            return []
+
+    def get_table_row_count(self, connection: Any, table: str) -> int:
+        try:
+            rows = self.fetch_rows(connection, f"SELECT COUNT(*) FROM {self._quote_identifier(table.lower())}")
+            return int(rows[0][0]) if rows else 0
+        except Exception as e:
+            self.logger.debug(f"Failed to get row count for {table}: {e}")
+            return 0
+
+    def _validate_data_integrity(
+        self, benchmark: Any, connection: Any, table_stats: dict[str, int]
+    ) -> tuple[str, dict[str, Any]]:
+        accessible_tables = []
+        inaccessible_tables = []
+        for table_name in table_stats:
+            try:
+                self.fetch_rows(connection, f"SELECT 1 FROM {self._quote_identifier(table_name.lower())} LIMIT 1")
+                accessible_tables.append(table_name)
+            except Exception as e:
+                self.logger.debug(f"Table {table_name} inaccessible: {e}")
+                inaccessible_tables.append(table_name)
+
+        if inaccessible_tables:
+            return "FAILED", {"inaccessible_tables": inaccessible_tables, "constraints_enabled": False}
+        return "PASSED", {"accessible_tables": accessible_tables, "constraints_enabled": True}
+
     def get_query_plan(self, connection: Any, query: str) -> str | None:
         try:
             rows = connection.query_iter(f"EXPLAIN {query}")
@@ -504,7 +553,7 @@ class DatabendAdapter(PlatformAdapter):
         try:
             from databend_driver import BlockingDatabendClient
 
-            dsn = self._build_dsn()
+            dsn = self._build_dsn(self.admin_database)
             client = BlockingDatabendClient(dsn)
             connection = self._get_blocking_connection(client)
             row = connection.query_row("SELECT 1")
@@ -571,7 +620,7 @@ class DatabendAdapter(PlatformAdapter):
         try:
             from databend_driver import BlockingDatabendClient
 
-            dsn = self._build_dsn()
+            dsn = self._build_dsn(self.admin_database)
             client = BlockingDatabendClient(dsn)
             connection = self._get_blocking_connection(client)
 
@@ -597,7 +646,7 @@ class DatabendAdapter(PlatformAdapter):
         try:
             from databend_driver import BlockingDatabendClient
 
-            dsn = self._build_dsn()
+            dsn = self._build_dsn(self.admin_database)
             client = BlockingDatabendClient(dsn)
             connection = self._get_blocking_connection(client)
             connection.exec(f"DROP DATABASE IF EXISTS {self._quote_identifier(database)}")

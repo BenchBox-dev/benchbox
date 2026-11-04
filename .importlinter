@@ -53,6 +53,7 @@ ignore_imports =
     benchbox.core.tpchavoc.equivalence -> benchbox.platforms.datafusion_tpch_rewrites
     benchbox.core.tpchavoc.equivalence -> benchbox.platforms.duckdb
     benchbox.core.tpchavoc.equivalence -> benchbox.platforms.postgresql
+    benchbox.core.transactional.questdb_sql -> benchbox.platforms.questdb_rewrites
     benchbox.core.write_primitives.benchmark -> benchbox.platforms.base.data_loading
     benchbox.core.write_primitives.benchmark -> benchbox.platforms.duckdb
 

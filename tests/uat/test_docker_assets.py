@@ -266,10 +266,10 @@ def test_compose_environment_ignores_relative_dir_for_non_path_mirroring_platfor
 def test_starrocks_compose_memory_defaults_for_manual_use_and_harness_overrides(monkeypatch):
     spec = docker_assets.docker_platform_spec("starrocks")
     compose = yaml.safe_load(spec.compose_files[0].read_text(encoding="utf-8"))
-    assert compose["services"]["starrocks"]["mem_limit"] == "${STARROCKS_MEMORY_LIMIT:-4g}"
+    assert compose["services"]["starrocks"]["mem_limit"] == "${STARROCKS_MEMORY_LIMIT:-8g}"
 
     monkeypatch.delenv(managed_runtime.STARROCKS_MEMORY_LIMIT_ENV_VAR, raising=False)
-    assert docker_assets.compose_environment(spec) == {managed_runtime.STARROCKS_MEMORY_LIMIT_ENV_VAR: "4g"}
+    assert docker_assets.compose_environment(spec) == {managed_runtime.STARROCKS_MEMORY_LIMIT_ENV_VAR: "8g"}
 
     monkeypatch.setenv(managed_runtime.STARROCKS_MEMORY_LIMIT_ENV_VAR, "6g")
     assert docker_assets.compose_environment(spec, starrocks_memory_limit="4g") == {
@@ -353,7 +353,7 @@ def test_local_managed_cedardb_compose_credentials_match_uat_argv():
 
     assert "CEDAR_USER: benchbox" in compose_text
     assert "CEDAR_PASSWORD: Benchbox1!" in compose_text
-    assert "mem_limit: 2g" in compose_text
+    assert "mem_limit: 8g" in compose_text
     assert "CEDAR_DB: benchbox_test" in compose_text
     assert argv[-6:] == [
         "--platform-option",
@@ -700,7 +700,7 @@ def test_sweep_leaked_mocker_volumes_swallows_individual_removal_failure(tmp_pat
 @pytest.mark.parametrize(
     ("platform", "expected_service_names"),
     [
-        ("databend", frozenset({"minio", "minio-setup", "databend"})),
+        ("databend", frozenset({"databend"})),
         ("doris", frozenset({"doris"})),
         ("starrocks", frozenset({"starrocks"})),
     ],
@@ -845,6 +845,7 @@ def test_starrocks_readiness_command_requires_alive_frontend_and_backend():
     ("platform", "service", "needle"),
     [
         ("cedardb", "cedardb", "psql"),
+        ("pg-mooncake", "pg-mooncake", "psql"),
         ("presto", "presto", "X-Presto-User"),
         ("trino", "trino", "X-Trino-User"),
     ],
@@ -880,7 +881,9 @@ def test_cedardb_readiness_reads_credentials_from_the_container_environment():
     assert "-h 127.0.0.1" in script
 
 
-@pytest.mark.parametrize(("platform", "floor"), [("cedardb", 15.0), ("presto", 60.0), ("trino", 60.0)])
+@pytest.mark.parametrize(
+    ("platform", "floor"), [("cedardb", 15.0), ("pg-mooncake", 15.0), ("presto", 60.0), ("trino", 60.0)]
+)
 def test_query_readiness_timeout_outlasts_the_tcp_liveness_probe(platform, floor):
     cfg = config.validate_config({"name": "readiness timeout", "platforms": {"include": [platform]}})
     spec = docker_assets.docker_platform_spec(platform)
@@ -985,6 +988,20 @@ def test_velox_connect_tmpfs_permits_native_library_loading():
     assert any(mount.startswith("/tmp:") and "exec" in mount.split(":", 1)[1].split(",") for mount in tmpfs_mounts)
 
 
+def test_velox_warehouse_is_off_the_tmpfs():
+    root = docker_assets.REPO_ROOT / "docker/velox"
+    entrypoint = (root / "entrypoint.sh").read_text(encoding="utf-8")
+    dockerfile = (root / "Dockerfile").read_text(encoding="utf-8")
+    compose = yaml.safe_load((root / "docker-compose.yml").read_text(encoding="utf-8"))
+    warehouse = "/var/lib/spark-warehouse"
+    assert f"spark.sql.warehouse.dir={warehouse}" in entrypoint
+    assert f"chown spark:spark {warehouse}" in dockerfile
+    assert not any(
+        warehouse.startswith(mount.split(":", 1)[0].rstrip("/") + "/")
+        for mount in compose["services"]["velox-connect"]["tmpfs"]
+    )
+
+
 def test_presto_compose_mounts_jvm_config_with_bounded_heap():
     spec = docker_assets.docker_platform_spec("presto")
     compose = yaml.safe_load(spec.compose_files[0].read_text(encoding="utf-8"))
@@ -1053,3 +1070,43 @@ def test_coordinator_readiness_script_exits_127_when_curl_is_missing(platform, t
         check=False,
     )
     assert result.returncode == 127
+
+
+def test_influxdb_cells_target_the_local_core_stack():
+    opts = docker_assets.platform_extra_opts("influxdb")
+    pairs = {value.split("=", 1)[0]: value.split("=", 1)[1] for value in opts if "=" in value}
+    assert pairs == {
+        "port": "8181",
+        "host": "localhost",
+        "ssl": "false",
+    }
+
+
+def test_influxdb_cells_select_the_core_deployment():
+    argv = matrix.benchbox_run_argv("influxdb", "tpch", 0.01, local_managed_platform=True)
+    assert argv[argv.index("--platform") + 1] == "influxdb:core"
+    duckdb_argv = matrix.benchbox_run_argv("duckdb", "tpch", 0.01)
+    assert duckdb_argv[duckdb_argv.index("--platform") + 1] == "duckdb"
+
+
+def test_pg_mooncake_readiness_reads_credentials_from_the_container_environment():
+    spec = docker_assets.docker_platform_spec("pg-mooncake")
+    argv = managed_runtime._readiness_command(spec, "benchbox-uat-pg-mooncake")
+    assert argv is not None
+    script = argv[-1]
+    assert "$POSTGRES_PASSWORD" in script and "$POSTGRES_USER" in script and "$POSTGRES_DB" in script
+    assert "-h 127.0.0.1" in script and "SELECT 1" in script
+
+
+def test_timescaledb_compose_sizes_shared_memory_for_parallel_hash_joins():
+    spec = docker_assets.docker_platform_spec("timescaledb")
+    compose_text = "\n".join(path.read_text(encoding="utf-8") for path in spec.compose_files)
+
+    assert 'shm_size: "2gb"' in compose_text
+
+
+def test_pg_mooncake_compose_raises_the_duckdb_memory_limit_above_the_4gb_default():
+    spec = docker_assets.docker_platform_spec("pg-mooncake")
+    compose_text = "\n".join(path.read_text(encoding="utf-8") for path in spec.compose_files)
+
+    assert "duckdb.max_memory=10240" in compose_text

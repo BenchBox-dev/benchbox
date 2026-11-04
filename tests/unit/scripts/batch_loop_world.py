@@ -33,6 +33,7 @@ SCOPE = {
 }
 PROJECT = "proj"
 BATCH = "b1"
+TRUSTED_REVIEW_WRAPPER = "print('trusted reviewer wrapper')\n"
 
 
 def git(cwd: Path, *args: str) -> str:
@@ -235,6 +236,8 @@ class World:
         self.tracker = FakeTracker()
         self.calls: list[tuple[list[str], Path]] = []
         self.review_cache: dict[tuple[str, str, str], dict] = {}
+        self.review_wrappers: list[str] = []
+        self.review_support: list[dict[str, str]] = []
         self.failing_tests: set[str] = set()
         self.preflight_rc = 0
         self.review_rc: int | None = None
@@ -253,6 +256,8 @@ class World:
             "tests/test_mid.py": "def test_m():\n    assert True\n",
             "docs/note.md": "note\n",
             ".github/oracle-reviewers.yml": "brief_max_bytes: 100000\n",
+            bi.REVIEW_WRAPPER: TRUSTED_REVIEW_WRAPPER,
+            **dict.fromkeys(bi.REVIEW_SUPPORT, "TRUSTED_SUPPORT = 1\n"),
             ".gitignore": ".todo-batch/\n",
         }.items():
             (seed / name).parent.mkdir(parents=True, exist_ok=True)
@@ -264,11 +269,7 @@ class World:
         self.primary = tmp_path / "primary"
         subprocess.run(["git", "clone", "-q", str(self.origin), str(self.primary)], check=True, capture_output=True)
         monkeypatch.setattr(bi, "_run", self.run)
-        monkeypatch.setattr(bi, "lookup_member_review", self.lookup_review)
         self.integration: Path | None = None
-
-    def lookup_review(self, repo: Path, base: str, head: str, trusted: str):
-        return self.review_cache.get((base, head, trusted))
 
     def run(self, argv, cwd, **_kwargs):
         argv = list(argv)
@@ -289,9 +290,16 @@ class World:
             return done(self.preflight_rc, stderr="preflight output")
         if argv[:3] == ["make", "-s", "changelog-check"]:
             return done()
-        if "preflight_targets.py" in argv:
+        if any("preflight_targets.py" in arg for arg in argv):
             return done(0, "\n".join(self.mapped_tests))
-        if argv[:2] == bi.DEFAULT_REVIEW_COMMAND:
+        if argv[0] == bi.REVIEW_INTERPRETER and Path(argv[1]).name == Path(bi.REVIEW_WRAPPER).name:
+            self.review_wrappers.append(Path(argv[1]).read_text(encoding="utf-8"))
+            self.review_support.append(
+                {
+                    Path(path).name: (Path(argv[1]).parent / Path(path).name).read_text(encoding="utf-8")
+                    for path in bi.REVIEW_SUPPORT
+                }
+            )
             return self.review(argv, Path(cwd))
         if "pytest" in argv or "ruff" in argv:
             failing = any(item in self.failing_tests for item in argv)
@@ -307,6 +315,13 @@ class World:
         outcome = "not-reviewed" if exempt else "clear"
         if self.review_rc is not None:
             outcome = "findings"
+        cached = self.review_cache.get((base, head, trusted))
+        if cached is not None:
+            outcome = cached.get("outcome", outcome)
+        elif getattr(self, "require_cached_review", False):
+            return done(
+                1, stderr="the local review cache holds no result for this member's patch; run batch-member-check"
+            )
         result = {
             "schema": "benchbox_member_review_v1",
             "outcome": outcome,
@@ -319,7 +334,9 @@ class World:
         }
         self.review_cache[(base, head, trusted)] = result
         Path(values["--result-json"]).write_text(json.dumps(result), encoding="utf-8")
-        return done(self.review_rc or 0)
+        rc = 1 if outcome == "findings" else (self.review_rc or 0)
+        err = "member review outcome 'findings' blocks landing" if outcome == "findings" else ""
+        return done(rc, stderr=err)
 
     def calls_matching(self, word: str) -> list[tuple[list[str], Path]]:
         return [call for call in self.calls if word in call[0]]

@@ -48,6 +48,10 @@ def normalize_query_id(query_id: str | int) -> str:
         digits, suffix = match.groups()
         return f"{digits}{suffix.lower() if suffix else ''}"
 
+    variant_match = re.fullmatch(r"(\d+)v(\d+)", normalized)
+    if variant_match:
+        return f"{variant_match.group(1)}_v{variant_match.group(2)}"
+
     return normalized
 
 
