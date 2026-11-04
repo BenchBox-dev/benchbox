@@ -2,10 +2,16 @@ from __future__ import annotations
 
 import logging
 import random
+import re
 from datetime import date, datetime, timedelta
 from typing import Any
 
+import pandas as pd
+
 from .results import ETLBatchResult, ETLPhaseResult
+from .sql_backend import bulk_insert_dataframe
+
+_INSERT_TARGET = re.compile(r"INSERT\s+INTO\s+(\w+)\s*\(([^)]*)\)", re.IGNORECASE)
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +21,15 @@ class TPCDIETLPipeline:
         self.connection = connection
         self.benchmark = benchmark
         self.dialect = dialect
+
+    def _bulk_insert(self, insert_sql: str, records: list[tuple[Any, ...]]) -> None:
+        match = _INSERT_TARGET.search(insert_sql)
+        if match is None:
+            raise ValueError("Unsupported INSERT statement for bulk load")
+        columns = [column.strip() for column in match.group(2).split(",")]
+        frame = pd.DataFrame(records, columns=columns)
+        if not bulk_insert_dataframe(self.connection, match.group(1), columns, frame):
+            self.connection.executemany(insert_sql, records)
 
     def run_historical_load(self, scale_factor: float = 1.0) -> ETLPhaseResult:
         logger.info(f"Starting TPC-DI historical load (scale factor: {scale_factor})")
@@ -338,7 +353,7 @@ class TPCDIETLPipeline:
                     )
                 )
 
-            self.connection.executemany(insert_sql, records)
+            self._bulk_insert(insert_sql, records)
             return len(records)
         except Exception as e:
             logger.error(f"Date dimension generation failed: {e}")
@@ -372,7 +387,7 @@ class TPCDIETLPipeline:
                         )
                     )
 
-            self.connection.executemany(insert_sql, records)
+            self._bulk_insert(insert_sql, records)
             return len(records)
         except Exception as e:
             logger.error(f"Time dimension generation failed: {e}")
@@ -432,7 +447,7 @@ class TPCDIETLPipeline:
                     )
                 )
 
-            self.connection.executemany(insert_sql, records)
+            self._bulk_insert(insert_sql, records)
             return len(records)
         except Exception as e:
             logger.error(f"Customer dimension generation failed: {e}")
@@ -482,7 +497,7 @@ class TPCDIETLPipeline:
                     )
                 )
 
-            self.connection.executemany(insert_sql, records)
+            self._bulk_insert(insert_sql, records)
             return len(records)
         except Exception as e:
             logger.error(f"Company dimension generation failed: {e}")
@@ -520,7 +535,7 @@ class TPCDIETLPipeline:
                     )
                 )
 
-            self.connection.executemany(insert_sql, records)
+            self._bulk_insert(insert_sql, records)
             return len(records)
         except Exception as e:
             logger.error(f"Security dimension generation failed: {e}")
@@ -553,7 +568,7 @@ class TPCDIETLPipeline:
                     )
                 )
 
-            self.connection.executemany(insert_sql, records)
+            self._bulk_insert(insert_sql, records)
             return len(records)
         except Exception as e:
             logger.error(f"Account dimension generation failed: {e}")
@@ -652,7 +667,7 @@ class TPCDIETLPipeline:
                     )
                 )
 
-            self.connection.executemany(insert_sql, records)
+            self._bulk_insert(insert_sql, records)
             logger.info(f"Generated {len(records)} trades with valid foreign key references")
             return len(records)
         except Exception as e:
