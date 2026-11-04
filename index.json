@@ -1913,6 +1913,13 @@
       "status": "done",
       "title": "Correct PR-1642 batch provenance: push commits, open real PR, fix completed_pr, record missing audit event"
     },
+    "batch-arrow-dataframe-roundtrips-20261104": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Batch arrow-dataframe-roundtrips: umbrella notes"
+    },
     "batch-feature-branch-integration": {
       "claim": null,
       "needs": [

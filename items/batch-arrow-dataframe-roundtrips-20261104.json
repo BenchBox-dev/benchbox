@@ -1,0 +1,14 @@
+{
+  "context": "2026-11-04 leader session started; owner hold on final PR until v0.5.0 released (latest tag v0.5.0rc3).",
+  "description": "Umbrella (non-member) item for batch arrow-dataframe-roundtrips. Holds batch order, decisions and state. Members: perf-duckdb-wire-native-handlers-20261030, perf-pandas-df-loader-date-objects-20261031, perf-dataframe-maintenance-arrow-20261031. Not enrolled: perf-arrow-* fetch items (wait on fetch-timing-contract-decision-20261103).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-04T13:52:10Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "708d50dd03c64822b42bf01c42213187",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}
