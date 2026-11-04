@@ -367,6 +367,82 @@
       "start_head": "5cfea582d2197ecc150d80c6125a65130c02f23a",
       "terminal_outcome": "deliver"
     },
+    "native-bulk-load-remainder": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/native-bulk-load-remainder",
+      "integration_head": "dff1efde16aed3e2c5f14ba539267f4ea2e59013",
+      "integration_log": [
+        {
+          "at": "2026-11-04T18:14:25Z",
+          "head": "dff1efde16aed3e2c5f14ba539267f4ea2e59013",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-native-bulk-load-remainder",
+      "lifecycle": "active",
+      "members": [
+        "perf-tpcdi-etl-bulk-paths-20261031",
+        "perf-questdb-influxdb-load-20261030",
+        "perf-library-loaders-and-datagen-rows-20261031"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "owner_epoch": 0,
+      "owner_generation": "60290fe04fe7801691e0dcda95e3ccc7",
+      "project_id": "benchbox",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "perf-library-loaders-and-datagen-rows-20261031": [
+          "benchbox/core/benchmark_mixins.py",
+          "benchbox/core/simple_benchmark_mixin.py",
+          "benchbox/core/tpcds/benchmark/runner.py",
+          "benchbox/core/tsbs_devops/benchmark.py",
+          "benchbox/core/tsbs_devops/generator.py",
+          "benchbox/core/coffeeshop/benchmark.py",
+          "benchbox/core/tpcdi/benchmark.py",
+          "benchbox/core/tpcdi/loader.py",
+          "benchbox/core/tpcdi/generator/*.py",
+          "benchbox/core/primitives/generator_base.py",
+          "benchbox/core/ssb/generator.py",
+          "benchbox/core/amplab/generator.py",
+          "tests/unit/core/test_benchmark_mixins.py",
+          "tests/unit/core/tpcds/*",
+          "tests/unit/core/tsbs_devops/*",
+          "tests/unit/core/coffeeshop/*",
+          "tests/unit/core/primitives/*",
+          "tests/unit/core/ssb/*",
+          "tests/unit/core/amplab/*",
+          "tests/unit/core/clickbench/*",
+          "tests/unit/core/tpcdi/*",
+          "changelog.d/*"
+        ],
+        "perf-questdb-influxdb-load-20261030": [
+          "benchbox/platforms/questdb.py",
+          "benchbox/platforms/influxdb/*.py",
+          "tests/unit/platforms/test_questdb_*.py",
+          "tests/unit/platforms/test_influxdb_*.py",
+          "tests/unit/platforms/influxdb/*",
+          "changelog.d/*"
+        ],
+        "perf-tpcdi-etl-bulk-paths-20261031": [
+          "benchbox/core/tpcdi/etl/*.py",
+          "benchbox/core/tpcdi/benchmark.py",
+          "tests/unit/core/tpcdi/*",
+          "tests/unit/core/test_tpcdi*",
+          "docs/internal/tpc-measured-intervals.md",
+          "changelog.d/*"
+        ]
+      },
+      "scope_hash": "80d0f814e173c384bd9130d4b1174be7e6923de8d4febbf21bd2e6a9c1eb64d8",
+      "start_head": "dff1efde16aed3e2c5f14ba539267f4ea2e59013",
+      "terminal_outcome": "deliver"
+    },
     "native-bulk-load-sql": {
       "accepted_members": {
         "perf-databend-bulk-load-20261030": "bcd64dfb73369a4437c6825c70da017d47de5834",
