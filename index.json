@@ -28475,12 +28475,17 @@
       "title": "Record the Theseus extraction ADR, full consumer inventory and cost baseline"
     },
     "theseus-atomic-benchbox-cutover-20261102": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-05T18:11:55Z",
+        "generation": "0f0ab86e07494a53881bf5a23bf029b4",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f"
+      },
       "needs": [
         "theseus-release-bootstrap-evidence-20261102"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Cut BenchBox over atomically to the approved Theseus artifact and remove obsolete evaluator paths"
     },
     "theseus-atomic-benchbox-cutover-20261102-deferral-1": {
