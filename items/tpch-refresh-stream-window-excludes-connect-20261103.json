@@ -11,7 +11,7 @@
     "implementation_dependencies": [],
     "member_id": "tpch-refresh-stream-window-excludes-connect-20261103"
   },
-  "context": "Origin: 2026-11-03 root-cause analysis of TPC-H RF1 timing (5 whys) and its adversarial review. Spec clauses cited here were read from the published PDFs at the links on 2026-11-03; re-read them rather than trusting this text.\n\n2026-11-03 correction round: need on the reference page removed; Ts effect stated instead of left to the implementer; subjective test-name criterion replaced by a named test.",
+  "context": "Origin: 2026-11-03 root-cause analysis of TPC-H RF1 timing (5 whys) and its adversarial review. Spec clauses cited here were read from the published PDFs at the links on 2026-11-03; re-read them rather than trusting this text.\n\n2026-11-03 correction round: need on the reference page removed; Ts effect stated instead of left to the implementer; subjective test-name criterion replaced by a named test.\n\nLanded in batch tpch-refresh-path (accepted 7be817e38e). start_monotonic/start_time now taken after refresh_connection_factory() returns; new tests test_refresh_stream_window_starts_after_refresh_connection_opens and test_throughput_total_time_excludes_refresh_connection_setup (fail on base: Ts 0.205 s with a 0.2 s sleeping factory); renamed test_throughput_duration_includes_refresh_precondition_and_postcondition_checks -> test_total_time_spans_refresh_stream_window_when_it_brackets_the_query_streams. pytest tests/unit/core/throughput tests/unit/core/tpch/test_tpch_refresh.py: 147 passed. Row text appended to the reference item context.",
   "description": "Problem. docs/internal/throughput-result-alignment.md states that a stream's window starts after its connection is open and ends before it is closed. The refresh stream does not follow that rule: in the TPC-H throughput refresh stream (benchbox/core/tpch/throughput_test.py, the method that sets refresh_stream.start_monotonic), start_monotonic and start_time are set before refresh_connection_factory() is called, so connection setup is inside the refresh stream window. Query streams take their start after the connection opens.\n\nChange. Take the refresh stream's start after the connection is open; keep end_monotonic before the connection closes. The refresh stream's start and end are part of the Ts span (benchbox/core/throughput/runner.py compute_metrics reads refresh_stream.start_monotonic and end_monotonic), so this change can shorten Ts and raise Throughput@Size when the refresh stream is the first or last stream; the changelog must say so.\n\nGuardrails for all code work: work only in a linked worktree (make worktree-create); never edit the primary clone. No explanatory comments or docstrings in source (make comment-policy-check). Durations use benchbox.utils.clock.mono_time()/elapsed_seconds(). Add a changelog.d/ fragment. Cited line numbers are orientation only: re-read the named symbols, docs and spec clauses before editing and treat a mismatch as a reason to stop and update this item. No live-cloud runs without owner approval; heavy runs only through make heavy-run or a lock-taking entry point. Green focused tests are not release certification. Do not change what the RF1 and RF2 intervals themselves measure; that belongs to tpch-refresh-checks-timing-per-decision-20261103 and perf-tpch-rf1-bulk-load-20261031. Test names must say what they assert: rename any refresh-timing test whose name claims checks or connection setup are inside the measurement when the assertions say otherwise (tests/unit/core/throughput/test_tpch_refresh_timing.py and test_throughput_runs_all_safety_checks_outside_the_refresh_measurement in tests/unit/core/tpch/test_tpch_refresh.py are the places to read).",
   "links": [
     "https://www.tpc.org/tpc_documents_current_versions/pdf/tpc-h_v3.0.1.pdf",
@@ -136,6 +136,14 @@
       "generation": "df7ae426ce644a4a9f601793d6afda78",
       "op": "prepare",
       "op_id": "8ef8a2d65b5f440ebfe7cc7a963e4ffd",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-04T14:43:46Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f71e554ab1c647abbdb03e89a6781a54",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
