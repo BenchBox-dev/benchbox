@@ -559,7 +559,7 @@
         }
       },
       "integration_branch": "feat/tpch-refresh-path",
-      "integration_head": "0149b46967c41125400db3a95c1fd022bf9d9e27",
+      "integration_head": "85fd49cb44f589e0cad07876ff54350799d3e00c",
       "integration_log": [
         {
           "at": "2026-11-04T13:53:00Z",
@@ -620,6 +620,22 @@
             "perf-tpch-rf1-bulk-load-20261031"
           ],
           "seq": 5
+        },
+        {
+          "at": "2026-11-04T15:18:02Z",
+          "changed_files": [
+            "tests/integration/_tpch_refresh_utils.py",
+            "tests/integration/test_ducklake_integration.py"
+          ],
+          "head": "85fd49cb44f589e0cad07876ff54350799d3e00c",
+          "kind": "fix",
+          "op_id": "b093c45053584d3ba8415ad3061200d0",
+          "previous_head": "0149b46967c41125400db3a95c1fd022bf9d9e27",
+          "requires_acceptance": [
+            "perf-tpch-rf1-bulk-load-20261031",
+            "tpch-ducklake-refresh-support-20261103"
+          ],
+          "seq": 6
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpch-refresh-path",
