@@ -269,6 +269,7 @@
     },
     "native-bulk-load-sql": {
       "accepted_members": {
+        "perf-databend-bulk-load-20261030": "bcd64dfb73369a4437c6825c70da017d47de5834",
         "perf-doris-stream-load-line-rewrite-20261031": "5aabe90f7210b4410ca96cdb7920f3ec7d24970d",
         "perf-firebolt-core-bulk-load-20261030": "70f17889b6e1db9fe4c82f7360b122383f682308",
         "perf-prepare-local-load-file-streaming-20261031": "b83d0872eb358ee42e53af0afb4b40b4c0affec4"
@@ -278,6 +279,17 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "perf-databend-bulk-load-20261030": {
+          "accepted_head": "bcd64dfb73369a4437c6825c70da017d47de5834",
+          "changed_files": [
+            "benchbox/platforms/databend/adapter.py",
+            "changelog.d/feat-native-bulk-load-sql--perf-databend-bulk-load-20261030.json",
+            "tests/unit/platforms/test_databend_adapter.py",
+            "tests/unit/platforms/test_databend_bulk_load.py"
+          ],
+          "integration_head": "168f8d51a3f02bb6c1c1ce1c1bf260125972edba",
+          "integration_seq": 4
+        },
         "perf-doris-stream-load-line-rewrite-20261031": {
           "accepted_head": "5aabe90f7210b4410ca96cdb7920f3ec7d24970d",
           "changed_files": [
@@ -312,7 +324,7 @@
         }
       },
       "integration_branch": "feat/native-bulk-load-sql",
-      "integration_head": "16e0a5eb8908565efc6cf9bef412e616af272038",
+      "integration_head": "168f8d51a3f02bb6c1c1ce1c1bf260125972edba",
       "integration_log": [
         {
           "at": "2026-11-04T13:52:23Z",
@@ -346,6 +358,15 @@
           "op_id": "a87466b4167243faab2c12eeaed9ef14",
           "previous_head": "2005772605e245af4f228267984d847c5c546396",
           "seq": 3
+        },
+        {
+          "at": "2026-11-04T14:43:22Z",
+          "head": "168f8d51a3f02bb6c1c1ce1c1bf260125972edba",
+          "kind": "prepare",
+          "member": "perf-databend-bulk-load-20261030",
+          "op_id": "e147776972ad4d029567e8944c548d95",
+          "previous_head": "16e0a5eb8908565efc6cf9bef412e616af272038",
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-native-bulk-load-sql",
@@ -18779,15 +18800,10 @@
       "title": "Bulk insert for ClickHouse server mode and Cloud without staging"
     },
     "perf-databend-bulk-load-20261030": {
-      "claim": {
-        "expires_at": "2026-11-05T14:43:17Z",
-        "generation": "b5d87af86d1043c3b5c797b4438d0a7b",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Use stage + COPY INTO for Databend loading"
     },
     "perf-dataframe-maintenance-arrow-20261031": {
