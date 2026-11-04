@@ -10,6 +10,87 @@
     "member_id": "perf-dataframe-maintenance-arrow-20261031"
   },
   "description": "platforms/dataframe/iceberg_maintenance.py:289-297 (update) converts matching rows to pandas and back; :322-345 (merge) scans the entire target table to pandas and merges with .map(dict(zip(...))). hudi_maintenance.py:79,87 and pyspark_maintenance.py:123 call spark.createDataFrame(arrow.to_pandas()), row-wise unless Arrow is enabled. platforms/datafusion.py:66-74 DataFusionCursorCompat._materialize builds a tuple per row via to_pylist; maintenance, write primitives and power/throughput fallback fetchall use it. Use pyiceberg upsert/overwrite with Arrow filters, Arrow-enabled or direct Arrow createDataFrame on Spark 4, and an Arrow-native count/fetch in the DataFusion cursor.",
+  "prepared": {
+    "accepted_head": "ee35e987c1539b59c1e0d622b53f9aadf7055288",
+    "batch_id": "arrow-dataframe-roundtrips",
+    "changed_files": [
+      "benchbox/platforms/dataframe/hudi_maintenance.py",
+      "benchbox/platforms/dataframe/iceberg_maintenance.py",
+      "benchbox/platforms/dataframe/pyspark_maintenance.py",
+      "benchbox/platforms/datafusion.py",
+      "changelog.d/perf-dataframe-maintenance-arrow-20261031.json",
+      "tests/unit/platforms/dataframe/test_iceberg_maintenance_coverage.py",
+      "tests/unit/platforms/dataframe/test_pyspark_maintenance_coverage.py",
+      "tests/unit/platforms/test_datafusion_adapter.py",
+      "tests/unit/platforms/test_datafusion_real_connection.py",
+      "tests/unit/platforms/test_datafusion_trailing_chunked.py"
+    ],
+    "integration_head": "298c080b24166662fd0e4e8c9e58172a6e4eb55d",
+    "integration_seq": 3,
+    "member_id": "perf-dataframe-maintenance-arrow-20261031",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "ffe85b779d4d8a1f8e8bc7a8b621437ced6dcab36cde5a6f98597b106132a652",
+    "source_base": "b171b7fe34c439b5a7fa6ddcd0d826c0bb63f3f0",
+    "source_revision": "ee35e987c1539b59c1e0d622b53f9aadf7055288",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-arrow-dataframe-roundtrips--perf-dataframe-maintenance-arrow-20261031",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/platforms/test_datafusion_tbl_load.py",
+        "tests/integration/platforms/test_iceberg_format_live.py",
+        "tests/integration/test_dataframe_maintenance_operations.py",
+        "tests/integration/test_datafusion_integration.py",
+        "tests/integration/test_platform_driver_version_matrix.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/uat/test_connection_registry_drift.py",
+        "tests/unit/benchmarks/test_write_primitives_dataframe.py",
+        "tests/unit/core/tuning/test_capability_registry_parity.py",
+        "tests/unit/core/tuning/test_ledger_execute_verbs.py",
+        "tests/unit/platforms/dataframe/test_hudi_maintenance.py",
+        "tests/unit/platforms/dataframe/test_iceberg_maintenance.py",
+        "tests/unit/platforms/dataframe/test_iceberg_maintenance_coverage.py",
+        "tests/unit/platforms/dataframe/test_lakehouse_optimization.py",
+        "tests/unit/platforms/dataframe/test_pyspark_maintenance_coverage.py",
+        "tests/unit/platforms/test_datafusion_adapter.py",
+        "tests/unit/platforms/test_datafusion_behavioral.py",
+        "tests/unit/platforms/test_datafusion_existing_tables.py",
+        "tests/unit/platforms/test_datafusion_load_data_path_coercion.py",
+        "tests/unit/platforms/test_datafusion_null_marker.py",
+        "tests/unit/platforms/test_datafusion_plan_capture.py",
+        "tests/unit/platforms/test_datafusion_real_connection.py",
+        "tests/unit/platforms/test_datafusion_trailing_chunked.py",
+        "tests/unit/platforms/test_local_platform_ctas_sort.py",
+        "tests/unit/platforms/test_platform_driver_runtime_contract.py",
+        "tests/unit/platforms/test_tuning_reconciliation_adapters.py",
+        "tests/unit/test_cli_dryrun_real_execution.py",
+        "tests/unit/tpchavoc/test_dialect_compat.py"
+      ],
+      "review": {
+        "base_sha": "b171b7fe34c439b5a7fa6ddcd0d826c0bb63f3f0",
+        "head_sha": "ee35e987c1539b59c1e0d622b53f9aadf7055288",
+        "head_tree": "46090e9ba6969918196add52de412a4b23e913d9",
+        "outcome": "clear",
+        "patch_digest": "1be5e829162c24d88dc4ff1101f05a96",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "37f78fbf166c8bab353cc6e7e68f99b0cec8dd2a"
+      },
+      "revision": "ee35e987c1539b59c1e0d622b53f9aadf7055288",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:claude-code:root@vm:cb45f246c9de058740ccbeed",
@@ -34,6 +115,15 @@
       "generation": "172ec205e3d34dc7831349cbd6321197",
       "op": "take",
       "op_id": "feaac7cc177c4ae9b986199bfe657692",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-04T15:21:21Z",
+      "client": "omp-coding-agent",
+      "generation": "172ec205e3d34dc7831349cbd6321197",
+      "op": "prepare",
+      "op_id": "96867b6079e346a1ae70488b0cde5687",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
