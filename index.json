@@ -316,6 +316,87 @@
       "scope_hash": "a99ebca08b62e5b80b87e98567b925e26f9bbe65609c28fa5e5a6d4c81c0eebb",
       "start_head": "3a3ee9826a6ab939d6235d31e69056c789ac365e",
       "terminal_outcome": "deliver"
+    },
+    "tpch-refresh-path": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/tpch-refresh-path",
+      "integration_head": "3a3ee9826a6ab939d6235d31e69056c789ac365e",
+      "integration_log": [
+        {
+          "at": "2026-11-04T13:53:00Z",
+          "head": "3a3ee9826a6ab939d6235d31e69056c789ac365e",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpch-refresh-path",
+      "lifecycle": "active",
+      "members": [
+        "tpch-refresh-stream-window-excludes-connect-20261103",
+        "perf-tpch-rf1-bulk-load-20261031",
+        "tpch-rf1-native-ingest-singlestore-20261103",
+        "tpch-ducklake-refresh-support-20261103"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "owner_epoch": 0,
+      "owner_generation": "51c81642e02ed252ff50cb38ac3dff7b",
+      "project_id": "benchbox",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "perf-tpch-rf1-bulk-load-20261031": [
+          "benchbox/core/tpch/*",
+          "benchbox/core/throughput/*",
+          "benchbox/core/contracts/*",
+          "benchbox/platforms/duckdb.py",
+          "benchbox/platforms/postgresql.py",
+          "benchbox/platforms/base/connection_wrappers.py",
+          "benchbox/platforms/base/execution.py",
+          "benchbox/platforms/base/platform_power.py",
+          "benchbox/platforms/base/data_loading.py",
+          "tests/unit/core/tpch/*",
+          "tests/unit/core/throughput/*",
+          "tests/unit/core/contracts/*",
+          "tests/unit/core/test_tpc_reporting_execution.py",
+          "tests/unit/platforms/*",
+          "tests/integration/test_tpch_refresh_integration.py",
+          "tests/integration/_tpch_refresh_utils.py",
+          "tests/integration/platforms/test_postgresql_live.py",
+          "docs/internal/*",
+          "changelog.d/*"
+        ],
+        "tpch-ducklake-refresh-support-20261103": [
+          "benchbox/platforms/ducklake.py",
+          "tests/unit/platforms/*",
+          "tests/unit/core/tpch/*",
+          "tests/integration/test_ducklake_integration.py",
+          "docs/internal/*",
+          "changelog.d/*"
+        ],
+        "tpch-refresh-stream-window-excludes-connect-20261103": [
+          "benchbox/core/tpch/throughput_test.py",
+          "tests/unit/core/throughput/*",
+          "tests/unit/core/tpch/test_tpch_refresh.py",
+          "docs/internal/throughput-result-alignment.md",
+          "changelog.d/*"
+        ],
+        "tpch-rf1-native-ingest-singlestore-20261103": [
+          "benchbox/platforms/singlestore.py",
+          "tests/unit/platforms/*",
+          "tests/unit/core/tpch/*",
+          "tests/integration/platforms/test_singlestore_live.py",
+          "docs/internal/*",
+          "changelog.d/*"
+        ]
+      },
+      "scope_hash": "95f9d1c071f4d57df7ecb3cb56232dc23a8d8d56bcbbbdcd5eed995736304d71",
+      "start_head": "3a3ee9826a6ab939d6235d31e69056c789ac365e",
+      "terminal_outcome": "deliver"
     }
   },
   "items": {
