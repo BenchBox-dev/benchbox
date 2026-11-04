@@ -257,14 +257,64 @@ def _commit(repo: Path, message: str) -> str:
     return _git(repo, "rev-parse", "HEAD")
 
 
+WORKFLOW = """\
+name: Release
+env:
+  HEAVY: "1.5"
+jobs:
+  admit:
+    runs-on: ubuntu-latest
+  uat-stage1:
+    needs: admit
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - shard: sqlite
+            platforms: sqlite
+    steps:
+      - run: make uat-sweep
+        env:
+          BENCHBOX_HEAVY_MEMORY_BUDGET_GIB: '13'
+  uat-stage2:
+    needs: [admit, uat-stage1]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: make uat-sweep
+        env:
+          CLICKHOUSE_MEMORY_LIMIT: 12g
+  uat-stage3:
+    needs: [admit, uat-stage2]
+    runs-on: ubuntu-latest
+    steps:
+      - run: make uat-sweep
+  release-uat:
+    needs: [uat-stage3]
+    steps:
+      - run: gate
+"""
+GUARDED_FILES = (
+    "tests/uat/file.txt",
+    "tests/utilities/file.txt",
+    "tests/__init__.py",
+    "docker/file.txt",
+    ".github/actions/release-uat-env/file.txt",
+    "Makefile",
+)
+WORKFLOW_FILE = ".github/workflows/release-v2.yml"
+
+
 @pytest.fixture
 def repo(tmp_path):
     path = tmp_path / "repo"
     path.mkdir()
     _git(path, "init", "-q")
-    for directory in ("tests/uat", "docker", ".github/actions/release-uat-env"):
-        (path / directory).mkdir(parents=True)
-        (path / directory / "file.txt").write_text("one\n")
+    for name in GUARDED_FILES:
+        (path / name).parent.mkdir(parents=True, exist_ok=True)
+        (path / name).write_text("one\n")
+    (path / WORKFLOW_FILE).parent.mkdir(parents=True, exist_ok=True)
+    (path / WORKFLOW_FILE).write_text(WORKFLOW)
     (path / "uv.lock").write_text(LOCK.format(v=RC))
     return path
 
@@ -276,8 +326,8 @@ def test_tree_check_passes_when_only_the_benchbox_lock_version_changes(repo):
     assert reuse.tree_differences(rc_sha, _commit(repo, "final"), RC, FINAL, repo) == []
 
 
-@pytest.mark.parametrize("path", ["tests/uat/file.txt", "docker/file.txt", ".github/actions/release-uat-env/file.txt"])
-def test_tree_check_fails_when_a_guarded_tree_changes(repo, path):
+@pytest.mark.parametrize("path", GUARDED_FILES)
+def test_tree_check_fails_when_a_guarded_path_changes(repo, path):
     rc_sha = _commit(repo, "rc")
     (repo / path).write_text("two\n")
     differences = reuse.tree_differences(rc_sha, _commit(repo, "final"), RC, RC, repo)
@@ -288,6 +338,73 @@ def test_tree_check_fails_when_a_new_guarded_file_appears(repo):
     rc_sha = _commit(repo, "rc")
     (repo / "docker" / "new.yml").write_text("x\n")
     assert reuse.tree_differences(rc_sha, _commit(repo, "final"), RC, RC, repo)
+
+
+def _final_workflow(repo: Path, text: str) -> list[str]:
+    rc_sha = _commit(repo, "rc")
+    (repo / WORKFLOW_FILE).write_text(text)
+    return reuse.tree_differences(rc_sha, _commit(repo, "final"), RC, RC, repo)
+
+
+def test_workflow_check_ignores_scheduling_keys_and_other_jobs(repo):
+    changed = (
+        WORKFLOW.replace(
+            "needs: admit\n    runs-on", "needs: [admit, uat-reuse]\n    if: ${{ !cancelled() }}\n    runs-on", 1
+        )
+        .replace("needs: [admit, uat-stage1]\n    if: ${{ always() }}", "needs: [admit, uat-reuse, uat-stage1]")
+        .replace("steps:\n      - run: gate", "steps:\n      - run: other gate")
+        + "  uat-reuse:\n    needs: admit\n"
+    )
+    assert _final_workflow(repo, changed) == []
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "job"),
+    [
+        ("BENCHBOX_HEAVY_MEMORY_BUDGET_GIB: '13'", "BENCHBOX_HEAVY_MEMORY_BUDGET_GIB: '14'", "uat-stage1"),
+        ("CLICKHOUSE_MEMORY_LIMIT: 12g", "CLICKHOUSE_MEMORY_LIMIT: 8g", "uat-stage2"),
+        ("platforms: sqlite", "platforms: sqlite,duckdb", "uat-stage1"),
+        (
+            "      - run: make uat-sweep\n  release-uat",
+            "      - run: make uat-sweep\n      - run: extra\n  release-uat",
+            "uat-stage3",
+        ),
+    ],
+)
+def test_workflow_check_fails_when_a_stage_job_changes_beyond_scheduling(repo, old, new, job):
+    assert old in WORKFLOW
+    differences = _final_workflow(repo, WORKFLOW.replace(old, new, 1))
+    assert differences == [f"{WORKFLOW_FILE}: {job} differs beyond needs and if"]
+
+
+def test_workflow_check_fails_when_workflow_env_changes(repo):
+    assert _final_workflow(repo, WORKFLOW.replace('HEAVY: "1.5"', 'HEAVY: "2"')) == [
+        f"{WORKFLOW_FILE}: workflow-level env differs"
+    ]
+
+
+def test_workflow_check_fails_when_a_stage_job_is_removed(repo):
+    stripped = WORKFLOW.replace(
+        "  uat-stage3:\n    needs: [admit, uat-stage2]\n    runs-on: ubuntu-latest\n    steps:\n      - run: make uat-sweep\n",
+        "",
+    )
+    assert _final_workflow(repo, stripped) == [f"{WORKFLOW_FILE}: uat-stage3 is missing"]
+
+
+RC4_COMMIT = "3a3ee9826a"
+
+
+def test_this_branch_workflow_keeps_the_stage_jobs_of_the_rc4_commit():
+    root = Path(__file__).resolve().parents[3]
+    probe = subprocess.run(
+        ["git", "cat-file", "-e", f"{RC4_COMMIT}:{WORKFLOW_FILE}"], cwd=root, capture_output=True, check=False
+    )
+    if probe.returncode != 0:
+        pytest.skip("the 0.5.0rc4 commit is not in this clone")
+    rc4 = _git(root, "show", f"{RC4_COMMIT}:{WORKFLOW_FILE}")
+    current = (root / WORKFLOW_FILE).read_text(encoding="utf-8")
+    assert reuse._stage_job_definitions(rc4) == reuse._stage_job_definitions(current)
+    assert "uat-reuse" in current and "uat-reuse" not in rc4
 
 
 def test_tree_check_fails_when_the_lock_changes_beyond_the_benchbox_version(repo):

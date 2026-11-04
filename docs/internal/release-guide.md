@@ -140,8 +140,10 @@ stage into shard jobs that run in parallel:
   `uat-reuse` job (final tags only) checks, and records in its job summary,
   that the candidate's `release-uat` job succeeded with green evidence for the
   candidate commit and admitted digest, that the candidate commit is an
-  ancestor of the final tag commit, that `tests/uat`, `docker`, and
-  `.github/actions/release-uat-env` are unchanged and `uv.lock` differs only
+  ancestor of the final tag commit, that `tests/uat`, `tests/utilities`,
+  `docker`, `.github/actions/release-uat-env`, and the `Makefile` are unchanged,
+  that the `release-v2.yml` stage jobs and workflow `env` are unchanged apart
+  from `needs` and `if`, and that `uv.lock` differs only
   in the `benchbox` version line, and that the candidate's wheel and sdist match
   the final's member by member apart from `RECORD` and the lines that hold only
   the version (see `docs/internal/release-artifacts.md`). When all hold the
@@ -150,7 +152,7 @@ stage into shard jobs that run in parallel:
   digest; if any condition fails the final runs the full stages. `publish` and
   `install-matrix` are unchanged. The candidate's shard artifacts are kept 30
   days, so tag the final within that window or expect a full UAT run; freeze
-  `tests/uat`, `docker`, and the environment action between the candidate and
+  those paths and the stage job definitions between the candidate and
   the final.
 
 The shard assignment is the `matrix.include` list of each `uat-stage` job.

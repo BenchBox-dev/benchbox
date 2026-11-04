@@ -18,7 +18,17 @@ FINAL_TAG = re.compile(r"v(\d+\.\d+\.\d+)")
 RC_TAG = re.compile(r"v(\d+\.\d+\.\d+)rc(\d+)")
 GATE_JOB_NAME = "release UAT gate"
 WORKFLOW_FILE = "release-v2.yml"
-GUARDED_TREES = ("tests/uat", "docker", ".github/actions/release-uat-env")
+GUARDED_TREES = (
+    "tests/uat",
+    "tests/utilities",
+    "tests/__init__.py",
+    "docker",
+    ".github/actions/release-uat-env",
+    "Makefile",
+)
+WORKFLOW_PATH = ".github/workflows/release-v2.yml"
+STAGE_JOBS = ("uat-stage1", "uat-stage2", "uat-stage3")
+SCHEDULING_KEYS = ("needs", "if")
 VERDICT_GREEN = "green"
 PLACEHOLDER = b"@@VERSION@@"
 IGNORED = object()
@@ -235,6 +245,32 @@ def normalize_lock(text: str, version: str) -> str | None:
     return "\n".join(lines) if found == 1 else None
 
 
+def _stage_job_definitions(text: str) -> dict[str, Any]:
+    import yaml
+
+    workflow = yaml.safe_load(text)
+    jobs = workflow["jobs"]
+    definitions: dict[str, Any] = {"env": workflow.get("env")}
+    for name in STAGE_JOBS:
+        job = jobs.get(name)
+        definitions[name] = None if job is None else {k: v for k, v in job.items() if k not in SCHEDULING_KEYS}
+    return definitions
+
+
+def workflow_differences(rc_sha: str, final_sha: str, repo: Path) -> list[str]:
+    rc = _stage_job_definitions(_git_out("show", f"{rc_sha}:{WORKFLOW_PATH}", cwd=repo))
+    final = _stage_job_definitions(_git_out("show", f"{final_sha}:{WORKFLOW_PATH}", cwd=repo))
+    differences: list[str] = []
+    for name in STAGE_JOBS:
+        if rc[name] is None or final[name] is None:
+            differences.append(f"{WORKFLOW_PATH}: {name} is missing")
+        elif rc[name] != final[name]:
+            differences.append(f"{WORKFLOW_PATH}: {name} differs beyond needs and if")
+    if rc["env"] != final["env"]:
+        differences.append(f"{WORKFLOW_PATH}: workflow-level env differs")
+    return differences
+
+
 def tree_differences(rc_sha: str, final_sha: str, rc_version: str, final_version: str, repo: Path) -> list[str]:
     differences: list[str] = []
     diff = _git("diff", "--quiet", f"{rc_sha}..{final_sha}", "--", *GUARDED_TREES, cwd=repo)
@@ -243,6 +279,7 @@ def tree_differences(rc_sha: str, final_sha: str, rc_version: str, final_version
         differences.append(f"guarded trees changed since the release candidate: {', '.join(names[:10])}")
     elif diff.returncode != 0:
         raise ValueError(f"git diff failed: {diff.stderr.strip()}")
+    differences.extend(workflow_differences(rc_sha, final_sha, repo))
     rc_lock = normalize_lock(_git_out("show", f"{rc_sha}:uv.lock", cwd=repo), rc_version)
     final_lock = normalize_lock(_git_out("show", f"{final_sha}:uv.lock", cwd=repo), final_version)
     if rc_lock is None or final_lock is None:

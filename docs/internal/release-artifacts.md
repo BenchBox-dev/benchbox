@@ -218,9 +218,14 @@ Gates, in order:
      the candidate's admitted digest; unexpired shard artifacts exist for all
      three stages.
    - The candidate commit is an ancestor of the final tag commit.
-   - `git diff` of `tests/uat`, `docker`, and `.github/actions/release-uat-env`
-     between the two commits is empty, and `uv.lock` differs only in the
-     `benchbox` package version line.
+   - `git diff` of `tests/uat`, `tests/utilities`, `tests/__init__.py`,
+     `docker`, `.github/actions/release-uat-env`, and the `Makefile` between
+     the two commits is empty. In `release-v2.yml`, the workflow-level `env` and
+     the `uat-stage1`, `uat-stage2`, and `uat-stage3` jobs are equal at both
+     commits once only their `needs` and `if` keys are ignored, so the shard
+     matrix, environment, steps, runner and timeouts are the ones the
+     candidate ran. `uv.lock` differs only in the `benchbox` package version
+     line.
    - The candidate's wheel and sdist are obtained from the candidate run's
      `admitted-<rc tag>` artifact or, when that has expired, from the trunk
      `dist-<sha>-attempt-<n>` artifact. Either must reproduce the admitted
