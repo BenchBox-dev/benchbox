@@ -38,18 +38,16 @@ class _NativeConnection:
         self.calls.append((sql, file, dict(format_options)))
         path = Path(file)
         raw = path.read_bytes()
-        if format_options["compression"] == "GZIP":
-            raw = gzip.decompress(raw)
         lines = [line for line in raw.decode("utf-8").split("\n") if line]
         delimiter = format_options["field_delimiter"]
         lines = lines[int(format_options["skip_header"]) :]
         null = format_options.get("null_display", "\\N")
         empty_is_null = format_options.get("empty_field_as") == "null"
+        parsed = [line.split(delimiter) for line in lines]
+        if len({len(values) for values in parsed}) > 1:
+            raise ValueError("column count mismatch")
         loaded = 0
-        for line in lines:
-            values = line.split(delimiter)
-            if format_options.get("error_on_column_count_mismatch") == "false" and values[-1] == "":
-                values = values[:-1]
+        for values in parsed:
             self.rows.append(tuple(None if v == null or (v == "" and empty_is_null) else v for v in values))
             loaded += 1
         return _Stats(loaded)
@@ -108,9 +106,8 @@ class TestNativeLoadPath:
         assert stats["customer"] == 4
         sql, file, options = connection.calls[0]
         assert sql == "INSERT INTO `customer` VALUES"
-        assert file == str(tmp_path / "customer.tbl")
+        assert file != str(tmp_path / "customer.tbl")
         assert options["field_delimiter"] == "|"
-        assert options["error_on_column_count_mismatch"] == "false"
         assert options["skip_header"] == "0"
         assert options["compression"] == "NONE"
         assert all(len(r) == 8 for r in connection.rows)
@@ -124,16 +121,16 @@ class TestNativeLoadPath:
         assert stats["t"] == 2
         options = connection.calls[0][2]
         assert options["field_delimiter"] == ","
-        assert "error_on_column_count_mismatch" not in options
+        assert "quote" not in options
 
-    def test_gzip_compression_is_passed_to_server(self, adapter, tmp_path):
+    def test_gzip_is_decompressed_locally_before_load(self, adapter, tmp_path):
         benchmark = _benchmark(tmp_path, "t", "1,a\n2,b\n", ".csv.gz", opener=gzip.open)
         connection = _NativeConnection()
 
         stats, _, _ = _run(adapter, connection, benchmark, tmp_path)
 
         assert stats["t"] == 2
-        assert connection.calls[0][2]["compression"] == "GZIP"
+        assert connection.calls[0][2]["compression"] == "NONE"
 
     def test_multiple_files_accumulate(self, adapter, tmp_path):
         one = tmp_path / "a.csv"
@@ -183,15 +180,16 @@ class TestNativeLoadPath:
 
         assert stats["t"] == 0
 
-    def test_tbl_without_trailing_delimiter_keeps_strict_column_count(self, adapter, tmp_path):
-        benchmark = _benchmark(tmp_path, "t", "1|a|b\n2|c|d\n", ".tbl")
+    def test_ragged_rows_fail_instead_of_loading(self, adapter, tmp_path):
+        benchmark = _benchmark(tmp_path, "t", "1|a|\n2|b|c|d|\n", ".tbl")
         connection = _NativeConnection()
 
-        _run(adapter, connection, benchmark, tmp_path)
+        stats, _, _ = _run(adapter, connection, benchmark, tmp_path)
 
-        assert "error_on_column_count_mismatch" not in connection.calls[0][2]
+        assert stats["t"] == 0
+        assert connection.rows == []
 
-    def test_tpc_empty_fields_load_as_null_and_quote_is_explicit(self, adapter, tmp_path):
+    def test_tpc_empty_fields_load_as_null_and_default_quote_is_left_to_server(self, adapter, tmp_path):
         benchmark = _benchmark(tmp_path, "t", "1|a|\n", ".tbl")
         connection = _NativeConnection()
 
@@ -199,7 +197,21 @@ class TestNativeLoadPath:
 
         options = connection.calls[0][2]
         assert options["empty_field_as"] == "null"
-        assert options["quote"] == '"'
+        assert "quote" not in options
+
+    def test_dialect_quote_is_passed(self, adapter, tmp_path):
+        benchmark = _benchmark(tmp_path, "t", "1,a\n", ".csv")
+        benchmark.csv_quote = "'"
+        connection = _NativeConnection()
+        with patch(
+            "benchbox.platforms.base.data_loading.resolve_csv_dialect",
+            return_value=Mock(
+                delimiter=",", encoding="utf-8", has_header=False, null_marker=None, quote="'", normalize_booleans=False
+            ),
+        ):
+            _run(adapter, connection, benchmark, tmp_path)
+
+        assert connection.calls[0][2]["quote"] == "'"
 
     def test_unsafe_delimiter_rejected(self, adapter, tmp_path):
         benchmark = _benchmark(tmp_path, "t", "1;a\n", ".csv")

@@ -344,8 +344,6 @@ class DatabendAdapter(PlatformAdapter):
 
         return table_stats, elapsed_seconds(start_time), None
 
-    _COMPRESSION_FORMATS = {".gz": "GZIP", ".bz2": "BZ2", ".zst": "ZSTD"}
-
     def _insert_files_batched(
         self,
         connection: Any,
@@ -374,6 +372,8 @@ class DatabendAdapter(PlatformAdapter):
         return total_rows_loaded
 
     def _load_file_native(self, connection: Any, table_name_quoted: str, file_path: Path, dialect: Any) -> int:
+        from benchbox.platforms.base.data_loading import prepare_local_load_file
+
         delimiter = dialect.delimiter
         if delimiter not in (",", "|", "\t"):
             raise ValueError(f"Unsafe delimiter character: {delimiter!r}")
@@ -383,18 +383,20 @@ class DatabendAdapter(PlatformAdapter):
             "field_delimiter": delimiter,
             "record_delimiter": "\n",
             "skip_header": "1" if dialect.has_header else "0",
-            "compression": self._COMPRESSION_FORMATS.get(file_path.suffix, "NONE"),
-            "quote": dialect.quote or '"',
+            "compression": "NONE",
         }
+        if dialect.quote:
+            format_options["quote"] = dialect.quote
         if dialect.null_marker:
             format_options["null_display"] = dialect.null_marker
         else:
             format_options["empty_field_as"] = "null"
-        if self._has_trailing_delimiter(file_path, dialect):
-            format_options["error_on_column_count_mismatch"] = "false"
 
         before = self._count_rows_or_none(connection, table_name_quoted)
-        stats = connection.load_file(f"INSERT INTO {table_name_quoted} VALUES", str(file_path), format_options)
+        with prepare_local_load_file(
+            file_path, dialect=dialect, strip_trailing_delim=self._has_trailing_delimiter(file_path, dialect)
+        ) as load_path:
+            stats = connection.load_file(f"INSERT INTO {table_name_quoted} VALUES", str(load_path), format_options)
         after = self._count_rows_or_none(connection, table_name_quoted)
         if before is not None and after is not None:
             return after - before
@@ -406,8 +408,10 @@ class DatabendAdapter(PlatformAdapter):
     def _has_trailing_delimiter(self, file_path: Path, dialect: Any) -> bool:
         from benchbox.utils.file_format import get_data_extension
 
+        if get_data_extension(file_path) in (".tbl", ".dat"):
+            return True
         if file_path.suffix == ".zst":
-            return get_data_extension(file_path) in (".tbl", ".dat")
+            return False
         handler = FileFormatRegistry.get_compression_handler(file_path)
         with handler.open(file_path, encoding=dialect.encoding) as f:
             skipped = 0
@@ -450,7 +454,7 @@ class DatabendAdapter(PlatformAdapter):
 
             compression_handler = FileFormatRegistry.get_compression_handler(file_path)
 
-            with compression_handler.open(file_path) as f:
+            with compression_handler.open(file_path, encoding=dialect.encoding) as f:
                 batch_rows: list[str] = []
                 column_count: int | None = None
 
