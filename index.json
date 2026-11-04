@@ -172,6 +172,79 @@
       "scope_hash": "b9c7208cbe74aa884dd245e67f0bc8e375262d11d7e3ae20e21c9154d36a04bc",
       "start_head": "5cfea582d2197ecc150d80c6125a65130c02f23a",
       "terminal_outcome": "deliver"
+    },
+    "native-bulk-load-sql": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/native-bulk-load-sql",
+      "integration_head": "3a3ee9826a6ab939d6235d31e69056c789ac365e",
+      "integration_log": [
+        {
+          "at": "2026-11-04T13:52:23Z",
+          "head": "3a3ee9826a6ab939d6235d31e69056c789ac365e",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-native-bulk-load-sql",
+      "lifecycle": "active",
+      "members": [
+        "perf-prepare-local-load-file-streaming-20261031",
+        "perf-doris-stream-load-line-rewrite-20261031",
+        "perf-databend-bulk-load-20261030",
+        "perf-firebolt-core-bulk-load-20261030"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "owner_epoch": 0,
+      "owner_generation": "b136a322de469289f72647bc7d9c0bd5",
+      "project_id": "benchbox",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "perf-databend-bulk-load-20261030": [
+          "benchbox/platforms/databend/*.py",
+          "tests/unit/platforms/test_databend_adapter.py",
+          "tests/unit/platforms/test_databend_*.py",
+          "changelog.d/*"
+        ],
+        "perf-doris-stream-load-line-rewrite-20261031": [
+          "benchbox/platforms/doris.py",
+          "tests/unit/platforms/test_doris_adapter.py",
+          "tests/unit/platforms/test_doris_stream_load_guards.py",
+          "tests/unit/platforms/test_doris_stream_load_*.py",
+          "changelog.d/*"
+        ],
+        "perf-firebolt-core-bulk-load-20261030": [
+          "benchbox/platforms/firebolt.py",
+          "tests/unit/platforms/test_firebolt_adapter.py",
+          "tests/unit/platforms/test_firebolt_coverage.py",
+          "tests/unit/platforms/test_firebolt_*.py",
+          "changelog.d/*"
+        ],
+        "perf-prepare-local-load-file-streaming-20261031": [
+          "benchbox/platforms/base/data_loading.py",
+          "benchbox/platforms/postgresql.py",
+          "benchbox/platforms/singlestore.py",
+          "benchbox/platforms/datafusion.py",
+          "tests/unit/platforms/test_prepare_local_load_file.py",
+          "tests/unit/platforms/base/test_trailing_delimiter_loading.py",
+          "tests/unit/platforms/base/test_data_loading_operations.py",
+          "tests/unit/platforms/test_data_loading.py",
+          "tests/unit/platforms/test_postgresql_adapter.py",
+          "tests/unit/platforms/test_singlestore_adapter.py",
+          "tests/unit/platforms/test_datafusion_trailing_chunked.py",
+          "tests/unit/platforms/test_prepare_local_load_file_*.py",
+          "tests/unit/platforms/base/test_prepare_local_load_file_*.py",
+          "changelog.d/*"
+        ]
+      },
+      "scope_hash": "a99ebca08b62e5b80b87e98567b925e26f9bbe65609c28fa5e5a6d4c81c0eebb",
+      "start_head": "3a3ee9826a6ab939d6235d31e69056c789ac365e",
+      "terminal_outcome": "deliver"
     }
   },
   "items": {
