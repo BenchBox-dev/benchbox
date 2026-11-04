@@ -110,6 +110,15 @@
       "op": "promote",
       "op_id": "5c044037b74641b8bc3ea2eab2dae028",
       "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-04T18:09:14Z",
+      "client": "omp-coding-agent",
+      "generation": "e48673d564f44a509cc03163b13eb415",
+      "op": "take",
+      "op_id": "846e0cd1aa964198903d7eb8b956b115",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
     }
   ]
 }
