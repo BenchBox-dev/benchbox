@@ -28624,9 +28624,9 @@
     },
     "theseus-repository-governance-bootstrap-20261102": {
       "claim": {
-        "expires_at": "2026-11-05T18:09:43Z",
-        "generation": "cc62de9a6f454a5d80e2aa78f4ac89e9",
-        "renewals": 0,
+        "expires_at": "2026-11-05T18:09:52Z",
+        "generation": "b784473910a84cc7988f5352f1d63340",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f"
       },
       "needs": [
