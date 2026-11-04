@@ -18683,10 +18683,15 @@
       "title": "pandas DataFrame loader: cast dates in Arrow, not via Python date objects"
     },
     "perf-prepare-local-load-file-streaming-20261031": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-05T14:23:49Z",
+        "generation": "106fbb451ddd46e993446aad78cd5bf4",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Stop line-by-line Python rewrites in prepare_local_load_file before COPY"
     },
     "perf-questdb-influxdb-load-20261030": {
