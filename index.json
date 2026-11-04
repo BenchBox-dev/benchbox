@@ -18757,10 +18757,15 @@
       "title": "Doris Stream Load: drop per-line Python decimal-null rewrite"
     },
     "perf-duckdb-wire-native-handlers-20261030": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-05T14:42:18Z",
+        "generation": "9b34d8a0c884406b90dde7060b78e531",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Wire DuckDB Vortex/DuckLake handlers; stop to_pylist in format handlers"
     },
     "perf-fallback-values-loaders-20261030": {
