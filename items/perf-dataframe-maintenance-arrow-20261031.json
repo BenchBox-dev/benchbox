@@ -4,6 +4,11 @@
     "Spark maintenance enables Arrow conversion or passes Arrow directly.",
     "Post-maintenance table contents match current behavior."
   ],
+  "batch": {
+    "batch_id": "arrow-dataframe-roundtrips",
+    "implementation_dependencies": [],
+    "member_id": "perf-dataframe-maintenance-arrow-20261031"
+  },
   "description": "platforms/dataframe/iceberg_maintenance.py:289-297 (update) converts matching rows to pandas and back; :322-345 (merge) scans the entire target table to pandas and merges with .map(dict(zip(...))). hudi_maintenance.py:79,87 and pyspark_maintenance.py:123 call spark.createDataFrame(arrow.to_pandas()), row-wise unless Arrow is enabled. platforms/datafusion.py:66-74 DataFusionCursorCompat._materialize builds a tuple per row via to_pylist; maintenance, write primitives and power/throughput fallback fetchall use it. Use pyiceberg upsert/overwrite with Arrow filters, Arrow-enabled or direct Arrow createDataFrame on Spark 4, and an Arrow-native count/fetch in the DataFusion cursor.",
   "sessions": [
     {
@@ -13,6 +18,14 @@
       "op": "create",
       "op_id": "1ccd379381334f8fad31c1b1df4feb28",
       "session_id": "d2b018a349924f4f88b746458c80b878"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-04T13:52:57Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "90981029a2a04e39bb5648b418760dac",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
 }
