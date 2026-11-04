@@ -33,7 +33,7 @@ def bulk_insert_dataframe(cursor: Any, quoted_table: str, quoted_columns: list[s
         if not (hasattr(cursor, "copy_expert") or hasattr(cursor, "copy")):
             cursor = cursor.cursor()
         buffer = io.StringIO()
-        dataframe.to_csv(buffer, index=False, header=False, na_rep=_COPY_NULL)
+        dataframe.to_csv(buffer, index=False, header=False, na_rep=_COPY_NULL, lineterminator="\n")
         copy_sql = f"COPY {quoted_table} ({column_sql}) FROM STDIN WITH (FORMAT csv, NULL '{_COPY_NULL}')"
         if hasattr(cursor, "copy_expert"):
             buffer.seek(0)
