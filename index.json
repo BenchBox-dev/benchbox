@@ -64,7 +64,7 @@
         }
       },
       "integration_branch": "feat/arrow-dataframe-roundtrips",
-      "integration_head": "fb0e3094013db632ca23f62f804e7fa105410f47",
+      "integration_head": "83489483a6b2758cfde0abc10089eecc703d2304",
       "integration_log": [
         {
           "at": "2026-11-04T13:52:39Z",
@@ -116,6 +116,22 @@
             "perf-duckdb-wire-native-handlers-20261030"
           ],
           "seq": 4
+        },
+        {
+          "at": "2026-11-04T16:41:56Z",
+          "changed_files": [
+            "benchbox/platforms/dataframe/iceberg_maintenance.py",
+            "tests/unit/platforms/test_data_loading_arrow_insert.py"
+          ],
+          "head": "83489483a6b2758cfde0abc10089eecc703d2304",
+          "kind": "fix",
+          "op_id": "fa60822ff955468e88d1579ef0aeef56",
+          "previous_head": "fb0e3094013db632ca23f62f804e7fa105410f47",
+          "requires_acceptance": [
+            "perf-dataframe-maintenance-arrow-20261031",
+            "perf-duckdb-wire-native-handlers-20261030"
+          ],
+          "seq": 5
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-arrow-dataframe-roundtrips",
