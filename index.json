@@ -28585,13 +28585,18 @@
       "title": "Provision Theseus-owned App, protected secrets and tailnet identity without exposing candidate builds"
     },
     "theseus-package-identity-install-20261102": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-05T18:10:03Z",
+        "generation": "ac8fbab280e94b5c99833614c5eb65bd",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f"
+      },
       "needs": [
         "theseus-repository-governance-bootstrap-20261102",
         "theseus-decision-vendored-matcher-20261102"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Package Theseus with consumer-configured identity and a hash-verified isolated installer"
     },
     "theseus-post-cutover-observation-closeout-20261102": {
