@@ -13,7 +13,7 @@
     ],
     "member_id": "tpch-ducklake-refresh-support-20261103"
   },
-  "context": "Origin: 2026-11-03 root-cause analysis of TPC-H RF1 timing (5 whys) and its adversarial review. Spec clauses cited here were read from the published PDFs at the links on 2026-11-03; re-read them rather than trusting this text.",
+  "context": "Origin: 2026-11-03 root-cause analysis of TPC-H RF1 timing (5 whys) and its adversarial review. Spec clauses cited here were read from the published PDFs at the links on 2026-11-03; re-read them rather than trusting this text.\n\nLanded in batch tpch-refresh-path (accepted 51c2021772). Command: BENCHBOX_OUTPUT_DIR=~/Developer/benchmark_runs/ducklake-refresh make heavy-run CMD='uv run -- benchbox run --platform ducklake --benchmark tpch --scale 0.01 --phases generate,load,maintenance --non-interactive': QRF1 and QRF2 SUCCESS (47/48 rows), validation passed. Live test TestDuckLakeTpchRefreshLive::test_rf1_rf2_values_path_with_expected_counts passed. Declaration kept True and pinned in test_refresh_capability_matches_verified_platforms; DuckLake proven on the VALUES fallback only; native ingest not enabled (resolve_refresh_ingester(adapter) is None pinned).",
   "description": "Problem. DuckLakeAdapter (benchbox/platforms/ducklake.py) subclasses DuckDBAdapter and inherits supports_refresh_functions = True. No refresh run on DuckLake is recorded. The repository already withdrew the declaration for Redshift for the same reason ('no run has verified it'). The attribute table in earlier analysis omitted DuckLake because the subclass inherits the value.\n\nDecision rule (the plan's recommended answer, adopted as the default; the owner may override in context; no owner gate otherwise): try a DuckDB-style refresh run against a DuckLake catalog at SF0.01. If RF1 and RF2 succeed and their evidence validates, keep the declaration and add a test that pins it. If they cannot be made to pass without changes outside this item, set supports_refresh_functions = False on DuckLakeAdapter and let the existing 'not supported' path report it.\n\nGuardrails for all code work: work only in a linked worktree (make worktree-create); never edit the primary clone. No explanatory comments or docstrings in source (make comment-policy-check). Durations use benchbox.utils.clock.mono_time()/elapsed_seconds(). Add a changelog.d/ fragment. Cited line numbers are orientation only: re-read the named symbols, docs and spec clauses before editing and treat a mismatch as a reason to stop and update this item. No live-cloud runs without owner approval; heavy runs only through make heavy-run or a lock-taking entry point. Green focused tests are not release certification. Never leave the inherited True in place on the strength of 'it is just DuckDB'. Do not change DuckDBAdapter's declaration. The RF1 native ingest capability is declared per adapter class and DuckLake does not inherit it (perf-tpch-rf1-bulk-load-20261031 pins that); if RF1 ingest has landed by the time this item runs, native ingest on DuckLake is only enabled after its own value-parity proof here.",
   "links": [
     "benchbox/platforms/ducklake.py",
@@ -110,6 +110,14 @@
       "generation": "2d1034d407c949909e5c2cdc49525e8c",
       "op": "prepare",
       "op_id": "6ad5b4ba03f54f7991f59266eac46002",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-04T14:44:00Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ad059aefadcd48b6987ba4892e3add80",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
