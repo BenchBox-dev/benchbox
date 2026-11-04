@@ -364,7 +364,8 @@
     "tpch-refresh-path": {
       "accepted_members": {
         "perf-tpch-rf1-bulk-load-20261031": "5e88433033745c63876856eec5cf25b1efbe8453",
-        "tpch-refresh-stream-window-excludes-connect-20261103": "7be817e38ec725a582e3c002243d9eb2b7a9b614"
+        "tpch-refresh-stream-window-excludes-connect-20261103": "7be817e38ec725a582e3c002243d9eb2b7a9b614",
+        "tpch-rf1-native-ingest-singlestore-20261103": "44fd07716d4d08f0b110e98fd808fce1e188f9ed"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -398,10 +399,18 @@
           ],
           "integration_head": "7a9bb7b6055e6067b1d8353ad2fc1f8107c6e7b0",
           "integration_seq": 1
+        },
+        "tpch-rf1-native-ingest-singlestore-20261103": {
+          "accepted_head": "44fd07716d4d08f0b110e98fd808fce1e188f9ed",
+          "changed_files": [
+            "tests/unit/core/tpch/test_tpch_refresh_native_ingest.py"
+          ],
+          "integration_head": "360de0e761a344df24e7ab43470d2af48d6fa755",
+          "integration_seq": 3
         }
       },
       "integration_branch": "feat/tpch-refresh-path",
-      "integration_head": "a7f3dff00eaf3a4221b2359e1f69ea8dcd8d66b5",
+      "integration_head": "360de0e761a344df24e7ab43470d2af48d6fa755",
       "integration_log": [
         {
           "at": "2026-11-04T13:53:00Z",
@@ -426,6 +435,15 @@
           "op_id": "ddadbc8c49bb4ecf97855a7aa45c43a3",
           "previous_head": "7a9bb7b6055e6067b1d8353ad2fc1f8107c6e7b0",
           "seq": 2
+        },
+        {
+          "at": "2026-11-04T14:38:19Z",
+          "head": "360de0e761a344df24e7ab43470d2af48d6fa755",
+          "kind": "prepare",
+          "member": "tpch-rf1-native-ingest-singlestore-20261103",
+          "op_id": "703bba03181c42e7bb2d87a15666ab1d",
+          "previous_head": "a7f3dff00eaf3a4221b2359e1f69ea8dcd8d66b5",
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpch-refresh-path",
@@ -29602,17 +29620,12 @@
       "title": "TPC-H RF1 native ingest for Snowflake and SingleStore, gated on live-run approval"
     },
     "tpch-rf1-native-ingest-singlestore-20261103": {
-      "claim": {
-        "expires_at": "2026-11-05T14:32:28Z",
-        "generation": "39abaa0fea1a4155b2eb5a768df04d4e",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [
         "perf-tpch-rf1-bulk-load-20261031"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "TPC-H RF1 native ingest for SingleStore (LOAD DATA) inside the RF1 timer"
     },
     "tpch-rf1-native-ingest-snowflake-20261103": {
