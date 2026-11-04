@@ -27442,10 +27442,15 @@
       "title": "Advance mechanical SQLGlot refreshes through protected fork and BenchBox merges"
     },
     "sqlglot-e2e-source-aware-adoption-review": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-05T21:09:53Z",
+        "generation": "55631882c47345b49fdc74368f0ee32b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ba4923b65d2bea2a5584a721"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Review SQLGlot wheel adoptions against their actual fork source changes"
     },
     "sqlglot-e2e-verified-wheel-adoption": {
