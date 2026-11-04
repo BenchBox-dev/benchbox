@@ -9,6 +9,68 @@
     "member_id": "perf-doris-stream-load-line-rewrite-20261031"
   },
   "description": "doris.py:560-563 and :596-610 apply _fix_tpcds_decimal_nulls to every line of TPC-DS files and re-encode them; the non-chunked path reads the whole file into memory. Use Doris load options (columns: header with ifnull/mappings) or pyarrow.csv preprocessing. The executemany fallback at doris.py:633-676 runs only when requests is missing; consider making requests required and removing it.",
+  "prepared": {
+    "accepted_head": "5aabe90f7210b4410ca96cdb7920f3ec7d24970d",
+    "batch_id": "native-bulk-load-sql",
+    "changed_files": [
+      "benchbox/platforms/doris.py",
+      "changelog.d/feat-native-bulk-load-sql--perf-doris-stream-load-line-rewrite-20261031.json",
+      "tests/unit/platforms/test_doris_adapter.py",
+      "tests/unit/platforms/test_doris_stream_load_guards.py",
+      "tests/unit/platforms/test_doris_stream_load_null_handling.py"
+    ],
+    "integration_head": "2005772605e245af4f228267984d847c5c546396",
+    "integration_seq": 2,
+    "member_id": "perf-doris-stream-load-line-rewrite-20261031",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "a99ebca08b62e5b80b87e98567b925e26f9bbe65609c28fa5e5a6d4c81c0eebb",
+    "source_base": "5f8cd2ecbfc89c69e20fe983d12a16000663de45",
+    "source_revision": "5aabe90f7210b4410ca96cdb7920f3ec7d24970d",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-native-bulk-load-sql--perf-doris-stream-load-line-rewrite-20261031",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/platforms/test_doris_live.py",
+        "tests/integration/platforms/test_doris_smoke.py",
+        "tests/integration/test_manifest_driven_loading.py",
+        "tests/integration/test_misc_plan_capture_live.py",
+        "tests/integration/test_throughput_session_isolation.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/uat/test_connection_registry_drift.py",
+        "tests/unit/platforms/test_doris_adapter.py",
+        "tests/unit/platforms/test_doris_stream_load_guards.py",
+        "tests/unit/platforms/test_doris_stream_load_null_handling.py",
+        "tests/unit/platforms/test_misc_plan_capture.py",
+        "tests/unit/platforms/test_starrocks_doris_all_schemas.py",
+        "tests/unit/platforms/test_throughput_session_capability.py",
+        "tests/unit/utils/test_doris_query_shape_rewrites.py"
+      ],
+      "review": {
+        "base_sha": "5f8cd2ecbfc89c69e20fe983d12a16000663de45",
+        "head_sha": "5aabe90f7210b4410ca96cdb7920f3ec7d24970d",
+        "head_tree": "8283c51f3d2179a0943da79cd9c871b7d5c8e4b4",
+        "outcome": "clear",
+        "patch_digest": "5f58f9bb40c885acc5cecc3d899bb484",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "3a3ee9826a6ab939d6235d31e69056c789ac365e"
+      },
+      "revision": "5aabe90f7210b4410ca96cdb7920f3ec7d24970d",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:claude-code:root@vm:cb45f246c9de058740ccbeed",
@@ -33,6 +95,15 @@
       "generation": "24fed10fc3cd4f4392c1a931ac729877",
       "op": "take",
       "op_id": "eed971e8116240adafdcf240e9157dc7",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-04T14:30:11Z",
+      "client": "omp-coding-agent",
+      "generation": "24fed10fc3cd4f4392c1a931ac729877",
+      "op": "prepare",
+      "op_id": "eaf8e41d3dd441e2a45a46bd82edce0f",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
