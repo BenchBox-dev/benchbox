@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "Iceberg update and merge maintenance, Spark/Hudi DataFrame ingestion and the DataFusion cursor now stay in Arrow instead of round-tripping through pandas or per-row Python dicts; Iceberg merge only reads and rewrites the target rows in the source key range."
+    }
+  ]
+}

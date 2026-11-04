@@ -32,6 +32,43 @@ from benchbox.core.dataframe.maintenance_interface import (
 
 logger = logging.getLogger(__name__)
 
+_ARROW_CONVERSION_KEY = "spark.sql.execution.arrow.pyspark.enabled"
+
+
+def _supports_direct_arrow_ingest() -> bool:
+    try:
+        import pyspark
+
+        return int(str(pyspark.__version__).split(".")[0]) >= 4
+    except (ImportError, ValueError):
+        return False
+
+
+def _is_arrow_table(value: Any) -> bool:
+    try:
+        import pyarrow as pa
+    except ImportError:
+        return False
+    return isinstance(value, pa.Table)
+
+
+def create_spark_dataframe_from_pandas(spark: Any, pandas_df: Any) -> Any:
+    previous = spark.conf.get(_ARROW_CONVERSION_KEY, None)
+    spark.conf.set(_ARROW_CONVERSION_KEY, "true")
+    try:
+        return spark.createDataFrame(pandas_df)
+    finally:
+        if previous is None:
+            spark.conf.unset(_ARROW_CONVERSION_KEY)
+        else:
+            spark.conf.set(_ARROW_CONVERSION_KEY, previous)
+
+
+def create_spark_dataframe_from_arrow(spark: Any, arrow_table: Any) -> Any:
+    if _supports_direct_arrow_ingest():
+        return spark.createDataFrame(arrow_table)
+    return create_spark_dataframe_from_pandas(spark, arrow_table.to_pandas())
+
 
 PYSPARK_DELTA_CAPABILITIES = DataFrameMaintenanceCapabilities(
     platform_name="pyspark-delta",
@@ -117,10 +154,16 @@ class PySparkMaintenanceOperations(BaseDataFrameMaintenanceOperations):
             return dataframe
 
         if hasattr(dataframe, "to_dict") and hasattr(dataframe, "columns"):
-            return self.spark.createDataFrame(dataframe)
+            return create_spark_dataframe_from_pandas(self.spark, dataframe)
+
+        if _is_arrow_table(dataframe):
+            return create_spark_dataframe_from_arrow(self.spark, dataframe)
+
+        if hasattr(dataframe, "to_arrow"):
+            return create_spark_dataframe_from_arrow(self.spark, dataframe.to_arrow())
 
         if hasattr(dataframe, "to_pandas"):
-            return self.spark.createDataFrame(dataframe.to_pandas())
+            return create_spark_dataframe_from_pandas(self.spark, dataframe.to_pandas())
 
         if isinstance(dataframe, list):
             return self.spark.createDataFrame(dataframe)
