@@ -14,7 +14,7 @@
     ],
     "member_id": "tpch-rf1-native-ingest-singlestore-20261103"
   },
-  "context": "Origin: 2026-11-03 analysis of TPC-H RF1 timing and its adversarial reviews; the findings are restated in this item and in tpc-measured-intervals-reference-20261103. Spec clauses cited here were read from the published PDFs at the links on 2026-11-03; re-read them rather than trusting this text.",
+  "context": "Origin: 2026-11-03 analysis of TPC-H RF1 timing and its adversarial reviews; the findings are restated in this item and in tpc-measured-intervals-reference-20261103. Spec clauses cited here were read from the published PDFs at the links on 2026-11-03; re-read them rather than trusting this text.\n\nLanded in batch tpch-refresh-path (accepted 44fd07716d) as a fallback pin only. NOT RUN: LOAD DATA LOCAL INFILE availability check, parity, timer-boundary for native path, SF1 duration, atomicity (host has no container runtime; live cloud unauthorized). Client config: local_infile=True at benchbox/platforms/singlestore.py:236; supports_refresh_functions at :108. No native ingest was implemented; SingleStoreAdapter stays on VALUES; test_singlestore_stays_on_values_fallback pins it. Item remains open for a host with a local SingleStore container.",
   "description": "Extend the RF1 ingest capability from perf-tpch-rf1-bulk-load-20261031 to SingleStore (benchbox/platforms/singlestore.py, supports_refresh_functions = True). SingleStore refresh was proven on local containers (see tpch-refresh-functions-in-power-and-throughput), and the adapter sets local_infile=True, so no live-cloud spend is involved.\n\nSpec: TPC-H 3.0.1 clause 5.3.7.10: parsing, formatting and database activity on the refresh data stay inside the RF1 timer; nothing precedes the timer except relocation. For SingleStore nothing precedes the timer.\n\nCheck (agent-actionable, record the result): the server accepts LOAD DATA LOCAL INFILE on the target container (server-side local_infile enabled). If it does not and cannot be enabled by the existing container configuration, record that and leave SingleStore on the VALUES fallback; close this item as not applicable with that evidence.\n\nGuardrails for all code work: work only in a linked worktree (make worktree-create); never edit the primary clone. No explanatory comments or docstrings in source (make comment-policy-check). Durations use benchbox.utils.clock.mono_time()/elapsed_seconds(). Add a changelog.d/ fragment. Cited line numbers are orientation only: re-read the named symbols, docs and spec clauses before editing and treat a mismatch as a reason to stop and update this item. No live-cloud runs without owner approval; heavy runs only through make heavy-run or a lock-taking entry point. Green focused tests are not release certification. Do not call adapter.load_data. Do not add a mode that moves any step before the timer. Stays on the fallback unless the parity and speed criteria pass.",
   "links": [
     "https://www.tpc.org/tpc_documents_current_versions/pdf/tpc-h_v3.0.1.pdf",
@@ -106,6 +106,14 @@
       "generation": "39abaa0fea1a4155b2eb5a768df04d4e",
       "op": "prepare",
       "op_id": "703bba03181c42e7bb2d87a15666ab1d",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-04T14:43:55Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "509756bd90764a188730dc92a0853779",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
