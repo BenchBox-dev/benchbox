@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Fork-owned contract records version, fork/upstream SHA, exact wheel checksum and canonical producer run/attempt/artifact provenance; core can consume it with read-only access and no fork-write token.",
+    "A delivery is never marked verified before all required trusted fork checks and clean distribution verification pass on the actual merged main SHA; skipped/missing/failed/wrong-publisher checks refuse in the fork.",
+    "The producer verifies source/build/relocation/runtime/distribution integrity itself using existing build and test capabilities; no duplicate verifier or fork suite is required in core.",
+    "Actual canonical artifact replay and installed fork-wheel proof exercised; wrong run/head/attempt/digest/provenance and expired artifact refuse with actionable fork-owned recovery evidence.",
+    "No public package/release, parallel normal build, registry service, Theseus modification or core orchestration is introduced; fork PR passes its ordinary review/protection/CI and merges."
+  ],
+  "context": "Owner instruction 2026-11-05 supersedes BOTH rejected designs. benchbox-sqlglot owns upstream discovery/integration, fork PR lifecycle, source/relocation/runtime/engine/distribution validation and trustworthy wheel delivery. BenchBox core owns consuming that delivery, origin/identity/hash binding, transactional pin updates, its own wrapper/benchmark-definition/installed-package concerns and ordinary core PR landing. Core must not discover upstream, merge fork PRs, reconstruct/re-review fork source, repeat fork test matrices or acquire a fork-write credential. Theseus stays unchanged and generic; no special policy, external-source inlet, synthetic dataset, second model-review path or reviewer release is needed. Theseus PR25 closed unmerged; prior approval claims withdrawn. This supersedes the source-review-at-core portion of sqlglot-fork-review-h1-governance, not existing protected-branch rules or ordinary review requirements. Preserve exact merged-SHA producer evidence, scoped independent credentials, no candidate execution with write/reviewer secrets, no golden/outcome/test/waiver changes, reviewed rollback, human holds/disarms, reverted-delivery suppression and no public release/cloud spend. Update current fork/core runbooks to this boundary. Corrected proposal: local://sqlglot-end-to-end-proposal.md. The live tracker, not discarded branch code or prior notes, owns delivery state.",
+  "description": "Implement in BenchBox-dev/benchbox-sqlglot, not core or Theseus. Own a reliable verified wheel delivery contract using existing downstream build/verify tooling and canonical source/package/engine CI. State the minimum consumer contract: version, full fork/upstream identities, wheel filename+SHA256, trusted canonical producer workflow/run/attempt/artifact identity and links to fork validation evidence. Only expose a verified delivery once ALL fork-required trusted checks and clean distribution verification pass at the actual merged main SHA. Reuse that exact build, never PR-synthetic or arbitrary latest-main bytes. Source-to-wheel/relocation verification and fork runtime semantics are producer responsibilities.\n\nDecision gates: select existing GitHub Actions artifact transport rather than a new registry/service/database/public release; prove the completion record is trusted producer output, not self-reported candidate metadata, and that a core read-only consumer can retrieve it. Missing/expired artifact becomes a fork issue naming the exact canonical run to recover. No alternate unbound automatic rebuild. Core receives a trustworthy product contract and does not recompute fork required-check membership or source verification. No SQLGlot changes or new API in Theseus. Keep the producer disabled until its own checks/access/identity are proven; no core-only reliability dependency blocks implementation.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-sqlglot/blob/main/downstream/MAINTAINING.md",
+    "https://github.com/BenchBox-dev/benchbox-sqlglot/blob/main/downstream/build.py",
+    "https://github.com/BenchBox-dev/benchbox-sqlglot/blob/main/downstream/verify.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ba4923b65d2bea2a5584a721",
+      "at": "2026-11-05T14:06:27Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b7d8a4662adf4cb7b299311b27019f3f",
+      "session_id": "cf3fdc0e8210426f8ab8cc6664c384cd"
+    }
+  ]
+}

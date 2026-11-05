@@ -27453,6 +27453,13 @@
       "status": "open",
       "title": "Document automated fork refresh and BenchBox adoption with maintainer-owned exceptions"
     },
+    "sqlglot-e2e-fork-wheel-delivery": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Provide verified SQLGlot wheel deliveries from benchbox-sqlglot"
+    },
     "sqlglot-e2e-lifecycle-controller": {
       "claim": null,
       "needs": [
