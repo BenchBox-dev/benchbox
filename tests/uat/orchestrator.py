@@ -248,6 +248,7 @@ def run_sweep(
     log_dir = log_dir_override or exec_phase.reserve_default_log_dir(config, now=now)
     benchmark_runs_dir = exec_phase.default_benchmark_runs_dir(config, now=now)
     log_dir.mkdir(parents=True, exist_ok=True)
+    exec_phase.record_host_identity(log_dir)
     container_engine = _record_container_engine_identity(log_dir)
 
     if databases_root is None:

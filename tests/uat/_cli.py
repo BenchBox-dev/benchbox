@@ -291,39 +291,47 @@ def _artifact_digest_violations(stages: list, stage_paths: list[list[Path]]) -> 
 def _lifecycle_ordering_violations(stages: list, stage_paths: list[list[Path]]) -> list[str] | None:
     import datetime as _dt
 
-    from tests.uat.phases.report import release_gate_ordering_violations
+    from tests.uat.phases.report import host_scoped_ordering_violations, parse_lifecycle_host_id
+
+    def read_lifecycle(path: Path) -> str | None:
+        lifecycle = path.parent / "uat_lifecycle.log"
+        return lifecycle.read_text(encoding="utf-8") if lifecycle.is_file() else None
 
     violations: list[str] = []
     lifecycle_texts: list[list[str]] = []
     for stage_label, paths in zip(("stage2", "stage3"), stage_paths[1:]):
         texts = []
         for path in paths:
-            lifecycle = path.parent / "uat_lifecycle.log"
-            if lifecycle.is_file():
-                texts.append(lifecycle.read_text(encoding="utf-8"))
-            else:
+            text = read_lifecycle(path)
+            if text is None:
                 texts.append("")
                 violations.append(
-                    f"{stage_label}: docker stage missing lifecycle log ({lifecycle}); ordering not verifiable"
+                    f"{stage_label}: docker stage missing lifecycle log "
+                    f"({path.parent / 'uat_lifecycle.log'}); ordering not verifiable"
                 )
+            else:
+                texts.append(text)
         lifecycle_texts.append(texts)
     try:
-        stage1_completed_at = max(_dt.datetime.fromisoformat(s.completed_at) for s in stages[0])
-        stage2_completed_at = max(_dt.datetime.fromisoformat(s.completed_at) for s in stages[1])
+        completions = [
+            [
+                (_dt.datetime.fromisoformat(summary.completed_at), parse_lifecycle_host_id(read_lifecycle(path) or ""))
+                for summary, path in zip(summaries, paths)
+            ]
+            for summaries, paths in zip(stages[:2], stage_paths[:2])
+        ]
     except (TypeError, ValueError) as exc:
         print(f"[gate-check] ERROR: unparseable completed_at in stage summaries: {exc}", file=sys.stderr)
         return None
     violations.extend(
         f"stage1 boundary: {violation}"
-        for violation in release_gate_ordering_violations(
-            [text for texts in lifecycle_texts for text in texts], native_stage_completed_at=stage1_completed_at
+        for violation in host_scoped_ordering_violations(
+            [text for texts in lifecycle_texts for text in texts], earlier_stages=completions[0]
         )
     )
     violations.extend(
         f"stage2 boundary: {violation}"
-        for violation in release_gate_ordering_violations(
-            lifecycle_texts[1], native_stage_completed_at=stage2_completed_at
-        )
+        for violation in host_scoped_ordering_violations(lifecycle_texts[1], earlier_stages=completions[1])
     )
     return violations
 

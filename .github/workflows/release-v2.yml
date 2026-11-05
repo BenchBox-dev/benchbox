@@ -315,7 +315,7 @@ jobs:
 
   uat-stage2:
     name: UAT stage 2 ${{ matrix.shard }}
-    needs: [admit, uat-reuse, uat-stage1]
+    needs: [admit, uat-reuse]
     if: ${{ !cancelled() && needs.admit.result == 'success' && needs.uat-reuse.outputs.reuse != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
@@ -388,7 +388,7 @@ jobs:
 
   uat-stage3:
     name: UAT stage 3 ${{ matrix.shard }}
-    needs: [admit, uat-reuse, uat-stage2]
+    needs: [admit, uat-reuse]
     if: ${{ !cancelled() && needs.admit.result == 'success' && needs.uat-reuse.outputs.reuse != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 360

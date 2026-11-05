@@ -166,13 +166,11 @@ def test_release_uat_environment_installs_the_admitted_wheel_and_records_its_dig
     assert "benchbox.checkout" in run
 
 
-def test_release_uat_stages_run_in_order_and_each_shards_one_stage_config():
+def test_release_uat_stages_start_together_and_each_shards_one_stage_config():
     jobs = _jobs()
-    assert set(jobs["uat-stage1"]["needs"]) == {"admit", "uat-reuse"}
-    assert set(jobs["uat-stage2"]["needs"]) == {"admit", "uat-reuse", "uat-stage1"}
-    assert set(jobs["uat-stage3"]["needs"]) == {"admit", "uat-reuse", "uat-stage2"}
     for number, name in enumerate(UAT_STAGE_JOBS, start=1):
         job = jobs[name]
+        assert set(job["needs"]) == {"admit", "uat-reuse"}
         run = _step_commands(job)
         assert f"release-gate-0{number}-" in "\n".join(
             str(step.get("env", {}).get("UAT_CONFIG", "")) for step in job["steps"]
@@ -194,7 +192,7 @@ def test_release_uat_shards_always_upload_their_evidence():
         assert sweep["timeout-minutes"] < _jobs()[name]["timeout-minutes"]
 
 
-def test_stages_run_after_a_failed_earlier_stage_and_skip_only_when_reuse_is_verified():
+def test_stages_run_independently_of_each_other_and_skip_only_when_reuse_is_verified():
     for name in UAT_STAGE_JOBS:
         condition = _jobs()[name]["if"]
         assert "!cancelled()" in condition
