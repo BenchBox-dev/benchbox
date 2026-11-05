@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "An inventory table (workflow, trigger, purpose, keep/merge/delete, reason) in the PR",
+    "Workflow count at or below 25, or each remaining workflow above 25 has a written keep reason",
+    "No required status check is removed without an owner-approved settings change (DECISION GATE)",
+    "CI, trunk, nightly and release-v2 probe (rv2r-05) runs pass after the change"
+  ],
+  "context": "Serial item after the batch. Legacy retirement is committed locally at 3867548a59 on branch chore/retire-legacy-release-path (worktree ../BenchBox.wt-retire-legacy-release) for dlv2-53. GUARDRAILS: deletions only for workflows proven unused or duplicated; G1-G3 ledger rules apply to any removed check. DECISION GATE: required-check and ruleset changes go to the owner.",
+  "description": "The ADR's first problem statement was 46 workflows; develop still has 46 (a different set). After dlv2-53 removes the legacy release workflows (release.yml, validate-release-pr.yml, test.yml, lint.yml, perf-smoke.yml), inventory the rest, merge or delete duplicates, and decide release-canary.yml (now only a daily develop signal that release-v2 does not read). Coordinate with dlv2-80 (GitHub cleanup) and dlv2-83 (docs cleanup) rather than duplicating them.",
+  "links": [
+    ".github/workflows/",
+    "docs/internal/adr/adr-dev-loop-v2.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a3eb8cbf1b5dc744e4710e1c",
+      "at": "2026-11-05T14:14:43Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "58df618d56a84db0a86f721c1a6c8d3f",
+      "session_id": "7da446616e5349658579dfc9c4288973"
+    }
+  ]
+}

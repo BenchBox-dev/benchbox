@@ -25201,6 +25201,16 @@
       "status": "open",
       "title": "Publish a weekly dev-loop dashboard against the dev-loop v2 targets and baseline"
     },
+    "rv2r-12-workflow-consolidation": {
+      "claim": null,
+      "needs": [
+        "dlv2-53-retire-legacy-release-path",
+        "rv2r-05-release-probe-mode"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Cut the workflow count toward the dev-loop v2 intent after the legacy release path is gone"
+    },
     "rx-ux-00-phase0-contract-decisions": {
       "claim": null,
       "needs": [],
