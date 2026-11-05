@@ -25109,6 +25109,15 @@
       "status": "open",
       "title": "Run the release-gate UAT matrix nightly on trunk and keep per-cell history"
     },
+    "rv2r-06-fail-closed-detectors": {
+      "claim": null,
+      "needs": [
+        "rv2r-01-adr-guardrails"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Make process checks fail when they ran but did nothing"
+    },
     "rv2r-09-trunk-dist-every-commit": {
       "claim": null,
       "needs": [],
