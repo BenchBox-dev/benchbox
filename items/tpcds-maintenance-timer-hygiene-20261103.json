@@ -19,6 +19,78 @@
     "benchbox/core/tpcds/maintenance_test.py",
     "benchbox/core/tpcds/maintenance_operations.py"
   ],
+  "prepared": {
+    "accepted_head": "7ed847e58c7cefd15f9820a524a5a71a6d71cb9d",
+    "batch_id": "tpc-timer-boundaries",
+    "changed_files": [
+      "benchbox/core/tpcds/maintenance_operations.py",
+      "benchbox/core/tpcds/maintenance_test.py",
+      "changelog.d/feat-tpc-timer-boundaries--tpcds-maintenance-timer-hygiene-20261103.json",
+      "tests/unit/core/tpcds/test_maintenance_timer_boundaries.py"
+    ],
+    "integration_head": "c8cb95a320607478dd0f1d79d38d23efc4130689",
+    "integration_seq": 1,
+    "member_id": "tpcds-maintenance-timer-hygiene-20261103",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "238e105960e4c16ff2fd2ddb46b4363c3233a5f0910375461dbb2f9b10377e49",
+    "source_base": "e3b793bdf55a538e06c8dcffd5530fc548fedad9",
+    "source_revision": "7ed847e58c7cefd15f9820a524a5a71a6d71cb9d",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-tpc-timer-boundaries--tpcds-maintenance-timer-hygiene-20261103",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/test_tpc_power_tests.py",
+        "tests/integration/test_tpcds_maintenance_test.py",
+        "tests/integration/test_tpcds_official_benchmark.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/unit/core/test_dryrun.py",
+        "tests/unit/core/test_greybeam_lifecycle.py",
+        "tests/unit/core/test_tpc_reporting_execution.py",
+        "tests/unit/core/test_tpcds_benchmark_fakes.py",
+        "tests/unit/core/test_tpcds_maintenance_delete_portability.py",
+        "tests/unit/core/test_tpcds_maintenance_operations.py",
+        "tests/unit/core/throughput/test_containment.py",
+        "tests/unit/core/tpcds/benchmark/test_tpcds_runner_coverage.py",
+        "tests/unit/core/tpcds/benchmark/test_tpcds_runner_streams.py",
+        "tests/unit/core/tpcds/test_maintenance_returns_composite_key.py",
+        "tests/unit/core/tpcds/test_maintenance_timer_boundaries.py",
+        "tests/unit/core/tpcds/test_official_benchmark_phases.py",
+        "tests/unit/core/tpcds/test_tpcds_maintenance_coverage.py",
+        "tests/unit/mcp/test_mcp_results_and_analytics.py",
+        "tests/unit/platforms/base/test_adapter_query_skips.py",
+        "tests/unit/platforms/test_base_adapter.py",
+        "tests/unit/platforms/test_generic_power_test.py",
+        "tests/unit/platforms/test_power_test_fail_fast.py",
+        "tests/unit/platforms/test_throughput_run_options.py",
+        "tests/unit/test_cli_dryrun_test_modes.py",
+        "tests/unit/test_tpcds_streams.py"
+      ],
+      "review": {
+        "base_sha": "e3b793bdf55a538e06c8dcffd5530fc548fedad9",
+        "head_sha": "7ed847e58c7cefd15f9820a524a5a71a6d71cb9d",
+        "head_tree": "1030dc91296607f56f2b8494219fce4d004d6710",
+        "outcome": "clear",
+        "patch_digest": "d237f9ebf5353ab7fc2d7465ee7e0c90",
+        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "e3b793bdf55a538e06c8dcffd5530fc548fedad9"
+      },
+      "revision": "7ed847e58c7cefd15f9820a524a5a71a6d71cb9d",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a561db75579ad3167de9da38",
@@ -51,6 +123,15 @@
       "generation": "f6016baa4251443ba45f5c76e6b98ecf",
       "op": "take",
       "op_id": "de934474ee5e45a5a3e1e557ae330cd5",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-05T19:02:01Z",
+      "client": "omp-coding-agent",
+      "generation": "f6016baa4251443ba45f5c76e6b98ecf",
+      "op": "prepare",
+      "op_id": "30ac524b363e4a9fa0cb07f0c17dee73",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]

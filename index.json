@@ -835,20 +835,43 @@
       "terminal_outcome": "deliver"
     },
     "tpc-timer-boundaries": {
-      "accepted_members": {},
+      "accepted_members": {
+        "tpcds-maintenance-timer-hygiene-20261103": "7ed847e58c7cefd15f9820a524a5a71a6d71cb9d"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "tpcds-maintenance-timer-hygiene-20261103": {
+          "accepted_head": "7ed847e58c7cefd15f9820a524a5a71a6d71cb9d",
+          "changed_files": [
+            "benchbox/core/tpcds/maintenance_operations.py",
+            "benchbox/core/tpcds/maintenance_test.py",
+            "changelog.d/feat-tpc-timer-boundaries--tpcds-maintenance-timer-hygiene-20261103.json",
+            "tests/unit/core/tpcds/test_maintenance_timer_boundaries.py"
+          ],
+          "integration_head": "c8cb95a320607478dd0f1d79d38d23efc4130689",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/tpc-timer-boundaries",
-      "integration_head": "e3b793bdf55a538e06c8dcffd5530fc548fedad9",
+      "integration_head": "c8cb95a320607478dd0f1d79d38d23efc4130689",
       "integration_log": [
         {
           "at": "2026-11-05T18:54:20Z",
           "head": "e3b793bdf55a538e06c8dcffd5530fc548fedad9",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-05T19:02:01Z",
+          "head": "c8cb95a320607478dd0f1d79d38d23efc4130689",
+          "kind": "prepare",
+          "member": "tpcds-maintenance-timer-hygiene-20261103",
+          "op_id": "30ac524b363e4a9fa0cb07f0c17dee73",
+          "previous_head": "e3b793bdf55a538e06c8dcffd5530fc548fedad9",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpc-timer-boundaries",
@@ -30507,15 +30530,10 @@
       "title": "TPC-DS data maintenance: dsdgen refresh sets, timed staged load, spec-defined functions, monotonic timers"
     },
     "tpcds-maintenance-timer-hygiene-20261103": {
-      "claim": {
-        "expires_at": "2026-11-06T19:01:56Z",
-        "generation": "f6016baa4251443ba45f5c76e6b98ecf",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "TPC-DS maintenance: keep connection setup out of each operation's timer, use monotonic durations, and make the generator deterministic"
     },
     "tpcds-obt-benchmark-implementation": {
