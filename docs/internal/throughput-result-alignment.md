@@ -40,7 +40,7 @@ default matches.
 durations. `start_wall_time` and `end_wall_time` are ISO-8601 wall-clock
 event times and are the only stream timestamps exported to result bundles.
 
-**Timing window.** A stream's window starts after its connection is open and
+**Timing window** (clause-by-clause timer sites: [TPC measured intervals](tpc-measured-intervals.md)). A stream's window starts after its connection is open and
 ends before the connection is closed, so connection setup (connect, session
 settings, benchmark configuration) and teardown are not part of Total Test
 Time. The TPC specifications measure the interval from the first query of
