@@ -25093,6 +25093,13 @@
       "status": "done",
       "title": "Runtime Module Refactor - Batch Two"
     },
+    "rv2r-01-adr-guardrails": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Record the release-v2 remediation decisions and new guardrails in the dev-loop v2 ADR"
+    },
     "rx-ux-00-phase0-contract-decisions": {
       "claim": null,
       "needs": [],

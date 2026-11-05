@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "adr-dev-loop-v2.md has a dated 2026-11-05 decision entry listing decisions (1)-(6) verbatim in substance, naming the superseded 2026-10-28 decision (3) and #2490's artifact-bound release UAT",
+    "Guardrail G12 (calibrate before block) and the release-window freeze rule appear in the ADR guardrail list with enforcement owners (G12: PR review checklist; freeze: rv2r-08 check)",
+    "The agent gate-tuning rubric is written as numbered, testable conditions, including the explicit exclusions (no timeout, memory-limit or validation changes; no pruning of the last gated scale)",
+    "release-artifacts.md and release-guide.md describe the release as admit + install matrix + UAT evidence check, with full UAT only as the fallback, and link to the trunk UAT workflow by name",
+    "make comment-policy-check and markdownlint pass; no code changes in this item"
+  ],
+  "context": "Batch plan: rv2r-01..09 form one registered batch 'release-v2-remediation' (feature delivery mode, one integration branch, one final PR) led by the agent that takes rv2r-01. The leader verifies the todo-db batch v2 capability first; if it is absent, run these serially as separate PRs. GUARDRAILS: the batch's final PR must not merge before dlv2-52-release-rehearsal-and-first-release is done (release-window freeze). Do not touch tests/uat, docker/, Makefile UAT targets or the release-v2 stage jobs before 0.5.0 is on PyPI, so the rc5->final evidence reuse stays valid. DECISION GATE: if any wording would change a decision's substance, ask the owner; otherwise no owner input is needed. Retrospective evidence: agent://ReleaseV2Retro; brief local://release-v2-retro-brief.md.",
+  "description": "The 0.5.0 retrospective (2026-11-05) found that a blocking full-matrix release UAT was added by coverage, never calibrated on hosted runners, and that process machinery (oracle, release workflow) shipped without live execution. The owner decided on 2026-11-05: (1) continuous UAT on trunk, nightly at 02:00 UTC and skipped when nothing relevant changed; a release checks evidence instead of running UAT, with full UAT only as a fallback. This supersedes the 2026-10-28 decision 'no reduction of UAT or gate coverage' and the 'artifact-bound release UAT' requirement in docs/internal/release-artifacts.md. (2) A standing release-window freeze: no infrastructure, oracle or CI-machinery merges between an rc tag and its PyPI publish. (3) New guardrail G12, calibrate before block: a new blocking gate needs a hosted calibration run, a measured runtime, a runner budget and a statement of what it catches. (4) The agent gate-tuning rubric (image digest pins; one recorded automatic retry for infrastructure signatures; envelope moves only above 20% infrastructure-failure rate over the last 10 runs, with another scale of the same platform x benchmark still gated, evidence cited and a tracker item filed; never a timeout, memory-limit or validation change). (5) Theseus/oracle is consumed as a pinned dependency: bumps go through a canary PR set and a fail-closed posting check, rollback is reverting the pin, and nothing changes during a release window. (6) Release-v2 probe mode and fail-closed detectors are required. This item writes these decisions into docs/internal/adr/adr-dev-loop-v2.md (new decision-log entry plus G12 and the freeze rule in the guardrail list) and updates release-artifacts.md and release-guide.md to the evidence-check model. Docs only.",
+  "links": [
+    "docs/internal/adr/adr-dev-loop-v2.md",
+    "docs/internal/release-artifacts.md",
+    "docs/internal/release-guide.md",
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-27T12-06-43-989Z_01a17d41-7415-7202-9145-695263c763ec/ReleaseV2Retro.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a3eb8cbf1b5dc744e4710e1c",
+      "at": "2026-11-05T14:12:39Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b283a63bed964051ba54c509cd2738a0",
+      "session_id": "7da446616e5349658579dfc9c4288973"
+    }
+  ]
+}
