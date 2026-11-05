@@ -9,6 +9,7 @@
     "implementation_dependencies": [],
     "member_id": "derived-power-export-rounding-20261017"
   },
+  "context": "2026-11-05 decision: export per-query ms at 7 significant digits (_round_query_ms_for_export in benchbox/core/results/schema.py); aggregates keep 0.1 ms rounding. New bundles reproduce derived Power@Size well inside 0.01% (test added). Published bundles keep 0.1 ms rounding (derived vs stored up to about 1.4%; RECORDED_POWER_TOLERANCE stays 5%). Acceptance bullet 3 (ADR states the bound) is open: the ADR moved to the site repo, so the statement is an owner-side follow-up there.",
   "description": "Gap accepted by the owner for #3075 but not closed: Power@Size derived at read time (benchbox/core/results/subscale_policy.py:45 derive_power_at_size) is computed from exported per-query ms, which the exporter rounds (benchbox/core/results/schema.py:91 _round_duration_ms_for_export, applied at :319). The same rounding bounds the 5% recorded-value check (subscale_policy.py:15, :76-85). Found 2026-10-16 by recomputing Power@Size for the 25 published subscale bundles that store a value: derived vs stored differs by about 0.1% or less for most, and up to 1.43% (tpch_sf001_polars_df_20260824_074104_51ccc406.json) where query times are a few ms. Fourteen bundles (11 TPC-H, 3 TPC-DS) rank on derived values and are marked derived_from_timings.",
   "prepared": {
     "accepted_head": "3296c62f2382a447950817a721cf7f691ceb0714",
@@ -203,6 +204,14 @@
       "generation": "c4aade64df3f4e81b4aa2b7c2a12e1f9",
       "op": "prepare",
       "op_id": "df48a14fd28d4083b8fc3d80dcd92c3b",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-05T20:27:39Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "aae6bf9fc24f4e28aa2f5019863548bb",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
