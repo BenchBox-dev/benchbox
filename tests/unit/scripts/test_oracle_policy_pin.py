@@ -42,14 +42,18 @@ def test_the_gated_base_and_attesters_are_pinned() -> None:
     assert consumer["inert_manifest"] == ".github/inert-paths.txt"
 
 
-def test_the_promotion_block_names_the_locked_repository_baseline_and_reviewers() -> None:
+def test_the_promotion_block_names_only_the_locked_package_repository_and_dependencies() -> None:
     promotion = POLICY["promotion"]
 
     assert promotion["package"] == LOCK["package"] == "theseus-reviewer"
     assert promotion["repository"] == LOCK["repository"] == "joeharris76/theseus"
-    assert promotion["bootstrap_baseline_commit"] == "95c423c35efd3fb4962145bdc628006d5aaaad26"
-    assert promotion["bootstrap_reviewers"] == ["joeharris76"]
     assert promotion["dependencies"] == {}
+    assert set(promotion) == {"package", "repository", "dependencies"}
+
+
+def test_the_policy_carries_no_theseus_owned_review_size_or_bootstrap_keys() -> None:
+    assert "brief_max_bytes" not in POLICY
+    assert not [key for key in POLICY["promotion"] if key.startswith("bootstrap_")]
 
 
 def test_live_reviewers_match_buckets_one_to_one() -> None:

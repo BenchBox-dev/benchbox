@@ -1683,8 +1683,8 @@ have been pinned through a separate trusted policy change. An author cannot
 authorize a new dependency by changing the policy in the promotion PR.
 `allowed_artifact_hosts` still limits download locations; an allowed host does
 not authorize arbitrary wheel bytes.
-Explicit empty `bootstrap_reviewers` or `allowed_artifact_hosts` lists are
-configuration errors, not requests to restore their defaults.
+An explicit empty `allowed_artifact_hosts` list is a configuration error, not
+a request to restore its default.
 
 The lock cannot contain two dependencies whose normalized distribution names
 match, even at different versions. Base-pinned dependency wheels may contain
@@ -1693,23 +1693,19 @@ metadata files, and RECORD hashes and sizes are verified without executing the
 contents. The promoted Theseus wheel retains its stricter source-match and
 pure-package rules, including rejection of native libraries and `.data` files.
 
-The first promotion additionally requires `bootstrap_baseline_commit`,
-`bootstrap_path_map`, and `bootstrap_reviewers` in the trusted base policy.
-The lock's bootstrap record must match that baseline, map, reviewer, and source
-commit. Its named reviewer must post an **unedited PR issue comment** using an
-authenticated GitHub `User` account in `bootstrap_reviewers`, containing this
-exact standalone line (substitute the complete digests):
+BenchBox's policy no longer carries `bootstrap_baseline_commit`,
+`bootstrap_path_map` or `bootstrap_reviewers`. The cutover to the Theseus
+package is complete, the base branch has a lock, and every promotion is a
+promotion from that lock. The block holds only `package`, `repository` and
+`dependencies`. Theseus accepts the `bootstrap_*` keys only for a repository
+whose base branch has no lock, which this repository no longer is.
 
-```text
-Theseus bootstrap approval: source=<40-character source_commit> lock=<64-character canonical lock SHA-256>
-```
+A promotion's required reads are the executed surface of the promoted source,
+not the whole delta: the files of the wheel's package under `src/`,
+`pyproject.toml`, and the review and gate workflows the callers reference.
+Renamed files are detected, and a byte-identical rename needs no read. The rest
+of the delta is staged and listed as not required. The decision and its reason
+are in `_project/decisions/review-depth-and-capacity-2026-11-05.md`.
 
-`promotion.bootstrap_approval_line(promotion.parse_lock(lock_text))` produces
-the line; the lock digest is `promotion.lock_digest`, not the raw JSON file
-hash. Bot comments, another author's comments, edited comments, and approvals
-for another lock or upstream source do not count. Repost a new comment after
-changing the lock. The hosted preparation and gate both enforce this approval;
-comment-read failures do not bypass it. Request a fresh oracle run after posting
-the approval; a gate sweep or manual dispatch can also re-evaluate the gate.
-Local advisory preparation explicitly skips PR-comment authorization because
-the PR may not yet exist. Local output never grants hosted gate authority.
+The review size and capacity limits belong to Theseus. `brief_max_bytes` is not
+a policy key, and a policy with an unknown top-level key is refused.

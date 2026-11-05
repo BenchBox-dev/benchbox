@@ -76,10 +76,12 @@ and work that installs or changes the loop is delivered serially.
   member that changes only exempt paths is recorded `not-reviewed`, the same
   bar a standalone PR meets. Final evidence executes every member's checks
   again on the final tree rather than replaying earlier results.
-- **Size is bounded by the hosted review.** `brief_max_bytes` (100000) is a hard
-  limit: a diff over it reviews in file-list mode, and a file list over it skips
-  the hosted reviewers. A landing that would exceed the file-list cap is refused;
-  the batch is split instead.
+- **Size is bounded by the hosted review, and Theseus says how.** Theseus owns
+  the size and capacity limits. Landing, advancing the integration head, status
+  and final evidence call `theseus preflight` for the combined change against
+  `origin/develop`; a landing or head it finds not reviewable (a lock change,
+  or a change above every reviewer's capacity) is refused with Theseus's reasons
+  and the batch is split instead.
 - **One changelog fragment per member**, at most five entries each.
 - **Cloud builders are not members.** They build one change on their own
   branch and PR; batch worktrees and the tracker writer are local.
@@ -108,7 +110,7 @@ and work that installs or changes the loop is delivered serially.
   for members; the detailed protocol lives in the agent docs.
 - PR-opening targets refuse in a member worktree; readiness and arming check the
   batch evidence in an integration worktree and fail closed.
-- A batch is bounded by the hosted brief cap and by one leader's capacity to land
-  and review; larger work is split into batches.
+- A batch is bounded by what the Theseus preflight finds reviewable and by one
+  leader's capacity to land and review; larger work is split into batches.
 - A lost owner generation is recoverable only through `recover_batch_owner` or
   an abort, so the leader's ledger must survive the session.

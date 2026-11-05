@@ -45,6 +45,9 @@ def ok(data: dict) -> SimpleNamespace:
     return SimpleNamespace(returncode=0, stdout=json.dumps({"ok": True, "data": data}), stderr="")
 
 
+THESEUS_STUB = Path("/stub/theseus")
+
+
 def done(returncode: int = 0, stdout: str = "", stderr: str = "") -> SimpleNamespace:
     return SimpleNamespace(returncode=returncode, stdout=stdout, stderr=stderr)
 
@@ -240,6 +243,12 @@ class World:
         self.review_support: list[dict[str, str]] = []
         self.failing_tests: set[str] = set()
         self.preflight_rc = 0
+        self.preflight_code = 0
+        self.preflight_reasons: list[str] = []
+        self.preflight_advisories: list[str] = []
+        self.preflight_stdout: str | None = None
+        self.preflight_heads: list[str] = []
+        self.preflight_arguments: list[list[str]] = []
         self.review_rc: int | None = None
         self.mapped_tests: list[str] = []
         self.origin = tmp_path / "origin.git"
@@ -255,7 +264,6 @@ class World:
             "tests/test_alpha.py": "def test_a():\n    assert True\n",
             "tests/test_mid.py": "def test_m():\n    assert True\n",
             "docs/note.md": "note\n",
-            ".github/oracle-reviewers.yml": "brief_max_bytes: 100000\n",
             bi.REVIEW_WRAPPER: TRUSTED_REVIEW_WRAPPER,
             **dict.fromkeys(bi.REVIEW_SUPPORT, "TRUSTED_SUPPORT = 1\n"),
             ".gitignore": ".todo-batch/\n",
@@ -269,6 +277,7 @@ class World:
         self.primary = tmp_path / "primary"
         subprocess.run(["git", "clone", "-q", str(self.origin), str(self.primary)], check=True, capture_output=True)
         monkeypatch.setattr(bi, "_run", self.run)
+        monkeypatch.setattr(bi, "_theseus_launcher", lambda repo: (THESEUS_STUB, {}))
         self.integration: Path | None = None
 
     def run(self, argv, cwd, **_kwargs):
@@ -286,6 +295,20 @@ class World:
         command = bi.TODO_DB_COMMAND
         if argv[: len(command)] == command:
             return self.tracker.show(argv[len(command) :])
+        if argv[:2] == [str(THESEUS_STUB), "preflight"]:
+            values = dict(zip(argv[2::2], argv[3::2], strict=False))
+            self.preflight_heads.append(values["--head"])
+            self.preflight_arguments.append(argv[2:])
+            reasons, advisories = self.preflight_reasons, self.preflight_advisories
+            if self.preflight_stdout is not None:
+                return done(self.preflight_code, self.preflight_stdout)
+            payload = {
+                "schema": 1,
+                "reviewable": self.preflight_code == 0,
+                "reasons": reasons,
+                "advisories": advisories,
+            }
+            return done(self.preflight_code, json.dumps(payload))
         if argv[:2] == ["make", "pr-preflight"]:
             return done(self.preflight_rc, stderr="preflight output")
         if argv[:3] == ["make", "-s", "changelog-check"]:
