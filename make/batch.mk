@@ -48,9 +48,10 @@ batch-member-check:
 
 .PHONY: batch-land
 batch-land: export BATCH_ARG_MEMBER := $(MEMBER)
+batch-land: export BATCH_ARG_ACCEPT_WRITES := $(ACCEPT_WRITES)
 batch-land:
-	@test -n "$$BATCH_ARG_MEMBER" || { echo "Usage: make batch-land MEMBER=<id>" >&2; exit 2; }
-	@$(BATCH_SCRIPT) land --member "$$BATCH_ARG_MEMBER"
+	@test -n "$$BATCH_ARG_MEMBER" || { echo "Usage: make batch-land MEMBER=<id> [ACCEPT_WRITES=op_id,...]" >&2; exit 2; }
+	@$(BATCH_SCRIPT) land --member "$$BATCH_ARG_MEMBER" --accept-writes "$$BATCH_ARG_ACCEPT_WRITES"
 
 .PHONY: batch-advance
 batch-advance: export BATCH_ARG_REASON := $(REASON)

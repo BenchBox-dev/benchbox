@@ -48,6 +48,13 @@ leader's worktree carries `benchbox.batch.role=integration`, a member's
 `benchbox.batch.role=member`, set at creation by the batch targets (a
 worktree's `benchbox.*` keys are never inherited).
 
+The owner check works only when identities differ. todo-db derives a worker's
+identity from its MCP server process, and subagents share their parent's
+server. So each leader runs as its own top-level session (or sets its own
+`TODO_DB_ACTOR`), and a member never runs as a subagent of its leader's session
+or of another leader's. Parallel leaders that share one identity also share its
+single live-claim slot and block each other's `take`.
+
 Rules that hold for the whole batch:
 
 - The integration branch is never a PR base. The one final PR is the whole
@@ -71,8 +78,8 @@ Rules that hold for the whole batch:
 |---|---|---|
 | `make batch-start BATCH= MEMBERS= SCOPE_JSON= PROJECT_ID= [WORKTREE_PATH=] [DEPENDENCIES=member=dep1+dep2,...] [CONFIRM_CUTOVER=1]` | Leader, any worktree | Creates `feat/<batch>` and its worktree from `refs/remotes/origin/develop`, writes the ledger and owner generation, and prints the `register_batch` arguments and an `after_register` block of `update_item` steps |
 | `make batch-member-create MEMBER= [WORKTREE_PATH=]` | Leader, integration worktree | Creates `feat/<batch>--<member>` at the current integration head; refuses an existing branch |
-| `make batch-member-check [TESTS=a,b]` | Member | Requires a clean branch that contains the integration head and has changes; runs `make pr-preflight` against that head (or the command given as `PREFLIGHT_CMD`, which is recorded and warned about at landing) and the changelog check, then executes the union of the mapped and named tests and records success only if that command passes and the checkout stays clean at the same head; runs the member review as early feedback |
-| `make batch-land MEMBER=` | Leader | Merges a checked member with `--no-ff` and prints the `take`/`prepare` payload (`prepare` only for a dependent member, which must already be taken); the member's implementation dependencies are read from its registered tracker metadata |
+| `make batch-member-check [TESTS=a,b]` | Member | Requires a clean branch that contains the integration head and has changes, and no uncommitted change in the primary clone under the member's frozen scope; runs `make pr-preflight` against that head (or the command given as `PREFLIGHT_CMD`, which is recorded and warned about at landing) and the changelog check, then executes the union of the mapped and named tests and records success only if that command passes and the checkout stays clean at the same head; runs the member review as early feedback |
+| `make batch-land MEMBER= [ACCEPT_WRITES=op_id,...]` | Leader | Merges a checked member with `--no-ff` and prints the `take`/`prepare` payload (`prepare` only for a dependent member, which must already be taken); the member's implementation dependencies are read from its registered tracker metadata |
 | `make batch-advance REASON=fix\|develop-merge` | Leader | Records a leader commit or a develop merge and prints the `advance_batch_head` payload |
 | `make batch-status` | Leader | Reconciles the ledger with the tracker and Git (rebuilding a missing ledger) and names the next step |
 | `make batch-verify` | Leader | Checks first-parent history, recorded heads, and member ancestry |
@@ -138,7 +145,13 @@ A member:
    the member contains the current integration head, the head is unchanged since
    its check, and every changed path is inside the frozen scope. It also refuses
    a landing the Theseus preflight finds not reviewable, and prints its reasons
-   (below).
+   (below). It also refuses a primary clone with uncommitted changes under the
+   member's scope, and any tracker write on the member item since its worktree
+   was created other than `take`, `release`, or `renew`. Inspect each listed
+   write with `show_item`; land again with `ACCEPT_WRITES=<op_id,...>` to record
+   the reviewed writes in the ledger. A `take` from a member that shares the
+   leader's identity cannot be told apart from the leader's own, which is why
+   identities must differ.
 2. The leader runs the trusted local reviewer for the exact captured base and
    head, with the reviewer code and policy pinned to the same trusted
    `origin/develop` commit (which must not predate the batch start). Only an
@@ -257,7 +270,9 @@ Theseus install. Landing, advancing and evidence refuse on exit 3 or 2 and print
 Theseus's reasons verbatim; status prints the answer and refuses nothing.
 Refusals include a landing that carries a Theseus lock change (land that on its
 own pull request) and a change too large for any reviewer's capacity (split the
-batch). Advisories from a reviewable answer print as warnings.
+batch). Advisories from a reviewable answer print as warnings. Run the preflight
+on the members' combined change before `register_batch` (or `make batch-status`
+once members exist); do not estimate.
 
 ## Rollback and recovery
 

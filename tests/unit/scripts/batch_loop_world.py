@@ -67,6 +67,8 @@ class FakeTracker:
         self.claims: dict[str, str] = {}
         self.item_needs: dict[str, list[str]] = {}
         self.item_batch: dict[str, dict] = {}
+        self.item_sessions: dict[str, list[dict]] = {}
+        self.session_page = 100
 
     def register(self, arguments: dict) -> None:
         self.batch = dict(arguments)
@@ -174,6 +176,15 @@ class FakeTracker:
 
     def show(self, args: list[str]) -> SimpleNamespace:
         if args[0] == "show":
+            options = dict(zip(args[2::2], args[3::2], strict=False))
+            if options.get("--field") == "sessions":
+                entries = self.item_sessions.get(args[1], [])
+                offset = int(options.get("--offset", 0))
+                data = {"id": args[1], "field": "sessions", "offset": offset, "total": len(entries), "rev": "r1"}
+                data["window"] = entries[offset : offset + self.session_page]
+                if offset + self.session_page < len(entries):
+                    data["continuation"] = {"field": "sessions", "offset": offset + self.session_page, "rev": "r1"}
+                return ok(data)
             needs = self.item_needs.get(args[1], [])
             data = {"id": args[1], "needs": {"total": len(needs), "values": needs}}
             if args[1] in self.item_batch:
