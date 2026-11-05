@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "TPC-H and TPC-DS power-test per-query times no longer include query generation: SQL is generated before the timer starts, once per query, and the same text is executed.",
+      "details": [
+        "Power-test times from earlier BenchBox versions include qgen/dsqgen generation and dialect translation (about 5 ms per query on one macOS host) and are not comparable with results produced from this version on, which exclude query generation. Separate the two by the BenchBox version recorded in the result bundle; no timing-method field is written by this change.",
+        "The executed SQL is unchanged for the same seed, stream and dialect. A generation failure still aborts the run before the first query is timed."
+      ],
+      "benchmarks": ["tpch", "tpcds"]
+    }
+  ]
+}
