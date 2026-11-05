@@ -25208,7 +25208,10 @@
     },
     "rv2r-11-loop-metrics-dashboard": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "rv2r-02-trunk-uat-nightly",
+        "rv2r-04-uat-rubric-automation"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Publish a weekly dev-loop dashboard against the dev-loop v2 targets and baseline"
