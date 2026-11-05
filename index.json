@@ -29386,6 +29386,16 @@
       "status": "open",
       "title": "Theseus v0.1.7: hunk coverage, git-built diffs, rename-aware executed-surface promotions, capacity sizing, compaction fail-closed, preflight"
     },
+    "theseus-v021-stdin-rendered-mode-20261105": {
+      "claim": null,
+      "needs": [
+        "theseus-remove-oracle-vocabulary-20261105",
+        "theseus-gateway-client-first-live-gate-20261102"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Theseus v0.2.1: brief on stdin, mode from rendered size, capacity recalibration and legacy-name removal"
+    },
     "throughput-adapter-session-capability-contract": {
       "claim": null,
       "needs": [

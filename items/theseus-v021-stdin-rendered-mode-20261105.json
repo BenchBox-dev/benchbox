@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Tests for (e) and (f); candidate row 13 (stdin canary) green.",
+    "The first self-gated Theseus PR passes (plan §5.6).",
+    "BenchBox re-locked to 0.2.1 with no config change; the owner drops the legacy oracle-gate requirement from ruleset 15611785 before this ships.",
+    "`git grep -i oracle` on Theseus main returns nothing except the docs migration section."
+  ],
+  "description": "Plan item T-C (local://brief-size-remediation-plan.md §2 e and f, §4.1), folded into the planned legacy-cleanup release:\n- (e) pick the brief mode from the rendered size (split _assemble_prompt into compose and render);\n- (f) send the brief to omp on stdin, add a candidate-check canary for omp bumps, and restate the inline bound in terms of capacity;\n- recalibrate capacity from schema-2 captures;\n- delete legacy.py and all old-name reads and mirroring, once no open BenchBox PR carries old markers.\nThis is the first self-gated Theseus PR, reviewed by theseus-review[bot] under the 0.2.0 rules.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-05T14:14:22Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "82e3c5c7ae964e4c89ceb849bb6e321f",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    }
+  ]
+}
