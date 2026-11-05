@@ -322,9 +322,7 @@ def test_land_refuses_member_tracker_writes_until_the_leader_accepts_them(world:
     ]
     before = world.head()
 
-    with _raises(
-        "tracker writes between its worktree creation and its first landing .*member-note.*member-prepare"
-    ) as raised:
+    with _raises("tracker writes between .* and its first landing .*member-note.*member-prepare") as raised:
         world.land("zeta")
     assert "metadata" not in str(raised.value) and "leader-take" not in str(raised.value)
     assert world.head() == before
@@ -336,15 +334,28 @@ def test_land_refuses_member_tracker_writes_until_the_leader_accepts_them(world:
     assert result["status"] == "merged"
     ledger = bi.load_ledger(world.integration, BATCH)
     assert ledger["landings"]["zeta"]["accepted_tracker_writes"] == ["member-note", "member-prepare"]
+    assert world.land("zeta")["status"] == "already-merged"
 
 
-def test_land_warns_when_a_member_worktree_predates_the_tracker_write_check(world: World) -> None:
+def test_land_refuses_a_member_write_in_the_same_second_as_the_worktree_creation(world: World) -> None:
+    world.start()
+    member = world.deliver("zeta", {"src/a.py": "member\n"})
+    created = git(member, "config", "--worktree", "--get", f"{bi.CONFIG_PREFIX}.created-at")
+    world.tracker.item_sessions["zeta"] = [_session("update", "same-second", created)]
+
+    with _raises("same-second"):
+        world.land("zeta")
+
+
+def test_land_checks_a_member_without_a_creation_time_from_the_batch_start(world: World) -> None:
     world.start()
     member = world.deliver("zeta", {"src/a.py": "member\n"})
     git(member, "config", "--worktree", "--unset", f"{bi.CONFIG_PREFIX}.created-at")
-    world.tracker.item_sessions["zeta"] = [_session("prepare", "unseen", "2999-01-01T00:00:00Z")]
+    world.tracker.item_sessions["zeta"] = [_session("update", "leader-metadata", "2000-01-01T00:00:05Z")]
 
-    result = world.land("zeta")
+    with _raises("between 2000-01-01T00:00:00Z and its first landing .*leader-metadata"):
+        world.land("zeta")
+    result = world.land("zeta", accepted_writes=frozenset({"leader-metadata"}))
 
     assert result["status"] == "merged"
     assert any("records no creation time" in warning for warning in result["warnings"])

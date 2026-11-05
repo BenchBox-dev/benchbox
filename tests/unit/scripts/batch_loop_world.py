@@ -74,7 +74,7 @@ class FakeTracker:
     def register(self, arguments: dict) -> None:
         self.batch = dict(arguments)
         self.repo = Path(arguments["integration_worktree"])
-        self.log = [{"seq": 0, "head": arguments["start_head"], "kind": "start"}]
+        self.log = [{"seq": 0, "head": arguments["start_head"], "kind": "start", "at": "2000-01-01T00:00:00Z"}]
         self.rev += 1
 
     @property
