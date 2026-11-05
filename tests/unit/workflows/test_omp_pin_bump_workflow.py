@@ -66,12 +66,17 @@ def test_every_action_is_pinned_to_a_commit_and_develop_is_what_gets_checked_out
     assert opener_steps()["Checkout develop"]["with"]["ref"] == "develop"
 
 
-def test_the_preparation_runs_trusted_develop_code_with_only_the_policy_parser_installed() -> None:
+def test_the_preparation_runs_the_verified_theseus_install_from_the_checked_out_develop_commit() -> None:
     prepare = steps()["Check the latest stable omp build against the pin"]
     command = " ".join(str(prepare["run"]).split())
-    assert "--isolated --no-project" in command and "--with pyyaml==6.0.3" in command
-    assert "_project.scripts.oracle_reviewers.omp_bump prepare" in command
+    assert 'THESEUS="$(python3 scripts/theseus_cli.py --trusted-ref "$(git rev-parse HEAD)" path)"' in command
+    assert '"$THESEUS" omp-bump prepare' in command
     assert "--policy .github/oracle-reviewers.yml" in command
+    assert "--omp-config .github/oracle-omp-config.yml" in command
+    assert "--fixtures tests/fixtures/oracle_reviewers/omp_candidate" in command
+    assert '--out-dir "$OUT_DIR"' in command
+    assert "uv run" not in WORKFLOW.read_text(encoding="utf-8")
+    assert "oracle_reviewers" not in command.replace("tests/fixtures/oracle_reviewers", "")
 
 
 def git(root: Path, *args: str) -> str:
@@ -318,7 +323,7 @@ def test_no_write_token_is_present_while_the_candidate_build_runs() -> None:
             assert step["with"]["persist-credentials"] is False
     opener = opener_steps()["Open the bump pull request"]
     assert opener["env"]["GH_TOKEN"] == "${{ secrets.GITHUB_TOKEN }}"
-    assert "omp_bump" not in run_text_of(opener_job())
+    assert "omp-bump" not in run_text_of(opener_job())
 
 
 def run_text_of(target: dict[str, Any]) -> str:

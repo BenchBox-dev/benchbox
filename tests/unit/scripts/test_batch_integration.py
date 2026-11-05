@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import runpy
 import subprocess
 import sys
 from pathlib import Path
@@ -22,6 +23,8 @@ from tests.unit.scripts.batch_loop_world import (
 TRACKER_SCOPE_HASH = "19ccf864114b7650486e01283d3af3b20d383cb3eb266699654ed626a849e624"
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
+
+ROOT = Path(__file__).resolve().parents[3]
 
 
 def _ledger(integration: Path) -> dict:
@@ -200,6 +203,41 @@ def test_member_review_runs_the_wrapper_from_the_trusted_commit_not_the_checkout
 
     assert (member / bi.REVIEW_WRAPPER).read_text(encoding="utf-8") == "print('tampered')\n"
     assert world.review_wrappers == [TRUSTED_REVIEW_WRAPPER] and result["head_sha"] == head
+
+
+def test_member_review_copies_the_trusted_support_modules_beside_the_wrapper(world: World) -> None:
+    world.start()
+    member = world.member("zeta")
+    head = world.commit(member, {"src/a.py": "member\n", bi.REVIEW_SUPPORT[0]: "TAMPERED = 1\n"})
+    trusted = git(member, "rev-parse", "refs/remotes/origin/develop")
+
+    bi._review_member_patch(member, world.head(), head, trusted)
+
+    assert world.review_support == [{Path(path).name: "TRUSTED_SUPPORT = 1\n" for path in bi.REVIEW_SUPPORT}]
+
+
+def test_the_wrapper_runs_from_a_bare_copy_and_reaches_the_install_step(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    for name in (bi.REVIEW_WRAPPER, *bi.REVIEW_SUPPORT):
+        (scratch / Path(name).name).write_bytes((ROOT / name).read_bytes())
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    git(repo, "init", "-q")
+    repo_scripts = str(ROOT / "scripts")
+    monkeypatch.setattr(sys, "path", [entry for entry in sys.path if entry != repo_scripts])
+    monkeypatch.delitem(sys.modules, "theseus_cli", raising=False)
+    monkeypatch.setattr(sys, "argv", ["oracle_local_review.py", "--trusted-ref", "HEAD"])
+    monkeypatch.chdir(repo)
+
+    with pytest.raises(SystemExit) as exit_info:
+        runpy.run_path(str(scratch / Path(bi.REVIEW_WRAPPER).name), run_name="__main__")
+
+    assert exit_info.value.code == 2
+    assert Path(sys.modules["theseus_cli"].__file__).parent == scratch
+    assert "the verified Theseus install" in capsys.readouterr().err
 
 
 def test_member_check_records_nothing_when_preflight_or_review_fails(world: World) -> None:

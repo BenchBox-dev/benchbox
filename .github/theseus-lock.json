@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "package": "theseus-reviewer",
+  "version": "0.1.6",
+  "repository": "joeharris76/theseus",
+  "source_commit": "6e5765e56b05ca0765cdd5273a8c1215e64756a2",
+  "source_sha256": "4cc12feb68a8b79e469bd3bb338956cb82bf3ff15b8d348bc6d15bf2268f9eff",
+  "delta_sha256": "252ee82384145017d22f13118c283ae93e8fff05bd426e5e3e0142ce4a2bb46d",
+  "artifact": {
+    "sha256": "2ee87f815945da19a4329954b7513ad4545fec75aa12ac2a32fd2ba6d616e83e",
+    "urls": [
+      "https://github.com/joeharris76/theseus/releases/download/v0.1.6/theseus_reviewer-0.1.6-py3-none-any.whl",
+      "https://github.com/joeharris76/theseus/releases/download/v0.1.6/theseus_reviewer-0.1.6-py3-none-any.retained.whl"
+    ]
+  },
+  "dependencies": [],
+  "workflow_sha": "6e5765e56b05ca0765cdd5273a8c1215e64756a2",
+  "matcher": {
+    "path": "_project/scripts/soundness_paths.py",
+    "sha256": "eab7c989245187504215795af169ed0cd6ba2006b8d2fac9ae4b25417283124c"
+  }
+}

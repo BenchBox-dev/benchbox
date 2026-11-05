@@ -122,6 +122,66 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
+  uat-reuse:
+    name: UAT evidence reuse
+    needs: admit
+    if: ${{ needs.admit.outputs.target == 'pypi' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      reuse: ${{ steps.decide.outputs.reuse }}
+      rc_tag: ${{ steps.decide.outputs.rc_tag }}
+      rc_sha: ${{ steps.decide.outputs.rc_sha }}
+      rc_run_id: ${{ steps.decide.outputs.rc_run_id }}
+      rc_dist_digest: ${{ steps.decide.outputs.rc_dist_digest }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ needs.admit.outputs.head_sha }}
+          fetch-depth: 0
+
+      - name: Download the admitted directory
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: admitted-${{ inputs.tag || github.ref_name }}
+          path: admitted
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Stage the admitted distributions
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+          HEAD_SHA: ${{ needs.admit.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          python3 -m pip install --require-hashes --only-binary :all: --no-deps -r scripts/release_requirements.txt
+          python3 scripts/release_admitted_dist.py --admitted admitted --tag "$RELEASE_TAG" --sha "$HEAD_SHA" --stage "$RUNNER_TEMP/final-dist"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Decide whether the release candidate's UAT evidence can be reused
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+          HEAD_SHA: ${{ needs.admit.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          uv run --locked --no-dev --no-install-project -- python scripts/release_reuse_uat_evidence.py decide \
+            --tag "$RELEASE_TAG" \
+            --head-sha "$HEAD_SHA" \
+            --github-repository "$GITHUB_REPOSITORY" \
+            --final-dist "$RUNNER_TEMP/final-dist" \
+            --work "$RUNNER_TEMP/reuse" \
+            --github-output "$GITHUB_OUTPUT"
+
   install-matrix:
     name: install ${{ matrix.python-version }} ${{ matrix.os }}
     needs: admit
@@ -170,7 +230,8 @@ jobs:
 
   uat-stage1:
     name: UAT stage 1 ${{ matrix.shard }}
-    needs: admit
+    needs: [admit, uat-reuse]
+    if: ${{ !cancelled() && needs.admit.result == 'success' && needs.uat-reuse.outputs.reuse != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     strategy:
@@ -254,8 +315,8 @@ jobs:
 
   uat-stage2:
     name: UAT stage 2 ${{ matrix.shard }}
-    needs: [admit, uat-stage1]
-    if: ${{ !cancelled() && needs.admit.result == 'success' }}
+    needs: [admit, uat-reuse, uat-stage1]
+    if: ${{ !cancelled() && needs.admit.result == 'success' && needs.uat-reuse.outputs.reuse != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     strategy:
@@ -327,8 +388,8 @@ jobs:
 
   uat-stage3:
     name: UAT stage 3 ${{ matrix.shard }}
-    needs: [admit, uat-stage2]
-    if: ${{ !cancelled() && needs.admit.result == 'success' }}
+    needs: [admit, uat-reuse, uat-stage2]
+    if: ${{ !cancelled() && needs.admit.result == 'success' && needs.uat-reuse.outputs.reuse != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     strategy:
@@ -401,10 +462,13 @@ jobs:
 
   release-uat:
     name: release UAT gate
-    needs: [admit, uat-stage1, uat-stage2, uat-stage3]
+    needs: [admit, uat-reuse, uat-stage1, uat-stage2, uat-stage3]
     if: ${{ !cancelled() && needs.admit.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
@@ -417,12 +481,14 @@ jobs:
           head-sha: ${{ needs.admit.outputs.head_sha }}
 
       - name: Download every shard's evidence
+        if: ${{ needs.uat-reuse.outputs.reuse != 'true' }}
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
           pattern: release-uat-${{ inputs.tag || github.ref_name }}-stage*
           path: ${{ runner.temp }}/uat-evidence
 
       - name: Check the combined release gate over every shard
+        if: ${{ needs.uat-reuse.outputs.reuse != 'true' }}
         env:
           UV_NO_SYNC: '1'
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
@@ -441,6 +507,45 @@ jobs:
             OUTPUT="$RUNNER_TEMP/uat-gate-summary.json" \
             DIST_DIGEST="$(sha256sum "$RELEASE_DIST_DIGEST_FILE" | cut -d' ' -f1)"
 
+      - name: Download the release candidate's shard evidence
+        if: ${{ needs.uat-reuse.outputs.reuse == 'true' }}
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          pattern: release-uat-${{ needs.uat-reuse.outputs.rc_tag }}-stage*
+          path: ${{ runner.temp }}/uat-evidence
+          run-id: ${{ needs.uat-reuse.outputs.rc_run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Re-verify the release candidate's evidence with the combined release gate
+        if: ${{ needs.uat-reuse.outputs.reuse == 'true' }}
+        env:
+          UV_NO_SYNC: '1'
+          RC_TAG: ${{ needs.uat-reuse.outputs.rc_tag }}
+          RC_SHA: ${{ needs.uat-reuse.outputs.rc_sha }}
+          RC_RUN_ID: ${{ needs.uat-reuse.outputs.rc_run_id }}
+          RC_DIST_DIGEST: ${{ needs.uat-reuse.outputs.rc_dist_digest }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          .venv/bin/python -c "import benchbox, pathlib; path = pathlib.Path(benchbox.__file__).resolve(); assert 'site-packages' in path.parts, path"
+          evidence="$RUNNER_TEMP/uat-evidence"
+          stage1=("$evidence"/release-uat-"$RC_TAG"-stage1-*/run)
+          stage2=("$evidence"/release-uat-"$RC_TAG"-stage2-*/run)
+          stage3=("$evidence"/release-uat-"$RC_TAG"-stage3-*/run)
+          make uat-gate-check \
+            STAGE1="${stage1[*]}" \
+            STAGE2="${stage2[*]}" \
+            STAGE3="${stage3[*]}" \
+            OUTPUT="$RUNNER_TEMP/uat-gate-summary.json" \
+            DIST_DIGEST="$RC_DIST_DIGEST"
+          python3 scripts/release_reuse_uat_evidence.py verify-gate \
+            --summary "$RUNNER_TEMP/uat-gate-summary.json" \
+            --rc-tag "$RC_TAG" \
+            --rc-run-id "$RC_RUN_ID" \
+            --rc-sha "$RC_SHA" \
+            --rc-digest "$RC_DIST_DIGEST" \
+            --receipt "$RUNNER_TEMP/uat-reuse-receipt.json"
+
       - name: Restore the checkout package
         if: always()
         run: |
@@ -450,19 +555,29 @@ jobs:
           fi
           git ls-files -z benchbox | xargs -0 git update-index --no-assume-unchanged
 
-      - name: Require every shard job to have succeeded
+      - name: Require every shard job to have succeeded or been replaced by verified reuse
         if: always()
         env:
+          REUSE: ${{ needs.uat-reuse.outputs.reuse }}
+          REUSE_RESULT: ${{ needs.uat-reuse.result }}
           STAGE1_RESULT: ${{ needs.uat-stage1.result }}
           STAGE2_RESULT: ${{ needs.uat-stage2.result }}
           STAGE3_RESULT: ${{ needs.uat-stage3.result }}
         run: |
           set -euo pipefail
           status=0
+          expected=success
+          if [ "$REUSE" = "true" ]; then
+            expected=skipped
+            if [ "$REUSE_RESULT" != "success" ]; then
+              echo "::error::UAT evidence reuse job finished as '$REUSE_RESULT', not 'success'."
+              status=1
+            fi
+          fi
           for stage in 1 2 3; do
             var="STAGE${stage}_RESULT"
-            if [ "${!var}" != "success" ]; then
-              echo "::error::UAT stage $stage shard jobs finished as '${!var}', not 'success'."
+            if [ "${!var}" != "$expected" ]; then
+              echo "::error::UAT stage $stage shard jobs finished as '${!var}', not '$expected'."
               status=1
             fi
           done
@@ -476,6 +591,7 @@ jobs:
           path: |
             ${{ runner.temp }}/dist-digest.txt
             ${{ runner.temp }}/uat-gate-summary.json
+            ${{ runner.temp }}/uat-reuse-receipt.json
           retention-days: 30
           if-no-files-found: warn
 

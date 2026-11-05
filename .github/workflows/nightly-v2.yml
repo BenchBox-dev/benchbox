@@ -935,6 +935,10 @@ jobs:
       - name: Install dependencies
         run: uv sync --group dev
 
+      - name: Warm the verified Theseus install
+        shell: bash
+        run: uv run -- python scripts/theseus_cli.py --trusted-ref "$(git rev-parse HEAD)" path
+
       - name: Run fast tests
         run: uv run -- python -m pytest tests -m "fast and not (slow or stress or resource_heavy or live_integration)" --tb=short --timeout=120 --junitxml=junit-fast-windows.xml
 
@@ -1054,6 +1058,10 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --group dev
+
+      - name: Warm the verified Theseus install
+        shell: bash
+        run: uv run -- python scripts/theseus_cli.py --trusted-ref "$(git rev-parse HEAD)" path
 
       - name: Measure fast tier durations
         run: |
@@ -1319,6 +1327,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
@@ -1334,6 +1344,14 @@ jobs:
       - name: Sync locked package-only runtime
         if: matrix.suite == 'core'
         run: uv sync --project _project/scripts --locked
+
+      - name: Warm the verified Theseus install
+        run: python3 scripts/theseus_cli.py --trusted-ref "$(git rev-parse HEAD)" path
+
+      - name: Verify the locked Theseus commit passed its required checks
+        run: python3 scripts/theseus_release_check.py
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Run core integration tests
         if: matrix.suite == 'core'
