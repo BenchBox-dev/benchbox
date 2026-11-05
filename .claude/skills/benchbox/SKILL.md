@@ -29,7 +29,7 @@ artifacts when supported.
 Aliases remain accepted: `benchmark-test`, `quality-check`, `qa`,
 `tpc-compliance`, `dialect-translation`, `sql`, `binary-check`, `binaries`,
 `compare-impl`, `live-test`, `platform-test`, `arch`, `arch-review`,
-`plan-execute`, `implement`, `release-cut`, and `release-finalize`.
+`plan-execute`, and `implement`.
 
 ## Hard rules
 
