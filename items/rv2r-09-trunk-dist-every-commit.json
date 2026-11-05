@@ -1,12 +1,13 @@
 {
   "acceptance": [
-    "Decision note in the PR body comparing A and B, with measured extra runner-minutes per day from the last 7 days of trunk runs",
-    "For A: a workflow test plus a live check that two develop merges within 5 minutes both end with dist-<sha>-attempt-N. For B: tests that admit and trunk-uat select the newest dist-bearing commit and fail clearly otherwise, plus a live run",
-    "No change to what the dist contains or how it is built (wheel and sdist digests for the same commit unchanged)",
-    "The chosen selection rule is written into rv2r-02's context before rv2r-02 is prepared"
+    "release-check (pre-tag) on a commit whose trunk run was superseded or failed fails with a message naming the newest releasable commit; tests cover superseded, failed and successful cases",
+    "trunk-uat selects the newest develop commit with a successful trunk.yml push run and dist artifact; test plus a live run",
+    "release-artifacts.md and release-guide.md state the 'tag only a releasable commit' rule and how to find one",
+    "No change to admission rules, dist contents or how the dist is built",
+    "The selection rule is written into rv2r-02's context before rv2r-02 is prepared"
   ],
-  "context": "Member of batch release-v2-remediation; ready now and runs alongside rv2r-01. GUARDRAILS: keep pending-run replacement for the test jobs; do not change dist build steps or artifact names. DECISION GATE: if the extra cost exceeds 60 runner-minutes per day, stop and ask the owner before choosing A.",
-  "description": "Since 2026-10-28, 42 of 100 trunk runs were cancelled. They were replaced while waiting under trunk.yml's workflow-level concurrency group `trunk-develop` (cancel-in-progress: false; trunk.yml:21-23). A commit without a trunk dist artifact cannot be released (release-artifacts.md:8-11), and trunk UAT (rv2r-02) also needs a dist. Choose and implement one approach. (A) Build the dist in a separate push-triggered workflow without a replacing concurrency group (adds one workflow; rv2r-12 counts it), or move the workflow-level concurrency to the test jobs only, so the dist job is never replaced. (B) Make admit and trunk UAT select the newest commit that has a dist, with a clear error otherwise, and document that rule. Measure runner cost before choosing. The choice fixes the dist-selection rule that rv2r-02 and rv2r-03 implement. Rollback: revert this member's commits.",
+  "context": "Member of batch release-v2-remediation; ready now and runs alongside rv2r-01. DECISION GATE: any change to the admission contract (which runs or workflows may supply a releasable dist) goes to the owner. The retrospective's b8 metric '0 unreleasable commits' is replaced by 'release tooling always names the newest releasable commit', because releasing superseded commits would release untested code.",
+  "description": "Since 2026-10-28, 42 of 100 trunk runs were cancelled: they were replaced while waiting under trunk.yml's workflow-level concurrency group `trunk-develop`. Admission (release-artifacts.md:41-45; scripts/release_admitted_dist.py:130) accepts only a dist from a successful trunk.yml push run on develop. Making a superseded commit releasable would therefore release code whose tests never ran, which breaks the ADR rule that a release ships only a trunk-tested exact commit. Implement: document 'tag only a commit with a successful trunk.yml push run'; make release-prep/release-check and trunk-uat (rv2r-02) select the newest such commit, and fail clearly otherwise, naming the newest releasable commit. Changing the admission contract (for example a separate dist workflow, or accepting superseded runs) is out of scope unless the owner decides otherwise. Rollback: revert this member's commits.",
   "links": [
     ".github/workflows/trunk.yml",
     "docs/internal/release-artifacts.md"
@@ -26,6 +27,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "93fa0072aaea464c90a68b5ab40f74c4",
+      "session_id": "7da446616e5349658579dfc9c4288973"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a3eb8cbf1b5dc744e4710e1c",
+      "at": "2026-11-05T15:37:41Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "619fd453573544f9bbbda55d27aaf81d",
       "session_id": "7da446616e5349658579dfc9c4288973"
     }
   ]

@@ -25197,7 +25197,7 @@
       "needs": [],
       "priority": "medium-high",
       "status": "open",
-      "title": "Make every develop commit releasable by guaranteeing a trunk dist artifact for it"
+      "title": "Make releases and trunk UAT select the newest releasable trunk commit, with clear errors otherwise"
     },
     "rv2r-10-flaky-ci-investigation": {
       "claim": null,
