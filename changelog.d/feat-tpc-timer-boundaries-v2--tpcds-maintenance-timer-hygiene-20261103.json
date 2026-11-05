@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "TPC-DS maintenance operation timings now cover only the operation itself: the connection is opened and dimension ranges are initialized before the interval starts, and the connection closes after it ends. Maintenance timings from earlier versions include connection setup and initialization and are not comparable with new ones.",
+      "benchmarks": ["tpcds"]
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "TPC-DS maintenance runs are now reproducible. The synthetic row generator is seeded from a configurable value (default fixed) instead of the wall clock, the seed is recorded in the maintenance result, and maintenance durations use a monotonic clock.",
+      "benchmarks": ["tpcds"]
+    }
+  ]
+}

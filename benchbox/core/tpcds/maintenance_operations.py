@@ -7,11 +7,14 @@
 
 import logging
 import random
-import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Optional
+
+from benchbox.utils.clock import elapsed_seconds, mono_time
+
+DEFAULT_MAINTENANCE_SEED = 20260101
 
 
 class MaintenanceOperationType(Enum):
@@ -68,7 +71,9 @@ class MaintenanceOperations:
         self.connection = None
         self.benchmark_instance = None
         self.config = None
-        self.random_gen = random.Random()
+        self.seed = DEFAULT_MAINTENANCE_SEED
+        self.random_gen = random.Random(self.seed)
+        self._transaction_counter = 0
 
         self.dimension_ranges = {}
 
@@ -88,11 +93,15 @@ class MaintenanceOperations:
             MaintenanceOperationType.BULK_UPDATE_INVENTORY: self._bulk_update_inventory,
         }
 
+    def set_seed(self, seed: int) -> None:
+        self.seed = seed
+        self.random_gen.seed(seed)
+        self._transaction_counter = 0
+
     def initialize(self, connection: Any, benchmark_instance: Any, config: Any) -> None:
         self.connection = connection
         self.benchmark_instance = benchmark_instance
         self.config = config
-        self.random_gen.seed(int(time.time()))
 
         self._initialize_dimension_ranges(connection)
 
@@ -150,6 +159,11 @@ class MaintenanceOperations:
         else:
             return "?"
 
+    def _seed_database_random(self, connection: Any) -> None:
+        descriptor = f"{type(connection).__module__}.{type(connection).__name__}".lower()
+        if "duckdb" in descriptor:
+            connection.execute(f"SELECT setseed({self.random_gen.random()})")
+
     def _execute_batched_insert(
         self, connection: Any, table_name: str, columns: str, rows_to_insert: list[tuple], num_columns: int
     ) -> int:
@@ -206,13 +220,17 @@ class MaintenanceOperations:
 
         return total_inserted
 
+    def _next_transaction_id(self) -> str:
+        self._transaction_counter += 1
+        return f"txn_{self.seed}_{self._transaction_counter}"
+
     def execute_operation(
         self,
         connection: Any,
         operation_type: MaintenanceOperationType,
         estimated_rows: int,
     ) -> MaintenanceResult:
-        start_time = time.time()
+        start_time = mono_time()
 
         try:
             if operation_type not in self.operation_handlers:
@@ -224,20 +242,20 @@ class MaintenanceOperations:
             handler = self.operation_handlers[operation_type]
             rows_affected = handler(connection, estimated_rows)
 
-            end_time = time.time()
+            end_time = mono_time()
 
             return MaintenanceResult(
                 operation_type=operation_type,
                 success=True,
                 start_time=start_time,
                 end_time=end_time,
-                duration=end_time - start_time,
+                duration=elapsed_seconds(start_time, end_time),
                 rows_affected=rows_affected,
-                transaction_id=f"txn_{int(time.time())}",
+                transaction_id=self._next_transaction_id(),
             )
 
         except ForeignKeyViolationError as e:
-            end_time = time.time()
+            end_time = mono_time()
             error_msg = f"Foreign key constraint violation in {operation_type}: {e}"
             self.logger.error(error_msg)
 
@@ -246,13 +264,13 @@ class MaintenanceOperations:
                 success=False,
                 start_time=start_time,
                 end_time=end_time,
-                duration=end_time - start_time,
+                duration=elapsed_seconds(start_time, end_time),
                 rows_affected=0,
                 error_message=error_msg,
             )
 
         except DataGenerationError as e:
-            end_time = time.time()
+            end_time = mono_time()
             error_msg = f"Data generation failed for {operation_type}: {e}"
             self.logger.error(error_msg)
 
@@ -261,13 +279,13 @@ class MaintenanceOperations:
                 success=False,
                 start_time=start_time,
                 end_time=end_time,
-                duration=end_time - start_time,
+                duration=elapsed_seconds(start_time, end_time),
                 rows_affected=0,
                 error_message=error_msg,
             )
 
         except ConnectionError as e:
-            end_time = time.time()
+            end_time = mono_time()
             error_msg = f"Database connection error for {operation_type}: {e}"
             self.logger.error(error_msg)
 
@@ -276,13 +294,13 @@ class MaintenanceOperations:
                 success=False,
                 start_time=start_time,
                 end_time=end_time,
-                duration=end_time - start_time,
+                duration=elapsed_seconds(start_time, end_time),
                 rows_affected=0,
                 error_message=error_msg,
             )
 
         except MaintenanceError as e:
-            end_time = time.time()
+            end_time = mono_time()
             error_msg = f"Maintenance operation {operation_type} failed: {e}"
             self.logger.error(error_msg)
 
@@ -291,13 +309,13 @@ class MaintenanceOperations:
                 success=False,
                 start_time=start_time,
                 end_time=end_time,
-                duration=end_time - start_time,
+                duration=elapsed_seconds(start_time, end_time),
                 rows_affected=0,
                 error_message=error_msg,
             )
 
         except Exception as e:
-            end_time = time.time()
+            end_time = mono_time()
             error_msg = f"Unexpected error in {operation_type}: {type(e).__name__}: {e}"
             self.logger.error(error_msg)
 
@@ -306,7 +324,7 @@ class MaintenanceOperations:
                 success=False,
                 start_time=start_time,
                 end_time=end_time,
-                duration=end_time - start_time,
+                duration=elapsed_seconds(start_time, end_time),
                 rows_affected=0,
                 error_message=error_msg,
             )
@@ -404,6 +422,7 @@ class MaintenanceOperations:
         """
 
         try:
+            self._seed_database_random(connection)
             cursor = connection.execute(query_sql, (estimated_rows,))
             sales_records = cursor.fetchall()
         except Exception as e:
