@@ -5,6 +5,7 @@
     "Tests cover the refusal and the unrelated-change case.",
     "docs/agent/batch-feature-delivery.md describes the guard."
   ],
+  "context": "PR #3957 head 50c8bd9496: the oracle verdict is SHIP, every required check passes, and the oracle threads are resolved. It is held with no-auto-merge until v0.5.0 is released, at the owner's request (the latest release was v0.4.2 on 2026-11-05). Next: when the owner names #3957, remove the hold, run make pr-arm PR=3957, and monitor to merge; then finish both items. The claim was released while waiting.",
   "description": "Member sessions edited files in the primary clone /Users/joe/Developer/BenchBox because relative tool paths resolve there. batch-member-check validates only the member worktree and agent-write-preflight guards only commits, so nothing caught it; a member noticed and the leaders moved the edits. A guard that compares the primary clone's uncommitted changes with the member's frozen scope catches the batch-relevant case without flagging unrelated owner work in the primary clone.",
   "links": [
     "scripts/batch_integration.py",
@@ -18,6 +19,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "d594c7ef7abf4cf7bdb031ab41af0c43",
+      "session_id": "4e1f5de86962468394697835ee28c6b3"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae",
+      "at": "2026-11-05T16:06:53Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6871e5ed174743068490e052b9d62f62",
       "session_id": "4e1f5de86962468394697835ee28c6b3"
     }
   ]
