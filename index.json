@@ -834,6 +834,72 @@
       "start_head": "3a3ee9826a6ab939d6235d31e69056c789ac365e",
       "terminal_outcome": "deliver"
     },
+    "tpc-timer-boundaries": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/tpc-timer-boundaries",
+      "integration_head": "e3b793bdf55a538e06c8dcffd5530fc548fedad9",
+      "integration_log": [
+        {
+          "at": "2026-11-05T18:54:20Z",
+          "head": "e3b793bdf55a538e06c8dcffd5530fc548fedad9",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpc-timer-boundaries",
+      "lifecycle": "active",
+      "members": [
+        "tpcds-maintenance-timer-hygiene-20261103",
+        "power-test-times-query-generation-20261031",
+        "derived-power-export-rounding-20261017",
+        "tpc-measured-intervals-reference-20261103"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "owner_epoch": 0,
+      "owner_generation": "98dc8bb4951d960a6a48a852ec4e3c37",
+      "project_id": "BenchBox",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "derived-power-export-rounding-20261017": [
+          "benchbox/core/results/schema.py",
+          "benchbox/core/results/subscale_policy.py",
+          "tests/unit/core/results/*",
+          "tests/unit/cli/test_subscale_power_output.py",
+          "changelog.d/*"
+        ],
+        "power-test-times-query-generation-20261031": [
+          "benchbox/core/tpch/power_test.py",
+          "benchbox/core/tpcds/power_test.py",
+          "benchbox/core/tpch/queries.py",
+          "tests/*power_test*",
+          "tests/unit/core/tpch/*",
+          "tests/unit/core/tpcds/*",
+          "tests/unit/core/throughput/*",
+          "tests/unit/tpch/*",
+          "changelog.d/*"
+        ],
+        "tpc-measured-intervals-reference-20261103": [
+          "docs/internal/tpc-measured-intervals.md",
+          "docs/internal/throughput-result-alignment.md",
+          "changelog.d/*"
+        ],
+        "tpcds-maintenance-timer-hygiene-20261103": [
+          "benchbox/core/tpcds/maintenance_test.py",
+          "benchbox/core/tpcds/maintenance_operations.py",
+          "tests/*maintenance*",
+          "changelog.d/*"
+        ]
+      },
+      "scope_hash": "238e105960e4c16ff2fd2ddb46b4363c3233a5f0910375461dbb2f9b10377e49",
+      "start_head": "e3b793bdf55a538e06c8dcffd5530fc548fedad9",
+      "terminal_outcome": "deliver"
+    },
     "tpch-refresh-path": {
       "accepted_members": {
         "perf-tpch-rf1-bulk-load-20261031": "5e88433033745c63876856eec5cf25b1efbe8453",
