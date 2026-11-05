@@ -836,6 +836,7 @@
     },
     "tpc-timer-boundaries": {
       "accepted_members": {
+        "power-test-times-query-generation-20261031": "abe979f3d1993cbe5fd7c72268ce3bfbe7ca3690",
         "tpcds-maintenance-timer-hygiene-20261103": "7ed847e58c7cefd15f9820a524a5a71a6d71cb9d"
       },
       "batch_schema": 2,
@@ -843,6 +844,18 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "power-test-times-query-generation-20261031": {
+          "accepted_head": "abe979f3d1993cbe5fd7c72268ce3bfbe7ca3690",
+          "changed_files": [
+            "benchbox/core/tpcds/power_test.py",
+            "benchbox/core/tpch/power_test.py",
+            "changelog.d/feat-tpc-timer-boundaries--power-test-times-query-generation-20261031.json",
+            "tests/unit/core/tpcds/test_tpcds_power_test_query_generation_boundary.py",
+            "tests/unit/core/tpch/test_power_test_query_generation_boundary.py"
+          ],
+          "integration_head": "bc3198ffd54046811891f0eeb9b17578053c5cf6",
+          "integration_seq": 2
+        },
         "tpcds-maintenance-timer-hygiene-20261103": {
           "accepted_head": "7ed847e58c7cefd15f9820a524a5a71a6d71cb9d",
           "changed_files": [
@@ -856,7 +869,7 @@
         }
       },
       "integration_branch": "feat/tpc-timer-boundaries",
-      "integration_head": "c8cb95a320607478dd0f1d79d38d23efc4130689",
+      "integration_head": "bc3198ffd54046811891f0eeb9b17578053c5cf6",
       "integration_log": [
         {
           "at": "2026-11-05T18:54:20Z",
@@ -872,6 +885,15 @@
           "op_id": "30ac524b363e4a9fa0cb07f0c17dee73",
           "previous_head": "e3b793bdf55a538e06c8dcffd5530fc548fedad9",
           "seq": 1
+        },
+        {
+          "at": "2026-11-05T19:11:11Z",
+          "head": "bc3198ffd54046811891f0eeb9b17578053c5cf6",
+          "kind": "prepare",
+          "member": "power-test-times-query-generation-20261031",
+          "op_id": "13172a1f54e5489d92a24b51511c0d54",
+          "previous_head": "c8cb95a320607478dd0f1d79d38d23efc4130689",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpc-timer-boundaries",
@@ -20548,15 +20570,10 @@
       "title": "Power Run Iterations Configuration ✅ COMPLETED"
     },
     "power-test-times-query-generation-20261031": {
-      "claim": {
-        "expires_at": "2026-11-06T19:11:05Z",
-        "generation": "03fb721dfda840ddb6de78e4049253f6",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Generate TPC-H and TPC-DS power-test query text before each per-query timer starts"
     },
     "pr-1644-fix-commit-nits-20260811": {
