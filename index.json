@@ -27203,7 +27203,7 @@
         "oracle-callers-env-secrets-unreachable-20261104"
       ],
       "priority": "medium",
-      "status": "blocked",
+      "status": "open",
       "title": "Stop the executed SQL comparison gate failing on SQLite q19 timeouts"
     },
     "sql-execution-gate-vacuous-empty-results-20261025": {
