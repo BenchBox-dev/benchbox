@@ -27617,10 +27617,15 @@
       "title": "Document fork producer and minimal core consumer boundaries"
     },
     "sqlglot-e2e-fork-wheel-delivery": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-06T14:46:03Z",
+        "generation": "d643d04b4d7c4bb2a333541a8b4455a9",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ba4923b65d2bea2a5584a721"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Provide verified SQLGlot wheel deliveries from benchbox-sqlglot"
     },
     "sqlglot-e2e-lifecycle-controller": {
