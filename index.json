@@ -25170,9 +25170,7 @@
     },
     "rv2r-06-fail-closed-detectors": {
       "claim": null,
-      "needs": [
-        "rv2r-01-adr-guardrails"
-      ],
+      "needs": [],
       "priority": "high",
       "status": "open",
       "title": "Make process checks fail when they ran but did nothing"
