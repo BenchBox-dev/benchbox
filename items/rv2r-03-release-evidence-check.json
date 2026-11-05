@@ -7,7 +7,7 @@
     "Live negative: with a guarded-path change after the trunk evidence, the run falls back to full UAT (probe mode is acceptable evidence)",
     "release-artifacts.md describes the candidate rules and fallback exactly as implemented"
   ],
-  "context": "Member of batch release-v2-remediation. Prior art: #3947 (reuse), #3956 (explicit publish conditions), #3946 (parallel stages). b7 disposition (owner, 2026-11-05): the wheel-digest binding for envelope-only fixes is superseded by continuous trunk UAT; an envelope fix lands on develop, trunk UAT is dispatched on that commit, and the next tag reuses it. GUARDRAILS: equivalence checks fail closed (any error -> full UAT); never accept evidence whose digest re-check fails; admit and the install matrix always run. DECISION GATE: any relaxation of an equivalence condition beyond the list above needs the owner.",
+  "context": "Member of batch release-v2-remediation. Prior art: #3947 (reuse), #3956 (explicit publish conditions), #3946 (parallel stages). b7 disposition (owner, 2026-11-05): the wheel-digest binding for envelope-only fixes is superseded by continuous trunk UAT; an envelope fix lands on develop, trunk UAT is dispatched on that commit, and the next tag reuses it. GUARDRAILS: equivalence checks fail closed (any error -> full UAT); never accept evidence whose digest re-check fails; admit and the install matrix always run. DECISION GATE: any relaxation of an equivalence condition beyond the list above needs the owner.\n\n2026-11-05 owner decision (from oracle finding D2 on the legacy-retirement PR): the release evidence check must also require the newest release-canary run (credential-free slow/resource-heavy suite) on an ancestor of the tag commit, no older than 48 h, to be green. This restores the legacy release_readiness_check.py gate in the new model; the canary has run daily for months, which satisfies G12 calibration. Add acceptance in implementation: missing, red, stale (>48 h) or non-ancestor canary refuses the release with a named reason (tests), and the fallback full UAT does not bypass it. Depends in practice on release-canary-green-after-0-5-0 (canary red since 2026-10-31); do not make it blocking while the canary is red without telling the owner.",
   "description": "Owner decision 2026-11-05: a release checks evidence. Generalize the #3947 reuse (scripts/release_reuse_uat_evidence.py, uat-reuse job), which today reuses only a same-version rc's run for a final tag. The new primary source is the newest green trunk UAT run for any tag, rc or final. A candidate must be a `.github/workflows/trunk-uat.yml` run with event schedule or workflow_dispatch and head_branch develop. It qualifies when: its source commit is an ancestor of the tag commit; the guarded UAT inputs are byte-identical (tests/uat, tests/utilities, tests/__init__.py, docker, Makefile, scripts/uat-bring-up, release-uat-env action, .github/workflows/trunk-uat.yml, workflow-level env and the UAT stage job definitions apart from needs/if); uv.lock differs only in the benchbox version line; the wheel and sdist are member-equivalent apart from version lines (candidate version read from its dist file names, not from a tag); and uat-gate-check re-verifies the downloaded evidence against that run's digest. Evidence containing rv2r-04 retries is accepted when a cell's infrastructure-signature attempt 1 failed and attempt 2 passed. Keep the rc-run source as a second candidate. If no candidate qualifies, run the full parallel UAT stages unchanged. publish keeps explicit result checks (#3956). Rollback: revert this member's commits; the rc-run reuse and full-UAT paths remain.",
   "links": [
     "scripts/release_reuse_uat_evidence.py",
@@ -30,6 +30,14 @@
       "op": "update",
       "op_id": "39b6eb1617064ffc8f597ddf7ad42542",
       "session_id": "7da446616e5349658579dfc9c4288973"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-05T23:47:08Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c3c589662268422880a1b25ed1c1b22f",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
     }
   ]
 }
