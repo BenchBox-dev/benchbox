@@ -11,15 +11,17 @@ from benchbox.core.tpcds.schema import get_create_all_tables_sql
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 
-class _DuckDBSharedConnection:
+class _SharedConnection:
+    dialect = "duckdb"
+
     def __init__(self, raw, events):
-        self._raw = raw
+        self.connection = raw
         self._events = events
 
     def execute(self, sql, params=None):
         if params is None:
-            return self._raw.execute(sql)
-        return self._raw.execute(sql, params)
+            return self.connection.execute(sql)
+        return self.connection.execute(sql, params)
 
     def close(self):
         self._events.append("close")
@@ -37,7 +39,7 @@ def raw_duckdb():
 def _maintenance_test(raw, events):
     def factory():
         events.append("open")
-        return _DuckDBSharedConnection(raw, events)
+        return _SharedConnection(raw, events)
 
     return TPCDSMaintenanceTest(benchmark=None, connection_factory=factory, scale_factor=0.01)
 

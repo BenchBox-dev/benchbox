@@ -10,7 +10,7 @@
     {
       "category": "fixed",
       "breaking": false,
-      "text": "TPC-DS maintenance runs are now reproducible. The synthetic row generator is seeded from a configurable value (default fixed) instead of the wall clock, the seed is recorded in the maintenance result, and maintenance durations use a monotonic clock.",
+      "text": "TPC-DS maintenance runs on DuckDB are now reproducible. The synthetic row generator is seeded from a value in the maintenance test configuration (default fixed) instead of the wall clock, DuckDB's random row selection is seeded from it, the seed is recorded in the maintenance test result, and maintenance durations use a monotonic clock.",
       "benchmarks": ["tpcds"]
     }
   ]

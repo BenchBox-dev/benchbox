@@ -160,8 +160,10 @@ class MaintenanceOperations:
             return "?"
 
     def _seed_database_random(self, connection: Any) -> None:
-        descriptor = f"{type(connection).__module__}.{type(connection).__name__}".lower()
-        if "duckdb" in descriptor:
+        inner = getattr(connection, "connection", connection)
+        descriptor = f"{type(inner).__module__}.{type(inner).__name__}".lower()
+        dialect = str(getattr(connection, "dialect", "")).lower()
+        if "duckdb" in descriptor or dialect == "duckdb":
             connection.execute(f"SELECT setseed({self.random_gen.random()})")
 
     def _execute_batched_insert(
