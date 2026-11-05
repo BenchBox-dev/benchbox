@@ -1,5 +1,5 @@
 {
-  "context": "2026-11-05: leader started. Owner instruction (Joe, 2026-11-05): implement each ready batch as a feature-delivery batch, complete all work up to arming the final PR, then wait for v0.5.0 to be released before merging. Final PR carries no-auto-merge. Never arm.",
+  "context": "Batch tpc-timer-boundaries; integration branch feat/tpc-timer-boundaries; worktree /Users/joe/Developer/BenchBox.wt-tpc-timer-boundaries. Registered 2026-11-05 at start head e3b793bd. Members in order: tpcds-maintenance-timer-hygiene-20261103, power-test-times-query-generation-20261031, derived-power-export-rounding-20261017, tpc-measured-intervals-reference-20261103. Owner instruction (Joe, 2026-11-05): complete all work up to arming the final PR, then wait for v0.5.0 before merging; final PR carries no-auto-merge; latest tag v0.5.0rc5.\nOverlap with held PRs: #3948 changes docs/internal/throughput-result-alignment.md, which the reference member edits (link only). No other overlap known at registration.\nOWNER DECISION PENDING before arming (power-test member): A/B/C marking choice. Implemented option A (query-generation slice of locality ADR timing method 2, separated by BenchBox version and changelog; timing_method left unwritten). B = interim marker field; C = owner supersedes ADR item 6 for this slice, changelog-only separation.\nOWED AT MERGE (not done in this batch): (a) if owner chooses A, update result-schema-2-4-producer-20261022 to need power-test-times-query-generation-20261031 and drop query generation from its timer-scope bullet; (b) set not_before on perf-smoke-rebaseline-after-power-query-generation-20261103 to merge date + 7 days.",
   "description": "Umbrella for feature-delivery batch tpc-timer-boundaries (integration branch feat/tpc-timer-boundaries). Members in order: tpcds-maintenance-timer-hygiene-20261103, power-test-times-query-generation-20261031, derived-power-export-rounding-20261017, tpc-measured-intervals-reference-20261103. Notes only; never a batch member.",
   "sessions": [
     {
@@ -8,6 +8,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "8625d918fe714d61b1b6aaf215f1bb8c",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-05T18:54:47Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4e8f887506914266bb45ed84238e8fc0",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
