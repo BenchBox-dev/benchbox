@@ -1,6 +1,6 @@
-# Release Performance Smoke
+# Performance Smoke
 
-BenchBox runs a small perf-smoke job on pull requests to the release branch
+BenchBox runs a small perf-smoke job nightly
 to catch orchestration-overhead regressions early. It's deliberately narrow: one platform
 (DuckDB), one benchmark (TPC-H), one scale (SF=0.01), one phase (power).
 The goal is to surface regressions in the result builder, dialect
@@ -15,9 +15,8 @@ benchmark DuckDB itself.
    `--fail-on-regression 10% --min-regression-delta 7ms --min-aggregate-regression-delta 82ms`.
 3. Result JSON (baseline + current) is uploaded as a 14-day artifact.
 
-Workflow lives at `.github/workflows/perf-smoke.yml`. The nightly T3 perf
-domain in `.github/workflows/nightly-v2.yml` runs the same comparison against
-the same baseline.
+The gate runs in the nightly T3 perf domain of `.github/workflows/nightly-v2.yml`.
+The pull-request job on the retired `release` branch no longer exists.
 
 Detection limits of this gate, with measured examples, are recorded in
 [nightly-perf-gate-review.md](nightly-perf-gate-review.md).

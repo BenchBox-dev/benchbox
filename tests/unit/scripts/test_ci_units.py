@@ -222,7 +222,6 @@ TEST_READ_MARKDOWN = [
     "docs/agent/attribution-surfaces.md",
     "docs/internal/release-guide.md",
     "docs/publish-exclusions.txt",
-    "_project/decisions/single-repo-migration.md",
     "_project/notes/phase-2-requests.md",
 ]
 

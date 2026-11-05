@@ -52,10 +52,6 @@ def test_one_job_named_review_event_produces_no_oracle_review_check() -> None:
     assert "oracle-review" not in {workflow["jobs"]["review-event"]["name"], *workflow["jobs"]}
 
 
-def test_job_skips_release_pull_requests() -> None:
-    assert _job()["if"] == "github.event.pull_request.base.ref != 'release'"
-
-
 def test_job_is_a_single_no_op_step() -> None:
     steps = _job()["steps"]
     assert len(steps) == 1
