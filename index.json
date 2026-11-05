@@ -25211,6 +25211,23 @@
       "status": "open",
       "title": "Cut the workflow count toward the dev-loop v2 intent after the legacy release path is gone"
     },
+    "rv2r-13-verify-next-release-under-new-model": {
+      "claim": null,
+      "needs": [
+        "dlv2-52-release-rehearsal-and-first-release",
+        "rv2r-03-release-evidence-check",
+        "rv2r-04-uat-rubric-automation",
+        "rv2r-05-release-probe-mode",
+        "rv2r-06-fail-closed-detectors",
+        "rv2r-07-oracle-pinned-dependency",
+        "rv2r-08-release-freeze-guard",
+        "rv2r-09-trunk-dist-every-commit",
+        "rv2r-11-loop-metrics-dashboard"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Verify the next release end to end under the evidence-check model and close the remediation"
+    },
     "rx-ux-00-phase0-contract-decisions": {
       "claim": null,
       "needs": [],

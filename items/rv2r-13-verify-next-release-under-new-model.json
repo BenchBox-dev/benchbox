@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Release lead time from tag push to publish job start is at most 30 minutes, excluding owner approval wait (run link and timestamps)",
+    "The release reused trunk UAT evidence (job summary shows the trunk run id); if it fell back to full UAT, the reason is recorded and a follow-up item filed",
+    "TestPyPI (rc) or PyPI (final) files match SHA256SUMS; gh attestation verify passes with signer workflow release-v2.yml; Linux --no-deps install works",
+    "Zero owner decisions were needed for gate tuning between this release's tag and publish (rubric handled any envelope changes)",
+    "No infrastructure merges during the release window (rv2r-08 check history)",
+    "Nightly trunk UAT has at least 7 consecutive runs (completed or skipped) with per-cell history, and the infrastructure-failure rate per cell is visible in the dashboard"
+  ],
+  "context": "Final verification for the remediation program. The tag and the pypi approval stay owner-only. DECISION GATE: if any acceptance line fails, file the gap as a new item with the run evidence and ask the owner whether to release anyway; do not tune gates outside the rubric to make it pass.",
+  "description": "Closing gate for the release-v2 remediation: the next release after 0.5.0 (0.5.1 or 0.6.0rc1) must demonstrate the outcomes the retrospective found missing. The release runs admit, the install matrix and the trunk UAT evidence check; publishes without owner intervention beyond the tag and the pypi approval; and every process component executes live. Measure it against the targets below and record the result on this item and in the rv2r-11 dashboard.",
+  "links": [
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-27T12-06-43-989Z_01a17d41-7415-7202-9145-695263c763ec/ReleaseV2Retro.md",
+    ".github/workflows/release-v2.yml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a3eb8cbf1b5dc744e4710e1c",
+      "at": "2026-11-05T14:14:47Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a94b24e1272b4783ac79c27d5d6e5550",
+      "session_id": "7da446616e5349658579dfc9c4288973"
+    }
+  ]
+}
