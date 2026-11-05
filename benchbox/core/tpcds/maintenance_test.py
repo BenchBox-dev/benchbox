@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 
 from benchbox.core.tpcds.maintenance_operations import (
+    DEFAULT_MAINTENANCE_SEED,
     MaintenanceOperations,
     MaintenanceOperationType,
 )
@@ -35,6 +36,7 @@ class TPCDSMaintenanceTestConfig:
     validate_integrity: bool = True
     verbose: bool = False
     output_dir: Optional[Path] = None
+    seed: int = DEFAULT_MAINTENANCE_SEED
 
 
 @dataclass
@@ -105,6 +107,7 @@ class TPCDSMaintenanceTest:
 
         result: dict[str, Any] = {
             "config": config,
+            "seed": config.seed,
             "start_time": start_time_str,
             "end_time": "",
             "total_time": 0.0,
@@ -126,6 +129,7 @@ class TPCDSMaintenanceTest:
                 self.logger.info(f"Maintenance operations: {config.maintenance_operations}")
                 self.logger.info(f"Scale factor: {config.scale_factor}")
 
+            self.maintenance_ops.set_seed(config.seed)
             self._run_maintenance_loop(config, result)
             self._finalize_maintenance_result(config, result, start_time)
 
@@ -212,38 +216,40 @@ class TPCDSMaintenanceTest:
     def _execute_maintenance_operation(
         self, operation_type: str, table_name: str, operation_id: int
     ) -> TPCDSMaintenanceOperation:
-        start_time = mono_time()
-
         operation = TPCDSMaintenanceOperation(
             operation_type=operation_type,
             table_name=table_name,
-            start_time=start_time,
+            start_time=0.0,
             end_time=0.0,
             duration=0.0,
             rows_affected=0,
             success=False,
         )
 
+        connection = None
         try:
             if self.verbose:
                 self.logger.info(f"Executing {operation_type} operation on {table_name}")
 
             connection = self.connection_factory()
-
             self.maintenance_ops.initialize(connection, self.benchmark, None)
-
             maint_op_type = self._map_to_maintenance_operation_type(operation_type, table_name)
-
             estimated_rows = 10
-            result = self.maintenance_ops.execute_operation(connection, maint_op_type, estimated_rows)
+
+            start_time = mono_time()
+            operation.start_time = start_time
+            try:
+                result = self.maintenance_ops.execute_operation(connection, maint_op_type, estimated_rows)
+            finally:
+                end_t = mono_time()
+                operation.end_time = end_t
+                operation.duration = elapsed_seconds(start_time, end_t)
 
             operation.rows_affected = result.rows_affected
             operation.success = result.success
 
             if result.error_message:
                 operation.error = result.error_message
-
-            connection.close()
 
             if self.verbose:
                 self.logger.info(
@@ -256,9 +262,13 @@ class TPCDSMaintenanceTest:
                 self.logger.error(f"{operation_type} operation on {table_name} failed: {e}")
 
         finally:
-            end_t = mono_time()
-            operation.end_time = end_t
-            operation.duration = elapsed_seconds(start_time, end_t)
+            if connection is not None:
+                try:
+                    connection.close()
+                except Exception as e:
+                    if operation.error is None:
+                        operation.error = f"Connection close failed: {e}"
+                        operation.success = False
 
         return operation
 
