@@ -3,7 +3,7 @@
     "All live capture and attempt artifacts are copied to ~/Developer/benchmark_runs/review-evidence-2026-11-05/ with manifest.tsv (artifact id, name, run id, head sha, created/expires, size, sha256) and a README; every zip is verified against its sha256.",
     "Expired or failed artifacts are listed explicitly."
   ],
-  "context": "Started 2026-11-05 by agent ReviewEvidenceArchive. Source plan: local://brief-size-remediation-plan.md §8.",
+  "context": "Started 2026-11-05 by agent ReviewEvidenceArchive. Source plan: local://brief-size-remediation-plan.md §8.\n\nDone 2026-11-05. Archive: ~/Developer/benchmark_runs/review-evidence-2026-11-05/ (152 MB). manifest.tsv has 2,091 zips:\n- capture 680\n- attempt 595\n- state 517\n- state-attempt 37\n- shadow 262\nEvery zip was re-hashed, CRC-tested and size-checked against the API. local-captures/ holds 458 local capture directories (469 files, 125 MB). failures.tsv lists 2 artifacts that expired mid-run (HTTP 410): 12904996857 oracle-verdict-state-3732 and 12905305695 oracle-verdict-attempt-1. A credential pattern scan of the local captures found only placeholder strings.",
   "description": "Review-depth calibration needs BenchBox's hosted review evidence: oracle-verdict-capture artifacts (30-day retention, about 680 runs) and oracle-verdict-attempt and state artifacts (7-day retention; the earliest live ones expire 2026-11-08), plus local captures from ~/.cache/benchbox/local-oracle/captures. The owner chose ~/Developer/benchmark_runs as the archive (D7, 2026-11-05).",
   "sessions": [
     {
@@ -21,6 +21,14 @@
       "generation": "dcdd239086e3450c8ce618ecdec77dc1",
       "op": "take",
       "op_id": "4a8f5122c1b44800b276c4a9bb5073a8",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-05T14:30:30Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "20c66aefcbb64c7ea683bb0b207823df",
       "session_id": "8d9ba932107b4322b2417b8af61c160c"
     }
   ]
