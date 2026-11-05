@@ -25135,7 +25135,7 @@
     "rv2r-02-trunk-uat-nightly": {
       "claim": null,
       "needs": [
-        "rv2r-01-adr-guardrails"
+        "rv2r-09-trunk-dist-every-commit"
       ],
       "priority": "high",
       "status": "open",
