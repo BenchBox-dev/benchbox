@@ -9505,10 +9505,15 @@
       "title": "Derive credential/secondary-port literals (password=, http_port=, be_http_port=) from canonical sources"
     },
     "derived-power-export-rounding-20261017": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-06T19:13:20Z",
+        "generation": "9094ef8a2f03423eb6bf13178f913f18",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Back-filled Power@Size inherits export rounding of query timings"
     },
     "design-and-implement-core-dataframe-abstractions": {
