@@ -30503,10 +30503,15 @@
       "title": "✅ TPC-Havoc Variant Modularization"
     },
     "tpc-measured-intervals-reference-20261103": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-06T19:43:40Z",
+        "generation": "ac459992653b43c5a014cccea50a0751",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Write one cited reference of every TPC measured-interval timer site and its known deviations"
     },
     "tpc-official-benchmark-classes-broken": {
