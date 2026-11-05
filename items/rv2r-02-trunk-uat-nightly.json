@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Workflow structure test: schedule, dispatch, skip-if-unchanged logic, same shard matrix as release-v2 (asserted against the live release-v2.yml so the two cannot drift), evidence names include the source sha",
+    "G12 calibration: at least one hosted dispatch run completes before this item is done; its wall time, runner-hours and per-shard pass state are recorded on this item",
+    "Skip logic proven live: a dispatch with no relevant change since the last green run exits in under 5 minutes with a clear 'skipped: unchanged since <sha>' summary",
+    "Per-cell history for the calibration run is readable by a script (the input that rv2r-04 and rv2r-11 consume)",
+    "No change to stage configs, timeouts, memory limits, validators or floors"
+  ],
+  "context": "Member of batch release-v2-remediation. Prior art: release-v2.yml uat-stage1/2/3 (parallel since #3946), the deleted release-uat-dryrun workflow (do not resurrect as throwaway). GUARDRAILS: 16 shards hold 16 of 20 Free-plan concurrent jobs for about 3 h, so the schedule must stay at 02:00 UTC, and a concurrency group must prevent overlapping runs. Do not edit tests/uat or docker/ until 0.5.0 is on PyPI (rc5->final reuse). DECISION GATE: if calibration shows more than 30 runner-hours per run, or the matrix cannot finish within the 6 h job limit, stop and ask the owner.",
+  "description": "Owner decision 2026-11-05: UAT becomes a continuous property of trunk. Add a scheduled workflow (02:00 UTC, plus workflow_dispatch) that runs the three release-gate stage configs as the parallel shard jobs release-v2 already uses, against the trunk dist of the newest develop commit that has one. It skips when nothing under benchbox/, tests/uat/, tests/utilities/, docker/, Makefile or uv.lock changed since the last green run. Reuse the release-uat-env action, the shard matrix and make uat-gate-check; do not fork the harness. Each run uploads shard evidence and a gate summary (90-day retention) bound to the source commit and dist digest, and appends per-cell results (terminal state, elapsed time, peak memory, failure signature) to a history artifact or a dedicated data branch, so flake and envelope data exist between releases.",
+  "links": [
+    ".github/workflows/release-v2.yml",
+    ".github/actions/release-uat-env/action.yml",
+    "tests/uat/configs/"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a3eb8cbf1b5dc744e4710e1c",
+      "at": "2026-11-05T14:13:20Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "59c130145e9348fc81aab73a76a33e70",
+      "session_id": "7da446616e5349658579dfc9c4288973"
+    }
+  ]
+}
