@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "scripts/compat_lint.py exits 0 on develop: both dialect branches registered as compat rules or marked @compat_local, with tests",
+    "test_batch_loop_e2e.py passes; root cause of 'member ... deleted from Git' named in the PR",
+    "The two network-guard errors are fixed by faking the dependency at a boundary the code owns (no network allow-listing, no test skips)",
+    "A scheduled or dispatched release-canary run on develop is green (run link recorded)",
+    "No test is skipped, deselected or xfailed to reach green"
+  ],
+  "context": "GUARDRAILS: no merge during the 0.5.0 release window (until v0.5.0 is on PyPI). Do not weaken compat_lint, the network guard or the batch-loop assertions. DECISION GATE: if a fix needs a policy change (for example allowing network in resource-heavy tests), ask the owner.",
+  "description": "The daily release-canary run (credential-free slow/resource-heavy suite) has failed every day since 2026-10-31 (last green 2026-10-30 on 0dfebbcad2). Nobody noticed because release-v2 does not consult it; 0.5.0 shipped with it red by owner decision on 2026-11-05. Failures on dfe585e094 (run 42060775536): (1) scripts/compat_lint.py exits 1 on 2 unregistered dialect branches in benchbox/core/transactional/benchmark_base.py (lines ~230 and ~311, from #3851 and #3765); draft #3911 registers the staging-manifest branch; (2) tests/integration/worktree/test_batch_loop_e2e.py fails 4 tests with 'member ... deleted from Git'; (3) BenchBox network guard errors in tests/unit/core/flightdata/test_flightdata_benchmark_resource_heavy.py::TestDataGeneration::test_large_scale_generation_uses_manifest_tracked_flight_shards (getaddrinfo) and tests/unit/core/sql_compat/test_schema_emit_rules_resource_heavy.py::test_compat_lint_passes (connect to 204.68.194.70:443). This must be green before rv2r-03 makes canary freshness blocking, or the next release is blocked.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/actions/runs/42060775536",
+    "https://github.com/BenchBox-dev/BenchBox/pull/3911"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-05T23:47:11Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "51a2e8f868b141ac871958cd0fb932d8",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
+    }
+  ]
+}
