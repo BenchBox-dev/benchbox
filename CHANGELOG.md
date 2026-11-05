@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.5.0rc4] - 2026-11-04
+## [0.5.0rc5] - 2026-11-04
 
 ### Before you upgrade
 
@@ -1009,7 +1009,7 @@ benchbox run --platform polars-df --benchmark tpch --scale 0.01
 - **PyPI**: [pypi.org/project/benchbox](https://pypi.org/project/benchbox/)
 
 [Unreleased]: https://github.com/BenchBox-dev/BenchBox/compare/v0.4.2...HEAD
-[0.5.0rc4]: https://github.com/BenchBox-dev/BenchBox/compare/v0.4.2...v0.5.0rc4
+[0.5.0rc5]: https://github.com/BenchBox-dev/BenchBox/compare/v0.4.2...v0.5.0rc5
 [0.4.2]: https://github.com/BenchBox-dev/BenchBox/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/BenchBox-dev/BenchBox/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/BenchBox-dev/BenchBox/compare/v0.3.1...v0.4.0
