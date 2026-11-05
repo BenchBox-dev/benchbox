@@ -271,6 +271,29 @@ def test_member_steps_refuse_primary_clone_edits_inside_the_member_scope(world: 
     assert world.head() == before
 
 
+def test_member_check_sees_a_primary_clone_rename_out_of_the_member_scope(world: World) -> None:
+    world.start()
+    member = world.member("zeta")
+    world.commit(member, {"src/a.py": "member\n"})
+    (world.primary / "elsewhere").mkdir()
+    git(world.primary, "mv", "src/a.py", "elsewhere/a.py")
+
+    with _raises(r"member 'zeta'.s scope: src/a.py"):
+        world.check(member, ["tests/test_zeta.py"])
+
+
+def test_land_refuses_an_offline_cached_session_history(world: World) -> None:
+    world.start()
+    world.deliver("zeta", {"src/a.py": "member\n"})
+    world.tracker.sessions_stale = True
+    before = world.head()
+
+    with _raises("tracker read is stale"):
+        world.land("zeta")
+
+    assert world.head() == before
+
+
 def test_member_steps_ignore_primary_clone_edits_outside_every_scope(world: World) -> None:
     world.start()
     member = world.member("zeta")
@@ -1200,7 +1223,7 @@ def test_cli_prints_the_register_payload_for_start(world: World, capsys: pytest.
     [
         (
             "batch-land",
-            {"MEMBER": '$(touch pwned) `touch pwned` "; touch pwned; "'},
+            {"MEMBER": '$(touch pwned) `touch pwned` "; touch pwned; "', "ACCEPT_WRITES": "$(shell touch pwned)x"},
         ),
         ("batch-advance", {"REASON": 'x"; touch pwned; echo "'}),
         ("batch-member-create", {"MEMBER": "m`touch pwned`", "WORKTREE_PATH": "$(touch pwned)"}),

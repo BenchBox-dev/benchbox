@@ -55,7 +55,7 @@ REVIEW_INTERPRETER = "python3"
 REVIEW_WRAPPER = "scripts/oracle_local_review.py"
 REVIEW_SUPPORT = ("scripts/theseus_cli.py",)
 FINAL_SUITE = "member-reruns"
-LEADER_MEMBER_OPS = frozenset({"take", "release", "renew"})
+LEADER_MEMBER_OPS = frozenset({"take", "release", "renew", "recover"})
 POLICY_PATH = ".github/oracle-reviewers.yml"
 SECTION_BUDGET = 6000
 ALLOWED_VERIFICATION_PREFIXES = (
@@ -213,7 +213,11 @@ def primary_scope_edits(repo: Path, patterns: list[str]) -> list[str]:
     while index < len(tokens) and tokens[index]:
         entry = os.fsdecode(tokens[index])
         paths.add(entry[3:])
-        index += 2 if entry[0] in "RC" else 1
+        if "R" in entry[:2] or "C" in entry[:2]:
+            paths.add(os.fsdecode(tokens[index + 1]))
+            index += 2
+        else:
+            index += 1
     return sorted(path for path in paths if _matches_scope(path, patterns))
 
 
@@ -648,10 +652,11 @@ def check_member(
     integration_head = _rev(repo, f"refs/heads/{branch}")
     if not _is_clean(repo):
         raise BatchError("member worktree is not clean; commit or remove changes first")
-    scope = read_tracker(repo, batch_id).get("scope")
-    patterns = scope.get(member) if isinstance(scope, dict) else None
+    integration = _worktree_for_branch(repo, branch)
+    ledger = load_ledger(integration, batch_id) if integration is not None else None
+    patterns = ledger.get("scope", {}).get(member) if isinstance(ledger, dict) else None
     if not isinstance(patterns, list) or not patterns:
-        raise BatchError(f"the tracker records no frozen scope for member {member!r}")
+        raise BatchError(f"the integration worktree's ledger records no frozen scope for member {member!r}")
     _refuse_primary_edits(repo, member, patterns)
     member_head = _rev(repo, "HEAD")
     if not _is_ancestor(repo, integration_head, member_head):
@@ -1025,7 +1030,9 @@ def _item_sessions(repo: Path, item: str) -> list[dict]:
     while True:
         args = ["show", item, "--field", "sessions", "--offset", str(offset), "--budget", str(SECTION_BUDGET)]
         page = _todo_db_json(repo, [*args, "--rev", revision] if revision else args)
-        revision = revision or str(page.get("rev") or "") or None
+        if page.get("stale") or page.get("cached_rev") is not None or not page.get("rev"):
+            raise BatchError("tracker read is stale or carries no revision (offline cache); reconnect and retry")
+        revision = str(page["rev"])
         window = page.get("window")
         if not isinstance(window, list):
             raise BatchError(f"the tracker returned no session history for {item!r}")

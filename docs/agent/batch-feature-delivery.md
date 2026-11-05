@@ -146,10 +146,12 @@ A member:
    its check, and every changed path is inside the frozen scope. It also refuses
    a landing the Theseus preflight finds not reviewable, and prints its reasons
    (below). It also refuses a primary clone with uncommitted changes under the
-   member's scope, and any tracker write on the member item since its worktree
-   was created other than `take`, `release`, or `renew`. Inspect each listed
-   write with `show_item`; land again with `ACCEPT_WRITES=<op_id,...>` to record
-   the reviewed writes in the ledger. A `take` from a member that shares the
+   member's scope, and any tracker write on the member item between its
+   worktree creation and its first landing other than `take`, `release`,
+   `renew`, or `recover`. Inspect each listed write with `show_item`; land again
+   with `ACCEPT_WRITES=<op_id,...>` to record the reviewed writes in the ledger.
+   A `take` from a member that shares the leader's identity cannot be told apart
+   from the leader's own, which is why identities must differ.
    leader's identity cannot be told apart from the leader's own, which is why
    identities must differ.
 2. The leader runs the trusted local reviewer for the exact captured base and

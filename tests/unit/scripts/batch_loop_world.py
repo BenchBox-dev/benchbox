@@ -69,6 +69,7 @@ class FakeTracker:
         self.item_batch: dict[str, dict] = {}
         self.item_sessions: dict[str, list[dict]] = {}
         self.session_page = 100
+        self.sessions_stale = False
 
     def register(self, arguments: dict) -> None:
         self.batch = dict(arguments)
@@ -184,6 +185,9 @@ class FakeTracker:
                 data["window"] = entries[offset : offset + self.session_page]
                 if offset + self.session_page < len(entries):
                     data["continuation"] = {"field": "sessions", "offset": offset + self.session_page, "rev": "r1"}
+                if self.sessions_stale:
+                    data["stale"] = True
+                    data["cached_rev"] = data.pop("rev")
                 return ok(data)
             needs = self.item_needs.get(args[1], [])
             data = {"id": args[1], "needs": {"total": len(needs), "values": needs}}
