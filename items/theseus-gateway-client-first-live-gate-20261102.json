@@ -7,7 +7,7 @@
     "Run IDs, exact package hash, client identity, observed gate result and residual failure ownership are recorded without raw secrets.",
     "The first live run resolves the owner-approved bootstrap source/lock/artifact/dependency hashes and fetch locations recorded by theseus-owner-app-tailnet-setup-20261102. It does not depend on the later final release or claim final BenchBox parity approval."
   ],
-  "context": "T4b, R2/P4. Production activation is a separate owner permission, not implied by the task's implementation authorization.\n\nDelivery: one BenchBox PR carries the pinned consumer proof, the recovery rehearsal, the first live gate and the atomic cutover. It opens after the Theseus release and the observation disposition; rehearsal and live-gate evidence attach to its head before merge.\n\nOwner directed cutover at the earliest possible point without long observation periods or extra ceremony (2026-11-03). Activates Theseus's self-hosted gate after cutover; observation disposition is no longer a prerequisite.\n\nOwner decisions (2026-11-04): (1) Release Theseus f2af0d8 as v0.1.0 now; Dependabot PRs #2-#5 batch into v0.1.1 after cutover. (2) Agent posts the first-promotion bootstrap approval comment from the owner's account; it records the owner's advance approval in chat. (3) Agent iterates on cutover defects without asking: fix in Theseus, independent review, merge own Theseus PR after CI, release v0.1.x, re-lock. (4) If the first live run after cutover fails, fix forward without reverting. (5) Apply the documented Theseus branch protection now. (6) Do the Theseus-owned App/secrets/tailnet and live self-gate right after cutover.",
+  "context": "T4b, R2/P4. Production activation is a separate owner permission, not implied by the task's implementation authorization.\n\nDelivery: one BenchBox PR carries the pinned consumer proof, the recovery rehearsal, the first live gate and the atomic cutover. It opens after the Theseus release and the observation disposition; rehearsal and live-gate evidence attach to its head before merge.\n\nOwner directed cutover at the earliest possible point without long observation periods or extra ceremony (2026-11-03). Activates Theseus's self-hosted gate after cutover; observation disposition is no longer a prerequisite.\n\nOwner decisions (2026-11-04): (1) Release Theseus f2af0d8 as v0.1.0 now; Dependabot PRs #2-#5 batch into v0.1.1 after cutover. (2) Agent posts the first-promotion bootstrap approval comment from the owner's account; it records the owner's advance approval in chat. (3) Agent iterates on cutover defects without asking: fix in Theseus, independent review, merge own Theseus PR after CI, release v0.1.x, re-lock. (4) If the first live run after cutover fails, fix forward without reverting. (5) Apply the documented Theseus branch protection now. (6) Do the Theseus-owned App/secrets/tailnet and live self-gate right after cutover.\n\nAmended 2026-11-05: the self-gate pins a Theseus release that contains the v0.1.7 depth rules (v0.2.0 or later) and uses the review-* vocabulary: App theseus-review (5620429), environment `theseus`, REVIEW_* secrets, tailscale_tag tag:theseus-ci.",
   "description": "Production-connected boundary T4b. After the recorded observation disposition and explicit owner activation approval, add only the named Theseus gateway client and perform the first genuine Theseus hosted review under its separate App. Record the measurement epoch boundary before any shared clients.json regeneration, agent restart, live review or gateway change. Use a quiet-time procedure and preserve BenchBox clients/OMP cache and in-flight reviews. Prove the gate source is the configured Theseus App, then owner enforces the required check; owner full-diff bootstrap governance ends only once that check is actually enforced.\nGuardrails: no natural-event observation can be manufactured as proof of old observation acceptance. These live reviews are explicitly extraction verification, tagged to the new epoch. No unapproved restart, shared-account load, App reuse, settings write, secret disclosure, bypass or production publication.",
   "links": [
     "theseus-owner-app-tailnet-setup-20261102",
@@ -53,6 +53,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "9625ada937e748d6b8633d38d7dd24c8",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-05T14:13:55Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "48c92fb4fa264869b466e6a163700ad9",
       "session_id": "8d9ba932107b4322b2417b8af61c160c"
     }
   ]

@@ -29245,7 +29245,8 @@
     "theseus-gateway-client-first-live-gate-20261102": {
       "claim": null,
       "needs": [
-        "theseus-owner-app-tailnet-setup-20261102"
+        "theseus-owner-app-tailnet-setup-20261102",
+        "theseus-remove-oracle-vocabulary-20261105"
       ],
       "priority": "medium",
       "status": "open",
