@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "A file-list SHIP is accepted only when every changed hunk of every required file was read; a test replays #3942-style token reads and is refused.",
+    "A 406 diff response yields a git-built diff in the trusted job, or an oversize decision; never a no-diff review.",
+    "Promotion deltas detect renames; byte-identical moves need no content read.",
+    "The brief reaches omp on stdin; a candidate check proves it for omp bumps; the cap is restated as a context-based bound with evidence.",
+    "Oversize is decided from reviewer capacity, and the decision is documented."
+  ],
+  "context": "Source: planner adversarial review BriefSizeAdversarialReview, 2026-11-05, against Theseus 0a58876 / 6e5765e and BenchBox 81cbcb2034. The owner chose to promote the 0.2.0 rename as-is and relax the ruleset if its review is absent or shallow; this item is the structural fix for later promotions.",
+  "description": "An adversarial review on 2026-11-05 found that a file-list SHIP can rest on token reads. A file counts as read after any successful read of any line range, or any single-file grep match (evidence.py:184-214). In BenchBox #3942's final SHIP:\n- 159 credited files were touched only by reads of 40 lines or fewer, e.g. 20 lines of a 1,436-line vendored file;\n- about 2,666 of about 32,947 upstream.diff lines were read;\n- the reviewer still said it read every required file.\nThe 120,000-byte brief cap exists only because the brief is passed to omp as one argv element (commands.py:114-139, policy.py:391). omp accepts the prompt on stdin or as @file. When GitHub's diff API returns 406 (over 300 files or 20,000 lines), Theseus reviews in file-list mode with no diff (github.py:53-57, cli.py:720-725). Promotion deltas have no rename detection (promotion.py:470-507), so every move counts twice.\n\nRanked changes:\n1. evidence.py: credit a file only when its changed hunks are covered, by reading the file or that file's hunks in the staged diff.\n2. cli.py/runner.py: on a 406, build the diff from git inside the trusted job; otherwise treat a file-list review with no diff as oversize.\n3. promotion.py and cli.py:856-865: make the delta rename-aware. Required reads limited to the executed surface (wheel src, workflows, lock files) need a recorded consumer-owner decision, because they narrow what the gate requires.\n4. Size oversize by reviewer capacity (required-read count and bytes), calibrated from captures like #3942.\n5. cli.py:1144-1158: pick the brief mode from the rendered size, not diff size plus a fixed 32 KiB.\n6. commands.py and policy.py:391: send the brief on stdin, add a stdin canary to candidate_checks for omp bumps, and restate the bound in terms of context.\n7. Consider `compaction.enabled: false` in the reviewer overlay, so running out of context fails closed.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-05T13:31:11Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "568ea5024baf4a99b7386f1b02558683",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    }
+  ]
+}
