@@ -1,0 +1,14 @@
+{
+  "context": "2026-11-05: leader started. Owner instruction (Joe, 2026-11-05): implement each ready batch as a feature-delivery batch, complete all work up to arming the final PR, then wait for v0.5.0 to be released before merging. Final PR carries no-auto-merge. Never arm.",
+  "description": "Umbrella for feature-delivery batch tpc-timer-boundaries (integration branch feat/tpc-timer-boundaries). Members in order: tpcds-maintenance-timer-hygiene-20261103, power-test-times-query-generation-20261031, derived-power-export-rounding-20261017, tpc-measured-intervals-reference-20261103. Notes only; never a batch member.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-05T18:53:41Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "8625d918fe714d61b1b6aaf215f1bb8c",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}
