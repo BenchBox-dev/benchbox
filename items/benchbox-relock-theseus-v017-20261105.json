@@ -4,6 +4,7 @@
     "audit-coverage shows full coverage of the PR's own promotion review, or a D9 relaxation is recorded.",
     "Live checks per plan §5.5 (1)–(4): an inline PR's SHIP carries a coverage marker; a file-list PR reports 'hunks covered N/N'; a 406-size PR gets a git-built diff; an oversize PR goes pending with a split message."
   ],
+  "context": "2026-11-05 status:\n- **PR:** #3959 (chore/theseus-v0.1.7), head 95e422f915. CI is green.\n- **Hosted verdicts:** SHIP WITH FIXES on both heads (runs 42098109799 and 42099675298), with 4 open defects in Theseus v0.1.7 itself:\n  - the old executed surface includes head workflows;\n  - only job-level `uses:` is followed;\n  - audit-coverage ignores staging failures;\n  - test_gitdiff patches stdlib subprocess.run.\n- **audit-coverage (v0.1.7):** 144/161 hunks covered (42 files) on the full review and 108/162 on the follow-up, so not covered. The capture is schema 1, so the audit can only overstate coverage.\n- **Local v0.1.7 corroboration:** could not run; the local catalog lacks the reviewer models, so it assumes 200K and reports pending too large.\n- **Owner decision:** fix the defects and the local-catalog bug in Theseus v0.1.8, re-lock #3959 to v0.1.8 in the same PR, and grant the D9 relaxation if the new hosted verdict is SHIP but the audit is still incomplete. #26 (0.2.0) is held until v0.1.8 is on main.\n- **Also:** the decision record names the decisions by title, not by D-labels, per AGENTS.md. #3957 conflicts textually in scripts/batch_integration.py and docs/agent/batch-feature-delivery.md.",
   "description": "Plan item B-1 (local://brief-size-remediation-plan.md §4.1, §4.3):\n- lock, callers and vendored bootstrap on v0.1.7;\n- `brief_max_bytes` and the `promotion.bootstrap_*` block removed from .github/oracle-reviewers.yml;\n- batch-land through `theseus preflight` (batch-land-review-capacity-gaps-20261105, same PR);\n- decision record for D1, D2, D3 and D6;\n- docs and tests.\nThe promotion is judged by the 0.1.6 rules (bootstrap problem). Accept it only after `theseus audit-coverage` on its hosted capture shows full hunk coverage, corroborated by a local v0.1.7 review. If the audit fails within the retry budget, it qualifies for the owner's repair-class relaxation (D9), recorded like the 2026-11-04 decision.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "1b4625170f164ae6856ce9d179e34504",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-05T21:49:28Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "45d4dee7ed4f48f28cb8d9f15d583ed2",
       "session_id": "8d9ba932107b4322b2417b8af61c160c"
     }
   ]
