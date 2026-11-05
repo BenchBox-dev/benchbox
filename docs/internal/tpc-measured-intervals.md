@@ -50,7 +50,7 @@ The accepted locality ADR amendment "Round Trip Removed and Platform Timings", i
 
 Reconciliation with the sites below:
 
-- Query generation: out of the timer for TPC-H and TPC-DS power (this change set, `power-test-times-query-generation-20261031`), for TPC-H throughput (always pre-generated), and for TPC-DS throughput only while `enable_preflight` is true (see F3).
+- Query generation: out of the timer for TPC-H and TPC-DS power (`power-test-times-query-generation-20261031`; power times from earlier BenchBox versions include it), for TPC-H throughput (always pre-generated), and for TPC-DS throughput only while `enable_preflight` is true (see F3).
 - Validation and metadata: the connection wrapper's `execute` validates row counts and records metadata inside the per-query timer. Item 6 wants it out; `result-schema-2-4-producer-20261022` owns this.
 - Tag setup, stats lookups, plan capture: `set_query_context` only stores the query and stream ids; whether an adapter does tag setup or plan capture inside `execute` was not checked per platform and is not claimed here.
 - `run.timing_method`: `benchbox/core/results/loader.py` reads it and `benchbox/core/results/schema.py` exports it when the result carries one, but no producer sets it. `result-schema-2-4-producer-20261022` owns writing it. Until then runs from different timer layouts carry no method label.
@@ -150,7 +150,7 @@ Cost items that are not deviations: `perf-tpch-rf1-bulk-load-20261031` (RF1 uses
 | F7 | TPC-DI: `run_etl_pipeline` timed phases include source data generation (the `extract` phase calls `generate_source_data`), which TPC-DI 1.1.0 1.2.2.1.1 and 7.2.1.1.2 exclude from timing; `run_full_benchmark` also includes schema creation, which 1.2.2.1.2 excludes. The spec starts the Historical Load at the SUT reading Source Data from the Staging Area (7.2.4.1). |
 | F8 | TPC-DI 7.5.1 to 7.5.3 take phase times from PCR records in `DImessages`. `benchbox/core/tpcdi` writes no PCR records (no `DImessages` or `PCR` reference), so BenchBox phase times come from its own clocks, not the specified completion timestamps. |
 
-The TPC-DI wording check: the brief expected an explicit clause that "transformation begins with the SUT reading Source Data". The spec states it as 7.2.4.1 (the Historical Load phase populates the warehouse by transforming Batch1 data from the Staging Area) and 1.2.2.1.1/7.2.1.1.2 (generation and copying are untimed). No separate sentence names the instant reading starts, because timing is defined through PCR timestamps (7.5.1).
+TPC-DI wording: no single sentence says that transformation begins with the SUT reading Source Data. The spec states it as 7.2.4.1 (the Historical Load phase populates the warehouse by transforming Batch1 data from the Staging Area) and 1.2.2.1.1/7.2.1.1.2 (generation and copying are untimed). No separate sentence names the instant reading starts, because timing is defined through PCR timestamps (7.5.1).
 
 ## Pending changes (PR #3948, held; not current behaviour)
 
