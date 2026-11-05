@@ -25,7 +25,9 @@
       "from_item": "theseus-atomic-benchbox-cutover-20261102-deferral-1",
       "id": 3,
       "reason": "P3 findings from the independent review of #3951 head 37baa2f. They were left out to avoid restarting CI and the local review before the emergency merge. Fix them in the next re-lock PR.",
-      "resolution": "open",
+      "resolution": "dismissed",
+      "resolved_at": "2026-11-05T14:15:26Z",
+      "resolved_reason": "Both oracle-review-v2.md corrections (bootstrap-record wording; inherit fails at startup against required secrets) were folded into #3951 head 02f8369 before it merged (80f82f3).",
       "summary": "oracle-review-v2.md: drop \"first-promotion bootstrap record\" wording (lines 42-44); inherit into required-secret callee fails at startup (39-41)"
     }
   ],
@@ -77,6 +79,14 @@
       "client": "omp-coding-agent",
       "op": "dismiss",
       "op_id": "68da195ab6614025a9f9b0cc16776ec6",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-05T14:15:26Z",
+      "client": "omp-coding-agent",
+      "op": "dismiss",
+      "op_id": "6ed4bfb915dd4e09a5764700cd145a12",
       "session_id": "8d9ba932107b4322b2417b8af61c160c"
     }
   ]
