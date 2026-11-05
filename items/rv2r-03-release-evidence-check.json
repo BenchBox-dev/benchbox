@@ -1,13 +1,14 @@
 {
   "acceptance": [
-    "Unit tests for candidate selection: newest qualifying trunk run wins; a non-ancestor, a guarded-path change, a lock change beyond the version line, a non-equivalent wheel, or an expired artifact each disqualify a candidate with a named reason in the job summary",
+    "Unit tests for candidate selection: the newest qualifying trunk run wins; a non-ancestor, a guarded-path change, a changed trunk-uat.yml, a run from a non-develop ref, a lock change beyond the version line, a non-equivalent wheel, or an expired artifact each disqualify a candidate with a named reason in the job summary",
+    "verify-gate accepts evidence where a cell's infrastructure-signature attempt 1 failed and attempt 2 passed, and rejects evidence where attempt 2 failed",
     "Workflow tests: the stages skip only when reuse=true; publish and github-release run on explicit results; the fallback path is the unchanged parallel stages",
-    "Live: a probe-mode run (rv2r-05) or a real rc dispatch shows 'reused trunk UAT run <id> for <sha>' and reaches publish within 30 minutes of admit",
+    "Live (on the combined tree after rv2r-05 is prepared): a probe-mode run or real rc dispatch shows 'reused trunk UAT run <id> for <sha>' and reaches publish within 30 minutes of admit",
     "Live negative: with a guarded-path change after the trunk evidence, the run falls back to full UAT (probe mode is acceptable evidence)",
     "release-artifacts.md describes the candidate rules and fallback exactly as implemented"
   ],
-  "context": "Member of batch release-v2-remediation. Prior art: #3947 (reuse), #3956 (explicit publish conditions), #3946 (parallel stages). GUARDRAILS: equivalence checks fail closed (any error -> full UAT); never accept evidence whose digest re-check fails; the install matrix and admit always run. DECISION GATE: any relaxation of an equivalence condition beyond the list above needs the owner.",
-  "description": "Owner decision 2026-11-05: a release checks evidence. Generalize the #3947 reuse (scripts/release_reuse_uat_evidence.py, uat-reuse job), which today reuses only a same-version rc's run for a final tag. The new source is the newest green trunk UAT run (rv2r-02) for any tag, rc or final, when: its source commit is an ancestor of the tag commit; the guarded UAT inputs are byte-identical (tests/uat, tests/utilities, docker, Makefile, scripts/uat-bring-up, release-uat-env action, workflow-level env and the UAT stage job definitions apart from needs/if); uv.lock differs only in the benchbox version line; the wheel and sdist are member-equivalent apart from version lines; and uat-gate-check re-verifies the downloaded evidence against that run's digest. Keep the rc-run source as a second candidate. If no candidate qualifies, run the full parallel UAT stages unchanged. publish keeps explicit result checks (#3956).",
+  "context": "Member of batch release-v2-remediation. Prior art: #3947 (reuse), #3956 (explicit publish conditions), #3946 (parallel stages). b7 disposition (owner, 2026-11-05): the wheel-digest binding for envelope-only fixes is superseded by continuous trunk UAT; an envelope fix lands on develop, trunk UAT is dispatched on that commit, and the next tag reuses it. GUARDRAILS: equivalence checks fail closed (any error -> full UAT); never accept evidence whose digest re-check fails; admit and the install matrix always run. DECISION GATE: any relaxation of an equivalence condition beyond the list above needs the owner.",
+  "description": "Owner decision 2026-11-05: a release checks evidence. Generalize the #3947 reuse (scripts/release_reuse_uat_evidence.py, uat-reuse job), which today reuses only a same-version rc's run for a final tag. The new primary source is the newest green trunk UAT run for any tag, rc or final. A candidate must be a `.github/workflows/trunk-uat.yml` run with event schedule or workflow_dispatch and head_branch develop. It qualifies when: its source commit is an ancestor of the tag commit; the guarded UAT inputs are byte-identical (tests/uat, tests/utilities, tests/__init__.py, docker, Makefile, scripts/uat-bring-up, release-uat-env action, .github/workflows/trunk-uat.yml, workflow-level env and the UAT stage job definitions apart from needs/if); uv.lock differs only in the benchbox version line; the wheel and sdist are member-equivalent apart from version lines (candidate version read from its dist file names, not from a tag); and uat-gate-check re-verifies the downloaded evidence against that run's digest. Evidence containing rv2r-04 retries is accepted when a cell's infrastructure-signature attempt 1 failed and attempt 2 passed. Keep the rc-run source as a second candidate. If no candidate qualifies, run the full parallel UAT stages unchanged. publish keeps explicit result checks (#3956). Rollback: revert this member's commits; the rc-run reuse and full-UAT paths remain.",
   "links": [
     "scripts/release_reuse_uat_evidence.py",
     ".github/workflows/release-v2.yml",
@@ -20,6 +21,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "34d16b40b6154782a3ae3e3e5b8f5158",
+      "session_id": "7da446616e5349658579dfc9c4288973"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a3eb8cbf1b5dc744e4710e1c",
+      "at": "2026-11-05T15:33:52Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "39b6eb1617064ffc8f597ddf7ad42542",
       "session_id": "7da446616e5349658579dfc9c4288973"
     }
   ]

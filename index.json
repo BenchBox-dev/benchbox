@@ -25144,7 +25144,8 @@
     "rv2r-03-release-evidence-check": {
       "claim": null,
       "needs": [
-        "rv2r-02-trunk-uat-nightly"
+        "rv2r-02-trunk-uat-nightly",
+        "rv2r-04-uat-rubric-automation"
       ],
       "priority": "high",
       "status": "open",
