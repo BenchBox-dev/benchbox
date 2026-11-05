@@ -19,6 +19,79 @@
     "benchbox/core/tpcds/maintenance_test.py",
     "benchbox/core/tpcds/maintenance_operations.py"
   ],
+  "prepared": {
+    "accepted_head": "ab9aaff30e964ff2220975abf0ac9423f84b6bd2",
+    "batch_id": "tpc-timer-boundaries-v2",
+    "changed_files": [
+      "benchbox/core/tpcds/maintenance_operations.py",
+      "benchbox/core/tpcds/maintenance_test.py",
+      "changelog.d/feat-tpc-timer-boundaries-v2--tpcds-maintenance-timer-hygiene-20261103.json",
+      "tests/unit/core/tpcds/test_maintenance_timer_boundaries.py"
+    ],
+    "integration_head": "8fa2235f4722d83e93176f2ee4baa3991fd5a1ee",
+    "integration_seq": 1,
+    "member_id": "tpcds-maintenance-timer-hygiene-20261103",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "84a338804d7eb4344fe707fed1f727abbcbc1607e3c876eefaca5d1687c1b532",
+    "source_base": "e3b793bdf55a538e06c8dcffd5530fc548fedad9",
+    "source_revision": "ab9aaff30e964ff2220975abf0ac9423f84b6bd2",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-tpc-timer-boundaries-v2--tpcds-maintenance-timer-hygiene-20261103",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/test_tpc_power_tests.py",
+        "tests/integration/test_tpcds_maintenance_test.py",
+        "tests/integration/test_tpcds_official_benchmark.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/unit/core/results/test_post_load_maintenance_phase.py",
+        "tests/unit/core/test_dryrun.py",
+        "tests/unit/core/test_greybeam_lifecycle.py",
+        "tests/unit/core/test_tpc_reporting_execution.py",
+        "tests/unit/core/test_tpcds_benchmark_fakes.py",
+        "tests/unit/core/test_tpcds_maintenance_delete_portability.py",
+        "tests/unit/core/test_tpcds_maintenance_operations.py",
+        "tests/unit/core/throughput/test_containment.py",
+        "tests/unit/core/tpcds/benchmark/test_tpcds_runner_coverage.py",
+        "tests/unit/core/tpcds/benchmark/test_tpcds_runner_streams.py",
+        "tests/unit/core/tpcds/test_maintenance_returns_composite_key.py",
+        "tests/unit/core/tpcds/test_maintenance_timer_boundaries.py",
+        "tests/unit/core/tpcds/test_official_benchmark_phases.py",
+        "tests/unit/core/tpcds/test_tpcds_maintenance_coverage.py",
+        "tests/unit/mcp/test_mcp_results_and_analytics.py",
+        "tests/unit/platforms/base/test_adapter_query_skips.py",
+        "tests/unit/platforms/test_base_adapter.py",
+        "tests/unit/platforms/test_generic_power_test.py",
+        "tests/unit/platforms/test_power_test_fail_fast.py",
+        "tests/unit/platforms/test_throughput_run_options.py",
+        "tests/unit/test_cli_dryrun_test_modes.py",
+        "tests/unit/test_tpcds_streams.py"
+      ],
+      "review": {
+        "base_sha": "e3b793bdf55a538e06c8dcffd5530fc548fedad9",
+        "head_sha": "ab9aaff30e964ff2220975abf0ac9423f84b6bd2",
+        "head_tree": "5754f7d81f1834110a38e05912f17043e0f13264",
+        "outcome": "clear",
+        "patch_digest": "eaa36f765080c904e0bbbae69db39df6",
+        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "e3b793bdf55a538e06c8dcffd5530fc548fedad9"
+      },
+      "revision": "ab9aaff30e964ff2220975abf0ac9423f84b6bd2",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a561db75579ad3167de9da38",
@@ -85,6 +158,15 @@
       "generation": "6486901850b34151995e79f3023f7a6b",
       "op": "take",
       "op_id": "fcb68151149844c8a5be7958f9419635",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-05T19:31:57Z",
+      "client": "omp-coding-agent",
+      "generation": "6486901850b34151995e79f3023f7a6b",
+      "op": "prepare",
+      "op_id": "986424a33c6c406693c889f0bff8d0b9",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
