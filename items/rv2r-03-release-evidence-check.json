@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Unit tests for candidate selection: newest qualifying trunk run wins; a non-ancestor, a guarded-path change, a lock change beyond the version line, a non-equivalent wheel, or an expired artifact each disqualify a candidate with a named reason in the job summary",
+    "Workflow tests: the stages skip only when reuse=true; publish and github-release run on explicit results; the fallback path is the unchanged parallel stages",
+    "Live: a probe-mode run (rv2r-05) or a real rc dispatch shows 'reused trunk UAT run <id> for <sha>' and reaches publish within 30 minutes of admit",
+    "Live negative: with a guarded-path change after the trunk evidence, the run falls back to full UAT (probe mode is acceptable evidence)",
+    "release-artifacts.md describes the candidate rules and fallback exactly as implemented"
+  ],
+  "context": "Member of batch release-v2-remediation. Prior art: #3947 (reuse), #3956 (explicit publish conditions), #3946 (parallel stages). GUARDRAILS: equivalence checks fail closed (any error -> full UAT); never accept evidence whose digest re-check fails; the install matrix and admit always run. DECISION GATE: any relaxation of an equivalence condition beyond the list above needs the owner.",
+  "description": "Owner decision 2026-11-05: a release checks evidence. Generalize the #3947 reuse (scripts/release_reuse_uat_evidence.py, uat-reuse job), which today reuses only a same-version rc's run for a final tag. The new source is the newest green trunk UAT run (rv2r-02) for any tag, rc or final, when: its source commit is an ancestor of the tag commit; the guarded UAT inputs are byte-identical (tests/uat, tests/utilities, docker, Makefile, scripts/uat-bring-up, release-uat-env action, workflow-level env and the UAT stage job definitions apart from needs/if); uv.lock differs only in the benchbox version line; the wheel and sdist are member-equivalent apart from version lines; and uat-gate-check re-verifies the downloaded evidence against that run's digest. Keep the rc-run source as a second candidate. If no candidate qualifies, run the full parallel UAT stages unchanged. publish keeps explicit result checks (#3956).",
+  "links": [
+    "scripts/release_reuse_uat_evidence.py",
+    ".github/workflows/release-v2.yml",
+    "tests/unit/scripts/test_release_reuse_uat_evidence.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a3eb8cbf1b5dc744e4710e1c",
+      "at": "2026-11-05T14:14:02Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "34d16b40b6154782a3ae3e3e5b8f5158",
+      "session_id": "7da446616e5349658579dfc9c4288973"
+    }
+  ]
+}
