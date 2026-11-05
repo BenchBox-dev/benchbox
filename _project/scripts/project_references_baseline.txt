@@ -2,10 +2,6 @@
 .github/oracle-reviewers.yml::_project/scripts/oracle_reviewers/templates/deep.md
 .github/oracle-reviewers.yml::_project/scripts/oracle_reviewers/templates/gate.md
 .github/oracle-reviewers.yml::_project/scripts/oracle_reviewers/templates/standard.md
-.github/theseus-lock.json::_project/scripts/oracle_reviewers/templates/README.md
-.github/theseus-lock.json::_project/scripts/oracle_reviewers/templates/deep.md
-.github/theseus-lock.json::_project/scripts/oracle_reviewers/templates/gate.md
-.github/theseus-lock.json::_project/scripts/oracle_reviewers/templates/standard.md
 .github/workflows/cross-surface-baseline-autodetect.yml::_project/cross-surface-baseline-autodetect/summary.json
 .gitignore::_project/PROJECT_DONE.md
 .gitignore::_project/PROJECT_DONE.yaml
