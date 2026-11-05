@@ -3149,6 +3149,13 @@
       "status": "done",
       "title": "Add leader-only batch-land, recorded head advances and batch-status reconciliation"
     },
+    "batch-land-review-capacity-gaps-20261105": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "batch-land review-size guard misses the 406 limit, lock bumps, required reads and leader fixes"
+    },
     "batch-loop-default-mode-20261101": {
       "claim": null,
       "needs": [

@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "batch-land and batch-status get sizes from the installed Theseus planner, not copied constants.",
+    "A landing that would exceed 300 files or 20,000 diff lines, or that adds a lock bump, is flagged before merge, with tests.",
+    "Leader fixes pass the same gate, with tests."
+  ],
+  "context": "Source: planner adversarial review BriefSizeAdversarialReview (2026-11-05) of the batch \"100 KB refusal\" explanation. That explanation's mechanics were right, but its line refs were stale (policy.py:316 is now Theseus policy.py:391; brief_sizes is :690) and it missed these gaps.",
+  "description": "scripts/batch_integration.py `brief_sizes` (:690-725) and `_brief_gate` (:941-957, called only at :1013) copy Theseus constants by hand (:55-57) and read the cap with a regex. The guard refuses only at oversize (about 980 BenchBox files, or about 830 promotion rows). It does not account for:\n- GitHub's diff limit of 300 files or 20,000 lines (HTTP 406), past which the hosted review runs with no diff;\n- lock bumps, whose promotion rows count toward the Theseus cap (Theseus cli.py:856-865);\n- the number of required reads, which is the real reviewer-capacity limit;\n- leader fixes (`_brief_gate` runs only in land_member, after the `_already_merged` return).\nFix: call the Theseus planner instead of copying constants; flag or refuse PRs over the 406 limit, lock bumps and high required-read counts; run the gate on leader fixes; add tests.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-05T13:31:15Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9447c5a613824843919237ec273ec2ec",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    }
+  ]
+}
