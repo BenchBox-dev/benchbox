@@ -27458,7 +27458,6 @@
       "claim": null,
       "needs": [
         "sqlglot-e2e-source-aware-adoption-review",
-        "sqlglot-e2e-reviewer-package-adoption",
         "sql-execution-gate-sqlite-q19-timeout",
         "sqlglot-e2e-verified-wheel-adoption"
       ],
