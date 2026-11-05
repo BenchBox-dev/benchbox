@@ -30507,10 +30507,15 @@
       "title": "TPC-DS data maintenance: dsdgen refresh sets, timed staged load, spec-defined functions, monotonic timers"
     },
     "tpcds-maintenance-timer-hygiene-20261103": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-06T19:01:56Z",
+        "generation": "f6016baa4251443ba45f5c76e6b98ecf",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "TPC-DS maintenance: keep connection setup out of each operation's timer, use monotonic durations, and make the generator deterministic"
     },
     "tpcds-obt-benchmark-implementation": {
