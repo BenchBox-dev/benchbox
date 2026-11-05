@@ -25444,7 +25444,8 @@
       "claim": null,
       "needs": [
         "rv2r-02-trunk-uat-nightly",
-        "rv2r-04-uat-rubric-automation"
+        "rv2r-04-uat-rubric-automation",
+        "release-canary-green-after-0-5-0"
       ],
       "priority": "high",
       "status": "open",
