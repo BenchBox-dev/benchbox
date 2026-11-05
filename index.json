@@ -25100,6 +25100,13 @@
       "status": "open",
       "title": "Record the release-v2 remediation decisions and new guardrails in the dev-loop v2 ADR"
     },
+    "rv2r-09-trunk-dist-every-commit": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Make every develop commit releasable by guaranteeing a trunk dist artifact for it"
+    },
     "rx-ux-00-phase0-contract-decisions": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "A short decision note in the PR body compares A and B with measured extra runner-minutes per day from the last 7 days of trunk runs",
+    "For the chosen approach: a test or workflow assertion shows that a superseded develop push still produces dist-<sha>-attempt-N (A), or that admit and trunk UAT select the newest dist-bearing commit with a clear error otherwise (B)",
+    "Live check after merge: two develop merges within 5 minutes both end with a dist artifact (A), or the documented selection works on a real run (B)",
+    "No change to what the dist contains or how it is built (the wheel and sdist digests for the same commit are unchanged)"
+  ],
+  "context": "Member of batch release-v2-remediation (see rv2r-01 context). GUARDRAILS: do not change dist build steps or artifact names; keep cancel-in-progress semantics for the test jobs. DECISION GATE: if extra cost exceeds 60 runner-minutes per day, stop and ask the owner before choosing A.",
+  "description": "Since 2026-10-28, 42 of 100 trunk runs were cancelled when a newer push replaced them. A commit without a trunk dist artifact cannot be released (docs/internal/release-artifacts.md:8-11), and continuous trunk UAT also needs that dist. Choose and implement one approach: (A) build and upload the dist in a separate trunk job that is never cancelled (for example its own concurrency group), or (B) make the release and trunk UAT always use the newest commit that has a dist, and document that rule. Measure runner cost before choosing.",
+  "links": [
+    ".github/workflows/trunk.yml",
+    "docs/internal/release-artifacts.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a3eb8cbf1b5dc744e4710e1c",
+      "at": "2026-11-05T14:12:43Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f1d777cc907b4e849c328786657c1369",
+      "session_id": "7da446616e5349658579dfc9c4288973"
+    }
+  ]
+}
