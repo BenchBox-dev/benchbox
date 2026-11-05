@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "A report (PR description or docs/internal note) over at least 14 days of ci.yml runs that classifies every non-success: real test failure, duration gate, timeout or cancel, superseded or cancelled, infrastructure; with counts and rates",
+    "For the duration gate: per-run distribution of the summed ratio and delta on runs with no relevant test changes, and the false-positive rate at the current 1.30 / 360 s thresholds",
+    "For macOS framing: queued time vs execution time split, p50/p90/p99 execution time, and how often the 15-minute limit is hit on execution alone",
+    "Each proposed change has its data, expected first-pass gain, and risk; DECISION GATE: owner approves or rejects each via the choice dialog before any threshold or timeout is edited",
+    "Approved changes land with tests; rejected ones are recorded on this item"
+  ],
+  "context": "Serial item (not in the batch). Owner decision 2026-11-05: investigate only; every gate threshold or timeout change needs owner approval. GUARDRAILS: no change to thresholds, timeouts, retries or required checks without that approval; re-running jobs to collect data is fine.",
+  "description": "CI first-pass green fell from the 70.4% baseline to about 47% (n=100 ci.yml runs since 2026-11-01). Observed drivers: the fast-tier duration gate tripping on runner variance (for example #3946: summed ratio 1.354 against 1.30, +504 s, with no slow tests from the PR) and macOS TPC-H binary framing hitting its 15-minute limit under queue load on many PRs. The owner chose 'investigate only' on 2026-11-05, so this item gathers the data and proposes changes; any threshold or timeout change needs explicit owner approval before it is implemented.",
+  "links": [
+    ".github/workflows/ci.yml",
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-27T12-06-43-989Z_01a17d41-7415-7202-9145-695263c763ec/ReleaseV2Retro.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a3eb8cbf1b5dc744e4710e1c",
+      "at": "2026-11-05T14:12:46Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "90a7da49a91342b6b25826f56acaba30",
+      "session_id": "7da446616e5349658579dfc9c4288973"
+    }
+  ]
+}

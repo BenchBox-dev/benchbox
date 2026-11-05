@@ -25107,6 +25107,13 @@
       "status": "open",
       "title": "Make every develop commit releasable by guaranteeing a trunk dist artifact for it"
     },
+    "rv2r-10-flaky-ci-investigation": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Measure why CI first-pass green fell to about 47% and bring threshold changes to the owner"
+    },
     "rx-ux-00-phase0-contract-decisions": {
       "claim": null,
       "needs": [],
