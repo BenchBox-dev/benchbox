@@ -1,12 +1,12 @@
 {
   "acceptance": [
-    "A short decision note in the PR body compares A and B with measured extra runner-minutes per day from the last 7 days of trunk runs",
-    "For the chosen approach: a test or workflow assertion shows that a superseded develop push still produces dist-<sha>-attempt-N (A), or that admit and trunk UAT select the newest dist-bearing commit with a clear error otherwise (B)",
-    "Live check after merge: two develop merges within 5 minutes both end with a dist artifact (A), or the documented selection works on a real run (B)",
-    "No change to what the dist contains or how it is built (the wheel and sdist digests for the same commit are unchanged)"
+    "Decision note in the PR body comparing A and B, with measured extra runner-minutes per day from the last 7 days of trunk runs",
+    "For A: a workflow test plus a live check that two develop merges within 5 minutes both end with dist-<sha>-attempt-N. For B: tests that admit and trunk-uat select the newest dist-bearing commit and fail clearly otherwise, plus a live run",
+    "No change to what the dist contains or how it is built (wheel and sdist digests for the same commit unchanged)",
+    "The chosen selection rule is written into rv2r-02's context before rv2r-02 is prepared"
   ],
-  "context": "Member of batch release-v2-remediation (see rv2r-01 context). GUARDRAILS: do not change dist build steps or artifact names; keep cancel-in-progress semantics for the test jobs. DECISION GATE: if extra cost exceeds 60 runner-minutes per day, stop and ask the owner before choosing A.",
-  "description": "Since 2026-10-28, 42 of 100 trunk runs were cancelled when a newer push replaced them. A commit without a trunk dist artifact cannot be released (docs/internal/release-artifacts.md:8-11), and continuous trunk UAT also needs that dist. Choose and implement one approach: (A) build and upload the dist in a separate trunk job that is never cancelled (for example its own concurrency group), or (B) make the release and trunk UAT always use the newest commit that has a dist, and document that rule. Measure runner cost before choosing.",
+  "context": "Member of batch release-v2-remediation; ready now and runs alongside rv2r-01. GUARDRAILS: keep pending-run replacement for the test jobs; do not change dist build steps or artifact names. DECISION GATE: if the extra cost exceeds 60 runner-minutes per day, stop and ask the owner before choosing A.",
+  "description": "Since 2026-10-28, 42 of 100 trunk runs were cancelled. They were replaced while waiting under trunk.yml's workflow-level concurrency group `trunk-develop` (cancel-in-progress: false; trunk.yml:21-23). A commit without a trunk dist artifact cannot be released (release-artifacts.md:8-11), and trunk UAT (rv2r-02) also needs a dist. Choose and implement one approach. (A) Build the dist in a separate push-triggered workflow without a replacing concurrency group (adds one workflow; rv2r-12 counts it), or move the workflow-level concurrency to the test jobs only, so the dist job is never replaced. (B) Make admit and trunk UAT select the newest commit that has a dist, with a clear error otherwise, and document that rule. Measure runner cost before choosing. The choice fixes the dist-selection rule that rv2r-02 and rv2r-03 implement. Rollback: revert this member's commits.",
   "links": [
     ".github/workflows/trunk.yml",
     "docs/internal/release-artifacts.md"
@@ -18,6 +18,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "f1d777cc907b4e849c328786657c1369",
+      "session_id": "7da446616e5349658579dfc9c4288973"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a3eb8cbf1b5dc744e4710e1c",
+      "at": "2026-11-05T15:35:20Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "93fa0072aaea464c90a68b5ab40f74c4",
       "session_id": "7da446616e5349658579dfc9c4288973"
     }
   ]
