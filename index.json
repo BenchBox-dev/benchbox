@@ -27470,7 +27470,7 @@
         "sqlglot-e2e-source-aware-adoption-review"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "dropped",
       "title": "Deploy the source-aware SQLGlot reviewer through a verified Theseus package pin"
     },
     "sqlglot-e2e-source-aware-adoption-review": {
