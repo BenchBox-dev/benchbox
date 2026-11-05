@@ -27463,13 +27463,11 @@
     "sqlglot-e2e-lifecycle-controller": {
       "claim": null,
       "needs": [
-        "sqlglot-e2e-source-aware-adoption-review",
-        "sql-execution-gate-sqlite-q19-timeout",
-        "sqlglot-e2e-verified-wheel-adoption"
+        "sqlglot-e2e-fork-wheel-delivery"
       ],
       "priority": "high",
       "status": "open",
-      "title": "Advance mechanical SQLGlot refreshes through protected fork and BenchBox merges"
+      "title": "Automate upstream integration inside benchbox-sqlglot"
     },
     "sqlglot-e2e-reviewer-package-adoption": {
       "claim": null,
