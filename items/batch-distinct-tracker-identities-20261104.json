@@ -5,7 +5,7 @@
     "Batch tooling refuses, or the leader procedure detects, a member landing whose tracker writes came from the batch owner's principal; the check is exercised by a test.",
     "The four batches registered on 2026-11-04 are checked for member-originated tracker writes before their final PRs are armed, and the result is recorded here."
   ],
-  "context": "2026-11-05 audit of the four active batches (arrow-dataframe-roundtrips, native-bulk-load-remainder, native-bulk-load-sql, tpch-refresh-path), read from each member item's tracker session history since its batch's integration_log start. Every write carries the one shared owner principal (...8b868951fc54003923be2571), so attribution is inferred from timing and content. Each member shows: the leader's metadata update within seconds of registration, then take and prepare a few seconds apart at landing. There are no writes in the window between member creation and landing. tpch-refresh-path also has one post-prepare update on each of its four members within 14 seconds (14:43:46-14:44:00Z). Those are verification-summary context notes, consistent with a leader sweep. Conclusion: no evidence of member-originated tracker writes; the shared identity means this cannot be proven.",
+  "context": "2026-11-05 audit of the four active batches (arrow-dataframe-roundtrips, native-bulk-load-remainder, native-bulk-load-sql, tpch-refresh-path), read from each member item's tracker session history since its batch's integration_log start. Every write carries the one shared owner principal (...8b868951fc54003923be2571), so attribution is inferred from timing and content. Each member shows: the leader's metadata update within seconds of registration, then take and prepare a few seconds apart at landing. There are no writes in the window between member creation and landing. tpch-refresh-path also has one post-prepare update on each of its four members within 14 seconds (14:43:46-14:44:00Z). Those are verification-summary context notes, consistent with a leader sweep. Conclusion: no evidence of member-originated tracker writes; the shared identity means this cannot be proven.\n\nDelivered with batch-primary-clone-dirty-guard-20261104 in one serial PR (owner choice: the items change the batch tooling, so they are not delivered through it). PR #3957, head d746162c5c, held with no-auto-merge until v0.5.0 is released, at the owner's request. pr-preflight passed (147). Independent review: no remaining Critical/Required defects.",
   "description": "todo-db derives each worker's principal from a per-process session id (todo_db/mcp/identity.py), and omp subagents borrow their parent's MCP connection. Four parallel batch leaders that ran as subagents of one session therefore registered the same owner and serialized on its single live-claim slot. If members also ran as subagents of a leader's session, the E_BATCH_OWNER refusal could not separate them from the owner, because the tracker sees one identity. The todo skill already says a member must not share the leader's server or actor, but nothing states how sessions must be launched to achieve that, and nothing detects a breach.",
   "links": [
     "docs/agent/batch-feature-delivery.md",
@@ -45,6 +45,14 @@
       "generation": "1d5511608d73498f9dd85c46b72a1982",
       "op": "renew",
       "op_id": "8bbf36df4ddf447e97a8b0bf85c7a792",
+      "session_id": "4e1f5de86962468394697835ee28c6b3"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae",
+      "at": "2026-11-05T14:56:30Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "0861255079304784b73d4e31cc6c13fa",
       "session_id": "4e1f5de86962468394697835ee28c6b3"
     }
   ]
