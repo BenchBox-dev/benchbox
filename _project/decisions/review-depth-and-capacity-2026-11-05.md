@@ -122,6 +122,13 @@ keep that from being a relaxation by default:
    that cannot pass its own repair, which is what v0.1.7 is. It is recorded
    there.
 
+Both the audit and the local review read the trusted policy at the base ref, and
+v0.1.7 refuses the `brief_max_bytes` key that `origin/develop` still carries
+until this change merges. They therefore run with `--base-ref origin/develop`
+and `--trusted-ref` set to a local commit that is `origin/develop` with that one
+key removed and nothing else changed. The author's own policy never decides what
+counts as required.
+
 Every later rule change, starting with the v0.2.0 promotion, is judged by the
 strict rules and gets no relaxation.
 
