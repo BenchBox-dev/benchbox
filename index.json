@@ -25187,9 +25187,7 @@
     },
     "rv2r-08-release-freeze-guard": {
       "claim": null,
-      "needs": [
-        "rv2r-01-adr-guardrails"
-      ],
+      "needs": [],
       "priority": "medium-high",
       "status": "open",
       "title": "Enforce the release-window freeze on infrastructure changes with a merge check"
