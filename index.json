@@ -27457,11 +27457,12 @@
     "sqlglot-e2e-fork-maintainer-docs": {
       "claim": null,
       "needs": [
-        "sqlglot-e2e-lifecycle-controller"
+        "sqlglot-e2e-lifecycle-controller",
+        "sqlglot-e2e-core-wheel-consumer"
       ],
       "priority": "high",
       "status": "open",
-      "title": "Document automated fork refresh and BenchBox adoption with maintainer-owned exceptions"
+      "title": "Document fork producer and minimal core consumer boundaries"
     },
     "sqlglot-e2e-fork-wheel-delivery": {
       "claim": null,

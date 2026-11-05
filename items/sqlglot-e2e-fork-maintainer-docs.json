@@ -1,15 +1,16 @@
 {
   "acceptance": [
-    "Runbook accurately names implemented schedule, controller, review-at-adoption, merged-commit checks/artifact, guarded landing, kill switch and credentials without values.",
-    "Existing fork contract/doc checks pass; no workflow/source behavior changed in documentation item unless separately reviewed scope gate.",
-    "Fork documentation PR merged; BenchBox evidence conventions and permanent-fork/rollback/publication decisions remain consistent."
+    "Fork/core runbooks and maintenance decision record match the deployed producer/consumer split and explicitly supersede source-review-at-core; no contradictory manual-only or PR-body-oracle promises remain.",
+    "Document exact producer contract, consumer checks, credential ownership, cutover, issue ownership, hold/disarm/rollback and artifact-expiry recovery, without token values or new review infrastructure.",
+    "Existing documentation/contract checks pass; ordinary fork and core documentation PRs merge without unrelated source/workflow behavior changes."
   ],
-  "context": "Owner correction, 2026-11-05: SQLGlot-specific source/artifact verification, evidence preparation and lifecycle policy belong to BenchBox, not Theseus. Theseus remains the independent generic sizing, bounded-template and review application. Earlier claims that SQLGlot-specific Theseus changes were approved are retracted. Theseus PR #25 is CLOSED and unmerged; no SQLGlot reviewer package release or BenchBox reviewer-pin promotion is authorized or required by this batch. Do not port the rejected app coupling, patch generated plans, force sizing/templates, import private APIs, impersonate Theseus self-promotion, or introduce a parallel reviewer. First prove supported generic full-source input, actual reviewer sizing/coverage and exact adoption-head binding from BenchBox-owned preparation. If a generic contract is genuinely missing, present concrete evidence for a separately scoped decision rather than invent a release blocker. Preserve independent source review at BenchBox adoption, CI-only fork governance, immutable merged-SHA artifact provenance, no candidate execution with write/reviewer credentials, restricted App scopes, holds/protection/current-head oracle and CI, pure wheel-only runtime shipping, baseline-outcome preservation and reviewed rollback. No public publication, cloud spend, automatic semantic repair, waiver, expected-result/golden edits, patch retirement, or unrelated cleanup. Dependency order remains serial across repository/review/deployment boundaries. Corrected proposal: local://sqlglot-end-to-end-proposal.md; live tracker owns implementation state.",
-  "description": "Update canonical BenchBox-dev/benchbox-sqlglot downstream/MAINTAINING.md through a fork PR to match implemented lifecycle. Amend manual-only execution wording but preserve maintainer accountability, CI-only fork review boundary, merge ancestry, private wheel-only shipping, no fork publishing/mutating workflows and owner-controlled BenchBox release. Cite controller location and exact exception recovery/artifact expiry/closed PR/hold handling. Keep no required fork review/App/native-auto-merge-setting changes. Amend BenchBox release/evidence/decision docs in corresponding implementation PRs; do not retain contradictory paste-only/manual workflow promises.\n\nApplication boundary: SQLGlot-specific logic and evidence belong to BenchBox. Consume Theseus only as the independent generic review application; no Theseus change, release or reviewer-pin promotion is a prerequisite. Prove the generic full-source input and head-binding contract in sqlglot-e2e-source-aware-adoption-review; a pin-only generic verdict is insufficient.",
+  "context": "Owner instruction 2026-11-05 supersedes BOTH rejected designs. benchbox-sqlglot owns upstream discovery/integration, fork PR lifecycle, source/relocation/runtime/engine/distribution validation and trustworthy wheel delivery. BenchBox core owns consuming that delivery, origin/identity/hash binding, transactional pin updates, its own wrapper/benchmark-definition/installed-package concerns and ordinary core PR landing. Core must not discover upstream, merge fork PRs, reconstruct/re-review fork source, repeat fork test matrices or acquire a fork-write credential. Theseus stays unchanged and generic; no special policy, external-source inlet, synthetic dataset, second model-review path or reviewer release is needed. Theseus PR25 closed unmerged; prior approval claims withdrawn. This supersedes the source-review-at-core portion of sqlglot-fork-review-h1-governance, not existing protected-branch rules or ordinary review requirements. Preserve exact merged-SHA producer evidence, scoped independent credentials, no candidate execution with write/reviewer secrets, no golden/outcome/test/waiver changes, reviewed rollback, human holds/disarms, reverted-delivery suppression and no public release/cloud spend. Update current fork/core runbooks to this boundary. Corrected proposal: local://sqlglot-end-to-end-proposal.md. The live tracker, not discarded branch code or prior notes, owns delivery state.",
+  "description": "Update fork downstream/MAINTAINING.md and core release/evidence/maintenance decision documents to actual implemented producer/consumer responsibilities. Explicitly supersede the earlier source-review-at-core-adoption convention from sqlglot-fork-review-h1-governance. Fork owns upstream integration, source/runtime/build verification, verified delivery and upstream exceptions; core trusts that product, validates origin/identity/hash, tests unique core integration/packaging and manages its own adoption PR. Remove claims that pasted fork diffs are reviewed by the core oracle. Do not add Theseus awareness, a new fork review App/required model-review status, duplicate source review or new test matrices. Preserve wheel-only/private namespace, ordinary protection/review policy, rollback, public release controls, scoped actors and cutover/hold/expiry recovery. Runbooks must match deployed workflow locations, schedule, credential ownership and kill switches, not a central core controller that no longer exists.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox-sqlglot/blob/main/downstream/MAINTAINING.md",
     "docs/internal/release-guide.md",
-    "docs/internal/sql-execution-evidence-gate.md"
+    "docs/internal/sql-execution-evidence-gate.md",
+    "_project/decisions/sqlglot-maintenance-decision-record.md"
   ],
   "sessions": [
     {
@@ -26,6 +27,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "afa3aa08e8a144bc9d64f4fb2382f627",
+      "session_id": "cf3fdc0e8210426f8ab8cc6664c384cd"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ba4923b65d2bea2a5584a721",
+      "at": "2026-11-05T14:06:41Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "cc7f89d88a3f4d6aa8d5ec325ce096b8",
       "session_id": "cf3fdc0e8210426f8ab8cc6664c384cd"
     }
   ]
