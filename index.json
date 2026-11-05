@@ -29379,10 +29379,12 @@
     },
     "theseus-review-depth-and-capacity-20261105": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "review-depth-owner-decisions-20261105"
+      ],
       "priority": "high",
       "status": "open",
-      "title": "Make Theseus reviews prove genuine coverage and size briefs by real reviewer capacity"
+      "title": "Theseus v0.1.7: hunk coverage, git-built diffs, rename-aware executed-surface promotions, capacity sizing, compaction fail-closed, preflight"
     },
     "throughput-adapter-session-capability-contract": {
       "claim": null,
