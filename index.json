@@ -24933,10 +24933,15 @@
       "title": "Record owner decisions D1–D9 on Theseus review depth and capacity"
     },
     "review-evidence-archive-20261105": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-06T14:30:19Z",
+        "generation": "dcdd239086e3450c8ce618ecdec77dc1",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Archive BenchBox review captures and attempt artifacts before they expire"
     },
     "review-protocol-authority-single-source-cutover": {
