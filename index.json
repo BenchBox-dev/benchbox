@@ -25114,6 +25114,13 @@
       "status": "open",
       "title": "Measure why CI first-pass green fell to about 47% and bring threshold changes to the owner"
     },
+    "rv2r-11-loop-metrics-dashboard": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Publish a weekly dev-loop dashboard against the dev-loop v2 targets and baseline"
+    },
     "rx-ux-00-phase0-contract-decisions": {
       "claim": null,
       "needs": [],

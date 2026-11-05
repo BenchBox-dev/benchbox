@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "make target or uv run command produces the report for an arbitrary window; unit tests cover the metric calculations on fixed API fixtures (no live API in tests)",
+    "The report shows each dev-loop v2 target next to its baseline value from _project/archive/dev-loop-v2/baseline.md",
+    "A weekly scheduled workflow uploads the report; its first live run succeeds and the artifact is linked on this item",
+    "dlv2-30day-metrics can be closed using this report (link it there)"
+  ],
+  "context": "Serial item. GUARDRAILS: read-only GitHub API use with the default token; no new secrets; the scheduled job must not hold more than 1 runner. No DECISION GATE beyond normal review.",
+  "description": "The dev-loop v2 targets (fast tier p95 <= 7 min, medium tier p95 <= 15 min, red trunk 0, flaky retry rate < 2%, workflow count) were never measured; dlv2-84 and dlv2-30day-metrics are open and unstarted. The retrospective had to sample gh data by hand. Build a script (scripts/, no new service) that computes the metrics from the GitHub API for a date window and writes a Markdown report, plus a weekly scheduled job that uploads it as an artifact. Extra metrics: CI first-pass green, PR open->merge p50/p90, runner-hours by workflow, release lead time (rc tag to PyPI), trunk UAT pass rate and per-cell infrastructure-failure rate, process-induced blocker count (from tracker items tagged by rv2r-04).",
+  "links": [
+    "_project/archive/dev-loop-v2/baseline.md",
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-27T12-06-43-989Z_01a17d41-7415-7202-9145-695263c763ec/ReleaseV2Retro.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a3eb8cbf1b5dc744e4710e1c",
+      "at": "2026-11-05T14:12:49Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "82c3378583b842aaa841fcfdc283afb1",
+      "session_id": "7da446616e5349658579dfc9c4288973"
+    }
+  ]
+}
