@@ -27494,7 +27494,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "dropped",
       "title": "Prepare and verify SQLGlot adoption source evidence in BenchBox"
     },
     "sqlglot-e2e-verified-wheel-adoption": {
