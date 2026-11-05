@@ -5,7 +5,9 @@
       "from_item": "theseus-atomic-benchbox-cutover-20261102-deferral-1",
       "id": 1,
       "reason": "On Theseus PRs #5 and #16, test (windows, py3.12) failed test_concurrent_cold_installs_of_one_key_all_succeed_and_leave_a_valid_install, then passed on rerun. The test covers the msvcrt install-key lock in bootstrap.py, which BenchBox vendors as _project/scripts/theseus_bootstrap.py. It has not been investigated: this may be a real race on Windows, not just test timing.",
-      "resolution": "open",
+      "resolution": "dismissed",
+      "resolved_at": "2026-11-05T14:15:18Z",
+      "resolved_reason": "Root cause found and fixed: a real retained-wheel race on Windows (os.replace over an open file). Fixed in Theseus PR #24 (merged 0a58876), with an independent review returning SHIP and CI repeat proof (25/25 failing before, 150/150 passing after). It reaches BenchBox's vendored bootstrap with the v0.1.7 re-lock (benchbox-relock-theseus-v017-20261105).",
       "summary": "Investigate Windows flake: concurrent cold installs of one key (test_bootstrap.py) may be a real race in the vendored bootstrap lock"
     },
     {
@@ -57,6 +59,14 @@
       "client": "omp-coding-agent",
       "op": "defer",
       "op_id": "71ae86929e0046f6b886ec6397af90ae",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-05T14:15:19Z",
+      "client": "omp-coding-agent",
+      "op": "dismiss",
+      "op_id": "91263d09afe84164842d0286f8007b6f",
       "session_id": "8d9ba932107b4322b2417b8af61c160c"
     }
   ]
