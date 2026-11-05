@@ -24907,6 +24907,13 @@
       "status": "open",
       "title": "Quarterly review of dependency upper bounds"
     },
+    "review-depth-owner-decisions-20261105": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Record owner decisions D1–D9 on Theseus review depth and capacity"
+    },
     "review-protocol-authority-single-source-cutover": {
       "claim": null,
       "needs": [],

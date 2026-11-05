@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "The BenchBox v0.1.7 re-lock PR adds a decision record under _project/decisions covering D1, D2, D3 and D6, with D2 recorded explicitly as narrowing the BenchBox gate's promotion scope."
+  ],
+  "context": "Decisions were made in session 2026-11-05 through the choice dialog ('Depth first', 'Executed surface', '~/Developer/benchmark_runs', 'Accept all').",
+  "description": "Owner decisions 2026-11-05 on the brief-size remediation plan (local://brief-size-remediation-plan.md §7):\n- D1: depth first. Theseus v0.1.7 ships the review-depth fixes before the 0.2.0 rename, with a fallback to relaxing 0.2.0 if v0.1.7 isn't promoted within 5 working days.\n- D2: promotion required reads limited to the executed surface (package source, pyproject.toml, review.yml, gate.yml), plus rename detection.\n- D3: coverage required for SHIP and SHIP WITH FIXES; a SHIP from before the change is re-reviewed on its next head.\n- D4: compaction off and treated as failure.\n- D5: diff always built from git.\n- D6: BenchBox configuration trimmed to the minimum.\n- D7: archive in ~/Developer/benchmark_runs.\n- D8: greps earn no coverage.\n- D9: if the offline audit of the v0.1.7 promotion fails, it qualifies for a repair-class relaxation.\nD1, D2, D3 and D6 go into the decision record of the BenchBox v0.1.7 re-lock PR.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-05T14:13:47Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "89c4afe9f59d4783939c2524b82e277d",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    }
+  ]
+}
