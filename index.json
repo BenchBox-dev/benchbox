@@ -931,6 +931,7 @@
       "accepted_members": {
         "derived-power-export-rounding-20261017": "3296c62f2382a447950817a721cf7f691ceb0714",
         "power-test-times-query-generation-20261031": "22ed4469e0b73b466a5b3aae666ab1565eb7005a",
+        "tpc-measured-intervals-reference-20261103": "96fa564de497f1355b353ea487057716f0ca223f",
         "tpcds-maintenance-timer-hygiene-20261103": "ab9aaff30e964ff2220975abf0ac9423f84b6bd2"
       },
       "batch_schema": 2,
@@ -960,6 +961,17 @@
           "integration_head": "4f213e45fff7e16b28792f206d9a3c3e75dcf40e",
           "integration_seq": 2
         },
+        "tpc-measured-intervals-reference-20261103": {
+          "accepted_head": "96fa564de497f1355b353ea487057716f0ca223f",
+          "changed_files": [
+            "changelog.d/feat-tpc-timer-boundaries-v2--tpc-measured-intervals-reference-20261103.json",
+            "docs/internal/throughput-result-alignment.md",
+            "docs/internal/tpc-measured-intervals.md",
+            "quality/docs-ownership.json"
+          ],
+          "integration_head": "28d3100551a7279339d67c83df76a2f7ab88624c",
+          "integration_seq": 4
+        },
         "tpcds-maintenance-timer-hygiene-20261103": {
           "accepted_head": "ab9aaff30e964ff2220975abf0ac9423f84b6bd2",
           "changed_files": [
@@ -973,7 +985,7 @@
         }
       },
       "integration_branch": "feat/tpc-timer-boundaries-v2",
-      "integration_head": "7151068c8e39edde11a9fa9541bf2be15b6e6263",
+      "integration_head": "28d3100551a7279339d67c83df76a2f7ab88624c",
       "integration_log": [
         {
           "at": "2026-11-05T19:21:47Z",
@@ -1007,6 +1019,15 @@
           "op_id": "df48a14fd28d4083b8fc3d80dcd92c3b",
           "previous_head": "4f213e45fff7e16b28792f206d9a3c3e75dcf40e",
           "seq": 3
+        },
+        {
+          "at": "2026-11-05T19:43:44Z",
+          "head": "28d3100551a7279339d67c83df76a2f7ab88624c",
+          "kind": "prepare",
+          "member": "tpc-measured-intervals-reference-20261103",
+          "op_id": "a415a1fc494541f2a0755bfed78e347c",
+          "previous_head": "7151068c8e39edde11a9fa9541bf2be15b6e6263",
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpc-timer-boundaries-v2",
@@ -30503,15 +30524,10 @@
       "title": "✅ TPC-Havoc Variant Modularization"
     },
     "tpc-measured-intervals-reference-20261103": {
-      "claim": {
-        "expires_at": "2026-11-06T19:43:40Z",
-        "generation": "ac459992653b43c5a014cccea50a0751",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Write one cited reference of every TPC measured-interval timer site and its known deviations"
     },
     "tpc-official-benchmark-classes-broken": {

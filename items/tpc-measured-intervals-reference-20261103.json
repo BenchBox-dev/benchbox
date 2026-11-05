@@ -21,6 +21,55 @@
     "docs/internal/throughput-result-alignment.md",
     "_project/scripts/timing_policy_check.py"
   ],
+  "prepared": {
+    "accepted_head": "96fa564de497f1355b353ea487057716f0ca223f",
+    "batch_id": "tpc-timer-boundaries-v2",
+    "changed_files": [
+      "changelog.d/feat-tpc-timer-boundaries-v2--tpc-measured-intervals-reference-20261103.json",
+      "docs/internal/throughput-result-alignment.md",
+      "docs/internal/tpc-measured-intervals.md",
+      "quality/docs-ownership.json"
+    ],
+    "integration_head": "28d3100551a7279339d67c83df76a2f7ab88624c",
+    "integration_seq": 4,
+    "member_id": "tpc-measured-intervals-reference-20261103",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "84a338804d7eb4344fe707fed1f727abbcbc1607e3c876eefaca5d1687c1b532",
+    "source_base": "7151068c8e39edde11a9fa9541bf2be15b6e6263",
+    "source_revision": "96fa564de497f1355b353ea487057716f0ca223f",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-tpc-timer-boundaries-v2--tpc-measured-intervals-reference-20261103",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/unit/docs/test_publish_policy.py",
+        "tests/unit/scripts/test_docs_ownership.py"
+      ],
+      "review": {
+        "base_sha": "7151068c8e39edde11a9fa9541bf2be15b6e6263",
+        "head_sha": "96fa564de497f1355b353ea487057716f0ca223f",
+        "head_tree": "2df4912ecdddd8d1359a64b85e42ccb1591e6453",
+        "outcome": "clear",
+        "patch_digest": "c9ad279c135730d7616dabe017c57063",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "e3b793bdf55a538e06c8dcffd5530fc548fedad9"
+      },
+      "revision": "96fa564de497f1355b353ea487057716f0ca223f",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a561db75579ad3167de9da38",
@@ -77,6 +126,15 @@
       "generation": "ac459992653b43c5a014cccea50a0751",
       "op": "take",
       "op_id": "ea062c26fafe469db1506209f090d4e3",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-05T19:43:44Z",
+      "client": "omp-coding-agent",
+      "generation": "ac459992653b43c5a014cccea50a0751",
+      "op": "prepare",
+      "op_id": "a415a1fc494541f2a0755bfed78e347c",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
