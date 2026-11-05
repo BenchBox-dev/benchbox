@@ -1,17 +1,17 @@
 {
   "acceptance": [
-    "Every implementation and activation item below is merged or operationally verified; no unowned deferred scope.",
-    "Source-aware adoption review derives old/new source from pins, verifies relocated wheel correspondence, reviews substantive source and fails closed on missing/oversize evidence.",
-    "Controller is enabled only after prerequisites and proves idempotent guarded progress, exact merged-artifact binding, protected landing and fail-closed exceptions.",
-    "Historical real-artifact/local-engine replay and production no-write dry-run exercised; delivered capability is not falsely claimed to certify a future release."
+    "Fork producer and core consumer capabilities are merged and operationally verified in their owning repositories; no unowned scope or Theseus source/release dependency remains.",
+    "Fork supplies validated exact-merged-SHA wheel provenance; core verifies origin/identity/hash and unique consumer behavior without reconstructing source or rerunning fork validation.",
+    "Fork/core credential, event, cutover, kill-switch and no-write dry-run proofs pass; known required core reliability prerequisite resolved before activation.",
+    "Live core develop identity/hash and merged adoption evidence define landing; separate first-real-release certification is not falsely inferred from current/no-op state."
   ],
-  "context": "Owner correction, 2026-11-05: SQLGlot-specific source/artifact verification, evidence preparation and lifecycle policy belong to BenchBox, not Theseus. Theseus remains the independent generic sizing, bounded-template and review application. Earlier claims that SQLGlot-specific Theseus changes were approved are retracted. Theseus PR #25 is CLOSED and unmerged; no SQLGlot reviewer package release or BenchBox reviewer-pin promotion is authorized or required by this batch. Do not port the rejected app coupling, patch generated plans, force sizing/templates, import private APIs, impersonate Theseus self-promotion, or introduce a parallel reviewer. First prove supported generic full-source input, actual reviewer sizing/coverage and exact adoption-head binding from BenchBox-owned preparation. If a generic contract is genuinely missing, present concrete evidence for a separately scoped decision rather than invent a release blocker. Preserve independent source review at BenchBox adoption, CI-only fork governance, immutable merged-SHA artifact provenance, no candidate execution with write/reviewer credentials, restricted App scopes, holds/protection/current-head oracle and CI, pure wheel-only runtime shipping, baseline-outcome preservation and reviewed rollback. No public publication, cloud spend, automatic semantic repair, waiver, expected-result/golden edits, patch retirement, or unrelated cleanup. Dependency order remains serial across repository/review/deployment boundaries. Corrected proposal: local://sqlglot-end-to-end-proposal.md; live tracker owns implementation state.",
-  "description": "Implement the requested full lifecycle: discover upstream final releases; mechanically prepare/resume fork PR; protected exact-head fork merge after required CI; require all canonical push-main checks at merge SHA; consume exact verified wheel artifact; transactionally prepare restricted BenchBox adoption; substantively review actual upstream/fork source delta at consumer adoption; run execution/installed-package gates; land through existing pr-arm; confirm develop pin/hash. Stateless hourly/manual reconciliation, one active consumer adoption, fresh checks before mutations, explicit failure fingerprints and actionable exception issues, no routine human merge/build/adopt commands.\n\nPrior art: scripts/sqlglot_fork_refresh.py; scripts/adopt_sqlglot_wheel.py; .github/workflows/sqlglot-fork-refresh.yml; fork downstream.refresh auto and three push-main workflows; existing source promotion primitives now owned by the pinned Theseus reviewer; existing make pr-arm and bot REST publication. Extend these, no new service/database/reviewer clone.\n\nDecision gates: source-aware reviewer must be deployed before activation; Q19 reliability fixed; App/write credential provenance/permissions verified; owner-only credentials and enable variable cannot be invented; actual first eligible release remains separate empirical certification.\n\nApplication boundary: SQLGlot-specific logic and evidence belong to BenchBox. Consume Theseus only as the independent generic review application; no Theseus change, release or reviewer-pin promotion is a prerequisite. Prove the generic full-source input and head-binding contract in sqlglot-e2e-source-aware-adoption-review; a pin-only generic verdict is insufficient.",
+  "context": "Owner instruction 2026-11-05 supersedes BOTH rejected designs. benchbox-sqlglot owns upstream discovery/integration, fork PR lifecycle, source/relocation/runtime/engine/distribution validation and trustworthy wheel delivery. BenchBox core owns consuming that delivery, origin/identity/hash binding, transactional pin updates, its own wrapper/benchmark-definition/installed-package concerns and ordinary core PR landing. Core must not discover upstream, merge fork PRs, reconstruct/re-review fork source, repeat fork test matrices or acquire a fork-write credential. Theseus stays unchanged and generic; no special policy, external-source inlet, synthetic dataset, second model-review path or reviewer release is needed. Theseus PR25 closed unmerged; prior approval claims withdrawn. This supersedes the source-review-at-core portion of sqlglot-fork-review-h1-governance, not existing protected-branch rules or ordinary review requirements. Preserve exact merged-SHA producer evidence, scoped independent credentials, no candidate execution with write/reviewer secrets, no golden/outcome/test/waiver changes, reviewed rollback, human holds/disarms, reverted-delivery suppression and no public release/cloud spend. Update current fork/core runbooks to this boundary. Corrected proposal: local://sqlglot-end-to-end-proposal.md. The live tracker, not discarded branch code or prior notes, owns delivery state.",
+  "description": "Deliver the owner-requested end-to-end process with strict repository concerns. benchbox-sqlglot discovers/integrates upstream, owns its protected PR/CI lifecycle, verifies source/build/runtime/distribution and provides a trustworthy immutable wheel delivery. BenchBox core only consumes that product, validates origin/identity/hash, updates its pin transactionally, runs minimal unique consumer integration/packaging checks and lands its ordinary core PR. Theseus stays independent and unchanged. No central core upstream orchestrator, external-source review inlet, duplicate fork suite or reviewer release.\n\nReuse fork refresh/build/verify and existing core adopter/packaging/pr-arm helpers. Separate producer and consumer controls/credentials/issues; proven cutover retires legacy core upstream automation without dual writers. Preserve holds/disarms, reverted-delivery suppression, exact canonical artifact identity, no-write dry-run/kill switches, baseline outcomes and separate public release authority. Current owner instruction supersedes source semantics review at core adoption; document that change rather than carry an obsolete decision. No-op deployment and first successful eligible release remain distinct.",
   "links": [
-    "docs/internal/sql-execution-evidence-gate.md",
+    "https://github.com/BenchBox-dev/benchbox-sqlglot/blob/main/downstream/MAINTAINING.md",
+    "docs/internal/release-guide.md",
     "_project/decisions/sqlglot-maintenance-decision-record.md",
-    "_project/decisions/sqlglot-fork-transpilation-plan.md",
-    "docs/agent/merge-queue-governance.md"
+    "docs/internal/merge-queue-governance.md"
   ],
   "sessions": [
     {
@@ -52,6 +52,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "93adb2a0981a459fa6d6d5f38232b80a",
+      "session_id": "cf3fdc0e8210426f8ab8cc6664c384cd"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ba4923b65d2bea2a5584a721",
+      "at": "2026-11-05T14:06:48Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1bdcc9861cf74c77a79a4ded87f7dc61",
       "session_id": "cf3fdc0e8210426f8ab8cc6664c384cd"
     }
   ]
