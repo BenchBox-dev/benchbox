@@ -24916,6 +24916,13 @@
       "status": "open",
       "title": "Record owner decisions D1–D9 on Theseus review depth and capacity"
     },
+    "review-evidence-archive-20261105": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Archive BenchBox review captures and attempt artifacts before they expire"
+    },
     "review-protocol-authority-single-source-cutover": {
       "claim": null,
       "needs": [],

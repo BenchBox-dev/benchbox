@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "All live capture and attempt artifacts are copied to ~/Developer/benchmark_runs/review-evidence-2026-11-05/ with manifest.tsv (artifact id, name, run id, head sha, created/expires, size, sha256) and a README; every zip is verified against its sha256.",
+    "Expired or failed artifacts are listed explicitly."
+  ],
+  "context": "Started 2026-11-05 by agent ReviewEvidenceArchive. Source plan: local://brief-size-remediation-plan.md §8.",
+  "description": "Review-depth calibration needs BenchBox's hosted review evidence: oracle-verdict-capture artifacts (30-day retention, about 680 runs) and oracle-verdict-attempt and state artifacts (7-day retention; the earliest live ones expire 2026-11-08), plus local captures from ~/.cache/benchbox/local-oracle/captures. The owner chose ~/Developer/benchmark_runs as the archive (D7, 2026-11-05).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-05T14:13:59Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5383878cd45f4f1193f8e7597f283cc8",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    }
+  ]
+}
