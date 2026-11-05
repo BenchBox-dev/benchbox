@@ -598,6 +598,7 @@ jobs:
   publish:
     name: publish to ${{ needs.admit.outputs.target }}
     needs: [admit, install-matrix, release-uat]
+    if: ${{ !cancelled() && needs.admit.result == 'success' && needs.install-matrix.result == 'success' && needs.release-uat.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment:
@@ -673,7 +674,7 @@ jobs:
   github-release:
     name: github release
     needs: [admit, publish]
-    if: needs.admit.outputs.target == 'pypi'
+    if: ${{ !cancelled() && needs.admit.outputs.target == 'pypi' && needs.admit.result == 'success' && needs.publish.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

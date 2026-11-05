@@ -22,7 +22,7 @@ JOB_IF_ALLOWED_CONTEXTS = frozenset({"github", "needs", "vars", "inputs"})
 
 JOB_IF_FORBIDDEN_CONTEXTS = frozenset({"matrix", "strategy", "env", "steps", "job", "runner", "secrets"})
 
-_CONTEXT_RE = re.compile(r"\b([a-z]+)\s*(?:\.|\[)", re.ASCII)
+_CONTEXT_RE = re.compile(r"(?<![\w.-])([a-z]+)\s*(?:\.|\[)", re.ASCII)
 
 
 def _workflow_files() -> list[Path]:
@@ -93,6 +93,8 @@ class TestGuardDetectsTheRegression:
             "inputs.benchmark == ''",
             "vars.SOME_FLAG == '1'",
             "github.ref == 'refs/heads/develop'",
+            "needs.install-matrix.result == 'success'",
+            "needs.uat-steps.outputs.env == 'x'",
         ],
     )
     def test_does_not_flag_legitimate_job_conditions(self, expression):

@@ -283,11 +283,21 @@ def test_only_the_reuse_and_gate_jobs_read_other_runs():
     assert yaml.safe_load(_text())["permissions"] == {"contents": "read"}
 
 
-def test_publish_still_depends_on_the_release_uat_gate_and_install_matrix():
+def test_publish_runs_on_gate_results_so_a_skipped_reuse_job_cannot_skip_it():
     publish = _jobs()["publish"]
     assert {"install-matrix", "release-uat"} <= set(publish["needs"])
     assert "uat-reuse" not in publish["needs"]
-    assert "if" not in publish
+    condition = publish["if"]
+    assert condition.startswith("${{ !cancelled() &&")
+    for need in publish["needs"]:
+        assert f"needs.{need}.result == 'success'" in condition
+
+
+def test_github_release_runs_only_after_a_successful_pypi_publish():
+    condition = _jobs()["github-release"]["if"]
+    assert condition.startswith("${{ !cancelled() &&")
+    assert "needs.admit.outputs.target == 'pypi'" in condition
+    assert "needs.publish.result == 'success'" in condition
 
 
 def test_install_matrix_does_not_depend_on_reuse():
