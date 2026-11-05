@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Unit tests: window open + guarded path + no label = fail; window open + 'release-fix' label = pass; window closed = pass; non-guarded path = pass",
+    "Window detection is derived from tags and release-v2 publish results (no manual state file), with a test for 'rc tag exists, final published' = closed",
+    "Live check on a throwaway PR during a test window (or a dispatch with a simulated tag list) shows the hold message naming the open rc and the label to apply",
+    "The ADR freeze rule (rv2r-01) links to this check by name"
+  ],
+  "context": "Member of batch release-v2-remediation. Prior art: the required 'hold' context and the no-auto-merge label flow (docs/agent/merge-authority.md). GUARDRAILS: the 'release-fix' label may only be applied by the owner (MERGE-AUTHORITY-001); agents never apply it. DECISION GATE: changes to required-check settings or label permissions are owner actions; prepare the exact settings change and ask.",
+  "description": "Owner decision 2026-11-05: no infrastructure, oracle or CI-machinery merges between an rc tag and its PyPI publish. During 0.5.0, #3942 (oracle cutover) merged mid-release and blocked every PR for about 6 h. Enforce the rule mechanically: while a release window is open (an rc tag vX.Y.ZrcN exists whose vX.Y.Z has not been published by release-v2), PRs touching .github/, scripts/ release and oracle tooling, Makefile, tests/uat/, tests/utilities/, docker/ or uv.lock fail a required check unless they carry the label 'release-fix' applied by the owner. Extend the existing required 'hold' check rather than adding a new required context.",
+  "links": [
+    ".github/workflows/",
+    "docs/agent/merge-authority.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a3eb8cbf1b5dc744e4710e1c",
+      "at": "2026-11-05T14:13:28Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "d1dac8f7563a41478356e65484984a7d",
+      "session_id": "7da446616e5349658579dfc9c4288973"
+    }
+  ]
+}
