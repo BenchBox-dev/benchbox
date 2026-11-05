@@ -52,8 +52,8 @@ promotion under the old rules has 234 required files, 4.3 MB of file bytes and a
 context. Rename detection alone halves the diff (49 renames, 18 of them
 byte-identical). The executed surface of the same delta is 27 files, about
 123 KB and 54K tokens, which any configured reviewer can read in full. What
-BenchBox executes is therefore read completely; what is dropped is reading that
-the reviewers could only touch.
+BenchBox executes today is therefore read completely; what is dropped is
+reading that the reviewers could only touch.
 
 Consequences of the narrowing:
 
@@ -61,7 +61,14 @@ Consequences of the narrowing:
   independent review and, once it is live, its self-gate, not with a BenchBox
   review.
 - The executed surface is derived by Theseus from the tree and the verified
-  wheel. BenchBox adds no key for it and encodes no Theseus path.
+  wheel. BenchBox adds no key for it and encodes no Theseus path. In v0.1.7 it
+  follows job-level `uses:` references to workflows in the Theseus repository.
+  The Theseus repository holds only `ci.yml`, `gate.yml` and `review.yml` and no
+  composite action, and the one other file the workflows check out from it,
+  `src/theseus_reviewer/bootstrap.py`, is inside the package. A step-level
+  action or another checked-out file added to the Theseus repository later is
+  not followed, so a release that adds one needs a reviewer's explicit
+  attention until Theseus follows it.
 - A trust model that relies on Theseus's release evidence instead of any
   consumer reading is a separate, later item. It needs a live Theseus self-gate
   and a receipt format first.
@@ -103,8 +110,12 @@ keep that from being a relaxation by default:
    files, 31 of them on the executed surface), with the rename left for the next.
 2. After the hosted verdict, `theseus audit-coverage` from v0.1.7 is run on the
    hosted review capture of the PR head. The promotion is accepted only if every
-   required hunk is covered. The result is recorded in a PR comment.
+   required hunk is covered. The result is recorded in a PR comment. The hosted
+   capture is written by v0.1.6, so it holds the requested read selectors and not
+   the lines omp returned; the audit therefore gives an upper bound on coverage,
+   and a full result is necessary evidence, not sufficient evidence.
 3. A local review with the v0.1.7 wheel against the same head corroborates it.
+   It runs under the strict rules and records the lines it actually read.
 4. If the audit shows incomplete coverage after the retry budget, or the hosted
    review is absent or shallow, the owner decides. The promotion then qualifies
    for the repair-class relaxation of the 2026-11-04 decision: a base-pinned gate

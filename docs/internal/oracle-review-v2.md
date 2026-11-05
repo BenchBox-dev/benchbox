@@ -1697,8 +1697,10 @@ BenchBox's policy no longer carries `bootstrap_baseline_commit`,
 `bootstrap_path_map` or `bootstrap_reviewers`. The cutover to the Theseus
 package is complete, the base branch has a lock, and every promotion is a
 promotion from that lock. The block holds only `package`, `repository` and
-`dependencies`. Theseus accepts the `bootstrap_*` keys only for a repository
-whose base branch has no lock, which this repository no longer is.
+`dependencies`. Theseus parses the `bootstrap_*` keys as optional and reads them
+only to authorize a first promotion, when the base branch has no lock, which
+this repository no longer is. Adding them back changes nothing for a promotion
+from the existing lock.
 
 A promotion's required reads are the executed surface of the promoted source,
 not the whole delta: the files of the wheel's package under `src/`,
