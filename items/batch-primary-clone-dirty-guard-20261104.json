@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "make batch-member-check and make batch-land refuse when the primary clone has uncommitted or untracked changes under the member's frozen scope, naming the paths.",
+    "Unrelated primary-clone changes outside every member scope do not cause a refusal.",
+    "Tests cover the refusal and the unrelated-change case.",
+    "docs/agent/batch-feature-delivery.md describes the guard."
+  ],
+  "description": "Member sessions edited files in the primary clone /Users/joe/Developer/BenchBox because relative tool paths resolve there. batch-member-check validates only the member worktree and agent-write-preflight guards only commits, so nothing caught it; a member noticed and the leaders moved the edits. A guard that compares the primary clone's uncommitted changes with the member's frozen scope catches the batch-relevant case without flagging unrelated owner work in the primary clone.",
+  "links": [
+    "scripts/batch_integration.py",
+    "make/batch.mk",
+    "docs/agent/batch-feature-delivery.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae",
+      "at": "2026-11-05T01:46:49Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "d594c7ef7abf4cf7bdb031ab41af0c43",
+      "session_id": "4e1f5de86962468394697835ee28c6b3"
+    }
+  ]
+}

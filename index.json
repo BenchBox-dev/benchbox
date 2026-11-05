@@ -3231,6 +3231,13 @@
       "status": "done",
       "title": "Deliver canonical tracker and batch skill support for prepared feature work"
     },
+    "batch-primary-clone-dirty-guard-20261104": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Refuse batch member checks and landings when the primary clone has edits in the member scope"
+    },
     "batch-remediation-benchbox-20261102": {
       "claim": null,
       "needs": [
