@@ -8,7 +8,10 @@
   "context": "Owner instruction 2026-11-05 supersedes BOTH rejected designs. benchbox-sqlglot owns upstream discovery/integration, fork PR lifecycle, source/relocation/runtime/engine/distribution validation and trustworthy wheel delivery. BenchBox core owns consuming that delivery, origin/identity/hash binding, transactional pin updates, its own wrapper/benchmark-definition/installed-package concerns and ordinary core PR landing. Core must not discover upstream, merge fork PRs, reconstruct/re-review fork source, repeat fork test matrices or acquire a fork-write credential. Theseus stays unchanged and generic; no special policy, external-source inlet, synthetic dataset, second model-review path or reviewer release is needed. Theseus PR25 closed unmerged; prior approval claims withdrawn. This supersedes the source-review-at-core portion of sqlglot-fork-review-h1-governance, not existing protected-branch rules or ordinary review requirements. Preserve exact merged-SHA producer evidence, scoped independent credentials, no candidate execution with write/reviewer secrets, no golden/outcome/test/waiver changes, reviewed rollback, human holds/disarms, reverted-delivery suppression and no public release/cloud spend. Update current fork/core runbooks to this boundary. Corrected proposal: local://sqlglot-end-to-end-proposal.md. The live tracker, not discarded branch code or prior notes, owns delivery state.",
   "description": "After capability activation, observe one real eligible clean upstream release through FORK-owned discovery/refresh/protected merge, complete fork validation and trusted exact-merged-SHA wheel delivery, then CORE-only download/identity/hash binding, transactional pin update, unique consumer integration/packaging checks, ordinary core review/CI and protected squash merge. No core source reconstruction or second semantics review, no Theseus changes, no routine manual merge/build/adopt command. Record actual version/SHAs/run/attempt/artifact/digest, fork PR and core adoption PR identities plus live develop pin/archive hash. A no-op or exception-only release does not prove success. If none is eligible, remain open rather than fabricate a tag or production pin-change probe.",
   "links": [
-    ".github/workflows/sqlglot-fork-refresh.yml"
+    "sqlglot-e2e-fork-wheel-delivery",
+    "sqlglot-e2e-lifecycle-controller",
+    "https://github.com/BenchBox-dev/benchbox-sqlglot/actions",
+    "sqlglot-e2e-core-wheel-consumer"
   ],
   "sessions": [
     {
@@ -33,6 +36,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "07b2895255a14b9f81fe10a137a15199",
+      "session_id": "cf3fdc0e8210426f8ab8cc6664c384cd"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ba4923b65d2bea2a5584a721",
+      "at": "2026-11-05T14:16:17Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "385c0533d7784812947ecae6629f5816",
       "session_id": "cf3fdc0e8210426f8ab8cc6664c384cd"
     }
   ]
