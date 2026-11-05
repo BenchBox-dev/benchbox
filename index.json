@@ -25143,6 +25143,15 @@
       "status": "open",
       "title": "Pin UAT images and automate the owner-approved gate-tuning rubric"
     },
+    "rv2r-05-release-probe-mode": {
+      "claim": null,
+      "needs": [
+        "rv2r-03-release-evidence-check"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Add a release-v2 probe mode that executes the real job graph before any workflow change merges"
+    },
     "rv2r-06-fail-closed-detectors": {
       "claim": null,
       "needs": [
