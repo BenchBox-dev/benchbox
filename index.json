@@ -25134,6 +25134,15 @@
       "status": "open",
       "title": "Make release-v2 check trunk UAT evidence instead of running UAT, with full UAT as fallback"
     },
+    "rv2r-04-uat-rubric-automation": {
+      "claim": null,
+      "needs": [
+        "rv2r-02-trunk-uat-nightly"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Pin UAT images and automate the owner-approved gate-tuning rubric"
+    },
     "rv2r-06-fail-closed-detectors": {
       "claim": null,
       "needs": [
