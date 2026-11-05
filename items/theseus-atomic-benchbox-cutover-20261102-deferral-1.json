@@ -15,7 +15,9 @@
       "from_item": "theseus-atomic-benchbox-cutover-20261102-deferral-1",
       "id": 2,
       "reason": "At v0.1.6 (6e5765e), the empty-secret refusal step tells callers to pass secrets: inherit. inherit does not cross owners, so the message misleads. Since v0.1.6 declares required secrets, the step now fires only when the caller's environment lacks a secret. Fix it in the next Theseus release.",
-      "resolution": "open",
+      "resolution": "dismissed",
+      "resolved_at": "2026-11-05T14:15:22Z",
+      "resolved_reason": "Fixed in Theseus PR #23 (merged 42ef825): the refusal now tells callers to map each declared secret by name and never mentions inherit, with a test. It reaches BenchBox with the v0.1.7 re-lock (benchbox-relock-theseus-v017-20261105).",
       "summary": "Theseus gate.yml/review.yml App-secret refusal message still says callers must pass secrets: inherit; should say map by name"
     },
     {
@@ -67,6 +69,14 @@
       "client": "omp-coding-agent",
       "op": "dismiss",
       "op_id": "91263d09afe84164842d0286f8007b6f",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-05T14:15:22Z",
+      "client": "omp-coding-agent",
+      "op": "dismiss",
+      "op_id": "68da195ab6614025a9f9b0cc16776ec6",
       "session_id": "8d9ba932107b4322b2417b8af61c160c"
     }
   ]
