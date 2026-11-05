@@ -3151,10 +3151,12 @@
     },
     "batch-land-review-capacity-gaps-20261105": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "theseus-review-depth-and-capacity-20261105"
+      ],
       "priority": "medium",
       "status": "open",
-      "title": "batch-land review-size guard misses the 406 limit, lock bumps, required reads and leader fixes"
+      "title": "batch-land uses `theseus preflight` instead of copied review constants and gates leader fixes"
     },
     "batch-loop-default-mode-20261101": {
       "claim": null,
