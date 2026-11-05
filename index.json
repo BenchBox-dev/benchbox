@@ -29232,6 +29232,13 @@
       "status": "done",
       "title": "Publish the parity-proven Theseus bytes and assemble independently approved first-promotion evidence"
     },
+    "theseus-remove-oracle-vocabulary-20261105": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Remove every use of \"oracle\" from Theseus and migrate consumers to Theseus-native names"
+    },
     "theseus-repository-governance-bootstrap-20261102": {
       "claim": null,
       "needs": [
