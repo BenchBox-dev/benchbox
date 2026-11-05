@@ -835,50 +835,12 @@
       "terminal_outcome": "deliver"
     },
     "tpc-timer-boundaries": {
-      "accepted_members": {
-        "derived-power-export-rounding-20261017": "2a1848c457375ca4c5e11151ec53a9ef0e421708",
-        "power-test-times-query-generation-20261031": "abe979f3d1993cbe5fd7c72268ce3bfbe7ca3690",
-        "tpcds-maintenance-timer-hygiene-20261103": "7ed847e58c7cefd15f9820a524a5a71a6d71cb9d"
-      },
+      "accepted_members": {},
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {
-        "derived-power-export-rounding-20261017": {
-          "accepted_head": "2a1848c457375ca4c5e11151ec53a9ef0e421708",
-          "changed_files": [
-            "benchbox/core/results/schema.py",
-            "changelog.d/feat-tpc-timer-boundaries--derived-power-export-rounding-20261017.json",
-            "tests/unit/core/results/test_export_power_precision.py"
-          ],
-          "integration_head": "42cb664589d789531ddebe5d43892bc29d374f5c",
-          "integration_seq": 3
-        },
-        "power-test-times-query-generation-20261031": {
-          "accepted_head": "abe979f3d1993cbe5fd7c72268ce3bfbe7ca3690",
-          "changed_files": [
-            "benchbox/core/tpcds/power_test.py",
-            "benchbox/core/tpch/power_test.py",
-            "changelog.d/feat-tpc-timer-boundaries--power-test-times-query-generation-20261031.json",
-            "tests/unit/core/tpcds/test_tpcds_power_test_query_generation_boundary.py",
-            "tests/unit/core/tpch/test_power_test_query_generation_boundary.py"
-          ],
-          "integration_head": "bc3198ffd54046811891f0eeb9b17578053c5cf6",
-          "integration_seq": 2
-        },
-        "tpcds-maintenance-timer-hygiene-20261103": {
-          "accepted_head": "7ed847e58c7cefd15f9820a524a5a71a6d71cb9d",
-          "changed_files": [
-            "benchbox/core/tpcds/maintenance_operations.py",
-            "benchbox/core/tpcds/maintenance_test.py",
-            "changelog.d/feat-tpc-timer-boundaries--tpcds-maintenance-timer-hygiene-20261103.json",
-            "tests/unit/core/tpcds/test_maintenance_timer_boundaries.py"
-          ],
-          "integration_head": "c8cb95a320607478dd0f1d79d38d23efc4130689",
-          "integration_seq": 1
-        }
-      },
+      "integrated_members": {},
       "integration_branch": "feat/tpc-timer-boundaries",
       "integration_head": "42cb664589d789531ddebe5d43892bc29d374f5c",
       "integration_log": [
@@ -917,7 +879,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpc-timer-boundaries",
-      "lifecycle": "active",
+      "lifecycle": "aborted",
       "members": [
         "tpcds-maintenance-timer-hygiene-20261103",
         "power-test-times-query-generation-20261031",

@@ -10,11 +10,6 @@
     "Closing steps: (a) if the owner chose A, result-schema-2-4-producer-20261022 is updated to need this item and to drop query generation from its timer-scope bullet; (b) perf-smoke-rebaseline-after-power-query-generation-20261103 gets not_before set to the merge date plus 7 days, so it cannot turn ready before five nightly results exist.",
     "If docs/internal/tpc-measured-intervals.md exists on the base branch, update the rows this change affects; otherwise append the row text to the context of tpc-measured-intervals-reference-20261103. Changelog fragment states that power-test times from earlier versions include query generation and are not comparable."
   ],
-  "batch": {
-    "batch_id": "tpc-timer-boundaries",
-    "implementation_dependencies": [],
-    "member_id": "power-test-times-query-generation-20261031"
-  },
   "context": "2026-11-03: spec clause and double-generation finding added; overlaps the fallback row-count sites in perf-arrow-aware-result-capture-20261030 (same files), so that item waits on this one. Origin: root-cause analysis of RF1 timing and its adversarial review. [INFERENCE] query generation cost may explain the uniform +1 to +2 ms per-query shifts in t3-perf-execution-variants-regression-20261010.\n\n2026-11-03 correction round: need on the reference page removed so the fix is not delayed by documentation; ADR reconciliation gate and closing steps added.",
   "description": "Problem. In the TPC-H power test (benchbox/core/tpch/power_test.py) query_start is taken before benchmark.get_query(...), which runs a qgen subprocess (tpch/queries.py) plus dialect translation; the TPC-DS power test (benchbox/core/tpcds/power_test.py) does the same with dsqgen. The throughput tests pregenerate text (tpch/throughput_test.py _resolve_query_text), so the two tests time different work. Measured on one macOS host: get_query takes a median 5.1 ms per query at steady state (first call 376 ms), against perf-smoke baseline queries of 4.4 to 12.3 ms, so power numbers carry roughly the generation cost per query and skew fast engines. It affects 22 of the 24 Power@Size terms for TPC-H and the corresponding TPC-DS terms.\n\nSpec: TPC-H 3.0.1 clause 5.3.7.2 defines a query interval from submission of the query to the SUT; query generation by the driver precedes submission and is not part of it.\n\nAlso: _preflight_validate_generation in the TPC-H power test already calls get_query for every query in the permutation and discards the text, so generation runs twice per query. Generate once, keep the text, and execute that text.\n\nReconciliation with a recorded decision: the accepted locality ADR, amendment 'Round Trip Removed and Platform Timings' (item 6: timers measure only the query; adapters move tag setup, stats lookups, validation, plan capture and power-test query generation out of the measured timer; runs record run.timing_method and are compared and ranked within one method; published numbers change when the timer fix lands), and the open item result-schema-2-4-producer-20261022 already cover this scope. The ADR moved to the site repository in #3545; its pre-move text is docs/development/adr/adr-client-link-locality-disclosure.md at commit e4a8a09091^. This item is the query-generation slice of that work.\n\nDECISION GATE (owner, before the PR is armed): how bundles produced after this change are told apart from earlier ones. (A, recommended) Land as the query-generation slice of timing method 2; timing_method stays unwritten by this item (the code reads it but no producer writes it; method 2 requires every scope in the ADR to be out of the timer), and separation until result-schema-2-4-producer lands relies on the BenchBox version recorded in the bundle plus the changelog; result-schema-2-4-producer then needs this item and drops query generation from its timer-scope bullet. (B) Add an interim marker field. (C) The owner supersedes ADR item 6 for this slice and accepts changelog-only separation. Only the owner chooses; quote the choice in context. Implementation and tests may proceed before the choice; arming may not.\n\nGuardrails for all code work: work only in a linked worktree (make worktree-create); never edit the primary clone. No explanatory comments or docstrings in source (make comment-policy-check). Durations use benchbox.utils.clock.mono_time()/elapsed_seconds(). Add a changelog.d/ fragment. Cited line numbers are orientation only: re-read the named symbols, docs and spec clauses before editing and treat a mismatch as a reason to stop and update this item. No live-cloud runs without owner approval; heavy runs only through make heavy-run or a lock-taking entry point. Green focused tests are not release certification. The text executed must be byte-identical to today's for the same seed, stream and dialect (power_stream_seed unchanged). A generation error must still abort the run before the first query is timed (preflight semantics). Generation time is not added to any metric input. Do not edit the perf-smoke baseline here; perf-smoke-rebaseline-after-power-query-generation-20261103 owns it.",
   "links": [
@@ -24,91 +19,6 @@
     "benchbox/core/tpcds/power_test.py",
     "benchbox/core/tpch/queries.py"
   ],
-  "prepared": {
-    "accepted_head": "abe979f3d1993cbe5fd7c72268ce3bfbe7ca3690",
-    "batch_id": "tpc-timer-boundaries",
-    "changed_files": [
-      "benchbox/core/tpcds/power_test.py",
-      "benchbox/core/tpch/power_test.py",
-      "changelog.d/feat-tpc-timer-boundaries--power-test-times-query-generation-20261031.json",
-      "tests/unit/core/tpcds/test_tpcds_power_test_query_generation_boundary.py",
-      "tests/unit/core/tpch/test_power_test_query_generation_boundary.py"
-    ],
-    "integration_head": "bc3198ffd54046811891f0eeb9b17578053c5cf6",
-    "integration_seq": 2,
-    "member_id": "power-test-times-query-generation-20261031",
-    "overlaps": [],
-    "owner_epoch": 0,
-    "schema": "prepared_work_v2",
-    "scope_hash": "238e105960e4c16ff2fd2ddb46b4363c3233a5f0910375461dbb2f9b10377e49",
-    "source_base": "c8cb95a320607478dd0f1d79d38d23efc4130689",
-    "source_revision": "abe979f3d1993cbe5fd7c72268ce3bfbe7ca3690",
-    "source_worktree": "/Users/joe/Developer/BenchBox.wt-tpc-timer-boundaries--power-test-times-query-generation-20261031",
-    "verification": {
-      "clean": true,
-      "command": [
-        "uv",
-        "run",
-        "--",
-        "python",
-        "-m",
-        "pytest",
-        "-n",
-        "0",
-        "-q",
-        "tests/integration/test_seed_sweep.py",
-        "tests/integration/test_tpc_compliance_integration.py",
-        "tests/integration/test_tpc_power_tests.py",
-        "tests/integration/test_tpcds_official_benchmark.py",
-        "tests/integration/test_tpcds_power_test.py",
-        "tests/integration/test_tpch_power_test.py",
-        "tests/integration/test_tpch_throughput_test.py",
-        "tests/system/test_module_size_thresholds.py",
-        "tests/unit/core/expected_results/test_tpcds_subscale_validation.py",
-        "tests/unit/core/results/test_power_stream_policy.py",
-        "tests/unit/core/test_greybeam_lifecycle.py",
-        "tests/unit/core/test_tpc_reporting_execution.py",
-        "tests/unit/core/throughput/test_containment.py",
-        "tests/unit/core/throughput/test_stream_numbering.py",
-        "tests/unit/core/throughput/test_tpch_refresh_timing.py",
-        "tests/unit/core/tpcds/test_official_benchmark_phases.py",
-        "tests/unit/core/tpcds/test_production_binding.py",
-        "tests/unit/core/tpcds/test_tpcds_power_test_query_generation_boundary.py",
-        "tests/unit/core/tpcds/test_tpcds_power_test_query_subset.py",
-        "tests/unit/core/tpcds/test_zero_query_detection.py",
-        "tests/unit/core/tpch/test_dataframe_seed_parity.py",
-        "tests/unit/core/tpch/test_official_benchmark_coverage.py",
-        "tests/unit/core/tpch/test_power_test_query_generation_boundary.py",
-        "tests/unit/core/tpch/test_power_test_query_subset.py",
-        "tests/unit/core/tpch/test_reporting_current_result.py",
-        "tests/unit/platforms/test_base_adapter.py",
-        "tests/unit/platforms/test_databricks_cache_control.py",
-        "tests/unit/platforms/test_duckdb_adapter.py",
-        "tests/unit/platforms/test_power_test_fail_fast.py",
-        "tests/unit/platforms/test_throughput_run_options.py",
-        "tests/unit/test_connection_interface_consistency.py",
-        "tests/unit/test_query_generation_preflight.py",
-        "tests/unit/test_reference_seed.py",
-        "tests/unit/test_wrapper_classes.py",
-        "tests/unit/test_wrapper_facades_fast.py",
-        "tests/unit/tpch/test_power_test_failure_accounting.py",
-        "tests/unit/tpch/test_tpch_compliance.py"
-      ],
-      "review": {
-        "base_sha": "c8cb95a320607478dd0f1d79d38d23efc4130689",
-        "head_sha": "abe979f3d1993cbe5fd7c72268ce3bfbe7ca3690",
-        "head_tree": "ea9b35caa48a161289b3f7bb3dc20f2b0d69f122",
-        "outcome": "clear",
-        "patch_digest": "98d9c73c1e4621f46b7aee5eb926803e",
-        "reason": "decided SHIP with no Critical or High findings",
-        "schema": "benchbox_member_review_v1",
-        "trusted_sha": "e3b793bdf55a538e06c8dcffd5530fc548fedad9"
-      },
-      "revision": "abe979f3d1993cbe5fd7c72268ce3bfbe7ca3690",
-      "status": "passed",
-      "suite": "member-tests"
-    }
-  },
   "sessions": [
     {
       "actor": "mcp:claude-code:root@vm:cb45f246c9de058740ccbeed",
@@ -158,6 +68,14 @@
       "generation": "03fb721dfda840ddb6de78e4049253f6",
       "op": "prepare",
       "op_id": "13172a1f54e5489d92a24b51511c0d54",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-05T19:21:27Z",
+      "client": "omp-coding-agent",
+      "op": "abort",
+      "op_id": "c8f9f7aa6ef144d29ef61102bb9bbe48",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]

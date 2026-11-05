@@ -7,11 +7,6 @@
     "Smoke: a DuckDB TPC-DS SF0.01 run with the maintenance phase completes and reports each operation's interval; paste the summary in the PR.",
     "changelog fragment states that maintenance timings from earlier versions include connection setup and initialize() and are not comparable."
   ],
-  "batch": {
-    "batch_id": "tpc-timer-boundaries",
-    "implementation_dependencies": [],
-    "member_id": "tpcds-maintenance-timer-hygiene-20261103"
-  },
   "context": "Origin: 2026-11-03 analysis of TPC-H RF1 timing and its adversarial reviews; the findings are restated in this item and in tpc-measured-intervals-reference-20261103. Spec clauses cited here were read from the published PDFs at the links on 2026-11-03; re-read them rather than trusting this text.",
   "description": "Problem (benchbox/core/tpcds/maintenance_test.py and maintenance_operations.py; re-read before editing). Each maintenance operation's timer covers opening a connection, initialize() (about 15 MIN/MAX dimension queries) and closing the connection. The inner timers use time.time(), which is a wall clock. The synthetic row generator is seeded from int(time.time()), so two runs on the same inputs insert different rows and no before/after checksum comparison is possible. These defects exist whatever data source the owner chooses in tpcds-maintenance-data-source-decision-20261103, so this item waits on no decision.\n\nTPC-DS 4.0.0 clause 7.4.9.1 starts a maintenance function's interval at the earlier of first submission or first read of the refresh data, so connection setup and initialize() are outside it.\n\nChange: open the connection and run initialize() before the interval starts and close after it ends; time with mono_time()/elapsed_seconds(); seed the generator from a configured value (default fixed) so a run is reproducible, and record the seed in the result.\n\nGuardrails for all code work: work only in a linked worktree (make worktree-create); never edit the primary clone. No explanatory comments or docstrings in source (make comment-policy-check). Durations use benchbox.utils.clock.mono_time()/elapsed_seconds(). Add a changelog.d/ fragment. Cited line numbers are orientation only: re-read the named symbols, docs and spec clauses before editing and treat a mismatch as a reason to stop and update this item. No live-cloud runs without owner approval; heavy runs only through make heavy-run or a lock-taking entry point. Green focused tests are not release certification. Do not change what the operations insert or the number of rows (the hardcoded 10 rows belongs to tpcds-maintenance-dsdgen-refresh-data-20261103 and the data-source decision). Do not add set-based SQL here (perf-tpcds-maintenance-set-based-20261031). If docs/internal/tpc-measured-intervals.md exists on the base branch, update its TPC-DS maintenance row; otherwise append the row text to the context of tpc-measured-intervals-reference-20261103.",
   "links": [
@@ -19,78 +14,6 @@
     "benchbox/core/tpcds/maintenance_test.py",
     "benchbox/core/tpcds/maintenance_operations.py"
   ],
-  "prepared": {
-    "accepted_head": "7ed847e58c7cefd15f9820a524a5a71a6d71cb9d",
-    "batch_id": "tpc-timer-boundaries",
-    "changed_files": [
-      "benchbox/core/tpcds/maintenance_operations.py",
-      "benchbox/core/tpcds/maintenance_test.py",
-      "changelog.d/feat-tpc-timer-boundaries--tpcds-maintenance-timer-hygiene-20261103.json",
-      "tests/unit/core/tpcds/test_maintenance_timer_boundaries.py"
-    ],
-    "integration_head": "c8cb95a320607478dd0f1d79d38d23efc4130689",
-    "integration_seq": 1,
-    "member_id": "tpcds-maintenance-timer-hygiene-20261103",
-    "overlaps": [],
-    "owner_epoch": 0,
-    "schema": "prepared_work_v2",
-    "scope_hash": "238e105960e4c16ff2fd2ddb46b4363c3233a5f0910375461dbb2f9b10377e49",
-    "source_base": "e3b793bdf55a538e06c8dcffd5530fc548fedad9",
-    "source_revision": "7ed847e58c7cefd15f9820a524a5a71a6d71cb9d",
-    "source_worktree": "/Users/joe/Developer/BenchBox.wt-tpc-timer-boundaries--tpcds-maintenance-timer-hygiene-20261103",
-    "verification": {
-      "clean": true,
-      "command": [
-        "uv",
-        "run",
-        "--",
-        "python",
-        "-m",
-        "pytest",
-        "-n",
-        "0",
-        "-q",
-        "tests/integration/test_tpc_power_tests.py",
-        "tests/integration/test_tpcds_maintenance_test.py",
-        "tests/integration/test_tpcds_official_benchmark.py",
-        "tests/system/test_module_size_thresholds.py",
-        "tests/unit/core/test_dryrun.py",
-        "tests/unit/core/test_greybeam_lifecycle.py",
-        "tests/unit/core/test_tpc_reporting_execution.py",
-        "tests/unit/core/test_tpcds_benchmark_fakes.py",
-        "tests/unit/core/test_tpcds_maintenance_delete_portability.py",
-        "tests/unit/core/test_tpcds_maintenance_operations.py",
-        "tests/unit/core/throughput/test_containment.py",
-        "tests/unit/core/tpcds/benchmark/test_tpcds_runner_coverage.py",
-        "tests/unit/core/tpcds/benchmark/test_tpcds_runner_streams.py",
-        "tests/unit/core/tpcds/test_maintenance_returns_composite_key.py",
-        "tests/unit/core/tpcds/test_maintenance_timer_boundaries.py",
-        "tests/unit/core/tpcds/test_official_benchmark_phases.py",
-        "tests/unit/core/tpcds/test_tpcds_maintenance_coverage.py",
-        "tests/unit/mcp/test_mcp_results_and_analytics.py",
-        "tests/unit/platforms/base/test_adapter_query_skips.py",
-        "tests/unit/platforms/test_base_adapter.py",
-        "tests/unit/platforms/test_generic_power_test.py",
-        "tests/unit/platforms/test_power_test_fail_fast.py",
-        "tests/unit/platforms/test_throughput_run_options.py",
-        "tests/unit/test_cli_dryrun_test_modes.py",
-        "tests/unit/test_tpcds_streams.py"
-      ],
-      "review": {
-        "base_sha": "e3b793bdf55a538e06c8dcffd5530fc548fedad9",
-        "head_sha": "7ed847e58c7cefd15f9820a524a5a71a6d71cb9d",
-        "head_tree": "1030dc91296607f56f2b8494219fce4d004d6710",
-        "outcome": "clear",
-        "patch_digest": "d237f9ebf5353ab7fc2d7465ee7e0c90",
-        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
-        "schema": "benchbox_member_review_v1",
-        "trusted_sha": "e3b793bdf55a538e06c8dcffd5530fc548fedad9"
-      },
-      "revision": "7ed847e58c7cefd15f9820a524a5a71a6d71cb9d",
-      "status": "passed",
-      "suite": "member-tests"
-    }
-  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a561db75579ad3167de9da38",
@@ -132,6 +55,14 @@
       "generation": "f6016baa4251443ba45f5c76e6b98ecf",
       "op": "prepare",
       "op_id": "30ac524b363e4a9fa0cb07f0c17dee73",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-05T19:21:27Z",
+      "client": "omp-coding-agent",
+      "op": "abort",
+      "op_id": "c8f9f7aa6ef144d29ef61102bb9bbe48",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
