@@ -4,6 +4,7 @@
     "Fix the rewrite or the load step (e.g. ANALYZE) so 10_v8 at SF0.01 stays under 1 GB across repeated runs",
     "Pin the SingleStore dev image to a digest"
   ],
+  "context": "2026-11-05: release-v2 run 41949185392 (v0.5.0rc5, commit 81cbcb2034) attempt 1 failed only singlestore x tpchavoc SF0.01, query 10_v8 error 1712 (4 executions, about 14.2 GB node memory). Owner pre-approved one recorded re-run of the olap shard for this failure; attempt 2 started at about 04:40 UTC. A second failure means pruning singlestore x tpchavoc from the release gate.",
   "description": "Release UAT stage 3 (olap shard) intermittently fails singlestore x tpchavoc SF0.01 on query 10_v8 with error 1712: about 12.6 GB of query-execution memory against about 0.5 GB of table memory. The exists_to_derived_join rewrite (dialect_compat.py SINGLESTORE_EXISTS_JOIN_VARIANT_IDS) did not hold: on the same source (7eba31ea4e), release-v2 run 41709904857 passed in 199 s, and run 41738182507 failed all 4 executions. Failures were also seen in release UAT dry runs 2 and 5. Suspected causes: plan nondeterminism without table statistics (the adapter never runs ANALYZE after load), or drift in the unpinned singlestoredb-dev:latest image (docker/singlestore/docker-compose.yml:3).",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/actions/runs/41738182507",
@@ -16,6 +17,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "81b7759f902f438e827c06e76ed23a16",
+      "session_id": "7da446616e5349658579dfc9c4288973"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a3eb8cbf1b5dc744e4710e1c",
+      "at": "2026-11-05T05:06:14Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b61b70096ef643ac97cdfa40e4ab0f91",
       "session_id": "7da446616e5349658579dfc9c4288973"
     }
   ]
