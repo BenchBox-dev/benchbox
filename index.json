@@ -937,7 +937,20 @@
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
-      "final_pr_history": [],
+      "final_pr": {
+        "head": "65d4e4d458fc339282b54bd72c828f5056bb900c",
+        "node_id": "PR_kwDOQ7J64c8AAAABNJ9Ydw",
+        "number": 3960,
+        "repository": "BenchBox-dev/BenchBox"
+      },
+      "final_pr_history": [
+        {
+          "at": "2026-11-05T19:57:47Z",
+          "head": "65d4e4d458fc339282b54bd72c828f5056bb900c",
+          "op_id": "a043b0c4b9e04b629b28e4cc1ba043ed",
+          "previous_head": null
+        }
+      ],
       "integrated_members": {
         "derived-power-export-rounding-20261017": {
           "accepted_head": "3296c62f2382a447950817a721cf7f691ceb0714",
