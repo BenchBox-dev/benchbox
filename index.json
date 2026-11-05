@@ -27652,7 +27652,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "Limit core wheel adoption to identity, transaction and consumer packaging"
     },
     "sqlglot-fork-a1-adopt-wrapper-wheel": {
