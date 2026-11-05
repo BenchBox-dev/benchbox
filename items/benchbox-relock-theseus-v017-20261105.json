@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "BenchBox develop pins v0.1.7; the config is trimmed; the decision record has merged.",
+    "audit-coverage shows full coverage of the PR's own promotion review, or a D9 relaxation is recorded.",
+    "Live checks per plan §5.5 (1)–(4): an inline PR's SHIP carries a coverage marker; a file-list PR reports 'hunks covered N/N'; a 406-size PR gets a git-built diff; an oversize PR goes pending with a split message."
+  ],
+  "description": "Plan item B-1 (local://brief-size-remediation-plan.md §4.1, §4.3):\n- lock, callers and vendored bootstrap on v0.1.7;\n- `brief_max_bytes` and the `promotion.bootstrap_*` block removed from .github/oracle-reviewers.yml;\n- batch-land through `theseus preflight` (batch-land-review-capacity-gaps-20261105, same PR);\n- decision record for D1, D2, D3 and D6;\n- docs and tests.\nThe promotion is judged by the 0.1.6 rules (bootstrap problem). Accept it only after `theseus audit-coverage` on its hosted capture shows full hunk coverage, corroborated by a local v0.1.7 review. If the audit fails within the retry budget, it qualifies for the owner's repair-class relaxation (D9), recorded like the 2026-11-04 decision.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-05T14:14:58Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1b4625170f164ae6856ce9d179e34504",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    }
+  ]
+}
