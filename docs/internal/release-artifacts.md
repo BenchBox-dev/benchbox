@@ -196,14 +196,17 @@ Gates, in order:
    with the checkout package hidden. A hosted job stops at six hours and the
    full sweep needs more, so each stage is split into parallel shard jobs
    (`uat-stage1`, `uat-stage2`, `uat-stage3`, one `--platforms` subset per
-   matrix entry) and the stages are chained with `needs`. Every shard uploads
+   matrix entry) that all start once admission passes. Every shard uploads
    its run directory. The `release-uat` gate job then downloads all shards and
    runs `make uat-gate-check` over them with the digest of the staged
    distributions. The gate is red when any shard skipped a cell the config does
    not prune by design, lost cells to early-stop pruning, could not reach or
    start a required platform, attempted no cells, or recorded another digest or
    source commit, or when the union of a stage's shard cells is not exactly the
-   stage's planned cell set.
+   stage's planned cell set. Docker start ordering is enforced only between
+   stage directories with the same host id (machine id plus `RUNNER_NAME`,
+   recorded as `[host] id=` in `uat_lifecycle.log`); a missing id counts as the
+   same host.
 
    A final tag (`vX.Y.Z`, target `pypi`) may reuse the evidence of its newest
    release candidate `vX.Y.ZrcN` instead of re-running the stages. The

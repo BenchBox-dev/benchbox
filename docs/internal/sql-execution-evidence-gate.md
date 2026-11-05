@@ -245,6 +245,17 @@ The gate is built to catch the regressions that the text corpus accepted:
   Q95 stay vacuous on SQLite and each of the six `tpcds_obt-augmented` runs
   reports a SQLite `reference` finding such as
   `(0.0, None, None) != (21.0, 108654.84, -11795.43)`.
+- SQLite TPC-H Q19 and the Havoc `19_v1`..`19_v10` variants timing out at the
+  15 s budget on CI. The gate DDL declares no keys, and every `OR` branch of Q19
+  carries its own `p_partkey = l_partkey`, so SQLite has no index to drive the
+  join and plans `SCAN lineitem` x `SCAN part` (about 120 M row pairs at SF0.01,
+  1.2 M progress ticks of 1000 VM ops, about 3.9 s locally). `ANALYZE` does not
+  change that plan or the work done (measured identical, so it is not the
+  cause). Indexing the leading column of each table when `SqliteEngine.open`
+  loads it gives `SCAN lineitem` + `MULTI-INDEX OR` on `part (p_partkey=?)`
+  (about 1 K ticks) with the same `(22923.028,)` result.
+  `test_sqlite_engine_indexes_the_leading_key_so_an_or_join_stays_cheap`
+  asserts the result and a progress-handler operation budget, not a duration.
 
 ## TPC-DS OBT equivalence
 

@@ -166,13 +166,11 @@ def test_release_uat_environment_installs_the_admitted_wheel_and_records_its_dig
     assert "benchbox.checkout" in run
 
 
-def test_release_uat_stages_run_in_order_and_each_shards_one_stage_config():
+def test_release_uat_stages_start_together_and_each_shards_one_stage_config():
     jobs = _jobs()
-    assert set(jobs["uat-stage1"]["needs"]) == {"admit", "uat-reuse"}
-    assert set(jobs["uat-stage2"]["needs"]) == {"admit", "uat-reuse", "uat-stage1"}
-    assert set(jobs["uat-stage3"]["needs"]) == {"admit", "uat-reuse", "uat-stage2"}
     for number, name in enumerate(UAT_STAGE_JOBS, start=1):
         job = jobs[name]
+        assert set(job["needs"]) == {"admit", "uat-reuse"}
         run = _step_commands(job)
         assert f"release-gate-0{number}-" in "\n".join(
             str(step.get("env", {}).get("UAT_CONFIG", "")) for step in job["steps"]
@@ -194,7 +192,7 @@ def test_release_uat_shards_always_upload_their_evidence():
         assert sweep["timeout-minutes"] < _jobs()[name]["timeout-minutes"]
 
 
-def test_stages_run_after_a_failed_earlier_stage_and_skip_only_when_reuse_is_verified():
+def test_stages_run_independently_of_each_other_and_skip_only_when_reuse_is_verified():
     for name in UAT_STAGE_JOBS:
         condition = _jobs()[name]["if"]
         assert "!cancelled()" in condition
@@ -285,11 +283,21 @@ def test_only_the_reuse_and_gate_jobs_read_other_runs():
     assert yaml.safe_load(_text())["permissions"] == {"contents": "read"}
 
 
-def test_publish_still_depends_on_the_release_uat_gate_and_install_matrix():
+def test_publish_runs_on_gate_results_so_a_skipped_reuse_job_cannot_skip_it():
     publish = _jobs()["publish"]
     assert {"install-matrix", "release-uat"} <= set(publish["needs"])
     assert "uat-reuse" not in publish["needs"]
-    assert "if" not in publish
+    condition = publish["if"]
+    assert condition.startswith("${{ !cancelled() &&")
+    for need in publish["needs"]:
+        assert f"needs.{need}.result == 'success'" in condition
+
+
+def test_github_release_runs_only_after_a_successful_pypi_publish():
+    condition = _jobs()["github-release"]["if"]
+    assert condition.startswith("${{ !cancelled() &&")
+    assert "needs.admit.outputs.target == 'pypi'" in condition
+    assert "needs.publish.result == 'success'" in condition
 
 
 def test_install_matrix_does_not_depend_on_reuse():
