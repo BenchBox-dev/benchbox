@@ -27487,12 +27487,10 @@
     },
     "sqlglot-e2e-verified-wheel-adoption": {
       "claim": null,
-      "needs": [
-        "sqlglot-e2e-source-aware-adoption-review"
-      ],
+      "needs": [],
       "priority": "high",
       "status": "open",
-      "title": "Bind SQLGlot adoption to the merged wheel identity and verify installed packages before merge"
+      "title": "Limit core wheel adoption to identity, transaction and consumer packaging"
     },
     "sqlglot-fork-a1-adopt-wrapper-wheel": {
       "claim": null,
