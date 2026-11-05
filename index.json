@@ -25161,7 +25161,8 @@
     "rv2r-05-release-probe-mode": {
       "claim": null,
       "needs": [
-        "rv2r-03-release-evidence-check"
+        "rv2r-03-release-evidence-check",
+        "rv2r-06-fail-closed-detectors"
       ],
       "priority": "high",
       "status": "open",

@@ -1,13 +1,13 @@
 {
   "acceptance": [
-    "Probe mode cannot upload to TestPyPI or PyPI, create attestations, or push tags or releases (asserted by test: no publish-action or attest step executes when probe=true; id-token permission absent in probe)",
-    "Running probe mode against the #3947 graph (before #3956) fails because publish did not run, a regression test kept as a fixture",
+    "Probe mode cannot upload to TestPyPI or PyPI, create attestations, or push tags or releases: asserted by test (no publish-action or attest step executes when probe=true; id-token permission absent in probe)",
+    "The #3947 graph (before #3956) kept as a fixture turns red in probe through the rv2r-06 detector (2)",
     "Probe runs in under 15 minutes and holds at most 4 runners",
-    "A PR touching release-v2.yml shows the probe job, and it is listed in the required-check documentation (setting change prepared for the owner if one is needed)",
-    "Both evidence variants (reuse and fallback) execute in probe and reach publish dry-run"
+    "A PR touching release-v2.yml shows the probe job; making it a required check is prepared as a settings change for the owner (DECISION GATE)",
+    "Both evidence variants (reuse and fallback) execute in probe and reach the publish dry run"
   ],
   "context": "Member of batch release-v2-remediation. GUARDRAILS: probe must be structurally incapable of publishing (no id-token: write, no upload step); never route probe through the pypi or test-pypi environments. DECISION GATE: making the probe job a required status check is a repository-settings change; prepare it and ask the owner.",
-  "description": "The #3947 publish-skip bug passed unit tests (one asserted the broken shape), local and hosted oracle review, and was found only by a 3-hour live run. Add a probe mode: release-v2 runs with the real job graph and conditions, but admit uses a synthetic probe target (no tag ruleset needed), UAT shards are stubs that emit valid evidence for the stub digest, the evidence-check path (rv2r-03) is exercised in both reuse and fallback variants, and publish runs as a dry run (download admitted files, verify SHA256SUMS, twine check; no upload, no attestation). A PR-triggered job runs probe mode whenever .github/workflows/release-v2.yml, scripts/release_*.py or the release-uat-env action change, and it is required for those PRs.",
+  "description": "The #3947 publish-skip bug passed unit tests (one asserted the broken shape) and local and hosted oracle review, and was found only by a 3-hour live run. Add a probe mode: release-v2 runs with its real job graph and conditions, but admit uses a synthetic probe target (no tag ruleset needed); install-matrix runs one Linux py3.12 cell; UAT shards are stubs that emit valid evidence for the stub digest; the evidence-check path (rv2r-03) is exercised in both reuse and fallback variants; and publish runs as a dry run (download admitted files, verify SHA256SUMS, twine check; no upload, no attestation). All other jobs keep their real needs and if. A PR-triggered job runs probe mode whenever .github/workflows/release-v2.yml, .github/workflows/trunk-uat.yml, .github/workflows/trunk.yml (dist-artifact job), scripts/release_*.py or the release-uat-env action change. Rollback: revert this member's commits.",
   "links": [
     ".github/workflows/release-v2.yml",
     "scripts/release_reuse_uat_evidence.py"
@@ -19,6 +19,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "597d050aaa134e6093c86977d8f2f0a0",
+      "session_id": "7da446616e5349658579dfc9c4288973"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a3eb8cbf1b5dc744e4710e1c",
+      "at": "2026-11-05T15:34:30Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9b1d1c705fd948299574645fac0d3033",
       "session_id": "7da446616e5349658579dfc9c4288973"
     }
   ]
