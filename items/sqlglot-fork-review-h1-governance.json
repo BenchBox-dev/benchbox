@@ -4,7 +4,7 @@
     "Soundness paths include the listed files; a test pins each; the change is merged with a current-head oracle SHIP.",
     "Adoption PR template/script includes the fork diff; at least one adoption PR demonstrates it."
   ],
-  "context": "Owner decision 2026-10-23: fork main requires the hosted checks including engine jobs; no required review. Fork semantics reviewed at adoption: adoption PRs carry the fork diff. Done: BenchBox #3345 (6a886c382) adds soundness paths (benchbox/_vendor/, dialect_utils.py, sqlglot_runtime_baseline.json, scripts/sql_execution_gate/, tests/unit/sql_compat/, Makefile, make/, sync/retirement/fork-diff scripts, nine named tests) pinned by test_soundness_paths.py, and `make sqlglot-fork-diff` (scripts/sqlglot_fork_diff.py) with PR-template checkbox; oracle SHIP. #3360 carried the fork diff by hand. Remaining: owner applies the branch-protection command (20 required checks from build/wheel-smoke/installed-suite/sdist-coexistence/run-checks 3.9-3.15/in-process/postgres/trino/questdb/starrocks/doris, strict true, no reviews; full command in history://Governance), and one adoption PR demonstrating make sqlglot-fork-diff output (Wheel10's .11 adoption #3365).",
+  "context": "Owner decision 2026-10-23: fork main requires the hosted checks including engine jobs; no required review. Fork semantics reviewed at adoption: adoption PRs carry the fork diff. Done: BenchBox #3345 (6a886c382) adds soundness paths (benchbox/_vendor/, dialect_utils.py, sqlglot_runtime_baseline.json, scripts/sql_execution_gate/, tests/unit/sql_compat/, Makefile, make/, sync/retirement/fork-diff scripts, nine named tests) pinned by test_soundness_paths.py, and `make sqlglot-fork-diff` (scripts/sqlglot_fork_diff.py) with PR-template checkbox; oracle SHIP. #3360 carried the fork diff by hand. Remaining: owner applies the branch-protection command (20 required checks from build/wheel-smoke/installed-suite/sdist-coexistence/run-checks 3.9-3.15/in-process/postgres/trino/questdb/starrocks/doris, strict true, no reviews; full command in history://Governance), and one adoption PR demonstrating make sqlglot-fork-diff output (Wheel10's .11 adoption #3365).\n\nOwner supersession, 2026-11-05: the current user explicitly assigns upstream integration and trustworthy wheel delivery to benchbox-sqlglot, with core consuming that product and testing only unique core concerns. This supersedes the earlier requirement that core adoption carry/re-review the fork source delta. It does not authorize new fork review App/status infrastructure or changing fork required checks/ordinary review/protection. Record the corrected producer/consumer boundary in fork MAINTAINING and core release/evidence/maintenance decision docs via sqlglot-e2e-fork-maintainer-docs. Rejected Theseus PR25 closed unmerged; no reviewer release/inlet dependency.",
   "description": "Adversarial review H1: all 30+ fork PRs merged with 0 reviews; fork main has no branch protection or rulesets; the BenchBox oracle cannot read the vendored wheel ('I could not read the vendored wheel') so it never reviews fork semantics; .github/soundness-paths.txt does not cover benchbox/_vendor/**, benchbox/utils/dialect_utils.py, scripts/sqlglot_runtime_baseline.json or the golden-corpus recorded/** files. Needed: (owner settings, fork repo) branch protection requiring the fork engine jobs and a review on fork main; (BenchBox, needs oracle review) add those paths to the soundness list; adoption PRs carry the fork diff between old and new fork_sha (git diff old..new) so the oracle can read it. Supersedes/merges with soundness-paths-cover-translation-wrapper.",
   "sessions": [
     {
@@ -48,6 +48,14 @@
       "op": "finish",
       "op_id": "848cbe9cf9c34545924f4f1ca67dc274",
       "session_id": "346ab30aded748589ff1183f3938406d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ba4923b65d2bea2a5584a721",
+      "at": "2026-11-05T14:06:57Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "bb58012b278a4383a584fa87d57233c0",
+      "session_id": "cf3fdc0e8210426f8ab8cc6664c384cd"
     }
   ]
 }
