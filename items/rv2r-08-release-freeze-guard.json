@@ -7,7 +7,7 @@
     "The ADR G13 entry (rv2r-01) names this check"
   ],
   "context": "Member of batch release-v2-remediation. Prior art: the required `hold` context and the no-auto-merge flow (docs/agent/merge-authority.md). The `release-fix` label is owner-only by policy (MERGE-AUTHORITY-001); agents share the owner account (ADR D4), so this is enforced by discipline and audit, not permissions: agents never apply it. DECISION GATE: changes to required-check settings or label permissions are owner actions; prepare the exact settings change and ask.",
-  "description": "Owner decision 2026-11-05 (ADR G13): no infrastructure, oracle or CI-machinery merges between an rc tag and its PyPI publish. During 0.5.0, #3942 (oracle cutover) merged mid-release and blocked every PR for about 6 h. Enforce the rule mechanically by extending the existing required `hold` check (pr-hold.yml) rather than adding a new required context. A release window is open when an rc tag vX.Y.ZrcN exists and vX.Y.Z is not yet on PyPI. It closes when vX.Y.Z is on PyPI (published by any workflow), or when a newer rc or final tag of a higher version exists. While a window is open, PRs touching .github/, release and oracle tooling under scripts/, Makefile, tests/uat/, tests/utilities/, docker/ or uv.lock fail `hold` unless they carry the `release-fix` label. Because pr-hold runs only on PR events, the guard also re-evaluates every open PR touching guarded paths on `push: tags: ['v*rc*']` and on release-v2 completion. Rollback: revert this member's commits; `hold` returns to its current behaviour.",
+  "description": "Owner decision 2026-11-05 (ADR G13): no infrastructure, oracle or CI-machinery merges between an rc tag and its PyPI publish. During 0.5.0, #3942 (oracle cutover) merged mid-release and blocked every PR for about 6 h. Enforce the rule mechanically by extending the existing required `hold` check (pr-hold.yml) rather than adding a new required context. A release window is open when an rc tag vX.Y.ZrcN exists and vX.Y.Z is not yet on PyPI. It closes when vX.Y.Z is on PyPI (published by any workflow), or when a newer rc or final tag of a higher version exists. While a window is open, PRs touching .github/, release and oracle tooling under scripts/, Makefile, tests/uat/, tests/utilities/, docker/ or uv.lock fail `hold` unless they carry the `release-fix` label. Because pr-hold runs only on PR events, a workflow triggered on `push: tags: ['v*rc*']` and on release-v2 completion re-runs each affected open PR's latest pr-hold run (`gh run rerun`). The window state is read live at run time, never from the event payload. Rollback: revert this member's commits; `hold` returns to its current behaviour.",
   "links": [
     ".github/workflows/",
     "docs/agent/merge-authority.md"
@@ -27,6 +27,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "cae59b3013b9428888677e45fd9fb994",
+      "session_id": "7da446616e5349658579dfc9c4288973"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a3eb8cbf1b5dc744e4710e1c",
+      "at": "2026-11-05T15:37:48Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "35f8077975b14ccf841ae9d716c2663c",
       "session_id": "7da446616e5349658579dfc9c4288973"
     }
   ]
