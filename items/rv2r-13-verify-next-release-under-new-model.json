@@ -1,10 +1,12 @@
 {
   "acceptance": [
-    "Release lead time from tag push to publish job start is at most 30 minutes, excluding owner approval wait (run link and timestamps)",
-    "The release reused trunk UAT evidence (job summary shows the trunk run id); if it fell back to full UAT, the reason is recorded and a follow-up item filed",
-    "TestPyPI (rc) or PyPI (final) files match SHA256SUMS; gh attestation verify passes with signer workflow release-v2.yml; Linux --no-deps install works",
+    "Release lead time from tag push to publish job start is at most 30 minutes, excluding the owner approval wait (run link and timestamps)",
+    "The release reused trunk UAT evidence (job summary shows the trunk-uat run id); if it fell back to full UAT, the reason is recorded and a follow-up item filed",
+    "TestPyPI (rc) or PyPI (final) files match SHA256SUMS; gh attestation verify passes with signer workflow release-v2.yml; a Linux --no-deps install works",
     "Zero owner decisions were needed for gate tuning between this release's tag and publish (rubric handled any envelope changes)",
-    "No infrastructure merges during the release window (rv2r-08 check history)",
+    "No infrastructure merges during the release window (G13 `hold` check history)",
+    "Every PR touching release-v2.yml since rv2r-05 merged shows a green probe run",
+    "The Theseus pin was unchanged in the window, or bumped via the rv2r-07 procedure",
     "Nightly trunk UAT has at least 7 consecutive runs (completed or skipped) with per-cell history, and the infrastructure-failure rate per cell is visible in the dashboard"
   ],
   "context": "Final verification for the remediation program. The tag and the pypi approval stay owner-only. DECISION GATE: if any acceptance line fails, file the gap as a new item with the run evidence and ask the owner whether to release anyway; do not tune gates outside the rubric to make it pass.",
@@ -20,6 +22,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "a94b24e1272b4783ac79c27d5d6e5550",
+      "session_id": "7da446616e5349658579dfc9c4288973"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a3eb8cbf1b5dc744e4710e1c",
+      "at": "2026-11-05T15:35:33Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6918ab2e5aaa4fb79820b006739db54d",
       "session_id": "7da446616e5349658579dfc9c4288973"
     }
   ]
