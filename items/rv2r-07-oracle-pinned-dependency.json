@@ -1,16 +1,17 @@
 {
   "acceptance": [
-    "Pin-consistency test fails when the uses@sha and theseus_ref disagree or differ between the two callers",
+    "Pin-consistency test fails when the `uses:` sha and theseus_ref disagree, or differ between the two callers",
     "docs/internal runbook for bump and rollback, linked from the ADR decision entry",
-    "A live canary bump (to the current Theseus main, or a no-op re-pin) follows the procedure end to end: canary PRs show a posted verdict and gate on the new pin, with run links recorded on this item",
-    "The rv2r-08 guard treats oracle caller files as guarded paths (test)"
+    "A live canary bump (to the current Theseus main, or a no-op re-pin) follows the procedure end to end via workflow_dispatch --ref; posted verdict and gate statuses on the canary PRs are recorded with run links",
+    "The batch final PR itself, which edits both callers, is canaried by this procedure before merge",
+    "The rv2r-08 guard treats the oracle caller files as guarded paths (test)"
   ],
   "context": "Member of batch release-v2-remediation. GUARDRAILS: no change to oracle policy, reviewer roles or required checks; never relax oracle-gate. DECISION GATE: removing or replacing a required check, or changing the `oracle` environment, is an owner action.",
-  "description": "Owner decision 2026-11-05: Theseus (joeharris76/theseus) is consumed at a pinned SHA like a dependency. Today the pin appears in oracle-verdict.yml and oracle-gate.yml (both 'uses' and 'theseus_ref'), and #3942 showed a bump can take every merge down. Deliver: (1) a single source of truth for the pin, with a test that all references match; (2) a documented bump procedure: canary PR set (at least one trivial PR and one PR with a known defect) whose verdict and gate must post and behave correctly on the new pin before merge, plus the rv2r-06 posting detector green; (3) rollback = revert the pin commit, written as a runbook with the exact steps; (4) bumps blocked during a release window via the rv2r-08 guard.",
+  "description": "Owner decision 2026-11-05: Theseus (joeharris76/theseus) is consumed at a pinned SHA like a dependency. Today the pin appears in oracle-verdict.yml and oracle-gate.yml (both `uses:` and `theseus_ref`), and #3942 showed a bump can take every merge down. Deliver: (1) pin consistency enforced by test (a `uses:` ref cannot be templated, so a test checks every reference matches); (2) a documented bump procedure: canary runs are workflow_dispatch from the bump branch (`gh workflow run oracle-verdict.yml --ref <bump-branch> -f pr=<canary>` and the same for oracle-gate.yml) on a canary PR set (a trivial PR and a PR with a known defect), whose verdict and gate must post and behave correctly on the new pin before merge, with the rv2r-06 posting detector green; (3) rollback = revert the pin commit, written as a runbook with exact steps; (4) bumps blocked during a release window by the rv2r-08 guard. Rollback for this item: revert its commits.",
   "links": [
     ".github/workflows/oracle-verdict.yml",
     ".github/workflows/oracle-gate.yml",
-    "docs/internal/oracle-gate-relaxation-2026-11-04.md"
+    "_project/decisions/oracle-gate-relaxation-2026-11-04.md"
   ],
   "sessions": [
     {
@@ -19,6 +20,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "b9d78e27fed74b919ff3e43e031d46ee",
+      "session_id": "7da446616e5349658579dfc9c4288973"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a3eb8cbf1b5dc744e4710e1c",
+      "at": "2026-11-05T15:34:38Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "09a79a20482c4b02b8b461896a818999",
       "session_id": "7da446616e5349658579dfc9c4288973"
     }
   ]
