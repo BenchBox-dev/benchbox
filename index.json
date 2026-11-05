@@ -25152,6 +25152,16 @@
       "status": "open",
       "title": "Make process checks fail when they ran but did nothing"
     },
+    "rv2r-07-oracle-pinned-dependency": {
+      "claim": null,
+      "needs": [
+        "rv2r-06-fail-closed-detectors",
+        "rv2r-08-release-freeze-guard"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Operate the Theseus oracle as a pinned dependency with canary bumps and one-step rollback"
+    },
     "rv2r-08-release-freeze-guard": {
       "claim": null,
       "needs": [
