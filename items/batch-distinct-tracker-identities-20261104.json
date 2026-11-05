@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "docs/agent/batch-feature-delivery.md and the todo skill's batch reference state that each batch leader runs as its own top-level session (or with its own TODO_DB_ACTOR), and that members never run as subagents of a leader's session.",
+    "The same docs say to measure the combined member diff with batch-status/brief sizes before register_batch, not to estimate it.",
+    "Batch tooling refuses, or the leader procedure detects, a member landing whose tracker writes came from the batch owner's principal; the check is exercised by a test.",
+    "The four batches registered on 2026-11-04 are checked for member-originated tracker writes before their final PRs are armed, and the result is recorded here."
+  ],
+  "description": "todo-db derives each worker's principal from a per-process session id (todo_db/mcp/identity.py), and omp subagents borrow their parent's MCP connection. Four parallel batch leaders that ran as subagents of one session therefore registered the same owner and serialized on its single live-claim slot. If members also ran as subagents of a leader's session, the E_BATCH_OWNER refusal could not separate them from the owner, because the tracker sees one identity. The todo skill already says a member must not share the leader's server or actor, but nothing states how sessions must be launched to achieve that, and nothing detects a breach.",
+  "links": [
+    "docs/agent/batch-feature-delivery.md",
+    ".claude/skills/todo/references/batch.md",
+    "scripts/batch_integration.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae",
+      "at": "2026-11-05T01:46:46Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "fd1ed5fbfec44fc6b0fa6884429de7c7",
+      "session_id": "4e1f5de86962468394697835ee28c6b3"
+    }
+  ]
+}

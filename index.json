@@ -3108,6 +3108,13 @@
       "status": "open",
       "title": "Batch arrow-dataframe-roundtrips: umbrella notes"
     },
+    "batch-distinct-tracker-identities-20261104": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Give batch leaders and members distinct todo-db identities"
+    },
     "batch-feature-branch-integration": {
       "claim": null,
       "needs": [
