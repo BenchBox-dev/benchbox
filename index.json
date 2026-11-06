@@ -1026,7 +1026,7 @@
         }
       },
       "integration_branch": "feat/load-path-live-fixes",
-      "integration_head": "3506a477c1c59b96acacfd9d0d4cb427c3f96ce9",
+      "integration_head": "8efe2e6fb80a3ec07c04de15a3b276fa23a6f009",
       "integration_log": [
         {
           "at": "2026-11-06T19:34:49Z",
@@ -1078,6 +1078,23 @@
           "op_id": "7e48f7cbdabd472f9cfff8bec5de255f",
           "previous_head": "4176d2b85ef0fd75b5f387167afc89d30f807875",
           "seq": 5
+        },
+        {
+          "at": "2026-11-06T20:29:16Z",
+          "changed_files": [
+            "benchbox/platforms/singlestore.py",
+            "changelog.d/feat-singlestore-rf1-native-ingest.json",
+            "docs/internal/tpc-measured-intervals.md",
+            "tests/integration/_tpch_refresh_utils.py",
+            "tests/integration/platforms/test_singlestore_live.py",
+            "tests/unit/core/tpch/test_tpch_refresh_native_ingest.py"
+          ],
+          "head": "8efe2e6fb80a3ec07c04de15a3b276fa23a6f009",
+          "kind": "develop-merge",
+          "merged_parent": "c2bdd8bc67424f827b7b79159aa518a46ba075d7",
+          "op_id": "94df9992434949b5896cd1a9599ed9bb",
+          "previous_head": "3506a477c1c59b96acacfd9d0d4cb427c3f96ce9",
+          "seq": 6
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-load-path-live-fixes",
