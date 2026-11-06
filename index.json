@@ -27256,12 +27256,17 @@
       "title": "Record the release-v2 remediation decisions and new guardrails in the dev-loop v2 ADR"
     },
     "rv2r-02-trunk-uat-nightly": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-07T17:49:31Z",
+        "generation": "f91de41a215745689f22e0adc13c3472",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec"
+      },
       "needs": [
         "rv2r-09-trunk-dist-every-commit"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Run the release-gate UAT matrix nightly on trunk and keep per-cell history"
     },
     "rv2r-03-release-evidence-check": {
