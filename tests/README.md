@@ -490,6 +490,10 @@ from the Linux machine wrapper) happen inside the root command's `execution_seco
 `outcome` `error`, the terminal `outcome` becomes `error` (`command_exit_code` keeps the child's status), and the
 exception still propagates. `BENCHBOX_HEAVY_RUN_ID`, `BENCHBOX_HEAVY_ROOT_RUN_ID` and `BENCHBOX_HEAVY_RUNS_FILE` reach
 children through `host_lock.owner_environment(handle=handle)` for API callers and automatically for `run_command`.
+The opt-in CLI guard, pytest session isolation and the xdist heavy-session hold export the same variables for their
+scope and restore the caller's values afterwards, and the watchdog process is launched with them. A reentrant
+admission or guard upgrade of an already-held handle adds `admission_finished`/`guard_started` rows and time to the
+existing run; it never adds a second `execution_started` or terminal row.
 If the event module cannot be loaded, one `WARNING: heavy run event log disabled` line is printed and runs go
 unrecorded. Strings are clipped (run id, event and outcome to 64 characters, working directory to 200) and a row that
 would still exceed 3500 encoded bytes is reduced to its identifying fields.

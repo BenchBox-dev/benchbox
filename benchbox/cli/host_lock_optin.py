@@ -61,12 +61,7 @@ def heavy_guard(command: str) -> Iterator[None]:
     try:
         handle = host_lock.acquire(host_lock.lock_path(), phase=PHASE, gate=command, command=f"benchbox {command}")
         if not handle.inherited and handle.count == 1:
-            try:
-                host_lock.check_admission()
-                handle.guard = host_lock.start_guard(handle)
-            except BaseException:
-                handle.release()
-                raise
+            host_lock.admit_and_guard(handle, created=True, log_report=False)
     except host_lock.LockOwnershipError as exc:
         raise _refuse(host_lock.EXIT_OWNERSHIP, str(exc)) from exc
     except host_lock.LockUnavailable as exc:
@@ -77,9 +72,11 @@ def heavy_guard(command: str) -> Iterator[None]:
         ) from exc
 
     watcher = handle.guard
-    previous_owner = os.environ.get(host_lock.OWNER_ENV)
+    exported = host_lock.trace_environment(handle)
     if not handle.inherited:
-        os.environ[host_lock.OWNER_ENV] = host_lock.process_identity()
+        exported[host_lock.OWNER_ENV] = host_lock.process_identity()
+    previous = {key: os.environ.get(key) for key in (host_lock.OWNER_ENV, *exported)}
+    os.environ.update(exported)
     try:
         try:
             yield
@@ -90,10 +87,11 @@ def heavy_guard(command: str) -> Iterator[None]:
         if watcher is not None and watcher.breached:
             raise _refuse(host_lock.EXIT_WATCHDOG, WATCHDOG_MESSAGE)
     finally:
-        if previous_owner is None:
-            os.environ.pop(host_lock.OWNER_ENV, None)
-        else:
-            os.environ[host_lock.OWNER_ENV] = previous_owner
+        for key, value in previous.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
         handle.release()
 
 

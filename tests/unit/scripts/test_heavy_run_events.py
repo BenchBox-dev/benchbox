@@ -14,6 +14,7 @@ import psutil
 import pytest
 
 from benchbox.utils import heavy_run_events as ev, host_lock as hl
+from tests.utilities.paths import REPO_ROOT
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
@@ -516,3 +517,123 @@ def test_api_acquire_environment_carries_run_ids_and_ledger_path_to_children(
         assert env[hl.ROOT_RUN_ID_ENV] == handle.run.root_run_id
     finally:
         handle.release()
+
+
+def test_a_reentrant_admission_and_guard_upgrade_lands_in_the_original_run(
+    lock_dir: Path, runs_file: Path, clock: FakeClock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class Quiet:
+        breached = False
+
+        def stop(self) -> None:
+            pass
+
+    def admit(**_: object) -> str:
+        clock.now += 2.0
+        return "ok"
+
+    def spawn(handle: object, environ: object = None) -> Quiet:
+        clock.now += 0.5
+        return Quiet()
+
+    monkeypatch.setattr(hl, "check_admission", admit)
+    monkeypatch.setattr(hl, "start_guard", spawn)
+    path = lock_dir / hl.LOCK_NAME
+    session = hl.acquire(path, wait_seconds=0, phase="pytest-session")
+    clock.now += 5.0
+    upgraded = hl.acquire(path, wait_seconds=0, phase="pytest-session", admit=True, guard=True)
+    assert upgraded is session
+    clock.now += 10.0
+    upgraded.release()
+    session.release()
+    rows = read_events(runs_file)
+    names = [row["event"] for row in rows]
+    assert names.count("lock_requested") == 1 and names.count("execution_started") == 1
+    assert names.count("run_finished") == 1 and names.count("admission_finished") == 1
+    details = rows[-1]["details"]
+    assert details["admission_seconds"] == 2.0 and details["guard_seconds"] == 0.5
+    assert rows[-1]["outcome"] == "released"
+
+
+def test_the_watchdog_launch_receives_the_run_identity(
+    lock_dir: Path, runs_file: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen: dict[str, str] = {}
+
+    class Recorder:
+        def __init__(self, argv: list[str], **kwargs: Any) -> None:
+            seen.update(kwargs["env"])
+
+        def terminate(self) -> None:
+            pass
+
+        def wait(self, timeout: float | None = None) -> int:
+            return 0
+
+    monkeypatch.setattr(hl.subprocess, "Popen", Recorder)
+    monkeypatch.setenv(hl.WATCHDOG_MODE_ENV, "kill")
+    handle = hl.acquire(lock_dir / hl.LOCK_NAME, wait_seconds=0, phase="p", guard=True)
+    try:
+        assert seen[hl.RUN_ID_ENV] == handle.run.run_id
+        assert seen[hl.RUNS_FILE_ENV] == str(runs_file)
+    finally:
+        handle.release()
+
+
+def test_cli_admission_refusal_is_recorded_as_admission_refused(
+    lock_dir: Path, runs_file: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from benchbox.cli import host_lock_optin
+
+    def refuse(**_: object) -> str:
+        raise hl.AdmissionRefused("report")
+
+    monkeypatch.setenv(host_lock_optin.HOST_LOCK_ENV, "1")
+    monkeypatch.setattr(hl, "check_admission", refuse)
+    with pytest.raises(SystemExit) as raised, host_lock_optin.heavy_guard("run"):
+        pass
+    assert raised.value.code == hl.EXIT_ADMISSION
+    by = by_event(read_events(runs_file))
+    assert by["admission_finished"]["outcome"] == "admission_refused"
+    assert by["run_finished"]["outcome"] == "admission_refused"
+
+
+def test_cli_guard_exports_and_restores_the_trace_environment(
+    lock_dir: Path, runs_file: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from benchbox.cli import host_lock_optin
+
+    monkeypatch.setenv(host_lock_optin.HOST_LOCK_ENV, "1")
+    monkeypatch.setattr(hl, "check_admission", lambda **_: "")
+    with host_lock_optin.heavy_guard("run"):
+        run_id = os.environ[hl.RUN_ID_ENV]
+        assert os.environ[hl.RUNS_FILE_ENV] == str(runs_file)
+        assert os.environ[hl.ROOT_RUN_ID_ENV] == run_id
+    for name in (hl.RUN_ID_ENV, hl.ROOT_RUN_ID_ENV, hl.RUNS_FILE_ENV, hl.OWNER_ENV):
+        assert name not in os.environ
+    assert read_events(runs_file)[-1]["run_id"] == run_id
+
+
+def test_session_isolation_exports_and_restores_the_trace_environment(tmp_path: Path) -> None:
+    lock = tmp_path / "lock"
+    script = (
+        "import json, os\n"
+        "from tests.utilities import session_isolation as isolation\n"
+        "names = ['BENCHBOX_HEAVY_RUN_ID', 'BENCHBOX_HEAVY_ROOT_RUN_ID', 'BENCHBOX_HEAVY_RUNS_FILE']\n"
+        "isolation.start()\n"
+        "seen = {name: os.environ.get(name) for name in names}\n"
+        "isolation.finish()\n"
+        "print(json.dumps([seen, [os.environ.get(name) for name in names]]))\n"
+    )
+    env = {k: v for k, v in os.environ.items() if not k.startswith("BENCHBOX_HEAVY_RUN")}
+    env.update(PYTHONPATH=str(REPO_ROOT), BENCHBOX_TEST_LOCK_DIR=str(lock), BENCHBOX_TEST_LOCK_WAIT_SECONDS="0")
+    env.pop(hl.OWNER_ENV, None)
+    result = subprocess.run(
+        [sys.executable, "-c", script], cwd=tmp_path, env=env, capture_output=True, text=True, timeout=60
+    )
+    assert result.returncode == 0, result.stderr
+    seen, after = json.loads(result.stdout.strip().splitlines()[-1])
+    assert after == [None, None, None]
+    assert seen["BENCHBOX_HEAVY_RUNS_FILE"] == str(lock.resolve() / hl.RUNS_FILE_NAME)
+    ledger = read_events(lock / hl.RUNS_FILE_NAME)
+    assert ledger[0]["run_id"] == seen["BENCHBOX_HEAVY_RUN_ID"] and ledger[-1]["event"] == "run_finished"

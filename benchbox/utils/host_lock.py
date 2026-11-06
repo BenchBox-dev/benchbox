@@ -612,12 +612,15 @@ def held_inode_matches(handle: HostLock) -> bool:
     return _inode_matches(handle.fd, handle.path)
 
 
-def _with_run_identity(env: dict[str, str], handle: HostLock | None) -> dict[str, str]:
+def trace_environment(handle: HostLock | None) -> dict[str, str]:
     run = None if handle is None else handle.run
-    if run is not None:
-        env[RUN_ID_ENV] = run.run_id
-        env[ROOT_RUN_ID_ENV] = run.root_run_id
-        env[RUNS_FILE_ENV] = run.environ[RUNS_FILE_ENV]
+    if run is None:
+        return {}
+    return {RUN_ID_ENV: run.run_id, ROOT_RUN_ID_ENV: run.root_run_id, RUNS_FILE_ENV: run.environ[RUNS_FILE_ENV]}
+
+
+def _with_run_identity(env: dict[str, str], handle: HostLock | None) -> dict[str, str]:
+    env.update(trace_environment(handle))
     return env
 
 
@@ -830,7 +833,11 @@ def _spawn_guard(handle: HostLock, env: Mapping[str, str]) -> Guard:
     argv += ["--flag-fd", str(write_fd)]
     try:
         process = subprocess.Popen(
-            argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, pass_fds=(write_fd,), env=dict(env)
+            argv,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            pass_fds=(write_fd,),
+            env=_with_run_identity(dict(env), handle),
         )
     except BaseException:
         os.close(read_fd)
@@ -881,6 +888,55 @@ def check_admission(
     return report
 
 
+def admit_and_guard(
+    handle: HostLock,
+    *,
+    created: bool,
+    admit: bool = True,
+    admit_need_gib: float | None = None,
+    guard: bool = True,
+    environ: Mapping[str, str] | None = None,
+    log_report: bool = True,
+) -> None:
+    run = handle.run
+    try:
+        if admit and not handle.inherited:
+            started = _now()
+            try:
+                report = check_admission(need_gib=admit_need_gib, environ=environ)
+            except BaseException as exc:
+                if run is not None:
+                    elapsed = _now() - started
+                    run.admission_seconds += elapsed
+                    _emit(run, "admission_finished", duration=elapsed, outcome=_failure_outcome(exc))
+                raise
+            if run is not None:
+                elapsed = _now() - started
+                run.admission_seconds += elapsed
+                _emit(run, "admission_finished", duration=elapsed, outcome="admitted")
+            if log_report:
+                _log(report)
+        if guard and handle.guard is None:
+            started = _now()
+            handle.guard = start_guard(handle, environ=environ)
+            if run is not None:
+                elapsed = _now() - started
+                run.guard_seconds += elapsed
+                _emit(
+                    run,
+                    "guard_started",
+                    duration=elapsed,
+                    outcome="started" if handle.guard is not None else "unavailable",
+                )
+    except BaseException as exc:
+        if created:
+            handle.outcome = _failure_outcome(exc)
+        handle.release()
+        raise
+    if run is not None and run.held_started is not None and not run.execution_recorded:
+        run.held_started = _now()
+
+
 def _acquire(
     lock_path: Path | None,
     *,
@@ -903,37 +959,15 @@ def _acquire(
         admit=admit,
         guard=guard,
     )
+    admit_and_guard(
+        handle,
+        created=created,
+        admit=admit,
+        admit_need_gib=admit_need_gib,
+        guard=guard,
+        environ=environ,
+    )
     run = handle.run if created else None
-    try:
-        if admit and not handle.inherited:
-            started = _now()
-            try:
-                report = check_admission(need_gib=admit_need_gib, environ=environ)
-            except BaseException as exc:
-                if run is not None:
-                    run.admission_seconds = _now() - started
-                    _emit(run, "admission_finished", duration=run.admission_seconds, outcome=_failure_outcome(exc))
-                raise
-            if run is not None:
-                run.admission_seconds = _now() - started
-                _emit(run, "admission_finished", duration=run.admission_seconds, outcome="admitted")
-            _log(report)
-        if guard and handle.guard is None:
-            started = _now()
-            handle.guard = start_guard(handle, environ=environ)
-            if run is not None:
-                run.guard_seconds = _now() - started
-                _emit(
-                    run,
-                    "guard_started",
-                    duration=run.guard_seconds,
-                    outcome="started" if handle.guard is not None else "unavailable",
-                )
-    except BaseException as exc:
-        if created:
-            handle.outcome = _failure_outcome(exc)
-        handle.release()
-        raise
     if run is not None:
         run.held_started = _now()
         _emit(run, "execution_started", program=_program_name(command))
