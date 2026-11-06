@@ -516,8 +516,13 @@ Required status checks:
 as on `develop`. The gate workflow, the review workflow, the reviewer policy
 (`.github/oracle-reviewers.yml`) and the `oracle` environment name `develop` as
 the only gated base, so a pull request into `release/X.Y.x` cannot report
-`oracle-gate` and cannot merge until they also cover release bases. Apply this
-ruleset only once they do.
+`oracle-gate` and cannot merge until a later change (multi-base support in the
+review gate) covers release bases. The same later change makes `trunk.yml` run
+on pushes to `release/**`; until then admission refuses a maintenance tag for
+lack of a trunk run on the branch. A maintenance release needs that change
+first. The ruleset can be applied before it: admission only needs the rulesets
+to exist, and it blocks merges into any `release/**` branch until the gate
+covers them.
 
 Other ruleset properties to preserve:
 

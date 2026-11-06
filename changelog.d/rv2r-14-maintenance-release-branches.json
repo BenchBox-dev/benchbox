@@ -1,1 +1,1 @@
-{"schema": 1, "internal": "Release tooling now supports owner-created release/X.Y.x maintenance branches with the same trunk, admission and release checks as develop; no change to the shipped package."}
+{"schema": 1, "internal": "Release admission accepts tags on owner-created release/X.Y.x branches with --latest=false; the ruleset drift check expects their rulesets. Trunk runs and oracle gating there come later; no package change."}

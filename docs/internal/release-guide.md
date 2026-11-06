@@ -69,6 +69,15 @@ push run on that branch with its `dist-artifact`. It refuses:
 - a commit on both lines, or on neither;
 - a commit whose trunk run is missing, failed, or ran on another branch.
 
+Prerequisite: `trunk.yml` does not yet run on pushes to `release/**`, and
+`oracle-gate` does not yet cover pull requests into a maintenance line. Both
+arrive with a later change (multi-base support in the review gate, plus a
+`release/**` push trigger for `trunk.yml`). Until it lands, admission refuses
+every maintenance tag because no trunk run exists on the branch, and a pull
+request into a maintenance line cannot report `oracle-gate`. A maintenance
+release therefore needs that change first; do not create a line before then.
+See the gate coverage note in [repo-admin-settings.md](repo-admin-settings.md).
+
 The procedure:
 
 1. Once, delete the legacy `release` branch if it still exists: Git cannot hold
@@ -81,12 +90,11 @@ The procedure:
    tag predates maintenance-line support, the first pull request into the branch
    brings `.github/workflows/trunk.yml`, `ci.yml`, `release-v2.yml` and
    `scripts/release_artifact_consumer.py` (and whatever they need) from
-   `develop`; `ci.yml` accepts a `release/X.Y.x` base, and `trunk.yml` builds
-   the dist on every push to `release/**`.
-4. Land the fix by pull request into `release/X.Y.x` with the same CI and
-   oracle review as `develop`; the pull request squash-merges like any other.
-   Land the same fix on `develop` through its own pull request when `develop`
-   has the defect too. Add a `changelog.d` fragment on each branch.
+   `develop`; `ci.yml` accepts a `release/X.Y.x` base.
+4. Land the fix by pull request into `release/X.Y.x`; the pull request
+   squash-merges like any other. Land the same fix on `develop` through its own
+   pull request when `develop` has the defect too. Add a `changelog.d` fragment
+   on each branch.
 5. Prepare the release on the branch, as for `develop`: from a worktree on
    `release/X.Y.x`, `make release-prep VERSION=X.Y.Z` and
    `make release-check VERSION=X.Y.Z RELEASE_PRE_TAG=1`, committed as one pull
@@ -116,10 +124,6 @@ The procedure:
    request is a `docs:` change and needs no fragment.
 9. When the line is no longer supported, the owner deletes the branch:
    `git push origin --delete release/X.Y.x`. The tags stay.
-
-A pull request into a maintenance line needs `oracle-gate` like any other, so
-the gate coverage note in [repo-admin-settings.md](repo-admin-settings.md)
-applies to it.
 
 ## Release canary and ruleset drift
 

@@ -136,7 +136,7 @@ def test_the_trunk_workflow_accepts_the_medium_only_call(filename: str) -> None:
     workflow = _load(filename)
     triggers = workflow[True]
     if filename == "trunk.yml":
-        assert triggers["push"] == {"branches": ["develop", "release/**"]}
+        assert triggers["push"] == {"branches": ["develop"]}
     else:
         assert "push" not in triggers
     assert "workflow_dispatch" in triggers
