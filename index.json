@@ -2145,6 +2145,7 @@
     },
     "sqlglot-core-delivery": {
       "accepted_members": {
+        "sqlglot-e2e-core-wheel-consumer": "acec0a21c2e6aed385496e6ab069ccef8bc532b0",
         "sqlglot-e2e-verified-wheel-adoption": "567c18249716efc85655218fe3cfb25b194e1343"
       },
       "batch_schema": 2,
@@ -2152,6 +2153,21 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "sqlglot-e2e-core-wheel-consumer": {
+          "accepted_head": "acec0a21c2e6aed385496e6ab069ccef8bc532b0",
+          "changed_files": [
+            ".github/sqlglot-delivery.json",
+            ".github/workflows/sqlglot-delivery.yml",
+            "changelog.d/sqlglot-e2e-core-wheel-consumer.json",
+            "docs/internal/merge-queue-governance.md",
+            "docs/internal/release-guide.md",
+            "scripts/sqlglot_delivery.py",
+            "tests/unit/scripts/test_sqlglot_delivery.py",
+            "tests/unit/workflows/test_sqlglot_delivery_workflow.py"
+          ],
+          "integration_head": "28cf8f798f931e5eb8db58582b88a77d3d019480",
+          "integration_seq": 4
+        },
         "sqlglot-e2e-verified-wheel-adoption": {
           "accepted_head": "567c18249716efc85655218fe3cfb25b194e1343",
           "changed_files": [
@@ -2169,7 +2185,7 @@
         }
       },
       "integration_branch": "feat/sqlglot-core-delivery",
-      "integration_head": "6e27e4e9debed01c40b36860ace949cd329809bf",
+      "integration_head": "28cf8f798f931e5eb8db58582b88a77d3d019480",
       "integration_log": [
         {
           "at": "2026-11-06T13:49:23Z",
@@ -2229,6 +2245,15 @@
           "op_id": "f359a72ebcc84b9fae8ce2b08990836b",
           "previous_head": "744dc67034e43008a870b7b9bfef1a799f7ce920",
           "seq": 3
+        },
+        {
+          "at": "2026-11-06T16:53:01Z",
+          "head": "28cf8f798f931e5eb8db58582b88a77d3d019480",
+          "kind": "prepare",
+          "member": "sqlglot-e2e-core-wheel-consumer",
+          "op_id": "9d1d9d9dea94408eb31d0f30f189b060",
+          "previous_head": "6e27e4e9debed01c40b36860ace949cd329809bf",
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-sqlglot-core-delivery",
@@ -29682,18 +29707,13 @@
       "title": "Deliver fork-owned SQLGlot integration and narrow core wheel adoption"
     },
     "sqlglot-e2e-core-wheel-consumer": {
-      "claim": {
-        "expires_at": "2026-11-07T16:45:08Z",
-        "generation": "6c3ff43b467f4191bc62cf970c2ef988",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f"
-      },
+      "claim": null,
       "needs": [
         "sqlglot-e2e-fork-wheel-delivery",
         "sqlglot-e2e-verified-wheel-adoption"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Consume verified fork wheel deliveries through ordinary core adoption PRs"
     },
     "sqlglot-e2e-first-release-certification": {
