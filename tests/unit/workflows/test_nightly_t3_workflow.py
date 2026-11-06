@@ -717,23 +717,6 @@ def test_actions_are_pinned_by_sha() -> None:
     assert not unpinned, f"actions must be pinned to a full commit SHA: {unpinned}"
 
 
-def test_perf_smoke_workflow_uses_the_same_regression_gate_options() -> None:
-    workflow = _load(WORKFLOWS_DIR / "perf-smoke.yml")
-    compare = next(
-        step for step in _steps(workflow["jobs"]["perf-smoke"]) if str(step.get("name", "")).startswith("Compare")
-    )
-    nightly = next(
-        step
-        for step in _steps(_load()["jobs"]["perf"])
-        if step.get("name") == "Compare against baseline (fail on >10% regression)"
-    )
-
-    for step in (compare, nightly):
-        assert "--fail-on-regression 10%" in step["run"]
-        assert "--min-regression-delta 7ms" in step["run"]
-        assert "--min-aggregate-regression-delta 82ms" in step["run"]
-
-
 def test_liveness_domain_runs_the_shared_script_with_read_only_actions_access() -> None:
     job = _load()["jobs"]["liveness"]
 
@@ -767,7 +750,7 @@ def test_windows_domain_timeout_leaves_margin_over_the_measured_run() -> None:
     assert _load()["jobs"]["windows"]["timeout-minutes"] >= measured_run_minutes * 1.25
 
 
-RETIRING_WORKFLOWS = {"release-canary.yml", "validate-release-pr.yml"}
+RETIRING_WORKFLOWS = {"release-canary.yml"}
 
 
 def test_a_kept_scheduled_workflow_runs_the_ruleset_drift_check() -> None:

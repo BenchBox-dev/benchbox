@@ -1899,28 +1899,13 @@
           "path": "scripts/release_canary_sharding.py"
         },
         {
-          "path": "scripts/release_finalize.py"
-        },
-        {
           "path": "scripts/release_flow.py"
-        },
-        {
-          "path": "scripts/release_readiness_check.py"
-        },
-        {
-          "path": "scripts/check_release_curation.py"
         },
         {
           "path": "scripts/check_submission_validator_sync.py"
         },
         {
           "path": "scripts/update_version.py"
-        },
-        {
-          "path": "scripts/release_cut_abort.sh"
-        },
-        {
-          "path": "scripts/release_cut_start.sh"
         }
       ]
     },

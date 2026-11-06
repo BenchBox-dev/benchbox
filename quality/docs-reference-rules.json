@@ -223,7 +223,6 @@
         "scripts/changelog_fragments.py",
         "scripts/check_untracked_handoffs.sh",
         "scripts/generate_changelog_entry.py",
-        "scripts/release_cut_abort.sh",
         "scripts/worktree_lifecycle.sh",
         "tests/fixtures/fast_tier_baseline/tests-00.json",
         "tests/fixtures/fast_tier_baseline/tests-01.json",

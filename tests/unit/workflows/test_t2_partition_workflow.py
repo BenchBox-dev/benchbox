@@ -150,30 +150,13 @@ def test_ci_paths_decides_the_medium_shards() -> None:
 def test_code_test_no_longer_runs_the_medium_work() -> None:
     steps = _steps_by_name(_jobs("ci.yml")["code-test"])
     for name in (
-        "Run changed tests on the curated release tree",
         "Download coverage selection",
         "Run medium tests for changed paths",
     ):
         assert name not in steps
     assert "Pre-build the assertion-rewrite cache" in steps
     text = "\n".join(step.get("run", "") for step in steps.values())
-    assert "release_curation_dry_run" not in text
     assert "coverage-selection" not in text
-
-
-def test_release_tree_check_runs_once_in_the_first_shard() -> None:
-    medium = _jobs("ci.yml")["medium-test"]
-    steps = _steps_by_name(medium)
-    step = steps["Run changed tests on the curated release tree"]
-    assert step["if"] == (
-        "${{ !cancelled() && matrix.shard_index == 0 && needs.ci-paths.outputs.code-tests-needed == 'true' }}"
-    )
-    assert step["env"] == {"BASE_SHA": "${{ github.event.pull_request.base.sha }}", "UV_PYTHON": "3.14"}
-    assert step["run"] == 'uv run -- python scripts/release_curation_dry_run.py --changed-since "$BASE_SHA"'
-    setup = next(s for s in medium["steps"] if s.get("uses", "").startswith("actions/setup-python@"))
-    assert setup["with"]["python-version"] == "${{ needs.ci-paths.outputs.heavy-needed == 'true' && '3.12' || '3.14' }}"
-    checkout = next(s for s in medium["steps"] if s.get("uses", "").startswith("actions/checkout@"))
-    assert checkout["with"] == {"fetch-depth": 0}
 
 
 def test_non_heavy_shards_run_their_share_of_the_coverage_selection() -> None:
@@ -287,7 +270,7 @@ def test_three_os_nightly_cells_retain_raw_framing_guard() -> None:
         _assert_no_trailing_delimiter(["1|ARGENTINA|1|comment|"], "raw fixture")
 
 
-@pytest.mark.parametrize("filename", ["ci.yml", "trunk.yml", "trunk-coverage.yml", "test.yml"])
+@pytest.mark.parametrize("filename", ["ci.yml", "trunk.yml", "trunk-coverage.yml"])
 def test_every_medium_sharding_command_binds_the_duration_fixture(filename: str) -> None:
     runs = [
         str(step.get("run", ""))
