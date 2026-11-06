@@ -35633,7 +35633,7 @@
       "needs": [],
       "priority": "high",
       "status": "active",
-      "title": "Doris ClickBench and pg_mooncake FlightData loads fail on develop at SF0.01"
+      "title": "pg_mooncake FlightData load fails in trunk UAT at SF0.01 (Doris ClickBench fixed)"
     },
     "uat-release-gate-enforcement": {
       "claim": null,
