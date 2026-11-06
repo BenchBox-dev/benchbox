@@ -124,3 +124,36 @@ def test_default_seed_is_fixed_and_recorded(raw_duckdb):
 
     assert result["seed"] == DEFAULT_MAINTENANCE_SEED
     assert MaintenanceOperations().seed == DEFAULT_MAINTENANCE_SEED
+
+
+def test_returns_selection_handles_int32_keys_and_is_seed_stable():
+    duckdb = pytest.importorskip("duckdb")
+
+    def run(seed):
+        raw = duckdb.connect()
+        raw.execute("CREATE TABLE S (I INTEGER, N INTEGER, Q INTEGER)")
+        raw.execute("CREATE TABLE R (I INTEGER, N INTEGER)")
+        raw.execute("INSERT INTO S SELECT 1624, 2000000000 - i, 1 FROM range(50) t(i) UNION ALL SELECT 7, 100000000, 2")
+        ops = MaintenanceOperations()
+        ops.set_seed(seed)
+        inserted = ops._insert_returns_generic(
+            raw,
+            5,
+            sales_table="S",
+            returns_table="R",
+            sales_select_columns="I, N",
+            sales_key_columns=("I", "N"),
+            sales_quantity_column="Q",
+            returns_columns="I, N",
+            returns_key_columns=("I", "N"),
+            num_returns_columns=2,
+            row_generator=lambda sale: (sale[0], sale[1]),
+        )
+        rows = raw.execute("SELECT I, N FROM R ORDER BY I, N").fetchall()
+        raw.close()
+        return inserted, rows
+
+    first = run(11)
+    assert first[0] == 5
+    assert run(11) == first
+    assert run(12) != first

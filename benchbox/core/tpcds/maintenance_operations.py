@@ -413,7 +413,7 @@ class MaintenanceOperations:
             WHERE {returns_table}.{returns_item} = {sales_table}.{sales_item}
               AND {returns_table}.{returns_number} = {sales_table}.{sales_number}
           )
-        ORDER BY (({sales_item} * 7919 + {sales_number} * 104729 + {order_offset}) % 1000003), {sales_item}, {sales_number}
+        ORDER BY ((CAST({sales_item} AS BIGINT) * 7919 + CAST({sales_number} AS BIGINT) * 104729 + {order_offset}) % 1000003), {sales_item}, {sales_number}
         LIMIT {placeholder}
         """
 
