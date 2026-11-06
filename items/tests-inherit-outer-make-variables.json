@@ -3,6 +3,7 @@
     "Tests run with the outer make variables (MAKEFLAGS, MFLAGS, MAKELEVEL, MAKEOVERRIDES) cleared, so child make invocations see only the variables each test passes.",
     "make pr-preflight BASE=<sha> passes for a change that selects the worktree tests."
   ],
+  "context": "Fix on branch fix/test-make-env-isolation (worktree /Users/joe/Developer/BenchBox.wt-fix-test-make-env-isolation), commit d43e4ab3: tests/conftest.py drops MAKEFLAGS, MFLAGS, MAKELEVEL, MAKEOVERRIDES at import, matching the existing Git-variable scrub. Reproduction: the five affected files under MAKEFLAGS=\" -- BASE=<sha>\" gave 26 failed/35 passed before and 61 passed after. make pr-preflight passed. make pr-open running. Claim released only to free the single claim slot; re-take to finish after merge.",
   "description": "make pr-preflight BASE=<sha> (as run by make batch-member-check) passes BASE to every child make through MAKEFLAGS. Tests that invoke make in fixture repositories then inherit BASE and fail with \"Could not resolve BASE to a commit\". Observed: 26 failures in tests/integration/worktree/test_worktree_lifecycle_metadata.py, test_worktree_release_dirty_guard.py, tests/unit/scripts/test_pr_preflight_base.py, test_worktree_create_base.py and test_worktree_create_linked.py when the changed files include Makefile. The same suite passes under plain make pr-preflight. This blocks batch-member-check for any member whose change selects these tests.",
   "links": [
     "tests/conftest.py",
@@ -24,6 +25,14 @@
       "generation": "3109588539ed4effa59e6e4b40264142",
       "op": "take",
       "op_id": "723348dfa5884766889139926efc85aa",
+      "session_id": "2f41579dd2194a049659596cdd9a4f3d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f",
+      "at": "2026-11-06T14:24:50Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7e38b2d662c0476c99260e232992cd6a",
       "session_id": "2f41579dd2194a049659596cdd9a4f3d"
     }
   ]
