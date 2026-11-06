@@ -24938,10 +24938,15 @@
       "title": "QuestDB ILP load sends TPC-H DATE columns as strings into TIMESTAMP columns, lineitem loads zero rows"
     },
     "questdb-ilp-load-drops-rows-per-file-socket-20261106": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-07T20:07:25Z",
+        "generation": "e643de2440d04864bfc8e5465b865bb1",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "QuestDB ILP load silently drops rows when each chunk file uses its own socket; ILP port is not published by docker/questdb"
     },
     "questdb-imp-headerless-column-mapping-verify": {
