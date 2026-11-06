@@ -166,6 +166,34 @@ Then:
 Restarting the gateway fails any review attempt in flight; the next retry sweep
 (on a push to `develop` or the hourly schedule) retries it.
 
+## Migrating to the review names
+
+Theseus 0.2.0 renamed the gateway directory and the client names. Every step
+below is owner-run on the live host; nothing in the repository does it. The
+running gateway keeps serving from `~/.omp/oracle-gateway` until step 1 is done,
+and `oracle_gateway_host.sh` now defaults to `~/.omp/review-gateway`, so run the
+steps in order and do not run the script between the update and step 1. Until the
+host is migrated, CI reviews end absent and local reviews refuse, both failing
+closed.
+
+1. Stop the agents, then move the directory: `launchctl bootout` the
+   `dev.omp.auth-gateway` agent, `mv ~/.omp/oracle-gateway ~/.omp/review-gateway`.
+2. Rename any per-client token files so they still derive client names:
+   `local-client.token` and `cloud-client.token` keep their names; the client
+   names derived from them become `review-local` and `review-cloud`, and
+   `client.token` stays the base client, now `review-ci`.
+3. Add `theseus-client.token` for the Theseus self-gate client `review-theseus`
+   (`umask 077; openssl rand -base64 36 | tr -d '\n' >
+   ~/.omp/review-gateway/theseus-client.token`).
+4. Run `gateway` (it regenerates `clients.json` from `origin/develop` with
+   `review-ci`, `review-local`, `review-cloud` and `review-theseus`, rewrites
+   `run.sh` for the new directory and restarts the agent), then `check`.
+5. The GitHub secrets keep their `ORACLE_*` names and values; the callers map
+   them to the `REVIEW_*` names Theseus expects, so `secrets` needs no change.
+6. Local review now reads only `~/.omp/review-gateway/local-client.token`, and
+   host-token redaction scans only the new directory, so no copy of a token may
+   stay in `~/.omp/oracle-gateway`. Remove it once `check` passes.
+
 ## Named clients
 
 Each caller besides CI has its own client, so its token can be rotated or

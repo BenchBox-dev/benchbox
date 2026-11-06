@@ -37,10 +37,10 @@ jobs:
       actions: write
       contents: read
       pull-requests: read
-    uses: joeharris76/theseus/.github/workflows/gate.yml@5188161c85d6a8d15c73d9685cd5a58c2e78aeeb
+    uses: joeharris76/theseus/.github/workflows/gate.yml@969f08364d4fab791159a03760eddda900ba8416
     with:
       environment: oracle
-      theseus_ref: 5188161c85d6a8d15c73d9685cd5a58c2e78aeeb
+      theseus_ref: 969f08364d4fab791159a03760eddda900ba8416
       gated_base: develop
       policy_path: .github/oracle-reviewers.yml
     secrets:
