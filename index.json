@@ -1039,7 +1039,7 @@
         }
       },
       "integration_branch": "feat/load-path-live-fixes",
-      "integration_head": "30e6d4f8ef511b9127d13409f9b5cc286b664aa5",
+      "integration_head": "f2ca1105aa9354ef7ee496cbb9248a75295f3d5f",
       "integration_log": [
         {
           "at": "2026-11-06T19:34:49Z",
@@ -1129,6 +1129,21 @@
             "questdb-ilp-load-drops-rows-per-file-socket-20261106"
           ],
           "seq": 7
+        },
+        {
+          "at": "2026-11-06T21:04:43Z",
+          "changed_files": [
+            "benchbox/platforms/base/data_loading.py",
+            "tests/unit/platforms/test_data_loading_arrow_insert.py"
+          ],
+          "head": "f2ca1105aa9354ef7ee496cbb9248a75295f3d5f",
+          "kind": "fix",
+          "op_id": "a38cb5d3fd8f423492fb326f52cb83fa",
+          "previous_head": "30e6d4f8ef511b9127d13409f9b5cc286b664aa5",
+          "requires_acceptance": [
+            "duckdb-iceberg-handler-register-fails-20261106"
+          ],
+          "seq": 8
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-load-path-live-fixes",
