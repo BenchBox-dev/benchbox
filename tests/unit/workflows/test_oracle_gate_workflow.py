@@ -16,7 +16,7 @@ WORKFLOW = REPO_ROOT / ".github" / "workflows" / "review-gate.yml"
 LOCK = REPO_ROOT / ".github" / "theseus-lock.json"
 CALLEE = re.compile(r"^joeharris76/theseus/\.github/workflows/gate\.yml@([0-9a-f]{40})$")
 ENGINE_PATHS = ("oracle_reviewers", "oracle_gate", "oracle_review_check", "uv run", "setup-uv")
-EXPECTED_SECRETS = ("REVIEW_APP_ID", "REVIEW_APP_PRIVATE_KEY")
+EXPECTED_SECRETS = {"REVIEW_APP_ID": "ORACLE_APP_ID", "REVIEW_APP_PRIVATE_KEY": "ORACLE_APP_PRIVATE_KEY"}
 SHA = "0123456789abcdef0123456789abcdef01234567"
 STANDIN = "Stand-in review: APPROVE"
 

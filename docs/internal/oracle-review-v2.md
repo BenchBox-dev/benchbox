@@ -81,7 +81,7 @@ second, separately verified install of the current base tip in its own process.
 The caller workflows pass the Theseus commit twice (the `uses:` ref and
 `theseus_ref`); both must equal the lock's `workflow_sha`. State and caches keep
 their BenchBox locations: `scripts/theseus_cli.py` sets `THESEUS_LOCAL_STATE` to
-`~/.cache/benchbox/local-review` and `THESEUS_OMP_CACHE` to `~/.cache/benchbox/omp`
+`~/.cache/benchbox/local-oracle` and `THESEUS_OMP_CACHE` to `~/.cache/benchbox/omp`
 (and `THESEUS_EPHEMERAL_CLONE=1` in a cloud session), so persisted findings,
 disputes and OMP builds stay readable. Old `export/` directories under the local
 state are inert and never read.
@@ -1125,7 +1125,7 @@ and posts nothing to GitHub.
   policy or unable to answer a rebuttal, or an `origin/develop` that cannot be
   fetched.
 - **Findings record and local disputes.** The driver keeps one findings record per
-  patch digest under `~/.cache/benchbox/local-review/records/`. It holds the
+  patch digest under `~/.cache/benchbox/local-oracle/records/`. It holds the
   CI-shaped protocol records of every local round (so the same planner, round
   limits and escalation rules apply) and, per finding, the CI-identical id
   (`c<cycle>-D<n>`, assigned by the same id function as CI), severity, location,
@@ -1168,7 +1168,7 @@ and posts nothing to GitHub.
   `--head`. It pushes exactly that commit (`git push origin <reviewed>:refs/heads/<branch>`)
   and arms that commit, even when the branch ref moved while the review ran; the
   next `pr-open` reviews the moved ref.
-- **Cache and lock.** Results are cached under `~/.cache/benchbox/local-review`
+- **Cache and lock.** Results are cached under `~/.cache/benchbox/local-oracle`
   (fixed per user; no environment variable moves it), keyed by the plan the shared
   planner produced (which carries the patch digest, base commit, prior-review
   context and chain), the head tree, and a hash of every trusted input: the
@@ -1740,7 +1740,7 @@ follows:
   sessions, `REVIEW_LOCAL_RECORD_OUT`). Gateway clients are `review-ci`,
   `review-local` and `review-cloud`, and the gateway directory is
   `~/.omp/review-gateway`. The local review state is
-  `~/.cache/benchbox/local-review`.
+  `~/.cache/benchbox/local-oracle`.
 - Until a later Theseus release removes the legacy mirror, each status is posted
   under both contexts and the old command and marker spellings are still read.
   `oracle-gate` stays the required context; `review-gate` is added to the ruleset
