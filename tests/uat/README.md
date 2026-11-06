@@ -4,6 +4,9 @@ This is the framework developer's guide. The operator guide is
 https://benchbox.dev/docs/operations/uat-framework.html; the design contract is
 `_project/specs/uat-framework.md`.
 
+Gate tuning (infrastructure retry, pinned images, history reports) is described in
+`docs/internal/uat-rubric.md`.
+
 ## Layout
 
 ```
