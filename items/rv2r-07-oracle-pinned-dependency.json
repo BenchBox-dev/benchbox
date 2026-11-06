@@ -13,7 +13,7 @@
     ],
     "member_id": "rv2r-07-oracle-pinned-dependency"
   },
-  "context": "Member of batch release-v2-remediation. GUARDRAILS: no change to oracle policy, reviewer roles or required checks; never relax oracle-gate. DECISION GATE: removing or replacing a required check, or changing the `oracle` environment, is an owner action.",
+  "context": "Member of batch release-v2-remediation. GUARDRAILS: no change to oracle policy, reviewer roles or required checks; never relax oracle-gate. DECISION GATE: removing or replacing a required check, or changing the `oracle` environment, is an owner action.\n\n2026-11-06: rv2r-08 (release-window freeze guard) was dropped after the owner retired the freeze; the 'nothing changes during a release window' rule no longer applies to pin bumps.",
   "description": "Owner decision 2026-11-05: Theseus (joeharris76/theseus) is consumed at a pinned SHA like a dependency. Today the pin appears in oracle-verdict.yml and oracle-gate.yml (both `uses:` and `theseus_ref`), and #3942 showed a bump can take every merge down. Deliver: (1) pin consistency enforced by test (a `uses:` ref cannot be templated, so a test checks every reference matches); (2) a documented bump procedure: canary runs are workflow_dispatch from the bump branch (`gh workflow run oracle-verdict.yml --ref <bump-branch> -f pr=<canary>` and the same for oracle-gate.yml) on a canary PR set (a trivial PR and a PR with a known defect), whose verdict and gate must post and behave correctly on the new pin before merge, with the rv2r-06 posting detector green; (3) rollback = revert the pin commit, written as a runbook with exact steps; (4) bumps blocked during a release window by the rv2r-08 guard. Rollback for this item: revert its commits.",
   "links": [
     ".github/workflows/oracle-verdict.yml",
@@ -43,6 +43,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "6f617a9453bc44e8bf6d1e88a4b72c10",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-06T13:41:59Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "76ddfff88f154f17b64b27ef59669f99",
       "session_id": "b7a346e5fd054aa88d3c05a944442610"
     }
   ]

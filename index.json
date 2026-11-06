@@ -26971,8 +26971,7 @@
     "rv2r-07-oracle-pinned-dependency": {
       "claim": null,
       "needs": [
-        "rv2r-06-fail-closed-detectors",
-        "rv2r-08-release-freeze-guard"
+        "rv2r-06-fail-closed-detectors"
       ],
       "priority": "medium-high",
       "status": "open",
