@@ -25156,7 +25156,9 @@
     },
     "result-schema-2-4-producer-20261022": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "power-test-times-query-generation-20261031"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Write result schema 2.4: method-2 timer, request counts and platform timing capture"
