@@ -26829,7 +26829,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "dropped",
       "title": "Enforce the release-window freeze on infrastructure changes with a merge check"
     },
     "rv2r-09-trunk-dist-every-commit": {
