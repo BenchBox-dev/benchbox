@@ -137,7 +137,7 @@ A member:
 1. `make batch-land MEMBER=<id>` refuses unless the member worktree is clean,
    the member contains the current integration head, the head is unchanged since
    its check, and every changed path is inside the frozen scope. It also refuses
-   a landing that would push the combined file list past the hosted brief cap
+   a landing the Theseus preflight finds not reviewable, and prints its reasons
    (below).
 2. The leader runs the trusted local reviewer for the exact captured base and
    head, with the reviewer code and policy pinned to the same trusted
@@ -245,15 +245,19 @@ integration worktree and local branch. It reports the finish status in dry runs
 and freshly revalidates the completed batch, merged PR and finish evidence before
 applying. Refused members or a held integration worktree block this final step.
 
-## Sizing: the hosted brief cap
+## Sizing: the Theseus preflight
 
-`brief_max_bytes` in `.github/oracle-reviewers.yml` is 100000 and is a hard
-limit on batch size. A diff over the cap switches the hosted review to file-list
-mode, where only hard read-only reviewers that read files run. A file list over
-the cap skips the hosted reviewers entirely. `batch-land` refuses a landing that
-pushes the combined file list over the cap, warns when it moves the final brief
-out of inline mode, and `batch-status` prints the sizes. When a batch would
-exceed the cap, split it into batches that each stay under it.
+Theseus owns how large a change may be and still be reviewed; BenchBox keeps no
+size constants. `theseus preflight --policy <policy> --base-ref <ref> --head
+<sha> --json` answers whether the change against `origin/develop` can be
+reviewed: exit 0 is reviewable, 3 is not, 2 is undetermined (for example the
+model catalog cannot be read). `batch-land`, `batch-advance` (both `fix` and
+`develop-merge`), `batch-status` and `batch-evidence` run it through the verified
+Theseus install. Landing, advancing and evidence refuse on exit 3 or 2 and print
+Theseus's reasons verbatim; status prints the answer and refuses nothing.
+Refusals include a landing that carries a Theseus lock change (land that on its
+own pull request) and a change too large for any reviewer's capacity (split the
+batch). Advisories from a reviewable answer print as warnings.
 
 ## Rollback and recovery
 

@@ -44,6 +44,11 @@ EVIDENCE_SCHEMA = "benchbox_batch_evidence_v2"
 CHECK_SCHEMA = "benchbox_member_check_v1"
 MEMBER_REVIEW_SCHEMA = "benchbox_member_review_v1"
 ACCEPTED_REVIEW_OUTCOMES = ("clear", "not-reviewed", "override")
+PREFLIGHT_EXIT_REVIEWABLE = 0
+PREFLIGHT_EXIT_NOT_REVIEWABLE = 3
+PREFLIGHT_REVIEWABLE = "reviewable"
+PREFLIGHT_NOT_REVIEWABLE = "not-reviewable"
+PREFLIGHT_UNDETERMINED = "undetermined"
 TODO_DB_COMMAND = ["uv", "run", "--project", "_project/scripts", "--locked", "--", "todo-db"]
 DEFAULT_PREFLIGHT_COMMAND = ["make", "pr-preflight"]
 REVIEW_INTERPRETER = "python3"
@@ -52,9 +57,6 @@ REVIEW_SUPPORT = ("scripts/theseus_cli.py",)
 FINAL_SUITE = "member-reruns"
 POLICY_PATH = ".github/oracle-reviewers.yml"
 SECTION_BUDGET = 6000
-DIFF_HEADROOM_BYTES = 32768
-FILE_LIST_HEADER_BYTES = 560
-UNREAD_MARK_BYTES = 34
 ALLOWED_VERIFICATION_PREFIXES = (
     ("uv", "run", "--", "python", "-m", "pytest"),
     ("uv", "run", "--", "ruff", "check"),
@@ -677,54 +679,6 @@ def _read_check(member_worktree: Path, member_head: str, integration_head: str) 
     return record if isinstance(record, dict) and record.get("schema") == CHECK_SCHEMA else None
 
 
-def _brief_cap(repo: Path) -> int | None:
-    for base in (repo, ROOT):
-        path = base / POLICY_PATH
-        if path.is_file():
-            match = re.search(r"^brief_max_bytes:\s*(\d+)\s*$", path.read_text(encoding="utf-8"), re.MULTILINE)
-            if match:
-                return int(match.group(1))
-    return None
-
-
-def brief_sizes(repo: Path, head: str) -> dict | None:
-    cap = _brief_cap(repo)
-    if cap is None:
-        return None
-    base = _git(repo, "merge-base", DEVELOP_REF, head)
-    diff_bytes = len(_git_raw(repo, "diff", "--no-renames", base, head))
-    numstat = _git_raw(repo, "diff", "--no-renames", "--numstat", "-z", base, head).split(b"\0")
-    statuses = {}
-    raw_status = _git_raw(repo, "diff", "--no-renames", "--name-status", "-z", base, head).split(b"\0")
-    for index in range(0, len(raw_status) - 1, 2):
-        statuses[os.fsdecode(raw_status[index + 1])] = {"A": "added", "D": "removed"}.get(
-            os.fsdecode(raw_status[index]), "modified"
-        )
-    rows = []
-    for entry in numstat:
-        parts = entry.split(b"\t")
-        if len(parts) != 3:
-            continue
-        path = os.fsdecode(parts[2])
-        rows.append(f"{path} (+{os.fsdecode(parts[0])}/-{os.fsdecode(parts[1])}, {statuses.get(path, 'modified')})")
-    listing = len("\n".join(rows).encode("utf-8"))
-    block = FILE_LIST_HEADER_BYTES + listing + len(rows) * (UNREAD_MARK_BYTES + 1)
-    if listing > cap:
-        mode = "oversize"
-    elif diff_bytes <= cap - DIFF_HEADROOM_BYTES:
-        mode = "inline"
-    elif block > cap:
-        mode = "oversize"
-    else:
-        mode = "file-list"
-    return {
-        "brief_max_bytes": cap,
-        "inline_diff_bytes": diff_bytes,
-        "file_list_bytes": block,
-        "mode": mode,
-    }
-
-
 def _rerun(repo: Path, ledger: dict, member: str, command: list[str], suite: str, reason: str) -> dict:
     head = _rev(repo, "HEAD")
     clean_before = _is_clean(repo)
@@ -938,23 +892,69 @@ def _landing_preconditions(repo: Path, ledger: dict, tracker: dict, member: str,
     }
 
 
-def _brief_gate(repo: Path, head: str, member_head: str) -> list[str]:
-    sizes_after = brief_sizes(repo, member_head)
-    if sizes_after is None:
-        return []
-    if sizes_after["mode"] == "oversize":
-        raise BatchError(
-            "landing would make the combined change's file list exceed brief_max_bytes "
-            f"({sizes_after['file_list_bytes']} > {sizes_after['brief_max_bytes']}); "
-            "the hosted reviewers would be skipped. Split the batch"
-        )
-    sizes_before = brief_sizes(repo, head)
-    if sizes_before is not None and sizes_before["mode"] == "inline" and sizes_after["mode"] != "inline":
-        return [
-            f"landing moves the final brief out of inline mode ({sizes_after['inline_diff_bytes']} diff bytes, "
-            f"cap {sizes_after['brief_max_bytes']})"
-        ]
-    return []
+def _theseus_launcher(repo: Path) -> tuple[Path, dict[str, str]]:
+    scripts = str(Path(__file__).resolve().parent)
+    if scripts not in sys.path:
+        sys.path.insert(0, scripts)
+    import theseus_cli
+
+    try:
+        program = theseus_cli.executable(repo, DEVELOP_REF)
+    except theseus_cli.TheseusError as exc:
+        raise BatchError(f"the Theseus install for the review preflight was refused: {exc}") from exc
+    return program, theseus_cli.launcher_environment(program)
+
+
+def review_preflight(repo: Path, head: str) -> dict:
+    try:
+        program, env = _theseus_launcher(repo)
+    except BatchError as exc:
+        return {"state": PREFLIGHT_UNDETERMINED, "exit": None, "reasons": [str(exc)], "advisories": []}
+    command = [
+        str(program),
+        "preflight",
+        "--policy",
+        POLICY_PATH,
+        "--base-ref",
+        DEVELOP_REF,
+        "--head",
+        head,
+        "--json",
+    ]
+    proc = _run(command, repo, env=env)
+    try:
+        payload = json.loads(proc.stdout)
+    except ValueError:
+        payload = None
+    valid = (
+        isinstance(payload, dict)
+        and isinstance(payload.get("reasons"), list)
+        and isinstance(payload.get("advisories"), list)
+        and all(isinstance(item, str) for item in payload["reasons"] + payload["advisories"])
+    )
+    reasons = list(payload["reasons"]) if valid else []
+    advisories = list(payload["advisories"]) if valid else []
+    if proc.returncode == PREFLIGHT_EXIT_REVIEWABLE and valid:
+        state = PREFLIGHT_REVIEWABLE
+    elif proc.returncode == PREFLIGHT_EXIT_NOT_REVIEWABLE and valid:
+        state = PREFLIGHT_NOT_REVIEWABLE
+    else:
+        state = PREFLIGHT_UNDETERMINED
+        if not reasons:
+            detail = (proc.stderr or proc.stdout or "no output").strip()[-400:]
+            reasons = [f"the Theseus preflight exited {proc.returncode} without a usable verdict: {detail}"]
+    return {"state": state, "exit": proc.returncode, "reasons": reasons, "advisories": advisories}
+
+
+def _preflight_gate(repo: Path, head: str) -> list[str]:
+    result = review_preflight(repo, head)
+    if result["state"] == PREFLIGHT_REVIEWABLE:
+        return list(result["advisories"])
+    if result["state"] == PREFLIGHT_NOT_REVIEWABLE:
+        lead = f"the change at {head[:12]} is not reviewable:"
+    else:
+        lead = f"the review preflight could not determine whether the change at {head[:12]} is reviewable:"
+    raise BatchError("\n".join([lead, *result["reasons"]]))
 
 
 def _overlap_reruns(
@@ -1010,7 +1010,7 @@ def land_member(repo: Path, member: str, *, push: bool = True) -> dict:
             "for the prepare step"
         )
     gate = _landing_preconditions(repo, ledger, tracker, member, facts, head)
-    warnings = _brief_gate(repo, head, facts["member_head"])
+    warnings = _preflight_gate(repo, facts["member_head"])
     if gate["preflight"] != [*DEFAULT_PREFLIGHT_COMMAND, f"BASE={head}"]:
         warnings.append(f"member preflight was not the default: {' '.join(gate['preflight']) or 'not recorded'}")
     merged = _git_merge(repo, member, head, facts["member_head"], ledger)
@@ -1227,8 +1227,15 @@ def advance_head(repo: Path, reason: str, *, push: bool = True) -> dict:
     if not _is_clean(repo):
         raise BatchError("integration worktree is not clean")
     expected, head = _resolve_advance(repo, ledger, tracker, reason)
+    advisories = _preflight_gate(repo, head)
     changed = _changed_files(repo, expected, head)
-    result: dict = {"reason": reason, "expected_head": expected, "head": head, "changed_files": changed}
+    result: dict = {
+        "reason": reason,
+        "expected_head": expected,
+        "head": head,
+        "changed_files": changed,
+        "advisories": advisories,
+    }
     failures: list[str] = []
     if reason == "fix":
         touched, failures = _fix_acceptance(repo, ledger, _receipts(tracker), head, changed)
@@ -1764,7 +1771,7 @@ def batch_status(repo: Path) -> dict:
         entries = ledger.get("acceptance", {}).get(member, [])
         if not entries or entries[-1].get("revision") != head or entries[-1].get("status") != "passed":
             stale.append(member)
-    sizes = brief_sizes(repo, head)
+    preflight = review_preflight(repo, head)
     save_ledger(repo, ledger)
     return {
         "batch_id": batch_id,
@@ -1775,7 +1782,7 @@ def batch_status(repo: Path) -> dict:
         "members": members_report,
         "acceptance_required": sorted(required),
         "acceptance_stale": [m for m in ledger["members"] if m in stale],
-        "brief": sizes,
+        "review_preflight": preflight,
         "final_pr": tracker.get("final_pr"),
         "owner_generation": "present" if ledger.get("owner_generation") else "missing: use recover_batch_owner",
         "next": next_steps,
@@ -1830,6 +1837,7 @@ def build_evidence(repo: Path) -> dict:
         raise BatchError("the final PR is not bound at the integration head; open the PR and bind_batch_pr first")
     if Path(str(tracker.get("integration_worktree"))).resolve() != repo.resolve():
         raise BatchError("this worktree is not the registered integration worktree")
+    _preflight_gate(repo, final_head)
     path = _ledger_dir(repo, batch_id) / "final-evidence.json"
     if path.exists():
         path.unlink()
