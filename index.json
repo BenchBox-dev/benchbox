@@ -2185,7 +2185,7 @@
         }
       },
       "integration_branch": "feat/sqlglot-core-delivery",
-      "integration_head": "28cf8f798f931e5eb8db58582b88a77d3d019480",
+      "integration_head": "d6f3ca6d9aedc3b61c3f8ce2f4e6f50a69be6278",
       "integration_log": [
         {
           "at": "2026-11-06T13:49:23Z",
@@ -2254,6 +2254,21 @@
           "op_id": "9d1d9d9dea94408eb31d0f30f189b060",
           "previous_head": "6e27e4e9debed01c40b36860ace949cd329809bf",
           "seq": 4
+        },
+        {
+          "at": "2026-11-06T16:57:21Z",
+          "changed_files": [
+            "scripts/sqlglot_delivery.py",
+            "tests/unit/scripts/test_sqlglot_delivery.py"
+          ],
+          "head": "d6f3ca6d9aedc3b61c3f8ce2f4e6f50a69be6278",
+          "kind": "fix",
+          "op_id": "94a9ccb390be4c2fab13ab230ca66736",
+          "previous_head": "28cf8f798f931e5eb8db58582b88a77d3d019480",
+          "requires_acceptance": [
+            "sqlglot-e2e-core-wheel-consumer"
+          ],
+          "seq": 5
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-sqlglot-core-delivery",
