@@ -13,7 +13,7 @@
     ],
     "member_id": "rv2r-05-release-probe-mode"
   },
-  "context": "Member of batch release-v2-remediation. GUARDRAILS: probe must be structurally incapable of publishing (no id-token: write, no upload step); never route probe through the pypi or test-pypi environments. DECISION GATE: making the probe job a required status check is a repository-settings change; prepare it and ask the owner.",
+  "context": "Member of batch release-v2-remediation. GUARDRAILS: probe must be structurally incapable of publishing (no id-token: write, no upload step); never route probe through the pypi or test-pypi environments. DECISION GATE: making the probe job a required status check is a repository-settings change; prepare it and ask the owner.\n\n2026-11-06 leader: removed rv2r-06 (already landed on the integration branch) from needs. Ordinary needs are done-only, and batch members reach done only at batch finish, so a same-batch ordinary need would deadlock the batch; the ordering is guaranteed by the integration branch instead.",
   "description": "The #3947 publish-skip bug passed unit tests (one asserted the broken shape) and local and hosted oracle review, and was found only by a 3-hour live run. Add a probe mode: release-v2 runs with its real job graph and conditions, but admit uses a synthetic probe target (no tag ruleset needed); install-matrix runs one Linux py3.12 cell; UAT shards are stubs that emit valid evidence for the stub digest; the evidence-check path (rv2r-03) is exercised in both reuse and fallback variants; and publish runs as a dry run (download admitted files, verify SHA256SUMS, twine check; no upload, no attestation). All other jobs keep their real needs and if. A PR-triggered job runs probe mode whenever .github/workflows/release-v2.yml, .github/workflows/trunk-uat.yml, .github/workflows/trunk.yml (dist-artifact job), scripts/release_*.py or the release-uat-env action change. Rollback: revert this member's commits.",
   "links": [
     ".github/workflows/release-v2.yml",
@@ -50,6 +50,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "8d116a3d714c48749fc75bb447c47428",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-06T18:38:03Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a8b25a352c6b47729484ee10dcf3372c",
       "session_id": "b7a346e5fd054aa88d3c05a944442610"
     }
   ]
