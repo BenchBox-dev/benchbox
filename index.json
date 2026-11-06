@@ -29240,6 +29240,13 @@
       "status": "done",
       "title": "SQL Cross-Platform Benchmark Suite"
     },
+    "sql-execution-evidence-sqlite-q16-timeouts-20261106": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "sql-execution-evidence fails on SQLite TPC-DS q16 and tpchavoc q10_v5 15 s timeouts on hosted runners, unrelated to the PR"
+    },
     "sql-execution-gate-cover-tpchavoc-obt-20261025": {
       "claim": null,
       "needs": [

@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "The hosted q16 and q10_v5 timings over at least 10 recent runs, with sqlite version and runner class, are recorded in context.",
+    "The gate passes 10 consecutive unchanged reruns on one PR head with no timeout failures.",
+    "Any query budget or exclusion is derived from those measurements and documented where the gate is defined."
+  ],
+  "description": "Problem. Every batch PR merged on 2026-11-06 failed at least once in sql-execution-evidence, and core with it: #3948, #3949, #3950, #3952 and #3960. The failures were SQLite TPC-DS q16, and once tpchavoc q10_v5, exceeding the gate's 15 s per-query timeout. #3960 failed on four runs and #3952 on three before a make pr-rerun passed. None of those PRs changed a SQLite or SQL-generation path. Locally, q16 passes in 11 to 36 s on sqlite 3.53; CI uses sqlite 3.46.1. Each failure costs a full CI cycle (1 to 5 hours of queue, see ci-queue-throughput-delays-arming-20261101).\n\nChange. Find why q16 runs close to or over 15 s on hosted runners: sqlite version, runner class, or an unindexed plan. Then make the gate deterministic, either by budgeting per query from measured hosted timings or by excluding queries whose hosted time is within a stated margin of the timeout, with the exclusion recorded. Do not just raise the timeout without measurements.\n\nGuardrails: work in a linked worktree (make worktree-create); never edit the primary clone; no explanatory comments (make comment-policy-check); changelog.d fragment if user-facing; re-read cited symbols before editing; never bypass a required check or relax a ruleset (owner-only).",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/pull/3960",
+    "https://github.com/BenchBox-dev/BenchBox/pull/3952"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-06T15:03:08Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5424ee57964e44b1b952a12998df8e19",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}
