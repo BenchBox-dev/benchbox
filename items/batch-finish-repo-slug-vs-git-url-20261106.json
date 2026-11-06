@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Binding with a .git URL either is refused at bind time with the canonical form named, or batch-finish accepts it.",
+    "A test covers URL, slug, case and .git variants."
+  ],
+  "description": "On 2026-11-06, after PR #3981 (batch load-path-live-fixes) merged and all members were finished, `make batch-finish EXECUTE=1` refused with a repository mismatch. The leader had bound the final PR with bind_batch_pr using `https://github.com/BenchBox-dev/BenchBox.git`, and the batch tooling compares against a slug. Once members are finished the batch is completed and bind_batch_pr cannot be re-run, so the leader cleaned up by hand: it checked each member tip against its accepted head and refs/pull/3981/head, then removed the worktrees and branches. Other batches (#3948, #3949, #3950, #3952, #3960) finished normally.\n\nChange. Normalize repository identity (case, .git suffix, URL versus slug) in both bind_batch_pr validation and the batch-finish comparison, or refuse the non-canonical form at bind time when it can still be corrected.\n\nGuardrails: work in a linked worktree; tracker runtime changes land in the todo-db repository, and only the pin and scripts land here.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-06T22:44:57Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "706c0fdb80c3481fb6d61f10bb5c82b7",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}

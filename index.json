@@ -5743,6 +5743,13 @@
       "status": "done",
       "title": "Make batch-finish finish the leader's integration worktree through the existing worktree-finish proof"
     },
+    "batch-finish-repo-slug-vs-git-url-20261106": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "make batch-finish refuses when the final PR was bound with a .git repository URL instead of an owner/repo slug"
+    },
     "batch-integration-loop-20261101": {
       "claim": null,
       "needs": [
