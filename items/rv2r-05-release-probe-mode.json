@@ -6,6 +6,13 @@
     "A PR touching release-v2.yml shows the probe job; making it a required check is prepared as a settings change for the owner (DECISION GATE)",
     "Both evidence variants (reuse and fallback) execute in probe and reach the publish dry run"
   ],
+  "batch": {
+    "batch_id": "release-v2-remediation",
+    "implementation_dependencies": [
+      "rv2r-03-release-evidence-check"
+    ],
+    "member_id": "rv2r-05-release-probe-mode"
+  },
   "context": "Member of batch release-v2-remediation. GUARDRAILS: probe must be structurally incapable of publishing (no id-token: write, no upload step); never route probe through the pypi or test-pypi environments. DECISION GATE: making the probe job a required status check is a repository-settings change; prepare it and ask the owner.",
   "description": "The #3947 publish-skip bug passed unit tests (one asserted the broken shape) and local and hosted oracle review, and was found only by a 3-hour live run. Add a probe mode: release-v2 runs with its real job graph and conditions, but admit uses a synthetic probe target (no tag ruleset needed); install-matrix runs one Linux py3.12 cell; UAT shards are stubs that emit valid evidence for the stub digest; the evidence-check path (rv2r-03) is exercised in both reuse and fallback variants; and publish runs as a dry run (download admitted files, verify SHA256SUMS, twine check; no upload, no attestation). All other jobs keep their real needs and if. A PR-triggered job runs probe mode whenever .github/workflows/release-v2.yml, .github/workflows/trunk-uat.yml, .github/workflows/trunk.yml (dist-artifact job), scripts/release_*.py or the release-uat-env action change. Rollback: revert this member's commits.",
   "links": [
@@ -28,6 +35,14 @@
       "op": "update",
       "op_id": "9b1d1c705fd948299574645fac0d3033",
       "session_id": "7da446616e5349658579dfc9c4288973"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-06T13:41:50Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b7ed8a0a42e249989f3b4d0df055034a",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
     }
   ]
 }
