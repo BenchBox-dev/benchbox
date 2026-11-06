@@ -439,21 +439,16 @@
   {
    "disposition": "prose-link-pinned",
    "kinds": {
-    "root": 1,
-    "unresolved": 1
+    "root": 1
    },
-   "occurrences": 2,
+   "occurrences": 1,
    "path": "CONTRIBUTING.md",
    "rule": "agent-and-contributor-prose",
-   "target_count": 2,
+   "target_count": 1,
    "targets": [
     {
      "kind": "root",
      "target": "docs/"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/internal/review-v2.md"
     }
    ]
   },
@@ -4154,9 +4149,9 @@
    "generated": 3,
    "pattern": 333,
    "root": 199,
-   "unresolved": 2048
+   "unresolved": 2047
   },
-  "references": 33198,
+  "references": 33197,
   "unclassified": 0
  }
 }
