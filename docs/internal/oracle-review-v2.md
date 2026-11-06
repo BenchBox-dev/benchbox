@@ -79,7 +79,10 @@ BenchBox keeps the consumer side:
 Hosted review installs the lock at the gated base tip; the gate runs from a
 second, separately verified install of the current base tip in its own process.
 The caller workflows pass the Theseus commit twice (the `uses:` ref and
-`theseus_ref`); both must equal the lock's `workflow_sha`. State and caches keep
+`theseus_ref`); both must equal the lock's `workflow_sha`, and
+`tests/unit/workflows/test_theseus_pin_consistency.py` enforces it for every
+workflow that references Theseus. `theseus-pin-bump.md` covers bumping and
+rolling back the pin. State and caches keep
 their BenchBox locations: `scripts/theseus_cli.py` sets `THESEUS_LOCAL_STATE` to
 `~/.cache/benchbox/local-oracle` and `THESEUS_OMP_CACHE` to `~/.cache/benchbox/omp`
 (and `THESEUS_EPHEMERAL_CLONE=1` in a cloud session), so persisted findings,

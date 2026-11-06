@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import os
 import re
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -445,3 +449,100 @@ def test_every_uat_job_frees_runner_disk_through_the_shared_environment_action()
     for name in ("uat-stage1", "uat-stage2", "uat-stage3"):
         uses = [step.get("uses") for step in _jobs()[name]["steps"]]
         assert "./.github/actions/release-uat-env" in uses
+
+
+OUTCOME_JOBS = ("admit", "install-matrix", "release-uat", "publish", "github-release")
+PYPI_SUCCESS = dict.fromkeys(OUTCOME_JOBS, "success")
+TEST_PYPI_SUCCESS = {**PYPI_SUCCESS, "github-release": "skipped"}
+RUN_41949185392_ATTEMPT_2 = {**TEST_PYPI_SUCCESS, "publish": "skipped"}
+
+
+def _outcome_step() -> dict:
+    return _jobs()["release-outcome"]["steps"][0]
+
+
+def _run_outcome(target: str, results: dict[str, str]) -> subprocess.CompletedProcess[str]:
+    bash = shutil.which("bash")
+    assert bash is not None
+    step = _outcome_step()
+    env = {"PATH": os.environ["PATH"], "TARGET": target}
+    for name, value in step["env"].items():
+        if name.endswith("_RESULT"):
+            job = next(job for job in OUTCOME_JOBS if f"needs.{job}.result" in value)
+            env[name] = results[job]
+    with tempfile.TemporaryDirectory() as directory:
+        (Path(directory) / "step.sh").write_text(step["run"], encoding="utf-8", newline="\n")
+        return subprocess.run(
+            [bash, "step.sh"], cwd=directory, env=env, capture_output=True, text=True, timeout=30, check=False
+        )
+
+
+def test_release_outcome_job_waits_for_every_release_job_and_always_runs():
+    job = _jobs()["release-outcome"]
+    assert set(job["needs"]) == set(OUTCOME_JOBS)
+    assert job["if"] == "${{ always() }}"
+    assert job["permissions"] == {}
+    assert len(job["steps"]) == 1
+    assert _outcome_step()["env"]["TARGET"] == "${{ needs.admit.outputs.target }}"
+
+
+def test_release_outcome_stays_green_for_a_complete_pypi_release():
+    result = _run_outcome("pypi", PYPI_SUCCESS)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_release_outcome_stays_green_for_a_complete_test_pypi_release_where_github_release_is_skipped():
+    result = _run_outcome("test-pypi", TEST_PYPI_SUCCESS)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_release_outcome_fails_the_run_that_went_green_with_publish_skipped():
+    result = _run_outcome("test-pypi", RUN_41949185392_ATTEMPT_2)
+    assert result.returncode == 1
+    assert "publish finished as 'skipped', not 'success'" in result.stdout
+    assert result.stdout.count("::error::") == 1
+
+
+@pytest.mark.parametrize("job", ["admit", "install-matrix", "release-uat", "publish"])
+@pytest.mark.parametrize("result", ["skipped", "failure", "cancelled", ""])
+@pytest.mark.parametrize("target", ["pypi", "test-pypi"])
+def test_release_outcome_cannot_be_bypassed_by_a_job_that_did_not_succeed(target, result, job):
+    results = {**(PYPI_SUCCESS if target == "pypi" else TEST_PYPI_SUCCESS), job: result}
+    outcome = _run_outcome(target, results)
+    assert outcome.returncode == 1
+    assert f"{job} finished as" in outcome.stdout
+
+
+@pytest.mark.parametrize("result", ["skipped", "failure", "cancelled", ""])
+def test_release_outcome_requires_the_github_release_of_a_pypi_publish(result):
+    outcome = _run_outcome("pypi", {**PYPI_SUCCESS, "github-release": result})
+    assert outcome.returncode == 1
+    assert "github-release finished as" in outcome.stdout
+
+
+def test_release_outcome_refuses_a_github_release_for_a_test_pypi_publish():
+    outcome = _run_outcome("test-pypi", {**TEST_PYPI_SUCCESS, "github-release": "success"})
+    assert outcome.returncode == 1
+
+
+@pytest.mark.parametrize("target", ["", "unknown"])
+def test_release_outcome_fails_when_the_admitted_target_is_not_a_tag_target(target):
+    outcome = _run_outcome(target, PYPI_SUCCESS)
+    assert outcome.returncode == 1
+    assert "neither 'pypi' nor 'test-pypi'" in outcome.stdout
+
+
+def test_release_uat_requires_executed_cells_before_the_combined_gate_on_both_paths():
+    steps = _jobs()["release-uat"]["steps"]
+    names = [step.get("name") for step in steps]
+    fresh = steps[names.index("Require executed cells in every stage's shard evidence")]
+    reused = steps[names.index("Require executed cells in the release candidate's shard evidence")]
+    assert fresh["if"] == "${{ needs.uat-reuse.outputs.reuse != 'true' }}"
+    assert reused["if"] == "${{ needs.uat-reuse.outputs.reuse == 'true' }}"
+    assert fresh["env"]["RELEASE_TAG"] == "${{ inputs.tag || github.ref_name }}"
+    assert reused["env"]["RC_TAG"] == "${{ needs.uat-reuse.outputs.rc_tag }}"
+    for step, tag in ((fresh, "RELEASE_TAG"), (reused, "RC_TAG")):
+        assert f'scripts/release_uat_evidence_check.py --root "$RUNNER_TEMP/uat-evidence" --tag "${tag}"' in step["run"]
+    assert names.index(fresh["name"]) < names.index("Check the combined release gate over every shard")
+    gate_check = "Re-verify the release candidate's evidence with the combined release gate"
+    assert names.index(reused["name"]) < names.index(gate_check)
