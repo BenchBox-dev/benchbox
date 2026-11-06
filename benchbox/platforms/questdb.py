@@ -805,7 +805,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
             ) from exc
 
     def _await_ilp_row_count(self, table_name: str, expected: int, rows_sent: int) -> None:
-        deadline = time.monotonic() + _ILP_VERIFY_TIMEOUT_SECONDS
+        deadline = mono_time() + _ILP_VERIFY_TIMEOUT_SECONDS
         previous = -1
         while True:
             actual = self._ilp_table_row_count(table_name)
@@ -813,8 +813,8 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                 break
             if actual > previous:
                 previous = actual
-                deadline = time.monotonic() + _ILP_VERIFY_TIMEOUT_SECONDS
-            if time.monotonic() >= deadline:
+                deadline = mono_time() + _ILP_VERIFY_TIMEOUT_SECONDS
+            if mono_time() >= deadline:
                 raise RuntimeError(
                     f"QuestDB ILP load of '{table_name}' lost rows: sent {rows_sent:,}, "
                     f"table holds {actual:,} but {expected:,} were expected after "
