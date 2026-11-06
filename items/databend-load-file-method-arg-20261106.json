@@ -9,7 +9,7 @@
     "implementation_dependencies": [],
     "member_id": "databend-load-file-method-arg-20261106"
   },
-  "context": "Related done item perf-databend-bulk-load-20261030. Not fixed by the verifier by instruction.",
+  "context": "Related done item perf-databend-bulk-load-20261030. Not fixed by the verifier by instruction.\n\nFixed in PR #3981 (merge c1a2dc186b). Verdict: INTRODUCED by #3949 (commit 9d675b4038 added the native load_file path); the tree before it (9d675b4038^) loads TPC-H SF0.01 on Databend v1.2.881 with all counts equal to the source. Before: all 8 tables failed with argument 'method': 'dict' object cannot be converted to 'PyString'. After (fix): customer 1500, lineitem 60175, nation 25, orders 15000, part 2000, partsupp 8000, region 5, supplier 100 equal the dbgen files, decimal sums equal, no INSERT VALUES fallback; NULL and quoted-text checks pass (empty field -> NULL, literal NULL text also -> NULL per blank_null_text parity, quoted \"b|c\" one field). Row count vs source is now checked after COPY INTO and any failed table fails the run.",
   "description": "Found by live verification of #3949 (perf-databend-bulk-load-20261030) on origin/develop 525361b2f8 against datafuselabs/databend v1.2.881 (compose docker/databend, run under mocker 0.7.2) with databend-driver 0.33.6.\n\nReproduction: `uv run --extra databend -- benchbox run --platform databend:self-hosted --benchmark tpch --scale 0.01 --phases generate,load --platform-option host=localhost --platform-option port=8000 --platform-option username=benchbox --platform-option password=benchbox --non-interactive --output <dir>` with the stack up (`make uat-bring-up PLATFORM=databend`).\n\nExpected: all 8 TPC-H tables load via stage + COPY INTO with dbgen row counts (lineitem 60175 at SF0.01).\nActual: every table fails: `Failed to load customer: argument 'method': 'dict' object cannot be converted to 'PyString'`, no rows loaded, run FAILED ('Required benchmark tables are missing or empty after load'). Log /tmp/live-verify-databend-tpch.log.\n\nCause: benchbox/platforms/databend/adapter.py DatabendAdapter._load_file_native calls `connection.load_file(sql, path, format_options)` positionally. databend-driver 0.33.6 BlockingDatabendConnection.load_file has signature (sql, fp, method=None, format_options=None, copy_options=None), so the dict lands in `method`. Calling with keywords `method=\"stage\", format_options={...}` works: write_rows 4, quoted text `\"b|c\"` kept as one field, empty field loaded as NULL, literal NULL text kept as string (/tmp/live-verify-databend-probe.log). The unit fake in tests/unit/platforms/test_databend_bulk_load.py defines `load_file(self, sql, file, format_options, copy_options=None)`, which hides the mismatch. pyproject pins `databend-driver>=0.28.0`; check which driver releases have which signature and pass keywords.\n\nSuspected symbol: DatabendAdapter._load_file_native (benchbox/platforms/databend/adapter.py ~line 410) and the fake in test_databend_bulk_load.py.",
   "links": [
     "benchbox/platforms/databend/adapter.py",
@@ -104,6 +104,14 @@
       "generation": "81090995660b4043812629c1ac092ff6",
       "op": "prepare",
       "op_id": "c51c45e5596b42ab84770f30efb13d7e",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-06T22:38:29Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a11a5e44583e4b4399dd1ca2de320458",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
