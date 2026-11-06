@@ -1753,7 +1753,7 @@
         }
       },
       "integration_branch": "feat/tpc-timer-boundaries-v2",
-      "integration_head": "14073a62e9618cfe556cf4afda0d6a1146dd0003",
+      "integration_head": "601a4a22bee8e01fb198462090be5e5b291bdd9d",
       "integration_log": [
         {
           "at": "2026-11-05T19:21:47Z",
@@ -1826,6 +1826,45 @@
             "tpcds-maintenance-timer-hygiene-20261103"
           ],
           "seq": 6
+        },
+        {
+          "at": "2026-11-06T03:03:00Z",
+          "changed_files": [
+            ".github/oracle-reviewers.yml",
+            ".github/theseus-lock.json",
+            ".github/workflows/oracle-gate.yml",
+            ".github/workflows/oracle-verdict.yml",
+            "CHANGELOG.md",
+            "README.md",
+            "_project/decisions/batch-integration-loop-2026-11-01.md",
+            "_project/decisions/review-depth-and-capacity-2026-11-05.md",
+            "_project/scripts/project_references_baseline.txt",
+            "_project/scripts/theseus_bootstrap.py",
+            "_project/sql-translation-ml/uv.lock",
+            "benchbox/__init__.py",
+            "benchbox/utils/VERSION_MANAGEMENT.md",
+            "changelog.d/fix-sqlite-q19-e2e-reliability.json",
+            "docs/README.md",
+            "docs/agent/batch-feature-delivery.md",
+            "docs/internal/oracle-review-v2.md",
+            "pyproject.toml",
+            "scripts/batch_integration.py",
+            "scripts/generate_changelog_entry.py",
+            "scripts/release_flow.py",
+            "tests/unit/scripts/batch_loop_world.py",
+            "tests/unit/scripts/test_batch_evidence.py",
+            "tests/unit/scripts/test_batch_integration.py",
+            "tests/unit/scripts/test_generate_changelog_entry.py",
+            "tests/unit/scripts/test_oracle_policy_pin.py",
+            "tests/unit/scripts/test_release_flow.py",
+            "uv.lock"
+          ],
+          "head": "601a4a22bee8e01fb198462090be5e5b291bdd9d",
+          "kind": "develop-merge",
+          "merged_parent": "7aa4a8b3912502ac93ce607003713ed142bd373b",
+          "op_id": "74bdc80a26d8492580defa45310cb0b8",
+          "previous_head": "14073a62e9618cfe556cf4afda0d6a1146dd0003",
+          "seq": 7
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpc-timer-boundaries-v2",
