@@ -210,7 +210,7 @@ landed are not dispatched to a cloud session.
 
    `make pr-open` first runs the same review driver as CI on the committed
    `HEAD`, from a trusted export of `origin/develop` (see
-   `docs/internal/review-v2.md`, Local pre-PR review), and refuses before
+   `docs/internal/oracle-review-v2.md`, Local pre-PR review), and refuses before
    any push on a DO NOT SHIP or a Critical or High defect, including one carried
    from an earlier review of the PR, a missing `TYPESAFE_API_KEY` in the cloud
    environment, an unreachable gateway, a missing `review-cloud` client

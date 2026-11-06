@@ -64,10 +64,10 @@ Five of these contexts are always-reporting result jobs in
 `.github/workflows/ci.yml`. `oracle-gate` is a commit status that
 `.github/workflows/review-gate.yml` posts through the `benchbox-oracle` App;
 it passes at once for a change confined to inert paths (see Inert-path
-manifest in `docs/internal/review-v2.md`). `hold` comes from
+manifest in `docs/internal/oracle-review-v2.md`). `hold` comes from
 `.github/workflows/pr-hold.yml` and fails while the PR carries the
 `no-auto-merge` label; it re-runs when a label is added or removed.
-`.github/workflows/review.yml` reports no check: it runs a no-op
+`.github/workflows/review-request.yml` reports no check: it runs a no-op
 `review-event` job on oracle review edited and dismissed events only, and its
 completion makes `oracle-gate` re-evaluate that head.
 
@@ -235,7 +235,7 @@ History of the required contexts:
 - 2026-10-24: `oracle-review` stopped being required, leaving the App-bound
   `oracle-gate` as the only required oracle check; the hosted ruleset is
   changed right after this runbook change merges. Recorded in
-  `_project/decisions/review-check-retired-2026-10-24.md`.
+  `_project/decisions/oracle-review-check-retired-2026-10-24.md`.
 
 ### No merge queue
 
@@ -248,7 +248,7 @@ resolved. The drift check reports a `merge_queue` rule that reappears.
 The required `oracle-gate` check (`.github/workflows/review-gate.yml`) passes
 when any of these holds:
 
-- The change touches only inert paths (see Inert-path manifest in `docs/internal/review-v2.md`).
+- The change touches only inert paths (see Inert-path manifest in `docs/internal/oracle-review-v2.md`).
 - The latest `oracle-verdict` commit status on the current head, created by the
   `benchbox-oracle` App after any retarget, is success. Review bodies are not read, so editing or
   deleting a review cannot change the result; statuses from any other creator

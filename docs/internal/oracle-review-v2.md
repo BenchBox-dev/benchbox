@@ -8,9 +8,9 @@ and posts a non-required `oracle-verdict` status and a review through the
 owner's GitHub App. The required `oracle-gate` check reads that App's PR reviews
 from `develop` code (see Required gate from trusted code). Policy:
 `.github/oracle-reviewers.yml`. Decision records:
-`_project/decisions/review-v2-shadow-2026-10-05.md` and, for verdicts,
+`_project/decisions/oracle-review-v2-shadow-2026-10-05.md` and, for verdicts,
 evidence and review rounds,
-`_project/decisions/review-protocol-2026-10-08.md`.
+`_project/decisions/oracle-review-protocol-2026-10-08.md`.
 
 The soundness manifest lists `.github/workflows/review-verdict.yml` explicitly,
 besides covering all workflows by directory prefix, so a PR changing only this
@@ -1647,7 +1647,7 @@ timeout.
 `oracle-gate` became required on 2026-10-21, scoped to the `benchbox-oracle`
 App's integration ID, alongside `oracle-review`, which stopped being required on
 2026-10-24 after a side-by-side comparison
-(`_project/decisions/review-check-retired-2026-10-24.md`). Its workflow
+(`_project/decisions/oracle-review-check-retired-2026-10-24.md`). Its workflow
 now only notifies; its completion after a review event is how `oracle-gate`
 re-evaluates without a trusted trigger of its own.
 

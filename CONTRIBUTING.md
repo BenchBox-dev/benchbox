@@ -141,7 +141,7 @@ independently to each member.
    fetchable, an unreachable gateway, a quota or reviewer absence, a held PR, a secret value on disk, or an
    `omp` that does not match the CI pin) refuses regardless.
    It pushes and arms exactly the commit it reviewed. The review is advisory, may differ from the CI oracle,
-   and posts nothing to GitHub. See `docs/internal/review-v2.md`, Local pre-PR review.
+   and posts nothing to GitHub. See `docs/internal/oracle-review-v2.md`, Local pre-PR review.
 
 5. **Arm it and monitor until it merges:**
 

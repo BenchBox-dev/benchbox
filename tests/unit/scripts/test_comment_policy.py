@@ -2580,7 +2580,13 @@ def test_oracle_review_covers_reads_both_verdict_headings(
     import check_comment_cleanup_scope as scope
 
     _review_env(tmp_path, monkeypatch)
-    _fake_api(monkeypatch, reviews=[_verdict_review(heading=heading)])
+    review = _verdict_review(heading=heading)
+    status = _gate_status()
+
+    def api(token: str, path: str):
+        return [review] if "/reviews?" in path else [status]
+
+    monkeypatch.setattr(scope, "_github_api", api)
     assert scope.oracle_review_covers(tmp_path) is True
 
 
