@@ -957,6 +957,7 @@
       "accepted_members": {
         "databend-load-file-method-arg-20261106": "722e7ddb5891672deca7a840a373ac18985a816b",
         "duckdb-iceberg-handler-register-fails-20261106": "bfb2856e453f7023e15fd771548d8003ab67cb04",
+        "questdb-ilp-date-columns-sent-as-strings-20261106": "786b7f93bd0b7b017b1f96a78cae3dedd18d3593",
         "questdb-ilp-load-drops-rows-per-file-socket-20261106": "3fd14b81537468041061304e9de9065b1e9b71fe"
       },
       "batch_schema": 2,
@@ -985,6 +986,18 @@
           "integration_head": "64602f81fdc17d68e00b3d3188adc60a318e8cbb",
           "integration_seq": 3
         },
+        "questdb-ilp-date-columns-sent-as-strings-20261106": {
+          "accepted_head": "786b7f93bd0b7b017b1f96a78cae3dedd18d3593",
+          "changed_files": [
+            "benchbox/platforms/questdb.py",
+            "changelog.d/feat-load-path-live-fixes--questdb-ilp-date-columns-sent-as-strings-20261106.json",
+            "tests/unit/platforms/test_questdb_adapter.py",
+            "tests/unit/platforms/test_questdb_coverage.py",
+            "tests/unit/platforms/test_questdb_ilp_arrow.py"
+          ],
+          "integration_head": "4176d2b85ef0fd75b5f387167afc89d30f807875",
+          "integration_seq": 4
+        },
         "questdb-ilp-load-drops-rows-per-file-socket-20261106": {
           "accepted_head": "3fd14b81537468041061304e9de9065b1e9b71fe",
           "changed_files": [
@@ -1000,7 +1013,7 @@
         }
       },
       "integration_branch": "feat/load-path-live-fixes",
-      "integration_head": "64602f81fdc17d68e00b3d3188adc60a318e8cbb",
+      "integration_head": "4176d2b85ef0fd75b5f387167afc89d30f807875",
       "integration_log": [
         {
           "at": "2026-11-06T19:34:49Z",
@@ -1034,6 +1047,15 @@
           "op_id": "a0bcbd4b1cc74620a30946c64ed94391",
           "previous_head": "9c964124ceebb124532943d1df6b877d71648422",
           "seq": 3
+        },
+        {
+          "at": "2026-11-06T20:26:08Z",
+          "head": "4176d2b85ef0fd75b5f387167afc89d30f807875",
+          "kind": "prepare",
+          "member": "questdb-ilp-date-columns-sent-as-strings-20261106",
+          "op_id": "ad3166f2d6cc4482aeda94d0b47a079b",
+          "previous_head": "64602f81fdc17d68e00b3d3188adc60a318e8cbb",
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-load-path-live-fixes",
@@ -24973,17 +24995,12 @@
       "title": "QuestDB benchmark compatibility remediation: disable always-failing benchmarks and patch adapter to expand coverage"
     },
     "questdb-ilp-date-columns-sent-as-strings-20261106": {
-      "claim": {
-        "expires_at": "2026-11-07T20:24:26Z",
-        "generation": "cf42c7743a2d47248f392fc3b82a35ec",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [
         "questdb-ilp-load-drops-rows-per-file-socket-20261106"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "QuestDB ILP load sends TPC-H DATE columns as strings into TIMESTAMP columns, lineitem loads zero rows"
     },
     "questdb-ilp-load-drops-rows-per-file-socket-20261106": {

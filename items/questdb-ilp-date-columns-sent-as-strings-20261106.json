@@ -15,6 +15,78 @@
   "links": [
     "benchbox/platforms/questdb.py"
   ],
+  "prepared": {
+    "accepted_head": "786b7f93bd0b7b017b1f96a78cae3dedd18d3593",
+    "batch_id": "load-path-live-fixes",
+    "changed_files": [
+      "benchbox/platforms/questdb.py",
+      "changelog.d/feat-load-path-live-fixes--questdb-ilp-date-columns-sent-as-strings-20261106.json",
+      "tests/unit/platforms/test_questdb_adapter.py",
+      "tests/unit/platforms/test_questdb_coverage.py",
+      "tests/unit/platforms/test_questdb_ilp_arrow.py"
+    ],
+    "integration_head": "4176d2b85ef0fd75b5f387167afc89d30f807875",
+    "integration_seq": 4,
+    "member_id": "questdb-ilp-date-columns-sent-as-strings-20261106",
+    "overlaps": [
+      {
+        "kind": "member",
+        "member": "questdb-ilp-load-drops-rows-per-file-socket-20261106",
+        "paths": [
+          "benchbox/platforms/questdb.py",
+          "tests/unit/platforms/test_questdb_adapter.py",
+          "tests/unit/platforms/test_questdb_coverage.py"
+        ]
+      }
+    ],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "b1d59a2e5ce68b19cccce60d859cb51873c8e578af04682d153abb78557e36ed",
+    "source_base": "64602f81fdc17d68e00b3d3188adc60a318e8cbb",
+    "source_revision": "786b7f93bd0b7b017b1f96a78cae3dedd18d3593",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-load-path-live-fixes--questdb-ilp-date-columns-sent-as-strings-20261106",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/test_manifest_driven_loading.py",
+        "tests/integration/test_misc_plan_capture_live.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/uat/test_connection_registry_drift.py",
+        "tests/unit/core/tuning/test_capability_registry_parity.py",
+        "tests/unit/platforms/test_misc_plan_capture.py",
+        "tests/unit/platforms/test_questdb_adapter.py",
+        "tests/unit/platforms/test_questdb_coverage.py",
+        "tests/unit/platforms/test_questdb_ilp_arrow.py",
+        "tests/unit/platforms/test_questdb_join_scope.py",
+        "tests/unit/platforms/test_questdb_rewrites.py",
+        "tests/unit/platforms/test_questdb_schema_enhancement.py",
+        "tests/unit/platforms/test_throughput_session_capability.py",
+        "tests/unit/utils/test_dialect_utils.py"
+      ],
+      "review": {
+        "base_sha": "64602f81fdc17d68e00b3d3188adc60a318e8cbb",
+        "head_sha": "786b7f93bd0b7b017b1f96a78cae3dedd18d3593",
+        "head_tree": "31f670346439f31c0b5a96447b7a821db9b41382",
+        "outcome": "clear",
+        "patch_digest": "4f8a4a786ddc1375393bcbf3db48cc3f",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "c2bdd8bc67424f827b7b79159aa518a46ba075d7"
+      },
+      "revision": "786b7f93bd0b7b017b1f96a78cae3dedd18d3593",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
@@ -39,6 +111,15 @@
       "generation": "cf42c7743a2d47248f392fc3b82a35ec",
       "op": "take",
       "op_id": "ad2971ff8a364f04aca3d927c5aa0d13",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-06T20:26:08Z",
+      "client": "omp-coding-agent",
+      "generation": "cf42c7743a2d47248f392fc3b82a35ec",
+      "op": "prepare",
+      "op_id": "ad3166f2d6cc4482aeda94d0b47a079b",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
