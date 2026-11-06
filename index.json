@@ -27104,10 +27104,15 @@
       "title": "Make release-v2 check trunk UAT evidence instead of running UAT, with full UAT as fallback"
     },
     "rv2r-04-uat-rubric-automation": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-07T15:47:05Z",
+        "generation": "9f71d1c1bf9d4b999ed6eac4e01a35f9",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Pin UAT images and automate the owner-approved gate-tuning rubric"
     },
     "rv2r-05-release-probe-mode": {
