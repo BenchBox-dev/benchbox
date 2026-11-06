@@ -580,6 +580,23 @@ def test_final_compile_folds_prerelease_verbatim_and_moves_compare_links(
     )
 
 
+def test_maintenance_compile_links_to_the_previous_release_of_its_own_line(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = _repo(tmp_path)
+    _git(repo, "tag", "v0.5.0")
+    _fragment(repo, "fix-a.json", [_entry("fixed", "fixed-maintenance")], subject="fix: a (#31)")
+
+    assert _compile(repo, monkeypatch, "0.4.3") == 0
+
+    text = (repo / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert _links(text)[:3] == [
+        f"[Unreleased]: {COMPARE}v0.4.3...HEAD",
+        f"[0.4.3]: {COMPARE}v0.4.2...v0.4.3",
+        f"[0.4.2]: {COMPARE}v0.4.1...v0.4.2",
+    ]
+
+
 def test_final_compile_without_fragments_folds_the_prerelease_section_unchanged(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

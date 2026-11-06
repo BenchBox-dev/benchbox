@@ -482,6 +482,149 @@ If the live ruleset differs from this runbook, update the ruleset or this
 document before relying on release-required enforcement. The retirement note
 above lists what to do once the ruleset is deleted.
 
+## Branch rulesets — `release/X.Y.x` maintenance lines
+
+A maintenance line is a branch `release/X.Y.x` that the owner creates from the
+`vX.Y.0` tag commit (or the newest `vX.Y.Z` tag of that minor) to ship a fix on
+an older minor without shipping everything on `develop`; see `release-guide.md`,
+"Maintenance releases". A branch exists only while its line is supported.
+Two rulesets cover every such branch, so both exist even when no branch does.
+Git cannot hold a branch named `release` and a branch named `release/X.Y.x` at
+once, so delete the legacy `release` branch before the first line is created.
+
+Ruleset name: `release-branches`, targets `refs/heads/release/**`.
+
+Pull requests into a maintenance line pass the same gate as `develop`: squash
+merge only, the same required contexts, resolved review threads, linear
+history, no force push. The ruleset has no bypass actors, so a push made with
+the owner's credentials is refused as well. It carries no `creation` or
+`deletion` rule; those belong to `release-branch-lifecycle` below.
+
+Required status checks:
+
+```text
+- core
+- explorer
+- results-data
+- docs
+- tooling
+- hold
+- oracle-gate
+```
+
+`oracle-gate` is bound to the `benchbox-oracle` App (`integration_id` 5201041),
+as on `develop`. The gate workflow, the review workflow, the reviewer policy
+(`.github/oracle-reviewers.yml`) and the `oracle` environment name `develop` as
+the only gated base, so a pull request into `release/X.Y.x` cannot report
+`oracle-gate` and cannot merge until they also cover release bases. Apply this
+ruleset only once they do.
+
+Other ruleset properties to preserve:
+
+```text
+strict_required_status_checks_policy: false
+required_linear_history: true
+non_fast_forward: true
+required_pull_request_reviews:    squash-only PRs
+require_extra_approval_for_unattributed_changes: true
+deletion: allowed
+bypass_actors: (none)
+```
+
+`deletion: allowed` is deliberate: deleting a branch whose line ended is the
+owner's lifecycle action, and a `deletion` rule in a ruleset without bypass
+actors would forbid it for everyone.
+
+Apply (owner only; save the block as `release-branches.json`, then
+`gh api -X POST repos/BenchBox-dev/BenchBox/rulesets --input release-branches.json`):
+
+```json
+{
+  "name": "release-branches",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {"ref_name": {"include": ["refs/heads/release/**"], "exclude": []}},
+  "bypass_actors": [],
+  "rules": [
+    {
+      "type": "pull_request",
+      "parameters": {
+        "required_approving_review_count": 0,
+        "dismiss_stale_reviews_on_push": false,
+        "required_reviewers": [],
+        "require_code_owner_review": false,
+        "dismissal_restriction": {"enabled": false, "allowed_actors": []},
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": true,
+        "require_extra_approval_for_unattributed_changes": true,
+        "allowed_merge_methods": ["squash"]
+      }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": false,
+        "do_not_enforce_on_create": false,
+        "required_status_checks": [
+          {"context": "core"},
+          {"context": "explorer"},
+          {"context": "results-data"},
+          {"context": "docs"},
+          {"context": "tooling"},
+          {"context": "hold"},
+          {"context": "oracle-gate", "integration_id": 5201041}
+        ]
+      }
+    },
+    {"type": "required_linear_history"},
+    {"type": "non_fast_forward"}
+  ]
+}
+```
+
+### Maintenance-line creation and deletion restricted to the owner
+
+Ruleset name: `release-branch-lifecycle`, targets `refs/heads/release/**`.
+
+Only the owner may create or delete a `release/**` branch, so no second
+always-on line appears by accident. The `creation` and `deletion` rules block
+everyone except the bypass actor, and a bypass actor bypasses every rule of its
+ruleset. The pull-request gate therefore lives in `release-branches`, which has
+no bypass actors, and this ruleset holds nothing but the two lifecycle rules.
+`scripts/ruleset_drift_check.py` pins the rules, the target, and exactly one
+bypass actor, `User` 57046 with `bypass_mode: always` (the identity that pushes
+release tags; see "Tag creation restricted to maintainers").
+
+Apply (owner only; save the block as `release-branch-lifecycle.json`, then
+`gh api -X POST repos/BenchBox-dev/BenchBox/rulesets --input release-branch-lifecycle.json`):
+
+```json
+{
+  "name": "release-branch-lifecycle",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {"ref_name": {"include": ["refs/heads/release/**"], "exclude": []}},
+  "bypass_actors": [{"actor_id": 57046, "actor_type": "User", "bypass_mode": "always"}],
+  "rules": [{"type": "creation"}, {"type": "deletion"}]
+}
+```
+
+If the API refuses the `User` actor type, copy the accepted shape from the live
+tag ruleset: `gh api repos/BenchBox-dev/BenchBox/rulesets/18774756 --jq .bypass_actors`.
+
+Verify (list, then inspect each by id):
+
+```bash
+gh api repos/BenchBox-dev/BenchBox/rulesets --jq '.[] | select(.name | startswith("release-branch")) | {id, name, target}'
+gh api repos/BenchBox-dev/BenchBox/rulesets/<id> --jq '{name, enforcement, include: .conditions.ref_name.include, bypass_actors, rules: [.rules[].type]}'
+gh auth token | uv run -- python scripts/ruleset_drift_check.py --token-stdin --require-bypass-actor-visibility
+```
+
+The drift check requires both rulesets to exist and to match this section. The
+environment deployment policies are unchanged: a release tag pushed from a
+maintenance line deploys under the tag ref, which `pypi` and `test-pypi` already
+admit (`v*`).
+
 ## Tag creation and release-environment protections
 
 `release-v2.yml` admits only a tag whose commit has a successful trunk run,
@@ -749,12 +892,15 @@ invocation, as a blocking release check in `release-canary.yml`, and during
 `tooling` result. Nightly and canary drift jobs check out `develop`. Only the
 drift step gets the admin-visible token.
 
-The script parses this runbook for `develop-squash-only` and `release-only`,
-then compares the live rulesets for required status check contexts, strict-base
-settings, bypass actors, linear history, non-fast-forward protection, deletion
-protection, and target refs. For `develop-squash-only` it also applies the
-`review_enforcement_findings` predicate, as described in "Soundness-path
-review enforcement" above.
+The script parses this runbook for `develop-squash-only`, `release-only` and
+`release-branches`, then compares the live rulesets for required status check
+contexts, strict-base settings, bypass actors, linear history, non-fast-forward
+protection, deletion protection, and target refs. For `develop-squash-only` and
+`release-branches` it also applies the `review_enforcement_findings` predicate,
+as described in "Soundness-path review enforcement" above. It pins
+`release-branch-lifecycle` (creation and deletion rules, owner bypass actor)
+from constants in the script, because that ruleset's one bypass actor is the
+point of it.
 
 The hosted checks use the repository secret `RULESET_DRIFT_TOKEN`, which has
 enough ruleset write or admin visibility for the API to expose `bypass_actors`.
