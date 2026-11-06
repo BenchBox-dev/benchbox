@@ -86,6 +86,7 @@ class TPCDSPowerTest:
             raise ValueError("scale_factor must be a positive number")
 
         self.benchmark = benchmark
+        self._pregenerated_queries: dict[tuple[Any, Any], str] = {}
 
         if connection_string is not None:
             conn_str = connection_string
@@ -157,6 +158,7 @@ class TPCDSPowerTest:
             self.logger.error(error_msg)
             return result
 
+        self._pregenerated_queries = {}
         self._preflight_validate_generation(available_query_ids)
 
         try:
@@ -252,7 +254,7 @@ class TPCDSPowerTest:
             variant = None
             query_display_id = str(query_id)
 
-        query_start = mono_time()
+        query_start: float | None = None
         query_result: dict[str, Any] = {
             "query_id": query_display_id,
             "position": position + 1,
@@ -267,16 +269,12 @@ class TPCDSPowerTest:
             if self.config.verbose:
                 self.logger.info(f"Executing Query {query_display_id} (position {position + 1})")
 
-            get_query_kwargs: dict[str, Any] = {
-                "seed": stream_param_seed,
-                "scale_factor": self.config.scale_factor,
-                "dialect": self.target_dialect,
-            }
-            if variant is not None:
-                get_query_kwargs["variant"] = variant
-            query_text = self.benchmark.get_query(query_id, **get_query_kwargs)
+            query_text = self._pregenerated_queries.get((query_id, variant))
+            if query_text is None:
+                query_text = self._generate_query(query_id, variant, stream_param_seed)
 
             label = f"Position_{position + 1}_Query_{query_display_id}"
+            query_start = mono_time()
             try:
                 if hasattr(connection, "set_query_context"):
                     connection.set_query_context(query_display_id, stream_id=self.config.stream_id)
@@ -317,7 +315,7 @@ class TPCDSPowerTest:
                 self.logger.info(f"Query {query_id} completed in {execution_time:.3f}s")
 
         except Exception as e:
-            execution_time = elapsed_seconds(query_start)
+            execution_time = elapsed_seconds(query_start) if query_start is not None else 0.0
             query_result.update(
                 {
                     "execution_time_seconds": execution_time,
@@ -404,30 +402,29 @@ class TPCDSPowerTest:
                     sequence.append((sq.query_id, None))
         return sequence
 
+    def _generate_query(self, query_id: Any, variant: Any, stream_param_seed: int) -> str:
+        get_query_kwargs: dict[str, Any] = {
+            "seed": stream_param_seed,
+            "scale_factor": self.config.scale_factor,
+            "dialect": self.target_dialect,
+        }
+        if variant is not None:
+            get_query_kwargs["variant"] = variant
+        return self.benchmark.get_query(query_id, **get_query_kwargs)
+
     def _preflight_validate_generation(self, available_query_ids: list[int]) -> None:
         sequence = self._build_query_sequence(available_query_ids)
         failures = []
+        self._pregenerated_queries = {}
 
         stream_param_seed = power_parameter_seed(self.config.seed, self.config.stream_id)
 
         for position, item in enumerate(sequence):
             query_id, variant = item if isinstance(item, tuple) else (item, None)
             try:
-                if variant is not None:
-                    _ = self.benchmark.get_query(
-                        query_id,
-                        seed=stream_param_seed,
-                        scale_factor=self.config.scale_factor,
-                        variant=variant,
-                        dialect=self.target_dialect,
-                    )
-                else:
-                    _ = self.benchmark.get_query(
-                        query_id,
-                        seed=stream_param_seed,
-                        scale_factor=self.config.scale_factor,
-                        dialect=self.target_dialect,
-                    )
+                self._pregenerated_queries[(query_id, variant)] = self._generate_query(
+                    query_id, variant, stream_param_seed
+                )
             except Exception as e:
                 failures.append(f"{query_id}{variant or ''}: {e}")
         if failures:

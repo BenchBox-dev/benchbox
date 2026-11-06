@@ -107,6 +107,15 @@ def _round_duration_ms_for_export(value: float) -> float:
     return float(f"{value:.6g}")
 
 
+QUERY_MS_EXPORT_SIGNIFICANT_DIGITS = 7
+
+
+def _round_query_ms_for_export(value: float) -> float:
+    if value <= 0:
+        return round(value, 1)
+    return float(f"{value:.{QUERY_MS_EXPORT_SIGNIFICANT_DIGITS}g}")
+
+
 class SchemaV2ValidationError(ValueError):
     pass
 
@@ -367,7 +376,7 @@ def _build_query_results_section(
         entry = query_execution_to_compact_v2(qr)
         entry["id"] = str(query_id)
         if exec_time_ms is not None:
-            entry["ms"] = _round_duration_ms_for_export(float(exec_time_ms))
+            entry["ms"] = _round_query_ms_for_export(float(exec_time_ms))
         entry["iter"] = iteration
         entry["stream"] = stream_id
         entry["run_type"] = run_type

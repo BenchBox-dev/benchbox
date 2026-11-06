@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "Result bundles now export per-query ms with seven significant digits instead of one decimal place, so Power@Size derived from exported timings matches the recorded value within 0.01%.",
+      "details": [
+        "Previously sub-10 ms queries were rounded to 0.1 ms, which skewed derived Power@Size by up to about 1.4% on small subscale runs.",
+        "Aggregate statistics such as total_ms and avg_ms keep their existing rounding."
+      ],
+      "benchmarks": ["tpch", "tpcds"]
+    }
+  ]
+}
