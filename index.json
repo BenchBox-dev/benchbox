@@ -30383,15 +30383,10 @@
       "title": "Prepare and verify SQLGlot adoption source evidence in BenchBox"
     },
     "sqlglot-e2e-verified-wheel-adoption": {
-      "claim": {
-        "expires_at": "2026-11-07T21:29:56Z",
-        "generation": "665c83d5854643b3954520725ae2dda5",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Limit core wheel adoption to identity, transaction and consumer packaging"
     },
     "sqlglot-fork-a1-adopt-wrapper-wheel": {
