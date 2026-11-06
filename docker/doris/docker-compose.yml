@@ -1,6 +1,6 @@
 services:
   doris:
-    image: apache/doris:4.0.3-all-slim
+    image: apache/doris:4.0.3-all-slim@sha256:3237bfb73471da7482c6575cecc1632c96dec09509cd2e60bcb798e2c5342823
     entrypoint:
       - bash
       - -c
