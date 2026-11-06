@@ -1878,20 +1878,48 @@
       "terminal_outcome": "deliver"
     },
     "release-v2-remediation": {
-      "accepted_members": {},
+      "accepted_members": {
+        "rv2r-09-trunk-dist-every-commit": "35511fbd3be478ccbf54e1b3d348d098d5e3da3a"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "rv2r-09-trunk-dist-every-commit": {
+          "accepted_head": "35511fbd3be478ccbf54e1b3d348d098d5e3da3a",
+          "changed_files": [
+            ".github/workflows/trunk.yml",
+            "changelog.d/rv2r-09-trunk-dist-every-commit.json",
+            "docs/internal/release-artifacts.md",
+            "docs/internal/release-guide.md",
+            "scripts/release_flow.py",
+            "scripts/release_releasable.py",
+            "tests/unit/scripts/test_release_flow.py",
+            "tests/unit/scripts/test_release_releasable.py",
+            "tests/unit/workflows/test_trunk_workflow.py"
+          ],
+          "integration_head": "d3edcdae7182b2af9aacf5762c9cc221b51c0364",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/release-v2-remediation",
-      "integration_head": "20a0045113e6c8ba13c3e7c4f78351e3fe81f81e",
+      "integration_head": "d3edcdae7182b2af9aacf5762c9cc221b51c0364",
       "integration_log": [
         {
           "at": "2026-11-06T13:41:20Z",
           "head": "20a0045113e6c8ba13c3e7c4f78351e3fe81f81e",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-06T15:33:45Z",
+          "head": "d3edcdae7182b2af9aacf5762c9cc221b51c0364",
+          "kind": "prepare",
+          "member": "rv2r-09-trunk-dist-every-commit",
+          "op_id": "e2d5126a16b642ebbeab6167ea155417",
+          "previous_head": "20a0045113e6c8ba13c3e7c4f78351e3fe81f81e",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-release-v2-remediation",
@@ -27116,15 +27144,10 @@
       "title": "Enforce the release-window freeze on infrastructure changes with a merge check"
     },
     "rv2r-09-trunk-dist-every-commit": {
-      "claim": {
-        "expires_at": "2026-11-07T15:33:37Z",
-        "generation": "7fe2ba0147b04469ac4d78378235ec70",
-        "renewals": 1,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "Give every develop push its own completed trunk run so every merged commit is releasable"
     },
     "rv2r-10-flaky-ci-investigation": {
