@@ -17097,6 +17097,13 @@
       "status": "open",
       "title": "Load every UAT benchmark into InfluxDB 3 Core and restore InfluxDB release-UAT coverage"
     },
+    "influxdb-load-ignores-compressed-tsbs-files-20261106": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "InfluxDB load reads only <table>.csv, so default zstd-compressed TSBS data loads nothing"
+    },
     "influxdb-timeseries-platform": {
       "claim": null,
       "needs": [],

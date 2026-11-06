@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "default (zstd) tsbs_devops load into InfluxDB gives dbgen row counts",
+    "default port consistent between metadata and compose"
+  ],
+  "context": "Priority medium: fails loudly, with a workaround (--compression none). Not fixed by the verifier.",
+  "description": "Found by live verification of #3952 on origin/develop 525361b2f8, influxdb:3-core.\n\nReproduction: `benchbox run --platform influxdb:core --benchmark tsbs_devops --scale 0.01 --phases generate,load --platform-option host=localhost --platform-option port=8181 --platform-option ssl=false --non-interactive` (default compression zstd gives cpu.csv.zst etc.).\nExpected: cpu 172800, mem 172800, disk 345600, net 345600 rows.\nActual: `Required benchbox tables are missing or empty after load: no rows were loaded for any table. Loaded tables: []` because InfluxDBAdapter.load_data looks only for data_dir/<table>.csv (benchbox/platforms/influxdb/adapter.py, around line 135) and skips the .csv.zst files. With `--compression none` the same load gives exact row counts (see item perf-questdb-influxdb-load-20261030 evidence). Also, the default port in platform metadata is 8086 while the compose stack and adapter default_service_port use 8181, so `--platform-option port=8181` is required. Pre-existing since the initial release (csv_path line dates from e0438e9932).\n\nSuspected: InfluxDBAdapter.load_data should resolve files through normalize_table_paths / the compression handler like other adapters.",
+  "links": [
+    "benchbox/platforms/influxdb/adapter.py",
+    "benchbox/platforms/influxdb/metadata.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-06T19:24:38Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "d275432a76604240a439e6751c5a9ce8",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}
