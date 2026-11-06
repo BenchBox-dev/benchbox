@@ -7,7 +7,7 @@
     "net_estimate_status is never eligible without passing the adapter conformance rule in the ADR."
   ],
   "context": "Readers-first rollout: #3103 added reader and validator support for 2.4 and kept the producer at 2.3. The ADR amendment 'Round Trip Removed and Platform Timings' defines the fields and the timer rule. Validation rules live in benchbox/core/results/timing_fields.py.\n\n2026-11-03: power-test query generation, one of the scopes in the timer bullet, is being moved out of the timer by power-test-times-query-generation-20261031. If the owner records option A there, this item gains a need on it and drops query generation from its timer-scope bullet; timing_method 2 is still written only here, once every listed scope is out of the timer.",
-  "description": "Readers accept result schema 2.4 (#3103), but the producer still writes 2.3, so the new fields are never filled. Make the producer write them, as the locality ADR amendment requires:\n\n- Timer scope (`run.timing_method` 2): move tag setup, stats lookups, validation, plan capture and power-test query generation out of the measured query timer in every adapter.\n- `queries[].request_count`: count each `execute()` or job submit inside the query's timer, including `BEGIN` and `COMMIT`.\n- `queries[].result_bytes`: record the result bytes returned to the client.\n- `queries[].platform_timing`: capture the platform's own timing by platform statement ID, never by tag, for each adapter that exposes it (for example Snowflake QUERY_HISTORY, BigQuery job statistics, Redshift SYS_QUERY_HISTORY). Derive `platform_ms`, mark `valid`, `suspect` or `unavailable`, and keep raw `fields` numeric.\n- `run.platform_timing` summary (`source`, `definition`, `coverage`) and `run.net_estimate_status`. Every adapter starts ineligible until conformance runs earn `eligible`.\n- `environment.client_link.probed_at`, and the same statement-ID capture for the probe's own statements.\n- Set `CURRENT_SCHEMA_VERSION = \"2.4\"`.\n- Keep method-2 runs apart from method-1 runs in publication and ranking: compare and rank only within one timing method.",
+  "description": "Readers accept result schema 2.4 (#3103), but the producer still writes 2.3, so the new fields are never filled. Make the producer write them, as the locality ADR amendment requires:\n\n- Timer scope (`run.timing_method` 2): move tag setup, stats lookups, validation and plan capture out of the measured query timer in every adapter. Power-test query generation already left the timer in power-test-times-query-generation-20261031.\n- `queries[].request_count`: count each `execute()` or job submit inside the query's timer, including `BEGIN` and `COMMIT`.\n- `queries[].result_bytes`: record the result bytes returned to the client.\n- `queries[].platform_timing`: capture the platform's own timing by platform statement ID, never by tag, for each adapter that exposes it (for example Snowflake QUERY_HISTORY, BigQuery job statistics, Redshift SYS_QUERY_HISTORY). Derive `platform_ms`, mark `valid`, `suspect` or `unavailable`, and keep raw `fields` numeric.\n- `run.platform_timing` summary (`source`, `definition`, `coverage`) and `run.net_estimate_status`. Every adapter starts ineligible until conformance runs earn `eligible`.\n- `environment.client_link.probed_at`, and the same statement-ID capture for the probe's own statements.\n- Set `CURRENT_SCHEMA_VERSION = \"2.4\"`.\n- Keep method-2 runs apart from method-1 runs in publication and ranking: compare and rank only within one timing method.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3103",
     "docs/development/adr/adr-client-link-locality-disclosure.md"
@@ -28,6 +28,14 @@
       "op": "update",
       "op_id": "9346026afddb42a5b367032e109c84be",
       "session_id": "ada67604a2174486ada6b7b9a8c4f586"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-06T05:08:10Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4f1131c1c92044bd8d63617d789776a4",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
 }
