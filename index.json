@@ -11172,15 +11172,10 @@
       "title": "A dsn platform option carrying user:password@host is exported verbatim in internal result metadata"
     },
     "databend-load-file-method-arg-20261106": {
-      "claim": {
-        "expires_at": "2026-11-07T22:38:59Z",
-        "generation": "a9a18ee33c094216923c22cd78542c99",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Databend native load: connection.load_file passes format_options in the driver's method slot, every table fails to load"
     },
     "databend-release-uat-coverage": {
