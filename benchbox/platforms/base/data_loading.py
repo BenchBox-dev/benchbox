@@ -34,6 +34,7 @@ from benchbox.utils.file_format import (
     get_delimiter_for_file,
     has_trailing_delimiter,
 )
+from benchbox.utils.iceberg_layout import resolve_iceberg_metadata_file
 from benchbox.utils.printing import quiet_console
 
 logger = logging.getLogger(__name__)
@@ -1308,11 +1309,12 @@ class IcebergFileHandler(FileFormatHandler):
             )
             try:
                 table_identifier = ("benchbox", validated_table)
-                try:
-                    iceberg_table = catalog.load_table(table_identifier)
-                except Exception:
-                    catalog.register_table(table_identifier, str(file_path))
-                    iceberg_table = catalog.load_table(table_identifier)
+                metadata_file = resolve_iceberg_metadata_file(file_path)
+                if metadata_file is None:
+                    raise DataLoadingError(f"Table '{validated_table}': no Iceberg metadata found under {file_path}")
+                catalog.create_namespace_if_not_exists(table_identifier[0])
+                catalog.register_table(table_identifier, str(metadata_file))
+                iceberg_table = catalog.load_table(table_identifier)
 
                 arrow_table = iceberg_table.scan().to_arrow()
                 row_count = arrow_table.num_rows
@@ -2048,6 +2050,46 @@ def _tables_map_to_no_files(tables: Any) -> bool:
     return bool(values) and all(isinstance(value, (list, tuple)) and len(value) == 0 for value in values)
 
 
+_PLAIN_TEXT_SUFFIXES = {".tbl", ".csv", ".tsv", ".dat"}
+
+
+def _source_row_count(path: Path) -> tuple[int, bool] | None:
+    try:
+        if path.is_dir():
+            metadata_file = resolve_iceberg_metadata_file(path)
+            if metadata_file is None:
+                return None
+            from pyiceberg.table import StaticTable
+
+            return StaticTable.from_metadata(str(metadata_file)).scan().count(), True
+        if path.suffix.lower() == ".parquet":
+            import pyarrow.parquet as pq
+
+            return pq.ParquetFile(path).metadata.num_rows, True
+        if path.suffix.lower() in _PLAIN_TEXT_SUFFIXES:
+            with path.open("rb") as handle:
+                return sum(1 for line in handle if line.strip()), False
+    except Exception:
+        return None
+    return None
+
+
+def _verify_loaded_row_count(table_name: str, source_paths: list[Path], loaded_rows: int) -> None:
+    total = 0
+    exact = True
+    for source_path in source_paths:
+        counted = _source_row_count(source_path)
+        if counted is None:
+            return
+        total += counted[0]
+        exact = exact and counted[1]
+    if total > 0 and (loaded_rows == 0 or (exact and loaded_rows != total)):
+        raise DataLoadingError(
+            f"Table '{table_name}': loaded {loaded_rows} rows but the source has {total} rows "
+            f"({len(source_paths)} source path(s))"
+        )
+
+
 class DataLoader:
     def __init__(
         self,
@@ -2201,14 +2243,16 @@ class DataLoader:
             return 0
 
         try:
-            return handler.load_table_bulk(
+            row_count = handler.load_table_bulk(
                 table_name, shard_paths, self.connection, self.benchmark, self.adapter.logger
             )
-        except ClickHouseServerLoadError:
+            _verify_loaded_row_count(table_name, shard_paths, row_count)
+            return row_count
+        except DataLoadingError:
             raise
         except Exception as e:
             quiet_console.print(f"  ❌ Failed to bulk-load {table_name}: {e}")
-            return 0
+            raise DataLoadingError(f"Table '{table_name}': bulk load failed: {e}") from e
 
     def _load_single_file(self, table_name: str, file_path: Path, data_source: DataSource | None = None) -> int:
         if data_source is None:
@@ -2238,17 +2282,17 @@ class DataLoader:
                 return 0
 
             row_count = handler.load_table(table_name, file_path, self.connection, self.benchmark, self.adapter.logger)
-
+            _verify_loaded_row_count(table_name, [file_path], row_count)
             return row_count
 
         except (subprocess.CalledProcessError, FileNotFoundError) as e:
             quiet_console.print(f"⚠️  Skipping {file_path.name} - decompression/file error: {e}")
             return 0
-        except ClickHouseServerLoadError:
+        except DataLoadingError:
             raise
         except Exception as e:
             quiet_console.print(f"  ❌ Failed to load {file_path.name}: {e}")
-            return 0
+            raise DataLoadingError(f"Table '{table_name}': load failed for {file_path.name}: {e}") from e
 
     def _create_custom_handler(self, file_path: Path, table_name: str, data_source: DataSource) -> Any | None:
         if not self.handler_factory:
