@@ -8,7 +8,7 @@
     "implementation_dependencies": [],
     "member_id": "influxdb-load-ignores-compressed-tsbs-files-20261106"
   },
-  "context": "Priority medium: fails loudly, with a workaround (--compression none). Not fixed by the verifier.",
+  "context": "Priority medium: fails loudly, with a workaround (--compression none). Not fixed by the verifier.\n\nFixed in PR #3981 (merge c1a2dc186b). Verdict: PRE-EXISTING (7aa4a8b391, before #3952, reads only <table>.csv and loads nothing from zstd data). Before: 'no rows were loaded for any table'. After (default zstd data, port=8181 passed): cpu 172800, mem 172800, disk 345600, net 345600, tags 10 on influxdb:3-core; the load reads .csv/.zst/.gz/.bz2 through the shared compression handler (one file per table), checks written rows against source rows and the server count, and fails when nothing loads. The default-port inconsistency (8086 metadata vs 8181 compose) was split out by parent ruling to influxdb-default-port-8086-vs-compose-8181-20261106 and is not fixed here.",
   "description": "Found by live verification of #3952 on origin/develop 525361b2f8, influxdb:3-core.\n\nReproduction: `benchbox run --platform influxdb:core --benchmark tsbs_devops --scale 0.01 --phases generate,load --platform-option host=localhost --platform-option port=8181 --platform-option ssl=false --non-interactive` (default compression zstd gives cpu.csv.zst etc.).\nExpected: cpu 172800, mem 172800, disk 345600, net 345600 rows.\nActual: `Required benchbox tables are missing or empty after load: no rows were loaded for any table. Loaded tables: []` because InfluxDBAdapter.load_data looks only for data_dir/<table>.csv (benchbox/platforms/influxdb/adapter.py, around line 135) and skips the .csv.zst files. With `--compression none` the same load gives exact row counts (see item perf-questdb-influxdb-load-20261030 evidence). Also, the default port in platform metadata is 8086 while the compose stack and adapter default_service_port use 8181, so `--platform-option port=8181` is required. Pre-existing since the initial release (csv_path line dates from e0438e9932).\n\nSuspected: InfluxDBAdapter.load_data should resolve files through normalize_table_paths / the compression handler like other adapters.",
   "links": [
     "benchbox/platforms/influxdb/adapter.py",
@@ -106,6 +106,14 @@
       "generation": "448a2fd982434e2fb4db4235ed760449",
       "op": "prepare",
       "op_id": "7e48f7cbdabd472f9cfff8bec5de255f",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-06T22:38:42Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3adce028801f493396ae419f27a63f82",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
