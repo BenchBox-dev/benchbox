@@ -10,7 +10,7 @@
     ],
     "member_id": "questdb-ilp-date-columns-sent-as-strings-20261106"
   },
-  "context": "Related done item perf-questdb-influxdb-load-20261030. Pre-existing. Not fixed by the verifier.",
+  "context": "Related done item perf-questdb-influxdb-load-20261030. Pre-existing. Not fixed by the verifier.\n\nFixed in PR #3981 (merge c1a2dc186b). Verdict: PRE-EXISTING (7aa4a8b391, before #3952, loads lineitem as 0 rows with SUCCESS). Before (head, after the socket fix): lineitem 0 rows, load now FAILED loudly (Broken pipe from QuestDB rejecting STRING->TIMESTAMP lines). After: column types from SHOW COLUMNS, date columns sent as epoch-micros timestamps; lineitem 60175 rows and all 8 tables at source counts; l_shipdate, l_commitdate, l_receiptdate equal the file for all 60175 rows. Unparseable dates now raise instead of taking server time.",
   "description": "Found by live verification of #3952 (perf-questdb-influxdb-load-20261030) on origin/develop 525361b2f8, questdb/questdb:10.0.1, loading_method=ilp, TPC-H SF0.01.\n\nExpected: lineitem loads 60175 rows (l_shipdate designated timestamp, l_commitdate and l_receiptdate as timestamps).\nActual: lineitem has 0 rows and the load reports SUCCESS. QuestDB log: `LineWalAppender could not write line protocol measurement [tableName=lineitem ... column: l_commitdate; cast error from protocol type: STRING to column type: TIMESTAMP`. The ILP builder (_ilp_lines_from_strings in benchbox/platforms/questdb.py) converts only the designated column from TPCH_TIMESTAMP_COLUMNS to epoch nanoseconds; every other date column is quoted as a string, and QuestDB rejects the line and drops the connection. Same on the pre-#3952 commit 7aa4a8b391 (0 rows), so not a regression. Logs /tmp/live-verify-questdb-check.log, /tmp/live-verify-questdb-check-base3952.log, /tmp/live-verify-questdb-load.log.\n\nSuspected: _ilp_lines_from_strings / _ilp_field_values (need per-column type awareness from SHOW COLUMNS, emitting timestamp columns as `<epoch_micros>t` or nanosecond integers).",
   "links": [
     "benchbox/platforms/questdb.py"
@@ -120,6 +120,14 @@
       "generation": "cf42c7743a2d47248f392fc3b82a35ec",
       "op": "prepare",
       "op_id": "ad3166f2d6cc4482aeda94d0b47a079b",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-06T22:38:38Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "85052fafbe814ce187660de43e2bf2c3",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
