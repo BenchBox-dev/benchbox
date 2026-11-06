@@ -20589,6 +20589,13 @@
       "status": "done",
       "title": "Lock local oracle reviews per patch instead of per machine"
     },
+    "oracle-maintains-finding-its-disposition-refutes-20261106": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Oracle kept D1 on #3950 'maintained' through two disputes while its own disposition text said the fix worked"
+    },
     "oracle-map-staged-gate-scale-and-label-vocabulary": {
       "claim": null,
       "needs": [],

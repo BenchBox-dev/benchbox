@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "The cause of the mismatch on #3950 is identified, citing the code or prompt that sets the disposition label.",
+    "A replay of the #3950 dispute inputs produces a disposition label consistent with its rationale, or a flagged inconsistency instead of escalation.",
+    "Regression test for the consistency rule."
+  ],
+  "description": "Problem. On PR #3950 head ec6e41c1416fe2ffd648eb3293c67cd3871b6f4d, finding D1 (High: DuckDB Vortex routing loads 0 rows) was fixed and disputed twice with file:line evidence. Both oracle-verdict reviews (2026-11-06 04:19 and 04:30 UTC) marked the dispute 'D1 (maintained)', yet the disposition text explained why the fallback catches the failure and cited the covering test. The gate escalated to the owner, who withdrew D1 by adjudication. The verdict and its rationale contradicted each other, and this cost an owner action and about an hour.\n\nChange. Find where the dispute disposition label (maintained or withdrawn) is decided relative to the reviewer's text, and make them consistent: the label is derived from or checked against the rationale, or a mismatch is flagged rather than escalated. Related: oracle-flags-code-outside-the-diff-and-dispute-does-not-rerun-20261101 and oracle-dispute-and-rerun-live-observation-20261030.\n\nGuardrails: work in a linked worktree (make worktree-create); never edit the primary clone; no explanatory comments (make comment-policy-check); changelog.d fragment if user-facing; re-read cited symbols before editing; never bypass a required check or relax a ruleset (owner-only).",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/pull/3950"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-06T15:03:15Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1ef3cb17f9b544a98f325c569e88ce54",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}
