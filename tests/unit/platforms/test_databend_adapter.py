@@ -418,7 +418,7 @@ class TestDatabendDataLoading:
         except ImportError:
             pytest.skip("databend-driver not installed")
 
-        mock_connection = Mock()
+        mock_connection = Mock(spec=["exec", "query_iter", "query_row", "close"])
         mock_benchmark = Mock()
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, encoding="utf-8") as f:
@@ -449,7 +449,7 @@ class TestDatabendDataLoading:
         except ImportError:
             pytest.skip("databend-driver not installed")
 
-        mock_connection = Mock()
+        mock_connection = Mock(spec=["exec", "query_iter", "query_row", "close"])
         mock_benchmark = Mock()
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".tbl", delete=False, encoding="utf-8") as f:
@@ -473,7 +473,7 @@ class TestDatabendDataLoading:
         except ImportError:
             pytest.skip("databend-driver not installed")
 
-        mock_connection = Mock()
+        mock_connection = Mock(spec=["exec", "query_iter", "query_row", "close"])
         mock_benchmark = Mock()
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, encoding="utf-8") as f:

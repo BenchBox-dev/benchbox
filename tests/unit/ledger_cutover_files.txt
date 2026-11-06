@@ -37,7 +37,6 @@ tests/unit/scripts/test_check_dependency_bounds.py
 tests/unit/scripts/test_check_duplicate_code.py
 tests/unit/scripts/test_check_makefile_inventory.py
 tests/unit/scripts/test_check_project_references.py
-tests/unit/scripts/test_check_release_curation.py
 tests/unit/scripts/test_check_rerun_shard_retention.py
 tests/unit/scripts/test_check_sqlglot_repro_retirement.py
 tests/unit/scripts/test_check_submission_validator_sync.py
@@ -85,8 +84,6 @@ tests/unit/scripts/test_regenerate_correctness_gate_digests.py
 tests/unit/scripts/test_release_admitted_dist.py
 tests/unit/scripts/test_release_artifact_consumer.py
 tests/unit/scripts/test_release_artifact_execution.py
-tests/unit/scripts/test_release_cut_start.py
-tests/unit/scripts/test_release_finalize.py
 tests/unit/scripts/test_release_flow.py
 tests/unit/scripts/test_required_case_evidence.py
 tests/unit/scripts/test_results_explorer_corpus_migrate.py
@@ -122,7 +119,6 @@ tests/unit/scripts/test_worktree_audit.py
 tests/unit/test_release_canary_incident.py
 tests/unit/test_release_canary_sharding.py
 tests/unit/test_release_infrastructure.py
-tests/unit/test_release_readiness.py
 tests/unit/workflows/test_comment_policy_nightly_workflow.py
 tests/unit/workflows/test_corpus_event_bridge.py
 tests/unit/workflows/test_corpus_trust_boundary.py
@@ -136,7 +132,6 @@ tests/unit/workflows/test_oracle_review_workflow.py
 tests/unit/workflows/test_published_results_base_ci.py
 tests/unit/workflows/test_release_canary_shard_evidence.py
 tests/unit/workflows/test_sqlglot_fork_refresh_workflow.py
-tests/unit/workflows/test_release_uat_charter_guard.py
 tests/unit/workflows/test_seed_corpus_pr_base.py
 tests/unit/workflows/test_site_inputs_workflow.py
 tests/unit/workflows/test_stacked_pr_base_guard.py

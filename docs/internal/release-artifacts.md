@@ -165,9 +165,7 @@ release-blocking `t3:*` issue. Linux correctness evidence remains separate from
 the deferred Darwin digest certification.
 
 TestPyPI rehearsals must exercise refusal paths and verify installed hashes.
-Production PyPI retains owner approval. The legacy `release.yml` stays
-available through `workflow_dispatch` only, so a `v*` tag push never starts
-two publishers.
+Production PyPI retains owner approval.
 
 ## Publishing workflow
 

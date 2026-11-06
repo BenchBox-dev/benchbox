@@ -28,7 +28,6 @@ def _evidence_uploads() -> list[tuple[str, str, dict]]:
 def test_the_evidence_uploads_are_found() -> None:
     assert {filename for filename, _, _ in _evidence_uploads()} == {
         "ci.yml",
-        "test.yml",
         "trunk-coverage.yml",
         "trunk.yml",
     }

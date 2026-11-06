@@ -14,8 +14,7 @@ handling are in [nightly-t3.md](nightly-t3.md).
 
 ## What the gate checks
 
-`.github/workflows/nightly-v2.yml` (`perf` job) and
-`.github/workflows/perf-smoke.yml` run one DuckDB TPC-H SF=0.01 power phase
+`.github/workflows/nightly-v2.yml` (`perf` job) runs one DuckDB TPC-H SF=0.01 power phase
 (3 measured iterations after one warmup) and then:
 
 ```
@@ -204,12 +203,12 @@ behaviour, not as end-to-end nightly behaviour.
 - A failed `t3:perf` night has no retry and no per-night noise estimate. Two
   neighbouring nights are never compared with each other, so a transient bad
   runner and a real regression look the same in the job log. The nightly job has
-  no skip label (`skip-perf-smoke` only exists on the PR workflow) and the
+  no skip label and the
   `t3:quarantine` job runs `pytest -m quarantine` tests only; the perf gate
   cannot be quarantined, so a persistent flake is handled by editing the floor
   or baseline, not by an expiring waiver.
-- `perf-smoke.yml` runs only for pull requests into `release`; changes
-  merged to `develop` are covered by the nightly run, one day later.
+- No pull-request perf gate remains; changes merged to `develop` are covered
+  by the nightly run, one day later.
 - The floor derivation lives in the baseline's sources file for the per-query
   floor only. `perf_smoke_baseline.py` does not compute or record the 82 ms
   aggregate floor, so the aggregate figure is defended by prose in perf-smoke.md.

@@ -32,7 +32,6 @@ MEDIUM_JOBS = ("medium-collect", "medium-test")
 INERT_PATHS = (
     "benchbox/base.py",
     ".github/workflows/ci.yml",
-    ".github/workflows/test.yml",
     "scripts/release_canary_sharding_extra.py",
     "tests/fixtures/medium_shard_durations.json.bak",
     "docs/internal/merge-queue-governance.md",

@@ -19,7 +19,6 @@ quality/fast-duration-calibration.json::_project/scripts/oracle_reviewers/templa
 quality/fast-duration-calibration.json::_project/scripts/oracle_reviewers/templates/deep.md
 quality/fast-duration-calibration.json::_project/scripts/oracle_reviewers/templates/gate.md
 quality/fast-duration-calibration.json::_project/scripts/oracle_reviewers/templates/standard.md
-scripts/release_readiness_check.py::_project/release-evidence/uat-gate-summary.json
 tests/uat/_cli.py::_project/release-evidence/uat-gate-summary.json
 tests/unit/scripts/test_pr_review_followups.py::_project/DONE/main/active/codex-pr-review-followups-week-2026-05-01.yaml
 tests/unit/scripts/test_shrink_rollup.py::_project/shrink-ledger/cli.md

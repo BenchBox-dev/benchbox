@@ -399,7 +399,7 @@ The soundness gate, as operated:
 `review_enforcement_findings` predicate. Through
 `DEVELOP_REVIEW_RULE_ENFORCED = True`, it treats missing thread resolution or a
 missing App-bound `oracle-gate` required check as a **blocking** finding. The daily
-`release-canary.yml` run and the `validate-release-pr.yml` bootstrap use the
+`release-canary.yml` run uses the
 same path. For an immediate live check, run the standalone checker:
 
 ```bash
@@ -418,10 +418,17 @@ predicate and its blocking default with explicit override.
 
 ## Branch ruleset — `release`
 
+Retired: the legacy `release` branch flow was replaced by the tag-triggered
+`release-v2.yml` publisher (see `release-guide.md`). The branch, its ruleset
+and the drift expectations below remain only until the owner deletes the branch
+and ruleset. `scripts/ruleset_drift_check.py` still parses this section, so
+do not remove it in the same change that deletes the live ruleset: first
+change the drift expectations (the `release-only` ruleset and the `release`
+branch policy of `test-pypi`), then remove this section.
+
 Ruleset name: `release-only`, targets `refs/heads/release`.
 
-Release-only branch. Direct pushes are not allowed; releases land through the
-`release-cut` and `release-finalize` Make targets in `release-guide.md`.
+Release-only branch. Direct pushes are not allowed.
 
 Required status checks:
 
@@ -430,23 +437,10 @@ Required status checks:
 - release-required-result
 ```
 
-`validate-base` is the branch-shape guard in
-`.github/workflows/validate-release-pr.yml`. It allows only release branches
-named `vX.Y.Z`, with an optional suffix.
-
-`release-required-result` is the umbrella job in `.github/workflows/test.yml`
-for release PR correctness. It aggregates:
-
-- the required fast lane
-- the bounded real-result correctness gate (`make test-correctness-gate`)
-- the credential-free integration-not-slow suite
-- the complete medium tier, in four shards
-- the isolated exact-one-wheel package smoke
-- dependency upper-bound checks
-- release-branch curation checks
-
-Use this context in the ruleset instead of individual matrix job names such as
-`test-package (...)`.
+`validate-base` was the branch-shape guard in the retired
+`.github/workflows/validate-release-pr.yml`, and `release-required-result` was
+the umbrella job in the retired `.github/workflows/test.yml`. No workflow
+produces either context any more, so no PR can merge into `release`.
 
 Other ruleset properties to preserve:
 
@@ -485,31 +479,29 @@ gh api repos/BenchBox-dev/BenchBox/rulesets/<release-ruleset-id> --jq '
 ```
 
 If the live ruleset differs from this runbook, update the ruleset or this
-document before relying on release-required enforcement. Green `validate-base`
-and `release-required-result` runs are mandatory only if the ruleset also
-requires both contexts.
+document before relying on release-required enforcement. The retirement note
+above lists what to do once the ruleset is deleted.
 
 ## Tag creation and release-environment protections
 
-In `.github/workflows/release.yml`, the `verify-tag-on-release` job asserts that
-the triggering ref (tag push or `workflow_dispatch`) is `release` or an ancestor
-of it before build and publish run, and the real-PyPI `Publish to PyPI` step
-also requires `startsWith(github.ref, 'refs/tags/v')`. Those are workflow-level
-(tooling) controls. The two sections below are the repo-admin half of the fix:
-who can create a `v*` tag at all, and whether the `pypi` environment requires
-human approval. The develop-PR `GITHUB_TOKEN` cannot read or write
-either (no `administration` scope); only an admin PAT can.
+`release-v2.yml` admits only a tag whose commit has a successful trunk run,
+requires an annotated tag, and re-checks the hosted tag object and peeled commit
+at publish time (`scripts/release_tag_recheck.py`); the real-PyPI publish is
+also confined to the `pypi` environment, which accepts deployments from `v*`
+tags only. Those are workflow-level (tooling) controls. The two sections below
+are the repo-admin half of the fix: who can create a `v*` tag at all, and
+whether the `pypi` environment requires human approval. The develop-PR
+`GITHUB_TOKEN` cannot read or write either (no `administration` scope); only an
+admin PAT can.
 
-### Tag creation restricted to release flow (enforced)
+### Tag creation restricted to maintainers (enforced)
 
 Current control: a tag-protection ruleset targeting `refs/tags/v*` restricts tag
-*creation* to the release automation identity or specific maintainer actors, as
-`develop-squash-only` restricts pushes to `refs/heads/develop`.
-`verify-tag-on-release` stops a stray tag from reaching build and publish only
-if the tagged commit is not on `release`. It cannot stop someone with push
-access from creating a `v*` tag *on* a release commit out of band, such as
-re-tagging an old release commit or tagging a version out of sequence. The
-ruleset closes that gap by restricting who may create the tag at all.
+*creation* to specific maintainer actors, as `develop-squash-only` restricts
+pushes to `refs/heads/develop`. The workflow checks cannot stop someone with
+push access from creating a `v*` tag out of band, such as re-tagging an old
+commit or tagging a version out of sequence. The ruleset closes that gap by
+restricting who may create the tag at all.
 
 Verify by listing rulesets and finding one whose `conditions.ref_name.include`
 targets `refs/tags/v*` with `target: "tag"`:
@@ -520,9 +512,9 @@ gh api repos/BenchBox-dev/BenchBox/rulesets --jq '.[] | {id, name, target, condi
 
 Live verification on 2026-07-21 shows `v-tag-restricted` (ruleset id
 `18774756`) is `active`, targets `refs/tags/v*`, has a `creation` rule, and
-has the release-finalize bypass actor `User:57046` with `bypass_mode: always`.
-`make release-finalize` needs that bypass to push its tag; confirm it stays
-scoped to that identity.
+has the maintainer bypass actor `User:57046` with `bypass_mode: always`.
+Pushing a release tag needs that bypass; confirm it stays scoped to that
+identity.
 
 An admin applied the ruleset on 2026-07-10, so no PR-side admin change is
 needed. The original application command, kept as history:
@@ -538,7 +530,7 @@ gh api -X POST repos/BenchBox-dev/BenchBox/rulesets \
 ```
 
 The live ruleset differs from this command: it also has the
-release-finalize bypass actor (`User:57046`). To narrow the actors further,
+maintainer bypass actor (`User:57046`). To narrow the actors further,
 for example to a release-bot identity, draft a new `bypass_actors` and
 `rules` payload with the admin first. A write task's own PR cannot apply
 it, because the develop-PR `GITHUB_TOKEN` has no `administration` scope to
@@ -575,9 +567,8 @@ The predicate flags a ruleset that:
   `deletion`, an actor with write access can delete a published `v*` tag and
   re-push it, or move it, after the release workflow admitted its commit.
 - has `bypass_actors` explicitly set to `[]`. A structurally valid ruleset with
-  zero bypass actors would block `make release-finalize`'s
-  `git push origin v$(VERSION)` and break releases, so this is a finding, not
-  an advisory.
+  zero bypass actors would block pushing the release tag and break releases,
+  so this is a finding, not an advisory.
 
 Adding the `update` and `deletion` rules is an owner settings change. As an
 admin, either add the two rules in the ruleset's settings page (Settings,
@@ -595,8 +586,8 @@ Re-run `scripts/ruleset_drift_check.py` with an admin token afterwards. The
 bypass actor still lets the release identity create tags; it can also move or
 delete them, so the release workflow re-checks the hosted tag at publish time.
 
-A non-empty `bypass_actors` list is not a failure, because
-`make release-finalize` needs a bypass path to tag. The check instead prints a
+A non-empty `bypass_actors` list is not a failure, because releases need a
+bypass path to push tags. The check instead prints a
 `CONFIRM before enforcing:` line listing the bypass actors; verify the list is
 the release identity only, not a broad Write or Admin role. An explicit
 `enforce_tag_rule=False` call remains for migration fixtures, but the live
@@ -620,9 +611,8 @@ Live-state note:
 ```
 
 Applied 2026-07-10: `v-tag-restricted` (id 18774756) is live and active. Its
-bypass list is a single `User` actor (57046), confirmed to be the
-release-finalize identity only, not a broad Write or Admin role;
-`release-finalize`'s `git push origin v$(VERSION)` needs it. With this
+bypass list is a single `User` actor (57046), confirmed to be the maintainer
+identity that pushes release tags, not a broad Write or Admin role. With this
 confirmed, `TAG_RULESET_ENFORCED` in
 `_project/scripts/ruleset_review_enforcement.py` is `True`, so a regression
 (ruleset deleted, made inactive, ref narrowed, creation rule dropped, or bypass
@@ -630,7 +620,7 @@ emptied) is a blocking drift finding, not a warning.
 
 ### `pypi` environment required-reviewers gate (configured; observed 2026-08-10)
 
-`release.yml`'s `publish` job scopes the real-PyPI publish to the GitHub
+`release-v2.yml`'s `publish` job scopes the real-PyPI publish to the GitHub
 `environment: pypi` (and `test-pypi` for the test-PyPI path), the native
 mechanism for a required-reviewers (human approval) gate. The workflow file
 does not prove that `pypi` has `required_reviewers` configured; only a live
@@ -670,8 +660,9 @@ diagnose.
 Deployment policies (applied 2026-10-23): both environments admit only
 selected refs, so a workflow run on an arbitrary branch cannot request them.
 `pypi` accepts deployments from tags matching `v*` only. `test-pypi` accepts
-tags matching `v*` and the `develop` and `release` branches, which keeps a
-`release.yml` TestPyPI dispatch from those branches working. A manual
+tags matching `v*` and the `develop` and `release` branches; the `release`
+branch entry is left over from the retired legacy publisher and stays pinned
+by the drift check until the owner removes it together with the branch. A manual
 `release-v2.yml` dispatch deploys under the ref it was started from, so start
 it from the release tag
 (`gh workflow run release-v2.yml --ref vX.Y.Z -f tag=vX.Y.Z`); a dispatch from
@@ -741,27 +732,22 @@ blocking_suite: (slow or resource_heavy) and not (stress or live_integration)
 advisory_suites: stress, live_integration, live cloud credentials
 ```
 
-Long-running UAT is an advisory campaign; release readiness requires the
-blocking release canary. For the optional UAT report, see
-`docs/internal/release-guide.md` "UAT matrix campaign evidence (advisory)".
+Long-running UAT is hosted release UAT in `release-v2.yml`; for the optional local
+campaign, see `docs/internal/release-guide.md` "UAT matrix campaign evidence".
 
-`validate-release-pr.yml` keeps the required context name `validate-base`, but
-that job now also runs `scripts/release_readiness_check.py` for release PRs. It
-fails when the latest completed `release-canary.yml` run is missing, red, older
-than 48 hours, or when the tested `develop` SHA in the canary summary artifact
-is not an ancestor of the release PR head. Scheduled canary runs start from the
-default branch, then check out `develop` before running release evidence and
-recording `commit_sha` in `release-canary-summary.json`. For the first release
-that introduces `release-canary.yml`, before GitHub can run it from the default
-branch, `validate-base` runs the same non-fast canary suite and ruleset drift
-check inline as bootstrap evidence.
+The release PR gate that consumed the canary summary (`validate-base`, in the
+retired `validate-release-pr.yml`) no longer exists, and `release-v2.yml` does
+not read the canary. A stale or red canary therefore does not block a tag by
+itself; the maintainer checks the latest `release-canary.yml` run before tagging
+(see `release-guide.md`). Scheduled canary runs start from the default branch,
+then check out `develop` before running release evidence and recording
+`commit_sha` in `release-canary-summary.json`.
 
 The ruleset drift check runs as the `ruleset-drift` domain of `nightly-v2.yml`, on manual
-invocation, and as a blocking release check in `release-canary.yml` and the
-`validate-release-pr.yml` bootstrap. It is not part of the required develop
-`tooling` result. Nightly and canary drift jobs check out `develop`; the release
-bootstrap restores the checker and its review helper from `develop` into the
-curated release checkout. Only the drift step gets the admin-visible token.
+invocation, as a blocking release check in `release-canary.yml`, and during
+`release-v2.yml` admission. It is not part of the required develop
+`tooling` result. Nightly and canary drift jobs check out `develop`. Only the
+drift step gets the admin-visible token.
 
 The script parses this runbook for `develop-squash-only` and `release-only`,
 then compares the live rulesets for required status check contexts, strict-base
@@ -773,11 +759,8 @@ review enforcement" above.
 The hosted checks use the repository secret `RULESET_DRIFT_TOKEN`, which has
 enough ruleset write or admin visibility for the API to expose `bypass_actors`.
 The default `GITHUB_TOKEN` is intentionally not used. If GitHub API access
-fails, the canary is red, and release PRs then fail on stale or red canary
-evidence instead of silently trusting comments. The "Bootstrap ruleset
-drift evidence" step in `validate-release-pr.yml` runs the same script with
-the same token, so both CI call sites get the same review-rule coverage
-without a separate code path.
+fails, the canary and the `release-v2.yml` admission check are red instead of
+silently trusting comments.
 
 ### Scheduled activation of `release-canary.yml` (RESOLVED 2026-07-08)
 
@@ -852,17 +835,10 @@ monthly, and 100 when the cron names a month. A newly registered workflow
 gets one window of grace before its first scheduled run, so a dead
 scheduled workflow cannot go unnoticed.
 
-The emergency override is intentionally explicit and SHA-scoped. Admins may set
-both repository variables below, then remove them after the release:
-
-```text
-RELEASE_READINESS_OVERRIDE_SHA: exact release PR head SHA
-RELEASE_READINESS_OVERRIDE_REASON: incident or approval record
-```
-
-The `validate-base` job summary records the override. Do not use it for routine
-canary failures; fix the non-fast canary, ruleset drift, or GitHub API access
-and let the canary return to green.
+The `RELEASE_READINESS_OVERRIDE_SHA` and `RELEASE_READINESS_OVERRIDE_REASON`
+repository variables were read only by the retired `validate-release-pr.yml`
+job. `release-v2.yml` runs the ruleset drift check without them, so an override
+cannot waive drift at release time. Remove the variables if they are still set.
 
 ## Repository labels
 

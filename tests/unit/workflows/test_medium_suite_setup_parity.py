@@ -16,7 +16,6 @@ MEDIUM_JOBS = {
     "trunk.yml:medium-test": ("trunk.yml", "medium-test"),
     "trunk-coverage.yml:medium-test": ("trunk-coverage.yml", "medium-test"),
     "nightly-v2.yml:integration": ("nightly-v2.yml", "integration"),
-    "test.yml:medium": ("test.yml", "medium"),
 }
 
 ALLOWED_MISSING: dict[str, dict[str, str]] = {}

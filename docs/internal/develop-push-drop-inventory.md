@@ -45,8 +45,7 @@ inventory's risk class:
 
 | Workflow | Why excluded |
 | --- | --- |
-| `lint.yml` / `test.yml` | `push.branches: [release]` only |
-| `release.yml` | tag push `v*` only |
+| `release-v2.yml` | tag push `v*` only |
 
 ### Retired entries
 

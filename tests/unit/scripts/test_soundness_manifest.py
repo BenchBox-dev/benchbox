@@ -110,7 +110,6 @@ pytestmark = [
         ".github/workflows/validate-submission.yml",
         ".github/workflows/sync-results-data-to-published.yml",
         "_project/scripts/soundness_paths.py",
-        ".github/workflows/release.yml",
         ".github/workflows/pr.yml",
         ".github/workflows/release-canary.yml",
         ".github/workflows/trunk.yml",
@@ -119,7 +118,6 @@ pytestmark = [
         "scripts/pr_arm.py",
         "scripts/pr_landing.py",
         "scripts/remote_closeout.py",
-        "_project/decisions/single-repo-migration.md",
     ],
 )
 def test_soundness_predicate_matches_review_required_paths(path: str) -> None:

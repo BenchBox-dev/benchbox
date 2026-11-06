@@ -10,6 +10,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
+from benchbox.core.contracts.platform_capabilities import TPCHRefreshIngester, resolve_refresh_ingester
 from benchbox.core.tpch.generator import TPCHDataGenerator
 from benchbox.core.tpch.schema import LINEITEM, ORDERS, DataType
 
@@ -154,10 +155,15 @@ def check_rf2_applied(connection: Any, update_set: TPCHRefreshUpdateSet, chunk_s
 
 def apply_rf1(connection: Any, update_set: TPCHRefreshUpdateSet, chunk_size: int = REFRESH_CHUNK_SIZE) -> int:
     _require_chunk_size(chunk_size)
+    ingester = resolve_refresh_ingester(getattr(connection, "platform_adapter", None))
     _begin_transaction(connection)
     try:
-        rows_inserted = _insert_source_rows(connection, update_set.orders_path, ORDERS, chunk_size)
-        rows_inserted += _insert_source_rows(connection, update_set.lineitem_path, LINEITEM, chunk_size)
+        if ingester is None:
+            rows_inserted = _insert_source_rows(connection, update_set.orders_path, ORDERS, chunk_size)
+            rows_inserted += _insert_source_rows(connection, update_set.lineitem_path, LINEITEM, chunk_size)
+        else:
+            rows_inserted = _ingest_source_file(ingester, connection, update_set.orders_path, ORDERS)
+            rows_inserted += _ingest_source_file(ingester, connection, update_set.lineitem_path, LINEITEM)
         _commit(connection)
         return rows_inserted
     except BaseException:
@@ -275,6 +281,11 @@ def _insert_source_rows(connection: Any, path: Path, table: Any, chunk_size: int
         connection.execute(f"INSERT INTO {table.name} ({column_names}) VALUES {values}")
         inserted += len(rows)
     return inserted
+
+
+def _ingest_source_file(ingester: TPCHRefreshIngester, connection: Any, path: Path, table: Any) -> int:
+    columns = [(column.name, column.data_type.value) for column in table.columns]
+    return ingester.ingest_refresh_file(connection, table.name, columns, path)
 
 
 def _sql_literal(value: str, data_type: DataType) -> str:

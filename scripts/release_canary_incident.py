@@ -123,8 +123,8 @@ def render(
         f"Failing tests:\n{failure_lines}{truncation}"
     )
     body = (
-        "The daily release canary failed. `scripts/release_readiness_check.py` blocks every release PR "
-        "until a canary run on an ancestor of the release head is green.\n\n"
+        "The daily release canary failed. `release-v2.yml` does not read the canary, so this does not block a "
+        "tag by itself; investigate before tagging a release.\n\n"
         "Owner: fix forward or revert the change that broke each failing test, then confirm the next "
         "canary run is green. This issue closes on the next green run.\n\n"
         f"{details}"

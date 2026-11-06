@@ -759,9 +759,9 @@ def _run_curation_check(source: Path, version: str) -> int:
         print("  RELEASE_ALLOW_RAW_CHANGELOG is set; accepting the section as-is")
         return 0
     print()
-    print(f"  Fix the [{version}] section in CHANGELOG.md, then re-run the cut:")
-    print(f"    make release-cut VERSION={version}")
-    print("  To accept the section deliberately: RELEASE_ALLOW_RAW_CHANGELOG=1 make release-cut ...")
+    print(f"  Fix the [{version}] section in CHANGELOG.md, then re-run this check:")
+    print(f"    generate_changelog_entry.py --check-curation --version {version}")
+    print("  To accept the section deliberately: set RELEASE_ALLOW_RAW_CHANGELOG=1 for this command")
     return 1
 
 

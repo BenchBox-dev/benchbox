@@ -193,10 +193,7 @@
       "file": "tests/unit/test_release_infrastructure.py",
       "tests": [
         "test_pyproject_has_beta_classifier",
-        "test_duckdb_is_optional_in_pyproject",
-        "test_release_docs_name_required_contexts",
-        "test_release_docs_name_canary_and_ruleset_drift",
-        "test_release_finalize_docs_separate_premerge_and_postmerge_signals"
+        "test_duckdb_is_optional_in_pyproject"
       ],
       "classification": "governance-stays",
       "contract_fields": [

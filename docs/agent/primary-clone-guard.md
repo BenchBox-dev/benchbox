@@ -53,8 +53,7 @@ clone of it.
 No live repository script resets or cleans a worktree: `scripts/` and
 `make/worktrees.mk` contain no `reset --hard`, `git clean`, or `checkout -f`
 (the only matches are recipes of the retired pool targets recorded in
-`make/monolith-baseline.json`, and `release-cut-abort`, which acts on its own
-`v<version>` branch).
+`make/monolith-baseline.json`).
 
 The probable cause is the pre-commit unstaged-changes stash. Before running
 hooks, pre-commit moves unstaged edits into a patch file under

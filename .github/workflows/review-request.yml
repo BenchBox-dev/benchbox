@@ -11,7 +11,6 @@ permissions: {}
 jobs:
   review-event:
     name: review-event
-    if: github.event.pull_request.base.ref != 'release'
     runs-on: ubuntu-latest
     timeout-minutes: 1
     steps:

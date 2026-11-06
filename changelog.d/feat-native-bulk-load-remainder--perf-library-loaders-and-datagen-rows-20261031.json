@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "Library-level data loading for TPC-DS, TSBS DevOps, CoffeeShop, TPC-DI, SSB, AMPLab and ClickBench now bulk-inserts through DuckDB read_csv on DuckDB connections instead of per-row INSERTs; the unused TPCDIDataLoader.load_csv_file was removed."
+    }
+  ]
+}
