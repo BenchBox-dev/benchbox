@@ -17947,6 +17947,13 @@
       "status": "open",
       "title": "Live integration tests with Starburst Galaxy (w22-w24)"
     },
+    "live-verify-perf-batches-evidence-20261106": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Live-engine verification evidence for the merged performance batches (#3948, #3949, #3950, #3952), run 2026-11-06"
+    },
     "livy-spark-adapters-open-table-format-loading": {
       "claim": null,
       "needs": [
