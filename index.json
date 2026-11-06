@@ -903,20 +903,44 @@
       "terminal_outcome": "deliver"
     },
     "hold-label-and-batch-e2e-20261106": {
-      "accepted_members": {},
+      "accepted_members": {
+        "pr-hold-stale-label-suite-unclearable-20261106": "3b6544c586ca44a2f19f04808650b6adecdc1d9a"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "pr-hold-stale-label-suite-unclearable-20261106": {
+          "accepted_head": "3b6544c586ca44a2f19f04808650b6adecdc1d9a",
+          "changed_files": [
+            ".github/workflows/pr-hold.yml",
+            "changelog.d/pr-hold-live-labels-20261106.json",
+            "docs/agent/merge-authority.md",
+            "docs/internal/repo-admin-settings.md",
+            "tests/unit/workflows/test_pr_hold_workflow.py"
+          ],
+          "integration_head": "959c3391352a8f78223e034cf6e736062636fdb5",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/hold-label-and-batch-e2e-20261106",
-      "integration_head": "20a0045113e6c8ba13c3e7c4f78351e3fe81f81e",
+      "integration_head": "959c3391352a8f78223e034cf6e736062636fdb5",
       "integration_log": [
         {
           "at": "2026-11-06T13:13:21Z",
           "head": "20a0045113e6c8ba13c3e7c4f78351e3fe81f81e",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-06T23:39:25Z",
+          "head": "959c3391352a8f78223e034cf6e736062636fdb5",
+          "kind": "prepare",
+          "member": "pr-hold-stale-label-suite-unclearable-20261106",
+          "op_id": "5f7e14dc49244df985293363d6395771",
+          "previous_head": "20a0045113e6c8ba13c3e7c4f78351e3fe81f81e",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-feat-hold-label-and-batch-e2e",
@@ -23292,15 +23316,10 @@
       "title": "Close PR-gate gap: darwin/windows TPC-H binaries behaviorally validated only on nightly"
     },
     "pr-hold-stale-label-suite-unclearable-20261106": {
-      "claim": {
-        "expires_at": "2026-11-07T23:39:22Z",
-        "generation": "74ede8744aab4f72b858caa92de26c75",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Let a head recover from a hold-era pr-hold failure after the hold is lifted"
     },
     "pr-landing-arm-batch-evidence-20261101": {
