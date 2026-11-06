@@ -35406,10 +35406,15 @@
       "title": "UAT: preflight disk report + headroom gate sized to the largest configured scale"
     },
     "uat-regression-doris-clickbench-mooncake-flightdata": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-07T20:27:08Z",
+        "generation": "5a3c1e12a6bc487d958f639ee5d9db0b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b5a3d7ca6a5de85d6929963d"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Doris ClickBench and pg_mooncake FlightData loads fail on develop at SF0.01"
     },
     "uat-release-gate-enforcement": {
