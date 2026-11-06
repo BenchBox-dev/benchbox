@@ -17,7 +17,7 @@ RECORD_SEPARATOR = "\x1e"
 FIELD_SEPARATOR = "\x1f"
 INTEGRATION_BRANCHES = frozenset({"develop", "published-results"})
 MAX_STACK_DEPTH = 3
-RECORD_MARKER = re.compile(r"<!-- oracle-local-record: v1 [A-Za-z0-9_-]+ -->")
+RECORD_MARKER = re.compile(r"<!-- (?:review|oracle)-local-record: v1 [A-Za-z0-9_-]+ -->")
 
 Runner = Callable[[list[str]], tuple[int, str]]
 

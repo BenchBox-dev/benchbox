@@ -186,10 +186,10 @@ jobs:
               --comment "Superseded by #${PR}, which proposes omp ${VERSION}. The replacement still requires candidate validation and all merge gates."
           done
           HEAD_SHA="$(git rev-parse HEAD)"
-          verdicts="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/statuses?per_page=100" --jq '.[] | select(.context == "oracle-verdict") | .id')"
-          titles="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/oracle-verdict.yml/runs?per_page=100" --jq '.workflow_runs[].display_title')"
+          verdicts="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/statuses?per_page=100" --jq '.[] | select(.context == "review-verdict") | .id')"
+          titles="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/review-verdict.yml/runs?per_page=100" --jq '.workflow_runs[].display_title')"
           if [ -n "$verdicts" ] || printf '%s\n' "$titles" | grep -F "pr=${PR} head=${HEAD_SHA}" > /dev/null; then
             echo "Pull request #${PR} already has a review for ${HEAD_SHA}."
             exit 0
           fi
-          gh workflow run oracle-verdict.yml --repo "$GITHUB_REPOSITORY" --ref develop -f pr="$PR" -f head="$HEAD_SHA"
+          gh workflow run review-verdict.yml --repo "$GITHUB_REPOSITORY" --ref develop -f pr="$PR" -f head="$HEAD_SHA"

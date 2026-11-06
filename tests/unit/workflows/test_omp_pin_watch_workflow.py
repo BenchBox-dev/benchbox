@@ -110,10 +110,10 @@ def test_the_revert_job_refuses_a_version_that_is_not_a_release_number() -> None
 
 def test_the_opener_starts_the_review_itself_because_the_job_token_cannot_trigger_pull_request_events() -> None:
     text = steps(opener_job())["Open the revert pull request"]["run"]
-    assert len(re.findall(r"gh workflow run oracle-verdict\.yml", text)) == 1
+    assert len(re.findall(r"gh workflow run review-verdict\.yml", text)) == 1
     assert '--ref develop -f pr="$PR" -f head="$HEAD_SHA"' in text
     assert text.index("/statuses") < text.index("gh workflow run")
-    assert text.index("workflows/oracle-verdict.yml/runs") < text.index("gh workflow run")
+    assert text.index("workflows/review-verdict.yml/runs") < text.index("gh workflow run")
 
 
 def test_the_only_secret_the_workflow_reads_is_the_job_token_and_the_evaluation_gets_it_only_as_read_access() -> None:

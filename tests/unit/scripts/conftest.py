@@ -50,9 +50,9 @@ def theseus_engine():
     from _project.scripts import soundness_merge_digest as digest
 
     unreachable = "http://127.0.0.1:9"
-    previous = os.environ.get("ORACLE_PROMOTION_MIRROR")
+    previous = os.environ.get("REVIEW_PROMOTION_MIRROR")
     cache_previous = os.environ.get("THESEUS_INSTALL_CACHE")
-    os.environ["ORACLE_PROMOTION_MIRROR"] = unreachable
+    os.environ["REVIEW_PROMOTION_MIRROR"] = unreachable
     if cache_previous is None:
         configured_home = os.environ.get("BENCHBOX_TEST_HOST_HOME")
         account_home = Path(configured_home) if configured_home else Path(os.path.expanduser(f"~{getpass.getuser()}"))
@@ -65,8 +65,8 @@ def theseus_engine():
         pytest.skip(f"the verified Theseus install is unavailable here: {exc}")
     finally:
         if previous is None:
-            os.environ.pop("ORACLE_PROMOTION_MIRROR", None)
+            os.environ.pop("REVIEW_PROMOTION_MIRROR", None)
         else:
-            os.environ["ORACLE_PROMOTION_MIRROR"] = previous
+            os.environ["REVIEW_PROMOTION_MIRROR"] = previous
         if cache_previous is None:
             os.environ.pop("THESEUS_INSTALL_CACHE", None)

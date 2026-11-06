@@ -112,7 +112,7 @@ a PR's mergeability — both only alert.
   a PR that is already armed, re-evaluate it from `develop`:
 
   ```bash
-  gh workflow run oracle-gate.yml --repo BenchBox-dev/BenchBox --ref develop -f pr=<pr>
+  gh workflow run review-gate.yml --repo BenchBox-dev/BenchBox --ref develop -f pr=<pr>
   ```
 
   The workflow reads the PR's current head itself, so this also works for a

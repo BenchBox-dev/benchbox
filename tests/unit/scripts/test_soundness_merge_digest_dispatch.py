@@ -102,7 +102,7 @@ def standin(sha=HEAD, at=AFTER):
 
 
 def oracle_review(state="failure", at=AFTER, body=None, sha=HEAD, review_state="COMMENTED"):
-    text = body if body is not None else f"### oracle-verdict: {state} for `{sha}`\n\nDetails."
+    text = body if body is not None else f"### review-verdict: {state} for `{sha}`\n\nDetails."
     return review(ORACLE_BOT, sha, at, review_state, "Bot", text)
 
 
@@ -746,9 +746,9 @@ def test_the_arrival_query_names_the_head_and_a_run_at_the_pull_creation_counts(
     ("verdict_body", "expected"),
     [
         (None, None),
-        ("### oracle-verdict: success for `{head}`", None),
-        ("### oracle-verdict: error for `{head}`", "error"),
-        ("### oracle-verdict: failure for `{head}`\n\nDecision: **DO NOT SHIP**.", "DO NOT SHIP"),
+        ("### review-verdict: success for `{head}`", None),
+        ("### review-verdict: error for `{head}`", "error"),
+        ("### review-verdict: failure for `{head}`\n\nDecision: **DO NOT SHIP**.", "DO NOT SHIP"),
     ],
 )
 def test_the_blocking_decision_is_the_latest_blocking_verdict(verdict_body, expected):
@@ -759,8 +759,8 @@ def test_the_blocking_decision_is_the_latest_blocking_verdict(verdict_body, expe
 
 
 def test_the_latest_blocking_review_by_time_decides_whatever_the_listing_order():
-    later = oracle_review(at=AFTER, body=f"### oracle-verdict: failure for `{HEAD}`\n\nDecision: **LATER**.")
-    earlier = oracle_review(at=PUSHED, body=f"### oracle-verdict: failure for `{HEAD}`\n\nDecision: **EARLIER**.")
+    later = oracle_review(at=AFTER, body=f"### review-verdict: failure for `{HEAD}`\n\nDecision: **LATER**.")
+    earlier = oracle_review(at=PUSHED, body=f"### review-verdict: failure for `{HEAD}`\n\nDecision: **EARLIER**.")
     assert digest.blocking_verdict_decision(evidence(reviews=(later, earlier))) == "LATER"
     assert digest.blocking_verdict_decision(evidence(reviews=(earlier, later))) == "LATER"
 
@@ -879,7 +879,7 @@ def test_a_withdrawn_list_may_end_the_body_and_none_body_has_none():
 
 
 def test_a_withdrawal_names_the_last_commit_and_lists_pulls_by_number():
-    body = f"### oracle-verdict: failure for `{HEAD}`\n\nWithdrawn as never defects:\n- one\n- one\n- two\n"
+    body = f"### review-verdict: failure for `{HEAD}`\n\nWithdrawn as never defects:\n- one\n- one\n- two\n"
     first = evidence(number=9, reviews=(oracle_review(body=body),))
     second = evidence(number=3, reviews=(oracle_review(body=body),))
     bare = evidence(number=4, commits=(), reviews=(oracle_review(body=body),))
@@ -911,7 +911,7 @@ def test_overrides_are_found_past_pulls_that_are_not_overrides():
 
 def test_an_override_with_unverifiable_evidence_lists_it_next_to_the_decision():
     flagged = review(
-        ORACLE_BOT, HEAD, PUSHED, "COMMENTED", "Bot", f"### oracle-verdict: failure for `{HEAD}`", "edited"
+        ORACLE_BOT, HEAD, PUSHED, "COMMENTED", "Bot", f"### review-verdict: failure for `{HEAD}`", "edited"
     )
     pull = evidence(reviews=(flagged,), comments=(standin(HEAD, AFTER),))
     assert digest.standin_overrides([pull])[0].severities == (digest.UNVERIFIABLE_FINDING,)
@@ -1459,7 +1459,7 @@ def test_an_edited_review_does_not_stop_the_checks_of_the_reviews_after_it(monke
     serve_status = [
         {
             "id": 1,
-            "context": "oracle-verdict",
+            "context": "review-verdict",
             "state": "failure",
             "description": "d",
             "creator": {"login": ORACLE_BOT, "type": "Bot"},
@@ -1488,7 +1488,7 @@ def test_an_edited_review_does_not_stop_the_checks_of_the_reviews_after_it(monke
             "carried": False,
             "summary": "",
         }
-        return f"### oracle-verdict: {state} for `{HEAD}`\n\nText.\n\n" + protocol.encode_marker(record)
+        return f"### review-verdict: {state} for `{HEAD}`\n\nText.\n\n" + protocol.encode_marker(record)
 
     edited = bare_app_review(body=body("SHIP", "success"), node_id="PRR_1")
     disagreeing = bare_app_review(body=body("SHIP", "success"), node_id="PRR_2")
@@ -1520,10 +1520,10 @@ def test_a_ship_review_with_a_run_id_no_status_carries_is_not_matched_to_a_bare_
         "summary": "",
         "run_uuid": "2" * 32,
     }
-    body = f"### oracle-verdict: success for `{HEAD}`\n\nText.\n\n" + protocol.encode_marker(record)
+    body = f"### review-verdict: success for `{HEAD}`\n\nText.\n\n" + protocol.encode_marker(record)
     status = {
         "id": 1,
-        "context": "oracle-verdict",
+        "context": "review-verdict",
         "state": "success",
         "description": "bare",
         "creator": {"login": ORACLE_BOT, "type": "Bot"},
@@ -1532,7 +1532,7 @@ def test_a_ship_review_with_a_run_id_no_status_carries_is_not_matched_to_a_bare_
     monkeypatch.setattr(digest, "_graphql_review_edits", lambda ids: {"PRR_1": (None, False)})
     monkeypatch.setattr(digest, "gh_pages", lambda endpoint: [status])
     (checked,) = digest.verify_oracle_reviews("o/r", [bare_app_review(body=body, node_id="PRR_1")])
-    assert "no oracle-verdict status" in checked.unverifiable
+    assert "no review-verdict status" in checked.unverifiable
 
 
 def test_an_oracle_thread_posted_by_the_app_bot_account_is_checked_for_edits(monkeypatch):
@@ -1544,7 +1544,7 @@ def test_an_oracle_thread_posted_by_the_app_bot_account_is_checked_for_edits(mon
 
 
 def test_an_oracle_review_at_the_retarget_instant_or_at_the_merge_instant():
-    verdict = f"### oracle-verdict: failure for `{HEAD}`"
+    verdict = f"### review-verdict: failure for `{HEAD}`"
     at_retarget = evidence(base_changed_at=AFTER, reviews=(oracle_review(at=AFTER, body=verdict),))
     at_merge = evidence(reviews=(oracle_review(at=MERGED_AT, body=verdict),))
     assert digest._oracle_reviews(at_retarget, {HEAD}) == []
@@ -1562,7 +1562,7 @@ def test_an_override_names_the_last_commit_of_the_pull():
 
 
 def test_a_withdrawal_names_the_last_commit_of_the_pull():
-    body = f"### oracle-verdict: failure for `{HEAD}`\n\nWithdrawn as never defects:\n- one\n"
+    body = f"### review-verdict: failure for `{HEAD}`\n\nWithdrawn as never defects:\n- one\n"
     pull = three_commit_pull(reviews=(oracle_review(body=body),))
     assert digest.withdrawn_findings([pull])[0].head == HEAD
 
@@ -1670,14 +1670,14 @@ def marked_body(decision, state, header=True):
         "carried": False,
         "summary": "",
     }
-    head = f"### oracle-verdict: {state} for `{HEAD}`\n\n" if header else "Free text.\n\n"
+    head = f"### review-verdict: {state} for `{HEAD}`\n\n" if header else "Free text.\n\n"
     return head + protocol.encode_marker(record)
 
 
 def serve_app_status(monkeypatch, state):
     status = {
         "id": 1,
-        "context": "oracle-verdict",
+        "context": "review-verdict",
         "state": state,
         "description": "d",
         "creator": {"login": ORACLE_BOT, "type": "Bot"},

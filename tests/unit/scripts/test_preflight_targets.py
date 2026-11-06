@@ -223,8 +223,8 @@ def test_source_guard_tests_exist() -> None:
         "scripts/pr_arm.py",
         "scripts/pr_landing.py",
         "tests/fixtures/oracle_reviewers/omp_candidate/manifest.json",
-        ".github/workflows/oracle-verdict.yml",
-        ".github/workflows/oracle-gate.yml",
+        ".github/workflows/review-verdict.yml",
+        ".github/workflows/review-gate.yml",
         ".github/oracle-reviewers.yml",
         ".github/oracle-omp-config.yml",
     ],
@@ -291,7 +291,7 @@ def test_oracle_workflow_change_still_selects_the_consumer_tests(repo: Path) -> 
         _write(repo, test)
     _write(repo, "tests/unit/workflows/test_every_workflow.py")
 
-    assert set(pt.ORACLE_CONSUMER_TESTS) <= set(pt.map_tests(repo, [".github/workflows/oracle-gate.yml"]))
+    assert set(pt.ORACLE_CONSUMER_TESTS) <= set(pt.map_tests(repo, [".github/workflows/review-gate.yml"]))
 
 
 def test_changed_test_package_init_selects_its_package_and_importers(

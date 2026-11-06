@@ -466,8 +466,8 @@ def _gateway_env(tmp_path: Path, *, credentials: bool = True, **overrides: str |
         "THESEUS_OMP_DOWNLOAD_MIRROR": _omp_server(tmp_path, overrides.get("STUB_OMP_CONTENT") or FAKE_OMP).origin,
         "BENCHBOX_GATEWAY_PROXY_PORT": "1055",
         "TS_AUTHKEY": FAKE_KEY if credentials else None,
-        "ORACLE_GATEWAY_URL": FAKE_URL if credentials else None,
-        "ORACLE_CLOUD_GATEWAY_TOKEN": FAKE_TOKEN if credentials else None,
+        "REVIEW_GATEWAY_URL": FAKE_URL if credentials else None,
+        "REVIEW_CLOUD_GATEWAY_TOKEN": FAKE_TOKEN if credentials else None,
     }
     values.update(overrides)
     return _env(**values)
