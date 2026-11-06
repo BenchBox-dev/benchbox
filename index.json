@@ -18479,10 +18479,15 @@
       "title": "Close open-table-format loading gaps for Livy-based Spark adapters"
     },
     "load-path-live-fixes-umbrella-20261106": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-07T22:43:33Z",
+        "generation": "3112603cc6214127865e06567b2ded9f",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Umbrella: load-path live fixes batch (Databend, DuckDB Iceberg, QuestDB ILP x2, InfluxDB compressed TSBS)"
     },
     "loader-dialect-source-and-pandas-null-groups": {
