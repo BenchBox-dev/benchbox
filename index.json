@@ -31115,15 +31115,10 @@
       "title": "Harden the testing correctness gate and close review follow-ups"
     },
     "tests-inherit-outer-make-variables": {
-      "claim": {
-        "expires_at": "2026-11-07T14:20:49Z",
-        "generation": "3109588539ed4effa59e6e4b40264142",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Isolate tests that run make from the outer make invocation"
     },
     "tests-load-real-saved-credentials-20261014": {
