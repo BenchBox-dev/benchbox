@@ -416,72 +416,6 @@ received current-head review, or merged.
 `tests/unit/release/test_ruleset_drift_review_coverage.py` cover the review
 predicate and its blocking default with explicit override.
 
-## Branch ruleset — `release`
-
-Retired: the legacy `release` branch flow was replaced by the tag-triggered
-`release-v2.yml` publisher (see `release-guide.md`). The branch, its ruleset
-and the drift expectations below remain only until the owner deletes the branch
-and ruleset. `scripts/ruleset_drift_check.py` still parses this section, so
-do not remove it in the same change that deletes the live ruleset: first
-change the drift expectations (the `release-only` ruleset and the `release`
-branch policy of `test-pypi`), then remove this section.
-
-Ruleset name: `release-only`, targets `refs/heads/release`.
-
-Release-only branch. Direct pushes are not allowed.
-
-Required status checks:
-
-```text
-- validate-base
-- release-required-result
-```
-
-`validate-base` was the branch-shape guard in the retired
-`.github/workflows/validate-release-pr.yml`, and `release-required-result` was
-the umbrella job in the retired `.github/workflows/test.yml`. No workflow
-produces either context any more, so no PR can merge into `release`.
-
-Other ruleset properties to preserve:
-
-```text
-strict_required_status_checks_policy: false
-required_linear_history: true
-non_fast_forward: true
-require_extra_approval_for_unattributed_changes: true
-deletion: blocked
-bypass_actors: (none)
-```
-
-Verify (the ruleset id varies; list, then inspect):
-
-```bash
-gh api repos/BenchBox-dev/BenchBox/rulesets --jq '.[] | {id, name, target}'
-gh api repos/BenchBox-dev/BenchBox/rulesets/<release-ruleset-id> --jq '
-  {
-    target: .target,
-    enforcement: .enforcement,
-    bypass_actors: [.bypass_actors[]?.actor_type],
-    required_checks: [
-      .rules[]
-      | select(.type == "required_status_checks")
-      | .parameters.required_status_checks[]?.context
-    ],
-    strict_base: (
-      .rules[]
-      | select(.type == "required_status_checks")
-      | .parameters.strict_required_status_checks_policy
-    ),
-    linear_history: any(.rules[]; .type == "required_linear_history"),
-    non_fast_forward: any(.rules[]; .type == "non_fast_forward"),
-    deletion: any(.rules[]; .type == "deletion")
-  }'
-```
-
-If the live ruleset differs from this runbook, update the ruleset or this
-document before relying on release-required enforcement. The retirement note
-above lists what to do once the ruleset is deleted.
-
 ## Tag creation and release-environment protections
 
 `release-v2.yml` admits only a tag whose commit has a successful trunk run,
@@ -597,7 +531,7 @@ CI wiring (added with the fnmatch and empty-bypass hardening above):
 `scripts/ruleset_drift_check.py`'s `tag_creation_findings()` calls
 `tag_protection_findings()` and `tag_bypass_advisory()` on every full ruleset
 that `release-canary.yml`'s `ruleset-drift` job already fetches with
-`RULESET_DRIFT_TOKEN` for the `develop-squash-only` and `release-only` checks,
+`RULESET_DRIFT_TOKEN` for the `develop-squash-only` check,
 so no second API call is needed. The daily canary run reports tag-ruleset drift
 as a blocking finding, so it depends only on the canary running at all.
 
@@ -660,9 +594,7 @@ diagnose.
 Deployment policies (applied 2026-10-23): both environments admit only
 selected refs, so a workflow run on an arbitrary branch cannot request them.
 `pypi` accepts deployments from tags matching `v*` only. `test-pypi` accepts
-tags matching `v*` and the `develop` and `release` branches; the `release`
-branch entry is left over from the retired legacy publisher and stays pinned
-by the drift check until the owner removes it together with the branch. A manual
+tags matching `v*` and the `develop` branch. A manual
 `release-v2.yml` dispatch deploys under the ref it was started from, so start
 it from the release tag
 (`gh workflow run release-v2.yml --ref vX.Y.Z -f tag=vX.Y.Z`); a dispatch from
@@ -716,8 +648,6 @@ gh api -X POST repos/BenchBox-dev/BenchBox/environments/test-pypi/deployment-bra
   -f name='v*' -f type=tag
 gh api -X POST repos/BenchBox-dev/BenchBox/environments/test-pypi/deployment-branch-policies \
   -f name=develop -f type=branch
-gh api -X POST repos/BenchBox-dev/BenchBox/environments/test-pypi/deployment-branch-policies \
-  -f name=release -f type=branch
 ```
 
 ## Release canary and ruleset drift
@@ -749,8 +679,8 @@ invocation, as a blocking release check in `release-canary.yml`, and during
 `tooling` result. Nightly and canary drift jobs check out `develop`. Only the
 drift step gets the admin-visible token.
 
-The script parses this runbook for `develop-squash-only` and `release-only`,
-then compares the live rulesets for required status check contexts, strict-base
+The script parses this runbook for `develop-squash-only`, then compares the
+live ruleset for required status check contexts, strict-base
 settings, bypass actors, linear history, non-fast-forward protection, deletion
 protection, and target refs. For `develop-squash-only` it also applies the
 `review_enforcement_findings` predicate, as described in "Soundness-path

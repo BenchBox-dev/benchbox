@@ -548,7 +548,7 @@
       "WA007": 2
     },
     "tests/unit/test_ruleset_drift.py": {
-      "WA003": 7
+      "WA003": 3
     },
     "tests/unit/test_standardized_test_commands.py": {
       "WA003": 23

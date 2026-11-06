@@ -43,7 +43,7 @@ TEST_PYPI_ENVIRONMENT = "test-pypi"
 ORACLE_ENVIRONMENT = "oracle"
 ENVIRONMENT_DEPLOYMENT_POLICIES = {
     PYPI_ENVIRONMENT: (("tag", "v*"),),
-    TEST_PYPI_ENVIRONMENT: (("branch", "develop"), ("branch", "release"), ("tag", "v*")),
+    TEST_PYPI_ENVIRONMENT: (("branch", "develop"), ("tag", "v*")),
     ORACLE_ENVIRONMENT: (("branch", "develop"),),
 }
 
@@ -184,7 +184,7 @@ def _other_properties(section: str, name: str) -> dict[str, str]:
 
 def parse_expected_rulesets(runbook_text: str) -> dict[str, ExpectedRuleset]:
     expected: dict[str, ExpectedRuleset] = {}
-    for name in ("develop-squash-only", "release-only"):
+    for name in ("develop-squash-only",):
         section = _section_for_ruleset(runbook_text, name)
         ref_match = re.search(r"targets?\s+`([^`]+)`", section)
         if not ref_match:
@@ -445,7 +445,7 @@ def render_summary(findings: list[str], expected: dict[str, ExpectedRuleset]) ->
             lines.append(f"- {ruleset.name}: required checks {', '.join(ruleset.required_checks)}")
         lines.append("- pypi environment: required reviewer joeharris76 (User id 57046)")
         lines.append("- pypi environment: deployments only from tag v*")
-        lines.append("- test-pypi environment: deployments only from tag v* and branches develop and release")
+        lines.append("- test-pypi environment: deployments only from tag v* and branch develop")
         lines.append("- oracle environment: deployments only from branch develop")
     if warnings:
         lines += ["", "## Non-blocking warnings", "", *[f"- {finding}" for finding in warnings]]

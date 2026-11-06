@@ -8,6 +8,7 @@ import pytest
 
 from scripts import ruleset_drift_check
 from scripts.ruleset_drift_check import (
+    ExpectedRuleset,
     compare_ruleset,
     deployment_policy_findings,
     environment_protection_findings,
@@ -19,10 +20,26 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 
+FIXTURE_REF = "refs/heads/fixture"
+FIXTURE_CHECKS = ("check-a", "check-b")
+
+
+def _fixture_expected() -> ExpectedRuleset:
+    return ExpectedRuleset(
+        name="fixture-ruleset",
+        ref=FIXTURE_REF,
+        required_checks=FIXTURE_CHECKS,
+        strict_required_status_checks_policy=False,
+        required_linear_history=True,
+        non_fast_forward=True,
+        deletion=True,
+        bypass_actors_none=True,
+    )
+
 
 def _live_ruleset(ref: str, checks: list[str], *, strict: bool = False, bypass: list[dict] | None = None) -> dict:
     return {
-        "name": "release-only",
+        "name": "fixture-ruleset",
         "enforcement": "active",
         "conditions": {"ref_name": {"include": [ref], "exclude": []}},
         "bypass_actors": bypass or [],
@@ -44,6 +61,7 @@ def _live_ruleset(ref: str, checks: list[str], *, strict: bool = False, bypass: 
 def test_parse_expected_rulesets_from_admin_runbook() -> None:
     expected = parse_expected_rulesets((REPO_ROOT / "docs" / "internal" / "repo-admin-settings.md").read_text())
 
+    assert set(expected) == {"develop-squash-only"}
     assert expected["develop-squash-only"].ref == "refs/heads/develop"
     assert expected["develop-squash-only"].required_checks == (
         "core",
@@ -55,47 +73,34 @@ def test_parse_expected_rulesets_from_admin_runbook() -> None:
         "oracle-gate",
     )
     assert expected["develop-squash-only"].strict_required_status_checks_policy is False
-    assert expected["release-only"].ref == "refs/heads/release"
-    assert expected["release-only"].required_checks == ("validate-base", "release-required-result")
-    assert expected["release-only"].strict_required_status_checks_policy is False
-    assert expected["release-only"].bypass_actors_none is True
 
 
 def test_matching_ruleset_has_no_drift_findings() -> None:
-    expected = parse_expected_rulesets((REPO_ROOT / "docs" / "internal" / "repo-admin-settings.md").read_text())[
-        "release-only"
-    ]
-    live = _live_ruleset("refs/heads/release", ["validate-base", "release-required-result"])
+    live = _live_ruleset(FIXTURE_REF, list(FIXTURE_CHECKS))
 
-    assert compare_ruleset(expected, live) == []
+    assert compare_ruleset(_fixture_expected(), live) == []
 
 
 def test_required_context_drift_is_reported() -> None:
-    expected = parse_expected_rulesets((REPO_ROOT / "docs" / "internal" / "repo-admin-settings.md").read_text())[
-        "release-only"
-    ]
-    live = _live_ruleset("refs/heads/release", ["validate-base"])
+    live = _live_ruleset(FIXTURE_REF, [FIXTURE_CHECKS[0]])
 
-    findings = compare_ruleset(expected, live)
+    findings = compare_ruleset(_fixture_expected(), live)
 
     assert findings
     assert "required checks" in findings[0]
-    assert "release-required-result" in findings[0]
+    assert FIXTURE_CHECKS[1] in findings[0]
 
 
 def test_ruleset_policy_drift_is_reported() -> None:
-    expected = parse_expected_rulesets((REPO_ROOT / "docs" / "internal" / "repo-admin-settings.md").read_text())[
-        "release-only"
-    ]
     live = _live_ruleset(
-        "refs/heads/release",
-        ["validate-base", "release-required-result"],
+        FIXTURE_REF,
+        list(FIXTURE_CHECKS),
         strict=True,
         bypass=[{"actor_type": "RepositoryRole"}],
     )
     live["rules"] = [rule for rule in live["rules"] if rule["type"] != "deletion"]
 
-    findings = compare_ruleset(expected, live)
+    findings = compare_ruleset(_fixture_expected(), live)
 
     assert any("strict_required_status_checks_policy" in finding for finding in findings)
     assert any("deletion" in finding for finding in findings)
@@ -103,13 +108,10 @@ def test_ruleset_policy_drift_is_reported() -> None:
 
 
 def test_bypass_actor_visibility_can_be_required() -> None:
-    expected = parse_expected_rulesets((REPO_ROOT / "docs" / "internal" / "repo-admin-settings.md").read_text())[
-        "release-only"
-    ]
-    live = _live_ruleset("refs/heads/release", ["validate-base", "release-required-result"])
+    live = _live_ruleset(FIXTURE_REF, list(FIXTURE_CHECKS))
     del live["bypass_actors"]
 
-    findings = compare_ruleset(expected, live, require_bypass_actor_visibility=True)
+    findings = compare_ruleset(_fixture_expected(), live, require_bypass_actor_visibility=True)
 
     assert any("bypass actors are not visible" in finding for finding in findings)
 
@@ -213,7 +215,7 @@ def test_matching_deployment_policies_have_no_findings(name: str) -> None:
         (
             "test-pypi",
             lambda env: None,
-            lambda p: p["branch_policies"].remove({"type": "branch", "name": "release"}),
+            lambda p: p["branch_policies"].append({"type": "branch", "name": "release"}),
             "deployment policies",
         ),
         (
