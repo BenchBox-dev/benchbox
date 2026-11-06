@@ -202,6 +202,21 @@ directories of a stage, and a single unsharded run directory per stage still
 works. See `docs/internal/uat-release-campaign.md` for campaign ordering and its
 report checklist.
 
+### Trunk UAT
+
+`trunk-uat.yml` runs the same three stages and the same shard jobs every night
+at 02:00 UTC against the trunk dist of the newest releasable `develop` commit,
+skips a scheduled run when nothing the release UAT depends on changed since the
+last run that executed shards, and defers while a `release-v2` run is in
+progress. Change a platform's shard in `release-v2.yml` and `trunk-uat.yml`
+together; `tests/unit/workflows/test_trunk_uat_workflow.py` fails when their
+matrices differ. Its evidence is kept 90 days, and each run appends per-cell
+results (terminal state, elapsed time, peak memory, failure signature, attempt)
+to the history that `scripts/trunk_uat.py history` reads. Dispatch it with
+`gh workflow run trunk-uat.yml --ref develop` after an envelope fix lands. The
+rules, artifacts and the decision gate on runner cost are in
+[trunk-uat.md](trunk-uat.md).
+
 ## Release notes from fragments
 
 Each pull request that changes user-visible behavior adds one
