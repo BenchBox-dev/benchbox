@@ -342,6 +342,7 @@ def test_iceberg_handler_registers_real_converter_output(tmp_path):
 
 
 class _Adapter:
+    dry_run_mode = False
     platform_name = "DuckDB"
     table_mode = "native"
     platform_config: dict = {}
@@ -399,3 +400,19 @@ def test_loader_allows_zero_rows_from_empty_source(tmp_path):
     loader = _loader(MagicMock(), handler_factory=lambda *args: _ZeroRowHandler())
 
     assert loader._load_single_file("widgets", source) == 0
+
+
+def test_loader_skips_row_count_check_in_dry_run(tmp_path):
+    class _PlaceholderHandler(_ZeroRowHandler):
+        def load_table(self, table_name, file_path, connection, benchmark, logger) -> int:
+            return 1000
+
+    source = tmp_path / "widgets.tbl"
+    source.write_text("1|a|\n2|b|\n")
+    loader = _loader(MagicMock(), handler_factory=lambda *args: _PlaceholderHandler())
+
+    with pytest.raises(data_loading.DataLoadingError):
+        loader._load_single_file("widgets", tmp_path / "missing.tbl")
+    loader.adapter.dry_run_mode = True
+    assert loader._load_single_file("widgets", source) == 1000
+    assert loader._load_sharded_table("widgets", [source]) == 1000

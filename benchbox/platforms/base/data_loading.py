@@ -2246,7 +2246,7 @@ class DataLoader:
             row_count = handler.load_table_bulk(
                 table_name, shard_paths, self.connection, self.benchmark, self.adapter.logger
             )
-            _verify_loaded_row_count(table_name, shard_paths, row_count)
+            self._verify_row_count(table_name, shard_paths, row_count)
             return row_count
         except DataLoadingError:
             raise
@@ -2282,7 +2282,7 @@ class DataLoader:
                 return 0
 
             row_count = handler.load_table(table_name, file_path, self.connection, self.benchmark, self.adapter.logger)
-            _verify_loaded_row_count(table_name, [file_path], row_count)
+            self._verify_row_count(table_name, [file_path], row_count)
             return row_count
 
         except (subprocess.CalledProcessError, FileNotFoundError) as e:
@@ -2293,6 +2293,11 @@ class DataLoader:
         except Exception as e:
             quiet_console.print(f"  ❌ Failed to load {file_path.name}: {e}")
             raise DataLoadingError(f"Table '{table_name}': load failed for {file_path.name}: {e}") from e
+
+    def _verify_row_count(self, table_name: str, source_paths: list[Path], loaded_rows: int) -> None:
+        if getattr(self.adapter, "dry_run_mode", False):
+            return
+        _verify_loaded_row_count(table_name, source_paths, loaded_rows)
 
     def _create_custom_handler(self, file_path: Path, table_name: str, data_source: DataSource) -> Any | None:
         if not self.handler_factory:
