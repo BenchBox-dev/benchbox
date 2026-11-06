@@ -10635,10 +10635,15 @@
       "title": "Databricks DataFrame Mode - CRITICAL PRIORITY"
     },
     "databricks-dataframe-plan-capture-live-check": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-07T17:50:23Z",
+        "generation": "123f0d17807d4092af1561dc1ec2f75e",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54"
+      },
       "needs": [],
       "priority": "low",
-      "status": "blocked",
+      "status": "active",
       "title": "Run Databricks DataFrame deferred plan capture against a real workspace"
     },
     "databricks-example-modernization-completed": {
