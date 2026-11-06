@@ -30,9 +30,10 @@ branch is incomplete.
   gh pr ready <n> --undo
   ```
 
-- The required `hold` check (`.github/workflows/pr-hold.yml`) fails while the
-  label is present, so a held PR cannot merge, even when armed or merged with a
-  raw `gh pr merge`. `make pr-arm` and `make pr-ready` also refuse it.
+- The required `hold` check (`.github/workflows/pr-hold.yml`) reads the PR's
+  live labels through the API each time it runs and fails while the label is
+  present, so a held PR cannot merge, even when armed or merged with a raw
+  `gh pr merge`. `make pr-arm` and `make pr-ready` also refuse it.
 - Release a hold only when the owner names that PR in the current request.
   A goal such as "merge all open PRs", a handoff, a tracker item, or an earlier
   message is not a release. Remove the label and draft status with the same
@@ -171,6 +172,10 @@ happened to #3264 and #3319 (`oracle-review` runs from `synchronize` and
   PR shows `mergeStateStatus` `UNSTABLE`, not `BLOCKED`, with the required check
   satisfied, even though `statusCheckRollup.state` reads FAILURE. The tooling
   lists only superseded suites that ended in a failure.
+- A `hold` suite that failed because a push landed while the label was set stays
+  in the rollup after the owner removes the label. Rerunning it re-reads the live
+  labels, so once the owner has released the hold `make pr-rerun PR=<n>` turns
+  that suite green; while the label is present it fails again.
 - `make pr-arm` refuses a PR whose required check has a failed suite behind a
   newer success and prints the suite and run URL. `scripts/pr_landing.py`
   live verification and `make pr-landing-remote-*` report the failed suite
