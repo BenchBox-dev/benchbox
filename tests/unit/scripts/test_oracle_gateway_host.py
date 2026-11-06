@@ -34,7 +34,7 @@ pytestmark = [
 BOOTSTRAP_RELATIVE = "_project/scripts/theseus_bootstrap.py"
 TOKENS = {"review-ci": "i" * 48, "review-local": "l" * 48, "review-cloud": "c" * 48}
 MODELS = ["anthropic/model-a", "openai-codex/model-b"]
-PROVIDERS = ("anthropic", "openai-codex", "muse-code", "google-antigravity")
+PROVIDERS = ("anthropic", "openai-codex", "google-antigravity")
 GIT_IDENTITY = {
     "GIT_AUTHOR_NAME": "Test",
     "GIT_AUTHOR_EMAIL": "test@example.com",
