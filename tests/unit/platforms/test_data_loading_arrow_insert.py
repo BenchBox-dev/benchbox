@@ -388,9 +388,9 @@ def test_loader_raises_when_handler_loads_zero_rows_from_non_empty_source(tmp_pa
     source.write_text("1|a|\n2|b|\n")
     loader = _loader(MagicMock(), handler_factory=lambda *args: _ZeroRowHandler())
 
-    with pytest.raises(data_loading.DataLoadingError, match="loaded 0 rows but the source has 2"):
+    with pytest.raises(data_loading.DataLoadingError, match="loaded 0 rows but the source has 1"):
         loader._load_single_file("widgets", source)
-    with pytest.raises(data_loading.DataLoadingError, match="loaded 0 rows but the source has 2"):
+    with pytest.raises(data_loading.DataLoadingError, match="loaded 0 rows but the source has 1"):
         loader._load_sharded_table("widgets", [source])
 
 
@@ -416,3 +416,16 @@ def test_loader_skips_row_count_check_in_dry_run(tmp_path):
     loader.adapter.dry_run_mode = True
     assert loader._load_single_file("widgets", source) == 1000
     assert loader._load_sharded_table("widgets", [source]) == 1000
+
+
+def test_loader_raises_on_decompression_or_file_errors(tmp_path):
+    class _MissingToolHandler(_ZeroRowHandler):
+        def load_table(self, table_name, file_path, connection, benchmark, logger) -> int:
+            raise FileNotFoundError("zstd")
+
+    source = tmp_path / "widgets.tbl"
+    source.write_text("1|a|\n")
+    loader = _loader(MagicMock(), handler_factory=lambda *args: _MissingToolHandler())
+
+    with pytest.raises(data_loading.DataLoadingError, match="widgets"):
+        loader._load_single_file("widgets", source)

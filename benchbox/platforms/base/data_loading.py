@@ -2067,8 +2067,7 @@ def _source_row_count(path: Path) -> tuple[int, bool] | None:
 
             return pq.ParquetFile(path).metadata.num_rows, True
         if path.suffix.lower() in _PLAIN_TEXT_SUFFIXES:
-            with path.open("rb") as handle:
-                return sum(1 for line in handle if line.strip()), False
+            return (1 if path.stat().st_size > 0 else 0), False
     except Exception:
         return None
     return None
@@ -2286,8 +2285,8 @@ class DataLoader:
             return row_count
 
         except (subprocess.CalledProcessError, FileNotFoundError) as e:
-            quiet_console.print(f"⚠️  Skipping {file_path.name} - decompression/file error: {e}")
-            return 0
+            quiet_console.print(f"  ❌ Failed to load {file_path.name}: {e}")
+            raise DataLoadingError(f"Table '{table_name}': decompression/file error for {file_path.name}: {e}") from e
         except DataLoadingError:
             raise
         except Exception as e:
