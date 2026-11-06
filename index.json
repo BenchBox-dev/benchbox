@@ -904,6 +904,7 @@
     },
     "hold-label-and-batch-e2e-20261106": {
       "accepted_members": {
+        "batch-loop-e2e-review-binding-failures-20261106": "e2808dca0560cc0824aad2b209a49c8fdc580be4",
         "pr-hold-stale-label-suite-unclearable-20261106": "3b6544c586ca44a2f19f04808650b6adecdc1d9a"
       },
       "batch_schema": 2,
@@ -911,6 +912,18 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "batch-loop-e2e-review-binding-failures-20261106": {
+          "accepted_head": "e2808dca0560cc0824aad2b209a49c8fdc580be4",
+          "changed_files": [
+            ".github/workflows/batch-loop-e2e.yml",
+            "changelog.d/batch-loop-e2e-review-binding-failures-20261106.json",
+            "tests/integration/worktree/batch_loop_support.py",
+            "tests/integration/worktree/batch_loop_theseus.py",
+            "tests/unit/workflows/test_batch_loop_e2e_workflow.py"
+          ],
+          "integration_head": "609e6eb81ecf869b9522a700ff070e9c9ea52945",
+          "integration_seq": 2
+        },
         "pr-hold-stale-label-suite-unclearable-20261106": {
           "accepted_head": "3b6544c586ca44a2f19f04808650b6adecdc1d9a",
           "changed_files": [
@@ -925,7 +938,7 @@
         }
       },
       "integration_branch": "feat/hold-label-and-batch-e2e-20261106",
-      "integration_head": "959c3391352a8f78223e034cf6e736062636fdb5",
+      "integration_head": "609e6eb81ecf869b9522a700ff070e9c9ea52945",
       "integration_log": [
         {
           "at": "2026-11-06T13:13:21Z",
@@ -941,6 +954,15 @@
           "op_id": "5f7e14dc49244df985293363d6395771",
           "previous_head": "20a0045113e6c8ba13c3e7c4f78351e3fe81f81e",
           "seq": 1
+        },
+        {
+          "at": "2026-11-06T23:44:48Z",
+          "head": "609e6eb81ecf869b9522a700ff070e9c9ea52945",
+          "kind": "prepare",
+          "member": "batch-loop-e2e-review-binding-failures-20261106",
+          "op_id": "754602ec56284e048bfacda268e12831",
+          "previous_head": "959c3391352a8f78223e034cf6e736062636fdb5",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-feat-hold-label-and-batch-e2e",
@@ -5831,15 +5853,10 @@
       "title": "Document the integration batch loop in AGENTS.md and docs/agent, keeping it opt-in until the pilot passes"
     },
     "batch-loop-e2e-review-binding-failures-20261106": {
-      "claim": {
-        "expires_at": "2026-11-07T23:44:45Z",
-        "generation": "f5c5567066bd4c06aa9eee25b1159f4b",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Restore the batch-loop end-to-end tests broken by the theseus_cli review binding"
     },
     "batch-loop-pilot-20261101": {
