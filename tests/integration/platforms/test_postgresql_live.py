@@ -144,3 +144,76 @@ class TestLivePostgreSQLQueryPlanCapture:
             assert plan1.plan_fingerprint == plan2.plan_fingerprint
         finally:
             adapter.close_connection(connection)
+
+
+@pytest.fixture
+def refresh_schemas():
+    import uuid
+
+    skip_unless_docker_service("localhost", 5432, platform="PostgreSQL")
+    suffix = uuid.uuid4().hex[:8]
+    adapters = []
+    connections = []
+    for role in ("native", "values", "atomic"):
+        adapter = PostgreSQLAdapter(
+            host="localhost",
+            port=5432,
+            username="benchbox",
+            password="benchbox",
+            database="benchbox_test",
+            schema=f"rf1_{role}_{suffix}",
+        )
+        adapter.skip_database_management = True
+        connection = adapter.create_connection()
+        adapters.append(adapter)
+        connections.append(connection)
+    opened: list = []
+    yield {
+        **dict(zip(("native", "values", "atomic"), zip(adapters, connections, strict=True), strict=True)),
+        "opened": opened,
+    }
+    for stream in opened:
+        stream.rollback()
+        stream.close()
+    for adapter, connection in zip(adapters, connections, strict=True):
+        connection.rollback()
+        connection.execute(f'DROP SCHEMA IF EXISTS "{adapter.schema}" CASCADE')
+        connection.commit()
+        adapter.close_connection(connection)
+
+
+def _refresh_connection(adapter, connection, *, native: bool, opened: list):
+    from unittest.mock import MagicMock
+
+    from benchbox.platforms.base.connection_wrappers import PlatformAdapterConnection
+
+    stream = adapter.new_stream_connection(connection)
+    opened.append(stream)
+    return PlatformAdapterConnection(stream, adapter if native else MagicMock(), maintenance_mode=True)
+
+
+@pytest.mark.slow
+class TestLivePostgreSQLTPCHRefreshIngest:
+    def test_native_rf1_matches_values_path_for_every_column(self, refresh_schemas, tmp_path):
+        from tests.integration._tpch_refresh_utils import _check_native_rf1_matches_values, _load_sf001_base_postgres
+
+        native = refresh_schemas["native"]
+        values = refresh_schemas["values"]
+
+        _check_native_rf1_matches_values(
+            _refresh_connection(*native, native=True, opened=refresh_schemas["opened"]),
+            _refresh_connection(*values, native=False, opened=refresh_schemas["opened"]),
+            tmp_path,
+            _load_sf001_base_postgres,
+        )
+
+    def test_native_rf1_bad_row_leaves_no_rows_and_connection_usable(self, refresh_schemas, tmp_path):
+        from tests.integration._tpch_refresh_utils import _check_rf1_bad_row_is_atomic, _load_sf001_base_postgres
+
+        refresh_connection = _refresh_connection(
+            *refresh_schemas["atomic"], native=True, opened=refresh_schemas["opened"]
+        )
+
+        _check_rf1_bad_row_is_atomic(refresh_connection, tmp_path, _load_sf001_base_postgres)
+
+        assert refresh_connection.execute("SELECT 1").fetchone()[0] == 1

@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "TPC-H refresh function RF1 now ingests the update-set files with the engine's native reader (DuckDB read_csv, PostgreSQL COPY) inside the RF1 timer, in the power test, throughput refresh stream and maintenance test. RF1 durations recorded by earlier versions used batched INSERT ... VALUES statements and are not comparable; adapters without native ingest keep the VALUES path."
+    }
+  ]
+}
