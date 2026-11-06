@@ -806,15 +806,19 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
 
     def _await_ilp_row_count(self, table_name: str, expected: int, rows_sent: int) -> None:
         deadline = time.monotonic() + _ILP_VERIFY_TIMEOUT_SECONDS
+        previous = -1
         while True:
             actual = self._ilp_table_row_count(table_name)
             if actual >= expected:
                 break
+            if actual > previous:
+                previous = actual
+                deadline = time.monotonic() + _ILP_VERIFY_TIMEOUT_SECONDS
             if time.monotonic() >= deadline:
                 raise RuntimeError(
                     f"QuestDB ILP load of '{table_name}' lost rows: sent {rows_sent:,}, "
                     f"table holds {actual:,} but {expected:,} were expected after "
-                    f"{_ILP_VERIFY_TIMEOUT_SECONDS:.0f}s (ILP gives no acknowledgement; "
+                    f"{_ILP_VERIFY_TIMEOUT_SECONDS:.0f}s without progress (ILP gives no acknowledgement; "
                     "check the QuestDB server log for rejected lines)"
                 )
             time.sleep(_ILP_VERIFY_POLL_SECONDS)

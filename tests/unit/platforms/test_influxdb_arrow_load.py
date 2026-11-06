@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import gzip
 import hashlib
 from datetime import datetime
 from unittest.mock import patch
@@ -197,6 +198,19 @@ class TestInfluxLoadFailsLoudly:
         with (
             patch("benchbox.platforms.influxdb._dependencies.INFLUXDB3_AVAILABLE", True),
             pytest.raises(DataLoadingError, match="nothing was loaded"),
+        ):
+            adapter.load_data(benchmark=None, connection=conn, data_dir=tmp_path)
+
+    def test_multiple_compression_variants_fail(self, adapter, tmp_path):
+        header = "time,hostname,usage_user\n2026-01-01T00:00:00Z,a,1\n"
+        (tmp_path / "cpu.csv").write_text(header)
+        (tmp_path / "cpu.csv.gz").write_bytes(gzip.compress(header.encode()))
+        conn = InfluxDBConnection(host="h", token="t", database="d")
+        conn._client = _FakeClient()
+        conn._client_type = "influxdb3"
+        with (
+            patch("benchbox.platforms.influxdb._dependencies.INFLUXDB3_AVAILABLE", True),
+            pytest.raises(DataLoadingError, match="Multiple data files for cpu"),
         ):
             adapter.load_data(benchmark=None, connection=conn, data_dir=tmp_path)
 

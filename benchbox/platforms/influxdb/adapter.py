@@ -196,11 +196,14 @@ class InfluxDBAdapter(
 
     @staticmethod
     def _find_table_files(data_dir: Path, table_name: str) -> list[Path]:
-        return sorted(
+        matches = sorted(
             path
             for path in data_dir.glob(f"{table_name}.csv*")
             if path.is_file() and strip_compression_suffix(path).name == f"{table_name}.csv"
         )
+        if len(matches) > 1:
+            raise DataLoadingError(f"Multiple data files for {table_name} in {data_dir}: {[m.name for m in matches]}")
+        return matches
 
     def _verify_visible_rows(self, connection: Any, table_name: str, expected: int) -> None:
         import time
