@@ -813,7 +813,7 @@
         }
       },
       "integration_branch": "feat/native-bulk-load-remainder",
-      "integration_head": "cb3192dabbfb7be991e9cf830045b7e8cb986bd4",
+      "integration_head": "84f7ddeee1c154312a99bcb2500ae2525f0c6088",
       "integration_log": [
         {
           "at": "2026-11-04T18:14:25Z",
@@ -970,6 +970,20 @@
             "perf-tpcdi-etl-bulk-paths-20261031"
           ],
           "seq": 7
+        },
+        {
+          "at": "2026-11-06T04:08:59Z",
+          "changed_files": [
+            "changelog.d/feat-native-bulk-load-remainder--perf-tpcdi-etl-bulk-paths-20261031.json"
+          ],
+          "head": "84f7ddeee1c154312a99bcb2500ae2525f0c6088",
+          "kind": "fix",
+          "op_id": "74806bf47e374caebf0d4978b0bf04e0",
+          "previous_head": "cb3192dabbfb7be991e9cf830045b7e8cb986bd4",
+          "requires_acceptance": [
+            "perf-tpcdi-etl-bulk-paths-20261031"
+          ],
+          "seq": 8
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-native-bulk-load-remainder",
