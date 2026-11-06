@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "The overlay guard scans only git-tracked files matching its globs, so untracked virtualenvs or caches cannot produce findings.",
+    "The guard still flags overlays in tracked workflows, Makefile and scripts, and its coverage test still passes."
+  ],
+  "description": "tests/unit/sql_compat/test_sqlglot_overlay_guard.py globs _project/scripts/**/*.py, which also walks the untracked _project/scripts/.venv. Batch tooling runs `uv run --project _project/scripts`, creating that virtualenv in every integration worktree; the public sqlglot package inside it trips the \"PyPI sqlglot install\" finding, so the guard fails in leader worktrees whenever an overlap rerun selects it (observed: batch sqlglot-core-delivery, 1 failed / 3644 passed). The guard is meant to check repository files only.",
+  "links": [
+    "tests/unit/sql_compat/test_sqlglot_overlay_guard.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f",
+      "at": "2026-11-06T16:14:15Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "904d3ee1c7154496817b2a460edeab2e",
+      "session_id": "2f41579dd2194a049659596cdd9a4f3d"
+    }
+  ]
+}
