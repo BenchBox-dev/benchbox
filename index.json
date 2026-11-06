@@ -24973,12 +24973,17 @@
       "title": "QuestDB benchmark compatibility remediation: disable always-failing benchmarks and patch adapter to expand coverage"
     },
     "questdb-ilp-date-columns-sent-as-strings-20261106": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-07T20:24:26Z",
+        "generation": "cf42c7743a2d47248f392fc3b82a35ec",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [
         "questdb-ilp-load-drops-rows-per-file-socket-20261106"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "QuestDB ILP load sends TPC-H DATE columns as strings into TIMESTAMP columns, lineitem loads zero rows"
     },
     "questdb-ilp-load-drops-rows-per-file-socket-20261106": {
