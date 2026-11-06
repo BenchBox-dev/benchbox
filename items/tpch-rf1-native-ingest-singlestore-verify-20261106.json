@@ -5,6 +5,7 @@
     "Timer-boundary unit test covers the SingleStore native path",
     "Changelog fragment states SingleStore's RF1 path"
   ],
+  "context": "LOAD DATA LOCAL INFILE availability (live, mocker 0.7.2, ghcr.io/singlestore-labs/singlestoredb-dev:latest, memsql 10.9.0, linux/amd64): server @@local_infile = ON by default. Driver singlestoredb 1.18.2: connect() without local_infile=True fails with error 1148 \"LOAD DATA LOCAL is disabled by your client configuration\"; with local_infile=True the load succeeds (2 rows, rowcount 2) and a trailing '|' is absorbed by an extra `@var` column-list entry, so no file staging is needed. SingleStoreAdapter._connect_database already passes local_infile=True. Mocker limits hit: `mocker compose up` of docker/singlestore fails with \"Error: platform linux/arm64\" (compose ignores `platform: linux/amd64`; make uat-bring-up PLATFORM=singlestore fails the same way even after `mocker pull --platform linux/amd64`), and the default 1 GiB VM makes memsql abort at start (globals.cpp:6384). Working bring-up: `mocker run -d --platform linux/amd64 -m 6g -c 4 --name benchbox-uat-manual-singlestore-singlestore-1 -p 13306:3306 -e ROOT_PASSWORD=benchbox ghcr.io/singlestore-labs/singlestoredb-dev:latest`.",
   "description": "Follow-up to tpch-rf1-native-ingest-singlestore-20261103, which landed only a fallback pin (SingleStoreAdapter stays on INSERT ... VALUES) because the author host had no container runtime. On a host with Docker: (1) check LOAD DATA LOCAL INFILE is accepted (server local_infile) and record it; (2) implement ingest_refresh_file on SingleStoreAdapter with supports_native_refresh_ingest declared on the class, inside the RF1 timer, no adapter.load_data, no mode moving work before the timer; (3) per-column checksum parity vs VALUES at SF0.01, atomicity with an injected bad row, RF1 SF1 duration vs VALUES; keep the fallback if not faster. Update the SingleStore row of the TPC measured-intervals reference. No live cloud.",
   "links": [
     "benchbox/platforms/singlestore.py",
@@ -26,6 +27,14 @@
       "generation": "59379df27aea47ddbed31394b2bc9376",
       "op": "take",
       "op_id": "ecf70bc29baa44f8954b08bf1f65f3f1",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-06T17:49:27Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "57d0dcebd1c044b28b311741bc184064",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
