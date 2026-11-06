@@ -666,14 +666,17 @@ def test_prepare_emits_a_bundle_and_a_marked_pull_request_limited_to_the_adoptio
     delivered = world.deliver(NEW, 2)
     prepared = world.prepare()
     assert prepared["branch"] == f"chore/sqlglot-{NEW}"
-    assert prepared["title"] == f"chore(sqlglot): adopt benchbox-sqlglot {NEW}"
+    assert prepared["title"] == f"chore(deps): adopt benchbox-sqlglot {NEW}"
     assert sorted(prepared["paths"]) == [
         "benchbox/_vendor/SQLGLOT_LICENSE.txt",
         "benchbox/_vendor/benchbox_sqlglot-30.23.0.2-py3-none-any.whl.zip",
         f"benchbox/_vendor/benchbox_sqlglot-{NEW}-py3-none-any.whl.zip",
         "benchbox/_vendor/sqlglot.json",
+        delivery.fragment_for(NEW),
         "scripts/sqlglot_runtime_baseline.json",
     ]
+    fragment = json.loads(sh(world.clone, "git", "show", f"{prepared['head']}:{delivery.fragment_for(NEW)}"))
+    assert fragment["entries"][0]["category"] == "changed" and NEW in fragment["entries"][0]["text"]
     marker = delivery.parse_marker(prepared["body"])
     assert marker == {
         "version": NEW,
@@ -842,6 +845,21 @@ def test_a_newer_delivery_supersedes_an_older_unarmed_unheld_automation_pull_req
     open_numbers = [pull["number"] for pull in world.api.pulls if pull["state"] == "open"]
     assert len(open_numbers) == 1 and open_numbers != [old["number"]]
     assert any(path.endswith("/issues/41/comments") for _, path, _ in world.api.mutations)
+
+
+def test_an_open_pull_request_for_a_suppressed_pair_is_closed_when_the_next_delivery_publishes(world: World) -> None:
+    old = world.deliver(NEW, 2)
+    world.prepare()
+    world.publish()
+    suppressed = world.api.pulls[0]["number"]
+    world.deliver(NEWER, 3)
+    world.use_config(suppressed=[{"version": NEW, "sha256": old["sha256"], "reason": "reverted"}])
+    world.reset()
+    world.prepare()
+    result = world.publish()
+    assert result["outcome"] == "created"
+    assert world.api.pull(suppressed)["state"] == "closed"
+    assert any(action["do"] == "close-suppressed" for action in result["actions"])
 
 
 @pytest.mark.parametrize("preserved", ["armed", "green", "held"])
@@ -1161,6 +1179,13 @@ def test_a_pull_request_body_edited_by_a_person_is_never_armed(published: World)
 def test_a_body_edit_by_the_app_alone_does_not_block_arming(published: World) -> None:
     published.api.edits[published.api.pulls[0]["number"]] = ["benchbox-sqlglot-delivery"]
     assert arm(published, FakeRunner())[0]["outcome"] == "armed"
+
+
+def test_a_suppressed_pair_is_never_armed(published: World) -> None:
+    marker = delivery.parse_marker(published.api.pulls[0]["body"])
+    published.use_config(suppressed=[{"version": marker["version"], "sha256": marker["sha256"], "reason": "reverted"}])
+    runner = FakeRunner()
+    assert arm(published, runner)[0]["outcome"] == "not-armed" and not runner.calls
 
 
 @pytest.mark.parametrize("unreadable", ["error", "anonymous-editor"])

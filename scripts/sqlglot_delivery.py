@@ -493,7 +493,7 @@ def branch_for(config: Config, version: str, retry: int = 0) -> str:
 
 
 def title_for(version: str) -> str:
-    return f"chore(sqlglot): adopt benchbox-sqlglot {version}"
+    return f"chore(deps): adopt benchbox-sqlglot {version}"
 
 
 def render_marker(values: Mapping[str, Any]) -> str:
@@ -579,12 +579,16 @@ def porcelain_paths(root: Path) -> list[str]:
     return sorted(paths)
 
 
+def fragment_for(version: str) -> str:
+    return f"changelog.d/sqlglot-fork-{version.replace('.', '-')}.json"
+
+
 def check_adoption_paths(paths: Sequence[str], version: str) -> None:
-    allowed = {PIN, BASELINE, LICENSE_NOTICE}
+    allowed = {PIN, BASELINE, LICENSE_NOTICE, fragment_for(version)}
     extra = sorted(path for path in paths if path not in allowed and not ARCHIVE_RE.fullmatch(path))
     require(not extra, f"adoption changed paths outside the allowed set: {', '.join(extra)}")
-    required = {PIN, BASELINE, f"benchbox/_vendor/benchbox_sqlglot-{version}-py3-none-any.whl.zip"}
-    missing = sorted(required - set(paths))
+    archive = f"benchbox/_vendor/benchbox_sqlglot-{version}-py3-none-any.whl.zip"
+    missing = sorted({PIN, BASELINE, fragment_for(version), archive} - set(paths))
     require(not missing, f"adoption did not change {', '.join(missing)}")
 
 
@@ -627,6 +631,15 @@ def prepare(
         )
     except (OSError, ValueError, KeyError, zipfile.BadZipFile) as error:
         raise DeliveryError(f"adoption refused: {error}") from error
+    entry = {
+        "category": "changed",
+        "breaking": False,
+        "text": f"The bundled SQLGlot runtime moves from {pinned['version']} to {expected['version']} (fork commit "
+        f"`{expected['forkSha'][:12]}`), a verified delivery of the benchbox-sqlglot fork.",
+    }
+    fragment = root / fragment_for(expected["version"])
+    fragment.parent.mkdir(exist_ok=True)
+    fragment.write_text(json.dumps({"schema": 1, "entries": [entry]}, indent=2) + "\n", encoding="utf-8")
     paths = porcelain_paths(root)
     check_adoption_paths(paths, expected["version"])
     outcomes_after = {
@@ -865,8 +878,10 @@ def publish(
     owned, foreign = open_adoptions(api, config, repo, login)
     history, free_index = version_history(api, config, repo, version)
     result: dict[str, Any] = {"outcome": "", "actions": [], "version": version, "dryRun": dry_run}
-    same = [item for item in owned if item.version == version and item.marker["sha256"] == digest]
-    others = [item for item in owned if item not in same]
+    suppressed_open = [item for item in owned if config.suppression(item.version, str(item.marker["sha256"]))]
+    live_owned = [item for item in owned if item not in suppressed_open]
+    same = [item for item in live_owned if item.version == version and item.marker["sha256"] == digest]
+    others = [item for item in live_owned if item not in same]
     occupied = [
         pull for pull in history if pull.get("state") == "open" and pull["number"] not in {item.number for item in same}
     ]
@@ -903,10 +918,28 @@ def publish(
     if create or same:
         for item in superseded:
             actions.append({"do": "close-pull-request", "number": item.number, "head": item.pull["head"]["sha"]})
+    for item in suppressed_open:
+        if HOLD_LABEL not in labels_of(item.pull):
+            actions.append({"do": "close-suppressed", "number": item.number, "head": item.pull["head"]["sha"]})
     result["actions"] = actions
-    if dry_run:
-        return result
-    for action in actions:
+    if not dry_run:
+        apply_actions(api, config, repo, clone, remote, auth, prepared_ref, pull_request, version, result)
+    return result
+
+
+def apply_actions(
+    api: Api,
+    config: Config,
+    repo: str,
+    clone: Path,
+    remote: str,
+    auth: Mapping[str, str],
+    prepared_ref: str,
+    pull_request: Mapping[str, Any],
+    version: str,
+    result: dict[str, Any],
+) -> None:
+    for action in result["actions"]:
         if action["do"] == "push":
             git(clone, "push", remote, f"{prepared_ref}:refs/heads/{action['branch']}", env=auth)
         elif action["do"] == "create-pull-request":
@@ -924,7 +957,9 @@ def publish(
         elif action["do"] == "close-pull-request":
             if not close_superseded(api, repo, action, version, result.get("pullRequest")):
                 action["skipped"] = True
-    return result
+        elif action["do"] == "close-suppressed":
+            if not close_suppressed(api, repo, action):
+                action["skipped"] = True
 
 
 def close_superseded(api: Api, repo: str, action: Mapping[str, Any], version: str, replacement: int | None) -> bool:
@@ -950,8 +985,26 @@ def close_superseded(api: Api, repo: str, action: Mapping[str, Any], version: st
     return True
 
 
+def close_suppressed(api: Api, repo: str, action: Mapping[str, Any]) -> bool:
+    number = action["number"]
+    fresh = api.request("GET", f"repos/{repo}/pulls/{number}")
+    if fresh.get("state") != "open" or fresh["head"]["sha"] != action["head"] or HOLD_LABEL in labels_of(fresh):
+        return False
+    api.request(
+        "POST",
+        f"repos/{repo}/issues/{number}/comments",
+        body={
+            "body": "This version and wheel hash are suppressed in `.github/sqlglot-delivery.json` after a rollback."
+        },
+    )
+    api.request("PATCH", f"repos/{repo}/pulls/{number}", body={"state": "closed"})
+    return True
+
+
 def arm_refusal(api: Api, config: Config, repo: str, item: OpenAdoption) -> str | None:
     pull = item.pull
+    if config.suppression(item.version, str(item.marker.get("sha256"))):
+        return "this version and wheel hash are suppressed after a rollback"
     if HOLD_LABEL in labels_of(pull):
         return f"the {HOLD_LABEL} hold is present"
     if pull.get("draft"):

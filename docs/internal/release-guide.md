@@ -361,7 +361,8 @@ pinned runtime. The command installs it, rewrites `benchbox/_vendor/sqlglot.json
 and the identity in `scripts/sqlglot_runtime_baseline.json`, runs the runtime pin
 and retirement/baseline checks, and restores the previous files if either fails.
 It publishes nothing; review any changed baseline outcome, then open the pull
-request. Give it a `chore(sqlglot)` title, which needs no changelog fragment.
+request. Give it a `chore(deps)` title with a `changed` changelog fragment, as
+the delivery workflow does.
 The retirement check executes a QuestDB case, so `BENCHBOX_QUESTDB_DSN` must
 point at a running QuestDB.
 
