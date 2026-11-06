@@ -29458,6 +29458,13 @@
       "status": "open",
       "title": "Spark SQL: 14 failed and 3 timed-out release UAT cells"
     },
+    "spark-test-connection-stops-shared-session": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Stop SparkAdapter.test_connection from stopping a live shared Spark session"
+    },
     "spark-trunc-day-returns-null-20261026": {
       "claim": null,
       "needs": [],
