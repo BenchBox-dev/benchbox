@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import errno
+import importlib.util
 import os
 import re
 import shlex
@@ -27,12 +28,18 @@ LOCK_OFFSET = 1 << 30
 EXIT_REFUSED = 75
 EXIT_OWNERSHIP = 78
 EXIT_ADMISSION = 76
+EXIT_USAGE = 2
 ADMIT_ENV = "BENCHBOX_HEAVY_ADMIT"
 LOG_PREFIX = "[host-lock]"
 WATCHDOG_MODE_ENV = "BENCHBOX_HEAVY_WATCHDOG"
 WATCHDOG_FLAG_HOLDER = b"H"
 WATCHDOG_STOP_SECONDS = 5.0
 EXIT_WATCHDOG = 79
+RUN_ID_ENV = "BENCHBOX_HEAVY_RUN_ID"
+ROOT_RUN_ID_ENV = "BENCHBOX_HEAVY_ROOT_RUN_ID"
+RUNS_FILE_ENV = "BENCHBOX_HEAVY_RUNS_FILE"
+RUNS_FILE_NAME = "heavy-runs.jsonl"
+_RUN_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 WATCHDOG_SCRIPT = Path(__file__).with_name("heavy_watchdog.py")
 _SIGTERM = signal.Signals["SIGTERM"]
 
@@ -76,6 +83,157 @@ def _now() -> float:
 def _log(message: str) -> None:
     sys.stderr.write(f"{LOG_PREFIX} {message}\n")
     sys.stderr.flush()
+
+
+def _load_sibling(stem: str) -> Any:
+    name = f"benchbox.utils.{stem}"
+    loaded = sys.modules.get(name)
+    if loaded is not None:
+        return loaded
+    path = Path(__file__).with_name(f"{stem}.py")
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    try:
+        spec.loader.exec_module(module)
+    except BaseException:
+        sys.modules.pop(name, None)
+        raise
+    return module
+
+
+_events_state: list[Any] = []
+
+
+def _load_events() -> Any:
+    if _events_state:
+        return _events_state[0]
+    try:
+        module = _load_sibling("heavy_run_events")
+    except Exception as exc:
+        module = None
+        _log(f"WARNING: heavy run event log disabled ({type(exc).__name__}: {exc}); runs continue unrecorded")
+    _events_state.append(module)
+    return module
+
+
+@dataclass
+class _Run:
+    run_id: str
+    parent_run_id: str | None
+    root_run_id: str
+    environ: dict[str, str]
+    started: float
+    wait_seconds: float = 0.0
+    admission_seconds: float = 0.0
+    guard_seconds: float = 0.0
+    execution_seconds: float = 0.0
+    cleanup_seconds: float = 0.0
+    acquired_at: float | None = None
+    held_started: float | None = None
+    execution_recorded: bool = False
+    cleanup_error: str | None = None
+    done: bool = False
+
+
+def _valid_run_id(value: str | None) -> str | None:
+    return value if value and _RUN_ID_PATTERN.fullmatch(value) else None
+
+
+def _program_name(command: str | None) -> str | None:
+    if not command:
+        return None
+    try:
+        parts = shlex.split(command)
+    except ValueError:
+        return None
+    return Path(parts[0]).name if parts else None
+
+
+def _start_run(path: Path, env: Mapping[str, str]) -> _Run | None:
+    events = _load_events()
+    if events is None:
+        return None
+    run_id = events.new_run_id()
+    parent = _valid_run_id(env.get(RUN_ID_ENV))
+    root = _valid_run_id(env.get(ROOT_RUN_ID_ENV)) or parent or run_id
+    events_env = dict(env)
+    explicit_file = events_env.get(RUNS_FILE_ENV, "").strip()
+    lock_parent = path.resolve().parent
+    if not explicit_file or (
+        Path(explicit_file).name == RUNS_FILE_NAME and Path(explicit_file).resolve().parent != lock_parent
+    ):
+        events_env[RUNS_FILE_ENV] = str(path.parent / RUNS_FILE_NAME)
+    return _Run(run_id, parent, root, events_env, _now())
+
+
+def _emit(
+    run: _Run | None,
+    event: str,
+    *,
+    duration: float | None = None,
+    outcome: str | None = None,
+    exit_code: int | None = None,
+    **details: object,
+) -> None:
+    events = _load_events()
+    if run is None or events is None:
+        return
+    payload: dict[str, object] = {"root_run_id": run.root_run_id}
+    if run.parent_run_id:
+        payload["parent_run_id"] = run.parent_run_id
+    payload.update({key: value for key, value in details.items() if value is not None})
+    try:
+        events.record_event(
+            event,
+            duration_seconds=duration,
+            outcome=outcome,
+            exit_code=exit_code,
+            details=payload,
+            environ=run.environ,
+            run_id=run.run_id,
+        )
+    except Exception:
+        pass
+
+
+def _finish_run(run: _Run | None, outcome: str, exit_code: int | None = None, **details: object) -> None:
+    if run is None:
+        return
+    with _registry_lock:
+        if run.done:
+            return
+        run.done = True
+    held = None if run.acquired_at is None else _now() - run.acquired_at
+    _emit(
+        run,
+        "run_finished",
+        duration=_now() - run.started,
+        outcome=outcome,
+        exit_code=exit_code,
+        wait_seconds=round(run.wait_seconds, 6),
+        admission_seconds=round(run.admission_seconds, 6),
+        guard_seconds=round(run.guard_seconds, 6),
+        execution_seconds=round(run.execution_seconds, 6),
+        cleanup_seconds=round(run.cleanup_seconds, 6),
+        held_seconds=None if held is None else round(held, 6),
+        cleanup_error=run.cleanup_error,
+        **details,
+    )
+
+
+def _failure_outcome(exc: BaseException) -> str:
+    if isinstance(exc, LockOwnershipError):
+        return "ownership_error"
+    if isinstance(exc, LockUnavailable):
+        return "queue_timeout"
+    if isinstance(exc, AdmissionRefused):
+        return "admission_refused"
+    if isinstance(exc, KeyboardInterrupt):
+        return "cancelled"
+    return "error"
 
 
 def _psutil() -> Any:
@@ -391,6 +549,9 @@ class HostLock:
     inherited: bool = False
     count: int = 1
     guard: Any = None
+    run: _Run | None = None
+    outcome: str | None = None
+    terminal_deferred: bool = False
 
     def release(self) -> None:
         _release(self)
@@ -418,10 +579,36 @@ def _release(handle: HostLock) -> None:
             del _registry[key]
         guard, handle.guard = handle.guard, None
         fd, handle.fd = handle.fd, None
+    cleanup_started = _now()
+    run = handle.run
+    if run is not None and run.held_started is not None and not run.execution_recorded:
+        run.execution_seconds = cleanup_started - run.held_started
+    failure: BaseException | None = None
     if guard is not None:
-        guard.stop()
+        try:
+            guard.stop()
+        except BaseException as exc:
+            failure = exc
     if fd is not None:
-        _close_lock(fd)
+        try:
+            _close_lock(fd)
+        except BaseException as exc:
+            failure = failure or exc
+    if run is not None:
+        run.cleanup_seconds = _now() - cleanup_started
+        if failure is not None:
+            run.cleanup_error = type(failure).__name__
+        _emit(
+            run,
+            "cleanup_finished",
+            duration=run.cleanup_seconds,
+            outcome="released" if failure is None else "error",
+            error=run.cleanup_error,
+        )
+        if not handle.terminal_deferred:
+            _finish_run(run, "error" if failure is not None else handle.outcome or "released")
+    if failure is not None:
+        raise failure
 
 
 def held_inode_matches(handle: HostLock) -> bool:
@@ -430,10 +617,22 @@ def held_inode_matches(handle: HostLock) -> bool:
     return _inode_matches(handle.fd, handle.path)
 
 
-def owner_environment(base: Mapping[str, str] | None = None) -> dict[str, str]:
+def trace_environment(handle: HostLock | None) -> dict[str, str]:
+    run = None if handle is None else handle.run
+    if run is None:
+        return {}
+    return {RUN_ID_ENV: run.run_id, ROOT_RUN_ID_ENV: run.root_run_id, RUNS_FILE_ENV: run.environ[RUNS_FILE_ENV]}
+
+
+def _with_run_identity(env: dict[str, str], handle: HostLock | None) -> dict[str, str]:
+    env.update(trace_environment(handle))
+    return env
+
+
+def owner_environment(base: Mapping[str, str] | None = None, handle: HostLock | None = None) -> dict[str, str]:
     env = dict(os.environ if base is None else base)
     env[OWNER_ENV] = process_identity()
-    return env
+    return _with_run_identity(env, handle)
 
 
 def _ancestry_identities() -> set[str]:
@@ -481,7 +680,9 @@ def _acquire_handle(
     gate: str | None,
     command: str | None,
     environ: Mapping[str, str] | None,
-) -> HostLock:
+    admit: bool = False,
+    guard: bool = False,
+) -> tuple[HostLock, bool]:
     path = default_lock_path() if lock_path is None else lock_path
     path.parent.mkdir(parents=True, exist_ok=True)
     key = _registry_key(path)
@@ -490,18 +691,39 @@ def _acquire_handle(
         existing = _registry.get(key)
         if existing is not None and existing.pid == pid and existing.count > 0:
             existing.count += 1
-            return existing
+            return existing, False
     env = os.environ if environ is None else environ
-    if _inherits_lock(path, env):
-        handle = HostLock(path, None, pid, inherited=True)
-    else:
-        timeout = wait_seconds_from_env(env) if wait_seconds is None else wait_seconds
-        fd = wait_for_lock(path, timeout)
-        write_holder(fd, path, phase=phase, gate=gate, command=command)
-        handle = HostLock(path, fd, pid)
+    timeout = wait_seconds_from_env(env) if wait_seconds is None else wait_seconds
+    run = _start_run(path, env)
+    _emit(
+        run,
+        "lock_requested",
+        phase=phase,
+        gate=gate,
+        program=_program_name(command),
+        admit=admit,
+        guard=guard,
+        wait_limit_seconds=round(timeout, 3),
+    )
+    try:
+        if _inherits_lock(path, env):
+            handle = HostLock(path, None, pid, inherited=True, run=run)
+        else:
+            fd = wait_for_lock(path, timeout)
+            write_holder(fd, path, phase=phase, gate=gate, command=command)
+            handle = HostLock(path, fd, pid, run=run)
+    except BaseException as exc:
+        if run is not None:
+            run.wait_seconds = _now() - run.started
+            _finish_run(run, _failure_outcome(exc))
+        raise
+    if run is not None:
+        run.acquired_at = _now()
+        run.wait_seconds = run.acquired_at - run.started
+        _emit(run, "lock_acquired", duration=run.wait_seconds, outcome="inherited" if handle.inherited else "acquired")
     with _registry_lock:
         _registry[key] = handle
-    return handle
+    return handle, True
 
 
 class Guard:
@@ -616,7 +838,11 @@ def _spawn_guard(handle: HostLock, env: Mapping[str, str]) -> Guard:
     argv += ["--flag-fd", str(write_fd)]
     try:
         process = subprocess.Popen(
-            argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, pass_fds=(write_fd,), env=dict(env)
+            argv,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            pass_fds=(write_fd,),
+            env=dict(env),
         )
     except BaseException:
         os.close(read_fd)
@@ -642,7 +868,7 @@ def start_guard(handle: HostLock, *, environ: Mapping[str, str] | None = None) -
     if IS_WINDOWS:
         return None
     try:
-        return _spawn_guard(handle, env)
+        return _spawn_guard(handle, _with_run_identity(dict(env), handle))
     except (OSError, ImportError, ValueError) as exc:
         _log(f"WARNING: could not start the heavy-work watchdog ({exc}); running unguarded")
         return None
@@ -667,6 +893,92 @@ def check_admission(
     return report
 
 
+def admit_and_guard(
+    handle: HostLock,
+    *,
+    created: bool,
+    admit: bool = True,
+    admit_need_gib: float | None = None,
+    guard: bool = True,
+    environ: Mapping[str, str] | None = None,
+    log_report: bool = True,
+) -> None:
+    run = handle.run
+    try:
+        if admit and not handle.inherited:
+            started = _now()
+            try:
+                report = check_admission(need_gib=admit_need_gib, environ=environ)
+            except BaseException as exc:
+                if run is not None:
+                    elapsed = _now() - started
+                    run.admission_seconds += elapsed
+                    _emit(run, "admission_finished", duration=elapsed, outcome=_failure_outcome(exc))
+                raise
+            if run is not None:
+                elapsed = _now() - started
+                run.admission_seconds += elapsed
+                _emit(run, "admission_finished", duration=elapsed, outcome="admitted")
+            if log_report:
+                _log(report)
+        if guard and handle.guard is None:
+            started = _now()
+            handle.guard = start_guard(handle, environ=environ)
+            if run is not None:
+                elapsed = _now() - started
+                run.guard_seconds += elapsed
+                _emit(
+                    run,
+                    "guard_started",
+                    duration=elapsed,
+                    outcome="started" if handle.guard is not None else "unavailable",
+                )
+    except BaseException as exc:
+        if created:
+            handle.outcome = _failure_outcome(exc)
+        handle.release()
+        raise
+    if run is not None and run.held_started is not None and not run.execution_recorded:
+        run.held_started = _now()
+
+
+def _acquire(
+    lock_path: Path | None,
+    *,
+    wait_seconds: float | None,
+    phase: str,
+    gate: str | None,
+    command: str | None,
+    environ: Mapping[str, str] | None,
+    admit: bool,
+    admit_need_gib: float | None,
+    guard: bool,
+) -> tuple[HostLock, bool]:
+    handle, created = _acquire_handle(
+        lock_path,
+        wait_seconds=wait_seconds,
+        phase=phase,
+        gate=gate,
+        command=command,
+        environ=environ,
+        admit=admit,
+        guard=guard,
+    )
+    admit_and_guard(
+        handle,
+        created=created,
+        admit=admit,
+        admit_need_gib=admit_need_gib,
+        guard=guard,
+        environ=environ,
+    )
+    run = handle.run if created else None
+    if run is not None:
+        run.held_started = _now()
+        _emit(run, "execution_started", program=_program_name(command))
+    return handle, created
+
+
 def acquire(
     lock_path: Path | None = None,
     *,
@@ -679,18 +991,17 @@ def acquire(
     admit_need_gib: float | None = None,
     guard: bool = False,
 ) -> HostLock:
-    handle = _acquire_handle(
-        lock_path, wait_seconds=wait_seconds, phase=phase, gate=gate, command=command, environ=environ
-    )
-    try:
-        if admit and not handle.inherited:
-            _log(check_admission(need_gib=admit_need_gib, environ=environ))
-        if guard and handle.guard is None:
-            handle.guard = start_guard(handle, environ=environ)
-    except BaseException:
-        handle.release()
-        raise
-    return handle
+    return _acquire(
+        lock_path,
+        wait_seconds=wait_seconds,
+        phase=phase,
+        gate=gate,
+        command=command,
+        environ=environ,
+        admit=admit,
+        admit_need_gib=admit_need_gib,
+        guard=guard,
+    )[0]
 
 
 @contextmanager
@@ -703,6 +1014,7 @@ def hold(lock_path: Path | None = None, **kwargs: Any) -> Iterator[HostLock]:
 
 
 _FORWARDED_SIGNALS = tuple(getattr(signal, name) for name in ("SIGINT", "SIGTERM", "SIGHUP") if hasattr(signal, name))
+_forwarded_signals: list[int] = []
 
 
 def _stdin_foreground_state() -> tuple[bool, bool]:
@@ -776,6 +1088,7 @@ def _supervise_posix(command: Sequence[str], env: Mapping[str, str]) -> int:
     child: subprocess.Popen[bytes] | None = None
 
     def forward(signum: int, _frame: object) -> None:
+        _forwarded_signals.append(signum)
         if child is None:
             raise SystemExit(128 + signum)
         try:
@@ -833,14 +1146,20 @@ def run_command(
     admit_need_gib: float | None = None,
     guard: bool = False,
 ) -> int:
+    rejected = _load_sibling("heavy_preflight_scope").rejection_message(command)
+    if rejected is not None:
+        _log(rejected)
+        return EXIT_USAGE
     path = lock_path()
     rendered = " ".join(shlex.quote(part) for part in command)
     try:
-        handle = acquire(
+        handle, created = _acquire(
             path,
+            wait_seconds=None,
             phase=phase,
             gate=gate,
             command=rendered,
+            environ=None,
             admit=admit,
             admit_need_gib=admit_need_gib,
             guard=guard,
@@ -856,16 +1175,45 @@ def run_command(
         return EXIT_ADMISSION
     except KeyboardInterrupt:
         return 128 + signal.SIGINT
-    env = dict(os.environ) if handle.inherited else owner_environment()
+    env = _with_run_identity(dict(os.environ), handle) if handle.inherited else owner_environment(handle=handle)
+    run = handle.run
     watcher = handle.guard
+    owned_run = run if created else None
+    handle.terminal_deferred = handle.terminal_deferred or created
+    del _forwarded_signals[:]
+    execution_started = _now()
+    code: int | None = None
+    outcome = "error"
     try:
         code = _run_supervised(command, env)
+        if _forwarded_signals:
+            outcome = "cancelled"
+        else:
+            outcome = "success" if code == 0 else "command_failed"
+    except (KeyboardInterrupt, SystemExit):
+        outcome = "cancelled"
+        raise
     finally:
-        handle.release()
-    if watcher is not None and watcher.breached:
+        execution_seconds = _now() - execution_started
+        if owned_run is not None:
+            owned_run.execution_seconds = execution_seconds
+            owned_run.execution_recorded = True
+        reported = code
+        breached = False
+        try:
+            handle.release()
+        finally:
+            breached = code is not None and watcher is not None and watcher.breached
+            if breached:
+                outcome = "watchdog_kill"
+                reported = EXIT_WATCHDOG
+            if owned_run is not None:
+                if owned_run.cleanup_error:
+                    outcome = "error"
+                _finish_run(owned_run, outcome, reported, command_exit_code=code)
+    if breached:
         _log(f"watchdog stopped the process tree after a breach; exiting {EXIT_WATCHDOG} (command status was {code})")
-        return EXIT_WATCHDOG
-    return code
+    return reported
 
 
 def admit_command(need_gib: float | None = None) -> int:
