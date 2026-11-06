@@ -127,7 +127,7 @@ A member:
 - runs the member review as early feedback. The leader does not trust that
   result: it reviews the exact patch again before landing. A change that
   touches only exempt paths is recorded `not-reviewed`, the same bar as a
-  standalone PR (`docs/internal/oracle-review-v2.md`);
+  standalone PR (`docs/internal/review-v2.md`);
 - stops with a landing report: branch, accepted head, base, changed files,
   tests, and review outcome. It does not push for publication, open a PR, or
   touch the tracker.

@@ -10,7 +10,7 @@ import yaml
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-WORKFLOW = REPO_ROOT / ".github" / "workflows" / "oracle-review.yml"
+WORKFLOW = REPO_ROOT / ".github" / "workflows" / "review-request.yml"
 FORBIDDEN_COMMANDS = re.compile(r"(?<![\w-])(gh|curl|python3?|uv|uvx|pip)(?![\w-])")
 
 
@@ -30,7 +30,7 @@ def _job() -> dict[str, Any]:
 
 
 def test_workflow_name_is_kept_for_the_gate_bridge() -> None:
-    assert _load()["name"] == "oracle-review"
+    assert _load()["name"] == "review-request"
 
 
 def test_only_review_events_trigger_the_workflow() -> None:
@@ -45,11 +45,11 @@ def test_workflow_has_no_token_permissions() -> None:
     assert "permissions" not in _job()
 
 
-def test_one_job_named_review_event_produces_no_oracle_review_check() -> None:
+def test_one_job_named_review_event_produces_no_review_request_check() -> None:
     workflow = _load()
     assert list(workflow["jobs"]) == ["review-event"]
     assert _job()["name"] == "review-event"
-    assert "oracle-review" not in {workflow["jobs"]["review-event"]["name"], *workflow["jobs"]}
+    assert "review-request" not in {workflow["jobs"]["review-event"]["name"], *workflow["jobs"]}
 
 
 def test_job_skips_release_pull_requests() -> None:

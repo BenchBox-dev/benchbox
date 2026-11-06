@@ -14,9 +14,9 @@ scratch. The design and its accepted risks are in
 | --- | --- |
 | omp build | The pinned `darwin-arm64` build from the `omp:` section of `.github/oracle-reviewers.yml` on `origin/develop`, installed by `theseus install-omp` (the verified Theseus install of `origin/develop`) into `~/.cache/benchbox/omp/<version>/darwin-arm64/omp` after its SHA-256 and version check, the same cache local reviews use. The script runs both agents from that path. It never looks up `omp` on `PATH` and ignores an `OMP` environment variable, so the omp you run day to day is untouched. |
 | Credential broker | launchd agent `dev.omp.auth-broker`: `<pinned omp> auth-broker serve --bind=127.0.0.1:8765 --trust-proxy-headers`. Provider logins live in `~/.omp/agent/agent.db`; its bearer token is `~/.omp/auth-broker.token`. Log: `~/.omp/logs/auth-broker.log`. |
-| Gateway | launchd agent `dev.omp.auth-gateway`, which runs `~/.omp/oracle-gateway/run.sh`: `<pinned omp> auth-gateway serve --bind=127.0.0.1:4000 --clients=~/.omp/oracle-gateway/clients.json`, with `HOME=~/.omp/oracle-gateway/home` and the broker's URL and token. Log: `~/.omp/logs/auth-gateway.log`. |
-| Client scope | `~/.omp/oracle-gateway/clients.json` (0600) admits `oracle-ci` and one client per [named client](#named-clients) token file. Each entry holds the SHA-256 of that client's token, every model `.github/oracle-omp-config.yml` on `origin/develop` lets a reviewer request, and every broker account logged in for those providers; `oracle-ci`'s token is `client.token`. `accounts` is also an allow-list: stored or environment API keys are never used for those providers. The gateway re-reads the file every 10 seconds. |
-| Gateway admin token | The gateway creates `~/.omp/oracle-gateway/home/.omp/auth-gateway.token` (0600) on first start. It is not scoped by `clients.json`. Never copy it off the host. |
+| Gateway | launchd agent `dev.omp.auth-gateway`, which runs `~/.omp/review-gateway/run.sh`: `<pinned omp> auth-gateway serve --bind=127.0.0.1:4000 --clients=~/.omp/review-gateway/clients.json`, with `HOME=~/.omp/review-gateway/home` and the broker's URL and token. Log: `~/.omp/logs/auth-gateway.log`. |
+| Client scope | `~/.omp/review-gateway/clients.json` (0600) admits `review-ci` and one client per [named client](#named-clients) token file. Each entry holds the SHA-256 of that client's token, every model `.github/oracle-omp-config.yml` on `origin/develop` lets a reviewer request, and every broker account logged in for those providers; `review-ci`'s token is `client.token`. `accounts` is also an allow-list: stored or environment API keys are never used for those providers. The gateway re-reads the file every 10 seconds. |
+| Gateway admin token | The gateway creates `~/.omp/review-gateway/home/.omp/auth-gateway.token` (0600) on first start. It is not scoped by `clients.json`. Never copy it off the host. |
 | Tailnet | `tailscale serve --bg --https=4000 http://127.0.0.1:4000`, reachable only inside the tailnet. |
 | GitHub | `oracle` environment secrets `ORACLE_GATEWAY_TOKEN` (the contents of `client.token`) and `ORACLE_GATEWAY_URL` (`https://<host>.<tailnet>.ts.net:4000`). |
 
@@ -109,7 +109,7 @@ Then:
    - It creates `client.token` if there is none.
    - It generates `clients.json` through `theseus gateway-clients`, which
      prints the model count and the pinned accounts per provider, one line
-     per client (`oracle-ci`, plus one for each
+     per client (`review-ci`, plus one for each
      [named client](#named-clients) token file).
    - It installs the agent, checks the token's scope, publishes the gateway
      with `tailscale serve` and prints the tailnet URL.
@@ -137,9 +137,9 @@ Then:
    when `run.sh` names another binary. The comparison is of the executable file
    the process was started from, as `ps` reports it. `models` must equal the model count in `clients.json`, and `/v1/usage`
    must be refused with a 403. With [named clients](#named-clients), each
-   one gets its own line and must list the same models as `oracle-ci`.
+   one gets its own line and must list the same models as `review-ci`.
 9. Run one review through it:
-   `gh workflow run oracle-verdict.yml --ref develop -f pr=<open soundness PR>`.
+   `gh workflow run review-verdict.yml --ref develop -f pr=<open soundness PR>`.
    It works when the pull request's `oracle-verdict` status becomes a
    decision (success or failure) instead of `pending: … absent`. The gateway
    log records only start-ups, not requests.
@@ -149,7 +149,7 @@ Then:
 - **Reviewer models changed** in `.github/oracle-omp-config.yml`: after the
   change merges, run `gateway` again so every client is allowed the new
   models.
-- **Rotate the client token:** `rm ~/.omp/oracle-gateway/client.token`, then
+- **Rotate the client token:** `rm ~/.omp/review-gateway/client.token`, then
   run `gateway` and `secrets`. The old token stops working within 10 seconds.
 - **Rotate the broker token:** `<pinned omp> auth-broker token --regenerate >/dev/null`,
   then restart both agents, because `run.sh` reads the broker token when it
@@ -169,18 +169,18 @@ Restarting the gateway fails any review attempt in flight; the next retry sweep
 ## Named clients
 
 Each caller besides CI has its own client, so its token can be rotated or
-revoked without touching `oracle-ci`. A client is named `oracle-<name>` and its
-token is `~/.omp/oracle-gateway/<name>-client.token`. `oracle-local`, which
-local pre-PR reviews use, has `~/.omp/oracle-gateway/local-client.token`.
-Every client gets the same models and pinned accounts as `oracle-ci` and its own
+revoked without touching `review-ci`. A client is named `review-<name>` and its
+token is `~/.omp/review-gateway/<name>-client.token`. `review-local`, which
+local pre-PR reviews use, has `~/.omp/review-gateway/local-client.token`.
+Every client gets the same models and pinned accounts as `review-ci` and its own
 `tokenSha256`.
 
 **No per-client limits.** `omp auth-gateway` accepts exactly three fields per
 client in `clients.json`: `tokenSha256`, `models` and `accounts`; any other
 field makes it reject the file. It has no per-client rate, concurrency or
 quota setting, so every client draws on the same pinned broker accounts and a
-leaked `oracle-local` or `oracle-cloud` token can spend the quota that
-`oracle-ci` depends on. Limiting a client's `models` would only stop it doing
+leaked `review-local` or `review-cloud` token can spend the quota that
+`review-ci` depends on. Limiting a client's `models` would only stop it doing
 its job, so all clients stay identical and `check` fails if they differ. The
 controls are the tailnet policy (only `tag:oracle-ci` and `tag:oracle-cloud`
 nodes and the owner's devices reach the gateway), per-client tokens, and fast
@@ -192,7 +192,7 @@ in front of the gateway to add limits.
   0600, and without printing it, then run `gateway`:
 
   ```sh
-  (umask 077; openssl rand -base64 36 | tr -d '\n' > ~/.omp/oracle-gateway/local-client.token)
+  (umask 077; openssl rand -base64 36 | tr -d '\n' > ~/.omp/review-gateway/local-client.token)
   _project/scripts/oracle_gateway_host.sh gateway
   ```
 
@@ -203,54 +203,54 @@ in front of the gateway to add limits.
   `gateway`, then update the caller's copy. The old token stops working within
   10 seconds. Other clients are unaffected.
 - **Revoke a client:** `_project/scripts/oracle_gateway_host.sh revoke
-  oracle-local`. It removes that client's entry from `clients.json` with one
+  review-local`. It removes that client's entry from `clients.json` with one
   atomic file replacement and then deletes its token file. It does not call the
   broker, restart the gateway or rewrite any other entry, so it works with the
-  broker down or a provider logged out and leaves `oracle-ci` untouched. The
+  broker down or a provider logged out and leaves `review-ci` untouched. The
   token stops working within 10 seconds; run `check` to confirm the remaining
-  clients. `revoke` refuses `oracle-ci`: rotate that token instead.
-- **Client names:** a client is `oracle-<name>` where `<name>` is lowercase
+  clients. `revoke` refuses `review-ci`: rotate that token instead.
+- **Client names:** a client is `review-<name>` where `<name>` is lowercase
   letters and digits joined by single hyphens. `gateway`, `check` and `revoke`
   share that rule: a `*-client.token` file whose name does not fit makes
   `gateway` and `check` fail naming the file, so rename or remove it; none is
   skipped silently.
 - **Check:** `check` prints each client's model count and fails if a client's
-  `clients.json` models or its live `/v1/models` list differ from `oracle-ci`'s,
+  `clients.json` models or its live `/v1/models` list differ from `review-ci`'s,
   if a client's `/v1/usage` is not refused with a 403, or if `clients.json` and
   the token files name different clients:
 
   ```text
   http://127.0.0.1:4000: healthz=200 models=11/11 usage=403
-  http://127.0.0.1:4000: oracle-local models=11/11 usage=403
+  http://127.0.0.1:4000: review-local models=11/11 usage=403
   ```
 
 ## Cloud builder client
 
 Cloud builder sessions (see
 [`cloud-builder.md`](../agent/cloud-builder.md#oracle-gateway-access)) use the
-named client `oracle-cloud`, whose token file is
-`~/.omp/oracle-gateway/cloud-client.token`. It already exists on the host; it
+named client `review-cloud`, whose token file is
+`~/.omp/review-gateway/cloud-client.token`. It already exists on the host; it
 is created, rotated and revoked as any [named client](#named-clients), so
-`oracle-ci` and `oracle-local` are never touched. The cloud environments hold
-three values by name only: `ORACLE_CLOUD_GATEWAY_TOKEN` (the contents of
-`cloud-client.token`), `ORACLE_GATEWAY_URL` and `TS_AUTHKEY`.
+`review-ci` and `review-local` are never touched. The cloud environments hold
+three values by name only: `REVIEW_CLOUD_GATEWAY_TOKEN` (the contents of
+`cloud-client.token`), `REVIEW_GATEWAY_URL` and `TS_AUTHKEY`.
 
 - **Rotate the cloud token:** replace `cloud-client.token` as shown under
   [named clients](#named-clients), run `gateway`, then set the new value as
-  `ORACLE_CLOUD_GATEWAY_TOKEN` in each cloud environment. The old token stops
-  working within 10 seconds; `oracle-ci` and `oracle-local` keep working.
+  `REVIEW_CLOUD_GATEWAY_TOKEN` in each cloud environment. The old token stops
+  working within 10 seconds; `review-ci` and `review-local` keep working.
 - **Revoke cloud access:** `_project/scripts/oracle_gateway_host.sh revoke
-  oracle-cloud`. To stop sessions from joining the tailnet at all, also
+  review-cloud`. To stop sessions from joining the tailnet at all, also
   revoke the `tag:oracle-cloud` auth key (below).
 - **Rotate or revoke the Tailscale credential:** in the Tailscale admin
   console, Settings, Keys, revoke the auth key behind `TS_AUTHKEY`, generate a
   new reusable, ephemeral, pre-approved key tagged `tag:oracle-cloud`, and set
   it as `TS_AUTHKEY` in each cloud environment. Revoking it does not affect
-  the OAuth client used by `oracle-ci`, nor the gateway tokens. Nodes
+  the OAuth client used by `review-ci`, nor the gateway tokens. Nodes
   already joined stay until their session ends; remove them in the Machines
   page to cut them off immediately.
-- **Check:** `check` lists `oracle-cloud` with the other clients, with the
-  same model count as `oracle-ci` and `/v1/usage` refused with a 403.
+- **Check:** `check` lists `review-cloud` with the other clients, with the
+  same model count as `review-ci` and `/v1/usage` refused with a 403.
 
 ## Move to another Mac
 
@@ -260,7 +260,7 @@ Build the new host, then on the old Mac remove the gateway:
 launchctl bootout gui/$(id -u)/dev.omp.auth-gateway
 rm ~/Library/LaunchAgents/dev.omp.auth-gateway.plist
 tailscale serve --https=4000 off
-rm -rf ~/.omp/oracle-gateway
+rm -rf ~/.omp/review-gateway
 ```
 
 If nothing else uses its broker, remove that too:

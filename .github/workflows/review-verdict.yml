@@ -1,0 +1,55 @@
+name: review-verdict
+
+run-name: review-verdict (${{ github.event_name }} pr=${{ github.event.pull_request.number || github.event.issue.number || inputs.pr || 'sweep' }}${{ (github.event.pull_request.head.sha || inputs.head) && format(' head={0}', github.event.pull_request.head.sha || inputs.head) || '' }})
+
+on:
+  push:
+    branches: [develop]
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number to review
+        required: true
+        type: string
+      head:
+        description: Head commit the dispatch targets; a different current head skips the run
+        required: false
+        type: string
+      reason:
+        description: Why this dispatch was requested
+        required: false
+        type: string
+  schedule:
+    - cron: '23 * * * *'
+
+permissions: {}
+
+concurrency:
+  group: review-verdict-${{ ((github.event_name == 'schedule' || github.event_name == 'push') && 'sweep') || (((github.event_name == 'pull_request_target' && (github.event.action != 'edited' || github.event.changes.base)) || (github.event_name == 'issue_comment' && github.event.issue.pull_request && (startsWith(github.event.comment.body, '/review') || startsWith(github.event.comment.body, '/oracle-review') || startsWith(github.event.comment.body, 'Review adjudication:') || startsWith(github.event.comment.body, 'Oracle adjudication:')) && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)) || github.event_name == 'workflow_dispatch') && format('pr-{0}', github.event.pull_request.number || github.event.issue.number || inputs.pr) || format('run-{0}', github.run_id)) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request_target' }}
+
+jobs:
+  verdict:
+    permissions:
+      actions: write
+      contents: read
+      pull-requests: read
+    uses: joeharris76/theseus/.github/workflows/review.yml@5188161c85d6a8d15c73d9685cd5a58c2e78aeeb
+    with:
+      environment: oracle
+      theseus_ref: 5188161c85d6a8d15c73d9685cd5a58c2e78aeeb
+      gated_base: develop
+      policy_path: .github/oracle-reviewers.yml
+      tailscale_tag: tag:oracle-ci
+    secrets:
+      REVIEW_APP_ID: ${{ secrets.ORACLE_APP_ID }}
+      REVIEW_APP_PRIVATE_KEY: ${{ secrets.ORACLE_APP_PRIVATE_KEY }}
+      REVIEW_GATEWAY_TOKEN: ${{ secrets.ORACLE_GATEWAY_TOKEN }}
+      REVIEW_GATEWAY_URL: ${{ secrets.ORACLE_GATEWAY_URL }}
+      TS_OAUTH_CI_CLIENT_ID: ${{ secrets.TS_OAUTH_CI_CLIENT_ID }}
+      TS_OAUTH_CI_SECRET: ${{ secrets.TS_OAUTH_CI_SECRET }}
+      TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}

@@ -693,7 +693,10 @@ def live_commit_statuses(run: Runner, repo_full: str, head: str) -> dict[str, st
             if login.removesuffix("[bot]") != ORACLE_APP_LOGIN or account_type != "Bot":
                 continue
             if state == "failure" and description.startswith(
-                f"oracle-review: waiting for the oracle's verdict on {head},"
+                (
+                    f"oracle-review: waiting for the oracle's verdict on {head},",
+                    f"review: waiting for the review's verdict on {head},",
+                )
             ):
                 state = "pending"
         statuses[name] = state

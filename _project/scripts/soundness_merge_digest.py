@@ -20,7 +20,7 @@ POLICY_PATH = ".github/oracle-reviewers.yml"
 THESEUS_MODULES = ("review_check", "adjudication", "edits", "protocol", "policy", "_vendor.yaml")
 
 ORACLE_VERDICT_LINE = re.compile(
-    r"### (?:oracle-verdict|oracle-review-shadow): (?P<state>[a-z]+) for `(?P<sha>[0-9a-f]{40})`"
+    r"### (?:review-verdict|oracle-verdict|oracle-review-shadow): (?P<state>[a-z]+) for `(?P<sha>[0-9a-f]{40})`"
 )
 MANIFEST_PATH = ".github/soundness-paths.txt"
 PREDICATE_PATH = "_project/scripts/soundness_paths.py"
@@ -813,14 +813,14 @@ def _status_disagreement(review: Review, statuses: Sequence[Mapping[str, Any]]) 
         return "its decision cannot be read from the review"
     status = engine().edits.chosen_status(
         statuses,
-        engine().review_check.ORACLE_CONTEXT,
+        engine().review_check.REVIEW_CONTEXT,
         engine().bot_login,
         run_uuid,
         decision or "",
         _submitted(review),
     )
     if status is None:
-        return "no oracle-verdict status from the App matches the review"
+        return "no review-verdict status from the App matches the review"
     if status.get("state") != expected:
         return f"its decision disagrees with the App's {status.get('state')} status"
     return ""

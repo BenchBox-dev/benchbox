@@ -16,7 +16,7 @@ POLICY_PATH = ".github/oracle-reviewers.yml"
 TRUSTED_TREE = ".github"
 DEVELOP_REF = "origin/develop"
 FETCH_BRANCH = "develop"
-LOCAL_STATE = Path(".cache") / "benchbox" / "local-oracle"
+LOCAL_STATE = Path(".cache") / "benchbox" / "local-review"
 OMP_CACHE = Path(".cache") / "benchbox" / "omp"
 FULL_SHA = re.compile(r"[0-9a-f]{40}")
 GATE_WAITING_EXIT = 3
@@ -159,8 +159,8 @@ def gate_refusals(run_command: Runner, repo: str, number: int, head: str, label:
         return []
     detail = out.strip().splitlines()[-1][:300] if out.strip() else "no output"
     if code == GATE_WAITING_EXIT:
-        return [f"a fresh oracle-gate evaluation of {head[:9]} does not pass: {detail}"]
-    return [f"a fresh oracle-gate evaluation of {head[:9]} failed (exit {code}): {detail}"]
+        return [f"a fresh review-gate evaluation of {head[:9]} does not pass: {detail}"]
+    return [f"a fresh review-gate evaluation of {head[:9]} failed (exit {code}): {detail}"]
 
 
 def gate(args: argparse.Namespace) -> int:
@@ -196,7 +196,7 @@ def _parser() -> argparse.ArgumentParser:
     commands.add_parser("path", help="Print the verified theseus executable.")
     run_parser = commands.add_parser("run", help="Run theseus with the remaining arguments.")
     run_parser.add_argument("rest", nargs=argparse.REMAINDER)
-    gate_parser = commands.add_parser("gate", help="Evaluate the oracle gate from the trusted policy.")
+    gate_parser = commands.add_parser("gate", help="Evaluate the review gate from the trusted policy.")
     gate_parser.add_argument("--repo", required=True)
     gate_parser.add_argument("--pr", type=int, required=True)
     gate_parser.add_argument("--head-sha", required=True)

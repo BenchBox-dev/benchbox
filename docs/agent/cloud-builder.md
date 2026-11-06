@@ -24,13 +24,13 @@ Configure each cloud environment once:
 | Setup script | Install `uv` if the image lacks it, put a `node` that satisfies `^22.22.2`, `^24.15.0`, or `>=26` first on `PATH`, then run `make cloud-bootstrap` |
 | Network | GitHub and the Python package index; add Docker registries for container checks. For the [oracle gateway](#oracle-gateway-access), also the OMP download host named in the `omp:` section of `.github/oracle-reviewers.yml`, and the Tailscale control plane |
 | `TS_AUTHKEY` | Optional. A Tailscale auth key for `tag:oracle-cloud` nodes (reusable, ephemeral, pre-approved, tagged) |
-| `ORACLE_GATEWAY_URL` | Optional. The gateway's tailnet URL |
-| `ORACLE_CLOUD_GATEWAY_TOKEN` | Optional. The token of the `oracle-cloud` gateway client |
+| `REVIEW_GATEWAY_URL` | Optional. The gateway's tailnet URL |
+| `REVIEW_CLOUD_GATEWAY_TOKEN` | Optional. The token of the `review-cloud` gateway client |
 | Repository access | `BenchBox-dev/BenchBox` with push access |
 
 Set the `BENCHBOX_*` rows as environment variables, not secrets, so they stay
 visible to every command and Git hook in the session. `TS_AUTHKEY`,
-`ORACLE_GATEWAY_URL` and `ORACLE_CLOUD_GATEWAY_TOKEN` are credentials: never
+`REVIEW_GATEWAY_URL` and `REVIEW_CLOUD_GATEWAY_TOKEN` are credentials: never
 print, log, commit or paste their values anywhere.
 
 The `node` range comes from a dependency of the markdownlint pre-commit hook;
@@ -51,7 +51,7 @@ cost the whole session, so the builder checks them first.
 
 ## Oracle gateway access
 
-When `TS_AUTHKEY`, `ORACLE_GATEWAY_URL` and `ORACLE_CLOUD_GATEWAY_TOKEN` are
+When `TS_AUTHKEY`, `REVIEW_GATEWAY_URL` and `REVIEW_CLOUD_GATEWAY_TOKEN` are
 all set, `make cloud-bootstrap` runs `scripts/cloud_gateway.sh`, which:
 
 1. downloads the OMP build that CI reviewers use, checks its SHA-256 and
@@ -85,7 +85,7 @@ with `gateway_proxy=...`, or `gateway=unavailable` with the reason, and
 The cloud environment also needs `TYPESAFE_API_KEY`, which `make pr-open`'s
 local review uses to classify the diff. The gateway client token, the Tailscale
 key and `TYPESAFE_API_KEY` stay in the session environment and may be readable
-by the review process; that residual is accepted because the `oracle-cloud`
+by the review process; that residual is accepted because the `review-cloud`
 client has its own quota and can be revoked alone, the Tailscale key is
 ephemeral and tagged so it reaches only the gateway, and the TypeSafe key
 classifies only. No other sensitive value, such as a GitHub token, may be
@@ -109,7 +109,7 @@ status file (accepting only a loopback `http://127.0.0.1:<port>` value), reaches
 the gateway through it for the health check, and gives the reviewer
 `HTTPS_PROXY`, `HTTP_PROXY`, `PI_PROXY` and `NO_PROXY` (loopback only) for that
 one run. `omp` ignores the first two for its gateway call and honors `PI_PROXY`.
-The `oracle-local` client and CI never receive proxy variables. It installs
+The `review-local` client and CI never receive proxy variables. It installs
 or reuses the pinned `omp` in the shared cache (`~/.cache/benchbox/omp`, or
 `THESEUS_OMP_CACHE`), the same build `make cloud-gateway` verified; the
 `omp-binary` path file is only for manual runs.
@@ -210,11 +210,11 @@ landed are not dispatched to a cloud session.
 
    `make pr-open` first runs the same review driver as CI on the committed
    `HEAD`, from a trusted export of `origin/develop` (see
-   `docs/internal/oracle-review-v2.md`, Local pre-PR review), and refuses before
+   `docs/internal/review-v2.md`, Local pre-PR review), and refuses before
    any push on a DO NOT SHIP or a Critical or High defect, including one carried
    from an earlier review of the PR, a missing `TYPESAFE_API_KEY` in the cloud
-   environment, an unreachable gateway, a missing `oracle-cloud` client
-   (`ORACLE_GATEWAY_URL` and `ORACLE_CLOUD_GATEWAY_TOKEN`), a secret value found
+   environment, an unreachable gateway, a missing `review-cloud` client
+   (`REVIEW_GATEWAY_URL` and `REVIEW_CLOUD_GATEWAY_TOKEN`), a secret value found
    on disk, an `origin/develop` that cannot be fetched, or an `omp` that is not
    the CI-pinned version. A Medium-only SHIP WITH FIXES proceeds. Fix a finding
    and recommit. A finding that is a false positive is disputed with

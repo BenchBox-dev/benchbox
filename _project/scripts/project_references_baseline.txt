@@ -12,7 +12,11 @@ _sources/tpcds-subscale-probe.md::_project/TODO/main/planning/patch-and-redistri
 docs/internal/adr/adr-explorer-cli-surface.md::_project/DONE/main/active/explorer-emit-comparison-artifact-from-pipeline.yaml
 docs/internal/adr/adr-published-results-slim-corpus-branch.md::_project/DONE/main/published-results-slim-down-and-corpus-mirror.yaml
 docs/internal/benchbox-results-platform-strategy.md::_project/_archive/specs/cli/config.md
+docs/internal/oracle-review-v2.md::_project/decisions/review-check-retired-2026-10-24.md
+docs/internal/oracle-review-v2.md::_project/decisions/review-protocol-2026-10-08.md
+docs/internal/oracle-review-v2.md::_project/decisions/review-v2-shadow-2026-10-05.md
 docs/internal/release-guide.md::_project/TODO/main/active/release-recovery-v0-3-1.yaml
+docs/internal/repo-admin-settings.md::_project/decisions/review-check-retired-2026-10-24.md
 docs/internal/uat-release-campaign.md::_project/release-evidence/uat-gate-summary.json
 make/monolith-baseline.json::_project/cross-surface-baseline-autodetect/summary.json
 quality/fast-duration-calibration.json::_project/scripts/oracle_reviewers/templates/README.md

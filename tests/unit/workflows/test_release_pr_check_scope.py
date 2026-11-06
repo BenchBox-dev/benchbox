@@ -26,7 +26,7 @@ def test_development_lanes_skip_release_pull_requests() -> None:
 
 
 def test_review_event_job_skips_reviews_on_release_pull_requests() -> None:
-    job = _load("oracle-review.yml")["jobs"]["review-event"]
+    job = _load("review-request.yml")["jobs"]["review-event"]
     assert job["if"] == "github.event.pull_request.base.ref != 'release'"
 
 

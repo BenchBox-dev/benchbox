@@ -55,7 +55,7 @@ SOURCE_GUARD_TESTS: dict[str, tuple[str, ...]] = {
     "scripts/pr_arm.py": ORACLE_CONSUMER_TESTS,
     "scripts/pr_landing.py": ORACLE_CONSUMER_TESTS,
     "tests/fixtures/oracle_reviewers/": ORACLE_CONSUMER_TESTS,
-    ".github/workflows/oracle-": ORACLE_CONSUMER_TESTS,
+    ".github/workflows/review-": ORACLE_CONSUMER_TESTS,
     ".github/oracle-": ORACLE_CONSUMER_TESTS,
     ".github/theseus-lock.json": ORACLE_CONSUMER_TESTS,
 }

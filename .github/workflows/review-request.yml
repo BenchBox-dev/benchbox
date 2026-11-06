@@ -1,6 +1,6 @@
-name: oracle-review
+name: review-request
 
-run-name: oracle-review (${{ github.event.action }})
+run-name: review-request (${{ github.event.action }})
 
 on:
   pull_request_review:

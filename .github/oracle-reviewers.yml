@@ -1,6 +1,6 @@
 version: 2
 mode: enforce
-status_context: oracle-verdict
+status_context: review-verdict
 findings_delivery: review
 bot_login: benchbox-oracle
 consumer:
@@ -114,9 +114,9 @@ classifier:
     - _project/scripts/theseus_bootstrap.py
     - _project/scripts/oracle_gateway_host.sh
     - .github/soundness-paths.txt
-    - .github/workflows/oracle-gate.yml
-    - .github/workflows/oracle-review.yml
-    - .github/workflows/oracle-verdict.yml
+    - .github/workflows/review-gate.yml
+    - .github/workflows/review-request.yml
+    - .github/workflows/review-verdict.yml
     - .github/workflows/omp-pin-bump.yml
     - .github/workflows/omp-pin-watch.yml
     - .github/workflows/soundness-merge-digest.yml

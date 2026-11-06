@@ -12,7 +12,7 @@ import theseus_cli
 
 DEVELOP_REF = theseus_cli.DEVELOP_REF
 EXIT_UNAVAILABLE = theseus_cli.EXIT_UNAVAILABLE
-RECORD_OUT_ENV = "ORACLE_LOCAL_RECORD_OUT"
+RECORD_OUT_ENV = "REVIEW_LOCAL_RECORD_OUT"
 
 Launcher = Callable[[list[str], dict[str, str]], int]
 
