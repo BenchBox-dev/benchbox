@@ -4,7 +4,7 @@
     "A landing that would exceed 300 files or 20,000 diff lines, or that adds a lock bump, is flagged before merge, with tests.",
     "Leader fixes pass the same gate, with tests."
   ],
-  "context": "Source: planner adversarial review BriefSizeAdversarialReview (2026-11-05) of the batch \"100 KB refusal\" explanation. That explanation's mechanics were right, but its line refs were stale (policy.py:316 is now Theseus policy.py:391; brief_sizes is :690) and it missed these gaps.\n\nRescoped 2026-11-05 per plan §2(h): delete the copied constants and brief_sizes, call `theseus preflight` at land, advance (fix and develop-merge), status and final evidence, and test the lock-bump and oversize refusals. Ships in the same PR as the BenchBox v0.1.7 re-lock (benchbox-relock-theseus-0.1.7-20261105).",
+  "context": "Source: planner adversarial review BriefSizeAdversarialReview (2026-11-05) of the batch \"100 KB refusal\" explanation. That explanation's mechanics were right, but its line refs were stale (policy.py:316 is now Theseus policy.py:391; brief_sizes is :690) and it missed these gaps.\n\nRescoped 2026-11-05 per plan §2(h): delete the copied constants and brief_sizes, call `theseus preflight` at land, advance (fix and develop-merge), status and final evidence, and test the lock-bump and oversize refusals. Ships in the same PR as the BenchBox v0.1.7 re-lock (benchbox-relock-theseus-0.1.7-20261105).\n\nDone 2026-11-05 in BenchBox #3959 (merged 7aa4a8b3). The copied constants, `_brief_cap` and `brief_sizes` in scripts/batch_integration.py are deleted. Land, advance (leader fix and develop-merge), status and final evidence now call `theseus preflight` through the verified install and print its reasons verbatim; status reports without refusing. Exit codes: 0 reviewable, 3 not reviewable, 2 undetermined. Lock bumps and oversize are refused. The tests and docs are updated (test_batch_integration.py, batch_loop_world.py, test_oracle_policy_pin.py, batch-feature-delivery.md, the batch-integration-loop decision record). Because preflight runs Theseus's own planner, the 406 limit, required reads and capacity are all covered.",
   "description": "scripts/batch_integration.py `brief_sizes` (:690-725) and `_brief_gate` (:941-957, called only at :1013) copy Theseus constants by hand (:55-57) and read the cap with a regex. The guard refuses only at oversize (about 980 BenchBox files, or about 830 promotion rows). It does not account for:\n- GitHub's diff limit of 300 files or 20,000 lines (HTTP 406), past which the hosted review runs with no diff;\n- lock bumps, whose promotion rows count toward the Theseus cap (Theseus cli.py:856-865);\n- the number of required reads, which is the real reviewer-capacity limit;\n- leader fixes (`_brief_gate` runs only in land_member, after the `_already_merged` return).\nFix: call the Theseus planner instead of copying constants; flag or refuse PRs over the 406 limit, lock bumps and high required-read counts; run the gate on leader fixes; add tests.",
   "sessions": [
     {
@@ -39,6 +39,14 @@
       "generation": "6ec6de97df4047ac9cf3e66ba8cfd5ea",
       "op": "finish",
       "op_id": "5d9ed5ef70b340e2b7faf672c771718e",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-06T02:55:34Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b5b45244354446638a09c51042d82ff9",
       "session_id": "8d9ba932107b4322b2417b8af61c160c"
     }
   ]
