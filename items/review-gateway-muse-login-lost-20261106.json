@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Repair PR merged by the owner under the single-merge procedure",
+    "Gateway host check passes with anthropic, openai-codex, google-antigravity logins",
+    "Ruleset restored and ruleset_drift_check --compare-capture exits 0",
+    "Decision record committed by the owner"
+  ],
+  "description": "NEEDS OWNER. The hosted review gateway cannot start. `_project/scripts/oracle_gateway_host.sh gateway` refuses with `error: no broker login for: muse-code` (omp pin 18.13.3, reproduced on origin/develop 20a0045113e6c8ba13c3e7c4f78351e3fe81f81e). The same gate blocks the repair: `make pr-open` refuses with `the local review is unavailable: the review-local gateway is unreachable` and pushes nothing. Latest hosted review seen on an open PR: #3963 `verdict / review` run 42164349709 SUCCESS at 2026-11-06T04:48Z; none has run since the gateway went down.\n\nRepair (branch fix/review-gateway-drop-muse, commit 76d71048332a19a2ad520d3c28c6dd075864b2b4, local worktree ../BenchBox.wt-fix-review-gateway-drop-muse, not pushed yet; PR number pending): drops every muse-code fallback row from .github/oracle-omp-config.yml, moves slow role and chain key to anthropic/claude-fable-5-1, drops muse-code from GATEWAY_PROVIDERS and its test, updates docs/internal/oracle-gateway-host.md and oracle-review-v2.md. Evidence: offline `theseus gateway-clients` with the new config and accounts for anthropic/openai-codex/google-antigravity only exits 0 (8 models, none muse); the same command on develop's config fails `no logged-in broker account for muse-code`. 70 targeted tests pass under heavy-run; comment-policy-check 0; pr-preflight passed.\n\nOwner steps (docs/agent/emergency-merge.md): decide how the PR is opened and merged; ruleset capture taken at /tmp/ruleset-15611785-before.json (enforcement active, bypass_actors visible and empty); decision record draft at local://muse-emergency-merge-record-draft.md. Agents arm and merge nothing.",
+  "links": [
+    "docs/agent/emergency-merge.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-06T13:30:00Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "19202be170fd400ba6ba44fd630c22ce",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    }
+  ]
+}

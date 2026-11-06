@@ -26578,6 +26578,13 @@
       "status": "done",
       "title": "Archive BenchBox review captures and attempt artifacts before they expire"
     },
+    "review-gateway-muse-login-lost-20261106": {
+      "claim": null,
+      "needs": [],
+      "priority": "critical",
+      "status": "open",
+      "title": "NEEDS OWNER: review gateway down, Muse broker login lost; emergency-merge repair branch ready"
+    },
     "review-protocol-authority-single-source-cutover": {
       "claim": null,
       "needs": [],
