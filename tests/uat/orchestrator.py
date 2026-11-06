@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from benchbox.utils.resource_limits import free_space_gib
-from tests.uat import cells_io, docker_assets, gate_summary, preflight_budget
+from tests.uat import cells_io, docker_assets, gate_summary, infrastructure_retry, preflight_budget
 from tests.uat.config import UATConfig, disk_gate_disabled_warning, load_config, memory_gate_disabled_warning
 from tests.uat.phases import (
     enumerate as enumerate_phase,
@@ -227,6 +227,13 @@ def _build_disk_floor_runner(
     return runner
 
 
+def _base_cell_runner(config: UATConfig) -> CellRunner:
+    budget_s = config.execute.infrastructure_retry_job_budget_s
+    if budget_s is None:
+        return exec_phase.run_cell
+    return infrastructure_retry.with_infrastructure_retry(exec_phase.run_cell, job_budget_s=budget_s)
+
+
 def _record_container_engine_identity(log_dir: Path) -> str | None:
     try:
         binary, version = docker_assets.container_engine_identity()
@@ -357,7 +364,7 @@ def _run_sweep_phases(
                 "cleanup_enabled": config.cleanup.prune_databases,
                 "free_space_checks_enabled": config.disk_gate_enabled,
                 "runner": _build_disk_floor_runner(
-                    exec_phase.run_cell,
+                    _base_cell_runner(config),
                     attempted_cells=attempted_cells,
                     watch_disk_floor=config.disk_gate_enabled,
                     free_space_path=config.preflight.free_space_path or str(benchmark_runs_dir),
@@ -737,6 +744,15 @@ def _collect_artifact_digests(log_dir: Path) -> dict[str, str | None]:
     }
 
 
+def _infrastructure_retry_accounting(
+    config: UATConfig, execute_outcome: Any
+) -> gate_summary.InfrastructureRetryAccounting | None:
+    budget_s = config.execute.infrastructure_retry_job_budget_s
+    if budget_s is None:
+        return None
+    return infrastructure_retry.retry_accounting(getattr(execute_outcome, "results", ()), job_budget_s=budget_s)
+
+
 def _write_gate_summary_artifact(
     *,
     config: UATConfig,
@@ -779,6 +795,7 @@ def _write_gate_summary_artifact(
         cross_scale_floor=cross_scale_floor,
         cross_scale_floor_breached=cross_scale_floor_breached,
         shard_platforms=sorted(shard_platforms) if shard_platforms else None,
+        infrastructure_retry=_infrastructure_retry_accounting(config, execute_outcome),
         artifact_digests=_collect_artifact_digests(log_dir),
         distribution_digest=_distribution_digest(),
         verdict=gate_summary.derive_verdict(

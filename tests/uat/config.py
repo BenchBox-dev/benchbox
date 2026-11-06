@@ -44,6 +44,7 @@ class ExecuteConfig:
     streams: int | None = None
     seed: int | None = None
     platform_chunking: bool = False
+    infrastructure_retry_job_budget_s: int | None = None
 
 
 @dataclass(frozen=True)
@@ -352,6 +353,7 @@ def _validate_execute(payload: dict[str, Any]) -> ExecuteConfig:
                 "streams",
                 "seed",
                 "platform_chunking",
+                "infrastructure_retry_job_budget_s",
             }
         ),
         "execute",
@@ -411,6 +413,9 @@ def _validate_execute(payload: dict[str, Any]) -> ExecuteConfig:
         streams=streams,
         seed=seed,
         platform_chunking=_require_bool(payload, "platform_chunking", default=False, section="execute"),
+        infrastructure_retry_job_budget_s=_optional_positive_int(
+            payload, "infrastructure_retry_job_budget_s", section="execute"
+        ),
     )
 
 

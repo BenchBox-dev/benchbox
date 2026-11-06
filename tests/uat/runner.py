@@ -45,6 +45,12 @@ class CellResult:
     submit_terminal_state: str = SubmitTerminalState.submittable.value
     throughput_check: str | None = None
     load_failure_path: Path | None = None
+    attempt: int = 1
+    retry_signature: str | None = None
+    retry_outcome: str | None = None
+    first_attempt_status: str | None = None
+    first_attempt_log_path: Path | None = None
+    first_attempt_elapsed_s: float | None = None
 
 
 def last_nonempty_output_line(log_text: str) -> str | None:
@@ -93,7 +99,13 @@ def submit_state_is_cell_failure(state: SubmitTerminalState | str) -> bool:
 
 def _default_log_path(log_dir: Path, platform: str, benchmark: str, scale: float, now: _dt.datetime) -> Path:
     timestamp = now.strftime("%Y%m%d_%H%M%S")
-    return log_dir / f"{platform}_{benchmark}_{scale}_{timestamp}.log"
+    stem = f"{platform}_{benchmark}_{scale}_{timestamp}"
+    candidate = log_dir / f"{stem}.log"
+    attempt = 1
+    while candidate.exists():
+        attempt += 1
+        candidate = log_dir / f"{stem}_{attempt}.log"
+    return candidate
 
 
 DIAGNOSTIC_RERUN_TIMEOUT_S = 180
