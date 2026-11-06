@@ -40,6 +40,17 @@
       "op_id": "9d68907f86e347a484d748ed55e01336",
       "reason": "Holder session ecdf9c0acb5347a09532dc0b99b05d49 (take op ac6e07d2af024f01a1fcc7529d07d764) was killed at about 13:47Z on 2026-11-06 by its launcher's process cleanup and cannot resume.",
       "session_id": "e515e51bd05745c1ad2db25d0ddca019"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:00b8148c76e35d5d52fcf5cb",
+      "at": "2026-11-06T13:46:20Z",
+      "client": "omp-coding-agent",
+      "displaced": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a366335727c9dfe4ed0b889b",
+      "generation": "72568a32c5d04519aac04fcbcf3dfa66",
+      "op": "takeover",
+      "op_id": "46c02523cfbe4103a8c4528f6021dc3a",
+      "reason": "Holder session took over at 13:44:43Z on 2026-11-06 and was stopped by the leader (about 13:46Z and 13:52Z, started by mistake); it cannot resume.",
+      "session_id": "338ac272334e4760a006727637da00bb"
     }
   ]
 }
