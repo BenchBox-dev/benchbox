@@ -101,6 +101,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: uv run -- python scripts/release_blocker_check.py
 
+      - name: Require a fresh green release canary on an ancestor of the tagged commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release_canary_freshness.py check \
+            --head-sha "$(git rev-parse HEAD)" \
+            --github-repository "$GITHUB_REPOSITORY"
+
       - name: Admit the trunk-tested artifacts
         id: admit
         env:
@@ -125,7 +134,6 @@ jobs:
   uat-reuse:
     name: UAT evidence reuse
     needs: admit
-    if: ${{ needs.admit.outputs.target == 'pypi' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -133,10 +141,11 @@ jobs:
       actions: read
     outputs:
       reuse: ${{ steps.decide.outputs.reuse }}
-      rc_tag: ${{ steps.decide.outputs.rc_tag }}
-      rc_sha: ${{ steps.decide.outputs.rc_sha }}
-      rc_run_id: ${{ steps.decide.outputs.rc_run_id }}
-      rc_dist_digest: ${{ steps.decide.outputs.rc_dist_digest }}
+      source_kind: ${{ steps.decide.outputs.source_kind }}
+      source_tag: ${{ steps.decide.outputs.source_tag }}
+      source_sha: ${{ steps.decide.outputs.source_sha }}
+      source_run_id: ${{ steps.decide.outputs.source_run_id }}
+      source_dist_digest: ${{ steps.decide.outputs.source_dist_digest }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
@@ -166,21 +175,31 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
 
-      - name: Decide whether the release candidate's UAT evidence can be reused
+      - name: Decide whether earlier UAT evidence can be reused
         id: decide
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
           HEAD_SHA: ${{ needs.admit.outputs.head_sha }}
         run: |
-          set -euo pipefail
-          uv run --locked --no-dev --no-install-project -- python scripts/release_reuse_uat_evidence.py decide \
-            --tag "$RELEASE_TAG" \
-            --head-sha "$HEAD_SHA" \
-            --github-repository "$GITHUB_REPOSITORY" \
-            --final-dist "$RUNNER_TEMP/final-dist" \
-            --work "$RUNNER_TEMP/reuse" \
-            --github-output "$GITHUB_OUTPUT"
+          set -uo pipefail
+          status=0
+          uv sync --locked --no-dev --no-install-project || status=$?
+          if [ "$status" -eq 0 ]; then
+            uv run --no-sync -- python scripts/release_reuse_uat_evidence.py decide \
+              --tag "$RELEASE_TAG" \
+              --head-sha "$HEAD_SHA" \
+              --github-repository "$GITHUB_REPOSITORY" \
+              --final-dist "$RUNNER_TEMP/final-dist" \
+              --work "$RUNNER_TEMP/reuse" \
+              --github-output "$GITHUB_OUTPUT" || status=$?
+          fi
+          if [ "$status" -ne 0 ]; then
+            reason="The reuse decision could not run (exit status $status); the full UAT stages run instead."
+            echo "::warning::$reason"
+            echo "reuse=false" >> "$GITHUB_OUTPUT"
+            printf '### Release UAT evidence reuse\n\nDecision: **run the full UAT stages**\n\n%s\n' "$reason" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
   install-matrix:
     name: install ${{ matrix.python-version }} ${{ matrix.os }}
@@ -515,51 +534,54 @@ jobs:
             OUTPUT="$RUNNER_TEMP/uat-gate-summary.json" \
             DIST_DIGEST="$(sha256sum "$RELEASE_DIST_DIGEST_FILE" | cut -d' ' -f1)"
 
-      - name: Download the release candidate's shard evidence
+      - name: Download the reused run's shard evidence
         if: ${{ needs.uat-reuse.outputs.reuse == 'true' }}
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
-          pattern: release-uat-${{ needs.uat-reuse.outputs.rc_tag }}-stage*
+          pattern: release-uat-${{ needs.uat-reuse.outputs.source_tag }}-stage*
           path: ${{ runner.temp }}/uat-evidence
-          run-id: ${{ needs.uat-reuse.outputs.rc_run_id }}
+          run-id: ${{ needs.uat-reuse.outputs.source_run_id }}
           github-token: ${{ github.token }}
 
-      - name: Require executed cells in the release candidate's shard evidence
+      - name: Require executed cells in the reused run's shard evidence
         if: ${{ needs.uat-reuse.outputs.reuse == 'true' }}
         env:
-          RC_TAG: ${{ needs.uat-reuse.outputs.rc_tag }}
+          SOURCE_TAG: ${{ needs.uat-reuse.outputs.source_tag }}
         run: |
           set -euo pipefail
-          python3 scripts/release_uat_evidence_check.py --root "$RUNNER_TEMP/uat-evidence" --tag "$RC_TAG"
+          python3 scripts/release_uat_evidence_check.py --root "$RUNNER_TEMP/uat-evidence" --tag "$SOURCE_TAG"
 
-      - name: Re-verify the release candidate's evidence with the combined release gate
+      - name: Re-verify the reused run's evidence with the combined release gate
         if: ${{ needs.uat-reuse.outputs.reuse == 'true' }}
         env:
           UV_NO_SYNC: '1'
-          RC_TAG: ${{ needs.uat-reuse.outputs.rc_tag }}
-          RC_SHA: ${{ needs.uat-reuse.outputs.rc_sha }}
-          RC_RUN_ID: ${{ needs.uat-reuse.outputs.rc_run_id }}
-          RC_DIST_DIGEST: ${{ needs.uat-reuse.outputs.rc_dist_digest }}
+          SOURCE_KIND: ${{ needs.uat-reuse.outputs.source_kind }}
+          SOURCE_TAG: ${{ needs.uat-reuse.outputs.source_tag }}
+          SOURCE_SHA: ${{ needs.uat-reuse.outputs.source_sha }}
+          SOURCE_RUN_ID: ${{ needs.uat-reuse.outputs.source_run_id }}
+          SOURCE_DIST_DIGEST: ${{ needs.uat-reuse.outputs.source_dist_digest }}
         run: |
           set -euo pipefail
           shopt -s nullglob
           .venv/bin/python -c "import benchbox, pathlib; path = pathlib.Path(benchbox.__file__).resolve(); assert 'site-packages' in path.parts, path"
           evidence="$RUNNER_TEMP/uat-evidence"
-          stage1=("$evidence"/release-uat-"$RC_TAG"-stage1-*/run)
-          stage2=("$evidence"/release-uat-"$RC_TAG"-stage2-*/run)
-          stage3=("$evidence"/release-uat-"$RC_TAG"-stage3-*/run)
+          stage1=("$evidence"/release-uat-"$SOURCE_TAG"-stage1-*/run)
+          stage2=("$evidence"/release-uat-"$SOURCE_TAG"-stage2-*/run)
+          stage3=("$evidence"/release-uat-"$SOURCE_TAG"-stage3-*/run)
           make uat-gate-check \
             STAGE1="${stage1[*]}" \
             STAGE2="${stage2[*]}" \
             STAGE3="${stage3[*]}" \
             OUTPUT="$RUNNER_TEMP/uat-gate-summary.json" \
-            DIST_DIGEST="$RC_DIST_DIGEST"
+            DIST_DIGEST="$SOURCE_DIST_DIGEST"
           python3 scripts/release_reuse_uat_evidence.py verify-gate \
             --summary "$RUNNER_TEMP/uat-gate-summary.json" \
-            --rc-tag "$RC_TAG" \
-            --rc-run-id "$RC_RUN_ID" \
-            --rc-sha "$RC_SHA" \
-            --rc-digest "$RC_DIST_DIGEST" \
+            --evidence "$evidence" \
+            --source-kind "$SOURCE_KIND" \
+            --source-tag "$SOURCE_TAG" \
+            --source-run-id "$SOURCE_RUN_ID" \
+            --source-sha "$SOURCE_SHA" \
+            --source-digest "$SOURCE_DIST_DIGEST" \
             --receipt "$RUNNER_TEMP/uat-reuse-receipt.json"
 
       - name: Restore the checkout package

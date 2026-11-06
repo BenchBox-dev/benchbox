@@ -107,11 +107,21 @@ so `release-v2.yml` splits each stage into shard jobs that run in parallel:
   ordering holds for stage directories that ran on the same host as the
   previous stage's shards. Each run records `[host] id=<hash>` (machine id plus
   `RUNNER_NAME`) in `uat_lifecycle.log`; a missing id counts as the same host.
-- A final tag may reuse its newest release candidate's UAT evidence through the
-  `uat-reuse` job. The conditions, and what to freeze between the candidate and
-  the final, are in [release-artifacts.md](release-artifacts.md). The
-  candidate's shard artifacts are kept 30 days, so tag the final within that
-  window or expect a full UAT run.
+- Every tag may reuse earlier UAT evidence through the `uat-reuse` job: first
+  the newest qualifying nightly trunk UAT run (see Trunk UAT below), then, for
+  a final tag, its newest release candidate's run. The conditions are in
+  [release-artifacts.md](release-artifacts.md). Anything that changes a guarded
+  UAT input after the evidence run (see that page) sends the release back to
+  the full stages; land an envelope fix on `develop`, dispatch `trunk-uat.yml`
+  on that commit, and tag after it finishes. Trunk evidence is kept 90 days and
+  a release candidate's shard artifacts 30 days. Tags on a `release/X.Y.x`
+  maintenance branch have no trunk evidence and run the full stages unless
+  their release candidate qualifies.
+- Independently of UAT, `admit` refuses any tag unless the newest
+  `release-canary.yml` run that tested an ancestor of the tagged commit
+  concluded `success` and started at most 48 hours ago. A red, stale, missing or
+  non-ancestor canary is named in the job summary; fix the canary (or wait for
+  the next daily run) and re-run the tag.
 
 The shard assignment is the `matrix.include` list of each `uat-stage` job.
 `tests/uat/test_release_gate_shards.py` fails when a config's platform set and
