@@ -29484,7 +29484,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "blocked",
+      "status": "open",
       "title": "Provide verified SQLGlot wheel deliveries from benchbox-sqlglot"
     },
     "sqlglot-e2e-lifecycle-controller": {
