@@ -138,6 +138,7 @@ def table_to_line_protocol(
     field_columns: list[str],
     timestamp_column: str | None,
     float_only_fields: frozenset[str] = frozenset(),
+    string_fields: frozenset[str] = frozenset(),
 ) -> Any:
     import pyarrow as pa
     import pyarrow.compute as pc
@@ -155,7 +156,12 @@ def table_to_line_protocol(
     field_parts = []
     for field in (field for field in field_columns if field in names):
         values = pc.utf8_trim_whitespace(table.column(field))
-        token = _field_token(pc.if_else(pc.equal(values, ""), None, values), field in float_only_fields)
+        values = pc.if_else(pc.equal(values, ""), None, values)
+        if field in string_fields:
+            escaped = pc.replace_substring(pc.replace_substring(values, "\\", "\\\\"), '"', '\\"')
+            token = pc.binary_join_element_wise('"', escaped, '"', "", null_handling="emit_null")
+        else:
+            token = _field_token(values, field in float_only_fields)
         part = pc.binary_join_element_wise(",", pa.scalar(field + "="), token, "", null_handling="emit_null")
         field_parts.append(pc.fill_null(part, ""))
 
@@ -377,9 +383,10 @@ class InfluxDBConnection:
         precision: str = "ns",
         batch_size: int = 10000,
         float_only_fields: frozenset[str] = frozenset(),
+        string_fields: frozenset[str] = frozenset(),
     ) -> int:
         lines = table_to_line_protocol(
-            measurement, table, tag_columns, field_columns, timestamp_column, float_only_fields
+            measurement, table, tag_columns, field_columns, timestamp_column, float_only_fields, string_fields
         )
         for start in range(0, len(lines), batch_size):
             self.write_line_protocol(lines.slice(start, batch_size).to_pylist(), precision)
