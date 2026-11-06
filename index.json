@@ -35060,6 +35060,13 @@
       "status": "blocked",
       "title": "UAT free-memory floor is a placeholder calibrated from a different metric than it gates on"
     },
+    "uat-mocker-compose-gaps-20261106": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Under mocker, UAT compose stacks lose entrypoint, memory, ulimit and port settings (Doris, Firebolt Core, QuestDB)"
+    },
     "uat-native-dataframe-compatibility-rules": {
       "claim": null,
       "needs": [
