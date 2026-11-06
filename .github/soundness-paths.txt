@@ -152,6 +152,11 @@ file	tests/unit/scripts/test_sql_execution_gate.py
 file	tests/unit/scripts/test_sync_sqlglot_runtime.py
 file	tests/unit/scripts/test_check_sqlglot_repro_retirement.py
 file	tests/unit/scripts/test_sqlglot_fork_diff.py
+file	.github/sqlglot-delivery.json
+file	scripts/sqlglot_delivery.py
+file	.github/workflows/sqlglot-delivery.yml
+file	tests/unit/scripts/test_sqlglot_delivery.py
+file	tests/unit/workflows/test_sqlglot_delivery_workflow.py
 file	tests/unit/utils/test_dialect_utils.py
 file	tests/unit/utils/test_apply_rewrite.py
 file	tests/unit/utils/test_apply_rewrite_engines.py
