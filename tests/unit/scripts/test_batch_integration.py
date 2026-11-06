@@ -371,6 +371,27 @@ def test_a_leader_write_in_the_landing_second_does_not_block_resuming_the_landin
     assert world.land("zeta")["status"] == "already-merged"
 
 
+def test_land_undoes_the_merge_when_a_member_write_arrives_during_it(
+    world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    world.start()
+    world.tracker.item_sessions["zeta"] = [_session("create", "created", "2000-01-01T00:00:00Z")]
+    world.deliver("zeta", {"src/a.py": "member\n"})
+    before = world.head()
+    original = bi._git_merge
+
+    def write_during_merge(*args, **kwargs):
+        world.tracker.item_sessions["zeta"].append(_session("update", "late-note", "2999-01-01T00:00:00Z"))
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(bi, "_git_merge", write_during_merge)
+    with _raises("late-note"):
+        world.land("zeta")
+
+    assert world.head() == before
+    assert "zeta" not in bi.load_ledger(world.integration, BATCH)["landings"]
+
+
 def test_land_checks_a_member_without_a_creation_time_from_the_batch_start(world: World) -> None:
     world.start()
     member = world.deliver("zeta", {"src/a.py": "member\n"})

@@ -150,15 +150,17 @@ A member:
    creation (or the batch start, for a worktree created before this check)
    through its first landing, other than `take`, `release`, `renew`, `recover`,
    and the leader's recorded `prepare`. Both guards run again just before the
-   merge. Inspect each listed write with `show_item`; land again with
+   merge, and the tracker guard runs once more right after it: a member write
+   that arrives during the merge undoes the merge and refuses the landing.
+   Inspect each listed write with `show_item`; land again with
    `ACCEPT_WRITES=<op_id,...>` to record the reviewed writes in the ledger,
    where later landings of the same member reuse them. The window is bounded
    by tracker order, not only by clock time: writes already on the member item
-   when `batch-member-create` ran, and writes after the last one the landing
-   saw, are never counted, so leader writes in the same second as either
-   boundary do not block a landing. A `take` from a member that shares the
-   leader's identity cannot be told apart from the leader's own, which is why
-   identities must differ.
+   when `batch-member-create` ran, and writes after the last one the
+   landing's closing check saw, are never counted, so leader writes in the
+   same second as either boundary do not block a landing. A `take` from a
+   member that shares the leader's identity cannot be told apart from the
+   leader's own, which is why identities must differ.
 2. The leader runs the trusted local reviewer for the exact captured base and
    head, with the reviewer code and policy pinned to the same trusted
    `origin/develop` commit (which must not predate the batch start). Only an

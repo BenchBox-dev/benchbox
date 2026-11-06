@@ -1162,13 +1162,18 @@ def land_member(repo: Path, member: str, *, push: bool = True, accepted_writes: 
         )
     gate = _landing_preconditions(repo, ledger, tracker, member, facts, head)
     _refuse_primary_edits(repo, member, ledger["scope"][member])
-    reviewed_writes, write_warnings, sessions_through = _check_member_writes(
-        repo, member, facts["worktree"], ledger, tracker, accepted_writes
-    )
+    _, write_warnings, _ = _check_member_writes(repo, member, facts["worktree"], ledger, tracker, accepted_writes)
     warnings = [*write_warnings, *_preflight_gate(repo, facts["member_head"])]
     if gate["preflight"] != [*DEFAULT_PREFLIGHT_COMMAND, f"BASE={head}"]:
         warnings.append(f"member preflight was not the default: {' '.join(gate['preflight']) or 'not recorded'}")
     merged = _git_merge(repo, member, head, facts["member_head"], ledger)
+    try:
+        reviewed_writes, _, sessions_through = _check_member_writes(
+            repo, member, facts["worktree"], ledger, tracker, accepted_writes
+        )
+    except BatchError:
+        _git(repo, "reset", "--hard", head)
+        raise
     landing = {
         "member_branch": facts["branch"],
         "member_worktree": str(facts["worktree"]),
