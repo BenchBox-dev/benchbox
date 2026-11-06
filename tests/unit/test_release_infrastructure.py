@@ -158,7 +158,7 @@ class TestReleaseInfrastructure:
         assert pr_fast["env"]["COVERAGE_CORE"] == "sysmon"
         assert expected_marker_flag in pr_fast["run"]
 
-        assert _workflow("trunk.yml")[True]["push"] == {"branches": ["develop"]}
+        assert _workflow("trunk.yml")[True]["push"] == {"branches": ["develop", "release/**"]}
         assert python_version("trunk.yml", "fast") == "3.12"
         assert expected_marker_flag in _workflow_job_run_text("trunk.yml", "fast")
 
