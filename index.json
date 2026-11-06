@@ -30331,7 +30331,7 @@
         "sql-execution-gate-sqlite-q19-timeout"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "Prove and activate fork delivery plus minimal core consumption"
     },
     "sqlglot-e2e-automated-delivery": {
