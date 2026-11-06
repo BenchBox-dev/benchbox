@@ -7,6 +7,13 @@
     "release-guide.md and the release skill describe: create release/X.Y.x from the tag, PR the fix, tag vX.Y.Z, release, add the changelog section to develop, delete the branch when the line ends",
     "Live rehearsal after merge: a release/0.5.x branch built from v0.5.0 with a no-op patch reaches TestPyPI as an rc through release-v2 (run id recorded), then the branch is deleted"
   ],
+  "batch": {
+    "batch_id": "release-v2-remediation",
+    "implementation_dependencies": [
+      "rv2r-09-trunk-dist-every-commit"
+    ],
+    "member_id": "rv2r-14-maintenance-release-branches"
+  },
   "context": "Member of batch release-v2-remediation. Source: dev-loop v2 retrospective 2026-11-06 (local dev-loop-v2-retro.md, section 6 option A; agent://DevLoopV2Retro). OWNER STEP: repository rulesets are owner-only. The member writes the exact ruleset JSON for refs/heads/release/** (creation/deletion restricted to the owner, pull request required, squash only, the same required status contexts as develop-squash-only, no force push) into docs/internal/repo-admin-settings.md and this item's context; the owner applies it before the final PR merges; the drift check expects it. The legacy `release` branch must be deleted first: Git cannot hold `release` and `release/X.Y.x` at once. Branch protection must not make release/** a second always-on line: branches exist only while a line is supported. DECISION GATE: if Theseus/oracle cannot gate a non-develop base without an upstream change, stop and report to the owner.",
   "description": "Owner decision 2026-11-06: shipping a fix on an older release without shipping everything on develop is a requirement (for example a security fix as 0.5.1 after 0.6.0). Neither the old nor the current flow supports it: release-v2 admits only a dist from a develop trunk run (scripts/release_artifact_consumer.py:27,179,196,411,653; trunk.yml:8-10). Implement on-demand maintenance lines: the owner creates `release/X.Y.x` from the `vX.Y.0` (or latest vX.Y.Z) tag commit; fixes land by PR into that branch with the same CI and oracle review as develop; trunk.yml runs on pushes to `release/**` and builds the dist; admission accepts a tag whose commit is on exactly one protected line (develop or the release/X.Y.x branch matching the tag's X.Y) with a successful trunk push run on that exact commit; the release UAT check falls back to full UAT when no trunk UAT evidence exists for the line; the GitHub release for a maintenance tag is created with `--latest=false`; the release's changelog section is also added to develop. Files: .github/workflows/trunk.yml, ci.yml:118-137 (accept release/* bases), review-gate.yml:44 (gated base per branch; check whether Theseus needs an upstream input), release_artifact_consumer.py, release-v2.yml github-release step, scripts/ruleset_drift_check.py and docs/internal/repo-admin-settings.md (expected `release-branches` ruleset for refs/heads/release/**), changelog/version tests that assume one branch, the benchbox release skill and docs/internal/release-guide.md (maintenance-release procedure). Rollback: revert this member's commits; the owner deletes the ruleset.",
   "links": [
@@ -23,6 +30,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "23d1d388373d4439b83c870e14644e0b",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-06T13:41:47Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "73c3be264d78414aac963f1fcf43b245",
       "session_id": "b7a346e5fd054aa88d3c05a944442610"
     }
   ]
