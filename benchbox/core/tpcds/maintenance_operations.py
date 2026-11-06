@@ -159,13 +159,6 @@ class MaintenanceOperations:
         else:
             return "?"
 
-    def _seed_database_random(self, connection: Any) -> None:
-        inner = getattr(connection, "connection", connection)
-        descriptor = f"{type(inner).__module__}.{type(inner).__name__}".lower()
-        dialect = str(getattr(connection, "dialect", "")).lower()
-        if "duckdb" in descriptor or dialect == "duckdb":
-            connection.execute(f"SELECT setseed({self.random_gen.random()})")
-
     def _execute_batched_insert(
         self, connection: Any, table_name: str, columns: str, rows_to_insert: list[tuple], num_columns: int
     ) -> int:
@@ -409,6 +402,7 @@ class MaintenanceOperations:
 
         sales_item, sales_number = sales_key_columns
         returns_item, returns_number = returns_key_columns
+        order_offset = self.random_gen.randrange(1000003)
         query_sql = f"""
         SELECT {sales_select_columns}
         FROM {sales_table}
@@ -419,12 +413,11 @@ class MaintenanceOperations:
             WHERE {returns_table}.{returns_item} = {sales_table}.{sales_item}
               AND {returns_table}.{returns_number} = {sales_table}.{sales_number}
           )
-        ORDER BY RANDOM()
+        ORDER BY (({sales_item} * 7919 + {sales_number} * 104729 + {order_offset}) % 1000003), {sales_item}, {sales_number}
         LIMIT {placeholder}
         """
 
         try:
-            self._seed_database_random(connection)
             cursor = connection.execute(query_sql, (estimated_rows,))
             sales_records = cursor.fetchall()
         except Exception as e:
