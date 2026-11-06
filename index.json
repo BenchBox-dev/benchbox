@@ -21820,10 +21820,15 @@
       "title": "Power Run Iterations Configuration ✅ COMPLETED"
     },
     "power-test-times-query-generation-20261031": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-07T05:07:27Z",
+        "generation": "c4025d95c1f04e0eb76a7af9d0a786c9",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Generate TPC-H and TPC-DS power-test query text before each per-query timer starts"
     },
     "pr-1644-fix-commit-nits-20260811": {
