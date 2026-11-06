@@ -29516,7 +29516,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "blocked",
+      "status": "open",
       "title": "Limit core wheel adoption to identity, transaction and consumer packaging"
     },
     "sqlglot-fork-a1-adopt-wrapper-wheel": {
