@@ -111,8 +111,9 @@ def _load_events() -> Any:
         return _events_state[0]
     try:
         module = _load_sibling("heavy_run_events")
-    except Exception:
+    except Exception as exc:
         module = None
+        _log(f"WARNING: heavy run event log disabled ({type(exc).__name__}: {exc}); runs continue unrecorded")
     _events_state.append(module)
     return module
 
@@ -130,6 +131,9 @@ class _Run:
     execution_seconds: float = 0.0
     cleanup_seconds: float = 0.0
     acquired_at: float | None = None
+    held_started: float | None = None
+    execution_recorded: bool = False
+    cleanup_error: str | None = None
     done: bool = False
 
 
@@ -210,6 +214,7 @@ def _finish_run(run: _Run | None, outcome: str, exit_code: int | None = None, **
         execution_seconds=round(run.execution_seconds, 6),
         cleanup_seconds=round(run.cleanup_seconds, 6),
         held_seconds=None if held is None else round(held, 6),
+        cleanup_error=run.cleanup_error,
         **details,
     )
 
@@ -570,18 +575,35 @@ def _release(handle: HostLock) -> None:
         guard, handle.guard = handle.guard, None
         fd, handle.fd = handle.fd, None
     cleanup_started = _now()
-    try:
-        if guard is not None:
+    run = handle.run
+    if run is not None and run.held_started is not None and not run.execution_recorded:
+        run.execution_seconds = cleanup_started - run.held_started
+    failure: BaseException | None = None
+    if guard is not None:
+        try:
             guard.stop()
-        if fd is not None:
+        except BaseException as exc:
+            failure = exc
+    if fd is not None:
+        try:
             _close_lock(fd)
-    finally:
-        run = handle.run
-        if run is not None:
-            run.cleanup_seconds = _now() - cleanup_started
-            _emit(run, "cleanup_finished", duration=run.cleanup_seconds, outcome="released")
-            if not handle.terminal_deferred:
-                _finish_run(run, handle.outcome or "released")
+        except BaseException as exc:
+            failure = failure or exc
+    if run is not None:
+        run.cleanup_seconds = _now() - cleanup_started
+        if failure is not None:
+            run.cleanup_error = type(failure).__name__
+        _emit(
+            run,
+            "cleanup_finished",
+            duration=run.cleanup_seconds,
+            outcome="released" if failure is None else "error",
+            error=run.cleanup_error,
+        )
+        if not handle.terminal_deferred:
+            _finish_run(run, "error" if failure is not None else handle.outcome or "released")
+    if failure is not None:
+        raise failure
 
 
 def held_inode_matches(handle: HostLock) -> bool:
@@ -590,10 +612,19 @@ def held_inode_matches(handle: HostLock) -> bool:
     return _inode_matches(handle.fd, handle.path)
 
 
-def owner_environment(base: Mapping[str, str] | None = None) -> dict[str, str]:
+def _with_run_identity(env: dict[str, str], handle: HostLock | None) -> dict[str, str]:
+    run = None if handle is None else handle.run
+    if run is not None:
+        env[RUN_ID_ENV] = run.run_id
+        env[ROOT_RUN_ID_ENV] = run.root_run_id
+        env[RUNS_FILE_ENV] = run.environ[RUNS_FILE_ENV]
+    return env
+
+
+def owner_environment(base: Mapping[str, str] | None = None, handle: HostLock | None = None) -> dict[str, str]:
     env = dict(os.environ if base is None else base)
     env[OWNER_ENV] = process_identity()
-    return env
+    return _with_run_identity(env, handle)
 
 
 def _ancestry_identities() -> set[str]:
@@ -903,6 +934,9 @@ def _acquire(
             handle.outcome = _failure_outcome(exc)
         handle.release()
         raise
+    if run is not None:
+        run.held_started = _now()
+        _emit(run, "execution_started", program=_program_name(command))
     return handle, created
 
 
@@ -1098,16 +1132,12 @@ def run_command(
         return EXIT_ADMISSION
     except KeyboardInterrupt:
         return 128 + signal.SIGINT
-    env = dict(os.environ) if handle.inherited else owner_environment()
+    env = _with_run_identity(dict(os.environ), handle) if handle.inherited else owner_environment(handle=handle)
     run = handle.run
-    if run is not None:
-        env[RUN_ID_ENV] = run.run_id
-        env[ROOT_RUN_ID_ENV] = run.root_run_id
     watcher = handle.guard
     owned_run = run if created else None
     handle.terminal_deferred = handle.terminal_deferred or created
     del _forwarded_signals[:]
-    _emit(owned_run, "execution_started", program=_program_name(rendered))
     execution_started = _now()
     code: int | None = None
     outcome = "error"
@@ -1122,15 +1152,22 @@ def run_command(
         raise
     finally:
         execution_seconds = _now() - execution_started
-        handle.release()
-        reported = code
-        breached = code is not None and watcher is not None and watcher.breached
-        if breached:
-            outcome = "watchdog_kill"
-            reported = EXIT_WATCHDOG
         if owned_run is not None:
             owned_run.execution_seconds = execution_seconds
-            _finish_run(owned_run, outcome, reported, command_exit_code=code)
+            owned_run.execution_recorded = True
+        reported = code
+        breached = False
+        try:
+            handle.release()
+        finally:
+            breached = code is not None and watcher is not None and watcher.breached
+            if breached:
+                outcome = "watchdog_kill"
+                reported = EXIT_WATCHDOG
+            if owned_run is not None:
+                if owned_run.cleanup_error:
+                    outcome = "error"
+                _finish_run(owned_run, outcome, reported, command_exit_code=code)
     if breached:
         _log(f"watchdog stopped the process tree after a breach; exiting {EXIT_WATCHDOG} (command status was {code})")
     return reported

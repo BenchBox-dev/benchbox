@@ -459,8 +459,8 @@ command line or environment, only the program name, `phase`/`gate` labels and ru
 | `lock_acquired` | `duration_seconds` is the **queue wait**; `outcome` is `acquired` or `inherited` (an ancestor holds it). |
 | `admission_finished` | `duration_seconds` is the admission check; `outcome` is `admitted` or `admission_refused`. |
 | `guard_started` | Watchdog start time (`started` or `unavailable`). |
-| `execution_started` | The command was launched under the lock. |
-| `cleanup_finished` | Guard teardown and lock release time. |
+| `execution_started` | The lock is held, admitted and guarded; the held-work interval starts (one row per run, also for `acquire`/`hold`). |
+| `cleanup_finished` | Guard teardown and lock release time; `outcome` is `released`, or `error` with `details.error` when teardown raised. |
 | `run_finished` | The one terminal row: `outcome`, `exit_code`, and `details` repeating the phase seconds below. |
 
 `run_finished.details` carries `wait_seconds`, `admission_seconds`, `guard_seconds`, `execution_seconds`,
@@ -472,15 +472,27 @@ Terminal `outcome` is one of `success`, `command_failed` (child exit status in `
 where no command outcome is known. `success` is only ever derived from the child's exit status, never from the lock
 being released.
 
-Queue, admission, execution and cleanup are separate phases: compare `wait_seconds` (blocked behind another holder),
+Queue and admission are separate, sequential phases, and so are execution and guard teardown: compare `wait_seconds` (blocked behind another holder),
 `admission_seconds` (pressure retries after the lock was won), `execution_seconds` (the command itself) and
-`cleanup_seconds`. `held_seconds` covers everything between acquisition and release. A re-entrant acquire by a process
+`cleanup_seconds`. For `run_command`, `execution_seconds` is the child's actual span; for a plain `acquire`/`hold` handle
+(such as a pytest session) it is the interval from the end of acquisition, admission and guard setup to release, with
+outcome `released` rather than a command verdict. `held_seconds` covers everything between acquisition and release. A re-entrant acquire by a process
 that already holds the lock adds no rows; only the outermost handle logs and closes the run.
 
 Run ids are exported to the child as `BENCHBOX_HEAVY_RUN_ID` (and `BENCHBOX_HEAVY_ROOT_RUN_ID`). A nested guarded
 command logs its own run with `parent_run_id` and `root_run_id` in `details`; ids that do not match
 `[A-Za-z0-9_-]{1,64}` are ignored. VM cleanup rows (`vm_cleanup_started`/`vm_cleanup_finished`) reuse the active
 `BENCHBOX_HEAVY_RUN_ID`.
+
+Durations are not all mutually exclusive: events from nested work (for example `vm_cleanup_started`/`vm_cleanup_finished`
+from the Linux machine wrapper) happen inside the root command's `execution_seconds`, while the guard teardown
+(`cleanup_seconds`) starts only after the command ends. A teardown failure is recorded as `cleanup_finished` with
+`outcome` `error`, the terminal `outcome` becomes `error` (`command_exit_code` keeps the child's status), and the
+exception still propagates. `BENCHBOX_HEAVY_RUN_ID`, `BENCHBOX_HEAVY_ROOT_RUN_ID` and `BENCHBOX_HEAVY_RUNS_FILE` reach
+children through `host_lock.owner_environment(handle=handle)` for API callers and automatically for `run_command`.
+If the event module cannot be loaded, one `WARNING: heavy run event log disabled` line is printed and runs go
+unrecorded. Strings are clipped (run id, event and outcome to 64 characters, working directory to 200) and a row that
+would still exceed 3500 encoded bytes is reduced to its identifying fields.
 
 **A hard kill leaves no terminal row.** `SIGKILL`, a host crash or power loss cannot run any handler, so such a run
 ends with `lock_requested`/`lock_acquired`/`execution_started` and no `run_finished`. Treat a run without a terminal

@@ -297,7 +297,7 @@ def test_nested_acquire_emits_one_run_and_one_terminal(lock_dir: Path, runs_file
     assert not runs_file.exists() or "run_finished" not in runs_file.read_text(encoding="utf-8")
     outer.release()
     names = [row["event"] for row in read_events(runs_file)]
-    assert names == ["lock_requested", "lock_acquired", "cleanup_finished", "run_finished"]
+    assert names == ["lock_requested", "lock_acquired", "execution_started", "cleanup_finished", "run_finished"]
     assert read_events(runs_file)[-1]["outcome"] == "released"
 
 
@@ -306,7 +306,11 @@ def test_run_command_nested_in_a_held_lock_adds_no_run_records(lock_dir: Path, r
     outer = hl.acquire(path, wait_seconds=0, phase="outer")
     try:
         assert hl.run_command(noop()) == 0
-        assert [row["event"] for row in read_events(runs_file)] == ["lock_requested", "lock_acquired"]
+        assert [row["event"] for row in read_events(runs_file)] == [
+            "lock_requested",
+            "lock_acquired",
+            "execution_started",
+        ]
     finally:
         outer.release()
     assert [row["event"] for row in read_events(runs_file)].count("run_finished") == 1
@@ -404,3 +408,111 @@ def test_a_sigkilled_supervisor_leaves_started_events_and_no_terminal(
                 pass
     names = [row["event"] for row in read_events(runs_file)]
     assert names == ["lock_requested", "lock_acquired", "execution_started"]
+
+
+def test_plain_acquire_records_the_held_execution_interval_without_faking_success(
+    lock_dir: Path, runs_file: Path, clock: FakeClock
+) -> None:
+    handle = hl.acquire(lock_dir / hl.LOCK_NAME, wait_seconds=0, phase="session")
+    clock.now += 90.0
+    handle.release()
+    rows = read_events(runs_file)
+    assert [row["event"] for row in rows].count("execution_started") == 1
+    final = rows[-1]
+    assert final["outcome"] == "released"
+    assert final["details"]["execution_seconds"] == 90.0 and final["details"]["held_seconds"] == 90.0
+
+
+class ExplodingGuard:
+    breached = False
+
+    def stop(self) -> None:
+        raise RuntimeError("teardown failed")
+
+
+def test_a_guard_teardown_error_still_closes_the_lock_and_is_recorded(lock_dir: Path, runs_file: Path) -> None:
+    path = lock_dir / hl.LOCK_NAME
+    handle = hl.acquire(path, wait_seconds=0, phase="p")
+    handle.guard = ExplodingGuard()
+    with pytest.raises(RuntimeError, match="teardown failed"):
+        handle.release()
+    assert not hl.lock_is_held(path)
+    by = by_event(read_events(runs_file))
+    assert by["cleanup_finished"]["outcome"] == "error"
+    assert by["cleanup_finished"]["details"]["error"] == "RuntimeError"
+    assert by["run_finished"]["outcome"] == "error"
+
+
+def test_run_command_still_writes_a_terminal_when_teardown_raises(
+    lock_dir: Path, runs_file: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(hl, "start_guard", lambda handle, environ=None: ExplodingGuard())
+    with pytest.raises(RuntimeError, match="teardown failed"):
+        hl.run_command(noop(), guard=True)
+    assert not hl.lock_is_held(lock_dir / hl.LOCK_NAME)
+    final = read_events(runs_file)[-1]
+    assert final["event"] == "run_finished" and final["outcome"] == "error"
+    assert final["details"]["command_exit_code"] == 0
+
+
+def test_hostile_run_id_cwd_and_details_stay_within_the_record_bound(tmp_path: Path) -> None:
+    target = tmp_path / "runs.jsonl"
+    emoji = "\U0001f600" * 500
+    ev.record_event(
+        "e" * 500,
+        outcome="o" * 500,
+        details={f"{emoji}{n}": emoji for n in range(30)},
+        environ={ev.FILE_ENV: str(target)},
+        run_id=emoji + "\n" + "r" * 9000,
+    )
+    data = target.read_bytes()
+    assert len(data) <= ev.MAX_RECORD_BYTES and data.count(b"\n") == 1
+    row = json.loads(data)
+    assert row["schema"] == ev.SCHEMA and row["run_id"].startswith(emoji[:5])
+    assert len(row["run_id"]) <= ev.MAX_ID_CHARS
+
+
+def test_a_unicode_working_directory_cannot_break_the_bound(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    target = tmp_path / "runs.jsonl"
+    monkeypatch.setattr(os, "getcwd", lambda: "/" + "\U0001f600" * 4000)
+    ev.record_event("probe", details={"k": "\U0001f600" * 200}, environ={ev.FILE_ENV: str(target)}, run_id="r" * 64)
+    data = target.read_bytes()
+    assert len(data) <= ev.MAX_RECORD_BYTES
+    assert json.loads(data)["run_id"] == "r" * 64
+
+
+def test_a_failed_event_module_load_warns_once_and_runs_unrecorded(
+    lock_dir: Path, runs_file: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def broken(stem: str) -> object:
+        raise ImportError("missing")
+
+    monkeypatch.setattr(hl, "_load_sibling", broken)
+    monkeypatch.setattr(hl, "_events_state", [])
+    assert hl.run_command(noop()) == 0
+    assert hl.run_command(noop()) == 0
+    assert capsys.readouterr().err.count("heavy run event log disabled") == 1
+    assert not runs_file.exists()
+
+
+def test_api_acquire_environment_carries_run_ids_and_ledger_path_to_children(
+    lock_dir: Path, runs_file: Path, tmp_path: Path
+) -> None:
+    handle = hl.acquire(lock_dir / hl.LOCK_NAME, wait_seconds=0, phase="session")
+    try:
+        env = hl.owner_environment(handle=handle)
+        assert hl.owner_environment()[hl.OWNER_ENV] == env[hl.OWNER_ENV]
+        assert hl.RUN_ID_ENV not in hl.owner_environment()
+        program = (
+            "import importlib.util, sys\n"
+            "spec = importlib.util.spec_from_file_location('hre', sys.argv[1])\n"
+            "m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)\n"
+            "m.record_event('vm_cleanup_started')\n"
+        )
+        env.pop(hl.LOCK_DIR_ENV)
+        subprocess.run([sys.executable, "-I", "-c", program, str(Path(ev.__file__))], env=env, check=True, timeout=60)
+        row = read_events(runs_file)[-1]
+        assert row["event"] == "vm_cleanup_started" and row["run_id"] == handle.run.run_id
+        assert env[hl.ROOT_RUN_ID_ENV] == handle.run.root_run_id
+    finally:
+        handle.release()

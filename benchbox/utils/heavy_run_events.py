@@ -16,6 +16,7 @@ DEFAULT_FILE_NAME = "heavy-runs.jsonl"
 MAX_RECORD_BYTES = 3500
 MAX_TEXT_CHARS = 200
 MAX_DETAIL_ITEMS = 24
+MAX_ID_CHARS = 64
 
 
 def new_run_id() -> str:
@@ -57,12 +58,25 @@ def _bounded(value: object) -> object:
     return str(value)[:MAX_TEXT_CHARS]
 
 
+def _dump(record: dict[str, object]) -> bytes:
+    return (json.dumps(record, separators=(",", ":"), sort_keys=True) + "\n").encode("utf-8")
+
+
 def _encode(record: dict[str, object]) -> bytes:
-    line = (json.dumps(record, separators=(",", ":"), sort_keys=True) + "\n").encode("utf-8")
+    line = _dump(record)
     if len(line) <= MAX_RECORD_BYTES:
         return line
     record["details"] = {"truncated": True}
-    return (json.dumps(record, separators=(",", ":"), sort_keys=True) + "\n").encode("utf-8")
+    line = _dump(record)
+    if len(line) <= MAX_RECORD_BYTES:
+        return line
+    for key in ("cwd", "event", "outcome", "run_id"):
+        value = record.get(key)
+        if isinstance(value, str):
+            record[key] = value[:MAX_ID_CHARS]
+    record["cwd"] = str(record.get("cwd", ""))[: MAX_ID_CHARS // 2]
+    record["cwd_truncated"] = True
+    return _dump(record)
 
 
 def record_event(
@@ -80,15 +94,15 @@ def record_event(
         record: dict[str, object] = {
             "schema": SCHEMA,
             "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-            "run_id": run_id or env.get(RUN_ID_ENV) or "unknown",
+            "run_id": str(run_id or env.get(RUN_ID_ENV) or "unknown")[:MAX_ID_CHARS],
             "pid": os.getpid(),
-            "cwd": os.getcwd(),
-            "event": event[:MAX_TEXT_CHARS],
+            "cwd": os.getcwd()[:MAX_TEXT_CHARS],
+            "event": event[:MAX_ID_CHARS],
         }
         if duration_seconds is not None:
             record["duration_seconds"] = round(max(0.0, duration_seconds), 6)
         if outcome is not None:
-            record["outcome"] = outcome[:MAX_TEXT_CHARS]
+            record["outcome"] = outcome[:MAX_ID_CHARS]
         if exit_code is not None:
             record["exit_code"] = exit_code
         if details:
