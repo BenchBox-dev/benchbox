@@ -4911,6 +4911,15 @@
       "status": "open",
       "title": "Re-lock BenchBox to Theseus v0.1.8 with config trimming, batch-land preflight and the review-depth decision record"
     },
+    "benchbox-residual-oracle-names-20261106": {
+      "claim": null,
+      "needs": [
+        "theseus-v021-stdin-rendered-mode-20261105"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Retire the oracle names BenchBox still uses after its migration to Theseus review-* names"
+    },
     "benchbox-score-advanced-fixtures": {
       "claim": null,
       "needs": [
