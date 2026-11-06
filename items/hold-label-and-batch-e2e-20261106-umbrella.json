@@ -1,0 +1,14 @@
+{
+  "context": "Members run as separate top-level omp sessions with their own TODO_DB_ACTOR; they make no tracker writes.",
+  "description": "Umbrella for registered batch hold-label-and-batch-e2e-20261106 (never a member). Members: pr-hold-stale-label-suite-unclearable-20261106, batch-loop-e2e-review-binding-failures-20261106. Independent members, no implementation edges. Integration branch feat/hold-label-and-batch-e2e-20261106.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae",
+      "at": "2026-11-06T13:13:05Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c4c9844351c04b2ca616b93172cb5b7f",
+      "session_id": "4e1f5de86962468394697835ee28c6b3"
+    }
+  ]
+}

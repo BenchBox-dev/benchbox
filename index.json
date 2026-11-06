@@ -16065,6 +16065,13 @@
       "status": "open",
       "title": "History-retention ADR and the publish allowlist reference documentation paths that no longer exist in core"
     },
+    "hold-label-and-batch-e2e-20261106-umbrella": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Batch notes: pr-hold live-label check and batch-loop e2e restoration"
+    },
     "holistic-review-followup-metadata-truth": {
       "claim": null,
       "needs": [],
