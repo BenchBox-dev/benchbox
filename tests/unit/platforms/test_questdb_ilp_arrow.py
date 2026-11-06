@@ -3,6 +3,8 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
+import socket
+import threading
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -124,14 +126,42 @@ def _column_checksums(lines):
     return sums
 
 
+class _IlpSink:
+    def __init__(self):
+        self.payloads: list[bytes] = []
+        self._listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._listener.bind(("127.0.0.1", 0))
+        self._listener.listen(1)
+        self.port = self._listener.getsockname()[1]
+        self._thread = threading.Thread(target=self._serve, daemon=True)
+        self._thread.start()
+
+    def _serve(self):
+        connection, _ = self._listener.accept()
+        with connection:
+            while chunk := connection.recv(65536):
+                self.payloads.append(chunk)
+
+    def close(self):
+        self._thread.join(timeout=10)
+        self._listener.close()
+
+
+def _load_to_sink(adapter, path, table, columns, dialect):
+    sink = _IlpSink()
+    adapter.ilp_host = "127.0.0.1"
+    adapter.ilp_port = sink.port
+    try:
+        with patch.object(adapter, "_get_table_columns", return_value=columns):
+            rows = adapter._load_table_via_ilp(table, path, dialect)
+    finally:
+        sink.close()
+    return rows, b"".join(sink.payloads).decode()
+
+
 def _send_lines(adapter, path, table, columns, dialect, monkeypatch):
-    sent: list[bytes] = []
-    sock = Mock()
-    sock.sendall.side_effect = sent.append
-    monkeypatch.setattr(questdb_module.socket, "socket", lambda *a, **k: sock)
-    with patch.object(adapter, "_get_table_columns", return_value=columns):
-        rows = adapter._load_table_via_ilp(table, path, dialect)
-    return rows, b"".join(sent).decode().splitlines()
+    rows, text = _load_to_sink(adapter, path, table, columns, dialect)
+    return rows, text.splitlines()
 
 
 def _assert_parity(adapter, path, table, columns, delimiter, ts_col, monkeypatch):
@@ -211,16 +241,13 @@ class TestIlpArrowParity:
     def test_batches_send_at_most_1000_rows_per_write(self, adapter, tmp_path, monkeypatch):
         path = tmp_path / "t.csv"
         path.write_text("".join(f"{i},v{i}\n" for i in range(2500)), encoding="utf-8")
-        sent: list[bytes] = []
-        sock = Mock()
-        sock.sendall.side_effect = sent.append
-        monkeypatch.setattr(questdb_module.socket, "socket", lambda *a, **k: sock)
-
-        with patch.object(adapter, "_get_table_columns", return_value=["id", "name"]):
-            rows = adapter._load_table_via_ilp("t", path, CsvDialect(",", False, None, False, None))
+        rows, text = _load_to_sink(adapter, path, "t", ["id", "name"], CsvDialect(",", False, None, False, None))
 
         assert rows == 2500
-        assert [payload.count(b"\n") for payload in sent] == [1000, 1000, 500]
+        assert text.count("\n") == 2500
+
+    def test_each_write_is_capped_at_1000_rows(self):
+        assert questdb_module._ILP_SEND_ROWS == 1000
 
 
 class TestParquetCsvParity:

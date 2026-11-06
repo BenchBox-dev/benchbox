@@ -32,6 +32,12 @@ def bulk_insert_dataframe(cursor: Any, quoted_table: str, quoted_columns: list[s
     if _driver_family(cursor) in _POSTGRES_DRIVERS:
         if not (hasattr(cursor, "copy_expert") or hasattr(cursor, "copy")):
             cursor = cursor.cursor()
+        whole_floats = {
+            column: "Int64"
+            for column in dataframe.select_dtypes(include="float").columns
+            if ((values := dataframe[column].dropna()) == values.round()).all() and values.abs().lt(2**63).all()
+        }
+        dataframe = dataframe.astype(whole_floats)
         buffer = io.StringIO()
         dataframe.to_csv(buffer, index=False, header=False, na_rep=_COPY_NULL, lineterminator="\n")
         copy_sql = f"COPY {quoted_table} ({column_sql}) FROM STDIN WITH (FORMAT csv, NULL '{_COPY_NULL}')"

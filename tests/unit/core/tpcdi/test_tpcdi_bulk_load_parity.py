@@ -173,6 +173,17 @@ def test_postgres_load_uses_copy_with_null_markers(tmp_path: Path) -> None:
     assert cursor.payloads == ['1,"Smith, J",True\n2,\\N,False\n']
 
 
+def test_postgres_copy_writes_nullable_integers_without_decimal_point(tmp_path: Path) -> None:
+    benchmark = TPCDIBenchmark(scale_factor=0.01, output_dir=tmp_path, max_workers=1)
+    cursor = _CopyCursor()
+    backend = _backend(_CopyConnection(cursor), benchmark)
+    frame = pd.DataFrame({"SK_CustomerID": [1, 2], "Tier": [2.0, None]})
+
+    backend._load_table_dataframe("DimCustomer", frame)
+
+    assert cursor.payloads == ["1,2\n2,\\N\n"]
+
+
 def test_other_engines_keep_the_row_path() -> None:
     class _Other:
         pass
