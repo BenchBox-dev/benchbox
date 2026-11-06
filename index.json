@@ -21097,10 +21097,15 @@
       "title": "TPC-DS maintenance: replace per-row UPDATEs and Python-built inserts with set-based SQL"
     },
     "perf-tpch-rf1-bulk-load-20261031": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-07T04:43:17Z",
+        "generation": "2d58488b12a84ebf95a5b6b65ec9d5b7",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "TPC-H RF1: ingest the update-set files with each engine's native reader inside the RF1 timer; keep VALUES as fallback"
     },
     "perf-trino-presto-bulk-load-20261030": {
