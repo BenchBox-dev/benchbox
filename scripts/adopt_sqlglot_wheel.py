@@ -36,13 +36,28 @@ def expected_sha256(wheel: Path, explicit: str | None) -> str:
     return digest
 
 
-def plan(root: Path, wheel: Path, sha256: str | None) -> dict[str, Any]:
+def plan(
+    root: Path,
+    wheel: Path,
+    sha256: str | None,
+    *,
+    version: str,
+    fork_sha: str,
+    upstream_sha: str,
+) -> dict[str, Any]:
     if not wheel.is_file():
         raise ValueError(f"Wheel not found: {wheel}")
     expected = expected_sha256(wheel, sha256)
     manifest = inspect_wheel(wheel)
     if manifest["sha256"] != expected:
         raise ValueError("Wheel SHA-256 does not match the verified digest")
+    for label, key, supplied in (
+        ("version", "version", version),
+        ("fork SHA", "fork_sha", fork_sha),
+        ("upstream SHA", "upstream_sha", upstream_sha),
+    ):
+        if manifest[key] != supplied.strip().lower():
+            raise ValueError(f"Wheel {label} does not match the expected {label}")
     current = json.loads((root / "benchbox/_vendor/sqlglot.json").read_text(encoding="utf-8"))
     if version_key(manifest["version"]) <= version_key(current["version"]):
         raise ValueError(f"Wheel {manifest['version']} is not newer than the pinned runtime {current['version']}")
@@ -90,8 +105,12 @@ def adopt(
     root: Path = ROOT,
     dry_run: bool = False,
     checks: Callable[[Path], None] | None = run_checks,
+    *,
+    version: str,
+    fork_sha: str,
+    upstream_sha: str,
 ) -> dict[str, Any]:
-    planned = plan(root, wheel, sha256)
+    planned = plan(root, wheel, sha256, version=version, fork_sha=fork_sha, upstream_sha=upstream_sha)
     manifest = planned["manifest"]
     print(
         f"SQLGlot runtime {planned['current']['version']} -> {manifest['version']} (fork {manifest['fork_sha'][:12]})"
@@ -122,10 +141,20 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--wheel", type=Path, required=True)
     parser.add_argument("--sha256", help="Expected SHA-256 of the wheel (or provide <wheel>.sha256)")
+    parser.add_argument("--version", required=True, help="Expected runtime version")
+    parser.add_argument("--fork-sha", required=True, help="Expected fork source commit")
+    parser.add_argument("--upstream-sha", required=True, help="Expected upstream source commit")
     parser.add_argument("--dry-run", action="store_true", help="Verify the wheel and report; change nothing")
     arguments = parser.parse_args(argv)
     try:
-        adopt(arguments.wheel, arguments.sha256, dry_run=arguments.dry_run)
+        adopt(
+            arguments.wheel,
+            arguments.sha256,
+            dry_run=arguments.dry_run,
+            version=arguments.version,
+            fork_sha=arguments.fork_sha,
+            upstream_sha=arguments.upstream_sha,
+        )
     except (OSError, ValueError, KeyError, TypeError, StopIteration, zipfile.BadZipFile) as error:
         print(f"SQLGlot adoption: {error}", file=sys.stderr)
         return 1
