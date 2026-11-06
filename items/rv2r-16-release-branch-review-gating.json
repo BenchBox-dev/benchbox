@@ -6,7 +6,7 @@
     "Drift check expects the oracle release/** policy; repo-admin-settings.md has the re-apply JSON; owner applied it (date recorded)",
     "Live: a no-op PR into a temporary release/0.5.x branch gets a hosted verdict and gate status, then the branch is deleted (run links recorded)"
   ],
-  "context": "Serial follow-up after the release-v2-remediation final PR merges; split from rv2r-14 because Theseus is single-base (rv2r-14 member report, 2026-11-06) and the trunk.yml/test change fell outside the batch's frozen scopes. Theseus change first, then the BenchBox PR. DECISION GATE: any widening of who can mint review tokens beyond release/** branches, or any change to how develop is gated, goes to the owner.",
+  "context": "Serial follow-up after the release-v2-remediation final PR merges; split from rv2r-14 because Theseus is single-base (rv2r-14 member report, 2026-11-06) and the trunk.yml/test change fell outside the batch's frozen scopes. Theseus change first, then the BenchBox PR. DECISION GATE: any widening of who can mint review tokens beyond release/** branches, or any change to how develop is gated, goes to the owner.\n\n2026-11-06 leader: also in scope. rv2r-03 makes release-v2 admission require a fresh (<=48 h) green release-canary run on an ancestor of the tagged commit, for every tag. release-canary.yml tests only develop, so a vX.Y.Z tag on release/X.Y.x can never pass admission until the canary can run on that line: add a release/** (or dispatch --ref) canary path whose runs the rv2r-03 freshness check accepts for tags on that line, with tests. Source: rv2r-03 member report, open point 3.",
   "description": "Owner decision 2026-11-06: PRs into owner-created release/X.Y.x maintenance branches get the same oracle review and gate as develop, through Theseus accepting more than one gated base. Today Theseus gates one base (gate.yml `gated_base` string; `theseus gate` reads `consumer.gated_base` from policy.py:254 and raises UngatedBase at gate.py:186; bridge/schedule/push sweep run from the default branch only; trusted lock/policy checkout is the gated branch tip). Deliver: (1) a Theseus PR (joeharris76/theseus) so gate and review accept a list or pattern of gated bases (for example develop plus release/*), with the trusted policy/lock read from the PR's base branch tip, and review-event refresh and sweeps covering open PRs into every gated base; (2) a BenchBox pin bump per the rv2r-07 runbook (verified after merge, rollback by revert); (3) review-verdict.yml, review-gate.yml and .github/oracle-reviewers.yml `consumer.gated_base` updated for release/*; (4) trunk.yml runs on pushes to release/** (and tests/unit/test_release_infrastructure.py updated), so maintenance commits get a dist; (5) the `oracle` environment gains a release/** deployment branch policy (owner-applied; exact JSON in docs/internal/repo-admin-settings.md) and scripts/ruleset_drift_check.py ENVIRONMENT_DEPLOYMENT_POLICIES expects it. Rollback: revert the pin bump and the BenchBox PR; the owner removes the environment policy.",
   "links": [
     ".github/workflows/review-gate.yml",
@@ -22,6 +22,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "9c5e137e5d104bf19622ac357de3c4d3",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-06T18:37:38Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "cbfb7ab8d3c6435c85be3d3504da2d27",
       "session_id": "b7a346e5fd054aa88d3c05a944442610"
     }
   ]
