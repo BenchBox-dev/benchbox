@@ -360,7 +360,7 @@ def test_host_lock_loaded_by_file_path_logs_without_importing_benchbox(tmp_path:
     env = {
         key: value
         for key, value in os.environ.items()
-        if key not in ("PYTHONPATH", hl.OWNER_ENV) and not key.startswith("BENCHBOX_HEAVY_RUN")
+        if key not in ("PYTHONPATH", hl.OWNER_ENV) and not key.startswith(("BENCHBOX_HEAVY_RUN", "BENCHBOX_HEAVY_ROOT"))
     }
     env[hl.LOCK_DIR_ENV] = str(tmp_path / "lock")
     result = subprocess.run(
@@ -651,7 +651,7 @@ def test_session_isolation_exports_and_restores_the_trace_environment(tmp_path: 
         "isolation.finish()\n"
         "print(json.dumps([seen, [os.environ.get(name) for name in names]]))\n"
     )
-    env = {k: v for k, v in os.environ.items() if not k.startswith("BENCHBOX_HEAVY_RUN")}
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("BENCHBOX_HEAVY_RUN", "BENCHBOX_HEAVY_ROOT"))}
     env.update(PYTHONPATH=str(REPO_ROOT), BENCHBOX_TEST_LOCK_DIR=str(lock), BENCHBOX_TEST_LOCK_WAIT_SECONDS="0")
     env.pop(hl.OWNER_ENV, None)
     result = subprocess.run(
