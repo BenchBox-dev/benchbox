@@ -1057,7 +1057,7 @@
         }
       },
       "integration_branch": "feat/load-path-live-fixes",
-      "integration_head": "a85016926ef554b210c4c02bc674f6e1d120dcd8",
+      "integration_head": "2b6f47fa72afd396ed77388568bff02689d1f928",
       "integration_log": [
         {
           "at": "2026-11-06T19:34:49Z",
@@ -1193,6 +1193,45 @@
             "questdb-ilp-load-drops-rows-per-file-socket-20261106"
           ],
           "seq": 10
+        },
+        {
+          "at": "2026-11-06T22:12:56Z",
+          "changed_files": [
+            ".github/path-filters.yml",
+            ".github/soundness-paths.txt",
+            ".github/sqlglot-delivery.json",
+            ".github/theseus-lock.json",
+            ".github/workflows/ci.yml",
+            ".github/workflows/review-gate.yml",
+            ".github/workflows/review-verdict.yml",
+            ".github/workflows/sqlglot-delivery.yml",
+            "Makefile",
+            "_project/decisions/auto-merge-policy-consolidation-2026-08-06.md",
+            "_project/decisions/sqlglot-maintenance-decision-record.md",
+            "changelog.d/docs-sqlglot-delivery-boundary.json",
+            "changelog.d/fix-sqlglot-consumer-checks.json",
+            "changelog.d/sqlglot-e2e-core-wheel-consumer.json",
+            "docs/internal/dev-loop-property-ledger.md",
+            "docs/internal/merge-queue-governance.md",
+            "docs/internal/pr-triage.md",
+            "docs/internal/release-guide.md",
+            "docs/internal/repo-admin-settings.md",
+            "docs/internal/sql-execution-evidence-gate.md",
+            "scripts/adopt_sqlglot_wheel.py",
+            "scripts/sqlglot_delivery.py",
+            "tests/unit/ledger_cutover_files.txt",
+            "tests/unit/platforms/test_no_midrun_destructive_ops.py",
+            "tests/unit/scripts/test_adopt_sqlglot_wheel.py",
+            "tests/unit/scripts/test_path_filter_decision.py",
+            "tests/unit/scripts/test_sqlglot_delivery.py",
+            "tests/unit/workflows/test_sqlglot_delivery_workflow.py"
+          ],
+          "head": "2b6f47fa72afd396ed77388568bff02689d1f928",
+          "kind": "develop-merge",
+          "merged_parent": "ef344d35f593b7683a2554485c3f2b3e75011e22",
+          "op_id": "80d25f8086ab4a86b49e85b43adf884b",
+          "previous_head": "a85016926ef554b210c4c02bc674f6e1d120dcd8",
+          "seq": 11
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-load-path-live-fixes",
