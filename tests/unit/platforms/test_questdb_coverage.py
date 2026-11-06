@@ -15,8 +15,6 @@ import benchbox.platforms.questdb as questdb_module
 from benchbox.platforms.base.data_loading import CsvDialect
 from benchbox.platforms.questdb import (
     QuestDBAdapter,
-    _date_to_epoch_ns,
-    _ilp_escape_field,
     _ilp_escape_measurement,
     _ilp_escape_tag_key,
 )
@@ -717,63 +715,6 @@ class TestLoadTableViaIlp:
         assert captured_strip == [False]
 
 
-class TestRowToIlpLine:
-    def test_row_to_ilp_line_basic(self):
-        line = QuestDBAdapter._row_to_ilp_line(
-            "test_table",
-            ["id", "name", "val"],
-            ["42", "hello", "3.14"],
-            None,
-        )
-        assert line is not None
-        assert "test_table" in line
-        assert "id=42i" in line
-        assert 'name="hello"' in line
-        assert "val=3.14" in line
-
-    def test_row_to_ilp_line_with_timestamp(self):
-        line = QuestDBAdapter._row_to_ilp_line(
-            "orders",
-            ["order_id", "o_orderdate"],
-            ["1", "1994-01-01"],
-            "o_orderdate",
-        )
-        assert line is not None
-        parts = line.split(" ")
-        assert len(parts) >= 2
-        assert parts[-1].isdigit()
-
-    def test_row_to_ilp_line_empty_fields_returns_none(self):
-        line = QuestDBAdapter._row_to_ilp_line(
-            "test",
-            ["col1", "col2"],
-            ["", ""],
-            None,
-        )
-        assert line is None
-
-    def test_row_to_ilp_line_skips_empty_values(self):
-        line = QuestDBAdapter._row_to_ilp_line(
-            "test",
-            ["col1", "col2", "col3"],
-            ["42", "", "hello"],
-            None,
-        )
-        assert line is not None
-        assert "col1=42i" in line
-        assert "col2" not in line
-
-    def test_row_to_ilp_line_measurement_escape(self):
-        line = QuestDBAdapter._row_to_ilp_line(
-            "my table",
-            ["val"],
-            ["1"],
-            None,
-        )
-        assert line is not None
-        assert r"my\ table" in line
-
-
 class TestPrepareLocalLoadFileForQuestDB:
     @pytest.fixture(autouse=True)
     def _no_import_schema(self):
@@ -1035,66 +976,6 @@ class TestIlpHelpers:
         assert _ilp_escape_tag_key("my,key") == r"my\,key"
         assert _ilp_escape_tag_key("my=key") == r"my\=key"
         assert _ilp_escape_tag_key("my key") == r"my\ key"
-
-    def test_ilp_escape_field_integer(self):
-        result = _ilp_escape_field("count", "42")
-        assert result == "count=42i"
-
-    def test_ilp_escape_field_float(self):
-        result = _ilp_escape_field("price", "3.14")
-        assert result == "price=3.14"
-
-    def test_ilp_escape_field_string(self):
-        result = _ilp_escape_field("name", "hello")
-        assert result == 'name="hello"'
-
-    def test_ilp_escape_field_empty_returns_none(self):
-        result = _ilp_escape_field("name", "")
-        assert result is None
-
-    def test_ilp_escape_field_string_with_quotes(self):
-        result = _ilp_escape_field("name", 'say "hello"')
-        assert result == 'name="say \\"hello\\""'
-
-    def test_ilp_escape_field_negative_integer(self):
-        result = _ilp_escape_field("delta", "-5")
-        assert result == "delta=-5i"
-
-    def test_ilp_escape_field_scientific_notation(self):
-        result = _ilp_escape_field("val", "1.23e10")
-        assert result is not None
-        assert "val=" in result
-
-
-class TestDateToEpochNs:
-    def test_date_format_yyyy_mm_dd(self):
-        result = _date_to_epoch_ns("1994-01-01")
-        assert result is not None
-        assert result.isdigit()
-        assert int(result) > 0
-
-    def test_date_format_datetime(self):
-        result = _date_to_epoch_ns("1994-01-01 12:30:00")
-        assert result is not None
-        assert result.isdigit()
-
-    def test_date_format_iso_datetime(self):
-        result = _date_to_epoch_ns("1994-01-01T12:30:00")
-        assert result is not None
-        assert result.isdigit()
-
-    def test_invalid_date_returns_none(self):
-        result = _date_to_epoch_ns("not-a-date")
-        assert result is None
-
-    def test_empty_string_returns_none(self):
-        result = _date_to_epoch_ns("   ")
-        assert result is None
-
-    def test_epoch_ns_is_nanoseconds(self):
-        result = _date_to_epoch_ns("2000-01-01")
-        assert result is not None
-        assert int(result) > 9 * 10**17
 
 
 class TestAdapterInitEdgeCases:
