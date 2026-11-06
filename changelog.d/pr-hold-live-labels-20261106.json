@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "The pr-hold workflow reads the pull request's live labels, so rerunning a failed hold check clears it once the owner removes the hold label"
+}
