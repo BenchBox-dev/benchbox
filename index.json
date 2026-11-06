@@ -2327,6 +2327,69 @@
       "start_head": "20a0045113e6c8ba13c3e7c4f78351e3fe81f81e",
       "terminal_outcome": "deliver"
     },
+    "sqlglot-core-delivery-2": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/sqlglot-core-delivery-2",
+      "integration_head": "0b0c8f764d6836a0986a566af14f95d49e725dd2",
+      "integration_log": [
+        {
+          "at": "2026-11-06T19:20:42Z",
+          "head": "0b0c8f764d6836a0986a566af14f95d49e725dd2",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-sqlglot-core-delivery-2",
+      "lifecycle": "active",
+      "members": [
+        "sqlglot-e2e-verified-wheel-adoption",
+        "sqlglot-e2e-core-wheel-consumer"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f",
+      "owner_epoch": 0,
+      "owner_generation": "5e7a5a43d7015e85a690e89b12792951",
+      "project_id": "benchbox",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "sqlglot-e2e-core-wheel-consumer": [
+          "scripts/sqlglot_delivery*.py",
+          "scripts/adopt_sqlglot_wheel.py",
+          "tests/unit/scripts/test_sqlglot_delivery*.py",
+          "tests/unit/workflows/test_sqlglot_delivery*.py",
+          ".github/workflows/sqlglot-delivery*.yml",
+          ".github/sqlglot-delivery.json",
+          ".github/soundness-paths.txt",
+          "Makefile",
+          "docs/internal/release-guide.md",
+          "docs/internal/merge-queue-governance.md",
+          "docs/internal/repo-admin-settings.md",
+          "docs/internal/pr-triage.md",
+          "docs/internal/dev-loop-property-ledger.md",
+          "tests/unit/ledger_cutover_files.txt",
+          "_project/decisions/auto-merge-policy-consolidation-2026-08-06.md",
+          "changelog.d/sqlglot-e2e-core-wheel-consumer*"
+        ],
+        "sqlglot-e2e-verified-wheel-adoption": [
+          "scripts/adopt_sqlglot_wheel.py",
+          "tests/unit/scripts/test_adopt_sqlglot_wheel.py",
+          "tests/unit/scripts/test_path_filter_decision.py",
+          "Makefile",
+          ".github/path-filters.yml",
+          ".github/workflows/ci.yml",
+          "docs/internal/release-guide.md",
+          "changelog.d/fix-sqlglot-consumer-checks*"
+        ]
+      },
+      "scope_hash": "53a8f7c2c00d934bb7fdc7a6079bfe566e205aa5ebe9b4b55d0c65fe6357a0dd",
+      "start_head": "0b0c8f764d6836a0986a566af14f95d49e725dd2",
+      "terminal_outcome": "deliver"
+    },
     "tpc-timer-boundaries": {
       "accepted_members": {},
       "batch_schema": 2,
