@@ -4,6 +4,7 @@
     "The QuestDB stack publishes 9009, and an ILP load through the adapter reaches the server.",
     "The Firebolt Core limits under mocker and Apple container are documented, with the exact error."
   ],
+  "context": "2026-11-06, SingleStore (#3979): `mocker compose` ignores `platform: linux/amd64` and fails with 'platform linux/arm64'. `make uat-bring-up PLATFORM=singlestore` fails the same way. The default 1 GiB VM makes SingleStore abort at start. Working command: `mocker run --platform linux/amd64 -m 4g -c 4 -p 13306:3306 -e ROOT_PASSWORD=benchbox ghcr.io/singlestore-labs/singlestoredb-dev:latest`. Also, docker-integration has no SingleStore job, so the `live_singlestore` tests do not run in CI.",
   "description": "Found during live verification on 2026-11-06 with mocker 0.7.2 on macOS (evidence on live-verify-perf-batches-evidence-20261106). (1) Doris: `mocker compose` ignored the stack's entrypoint and memory settings; the container got 1112 MB, the FE JVM died, and `up --wait` still reported OK. It worked with `mocker run -m 4g --entrypoint bash` and the repo's entrypoint script. (2) Firebolt Core: mocker ignores the memlock ulimit, so the server dies with `io_uring_register_buffers failed: Cannot allocate memory`. Under Apple `container` it needs more than 7 GiB for TPC-H SF0.01 and hung at 7 GiB. (3) QuestDB: docker/questdb compose does not publish ILP port 9009, so the ILP load path cannot reach the server (an engine-independent stack defect).\n\nChange. Make tests/uat bring-up detect and fail loudly when the engine drops a declared entrypoint, memory limit or ulimit, instead of reporting healthy. Publish 9009 in docker/questdb. Document the per-engine limits in the UAT framework docs. Do not prune globally.\n\nGuardrails: work in a linked worktree; heavy work only through make heavy-run; no explanatory comments.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "6039e52b55e64d3b925334c6b665b9e9",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-06T20:10:43Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7ce7b4abebaa4f9abda96dbb4de810be",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
