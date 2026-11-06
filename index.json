@@ -1981,7 +1981,8 @@
         "rv2r-04-uat-rubric-automation": "8a83e4ad1531a772bd03f8374c33358c8cf634ed",
         "rv2r-06-fail-closed-detectors": "fcc3a048a6e2ebd2c712ed5621735cf01a91907b",
         "rv2r-07-oracle-pinned-dependency": "2c7130e0f6de08eed6af8531fcf4f13b3b7511db",
-        "rv2r-09-trunk-dist-every-commit": "35511fbd3be478ccbf54e1b3d348d098d5e3da3a"
+        "rv2r-09-trunk-dist-every-commit": "35511fbd3be478ccbf54e1b3d348d098d5e3da3a",
+        "rv2r-14-maintenance-release-branches": "4e2f4509a1459a0422e47c154fed72016d5d2b65"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -2079,10 +2080,31 @@
           ],
           "integration_head": "d3edcdae7182b2af9aacf5762c9cc221b51c0364",
           "integration_seq": 1
+        },
+        "rv2r-14-maintenance-release-branches": {
+          "accepted_head": "4e2f4509a1459a0422e47c154fed72016d5d2b65",
+          "changed_files": [
+            ".github/workflows/ci.yml",
+            ".github/workflows/release-v2.yml",
+            "changelog.d/rv2r-14-maintenance-release-branches.json",
+            "docs/internal/release-guide.md",
+            "docs/internal/repo-admin-settings.md",
+            "scripts/release_artifact_consumer.py",
+            "scripts/ruleset_drift_check.py",
+            "tests/unit/scripts/test_generate_changelog_entry.py",
+            "tests/unit/scripts/test_release_artifact_execution.py",
+            "tests/unit/scripts/test_release_flow.py",
+            "tests/unit/scripts/test_release_maintenance_admission.py",
+            "tests/unit/test_ruleset_drift.py",
+            "tests/unit/workflows/test_ci_maintenance_base.py",
+            "tests/unit/workflows/test_release_v2_workflow.py"
+          ],
+          "integration_head": "feabcc139e684a48dbf2a17a3ecb27e4cba6d7cb",
+          "integration_seq": 6
         }
       },
       "integration_branch": "feat/release-v2-remediation",
-      "integration_head": "91443a9c1e022ece68b06b537a63ddb6d76cf8ca",
+      "integration_head": "feabcc139e684a48dbf2a17a3ecb27e4cba6d7cb",
       "integration_log": [
         {
           "at": "2026-11-06T13:41:20Z",
@@ -2134,6 +2156,15 @@
           "op_id": "7d4569bf8ef54452a435b05b566e0cbd",
           "previous_head": "e4f2d33afe28cbfd2991ca9e7e0cfe44b173432a",
           "seq": 5
+        },
+        {
+          "at": "2026-11-06T19:39:17Z",
+          "head": "feabcc139e684a48dbf2a17a3ecb27e4cba6d7cb",
+          "kind": "prepare",
+          "member": "rv2r-14-maintenance-release-branches",
+          "op_id": "9641e930b6ba487aa4081226da7e33f8",
+          "previous_head": "91443a9c1e022ece68b06b537a63ddb6d76cf8ca",
+          "seq": 6
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-release-v2-remediation",
@@ -27612,17 +27643,12 @@
       "title": "Verify the next release end to end under the evidence-check model and close the remediation"
     },
     "rv2r-14-maintenance-release-branches": {
-      "claim": {
-        "expires_at": "2026-11-07T19:31:58Z",
-        "generation": "05a9518dd11641898aa7570c824169a9",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec"
-      },
+      "claim": null,
       "needs": [
         "rv2r-09-trunk-dist-every-commit"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Allow patch releases from owner-created release/X.Y.x branches with the same release-v2 checks"
     },
     "rv2r-15-review-posting-detector": {
