@@ -5,8 +5,10 @@ from __future__ import annotations
 import argparse
 import hashlib
 import importlib.util
+import io
 import json
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -15,14 +17,14 @@ import zipfile
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 WORKFLOW_FILE = "trunk-uat.yml"
 WORKFLOW_PATH = ".github/workflows/trunk-uat.yml"
 RELEASE_WORKFLOW_FILE = "release-v2.yml"
 RECORD_PREFIX = "trunk-uat-record-"
-RECORD_NAME = re.compile(r"trunk-uat-record-([0-9a-f]{40})")
+RECORD_NAME = re.compile(re.escape(RECORD_PREFIX) + r"([0-9a-f]{40})")
 SHARD_DIRECTORY = re.compile(r"trunk-uat-[0-9a-f]{40}-stage([0-9]+)-(.+)")
 SHARD_JOB = re.compile(r"UAT stage ([0-9]+) (.+)")
 RECORD_FILE = "trunk-uat-record.json"
@@ -32,17 +34,20 @@ HISTORY_SCHEMA = 1
 BASELINE_RUN_LIMIT = 30
 RUNNER_HOUR_GATE = 30.0
 JOB_HOUR_LIMIT = 6.0
-EXCERPT_CHARS = 200
 LOG_TAIL_BYTES = 64 * 1024
-FAILURE_MARKERS = ("# UAT_TIMEOUT", "# UAT_MEMORY_LIMIT")
+HARNESS_FAILURE_FIELDS = (
+    "failure_kind",
+    "failure_signature",
+    "retry_signature",
+    "retry_outcome",
+    "first_attempt_status",
+    "first_attempt_elapsed_s",
+)
 _SHA = re.compile(r"[0-9a-f]{40}")
 _PEAK_RSS = re.compile(r"^# UAT_PEAK_RSS_GIB=([0-9]+(?:\.[0-9]+)?)\s*$", re.MULTILINE)
-_HEX = re.compile(r"\b[0-9a-f]{8,}\b")
-_NUMBER = re.compile(r"\d+(?:\.\d+)?")
-_PATH = re.compile(r"(?<![\w.])/[^\s'\"]+")
 
 Api = Callable[[str], dict[str, Any]]
-Fetch = Callable[[int], dict[str, bytes]]
+Fetch = Callable[[int], bytes]
 
 
 def _sibling(name: str):
@@ -105,22 +110,37 @@ def active_runs(api: Api, workflow: str) -> list[dict[str, Any]]:
     return sorted((run for run in runs if run.get("status") != "completed"), key=lambda run: run["id"], reverse=True)
 
 
-def find_baseline(
-    api: Api, *, branch: str, current_run_id: int, run_limit: int = BASELINE_RUN_LIMIT
-) -> Baseline | None:
+@dataclass(frozen=True)
+class ExecutedRun:
+    run_id: int
+    sha: str
+    artifacts: list[dict[str, Any]]
+
+
+def executed_runs(
+    api: Api, *, branch: str, run_limit: int = BASELINE_RUN_LIMIT, exclude_run_id: int | None = None
+) -> Iterator[ExecutedRun]:
     runs = _runs(api, f"actions/workflows/{WORKFLOW_FILE}/runs?branch={branch}&per_page={run_limit}")
     runs.sort(key=lambda run: (str(run.get("created_at")), run["id"]), reverse=True)
     for run in runs[:run_limit]:
-        if run["id"] == current_run_id or run.get("status") != "completed":
+        if run["id"] == exclude_run_id or run.get("status") != "completed":
             continue
         artifacts = api(f"actions/runs/{run['id']}/artifacts?per_page=100").get("artifacts")
         if not isinstance(artifacts, list):
             raise ValueError("malformed artifact listing")
-        for artifact in artifacts:
+        live = [artifact for artifact in artifacts if artifact.get("expired") is False]
+        for artifact in live:
             match = RECORD_NAME.fullmatch(str(artifact.get("name")))
-            if match is not None and artifact.get("expired") is False:
-                return Baseline(match.group(1), run["id"])
-    return None
+            if match is not None:
+                yield ExecutedRun(run["id"], match.group(1), live)
+                break
+
+
+def find_baseline(
+    api: Api, *, branch: str, current_run_id: int, run_limit: int = BASELINE_RUN_LIMIT
+) -> Baseline | None:
+    newest = next(executed_runs(api, branch=branch, run_limit=run_limit, exclude_run_id=current_run_id), None)
+    return None if newest is None else Baseline(newest.sha, newest.run_id)
 
 
 def decide(
@@ -213,34 +233,6 @@ def admit(root: Path, sha: str, output: Path, api: Api | None = None) -> dict[st
     return receipt
 
 
-def normalize_failure(text: str) -> str:
-    text = _PATH.sub("<path>", text)
-    text = _HEX.sub("<hex>", text)
-    text = _NUMBER.sub("#", text)
-    return " ".join(text.split())[:EXCERPT_CHARS]
-
-
-def _failure_text(row: dict[str, Any]) -> str:
-    tail = [line.strip() for line in str(row.get("failure_tail") or "").splitlines() if line.strip()]
-    for line in reversed(tail):
-        if line.startswith(FAILURE_MARKERS):
-            return line
-    queries = row.get("failed_queries")
-    if isinstance(queries, list):
-        for query in queries:
-            if isinstance(query, dict) and query.get("error"):
-                return str(query["error"])
-    for line in reversed(tail):
-        if not line.startswith("# UAT_PEAK_RSS_GIB"):
-            return line
-    return ""
-
-
-def failure_signature(row: dict[str, Any], terminal_state: str) -> tuple[str, str]:
-    excerpt = normalize_failure(_failure_text(row))
-    return f"{terminal_state}:{hashlib.sha256(excerpt.encode('utf-8')).hexdigest()[:12]}", excerpt
-
-
 def peak_rss_gib(log: Path) -> float | None:
     try:
         with log.open("rb") as stream:
@@ -255,24 +247,22 @@ def peak_rss_gib(log: Path) -> float | None:
 
 def cell_record(row: dict[str, Any], *, run_dir: Path, stage: int, shard: str) -> dict[str, Any]:
     status = str(row.get("status"))
-    terminal_state = str(row.get("terminal_state") or status)
-    signature, excerpt = (None, None) if status == "passed" else failure_signature(row, terminal_state)
     attempt = row.get("attempt")
     log_path = row.get("log_path")
-    return {
+    record: dict[str, Any] = {
         "stage": stage,
         "shard": shard,
         "platform": row.get("platform"),
         "benchmark": row.get("benchmark"),
         "scale": row.get("scale"),
         "status": status,
-        "terminal_state": terminal_state,
+        "terminal_state": str(row.get("terminal_state") or status),
         "elapsed_s": row.get("elapsed_s"),
         "peak_rss_gib": peak_rss_gib(run_dir / Path(str(log_path)).name) if log_path else None,
-        "failure_signature": signature,
-        "failure_excerpt": excerpt,
         "attempt": attempt if type(attempt) is int and attempt >= 1 else 1,
     }
+    record.update({key: row.get(key) for key in HARNESS_FAILURE_FIELDS})
+    return record
 
 
 def read_shard_cells(evidence: Path) -> tuple[list[dict[str, Any]], list[str]]:
@@ -470,8 +460,8 @@ def write_record(output: Path, record: dict[str, Any], rows: list[dict[str, Any]
     )
 
 
-def _fetch_artifact(artifact_id: int) -> dict[str, bytes]:
-    return _reuse._download_artifact(_consumer.REPOSITORY, artifact_id)
+def _fetch_artifact(artifact_id: int) -> bytes:
+    return _reuse._gh_bytes("api", f"repos/{_consumer.REPOSITORY}/actions/artifacts/{artifact_id}/zip")
 
 
 def history_rows(
@@ -479,16 +469,55 @@ def history_rows(
 ) -> Iterator[dict[str, Any]]:
     api = api or _consumer.github_json
     fetch = fetch or _fetch_artifact
-    runs = _runs(api, f"actions/workflows/{WORKFLOW_FILE}/runs?branch={branch}&per_page={run_limit}")
-    runs.sort(key=lambda run: (str(run.get("created_at")), run["id"]), reverse=True)
-    for run in runs[:run_limit]:
-        if run.get("status") != "completed":
-            continue
-        for artifact in api(f"actions/runs/{run['id']}/artifacts?per_page=100").get("artifacts", []):
-            if RECORD_NAME.fullmatch(str(artifact.get("name"))) and artifact.get("expired") is False:
-                for line in fetch(artifact["id"]).get(HISTORY_FILE, b"").decode("utf-8").splitlines():
-                    if line.strip():
-                        yield json.loads(line)
+    for executed in executed_runs(api, branch=branch, run_limit=run_limit):
+        record = next(item for item in executed.artifacts if RECORD_NAME.fullmatch(str(item.get("name"))))
+        with zipfile.ZipFile(io.BytesIO(fetch(record["id"]))) as archive:
+            text = archive.read(HISTORY_FILE).decode("utf-8")
+        for line in text.splitlines():
+            if line.strip():
+                yield json.loads(line)
+
+
+def extract_run_directory(blob: bytes, destination: Path) -> int:
+    written = 0
+    with zipfile.ZipFile(io.BytesIO(blob)) as archive:
+        for info in archive.infolist():
+            name = PurePosixPath(info.filename)
+            if info.is_dir() or name.parts[:1] != ("run",) or len(name.parts) < 2:
+                continue
+            relative = PurePosixPath(*name.parts[1:])
+            if name.is_absolute() or ".." in name.parts or "\\" in info.filename:
+                raise ValueError(f"unsafe evidence member {info.filename!r}")
+            if info.file_size > _reuse.MAX_MEMBER_BYTES:
+                raise ValueError(f"evidence member {info.filename!r} is too large")
+            target = destination / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with archive.open(info) as source, target.open("xb") as stream:
+                shutil.copyfileobj(source, stream)
+            written += 1
+    return written
+
+
+def fetch_run_directories(
+    output: Path,
+    api: Api | None = None,
+    fetch: Fetch | None = None,
+    *,
+    branch: str = "develop",
+    run_limit: int = BASELINE_RUN_LIMIT,
+) -> list[Path]:
+    api = api or _consumer.github_json
+    fetch = fetch or _fetch_artifact
+    directories: list[Path] = []
+    for executed in executed_runs(api, branch=branch, run_limit=run_limit):
+        for artifact in executed.artifacts:
+            match = SHARD_DIRECTORY.fullmatch(str(artifact.get("name")))
+            if match is None:
+                continue
+            destination = output / f"{executed.run_id}-{executed.sha[:12]}" / f"stage{match.group(1)}-{match.group(2)}"
+            if extract_run_directory(fetch(artifact["id"]), destination):
+                directories.append(destination)
+    return directories
 
 
 def _post(path: str) -> None:
@@ -590,6 +619,12 @@ def _command_history(args: argparse.Namespace) -> int:
     return 0
 
 
+def _command_fetch_runs(args: argparse.Namespace) -> int:
+    directories = fetch_run_directories(args.output, branch=args.branch, run_limit=args.run_limit)
+    print(f"wrote {len(directories)} shard run directories under {args.output}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Plan, admit, record and read the nightly trunk UAT")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -632,6 +667,14 @@ def main(argv: list[str] | None = None) -> int:
     history.add_argument("--branch", default="develop")
     history.add_argument("--run-limit", type=int, default=BASELINE_RUN_LIMIT)
     history.set_defaults(handler=_command_history)
+
+    fetch = commands.add_parser(
+        "fetch-runs", help="Download shard run directories of recent executed runs for scripts/uat_rubric.py"
+    )
+    fetch.add_argument("--output", type=Path, required=True)
+    fetch.add_argument("--branch", default="develop")
+    fetch.add_argument("--run-limit", type=int, default=BASELINE_RUN_LIMIT)
+    fetch.set_defaults(handler=_command_fetch_runs)
 
     args = parser.parse_args(argv)
     try:

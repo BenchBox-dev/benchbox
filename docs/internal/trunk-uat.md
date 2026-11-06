@@ -87,28 +87,39 @@ SHA-256 of `dist-digest.txt`, the value passed to `uat-gate-check`) and records
 the gate `verdict`, cell counts, per-shard state and hours, `runner_hours`,
 `wall_hours`, and `over_gate`.
 
-`cells-history.jsonl` is the per-cell history store. The artifacts of successive
-runs are the append-only log; each row has schema `1` and these fields:
+The per-cell history has two readable forms, both built from the shard evidence
+the harness already writes. The artifacts of successive runs are the
+append-only log.
+
+`cells-history.jsonl` is one JSON row per executed cell (schema `1`):
 
 - run: `run_id`, `run_attempt`, `event`, `source_sha`, `dist_digest`;
 - cell: `stage`, `shard`, `platform`, `benchmark`, `scale`;
 - result: `status`, `terminal_state`, `elapsed_s`, `peak_rss_gib` (from the
   `# UAT_PEAK_RSS_GIB` marker in the cell log, else null);
-- failure: `failure_signature` (`<terminal state>:<12 hex digits of a digest of
-  the normalized failure line>`, null for passed cells) and `failure_excerpt`,
-  where numbers, hex identifiers and absolute paths are normalized away so the
-  same failure keeps one signature across runs;
-- `attempt`: the `attempt` field of the `cells.jsonl` row when the harness sets
-  one, otherwise 1.
+- failure: `failure_kind` and `failure_signature` exactly as the harness
+  classified them in `cells.jsonl` (null for a passed cell);
+- attempt: `attempt`, `retry_signature`, `retry_outcome`, `first_attempt_status`
+  and `first_attempt_elapsed_s` from the infrastructure retry, with `attempt`
+  1 when the harness wrote no retry.
 
-Scripts read the history with:
+Print the rows of the newest executed runs, newest first:
 
 ```bash
 uv run -- python scripts/trunk_uat.py history --branch develop --run-limit 30
 ```
 
-which prints the rows of the newest executed runs, newest first, as JSON lines.
 Python callers use `scripts.trunk_uat.history_rows(branch=..., run_limit=...)`.
+
+`scripts/uat_rubric.py` reads a directory of run directories instead. Download
+the shard run directories of the newest executed runs into that layout
+(`<run id>-<sha prefix>/stage<N>-<shard>/cells.jsonl` and the rest of the run
+directory) and point the rubric at it:
+
+```bash
+uv run -- python scripts/trunk_uat.py fetch-runs --output ~/trunk-uat-history --run-limit 30
+uv run -- python scripts/uat_rubric.py --history-dir ~/trunk-uat-history --output-dir ~/trunk-uat-rubric
+```
 
 ## Failure detectors
 

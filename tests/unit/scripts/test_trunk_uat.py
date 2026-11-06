@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import subprocess
+import zipfile
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
 from scripts import release_admitted_dist, trunk_uat
+from tests.uat import rubric
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -39,7 +42,15 @@ class Github:
                 "created_at": f"2026-11-{run_id - 1000:02d}T02:00:00Z",
             }
         )
-        names = [f"trunk-uat-gate-{executed_sha}", f"trunk-uat-record-{executed_sha}"] if executed_sha else []
+        names = (
+            [
+                f"trunk-uat-{executed_sha}-stage1-sqlite",
+                f"trunk-uat-gate-{executed_sha}",
+                f"trunk-uat-record-{executed_sha}",
+            ]
+            if executed_sha
+            else []
+        )
         self.artifacts[run_id] = [
             {"id": run_id * 10 + n, "name": name, "expired": expired} for n, name in enumerate(names)
         ]
@@ -399,7 +410,12 @@ def test_record_lists_every_executed_cell_with_state_elapsed_memory_signature_an
                 "terminal_state": "timed-out",
                 "elapsed_s": 3600.0,
                 "log_path": "/x/sqlite-tpcds.log",
-                "failure_tail": "work\n# UAT_TIMEOUT timeout_s=3600 exit_code=-9\n",
+                "failure_kind": "infrastructure",
+                "failure_signature": "timeout",
+                "retry_signature": "timeout",
+                "retry_outcome": "retry_failed",
+                "first_attempt_status": "timed-out",
+                "first_attempt_elapsed_s": 3000.0,
                 "attempt": 2,
             },
         ],
@@ -422,8 +438,8 @@ def test_record_lists_every_executed_cell_with_state_elapsed_memory_signature_an
     )
     assert first["failure_signature"] is None and first["attempt"] == 1
     assert second["terminal_state"] == "timed-out" and second["attempt"] == 2 and second["peak_rss_gib"] == 9.5
-    assert second["failure_signature"].startswith("timed-out:")
-    assert second["failure_excerpt"] == "# UAT_TIMEOUT timeout_s=# exit_code=-#"
+    assert (second["failure_kind"], second["failure_signature"]) == ("infrastructure", "timeout")
+    assert (second["retry_outcome"], second["first_attempt_status"]) == ("retry_failed", "timed-out")
     for row in rows:
         assert row["source_sha"] == sha("a") and row["run_id"] == 42 and row["stage"] == 1 and row["shard"] == "sqlite"
         assert row["dist_digest"] == record["dist_digest"]
@@ -565,26 +581,16 @@ def test_executed_record_is_written_for_the_history_artifact(monkeypatch, tmp_pa
     assert [row["platform"] for row in history] == ["sqlite"]
 
 
-def test_failure_signature_ignores_run_specific_numbers_paths_and_ids():
-    first = {"failure_tail": "boom at /tmp/run-1/x.db after 12.5s id=deadbeef01"}
-    second = {"failure_tail": "boom at /var/other/y.db after 99s id=cafebabe99"}
-    other = {"failure_tail": "different failure"}
-    assert trunk_uat.failure_signature(first, "failed") == trunk_uat.failure_signature(second, "failed")
-    assert trunk_uat.failure_signature(first, "failed") != trunk_uat.failure_signature(other, "failed")
-    assert trunk_uat.failure_signature(first, "failed") != trunk_uat.failure_signature(first, "timed-out")
+def zip_bytes(files: dict[str, bytes]) -> bytes:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        for name, data in files.items():
+            archive.writestr(name, data)
+    return buffer.getvalue()
 
 
-def test_failure_signature_prefers_exit_markers_then_query_errors_then_the_last_line():
-    tail = {
-        "failure_tail": "line\n# UAT_MEMORY_LIMIT limit_gib=12 peak_gib=13.00 exit_code=-9\n# UAT_PEAK_RSS_GIB=13.00"
-    }
-    assert trunk_uat.failure_signature(tail, "memory")[1].startswith("# UAT_MEMORY_LIMIT")
-    query = {"failure_tail": "noise", "failed_queries": [{"error": "syntax error near x"}]}
-    assert trunk_uat.failure_signature(query, "failed")[1] == "syntax error near x"
-    assert (
-        trunk_uat.failure_signature({"failure_tail": "a\nlast line\n# UAT_PEAK_RSS_GIB=1.00"}, "failed")[1]
-        == "last line"
-    )
+def artifact_payloads(github: Github, runs: tuple[int, ...], build_payload) -> dict[int, bytes]:
+    return {artifact["id"]: build_payload(run, artifact["name"]) for run in runs for artifact in github.artifacts[run]}
 
 
 def test_history_rows_read_executed_runs_newest_first_and_skip_expired_ones():
@@ -593,15 +599,14 @@ def test_history_rows_read_executed_runs_newest_first_and_skip_expired_ones():
     skipped = github.uat_run()
     expired = github.uat_run(executed_sha=sha("b"), expired=True)
     new = github.uat_run(executed_sha=sha("c"))
-    payloads = {
-        artifact["id"]: {trunk_uat.HISTORY_FILE: (json.dumps({"run": run}) + "\n").encode()}
-        for run in (old, new)
-        for artifact in github.artifacts[run]
-        if artifact["name"].startswith(trunk_uat.RECORD_PREFIX)
-    }
+    payloads = artifact_payloads(
+        github,
+        (old, new),
+        lambda run, name: zip_bytes({trunk_uat.HISTORY_FILE: (json.dumps({"run": run}) + "\n").encode()}),
+    )
     fetched: list[int] = []
 
-    def fetch(artifact_id: int) -> dict[str, bytes]:
+    def fetch(artifact_id: int) -> bytes:
         fetched.append(artifact_id)
         return payloads[artifact_id]
 
@@ -609,6 +614,41 @@ def test_history_rows_read_executed_runs_newest_first_and_skip_expired_ones():
     assert [row["run"] for row in rows] == [new, old]
     assert skipped not in [row["run"] for row in rows] and expired not in [row["run"] for row in rows]
     assert len(fetched) == 2
+
+
+def test_fetched_shard_run_directories_load_in_the_uat_rubric_history_reader(tmp_path):
+    github = Github()
+    older = github.uat_run(executed_sha=sha("a"))
+    github.uat_run()
+    newer = github.uat_run(executed_sha=sha("b"))
+    rows = [passed_row("sqlite", "sqlite.log"), {**passed_row("duckdb", "duckdb.log"), "status": "failed"}]
+    payloads = artifact_payloads(
+        github,
+        (older, newer),
+        lambda run, name: zip_bytes(
+            {
+                "dist-digest.txt": b"digest\n",
+                "run/cells.jsonl": "".join(json.dumps(row) + "\n" for row in rows).encode(),
+                "run/uat_gate_summary.json": json.dumps({"completed_at": f"2026-11-0{run % 10}T05:00:00"}).encode(),
+                "run/sqlite.log": b"log",
+            }
+        ),
+    )
+    directories = trunk_uat.fetch_run_directories(tmp_path / "history", github, payloads.__getitem__)
+    names = sorted(str(path.relative_to(tmp_path / "history")) for path in directories)
+    assert names == sorted([f"{newer}-{sha('b')[:12]}/stage1-sqlite", f"{older}-{sha('a')[:12]}/stage1-sqlite"])
+    assert (directories[0] / "sqlite.log").read_bytes() == b"log"
+    assert not (directories[0] / "dist-digest.txt").exists()
+    runs = rubric.load_history(tmp_path / "history")
+    assert len(runs) == 2
+    assert {obs.cell[0] for run in runs for obs in run.observations} == {"sqlite", "duckdb"}
+
+
+def test_run_directory_extraction_refuses_members_that_escape_the_destination(tmp_path):
+    blob = zip_bytes({"run/cells.jsonl": b"{}\n", "run/../escape.txt": b"x"})
+    with pytest.raises(ValueError, match="unsafe evidence member"):
+        trunk_uat.extract_run_directory(blob, tmp_path / "out")
+    assert not (tmp_path / "escape.txt").exists()
 
 
 def test_admission_receipt_is_accepted_by_the_release_admitted_dist_verifier(tmp_path):
