@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Tests reproduce the silent no-op (no posted verdict or gate status for the head) and assert the caller fails, plus a positive test that it stays green when a status is posted",
+    "Proven before merge: `gh workflow run review-verdict.yml --ref <branch with a secret mapping removed> -f pr=<canary>` (and the same for review-gate.yml) ends red; the same dispatch from the PR head on 3 canary PRs (trivial, known-defect, docs-only) is green and posts a status; run links recorded",
+    "The detector cannot be bypassed by a skipped upstream job (explicit result checks, not implicit success)"
+  ],
+  "context": "Serial item (not a batch member). Start after the release-v2-remediation final PR merges, since rv2r-07 and rv2r-14 edit review-gate.yml in the batch. review-verdict and review-gate run on pull_request_target, so caller edits only run after merge unless dispatched with --ref; use dispatch for all pre-merge evidence. A false red blocks every merge, so canary first. DECISION GATE: any change needing repository or environment settings (secrets, rulesets, required checks) goes to the owner.",
+  "description": "After #3942 the oracle verdict caller ran without secrets, posted nothing, and its jobs still went green. Since the Theseus v0.2 migration (#3962) the callers are .github/workflows/review-verdict.yml and .github/workflows/review-gate.yml. Add a final job to each that fails when no verdict (review-verdict) or gate status (review-gate) was posted for the head SHA, or have Theseus expose an output the caller asserts (change Theseus by its own PR and bump the pin per rv2r-07's procedure). Detectors only add failure conditions; they never relax or skip an existing check. Split from rv2r-06 on 2026-11-06 because these files fall outside the release-v2-remediation batch's frozen scopes; delivered serially after that batch's final PR merges. Rollback: revert the PR.",
+  "links": [
+    ".github/workflows/review-verdict.yml",
+    ".github/workflows/review-gate.yml",
+    "_project/decisions/oracle-gate-relaxation-2026-11-04.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-06T15:02:52Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "2c285945d0da4cc0978942d3c1295c35",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
+    }
+  ]
+}

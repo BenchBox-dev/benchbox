@@ -27129,6 +27129,15 @@
       "status": "open",
       "title": "Allow patch releases from owner-created release/X.Y.x branches with the same release-v2 checks"
     },
+    "rv2r-15-review-posting-detector": {
+      "claim": null,
+      "needs": [
+        "rv2r-07-oracle-pinned-dependency"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Fail the review callers when no verdict or gate status was posted for the head"
+    },
     "rx-ux-00-phase0-contract-decisions": {
       "claim": null,
       "needs": [],
