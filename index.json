@@ -2023,6 +2023,63 @@
       "start_head": "20a0045113e6c8ba13c3e7c4f78351e3fe81f81e",
       "terminal_outcome": "deliver"
     },
+    "sqlglot-core-delivery": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/sqlglot-core-delivery",
+      "integration_head": "20a0045113e6c8ba13c3e7c4f78351e3fe81f81e",
+      "integration_log": [
+        {
+          "at": "2026-11-06T13:49:23Z",
+          "head": "20a0045113e6c8ba13c3e7c4f78351e3fe81f81e",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-sqlglot-core-delivery",
+      "lifecycle": "active",
+      "members": [
+        "sqlglot-e2e-verified-wheel-adoption",
+        "sqlglot-e2e-core-wheel-consumer"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f",
+      "owner_epoch": 0,
+      "owner_generation": "e18cd8344d918c51a36712c1708f1918",
+      "project_id": "benchbox",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "sqlglot-e2e-core-wheel-consumer": [
+          "scripts/sqlglot_delivery*.py",
+          "scripts/adopt_sqlglot_wheel.py",
+          "tests/unit/scripts/test_sqlglot_delivery*.py",
+          "tests/unit/workflows/test_sqlglot_delivery*.py",
+          ".github/workflows/sqlglot-delivery*.yml",
+          ".github/sqlglot-delivery.json",
+          "Makefile",
+          "docs/internal/release-guide.md",
+          "docs/internal/merge-queue-governance.md",
+          "changelog.d/sqlglot-e2e-core-wheel-consumer*"
+        ],
+        "sqlglot-e2e-verified-wheel-adoption": [
+          "scripts/adopt_sqlglot_wheel.py",
+          "tests/unit/scripts/test_adopt_sqlglot_wheel.py",
+          "tests/unit/scripts/test_path_filter_decision.py",
+          "Makefile",
+          ".github/path-filters.yml",
+          ".github/workflows/ci.yml",
+          "docs/internal/release-guide.md",
+          "changelog.d/fix-sqlglot-consumer-checks*"
+        ]
+      },
+      "scope_hash": "c6d4a232269cda8a3ccc01b5f98d5eee4976e8f5a6794265c4e8ba5e5a0f5e30",
+      "start_head": "20a0045113e6c8ba13c3e7c4f78351e3fe81f81e",
+      "terminal_outcome": "deliver"
+    },
     "tpc-timer-boundaries": {
       "accepted_members": {},
       "batch_schema": 2,
