@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import csv
 import logging
 import os
 import re
@@ -296,6 +297,7 @@ class DatabendAdapter(PlatformAdapter):
     ) -> tuple[dict[str, int], float, dict[str, Any] | None]:
         start_time = mono_time()
         table_stats: dict[str, int] = {}
+        failed_tables: dict[str, str] = {}
 
         try:
             connection.exec(f"USE {self._quote_identifier(self.database)}")
@@ -331,8 +333,13 @@ class DatabendAdapter(PlatformAdapter):
                     )
 
                 except Exception as e:
-                    self.logger.error(f"Failed to load {table_name}: {str(e)[:100]}...")
+                    self.logger.error(f"Failed to load {table_name}: {str(e)[:300]}")
                     table_stats[table_name.lower()] = 0
+                    failed_tables[table_name.lower()] = str(e)
+
+            if failed_tables:
+                details = "; ".join(f"{name}: {msg[:200]}" for name, msg in failed_tables.items())
+                raise RuntimeError(f"Databend load failed for {len(failed_tables)} table(s): {details}")
 
             total_time = elapsed_seconds(start_time)
             total_rows = sum(table_stats.values())
@@ -407,14 +414,36 @@ class DatabendAdapter(PlatformAdapter):
             if not dialect.quote and self._file_contains_byte(load_path, b'"'):
                 self.logger.warning(f"{file_path.name} contains quote characters, using INSERT VALUES")
                 return None
-            stats = connection.load_file(f"INSERT INTO {table_name_quoted} VALUES", str(load_path), format_options)
+            stats = connection.load_file(
+                f"INSERT INTO {table_name_quoted} VALUES",
+                str(load_path),
+                method="stage",
+                format_options=format_options,
+            )
+            expected = self._count_source_records(load_path, dialect)
         after = self._count_rows_or_none(connection, table_name_quoted)
-        if before is not None and after is not None:
-            return after - before
         written = getattr(stats, "write_rows", None)
-        if isinstance(written, int) and not isinstance(written, bool) and written > 0:
-            return written
-        raise RuntimeError(f"Could not determine rows loaded from {file_path.name}")
+        if before is not None and after is not None:
+            loaded = after - before
+        elif isinstance(written, int) and not isinstance(written, bool) and written > 0:
+            loaded = written
+        else:
+            raise RuntimeError(f"Could not determine rows loaded from {file_path.name}")
+        if loaded != expected:
+            raise RuntimeError(f"Row count mismatch loading {file_path.name}: source has {expected}, loaded {loaded}")
+        return loaded
+
+    @staticmethod
+    def _count_source_records(path: Path, dialect: Any) -> int:
+        skip = 1 if dialect.has_header else 0
+        needs_csv_parse = bool(dialect.quote) and DatabendAdapter._file_contains_byte(path, dialect.quote.encode())
+        with path.open("r", encoding="utf-8", newline="") as handle:
+            if needs_csv_parse:
+                reader = csv.reader(handle, delimiter=dialect.delimiter, quotechar=dialect.quote)
+                records = sum(1 for row in reader if row)
+            else:
+                records = sum(1 for line in handle if line.strip("\r\n"))
+        return max(records - skip, 0)
 
     @staticmethod
     def _file_contains_byte(path: Path, needle: bytes) -> bool:
