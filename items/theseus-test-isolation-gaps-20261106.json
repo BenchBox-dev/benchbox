@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "`_create_exclusive` closes the descriptor when `fdopen` raises. A test proves it without patching the stdlib, or the code is structured so the failure can't leak.",
+    "A test drives a failed state download through the existing fake-gh helper and asserts the caller fails closed.",
+    "test_isolation.py, test_local_windows_support.py and tests/integration/runs.py use code-owned seams or real environments instead of patching subprocess, os, urllib, socket or time.",
+    "Full suite green on 3.11, 3.13 and the Windows job."
+  ],
+  "description": "The independent review of Theseus PR #32 (v0.2.1) left these gaps open:\n- `runner._create_exclusive` leaks the descriptor if `os.fdopen` itself fails after `os.open` succeeds. This is pre-existing; the inline code had the same shape.\n- No test covers a failed `gh run download` in the state-download path.\n- Stdlib patching remains in tests the v0.2.1 sweep did not touch, because they had not changed since v0.1.6: `tests/unit/.../test_isolation.py`, `test_local_windows_support.py`, and `mock.patch.dict(os.environ, …)` in `tests/integration/runs.py`. A future hosted review of a Theseus promotion that touches those files will flag them, as it flagged test_legacy_transition.py on BenchBox PR #3962.\n- The stage_pull_request_diff failure test is skipped when running as root.",
+  "links": [
+    "https://github.com/joeharris76/theseus/pull/32",
+    "https://github.com/BenchBox-dev/benchbox/pull/3962"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-06T12:52:54Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0edc6f575ebf447d89f0d1869870d8e2",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    }
+  ]
+}

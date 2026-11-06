@@ -31012,6 +31012,13 @@
       "status": "done",
       "title": "Theseus v0.1.7: hunk coverage, git-built diffs, rename-aware executed-surface promotions, capacity sizing, compaction fail-closed, preflight"
     },
+    "theseus-test-isolation-gaps-20261106": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Theseus: close the test and fd-handling gaps left after the v0.2.1 test-seam fix"
+    },
     "theseus-v021-stdin-rendered-mode-20261105": {
       "claim": null,
       "needs": [
