@@ -102,7 +102,7 @@ idle reclaim below applies) or when another same-user host process that is not
 its own child runs `container machine run`/`create` against the machine (`-n`
 or `--name` naming it, or no name when the machine is `default: true`) or
 the wrapper itself; it logs `left running: in use by pid N`. If that check
-cannot run, the machine is stopped.
+cannot run, the machine is left running for the sentinel.
 
 The sentinel stops the machine when it is running, no live lock holder's process
 tree contains the wrapper or a `container machine run` for it, and no such
@@ -130,8 +130,39 @@ when a live holder's tree contains the wrapper for that machine. The watchdog
 counts it toward a breach only above its own allowance,
 `BENCHBOX_HEAVY_VM_ALLOWANCE_GIB` (default the machine's configured memory plus
 10%), and only for the holder whose tree contains the wrapper; it is never added
-to the shared budget. A VM breach SIGTERMs the tree so the wrapper's EXIT trap
-stops the machine.
+to the shared budget. A VM breach SIGTERMs the tree deepest-first; the descendants
+share one `BENCHBOX_HEAVY_WATCHDOG_GRACE_SECONDS` budget. Wrappers for the
+configured machine alone then share one further cleanup deadline so their EXIT
+trap can stop the machine even after a stubborn child consumed the normal grace;
+a wrapper is SIGKILLed when that shared deadline ends. The deadline is derived
+from the actual bounds: python start-up 10 s, two 5 s state probes, the stop
+timeout (`BENCHBOX_LINUX_STOP_TIMEOUT_SECONDS`, default 60) and two 3 s kill
+steps, 86 s by default. Other processes, other machines' wrappers and
+processes no longer descended from the holder get no extension.
+
+The container CLI (1.1.0) has `machine stop <id>` and no force option, and
+nothing here kills Virtualization processes. On exit the wrapper makes one
+`python -m benchbox.utils.linux_machine cleanup` call that re-checks other
+same-user runs (nameless default-machine runs included when the state is
+unreadable) and whether this run still owns the host lock, runs the stop in its
+own process group within the bound, kills and reaps that group, reads the real
+state, and records `vm_cleanup_started` / `vm_cleanup_finished` events (machine,
+source, duration, outcome, joined to the run by `BENCHBOX_HEAVY_RUN_ID`). Only a
+verified `stopped` state counts as stopped: a `running`, transitional or
+unreadable state is an `ERROR`/`WARNING` and the machine is left for the
+sentinel. If the helper itself fails the machine is left running with a
+warning rather than stopped unverified.
+
+The sentinel takes the host lock with a non-blocking acquire before it stops
+an idle machine, so it never races a new run and never waits on one, and holds
+it until the stop group is reaped and the final state is read. It keeps the last
+1 KiB of `container machine stop` output in the log and reconciles with the
+actual state; anything other than `stopped` is a failure retried after the next
+idle window. Three consecutive failures also log `STUCK` with
+`container machine logs -n 50 <machine>` on every further attempt; retries are
+not disabled. The underlying provider hang seen on 2026-11-02 (stop timing out for
+9 hours) is unresolved: this code makes it diagnosable and bounded, not fixed, and
+only the owner can intervene when `STUCK` repeats.
 
 `benchbox-agent` is currently a 6G machine (the owner resized it from 8G on
 2026-11-01), matching the documented `container machine create ... --memory 6G`.

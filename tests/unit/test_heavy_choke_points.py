@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
@@ -166,9 +167,16 @@ def test_the_choke_point_check_ignores_usage_lines_and_guarded_calls() -> None:
 STUB_CONTAINER = """#!/usr/bin/env bash
 printf '%s\\n' "$*" >> "$STUB_LOG"
 case "$1 $2" in
-  "machine list") printf '[{"status":"%s","id":"%s","default":true},{"status":"running","id":"other"}]\\n' "$STUB_STATUS" "${STUB_MACHINE:-m}" ;;
+  "machine list")
+    status="$STUB_STATUS"
+    [ -f "$STUB_LOG.stopped" ] && status=stopped
+    printf '[{"status":"%s","id":"%s","default":true},{"status":"running","id":"other"}]\\n' "$status" "${STUB_MACHINE:-m}" ;;
   "machine run") [ -n "${STUB_RUN_HOOK:-}" ] && bash -c "$STUB_RUN_HOOK"; exit "${STUB_RUN_EXIT:-0}" ;;
-  "machine stop") [ -n "${STUB_STOP_HANG:-}" ] && exec sleep 30; exit "${STUB_STOP_EXIT:-0}" ;;
+  "machine stop")
+    [ -n "${STUB_STOP_STUCK:-}" ] || touch "$STUB_LOG.stopped"
+    [ -n "${STUB_STOP_OUT:-}" ] && echo "$STUB_STOP_OUT"
+    [ -n "${STUB_STOP_HANG:-}" ] && { echo $$ > "$STUB_LOG.stop.pid"; exec sleep 30; }
+    exit "${STUB_STOP_EXIT:-0}" ;;
 esac
 """
 
@@ -179,9 +187,6 @@ def _stub_env(tmp_path: Path, status: str, **extra: str) -> dict[str, str]:
     stub = bin_dir / "container"
     stub.write_text(STUB_CONTAINER, encoding="utf-8")
     stub.chmod(0o755)
-    idle_checker = tmp_path / "idle_checker"
-    idle_checker.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
-    idle_checker.chmod(0o755)
     env = dict(
         os.environ,
         PATH=f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
@@ -192,7 +197,7 @@ def _stub_env(tmp_path: Path, status: str, **extra: str) -> dict[str, str]:
         BENCHBOX_TEST_LOCK_WAIT_SECONDS="0",
         BENCHBOX_HEAVY_ADMIT="force",
         BENCHBOX_HEAVY_WATCHDOG="off",
-        **{"BENCHBOX_PYTHON": str(idle_checker), **extra},
+        **{"BENCHBOX_PYTHON": sys.executable, **extra},
     )
     for key in ("BENCHBOX_TEST_SESSION_OWNER", "BENCHBOX_SKIP_TEST_LOCK"):
         env.pop(key, None)
@@ -201,7 +206,8 @@ def _stub_env(tmp_path: Path, status: str, **extra: str) -> dict[str, str]:
 
 def _calls(tmp_path: Path) -> list[str]:
     log = tmp_path / "calls.log"
-    return log.read_text(encoding="utf-8").splitlines() if log.exists() else []
+    lines = log.read_text(encoding="utf-8").splitlines() if log.exists() else []
+    return [line for line in lines if line != "machine list --format json"]
 
 
 def _wrapper(env: dict[str, str], *args: str) -> subprocess.CompletedProcess[str]:
@@ -290,7 +296,10 @@ def _checker(tmp_path: Path, script: str) -> str:
 @posix_only
 @needs_bash
 def test_a_live_foreign_machine_run_prevents_the_stop_and_is_logged(tmp_path: Path) -> None:
-    checker = _checker(tmp_path, "#!/bin/sh\necho 4242\nexit 0\n")
+    checker = _checker(
+        tmp_path,
+        "#!/bin/sh\necho \"==> linux machine '$4' left running: in use by pid 4242\" >&2\nexit 0\n",
+    )
     result = _locked_wrapper(_stub_env(tmp_path, "running", BENCHBOX_PYTHON=checker, STUB_RUN_EXIT="3"), "--", "false")
     assert result.returncode == 3
     assert not any(call.startswith("machine stop") for call in _calls(tmp_path))
@@ -300,11 +309,15 @@ def test_a_live_foreign_machine_run_prevents_the_stop_and_is_logged(tmp_path: Pa
 @posix_only
 @needs_bash
 @pytest.mark.parametrize("code", [1, 2, 127])
-def test_no_foreign_run_or_an_unrunnable_check_stops_the_machine(tmp_path: Path, code: int) -> None:
+def test_a_failing_cleanup_helper_leaves_the_machine_running_with_a_warning_and_keeps_the_status(
+    tmp_path: Path, code: int
+) -> None:
     checker = _checker(tmp_path, f"#!/bin/sh\nexit {code}\n")
-    result = _locked_wrapper(_stub_env(tmp_path, "running", BENCHBOX_PYTHON=checker), "--", "true")
-    assert result.returncode == 0, result.stderr
-    assert _calls(tmp_path)[-1] == "machine stop m"
+    result = _locked_wrapper(_stub_env(tmp_path, "running", BENCHBOX_PYTHON=checker, STUB_RUN_EXIT="6"), "--", "true")
+    assert result.returncode == 6, result.stderr
+    assert not any(call.startswith("machine stop") for call in _calls(tmp_path))
+    assert f"cleanup helper failed (exit {code})" in result.stderr
+    assert "left running for the sentinel" in result.stderr
 
 
 @posix_only
@@ -326,28 +339,110 @@ def test_the_real_process_check_finds_no_foreign_run_and_the_machine_is_stopped(
 
 @posix_only
 @needs_bash
-def test_a_sigterm_during_the_exit_busy_check_still_stops_the_machine_and_keeps_the_status(tmp_path: Path) -> None:
-    checker = _checker(tmp_path, '#!/bin/sh\n[ "$5" = --own-pid ] || exit 9\nkill -TERM "$6"\nsleep 1\nexit 1\n')
+def test_a_sigterm_during_the_cleanup_does_not_abort_it_and_keeps_the_status(tmp_path: Path) -> None:
+    marker = tmp_path / "cleanup.done"
+    checker = _checker(
+        tmp_path,
+        f'#!/bin/sh\n[ "$5" = --own-pid ] || exit 9\nkill -TERM "$6"\nsleep 1\ntouch {marker}\nexit 0\n',
+    )
     env = _stub_env(tmp_path, "running", BENCHBOX_PYTHON=checker, STUB_RUN_EXIT="5")
     result = _locked_wrapper(env, "--", "true")
     assert result.returncode == 5, result.stderr
-    assert _calls(tmp_path)[-1] == "machine stop m"
+    assert marker.exists()
+
+
+def _stop_pid_alive(tmp_path: Path) -> bool:
+    pid = int((tmp_path / "calls.log.stop.pid").read_text(encoding="utf-8"))
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    return True
 
 
 @posix_only
 @needs_bash
-def test_a_hanging_stop_is_cut_off_with_a_warning_and_the_status_survives(tmp_path: Path) -> None:
-    env = _stub_env(tmp_path, "running", STUB_STOP_HANG="1", BENCHBOX_LINUX_STOP_TIMEOUT_SECONDS="1", STUB_RUN_EXIT="4")
+def test_a_hanging_stop_that_leaves_the_machine_running_is_diagnosed_and_the_status_survives(tmp_path: Path) -> None:
+    env = _stub_env(
+        tmp_path,
+        "running",
+        STUB_STOP_HANG="1",
+        STUB_STOP_STUCK="1",
+        STUB_STOP_OUT="Error: XPC connection interrupted",
+        BENCHBOX_LINUX_STOP_TIMEOUT_SECONDS="1",
+        STUB_RUN_EXIT="4",
+    )
     result = _locked_wrapper(env, "--", "true")
     assert result.returncode == 4, result.stderr
     assert "timed out after 1s" in result.stderr
-    assert "WARNING: could not stop machine 'm'" in result.stderr
+    assert "Error: XPC connection interrupted" in result.stderr
+    assert "ERROR: linux machine 'm' is still running" in result.stderr
+    assert "no force-stop" in result.stderr
+    assert not _stop_pid_alive(tmp_path)
+
+
+@posix_only
+@needs_bash
+def test_a_slow_stop_that_lands_after_the_timeout_is_reconciled_to_the_actual_state(tmp_path: Path) -> None:
+    env = _stub_env(tmp_path, "running", STUB_STOP_HANG="1", BENCHBOX_LINUX_STOP_TIMEOUT_SECONDS="1")
+    result = _locked_wrapper(env, "--", "true")
+    assert result.returncode == 0, result.stderr
+    assert "timed out after 1s but the machine is now 'stopped'" in result.stderr
+    assert "ERROR" not in result.stderr
+
+
+@posix_only
+@needs_bash
+def test_a_failing_stop_shows_the_cli_output_and_a_machine_that_did_stop_is_not_an_error(tmp_path: Path) -> None:
+    env = _stub_env(tmp_path, "running", STUB_STOP_EXIT="1", STUB_STOP_OUT="Error: machine already stopping")
+    result = _locked_wrapper(env, "--", "true")
+    assert result.returncode == 0, result.stderr
+    assert "Error: machine already stopping" in result.stderr
+    assert "exit 1 but the machine is now 'stopped'" in result.stderr
+    assert "ERROR" not in result.stderr
+
+
+@posix_only
+@needs_bash
+def test_a_zero_exit_stop_that_leaves_the_machine_running_is_still_an_error(tmp_path: Path) -> None:
+    env = _stub_env(tmp_path, "running", STUB_STOP_STUCK="1")
+    result = _locked_wrapper(env, "--", "true")
+    assert result.returncode == 0, result.stderr
+    assert "ERROR: linux machine 'm' is still running after 'container machine stop' (exit 0" in result.stderr
+
+
+@posix_only
+@needs_bash
+def test_the_cleanup_is_recorded_with_the_run_id_and_the_actual_outcome(tmp_path: Path) -> None:
+    machine = f"m-{tmp_path.name}"
+    env = _stub_env(
+        tmp_path,
+        "running",
+        BENCHBOX_PYTHON=sys.executable,
+        STUB_MACHINE=machine,
+        BENCHBOX_HEAVY_RUN_ID="run-123",
+        STUB_STOP_STUCK="1",
+    )
+    result = _locked_wrapper(env, "--", "true")
+    assert result.returncode == 0, result.stderr
+    rows = [
+        json.loads(line) for line in (tmp_path / "lock" / "heavy-runs.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    cleanup = [row for row in rows if row["event"].startswith("vm_cleanup_")]
+    assert [row["event"] for row in cleanup] == ["vm_cleanup_started", "vm_cleanup_finished"]
+    assert {row["run_id"] for row in cleanup} == {"run-123"}
+    assert cleanup[-1]["outcome"] == "still_running"
+    assert cleanup[-1]["details"]["machine"] == machine
+    assert cleanup[-1]["duration_seconds"] >= 0
 
 
 @posix_only
 @needs_bash
 def test_keep_machine_with_a_stopped_prior_state_still_yields_to_a_foreign_run(tmp_path: Path) -> None:
-    checker = _checker(tmp_path, "#!/bin/sh\necho 4242\nexit 0\n")
+    checker = _checker(
+        tmp_path,
+        "#!/bin/sh\necho \"==> linux machine '$4' left running: in use by pid 4242\" >&2\nexit 0\n",
+    )
     env = _stub_env(tmp_path, "stopped", BENCHBOX_PYTHON=checker, BENCHBOX_KEEP_LINUX_MACHINE="1")
     result = _locked_wrapper(env, "--", "true")
     assert result.returncode == 0, result.stderr

@@ -6,7 +6,6 @@ import logging.handlers
 import os
 import re
 import signal
-import subprocess
 import sys
 import time
 from collections.abc import Callable, Mapping, Sequence
@@ -18,6 +17,7 @@ import psutil
 
 from benchbox.utils import (
     git_flood,
+    heavy_run_events,
     heavy_status,
     heavy_watchdog,
     host_lock,
@@ -48,7 +48,8 @@ SIG_KILL = getattr(signal, "SIGKILL", SIG_TERM)
 EXIT_ALREADY_RUNNING = host_lock.EXIT_REFUSED
 VM_IDLE_ENV = "BENCHBOX_HEAVY_VM_IDLE_MINUTES"
 DEFAULT_VM_IDLE_MINUTES = 10.0
-VM_STOP_TIMEOUT_SECONDS = 60.0
+VM_STOP_TIMEOUT_SECONDS = vm_footprint.DEFAULT_STOP_TIMEOUT_SECONDS
+VM_STOP_ESCALATE_FAILURES = 3
 VM_POLL_SECONDS = 15.0
 DENIED_NAMES = frozenset(
     {
@@ -311,15 +312,44 @@ class StopHandle(Protocol):
 
     def kill(self) -> None: ...
 
+    def output(self) -> str: ...
+
+    def close(self) -> None: ...
+
 
 def start_machine_stop(machine: str) -> StopHandle:
-    return subprocess.Popen(
-        ["container", "machine", "stop", machine],
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        start_new_session=True,
-    )
+    return linux_machine.MachineStop(machine)
+
+
+class StopLock:
+    def __init__(self, fd: int) -> None:
+        self._fd: int | None = fd
+
+    def release(self) -> None:
+        fd, self._fd = self._fd, None
+        if fd is None:
+            return
+        try:
+            host_lock.unlock(fd)
+        finally:
+            os.close(fd)
+
+
+def acquire_stop_lock(lock_path: Path, machine: str) -> StopLock | None:
+    try:
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        fd = os.open(str(lock_path), os.O_CREAT | os.O_RDWR | getattr(os, "O_CLOEXEC", 0), 0o644)
+    except OSError:
+        return None
+    try:
+        if not host_lock.try_lock(fd) or os.fstat(fd).st_ino != os.stat(lock_path).st_ino:
+            os.close(fd)
+            return None
+    except OSError:
+        os.close(fd)
+        return None
+    host_lock.write_holder(fd, lock_path, phase="vm-stop", command=f"container machine stop {machine}")
+    return StopLock(fd)
 
 
 class VmWatch:
@@ -334,7 +364,12 @@ class VmWatch:
         stopper: Callable[[str], StopHandle] = start_machine_stop,
         clock: Callable[[], float] = mono_time,
         footprint_reader: Callable[[str, frozenset[int]], str | None] | None = None,
+        event_recorder: Callable[..., None] = heavy_run_events.record_event,
+        lock_acquirer: Callable[[str], StopLock | None] | None = None,
     ) -> None:
+        self._lock_acquirer = lock_acquirer or (lambda machine: acquire_stop_lock(host_lock.lock_path(), machine))
+        self._stop_lock: StopLock | None = None
+        self._reported_lock_wait = False
         self._footprint_reader = footprint_reader
         self._footprint_key: str | None = None
         self.policy = policy
@@ -350,6 +385,8 @@ class VmWatch:
         self._reported_unguarded: frozenset[int] = frozenset()
         self._stop: tuple[StopHandle, float] | None = None
         self._held: frozenset[int] = frozenset()
+        self._stop_failures = 0
+        self._events = event_recorder
 
     def _log_footprint(self, machine: str) -> None:
         if self._footprint_reader is None:
@@ -363,29 +400,88 @@ class VmWatch:
     def _reset_idle(self) -> None:
         self._idle_since = None
         self._reported_idle = False
+        self._reported_lock_wait = False
+        self._stop_failures = 0
 
     def _fail(self, now: float, reason: str) -> None:
         machine = self.policy.vm_machine
-        self._log(f"could not stop linux machine '{machine}': {reason}; retrying after the next idle window")
         self._stop = None
         self._idle_since = now
         self._reported_idle = True
+        self._stop_failures += 1
+        self._log(f"could not stop linux machine '{machine}': {reason}; retrying after the next idle window")
+        if self._stop_failures >= VM_STOP_ESCALATE_FAILURES:
+            self._log(
+                f"linux machine '{machine}' STUCK: {self._stop_failures} consecutive stop attempts failed; the "
+                "container CLI has no force-stop, so this needs the owner: "
+                f"'container machine logs -n 50 {machine}'"
+            )
 
     def _poll_stop(self, now: float) -> None:
         assert self._stop is not None
         handle, started = self._stop
         code = handle.poll()
-        if code is None:
-            if elapsed_seconds(started, now) >= VM_STOP_TIMEOUT_SECONDS:
-                handle.kill()
-                self._fail(now, f"timed out after {VM_STOP_TIMEOUT_SECONDS:.0f}s")
+        if code is None and elapsed_seconds(started, now) < VM_STOP_TIMEOUT_SECONDS:
             return
-        if code != 0:
-            self._fail(now, f"exit {code}")
-            return
-        self._log(f"stopped idle linux machine '{self.policy.vm_machine}'")
+        kind = "timeout" if code is None else (None if code == 0 else "error")
+        failure = (
+            f"timed out after {VM_STOP_TIMEOUT_SECONDS:.0f}s"
+            if code is None
+            else (None if code == 0 else f"exit {code}")
+        )
         self._stop = None
+        try:
+            try:
+                handle.kill()
+                output = handle.output()
+            finally:
+                handle.close()
+            try:
+                state = self._state_reader(self.policy.vm_machine)
+            except Exception:
+                state = None
+            self._conclude_stop(now, started, output, kind, failure, state)
+        finally:
+            self._release_stop_lock()
+
+    def _conclude_stop(
+        self,
+        now: float,
+        started: float,
+        output: str,
+        kind: str | None,
+        failure: str | None,
+        state: linux_machine.MachineState | None,
+    ) -> None:
+        machine = self.policy.vm_machine
+        detail = f"; stop output: {output}" if output else ""
+        outcome = linux_machine.classify_stop(state, kind)
+        duration = elapsed_seconds(started, now)
+        if outcome in {"still_running", "unverified"}:
+            status = "unreadable" if state is None else f"'{state.status}'"
+            reason = f"{failure or 'exit 0'}; machine state {status}, not confirmed stopped{detail}"
+            self._fail(now, reason)
+            self._record_stop(duration, outcome, failure)
+            return
+        if failure is not None:
+            self._log(f"stop of linux machine '{machine}' reported {failure} but the machine is 'stopped'{detail}")
+        else:
+            self._log(f"stopped idle linux machine '{machine}'")
         self._reset_idle()
+        self._record_stop(duration, outcome, failure)
+
+    def _record_stop(self, duration: float, outcome: str, failure: str | None) -> None:
+        self._events(
+            "vm_cleanup_finished",
+            duration_seconds=duration,
+            outcome=outcome,
+            details={
+                "machine": self.policy.vm_machine,
+                "source": "sentinel",
+                "failure": failure,
+                "consecutive_failures": self._stop_failures,
+            },
+        )
 
     def _assess(self, state: linux_machine.MachineState) -> linux_machine.VmAssessment:
         machine = self.policy.vm_machine
@@ -429,10 +525,6 @@ class VmWatch:
             self._idle_since = now
         if elapsed_seconds(self._idle_since, now) < self.policy.vm_idle_seconds:
             return
-        assessment = self._assess(state)
-        if not assessment.idle:
-            self._reset_idle()
-            return
         memory = "unmeasured" if state.memory_gib is None else f"{state.memory_gib:.2f} GiB"
         idle = f"linux machine '{machine}' running with no lock holder or run process (configured memory {memory})"
         if self.policy.mode != "kill":
@@ -440,13 +532,50 @@ class VmWatch:
                 self._reported_idle = True
                 self._log(f"VM idle: {idle}; warn mode, not stopping")
             return
+        lock = self._lock_acquirer(machine)
+        if lock is None:
+            if not self._reported_lock_wait:
+                self._reported_lock_wait = True
+                self._log(f"VM idle: {idle}; the host lock is held by a run, so the stop waits for it")
+            return
+        self._reported_lock_wait = False
+        fresh = self._state_reader(machine)
+        if fresh is None or fresh.status != "running" or not self._assess(fresh).idle:
+            lock.release()
+            self._reset_idle()
+            return
         self._log(f"VM idle: {idle}; stopping it")
+        self._events(
+            "vm_cleanup_started", details={"machine": machine, "source": "sentinel", "attempt": self._stop_failures + 1}
+        )
         try:
             handle = self._stopper(machine)
         except OSError as exc:
+            lock.release()
             self._fail(now, str(exc))
+            self._record_stop(0.0, "spawn_failed", str(exc))
             return
         self._stop = (handle, now)
+        self._stop_lock = lock
+
+    def close(self) -> None:
+        if self._stop is None:
+            return
+        handle, started = self._stop
+        self._stop = None
+        try:
+            handle.kill()
+        finally:
+            try:
+                handle.close()
+            finally:
+                self._release_stop_lock()
+        self._record_stop(elapsed_seconds(started, self._clock()), "cancelled", "sentinel stopped")
+
+    def _release_stop_lock(self) -> None:
+        lock, self._stop_lock = self._stop_lock, None
+        if lock is not None:
+            lock.release()
 
 
 class Sentinel:
@@ -736,12 +865,19 @@ def run_sentinel(args: argparse.Namespace, environ: Mapping[str, str]) -> int:
         found = heavy_status.read_vm_footprint(attributor, machine, held, environ)
         return None if found is None else heavy_status.describe_vm_footprint(found)
 
+    vm_watch = VmWatch(
+        policy,
+        log=log.write,
+        holder_reader=holders,
+        footprint_reader=vm_line,
+        lock_acquirer=lambda machine: acquire_stop_lock(lock_path, machine),
+    )
     sentinel = Sentinel(
         policy,
         log=log.write,
         worktree_lister=lister,
         holder_reader=holders,
-        vm_watch=VmWatch(policy, log=log.write, holder_reader=holders, footprint_reader=vm_line),
+        vm_watch=vm_watch,
     )
     previous = signal.signal(SIG_TERM, _terminate)
     log.write(f"started pid {os.getpid()}; mode {policy.mode}; log {log_path}")
@@ -753,6 +889,7 @@ def run_sentinel(args: argparse.Namespace, environ: Mapping[str, str]) -> int:
     except (KeyboardInterrupt, SystemExit):
         pass
     finally:
+        vm_watch.close()
         signal.signal(SIG_TERM, previous)
         log.write("stopped")
         release_pid_file(pid_path)
