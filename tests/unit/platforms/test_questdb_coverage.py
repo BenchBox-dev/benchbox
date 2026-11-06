@@ -25,6 +25,11 @@ pytestmark = [
 ]
 
 
+@pytest.fixture(autouse=True)
+def _no_ilp_timestamp_columns(monkeypatch):
+    monkeypatch.setattr(QuestDBAdapter, "_ilp_timestamp_columns", lambda self, table_name, designated: frozenset())
+
+
 @pytest.fixture()
 def questdb_stubs(monkeypatch):
     mock_psycopg = Mock()

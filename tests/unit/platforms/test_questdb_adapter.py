@@ -17,10 +17,17 @@ from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.platforms.base.data_loading import CsvDialect, DataSource
 from benchbox.platforms.questdb import QUESTDB_DIALECT, QuestDBAdapter
 
+_REAL_ILP_TIMESTAMP_COLUMNS = QuestDBAdapter._ilp_timestamp_columns
+
 pytestmark = [
     pytest.mark.unit,
     pytest.mark.fast,
 ]
+
+
+@pytest.fixture(autouse=True)
+def _no_ilp_timestamp_columns(monkeypatch):
+    monkeypatch.setattr(QuestDBAdapter, "_ilp_timestamp_columns", lambda self, table_name, designated: frozenset())
 
 
 @pytest.fixture()
@@ -523,6 +530,120 @@ class TestQuestDBAdapter:
     def test_ilp_load_fails_when_fewer_rows_land_than_were_sent(self, questdb_stubs, tmp_path):
         with pytest.raises(RuntimeError, match="lost rows: sent 6, table holds 4"):
             self._ilp_chunked_load(tmp_path, [0, 4, 4, 4])
+
+    LINEITEM_TYPES = {
+        "l_orderkey": "LONG",
+        "l_shipdate": "TIMESTAMP",
+        "l_commitdate": "TIMESTAMP",
+        "l_receiptdate": "TIMESTAMP",
+        "l_comment": "VARCHAR",
+    }
+
+    def _lineitem_load(self, tmp_path, rows):
+        data_file = tmp_path / "lineitem.tbl"
+        data_file.write_text("".join(rows), encoding="utf-8")
+        received: list[str] = []
+        rejected: list[str] = []
+        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.bind(("127.0.0.1", 0))
+        server.listen(1)
+
+        def _serve():
+            conn, _ = server.accept()
+            with conn:
+                buffer = b""
+                while chunk := conn.recv(4096):
+                    buffer += chunk
+                for line in buffer.decode().splitlines():
+                    if 'l_commitdate="' in line or 'l_receiptdate="' in line:
+                        rejected.append(line)
+                    else:
+                        received.append(line)
+
+        thread = threading.Thread(target=_serve)
+        thread.start()
+
+        def fake_get(url, params=None, **kwargs):
+            response = Mock()
+            if params["query"].startswith("SHOW COLUMNS"):
+                response.json.return_value = {"dataset": [[k, v, "false"] for k, v in self.LINEITEM_TYPES.items()]}
+            else:
+                thread.join(timeout=10)
+                response.json.return_value = {"dataset": [[len(received)]]}
+            return response
+
+        try:
+            adapter = QuestDBAdapter(host="localhost", loading_method="ilp")
+            adapter.ilp_host = "127.0.0.1"
+            adapter.ilp_port = server.getsockname()[1]
+            benchmark = Mock()
+            benchmark.tables = {"lineitem": str(data_file)}
+            benchmark.csv_delimiter = "|"
+            benchmark.csv_has_header = False
+            benchmark.csv_normalize_booleans = None
+            with (
+                patch.object(QuestDBAdapter, "_ilp_timestamp_columns", _REAL_ILP_TIMESTAMP_COLUMNS),
+                patch.object(questdb_module, "_http_get", side_effect=fake_get),
+                patch.object(questdb_module, "_ILP_VERIFY_TIMEOUT_SECONDS", 0.0),
+            ):
+                result = adapter.load_data(benchmark, Mock(), tmp_path)
+        finally:
+            server.close()
+            thread.join(timeout=10)
+        return result, received, rejected
+
+    def test_ilp_sends_non_designated_date_columns_as_timestamps(self, questdb_stubs, tmp_path):
+        rows = ["1|1994-01-02|1994-02-03|1994-03-04|first|\n", "2|1995-01-02||1995-03-04|second|\n"]
+
+        (stats, _, _), received, rejected = self._lineitem_load(tmp_path, rows)
+
+        assert rejected == []
+        assert stats["lineitem"] == 2
+        assert (
+            received[1] == 'lineitem l_orderkey=2i,l_receiptdate=794275200000000t,l_comment="second" 789004800000000000'
+        )
+        assert received[0] == (
+            'lineitem l_orderkey=1i,l_commitdate=760233600000000t,l_receiptdate=762739200000000t,l_comment="first" 757468800000000000'
+        )
+
+    def test_ilp_load_fails_when_the_server_rejects_string_dates(self, questdb_stubs, tmp_path):
+        rows = ["1|1994-01-02|1994-02-03|1994-03-04|first|\n"]
+        with patch.object(
+            questdb_module, "_ilp_timestamp_field", lambda key, values: questdb_module._ilp_field_values(key, values)
+        ):
+            with pytest.raises(RuntimeError, match="lost rows: sent 1, table holds 0"):
+                self._lineitem_load(tmp_path, rows)
+
+    def test_ilp_timestamp_columns_come_from_the_table_types(self, questdb_stubs):
+        adapter = QuestDBAdapter(host="localhost", loading_method="ilp")
+        response = Mock()
+        response.json.return_value = {"dataset": [[k, v, "false"] for k, v in self.LINEITEM_TYPES.items()]}
+
+        with patch.object(QuestDBAdapter, "_ilp_timestamp_columns", _REAL_ILP_TIMESTAMP_COLUMNS):
+            with patch.object(questdb_module, "_http_get", return_value=response):
+                columns = adapter._ilp_timestamp_columns("lineitem", "l_shipdate")
+
+        assert columns == frozenset({"l_commitdate", "l_receiptdate"})
+
+    def test_ilp_timestamp_columns_raise_when_types_are_unreadable(self, questdb_stubs):
+        adapter = QuestDBAdapter(host="localhost", loading_method="ilp")
+
+        with patch.object(QuestDBAdapter, "_ilp_timestamp_columns", _REAL_ILP_TIMESTAMP_COLUMNS):
+            with patch.object(questdb_module, "_http_get", side_effect=ConnectionError("down")):
+                with pytest.raises(RuntimeError, match="Cannot read the column types"):
+                    adapter._ilp_timestamp_columns("lineitem", "l_shipdate")
+
+    def test_ilp_unparseable_designated_timestamp_fails_the_load(self, questdb_stubs, tmp_path):
+        rows = ["1|not-a-date|1994-02-03|1994-03-04|first|\n"]
+
+        with pytest.raises(RuntimeError, match="'l_shipdate' holds a value that is not a date"):
+            self._lineitem_load(tmp_path, rows)
+
+    def test_ilp_unparseable_date_fails_the_load(self, questdb_stubs, tmp_path):
+        rows = ["1|1994-01-02|not-a-date|1994-03-04|first|\n"]
+
+        with pytest.raises(RuntimeError, match="'l_commitdate' holds a value that is not a date"):
+            self._lineitem_load(tmp_path, rows)
 
     def test_ilp_dat_keeps_trailing_null_column(self, questdb_stubs, tmp_path):
         data_file = tmp_path / "store_sales.dat"
