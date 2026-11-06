@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "lineitem loads 60175 rows via ILP at SF0.01 with l_commitdate and l_receiptdate equal to the file dates",
+    "load fails loudly when QuestDB rejects lines"
+  ],
+  "context": "Related done item perf-questdb-influxdb-load-20261030. Pre-existing. Not fixed by the verifier.",
+  "description": "Found by live verification of #3952 (perf-questdb-influxdb-load-20261030) on origin/develop 525361b2f8, questdb/questdb:10.0.1, loading_method=ilp, TPC-H SF0.01.\n\nExpected: lineitem loads 60175 rows (l_shipdate designated timestamp, l_commitdate and l_receiptdate as timestamps).\nActual: lineitem has 0 rows and the load reports SUCCESS. QuestDB log: `LineWalAppender could not write line protocol measurement [tableName=lineitem ... column: l_commitdate; cast error from protocol type: STRING to column type: TIMESTAMP`. The ILP builder (_ilp_lines_from_strings in benchbox/platforms/questdb.py) converts only the designated column from TPCH_TIMESTAMP_COLUMNS to epoch nanoseconds; every other date column is quoted as a string, and QuestDB rejects the line and drops the connection. Same on the pre-#3952 commit 7aa4a8b391 (0 rows), so not a regression. Logs /tmp/live-verify-questdb-check.log, /tmp/live-verify-questdb-check-base3952.log, /tmp/live-verify-questdb-load.log.\n\nSuspected: _ilp_lines_from_strings / _ilp_field_values (need per-column type awareness from SHOW COLUMNS, emitting timestamp columns as `<epoch_micros>t` or nanosecond integers).",
+  "links": [
+    "benchbox/platforms/questdb.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-06T19:24:35Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "29bf217a3134410dbff9db4d5d814c54",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}
