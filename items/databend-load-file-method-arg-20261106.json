@@ -4,6 +4,11 @@
     "unit test fake matches the real driver signature so a positional format_options call fails",
     "a NULL and a quoted-text column check passes after load"
   ],
+  "batch": {
+    "batch_id": "load-path-live-fixes",
+    "implementation_dependencies": [],
+    "member_id": "databend-load-file-method-arg-20261106"
+  },
   "context": "Related done item perf-databend-bulk-load-20261030. Not fixed by the verifier by instruction.",
   "description": "Found by live verification of #3949 (perf-databend-bulk-load-20261030) on origin/develop 525361b2f8 against datafuselabs/databend v1.2.881 (compose docker/databend, run under mocker 0.7.2) with databend-driver 0.33.6.\n\nReproduction: `uv run --extra databend -- benchbox run --platform databend:self-hosted --benchmark tpch --scale 0.01 --phases generate,load --platform-option host=localhost --platform-option port=8000 --platform-option username=benchbox --platform-option password=benchbox --non-interactive --output <dir>` with the stack up (`make uat-bring-up PLATFORM=databend`).\n\nExpected: all 8 TPC-H tables load via stage + COPY INTO with dbgen row counts (lineitem 60175 at SF0.01).\nActual: every table fails: `Failed to load customer: argument 'method': 'dict' object cannot be converted to 'PyString'`, no rows loaded, run FAILED ('Required benchmark tables are missing or empty after load'). Log /tmp/live-verify-databend-tpch.log.\n\nCause: benchbox/platforms/databend/adapter.py DatabendAdapter._load_file_native calls `connection.load_file(sql, path, format_options)` positionally. databend-driver 0.33.6 BlockingDatabendConnection.load_file has signature (sql, fp, method=None, format_options=None, copy_options=None), so the dict lands in `method`. Calling with keywords `method=\"stage\", format_options={...}` works: write_rows 4, quoted text `\"b|c\"` kept as one field, empty field loaded as NULL, literal NULL text kept as string (/tmp/live-verify-databend-probe.log). The unit fake in tests/unit/platforms/test_databend_bulk_load.py defines `load_file(self, sql, file, format_options, copy_options=None)`, which hides the mismatch. pyproject pins `databend-driver>=0.28.0`; check which driver releases have which signature and pass keywords.\n\nSuspected symbol: DatabendAdapter._load_file_native (benchbox/platforms/databend/adapter.py ~line 410) and the fake in test_databend_bulk_load.py.",
   "links": [
@@ -17,6 +22,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "6e75d848b12047358fbda8b686c363ed",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-06T19:34:56Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7ccec4d268a94a119972823fbd2cd5ba",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
