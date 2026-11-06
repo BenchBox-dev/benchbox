@@ -1,0 +1,1 @@
+{"schema": 1, "internal": "Release workflow now fails when publish or the GitHub release did not run after a green gate, and when the UAT evidence holds no shards or no executed cells; CI-only with no user effect"}
