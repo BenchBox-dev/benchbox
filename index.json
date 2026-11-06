@@ -23292,10 +23292,15 @@
       "title": "Close PR-gate gap: darwin/windows TPC-H binaries behaviorally validated only on nightly"
     },
     "pr-hold-stale-label-suite-unclearable-20261106": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-07T23:39:22Z",
+        "generation": "74ede8744aab4f72b858caa92de26c75",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Let a head recover from a hold-era pr-hold failure after the hold is lifted"
     },
     "pr-landing-arm-batch-evidence-20261101": {
