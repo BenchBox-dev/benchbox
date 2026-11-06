@@ -30322,13 +30322,18 @@
       "title": "Deliver fork-owned SQLGlot integration and narrow core wheel adoption"
     },
     "sqlglot-e2e-core-wheel-consumer": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-07T21:30:03Z",
+        "generation": "7df030fbb9754195849d61fc48198b4e",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f"
+      },
       "needs": [
         "sqlglot-e2e-fork-wheel-delivery",
         "sqlglot-e2e-verified-wheel-adoption"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Consume verified fork wheel deliveries through ordinary core adoption PRs"
     },
     "sqlglot-e2e-first-release-certification": {
