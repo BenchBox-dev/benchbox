@@ -2053,7 +2053,7 @@ def _tables_map_to_no_files(tables: Any) -> bool:
 _PLAIN_TEXT_SUFFIXES = {".tbl", ".csv", ".tsv", ".dat"}
 
 
-def _source_row_count(path: Path) -> tuple[int, bool] | None:
+def _source_row_count(path: Path, has_header: bool) -> tuple[int, bool] | None:
     try:
         if path.is_dir():
             metadata_file = resolve_iceberg_metadata_file(path)
@@ -2067,17 +2067,23 @@ def _source_row_count(path: Path) -> tuple[int, bool] | None:
 
             return pq.ParquetFile(path).metadata.num_rows, True
         if path.suffix.lower() in _PLAIN_TEXT_SUFFIXES:
-            return (1 if path.stat().st_size > 0 else 0), False
+            if path.stat().st_size == 0:
+                return 0, False
+            if not has_header:
+                return 1, False
+            with path.open("rb") as handle:
+                handle.readline()
+                return (1 if any(line.strip() for line in handle) else 0), False
     except Exception:
         return None
     return None
 
 
-def _verify_loaded_row_count(table_name: str, source_paths: list[Path], loaded_rows: int) -> None:
+def _verify_loaded_row_count(table_name: str, source_paths: list[Path], loaded_rows: int, has_header: bool) -> None:
     total = 0
     exact = True
     for source_path in source_paths:
-        counted = _source_row_count(source_path)
+        counted = _source_row_count(source_path, has_header)
         if counted is None:
             return
         total += counted[0]
@@ -2245,7 +2251,7 @@ class DataLoader:
             row_count = handler.load_table_bulk(
                 table_name, shard_paths, self.connection, self.benchmark, self.adapter.logger
             )
-            self._verify_row_count(table_name, shard_paths, row_count)
+            self._verify_row_count(table_name, shard_paths, row_count, data_source)
             return row_count
         except DataLoadingError:
             raise
@@ -2281,7 +2287,7 @@ class DataLoader:
                 return 0
 
             row_count = handler.load_table(table_name, file_path, self.connection, self.benchmark, self.adapter.logger)
-            self._verify_row_count(table_name, [file_path], row_count)
+            self._verify_row_count(table_name, [file_path], row_count, data_source)
             return row_count
 
         except (subprocess.CalledProcessError, FileNotFoundError) as e:
@@ -2293,10 +2299,13 @@ class DataLoader:
             quiet_console.print(f"  ❌ Failed to load {file_path.name}: {e}")
             raise DataLoadingError(f"Table '{table_name}': load failed for {file_path.name}: {e}") from e
 
-    def _verify_row_count(self, table_name: str, source_paths: list[Path], loaded_rows: int) -> None:
+    def _verify_row_count(
+        self, table_name: str, source_paths: list[Path], loaded_rows: int, data_source: DataSource
+    ) -> None:
         if getattr(self.adapter, "dry_run_mode", False):
             return
-        _verify_loaded_row_count(table_name, source_paths, loaded_rows)
+        has_header = resolve_csv_dialect(data_source, table_name, source_paths[0], self.benchmark).has_header
+        _verify_loaded_row_count(table_name, source_paths, loaded_rows, has_header)
 
     def _create_custom_handler(self, file_path: Path, table_name: str, data_source: DataSource) -> Any | None:
         if not self.handler_factory:

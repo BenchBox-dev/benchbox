@@ -402,6 +402,30 @@ def test_loader_allows_zero_rows_from_empty_source(tmp_path):
     assert loader._load_single_file("widgets", source) == 0
 
 
+def test_loader_allows_zero_rows_from_header_only_csv(tmp_path):
+    source = tmp_path / "widgets.csv"
+    source.write_text("id,name\n")
+    data_source = data_loading.DataSource(
+        source_type="legacy_mapping", tables={"widgets": source}, table_metadata={"widgets": {"csv_has_header": True}}
+    )
+    loader = _loader(MagicMock(), handler_factory=lambda *args: _ZeroRowHandler())
+
+    assert loader._load_single_file("widgets", source, data_source) == 0
+    assert loader._load_sharded_table("widgets", [source], data_source) == 0
+
+
+def test_loader_raises_when_header_csv_has_rows_but_none_load(tmp_path):
+    source = tmp_path / "widgets.csv"
+    source.write_text("id,name\n1,a\n")
+    data_source = data_loading.DataSource(
+        source_type="legacy_mapping", tables={"widgets": source}, table_metadata={"widgets": {"csv_has_header": True}}
+    )
+    loader = _loader(MagicMock(), handler_factory=lambda *args: _ZeroRowHandler())
+
+    with pytest.raises(data_loading.DataLoadingError, match="loaded 0 rows but the source has 1"):
+        loader._load_single_file("widgets", source, data_source)
+
+
 def test_loader_skips_row_count_check_in_dry_run(tmp_path):
     class _PlaceholderHandler(_ZeroRowHandler):
         def load_table(self, table_name, file_path, connection, benchmark, logger) -> int:
