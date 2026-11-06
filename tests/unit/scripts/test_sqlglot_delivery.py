@@ -714,6 +714,21 @@ def test_prepare_refuses_an_adopter_that_touches_anything_else(world: World) -> 
     assert not (world.tmp / "prepared" / delivery.BUNDLE_FILE).exists()
 
 
+def test_prepare_refuses_an_adoption_that_changes_expected_outcomes(world: World) -> None:
+    world.deliver(NEW, 2)
+    world.run_plan()
+
+    def rewrite_outcomes(root: Path) -> None:
+        path = root / delivery.BASELINE
+        baseline = json.loads(path.read_text(encoding="utf-8"))
+        baseline["cases"] = [{"id": "changed-outcome"}]
+        path.write_text(json.dumps(baseline, indent=2) + "\n", encoding="utf-8")
+
+    with pytest.raises(DeliveryError, match="expected outcomes"):
+        delivery.prepare(world.clone, world.tmp / "plan", world.tmp / "prepared", world.config, checks=rewrite_outcomes)
+    assert not (world.tmp / "prepared" / delivery.BUNDLE_FILE).exists()
+
+
 def test_a_wheel_built_for_another_version_is_refused(world: World) -> None:
     world.deliver(NEWER, 2, wheel=world.build(NEW))
     with pytest.raises(DeliveryError):

@@ -609,6 +609,9 @@ def prepare(
     require(hashlib.sha256(wheel.read_bytes()).hexdigest() == expected["sha256"], "wheel does not match the plan hash")
     require(not porcelain_paths(root), "the checkout has uncommitted changes; prepare needs a clean trusted checkout")
     pinned = json.loads((root / PIN).read_text(encoding="utf-8"))
+    outcomes_before = {
+        k: v for k, v in json.loads((root / BASELINE).read_text(encoding="utf-8")).items() if k != "identity"
+    }
     base = git(root, "rev-parse", "HEAD")
     from scripts import adopt_sqlglot_wheel
 
@@ -626,6 +629,13 @@ def prepare(
         raise DeliveryError(f"adoption refused: {error}") from error
     paths = porcelain_paths(root)
     check_adoption_paths(paths, expected["version"])
+    outcomes_after = {
+        k: v for k, v in json.loads((root / BASELINE).read_text(encoding="utf-8")).items() if k != "identity"
+    }
+    require(
+        outcomes_after == outcomes_before,
+        f"adoption changed expected outcomes in {BASELINE}, not only its identity; adopt this version by hand",
+    )
     after = json.loads((root / PIN).read_text(encoding="utf-8"))
     require(after.get("sha256") == expected["sha256"], "the adopted pin hash differs from the expected hash")
     require(after.get("version") == expected["version"], "the adopted pin version differs from the expected version")
