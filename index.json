@@ -26790,6 +26790,13 @@
       "status": "done",
       "title": "Make docs/development/agent-review-protocol.md the single review-protocol authority; audit detects contradictions"
     },
+    "review-provider-loss-resilience-20261106": {
+      "claim": null,
+      "needs": [],
+      "priority": "critical",
+      "status": "open",
+      "title": "Losing one model provider must never stop reviews or merges"
+    },
     "review-remediations-verify-per-instance": {
       "claim": null,
       "needs": [

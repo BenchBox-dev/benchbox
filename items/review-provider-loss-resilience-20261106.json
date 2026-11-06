@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "Executable scenarios in Theseus and BenchBox prove that removing any single provider (each of anthropic, openai-codex, google-antigravity, and any future one) leaves the gateway startable, hosted and local reviews working on the remaining providers, and pr-open usable. Each substitution is reported on the PR.",
+    "When no remaining served model meets the PR's tier or capacity, the verdict and gate stay pending with an explicit `unavailable` cause. Nothing merges with a weaker review, and no attempts or retry budget are spent.",
+    "A develop config naming a dead provider is harmless: its removal PR gets a normal hosted review, with no ruleset relaxation.",
+    "A lost broker login or a provider outage is reported within one hour, through a host notification and a GitHub issue or a red CI health job.",
+    "No source file in either repository hard-codes a required provider list. A guard test enforces it.",
+    "Owner decisions in the plan's decision section are recorded before implementation."
+  ],
+  "description": "On 2026-11-03 the review broker lost its muse-code login. Nothing alerted. On 2026-11-06 the gateway host script refused to restart (`no broker login for: muse-code`), and every hosted and local review failed closed. The PR removing muse could not be reviewed, because review needs the gateway, so it merged through a 7-second owner-authorized ruleset relaxation (#3965). The cause is structural: hard-coded provider lists in the host script and Theseus `gateway-clients`, accounts required for every provider in the config, no availability-aware reviewer substitution (omp falls back only on usage limits), no outage path in `make pr-open`, and no monitoring. The plan is in local://provider-loss-resilience-plan.md:\n- the host derives providers from the trusted config and starts with whichever are logged in, plus an owner-held denylist;\n- Theseus selects the first served model from each role's fallback chain and reports substitutions;\n- an `unavailable` pending cause that spends no budget;\n- a host monitor and an hourly CI health job;\n- tests forbidding hard-coded provider requirements.\nSequence: a Theseus release, then a BenchBox lock-only PR, then a BenchBox host/monitor PR.",
+  "links": [
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-11-02T02-04-38-450Z_01a19a00-60b2-70a6-b56d-6f666415a725/local/provider-loss-resilience-plan.md",
+    "https://github.com/BenchBox-dev/benchbox/pull/3965"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-06T14:04:31Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a7a679282b1a457383b39279789150f9",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    }
+  ]
+}
