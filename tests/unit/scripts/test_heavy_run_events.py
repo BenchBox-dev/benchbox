@@ -357,7 +357,11 @@ def test_host_lock_loaded_by_file_path_logs_without_importing_benchbox(tmp_path:
         "h = hl.acquire(hl.lock_path(), wait_seconds=0, phase='iso'); h.release()\n"
         "print('benchbox' in sys.modules)\n"
     )
-    env = {key: value for key, value in os.environ.items() if key not in ("PYTHONPATH", hl.RUN_ID_ENV, hl.OWNER_ENV)}
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in ("PYTHONPATH", hl.OWNER_ENV) and not key.startswith("BENCHBOX_HEAVY_RUN")
+    }
     env[hl.LOCK_DIR_ENV] = str(tmp_path / "lock")
     result = subprocess.run(
         [sys.executable, "-I", "-c", script, str(Path(hl.__file__))],
