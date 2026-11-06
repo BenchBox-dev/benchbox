@@ -5,7 +5,7 @@
     "Ruleset restored and ruleset_drift_check --compare-capture exits 0",
     "Decision record committed by the owner"
   ],
-  "context": "Update: repair head is now b033713515ce2a7f8ffee615180243dd3dadfce6 (branch fix/review-gateway-drop-muse, not pushed). Four files: .github/oracle-omp-config.yml, _project/scripts/oracle_gateway_host.sh, docs/internal/oracle-gateway-host.md (the only doc changed), tests/unit/scripts/test_oracle_gateway_host.py; 6 insertions, 10 deletions. docs/internal/oracle-review-v2.md was left unchanged because it describes Theseus's models.yml. Supersedes head 76d71048332a. make pr-open refuses while the gateway is down, so the owner opens the PR by hand; agent://ProviderLossResiliencePlan will cover that gap.",
+  "context": "Update: repair head is now b033713515ce2a7f8ffee615180243dd3dadfce6 (branch fix/review-gateway-drop-muse, not pushed). Four files: .github/oracle-omp-config.yml, _project/scripts/oracle_gateway_host.sh, docs/internal/oracle-gateway-host.md (the only doc changed), tests/unit/scripts/test_oracle_gateway_host.py; 6 insertions, 10 deletions. docs/internal/oracle-review-v2.md was left unchanged because it describes Theseus's models.yml. Supersedes head 76d71048332a. make pr-open refuses while the gateway is down, so the owner opens the PR by hand; agent://ProviderLossResiliencePlan will cover that gap.\n\nResolved. Repair PR #3965 (head b033713515ce2a7f8ffee615180243dd3dadfce6) squash-merged as 34c947c60a5f085d25041db54b72af3a2e2baa92 at 2026-11-06T14:03:19Z with oracle-gate removed 14:03:13Z and restored 14:03:20Z (7 s, bound to 5201041, compare-capture exit 0). Capture: /Users/joe/scratch-ruleset/ruleset-15611785-before.json. Gateway restored ~14:05Z: check exit 0, 8/8 models. Root cause: broker muse-code login lost 2026-11-03 16:03:56. Decision record PR #3966 merged as 1bd5f7bf0ee5a294b134ec9af2540e20691812b5 (_project/decisions/oracle-gate-relaxation-muse-login-loss-2026-11-06.md).",
   "description": "NEEDS OWNER. The hosted review gateway cannot start. `_project/scripts/oracle_gateway_host.sh gateway` refuses with `error: no broker login for: muse-code` (omp pin 18.13.3, reproduced on origin/develop 20a0045113e6c8ba13c3e7c4f78351e3fe81f81e). The same gate blocks the repair: `make pr-open` refuses with `the local review is unavailable: the review-local gateway is unreachable` and pushes nothing. Latest hosted review seen on an open PR: #3963 `verdict / review` run 42164349709 SUCCESS at 2026-11-06T04:48Z; none has run since the gateway went down.\n\nRepair (branch fix/review-gateway-drop-muse, commit 76d71048332a19a2ad520d3c28c6dd075864b2b4, local worktree ../BenchBox.wt-fix-review-gateway-drop-muse, not pushed yet; PR number pending): drops every muse-code fallback row from .github/oracle-omp-config.yml, moves slow role and chain key to anthropic/claude-fable-5-1, drops muse-code from GATEWAY_PROVIDERS and its test, updates docs/internal/oracle-gateway-host.md and oracle-review-v2.md. Evidence: offline `theseus gateway-clients` with the new config and accounts for anthropic/openai-codex/google-antigravity only exits 0 (8 models, none muse); the same command on develop's config fails `no logged-in broker account for muse-code`. 70 targeted tests pass under heavy-run; comment-policy-check 0; pr-preflight passed.\n\nOwner steps (docs/agent/emergency-merge.md): decide how the PR is opened and merged; ruleset capture taken at /tmp/ruleset-15611785-before.json (enforcement active, bypass_actors visible and empty); decision record draft at local://muse-emergency-merge-record-draft.md. Agents arm and merge nothing.",
   "links": [
     "docs/agent/emergency-merge.md"
@@ -25,6 +25,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "b17913194dcd4579bbbc15a5804a0a66",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-06T14:09:35Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c55584ded0694ca98fa7ff1de4b9781e",
       "session_id": "8d9ba932107b4322b2417b8af61c160c"
     }
   ]
