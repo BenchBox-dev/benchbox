@@ -1,7 +1,7 @@
 # Decision: review depth before the Theseus rename, and a smaller consumer contract
 
 Date: 2026-11-05
-Status: Decided; takes effect when the re-lock to Theseus v0.1.7 merges.
+Status: Decided; takes effect when the re-lock to Theseus v0.1.8 merges.
 Related: `_project/decisions/oracle-gate-relaxation-2026-11-04.md`,
 `_project/decisions/batch-integration-loop-2026-11-01.md`,
 `docs/internal/oracle-review-v2.md` (Theseus promotion trust),
@@ -11,11 +11,11 @@ Related: `_project/decisions/oracle-gate-relaxation-2026-11-04.md`,
 
 The owner decided, in this order:
 
-1. **Depth first.** Theseus v0.1.7 ships the review-depth fixes before the
-   `.oracle-*` to `.review-*` rename (v0.2.0). BenchBox re-locks to v0.1.7 first
+1. **Depth first.** Theseus v0.1.8 ships the review-depth fixes before the
+   `.oracle-*` to `.review-*` rename (v0.2.0). BenchBox re-locks to v0.1.8 first
    and to v0.2.0 afterwards, so the code that decides BenchBox merges is
    genuinely reviewed under the depth rules instead of passing under a
-   relaxation. If v0.1.7 is not promoted within five working days, the fallback
+   relaxation. If v0.1.8 is not promoted within five working days, the fallback
    is to relax the v0.2.0 promotion with a record, as the 2026-11-04 decision
    did for a repair.
 2. **Promotion required reads are limited to the executed surface.** A
@@ -34,7 +34,7 @@ The owner decided, in this order:
    `bootstrap_reviewers` and `bootstrap_path_map` keys. It keeps only BenchBox
    semantics: the gated base, attesters, path manifests, models and pools, retry
    and protocol limits, exempt paths, and the promotion `package`, `repository`
-   and `dependencies`. Theseus v0.1.7 refuses unknown top-level keys, so
+   and `dependencies`. Theseus v0.1.8 refuses unknown top-level keys, so
    `brief_max_bytes` must go with the re-lock.
 
 ## Narrowing of the BenchBox gate's promotion scope
@@ -42,7 +42,7 @@ The owner decided, in this order:
 Decision 2 narrows what the BenchBox gate reviews when it promotes Theseus.
 Until now a promotion was reviewed over the whole delta between the locked and
 the proposed source tree (with BenchBox's exempt globs applied to it). From
-v0.1.7 the gate requires reads only of the executed surface. Theseus tests,
+v0.1.8 the gate requires reads only of the executed surface. Theseus tests,
 docs, tools and every workflow no caller references are no longer read by the
 BenchBox promotion review.
 
@@ -61,14 +61,12 @@ Consequences of the narrowing:
   independent review and, once it is live, its self-gate, not with a BenchBox
   review.
 - The executed surface is derived by Theseus from the tree and the verified
-  wheel. BenchBox adds no key for it and encodes no Theseus path. In v0.1.7 it
-  follows job-level `uses:` references to workflows in the Theseus repository.
-  The Theseus repository holds only `ci.yml`, `gate.yml` and `review.yml` and no
-  composite action, and the one other file the workflows check out from it,
-  `src/theseus_reviewer/bootstrap.py`, is inside the package. A step-level
-  action or another checked-out file added to the Theseus repository later is
-  not followed, so a release that adds one needs a reviewer's explicit
-  attention until Theseus follows it.
+  wheel. BenchBox adds no key for it and encodes no Theseus path. Theseus
+  supports only its package, `pyproject.toml` and job-level reusable workflows
+  in the Theseus repository, taken from the base workflows. A step-level
+  `uses:` of a Theseus action, or a local `./` action, holds the promotion
+  instead of being skipped, and the workflow references must equal the lock
+  pin. Theseus actions are therefore not an unreviewed gap.
 - A trust model that relies on Theseus's release evidence instead of any
   consumer reading is a separate, later item. It needs a live Theseus self-gate
   and a receipt format first.
@@ -85,12 +83,12 @@ Consequences of the narrowing:
 - **Compaction on #3902.** Three `huge` attempts compacted their context
   mid-turn, and one of those SHIPs was accepted (run 41696376860, peak context
   861,911 tokens). The old evidence check could not see compaction. Theseus
-  v0.1.7 disables compaction in the reviewer's overlay and refuses any attempt
+  v0.1.8 disables compaction in the reviewer's overlay and refuses any attempt
   whose output contains a compaction event.
 - **The 406 limit.** GitHub's pull request diff endpoint answers 406 above
   20,000 diff lines (#3942) or 300 files (#3902, 353 files). The reviewers then
   ran with no diff, and one said the base and deletion comparison was
-  "blocked". Theseus v0.1.7 builds the diff from Git in the trusted job and
+  "blocked". Theseus v0.1.8 builds the diff from Git in the trusted job and
   holds the plan if it cannot.
 - **Copied constants.** `scripts/batch_integration.py` carried its own copy of
   the brief cap, header and mark sizes, and a file-list size estimate that
@@ -100,30 +98,31 @@ Consequences of the narrowing:
   before final evidence, and prints Theseus's reasons verbatim. Lock changes and
   oversize changes are refused there with the reasons Theseus gives.
 
-## The v0.1.7 promotion itself
+## The v0.1.8 promotion itself
 
 A promotion is judged by the rules of the base lock, so this promotion is
 judged by v0.1.6. It cannot be reviewed under the rules it introduces. To
 keep that from being a relaxation by default:
 
-1. The promotion is the smallest rules-changing delta: one release (111 changed
-   files, 31 of them on the executed surface), with the rename left for the next.
-2. After the hosted verdict, `theseus audit-coverage` from v0.1.7 is run on the
+1. The promotion is the smallest rules-changing delta: the v0.1.6 to v0.1.8
+   release range (113 changed files), with the rename left for the next. It
+   carries the v0.1.7 depth work and the fixes that review of v0.1.7 required.
+2. After the hosted verdict, `theseus audit-coverage` from v0.1.8 is run on the
    hosted review capture of the PR head. The promotion is accepted only if every
    required hunk is covered. The result is recorded in a PR comment. The hosted
    capture is written by v0.1.6, so it holds the requested read selectors and not
    the lines omp returned; the audit therefore gives an upper bound on coverage,
    and a full result is necessary evidence, not sufficient evidence.
-3. A local review with the v0.1.7 wheel against the same head corroborates it.
+3. A local review with the v0.1.8 wheel against the same head corroborates it.
    It runs under the strict rules and records the lines it actually read.
 4. If the audit shows incomplete coverage after the retry budget, or the hosted
    review is absent or shallow, the owner decides. The promotion then qualifies
    for the repair-class relaxation of the 2026-11-04 decision: a base-pinned gate
-   that cannot pass its own repair, which is what v0.1.7 is. It is recorded
+   that cannot pass its own repair, which is what v0.1.8 is. It is recorded
    there.
 
 Both the audit and the local review read the trusted policy at the base ref, and
-v0.1.7 refuses the `brief_max_bytes` key that `origin/develop` still carries
+v0.1.8 refuses the `brief_max_bytes` key that `origin/develop` still carries
 until this change merges. They therefore run with `--base-ref origin/develop`
 and `--trusted-ref` set to a local commit that is `origin/develop` with that one
 key removed and nothing else changed. The author's own policy never decides what

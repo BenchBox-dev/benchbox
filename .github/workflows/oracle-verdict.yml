@@ -38,10 +38,10 @@ jobs:
       actions: write
       contents: read
       pull-requests: read
-    uses: joeharris76/theseus/.github/workflows/review.yml@e60a1436aedd65136bb1bd3d805efbb28fbbbae8
+    uses: joeharris76/theseus/.github/workflows/review.yml@43e6cbccdab228d2b9091b5b53c2367c316c73d4
     with:
       environment: oracle
-      theseus_ref: e60a1436aedd65136bb1bd3d805efbb28fbbbae8
+      theseus_ref: 43e6cbccdab228d2b9091b5b53c2367c316c73d4
       gated_base: develop
     secrets:
       ORACLE_APP_ID: ${{ secrets.ORACLE_APP_ID }}
