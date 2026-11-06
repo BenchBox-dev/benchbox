@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "LOAD DATA LOCAL INFILE availability recorded in context",
+    "Parity, atomicity and SF1 speed evidence recorded; fallback kept if native is not faster",
+    "Timer-boundary unit test covers the SingleStore native path",
+    "Changelog fragment states SingleStore's RF1 path"
+  ],
+  "description": "Follow-up to tpch-rf1-native-ingest-singlestore-20261103, which landed only a fallback pin (SingleStoreAdapter stays on INSERT ... VALUES) because the author host had no container runtime. On a host with Docker: (1) check LOAD DATA LOCAL INFILE is accepted (server local_infile) and record it; (2) implement ingest_refresh_file on SingleStoreAdapter with supports_native_refresh_ingest declared on the class, inside the RF1 timer, no adapter.load_data, no mode moving work before the timer; (3) per-column checksum parity vs VALUES at SF0.01, atomicity with an injected bad row, RF1 SF1 duration vs VALUES; keep the fallback if not faster. Update the SingleStore row of the TPC measured-intervals reference. No live cloud.",
+  "links": [
+    "benchbox/platforms/singlestore.py",
+    "tests/unit/core/tpch/test_tpch_refresh_native_ingest.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-06T04:43:41Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f7ad7bc651c44061b95aadacc83f79fe",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}
