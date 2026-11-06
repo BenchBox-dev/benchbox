@@ -902,6 +902,57 @@
       "start_head": "5cfea582d2197ecc150d80c6125a65130c02f23a",
       "terminal_outcome": "deliver"
     },
+    "hold-label-and-batch-e2e-20261106": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/hold-label-and-batch-e2e-20261106",
+      "integration_head": "20a0045113e6c8ba13c3e7c4f78351e3fe81f81e",
+      "integration_log": [
+        {
+          "at": "2026-11-06T13:13:21Z",
+          "head": "20a0045113e6c8ba13c3e7c4f78351e3fe81f81e",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-feat-hold-label-and-batch-e2e",
+      "lifecycle": "active",
+      "members": [
+        "pr-hold-stale-label-suite-unclearable-20261106",
+        "batch-loop-e2e-review-binding-failures-20261106"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae",
+      "owner_epoch": 0,
+      "owner_generation": "91858545b2a8f2c12bcfb91064136134",
+      "project_id": "benchbox",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "batch-loop-e2e-review-binding-failures-20261106": [
+          "tests/integration/worktree/test_batch_loop_e2e.py",
+          "tests/integration/worktree/batch_loop_*",
+          ".github/workflows/ci.yml",
+          ".github/workflows/nightly-v2.yml",
+          ".github/workflows/batch-loop*",
+          "tests/unit/workflows/test_batch_loop*",
+          "changelog.d/batch-loop-e2e*"
+        ],
+        "pr-hold-stale-label-suite-unclearable-20261106": [
+          ".github/workflows/pr-hold.yml",
+          "tests/unit/workflows/test_pr_hold_workflow.py",
+          "docs/agent/merge-authority.md",
+          "docs/internal/repo-admin-settings.md",
+          "changelog.d/pr-hold*"
+        ]
+      },
+      "scope_hash": "b30bdc656f9f8dfea266d7f7d49916f9d146d9cdd5fd63f072b3c32470e6bfe2",
+      "start_head": "20a0045113e6c8ba13c3e7c4f78351e3fe81f81e",
+      "terminal_outcome": "deliver"
+    },
     "native-bulk-load-remainder": {
       "accepted_members": {
         "perf-library-loaders-and-datagen-rows-20261031": "353cbb9f028e232a416001c2886779b3c1e98974",
