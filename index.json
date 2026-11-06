@@ -2067,7 +2067,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpc-timer-boundaries-v2",
-      "lifecycle": "active",
+      "lifecycle": "completed",
       "members": [
         "tpcds-maintenance-timer-hygiene-20261103",
         "power-test-times-query-generation-20261031",
@@ -31647,15 +31647,10 @@
       "title": "✅ TPC-Havoc Variant Modularization"
     },
     "tpc-measured-intervals-reference-20261103": {
-      "claim": {
-        "expires_at": "2026-11-07T05:07:40Z",
-        "generation": "b2a0ec9144274a7b959cf750fbbfa0a9",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Write one cited reference of every TPC measured-interval timer site and its known deviations"
     },
     "tpc-official-benchmark-classes-broken": {
