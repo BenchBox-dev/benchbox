@@ -1,4 +1,0 @@
-{
-  "schema": 1,
-  "internal": "The oracle reviewer and merge gate run from the hash-pinned Theseus package; the in-tree engine, gate and its tests are removed"
-}
