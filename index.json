@@ -25249,6 +25249,13 @@
       "status": "done",
       "title": "Make QuestDB parquet chunk row count tunable via platform config"
     },
+    "questdb-rest-and-databend-partial-load-loud-20261106": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "QuestDB REST load swallows per-chunk failures, and a Databend row-count mismatch leaves a partial table"
+    },
     "questdb-strip-pk-quoted-constraint-name": {
       "claim": null,
       "needs": [],

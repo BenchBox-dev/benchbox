@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "A forced chunk failure on QuestDB REST fails the load, with the chunk named in the error.",
+    "A forced Databend count mismatch fails the load, and the table is truncated or the failure says it is partial.",
+    "Live checks against both engines are recorded."
+  ],
+  "description": "Leftovers from the load-path fixes in #3981. (1) QuestDB's REST /imp path still swallows per-chunk load failures, unlike the ILP path, which now fails on any count mismatch. (2) Databend detects a row-count mismatch only after COPY INTO has run, so a partial load stays in the table until the next run recreates the schema. Both must fail loudly and leave no silently partial data.\n\nGuardrails: work in a linked worktree; live checks under mocker through make heavy-run (see uat-mocker-compose-gaps-20261106); no explanatory comments; changelog fragment.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-06T22:45:00Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "44e8cfebd4ee4a9bb2a72e59d56dd260",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}
