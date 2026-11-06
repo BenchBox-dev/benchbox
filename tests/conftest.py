@@ -41,6 +41,8 @@ except (OSError, _subprocess.SubprocessError):
     _git_local_env = []
 for _git_local_key in {*_git_local_env, *_GIT_LOCAL_ENV_FALLBACK}:
     os.environ.pop(_git_local_key, None)
+for _make_key in ("MAKEFLAGS", "MFLAGS", "MAKELEVEL", "MAKEOVERRIDES"):
+    os.environ.pop(_make_key, None)
 
 import sys
 import time
