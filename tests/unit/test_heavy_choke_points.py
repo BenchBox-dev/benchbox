@@ -199,8 +199,15 @@ def _stub_env(tmp_path: Path, status: str, **extra: str) -> dict[str, str]:
         BENCHBOX_HEAVY_WATCHDOG="off",
         **{"BENCHBOX_PYTHON": sys.executable, **extra},
     )
-    for key in ("BENCHBOX_TEST_SESSION_OWNER", "BENCHBOX_SKIP_TEST_LOCK"):
-        env.pop(key, None)
+    for key in (
+        "BENCHBOX_TEST_SESSION_OWNER",
+        "BENCHBOX_SKIP_TEST_LOCK",
+        "BENCHBOX_HEAVY_RUNS_FILE",
+        "BENCHBOX_HEAVY_RUN_ID",
+        "BENCHBOX_HEAVY_ROOT_RUN_ID",
+    ):
+        if key not in extra:
+            env.pop(key, None)
     return env
 
 
