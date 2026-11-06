@@ -539,24 +539,30 @@ class VmWatch:
                 self._log(f"VM idle: {idle}; the host lock is held by a run, so the stop waits for it")
             return
         self._reported_lock_wait = False
-        fresh = self._state_reader(machine)
-        if fresh is None or fresh.status != "running" or not self._assess(fresh).idle:
-            lock.release()
-            self._reset_idle()
-            return
-        self._log(f"VM idle: {idle}; stopping it")
-        self._events(
-            "vm_cleanup_started", details={"machine": machine, "source": "sentinel", "attempt": self._stop_failures + 1}
-        )
-        try:
-            handle = self._stopper(machine)
-        except OSError as exc:
-            lock.release()
-            self._fail(now, str(exc))
-            self._record_stop(0.0, "spawn_failed", str(exc))
-            return
-        self._stop = (handle, now)
         self._stop_lock = lock
+        try:
+            fresh = self._state_reader(machine)
+            if fresh is None or fresh.status != "running" or not self._assess(fresh).idle:
+                self._release_stop_lock()
+                self._reset_idle()
+                return
+            self._log(f"VM idle: {idle}; stopping it")
+            self._events(
+                "vm_cleanup_started",
+                details={"machine": machine, "source": "sentinel", "attempt": self._stop_failures + 1},
+            )
+            try:
+                handle = self._stopper(machine)
+            except OSError as exc:
+                self._release_stop_lock()
+                self._fail(now, str(exc))
+                self._record_stop(0.0, "spawn_failed", str(exc))
+                return
+            self._stop = (handle, now)
+        except BaseException:
+            if self._stop is None:
+                self._release_stop_lock()
+            raise
 
     def close(self) -> None:
         if self._stop is None:

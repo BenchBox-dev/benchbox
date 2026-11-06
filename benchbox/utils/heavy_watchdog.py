@@ -389,15 +389,18 @@ class Watchdog:
                 if member.pid in wrappers:
                     self._record_cleanup("vm_cleanup_started", member)
             survivors = self._wait_gone(level, deadline)
+            wrapper_survivors = []
             for member in survivors:
                 if member.pid in wrappers:
-                    self.log(
-                        f"linux machine wrapper pid {member.pid} is stopping the VM; "
-                        f"allowing up to {self._cleanup_budget():g}s in total"
-                    )
-                    self._finish_machine_cleanup(member, started)
+                    wrapper_survivors.append(member)
                 else:
                     self._signal_descendant(member, SIG_KILL)
+            for member in wrapper_survivors:
+                self.log(
+                    f"linux machine wrapper pid {member.pid} is stopping the VM; "
+                    f"allowing up to {self._cleanup_budget():g}s in total"
+                )
+                self._finish_machine_cleanup(member, started)
             for pid, member in wrappers.items():
                 if all(s.pid != pid for s in survivors):
                     self._record_cleanup(

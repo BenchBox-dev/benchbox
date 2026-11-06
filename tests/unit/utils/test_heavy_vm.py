@@ -665,3 +665,29 @@ def test_the_stop_lock_is_exclusive_and_visible_as_a_held_lock(tmp_path: Path) -
     second = hs.acquire_stop_lock(path, "m")
     assert second is not None
     second.release()
+
+
+def test_the_stop_lock_is_released_if_recheck_raises_an_exception(tmp_path: Path) -> None:
+    from benchbox.utils import host_lock
+
+    path = tmp_path / "host.lock"
+    calls = 0
+
+    def flaky_reader(_m: str) -> lm.MachineState:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return lm.MachineState("running", 6.0, False)
+        raise RuntimeError("boom during recheck")
+
+    watch = hs.VmWatch(
+        hs.SentinelPolicy(mode="kill", budget_bytes=None, vm_machine="m", vm_idle_seconds=0.0),
+        log=lambda _: None,
+        holder_reader=lambda: frozenset(),
+        state_reader=flaky_reader,
+        process_reader=lambda *_: [],
+        lock_acquirer=lambda m: hs.acquire_stop_lock(path, m),
+    )
+    with pytest.raises(RuntimeError, match="boom during recheck"):
+        watch.check()
+    assert not host_lock.lock_is_held(path)
