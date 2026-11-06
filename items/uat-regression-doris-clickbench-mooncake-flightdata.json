@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Root cause of each failure named in the PR, with the commit that introduced it",
+    "Both cells pass in the UAT harness (local docker or a dispatched trunk UAT run; run link recorded)",
+    "A regression test at the loader boundary for each cause",
+    "No strict-mode, filter-ratio or validation loosening"
+  ],
+  "context": "Found by trunk UAT calibration on 2026-11-06. Evidence artifacts: release-uat-trunk-525361b2f8b97f8d750b2faaab8d3f9f3a750d2e-stage3-olap and -stage3-postgres-family (cells.jsonl, per-cell logs). Heavy runs only through lock-taking entry points. DECISION GATE: any change to Doris load strictness or filter ratio goes to the owner.",
+  "description": "The first trunk UAT run (42266293613, testing develop 525361b2f8) failed two cells that passed in the v0.5.0 release UAT (run 42133357291, dfe585e094) the same day: (1) doris clickbench SF0.01: Stream Load failed with `[DATA_QUALITY_ERROR] Encountered unqualified data` and no rows loaded into `hits`; (2) pg-mooncake flightdata SF0.01: `create_table failed: Rpc(... Moonlink connector error (permanent) ... mpsc channel send error ... channel closed)` after `Could not restore the heap table name flights after a mirror failure: relation \"flights\" already exists`. Prime suspect: #3949 (native bulk load paths for local file prep, Doris, Databend and Firebolt Core), merged after 0.5.0; also check #3950 for the mooncake path. The Doris image tag is unchanged (4.0.3-all-slim). Reproduce with the UAT harness, name the root cause of each, and fix without loosening strict mode, max_filter_ratio or any validation.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/42266293613",
+    "https://github.com/BenchBox-dev/benchbox/pull/3949"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-06T20:26:44Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c6dcd909eba84a2eab8d0cebf2a23a7a",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
+    }
+  ]
+}
