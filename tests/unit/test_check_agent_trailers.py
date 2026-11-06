@@ -25,7 +25,7 @@ def _run(tmp_path: Path, message: str, env: dict[str, str] | None = None) -> sub
 REJECTED = pytest.mark.parametrize(
     ("label", "message"),
     [
-        ("vendor address", "feat: x\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>"),
+        ("vendor address", "feat: x\n\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"),
         ("openai vendor address", "feat: x\n\nCo-Authored-By: Codex <noreply@openai.com>"),
         ("agent name with its own address", "feat: x\n\nCo-Authored-By: Claude <claude@example.com>"),
         ("agent name, unrelated address", "feat: x\n\nCo-Authored-By: Codex <codex@somewhere.org>"),
