@@ -29578,12 +29578,17 @@
       "title": "Provide verified SQLGlot wheel deliveries from benchbox-sqlglot"
     },
     "sqlglot-e2e-lifecycle-controller": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-07T15:29:50Z",
+        "generation": "6f02294f8c8c4d52ab68107225a6002b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f"
+      },
       "needs": [
         "sqlglot-e2e-fork-wheel-delivery"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Automate upstream integration inside benchbox-sqlglot"
     },
     "sqlglot-e2e-reviewer-package-adoption": {
