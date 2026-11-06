@@ -4646,10 +4646,15 @@
       "title": "Deploy the branch-delivery batch skill with compatible tracker and BenchBox bindings"
     },
     "batch-tpc-timer-boundaries-umbrella-20261105": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-07T05:09:23Z",
+        "generation": "c533057dbc064877b2dd0852bc35173b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Batch tpc-timer-boundaries: umbrella notes (not a member)"
     },
     "batch-tpch-refresh-path-umbrella-20261104": {
