@@ -490,6 +490,14 @@ jobs:
           pattern: release-uat-${{ inputs.tag || github.ref_name }}-stage*
           path: ${{ runner.temp }}/uat-evidence
 
+      - name: Require executed cells in every stage's shard evidence
+        if: ${{ needs.uat-reuse.outputs.reuse != 'true' }}
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release_uat_evidence_check.py --root "$RUNNER_TEMP/uat-evidence" --tag "$RELEASE_TAG"
+
       - name: Check the combined release gate over every shard
         if: ${{ needs.uat-reuse.outputs.reuse != 'true' }}
         env:
@@ -518,6 +526,14 @@ jobs:
           path: ${{ runner.temp }}/uat-evidence
           run-id: ${{ needs.uat-reuse.outputs.rc_run_id }}
           github-token: ${{ github.token }}
+
+      - name: Require executed cells in the release candidate's shard evidence
+        if: ${{ needs.uat-reuse.outputs.reuse == 'true' }}
+        env:
+          RC_TAG: ${{ needs.uat-reuse.outputs.rc_tag }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release_uat_evidence_check.py --root "$RUNNER_TEMP/uat-evidence" --tag "$RC_TAG"
 
       - name: Re-verify the release candidate's evidence with the combined release gate
         if: ${{ needs.uat-reuse.outputs.reuse == 'true' }}
@@ -717,3 +733,47 @@ jobs:
           else
             gh release create "$RELEASE_TAG" staged/* --title "BenchBox $version" --notes-file release-notes.md $latest_flag
           fi
+
+  release-outcome:
+    name: release outcome
+    needs: [admit, install-matrix, release-uat, publish, github-release]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Fail unless every release job ran and succeeded
+        env:
+          TARGET: ${{ needs.admit.outputs.target }}
+          ADMIT_RESULT: ${{ needs.admit.result }}
+          INSTALL_MATRIX_RESULT: ${{ needs.install-matrix.result }}
+          RELEASE_UAT_RESULT: ${{ needs.release-uat.result }}
+          PUBLISH_RESULT: ${{ needs.publish.result }}
+          GITHUB_RELEASE_RESULT: ${{ needs.github-release.result }}
+        run: |
+          set -uo pipefail
+          status=0
+          require_success() {
+            if [ "$2" != "success" ]; then
+              echo "::error::$1 finished as '${2:-unknown}', not 'success'; the release did not complete."
+              status=1
+            fi
+          }
+          require_success admit "$ADMIT_RESULT"
+          require_success install-matrix "$INSTALL_MATRIX_RESULT"
+          require_success release-uat "$RELEASE_UAT_RESULT"
+          require_success publish "$PUBLISH_RESULT"
+          case "$TARGET" in
+            pypi) require_success github-release "$GITHUB_RELEASE_RESULT" ;;
+            test-pypi)
+              if [ "$GITHUB_RELEASE_RESULT" != "skipped" ]; then
+                echo "::error::github-release finished as '${GITHUB_RELEASE_RESULT:-unknown}' for a test-pypi release; it must be skipped."
+                status=1
+              fi
+              ;;
+            *)
+              echo "::error::The admitted release target is '${TARGET:-empty}', neither 'pypi' nor 'test-pypi'."
+              status=1
+              ;;
+          esac
+          exit "$status"
