@@ -31878,6 +31878,13 @@
       "status": "done",
       "title": "Fix todo-db not_before clearing and add an append mode for text fields"
     },
+    "todo-db-parallel-batch-leaders-share-claim-slot-20261106": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Parallel batch leaders on one todo-db MCP server share one worker identity and serialize on its single claim slot"
+    },
     "todo-db-runtime-schema3-batch-capability": {
       "claim": null,
       "needs": [
