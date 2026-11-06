@@ -21485,15 +21485,10 @@
       "title": "Clear the two remaining orphans on test/freeze-bulk-path-coverage"
     },
     "overlay-guard-scans-untracked-venv": {
-      "claim": {
-        "expires_at": "2026-11-07T16:14:19Z",
-        "generation": "322ba56b6d634b7491d72f70249a7811",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Limit the SQLGlot overlay guard to tracked files"
     },
     "owner-agent-identity-20261021": {
