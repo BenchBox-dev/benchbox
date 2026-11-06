@@ -6051,15 +6051,10 @@
       "title": "Burn down the full repository-wide `ty` backlog outside release-critical entrypoints"
     },
     "bypass-guard-scans-ignored-venv": {
-      "claim": {
-        "expires_at": "2026-11-07T17:09:31Z",
-        "generation": "2f0fc9df35b542ebb2be0d4d918cb642",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Skip ignored files in the vendored SQLGlot bypass scan"
     },
     "bypass-scanner-scripts-transpile-20261025": {
