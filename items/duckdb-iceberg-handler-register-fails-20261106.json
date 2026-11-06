@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "adapter.load_data on an iceberg manifest loads all 8 TPC-H tables at SF0.01 with row counts and per-column checksums equal to the native CSV load",
+    "a unit test registers a real converter-written Iceberg directory"
+  ],
+  "context": "Related done item perf-duckdb-wire-native-handlers-20261030. Not fixed by the verifier.",
+  "description": "Found by live verification of #3950 (perf-duckdb-wire-native-handlers-20261030) on origin/develop 525361b2f8, duckdb with pyiceberg from the table-formats extra.\n\nReproduction: generate TPC-H SF0.01 with the iceberg converter (`benchbox run --platform duckdb --benchmark tpch --scale 0.01 --table-format iceberg --phases generate`), then load through the adapter: DuckDBAdapter(database_path=...), adapter.requested_table_format='iceberg', create_schema, load_data(benchmark, conn, <data dir>) (script /tmp/lv/dd_direct.py iceberg ...).\nExpected: 8 tables load with dbgen row counts (customer 1500, lineitem 60175, ...).\nActual: every table prints `Failed to bulk-load <table>: Namespace does not exist: benchbox` and the returned stats are 0 for all 8 tables (/tmp/live-verify-dd-iceberg-direct.log). A second defect sits behind the first: IcebergFileHandler.load_table (benchbox/platforms/base/data_loading.py) calls catalog.register_table(('benchbox', table), str(file_path)) with the table DIRECTORY; pyiceberg needs a *.metadata.json location and raises `OSError: Cannot open for reading: path ... is a directory` (verified separately; registering the latest metadata.json gives 1500 customer rows). Before #3950 the directory was rejected earlier (DataLoadingError 'shard path is a directory with no data files'), so the Iceberg route never worked end to end on DuckDB.\n\nWhat does work: the #3950 Arrow insert itself. insert_arrow_table on Arrow tables read from the same Iceberg tables via pyiceberg StaticTable inserts all 8 tables with row count and per-column checksum parity against a native CSV load (/tmp/live-verify-dd-direct-parity.log). Vortex (DuckDB-extension-written and Python-bindings-written files, handler DuckDBVortexHandler, no fallback needed) and DuckLake (metadata.ducklake directories) both pass parity.\n\nNote: the CLI path `--platform duckdb --table-format iceberg|vortex` does not exercise these handlers at all: it converts the files but loads the .tbl shards (log says 'from 10 shard(s)'), so a CLI run cannot show Iceberg/Vortex load correctness.\n\nSuspected symbol: IcebergFileHandler.load_table in benchbox/platforms/base/data_loading.py (create namespace with catalog.create_namespace_if_not_exists, register the highest-numbered metadata/*.metadata.json).",
+  "links": [
+    "benchbox/platforms/base/data_loading.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-06T19:28:27Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c3eebf26e94b4887b0ebb98f667be32f",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}
