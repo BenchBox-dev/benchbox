@@ -272,7 +272,12 @@ class TestLoadDataBranches:
         mock_benchmark = self._make_benchmark({"dimbroker": str(data_file)})
         mock_benchmark.csv_normalize_booleans = True
 
-        with patch.object(adapter, "_load_table_via_ilp", return_value=1) as mock_ilp:
+        with (
+            patch.object(adapter, "_load_table_via_ilp", return_value=1) as mock_ilp,
+            patch.object(adapter, "_open_ilp_socket", return_value=Mock()),
+            patch.object(adapter, "_ilp_table_row_count", return_value=0),
+            patch.object(adapter, "_await_ilp_row_count"),
+        ):
             adapter.load_data(mock_benchmark, Mock(), tmp_path)
 
         assert mock_ilp.call_args.args[2].normalize_booleans is True
@@ -329,12 +334,134 @@ class TestLoadDataBranches:
         adapter = QuestDBAdapter(loading_method="ilp")
         mock_benchmark = self._make_benchmark({"lineitem": str(data_file)})
 
-        with patch.object(adapter, "_load_table_via_ilp", return_value=50) as mock_ilp:
+        with (
+            patch.object(adapter, "_load_table_via_ilp", return_value=50) as mock_ilp,
+            patch.object(adapter, "_open_ilp_socket", return_value=Mock()),
+            patch.object(adapter, "_ilp_table_row_count", return_value=0),
+            patch.object(adapter, "_await_ilp_row_count"),
+        ):
             stats, duration, _ = adapter.load_data(mock_benchmark, Mock(), tmp_path)
 
         assert mock_ilp.call_count == 1
         assert mock_ilp.call_args.args[:2] == ("lineitem", data_file)
         assert stats["lineitem"] == 50
+
+    def test_load_data_ilp_chunked_table_uses_one_socket_and_verifies_total(self, questdb_stubs, tmp_path):
+        files = []
+        for index in (1, 2, 3):
+            data_file = tmp_path / f"partsupp.tbl.{index}"
+            data_file.write_text("1|2\n", encoding="utf-8")
+            files.append(data_file)
+
+        adapter = QuestDBAdapter(loading_method="ilp")
+        mock_benchmark = self._make_benchmark({"partsupp": [str(f) for f in files]})
+        shared = Mock()
+
+        with (
+            patch.object(adapter, "_load_table_via_ilp", return_value=10) as mock_ilp,
+            patch.object(adapter, "_open_ilp_socket", return_value=shared) as mock_open,
+            patch.object(adapter, "_ilp_table_row_count", return_value=5),
+            patch.object(adapter, "_await_ilp_row_count") as mock_await,
+        ):
+            stats, _, _ = adapter.load_data(mock_benchmark, Mock(), tmp_path)
+
+        assert mock_open.call_count == 1
+        assert [call.args[3] for call in mock_ilp.call_args_list] == [shared] * 3
+        shared.close.assert_called_once()
+        mock_await.assert_called_once_with("partsupp", 35, 30)
+        assert stats["partsupp"] == 30
+
+    def test_load_data_ilp_row_loss_fails_loudly(self, questdb_stubs, tmp_path):
+        data_file = tmp_path / "partsupp.tbl"
+        data_file.write_text("1|2\n", encoding="utf-8")
+
+        adapter = QuestDBAdapter(loading_method="ilp")
+        mock_benchmark = self._make_benchmark({"partsupp": str(data_file)})
+
+        with (
+            patch.object(adapter, "_load_table_via_ilp", return_value=10),
+            patch.object(adapter, "_open_ilp_socket", return_value=Mock()),
+            patch.object(adapter, "_ilp_table_row_count", side_effect=[0, 7, 7]),
+            patch("benchbox.platforms.questdb._ILP_VERIFY_TIMEOUT_SECONDS", 0.0),
+            pytest.raises(RuntimeError, match="lost rows: sent 10, table holds 7"),
+        ):
+            adapter.load_data(mock_benchmark, Mock(), tmp_path)
+
+    def test_load_data_ilp_send_failure_is_not_swallowed(self, questdb_stubs, tmp_path):
+        data_file = tmp_path / "partsupp.tbl"
+        data_file.write_text("1|2\n", encoding="utf-8")
+
+        adapter = QuestDBAdapter(loading_method="ilp")
+        mock_benchmark = self._make_benchmark({"partsupp": str(data_file)})
+        sock = Mock()
+
+        with (
+            patch.object(adapter, "_load_table_via_ilp", side_effect=OSError("broken pipe")),
+            patch.object(adapter, "_open_ilp_socket", return_value=sock),
+            patch.object(adapter, "_ilp_table_row_count", return_value=0),
+            pytest.raises(RuntimeError, match="partsupp: broken pipe"),
+        ):
+            adapter.load_data(mock_benchmark, Mock(), tmp_path)
+
+        sock.close.assert_called_once()
+
+    def test_load_data_ilp_failure_does_not_stop_other_tables_but_still_raises(self, questdb_stubs, tmp_path):
+        files = {}
+        for name in ("lineitem", "region"):
+            data_file = tmp_path / f"{name}.tbl"
+            data_file.write_text("1|2\n", encoding="utf-8")
+            files[name] = str(data_file)
+
+        adapter = QuestDBAdapter(loading_method="ilp")
+        mock_benchmark = self._make_benchmark(files)
+        loaded: list[str] = []
+
+        def load(table_name, data_file, dialect, sock):
+            if table_name == "lineitem":
+                raise OSError("rejected")
+            loaded.append(table_name)
+            return 5
+
+        with (
+            patch.object(adapter, "_load_table_via_ilp", side_effect=load),
+            patch.object(adapter, "_open_ilp_socket", return_value=Mock()),
+            patch.object(adapter, "_ilp_table_row_count", return_value=0),
+            patch.object(adapter, "_await_ilp_row_count"),
+            pytest.raises(RuntimeError, match="1 table.*lineitem: rejected"),
+        ):
+            adapter.load_data(mock_benchmark, Mock(), tmp_path)
+
+        assert loaded == ["region"]
+
+    def test_await_ilp_row_count_waits_for_late_rows(self, questdb_stubs):
+        adapter = QuestDBAdapter(loading_method="ilp")
+
+        with (
+            patch.object(adapter, "_ilp_table_row_count", side_effect=[3, 8, 10]) as mock_count,
+            patch("benchbox.platforms.questdb.time.sleep") as mock_sleep,
+        ):
+            adapter._await_ilp_row_count("partsupp", 10, 10)
+
+        assert mock_count.call_count == 3
+        assert mock_sleep.call_count == 2
+
+    def test_await_ilp_row_count_fails_when_more_rows_than_sent(self, questdb_stubs):
+        adapter = QuestDBAdapter(loading_method="ilp")
+
+        with (
+            patch.object(adapter, "_ilp_table_row_count", return_value=12),
+            pytest.raises(RuntimeError, match="row count mismatch"),
+        ):
+            adapter._await_ilp_row_count("partsupp", 10, 10)
+
+    def test_ilp_row_count_raises_when_the_count_query_fails(self, questdb_stubs):
+        adapter = QuestDBAdapter(loading_method="ilp")
+
+        with (
+            patch.object(questdb_module, "_http_get", side_effect=ConnectionError("down")),
+            pytest.raises(RuntimeError, match="Cannot count rows"),
+        ):
+            adapter._ilp_table_row_count("partsupp")
 
     def test_load_data_rest_fails_records_zero_rows(self, questdb_stubs, tmp_path):
         data_file = tmp_path / "lineitem.csv"
@@ -1131,7 +1258,12 @@ class TestLoadDataMultiChunk:
         mock_benchmark = Mock()
         mock_benchmark.tables = {"orders": [str(chunk_a), str(chunk_b)]}
 
-        with patch.object(adapter, "_load_table_via_ilp", side_effect=[5, 7]) as mock_ilp:
+        with (
+            patch.object(adapter, "_load_table_via_ilp", side_effect=[5, 7]) as mock_ilp,
+            patch.object(adapter, "_open_ilp_socket", return_value=Mock()),
+            patch.object(adapter, "_ilp_table_row_count", return_value=0),
+            patch.object(adapter, "_await_ilp_row_count"),
+        ):
             stats, _, _ = adapter.load_data(mock_benchmark, Mock(), tmp_path)
 
         assert mock_ilp.call_count == 2

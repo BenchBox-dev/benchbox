@@ -9,6 +9,7 @@ import json
 import re
 import socket
 import threading
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import replace
@@ -52,6 +53,8 @@ except ImportError:
     psycopg = None
 
 _ILP_SEND_ROWS = 1000
+_ILP_VERIFY_TIMEOUT_SECONDS = 120.0
+_ILP_VERIFY_POLL_SECONDS = 0.5
 
 TPCH_TIMESTAMP_COLUMNS: dict[str, str] = {
     "lineitem": "l_shipdate",
@@ -596,6 +599,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
             self.log_operation_complete("Data loading", loading_time, "Loaded 0 total rows")
             return {}, loading_time, None
 
+        ilp_failures: dict[str, Exception] = {}
         for table_name, table_path in data_source.tables.items():
             table_name_lower = table_name.lower()
 
@@ -611,13 +615,20 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                 continue
 
             total_rows = 0
+            if method == "ilp":
+                try:
+                    total_rows = self._load_table_files_via_ilp(table_name_lower, data_files, data_source, benchmark)
+                except Exception as e:
+                    self.logger.error(f"Failed to load {table_name_lower} via ILP: {e}")
+                    ilp_failures[table_name_lower] = e
+                    continue
+                table_stats[table_name_lower] = total_rows
+                continue
+
             for data_file in data_files:
                 try:
                     dialect = resolve_csv_dialect(data_source, table_name_lower, data_file, benchmark)
-                    if method == "ilp":
-                        rows = self._load_table_via_ilp(table_name_lower, data_file, dialect)
-                        source = "ILP"
-                    elif get_data_extension(data_file) == ".parquet":
+                    if get_data_extension(data_file) == ".parquet":
                         rows = self._load_parquet_via_chunked_csv(table_name_lower, data_file)
                         source = "REST/parquet-csv"
                     else:
@@ -632,6 +643,12 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                 self.log_verbose(f"Loaded {rows:,} rows into {table_name_lower} from {data_file.name} (via {source})")
 
             table_stats[table_name_lower] = total_rows
+
+        if ilp_failures:
+            details = "; ".join(f"{name}: {error}" for name, error in ilp_failures.items())
+            raise RuntimeError(f"QuestDB ILP load failed for {len(ilp_failures)} table(s): {details}") from next(
+                iter(ilp_failures.values())
+            )
 
         loading_time = elapsed_seconds(start_time)
 
@@ -747,7 +764,69 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
 
         return total_rows
 
-    def _load_table_via_ilp(self, table_name: str, data_file: Path, dialect: CsvDialect) -> int:
+    def _load_table_files_via_ilp(
+        self, table_name: str, data_files: list[Path], data_source: Any, benchmark: Any
+    ) -> int:
+        rows_before = self._ilp_table_row_count(table_name)
+        total_rows = 0
+        sock = self._open_ilp_socket()
+        try:
+            for data_file in data_files:
+                dialect = resolve_csv_dialect(data_source, table_name, data_file, benchmark)
+                rows = self._load_table_via_ilp(table_name, data_file, dialect, sock)
+                total_rows += rows
+                self.log_verbose(f"Sent {rows:,} rows into {table_name} from {data_file.name} (via ILP)")
+        finally:
+            sock.close()
+        self._await_ilp_row_count(table_name, rows_before + total_rows, total_rows)
+        return total_rows
+
+    def _open_ilp_socket(self) -> socket.socket:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(30)
+        try:
+            sock.connect((self.ilp_host, self.ilp_port))
+        except BaseException:
+            sock.close()
+            raise
+        return sock
+
+    def _ilp_table_row_count(self, table_name: str) -> int:
+        if not self._validate_identifier(table_name):
+            raise ValueError(f"Invalid table identifier for QuestDB ILP load: {table_name!r}")
+        url = f"{'https' if self.use_tls else 'http'}://{self.host}:{self.http_port}/exec"
+        try:
+            response = _http_get(url, params={"query": f'SELECT count() FROM "{table_name}"'}, timeout=30)
+            response.raise_for_status()
+            return int(response.json()["dataset"][0][0])
+        except Exception as exc:
+            raise RuntimeError(
+                f"Cannot count rows of QuestDB table '{table_name}' to verify the ILP load: {exc}"
+            ) from exc
+
+    def _await_ilp_row_count(self, table_name: str, expected: int, rows_sent: int) -> None:
+        deadline = time.monotonic() + _ILP_VERIFY_TIMEOUT_SECONDS
+        while True:
+            actual = self._ilp_table_row_count(table_name)
+            if actual >= expected:
+                break
+            if time.monotonic() >= deadline:
+                raise RuntimeError(
+                    f"QuestDB ILP load of '{table_name}' lost rows: sent {rows_sent:,}, "
+                    f"table holds {actual:,} but {expected:,} were expected after "
+                    f"{_ILP_VERIFY_TIMEOUT_SECONDS:.0f}s (ILP gives no acknowledgement; "
+                    "check the QuestDB server log for rejected lines)"
+                )
+            time.sleep(_ILP_VERIFY_POLL_SECONDS)
+        if actual != expected:
+            raise RuntimeError(
+                f"QuestDB ILP load of '{table_name}' row count mismatch: sent {rows_sent:,}, "
+                f"table holds {actual:,} but {expected:,} were expected"
+            )
+
+    def _load_table_via_ilp(
+        self, table_name: str, data_file: Path, dialect: CsvDialect, sock: socket.socket | None = None
+    ) -> int:
         rows_sent = 0
 
         column_names = self._get_table_columns(table_name)
@@ -756,11 +835,10 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
 
         ts_col = TPCH_TIMESTAMP_COLUMNS.get(table_name.lower())
 
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(30)
+        owns_socket = sock is None
+        if owns_socket:
+            sock = self._open_ilp_socket()
         try:
-            sock.connect((self.ilp_host, self.ilp_port))
-
             strip_trailing_delim = get_data_extension(data_file) == ".tbl"
             with prepare_local_load_file(
                 data_file, dialect=dialect, strip_trailing_delim=strip_trailing_delim
@@ -771,7 +849,8 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                         sock.sendall(("\n".join(chunk) + "\n").encode("utf-8"))
                     rows_sent += len(lines)
         finally:
-            sock.close()
+            if owns_socket:
+                sock.close()
 
         return rows_sent
 
