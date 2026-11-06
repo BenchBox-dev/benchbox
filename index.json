@@ -2185,7 +2185,7 @@
         }
       },
       "integration_branch": "feat/sqlglot-core-delivery",
-      "integration_head": "d6f3ca6d9aedc3b61c3f8ce2f4e6f50a69be6278",
+      "integration_head": "9cc3b92f6442e9cad41aef140f2c8dde278f0acc",
       "integration_log": [
         {
           "at": "2026-11-06T13:49:23Z",
@@ -2269,6 +2269,19 @@
             "sqlglot-e2e-core-wheel-consumer"
           ],
           "seq": 5
+        },
+        {
+          "at": "2026-11-06T17:30:18Z",
+          "changed_files": [
+            "changelog.d/fix-bypass-scan-skip-ignored.json",
+            "tests/unit/sql_compat/test_vendored_sqlglot_bypass.py"
+          ],
+          "head": "9cc3b92f6442e9cad41aef140f2c8dde278f0acc",
+          "kind": "develop-merge",
+          "merged_parent": "10f6a1dd92f2a39bf6abc8deba1010386265d188",
+          "op_id": "84c14a8313ac497995a267e2a101f06d",
+          "previous_head": "d6f3ca6d9aedc3b61c3f8ce2f4e6f50a69be6278",
+          "seq": 6
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-sqlglot-core-delivery",
