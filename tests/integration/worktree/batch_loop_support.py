@@ -8,6 +8,8 @@ import stat
 import subprocess
 from pathlib import Path
 
+from batch_loop_theseus import BOOTSTRAP, THESEUS_HOME_ENV
+
 ROOT = Path(__file__).resolve().parents[3]
 
 TRACKED_COPY = (
@@ -101,6 +103,7 @@ DEVELOP_FILES = {
     ),
     "pytest.ini": "[pytest]\npythonpath = .\n",
     "scripts/oracle_local_review.py": FAKE_REVIEW,
+    "_project/scripts/theseus_bootstrap.py": BOOTSTRAP,
     ".gitignore": ".venv/\n__pycache__/\n.pytest_cache/\n.todo-batch/\n*.pyc\n",
     "src/__init__.py": "",
     "src/shared.py": SHARED_SOURCE,
@@ -250,6 +253,7 @@ class World:
             FAKE_PREFLIGHT_LOG=str(self.root / "preflight.log"),
             FAKE_GH_LOG=str(self.root / "gh.log"),
             FAKE_REVIEW_OUTCOME_FILE=str(self.root / "review-outcome"),
+            **{THESEUS_HOME_ENV: str(self.root / "theseus")},
         )
         return env
 
