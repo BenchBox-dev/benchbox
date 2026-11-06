@@ -3,6 +3,7 @@
     "The bypass scan covers tracked and untracked-but-not-ignored Python files only, so ignored virtualenvs and caches cannot produce findings.",
     "Existing allowlist and new-caller detection behavior is unchanged."
   ],
+  "context": "Merged: https://github.com/BenchBox-dev/benchbox/pull/3974 as 10f6a1dd. With the uv-created _project/scripts/.venv present: before 1 failed/30 passed, after 32 passed including the new dot-directory regression test.",
   "description": "tests/unit/sql_compat/test_vendored_sqlglot_bypass.py walks benchbox/, scripts/ and _project/ with rglob, including the git-ignored _project/scripts/.venv that uv creates. The public sqlglot package inside it is reported as new upstream sqlglot importers, failing the fast tier in any worktree with that virtualenv (observed in batch sqlglot-core-delivery: 1 failed / 36785 passed). Same class as overlay-guard-scans-untracked-venv.",
   "links": [
     "tests/unit/sql_compat/test_vendored_sqlglot_bypass.py"
@@ -23,6 +24,14 @@
       "generation": "2f0fc9df35b542ebb2be0d4d918cb642",
       "op": "take",
       "op_id": "240a36bb29424f88b06fe68fe5926b60",
+      "session_id": "2f41579dd2194a049659596cdd9a4f3d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f",
+      "at": "2026-11-06T17:29:57Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6b2fcfbff9fa4e0f915a769a96dba619",
       "session_id": "2f41579dd2194a049659596cdd9a4f3d"
     }
   ]
