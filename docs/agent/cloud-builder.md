@@ -111,7 +111,7 @@ the gateway through it for the health check, and gives the reviewer
 one run. `omp` ignores the first two for its gateway call and honors `PI_PROXY`.
 The `oracle-local` client and CI never receive proxy variables. It installs
 or reuses the pinned `omp` in the shared cache (`~/.cache/benchbox/omp`, or
-`BENCHBOX_OMP_CACHE`), the same build `make cloud-gateway` verified; the
+`THESEUS_OMP_CACHE`), the same build `make cloud-gateway` verified; the
 `omp-binary` path file is only for manual runs.
 
 Use the gateway per command, never as a session-wide proxy, because the proxy

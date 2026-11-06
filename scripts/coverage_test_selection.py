@@ -672,10 +672,7 @@ def prune_missing_nodeids(repo: Path, node_ids: list[str], collected: list[str])
     return pruned
 
 
-POSIX_ONLY_TEST_PREFIXES = (
-    "tests/unit/scripts/oracle_reviewers/",
-    "_project/sql-translation-ml/",
-)
+POSIX_ONLY_TEST_PREFIXES = ("_project/sql-translation-ml/",)
 
 
 def windows_test_files(repo: Path, payload: dict, changed_paths: list[str]) -> list[str]:

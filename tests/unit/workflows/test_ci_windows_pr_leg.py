@@ -78,7 +78,7 @@ def test_windows_leg_trigger_covers_tests_scripts_project_scripts_and_benchbox_p
 
     for path in (
         "tests/unit/test_module_state_guard.py",
-        "tests/unit/scripts/oracle_reviewers/test_local_review.py",
+        "tests/unit/scripts/test_check_doc_anchors.py",
         "scripts/sqlglot_fork_diff.py",
         "_project/scripts/preflight_targets.py",
         "benchbox/core/runner.py",

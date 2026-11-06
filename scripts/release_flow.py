@@ -47,6 +47,7 @@ CLI_DESCRIPTION = (
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+LOCKED_SUBPROJECTS = ("_project/sql-translation-ml", "_project/scripts")
 
 Runner = Callable[[Sequence[str], Path], tuple[int, str]]
 
@@ -278,6 +279,11 @@ def prep(root: Path, version: str, release_date: str | None, runner: Runner) -> 
             [sys.executable, str(update_version), "--version", version, "--update-pyproject"],
         ),
         ("uv.lock", ["uv", "lock"]),
+        *(
+            (f"{project}/uv.lock", ["uv", "lock", "--project", project])
+            for project in LOCKED_SUBPROJECTS
+            if (root / project / "uv.lock").is_file()
+        ),
         ("CHANGELOG.md", compile_cmd),
     ]
 

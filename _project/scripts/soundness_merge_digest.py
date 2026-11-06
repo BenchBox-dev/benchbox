@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib
 import json
 import re
 import subprocess
@@ -11,19 +12,12 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
+from types import ModuleType
 from typing import Any
 
-from oracle_review_check import (
-    ORACLE_CONTEXT,
-    ORACLE_LOGIN,
-    STANDIN_ATTESTERS,
-    _attested_shas,
-    latest_base_change,
-    standin_not_before,
-    verdict_state,
-)
-from oracle_reviewers import adjudication, edits
-from oracle_reviewers.protocol import MarkerError, decode_marker
+REPO_ROOT = Path(__file__).resolve().parents[2]
+POLICY_PATH = ".github/oracle-reviewers.yml"
+THESEUS_MODULES = ("review_check", "adjudication", "edits", "protocol", "policy", "_vendor.yaml")
 
 ORACLE_VERDICT_LINE = re.compile(
     r"### (?:oracle-verdict|oracle-review-shadow): (?P<state>[a-z]+) for `(?P<sha>[0-9a-f]{40})`"
@@ -39,8 +33,10 @@ GOVERNANCE_PATHS = frozenset(
     }
 )
 PREDICATE_DRIVER = (
-    "import json, sys; sys.path.insert(0, sys.argv[1]); from soundness_paths import is_soundness_path; "
-    "print(json.dumps([p for p in json.load(sys.stdin) if is_soundness_path(p)]))"
+    "import json, sys; from pathlib import Path; sys.path.insert(0, sys.argv[1]); import soundness_paths as sp; "
+    "judge = sp.Matcher(sp.load_rules(Path(sys.argv[2]))).is_soundness_path if hasattr(sp, 'Matcher') "
+    "else sp.is_soundness_path; "
+    "print(json.dumps([p for p in json.load(sys.stdin) if judge(p)]))"
 )
 DEFAULT_REPO = "BenchBox-dev/BenchBox"
 BASE_BRANCH = "develop"
@@ -92,6 +88,60 @@ SEVERITY_ORDER = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}
 
 class ReadError(RuntimeError):
     pass
+
+
+@dataclass(frozen=True)
+class Engine:
+    review_check: ModuleType
+    adjudication: ModuleType
+    edits: ModuleType
+    protocol: ModuleType
+    bot_login: str
+    attesters: frozenset[str]
+
+
+_ENGINE: Engine | None = None
+
+
+def engine() -> Engine:
+    if _ENGINE is None:
+        raise ReadError("the verified Theseus install has not been loaded")
+    return _ENGINE
+
+
+def load_engine(root: Path, ref: str) -> Engine:
+    scripts = str(root / "scripts")
+    if scripts not in sys.path:
+        sys.path.insert(0, scripts)
+    import theseus_cli
+
+    try:
+        site = theseus_cli.site_directory(root, ref).resolve()
+    except theseus_cli.TheseusError as exc:
+        raise ReadError(str(exc)) from exc
+    if str(site) not in sys.path:
+        sys.path.insert(0, str(site))
+    sys.dont_write_bytecode = True
+    try:
+        package = importlib.import_module("theseus_reviewer")
+        modules = {name: importlib.import_module(f"theseus_reviewer.{name}") for name in THESEUS_MODULES}
+    except ImportError as exc:
+        raise ReadError(f"the verified Theseus install at {site} cannot be imported: {exc}") from exc
+    if not Path(package.__file__ or "").resolve().is_relative_to(site):
+        raise ReadError(f"theseus_reviewer was imported from outside the verified install at {site}")
+    policy_text = run(["git", "show", f"{ref}:{POLICY_PATH}"], cwd=root)
+    try:
+        binding = modules["policy"].parse_policy(modules["_vendor.yaml"].safe_load(policy_text)).binding()
+    except (ValueError, KeyError, TypeError) as exc:
+        raise ReadError(f"{POLICY_PATH} at {ref} is not a valid Theseus policy: {exc}") from exc
+    return Engine(
+        modules["review_check"],
+        modules["adjudication"],
+        modules["edits"],
+        modules["protocol"],
+        binding.bot_login,
+        binding.attesters,
+    )
 
 
 @dataclass(frozen=True)
@@ -284,7 +334,7 @@ def _oracle_reviews(
     return [
         review
         for review in evidence.reviews
-        if review.login == f"{ORACLE_LOGIN}[bot]"
+        if review.login == f"{engine().bot_login}[bot]"
         and review.user_type == "Bot"
         and review.state not in ("PENDING", "DISMISSED")
         and (include_unverifiable or not review.unverifiable)
@@ -294,7 +344,7 @@ def _oracle_reviews(
 
 
 def _review_verdict(review: Review) -> str | None:
-    return verdict_state(review.body, review.commit_sha, ORACLE_VERDICT_LINE)
+    return engine().review_check.verdict_state(review.body, review.commit_sha, ORACLE_VERDICT_LINE)
 
 
 def _oracle_success(evidence: PullEvidence) -> bool:
@@ -311,7 +361,7 @@ def _standin_after(evidence: PullEvidence) -> str:
         return ""
     head_reviews = _oracle_reviews(evidence, {evidence.commits[-1].sha}, include_unverifiable=True)
     return (
-        standin_not_before(
+        engine().review_check.standin_not_before(
             evidence.base_changed_at,
             (
                 (review.submitted_at, "failure" if review.unverifiable else _review_verdict(review))
@@ -329,11 +379,11 @@ def standin_comment(evidence: PullEvidence) -> Comment | None:
     after = _standin_after(evidence)
     for comment in evidence.comments:
         if (
-            comment.login in STANDIN_ATTESTERS
+            comment.login in engine().attesters
             and comment.user_type == "User"
             and comment.updated_at in (None, comment.created_at)
             and after < comment.created_at <= evidence.merged_at
-            and head in _attested_shas({"body": comment.body})
+            and head in engine().review_check._attested_shas({"body": comment.body})
         ):
             return comment
     return None
@@ -348,7 +398,7 @@ def instruction_gap_seconds(evidence: PullEvidence, at: str) -> int | None:
         comment.created_at
         for comment in evidence.comments
         if OWNER_INSTRUCTION in comment.body
-        and comment.login in STANDIN_ATTESTERS
+        and comment.login in engine().attesters
         and comment.user_type == "User"
         and comment.updated_at in (None, comment.created_at)
         and comment.created_at <= at
@@ -391,7 +441,7 @@ def review_signals(evidence: PullEvidence) -> tuple[str, ...]:
         signals.append("connector-approval")
     for comment in evidence.comments:
         match = EXTERNAL_REVIEW_PATTERN.search(comment.body)
-        attester = comment.login in STANDIN_ATTESTERS and comment.user_type == "User"
+        attester = comment.login in engine().attesters and comment.user_type == "User"
         if match and attester and in_window(comment.created_at):
             signals.append(f"external-review:{match.group(1).lower()}")
     if standin_comment(evidence) is not None:
@@ -414,7 +464,7 @@ def unreviewed_thread_count(evidence: PullEvidence) -> int:
 
 
 def is_overridden_finding(thread: Thread) -> bool:
-    return thread.started_by.removesuffix("[bot]") == ORACLE_LOGIN and (
+    return thread.started_by.removesuffix("[bot]") == engine().bot_login and (
         thread.severity in OVERRIDDEN_SEVERITIES or bool(thread.unverifiable)
     )
 
@@ -451,7 +501,7 @@ def open_finding_severities(evidence: PullEvidence) -> tuple[str, ...]:
         thread.severity
         for thread in evidence.threads
         if not thread.resolved
-        and thread.started_by.removesuffix("[bot]") == ORACLE_LOGIN
+        and thread.started_by.removesuffix("[bot]") == engine().bot_login
         and thread.severity
         and thread.first_comment_sha in shas
     }
@@ -559,8 +609,8 @@ def _recorded_rulings(pull: PullEvidence) -> list[tuple[str, str, str]]:
     previous = ""
     for review in reviews:
         try:
-            record = decode_marker(review.body)
-        except MarkerError:
+            record = engine().protocol.decode_marker(review.body)
+        except engine().protocol.MarkerError:
             record = None
         for item in (record or {}).get("adjudicated") or ():
             first.setdefault((item["action"], item["id"]), previous or review.submitted_at)
@@ -574,10 +624,10 @@ def adjudication_records(pulls: Sequence[PullEvidence]) -> list[AdjudicationReco
         head = pull.commits[-1].sha if pull.commits else ""
         seen: set[tuple[str, str]] = set()
         for comment in pull.comments:
-            ruling = adjudication.parse(comment.body)
+            ruling = engine().adjudication.parse(comment.body)
             if (
                 ruling is not None
-                and comment.login in STANDIN_ATTESTERS
+                and comment.login in engine().attesters
                 and comment.user_type == "User"
                 and comment.created_at <= pull.merged_at
             ):
@@ -722,26 +772,26 @@ def commit_subject(sha: str) -> str:
 
 def _thread_unverifiable(comment: Mapping[str, Any]) -> str:
     try:
-        edited = edits.node_edited(comment)
-    except edits.EditStateError as exc:
+        edited = engine().edits.node_edited(comment)
+    except engine().edits.EditStateError as exc:
         return f"an oracle finding's edit state could not be read ({exc})"
     return "an oracle finding was edited after posting" if edited else ""
 
 
 def _graphql_review_edits(node_ids: Sequence[str]) -> dict[str, tuple[Any, bool]]:
     states: dict[str, tuple[Any, bool]] = {}
-    for batch in edits.batches(list(dict.fromkeys(node_ids))):
-        args = ["api", "graphql", "-f", f"query={edits.REVIEW_EDITS_QUERY}"]
+    for batch in engine().edits.batches(list(dict.fromkeys(node_ids))):
+        args = ["api", "graphql", "-f", f"query={engine().edits.REVIEW_EDITS_QUERY}"]
         for node_id in batch:
             args += ["-f", f"ids[]={node_id}"]
-        states.update(edits.parse_review_edits(gh_json(*args), batch))
+        states.update(engine().edits.parse_review_edits(gh_json(*args), batch))
     return states
 
 
 def _review_decision(review: Review) -> tuple[str | None, str | None, str | None]:
     try:
-        record = decode_marker(review.body)
-    except MarkerError:
+        record = engine().protocol.decode_marker(review.body)
+    except engine().protocol.MarkerError:
         record = None
     header = _review_verdict(review)
     if record is None:
@@ -758,10 +808,17 @@ def _submitted(review: Review) -> datetime | None:
 
 def _status_disagreement(review: Review, statuses: Sequence[Mapping[str, Any]]) -> str:
     decision, run_uuid, header = _review_decision(review)
-    expected = edits.expected_state(decision) if decision is not None else header
+    expected = engine().edits.expected_state(decision) if decision is not None else header
     if expected is None or (decision is not None and header not in (None, expected)):
         return "its decision cannot be read from the review"
-    status = edits.chosen_status(statuses, ORACLE_CONTEXT, ORACLE_LOGIN, run_uuid, decision or "", _submitted(review))
+    status = engine().edits.chosen_status(
+        statuses,
+        engine().review_check.ORACLE_CONTEXT,
+        engine().bot_login,
+        run_uuid,
+        decision or "",
+        _submitted(review),
+    )
     if status is None:
         return "no oracle-verdict status from the App matches the review"
     if status.get("state") != expected:
@@ -773,7 +830,7 @@ def verify_oracle_reviews(repo: str, reviews: Sequence[Review]) -> tuple[Review,
     candidates = [
         review
         for review in reviews
-        if review.login == f"{ORACLE_LOGIN}[bot]"
+        if review.login == f"{engine().bot_login}[bot]"
         and review.user_type == "Bot"
         and review.state not in ("PENDING", "DISMISSED")
     ]
@@ -782,9 +839,9 @@ def verify_oracle_reviews(repo: str, reviews: Sequence[Review]) -> tuple[Review,
     reasons: dict[int, str] = {}
     try:
         if not all(review.node_id for review in candidates):
-            raise edits.EditStateError("an oracle review has no node id")
+            raise engine().edits.EditStateError("an oracle review has no node id")
         states = _graphql_review_edits([review.node_id for review in candidates])
-    except (edits.EditStateError, ReadError, ValueError, OSError) as exc:
+    except (engine().edits.EditStateError, ReadError, ValueError, OSError) as exc:
         return tuple(
             replace(review, unverifiable=f"its edit state could not be read ({exc})")
             if review in candidates
@@ -793,7 +850,7 @@ def verify_oracle_reviews(repo: str, reviews: Sequence[Review]) -> tuple[Review,
         )
     statuses: dict[str, Sequence[Mapping[str, Any]] | str] = {}
     for review in candidates:
-        if edits.is_edited(*states[review.node_id]):
+        if engine().edits.is_edited(*states[review.node_id]):
             reasons[id(review)] = "it was edited after posting"
             continue
         if review.commit_sha not in statuses:
@@ -847,7 +904,8 @@ def collect_threads(repo: str, number: int) -> tuple[Thread, ...]:
                 continue
             first = node["comments"]["nodes"][0]
             started_by = (first.get("author") or {}).get("login", "")
-            unverifiable = _thread_unverifiable(first) if started_by.removesuffix("[bot]") == ORACLE_LOGIN else ""
+            is_oracle = started_by.removesuffix("[bot]") == engine().bot_login
+            unverifiable = _thread_unverifiable(first) if is_oracle else ""
             parsed.append(
                 Thread(
                     resolved=bool(node["isResolved"]),
@@ -972,7 +1030,7 @@ def collect_pull(repo: str, sha: str) -> PullEvidence | None:
             for c in gh_pages(f"repos/{repo}/issues/{number}/comments")
         ),
         threads=collect_threads(repo, number),
-        base_changed_at=latest_base_change(timeline) or "",
+        base_changed_at=engine().review_check.latest_base_change(timeline) or "",
         armed_at=tuple(armed),
     )
 
@@ -986,8 +1044,15 @@ def soundness_files(sha: str, files: Sequence[str], *, cwd: Path | None = None) 
             target = root / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(run(["git", "show", f"{sha}~1:{relative}"], cwd=cwd), encoding="utf-8")
+        manifest = root / MANIFEST_PATH
         output = run(
-            [sys.executable, "-c", PREDICATE_DRIVER, str(root / "_project" / "scripts")],
+            [
+                sys.executable,
+                "-c",
+                PREDICATE_DRIVER,
+                str(root / "_project" / "scripts"),
+                str(manifest),
+            ],
             input_text=json.dumps(list(files)),
             cwd=cwd,
         )
@@ -1276,7 +1341,7 @@ def attested_review(comments: Sequence[dict[str, Any]]) -> dict[str, Any] | None
     for comment in comments:
         user = comment.get("user") or {}
         if (
-            user.get("login") in STANDIN_ATTESTERS
+            user.get("login") in engine().attesters
             and user.get("type") == "User"
             and is_attested_review(comment.get("body") or "")
         ):
@@ -1369,6 +1434,7 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    global _ENGINE
     args = _parse_args(argv)
     try:
         until = run(["git", "rev-parse", args.ref]).strip()
@@ -1382,6 +1448,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             write_checkpoint(args.repo, until, "Checkpoint recorded; the next run reports commits after it.")
             print(f"Recorded checkpoint {until[:9]}.")
             return 0
+        _ENGINE = load_engine(REPO_ROOT, args.ref)
         since = args.since or read_checkpoint(args.repo)
         if since is None:
             print("No checkpoint stored; pass --since, or run once with --apply --bootstrap.", file=sys.stderr)

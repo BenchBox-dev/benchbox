@@ -230,17 +230,6 @@
       "cutover_action": "Done: the retired docs page fallback is removed; curated release-tree and other hosted-only steps are explicit exemptions."
     },
     {
-      "id": "soundness-public-record-negatives",
-      "file": "tests/unit/scripts/test_soundness_paths.py",
-      "tests": [
-        "test_soundness_predicate_matches_review_required_paths"
-      ],
-      "classification": "governance-stays",
-      "site_reads": [],
-      "reason": "Names public-record pages as sample paths asserted not to be soundness paths; no page content is read. The inert-path exceptions for those pages are wiring changed at cutover.",
-      "cutover_action": "None."
-    },
-    {
       "id": "tpcds-obt-lineage-page",
       "file": "tests/unit/core/tpcds_obt/test_tpcds_obt_model.py",
       "tests": [

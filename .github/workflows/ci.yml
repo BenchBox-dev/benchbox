@@ -874,6 +874,10 @@ jobs:
         run: |
           uv sync --group dev
 
+      - name: Warm the verified Theseus install
+        shell: bash
+        run: uv run -- python scripts/theseus_cli.py --trusted-ref "$(git rev-parse HEAD)" path
+
       - name: Summarize Make interface changes
         continue-on-error: true
         env:
@@ -1059,6 +1063,14 @@ jobs:
 
       - name: Sync locked package-only runtime
         run: uv sync --project _project/scripts --locked
+
+      - name: Warm the verified Theseus install
+        run: python3 scripts/theseus_cli.py --trusted-ref "$(git rev-parse HEAD)" path
+
+      - name: Verify the locked Theseus commit passed its required checks
+        run: python3 scripts/theseus_release_check.py
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Download coverage selection
         if: needs.ci-paths.outputs.heavy-needed != 'true'
@@ -1365,6 +1377,10 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --group dev
+
+      - name: Warm the verified Theseus install
+        shell: bash
+        run: uv run -- python scripts/theseus_cli.py --trusted-ref "$(git rev-parse HEAD)" path
 
       - name: Download coverage selection
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131

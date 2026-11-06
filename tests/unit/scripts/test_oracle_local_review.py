@@ -3,64 +3,43 @@ from __future__ import annotations
 import importlib.util
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
+import theseus_cli
 
-pytestmark = [
-    pytest.mark.unit,
-    pytest.mark.fast,
-    pytest.mark.skipif(
-        not (Path(__file__).resolve().parents[3] / "_project" / "scripts" / "oracle_reviewers").is_dir(),
-        reason="_project scripts are not in this checkout (release tree)",
-    ),
-]
+pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 ROOT = Path(__file__).resolve().parents[3]
 
 
-def _load():
-    spec = importlib.util.spec_from_file_location("oracle_local_review", ROOT / "scripts/oracle_local_review.py")
+def _load(name: str):
+    spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / f"{name}.py")
     module = importlib.util.module_from_spec(spec)
+    sys.modules.setdefault(name, module)
     spec.loader.exec_module(module)
     return module
 
 
-bootstrap = _load()
-REVIEWER_FILE = "_project/scripts/oracle_reviewers/cli.py"
-CREDENTIALS_FILE = "_project/scripts/oracle_reviewers/credentials.py"
+wrapper = _load("oracle_local_review")
+
+FAKE_BOOTSTRAP = """\
+import os
+import sys
 
 
-@pytest.fixture(autouse=True)
-def _no_ambient_secrets(monkeypatch: pytest.MonkeyPatch) -> None:
-    try:
-        from _project.scripts.oracle_reviewers import local
-    except ModuleNotFoundError:
-        return
-
-    for name in local.SCRUBBED_AT_START:
-        monkeypatch.delenv(name, raising=False)
-    monkeypatch.delenv(bootstrap.HANDOVER_ENV, raising=False)
+def main(argv):
+    if not os.environ["FAKE_THESEUS"] or not (sys.flags.isolated and sys.flags.no_site):
+        return 1
+    print("noise")
+    print(os.environ["FAKE_THESEUS"])
+    return 0
 
 
-@pytest.fixture(autouse=True)
-def _close_handover_descriptors(monkeypatch: pytest.MonkeyPatch):
-    opened: list[int] = []
-    original = bootstrap.hand_over
-
-    def recording(environ, names):
-        scrubbed = original(environ, names)
-        if bootstrap.HANDOVER_ENV in scrubbed:
-            opened.append(int(scrubbed[bootstrap.HANDOVER_ENV]))
-        return scrubbed
-
-    monkeypatch.setattr(bootstrap, "hand_over", recording)
-    yield
-    for descriptor in opened:
-        try:
-            os.close(descriptor)
-        except OSError:
-            pass
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))
+"""
 
 
 def _git(path: Path, *args: str) -> str:
@@ -74,287 +53,171 @@ def _git(path: Path, *args: str) -> str:
     return result.stdout.strip()
 
 
-def _commit(repo: Path, files: dict[str, str]) -> str:
-    for name, text in files.items():
-        target = repo / name
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(text, encoding="utf-8")
-        _git(repo, "add", name)
-    _git(repo, "commit", "--quiet", "-m", "change")
-    return _git(repo, "rev-parse", "HEAD")
-
-
 @pytest.fixture
-def clones(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path]:
-    origin = tmp_path / "origin"
-    origin.mkdir()
-    _git(origin, "init", "--quiet", "--initial-branch=develop")
-    seed = {path: f"trusted {path}\n" for path in bootstrap.REVIEWER_PATHS if "." in Path(path).name}
-    seed[REVIEWER_FILE] = "trusted cli\n"
-    seed[CREDENTIALS_FILE] = (ROOT / CREDENTIALS_FILE).read_text(encoding="utf-8")
-    seed["unrelated.txt"] = "unrelated\n"
-    _commit(origin, seed)
-    work = tmp_path / "work"
-    subprocess.run(["git", "clone", "--quiet", str(origin), str(work)], check=True, capture_output=True)
+def repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    work = tmp_path / "work"
+    work.mkdir()
+    _git(work, "init", "--quiet", "--initial-branch=develop")
+    bootstrap = work / theseus_cli.BOOTSTRAP_PATH
+    bootstrap.parent.mkdir(parents=True)
+    bootstrap.write_text(FAKE_BOOTSTRAP, encoding="utf-8")
+    _git(work, "add", theseus_cli.BOOTSTRAP_PATH)
+    _git(work, "commit", "--quiet", "-m", "trusted")
     monkeypatch.chdir(work)
-    return origin, work
+    return work
 
 
 def _args(*extra: str):
-    return bootstrap.parser().parse_args(["--head", "HEAD", *extra])
+    return wrapper.parser().parse_args(["--head", "HEAD", *extra])
 
 
-def test_the_export_holds_only_the_reviewer_paths_of_the_chosen_commit(clones: tuple[Path, Path]) -> None:
-    _, work = clones
-    (work / REVIEWER_FILE).write_text("branch edit\n", encoding="utf-8")
-    commit = _git(work, "rev-parse", "origin/develop")
+def _launched(args, monkeypatch: pytest.MonkeyPatch, program: Path) -> tuple[list[str], dict[str, str]]:
+    monkeypatch.setattr(theseus_cli, "executable", lambda root, ref: program)
+    seen: list[tuple[list[str], dict[str, str]]] = []
 
-    target = bootstrap.export_reviewer(work, commit, Path.home() / bootstrap.EXPORT_PARENT)
+    def launcher(argv: list[str], env: dict[str, str]) -> int:
+        seen.append((argv, env))
+        return 7
 
-    assert (target / REVIEWER_FILE).read_text(encoding="utf-8") == "trusted cli\n"
-    assert not (target / "unrelated.txt").exists()
-    assert target.name == commit
-
-
-def test_a_complete_export_is_reused_for_the_same_commit(clones: tuple[Path, Path]) -> None:
-    _, work = clones
-    commit = _git(work, "rev-parse", "origin/develop")
-    parent = Path.home() / bootstrap.EXPORT_PARENT
-    first = bootstrap.export_reviewer(work, commit, parent)
-    (first / "marker").write_text("kept\n", encoding="utf-8")
-
-    second = bootstrap.export_reviewer(work, commit, parent)
-
-    assert second == first and (second / "marker").is_file()
+    assert wrapper.run(args, launcher) == 7
+    return seen[0]
 
 
-def test_the_review_launches_from_the_fetched_develop_export_with_the_pinned_runner(clones: tuple[Path, Path]) -> None:
-    origin, work = clones
-    advanced = _commit(origin, {REVIEWER_FILE: "advanced cli\n"})
-    launched: list[tuple[list[str], dict[str, str]]] = []
-
-    code = bootstrap.run(_args(), lambda argv, env: launched.append((argv, env)) or 0)
-
-    assert code == 0
-    ((argv, env),) = launched
-    export = Path(env["PYTHONPATH"])
-    assert export.name == advanced
-    assert (export / REVIEWER_FILE).read_text(encoding="utf-8") == "advanced cli\n"
-    assert argv[:2] == ["uv", "run"] and "--isolated" in argv and "--no-project" in argv
-    assert argv[argv.index("python") + 1] == "-P"
-    assert argv[argv.index("local-review") :][:3] == ["local-review", "--policy", ".github/oracle-reviewers.yml"]
-    assert ("--base-ref", "origin/develop") in set(zip(argv, argv[1:], strict=False))
-
-
-def test_dispute_options_reach_the_review_and_the_record_path_travels_in_the_environment(
-    clones: tuple[Path, Path],
+def test_the_review_runs_the_verified_install_with_the_trusted_inputs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    launched: list[tuple[list[str], dict[str, str]]] = []
+    program = tmp_path / "theseus"
+    argv, _ = _launched(_args("--base-ref", "origin/develop", "--trusted-ref", "origin/develop"), monkeypatch, program)
 
-    code = bootstrap.run(
-        _args("--rebuttals", "r.json", "--adjudicate", "WITHDRAW D1 - owner said so", "--record-out", "rec.txt"),
-        lambda argv, env: launched.append((argv, env)) or 0,
-    )
+    assert argv == [
+        "theseus",
+        "local-review",
+        "--policy",
+        ".github/oracle-reviewers.yml",
+        "--base-ref",
+        "origin/develop",
+        "--trusted-ref",
+        "origin/develop",
+        "--head",
+        "HEAD",
+    ]
 
-    assert code == 0
-    ((argv, env),) = launched
+
+def test_the_trusted_ref_defaults_to_develop_and_never_follows_the_base_ref(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    for extra in ([], ["--base-ref", "origin/feature"], ["--member", "--base-ref", "c" * 40]):
+        argv, _ = _launched(_args(*extra), monkeypatch, tmp_path / "theseus")
+        assert argv[argv.index("--trusted-ref") + 1] == wrapper.DEVELOP_REF
+
+
+def test_the_install_is_prepared_from_the_trusted_ref_not_the_base_ref(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    prepared = []
+    monkeypatch.setattr(wrapper.theseus_cli, "executable", lambda root, ref: prepared.append(ref) or tmp_path / "t")
+    monkeypatch.setattr(wrapper.theseus_cli, "launcher_environment", lambda program: {})
+    wrapper.run(_args("--base-ref", "origin/feature"), lambda argv, env: 0)
+    assert prepared == [wrapper.DEVELOP_REF]
+
+
+def test_member_mode_passes_the_result_file_and_the_given_trusted_ref(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    args = _args("--member", "--result-json", "out.json", "--base-ref", "a" * 40, "--trusted-ref", "b" * 40)
+    argv, _ = _launched(args, monkeypatch, tmp_path / "theseus")
+
+    assert argv[argv.index("--trusted-ref") + 1] == "b" * 40
+    assert argv[-3:] == ["--member", "--result-json", "out.json"]
+
+
+def test_rebuttals_and_adjudication_are_forwarded(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    args = _args("--rebuttals", "r.json", "--adjudicate", "owner ruling")
+    argv, _ = _launched(args, monkeypatch, tmp_path / "theseus")
+
     assert argv[argv.index("--rebuttals") + 1] == "r.json"
-    assert argv[argv.index("--adjudicate") + 1] == "WITHDRAW D1 - owner said so"
-    assert "--record-out" not in argv and "--body-file" not in argv
-    assert env[bootstrap.RECORD_OUT_ENV] == "rec.txt"
+    assert argv[argv.index("--adjudicate") + 1] == "owner ruling"
 
 
-def test_a_plain_review_passes_no_dispute_options(clones: tuple[Path, Path]) -> None:
-    launched: list[tuple[list[str], dict[str, str]]] = []
-
-    bootstrap.run(_args(), lambda argv, env: launched.append((argv, env)) or 0)
-
-    ((argv, env),) = launched
-    assert "--rebuttals" not in argv and "--adjudicate" not in argv
-    assert bootstrap.RECORD_OUT_ENV not in env
-
-
-SHA_A = "a" * 40
-SHA_B = "b" * 40
-SHA_C = "c" * 40
-
-
-def _launched_argv(clones: tuple[Path, Path], *extra: str) -> list[str]:
-    launched: list[list[str]] = []
-    bootstrap.run(_args(*extra), lambda argv, env: launched.append(argv) or 0)
-    return launched[0]
-
-
-def test_member_mode_passes_the_trusted_ref_unchanged_and_never_falls_back_to_the_base(
-    clones: tuple[Path, Path],
+def test_the_record_path_and_cache_locations_reach_the_review_environment(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    argv = _launched_argv(
-        clones, "--member", "--result-json", "r.json", "--base-ref", SHA_A, "--trusted-ref", SHA_B, "--head", SHA_C
-    )
-    assert argv[argv.index("--trusted-ref") + 1] == SHA_B
-
-    argv = _launched_argv(clones, "--member", "--result-json", "r.json", "--base-ref", SHA_A, "--head", SHA_C)
-    assert argv[argv.index("--trusted-ref") + 1] == ""
-
-
-def test_a_result_path_without_member_mode_reaches_the_review_so_the_pairing_check_refuses(
-    clones: tuple[Path, Path],
-) -> None:
-    argv = _launched_argv(clones, "--result-json", "r.json")
-
-    assert "--member" not in argv
-    assert argv[argv.index("--result-json") + 1] == "r.json"
-
-
-def test_member_mode_without_a_result_path_forwards_only_the_member_flag(clones: tuple[Path, Path]) -> None:
-    argv = _launched_argv(clones, "--member")
-
-    assert "--member" in argv and "--result-json" not in argv
-
-
-def test_the_review_refuses_without_launching_when_develop_cannot_be_fetched(
-    clones: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
-) -> None:
-    origin, work = clones
-    _git(work, "remote", "set-url", "origin", str(origin) + "-missing")
-    launched: list[object] = []
-
-    code = bootstrap.run(_args(), lambda argv, env: launched.append(argv) or 0)
-
-    assert code == bootstrap.EXIT_UNAVAILABLE
-    assert launched == []
-    error = capsys.readouterr().err
-    assert "origin/develop" in error and "cannot run" in error
-    assert not (Path.home() / bootstrap.EXPORT_PARENT).exists()
-
-
-def test_an_explicit_reviewer_ref_is_exported_without_fetching(clones: tuple[Path, Path]) -> None:
-    origin, work = clones
-    _git(work, "remote", "set-url", "origin", str(origin) + "-missing")
-    _git(work, "switch", "--quiet", "-c", "feature")
-    branch_head = _commit(work, {REVIEWER_FILE: "branch cli\n"})
-    launched: list[dict[str, str]] = []
-
-    code = bootstrap.run(_args("--reviewer-ref", "HEAD"), lambda argv, env: launched.append(env) or 0)
-
-    assert code == 0
-    export = Path(launched[0]["PYTHONPATH"])
-    assert export.name == branch_head
-    assert (export / REVIEWER_FILE).read_text(encoding="utf-8") == "branch cli\n"
-
-
-def test_only_the_newest_exports_are_kept(clones: tuple[Path, Path]) -> None:
-    _, work = clones
-    parent = Path.home() / bootstrap.EXPORT_PARENT
-    parent.mkdir(parents=True)
-    for index in range(5):
-        stale = parent / f"{index:040d}"
-        stale.mkdir()
-        os.utime(stale, (index, index))
-    current = bootstrap.export_reviewer(work, _git(work, "rev-parse", "origin/develop"), parent)
-
-    bootstrap.prune_exports(parent, current)
-
-    kept = sorted(item.name for item in parent.iterdir())
-    assert len(kept) == bootstrap.EXPORT_KEEP
-    assert current.name in kept and f"{4:040d}" in kept and f"{0:040d}" not in kept
-
-
-def test_the_withheld_names_and_handover_variable_match_the_reviewer(clones: tuple[Path, Path]) -> None:
-    from _project.scripts.oracle_reviewers import local
-
-    _, work = clones
-    commit = _git(work, "rev-parse", "origin/develop")
-    target = bootstrap.export_reviewer(work, commit, Path.home() / bootstrap.EXPORT_PARENT)
-
-    assert bootstrap.withheld_names(target) == local.SCRUBBED_AT_START
-    assert bootstrap.HANDOVER_ENV == local.HANDOVER_ENV
-
-
-def test_the_launched_environment_holds_no_secret_and_hands_them_over_a_descriptor(
-    clones: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    import json
-
-    secrets = {
-        "TYPESAFE_API_KEY": "k" * 16,
-        "TS_AUTHKEY": "t" * 16,
-        "GH_TOKEN": "g" * 16,
-        "ORACLE_CLOUD_GATEWAY_TOKEN": "c" * 16,
-    }
-    for name, value in secrets.items():
-        monkeypatch.setenv(name, value)
-    monkeypatch.setenv("UNRELATED_SETTING", "kept")
-    launched: list[dict[str, str]] = []
-
-    code = bootstrap.run(_args(), lambda argv, env: launched.append(env) or 0)
-
-    assert code == 0
-    (env,) = launched
-    assert not set(secrets) & set(env)
-    assert not [value for value in env.values() if any(secret in value for secret in secrets.values())]
-    assert env["UNRELATED_SETTING"] == "kept"
-    with os.fdopen(int(env[bootstrap.HANDOVER_ENV]), "r", encoding="utf-8") as handle:
-        assert json.load(handle) == secrets
-
-
-def test_no_handover_descriptor_is_created_when_nothing_is_withheld(
-    clones: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    for name in bootstrap_names():
+    for name in ("THESEUS_LOCAL_STATE", "THESEUS_OMP_CACHE", "THESEUS_EPHEMERAL_CLONE"):
         monkeypatch.delenv(name, raising=False)
-    launched: list[dict[str, str]] = []
+    monkeypatch.setenv("BENCHBOX_EPHEMERAL_CLONE", "1")
+    _, env = _launched(_args("--record-out", "record.txt"), monkeypatch, tmp_path / "theseus")
 
-    assert bootstrap.run(_args(), lambda argv, env: launched.append(env) or 0) == 0
-    assert bootstrap.HANDOVER_ENV not in launched[0]
-
-
-def bootstrap_names() -> frozenset[str]:
-    from _project.scripts.oracle_reviewers import local
-
-    return local.SCRUBBED_AT_START
+    assert env[wrapper.RECORD_OUT_ENV] == "record.txt"
+    assert env["PATH"].split(os.pathsep)[0] == str(tmp_path)
+    assert env["THESEUS_LOCAL_STATE"] == str(Path.home() / ".cache" / "benchbox" / "local-oracle")
+    assert env["THESEUS_OMP_CACHE"] == str(Path.home() / ".cache" / "benchbox" / "omp")
+    assert env["THESEUS_EPHEMERAL_CLONE"] == "1"
 
 
-@pytest.mark.skipif(os.name == "nt", reason="the stub uv is a shebang script")
-def test_the_real_launcher_execs_uv_without_any_withheld_secret_in_its_environment(
-    clones: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+def test_an_explicit_state_directory_is_not_overridden(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("THESEUS_LOCAL_STATE", str(tmp_path / "elsewhere"))
+    _, env = _launched(_args(), monkeypatch, tmp_path / "theseus")
+
+    assert env["THESEUS_LOCAL_STATE"] == str(tmp_path / "elsewhere")
+
+
+def test_a_refused_install_blocks_the_review(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    import json
-    import sys
+    def refuse(root: Path, ref: str) -> Path:
+        raise theseus_cli.TheseusError("lock hash mismatch")
 
-    _, work = clones
-    stubs = tmp_path / "stubs"
-    stubs.mkdir()
-    dump = tmp_path / "uv-env.json"
-    stub = stubs / "uv"
-    stub.write_text(
-        f"#!{sys.executable}\nimport json, os\n"
-        f"open({str(dump)!r}, 'w').write(json.dumps({{'env': dict(os.environ), 'fd': os.environ.get('ORACLE_LOCAL_HANDOVER_FD')}}))\n",
-        encoding="utf-8",
-    )
-    stub.chmod(0o755)
-    secrets = {
-        "TYPESAFE_API_KEY": "k" * 16,
-        "TS_AUTHKEY": "t" * 16,
-        "GH_TOKEN": "g" * 16,
-        "ORACLE_CLOUD_GATEWAY_TOKEN": "c" * 16,
-    }
-    env = {**os.environ, **secrets, "HOME": os.environ["HOME"], "PATH": f"{stubs}{os.pathsep}{os.environ['PATH']}"}
+    monkeypatch.setattr(theseus_cli, "executable", refuse)
 
-    result = subprocess.run(
-        [sys.executable, str(ROOT / "scripts/oracle_local_review.py"), "--head", "HEAD"],
-        cwd=work,
-        env=env,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    def never(argv: list[str], env: dict[str, str]) -> int:
+        raise AssertionError("the review must not launch")
 
-    assert result.returncode == 0, result.stderr
-    seen = json.loads(dump.read_text(encoding="utf-8"))
-    assert not set(secrets) & set(seen["env"])
-    assert not [value for value in seen["env"].values() if any(secret in value for secret in secrets.values())]
-    assert seen["fd"] is not None
+    assert wrapper.run(_args("--base-ref", "origin/develop"), never) == wrapper.EXIT_UNAVAILABLE
+    assert "lock hash mismatch" in capsys.readouterr().err
+
+
+def test_the_first_stage_comes_from_the_trusted_commit_not_the_working_tree(
+    repo: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    trusted = _git(repo, "rev-parse", "HEAD")
+    launcher = tmp_path / "bin" / "theseus"
+    launcher.parent.mkdir()
+    launcher.write_text("#!/bin/sh\n", encoding="utf-8")
+    monkeypatch.setenv("FAKE_THESEUS", str(launcher))
+    (repo / theseus_cli.BOOTSTRAP_PATH).write_text("raise SystemExit('tampered working tree')\n", encoding="utf-8")
+
+    assert theseus_cli.executable(repo, trusted) == launcher
+
+
+def test_a_first_stage_failure_is_a_refusal(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    trusted = _git(repo, "rev-parse", "HEAD")
+    monkeypatch.setenv("FAKE_THESEUS", "")
+
+    with pytest.raises(theseus_cli.TheseusError, match="was refused"):
+        theseus_cli.executable(repo, trusted)
+
+
+def test_a_ref_without_a_first_stage_is_a_refusal(tmp_path: Path) -> None:
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    _git(empty, "init", "--quiet")
+    _git(empty, "commit", "--quiet", "--allow-empty", "-m", "empty")
+
+    with pytest.raises(theseus_cli.TheseusError):
+        theseus_cli.executable(empty, _git(empty, "rev-parse", "HEAD"))
+
+
+def test_a_non_sha_trusted_commit_is_refused(repo: Path) -> None:
+    with pytest.raises(theseus_cli.TheseusError, match="full SHA"):
+        theseus_cli.install(repo, "HEAD")
+
+
+def test_the_environment_does_not_leak_into_the_caller(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("THESEUS_OMP_CACHE", raising=False)
+    theseus_cli.environment()
+
+    assert "THESEUS_OMP_CACHE" not in os.environ

@@ -17,13 +17,84 @@ besides covering all workflows by directory prefix, so a PR changing only this
 workflow faces the same required `oracle-gate` as other soundness changes; an
 absent, pending or failed oracle decision does not pass on its own.
 
+## Theseus ownership
+
+The reviewer engine, the gate, the local driver, the OMP maintenance commands
+and the reusable review and gate workflows live in the Theseus package
+(`theseus-reviewer`, repository `joeharris76/theseus`). BenchBox no longer
+carries that code: module names in the sections below (`cli.py`, `local.py`,
+`omp_pin.py`, `oracle_review_check.py`, `oracle_gate.py` and the rest of the old
+`_project/scripts/oracle_reviewers/` package) now name modules under
+`src/theseus_reviewer/` in that repository, and their unit and scenario tests
+live there.
+
+BenchBox keeps the consumer side:
+
+- `.github/workflows/oracle-verdict.yml` and `oracle-gate.yml`: thin callers of
+  the SHA-pinned Theseus reusable workflows. Each caller job passes every
+  `oracle` environment secret the callee uses by name (`NAME: ${{ secrets.NAME }}`):
+  seven for the review workflow, `ORACLE_APP_ID` and `ORACLE_APP_PRIVATE_KEY` for
+  the gate. The callee declares them under `on.workflow_call.secrets` as
+  required, so a missing mapping fails at startup instead of resolving empty.
+  `secrets: inherit` is not used: it does not cross owners (this repository is
+  owned by an organization, Theseus by a user), and against these callees,
+  which declare the secrets as required, it fails at startup with "Secret … is
+  required, but not provided" (https://github.com/actions/runner/issues/4453).
+- `.github/theseus-lock.json`: the reviewed lock (package, version, source
+  commit, artifact sha256 and two distinct https URLs, dependency hashes and
+  the `matcher` entry; only the first promotion's lock carried a `bootstrap`
+  record, later locks have none). Only a promotion pull request changes it,
+  and the gate refuses any change that lacks the
+  authenticated promotion evidence.
+- `_project/scripts/theseus_bootstrap.py`: the verbatim first-stage installer.
+  `scripts/theseus_cli.py` runs the first stage read from a trusted commit
+  (`origin/develop` by default) with `python -I -S`, installs the locked wheel into
+  an isolated hash-verified tree and runs the printed `theseus` executable. A
+  refused install stops the caller; there is no fallback to an older install, an
+  export directory or an ambient `theseus`.
+- `_project/scripts/soundness_paths.py`: the single byte-identical vendored copy
+  of the Theseus soundness matcher, pinned by the lock's `matcher` entry
+  (`theseus matcher verify --copy _project/scripts/soundness_paths.py --sha256
+  <entry>`). It has no default manifest: callers pass `.github/soundness-paths.txt`
+  through `_project/scripts/soundness_manifest.py` or `--manifest`.
+- `scripts/theseus_release_check.py`: runs on every medium-tier CI job right after
+  the install warm-up. It reads the lock and asks the GitHub REST API (with
+  `GITHUB_TOKEN` when present) whether `source_commit` is reachable from the
+  lock repository's `main` (compare status `identical` or `behind`) and whether
+  `test (py3.11)`, `test (py3.13)` and `build and installed-wheel smoke` concluded
+  `success` on that commit or, when it has none, on the head of its merged pull
+  request, and only when that pull request head's git tree sha equals the locked commit's
+  tree sha (`GET /git/commits/{sha}` -> `tree.sha` for both); a head whose tree differs is
+  refused. This keeps Theseus's own deterministic suite gating every promotion,
+  since BenchBox no longer runs it. A byte-identity test compares the installed
+  `theseus_reviewer/soundness_paths.py` with the vendored matcher and the lock hash.
+- Policy and manifests (`.github/oracle-reviewers.yml` with its `consumer:` and
+  `promotion:` sections, `.github/oracle-omp-config.yml`, `.github/soundness-paths.txt`,
+  `.github/inert-paths.txt`), the thin caller workflows `oracle-verdict.yml`,
+  `oracle-gate.yml` and `oracle-review.yml` pinned to one Theseus commit, the
+  gateway host script, the PR lifecycle (`pr_arm.py`, `pr_landing.py`, remote
+  closeout and review), the soundness merge digest and drain report, and the
+  inert-path read-index scanner and symlink guard.
+
+Hosted review installs the lock at the gated base tip; the gate runs from a
+second, separately verified install of the current base tip in its own process.
+The caller workflows pass the Theseus commit twice (the `uses:` ref and
+`theseus_ref`); both must equal the lock's `workflow_sha`. State and caches keep
+their BenchBox locations: `scripts/theseus_cli.py` sets `THESEUS_LOCAL_STATE` to
+`~/.cache/benchbox/local-oracle` and `THESEUS_OMP_CACHE` to `~/.cache/benchbox/omp`
+(and `THESEUS_EPHEMERAL_CLONE=1` in a cloud session), so persisted findings,
+disputes and OMP builds stay readable. Old `export/` directories under the local
+state are inert and never read.
+
 ## Setup
 
 1. Create a GitHub App owned by the repository owner with **Commit statuses:
    write** and **Pull requests: write**, installed on this repository only.
 2. Before the workflow first runs, create the `oracle` environment with
    deployment branches limited to `develop`; GitHub creates a missing
-   environment with no protection rules.
+   environment with no protection rules. The branch rule does not keep PR
+   runs from the secrets: for `pull_request_target` it is evaluated against
+   the default branch, so those runs reach them.
 3. Add these `oracle` environment secrets:
    - `ORACLE_APP_ID`, `ORACLE_APP_PRIVATE_KEY`: only the `review` job's `Mint
      the App token` step, after the attempt loop and the redaction check.
@@ -668,7 +739,7 @@ sound, and it does not apply to an inline brief or to a verdict that does not sh
   defect, or an earlier defect not fixed) needs neither. A multi-path or
   directory `grep` credits nothing, and `details.files` is ignored: it lists
   matches, not reads. The recorded transcript
-  (`tests/fixtures/oracle_reviewers/omp_multi_turn_review.jsonl`) keeps grep
+  (`tests/fixtures/oracle_reviewers/omp_candidate/omp_multi_turn_review.jsonl`) keeps grep
   match metadata (`files`, `fileMatches`, `matchCount`, `fileCount`) apart from
   the rendered `displayContent` with its own `truncated` flag, and its only grep
   is untruncated, so `files` is unproven under truncation.
@@ -874,23 +945,18 @@ local adapter. `make trunk-revert` opens its PR through `gh pr create` without
 it. The review is advisory, labelled as possibly differing from the CI oracle,
 and posts nothing to GitHub.
 
-- **Trusted copy.** `scripts/oracle_local_review.py` runs `git fetch origin
-  develop`, then exports the reviewer package (`_project/scripts/oracle_reviewers`,
-  the soundness and inert path predicates, the policy, OMP config and both
-  manifests) from that commit with `git archive` into
-  `~/.cache/benchbox/local-oracle/export/<commit>`, and runs `cli.py
-  local-review` from the export under isolated `uv` with `pyyaml==6.0.3`, as the
-  hosted job does. The branch's working tree is never part of the export, so a
-  branch cannot change the machinery that clears it. The three newest exports are
-  kept. When `origin/develop` cannot be fetched or exported the review refuses
-  (exit 2) and nothing runs. A process of the same user can still alter the cache
-  files; CI remains the control. The script's `--reviewer-ref REF` option exports
-  another ref for a pre-merge smoke of the reviewer package itself; the script
-  only reviews, it cannot push or open a PR, and `make pr-open` never passes it.
-  Only the thin caller (the Makefile target and that script) comes from the
-  branch; the policy, manifests and omp pin are read from `origin/develop` as the
-  hosted job reads them from the base branch, so a branch cannot widen its own
-  exempt paths.
+- **Trusted copy.** `scripts/oracle_local_review.py` resolves the trusted ref
+  (`--trusted-ref`, `origin/develop` after `git fetch origin develop` by default),
+  installs the Theseus build locked at that commit through the first stage read
+  from the same commit, and runs `theseus local-review` from that install. The
+  branch's working tree is never part of what runs, so a branch cannot change the
+  machinery that clears it. When the lock, the artifact hashes or the install
+  cannot be verified the review refuses (exit 2) and nothing runs. The
+  `--record-out FILE` option sets `ORACLE_LOCAL_RECORD_OUT`; only the thin
+  caller (the Makefile target and that script) comes from the branch, and the
+  policy, manifests and omp pin are read from the trusted commit as the hosted
+  job reads them from the base branch, so a branch cannot widen its own exempt
+  paths.
 - **Same driver.** `local-review` is the orchestrator the workflow YAML is for CI:
   it runs `cli.py drive --environment local` phases as separate processes,
   `prepare`, `scan`, `harness`, `isolation`, `attempts` and `recover` (repeated as
@@ -931,7 +997,7 @@ and posts nothing to GitHub.
   `oracle-cloud` client from `ORACLE_GATEWAY_URL` and
   `ORACLE_CLOUD_GATEWAY_TOKEN`, refusing if either is missing.
   The tailnet is reachable only through the local proxy that `make cloud-gateway`
-  records as `gateway_proxy=` in `<git dir>/benchbox-cloud-gateway.status`: the
+  records as `gateway_proxy=` in `<git dir>/theseus-cloud-gateway.status`: the
   health check uses it (and never an ambient proxy variable), and the reviewer
   gets `HTTPS_PROXY`, `HTTP_PROXY`,
   `PI_PROXY` and a loopback-only `NO_PROXY` for the cloud
@@ -953,8 +1019,8 @@ and posts nothing to GitHub.
   `darwin-arm64`), the download URL and SHA-256. One installer (`omp_pin.py`,
   `cli.py install-omp` and `drive harness`, run under isolated `uv` with `pyyaml==6.0.3`; YAML is
   imported only to parse the policy) downloads the platform build into
-  `~/.cache/benchbox/omp/<version>/<platform>/omp` (`BENCHBOX_OMP_CACHE`
-  overrides the root; `BENCHBOX_OMP_DOWNLOAD_MIRROR` swaps the pinned URL's origin for a loopback one so tests can serve a build locally, and is refused if it names any other host), checks the SHA-256 before the file is marked executable,
+  `~/.cache/benchbox/omp/<version>/<platform>/omp` (`THESEUS_OMP_CACHE`
+  overrides the root; `THESEUS_OMP_DOWNLOAD_MIRROR` swaps the pinned URL's origin for a loopback one so tests can serve a build locally, and is refused if it names any other host), checks the SHA-256 before the file is marked executable,
   then checks the binary reports the pinned version. The CI `Install omp` step (`drive harness`),
   `scripts/cloud_gateway.sh` and the local review all use it, and the reviewer
   runs the installed binary by its path (`ORACLE_OMP_BINARY`), never the `omp` on
@@ -1194,7 +1260,7 @@ The harness boundary is OMP's command line, JSON event stream and configuration,
 which unit tests cannot check alone. A change to `commands.py`, `verdict.py`,
 `evidence.py`, `runner.py`, the reviewer policy or the attempt loop must also:
 
-- keep `tests/fixtures/oracle_reviewers/omp_multi_turn_review.jsonl` a real
+- keep `tests/fixtures/oracle_reviewers/omp_candidate/omp_multi_turn_review.jsonl` a real
   recording of a review the harness already ran. When OMP output changes,
   replace it with the stream of a CI or local review run that already happened,
   with machine paths replaced and credentials checked for. Never run a model
@@ -1617,8 +1683,8 @@ have been pinned through a separate trusted policy change. An author cannot
 authorize a new dependency by changing the policy in the promotion PR.
 `allowed_artifact_hosts` still limits download locations; an allowed host does
 not authorize arbitrary wheel bytes.
-Explicit empty `bootstrap_reviewers` or `allowed_artifact_hosts` lists are
-configuration errors, not requests to restore their defaults.
+An explicit empty `allowed_artifact_hosts` list is a configuration error, not
+a request to restore its default.
 
 The lock cannot contain two dependencies whose normalized distribution names
 match, even at different versions. Base-pinned dependency wheels may contain
@@ -1627,23 +1693,21 @@ metadata files, and RECORD hashes and sizes are verified without executing the
 contents. The promoted Theseus wheel retains its stricter source-match and
 pure-package rules, including rejection of native libraries and `.data` files.
 
-The first promotion additionally requires `bootstrap_baseline_commit`,
-`bootstrap_path_map`, and `bootstrap_reviewers` in the trusted base policy.
-The lock's bootstrap record must match that baseline, map, reviewer, and source
-commit. Its named reviewer must post an **unedited PR issue comment** using an
-authenticated GitHub `User` account in `bootstrap_reviewers`, containing this
-exact standalone line (substitute the complete digests):
+BenchBox's policy no longer carries `bootstrap_baseline_commit`,
+`bootstrap_path_map` or `bootstrap_reviewers`. The cutover to the Theseus
+package is complete, the base branch has a lock, and every promotion is a
+promotion from that lock. The block holds only `package`, `repository` and
+`dependencies`. Theseus parses the `bootstrap_*` keys as optional and reads them
+only to authorize a first promotion, when the base branch has no lock, which
+this repository no longer is. Adding them back changes nothing for a promotion
+from the existing lock.
 
-```text
-Theseus bootstrap approval: source=<40-character source_commit> lock=<64-character canonical lock SHA-256>
-```
+A promotion's required reads are the executed surface of the promoted source,
+not the whole delta: the files of the wheel's package under `src/`,
+`pyproject.toml`, and the review and gate workflows the callers reference.
+Renamed files are detected, and a byte-identical rename needs no read. The rest
+of the delta is staged and listed as not required. The decision and its reason
+are in `_project/decisions/review-depth-and-capacity-2026-11-05.md`.
 
-`promotion.bootstrap_approval_line(promotion.parse_lock(lock_text))` produces
-the line; the lock digest is `promotion.lock_digest`, not the raw JSON file
-hash. Bot comments, another author's comments, edited comments, and approvals
-for another lock or upstream source do not count. Repost a new comment after
-changing the lock. The hosted preparation and gate both enforce this approval;
-comment-read failures do not bypass it. Request a fresh oracle run after posting
-the approval; a gate sweep or manual dispatch can also re-evaluate the gate.
-Local advisory preparation explicitly skips PR-comment authorization because
-the PR may not yet exist. Local output never grants hosted gate authority.
+The review size and capacity limits belong to Theseus. `brief_max_bytes` is not
+a policy key, and a policy with an unknown top-level key is refused.

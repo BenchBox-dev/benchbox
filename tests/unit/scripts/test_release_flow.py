@@ -247,7 +247,8 @@ def test_release_enforcement_requires_external_review_for_each_dependency(path: 
     assert spec.loader is not None
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
-    assert module.is_soundness_path(path)
+    manifest = REPO_ROOT / ".github" / "soundness-paths.txt"
+    assert module.Matcher(module.load_rules(manifest)).is_soundness_path(path)
 
 
 @pytest.mark.skipif(shutil.which("uv") is None, reason="needs uv")
@@ -463,6 +464,22 @@ def test_prep_validates_fragments_first_and_compiles_them_last(tree: Path) -> No
         assert argv[argv.index("--version") + 1] == VERSION
         assert argv[argv.index("--release-date") + 1] == "2026-02-03"
         assert "--since-ref" not in argv
+
+
+def test_prep_relocks_each_present_subproject_before_compiling(tree: Path) -> None:
+    present = release_flow.LOCKED_SUBPROJECTS[0]
+    (tree / present).mkdir(parents=True)
+    (tree / present / "uv.lock").write_text("version = 1\n", encoding="utf-8")
+    calls: list[list[str]] = []
+
+    def runner(argv, cwd):
+        calls.append(list(argv))
+        return 0, ""
+
+    assert release_flow.prep(tree, VERSION, None, runner) == 0
+    uv_calls = [argv for argv in calls if argv[0] == "uv"]
+    assert uv_calls == [["uv", "lock"], ["uv", "lock", "--project", present]]
+    assert calls.index(uv_calls[-1]) == len(calls) - 2
 
 
 def test_pre_tag_check_fails_while_any_fragment_is_pending(tree: Path) -> None:

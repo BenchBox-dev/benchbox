@@ -4,7 +4,7 @@ set -eu
 top=$(git rev-parse --show-toplevel)
 git_dir=$(git rev-parse --absolute-git-dir)
 state_dir="$git_dir/benchbox-cloud-gateway"
-status_file="$git_dir/benchbox-cloud-gateway.status"
+status_file="$git_dir/theseus-cloud-gateway.status"
 proxy_port=${BENCHBOX_GATEWAY_PROXY_PORT:-1055}
 pid_file="$state_dir/tailscaled.pid"
 
@@ -100,13 +100,17 @@ install_omp() {
     return 1
   fi
   log="$state_dir/omp-install.log"
-  if printf '%s\n' "$policy" |
-    (cd "$top" && uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- \
-      python -m _project.scripts.oracle_reviewers.cli install-omp --policy -) >"$state_dir/omp-binary" 2>"$log"; then
+  trusted="$state_dir/trusted-policy"
+  rm -rf "$trusted"
+  mkdir -p "$trusted"
+  if git -C "$top" archive origin/develop .github | tar -x -C "$trusted" &&
+    python3 "$top/scripts/theseus_cli.py" run -- install-omp --policy "$trusted/.github/oracle-reviewers.yml" >"$state_dir/omp-binary" 2>"$log"; then
+    rm -rf "$trusted"
     omp_state=installed
     say "OMP installed and verified"
     return 0
   fi
+  rm -rf "$trusted"
   rm -f "$state_dir/omp-binary"
   sed 's/^/cloud-gateway: omp: /' "$log" | tail -n 5
   say "OMP not installed; the environment network allowlist needs the OMP download host named in the pin"

@@ -164,6 +164,11 @@ _SQLITE_TPCHAVOC_SF1_RUNTIME_ENVELOPE_REASON = (
     "release-v2 run 40701870861. SF1 scales the same joins roughly tenfold. SF0.01 and SF0.1 stay in the gate."
 )
 
+_PYSPARK_DF_TPCHAVOC_SF01_RUNTIME_ENVELOPE_REASON = (
+    "pyspark-df TPC-Havoc SF0.1 cannot reliably meet the 1200s release-gate cell contract: passing cells took "
+    "692-966s and two runs timed out at 1200s. SF1 is already outside the envelope. SF0.01 stays in the gate."
+)
+
 _SF1_TIMEOUT_RUNNER_CLAUSE = "measured on the 4 vCPU / 16 GB release runner (release UAT dry run 2, run 41163626947). SF0.01 and SF0.1 stay in the gate."
 
 _DASK_DF_SF1_RUNTIME_ENVELOPE_REASON = (
@@ -299,6 +304,7 @@ _RELEASE_GATE_RUNTIME_ENVELOPES = (
         ("datafusion", "datavault"): _DATAFUSION_DATAVAULT_RUNTIME_ENVELOPE_REASON,
         ("sqlite", "tpcds"): _SQLITE_TPCDS_RUNTIME_ENVELOPE_REASON,
         ("sqlite", "tpcds_obt"): _SQLITE_TPCDS_OBT_RUNTIME_ENVELOPE_REASON,
+        ("pyspark-df", "tpchavoc", 0.1): _PYSPARK_DF_TPCHAVOC_SF01_RUNTIME_ENVELOPE_REASON,
     }
 )
 
@@ -323,6 +329,11 @@ _RELEASE_GATE_RUNTIME_ENVELOPE_EVIDENCE = (
             "tpchavoc",
             1.0,
         ): "release-v2 run 40701870861 stage 1 (1200s timeout); local SF0.1 timing 2026-10-29",
+        (
+            "pyspark-df",
+            "tpchavoc",
+            0.1,
+        ): "release-v2 run 41842316367 for v0.5.0rc4 and a release UAT dry run: terminal=timeout at 1200s",
     }
 )
 
