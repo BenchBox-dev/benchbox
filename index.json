@@ -31328,7 +31328,7 @@
       ],
       "priority": "medium",
       "status": "open",
-      "title": "Theseus v0.2.2: brief on stdin, mode from rendered size, capacity recalibration and legacy-name removal"
+      "title": "Theseus v0.2.3: brief on stdin, mode from rendered size, capacity recalibration and legacy-name removal"
     },
     "throughput-adapter-session-capability-contract": {
       "claim": null,
