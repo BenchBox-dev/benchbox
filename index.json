@@ -1877,6 +1877,152 @@
       "start_head": "3a3ee9826a6ab939d6235d31e69056c789ac365e",
       "terminal_outcome": "deliver"
     },
+    "release-v2-remediation": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/release-v2-remediation",
+      "integration_head": "20a0045113e6c8ba13c3e7c4f78351e3fe81f81e",
+      "integration_log": [
+        {
+          "at": "2026-11-06T13:41:20Z",
+          "head": "20a0045113e6c8ba13c3e7c4f78351e3fe81f81e",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-release-v2-remediation",
+      "lifecycle": "active",
+      "members": [
+        "rv2r-01-adr-guardrails",
+        "rv2r-09-trunk-dist-every-commit",
+        "rv2r-04-uat-rubric-automation",
+        "rv2r-06-fail-closed-detectors",
+        "rv2r-02-trunk-uat-nightly",
+        "rv2r-07-oracle-pinned-dependency",
+        "rv2r-03-release-evidence-check",
+        "rv2r-14-maintenance-release-branches",
+        "rv2r-05-release-probe-mode"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "owner_epoch": 0,
+      "owner_generation": "ee495172f78ed34f2cda022f985986c4",
+      "project_id": "benchbox",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "rv2r-01-adr-guardrails": [
+          "docs/internal/adr/adr-dev-loop-v2.md",
+          "docs/internal/release-artifacts.md",
+          "docs/internal/release-guide.md",
+          "docs/internal/dev-loop-property-ledger.md",
+          "changelog.d/rv2r-01*"
+        ],
+        "rv2r-02-trunk-uat-nightly": [
+          ".github/workflows/trunk-uat.yml",
+          ".github/actions/release-uat-env/*",
+          "scripts/trunk_uat*.py",
+          "tests/unit/scripts/test_trunk_uat*.py",
+          "tests/unit/workflows/test_trunk_uat*.py",
+          "docs/internal/trunk-uat.md",
+          "docs/internal/release-guide.md",
+          "changelog.d/rv2r-02*"
+        ],
+        "rv2r-03-release-evidence-check": [
+          "scripts/release_reuse_uat_evidence.py",
+          "scripts/release_canary_freshness*.py",
+          ".github/workflows/release-v2.yml",
+          "tests/unit/scripts/test_release_reuse_uat_evidence*.py",
+          "tests/unit/scripts/test_release_canary_freshness*.py",
+          "tests/unit/workflows/test_release_v2_workflow*.py",
+          "docs/internal/release-artifacts.md",
+          "docs/internal/release-guide.md",
+          "changelog.d/rv2r-03*"
+        ],
+        "rv2r-04-uat-rubric-automation": [
+          "docker/*",
+          "tests/uat/*",
+          "scripts/uat_*.py",
+          "scripts/uat-bring-up/*",
+          "tests/unit/uat/*",
+          "tests/unit/scripts/test_uat_*.py",
+          "Makefile",
+          "make/uat*.mk",
+          "docs/internal/uat-*.md",
+          "changelog.d/rv2r-04*"
+        ],
+        "rv2r-05-release-probe-mode": [
+          ".github/workflows/release-v2.yml",
+          ".github/workflows/release-v2-probe.yml",
+          "scripts/release_artifact_consumer.py",
+          "scripts/release_admitted_dist.py",
+          "scripts/release_probe*.py",
+          "scripts/release_reuse_uat_evidence.py",
+          "tests/unit/scripts/test_release_*.py",
+          "tests/unit/workflows/test_release_v2*.py",
+          "docs/internal/release-guide.md",
+          "changelog.d/rv2r-05*"
+        ],
+        "rv2r-06-fail-closed-detectors": [
+          ".github/workflows/oracle-verdict.yml",
+          ".github/workflows/oracle-gate.yml",
+          ".github/workflows/release-v2.yml",
+          "scripts/oracle_*.py",
+          "scripts/release_uat_*.py",
+          "tests/unit/workflows/test_oracle_*.py",
+          "tests/unit/workflows/test_release_v2*.py",
+          "tests/unit/scripts/test_oracle_*.py",
+          "tests/unit/scripts/test_release_uat_*.py",
+          "changelog.d/rv2r-06*"
+        ],
+        "rv2r-07-oracle-pinned-dependency": [
+          ".github/workflows/oracle-verdict.yml",
+          ".github/workflows/oracle-gate.yml",
+          ".github/workflows/review-gate.yml",
+          "tests/unit/workflows/test_oracle_*.py",
+          "tests/unit/workflows/test_theseus_pin*.py",
+          "docs/internal/oracle-review-v2.md",
+          "docs/internal/theseus-*.md",
+          "changelog.d/rv2r-07*"
+        ],
+        "rv2r-09-trunk-dist-every-commit": [
+          ".github/workflows/trunk.yml",
+          "scripts/release_flow.py",
+          "scripts/release_releasable*.py",
+          "tests/unit/scripts/test_release_flow.py",
+          "tests/unit/scripts/test_release_releasable*.py",
+          "tests/unit/workflows/test_trunk_*.py",
+          "docs/internal/release-artifacts.md",
+          "docs/internal/release-guide.md",
+          "changelog.d/rv2r-09*"
+        ],
+        "rv2r-14-maintenance-release-branches": [
+          ".github/workflows/trunk.yml",
+          ".github/workflows/ci.yml",
+          ".github/workflows/review-gate.yml",
+          ".github/workflows/release-v2.yml",
+          "scripts/release_artifact_consumer.py",
+          "scripts/release_flow.py",
+          "scripts/ruleset_drift_check.py",
+          "tests/unit/scripts/test_release_*.py",
+          "tests/unit/test_ruleset_drift.py",
+          "tests/unit/release/*",
+          "tests/unit/workflows/test_trunk_*.py",
+          "tests/unit/workflows/test_release_v2*.py",
+          "tests/unit/workflows/test_ci_*.py",
+          "tests/unit/scripts/test_generate_changelog_entry.py",
+          "docs/internal/repo-admin-settings.md",
+          "docs/internal/release-guide.md",
+          "changelog.d/rv2r-14*"
+        ]
+      },
+      "scope_hash": "f33d54323bf1878db20222c7a0bd92dc4fd11f0368b68bd2c0854c6f21904012",
+      "start_head": "20a0045113e6c8ba13c3e7c4f78351e3fe81f81e",
+      "terminal_outcome": "deliver"
+    },
     "tpc-timer-boundaries": {
       "accepted_members": {},
       "batch_schema": 2,
