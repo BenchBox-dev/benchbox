@@ -1881,6 +1881,7 @@
       "accepted_members": {
         "rv2r-04-uat-rubric-automation": "8a83e4ad1531a772bd03f8374c33358c8cf634ed",
         "rv2r-06-fail-closed-detectors": "fcc3a048a6e2ebd2c712ed5621735cf01a91907b",
+        "rv2r-07-oracle-pinned-dependency": "2c7130e0f6de08eed6af8531fcf4f13b3b7511db",
         "rv2r-09-trunk-dist-every-commit": "35511fbd3be478ccbf54e1b3d348d098d5e3da3a"
       },
       "batch_schema": 2,
@@ -1939,6 +1940,17 @@
           "integration_head": "34adfbb5ac12b5cf2cd546ff61dd63aa394f90d9",
           "integration_seq": 3
         },
+        "rv2r-07-oracle-pinned-dependency": {
+          "accepted_head": "2c7130e0f6de08eed6af8531fcf4f13b3b7511db",
+          "changed_files": [
+            "changelog.d/rv2r-07-oracle-pinned-dependency.json",
+            "docs/internal/oracle-review-v2.md",
+            "docs/internal/theseus-pin-bump.md",
+            "tests/unit/workflows/test_theseus_pin_consistency.py"
+          ],
+          "integration_head": "e4f2d33afe28cbfd2991ca9e7e0cfe44b173432a",
+          "integration_seq": 4
+        },
         "rv2r-09-trunk-dist-every-commit": {
           "accepted_head": "35511fbd3be478ccbf54e1b3d348d098d5e3da3a",
           "changed_files": [
@@ -1957,7 +1969,7 @@
         }
       },
       "integration_branch": "feat/release-v2-remediation",
-      "integration_head": "34adfbb5ac12b5cf2cd546ff61dd63aa394f90d9",
+      "integration_head": "e4f2d33afe28cbfd2991ca9e7e0cfe44b173432a",
       "integration_log": [
         {
           "at": "2026-11-06T13:41:20Z",
@@ -1991,6 +2003,15 @@
           "op_id": "1a5eaded6d0c4c84a31f5179b149cab4",
           "previous_head": "d58757cfbd6cf9bfbbdb9905da03c0e925a2adbd",
           "seq": 3
+        },
+        {
+          "at": "2026-11-06T16:00:40Z",
+          "head": "e4f2d33afe28cbfd2991ca9e7e0cfe44b173432a",
+          "kind": "prepare",
+          "member": "rv2r-07-oracle-pinned-dependency",
+          "op_id": "bd6ec1ccd4ed45f28c817c9b99e67ef3",
+          "previous_head": "34adfbb5ac12b5cf2cd546ff61dd63aa394f90d9",
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-release-v2-remediation",
@@ -27199,17 +27220,12 @@
       "title": "Make process checks fail when they ran but did nothing"
     },
     "rv2r-07-oracle-pinned-dependency": {
-      "claim": {
-        "expires_at": "2026-11-07T16:00:20Z",
-        "generation": "6d28c34f81ce41f4ab1034dba127572f",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec"
-      },
+      "claim": null,
       "needs": [
         "rv2r-06-fail-closed-detectors"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "Operate the Theseus oracle as a pinned dependency with canary bumps and one-step rollback"
     },
     "rv2r-08-release-freeze-guard": {

@@ -20,6 +20,54 @@
     ".github/workflows/oracle-gate.yml",
     "_project/decisions/oracle-gate-relaxation-2026-11-04.md"
   ],
+  "prepared": {
+    "accepted_head": "2c7130e0f6de08eed6af8531fcf4f13b3b7511db",
+    "batch_id": "release-v2-remediation",
+    "changed_files": [
+      "changelog.d/rv2r-07-oracle-pinned-dependency.json",
+      "docs/internal/oracle-review-v2.md",
+      "docs/internal/theseus-pin-bump.md",
+      "tests/unit/workflows/test_theseus_pin_consistency.py"
+    ],
+    "integration_head": "e4f2d33afe28cbfd2991ca9e7e0cfe44b173432a",
+    "integration_seq": 4,
+    "member_id": "rv2r-07-oracle-pinned-dependency",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "f33d54323bf1878db20222c7a0bd92dc4fd11f0368b68bd2c0854c6f21904012",
+    "source_base": "34adfbb5ac12b5cf2cd546ff61dd63aa394f90d9",
+    "source_revision": "2c7130e0f6de08eed6af8531fcf4f13b3b7511db",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-rv2r-07-oracle-pinned-dependency",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/unit/workflows/test_theseus_pin_consistency.py"
+      ],
+      "review": {
+        "base_sha": "34adfbb5ac12b5cf2cd546ff61dd63aa394f90d9",
+        "head_sha": "2c7130e0f6de08eed6af8531fcf4f13b3b7511db",
+        "head_tree": "4bdcb5c846a1b374c70a065b58d3cca73b9317b1",
+        "outcome": "clear",
+        "patch_digest": "e96011fb732d5459a603dea39e7049f8",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "ac992fe44fbd4fc4c94e3a205593b94521183468"
+      },
+      "revision": "2c7130e0f6de08eed6af8531fcf4f13b3b7511db",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a3eb8cbf1b5dc744e4710e1c",
@@ -60,6 +108,15 @@
       "generation": "6d28c34f81ce41f4ab1034dba127572f",
       "op": "take",
       "op_id": "d2e9d48dc86c4e0c973d3bcff3e31373",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-06T16:00:40Z",
+      "client": "omp-coding-agent",
+      "generation": "6d28c34f81ce41f4ab1034dba127572f",
+      "op": "prepare",
+      "op_id": "bd6ec1ccd4ed45f28c817c9b99e67ef3",
       "session_id": "b7a346e5fd054aa88d3c05a944442610"
     }
   ]
