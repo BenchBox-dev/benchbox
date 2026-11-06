@@ -443,12 +443,13 @@ class TestLoadDataBranches:
 
         with (
             patch.object(adapter, "_ilp_table_row_count", side_effect=[3, 8, 10]) as mock_count,
-            patch("benchbox.platforms.questdb.time.sleep") as mock_sleep,
+            patch.object(questdb_module, "time") as mock_time,
         ):
+            mock_time.monotonic.return_value = 0.0
             adapter._await_ilp_row_count("partsupp", 10, 10)
 
         assert mock_count.call_count == 3
-        assert mock_sleep.call_count == 2
+        assert mock_time.sleep.call_count == 2
 
     def test_await_ilp_row_count_extends_the_deadline_while_rows_keep_arriving(self, questdb_stubs):
         adapter = QuestDBAdapter(loading_method="ilp")
@@ -456,9 +457,9 @@ class TestLoadDataBranches:
 
         with (
             patch.object(adapter, "_ilp_table_row_count", side_effect=[1, 2, 3, 10]),
-            patch("benchbox.platforms.questdb.time.sleep"),
-            patch("benchbox.platforms.questdb.time.monotonic", side_effect=lambda: next(clock)),
+            patch.object(questdb_module, "time") as mock_time,
         ):
+            mock_time.monotonic.side_effect = lambda: next(clock)
             adapter._await_ilp_row_count("partsupp", 10, 10)
 
     def test_await_ilp_row_count_fails_when_rows_stop_arriving(self, questdb_stubs):
@@ -467,10 +468,10 @@ class TestLoadDataBranches:
 
         with (
             patch.object(adapter, "_ilp_table_row_count", return_value=4),
-            patch("benchbox.platforms.questdb.time.sleep"),
-            patch("benchbox.platforms.questdb.time.monotonic", side_effect=lambda: next(clock)),
+            patch.object(questdb_module, "time") as mock_time,
             pytest.raises(RuntimeError, match="without progress"),
         ):
+            mock_time.monotonic.side_effect = lambda: next(clock)
             adapter._await_ilp_row_count("partsupp", 10, 10)
 
     def test_await_ilp_row_count_fails_when_more_rows_than_sent(self, questdb_stubs):
