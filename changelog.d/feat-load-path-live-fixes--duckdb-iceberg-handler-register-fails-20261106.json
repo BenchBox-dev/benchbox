@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed Iceberg table loads on DuckDB, which registered the table directory instead of its metadata file in a namespace that did not exist and silently loaded 0 rows; file-based loads now raise when a handler fails or loads fewer rows than the source holds."
+    }
+  ]
+}

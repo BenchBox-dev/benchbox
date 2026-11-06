@@ -461,6 +461,69 @@ class TestQuestDBAdapter:
         assert b"3|4\n" in captured_body["content"]
         assert b"1|2|\n" not in captured_body["content"]
 
+    def _ilp_chunked_load(self, tmp_path, landed_rows):
+        files = []
+        for index in (1, 2):
+            data_file = tmp_path / f"region.tbl.{index}"
+            data_file.write_text("1|AFRICA|c1|\n2|ASIA|c2|\n3|EUROPE|c3|\n", encoding="utf-8")
+            files.append(data_file)
+
+        received: list[bytes] = []
+        connections: list[int] = []
+        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.bind(("127.0.0.1", 0))
+        server.listen(4)
+        server.settimeout(1)
+
+        def _serve():
+            while True:
+                try:
+                    conn, _ = server.accept()
+                except OSError:
+                    return
+                connections.append(1)
+                with conn:
+                    while chunk := conn.recv(4096):
+                        received.append(chunk)
+
+        thread = threading.Thread(target=_serve)
+        thread.start()
+        counts = iter(landed_rows)
+        response = Mock()
+        response.json.side_effect = lambda: {"dataset": [[next(counts)]]}
+        try:
+            adapter = QuestDBAdapter(host="localhost", loading_method="ilp")
+            adapter.ilp_host = "127.0.0.1"
+            adapter.ilp_port = server.getsockname()[1]
+            benchmark = Mock()
+            benchmark.tables = {"region": [str(f) for f in files]}
+            benchmark.csv_delimiter = "|"
+            benchmark.csv_has_header = False
+            benchmark.csv_normalize_booleans = None
+            with (
+                patch.object(adapter, "_get_table_columns", return_value=["r_regionkey", "r_name", "r_comment"]),
+                patch.object(questdb_module, "_http_get", return_value=response),
+                patch.object(questdb_module, "_ILP_VERIFY_TIMEOUT_SECONDS", 0.0),
+            ):
+                try:
+                    return adapter.load_data(benchmark, Mock(), tmp_path), connections, received
+                finally:
+                    server.close()
+                    thread.join(timeout=10)
+        finally:
+            server.close()
+
+    def test_ilp_chunked_table_uses_one_connection_and_checks_count(self, questdb_stubs, tmp_path):
+        (stats, _, _), connections, received = self._ilp_chunked_load(tmp_path, [0, 6])
+
+        assert len(connections) == 1
+        assert stats["region"] == 6
+        assert len(b"".join(received).decode().splitlines()) == 6
+
+    def test_ilp_load_fails_when_fewer_rows_land_than_were_sent(self, questdb_stubs, tmp_path):
+        with pytest.raises(RuntimeError, match="lost rows: sent 6, table holds 4"):
+            self._ilp_chunked_load(tmp_path, [0, 4, 4, 4])
+
     def test_ilp_dat_keeps_trailing_null_column(self, questdb_stubs, tmp_path):
         data_file = tmp_path / "store_sales.dat"
         data_file.write_text("1|2|\n3|4|5\n7|8|9|\n", encoding="utf-8")
