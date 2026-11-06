@@ -355,14 +355,21 @@ def build_plan(api: Api, config: Config, pin: Mapping[str, Any], out_dir: Path |
         by_version.setdefault(receipt.version, {}).setdefault(receipt.sha256, []).append(receipt)
     pinned = {"version": pin["version"], "sha256": pin["sha256"]}
     base = {"pin": pinned, "untrustedRuns": untrusted}
-    for version, hashes in by_version.items():
-        if len(hashes) > 1:
-            listing = "; ".join(
-                f"sha256:{digest} in run {max(items, key=lambda item: item.order).run['id']}"
-                for digest, items in sorted(hashes.items())
-            )
-            message = exception_message(config, f"benchbox-sqlglot {version} has two wheel hashes", listing)
-            return {**base, "state": "exception", "message": message}
+
+    def collision(version: str) -> dict[str, Any] | None:
+        hashes = by_version.get(version, {})
+        if len(hashes) < 2:
+            return None
+        listing = "; ".join(
+            f"sha256:{digest} in run {max(items, key=lambda item: item.order).run['id']}"
+            for digest, items in sorted(hashes.items())
+        )
+        message = exception_message(config, f"benchbox-sqlglot {version} has two wheel hashes", listing)
+        return {**base, "state": "exception", "message": message}
+
+    pinned_collision = collision(pin["version"])
+    if pinned_collision is not None:
+        return pinned_collision
     same = by_version.get(pin["version"])
     if same is not None and pin["sha256"] not in same:
         subject = (
@@ -375,6 +382,9 @@ def build_plan(api: Api, config: Config, pin: Mapping[str, Any], out_dir: Path |
     for version in sorted(
         (v for v in by_version if version_key(v) > version_key(pin["version"])), key=version_key, reverse=True
     ):
+        candidate_collision = collision(version)
+        if candidate_collision is not None:
+            return candidate_collision
         digest, candidates = next(iter(by_version[version].items()))
         found = locate_and_verify(api, config, candidates)
         record = found["record"]
