@@ -1867,7 +1867,7 @@ def _failed_details_for(tmp_path: Path, failures: dict[str, str]) -> list[dict[s
         result_path=result_path,
         submit_terminal_state="query_failure",
     )
-    return cells_io._failed_query_details(cell)
+    return cells_io.failed_query_details(cell)
 
 
 def test_cells_jsonl_repeated_query_id_same_error_type_keeps_each_execution_message(tmp_path: Path):
