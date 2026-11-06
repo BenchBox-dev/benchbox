@@ -241,7 +241,8 @@ History of the required contexts:
 
 `develop-squash-only` (ruleset id `15611785`) has had no `merge_queue` rule
 since 2026-10-03; see `_project/decisions/merge-queue-retirement-2026-10-03.md`.
-Agents arm a PR with `make pr-arm`, which enables auto-merge; the PR
+Agents arm a PR with `make pr-arm`, which enables auto-merge; the SQLGlot
+delivery workflow arms its own adoption PRs under the same rules. The PR
 squash-merges when the required checks pass and every review thread is
 resolved. The drift check reports a `merge_queue` rule that reappears.
 
@@ -369,7 +370,11 @@ The soundness gate, as operated:
   ancestor. It does not verify a merge queue or merge `develop` itself. Refresh
   a conflicting PR near its landing turn, then rerun CI and get review on the
   resulting head before arming.
-- No workflow arms auto-merge. One workflow disarms: when a `trunk.yml` run
+- One workflow arms auto-merge: `.github/workflows/sqlglot-delivery.yml` arms
+  the SQLGlot adoption PR it opens, as the delivery App, through the same
+  `scripts/pr_arm.py` rules as `make pr-arm`. It never arms after a human hold
+  or disarm; only a `trunk-red-disarm` disarm may be re-armed. No other
+  workflow arms auto-merge. One workflow disarms: when a `trunk.yml` run
   on `develop` completes red, `.github/workflows/trunk-red-disarm.yml` disables
   auto-merge on each open PR against `develop` that has it enabled and that
   `scripts/trunk_revert.py arm-gate` would refuse, through the GraphQL
@@ -386,7 +391,8 @@ The soundness gate, as operated:
   check, so the PR cannot merge even though auto-merge stays on. Disable
   auto-merge too (`gh pr merge <n> --disable-auto`) so the PR shows no false
   intent to land. See `docs/internal/pr-triage.md` "Durable auto-merge holds".
-- `make pr-arm` refuses drafts, non-develop bases, durable holds, requested
+- `make pr-arm` (and the delivery workflow, through `scripts/pr_arm.py`)
+  refuses drafts, non-develop bases, durable holds, requested
   changes, unresolved threads, unpublished work, and a remote head that differs
   from local HEAD. It enables squash auto-merge for the exact reviewed head.
   Required checks and thread resolution control the merge.
