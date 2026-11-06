@@ -22362,6 +22362,13 @@
       "status": "open",
       "title": "Make pr-arm and pr-rerun agree on what to do while a head's full CI run is still in progress"
     },
+    "pr-arm-stale-hold-suite-needs-new-head-20261106": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "After removing no-auto-merge, a stale failed hold suite blocks make pr-arm, and only a new head clears it"
+    },
     "pr-arm-stale-remote-race": {
       "claim": null,
       "needs": [],
