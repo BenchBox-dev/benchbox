@@ -32086,12 +32086,17 @@
       "title": "TPC-H DataFrame runs must bind the SQL run's seed-derived parameters, and the reference-seed assumption must be corrected (needs owner sign-off)"
     },
     "tpch-ducklake-refresh-support-20261103": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-07T04:43:29Z",
+        "generation": "6b1f654655114177ad02f1116da35a55",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [
         "perf-tpch-rf1-bulk-load-20261031"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Prove TPC-H refresh functions on DuckLake or stop declaring support"
     },
     "tpch-power-measured-iterations-stream-and-validation": {
