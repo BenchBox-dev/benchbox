@@ -957,6 +957,7 @@
       "accepted_members": {
         "databend-load-file-method-arg-20261106": "722e7ddb5891672deca7a840a373ac18985a816b",
         "duckdb-iceberg-handler-register-fails-20261106": "bfb2856e453f7023e15fd771548d8003ab67cb04",
+        "influxdb-load-ignores-compressed-tsbs-files-20261106": "1da7450653b2dd8a7029b7a1a04653439533e512",
         "questdb-ilp-date-columns-sent-as-strings-20261106": "786b7f93bd0b7b017b1f96a78cae3dedd18d3593",
         "questdb-ilp-load-drops-rows-per-file-socket-20261106": "3fd14b81537468041061304e9de9065b1e9b71fe"
       },
@@ -986,6 +987,18 @@
           "integration_head": "64602f81fdc17d68e00b3d3188adc60a318e8cbb",
           "integration_seq": 3
         },
+        "influxdb-load-ignores-compressed-tsbs-files-20261106": {
+          "accepted_head": "1da7450653b2dd8a7029b7a1a04653439533e512",
+          "changed_files": [
+            "benchbox/platforms/influxdb/adapter.py",
+            "benchbox/platforms/influxdb/client.py",
+            "changelog.d/feat-load-path-live-fixes--influxdb-load-ignores-compressed-tsbs-files-20261106.json",
+            "tests/unit/platforms/test_influxdb_adapter_coverage.py",
+            "tests/unit/platforms/test_influxdb_arrow_load.py"
+          ],
+          "integration_head": "3506a477c1c59b96acacfd9d0d4cb427c3f96ce9",
+          "integration_seq": 5
+        },
         "questdb-ilp-date-columns-sent-as-strings-20261106": {
           "accepted_head": "786b7f93bd0b7b017b1f96a78cae3dedd18d3593",
           "changed_files": [
@@ -1013,7 +1026,7 @@
         }
       },
       "integration_branch": "feat/load-path-live-fixes",
-      "integration_head": "4176d2b85ef0fd75b5f387167afc89d30f807875",
+      "integration_head": "3506a477c1c59b96acacfd9d0d4cb427c3f96ce9",
       "integration_log": [
         {
           "at": "2026-11-06T19:34:49Z",
@@ -1056,6 +1069,15 @@
           "op_id": "ad3166f2d6cc4482aeda94d0b47a079b",
           "previous_head": "64602f81fdc17d68e00b3d3188adc60a318e8cbb",
           "seq": 4
+        },
+        {
+          "at": "2026-11-06T20:28:39Z",
+          "head": "3506a477c1c59b96acacfd9d0d4cb427c3f96ce9",
+          "kind": "prepare",
+          "member": "influxdb-load-ignores-compressed-tsbs-files-20261106",
+          "op_id": "7e48f7cbdabd472f9cfff8bec5de255f",
+          "previous_head": "4176d2b85ef0fd75b5f387167afc89d30f807875",
+          "seq": 5
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-load-path-live-fixes",
@@ -17402,15 +17424,10 @@
       "title": "Load every UAT benchmark into InfluxDB 3 Core and restore InfluxDB release-UAT coverage"
     },
     "influxdb-load-ignores-compressed-tsbs-files-20261106": {
-      "claim": {
-        "expires_at": "2026-11-07T20:28:17Z",
-        "generation": "448a2fd982434e2fb4db4235ed760449",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "InfluxDB load reads only <table>.csv, so default zstd-compressed TSBS data loads nothing"
     },
     "influxdb-timeseries-platform": {

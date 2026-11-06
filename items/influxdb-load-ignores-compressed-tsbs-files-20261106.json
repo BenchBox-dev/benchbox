@@ -14,6 +14,65 @@
     "benchbox/platforms/influxdb/adapter.py",
     "benchbox/platforms/influxdb/metadata.py"
   ],
+  "prepared": {
+    "accepted_head": "1da7450653b2dd8a7029b7a1a04653439533e512",
+    "batch_id": "load-path-live-fixes",
+    "changed_files": [
+      "benchbox/platforms/influxdb/adapter.py",
+      "benchbox/platforms/influxdb/client.py",
+      "changelog.d/feat-load-path-live-fixes--influxdb-load-ignores-compressed-tsbs-files-20261106.json",
+      "tests/unit/platforms/test_influxdb_adapter_coverage.py",
+      "tests/unit/platforms/test_influxdb_arrow_load.py"
+    ],
+    "integration_head": "3506a477c1c59b96acacfd9d0d4cb427c3f96ce9",
+    "integration_seq": 5,
+    "member_id": "influxdb-load-ignores-compressed-tsbs-files-20261106",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "b1d59a2e5ce68b19cccce60d859cb51873c8e578af04682d153abb78557e36ed",
+    "source_base": "4176d2b85ef0fd75b5f387167afc89d30f807875",
+    "source_revision": "1da7450653b2dd8a7029b7a1a04653439533e512",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-load-path-live-fixes--influxdb-load-ignores-compressed-tsbs-files-20261106",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/platforms/test_influxdb_live.py",
+        "tests/integration/platforms/test_influxdb_smoke.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/uat/test_connection_registry_drift.py",
+        "tests/unit/core/test_deployment_selection.py",
+        "tests/unit/platforms/influxdb",
+        "tests/unit/platforms/influxdb/test_setup_mixin.py",
+        "tests/unit/platforms/test_influxdb_adapter.py",
+        "tests/unit/platforms/test_influxdb_adapter_coverage.py",
+        "tests/unit/platforms/test_influxdb_arrow_load.py",
+        "tests/unit/platforms/test_platform_adapter_init_and_loading.py"
+      ],
+      "review": {
+        "base_sha": "4176d2b85ef0fd75b5f387167afc89d30f807875",
+        "head_sha": "1da7450653b2dd8a7029b7a1a04653439533e512",
+        "head_tree": "58c05e0e7c7e8bf64c3dad458157959dd6ea913a",
+        "outcome": "clear",
+        "patch_digest": "88c7b4f3391673115a0f335b353eba04",
+        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "c2bdd8bc67424f827b7b79159aa518a46ba075d7"
+      },
+      "revision": "1da7450653b2dd8a7029b7a1a04653439533e512",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
@@ -38,6 +97,15 @@
       "generation": "448a2fd982434e2fb4db4235ed760449",
       "op": "take",
       "op_id": "6f16e63c33d34aeea387fcd5681e2c53",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-06T20:28:40Z",
+      "client": "omp-coding-agent",
+      "generation": "448a2fd982434e2fb4db4235ed760449",
+      "op": "prepare",
+      "op_id": "7e48f7cbdabd472f9cfff8bec5de255f",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
