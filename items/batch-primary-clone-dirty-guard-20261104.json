@@ -5,7 +5,7 @@
     "Tests cover the refusal and the unrelated-change case.",
     "docs/agent/batch-feature-delivery.md describes the guard."
   ],
-  "context": "PR #3957 head 50c8bd9496: the oracle verdict is SHIP, every required check passes, and the oracle threads are resolved. It is held with no-auto-merge until v0.5.0 is released, at the owner's request (the latest release was v0.4.2 on 2026-11-05). Next: when the owner names #3957, remove the hold, run make pr-arm PR=3957, and monitor to merge; then finish both items. The claim was released while waiting.",
+  "context": "PR #3957 head 50c8bd9496: the oracle verdict is SHIP, every required check passes, and the oracle threads are resolved. It is held with no-auto-merge until v0.5.0 is released, at the owner's request (the latest release was v0.4.2 on 2026-11-05). Next: when the owner names #3957, remove the hold, run make pr-arm PR=3957, and monitor to merge; then finish both items. The claim was released while waiting.\n\nMerged in PR #3957 as f8efe096c2f5f10af4a1d997c3fd7d623107d775 (final head d6ed5a16ff, rebased on develop after v0.5.0). The oracle verdict is SHIP and all required checks passed. The hold was released by the owner naming #3957 after the v0.5.0 release. Batch, landing and arming unit suites passed (500) on the final head; pr-preflight passed (147). Rebase note: #3959 replaced the brief-size cap with the Theseus preflight. The landing warnings now combine the member-write warnings with _preflight_gate, and the sizing docs tell leaders to run the Theseus preflight before register_batch rather than estimate. Known out-of-scope problem: test_batch_loop_e2e.py has 4 of 6 tests failing on develop since #3942 (review binding via theseus_cli); not filed.",
   "description": "Member sessions edited files in the primary clone /Users/joe/Developer/BenchBox because relative tool paths resolve there. batch-member-check validates only the member worktree and agent-write-preflight guards only commits, so nothing caught it; a member noticed and the leaders moved the edits. A guard that compares the primary clone's uncommitted changes with the member's frozen scope catches the batch-relevant case without flagging unrelated owner work in the primary clone.",
   "links": [
     "scripts/batch_integration.py",
@@ -36,6 +36,14 @@
       "generation": "c3bcaac63aab49f3894ed782ddac71af",
       "op": "take",
       "op_id": "0031302048814dabab39afc2252a31a7",
+      "session_id": "4e1f5de86962468394697835ee28c6b3"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae",
+      "at": "2026-11-06T05:58:56Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "40387dc0f0324dbeb515b52e05ace811",
       "session_id": "4e1f5de86962468394697835ee28c6b3"
     }
   ]
