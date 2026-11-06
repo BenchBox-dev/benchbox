@@ -308,6 +308,8 @@ def count_kind(source: str, kind: str) -> int:
 def _python_files(roots: Sequence[Path], repo_root: Path) -> Iterator[tuple[str, Path]]:
     for root in roots:
         for path in sorted(root.rglob("*.py")):
+            if any(part.startswith(".") for part in path.relative_to(root).parts):
+                continue
             yield path.relative_to(repo_root).as_posix(), path
 
 
@@ -875,6 +877,16 @@ def test_scripts_directory_is_scanned_for_fork_bypass(tmp_path: Path):
     found = scan_package([scripts_root], tmp_path)
     assert ("scripts/offender.py", KIND_CALL) in found
     assert diff_allowlist(found, {}).new_or_grown
+
+
+def test_dot_directories_such_as_virtualenvs_are_not_scanned(tmp_path: Path):
+    project = tmp_path / "_project"
+    installed = project / "scripts" / ".venv" / "lib" / "site-packages" / "sqlglot"
+    installed.mkdir(parents=True)
+    (installed / "__init__.py").write_text("from benchbox._vendor import sqlglot\n", encoding="utf-8")
+    (project / "scripts" / "tool.py").write_text("from benchbox._vendor import sqlglot\n", encoding="utf-8")
+    found = scan_package([project], tmp_path)
+    assert {path for path, _kind in found} == {"_project/scripts/tool.py"}
 
 
 def test_default_scan_roots_cover_scripts_and_project_tools():
