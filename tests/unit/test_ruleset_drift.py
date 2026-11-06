@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import io
 import json
+import urllib.error
+from email.message import Message
 from pathlib import Path
 
 import pytest
@@ -9,11 +11,14 @@ import pytest
 from scripts import ruleset_drift_check
 from scripts.ruleset_drift_check import (
     ExpectedRuleset,
+    blocking_findings,
     compare_ruleset,
     deployment_policy_findings,
     environment_protection_findings,
     merge_queue_findings,
     parse_expected_rulesets,
+    release_branch_findings,
+    retired_release_ruleset_findings,
 )
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -270,6 +275,7 @@ def test_main_fails_when_a_live_environment_gains_a_policy(
         lambda _repo, _token, name: {**_pypi_environment(), **_deployment_environment(), "name": name},
     )
     monkeypatch.setattr(ruleset_drift_check, "_fetch_environment_policies", lambda _repo, _token, name: policies[name])
+    monkeypatch.setattr(ruleset_drift_check, "_fetch_branch_exists", lambda _repo, _token, _branch: False)
     monkeypatch.delenv("RELEASE_READINESS_OVERRIDE_SHA", raising=False)
     monkeypatch.delenv("RELEASE_READINESS_OVERRIDE_REASON", raising=False)
 
@@ -278,6 +284,7 @@ def test_main_fails_when_a_live_environment_gains_a_policy(
     blocking = json.loads(output.read_text(encoding="utf-8"))["blocking_findings"]
     assert any("pypi environment: deployment policies" in finding for finding in blocking)
     assert not any("test-pypi environment" in finding for finding in blocking)
+    assert not any("retired" in finding for finding in blocking)
 
 
 def test_token_stdin_is_forwarded_to_all_github_queries(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -295,8 +302,101 @@ def test_token_stdin_is_forwarded_to_all_github_queries(monkeypatch: pytest.Monk
         lambda _repo, token, name: seen.append(token) or _deployment_policies(name),
     )
 
+    monkeypatch.setattr(
+        ruleset_drift_check, "_fetch_branch_exists", lambda _repo, token, _branch: seen.append(token) or False
+    )
+
     assert ruleset_drift_check.main(["--token-stdin"]) == 1
-    assert seen == ["stdin-token"] * 7
+    assert seen == ["stdin-token"] * 8
+
+
+def _http_error(code: int) -> urllib.error.HTTPError:
+    return urllib.error.HTTPError("https://api.github.com/x", code, "status", Message(), None)
+
+
+def _stub_branch_api(monkeypatch: pytest.MonkeyPatch, outcome: object) -> list[str]:
+    seen: list[str] = []
+
+    def fake_api_json(url: str, token: str) -> dict:
+        seen.append(url)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return {"name": "release"}
+
+    monkeypatch.setattr(ruleset_drift_check, "_api_json", fake_api_json)
+    return seen
+
+
+def test_release_branch_present_is_a_finding(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen = _stub_branch_api(monkeypatch, {"name": "release"})
+
+    findings = release_branch_findings("owner/repo", "token")
+
+    assert seen == ["https://api.github.com/repos/owner/repo/branches/release"]
+    assert len(findings) == 1
+    assert "`release` branch exists" in findings[0]
+
+
+def test_release_branch_absent_is_clean(monkeypatch: pytest.MonkeyPatch) -> None:
+    _stub_branch_api(monkeypatch, _http_error(404))
+
+    assert release_branch_findings("owner/repo", "token") == []
+
+
+def test_release_branch_lookup_error_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    _stub_branch_api(monkeypatch, _http_error(403))
+
+    findings = release_branch_findings("owner/repo", "token")
+
+    assert len(findings) == 1
+    assert "could not verify" in findings[0]
+    assert blocking_findings(findings) == findings
+
+
+def test_ruleset_targeting_release_branch_is_a_finding() -> None:
+    stale = _live_ruleset("refs/heads/release", ["validate-base"])
+    stale["name"] = "stale-release-ruleset"
+
+    findings = retired_release_ruleset_findings([stale])
+
+    assert len(findings) == 1
+    assert "stale-release-ruleset" in findings[0]
+    assert "refs/heads/release" in findings[0]
+
+
+def test_develop_and_tag_rulesets_are_not_release_findings() -> None:
+    develop = _live_ruleset("refs/heads/develop", ["core"])
+    tag = {"name": "v-tag-restricted", "conditions": {"ref_name": {"include": ["refs/tags/v*"], "exclude": []}}}
+    no_conditions = {"name": "bare"}
+
+    assert retired_release_ruleset_findings([develop, tag, no_conditions]) == []
+
+
+def test_main_fails_when_the_release_branch_reappears(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "ruleset-drift.json"
+    stale = _live_ruleset("refs/heads/release", ["validate-base"])
+    stale["name"] = "stale-release-ruleset"
+    monkeypatch.setattr(ruleset_drift_check, "_fetch_live_rulesets", lambda _repo, _token: {stale["name"]: stale})
+    monkeypatch.setattr(
+        ruleset_drift_check,
+        "_fetch_environment",
+        lambda _repo, _token, name: {**_pypi_environment(), **_deployment_environment(), "name": name},
+    )
+    monkeypatch.setattr(
+        ruleset_drift_check, "_fetch_environment_policies", lambda _repo, _token, name: _deployment_policies(name)
+    )
+    monkeypatch.setattr(ruleset_drift_check, "_fetch_branch_exists", lambda _repo, _token, _branch: True)
+    monkeypatch.delenv("RELEASE_READINESS_OVERRIDE_SHA", raising=False)
+    monkeypatch.delenv("RELEASE_READINESS_OVERRIDE_REASON", raising=False)
+
+    assert ruleset_drift_check.main(["--token", "token", "--output", str(output)]) == 1
+
+    blocking = json.loads(output.read_text(encoding="utf-8"))["blocking_findings"]
+    assert any("`release` branch exists" in finding for finding in blocking)
+    assert any("stale-release-ruleset" in finding for finding in blocking)
 
 
 def test_github_api_failure_is_reported_without_traceback(

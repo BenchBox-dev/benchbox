@@ -416,6 +416,14 @@ received current-head review, or merged.
 `tests/unit/release/test_ruleset_drift_review_coverage.py` cover the review
 predicate and its blocking default with explicit override.
 
+## Retired `release` branch
+
+The legacy `release` branch and its rulesets (`release-only`,
+`v-release-branches-minimal`) were deleted on <DATE>, together with the
+`release` deployment-branch policies on the `test-pypi` and `github-pages`
+environments. `scripts/ruleset_drift_check.py` fails if a `release` branch or a
+ruleset targeting `refs/heads/release` reappears.
+
 ## Tag creation and release-environment protections
 
 `release-v2.yml` admits only a tag whose commit has a successful trunk run,
@@ -594,7 +602,7 @@ diagnose.
 Deployment policies (applied 2026-10-23): both environments admit only
 selected refs, so a workflow run on an arbitrary branch cannot request them.
 `pypi` accepts deployments from tags matching `v*` only. `test-pypi` accepts
-tags matching `v*` and the `develop` branch. A manual
+tags matching `v*` and the `develop` branch (verified live on <DATE>). A manual
 `release-v2.yml` dispatch deploys under the ref it was started from, so start
 it from the release tag
 (`gh workflow run release-v2.yml --ref vX.Y.Z -f tag=vX.Y.Z`); a dispatch from

@@ -226,8 +226,8 @@ Owner decisions of 2026-10-27:
   `duration_exempt` marker are removed.
 - The browser check is ported to the site repository and the Explorer-token lint is retired.
 - GizmoSQL stays in the release rehearsal candidate.
-- Deleting the `release` branch and its ruleset is an owner-run step after the first publication on the new release
-  path; this ADR's approval to delete `release` and `publication` branches does not authorize an agent to do it.
+- The `release` branch and its ruleset were deleted by the owner on <DATE>, after the first publication on the new
+  release path; this ADR's approval to delete `release` and `publication` branches did not authorize an agent to do it.
 
 ## Standing Administrative Approvals
 
