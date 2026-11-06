@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "The bypass scan covers tracked and untracked-but-not-ignored Python files only, so ignored virtualenvs and caches cannot produce findings.",
+    "Existing allowlist and new-caller detection behavior is unchanged."
+  ],
+  "description": "tests/unit/sql_compat/test_vendored_sqlglot_bypass.py walks benchbox/, scripts/ and _project/ with rglob, including the git-ignored _project/scripts/.venv that uv creates. The public sqlglot package inside it is reported as new upstream sqlglot importers, failing the fast tier in any worktree with that virtualenv (observed in batch sqlglot-core-delivery: 1 failed / 36785 passed). Same class as overlay-guard-scans-untracked-venv.",
+  "links": [
+    "tests/unit/sql_compat/test_vendored_sqlglot_bypass.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f",
+      "at": "2026-11-06T17:09:28Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5738a6cc1b08449fa95e88c98c2fc1df",
+      "session_id": "2f41579dd2194a049659596cdd9a4f3d"
+    }
+  ]
+}

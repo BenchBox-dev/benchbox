@@ -6050,6 +6050,13 @@
       "status": "open",
       "title": "Burn down the full repository-wide `ty` backlog outside release-critical entrypoints"
     },
+    "bypass-guard-scans-ignored-venv": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Skip ignored files in the vendored SQLGlot bypass scan"
+    },
     "bypass-scanner-scripts-transpile-20261025": {
       "claim": null,
       "needs": [],
