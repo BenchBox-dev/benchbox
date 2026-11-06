@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "final PR merged",
+    "every member finished",
+    "batch finished",
+    "every container stack torn down"
+  ],
+  "context": "Batch registered; members not yet dispatched.",
+  "description": "Notes for batch load-path-live-fixes (integration branch feat/load-path-live-fixes). Not a batch member. Members in landing order: databend-load-file-method-arg-20261106, duckdb-iceberg-handler-register-fails-20261106, questdb-ilp-load-drops-rows-per-file-socket-20261106, questdb-ilp-date-columns-sent-as-strings-20261106 (depends on the previous), influxdb-load-ignores-compressed-tsbs-files-20261106. Goal: each defect reproduced live, fixed, passes live with row counts equal to the source, regression test, silent-success paths become loud failures, and each item records whether the defect was introduced by #3949/#3950/#3952 or pre-existing.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-06T19:34:59Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c6b79ad8946b40c49b8e0a100aee2068",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}
