@@ -15,6 +15,62 @@
     "benchbox/platforms/databend/adapter.py",
     "tests/unit/platforms/test_databend_bulk_load.py"
   ],
+  "prepared": {
+    "accepted_head": "722e7ddb5891672deca7a840a373ac18985a816b",
+    "batch_id": "load-path-live-fixes",
+    "changed_files": [
+      "benchbox/platforms/databend/adapter.py",
+      "changelog.d/feat-load-path-live-fixes--databend-load-file-method-arg-20261106.json",
+      "tests/unit/platforms/test_databend_bulk_load.py"
+    ],
+    "integration_head": "1cd4a64a27418c507c2640495bc671a43aaf3b5f",
+    "integration_seq": 1,
+    "member_id": "databend-load-file-method-arg-20261106",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "b1d59a2e5ce68b19cccce60d859cb51873c8e578af04682d153abb78557e36ed",
+    "source_base": "0b0c8f764d6836a0986a566af14f95d49e725dd2",
+    "source_revision": "722e7ddb5891672deca7a840a373ac18985a816b",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-load-path-live-fixes--databend-load-file-method-arg-20261106",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/platforms/test_databend_smoke.py",
+        "tests/integration/test_misc_plan_capture_live.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/uat/test_connection_registry_drift.py",
+        "tests/unit/core/test_compute_resource_unification.py",
+        "tests/unit/core/tuning/test_capability_registry_parity.py",
+        "tests/unit/platforms/test_databend_adapter.py",
+        "tests/unit/platforms/test_databend_bulk_load.py",
+        "tests/unit/platforms/test_deployment_modes_recorded.py",
+        "tests/unit/platforms/test_misc_plan_capture.py"
+      ],
+      "review": {
+        "base_sha": "0b0c8f764d6836a0986a566af14f95d49e725dd2",
+        "head_sha": "722e7ddb5891672deca7a840a373ac18985a816b",
+        "head_tree": "56284340697ec4a757ab589517d43ccac6bedfe2",
+        "outcome": "clear",
+        "patch_digest": "913e178fb71e1ce63a4736a258cb1e20",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "0b0c8f764d6836a0986a566af14f95d49e725dd2"
+      },
+      "revision": "722e7ddb5891672deca7a840a373ac18985a816b",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
@@ -39,6 +95,15 @@
       "generation": "81090995660b4043812629c1ac092ff6",
       "op": "take",
       "op_id": "824c249348ea41b6bb98dff52a90fa94",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-06T20:07:01Z",
+      "client": "omp-coding-agent",
+      "generation": "81090995660b4043812629c1ac092ff6",
+      "op": "prepare",
+      "op_id": "c51c45e5596b42ab84770f30efb13d7e",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
