@@ -160,7 +160,10 @@ def _start_run(path: Path, env: Mapping[str, str]) -> _Run | None:
     parent = _valid_run_id(env.get(RUN_ID_ENV))
     root = _valid_run_id(env.get(ROOT_RUN_ID_ENV)) or parent or run_id
     events_env = dict(env)
-    if not events_env.get(RUNS_FILE_ENV, "").strip():
+    explicit_file = events_env.get(RUNS_FILE_ENV, "").strip()
+    real_default_file = default_lock_path().resolve().parent / RUNS_FILE_NAME
+    is_custom_lock = path.resolve().parent != default_lock_path().resolve().parent
+    if not explicit_file or (is_custom_lock and Path(explicit_file).resolve() == real_default_file):
         events_env[RUNS_FILE_ENV] = str(path.parent / RUNS_FILE_NAME)
     return _Run(run_id, parent, root, events_env, _now())
 
@@ -838,7 +841,7 @@ def _spawn_guard(handle: HostLock, env: Mapping[str, str]) -> Guard:
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             pass_fds=(write_fd,),
-            env=_with_run_identity(dict(env), handle),
+            env=dict(env),
         )
     except BaseException:
         os.close(read_fd)
@@ -864,7 +867,7 @@ def start_guard(handle: HostLock, *, environ: Mapping[str, str] | None = None) -
     if IS_WINDOWS:
         return None
     try:
-        return _spawn_guard(handle, env)
+        return _spawn_guard(handle, _with_run_identity(dict(env), handle))
     except (OSError, ImportError, ValueError) as exc:
         _log(f"WARNING: could not start the heavy-work watchdog ({exc}); running unguarded")
         return None

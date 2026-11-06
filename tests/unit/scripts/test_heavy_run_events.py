@@ -7,6 +7,7 @@ import subprocess
 import sys
 import threading
 import time
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -564,17 +565,18 @@ def test_the_watchdog_launch_receives_the_run_identity(
 ) -> None:
     seen: dict[str, str] = {}
 
-    class Recorder:
-        def __init__(self, argv: list[str], **kwargs: Any) -> None:
-            seen.update(kwargs["env"])
+    class StubGuard:
+        breached = False
+        holder_terminated = False
 
-        def terminate(self) -> None:
+        def stop(self) -> None:
             pass
 
-        def wait(self, timeout: float | None = None) -> int:
-            return 0
+    def fake_spawn_guard(_handle: hl.HostLock, env: Mapping[str, str]) -> Any:
+        seen.update(env)
+        return StubGuard()
 
-    monkeypatch.setattr(hl.subprocess, "Popen", Recorder)
+    monkeypatch.setattr(hl, "_spawn_guard", fake_spawn_guard)
     monkeypatch.setenv(hl.WATCHDOG_MODE_ENV, "kill")
     handle = hl.acquire(lock_dir / hl.LOCK_NAME, wait_seconds=0, phase="p", guard=True)
     try:
@@ -582,6 +584,23 @@ def test_the_watchdog_launch_receives_the_run_identity(
         assert seen[hl.RUNS_FILE_ENV] == str(runs_file)
     finally:
         handle.release()
+
+
+def test_custom_lock_dir_does_not_pollute_outer_runs_file(
+    lock_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_default_lock = tmp_path / "default_home" / ".benchbox" / hl.LOCK_NAME
+    monkeypatch.setattr(hl, "default_lock_path", lambda: fake_default_lock)
+    outer_file = fake_default_lock.parent / hl.RUNS_FILE_NAME
+    outer_file.parent.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv(hl.RUNS_FILE_ENV, str(outer_file))
+    handle = hl.acquire(lock_dir / hl.LOCK_NAME, wait_seconds=0, phase="isolated")
+    try:
+        pass
+    finally:
+        handle.release()
+    assert not outer_file.exists()
+    assert (lock_dir / "heavy-runs.jsonl").exists()
 
 
 def test_cli_admission_refusal_is_recorded_as_admission_refused(
