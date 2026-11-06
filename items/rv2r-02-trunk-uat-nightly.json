@@ -10,6 +10,13 @@
     "After the calibration run, every open tracker item matching `release-uat-*`, `uat-*-20261030` or `*-uat-failures-20261030` is finished with that run's cell evidence or updated with its current cell history; coverage-restoring items (cedardb-/databend-release-uat-coverage, influxdb-general-loader-uat) stay open and need a G12 calibration before re-entering the gate",
     "No change to stage configs, timeouts, memory limits, validators or floors"
   ],
+  "batch": {
+    "batch_id": "release-v2-remediation",
+    "implementation_dependencies": [
+      "rv2r-09-trunk-dist-every-commit"
+    ],
+    "member_id": "rv2r-02-trunk-uat-nightly"
+  },
   "context": "Member of batch release-v2-remediation (see rv2r-01 for names and live-evidence order). Prior art: release-v2.yml uat-stage1/2/3 (parallel since #3946); the deleted throwaway release-uat-dryrun workflow is the precedent for the temporary push trigger. GUARDRAILS: 16 shards hold 16 of 20 Free-plan concurrent jobs for about 3 h; keep the 02:00 UTC schedule and a concurrency group that prevents overlap. Do not edit tests/uat or docker/ on develop until 0.5.0 is on PyPI. DECISION GATE: if calibration shows more than 30 runner-hours per run, or the matrix cannot finish within the 6 h job limit, stop and ask the owner.",
   "description": "Owner decision 2026-11-05: UAT becomes a continuous property of trunk. Add `.github/workflows/trunk-uat.yml` (02:00 UTC schedule plus workflow_dispatch) that runs the three release-gate stage configs as the parallel shard jobs release-v2 uses, against the trunk dist of the newest releasable develop commit (selection rule from rv2r-09). Skip rule: a scheduled run skips when nothing in the skip path set changed since the skip baseline; workflow_dispatch always runs. The skip baseline is the last run that executed shards; skipped and deferred runs never become the baseline. The skip path set is the union of GUARDED_TREES imported from scripts/release_reuse_uat_evidence.py, benchbox/, uv.lock, .github/workflows/trunk-uat.yml and .github/workflows/release-v2.yml (imported, not duplicated). Reuse the release-uat-env action, the shard matrix and make uat-gate-check; do not fork the harness. Each run uploads shard evidence and a gate summary (90-day retention) bound to the source commit and dist digest, and appends per-cell results (terminal state, elapsed, peak memory, failure signature, attempt number) to a history store readable by scripts. The run fails when zero cells executed (fail-closed detector 3). It does not start while a release-v2 run is in progress (deferred). release-v2's full-UAT fallback cancels an in-progress trunk-uat run, recorded in both summaries. Rollback: revert the workflow commit; release-v2's full-UAT fallback is unchanged.",
   "links": [
@@ -41,6 +48,14 @@
       "op": "update",
       "op_id": "46a3765dbdbd49d690cce10b0a4f85dd",
       "session_id": "7da446616e5349658579dfc9c4288973"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-06T13:41:38Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b314ef1a38d2464bb0e270f748815cc0",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
     }
   ]
 }
