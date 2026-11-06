@@ -26777,15 +26777,10 @@
       "title": "Archive BenchBox review captures and attempt artifacts before they expire"
     },
     "review-gateway-muse-login-lost-20261106": {
-      "claim": {
-        "expires_at": "2026-11-07T14:09:38Z",
-        "generation": "e3bc977dec6946cd8e89621c24a16f11",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f"
-      },
+      "claim": null,
       "needs": [],
       "priority": "critical",
-      "status": "active",
+      "status": "done",
       "title": "NEEDS OWNER: review gateway down, Muse broker login lost; emergency-merge repair branch ready"
     },
     "review-protocol-authority-single-source-cutover": {
