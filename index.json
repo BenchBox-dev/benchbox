@@ -1026,7 +1026,7 @@
         }
       },
       "integration_branch": "feat/load-path-live-fixes",
-      "integration_head": "8efe2e6fb80a3ec07c04de15a3b276fa23a6f009",
+      "integration_head": "30e6d4f8ef511b9127d13409f9b5cc286b664aa5",
       "integration_log": [
         {
           "at": "2026-11-06T19:34:49Z",
@@ -1095,6 +1095,27 @@
           "op_id": "94df9992434949b5896cd1a9599ed9bb",
           "previous_head": "3506a477c1c59b96acacfd9d0d4cb427c3f96ce9",
           "seq": 6
+        },
+        {
+          "at": "2026-11-06T20:50:52Z",
+          "changed_files": [
+            "benchbox/platforms/influxdb/adapter.py",
+            "benchbox/platforms/questdb.py",
+            "changelog.d/feat-load-path-live-fixes--duckdb-iceberg-handler-register-fails-20261106.json",
+            "tests/unit/platforms/test_influxdb_arrow_load.py",
+            "tests/unit/platforms/test_questdb_coverage.py"
+          ],
+          "head": "30e6d4f8ef511b9127d13409f9b5cc286b664aa5",
+          "kind": "fix",
+          "op_id": "f1c5876de71141998d910f10ac287afa",
+          "previous_head": "8efe2e6fb80a3ec07c04de15a3b276fa23a6f009",
+          "requires_acceptance": [
+            "duckdb-iceberg-handler-register-fails-20261106",
+            "influxdb-load-ignores-compressed-tsbs-files-20261106",
+            "questdb-ilp-date-columns-sent-as-strings-20261106",
+            "questdb-ilp-load-drops-rows-per-file-socket-20261106"
+          ],
+          "seq": 7
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-load-path-live-fixes",
