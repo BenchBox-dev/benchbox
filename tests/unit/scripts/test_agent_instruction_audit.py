@@ -680,7 +680,7 @@ def test_commit_range_rejects_agent_coauthor_trailer(tmp_path: Path) -> None:
     project = _git_range_repo(tmp_path)
     _git_commit(
         project,
-        "feat: work\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>",
+        "feat: work\n\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>",
         "Joe Harris",
         "joeharris76@gmail.com",
     )
