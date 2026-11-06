@@ -1051,7 +1051,7 @@
         }
       },
       "integration_branch": "feat/load-path-live-fixes",
-      "integration_head": "375d9072561c94f63dda9f3136a063afc13d8ae9",
+      "integration_head": "a85016926ef554b210c4c02bc674f6e1d120dcd8",
       "integration_log": [
         {
           "at": "2026-11-06T19:34:49Z",
@@ -1171,6 +1171,22 @@
             "questdb-ilp-load-drops-rows-per-file-socket-20261106"
           ],
           "seq": 9
+        },
+        {
+          "at": "2026-11-06T21:31:09Z",
+          "changed_files": [
+            "benchbox/platforms/questdb.py",
+            "tests/unit/platforms/test_questdb_coverage.py"
+          ],
+          "head": "a85016926ef554b210c4c02bc674f6e1d120dcd8",
+          "kind": "fix",
+          "op_id": "625846ac68b1481391b47157605c1a9b",
+          "previous_head": "375d9072561c94f63dda9f3136a063afc13d8ae9",
+          "requires_acceptance": [
+            "questdb-ilp-date-columns-sent-as-strings-20261106",
+            "questdb-ilp-load-drops-rows-per-file-socket-20261106"
+          ],
+          "seq": 10
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-load-path-live-fixes",
