@@ -965,7 +965,7 @@
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr": {
-        "head": "375d9072561c94f63dda9f3136a063afc13d8ae9",
+        "head": "a85016926ef554b210c4c02bc674f6e1d120dcd8",
         "node_id": "PR_kwDOQ7J64c8AAAABNZ3Kng",
         "number": 3981,
         "repository": "https://github.com/BenchBox-dev/BenchBox.git"
@@ -988,6 +988,12 @@
           "head": "375d9072561c94f63dda9f3136a063afc13d8ae9",
           "op_id": "90a7fe74cee540769cdd4a0ca7cb9481",
           "previous_head": "f2ca1105aa9354ef7ee496cbb9248a75295f3d5f"
+        },
+        {
+          "at": "2026-11-06T21:31:18Z",
+          "head": "a85016926ef554b210c4c02bc674f6e1d120dcd8",
+          "op_id": "1d03407ea7244c4bb58e5540077991c5",
+          "previous_head": "375d9072561c94f63dda9f3136a063afc13d8ae9"
         }
       ],
       "integrated_members": {
