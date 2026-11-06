@@ -998,6 +998,10 @@ cloud-verify:
 .PHONY: pr-preflight
 pr-preflight:
 	@set -eu; \
+	if [ -n "$${BENCHBOX_TEST_SESSION_OWNER:-}" ]; then \
+		echo "pr-preflight: refusing to run inside a process that holds the host lock; run 'make pr-preflight' directly, never wrap the whole pipeline" >&2; \
+		exit 2; \
+	fi; \
 	sh scripts/check_primary_clone_clean.sh report; \
 	$(MAKE) -s changelog-check; \
 	PREFLIGHT_BASE="$(or $(BASE),origin/develop)"; \

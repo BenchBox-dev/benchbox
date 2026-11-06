@@ -28,6 +28,7 @@ LOCK_OFFSET = 1 << 30
 EXIT_REFUSED = 75
 EXIT_OWNERSHIP = 78
 EXIT_ADMISSION = 76
+EXIT_USAGE = 2
 ADMIT_ENV = "BENCHBOX_HEAVY_ADMIT"
 LOG_PREFIX = "[host-lock]"
 WATCHDOG_MODE_ENV = "BENCHBOX_HEAVY_WATCHDOG"
@@ -1141,6 +1142,12 @@ def run_command(
     admit_need_gib: float | None = None,
     guard: bool = False,
 ) -> int:
+    from benchbox.utils.heavy_preflight_scope import rejection_message
+
+    rejected = rejection_message(command)
+    if rejected is not None:
+        _log(rejected)
+        return EXIT_USAGE
     path = lock_path()
     rendered = " ".join(shlex.quote(part) for part in command)
     try:

@@ -19,6 +19,10 @@ refuses to start it while the host is already under pressure.
   use `&`, `nohup`, or a start script that daemonizes: the server would
   outlive the lock. Background `make heavy-run` itself if the shell must stay
   free. Never leave a server running or orphaned to launchd.
+- Run `make pr-preflight` directly, never wrap the whole pipeline in `make heavy-run` or `host_lock run`: its heavy
+  leaf steps already take the lock themselves, and a wrapper (`sh -c 'make pr-preflight'`, `make -C ... pr-preflight`,
+  any goal list naming it) is refused with exit 2 before the lock is requested. `make pr-preflight` also exits 2 when
+  started inside a process that already holds the host lock.
 - Run `make heavy-status` before starting heavy work and before assuming a
   lock refusal is stale.
 - Never move, delete, or recreate the lock file; `make test-unlock` clears
@@ -55,7 +59,7 @@ refuses to start it while the host is already under pressure.
 |---|---|
 | `make heavy-status` | Read-only report; never takes the lock; each external command is cut off at 5 s and shown as `unmeasured` |
 | `make heavy-run CMD='...'` | Admission check, then the command under the host lock and watchdog; make exits 2 and prints `Error 75` (lock refused), `Error 76` (admission refused), `Error 78` (ownership error) or `Error 79` (watchdog stopped the tree) |
-| `uv run -- python -m benchbox.utils.host_lock run --admit --guard -- sh -c '...'` | The same without make; exits with the raw code 75, 76, 78 or 79 |
+| `uv run -- python -m benchbox.utils.host_lock run --admit --guard -- sh -c '...'` | The same without make; exits with the raw code 2 (wrapped `make pr-preflight` refused before the lock), 75, 76, 78 or 79 |
 | `python -m benchbox.utils.host_lock admit` | Admission check only |
 | `make heavy-sentinel` | Foreground sentinel; `SENTINEL_ARGS='--duration 30 --log /tmp/s.log'` bounds it and redirects the log |
 | `make heavy-sentinel-install` / `make heavy-sentinel-uninstall` | Write or remove the per-user LaunchAgent `~/Library/LaunchAgents/dev.benchbox.sentinel.plist` and load or unload it with `launchctl bootstrap/bootout gui/$UID`; changes host state, owner approval required |
