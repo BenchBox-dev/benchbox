@@ -964,7 +964,20 @@
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
-      "final_pr_history": [],
+      "final_pr": {
+        "head": "30e6d4f8ef511b9127d13409f9b5cc286b664aa5",
+        "node_id": "PR_kwDOQ7J64c8AAAABNZ3Kng",
+        "number": 3981,
+        "repository": "https://github.com/BenchBox-dev/BenchBox.git"
+      },
+      "final_pr_history": [
+        {
+          "at": "2026-11-06T20:55:26Z",
+          "head": "30e6d4f8ef511b9127d13409f9b5cc286b664aa5",
+          "op_id": "d5ff5a04bd644c29a89653548b1002fe",
+          "previous_head": null
+        }
+      ],
       "integrated_members": {
         "databend-load-file-method-arg-20261106": {
           "accepted_head": "722e7ddb5891672deca7a840a373ac18985a816b",
