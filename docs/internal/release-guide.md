@@ -28,9 +28,11 @@ make release-check VERSION=X.Y.Z RELEASE_PRE_TAG=1
    section, commit the result as one pull request against `develop`, and merge
    it like any other pull request. See "Preparing and checking a release on
    develop".
-2. Wait for the `trunk.yml` push run of the merged commit to finish green. The
-   publisher uses that run's `dist-artifact` and never rebuilds, so a commit
-   whose run was replaced while waiting, or whose run failed, cannot be released.
+2. Wait for the `trunk.yml` push run of the merged commit to finish green. Every
+   push to `develop` gets its own run, and a later push never cancels or
+   replaces it, so merging can continue while it runs. The publisher uses that
+   run's `dist-artifact` and never rebuilds, so a commit whose run failed cannot
+   be released.
 3. Tag the merged `develop` commit with an annotated, PEP 440 tag and push it:
    `git tag -a vX.Y.Z <sha> -m "BenchBox X.Y.Z"` then
    `git push origin vX.Y.Z`. Use `VERSION=0.5.0rc1` and tag `v0.5.0rc1` for a
@@ -266,6 +268,14 @@ problem it finds. It verifies that:
   whose tree still carries a fragment, for example one merged after the
   preparation pull request. A default `release-check` passes while fragments
   are pending.
+- with `release_flow.py check --releasable-commit <sha>` (not reachable through
+  `make release-check`), `<sha>` has a successful `trunk.yml` push run on
+  `develop` and an unexpired dist artifact, judged by the same producer
+  selection admission uses. When it does not, the check fails with the reason
+  and names the newest develop commit that is releasable. It needs `gh` access
+  to `BenchBox-dev/BenchBox`. `scripts/release_releasable.py newest` prints that
+  commit alone, and `scripts/release_releasable.py check --sha <sha>` runs the
+  commit check without the release content checks.
 
 To adopt a refreshed fork wheel, run
 `make sqlglot-adopt-wheel WHEEL=<path> SHA256=<digest>` (or put the digest in
@@ -349,8 +359,10 @@ naming the missing secret.
   Re-running a failed tag is allowed only for a run that failed before
   publishing and only while the trunk artifact for that commit is unchanged;
   see [release-artifacts.md](release-artifacts.md).
-- **The trunk run of the commit is missing, red, or was replaced**: the commit
-  cannot be released. Merge a new commit to `develop` and tag that one.
+- **The trunk run of the commit is red or its dist artifact is missing or
+  expired**: the commit cannot be released. Run
+  `uv run -- python scripts/release_releasable.py newest` for the newest
+  releasable `develop` commit, or merge a new commit and tag that one.
 - **Release canary is missing, stale, or red**: inspect the latest
   `release-canary.yml` run. If the non-fast canary failed, fix through
   `develop`; if ruleset drift failed, update the live GitHub ruleset or
