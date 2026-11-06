@@ -1,13 +1,14 @@
 {
   "acceptance": [
-    "release-check (pre-tag) on a commit whose trunk run was superseded or failed fails with a message naming the newest releasable commit; tests cover superseded, failed and successful cases",
-    "trunk-uat selects the newest develop commit with a successful trunk.yml push run and dist artifact; test plus a live run",
-    "release-artifacts.md and release-guide.md state the 'tag only a releasable commit' rule and how to find one",
-    "No change to admission rules, dist contents or how the dist is built",
-    "The selection rule is written into rv2r-02's context before rv2r-02 is prepared"
+    "trunk.yml no longer cancels or replaces an earlier develop push's run; a workflow test pins the concurrency setting",
+    "Live: two develop pushes in quick succession each end with a completed trunk run and a dist artifact (run ids recorded)",
+    "Runner-cost measurement recorded in context (extra runs/day, p50/p90 queue wait) and within the decision-gate limit or owner-approved",
+    "release-check on a commit whose trunk run failed fails with a message naming the newest releasable commit; tests cover failed and successful cases",
+    "trunk-uat selects the newest develop commit with a successful trunk push run and dist; rule written into rv2r-02's context before rv2r-02 is prepared",
+    "No change to admission rules, dist contents or how the dist is built; release-artifacts.md and release-guide.md drop any develop-freeze instruction"
   ],
-  "context": "Member of batch release-v2-remediation; ready now and runs alongside rv2r-01. DECISION GATE: any change to the admission contract (which runs or workflows may supply a releasable dist) goes to the owner. The retrospective's b8 metric '0 unreleasable commits' is replaced by 'release tooling always names the newest releasable commit', because releasing superseded commits would release untested code.",
-  "description": "Since 2026-10-28, 42 of 100 trunk runs were cancelled: they were replaced while waiting under trunk.yml's workflow-level concurrency group `trunk-develop`. Admission (release-artifacts.md:41-45; scripts/release_admitted_dist.py:130) accepts only a dist from a successful trunk.yml push run on develop. Making a superseded commit releasable would therefore release code whose tests never ran, which breaks the ADR rule that a release ships only a trunk-tested exact commit. Implement: document 'tag only a commit with a successful trunk.yml push run'; make release-prep/release-check and trunk-uat (rv2r-02) select the newest such commit, and fail clearly otherwise, naming the newest releasable commit. Changing the admission contract (for example a separate dist workflow, or accepting superseded runs) is out of scope unless the owner decides otherwise. Rollback: revert this member's commits.",
+  "context": "Member of batch release-v2-remediation; ready now. Replaces the earlier 'select the newest releasable commit' scope (2026-11-05) and the release-window freeze (G13, retired 2026-11-06; rv2r-08 dropped). DECISION GATE: measure the runner cost (extra trunk runs per day, queue wait, effect on the 20-concurrent-job free plan) on the integration branch or from history before the final PR; if trunk queue wait at the 90th percentile exceeds 30 minutes, bring the numbers to the owner before merging. Do not change what admission accepts (exact commit, successful trunk push run, dist artifact). The retrospective: local dev-loop-v2-retro.md, section 6 option B.",
+  "description": "Since 2026-10-28, 55 of 267 develop pushes have no dist because trunk.yml's workflow-level concurrency group `trunk-develop` replaced their run before it finished. Admission (release-artifacts.md:41-45; scripts/release_admitted_dist.py:130; scripts/release_artifact_consumer.py:191-218) accepts only a dist from a successful trunk.yml push run on the exact tagged commit, so those commits can never be released, and releases needed a develop freeze. Owner decision 2026-11-06: fix this at the source. Change trunk.yml concurrency so a newer push never cancels or replaces an older push's run (per-SHA group or no cancel-in-progress; queueing is acceptable), so every develop push commit gets a completed run with its tests and dist. The admission contract is unchanged: a release still needs a successful trunk run on the exact tagged commit. Also make release-check and trunk-uat (rv2r-02) name the newest releasable commit when the chosen commit's run failed. Rollback: revert this member's commits.",
   "links": [
     ".github/workflows/trunk.yml",
     "docs/internal/release-artifacts.md"
@@ -36,6 +37,14 @@
       "op": "update",
       "op_id": "619fd453573544f9bbbda55d27aaf81d",
       "session_id": "7da446616e5349658579dfc9c4288973"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-06T13:28:32Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6af38e2c248d4be388d3ef14b22255f8",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
     }
   ]
 }

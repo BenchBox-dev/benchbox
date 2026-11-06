@@ -26837,7 +26837,7 @@
       "needs": [],
       "priority": "medium-high",
       "status": "open",
-      "title": "Make releases and trunk UAT select the newest releasable trunk commit, with clear errors otherwise"
+      "title": "Give every develop push its own completed trunk run so every merged commit is releasable"
     },
     "rv2r-10-flaky-ci-investigation": {
       "claim": null,
