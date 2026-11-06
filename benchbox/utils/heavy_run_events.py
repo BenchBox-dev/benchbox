@@ -27,6 +27,17 @@ def current_run_id(environ: Mapping[str, str] | None = None) -> str | None:
     return env.get(RUN_ID_ENV) or None
 
 
+def _real_home() -> Path:
+    if sys.platform == "win32":
+        return Path.home()
+    import pwd
+
+    try:
+        return Path(pwd.getpwuid(os.getuid()).pw_dir)
+    except KeyError:
+        return Path.home()
+
+
 def events_path(environ: Mapping[str, str] | None = None) -> Path:
     env = os.environ if environ is None else environ
     explicit = env.get(FILE_ENV, "").strip()
@@ -35,7 +46,7 @@ def events_path(environ: Mapping[str, str] | None = None) -> Path:
     lock_dir = env.get(LOCK_DIR_ENV, "").strip()
     if lock_dir:
         return Path(lock_dir).expanduser() / DEFAULT_FILE_NAME
-    return Path.home() / ".benchbox" / DEFAULT_FILE_NAME
+    return _real_home() / ".benchbox" / DEFAULT_FILE_NAME
 
 
 def _bounded(value: object) -> object:

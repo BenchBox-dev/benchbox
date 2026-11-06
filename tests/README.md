@@ -440,6 +440,52 @@ same module, so it honors the override and the real-home default.
 `BENCHBOX_SKIP_TEST_LOCK=1` - but expect noisy timing results and CPU
 contention. Do not bypass in CI.
 
+### Heavy run event log
+
+Every guarded run (`host_lock run`, `make` heavy gates, pytest sessions, UAT and VM runs) appends JSON Lines rows
+to `<lock dir>/heavy-runs.jsonl`, i.e. `~/.benchbox/heavy-runs.jsonl` by default. `BENCHBOX_HEAVY_RUNS_FILE`
+overrides the file; when `BENCHBOX_TEST_LOCK_DIR` is set (tests, the Linux guest) the file sits next to that lock,
+so test and guest runs never write the real home. Nothing is uploaded; the file is local and mode `0600`.
+
+Each row has `schema` (`heavy_run_v1`), a UTC wall `ts` (audit only), `run_id`, `pid`, `cwd`, `event`, and when
+applicable `duration_seconds` (monotonic), `outcome`, `exit_code` and a small `details` object. Rows never contain the
+command line or environment, only the program name, `phase`/`gate` labels and run identifiers. A row is one
+`O_APPEND` write capped at 3500 bytes, so concurrent producers interleave whole lines. A failed write prints a
+`[heavy-run-events]` warning and never changes a guard's refusal, wait or exit status.
+
+| Event | Meaning |
+| --- | --- |
+| `lock_requested` | The run asked for the lock (`wait_limit_seconds`, `phase`, `gate`, `program`, `admit`, `guard`). |
+| `lock_acquired` | `duration_seconds` is the **queue wait**; `outcome` is `acquired` or `inherited` (an ancestor holds it). |
+| `admission_finished` | `duration_seconds` is the admission check; `outcome` is `admitted` or `admission_refused`. |
+| `guard_started` | Watchdog start time (`started` or `unavailable`). |
+| `execution_started` | The command was launched under the lock. |
+| `cleanup_finished` | Guard teardown and lock release time. |
+| `run_finished` | The one terminal row: `outcome`, `exit_code`, and `details` repeating the phase seconds below. |
+
+`run_finished.details` carries `wait_seconds`, `admission_seconds`, `guard_seconds`, `execution_seconds`,
+`cleanup_seconds` and `held_seconds`; its `duration_seconds` runs from request to finish.
+
+Terminal `outcome` is one of `success`, `command_failed` (child exit status in `exit_code`), `queue_timeout`,
+`admission_refused`, `ownership_error`, `cancelled`, `watchdog_kill` (`exit_code` 79, the child's own status in
+`details.command_exit_code`), `error`, or `released` for a lock taken with `acquire`/`hold` (such as a pytest session)
+where no command outcome is known. `success` is only ever derived from the child's exit status, never from the lock
+being released.
+
+Queue, admission, execution and cleanup are separate phases: compare `wait_seconds` (blocked behind another holder),
+`admission_seconds` (pressure retries after the lock was won), `execution_seconds` (the command itself) and
+`cleanup_seconds`. `held_seconds` covers everything between acquisition and release. A re-entrant acquire by a process
+that already holds the lock adds no rows; only the outermost handle logs and closes the run.
+
+Run ids are exported to the child as `BENCHBOX_HEAVY_RUN_ID` (and `BENCHBOX_HEAVY_ROOT_RUN_ID`). A nested guarded
+command logs its own run with `parent_run_id` and `root_run_id` in `details`; ids that do not match
+`[A-Za-z0-9_-]{1,64}` are ignored. VM cleanup rows (`vm_cleanup_started`/`vm_cleanup_finished`) reuse the active
+`BENCHBOX_HEAVY_RUN_ID`.
+
+**A hard kill leaves no terminal row.** `SIGKILL`, a host crash or power loss cannot run any handler, so such a run
+ends with `lock_requested`/`lock_acquired`/`execution_started` and no `run_finished`. Treat a run without a terminal
+row as incomplete (killed or still running), never as a success; compare its `pid` with live processes to tell which.
+
 ### Heavy-work admission
 
 The lock serializes BenchBox jobs but cannot see memory held elsewhere (resident Apple `container` VMs,
