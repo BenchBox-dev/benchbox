@@ -12,9 +12,9 @@ import sys
 from pathlib import Path
 
 try:
-    from _project.scripts.soundness_paths import _glob_matches, _load_rules, normalize_path
+    from _project.scripts.soundness_paths import glob_matches, load_rules, normalize_path, rules_match
 except ImportError:
-    from soundness_paths import _glob_matches, _load_rules, normalize_path
+    from soundness_paths import glob_matches, load_rules, normalize_path, rules_match
 
 DATA_PATH = Path(
     os.environ.get(
@@ -24,13 +24,9 @@ DATA_PATH = Path(
 )
 READERS_PATH = Path(__file__).resolve().parents[1] / "inert-doc-readers.json"
 _VALID_KINDS = frozenset({"file", "glob", "prefix", "regex", "except"})
-_RULES = _load_rules(DATA_PATH, _VALID_KINDS)
-EXEMPT_PATTERNS = tuple(rule.pattern for rule in _RULES if rule.kind != "except")
+_RULES = load_rules(DATA_PATH, _VALID_KINDS, "inert path")
+_EXEMPT_RULES = tuple(rule for rule in _RULES if rule.kind != "except")
 EXCEPT_PATTERNS = tuple(rule.pattern for rule in _RULES if rule.kind == "except")
-_EXEMPT_PREFIXES = tuple(rule.pattern for rule in _RULES if rule.kind == "prefix")
-_EXEMPT_FILES = tuple(rule.pattern for rule in _RULES if rule.kind in {"file", "glob"})
-_EXEMPT_GLOBS = tuple(rule.pattern for rule in _RULES if rule.kind == "glob")
-_EXEMPT_REGEXES = tuple(re.compile(rule.pattern) for rule in _RULES if rule.kind == "regex")
 SCAN_DIRS = ("benchbox", "scripts", "_project/scripts", "tests")
 WORKFLOW_GLOB = ".github/workflows/*.yml"
 MAKE_GLOB = "make/*.mk"
@@ -78,24 +74,12 @@ _YAML_MAKE_CANDIDATE = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_./-]*(?:\.(?:md|mdx|r
 MAX_CANDIDATE_SEGMENTS = 8
 
 
-def matches_exemption(path: str, rules: tuple = _RULES) -> bool:
-    normalized = normalize_path(path)
-    if not normalized:
-        return False
-    prefixes = tuple(rule.pattern for rule in rules if rule.kind == "prefix")
-    files = tuple(rule.pattern for rule in rules if rule.kind in {"file", "glob"})
-    globs = tuple(rule.pattern for rule in rules if rule.kind == "glob")
-    regexes = [re.compile(rule.pattern) for rule in rules if rule.kind == "regex"]
-    return (
-        any(regex.match(normalized) is not None for regex in regexes)
-        or any(_glob_matches(normalized, pattern) for pattern in globs)
-        or normalized in files
-        or normalized.startswith(prefixes)
-    )
+def matches_exemption(path: str, rules: tuple = _EXEMPT_RULES) -> bool:
+    return rules_match(path, rules)
 
 
 def matches_exception(path: str, patterns: tuple[str, ...] = EXCEPT_PATTERNS) -> bool:
-    return any(_glob_matches(normalize_path(path), pattern) for pattern in patterns)
+    return any(glob_matches(normalize_path(path), pattern) for pattern in patterns)
 
 
 def is_machine_read_doc(path: str) -> bool:

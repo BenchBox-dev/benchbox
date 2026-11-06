@@ -128,7 +128,8 @@ def verify_parent(run: Runner, repo: str, branch: str, parent: str) -> None:
         level = base
     if depth + 1 > MAX_STACK_DEPTH:
         raise PrOpenError(
-            f"stack parent {parent} is already level {depth}; a stack is at most {MAX_STACK_DEPTH} PRs deep"
+            f"stack parent {parent} is already level {depth}; a stack is at most {MAX_STACK_DEPTH} PRs deep "
+            "(use independent PRs or a feature batch instead)"
         )
 
 

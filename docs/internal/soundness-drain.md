@@ -13,7 +13,7 @@ post a top-level `/oracle-review` comment or run
 `gh workflow run oracle-verdict.yml --ref develop -f pr=<number>`.
 
 When the oracle cannot review, or its verdict must be overruled, a
-listed attester in `STANDIN_ATTESTERS` (`_project/scripts/oracle_review_check.py`)
+listed attester in `consumer.attesters` (`.github/oracle-reviewers.yml`)
 can substitute an independent stand-in review. After that review of the
 current head, the attester posts a PR comment whose whole text is the line
 `Stand-in oracle review: APPROVE <full head SHA>`; the review itself goes in a
@@ -69,7 +69,7 @@ hold:
   a missing run is fail-closed, not an absent requirement.
 - **(b) awaiting the owner** — auto-merge is currently OFF, **and** either
   the diff touches a soundness-critical path (reused via
-  `any_soundness_path` imported from `soundness_paths.py` —
+  `any_soundness_path` from `soundness_manifest.py` over the vendored `soundness_paths.py` —
   never re-derived or edited), or the owner (`joeharris76`) is a requested
   reviewer.
 - **(c) parked > 24h** — more than 24 hours of park time (see below).

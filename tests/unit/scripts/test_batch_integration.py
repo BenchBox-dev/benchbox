@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import runpy
 import subprocess
 import sys
 from pathlib import Path
@@ -22,6 +23,8 @@ from tests.unit.scripts.batch_loop_world import (
 TRACKER_SCOPE_HASH = "19ccf864114b7650486e01283d3af3b20d383cb3eb266699654ed626a849e624"
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
+
+ROOT = Path(__file__).resolve().parents[3]
 
 
 def _ledger(integration: Path) -> dict:
@@ -202,6 +205,41 @@ def test_member_review_runs_the_wrapper_from_the_trusted_commit_not_the_checkout
     assert world.review_wrappers == [TRUSTED_REVIEW_WRAPPER] and result["head_sha"] == head
 
 
+def test_member_review_copies_the_trusted_support_modules_beside_the_wrapper(world: World) -> None:
+    world.start()
+    member = world.member("zeta")
+    head = world.commit(member, {"src/a.py": "member\n", bi.REVIEW_SUPPORT[0]: "TAMPERED = 1\n"})
+    trusted = git(member, "rev-parse", "refs/remotes/origin/develop")
+
+    bi._review_member_patch(member, world.head(), head, trusted)
+
+    assert world.review_support == [{Path(path).name: "TRUSTED_SUPPORT = 1\n" for path in bi.REVIEW_SUPPORT}]
+
+
+def test_the_wrapper_runs_from_a_bare_copy_and_reaches_the_install_step(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    for name in (bi.REVIEW_WRAPPER, *bi.REVIEW_SUPPORT):
+        (scratch / Path(name).name).write_bytes((ROOT / name).read_bytes())
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    git(repo, "init", "-q")
+    repo_scripts = str(ROOT / "scripts")
+    monkeypatch.setattr(sys, "path", [entry for entry in sys.path if entry != repo_scripts])
+    monkeypatch.delitem(sys.modules, "theseus_cli", raising=False)
+    monkeypatch.setattr(sys, "argv", ["oracle_local_review.py", "--trusted-ref", "HEAD"])
+    monkeypatch.chdir(repo)
+
+    with pytest.raises(SystemExit) as exit_info:
+        runpy.run_path(str(scratch / Path(bi.REVIEW_WRAPPER).name), run_name="__main__")
+
+    assert exit_info.value.code == 2
+    assert Path(sys.modules["theseus_cli"].__file__).parent == scratch
+    assert "the verified Theseus install" in capsys.readouterr().err
+
+
 def test_member_check_records_nothing_when_preflight_or_review_fails(world: World) -> None:
     integration = world.start()
     member = world.member("zeta")
@@ -259,13 +297,13 @@ def test_land_merges_the_checked_member_head_even_if_the_member_branch_moves_dur
     world.start()
     member = world.deliver("zeta", {"src/a.py": "member\n"})
     checked = git(member, "rev-parse", "HEAD")
-    original = bi._brief_gate
+    original = bi._preflight_gate
 
     def move_member_branch(*args, **kwargs):
         git(member, "commit", "-q", "--allow-empty", "-m", "late")
         return original(*args, **kwargs)
 
-    monkeypatch.setattr(bi, "_brief_gate", move_member_branch)
+    monkeypatch.setattr(bi, "_preflight_gate", move_member_branch)
     world.land("zeta")
     assert git(world.integration, "rev-parse", "HEAD^2") == checked
 
@@ -705,38 +743,73 @@ def test_a_clean_landing_prints_no_hunk_warning(world: World) -> None:
     assert world.land("alpha")["warnings"] == []
 
 
-def test_land_refuses_a_landing_whose_file_list_exceeds_the_brief_cap(
-    world: World, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_land_refuses_a_lock_bump_with_the_theseus_reasons_verbatim(world: World) -> None:
     world.start()
     world.deliver("zeta", {"src/a.py": "member\n"})
-    monkeypatch.setattr(bi, "_brief_cap", lambda repo: 300)
+    reason = "contains a Theseus promotion; land the lock change as its own pull request"
+    world.preflight_code = 3
+    world.preflight_reasons = [reason]
     before = world.head()
-    with _raises("exceed brief_max_bytes"):
+    with _raises(f"not reviewable:\n{reason}"):
         world.land("zeta")
     assert world.head() == before
 
 
-def test_land_warns_when_a_landing_moves_the_brief_out_of_inline_mode(
-    world: World, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_land_refuses_an_oversize_landing_before_merging(world: World) -> None:
     world.start()
-    world.deliver("zeta", {"src/a.py": "x = 1\n" * 2000})
-    monkeypatch.setattr(bi, "_brief_cap", lambda repo: 40000)
+    world.deliver("zeta", {"src/a.py": "member\n"})
+    reason = "needs about 900000 tokens of reading, above every reviewer's capacity; split"
+    world.preflight_code = 3
+    world.preflight_reasons = [reason]
+    before = world.head()
+    with _raises(f"is not reviewable:\n{reason}"):
+        world.land("zeta")
+    assert world.head() == before
+
+
+def test_land_refuses_when_the_preflight_cannot_determine_reviewability(world: World) -> None:
+    world.start()
+    world.deliver("zeta", {"src/a.py": "member\n"})
+    reason = "the model catalog cannot be read, so reviewer capacity cannot be determined"
+    world.preflight_code = 2
+    world.preflight_reasons = [reason]
+    before = world.head()
+    with _raises(f"could not determine whether.*:\n{reason}"):
+        world.land("zeta")
+    assert world.head() == before
+
+
+def test_land_treats_an_unreadable_preflight_answer_as_undetermined(world: World) -> None:
+    world.start()
+    world.deliver("zeta", {"src/a.py": "member\n"})
+    world.preflight_stdout = "not json"
+    with _raises("could not determine whether"):
+        world.land("zeta")
+
+
+def test_land_passes_the_member_head_base_policy_and_json_flag_to_the_preflight(world: World) -> None:
+    world.start()
+    member = world.deliver("zeta", {"src/a.py": "member\n"})
+    world.land("zeta")
+    assert world.preflight_arguments == [
+        [
+            "--policy",
+            bi.POLICY_PATH,
+            "--base-ref",
+            bi.DEVELOP_REF,
+            "--head",
+            git(member, "rev-parse", "HEAD"),
+            "--json",
+        ]
+    ]
+
+
+def test_land_reports_the_preflight_advisories_as_warnings(world: World) -> None:
+    world.start()
+    world.deliver("zeta", {"src/a.py": "member\n"})
+    world.preflight_advisories = ["small: the change needs about 200000 tokens of reading"]
     result = world.land("zeta")
-    assert any("out of inline mode" in warning for warning in result["warnings"])
-    small = world.deliver("alpha", {"src/b.py": "y = 1\n"})
-    assert small.exists()
-
-
-def test_brief_sizes_report_inline_and_file_list_modes(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
-    integration = world.start()
-    monkeypatch.setattr(bi, "_brief_cap", lambda repo: 40000)
-    world.commit(integration, {"src/a.py": "x = 1\n" * 10})
-    assert bi.brief_sizes(integration, "HEAD")["mode"] == "inline"
-    world.commit(integration, {"src/b.py": "x = 1\n" * 3000})
-    sizes = bi.brief_sizes(integration, "HEAD")
-    assert sizes["mode"] == "file-list" and sizes["inline_diff_bytes"] > 40000 - bi.DIFF_HEADROOM_BYTES
+    assert "small: the change needs about 200000 tokens of reading" in result["warnings"]
 
 
 def _landed_pair(world: World) -> Path:
@@ -814,8 +887,73 @@ def test_a_develop_merge_is_recorded_without_any_member_rerun(world: World) -> N
     assert result["payload"]["arguments"]["reason"] == "develop-merge"
     assert result["payload"]["arguments"]["expected_head"] == expected
     assert len(git(integration, "rev-list", "--parents", "-n", "1", "HEAD").split()) == 3
+    assert world.preflight_heads[-1] == world.head()
     ledger = _ledger(integration)
     assert ledger["advances"][-1]["kind"] == "develop-merge"
+
+
+def test_advance_fix_runs_the_preflight_at_the_new_head(world: World) -> None:
+    integration = _landed_pair(world)
+    fix_head = world.commit(integration, {"src/a.py": "fixed\n"}, "fix")
+    world.preflight_heads.clear()
+    bi.advance_head(integration, "fix")
+    assert world.preflight_heads == [fix_head]
+
+
+def test_advance_fix_refuses_a_head_the_preflight_rejects_and_records_nothing(world: World) -> None:
+    integration = _landed_pair(world)
+    world.commit(integration, {"src/a.py": "fixed\n"}, "fix")
+    reason = "the diff cannot be built"
+    world.preflight_code = 2
+    world.preflight_reasons = [reason]
+    world.calls.clear()
+    with _raises(f"could not determine whether.*:\n{reason}"):
+        bi.advance_head(integration, "fix")
+    assert not [call for call in world.calls if "pytest" in call[0]]
+    assert _ledger(integration)["advances"] == []
+
+
+def test_advance_develop_merge_refuses_a_head_the_preflight_rejects(world: World) -> None:
+    integration = _landed_pair(world)
+    (world.seed / "other").mkdir()
+    (world.seed / "other" / "dev.txt").write_text("develop moved\n")
+    git(world.seed, "add", "other/dev.txt")
+    git(world.seed, "commit", "-qm", "develop moves")
+    git(world.seed, "push", "-q", "origin", "develop")
+    reason = "contains a Theseus promotion; land the lock change as its own pull request"
+    world.preflight_code = 3
+    world.preflight_reasons = [reason]
+    with _raises(f"is not reviewable:\n{reason}"):
+        bi.advance_head(integration, "develop-merge")
+    assert _ledger(integration)["advances"] == []
+
+
+def test_status_shows_the_preflight_reasons_without_refusing(world: World) -> None:
+    integration = _landed_pair(world)
+    reason = "needs about 900000 tokens of reading, above every reviewer's capacity; split"
+    world.preflight_code = 3
+    world.preflight_reasons = [reason]
+    status = bi.batch_status(integration)
+    assert status["review_preflight"] == {
+        "state": "not-reviewable",
+        "exit": 3,
+        "reasons": [reason],
+        "advisories": [],
+    }
+
+
+def test_status_reports_an_undetermined_preflight_when_the_install_is_refused(
+    world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    integration = _landed_pair(world)
+
+    def refuse(repo):
+        raise bi.BatchError("the Theseus install for the review preflight was refused: no network")
+
+    monkeypatch.setattr(bi, "_theseus_launcher", refuse)
+    status = bi.batch_status(integration)["review_preflight"]
+    assert status["state"] == "undetermined" and status["exit"] is None
+    assert "no network" in status["reasons"][0]
 
 
 def test_a_develop_merge_is_recorded_after_a_fix_advance_has_already_been_recorded(world: World) -> None:
@@ -887,7 +1025,7 @@ def test_verify_fails_when_a_prepared_members_head_is_missing_from_the_integrati
     assert report["ok"] is False and report["member_ancestry"]["alpha"] is False
 
 
-def test_status_lists_members_in_registered_order_with_brief_and_acceptance_state(world: World) -> None:
+def test_status_lists_members_in_registered_order_with_preflight_and_acceptance_state(world: World) -> None:
     integration = world.start()
     world.deliver("zeta", {"src/a.py": "zeta change\n"})
     world.land_and_prepare("zeta")
@@ -896,7 +1034,8 @@ def test_status_lists_members_in_registered_order_with_brief_and_acceptance_stat
     status = bi.batch_status(integration)
     assert [m["member"] for m in status["members"]] == MEMBERS
     assert status["acceptance_required"] == ["zeta"] and status["acceptance_stale"] == []
-    assert status["brief"]["mode"] == "inline" and status["brief"]["brief_max_bytes"] == 100000
+    assert status["review_preflight"] == {"state": "reviewable", "exit": 0, "reasons": [], "advisories": []}
+    assert world.preflight_heads[-1] == world.head()
     assert status["integration_head"] == status["tracker_integration_head"] == world.head()
     world.commit(integration, {"src/a.py": "fixed\n"}, "fix")
     assert bi.batch_status(integration)["acceptance_stale"] == ["zeta"]

@@ -8,16 +8,11 @@ from typing import Any
 
 import pytest
 
-from _project.scripts.oracle_reviewers import credentials, redaction_check, verdict
-
-from .harness import REPO_ROOT
-
 pytestmark = [pytest.mark.integration, pytest.mark.medium]
 
+REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURES = REPO_ROOT / "tests" / "fixtures" / "oracle_reviewers"
 PROVENANCE = json.loads((FIXTURES / "provenance.json").read_text(encoding="utf-8"))["fixtures"]
-CI_CAPTURE = "captures/ci_attempt.json"
-LOCAL_CAPTURE = "captures/local_review.json"
 ORIGINS = {"ci-run", "local-review", "live-jev", "captured", "derived", "hand-built"}
 LEAKS = {
     "token": re.compile(
@@ -31,63 +26,54 @@ LEAKS = {
         re.IGNORECASE,
     ),
 }
-
-
-def _capture(name: str) -> dict[str, Any]:
-    return json.loads((FIXTURES / name).read_text(encoding="utf-8"))
-
-
-def _stream(capture: dict[str, Any]) -> str:
-    return "\n".join(json.dumps(event) for event in capture["events"])
+PLANTED = {
+    "token": "sk-abcdef123456789",
+    "tailnet host": "https://gateway.tail1234.ts.net/v1",
+    "operator home path": "/Users/someone/work",
+    "foreign host": "https://internal.example/x",
+}
 
 
 def _jsonl_events(text: str) -> list[Any]:
     return [json.loads(line) for line in text.splitlines() if line.strip()]
 
 
-def _streamed_text(events: list[Any]) -> list[dict[str, str]]:
-    deltas: list[dict[str, str]] = []
+def _streamed_text(events: list[Any]) -> str:
+    deltas: list[str] = []
     for event in events:
         inner = event.get("assistantMessageEvent") if isinstance(event, dict) else None
         if isinstance(inner, dict) and isinstance(inner.get("delta"), str):
-            deltas.append({"text": inner["delta"]})
-    return deltas
+            deltas.append(inner["delta"])
+    return "".join(deltas)
 
 
-def _structural_check(name: str, text: str, tmp_path: Path, extra: tuple[str, ...] = ()) -> None:
-    copy = tmp_path / Path(name).name
+def _leaks(text: str) -> dict[str, list[str]]:
+    return {kind: pattern.findall(text)[:2] for kind, pattern in LEAKS.items() if pattern.search(text)}
+
+
+def _scan(name: str, root: Path) -> dict[str, list[str]]:
+    text = (root / name).read_text(encoding="utf-8")
+    found = _leaks(text)
     if name.endswith(".jsonl"):
-        events = _jsonl_events(text)
-        streamed = _streamed_text(events)
-        joined = "".join(item["text"] for item in streamed)
-        assert not credentials.contains(joined, extra)
-        found = {kind: pattern.findall(joined)[:2] for kind, pattern in LEAKS.items() if pattern.search(joined)}
-        assert not found, found
-        copy = copy.with_suffix(".json")
-        copy.write_text(json.dumps([events, streamed]), encoding="utf-8")
-        expected = json.loads(copy.read_text(encoding="utf-8"))
+        found.update(_leaks(_streamed_text(_jsonl_events(text))))
     else:
-        shutil.copyfile(FIXTURES / name, copy)
-        expected = json.loads(text)
-    redaction_check.sanitize(copy, extra)
-    assert json.loads(copy.read_text(encoding="utf-8")) == expected
+        json.loads(text)
+    return found
 
 
-def _fixture_files() -> list[str]:
+def _fixture_files(root: Path) -> list[str]:
     return sorted(
-        path.relative_to(FIXTURES).as_posix()
-        for path in FIXTURES.rglob("*")
+        path.relative_to(root).as_posix()
+        for path in root.rglob("*")
         if path.is_file() and path.suffix in {".json", ".jsonl"} and path.name != "provenance.json"
     )
 
 
 def test_every_fixture_states_its_source_and_redaction_result_and_none_is_stale() -> None:
-    assert sorted(PROVENANCE) == _fixture_files()
+    assert sorted(PROVENANCE) == _fixture_files(FIXTURES)
     for name, entry in PROVENANCE.items():
         assert entry["origin"] in ORIGINS, name
         assert entry["source"].strip() and entry["redaction"].strip(), name
-        if entry["origin"] in {"ci-run", "local-review"} and name.startswith("captures/"):
-            assert entry.get("run_id") or entry.get("local_review_at"), name
 
 
 @pytest.mark.parametrize(
@@ -115,19 +101,9 @@ def test_an_allowed_host_is_not_a_foreign_host(text: str) -> None:
     assert not LEAKS["foreign host"].search(text)
 
 
-def test_ci_run_fixtures_name_the_run_that_produced_them() -> None:
-    for name, entry in PROVENANCE.items():
-        if entry["origin"] == "ci-run":
-            assert re.fullmatch(r"\d{9,}", entry["run_id"]), name
-
-
 @pytest.mark.parametrize("name", sorted(PROVENANCE))
-def test_no_fixture_carries_a_secret_or_a_private_host_or_path(name: str, tmp_path: Path) -> None:
-    text = (FIXTURES / name).read_text(encoding="utf-8")
-    assert not credentials.contains(text)
-    found = {kind: pattern.findall(text)[:2] for kind, pattern in LEAKS.items() if pattern.search(text)}
-    assert not found, found
-    _structural_check(name, text, tmp_path)
+def test_no_fixture_carries_a_secret_or_a_private_host_or_path(name: str) -> None:
+    assert not _scan(name, FIXTURES)
 
 
 def test_a_token_split_across_streamed_jsonl_deltas_fails_the_structural_check(tmp_path: Path) -> None:
@@ -136,35 +112,43 @@ def test_a_token_split_across_streamed_jsonl_deltas_fails_the_structural_check(t
         json.dumps({"type": "message_update", "assistantMessageEvent": {"type": "text_delta", "delta": part}})
         for part in split
     )
+    (tmp_path / "stream.jsonl").write_text(text, encoding="utf-8")
 
-    assert not credentials.contains(text) and not any(pattern.search(text) for pattern in LEAKS.values())
-    with pytest.raises(AssertionError):
-        _structural_check("stream.jsonl", text, tmp_path)
-
-
-def test_the_curated_ci_capture_is_the_recorded_run_and_carries_a_shippable_answer() -> None:
-    entry, capture = PROVENANCE[CI_CAPTURE], _capture(CI_CAPTURE)
-
-    assert capture["run_id"] == entry["run_id"] and capture["head_sha"] == entry["head_sha"]
-    assert capture["pr"] == entry["pr"] and capture["schema"] == 1 and capture["exit_code"] == 0
-    assert capture["absence"] is None and capture["terminal_error"] is None and not capture["timed_out"]
-    answer = verdict.parse_output("omp", _stream(capture))
-    assert answer["decision"] == "SHIP" and answer["status"] == "complete"
-    types = [event["type"] for event in capture["events"]]
-    assert "retry_fallback_applied" in types and "retry_fallback_succeeded" in types
-    assert not any(kind.endswith("_update") for kind in types)
-    results = [event["result"] for event in capture["events"] if event["type"] == "tool_execution_end"]
-    assert results and all(item.startswith("[tool output withheld: ") for item in results)
+    assert not _leaks(text)
+    assert _scan("stream.jsonl", tmp_path) == {"token": ["sk-abcdef123456789"]}
 
 
-def test_the_curated_local_review_capture_is_the_recorded_review_and_carries_a_shippable_answer() -> None:
-    entry, capture = PROVENANCE[LOCAL_CAPTURE], _capture(LOCAL_CAPTURE)
+@pytest.mark.parametrize("kind", sorted(PLANTED))
+@pytest.mark.parametrize("name", ["omp_candidate/static_outputs.json", "omp_candidate/chain_review.jsonl"])
+def test_a_planted_leak_in_a_copy_of_the_fixtures_is_caught(kind: str, name: str, tmp_path: Path) -> None:
+    copy = tmp_path / "oracle_reviewers"
+    shutil.copytree(FIXTURES, copy)
+    assert not _scan(name, copy)
+    path = copy / name
+    if name.endswith(".jsonl"):
+        path.write_text(path.read_text(encoding="utf-8") + json.dumps({"note": PLANTED[kind]}) + "\n", encoding="utf-8")
+    else:
+        path.write_text(
+            json.dumps({"planted": PLANTED[kind], "original": json.loads(path.read_text(encoding="utf-8"))})
+        )
 
-    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", entry["local_review_at"])
-    assert capture["head_sha"] == entry["head_sha"] and capture["pr"] is None
-    assert re.fullmatch(r"[0-9a-f]{32}", capture["run_id"])
-    assert capture["schema"] == 1 and capture["exit_code"] == 0 and capture["absence"] is None
-    answer = verdict.parse_output("omp", _stream(capture))
-    assert answer["decision"] == "SHIP" and answer["status"] == "complete"
-    results = [event["result"] for event in capture["events"] if event["type"] == "tool_execution_end"]
-    assert results and all(item.startswith("[tool output withheld: ") for item in results)
+    assert kind in _scan(name, copy)
+
+
+def test_a_fixture_missing_from_the_provenance_manifest_is_detected(tmp_path: Path) -> None:
+    copy = tmp_path / "oracle_reviewers"
+    shutil.copytree(FIXTURES, copy)
+    (copy / "omp_candidate" / "unlisted.json").write_text("{}", encoding="utf-8")
+
+    assert sorted(PROVENANCE) != _fixture_files(copy)
+
+
+def test_every_manifest_stream_file_resolves_inside_the_candidate_directory() -> None:
+    candidate = (FIXTURES / "omp_candidate").resolve()
+    streams = json.loads((candidate / "manifest.json").read_text(encoding="utf-8"))["streams"]
+
+    assert streams
+    for name, stream in streams.items():
+        target = (candidate / stream["file"]).resolve()
+        assert target.is_relative_to(candidate), name
+        assert target.is_file(), name

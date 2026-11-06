@@ -44,8 +44,7 @@ require_omp() {
   local develop_dir binary
   develop_dir=$(mktemp -d)
   export_develop "$develop_dir" || { rm -rf "$develop_dir"; exit 1; }
-  binary=$(cd "$develop_dir" && uv run --quiet --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- \
-    python -m _project.scripts.oracle_reviewers.cli install-omp --policy .github/oracle-reviewers.yml) \
+  binary=$("$THESEUS" install-omp --policy "$develop_dir/.github/oracle-reviewers.yml") \
     || { rm -rf "$develop_dir"; fail "cannot install the omp build pinned in origin/develop:.github/oracle-reviewers.yml"; }
   rm -rf "$develop_dir"
   [ -n "$binary" ] && [ -x "$binary" ] || fail "the pinned omp install gave no executable"
@@ -318,11 +317,22 @@ check_gateway_scope() {
 }
 
 export_develop() {
-  local destination=$1
+  local destination=$1 commit scratch
   git -C "$REPO_ROOT" fetch --quiet origin +refs/heads/develop:refs/remotes/origin/develop \
     || fail "cannot fetch origin/develop in $REPO_ROOT"
-  git -C "$REPO_ROOT" archive origin/develop _project/scripts .github \
-    | tar -x -C "$destination" || fail "cannot export origin/develop from $REPO_ROOT"
+  commit=$(git -C "$REPO_ROOT" rev-parse --verify "origin/develop^{commit}") \
+    || fail "cannot resolve origin/develop in $REPO_ROOT"
+  git -C "$REPO_ROOT" archive "$commit" .github | tar -x -C "$destination" \
+    || fail "cannot export origin/develop from $REPO_ROOT"
+  scratch=$(mktemp -d)
+  git -C "$REPO_ROOT" show "$commit:_project/scripts/theseus_bootstrap.py" > "$scratch/bootstrap.py" \
+    || { rm -rf "$scratch"; fail "origin/develop has no Theseus first stage"; }
+  THESEUS=$(THESEUS_OMP_CACHE=${THESEUS_OMP_CACHE:-$HOME/.cache/benchbox/omp} \
+    python3 -I -S "$scratch/bootstrap.py" install --repo "$REPO_ROOT" --commit "$commit") \
+    || { rm -rf "$scratch"; fail "the verified Theseus install of origin/develop was refused"; }
+  rm -rf "$scratch"
+  [ -x "$THESEUS" ] || fail "the verified Theseus install gave no executable"
+  export THESEUS_OMP_CACHE=${THESEUS_OMP_CACHE:-$HOME/.cache/benchbox/omp}
 }
 
 cmd_broker() {
@@ -370,10 +380,9 @@ cmd_gateway() {
   trap "rm -rf '$ACCOUNTS_FILE' '$develop_dir'" EXIT
   export_develop "$develop_dir"
   broker_omp usage accounts --json > "$ACCOUNTS_FILE"
-  (cd "$develop_dir" && uv run --quiet --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- \
-    python -m _project.scripts.oracle_reviewers.cli gateway-clients \
+  "$THESEUS" gateway-clients \
     --token-file "$CLIENT_TOKEN_FILE" ${named_clients[@]+"${named_clients[@]}"} \
-    --accounts "$ACCOUNTS_FILE" --out "$CLIENTS_FILE")
+    --accounts "$ACCOUNTS_FILE" --omp-config "$develop_dir/.github/oracle-omp-config.yml" --out "$CLIENTS_FILE"
   rm -f "$ACCOUNTS_FILE"
   local staged changed=no
   staged=$(mktemp)

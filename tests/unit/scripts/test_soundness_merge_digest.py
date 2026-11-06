@@ -15,8 +15,13 @@ pytestmark = [
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "_project/scripts"))
-sys.modules["oracle_review_check"] = importlib.import_module("_project.scripts.oracle_review_check")
 digest = importlib.import_module("_project.scripts.soundness_merge_digest")
+
+
+@pytest.fixture(autouse=True)
+def _theseus(theseus_engine, monkeypatch):
+    monkeypatch.setattr(digest, "_ENGINE", theseus_engine)
+
 
 HEAD = "a" * 40
 OLD = "b" * 40
@@ -428,6 +433,37 @@ def test_a_commit_that_removes_a_rule_and_edits_the_path_it_covered_is_still_fla
     assert "secret.py" in digest.soundness_files(git(repo, "rev-parse", "HEAD"), changed, cwd=repo)
 
 
+LEGACY_PREDICATE = (
+    "from pathlib import Path\n"
+    "RULES = [l.split('\\t', 1)[1] for l in (Path(__file__).resolve().parents[2] / '.github/soundness-paths.txt')"
+    ".read_text().splitlines() if l.startswith('file\\t')]\n"
+    "def is_soundness_path(path):\n    return path in RULES\n"
+)
+
+
+def test_a_first_parent_predicate_with_the_old_api_still_judges_the_commit(repo):
+    seed_predicate(repo, "file\tsecret.py\n")
+    write(repo, "_project/scripts/soundness_paths.py", LEGACY_PREDICATE)
+    write(repo, "secret.py", "1\n")
+    git(repo, "add", ".")
+    git(repo, "commit", "-qm", "legacy predicate")
+    write(repo, "secret.py", "2\n")
+    git(repo, "commit", "-qam", "edit")
+    assert digest.soundness_files(git(repo, "rev-parse", "HEAD"), ["secret.py", "other.py"], cwd=repo) == ["secret.py"]
+
+
+def test_a_commit_that_weakens_the_predicate_cannot_hide_an_earlier_match(repo):
+    seed_predicate(repo, "file\tsecret.py\n")
+    write(repo, "secret.py", "1\n")
+    git(repo, "add", ".")
+    git(repo, "commit", "-qm", "protect")
+    write(repo, "_project/scripts/soundness_paths.py", LEGACY_PREDICATE.replace("path in RULES", "False"))
+    write(repo, "secret.py", "2\n")
+    git(repo, "commit", "-qam", "neuter the predicate and edit")
+    sha = git(repo, "rev-parse", "HEAD")
+    assert "secret.py" in digest.soundness_files(sha, ["secret.py"], cwd=repo)
+
+
 def test_a_rule_added_later_does_not_apply_to_earlier_commits(repo):
     seed_predicate(repo, "")
     write(repo, "late.py", "1\n")
@@ -779,6 +815,8 @@ def fake_git(args, **_):
 def stubbed(monkeypatch):
     calls = {"issues": [], "checkpoint": [], "closed": [], "closures": []}
     unreviewed = digest.classify("d" * 40, "unreviewed", ["AGENTS.md"], evidence(number=8))
+    engine = digest._ENGINE
+    monkeypatch.setattr(digest, "load_engine", lambda root, ref: engine)
     monkeypatch.setattr(digest, "run", fake_git)
     monkeypatch.setattr(digest, "read_checkpoint", lambda repo: ON_HISTORY)
     monkeypatch.setattr(digest, "collect_entries", lambda repo, ref, since: [unreviewed])
@@ -1139,9 +1177,10 @@ TIMELINES = {
 
 
 def gate_accepts(verdicts, standin_at, base_change):
-    checker = sys.modules["oracle_review_check"]
+    from theseus_reviewer import policy, review_check as checker
+
     run_uuid = "1" * 32
-    from _project.scripts.oracle_reviewers import protocol
+    from theseus_reviewer import protocol
 
     record = {
         "v": protocol.MARKER_VERSION,
@@ -1194,8 +1233,9 @@ def gate_accepts(verdicts, standin_at, base_change):
         "last_edited_at": None,
         "includes_created_edit": False,
     }
+    binding = policy.Binding(digest.engine().bot_login, digest.engine().attesters, "develop")
     status, _ = checker.decide(
-        HEAD, ["AGENTS.md"], statuses, lambda _files: True, base_change, comments, reviews=[receipt]
+        HEAD, ["AGENTS.md"], statuses, lambda _files: True, base_change, comments, binding=binding, reviews=[receipt]
     )
     return status == checker.PASS
 
@@ -2073,7 +2113,7 @@ def oracle_record(decision, **over):
 
 
 def oracle_review_body(decision="SHIP", state="success", marker=True, **over):
-    from oracle_reviewers import protocol
+    from theseus_reviewer import protocol
 
     body = f"### oracle-verdict: {state} for `{HEAD}`\n\nDecision text.\n"
     return body + ("\n" + protocol.encode_marker(oracle_record(decision, **over)) if marker else "")
@@ -2182,7 +2222,7 @@ def test_a_review_with_no_readable_decision_is_unverifiable(monkeypatch):
 
 
 def test_unreadable_edit_state_makes_every_oracle_review_unverifiable(monkeypatch):
-    from oracle_reviewers import edits
+    from theseus_reviewer import edits
 
     serve_verification(monkeypatch, graphql_error=edits.EditStateError("GraphQL returned errors"))
     reviews = [app_review(oracle_review_body()), review("joe", HEAD, user_type="User")]
@@ -2386,7 +2426,7 @@ def test_an_edited_adjudication_comment_is_still_listed_and_noted():
 
 
 def test_a_ruling_recorded_by_the_oracle_is_listed_when_its_comment_is_gone():
-    from oracle_reviewers import protocol
+    from theseus_reviewer import protocol
 
     record = {
         "v": 1,
@@ -2415,7 +2455,7 @@ def test_a_ruling_recorded_by_the_oracle_is_listed_when_its_comment_is_gone():
 
 
 def test_a_recovered_ruling_needs_an_instruction_before_the_review_that_preceded_it():
-    from oracle_reviewers import protocol
+    from theseus_reviewer import protocol
 
     base = {
         "v": 1,
