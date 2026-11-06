@@ -6,6 +6,7 @@ import os
 import shutil
 import stat
 import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -41,12 +42,12 @@ SHARED_SOURCE = "ALPHA = None\nGAMMA = None\n\n\ndef unrelated() -> int:\n    re
 
 FAKE_REVIEW = """\
 import argparse
-import hashlib
 import json
 import os
-import subprocess
 import sys
 from pathlib import Path
+
+import theseus_cli
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--policy", required=True)
@@ -58,24 +59,71 @@ parser.add_argument("--head", required=True)
 args = parser.parse_args()
 outcome_file = Path(os.environ["FAKE_REVIEW_OUTCOME_FILE"])
 outcome = outcome_file.read_text().strip() if outcome_file.exists() else "clear"
-
-
-def git(*command):
-    return subprocess.run(["git", *command], check=True, capture_output=True, text=True).stdout
-
-
 record = {
     "schema": "benchbox_member_review_v1",
     "outcome": outcome,
     "reason": "fake reviewer verdict",
     "base_sha": args.base_ref,
     "head_sha": args.head,
-    "head_tree": git("rev-parse", f"{args.head}^{{tree}}").strip(),
-    "patch_digest": hashlib.sha256(git("diff", args.base_ref, args.head).encode()).hexdigest(),
     "trusted_sha": args.trusted_ref,
+    **theseus_cli.member_binding(Path.cwd(), args.base_ref, args.head, args.trusted_ref),
 }
 Path(args.result_json).write_text(json.dumps(record))
 sys.exit(1 if outcome == "findings" else 0)
+"""
+
+FAKE_THESEUS_BOOTSTRAP = """\
+import os
+import shlex
+import shutil
+import sys
+from pathlib import Path
+
+sources = Path(os.environ["FAKE_THESEUS_SOURCES"])
+home = Path(os.environ["FAKE_THESEUS_HOME"])
+program = home / "bin" / "theseus"
+package = home / "site" / "theseus_reviewer"
+program.parent.mkdir(parents=True, exist_ok=True)
+package.mkdir(parents=True, exist_ok=True)
+launcher = home / "bin" / "theseus_launcher.py"
+shutil.copy2(sources / "theseus_launcher.py", launcher)
+program.write_text(f"#!/bin/sh\\nexec {shlex.quote(sys.executable)} {shlex.quote(str(launcher))} \\"$@\\"\\n")
+program.chmod(0o755)
+(package / "__init__.py").write_text("")
+shutil.copy2(sources / "theseus_local.py", package / "local.py")
+print(program)
+"""
+
+FAKE_THESEUS_LAUNCHER = """\
+import json
+import sys
+
+if sys.argv[1:2] != ["preflight"]:
+    sys.exit(2)
+json.dump({"schema": 1, "reviewable": True, "reasons": [], "advisories": []}, sys.stdout)
+"""
+
+FAKE_THESEUS_LOCAL = """\
+import hashlib
+import subprocess
+
+
+class Unavailable(Exception):
+    pass
+
+
+def _git(root, *args):
+    return subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True, text=True).stdout.strip()
+
+
+def member_binding(root, base, head):
+    try:
+        return {
+            "head_tree": _git(root, "rev-parse", f"{head}^{{tree}}"),
+            "patch_digest": hashlib.sha256(_git(root, "diff", base, head).encode("utf-8")).hexdigest()[:32],
+        }
+    except subprocess.CalledProcessError as exc:
+        raise Unavailable(str(exc)) from exc
 """
 
 FAKE_PREFLIGHT = """\
@@ -101,6 +149,7 @@ DEVELOP_FILES = {
     ),
     "pytest.ini": "[pytest]\npythonpath = .\n",
     "scripts/oracle_local_review.py": FAKE_REVIEW,
+    "_project/scripts/theseus_bootstrap.py": FAKE_THESEUS_BOOTSTRAP,
     ".gitignore": ".venv/\n__pycache__/\n.pytest_cache/\n.todo-batch/\n*.pyc\n",
     "src/__init__.py": "",
     "src/shared.py": SHARED_SOURCE,
@@ -250,6 +299,8 @@ class World:
             FAKE_PREFLIGHT_LOG=str(self.root / "preflight.log"),
             FAKE_GH_LOG=str(self.root / "gh.log"),
             FAKE_REVIEW_OUTCOME_FILE=str(self.root / "review-outcome"),
+            FAKE_THESEUS_SOURCES=str(self.tools),
+            FAKE_THESEUS_HOME=str(self.root / "theseus"),
         )
         return env
 
@@ -299,6 +350,8 @@ class World:
         self.run(["git", "fetch", "-q", "origin"], self.primary)
         self.run(["git", "branch", "--set-upstream-to=origin/develop", "develop"], self.primary)
         (self.tools / "fake_preflight.py").write_text(FAKE_PREFLIGHT)
+        (self.tools / "theseus_launcher.py").write_text(FAKE_THESEUS_LAUNCHER)
+        (self.tools / "theseus_local.py").write_text(FAKE_THESEUS_LOCAL)
         gh = self.tools / "gh"
         gh.write_text(FAKE_GH)
         gh.chmod(gh.stat().st_mode | stat.S_IXUSR)
@@ -329,6 +382,11 @@ class World:
     def close(self) -> None:
         for server in self.servers:
             server.stop()
+        for name in [
+            name for name in sys.modules if name == "theseus_reviewer" or name.startswith("theseus_reviewer.")
+        ]:
+            del sys.modules[name]
+        sys.path[:] = [entry for entry in sys.path if not Path(entry).is_relative_to(self.root)]
 
     def make(self, cwd: Path, target: str, *, check: bool = True, **variables: str):
         argv = ["make", "--no-print-directory", target, *[f"{key}={value}" for key, value in variables.items()]]
