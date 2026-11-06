@@ -1,0 +1,58 @@
+name: Batch Loop E2E
+
+on:
+  pull_request:
+    paths:
+      - "scripts/batch_integration.py"
+      - "scripts/theseus_cli.py"
+      - "scripts/pr_landing.py"
+      - "scripts/pr_arm.py"
+      - "scripts/oracle_local_review.py"
+      - "scripts/changelog_fragments.py"
+      - "scripts/worktree_lifecycle.sh"
+      - "scripts/worktree_lifecycle_metadata.py"
+      - "scripts/set_worktree_identity.sh"
+      - "Makefile"
+      - "make/**"
+      - "_project/scripts/theseus_bootstrap.py"
+      - "_project/scripts/pyproject.toml"
+      - "_project/scripts/uv.lock"
+      - "_project/scripts/vendor/**"
+      - "tests/integration/worktree/test_batch_loop_e2e.py"
+      - "tests/integration/worktree/batch_loop_*"
+      - ".github/workflows/batch-loop-e2e.yml"
+  schedule:
+    - cron: "43 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: batch-loop-e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  batch-loop-e2e:
+    name: batch-loop-e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Run the batch landing loop end to end
+        run: uv run -- python -m pytest tests/integration/worktree/test_batch_loop_e2e.py -m slow -n 0 -q --tb=short -p no:randomly
