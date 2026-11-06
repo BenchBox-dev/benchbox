@@ -143,10 +143,26 @@ def test_marker_comments_and_marker_edits_gate_in_the_pull_request_group() -> No
     assert _group("issue_comment", _comment("created", STANDIN)) == "review-gate-8"
     assert _group("issue_comment", _comment("deleted", STANDIN)) == "review-gate-8"
     assert _group("issue_comment", _comment("created", "Oracle adjudication: WITHDRAW D1 - done")) == "review-gate-8"
+    assert _group("issue_comment", _comment("created", "Review adjudication: WITHDRAW D1 - done")) == "review-gate-8"
+    assert _group("issue_comment", _comment("created", "Stand-in oracle review: APPROVE")) == "review-gate-8"
+    assert _group("issue_comment", _comment("edited", "withdrawn", STANDIN)) == "review-gate-8"
+    assert _group("issue_comment", _comment("edited", STANDIN, "draft")) == "review-gate-8"
+    assert (
+        _group("issue_comment", _comment("edited", "withdrawn", "Stand-in oracle review: APPROVE")) == "review-gate-8"
+    )
+    assert (
+        _group("issue_comment", _comment("edited", "withdrawn", "Oracle adjudication: WITHDRAW D1 - x"))
+        == "review-gate-8"
+    )
+    assert (
+        _group("issue_comment", _comment("edited", "withdrawn", "Review adjudication: WITHDRAW D1 - x"))
+        == "review-gate-8"
+    )
 
 
 def test_unrelated_comments_run_in_a_group_of_their_own() -> None:
     assert _group("issue_comment", _comment("created", "looks good")) == "review-gate-ignored-55"
+    assert _group("issue_comment", _comment("edited", "fixed", "typo")) == "review-gate-ignored-55"
     assert _group("issue_comment", _comment("edited", "fixed", "typo")) == "review-gate-ignored-55"
 
 
