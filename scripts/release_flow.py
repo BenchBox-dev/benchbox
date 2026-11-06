@@ -41,6 +41,10 @@ CLI_DESCRIPTION = (
     "    fragment is still pending, which keeps a release preparation change from\n"
     "    merging with uncompiled fragments and confirms a tagged tree carries none.\n"
     "\n"
+    "    ``check --releasable-commit SHA`` additionally fails unless SHA has a\n"
+    "    successful ``trunk.yml`` push run on ``develop`` with its dist artifact,\n"
+    "    and then names the newest develop commit that does.\n"
+    "\n"
     "    ``check`` is meant to run on a clean checkout, locally and in CI, so a tag\n"
     "    is only cut from a tree that already passed it.\n"
 )
@@ -205,6 +209,13 @@ def check_sqlglot_advisories(root: Path, runner: Runner) -> list[str]:
     return _delegated("sqlglot advisories", [sys.executable, str(script), "--root", str(root)], root, runner)
 
 
+def check_releasable_commit(root: Path, sha: str, api: Callable[[str], dict] | None = None) -> list[str]:
+    try:
+        return _load_script("release_releasable", root).releasable_problems(sha, api)
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        return [f"releasable commit: cannot verify {sha} against GitHub ({exc})"]
+
+
 def run_checks(
     root: Path,
     version: str,
@@ -213,6 +224,8 @@ def run_checks(
     baseline_ref: str | None = None,
     skip_upstream_freshness: bool = False,
     pre_tag: bool = False,
+    releasable_commit: str | None = None,
+    releasable_api: Callable[[str], dict] | None = None,
 ) -> list[str]:
     problems: list[str] = []
     if normalize_version(version) is None:
@@ -226,6 +239,8 @@ def run_checks(
     if not skip_upstream_freshness:
         problems += check_sqlglot_upstream_freshness(root, runner)
         problems += check_sqlglot_advisories(root, runner)
+    if releasable_commit is not None:
+        problems += check_releasable_commit(root, releasable_commit, releasable_api)
     return problems
 
 
@@ -404,6 +419,11 @@ def main(argv: list[str] | None = None) -> int:
     sub.choices["check"].add_argument(
         "--pre-tag", action="store_true", help="Also fail while any changelog.d/*.json fragment is pending"
     )
+    sub.choices["check"].add_argument(
+        "--releasable-commit",
+        metavar="SHA",
+        help="Also fail unless SHA has a successful trunk push run with a dist artifact; names the newest one",
+    )
     select = sub.add_parser("select", help="Select release candidates using the immutable CI event base")
     select.add_argument("--base-sha", required=True)
     select.add_argument("--github-output", type=Path, required=True)
@@ -436,6 +456,7 @@ def main(argv: list[str] | None = None) -> int:
         baseline_ref=args.baseline_ref,
         skip_upstream_freshness=args.skip_upstream_freshness,
         pre_tag=args.pre_tag,
+        releasable_commit=args.releasable_commit,
     )
     if problems:
         print(f"release-check FAILED for {version}:", file=sys.stderr)
