@@ -29731,17 +29731,12 @@
       "title": "Bootstrap Theseus repository governance and preserve the BenchBox source provenance"
     },
     "theseus-review-depth-and-capacity-20261105": {
-      "claim": {
-        "expires_at": "2026-11-07T02:54:55Z",
-        "generation": "5148426a17874c4397862fe984f511df",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f"
-      },
+      "claim": null,
       "needs": [
         "review-depth-owner-decisions-20261105"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Theseus v0.1.7: hunk coverage, git-built diffs, rename-aware executed-surface promotions, capacity sizing, compaction fail-closed, preflight"
     },
     "theseus-v021-stdin-rendered-mode-20261105": {
