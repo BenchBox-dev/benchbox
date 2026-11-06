@@ -5,7 +5,7 @@
     "Report which reviewers are required and alert when quota or availability leaves none.",
     "Adds or updates the matching scenario in tests/integration/oracle (registered in ORACLE_SCENARIO_TESTS), proven to fail with this item's defect reintroduced; the scenario runs only the fake omp executable and fake servers, never a real omp or model-provider call."
   ],
-  "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\n\n\noracle-response-evidence-secrets-20261021 disables read summarization and preserves bounded useful read traces without reducing required-file evidence. Broad large-diff coverage/capacity acceptance remains here. No closure implied.",
+  "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\n\n\noracle-response-evidence-secrets-20261021 disables read summarization and preserves bounded useful read traces without reducing required-file evidence. Broad large-diff coverage/capacity acceptance remains here. No closure implied.\n\n2026-11-06 evidence from the BenchBox migration to Theseus v0.2.x, PR #3962, judged by the v0.1.8 hunk-coverage rule:\n- First head bcfd69759b: all five hosted attempts ended \"absent (incomplete)\", each missing 1–7 hunks.\n- Head b26cbc12dd: attempt 1 was again incomplete (5 hunks unseen).\n- Final head 777b323c: capture-1 covered 316/319 (three hunks in review-request.yml and review-verdict.yml unseen) before capture-2 reached 319/319 and SHIP.\n- The /oracle-review comment on bcfd697 (run 42166283710) was skipped by design: \"backoff: the next retry is allowed after 06:03:53Z\".\nSo under the coverage rule, incompleteness by small margins (≤2% of hunks) is the dominant failure mode on promotion-size diffs, and backoff turns each miss into roughly an hour of delay. Calibration belongs with theseus-v021-stdin-rendered-mode-20261105 (Theseus v0.2.2): a stronger retry hint naming the unseen hunks, or a targeted follow-up read for them.",
   "description": "On PR #3139 the muse reviewer finished 'incomplete' because it did not examine eight workflow files, and the other reviewers were unavailable (OpenAI quota exhausted, same-family skip, diff over the agy brief cap). The verdict stayed pending and the PR could only merge through a stand-in. A /oracle-review comment started no new run. Large soundness-path diffs will hit this again.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3139",
@@ -60,6 +60,14 @@
       "op": "update",
       "op_id": "f8bc8dc2d11242158fd7370fc20afd0a",
       "session_id": "f2ea81a526d74429861bc01fff72f167"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-06T12:52:51Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "503e667a0ef44cafb5bde40321337701",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
     }
   ]
 }
