@@ -32979,10 +32979,15 @@
       "title": "TPC-H RF1 native ingest for SingleStore (LOAD DATA) inside the RF1 timer"
     },
     "tpch-rf1-native-ingest-singlestore-verify-20261106": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-07T17:44:16Z",
+        "generation": "59379df27aea47ddbed31394b2bc9376",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Verify SingleStore LOAD DATA for TPC-H RF1 on a local container and enable native ingest only if parity and speed pass"
     },
     "tpch-rf1-native-ingest-snowflake-20261103": {
