@@ -4470,10 +4470,15 @@
       "title": "Batch arrow-dataframe-roundtrips: umbrella notes"
     },
     "batch-distinct-tracker-identities-20261104": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-07T05:58:44Z",
+        "generation": "a9ffdb6ca9d44c338ed44049c8ca0246",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Give batch leaders and members distinct todo-db identities"
     },
     "batch-feature-branch-integration": {
