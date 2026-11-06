@@ -4693,15 +4693,10 @@
       "title": "Correct PR-1642 batch provenance: push commits, open real PR, fix completed_pr, record missing audit event"
     },
     "batch-arrow-dataframe-roundtrips-20261104": {
-      "claim": {
-        "expires_at": "2026-11-07T13:24:19Z",
-        "generation": "2ddebbe43a8d47c49f5fdd264f3a6edf",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Batch arrow-dataframe-roundtrips: umbrella notes"
     },
     "batch-distinct-tracker-identities-20261104": {
