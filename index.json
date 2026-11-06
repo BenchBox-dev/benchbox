@@ -953,6 +953,104 @@
       "start_head": "20a0045113e6c8ba13c3e7c4f78351e3fe81f81e",
       "terminal_outcome": "deliver"
     },
+    "load-path-live-fixes": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/load-path-live-fixes",
+      "integration_head": "0b0c8f764d6836a0986a566af14f95d49e725dd2",
+      "integration_log": [
+        {
+          "at": "2026-11-06T19:34:49Z",
+          "head": "0b0c8f764d6836a0986a566af14f95d49e725dd2",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-load-path-live-fixes",
+      "lifecycle": "active",
+      "members": [
+        "databend-load-file-method-arg-20261106",
+        "duckdb-iceberg-handler-register-fails-20261106",
+        "questdb-ilp-load-drops-rows-per-file-socket-20261106",
+        "questdb-ilp-date-columns-sent-as-strings-20261106",
+        "influxdb-load-ignores-compressed-tsbs-files-20261106"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "owner_epoch": 0,
+      "owner_generation": "3f8eac5e54182f99e96511175bb62e0c",
+      "project_id": "BenchBox",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "databend-load-file-method-arg-20261106": [
+          "benchbox/platforms/databend/*",
+          "tests/unit/platforms/test_databend_*.py",
+          "tests/integration/platforms/test_databend_*.py",
+          "pyproject.toml",
+          "uv.lock",
+          "changelog.d/feat-load-path-live-fixes--databend-load-file-method-arg-20261106.json",
+          "quality/comment-policy.json",
+          "tests/fixtures/fast_tier_baseline/*"
+        ],
+        "duckdb-iceberg-handler-register-fails-20261106": [
+          "benchbox/platforms/base/data_loading.py",
+          "benchbox/platforms/duckdb.py",
+          "benchbox/utils/iceberg_layout.py",
+          "benchbox/utils/format_converters/*",
+          "tests/unit/platforms/test_data_loading*.py",
+          "tests/unit/platforms/test_duckdb*.py",
+          "tests/unit/utils/test_iceberg_layout.py",
+          "tests/unit/utils/format_converters/*",
+          "tests/integration/platforms/test_iceberg_format_live.py",
+          "changelog.d/feat-load-path-live-fixes--duckdb-iceberg-handler-register-fails-20261106.json",
+          "quality/comment-policy.json",
+          "tests/fixtures/fast_tier_baseline/*"
+        ],
+        "influxdb-load-ignores-compressed-tsbs-files-20261106": [
+          "benchbox/platforms/influxdb/*",
+          "tests/unit/platforms/test_influxdb_*.py",
+          "tests/unit/platforms/influxdb/*",
+          "tests/unit/platforms/test_platform_adapter_init_and_loading.py",
+          "tests/integration/platforms/test_influxdb_*.py",
+          "tests/integration/platforms/common.py",
+          "docker/influxdb/*",
+          "docs/operations/local-platform-provisioning.tsv",
+          "tests/uat/docker_assets.py",
+          "changelog.d/feat-load-path-live-fixes--influxdb-load-ignores-compressed-tsbs-files-20261106.json",
+          "quality/comment-policy.json",
+          "tests/fixtures/fast_tier_baseline/*"
+        ],
+        "questdb-ilp-date-columns-sent-as-strings-20261106": [
+          "benchbox/platforms/questdb.py",
+          "tests/unit/platforms/test_questdb_*.py",
+          "tests/integration/platforms/test_questdb_*.py",
+          "docker/questdb/*",
+          "docs/operations/local-platform-provisioning.tsv",
+          "tests/uat/docker_assets.py",
+          "changelog.d/feat-load-path-live-fixes--questdb-ilp-date-columns-sent-as-strings-20261106.json",
+          "quality/comment-policy.json",
+          "tests/fixtures/fast_tier_baseline/*"
+        ],
+        "questdb-ilp-load-drops-rows-per-file-socket-20261106": [
+          "benchbox/platforms/questdb.py",
+          "tests/unit/platforms/test_questdb_*.py",
+          "tests/integration/platforms/test_questdb_*.py",
+          "docker/questdb/*",
+          "docs/operations/local-platform-provisioning.tsv",
+          "tests/uat/docker_assets.py",
+          "changelog.d/feat-load-path-live-fixes--questdb-ilp-load-drops-rows-per-file-socket-20261106.json",
+          "quality/comment-policy.json",
+          "tests/fixtures/fast_tier_baseline/*"
+        ]
+      },
+      "scope_hash": "b1d59a2e5ce68b19cccce60d859cb51873c8e578af04682d153abb78557e36ed",
+      "start_head": "0b0c8f764d6836a0986a566af14f95d49e725dd2",
+      "terminal_outcome": "deliver"
+    },
     "native-bulk-load-remainder": {
       "accepted_members": {
         "perf-library-loaders-and-datagen-rows-20261031": "353cbb9f028e232a416001c2886779b3c1e98974",
