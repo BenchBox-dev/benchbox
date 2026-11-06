@@ -24797,7 +24797,9 @@
     },
     "questdb-ilp-date-columns-sent-as-strings-20261106": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "questdb-ilp-load-drops-rows-per-file-socket-20261106"
+      ],
       "priority": "high",
       "status": "open",
       "title": "QuestDB ILP load sends TPC-H DATE columns as strings into TIMESTAMP columns, lineitem loads zero rows"
