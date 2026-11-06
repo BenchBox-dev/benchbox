@@ -3,6 +3,7 @@
     "Each listed maintainer action has a recorded owner decision or completion note",
     "No agent-completable step remains listed without its own tracker link"
   ],
+  "context": "2026-11-06: Delete the two archived probe repositories created on 2026-11-04 to prove that `secrets: inherit` does not cross owners: joeharris76/secrets-probe-callee and the secrets-probe-caller repository (in the BenchBox-dev organization). Agents' gh token lacks the delete_repo scope. Run `gh auth refresh -s delete_repo`, then `gh repo delete <owner>/<name> --yes` for each. The finding they proved is recorded on oracle-callers-env-secrets-unreachable-20261104, so nothing else depends on them.",
   "description": "Maintainer-only actions. REVALIDATED 2026-08-20: w1-w3 (branch rename / default_branch) are done.\n\nRemaining customer-value human actions, tracked on their own items (do not duplicate as extra gates):\n- Databricks Free Edition, Snowflake trial (\\$400), BigQuery trial (\\$300): first-live-cloud-benchmark-run-and-publish w1-w4\n- Approve the PyPI environment / publish step during cut-v0-4-0-release w3 (pypi environment already has joeharris76 as required reviewer)\n\nw4 (secondary GitHub account) is NOT a customer-value blocker. That path is deferred on external-contributor-submission-dry-run. w5 remains optional cleanup.",
   "legacy": {
     "anti_patterns": [
@@ -173,6 +174,14 @@
       "op": "update",
       "op_id": "71d777ffc51f4fac82b8124fe32e111e",
       "session_id": "ccd5a4124a5a4b2ab886fc474bb7d83c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-06T12:52:47Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "79c2ed416767497385cfb6ba97498388",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
     }
   ]
 }
