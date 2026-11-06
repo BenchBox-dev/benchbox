@@ -152,6 +152,39 @@ def test_vortex_extension_fallback_uses_arrow_insert(monkeypatch, tmp_path):
     assert [name for name, _ in inserted] == ["t"]
 
 
+def test_vortex_read_failure_falls_back_to_python_bindings(monkeypatch, tmp_path):
+    table = _arrow_table(30)
+
+    class FakeArray:
+        def to_arrow(self):
+            return table
+
+    fake_vortex = types.SimpleNamespace(io=types.SimpleNamespace(read=lambda path: FakeArray()))
+    monkeypatch.setitem(__import__("sys").modules, "vortex", fake_vortex)
+
+    inserted = []
+
+    def fake_insert(connection, name, arrow_table):
+        inserted.append(name)
+        return arrow_table.num_rows
+
+    monkeypatch.setattr(data_loading, "insert_arrow_table", fake_insert)
+
+    def execute(sql, *args):
+        if "read_vortex" in sql:
+            raise RuntimeError("cannot read file")
+        result = MagicMock()
+        result.fetchone.return_value = (0,)
+        return result
+
+    conn = MagicMock()
+    conn.execute.side_effect = execute
+
+    handler = DuckDBVortexHandler(MagicMock(dry_run_mode=False))
+    assert handler.load_table("t", tmp_path / "t.vortex", conn, MagicMock(), MagicMock()) == 30
+    assert inserted == ["t"]
+
+
 @pytest.mark.parametrize(
     "handler_cls, patch_target",
     [

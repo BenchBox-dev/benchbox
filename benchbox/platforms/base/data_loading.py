@@ -1401,7 +1401,11 @@ class DuckDBVortexHandler(FileFormatHandler):
             return 1000
         else:
             before = connection.execute(f"SELECT COUNT(*) FROM {validated_table}").fetchone()[0]
-            connection.execute(insert_sql)
+            try:
+                connection.execute(insert_sql)
+            except Exception:
+                logger.debug("DuckDB read_vortex could not read the file, falling back to generic handler")
+                return VortexFileHandler().load_table(table_name, file_path, connection, benchmark, logger)
             after = connection.execute(f"SELECT COUNT(*) FROM {validated_table}").fetchone()[0]
             return after - before
 
