@@ -98,6 +98,7 @@ tests/unit/scripts/test_soundness_merge_digest.py
 tests/unit/scripts/test_sqlglot_generator.py
 tests/unit/scripts/test_sqlglot_generator_known_failures.py
 tests/unit/scripts/test_sqlglot_fork_refresh.py
+tests/unit/scripts/test_sqlglot_delivery.py
 tests/unit/scripts/test_sqlite_extract_repro.py
 tests/unit/scripts/test_submission_workflow_waiver.py
 tests/unit/scripts/test_timing_policy_check.py
@@ -132,6 +133,7 @@ tests/unit/workflows/test_oracle_review_workflow.py
 tests/unit/workflows/test_published_results_base_ci.py
 tests/unit/workflows/test_release_canary_shard_evidence.py
 tests/unit/workflows/test_sqlglot_fork_refresh_workflow.py
+tests/unit/workflows/test_sqlglot_delivery_workflow.py
 tests/unit/workflows/test_seed_corpus_pr_base.py
 tests/unit/workflows/test_site_inputs_workflow.py
 tests/unit/workflows/test_stacked_pr_base_guard.py
