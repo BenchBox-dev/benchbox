@@ -1809,7 +1809,7 @@
         }
       },
       "integration_branch": "feat/tpc-timer-boundaries-v2",
-      "integration_head": "127e0988700086b6e76bfd60c9f072ac6d113461",
+      "integration_head": "a1f597bf83bfd2b77292f1aab7f52dca730fdc87",
       "integration_log": [
         {
           "at": "2026-11-05T19:21:47Z",
@@ -1936,6 +1936,21 @@
             "tpcds-maintenance-timer-hygiene-20261103"
           ],
           "seq": 8
+        },
+        {
+          "at": "2026-11-06T03:54:35Z",
+          "changed_files": [
+            "benchbox/core/tpcds/maintenance_operations.py",
+            "tests/unit/core/tpcds/test_maintenance_timer_boundaries.py"
+          ],
+          "head": "a1f597bf83bfd2b77292f1aab7f52dca730fdc87",
+          "kind": "fix",
+          "op_id": "1565b6f3eb6c493ca628413cd7434146",
+          "previous_head": "127e0988700086b6e76bfd60c9f072ac6d113461",
+          "requires_acceptance": [
+            "tpcds-maintenance-timer-hygiene-20261103"
+          ],
+          "seq": 9
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpc-timer-boundaries-v2",
