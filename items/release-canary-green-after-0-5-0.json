@@ -129,6 +129,17 @@
       "op": "update",
       "op_id": "b684cb06f9df479d824ac0e3a379c81a",
       "session_id": "3021bd717a8048e3a41f45e7a1623169"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:89cd5a9a0ab618f0122a0717",
+      "at": "2026-11-06T19:43:23Z",
+      "client": "omp-coding-agent",
+      "displaced": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cde105aa05a0f6f9118d0802",
+      "generation": "fc9d0cdf141847989e1e124de7c58173",
+      "op": "takeover",
+      "op_id": "d6cdf73509054e3096025c64f125b9e6",
+      "reason": "That holder is my own earlier MCP server, killed by SIGTERM mid-task; the session resumed under a new server identity and cannot present the old generation.",
+      "session_id": "3021bd717a8048e3a41f45e7a1623169"
     }
   ]
 }

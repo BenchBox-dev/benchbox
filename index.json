@@ -25320,10 +25320,10 @@
     },
     "release-canary-green-after-0-5-0": {
       "claim": {
-        "expires_at": "2026-11-07T17:51:56Z",
-        "generation": "c8f267288b254a6baf7b5f288c222a4d",
+        "expires_at": "2026-11-07T19:43:23Z",
+        "generation": "fc9d0cdf141847989e1e124de7c58173",
         "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cde105aa05a0f6f9118d0802"
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:89cd5a9a0ab618f0122a0717"
       },
       "needs": [],
       "priority": "high",
