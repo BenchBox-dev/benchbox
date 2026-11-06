@@ -235,7 +235,7 @@ gateway_code() {
 
 valid_client_name() {
   local LC_ALL=C
-  [[ $1 =~ ^oracle-[a-z0-9]+(-[a-z0-9]+)*$ ]]
+  [[ $1 =~ ^review-[a-z0-9]+(-[a-z0-9]+)*$ ]]
 }
 
 client_token_files() {
