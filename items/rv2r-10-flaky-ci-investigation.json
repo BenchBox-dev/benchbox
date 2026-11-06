@@ -6,7 +6,7 @@
     "Each proposed change has its data, expected first-pass gain, and risk; DECISION GATE: owner approves or rejects each via the choice dialog before any threshold or timeout is edited",
     "Approved changes land with tests; rejected ones are recorded on this item"
   ],
-  "context": "Serial item (not in the batch). Owner decision 2026-11-05: investigate only; every gate threshold or timeout change needs owner approval. GUARDRAILS: no change to thresholds, timeouts, retries or required checks without that approval; re-running jobs to collect data is fine. No PR merges while develop is frozen for 0.5.0 (dlv2-52 owner decision 1) or during a G13 release window; the investigation report itself may proceed at any time. Rollback for any approved change: revert its commit.",
+  "context": "Serial item (not in the batch). Owner decision 2026-11-05: investigate only; every gate threshold or timeout change needs owner approval. GUARDRAILS: no change to thresholds, timeouts, retries or required checks without that approval; re-running jobs to collect data is fine. No PR merges while develop is frozen for 0.5.0 (dlv2-52 owner decision 1) or during a G13 release window; the investigation report itself may proceed at any time. Rollback for any approved change: revert its commit.\n\n2026-11-06 observed: tests/unit/test_heavy_choke_points.py failed the ubuntu py3.14 fast leg 5 times on PR #3982. Tests using the default stub machine name `m` race under pytest-xdist: the cleanup helper sees sibling tests' wrapper processes and leaves the machine running (reproduced locally with -n 4). Likely introduced by #3972. Candidate fix: a unique STUB_MACHINE per test, as lines 333 and 424 of that file already do.",
   "description": "CI first-pass green fell from the 70.4% baseline to about 47% (n=100 ci.yml runs since 2026-11-01). Observed drivers: the fast-tier duration gate tripping on runner variance (for example #3946: summed ratio 1.354 against 1.30, +504 s, with no slow tests from the PR) and macOS TPC-H binary framing hitting its 15-minute limit under queue load on many PRs. The owner chose 'investigate only' on 2026-11-05, so this item gathers the data and proposes changes; any threshold or timeout change needs explicit owner approval before it is implemented.",
   "links": [
     ".github/workflows/ci.yml",
@@ -28,6 +28,14 @@
       "op": "update",
       "op_id": "78f79761a0484c9ebc87a473c2e5e8d5",
       "session_id": "7da446616e5349658579dfc9c4288973"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-06T22:27:48Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ce4aed7b2dca400a98318c5bd8a5d1b4",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
     }
   ]
 }
