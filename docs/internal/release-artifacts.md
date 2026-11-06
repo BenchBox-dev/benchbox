@@ -157,7 +157,9 @@ read, but it does not defend against a hostile writer on the same filesystem.
 
 The publishing workflow still requires the live `v-tag-restricted` rule,
 verifiable provenance attestation, all twelve Python 3.11–3.14 installation and
-smoke cells across Linux/macOS/Windows, artifact-bound release UAT, the binary
+smoke cells across Linux/macOS/Windows, artifact-bound release UAT (a final tag
+may satisfy it by verified reuse of its release candidate's evidence, described
+under "Gates"), the binary
 manifest, `make release-check`, ruleset drift checks, and no open
 release-blocking `t3:*` issue. Linux correctness evidence remains separate from
 the deferred Darwin digest certification.
@@ -194,14 +196,62 @@ Gates, in order:
    with the checkout package hidden. A hosted job stops at six hours and the
    full sweep needs more, so each stage is split into parallel shard jobs
    (`uat-stage1`, `uat-stage2`, `uat-stage3`, one `--platforms` subset per
-   matrix entry) and the stages are chained with `needs`. Every shard uploads
+   matrix entry) that all start once admission passes. Every shard uploads
    its run directory. The `release-uat` gate job then downloads all shards and
    runs `make uat-gate-check` over them with the digest of the staged
    distributions. The gate is red when any shard skipped a cell the config does
    not prune by design, lost cells to early-stop pruning, could not reach or
    start a required platform, attempted no cells, or recorded another digest or
    source commit, or when the union of a stage's shard cells is not exactly the
-   stage's planned cell set.
+   stage's planned cell set. Docker start ordering is enforced only between
+   stage directories with the same host id (machine id plus `RUNNER_NAME`,
+   recorded as `[host] id=` in `uat_lifecycle.log`); a missing id counts as the
+   same host.
+
+   A final tag (`vX.Y.Z`, target `pypi`) may reuse the evidence of its newest
+   release candidate `vX.Y.ZrcN` instead of re-running the stages. The
+   `uat-reuse` job decides, and every condition below must hold or the final
+   tag runs the three stages unchanged. Each result is recorded in the job
+   summary and an unexpected error counts as a failed condition:
+
+   - The release candidate's `release-v2.yml` push run (newest run for that tag
+     and commit, found through the Actions API) has a `release-uat` job that
+     concluded `success`; its `release-uat-<rc tag>` artifact holds a green gate
+     summary whose source commit is the candidate commit and whose digest is
+     the candidate's admitted digest; unexpired shard artifacts exist for all
+     three stages.
+   - The candidate commit is an ancestor of the final tag commit.
+   - `git diff` of `tests/uat`, `tests/utilities`, `tests/__init__.py`,
+     `docker`, `.github/actions/release-uat-env`, `scripts/uat-bring-up`, and the `Makefile` between
+     the two commits is empty. In `release-v2.yml`, the workflow-level `env` and
+     the `uat-stage1`, `uat-stage2`, and `uat-stage3` jobs are equal at both
+     commits once only their `needs` and `if` keys are ignored, so the shard
+     matrix, environment, steps, runner and timeouts are the ones the
+     candidate ran. `uv.lock` differs only in the `benchbox` package version
+     line.
+   - The candidate's wheel and sdist are obtained from the candidate run's
+     `admitted-<rc tag>` artifact or, when that has expired, from the trunk
+     `dist-<sha>-attempt-<n>` artifact. Either must reproduce the admitted
+     digest. They match the final's admitted wheel and sdist member by member
+     (`scripts/release_reuse_uat_evidence.py`): same file set and identical
+     bytes, except the `RECORD` content, and lines that carry only the version:
+     `Version:` in `METADATA` and `PKG-INFO`, the `__version__` assignment in
+     `benchbox/__init__.py`, the `Current release:` line in `README.md`,
+     `VERSION_MANAGEMENT.md` and the long description, and the `version`
+     line of the sdist `pyproject.toml`. The `dist-info` directory name and the
+     sdist root directory are compared with the version normalized. The sdist
+     `CHANGELOG.md` is not compared; it is documentation outside the wheel.
+
+   When all hold, the stage jobs are skipped. `release-uat` downloads the
+   candidate run's shard artifacts (`actions: read`, run id and token) and runs
+   `make uat-gate-check` over them with the candidate's admitted digest, so the
+   evidence is re-verified and not trusted, then checks that the resulting
+   summary is green for the candidate commit and digest. It is red unless the
+   stage jobs were skipped and the reuse job succeeded. `install-matrix` and
+   `publish` are unchanged: `publish` still needs `release-uat` and
+   `install-matrix`. Reuse needs the candidate's shard artifacts (30-day
+   retention from the candidate run), and its `admitted-` artifact (7 days) or
+   the trunk dist artifact (90 days); past that, the final runs full UAT.
 4. The publish job waits for environment approval, re-checks the hosted tag
    object and peeled commit against the admission receipt
    (`scripts/release_tag_recheck.py`), stages only the verified files, attests

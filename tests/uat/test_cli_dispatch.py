@@ -630,6 +630,74 @@ def test_gate_check_flags_docker_up_before_stage1_completion(tmp_path: Path, cap
     assert any("stage1 boundary" in violation for violation in payload["ordering_violations"])
 
 
+def test_gate_check_ignores_docker_overlap_with_a_stage_from_another_host(tmp_path: Path):
+    s1 = _write_stage(tmp_path, 1, "release-gate-01-native-dataframe", "2026-07-10T10:00:00")
+    s2 = _write_stage(tmp_path, 2, "release-gate-02-docker-nonoltp", "2026-07-10T12:00:00")
+    s3 = _write_stage(tmp_path, 3, "release-gate-03-docker-oltp", "2026-07-10T14:00:00")
+    (s1 / "uat_lifecycle.log").write_text("2026-07-10T08:00:00 [host] id=host-a\n", encoding="utf-8")
+    (s2 / "uat_lifecycle.log").write_text(
+        "2026-07-10T08:30:00 [host] id=host-b\n2026-07-10T09:00:00 [docker] platform=starrocks action=up status=ok\n",
+        encoding="utf-8",
+    )
+    (s3 / "uat_lifecycle.log").write_text(
+        "2026-07-10T08:30:00 [host] id=host-c\n2026-07-10T09:30:00 [docker] platform=postgresql action=up status=ok\n",
+        encoding="utf-8",
+    )
+    for stage in (s1, s2, s3):
+        _update_digests(stage)
+    output = tmp_path / "evidence.json"
+
+    rc = _cli.main(
+        ["gate-check", "--stage1", str(s1), "--stage2", str(s2), "--stage3", str(s3), "--output", str(output)]
+    )
+
+    assert rc == 0
+    assert json.loads(output.read_text(encoding="utf-8"))["ordering_violations"] == []
+
+
+def test_gate_check_flags_docker_overlap_with_a_stage_from_the_same_host(tmp_path: Path):
+    s1 = _write_stage(tmp_path, 1, "release-gate-01-native-dataframe", "2026-07-10T10:00:00")
+    s2 = _write_stage(tmp_path, 2, "release-gate-02-docker-nonoltp", "2026-07-10T12:00:00")
+    s3 = _write_stage(tmp_path, 3, "release-gate-03-docker-oltp", "2026-07-10T14:00:00")
+    (s1 / "uat_lifecycle.log").write_text("2026-07-10T08:00:00 [host] id=host-a\n", encoding="utf-8")
+    (s2 / "uat_lifecycle.log").write_text(
+        "2026-07-10T08:30:00 [host] id=host-a\n2026-07-10T09:00:00 [docker] platform=starrocks action=up status=ok\n",
+        encoding="utf-8",
+    )
+    for stage in (s1, s2):
+        _update_digests(stage)
+    output = tmp_path / "evidence.json"
+
+    rc = _cli.main(
+        ["gate-check", "--stage1", str(s1), "--stage2", str(s2), "--stage3", str(s3), "--output", str(output)]
+    )
+
+    assert rc == 1
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert any("stage1 boundary" in violation for violation in payload["ordering_violations"])
+
+
+def test_gate_check_treats_a_missing_host_id_as_the_same_host(tmp_path: Path):
+    s1 = _write_stage(tmp_path, 1, "release-gate-01-native-dataframe", "2026-07-10T10:00:00")
+    s2 = _write_stage(tmp_path, 2, "release-gate-02-docker-nonoltp", "2026-07-10T12:00:00")
+    s3 = _write_stage(tmp_path, 3, "release-gate-03-docker-oltp", "2026-07-10T14:00:00")
+    (s1 / "uat_lifecycle.log").write_text("2026-07-10T08:00:00 [host] id=host-a\n", encoding="utf-8")
+    (s2 / "uat_lifecycle.log").write_text(
+        "2026-07-10T09:00:00 [docker] platform=starrocks action=up status=ok\n", encoding="utf-8"
+    )
+    for stage in (s1, s2):
+        _update_digests(stage)
+    output = tmp_path / "evidence.json"
+
+    rc = _cli.main(
+        ["gate-check", "--stage1", str(s1), "--stage2", str(s2), "--stage3", str(s3), "--output", str(output)]
+    )
+
+    assert rc == 1
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert any("stage1 boundary" in violation for violation in payload["ordering_violations"])
+
+
 def test_gate_check_flags_stage3_docker_up_before_stage2_completion(tmp_path: Path):
     s1 = _write_stage(tmp_path, 1, "release-gate-01-native-dataframe", "2026-07-10T10:00:00")
     s2 = _write_stage(tmp_path, 2, "release-gate-02-docker-nonoltp", "2026-07-10T12:00:00")

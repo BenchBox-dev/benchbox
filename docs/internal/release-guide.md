@@ -125,9 +125,8 @@ stage into shard jobs that run in parallel:
   platform group. A shard runs `make uat-sweep CONFIG=<stage config>
   PLATFORMS=<a,b>`, which narrows the config's platform set without changing
   its scales, per-cell timeout, validators, or floors.
-- Stage 2 needs stage 1 and stage 3 needs stage 2, so no Docker stack starts
-  before the previous stage has fully finished. Later stages still run after an
-  earlier stage fails so one run reports every failure.
+- All three stages start once `admit` passes. Each shard is its own hosted
+  runner, so shards share no Docker state, and one run reports every failure.
 - Each shard uploads its run directory as `release-uat-<tag>-stage<N>-<shard>`.
 - The `release-uat` job downloads every shard and runs `make uat-gate-check`
   with several run directories per stage. It is red unless the union of a
@@ -135,7 +134,27 @@ stage into shard jobs that run in parallel:
   duplicated, nothing outside the plan), every shard is green with the same
   source commit and the admitted distribution digest, the cross-scale floor is
   met by the summed clean pairs of the stage's shards, and the Docker start
-  ordering holds against the latest shard completion of the previous stage.
+  ordering holds for stage directories that ran on the same host as the
+  previous stage's shards. Each run records `[host] id=<hash>` (machine id plus
+  `RUNNER_NAME`) in `uat_lifecycle.log`; a missing id counts as the same host.
+- A final tag may reuse its newest release candidate's UAT evidence. The
+  `uat-reuse` job (final tags only) checks, and records in its job summary,
+  that the candidate's `release-uat` job succeeded with green evidence for the
+  candidate commit and admitted digest, that the candidate commit is an
+  ancestor of the final tag commit, that `tests/uat`, `tests/utilities`,
+  `docker`, `.github/actions/release-uat-env`, `scripts/uat-bring-up`, and the `Makefile` are unchanged,
+  that the `release-v2.yml` stage jobs and workflow `env` are unchanged apart
+  from `needs` and `if`, and that `uv.lock` differs only
+  in the `benchbox` version line, and that the candidate's wheel and sdist match
+  the final's member by member apart from `RECORD` and the lines that hold only
+  the version (see `docs/internal/release-artifacts.md`). When all hold the
+  stage jobs are skipped and `release-uat` re-runs `make uat-gate-check` over
+  the candidate's downloaded shard artifacts with the candidate's admitted
+  digest; if any condition fails the final runs the full stages. `publish` and
+  `install-matrix` are unchanged. The candidate's shard artifacts are kept 30
+  days, so tag the final within that window or expect a full UAT run; freeze
+  those paths and the stage job definitions between the candidate and
+  the final.
 
 The shard assignment is the `matrix.include` list of each `uat-stage` job.
 `tests/uat/test_release_gate_shards.py` fails when a config's platform set and

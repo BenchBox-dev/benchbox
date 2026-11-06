@@ -245,6 +245,51 @@ class TestChangelogCurationGuard:
         assert not ok
         assert any("ceiling" in p for p in problems)
 
+    def test_section_word_ceiling_is_enforced_from_0_5_0(self, tmp_path: Path) -> None:
+        sentence = " ".join(["word"] * 50)
+        count = generate_changelog_entry.MAX_CURATED_WORDS // 50 + 1
+        bullets = "\n".join(f"- {sentence}" for _ in range(count))
+        self._write(tmp_path, f"## [0.5.0] - 2026-11-05\n\n### Added\n\n{bullets}\n")
+        ok, problems = generate_changelog_entry.check_changelog_curation(tmp_path, "0.5.0")
+        assert not ok
+        assert any("word curated ceiling" in p for p in problems)
+
+    def test_wrapped_bullet_counts_its_continuation_lines(self, tmp_path: Path) -> None:
+        half = " ".join(["word"] * (generate_changelog_entry.MAX_BULLET_WORDS // 2 + 1))
+        self._write(tmp_path, f"## [0.5.1] - 2026-11-20\n\n### Fixed\n\n- {half}\n  {half}\n- A short fix.\n")
+        ok, problems = generate_changelog_entry.check_changelog_curation(tmp_path, "0.5.1")
+        assert not ok
+        assert len(problems) == 1
+        assert problems[0].startswith("1 bullet(s) exceed")
+        assert problems[0].endswith(f"({2 * (generate_changelog_entry.MAX_BULLET_WORDS // 2 + 1)} words)")
+
+    def test_lazy_continuation_lines_count_toward_their_bullet(self, tmp_path: Path) -> None:
+        half = " ".join(["word"] * (generate_changelog_entry.MAX_BULLET_WORDS // 2 + 1))
+        self._write(tmp_path, f"## [0.5.1] - 2026-11-20\n\n### Fixed\n\n- {half}\n{half}\n\n- A short fix.\n")
+        ok, problems = generate_changelog_entry.check_changelog_curation(tmp_path, "0.5.1")
+        assert not ok
+        assert problems[0].startswith("1 bullet(s) exceed")
+
+    def test_indented_paragraph_after_a_blank_line_counts_toward_its_bullet(self, tmp_path: Path) -> None:
+        half = " ".join(["word"] * (generate_changelog_entry.MAX_BULLET_WORDS // 2 + 1))
+        self._write(tmp_path, f"## [0.5.1] - 2026-11-20\n\n### Fixed\n\n- {half}\n\n  {half}\n\n- A short fix.\n")
+        ok, problems = generate_changelog_entry.check_changelog_curation(tmp_path, "0.5.1")
+        assert not ok
+        assert problems[0].startswith("1 bullet(s) exceed")
+
+    def test_unindented_paragraph_after_a_blank_line_ends_the_bullet(self, tmp_path: Path) -> None:
+        half = " ".join(["word"] * (generate_changelog_entry.MAX_BULLET_WORDS // 2 + 1))
+        self._write(tmp_path, f"## [0.5.1] - 2026-11-20\n\n### Fixed\n\n- {half}\n\n{half}\n")
+        ok, problems = generate_changelog_entry.check_changelog_curation(tmp_path, "0.5.1")
+        assert ok, problems
+
+    @pytest.mark.parametrize("version", ["0.4.2", "0.5.0rc3"])
+    def test_word_ceilings_do_not_apply_before_0_5_0(self, tmp_path: Path, version: str) -> None:
+        long_bullet = " ".join(["word"] * (generate_changelog_entry.MAX_BULLET_WORDS + 40))
+        self._write(tmp_path, f"## [{version}] - 2026-10-05\n\n### Fixed\n\n- {long_bullet}\n")
+        ok, problems = generate_changelog_entry.check_changelog_curation(tmp_path, version)
+        assert ok, problems
+
     def test_contributor_level_draft_is_rejected_without_raw_subjects(self, tmp_path: Path) -> None:
         bullets = "\n".join(
             f"- **Change number {i}.** User-visible improvement.\n"

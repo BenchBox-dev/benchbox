@@ -116,6 +116,19 @@ def test_evidence_refuses_without_a_final_pr_bound_at_the_integration_head(world
         bi.build_evidence(integration)
 
 
+def test_evidence_refuses_before_any_rerun_when_the_final_change_is_not_reviewable(world: World) -> None:
+    integration = _ready_for_evidence(world)
+    reason = "needs about 900000 tokens of reading, above every reviewer's capacity; split"
+    world.preflight_code = 3
+    world.preflight_reasons = [reason]
+    world.preflight_heads.clear()
+    world.calls.clear()
+    with _raises(f"is not reviewable:\n{reason}"):
+        bi.build_evidence(integration)
+    assert world.preflight_heads == [world.head()]
+    assert not [call for call in world.calls if "pytest" in call[0]]
+
+
 @pytest.mark.parametrize("defect", ["missing", "findings"])
 def test_evidence_refuses_when_a_receipt_holds_no_accepted_review(world: World, defect: str) -> None:
     integration = _ready_for_evidence(world)

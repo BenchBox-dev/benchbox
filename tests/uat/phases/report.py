@@ -335,3 +335,34 @@ def release_gate_ordering_violations(
                     f"{native_stage_completed_at.isoformat()}"
                 )
     return violations
+
+
+def parse_lifecycle_host_id(lifecycle_log_text: str) -> str | None:
+    for raw in lifecycle_log_text.splitlines():
+        _, _, rest = raw.partition("[host] ")
+        if not rest:
+            continue
+        for token in rest.split():
+            if token.startswith("id="):
+                return token.split("=", 1)[1] or None
+    return None
+
+
+def _same_host(left: str | None, right: str | None) -> bool:
+    return left is None or right is None or left == right
+
+
+def host_scoped_ordering_violations(
+    docker_stage_lifecycle_logs: Iterable[str],
+    *,
+    earlier_stages: Iterable[tuple[_dt.datetime, str | None]],
+) -> list[str]:
+    earlier = list(earlier_stages)
+    violations: list[str] = []
+    for log_text in docker_stage_lifecycle_logs:
+        host_id = parse_lifecycle_host_id(log_text)
+        completions = [completed_at for completed_at, earlier_host in earlier if _same_host(host_id, earlier_host)]
+        if not completions:
+            continue
+        violations.extend(release_gate_ordering_violations([log_text], native_stage_completed_at=max(completions)))
+    return violations
