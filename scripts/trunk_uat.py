@@ -25,7 +25,7 @@ WORKFLOW_PATH = ".github/workflows/trunk-uat.yml"
 RELEASE_WORKFLOW_FILE = "release-v2.yml"
 RECORD_PREFIX = "trunk-uat-record-"
 RECORD_NAME = re.compile(re.escape(RECORD_PREFIX) + r"([0-9a-f]{40})")
-SHARD_DIRECTORY = re.compile(r"trunk-uat-[0-9a-f]{40}-stage([0-9]+)-(.+)")
+SHARD_DIRECTORY = re.compile(r"release-uat-trunk-[0-9a-f]{40}-stage([0-9]+)-(.+)")
 SHARD_JOB = re.compile(r"UAT stage ([0-9]+) (.+)")
 RECORD_FILE = "trunk-uat-record.json"
 HISTORY_FILE = "cells-history.jsonl"
@@ -65,12 +65,7 @@ _releasable = _sibling("release_releasable")
 _reuse = _sibling("release_reuse_uat_evidence")
 
 SKIP_PATHS = tuple(dict.fromkeys((*_reuse.GUARDED_TREES, "benchbox", "uv.lock", WORKFLOW_PATH, _reuse.WORKFLOW_PATH)))
-
-
-@dataclass(frozen=True)
-class Baseline:
-    sha: str
-    run_id: int
+GREEN = _reuse.VERDICT_GREEN
 
 
 @dataclass(frozen=True)
@@ -136,11 +131,24 @@ def executed_runs(
                 break
 
 
+def baseline_problem(executed: ExecutedRun, fetch: Fetch) -> str | None:
+    artifact = next(item for item in executed.artifacts if RECORD_NAME.fullmatch(str(item.get("name"))))
+    with zipfile.ZipFile(io.BytesIO(fetch(artifact["id"]))) as archive:
+        record = json.loads(archive.read(RECORD_FILE))
+    results = record.get("job_results")
+    failed = (
+        sorted(name for name, result in results.items() if result != "success") if isinstance(results, dict) else []
+    )
+    if record.get("verdict") != GREEN or failed:
+        detail = f"verdict {record.get('verdict')}" + (f", jobs not successful: {', '.join(failed)}" if failed else "")
+        return f"baseline run {executed.run_id} at {executed.sha} was not green ({detail})"
+    return None
+
+
 def find_baseline(
     api: Api, *, branch: str, current_run_id: int, run_limit: int = BASELINE_RUN_LIMIT
-) -> Baseline | None:
-    newest = next(executed_runs(api, branch=branch, run_limit=run_limit, exclude_run_id=current_run_id), None)
-    return None if newest is None else Baseline(newest.sha, newest.run_id)
+) -> ExecutedRun | None:
+    return next(executed_runs(api, branch=branch, run_limit=run_limit, exclude_run_id=current_run_id), None)
 
 
 def decide(
@@ -150,6 +158,7 @@ def decide(
     run_id: int,
     api: Api,
     changed: Callable[[str, str], list[str] | None],
+    fetch: Fetch | None = None,
 ) -> Decision:
     active = active_runs(api, RELEASE_WORKFLOW_FILE)
     if active:
@@ -163,6 +172,9 @@ def decide(
     if baseline is None:
         return Decision("run", f"run: no earlier run on {branch} executed shards", source)
     known = Decision("run", "", source, baseline.sha, baseline.run_id)
+    problem = baseline_problem(baseline, fetch or _fetch_artifact)
+    if problem is not None:
+        return _with_reason(known, f"run: {problem}")
     paths = changed(baseline.sha, source)
     if paths is None:
         return _with_reason(known, f"run: skip baseline {baseline.sha} is not in the checkout")

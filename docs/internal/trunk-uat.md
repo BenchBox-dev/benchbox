@@ -33,7 +33,7 @@ summary and the job outputs.
 | --- | --- | --- |
 | defer | `deferred: release-v2 run <id> in progress` | Any `release-v2.yml` run is not completed, for a scheduled or a dispatched run. |
 | skip | `skipped: unchanged since <sha>` | Scheduled only: no path in the skip path set changed between the skip baseline and the source commit. |
-| run | `run: <reason>` | Everything else: dispatch, no baseline, an unreachable baseline commit, or a changed skip path. |
+| run | `run: <reason>` | Everything else: dispatch, no baseline, a baseline that was not green, an unreachable baseline commit, or a changed skip path. |
 
 Only the `schedule` event can skip. `workflow_dispatch` and any other trigger
 always run unless deferred.
@@ -49,9 +49,12 @@ The skip baseline is the newest earlier run on the same branch that executed
 shards: the run that uploaded a `trunk-uat-record-<sha>` artifact. A
 run uploads that artifact only when at least one cell executed and the run was
 not cancelled, so skipped, deferred, cancelled and zero-cell runs never become
-the baseline. A red run that executed cells is still the baseline: a scheduled
-run with no relevant change skips after it, and `workflow_dispatch` reruns it.
-An expired artifact is ignored, so a baseline older than 90 days forces a run.
+the baseline. A scheduled run skips behind the baseline only when the baseline's
+gate verdict was `green` and every job of that run succeeded; after a red or
+partial baseline it runs again (`run: baseline run <id> at <sha> was not green
+(...)`), so an unchanged red trunk never reports a green skip. A red run that
+executed cells is still the baseline, and a green run clears it. An expired
+artifact is ignored, so a baseline older than 90 days forces a run.
 
 A skipped run finishes after the plan job. It starts no shard, so it ends in
 minutes.
@@ -63,7 +66,7 @@ minutes.
 | `plan` | Decision above. Needs `actions: read`. |
 | `admit` | Trunk dist of the source commit, uploaded as `admitted-v<version>` for the action. |
 | `uat-stage1`, `uat-stage2`, `uat-stage3` | The same 16 shard jobs, matrices, timeouts and step definitions as `release-v2.yml`. A workflow test compares them with the live `release-v2.yml`. |
-| `gate` | `make uat-gate-check` over every shard with the dist digest, as `release-uat` does. |
+| `gate` | `scripts/release_uat_evidence_check.py` (every shard staged a run with attempted cells), then `make uat-gate-check` over every shard with the dist digest, as `release-uat` does. |
 | `record` | Per-cell records, cost, and the zero-cell detector. Runs after a cancellation. |
 
 Concurrency group `trunk-uat` queues a second run behind the first and never
@@ -78,7 +81,7 @@ the evidence of the shards that ran again and the gate sees every shard.
 
 | Artifact | Contents |
 | --- | --- |
-| `trunk-uat-<sha>-stage<N>-<shard>` | The shard's `uat_*` run directory and `dist-digest.txt`. |
+| `release-uat-trunk-<sha>-stage<N>-<shard>` | The shard's `uat_*` run directory and `dist-digest.txt`. The `release-uat-<tag>-stage<N>-<shard>` naming of `release-v2` with the tag component `trunk-<sha>`, so the release evidence detector reads it unchanged. |
 | `trunk-uat-gate-<sha>` | `uat-gate-summary.json` (the combined gate verdict) and `dist-digest.txt`. |
 | `trunk-uat-record-<sha>` | `trunk-uat-record.json` and `cells-history.jsonl`. Present only for executed runs. |
 

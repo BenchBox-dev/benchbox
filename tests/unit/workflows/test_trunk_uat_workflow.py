@@ -134,6 +134,8 @@ def test_the_gate_job_checks_every_shard_and_requires_each_stage_to_succeed():
     gate = _jobs()["gate"]
     assert set(gate["needs"]) == {"plan", "admit", *STAGES}
     commands = "\n".join(step.get("run", "") for step in gate["steps"])
+    assert commands.index("scripts/release_uat_evidence_check.py") < commands.index("make uat-gate-check")
+    assert '--tag "trunk-$SOURCE_SHA"' in commands
     assert "make uat-gate-check" in commands
     assert 'DIST_DIGEST="$(sha256sum "$RELEASE_DIST_DIGEST_FILE" | cut -d\' \' -f1)"' in commands
     require = _step(gate, "Require every shard job to have succeeded")

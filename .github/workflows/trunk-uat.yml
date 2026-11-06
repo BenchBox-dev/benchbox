@@ -180,7 +180,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
-          name: trunk-uat-${{ needs.plan.outputs.source_sha }}-stage1-${{ matrix.shard }}
+          name: release-uat-trunk-${{ needs.plan.outputs.source_sha }}-stage1-${{ matrix.shard }}
           path: ${{ runner.temp }}/shard-evidence
           overwrite: true
           retention-days: 90
@@ -254,7 +254,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
-          name: trunk-uat-${{ needs.plan.outputs.source_sha }}-stage2-${{ matrix.shard }}
+          name: release-uat-trunk-${{ needs.plan.outputs.source_sha }}-stage2-${{ matrix.shard }}
           path: ${{ runner.temp }}/shard-evidence
           overwrite: true
           retention-days: 90
@@ -329,7 +329,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
-          name: trunk-uat-${{ needs.plan.outputs.source_sha }}-stage3-${{ matrix.shard }}
+          name: release-uat-trunk-${{ needs.plan.outputs.source_sha }}-stage3-${{ matrix.shard }}
           path: ${{ runner.temp }}/shard-evidence
           overwrite: true
           retention-days: 90
@@ -358,8 +358,15 @@ jobs:
       - name: Download every shard's evidence
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
-          pattern: trunk-uat-${{ needs.plan.outputs.source_sha }}-stage*
+          pattern: release-uat-trunk-${{ needs.plan.outputs.source_sha }}-stage*
           path: ${{ runner.temp }}/uat-evidence
+
+      - name: Require executed cells in every stage's shard evidence
+        env:
+          SOURCE_SHA: ${{ needs.plan.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release_uat_evidence_check.py --root "$RUNNER_TEMP/uat-evidence" --tag "trunk-$SOURCE_SHA"
 
       - name: Check the combined release gate over every shard
         env:
@@ -370,7 +377,7 @@ jobs:
           shopt -s nullglob
           .venv/bin/python -c "import benchbox, pathlib; path = pathlib.Path(benchbox.__file__).resolve(); assert 'site-packages' in path.parts, path"
           evidence="$RUNNER_TEMP/uat-evidence"
-          prefix="trunk-uat-$SOURCE_SHA"
+          prefix="release-uat-trunk-$SOURCE_SHA"
           stage1=("$evidence"/"$prefix"-stage1-*/run)
           stage2=("$evidence"/"$prefix"-stage2-*/run)
           stage3=("$evidence"/"$prefix"-stage3-*/run)
@@ -442,7 +449,7 @@ jobs:
         continue-on-error: true
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
-          pattern: trunk-uat-${{ needs.plan.outputs.source_sha }}-stage*
+          pattern: release-uat-trunk-${{ needs.plan.outputs.source_sha }}-stage*
           path: ${{ runner.temp }}/uat-evidence
 
       - name: Download the gate summary

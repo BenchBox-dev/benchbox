@@ -20,6 +20,14 @@ def sha(letter: str) -> str:
     return letter * 40
 
 
+def zip_bytes(files: dict[str, bytes]) -> bytes:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        for name, data in files.items():
+            archive.writestr(name, data)
+    return buffer.getvalue()
+
+
 class Github:
     def __init__(self) -> None:
         self.uat_runs: list[dict] = []
@@ -27,10 +35,18 @@ class Github:
         self.release_runs: list[dict] = []
         self.jobs: dict[int, list[dict]] = {}
         self.calls: list[str] = []
+        self.records: dict[int, bytes] = {}
         self._next = 1000
 
     def uat_run(
-        self, *, executed_sha: str | None = None, branch: str = "develop", status: str = "completed", expired=False
+        self,
+        *,
+        executed_sha: str | None = None,
+        branch: str = "develop",
+        status: str = "completed",
+        expired=False,
+        verdict: str | None = "green",
+        failed_jobs: tuple[str, ...] = (),
     ) -> int:
         self._next += 1
         run_id = self._next
@@ -44,7 +60,7 @@ class Github:
         )
         names = (
             [
-                f"trunk-uat-{executed_sha}-stage1-sqlite",
+                f"release-uat-trunk-{executed_sha}-stage1-sqlite",
                 f"trunk-uat-gate-{executed_sha}",
                 f"trunk-uat-record-{executed_sha}",
             ]
@@ -54,7 +70,15 @@ class Github:
         self.artifacts[run_id] = [
             {"id": run_id * 10 + n, "name": name, "expired": expired} for n, name in enumerate(names)
         ]
+        if executed_sha:
+            results = dict.fromkeys(("admit", "uat-stage1", "uat-stage2", "uat-stage3", "gate"), "success")
+            results.update(dict.fromkeys(failed_jobs, "failure"))
+            record = {"verdict": verdict, "job_results": results, "source_sha": executed_sha}
+            self.records[run_id * 10 + 2] = zip_bytes({trunk_uat.RECORD_FILE: json.dumps(record).encode()})
         return run_id
+
+    def fetch(self, artifact_id: int) -> bytes:
+        return self.records[artifact_id]
 
     def release_run(self, status: str) -> int:
         self._next += 1
@@ -100,7 +124,9 @@ def releasable(monkeypatch):
 
 
 def decide(github: Github, history: History, *, event: str = "schedule", run_id: int = 9999, branch="develop"):
-    return trunk_uat.decide(event=event, branch=branch, run_id=run_id, api=github, changed=history.changed)
+    return trunk_uat.decide(
+        event=event, branch=branch, run_id=run_id, api=github, changed=history.changed, fetch=github.fetch
+    )
 
 
 def test_scheduled_run_skips_when_nothing_in_the_skip_path_set_changed(releasable):
@@ -220,6 +246,36 @@ def test_the_current_run_and_unfinished_runs_are_not_baselines(releasable):
     assert decide(github, history, run_id=current).baseline_sha == sha("a")
 
 
+@pytest.mark.parametrize(
+    ("verdict", "failed_jobs", "named"),
+    [
+        ("red", (), "verdict red"),
+        (None, (), "verdict None"),
+        ("green", ("uat-stage2",), "uat-stage2"),
+        ("green", ("gate", "admit"), "admit, gate"),
+    ],
+)
+def test_a_scheduled_run_does_not_skip_behind_a_baseline_that_was_not_green(releasable, verdict, failed_jobs, named):
+    github = Github()
+    github.uat_run(executed_sha=sha("a"), verdict=verdict, failed_jobs=failed_jobs)
+    history = History({sha("a"): set(), sha("b"): {"docs/guide.md"}})
+    releasable["sha"] = sha("b")
+    decision = decide(github, history)
+    assert decision.action == "run"
+    assert decision.reason.startswith(f"run: baseline run 1001 at {sha('a')} was not green")
+    assert named in decision.reason
+    assert decision.baseline_sha == sha("a")
+
+
+def test_a_green_baseline_after_a_red_one_allows_the_next_skip(releasable):
+    github = Github()
+    github.uat_run(executed_sha=sha("a"), verdict="red")
+    github.uat_run(executed_sha=sha("b"))
+    history = History({sha("a"): set(), sha("b"): set(), sha("c"): {"docs/note.md"}})
+    releasable["sha"] = sha("c")
+    assert decide(github, history).reason == f"skipped: unchanged since {sha('b')}"
+
+
 def test_the_baseline_is_read_from_the_runs_own_branch(releasable):
     github = Github()
     github.uat_run(executed_sha=sha("a"), branch="feat/calibration")
@@ -290,6 +346,7 @@ def test_plan_command_writes_the_decision_for_downstream_jobs(monkeypatch, relea
     github.uat_run(executed_sha=sha("a"))
     releasable["sha"] = sha("b")
     monkeypatch.setattr(trunk_uat._consumer, "github_json", github)
+    monkeypatch.setattr(trunk_uat, "_fetch_artifact", github.fetch)
     monkeypatch.setattr(trunk_uat, "git_changed_paths", lambda root, base, head: ["docs/x.md"])
     output, summary = tmp_path / "output", tmp_path / "summary.md"
     code = trunk_uat.main(
@@ -339,7 +396,7 @@ def test_git_changed_paths_lists_files_and_reports_unknown_commits(tmp_path):
 
 
 def write_shard(root: Path, stage: int, shard: str, rows: list[dict], logs: dict[str, str] | None = None) -> Path:
-    run_dir = root / f"trunk-uat-{sha('a')}-stage{stage}-{shard}" / "run"
+    run_dir = root / f"release-uat-trunk-{sha('a')}-stage{stage}-{shard}" / "run"
     run_dir.mkdir(parents=True)
     (run_dir / "cells.jsonl").write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
     for name, text in (logs or {}).items():
@@ -581,14 +638,6 @@ def test_executed_record_is_written_for_the_history_artifact(monkeypatch, tmp_pa
     assert [row["platform"] for row in history] == ["sqlite"]
 
 
-def zip_bytes(files: dict[str, bytes]) -> bytes:
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, "w") as archive:
-        for name, data in files.items():
-            archive.writestr(name, data)
-    return buffer.getvalue()
-
-
 def artifact_payloads(github: Github, runs: tuple[int, ...], build_payload) -> dict[int, bytes]:
     return {artifact["id"]: build_payload(run, artifact["name"]) for run in runs for artifact in github.artifacts[run]}
 
@@ -688,3 +737,21 @@ def test_admission_receipt_is_accepted_by_the_release_admitted_dist_verifier(tmp
     assert verified["version"] == version and set(payloads) == set(files)
     with pytest.raises(ValueError, match="another commit"):
         release_admitted_dist.verify_admitted(admitted, receipt["tag"], sha("b"))
+
+
+def test_shard_evidence_names_are_checked_by_the_release_evidence_detector(tmp_path):
+    from scripts import release_uat_evidence_check
+
+    for stage in (1, 2, 3):
+        run_dir = tmp_path / f"release-uat-trunk-{sha('a')}-stage{stage}-shard" / "run"
+        run_dir.mkdir(parents=True)
+        attempted = 0 if stage == 3 else 4
+        (run_dir / release_uat_evidence_check.GATE_SUMMARY_FILENAME).write_text(
+            json.dumps({"accounting": {"attempted": attempted}}), encoding="utf-8"
+        )
+    violations, shards, executed = release_uat_evidence_check.check_evidence(tmp_path, f"trunk-{sha('a')}")
+    assert shards == 3 and executed == 8
+    assert violations == [
+        f"release-uat-trunk-{sha('a')}-stage3-shard: the shard executed zero cells",
+    ]
+    assert trunk_uat.SHARD_DIRECTORY.fullmatch(f"release-uat-trunk-{sha('a')}-stage3-shard") is not None
