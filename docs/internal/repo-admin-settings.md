@@ -66,7 +66,8 @@ Five of these contexts are always-reporting result jobs in
 it passes at once for a change confined to inert paths (see Inert-path
 manifest in `docs/internal/oracle-review-v2.md`). `hold` comes from
 `.github/workflows/pr-hold.yml` and fails while the PR carries the
-`no-auto-merge` label; it re-runs when a label is added or removed.
+`no-auto-merge` label, read live from the API on every run, so a rerun after
+the label is removed passes; it re-runs when a label is added or removed.
 `.github/workflows/review-request.yml` reports no check: it runs a no-op
 `review-event` job on oracle review edited and dismissed events only, and its
 completion makes `oracle-gate` re-evaluate that head.
