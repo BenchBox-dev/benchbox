@@ -25225,10 +25225,15 @@
       "title": "Quarterly review of dependency upper bounds"
     },
     "review-depth-owner-decisions-20261105": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-07T02:54:35Z",
+        "generation": "21f583c88e424d7ab376069ec5a3b3c9",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Record owner decisions D1–D9 on Theseus review depth and capacity"
     },
     "review-evidence-archive-20261105": {
