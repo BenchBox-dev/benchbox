@@ -3445,17 +3445,12 @@
       "title": "Add leader-only batch-land, recorded head advances and batch-status reconciliation"
     },
     "batch-land-review-capacity-gaps-20261105": {
-      "claim": {
-        "expires_at": "2026-11-07T02:55:14Z",
-        "generation": "6ec6de97df4047ac9cf3e66ba8cfd5ea",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f"
-      },
+      "claim": null,
       "needs": [
         "theseus-review-depth-and-capacity-20261105"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "batch-land uses `theseus preflight` instead of copied review constants and gates leader fixes"
     },
     "batch-loop-default-mode-20261101": {
