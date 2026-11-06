@@ -7,6 +7,7 @@
     "No source file in either repository hard-codes a required provider list. A guard test enforces it.",
     "Owner decisions in the plan's decision section are recorded before implementation."
   ],
+  "context": "Owner decisions, 2026-11-06 (numbering per the plan's decision table):\n- D1: a role's fallback chain is the list of qualified substitutes for every failure mode.\n- D2: YES. google-antigravity/claude-opus-5-5 and claude-sonnet-5-5 go first in the anthropic opus and sonnet chains, after checking Antigravity quota and terms.\n- D3: a deliberate removal is a notice, plus \"develop still names p\".\n- D4: a red scheduled health job, plus a host-side issue through the owner's gh.\n- D5: pr-open opens a draft with a marker when the local review is unavailable, for availability causes only.\n- D6: classifier.unavailable_bucket = large. (The owner chose large over the recommended max; this accepts a risk of under-reviewing a huge change during a TypeSafe outage.)\n- D7: owner interactive omp `fallbackOn: any`; the review config stays `usage-limit`. Applied to ~/.omp/agent/config.yml.\n- D8: resilience ships as Theseus v0.2.2; the stdin/legacy cleanup is renumbered to v0.2.3.\n- D9: at least 2 providers per role.\n- D10: a substitute may answer follow-up rounds (the tier is the reviewer identity), with the model shown in the body.\n- D11: CI detects by model listing, plus host `omp auth-gateway check` usage probes; no paid completion probes.\nRelated merges: #3965 (34c947c) muse removal; #3966 (1bd5f7b) decision record; #3967 (3ef13ee) skills on Fable 5.1; Theseus #34 (31134fe) fixtures.",
   "description": "On 2026-11-03 the review broker lost its muse-code login. Nothing alerted. On 2026-11-06 the gateway host script refused to restart (`no broker login for: muse-code`), and every hosted and local review failed closed. The PR removing muse could not be reviewed, because review needs the gateway, so it merged through a 7-second owner-authorized ruleset relaxation (#3965). The cause is structural: hard-coded provider lists in the host script and Theseus `gateway-clients`, accounts required for every provider in the config, no availability-aware reviewer substitution (omp falls back only on usage limits), no outage path in `make pr-open`, and no monitoring. The plan is in local://provider-loss-resilience-plan.md:\n- the host derives providers from the trusted config and starts with whichever are logged in, plus an owner-held denylist;\n- Theseus selects the first served model from each role's fallback chain and reports substitutions;\n- an `unavailable` pending cause that spends no budget;\n- a host monitor and an hourly CI health job;\n- tests forbidding hard-coded provider requirements.\nSequence: a Theseus release, then a BenchBox lock-only PR, then a BenchBox host/monitor PR.",
   "links": [
     "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-11-02T02-04-38-450Z_01a19a00-60b2-70a6-b56d-6f666415a725/local/provider-loss-resilience-plan.md",
@@ -19,6 +20,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "a7a679282b1a457383b39279789150f9",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-06T14:39:02Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "dfec6cec56da4f1eae0b8e75788141c8",
       "session_id": "8d9ba932107b4322b2417b8af61c160c"
     }
   ]
