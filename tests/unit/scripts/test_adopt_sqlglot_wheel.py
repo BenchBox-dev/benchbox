@@ -68,12 +68,12 @@ def state(root: Path) -> dict[str, bytes]:
     return {str(p.relative_to(root)): p.read_bytes() for p in root.rglob("*") if p.is_file()}
 
 
-def test_adoption_updates_pin_baseline_and_runs_checks(repo: Path, tmp_path: Path) -> None:
+def test_adoption_updates_pin_and_baseline(repo: Path, tmp_path: Path) -> None:
     wheel = build_wheel(tmp_path, "30.23.0.3")
-    calls: list[Path] = []
-    manifest = adopt(wheel, digest(wheel), root=repo, checks=calls.append)
+    manifest = adopt(
+        wheel, digest(wheel), root=repo, checks=None, version="30.23.0.3", fork_sha="a" * 40, upstream_sha="b" * 40
+    )
     runtime = repo / "benchbox" / "_vendor"
-    assert calls == [repo]
     assert json.loads((runtime / "sqlglot.json").read_text(encoding="utf-8")) == manifest
     assert sorted(p.name for p in runtime.iterdir()) == [
         "SQLGLOT_LICENSE.txt",
@@ -91,6 +91,21 @@ def test_dry_run_changes_nothing(repo: Path, tmp_path: Path, capsys: pytest.Capt
     adopt(wheel, digest(wheel), root=repo, dry_run=True, checks=pytest.fail)
     assert state(repo) == before
     assert "30.23.0.2 -> 30.23.0.3" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("dry_run", [False, True])
+@pytest.mark.parametrize(
+    "expected",
+    [{"version": "30.23.0.4"}, {"fork_sha": "c" * 40}, {"upstream_sha": "c" * 40}],
+)
+def test_wrong_expected_identity_refused_without_changes(
+    repo: Path, tmp_path: Path, expected: dict[str, str], dry_run: bool
+) -> None:
+    wheel = build_wheel(tmp_path, "30.23.0.3")
+    before = state(repo)
+    with pytest.raises(ValueError, match="expected"):
+        adopt(wheel, digest(wheel), root=repo, dry_run=dry_run, checks=pytest.fail, **expected)
+    assert state(repo) == before
 
 
 def test_unverified_wheel_refused(repo: Path, tmp_path: Path) -> None:
