@@ -1879,6 +1879,7 @@
     },
     "release-v2-remediation": {
       "accepted_members": {
+        "rv2r-02-trunk-uat-nightly": "6d698e1b0497c5056f431710e80ea67aca08afdd",
         "rv2r-04-uat-rubric-automation": "8a83e4ad1531a772bd03f8374c33358c8cf634ed",
         "rv2r-06-fail-closed-detectors": "fcc3a048a6e2ebd2c712ed5621735cf01a91907b",
         "rv2r-07-oracle-pinned-dependency": "2c7130e0f6de08eed6af8531fcf4f13b3b7511db",
@@ -1889,6 +1890,20 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "rv2r-02-trunk-uat-nightly": {
+          "accepted_head": "6d698e1b0497c5056f431710e80ea67aca08afdd",
+          "changed_files": [
+            ".github/workflows/trunk-uat.yml",
+            "changelog.d/rv2r-02-trunk-uat-nightly.json",
+            "docs/internal/release-guide.md",
+            "docs/internal/trunk-uat.md",
+            "scripts/trunk_uat.py",
+            "tests/unit/scripts/test_trunk_uat.py",
+            "tests/unit/workflows/test_trunk_uat_workflow.py"
+          ],
+          "integration_head": "91443a9c1e022ece68b06b537a63ddb6d76cf8ca",
+          "integration_seq": 5
+        },
         "rv2r-04-uat-rubric-automation": {
           "accepted_head": "8a83e4ad1531a772bd03f8374c33358c8cf634ed",
           "changed_files": [
@@ -1969,7 +1984,7 @@
         }
       },
       "integration_branch": "feat/release-v2-remediation",
-      "integration_head": "e4f2d33afe28cbfd2991ca9e7e0cfe44b173432a",
+      "integration_head": "91443a9c1e022ece68b06b537a63ddb6d76cf8ca",
       "integration_log": [
         {
           "at": "2026-11-06T13:41:20Z",
@@ -2012,6 +2027,15 @@
           "op_id": "bd6ec1ccd4ed45f28c817c9b99e67ef3",
           "previous_head": "34adfbb5ac12b5cf2cd546ff61dd63aa394f90d9",
           "seq": 4
+        },
+        {
+          "at": "2026-11-06T17:52:51Z",
+          "head": "91443a9c1e022ece68b06b537a63ddb6d76cf8ca",
+          "kind": "prepare",
+          "member": "rv2r-02-trunk-uat-nightly",
+          "op_id": "7d4569bf8ef54452a435b05b566e0cbd",
+          "previous_head": "e4f2d33afe28cbfd2991ca9e7e0cfe44b173432a",
+          "seq": 5
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-release-v2-remediation",
@@ -27261,17 +27285,12 @@
       "title": "Record the release-v2 remediation decisions and new guardrails in the dev-loop v2 ADR"
     },
     "rv2r-02-trunk-uat-nightly": {
-      "claim": {
-        "expires_at": "2026-11-07T17:49:31Z",
-        "generation": "f91de41a215745689f22e0adc13c3472",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec"
-      },
+      "claim": null,
       "needs": [
         "rv2r-09-trunk-dist-every-commit"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Run the release-gate UAT matrix nightly on trunk and keep per-cell history"
     },
     "rv2r-03-release-evidence-check": {
