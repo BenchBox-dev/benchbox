@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Each named generator writes through pyarrow.csv or DuckDB COPY, with no per-row Python write loop left.",
+    "For each generator at a small scale factor with a fixed seed, the generated files are byte-identical to the base commit's, or the difference is documented and the data-generation version bumped.",
+    "Before and after generation time recorded per generator at SF1.",
+    "Changelog fragment added."
+  ],
+  "description": "Scope left from perf-library-loaders-and-datagen-rows-20261031 (finished in PR #3952). That PR met the item's acceptance for the library loaders, but it reverted the data-generation part to stay under the hosted review size cap. Still to do: the staging rewrite in generator_base and the per-row csv.writer generators for SSB, AMPLab, TSBS and TPC-DI write files one Python row at a time. Use pyarrow.csv or DuckDB COPY instead.\n\nThe generated files must stay byte-identical for the same seed and scale factor, or a documented format change must be recorded in the changelog with a data-generation version bump. Re-read the symbols before editing, since line numbers drift.\n\nGuardrails: work in a linked worktree; no explanatory comments; changelog.d fragment; heavy runs only through make heavy-run; no live cloud.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/pull/3952"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-06T12:27:34Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "95d8d53bd59843b5a43ed4414d1d4af4",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}
