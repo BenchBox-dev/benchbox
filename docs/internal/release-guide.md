@@ -268,8 +268,12 @@ problem it finds. It verifies that:
   are pending.
 
 To adopt a refreshed fork wheel, run
-`make sqlglot-adopt-wheel WHEEL=<path> SHA256=<digest>` (or put the digest in
-`<wheel>.sha256` beside it; add `DRY_RUN=1` to only verify). The wheel must be
+`make sqlglot-adopt-wheel WHEEL=<path> SHA256=<digest> EXPECTED_VERSION=<version>
+FORK_SHA=<sha> UPSTREAM_SHA=<sha>` (the digest may instead sit in
+`<wheel>.sha256` beside it; add `DRY_RUN=1` to only verify). Take the version,
+fork and upstream SHAs and wheel digest from the fork's verified delivery
+record; all three identities are required, and a wheel whose identity differs
+is refused before anything is changed or a dry run reports success. The wheel must be
 the verified, clean, pure-Python release artifact and strictly newer than the
 pinned runtime. The command installs it, rewrites `benchbox/_vendor/sqlglot.json`
 and the identity in `scripts/sqlglot_runtime_baseline.json`, runs the runtime pin

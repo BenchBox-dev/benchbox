@@ -103,6 +103,7 @@ packaging:
   - "setup.cfg"
   - "benchbox/__init__.py"
   - "uv.lock"
+  - "benchbox/_vendor/**"
 
 framing:
   - "tests/utilities/**"
