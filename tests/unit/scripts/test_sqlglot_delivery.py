@@ -536,6 +536,21 @@ def test_a_version_with_two_hashes_is_a_producer_exception_that_names_the_fork(w
     assert PRODUCER in plan["message"] and NEW in plan["message"]
 
 
+def test_a_collision_on_a_version_core_will_not_adopt_does_not_block_a_newer_one(world: World) -> None:
+    world.deliver("30.23.0.1", 2)
+    world.deliver("30.23.0.1", 3, wheel=world.build("30.23.0.1", dirty=True))
+    world.deliver(NEW, 4)
+    world.deliver(NEW, 5, wheel=world.build(NEW, dirty=True))
+    world.deliver(NEWER, 6)
+    assert world.plan()["expected"]["version"] == NEWER
+
+
+def test_a_collision_below_the_pin_leaves_core_current(world: World) -> None:
+    world.deliver("30.23.0.1", 2)
+    world.deliver("30.23.0.1", 3, wheel=world.build("30.23.0.1", dirty=True))
+    assert world.plan()["state"] == "current"
+
+
 def test_the_pinned_version_with_a_different_hash_is_a_producer_exception(world: World) -> None:
     world.api.runs.clear()
     world.deliver(OLD, 2, wheel=world.build(OLD, dirty=True))
