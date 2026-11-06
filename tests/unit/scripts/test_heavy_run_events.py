@@ -480,7 +480,7 @@ def test_hostile_run_id_cwd_and_details_stay_within_the_record_bound(tmp_path: P
 
 def test_a_unicode_working_directory_cannot_break_the_bound(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     target = tmp_path / "runs.jsonl"
-    monkeypatch.setattr(os, "getcwd", lambda: "/" + "\U0001f600" * 4000)
+    monkeypatch.setattr(ev, "_getcwd", lambda: "/" + "\U0001f600" * 4000)
     ev.record_event("probe", details={"k": "\U0001f600" * 200}, environ={ev.FILE_ENV: str(target)}, run_id="r" * 64)
     data = target.read_bytes()
     assert len(data) <= ev.MAX_RECORD_BYTES

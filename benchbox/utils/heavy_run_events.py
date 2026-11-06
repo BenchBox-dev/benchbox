@@ -17,6 +17,7 @@ MAX_RECORD_BYTES = 3500
 MAX_TEXT_CHARS = 200
 MAX_DETAIL_ITEMS = 24
 MAX_ID_CHARS = 64
+_getcwd = os.getcwd
 
 
 def new_run_id() -> str:
@@ -96,7 +97,7 @@ def record_event(
             "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
             "run_id": str(run_id or env.get(RUN_ID_ENV) or "unknown")[:MAX_ID_CHARS],
             "pid": os.getpid(),
-            "cwd": os.getcwd()[:MAX_TEXT_CHARS],
+            "cwd": _getcwd()[:MAX_TEXT_CHARS],
             "event": event[:MAX_ID_CHARS],
         }
         if duration_seconds is not None:
