@@ -138,7 +138,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `review-verdict.yml` | product-safety | Self-hosted soundness review: reviewers chosen by tier and availability in one review job, each holding only the gateway client token, and a review and non-required `oracle-verdict` status posted by the owner's App, followed in the same publish step by the required `oracle-gate` status for the exact head, evaluated from the trusted develop checkout with the same decision the gate workflow uses and posted with the App token |
 | `pr-hold.yml` | product-safety | Required `hold` check: fails while the `no-auto-merge` label is present, on every label change |
 | `pricing-data-drift-check.yml` | product-safety | Pricing data integrity |
-| `release-v2.yml` | product-safety | Tag-triggered publication of the admitted trunk artifacts: annotated tag, latest-run admission, install matrix, artifact-bound UAT, publish-time tag re-check, attestation |
+| `release-v2.yml` | product-safety | Tag-triggered publication of the admitted trunk artifacts: annotated tag, latest-run admission, install matrix, check of continuous trunk UAT evidence and of a fresh release canary (full UAT only as the fallback), publish-time tag re-check, attestation |
 | `release-canary.yml` | product-safety | Release canary protection |
 | `seed-corpus.yml` | product-safety | Corpus seeding |
 | `site-inputs.yml` | product-safety | Versioned site-inputs bundle build, attestation, artifact upload and site dispatch |

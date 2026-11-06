@@ -155,14 +155,31 @@ read, but it does not defend against a hostile writer on the same filesystem.
 
 ## Release requirements
 
-The publishing workflow still requires the live `v-tag-restricted` rule,
-verifiable provenance attestation, all twelve Python 3.11–3.14 installation and
-smoke cells across Linux/macOS/Windows, artifact-bound release UAT (a final tag
-may satisfy it by verified reuse of its release candidate's evidence, described
-under "Gates"), the binary
-manifest, `make release-check`, ruleset drift checks, and no open
-release-blocking `t3:*` issue. Linux correctness evidence remains separate from
-the deferred Darwin digest certification.
+A release is four checks on the tagged commit: admit, the install matrix, a check
+of continuous UAT evidence, and a fresh release canary. The full UAT run is a
+fallback, not part of the normal path.
+
+- **Admit.** The publishing workflow requires the live `v-tag-restricted` rule,
+  verifiable provenance attestation, the binary manifest, `make release-check`,
+  ruleset drift checks, and no open release-blocking `t3:*` issue (see "Gates").
+- **Install matrix.** All twelve Python 3.11–3.14 installation and smoke cells
+  across Linux/macOS/Windows pass against the admitted wheel.
+- **UAT evidence check.** Continuous UAT on `develop`, run by
+  `.github/workflows/trunk-uat.yml` nightly at 02:00 UTC and skipped when nothing
+  relevant changed, produces the evidence. A release checks that evidence for
+  the tagged commit and does not run UAT itself.
+- **Fresh canary.** The newest `release-canary.yml` run on an ancestor of the
+  release commit is green and at most 48 hours old.
+- **Fallback.** When no qualifying UAT evidence exists, the release runs the full
+  UAT described under "Gates", step 3.
+
+Linux correctness evidence remains separate from the deferred Darwin digest
+certification.
+
+The artifact-bound release UAT that `release-v2.yml` gained in #2490 is
+superseded: UAT is not tied to the digest of the wheel being released, because
+trunk UAT covers every `develop` commit instead. Patch releases from a
+`release/X.Y.x` branch pass the same checks.
 
 TestPyPI rehearsals must exercise refusal paths and verify installed hashes.
 Production PyPI retains owner approval.
@@ -256,8 +273,10 @@ Gates, in order:
    their hashes, and publishes them to `test-pypi` or `pypi`.
 
 Verify a published release with `gh attestation verify <file> --repo
-BenchBox-dev/BenchBox --signer-workflow
-BenchBox-dev/BenchBox/.github/workflows/release-v2.yml`.
+BenchBox-dev/benchbox --signer-workflow
+BenchBox-dev/benchbox/.github/workflows/release-v2.yml`. The repository name is
+lowercase and `--signer-workflow` matches case-sensitively, so the mixed-case
+`BenchBox-dev/BenchBox` form exits 1.
 
 PyPI and TestPyPI trusted publishers are bound to the workflow file name, so
 the owner must register `release-v2.yml` publishers before the first

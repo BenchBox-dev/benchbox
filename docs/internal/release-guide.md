@@ -1,8 +1,10 @@
 # Cutting a BenchBox release
 
-BenchBox releases from a single long-lived branch, `develop`, in
-`BenchBox-dev/BenchBox`. A release is an annotated `vX.Y.Z` tag on a `develop`
-commit whose `trunk.yml` push run is green. Pushing the tag starts
+BenchBox releases from `develop`, the default release line, in
+`BenchBox-dev/BenchBox`. Owner-created `release/X.Y.x` branches, cut from a
+release tag, are the only other release line and serve patch releases on an
+older line; they pass the same `release-v2` checks. A release is an annotated
+`vX.Y.Z` tag on a commit whose `trunk.yml` push run is green. Pushing the tag starts
 `.github/workflows/release-v2.yml`, which admits the artifacts that run built,
 verifies them, publishes them with attestations, and creates the GitHub release.
 This guide is the maintainer runbook. The artifact, admission, and publishing
@@ -36,8 +38,9 @@ make release-check VERSION=X.Y.Z RELEASE_PRE_TAG=1
    `git push origin vX.Y.Z`. Use `VERSION=0.5.0rc1` and tag `v0.5.0rc1` for a
    TestPyPI rehearsal, then `VERSION=0.5.0` and tag `v0.5.0` for PyPI.
 4. Follow the `release-v2.yml` run. It admits the trunk artifacts, runs the
-   install matrix and the release UAT (or verified reuse of the release
-   candidate's evidence), waits for the `pypi` or `test-pypi` environment
+   install matrix, checks the continuous UAT evidence and the fresh release
+   canary (the full UAT runs only as the fallback when no qualifying evidence
+   exists), waits for the `pypi` or `test-pypi` environment
    approval, publishes, and creates the GitHub release from the curated
    changelog section. Confirm the GitHub release, the PyPI version, and
    `gh attestation verify` as described in [release-artifacts.md](release-artifacts.md)
@@ -62,9 +65,10 @@ for that part of the contract. The canary's `pypi-latest-installability` job
 installs the newest published `benchbox` from PyPI, so a broken published
 release is detected without waiting for the next release.
 
-`release-v2.yml` does not consult the canary. Before tagging, check the latest
-`release-canary.yml` run yourself: a missing, red, or old run is a reason to
-investigate first. `release-v2.yml` runs the ruleset drift check itself during
+`release-v2.yml` requires a fresh canary: the newest `release-canary.yml` run on
+an ancestor of the release commit must be green and at most 48 hours old. A
+missing, red, or old run blocks the release; investigate the canary before
+tagging. `release-v2.yml` also runs the ruleset drift check itself during
 admission, so ruleset drift blocks publication regardless of the canary.
 
 Stress tests, live cloud integrations, and long-running campaigns outside the
@@ -73,7 +77,10 @@ stable enough to make them release-blocking.
 
 ## UAT matrix campaign evidence
 
-The three-stage UAT matrix runs hosted and is blocking for `publish`. Running the
+The three-stage UAT matrix runs hosted. On `develop` it runs continuously
+through `.github/workflows/trunk-uat.yml`; a release checks that evidence, and
+only the fallback described below runs the matrix inside `release-v2.yml`.
+Running the
 campaign locally is optional (run stage 2 after stage 1 completes, and stage 3
 after stage 2 completes):
 
@@ -86,8 +93,13 @@ make uat-gate-check STAGE1=<run-dir> STAGE2=<run-dir> STAGE3=<run-dir>
 
 ### Release UAT in `release-v2`
 
+A release does not run the UAT matrix in the normal case. Continuous UAT on
+`develop` (`.github/workflows/trunk-uat.yml`, nightly at 02:00 UTC, skipped when
+nothing relevant changed) produces the evidence, and the release checks it. The
+shard jobs below are the fallback that runs when no qualifying evidence exists.
+
 One GitHub-hosted job stops at six hours and stage 1 alone needs more than that,
-so `release-v2.yml` splits each stage into shard jobs that run in parallel:
+so each stage is split into shard jobs that run in parallel:
 
 - `uat-stage1`, `uat-stage2`, and `uat-stage3` each run one matrix entry per
   platform group. A shard runs `make uat-sweep CONFIG=<stage config>
@@ -106,9 +118,8 @@ so `release-v2.yml` splits each stage into shard jobs that run in parallel:
   previous stage's shards. Each run records `[host] id=<hash>` (machine id plus
   `RUNNER_NAME`) in `uat_lifecycle.log`; a missing id counts as the same host.
 - A final tag may reuse its newest release candidate's UAT evidence through the
-  `uat-reuse` job. The conditions, and what to freeze between the candidate and
-  the final, are in [release-artifacts.md](release-artifacts.md). The
-  candidate's shard artifacts are kept 30 days, so tag the final within that
+  `uat-reuse` job. The conditions are in [release-artifacts.md](release-artifacts.md).
+  The candidate's shard artifacts are kept 30 days, so tag the final within that
   window or expect a full UAT run.
 
 The shard assignment is the `matrix.include` list of each `uat-stage` job.
@@ -344,7 +355,8 @@ naming the missing secret.
 ## Recovering from common failures
 
 - **A `release-v2.yml` gate fails before publication** (`admit`, the install
-  matrix, release UAT, or the release-blocking issue check): fix the cause on
+  matrix, the UAT evidence check, the canary check, the fallback release UAT, or
+  the release-blocking issue check): fix the cause on
   `develop` and, when the failure was in the tagged tree, tag a new version.
   Re-running a failed tag is allowed only for a run that failed before
   publishing and only while the trunk artifact for that commit is unchanged;
