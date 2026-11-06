@@ -17253,6 +17253,13 @@
       "status": "done",
       "title": "One inert-path manifest that excludes machine-read docs, with a drift guard"
     },
+    "influxdb-default-port-8086-vs-compose-8181-20261106": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "InfluxDB default port is 8086 in platform metadata but compose and adapter default_service_port use 8181"
+    },
     "influxdb-general-loader-uat": {
       "claim": null,
       "needs": [],
