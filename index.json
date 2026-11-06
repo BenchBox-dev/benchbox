@@ -10634,6 +10634,13 @@
       "status": "done",
       "title": "A dsn platform option carrying user:password@host is exported verbatim in internal result metadata"
     },
+    "databend-load-file-method-arg-20261106": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Databend native load: connection.load_file passes format_options in the driver's method slot, every table fails to load"
+    },
     "databend-release-uat-coverage": {
       "claim": null,
       "needs": [],
