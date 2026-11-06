@@ -140,6 +140,15 @@
       "op_id": "d6cdf73509054e3096025c64f125b9e6",
       "reason": "That holder is my own earlier MCP server, killed by SIGTERM mid-task; the session resumed under a new server identity and cannot present the old generation.",
       "session_id": "3021bd717a8048e3a41f45e7a1623169"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:89cd5a9a0ab618f0122a0717",
+      "at": "2026-11-06T19:43:28Z",
+      "client": "omp-coding-agent",
+      "generation": "fc9d0cdf141847989e1e124de7c58173",
+      "op": "release",
+      "op_id": "2449c9da57e44acebf6ff306b7537c41",
+      "session_id": "3021bd717a8048e3a41f45e7a1623169"
     }
   ]
 }
