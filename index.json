@@ -12530,18 +12530,13 @@
       "title": "Build the tag-triggered release workflow that publishes the exact trunk-tested artifacts"
     },
     "dlv2-52-release-rehearsal-and-first-release": {
-      "claim": {
-        "expires_at": "2026-11-07T17:48:26Z",
-        "generation": "f847db120c9e42558e6967b3a40c4b28",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec"
-      },
+      "claim": null,
       "needs": [
         "dlv2-52a-testpypi-rehearsal",
         "dlv2-22-nightly-t3-shadow"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Rehearse the new release path on TestPyPI, then hand the next PyPI release to the owner"
     },
     "dlv2-52a-testpypi-rehearsal": {
