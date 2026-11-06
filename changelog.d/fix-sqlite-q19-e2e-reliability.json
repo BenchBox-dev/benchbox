@@ -1,4 +1,0 @@
-{
-  "schema": 1,
-  "internal": "The SQL execution gate indexes the leading key column of each SQLite table so TPC-H Q19 and its Havoc variants no longer time out on a nested table scan"
-}
