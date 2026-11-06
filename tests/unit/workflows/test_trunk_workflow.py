@@ -26,30 +26,32 @@ def test_runs_after_each_push_to_develop_and_on_demand() -> None:
 
 
 GROUP = re.compile(
-    r"^\$\{\{ github\.event_name == '(?P<event>\w+)' && '(?P<shared>[\w-]+)' \|\| format\('(?P<other>[\w-]*\{0\})', github\.sha\) \}\}$"
+    r"^\$\{\{ github\.event_name == '(?P<event>\w+)' && format\('(?P<push>[\w-]*\{0\})', github\.sha\)"
+    r" \|\| format\('(?P<other>[\w-]*\{0\})', github\.sha\) \}\}$"
 )
 
 
 def _group(event_name: str, sha: str) -> str:
     match = GROUP.fullmatch(_workflow()["concurrency"]["group"])
-    assert match, "the concurrency group is no longer one shared name for pushes and one name per commit otherwise"
+    assert match, "the concurrency group is no longer one name per commit for pushes and for every other event"
     if event_name == match["event"]:
-        return match["shared"]
+        return match["push"].format(sha)
     return match["other"].format(sha)
 
 
-def test_develop_pushes_share_one_group_so_only_the_latest_waits() -> None:
-    assert _group("push", "a" * 40) == _group("push", "b" * 40)
+def test_every_develop_push_gets_its_own_concurrency_group() -> None:
+    assert _group("push", "a" * 40) != _group("push", "b" * 40)
+    assert _group("push", "a" * 40) == _group("push", "a" * 40)
 
 
-def test_a_run_for_another_event_never_shares_the_develop_group() -> None:
+def test_a_run_for_another_event_never_shares_a_develop_push_group() -> None:
     develop = _group("push", "a" * 40)
     assert _group("pull_request", "a" * 40) != develop
     assert _group("workflow_dispatch", "a" * 40) != develop
     assert _group("pull_request", "a" * 40) != _group("pull_request", "b" * 40)
 
 
-def test_a_running_run_is_never_cancelled_and_no_queue_keeps_older_pending_runs() -> None:
+def test_no_run_is_cancelled_or_replaced_by_a_later_push() -> None:
     concurrency = _workflow()["concurrency"]
     assert concurrency["cancel-in-progress"] is False
     assert "queue" not in concurrency
