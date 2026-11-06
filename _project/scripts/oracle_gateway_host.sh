@@ -20,7 +20,7 @@ AGENT_DIR=$HOME/Library/LaunchAgents
 DOMAIN=gui/$(id -u)
 BROKER_LABEL=dev.omp.auth-broker
 GATEWAY_LABEL=dev.omp.auth-gateway
-GATEWAY_PROVIDERS=(anthropic openai-codex muse-code google-antigravity)
+GATEWAY_PROVIDERS=(anthropic openai-codex google-antigravity)
 
 usage() {
   echo "usage: $(basename "$0") broker|gateway|secrets|check|revoke <client>" >&2

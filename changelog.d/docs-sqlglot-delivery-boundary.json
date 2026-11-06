@@ -1,0 +1,1 @@
+{"schema": 1, "internal": "Document the SQLGlot delivery boundary: the fork owns refresh and verified wheel delivery, and core consumes it through the delivery workflow."}

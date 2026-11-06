@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed Doris loads of files that spell NULL with a non-empty marker, such as ClickBench: Stream Load now maps the dialect's own NULL marker to NULL, so quoted empty strings load as empty strings instead of NULL and no longer fail NOT NULL columns with a data quality error",
+      "platforms": [
+        "doris"
+      ],
+      "benchmarks": [
+        "clickbench"
+      ]
+    }
+  ]
+}

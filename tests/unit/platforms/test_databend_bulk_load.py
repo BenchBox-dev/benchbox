@@ -26,6 +26,7 @@ class _NativeConnection:
     def __init__(self):
         self.rows = []
         self.calls = []
+        self.methods = []
 
     def exec(self, sql):
         if not sql.startswith("USE "):
@@ -34,7 +35,9 @@ class _NativeConnection:
     def query_iter(self, sql):
         return iter([(len(self.rows),)])
 
-    def load_file(self, sql, file, format_options, copy_options=None):
+    def load_file(self, sql, fp, method=None, format_options=None, copy_options=None):
+        file = fp
+        self.methods.append(method)
         self.calls.append((sql, file, dict(format_options)))
         path = Path(file)
         raw = path.read_bytes()
@@ -129,9 +132,9 @@ class TestNativeLoadPath:
         uploaded: list[bytes] = []
 
         class _Capturing(_NativeConnection):
-            def load_file(self, sql, file, format_options, copy_options=None):
-                uploaded.append(Path(file).read_bytes())
-                return super().load_file(sql, file, format_options, copy_options)
+            def load_file(self, sql, fp, method=None, format_options=None, copy_options=None):
+                uploaded.append(Path(fp).read_bytes())
+                return super().load_file(sql, fp, method, format_options, copy_options)
 
         connection = _Capturing()
 
@@ -169,8 +172,8 @@ class TestNativeLoadPath:
         connection = _NativeConnection()
         original = connection.load_file
 
-        def load_file(sql, file, options, copy_options=None):
-            original(sql, file, options)
+        def load_file(sql, fp, method=None, format_options=None, copy_options=None):
+            original(sql, fp, method, format_options)
             return _Stats(0)
 
         connection.load_file = load_file
@@ -194,17 +197,46 @@ class TestNativeLoadPath:
         connection.query_iter = Mock(side_effect=RuntimeError("no count"))
         connection.load_file = Mock(return_value=_Stats(0))
 
-        stats, _, _ = _run(adapter, connection, benchmark, tmp_path)
+        with pytest.raises(RuntimeError, match="Could not determine rows loaded"):
+            _run(adapter, connection, benchmark, tmp_path)
 
-        assert stats["t"] == 0
+    def test_positional_format_options_would_fail_against_driver_signature(self, adapter, tmp_path):
+        benchmark = _benchmark(tmp_path, "t", "1,a\n", ".csv")
+        connection = _NativeConnection()
+
+        _run(adapter, connection, benchmark, tmp_path)
+
+        assert connection.methods == ["stage"]
+
+    def test_row_count_mismatch_with_source_fails_loudly(self, adapter, tmp_path):
+        benchmark = _benchmark(tmp_path, "t", "1,a\n2,b\n3,c\n", ".csv")
+        connection = _NativeConnection()
+        original = connection.load_file
+
+        def dropping(sql, fp, method=None, format_options=None, copy_options=None):
+            original(sql, fp, method, format_options)
+            connection.rows.pop()
+            return _Stats(2)
+
+        connection.load_file = dropping
+
+        with pytest.raises(RuntimeError, match="source has 3, loaded 2"):
+            _run(adapter, connection, benchmark, tmp_path)
+
+    def test_quoted_embedded_newline_counts_as_one_source_record(self, adapter, tmp_path):
+        path = tmp_path / "q.csv"
+        path.write_text('1,"a\nb"\n2,c\n', encoding="utf-8")
+        dialect = Mock(has_header=False, quote='"', delimiter=",")
+
+        assert DatabendAdapter._count_source_records(path, dialect) == 2
 
     def test_ragged_rows_fail_instead_of_loading(self, adapter, tmp_path):
         benchmark = _benchmark(tmp_path, "t", "1|a|\n2|b|c|d|\n", ".tbl")
         connection = _NativeConnection()
 
-        stats, _, _ = _run(adapter, connection, benchmark, tmp_path)
+        with pytest.raises(RuntimeError, match="column count mismatch"):
+            _run(adapter, connection, benchmark, tmp_path)
 
-        assert stats["t"] == 0
         assert connection.rows == []
 
     def test_tpc_empty_fields_load_as_null_and_default_quote_is_left_to_server(self, adapter, tmp_path):
@@ -262,9 +294,9 @@ class TestNativeLoadPath:
         benchmark.csv_delimiter = ";"
         connection = _NativeConnection()
 
-        stats, _, _ = _run(adapter, connection, benchmark, tmp_path)
+        with pytest.raises(RuntimeError, match="Unsafe delimiter"):
+            _run(adapter, connection, benchmark, tmp_path)
 
-        assert stats["t"] == 0
         assert connection.calls == []
 
     def test_connection_without_load_file_uses_values_fallback(self, adapter, tmp_path):

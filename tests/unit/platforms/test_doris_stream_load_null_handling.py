@@ -47,14 +47,17 @@ def _legacy_rows(lines: list[str], delimiter: str) -> list[list[str | None]]:
 
 
 def _doris_rows(body: bytes, columns_header: str, delimiter: str, ncols: int) -> list[list[str | None]]:
-    mappings = dict(re.findall(r"(\w+)=nullif\((tmp_\d+),''\)", columns_header))
-    assert list(mappings) == COLUMNS[:ncols]
+    mappings = re.findall(r"(\w+)=nullif\((tmp_\d+),'((?:[^'\\]|\\.)*)'\)", columns_header)
+    assert [column for column, _, _ in mappings] == COLUMNS[:ncols]
+    markers = {marker for _, _, marker in mappings}
+    assert len(markers) == 1
+    marker = markers.pop()
     parsed = []
     for line in body.decode("utf-8").split("\n"):
         if not line:
             continue
         fields = line.split(delimiter)[:ncols]
-        parsed.append([None if field == "" else field for field in fields])
+        parsed.append([None if field == marker else field for field in fields])
     return parsed
 
 
@@ -72,7 +75,9 @@ def _adapter(**config) -> DorisAdapter:
         pytest.skip("pymysql not installed")
 
 
-def _capture(adapter: DorisAdapter, path: Path, columns: list[str]) -> tuple[bytes, dict[str, str], int]:
+def _capture(
+    adapter: DorisAdapter, path: Path, columns: list[str], dialect: CsvDialect = TPC_DIALECT
+) -> tuple[bytes, dict[str, str], int]:
     bodies: list[bytes] = []
     seen_headers: list[dict[str, str]] = []
 
@@ -83,7 +88,7 @@ def _capture(adapter: DorisAdapter, path: Path, columns: list[str]) -> tuple[byt
 
     with patch("benchbox.platforms.doris._requests") as mock_requests:
         mock_requests.put.side_effect = _put
-        adapter._stream_load_file("web_sales", path, TPC_DIALECT, columns)
+        adapter._stream_load_file("web_sales", path, dialect, columns)
         calls = mock_requests.put.call_count
     return b"".join(bodies), seen_headers[0], calls
 
@@ -218,7 +223,9 @@ class TestNullParityWithLegacyRewrite:
         assert new_rows[4][3] is None
 
     def test_columns_header_covers_every_table_column(self):
-        header = _adapter()._stream_load_headers(format_name="csv", delimiter="|", is_tpc=True, columns=COLUMNS)
+        header = _adapter()._stream_load_headers(
+            format_name="csv", delimiter="|", is_tpc=True, columns=COLUMNS, null_marker=""
+        )
 
         assert header["columns"] == (
             "tmp_0,tmp_1,tmp_2,tmp_3,"
@@ -260,3 +267,56 @@ class TestLoadResolvedDataFile:
 
         connection.cursor.assert_not_called()
         assert stream_load.call_args.args[3] is None
+
+
+CLICKBENCH_COLUMNS = ["watch_id", "title", "referer", "url"]
+CLICKBENCH_DIALECT = CsvDialect("|", False, "__NULL__", False, '"')
+CLICKBENCH_BODY = b'1|Home|""|https://example.com/\r\n2|""|""|https://example.com/a\r\n3|Search|ref|__NULL__\r\n'
+
+
+def _doris_trimmed_rows(body: bytes, headers: dict[str, str], delimiter: str) -> list[list[str | None]]:
+    assert headers["trim_double_quotes"] == "true"
+    mappings = re.findall(r"(\w+)=nullif\((tmp_\d+),'((?:[^'\\]|\\.)*)'\)", headers["columns"])
+    assert [column for column, _, _ in mappings] == CLICKBENCH_COLUMNS
+    marker = mappings[0][2]
+    parsed = []
+    for line in body.decode("utf-8").split("\n"):
+        if not line:
+            continue
+        fields = [
+            field[1:-1] if len(field) >= 2 and field.startswith('"') and field.endswith('"') else field
+            for field in line.split(delimiter)
+        ]
+        parsed.append([None if field == marker else field for field in fields])
+    return parsed
+
+
+class TestNullMarkerIsHonoured:
+    @pytest.mark.parametrize("chunk_size", [10 * 1024 * 1024, 30])
+    def test_quoted_empty_strings_load_as_empty_strings_and_marker_as_null(self, tmp_path, chunk_size):
+        data_file = tmp_path / "hits.csv"
+        data_file.write_bytes(CLICKBENCH_BODY)
+
+        sent, headers, _ = _capture(
+            _adapter(stream_load_chunk_size=chunk_size), data_file, CLICKBENCH_COLUMNS, CLICKBENCH_DIALECT
+        )
+
+        assert _doris_trimmed_rows(sent, headers, "|") == [
+            ["1", "Home", "", "https://example.com/"],
+            ["2", "", "", "https://example.com/a"],
+            ["3", "Search", "ref", None],
+        ]
+
+    def test_header_maps_the_dialect_null_marker(self):
+        header = _adapter()._stream_load_headers(
+            format_name="csv", delimiter="|", is_tpc=True, columns=["a", "b"], null_marker="__NULL__"
+        )
+
+        assert header["columns"] == "tmp_0,tmp_1,a=nullif(tmp_0,'__NULL__'),b=nullif(tmp_1,'__NULL__')"
+
+    def test_marker_is_escaped_as_a_string_literal(self):
+        header = _adapter()._stream_load_headers(
+            format_name="csv", delimiter="|", is_tpc=True, columns=["a"], null_marker="it's\\"
+        )
+
+        assert header["columns"].endswith(r"a=nullif(tmp_0,'it\'s\\')")
