@@ -50,6 +50,15 @@
       "op": "take",
       "op_id": "7ebf2354d4ba45a1892a943a54249fde",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-06T05:09:26Z",
+      "client": "omp-coding-agent",
+      "generation": "c533057dbc064877b2dd0852bc35173b",
+      "op": "finish",
+      "op_id": "9a43fcaaf0aa4ab0bf1dc8fe581c9db9",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
 }
