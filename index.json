@@ -27478,12 +27478,17 @@
       "title": "Verify the next release end to end under the evidence-check model and close the remediation"
     },
     "rv2r-14-maintenance-release-branches": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-07T19:31:58Z",
+        "generation": "05a9518dd11641898aa7570c824169a9",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec"
+      },
       "needs": [
         "rv2r-09-trunk-dist-every-commit"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Allow patch releases from owner-created release/X.Y.x branches with the same release-v2 checks"
     },
     "rv2r-15-review-posting-detector": {
