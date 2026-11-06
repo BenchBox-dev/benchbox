@@ -3649,14 +3649,19 @@
       "title": "BenchBox MCP Server for AI Agent Integration"
     },
     "benchbox-relock-theseus-v017-20261105": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-07T02:54:18Z",
+        "generation": "ddffea494d144e04a3ffadd08319fc1f",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f"
+      },
       "needs": [
         "theseus-review-depth-and-capacity-20261105",
         "review-depth-owner-decisions-20261105",
         "batch-land-review-capacity-gaps-20261105"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Re-lock BenchBox to Theseus v0.1.7 with config trimming, batch-land preflight and the review-depth decision record"
     },
     "benchbox-score-advanced-fixtures": {
