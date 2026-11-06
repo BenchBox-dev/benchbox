@@ -4727,6 +4727,13 @@
       "status": "done",
       "title": "Document the integration batch loop in AGENTS.md and docs/agent, keeping it opt-in until the pilot passes"
     },
+    "batch-loop-e2e-review-binding-failures-20261106": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Restore the batch-loop end-to-end tests broken by the theseus_cli review binding"
+    },
     "batch-loop-pilot-20261101": {
       "claim": null,
       "needs": [

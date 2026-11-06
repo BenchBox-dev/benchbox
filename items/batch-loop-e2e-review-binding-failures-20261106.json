@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "uv run -- pytest -m slow -n 0 tests/integration/worktree/test_batch_loop_e2e.py passes on develop",
+    "The fixtures supply the Git facts the theseus_cli binding needs; the tests do not stub out the binding check",
+    "A CI or scheduled job runs this file and reports failures"
+  ],
+  "context": "Found while landing PR #3957 (batch identity and primary-clone guards); out of scope there.",
+  "description": "Problem (observed 2026-11-06 on unmodified develop): 4 of the 6 tests in tests/integration/worktree/test_batch_loop_e2e.py fail with 'review binding could not be recomputed from Git'. The failures began when #3942 moved review binding into scripts/theseus_cli.py; the tests' fixture repositories do not provide what the new binding reads. The file is marked slow and runs in no CI job, so the regression went unnoticed and the batch landing loop currently has no working end-to-end coverage for those four paths. The two passing tests include test_receipt_survives_context_edit_and_resets_on_acceptance_edit.\n\nOutcome: all six tests pass on develop, and the file runs in a CI job, or another scheduled lane, that fails visibly when they break.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae",
+      "at": "2026-11-06T12:50:35Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c29451c0f1634416ad86cee31c46316e",
+      "session_id": "4e1f5de86962468394697835ee28c6b3"
+    }
+  ]
+}
