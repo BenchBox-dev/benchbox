@@ -4,7 +4,7 @@ import datetime as _dt
 import json
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 
 from tests.uat.phases.report import atomic_write_text
@@ -50,6 +50,17 @@ class PhaseAccounting:
 
 
 @dataclass(frozen=True)
+class InfrastructureRetryAccounting:
+    job_budget_s: int | None = None
+    triggered: int = 0
+    retried: int = 0
+    retry_passed: int = 0
+    retry_failed: int = 0
+    skipped_insufficient_time: int = 0
+    retried_by_signature: dict[str, int] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
 class GateSummary:
     config_name: str
     source_commit_sha: str
@@ -74,6 +85,7 @@ class GateSummary:
     artifact_digests: dict[str, str | None] | None = None
     distribution_digest: str | None = None
     shard_platforms: list[str] | None = None
+    infrastructure_retry: InfrastructureRetryAccounting | None = None
     version: int = GATE_SUMMARY_SCHEMA_VERSION
 
     def to_json_dict(self) -> dict:
@@ -107,6 +119,10 @@ def read_gate_summary(path: Path) -> GateSummary:
     accounting = _dataclass_from_payload(PhaseAccounting, accounting_payload)
     payload = dict(payload)
     payload["accounting"] = accounting
+    retry_payload = payload.get("infrastructure_retry")
+    payload["infrastructure_retry"] = (
+        _dataclass_from_payload(InfrastructureRetryAccounting, retry_payload) if retry_payload else None
+    )
     known = {f.name for f in fields(GateSummary)}
     return GateSummary(**{k: v for k, v in payload.items() if k in known})
 
