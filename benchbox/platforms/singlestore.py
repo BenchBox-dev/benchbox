@@ -7,7 +7,7 @@ from __future__ import annotations
 import contextlib
 import os
 import tempfile
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -103,9 +103,14 @@ def _parquet_as_load_file(data_file: Path) -> Iterator[Path]:
         tmp_path.unlink(missing_ok=True)
 
 
+_DECIMAL_TEXT_PATTERN = r"'^-?[0-9]+(\\.[0-9]+)?$'"
+_OUT_OF_RANGE_DECIMAL = "1e30"
+
+
 class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapter):
     plan_capture_phase_eligible = True
     supports_refresh_functions = True
+    supports_native_refresh_ingest = True
     default_service_port = _DEFAULT_PORT
 
     driver_isolation_capability = DriverIsolationCapability.FEASIBLE_CLIENT_ONLY
@@ -290,6 +295,43 @@ class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, Platform
             if dialect.has_header:
                 clauses.append("IGNORE 1 LINES")
             return self._execute_load_data(connection, table_name, load_path, clauses)
+
+    def ingest_refresh_file(
+        self,
+        connection: Any,
+        table_name: str,
+        columns: Sequence[tuple[str, str]],
+        path: Path,
+    ) -> int:
+        if not self._validate_identifier(table_name):
+            raise ValueError(f"Invalid table identifier: {table_name!r}")
+        targets = []
+        guards = []
+        for name, data_type in columns:
+            if data_type.upper().startswith("DECIMAL"):
+                targets.append(f"@{name}")
+                guards.append(
+                    f"`{name}` = IF(@{name} REGEXP {_DECIMAL_TEXT_PATTERN}, @{name}, {_OUT_OF_RANGE_DECIMAL})"
+                )
+            else:
+                targets.append(f"`{name}`")
+        escaped_path = str(path).replace("\\", "\\\\").replace("'", "\\'")
+        sql = (
+            f"LOAD DATA LOCAL INFILE '{escaped_path}' INTO TABLE `{table_name}` "
+            f"FIELDS TERMINATED BY '|' LINES TERMINATED BY '\\n' ({', '.join(targets)})"
+        )
+        if guards:
+            sql += f" SET {', '.join(guards)}"
+        raw_connection = getattr(connection, "connection", connection)
+        cursor = raw_connection.cursor()
+        try:
+            cursor.execute(sql)
+            rows = cursor.rowcount
+        finally:
+            cursor.close()
+        if rows is None or rows < 0:
+            raise RuntimeError(f"SingleStore did not report the rows loaded into {table_name}")
+        return rows
 
     def _execute_load_data(self, connection: Any, table_name: str, load_path: Path, clauses: list[str]) -> int:
         cursor = connection.cursor()
