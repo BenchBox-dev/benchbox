@@ -267,7 +267,74 @@ problem it finds. It verifies that:
   preparation pull request. A default `release-check` passes while fragments
   are pending.
 
-To adopt a refreshed fork wheel, run
+The `sqlglot-delivery` workflow adopts verified fork deliveries. It runs daily
+on `develop` in `BenchBox-dev/BenchBox` and on `workflow_dispatch`
+(`dry_run`, default true, and `retry`), and is driven by
+`scripts/sqlglot_delivery.py`.
+
+- **Trust root.** `.github/sqlglot-delivery.json` fixes the producer
+  repository, workflow path, branch `main`, allowed events, artifact prefix and
+  record schema and kind. A delivery record can never change it; every field
+  the record repeats must equal what the trusted producer run says.
+- **Plan.** `plan` lists every producer run (it refuses a listing whose count
+  differs from `total_count`), keeps only trusted runs, reads every attempt's
+  jobs, and collects the successful receipt jobs
+  (`delivered benchbox-sqlglot <version> sha256:<digest>`). It picks the newest
+  receipt above the pin, finds the newest run and attempt that still has an
+  unexpired `benchbox-sqlglot-delivery-a<attempt>` artifact, and verifies the
+  record, `SHA256SUMS` and wheel bytes against the receipt. A run that only
+  changes the producer's tooling, with the same version and hash, is not a new
+  adoption. A delivery that fails verification fails the run; it is never
+  skipped for an older one.
+- **Prepare** has no credentials. It runs the adopter
+  (`scripts/adopt_sqlglot_wheel.py`) with the version, fork SHA, upstream SHA
+  and hash from the verified record, requires that only the pin, the wheel
+  archive, the license notice and the baseline identity changed, and emits a
+  git bundle and a pull request title and body. The body carries a marker that
+  binds version, fork SHA, upstream SHA, hash and the producer run and attempt.
+- **Publish** runs only when `SQLGLOT_DELIVERY_ENABLED` is `true`, the run is
+  not a dry run and the plan says `adopt`. It re-checks the bundle, pushes
+  `chore/sqlglot-<version>` and opens the pull request, resuming after an
+  interrupted push or pull request creation. At most one automation adoption
+  pull request is open. Opening the same version and hash again changes
+  nothing. A newer delivery closes an older automation pull request that is
+  unarmed, unheld and not green; it waits behind one that is armed, green or
+  held. Human-authored and human-modified pull requests and branches, and any
+  pull request with the `no-auto-merge` hold, are never touched. A pair whose
+  pull request was closed unmerged is not proposed again unless a person
+  dispatches the workflow with `retry`, which uses a fresh
+  `chore/sqlglot-<version>-retryN` branch. A pair whose adoption merged and was
+  reverted is never proposed again.
+- **Arm** runs after publish in the same job and arms an automation pull
+  request only by running `scripts/trunk_revert.py arm-gate` and
+  `scripts/pr_arm.py` on the exact head, as `make pr-arm` does. It never
+  re-arms after a person disabled auto-merge or applied the hold. The one
+  automation disarm it recovers from is the trunk-red disarm by
+  `github-actions[bot]` (`trunk-red-disarm.yml`). The pull request is usually
+  not green on the run that opens it, so the next daily run arms it.
+- **Kill switch and dry run.** Every mutating command refuses unless the
+  repository variable `SQLGLOT_DELIVERY_ENABLED` is exactly `true`. A manual
+  dispatch defaults to `dry_run`: the prepare job verifies the delivery and
+  writes the plan to the run summary with a read-only token, and nothing is
+  published. `publish` and `arm` also take `--dry-run` for a local report of
+  the actions they would take.
+- **Credentials.** The publish job mints a token from the delivery GitHub App
+  with `contents` and `pull-requests` write, using the secrets
+  `SQLGLOT_DELIVERY_APP_ID` and `SQLGLOT_DELIVERY_APP_PRIVATE_KEY`. Without
+  them the job fails with a message and publishes nothing. The prepare job
+  holds no secret and a read-only token, and the publish job never runs code
+  from the prepared artifact.
+- **Rollback.** Revert the adoption pull request on `develop`, and in the same
+  reviewed pull request add `{"forkSha", "sha256", "reason"}` to `suppressed`
+  in `.github/sqlglot-delivery.json`. Suppressed pairs are skipped and the next
+  best delivery is considered.
+- **Producer exceptions.** A version delivered with two hashes, or a pinned
+  version delivered with a different hash, fails the run with `Producer
+  exception` and names the fork. The producer owns the fix in
+  `BenchBox-dev/benchbox-sqlglot`; core opens no issue and adopts nothing
+  until the producer publishes a newer version.
+
+To adopt a wheel by hand, for example while the workflow is disabled, run
 `make sqlglot-adopt-wheel WHEEL=<path> SHA256=<digest> EXPECTED_VERSION=<version>
 FORK_SHA=<sha> UPSTREAM_SHA=<sha>` (the digest may instead sit in
 `<wheel>.sha256` beside it; add `DRY_RUN=1` to only verify). Take the version,
@@ -278,9 +345,10 @@ the verified, clean, pure-Python release artifact and strictly newer than the
 pinned runtime. The command installs it, rewrites `benchbox/_vendor/sqlglot.json`
 and the identity in `scripts/sqlglot_runtime_baseline.json`, runs the runtime pin
 and retirement/baseline checks, and restores the previous files if either fails.
-It publishes nothing; add a `changelog.d` fragment, review any changed baseline
-outcome, then open the pull request. The retirement check executes a QuestDB
-case, so `BENCHBOX_QUESTDB_DSN` must point at a running QuestDB.
+It publishes nothing; review any changed baseline outcome, then open the pull
+request. Give it a `chore(sqlglot)` title, which needs no changelog fragment.
+The retirement check executes a QuestDB case, so `BENCHBOX_QUESTDB_DSN` must
+point at a running QuestDB.
 
 Both targets need the full development tree, because the lock-revision check
 lives under `_project/`.
