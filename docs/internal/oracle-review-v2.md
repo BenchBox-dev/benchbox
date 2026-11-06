@@ -125,9 +125,11 @@ provider key reaches the runner. Per attempt, the loop writes the reviewer's OMP
 home into a fresh scratch `HOME` (`write_reviewer_home`, behind `cli.py
 reviewer-home --home <home> --gateway-url <url>`):
 `.github/oracle-omp-config.yml` as `config.yml`, and a `models.yml` pointing
-providers `anthropic`, `openai-codex`, `muse-code` and `google-antigravity` at
-the gateway with `transport: pi-native` and `apiKey: OMP_GATEWAY_TOKEN` (the
-variable name, not a value). An empty or non-`https://` URL is refused.
+every provider that config names at the gateway with `transport: pi-native`
+and `apiKey: OMP_GATEWAY_TOKEN` (the variable name, not a value); no provider
+list lives in code. An empty or non-`https://` URL is refused. Losing one
+provider does not stop reviews: see
+[Losing or removing a provider](oracle-gateway-host.md#losing-or-removing-a-provider).
 
 The gateway answers only while the Mac is awake and online; otherwise attempts
 are absent and the sweep retries (see Commands).
@@ -172,8 +174,13 @@ a manual dispatch, a `pull_request_target` event other than a plain edit, and a
    will be reviewed it then classifies the change: it asks Jev, through
    TypeSafe's `/v1/systemone` API, for the size bucket, review capability,
    review template and per-file priority, and selects the attempt-1 reviewer. A
-   classification failure leaves the attempts pending and does not fail the
-   step. The bucket names the first reviewer in `.github/oracle-reviewers.yml`;
+   classification failure (an unreachable or failing classifier, not a missing
+   key) does not fail the step: when `classifier.unavailable_bucket` is set in
+   the policy, as it is here (`large`), the change is reviewed from that
+   bucket instead (the higher of it and the `large` gate floor), with the
+   `deep` capability, the `gate` template when gate paths are touched and
+   `deep` otherwise, and the summary says classification was unavailable;
+   without the policy key the attempts stay pending. The bucket names the first reviewer in `.github/oracle-reviewers.yml`;
    later slots reuse the classification and can move up the chain (see
    Rounds). Review-machinery changes always get the `gate` template and at
    least the `large` bucket. Selection skips disabled reviewers,
@@ -976,7 +983,8 @@ and posts nothing to GitHub.
   macOS, keychain service `TYPESAFE_API_KEY`, added once with `security
   add-generic-password -s TYPESAFE_API_KEY -a "$USER" -w` (it prompts for the
   value). Without a key the review cannot classify, so it refuses (exit 2) and
-  names that step; there is no fixed default. A change that needs no review
+  names that step; a missing key is configuration, so the
+  `classifier.unavailable_bucket` fallback does not apply to it. A change that needs no review
   (only exempt paths) needs no key. The classifier key stays out of the
   processes that `make pr-open` starts for the review: the launcher script takes
   `TYPESAFE_API_KEY`, `TS_AUTHKEY`, the gateway values and the GitHub tokens out
@@ -1117,13 +1125,24 @@ and posts nothing to GitHub.
   decision for this head, or an unchanged patch, the recorded decision and its open
   defects are judged by the same rule, so a carried Critical blocks even when the
   new diff is clean. Nothing in the PR body overrides a block, and no commit message does.
-  A review that cannot run also refuses (exit 2): unreachable gateway, timeout,
+  A review that cannot run also refuses (exit 2): timeout,
   quota exhaustion, no verdict, no classifier key, a held PR (an edited oracle
   review, an unreadable history, the strike limit), a secret value found on disk,
   a classification that failed, an `omp` build that fails its checksum or has no
   pin for this platform, the reviewer that raised a finding being absent from the
   policy or unable to answer a rebuttal, or an `origin/develop` that cannot be
-  fetched.
+  fetched. The exception is a review that cannot run because the gateway is
+  unreachable, rejects the client token, or serves no provider that can review
+  the change (the local review writes `availability: <reason>` to the file named
+  by `REVIEW_LOCAL_UNAVAILABLE_OUT`): then `pr-open` pushes and opens the PR as
+  a draft whose body ends with `Local review: unavailable (<reason>); the hosted
+  review decides`, and does not arm it even with `READY=1`. An existing PR for
+  the branch is not converted to a draft (that needs GraphQL, which the REST
+  path avoids); it gets the marker and is not armed by that run. The hosted
+  review-verdict and `review-gate` still decide: `make pr-arm` refuses the
+  draft, and after you mark it ready it still refuses until a fresh gate
+  evaluation of the head passes. A later `make pr-open` that clears the review
+  removes the marker.
 - **Findings record and local disputes.** The driver keeps one findings record per
   patch digest under `~/.cache/benchbox/local-oracle/records/`. It holds the
   CI-shaped protocol records of every local round (so the same planner, round

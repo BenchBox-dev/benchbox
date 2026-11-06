@@ -12,6 +12,7 @@ import theseus_cli
 
 DEVELOP_REF = theseus_cli.DEVELOP_REF
 EXIT_UNAVAILABLE = theseus_cli.EXIT_UNAVAILABLE
+UNAVAILABLE_OUT_ENV = "REVIEW_LOCAL_UNAVAILABLE_OUT"
 RECORD_OUT_ENV = "REVIEW_LOCAL_RECORD_OUT"
 
 Launcher = Callable[[list[str], dict[str, str]], int]
@@ -63,6 +64,8 @@ def run(args: argparse.Namespace, launcher: Launcher = launch) -> int:
     env = theseus_cli.launcher_environment(program)
     if args.record_out:
         env[RECORD_OUT_ENV] = args.record_out
+    if args.unavailable_out:
+        env[UNAVAILABLE_OUT_ENV] = args.unavailable_out
     return launcher(review_command(args), env)
 
 
@@ -76,6 +79,7 @@ def parser() -> argparse.ArgumentParser:
     built.add_argument("--adjudicate", default="")
     built.add_argument("--record-out", default="")
     built.add_argument("--member", action="store_true")
+    built.add_argument("--unavailable-out", default="")
     built.add_argument("--result-json", default="")
     return built
 
