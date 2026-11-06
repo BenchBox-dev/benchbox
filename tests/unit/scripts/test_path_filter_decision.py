@@ -238,6 +238,13 @@ def test_github_output_exposes_skill_integrity_lane(rules: dict[str, list[str]],
     assert "needs-code-ci=false\n" in text
 
 
+def test_bundled_runtime_change_selects_package_smoke(rules: dict[str, list[str]]) -> None:
+    decision = classify_paths(["benchbox/_vendor/sqlglot.json"], rules)
+
+    assert decision["packaging_needed"] is True
+    assert decision["needs_code_ci"] is True
+
+
 def test_docs_markdown_is_safe(rules: dict[str, list[str]]) -> None:
     decision = classify_paths(["docs/development/run-lifecycle-map.md"], rules)
     assert decision["safe_content_only"] is True
