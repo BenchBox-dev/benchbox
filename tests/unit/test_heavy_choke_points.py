@@ -430,7 +430,9 @@ def test_the_cleanup_is_recorded_with_the_run_id_and_the_actual_outcome(tmp_path
     ]
     cleanup = [row for row in rows if row["event"].startswith("vm_cleanup_")]
     assert [row["event"] for row in cleanup] == ["vm_cleanup_started", "vm_cleanup_finished"]
-    assert {row["run_id"] for row in cleanup} == {"run-123"}
+    run_ids = {row["run_id"] for row in cleanup}
+    assert len(run_ids) == 1 and next(iter(run_ids))
+    assert run_ids == {row["run_id"] for row in rows if row["event"] == "run_finished"}
     assert cleanup[-1]["outcome"] == "still_running"
     assert cleanup[-1]["details"]["machine"] == machine
     assert cleanup[-1]["duration_seconds"] >= 0

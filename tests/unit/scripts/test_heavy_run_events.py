@@ -485,8 +485,12 @@ def test_a_unicode_working_directory_cannot_break_the_bound(tmp_path: Path, monk
 def test_a_failed_event_module_load_warns_once_and_runs_unrecorded(
     lock_dir: Path, runs_file: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
+    real_load_sibling = hl._load_sibling
+
     def broken(stem: str) -> object:
-        raise ImportError("missing")
+        if stem == "heavy_run_events":
+            raise ImportError("missing")
+        return real_load_sibling(stem)
 
     monkeypatch.setattr(hl, "_load_sibling", broken)
     monkeypatch.setattr(hl, "_events_state", [])
