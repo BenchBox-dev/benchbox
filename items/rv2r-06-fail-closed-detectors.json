@@ -5,6 +5,11 @@
     "Detector (2) would have failed run 41949185392 attempt 2 (show the evaluated condition against that run's job results)",
     "No detector can be bypassed by a skipped upstream job (explicit result checks, not implicit success())"
   ],
+  "batch": {
+    "batch_id": "release-v2-remediation",
+    "implementation_dependencies": [],
+    "member_id": "rv2r-06-fail-closed-detectors"
+  },
   "context": "Member of batch release-v2-remediation. oracle-verdict and oracle-gate run on pull_request_target, so edits to their callers only run after merge unless dispatched with --ref; use dispatch for all pre-merge evidence. If a detector belongs in Theseus (joeharris76/theseus), change it there via its own PR, then bump the pin per rv2r-07. GUARDRAILS: detectors only add failure conditions; they never relax or skip an existing check; a false red blocks every merge, so canary first. DECISION GATE: any change needing repository or environment settings (secrets, rulesets, required checks) goes to the owner.",
   "description": "Two outages were silent no-ops reported as green: after #3942 the oracle-verdict caller ran without secrets, posted nothing, and its jobs still went green; after #3947 the release run concluded success with publish skipped. Add fail-closed detectors: (1) the BenchBox oracle-verdict and oracle-gate callers end with a job that fails when no verdict or gate status was posted for the head (or the Theseus workflow exposes an output that the caller asserts); (2) release-v2 fails the run when publish did not run after a green gate on a tag target, and fails release-uat when zero shard directories or zero executed cells were found. (Detector 3, trunk UAT with zero cells, is owned by rv2r-02.) Each detector has a negative test proving it turns red. Rollback: revert the detector commit; G12 applies (the canary runs below are its calibration).",
   "links": [
@@ -29,6 +34,14 @@
       "op": "update",
       "op_id": "2c497b12118e4956bc59a55095e2c542",
       "session_id": "7da446616e5349658579dfc9c4288973"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-06T13:41:35Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c6e54de535a84deaa2dc4f48afa34c17",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
     }
   ]
 }
