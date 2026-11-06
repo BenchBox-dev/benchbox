@@ -2031,13 +2031,39 @@
       "final_pr_history": [],
       "integrated_members": {},
       "integration_branch": "feat/sqlglot-core-delivery",
-      "integration_head": "20a0045113e6c8ba13c3e7c4f78351e3fe81f81e",
+      "integration_head": "5993fbf74acd66a118de66c6c661915bc1bb2ac7",
       "integration_log": [
         {
           "at": "2026-11-06T13:49:23Z",
           "head": "20a0045113e6c8ba13c3e7c4f78351e3fe81f81e",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-06T14:42:36Z",
+          "changed_files": [
+            ".claude/skills/shared-agent-execution/SKILL.md",
+            ".claude/skills/shared-agent-execution/references/external-harnesses.md",
+            ".claude/skills/skill-sync.manifest",
+            ".claude/skills/skill-sync.receipt",
+            ".github/oracle-omp-config.yml",
+            "_project/decisions/oracle-gate-relaxation-muse-login-loss-2026-11-06.md",
+            "_project/scripts/oracle_gateway_host.sh",
+            "changelog.d/fix-test-make-env-isolation.json",
+            "docs/internal/oracle-gateway-host.md",
+            "skill-sync.conf",
+            "tests/conftest.py",
+            "tests/fixtures/fast_tier_baseline/tests-01.json",
+            "tests/unit/scripts/test_agent_instruction_audit.py",
+            "tests/unit/scripts/test_oracle_gateway_host.py",
+            "tests/unit/test_check_agent_trailers.py"
+          ],
+          "head": "5993fbf74acd66a118de66c6c661915bc1bb2ac7",
+          "kind": "develop-merge",
+          "merged_parent": "cafa6d569b50eede6372cb026ad7d0f64123f32f",
+          "op_id": "cc1bdd88b3dc4f7980dbba00c715f448",
+          "previous_head": "20a0045113e6c8ba13c3e7c4f78351e3fe81f81e",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-sqlglot-core-delivery",
