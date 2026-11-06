@@ -59,9 +59,14 @@ def heavy_guard(command: str) -> Iterator[None]:
     from benchbox.utils import host_lock
 
     try:
-        handle = host_lock.acquire(host_lock.lock_path(), phase=PHASE, gate=command, command=f"benchbox {command}")
-        if not handle.inherited and handle.count == 1:
-            host_lock.admit_and_guard(handle, created=True, log_report=False)
+        handle = host_lock.acquire(
+            host_lock.lock_path(),
+            phase=PHASE,
+            gate=command,
+            command=f"benchbox {command}",
+            admit=True,
+            guard=True,
+        )
     except host_lock.LockOwnershipError as exc:
         raise _refuse(host_lock.EXIT_OWNERSHIP, str(exc)) from exc
     except host_lock.LockUnavailable as exc:

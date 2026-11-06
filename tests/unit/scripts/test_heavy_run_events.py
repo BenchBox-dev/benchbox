@@ -617,6 +617,7 @@ def test_cli_admission_refusal_is_recorded_as_admission_refused(
         pass
     assert raised.value.code == hl.EXIT_ADMISSION
     by = by_event(read_events(runs_file))
+    assert "execution_started" not in by
     assert by["admission_finished"]["outcome"] == "admission_refused"
     assert by["run_finished"]["outcome"] == "admission_refused"
 
