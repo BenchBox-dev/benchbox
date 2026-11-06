@@ -29,6 +29,17 @@
       "op": "take",
       "op_id": "ac6e07d2af024f01a1fcc7529d07d764",
       "session_id": "ecdf9c0acb5347a09532dc0b99b05d49"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a366335727c9dfe4ed0b889b",
+      "at": "2026-11-06T13:44:43Z",
+      "client": "omp-coding-agent",
+      "displaced": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d2127a8e30fb0db814c603c5",
+      "generation": "c9e4a120a9bd4ac2b87638a6b4c0160b",
+      "op": "takeover",
+      "op_id": "9d68907f86e347a484d748ed55e01336",
+      "reason": "Holder session ecdf9c0acb5347a09532dc0b99b05d49 (take op ac6e07d2af024f01a1fcc7529d07d764) was killed at about 13:47Z on 2026-11-06 by its launcher's process cleanup and cannot resume.",
+      "session_id": "e515e51bd05745c1ad2db25d0ddca019"
     }
   ]
 }
