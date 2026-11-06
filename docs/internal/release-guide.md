@@ -399,35 +399,25 @@ uv run -- python scripts/generate_changelog_entry.py \
 The notes-only recovery does not retag, republish to PyPI, or replace release
 assets.
 
-The `sqlglot-fork-refresh` workflow runs nightly and starts the refresh when a
-newer final upstream tag exists. It refreshes a checkout of the fork's `main`
-with `python -m downstream.refresh auto`, which succeeds only when every carried
-patch applies without a conflict, none is already contained upstream, and the
-refresh leaves the active workflows under `.github/workflows/` unchanged. A
-refresh that succeeds is pushed as `refresh/upstream-X.Y.Z` and opened as a pull
-request in `BenchBox-dev/benchbox-sqlglot`, where its checks run.
+The fork owns the upstream lifecycle. Its `benchbox-upstream.yml` workflow
+discovers a newer final upstream tag, refreshes the fork with
+`python -m downstream.refresh auto`, opens the refresh pull request and merges it
+once the fork's required checks pass; its `benchbox-delivery.yml` workflow then
+publishes the verified wheel delivery that `sqlglot-delivery.yml` adopts here.
+Refresh conflicts, failed refreshes and failing fork checks are issues in
+`BenchBox-dev/benchbox-sqlglot`, not in this repository. The fork runbook,
+`downstream/MAINTAINING.md`, describes its kill switch, dry runs, credentials
+and recovery.
 
-One issue per tag, `SQLGlot fork refresh to vX.Y.Z needs follow-up`, opens in
-this repository when a patch conflicts, a step fails, the refresh pull request
-has failing checks or was closed without merging, a `refresh/upstream-X.Y.Z`
-branch exists with no pull request, or the refresh could not be pushed. The issue
-is updated, with one comment, only when the reason changes. It closes when the
-fork is on the newest tag, when a healthy refresh pull request is open, or when
-a newer tag supersedes it. A refresh pull request that stays open and healthy
-raises no issue; GitHub's pull request notifications and the freshness check
-above are the signals for it. A separate issue, `SQLGlot fork refresh check
-failed`, covers the check itself failing (for example a GitHub API error or a
-failed preparation job); it leaves the per-tag issues as they were and closes on
-the next good run.
-
-The workflow never merges the fork pull request, builds or releases the wheel, or
-adopts it here; those steps stay with the maintainer. Pushing needs the
-repository secret `SQLGLOT_FORK_REFRESH_TOKEN`, a fine-grained personal access
-token limited to `BenchBox-dev/benchbox-sqlglot` with read and write access to
-contents and pull requests. A token is required because the workflow's own token
-cannot write to another repository and pull requests it opens would not start the
-fork's checks. Without the secret the workflow still runs and raises the issue,
-naming the missing secret.
+The `sqlglot-fork-refresh` workflow in this repository is the legacy producer
+and is retiring. Until it is disabled it runs nightly, refreshes a checkout of
+the fork's `main` with the same `auto` command, pushes a successful refresh as
+`refresh/upstream-X.Y.Z` with the `SQLGLOT_FORK_REFRESH_TOKEN` secret, opens the
+fork pull request, and raises a per-tag issue here (`SQLGlot fork refresh to
+vX.Y.Z needs follow-up`, or `SQLGlot fork refresh check failed` for the check
+itself) when it cannot. It never merges or adopts. Disable it before enabling the
+fork's controller, so only one workflow writes upstream refreshes to the fork;
+its workflow, script, tests and secret are then removed.
 
 ## Recovering from common failures
 

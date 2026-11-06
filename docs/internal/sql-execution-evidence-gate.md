@@ -146,10 +146,13 @@ local engine adapters or the gate itself change.
 
 ## Adoption evidence
 
-Each wheel adoption PR pastes the gate output (candidate and baseline wheel
-versions, per-engine cell counts, verified improvements and expected
-differences) into its description. Verified improvements are published-result
-impacts and are listed as such.
+The gate output (candidate and baseline wheel versions, per-engine cell counts,
+verified improvements and expected differences) is the evidence for a wheel
+adoption. An adoption changes the runtime pin under `benchbox/_vendor/`, so CI
+runs the `sql-execution-evidence` job on every adoption PR, whether the delivery
+workflow (`.github/workflows/sqlglot-delivery.yml`) opened it or a maintainer
+adopted a wheel by hand; that job's output is the evidence reviewers read.
+Verified improvements are published-result impacts and are listed as such.
 
 ## Translator identity in result bundles
 
@@ -176,12 +179,14 @@ runtime, is an error in the submission validator, `results-data/validate_corpus.
 and the Explorer pipeline. It changes no ranking identity and carries no SQL
 hashes.
 
-## Fork diff
+## Fork diff (legacy diagnostic)
 
 The gate shows what the new wheel does to the shipped queries; it does not show
-what changed inside the fork. Each wheel adoption PR therefore also carries the
-fork diff from the previous pinned `fork_sha` to the new one, so the oracle and
-human reviewers read the translation semantics they are admitting:
+what changed inside the fork. Fork source review happens in the fork's own pull
+requests, not in BenchBox adoption PRs, and adoption PRs do not carry a fork
+diff. The `sqlglot-fork-diff` tool is a legacy diagnostic kept until its
+removal; use it, or `git diff <old> <new>` in a fork clone, to inspect a change
+between two fork commits:
 
 ```
 make sqlglot-fork-diff OUT=/tmp/fork-diff.md
@@ -194,9 +199,8 @@ tree. The tool fetches both commits from the fork into a throwaway bare
 repository and writes Markdown with the commit list, the diffstat and the
 per-file diff, `downstream/` and `sqlglot/benchbox/` first. Files that do not
 fit the size budget (50 KB by default) are listed by name, not dropped; read
-them with `git diff <old> <new> -- <path>` in a fork clone. Paste the output
-into the PR description next to the gate output. A rollback adoption prints
-`Direction: not-descendant`.
+them with `git diff <old> <new> -- <path>` in a fork clone. A rollback
+prints `Direction: not-descendant`.
 
 The evidence and the code that judges it are soundness paths
 (`.github/soundness-paths.txt`): the runtime pin and bundled wheel
