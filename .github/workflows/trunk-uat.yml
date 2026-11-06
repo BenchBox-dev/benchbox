@@ -1,0 +1,495 @@
+name: Trunk UAT
+
+env:
+  BENCHBOX_HEAVY_ADMIT_MIN_GIB: "1.5"
+  BENCHBOX_HEAVY_MIN_FREE_DISK_GIB: "5"
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: trunk-uat
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      action: ${{ steps.plan.outputs.action }}
+      reason: ${{ steps.plan.outputs.reason }}
+      source_sha: ${{ steps.plan.outputs.source_sha }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Decide whether this run executes the matrix, skips, or defers
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 scripts/trunk_uat.py plan \
+            --event "$GITHUB_EVENT_NAME" \
+            --branch "$GITHUB_REF_NAME" \
+            --run-id "$GITHUB_RUN_ID" \
+            --root . \
+            --github-output "$GITHUB_OUTPUT" \
+            --summary "$GITHUB_STEP_SUMMARY"
+
+  admit:
+    name: admit
+    needs: plan
+    if: ${{ needs.plan.outputs.action == 'run' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      tag: ${{ steps.admit.outputs.tag }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install the admission dependencies
+        run: |
+          set -euo pipefail
+          python3 -m pip install --require-hashes --only-binary :all: --no-deps -r scripts/release_requirements.txt
+
+      - name: Admit the trunk distribution of the selected commit
+        id: admit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ needs.plan.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          python3 scripts/trunk_uat.py admit \
+            --source . \
+            --sha "$SOURCE_SHA" \
+            --output "$RUNNER_TEMP/admitted" \
+            --github-output "$GITHUB_OUTPUT"
+          cp -R "$RUNNER_TEMP/admitted" admitted
+
+      - name: Upload the admitted directory
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: admitted-${{ steps.admit.outputs.tag }}
+          path: admitted/
+          retention-days: 7
+          if-no-files-found: error
+
+  uat-stage1:
+    name: UAT stage 1 ${{ matrix.shard }}
+    needs: [plan, admit]
+    if: ${{ !cancelled() && needs.admit.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: sqlite
+            platforms: sqlite
+          - shard: spark
+            platforms: spark
+          - shard: duckdb
+            platforms: duckdb
+          - shard: datafusion-clickhouse-local
+            platforms: datafusion,clickhouse-local
+          - shard: polars-df
+            platforms: polars-df
+          - shard: pandas-df
+            platforms: pandas-df
+          - shard: pyspark-df
+            platforms: pyspark-df
+          - shard: dask-df
+            platforms: dask-df
+          - shard: datafusion-df
+            platforms: datafusion-df
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ needs.plan.outputs.source_sha }}
+
+      - name: Prepare the admitted distribution
+        uses: ./.github/actions/release-uat-env
+        with:
+          tag: ${{ needs.admit.outputs.tag }}
+          head-sha: ${{ needs.plan.outputs.source_sha }}
+
+      - name: Run the stage 1 shard against the trunk distribution
+        timeout-minutes: 345
+        env:
+          UV_NO_SYNC: '1'
+          UAT_CONFIG: tests/uat/configs/release-gate-01-native-dataframe.yaml
+          SHARD_PLATFORMS: ${{ matrix.platforms }}
+          BENCHBOX_HEAVY_MEMORY_BUDGET_GIB: '13'
+        run: |
+          set -euo pipefail
+          .venv/bin/python -c "import benchbox, pathlib; path = pathlib.Path(benchbox.__file__).resolve(); assert 'site-packages' in path.parts, path"
+          make uat-sweep CONFIG="$UAT_CONFIG" PLATFORMS="$SHARD_PLATFORMS"
+          .venv/bin/python -c "import benchbox, pathlib; path = pathlib.Path(benchbox.__file__).resolve(); assert 'site-packages' in path.parts, path"
+
+      - name: Restore the checkout package
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -d "$RUNNER_TEMP/benchbox.checkout" ]; then
+            mv "$RUNNER_TEMP/benchbox.checkout" benchbox
+          fi
+          git ls-files -z benchbox | xargs -0 git update-index --no-assume-unchanged
+
+      - name: Stage the shard evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/shard-evidence"
+          mkdir -p "$evidence"
+          shopt -s nullglob
+          if [ -f "${RELEASE_DIST_DIGEST_FILE:-}" ]; then
+            cp "$RELEASE_DIST_DIGEST_FILE" "$evidence/dist-digest.txt"
+          fi
+          runs=("$HOME"/Developer/benchmark_runs/logs/uat_*)
+          if [ "${#runs[@]}" -eq 1 ]; then
+            cp -R "${runs[0]}" "$evidence/run"
+          fi
+
+      - name: Upload the shard evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: trunk-uat-${{ needs.plan.outputs.source_sha }}-stage1-${{ matrix.shard }}
+          path: ${{ runner.temp }}/shard-evidence
+          overwrite: true
+          retention-days: 90
+          if-no-files-found: warn
+
+  uat-stage2:
+    name: UAT stage 2 ${{ matrix.shard }}
+    needs: [plan, admit]
+    if: ${{ !cancelled() && needs.admit.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: lakesail
+            platforms: lakesail
+          - shard: clickhouse-server
+            platforms: clickhouse-server
+          - shard: starrocks
+            platforms: starrocks
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ needs.plan.outputs.source_sha }}
+
+      - name: Prepare the admitted distribution
+        uses: ./.github/actions/release-uat-env
+        with:
+          tag: ${{ needs.admit.outputs.tag }}
+          head-sha: ${{ needs.plan.outputs.source_sha }}
+
+      - name: Run the stage 2 shard against the trunk distribution
+        timeout-minutes: 345
+        env:
+          UV_NO_SYNC: '1'
+          UAT_CONFIG: tests/uat/configs/release-gate-02-docker-nonoltp.yaml
+          SHARD_PLATFORMS: ${{ matrix.platforms }}
+          CLICKHOUSE_MEMORY_LIMIT: 12g
+        run: |
+          set -euo pipefail
+          .venv/bin/python -c "import benchbox, pathlib; path = pathlib.Path(benchbox.__file__).resolve(); assert 'site-packages' in path.parts, path"
+          make uat-sweep CONFIG="$UAT_CONFIG" PLATFORMS="$SHARD_PLATFORMS"
+          .venv/bin/python -c "import benchbox, pathlib; path = pathlib.Path(benchbox.__file__).resolve(); assert 'site-packages' in path.parts, path"
+
+      - name: Restore the checkout package
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -d "$RUNNER_TEMP/benchbox.checkout" ]; then
+            mv "$RUNNER_TEMP/benchbox.checkout" benchbox
+          fi
+          git ls-files -z benchbox | xargs -0 git update-index --no-assume-unchanged
+
+      - name: Stage the shard evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/shard-evidence"
+          mkdir -p "$evidence"
+          shopt -s nullglob
+          if [ -f "${RELEASE_DIST_DIGEST_FILE:-}" ]; then
+            cp "$RELEASE_DIST_DIGEST_FILE" "$evidence/dist-digest.txt"
+          fi
+          runs=("$HOME"/Developer/benchmark_runs/logs/uat_*)
+          if [ "${#runs[@]}" -eq 1 ]; then
+            cp -R "${runs[0]}" "$evidence/run"
+          fi
+
+      - name: Upload the shard evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: trunk-uat-${{ needs.plan.outputs.source_sha }}-stage2-${{ matrix.shard }}
+          path: ${{ runner.temp }}/shard-evidence
+          overwrite: true
+          retention-days: 90
+          if-no-files-found: warn
+
+  uat-stage3:
+    name: UAT stage 3 ${{ matrix.shard }}
+    needs: [plan, admit]
+    if: ${{ !cancelled() && needs.admit.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: postgres-family
+            platforms: postgresql,pg-duckdb,pg-mooncake,timescaledb
+          - shard: query-engines
+            platforms: velox
+          - shard: olap
+            platforms: doris,singlestore
+          - shard: timeseries
+            platforms: questdb
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ needs.plan.outputs.source_sha }}
+
+      - name: Prepare the admitted distribution
+        uses: ./.github/actions/release-uat-env
+        with:
+          tag: ${{ needs.admit.outputs.tag }}
+          head-sha: ${{ needs.plan.outputs.source_sha }}
+
+      - name: Run the stage 3 shard against the trunk distribution
+        timeout-minutes: 345
+        env:
+          UV_NO_SYNC: '1'
+          UAT_CONFIG: tests/uat/configs/release-gate-03-docker-oltp.yaml
+          SHARD_PLATFORMS: ${{ matrix.platforms }}
+        run: |
+          set -euo pipefail
+          .venv/bin/python -c "import benchbox, pathlib; path = pathlib.Path(benchbox.__file__).resolve(); assert 'site-packages' in path.parts, path"
+          make uat-sweep CONFIG="$UAT_CONFIG" PLATFORMS="$SHARD_PLATFORMS"
+          .venv/bin/python -c "import benchbox, pathlib; path = pathlib.Path(benchbox.__file__).resolve(); assert 'site-packages' in path.parts, path"
+
+      - name: Restore the checkout package
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -d "$RUNNER_TEMP/benchbox.checkout" ]; then
+            mv "$RUNNER_TEMP/benchbox.checkout" benchbox
+          fi
+          git ls-files -z benchbox | xargs -0 git update-index --no-assume-unchanged
+
+      - name: Stage the shard evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/shard-evidence"
+          mkdir -p "$evidence"
+          shopt -s nullglob
+          if [ -f "${RELEASE_DIST_DIGEST_FILE:-}" ]; then
+            cp "$RELEASE_DIST_DIGEST_FILE" "$evidence/dist-digest.txt"
+          fi
+          runs=("$HOME"/Developer/benchmark_runs/logs/uat_*)
+          if [ "${#runs[@]}" -eq 1 ]; then
+            cp -R "${runs[0]}" "$evidence/run"
+          fi
+
+      - name: Upload the shard evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: trunk-uat-${{ needs.plan.outputs.source_sha }}-stage3-${{ matrix.shard }}
+          path: ${{ runner.temp }}/shard-evidence
+          overwrite: true
+          retention-days: 90
+          if-no-files-found: warn
+
+  gate:
+    name: trunk UAT gate
+    needs: [plan, admit, uat-stage1, uat-stage2, uat-stage3]
+    if: ${{ !cancelled() && needs.admit.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ needs.plan.outputs.source_sha }}
+
+      - name: Prepare the admitted distribution
+        uses: ./.github/actions/release-uat-env
+        with:
+          tag: ${{ needs.admit.outputs.tag }}
+          head-sha: ${{ needs.plan.outputs.source_sha }}
+
+      - name: Download every shard's evidence
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          pattern: trunk-uat-${{ needs.plan.outputs.source_sha }}-stage*
+          path: ${{ runner.temp }}/uat-evidence
+
+      - name: Check the combined release gate over every shard
+        env:
+          UV_NO_SYNC: '1'
+          SOURCE_SHA: ${{ needs.plan.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          .venv/bin/python -c "import benchbox, pathlib; path = pathlib.Path(benchbox.__file__).resolve(); assert 'site-packages' in path.parts, path"
+          evidence="$RUNNER_TEMP/uat-evidence"
+          prefix="trunk-uat-$SOURCE_SHA"
+          stage1=("$evidence"/"$prefix"-stage1-*/run)
+          stage2=("$evidence"/"$prefix"-stage2-*/run)
+          stage3=("$evidence"/"$prefix"-stage3-*/run)
+          make uat-gate-check \
+            STAGE1="${stage1[*]}" \
+            STAGE2="${stage2[*]}" \
+            STAGE3="${stage3[*]}" \
+            OUTPUT="$RUNNER_TEMP/uat-gate-summary.json" \
+            DIST_DIGEST="$(sha256sum "$RELEASE_DIST_DIGEST_FILE" | cut -d' ' -f1)"
+
+      - name: Restore the checkout package
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -d "$RUNNER_TEMP/benchbox.checkout" ]; then
+            mv "$RUNNER_TEMP/benchbox.checkout" benchbox
+          fi
+          git ls-files -z benchbox | xargs -0 git update-index --no-assume-unchanged
+
+      - name: Require every shard job to have succeeded
+        if: always()
+        env:
+          STAGE1_RESULT: ${{ needs.uat-stage1.result }}
+          STAGE2_RESULT: ${{ needs.uat-stage2.result }}
+          STAGE3_RESULT: ${{ needs.uat-stage3.result }}
+        run: |
+          set -euo pipefail
+          status=0
+          for stage in 1 2 3; do
+            var="STAGE${stage}_RESULT"
+            if [ "${!var}" != "success" ]; then
+              echo "::error::UAT stage $stage shard jobs finished as '${!var}', not 'success'."
+              status=1
+            fi
+          done
+          exit "$status"
+
+      - name: Upload the gate summary with the distribution digest
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: trunk-uat-gate-${{ needs.plan.outputs.source_sha }}
+          path: |
+            ${{ runner.temp }}/dist-digest.txt
+            ${{ runner.temp }}/uat-gate-summary.json
+          overwrite: true
+          retention-days: 90
+          if-no-files-found: warn
+
+  record:
+    name: trunk UAT record
+    needs: [plan, admit, uat-stage1, uat-stage2, uat-stage3, gate]
+    if: ${{ always() && needs.plan.outputs.action == 'run' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Download every shard's evidence
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          pattern: trunk-uat-${{ needs.plan.outputs.source_sha }}-stage*
+          path: ${{ runner.temp }}/uat-evidence
+
+      - name: Download the gate summary
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: trunk-uat-gate-${{ needs.plan.outputs.source_sha }}
+          path: ${{ runner.temp }}/uat-gate
+
+      - name: Record the run and append per-cell history
+        id: record
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ needs.plan.outputs.source_sha }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          ADMIT_RESULT: ${{ needs.admit.result }}
+          STAGE1_RESULT: ${{ needs.uat-stage1.result }}
+          STAGE2_RESULT: ${{ needs.uat-stage2.result }}
+          STAGE3_RESULT: ${{ needs.uat-stage3.result }}
+          GATE_RESULT: ${{ needs.gate.result }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/uat-evidence" "$RUNNER_TEMP/uat-gate"
+          python3 scripts/trunk_uat.py record \
+            --evidence "$RUNNER_TEMP/uat-evidence" \
+            --gate "$RUNNER_TEMP/uat-gate" \
+            --sha "$SOURCE_SHA" \
+            --run-id "$GITHUB_RUN_ID" \
+            --attempt "$RUN_ATTEMPT" \
+            --event "$GITHUB_EVENT_NAME" \
+            --job-result "admit=$ADMIT_RESULT" \
+            --job-result "uat-stage1=$STAGE1_RESULT" \
+            --job-result "uat-stage2=$STAGE2_RESULT" \
+            --job-result "uat-stage3=$STAGE3_RESULT" \
+            --job-result "gate=$GATE_RESULT" \
+            --output "$RUNNER_TEMP/trunk-uat-record" \
+            --github-output "$GITHUB_OUTPUT" \
+            --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the run record and per-cell history
+        if: ${{ always() && steps.record.outputs.executed == 'true' }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: trunk-uat-record-${{ needs.plan.outputs.source_sha }}
+          path: ${{ runner.temp }}/trunk-uat-record
+          overwrite: true
+          retention-days: 90
+          if-no-files-found: error
