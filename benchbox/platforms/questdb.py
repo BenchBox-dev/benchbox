@@ -51,6 +51,8 @@ try:
 except ImportError:
     psycopg = None
 
+_ILP_SEND_ROWS = 1000
+
 TPCH_TIMESTAMP_COLUMNS: dict[str, str] = {
     "lineitem": "l_shipdate",
     "orders": "o_orderdate",
@@ -763,25 +765,11 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
             with prepare_local_load_file(
                 data_file, dialect=dialect, strip_trailing_delim=strip_trailing_delim
             ) as load_path:
-                with open(load_path, encoding="utf-8") as stream:
-                    reader = csv.reader(stream, delimiter=dialect.delimiter)
-                    batch: list[str] = []
-                    for row in reader:
-                        if len(row) == len(column_names) + 1 and not row[-1]:
-                            row = row[:-1]
-                        if len(row) != len(column_names):
-                            continue
-                        line = self._row_to_ilp_line(table_name, column_names, row, ts_col)
-                        if line:
-                            batch.append(line)
-                            rows_sent += 1
-
-                        if len(batch) >= 1000:
-                            sock.sendall(("\n".join(batch) + "\n").encode("utf-8"))
-                            batch = []
-
-                    if batch:
-                        sock.sendall(("\n".join(batch) + "\n").encode("utf-8"))
+                for lines in _ilp_line_batches(table_name, column_names, load_path, dialect.delimiter, ts_col):
+                    for start in range(0, len(lines), _ILP_SEND_ROWS):
+                        chunk = lines.slice(start, _ILP_SEND_ROWS).to_pylist()
+                        sock.sendall(("\n".join(chunk) + "\n").encode("utf-8"))
+                    rows_sent += len(lines)
         finally:
             sock.close()
 
@@ -827,37 +815,6 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
             return [row[0] for row in dataset if row]
         except Exception:
             return []
-
-    @staticmethod
-    def _row_to_ilp_line(
-        measurement: str,
-        column_names: list[str],
-        values: list[str],
-        ts_column: str | None,
-    ) -> str | None:
-        fields: list[str] = []
-        timestamp_ns: str | None = None
-
-        for col_name, val in zip(column_names, values):
-            val = val.strip()
-            if not val:
-                continue
-
-            if ts_column and col_name == ts_column:
-                timestamp_ns = _date_to_epoch_ns(val)
-                continue
-
-            escaped = _ilp_escape_field(col_name, val)
-            if escaped:
-                fields.append(escaped)
-
-        if not fields:
-            return None
-
-        line = f"{_ilp_escape_measurement(measurement)} {','.join(fields)}"
-        if timestamp_ns:
-            line += f" {timestamp_ns}"
-        return line
 
     def _count_table_rows_via_http(self, table_name: str) -> int:
         if not self._validate_identifier(table_name):
@@ -1087,26 +1044,119 @@ def _ilp_escape_tag_key(key: str) -> str:
     return key.replace(",", r"\,").replace("=", r"\=").replace(" ", r"\ ")
 
 
-def _ilp_escape_field(col_name: str, value: str) -> str | None:
-    if not value:
-        return None
+def _ilp_str(value: str) -> Any:
+    import pyarrow as pa
 
-    escaped_key = _ilp_escape_tag_key(col_name)
+    return pa.scalar(value)
 
-    try:
-        int_val = int(value)
-        return f"{escaped_key}={int_val}i"
-    except ValueError:
-        pass
 
-    try:
-        float_val = float(value)
-        return f"{escaped_key}={float_val}"
-    except ValueError:
-        pass
+def _ilp_field_values(key: str, values: Any) -> Any:
+    import pyarrow as pa
+    import pyarrow.compute as pc
 
-    escaped_val = value.replace("\\", "\\\\").replace('"', '\\"')
-    return f'{escaped_key}="{escaped_val}"'
+    is_int = pc.match_substring_regex(values, r"^[+-]?[0-9]{1,18}$")
+    is_float = pc.match_substring_regex(
+        values, r"(?i)^[+-]?(([0-9]+\.?[0-9]*|\.[0-9]+)(e[+-]?[0-9]+)?|inf|infinity|nan)$"
+    )
+    as_int = pc.cast(pc.if_else(is_int, values, "0"), pa.int64())
+    int_token = pc.if_else(is_int, pc.binary_join_element_wise(pc.cast(as_int, pa.string()), "i", ""), None)
+    as_float = pc.cast(pc.if_else(is_float, values, "0"), pa.float64())
+    float_token = pc.if_else(is_float, pc.cast(as_float, pa.string()), None)
+    quoted = pc.binary_join_element_wise(
+        '"', pc.replace_substring(pc.replace_substring(values, "\\", "\\\\"), '"', '\\"'), '"', ""
+    )
+    token = pc.coalesce(int_token, float_token, quoted)
+    part = pc.binary_join_element_wise(
+        ",", _ilp_str(_ilp_escape_tag_key(key) + "="), token, "", null_handling="emit_null"
+    )
+    return pc.fill_null(part, "")
+
+
+def _ilp_epoch_ns(values: Any) -> Any:
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    parsed = pc.coalesce(
+        *(
+            pc.strptime(values, fmt, unit="s", error_is_null=True)
+            for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S")
+        )
+    )
+    seconds = pc.cast(parsed, pa.int64())
+    return pc.cast(pc.multiply(seconds, 1_000_000_000), pa.string())
+
+
+def _ilp_lines_from_strings(
+    measurement: str, column_names: list[str], columns: list[Any], ts_column: str | None
+) -> Any:
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    field_parts = []
+    timestamp = None
+    for name, column in zip(column_names, columns):
+        trimmed = pc.utf8_trim_whitespace(column)
+        values = pc.if_else(pc.equal(trimmed, ""), None, trimmed)
+        if ts_column and name == ts_column:
+            timestamp = _ilp_epoch_ns(values)
+            continue
+        field_parts.append(_ilp_field_values(name, values))
+
+    rows = len(columns[0])
+    fields = pc.utf8_slice_codeunits(pc.binary_join_element_wise(*field_parts, ""), 1)
+    if timestamp is None:
+        suffix = pa.array([""] * rows, type=pa.string())
+    else:
+        suffix = pc.fill_null(pc.binary_join_element_wise(" ", timestamp, "", null_handling="emit_null"), "")
+    lines = pc.binary_join_element_wise(_ilp_str(_ilp_escape_measurement(measurement) + " "), fields, suffix, "")
+    return pc.filter(lines, pc.not_equal(fields, ""))
+
+
+def _ilp_line_batches(
+    measurement: str, column_names: list[str], path: Path, delimiter: str, ts_column: str | None
+) -> Iterator[Any]:
+    import pyarrow as pa
+    import pyarrow.csv as pacsv
+
+    width = len(column_names)
+    with open(path, encoding="utf-8", newline="") as stream:
+        first = next(csv.reader([stream.readline()], delimiter=delimiter), [])
+    if len(first) == width + 1 and not first[-1]:
+        width += 1
+    names = column_names + ["__trailing"] if width > len(column_names) else column_names
+    salvage: list[str] = []
+
+    def keep_neighbor_width(row: Any) -> str:
+        if row.actual_columns in (len(column_names), len(column_names) + 1):
+            salvage.append(row.text)
+        return "skip"
+
+    reader = pacsv.open_csv(
+        path,
+        read_options=pacsv.ReadOptions(column_names=names),
+        parse_options=pacsv.ParseOptions(
+            delimiter=delimiter, newlines_in_values=True, invalid_row_handler=keep_neighbor_width
+        ),
+        convert_options=pacsv.ConvertOptions(
+            column_types={name: pa.string() for name in names}, strings_can_be_null=False, null_values=[]
+        ),
+    )
+
+    def emit(columns: list[Any]) -> Any:
+        return _ilp_lines_from_strings(measurement, column_names, columns[: len(column_names)], ts_column)
+
+    for batch in reader:
+        if batch.num_rows:
+            yield emit(batch.columns)
+        if salvage:
+            rows = [
+                row[: len(column_names)]
+                for row in csv.reader(salvage, delimiter=delimiter)
+                if len(row) == len(column_names) or (len(row) == len(column_names) + 1 and not row[-1])
+            ]
+            salvage.clear()
+            if rows:
+                yield emit([pa.array(list(col), type=pa.string()) for col in zip(*rows)])
 
 
 def _build_questdb_config(
@@ -1143,17 +1193,3 @@ def _build_questdb_config(
         "loading_method": merged.get("loading_method", "rest"),
     }
     return DatabaseConfig(**config_dict)
-
-
-def _date_to_epoch_ns(date_str: str) -> str | None:
-    from datetime import datetime, timezone
-
-    date_str = date_str.strip()
-    for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S"):
-        try:
-            dt = datetime.strptime(date_str, fmt).replace(tzinfo=timezone.utc)
-            epoch_s = int(dt.timestamp())
-            return str(epoch_s * 1_000_000_000)
-        except ValueError:
-            continue
-    return None

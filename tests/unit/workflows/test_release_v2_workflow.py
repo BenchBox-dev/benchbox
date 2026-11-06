@@ -10,7 +10,6 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 WORKFLOWS = Path(__file__).resolve().parents[3] / ".github" / "workflows"
 WORKFLOW = WORKFLOWS / "release-v2.yml"
-LEGACY = WORKFLOWS / "release.yml"
 
 
 def _text() -> str:
@@ -41,13 +40,6 @@ def test_release_v2_starts_on_version_tag_push_or_dispatch_with_a_tag():
     triggers = _triggers(WORKFLOW)
     assert triggers["push"]["tags"] == ["v*"]
     assert triggers["workflow_dispatch"]["inputs"]["tag"]["required"] is True
-
-
-def test_legacy_release_is_dispatch_only_so_a_tag_push_starts_one_publisher():
-    triggers = _triggers(LEGACY)
-    assert set(triggers) == {"workflow_dispatch"}
-    assert "push" not in _triggers(LEGACY)
-    assert "push" in _triggers(WORKFLOW)
 
 
 @pytest.mark.parametrize(

@@ -344,14 +344,14 @@ class TPCHThroughputTest:
         if refresh_stream is None:
             raise RuntimeError("TPC-H refresh stream result was not initialized")
 
-        refresh_stream.start_monotonic = mono_time()
-        refresh_stream.start_time = datetime.now().isoformat()
         refresh_stream.status = "RUNNING"
         connection = None
         try:
             if self.refresh_connection_factory is None:
                 raise RuntimeError("TPC-H refresh stream requires a separate connection factory")
             connection = self.refresh_connection_factory()
+            refresh_stream.start_monotonic = mono_time()
+            refresh_stream.start_time = datetime.now().isoformat()
             deleted_lineitems = deleted_lineitems or {}
             for offset in range(num_streams):
                 if cancel_event is not None and cancel_event.is_set():

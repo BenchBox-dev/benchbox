@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Iterator
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -120,7 +121,7 @@ class InfluxDBAdapter(
             )
             return {}, 0.0, {"skipped": True, "reason": "influxdb3-python not available"}
 
-        if not hasattr(connection, "write_batch"):
+        if not hasattr(connection, "write_table"):
             self.logger.warning(
                 "Connection does not support batch writes. "
                 "Data loading requires InfluxDBConnection with influxdb3-python client."
@@ -145,18 +146,20 @@ class InfluxDBAdapter(
             table_start = time.perf_counter()
 
             try:
-                records = self._read_tsbs_csv(csv_path, config)
-
-                if records:
-                    count = connection.write_batch(
+                count = 0
+                for batch in self._iter_tsbs_batches(csv_path, config):
+                    count += connection.write_table(
                         measurement=table_name,
-                        records=records,
+                        table=batch,
                         tag_columns=config["tags"],
                         field_columns=config["fields"],
-                        timestamp_column="time",
+                        timestamp_column=config["timestamp"],
                         precision="ns",
                         batch_size=10000,
+                        float_only_fields=self._FLOAT_ONLY_FIELDS,
                     )
+
+                if count:
                     row_counts[table_name] = count
                     load_metadata["tables_loaded"].append(table_name)
                     self.logger.info(f"Loaded {count:,} rows into {table_name}")
@@ -272,52 +275,22 @@ class InfluxDBAdapter(
         }
     )
 
-    def _read_tsbs_csv(self, csv_path: Path, config: dict[str, Any]) -> list[dict[str, Any]]:
-        import csv
+    def _iter_tsbs_batches(self, csv_path: Path, config: dict[str, Any]) -> Iterator[Any]:
+        import pyarrow as pa
+        import pyarrow.csv as pacsv
 
-        records: list[dict[str, Any]] = []
-        with open(csv_path, newline="", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                record: dict[str, Any] = {}
-
-                if config["timestamp"] in row:
-                    record["time"] = self._parse_timestamp(row[config["timestamp"]])
-
-                for tag in config["tags"]:
-                    if tag in row:
-                        record[tag] = row[tag]
-
-                for field in config["fields"]:
-                    if field in row and row[field]:
-                        parsed = self._parse_field_value(field, row[field])
-                        if parsed is not None:
-                            record[field] = parsed
-
-                records.append(record)
-        return records
-
-    @staticmethod
-    def _parse_timestamp(ts_str: str):
-        from datetime import datetime
-
-        try:
-            return datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
-        except ValueError:
-            try:
-                return datetime.fromtimestamp(float(ts_str))
-            except (ValueError, OSError):
-                return None
-
-    def _parse_field_value(self, field: str, raw: str):
-        try:
-            value = float(raw)
-            if value.is_integer() and field not in self._FLOAT_ONLY_FIELDS:
-                return int(value)
-            return value
-        except ValueError:
-            self.logger.debug(f"Skipping invalid value for field '{field}': {raw}")
-            return None
+        wanted = [config["timestamp"], *config["tags"], *config["fields"]]
+        convert = pacsv.ConvertOptions(strings_can_be_null=False, null_values=[])
+        with pacsv.open_csv(csv_path, convert_options=convert) as probe:
+            present = [name for name in wanted if name and name in probe.schema.names]
+        convert = pacsv.ConvertOptions(
+            include_columns=present,
+            column_types={name: pa.string() for name in present},
+            strings_can_be_null=False,
+            null_values=[],
+        )
+        with pacsv.open_csv(csv_path, convert_options=convert) as reader:
+            yield from reader
 
     def configure_for_benchmark(self, connection: Any, benchmark_type: str) -> None:
         self.logger.debug(f"Configuring InfluxDB for benchmark type: {benchmark_type}")

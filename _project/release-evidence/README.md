@@ -10,10 +10,8 @@ Conventions:
 - The **operator** may review and commit the evidence file deliberately after
   `make uat-gate-check` exits 0 — sweeps and the gate-check never write to
   the git tree themselves.
-- `scripts/release_readiness_check.py` reports this file when it exists. It is
-  historical campaign evidence, not a release input and not a release-PR gate.
-- Like the rest of `_project/`, this directory lives on `develop` only and
-  is curated out of release branches by `make release-cut`.
+- The file is historical campaign evidence, not a release input and not a
+  release gate; `release-v2.yml` runs its own artifact-bound release UAT.
 - Each release cycle overwrites the file; history is the git log.
 
 ## Provenance binding (added 2026-08-09)
@@ -28,8 +26,7 @@ directories passed on the command line** and rejects a mismatch (edited
 artifact), an absent digest on old evidence ("regenerate evidence" HOLD),
 or `source_commit_sha='unknown'` (git failure swallowed at sweep start).
 The combined evidence (`uat-gate-summary.json`) preserves
-`stage_artifact_digests` per stage. `scripts/release_readiness_check.py`
-reports missing digests as an advisory campaign-quality issue.
+`stage_artifact_digests` per stage.
 
 **Threat model:** digests are recomputed on the operator machine, so they
 prove the committed summary matches the stage directories the operator

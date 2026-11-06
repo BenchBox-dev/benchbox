@@ -52,7 +52,7 @@ edited as part of transfer.
 ## G2 — PyPI trusted publishers (operator)
 
 On the existing PyPI project `benchbox`, add a GitHub publisher for
-`BenchBox-dev/BenchBox`, workflow `release.yml`, environment `pypi`.
+`BenchBox-dev/BenchBox`, workflow `release-v2.yml`, environment `pypi`.
 Repeat on TestPyPI for environment `test-pypi`. Keep the
 `joeharris76/BenchBox` publishers during overlap. OIDC is checked at
 publish time; the repo does not have to exist yet for an existing
@@ -60,7 +60,7 @@ project.
 
 ## G3 — Freeze and snapshot (operator)
 
-1. No `release-cut` / `v*` tag in flight; no `incident:develop-red`.
+1. No `v*` tag in flight; no `incident:develop-red`.
 2. Accept that open develop PRs move with the repo.
 3. Save **full JSON** for every ruleset and environment, including
    `github-pages` `deployment-branch-policies` (live: branch `release`

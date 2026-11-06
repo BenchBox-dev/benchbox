@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -507,6 +508,7 @@ class DuckDBAdapter(PlatformAdapter):
     driver_isolation_capability = DriverIsolationCapability.SUPPORTED
     supports_external_tables = True
     supports_refresh_functions = True
+    supports_native_refresh_ingest = True
     plan_capture_phase_eligible = True
     physical_identifier_case = "lower"
     index_ddl_unsupported_reason: str | None = None
@@ -1179,6 +1181,33 @@ class DuckDBAdapter(PlatformAdapter):
 
     def get_target_dialect(self) -> str:
         return "duckdb"
+
+    def ingest_refresh_file(
+        self,
+        connection: Any,
+        table_name: str,
+        columns: Sequence[tuple[str, str]],
+        path: Path,
+    ) -> int:
+        typed_columns = [
+            f"'{name}': '{sql_type if sql_type in {'DECIMAL(15,2)', 'INTEGER', 'DATE'} else 'VARCHAR'}'"
+            for name, sql_type in columns
+        ]
+        with path.open(encoding="utf-8") as source:
+            has_trailing_delimiter = source.readline().rstrip("\r\n").endswith("|")
+        if has_trailing_delimiter:
+            typed_columns.append("'_trailing_delimiter': 'VARCHAR'")
+        column_names = ", ".join(name for name, _ in columns)
+        literal_path = str(path).replace("'", "''")
+        statement = (
+            f"INSERT INTO {table_name} ({column_names}) SELECT {column_names} FROM read_csv('{literal_path}', "
+            f"delim='|', header=false, quote='\"', escape='\"', nullstr='__BENCHBOX_NO_NULL__', "
+            f"auto_detect=false, columns={{{', '.join(typed_columns)}}})"
+        )
+        row = connection.execute(statement).fetchone()
+        if row is None:
+            raise RuntimeError(f"DuckDB did not report the rows ingested into {table_name}")
+        return int(row[0])
 
     def supports_tuning_type(self, tuning_type) -> bool:
         try:

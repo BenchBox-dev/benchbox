@@ -24,7 +24,7 @@ def _stream(stream_id: int, start: float, end: float, start_wall: str, end_wall:
     )
 
 
-def test_throughput_duration_includes_refresh_precondition_and_postcondition_checks() -> None:
+def test_total_time_spans_refresh_stream_window_when_it_brackets_the_query_streams() -> None:
     result = ThroughputResult(
         start_time="",
         end_time="",
@@ -120,3 +120,68 @@ def test_failed_refresh_withholds_throughput_without_discarding_refresh_evidence
     assert result.refresh_stream.pairs == pairs
     assert result.stream_results[0].queries_executed == 22
     assert result.stream_results[1].queries_executed == 22
+
+
+def _refresh_test(factory):
+    from benchbox.core.tpch.throughput_test import TPCHThroughputTest
+
+    return TPCHThroughputTest(
+        benchmark=object(),
+        connection_factory=lambda: None,
+        scale_factor=0.01,
+        num_streams=1,
+        refresh_enabled=True,
+        refresh_connection_factory=factory,
+    )
+
+
+def _run_refresh_stream(test):
+    from benchbox.core.tpch.throughput_test import TPCHRefreshStreamResult
+
+    stream = TPCHRefreshStreamResult(first_set=2)
+    return test._execute_refresh_stream({}, 0, stream)
+
+
+def test_refresh_stream_window_starts_after_refresh_connection_opens() -> None:
+    import time
+
+    from benchbox.utils.clock import mono_time
+
+    opened_at = []
+
+    def factory():
+        time.sleep(0.2)
+        opened_at.append(mono_time())
+        return SimpleNamespace(close=lambda: None)
+
+    stream = _run_refresh_stream(_refresh_test(factory))
+
+    assert stream.status == "COMPLETED"
+    assert stream.start_monotonic >= opened_at[0]
+    assert stream.end_monotonic - stream.start_monotonic < 0.1
+
+
+def test_throughput_total_time_excludes_refresh_connection_setup() -> None:
+    import time
+
+    def factory():
+        time.sleep(0.2)
+        return SimpleNamespace(close=lambda: None)
+
+    refresh = _run_refresh_stream(_refresh_test(factory))
+    base = refresh.start_monotonic
+    result = ThroughputResult(
+        start_time="",
+        end_time="",
+        total_time=0,
+        throughput_at_size=0,
+        streams_executed=1,
+        streams_successful=1,
+        stream_results=[_stream(1, base + 0.01, base + 0.02, "query-start", "query-end")],
+    )
+    result.refresh_stream = refresh
+
+    success = StreamRunner.compute_metrics(result, SimpleNamespace(num_streams=1, scale_factor=1.0), base - 0.2)
+
+    assert success is True
+    assert result.total_time < 0.1

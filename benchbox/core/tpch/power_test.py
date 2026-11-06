@@ -121,6 +121,7 @@ class TPCHPowerTest:
         self.benchmark = benchmark
         self.connection = connection
         self.dialect = dialect
+        self._pregenerated_queries: dict[int, str] = {}
         self.refresh_update_set = refresh_update_set
         self.refresh_connection_factory = refresh_connection_factory
         if refresh_update_set is not None and refresh_connection_factory is None:
@@ -231,6 +232,7 @@ class TPCHPowerTest:
             if self.config.verbose:
                 self.logger.info(f"Using TPC-H stream {stream_id} permutation: {query_permutation}")
 
+        self._pregenerated_queries = {}
         self._preflight_validate_generation(query_permutation)
 
         refresh_connection = None
@@ -325,7 +327,7 @@ class TPCHPowerTest:
 
     def _run_queries(self, query_permutation: list[int], result: TPCHPowerTestResult) -> None:
         for position, query_id in enumerate(query_permutation):
-            query_start = mono_time()
+            query_start: float | None = None
             query_result = {
                 "query_id": query_id,
                 "position": position + 1,
@@ -341,15 +343,12 @@ class TPCHPowerTest:
                     self.logger.info(f"Executing Query {query_id} (position {position + 1}/{len(query_permutation)})")
 
                 stream_seed = power_stream_seed(self.config.seed, self.config.stream_id)
-                query_text = self.benchmark.get_query(
-                    query_id,
-                    seed=stream_seed,
-                    stream_id=self.config.stream_id,
-                    scale_factor=self.config.scale_factor,
-                    dialect=self.dialect,
-                )
+                query_text = self._pregenerated_queries.get(query_id)
+                if query_text is None:
+                    query_text = self._generate_query(query_id, stream_seed)
 
                 label = f"Position_{position + 1}_Query_{query_id}"
+                query_start = mono_time()
                 try:
                     if hasattr(self.connection, "set_query_context"):
                         self.connection.set_query_context(query_id, stream_id=self.config.stream_id)
@@ -393,7 +392,7 @@ class TPCHPowerTest:
                     self.logger.info(f"Query {query_id} completed in {execution_time:.3f}s")
 
             except Exception as e:
-                execution_time = elapsed_seconds(query_start)
+                execution_time = elapsed_seconds(query_start) if query_start is not None else 0.0
                 query_result.update(
                     {
                         "execution_time_seconds": execution_time,
@@ -500,18 +499,22 @@ class TPCHPowerTest:
                 self.logger.error(f"Failed to get query {query_id}: {e}")
         return queries
 
+    def _generate_query(self, query_id: int, stream_seed: int) -> str:
+        return self.benchmark.get_query(
+            query_id,
+            seed=stream_seed,
+            stream_id=self.config.stream_id,
+            scale_factor=self.config.scale_factor,
+            dialect=self.dialect,
+        )
+
     def _preflight_validate_generation(self, query_permutation: list[int]) -> None:
         failures = []
+        self._pregenerated_queries = {}
         stream_seed = power_stream_seed(self.config.seed, self.config.stream_id)
         for position, query_id in enumerate(query_permutation):
             try:
-                _ = self.benchmark.get_query(
-                    query_id,
-                    seed=stream_seed,
-                    stream_id=self.config.stream_id,
-                    scale_factor=self.config.scale_factor,
-                    dialect=self.dialect,
-                )
+                self._pregenerated_queries[query_id] = self._generate_query(query_id, stream_seed)
             except Exception as e:
                 failures.append(f"{query_id}: {e}")
         if failures:

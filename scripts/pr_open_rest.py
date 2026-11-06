@@ -15,7 +15,7 @@ BASE_REF = f"origin/{BASE_BRANCH}"
 REPOSITORY_PATTERN = r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+"
 RECORD_SEPARATOR = "\x1e"
 FIELD_SEPARATOR = "\x1f"
-INTEGRATION_BRANCHES = frozenset({"develop", "release", "published-results"})
+INTEGRATION_BRANCHES = frozenset({"develop", "published-results"})
 MAX_STACK_DEPTH = 3
 RECORD_MARKER = re.compile(r"<!-- oracle-local-record: v1 [A-Za-z0-9_-]+ -->")
 

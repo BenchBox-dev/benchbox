@@ -254,6 +254,113 @@ def test_member_check_records_nothing_when_preflight_or_review_fails(world: Worl
     assert bi._read_check(member, head, git(integration, "rev-parse", "HEAD")) is None
 
 
+@pytest.mark.parametrize("action", ["check", "land"])
+def test_member_steps_refuse_primary_clone_edits_inside_the_member_scope(world: World, action: str) -> None:
+    world.start()
+    member = world.member("zeta")
+    world.commit(member, {"src/a.py": "member\n"})
+    if action == "land":
+        world.check(member, ["tests/test_zeta.py"])
+    (world.primary / "src" / "a.py").write_text("stray edit\n")
+    (world.primary / "src" / "new.py").write_text("stray file\n")
+    before = world.head()
+
+    with _raises(r"primary clone .* has uncommitted changes in member 'zeta'.s scope: src/a.py, src/new.py"):
+        world.check(member, ["tests/test_zeta.py"]) if action == "check" else world.land("zeta")
+
+    assert world.head() == before
+
+
+def test_member_check_sees_a_primary_clone_rename_out_of_the_member_scope(world: World) -> None:
+    world.start()
+    member = world.member("zeta")
+    world.commit(member, {"src/a.py": "member\n"})
+    (world.primary / "elsewhere").mkdir()
+    git(world.primary, "mv", "src/a.py", "elsewhere/a.py")
+
+    with _raises(r"member 'zeta'.s scope: src/a.py"):
+        world.check(member, ["tests/test_zeta.py"])
+
+
+def test_land_refuses_an_offline_cached_session_history(world: World) -> None:
+    world.start()
+    world.deliver("zeta", {"src/a.py": "member\n"})
+    world.tracker.sessions_stale = True
+    before = world.head()
+
+    with _raises("tracker read is stale"):
+        world.land("zeta")
+
+    assert world.head() == before
+
+
+def test_member_steps_ignore_primary_clone_edits_outside_every_scope(world: World) -> None:
+    world.start()
+    member = world.member("zeta")
+    world.commit(member, {"src/a.py": "member\n"})
+    (world.primary / "owner-notes.txt").write_text("unrelated\n")
+
+    world.check(member, ["tests/test_zeta.py"])
+    result = world.land("zeta")
+
+    assert result["status"] == "merged"
+
+
+def _session(op: str, op_id: str, at: str) -> dict:
+    return {"op": op, "op_id": op_id, "at": at, "actor": "mcp:omp-coding-agent:joe@host:shared"}
+
+
+def test_land_refuses_member_tracker_writes_until_the_leader_accepts_them(world: World) -> None:
+    world.start()
+    world.deliver("zeta", {"src/a.py": "member\n"})
+    world.tracker.session_page = 1
+    world.tracker.item_sessions["zeta"] = [
+        _session("update", "metadata", "2000-01-01T00:00:00Z"),
+        _session("take", "leader-take", "2999-01-01T00:00:00Z"),
+        _session("update", "member-note", "2999-01-01T00:00:01Z"),
+        _session("prepare", "member-prepare", "2999-01-01T00:00:02Z"),
+    ]
+    before = world.head()
+
+    with _raises("tracker writes between .* and its first landing .*member-note.*member-prepare") as raised:
+        world.land("zeta")
+    assert "metadata" not in str(raised.value) and "leader-take" not in str(raised.value)
+    assert world.head() == before
+    with _raises("member-prepare"):
+        world.land("zeta", accepted_writes=frozenset({"member-note"}))
+
+    result = world.land("zeta", accepted_writes=frozenset({"member-note", "member-prepare"}))
+
+    assert result["status"] == "merged"
+    ledger = bi.load_ledger(world.integration, BATCH)
+    assert ledger["landings"]["zeta"]["accepted_tracker_writes"] == ["member-note", "member-prepare"]
+    assert world.land("zeta")["status"] == "already-merged"
+
+
+def test_land_refuses_a_member_write_in_the_same_second_as_the_worktree_creation(world: World) -> None:
+    world.start()
+    member = world.deliver("zeta", {"src/a.py": "member\n"})
+    created = git(member, "config", "--worktree", "--get", f"{bi.CONFIG_PREFIX}.created-at")
+    world.tracker.item_sessions["zeta"] = [_session("update", "same-second", created)]
+
+    with _raises("same-second"):
+        world.land("zeta")
+
+
+def test_land_checks_a_member_without_a_creation_time_from_the_batch_start(world: World) -> None:
+    world.start()
+    member = world.deliver("zeta", {"src/a.py": "member\n"})
+    git(member, "config", "--worktree", "--unset", f"{bi.CONFIG_PREFIX}.created-at")
+    world.tracker.item_sessions["zeta"] = [_session("update", "leader-metadata", "2000-01-01T00:00:05Z")]
+
+    with _raises("between 2000-01-01T00:00:00Z and its first landing .*leader-metadata"):
+        world.land("zeta")
+    result = world.land("zeta", accepted_writes=frozenset({"leader-metadata"}))
+
+    assert result["status"] == "merged"
+    assert any("records no creation time" in warning for warning in result["warnings"])
+
+
 def test_member_check_uses_an_overridden_preflight_command(world: World) -> None:
     world.start()
     member = world.member("zeta")
@@ -1127,7 +1234,7 @@ def test_cli_prints_the_register_payload_for_start(world: World, capsys: pytest.
     [
         (
             "batch-land",
-            {"MEMBER": '$(touch pwned) `touch pwned` "; touch pwned; "'},
+            {"MEMBER": '$(touch pwned) `touch pwned` "; touch pwned; "', "ACCEPT_WRITES": "$(shell touch pwned)x"},
         ),
         ("batch-advance", {"REASON": 'x"; touch pwned; echo "'}),
         ("batch-member-create", {"MEMBER": "m`touch pwned`", "WORKTREE_PATH": "$(touch pwned)"}),

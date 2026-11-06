@@ -18,7 +18,7 @@ JOB = "ci-paths"
 STEP_NAME = "Check base branch"
 TEXT_EDIT_SKIP = "${{ !(github.event.action == 'edited' && !github.event.changes.base) }}"
 
-INTEGRATION_BRANCHES = {"develop", "release", "published-results"}
+INTEGRATION_BRANCHES = {"develop", "published-results"}
 
 
 def _triggers(workflow: dict[str, Any]) -> dict[str, Any]:
