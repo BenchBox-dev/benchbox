@@ -15,6 +15,7 @@
     "docs/internal/nightly-perf-gate-review.md",
     "https://github.com/BenchBox-dev/BenchBox/issues/2778"
   ],
+  "not_before": "2026-11-13T00:00:00Z",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a561db75579ad3167de9da38",
@@ -31,6 +32,14 @@
       "op": "update",
       "op_id": "3fe11420ffdc4891803bf388071a3947",
       "session_id": "ada67604a2174486ada6b7b9a8c4f586"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-06T05:08:13Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b1cc3892024542889670200465f536ae",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
 }
