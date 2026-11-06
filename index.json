@@ -4602,10 +4602,15 @@
       "title": "Deliver canonical tracker and batch skill support for prepared feature work"
     },
     "batch-primary-clone-dirty-guard-20261104": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-07T05:58:53Z",
+        "generation": "c3bcaac63aab49f3894ed782ddac71af",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Refuse batch member checks and landings when the primary clone has edits in the member scope"
     },
     "batch-remediation-benchbox-20261102": {
