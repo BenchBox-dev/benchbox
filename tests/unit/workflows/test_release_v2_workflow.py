@@ -10,6 +10,8 @@ from pathlib import Path
 import pytest
 import yaml
 
+from tests.utilities.posix_shell import run_posix_shell, skip_without_posix_shell
+
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 WORKFLOWS = Path(__file__).resolve().parents[3] / ".github" / "workflows"
@@ -449,6 +451,75 @@ def test_every_uat_job_frees_runner_disk_through_the_shared_environment_action()
     for name in ("uat-stage1", "uat-stage2", "uat-stage3"):
         uses = [step.get("uses") for step in _jobs()[name]["steps"]]
         assert "./.github/actions/release-uat-env" in uses
+
+
+RELEASE_STEP = "Create the GitHub release from the admitted distributions"
+
+
+def _run_release_step(tmp_path: Path, branch: str, *, existing: bool):
+    skip_without_posix_shell()
+    step = next(s for s in _jobs()["github-release"]["steps"] if s.get("name") == RELEASE_STEP)
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    log = tmp_path / "gh.log"
+    (bin_dir / "python3").write_text("#!/bin/sh\nexit 0\n")
+    (bin_dir / "gh").write_text(
+        f'#!/bin/sh\nif [ "$1 $2" = "release view" ]; then exit {0 if existing else 1}; fi\necho "$*" >> "{log}"\n'
+    )
+    for stub in bin_dir.iterdir():
+        stub.chmod(0o755)
+    (tmp_path / "staged").mkdir()
+    (tmp_path / "staged" / "benchbox-0.5.1-py3-none-any.whl").write_text("")
+    result = run_posix_shell(
+        step["run"],
+        cwd=tmp_path,
+        env={
+            "PATH": f"{bin_dir}:/usr/bin:/bin",
+            "RELEASE_TAG": "v0.5.1",
+            "HEAD_SHA": "a" * 40,
+            "RELEASE_BRANCH": branch,
+            "GH_TOKEN": "unused",
+        },
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return result, log.read_text(encoding="utf-8") if log.exists() else ""
+
+
+def test_admission_reports_the_release_line_to_the_github_release_job():
+    admit = _jobs()["admit"]
+    assert admit["outputs"]["branch"] == "${{ steps.admit.outputs.branch }}"
+    admit_step = next(s for s in admit["steps"] if s.get("id") == "admit")
+    assert "release_artifact_consumer.py line" in admit_step["run"]
+    assert 'echo "branch=$branch" >> "$GITHUB_OUTPUT"' in admit_step["run"]
+    release_env = next(s for s in _jobs()["github-release"]["steps"] if s.get("name") == RELEASE_STEP)["env"]
+    assert release_env["RELEASE_BRANCH"] == "${{ needs.admit.outputs.branch }}"
+
+
+@pytest.mark.parametrize("existing", [False, True])
+def test_a_maintenance_release_is_never_marked_latest(tmp_path, existing):
+    result, calls = _run_release_step(tmp_path, "release/0.5.x", existing=existing)
+    assert result.returncode == 0, result.stdout + result.stderr
+    verb = "edit" if existing else "create"
+    (call,) = [line for line in calls.splitlines() if line.startswith(f"release {verb}")]
+    assert call.endswith("--latest=false")
+
+
+@pytest.mark.parametrize("existing", [False, True])
+def test_a_develop_release_keeps_the_default_latest_behavior(tmp_path, existing):
+    result, calls = _run_release_step(tmp_path, "develop", existing=existing)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "--latest" not in calls
+    assert f"release {'edit' if existing else 'create'} v0.5.1" in calls
+
+
+@pytest.mark.parametrize("branch", ["", "main", "feature/x"])
+def test_an_unreported_release_line_publishes_no_github_release(tmp_path, branch):
+    result, calls = _run_release_step(tmp_path, branch, existing=False)
+    assert result.returncode != 0
+    assert "no release line" in result.stdout
+    assert calls == ""
 
 
 OUTCOME_JOBS = ("admit", "install-matrix", "release-uat", "publish", "github-release")

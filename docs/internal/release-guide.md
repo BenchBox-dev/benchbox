@@ -1,10 +1,12 @@
 # Cutting a BenchBox release
 
-BenchBox releases from a single long-lived branch, `develop`, in
-`BenchBox-dev/BenchBox`. A release is an annotated `vX.Y.Z` tag on a `develop`
-commit whose `trunk.yml` push run is green. Pushing the tag starts
-`.github/workflows/release-v2.yml`, which admits the artifacts that run built,
-verifies them, publishes them with attestations, and creates the GitHub release.
+BenchBox releases from one long-lived branch, `develop`, in
+`BenchBox-dev/BenchBox`, and from on-demand `release/X.Y.x` maintenance
+lines (see "Maintenance releases"). A release is an annotated `vX.Y.Z` tag on a
+commit of one of those branches whose `trunk.yml` push run is green. Pushing the
+tag starts `.github/workflows/release-v2.yml`, which admits the artifacts that
+run built, verifies them, publishes them with attestations, and creates the
+GitHub release.
 This guide is the maintainer runbook. The artifact, admission, and publishing
 contract lives in [release-artifacts.md](release-artifacts.md); this guide does
 not repeat it.
@@ -47,6 +49,81 @@ make release-check VERSION=X.Y.Z RELEASE_PRE_TAG=1
 
 Choose an unused version and resolve any existing `vX.Y.Z` tag before starting.
 Never retag or force-push a published tag.
+
+## Maintenance releases
+
+A maintenance line ships a fix on an older minor without shipping everything on
+`develop`, for example a security fix as `0.5.1` after `0.6.0` is out. Lines
+are on demand: a `release/X.Y.x` branch exists only while that minor is
+supported, and only the owner creates or deletes one (rulesets
+`release-branches` and `release-branch-lifecycle` in
+[repo-admin-settings.md](repo-admin-settings.md)).
+
+Admission (`scripts/release_artifact_consumer.py`) accepts a tag only when its
+commit is on exactly one protected line, `develop` or the `release/X.Y.x`
+branch for the tag's `X.Y`, and that exact commit has a successful `trunk.yml`
+push run on that branch with its `dist-artifact`. It refuses:
+
+- a `vX.Y.Z` tag on a `develop` commit while `release/X.Y.x` exists;
+- a tag for another minor on a maintenance branch (`v0.6.1` on `release/0.5.x`);
+- a commit on both lines, or on neither;
+- a commit whose trunk run is missing, failed, or ran on another branch.
+
+Prerequisite: `trunk.yml` does not yet run on pushes to `release/**`, and
+`oracle-gate` does not yet cover pull requests into a maintenance line. Both
+arrive with a later change (multi-base support in the review gate, plus a
+`release/**` push trigger for `trunk.yml`). Until it lands, admission refuses
+every maintenance tag because no trunk run exists on the branch, and a pull
+request into a maintenance line cannot report `oracle-gate`. A maintenance
+release therefore needs that change first; do not create a line before then.
+See the gate coverage note in [repo-admin-settings.md](repo-admin-settings.md).
+
+The procedure:
+
+1. Once, delete the legacy `release` branch if it still exists: Git cannot hold
+   `release` and `release/X.Y.x` together. Confirm both rulesets are live with
+   `scripts/ruleset_drift_check.py`.
+2. The owner creates the branch from the `vX.Y.0` tag commit, or from the newest
+   `vX.Y.Z` tag of that minor:
+   `git push origin "vX.Y.0^{commit}:refs/heads/release/X.Y.x"`.
+3. The branch starts with the workflows and release scripts of that tag. If the
+   tag predates maintenance-line support, the first pull request into the branch
+   brings `.github/workflows/trunk.yml`, `ci.yml`, `release-v2.yml` and
+   `scripts/release_artifact_consumer.py` (and whatever they need) from
+   `develop`; `ci.yml` accepts a `release/X.Y.x` base.
+4. Land the fix by pull request into `release/X.Y.x`; the pull request
+   squash-merges like any other. Land the same fix on `develop` through its own
+   pull request when `develop` has the defect too. Add a `changelog.d` fragment
+   on each branch.
+5. Prepare the release on the branch, as for `develop`: from a worktree on
+   `release/X.Y.x`, `make release-prep VERSION=X.Y.Z` and
+   `make release-check VERSION=X.Y.Z RELEASE_PRE_TAG=1`, committed as one pull
+   request into the branch. The lock-revision baseline is the newest final tag
+   older than `X.Y.Z`, so `0.5.1` compares with `v0.5.0` even when `v0.6.0`
+   exists.
+6. Wait for the `trunk.yml` push run of the merged commit on `release/X.Y.x`:
+   `gh run list --workflow trunk.yml --branch release/X.Y.x --event push`.
+   `release_flow.py check --releasable-commit` and
+   `scripts/release_releasable.py` look at `develop` only; admission is the
+   check for a maintenance commit.
+7. Tag the commit with an annotated tag and push it. Rehearse with
+   `vX.Y.ZrcN` first: it publishes to TestPyPI from the same checks. For the
+   final tag, release UAT reuses the newest `vX.Y.ZrcN` evidence of the same
+   version when every reuse condition holds, and otherwise runs the full
+   three-stage UAT; a maintenance line has no other UAT evidence to fall back
+   on. The GitHub release is created with `--latest=false`, so "Latest" keeps
+   pointing at the newest minor, and PyPI resolves `pip install benchbox` by
+   version, not by upload time.
+8. Add the release's changelog section to `develop`. Open a pull request into
+   `develop` that copies the `## [X.Y.Z] - <date>` section (print it from the
+   tag with `python scripts/generate_changelog_entry.py --version X.Y.Z
+   --print-section`) into `CHANGELOG.md` below every newer section and above
+   the previous release of that minor, and adds
+   `[X.Y.Z]: https://github.com/BenchBox-dev/BenchBox/compare/vX.Y.(Z-1)...vX.Y.Z`
+   to the link list in the same position. Leave `[Unreleased]` alone. The pull
+   request is a `docs:` change and needs no fragment.
+9. When the line is no longer supported, the owner deletes the branch:
+   `git push origin --delete release/X.Y.x`. The tags stay.
 
 ## Release canary and ruleset drift
 
