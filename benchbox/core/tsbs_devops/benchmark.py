@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Union
 
 from benchbox.base import BaseBenchmark, GeneratorOutputDirMixin
+from benchbox.core.benchmark_mixins import duckdb_insert_from_csv
 from benchbox.core.query_catalog_base import TranslatableQueryMixin
 from benchbox.core.tsbs_devops.generator import TSBSDevOpsDataGenerator
 from benchbox.core.tsbs_devops.queries import TSBSDevOpsQueryManager
@@ -224,6 +225,10 @@ class TSBSDevOpsBenchmark(GeneratorOutputDirMixin, TranslatableQueryMixin, BaseB
         table_schema = TSBS_DEVOPS_SCHEMA[table_name]
         column_names = list(table_schema["columns"].keys())
         num_columns = len(column_names)
+
+        copied = duckdb_insert_from_csv(connection, table_name, data_file, num_columns, delimiter=",", skip_header=True)
+        if copied is not None:
+            return copied
 
         placeholders = ", ".join(["?" for _ in range(num_columns)])
         insert_sql = f"INSERT INTO {table_name} VALUES ({placeholders})"

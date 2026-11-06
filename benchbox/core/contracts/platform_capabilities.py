@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -57,6 +58,29 @@ class ExternalTableLoader(Protocol):
         connection: Any,
         data_dir: Any,
     ) -> tuple[dict[str, int], float, dict[str, Any] | None]: ...
+
+
+class TPCHRefreshIngester(Protocol):
+    supports_native_refresh_ingest: bool
+
+    def ingest_refresh_file(
+        self,
+        connection: Any,
+        table_name: str,
+        columns: Sequence[tuple[str, str]],
+        path: Path,
+    ) -> int: ...
+
+
+def resolve_refresh_ingester(adapter: Any) -> TPCHRefreshIngester | None:
+    if adapter is None:
+        return None
+    declared = vars(type(adapter)).get("supports_native_refresh_ingest")
+    if declared is not True:
+        return None
+    if not callable(getattr(adapter, "ingest_refresh_file", None)):
+        return None
+    return adapter
 
 
 class DataFrameQueryRuntime(Protocol):

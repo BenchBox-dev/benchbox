@@ -380,3 +380,111 @@ class TestFacadeMixins:
 
         assert benchmark.get_query("Q2", dialect="sqlite") == "select 2"
         benchmark._impl.get_query.assert_called_once_with("Q2", dialect="sqlite")
+
+
+def _reference_rows(
+    path: Path, delimiter: str, num_columns: int, null_flags: list[bool], pad: bool, skip_header: bool
+) -> list:
+    import csv
+
+    rows = []
+    with open(path, newline="", encoding="utf-8") as handle:
+        reader = csv.reader(handle, delimiter=delimiter)
+        if skip_header:
+            next(reader, None)
+        for row in reader:
+            if pad:
+                row = (row + [None] * num_columns)[:num_columns]
+            if len(row) != num_columns:
+                continue
+            rows.append([None if flag and value == "" else value for value, flag in zip(row, null_flags)])
+    return rows
+
+
+def _table_fingerprint(connection: Any, table: str, num_columns: int) -> tuple:
+    count = connection.execute(f"SELECT count(*) FROM {table}").fetchone()[0]
+    sums = [
+        connection.execute(
+            f"SELECT coalesce(sum(hash(c{i})), 0), count(c{i}) FROM (SELECT c{i}::VARCHAR AS c{i} FROM {table})"
+        ).fetchone()
+        for i in range(num_columns)
+    ]
+    return count, sums
+
+
+class TestDuckDBInsertFromCsv:
+    @pytest.mark.parametrize(
+        ("delimiter", "header", "null_flags", "trailing"),
+        [
+            ("|", False, [False] * 4, False),
+            (",", True, [False, False, False, False], False),
+            ("|", False, [True] * 4, True),
+            ("|", False, [False, True, True, False], False),
+        ],
+    )
+    def test_matches_python_row_loop(self, tmp_path: Path, delimiter, header, null_flags, trailing):
+        duckdb = pytest.importorskip("duckdb")
+        from benchbox.core.benchmark_mixins import duckdb_insert_from_csv
+
+        end = delimiter if trailing else ""
+        lines = ["a,b,c,d"] if header else []
+        for i in range(500):
+            quoted = f'"q{delimiter}{i}"' if i % 7 == 0 else f"v{i}"
+            second = "" if i % 5 == 0 else str(i * 3)
+            third = "" if i % 11 == 0 else f"{i}.25"
+            lines.append(delimiter.join([str(i), quoted, second, third]) + end)
+        lines.append(delimiter.join(["short", "row"]) + end)
+        if not trailing:
+            lines.append(delimiter.join(["1", "2", "3", "4", "5", "6"]))
+        path = tmp_path / "data.dat"
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+        connection = duckdb.connect()
+        connection.execute("CREATE TABLE fast (c0 VARCHAR, c1 VARCHAR, c2 VARCHAR, c3 VARCHAR)")
+        connection.execute("CREATE TABLE ref (c0 VARCHAR, c1 VARCHAR, c2 VARCHAR, c3 VARCHAR)")
+
+        loaded = duckdb_insert_from_csv(
+            connection,
+            "fast",
+            path,
+            4,
+            delimiter=delimiter,
+            skip_header=header,
+            null_if_empty=null_flags,
+            trailing_delimiter=trailing,
+            skip_malformed=not trailing,
+        )
+        expected = _reference_rows(path, delimiter, 4, null_flags, trailing, header)
+        connection.executemany("INSERT INTO ref VALUES (?, ?, ?, ?)", expected)
+
+        assert loaded == len(expected) == (501 if trailing else 500)
+        assert _table_fingerprint(connection, "fast", 4) == _table_fingerprint(connection, "ref", 4)
+
+    def test_returns_none_for_non_duckdb_connection(self, tmp_path: Path):
+        from benchbox.core.benchmark_mixins import duckdb_insert_from_csv
+
+        assert duckdb_insert_from_csv(Mock(), "t", tmp_path / "x.csv", 1) is None
+
+    def test_strict_mode_raises_on_malformed_rows(self, tmp_path: Path):
+        duckdb = pytest.importorskip("duckdb")
+        from benchbox.core.benchmark_mixins import duckdb_insert_from_csv
+
+        path = tmp_path / "bad.dat"
+        path.write_text("1|2\n3\n", encoding="utf-8")
+        connection = duckdb.connect()
+        connection.execute("CREATE TABLE t (a VARCHAR, b VARCHAR)")
+
+        with pytest.raises(duckdb.Error):
+            duckdb_insert_from_csv(connection, "t", path, 2, skip_malformed=False)
+
+    def test_padding_mode_raises_instead_of_dropping_overlong_rows(self, tmp_path: Path):
+        duckdb = pytest.importorskip("duckdb")
+        from benchbox.core.benchmark_mixins import duckdb_insert_from_csv
+
+        path = tmp_path / "long.dat"
+        path.write_text("1|2|\n1|2|3|4|\n", encoding="utf-8")
+        connection = duckdb.connect()
+        connection.execute("CREATE TABLE t (a VARCHAR, b VARCHAR)")
+
+        with pytest.raises(duckdb.Error):
+            duckdb_insert_from_csv(connection, "t", path, 2, trailing_delimiter=True, skip_malformed=False)

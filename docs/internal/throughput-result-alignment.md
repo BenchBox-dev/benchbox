@@ -48,6 +48,12 @@ the first stream to the completion of the last query of the last stream.
 After `compute_metrics()` the throughput phase `start_time`, `end_time` and
 `duration_ms` all describe that same interval.
 
+The TPC-H refresh stream follows the same rule: its `start_monotonic` and
+`start_time` are taken after the refresh connection factory returns, and its
+`end_monotonic` and `end_time` are taken before the connection is closed.
+The refresh stream bounds are part of the Ts span, so refresh connection
+setup no longer counts toward Total Test Time.
+
 **Outcome:** `ThroughputStreamResult` in `core.throughput.result` replaces
 both. The existing names become aliases in their respective modules for
 backward compatibility:

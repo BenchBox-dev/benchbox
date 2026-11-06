@@ -3360,6 +3360,7 @@ class TestExceptionPathsForThroughputAndMaintenance:
         ("module_name", "class_name", "expected"),
         [
             ("benchbox.platforms.duckdb", "DuckDBAdapter", True),
+            ("benchbox.platforms.ducklake", "DuckLakeAdapter", True),
             ("benchbox.platforms.sqlite", "SQLiteAdapter", True),
             ("benchbox.platforms.postgresql", "PostgreSQLAdapter", True),
             ("benchbox.platforms.singlestore", "SingleStoreAdapter", True),
