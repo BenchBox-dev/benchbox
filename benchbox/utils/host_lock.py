@@ -161,9 +161,10 @@ def _start_run(path: Path, env: Mapping[str, str]) -> _Run | None:
     root = _valid_run_id(env.get(ROOT_RUN_ID_ENV)) or parent or run_id
     events_env = dict(env)
     explicit_file = events_env.get(RUNS_FILE_ENV, "").strip()
-    real_default_file = default_lock_path().resolve().parent / RUNS_FILE_NAME
-    is_custom_lock = path.resolve().parent != default_lock_path().resolve().parent
-    if not explicit_file or (is_custom_lock and Path(explicit_file).resolve() == real_default_file):
+    lock_parent = path.resolve().parent
+    if not explicit_file or (
+        Path(explicit_file).name == RUNS_FILE_NAME and Path(explicit_file).resolve().parent != lock_parent
+    ):
         events_env[RUNS_FILE_ENV] = str(path.parent / RUNS_FILE_NAME)
     return _Run(run_id, parent, root, events_env, _now())
 

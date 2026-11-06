@@ -589,9 +589,7 @@ def test_the_watchdog_launch_receives_the_run_identity(
 def test_custom_lock_dir_does_not_pollute_outer_runs_file(
     lock_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    fake_default_lock = tmp_path / "default_home" / ".benchbox" / hl.LOCK_NAME
-    monkeypatch.setattr(hl, "default_lock_path", lambda: fake_default_lock)
-    outer_file = fake_default_lock.parent / hl.RUNS_FILE_NAME
+    outer_file = tmp_path / "outer" / hl.RUNS_FILE_NAME
     outer_file.parent.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv(hl.RUNS_FILE_ENV, str(outer_file))
     handle = hl.acquire(lock_dir / hl.LOCK_NAME, wait_seconds=0, phase="isolated")
@@ -600,7 +598,7 @@ def test_custom_lock_dir_does_not_pollute_outer_runs_file(
     finally:
         handle.release()
     assert not outer_file.exists()
-    assert (lock_dir / "heavy-runs.jsonl").exists()
+    assert (lock_dir / hl.RUNS_FILE_NAME).exists()
 
 
 def test_cli_admission_refusal_is_recorded_as_admission_refused(
