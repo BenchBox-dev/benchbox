@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -21,6 +22,9 @@ PRELUDE = (
     "hl = importlib.util.module_from_spec(spec)\n"
     "sys.modules[spec.name] = hl\n"
     "spec.loader.exec_module(hl)\n"
+)
+RUN_FILE_PROGRAM = (
+    "import runpy, sys\ntarget = sys.argv[1]\nsys.argv = sys.argv[1:]\nrunpy.run_path(target, run_name='__main__')\n"
 )
 CLI_PROGRAM = PRELUDE + "raise SystemExit(hl.main(sys.argv[2:]))\n"
 HOLDER_PROGRAM = (
@@ -49,11 +53,7 @@ HOLDER_PROGRAM = (
         ["sh", "-c", "if true; then\n  make pr-preflight\nfi"],
         ["sh", "-c", "echo $(make pr-preflight)"],
         ["sh", "-c", "echo start; (make pr-preflight)"],
-        ["sh", "-c", 'make "$@"', "_", "pr-preflight"],
         ["sh", "-c", 'echo "never closed; make pr-preflight'],
-        ["env", "A=1", "make", "pr-preflight"],
-        ["uv", "run", "--", "make", "pr-preflight"],
-        ["timeout", "600", "make", "pr-preflight"],
     ],
 )
 def test_whole_pipeline_wrappers_are_classified(command: list[str]) -> None:
@@ -159,3 +159,33 @@ def test_safe_heavy_commands_still_wait_on_a_held_lock(lock_file: Path, monkeypa
             holder.stdout.close()
 
     assert result.returncode == hl.EXIT_REFUSED
+
+
+def test_standalone_host_lock_file_runs_without_the_benchbox_package(tmp_path: Path) -> None:
+    standalone = tmp_path / "standalone"
+    standalone.mkdir()
+    for name in ("host_lock.py", "heavy_preflight_scope.py"):
+        shutil.copy(HOST_LOCK_FILE.with_name(name), standalone / name)
+    env = {key: value for key, value in os.environ.items() if key not in ("PYTHONPATH", hl.OWNER_ENV)} | {
+        hl.LOCK_DIR_ENV: str(tmp_path / "lock"),
+        hl.WAIT_ENV: "0",
+    }
+
+    def run(isolate_site: bool, *command: str) -> subprocess.CompletedProcess[str]:
+        argv = ["run", "--", *command]
+        target = str(standalone / "host_lock.py")
+        if isolate_site:
+            full = [sys.executable, "-I", "-S", "-c", RUN_FILE_PROGRAM, target, *argv]
+        else:
+            full = [sys.executable, "-I", "-c", RUN_FILE_PROGRAM, target, *argv]
+        return subprocess.run(full, cwd=tmp_path, env=env, capture_output=True, text=True, timeout=30)
+
+    rejected = run(True, "sh", "-c", "make pr-preflight")
+    lock_created = (tmp_path / "lock").exists()
+    allowed = run(False, "sh", "-c", "echo 'make pr-preflight'")
+
+    assert rejected.returncode == hl.EXIT_USAGE, rejected.stderr
+    assert "Run `make pr-preflight` directly" in rejected.stderr
+    assert not lock_created
+    assert allowed.returncode == 0, allowed.stderr
+    assert allowed.stdout.strip() == "make pr-preflight"

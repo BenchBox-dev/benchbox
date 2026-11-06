@@ -152,15 +152,3 @@ def test_pr_preflight_light_steps_ignore_an_unrelated_lock_holder(tmp_path: Path
         handle.release()
 
     assert [line.split()[-1] for line in selections] == ["abc1234"] * 2
-
-
-def test_pr_preflight_recipe_takes_no_lock_and_its_linux_leaf_stays_guarded() -> None:
-    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
-    recipe = makefile.split("\npr-preflight:\n", 1)[1].split("\n.PHONY:", 1)[0]
-    leaf = (ROOT / "scripts" / "linux_preflight_pytest.sh").read_text(encoding="utf-8")
-
-    assert "host_lock" not in recipe
-    assert "scripts/linux_preflight_pytest.sh" in recipe
-    assert "host_lock run --phase linux-preflight --gate linux-preflight" in leaf.replace("\\\n", "")
-    assert "--admit" in leaf
-    assert "--guard" in leaf

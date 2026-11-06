@@ -1142,9 +1142,7 @@ def run_command(
     admit_need_gib: float | None = None,
     guard: bool = False,
 ) -> int:
-    from benchbox.utils.heavy_preflight_scope import rejection_message
-
-    rejected = rejection_message(command)
+    rejected = _load_sibling("heavy_preflight_scope").rejection_message(command)
     if rejected is not None:
         _log(rejected)
         return EXIT_USAGE
