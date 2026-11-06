@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
 import time
 from pathlib import Path
 
@@ -10,6 +11,7 @@ import pytest
 from benchbox.utils import heavy_sentinel as hs, heavy_status, linux_machine as lm, sentinel_launchd
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
+posix_only = pytest.mark.skipif(sys.platform == "win32", reason="POSIX process semantics")
 
 C = "/opt/homebrew/bin/container"
 RUNNING = lm.MachineState("running", 8.0, True)
@@ -621,6 +623,7 @@ def test_closing_the_sentinel_kills_an_inflight_stop_and_frees_the_lock() -> Non
     assert [lock.released for lock in rig.locks] == [True]
 
 
+@posix_only
 def test_the_real_stop_process_is_group_killed_with_its_output_kept_and_no_leaked_worker(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
