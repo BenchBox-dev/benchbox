@@ -3662,7 +3662,7 @@
       ],
       "priority": "high",
       "status": "open",
-      "title": "Re-lock BenchBox to Theseus v0.1.7 with config trimming, batch-land preflight and the review-depth decision record"
+      "title": "Re-lock BenchBox to Theseus v0.1.8 with config trimming, batch-land preflight and the review-depth decision record"
     },
     "benchbox-score-advanced-fixtures": {
       "claim": null,
