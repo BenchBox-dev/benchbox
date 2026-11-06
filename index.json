@@ -2169,7 +2169,7 @@
         }
       },
       "integration_branch": "feat/sqlglot-core-delivery",
-      "integration_head": "744dc67034e43008a870b7b9bfef1a799f7ce920",
+      "integration_head": "6e27e4e9debed01c40b36860ace949cd329809bf",
       "integration_log": [
         {
           "at": "2026-11-06T13:49:23Z",
@@ -2211,6 +2211,24 @@
           "op_id": "f5b5c807500145c1b7738c0e657b87d6",
           "previous_head": "5993fbf74acd66a118de66c6c661915bc1bb2ac7",
           "seq": 2
+        },
+        {
+          "at": "2026-11-06T16:34:47Z",
+          "changed_files": [
+            "benchbox/core/flightdata/downloader.py",
+            "benchbox/core/transactional/benchmark_base.py",
+            "changelog.d/fix-flightdata-lazy-prefetch.json",
+            "changelog.d/fix-overlay-guard-tracked-files.json",
+            "tests/integration/worktree/batch_loop_support.py",
+            "tests/unit/core/flightdata/test_source_contract.py",
+            "tests/unit/sql_compat/test_sqlglot_overlay_guard.py"
+          ],
+          "head": "6e27e4e9debed01c40b36860ace949cd329809bf",
+          "kind": "develop-merge",
+          "merged_parent": "0826dcd8e7990ae4f55ff8d34714a03104d39a3a",
+          "op_id": "f359a72ebcc84b9fae8ce2b08990836b",
+          "previous_head": "744dc67034e43008a870b7b9bfef1a799f7ce920",
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-sqlglot-core-delivery",
