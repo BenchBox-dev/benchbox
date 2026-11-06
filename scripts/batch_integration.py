@@ -585,6 +585,7 @@ def create_member(repo: Path, member: str, worktree_path: Path | None = None) ->
     if _branch(repo) != ledger["integration_branch"]:
         raise BatchError(f"integration worktree is not on {ledger['integration_branch']}")
     head = _rev(repo, "HEAD")
+    sessions_mark = _last_op_id(_item_sessions(repo, member))
     branch = member_branch_name(batch_id, member)
     if _git_ok(repo, "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"):
         raise BatchError(f"branch {branch} already exists; refusing to recreate member {member!r}")
@@ -601,6 +602,8 @@ def create_member(repo: Path, member: str, worktree_path: Path | None = None) ->
     _config_set(path, "member", member)
     _config_set(path, "source-base", head)
     _config_set(path, "created-at", _now())
+    if sessions_mark is not None:
+        _config_set(path, "sessions-mark", sessions_mark)
     return {"worktree": str(path), "branch": branch, "batch_id": batch_id, "member": member, "source_base": head}
 
 
@@ -1043,12 +1046,33 @@ def _item_sessions(repo: Path, item: str) -> list[dict]:
         offset = int(continuation["offset"])
 
 
+def _op_position(entries: list[dict], op_id: str | None) -> int | None:
+    if op_id is None:
+        return None
+    for index, entry in enumerate(entries):
+        if entry.get("op_id") == op_id:
+            return index
+    return None
+
+
+def _last_op_id(entries: list[dict]) -> str | None:
+    return str(entries[-1].get("op_id")) if entries and entries[-1].get("op_id") else None
+
+
 def member_tracker_writes(
-    repo: Path, member: str, since: str, until: str | None = None, leader_op_ids: frozenset[str] = frozenset()
+    entries: list[dict],
+    since: str,
+    until: str | None = None,
+    leader_op_ids: frozenset[str] = frozenset(),
+    after: str | None = None,
+    through: str | None = None,
 ) -> list[dict]:
+    first = _op_position(entries, after)
+    last = _op_position(entries, through)
+    window = entries[(0 if first is None else first + 1) : (len(entries) if last is None else last + 1)]
     return [
         entry
-        for entry in _item_sessions(repo, member)
+        for entry in window
         if since <= str(entry.get("at", ""))
         and (until is None or str(entry.get("at", "")) <= until)
         and entry.get("op") not in LEADER_MEMBER_OPS
@@ -1073,7 +1097,7 @@ def _first_landing(ledger: dict, tracker: dict, member: str) -> str | None:
 
 def _check_member_writes(
     repo: Path, member: str, worktree: Path, ledger: dict, tracker: dict, accepted: frozenset[str]
-) -> tuple[list, list]:
+) -> tuple[list, list, str | None]:
     warnings: list[str] = []
     since = _config_get(worktree, "created-at")
     if since is None:
@@ -1084,9 +1108,19 @@ def _check_member_writes(
         warnings.append(
             f"member {member!r} worktree records no creation time; its tracker writes were checked from {since}"
         )
-    accepted = accepted | frozenset(ledger["landings"].get(member, {}).get("accepted_tracker_writes") or [])
+    landing = ledger["landings"].get(member, {})
+    accepted = accepted | frozenset(landing.get("accepted_tracker_writes") or [])
     leader_ops = frozenset(str(entry.get("op_id")) for entry in _member_log_entries(tracker, member))
-    writes = member_tracker_writes(repo, member, since, _first_landing(ledger, tracker, member), leader_ops)
+    through = landing.get("sessions_through")
+    entries = _item_sessions(repo, member)
+    writes = member_tracker_writes(
+        entries,
+        since,
+        _first_landing(ledger, tracker, member) if through is None else None,
+        leader_ops,
+        _config_get(worktree, "sessions-mark"),
+        through,
+    )
     unexplained = [entry for entry in writes if entry.get("op_id") not in accepted]
     if unexplained:
         listed = "; ".join(f"{e.get('op')} {e.get('op_id')} at {e.get('at')} by {e.get('actor')}" for e in unexplained)
@@ -1096,7 +1130,7 @@ def _check_member_writes(
             "Inspect the writes with show_item, then land again with ACCEPT_WRITES=<op_id,...> to record them as "
             "reviewed"
         )
-    return sorted(str(entry.get("op_id")) for entry in writes), warnings
+    return sorted(str(entry.get("op_id")) for entry in writes), warnings, _last_op_id(entries)
 
 
 def land_member(repo: Path, member: str, *, push: bool = True, accepted_writes: frozenset[str] = frozenset()) -> dict:
@@ -1128,7 +1162,7 @@ def land_member(repo: Path, member: str, *, push: bool = True, accepted_writes: 
         )
     gate = _landing_preconditions(repo, ledger, tracker, member, facts, head)
     _refuse_primary_edits(repo, member, ledger["scope"][member])
-    reviewed_writes, write_warnings = _check_member_writes(
+    reviewed_writes, write_warnings, sessions_through = _check_member_writes(
         repo, member, facts["worktree"], ledger, tracker, accepted_writes
     )
     warnings = [*write_warnings, *_preflight_gate(repo, facts["member_head"])]
@@ -1148,6 +1182,7 @@ def land_member(repo: Path, member: str, *, push: bool = True, accepted_writes: 
         "verification": gate["verification"],
         "landed_at": _now(),
         "accepted_tracker_writes": reviewed_writes,
+        "sessions_through": sessions_through,
     }
     earlier = {key: value for key, value in ledger["landings"].items() if key != member}
     ledger["landings"][member] = landing
