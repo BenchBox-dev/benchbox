@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "The digest handles a PR whose commit count reaches the API listing limit without truncating evidence: for example, read the merged squash commit or compare base...head through the git data. It records that PR's soundness-path files completely, or records an explicit, owner-visible exception for it.",
+    "The checkpoint advances past #3902, and the backlog of soundness-path merges since 2026-11-03 (including #3962) is digested.",
+    "A unit test reproduces a PR at the listing limit and proves the digest neither truncates silently nor stalls permanently.",
+    "The next scheduled run succeeds."
+  ],
+  "description": "The soundness merge digest (`.github/workflows/soundness-merge-digest.yml`) has failed on every run since 2026-11-04: the scheduled runs on Nov 4 and 5, and a manual dispatch on Nov 6 (run 42220708367). Each fails with exit 2: `soundness-merge-digest: #3902 has 250 commits, the most the API lists; the checkpoint was not advanced`. PR #3902 (`chore(release): prepare 0.5.0rc3`, merged 2026-11-03) has more commits than the GitHub PR-commits endpoint returns. The script refuses rather than digest a truncated list, which is correct, but it never advances past the PR. So no soundness-path merge since Nov 3 has been digested, including the Theseus v0.2.1 migration (#3962, b0cfe591). This is not caused by the Theseus migration: the failures began before it, and the error is not a REVIEW_CONTEXT issue.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/42220708367",
+    "https://github.com/BenchBox-dev/benchbox/pull/3902",
+    "scripts/soundness_merge_digest.py",
+    ".github/workflows/soundness-merge-digest.yml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-06T12:53:20Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "aea616f0469d4fc28d4c6f4919047340",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    }
+  ]
+}

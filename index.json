@@ -28672,6 +28672,13 @@
       "status": "done",
       "title": "The soundness merge digest accepts an external-review comment from any author"
     },
+    "soundness-merge-digest-stuck-on-250-commit-pr-20261106": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Soundness merge digest has failed every day since Nov 4 because PR #3902 exceeds the 250-commit API listing"
+    },
     "soundness-oracle-branch-name-quote-20261022": {
       "claim": null,
       "needs": [
