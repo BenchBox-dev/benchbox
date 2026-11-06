@@ -14,6 +14,7 @@ import tempfile
 import zipfile
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path, PurePosixPath
 from typing import Any, Protocol
 
@@ -39,7 +40,7 @@ SHA1_RE = re.compile(r"^[0-9a-f]{40}$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 ARCHIVE_RE = re.compile(r"^benchbox/_vendor/benchbox_sqlglot-\d+\.\d+\.\d+\.\d+-py3-none-any\.whl\.zip$")
 MARKER_RE = re.compile(r"<!-- sqlglot-delivery: (\{[^\n]*?\}) -->")
-MARKER_KEYS = ("forkSha", "runAttempt", "runId", "sha256", "upstreamSha", "version")
+MARKER_KEYS = ("baseSha", "forkSha", "headSha", "runAttempt", "runId", "sha256", "upstreamSha", "version")
 GREEN_CONCLUSIONS = frozenset({"success", "neutral", "skipped"})
 Runner = Callable[[Sequence[str], Path | None, Mapping[str, str] | None], "subprocess.CompletedProcess[str]"]
 
@@ -94,6 +95,13 @@ class GhApi:
 
 
 @dataclass(frozen=True)
+class Suppression:
+    version: str
+    sha256: str
+    fork_sha: str | None
+
+
+@dataclass(frozen=True)
 class Config:
     producer: str
     workflow_path: str
@@ -106,7 +114,10 @@ class Config:
     base: str
     branch_prefix: str
     disarm_actors: tuple[str, ...]
-    suppressed: frozenset[tuple[str, str]]
+    suppressed: tuple[Suppression, ...]
+
+    def suppression(self, version: str, digest: str) -> Suppression | None:
+        return next((item for item in self.suppressed if (item.version, item.sha256) == (version, digest)), None)
 
     @property
     def workflow_file(self) -> str:
@@ -117,12 +128,19 @@ def load_config(path: Path) -> Config:
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
         producer, consumer, record = raw["producer"], raw["consumer"], raw["producer"]["record"]
-        suppressed = set()
+        suppressed = []
         for entry in raw["suppressed"]:
-            fork_sha, digest = entry["forkSha"], entry["sha256"]
-            if not SHA1_RE.fullmatch(fork_sha) or not SHA256_RE.fullmatch(digest) or not str(entry["reason"]).strip():
-                raise ValueError("a suppressed entry needs forkSha, sha256 and a reason")
-            suppressed.add((fork_sha, digest))
+            version, digest, fork_sha = entry["version"], entry["sha256"], entry.get("forkSha")
+            if (
+                not isinstance(version, str)
+                or not VERSION_RE.fullmatch(version)
+                or not isinstance(digest, str)
+                or not SHA256_RE.fullmatch(digest)
+                or not (fork_sha is None or (isinstance(fork_sha, str) and SHA1_RE.fullmatch(fork_sha)))
+                or not str(entry["reason"]).strip()
+            ):
+                raise ValueError("a suppressed entry needs version, sha256 and a reason (forkSha is optional)")
+            suppressed.append(Suppression(version, digest, fork_sha))
         config = Config(
             producer=producer["repository"],
             workflow_path=producer["workflowPath"],
@@ -135,7 +153,7 @@ def load_config(path: Path) -> Config:
             base=consumer["base"],
             branch_prefix=consumer["branchPrefix"],
             disarm_actors=tuple(consumer["trunkRedDisarmActors"]),
-            suppressed=frozenset(suppressed),
+            suppressed=tuple(suppressed),
         )
     except (OSError, ValueError, KeyError, TypeError) as error:
         raise DeliveryError(f"unreadable delivery trust root {path}: {error}") from error
@@ -386,11 +404,15 @@ def build_plan(api: Api, config: Config, pin: Mapping[str, Any], out_dir: Path |
         if candidate_collision is not None:
             return candidate_collision
         digest, candidates = next(iter(by_version[version].items()))
+        suppression = config.suppression(version, digest)
+        if suppression is not None:
+            entry = {"version": version, "sha256": digest}
+            if suppression.fork_sha:
+                entry["forkSha"] = suppression.fork_sha
+            skipped.append(entry)
+            continue
         found = locate_and_verify(api, config, candidates)
         record = found["record"]
-        if (record["forkSha"], digest) in config.suppressed:
-            skipped.append({"version": version, "forkSha": record["forkSha"], "sha256": digest})
-            continue
         receipt = found["receipt"]
         result = {
             **base,
@@ -492,7 +514,14 @@ def parse_marker(body: str | None) -> dict[str, Any] | None:
         return None
     if not isinstance(marker, dict) or sorted(marker) != list(MARKER_KEYS):
         return None
-    patterns = (("version", VERSION_RE), ("forkSha", SHA1_RE), ("upstreamSha", SHA1_RE), ("sha256", SHA256_RE))
+    patterns = (
+        ("version", VERSION_RE),
+        ("forkSha", SHA1_RE),
+        ("upstreamSha", SHA1_RE),
+        ("sha256", SHA256_RE),
+        ("headSha", SHA1_RE),
+        ("baseSha", SHA1_RE),
+    )
     if any(not isinstance(marker[key], str) or pattern.fullmatch(marker[key]) is None for key, pattern in patterns):
         return None
     if any(isinstance(marker[key], bool) or not isinstance(marker[key], int) for key in ("runId", "runAttempt")):
@@ -500,7 +529,7 @@ def parse_marker(body: str | None) -> dict[str, Any] | None:
     return marker
 
 
-def marker_for(plan: Mapping[str, Any]) -> dict[str, Any]:
+def marker_for(plan: Mapping[str, Any], head: str, base: str) -> dict[str, Any]:
     expected, producer = plan["expected"], plan["producer"]
     return {
         "version": expected["version"],
@@ -509,10 +538,12 @@ def marker_for(plan: Mapping[str, Any]) -> dict[str, Any]:
         "sha256": expected["sha256"],
         "runId": producer["runId"],
         "runAttempt": producer["runAttempt"],
+        "headSha": head,
+        "baseSha": base,
     }
 
 
-def pull_request_text(plan: Mapping[str, Any], previous: str) -> tuple[str, str]:
+def pull_request_text(plan: Mapping[str, Any], previous: str, head: str, base: str) -> tuple[str, str]:
     expected, producer = plan["expected"], plan["producer"]
     body = (
         f"Adopts the verified benchbox-sqlglot {expected['version']} runtime wheel (the pin is {previous}).\n\n"
@@ -524,8 +555,8 @@ def pull_request_text(plan: Mapping[str, Any], previous: str) -> tuple[str, str]
         "baseline identity. The scheduled SQLGlot delivery workflow opened it and keeps at most one such pull "
         "request open. It is armed for merge only through the normal arming checks and never after a human "
         "disables auto-merge or applies the `no-auto-merge` hold. To roll the adoption back, revert it and add "
-        "its fork commit and wheel hash to `suppressed` in `.github/sqlglot-delivery.json`.\n\n"
-        f"{render_marker(marker_for(plan))}\n"
+        "its version and wheel hash to `suppressed` in `.github/sqlglot-delivery.json`.\n\n"
+        f"{render_marker(marker_for(plan, head, base))}\n"
     )
     return title_for(expected["version"]), body
 
@@ -599,18 +630,22 @@ def prepare(
     require(after.get("sha256") == expected["sha256"], "the adopted pin hash differs from the expected hash")
     require(after.get("version") == expected["version"], "the adopted pin version differs from the expected version")
     branch = branch_for(config, expected["version"])
-    title, body = pull_request_text(plan, pinned["version"])
+    stamp = f"{git(root, 'log', '-1', '--format=%ct', base)} +0000"
     identity = {
         "GIT_AUTHOR_NAME": BOT_NAME,
         "GIT_AUTHOR_EMAIL": BOT_EMAIL,
+        "GIT_AUTHOR_DATE": stamp,
         "GIT_COMMITTER_NAME": BOT_NAME,
         "GIT_COMMITTER_EMAIL": BOT_EMAIL,
+        "GIT_COMMITTER_DATE": stamp,
     }
+    title = title_for(expected["version"])
     git(root, "checkout", "-b", branch)
     for path in paths:
         git(root, "add", "--", path)
     git(root, "-c", "commit.gpgsign=false", "commit", "-m", title, env=identity)
     head = git(root, "rev-parse", "HEAD")
+    title, body = pull_request_text(plan, pinned["version"], head, base)
     out_dir.mkdir(parents=True, exist_ok=True)
     bundle = out_dir / BUNDLE_FILE
     bundle.unlink(missing_ok=True)
@@ -622,22 +657,23 @@ def prepare(
     return prepared
 
 
-def commit_problem(clone: Path, tip: str, plan: Mapping[str, Any], config: Config, remote: str) -> str | None:
+def commit_problem(
+    clone: Path, tip: str, plan: Mapping[str, Any], config: Config, remote: str, base: str
+) -> str | None:
     expected = plan["expected"]
     try:
         parents = git(clone, "rev-list", "--parents", "-n", "1", tip).split()[1:]
         if len(parents) != 1:
             return "the adoption commit does not have exactly one parent"
         parent = parents[0]
+        if parent != base:
+            return "the adoption commit is not based on the prepared base"
         if run(
             ["git", "merge-base", "--is-ancestor", parent, f"refs/remotes/{remote}/{config.base}"], clone
         ).returncode:
             return f"the adoption commit is not based on {config.base}"
         if git(clone, "rev-list", "--count", f"{parent}..{tip}") != "1":
             return "the adoption branch carries more than one commit"
-        identity = git(clone, "log", "-1", "--format=%ae|%ce", tip)
-        if identity != f"{BOT_EMAIL}|{BOT_EMAIL}":
-            return "the adoption commit was not authored by the delivery automation"
         names = git(clone, "diff", "--name-only", "--no-renames", "-z", parent, tip).split("\0")
         check_adoption_paths([name for name in names if name], expected["version"])
         pin = json.loads(git(clone, "show", f"{tip}:{PIN}"))
@@ -673,6 +709,32 @@ class OpenAdoption:
         return str(self.marker["version"])
 
 
+EDIT_HISTORY_QUERY = (
+    "query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name)"
+    "{pullRequest(number:$number){userContentEdits(first:100){nodes{editor{login}} pageInfo{hasNextPage}}}}}"
+)
+
+
+def bot_login(login: object) -> str:
+    return str(login or "").casefold().removesuffix("[bot]")
+
+
+def body_editors(api: Api, repo: str, number: int) -> list[str]:
+    owner, name = repo.split("/", 1)
+    try:
+        response = api.request(
+            "POST",
+            "graphql",
+            body={"query": EDIT_HISTORY_QUERY, "variables": {"owner": owner, "name": name, "number": number}},
+        )
+        edits = response["data"]["repository"]["pullRequest"]["userContentEdits"]
+        if edits["pageInfo"]["hasNextPage"]:
+            raise DeliveryError("the edit list is longer than one page")
+        return [bot_login((node.get("editor") or {}).get("login")) for node in edits["nodes"]]
+    except (KeyError, TypeError, AttributeError) as error:
+        raise DeliveryError(f"the body edit history of pull request #{number} cannot be read") from error
+
+
 def pull_problem(api: Api, config: Config, repo: str, login: str, pull: Mapping[str, Any]) -> str | None:
     marker = parse_marker(pull.get("body"))
     if marker is None:
@@ -689,11 +751,18 @@ def pull_problem(api: Api, config: Config, repo: str, login: str, pull: Mapping[
         return "branch does not match its marker"
     if pull.get("title") != title_for(marker["version"]):
         return "title was edited"
+    if pull["head"].get("sha") != marker["headSha"]:
+        return "the branch no longer points at the commit the automation pushed"
     commits = paged(api, f"repos/{repo}/pulls/{pull['number']}/commits")
-    for commit in commits:
-        details = commit["commit"]
-        if (details["author"]["email"], details["committer"]["email"]) != (BOT_EMAIL, BOT_EMAIL):
-            return "carries a commit that is not from the delivery automation"
+    if len(commits) != 1:
+        return "the branch does not carry exactly the automation commit"
+    only = commits[0]
+    if only.get("sha") != marker["headSha"] or [parent.get("sha") for parent in only.get("parents") or []] != [
+        marker["baseSha"]
+    ]:
+        return "the branch commit is not the one the automation recorded"
+    if any(editor != bot_login(login) for editor in body_editors(api, repo, int(pull["number"]))):
+        return "the pull request body was edited by someone other than the delivery automation"
     return None
 
 
@@ -769,7 +838,10 @@ def publish(
     require(plan.get("state") == "adopt", "the prepared plan is not an adoption")
     expected = plan["expected"]
     version, digest = expected["version"], expected["sha256"]
-    require(parse_marker(pull_request["body"]) == marker_for(plan), "the prepared pull request marker differs")
+    require(
+        parse_marker(pull_request["body"]) == marker_for(plan, pull_request["head"], pull_request["base"]),
+        "the prepared pull request marker differs",
+    )
     require(pull_request["title"] == title_for(version), "the prepared pull request title is unexpected")
     auth = authorization(token)
     git(clone, "fetch", remote, f"+refs/heads/{config.base}:refs/remotes/{remote}/{config.base}", env=auth)
@@ -777,7 +849,7 @@ def publish(
     git(clone, "fetch", str(prepared / BUNDLE_FILE), f"+refs/heads/{pull_request['branch']}:{prepared_ref}")
     head = git(clone, "rev-parse", prepared_ref)
     require(head == pull_request["head"], "the prepared bundle tip differs from the prepared pull request")
-    problem = commit_problem(clone, head, plan, config, remote)
+    problem = commit_problem(clone, head, plan, config, remote, pull_request["base"])
     require(problem is None, f"the prepared adoption is not publishable: {problem}")
 
     owned, foreign = open_adoptions(api, config, repo, login)
@@ -811,15 +883,12 @@ def publish(
         if existing is None:
             actions.append({"do": "push", "branch": branch, "head": head})
         else:
-            git(clone, "fetch", remote, f"+refs/heads/{branch}:refs/sqlglot-delivery/resume", env=auth)
-            resumed = git(clone, "rev-parse", "refs/sqlglot-delivery/resume")
-            problem = commit_problem(clone, resumed, plan, config, remote)
             require(
-                problem is None,
+                existing == head,
                 f"branch {branch} exists with no pull request and is not a clean adoption of this delivery: "
-                f"{problem}; delete it or resolve it by hand",
+                "its tip is not the prepared adoption commit; delete it or resolve it by hand",
             )
-            actions.append({"do": "resume-branch", "branch": branch, "head": resumed})
+            actions.append({"do": "resume-branch", "branch": branch, "head": existing})
         actions.append({"do": "create-pull-request", "branch": branch})
     if create or same:
         for item in superseded:
@@ -890,6 +959,13 @@ def arm_refusal(api: Api, config: Config, repo: str, item: OpenAdoption) -> str 
     return None
 
 
+def live_check(api: Api, config: Config, repo: str, login: str, number: int) -> tuple[Mapping[str, Any], str | None]:
+    live = api.request("GET", f"repos/{repo}/pulls/{number}")
+    if live.get("state") != "open":
+        return live, "the pull request is no longer open"
+    return live, pull_problem(api, config, repo, login, live)
+
+
 def arm(
     api: Api,
     config: Config,
@@ -910,9 +986,14 @@ def arm(
     owned, _ = open_adoptions(api, config, repo, login)
     results: list[dict[str, Any]] = []
     auth = authorization(token)
-    for item in owned:
-        head = item.pull["head"]["sha"]
-        entry: dict[str, Any] = {"pullRequest": item.number, "head": head}
+    for listed in owned:
+        live, problem = live_check(api, config, repo, login, listed.number)
+        head = live["head"]["sha"]
+        entry: dict[str, Any] = {"pullRequest": listed.number, "head": head}
+        if problem is not None:
+            results.append({**entry, "outcome": "not-armed", "reason": problem})
+            continue
+        item = OpenAdoption(live, parse_marker(live["body"]) or {})
         refusal = arm_refusal(api, config, repo, item)
         if refusal is not None:
             results.append({**entry, "outcome": "not-armed", "reason": refusal})
@@ -920,7 +1001,8 @@ def arm(
         if dry_run:
             results.append({**entry, "outcome": "would-arm"})
             continue
-        results.append({**entry, **arm_in_worktree(clone, item, config, repo, token, auth, remote, runner)})
+        recheck = partial(live_check, api, config, repo, login, item.number)
+        results.append({**entry, **arm_in_worktree(clone, item, config, repo, token, auth, remote, runner, recheck)})
     return results
 
 
@@ -933,6 +1015,7 @@ def arm_in_worktree(
     auth: Mapping[str, str],
     remote: str,
     runner: Runner,
+    recheck: Callable[[], tuple[Mapping[str, Any], str | None]],
 ) -> dict[str, Any]:
     head = item.pull["head"]["sha"]
     branch = item.pull["head"]["ref"]
@@ -961,6 +1044,9 @@ def arm_in_worktree(
         )
         if gate.returncode:
             return {"outcome": "not-armed", "reason": "trunk is red or its state is unreadable", "detail": detail(gate)}
+        live, problem = recheck()
+        if problem is not None or live["head"]["sha"] != head:
+            return {"outcome": "not-armed", "reason": problem or "the branch moved after it was read"}
         armed = runner(
             [
                 sys.executable,

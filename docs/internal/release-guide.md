@@ -291,7 +291,8 @@ on `develop` in `BenchBox-dev/BenchBox` and on `workflow_dispatch`
   and hash from the verified record, requires that only the pin, the wheel
   archive, the license notice and the baseline identity changed, and emits a
   git bundle and a pull request title and body. The body carries a marker that
-  binds version, fork SHA, upstream SHA, hash and the producer run and attempt.
+  binds version, fork SHA, upstream SHA, hash, the producer run and attempt,
+  and the adoption commit and its parent.
 - **Publish** runs only when `SQLGLOT_DELIVERY_ENABLED` is `true`, the run is
   not a dry run and the plan says `adopt`. It re-checks the bundle, pushes
   `chore/sqlglot-<version>` and opens the pull request, resuming after an
@@ -299,7 +300,15 @@ on `develop` in `BenchBox-dev/BenchBox` and on `workflow_dispatch`
   pull request is open. Opening the same version and hash again changes
   nothing. A newer delivery closes an older automation pull request that is
   unarmed, unheld and not green; it waits behind one that is armed, green or
-  held. Human-authored and human-modified pull requests and branches, and any
+  held. A pull request counts as automation-owned only when the live head is
+  the single commit whose SHA and parent the marker recorded, the body has no
+  edit by anyone but the delivery App (read from the GraphQL
+  `userContentEdits` history; an unreadable history refuses), and the author,
+  head repository, branch name and title match. A commit email proves nothing.
+  A branch left behind by an interrupted push is resumed only when its tip is
+  the prepared commit, which is reproducible for an unmoved `develop`;
+  otherwise it is refused and a person deletes it. Human-authored and
+  human-modified pull requests and branches, and any
   pull request with the `no-auto-merge` hold, are never touched. A pair whose
   pull request was closed unmerged is not proposed again unless a person
   dispatches the workflow with `retry`, which uses a fresh
@@ -307,7 +316,10 @@ on `develop` in `BenchBox-dev/BenchBox` and on `workflow_dispatch`
   reverted is never proposed again.
 - **Arm** runs after publish in the same job and arms an automation pull
   request only by running `scripts/trunk_revert.py arm-gate` and
-  `scripts/pr_arm.py` on the exact head, as `make pr-arm` does. It never
+  `scripts/pr_arm.py` on the exact head, as `make pr-arm` does. It re-reads
+  the pull request and repeats the full ownership check live, both when it
+  lists the pull request and again immediately before it runs `pr_arm.py`, and
+  refuses on any mismatch. It never
   re-arms after a person disabled auto-merge or applied the hold. The one
   automation disarm it recovers from is the trunk-red disarm by
   `github-actions[bot]` (`trunk-red-disarm.yml`). The pull request is usually
@@ -325,9 +337,12 @@ on `develop` in `BenchBox-dev/BenchBox` and on `workflow_dispatch`
   holds no secret and a read-only token, and the publish job never runs code
   from the prepared artifact.
 - **Rollback.** Revert the adoption pull request on `develop`, and in the same
-  reviewed pull request add `{"forkSha", "sha256", "reason"}` to `suppressed`
-  in `.github/sqlglot-delivery.json`. Suppressed pairs are skipped and the next
-  best delivery is considered.
+  reviewed pull request add `{"version", "sha256", "reason"}` to `suppressed`
+  in `.github/sqlglot-delivery.json` (`forkSha` is optional and informational).
+  A suppressed pair is decided from the producer's receipt alone: it is skipped
+  before any artifact is downloaded, so it stays skipped after its artifact
+  expires or its record stops verifying, and the next best delivery is
+  considered. The skipped pairs are listed in `skippedSuppressed`.
 - **Producer exceptions.** A version delivered with two hashes, or a pinned
   version delivered with a different hash, fails the run with `Producer
   exception` and names the fork. The producer owns the fix in

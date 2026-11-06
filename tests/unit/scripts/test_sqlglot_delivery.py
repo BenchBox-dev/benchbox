@@ -31,6 +31,8 @@ ENABLED = {"SQLGLOT_DELIVERY_ENABLED": "true"}
 FORK_SHA = "a" * 40
 UPSTREAM_SHA = "b" * 40
 OLD, NEW, NEWER = "30.23.0.2", "30.23.0.3", "30.23.0.4"
+BASE_SHA = "e" * 40
+FORGED_SHA = "f" * 40
 
 
 def sha256_of(data: bytes) -> str:
@@ -53,6 +55,9 @@ class FakeGitHub:
         self.commits: dict[int, list[dict[str, Any]]] = {}
         self.checks: dict[str, list[dict[str, Any]]] = {}
         self.timeline: dict[int, list[dict[str, Any]]] = {}
+        self.edits: dict[int, list[str | None]] = {}
+        self.edits_unreadable = False
+        self.on_read: dict[int, list[Callable[[dict[str, Any]], None] | None]] = {}
         self.calls: list[tuple[str, str]] = []
         self.mutations: list[tuple[str, str, Any]] = []
         self.fail_once: set[tuple[str, str]] = set()
@@ -68,7 +73,7 @@ class FakeGitHub:
     ) -> Any:
         params = params or {}
         self.calls.append((method, path))
-        if method != "GET":
+        if method != "GET" and path != "graphql":
             self.mutations.append((method, path, body))
             if (method, path) in self.fail_once:
                 self.fail_once.discard((method, path))
@@ -86,13 +91,19 @@ class FakeGitHub:
             return self.page(self.filtered(params), params)
         if path == f"repos/{CONSUMER}/pulls" and method == "POST":
             return self.create(body or {})
+        if path == "graphql":
+            return self.graphql(body or {})
         if match := re.fullmatch(rf"repos/{CONSUMER}/pulls/(\d+)", path):
             pull = self.pull(int(match[1]))
             if method == "PATCH":
                 pull["state"] = (body or {})["state"]
+            if method == "GET" and self.on_read.get(pull["number"]):
+                hook = self.on_read[pull["number"]].pop(0)
+                if hook is not None:
+                    hook(pull)
             return copy.deepcopy(pull)
         if match := re.fullmatch(rf"repos/{CONSUMER}/pulls/(\d+)/commits", path):
-            return self.page(self.commits.get(int(match[1]), [bot_commit()]), params)
+            return self.page(self.commits.get(int(match[1])) or self.recorded_commits(int(match[1])), params)
         if match := re.fullmatch(rf"repos/{CONSUMER}/commits/([0-9a-f]+)/check-runs", path):
             runs = self.checks.get(match[1], [])
             return {"total_count": len(runs), "check_runs": self.page(runs, params)}
@@ -107,6 +118,25 @@ class FakeGitHub:
         match = re.fullmatch(rf"repos/{PRODUCER}/actions/artifacts/(\d+)/zip", path)
         assert match
         return self.blobs[int(match[1])]
+
+    def recorded_commits(self, number: int) -> list[dict[str, Any]]:
+        marker = delivery.parse_marker(self.pull(number)["body"])
+        return [commit_of(marker["headSha"], marker["baseSha"])] if marker else []
+
+    def forge_push(self, number: int, *, replace: bool = False, email: str = delivery.BOT_EMAIL) -> None:
+        pull = self.pull(number)
+        recorded = self.recorded_commits(number)
+        pull["head"]["sha"] = FORGED_SHA
+        forged = commit_of(FORGED_SHA, recorded[-1]["parents"][0]["sha"] if replace else recorded[-1]["sha"], email)
+        self.commits[number] = [forged] if replace else [*recorded, forged]
+
+    def graphql(self, body: Mapping[str, Any]) -> dict[str, Any]:
+        if self.edits_unreadable:
+            return {"data": None, "errors": [{"message": "forbidden"}]}
+        wanted = self.edits.get(body["variables"]["number"], [])
+        nodes = [{"editor": {"login": login} if login else None} for login in wanted]
+        edits = {"nodes": nodes, "pageInfo": {"hasNextPage": False}}
+        return {"data": {"repository": {"pullRequest": {"userContentEdits": edits}}}}
 
     def filtered(self, params: Mapping[str, Any]) -> list[dict[str, Any]]:
         selected = []
@@ -165,6 +195,8 @@ class FakeGitHub:
                     "sha256": digest or sha256_of(version.encode()),
                     "runId": 7,
                     "runAttempt": 1,
+                    "headSha": sha,
+                    "baseSha": BASE_SHA,
                 }
             )
         pull = {
@@ -187,8 +219,12 @@ class FakeGitHub:
         return [item for item in self.mutations if method is None or item[0] == method]
 
 
-def bot_commit() -> dict[str, Any]:
-    return {"commit": {"author": {"email": delivery.BOT_EMAIL}, "committer": {"email": delivery.BOT_EMAIL}}}
+def commit_of(sha: str, parent: str, email: str = delivery.BOT_EMAIL) -> dict[str, Any]:
+    return {
+        "sha": sha,
+        "parents": [{"sha": parent}],
+        "commit": {"author": {"email": email}, "committer": {"email": email}},
+    }
 
 
 def sh(cwd: Path, *args: str) -> str:
@@ -576,21 +612,54 @@ def test_runs_are_listed_across_every_page(world: World) -> None:
 def test_a_suppressed_pair_is_skipped_for_the_next_best_delivery(world: World) -> None:
     world.deliver(NEW, 2)
     newer = world.deliver(NEWER, 3)
-    world.use_config(suppressed=[{"forkSha": FORK_SHA, "sha256": newer["sha256"], "reason": "reverted"}])
+    entry = {"version": NEWER, "forkSha": FORK_SHA, "sha256": newer["sha256"], "reason": "reverted"}
+    world.use_config(suppressed=[entry])
     plan = world.plan()
     assert plan["expected"]["version"] == NEW
     assert plan["skippedSuppressed"] == [{"version": NEWER, "forkSha": FORK_SHA, "sha256": newer["sha256"]}]
 
 
-def test_a_suppressed_only_delivery_leaves_core_current(world: World) -> None:
-    delivered = world.deliver(NEW, 2)
-    world.use_config(suppressed=[{"forkSha": FORK_SHA, "sha256": delivered["sha256"], "reason": "reverted"}])
+def test_a_suppressed_delivery_whose_artifact_expired_is_skipped_and_the_next_older_one_is_planned(
+    world: World,
+) -> None:
+    world.deliver(NEW, 2)
+    newer = world.deliver(NEWER, 3, expired=(1,))
+    world.use_config(suppressed=[{"version": NEWER, "sha256": newer["sha256"], "reason": "reverted"}])
+    plan = world.plan()
+    assert plan["state"] == "adopt" and plan["expected"]["version"] == NEW
+    assert plan["skippedSuppressed"] == [{"version": NEWER, "sha256": newer["sha256"]}]
+    assert not [call for call in world.api.calls if "/runs/3/artifacts" in call[1]]
+
+
+def test_a_suppressed_delivery_whose_record_no_longer_verifies_is_skipped(world: World) -> None:
+    broken = world.deliver(NEWER, 3, tamper=mutate(("kind",), "other"))
+    world.use_config(suppressed=[{"version": NEWER, "sha256": broken["sha256"], "reason": "reverted"}])
     assert world.plan()["state"] == "current"
 
 
-def test_a_suppressed_entry_without_a_reason_is_not_a_trust_root(world: World) -> None:
+def test_a_suppression_for_another_hash_of_the_version_does_not_hide_the_delivery(world: World) -> None:
+    world.deliver(NEWER, 3)
+    world.use_config(suppressed=[{"version": NEWER, "sha256": "0" * 64, "reason": "reverted"}])
+    assert world.plan()["expected"]["version"] == NEWER
+
+
+def test_a_suppressed_only_delivery_leaves_core_current(world: World) -> None:
+    delivered = world.deliver(NEW, 2)
+    world.use_config(suppressed=[{"version": NEW, "sha256": delivered["sha256"], "reason": "reverted"}])
+    assert world.plan()["state"] == "current"
+
+
+@pytest.mark.parametrize(
+    "entry",
+    [
+        {"version": NEW, "sha256": "0" * 64, "reason": " "},
+        {"sha256": "0" * 64, "reason": "reverted"},
+        {"version": NEW, "sha256": "0" * 64, "forkSha": "not-a-commit", "reason": "reverted"},
+    ],
+)
+def test_a_malformed_suppressed_entry_is_not_a_trust_root(world: World, entry: dict[str, str]) -> None:
     with pytest.raises(DeliveryError, match="trust root"):
-        world.use_config(suppressed=[{"forkSha": FORK_SHA, "sha256": "0" * 64, "reason": " "}])
+        world.use_config(suppressed=[entry])
 
 
 def test_prepare_emits_a_bundle_and_a_marked_pull_request_limited_to_the_adoption_paths(world: World) -> None:
@@ -613,6 +682,8 @@ def test_prepare_emits_a_bundle_and_a_marked_pull_request_limited_to_the_adoptio
         "sha256": delivered["sha256"],
         "runId": 2,
         "runAttempt": 1,
+        "headSha": prepared["head"],
+        "baseSha": prepared["base"],
     }
     pin = json.loads(sh(world.clone, "git", "show", f"{prepared['head']}:benchbox/_vendor/sqlglot.json"))
     assert pin["sha256"] == delivered["sha256"]
@@ -700,7 +771,20 @@ def test_an_interrupted_run_resumes_from_the_pushed_branch(world: World) -> None
     assert world.api.branch_sha("chore/sqlglot-30.23.0.3") == pushed
 
 
-def test_a_resumed_branch_from_a_fresh_preparation_with_a_different_commit_is_accepted(world: World) -> None:
+def test_a_fresh_preparation_on_an_unmoved_develop_resumes_the_same_commit(world: World) -> None:
+    world.deliver(NEW, 2)
+    prepared = world.prepare()
+    world.api.fail_once.add(("POST", f"repos/{CONSUMER}/pulls"))
+    with pytest.raises(DeliveryError):
+        world.publish()
+    world.reset()
+    assert world.prepare()["head"] == prepared["head"]
+    assert world.publish()["actions"][0]["do"] == "resume-branch"
+    assert world.api.branch_sha("chore/sqlglot-30.23.0.3") == prepared["head"]
+    assert len(world.api.pulls) == 1
+
+
+def test_a_branch_left_by_a_preparation_on_an_older_develop_is_refused_not_overwritten(world: World) -> None:
     world.deliver(NEW, 2)
     world.prepare()
     world.api.fail_once.add(("POST", f"repos/{CONSUMER}/pulls"))
@@ -711,9 +795,10 @@ def test_a_resumed_branch_from_a_fresh_preparation_with_a_different_commit_is_ac
     sh(world.clone, "git", "commit", "--allow-empty", "-m", "unrelated develop movement")
     sh(world.clone, "git", "push", "origin", "develop")
     world.prepare()
-    world.publish()
+    with pytest.raises(DeliveryError, match="not a clean adoption"):
+        world.publish()
     assert world.api.branch_sha("chore/sqlglot-30.23.0.3") == pushed
-    assert len(world.api.pulls) == 1
+    assert not world.api.pulls
 
 
 def test_an_interruption_before_the_old_pull_request_is_closed_resumes_the_closure(world: World) -> None:
@@ -786,10 +871,9 @@ def test_human_authored_and_human_modified_pull_requests_are_never_touched(world
     world.deliver(NEWER, 3)
     world.api.add_pull(41, "chore/sqlglot-30.23.0.1", "1" * 40, author="a-human")
     world.api.add_pull(42, f"chore/sqlglot-{NEW}", "2" * 40)
-    world.api.commits[42] = [
-        bot_commit(),
-        {"commit": {"author": {"email": "joe@example.com"}, "committer": {"email": "joe@example.com"}}},
-    ]
+    world.api.forge_push(42)
+    world.api.add_pull(44, "chore/sqlglot-30.23.0.1-c", "4" * 40)
+    world.api.edits[44] = ["a-human"]
     world.api.add_pull(43, "chore/sqlglot-30.23.0.1-b", "3" * 40, title="chore: my own title")
     world.prepare()
     result = world.publish()
@@ -876,6 +960,7 @@ def test_a_prepared_bundle_that_touches_other_paths_is_refused_before_any_mutati
     bundle.unlink()
     sh(world.clone, "git", "bundle", "create", str(bundle), prepared["branch"], f"^{prepared['base']}")
     pull = json.loads((world.tmp / "prepared" / delivery.PULL_REQUEST_FILE).read_text(encoding="utf-8"))
+    pull["body"] = pull["body"].replace(prepared["head"], head)
     pull["head"] = head
     (world.tmp / "prepared" / delivery.PULL_REQUEST_FILE).write_text(json.dumps(pull))
     with pytest.raises(DeliveryError, match="not publishable"):
@@ -1043,13 +1128,38 @@ def test_an_already_armed_pull_request_is_left_alone(published: World) -> None:
     assert arm(published, runner)[0]["outcome"] == "not-armed" and not runner.calls
 
 
-def test_human_modified_pull_requests_are_never_armed(published: World) -> None:
-    published.api.commits[published.api.pulls[0]["number"]] = [
-        bot_commit(),
-        {"commit": {"author": {"email": "joe@example.com"}, "committer": {"email": "joe@example.com"}}},
-    ]
+@pytest.mark.parametrize("replace", [False, True])
+def test_a_commit_pushed_by_a_human_carrying_the_bot_email_is_never_armed(published: World, replace: bool) -> None:
+    published.api.forge_push(published.api.pulls[0]["number"], replace=replace)
     runner = FakeRunner()
     assert arm(published, runner) == []
+    assert not runner.calls
+
+
+def test_a_pull_request_body_edited_by_a_person_is_never_armed(published: World) -> None:
+    published.api.edits[published.api.pulls[0]["number"]] = ["a-human"]
+    runner = FakeRunner()
+    assert arm(published, runner) == []
+    assert not runner.calls
+
+
+def test_a_body_edit_by_the_app_alone_does_not_block_arming(published: World) -> None:
+    published.api.edits[published.api.pulls[0]["number"]] = ["benchbox-sqlglot-delivery"]
+    assert arm(published, FakeRunner())[0]["outcome"] == "armed"
+
+
+@pytest.mark.parametrize("unreadable", ["error", "anonymous-editor"])
+def test_an_unreadable_or_anonymous_edit_history_refuses(published: World, unreadable: str) -> None:
+    number = published.api.pulls[0]["number"]
+    if unreadable == "error":
+        published.api.edits_unreadable = True
+        runner = FakeRunner()
+        with pytest.raises(DeliveryError, match="cannot be read"):
+            arm(published, runner)
+    else:
+        published.api.edits[number] = [None]
+        runner = FakeRunner()
+        assert arm(published, runner) == []
     assert not runner.calls
 
 
@@ -1059,11 +1169,28 @@ def test_arm_dry_run_runs_no_arming_command(published: World) -> None:
     assert not runner.calls
 
 
-def test_a_branch_that_moved_after_it_was_read_is_not_armed(published: World) -> None:
+def test_a_head_that_moved_after_publication_is_not_armed(published: World) -> None:
     published.api.pulls[0]["head"]["sha"] = "9" * 40
     runner = FakeRunner()
-    assert arm(published, runner)[0]["outcome"] == "not-armed"
+    assert arm(published, runner) == []
     assert not runner.calls
+
+
+def test_a_head_forged_between_listing_and_arming_is_not_armed(published: World) -> None:
+    number = published.api.pulls[0]["number"]
+    published.api.on_read[number] = [lambda pull: published.api.forge_push(number)]
+    runner = FakeRunner()
+    outcome = arm(published, runner)
+    assert outcome[0]["outcome"] == "not-armed" and "no longer points" in outcome[0]["reason"]
+    assert not runner.calls
+
+
+def test_a_head_forged_after_the_trunk_gate_is_not_armed(published: World) -> None:
+    number = published.api.pulls[0]["number"]
+    published.api.on_read[number] = [None, lambda pull: published.api.forge_push(number)]
+    runner = FakeRunner()
+    assert arm(published, runner)[0]["outcome"] == "not-armed"
+    assert [call["script"] for call in runner.calls] == ["trunk_revert.py"]
 
 
 def test_arming_leaves_no_worktree_behind(published: World) -> None:
