@@ -3,12 +3,14 @@
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
 import contextlib
+import itertools
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, call, patch
 
 import pytest
 
+from benchbox.platforms.base.data_loading import DataLoadingError
 from benchbox.platforms.duckdb import DuckDBAdapter
 
 pytestmark = [
@@ -695,6 +697,8 @@ class TestDuckDBAdapter:
     @patch("benchbox.platforms.duckdb.duckdb")
     def test_load_data_empty_files(self, mock_duckdb):
         mock_connection = Mock()
+        mock_connection.execute.return_value.fetchall.return_value = [("id",)]
+        mock_connection.execute.return_value.fetchone.return_value = [0]
         mock_duckdb.connect.return_value = mock_connection
 
         mock_benchmark = Mock()
@@ -1211,7 +1215,8 @@ class TestDuckDBAdapter:
     @patch("benchbox.platforms.duckdb.duckdb")
     def test_table_loading_order(self, mock_duckdb):
         mock_connection = Mock()
-        mock_connection.execute.return_value.fetchone.return_value = [50]
+        mock_connection.execute.return_value.fetchone.side_effect = itertools.cycle([[0], [1]])
+        mock_connection.execute.return_value.fetchall.return_value = [("id",), ("name",)]
         mock_duckdb.connect.return_value = mock_connection
 
         mock_benchmark = Mock()
@@ -1256,10 +1261,8 @@ class TestDuckDBAdapter:
 
             adapter = DuckDBAdapter()
 
-            table_stats, load_time, _ = adapter.load_data(mock_benchmark, mock_connection, Path("/tmp"))
-
-            assert table_stats["error_table"] == 0
-            assert isinstance(load_time, float)
+            with pytest.raises(DataLoadingError, match="error_table"):
+                adapter.load_data(mock_benchmark, mock_connection, Path("/tmp"))
 
         finally:
             temp_path.unlink()
