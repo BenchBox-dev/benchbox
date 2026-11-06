@@ -19,6 +19,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Callable, Iterator
 
+import pyarrow as pa
 import pytest
 
 from benchbox.core.platform_registry import PlatformRegistry
@@ -82,8 +83,11 @@ TEXT_ATTRIBUTES = frozenset({"token", "access_token"})
 FAR_FUTURE_ATTRIBUTES = frozenset({"expires_on"})
 CLASS_ATTRIBUTES = frozenset({"DataFrame", "LazyFrame"})
 COUNT_QUERY = re.compile(r"\bCOUNT\s*\(", re.IGNORECASE)
+COUNT_TARGET = re.compile(r"\bCOUNT\s*\([^)]*\)\s+FROM\s+(" + QUALIFIED_NAME + ")", re.IGNORECASE)
+INSERT_TARGET = re.compile(r"\s*INSERT\s+(?:OVERWRITE\s+)?(?:INTO\s+)?(" + QUALIFIED_NAME + ")", re.IGNORECASE)
 CONNECTION_PROBE = re.compile(r"^\s*SELECT\s+1(?:\s+AS\s+\w+)?\s*;?\s*$", re.IGNORECASE)
 FAKE_VERSION = "9.9.9"
+STREAM_LOAD_RESPONSE = '{"Status": "Success", "Message": "OK", "NumberLoadedRows": 1}'
 FAKE_VERSIONS = {"duckdb": "1.4.0"}
 CATALOG_NAME = "benchdb"
 
@@ -281,6 +285,7 @@ class Ledger:
     rows: list[Any] = field(default_factory=lambda: [CatalogRow((CATALOG_NAME,) * 4)])
     scripted: list[tuple[re.Pattern[str], list[Any]]] = field(default_factory=list)
     last_sql: str = ""
+    inserted: dict[str, int] = field(default_factory=dict)
     temp_entries_at_start: frozenset[str] = field(default_factory=temp_entries)
     driver_calls: dict[str, int] = field(default_factory=dict)
     statements_seen: dict[str, int] = field(default_factory=dict)
@@ -289,10 +294,30 @@ class Ledger:
         for pattern, rows in self.scripted:
             if pattern.search(self.last_sql):
                 return rows
+        if counted := COUNT_TARGET.search(self.last_sql):
+            return [(1 + self.inserted.get(table_key(counted.group(1)), 0),)]
+        if COUNT_QUERY.search(self.last_sql):
+            return [(1,)]
         return self.rows
 
     def record(self, kind: str, detail: str, destructive: bool, target: str = "") -> None:
         self.events.append(Event(self.phase, self.stage, kind, detail.strip()[:240], destructive, target))
+
+    def note_inserts(self, text: str) -> None:
+        for statement in split_statements(text):
+            if inserting := INSERT_TARGET.match(statement):
+                target_table = table_key(inserting.group(1))
+                self.inserted[target_table] = self.inserted.get(target_table, 0) + 1
+
+    def count_stream(self) -> bytes:
+        counted = COUNT_TARGET.search(self.last_sql)
+        if not counted:
+            return b""
+        table = pa.table({"count()": [1 + self.inserted.get(table_key(counted.group(1)), 0)]})
+        sink = pa.BufferOutputStream()
+        with pa.ipc.new_stream(sink, table.schema) as writer:
+            writer.write_table(table)
+        return sink.getvalue().to_pybytes()
 
     def record_sql(self, origin: str, statement: str) -> None:
         self.last_sql = statement
@@ -304,9 +329,12 @@ class Ledger:
         statements = [value for value in (*args, *kwargs.values()) if isinstance(value, str)]
         self.driver_calls[self.phase] = self.driver_calls.get(self.phase, 0) + 1
         if leaf in SQL_CALLS and statements:
+            self.note_inserts(statements[0])
             self.record_sql(name, statements[0])
             return
         texts = [text for text in sql_texts(args, kwargs) if looks_like_sql(text)]
+        for text in texts:
+            self.note_inserts(text)
         if destructive := next((text for text in texts if has_destructive_statement(text)), None):
             self.record_sql(name, destructive)
         elif texts:
@@ -424,6 +452,8 @@ class Fake:
             return time.time() + 10**9
         if attribute in CLASS_ATTRIBUTES:
             return fake_class(self._ledger, f"{self._name}.{attribute}")
+        if attribute == "text":
+            return STREAM_LOAD_RESPONSE
         if attribute == "status_code":
             return 200
         return Fake(self._ledger, f"{self._name}.{attribute}")
@@ -432,6 +462,10 @@ class Fake:
         return None
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        for value in (*args, *kwargs.values()):
+            if isinstance(value, types.GeneratorType):
+                for _ in value:
+                    pass
         self._ledger.record_call(self._name, args, kwargs)
         leaf = self._name.rsplit(".", 1)[-1]
         rows = self._ledger.rows_now()
@@ -440,7 +474,7 @@ class Fake:
         if leaf in FETCH_ONE:
             return rows[0] if rows else None
         if leaf == "bytes":
-            return b""
+            return self._ledger.count_stream()
         if leaf == "json":
             return Payload()
         if leaf == "paginate":
@@ -1096,7 +1130,6 @@ def ledger(world: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Ledger]:
     modules_before = dict(sys.modules)
     ledger = Ledger(world=world)
     ledger.scripted.append((CONNECTION_PROBE, [(1,)]))
-    ledger.scripted.append((COUNT_QUERY, [(1,)]))
     ledger.protect_current_files()
 
     for module, attribute in (
