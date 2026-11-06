@@ -6,9 +6,17 @@ push-triggered trunk run on `develop`. It never rebuilds or publishes packages.
 ## Producer
 
 The `dist-artifact` job of `.github/workflows/trunk.yml` runs on each push to
-`develop` that is not replaced while waiting; a replaced push gets no run and no
-artifact, so that commit cannot be released. Its artifact name is
+`develop`. The workflow's concurrency group is per commit, so a later push never
+cancels or replaces an earlier push's run: every pushed commit gets a completed
+run with its tests and artifact, and runs for different commits may queue for
+runners. Its artifact name is
 `dist-<full head SHA>-attempt-<positive run attempt>`.
+
+A commit whose run failed is still unreleasable, because admission is unchanged.
+`scripts/release_releasable.py newest` prints the newest `develop` commit whose
+trunk push run succeeded and whose attempt-bound artifact passes the same
+selection admission uses; it examines at most the 40 newest distinct commits
+with a successful run. Candidate selection for trunk UAT uses that rule.
 
 The artifact contains exactly four regular files at its root:
 
