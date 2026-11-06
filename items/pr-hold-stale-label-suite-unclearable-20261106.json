@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "pr-hold decides from the pull request's live labels (read through the API), not the event payload, so a rerun of a hold-era suite passes once the label is gone",
+    "Or, if the payload stays authoritative: pr-arm recognises a superseded pr-hold failure and names the working remedy instead of make pr-rerun",
+    "A test covers this sequence: push while held, remove the label, then rerun the old suite or arm",
+    "No change to required contexts or rulesets; the hold still blocks while the label is present"
+  ],
+  "context": "Related but distinct: pr-arm-rerun-contradictory-guidance-20261027 covers pr-arm/pr-rerun advice while a full CI run is still in progress.",
+  "description": "Problem (2026-11-06, PR #3957 head 47049d6e59): .github/workflows/pr-hold.yml computes HELD from github.event.pull_request.labels, the payload of the triggering event. A push made while no-auto-merge was set produced a failed 'hold' suite. Removing the label produced a newer, successful 'unlabeled' run. make pr-arm then refused: the failure is 'hidden behind a newer success; the merge rollup still counts it, so run make pr-rerun'. make pr-rerun reran it, but a rerun replays the original payload, which still carries the label, so it failed again, and pr-arm refused with 'required check hold completed with conclusion failure'. Only a new head cleared it; here that was a rebase onto develop. Every owner-released hold set before the last push hits this loop.\n\nOutcome: after the owner removes the label, the current head can be armed without pushing a new commit.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3957"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae",
+      "at": "2026-11-06T12:50:38Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "2e647a3d811844f993d95bc1c98cf70e",
+      "session_id": "4e1f5de86962468394697835ee28c6b3"
+    }
+  ]
+}
