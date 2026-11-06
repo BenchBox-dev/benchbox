@@ -27116,10 +27116,15 @@
       "title": "Enforce the release-window freeze on infrastructure changes with a merge check"
     },
     "rv2r-09-trunk-dist-every-commit": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-07T15:33:30Z",
+        "generation": "f1957e23425246bd9dcab046edca05cd",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Give every develop push its own completed trunk run so every merged commit is releasable"
     },
     "rv2r-10-flaky-ci-investigation": {
