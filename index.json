@@ -2458,6 +2458,7 @@
     },
     "sqlglot-core-delivery-2": {
       "accepted_members": {
+        "sqlglot-e2e-core-wheel-consumer": "11f5962c45cb43bd185bfcfc30c2a7c01a88d8af",
         "sqlglot-e2e-verified-wheel-adoption": "09f69540de7f5f955fde0c30729178b6b138f67a"
       },
       "batch_schema": 2,
@@ -2465,6 +2466,27 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "sqlglot-e2e-core-wheel-consumer": {
+          "accepted_head": "11f5962c45cb43bd185bfcfc30c2a7c01a88d8af",
+          "changed_files": [
+            ".github/soundness-paths.txt",
+            ".github/sqlglot-delivery.json",
+            ".github/workflows/sqlglot-delivery.yml",
+            "_project/decisions/auto-merge-policy-consolidation-2026-08-06.md",
+            "changelog.d/sqlglot-e2e-core-wheel-consumer.json",
+            "docs/internal/dev-loop-property-ledger.md",
+            "docs/internal/merge-queue-governance.md",
+            "docs/internal/pr-triage.md",
+            "docs/internal/release-guide.md",
+            "docs/internal/repo-admin-settings.md",
+            "scripts/sqlglot_delivery.py",
+            "tests/unit/ledger_cutover_files.txt",
+            "tests/unit/scripts/test_sqlglot_delivery.py",
+            "tests/unit/workflows/test_sqlglot_delivery_workflow.py"
+          ],
+          "integration_head": "57e57da05b0ba1965836783a9c0ba0d7f01b73c9",
+          "integration_seq": 2
+        },
         "sqlglot-e2e-verified-wheel-adoption": {
           "accepted_head": "09f69540de7f5f955fde0c30729178b6b138f67a",
           "changed_files": [
@@ -2482,7 +2504,7 @@
         }
       },
       "integration_branch": "feat/sqlglot-core-delivery-2",
-      "integration_head": "bc805016a85d10685369d21c676a25270511788f",
+      "integration_head": "57e57da05b0ba1965836783a9c0ba0d7f01b73c9",
       "integration_log": [
         {
           "at": "2026-11-06T19:20:42Z",
@@ -2498,6 +2520,15 @@
           "op_id": "ed45be87641c432c84cea2c5f5ae2a04",
           "previous_head": "0b0c8f764d6836a0986a566af14f95d49e725dd2",
           "seq": 1
+        },
+        {
+          "at": "2026-11-06T20:02:08Z",
+          "head": "57e57da05b0ba1965836783a9c0ba0d7f01b73c9",
+          "kind": "prepare",
+          "member": "sqlglot-e2e-core-wheel-consumer",
+          "op_id": "0a560a99cdcd404ebe7f119d6fe2b5b5",
+          "previous_head": "bc805016a85d10685369d21c676a25270511788f",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-sqlglot-core-delivery-2",
@@ -30037,18 +30068,13 @@
       "title": "Deliver fork-owned SQLGlot integration and narrow core wheel adoption"
     },
     "sqlglot-e2e-core-wheel-consumer": {
-      "claim": {
-        "expires_at": "2026-11-07T19:54:32Z",
-        "generation": "0490a02d2f694412b299d61008bd7460",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f"
-      },
+      "claim": null,
       "needs": [
         "sqlglot-e2e-fork-wheel-delivery",
         "sqlglot-e2e-verified-wheel-adoption"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Consume verified fork wheel deliveries through ordinary core adoption PRs"
     },
     "sqlglot-e2e-first-release-certification": {
