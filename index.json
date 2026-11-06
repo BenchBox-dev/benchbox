@@ -2168,10 +2168,7 @@
       "terminal_outcome": "deliver"
     },
     "sqlglot-core-delivery": {
-      "accepted_members": {
-        "sqlglot-e2e-core-wheel-consumer": "acec0a21c2e6aed385496e6ab069ccef8bc532b0",
-        "sqlglot-e2e-verified-wheel-adoption": "567c18249716efc85655218fe3cfb25b194e1343"
-      },
+      "accepted_members": {},
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
@@ -2189,38 +2186,7 @@
           "previous_head": null
         }
       ],
-      "integrated_members": {
-        "sqlglot-e2e-core-wheel-consumer": {
-          "accepted_head": "acec0a21c2e6aed385496e6ab069ccef8bc532b0",
-          "changed_files": [
-            ".github/sqlglot-delivery.json",
-            ".github/workflows/sqlglot-delivery.yml",
-            "changelog.d/sqlglot-e2e-core-wheel-consumer.json",
-            "docs/internal/merge-queue-governance.md",
-            "docs/internal/release-guide.md",
-            "scripts/sqlglot_delivery.py",
-            "tests/unit/scripts/test_sqlglot_delivery.py",
-            "tests/unit/workflows/test_sqlglot_delivery_workflow.py"
-          ],
-          "integration_head": "28cf8f798f931e5eb8db58582b88a77d3d019480",
-          "integration_seq": 4
-        },
-        "sqlglot-e2e-verified-wheel-adoption": {
-          "accepted_head": "567c18249716efc85655218fe3cfb25b194e1343",
-          "changed_files": [
-            ".github/path-filters.yml",
-            ".github/workflows/ci.yml",
-            "Makefile",
-            "changelog.d/fix-sqlglot-consumer-checks.json",
-            "docs/internal/release-guide.md",
-            "scripts/adopt_sqlglot_wheel.py",
-            "tests/unit/scripts/test_adopt_sqlglot_wheel.py",
-            "tests/unit/scripts/test_path_filter_decision.py"
-          ],
-          "integration_head": "744dc67034e43008a870b7b9bfef1a799f7ce920",
-          "integration_seq": 2
-        }
-      },
+      "integrated_members": {},
       "integration_branch": "feat/sqlglot-core-delivery",
       "integration_head": "9cc3b92f6442e9cad41aef140f2c8dde278f0acc",
       "integration_log": [
@@ -2322,7 +2288,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-sqlglot-core-delivery",
-      "lifecycle": "active",
+      "lifecycle": "aborted",
       "members": [
         "sqlglot-e2e-verified-wheel-adoption",
         "sqlglot-e2e-core-wheel-consumer"
