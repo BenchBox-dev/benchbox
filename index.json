@@ -13785,10 +13785,15 @@
       "title": "DuckDB H2O tuned template tunes tables the schema does not have; no test checks template tables exist"
     },
     "duckdb-iceberg-handler-register-fails-20261106": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-07T20:20:39Z",
+        "generation": "de1239e9cf684827bdd07d266ca28e32",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "DuckDB adapter Iceberg load fails for every table: IcebergFileHandler does not create the namespace and registers the table directory instead of a metadata file"
     },
     "duckdb-index-identifier-binding-20261001": {
