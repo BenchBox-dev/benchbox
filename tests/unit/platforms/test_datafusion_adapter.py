@@ -748,9 +748,9 @@ WHERE DATE '1994-01-01' <= DATE '1995-01-01'"""
 
     @patch("benchbox.platforms.datafusion.SessionContext")
     def test_connection_compat_execute_fetchall(self, mock_session_context):
-        mock_batch = Mock()
-        mock_batch.schema.names = ["a", "b"]
-        mock_batch.to_pylist.return_value = [{"a": 1, "b": "x"}, {"a": 2, "b": "y"}]
+        import pyarrow as pa
+
+        mock_batch = pa.record_batch({"a": [1, 2], "b": ["x", "y"]})
 
         mock_df = Mock()
         mock_df.collect.return_value = [mock_batch]
@@ -767,9 +767,9 @@ WHERE DATE '1994-01-01' <= DATE '1995-01-01'"""
 
     @patch("benchbox.platforms.datafusion.SessionContext")
     def test_connection_compat_execute_is_lazy_for_select(self, mock_session_context):
-        mock_batch = Mock()
-        mock_batch.schema.names = ["a"]
-        mock_batch.to_pylist.return_value = [{"a": 1}]
+        import pyarrow as pa
+
+        mock_batch = pa.record_batch({"a": [1]})
 
         mock_df = Mock()
         mock_df.collect.return_value = [mock_batch]

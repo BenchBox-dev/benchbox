@@ -230,3 +230,45 @@ class TestDataFusionCursorCompat:
 
         sql = "-- this is a comment\nDROP TABLE t"
         assert DataFusionConnectionCompat._requires_eager_execution(sql) is True
+
+
+class TestDataFusionCursorCompatRows:
+    @staticmethod
+    def _cursor(sql):
+        import datafusion
+
+        from benchbox.platforms.datafusion import DataFusionCursorCompat
+
+        return DataFusionCursorCompat(datafusion.SessionContext().sql(sql))
+
+    def test_fetchall_matches_pylist_reference_with_nulls_dates_decimals(self):
+        import datafusion
+
+        from benchbox.platforms.datafusion import DataFusionCursorCompat
+
+        ctx = datafusion.SessionContext()
+        sql = (
+            "SELECT * FROM (VALUES (1, 'a', DATE '2024-01-02', CAST('1.50' AS DECIMAL(10,2))), "
+            "(2, NULL, NULL, NULL), (3, 'c', DATE '2024-03-04', CAST('3.25' AS DECIMAL(10,2)))) AS t(id, s, d, amt)"
+        )
+        reference = []
+        for batch in ctx.sql(sql).collect():
+            names = [str(n) for n in batch.schema.names]
+            reference.extend(tuple(row.get(n) for n in names) for row in batch.to_pylist())
+
+        cursor = DataFusionCursorCompat(ctx.sql(sql))
+        assert cursor.fetchall() == reference
+        assert cursor.rowcount == 3
+        assert cursor.fetchone() == reference[0]
+
+    def test_fetchone_before_fetchall_sets_rowcount_and_matches(self):
+        cursor = self._cursor("SELECT * FROM (VALUES (1, 'x'), (2, 'y')) AS t(a, b)")
+        assert cursor.fetchone() == (1, "x")
+        assert cursor.rowcount == 2
+        assert cursor.fetchall() == [(1, "x"), (2, "y")]
+
+    def test_empty_result(self):
+        cursor = self._cursor("SELECT 1 AS a WHERE 1 = 0")
+        assert cursor.fetchone() is None
+        assert cursor.fetchall() == []
+        assert cursor.rowcount == 0

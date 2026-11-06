@@ -32,13 +32,18 @@ def _parse_date_value(value: Any) -> Any:
 
 
 def _parse_date_column(series: Any) -> Any:
+    import pyarrow as pa
+
+    date_dtype = pd.ArrowDtype(pa.date32())
     try:
         parsed = pd.to_datetime(series, format="ISO8601")
     except (ValueError, TypeError):
-        return series.map(_parse_date_value)
+        return pd.array(series.map(_parse_date_value), dtype=date_dtype)
     if not pd.api.types.is_datetime64_any_dtype(parsed):
-        return series.map(_parse_date_value)
-    return parsed.dt.date.astype(object).where(parsed.notna(), None)
+        return pd.array(series.map(_parse_date_value), dtype=date_dtype)
+    if getattr(parsed.dtype, "tz", None) is not None:
+        parsed = parsed.dt.tz_localize(None)
+    return parsed.astype(date_dtype)
 
 
 _NUMERIC_SQL_TYPE_PREFIXES = ("INT", "BIGINT", "SMALLINT", "TINYINT", "DECIMAL", "NUMERIC", "FLOAT", "DOUBLE", "REAL")
@@ -118,12 +123,9 @@ def _coerce_date_columns(df: PandasDF, date_columns: list[str]) -> PandasDF:
     if not date_columns:
         return df
 
-    import pyarrow as pa
-
-    date_dtype = pd.ArrowDtype(pa.date32())
     for column in date_columns:
         if column in df.columns:
-            df[column] = pd.array(_parse_date_column(df[column]), dtype=date_dtype)
+            df[column] = _parse_date_column(df[column])
     return df
 
 
