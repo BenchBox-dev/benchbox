@@ -938,7 +938,7 @@
         }
       },
       "integration_branch": "feat/hold-label-and-batch-e2e-20261106",
-      "integration_head": "609e6eb81ecf869b9522a700ff070e9c9ea52945",
+      "integration_head": "7530216ddf485dcc5fe756d2952b8242600b0c28",
       "integration_log": [
         {
           "at": "2026-11-06T13:13:21Z",
@@ -963,6 +963,21 @@
           "op_id": "754602ec56284e048bfacda268e12831",
           "previous_head": "959c3391352a8f78223e034cf6e736062636fdb5",
           "seq": 2
+        },
+        {
+          "at": "2026-11-06T23:47:48Z",
+          "changed_files": [
+            "tests/integration/worktree/batch_loop_support.py",
+            "tests/integration/worktree/batch_loop_theseus.py"
+          ],
+          "head": "7530216ddf485dcc5fe756d2952b8242600b0c28",
+          "kind": "fix",
+          "op_id": "f5287f3083c1400eb8155869706eb8c0",
+          "previous_head": "609e6eb81ecf869b9522a700ff070e9c9ea52945",
+          "requires_acceptance": [
+            "batch-loop-e2e-review-binding-failures-20261106"
+          ],
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-feat-hold-label-and-batch-e2e",
