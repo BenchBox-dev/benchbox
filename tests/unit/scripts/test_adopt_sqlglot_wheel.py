@@ -51,6 +51,10 @@ def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def identity(version: str) -> dict[str, str]:
+    return {"version": version, "fork_sha": "a" * 40, "upstream_sha": "b" * 40}
+
+
 @pytest.fixture
 def repo(tmp_path: Path) -> Path:
     root = tmp_path / "repo"
@@ -70,9 +74,7 @@ def state(root: Path) -> dict[str, bytes]:
 
 def test_adoption_updates_pin_and_baseline(repo: Path, tmp_path: Path) -> None:
     wheel = build_wheel(tmp_path, "30.23.0.3")
-    manifest = adopt(
-        wheel, digest(wheel), root=repo, checks=None, version="30.23.0.3", fork_sha="a" * 40, upstream_sha="b" * 40
-    )
+    manifest = adopt(wheel, digest(wheel), root=repo, checks=None, **identity("30.23.0.3"))
     runtime = repo / "benchbox" / "_vendor"
     assert json.loads((runtime / "sqlglot.json").read_text(encoding="utf-8")) == manifest
     assert sorted(p.name for p in runtime.iterdir()) == [
@@ -88,7 +90,7 @@ def test_adoption_updates_pin_and_baseline(repo: Path, tmp_path: Path) -> None:
 def test_dry_run_changes_nothing(repo: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     wheel = build_wheel(tmp_path, "30.23.0.3")
     before = state(repo)
-    adopt(wheel, digest(wheel), root=repo, dry_run=True, checks=pytest.fail)
+    adopt(wheel, digest(wheel), root=repo, dry_run=True, checks=pytest.fail, **identity("30.23.0.3"))
     assert state(repo) == before
     assert "30.23.0.2 -> 30.23.0.3" in capsys.readouterr().out
 
@@ -104,29 +106,36 @@ def test_wrong_expected_identity_refused_without_changes(
     wheel = build_wheel(tmp_path, "30.23.0.3")
     before = state(repo)
     with pytest.raises(ValueError, match="expected"):
-        adopt(wheel, digest(wheel), root=repo, dry_run=dry_run, checks=pytest.fail, **expected)
+        adopt(
+            wheel,
+            digest(wheel),
+            root=repo,
+            dry_run=dry_run,
+            checks=pytest.fail,
+            **{**identity("30.23.0.3"), **expected},
+        )
     assert state(repo) == before
 
 
 def test_unverified_wheel_refused(repo: Path, tmp_path: Path) -> None:
     wheel = build_wheel(tmp_path, "30.23.0.3")
     with pytest.raises(ValueError, match="unverified"):
-        adopt(wheel, None, root=repo, checks=None)
+        adopt(wheel, None, root=repo, checks=None, **identity("30.23.0.3"))
     with pytest.raises(ValueError, match="does not match"):
-        adopt(wheel, "0" * 64, root=repo, checks=None)
+        adopt(wheel, "0" * 64, root=repo, checks=None, **identity("30.23.0.3"))
 
 
 def test_sidecar_digest_accepted(repo: Path, tmp_path: Path) -> None:
     wheel = build_wheel(tmp_path, "30.23.0.3")
     (tmp_path / (wheel.name + ".sha256")).write_text(f"{digest(wheel)}  {wheel.name}\n")
-    assert adopt(wheel, None, root=repo, checks=None)["version"] == "30.23.0.3"
+    assert adopt(wheel, None, root=repo, checks=None, **identity("30.23.0.3"))["version"] == "30.23.0.3"
 
 
 def test_dirty_wheel_refused_without_changes(repo: Path, tmp_path: Path) -> None:
     wheel = build_wheel(tmp_path, "30.23.0.3", dirty=True)
     before = state(repo)
     with pytest.raises(ValueError, match="development"):
-        adopt(wheel, digest(wheel), root=repo, checks=None)
+        adopt(wheel, digest(wheel), root=repo, checks=None, **identity("30.23.0.3"))
     assert state(repo) == before
 
 
@@ -134,7 +143,7 @@ def test_dirty_wheel_refused_without_changes(repo: Path, tmp_path: Path) -> None
 def test_not_newer_wheel_refused(repo: Path, tmp_path: Path, version: str) -> None:
     wheel = build_wheel(tmp_path, version)
     with pytest.raises(ValueError, match="not newer"):
-        adopt(wheel, digest(wheel), root=repo, checks=None)
+        adopt(wheel, digest(wheel), root=repo, checks=None, **identity(version))
 
 
 def test_failed_check_restores_previous_runtime(repo: Path, tmp_path: Path) -> None:
@@ -145,11 +154,19 @@ def test_failed_check_restores_previous_runtime(repo: Path, tmp_path: Path) -> N
         raise ValueError("retirement and baseline check failed")
 
     with pytest.raises(ValueError, match="retirement"):
-        adopt(wheel, digest(wheel), root=repo, checks=failing)
+        adopt(wheel, digest(wheel), root=repo, checks=failing, **identity("30.23.0.3"))
     assert state(repo) == before
 
 
 def test_main_reports_refusal(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     wheel = build_wheel(tmp_path, "30.23.0.3")
-    assert main(["--wheel", str(wheel), "--dry-run"]) == 1
+    expected = ["--version", "30.23.0.3", "--fork-sha", "a" * 40, "--upstream-sha", "b" * 40]
+    assert main(["--wheel", str(wheel), *expected, "--dry-run"]) == 1
     assert "unverified" in capsys.readouterr().err
+
+
+def test_main_requires_expected_identity(tmp_path: Path) -> None:
+    wheel = build_wheel(tmp_path, "30.23.0.3")
+    with pytest.raises(SystemExit) as refused:
+        main(["--wheel", str(wheel), "--sha256", digest(wheel), "--dry-run"])
+    assert refused.value.code == 2

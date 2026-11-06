@@ -41,9 +41,9 @@ def plan(
     wheel: Path,
     sha256: str | None,
     *,
-    version: str | None = None,
-    fork_sha: str | None = None,
-    upstream_sha: str | None = None,
+    version: str,
+    fork_sha: str,
+    upstream_sha: str,
 ) -> dict[str, Any]:
     if not wheel.is_file():
         raise ValueError(f"Wheel not found: {wheel}")
@@ -56,7 +56,7 @@ def plan(
         ("fork SHA", "fork_sha", fork_sha),
         ("upstream SHA", "upstream_sha", upstream_sha),
     ):
-        if supplied is not None and manifest[key] != supplied.strip().lower():
+        if manifest[key] != supplied.strip().lower():
             raise ValueError(f"Wheel {label} does not match the expected {label}")
     current = json.loads((root / "benchbox/_vendor/sqlglot.json").read_text(encoding="utf-8"))
     if version_key(manifest["version"]) <= version_key(current["version"]):
@@ -106,9 +106,9 @@ def adopt(
     dry_run: bool = False,
     checks: Callable[[Path], None] | None = run_checks,
     *,
-    version: str | None = None,
-    fork_sha: str | None = None,
-    upstream_sha: str | None = None,
+    version: str,
+    fork_sha: str,
+    upstream_sha: str,
 ) -> dict[str, Any]:
     planned = plan(root, wheel, sha256, version=version, fork_sha=fork_sha, upstream_sha=upstream_sha)
     manifest = planned["manifest"]
@@ -141,9 +141,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--wheel", type=Path, required=True)
     parser.add_argument("--sha256", help="Expected SHA-256 of the wheel (or provide <wheel>.sha256)")
-    parser.add_argument("--version", help="Expected runtime version")
-    parser.add_argument("--fork-sha", help="Expected fork source commit")
-    parser.add_argument("--upstream-sha", help="Expected upstream source commit")
+    parser.add_argument("--version", required=True, help="Expected runtime version")
+    parser.add_argument("--fork-sha", required=True, help="Expected fork source commit")
+    parser.add_argument("--upstream-sha", required=True, help="Expected upstream source commit")
     parser.add_argument("--dry-run", action="store_true", help="Verify the wheel and report; change nothing")
     arguments = parser.parse_args(argv)
     try:
