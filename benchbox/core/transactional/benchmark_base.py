@@ -60,6 +60,20 @@ _STARROCKS_BETWEEN_RE = re.compile(r"(?P<column>\w+)\s+BETWEEN\s+(?P<lo>\S+)\s+A
 _STARROCKS_UNCONDITIONAL_DELETE_RE = re.compile(r"^\s*DELETE\s+FROM\s+\S+\s*$", re.IGNORECASE)
 
 
+@compat_local(
+    kind="rendering",
+    platform_specific=True,
+    reason=(
+        "StarRocks starts an explicit transaction with BEGIN, so the statement is rendered without the "
+        "TRANSACTION keyword. Only the statement text changes; isolation and commit behaviour are untouched."
+    ),
+)
+def _starrocks_begin_statement(sql: str, dialect: str) -> str:
+    if dialect == "starrocks":
+        return _BEGIN_TRANSACTION_RE.sub("BEGIN;", sql)
+    return sql
+
+
 def _starrocks_cleanup_statement(statement: str) -> str:
     if not statement.lstrip().upper().startswith("DELETE"):
         return statement
@@ -208,15 +222,6 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
                 return True, overrides[fallback_key]
         return False, None
 
-    @compat_local(
-        kind="rendering",
-        platform_specific=True,
-        reason=(
-            "Rewrites transactional primitive SQL for engines without PostgreSQL's series and transaction syntax: "
-            "series generation, BEGIN and isolation statements and temporary-table DDL per Doris, SingleStore, "
-            "StarRocks, QuestDB, Snowflake, BigQuery and PostgreSQL."
-        ),
-    )
     def _rewrite_transactional_sql_for_platform(self, sql: str, platform_key: str | None) -> str:
         dialect = (platform_key or "").lower()
         if dialect == "doris":
@@ -237,8 +242,7 @@ class TransactionalBenchmarkBase(GeneratorOutputDirMixin, BaseBenchmark, Operati
             sql = _UNNEST_SERIES_SELECT_RE.sub(
                 lambda m: template.format(lo=m.group("lo"), hi=m.group("hi"), alias=m.group("alias")), sql
             )
-            if dialect == "starrocks":
-                return _BEGIN_TRANSACTION_RE.sub("BEGIN;", sql)
+            sql = _starrocks_begin_statement(sql, dialect)
             return rewrite_questdb_operation_sql(sql) if dialect == "questdb" else sql
         if dialect not in _POSTGRES_SERIES_DIALECTS:
             return sql
