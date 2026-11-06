@@ -100,7 +100,7 @@ Then:
    `.github/oracle-omp-config.yml`.
 3. Start the broker: `_project/scripts/oracle_gateway_host.sh broker`.
 4. Log in to each reviewer provider with the account the oracle should spend:
-   `<pinned omp> auth-broker login anthropic`, then `openai-codex`, `muse-code` and
+   `<pinned omp> auth-broker login anthropic`, then `openai-codex` and
    `google-antigravity`. The broker step prints any that are missing. Every
    account logged in for a provider is pinned, so log out of any the oracle
    must not use (`<pinned omp> auth-broker logout <provider>`). The broker step
@@ -124,7 +124,7 @@ Then:
    broker: ok on 127.0.0.1:8765
    dev.omp.auth-broker: omp 18.12.1 sha256=<hash>
    dev.omp.auth-gateway: omp 18.12.1 sha256=<hash>
-   logins: anthropic openai-codex muse-code google-antigravity
+   logins: anthropic openai-codex google-antigravity
    http://127.0.0.1:4000: healthz=200 models=11/11 usage=403
    https://<host>.<tailnet>.ts.net:4000: healthz=200 models=11/11 usage=403
    secrets: ORACLE_GATEWAY_TOKEN and ORACLE_GATEWAY_URL are set
