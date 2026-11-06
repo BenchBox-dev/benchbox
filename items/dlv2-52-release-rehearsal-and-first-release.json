@@ -187,6 +187,15 @@
       "op": "update",
       "op_id": "d3ac3a84fb6e4ff1812842dffc6724dc",
       "session_id": "b7a346e5fd054aa88d3c05a944442610"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-06T13:42:20Z",
+      "client": "omp-coding-agent",
+      "generation": "c0c30ccd98504825b6cb51a198cd581a",
+      "op": "release",
+      "op_id": "449232f71c044b91aadf4f815a6f3041",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
     }
   ]
 }
