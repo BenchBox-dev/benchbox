@@ -2,29 +2,6 @@
  "schema": 1,
  "differences": [
   {
-   "engine": "sqlite",
-   "benchmark": "tpcds",
-   "check": "error",
-   "queries": [
-    13,
-    48
-   ],
-   "match": "timeout",
-   "justification": "SQLite without indexes does not finish these multi-join queries inside the per-query budget at SF0.01. The outcome depends on wall-clock speed, so the entry is optional. Performance limit of the engine on unindexed TPC-DS, not a translation difference.",
-   "optional": true
-  },
-  {
-   "engine": "sqlite",
-   "benchmark": "tpch",
-   "check": "error",
-   "queries": [
-    21
-   ],
-   "match": "timeout",
-   "justification": "SQLite without indexes does not finish TPC-H Q21 inside the per-query budget at SF0.01. The outcome depends on wall-clock speed, so the entry is optional. Performance limit of the engine on unindexed TPC-H, not a translation difference.",
-   "optional": true
-  },
-  {
    "engine": "postgres",
    "benchmark": "tpch",
    "check": "error",
@@ -594,27 +571,6 @@
    ],
    "match": "every cell NULL or 0",
    "justification": "Executed on DuckDB with the gate data (SF0.01): part has 0 rows with p_brand 'Brand#23' and p_container 'MED BOX', so the SUM is NULL."
-  },
-  {
-   "engine": "sqlite",
-   "benchmark": "tpchavoc",
-   "check": "error",
-   "queries": [
-    "5_v8",
-    "21_v1",
-    "21_v2",
-    "21_v3",
-    "21_v4",
-    "21_v5",
-    "21_v6",
-    "21_v7",
-    "21_v8",
-    "21_v9",
-    "21_v10"
-   ],
-   "match": "timeout",
-   "optional": true,
-   "justification": "SQLite without indexes does not finish these TPC-H Havoc variants inside the per-query budget at SF0.01: 5_v8 always exceeds it, and the ten 21_v variants run 13 to 15 seconds against the 15 second budget (TPC-H Q21 is already an optional timeout). The outcome depends on wall-clock speed, so the entry is optional. Performance limit of the engine on unindexed TPC-H, not a translation difference."
   },
   {
    "engine": "postgres",

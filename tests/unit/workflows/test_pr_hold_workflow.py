@@ -128,6 +128,12 @@ def test_hold_step_ignores_labels_that_merely_contain_the_hold_label(tmp_path: P
 
 
 @needs_posix_shell_and_jq
+def test_hold_step_matches_the_hold_label_case_insensitively(tmp_path: Path) -> None:
+    result, _ = _hold_step(tmp_path, _GH_SERVES_THE_PR_JSON, [_hold_label().upper()])
+    assert result.returncode == 1
+
+
+@needs_posix_shell_and_jq
 def test_hold_step_passes_once_the_label_is_removed_on_a_rerun_of_the_labeled_run(tmp_path: Path) -> None:
     held, _ = _hold_step(tmp_path / "while-held", _GH_SERVES_THE_PR_JSON, [_hold_label()])
     released, _ = _hold_step(tmp_path / "after-release", _GH_SERVES_THE_PR_JSON, [])

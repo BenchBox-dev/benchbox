@@ -28,7 +28,7 @@ jobs:
         run: |
           set -eu
           labels="$(gh api "repos/$REPO/pulls/$PR" --jq '.labels[].name')"
-          if printf '%s\n' "$labels" | grep -Fxq "$HOLD_LABEL"; then
+          if printf '%s\n' "$labels" | grep -Fxiq "$HOLD_LABEL"; then
             echo "::error::PR carries the durable hold label '$HOLD_LABEL'. Only the owner releases it, by naming this PR in a current request."
             exit 1
           fi
