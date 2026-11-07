@@ -15,6 +15,56 @@
     "https://github.com/BenchBox-dev/BenchBox/pull/3960",
     "https://github.com/BenchBox-dev/BenchBox/pull/3952"
   ],
+  "prepared": {
+    "accepted_head": "47db7b112ac5fff0513e1c740cb4eca79046d108",
+    "batch_id": "arming-reliability",
+    "changed_files": [
+      "changelog.d/feat-arming-reliability--sql-execution-evidence-sqlite-q16-timeouts-20261106.json",
+      "docs/internal/sql-execution-evidence-gate.md",
+      "scripts/sql_execution_gate/engines.py",
+      "scripts/sql_execution_gate/gate.py",
+      "scripts/sql_execution_gate/obt.py",
+      "tests/unit/scripts/test_sql_execution_gate.py"
+    ],
+    "integration_head": "b18d8a4336075320eee62e3c9688c0a15e1a09a7",
+    "integration_seq": 2,
+    "member_id": "sql-execution-evidence-sqlite-q16-timeouts-20261106",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "91065dd87aa2a8c51c981e4df99a1171d8f29fc9a21a179039a29f1b07661029",
+    "source_base": "3b3ce3f84f2186337eb118e888dfda35c909cb3c",
+    "source_revision": "47db7b112ac5fff0513e1c740cb4eca79046d108",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-arming-reliability--sql-execution-evidence-sqlite-q16-timeouts-20261106",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/unit/scripts/test_sql_execution_gate.py"
+      ],
+      "review": {
+        "base_sha": "3b3ce3f84f2186337eb118e888dfda35c909cb3c",
+        "head_sha": "47db7b112ac5fff0513e1c740cb4eca79046d108",
+        "head_tree": "00fdfa515fad85ec66b331c04e1a9d86b31b60b0",
+        "outcome": "clear",
+        "patch_digest": "c9e139dfe00babb62bc48eefc51ea10b",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "b10beb761fc7aaffbda093bb935c4f8c950f4624"
+      },
+      "revision": "47db7b112ac5fff0513e1c740cb4eca79046d108",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
@@ -47,6 +97,15 @@
       "generation": "8bc165263df44617944d8db3d01e76ec",
       "op": "take",
       "op_id": "3dd705fd24984b46a1d15e4df87f0708",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T03:44:15Z",
+      "client": "omp-coding-agent",
+      "generation": "8bc165263df44617944d8db3d01e76ec",
+      "op": "prepare",
+      "op_id": "8112e2a064bb41829594bbd422ac8017",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]

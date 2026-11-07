@@ -2,7 +2,8 @@
   "batches": {
     "arming-reliability": {
       "accepted_members": {
-        "pr-arm-stale-hold-suite-needs-new-head-20261106": "1f3279d9b899d733736dfafaa8d2aeb55c0dd16d"
+        "pr-arm-stale-hold-suite-needs-new-head-20261106": "1f3279d9b899d733736dfafaa8d2aeb55c0dd16d",
+        "sql-execution-evidence-sqlite-q16-timeouts-20261106": "47db7b112ac5fff0513e1c740cb4eca79046d108"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -21,10 +22,23 @@
           ],
           "integration_head": "3b3ce3f84f2186337eb118e888dfda35c909cb3c",
           "integration_seq": 1
+        },
+        "sql-execution-evidence-sqlite-q16-timeouts-20261106": {
+          "accepted_head": "47db7b112ac5fff0513e1c740cb4eca79046d108",
+          "changed_files": [
+            "changelog.d/feat-arming-reliability--sql-execution-evidence-sqlite-q16-timeouts-20261106.json",
+            "docs/internal/sql-execution-evidence-gate.md",
+            "scripts/sql_execution_gate/engines.py",
+            "scripts/sql_execution_gate/gate.py",
+            "scripts/sql_execution_gate/obt.py",
+            "tests/unit/scripts/test_sql_execution_gate.py"
+          ],
+          "integration_head": "b18d8a4336075320eee62e3c9688c0a15e1a09a7",
+          "integration_seq": 2
         }
       },
       "integration_branch": "feat/arming-reliability",
-      "integration_head": "3b3ce3f84f2186337eb118e888dfda35c909cb3c",
+      "integration_head": "b18d8a4336075320eee62e3c9688c0a15e1a09a7",
       "integration_log": [
         {
           "at": "2026-11-07T01:02:04Z",
@@ -40,6 +54,15 @@
           "op_id": "a9f8e6c35b5846868ebfdf4a6df16bf0",
           "previous_head": "c1a2dc186b4f9a76e1a5b8da2aa380cb2893eb67",
           "seq": 1
+        },
+        {
+          "at": "2026-11-07T03:44:15Z",
+          "head": "b18d8a4336075320eee62e3c9688c0a15e1a09a7",
+          "kind": "prepare",
+          "member": "sql-execution-evidence-sqlite-q16-timeouts-20261106",
+          "op_id": "8112e2a064bb41829594bbd422ac8017",
+          "previous_head": "3b3ce3f84f2186337eb118e888dfda35c909cb3c",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-arming-reliability",
@@ -31378,15 +31401,10 @@
       "title": "SQL Cross-Platform Benchmark Suite"
     },
     "sql-execution-evidence-sqlite-q16-timeouts-20261106": {
-      "claim": {
-        "expires_at": "2026-11-08T03:44:11Z",
-        "generation": "8bc165263df44617944d8db3d01e76ec",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "sql-execution-evidence fails on SQLite TPC-DS q16 and tpchavoc q10_v5 15 s timeouts on hosted runners, unrelated to the PR"
     },
     "sql-execution-gate-cover-tpchavoc-obt-20261025": {
