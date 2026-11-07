@@ -300,7 +300,13 @@ def test_handback_guard_allows_safety_wording_and_separate_list_items(tmp_path: 
 
 @pytest.mark.parametrize(
     "relative",
-    ["Makefile", "make/help.mk", "docs/internal/pr-triage.md", "docs/internal/repo-admin-settings.md"],
+    [
+        "Makefile",
+        "make/help.mk",
+        "make/pr-landing.mk",
+        "docs/internal/pr-triage.md",
+        "docs/internal/repo-admin-settings.md",
+    ],
 )
 def test_handback_guard_covers_the_scripts_and_docs_that_print_guidance(tmp_path: Path, relative: str) -> None:
     project = _candidate(tmp_path)

@@ -20,6 +20,7 @@ _LEADING_VARIABLE = re.compile(
     r"^[^#\s:][^:]*: (?P<name>[A-Za-z_][A-Za-z0-9_]*) (?::=|::=|\?=|\+=|=)(?: (?P<value>.*))?$"
 )
 _TRAILING_VARIABLE = re.compile(r"^# (?P<name>[A-Za-z_][A-Za-z0-9_]*) (?::=|=|\?=|\+=) ?(?P<value>.*)$")
+_ROOTED_INCLUDE = re.compile(r"^include \$\(BENCHBOX_MAKEFILE_ROOT\)(?P<path>\S+)\s*$")
 
 _FENCED_BLOCK = re.compile(r"```[^\n]*\n(.*?)```", re.DOTALL)
 _INLINE_CODE = re.compile(r"`([^`\n]+)`")
@@ -103,6 +104,18 @@ def rules(root: Path) -> dict[str, MakeRule]:
 
 def targets(root: Path) -> list[str]:
     return sorted(name for name in rules(root) if name[:1].isalnum() and name != "$@")
+
+
+def makefile_sources(root: Path) -> str:
+    return _with_includes_expanded(root, root / "Makefile")
+
+
+def _with_includes_expanded(root: Path, path: Path) -> str:
+    parts: list[str] = []
+    for line in path.read_text(encoding="utf-8").splitlines(keepends=True):
+        include = _ROOTED_INCLUDE.match(line)
+        parts.append(_with_includes_expanded(root, root / include["path"]) if include else line)
+    return "".join(parts)
 
 
 def named_targets(markdown: str) -> set[str]:

@@ -278,6 +278,10 @@ EXTRA_TEST_MAP: dict[str, list[str]] = {
     "scripts/worktree_lifecycle.sh": WORKTREE_TESTS,
     "make/worktrees.mk": [*WORKTREE_TESTS, *MAKE_INTERFACE_TESTS],
     "Makefile": [*WORKTREE_TESTS, *MAKE_INTERFACE_TESTS],
+    **{
+        f"make/{module}.mk": MAKE_INTERFACE_TESTS
+        for module in ("tests", "reports", "oracle", "quality", "build", "pr-landing", "uat")
+    },
 }
 
 

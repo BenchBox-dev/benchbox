@@ -83,7 +83,7 @@
       "path": "tests/unit/scripts/test_ci_lint_environment_boundary.py",
       "symbol": "TestGateFailsClosed.test_ci_lint_environment_boundary_runs_the_guard_when_the_gate_is_broken",
       "text": "unresolved executable source: f'{broken} echo RAN; else echo SKIPPED; fi'",
-      "payload": "sha256:ecb9eda5f86def5ec1977064e57340c4b70da732c6b6bed4ba6192fb09dbaff9",
+      "payload": "sha256:72c9fdcf8b469da9557558fae6952770fe41b1fc457aaf2d946385510612245d",
       "finding_kind": "payload-error",
       "kind": "fixture",
       "consumer": "tests/unit/scripts/test_ci_lint_environment_boundary.py",
@@ -31830,19 +31830,6 @@
       "kind": "fixture",
       "consumer": "tests/unit/publication/test_validator_parity.py",
       "necessity": "In `test_parity_executes_real_payloads_in_an_isolated_slim_checkout` the test starts a subprocess whose program or inline source (sys.executable) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/scripts/test_ci_lint_environment_boundary.py",
-      "symbol": "TestGateFailsClosed.test_ci_lint_environment_boundary_runs_the_guard_when_the_gate_is_broken",
-      "text": "unresolved executable source: f'{broken} echo RAN; else echo SKIPPED; fi'",
-      "payload": "sha256:04eeea1e8e5e92f084f0c15151a41cc2d37919d02db4423965451067c9d3409b",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/scripts/test_ci_lint_environment_boundary.py",
-      "necessity": "In `TestGateFailsClosed.test_ci_lint_environment_boundary_runs_the_guard_when_the_gate_is_broken` the test starts a subprocess whose program or inline source (f'{broken} echo RAN; else echo SKIPPED; fi') is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
       "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
       "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
       "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."

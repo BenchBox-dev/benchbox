@@ -10,6 +10,8 @@ from typing import Any
 
 import pytest
 
+import scripts.check_make_targets as make_targets
+
 pytest.importorskip("mcp", reason="MCP SDK not installed. Install with: uv add benchbox --extra mcp")
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -316,6 +318,6 @@ def test_exporter_inputs_run_the_docs_unit(path: str) -> None:
 
 def test_the_contract_guard_runs_in_the_lint_job_and_the_local_mirror() -> None:
     workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+    makefile = make_targets.makefile_sources(ROOT)
     assert "run: make doc-contracts-guard" in workflow
     assert "$(MAKE) doc-contracts-guard" in makefile
