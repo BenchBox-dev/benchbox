@@ -22,6 +22,7 @@ class MaintenanceTestConfig:
     maintenance_interval: float = 30.0
     verbose: bool = False
     output_dir: Optional[Path] = None
+    seed: Optional[int] = None
 
 
 __all__ = ["ThroughputTestConfig", "MaintenanceTestConfig"]

@@ -34,6 +34,8 @@ from benchbox.core.results.query_plan_models import (
     DEFAULT_RAW_OUTPUT_POLICY,
 )
 from benchbox.platforms.base.models import (
+    MaintenanceOperation,
+    MaintenanceTestPhase,
     PowerTestPhase,
     QueryExecution,
     SetupPhase,
@@ -1324,6 +1326,29 @@ class ResultCaptureMixin:
             refresh_stream=refresh_stream,
         )
 
+    def _create_maintenance_phase(self, maintenance_result: Mapping[str, Any]) -> MaintenanceTestPhase:
+        operations = [
+            MaintenanceOperation(
+                operation=f"{operation.operation_type}_{operation.table_name}",
+                operation_type=operation.operation_type,
+                table=operation.table_name,
+                execution_time_ms=int(operation.duration * 1000),
+                rows_affected=operation.rows_affected,
+                status="SUCCESS" if operation.success else "FAILED",
+                error_message=operation.error,
+            )
+            for operation in maintenance_result.get("operations", [])
+        ]
+        return MaintenanceTestPhase(
+            start_time=self._format_timestamp(maintenance_result.get("start_time")),
+            end_time=self._format_timestamp(maintenance_result.get("end_time")),
+            duration_ms=int(float(maintenance_result.get("total_time") or 0.0) * 1000),
+            maintenance_operations=operations,
+            query_executions=[],
+            seed=maintenance_result.get("seed"),
+            success=bool(maintenance_result.get("success", False)),
+        )
+
     @staticmethod
     def _format_timestamp(value: Any) -> str:
         if isinstance(value, str) and value:
@@ -1520,10 +1545,16 @@ class ResultCaptureMixin:
             throughput_test_phase = self._create_throughput_phase(self._last_throughput_test_result)
             self._last_throughput_test_result = None
 
+        maintenance_test_phase = None
+        if getattr(self, "_last_maintenance_test_result", None) is not None:
+            maintenance_test_phase = self._create_maintenance_phase(self._last_maintenance_test_result)
+            self._last_maintenance_test_result = None
+
         execution_phases = ExecutionPhases(
             setup=setup_phase,
             power_test=power_test_phase,
             throughput_test=throughput_test_phase,
+            maintenance_test=maintenance_test_phase,
         )
         return execution_phases, total_exec_time, power_test_phase, throughput_test_phase
 

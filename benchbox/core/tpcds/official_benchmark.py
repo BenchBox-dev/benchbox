@@ -30,6 +30,7 @@ class TPCDSOfficialBenchmarkConfig:
     audit_trail: bool = True
     output_dir: Optional[Path] = None
     verbose: bool = False
+    seed: Optional[int] = None
 
 
 @dataclass
@@ -202,18 +203,27 @@ class TPCDSOfficialBenchmark:
                     result.success = False
                 else:
                     try:
+                        from benchbox.core.tpcds.maintenance_operations import resolve_maintenance_seed
                         from benchbox.core.tpcds.maintenance_test import (
                             TPCDSMaintenanceTest,
+                            TPCDSMaintenanceTestConfig,
                         )
 
                         maintenance_test = TPCDSMaintenanceTest(
                             benchmark=self.benchmark,
                             connection_factory=connection_factory,
+                            scale_factor=config.scale_factor,
                             verbose=config.verbose,
                             dialect=self.dialect,
                         )
 
-                        maintenance_result = maintenance_test.run()
+                        maintenance_result = maintenance_test.run(
+                            TPCDSMaintenanceTestConfig(
+                                scale_factor=config.scale_factor,
+                                verbose=config.verbose,
+                                seed=resolve_maintenance_seed(config.seed),
+                            )
+                        )
                         result.maintenance_test_result = maintenance_result
 
                     except Exception as e:

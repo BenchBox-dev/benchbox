@@ -622,6 +622,7 @@ class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         output_dir: Optional[Union[str, Path]] = None,
         *,
         adapter: Any = None,
+        seed: Optional[int] = None,
     ) -> dict[str, Any]:
         warn_legacy_throughput_api("TPCDSBenchmark.run_official_benchmark", "tpcds")
         if throughput_test:
@@ -672,7 +673,7 @@ class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
                     }
                     result["success"] = False
                 else:
-                    self._run_maintenance_phase(connection, dialect, logger, result)
+                    self._run_maintenance_phase(connection, dialect, logger, result, seed)
 
             self._finalize_benchmark_result(result, benchmark_start_time, logger)
             return result
@@ -749,12 +750,17 @@ class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
                 logger.error(error_msg)
 
     def _run_maintenance_phase(
-        self, connection: Any, dialect: str, logger: logging.Logger, result: dict[str, Any]
+        self,
+        connection: Any,
+        dialect: str,
+        logger: logging.Logger,
+        result: dict[str, Any],
+        seed: Optional[int] = None,
     ) -> None:
         if self.verbose:
             logger.info("Running Maintenance Test...")
         try:
-            maintenance_config = MaintenanceTestConfig(scale_factor=self.scale_factor, verbose=self.verbose)
+            maintenance_config = MaintenanceTestConfig(scale_factor=self.scale_factor, verbose=self.verbose, seed=seed)
             maintenance_result = self.run_maintenance_test(
                 connection=connection,
                 config=maintenance_config,
@@ -1035,6 +1041,7 @@ class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         stream_executor: Optional[Any] = None,
         dialect: str = "standard",
     ) -> MaintenanceTestResult:
+        from benchbox.core.tpcds.maintenance_operations import resolve_maintenance_seed
         from benchbox.core.tpcds.maintenance_test import (
             TPCDSMaintenanceTest,
             TPCDSMaintenanceTestConfig,
@@ -1071,6 +1078,7 @@ class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
             validate_integrity=True,
             verbose=config.verbose,
             output_dir=config.output_dir,
+            seed=resolve_maintenance_seed(getattr(config, "seed", None)),
         )
 
         result_dict = maintenance_test.run(config=tpcds_config)
@@ -1097,6 +1105,7 @@ class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
             overall_throughput=result_dict["overall_throughput"],
             maintenance_operations=maintenance_operations,
             error_details=result_dict["errors"],
+            seed=result_dict.get("seed", tpcds_config.seed),
         )
 
         return result

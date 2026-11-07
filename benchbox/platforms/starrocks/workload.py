@@ -307,7 +307,11 @@ class StarRocksStreamLoadHandler(FileFormatHandler):
         import json as _json
         import time as _time
 
-        import requests as _requests
+        from benchbox.platforms.starrocks import _dependencies
+
+        _requests = _dependencies.requests
+        if _requests is None:
+            raise ImportError("StarRocks Stream Load requires the 'requests' package")
 
         validate_sql_identifier(table_name, "table name")
 

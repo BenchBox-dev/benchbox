@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from benchbox.platforms._spark_helpers import default_spark_driver_memory
+from benchbox.platforms.spark import bounded_default_driver_memory
 
 pytestmark = [
     pytest.mark.unit,
@@ -190,7 +191,7 @@ class TestSparkAdapter:
         assert adapter.master == "local[*]"
         assert adapter.app_name == "BenchBox"
         assert adapter.database == "default"
-        assert adapter.driver_memory == default_spark_driver_memory("local[*]")
+        assert adapter.driver_memory == bounded_default_driver_memory("local[*]")
         assert adapter.executor_memory == "4g"
         assert adapter.executor_cores == 2
         assert adapter.disable_cache is True
@@ -375,13 +376,61 @@ class TestSparkAdapter:
 
         conf = SparkAdapter()._get_spark_conf()
 
-        assert conf["spark.driver.memory"] == default_spark_driver_memory("local[*]")
+        assert conf["spark.driver.memory"] == bounded_default_driver_memory("local[*]")
         assert conf["spark.executor.memory"] == "4g"
         assert conf["spark.executor.cores"] == "2"
         assert conf["spark.sql.inMemoryColumnarStorage.enabled"] == "false"
         assert "spark.sql.shuffle.partitions" not in conf
         assert "spark.sql.adaptive.enabled" not in conf
         assert "spark.hadoop.io.compression.codecs" not in conf
+
+    def test_default_driver_memory_is_bounded_by_the_heavy_budget_under_heavy_run(self, mock_pyspark, monkeypatch):
+        from benchbox.platforms.spark import SparkAdapter
+
+        monkeypatch.setenv("BENCHBOX_HEAVY_RUN_ID", "run-1")
+        monkeypatch.setenv("BENCHBOX_HEAVY_MEMORY_BUDGET_GIB", "8")
+
+        adapter = SparkAdapter()
+
+        assert adapter.driver_memory == "4g"
+        assert adapter._get_spark_conf()["spark.driver.memory"] == "4g"
+
+    def test_default_driver_memory_follows_the_configured_heavy_budget(self, monkeypatch):
+        monkeypatch.setenv("BENCHBOX_HEAVY_RUN_ID", "run-1")
+        monkeypatch.setenv("BENCHBOX_HEAVY_MEMORY_BUDGET_GIB", "20")
+
+        assert bounded_default_driver_memory("local[*]") == "12g"
+
+    @pytest.mark.parametrize(
+        ("budget_gib", "expected"), [("8", "4g"), ("6", "3g"), ("4", "1g"), ("3.5", "1g"), ("1", "1g")]
+    )
+    def test_default_driver_memory_leaves_room_for_the_jvm_and_python_within_small_budgets(
+        self, monkeypatch, budget_gib, expected
+    ):
+        monkeypatch.setenv("BENCHBOX_HEAVY_RUN_ID", "run-1")
+        monkeypatch.setenv("BENCHBOX_HEAVY_MEMORY_BUDGET_GIB", budget_gib)
+
+        assert bounded_default_driver_memory("local[*]") == expected
+
+    def test_default_driver_memory_is_unbounded_outside_heavy_run(self, monkeypatch):
+        monkeypatch.delenv("BENCHBOX_HEAVY_RUN_ID", raising=False)
+        monkeypatch.setenv("BENCHBOX_HEAVY_MEMORY_BUDGET_GIB", "8")
+
+        assert bounded_default_driver_memory("local[*]") == default_spark_driver_memory("local[*]")
+
+    def test_default_driver_memory_for_cluster_master_ignores_the_heavy_budget(self, monkeypatch):
+        monkeypatch.setenv("BENCHBOX_HEAVY_RUN_ID", "run-1")
+        monkeypatch.setenv("BENCHBOX_HEAVY_MEMORY_BUDGET_GIB", "8")
+
+        assert bounded_default_driver_memory("yarn") == "4g"
+
+    def test_explicit_driver_memory_overrides_the_heavy_budget_bound(self, mock_pyspark, monkeypatch):
+        from benchbox.platforms.spark import SparkAdapter
+
+        monkeypatch.setenv("BENCHBOX_HEAVY_RUN_ID", "run-1")
+        monkeypatch.setenv("BENCHBOX_HEAVY_MEMORY_BUDGET_GIB", "8")
+
+        assert SparkAdapter(driver_memory="3g").driver_memory == "3g"
 
     def test_baseline_records_cache_and_resource_settings_as_harness(self, mock_pyspark):
         from benchbox.core.tuning.applied_ledger import HARNESS_DEFAULT, AppliedTuningLedger
@@ -1276,6 +1325,39 @@ class TestSparkAdapterTestConnection:
 
         assert result is True
         mock_spark_session.stop.assert_called_once()
+
+    def test_test_connection_does_not_stop_live_session(self):
+        from benchbox.platforms.spark import SparkAdapter
+
+        mock_session_class, mock_spark_session, _ = self._make_builder_and_session()
+        mock_df = MagicMock()
+        mock_df.collect.return_value = [1]
+        mock_spark_session.sql.return_value = mock_df
+
+        with patch("benchbox.platforms.spark.SparkSession", mock_session_class):
+            adapter = SparkAdapter(master="local[*]")
+            adapter._spark_session = mock_spark_session
+            result = adapter.test_connection()
+
+        assert result is True
+        mock_spark_session.stop.assert_not_called()
+        assert adapter._spark_session is mock_spark_session
+
+    def test_test_connection_does_not_stop_externally_active_session(self):
+        from benchbox.platforms.spark import SparkAdapter
+
+        mock_session_class, mock_spark_session, _ = self._make_builder_and_session()
+        mock_session_class.getActiveSession.return_value = mock_spark_session
+        mock_df = MagicMock()
+        mock_df.collect.return_value = [1]
+        mock_spark_session.sql.return_value = mock_df
+
+        with patch("benchbox.platforms.spark.SparkSession", mock_session_class):
+            adapter = SparkAdapter(master="local[*]")
+            result = adapter.test_connection()
+
+        assert result is True
+        mock_spark_session.stop.assert_not_called()
 
     def test_test_connection_suppresses_window_exec_warnings(self):
         from benchbox.platforms.spark import SparkAdapter

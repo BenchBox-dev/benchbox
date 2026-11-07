@@ -6,12 +6,12 @@
 
 from __future__ import annotations
 
-import csv
 import logging
 import random
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from benchbox.utils.arrow_rows import ArrowRowWriter
 from benchbox.utils.cloud_storage import CloudStorageGeneratorMixin, create_path_handler
 from benchbox.utils.compression_mixin import CompressionMixin
 from benchbox.utils.datagen_manifest import require_manifest_files
@@ -178,9 +178,7 @@ class SSBDataGenerator(CompressionMixin, CloudStorageGeneratorMixin):
         filename = self.get_compressed_filename("date.tbl")
         file_path = self.output_dir / filename
 
-        with self.open_output_file(file_path, "wt") as f:
-            writer = csv.writer(f, delimiter="|")
-
+        with self.open_output_file(file_path, "wb") as f, ArrowRowWriter(f) as writer:
             for current_date in self._date_objects():
                 d_datekey = int(current_date.strftime("%Y%m%d"))
                 d_date = current_date.strftime("%Y-%m-%d")
@@ -332,9 +330,7 @@ class SSBDataGenerator(CompressionMixin, CloudStorageGeneratorMixin):
         file_path = self.output_dir / filename
         num_customers = int(self.base_customers * self.scale_factor)
 
-        with self.open_output_file(file_path, "wt") as f:
-            writer = csv.writer(f, delimiter="|")
-
+        with self.open_output_file(file_path, "wb") as f, ArrowRowWriter(f) as writer:
             for i in range(1, num_customers + 1):
                 c_custkey = i
                 c_name = f"Customer#{i:09d}"
@@ -397,9 +393,7 @@ class SSBDataGenerator(CompressionMixin, CloudStorageGeneratorMixin):
         file_path = self.output_dir / filename
         num_suppliers = int(self.base_suppliers * self.scale_factor)
 
-        with self.open_output_file(file_path, "wt") as f:
-            writer = csv.writer(f, delimiter="|")
-
+        with self.open_output_file(file_path, "wb") as f, ArrowRowWriter(f) as writer:
             for i in range(1, num_suppliers + 1):
                 s_suppkey = i
                 s_name = f"Supplier#{i:09d}"
@@ -492,9 +486,7 @@ class SSBDataGenerator(CompressionMixin, CloudStorageGeneratorMixin):
             "LG PKG",
         ]
 
-        with self.open_output_file(file_path, "wt") as f:
-            writer = csv.writer(f, delimiter="|")
-
+        with self.open_output_file(file_path, "wb") as f, ArrowRowWriter(f) as writer:
             for i in range(1, num_parts + 1):
                 p_partkey = i
                 p_name = f"Part {i}"
@@ -539,9 +531,7 @@ class SSBDataGenerator(CompressionMixin, CloudStorageGeneratorMixin):
 
         valid_dates = self._date_objects()
 
-        with self.open_output_file(file_path, "wt") as f:
-            writer = csv.writer(f, delimiter="|")
-
+        with self.open_output_file(file_path, "wb") as f, ArrowRowWriter(f) as writer:
             order_key = 1
             line_number = 0
             for i in range(1, num_lineorders + 1):

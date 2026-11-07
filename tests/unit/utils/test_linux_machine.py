@@ -296,3 +296,73 @@ def test_the_lock_is_not_lost_while_the_owner_still_holds_it(monkeypatch: pytest
         assert not lm.lock_lost()
         monkeypatch.setenv(host_lock.OWNER_ENV, "1:1.00")
         assert lm.lock_lost()
+
+
+class StopRig:
+    def __init__(self, states: list[str | None]) -> None:
+        self.states = states
+        self.calls: list[str] = []
+        self.now = 0.0
+
+    def read(self, machine: str) -> lm.MachineState | None:
+        status = self.states.pop(0) if len(self.states) > 1 else self.states[0]
+        return None if status is None else lm.MachineState(status, 6.0, False)
+
+    def poweroff(self, machine: str, timeout: float) -> None:
+        self.calls.append(f"poweroff {machine} {timeout:g}")
+
+    def stop(self, machine: str) -> int:
+        self.calls.append(f"stop {machine}")
+        return 0
+
+    def run(self, wait: float) -> int:
+        def sleep(seconds: float) -> None:
+            self.now += seconds
+
+        return lm.stop_sequence(
+            "m",
+            wait,
+            state_reader=self.read,
+            request_poweroff=self.poweroff,
+            machine_stop=self.stop,
+            clock=lambda: self.now,
+            sleeper=sleep,
+        )
+
+
+def test_a_guest_that_powers_off_needs_no_machine_stop() -> None:
+    rig = StopRig(["running", "running", "running", "stopped"])
+    assert rig.run(15) == 0
+    assert rig.calls == [f"poweroff m {lm.POWEROFF_REQUEST_TIMEOUT_SECONDS:g}"]
+
+
+def test_a_guest_that_stays_running_falls_back_to_machine_stop_after_the_wait() -> None:
+    rig = StopRig(["running"])
+    assert rig.run(3) == 0
+    assert rig.calls == [f"poweroff m {lm.POWEROFF_REQUEST_TIMEOUT_SECONDS:g}", "stop m"]
+    assert rig.now == 3.0
+
+
+def test_an_unreadable_state_skips_the_poweroff_and_stops() -> None:
+    rig = StopRig([None])
+    assert rig.run(15) == 0
+    assert rig.calls == ["stop m"]
+
+
+def test_a_stopped_machine_is_neither_powered_on_nor_stopped() -> None:
+    rig = StopRig(["stopped"])
+    assert rig.run(15) == 0
+    assert rig.calls == []
+
+
+def test_a_pretty_printed_machine_list_is_still_recognised_as_running() -> None:
+    text = json.dumps([{"id": "m", "config": {"nested": {"status": "x"}}, "status": "running"}], indent=2)
+    state = lm.parse_machine_state(text, "m")
+    assert state is not None and state.status == "running"
+
+
+def test_the_stop_step_bounds_fit_inside_the_default_stop_timeout() -> None:
+    worst_before_stop = (
+        lm.PROCESS_TIMEOUT_SECONDS * 2 + lm.POWEROFF_REQUEST_TIMEOUT_SECONDS + lm.GUEST_POWEROFF_WAIT_SECONDS
+    )
+    assert worst_before_stop <= lm.stop_timeout_seconds({}) - 20

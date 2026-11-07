@@ -55,6 +55,22 @@ except ImportError:
 _ILP_SEND_ROWS = 1000
 _ILP_VERIFY_TIMEOUT_SECONDS = 120.0
 _ILP_VERIFY_POLL_SECONDS = 0.5
+_ROWS_IMPORTED_RE = re.compile(r"Rows imported\s*\|\s*(\d+)")
+_ROWS_HANDLED_RE = re.compile(r"Rows handled\s*\|\s*(\d+)")
+
+
+def _imported_rows(response_text: str, expected: int | None = None) -> int | None:
+    imported_match = _ROWS_IMPORTED_RE.search(response_text)
+    if imported_match is None:
+        return None
+    imported = int(imported_match.group(1))
+    if expected is None:
+        handled_match = _ROWS_HANDLED_RE.search(response_text)
+        expected = int(handled_match.group(1)) if handled_match else None
+    if expected is not None and imported != expected:
+        raise RuntimeError(f"QuestDB imported {imported:,} of {expected:,} rows ({expected - imported:,} rejected)")
+    return imported
+
 
 TPCH_TIMESTAMP_COLUMNS: dict[str, str] = {
     "lineitem": "l_shipdate",
@@ -599,7 +615,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
             self.log_operation_complete("Data loading", loading_time, "Loaded 0 total rows")
             return {}, loading_time, None
 
-        ilp_failures: dict[str, Exception] = {}
+        load_failures: dict[str, Exception] = {}
         for table_name, table_path in data_source.tables.items():
             table_name_lower = table_name.lower()
 
@@ -620,7 +636,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                     total_rows = self._load_table_files_via_ilp(table_name_lower, data_files, data_source, benchmark)
                 except Exception as e:
                     self.logger.error(f"Failed to load {table_name_lower} via ILP: {e}")
-                    ilp_failures[table_name_lower] = e
+                    load_failures[table_name_lower] = e
                     continue
                 table_stats[table_name_lower] = total_rows
                 continue
@@ -637,18 +653,21 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                         )
                         source = "REST"
                 except Exception as e:
-                    self.logger.error(f"Failed to load {table_name_lower} chunk {data_file.name}: {e}")
-                    continue
+                    chunk_error = RuntimeError(f"chunk {data_file.name}: {e}")
+                    chunk_error.__cause__ = e
+                    self.logger.error(f"Failed to load {table_name_lower} {chunk_error}")
+                    load_failures[table_name_lower] = chunk_error
+                    break
                 total_rows += rows
                 self.log_verbose(f"Loaded {rows:,} rows into {table_name_lower} from {data_file.name} (via {source})")
 
             table_stats[table_name_lower] = total_rows
 
-        if ilp_failures:
-            details = "; ".join(f"{name}: {error}" for name, error in ilp_failures.items())
-            raise RuntimeError(f"QuestDB ILP load failed for {len(ilp_failures)} table(s): {details}") from next(
-                iter(ilp_failures.values())
-            )
+        if load_failures:
+            details = "; ".join(f"{name}: {error}" for name, error in load_failures.items())
+            raise RuntimeError(
+                f"QuestDB {method.upper()} load failed for {len(load_failures)} table(s): {details}"
+            ) from next(iter(load_failures.values()))
 
         loading_time = elapsed_seconds(start_time)
 
@@ -717,9 +736,9 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                 response = _http_post(url, params=params, files=files, timeout=300)
         response.raise_for_status()
 
-        match = re.search(r"Rows imported\s*\|\s*(\d+)", response.text)
-        if match:
-            return int(match.group(1))
+        imported = _imported_rows(response.text)
+        if imported is not None:
+            return imported
 
         return self._count_table_rows_via_http(table_name)
 
@@ -739,26 +758,32 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
 
         schema = self._import_schema(table_name, named_only=True)
         pf = pq.ParquetFile(data_file)
-        for batch in pf.iter_batches(batch_size=self.parquet_chunk_rows):
-            csv_buf = io.BytesIO()
-            pacsv.write_csv(batch, csv_buf, write_options=pacsv.WriteOptions(include_header=True))
-            csv_buf.seek(0)
+        for batch_number, batch in enumerate(pf.iter_batches(batch_size=self.parquet_chunk_rows), start=1):
+            first_row = total_rows + 1
+            try:
+                csv_buf = io.BytesIO()
+                pacsv.write_csv(batch, csv_buf, write_options=pacsv.WriteOptions(include_header=True))
+                csv_buf.seek(0)
 
-            params = {
-                "name": table_name,
-                "overwrite": "false",
-                "durable": "true",
-                "delimiter": ",",
-                "forceHeader": "true",
-            }
-            files = {"data": (f"{table_name}.csv", csv_buf, "text/csv")}
-            if schema:
-                files = {"schema": (None, schema, "application/json"), **files}
-            response = _http_post(url, params=params, files=files, timeout=600)
-            response.raise_for_status()
-
-            match = re.search(r"Rows imported\s*\|\s*(\d+)", response.text)
-            chunk_rows = int(match.group(1)) if match else len(batch)
+                params = {
+                    "name": table_name,
+                    "overwrite": "false",
+                    "durable": "true",
+                    "delimiter": ",",
+                    "forceHeader": "true",
+                }
+                files = {"data": (f"{table_name}.csv", csv_buf, "text/csv")}
+                if schema:
+                    files = {"schema": (None, schema, "application/json"), **files}
+                response = _http_post(url, params=params, files=files, timeout=600)
+                response.raise_for_status()
+                imported = _imported_rows(response.text, expected=len(batch))
+            except Exception as exc:
+                raise RuntimeError(
+                    f"batch {batch_number} (rows {first_row:,}-{first_row + len(batch) - 1:,}) failed after "
+                    f"{total_rows:,} rows of {data_file.name} were imported: {exc}"
+                ) from exc
+            chunk_rows = len(batch) if imported is None else imported
             total_rows += chunk_rows
             self.log_verbose(f"Loaded chunk of {chunk_rows:,} rows into {table_name} (parquet → CSV)")
 

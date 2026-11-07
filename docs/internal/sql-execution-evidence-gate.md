@@ -210,28 +210,15 @@ runtime, is an error in the submission validator, `results-data/validate_corpus.
 and the Explorer pipeline. It changes no ranking identity and carries no SQL
 hashes.
 
-## Fork diff (legacy diagnostic)
+## Fork changes
 
 The gate shows what the new wheel does to the shipped queries; it does not show
 what changed inside the fork. Fork source review happens in the fork's own pull
 requests, not in BenchBox adoption PRs, and adoption PRs do not carry a fork
-diff. The `sqlglot-fork-diff` tool is a legacy diagnostic kept until its
-removal; use it, or `git diff <old> <new>` in a fork clone, to inspect a change
-between two fork commits:
-
-```
-make sqlglot-fork-diff OUT=/tmp/fork-diff.md
-make sqlglot-fork-diff OLD=<old fork_sha> NEW=<new fork_sha> OUT=/tmp/fork-diff.md
-```
-
-`OLD` defaults to the `fork_sha` in `benchbox/_vendor/sqlglot.json` at
-`BASE_REF` (default `origin/develop`); `NEW` defaults to the pin in the working
-tree. The tool fetches both commits from the fork into a throwaway bare
-repository and writes Markdown with the commit list, the diffstat and the
-per-file diff, `downstream/` and `sqlglot/benchbox/` first. Files that do not
-fit the size budget (50 KB by default) are listed by name, not dropped; read
-them with `git diff <old> <new> -- <path>` in a fork clone. A rollback
-prints `Direction: not-descendant`.
+diff. To inspect a change between two pins, take the old and new `fork_sha`
+from `benchbox/_vendor/sqlglot.json` and run `git diff <old> <new>` in a fork
+clone; `git merge-base --is-ancestor <old> <new>` tells a rollback from a
+refresh.
 
 The evidence and the code that judges it are soundness paths
 (`.github/soundness-paths.txt`): the runtime pin and bundled wheel
@@ -241,12 +228,11 @@ logic and `expected_differences.json`), everything under
 `tests/unit/sql_compat/` (the corpus harness, its `recorded/` and `frozen/`
 data and the corpus, wrapper and bypass assertion tests), the
 `Makefile` and the `make/` fragments (CI runs the gate through
-`make sql-execution-gate`), the pin, retirement and fork-diff scripts, and
-their tests (`test_sql_execution_gate.py`, which holds the regression proofs
-below, `test_sync_sqlglot_runtime.py`, `test_check_sqlglot_repro_retirement.py`,
-`test_sqlglot_fork_diff.py` and the wrapper tests
-under `tests/unit/utils/`). A change to any of them needs an oracle success
-review on the current head.
+`make sql-execution-gate`), the pin and retirement scripts, and their tests
+(`test_sql_execution_gate.py`, which holds the regression proofs below,
+`test_sync_sqlglot_runtime.py`, `test_check_sqlglot_repro_retirement.py` and the
+wrapper tests under `tests/unit/utils/`). A change to any of them needs an oracle
+success review on the current head.
 
 ## Regression proofs
 
