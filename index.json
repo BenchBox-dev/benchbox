@@ -1630,7 +1630,7 @@
         }
       },
       "integration_branch": "feat/load-hardening",
-      "integration_head": "9c5329e78636e405c4c189d79c38b21e2684000a",
+      "integration_head": "c37b8637757492ca49d3bce9e69fb60d480687d2",
       "integration_log": [
         {
           "at": "2026-11-07T00:53:18Z",
@@ -1673,6 +1673,20 @@
             "uat-mocker-compose-gaps-20261106"
           ],
           "seq": 3
+        },
+        {
+          "at": "2026-11-07T02:31:40Z",
+          "changed_files": [
+            "tests/uat/test_declared_settings.py"
+          ],
+          "head": "c37b8637757492ca49d3bce9e69fb60d480687d2",
+          "kind": "fix",
+          "op_id": "5859b9934e35432bb627decdadf0d81e",
+          "previous_head": "9c5329e78636e405c4c189d79c38b21e2684000a",
+          "requires_acceptance": [
+            "uat-mocker-compose-gaps-20261106"
+          ],
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-load-hardening",
