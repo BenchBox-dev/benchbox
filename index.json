@@ -2064,20 +2064,41 @@
       "terminal_outcome": "deliver"
     },
     "ci-and-preflight-reliability": {
-      "accepted_members": {},
+      "accepted_members": {
+        "deployment-modes-test-host-dependent": "9803064a09f0c965855a4c57f885bf4650d62d69"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "deployment-modes-test-host-dependent": {
+          "accepted_head": "9803064a09f0c965855a4c57f885bf4650d62d69",
+          "changed_files": [
+            "changelog.d/feat-ci-and-preflight-reliability--deployment-modes-test-host-dependent.json",
+            "tests/unit/platforms/test_deployment_modes_recorded.py"
+          ],
+          "integration_head": "2e45e23273108bbeb108b1f638fde70c7df77faf",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/ci-and-preflight-reliability",
-      "integration_head": "766364b8a32f55ac19a09feca8dead5008a2fd80",
+      "integration_head": "2e45e23273108bbeb108b1f638fde70c7df77faf",
       "integration_log": [
         {
           "at": "2026-11-07T14:24:40Z",
           "head": "766364b8a32f55ac19a09feca8dead5008a2fd80",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-07T16:25:52Z",
+          "head": "2e45e23273108bbeb108b1f638fde70c7df77faf",
+          "kind": "prepare",
+          "member": "deployment-modes-test-host-dependent",
+          "op_id": "e85170504f924eb5a8112e7c116e87e1",
+          "previous_head": "766364b8a32f55ac19a09feca8dead5008a2fd80",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-ci-and-preflight-reliability",
@@ -15234,15 +15255,10 @@
       "title": "Platform Deployment Factory Integration"
     },
     "deployment-modes-test-host-dependent": {
-      "claim": {
-        "expires_at": "2026-11-08T16:25:48Z",
-        "generation": "f7a2e428bed641b09434bae5919b147a",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "test_deployment_modes_recorded fails locally when the host is detected as a container"
     },
     "deployment-modes-unrecorded-20261014": {
