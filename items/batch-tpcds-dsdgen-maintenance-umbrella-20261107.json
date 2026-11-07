@@ -2,7 +2,7 @@
   "acceptance": [
     "The final PR has merged, the member is finished and make batch-finish EXECUTE=1 has run."
   ],
-  "context": "Owner decision 2026-11-06 on tpcds-maintenance-dsdgen-refresh-data-20261103: kit keys unchanged; maintenance must not run against enforced primary keys (refuse per platform, or declare keys not enforced). Kit bug: getUpdateBase reads arRowcount[nTable - S_BRAND]. Site guide follow-up: site-maintenance-phase-guide-dsdgen-refresh-20261107.",
+  "context": "Owner decision 2026-11-06 on tpcds-maintenance-dsdgen-refresh-data-20261103: kit keys unchanged; maintenance must not run against enforced primary keys (refuse per platform, or declare keys not enforced). Kit bug: getUpdateBase reads arRowcount[nTable - S_BRAND]. Site guide follow-up: site-maintenance-phase-guide-dsdgen-refresh-20261107.\n\nFinal PR BenchBox-dev/BenchBox#4015 merged 2026-11-07; member tpcds-maintenance-dsdgen-refresh-data-20261103 finished; batch-finish executed. QphDS (tpcds-qphds-spec-metric-implementation) delivered as a serial PR on feat/tpcds-qphds-spec-metric.",
   "description": "Leader notes for batch tpcds-dsdgen-maintenance, which delivers tpcds-maintenance-dsdgen-refresh-data-20261103 as one final PR. tpcds-qphds-spec-metric-implementation depends on it and is delivered as a serial PR after the batch PR merges unless the size preflight allows enrolling it. Close this item when the batch PR has merged and the batch is finished.",
   "sessions": [
     {
@@ -20,6 +20,14 @@
       "generation": "bb5e59311fe44a5e8d2c9fbdc027bc11",
       "op": "take",
       "op_id": "da7293e9824b4e41b285ad3db3a45791",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T07:55:08Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "33b061b2209d4f3e879500b6e21575c2",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
