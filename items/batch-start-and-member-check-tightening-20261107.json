@@ -41,6 +41,17 @@
       "op": "update",
       "op_id": "6faa6d33e6ed49bf9b3431f5475f3787",
       "session_id": "409cb2a0eb0e4796909f58fff57a89db"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e58cf4218d54b0b5be7b2b65",
+      "at": "2026-11-07T23:50:17Z",
+      "client": "omp-coding-agent",
+      "displaced": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bb6f7e6f859b70e64eb3e9bf",
+      "generation": "226b741619494d0194070d76fff3c289",
+      "op": "takeover",
+      "op_id": "2c32ca32575c4e76bb5908456ab42c10",
+      "reason": "Owner resumed this item in a new session of the same actor (omp-coding-agent, joe@joe-mac-mini); the earlier session ended after committing fix/batch-start-member-check-tightening.",
+      "session_id": "317b65c7d117423f96e1ac6bc9b2e642"
     }
   ]
 }
