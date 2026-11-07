@@ -59,13 +59,15 @@ UAT_BRING_UP_KNOWN_PLATFORMS := cedardb clickhouse-server databend doris influxd
 uat-bring-up:
 	$(if $(strip $(PLATFORM)),$(if $(filter $(PLATFORM),$(UAT_BRING_UP_KNOWN_PLATFORMS)),,$(error unknown platform '$(PLATFORM)'; supported: $(UAT_BRING_UP_KNOWN_PLATFORMS))),)
 	@if [ -z "$(PLATFORM)" ]; then \
-		echo "Usage: make uat-bring-up PLATFORM=<name> [TIMEOUT_S=300] [DRY_RUN=1] [BENCHMARK_RUNS_DIR=~/Developer/benchmark_runs]" >&2; \
+		echo "Usage: make uat-bring-up PLATFORM=<name> [TIMEOUT_S=300] [DRY_RUN=1] [BENCHMARK_RUNS_DIR=~/Developer/benchmark_runs] [DOWN=1 [REMOVE_VOLUMES=1]]" >&2; \
 		exit 2; \
 	fi
 	@uv run --no-sync -- python scripts/uat-bring-up/uat_bring_up.py \
 		--platform "$(PLATFORM)" \
 		$(if $(TIMEOUT_S),--timeout-s "$(TIMEOUT_S)",) \
 		$(if $(BENCHMARK_RUNS_DIR),--benchmark-runs-dir "$(BENCHMARK_RUNS_DIR)",) \
+		$(if $(DOWN),--down,) \
+		$(if $(DOWN),$(if $(REMOVE_VOLUMES),--remove-volumes,),) \
 		$(if $(DRY_RUN),--dry-run,)
 
 .PHONY: uat-prepull
