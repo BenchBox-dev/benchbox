@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "Identify the polluting test and the leaked state; fix the leak (not the victim) so the command above passes, with the leak detector or a regression test catching it."
+  ],
+  "description": "On develop (verified on develop plus the cross-surface make change, head 583227c581, 2026-11-07), running `uv run -- pytest -n 0 -q tests/unit/scripts/test_check_make_targets.py tests/unit/test_standardized_test_commands.py tests/system/test_ci_lint_parity.py tests/unit/scripts/test_ci_lint_environment_boundary.py tests/unit/scripts/test_agent_instruction_audit.py tests/unit/test_release_infrastructure.py tests/unit/scripts/test_pr_arm.py tests/unit/test_vm_admission_sizing.py` fails test_an_integration_worktree_arms_a_pr_whose_batch_evidence_holds and both test_a_markerless_checkout_still_applies_batch_evidence_to_a_registered_pr cases (pr_arm.arm returns 2), while each passes alone. Pairing test_pr_arm.py with any single one of the preceding files under -k does not reproduce it, so the polluting state comes from a test those -k runs deselected. A test leaks state (environment, module global, cwd or git config) into pr_arm batch-evidence checks.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:95654933fcc78b44d934f92f",
+      "at": "2026-11-07T06:00:57Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e62be369593841a8932e4a904ae0aa79",
+      "session_id": "c925cef22c8f4d6fa75a3c3995e6df7d"
+    }
+  ]
+}

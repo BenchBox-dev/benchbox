@@ -34125,6 +34125,13 @@
       "status": "done",
       "title": "✅ Test Organization Cleanup"
     },
+    "test-pr-arm-batch-evidence-order-pollution-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Three test_pr_arm batch-evidence tests fail when run after a specific set of other test files"
+    },
     "test-real-combined-plan-capture-checkpoint": {
       "claim": null,
       "needs": [
