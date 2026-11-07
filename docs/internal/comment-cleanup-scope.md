@@ -24,7 +24,7 @@ things call it.
 1. **The comment-policy checker.** `scripts/check_comment_policy.py` imports
    `immutable_external_ownership` and runs it in `strict` mode, with or
    without a comparison base. That covers `make comment-policy-check`, the pre-commit hook,
-   `make comment-policy-strict`, and the CI step "Enforce comment and
+   `make comment-policy-scan COMMENT_POLICY_MODE=strict`, and the CI step "Enforce comment and
    docstring policy" in `.github/workflows/ci.yml`. It reads the ledger from a
    trusted commit, not from the working tree:
    - A run with a comparison base (local check, hook, and CI) uses that base. In
@@ -32,7 +32,7 @@ things call it.
    - A run without one uses the merge-base of `HEAD` and `origin/develop`, or an
      explicit `--ownership-base` that is an ancestor of it.
 2. **The pinned-notice drift check.** `--check-drift` runs in
-   `make comment-policy-check`, `make check-comment-scope`, and the CI step
+   `make comment-policy-check`, `make comment-policy-scan COMMENT_POLICY_MODE=scope`, and the CI step
    "Enforce pinned notice drift". CI skips the step unless `LICENSE`,
    `COPYRIGHT.md`, or the ledger changed. When it runs, it uses the base's copy
    of the scope checker, never the pull request's copy.
@@ -153,7 +153,7 @@ Then run:
 
 ```console
 make comment-policy-check
-make comment-policy-strict
+make comment-policy-scan COMMENT_POLICY_MODE=strict
 uv run -- python -m pytest tests/unit/scripts/test_comment_cleanup_scope.py
 ```
 

@@ -314,9 +314,8 @@ pr-arm:
 	fi; \
 	uv run -- python scripts/pr_arm.py
 
-REMOTE_CLOSEOUT_TARGETS := pr-arm-remote pr-landing-remote-bind pr-landing-remote-record \
-	pr-landing-remote-manifest pr-landing-remote-review pr-landing-remote-withdraw pr-landing-remote-ready
-REMOTE_CLOSEOUT_VARIABLES := PR HEAD REPO BRANCH ITEM RECORD BUILDER_HEAD OWNER_EXPLAINED MODEL REVIEWER DRY_RUN RESUME
+REMOTE_CLOSEOUT_TARGETS := pr-arm-remote pr-landing-remote
+REMOTE_CLOSEOUT_VARIABLES := PR HEAD REPO BRANCH ITEM RECORD BUILDER_HEAD OWNER_EXPLAINED MODEL REVIEWER DRY_RUN RESUME ACTION
 .PHONY: $(REMOTE_CLOSEOUT_TARGETS)
 $(foreach name,$(REMOTE_CLOSEOUT_VARIABLES),$(eval $(REMOTE_CLOSEOUT_TARGETS): override $(name) := $$(value $(name))))
 $(foreach name,$(REMOTE_CLOSEOUT_VARIABLES),$(eval $(REMOTE_CLOSEOUT_TARGETS): export REMOTE_CLOSEOUT_$(name) := $$($(name))))
@@ -329,19 +328,13 @@ REMOTE_ARM_GATE = if [ -n "$${REMOTE_CLOSEOUT_PR:-}" ]; then \
 pr-arm-remote:
 	@set -eu; $(REMOTE_ARM_GATE); \
 	uv run --no-project -- python scripts/remote_closeout.py arm
-pr-landing-remote-bind:
-	@uv run --no-project -- python scripts/remote_closeout.py bind
-pr-landing-remote-record:
-	@uv run --no-project -- python scripts/remote_closeout.py record
-pr-landing-remote-manifest:
-	@uv run --no-project -- python scripts/remote_closeout.py manifest
-pr-landing-remote-review:
-	@uv run --no-project -- python scripts/remote_review.py
-pr-landing-remote-withdraw:
-	@uv run --no-project -- python scripts/remote_closeout.py withdraw
-pr-landing-remote-ready:
-	@set -eu; $(REMOTE_ARM_GATE); \
-	uv run --no-project -- python scripts/remote_closeout.py ready
+pr-landing-remote:
+	@set -eu; case "$$REMOTE_CLOSEOUT_ACTION" in \
+		bind|record|manifest|withdraw) uv run --no-project -- python scripts/remote_closeout.py "$$REMOTE_CLOSEOUT_ACTION" ;; \
+		review) uv run --no-project -- python scripts/remote_review.py ;; \
+		ready) $(REMOTE_ARM_GATE); uv run --no-project -- python scripts/remote_closeout.py ready ;; \
+		*) echo "pr-landing-remote: ACTION must be bind, record, manifest, review, withdraw or ready" >&2; exit 2 ;; \
+	esac
 
 .PHONY: trunk-revert
 trunk-revert:

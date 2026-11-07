@@ -73,7 +73,7 @@ opens its failure issue.
 
 A red `trunk.yml` run names its culprit and stops the repository's arming
 commands. `scripts/trunk_revert.py arm-gate` runs first in `make pr-arm`,
-`make pr-arm-remote`, `make pr-landing-remote-ready`, and `make pr-landing-ready`
+`make pr-arm-remote`, `make pr-landing-remote ACTION=ready`, and `make pr-landing-ready`
 with `ARM=1`, which is what `make pr-ready` and `make pr-arm-auto-merge` reach. It walks the
 completed `trunk.yml` runs on `develop` back to the last success, ignoring runs still in
 progress and cancelled runs. If the newest completed run failed, `timed_out` or

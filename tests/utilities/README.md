@@ -131,18 +131,19 @@ uv run -- python -m pytest -m unit -v
 ```
 
 ### CI/CD Pipeline
-`make test-ci` is comprehensive CI testing, and `make coverage-report` runs tests with coverage for CI. Each is
-equivalent to the `pytest` command after it. `make coverage-opt-in-all` includes stress and live tests, so use it only
+`make test-ci` is comprehensive CI testing, and `make coverage COVERAGE_REPORTS="xml term-full"` runs tests with
+coverage for CI. Each is equivalent to the `pytest` command after it. `make coverage COVERAGE_SCOPE=opt-in` includes
+stress and live tests, so use it only
 when their services and credentials are available. `uv run -- python -m pytest -n auto --tb=short` is explicit
 full-tree parallel testing and requires live services and credentials.
 ```bash
 make test-ci
 uv run -- python -m pytest -c pytest-ci.ini -m "not (slow or stress or resource_heavy or live_integration)"
 
-make coverage-report
+make coverage COVERAGE_REPORTS="xml term-full"
 uv run -- python -m pytest -c pytest-ci.ini -m "not (stress or resource_heavy or live_integration)" --cov=benchbox --cov-report=xml --junit-xml=test-results.xml
 
-make coverage-opt-in-all
+make coverage COVERAGE_SCOPE=opt-in
 
 uv run -- python -m pytest -n auto --tb=short
 ```
@@ -193,7 +194,7 @@ The first command is the old way. The `make` target and `pytest` command are the
 ```bash
 python tests/run_coverage.py --report html
 
-make coverage-html
+make coverage COVERAGE_REPORTS=html
 uv run -- python -m pytest --cov=benchbox --cov-report=html
 ```
 
