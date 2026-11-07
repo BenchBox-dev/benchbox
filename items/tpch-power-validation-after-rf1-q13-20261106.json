@@ -4,6 +4,7 @@
     "A DuckDB TPC-H SF0.01 run with refresh functions completes with no false validation failure, and the validation status in the result says which queries were validated against which data.",
     "Tests cover a refresh-enabled run and a run without refresh."
   ],
+  "context": "2026-11-07 owner decision (Joe, answering a choice dialog): \"Skip post-RF1 queries, record why\". Validate only power queries that run against base data. Queries that run after RF1 are marked not validated with the reason data refreshed, and the result records which queries were validated against which data.",
   "description": "Seen in a DuckDB TPC-H SF0.01 run with refresh functions on 2026-11-06, during PR #3994. The final power run failed Q13 row-count validation (expected 33, got 34) because RF1 inserts rows before the power queries run. The answer set used for validation is for the base data, so any run with refresh enabled can fail validation on queries whose answers RF1 changes. Not yet confirmed on the commit before #3994; RF1 ran before the queries there as well, so this is believed to be pre-existing.\n\nChange. Confirm on the base commit first. Then decide from the spec how validation applies when refresh functions run: TPC-H 3.0.1 validates answers in the qualification database run, not in a performance run after RF1. Make validation either skip post-RF1 power queries with a recorded reason or compare against answers for the refreshed data. Do not silence it per query.\n\nGuardrails: work in a linked worktree; heavy runs through make heavy-run; no explanatory comments; changelog fragment.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "7de83f992bdf4f3ca06b78c14740093f",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T14:13:43Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "94cae68927dc4ac2a66767ed3895fdc9",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
