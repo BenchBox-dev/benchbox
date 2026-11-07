@@ -9,6 +9,62 @@
     "member_id": "tpch-parity-test-skips-without-cached-extension-20261107"
   },
   "description": "During #4012, the DuckDB 22-query TPC-H parity test skipped under the test-isolation HOME because the DuckDB `tpch` extension was not cached there. The parity evidence came from a manual script instead. If CI also lacks the cached extension, the test never runs and gives false assurance.\n\nChange. Check whether the test runs in CI (job logs show passed or skipped). Make it run deterministically: vendor or pre-install the extension in the fixture, or generate data with BenchBox's own dbgen path. A skip in CI must fail the required job, or be removed.\n\nGuardrails: work in a linked worktree (make worktree-create); never edit the primary clone; heavy work only through make heavy-run; container checks under mocker one stack at a time (limits in tests/uat docs and the uat-mocker-compose-gaps-20261106 context); no live cloud without owner approval; no explanatory comments; changelog fragment if user-facing.",
+  "prepared": {
+    "accepted_head": "e0f3677671a09f3f2022bb3e994e3c82e07bcb06",
+    "batch_id": "result-validity",
+    "changed_files": [
+      "tests/conftest.py",
+      "tests/unit/platforms/test_arrow_fetch_native_drivers.py",
+      "tests/unit/platforms/test_duckdb_arrow_fetch.py"
+    ],
+    "integration_head": "5d8537b76faab7303991219605fbc10f73bf1ed3",
+    "integration_seq": 2,
+    "member_id": "tpch-parity-test-skips-without-cached-extension-20261107",
+    "overlaps": [
+      {
+        "kind": "member",
+        "member": "chdb-rows-nan-vs-arrow-null-q17-20261107",
+        "paths": [
+          "tests/unit/platforms/test_arrow_fetch_native_drivers.py"
+        ]
+      }
+    ],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "11e4796de2c971b9fc776447d58903977813cc305b8c6a00ba389fe4f35784b0",
+    "source_base": "6b255f022b1dd64a9f93908ea33928301a54a0fb",
+    "source_revision": "e0f3677671a09f3f2022bb3e994e3c82e07bcb06",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-result-validity--tpch-parity-test-skips-without-cached-extension-20261107",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/unit/platforms/test_arrow_fetch_native_drivers.py",
+        "tests/unit/platforms/test_duckdb_arrow_fetch.py"
+      ],
+      "review": {
+        "base_sha": "6b255f022b1dd64a9f93908ea33928301a54a0fb",
+        "head_sha": "e0f3677671a09f3f2022bb3e994e3c82e07bcb06",
+        "head_tree": "aa3ec9f550d89373f96339b717eee21c65a0e541",
+        "outcome": "clear",
+        "patch_digest": "ffbb5fb4a2078491bc62a1f85d99f4de",
+        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "766364b8a32f55ac19a09feca8dead5008a2fd80"
+      },
+      "revision": "e0f3677671a09f3f2022bb3e994e3c82e07bcb06",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
@@ -33,6 +89,15 @@
       "generation": "9c63470741494e37ba2bbe063760dda1",
       "op": "take",
       "op_id": "01a5488905e74506ab510c550b18f461",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T15:03:10Z",
+      "client": "omp-coding-agent",
+      "generation": "9c63470741494e37ba2bbe063760dda1",
+      "op": "prepare",
+      "op_id": "93548253ab9444a5a79a966ef438ab76",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]

@@ -4969,7 +4969,8 @@
     },
     "result-validity": {
       "accepted_members": {
-        "chdb-rows-nan-vs-arrow-null-q17-20261107": "b8e3fc9fc25d0b108f042e1f408401d9a7af6d05"
+        "chdb-rows-nan-vs-arrow-null-q17-20261107": "b8e3fc9fc25d0b108f042e1f408401d9a7af6d05",
+        "tpch-parity-test-skips-without-cached-extension-20261107": "e0f3677671a09f3f2022bb3e994e3c82e07bcb06"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -4987,10 +4988,20 @@
           ],
           "integration_head": "6b255f022b1dd64a9f93908ea33928301a54a0fb",
           "integration_seq": 1
+        },
+        "tpch-parity-test-skips-without-cached-extension-20261107": {
+          "accepted_head": "e0f3677671a09f3f2022bb3e994e3c82e07bcb06",
+          "changed_files": [
+            "tests/conftest.py",
+            "tests/unit/platforms/test_arrow_fetch_native_drivers.py",
+            "tests/unit/platforms/test_duckdb_arrow_fetch.py"
+          ],
+          "integration_head": "5d8537b76faab7303991219605fbc10f73bf1ed3",
+          "integration_seq": 2
         }
       },
       "integration_branch": "feat/result-validity",
-      "integration_head": "6b255f022b1dd64a9f93908ea33928301a54a0fb",
+      "integration_head": "5d8537b76faab7303991219605fbc10f73bf1ed3",
       "integration_log": [
         {
           "at": "2026-11-07T14:16:47Z",
@@ -5006,6 +5017,15 @@
           "op_id": "e5dea9640e00499eac36e304cf25e85f",
           "previous_head": "766364b8a32f55ac19a09feca8dead5008a2fd80",
           "seq": 1
+        },
+        {
+          "at": "2026-11-07T15:03:10Z",
+          "head": "5d8537b76faab7303991219605fbc10f73bf1ed3",
+          "kind": "prepare",
+          "member": "tpch-parity-test-skips-without-cached-extension-20261107",
+          "op_id": "93548253ab9444a5a79a966ef438ab76",
+          "previous_head": "6b255f022b1dd64a9f93908ea33928301a54a0fb",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-result-validity",
@@ -36830,15 +36850,10 @@
       "title": "Prove TPC-H refresh functions on DuckLake or stop declaring support"
     },
     "tpch-parity-test-skips-without-cached-extension-20261107": {
-      "claim": {
-        "expires_at": "2026-11-08T15:03:06Z",
-        "generation": "9c63470741494e37ba2bbe063760dda1",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "The 22-query TPC-H rows-against-Arrow parity test silently skips under the isolated test HOME when the DuckDB tpch extension is not cached"
     },
     "tpch-power-measured-iterations-stream-and-validation": {
