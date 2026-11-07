@@ -9,6 +9,68 @@
     "member_id": "doris-load-dead-paths-cleanup-20261107"
   },
   "description": "After #3949 (Doris Stream Load without the per-line rewrite), `_empty_fields_to_null` in benchbox/platforms/doris.py has no production caller but stays because a test outside that batch's scope imports it. The `requests`-missing executemany fallback also stays because an integration test asserts it. Both are dead weight on the load path.\n\nChange. Remove `_empty_fields_to_null` and update its test. Decide whether the requests-missing fallback is still a supported configuration (requests is part of the doris extra?); if not, remove it and its test.\n\nGuardrails: work in a linked worktree (make worktree-create); never edit the primary clone; heavy work only through make heavy-run; container checks under mocker one stack at a time (limits in tests/uat docs and the uat-mocker-compose-gaps-20261106 context); no live cloud without owner approval; no explanatory comments; changelog fragment if user-facing.",
+  "prepared": {
+    "accepted_head": "3a6bcd7a4ad249ccaaa9c603b8920b6046c741c6",
+    "batch_id": "load-value-integrity",
+    "changed_files": [
+      "benchbox/platforms/doris.py",
+      "changelog.d/feat-load-value-integrity--doris-load-dead-paths-cleanup-20261107.json",
+      "tests/integration/platforms/test_doris_smoke.py",
+      "tests/unit/platforms/test_doris_adapter.py",
+      "tests/unit/utils/test_doris_query_shape_rewrites.py"
+    ],
+    "integration_head": "63583af3ef63db815465cb7c2b31eefca2066a25",
+    "integration_seq": 4,
+    "member_id": "doris-load-dead-paths-cleanup-20261107",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "e0d6ab2a29cc96153e2c959e9911cbcb8b990d8be2041b4a69da84103076f877",
+    "source_base": "95b2aeff395c49223700b04d0a86a398e14d6647",
+    "source_revision": "3a6bcd7a4ad249ccaaa9c603b8920b6046c741c6",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-load-value-integrity--doris-load-dead-paths-cleanup-20261107",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/platforms/test_doris_live.py",
+        "tests/integration/platforms/test_doris_smoke.py",
+        "tests/integration/test_manifest_driven_loading.py",
+        "tests/integration/test_misc_plan_capture_live.py",
+        "tests/integration/test_throughput_session_isolation.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/uat/test_connection_registry_drift.py",
+        "tests/unit/platforms/test_doris_adapter.py",
+        "tests/unit/platforms/test_doris_stream_load_guards.py",
+        "tests/unit/platforms/test_doris_stream_load_null_handling.py",
+        "tests/unit/platforms/test_misc_plan_capture.py",
+        "tests/unit/platforms/test_starrocks_doris_all_schemas.py",
+        "tests/unit/platforms/test_throughput_session_capability.py",
+        "tests/unit/utils/test_doris_query_shape_rewrites.py"
+      ],
+      "review": {
+        "base_sha": "95b2aeff395c49223700b04d0a86a398e14d6647",
+        "head_sha": "3a6bcd7a4ad249ccaaa9c603b8920b6046c741c6",
+        "head_tree": "7d67edcabea80fc015bbba369ca0693d545dcee4",
+        "outcome": "clear",
+        "patch_digest": "505e4db79b3199dc2a3e1d7e740f9e96",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "a97efb27665e5a1ad040d12e99262bac772fa895"
+      },
+      "revision": "3a6bcd7a4ad249ccaaa9c603b8920b6046c741c6",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
@@ -33,6 +95,15 @@
       "generation": "af071b4cc43148608ab34f0340aa0ece",
       "op": "take",
       "op_id": "d9dfd36d14124260a2ae854995c4f9e1",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T15:22:09Z",
+      "client": "omp-coding-agent",
+      "generation": "af071b4cc43148608ab34f0340aa0ece",
+      "op": "prepare",
+      "op_id": "c8a0be45bfef4dbb96d7f783c6ce9220",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
