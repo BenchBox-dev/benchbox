@@ -131,6 +131,19 @@ Official-export rule: `qphds_at_size` is exported in `summary.tpc_metrics` only 
 
 `benchbox metrics qphh` does not compute QphDS@Size, because it needs the load time and both throughput and maintenance tests of a single run.
 
+### Verified full-sequence run
+
+The full sequence (load, Power Test, Throughput Test 1, Data Maintenance Test 1, Throughput Test 2, Data Maintenance Test 2) was run end to end on DuckDB at scale factor 1 with the `notuning` configuration (no enforced primary keys, so the maintenance key guard does not refuse):
+
+```
+benchbox run --official --platform duckdb --benchmark tpcds --scale 1 --seed 42 --concurrency 4 \
+  --phases generate,load,power,throughput,maintenance --output <dir>
+```
+
+The run exported `qphds_at_size` = 511776 with `power_at_size` 221398.7 and `throughput_at_size` 202342.4. Each term traces to its phase in the result: T_PT = 4 x `phases.power_test.duration_ms` (2566 ms), T_TT = `throughput_test` (7045 ms) + `throughput_test_2` (5673 ms), T_DM = `maintenance_test` (779 ms) + `maintenance_test_2` (825 ms), T_LD = 0.04 x (`schema_creation` 707 ms + `data_loading` 6482 ms), Q = 99 x 4 = 396.
+
+The same command repeated against the database the first run left behind reuses the load: the Power, Throughput and Maintenance phases still run, but `data_loading` reports 0 ms and the export withholds the metric with `qphds_unavailable` reading "database load was reused, so its time was not measured in this run" and "database load elapsed time is missing or not positive". Without `--concurrency` the run uses 2 streams and the export withholds the metric with "stream count must be an even number of at least 4; got 2". Delete the database file under `benchmark_runs/databases/` before a run that must export the metric.
+
 ## Known deviations
 
 | ID | Deviation | Status |
