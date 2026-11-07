@@ -34236,7 +34236,7 @@
       "needs": [],
       "priority": "medium",
       "status": "open",
-      "title": "SQLGlot fork and core dry runs pass while their write prerequisites are missing"
+      "title": "Verify core SQLGlot delivery App readiness before publishing"
     },
     "sqlglot-dialect-translation-code-review-implementation": {
       "claim": null,
