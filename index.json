@@ -1274,7 +1274,7 @@
         }
       },
       "integration_branch": "feat/arrow-result-fetch-2",
-      "integration_head": "4f7b11d35115d101e228436e1bdf4bba6bb1d52f",
+      "integration_head": "338e25a5e36f1935c21b32bfd37c041f969f8cee",
       "integration_log": [
         {
           "at": "2026-11-07T01:19:32Z",
@@ -1685,6 +1685,21 @@
           "op_id": "a9bf90061ea44edd96a7b2be14c42e2c",
           "previous_head": "2f380b5d10da7572285847fe1d6577ad8277c477",
           "seq": 12
+        },
+        {
+          "at": "2026-11-07T08:18:54Z",
+          "changed_files": [
+            "benchbox/core/results/comparison_modes.py",
+            "tests/unit/core/results/test_fetch_mode.py"
+          ],
+          "head": "338e25a5e36f1935c21b32bfd37c041f969f8cee",
+          "kind": "fix",
+          "op_id": "df420d581e6647ea91257905eaa60ba5",
+          "previous_head": "4f7b11d35115d101e228436e1bdf4bba6bb1d52f",
+          "requires_acceptance": [
+            "perf-arrow-aware-result-capture-20261030"
+          ],
+          "seq": 13
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-arrow-result-fetch-2",
