@@ -12,7 +12,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from benchbox.utils import host_lock
-from tests.uat import docker_assets, matrix
+from tests.uat import declared_settings, docker_assets, matrix
 
 DOCUMENT_ONLY_PLATFORMS = frozenset()
 
@@ -170,6 +170,16 @@ def main(argv: list[str] | None = None) -> int:
         return result.returncode or 1
 
     matrix.invalidate_reachability_cache_after_lifecycle_change()
+    if not args.dry_run:
+        dropped = declared_settings.verify_declared_settings(
+            spec,
+            project_name,
+            env=compose_env,
+            runner=docker_assets.run_docker_command,
+        )
+        if dropped:
+            print(f"UAT bring-up failed for {platform}: {dropped}", file=sys.stderr)
+            return 1
     if not args.dry_run and not matrix.platform_is_reachable(platform):
         endpoint = spec.tcp_probe_label or "configured endpoint"
         print(f"UAT bring-up failed for {platform}: {endpoint} is still unreachable", file=sys.stderr)
