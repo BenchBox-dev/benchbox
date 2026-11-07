@@ -10,7 +10,7 @@
     "implementation_dependencies": [],
     "member_id": "polars-plan-companion-leaks-local-paths-20261107"
   },
-  "context": "Found by the site viewer work (benchbox-site PR #124). Privacy-class defect: check published bundles for leaked paths too. Verification rubric: reproduction before; fix; regression test; focused suites; comment-policy and ruff; PR merged with green CI and passing oracle review.",
+  "context": "Found by the site viewer work (benchbox-site PR #124). Privacy-class defect: check published bundles for leaked paths too. Verification rubric: reproduction before; fix; regression test; focused suites; comment-policy and ruff; PR merged with green CI and passing oracle review.\n\nPublished-artifact audit (read-only, 2026-11-07). Coverage: origin/published-results head 33e5eeb1 (68 commits + heads of 165 targeting PRs, 261 commits) and develop results-data across 5,061 commits: 0 .plans.json files anywhere and no plan-text keys in any of 5,762 unique JSON blobs parsed; live benchbox.dev results data: 480 results, has_plans=0 and plans_published=0 for all (30 Polars), all 480 companion URLs 404; benchbox-site: 5 fixture companions only (benchbox-site@1bc7d17 explorer/src/lib/__tests__/fixtures/plans/, from PR #124), one Polars fixture uses a neutral /data placeholder, detector and broader scan found no home/output-root leak. Result: 0 affected published companions; no owner-only remediation needed for plans companions. Not audited: api.benchbox.dev hosted ingest (unreachable, no public read API). Detector blind spots (/tmp, /data, /mnt, /opt, non-C drive roots) and unfixed export gaps are reported to the controller: anonymize_plans_payload does not scrub plan_data/plan_text; benchbox publish run copies companions byte-for-byte; site deploy privacy gate has no local-path rule. Unrelated: published-results history has 1,007 historical blobs with home-class paths (pre-#1467, retained by ADR); real maintainer home paths remain in a few test fixtures.",
   "description": "The Polars DataFrame plans companion stores plan_data.logical_plan text that includes absolute local Parquet paths (for example /Users/<name>/...). Any published Polars .plans.json would expose a contributor's directory layout and username; the site only reads the file and cannot fix it. The same companion keys entries with an empty test type (Q1#0:), unlike the DuckDB and SQLite keys, so key shape differs by platform.",
   "links": [
     "benchbox/core/results/schema.py",
@@ -186,6 +186,14 @@
       "generation": "3f74b0a5b52f40c1b7b762ca8b14b882",
       "op": "prepare",
       "op_id": "72b9af3d688f418e81f4fb811f1f514e",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-07T23:13:28Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1e29930cc303412fbcffc5a355c5c108",
       "session_id": "dc59872de7f0484eafa9032416c81607"
     }
   ]
