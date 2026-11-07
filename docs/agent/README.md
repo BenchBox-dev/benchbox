@@ -37,6 +37,7 @@ requires a human audience that belongs on benchbox.dev. A new
 | `emergency-merge.md` | Base-pinned gate breakage: agents reproduce, record evidence, and stop; stand-in evidence matches `merge-authority.md`; ruleset relaxation is owner-only |
 | `primary-clone-guard.md` | Primary-clone change report, absolute worktree paths for workers, and the lost-edit cause |
 | `remote-closeout.md` | Closing out a PR from the primary clone without a checkout |
+| `preflight-receipt.md` | The tree-bound receipt `make pr-preflight` writes and `make pr-open` requires, the known-failure allowlist, and what the hosted gate does not read |
 | `heavy-work.md` | Host lock, admission, `make heavy-status`/`heavy-run`, and the known limits behind `[HEAVY-LOCK-001]` |
 | `maintainer-bundles.md` | Automatic pseudonym salt, staging a local run with `make corpus-stage-local`, and the guard-refusal rule |
 | `batch-feature-delivery.md` | The default feature batch loop for explicitly assigned cohesive batches: leader and member roles, the `batch-start`, `batch-member-create`, `batch-member-check`, `batch-land`, `batch-advance`, `batch-status`, `batch-verify`, `batch-evidence`, and `batch-finish` targets, the brief-size limit, rollback, and recovery |
