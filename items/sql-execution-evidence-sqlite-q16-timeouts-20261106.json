@@ -4,67 +4,12 @@
     "The gate passes 10 consecutive unchanged reruns on one PR head with no timeout failures.",
     "Any query budget or exclusion is derived from those measurements and documented where the gate is defined."
   ],
-  "batch": {
-    "batch_id": "arming-reliability",
-    "implementation_dependencies": [],
-    "member_id": "sql-execution-evidence-sqlite-q16-timeouts-20261106"
-  },
   "context": "Hosted measurements (GitHub-hosted ubuntu-latest, image ubuntu-26.04, repo is public so the standard runner; SQLite 3.46.1 in all 20 runs). Before = 10 runs of the sql-execution-evidence job on one head (scratch PR carrying only per-query timing output; job ids 128255020518 128260922478 128263139336 128264903328 128268070851 128270483576 128271619382 128276115584 128278484433 128280309174). After = 10 runs on one head with the SQLite key indexes (scratch PR; job ids 128269868277 128278939051 128281706597 128282744593 128283671251 128284573201 128285352327 128286242556 128287334438 128288442755). Both scratch PRs closed unmerged, branches deleted.\nBefore: 2 of 10 passed. tpcds q16 sqlite 15.00s TIMED OUT in 8 runs, 9.91 and 13.98s otherwise. tpcds-augmented q16.1001 5.66-14.22s, q16.default 5.60-11.51s. tpchavoc q10_v5 timed out in 2 runs (15.00s), 7.82-14.10s otherwise. tpchavoc q9_v1 6.04-9.72s. sqlite engine time 63.3-114.8s.\nAfter: 10 of 10 passed. q16 and q10_v5 below 0.23s in every run (not in the 15 slowest). q9_v1 max 1.66s. Slowest sqlite query per run 2.15-4.37s (tpchavoc 9_v4). sqlite engine time 16.0-33.7s.\nRoot cause: hosted SQLite 3.46.1 plans SCAN cs2 per outer row for the q16 correlated EXISTS (27s on a loaded dev host with the 3.46.1 shell); SQLite 3.53/3.54 builds an automatic partial covering index and runs q16 in 0.48s, so local runs never reproduce it. Fix: index join/correlation key columns (key, _sk, _order_number, _ticket_number suffixes) plus the leading column; 3.46.1 shell then runs q16 in 0.013s and all 347 queries in at most 1.6s. Timeout stays 15s: after the fix the worst hosted query is 4.4s, a 3.4x margin.\nNot changed: PostgreSQL tpch q20, tpchavoc 8_v10 and 9_v1 hit the 15s statement timeout on every hosted run (recorded optional entries); out of this item's scope.",
   "description": "Problem. Every batch PR merged on 2026-11-06 failed at least once in sql-execution-evidence, and core with it: #3948, #3949, #3950, #3952 and #3960. The failures were SQLite TPC-DS q16, and once tpchavoc q10_v5, exceeding the gate's 15 s per-query timeout. #3960 failed on four runs and #3952 on three before a make pr-rerun passed. None of those PRs changed a SQLite or SQL-generation path. Locally, q16 passes in 11 to 36 s on sqlite 3.53; CI uses sqlite 3.46.1. Each failure costs a full CI cycle (1 to 5 hours of queue, see ci-queue-throughput-delays-arming-20261101).\n\nChange. Find why q16 runs close to or over 15 s on hosted runners: sqlite version, runner class, or an unindexed plan. Then make the gate deterministic, either by budgeting per query from measured hosted timings or by excluding queries whose hosted time is within a stated margin of the timeout, with the exclusion recorded. Do not just raise the timeout without measurements.\n\nGuardrails: work in a linked worktree (make worktree-create); never edit the primary clone; no explanatory comments (make comment-policy-check); changelog.d fragment if user-facing; re-read cited symbols before editing; never bypass a required check or relax a ruleset (owner-only).",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/pull/3960",
     "https://github.com/BenchBox-dev/BenchBox/pull/3952"
   ],
-  "prepared": {
-    "accepted_head": "47db7b112ac5fff0513e1c740cb4eca79046d108",
-    "batch_id": "arming-reliability",
-    "changed_files": [
-      "changelog.d/feat-arming-reliability--sql-execution-evidence-sqlite-q16-timeouts-20261106.json",
-      "docs/internal/sql-execution-evidence-gate.md",
-      "scripts/sql_execution_gate/engines.py",
-      "scripts/sql_execution_gate/gate.py",
-      "scripts/sql_execution_gate/obt.py",
-      "tests/unit/scripts/test_sql_execution_gate.py"
-    ],
-    "integration_head": "b18d8a4336075320eee62e3c9688c0a15e1a09a7",
-    "integration_seq": 2,
-    "member_id": "sql-execution-evidence-sqlite-q16-timeouts-20261106",
-    "overlaps": [],
-    "owner_epoch": 0,
-    "schema": "prepared_work_v2",
-    "scope_hash": "91065dd87aa2a8c51c981e4df99a1171d8f29fc9a21a179039a29f1b07661029",
-    "source_base": "3b3ce3f84f2186337eb118e888dfda35c909cb3c",
-    "source_revision": "47db7b112ac5fff0513e1c740cb4eca79046d108",
-    "source_worktree": "/Users/joe/Developer/BenchBox.wt-arming-reliability--sql-execution-evidence-sqlite-q16-timeouts-20261106",
-    "verification": {
-      "clean": true,
-      "command": [
-        "uv",
-        "run",
-        "--",
-        "python",
-        "-m",
-        "pytest",
-        "-n",
-        "0",
-        "-q",
-        "tests/unit/scripts/test_sql_execution_gate.py"
-      ],
-      "review": {
-        "base_sha": "3b3ce3f84f2186337eb118e888dfda35c909cb3c",
-        "head_sha": "47db7b112ac5fff0513e1c740cb4eca79046d108",
-        "head_tree": "00fdfa515fad85ec66b331c04e1a9d86b31b60b0",
-        "outcome": "clear",
-        "patch_digest": "c9e139dfe00babb62bc48eefc51ea10b",
-        "reason": "decided SHIP with no Critical or High findings",
-        "schema": "benchbox_member_review_v1",
-        "trusted_sha": "b10beb761fc7aaffbda093bb935c4f8c950f4624"
-      },
-      "revision": "47db7b112ac5fff0513e1c740cb4eca79046d108",
-      "status": "passed",
-      "suite": "member-tests"
-    }
-  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
@@ -106,6 +51,14 @@
       "generation": "8bc165263df44617944d8db3d01e76ec",
       "op": "prepare",
       "op_id": "8112e2a064bb41829594bbd422ac8017",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T05:28:55Z",
+      "client": "omp-coding-agent",
+      "op": "abort",
+      "op_id": "e925a31a1b8c4c268e4135588fc584ad",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]

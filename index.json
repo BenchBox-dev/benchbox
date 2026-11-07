@@ -1,10 +1,7 @@
 {
   "batches": {
     "arming-reliability": {
-      "accepted_members": {
-        "pr-arm-stale-hold-suite-needs-new-head-20261106": "1f3279d9b899d733736dfafaa8d2aeb55c0dd16d",
-        "sql-execution-evidence-sqlite-q16-timeouts-20261106": "47db7b112ac5fff0513e1c740cb4eca79046d108"
-      },
+      "accepted_members": {},
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
@@ -40,34 +37,7 @@
           "previous_head": "e7159ff55aa574e7116cedbd4a5888d2d0494266"
         }
       ],
-      "integrated_members": {
-        "pr-arm-stale-hold-suite-needs-new-head-20261106": {
-          "accepted_head": "1f3279d9b899d733736dfafaa8d2aeb55c0dd16d",
-          "changed_files": [
-            ".github/workflows/pr-hold.yml",
-            "changelog.d/feat-arming-reliability--pr-arm-stale-hold-suite-needs-new-head-20261106.json",
-            "docs/agent/merge-authority.md",
-            "docs/internal/dev-loop-property-ledger.md",
-            "docs/internal/repo-admin-settings.md",
-            "tests/unit/workflows/test_pr_hold_workflow.py"
-          ],
-          "integration_head": "3b3ce3f84f2186337eb118e888dfda35c909cb3c",
-          "integration_seq": 1
-        },
-        "sql-execution-evidence-sqlite-q16-timeouts-20261106": {
-          "accepted_head": "47db7b112ac5fff0513e1c740cb4eca79046d108",
-          "changed_files": [
-            "changelog.d/feat-arming-reliability--sql-execution-evidence-sqlite-q16-timeouts-20261106.json",
-            "docs/internal/sql-execution-evidence-gate.md",
-            "scripts/sql_execution_gate/engines.py",
-            "scripts/sql_execution_gate/gate.py",
-            "scripts/sql_execution_gate/obt.py",
-            "tests/unit/scripts/test_sql_execution_gate.py"
-          ],
-          "integration_head": "b18d8a4336075320eee62e3c9688c0a15e1a09a7",
-          "integration_seq": 2
-        }
-      },
+      "integrated_members": {},
       "integration_branch": "feat/arming-reliability",
       "integration_head": "cd09f769f1922746634fbcaf02a50ed7baf72c1a",
       "integration_log": [
@@ -286,7 +256,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-arming-reliability",
-      "lifecycle": "active",
+      "lifecycle": "aborted",
       "members": [
         "pr-arm-stale-hold-suite-needs-new-head-20261106",
         "sql-execution-evidence-sqlite-q16-timeouts-20261106"
