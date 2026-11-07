@@ -4,59 +4,8 @@
     "A test covers both container and non-container variant ids for at least one platform.",
     "make test-fast passes."
   ],
-  "batch": {
-    "batch_id": "ci-and-preflight-reliability",
-    "implementation_dependencies": [],
-    "member_id": "deployment-modes-test-host-dependent"
-  },
   "context": "Evidence: SaltAutoCore report, 2026-11-01 (not reproduced by the parent).\n\n2026-11-06/07: recurred. make pr-preflight showed 14 failures in tests/unit/platforms/test_deployment_modes_recorded.py (mainly databend and timescaledb) during #3995; one passed when run alone. CI passed.",
   "description": "During #3878, `make pr-preflight` on the agent's host failed 12 tests in tests/unit/platforms/test_deployment_modes_recorded.py because the computed published_variant_id gained the `^container` suffix (added by #3618 for runs inside a container). CI passed the same tests. The tests read real host container detection instead of fixing it, so their result depends on where they run.",
-  "prepared": {
-    "accepted_head": "9803064a09f0c965855a4c57f885bf4650d62d69",
-    "batch_id": "ci-and-preflight-reliability",
-    "changed_files": [
-      "changelog.d/feat-ci-and-preflight-reliability--deployment-modes-test-host-dependent.json",
-      "tests/unit/platforms/test_deployment_modes_recorded.py"
-    ],
-    "integration_head": "2e45e23273108bbeb108b1f638fde70c7df77faf",
-    "integration_seq": 1,
-    "member_id": "deployment-modes-test-host-dependent",
-    "overlaps": [],
-    "owner_epoch": 0,
-    "schema": "prepared_work_v2",
-    "scope_hash": "56072a7c78fa331722f91b6f8eb451f154aa61a099fd859cbd2f92c02f36abdc",
-    "source_base": "766364b8a32f55ac19a09feca8dead5008a2fd80",
-    "source_revision": "9803064a09f0c965855a4c57f885bf4650d62d69",
-    "source_worktree": "/Users/joe/Developer/BenchBox.wt-ci-and-preflight-reliability--deployment-modes-test-host-dependent",
-    "verification": {
-      "clean": true,
-      "command": [
-        "uv",
-        "run",
-        "--",
-        "python",
-        "-m",
-        "pytest",
-        "-n",
-        "0",
-        "-q",
-        "tests/unit/platforms/test_deployment_modes_recorded.py"
-      ],
-      "review": {
-        "base_sha": "766364b8a32f55ac19a09feca8dead5008a2fd80",
-        "head_sha": "9803064a09f0c965855a4c57f885bf4650d62d69",
-        "head_tree": "acb1241de05ad2c1b73e0c82c37f1f3b462c2a75",
-        "outcome": "clear",
-        "patch_digest": "1b4d1f185acf0129ce1f1f30ab7418f7",
-        "reason": "decided SHIP with no Critical or High findings",
-        "schema": "benchbox_member_review_v1",
-        "trusted_sha": "a97efb27665e5a1ad040d12e99262bac772fa895"
-      },
-      "revision": "9803064a09f0c965855a4c57f885bf4650d62d69",
-      "status": "passed",
-      "suite": "member-tests"
-    }
-  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e275448d846640d27249a6f8",
@@ -106,6 +55,14 @@
       "generation": "f7a2e428bed641b09434bae5919b147a",
       "op": "prepare",
       "op_id": "e85170504f924eb5a8112e7c116e87e1",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T19:44:30Z",
+      "client": "omp-coding-agent",
+      "op": "abort",
+      "op_id": "1aa3d5f40b9143d496a3de604a0da80e",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]

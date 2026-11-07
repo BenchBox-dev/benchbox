@@ -4,64 +4,10 @@
     "PostgreSQL q20 and the Havoc 8_v10/9_v1 timeouts no longer need to be tolerated, or are recorded as required entries with a reason",
     "sql-execution-evidence passes on hosted CI at the changed head with no timeout"
   ],
-  "batch": {
-    "batch_id": "ci-and-preflight-reliability",
-    "implementation_dependencies": [],
-    "member_id": "sql-execution-evidence-gate-config-hygiene-20261107"
-  },
   "description": "Leftover from PR #4007 (SQLite q16 gate fix). (1) PostgreSQL TPC-H q20 (and the tpchavoc 20_v1..20_v10 variants) plus tpchavoc 8_v10 and 9_v1 hit the 15 s statement timeout on every hosted run; they are `optional: true` entries in scripts/sql_execution_gate/expected_differences.json, which exempts them from the stale-entry check, so they would also hide a regression. Decide per entry: raise the budget, add PostgreSQL indexes like the SQLite fix, or make them required entries with a current justification. (2) The remaining optional SQLite entries still say 'without indexes' and are probably obsolete now the indexes landed (SQLite's slowest query was 4.4 s over ten hosted runs): tpcds_obt q35 timeout, the tpcds vacuous q13 entry (marked optional because of SQLite timeouts), and any other optional SQLite timeout wording. Remove them or make them non-optional, verified with hosted runs of sql-execution-evidence. (3) Also review the optional PostgreSQL tpcds_obt q56 entry. PR #4007 already pruned the SQLite timeout entries for tpcds 13/48, tpch 21, tpchavoc 5_v8/21_v*, and the tpcds_obt base-equivalence 13/48 entry.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/pull/4007"
   ],
-  "prepared": {
-    "accepted_head": "f069195a94e9012568f58d02b6564b83481dafba",
-    "batch_id": "ci-and-preflight-reliability",
-    "changed_files": [
-      "changelog.d/feat-ci-and-preflight-reliability--sql-execution-evidence-gate-config-hygiene-20261107.json",
-      "docs/internal/sql-execution-evidence-gate.md",
-      "scripts/sql_execution_gate/engines.py",
-      "scripts/sql_execution_gate/expected_differences.json",
-      "tests/unit/scripts/test_sql_execution_gate.py"
-    ],
-    "integration_head": "1c440f896d113512466f27bad3b9d8d394a8d3a9",
-    "integration_seq": 5,
-    "member_id": "sql-execution-evidence-gate-config-hygiene-20261107",
-    "overlaps": [],
-    "owner_epoch": 0,
-    "schema": "prepared_work_v2",
-    "scope_hash": "56072a7c78fa331722f91b6f8eb451f154aa61a099fd859cbd2f92c02f36abdc",
-    "source_base": "0b6f6c414e9456d2fac3243c1f21204f09e34cb3",
-    "source_revision": "f069195a94e9012568f58d02b6564b83481dafba",
-    "source_worktree": "/Users/joe/Developer/BenchBox.wt-ci-and-preflight-reliability--sql-execution-evidence-gate-config-hygiene-20261107",
-    "verification": {
-      "clean": true,
-      "command": [
-        "uv",
-        "run",
-        "--",
-        "python",
-        "-m",
-        "pytest",
-        "-n",
-        "0",
-        "-q",
-        "tests/unit/scripts/test_sql_execution_gate.py"
-      ],
-      "review": {
-        "base_sha": "0b6f6c414e9456d2fac3243c1f21204f09e34cb3",
-        "head_sha": "f069195a94e9012568f58d02b6564b83481dafba",
-        "head_tree": "cadd1fce15ff562ae7bb6e351b6068a6578a4fb1",
-        "outcome": "clear",
-        "patch_digest": "17896936461cf030ebaed5ff980c4031",
-        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
-        "schema": "benchbox_member_review_v1",
-        "trusted_sha": "d605d4f38d0627aaef421df019caa2bde0a3afcc"
-      },
-      "revision": "f069195a94e9012568f58d02b6564b83481dafba",
-      "status": "passed",
-      "suite": "member-tests"
-    }
-  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
@@ -103,6 +49,14 @@
       "generation": "9ed20a815a84415b8ee8aacefac1f899",
       "op": "prepare",
       "op_id": "7ea6d5d081894a4f8e64259bf94b1b6a",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T19:44:29Z",
+      "client": "omp-coding-agent",
+      "op": "abort",
+      "op_id": "1aa3d5f40b9143d496a3de604a0da80e",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
