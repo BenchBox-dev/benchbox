@@ -58,8 +58,8 @@ Owner decisions of 2026-10-27:
   05:43 UTC and reports failures to a site-local issue labelled `t3:browser`; its dispatch run 40609640737 passed on
   both browsers. Core `nightly-v2.yml` has no browser job.
 - GizmoSQL stays in the release rehearsal candidate.
-- Deleting the `release` branch and its ruleset is an owner-run step after the dlv2-52 publication; no agent deletes
-  them.
+- The `release` branch and its ruleset were deleted by the owner on 2026-11-07, after the first publication on the new
+  release path; no agent deleted them.
 - The merge-queue and auto-revert branch namespaces were purged on 2026-10-27: 105 remote branches were deleted
   (6 `gh-readonly-queue`, 8 `auto-revert`, 46 closed-PR `auto/results-mirror`, 45 other closed or merged pull
   request branches), with their tips archived in the tracker. The `release`, `develop`, `published-results` and

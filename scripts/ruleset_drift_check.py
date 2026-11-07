@@ -7,6 +7,7 @@ import json
 import os
 import re
 import sys
+import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
@@ -43,9 +44,10 @@ TEST_PYPI_ENVIRONMENT = "test-pypi"
 ORACLE_ENVIRONMENT = "oracle"
 ENVIRONMENT_DEPLOYMENT_POLICIES = {
     PYPI_ENVIRONMENT: (("tag", "v*"),),
-    TEST_PYPI_ENVIRONMENT: (("branch", "develop"), ("branch", "release"), ("tag", "v*")),
+    TEST_PYPI_ENVIRONMENT: (("branch", "develop"), ("tag", "v*")),
     ORACLE_ENVIRONMENT: (("branch", "develop"),),
 }
+RETIRED_RELEASE_BRANCH = "release"
 
 
 @dataclass(frozen=True)
@@ -141,6 +143,38 @@ def _api_json(url: str, token: str) -> Any:
         return json.loads(response.read().decode("utf-8"))
 
 
+def _fetch_branch_exists(repo: str, token: str, branch: str) -> bool:
+    try:
+        _api_json(f"https://api.github.com/repos/{repo}/branches/{branch}", token)
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return False
+        raise
+    return True
+
+
+def release_branch_findings(repo: str, token: str) -> list[str]:
+    try:
+        exists = _fetch_branch_exists(repo, token, RETIRED_RELEASE_BRANCH)
+    except Exception as exc:
+        return [f"release branch: could not verify that the retired `{RETIRED_RELEASE_BRANCH}` branch is absent: {exc}"]
+    if exists:
+        return [f"release branch: the retired `{RETIRED_RELEASE_BRANCH}` branch exists but must be deleted"]
+    return []
+
+
+def retired_release_ruleset_findings(live_rulesets: list[dict[str, Any]]) -> list[str]:
+    findings: list[str] = []
+    retired_ref = f"refs/heads/{RETIRED_RELEASE_BRANCH}"
+    for ruleset in live_rulesets:
+        include = ((ruleset.get("conditions") or {}).get("ref_name") or {}).get("include") or []
+        if retired_ref in include:
+            findings.append(
+                f"{ruleset.get('name')}: live ruleset targets the retired {retired_ref} and must be deleted"
+            )
+    return findings
+
+
 def _bool_from_text(value: str) -> bool:
     lowered = value.strip().lower()
     if lowered == "true":
@@ -184,7 +218,7 @@ def _other_properties(section: str, name: str) -> dict[str, str]:
 
 def parse_expected_rulesets(runbook_text: str) -> dict[str, ExpectedRuleset]:
     expected: dict[str, ExpectedRuleset] = {}
-    for name in ("develop-squash-only", "release-only"):
+    for name in ("develop-squash-only",):
         section = _section_for_ruleset(runbook_text, name)
         ref_match = re.search(r"targets?\s+`([^`]+)`", section)
         if not ref_match:
@@ -445,7 +479,8 @@ def render_summary(findings: list[str], expected: dict[str, ExpectedRuleset]) ->
             lines.append(f"- {ruleset.name}: required checks {', '.join(ruleset.required_checks)}")
         lines.append("- pypi environment: required reviewer joeharris76 (User id 57046)")
         lines.append("- pypi environment: deployments only from tag v*")
-        lines.append("- test-pypi environment: deployments only from tag v* and branches develop and release")
+        lines.append("- test-pypi environment: deployments only from tag v* and branch develop")
+        lines.append("- no `release` branch or ruleset")
         lines.append("- oracle environment: deployments only from branch develop")
     if warnings:
         lines += ["", "## Non-blocking warnings", "", *[f"- {finding}" for finding in warnings]]
@@ -549,6 +584,8 @@ def main(argv: list[str] | None = None) -> int:
     findings.extend(environment_protection_findings(live_pypi_environment))
     for name, live_environment in live_environments.items():
         findings.extend(deployment_policy_findings(name, live_environment, live_policies[name]))
+    findings.extend(release_branch_findings(args.repo, token))
+    findings.extend(retired_release_ruleset_findings(list(live_by_name.values())))
 
     blocking = blocking_findings(findings)
     summary = render_summary(findings, expected)
