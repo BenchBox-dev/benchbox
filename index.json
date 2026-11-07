@@ -5493,7 +5493,20 @@
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
-      "final_pr_history": [],
+      "final_pr": {
+        "head": "3749b8566563bfaf7db89cdd22b2c7c942adb643",
+        "node_id": "PR_kwDOQ7J64c8AAAABNeXheg",
+        "number": 4015,
+        "repository": "BenchBox-dev/BenchBox"
+      },
+      "final_pr_history": [
+        {
+          "at": "2026-11-07T06:45:43Z",
+          "head": "3749b8566563bfaf7db89cdd22b2c7c942adb643",
+          "op_id": "28e7fdd1cfd3420dbd5dc86f7186d959",
+          "previous_head": null
+        }
+      ],
       "integrated_members": {
         "tpcds-maintenance-dsdgen-refresh-data-20261103": {
           "accepted_head": "ccd6d219046a58d82ba8e0c8ca336066292a079b",
