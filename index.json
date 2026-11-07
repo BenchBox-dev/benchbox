@@ -1280,7 +1280,7 @@
         }
       },
       "integration_branch": "feat/arrow-result-fetch-2",
-      "integration_head": "338e25a5e36f1935c21b32bfd37c041f969f8cee",
+      "integration_head": "3d1ce4736abb40d4fa116135a62cd1133224b5fc",
       "integration_log": [
         {
           "at": "2026-11-07T01:19:32Z",
@@ -1706,6 +1706,28 @@
             "perf-arrow-aware-result-capture-20261030"
           ],
           "seq": 13
+        },
+        {
+          "at": "2026-11-07T08:50:36Z",
+          "changed_files": [
+            "benchbox/core/tpcds/power_test.py",
+            "benchbox/core/tpcds/throughput_test.py",
+            "benchbox/core/tpch/power_test.py",
+            "benchbox/core/tpch/throughput_test.py",
+            "benchbox/platforms/base/arrow_result.py",
+            "docs/internal/tpc-measured-intervals.md",
+            "tests/unit/core/tpch/test_power_test_query_generation_boundary.py",
+            "tests/unit/platforms/test_arrow_result_capture.py"
+          ],
+          "head": "3d1ce4736abb40d4fa116135a62cd1133224b5fc",
+          "kind": "fix",
+          "op_id": "2e3592b6f81c4b2c97e1012c7dd79900",
+          "previous_head": "338e25a5e36f1935c21b32bfd37c041f969f8cee",
+          "requires_acceptance": [
+            "perf-arrow-aware-result-capture-20261030",
+            "perf-arrow-fetch-native-drivers-20261030"
+          ],
+          "seq": 14
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-arrow-result-fetch-2",
