@@ -230,15 +230,22 @@ class PostgresEngine:
         self.connection.execute(f"SET search_path TO {self.schema}")
         self.connection.execute(dataset.ddl)
         for table, path in dataset.tables.items():
-            columns = self.connection.execute(
-                "SELECT count(*) FROM information_schema.columns WHERE table_schema = %s AND table_name = %s",
-                (self.schema, table),
-            ).fetchone()[0]
+            names = [
+                row[0]
+                for row in self.connection.execute(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_schema = %s AND table_name = %s ORDER BY ordinal_position",
+                    (self.schema, table),
+                ).fetchall()
+            ]
+            columns = len(names)
             statement = f"COPY {table} FROM STDIN (FORMAT csv, DELIMITER '|', NULL '', QUOTE E'\\x01')"
             with self.connection.cursor().copy(statement) as copy:
                 writer = csv.writer(_Sink(copy), delimiter="|", quotechar="\x01", lineterminator="\n")
                 for row in _data_lines(path, columns):
                     writer.writerow(["" if cell is None else cell for cell in row])
+            for column in index_columns(names, dataset.index_keys):
+                self.connection.execute(f'CREATE INDEX "{table}_{column}_ix" ON {table} ("{column}")')
         self.connection.execute("ANALYZE")
         self.connection.execute(f"SET statement_timeout = {int(self.timeout * 1000)}")
 
