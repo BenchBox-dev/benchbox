@@ -1763,7 +1763,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-arrow-result-fetch-2",
-      "lifecycle": "active",
+      "lifecycle": "completed",
       "members": [
         "perf-arrow-aware-result-capture-20261030",
         "perf-arrow-fetch-native-drivers-20261030",
@@ -25105,17 +25105,12 @@
       "title": "Rebuild the perf-smoke baseline after power-test query generation leaves the timer"
     },
     "perf-spark-arrow-collect-20261030": {
-      "claim": {
-        "expires_at": "2026-11-08T09:35:39Z",
-        "generation": "2943ee6167484863a29088bba2cc0991",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [
         "perf-arrow-aware-result-capture-20261030"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Use Arrow collect for Spark-family adapters"
     },
     "perf-starrocks-parquet-load-20261030": {
