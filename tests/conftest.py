@@ -438,3 +438,29 @@ def tpch_sf001_data(tmp_path_factory: pytest.TempPathFactory):
 
     yield copy_to
     assert _tree_digest(cached_dir) == generated
+
+
+@pytest.fixture(scope="session")
+def tpch_sf001_duckdb(tpch_sf001_data, tmp_path_factory: pytest.TempPathFactory):
+    import duckdb
+
+    from benchbox.core.tpch.queries import TPCHQueries
+    from benchbox.core.tpch.schema import TABLES
+
+    tpch_dir = Path(tpch_sf001_data(tmp_path_factory.mktemp("tpch_sf001_duckdb") / "data")) / "tpch_sf001"
+    connection = duckdb.connect()
+    for table in TABLES:
+        files = sorted(str(path) for path in tpch_dir.glob(f"{table.name}.tbl*"))
+        assert files, f"BenchBox generator produced no data files for {table.name}"
+        connection.execute(table.get_create_table_sql())
+        names = [column.name for column in table.columns]
+        spec = ", ".join(f"'{name}': 'VARCHAR'" for name in names)
+        connection.execute(
+            f"INSERT INTO {table.name} SELECT {', '.join(names)} "
+            f"FROM read_csv({files!r}, delim='|', header=false, columns={{{spec}}})"
+        )
+    queries = TPCHQueries().get_all_queries()
+    assert len(queries) == 22
+    assert connection.execute("SELECT count(*) FROM lineitem").fetchone()[0] > 0
+    yield connection, queries
+    connection.close()

@@ -67,18 +67,13 @@ class TestDataFusionFetchMode:
         assert result["rows_returned"] == 0
         assert result["first_row"] is None
 
-    def test_all_22_tpch_queries_digest_identically(self, tmp_path):
-        duckdb = pytest.importorskip("duckdb")
-        source = duckdb.connect()
-        try:
-            source.execute("LOAD tpch")
-            source.execute("CALL dbgen(sf=0.01)")
-        except duckdb.Error as exc:
-            pytest.skip(f"DuckDB tpch extension unavailable: {exc}")
+    def test_all_22_tpch_queries_digest_identically(self, tmp_path, tpch_sf001_duckdb):
+        source, query_map = tpch_sf001_duckdb
         tables = [row[0] for row in source.execute("SHOW TABLES").fetchall()]
+        assert len(tables) == 8
         for table in tables:
             source.execute(f"COPY {table} TO '{tmp_path}/{table}.parquet' (FORMAT parquet)")
-        queries = source.execute("SELECT query_nr, query FROM tpch_queries() ORDER BY query_nr").fetchall()
+        queries = sorted(query_map.items())
         assert len(queries) == 22
 
         outcomes: dict[str, dict[int, tuple]] = {}
