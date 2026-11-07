@@ -5,6 +5,7 @@
     "A unit test reproduces a PR at the listing limit and proves the digest neither truncates silently nor stalls permanently.",
     "The next scheduled run succeeds."
   ],
+  "context": "2026-11-07: fixed by #4021 (4f86c66).\n- A PR at the 250-commit API limit is read whole from git: refs/pull/N/head must match the PR head, and base..head must match the PR's commit count; otherwise ReadError, never a partial list. Unit tests cover a whole read, a short list refused, a moved head refused, and a merge commit.\n- Dispatched run 42399447516 succeeded: window aa796d1ab..4f86c6627, 55 soundness-path commits, including #3902, #3962, #3965, #3978 and #3987.\n- It opened #4032 (80f82f3, #3951) and #4033 (34c947c, #3965). These are the two owner-authorized emergency merges that bypassed the review gate, correctly flagged; they need an owner-attested external review.\n- Remaining: observe the next scheduled run succeed.",
   "description": "The soundness merge digest (`.github/workflows/soundness-merge-digest.yml`) has failed on every run since 2026-11-04: the scheduled runs on Nov 4 and 5, and a manual dispatch on Nov 6 (run 42220708367). Each fails with exit 2: `soundness-merge-digest: #3902 has 250 commits, the most the API lists; the checkpoint was not advanced`. PR #3902 (`chore(release): prepare 0.5.0rc3`, merged 2026-11-03) has more commits than the GitHub PR-commits endpoint returns. The script refuses rather than digest a truncated list, which is correct, but it never advances past the PR. So no soundness-path merge since Nov 3 has been digested, including the Theseus v0.2.1 migration (#3962, b0cfe591). This is not caused by the Theseus migration: the failures began before it, and the error is not a REVIEW_CONTEXT issue.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/actions/runs/42220708367",
@@ -28,6 +29,14 @@
       "generation": "561588e349dd44ff8e4daf9f0776e35d",
       "op": "take",
       "op_id": "a12323ecf0ee45fa8695f3a1366a9aaf",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-07T18:21:07Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "460e25acc0b34aca82a838499f135439",
       "session_id": "8d9ba932107b4322b2417b8af61c160c"
     }
   ]
