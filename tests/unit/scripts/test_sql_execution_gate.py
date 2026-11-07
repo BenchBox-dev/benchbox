@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import datetime
 import json
-import sys
 import types
 from contextlib import contextmanager
 from decimal import Decimal
@@ -647,8 +646,7 @@ class _RecordingPostgres:
 
 def _open_postgres(monkeypatch, tmp_path, columns, index_keys):
     recorder = _RecordingPostgres(columns)
-    monkeypatch.setitem(sys.modules, "psycopg", types.SimpleNamespace(connect=lambda dsn, autocommit: recorder))
-    monkeypatch.setenv("BENCHBOX_POSTGRES_DSN", "postgresql://unused")
+    monkeypatch.setattr(PostgresEngine, "_connect", staticmethod(lambda: recorder))
     data = tmp_path / "cs.tbl"
     data.write_text("1|2|3|\n")
     engine = PostgresEngine(15.0)

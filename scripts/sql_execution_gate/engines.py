@@ -221,10 +221,14 @@ class PostgresEngine:
     def available() -> bool:
         return bool(os.environ.get("BENCHBOX_POSTGRES_DSN")) and importlib.util.find_spec("psycopg") is not None
 
-    def open(self, dataset: Dataset, parquet_dir: Path) -> None:
+    @staticmethod
+    def _connect():
         import psycopg
 
-        self.connection = psycopg.connect(os.environ["BENCHBOX_POSTGRES_DSN"], autocommit=True)
+        return psycopg.connect(os.environ["BENCHBOX_POSTGRES_DSN"], autocommit=True)
+
+    def open(self, dataset: Dataset, parquet_dir: Path) -> None:
+        self.connection = self._connect()
         self.connection.execute(f"DROP SCHEMA IF EXISTS {self.schema} CASCADE")
         self.connection.execute(f"CREATE SCHEMA {self.schema}")
         self.connection.execute(f"SET search_path TO {self.schema}")
