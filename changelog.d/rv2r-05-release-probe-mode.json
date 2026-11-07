@@ -1,0 +1,1 @@
+{"schema": 1, "internal": "Release workflow probe mode that runs the real release-v2 job graph without a tag and without publishing, plus a pull request check that runs it when release inputs change; CI-only with no user effect"}
