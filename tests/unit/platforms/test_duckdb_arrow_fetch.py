@@ -8,7 +8,7 @@ pytest.importorskip("pyarrow")
 from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW, FETCH_MODE_ROWS
 from benchbox.platforms.duckdb import DuckDBAdapter
 
-pytestmark = [pytest.mark.unit]
+pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 TYPE_MATRIX_SQL = """
 SELECT

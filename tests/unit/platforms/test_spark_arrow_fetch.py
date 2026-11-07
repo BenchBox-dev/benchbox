@@ -19,7 +19,7 @@ from benchbox.platforms.base.spark_execution_mixin import (
     spark_dataframe_supports_arrow,
 )
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 
 class _Host(SparkQueryExecutionMixin):
@@ -348,7 +348,6 @@ PARITY_QUERIES = {
 }
 
 
-@pytest.mark.medium
 @pytest.mark.parametrize("fetch_path", ["toArrow", "toPandas"])
 @pytest.mark.parametrize("query_name", sorted(PARITY_QUERIES))
 @pytest.mark.parametrize("session_time_zone", ["UTC", "America/Los_Angeles"])
