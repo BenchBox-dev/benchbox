@@ -5042,7 +5042,7 @@
         }
       },
       "integration_branch": "feat/result-validity",
-      "integration_head": "91ed8e11c35d1a907fd9f6ffb3b64c28e2f2d228",
+      "integration_head": "ff71f3d0a06f6b17281403d5e229ecc6d1d53a48",
       "integration_log": [
         {
           "at": "2026-11-07T14:16:47Z",
@@ -5076,6 +5076,21 @@
           "op_id": "8fecbec12de641aabeee8934254dd2fd",
           "previous_head": "5d8537b76faab7303991219605fbc10f73bf1ed3",
           "seq": 3
+        },
+        {
+          "at": "2026-11-07T15:16:12Z",
+          "changed_files": [
+            "changelog.d/fix-chdb-rows-nan-vs-arrow-null-q17-20261107.json",
+            "docs/internal/tpc-measured-intervals.md"
+          ],
+          "head": "ff71f3d0a06f6b17281403d5e229ecc6d1d53a48",
+          "kind": "fix",
+          "op_id": "16381dab28f14f2181f41bac2457657e",
+          "previous_head": "91ed8e11c35d1a907fd9f6ffb3b64c28e2f2d228",
+          "requires_acceptance": [
+            "chdb-rows-nan-vs-arrow-null-q17-20261107"
+          ],
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-result-validity",
