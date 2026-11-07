@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "A bounded e2e test shows a develop merge that deletes a receipt-named test, followed by batch-evidence, succeeding with the dropped path recorded.",
+    "A member-deleted test still fails evidence."
+  ],
+  "description": "On 2026-11-07, batch arming-reliability (PR #4007) recorded a develop merge with batch-advance REASON=develop-merge. That merge brought in #4002, which deleted tests/unit/workflows/test_sqlglot_fork_refresh_workflow.py. Member pr-arm-stale-hold-suite-needs-new-head-20261106's prepared receipt names that file in its pytest command, and receipts are immutable. `make batch-evidence` reruns every receipt command on the final head, so it fails at every head that contains #4002. batch-advance REASON=fix refuses a fix to scripts/batch_integration.py because that file is outside the member scopes. The only way out was abort_batch.\n\nChange. Make final evidence survive upstream test deletions and renames. Options: batch-evidence drops receipt test paths that no longer exist on the final head, but only when the deletion came from a recorded develop merge, and records that it did; or batch-advance REASON=develop-merge re-derives affected receipt commands and re-prepares those members. Batch tooling changes ship serially (batch-feature-delivery.md: the loop cannot certify itself).\n\nGuardrails: work in a linked worktree; never weaken evidence for paths a member itself deleted; tracker runtime changes land in the todo-db repo.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T05:28:44Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "7a07831de3244a5ebe6501ff9540b0fd",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}

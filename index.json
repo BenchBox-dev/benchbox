@@ -7791,6 +7791,13 @@
       "status": "done",
       "title": "Refuse batch member checks and landings when the primary clone has edits in the member scope"
     },
+    "batch-receipt-names-test-deleted-by-develop-merge-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "make batch-evidence fails forever when a develop merge deletes a test file named in an immutable member receipt"
+    },
     "batch-remediation-benchbox-20261102": {
       "claim": null,
       "needs": [
