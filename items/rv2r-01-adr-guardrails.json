@@ -20,6 +20,93 @@
     "docs/internal/release-guide.md",
     "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-27T12-06-43-989Z_01a17d41-7415-7202-9145-695263c763ec/ReleaseV2Retro.md"
   ],
+  "prepared": {
+    "accepted_head": "4c88527ab845520cadedbbab67f90fbd26a1ab12",
+    "batch_id": "release-v2-remediation",
+    "changed_files": [
+      "changelog.d/rv2r-01-adr-guardrails.json",
+      "docs/internal/adr/adr-dev-loop-v2.md",
+      "docs/internal/dev-loop-property-ledger.md",
+      "docs/internal/release-artifacts.md",
+      "docs/internal/release-guide.md"
+    ],
+    "integration_head": "05cddf7ea96d6d1147b635234f914ca7e262e4c9",
+    "integration_seq": 10,
+    "member_id": "rv2r-01-adr-guardrails",
+    "overlaps": [
+      {
+        "kind": "member",
+        "member": "rv2r-02-trunk-uat-nightly",
+        "paths": [
+          "docs/internal/release-guide.md"
+        ]
+      },
+      {
+        "kind": "member",
+        "member": "rv2r-03-release-evidence-check",
+        "paths": [
+          "docs/internal/release-artifacts.md",
+          "docs/internal/release-guide.md"
+        ]
+      },
+      {
+        "kind": "member",
+        "member": "rv2r-05-release-probe-mode",
+        "paths": [
+          "docs/internal/release-guide.md"
+        ]
+      },
+      {
+        "kind": "member",
+        "member": "rv2r-09-trunk-dist-every-commit",
+        "paths": [
+          "docs/internal/release-artifacts.md",
+          "docs/internal/release-guide.md"
+        ]
+      },
+      {
+        "kind": "member",
+        "member": "rv2r-14-maintenance-release-branches",
+        "paths": [
+          "docs/internal/release-guide.md"
+        ]
+      }
+    ],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "f33d54323bf1878db20222c7a0bd92dc4fd11f0368b68bd2c0854c6f21904012",
+    "source_base": "e1e5948eab1471c558ea9e3ce02ab2e4d9981f49",
+    "source_revision": "4c88527ab845520cadedbbab67f90fbd26a1ab12",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-rv2r-01-adr-guardrails",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/unit/test_ledger_coverage.py"
+      ],
+      "review": {
+        "base_sha": "e1e5948eab1471c558ea9e3ce02ab2e4d9981f49",
+        "head_sha": "4c88527ab845520cadedbbab67f90fbd26a1ab12",
+        "head_tree": "ad89ca6fc554251cafb5a698440500b3d5f51da8",
+        "outcome": "clear",
+        "patch_digest": "c05ac73d2168186bf6b163b7e9b44aef",
+        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "4598311b4743a9cac90ea59a23864bff44219181"
+      },
+      "revision": "4c88527ab845520cadedbbab67f90fbd26a1ab12",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a3eb8cbf1b5dc744e4710e1c",
@@ -68,6 +155,15 @@
       "generation": "eeea580db2934c66a91339b3dc90441e",
       "op": "take",
       "op_id": "f6356d65071847039c9bd7b9fa395dba",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-07T06:32:18Z",
+      "client": "omp-coding-agent",
+      "generation": "eeea580db2934c66a91339b3dc90441e",
+      "op": "prepare",
+      "op_id": "325bca7984784262bddadda8015aa995",
       "session_id": "b7a346e5fd054aa88d3c05a944442610"
     }
   ]

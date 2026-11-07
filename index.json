@@ -3789,6 +3789,7 @@
     },
     "release-v2-remediation": {
       "accepted_members": {
+        "rv2r-01-adr-guardrails": "4c88527ab845520cadedbbab67f90fbd26a1ab12",
         "rv2r-02-trunk-uat-nightly": "6d698e1b0497c5056f431710e80ea67aca08afdd",
         "rv2r-03-release-evidence-check": "80bc23504dcc42cdaddaf2542427de765ab99df7",
         "rv2r-04-uat-rubric-automation": "8a83e4ad1531a772bd03f8374c33358c8cf634ed",
@@ -3803,6 +3804,18 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "rv2r-01-adr-guardrails": {
+          "accepted_head": "4c88527ab845520cadedbbab67f90fbd26a1ab12",
+          "changed_files": [
+            "changelog.d/rv2r-01-adr-guardrails.json",
+            "docs/internal/adr/adr-dev-loop-v2.md",
+            "docs/internal/dev-loop-property-ledger.md",
+            "docs/internal/release-artifacts.md",
+            "docs/internal/release-guide.md"
+          ],
+          "integration_head": "05cddf7ea96d6d1147b635234f914ca7e262e4c9",
+          "integration_seq": 10
+        },
         "rv2r-02-trunk-uat-nightly": {
           "accepted_head": "6d698e1b0497c5056f431710e80ea67aca08afdd",
           "changed_files": [
@@ -3956,7 +3969,7 @@
         }
       },
       "integration_branch": "feat/release-v2-remediation",
-      "integration_head": "e1e5948eab1471c558ea9e3ce02ab2e4d9981f49",
+      "integration_head": "05cddf7ea96d6d1147b635234f914ca7e262e4c9",
       "integration_log": [
         {
           "at": "2026-11-06T13:41:20Z",
@@ -4174,6 +4187,15 @@
           "op_id": "1a1b39bebe1d425abf7b340ffed9bb3b",
           "previous_head": "541e9b86848825601323749043800c86de2ea6c7",
           "seq": 9
+        },
+        {
+          "at": "2026-11-07T06:32:18Z",
+          "head": "05cddf7ea96d6d1147b635234f914ca7e262e4c9",
+          "kind": "prepare",
+          "member": "rv2r-01-adr-guardrails",
+          "op_id": "325bca7984784262bddadda8015aa995",
+          "previous_head": "e1e5948eab1471c558ea9e3ce02ab2e4d9981f49",
+          "seq": 10
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-release-v2-remediation",
@@ -30128,15 +30150,10 @@
       "title": "Runtime Module Refactor - Batch Two"
     },
     "rv2r-01-adr-guardrails": {
-      "claim": {
-        "expires_at": "2026-11-08T06:32:14Z",
-        "generation": "eeea580db2934c66a91339b3dc90441e",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Record the release-v2 remediation decisions and new guardrails in the dev-loop v2 ADR"
     },
     "rv2r-02-trunk-uat-nightly": {
