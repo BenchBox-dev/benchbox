@@ -1,4 +1,5 @@
 {
+  "context": "2026-11-06 batch load-hardening state: both members landed and prepared on feat/load-hardening (integration seq 2, head 0270a0650f). Live checks under mocker 0.7.2 via make heavy-run: (1) Doris bring-up: compose up --wait OK but bring-up failed with 'service doris: entrypoint: declared entrypoint did not run (/tmp/.benchbox-entrypoint-applied is absent)'; probe validated with mocker run -m 2g/1g (cgroup memory.max, MemTotal, ulimit -l 8192, uname -m aarch64 read correctly). (2) QuestDB: bring-up OK, host ports 9009/19000/8812/9003 reachable; REST parquet load with chunk size 2: control loads 6 rows; forced second-chunk failure raised 'QuestDB REST load failed for 1 table(s): live_t: chunk live_t.parquet: batch 2 (rows 3-4) failed after 2 rows of live_t.parquet were imported: forced chunk failure'. (3) Databend: control loads 3 rows; forced count mismatch raised 'Databend load failed for 1 table(s): live_t: table truncated: Row count mismatch loading live_t.csv: source has 4, loaded 3' and the table held 0 rows. All stacks torn down. Next: fast tier, pr-preflight, pr-open, bind_batch_pr, batch-evidence, arm, finish members, batch-finish EXECUTE=1.",
   "description": "Umbrella for feature batch load-hardening (integration branch feat/load-hardening). Members in order: uat-mocker-compose-gaps-20261106, questdb-rest-and-databend-partial-load-loud-20261106. Not a batch member; carries batch notes. Closed after batch-finish.",
   "sessions": [
     {
@@ -7,6 +8,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "a1fef3ffc0024e1c9bd07c4ba2d6df17",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T01:52:17Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "36d3f0e9beb24fd38bac032231526102",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
