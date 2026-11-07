@@ -3217,6 +3217,7 @@
     "spark-family-fixes": {
       "accepted_members": {
         "platform-options-forwarding-gaps-20261014": "00436ddc83fdb25c32c1b1abc670b31cde929768",
+        "spark-local-default-jvm-exceeds-heavy-run-budget-20261106": "83def6b0c3fd809bde3d934bb946c2c9599cd9b6",
         "spark-test-connection-stops-shared-session": "d2d1b806002fa70f3e9b7e1caaddb35c238ac98e"
       },
       "batch_schema": 2,
@@ -3242,6 +3243,16 @@
           "integration_head": "7724626cb613f3a8a075c1b5b28a33beb0fa0af1",
           "integration_seq": 1
         },
+        "spark-local-default-jvm-exceeds-heavy-run-budget-20261106": {
+          "accepted_head": "83def6b0c3fd809bde3d934bb946c2c9599cd9b6",
+          "changed_files": [
+            "benchbox/platforms/spark.py",
+            "changelog.d/feat-spark-family-fixes--spark-local-default-jvm-exceeds-heavy-run-budget-20261106.json",
+            "tests/unit/platforms/test_spark_adapter.py"
+          ],
+          "integration_head": "f24a03e87013c2770f52cd137412a8a8c8956a69",
+          "integration_seq": 3
+        },
         "spark-test-connection-stops-shared-session": {
           "accepted_head": "d2d1b806002fa70f3e9b7e1caaddb35c238ac98e",
           "changed_files": [
@@ -3254,7 +3265,7 @@
         }
       },
       "integration_branch": "feat/spark-family-fixes",
-      "integration_head": "b2c5a1ecbedec4ef670f1ce5611585d1513dd87a",
+      "integration_head": "f24a03e87013c2770f52cd137412a8a8c8956a69",
       "integration_log": [
         {
           "at": "2026-11-07T00:56:51Z",
@@ -3279,6 +3290,15 @@
           "op_id": "f42b7e7dfcac416c9797fdd73dc3df7e",
           "previous_head": "7724626cb613f3a8a075c1b5b28a33beb0fa0af1",
           "seq": 2
+        },
+        {
+          "at": "2026-11-07T01:33:51Z",
+          "head": "f24a03e87013c2770f52cd137412a8a8c8956a69",
+          "kind": "prepare",
+          "member": "spark-local-default-jvm-exceeds-heavy-run-budget-20261106",
+          "op_id": "b48e10b32174441b97e19b96708fe4d3",
+          "previous_head": "b2c5a1ecbedec4ef670f1ce5611585d1513dd87a",
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-spark-family-fixes",
@@ -30814,17 +30834,12 @@
       "title": "Spark Parquet/ORC DDL keeps column-level REFERENCES clauses that it should strip"
     },
     "spark-local-default-jvm-exceeds-heavy-run-budget-20261106": {
-      "claim": {
-        "expires_at": "2026-11-08T01:32:55Z",
-        "generation": "c109b149f7e94960988c04162e7847b6",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54"
-      },
+      "claim": null,
       "needs": [
         "spark-test-connection-stops-shared-session"
       ],
       "priority": "low",
-      "status": "active",
+      "status": "open",
       "title": "Make a default local Spark run fit the heavy-run memory budget"
     },
     "spark-mixin-open-table-format-loading": {
