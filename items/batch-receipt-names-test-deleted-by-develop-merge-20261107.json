@@ -3,7 +3,7 @@
     "A bounded e2e test shows a develop merge that deletes a receipt-named test, followed by batch-evidence, succeeding with the dropped path recorded.",
     "A member-deleted test still fails evidence."
   ],
-  "context": "2026-11-07, a related gap found while recovering from this: after abort_batch, `make pr-arm` still treated PR #4007 as a batch PR and refused with `unreadable batch evidence file: .todo-batch/arming-reliability/final-evidence.json`. scripts/pr_arm.py (~:308) and scripts/pr_landing.py (~:969) read the integration worktree's benchbox.batch.role/id git config and do not check the tracker's lifecycle, which was `aborted`. batch-feature-delivery.md says that after an abort, members return to ordinary claim/finish. Arming should follow the tracker's aborted state, or abort should clear the markers. Workaround used: remove the stale benchbox.batch.* worktree config after confirming lifecycle=aborted.",
+  "context": "2026-11-07, a related gap found while recovering from this: after abort_batch, `make pr-arm` still treated PR #4007 as a batch PR and refused with `unreadable batch evidence file: .todo-batch/arming-reliability/final-evidence.json`. scripts/pr_arm.py (~:308) and scripts/pr_landing.py (~:969) read the integration worktree's benchbox.batch.role/id git config and do not check the tracker's lifecycle, which was `aborted`. batch-feature-delivery.md says that after an abort, members return to ordinary claim/finish. Arming should follow the tracker's aborted state, or abort should clear the markers. Workaround used: remove the stale benchbox.batch.* worktree config after confirming lifecycle=aborted.\n\n2026-11-07: shipped in PR #4027 (merge b097f00fdd). batch-evidence drops receipt test paths that a recorded develop-merge deleted (absent from the final Git tree, not member-owned), records them as dropped_receipt_paths and in the ledger rerun entry; pr_landing re-derives the expected dropped set and refuses omitted, forged or still-present paths. A path a member owns, or a receipt left with no verification path, still fails. Tests: test_batch_evidence.py (develop deletion succeeds with dropped path recorded; member-owned path still fails; omitted/forged refused; ignored stale copy not kept). pr_arm now follows the tracker's aborted lifecycle over stale integration markers (test_pr_arm.py). Decision: chose the batch-evidence option, not re-preparing members, so receipts stay immutable and no tracker runtime change is needed.",
   "description": "On 2026-11-07, batch arming-reliability (PR #4007) recorded a develop merge with batch-advance REASON=develop-merge. That merge brought in #4002, which deleted tests/unit/workflows/test_sqlglot_fork_refresh_workflow.py. Member pr-arm-stale-hold-suite-needs-new-head-20261106's prepared receipt names that file in its pytest command, and receipts are immutable. `make batch-evidence` reruns every receipt command on the final head, so it fails at every head that contains #4002. batch-advance REASON=fix refuses a fix to scripts/batch_integration.py because that file is outside the member scopes. The only way out was abort_batch.\n\nChange. Make final evidence survive upstream test deletions and renames. Options: batch-evidence drops receipt test paths that no longer exist on the final head, but only when the deletion came from a recorded develop merge, and records that it did; or batch-advance REASON=develop-merge re-derives affected receipt commands and re-prepares those members. Batch tooling changes ship serially (batch-feature-delivery.md: the loop cannot certify itself).\n\nGuardrails: work in a linked worktree; never weaken evidence for paths a member itself deleted; tracker runtime changes land in the todo-db repo.",
   "sessions": [
     {
@@ -29,6 +29,14 @@
       "generation": "328a59e3fd3d4ab19548d4104d85db42",
       "op": "take",
       "op_id": "d6ab4b6a89954f61affcea0826997df4",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T17:44:09Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f4e67bb8c5f94bd6b0d9a72f64db846b",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
