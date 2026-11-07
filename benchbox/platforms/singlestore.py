@@ -110,9 +110,6 @@ _OUT_OF_RANGE_DECIMAL = "1e30"
 class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapter):
     plan_capture_phase_eligible = True
     supports_refresh_functions = True
-    tpcds_maintenance_unsupported_reason = (
-        "the dsdgen refresh statements have not been validated against SingleStore's MySQL-wire SQL"
-    )
     supports_native_refresh_ingest = True
     default_service_port = _DEFAULT_PORT
 

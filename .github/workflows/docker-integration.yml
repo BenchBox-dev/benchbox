@@ -295,7 +295,7 @@ jobs:
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
 
       - name: Install dependencies
-        run: uv sync --group dev
+        run: uv sync --group dev --extra singlestore
 
       - name: Bring up SingleStore compose stack
         run: docker compose -f docker/singlestore/docker-compose.yml up -d --wait --wait-timeout 600
@@ -303,7 +303,8 @@ jobs:
       - name: Run SingleStore live integration tests
         run: |
           set -o pipefail
-          uv run -- python -m pytest tests/integration/platforms/test_singlestore_live.py \
+          uv run --extra singlestore -- python -m pytest tests/integration/platforms/test_singlestore_live.py \
+            tests/integration/platforms/test_singlestore_tpcds_maintenance_live.py \
             -m "live_singlestore" --tb=short -v -p no:cacheprovider \
             | tee /tmp/singlestore_docker_output.txt
           if ! grep -Eq '[0-9]+ passed' /tmp/singlestore_docker_output.txt; then

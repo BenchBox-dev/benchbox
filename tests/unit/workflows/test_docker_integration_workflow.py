@@ -176,6 +176,8 @@ def test_singlestore_job_runs_live_marker_against_pinned_compose_image() -> None
     assert "docker/singlestore/docker-compose.yml" in text
     assert "up -d --wait" in text
     assert '-m "live_singlestore"' in text
+    assert "tests/integration/platforms/test_singlestore_tpcds_maintenance_live.py" in text
+    assert "uv sync --group dev --extra singlestore" in text
     assert "no passing tests" in text
     teardown = job["steps"][-1]
     assert teardown["if"] == "always()"
