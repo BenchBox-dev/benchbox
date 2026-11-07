@@ -32240,6 +32240,13 @@
       "status": "done",
       "title": "SQL Cross-Platform Benchmark Suite"
     },
+    "sql-execution-evidence-gate-config-hygiene-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Clean up the SQL execution gate's optional timeout allowlist entries"
+    },
     "sql-execution-evidence-sqlite-q16-timeouts-20261106": {
       "claim": null,
       "needs": [],

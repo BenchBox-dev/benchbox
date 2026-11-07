@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Every remaining `optional: true` timeout entry in scripts/sql_execution_gate/expected_differences.json has a justification that matches current hosted-run evidence",
+    "PostgreSQL q20 and the Havoc 8_v10/9_v1 timeouts no longer need to be tolerated, or are recorded as required entries with a reason",
+    "sql-execution-evidence passes on hosted CI at the changed head with no timeout"
+  ],
+  "description": "Leftover from PR #4007 (SQLite q16 gate fix). (1) PostgreSQL TPC-H q20 (and the tpchavoc 20_v1..20_v10 variants) plus tpchavoc 8_v10 and 9_v1 hit the 15 s statement timeout on every hosted run; they are `optional: true` entries in scripts/sql_execution_gate/expected_differences.json, which exempts them from the stale-entry check, so they would also hide a regression. Decide per entry: raise the budget, add PostgreSQL indexes like the SQLite fix, or make them required entries with a current justification. (2) The remaining optional SQLite entries still say 'without indexes' and are probably obsolete now the indexes landed (SQLite's slowest query was 4.4 s over ten hosted runs): tpcds_obt q35 timeout, the tpcds vacuous q13 entry (marked optional because of SQLite timeouts), and any other optional SQLite timeout wording. Remove them or make them non-optional, verified with hosted runs of sql-execution-evidence. (3) Also review the optional PostgreSQL tpcds_obt q56 entry. PR #4007 already pruned the SQLite timeout entries for tpcds 13/48, tpch 21, tpchavoc 5_v8/21_v*, and the tpcds_obt base-equivalence 13/48 entry.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/pull/4007"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T05:52:08Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "59b2c20ba0bb49a99d9341706e5aa80f",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}
