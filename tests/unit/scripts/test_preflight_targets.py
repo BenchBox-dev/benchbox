@@ -503,7 +503,6 @@ def _with_ledger_test(repo: Path, *files: str) -> None:
         "tests/unit/test_auto_merge_new.py",
         "tests/unit/test_release_new.py",
         ".pre-commit-config.yaml",
-        "docs/internal/dev-loop-property-ledger.md",
     ],
 )
 def test_a_ledger_governed_path_selects_the_ledger_coverage_test(repo: Path, path: str) -> None:
@@ -558,7 +557,7 @@ def test_a_renamed_ledger_governed_file_selects_the_ledger_coverage_test(repo: P
         "tests/unit/core/test_foo.py",
         "tests/unit/test_unrelated.py",
         "tests/unit/test_auto.py",
-        "docs/guide.md",
+        "benchbox/data/sample.csv",
         "scripts/sub/helper.py",
         ".github/workflows/sub/ci.yml",
         ".github/workflows/ci.yaml",

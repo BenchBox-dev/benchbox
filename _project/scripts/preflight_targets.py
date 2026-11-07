@@ -67,7 +67,6 @@ LEDGER_GOVERNED = re.compile(
     r"|tests/unit/(?:workflows|scripts|release)/.+"
     r"|tests/unit/test_(?:auto_merge|release)_[^/]*"
     r"|\.pre-commit-config\.yaml"
-    r"|docs/internal/dev-loop-property-ledger\.md"
 )
 
 
