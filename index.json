@@ -4968,20 +4968,44 @@
       "terminal_outcome": "deliver"
     },
     "result-validity": {
-      "accepted_members": {},
+      "accepted_members": {
+        "chdb-rows-nan-vs-arrow-null-q17-20261107": "b8e3fc9fc25d0b108f042e1f408401d9a7af6d05"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "chdb-rows-nan-vs-arrow-null-q17-20261107": {
+          "accepted_head": "b8e3fc9fc25d0b108f042e1f408401d9a7af6d05",
+          "changed_files": [
+            "benchbox/platforms/clickhouse/adapter.py",
+            "benchbox/platforms/clickhouse/client.py",
+            "changelog.d/fix-chdb-rows-nan-vs-arrow-null-q17-20261107.json",
+            "docs/internal/tpc-measured-intervals.md",
+            "tests/unit/platforms/test_arrow_fetch_native_drivers.py"
+          ],
+          "integration_head": "6b255f022b1dd64a9f93908ea33928301a54a0fb",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/result-validity",
-      "integration_head": "766364b8a32f55ac19a09feca8dead5008a2fd80",
+      "integration_head": "6b255f022b1dd64a9f93908ea33928301a54a0fb",
       "integration_log": [
         {
           "at": "2026-11-07T14:16:47Z",
           "head": "766364b8a32f55ac19a09feca8dead5008a2fd80",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-07T14:47:00Z",
+          "head": "6b255f022b1dd64a9f93908ea33928301a54a0fb",
+          "kind": "prepare",
+          "member": "chdb-rows-nan-vs-arrow-null-q17-20261107",
+          "op_id": "e5dea9640e00499eac36e304cf25e85f",
+          "previous_head": "766364b8a32f55ac19a09feca8dead5008a2fd80",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-result-validity",
@@ -10139,15 +10163,10 @@
       "title": "Pinned chDB 4.1.6 does not load on macOS 27; ClickHouse local e2e tests are skipped there"
     },
     "chdb-rows-nan-vs-arrow-null-q17-20261107": {
-      "claim": {
-        "expires_at": "2026-11-08T14:46:51Z",
-        "generation": "136918262d2f4d1fb0b3f50c1f18eab3",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "chDB TPC-H Q17 returns NaN through the rows path but NULL through Arrow; find which is correct"
     },
     "chdb-ssb-tests-share-instance-state-20261023": {
