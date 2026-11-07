@@ -34,14 +34,17 @@ def checkout(tmp_path):
     return root
 
 
+def _uv_env(tmp_path: Path) -> dict[str, str]:
+    inherited = {key: value for key, value in os.environ.items() if key != "UV_PROJECT_ENVIRONMENT"}
+    return {**inherited, "UV_CACHE_DIR": str(tmp_path / "uv-cache"), "UV_PYTHON_DOWNLOADS": "never"}
+
+
 def _env(tmp_path: Path, path: str) -> dict[str, str]:
     runner_temp = tmp_path / "runner-temp"
     runner_temp.mkdir()
     return {
-        **os.environ,
+        **_uv_env(tmp_path),
         "PATH": path,
-        "UV_CACHE_DIR": str(tmp_path / "uv-cache"),
-        "UV_PYTHON_DOWNLOADS": "never",
         "RELEASE_TAG": "v0.5.0",
         "HEAD_SHA": HEAD_SHA,
         "GH_TOKEN": "unused",
@@ -66,7 +69,7 @@ def test_the_decide_step_command_runs_under_the_real_uv_and_reaches_the_decision
     lock = subprocess.run(
         ["uv", "lock", "--offline"],
         cwd=checkout,
-        env={**os.environ, "UV_CACHE_DIR": str(tmp_path / "uv-cache"), "UV_PYTHON_DOWNLOADS": "never"},
+        env=_uv_env(tmp_path),
         capture_output=True,
         text=True,
         check=False,
