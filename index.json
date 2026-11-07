@@ -30443,7 +30443,7 @@
     "review-gate-cannot-resolve-pr-number-20261107": {
       "claim": null,
       "needs": [],
-      "priority": "medium",
+      "priority": "medium-high",
       "status": "open",
       "title": "`gate / gate` fails with 'cannot resolve a pull request number' on most PRs and lingers red after merge"
     },
