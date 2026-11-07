@@ -9816,6 +9816,18 @@
       "status": "done",
       "title": "Batch native-bulk-load-sql: leader notes (umbrella, not a member)"
     },
+    "batch-optin-remediation-20261107-umbrella": {
+      "claim": null,
+      "needs": [
+        "batch-mode-opt-in-policy-docs-20261107",
+        "ledger-coverage-test-mapped-in-preflight-20261107",
+        "batch-start-and-member-check-tightening-20261107",
+        "delete-aborted-hold-e2e-batch-branches-20261107"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Deliver the batch opt-in remediation: docs and ledger batch plus serial tooling PR"
+    },
     "batch-prepared-delivery-tracker-and-skill": {
       "claim": null,
       "needs": [
