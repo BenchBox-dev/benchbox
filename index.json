@@ -32297,10 +32297,15 @@
       "title": "Fix the nightly-v2 t3:durations job, which fails with no successful pytest verdict"
     },
     "t3-perf-aggregate-gate-tolerance-decision-20261009": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T01:06:37Z",
+        "generation": "27e00c7a88294ac7a7ce77a519c84caf",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Owner decision: close the aggregate-floor item on landed evidence, or keep it waiting on the 640 ms investigation"
     },
     "t3-perf-baseline-refresh-20261008": {
