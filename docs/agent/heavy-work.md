@@ -160,12 +160,16 @@ warning rather than stopped unverified.
 Both the wrapper and the sentinel stop the machine the same way. The guest runs
 systemd as PID 1, which does not shut down on the SIGTERM that
 `container machine stop` sends, so a plain stop ends in a forced kill (exit
-status 137). The stop step therefore first checks that the machine is
-`running` (it never boots a stopped one), asks the guest to shut down with
-`container machine run -n <machine> -- systemctl poweroff --no-block`, waits up
-to `BENCHBOX_LINUX_POWEROFF_WAIT_SECONDS` (default 20) for it to leave
-`running`, and only then falls back to `container machine stop`. The whole
-sequence runs inside the same stop timeout and process group.
+status 137). The stop step (`python -m benchbox.utils.linux_machine
+stop-sequence`) therefore reads the state from `container machine list --format
+json`. If the machine is `running` it asks the guest to shut down with
+`container machine run -n <machine> -- systemctl poweroff --no-block` (cut off
+after 8 s), waits up to `BENCHBOX_LINUX_POWEROFF_WAIT_SECONDS` (default 15) for
+it to reach `stopped`, and otherwise falls back to `container machine stop`. A
+`stopped` machine is left alone and is never booted to power it off; an
+unreadable state goes straight to `container machine stop`. The whole sequence
+runs inside the same stop timeout and process group, and the fallback starts by
+about 33 s, leaving at least 27 s of the default 60 s timeout.
 
 The sentinel takes the host lock with a non-blocking acquire before it stops
 an idle machine, so it never races a new run and never waits on one, and holds

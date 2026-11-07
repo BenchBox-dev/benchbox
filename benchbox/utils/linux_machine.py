@@ -241,22 +241,8 @@ def lock_lost(environ: Mapping[str, str] | None = None) -> bool:
 
 
 GUEST_POWEROFF_WAIT_ENV = "BENCHBOX_LINUX_POWEROFF_WAIT_SECONDS"
-GUEST_POWEROFF_WAIT_SECONDS = 20
-STOP_SCRIPT = """
-running() {
-  container machine list --format json | tr '}' '\\n' | grep -F "\\"id\\":\\"$1\\"" | grep -q '"status":"running"'
-}
-if running "$1"; then
-  container machine run -n "$1" -- systemctl poweroff --no-block
-  waited=0
-  while running "$1" && [ "$waited" -lt "$2" ]; do
-    sleep 1
-    waited=$((waited + 1))
-  done
-  running "$1" || exit 0
-fi
-exec container machine stop "$1"
-"""
+GUEST_POWEROFF_WAIT_SECONDS = 15
+POWEROFF_REQUEST_TIMEOUT_SECONDS = 8.0
 
 
 def guest_poweroff_wait_seconds(environ: Mapping[str, str] | None = None) -> int:
@@ -264,8 +250,61 @@ def guest_poweroff_wait_seconds(environ: Mapping[str, str] | None = None) -> int
     return int(raw) if raw.strip().isdigit() else GUEST_POWEROFF_WAIT_SECONDS
 
 
+def _say(message: str) -> None:
+    sys.stdout.write(message + "\n")
+    sys.stdout.flush()
+
+
+def _request_guest_poweroff(machine: str, timeout: float) -> None:
+    argv = ["container", "machine", "run", "-n", machine, "--", "systemctl", "poweroff", "--no-block"]
+    try:
+        subprocess.run(argv, stdin=subprocess.DEVNULL, timeout=timeout, check=False)
+    except subprocess.TimeoutExpired:
+        _say(f"guest poweroff request timed out after {timeout:g}s; falling back to 'container machine stop'")
+    except OSError as exc:
+        _say(f"guest poweroff request failed ({exc}); falling back to 'container machine stop'")
+
+
+def _machine_stop(machine: str) -> int:
+    try:
+        return subprocess.call(["container", "machine", "stop", machine], stdin=subprocess.DEVNULL)
+    except OSError as exc:
+        _say(f"could not run 'container machine stop {machine}': {exc}")
+        return 127
+
+
+def stop_sequence(
+    machine: str,
+    wait_seconds: float,
+    *,
+    state_reader: Callable[[str], MachineState | None] = read_machine_state,
+    request_poweroff: Callable[[str, float], None] = _request_guest_poweroff,
+    machine_stop: Callable[[str], int] = _machine_stop,
+    clock: Callable[[], float] = mono_time,
+    sleeper: Callable[[float], None] = time.sleep,
+) -> int:
+    state = state_reader(machine)
+    if state is None:
+        _say(f"state of '{machine}' unreadable; skipping guest poweroff")
+    elif state.status == "stopped":
+        return 0
+    elif state.status == "running":
+        request_poweroff(machine, POWEROFF_REQUEST_TIMEOUT_SECONDS)
+        started = clock()
+        while True:
+            state = state_reader(machine)
+            if state is not None and state.status == "stopped":
+                return 0
+            if elapsed_seconds(started, clock()) >= wait_seconds:
+                break
+            sleeper(1.0)
+        _say(f"guest did not power off within {wait_seconds:g}s; using 'container machine stop'")
+    return machine_stop(machine)
+
+
 def stop_command(machine: str, environ: Mapping[str, str] | None = None) -> list[str]:
-    return ["sh", "-c", STOP_SCRIPT, "machine-stop", machine, str(guest_poweroff_wait_seconds(environ))]
+    wait = str(guest_poweroff_wait_seconds(environ))
+    return [sys.executable, "-m", "benchbox.utils.linux_machine", "stop-sequence", machine, "--wait", wait]
 
 
 class MachineStop:
@@ -452,7 +491,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     cleanup.add_argument("machine")
     cleanup.add_argument("--own-pid", type=int, required=True)
     cleanup.add_argument("--stop-timeout", type=float)
+    sequence = sub.add_parser("stop-sequence")
+    sequence.add_argument("machine")
+    sequence.add_argument("--wait", type=float, default=GUEST_POWEROFF_WAIT_SECONDS)
     args = parser.parse_args(argv)
+    if args.command == "stop-sequence":
+        return stop_sequence(args.machine, args.wait)
     return cleanup_main(args.machine, args.own_pid, args.stop_timeout)
 
 

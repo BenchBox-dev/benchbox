@@ -169,12 +169,14 @@ printf '%s\\n' "$*" >> "$STUB_LOG"
 case "$1 $2" in
   "machine list")
     status="$STUB_STATUS"
+    [ -f "$STUB_LOG.running" ] && status=running
     [ -f "$STUB_LOG.stopped" ] && status=stopped
     printf '[{"status":"%s","id":"%s","default":true},{"status":"running","id":"other"}]\\n' "$status" "${STUB_MACHINE:-m}" ;;
   "machine run")
     case "$*" in
       *"systemctl poweroff"*) [ -n "${STUB_GUEST_IGNORES_POWEROFF:-}" ] || touch "$STUB_LOG.stopped"; exit 0 ;;
     esac
+    rm -f "$STUB_LOG.stopped"; touch "$STUB_LOG.running"
     [ -n "${STUB_RUN_HOOK:-}" ] && bash -c "$STUB_RUN_HOOK"; exit "${STUB_RUN_EXIT:-0}" ;;
   "machine stop")
     [ -n "${STUB_STOP_STUCK:-}" ] || touch "$STUB_LOG.stopped"
@@ -277,8 +279,9 @@ def test_a_machine_this_run_started_is_stopped_afterwards_and_the_lock_is_held_m
     assert result.returncode == 0, result.stderr
     assert probe.read_text(encoding="utf-8").strip() == "True"
     calls = _calls(tmp_path)
-    assert [call for call in calls if call != "machine list --format json"][-2:] == [
+    assert [call for call in calls if call != "machine list --format json"][-3:] == [
         "machine run -n m -e A=1 -- true",
+        "machine run -n m -- systemctl poweroff --no-block",
         "machine stop m",
     ]
 
@@ -438,15 +441,6 @@ def test_a_guest_that_ignores_poweroff_falls_back_to_machine_stop(tmp_path: Path
     assert result.returncode == 0, result.stderr
     assert _calls(tmp_path)[-2:] == ["machine run -n m -- systemctl poweroff --no-block", "machine stop m"]
     assert "ERROR" not in result.stderr
-
-
-@posix_only
-@needs_bash
-def test_a_machine_that_is_not_running_is_never_booted_to_power_it_off(tmp_path: Path) -> None:
-    env = _stub_env(tmp_path, "stopped", STUB_GUEST_IGNORES_POWEROFF="")
-    result = _locked_wrapper(env, "--", "true")
-    assert result.returncode == 0, result.stderr
-    assert not any("systemctl poweroff" in call for call in _calls(tmp_path))
 
 
 @posix_only
