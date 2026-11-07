@@ -20,7 +20,7 @@ from benchbox.core.cost.models import cost_status_of, published_total_cost
 from benchbox.core.results.comparison_modes import IncomparableModesError, results_fetch_mode, stored_fetch_mode
 from benchbox.core.results.environment import build_platform_metadata_payload
 from benchbox.core.results.execution_variant import ExecutionVariant, platform_info_bundle, read_execution_variant
-from benchbox.core.results.fetch_mode import parse_fetch_mode
+from benchbox.core.results.fetch_mode import MIXED_FETCH_MODE, parse_fetch_mode
 from benchbox.core.results.models import BenchmarkResults
 from benchbox.core.results.platform_options import sanitize_platform_options
 from benchbox.core.results.regression_policy import is_regression
@@ -686,7 +686,7 @@ class ResultDatabase:
                     (benchmark, scale_factor, cutoff.isoformat()),
                 )
                 modes = sorted(row["mode"] for row in cursor.fetchall())
-                if len(modes) > 1:
+                if len(modes) > 1 or MIXED_FETCH_MODE in modes:
                     raise IncomparableModesError(
                         [
                             f"fetch mode differs across stored results ({', '.join(modes)}); rank one fetch mode at a time"

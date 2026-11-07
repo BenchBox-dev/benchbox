@@ -24,7 +24,7 @@ def resolve_fetch_mode(requested: Any, default: str) -> str:
 
 
 def summarize_fetch_modes(modes: Iterable[Any]) -> str | None:
-    recorded = {LEGACY_FETCH_MODE if mode is None else parse_fetch_mode(mode) for mode in modes}
+    recorded = {parse_fetch_mode(mode) for mode in modes if mode is not None}
     if not recorded:
         return None
     if len(recorded) == 1:

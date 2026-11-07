@@ -74,6 +74,8 @@ class TestFetchModeValues:
     def test_summarize_reports_mixed_and_treats_unrecorded_as_rows(self):
         assert summarize_fetch_modes(["arrow", "arrow"]) == "arrow"
         assert summarize_fetch_modes([None, "rows"]) == "rows"
+        assert summarize_fetch_modes([None, "arrow"]) == "arrow"
+        assert summarize_fetch_modes([None]) is None
         assert summarize_fetch_modes(["rows", "arrow"]) == MIXED_FETCH_MODE
         assert summarize_fetch_modes([]) is None
 
@@ -260,3 +262,46 @@ class TestResultDatabase:
         trends = db.get_performance_trends("DuckDB", "TPC-H", 1.0, periods=3, period_days=30)
         assert sum(trend.sample_count for trend in trends) == 1
         assert trends[0].avg_geometric_mean_ms == 100.0
+
+
+class TestUnrecordedEntriesAndMixedRuns:
+    def test_entries_without_a_mode_do_not_make_a_run_mixed(self):
+        bundle = _bundle(["arrow", None, "arrow"])
+        assert bundle["run"]["fetch_mode"] == "arrow"
+        assert bundle_fetch_mode(bundle) == "arrow"
+
+    def test_rankings_refuse_when_only_mixed_runs_are_stored(self, tmp_path):
+        db = ResultDatabase(tmp_path / "r.db")
+        now = datetime.now(timezone.utc)
+        result = _stored("a", "DuckDB", "arrow", 100.0, now)
+        result.query_results = [
+            {"query_id": "1", "status": "SUCCESS", "fetch_mode": "arrow"},
+            {"query_id": "2", "status": "SUCCESS", "fetch_mode": "rows"},
+        ]
+        db.store_result(result)
+        with pytest.raises(IncomparableModesError):
+            db.calculate_rankings("TPC-H", 1.0)
+
+    def test_live_platform_comparison_refuses_mixed_modes(self):
+        from unittest.mock import MagicMock, patch
+
+        from benchbox.cli.commands.compare import _build_platform_runner
+
+        outcomes = iter(
+            [
+                make_benchmark_results(query_results=[_execution("1", "arrow")]),
+                make_benchmark_results(query_results=[_execution("1", "rows")]),
+            ]
+        )
+        orchestrator = MagicMock()
+        orchestrator.execute_benchmark.side_effect = lambda *args, **kwargs: next(outcomes)
+        with (
+            patch("benchbox.cli.orchestrator.BenchmarkOrchestrator", return_value=orchestrator),
+            patch("benchbox.cli.database.DatabaseManager"),
+            patch("benchbox.cli.system.SystemProfiler"),
+        ):
+            runner = _build_platform_runner()
+            kwargs = {"benchmark": "tpch", "scale_factor": 0.01, "query_ids": None, "iterations": 1, "data_dir": None}
+            runner(platform="duckdb", **kwargs)
+            with pytest.raises(ValueError, match="compared and ranked within one mode"):
+                runner(platform="sqlite", **kwargs)

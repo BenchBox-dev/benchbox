@@ -105,7 +105,7 @@ _DUCKDB_ARROW_CELL_CONVERTERS = {
     "UHUGEINT": int,
     "UUID": uuid.UUID,
     "INTERVAL": _duckdb_interval_to_timedelta,
-    "TIMESTAMP_NS": lambda value: value.to_pydatetime(warn=False),
+    "TIMESTAMP_NS": lambda value: value.to_pydatetime(warn=False) if hasattr(value, "to_pydatetime") else value,
 }
 
 

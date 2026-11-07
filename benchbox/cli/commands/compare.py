@@ -901,7 +901,10 @@ def _build_platform_runner():
     from benchbox.cli.orchestrator import BenchmarkOrchestrator
     from benchbox.cli.system import SystemProfiler
     from benchbox.core.benchmark_registry import get_benchmark_metadata
+    from benchbox.core.results.comparison_modes import IncomparableModesError, results_mode_differences
     from benchbox.core.schemas import BenchmarkConfig
+
+    executed: list[Any] = []
 
     def run_one_platform(
         *,
@@ -933,12 +936,17 @@ def _build_platform_runner():
         if data_dir is not None:
             orchestrator.set_custom_output_dir(str(data_dir))
 
-        return orchestrator.execute_benchmark(
+        result = orchestrator.execute_benchmark(
             benchmark_config,
             SystemProfiler().get_system_profile(),
             DatabaseManager().create_config(platform),
             ["data", "schema", "load", "power"],
         )
+        mode_differences = results_mode_differences([*executed, result])
+        if mode_differences:
+            raise ValueError(str(IncomparableModesError(mode_differences)))
+        executed.append(result)
+        return result
 
     return run_one_platform
 

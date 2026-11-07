@@ -37,8 +37,11 @@ def _adapter(mode: str | None = None) -> DuckDBAdapter:
 def tpch_connection():
     connection = duckdb.connect()
     try:
-        connection.execute("INSTALL tpch")
-        connection.execute("LOAD tpch")
+        try:
+            connection.execute("LOAD tpch")
+        except duckdb.Error:
+            connection.execute("INSTALL tpch")
+            connection.execute("LOAD tpch")
         connection.execute("CALL dbgen(sf=0.01)")
     except duckdb.Error as exc:
         pytest.skip(f"DuckDB tpch extension unavailable: {exc}")
