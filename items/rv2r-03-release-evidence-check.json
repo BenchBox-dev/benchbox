@@ -7,13 +7,6 @@
     "Live negative: with a guarded-path change after the trunk evidence, the run falls back to full UAT (probe mode is acceptable evidence)",
     "release-artifacts.md describes the candidate rules and fallback exactly as implemented"
   ],
-  "batch": {
-    "batch_id": "release-v2-remediation",
-    "implementation_dependencies": [
-      "rv2r-02-trunk-uat-nightly"
-    ],
-    "member_id": "rv2r-03-release-evidence-check"
-  },
   "context": "Member of batch release-v2-remediation. Prior art: #3947 (reuse), #3956 (explicit publish conditions), #3946 (parallel stages). b7 disposition (owner, 2026-11-05): the wheel-digest binding for envelope-only fixes is superseded by continuous trunk UAT; an envelope fix lands on develop, trunk UAT is dispatched on that commit, and the next tag reuses it. GUARDRAILS: equivalence checks fail closed (any error -> full UAT); never accept evidence whose digest re-check fails; admit and the install matrix always run. DECISION GATE: any relaxation of an equivalence condition beyond the list above needs the owner.\n\n2026-11-05 owner decision (from oracle finding D2 on the legacy-retirement PR): the release evidence check must also require the newest release-canary run (credential-free slow/resource-heavy suite) on an ancestor of the tag commit, no older than 48 h, to be green. This restores the legacy release_readiness_check.py gate in the new model; the canary has run daily for months, which satisfies G12 calibration. Add acceptance in implementation: missing, red, stale (>48 h) or non-ancestor canary refuses the release with a named reason (tests), and the fallback full UAT does not bypass it. Depends in practice on release-canary-green-after-0-5-0 (canary red since 2026-10-31); do not make it blocking while the canary is red without telling the owner.\n\n2026-11-06 BUG from the v0.5.0 run 42133357291: the `uat-reuse` job's decide step failed with `error: unexpected argument '--no-install-project' found` (the runner's `uv run` rejects that flag), so reuse never evaluated and the release fell back to full UAT (fail-closed, as designed, but costing about 3 h). Fix in this item: invoke the script in a form the runner's uv accepts (for example `uv run --locked --no-dev --no-project --with pyyaml` or a pinned requirements install), and prove it live through probe mode (rv2r-05) before relying on reuse. Also: a failed uat-reuse job marks the release run red even when publish succeeds; decide whether a reuse-job error should be reported as 'reuse=false with reason' instead of a job failure.\n\n2026-11-06 leader: removed rv2r-04 (already landed on the integration branch) from needs. Ordinary needs are done-only, and batch members reach done only at batch finish, so a same-batch ordinary need would deadlock the batch; the ordering is guaranteed by the integration branch instead.",
   "description": "Owner decision 2026-11-05: a release checks evidence. Generalize the #3947 reuse (scripts/release_reuse_uat_evidence.py, uat-reuse job), which today reuses only a same-version rc's run for a final tag. The new primary source is the newest green trunk UAT run for any tag, rc or final. A candidate must be a `.github/workflows/trunk-uat.yml` run with event schedule or workflow_dispatch and head_branch develop. It qualifies when: its source commit is an ancestor of the tag commit; the guarded UAT inputs are byte-identical (tests/uat, tests/utilities, tests/__init__.py, docker, Makefile, scripts/uat-bring-up, release-uat-env action, .github/workflows/trunk-uat.yml, workflow-level env and the UAT stage job definitions apart from needs/if); uv.lock differs only in the benchbox version line; the wheel and sdist are member-equivalent apart from version lines (candidate version read from its dist file names, not from a tag); and uat-gate-check re-verifies the downloaded evidence against that run's digest. Evidence containing rv2r-04 retries is accepted when a cell's infrastructure-signature attempt 1 failed and attempt 2 passed. Keep the rc-run source as a second candidate. If no candidate qualifies, run the full parallel UAT stages unchanged. publish keeps explicit result checks (#3956). Rollback: revert this member's commits; the rc-run reuse and full-UAT paths remain.",
   "links": [
@@ -21,157 +14,6 @@
     ".github/workflows/release-v2.yml",
     "tests/unit/scripts/test_release_reuse_uat_evidence.py"
   ],
-  "prepared": {
-    "accepted_head": "80bc23504dcc42cdaddaf2542427de765ab99df7",
-    "batch_id": "release-v2-remediation",
-    "changed_files": [
-      ".github/workflows/release-v2.yml",
-      "changelog.d/rv2r-03-release-evidence-check.json",
-      "docs/internal/release-artifacts.md",
-      "docs/internal/release-guide.md",
-      "scripts/release_canary_freshness.py",
-      "scripts/release_reuse_uat_evidence.py",
-      "tests/unit/scripts/test_release_canary_freshness.py",
-      "tests/unit/scripts/test_release_reuse_uat_evidence.py",
-      "tests/unit/workflows/test_release_v2_workflow.py",
-      "tests/unit/workflows/test_release_v2_workflow_reuse_step.py"
-    ],
-    "integration_head": "541e9b86848825601323749043800c86de2ea6c7",
-    "integration_seq": 8,
-    "member_id": "rv2r-03-release-evidence-check",
-    "overlaps": [
-      {
-        "kind": "member",
-        "member": "rv2r-02-trunk-uat-nightly",
-        "paths": [
-          "docs/internal/release-guide.md"
-        ]
-      },
-      {
-        "kind": "member",
-        "member": "rv2r-06-fail-closed-detectors",
-        "paths": [
-          ".github/workflows/release-v2.yml",
-          "tests/unit/workflows/test_release_v2_workflow.py"
-        ]
-      },
-      {
-        "kind": "member",
-        "member": "rv2r-09-trunk-dist-every-commit",
-        "paths": [
-          "docs/internal/release-artifacts.md",
-          "docs/internal/release-guide.md"
-        ]
-      },
-      {
-        "kind": "member",
-        "member": "rv2r-14-maintenance-release-branches",
-        "paths": [
-          ".github/workflows/release-v2.yml",
-          "docs/internal/release-guide.md",
-          "tests/unit/workflows/test_release_v2_workflow.py"
-        ]
-      }
-    ],
-    "owner_epoch": 0,
-    "schema": "prepared_work_v2",
-    "scope_hash": "f33d54323bf1878db20222c7a0bd92dc4fd11f0368b68bd2c0854c6f21904012",
-    "source_base": "3fe88f96e243e5a31232a2a5336129969e687f46",
-    "source_revision": "80bc23504dcc42cdaddaf2542427de765ab99df7",
-    "source_worktree": "/Users/joe/Developer/BenchBox.wt-rv2r-03-release-evidence-check",
-    "verification": {
-      "clean": true,
-      "command": [
-        "uv",
-        "run",
-        "--",
-        "python",
-        "-m",
-        "pytest",
-        "-n",
-        "0",
-        "-q",
-        "tests/uat/test_release_gate_shards.py",
-        "tests/unit/scripts/test_release_canary_freshness.py",
-        "tests/unit/scripts/test_release_flow.py",
-        "tests/unit/scripts/test_release_reuse_uat_evidence.py",
-        "tests/unit/scripts/test_trunk_uat.py",
-        "tests/unit/test_release_infrastructure.py",
-        "tests/unit/workflows/test_ci_aggregate_cancelled.py",
-        "tests/unit/workflows/test_ci_changelog_gate.py",
-        "tests/unit/workflows/test_ci_maintenance_base.py",
-        "tests/unit/workflows/test_ci_medium_collect_cache.py",
-        "tests/unit/workflows/test_ci_shadow_miss_step.py",
-        "tests/unit/workflows/test_ci_text_edit_refresh_workflow.py",
-        "tests/unit/workflows/test_ci_text_edit_skip.py",
-        "tests/unit/workflows/test_ci_verify_fast_duration_step.py",
-        "tests/unit/workflows/test_ci_windows_pr_leg.py",
-        "tests/unit/workflows/test_comment_policy_nightly_workflow.py",
-        "tests/unit/workflows/test_corpus_event_bridge.py",
-        "tests/unit/workflows/test_corpus_trust_boundary.py",
-        "tests/unit/workflows/test_docker_integration_workflow.py",
-        "tests/unit/workflows/test_evidence_artifact_reruns.py",
-        "tests/unit/workflows/test_fast_duration_baseline_refresh.py",
-        "tests/unit/workflows/test_fast_tier_junit_emit.py",
-        "tests/unit/workflows/test_medium_suite_setup_parity.py",
-        "tests/unit/workflows/test_nightly_t3_durations.py",
-        "tests/unit/workflows/test_nightly_t3_legacy_ports.py",
-        "tests/unit/workflows/test_nightly_t3_report_lifecycle.py",
-        "tests/unit/workflows/test_nightly_t3_workflow.py",
-        "tests/unit/workflows/test_nightly_throughput_uat_contract.py",
-        "tests/unit/workflows/test_omp_pin_bump_workflow.py",
-        "tests/unit/workflows/test_omp_pin_watch_workflow.py",
-        "tests/unit/workflows/test_oracle_gate_workflow.py",
-        "tests/unit/workflows/test_oracle_review_workflow.py",
-        "tests/unit/workflows/test_oracle_verdict_workflow.py",
-        "tests/unit/workflows/test_pr_hold_workflow.py",
-        "tests/unit/workflows/test_published_results_base_ci.py",
-        "tests/unit/workflows/test_release_canary_shard_evidence.py",
-        "tests/unit/workflows/test_release_v2_workflow.py",
-        "tests/unit/workflows/test_release_v2_workflow_reuse_step.py",
-        "tests/unit/workflows/test_seed_corpus_pr_base.py",
-        "tests/unit/workflows/test_site_inputs_concurrency.py",
-        "tests/unit/workflows/test_site_inputs_reporter.py",
-        "tests/unit/workflows/test_site_inputs_workflow.py",
-        "tests/unit/workflows/test_sqlglot_delivery_workflow.py",
-        "tests/unit/workflows/test_sqlglot_fork_refresh_workflow.py",
-        "tests/unit/workflows/test_stacked_pr_base_guard.py",
-        "tests/unit/workflows/test_t2_partition_workflow.py",
-        "tests/unit/workflows/test_theseus_pin_consistency.py",
-        "tests/unit/workflows/test_trunk_coverage_workflow.py",
-        "tests/unit/workflows/test_trunk_lane_pre_merge.py",
-        "tests/unit/workflows/test_trunk_red_disarm_workflow.py",
-        "tests/unit/workflows/test_trunk_uat_workflow.py",
-        "tests/unit/workflows/test_trunk_workflow.py",
-        "tests/unit/workflows/test_validate_submission_changed_bundles.py",
-        "tests/unit/workflows/test_validate_submission_comment_security.py",
-        "tests/unit/workflows/test_validate_submission_corpus_allowlist.py",
-        "tests/unit/workflows/test_validate_submission_fail_open.py",
-        "tests/unit/workflows/test_validate_submission_override_approval.py",
-        "tests/unit/workflows/test_validate_submission_trusted_checkout.py",
-        "tests/unit/workflows/test_validate_submission_vendor_gate.py",
-        "tests/unit/workflows/test_validate_submission_workflow_guard_mirror.py",
-        "tests/unit/workflows/test_windows_fast_workflow.py",
-        "tests/unit/workflows/test_workflow_context_availability.py",
-        "tests/unit/workflows/test_workflow_dispatch_dedupe.py",
-        "tests/unit/workflows/test_workflow_expression_contexts.py",
-        "tests/unit/workflows/test_workflow_trigger_events.py"
-      ],
-      "review": {
-        "base_sha": "3fe88f96e243e5a31232a2a5336129969e687f46",
-        "head_sha": "80bc23504dcc42cdaddaf2542427de765ab99df7",
-        "head_tree": "f9f1350d76ded74eaa802844d35feb16f82ae1d4",
-        "outcome": "clear",
-        "patch_digest": "66b1cd9a6e7d934f2b6063d2f10d8305",
-        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
-        "schema": "benchbox_member_review_v1",
-        "trusted_sha": "ff9c2882f2f48c89852b47e2f7347497d72d86e6"
-      },
-      "revision": "80bc23504dcc42cdaddaf2542427de765ab99df7",
-      "status": "passed",
-      "suite": "member-tests"
-    }
-  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a3eb8cbf1b5dc744e4710e1c",
@@ -253,6 +95,14 @@
       "generation": "a568e8140d864033903ece0aea8b5658",
       "op": "prepare",
       "op_id": "8e7a43cf16fe42b291c149ce8a37b735",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-07T21:50:20Z",
+      "client": "omp-coding-agent",
+      "op": "abort",
+      "op_id": "2ff20a3a4eea46bb8d73390d64b57e33",
       "session_id": "b7a346e5fd054aa88d3c05a944442610"
     }
   ]

@@ -7,11 +7,6 @@
     "release-artifacts.md and release-guide.md describe the release as admit + install matrix + UAT evidence check + fresh canary, with full UAT only as the fallback, name .github/workflows/trunk-uat.yml, and contain no develop-freeze instruction",
     "make comment-policy-check and markdownlint pass; no code changes in this item"
   ],
-  "batch": {
-    "batch_id": "release-v2-remediation",
-    "implementation_dependencies": [],
-    "member_id": "rv2r-01-adr-guardrails"
-  },
   "context": "Batch plan: the open rv2r members (01-07, 09, 14) form one registered batch 'release-v2-remediation' (feature delivery mode, one integration branch, one final PR). The leader verifies the todo-db batch v2 capability first; DECISION GATE: if the capability is absent, STOP and ask the owner; do not split into separate PRs. Live-evidence order inside the batch: rv2r-02 calibrates before merge via a temporary push trigger on the integration branch; rv2r-06/07 canaries run by workflow_dispatch --ref <integration branch> before the final PR merges; rv2r-03 and rv2r-05 live lines run on the combined tree after both are prepared; remaining live checks (rv2r-09, rv2r-02 skip run, rv2r-14 rehearsal) happen after merge, before finish. DECISION GATE: if any wording would change a decision's substance, ask the owner. Retrospective evidence: agent://ReleaseV2Retro, agent://DevLoopV2Retro (dev-loop-v2-retro.md); review: agent://RemediationTodoReview.\n\n2026-11-05: also fix docs/internal/release-artifacts.md:260-262. The `gh attestation verify` command uses BenchBox-dev/BenchBox, but the repository is now `benchbox` (lowercase), and --signer-workflow matching is case-sensitive: the mixed-case command exits 1 while `--repo BenchBox-dev/benchbox --signer-workflow BenchBox-dev/benchbox/.github/workflows/release-v2.yml` exits 0 (verified on the 0.5.0rc5 TestPyPI files). Use the lowercase form.",
   "description": "The 0.5.0 retrospective (2026-11-05) found that a blocking full-matrix release UAT was added by coverage, never calibrated on hosted runners, and that process machinery (oracle, release workflow) shipped without live execution. The owner decided on 2026-11-05: (1) continuous UAT on trunk, nightly at 02:00 UTC and skipped when nothing relevant changed; a release checks evidence instead of running UAT, with full UAT only as a fallback. This supersedes the 2026-10-28 decision 'no reduction of UAT or gate coverage' and the 'artifact-bound release UAT' requirement in docs/internal/release-artifacts.md. (2) [Retired 2026-11-06, see (8)] A release-window freeze. (3) New guardrail G12, calibrate before block: a new blocking gate needs a hosted calibration run, a measured runtime, a runner budget and a statement of what it catches. (4) The agent gate-tuning rubric (image digest pins; one recorded automatic retry for infrastructure signatures; envelope moves only above 20% infrastructure-failure rate over the last 10 runs, with another scale of the same platform x benchmark still gated, evidence cited and a tracker item filed; never a timeout, memory-limit or validation change). (5) Theseus/oracle is consumed as a pinned dependency: bumps go through a canary procedure and a fail-closed posting check, rollback is reverting the pin. (6) Release-v2 probe mode and fail-closed detectors are required. (7) Envelope-only fixes need no special evidence path; continuous trunk UAT supersedes the wheel-digest binding idea. The owner decided on 2026-11-06, after the dev-loop v2 retrospective: (8) every develop push gets its own completed trunk run (rv2r-09), and the release-window freeze is retired; (9) patch releases on an older line are a requirement: on-demand `release/X.Y.x` branches cut from a release tag, gated by the same release-v2 checks (rv2r-14); (10) a release also requires a fresh (<=48 h) green release canary on an ancestor commit (rv2r-03). Fixed names: trunk UAT workflow `.github/workflows/trunk-uat.yml`. Scope: edit only the UAT/gate/branching sections (release-guide.md 'Release UAT in release-v2', release-artifacts.md 'Release requirements') and the ADR; rv2r-03 owns the candidate-rule text; rv2r-14 owns the maintenance-branch procedure. Docs only. Rollback: revert the doc commit.",
   "links": [
@@ -20,93 +15,6 @@
     "docs/internal/release-guide.md",
     "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-27T12-06-43-989Z_01a17d41-7415-7202-9145-695263c763ec/ReleaseV2Retro.md"
   ],
-  "prepared": {
-    "accepted_head": "4c88527ab845520cadedbbab67f90fbd26a1ab12",
-    "batch_id": "release-v2-remediation",
-    "changed_files": [
-      "changelog.d/rv2r-01-adr-guardrails.json",
-      "docs/internal/adr/adr-dev-loop-v2.md",
-      "docs/internal/dev-loop-property-ledger.md",
-      "docs/internal/release-artifacts.md",
-      "docs/internal/release-guide.md"
-    ],
-    "integration_head": "05cddf7ea96d6d1147b635234f914ca7e262e4c9",
-    "integration_seq": 10,
-    "member_id": "rv2r-01-adr-guardrails",
-    "overlaps": [
-      {
-        "kind": "member",
-        "member": "rv2r-02-trunk-uat-nightly",
-        "paths": [
-          "docs/internal/release-guide.md"
-        ]
-      },
-      {
-        "kind": "member",
-        "member": "rv2r-03-release-evidence-check",
-        "paths": [
-          "docs/internal/release-artifacts.md",
-          "docs/internal/release-guide.md"
-        ]
-      },
-      {
-        "kind": "member",
-        "member": "rv2r-05-release-probe-mode",
-        "paths": [
-          "docs/internal/release-guide.md"
-        ]
-      },
-      {
-        "kind": "member",
-        "member": "rv2r-09-trunk-dist-every-commit",
-        "paths": [
-          "docs/internal/release-artifacts.md",
-          "docs/internal/release-guide.md"
-        ]
-      },
-      {
-        "kind": "member",
-        "member": "rv2r-14-maintenance-release-branches",
-        "paths": [
-          "docs/internal/release-guide.md"
-        ]
-      }
-    ],
-    "owner_epoch": 0,
-    "schema": "prepared_work_v2",
-    "scope_hash": "f33d54323bf1878db20222c7a0bd92dc4fd11f0368b68bd2c0854c6f21904012",
-    "source_base": "e1e5948eab1471c558ea9e3ce02ab2e4d9981f49",
-    "source_revision": "4c88527ab845520cadedbbab67f90fbd26a1ab12",
-    "source_worktree": "/Users/joe/Developer/BenchBox.wt-rv2r-01-adr-guardrails",
-    "verification": {
-      "clean": true,
-      "command": [
-        "uv",
-        "run",
-        "--",
-        "python",
-        "-m",
-        "pytest",
-        "-n",
-        "0",
-        "-q",
-        "tests/unit/test_ledger_coverage.py"
-      ],
-      "review": {
-        "base_sha": "e1e5948eab1471c558ea9e3ce02ab2e4d9981f49",
-        "head_sha": "4c88527ab845520cadedbbab67f90fbd26a1ab12",
-        "head_tree": "ad89ca6fc554251cafb5a698440500b3d5f51da8",
-        "outcome": "clear",
-        "patch_digest": "c05ac73d2168186bf6b163b7e9b44aef",
-        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
-        "schema": "benchbox_member_review_v1",
-        "trusted_sha": "4598311b4743a9cac90ea59a23864bff44219181"
-      },
-      "revision": "4c88527ab845520cadedbbab67f90fbd26a1ab12",
-      "status": "passed",
-      "suite": "member-tests"
-    }
-  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a3eb8cbf1b5dc744e4710e1c",
@@ -164,6 +72,14 @@
       "generation": "eeea580db2934c66a91339b3dc90441e",
       "op": "prepare",
       "op_id": "325bca7984784262bddadda8015aa995",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-07T21:50:19Z",
+      "client": "omp-coding-agent",
+      "op": "abort",
+      "op_id": "2ff20a3a4eea46bb8d73390d64b57e33",
       "session_id": "b7a346e5fd054aa88d3c05a944442610"
     }
   ]

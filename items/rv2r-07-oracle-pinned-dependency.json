@@ -6,13 +6,6 @@
     "The batch final PR itself, which edits both callers, is canaried by this procedure before merge",
     "The rv2r-08 guard treats the oracle caller files as guarded paths (test)"
   ],
-  "batch": {
-    "batch_id": "release-v2-remediation",
-    "implementation_dependencies": [
-      "rv2r-06-fail-closed-detectors"
-    ],
-    "member_id": "rv2r-07-oracle-pinned-dependency"
-  },
   "context": "Member of batch release-v2-remediation. GUARDRAILS: no change to oracle policy, reviewer roles or required checks; never relax oracle-gate. DECISION GATE: removing or replacing a required check, or changing the `oracle` environment, is an owner action.\n\n2026-11-06: rv2r-08 (release-window freeze guard) was dropped after the owner retired the freeze; the 'nothing changes during a release window' rule no longer applies to pin bumps.\n\n2026-11-06 owner decision: a Theseus pin bump is verified AFTER merge (dispatch review-verdict/review-gate on develop against the canary PR set) and rolled back by reverting the one-line pin. The `oracle` environment keeps its develop-only deployment policy; no bump-branch policy is added. Leader follow-ups outside member scope: link docs/internal/theseus-pin-bump.md from _project/decisions/theseus-oracle-extraction-2026-11-02.md and add it to quality/docs-ownership.json.",
   "description": "Owner decision 2026-11-05: Theseus (joeharris76/theseus) is consumed at a pinned SHA like a dependency. Today the pin appears in oracle-verdict.yml and oracle-gate.yml (both `uses:` and `theseus_ref`), and #3942 showed a bump can take every merge down. Deliver: (1) pin consistency enforced by test (a `uses:` ref cannot be templated, so a test checks every reference matches); (2) a documented bump procedure: canary runs are workflow_dispatch from the bump branch (`gh workflow run oracle-verdict.yml --ref <bump-branch> -f pr=<canary>` and the same for oracle-gate.yml) on a canary PR set (a trivial PR and a PR with a known defect), whose verdict and gate must post and behave correctly on the new pin before merge, with the rv2r-06 posting detector green; (3) rollback = revert the pin commit, written as a runbook with exact steps; (4) bumps blocked during a release window by the rv2r-08 guard. Rollback for this item: revert its commits.",
   "links": [
@@ -20,54 +13,6 @@
     ".github/workflows/oracle-gate.yml",
     "_project/decisions/oracle-gate-relaxation-2026-11-04.md"
   ],
-  "prepared": {
-    "accepted_head": "2c7130e0f6de08eed6af8531fcf4f13b3b7511db",
-    "batch_id": "release-v2-remediation",
-    "changed_files": [
-      "changelog.d/rv2r-07-oracle-pinned-dependency.json",
-      "docs/internal/oracle-review-v2.md",
-      "docs/internal/theseus-pin-bump.md",
-      "tests/unit/workflows/test_theseus_pin_consistency.py"
-    ],
-    "integration_head": "e4f2d33afe28cbfd2991ca9e7e0cfe44b173432a",
-    "integration_seq": 4,
-    "member_id": "rv2r-07-oracle-pinned-dependency",
-    "overlaps": [],
-    "owner_epoch": 0,
-    "schema": "prepared_work_v2",
-    "scope_hash": "f33d54323bf1878db20222c7a0bd92dc4fd11f0368b68bd2c0854c6f21904012",
-    "source_base": "34adfbb5ac12b5cf2cd546ff61dd63aa394f90d9",
-    "source_revision": "2c7130e0f6de08eed6af8531fcf4f13b3b7511db",
-    "source_worktree": "/Users/joe/Developer/BenchBox.wt-rv2r-07-oracle-pinned-dependency",
-    "verification": {
-      "clean": true,
-      "command": [
-        "uv",
-        "run",
-        "--",
-        "python",
-        "-m",
-        "pytest",
-        "-n",
-        "0",
-        "-q",
-        "tests/unit/workflows/test_theseus_pin_consistency.py"
-      ],
-      "review": {
-        "base_sha": "34adfbb5ac12b5cf2cd546ff61dd63aa394f90d9",
-        "head_sha": "2c7130e0f6de08eed6af8531fcf4f13b3b7511db",
-        "head_tree": "4bdcb5c846a1b374c70a065b58d3cca73b9317b1",
-        "outcome": "clear",
-        "patch_digest": "e96011fb732d5459a603dea39e7049f8",
-        "reason": "decided SHIP with no Critical or High findings",
-        "schema": "benchbox_member_review_v1",
-        "trusted_sha": "ac992fe44fbd4fc4c94e3a205593b94521183468"
-      },
-      "revision": "2c7130e0f6de08eed6af8531fcf4f13b3b7511db",
-      "status": "passed",
-      "suite": "member-tests"
-    }
-  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a3eb8cbf1b5dc744e4710e1c",
@@ -125,6 +70,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "d87f24cefcb54cc8b21785bfae87d349",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-07T21:50:19Z",
+      "client": "omp-coding-agent",
+      "op": "abort",
+      "op_id": "2ff20a3a4eea46bb8d73390d64b57e33",
       "session_id": "b7a346e5fd054aa88d3c05a944442610"
     }
   ]

@@ -10,13 +10,6 @@
     "After the calibration run, every open tracker item matching `release-uat-*`, `uat-*-20261030` or `*-uat-failures-20261030` is finished with that run's cell evidence or updated with its current cell history; coverage-restoring items (cedardb-/databend-release-uat-coverage, influxdb-general-loader-uat) stay open and need a G12 calibration before re-entering the gate",
     "No change to stage configs, timeouts, memory limits, validators or floors"
   ],
-  "batch": {
-    "batch_id": "release-v2-remediation",
-    "implementation_dependencies": [
-      "rv2r-09-trunk-dist-every-commit"
-    ],
-    "member_id": "rv2r-02-trunk-uat-nightly"
-  },
   "context": "Member of batch release-v2-remediation (see rv2r-01 for names and live-evidence order). Prior art: release-v2.yml uat-stage1/2/3 (parallel since #3946); the deleted throwaway release-uat-dryrun workflow is the precedent for the temporary push trigger. GUARDRAILS: 16 shards hold 16 of 20 Free-plan concurrent jobs for about 3 h; keep the 02:00 UTC schedule and a concurrency group that prevents overlap. Do not edit tests/uat or docker/ on develop until 0.5.0 is on PyPI. DECISION GATE: if calibration shows more than 30 runner-hours per run, or the matrix cannot finish within the 6 h job limit, stop and ask the owner.\n\n2026-11-06 leader: G12 hosted calibration run 42266293613 (throwaway branch ci/trunk-uat-calibration with a push trigger, built from integration head 91443a9c1e; tested develop's releasable commit 525361b2f8). 20 jobs, 20.45 runner-hours, wall 2 h 26 min (17:57-20:23Z), longest job stage 2 clickhouse-server 140 min: within the decision gate (30 runner-hours, 6 h job limit). Gate result red for two reasons: (a) two real cell failures on develop (doris clickbench SF0.01 Stream Load DATA_QUALITY_ERROR; pg-mooncake flightdata SF0.01 Moonlink create_table RPC error), filed as uat-regression-doris-clickbench-mooncake-flightdata; (b) the gate step could not find scripts/release_uat_evidence_check.py because the gate checks out the source commit, which predates this batch. (b) is transitional: after the final PR merges the selected source commits contain the script. Shard evidence, cells.jsonl and record wiring worked.",
   "description": "Owner decision 2026-11-05: UAT becomes a continuous property of trunk. Add `.github/workflows/trunk-uat.yml` (02:00 UTC schedule plus workflow_dispatch) that runs the three release-gate stage configs as the parallel shard jobs release-v2 uses, against the trunk dist of the newest releasable develop commit (selection rule from rv2r-09). Skip rule: a scheduled run skips when nothing in the skip path set changed since the skip baseline; workflow_dispatch always runs. The skip baseline is the last run that executed shards; skipped and deferred runs never become the baseline. The skip path set is the union of GUARDED_TREES imported from scripts/release_reuse_uat_evidence.py, benchbox/, uv.lock, .github/workflows/trunk-uat.yml and .github/workflows/release-v2.yml (imported, not duplicated). Reuse the release-uat-env action, the shard matrix and make uat-gate-check; do not fork the harness. Each run uploads shard evidence and a gate summary (90-day retention) bound to the source commit and dist digest, and appends per-cell results (terminal state, elapsed, peak memory, failure signature, attempt number) to a history store readable by scripts. The run fails when zero cells executed (fail-closed detector 3). It does not start while a release-v2 run is in progress (deferred). release-v2's full-UAT fallback cancels an in-progress trunk-uat run, recorded in both summaries. Rollback: revert the workflow commit; release-v2's full-UAT fallback is unchanged.",
   "links": [
@@ -24,121 +17,6 @@
     ".github/actions/release-uat-env/action.yml",
     "tests/uat/configs/"
   ],
-  "prepared": {
-    "accepted_head": "6d698e1b0497c5056f431710e80ea67aca08afdd",
-    "batch_id": "release-v2-remediation",
-    "changed_files": [
-      ".github/workflows/trunk-uat.yml",
-      "changelog.d/rv2r-02-trunk-uat-nightly.json",
-      "docs/internal/release-guide.md",
-      "docs/internal/trunk-uat.md",
-      "scripts/trunk_uat.py",
-      "tests/unit/scripts/test_trunk_uat.py",
-      "tests/unit/workflows/test_trunk_uat_workflow.py"
-    ],
-    "integration_head": "91443a9c1e022ece68b06b537a63ddb6d76cf8ca",
-    "integration_seq": 5,
-    "member_id": "rv2r-02-trunk-uat-nightly",
-    "overlaps": [
-      {
-        "kind": "member",
-        "member": "rv2r-09-trunk-dist-every-commit",
-        "paths": [
-          "docs/internal/release-guide.md"
-        ]
-      }
-    ],
-    "owner_epoch": 0,
-    "schema": "prepared_work_v2",
-    "scope_hash": "f33d54323bf1878db20222c7a0bd92dc4fd11f0368b68bd2c0854c6f21904012",
-    "source_base": "e4f2d33afe28cbfd2991ca9e7e0cfe44b173432a",
-    "source_revision": "6d698e1b0497c5056f431710e80ea67aca08afdd",
-    "source_worktree": "/Users/joe/Developer/BenchBox.wt-rv2r-02-trunk-uat-nightly",
-    "verification": {
-      "clean": true,
-      "command": [
-        "uv",
-        "run",
-        "--",
-        "python",
-        "-m",
-        "pytest",
-        "-n",
-        "0",
-        "-q",
-        "tests/unit/scripts/test_trunk_uat.py",
-        "tests/unit/workflows/test_ci_aggregate_cancelled.py",
-        "tests/unit/workflows/test_ci_changelog_gate.py",
-        "tests/unit/workflows/test_ci_medium_collect_cache.py",
-        "tests/unit/workflows/test_ci_shadow_miss_step.py",
-        "tests/unit/workflows/test_ci_text_edit_refresh_workflow.py",
-        "tests/unit/workflows/test_ci_text_edit_skip.py",
-        "tests/unit/workflows/test_ci_verify_fast_duration_step.py",
-        "tests/unit/workflows/test_ci_windows_pr_leg.py",
-        "tests/unit/workflows/test_comment_policy_nightly_workflow.py",
-        "tests/unit/workflows/test_corpus_event_bridge.py",
-        "tests/unit/workflows/test_corpus_trust_boundary.py",
-        "tests/unit/workflows/test_docker_integration_workflow.py",
-        "tests/unit/workflows/test_evidence_artifact_reruns.py",
-        "tests/unit/workflows/test_fast_duration_baseline_refresh.py",
-        "tests/unit/workflows/test_fast_tier_junit_emit.py",
-        "tests/unit/workflows/test_medium_suite_setup_parity.py",
-        "tests/unit/workflows/test_nightly_t3_durations.py",
-        "tests/unit/workflows/test_nightly_t3_legacy_ports.py",
-        "tests/unit/workflows/test_nightly_t3_report_lifecycle.py",
-        "tests/unit/workflows/test_nightly_t3_workflow.py",
-        "tests/unit/workflows/test_nightly_throughput_uat_contract.py",
-        "tests/unit/workflows/test_omp_pin_bump_workflow.py",
-        "tests/unit/workflows/test_omp_pin_watch_workflow.py",
-        "tests/unit/workflows/test_oracle_gate_workflow.py",
-        "tests/unit/workflows/test_oracle_review_workflow.py",
-        "tests/unit/workflows/test_oracle_verdict_workflow.py",
-        "tests/unit/workflows/test_pr_hold_workflow.py",
-        "tests/unit/workflows/test_published_results_base_ci.py",
-        "tests/unit/workflows/test_release_canary_shard_evidence.py",
-        "tests/unit/workflows/test_release_v2_workflow.py",
-        "tests/unit/workflows/test_seed_corpus_pr_base.py",
-        "tests/unit/workflows/test_site_inputs_concurrency.py",
-        "tests/unit/workflows/test_site_inputs_reporter.py",
-        "tests/unit/workflows/test_site_inputs_workflow.py",
-        "tests/unit/workflows/test_sqlglot_fork_refresh_workflow.py",
-        "tests/unit/workflows/test_stacked_pr_base_guard.py",
-        "tests/unit/workflows/test_t2_partition_workflow.py",
-        "tests/unit/workflows/test_theseus_pin_consistency.py",
-        "tests/unit/workflows/test_trunk_coverage_workflow.py",
-        "tests/unit/workflows/test_trunk_lane_pre_merge.py",
-        "tests/unit/workflows/test_trunk_red_disarm_workflow.py",
-        "tests/unit/workflows/test_trunk_uat_workflow.py",
-        "tests/unit/workflows/test_trunk_workflow.py",
-        "tests/unit/workflows/test_validate_submission_changed_bundles.py",
-        "tests/unit/workflows/test_validate_submission_comment_security.py",
-        "tests/unit/workflows/test_validate_submission_corpus_allowlist.py",
-        "tests/unit/workflows/test_validate_submission_fail_open.py",
-        "tests/unit/workflows/test_validate_submission_override_approval.py",
-        "tests/unit/workflows/test_validate_submission_trusted_checkout.py",
-        "tests/unit/workflows/test_validate_submission_vendor_gate.py",
-        "tests/unit/workflows/test_validate_submission_workflow_guard_mirror.py",
-        "tests/unit/workflows/test_windows_fast_workflow.py",
-        "tests/unit/workflows/test_workflow_context_availability.py",
-        "tests/unit/workflows/test_workflow_dispatch_dedupe.py",
-        "tests/unit/workflows/test_workflow_expression_contexts.py",
-        "tests/unit/workflows/test_workflow_trigger_events.py"
-      ],
-      "review": {
-        "base_sha": "e4f2d33afe28cbfd2991ca9e7e0cfe44b173432a",
-        "head_sha": "6d698e1b0497c5056f431710e80ea67aca08afdd",
-        "head_tree": "0f66c5292747916f35d14a6265a6c1b95533b07b",
-        "outcome": "clear",
-        "patch_digest": "8ec21a9ce925733f14f433d73a5a04c3",
-        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
-        "schema": "benchbox_member_review_v1",
-        "trusted_sha": "ac992fe44fbd4fc4c94e3a205593b94521183468"
-      },
-      "revision": "6d698e1b0497c5056f431710e80ea67aca08afdd",
-      "status": "passed",
-      "suite": "member-tests"
-    }
-  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a3eb8cbf1b5dc744e4710e1c",
@@ -196,6 +74,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "3a74787fd1a6492b83f4da8771de7fe2",
+      "session_id": "b7a346e5fd054aa88d3c05a944442610"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
+      "at": "2026-11-07T21:50:19Z",
+      "client": "omp-coding-agent",
+      "op": "abort",
+      "op_id": "2ff20a3a4eea46bb8d73390d64b57e33",
       "session_id": "b7a346e5fd054aa88d3c05a944442610"
     }
   ]
