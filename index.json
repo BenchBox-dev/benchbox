@@ -23762,12 +23762,17 @@
       "title": "Arrow result fetch for cloud adapters (MotherDuck, Databricks, Athena, BigQuery, Snowflake, ClickHouse Cloud) once live-cloud parity runs are approved"
     },
     "perf-arrow-fetch-native-drivers-20261030": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T04:56:11Z",
+        "generation": "7837aa33ef9b4fcd8e8694422f5b95fd",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [
         "perf-arrow-aware-result-capture-20261030"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Fetch results as Arrow where the current driver supports it"
     },
     "perf-clickhouse-server-bulk-load-20261030": {
