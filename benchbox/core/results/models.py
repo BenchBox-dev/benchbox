@@ -317,6 +317,8 @@ class MaintenanceTestPhase:
     duration_ms: int
     maintenance_operations: list[MaintenanceOperation]
     query_executions: list[QueryExecution]
+    seed: int | None = None
+    success: bool = True
 
 
 @dataclass

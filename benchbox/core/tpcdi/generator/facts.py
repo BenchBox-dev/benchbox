@@ -36,9 +36,7 @@ class FactGenerationMixin:
                 num_companies,
             )
 
-        with open(file_path, "w", newline="", buffering=self.buffer_size, encoding="utf-8") as f:
-            writer = PipeRowWriter(f)
-
+        with PipeRowWriter(file_path) as writer:
             for chunk_start in range(1, num_trades + 1, self.chunk_size):
                 chunk_end = min(chunk_start + self.chunk_size, num_trades + 1)
                 chunk_rows = []
@@ -97,9 +95,7 @@ class FactGenerationMixin:
                 )
                 future_to_chunk[future] = (chunk_start, chunk_end)
 
-            with open(file_path, "w", newline="", buffering=self.buffer_size, encoding="utf-8") as f:
-                writer = PipeRowWriter(f)
-
+            with PipeRowWriter(file_path) as writer:
                 completed_chunks = []
                 for future in as_completed(future_to_chunk):
                     chunk_start, chunk_end = future_to_chunk[future]
@@ -206,9 +202,7 @@ class FactGenerationMixin:
 
         num_records = min(num_accounts * 30, 100000)
 
-        with open(file_path, "w", newline="", encoding="utf-8") as f:
-            writer = PipeRowWriter(f)
-
+        with PipeRowWriter(file_path) as writer:
             for _i in range(num_records):
                 sk_customer_id = self._rng.randint(1, num_customers)
                 sk_account_id = self._rng.randint(1, num_accounts)
@@ -246,9 +240,7 @@ class FactGenerationMixin:
 
         num_records = min(num_accounts * 10, 50000)
 
-        with open(file_path, "w", newline="", encoding="utf-8") as f:
-            writer = PipeRowWriter(f)
-
+        with PipeRowWriter(file_path) as writer:
             for _i in range(num_records):
                 sk_customer_id = self._rng.randint(1, num_customers)
                 sk_account_id = self._rng.randint(1, num_accounts)
@@ -289,9 +281,7 @@ class FactGenerationMixin:
         days_of_data = min(252, int(252 * self.scale_factor))
         num_records = min(num_securities * days_of_data, 100000)
 
-        with open(file_path, "w", newline="", encoding="utf-8") as f:
-            writer = PipeRowWriter(f)
-
+        with PipeRowWriter(file_path) as writer:
             security_prices = {}
 
             for _i in range(num_records):
@@ -353,9 +343,7 @@ class FactGenerationMixin:
 
         num_records = min(int(num_customers * 5 * self.scale_factor), 25000)
 
-        with open(file_path, "w", newline="", encoding="utf-8") as f:
-            writer = PipeRowWriter(f)
-
+        with PipeRowWriter(file_path) as writer:
             for _i in range(num_records):
                 sk_customer_id = self._rng.randint(1, num_customers)
                 sk_security_id = self._rng.randint(1, num_securities)

@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Spark connection test no longer stops a Spark session that is already in use"
+    }
+  ]
+}

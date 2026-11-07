@@ -13,7 +13,6 @@
     "tests/unit/test_release_infrastructure.py"
   ],
   "AGENTS.md": [
-    "tests/unit/scripts/test_check_makefile_inventory.py",
     "tests/unit/workflows/test_stacked_pr_base_guard.py"
   ],
   "CHANGELOG.md": [
@@ -98,9 +97,6 @@
   ],
   "docs/reference/threat-model.md": [
     "tests/unit/docs/test_publication_architecture.py"
-  ],
-  "tests/README.md": [
-    "tests/unit/test_standardized_test_commands.py"
   ],
   "tests/fixtures/dev_loop_metrics/refresh_audit_sample.md": [
     "tests/unit/scripts/test_dev_loop_pr_metrics.py"

@@ -228,7 +228,7 @@
       "WA003": 1
     },
     "tests/unit/core/primitives/test_generator_base.py": {
-      "WA003": 4
+      "WA003": 2
     },
     "tests/unit/core/publishing/test_publish_store.py": {
       "WA003": 1
@@ -507,9 +507,6 @@
     "tests/unit/scripts/test_soundness_merge_digest.py": {
       "WA007": 1
     },
-    "tests/unit/scripts/test_sqlglot_fork_diff.py": {
-      "WA007": 1
-    },
     "tests/unit/scripts/test_todo_state_workflow.py": {
       "WA003": 1
     },
@@ -551,7 +548,7 @@
       "WA003": 3
     },
     "tests/unit/test_standardized_test_commands.py": {
-      "WA003": 23
+      "WA003": 19
     },
     "tests/unit/test_tpcds_streams.py": {
       "WA003": 2

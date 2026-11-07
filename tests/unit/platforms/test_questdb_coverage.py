@@ -497,10 +497,13 @@ class TestLoadDataBranches:
         adapter = QuestDBAdapter(loading_method="rest")
         mock_benchmark = self._make_benchmark({"lineitem": str(data_file)})
 
-        with patch.object(adapter, "_load_table_via_rest_api", side_effect=Exception("HTTP 500")):
-            stats, duration, _ = adapter.load_data(mock_benchmark, Mock(), tmp_path)
-
-        assert stats["lineitem"] == 0
+        with (
+            patch.object(adapter, "_load_table_via_rest_api", side_effect=Exception("HTTP 500")),
+            pytest.raises(
+                RuntimeError, match=r"QuestDB REST load failed for 1 table\(s\): lineitem: chunk lineitem.csv: HTTP 500"
+            ),
+        ):
+            adapter.load_data(mock_benchmark, Mock(), tmp_path)
 
 
 class TestPopulateTransactionalStagingTables:
@@ -618,6 +621,23 @@ class TestLoadTableViaRestApi:
             count = adapter._load_table_via_rest_api("test_table", data_file, dialect)
 
         assert count == 42
+
+    def test_rest_api_rejected_rows_fail_the_load(self, questdb_stubs, tmp_path):
+        data_file = tmp_path / "test.csv"
+        data_file.write_text("col1\n1\n2\n", encoding="utf-8")
+
+        adapter = QuestDBAdapter(host="myhost", http_port=9000)
+        dialect = CsvDialect(",", False, None, False, None)
+
+        mock_response = Mock()
+        mock_response.headers = {"content-type": "text/plain"}
+        mock_response.text = "|  Rows handled  |  42  |\n|  Rows imported  |  40  |\n"
+
+        with (
+            patch.object(questdb_module, "_http_post", return_value=mock_response),
+            pytest.raises(RuntimeError, match=r"imported 40 of 42 rows \(2 rejected\)"),
+        ):
+            adapter._load_table_via_rest_api("test_table", data_file, dialect)
 
     def test_rest_api_text_no_match_falls_back_to_count(self, questdb_stubs, tmp_path):
         data_file = tmp_path / "test.csv"
@@ -1296,7 +1316,7 @@ class TestLoadDataMultiChunk:
         assert mock_ilp.call_count == 2
         assert stats["orders"] == 12
 
-    def test_one_failing_chunk_does_not_abort_table(self, questdb_stubs, tmp_path):
+    def test_one_failing_chunk_fails_the_load_and_names_the_chunk(self, questdb_stubs, tmp_path):
         chunk_a = tmp_path / "lineitem_0.csv"
         chunk_b = tmp_path / "lineitem_1.csv"
         chunk_a.write_text("col1\n1\n", encoding="utf-8")
@@ -1306,14 +1326,41 @@ class TestLoadDataMultiChunk:
         mock_benchmark = Mock()
         mock_benchmark.tables = {"lineitem": [str(chunk_a), str(chunk_b)]}
 
-        with patch.object(
-            adapter,
-            "_load_table_via_rest_api",
-            side_effect=[42, Exception("HTTP 500")],
+        with (
+            patch.object(
+                adapter,
+                "_load_table_via_rest_api",
+                side_effect=[42, Exception("HTTP 500")],
+            ),
+            pytest.raises(RuntimeError, match=r"lineitem: chunk lineitem_1.csv: HTTP 500"),
         ):
-            stats, _, _ = adapter.load_data(mock_benchmark, Mock(), tmp_path)
+            adapter.load_data(mock_benchmark, Mock(), tmp_path)
 
-        assert stats["lineitem"] == 42
+    def test_a_failing_chunk_skips_the_rest_of_its_table_but_not_other_tables(self, questdb_stubs, tmp_path):
+        files = {name: tmp_path / f"{name}.csv" for name in ("lineitem_0", "lineitem_1", "orders_0")}
+        for file in files.values():
+            file.write_text("col1\n1\n", encoding="utf-8")
+
+        adapter = QuestDBAdapter(loading_method="rest")
+        mock_benchmark = Mock()
+        mock_benchmark.tables = {
+            "lineitem": [str(files["lineitem_0"]), str(files["lineitem_1"])],
+            "orders": str(files["orders_0"]),
+        }
+
+        with (
+            patch.object(
+                adapter,
+                "_load_table_via_rest_api",
+                side_effect=[Exception("HTTP 500"), 7],
+            ) as mock_rest,
+            pytest.raises(
+                RuntimeError, match=r"QuestDB REST load failed for 1 table\(s\): lineitem: chunk lineitem_0.csv"
+            ),
+        ):
+            adapter.load_data(mock_benchmark, Mock(), tmp_path)
+
+        assert [call.args[0] for call in mock_rest.call_args_list] == ["lineitem", "orders"]
 
     def test_single_path_still_loads(self, questdb_stubs, tmp_path):
         data_file = tmp_path / "region.csv"
@@ -1490,7 +1537,9 @@ class _UploadServer:
         from urllib.parse import parse_qs, urlparse
 
         self.requests: list[dict] = []
-        self.reply = "| Rows imported | 1 |"
+        self.reply = "| Rows imported | 2 |"
+        self.fail_on_request: int | None = None
+        self.replies: list[str] = []
         outer = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -1499,8 +1548,8 @@ class _UploadServer:
                 body = self.rfile.read(length)
                 query = {key: values[0] for key, values in parse_qs(urlparse(self.path).query).items()}
                 outer.requests.append({"query": query, "body": body})
-                payload = outer.reply.encode()
-                self.send_response(200)
+                payload = (outer.replies[len(outer.requests) - 1] if outer.replies else outer.reply).encode()
+                self.send_response(500 if outer.fail_on_request == len(outer.requests) else 200)
                 self.send_header("Content-Length", str(len(payload)))
                 self.end_headers()
                 self.wfile.write(payload)
@@ -1543,7 +1592,6 @@ class TestLoadParquetViaChunkedCsv:
     def test_all_chunks_use_overwrite_false(self, questdb_stubs, tmp_path, upload_server):
         data_file = self._parquet(tmp_path, 4)
         adapter = QuestDBAdapter(host="127.0.0.1", http_port=upload_server.port, parquet_chunk_rows=2)
-        upload_server.reply = "| Rows imported | 100 |"
 
         rows = adapter._load_parquet_via_chunked_csv("obt_table", data_file)
 
@@ -1552,7 +1600,27 @@ class TestLoadParquetViaChunkedCsv:
             assert request["query"]["overwrite"] == "false", (
                 "overwrite=true on any chunk risks discarding QuestDB schema enhancements"
             )
-        assert rows == 200
+        assert rows == 4
+
+    def test_a_failing_chunk_is_named_and_stops_the_file(self, questdb_stubs, tmp_path, upload_server):
+        data_file = self._parquet(tmp_path, 6)
+        adapter = QuestDBAdapter(host="127.0.0.1", http_port=upload_server.port, parquet_chunk_rows=2)
+        upload_server.fail_on_request = 2
+
+        with pytest.raises(
+            RuntimeError, match=r"batch 2 \(rows 3-4\) failed after 2 rows of obt.parquet were imported"
+        ):
+            adapter._load_parquet_via_chunked_csv("obt_table", data_file)
+
+        assert len(upload_server.requests) == 2
+
+    def test_a_chunk_that_imports_fewer_rows_than_sent_fails(self, questdb_stubs, tmp_path, upload_server):
+        data_file = self._parquet(tmp_path, 4)
+        adapter = QuestDBAdapter(host="127.0.0.1", http_port=upload_server.port, parquet_chunk_rows=2)
+        upload_server.reply = "| Rows imported | 1 |"
+
+        with pytest.raises(RuntimeError, match=r"batch 1 \(rows 1-2\).*imported 1 of 2 rows \(1 rejected\)"):
+            adapter._load_parquet_via_chunked_csv("obt_table", data_file)
 
     def test_header_on_every_chunk(self, questdb_stubs, tmp_path, upload_server):
         data_file = self._parquet(tmp_path, 4)
@@ -1599,9 +1667,12 @@ class TestLoadParquetViaChunkedCsv:
         data_file = self._parquet(tmp_path, 5)
         adapter = QuestDBAdapter(host="127.0.0.1", http_port=upload_server.port, parquet_chunk_rows=2)
 
-        adapter._load_parquet_via_chunked_csv("obt_table", data_file)
+        upload_server.replies = ["| Rows imported | 2 |", "| Rows imported | 2 |", "| Rows imported | 1 |"]
+
+        rows = adapter._load_parquet_via_chunked_csv("obt_table", data_file)
 
         assert len(upload_server.requests) == 3
+        assert rows == 5
 
     def test_nullable_integers_are_posted_without_a_decimal_point(self, questdb_stubs, tmp_path, upload_server):
         import pyarrow as pa

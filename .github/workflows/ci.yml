@@ -877,12 +877,6 @@ jobs:
         shell: bash
         run: uv run -- python scripts/theseus_cli.py --trusted-ref "$(git rev-parse HEAD)" path
 
-      - name: Summarize Make interface changes
-        continue-on-error: true
-        env:
-          BASE_REF: ${{ github.event.pull_request.base.sha }}
-        run: python make/interface_summary.py --base-ref "$BASE_REF" --summary "$GITHUB_STEP_SUMMARY"
-
       - name: Pre-build the assertion-rewrite cache
         run: |
           find tests \( -name 'test_*.py' -o -name '*_test.py' \) -not -path '*/__pycache__/*' | sort \
@@ -1262,63 +1256,63 @@ jobs:
 
       - name: Run SSB cross-surface SQL<->DataFrame equivalence gate
         if: matrix.partition == 'b'
-        run: make ssb-cross-surface-equivalence-report
+        run: make cross-surface-equivalence-report CROSS_SURFACE_BENCHMARK=ssb
 
       - name: Run AMPLab cross-surface SQL<->DataFrame equivalence gate
         if: matrix.partition == 'b'
-        run: make amplab-cross-surface-equivalence-report
+        run: make cross-surface-equivalence-report CROSS_SURFACE_BENCHMARK=amplab
 
       - name: Run CoffeeShop cross-surface SQL<->DataFrame equivalence gate
         if: matrix.partition == 'a'
-        run: make coffeeshop-cross-surface-equivalence-report
+        run: make cross-surface-equivalence-report CROSS_SURFACE_BENCHMARK=coffeeshop
 
       - name: Run ClickBench cross-surface SQL<->DataFrame equivalence gate
         if: matrix.partition == 'b'
-        run: make clickbench-cross-surface-equivalence-report
+        run: make cross-surface-equivalence-report CROSS_SURFACE_BENCHMARK=clickbench
 
       - name: Run JoinOrder-synthetic cross-surface SQL<->DataFrame equivalence gate
         if: matrix.partition == 'b'
-        run: make joinorder-synthetic-cross-surface-equivalence-report
+        run: make cross-surface-equivalence-report CROSS_SURFACE_BENCHMARK=joinorder_synthetic
 
       - name: Run H2O-DB cross-surface SQL<->DataFrame equivalence gate
         if: matrix.partition == 'a'
-        run: make h2odb-cross-surface-equivalence-report
+        run: make cross-surface-equivalence-report CROSS_SURFACE_BENCHMARK=h2odb
 
       - name: Run Read Primitives cross-surface SQL<->DataFrame equivalence gate
         if: matrix.partition == 'b'
-        run: make read-primitives-cross-surface-equivalence-report
+        run: make cross-surface-equivalence-report CROSS_SURFACE_BENCHMARK=read_primitives
 
       - name: Run FlightData cross-surface SQL<->DataFrame equivalence gate
         if: matrix.partition == 'a'
-        run: make flightdata-cross-surface-equivalence-report
+        run: make cross-surface-equivalence-report CROSS_SURFACE_BENCHMARK=flightdata
 
       - name: Run Data Vault cross-surface SQL<->DataFrame equivalence gate
         if: matrix.partition == 'b'
-        run: make datavault-cross-surface-equivalence-report
+        run: make cross-surface-equivalence-report CROSS_SURFACE_BENCHMARK=datavault
 
       - name: Run NYC Taxi cross-surface SQL<->DataFrame equivalence gate
         if: matrix.partition == 'a'
-        run: make nyctaxi-cross-surface-equivalence-report
+        run: make cross-surface-equivalence-report CROSS_SURFACE_BENCHMARK=nyctaxi
 
       - name: Run TSBS DevOps cross-surface SQL<->DataFrame equivalence gate
         if: matrix.partition == 'a'
-        run: make tsbs-devops-cross-surface-equivalence-report
+        run: make cross-surface-equivalence-report CROSS_SURFACE_BENCHMARK=tsbs_devops
 
       - name: Run TPC-H Skew cross-surface SQL<->DataFrame equivalence gate
         if: matrix.partition == 'a'
-        run: make tpch-skew-cross-surface-equivalence-report
+        run: make cross-surface-equivalence-report CROSS_SURFACE_BENCHMARK=tpch_skew
 
       - name: Run TPC-H cross-surface SQL<->DataFrame equivalence gate
         if: matrix.partition == 'a'
-        run: make tpch-cross-surface-equivalence-report
+        run: make cross-surface-equivalence-report CROSS_SURFACE_BENCHMARK=tpch
 
       - name: Run TPC-DS cross-surface SQL<->DataFrame equivalence gate (Polars and DataFusion)
         if: matrix.partition == 'b'
-        run: make tpcds-cross-surface-equivalence-report
+        run: make cross-surface-equivalence-report CROSS_SURFACE_BENCHMARK=tpcds
 
       - name: Run TPC-DS cross-surface SQL<->DataFrame equivalence gate (pandas)
         if: matrix.partition == 'a'
-        run: make tpcds-pandas-cross-surface-equivalence-report
+        run: make cross-surface-equivalence-report CROSS_SURFACE_BENCHMARK=tpcds CROSS_SURFACE_BACKEND=pandas
 
       - name: Run the required local-engine cases
         if: ${{ !cancelled() && matrix.partition == 'a' }}

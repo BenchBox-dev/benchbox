@@ -25,6 +25,16 @@ class TPCHRefreshUpdateSet:
     delete_path: Path
 
 
+@dataclass(frozen=True)
+class TPCHRF2Deletes:
+    orders: int
+    lineitems: int
+
+    @property
+    def rows(self) -> int:
+        return self.orders + self.lineitems
+
+
 def _greybeam_routed(adapter: Any) -> bool:
     from benchbox.core.gateway import is_greybeam_gateway
 
@@ -113,44 +123,67 @@ def generate_refresh_update_sets(
     return update_sets
 
 
-def check_rf1_preconditions(
-    connection: Any, update_set: TPCHRefreshUpdateSet, chunk_size: int = REFRESH_CHUNK_SIZE
+def check_rf1_applied(
+    connection: Any,
+    update_set: TPCHRefreshUpdateSet,
+    rows_inserted: int,
+    chunk_size: int = REFRESH_CHUNK_SIZE,
 ) -> None:
     _require_chunk_size(chunk_size)
+    order_rows = 0
+    found_lineitems = 0
     for rows in _source_row_chunks(update_set.orders_path, ORDERS, chunk_size):
         order_keys = [int(row[0]) for row in rows]
-        if _count_matching_keys(connection, ORDERS.name, "O_ORDERKEY", order_keys):
+        order_rows += len(order_keys)
+        found, distinct = _count_matching_keys_distinct(connection, ORDERS.name, "O_ORDERKEY", order_keys)
+        if found != len(order_keys) or distinct != len(order_keys):
             raise ValueError(
-                f"refresh set {update_set.set_id} was already applied; reload the data or set tpch_refresh_first_set"
+                _reload_message(
+                    update_set,
+                    "RF1",
+                    f"found {found} orders rows ({distinct} distinct keys) for {len(order_keys)} inserted order keys",
+                )
             )
+        found_lineitems += _count_matching_keys(connection, LINEITEM.name, "L_ORDERKEY", order_keys)
+    lineitem_rows = sum(len(rows) for rows in _source_row_chunks(update_set.lineitem_path, LINEITEM, chunk_size))
+    if found_lineitems != lineitem_rows:
+        raise ValueError(
+            _reload_message(
+                update_set,
+                "RF1",
+                f"found {found_lineitems} lineitem rows for the inserted orders, expected {lineitem_rows}",
+            )
+        )
+    if rows_inserted != order_rows + lineitem_rows:
+        raise ValueError(
+            _reload_message(
+                update_set,
+                "RF1",
+                f"inserted {rows_inserted} rows, expected {order_rows + lineitem_rows}",
+            )
+        )
 
 
-def check_rf2_preconditions(
-    connection: Any, update_set: TPCHRefreshUpdateSet, chunk_size: int = REFRESH_CHUNK_SIZE
-) -> int:
+def check_rf2_applied(
+    connection: Any,
+    update_set: TPCHRefreshUpdateSet,
+    orders_deleted: int,
+    chunk_size: int = REFRESH_CHUNK_SIZE,
+) -> None:
     _require_chunk_size(chunk_size)
     expected_orders = 0
-    deleted_lineitems = 0
     for order_keys in _key_chunks(update_set.delete_path, chunk_size):
-        matching_orders = _count_matching_keys(connection, ORDERS.name, "O_ORDERKEY", order_keys)
-        if matching_orders != len(order_keys):
-            raise ValueError(
-                f"refresh set {update_set.set_id} expected to delete {len(order_keys)} orders, found {matching_orders}"
-            )
-        deleted_lineitems += _count_matching_keys(connection, LINEITEM.name, "L_ORDERKEY", order_keys)
         expected_orders += len(order_keys)
-    if expected_orders == 0:
-        raise ValueError(f"refresh set {update_set.set_id} has no delete keys")
-    return deleted_lineitems
-
-
-def check_rf2_applied(connection: Any, update_set: TPCHRefreshUpdateSet, chunk_size: int = REFRESH_CHUNK_SIZE) -> None:
-    _require_chunk_size(chunk_size)
-    for order_keys in _key_chunks(update_set.delete_path, chunk_size):
         if _count_matching_keys(connection, ORDERS.name, "O_ORDERKEY", order_keys):
-            raise ValueError(f"refresh set {update_set.set_id} left orders for deleted keys")
+            raise ValueError(_reload_message(update_set, "RF2", "left orders for deleted keys"))
         if _count_matching_keys(connection, LINEITEM.name, "L_ORDERKEY", order_keys):
-            raise ValueError(f"refresh set {update_set.set_id} left lineitems for deleted orders")
+            raise ValueError(_reload_message(update_set, "RF2", "left lineitems for deleted orders"))
+    if expected_orders == 0:
+        raise ValueError(_reload_message(update_set, "RF2", "has no delete keys"))
+    if orders_deleted != expected_orders:
+        raise ValueError(
+            _reload_message(update_set, "RF2", f"deleted {orders_deleted} orders, expected {expected_orders}")
+        )
 
 
 def apply_rf1(connection: Any, update_set: TPCHRefreshUpdateSet, chunk_size: int = REFRESH_CHUNK_SIZE) -> int:
@@ -174,24 +207,45 @@ def apply_rf1(connection: Any, update_set: TPCHRefreshUpdateSet, chunk_size: int
 def apply_rf2(
     connection: Any,
     update_set: TPCHRefreshUpdateSet,
-    deleted_lineitems: int,
     chunk_size: int = REFRESH_CHUNK_SIZE,
-) -> int:
+) -> TPCHRF2Deletes:
     _require_chunk_size(chunk_size)
     _begin_transaction(connection)
     try:
-        expected_orders = 0
+        lineitems_deleted = 0
+        orders_deleted = 0
         for order_keys in _key_chunks(update_set.delete_path, chunk_size):
             key_list = ", ".join(str(key) for key in order_keys)
-            connection.execute(f"DELETE FROM {LINEITEM.name} WHERE L_ORDERKEY IN ({key_list})")
-            connection.execute(f"DELETE FROM {ORDERS.name} WHERE O_ORDERKEY IN ({key_list})")
-            expected_orders += len(order_keys)
+            lineitems_deleted += _reported_row_count(
+                connection.execute(f"DELETE FROM {LINEITEM.name} WHERE L_ORDERKEY IN ({key_list})"), update_set
+            )
+            orders_deleted += _reported_row_count(
+                connection.execute(f"DELETE FROM {ORDERS.name} WHERE O_ORDERKEY IN ({key_list})"), update_set
+            )
 
         _commit(connection)
-        return expected_orders + deleted_lineitems
+        return TPCHRF2Deletes(orders=orders_deleted, lineitems=lineitems_deleted)
     except BaseException:
         _rollback(connection)
         raise
+
+
+def _reload_message(update_set: TPCHRefreshUpdateSet, function: str, detail: str) -> str:
+    return (
+        f"refresh set {update_set.set_id} {function} {detail}; "
+        f"the database needs a reload before refresh set {update_set.set_id} is applied again"
+    )
+
+
+def _reported_row_count(cursor: Any, update_set: TPCHRefreshUpdateSet) -> int:
+    rowcount = getattr(cursor, "rowcount", None)
+    if isinstance(rowcount, int) and not isinstance(rowcount, bool) and rowcount >= 0:
+        return rowcount
+    fetchone = getattr(cursor, "fetchone", None)
+    row = fetchone() if callable(fetchone) else None
+    if row and isinstance(row[0], int) and not isinstance(row[0], bool) and row[0] >= 0:
+        return row[0]
+    raise RuntimeError(f"refresh set {update_set.set_id} RF2: the driver did not report a deleted row count")
 
 
 def _require_chunk_size(chunk_size: int) -> None:
@@ -222,6 +276,19 @@ def _rollback(connection: Any) -> None:
             rollback()
         except Exception:
             pass
+
+
+def _count_matching_keys_distinct(
+    connection: Any, table_name: str, column_name: str, keys: list[int]
+) -> tuple[int, int]:
+    key_list = ", ".join(str(key) for key in keys)
+    cursor = connection.execute(
+        f"SELECT COUNT(*), COUNT(DISTINCT {column_name}) FROM {table_name} WHERE {column_name} IN ({key_list})"
+    )
+    row = cursor.fetchone()
+    if row is None:
+        raise RuntimeError(f"Could not count rows for {table_name}.{column_name}")
+    return int(row[0]), int(row[1])
 
 
 def _count_matching_keys(connection: Any, table_name: str, column_name: str, keys: list[int]) -> int:
@@ -303,3 +370,9 @@ def _sql_literal(value: str, data_type: DataType) -> str:
             raise ValueError(f"invalid TPC-H decimal value {value!r}")
         return format(decimal_value, "f")
     return "'" + value.replace("'", "''") + "'"
+
+
+def applied_counts(applied: int | TPCHRF2Deletes) -> dict[str, int]:
+    if isinstance(applied, TPCHRF2Deletes):
+        return {"rows": applied.rows, "orders_deleted": applied.orders, "lineitems_deleted": applied.lineitems}
+    return {"rows": applied, "rows_inserted": applied}

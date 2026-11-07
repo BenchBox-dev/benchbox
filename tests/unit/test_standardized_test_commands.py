@@ -46,17 +46,35 @@ def _makefile_target_body(makefile_content: str, target_name: str) -> str:
     return "".join(body)
 
 
-_SPLIT_CROSS_SURFACE_TARGETS = {"tpcds": ("tpcds-pandas-cross-surface-equivalence-report",)}
+_SPLIT_CROSS_SURFACE_RUNS = {"tpcds": ("CROSS_SURFACE_BACKEND=pandas",)}
 
 
-def _cross_surface_make_target(gate_name: str) -> str:
-    return f"{gate_name.replace('_', '-')}-cross-surface-equivalence-report"
+def _cross_surface_command(gate_name: str, *arguments: str) -> str:
+    return " ".join(("make cross-surface-equivalence-report", f"CROSS_SURFACE_BENCHMARK={gate_name}", *arguments))
+
+
+def _make_dry_run(command: str) -> str:
+    result = subprocess.run(
+        ["make", "--no-print-directory", "-n", *command.split()[1:]],
+        cwd=REPO_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    assert result.returncode == 0, result.stderr
+    return result.stdout
 
 
 def _workflow_job_run_text(workflow_path: Path, job_name: str) -> str:
     workflow = yaml.safe_load(workflow_path.read_text(encoding="utf-8"))
     steps = workflow["jobs"][job_name]["steps"]
     return "\n".join(str(step.get("run", "")) for step in steps)
+
+
+def _workflow_job_step_commands(workflow_path: Path, job_name: str) -> list[str]:
+    workflow = yaml.safe_load(workflow_path.read_text(encoding="utf-8"))
+    return [str(step["run"]).strip() for step in workflow["jobs"][job_name]["steps"] if "run" in step]
 
 
 def _load_ini_section(path: Path, section: str) -> dict[str, str]:
@@ -404,17 +422,6 @@ class TestMakefileCommands:
             in makefile_content
         )
 
-    def test_medium_marker_policy_is_documented_with_pr_routing(self):
-        repo_root = Path(__file__).resolve().parent.parent.parent
-        readme_content = (repo_root / "tests" / "README.md").read_text()
-        makefile_content = (repo_root / "Makefile").read_text()
-
-        assert "The `medium-test` job in `.github/workflows/ci.yml` runs `make test-medium`" in readme_content
-        assert "only when the heavy tier is needed" in readme_content
-        assert "Ordinary\ncode-change PRs skip it" in readme_content
-        assert "Product-critical tests that need a different" in readme_content
-        assert "test-medium:" in makefile_content
-
     def test_every_speed_marker_tier_has_a_ci_consumer(self):
         from tests.unit.test_marker_strategy import _E2E_QUICK_INCOMPATIBLE, _SPEED_MARKERS
 
@@ -506,56 +513,47 @@ class TestMakefileCommands:
         assert "make test-correctness-gate" in run_text
         assert "make tpchavoc-equivalence-report" in run_text
         assert "make tpchavoc-dataframe-equivalence-report" in run_text
-        for target in (
-            "make ssb-cross-surface-equivalence-report",
-            "make amplab-cross-surface-equivalence-report",
-            "make coffeeshop-cross-surface-equivalence-report",
-        ):
-            assert target in run_text, f"required correctness-gate job missing value-level step: {target}"
+        step_commands = _workflow_job_step_commands(repo_root / ".github" / "workflows" / "ci.yml", "correctness-gate")
+        for gate_name in ("ssb", "amplab", "coffeeshop"):
+            command = _cross_surface_command(gate_name)
+            assert command in step_commands, f"required correctness-gate job missing value-level step: {command}"
 
+    @pytest.mark.skipif(shutil.which("make") is None, reason="make is required to expand the gate commands")
     def test_cross_surface_gates_are_pinned_in_make_and_ci(self):
         from benchbox.core.equivalence.cross_surface import GATES
 
         repo_root = Path(__file__).resolve().parent.parent.parent
-        makefile_content = (repo_root / "Makefile").read_text()
-        correctness_gate_run_text = _workflow_job_run_text(
-            repo_root / ".github" / "workflows" / "ci.yml",
-            "correctness-gate",
-        )
-        missing_make_targets: list[str] = []
+        step_commands = _workflow_job_step_commands(repo_root / ".github" / "workflows" / "ci.yml", "correctness-gate")
         missing_ci_steps: list[str] = []
 
         for gate_name in sorted(GATES):
-            target = _cross_surface_make_target(gate_name)
-            try:
-                body = _makefile_target_body(makefile_content, target)
-            except AssertionError:
-                missing_make_targets.append(target)
-            else:
-                assert f"--benchmark {gate_name}" in body, (
-                    f"Make target {target} must invoke the matching cross_surface benchmark {gate_name!r}"
-                )
-            if f"make {target}" not in correctness_gate_run_text:
-                missing_ci_steps.append(f"make {target}")
+            command = _cross_surface_command(gate_name)
+            assert f"--benchmark {gate_name} " in f"{_make_dry_run(command)} ", (
+                f"{command} must invoke the matching cross_surface benchmark {gate_name!r}"
+            )
+            if command not in step_commands:
+                missing_ci_steps.append(command)
 
-        assert not missing_make_targets, f"GATES entries missing Make targets: {missing_make_targets}"
         assert not missing_ci_steps, f"GATES entries missing correctness-gate CI steps: {missing_ci_steps}"
 
-    def test_split_cross_surface_targets_cover_every_gate_backend(self):
+    @pytest.mark.skipif(shutil.which("make") is None, reason="make is required to expand the gate commands")
+    def test_split_cross_surface_runs_cover_every_gate_backend(self):
         from benchbox.core.equivalence.cross_surface import GATES
 
         repo_root = Path(__file__).resolve().parent.parent.parent
-        makefile_content = (repo_root / "Makefile").read_text()
-        run_text = _workflow_job_run_text(repo_root / ".github" / "workflows" / "ci.yml", "correctness-gate")
-        for gate_name, extra_targets in _SPLIT_CROSS_SURFACE_TARGETS.items():
+        step_commands = _workflow_job_step_commands(repo_root / ".github" / "workflows" / "ci.yml", "correctness-gate")
+        for gate_name, extra_arguments in _SPLIT_CROSS_SURFACE_RUNS.items():
             covered: set[str] = set()
-            for target in (_cross_surface_make_target(gate_name), *extra_targets):
-                body = _makefile_target_body(makefile_content, target)
-                assert f"--benchmark {gate_name}" in body, f"{target} must run --benchmark {gate_name}"
-                assert f"make {target}" in run_text, f"correctness-gate CI is missing make {target}"
-                covered.update(re.findall(r"--backend (\S+)", body))
+            for command in (
+                _cross_surface_command(gate_name),
+                *(_cross_surface_command(gate_name, argument) for argument in extra_arguments),
+            ):
+                expanded = _make_dry_run(command)
+                assert f"--benchmark {gate_name} " in f"{expanded} ", f"{command} must run --benchmark {gate_name}"
+                assert command in step_commands, f"correctness-gate CI is missing {command}"
+                covered.update(re.findall(r"--backend (\S+)", expanded))
             assert covered == set(GATES[gate_name].backends), (
-                f"{gate_name} Make targets run {sorted(covered)}, gate backends are {sorted(GATES[gate_name].backends)}"
+                f"{gate_name} runs cover {sorted(covered)}, gate backends are {sorted(GATES[gate_name].backends)}"
             )
 
     def test_makefile_test_slow_runs_serially(self):

@@ -18,6 +18,7 @@ FIELD_SEPARATOR = "\x1f"
 INTEGRATION_BRANCHES = frozenset({"develop", "published-results"})
 MAX_STACK_DEPTH = 3
 RECORD_MARKER = re.compile(r"<!-- (?:review|oracle)-local-record: v1 [A-Za-z0-9_-]+ -->")
+UNAVAILABLE_MARKER = re.compile(r"Local review: unavailable \(.*\); the hosted review decides")
 
 Runner = Callable[[list[str]], tuple[int, str]]
 
@@ -139,9 +140,34 @@ def _pr_from(response: object, status: str) -> PublishedPr:
     return PublishedPr(status, int(response["number"]), str(response["html_url"]))
 
 
+def unavailable_marker(cause: str) -> str:
+    return f"Local review: unavailable ({' '.join(cause.split())[:200]}); the hosted review decides"
+
+
+def _without_markers(body: str) -> list[str]:
+    return [
+        line
+        for line in body.replace("\r\n", "\n").split("\n")
+        if not RECORD_MARKER.fullmatch(line.strip()) and not UNAVAILABLE_MARKER.fullmatch(line.strip())
+    ]
+
+
 def with_record(body: str, marker: str) -> str:
-    kept = [line for line in body.replace("\r\n", "\n").split("\n") if not RECORD_MARKER.fullmatch(line.strip())]
-    return "\n".join(kept).rstrip() + f"\n\n{marker}\n"
+    return "\n".join(_without_markers(body)).rstrip() + f"\n\n{marker}\n"
+
+
+def with_unavailable(body: str, cause: str) -> str:
+    return "\n".join(_without_markers(body)).rstrip() + f"\n\n{unavailable_marker(cause)}\n"
+
+
+def _stamp(text: str, record: str, unavailable: str, clear: bool = False) -> str | None:
+    if unavailable:
+        return with_unavailable(text, unavailable)
+    if record:
+        return with_record(text, record)
+    if clear and any(UNAVAILABLE_MARKER.fullmatch(line.strip()) for line in text.replace("\r\n", "\n").split("\n")):
+        return "\n".join(_without_markers(text)).rstrip() + "\n"
+    return None
 
 
 def publish(
@@ -155,6 +181,7 @@ def publish(
     draft: bool = False,
     parent: str | None = None,
     record: str = "",
+    unavailable: str = "",
 ) -> PublishedPr:
     base = parent or BASE_BRANCH
     if parent:
@@ -165,13 +192,15 @@ def publish(
         fields = []
         if title and title.strip() != str(existing.get("title") or "").strip():
             fields += ["-f", f"title={title}"]
-        if record:
-            base_text = (
-                body_file.read_text(encoding="utf-8") if body_file is not None else str(existing.get("body") or "")
-            )
-            body = with_record(base_text, record)
-            if body.rstrip() != str(existing.get("body") or "").replace("\r\n", "\n").rstrip():
-                fields += ["-f", f"body={body}"]
+        stamped = _stamp(
+            body_file.read_text(encoding="utf-8") if body_file is not None else str(existing.get("body") or ""),
+            record,
+            unavailable,
+            clear=body_file is None,
+        )
+        if stamped is not None:
+            if stamped.rstrip() != str(existing.get("body") or "").replace("\r\n", "\n").rstrip():
+                fields += ["-f", f"body={stamped}"]
         elif body_file is not None:
             body = body_file.read_text(encoding="utf-8")
             current_body = str(existing.get("body") or "")
@@ -186,9 +215,9 @@ def publish(
     resolved_title = title or default_title(commits, base_ref)
     cmd = ["gh", "api", "--method", "POST", f"repos/{repo}/pulls"]
     cmd += ["-f", f"title={resolved_title}", "-f", f"head={head_spec}", "-f", f"base={base}"]
-    if record:
+    if record or unavailable:
         text = body_file.read_text(encoding="utf-8") if body_file is not None else default_body(commits)
-        cmd += ["-f", f"body={with_record(text, record)}"]
+        cmd += ["-f", f"body={_stamp(text, record, unavailable)}"]
     elif body_file is not None:
         cmd += ["-F", f"body=@{body_file}"]
     else:
@@ -207,6 +236,7 @@ def main(argv: Sequence[str] | None = None, run: Runner = live_run) -> int:
     parser.add_argument("--title", default="")
     parser.add_argument("--body-file", default="")
     parser.add_argument("--record-file", default="")
+    parser.add_argument("--local-review-unavailable", default="")
     parser.add_argument("--draft", action="store_true")
     parser.add_argument("--parent", default="")
     parser.add_argument("--verify-parent", action="store_true")
@@ -240,9 +270,10 @@ def main(argv: Sequence[str] | None = None, run: Runner = live_run) -> int:
             args.title or None,
             body_file,
             run,
-            args.draft or bool(args.parent),
+            args.draft or bool(args.parent) or bool(args.local_review_unavailable),
             args.parent or None,
             record,
+            args.local_review_unavailable,
         )
     except (PrOpenError, OSError) as exc:
         print(f"pr-open: {exc}", file=sys.stderr)

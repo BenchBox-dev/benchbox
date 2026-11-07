@@ -50,7 +50,34 @@ This document provides guidelines and instructions for contributing.
 
 `develop` is the long-lived development branch and the repository's default branch; **all changes land via PR**. Releases are tags on `develop` commits (see `docs/internal/release-guide.md`). PRs target `develop` and squash-merge with linear history.
 
-Required CI on `develop` reports five unit results (`core`, `explorer`, `results-data`, `docs` and `tooling` from `.github/workflows/ci.yml`), plus `hold` and `oracle-gate`. `oracle-gate` is posted by the `benchbox-oracle` app from `develop` code and passes on a result-affecting PR only when the app's latest review of its current head reports success (or a listed attester has posted the stand-in approval for that head) and the oracle's threads are resolved. `.github/ci-units.yml` and `.github/path-filters.yml` classify each PR: content-only PRs run content validation and skip Python fast tests, while code, infra, workflow, tooling, and unknown paths run the lint/type + Ubuntu Python 3.14 fast-test checks. Python 3.12 runs the same fast suite after each merge to `develop` (`trunk.yml`). Soundness-path review applies even when the author uses the owner's account; once a finished branch is armed, auto-merge lands it when required checks are green and all review threads are resolved.
+Required CI on `develop` reports five unit results (`core`, `explorer`, `results-data`, `docs` and `tooling` from `.github/workflows/ci.yml`), plus `hold` and `oracle-gate`. `oracle-gate` is posted by the `benchbox-oracle` app from `develop` code and passes on a result-affecting PR only when the app's latest review of its current head reports success (or a listed attester has posted the stand-in approval for that head) and the oracle's threads are resolved. Soundness-path review applies even when the author uses the owner's account; once a finished branch is armed, auto-merge lands it when required checks are green and all review threads are resolved.
+
+### CI lanes
+
+The canonical policy is [Merge and trunk governance](docs/internal/merge-queue-governance.md).
+The workflows serve different purposes:
+
+| Lane | Trigger and purpose |
+| --- | --- |
+| PR (`ci.yml`) | Path-aware checks on the PR head. All five unit outcomes report even when their work is unaffected; an untouched unit succeeds, while a required job that fails or unexpectedly skips fails its unit. |
+| Trunk (`trunk.yml`) | Pushes to `develop` test the merged state: Python 3.12 fast tests, the full four-shard medium tier without coverage, correctness and required-local-case gates, and distribution artifacts. Push runs are serialized: the running run continues and only the newest pending push is retained; intermediate waiting pushes are replaced, not individually tested. |
+| Coverage producer (`trunk-coverage.yml`) | Scheduled six times daily and manually dispatched, not run on every merge. Runs the medium tier with per-test coverage and publishes the map used by PR test selection. Changes to the Trunk or coverage lane's own inputs can also invoke its medium-only workflow from PR CI. |
+| Nightly T3 (`nightly-v2.yml`) | Daily at 07:30 UTC and manually dispatched. Broad, live, platform and performance checks report by domain; see [Nightly T3 validation](docs/internal/nightly-t3.md) for artifacts and failure ownership. |
+
+`.github/ci-units.yml` assigns paths to one or more units; unknown paths fall back to `core`,
+an empty change set or a classifier self-protection change runs every unit, and Markdown changes
+and deleted/renamed paths also select `docs`. A touched `core` or `tooling` unit runs lint/type
+checks and the Ubuntu Python 3.14 fast suite. Other content-only changes run the applicable
+content/docs checks without that suite; a `.md` suffix alone does not make a change content-only.
+For example, `CONTRIBUTING.md`, agent instructions and selected internal runbooks explicitly
+route to code CI.
+
+`.github/path-filters.yml` adds content, skill-integrity, packaging, binary-framing and
+visualization checks. Coverage-impact selection currently runs in shadow mode: it records
+the proposed selection but escalates to the complete medium tier. Selected Windows tests,
+tuning, SQL-execution evidence, publication/API contracts and Trunk-lane changes have
+additional conditional jobs. Read the `ci-paths` summary and decision artifacts for the
+actual routing of a head rather than assuming every PR runs every job.
 
 ## Development Workflow
 
@@ -115,7 +142,9 @@ independently to each member.
    make pr-open TITLE="fix(scope): what the change does" PR_BODY_FILE=pr-body.md
    ```
 
-   `make pr-preflight` runs the local lint and the path-aware content guard or fast tests. `make pr-open` pushes and
+   `make pr-preflight` checks changelog fragments, runs Ruff on changed Python files and runs
+   mapped tests, with a conditional Linux run for platform-sensitive mapped tests. It does not
+   run the CI content guard or the full fast lane. `make pr-open` pushes and
    uses the GitHub REST API; it refuses to run from `develop` or `release`. Without `TITLE`, a new PR uses the
    oldest branch commit's subject. On an existing PR, `make pr-open` pushes and then updates only supplied title
    and body fields that differ from the current text, together in one request. Omitting a field preserves it;
@@ -138,8 +167,12 @@ independently to each member.
    it (`ADJUDICATE='WITHDRAW|MAINTAIN D<n> - <instruction>'`, passed only when the owner names the head, the
    finding and the decision in the current request). `make pr-open` embeds the findings record in the PR body as
    a hidden marker; CI reads it as claims only. A review that cannot run (no key, `origin/develop` not
-   fetchable, an unreachable gateway, a quota or reviewer absence, a held PR, a secret value on disk, or an
-   `omp` that does not match the CI pin) refuses regardless.
+   fetchable, a quota or reviewer absence, a held PR, a secret value on disk, or an
+   `omp` that does not match the CI pin) refuses regardless. The one exception is an availability cause
+   (the gateway is unreachable, rejects the client token, or serves no provider that can review the change):
+   `make pr-open` then pushes and opens a draft whose body ends with `Local review: unavailable (<reason>); the
+   hosted review decides`, never arms it (an existing PR keeps its state and gets the marker), and `make pr-arm` refuses it until the hosted `review-gate` passes
+   for the head.
    It pushes and arms exactly the commit it reviewed. The review is advisory, may differ from the CI oracle,
    and posts nothing to GitHub. See `docs/internal/oracle-review-v2.md`, Local pre-PR review.
 
@@ -189,17 +222,33 @@ independently to each member.
 
 There are two layers, and you only need the first:
 
-**Required gate (mirrors what CI enforces):**
+**Required local gate (narrower than CI):**
 
 ```bash
 make pr-preflight
 ```
 
-This runs `ruff check` and `ruff format --check` on the Python files you changed, then runs the tests for them without xdist, so it does not wait on the shared test lock. A changed `tests/**/test_*.py` runs itself; a changed `benchbox/**/<module>.py` or `scripts/<module>.py` runs every `tests/**/test_<module>.py`. Tests that failed in the previous run go first (`--ff`), then the rest run. If no test maps to your change it runs no tests and says CI will run the fast lane.
+This first reports primary-clone cleanliness and checks changelog fragments. It runs `ruff check`
+and `ruff format --check` on the Python files you changed, then runs mapped tests without xdist,
+so it does not wait on the shared test lock. A changed `tests/**/test_*.py` runs itself; a changed
+`benchbox/**/<module>.py` or `scripts/<module>.py` runs every `tests/**/test_<module>.py`.
+Tests that failed in the previous run go first (`--ff`), then the rest run. After a successful
+mapped run, changes touching platform-branching code or platform skips can select an additional
+Linux mapped-test run. If no test maps to your change it runs no tests; CI decides which lanes apply.
 
-It does not run the full fast lane, type checking, or the other lint guards. CI runs all of them on every PR within about 20 minutes and is the authoritative check. To run the full fast lane before pushing, use `make pr-preflight-fast-tests`; to run the CI lint guards use `make ci-lint`.
+It does not run the full fast lane, type checking, content validation or the other lint guards.
+CI is path-aware and authoritative. Elapsed time depends on runner queues and on which
+conditional lanes a head selects; the merge gate is check results, not elapsed time.
+To run the full fast lane before pushing, use `make pr-preflight-fast-tests`; to run the CI
+lint guards use `make ci-lint`.
 
-**Optional thoroughness check** — only useful when you've changed cross-cutting things (CI workflows, packaging, docs build, integration paths):
+When the PR fast suite runs, `core` also enforces the aggregate
+[fast-test duration policy](docs/internal/nightly-t3.md#fast-test-duration-policy).
+It compares calibrated summed test durations with the committed baseline, not job wall time
+or an individual test's speed. A text-only PR edit reuses the same-head full-run verdict;
+it does not rerun this gate or any tests. Use `make pr-rerun` to retry CI, as described above.
+
+**Optional thoroughness check** — only useful when you've changed cross-cutting things (CI workflows, packaging, docs inputs, integration paths):
 
 ```bash
 make ci-local
@@ -212,10 +261,13 @@ This runs the broader CI mirror:
 | Lint + format + type checking | `make ci-lint` |
 | Fast tests with coverage | `make ci-test` |
 | Integration smoke tests | `make test-integration-smoke` |
-| Documentation build | `make ci-docs` |
+| Documentation validation + input generation (not a site build) | `make ci-docs` |
 | Package build + install test | `make test-package` |
 
 Or run any of those individually. Additional one-offs: `make security-audit` and `make spellcheck`.
+
+`make ci-docs` runs `docs-validate` and `docs-generate`. The documentation site and its build
+live in [BenchBox-dev/benchbox-site](https://github.com/BenchBox-dev/benchbox-site), not this repository.
 
 Skip `make ci-local` for everyday changes — `make pr-preflight` is the right gate. The required checks gate the merge, so the cost of being wrong is a re-push and `make pr-arm` for the new head.
 
@@ -237,8 +289,9 @@ make test-ci
 ```
 
 `make test` is a fast local run without coverage. `make test-unit` and `make test-integration` run only unit or
-integration tests, `make test-fast` runs tests marked fast (under a second), and `make test-ci` is the CI profile with
-coverage and reports.
+integration tests, `make test-fast` selects tests carrying the `fast` marker, and `make test-ci` is the CI profile
+with coverage and reports. `fast` is a selection marker, not a promise that each test finishes in under a second;
+the aggregate CI duration gate is described in the [fast-test duration policy](docs/internal/nightly-t3.md#fast-test-duration-policy).
 
 The default `pytest.ini` is optimized for quick local feedback. Use the CI profile when you need coverage, HTML reports,
 or JUnit XML output.

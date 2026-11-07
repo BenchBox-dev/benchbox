@@ -545,6 +545,7 @@ class SynapseSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter)
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> SynapseSparkAdapter:
         from benchbox.core.compute_resource import normalize_compute_options
+        from benchbox.platforms.base.config_utils import forward_plan_options
 
         config = normalize_compute_options("synapse-spark", config)
         params: dict[str, Any] = {
@@ -570,5 +571,7 @@ class SynapseSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter)
         ]:
             if key in config:
                 params[key] = config[key]
+
+        forward_plan_options(config, params)
 
         return cls(**params)

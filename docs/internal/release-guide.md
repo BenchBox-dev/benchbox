@@ -591,17 +591,8 @@ publishes the verified wheel delivery that `sqlglot-delivery.yml` adopts here.
 Refresh conflicts, failed refreshes and failing fork checks are issues in
 `BenchBox-dev/benchbox-sqlglot`, not in this repository. The fork runbook,
 `downstream/MAINTAINING.md`, describes its kill switch, dry runs, credentials
-and recovery.
-
-The `sqlglot-fork-refresh` workflow in this repository is the legacy producer
-and is retiring. Until it is disabled it runs nightly, refreshes a checkout of
-the fork's `main` with the same `auto` command, pushes a successful refresh as
-`refresh/upstream-X.Y.Z` with the `SQLGLOT_FORK_REFRESH_TOKEN` secret, opens the
-fork pull request, and raises a per-tag issue here (`SQLGlot fork refresh to
-vX.Y.Z needs follow-up`, or `SQLGlot fork refresh check failed` for the check
-itself) when it cannot. It never merges or adopts. Disable it before enabling the
-fork's controller, so only one workflow writes upstream refreshes to the fork;
-its workflow, script, tests and secret are then removed.
+and recovery. This repository holds no fork-write credential and runs no refresh
+of its own.
 
 ## Recovering from common failures
 

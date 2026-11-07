@@ -104,6 +104,8 @@ class TimescaleDBAdapter(PostgreSQLAdapter):
         )
         if deployment_mode is not None:
             adapter_config["deployment_mode"] = deployment_mode
+        if config.get("service_url"):
+            adapter_config["service_url"] = config["service_url"]
         return cls(**adapter_config)
 
     def __init__(self, **config):

@@ -30,10 +30,8 @@ target graph.
 | `make/worktrees.mk` | Disposable worktree creation, exact-path removal, manual release, finish preview, merged-worktree reap, and listing | Native Git lifecycle wrappers belong here; no slot allocation or automatic branch cleanup. `worktree-reap` removes only what a fresh `worktree-finish` evaluation would remove, and only with `APPLY=1` |
 | `make/worktree-maintenance.mk` | Finding and soundness reporting utilities | Keep unrelated reporting targets here. Worktree reaping goes through `worktree-finish` checks (`worktree-finish`, `worktree-reap`). The only worktree-less branch reaper, `branch-prune-merged` in the root `Makefile`, is an explicit exception for branches at their historically proven merge-time PR head |
 | `make/help.mk` | Exact ordered `make help` recipe | Keep existing category and command order; add the help line in the same change as a new user-facing target |
-| `make/inventory.json` | Locally generated contract (the contents listed under [Drift guard](#drift-guard), plus aliases), derived wholly from the `Makefile`, its included modules, and the migration files below | Never edit or commit; only `make/check_makefile_inventory.py --write` writes it |
-| `make/monolith-baseline.json` | Durable inventory of the committed pre-split monolith: 198 targets, 195 public targets, default goal `test` | Do not regenerate during ordinary Make changes; changing this migration proof needs a separate architectural decision |
-| `make/migration-proof.json` | Compact hashes, counts, include order, and reviewed delta for the initial split | The normal inventory writer never changes it; keep it with the baseline as historical evidence |
-| `make/check_makefile_inventory.py` | Inventory reader, writer, and historical verifier | Keep under `make/` so `make makefile-inventory-check` keeps working |
+| `make/monolith-baseline.json` | Historical inventory of the committed pre-split monolith: 198 targets, 195 public targets, default goal `test` | History only; nothing reads or regenerates it |
+| `make/migration-proof.json` | Historical hashes, counts, include order, and reviewed delta for the initial split | History only; keep it with the baseline |
 
 Cross-module prerequisites stay explicit in target headers. A module invokes
 another module's public target and must not reach into its file. Variables live
@@ -59,54 +57,32 @@ bootstrap variable still freezes the root path before includes append to that
 built-in list, preventing future ordering-dependent path drift. It is
 repository-reserved, not a supported user customization point.
 
-## Drift guard
+## Interface guard
 
-Run:
+`scripts/check_make_targets.py` reads the rule database GNU Make prints with
+`make -pRrq :`. Any error or warning Make reports while reading the files, such
+as a missing include, a parse error or a target whose recipe is defined twice,
+fails it. It enforces two things:
 
-```bash
-make makefile-inventory-check
-```
+- Every target named in a `make` command inside a code span or code block of
+  `AGENTS.md`, `CONTRIBUTING.md`, `docs/` (except the decision records under
+  `docs/internal/adr/`) or `.claude/skills/` is a defined target.
+  `make docs-validate` runs this check, so the `docs` unit catches a
+  documentation change that names a missing target, and
+  `tests/unit/scripts/test_check_make_targets.py` repeats it in the fast unit
+  tier for Make changes.
+- The number of targets stays at or below `TARGET_CEILING` in that test.
+  Targets are counted the way the original reduction plan measured them: every
+  name in the rule database that starts with a letter or digit. A new target
+  replaces or consolidates an existing one; raising the ceiling needs the
+  owner's agreement.
 
-The guard expands only the repository's narrow, mandatory include syntax and
-never runs recipes. It builds the inventory in memory without writing, so it
-works on a read-only tree without the untracked `make/inventory.json`. It
-records:
+Tests that need a target's prerequisites, recipe or target-specific variables,
+such as the timed-target check below, read them through the same script.
 
-- the default goal and ordered include list;
-- all explicit and pattern targets plus the phony target set;
-- exact target headers and prerequisites;
-- exact recipe bytes and command order;
-- variable assignments and `define` macro bodies;
-- the global ordered stream of assignments, macros, phony declarations, and
-  rules after include expansion.
-
-The check fails when it cannot safely inventory the Make sources (a missing
-include, an include cycle, unsupported top-level syntax) or when
-`make/migration-proof.json` no longer matches `make/monolith-baseline.json`.
-
-The inventory does not freeze the Make interface: a target, prerequisite, or
-recipe change needs no manifest update. For a pull request that changes
-`Makefile` or `make/`, the CI step summary shows an informational public-target
-and recipe diff against its base (`make/interface_summary.py`). To inspect the
-evaluated contract in a local manifest, run:
-
-```bash
-uv run -- python make/check_makefile_inventory.py --write
-```
-
-The writer validates but never rewrites `monolith-baseline.json` or
-`migration-proof.json`. `.gitignore` ignores the generated
-`make/inventory.json`, so `git status` does not show it. Keep or delete it.
-
-To reproduce the historical comparison, run it explicitly at the commit that
-introduced the split, or a checkout rebuilt from it:
-
-```bash
-uv run -- python make/check_makefile_inventory.py --verify-migration
-```
-
-Later intentional Make changes are expected to diverge from it. The immutable
-proof metadata stays valid and auditable without a third full inventory copy.
+`make/monolith-baseline.json` and `make/migration-proof.json` record the
+committed pre-split monolith and the reviewed delta of the first split. No
+check reads them; they are kept as history.
 
 ## Local timing records
 
@@ -126,11 +102,13 @@ target writes its own record.
 
 `MAKE_TIMED_TARGETS` in the root `Makefile` is the single list of timed
 targets. Each runs its recipe under `scripts/make_timing_shell.sh` through a
-target-specific `SHELL`, leaving recipe text unchanged. Because every recipe
-line runs through that shell and writes a record, a target belongs in the list
-only if it has no prerequisites and a single logical recipe line; a test
-enforces this. Recording is best effort: if the file cannot be written, a
-one-line warning goes to stderr and the target keeps its own exit status.
+target-specific `SHELL`, leaving recipe text unchanged. Every recipe line that
+runs through that shell writes a record, and a target's prerequisites inherit
+its `SHELL`. A target therefore belongs in the list only if its recipe is a
+single logical line and each prerequisite sets its own `SHELL := /bin/sh`, as
+`.development-tree-required` does; a test enforces both. Recording is best
+effort: if the file cannot be written, a one-line warning goes to stderr and
+the target keeps its own exit status.
 
 `make make-timings-report` prints each target's run count, failure count,
 median, p90, and maximum for the last `MAKE_TIMINGS_DAYS` days (default 30),
@@ -142,7 +120,7 @@ then the `MAKE_TIMINGS_SLOWEST` slowest runs (default 5). The tests set
 | Change | Required action | Rollback |
 |---|---|---|
 | Add a target inside an existing domain | Add it to the owning module, with help if public | Revert the target and help entry together |
-| Move a target from root to a module | First prove no root-literal consumer remains; move comments, variables, rule, and recipe as one block; `make makefile-inventory-check` must still pass | Move the exact block back to its original parse position; remove an empty module |
+| Move a target from root to a module | First prove no root-literal consumer remains; move comments, variables, rule, and recipe as one block; `tests/unit/scripts/test_check_make_targets.py` must still pass | Move the exact block back to its original parse position; remove an empty module |
 | Add a module | Add one mandatory rooted include at the intended parse position; update this ownership table | Move its blocks back, remove the include, then remove the module |
 
 ## Alternatives rejected
