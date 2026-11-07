@@ -31,7 +31,7 @@ from benchbox.core.dataframe.schema_utils import extract_schema_columns
 from benchbox.core.errors import PlanCaptureError
 from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW
 from benchbox.platforms.base import DriverIsolationCapability, PlatformAdapter
-from benchbox.platforms.base.arrow_result import fetch_result
+from benchbox.platforms.base.arrow_result import ArrowRows, fetch_result
 from benchbox.platforms.base.data_loading import (
     NO_BENCHMARK,
     DataSource,
@@ -93,16 +93,6 @@ class DataFusionCursorCompat:
 
     def fetchall(self) -> list[tuple[Any, ...]]:
         return self._materialize()
-
-
-def _datafusion_batches_to_rows(batches: list[Any]) -> list[tuple[Any, ...]]:
-    rows: list[tuple[Any, ...]] = []
-    for batch in batches:
-        if batch.num_columns == 0:
-            rows.extend([()] * batch.num_rows)
-        else:
-            rows.extend(zip(*(column.to_pylist() for column in batch.columns), strict=True))
-    return rows
 
 
 def _datafusion_batches_to_table(batches: list[Any], dataframe: Any) -> Any:
@@ -1378,7 +1368,7 @@ class DataFusionAdapter(NoConstraintEnforcementMixin, PlatformAdapter):
             result_batches = df.collect()
             fetched = fetch_result(
                 self.fetch_mode,
-                fetch_rows=lambda: _datafusion_batches_to_rows(result_batches),
+                fetch_rows=lambda: ArrowRows(_datafusion_batches_to_table(result_batches, df)),
                 fetch_arrow=lambda: _datafusion_batches_to_table(result_batches, df),
             )
 

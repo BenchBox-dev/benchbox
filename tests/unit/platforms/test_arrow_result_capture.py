@@ -243,10 +243,10 @@ class TestResultCountWithoutRows:
         assert cursor_result_count(cursor) == 9
         assert not cursor.fetched
 
-    def test_rowcount_attribute(self):
+    def test_rowcount_attribute_does_not_skip_the_receipt(self):
         cursor = CountingCursor(rowcount=3)
-        assert cursor_result_count(cursor) == 3
-        assert not cursor.fetched
+        assert cursor_result_count(cursor) == 2
+        assert cursor.fetched
 
     def test_arrow_num_rows(self):
         cursor = CountingCursor(num_rows=11)
@@ -257,11 +257,6 @@ class TestResultCountWithoutRows:
         cursor = CountingCursor(to_arrow_table=lambda: pa.Table.from_batches([_batch(0, 5)]))
         assert cursor_result_count(cursor) == 5
         assert not cursor.fetched
-
-    def test_unknown_negative_rowcount_falls_back_to_fetchall(self):
-        cursor = CountingCursor(rowcount=-1)
-        assert cursor_result_count(cursor) == 2
-        assert cursor.fetched
 
     def test_cursor_without_fetchall_counts_zero(self):
         assert cursor_result_count(object()) == 0

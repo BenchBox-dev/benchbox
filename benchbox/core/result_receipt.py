@@ -35,10 +35,9 @@ def cursor_result_count(cursor: Any) -> int:
         counted = _count(counter())
         if counted is not None:
             return counted
-    for known in (getattr(cursor, "num_rows", None), getattr(cursor, "rowcount", None)):
-        counted = _count(known)
-        if counted is not None:
-            return counted
+    counted = _count(getattr(cursor, "num_rows", None))
+    if counted is not None:
+        return counted
     arrow_counted = _arrow_count(cursor)
     if arrow_counted is not None:
         return arrow_counted
