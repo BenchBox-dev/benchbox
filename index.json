@@ -3342,7 +3342,7 @@
         }
       },
       "integration_branch": "feat/spark-family-fixes",
-      "integration_head": "f24a03e87013c2770f52cd137412a8a8c8956a69",
+      "integration_head": "fa1c51b43ffb3f89f4d8bf4d1f94d36dfcf62080",
       "integration_log": [
         {
           "at": "2026-11-07T00:56:51Z",
@@ -3376,6 +3376,23 @@
           "op_id": "b48e10b32174441b97e19b96708fe4d3",
           "previous_head": "b2c5a1ecbedec4ef670f1ce5611585d1513dd87a",
           "seq": 3
+        },
+        {
+          "at": "2026-11-07T02:12:29Z",
+          "changed_files": [
+            "benchbox/platforms/spark.py",
+            "changelog.d/feat-spark-family-fixes--spark-local-default-jvm-exceeds-heavy-run-budget-20261106.json",
+            "tests/unit/platforms/test_spark_adapter.py"
+          ],
+          "head": "fa1c51b43ffb3f89f4d8bf4d1f94d36dfcf62080",
+          "kind": "fix",
+          "op_id": "524c4d45d7f1430eb1ad0d8751aa777a",
+          "previous_head": "f24a03e87013c2770f52cd137412a8a8c8956a69",
+          "requires_acceptance": [
+            "spark-local-default-jvm-exceeds-heavy-run-budget-20261106",
+            "spark-test-connection-stops-shared-session"
+          ],
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-spark-family-fixes",
