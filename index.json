@@ -3523,7 +3523,7 @@
         }
       },
       "integration_branch": "feat/load-value-integrity",
-      "integration_head": "c8952823d393c504263eb452839cff81fafe85bf",
+      "integration_head": "66fbf7c38851ae991712d43db14d6358f008ece5",
       "integration_log": [
         {
           "at": "2026-11-07T14:17:34Z",
@@ -3587,6 +3587,20 @@
           "op_id": "8bcc0f4ffcce45319fd35c68ad5e6503",
           "previous_head": "669d42be4ac45b136babbd3f7ce1cf25704eb51a",
           "seq": 6
+        },
+        {
+          "at": "2026-11-07T20:44:06Z",
+          "changed_files": [
+            "tests/unit/workflows/test_docker_integration_workflow.py"
+          ],
+          "head": "66fbf7c38851ae991712d43db14d6358f008ece5",
+          "kind": "fix",
+          "op_id": "349a382a2131456f830d137a8550f625",
+          "previous_head": "c8952823d393c504263eb452839cff81fafe85bf",
+          "requires_acceptance": [
+            "singlestore-ci-and-tpcds-maintenance-20261107"
+          ],
+          "seq": 7
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-load-value-integrity",
