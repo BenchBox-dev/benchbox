@@ -245,6 +245,21 @@ def test_ratchet_allows_same_path_wheel_version_bump_without_expanding_exclusion
         check_ratchet(policy(external=[diff_prov_entry]), policy(external=[base_entry]))
 
 
+def test_ratchet_rejects_renaming_a_wheel_to_a_different_distribution_and_owner() -> None:
+    base_entry = {
+        "path": "_project/scripts/vendor/todo_db-0.15.0-py3-none-any.whl",
+        "owner": "todo-db",
+        "provenance": "_project/scripts/pyproject.toml",
+    }
+    renamed_entry = {
+        "path": "_project/scripts/vendor/tractable-1.0.0-py3-none-any.whl",
+        "owner": "tractable",
+        "provenance": "_project/scripts/pyproject.toml",
+    }
+    with pytest.raises(ValueError, match="cannot add or expand external exclusions"):
+        check_ratchet(policy(external=[renamed_entry]), policy(external=[base_entry]))
+
+
 def git_repo(tmp_path: Path, source: str) -> str:
     (tmp_path / "quality").mkdir()
     (tmp_path / "quality/comment-policy.json").write_text(json.dumps(policy()), encoding="utf-8")
