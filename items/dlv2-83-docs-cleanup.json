@@ -5,7 +5,7 @@
     "Validated through core CI for core-only paths (docs/internal, docs/agent); site-owned files go through the site repo and freeze process",
     "No requirement that core-only docs deploy to production"
   ],
-  "context": "2026-10-27: targets live under docs/internal; docs freeze applies to site-owned paths in quality/docs-ownership.json.",
+  "context": "2026-10-27: targets live under docs/internal; docs freeze applies to site-owned paths in quality/docs-ownership.json.\n\n2026-11-07 preparatory implementation: docs/dev-loop-docs-cleanup worktree BenchBox.wt-dev-loop-docs, commit ff60df0be80bf56558db1e121c17ae6a19344988, draft stacked PR #4030 based on this session’s refactor/makefile-families (#4022). Retained live Trunk recovery and PR-base policy; removed obsolete merge-queue-canary-runbook.md and develop-push-drop-inventory.md, repaired ownership/link entries, five-unit/review/nightly/ruleset/path wording. Site-owned paths intentionally unchanged. make docs-validate and docs-reference-inventory-check pass; pr-preflight 404 mapped tests passed, Linux did not start (host admission refusal), local review SHIP. Wait for #4022 merge; then finish 82, take 83, rebase docs commit --onto origin/develop d93952f0dd8aa8871141208625643d9d1230da66, retarget #4030 develop, ready, refresh exact-head CI/oracle and arm. Do not mark 83 done on a parent-based draft.",
   "description": "AUDIT 2026-10-27 (owner-adjudicated, advisor-reviewed): the acceptance and context sections supersede this description wherever they differ. Historical text below is kept for reference.\n\nRewrite docs/development/{testing.md, makefile-architecture.md, quality-gate-policy.md} and docs/operations/{merge-queue-governance.md, pr-triage.md}. merge-queue-governance.md is the live governance doc: rewrite it for the current required checks, do not delete it. docs/operations/repo-admin-settings.md stays unchanged until site-split-53 lands; after that, update it to the final rulesets and drift-expected settings.\n\nDelete docs/operations/{ci-local-parity.md, develop-post-merge-gaps.md, guards-fix.md, merge-queue-canary-runbook.md (historical), branch-rename-runbook.md (D1 keeps develop)} and docs/development/pr-base-branch-policy.md. Delete docs/operations/develop-push-drop-inventory.md only after docs.yml is deleted (site-split-50).\n\nDo not delete these live docs: docs/operations/soundness-drain.md (updated by #2843) and docs/operations/fast-lane-budget.md (describes the current code-test lane).\n\nSite-split-50 deletes the Sphinx build, the toctrees and docs/linkcheck_ignore.txt, so this item only has to leave no link to a deleted page.",
   "sessions": [
     {
@@ -39,6 +39,14 @@
       "op": "update",
       "op_id": "b2d38757e9fb46be8165bf47976c5dca",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:95654933fcc78b44d934f92f",
+      "at": "2026-11-07T16:49:05Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "34d030aecb37448081f762103b9ab0da",
+      "session_id": "c925cef22c8f4d6fa75a3c3995e6df7d"
     }
   ]
 }
