@@ -1,11 +1,12 @@
 {
   "acceptance": [
-    "The triggering event types and the failing code path are identified, with run ids.",
-    "On a new PR, `gate / gate` either passes or is skipped neutrally for these events, and never fails while review is pending.",
-    "A stale failure no longer leaves a PR BLOCKED once a later run succeeds."
+    "The Theseus gate job succeeds on exit 3 (status posted, waiting) and fails on exit 2 or any other error. The App-posted status is unchanged, so waiting still shows as failure on the required context and nothing can merge while waiting.",
+    "Cancelled-run noise is reduced without weakening concurrency guarantees, or left as is with the reason recorded (see oracle-gate-bridge-noop-runs-hold-runner-slots-20261101).",
+    "Docs state that consumers must require the App-posted status context, never the `gate / gate` check-run.",
+    "Released and re-locked in BenchBox. On a new PR, `gate / gate` is green while the review is pending, and a forced gate error still turns it red."
   ],
   "context": "Triage 2026-11-07 (read-only, with run ids; the full report is in the session).\n- Partly valid.\n- `gate / gate` fails on 92% of pull_request_target runs: 267 of 290 since 11-01. 102 PRs were affected, and 72 of 96 merged PRs ended red. Re-locks didn't change this.\n- The failure is NOT \"cannot resolve a pull request number\". That text appears only in the echoed script of the \"Resolve the pull request\" step, which never failed. That path is unreachable: gate.yml:138-141 skips push, schedule and workflow_run.\n- The real cause: gate.py:385-389 exits 3 (\"posted, waiting\") for every non-pass verdict, and Theseus gate.yml:236 doesn't accept exit 3. The sweep job does accept it (gate.yml:357), and docs/hosted-workflows.md:90 defines 3 as waiting.\n- The #4007 BLOCKED claim is false. The cause was an unresolved review thread (required_review_thread_resolution); the PR went CLEAN about 1 minute after the thread was resolved. No ruleset or BenchBox tool reads the `gate / gate` check-run.\n- Severity: noise. It hides the rare real gate error: 3 of 381 failures were exit 2, e.g. 41640051806 (HTTP 500).\n- Fix in Theseus gate.yml:222-236: treat exit 3 as success/neutral for the job, and keep exit 2 as failure. Then re-lock BenchBox.\n- Acceptance criteria 1 and 3 rest on false premises. Dispatch refresh runs attach their check to the develop SHA, so \"a later success supersedes\" can't apply.\n- Little overlap with oracle-gate-bridge-noop-runs-hold-runner-slots-20261101, but its concurrency guardrails apply to any job-level change.\n- Recommended priority: low. Fold the fix into Theseus v0.2.4.",
-  "description": "From 2026-11-04 to 2026-11-07, the `gate / gate` check (review-gate bridge) failed on #3949, #3952, #3960, #3979, #3991, #3992, #3994, #3995 and #4007. The log says 'cannot resolve a pull request number'; on some PRs it fails within 14-17 s with 'review: waiting' before the verdict posts. It is not a required check, so arming and merging go ahead, but it leaves a red check on the PR. On #4007 a stale failed run (42342923424) kept the PR BLOCKED until its failed jobs were rerun. Agents and reviewers cannot tell a real gate failure from this noise.\n\nChange. Find why the bridge cannot resolve the PR number for these events (event type, fork or merge-queue refs, timing before the PR exists). Make it resolve the number or skip neutrally, and make a later success supersede the stale failure. Related: oracle-gate-bridge-noop-runs-hold-runner-slots-20261101 and the Theseus adoption items.\n\nGuardrails: work in a linked worktree (make worktree-create); never edit the primary clone; heavy work only through make heavy-run; container checks under mocker one stack at a time (limits in tests/uat docs and the uat-mocker-compose-gaps-20261106 context); no live cloud without owner approval; no explanatory comments; changelog fragment if user-facing.",
+  "description": "`gate / gate` fails on 92% of pull_request_target runs: 267 of 290 since 2026-11-01. 102 PRs were affected, and 72 of 96 merged PRs merged with it red.\nCause:\n- Theseus gate.py:385-389 exits 3 (\"posted, waiting\") for every non-pass verdict.\n- The reusable gate.yml gate job (around line 236) treats any non-zero exit as failure, although the sweep job accepts 3 (gate.yml:357) and docs/hosted-workflows.md:90 defines 3 as waiting.\n- Green refreshes run as workflow_dispatch and land on the develop SHA, so the PR head's check stays red.\nEffects:\n- It blocks nothing; the required context is the App-posted `oracle-gate`/`review-gate` status.\n- It hides the rare real gate error: exit 2, 3 of 381 failures, e.g. run 41640051806 (HTTP 500).\n- Cancel-in-progress also leaves cancelled PR-head gate jobs (59 since 11-01, e.g. #3995).\nThe original premises were wrong: \"cannot resolve a pull request number\" is only echoed script text, and #4007 was blocked by an unresolved review thread, not this check.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
@@ -29,6 +30,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "53b29bcd381646f9bb07f9b5d5a74dd3",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-07T14:19:55Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "0cd062bd90224d45bbe6fc3366dbbda1",
       "session_id": "8d9ba932107b4322b2417b8af61c160c"
     }
   ]
