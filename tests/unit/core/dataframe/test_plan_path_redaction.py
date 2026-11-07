@@ -48,7 +48,9 @@ def _strings(value) -> list[str]:
 def _captured(tmp_path: Path) -> tuple[QueryPlan, QueryPlan]:
     data_dir, under_data, under_home = _scan_paths(tmp_path)
     frame = _FakeLazyFrame([under_data, under_home])
-    plan = capture_query_plan(frame, "polars-df", local_roots=(data_dir,))
+    captured = capture_query_plan(frame, "polars-df")
+    assert captured is not None
+    plan = redact_plan_local_paths(captured, (data_dir,))
     raw = QueryPlan(
         platform="polars",
         plan_type="optimized",

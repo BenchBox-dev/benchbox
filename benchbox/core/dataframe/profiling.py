@@ -502,7 +502,7 @@ def redact_plan_local_paths(plan: QueryPlan, roots: Iterable[str | Path] = ()) -
     )
 
 
-def capture_query_plan(df: Any, platform: str, local_roots: Iterable[str | Path] = ()) -> QueryPlan | None:
+def capture_query_plan(df: Any, platform: str) -> QueryPlan | None:
     platform_lower = normalize_dataframe_platform(platform)
 
     plan: QueryPlan | None = None
@@ -516,7 +516,7 @@ def capture_query_plan(df: Any, platform: str, local_roots: Iterable[str | Path]
 
     if plan is None:
         return None
-    return redact_plan_local_paths(plan, local_roots)
+    return redact_plan_local_paths(plan)
 
 
 def _analyze_polars_plan(plan: str) -> list[str]:
