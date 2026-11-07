@@ -2,7 +2,7 @@
   "acceptance": [
     "uv run -- python _project/scripts/agent_instruction_audit.py passes, and the audited total stays at or below 17,300 bytes (expected about -52 bytes against develop).",
     "AGENTS.md and the five docs above no longer say batch mode is the default for explicitly assigned cohesive batches. Each states opt-in (owner names it, two or more members, v2 capability) and the feature-branch default. Verified with git grep -n 'explicitly assigned cohesive' (no matches) on the final tree.",
-    "batch-feature-delivery.md has the Feature branch subsection, the Plan first paragraph and the new sizing sentence. The ADR has a dated status update. make docs-check (or the repo's docs lint target) passes.",
+    "batch-feature-delivery.md has the Feature branch subsection, the Plan first paragraph and the new sizing sentence. The ADR has a dated status update. make docs-check passes.",
     "make comment-policy-check and the changelog check pass, with exactly one new fragment.",
     "Decision gate: if the audit exceeds the budget after the rewrite, trim only inside the AGENTS.md 'Delivery modes' section. If that cannot fit, stop and ask the owner; never cut other sections."
   ],
@@ -21,6 +21,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "07fbf240f7994be5a89bc84f17e8c52a",
+      "session_id": "4e1f5de86962468394697835ee28c6b3"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae",
+      "at": "2026-11-07T21:51:29Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "997cfe9d63ca47cda64b3802a06855ba",
       "session_id": "4e1f5de86962468394697835ee28c6b3"
     }
   ]
