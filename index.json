@@ -5613,7 +5613,20 @@
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
-      "final_pr_history": [],
+      "final_pr": {
+        "head": "f6c55800ec1e02c7155dfe29e3620e6ccd5a28af",
+        "node_id": "PR_kwDOQ7J64c8AAAABNjyFTg",
+        "number": 4036,
+        "repository": "BenchBox-dev/BenchBox"
+      },
+      "final_pr_history": [
+        {
+          "at": "2026-11-07T19:05:26Z",
+          "head": "f6c55800ec1e02c7155dfe29e3620e6ccd5a28af",
+          "op_id": "cd7dbd2bed2242129a4ed3f5cd24e225",
+          "previous_head": null
+        }
+      ],
       "integrated_members": {
         "chdb-4x-engine-load-verification-20261006": {
           "accepted_head": "b041fa6faf086c57a524ef8b3f3f6fffd7bca004",
