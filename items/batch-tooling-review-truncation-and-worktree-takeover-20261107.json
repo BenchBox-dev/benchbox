@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "A member review with a long finding shows the full text, or a path to it, in batch-member-check output.",
+    "A successor leader can commit in the batch worktrees after a recorded handoff without BENCHBOX_WORKTREE_TAKEOVER."
+  ],
+  "description": "Seen across the batches run 2026-11-04 to 2026-11-07. (1) `make batch-member-check` truncates the member review findings to 400 characters, so a High finding is only readable by running scripts/oracle_local_review.py by hand. (2) When a leader session ran out of budget and a new session continued the same batch, commits in the integration and member worktrees needed BENCHBOX_WORKTREE_TAKEOVER=1 because the worktree owner marker named the old session. That is a normal handoff in batch work (handoffs.md), and it currently needs an override flag.\n\nChange. Print full findings, or write them to a file and print the path. Give the documented batch handoff (batch-recover or a successor leader) a supported way to take over worktree ownership, recorded in the ledger, without the generic override.\n\nGuardrails: batch tooling changes ship serially; work in a linked worktree; no explanatory comments.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T13:48:59Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "19239416e07d457a9eca8bb1d15e5e66",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}
