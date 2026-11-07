@@ -524,6 +524,7 @@ spark.stop()
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> DataprocAdapter:
         from benchbox.core.compute_resource import normalize_compute_options
+        from benchbox.platforms.base.config_utils import forward_plan_options
 
         config = normalize_compute_options("dataproc", config)
         params = {
@@ -554,6 +555,8 @@ spark.stop()
         ]:
             if key in config:
                 params[key] = config[key]
+
+        forward_plan_options(config, params)
 
         return cls(**params)
 

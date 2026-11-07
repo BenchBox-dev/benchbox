@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import Any
 
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.heavy_run_events import current_run_id
+from benchbox.utils.resource_limits import heavy_memory_budget_gib
 
 from ..utils.dependencies import (
     check_platform_dependencies,
@@ -58,6 +60,17 @@ _MAX_COMPATIBLE_JAVA_VERSION = 22
 _logger = logging.getLogger(__name__)
 _SPARK_AUTO_BROADCAST_THRESHOLD = "spark.sql.autoBroadcastJoinThreshold"
 _SPARK_AQE_KEYS = SPARK_AQE_KEYS
+_JVM_AND_PYTHON_ALLOWANCE_GIB = 3
+
+
+def bounded_default_driver_memory(master: str) -> str:
+    if not master.startswith("local") or current_run_id() is None:
+        return default_spark_driver_memory(master)
+    budget_gib = heavy_memory_budget_gib()
+    if budget_gib is None:
+        return default_spark_driver_memory(master)
+    scaled_heap_gib = int(default_spark_driver_memory(master, int(budget_gib * 1024**3)).removesuffix("g"))
+    return f"{max(1, min(scaled_heap_gib, int(budget_gib - _JVM_AND_PYTHON_ALLOWANCE_GIB)))}g"
 
 
 def _get_java_version(java_home: str | None = None) -> int | None:
@@ -180,7 +193,7 @@ class SparkAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
         self.warehouse_dir = config.get("warehouse_dir")
         self.database = config.get("database") or "default"
 
-        self.driver_memory = config.get("driver_memory") or default_spark_driver_memory(self.master)
+        self.driver_memory = config.get("driver_memory") or bounded_default_driver_memory(self.master)
         self.executor_memory = config.get("executor_memory") or "4g"
         self.executor_cores = config.get("executor_cores") if config.get("executor_cores") is not None else 2
         self.num_executors = config.get("num_executors")
@@ -589,14 +602,17 @@ class SparkAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
             for key, value in spark_conf.items():
                 builder = builder.config(key, value)
 
+            existing = (self._spark_session, SparkSession.getActiveSession())
             spark = builder.getOrCreate()
+            borrowed = any(session is spark for session in existing)
             self._configure_runtime_logging(spark)
 
             try:
                 spark.sql("SELECT 1").collect()
                 return True
             finally:
-                spark.stop()
+                if not borrowed:
+                    spark.stop()
         except Exception as e:
             self.logger.debug(f"Connection test failed: {e}")
             return False
