@@ -1286,7 +1286,7 @@
         }
       },
       "integration_branch": "feat/arrow-result-fetch-2",
-      "integration_head": "3d1ce4736abb40d4fa116135a62cd1133224b5fc",
+      "integration_head": "9d67b1c3a55cce7b836c3231a605170015587221",
       "integration_log": [
         {
           "at": "2026-11-07T01:19:32Z",
@@ -1734,6 +1734,26 @@
             "perf-arrow-fetch-native-drivers-20261030"
           ],
           "seq": 14
+        },
+        {
+          "at": "2026-11-07T09:15:35Z",
+          "changed_files": [
+            "benchbox/core/results/fetch_mode.py",
+            "benchbox/core/tpcds/power_test.py",
+            "benchbox/core/tpcds/throughput_test.py",
+            "benchbox/core/tpch/power_test.py",
+            "benchbox/core/tpch/throughput_test.py",
+            "benchbox/platforms/base/arrow_result.py",
+            "tests/unit/platforms/test_arrow_result_capture.py"
+          ],
+          "head": "9d67b1c3a55cce7b836c3231a605170015587221",
+          "kind": "fix",
+          "op_id": "a39d01f5290844e7a45369558ea11906",
+          "previous_head": "3d1ce4736abb40d4fa116135a62cd1133224b5fc",
+          "requires_acceptance": [
+            "perf-arrow-aware-result-capture-20261030"
+          ],
+          "seq": 15
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-arrow-result-fetch-2",
