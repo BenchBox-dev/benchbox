@@ -5598,7 +5598,7 @@
         }
       },
       "integration_branch": "feat/tpcds-dsdgen-maintenance",
-      "integration_head": "4c3dfe539f3b90f39bbf0c069650c145cd97d736",
+      "integration_head": "bc6b818e6ed41bde24fe1f67564dbf80e538cee7",
       "integration_log": [
         {
           "at": "2026-11-07T04:13:50Z",
@@ -5733,6 +5733,26 @@
             "tpcds-maintenance-dsdgen-refresh-data-20261103"
           ],
           "seq": 5
+        },
+        {
+          "at": "2026-11-07T07:34:18Z",
+          "changed_files": [
+            "benchbox/core/tpcds/generator/runner.py",
+            "benchbox/core/tpcds/maintenance_test.py",
+            "benchbox/platforms/singlestore.py",
+            "changelog.d/feat-tpcds-dsdgen-maintenance--tpcds-maintenance-dsdgen-refresh-data-20261103.json",
+            "docs/internal/tpc-measured-intervals.md",
+            "tests/unit/platforms/test_singlestore_refresh_ingest_nulls.py",
+            "tests/unit/platforms/test_tpcds_maintenance_primary_keys.py"
+          ],
+          "head": "bc6b818e6ed41bde24fe1f67564dbf80e538cee7",
+          "kind": "fix",
+          "op_id": "9083c3a553b6481abeacd3a2c664db70",
+          "previous_head": "4c3dfe539f3b90f39bbf0c069650c145cd97d736",
+          "requires_acceptance": [
+            "tpcds-maintenance-dsdgen-refresh-data-20261103"
+          ],
+          "seq": 6
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcds-dsdgen-maintenance",
