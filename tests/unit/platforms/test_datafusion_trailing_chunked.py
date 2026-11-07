@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -39,6 +40,8 @@ _TRAILING_ROWS = (
 def _write_variant(dir_path: Path, filename: str) -> Path:
     path = dir_path / filename
     if filename.endswith(".zst"):
+        if shutil.which("zstd") is None:
+            pytest.skip("zstd CLI not installed")
         compressor = CompressionManager().get_compressor("zstd")
         with compressor.open_for_write(path, "wt") as handle:
             handle.write(_TRAILING_ROWS)

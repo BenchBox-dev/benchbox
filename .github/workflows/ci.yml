@@ -10,7 +10,6 @@ env:
 on:
   pull_request:
     types: [opened, synchronize, reopened, edited, ready_for_review]
-    branches-ignore: [release]
 
 concurrency:
   group: ${{ (github.event.action == 'edited' && !github.event.changes.base) && format('ci-text-{0}', github.run_id) || format('ci-{0}', github.event.pull_request.number || github.ref) }}
@@ -123,14 +122,14 @@ jobs:
         run: |
           set -euo pipefail
           case "$BASE_REF" in
-            develop|release|published-results)
+            develop|published-results)
               echo "Base branch '$BASE_REF' is an integration branch; the normal CI lanes apply."
               ;;
             *)
               if [ "$IS_DRAFT" = "true" ]; then
                 echo "Draft PR stacked on '$BASE_REF'; it cannot be armed until it is retargeted at develop."
               else
-                echo "::error::Ready PR base branch is '$BASE_REF', not develop, release or published-results."
+                echo "::error::Ready PR base branch is '$BASE_REF', not develop or published-results."
                 echo "Only a draft PR may target a parent branch. After the parent merges, retarget this PR at develop and rebase it onto the squash commit."
                 exit 1
               fi
@@ -727,11 +726,6 @@ jobs:
         continue-on-error: true
         run: make audit-raw-check
 
-      - name: Release curation list drift check
-        id: guard-release-curation
-        continue-on-error: true
-        run: uv run -- python scripts/check_release_curation.py
-
       - name: Untracked skill-mirror drift guard (cloud parity)
         id: guard-skill-mirror-drift
         continue-on-error: true
@@ -1072,11 +1066,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
-      - name: Verify every upstream-port ledger entry is covered at the PR base
-        run: python3 scripts/theseus_ledger_check.py
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-
       - name: Download coverage selection
         if: needs.ci-paths.outputs.heavy-needed != 'true'
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
@@ -1188,13 +1177,6 @@ jobs:
         run: |
           free -m
           sudo dmesg -T 2>/dev/null | grep -iE 'out of memory|oom-kill|killed process' | tail -20 || true
-
-      - name: Run changed tests on the curated release tree
-        if: ${{ !cancelled() && matrix.shard_index == 0 && needs.ci-paths.outputs.code-tests-needed == 'true' }}
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          UV_PYTHON: '3.14'
-        run: uv run -- python scripts/release_curation_dry_run.py --changed-since "$BASE_SHA"
 
       - name: Upload medium shard evidence
         if: ${{ always() && needs.ci-paths.outputs.heavy-needed == 'true' }}
@@ -1547,6 +1529,7 @@ jobs:
             exit 1
           fi
           wheel=$(find "$PWD/dist" -maxdepth 1 -name '*.whl' -print -quit)
+          uv run -- python -m scripts.smoke_sqlglot_runtime_install "$wheel"
           tmpdir=$(mktemp -d)
           cd "$tmpdir"
           uv run --isolated --no-project --with "$wheel" -- python -c "import importlib.util; import benchbox; assert importlib.util.find_spec('pandas') is None, 'core install must not pull pandas'; print('Package installation successful (minimal import surface)')"

@@ -4,8 +4,9 @@
 
 from __future__ import annotations
 
+import contextlib
+import functools
 import gzip
-import io
 import math
 import os
 import re
@@ -30,6 +31,7 @@ from .base.data_loading import (
     GzipHandler,
     NoCompressionHandler,
     ZstdHandler,
+    normalize_line_breaks,
     resolve_csv_dialect,
 )
 from .base.mysql_wire import (
@@ -67,6 +69,21 @@ def _empty_fields_to_null(line: str, delimiter: str) -> str:
         fields.pop()
     joined = delimiter.join(r"\N" if field == "" else field for field in fields)
     return joined + delimiter if trailing else joined
+
+
+def _stream_load_text_body(data: bytes) -> bytes:
+    return normalize_line_breaks(data if data.isascii() else data.decode("latin-1").encode("utf-8"))
+
+
+def _stream_load_string_literal(value: str) -> str:
+    return "'" + value.replace("\\", "\\\\").replace("'", "\\'") + "'"
+
+
+def _null_mapped_columns_header(columns: list[str], null_marker: str) -> str:
+    sources = [f"tmp_{index}" for index in range(len(columns))]
+    marker = _stream_load_string_literal(null_marker)
+    mappings = [f"{column}=nullif({source},{marker})" for column, source in zip(columns, sources, strict=True)]
+    return ",".join(sources + mappings)
 
 
 def _format_filter_ratio(value: Any) -> str:
@@ -435,49 +452,64 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
     ) -> int:
         dialect = resolve_csv_dialect(data_source, source_table_name, data_file, benchmark)
         if _requests is not None:
-            return self._stream_load_file(table_name, data_file, dialect)
+            columns = self._table_column_names(connection, table_name) if dialect.null_marker is not None else None
+            return self._stream_load_file(table_name, data_file, dialect, columns)
         return self._insert_load_file(connection, table_name, data_file, dialect)
 
-    def _stream_load_file(self, table_name: str, data_file: Path, dialect: CsvDialect) -> int:
+    @staticmethod
+    def _table_column_names(connection: Any, table_name: str) -> list[str]:
+        cursor = connection.cursor()
+        try:
+            cursor.execute(f"DESCRIBE `{table_name}`")
+            return [str(row[0]) for row in cursor.fetchall()]
+        finally:
+            cursor.close()
+
+    def _stream_load_file(
+        self, table_name: str, data_file: Path, dialect: CsvDialect, columns: list[str] | None = None
+    ) -> int:
         data_file = Path(data_file)
 
         if get_data_extension(data_file) == ".parquet":
             return self._stream_load_parquet(table_name, data_file)
 
+        if dialect.null_marker is not None and not columns:
+            raise ValueError(f"Table column names are required to Stream Load {table_name} with NULL handling")
+
         file_size = data_file.stat().st_size
 
         if file_size > self.stream_load_chunk_size:
-            return self._stream_load_file_chunked(table_name, data_file, dialect)
+            return self._stream_load_file_chunked(table_name, data_file, dialect, columns)
 
-        return self._stream_load_single(table_name, data_file, dialect)
+        return self._stream_load_single(table_name, data_file, dialect, columns)
 
     @staticmethod
-    def _open_data_file_text(path: Path):
-        import contextlib
-
-        handler = FileFormatRegistry.get_compression_handler(path)
-
-        @contextlib.contextmanager
-        def _ctx():
-            if isinstance(handler, ZstdHandler):
-                import zstandard
-
-                dctx = zstandard.ZstdDecompressor()
-                with open(path, "rb") as raw, dctx.stream_reader(raw) as reader:
-                    yield io.TextIOWrapper(reader, encoding="latin-1", newline="")
-            elif isinstance(handler, GzipHandler):
-                yield gzip.open(path, "rt", encoding="latin-1")
-            elif isinstance(handler, NoCompressionHandler):
-                yield open(path, encoding="latin-1")
-            else:
-                raise ValueError(f"Unsupported compression handler {type(handler).__name__} for {path}")
-
-        return _ctx()
+    def _iter_line_aligned_chunks(reader: Any, chunk_size: int, skip_header: bool):
+        pending = b""
+        header_pending = skip_header
+        while True:
+            block = reader.read(chunk_size)
+            if not block:
+                break
+            pending += block
+            if header_pending:
+                newline = pending.find(b"\n")
+                if newline < 0:
+                    continue
+                pending = pending[newline + 1 :]
+                header_pending = False
+            if len(pending) < chunk_size:
+                continue
+            cut = pending.rfind(b"\n")
+            if cut < 0:
+                continue
+            yield pending[: cut + 1]
+            pending = pending[cut + 1 :]
+        if pending and not header_pending:
+            yield pending
 
     @staticmethod
     def _open_data_file_binary(path: Path):
-        import contextlib
-
         handler = FileFormatRegistry.get_compression_handler(path)
 
         @contextlib.contextmanager
@@ -489,13 +521,20 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
                 with open(path, "rb") as raw:
                     yield dctx.stream_reader(raw)
             elif isinstance(handler, GzipHandler):
-                yield gzip.open(path, "rb")
+                with gzip.open(path, "rb") as stream:
+                    yield stream
             elif isinstance(handler, NoCompressionHandler):
-                yield open(path, "rb")
+                with open(path, "rb") as stream:
+                    yield stream
             else:
                 raise ValueError(f"Unsupported compression handler {type(handler).__name__} for {path}")
 
         return _ctx()
+
+    @contextlib.contextmanager
+    def _open_data_file_chunks(self, path: Path):
+        with self._open_data_file_binary(path) as f:
+            yield iter(lambda: f.read(1 << 20), b"")
 
     def _stream_load_put(self, url: str, data: bytes | Callable[[], Any], headers: dict):
         kwargs = {
@@ -551,6 +590,8 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         delimiter: str | None = None,
         is_tpc: bool = False,
         skip_header: bool = False,
+        columns: list[str] | None = None,
+        null_marker: str | None = None,
     ) -> dict[str, str]:
         headers = {
             "Expect": "100-continue",
@@ -561,6 +602,8 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
             headers["column_separator"] = delimiter
         if is_tpc:
             headers["trim_double_quotes"] = "true"
+            if columns and null_marker is not None:
+                headers["columns"] = _null_mapped_columns_header(columns, null_marker)
         if skip_header:
             headers["skip_lines"] = "1"
         return headers
@@ -597,7 +640,9 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
 
         return result
 
-    def _stream_load_single(self, table_name: str, data_file: Path, dialect: CsvDialect) -> int:
+    def _stream_load_single(
+        self, table_name: str, data_file: Path, dialect: CsvDialect, columns: list[str] | None = None
+    ) -> int:
         delimiter = dialect.delimiter
         is_tpc = dialect.null_marker is not None
 
@@ -605,19 +650,22 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         url = f"{scheme}://{self.host}:{self.http_port}/api/{self.database}/{table_name}/_stream_load"
 
         headers = self._stream_load_headers(
-            format_name="csv", delimiter=delimiter, is_tpc=is_tpc, skip_header=dialect.has_header
+            format_name="csv",
+            delimiter=delimiter,
+            is_tpc=is_tpc,
+            skip_header=dialect.has_header,
+            columns=columns,
+            null_marker=dialect.null_marker,
         )
 
         if is_tpc:
-            with self._open_data_file_text(data_file) as f:
-                lines = f.read().splitlines()
-            lines = [_empty_fields_to_null(line, delimiter) for line in lines]
-            data = "\n".join(lines).encode("utf-8")
-        else:
             with self._open_data_file_binary(data_file) as f:
-                data = f.read()
-
-        resp = self._stream_load_put(url, data, headers)
+                body: Any = _stream_load_text_body(f.read())
+        elif isinstance(FileFormatRegistry.get_compression_handler(data_file), NoCompressionHandler):
+            body = functools.partial(self._open_data_file_binary, data_file)
+        else:
+            body = functools.partial(self._open_data_file_chunks, data_file)
+        resp = self._stream_load_put(url, body, headers)
         result = self._handle_stream_load_response(resp, context="Stream Load")
         return int(result.get("NumberLoadedRows", 0))
 
@@ -630,52 +678,31 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         result = self._handle_stream_load_response(resp, context="Stream Load (Parquet)")
         return int(result.get("NumberLoadedRows", 0))
 
-    def _stream_load_file_chunked(self, table_name: str, data_file: Path, dialect: CsvDialect) -> int:
+    def _stream_load_file_chunked(
+        self, table_name: str, data_file: Path, dialect: CsvDialect, columns: list[str] | None = None
+    ) -> int:
         delimiter = dialect.delimiter
         is_tpc = dialect.null_marker is not None
 
         scheme = "https" if self.use_tls else "http"
         url = f"{scheme}://{self.host}:{self.http_port}/api/{self.database}/{table_name}/_stream_load"
 
-        headers = self._stream_load_headers(format_name="csv", delimiter=delimiter, is_tpc=is_tpc)
+        headers = self._stream_load_headers(
+            format_name="csv", delimiter=delimiter, is_tpc=is_tpc, columns=columns, null_marker=dialect.null_marker
+        )
 
         total_rows = 0
         chunk_num = 0
 
-        with self._open_data_file_text(data_file) as f:
-            if dialect.has_header:
-                next(f, None)
-            while True:
-                chunk_lines: list[str] = []
-                chunk_bytes = 0
-
-                for line in f:
-                    line = line.rstrip("\n").rstrip("\r")
-                    if not line:
-                        continue
-
-                    if is_tpc:
-                        line = _empty_fields_to_null(line, delimiter)
-
-                    chunk_lines.append(line)
-                    chunk_bytes += len(line.encode("utf-8", errors="replace")) + 1
-
-                    if chunk_bytes >= self.stream_load_chunk_size:
-                        break
-
-                if not chunk_lines:
-                    break
-
+        with self._open_data_file_binary(data_file) as f:
+            for raw in self._iter_line_aligned_chunks(f, self.stream_load_chunk_size, dialect.has_header):
+                data = _stream_load_text_body(raw)
                 chunk_num += 1
-                data = "\n".join(chunk_lines).encode("utf-8", errors="replace")
-                self.log_verbose(
-                    f"Stream Load chunk {chunk_num} for {table_name}: {len(chunk_lines)} lines, {len(data):,} bytes"
-                )
+                self.log_verbose(f"Stream Load chunk {chunk_num} for {table_name}: {len(data):,} bytes")
 
                 resp = self._stream_load_put(url, data, headers)
                 result = self._handle_stream_load_response(resp, context=f"Stream Load chunk {chunk_num}")
-                chunk_rows = int(result.get("NumberLoadedRows", 0))
-                total_rows += chunk_rows
+                total_rows += int(result.get("NumberLoadedRows", 0))
 
         self.log_verbose(
             f"Chunked Stream Load complete for {table_name}: {chunk_num} chunks, {total_rows:,} total rows"

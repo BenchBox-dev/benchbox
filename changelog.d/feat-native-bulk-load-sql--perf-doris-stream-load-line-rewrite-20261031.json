@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "Doris TPC Stream Load maps empty fields to NULL server-side via the Stream Load columns header instead of rewriting every line in Python; file bytes are sent as-is apart from a bulk latin-1 to UTF-8 transcode, and chunked loads cut on line boundaries without per-line processing"
+    }
+  ]
+}

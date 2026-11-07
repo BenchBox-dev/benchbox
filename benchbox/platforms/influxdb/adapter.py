@@ -6,16 +6,19 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Iterator
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from benchbox.core.deployment import deployment_class
 from benchbox.platforms.base import DriverIsolationCapability, PlatformAdapter
+from benchbox.platforms.base.data_loading import DataLoadingError, FileFormatRegistry, _open_binary_stream
 from benchbox.utils.dependencies import (
     check_platform_dependencies,
     get_dependency_error_message,
     get_package_install_message,
 )
+from benchbox.utils.file_format import strip_compression_suffix
 
 from ._dependencies import INFLUXDB_AVAILABLE
 from .metadata import InfluxDBMetadataMixin
@@ -29,6 +32,8 @@ if TYPE_CHECKING:
     )
 
 logger = logging.getLogger(__name__)
+
+_HEADER_PEEK_BYTES = 1 << 16
 
 
 class InfluxDBAdapter(
@@ -120,7 +125,7 @@ class InfluxDBAdapter(
             )
             return {}, 0.0, {"skipped": True, "reason": "influxdb3-python not available"}
 
-        if not hasattr(connection, "write_batch"):
+        if not hasattr(connection, "write_table"):
             self.logger.warning(
                 "Connection does not support batch writes. "
                 "Data loading requires InfluxDBConnection with influxdb3-python client."
@@ -136,43 +141,83 @@ class InfluxDBAdapter(
         self.logger.info(f"Loading TSBS DevOps data from {data_dir}")
 
         for table_name, config in tsbs_tables.items():
-            csv_path = data_dir / f"{table_name}.csv"
-            if not csv_path.exists():
+            data_files = self._find_table_files(data_dir, table_name)
+            if not data_files:
                 self.logger.debug(f"No data file found for {table_name}, skipping")
                 continue
 
-            self.logger.info(f"Loading {table_name} from {csv_path}")
             table_start = time.perf_counter()
+            source_rows = 0
+            count = 0
+            for data_file in data_files:
+                self.logger.info(f"Loading {table_name} from {data_file}")
+                try:
+                    for batch in self._iter_tsbs_batches(data_file, config):
+                        source_rows += batch.num_rows
+                        count += connection.write_table(
+                            measurement=table_name,
+                            table=batch,
+                            tag_columns=config["tags"],
+                            field_columns=config["fields"],
+                            timestamp_column=config["timestamp"],
+                            precision="ns",
+                            batch_size=10000,
+                            float_only_fields=self._FLOAT_ONLY_FIELDS,
+                            string_fields=self._STRING_FIELDS if table_name == "tags" else frozenset(),
+                        )
+                except Exception as e:
+                    raise DataLoadingError(f"Failed to load {table_name} from {data_file.name}: {e}") from e
 
-            try:
-                records = self._read_tsbs_csv(csv_path, config)
+            if count != source_rows:
+                raise DataLoadingError(
+                    f"InfluxDB load of {table_name} wrote {count} of {source_rows} source rows; "
+                    "rows without any usable field values cannot be written"
+                )
+            self._verify_visible_rows(connection, table_name, count)
 
-                if records:
-                    count = connection.write_batch(
-                        measurement=table_name,
-                        records=records,
-                        tag_columns=config["tags"],
-                        field_columns=config["fields"],
-                        timestamp_column="time",
-                        precision="ns",
-                        batch_size=10000,
-                    )
-                    row_counts[table_name] = count
-                    load_metadata["tables_loaded"].append(table_name)
-                    self.logger.info(f"Loaded {count:,} rows into {table_name}")
-
-            except Exception as e:
-                self.logger.error(f"Failed to load {table_name}: {e}")
-                row_counts[table_name] = 0
+            if count:
+                row_counts[table_name] = count
+                load_metadata["tables_loaded"].append(table_name)
+                self.logger.info(f"Loaded {count:,} rows into {table_name}")
 
             table_time = time.perf_counter() - table_start
             total_time += table_time
             self.logger.debug(f"{table_name} load time: {table_time:.2f}s")
 
+        if not row_counts:
+            raise DataLoadingError(
+                f"No TSBS data files with rows found in {data_dir}; nothing was loaded into InfluxDB"
+            )
+
         load_metadata["total_rows"] = sum(row_counts.values())
         self.logger.info(f"Data loading complete: {load_metadata['total_rows']:,} total rows in {total_time:.2f}s")
 
         return row_counts, total_time, load_metadata
+
+    @staticmethod
+    def _find_table_files(data_dir: Path, table_name: str) -> list[Path]:
+        matches = sorted(
+            path
+            for path in data_dir.glob(f"{table_name}.csv*")
+            if path.is_file() and strip_compression_suffix(path).name == f"{table_name}.csv"
+        )
+        if len(matches) > 1:
+            raise DataLoadingError(f"Multiple data files for {table_name} in {data_dir}: {[m.name for m in matches]}")
+        return matches
+
+    def _verify_visible_rows(self, connection: Any, table_name: str, expected: int) -> None:
+        import time
+
+        deadline = time.monotonic() + self._VISIBILITY_TIMEOUT_S
+        visible = 0
+        while True:
+            visible = int(self.get_table_row_count(connection, table_name))
+            if visible >= expected:
+                return
+            if time.monotonic() >= deadline:
+                break
+            time.sleep(self._VISIBILITY_POLL_S)
+        raise DataLoadingError(f"InfluxDB reports {visible} rows in {table_name} after writing {expected} source rows")
 
     @staticmethod
     def _tsbs_table_configs() -> dict[str, dict[str, Any]]:
@@ -255,6 +300,23 @@ class InfluxDBAdapter(
             },
         }
 
+    _VISIBILITY_TIMEOUT_S = 30.0
+    _VISIBILITY_POLL_S = 0.5
+
+    _STRING_FIELDS = frozenset(
+        {
+            "region",
+            "datacenter",
+            "rack",
+            "os",
+            "arch",
+            "team",
+            "service",
+            "service_version",
+            "service_environment",
+        }
+    )
+
     _FLOAT_ONLY_FIELDS = frozenset(
         {
             "usage_user",
@@ -272,52 +334,27 @@ class InfluxDBAdapter(
         }
     )
 
-    def _read_tsbs_csv(self, csv_path: Path, config: dict[str, Any]) -> list[dict[str, Any]]:
+    def _iter_tsbs_batches(self, csv_path: Path, config: dict[str, Any]) -> Iterator[Any]:
         import csv
+        import io
 
-        records: list[dict[str, Any]] = []
-        with open(csv_path, newline="", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                record: dict[str, Any] = {}
+        import pyarrow as pa
+        import pyarrow.csv as pacsv
 
-                if config["timestamp"] in row:
-                    record["time"] = self._parse_timestamp(row[config["timestamp"]])
-
-                for tag in config["tags"]:
-                    if tag in row:
-                        record[tag] = row[tag]
-
-                for field in config["fields"]:
-                    if field in row and row[field]:
-                        parsed = self._parse_field_value(field, row[field])
-                        if parsed is not None:
-                            record[field] = parsed
-
-                records.append(record)
-        return records
-
-    @staticmethod
-    def _parse_timestamp(ts_str: str):
-        from datetime import datetime
-
-        try:
-            return datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
-        except ValueError:
-            try:
-                return datetime.fromtimestamp(float(ts_str))
-            except (ValueError, OSError):
-                return None
-
-    def _parse_field_value(self, field: str, raw: str):
-        try:
-            value = float(raw)
-            if value.is_integer() and field not in self._FLOAT_ONLY_FIELDS:
-                return int(value)
-            return value
-        except ValueError:
-            self.logger.debug(f"Skipping invalid value for field '{field}': {raw}")
-            return None
+        wanted = [name for name in (config["timestamp"], *config["tags"], *config["fields"]) if name]
+        handler = FileFormatRegistry.get_compression_handler(csv_path)
+        with _open_binary_stream(csv_path, handler) as stream:
+            head = stream.peek(_HEADER_PEEK_BYTES)[:_HEADER_PEEK_BYTES]
+            header = next(csv.reader(io.StringIO(head.decode("utf-8", errors="replace").split("\n", 1)[0])), [])
+            present = [name for name in wanted if name in header]
+            convert = pacsv.ConvertOptions(
+                include_columns=present,
+                column_types={name: pa.string() for name in present},
+                strings_can_be_null=False,
+                null_values=[],
+            )
+            with pacsv.open_csv(stream, convert_options=convert) as reader:
+                yield from reader
 
     def configure_for_benchmark(self, connection: Any, benchmark_type: str) -> None:
         self.logger.debug(f"Configuring InfluxDB for benchmark type: {benchmark_type}")

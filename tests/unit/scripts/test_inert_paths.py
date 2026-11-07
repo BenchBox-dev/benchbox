@@ -29,7 +29,6 @@ MACHINE_READ_SAMPLE = [
     "docs/internal/dev-loop-worktrees.md",
     "docs/publish-allowlist.txt",
     "docs/publish-exclusions.txt",
-    "tests/uat/CHARTER.md",
     ".claude/settings.json",
     ".claude/commands/blind-spot.md",
     ".claude/skills/code/SKILL.md",
@@ -38,7 +37,7 @@ MACHINE_READ_SAMPLE = [
     ".github/PULL_REQUEST_TEMPLATE.md",
 ]
 INERT_SAMPLE = [
-    "docs/internal/branch-rename-runbook.md",
+    "docs/internal/corpus-refresh.md",
     "_project/todo-db-export/index.md",
 ]
 
@@ -65,7 +64,7 @@ def test_seed_exceptions_are_machine_read_but_not_inert() -> None:
 
 
 def test_plain_prose_stays_inert() -> None:
-    assert inert.is_inert_path("docs/internal/branch-rename-runbook.md")
+    assert inert.is_inert_path("docs/internal/corpus-refresh.md")
     assert inert.is_inert_path("docs/some-guide.md")
     assert inert.is_inert_path("_project/todo-db-export/events.jsonl")
     assert not inert.is_inert_path("benchbox/core/engine.py")
@@ -73,7 +72,7 @@ def test_plain_prose_stays_inert() -> None:
 
 
 def test_inert_predicate_normalises_windows_separators() -> None:
-    assert inert.is_inert_path("docs\\internal\\branch-rename-runbook.md")
+    assert inert.is_inert_path("docs\\internal\\corpus-refresh.md")
 
 
 def test_soundness_paths_still_need_review() -> None:

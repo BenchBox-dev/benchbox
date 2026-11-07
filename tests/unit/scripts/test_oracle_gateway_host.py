@@ -32,16 +32,16 @@ pytestmark = [
     ),
 ]
 BOOTSTRAP_RELATIVE = "_project/scripts/theseus_bootstrap.py"
-TOKENS = {"oracle-ci": "i" * 48, "oracle-local": "l" * 48, "oracle-cloud": "c" * 48}
+TOKENS = {"review-ci": "i" * 48, "review-local": "l" * 48, "review-cloud": "c" * 48}
 MODELS = ["anthropic/model-a", "openai-codex/model-b"]
-PROVIDERS = ("anthropic", "openai-codex", "muse-code", "google-antigravity")
+PROVIDERS = ("anthropic", "openai-codex", "google-antigravity")
 GIT_IDENTITY = {
     "GIT_AUTHOR_NAME": "Test",
     "GIT_AUTHOR_EMAIL": "test@example.com",
     "GIT_COMMITTER_NAME": "Test",
     "GIT_COMMITTER_EMAIL": "test@example.com",
 }
-WHEEL_PATH = "/_assets/github.com/joeharris76/theseus/releases/download/v0.1.4/theseus_reviewer-0.1.4-py3-none-any.whl"
+WHEEL_PATH = "/_assets/github.com/joeharris76/theseus/releases/download/v0.1.6/theseus_reviewer-0.1.6-py3-none-any.whl"
 RETAINED_PATH = WHEEL_PATH.replace(".whl", ".retained.whl")
 
 FAKE_THESEUS = """\
@@ -76,7 +76,7 @@ def main():
     if command == "gateway-clients":
         with open(options["--omp-config"], encoding="utf-8") as handle:
             default = next(line.split(":", 1)[1].strip() for line in handle.read().splitlines() if line.startswith("default:"))
-        tokens = {"oracle-ci": options["--token-file"]}
+        tokens = {"review-ci": options["--token-file"]}
         for item in named:
             name, path = item.split("=", 1)
             tokens[name] = path
@@ -142,11 +142,11 @@ def _executable(path: Path, text: str) -> Path:
 
 
 def _wheel() -> bytes:
-    dist = "theseus_reviewer-0.1.4.dist-info"
+    dist = "theseus_reviewer-0.1.6.dist-info"
     files = {
         "theseus_reviewer/__init__.py": b"",
         "theseus_reviewer/cli.py": FAKE_THESEUS.encode(),
-        f"{dist}/METADATA": b"Metadata-Version: 2.1\nName: theseus-reviewer\nVersion: 0.1.4\n",
+        f"{dist}/METADATA": b"Metadata-Version: 2.1\nName: theseus-reviewer\nVersion: 0.1.6\n",
         f"{dist}/WHEEL": b"Wheel-Version: 1.0\nGenerator: test\nRoot-Is-Purelib: true\nTag: py3-none-any\n",
         f"{dist}/entry_points.txt": b"[console_scripts]\ntheseus = theseus_reviewer.cli:main\n",
     }
@@ -173,7 +173,7 @@ def _lock(sha256: str = WHEEL_SHA256) -> str:
         {
             "schema": 1,
             "package": "theseus-reviewer",
-            "version": "0.1.4",
+            "version": "0.1.6",
             "repository": "joeharris76/theseus",
             "source_commit": commit,
             "source_sha256": "1" * 64,
@@ -280,9 +280,9 @@ def host(tmp_path: Path, mirror: dict[str, bytes]) -> dict:
     clients_file = gateway_dir / "clients.json"
     clients_file.write_text(json.dumps(clients, indent=2) + "\n", encoding="utf-8")
     clients_file.chmod(0o600)
-    (gateway_dir / "client.token").write_text(TOKENS["oracle-ci"], encoding="utf-8")
-    (gateway_dir / "local-client.token").write_text(TOKENS["oracle-local"], encoding="utf-8")
-    (gateway_dir / "cloud-client.token").write_text(TOKENS["oracle-cloud"], encoding="utf-8")
+    (gateway_dir / "client.token").write_text(TOKENS["review-ci"], encoding="utf-8")
+    (gateway_dir / "local-client.token").write_text(TOKENS["review-local"], encoding="utf-8")
+    (gateway_dir / "cloud-client.token").write_text(TOKENS["review-cloud"], encoding="utf-8")
     home = tmp_path / "home"
     (home / ".omp").mkdir(parents=True)
     (home / ".omp" / "auth-broker.token").write_text("broker-token", encoding="utf-8")
@@ -311,7 +311,7 @@ def host(tmp_path: Path, mirror: dict[str, bytes]) -> dict:
         "PATH": f"{stubs}{os.pathsep}{os.environ['PATH']}",
         "THESEUS_INSTALL_CACHE": str(tmp_path / "theseus-cache"),
         "THESEUS_OMP_CACHE": str(tmp_path / "omp-cache"),
-        "ORACLE_PROMOTION_MIRROR": mirror["url"].decode(),
+        "REVIEW_PROMOTION_MIRROR": mirror["url"].decode(),
         "FAKE_THESEUS_LOG": str(tmp_path / "theseus-calls.log"),
     }
     return {
@@ -363,31 +363,31 @@ def _revoke(host: dict, name: str) -> subprocess.CompletedProcess[str]:
 
 
 def test_revoking_one_client_leaves_the_others_byte_identical_and_calls_no_service(host: dict) -> None:
-    result = _revoke(host, "oracle-local")
+    result = _revoke(host, "review-local")
     assert result.returncode == 0, result.stderr
-    remaining = {name: entry for name, entry in host["clients"].items() if name != "oracle-local"}
+    remaining = {name: entry for name, entry in host["clients"].items() if name != "review-local"}
     clients_file = host["dir"] / "clients.json"
     assert clients_file.read_text(encoding="utf-8") == json.dumps(remaining, indent=2) + "\n"
     assert (clients_file.stat().st_mode & 0o777) == 0o600
     assert not (host["dir"] / "local-client.token").exists()
-    assert (host["dir"] / "client.token").read_text(encoding="utf-8") == TOKENS["oracle-ci"]
-    assert (host["dir"] / "cloud-client.token").read_text(encoding="utf-8") == TOKENS["oracle-cloud"]
+    assert (host["dir"] / "client.token").read_text(encoding="utf-8") == TOKENS["review-ci"]
+    assert (host["dir"] / "cloud-client.token").read_text(encoding="utf-8") == TOKENS["review-cloud"]
     assert not host["calls"].exists()
     assert not [path for path in host["dir"].iterdir() if path.name.startswith(".clients.")]
-    assert TOKENS["oracle-local"] not in result.stdout + result.stderr
+    assert TOKENS["review-local"] not in result.stdout + result.stderr
 
 
 def test_revoking_a_client_whose_token_file_is_already_gone_still_removes_its_entry(host: dict) -> None:
     (host["dir"] / "cloud-client.token").unlink()
-    assert _revoke(host, "oracle-cloud").returncode == 0
-    assert list(json.loads((host["dir"] / "clients.json").read_text(encoding="utf-8"))) == ["oracle-ci", "oracle-local"]
+    assert _revoke(host, "review-cloud").returncode == 0
+    assert list(json.loads((host["dir"] / "clients.json").read_text(encoding="utf-8"))) == ["review-ci", "review-local"]
 
 
 def test_revoking_refuses_oracle_ci_and_unknown_names_and_changes_nothing(host: dict) -> None:
     before = (host["dir"] / "clients.json").read_bytes()
     outside = host["dir"].parent / "x-client.token"
     outside.write_text("keep", encoding="utf-8")
-    for name in ("oracle-ci", "oracle-missing", "local", "", "oracle-../x", "oracle-local/../../x"):
+    for name in ("review-ci", "review-missing", "local", "", "review-../x", "review-local/../../x"):
         assert _revoke(host, name).returncode != 0
     assert (host["dir"] / "clients.json").read_bytes() == before
     assert (host["dir"] / "client.token").exists()
@@ -398,7 +398,7 @@ def test_revoking_refuses_oracle_ci_and_unknown_names_and_changes_nothing(host: 
 def test_a_failed_revoke_leaves_the_clients_file_and_token_untouched(host: dict) -> None:
     clients_file = host["dir"] / "clients.json"
     clients_file.write_text("not json", encoding="utf-8")
-    assert _revoke(host, "oracle-local").returncode != 0
+    assert _revoke(host, "review-local").returncode != 0
     assert clients_file.read_text(encoding="utf-8") == "not json"
     assert (host["dir"] / "local-client.token").exists()
     assert not [path for path in host["dir"].iterdir() if path.name.startswith(".clients.")]
@@ -421,7 +421,7 @@ def test_a_token_file_that_derives_a_second_oracle_ci_is_refused(host: dict) -> 
     (host["dir"] / "ci-client.token").write_text("t" * 48, encoding="utf-8")
     result = _require_valid_token_files(host)
     assert result.returncode != 0
-    assert "ci-client.token" in result.stderr and "second oracle-ci" in result.stderr
+    assert "ci-client.token" in result.stderr and "second review-ci" in result.stderr
     assert "t" * 48 not in result.stdout + result.stderr
 
 
@@ -431,7 +431,7 @@ def test_the_existing_token_file_names_are_accepted(host: dict) -> None:
 
 @pytest.mark.parametrize("suffix", ["local", "my-ci", "ci2", "Ops", "my_ci", "a--b", "x-", "a.b"])
 def test_revoke_and_the_token_file_check_accept_the_same_names(host: dict, suffix: str) -> None:
-    name = f"oracle-{suffix}"
+    name = f"review-{suffix}"
     clients_file = host["dir"] / "clients.json"
     clients = json.loads(clients_file.read_text(encoding="utf-8"))
     clients[name] = _entry("z" * 48)
@@ -449,16 +449,16 @@ def test_the_clients_check_accepts_each_client_with_its_own_token_hash(host: dic
 
 
 def test_the_clients_check_refuses_a_client_whose_recorded_hash_is_not_its_token_files(host: dict) -> None:
-    host["clients"]["oracle-cloud"]["tokenSha256"] = host["clients"]["oracle-local"]["tokenSha256"]
+    host["clients"]["review-cloud"]["tokenSha256"] = host["clients"]["review-local"]["tokenSha256"]
     (host["dir"] / "clients.json").write_text(json.dumps(host["clients"]), encoding="utf-8")
     result = _source(host, "check_clients_file")
     assert result.returncode != 0
-    assert "oracle-cloud" in result.stderr
-    assert TOKENS["oracle-cloud"] not in result.stdout + result.stderr
+    assert "review-cloud" in result.stderr
+    assert TOKENS["review-cloud"] not in result.stdout + result.stderr
 
 
 def test_the_clients_check_refuses_a_client_that_is_missing_or_unlisted(host: dict) -> None:
-    del host["clients"]["oracle-cloud"]
+    del host["clients"]["review-cloud"]
     (host["dir"] / "clients.json").write_text(json.dumps(host["clients"]), encoding="utf-8")
     result = _source(host, "check_clients_file")
     assert result.returncode != 0
@@ -466,24 +466,24 @@ def test_the_clients_check_refuses_a_client_that_is_missing_or_unlisted(host: di
 
 
 def test_the_clients_check_refuses_models_that_differ_from_oracle_ci(host: dict) -> None:
-    host["clients"]["oracle-local"]["models"] = ["anthropic/model-a"]
+    host["clients"]["review-local"]["models"] = ["anthropic/model-a"]
     (host["dir"] / "clients.json").write_text(json.dumps(host["clients"]), encoding="utf-8")
     result = _source(host, "check_clients_file")
     assert result.returncode != 0
-    assert "oracle-local" in result.stderr and "models that differ from oracle-ci's" in result.stderr
+    assert "review-local" in result.stderr and "models that differ from review-ci's" in result.stderr
 
 
 def test_the_live_scope_check_passes_when_every_client_sees_the_same_models(host: dict) -> None:
     result = _source(host, 'check_gateway_scope "http://127.0.0.1:4000"')
     assert result.returncode == 0, result.stderr
-    assert "oracle-local models=2/2 usage=403" in result.stdout
+    assert "review-local models=2/2 usage=403" in result.stdout
 
 
 def test_the_live_scope_check_refuses_a_client_that_sees_different_models(host: dict) -> None:
-    env = {**host["env"], "CURL_ODD_TOKEN": TOKENS["oracle-cloud"]}
+    env = {**host["env"], "CURL_ODD_TOKEN": TOKENS["review-cloud"]}
     result = _source(host, 'check_gateway_scope "http://127.0.0.1:4000"', env)
     assert result.returncode != 0
-    assert "lists different models for oracle-cloud than for oracle-ci" in result.stderr
+    assert "lists different models for review-cloud than for review-ci" in result.stderr
 
 
 def _resolved(host: dict) -> subprocess.CompletedProcess[str]:
@@ -616,7 +616,7 @@ def test_gateway_clients_are_generated_from_origin_develop_not_the_checked_out_b
     assert result.returncode == 0, result.stderr
     assert "gateway: published at https://host.example.ts.net:4000" in result.stdout
     clients = json.loads((host["dir"] / "clients.json").read_text(encoding="utf-8"))
-    assert sorted(clients) == ["oracle-ci", "oracle-cloud", "oracle-local"]
+    assert sorted(clients) == ["review-ci", "review-cloud", "review-local"]
     for name, token in TOKENS.items():
         assert clients[name]["models"] == ["anthropic/from-develop", "openai-codex/model-b"]
         assert clients[name]["tokenSha256"] == hashlib.sha256(token.encode()).hexdigest()
@@ -640,7 +640,7 @@ def test_gateway_clients_follow_a_develop_config_that_changed_after_the_checkout
     _develop(host, {".github/oracle-omp-config.yml": _config("anthropic/newer-develop")})
     assert _script(host, "gateway").returncode == 0
     clients = json.loads((host["dir"] / "clients.json").read_text(encoding="utf-8"))
-    assert clients["oracle-ci"]["models"][0] == "anthropic/newer-develop"
+    assert clients["review-ci"]["models"][0] == "anthropic/newer-develop"
 
 
 def test_the_gateway_refuses_before_writing_clients_when_a_broker_login_is_missing(host: dict) -> None:

@@ -455,18 +455,13 @@
   {
    "disposition": "wiring-updated",
    "kinds": {
-    "extra": 1,
-    "file": 1
+    "extra": 1
    },
-   "occurrences": 2,
+   "occurrences": 1,
    "path": "Makefile",
    "rule": "build-and-ignore-wiring",
-   "target_count": 2,
+   "target_count": 1,
    "targets": [
-    {
-     "kind": "file",
-     "target": "docs/README.md"
-    },
     {
      "kind": "extra",
      "target": "scripts/check_public_contract_drift.py"
@@ -2423,22 +2418,6 @@
    ]
   },
   {
-   "disposition": "fixture-data",
-   "kinds": {
-    "pattern": 1
-   },
-   "occurrences": 1,
-   "path": "scripts/release_cut_abort.sh",
-   "rule": "test-sample-data",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "pattern",
-     "target": "docs/*"
-    }
-   ]
-  },
-  {
    "disposition": "site-pipeline-cutover",
    "kinds": {
     "extra": 1,
@@ -4132,7 +4111,7 @@
   "dispositions": {
    "contract-replaced": 1,
    "contract-tooling": 6,
-   "fixture-data": 38,
+   "fixture-data": 37,
    "governance-stays": 9,
    "historical-record": 112,
    "lock-test": 4,
@@ -4140,18 +4119,18 @@
    "site-pipeline-cutover": 4,
    "wiring-updated": 31
   },
-  "files": 217,
+  "files": 216,
   "kinds": {
    "built-url": 29037,
    "dir": 163,
    "extra": 37,
-   "file": 1378,
+   "file": 1377,
    "generated": 3,
-   "pattern": 333,
+   "pattern": 332,
    "root": 199,
    "unresolved": 2047
   },
-  "references": 33197,
+  "references": 33195,
   "unclassified": 0
  }
 }

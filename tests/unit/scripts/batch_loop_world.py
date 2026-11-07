@@ -45,6 +45,9 @@ def ok(data: dict) -> SimpleNamespace:
     return SimpleNamespace(returncode=0, stdout=json.dumps({"ok": True, "data": data}), stderr="")
 
 
+THESEUS_STUB = Path("/stub/theseus")
+
+
 def done(returncode: int = 0, stdout: str = "", stderr: str = "") -> SimpleNamespace:
     return SimpleNamespace(returncode=returncode, stdout=stdout, stderr=stderr)
 
@@ -64,11 +67,14 @@ class FakeTracker:
         self.claims: dict[str, str] = {}
         self.item_needs: dict[str, list[str]] = {}
         self.item_batch: dict[str, dict] = {}
+        self.item_sessions: dict[str, list[dict]] = {}
+        self.session_page = 100
+        self.sessions_stale = False
 
     def register(self, arguments: dict) -> None:
         self.batch = dict(arguments)
         self.repo = Path(arguments["integration_worktree"])
-        self.log = [{"seq": 0, "head": arguments["start_head"], "kind": "start"}]
+        self.log = [{"seq": 0, "head": arguments["start_head"], "kind": "start", "at": "2000-01-01T00:00:00Z"}]
         self.rev += 1
 
     @property
@@ -171,6 +177,18 @@ class FakeTracker:
 
     def show(self, args: list[str]) -> SimpleNamespace:
         if args[0] == "show":
+            options = dict(zip(args[2::2], args[3::2], strict=False))
+            if options.get("--field") == "sessions":
+                entries = self.item_sessions.get(args[1], [])
+                offset = int(options.get("--offset", 0))
+                data = {"id": args[1], "field": "sessions", "offset": offset, "total": len(entries), "rev": "r1"}
+                data["window"] = entries[offset : offset + self.session_page]
+                if offset + self.session_page < len(entries):
+                    data["continuation"] = {"field": "sessions", "offset": offset + self.session_page, "rev": "r1"}
+                if self.sessions_stale:
+                    data["stale"] = True
+                    data["cached_rev"] = data.pop("rev")
+                return ok(data)
             needs = self.item_needs.get(args[1], [])
             data = {"id": args[1], "needs": {"total": len(needs), "values": needs}}
             if args[1] in self.item_batch:
@@ -240,6 +258,12 @@ class World:
         self.review_support: list[dict[str, str]] = []
         self.failing_tests: set[str] = set()
         self.preflight_rc = 0
+        self.preflight_code = 0
+        self.preflight_reasons: list[str] = []
+        self.preflight_advisories: list[str] = []
+        self.preflight_stdout: str | None = None
+        self.preflight_heads: list[str] = []
+        self.preflight_arguments: list[list[str]] = []
         self.review_rc: int | None = None
         self.mapped_tests: list[str] = []
         self.origin = tmp_path / "origin.git"
@@ -255,7 +279,6 @@ class World:
             "tests/test_alpha.py": "def test_a():\n    assert True\n",
             "tests/test_mid.py": "def test_m():\n    assert True\n",
             "docs/note.md": "note\n",
-            ".github/oracle-reviewers.yml": "brief_max_bytes: 100000\n",
             bi.REVIEW_WRAPPER: TRUSTED_REVIEW_WRAPPER,
             **dict.fromkeys(bi.REVIEW_SUPPORT, "TRUSTED_SUPPORT = 1\n"),
             ".gitignore": ".todo-batch/\n",
@@ -269,6 +292,7 @@ class World:
         self.primary = tmp_path / "primary"
         subprocess.run(["git", "clone", "-q", str(self.origin), str(self.primary)], check=True, capture_output=True)
         monkeypatch.setattr(bi, "_run", self.run)
+        monkeypatch.setattr(bi, "_theseus_launcher", lambda repo: (THESEUS_STUB, {}))
         self.integration: Path | None = None
 
     def run(self, argv, cwd, **_kwargs):
@@ -286,6 +310,20 @@ class World:
         command = bi.TODO_DB_COMMAND
         if argv[: len(command)] == command:
             return self.tracker.show(argv[len(command) :])
+        if argv[:2] == [str(THESEUS_STUB), "preflight"]:
+            values = dict(zip(argv[2::2], argv[3::2], strict=False))
+            self.preflight_heads.append(values["--head"])
+            self.preflight_arguments.append(argv[2:])
+            reasons, advisories = self.preflight_reasons, self.preflight_advisories
+            if self.preflight_stdout is not None:
+                return done(self.preflight_code, self.preflight_stdout)
+            payload = {
+                "schema": 1,
+                "reviewable": self.preflight_code == 0,
+                "reasons": reasons,
+                "advisories": advisories,
+            }
+            return done(self.preflight_code, json.dumps(payload))
         if argv[:2] == ["make", "pr-preflight"]:
             return done(self.preflight_rc, stderr="preflight output")
         if argv[:3] == ["make", "-s", "changelog-check"]:

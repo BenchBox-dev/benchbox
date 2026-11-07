@@ -236,11 +236,7 @@ UI from its own `explorer/` source. Change the Explorer app there by pull reques
 corpus-archive branch that contributor PRs target and that mirrors develop's
 `results-data/`.
 
-> **Curated-preview state:** `release-cut` retains `results-data/` and the
-> three publication helpers under `_project/scripts/`; all other `_project/`
-> content remains development-only.
->
-> This is a curated preview, not a broad leaderboard or full-cohort claim.
+> **Curated-preview state:** this is a curated preview, not a broad leaderboard or full-cohort claim.
 > Completion evidence must pin the release SHA, artifact digest, deployment
 > ID, prior rollback target, deploy receipt, route/header checks, range
 > reads, bundle privacy scan, and live custom-domain behavior. A develop

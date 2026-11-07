@@ -15,8 +15,6 @@ import benchbox.platforms.questdb as questdb_module
 from benchbox.platforms.base.data_loading import CsvDialect
 from benchbox.platforms.questdb import (
     QuestDBAdapter,
-    _date_to_epoch_ns,
-    _ilp_escape_field,
     _ilp_escape_measurement,
     _ilp_escape_tag_key,
 )
@@ -25,6 +23,11 @@ pytestmark = [
     pytest.mark.unit,
     pytest.mark.fast,
 ]
+
+
+@pytest.fixture(autouse=True)
+def _no_ilp_timestamp_columns(monkeypatch):
+    monkeypatch.setattr(QuestDBAdapter, "_ilp_timestamp_columns", lambda self, table_name, designated: frozenset())
 
 
 @pytest.fixture()
@@ -274,7 +277,12 @@ class TestLoadDataBranches:
         mock_benchmark = self._make_benchmark({"dimbroker": str(data_file)})
         mock_benchmark.csv_normalize_booleans = True
 
-        with patch.object(adapter, "_load_table_via_ilp", return_value=1) as mock_ilp:
+        with (
+            patch.object(adapter, "_load_table_via_ilp", return_value=1) as mock_ilp,
+            patch.object(adapter, "_open_ilp_socket", return_value=Mock()),
+            patch.object(adapter, "_ilp_table_row_count", return_value=0),
+            patch.object(adapter, "_await_ilp_row_count"),
+        ):
             adapter.load_data(mock_benchmark, Mock(), tmp_path)
 
         assert mock_ilp.call_args.args[2].normalize_booleans is True
@@ -331,12 +339,156 @@ class TestLoadDataBranches:
         adapter = QuestDBAdapter(loading_method="ilp")
         mock_benchmark = self._make_benchmark({"lineitem": str(data_file)})
 
-        with patch.object(adapter, "_load_table_via_ilp", return_value=50) as mock_ilp:
+        with (
+            patch.object(adapter, "_load_table_via_ilp", return_value=50) as mock_ilp,
+            patch.object(adapter, "_open_ilp_socket", return_value=Mock()),
+            patch.object(adapter, "_ilp_table_row_count", return_value=0),
+            patch.object(adapter, "_await_ilp_row_count"),
+        ):
             stats, duration, _ = adapter.load_data(mock_benchmark, Mock(), tmp_path)
 
         assert mock_ilp.call_count == 1
         assert mock_ilp.call_args.args[:2] == ("lineitem", data_file)
         assert stats["lineitem"] == 50
+
+    def test_load_data_ilp_chunked_table_uses_one_socket_and_verifies_total(self, questdb_stubs, tmp_path):
+        files = []
+        for index in (1, 2, 3):
+            data_file = tmp_path / f"partsupp.tbl.{index}"
+            data_file.write_text("1|2\n", encoding="utf-8")
+            files.append(data_file)
+
+        adapter = QuestDBAdapter(loading_method="ilp")
+        mock_benchmark = self._make_benchmark({"partsupp": [str(f) for f in files]})
+        shared = Mock()
+
+        with (
+            patch.object(adapter, "_load_table_via_ilp", return_value=10) as mock_ilp,
+            patch.object(adapter, "_open_ilp_socket", return_value=shared) as mock_open,
+            patch.object(adapter, "_ilp_table_row_count", return_value=5),
+            patch.object(adapter, "_await_ilp_row_count") as mock_await,
+        ):
+            stats, _, _ = adapter.load_data(mock_benchmark, Mock(), tmp_path)
+
+        assert mock_open.call_count == 1
+        assert [call.args[3] for call in mock_ilp.call_args_list] == [shared] * 3
+        shared.close.assert_called_once()
+        mock_await.assert_called_once_with("partsupp", 35, 30)
+        assert stats["partsupp"] == 30
+
+    def test_load_data_ilp_row_loss_fails_loudly(self, questdb_stubs, tmp_path):
+        data_file = tmp_path / "partsupp.tbl"
+        data_file.write_text("1|2\n", encoding="utf-8")
+
+        adapter = QuestDBAdapter(loading_method="ilp")
+        mock_benchmark = self._make_benchmark({"partsupp": str(data_file)})
+
+        with (
+            patch.object(adapter, "_load_table_via_ilp", return_value=10),
+            patch.object(adapter, "_open_ilp_socket", return_value=Mock()),
+            patch.object(adapter, "_ilp_table_row_count", side_effect=[0, 7, 7]),
+            patch("benchbox.platforms.questdb._ILP_VERIFY_TIMEOUT_SECONDS", 0.0),
+            pytest.raises(RuntimeError, match="lost rows: sent 10, table holds 7"),
+        ):
+            adapter.load_data(mock_benchmark, Mock(), tmp_path)
+
+    def test_load_data_ilp_send_failure_is_not_swallowed(self, questdb_stubs, tmp_path):
+        data_file = tmp_path / "partsupp.tbl"
+        data_file.write_text("1|2\n", encoding="utf-8")
+
+        adapter = QuestDBAdapter(loading_method="ilp")
+        mock_benchmark = self._make_benchmark({"partsupp": str(data_file)})
+        sock = Mock()
+
+        with (
+            patch.object(adapter, "_load_table_via_ilp", side_effect=OSError("broken pipe")),
+            patch.object(adapter, "_open_ilp_socket", return_value=sock),
+            patch.object(adapter, "_ilp_table_row_count", return_value=0),
+            pytest.raises(RuntimeError, match="partsupp: broken pipe"),
+        ):
+            adapter.load_data(mock_benchmark, Mock(), tmp_path)
+
+        sock.close.assert_called_once()
+
+    def test_load_data_ilp_failure_does_not_stop_other_tables_but_still_raises(self, questdb_stubs, tmp_path):
+        files = {}
+        for name in ("lineitem", "region"):
+            data_file = tmp_path / f"{name}.tbl"
+            data_file.write_text("1|2\n", encoding="utf-8")
+            files[name] = str(data_file)
+
+        adapter = QuestDBAdapter(loading_method="ilp")
+        mock_benchmark = self._make_benchmark(files)
+        loaded: list[str] = []
+
+        def load(table_name, data_file, dialect, sock):
+            if table_name == "lineitem":
+                raise OSError("rejected")
+            loaded.append(table_name)
+            return 5
+
+        with (
+            patch.object(adapter, "_load_table_via_ilp", side_effect=load),
+            patch.object(adapter, "_open_ilp_socket", return_value=Mock()),
+            patch.object(adapter, "_ilp_table_row_count", return_value=0),
+            patch.object(adapter, "_await_ilp_row_count"),
+            pytest.raises(RuntimeError, match="1 table.*lineitem: rejected"),
+        ):
+            adapter.load_data(mock_benchmark, Mock(), tmp_path)
+
+        assert loaded == ["region"]
+
+    def test_await_ilp_row_count_waits_for_late_rows(self, questdb_stubs):
+        adapter = QuestDBAdapter(loading_method="ilp")
+
+        with (
+            patch.object(adapter, "_ilp_table_row_count", side_effect=[3, 8, 10]) as mock_count,
+            patch.object(questdb_module, "_ILP_VERIFY_POLL_SECONDS", 0),
+        ):
+            adapter._await_ilp_row_count("partsupp", 10, 10)
+
+        assert mock_count.call_count == 3
+
+    def test_await_ilp_row_count_extends_the_deadline_while_rows_keep_arriving(self, questdb_stubs):
+        adapter = QuestDBAdapter(loading_method="ilp")
+        clock = iter(range(0, 10_000, 100))
+
+        with (
+            patch.object(adapter, "_ilp_table_row_count", side_effect=[1, 2, 3, 10]),
+            patch.object(questdb_module, "_ILP_VERIFY_POLL_SECONDS", 0),
+            patch.object(questdb_module, "mono_time", side_effect=lambda: next(clock)),
+        ):
+            adapter._await_ilp_row_count("partsupp", 10, 10)
+
+    def test_await_ilp_row_count_fails_when_rows_stop_arriving(self, questdb_stubs):
+        adapter = QuestDBAdapter(loading_method="ilp")
+        clock = iter(range(0, 10_000, 100))
+
+        with (
+            patch.object(adapter, "_ilp_table_row_count", return_value=4),
+            patch.object(questdb_module, "_ILP_VERIFY_POLL_SECONDS", 0),
+            patch.object(questdb_module, "mono_time", side_effect=lambda: next(clock)),
+            pytest.raises(RuntimeError, match="without progress"),
+        ):
+            adapter._await_ilp_row_count("partsupp", 10, 10)
+
+    def test_await_ilp_row_count_fails_when_more_rows_than_sent(self, questdb_stubs):
+        adapter = QuestDBAdapter(loading_method="ilp")
+
+        with (
+            patch.object(adapter, "_ilp_table_row_count", return_value=12),
+            pytest.raises(RuntimeError, match="row count mismatch"),
+        ):
+            adapter._await_ilp_row_count("partsupp", 10, 10)
+
+    def test_ilp_row_count_raises_when_the_count_query_fails(self, questdb_stubs):
+        adapter = QuestDBAdapter(loading_method="ilp")
+
+        with (
+            patch.object(questdb_module, "_http_get", side_effect=ConnectionError("down")),
+            pytest.raises(RuntimeError, match="Cannot count rows"),
+        ):
+            adapter._ilp_table_row_count("partsupp")
 
     def test_load_data_rest_fails_records_zero_rows(self, questdb_stubs, tmp_path):
         data_file = tmp_path / "lineitem.csv"
@@ -717,63 +869,6 @@ class TestLoadTableViaIlp:
         assert captured_strip == [False]
 
 
-class TestRowToIlpLine:
-    def test_row_to_ilp_line_basic(self):
-        line = QuestDBAdapter._row_to_ilp_line(
-            "test_table",
-            ["id", "name", "val"],
-            ["42", "hello", "3.14"],
-            None,
-        )
-        assert line is not None
-        assert "test_table" in line
-        assert "id=42i" in line
-        assert 'name="hello"' in line
-        assert "val=3.14" in line
-
-    def test_row_to_ilp_line_with_timestamp(self):
-        line = QuestDBAdapter._row_to_ilp_line(
-            "orders",
-            ["order_id", "o_orderdate"],
-            ["1", "1994-01-01"],
-            "o_orderdate",
-        )
-        assert line is not None
-        parts = line.split(" ")
-        assert len(parts) >= 2
-        assert parts[-1].isdigit()
-
-    def test_row_to_ilp_line_empty_fields_returns_none(self):
-        line = QuestDBAdapter._row_to_ilp_line(
-            "test",
-            ["col1", "col2"],
-            ["", ""],
-            None,
-        )
-        assert line is None
-
-    def test_row_to_ilp_line_skips_empty_values(self):
-        line = QuestDBAdapter._row_to_ilp_line(
-            "test",
-            ["col1", "col2", "col3"],
-            ["42", "", "hello"],
-            None,
-        )
-        assert line is not None
-        assert "col1=42i" in line
-        assert "col2" not in line
-
-    def test_row_to_ilp_line_measurement_escape(self):
-        line = QuestDBAdapter._row_to_ilp_line(
-            "my table",
-            ["val"],
-            ["1"],
-            None,
-        )
-        assert line is not None
-        assert r"my\ table" in line
-
-
 class TestPrepareLocalLoadFileForQuestDB:
     @pytest.fixture(autouse=True)
     def _no_import_schema(self):
@@ -1036,66 +1131,6 @@ class TestIlpHelpers:
         assert _ilp_escape_tag_key("my=key") == r"my\=key"
         assert _ilp_escape_tag_key("my key") == r"my\ key"
 
-    def test_ilp_escape_field_integer(self):
-        result = _ilp_escape_field("count", "42")
-        assert result == "count=42i"
-
-    def test_ilp_escape_field_float(self):
-        result = _ilp_escape_field("price", "3.14")
-        assert result == "price=3.14"
-
-    def test_ilp_escape_field_string(self):
-        result = _ilp_escape_field("name", "hello")
-        assert result == 'name="hello"'
-
-    def test_ilp_escape_field_empty_returns_none(self):
-        result = _ilp_escape_field("name", "")
-        assert result is None
-
-    def test_ilp_escape_field_string_with_quotes(self):
-        result = _ilp_escape_field("name", 'say "hello"')
-        assert result == 'name="say \\"hello\\""'
-
-    def test_ilp_escape_field_negative_integer(self):
-        result = _ilp_escape_field("delta", "-5")
-        assert result == "delta=-5i"
-
-    def test_ilp_escape_field_scientific_notation(self):
-        result = _ilp_escape_field("val", "1.23e10")
-        assert result is not None
-        assert "val=" in result
-
-
-class TestDateToEpochNs:
-    def test_date_format_yyyy_mm_dd(self):
-        result = _date_to_epoch_ns("1994-01-01")
-        assert result is not None
-        assert result.isdigit()
-        assert int(result) > 0
-
-    def test_date_format_datetime(self):
-        result = _date_to_epoch_ns("1994-01-01 12:30:00")
-        assert result is not None
-        assert result.isdigit()
-
-    def test_date_format_iso_datetime(self):
-        result = _date_to_epoch_ns("1994-01-01T12:30:00")
-        assert result is not None
-        assert result.isdigit()
-
-    def test_invalid_date_returns_none(self):
-        result = _date_to_epoch_ns("not-a-date")
-        assert result is None
-
-    def test_empty_string_returns_none(self):
-        result = _date_to_epoch_ns("   ")
-        assert result is None
-
-    def test_epoch_ns_is_nanoseconds(self):
-        result = _date_to_epoch_ns("2000-01-01")
-        assert result is not None
-        assert int(result) > 9 * 10**17
-
 
 class TestAdapterInitEdgeCases:
     def test_ilp_host_defaults_to_host(self, questdb_stubs):
@@ -1250,7 +1285,12 @@ class TestLoadDataMultiChunk:
         mock_benchmark = Mock()
         mock_benchmark.tables = {"orders": [str(chunk_a), str(chunk_b)]}
 
-        with patch.object(adapter, "_load_table_via_ilp", side_effect=[5, 7]) as mock_ilp:
+        with (
+            patch.object(adapter, "_load_table_via_ilp", side_effect=[5, 7]) as mock_ilp,
+            patch.object(adapter, "_open_ilp_socket", return_value=Mock()),
+            patch.object(adapter, "_ilp_table_row_count", return_value=0),
+            patch.object(adapter, "_await_ilp_row_count"),
+        ):
             stats, _, _ = adapter.load_data(mock_benchmark, Mock(), tmp_path)
 
         assert mock_ilp.call_count == 2

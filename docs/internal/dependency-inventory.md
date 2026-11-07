@@ -47,7 +47,7 @@ extract). Together:
    `import` lines and were verified live by checking the relevant config
    surface (`pytest.ini`).
 6. **Ongoing check.** `make audit-deps` runs
-   `_project/scripts/dependency_audit/check_deps.py` in CI (`.github/workflows/lint.yml`)
+   `_project/scripts/dependency_audit/check_deps.py` in CI (`.github/workflows/ci.yml`)
    and fails if any declared package has zero import sites and is not in one
    of the two allowlists in `_project/scripts/dependency_audit/`. To add a
    justified exception, append an entry with a `reason:` to the appropriate

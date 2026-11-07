@@ -13,7 +13,6 @@ pytestmark = pytest.mark.medium
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 PR_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 PUBLICATION_DOCS_WORKFLOW = None
-RELEASE_TEST_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "test.yml"
 MAKEFILE = REPO_ROOT / "Makefile"
 LINT_JOB_ID = "code-lint"
 
@@ -35,7 +34,6 @@ EXCLUDED_STEPS: dict[str, str] = {
 
 MERGE_GATE_WORKFLOWS = {
     "ci.yml": PR_WORKFLOW,
-    "test.yml": RELEASE_TEST_WORKFLOW,
 }
 MERGE_GATE_SETUP_NAMES = {
     "Install Python dependencies",
@@ -50,7 +48,6 @@ MERGE_GATE_SETUP_NAMES = {
 MERGE_GATE_NON_GUARD_JOBS = {
     "certification-identity",
     "ci-required-result",
-    "release-required-result",
     "core",
     "explorer",
     "results-data",
@@ -76,17 +73,6 @@ MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "sql-execution-evidence", "Run the executed SQL comparison gate"): "sql-execution-gate",
     ("ci.yml", "package-smoke", "Build package"): "test-package",
     ("ci.yml", "ci-paths", "Check paths linked from the published site documentation"): "site-linked-paths-check",
-    (
-        "test.yml",
-        "release-readiness",
-        "Check bundled SQLGlot is on the newest upstream release",
-    ): "sqlglot-upstream-freshness-check",
-    (
-        "test.yml",
-        "release-readiness",
-        "Check bundled SQLGlot carries no published advisory",
-    ): "sqlglot-advisory-check",
-    ("test.yml", "test-package", "Build package"): "test-package",
     ("ci.yml", "ci-paths", "Check release content"): "release-check",
     ("ci.yml", "ci-paths", "Check changelog fragments"): "changelog-check",
     (
@@ -119,18 +105,12 @@ MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "code-lint", "Public contract drift check"): "ci-lint",
     ("ci.yml", "code-lint", "Documentation contracts drift check"): "ci-lint",
     ("ci.yml", "code-lint", "Dependency inventory drift check"): "ci-lint",
-    ("ci.yml", "code-lint", "Release curation list drift check"): "ci-lint",
     ("ci.yml", "code-lint", "Untracked skill-mirror drift guard (cloud parity)"): "ci-lint",
     ("ci.yml", "code-lint", "Check for unsafe patch() string paths in tests"): "ci-lint",
     ("ci.yml", "correctness-gate", "Run the required local-engine cases"): "test-required-local-cases",
     ("ci.yml", "correctness-gate", "Run the polars-df smoke and cross-surface gates on Polars 2.0.0"): (
         "polars-df-compat-check"
     ),
-    ("test.yml", "test", "Run linting"): "ci-lint",
-    ("test.yml", "test", "Run type checking"): "ci-lint",
-    ("test.yml", "compat-test", "Run linting"): "ci-lint",
-    ("test.yml", "compat-test", "Run type checking"): "ci-lint",
-    ("test.yml", "parity", "Verify parity fixtures match Python source"): "parity-check",
     ("ci.yml", "parity-check", "Verify parity fixtures match Python source"): "parity-check",
     ("ci.yml", "example-validation", "Validate examples and docs references"): "docs-validate",
     ("ci.yml", "example-validation", "Generate documentation inputs"): "docs-generate",
@@ -141,25 +121,7 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
         "A fast unit test, tests/unit/cli/test_shipped_docs_urls.py, that make test-fast and "
         "pr-preflight already run; the hosted step exists only so Markdown-only changes run it."
     ),
-    ("ci.yml", "medium-test", "Run changed tests on the curated release tree"): (
-        "The curated release-tree selector runs hosted against the PR base ref; no "
-        "standalone Make target invokes scripts/release_curation_dry_run.py, and "
-        "its logic is pinned by tests/unit/scripts/test_release_curation_dry_run.py."
-    ),
     ("ci.yml", "medium-test", "Verify the locked Theseus commit passed its required checks"): (
-        "Hosted check; it queries the check runs of the locked Theseus commit through the Actions "
-        "token, which has no local equivalent, and its logic is pinned by "
-        "tests/unit/scripts/test_theseus_release_check.py."
-    ),
-    ("ci.yml", "medium-test", "Verify every upstream-port ledger entry is covered at the PR base"): (
-        "Hosted check; it clones the locked Theseus source from GitHub and needs the PR base history, "
-        "and its decision logic is pinned by tests/unit/scripts/test_theseus_ledger_check.py."
-    ),
-    ("test.yml", "medium", "Verify every upstream-port ledger entry is covered at the PR base"): (
-        "Hosted check; it clones the locked Theseus source from GitHub and needs the base history, "
-        "and its decision logic is pinned by tests/unit/scripts/test_theseus_ledger_check.py."
-    ),
-    ("test.yml", "medium", "Verify the locked Theseus commit passed its required checks"): (
         "Hosted check; it queries the check runs of the locked Theseus commit through the Actions "
         "token, which has no local equivalent, and its logic is pinned by "
         "tests/unit/scripts/test_theseus_release_check.py."
@@ -235,25 +197,6 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
         "Hosted audit lane compares the PR event base and merge-queue ancestry; "
         "those refs are not available as a stable local input."
     ),
-    ("test.yml", "check-test-patterns", "Run patch safety check"): (
-        "Release-branch-only patch audit; no local target exists and its absence "
-        "is explicit rather than a silent CI-only guard."
-    ),
-    ("test.yml", "release-readiness", "Check dependency upper bounds"): (
-        "Release-candidate-only artifact report; local develop preflight does not "
-        "produce the release artifact it validates."
-    ),
-    ("test.yml", "release-readiness", "Check release branch curation"): (
-        "Release-candidate-only curation of the curated branch; it is not a develop-tree contract."
-    ),
-    ("test.yml", "parity", "Detect results explorer"): (
-        "Hosted Node-lane dependency sentinel; the local parity target assumes "
-        "the checked-in application and does not manufacture its optional tree."
-    ),
-    ("test.yml", "parity", "Run Vitest parity suite"): (
-        "Release parity's Node/npm suite is hosted in this workflow; it is not a "
-        "silent omission because the exception names the exact runner surface."
-    ),
     ("ci.yml", "ci-paths", "Check base branch"): (
         "Branch-identity guard with no local equivalent: the check reads the "
         "hosted PR base ref (`github.base_ref`), which has no meaning in a "
@@ -274,16 +217,6 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
     ),
     ("ci.yml", "medium-test", "Run medium tests for changed paths"): (
         "Runs the medium tests that `pr-preflight` maps from the changed paths; covered locally by `pr-preflight`."
-    ),
-    ("test.yml", "medium-collect", "Collect the complete medium tier"): (
-        "Hosted exact-SHA medium collection is consumed by the release shards; local test-medium runs it unsplit."
-    ),
-    ("test.yml", "medium", "Partition the complete medium tier"): (
-        "Hosted partitioning binds the shared collection artifact to this SHA; local test-medium runs the full set."
-    ),
-    ("test.yml", "medium", "Run medium tests"): "Covered by the local `test-medium` target.",
-    ("test.yml", "medium-coverage", "Verify complete medium shard coverage"): (
-        "Hosted evidence proves the four release shard assignments executed once; local test-medium runs the full set."
     ),
     ("ci.yml", "code-test", "Pre-build the assertion-rewrite cache"): (
         "Cache warm-up for the fast lane; it asserts nothing and only shortens collection in the step after it."
@@ -310,25 +243,6 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "audit-sha", "Fetch PR head for audit ancestry (merge queue only)"): (
         "Merge-queue-only ref preparation; those ephemeral refs do not exist in a stable local checkout."
     ),
-    ("test.yml", "test", "Run linting"): "Covered by the local `ci-lint` target.",
-    ("test.yml", "test", "Run type checking"): "Covered by the local `ci-lint` target.",
-    ("test.yml", "test", "Run fast tests"): "Covered by the local `test-fast` target.",
-    ("test.yml", "compat-test", "Run linting"): "Covered by the local `ci-lint` target.",
-    ("test.yml", "compat-test", "Run type checking"): "Covered by the local `ci-lint` target.",
-    ("test.yml", "compat-test", "Run fast tests"): "Covered by the local `test-fast` target.",
-    ("test.yml", "security", "Run security audit"): "Covered by the local `security-audit` target.",
-    ("test.yml", "integration-smoke", "Run integration smoke tests"): (
-        "Covered by the local `test-integration-smoke` target."
-    ),
-    ("test.yml", "integration-table-formats", "Run table-format integration tests"): (
-        "Covered by the local integration test target; the hosted job selects an optional table-format marker."
-    ),
-    ("test.yml", "integration", "Run integration tests"): "Covered by the local `test-integration` target.",
-    ("test.yml", "correctness-gate", "Run bounded real-result correctness gate"): (
-        "Covered by the local `test-correctness-gate` target."
-    ),
-    ("test.yml", "test-package", "Test package installation"): "Covered by the local `test-package` target.",
-    ("test.yml", "pyspark-tests", "Run PySpark tests"): "Covered by the local `test-pyspark` target.",
     ("ci.yml", "ruleset-drift", "Compare live governance with the trusted runbook"): (
         "Hosted governance check reads the live ruleset via the API with a "
         "secret token; covered locally by tests/unit/test_ruleset_drift.py."

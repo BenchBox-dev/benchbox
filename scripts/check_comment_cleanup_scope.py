@@ -1589,7 +1589,9 @@ def immutable_dependency_artifacts(
 
 ORACLE_GATE_CONTEXT = "oracle-gate"
 ORACLE_LOGIN = "benchbox-oracle"
-_ORACLE_VERDICT = re.compile(r"### (?:oracle-verdict|oracle-review-shadow): ([a-z]+) for `([0-9a-f]{40})`")
+_ORACLE_VERDICT = re.compile(
+    r"### (?:review-verdict|oracle-verdict|oracle-review-shadow): ([a-z]+) for `([0-9a-f]{40})`"
+)
 
 
 def _github_api(token: str, path: str) -> Any:

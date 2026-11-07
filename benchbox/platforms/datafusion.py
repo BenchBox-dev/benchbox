@@ -57,28 +57,37 @@ if TYPE_CHECKING:
 class DataFusionCursorCompat:
     def __init__(self, dataframe: Any):
         self._dataframe = dataframe
+        self._batches: list[Any] | None = None
         self._rows: list[tuple[Any, ...]] | None = None
         self.rowcount = -1
+
+    def _collect(self) -> list[Any]:
+        if self._batches is None:
+            self._batches = [batch for batch in self._dataframe.collect() if batch.num_rows > 0]
+            self.rowcount = sum(batch.num_rows for batch in self._batches)
+        return self._batches
 
     def _materialize(self) -> list[tuple[Any, ...]]:
         if self._rows is not None:
             return self._rows
 
         rows: list[tuple[Any, ...]] = []
-        batches = self._dataframe.collect()
+        for batch in self._collect():
+            if batch.num_columns == 0:
+                rows.extend([()] * batch.num_rows)
+            else:
+                rows.extend(zip(*(column.to_pylist() for column in batch.columns), strict=True))
 
-        for batch in batches:
-            column_names = [str(name) for name in batch.schema.names]
-            for row in batch.to_pylist():
-                rows.append(tuple(row.get(name) for name in column_names))
-
-        self.rowcount = len(rows)
         self._rows = rows
         return rows
 
     def fetchone(self) -> tuple[Any, ...] | None:
-        rows = self._materialize()
-        return rows[0] if rows else None
+        if self._rows is not None:
+            return self._rows[0] if self._rows else None
+        batches = self._collect()
+        if not batches:
+            return None
+        return tuple(column[0].as_py() for column in batches[0].columns)
 
     def fetchall(self) -> list[tuple[Any, ...]]:
         return self._materialize()

@@ -146,10 +146,13 @@ local engine adapters or the gate itself change.
 
 ## Adoption evidence
 
-Each wheel adoption PR pastes the gate output (candidate and baseline wheel
-versions, per-engine cell counts, verified improvements and expected
-differences) into its description. Verified improvements are published-result
-impacts and are listed as such.
+The gate output (candidate and baseline wheel versions, per-engine cell counts,
+verified improvements and expected differences) is the evidence for a wheel
+adoption. An adoption changes the runtime pin under `benchbox/_vendor/`, so CI
+runs the `sql-execution-evidence` job on every adoption PR, whether the delivery
+workflow (`.github/workflows/sqlglot-delivery.yml`) opened it or a maintainer
+adopted a wheel by hand; that job's output is the evidence reviewers read.
+Verified improvements are published-result impacts and are listed as such.
 
 ## Translator identity in result bundles
 
@@ -176,12 +179,14 @@ runtime, is an error in the submission validator, `results-data/validate_corpus.
 and the Explorer pipeline. It changes no ranking identity and carries no SQL
 hashes.
 
-## Fork diff
+## Fork diff (legacy diagnostic)
 
 The gate shows what the new wheel does to the shipped queries; it does not show
-what changed inside the fork. Each wheel adoption PR therefore also carries the
-fork diff from the previous pinned `fork_sha` to the new one, so the oracle and
-human reviewers read the translation semantics they are admitting:
+what changed inside the fork. Fork source review happens in the fork's own pull
+requests, not in BenchBox adoption PRs, and adoption PRs do not carry a fork
+diff. The `sqlglot-fork-diff` tool is a legacy diagnostic kept until its
+removal; use it, or `git diff <old> <new>` in a fork clone, to inspect a change
+between two fork commits:
 
 ```
 make sqlglot-fork-diff OUT=/tmp/fork-diff.md
@@ -194,9 +199,8 @@ tree. The tool fetches both commits from the fork into a throwaway bare
 repository and writes Markdown with the commit list, the diffstat and the
 per-file diff, `downstream/` and `sqlglot/benchbox/` first. Files that do not
 fit the size budget (50 KB by default) are listed by name, not dropped; read
-them with `git diff <old> <new> -- <path>` in a fork clone. Paste the output
-into the PR description next to the gate output. A rollback adoption prints
-`Direction: not-descendant`.
+them with `git diff <old> <new> -- <path>` in a fork clone. A rollback
+prints `Direction: not-descendant`.
 
 The evidence and the code that judges it are soundness paths
 (`.github/soundness-paths.txt`): the runtime pin and bundled wheel
@@ -245,6 +249,17 @@ The gate is built to catch the regressions that the text corpus accepted:
   Q95 stay vacuous on SQLite and each of the six `tpcds_obt-augmented` runs
   reports a SQLite `reference` finding such as
   `(0.0, None, None) != (21.0, 108654.84, -11795.43)`.
+- SQLite TPC-H Q19 and the Havoc `19_v1`..`19_v10` variants timing out at the
+  15 s budget on CI. The gate DDL declares no keys, and every `OR` branch of Q19
+  carries its own `p_partkey = l_partkey`, so SQLite has no index to drive the
+  join and plans `SCAN lineitem` x `SCAN part` (about 120 M row pairs at SF0.01,
+  1.2 M progress ticks of 1000 VM ops, about 3.9 s locally). `ANALYZE` does not
+  change that plan or the work done (measured identical, so it is not the
+  cause). Indexing the leading column of each table when `SqliteEngine.open`
+  loads it gives `SCAN lineitem` + `MULTI-INDEX OR` on `part (p_partkey=?)`
+  (about 1 K ticks) with the same `(22923.028,)` result.
+  `test_sqlite_engine_indexes_the_leading_key_so_an_or_join_stays_cheap`
+  asserts the result and a progress-handler operation budget, not a duration.
 
 ## TPC-DS OBT equivalence
 

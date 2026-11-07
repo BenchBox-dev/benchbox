@@ -111,7 +111,7 @@ class TestLintingConsolidation:
             assert cmd not in makefile_content, f"Found reference to {cmd} in Makefile"
 
     def test_github_actions_use_ruff(self):
-        lint_workflow_path = Path(__file__).parent.parent.parent / ".github" / "workflows" / "lint.yml"
+        lint_workflow_path = Path(__file__).parent.parent.parent / ".github" / "workflows" / "ci.yml"
 
         with open(lint_workflow_path, encoding="utf-8") as f:
             workflow_content = f.read()

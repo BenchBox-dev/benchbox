@@ -846,6 +846,7 @@ def test_scale_specific_runtime_envelope_prunes_only_that_scale(monkeypatch):
     assert scale_pruned == {
         ("sqlite", "datavault", 1.0),
         ("sqlite", "tpchavoc", 1.0),
+        ("pyspark-df", "tpchavoc", 0.1),
         *(cell for cell in _SF1_TIMEOUT_PRUNED_CELLS if cell[1] not in ("joinorder", "tpcds_obt")),
     }
 
@@ -853,6 +854,7 @@ def test_scale_specific_runtime_envelope_prunes_only_that_scale(monkeypatch):
     assert scale_pruned.isdisjoint(cells)
     for benchmark in ("datavault", "tpchavoc"):
         assert {("sqlite", benchmark, 0.01), ("sqlite", benchmark, 0.1)} <= cells
+    assert ("pyspark-df", "tpchavoc", 0.01) in cells
 
     unscaled = {
         (cell.platform, cell.benchmark)

@@ -12,12 +12,13 @@ from workflow_expressions import evaluate as _evaluate, render as _render
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-WORKFLOW = REPO_ROOT / ".github" / "workflows" / "oracle-gate.yml"
+WORKFLOW = REPO_ROOT / ".github" / "workflows" / "review-gate.yml"
 LOCK = REPO_ROOT / ".github" / "theseus-lock.json"
 CALLEE = re.compile(r"^joeharris76/theseus/\.github/workflows/gate\.yml@([0-9a-f]{40})$")
 ENGINE_PATHS = ("oracle_reviewers", "oracle_gate", "oracle_review_check", "uv run", "setup-uv")
+EXPECTED_SECRETS = {"REVIEW_APP_ID": "ORACLE_APP_ID", "REVIEW_APP_PRIVATE_KEY": "ORACLE_APP_PRIVATE_KEY"}
 SHA = "0123456789abcdef0123456789abcdef01234567"
-STANDIN = "Stand-in oracle review: APPROVE"
+STANDIN = "Stand-in review: APPROVE"
 
 
 def _load() -> dict[str, Any]:
@@ -39,7 +40,7 @@ def _text() -> str:
 
 def test_the_workflow_keeps_the_protocol_name_and_a_single_caller_job() -> None:
     workflow = _load()
-    assert workflow["name"] == "oracle-gate"
+    assert workflow["name"] == "review-gate"
     assert list(workflow["jobs"]) == ["gate"]
     assert workflow["permissions"] == {}
 
@@ -69,7 +70,7 @@ def test_pull_request_comment_bridge_dispatch_and_schedule_triggers_keep_their_s
         "edited",
     }
     assert triggers["issue_comment"]["types"] == ["created", "edited", "deleted"]
-    assert triggers["workflow_run"] == {"workflows": ["oracle-review"], "types": ["completed"]}
+    assert triggers["workflow_run"] == {"workflows": ["review-request"], "types": ["completed"]}
     inputs = triggers["workflow_dispatch"]["inputs"]
     assert inputs["pr"]["required"] is True
     assert inputs["head_sha"]["required"] is False
@@ -85,11 +86,12 @@ def test_the_caller_calls_the_pinned_theseus_gate_workflow_with_the_same_commit_
     assert len(re.findall(r"\b[0-9a-f]{40}\b", _text())) == 2
 
 
-def test_the_caller_passes_the_environment_and_the_develop_base_and_nothing_else() -> None:
+def test_the_caller_passes_the_environment_the_develop_base_and_the_policy_path_and_nothing_else() -> None:
     assert _job()["with"] == {
         "environment": "oracle",
         "theseus_ref": _job()["with"]["theseus_ref"],
         "gated_base": "develop",
+        "policy_path": ".github/oracle-reviewers.yml",
     }
 
 
@@ -97,18 +99,22 @@ def test_the_calling_job_grants_the_documented_permission_ceiling() -> None:
     assert _job()["permissions"] == {"actions": "write", "contents": "read", "pull-requests": "read"}
 
 
-def test_the_caller_has_no_steps_secrets_or_in_tree_engine_references() -> None:
+def test_the_caller_has_no_steps_and_passes_named_secrets_with_no_in_tree_engine_references() -> None:
     job = _job()
-    assert set(job) == {"permissions", "uses", "with"}
+    assert set(job) == {"permissions", "uses", "with", "secrets"}
     text = _text()
-    assert "secrets:" not in text and "inherit" not in text
+    assert _job()["secrets"] == {
+        name: "${{ secrets." + name.replace("REVIEW_", "ORACLE_") + " }}" for name in EXPECTED_SECRETS
+    }
+    assert "inherit" not in text
+    assert text.count("secrets:") == 1
     for needle in ENGINE_PATHS:
         assert needle not in text, needle
 
 
 def test_the_concurrency_group_keeps_the_gate_prefix_and_never_cancels_pushes() -> None:
     concurrency = _load()["concurrency"]
-    assert concurrency["group"].startswith("oracle-gate-${{")
+    assert concurrency["group"].startswith("review-gate-${{")
     assert concurrency["cancel-in-progress"] == "${{ github.event_name != 'push' }}"
     cancel = concurrency["cancel-in-progress"].removeprefix("${{").removesuffix("}}")
     assert _evaluate(cancel, {"github": {"event_name": "push"}}) is False
@@ -128,24 +134,40 @@ def _comment(action: str, body: str, previous: str | None = None) -> dict[str, A
 
 
 def test_push_sweeps_share_a_group_apart_from_pull_request_gates() -> None:
-    assert _group("push", {}) == "oracle-gate-push-sweep"
+    assert _group("push", {}) == "review-gate-push-sweep"
     for number in (7, 8):
-        assert _group("pull_request_target", {"pull_request": {"number": number}}) == f"oracle-gate-{number}"
+        assert _group("pull_request_target", {"pull_request": {"number": number}}) == f"review-gate-{number}"
 
 
 def test_marker_comments_and_marker_edits_gate_in_the_pull_request_group() -> None:
-    assert _group("issue_comment", _comment("created", STANDIN)) == "oracle-gate-8"
-    assert _group("issue_comment", _comment("edited", "withdrawn", STANDIN)) == "oracle-gate-8"
-    assert _group("issue_comment", _comment("edited", STANDIN, "draft")) == "oracle-gate-8"
+    assert _group("issue_comment", _comment("created", STANDIN)) == "review-gate-8"
+    assert _group("issue_comment", _comment("deleted", STANDIN)) == "review-gate-8"
+    assert _group("issue_comment", _comment("created", "Oracle adjudication: WITHDRAW D1 - done")) == "review-gate-8"
+    assert _group("issue_comment", _comment("created", "Review adjudication: WITHDRAW D1 - done")) == "review-gate-8"
+    assert _group("issue_comment", _comment("created", "Stand-in oracle review: APPROVE")) == "review-gate-8"
+    assert _group("issue_comment", _comment("edited", "withdrawn", STANDIN)) == "review-gate-8"
+    assert _group("issue_comment", _comment("edited", STANDIN, "draft")) == "review-gate-8"
+    assert (
+        _group("issue_comment", _comment("edited", "withdrawn", "Stand-in oracle review: APPROVE")) == "review-gate-8"
+    )
+    assert (
+        _group("issue_comment", _comment("edited", "withdrawn", "Oracle adjudication: WITHDRAW D1 - x"))
+        == "review-gate-8"
+    )
+    assert (
+        _group("issue_comment", _comment("edited", "withdrawn", "Review adjudication: WITHDRAW D1 - x"))
+        == "review-gate-8"
+    )
 
 
 def test_unrelated_comments_run_in_a_group_of_their_own() -> None:
-    assert _group("issue_comment", _comment("created", "looks good")) == "oracle-gate-ignored-55"
-    assert _group("issue_comment", _comment("edited", "fixed", "typo")) == "oracle-gate-ignored-55"
+    assert _group("issue_comment", _comment("created", "looks good")) == "review-gate-ignored-55"
+    assert _group("issue_comment", _comment("edited", "fixed", "typo")) == "review-gate-ignored-55"
+    assert _group("issue_comment", _comment("edited", "fixed", "typo")) == "review-gate-ignored-55"
 
 
 def test_a_workflow_run_bridge_is_keyed_by_the_head_sha() -> None:
-    assert _group("workflow_run", {"workflow_run": {"head_sha": SHA}}) == f"oracle-gate-bridge-{SHA}"
+    assert _group("workflow_run", {"workflow_run": {"head_sha": SHA}}) == f"review-gate-bridge-{SHA}"
 
 
 def _run_name(event_name: str, event: dict[str, Any], inputs: dict[str, Any] | None = None) -> str:
@@ -154,8 +176,8 @@ def _run_name(event_name: str, event: dict[str, Any], inputs: dict[str, Any] | N
 
 
 def test_only_the_scheduled_and_push_runs_are_titled_sweep() -> None:
-    assert _run_name("schedule", {}) == "oracle-gate (schedule sweep)"
-    assert _run_name("push", {}) == "oracle-gate (push sweep)"
+    assert _run_name("schedule", {}) == "review-gate (schedule sweep)"
+    assert _run_name("push", {}) == "review-gate (push sweep)"
     titles = [
         _run_name("workflow_run", {"workflow_run": {"head_sha": SHA}}),
         _run_name("pull_request_target", {"pull_request": {"number": 7}}),
@@ -166,13 +188,13 @@ def test_only_the_scheduled_and_push_runs_are_titled_sweep() -> None:
 
 
 def test_titles_carry_the_pull_request_number_or_the_source_head_sha() -> None:
-    assert _run_name("workflow_run", {"workflow_run": {"head_sha": SHA}}) == f"oracle-gate (workflow_run sha={SHA})"
-    assert _run_name("pull_request_target", {"pull_request": {"number": 7}}) == "oracle-gate (pull_request_target pr=7)"
-    assert _run_name("issue_comment", {"issue": {"number": 8}}) == "oracle-gate (issue_comment pr=8)"
-    assert _run_name("workflow_dispatch", {}, {"pr": "9"}) == "oracle-gate (workflow_dispatch pr=9)"
+    assert _run_name("workflow_run", {"workflow_run": {"head_sha": SHA}}) == f"review-gate (workflow_run sha={SHA})"
+    assert _run_name("pull_request_target", {"pull_request": {"number": 7}}) == "review-gate (pull_request_target pr=7)"
+    assert _run_name("issue_comment", {"issue": {"number": 8}}) == "review-gate (issue_comment pr=8)"
+    assert _run_name("workflow_dispatch", {}, {"pr": "9"}) == "review-gate (workflow_dispatch pr=9)"
 
 
-CALLER_FILES = {"oracle-gate.yml": "gate.yml", "oracle-verdict.yml": "review.yml"}
+CALLER_FILES = {"review-gate.yml": "gate.yml", "review-verdict.yml": "review.yml"}
 STATUS_ACTION = re.compile(r"commit-status|create-status|set-status", re.IGNORECASE)
 
 
@@ -196,7 +218,7 @@ def test_only_the_theseus_caller_jobs_can_post_the_gate_context() -> None:
                 text = str(step)
                 posts = bool(STATUS_ACTION.search(str(step.get("uses", "")))) or "statuses/" in run
                 variable_context = re.search(r"context[\"']?\s*[=:]\s*[\"']?\$", text)
-                if "oracle-gate" in text or (posts and variable_context):
+                if "oracle-gate" in text or "review-gate" in text or (posts and variable_context):
                     offenders.append((workflow.name, job_name, step.get("name")))
     assert offenders == []
     assert set(CALLER_FILES) == {

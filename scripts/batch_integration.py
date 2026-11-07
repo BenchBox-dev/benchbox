@@ -44,17 +44,20 @@ EVIDENCE_SCHEMA = "benchbox_batch_evidence_v2"
 CHECK_SCHEMA = "benchbox_member_check_v1"
 MEMBER_REVIEW_SCHEMA = "benchbox_member_review_v1"
 ACCEPTED_REVIEW_OUTCOMES = ("clear", "not-reviewed", "override")
+PREFLIGHT_EXIT_REVIEWABLE = 0
+PREFLIGHT_EXIT_NOT_REVIEWABLE = 3
+PREFLIGHT_REVIEWABLE = "reviewable"
+PREFLIGHT_NOT_REVIEWABLE = "not-reviewable"
+PREFLIGHT_UNDETERMINED = "undetermined"
 TODO_DB_COMMAND = ["uv", "run", "--project", "_project/scripts", "--locked", "--", "todo-db"]
 DEFAULT_PREFLIGHT_COMMAND = ["make", "pr-preflight"]
 REVIEW_INTERPRETER = "python3"
 REVIEW_WRAPPER = "scripts/oracle_local_review.py"
 REVIEW_SUPPORT = ("scripts/theseus_cli.py",)
 FINAL_SUITE = "member-reruns"
+LEADER_MEMBER_OPS = frozenset({"take", "release", "renew", "recover"})
 POLICY_PATH = ".github/oracle-reviewers.yml"
 SECTION_BUDGET = 6000
-DIFF_HEADROOM_BYTES = 32768
-FILE_LIST_HEADER_BYTES = 560
-UNREAD_MARK_BYTES = 34
 ALLOWED_VERIFICATION_PREFIXES = (
     ("uv", "run", "--", "python", "-m", "pytest"),
     ("uv", "run", "--", "ruff", "check"),
@@ -194,6 +197,37 @@ def scope_digest(scope: dict[str, list[str]]) -> str:
 
 def _matches_scope(path: str, patterns: list[str]) -> bool:
     return any(fnmatch.fnmatch(path, pattern) for pattern in patterns)
+
+
+def _primary_checkout(repo: Path) -> Path:
+    return Path(_git(repo, "rev-parse", "--path-format=absolute", "--git-common-dir")).parent
+
+
+def primary_scope_edits(repo: Path, patterns: list[str]) -> list[str]:
+    primary = _primary_checkout(repo)
+    if primary.resolve() == repo.resolve() or not (primary / ".git").is_dir():
+        return []
+    tokens = _git_raw(primary, "status", "--porcelain=v1", "-z", "--untracked-files=all").split(b"\0")
+    paths: set[str] = set()
+    index = 0
+    while index < len(tokens) and tokens[index]:
+        entry = os.fsdecode(tokens[index])
+        paths.add(entry[3:])
+        if "R" in entry[:2] or "C" in entry[:2]:
+            paths.add(os.fsdecode(tokens[index + 1]))
+            index += 2
+        else:
+            index += 1
+    return sorted(path for path in paths if _matches_scope(path, patterns))
+
+
+def _refuse_primary_edits(repo: Path, member: str, patterns: list[str]) -> None:
+    edits = primary_scope_edits(repo, patterns)
+    if edits:
+        raise BatchError(
+            f"the primary clone {_primary_checkout(repo)} has uncommitted changes in member {member!r}'s scope: "
+            f"{', '.join(edits[:10])}; move them into the member worktree or remove them, then run this again"
+        )
 
 
 def _ledger_dir(repo: Path, batch_id: str) -> Path:
@@ -551,6 +585,7 @@ def create_member(repo: Path, member: str, worktree_path: Path | None = None) ->
     if _branch(repo) != ledger["integration_branch"]:
         raise BatchError(f"integration worktree is not on {ledger['integration_branch']}")
     head = _rev(repo, "HEAD")
+    sessions_mark = _last_op_id(_item_sessions(repo, member))
     branch = member_branch_name(batch_id, member)
     if _git_ok(repo, "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"):
         raise BatchError(f"branch {branch} already exists; refusing to recreate member {member!r}")
@@ -566,6 +601,9 @@ def create_member(repo: Path, member: str, worktree_path: Path | None = None) ->
     _config_set(path, "id", batch_id)
     _config_set(path, "member", member)
     _config_set(path, "source-base", head)
+    _config_set(path, "created-at", _now())
+    if sessions_mark is not None:
+        _config_set(path, "sessions-mark", sessions_mark)
     return {"worktree": str(path), "branch": branch, "batch_id": batch_id, "member": member, "source_base": head}
 
 
@@ -617,6 +655,12 @@ def check_member(
     integration_head = _rev(repo, f"refs/heads/{branch}")
     if not _is_clean(repo):
         raise BatchError("member worktree is not clean; commit or remove changes first")
+    integration = _worktree_for_branch(repo, branch)
+    ledger = load_ledger(integration, batch_id) if integration is not None else None
+    patterns = ledger.get("scope", {}).get(member) if isinstance(ledger, dict) else None
+    if not isinstance(patterns, list) or not patterns:
+        raise BatchError(f"the integration worktree's ledger records no frozen scope for member {member!r}")
+    _refuse_primary_edits(repo, member, patterns)
     member_head = _rev(repo, "HEAD")
     if not _is_ancestor(repo, integration_head, member_head):
         raise BatchError(
@@ -675,54 +719,6 @@ def _read_check(member_worktree: Path, member_head: str, integration_head: str) 
     except ValueError:
         return None
     return record if isinstance(record, dict) and record.get("schema") == CHECK_SCHEMA else None
-
-
-def _brief_cap(repo: Path) -> int | None:
-    for base in (repo, ROOT):
-        path = base / POLICY_PATH
-        if path.is_file():
-            match = re.search(r"^brief_max_bytes:\s*(\d+)\s*$", path.read_text(encoding="utf-8"), re.MULTILINE)
-            if match:
-                return int(match.group(1))
-    return None
-
-
-def brief_sizes(repo: Path, head: str) -> dict | None:
-    cap = _brief_cap(repo)
-    if cap is None:
-        return None
-    base = _git(repo, "merge-base", DEVELOP_REF, head)
-    diff_bytes = len(_git_raw(repo, "diff", "--no-renames", base, head))
-    numstat = _git_raw(repo, "diff", "--no-renames", "--numstat", "-z", base, head).split(b"\0")
-    statuses = {}
-    raw_status = _git_raw(repo, "diff", "--no-renames", "--name-status", "-z", base, head).split(b"\0")
-    for index in range(0, len(raw_status) - 1, 2):
-        statuses[os.fsdecode(raw_status[index + 1])] = {"A": "added", "D": "removed"}.get(
-            os.fsdecode(raw_status[index]), "modified"
-        )
-    rows = []
-    for entry in numstat:
-        parts = entry.split(b"\t")
-        if len(parts) != 3:
-            continue
-        path = os.fsdecode(parts[2])
-        rows.append(f"{path} (+{os.fsdecode(parts[0])}/-{os.fsdecode(parts[1])}, {statuses.get(path, 'modified')})")
-    listing = len("\n".join(rows).encode("utf-8"))
-    block = FILE_LIST_HEADER_BYTES + listing + len(rows) * (UNREAD_MARK_BYTES + 1)
-    if listing > cap:
-        mode = "oversize"
-    elif diff_bytes <= cap - DIFF_HEADROOM_BYTES:
-        mode = "inline"
-    elif block > cap:
-        mode = "oversize"
-    else:
-        mode = "file-list"
-    return {
-        "brief_max_bytes": cap,
-        "inline_diff_bytes": diff_bytes,
-        "file_list_bytes": block,
-        "mode": mode,
-    }
 
 
 def _rerun(repo: Path, ledger: dict, member: str, command: list[str], suite: str, reason: str) -> dict:
@@ -938,23 +934,69 @@ def _landing_preconditions(repo: Path, ledger: dict, tracker: dict, member: str,
     }
 
 
-def _brief_gate(repo: Path, head: str, member_head: str) -> list[str]:
-    sizes_after = brief_sizes(repo, member_head)
-    if sizes_after is None:
-        return []
-    if sizes_after["mode"] == "oversize":
-        raise BatchError(
-            "landing would make the combined change's file list exceed brief_max_bytes "
-            f"({sizes_after['file_list_bytes']} > {sizes_after['brief_max_bytes']}); "
-            "the hosted reviewers would be skipped. Split the batch"
-        )
-    sizes_before = brief_sizes(repo, head)
-    if sizes_before is not None and sizes_before["mode"] == "inline" and sizes_after["mode"] != "inline":
-        return [
-            f"landing moves the final brief out of inline mode ({sizes_after['inline_diff_bytes']} diff bytes, "
-            f"cap {sizes_after['brief_max_bytes']})"
-        ]
-    return []
+def _theseus_launcher(repo: Path) -> tuple[Path, dict[str, str]]:
+    scripts = str(Path(__file__).resolve().parent)
+    if scripts not in sys.path:
+        sys.path.insert(0, scripts)
+    import theseus_cli
+
+    try:
+        program = theseus_cli.executable(repo, DEVELOP_REF)
+    except theseus_cli.TheseusError as exc:
+        raise BatchError(f"the Theseus install for the review preflight was refused: {exc}") from exc
+    return program, theseus_cli.launcher_environment(program)
+
+
+def review_preflight(repo: Path, head: str) -> dict:
+    try:
+        program, env = _theseus_launcher(repo)
+    except BatchError as exc:
+        return {"state": PREFLIGHT_UNDETERMINED, "exit": None, "reasons": [str(exc)], "advisories": []}
+    command = [
+        str(program),
+        "preflight",
+        "--policy",
+        POLICY_PATH,
+        "--base-ref",
+        DEVELOP_REF,
+        "--head",
+        head,
+        "--json",
+    ]
+    proc = _run(command, repo, env=env)
+    try:
+        payload = json.loads(proc.stdout)
+    except ValueError:
+        payload = None
+    valid = (
+        isinstance(payload, dict)
+        and isinstance(payload.get("reasons"), list)
+        and isinstance(payload.get("advisories"), list)
+        and all(isinstance(item, str) for item in payload["reasons"] + payload["advisories"])
+    )
+    reasons = list(payload["reasons"]) if valid else []
+    advisories = list(payload["advisories"]) if valid else []
+    if proc.returncode == PREFLIGHT_EXIT_REVIEWABLE and valid:
+        state = PREFLIGHT_REVIEWABLE
+    elif proc.returncode == PREFLIGHT_EXIT_NOT_REVIEWABLE and valid:
+        state = PREFLIGHT_NOT_REVIEWABLE
+    else:
+        state = PREFLIGHT_UNDETERMINED
+        if not reasons:
+            detail = (proc.stderr or proc.stdout or "no output").strip()[-400:]
+            reasons = [f"the Theseus preflight exited {proc.returncode} without a usable verdict: {detail}"]
+    return {"state": state, "exit": proc.returncode, "reasons": reasons, "advisories": advisories}
+
+
+def _preflight_gate(repo: Path, head: str) -> list[str]:
+    result = review_preflight(repo, head)
+    if result["state"] == PREFLIGHT_REVIEWABLE:
+        return list(result["advisories"])
+    if result["state"] == PREFLIGHT_NOT_REVIEWABLE:
+        lead = f"the change at {head[:12]} is not reviewable:"
+    else:
+        lead = f"the review preflight could not determine whether the change at {head[:12]} is reviewable:"
+    raise BatchError("\n".join([lead, *result["reasons"]]))
 
 
 def _overlap_reruns(
@@ -984,7 +1026,114 @@ def registered_dependencies(repo: Path, batch_id: str, member: str) -> list[str]
     return list(dependencies)
 
 
-def land_member(repo: Path, member: str, *, push: bool = True) -> dict:
+def _item_sessions(repo: Path, item: str) -> list[dict]:
+    entries: list[dict] = []
+    offset = 0
+    revision: str | None = None
+    while True:
+        args = ["show", item, "--field", "sessions", "--offset", str(offset), "--budget", str(SECTION_BUDGET)]
+        page = _todo_db_json(repo, [*args, "--rev", revision] if revision else args)
+        if page.get("stale") or page.get("cached_rev") is not None or not page.get("rev"):
+            raise BatchError("tracker read is stale or carries no revision (offline cache); reconnect and retry")
+        revision = str(page["rev"])
+        window = page.get("window")
+        if not isinstance(window, list):
+            raise BatchError(f"the tracker returned no session history for {item!r}")
+        entries.extend(entry for entry in window if isinstance(entry, dict))
+        continuation = page.get("continuation")
+        if not isinstance(continuation, dict):
+            return entries
+        offset = int(continuation["offset"])
+
+
+def _op_position(entries: list[dict], op_id: str | None) -> int | None:
+    if op_id is None:
+        return None
+    for index, entry in enumerate(entries):
+        if entry.get("op_id") == op_id:
+            return index
+    return None
+
+
+def _last_op_id(entries: list[dict]) -> str | None:
+    return str(entries[-1].get("op_id")) if entries and entries[-1].get("op_id") else None
+
+
+def member_tracker_writes(
+    entries: list[dict],
+    since: str,
+    until: str | None = None,
+    leader_op_ids: frozenset[str] = frozenset(),
+    after: str | None = None,
+    through: str | None = None,
+) -> list[dict]:
+    first = _op_position(entries, after)
+    last = _op_position(entries, through)
+    window = entries[(0 if first is None else first + 1) : (len(entries) if last is None else last + 1)]
+    return [
+        entry
+        for entry in window
+        if since <= str(entry.get("at", ""))
+        and (until is None or str(entry.get("at", "")) <= until)
+        and entry.get("op") not in LEADER_MEMBER_OPS
+        and entry.get("op_id") not in leader_op_ids
+    ]
+
+
+def _member_log_entries(tracker: dict, member: str) -> list[dict]:
+    return [
+        entry
+        for entry in tracker.get("integration_log", [])
+        if isinstance(entry, dict) and entry.get("kind") == "prepare" and entry.get("member") == member
+    ]
+
+
+def _first_landing(ledger: dict, tracker: dict, member: str) -> str | None:
+    times = [ledger["landings"].get(member, {}).get("landed_at")]
+    times += [entry.get("at") for entry in _member_log_entries(tracker, member)]
+    present = [str(time) for time in times if time]
+    return min(present) if present else None
+
+
+def _check_member_writes(
+    repo: Path, member: str, worktree: Path, ledger: dict, tracker: dict, accepted: frozenset[str]
+) -> tuple[list, list, str | None]:
+    warnings: list[str] = []
+    since = _config_get(worktree, "created-at")
+    if since is None:
+        log = tracker.get("integration_log", [])
+        since = str(log[0].get("at") or "") if log and isinstance(log[0], dict) else ""
+        if not since:
+            raise BatchError(f"member {member!r} has no creation time and the tracker records no batch start time")
+        warnings.append(
+            f"member {member!r} worktree records no creation time; its tracker writes were checked from {since}"
+        )
+    landing = ledger["landings"].get(member, {})
+    accepted = accepted | frozenset(landing.get("accepted_tracker_writes") or [])
+    leader_ops = frozenset(str(entry.get("op_id")) for entry in _member_log_entries(tracker, member))
+    through = landing.get("sessions_through")
+    entries = _item_sessions(repo, member)
+    writes = member_tracker_writes(
+        entries,
+        since,
+        _first_landing(ledger, tracker, member) if through is None else None,
+        leader_ops,
+        _config_get(worktree, "sessions-mark"),
+        through,
+    )
+    unexplained = [entry for entry in writes if entry.get("op_id") not in accepted]
+    if unexplained:
+        listed = "; ".join(f"{e.get('op')} {e.get('op_id')} at {e.get('at')} by {e.get('actor')}" for e in unexplained)
+        raise BatchError(
+            f"member {member!r} has tracker writes between {since} and its first landing ({listed}). "
+            "Members never write to the tracker: run each member in its own session with its own todo-db identity. "
+            "Inspect the writes with show_item, then land again with ACCEPT_WRITES=<op_id,...> to record them as "
+            "reviewed"
+        )
+    return sorted(str(entry.get("op_id")) for entry in writes), warnings, _last_op_id(entries)
+
+
+def land_member(repo: Path, member: str, *, push: bool = True, accepted_writes: frozenset[str] = frozenset()) -> dict:
     batch_id = require_role(repo, ROLE_INTEGRATION)
     ledger = _require_ledger(repo, batch_id)
     if member not in ledger["members"]:
@@ -999,6 +1148,8 @@ def land_member(repo: Path, member: str, *, push: bool = True) -> dict:
     if not _is_clean(repo):
         raise BatchError("integration worktree is not clean")
     facts = _member_landing_facts(repo, ledger, member)
+    _refuse_primary_edits(repo, member, ledger["scope"][member])
+    _check_member_writes(repo, member, facts["worktree"], ledger, tracker, accepted_writes)
     head = _rev(repo, "HEAD")
     merged_already = _already_merged(repo, ledger, tracker, member, facts, head, dependencies)
     if merged_already is not None:
@@ -1010,10 +1161,19 @@ def land_member(repo: Path, member: str, *, push: bool = True) -> dict:
             "for the prepare step"
         )
     gate = _landing_preconditions(repo, ledger, tracker, member, facts, head)
-    warnings = _brief_gate(repo, head, facts["member_head"])
+    _refuse_primary_edits(repo, member, ledger["scope"][member])
+    _, write_warnings, _ = _check_member_writes(repo, member, facts["worktree"], ledger, tracker, accepted_writes)
+    warnings = [*write_warnings, *_preflight_gate(repo, facts["member_head"])]
     if gate["preflight"] != [*DEFAULT_PREFLIGHT_COMMAND, f"BASE={head}"]:
         warnings.append(f"member preflight was not the default: {' '.join(gate['preflight']) or 'not recorded'}")
     merged = _git_merge(repo, member, head, facts["member_head"], ledger)
+    try:
+        reviewed_writes, _, sessions_through = _check_member_writes(
+            repo, member, facts["worktree"], ledger, tracker, accepted_writes
+        )
+    except BatchError:
+        _git(repo, "reset", "--hard", head)
+        raise
     landing = {
         "member_branch": facts["branch"],
         "member_worktree": str(facts["worktree"]),
@@ -1026,6 +1186,8 @@ def land_member(repo: Path, member: str, *, push: bool = True) -> dict:
         "review_outcome": gate["review"]["outcome"],
         "verification": gate["verification"],
         "landed_at": _now(),
+        "accepted_tracker_writes": reviewed_writes,
+        "sessions_through": sessions_through,
     }
     earlier = {key: value for key, value in ledger["landings"].items() if key != member}
     ledger["landings"][member] = landing
@@ -1227,8 +1389,15 @@ def advance_head(repo: Path, reason: str, *, push: bool = True) -> dict:
     if not _is_clean(repo):
         raise BatchError("integration worktree is not clean")
     expected, head = _resolve_advance(repo, ledger, tracker, reason)
+    advisories = _preflight_gate(repo, head)
     changed = _changed_files(repo, expected, head)
-    result: dict = {"reason": reason, "expected_head": expected, "head": head, "changed_files": changed}
+    result: dict = {
+        "reason": reason,
+        "expected_head": expected,
+        "head": head,
+        "changed_files": changed,
+        "advisories": advisories,
+    }
     failures: list[str] = []
     if reason == "fix":
         touched, failures = _fix_acceptance(repo, ledger, _receipts(tracker), head, changed)
@@ -1764,7 +1933,7 @@ def batch_status(repo: Path) -> dict:
         entries = ledger.get("acceptance", {}).get(member, [])
         if not entries or entries[-1].get("revision") != head or entries[-1].get("status") != "passed":
             stale.append(member)
-    sizes = brief_sizes(repo, head)
+    preflight = review_preflight(repo, head)
     save_ledger(repo, ledger)
     return {
         "batch_id": batch_id,
@@ -1775,7 +1944,7 @@ def batch_status(repo: Path) -> dict:
         "members": members_report,
         "acceptance_required": sorted(required),
         "acceptance_stale": [m for m in ledger["members"] if m in stale],
-        "brief": sizes,
+        "review_preflight": preflight,
         "final_pr": tracker.get("final_pr"),
         "owner_generation": "present" if ledger.get("owner_generation") else "missing: use recover_batch_owner",
         "next": next_steps,
@@ -1830,6 +1999,7 @@ def build_evidence(repo: Path) -> dict:
         raise BatchError("the final PR is not bound at the integration head; open the PR and bind_batch_pr first")
     if Path(str(tracker.get("integration_worktree"))).resolve() != repo.resolve():
         raise BatchError("this worktree is not the registered integration worktree")
+    _preflight_gate(repo, final_head)
     path = _ledger_dir(repo, batch_id) / "final-evidence.json"
     if path.exists():
         path.unlink()
@@ -1959,6 +2129,7 @@ def main(argv: list[str] | None = None) -> int:
     land = sub.add_parser("land", help="merge a checked member into the integration branch")
     land.add_argument("--member", required=True)
     land.add_argument("--no-push", action="store_true")
+    land.add_argument("--accept-writes", default="")
 
     advance = sub.add_parser("advance", help="record a leader fix commit or develop merge")
     advance.add_argument("--reason", required=True, choices=("fix", "develop-merge"))
@@ -2009,7 +2180,8 @@ def main(argv: list[str] | None = None) -> int:
                 )
             )
         elif args.command == "land":
-            _print(land_member(repo, args.member, push=not args.no_push))
+            accepted = frozenset(_parse_csv(args.accept_writes))
+            _print(land_member(repo, args.member, push=not args.no_push, accepted_writes=accepted))
         elif args.command == "advance":
             _print(advance_head(repo, args.reason, push=not args.no_push))
         elif args.command == "finish":

@@ -4,6 +4,7 @@ import ast
 import bz2
 import contextlib
 import csv
+import functools
 import gzip
 import hashlib
 import inspect
@@ -14,6 +15,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import uuid
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
@@ -32,6 +34,7 @@ from benchbox.utils.file_format import (
     get_delimiter_for_file,
     has_trailing_delimiter,
 )
+from benchbox.utils.iceberg_layout import resolve_iceberg_metadata_file
 from benchbox.utils.printing import quiet_console
 
 logger = logging.getLogger(__name__)
@@ -596,18 +599,22 @@ class Bzip2Handler(CompressionHandler):
             yield f
 
 
+def _require_zstd_cli(file_path: Path) -> None:
+    if shutil.which("zstd") is None:
+        raise DataLoadingError(
+            f"Cannot load zstd-compressed file '{file_path.name}': the 'zstd' command was not found "
+            "on PATH. Install it (e.g. 'brew install zstd' or 'apt-get install zstd') or regenerate "
+            "uncompressed data."
+        )
+
+
 class ZstdHandler(CompressionHandler):
     def __init__(self, adapter: Any = None):
         self.adapter = adapter
 
     @contextmanager
     def open(self, file_path: Path, newline: str | None = None, encoding: str = "utf-8") -> Iterator[Any]:
-        if shutil.which("zstd") is None:
-            raise DataLoadingError(
-                f"Cannot load zstd-compressed file '{file_path.name}': the 'zstd' command was not found "
-                "on PATH. Install it (e.g. 'brew install zstd' or 'apt-get install zstd') or regenerate "
-                "uncompressed data."
-            )
+        _require_zstd_cli(file_path)
 
         if self.adapter and hasattr(self.adapter, "log_verbose"):
             self.adapter.log_verbose(f"Decompressing {file_path.name} using system zstd command...")
@@ -1086,6 +1093,41 @@ class DuckDBParquetHandler(FileFormatHandler):
             return after - before
 
 
+def _connection_accepts_arrow(connection: Any) -> bool:
+    try:
+        import duckdb
+    except ImportError:
+        return False
+    return isinstance(connection, duckdb.DuckDBPyConnection)
+
+
+def insert_arrow_table(connection: Any, validated_table: str, arrow_table: Any) -> int:
+    row_count = arrow_table.num_rows
+    if row_count == 0:
+        return 0
+
+    column_names = arrow_table.schema.names
+    validated_columns = [validate_sql_identifier(col, "column name") for col in column_names]
+    columns_str = ",".join(validated_columns)
+
+    if _connection_accepts_arrow(connection):
+        view_name = f"_benchbox_arrow_{uuid.uuid4().hex[:12]}"
+        connection.register(view_name, arrow_table)
+        try:
+            connection.execute(f"INSERT INTO {validated_table} ({columns_str}) SELECT {columns_str} FROM {view_name}")
+        finally:
+            connection.unregister(view_name)
+        return row_count
+
+    placeholders = ",".join(["?" for _ in validated_columns])
+    insert_sql = f"INSERT INTO {validated_table} ({columns_str}) VALUES ({placeholders})"
+    data_tuples = [tuple(row[col] for col in column_names) for row in arrow_table.to_pylist()]
+    batch_size = 1000
+    for i in range(0, len(data_tuples), batch_size):
+        connection.executemany(insert_sql, data_tuples[i : i + batch_size])
+    return row_count
+
+
 class DeltaFileHandler(FileFormatHandler):
     def get_delimiter(self) -> str:
         return ""
@@ -1108,23 +1150,7 @@ class DeltaFileHandler(FileFormatHandler):
         if row_count == 0:
             return 0
 
-        data = arrow_table.to_pylist()
-
-        column_names = arrow_table.schema.names
-        validated_columns = [validate_sql_identifier(col, "column name") for col in column_names]
-        placeholders = ",".join(["?" for _ in validated_columns])
-        columns_str = ",".join(validated_columns)
-
-        insert_sql = f"INSERT INTO {validated_table} ({columns_str}) VALUES ({placeholders})"
-
-        data_tuples = [tuple(row[col] for col in column_names) for row in data]
-
-        batch_size = 1000
-        for i in range(0, len(data_tuples), batch_size):
-            batch = data_tuples[i : i + batch_size]
-            connection.executemany(insert_sql, batch)
-
-        return row_count
+        return insert_arrow_table(connection, validated_table, arrow_table)
 
 
 class DuckDBDeltaHandler(FileFormatHandler):
@@ -1153,9 +1179,10 @@ class DuckDBDeltaHandler(FileFormatHandler):
             self.adapter.capture_sql(insert_sql, "load_data", validated_table)
             return 1000
         else:
+            before = connection.execute(f"SELECT COUNT(*) FROM {validated_table}").fetchone()[0]
             connection.execute(insert_sql)
-            row_count = connection.execute(f"SELECT COUNT(*) FROM {validated_table}").fetchone()[0]
-            return row_count
+            after = connection.execute(f"SELECT COUNT(*) FROM {validated_table}").fetchone()[0]
+            return after - before
 
 
 class DuckLakeFileHandler(FileFormatHandler):
@@ -1190,23 +1217,7 @@ class DuckLakeFileHandler(FileFormatHandler):
             if row_count == 0:
                 return 0
 
-            data = arrow_table.to_pylist()
-
-            column_names = arrow_table.schema.names
-            validated_columns = [validate_sql_identifier(col, "column name") for col in column_names]
-            placeholders = ",".join(["?" for _ in validated_columns])
-            columns_str = ",".join(validated_columns)
-
-            insert_sql = f"INSERT INTO {validated_table} ({columns_str}) VALUES ({placeholders})"
-
-            data_tuples = [tuple(row[col] for col in column_names) for row in data]
-
-            batch_size = 1000
-            for i in range(0, len(data_tuples), batch_size):
-                batch = data_tuples[i : i + batch_size]
-                connection.executemany(insert_sql, batch)
-
-            return row_count
+            return insert_arrow_table(connection, validated_table, arrow_table)
 
         finally:
             temp_conn.close()
@@ -1234,8 +1245,6 @@ class DuckDBDuckLakeHandler(FileFormatHandler):
         except Exception:
             pass
 
-        import uuid
-
         catalog_alias = f"ducklake_{uuid.uuid4().hex[:8]}"
 
         escaped_metadata = escape_sql_string_literal(str(metadata_path))
@@ -1255,9 +1264,10 @@ class DuckDBDuckLakeHandler(FileFormatHandler):
                 self.adapter.capture_sql(insert_sql, "load_data", validated_table)
                 return 1000
             else:
+                before = connection.execute(f"SELECT COUNT(*) FROM {validated_table}").fetchone()[0]
                 connection.execute(insert_sql)
-                row_count = connection.execute(f"SELECT COUNT(*) FROM {validated_table}").fetchone()[0]
-                return row_count
+                after = connection.execute(f"SELECT COUNT(*) FROM {validated_table}").fetchone()[0]
+                return after - before
 
         finally:
             try:
@@ -1299,11 +1309,12 @@ class IcebergFileHandler(FileFormatHandler):
             )
             try:
                 table_identifier = ("benchbox", validated_table)
-                try:
-                    iceberg_table = catalog.load_table(table_identifier)
-                except Exception:
-                    catalog.register_table(table_identifier, str(file_path))
-                    iceberg_table = catalog.load_table(table_identifier)
+                metadata_file = resolve_iceberg_metadata_file(file_path)
+                if metadata_file is None:
+                    raise DataLoadingError(f"Table '{validated_table}': no Iceberg metadata found under {file_path}")
+                catalog.create_namespace_if_not_exists(table_identifier[0])
+                catalog.register_table(table_identifier, str(metadata_file))
+                iceberg_table = catalog.load_table(table_identifier)
 
                 arrow_table = iceberg_table.scan().to_arrow()
                 row_count = arrow_table.num_rows
@@ -1311,23 +1322,7 @@ class IcebergFileHandler(FileFormatHandler):
                 if row_count == 0:
                     return 0
 
-                data = arrow_table.to_pylist()
-
-                column_names = arrow_table.schema.names
-                validated_columns = [validate_sql_identifier(col, "column name") for col in column_names]
-                placeholders = ",".join(["?" for _ in validated_columns])
-                columns_str = ",".join(validated_columns)
-
-                insert_sql = f"INSERT INTO {validated_table} ({columns_str}) VALUES ({placeholders})"
-
-                data_tuples = [tuple(row[col] for col in column_names) for row in data]
-
-                batch_size = 1000
-                for i in range(0, len(data_tuples), batch_size):
-                    batch = data_tuples[i : i + batch_size]
-                    connection.executemany(insert_sql, batch)
-
-                return row_count
+                return insert_arrow_table(connection, validated_table, arrow_table)
             finally:
                 catalog.engine.dispose()
 
@@ -1382,23 +1377,7 @@ class VortexFileHandler(FileFormatHandler):
         if row_count == 0:
             return 0
 
-        data = arrow_table.to_pylist()
-
-        column_names = arrow_table.schema.names
-        validated_columns = [validate_sql_identifier(col, "column name") for col in column_names]
-        placeholders = ",".join(["?" for _ in validated_columns])
-        columns_str = ",".join(validated_columns)
-
-        insert_sql = f"INSERT INTO {validated_table} ({columns_str}) VALUES ({placeholders})"
-
-        data_tuples = [tuple(row[col] for col in column_names) for row in data]
-
-        batch_size = 1000
-        for i in range(0, len(data_tuples), batch_size):
-            batch = data_tuples[i : i + batch_size]
-            connection.executemany(insert_sql, batch)
-
-        return row_count
+        return insert_arrow_table(connection, validated_table, arrow_table)
 
 
 class DuckDBVortexHandler(FileFormatHandler):
@@ -1428,9 +1407,14 @@ class DuckDBVortexHandler(FileFormatHandler):
             self.adapter.capture_sql(insert_sql, "load_data", validated_table)
             return 1000
         else:
-            connection.execute(insert_sql)
-            row_count = connection.execute(f"SELECT COUNT(*) FROM {validated_table}").fetchone()[0]
-            return row_count
+            before = connection.execute(f"SELECT COUNT(*) FROM {validated_table}").fetchone()[0]
+            try:
+                connection.execute(insert_sql)
+            except Exception:
+                logger.debug("DuckDB read_vortex could not read the file, falling back to generic handler")
+                return VortexFileHandler().load_table(table_name, file_path, connection, benchmark, logger)
+            after = connection.execute(f"SELECT COUNT(*) FROM {validated_table}").fetchone()[0]
+            return after - before
 
 
 _CLICKHOUSE_TRUE_TOKENS = frozenset(("true", "t", "1", "yes"))
@@ -1859,6 +1843,18 @@ def is_delta_table_dir(path: Path | str) -> bool:
         return False
 
 
+def is_table_format_dir(path: Path | str) -> bool:
+    candidate = Path(path)
+    try:
+        return candidate.is_dir() and (
+            (candidate / "metadata.ducklake").exists()
+            or (candidate / "_delta_log").is_dir()
+            or (candidate / "metadata").is_dir()
+        )
+    except OSError:
+        return False
+
+
 class FileFormatRegistry:
     _format_handlers = {
         ".csv": lambda: DelimitedFileHandler(","),
@@ -1903,16 +1899,122 @@ class FileFormatRegistry:
         return handler_class()
 
 
+_REWRITE_CHUNK_BYTES = 1 << 20
+_CR_RE = re.compile(rb"\r\n?")
+_BLANK_LINES_RE = re.compile(rb"\n{2,}")
+
+
+@contextmanager
+def _open_binary_stream(file_path: Path, compression_handler: CompressionHandler) -> Iterator[Any]:
+    if isinstance(compression_handler, GzipHandler):
+        with gzip.open(file_path, "rb") as f:
+            yield f
+    elif isinstance(compression_handler, Bzip2Handler):
+        with bz2.open(file_path, "rb") as f:
+            yield f
+    elif isinstance(compression_handler, ZstdHandler):
+        _require_zstd_cli(file_path)
+        with subprocess.Popen(["zstd", "-d", str(file_path), "-c"], stdout=subprocess.PIPE) as proc:
+            try:
+                yield proc.stdout
+            finally:
+                proc.stdout.close()
+            if proc.wait() != 0:
+                raise subprocess.CalledProcessError(proc.returncode, proc.args)
+    else:
+        with open(file_path, "rb") as f:
+            yield f
+
+
+def _replace_boolean_fields(segment: bytes, delim: bytes) -> bytes:
+    if b"True" not in segment and b"False" not in segment:
+        return segment
+    padded = delim + segment.replace(b"\n", delim + b"\n" + delim)
+    for token, replacement in ((b"True", b"1"), (b"False", b"0")):
+        needle = delim + token + delim
+        swap = delim + replacement + delim
+        padded = padded.replace(needle, swap).replace(needle, swap)
+    return padded[len(delim) :].replace(delim + b"\n" + delim, b"\n")
+
+
+@functools.lru_cache(maxsize=8)
+def _null_text_field_re(delim: bytes) -> re.Pattern[bytes]:
+    escaped = re.escape(delim)
+    return re.compile(escaped + rb"null(?=" + escaped + rb")", re.IGNORECASE)
+
+
+def _blank_null_text_fields(segment: bytes, delim: bytes) -> bytes:
+    pattern = _null_text_field_re(delim)
+    padded = delim + segment.replace(b"\n", delim + b"\n" + delim)
+    if pattern.search(padded) is None:
+        return segment
+    padded = pattern.sub(delim, padded)
+    return padded[len(delim) :].replace(delim + b"\n" + delim, b"\n")
+
+
+def normalize_line_breaks(segment: bytes) -> bytes:
+    if b"\r" in segment:
+        segment = _CR_RE.sub(b"\n", segment)
+    if b"\n\n" in segment or segment.startswith(b"\n"):
+        segment = _BLANK_LINES_RE.sub(b"\n", segment).lstrip(b"\n")
+    return segment
+
+
+def _normalize_segment(
+    segment: bytes,
+    delim: bytes,
+    strip_trailing_delim: bool,
+    normalize_booleans: bool,
+    blank_null_text: bool = False,
+) -> bytes:
+    segment = normalize_line_breaks(segment)
+    if strip_trailing_delim:
+        segment = segment.replace(delim + b"\n", b"\n")
+    if normalize_booleans:
+        segment = _replace_boolean_fields(segment, delim)
+    if blank_null_text:
+        segment = _blank_null_text_fields(segment, delim)
+    return segment
+
+
+def _rewrite_stream(
+    src: Any,
+    dst: Any,
+    *,
+    delim: bytes,
+    strip_trailing_delim: bool,
+    normalize_booleans: bool,
+    blank_null_text: bool = False,
+) -> None:
+    carry = b""
+    while chunk := src.read(_REWRITE_CHUNK_BYTES):
+        buffer = carry + chunk
+        cut = buffer.rfind(b"\n")
+        if cut < 0:
+            carry = buffer
+            continue
+        carry = buffer[cut + 1 :]
+        dst.write(
+            _normalize_segment(buffer[: cut + 1], delim, strip_trailing_delim, normalize_booleans, blank_null_text)
+        )
+    if carry:
+        dst.write(_normalize_segment(carry + b"\n", delim, strip_trailing_delim, normalize_booleans, blank_null_text))
+
+
 @contextmanager
 def prepare_local_load_file(
     file_path: Path,
     *,
     dialect: CsvDialect,
     strip_trailing_delim: bool,
+    normalize_line_endings: bool = False,
+    blank_null_text: bool = False,
 ) -> Iterator[Path]:
     compression_handler = FileFormatRegistry.get_compression_handler(file_path)
     is_compressed = not isinstance(compression_handler, NoCompressionHandler)
-    needs_transform = is_compressed or strip_trailing_delim or dialect.normalize_booleans
+    needs_transform = (
+        is_compressed or strip_trailing_delim or dialect.normalize_booleans or normalize_line_endings or blank_null_text
+    )
 
     if not needs_transform:
         yield file_path
@@ -1924,20 +2026,16 @@ def prepare_local_load_file(
         os.close(tmp_fd)
         tmp_path = Path(tmp_name)
 
-        delim = dialect.delimiter
-        with tmp_path.open("w", encoding="utf-8", newline="") as dst:
-            with compression_handler.open(file_path) as src:
-                for line in src:
-                    line = line.rstrip("\n").rstrip("\r")
-                    if not line:
-                        continue
-                    if strip_trailing_delim and line.endswith(delim):
-                        line = line[: -len(delim)]
-                    if dialect.normalize_booleans:
-                        fields = line.split(delim)
-                        fields = ["1" if f == "True" else "0" if f == "False" else f for f in fields]
-                        line = delim.join(fields)
-                    dst.write(line + "\n")
+        delim = dialect.delimiter.encode("utf-8")
+        with tmp_path.open("wb") as dst, _open_binary_stream(file_path, compression_handler) as src:
+            _rewrite_stream(
+                src,
+                dst,
+                delim=delim,
+                strip_trailing_delim=strip_trailing_delim,
+                normalize_booleans=dialect.normalize_booleans,
+                blank_null_text=blank_null_text,
+            )
         yield tmp_path
     finally:
         if tmp_path is not None:
@@ -1950,6 +2048,51 @@ def _tables_map_to_no_files(tables: Any) -> bool:
         return False
     values = list(tables.values())
     return bool(values) and all(isinstance(value, (list, tuple)) and len(value) == 0 for value in values)
+
+
+_PLAIN_TEXT_SUFFIXES = {".tbl", ".csv", ".tsv", ".dat"}
+
+
+def _source_row_count(path: Path, has_header: bool) -> tuple[int, bool] | None:
+    try:
+        if path.is_dir():
+            metadata_file = resolve_iceberg_metadata_file(path)
+            if metadata_file is None:
+                return None
+            from pyiceberg.table import StaticTable
+
+            return StaticTable.from_metadata(str(metadata_file)).scan().count(), True
+        if path.suffix.lower() == ".parquet":
+            import pyarrow.parquet as pq
+
+            return pq.ParquetFile(path).metadata.num_rows, True
+        if path.suffix.lower() in _PLAIN_TEXT_SUFFIXES:
+            if path.stat().st_size == 0:
+                return 0, False
+            if not has_header:
+                return 1, False
+            with path.open("rb") as handle:
+                handle.readline()
+                return (1 if any(line.strip() for line in handle) else 0), False
+    except Exception:
+        return None
+    return None
+
+
+def _verify_loaded_row_count(table_name: str, source_paths: list[Path], loaded_rows: int, has_header: bool) -> None:
+    total = 0
+    exact = True
+    for source_path in source_paths:
+        counted = _source_row_count(source_path, has_header)
+        if counted is None:
+            return
+        total += counted[0]
+        exact = exact and counted[1]
+    if total > 0 and (loaded_rows == 0 or (exact and loaded_rows != total)):
+        raise DataLoadingError(
+            f"Table '{table_name}': loaded {loaded_rows} rows but the source has {total} rows "
+            f"({len(source_paths)} source path(s))"
+        )
 
 
 class DataLoader:
@@ -2071,7 +2214,7 @@ class DataLoader:
             if pp.is_file():
                 shard_paths.append(pp)
             elif pp.is_dir():
-                if is_delta_table_dir(pp):
+                if is_table_format_dir(pp):
                     shard_paths.append(pp)
                     continue
                 data_globs = ["*.tbl*", "*.csv*", "*.parquet*", "*.tsv*", "*.dat*"]
@@ -2105,20 +2248,22 @@ class DataLoader:
             return 0
 
         try:
-            return handler.load_table_bulk(
+            row_count = handler.load_table_bulk(
                 table_name, shard_paths, self.connection, self.benchmark, self.adapter.logger
             )
-        except ClickHouseServerLoadError:
+            self._verify_row_count(table_name, shard_paths, row_count, data_source)
+            return row_count
+        except DataLoadingError:
             raise
         except Exception as e:
             quiet_console.print(f"  ❌ Failed to bulk-load {table_name}: {e}")
-            return 0
+            raise DataLoadingError(f"Table '{table_name}': bulk load failed: {e}") from e
 
     def _load_single_file(self, table_name: str, file_path: Path, data_source: DataSource | None = None) -> int:
         if data_source is None:
             data_source = DataSource(source_type="legacy_mapping", tables={table_name: file_path})
 
-        if file_path.is_dir():
+        if file_path.is_dir() and not is_table_format_dir(file_path):
             raise DataLoadingError(
                 f"Table '{table_name}': expected file but found directory at {file_path}. "
                 f"This may indicate stale data from a previous conversion. "
@@ -2142,17 +2287,25 @@ class DataLoader:
                 return 0
 
             row_count = handler.load_table(table_name, file_path, self.connection, self.benchmark, self.adapter.logger)
-
+            self._verify_row_count(table_name, [file_path], row_count, data_source)
             return row_count
 
         except (subprocess.CalledProcessError, FileNotFoundError) as e:
-            quiet_console.print(f"⚠️  Skipping {file_path.name} - decompression/file error: {e}")
-            return 0
-        except ClickHouseServerLoadError:
+            quiet_console.print(f"  ❌ Failed to load {file_path.name}: {e}")
+            raise DataLoadingError(f"Table '{table_name}': decompression/file error for {file_path.name}: {e}") from e
+        except DataLoadingError:
             raise
         except Exception as e:
             quiet_console.print(f"  ❌ Failed to load {file_path.name}: {e}")
-            return 0
+            raise DataLoadingError(f"Table '{table_name}': load failed for {file_path.name}: {e}") from e
+
+    def _verify_row_count(
+        self, table_name: str, source_paths: list[Path], loaded_rows: int, data_source: DataSource
+    ) -> None:
+        if getattr(self.adapter, "dry_run_mode", False):
+            return
+        has_header = resolve_csv_dialect(data_source, table_name, source_paths[0], self.benchmark).has_header
+        _verify_loaded_row_count(table_name, source_paths, loaded_rows, has_header)
 
     def _create_custom_handler(self, file_path: Path, table_name: str, data_source: DataSource) -> Any | None:
         if not self.handler_factory:

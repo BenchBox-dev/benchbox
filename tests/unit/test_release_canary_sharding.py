@@ -588,7 +588,7 @@ def test_module_weight_is_the_sum_of_its_tests_not_its_slowest_test():
     assert sorted(len(shard) for shard in shards) == [3, 10]
 
 
-@pytest.mark.parametrize("filename", ["ci.yml", "trunk.yml", "trunk-coverage.yml", "test.yml"])
+@pytest.mark.parametrize("filename", ["ci.yml", "trunk.yml", "trunk-coverage.yml"])
 def test_medium_shards_run_with_module_scope_distribution(filename: str):
     workflow = yaml.safe_load((REPO_ROOT / ".github" / "workflows" / filename).read_text(encoding="utf-8"))
     runs = [str(step.get("run", "")) for job in workflow["jobs"].values() for step in job.get("steps", [])]

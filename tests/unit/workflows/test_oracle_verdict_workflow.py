@@ -12,10 +12,19 @@ from workflow_expressions import evaluate, render
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-WORKFLOW = REPO_ROOT / ".github" / "workflows" / "oracle-verdict.yml"
+WORKFLOW = REPO_ROOT / ".github" / "workflows" / "review-verdict.yml"
 LOCK = REPO_ROOT / ".github" / "theseus-lock.json"
 CALLEE = re.compile(r"^joeharris76/theseus/\.github/workflows/review\.yml@([0-9a-f]{40})$")
 ENGINE_PATHS = ("oracle_reviewers", "oracle_gate", "oracle_review_check", "uv run", "setup-uv")
+EXPECTED_SECRETS = {
+    "REVIEW_APP_ID": "ORACLE_APP_ID",
+    "REVIEW_APP_PRIVATE_KEY": "ORACLE_APP_PRIVATE_KEY",
+    "REVIEW_GATEWAY_TOKEN": "ORACLE_GATEWAY_TOKEN",
+    "REVIEW_GATEWAY_URL": "ORACLE_GATEWAY_URL",
+    "TS_OAUTH_CI_CLIENT_ID": "TS_OAUTH_CI_CLIENT_ID",
+    "TS_OAUTH_CI_SECRET": "TS_OAUTH_CI_SECRET",
+    "TYPESAFE_API_KEY": "TYPESAFE_API_KEY",
+}
 RUN_TITLE_PULL = re.compile(r"\bpr=(\d+)")
 SHA = "c" * 40
 
@@ -45,7 +54,7 @@ def _context(
 
 def test_the_workflow_keeps_the_protocol_name_and_a_single_caller_job() -> None:
     workflow = _load()
-    assert workflow["name"] == "oracle-verdict"
+    assert workflow["name"] == "review-verdict"
     assert list(workflow["jobs"]) == ["verdict"]
     assert workflow["permissions"] == {}
 
@@ -83,11 +92,13 @@ def test_the_caller_calls_the_pinned_theseus_review_workflow_with_the_same_commi
     assert len(re.findall(r"\b[0-9a-f]{40}\b", _text())) == 2
 
 
-def test_the_caller_passes_the_environment_and_the_develop_base_and_nothing_else() -> None:
+def test_the_caller_passes_the_environment_base_policy_path_and_tailscale_tag_and_nothing_else() -> None:
     assert _job()["with"] == {
         "environment": "oracle",
         "theseus_ref": _job()["with"]["theseus_ref"],
         "gated_base": "develop",
+        "policy_path": ".github/oracle-reviewers.yml",
+        "tailscale_tag": "tag:oracle-ci",
     }
 
 
@@ -95,10 +106,12 @@ def test_the_calling_job_grants_the_documented_permission_ceiling() -> None:
     assert _job()["permissions"] == {"actions": "write", "contents": "read", "pull-requests": "read"}
 
 
-def test_the_caller_has_no_steps_secrets_or_in_tree_engine_references() -> None:
-    assert set(_job()) == {"permissions", "uses", "with"}
+def test_the_caller_has_no_steps_and_passes_named_secrets_with_no_in_tree_engine_references() -> None:
+    assert set(_job()) == {"permissions", "uses", "with", "secrets"}
     text = _text()
-    assert "secrets:" not in text and "inherit" not in text
+    assert _job()["secrets"] == {name: "${{ secrets." + source + " }}" for name, source in EXPECTED_SECRETS.items()}
+    assert "inherit" not in text
+    assert text.count("secrets:") == 1
     for needle in ENGINE_PATHS:
         assert needle not in text, needle
 
@@ -110,14 +123,14 @@ def _cancels(event_name: str) -> Any:
 
 def test_the_concurrency_group_keeps_the_verdict_prefix() -> None:
     group = _load()["concurrency"]["group"]
-    assert group.startswith("oracle-verdict-${{")
+    assert group.startswith("review-verdict-${{")
     assert "github.event.changes.base" in group
 
 
 def test_push_and_schedule_sweeps_share_one_group_that_never_cancels() -> None:
     group = _load()["concurrency"]["group"]
     pushed = render(group, _context("push"))
-    assert pushed == render(group, _context("schedule")) == "oracle-verdict-sweep"
+    assert pushed == render(group, _context("schedule")) == "review-verdict-sweep"
     pull_groups = {render(group, _context("workflow_dispatch", inputs={"pr": str(number)})) for number in (7, 8)} | {
         render(group, _context("pull_request_target", {"action": "synchronize", "pull_request": {"number": 9}})),
         render(group, _context("issue_comment", {"issue": {"number": 10}})),
@@ -148,16 +161,16 @@ def test_a_dispatch_run_queues_in_the_pull_request_group_instead_of_cancelling()
         render(group, _context("workflow_dispatch", inputs={"pr": "7"})),
         render(group, _context("pull_request_target", pull)),
     }
-    assert groups == {"oracle-verdict-pr-7"}
+    assert groups == {"review-verdict-pr-7"}
     assert _cancels("workflow_dispatch") is False
 
 
 def test_a_title_edit_does_not_share_the_pull_request_group() -> None:
     group = _load()["concurrency"]["group"]
     edited = {"action": "edited", "pull_request": {"number": 7}}
-    assert render(group, _context("pull_request_target", edited)) == "oracle-verdict-run-55"
+    assert render(group, _context("pull_request_target", edited)) == "review-verdict-run-55"
     rebased = {**edited, "changes": {"base": {"ref": {"from": "main"}}}}
-    assert render(group, _context("pull_request_target", rebased)) == "oracle-verdict-pr-7"
+    assert render(group, _context("pull_request_target", rebased)) == "review-verdict-pr-7"
 
 
 def _run_title(event_name: str, event: dict[str, Any] | None = None, inputs: dict[str, Any] | None = None) -> str:
@@ -168,16 +181,16 @@ def _run_title(event_name: str, event: dict[str, Any] | None = None, inputs: dic
 @pytest.mark.parametrize(
     ("event_name", "event", "inputs", "title"),
     [
-        ("workflow_dispatch", {}, {"pr": "7", "head": SHA}, f"oracle-verdict (workflow_dispatch pr=7 head={SHA})"),
-        ("workflow_dispatch", {}, {"pr": "7"}, "oracle-verdict (workflow_dispatch pr=7)"),
+        ("workflow_dispatch", {}, {"pr": "7", "head": SHA}, f"review-verdict (workflow_dispatch pr=7 head={SHA})"),
+        ("workflow_dispatch", {}, {"pr": "7"}, "review-verdict (workflow_dispatch pr=7)"),
         (
             "pull_request_target",
             {"pull_request": {"number": 9, "head": {"sha": SHA}}},
             None,
-            f"oracle-verdict (pull_request_target pr=9 head={SHA})",
+            f"review-verdict (pull_request_target pr=9 head={SHA})",
         ),
-        ("issue_comment", {"issue": {"number": 10}}, None, "oracle-verdict (issue_comment pr=10)"),
-        ("schedule", {}, None, "oracle-verdict (schedule pr=sweep)"),
+        ("issue_comment", {"issue": {"number": 10}}, None, "review-verdict (issue_comment pr=10)"),
+        ("schedule", {}, None, "review-verdict (schedule pr=sweep)"),
     ],
 )
 def test_the_run_title_records_the_head_the_run_targets(

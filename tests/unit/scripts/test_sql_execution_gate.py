@@ -580,6 +580,32 @@ def test_sqlite_engine_interrupts_a_runaway_query_at_the_budget(tmp_path):
     engine.close()
 
 
+def test_sqlite_engine_indexes_the_leading_key_so_an_or_join_stays_cheap(tmp_path):
+    parts, lines = 200, 2000
+    (tmp_path / "part.tbl").write_text("".join(f"{k}|{'A' if k % 2 else 'B'}|\n" for k in range(1, parts + 1)))
+    (tmp_path / "item.tbl").write_text("".join(f"{i}|{i % parts + 1}|{i % 7}|\n" for i in range(lines)))
+    ddl = "CREATE TABLE part (p_key INTEGER, p_brand TEXT); CREATE TABLE item (i_id INTEGER, i_part INTEGER, i_qty INTEGER)"
+    sql = (
+        "SELECT SUM(i_qty) FROM item, part WHERE (p_key = i_part AND p_brand = 'A' AND i_qty < 3) "
+        "OR (p_key = i_part AND p_brand = 'B' AND i_qty > 5)"
+    )
+    expected = sum(
+        i % 7 for i in range(lines) if ((i % parts + 1) % 2 and i % 7 < 3) or (not (i % parts + 1) % 2 and i % 7 > 5)
+    )
+    engine = SqliteEngine(30.0)
+    engine.open(Dataset("t", ddl, {"part": tmp_path / "part.tbl", "item": tmp_path / "item.tbl"}), tmp_path)
+    ticks = [0]
+
+    def tick() -> int:
+        ticks[0] += 1
+        return 0
+
+    engine.connection.set_progress_handler(tick, 1000)
+    assert engine.execute(sql) == [(expected,)]
+    engine.close()
+    assert ticks[0] < 1000
+
+
 @pytest.mark.parametrize("base", [None, gate.Outcome(error="timeout"), gate.Outcome()])
 def test_obt_base_equivalence_fails_closed_without_base_rows(base):
     candidate = gate.Outcome(rows=[(1,)])

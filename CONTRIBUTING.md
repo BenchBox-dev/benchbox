@@ -48,7 +48,7 @@ This document provides guidelines and instructions for contributing.
 
 ## Branches & PR gate
 
-`develop` is the long-lived development branch and the repository's default branch; **all changes land via PR**. `release` is release-only (handled by the version-branch flow — see `docs/internal/release-guide.md`). PRs target `develop` and squash-merge with linear history.
+`develop` is the long-lived development branch and the repository's default branch; **all changes land via PR**. Releases are tags on `develop` commits (see `docs/internal/release-guide.md`). PRs target `develop` and squash-merge with linear history.
 
 Required CI on `develop` reports five unit results (`core`, `explorer`, `results-data`, `docs` and `tooling` from `.github/workflows/ci.yml`), plus `hold` and `oracle-gate`. `oracle-gate` is posted by the `benchbox-oracle` app from `develop` code and passes on a result-affecting PR only when the app's latest review of its current head reports success (or a listed attester has posted the stand-in approval for that head) and the oracle's threads are resolved. Soundness-path review applies even when the author uses the owner's account; once a finished branch is armed, auto-merge lands it when required checks are green and all review threads are resolved.
 
@@ -383,19 +383,13 @@ live only in `benchbox-site`. To change them, open a pull request there.
 ## Releasing
 
 External contributions land via PR against `develop` (squash-merge). Releases
-are cut by maintainers via the version-branch flow documented in
-[`docs/internal/release-guide.md`](docs/internal/release-guide.md):
-
-1. `make release-cut VERSION=X.Y.Z` from a clean linked worktree whose HEAD is
-   the freshly fetched `origin/develop` commit. It cuts `vX.Y.Z` with a
-   release-curated tree and opens a PR against `release`. The target refuses
-   the primary clone and any checkout that is dirty, ahead, or behind.
-2. Review the PR and wait for `validate-base` and `release-required-result`.
-3. `make release-finalize VERSION=X.Y.Z` merges and tags the release; `release.yml`
-   publishes to PyPI.
-
-Use `make release-cut-abort VERSION=X.Y.Z` to back out an uncommitted cut from
-the worktree that created it.
+are cut by maintainers from `develop`: a release preparation PR (`make release-prep VERSION=X.Y.Z`)
+merges like any other PR, then an annotated `vX.Y.Z` tag on a
+commit with a green `trunk.yml` run starts `release-v2.yml`, which publishes to
+PyPI. The steps are in
+[`docs/internal/release-guide.md`](docs/internal/release-guide.md) and the
+publishing contract in
+[`docs/internal/release-artifacts.md`](docs/internal/release-artifacts.md).
 
 Never edit `CHANGELOG.md`; its `[Unreleased]` section stays empty and CI fails
 a pull request that adds text there. A pull request that changes shipped code

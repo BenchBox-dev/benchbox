@@ -35,7 +35,6 @@ CLI_DESCRIPTION = (
     "      carry the requested version;\n"
     "    * ``CHANGELOG.md`` has a dated, curated section for the version;\n"
     "    * the ``uv.lock`` schema revision has not been downgraded;\n"
-    "    * every top-level path is accounted for in the release curation lists;\n"
     "    * no capped dependency has reached its upper bound.\n"
     "\n"
     "    ``check --pre-tag`` additionally fails while any ``changelog.d/*.json``\n"
@@ -47,6 +46,7 @@ CLI_DESCRIPTION = (
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+LOCKED_SUBPROJECTS = ("_project/sql-translation-ml", "_project/scripts")
 
 Runner = Callable[[Sequence[str], Path], tuple[int, str]]
 
@@ -190,11 +190,6 @@ def check_uv_lock_revision(root: Path, runner: Runner, baseline_ref: str | None)
     return _delegated("uv.lock revision", [sys.executable, str(script), "--baseline-ref", commit], root, runner)
 
 
-def check_release_curation(root: Path, runner: Runner) -> list[str]:
-    script = root / "scripts" / "check_release_curation.py"
-    return _delegated("release curation", [sys.executable, str(script)], root, runner)
-
-
 def check_dependency_bounds(root: Path, runner: Runner) -> list[str]:
     script = root / "scripts" / "check_dependency_bounds.py"
     return _delegated("dependency bounds", [sys.executable, str(script), "--fail-on=cap-reached"], root, runner)
@@ -227,7 +222,6 @@ def run_checks(
     if pre_tag:
         problems += check_no_pending_fragments(root)
     problems += check_uv_lock_revision(root, runner, baseline_ref or latest_release_tag(root, before_version=version))
-    problems += check_release_curation(root, runner)
     problems += check_dependency_bounds(root, runner)
     if not skip_upstream_freshness:
         problems += check_sqlglot_upstream_freshness(root, runner)
@@ -278,6 +272,11 @@ def prep(root: Path, version: str, release_date: str | None, runner: Runner) -> 
             [sys.executable, str(update_version), "--version", version, "--update-pyproject"],
         ),
         ("uv.lock", ["uv", "lock"]),
+        *(
+            (f"{project}/uv.lock", ["uv", "lock", "--project", project])
+            for project in LOCKED_SUBPROJECTS
+            if (root / project / "uv.lock").is_file()
+        ),
         ("CHANGELOG.md", compile_cmd),
     ]
 
@@ -369,14 +368,12 @@ def select_candidate(root: Path, base_sha: str) -> tuple[bool, str, bool, bool]:
         "scripts/update_version.py",
         "scripts/generate_changelog_entry.py",
         "scripts/changelog_fragments.py",
-        "scripts/check_release_curation.py",
         "scripts/check_dependency_bounds.py",
         "scripts/check_sqlglot_upstream_freshness.py",
         "scripts/check_sqlglot_advisories.py",
         "scripts/sqlglot_refresh_waiver.json",
         "benchbox/_vendor/sqlglot.json",
         "_project/scripts/check_uv_lock_revision.py",
-        "_project/decisions/single-repo-migration.md",
         "Makefile",
         ".github/workflows/ci.yml",
     }

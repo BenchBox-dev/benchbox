@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import csv
 import logging
 import os
 import re
@@ -296,6 +297,7 @@ class DatabendAdapter(PlatformAdapter):
     ) -> tuple[dict[str, int], float, dict[str, Any] | None]:
         start_time = mono_time()
         table_stats: dict[str, int] = {}
+        failed_tables: dict[str, str] = {}
 
         try:
             connection.exec(f"USE {self._quote_identifier(self.database)}")
@@ -331,8 +333,13 @@ class DatabendAdapter(PlatformAdapter):
                     )
 
                 except Exception as e:
-                    self.logger.error(f"Failed to load {table_name}: {str(e)[:100]}...")
+                    self.logger.error(f"Failed to load {table_name}: {str(e)[:300]}")
                     table_stats[table_name.lower()] = 0
+                    failed_tables[table_name.lower()] = str(e)
+
+            if failed_tables:
+                details = "; ".join(f"{name}: {msg[:200]}" for name, msg in failed_tables.items())
+                raise RuntimeError(f"Databend load failed for {len(failed_tables)} table(s): {details}")
 
             total_time = elapsed_seconds(start_time)
             total_rows = sum(table_stats.values())
@@ -345,6 +352,135 @@ class DatabendAdapter(PlatformAdapter):
         return table_stats, elapsed_seconds(start_time), None
 
     def _insert_files_batched(
+        self,
+        connection: Any,
+        table_name_quoted: str,
+        valid_files: list[Path],
+        table_name: str,
+        data_source: Any,
+        benchmark: Any,
+    ) -> int:
+        from benchbox.platforms.base.data_loading import resolve_csv_dialect
+
+        if not callable(getattr(connection, "load_file", None)):
+            return self._insert_files_values(
+                connection, table_name_quoted, valid_files, table_name, data_source, benchmark
+            )
+
+        total_rows_loaded = 0
+        for file_path in valid_files:
+            dialect = resolve_csv_dialect(data_source, table_name, file_path, benchmark)
+            if dialect.encoding.lower().replace("_", "-") not in ("utf-8", "utf8"):
+                total_rows_loaded += self._insert_files_values(
+                    connection, table_name_quoted, [file_path], table_name, data_source, benchmark
+                )
+                continue
+            loaded = self._load_file_native(connection, table_name_quoted, file_path, dialect)
+            if loaded is None:
+                loaded = self._insert_files_values(
+                    connection, table_name_quoted, [file_path], table_name, data_source, benchmark
+                )
+            total_rows_loaded += loaded
+        return total_rows_loaded
+
+    def _load_file_native(self, connection: Any, table_name_quoted: str, file_path: Path, dialect: Any) -> int | None:
+        from benchbox.platforms.base.data_loading import prepare_local_load_file
+
+        delimiter = dialect.delimiter
+        if delimiter not in (",", "|", "\t"):
+            raise ValueError(f"Unsafe delimiter character: {delimiter!r}")
+
+        format_options: dict[str, str] = {
+            "type": "CSV",
+            "field_delimiter": delimiter,
+            "record_delimiter": "\n",
+            "skip_header": "1" if dialect.has_header else "0",
+            "compression": "NONE",
+            "empty_field_as": "null",
+        }
+        if dialect.quote:
+            format_options["quote"] = dialect.quote
+        if dialect.null_marker:
+            format_options["null_display"] = dialect.null_marker
+
+        before = self._count_rows_or_none(connection, table_name_quoted)
+        with prepare_local_load_file(
+            file_path,
+            dialect=dialect,
+            strip_trailing_delim=self._has_trailing_delimiter(file_path, dialect),
+            normalize_line_endings=True,
+            blank_null_text=True,
+        ) as load_path:
+            if not dialect.quote and self._file_contains_byte(load_path, b'"'):
+                self.logger.warning(f"{file_path.name} contains quote characters, using INSERT VALUES")
+                return None
+            stats = connection.load_file(
+                f"INSERT INTO {table_name_quoted} VALUES",
+                str(load_path),
+                method="stage",
+                format_options=format_options,
+            )
+            expected = self._count_source_records(load_path, dialect)
+        after = self._count_rows_or_none(connection, table_name_quoted)
+        written = getattr(stats, "write_rows", None)
+        if before is not None and after is not None:
+            loaded = after - before
+        elif isinstance(written, int) and not isinstance(written, bool) and written > 0:
+            loaded = written
+        else:
+            raise RuntimeError(f"Could not determine rows loaded from {file_path.name}")
+        if loaded != expected:
+            raise RuntimeError(f"Row count mismatch loading {file_path.name}: source has {expected}, loaded {loaded}")
+        return loaded
+
+    @staticmethod
+    def _count_source_records(path: Path, dialect: Any) -> int:
+        skip = 1 if dialect.has_header else 0
+        needs_csv_parse = bool(dialect.quote) and DatabendAdapter._file_contains_byte(path, dialect.quote.encode())
+        with path.open("r", encoding="utf-8", newline="") as handle:
+            if needs_csv_parse:
+                reader = csv.reader(handle, delimiter=dialect.delimiter, quotechar=dialect.quote)
+                records = sum(1 for row in reader if row)
+            else:
+                records = sum(1 for line in handle if line.strip("\r\n"))
+        return max(records - skip, 0)
+
+    @staticmethod
+    def _file_contains_byte(path: Path, needle: bytes) -> bool:
+        with path.open("rb") as handle:
+            while chunk := handle.read(1 << 20):
+                if needle in chunk:
+                    return True
+        return False
+
+    def _has_trailing_delimiter(self, file_path: Path, dialect: Any) -> bool:
+        from benchbox.utils.file_format import get_data_extension
+
+        if get_data_extension(file_path) in (".tbl", ".dat"):
+            return True
+        if file_path.suffix == ".zst":
+            return False
+        handler = FileFormatRegistry.get_compression_handler(file_path)
+        with handler.open(file_path, encoding=dialect.encoding) as f:
+            skipped = 0
+            for raw_line in f:
+                line = raw_line.rstrip("\n")
+                if dialect.has_header and skipped == 0:
+                    skipped = 1
+                    continue
+                if line:
+                    return line.endswith(dialect.delimiter)
+        return False
+
+    def _count_rows_or_none(self, connection: Any, table_name_quoted: str) -> int | None:
+        try:
+            rows = self.fetch_rows(connection, f"SELECT COUNT(*) FROM {table_name_quoted}")
+            return int(rows[0][0])
+        except Exception as e:
+            self.logger.debug(f"Row count unavailable for {table_name_quoted}: {e}")
+            return None
+
+    def _insert_files_values(
         self,
         connection: Any,
         table_name_quoted: str,
@@ -366,7 +502,7 @@ class DatabendAdapter(PlatformAdapter):
 
             compression_handler = FileFormatRegistry.get_compression_handler(file_path)
 
-            with compression_handler.open(file_path) as f:
+            with compression_handler.open(file_path, encoding=dialect.encoding) as f:
                 batch_rows: list[str] = []
                 column_count: int | None = None
 

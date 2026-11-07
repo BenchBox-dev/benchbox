@@ -1353,11 +1353,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
-      - name: Verify every upstream-port ledger entry is covered at the PR base
-        run: python3 scripts/theseus_ledger_check.py
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-
       - name: Run core integration tests
         if: matrix.suite == 'core'
         run: uv run -- python -m pytest tests/integration -m "integration and not (slow or stress or resource_heavy or live_integration)" --tb=short --maxfail=5 --timeout=300 --junitxml=${{ matrix.junit }}

@@ -1503,6 +1503,8 @@ def test_pr_open_never_selects_the_reviewer_copy() -> None:
     [
         (f"oracle-review: waiting for the oracle's verdict on {'a' * 40}, or a stand-in attestation", "pending"),
         (f"oracle-review: waiting for the oracle's verdict on {'b' * 40}, or a stand-in attestation", "failure"),
+        (f"review: waiting for the review's verdict on {'a' * 40}, or a stand-in attestation", "pending"),
+        (f"review: waiting for the review's verdict on {'b' * 40}, or a stand-in attestation", "failure"),
         ("oracle-review: the oracle's latest review reports SHIP WITH FIXES, not success", "failure"),
         ("oracle-review: error: could not fetch reviews", "failure"),
         ("", "failure"),

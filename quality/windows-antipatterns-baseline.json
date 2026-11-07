@@ -21,9 +21,6 @@
     "scripts/check_duplicate_code.py": {
       "WA007": 3
     },
-    "scripts/check_release_curation.py": {
-      "WA007": 1
-    },
     "scripts/check_sqlglot_repro_retirement.py": {
       "WA007": 3
     },
@@ -72,17 +69,8 @@
     "scripts/release_artifact_consumer.py": {
       "WA002": 1
     },
-    "scripts/release_curation_dry_run.py": {
-      "WA007": 1
-    },
-    "scripts/release_finalize.py": {
-      "WA007": 1
-    },
     "scripts/release_flow.py": {
       "WA003": 1
-    },
-    "scripts/release_readiness_check.py": {
-      "WA007": 2
     },
     "scripts/release_tag_recheck.py": {
       "WA007": 1
@@ -425,10 +413,6 @@
     "tests/unit/scripts/test_check_duplicate_code.py": {
       "WA007": 1
     },
-    "tests/unit/scripts/test_check_release_curation.py": {
-      "WA003": 1,
-      "WA007": 1
-    },
     "tests/unit/scripts/test_ci_units.py": {
       "WA007": 1
     },
@@ -511,15 +495,6 @@
       "WA003": 8,
       "WA007": 1
     },
-    "tests/unit/scripts/test_release_curation_dry_run.py": {
-      "WA007": 1
-    },
-    "tests/unit/scripts/test_release_cut_start.py": {
-      "WA007": 1
-    },
-    "tests/unit/scripts/test_release_finalize.py": {
-      "WA007": 1
-    },
     "tests/unit/scripts/test_release_flow.py": {
       "WA007": 6
     },
@@ -576,7 +551,7 @@
       "WA003": 7
     },
     "tests/unit/test_standardized_test_commands.py": {
-      "WA003": 22
+      "WA003": 21
     },
     "tests/unit/test_tpcds_streams.py": {
       "WA003": 2

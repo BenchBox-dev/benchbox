@@ -9,7 +9,7 @@ PINNED_VERSION=
 PINNED_SHA=
 BROKER_PORT=${BROKER_PORT:-8765}
 GATEWAY_PORT=${GATEWAY_PORT:-4000}
-GATEWAY_DIR=${GATEWAY_DIR:-$HOME/.omp/oracle-gateway}
+GATEWAY_DIR=${GATEWAY_DIR:-$HOME/.omp/review-gateway}
 BROKER_TOKEN_FILE=$HOME/.omp/auth-broker.token
 CLIENT_TOKEN_FILE=$GATEWAY_DIR/client.token
 CLIENTS_FILE=$GATEWAY_DIR/clients.json
@@ -20,7 +20,7 @@ AGENT_DIR=$HOME/Library/LaunchAgents
 DOMAIN=gui/$(id -u)
 BROKER_LABEL=dev.omp.auth-broker
 GATEWAY_LABEL=dev.omp.auth-gateway
-GATEWAY_PROVIDERS=(anthropic openai-codex muse-code google-antigravity)
+GATEWAY_PROVIDERS=(anthropic openai-codex google-antigravity)
 
 usage() {
   echo "usage: $(basename "$0") broker|gateway|secrets|check|revoke <client>" >&2
@@ -235,22 +235,22 @@ gateway_code() {
 
 valid_client_name() {
   local LC_ALL=C
-  [[ $1 =~ ^oracle-[a-z0-9]+(-[a-z0-9]+)*$ ]]
+  [[ $1 =~ ^review-[a-z0-9]+(-[a-z0-9]+)*$ ]]
 }
 
 client_token_files() {
   local file
-  echo "oracle-ci $CLIENT_TOKEN_FILE"
+  echo "review-ci $CLIENT_TOKEN_FILE"
   for file in "$GATEWAY_DIR"/*-client.token; do
     [ -e "$file" ] || continue
-    echo "oracle-$(basename "$file" -client.token) $file"
+    echo "review-$(basename "$file" -client.token) $file"
   done
 }
 
 require_valid_token_files() {
   local name file
   [ ! -e "$GATEWAY_DIR/ci-client.token" ] \
-    || fail "$GATEWAY_DIR/ci-client.token would be a second oracle-ci; oracle-ci's token is $CLIENT_TOKEN_FILE, so remove or rename it"
+    || fail "$GATEWAY_DIR/ci-client.token would be a second review-ci; review-ci's token is $CLIENT_TOKEN_FILE, so remove or rename it"
   while read -r name file; do
     valid_client_name "$name" \
       || fail "$file names the client '$name'; rename it to <name>-client.token with <name> lowercase letters, digits and single hyphens"
@@ -281,8 +281,8 @@ check_clients_file() {
   names=$(jq -r 'keys[]' "$CLIENTS_FILE" | sort) || fail "$CLIENTS_FILE is not readable JSON"
   expected=$(client_token_files | cut -d' ' -f1 | sort)
   [ "$names" = "$expected" ] || fail "$CLIENTS_FILE has clients [$(echo "$names" | joined)] but the token files are for [$(echo "$expected" | joined)]; run '$(basename "$0") gateway'"
-  differing=$(jq -r '."oracle-ci".models as $ci | to_entries[] | select(.value.models != $ci) | .key' "$CLIENTS_FILE")
-  [ -z "$differing" ] || fail "$CLIENTS_FILE gives [$(echo "$differing" | joined)] models that differ from oracle-ci's"
+  differing=$(jq -r '."review-ci".models as $ci | to_entries[] | select(.value.models != $ci) | .key' "$CLIENTS_FILE")
+  [ -z "$differing" ] || fail "$CLIENTS_FILE gives [$(echo "$differing" | joined)] models that differ from review-ci's"
   while read -r name token_file; do
     recorded=$(jq -r --arg name "$name" '.[$name].tokenSha256 // empty' "$CLIENTS_FILE")
     [ "$recorded" = "$(file_sha256 "$token_file")" ] \
@@ -293,7 +293,7 @@ check_clients_file() {
 check_gateway_scope() {
   local base=$1 expected health models usage name token_file signature ci_signature
   check_clients_file
-  expected=$(jq -r '."oracle-ci".models | length' "$CLIENTS_FILE")
+  expected=$(jq -r '."review-ci".models | length' "$CLIENTS_FILE")
   health=$(gateway_code "$base/healthz")
   [ "$health" = 200 ] || fail "$base/healthz answered '$health'; is the gateway running and published?"
   ci_signature=$(gateway_curl "$CLIENT_TOKEN_FILE" "$base/v1/models" | model_signature) \
@@ -304,14 +304,14 @@ check_gateway_scope() {
   [ "$models" = "$expected" ] || fail "$base lists $models models; the clients file allows $expected"
   [ "$usage" = 403 ] || fail "$base answered /v1/usage with $usage; expected 403"
   while read -r name token_file; do
-    [ "$name" != oracle-ci ] || continue
+    [ "$name" != review-ci ] || continue
     signature=$(gateway_curl "$token_file" "$base/v1/models" | model_signature) \
       || fail "$base/v1/models did not answer for $name"
     models=$(echo "$signature" | jq 'length')
     usage=$(gateway_curl "$token_file" "$base/v1/usage" -o /dev/null -w '%{http_code}' || true)
     echo "$base: $name models=$models/$expected usage=$usage"
-    [ "$models" = "$expected" ] || fail "$base lists $models models for $name; oracle-ci has $expected"
-    [ "$signature" = "$ci_signature" ] || fail "$base lists different models for $name than for oracle-ci"
+    [ "$models" = "$expected" ] || fail "$base lists $models models for $name; review-ci has $expected"
+    [ "$signature" = "$ci_signature" ] || fail "$base lists different models for $name than for review-ci"
     [ "$usage" = 403 ] || fail "$base answered /v1/usage for $name with $usage; expected 403"
   done < <(client_token_files)
 }
@@ -371,7 +371,7 @@ cmd_gateway() {
   chmod 600 "$CLIENT_TOKEN_FILE"
   local named_clients=() name token_file
   while read -r name token_file; do
-    [ "$name" != oracle-ci ] || continue
+    [ "$name" != review-ci ] || continue
     chmod 600 "$token_file"
     named_clients+=(--client "$name=$token_file")
   done < <(client_token_files)
@@ -413,11 +413,11 @@ EOF
 
 cmd_revoke() {
   local name=${1:-} token_file staged
-  [ "$name" != oracle-ci ] \
-    || fail "oracle-ci is the review client; rotate its token with '$(basename "$0") gateway' instead"
+  [ "$name" != review-ci ] \
+    || fail "review-ci is the review client; rotate its token with '$(basename "$0") gateway' instead"
   valid_client_name "$name" \
-    || fail "name a client like oracle-local; usage: $(basename "$0") revoke <client>"
-  token_file=$GATEWAY_DIR/${name#oracle-}-client.token
+    || fail "name a client like review-local; usage: $(basename "$0") revoke <client>"
+  token_file=$GATEWAY_DIR/${name#review-}-client.token
   jq -e --arg name "$name" 'has($name)' "$CLIENTS_FILE" >/dev/null 2>&1 || [ -e "$token_file" ] \
     || fail "$name is neither in $CLIENTS_FILE nor has a token file"
   staged=$(mktemp "$GATEWAY_DIR/.clients.XXXXXX")

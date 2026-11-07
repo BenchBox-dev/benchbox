@@ -342,16 +342,12 @@ class TestMakefileCommands:
         makefile_content = (repo_root / "Makefile").read_text()
         preflight_body = _makefile_target_body(makefile_content, "pr-preflight-fast-tests")
         develop_pr_run_text = _workflow_job_run_text(repo_root / ".github" / "workflows" / "ci.yml", "code-test")
-        main_pr_run_text = _workflow_job_run_text(repo_root / ".github" / "workflows" / "test.yml", "test")
 
         assert f'-m "{CI_FAST_EXPRESSION}"' in preflight_body
         assert "-m fast -q" not in preflight_body
         assert f'-m "{CI_FAST_EXPRESSION}"' in develop_pr_run_text
-        assert f'-m "{CI_FAST_EXPRESSION}"' in main_pr_run_text
         assert "--timeout=120" in develop_pr_run_text
-        assert "--timeout=120" in main_pr_run_text
         assert "--cov-fail-under=70" in develop_pr_run_text
-        assert "--cov-fail-under=70" in main_pr_run_text
         assert "coverage remains CI-only" in makefile_content
 
     def test_test_ci_is_maintained_broad_local_profile(self):
@@ -389,13 +385,11 @@ class TestMakefileCommands:
         repo_root = Path(__file__).resolve().parent.parent.parent
         makefile_content = (repo_root / "Makefile").read_text()
         pr_workflow = (repo_root / ".github" / "workflows" / "ci.yml").read_text()
-        test_workflow = (repo_root / ".github" / "workflows" / "test.yml").read_text()
         conftest_content = (repo_root / "tests" / "conftest.py").read_text()
         policy_content = (repo_root / "docs" / "internal" / "quality-gate-policy.md").read_text()
 
         assert "--cov-fail-under=70" in makefile_content
         assert "--cov-fail-under=70" in pr_workflow
-        assert "--cov-fail-under=70" in test_workflow
         assert "70 is the blocking CI floor" in policy_content
         assert "threshold = 80.0" in conftest_content
         assert "intentionally advisory" in policy_content
@@ -417,7 +411,6 @@ class TestMakefileCommands:
         repo_root = Path(__file__).resolve().parent.parent.parent
         workflow_paths = [
             repo_root / ".github" / "workflows" / "ci.yml",
-            repo_root / ".github" / "workflows" / "test.yml",
             repo_root / ".github" / "workflows" / "nightly-v2.yml",
         ]
         combined_text = "\n".join(path.read_text(encoding="utf-8") for path in workflow_paths)
@@ -553,19 +546,6 @@ class TestMakefileCommands:
             assert covered == set(GATES[gate_name].backends), (
                 f"{gate_name} Make targets run {sorted(covered)}, gate backends are {sorted(GATES[gate_name].backends)}"
             )
-
-    def test_main_release_required_includes_bounded_correctness_gate(self):
-        repo_root = Path(__file__).resolve().parent.parent.parent
-        workflow = yaml.safe_load((repo_root / ".github" / "workflows" / "test.yml").read_text(encoding="utf-8"))
-        job = workflow["jobs"]["correctness-gate"]
-        aggregate = workflow["jobs"]["release-required-result"]
-
-        assert "github.base_ref == 'release'" in job["if"]
-        assert "make test-correctness-gate" in _workflow_job_run_text(
-            repo_root / ".github" / "workflows" / "test.yml",
-            "correctness-gate",
-        )
-        assert "correctness-gate" in aggregate["needs"]
 
     def test_makefile_test_slow_runs_serially(self):
         makefile_content = (Path(__file__).resolve().parent.parent.parent / "Makefile").read_text()

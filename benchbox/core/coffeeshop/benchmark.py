@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from benchbox.base import BaseBenchmark, GeneratorOutputDirMixin
+from benchbox.core.benchmark_mixins import duckdb_insert_from_csv
 from benchbox.core.coffeeshop.generator import CoffeeShopDataGenerator
 from benchbox.core.coffeeshop.queries import CoffeeShopQueryManager
 from benchbox.core.coffeeshop.schema import TABLES, get_all_create_table_sql
@@ -235,6 +236,19 @@ class CoffeeShopBenchmark(GeneratorOutputDirMixin, TranslatableQueryMixin, BaseB
 
             table_schema = TABLES[table_name]
             columns = [col["name"] for col in table_schema["columns"]]
+            if (
+                duckdb_insert_from_csv(
+                    connection,
+                    table_name,
+                    file_path,
+                    len(columns),
+                    delimiter=",",
+                    null_if_empty=True,
+                    skip_malformed=False,
+                )
+                is not None
+            ):
+                continue
             placeholders = ",".join(["?" for _ in columns])
             insert_sql = f"INSERT INTO {table_name} VALUES ({placeholders})"
 

@@ -231,13 +231,11 @@ def test_lock_baseline_cannot_be_replaced_to_hide_a_committed_downgrade(tree: Pa
         "scripts/release_flow.py",
         "scripts/update_version.py",
         "scripts/generate_changelog_entry.py",
-        "scripts/check_release_curation.py",
         "scripts/check_dependency_bounds.py",
         "scripts/check_sqlglot_upstream_freshness.py",
         "scripts/check_sqlglot_advisories.py",
         "scripts/sqlglot_refresh_waiver.json",
         "_project/scripts/check_uv_lock_revision.py",
-        "_project/decisions/single-repo-migration.md",
     ],
 )
 @pytest.mark.skipif(not SOUNDNESS_PATHS.exists(), reason=RELEASE_TREE_SKIP)
@@ -312,7 +310,6 @@ def test_invalid_fragment_aborts_preparation_before_any_marker_or_changelog_writ
     ("script_name", "label"),
     [
         ("check_uv_lock_revision.py", "uv.lock revision"),
-        ("check_release_curation.py", "release curation"),
         ("check_dependency_bounds.py", "dependency bounds"),
         ("check_sqlglot_upstream_freshness.py", "sqlglot upstream freshness"),
         ("check_sqlglot_advisories.py", "sqlglot advisories"),
@@ -466,6 +463,22 @@ def test_prep_validates_fragments_first_and_compiles_them_last(tree: Path) -> No
         assert "--since-ref" not in argv
 
 
+def test_prep_relocks_each_present_subproject_before_compiling(tree: Path) -> None:
+    present = release_flow.LOCKED_SUBPROJECTS[0]
+    (tree / present).mkdir(parents=True)
+    (tree / present / "uv.lock").write_text("version = 1\n", encoding="utf-8")
+    calls: list[list[str]] = []
+
+    def runner(argv, cwd):
+        calls.append(list(argv))
+        return 0, ""
+
+    assert release_flow.prep(tree, VERSION, None, runner) == 0
+    uv_calls = [argv for argv in calls if argv[0] == "uv"]
+    assert uv_calls == [["uv", "lock"], ["uv", "lock", "--project", present]]
+    assert calls.index(uv_calls[-1]) == len(calls) - 2
+
+
 def test_pre_tag_check_fails_while_any_fragment_is_pending(tree: Path) -> None:
     assert release_flow.run_checks(tree, VERSION, ok_runner, pre_tag=True) == []
     write_fragment(tree, "feat-pending.json")
@@ -580,7 +593,6 @@ def test_candidate_selection_preserves_ordinary_prose_dependency_and_source_edit
         "scripts/release_flow.py",
         "scripts/changelog_fragments.py",
         "scripts/check_dependency_bounds.py",
-        "_project/decisions/single-repo-migration.md",
         ".github/workflows/ci.yml",
         "Makefile",
     ],
@@ -708,7 +720,7 @@ def test_candidate_selection_cli_is_stdlib_only_and_preserves_lock(
     assert (root / "uv.lock").read_bytes() == original
 
 
-def test_candidate_check_is_required_on_pull_requests_without_changing_legacy_publisher() -> None:
+def test_candidate_check_is_required_on_pull_requests() -> None:
     import yaml
 
     workflow = yaml.safe_load((REPO_ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
@@ -730,24 +742,9 @@ def test_candidate_check_is_required_on_pull_requests_without_changing_legacy_pu
     assert "ci-paths" in core["needs"]
     aggregate = next(step for step in core["steps"] if step.get("id") == "aggregate")
     assert "--always ci-paths" in aggregate["run"]
-    assert "origin/release" in (REPO_ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
 
 
-def test_publish_and_release_branch_workflows_run_the_advisory_check() -> None:
-    import yaml
-
-    release = yaml.safe_load((REPO_ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8"))
-    job = release["jobs"]["sqlglot-upstream-freshness"]
-    assert any("scripts/check_sqlglot_advisories.py" in step.get("run", "") for step in job["steps"])
-    assert "sqlglot-upstream-freshness" in release["jobs"]["build"]["needs"]
-
-    test = yaml.safe_load((REPO_ROOT / ".github/workflows/test.yml").read_text(encoding="utf-8"))
-    runs = [step.get("run", "") for step in test["jobs"]["release-readiness"]["steps"]]
-    assert any("scripts/check_sqlglot_advisories.py" in run for run in runs)
-    assert any("scripts/check_sqlglot_upstream_freshness.py" in run for run in runs)
-
-
-def test_make_targets_exist_and_legacy_release_targets_are_kept() -> None:
+def test_make_targets_exist() -> None:
     def dry_run(target: str, version: str = VERSION) -> str:
         return subprocess.run(
             ["make", "-n", target, f"VERSION={version}"],
@@ -768,8 +765,6 @@ def test_make_targets_exist_and_legacy_release_targets_are_kept() -> None:
     ).stdout
     assert "--skip-upstream-freshness" in skipped
     assert "release_flow.py prep --version" in dry_run("release-prep")
-    assert "release_finalize.py" in dry_run("release-finalize")
-    assert "release_cut_start.sh" in dry_run("release-cut")
     assert "--pre-tag" not in dry_run("release-check")
     assert (
         "--pre-tag"

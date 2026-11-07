@@ -15620,7 +15620,7 @@
     "p50_seconds": 0.047066
   },
   {
-    "id": "tests/unit/test_check_agent_trailers.py::test_rejects_agent_attribution[vendor address-feat: x\\n\\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>]",
+    "id": "tests/unit/test_check_agent_trailers.py::test_rejects_agent_attribution[vendor address-feat: x\\n\\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>]",
     "p50_seconds": 0.046019
   },
   {

@@ -287,3 +287,5 @@ What class of issue does this evaluation's framework miss?
    incidentally. No mechanism inventories external dependencies of the merge
    path (review bots, GitHub auto-merge semantics such as `mergedBy` =
    enabler) or alerts when one degrades.
+
+> Addendum 2026-11-05: the SQLGlot delivery workflow (`.github/workflows/sqlglot-delivery.yml`) is a deliberate automated arm path for its own adoption PRs; it uses the ordinary `scripts/pr_arm.py` rules, so D2's removal of the draft-to-ready arm step is unchanged.

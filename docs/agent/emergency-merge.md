@@ -33,7 +33,7 @@ no PR can pass it. Agents never run, script, or propose any of these:
   preceding `Owner instruction` comment naming the PR, head SHA, and covered
   findings.
   A stand-in never covers open findings (`oracle-gate` rejects it on a SHIP
-  WITH FIXES head), and an `Oracle adjudication:` comment follows the same
+  WITH FIXES head), and an `Review adjudication:` comment follows the same
   owner-naming and `Owner instruction` rules; a broken gate is no reason to
   post either.
 

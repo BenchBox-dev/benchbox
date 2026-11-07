@@ -305,6 +305,57 @@ def test_release_gate_ordering_respects_each_events_own_offset_across_dst():
     assert violations == []
 
 
+def _host(host_id: str) -> str:
+    return f"2026-05-30T00:00:00 [host] id={host_id}\n"
+
+
+def test_parse_lifecycle_host_id_reads_the_recorded_id():
+    assert report.parse_lifecycle_host_id(_host("abc123") + _DOCKER_LOG_OK) == "abc123"
+    assert report.parse_lifecycle_host_id(_DOCKER_LOG_OK) is None
+
+
+def test_host_scoped_ordering_flags_overlap_on_the_same_host():
+    boundary = _dt.datetime(2026, 5, 30, 1, 0, 0)
+    violations = report.host_scoped_ordering_violations(
+        [_host("a") + _DOCKER_LOG_EARLY], earlier_stages=[(boundary, "a")]
+    )
+    assert len(violations) == 1
+    assert "cedardb" in violations[0]
+
+
+def test_host_scoped_ordering_ignores_overlap_on_a_different_host():
+    boundary = _dt.datetime(2026, 5, 30, 1, 0, 0)
+    violations = report.host_scoped_ordering_violations(
+        [_host("b") + _DOCKER_LOG_EARLY], earlier_stages=[(boundary, "a")]
+    )
+    assert violations == []
+
+
+def test_host_scoped_ordering_treats_a_missing_host_id_as_the_same_host():
+    boundary = _dt.datetime(2026, 5, 30, 1, 0, 0)
+    assert report.host_scoped_ordering_violations([_DOCKER_LOG_EARLY], earlier_stages=[(boundary, "a")])
+    assert report.host_scoped_ordering_violations([_host("b") + _DOCKER_LOG_EARLY], earlier_stages=[(boundary, None)])
+
+
+def test_host_scoped_ordering_only_counts_same_host_earlier_stages():
+    early = _dt.datetime(2026, 5, 30, 0, 0, 0)
+    late = _dt.datetime(2026, 5, 30, 1, 0, 0)
+    log = _host("a") + _DOCKER_LOG_EARLY
+    assert report.host_scoped_ordering_violations([log], earlier_stages=[(early, "a"), (late, "b")]) == []
+    assert report.host_scoped_ordering_violations([log], earlier_stages=[(early, "b"), (late, "a")])
+
+
+def test_record_host_identity_appends_a_stable_host_line(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("RUNNER_NAME", "runner-1")
+    execute.record_host_identity(tmp_path)
+    execute.record_host_identity(tmp_path)
+    log_lines = (tmp_path / "uat_lifecycle.log").read_text(encoding="utf-8").splitlines()
+    ids = {report.parse_lifecycle_host_id(line) for line in log_lines}
+    assert len(ids) == 1 and None not in ids
+    monkeypatch.setenv("RUNNER_NAME", "runner-2")
+    assert execute.host_identity() not in ids
+
+
 def test_append_lifecycle_log_writes_offset_aware_timestamp(tmp_path: Path):
     execute.append_lifecycle_log(tmp_path, "[docker] platform=duckdb action=up status=ok")
 

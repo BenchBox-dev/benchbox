@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Batch tooling refuses member checks and landings when the primary clone has edits in the member scope or the member item has tracker writes; documents distinct leader and member identities"
+}

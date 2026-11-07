@@ -10,7 +10,12 @@ import pytest
 from benchbox.core.results.metrics import TPCMetricsCalculator
 from benchbox.core.tpch.generator import TPCHDataGenerator
 from benchbox.core.tpch.refresh import require_refresh_support
-from tests.integration._tpch_refresh_utils import _check_rf1_rf2_with_expected_counts
+from tests.integration._tpch_refresh_utils import (
+    _check_native_rf1_matches_values,
+    _check_rf1_bad_row_is_atomic,
+    _check_rf1_rf2_with_expected_counts,
+    _load_sf001_base,
+)
 
 pytestmark = [pytest.mark.integration, pytest.mark.slow, pytest.mark.tpch]
 
@@ -27,6 +32,42 @@ def test_duckdb_sf001_applies_rf1_and_rf2_with_expected_counts_and_deleted_keys(
     import duckdb
 
     _check_rf1_rf2_with_expected_counts(duckdb.connect(":memory:"), tmp_path)
+
+
+def _duckdb_refresh_connection(adapter):
+    import duckdb
+
+    from benchbox.platforms.base.connection_wrappers import PlatformAdapterConnection
+
+    return PlatformAdapterConnection(duckdb.connect(":memory:"), adapter, maintenance_mode=True)
+
+
+def _duckdb_adapters():
+    from unittest.mock import MagicMock
+
+    from benchbox.platforms.duckdb import DuckDBAdapter
+
+    return DuckDBAdapter(), MagicMock()
+
+
+def test_duckdb_native_rf1_matches_values_path_for_every_column(tmp_path: Path) -> None:
+    native_adapter, values_adapter = _duckdb_adapters()
+
+    _check_native_rf1_matches_values(
+        _duckdb_refresh_connection(native_adapter),
+        _duckdb_refresh_connection(values_adapter),
+        tmp_path,
+        _load_sf001_base,
+    )
+
+
+def test_duckdb_native_rf1_bad_row_leaves_no_rows_and_connection_usable(tmp_path: Path) -> None:
+    native_adapter, _ = _duckdb_adapters()
+    connection = _duckdb_refresh_connection(native_adapter)
+
+    _check_rf1_bad_row_is_atomic(connection, tmp_path, _load_sf001_base)
+
+    assert connection.execute("SELECT 1").fetchone()[0] == 1
 
 
 @pytest.mark.parametrize("platform_name", ["unsupported-engine", "dataframe"])

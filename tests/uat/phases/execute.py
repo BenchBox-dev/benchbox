@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import datetime as _dt
+import hashlib
 import os
+import socket
+import subprocess
 import time
 from collections import defaultdict
 from collections.abc import Callable
@@ -1323,6 +1326,38 @@ def append_lifecycle_log(log_dir: Path | None, line: str) -> None:
     log_dir.mkdir(parents=True, exist_ok=True)
     with (log_dir / "uat_lifecycle.log").open("a", encoding="utf-8") as fh:
         fh.write(f"{_dt.datetime.now().astimezone().isoformat(timespec='seconds')} {line}\n")
+
+
+def _machine_id() -> str:
+    for candidate in (Path("/etc/machine-id"), Path("/var/lib/dbus/machine-id")):
+        try:
+            value = candidate.read_text(encoding="utf-8").strip()
+        except OSError:
+            continue
+        if value:
+            return value
+    try:
+        completed = subprocess.run(
+            ["ioreg", "-rd1", "-c", "IOPlatformExpertDevice"], capture_output=True, text=True, timeout=10, check=False
+        )
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    for line in completed.stdout.splitlines():
+        if "IOPlatformUUID" in line:
+            return line.rsplit('"', 2)[-2].strip()
+    return ""
+
+
+def host_identity() -> str:
+    machine_id = _machine_id()
+    runner_name = os.environ.get("RUNNER_NAME", "").strip()
+    if not machine_id and not runner_name:
+        machine_id = socket.gethostname()
+    return hashlib.sha256(f"{machine_id}|{runner_name}".encode()).hexdigest()[:16]
+
+
+def record_host_identity(log_dir: Path | None) -> None:
+    append_lifecycle_log(log_dir, f"[host] id={host_identity()}")
 
 
 def default_log_dir(config: UATConfig, now: _dt.datetime | None = None) -> Path:

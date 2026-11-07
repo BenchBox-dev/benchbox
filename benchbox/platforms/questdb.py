@@ -9,6 +9,7 @@ import json
 import re
 import socket
 import threading
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import replace
@@ -50,6 +51,10 @@ try:
     import psycopg
 except ImportError:
     psycopg = None
+
+_ILP_SEND_ROWS = 1000
+_ILP_VERIFY_TIMEOUT_SECONDS = 120.0
+_ILP_VERIFY_POLL_SECONDS = 0.5
 
 TPCH_TIMESTAMP_COLUMNS: dict[str, str] = {
     "lineitem": "l_shipdate",
@@ -594,6 +599,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
             self.log_operation_complete("Data loading", loading_time, "Loaded 0 total rows")
             return {}, loading_time, None
 
+        ilp_failures: dict[str, Exception] = {}
         for table_name, table_path in data_source.tables.items():
             table_name_lower = table_name.lower()
 
@@ -609,13 +615,20 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                 continue
 
             total_rows = 0
+            if method == "ilp":
+                try:
+                    total_rows = self._load_table_files_via_ilp(table_name_lower, data_files, data_source, benchmark)
+                except Exception as e:
+                    self.logger.error(f"Failed to load {table_name_lower} via ILP: {e}")
+                    ilp_failures[table_name_lower] = e
+                    continue
+                table_stats[table_name_lower] = total_rows
+                continue
+
             for data_file in data_files:
                 try:
                     dialect = resolve_csv_dialect(data_source, table_name_lower, data_file, benchmark)
-                    if method == "ilp":
-                        rows = self._load_table_via_ilp(table_name_lower, data_file, dialect)
-                        source = "ILP"
-                    elif get_data_extension(data_file) == ".parquet":
+                    if get_data_extension(data_file) == ".parquet":
                         rows = self._load_parquet_via_chunked_csv(table_name_lower, data_file)
                         source = "REST/parquet-csv"
                     else:
@@ -630,6 +643,12 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                 self.log_verbose(f"Loaded {rows:,} rows into {table_name_lower} from {data_file.name} (via {source})")
 
             table_stats[table_name_lower] = total_rows
+
+        if ilp_failures:
+            details = "; ".join(f"{name}: {error}" for name, error in ilp_failures.items())
+            raise RuntimeError(f"QuestDB ILP load failed for {len(ilp_failures)} table(s): {details}") from next(
+                iter(ilp_failures.values())
+            )
 
         loading_time = elapsed_seconds(start_time)
 
@@ -745,7 +764,73 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
 
         return total_rows
 
-    def _load_table_via_ilp(self, table_name: str, data_file: Path, dialect: CsvDialect) -> int:
+    def _load_table_files_via_ilp(
+        self, table_name: str, data_files: list[Path], data_source: Any, benchmark: Any
+    ) -> int:
+        rows_before = self._ilp_table_row_count(table_name)
+        total_rows = 0
+        sock = self._open_ilp_socket()
+        try:
+            for data_file in data_files:
+                dialect = resolve_csv_dialect(data_source, table_name, data_file, benchmark)
+                rows = self._load_table_via_ilp(table_name, data_file, dialect, sock)
+                total_rows += rows
+                self.log_verbose(f"Sent {rows:,} rows into {table_name} from {data_file.name} (via ILP)")
+        finally:
+            sock.close()
+        self._await_ilp_row_count(table_name, rows_before + total_rows, total_rows)
+        return total_rows
+
+    def _open_ilp_socket(self) -> socket.socket:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(30)
+        try:
+            sock.connect((self.ilp_host, self.ilp_port))
+        except BaseException:
+            sock.close()
+            raise
+        return sock
+
+    def _ilp_table_row_count(self, table_name: str) -> int:
+        if not self._validate_identifier(table_name):
+            raise ValueError(f"Invalid table identifier for QuestDB ILP load: {table_name!r}")
+        url = f"{'https' if self.use_tls else 'http'}://{self.host}:{self.http_port}/exec"
+        try:
+            response = _http_get(url, params={"query": f'SELECT count() FROM "{table_name}"'}, timeout=30)
+            response.raise_for_status()
+            return int(response.json()["dataset"][0][0])
+        except Exception as exc:
+            raise RuntimeError(
+                f"Cannot count rows of QuestDB table '{table_name}' to verify the ILP load: {exc}"
+            ) from exc
+
+    def _await_ilp_row_count(self, table_name: str, expected: int, rows_sent: int) -> None:
+        deadline = mono_time() + _ILP_VERIFY_TIMEOUT_SECONDS
+        previous = -1
+        while True:
+            actual = self._ilp_table_row_count(table_name)
+            if actual >= expected:
+                break
+            if actual > previous:
+                previous = actual
+                deadline = mono_time() + _ILP_VERIFY_TIMEOUT_SECONDS
+            if mono_time() >= deadline:
+                raise RuntimeError(
+                    f"QuestDB ILP load of '{table_name}' lost rows: sent {rows_sent:,}, "
+                    f"table holds {actual:,} but {expected:,} were expected after "
+                    f"{_ILP_VERIFY_TIMEOUT_SECONDS:.0f}s without progress (ILP gives no acknowledgement; "
+                    "check the QuestDB server log for rejected lines)"
+                )
+            time.sleep(_ILP_VERIFY_POLL_SECONDS)
+        if actual != expected:
+            raise RuntimeError(
+                f"QuestDB ILP load of '{table_name}' row count mismatch: sent {rows_sent:,}, "
+                f"table holds {actual:,} but {expected:,} were expected"
+            )
+
+    def _load_table_via_ilp(
+        self, table_name: str, data_file: Path, dialect: CsvDialect, sock: socket.socket | None = None
+    ) -> int:
         rows_sent = 0
 
         column_names = self._get_table_columns(table_name)
@@ -753,37 +838,26 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
             raise RuntimeError(f"Cannot determine column names for table '{table_name}' (needed for ILP)")
 
         ts_col = TPCH_TIMESTAMP_COLUMNS.get(table_name.lower())
+        timestamp_columns = self._ilp_timestamp_columns(table_name, ts_col)
 
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(30)
+        owns_socket = sock is None
+        if owns_socket:
+            sock = self._open_ilp_socket()
         try:
-            sock.connect((self.ilp_host, self.ilp_port))
-
             strip_trailing_delim = get_data_extension(data_file) == ".tbl"
             with prepare_local_load_file(
                 data_file, dialect=dialect, strip_trailing_delim=strip_trailing_delim
             ) as load_path:
-                with open(load_path, encoding="utf-8") as stream:
-                    reader = csv.reader(stream, delimiter=dialect.delimiter)
-                    batch: list[str] = []
-                    for row in reader:
-                        if len(row) == len(column_names) + 1 and not row[-1]:
-                            row = row[:-1]
-                        if len(row) != len(column_names):
-                            continue
-                        line = self._row_to_ilp_line(table_name, column_names, row, ts_col)
-                        if line:
-                            batch.append(line)
-                            rows_sent += 1
-
-                        if len(batch) >= 1000:
-                            sock.sendall(("\n".join(batch) + "\n").encode("utf-8"))
-                            batch = []
-
-                    if batch:
-                        sock.sendall(("\n".join(batch) + "\n").encode("utf-8"))
+                for lines in _ilp_line_batches(
+                    table_name, column_names, load_path, dialect.delimiter, ts_col, timestamp_columns
+                ):
+                    for start in range(0, len(lines), _ILP_SEND_ROWS):
+                        chunk = lines.slice(start, _ILP_SEND_ROWS).to_pylist()
+                        sock.sendall(("\n".join(chunk) + "\n").encode("utf-8"))
+                    rows_sent += len(lines)
         finally:
-            sock.close()
+            if owns_socket:
+                sock.close()
 
         return rows_sent
 
@@ -812,6 +886,22 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
             columns.append(entry)
         return json.dumps(columns) if columns else None
 
+    def _ilp_timestamp_columns(self, table_name: str, designated: str | None) -> frozenset[str]:
+        if not self._validate_identifier(table_name):
+            raise ValueError(f"Invalid table identifier for QuestDB ILP load: {table_name!r}")
+        url = f"{'https' if self.use_tls else 'http'}://{self.host}:{self.http_port}/exec"
+        try:
+            response = _http_get(url, params={"query": f'SHOW COLUMNS FROM "{table_name}"'}, timeout=30)
+            response.raise_for_status()
+            rows = [row for row in response.json().get("dataset", []) if len(row) >= 2]
+        except Exception as exc:
+            raise RuntimeError(f"Cannot read the column types of '{table_name}' for the ILP load: {exc}") from exc
+        return frozenset(
+            row[0]
+            for row in rows
+            if str(row[1]).upper() in ("TIMESTAMP", "TIMESTAMP_NS", "DATE") and row[0] != designated
+        )
+
     def _get_table_columns(self, table_name: str) -> list[str]:
         if not self._validate_identifier(table_name):
             return []
@@ -827,37 +917,6 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
             return [row[0] for row in dataset if row]
         except Exception:
             return []
-
-    @staticmethod
-    def _row_to_ilp_line(
-        measurement: str,
-        column_names: list[str],
-        values: list[str],
-        ts_column: str | None,
-    ) -> str | None:
-        fields: list[str] = []
-        timestamp_ns: str | None = None
-
-        for col_name, val in zip(column_names, values):
-            val = val.strip()
-            if not val:
-                continue
-
-            if ts_column and col_name == ts_column:
-                timestamp_ns = _date_to_epoch_ns(val)
-                continue
-
-            escaped = _ilp_escape_field(col_name, val)
-            if escaped:
-                fields.append(escaped)
-
-        if not fields:
-            return None
-
-        line = f"{_ilp_escape_measurement(measurement)} {','.join(fields)}"
-        if timestamp_ns:
-            line += f" {timestamp_ns}"
-        return line
 
     def _count_table_rows_via_http(self, table_name: str) -> int:
         if not self._validate_identifier(table_name):
@@ -1087,26 +1146,153 @@ def _ilp_escape_tag_key(key: str) -> str:
     return key.replace(",", r"\,").replace("=", r"\=").replace(" ", r"\ ")
 
 
-def _ilp_escape_field(col_name: str, value: str) -> str | None:
-    if not value:
-        return None
+def _ilp_str(value: str) -> Any:
+    import pyarrow as pa
 
-    escaped_key = _ilp_escape_tag_key(col_name)
+    return pa.scalar(value)
 
-    try:
-        int_val = int(value)
-        return f"{escaped_key}={int_val}i"
-    except ValueError:
-        pass
 
-    try:
-        float_val = float(value)
-        return f"{escaped_key}={float_val}"
-    except ValueError:
-        pass
+def _ilp_field_values(key: str, values: Any) -> Any:
+    import pyarrow as pa
+    import pyarrow.compute as pc
 
-    escaped_val = value.replace("\\", "\\\\").replace('"', '\\"')
-    return f'{escaped_key}="{escaped_val}"'
+    is_int = pc.match_substring_regex(values, r"^[+-]?[0-9]{1,18}$")
+    is_float = pc.match_substring_regex(
+        values, r"(?i)^[+-]?(([0-9]+\.?[0-9]*|\.[0-9]+)(e[+-]?[0-9]+)?|inf|infinity|nan)$"
+    )
+    as_int = pc.cast(pc.if_else(is_int, values, "0"), pa.int64())
+    int_token = pc.if_else(is_int, pc.binary_join_element_wise(pc.cast(as_int, pa.string()), "i", ""), None)
+    as_float = pc.cast(pc.if_else(is_float, values, "0"), pa.float64())
+    float_token = pc.if_else(is_float, pc.cast(as_float, pa.string()), None)
+    quoted = pc.binary_join_element_wise(
+        '"', pc.replace_substring(pc.replace_substring(values, "\\", "\\\\"), '"', '\\"'), '"', ""
+    )
+    token = pc.coalesce(int_token, float_token, quoted)
+    part = pc.binary_join_element_wise(
+        ",", _ilp_str(_ilp_escape_tag_key(key) + "="), token, "", null_handling="emit_null"
+    )
+    return pc.fill_null(part, "")
+
+
+def _ilp_epoch_seconds(name: str, values: Any) -> Any:
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    parsed = pc.coalesce(
+        *(
+            pc.strptime(values, fmt, unit="s", error_is_null=True)
+            for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S")
+        )
+    )
+    unparsed = pc.filter(values, pc.and_(pc.is_valid(values), pc.is_null(parsed)))
+    if len(unparsed):
+        raise ValueError(f"Column '{name}' holds a value that is not a date or timestamp: {unparsed[0].as_py()!r}")
+    return pc.cast(parsed, pa.int64())
+
+
+def _ilp_epoch_ns(name: str, values: Any) -> Any:
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    return pc.cast(pc.multiply(_ilp_epoch_seconds(name, values), 1_000_000_000), pa.string())
+
+
+def _ilp_timestamp_field(key: str, values: Any) -> Any:
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    micros = pc.cast(pc.multiply(_ilp_epoch_seconds(key, values), 1_000_000), pa.string())
+    part = pc.binary_join_element_wise(
+        ",", _ilp_str(_ilp_escape_tag_key(key) + "="), micros, "t", "", null_handling="emit_null"
+    )
+    return pc.fill_null(part, "")
+
+
+def _ilp_lines_from_strings(
+    measurement: str,
+    column_names: list[str],
+    columns: list[Any],
+    ts_column: str | None,
+    timestamp_columns: frozenset[str] = frozenset(),
+) -> Any:
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    field_parts = []
+    timestamp = None
+    for name, column in zip(column_names, columns):
+        trimmed = pc.utf8_trim_whitespace(column)
+        values = pc.if_else(pc.equal(trimmed, ""), None, trimmed)
+        if ts_column and name == ts_column:
+            timestamp = _ilp_epoch_ns(name, values)
+            continue
+        if name in timestamp_columns:
+            field_parts.append(_ilp_timestamp_field(name, values))
+            continue
+        field_parts.append(_ilp_field_values(name, values))
+
+    rows = len(columns[0])
+    fields = pc.utf8_slice_codeunits(pc.binary_join_element_wise(*field_parts, ""), 1)
+    if timestamp is None:
+        suffix = pa.array([""] * rows, type=pa.string())
+    else:
+        suffix = pc.fill_null(pc.binary_join_element_wise(" ", timestamp, "", null_handling="emit_null"), "")
+    lines = pc.binary_join_element_wise(_ilp_str(_ilp_escape_measurement(measurement) + " "), fields, suffix, "")
+    return pc.filter(lines, pc.not_equal(fields, ""))
+
+
+def _ilp_line_batches(
+    measurement: str,
+    column_names: list[str],
+    path: Path,
+    delimiter: str,
+    ts_column: str | None,
+    timestamp_columns: frozenset[str] = frozenset(),
+) -> Iterator[Any]:
+    import pyarrow as pa
+    import pyarrow.csv as pacsv
+
+    width = len(column_names)
+    with open(path, encoding="utf-8", newline="") as stream:
+        first = next(csv.reader([stream.readline()], delimiter=delimiter), [])
+    if len(first) == width + 1 and not first[-1]:
+        width += 1
+    names = column_names + ["__trailing"] if width > len(column_names) else column_names
+    salvage: list[str] = []
+
+    def keep_neighbor_width(row: Any) -> str:
+        if row.actual_columns in (len(column_names), len(column_names) + 1):
+            salvage.append(row.text)
+        return "skip"
+
+    reader = pacsv.open_csv(
+        path,
+        read_options=pacsv.ReadOptions(column_names=names),
+        parse_options=pacsv.ParseOptions(
+            delimiter=delimiter, newlines_in_values=True, invalid_row_handler=keep_neighbor_width
+        ),
+        convert_options=pacsv.ConvertOptions(
+            column_types={name: pa.string() for name in names}, strings_can_be_null=False, null_values=[]
+        ),
+    )
+
+    def emit(columns: list[Any]) -> Any:
+        return _ilp_lines_from_strings(
+            measurement, column_names, columns[: len(column_names)], ts_column, timestamp_columns
+        )
+
+    for batch in reader:
+        if batch.num_rows:
+            yield emit(batch.columns)
+        if salvage:
+            rows = [
+                row[: len(column_names)]
+                for row in csv.reader(salvage, delimiter=delimiter)
+                if len(row) == len(column_names) or (len(row) == len(column_names) + 1 and not row[-1])
+            ]
+            salvage.clear()
+            if rows:
+                yield emit([pa.array(list(col), type=pa.string()) for col in zip(*rows)])
 
 
 def _build_questdb_config(
@@ -1143,17 +1329,3 @@ def _build_questdb_config(
         "loading_method": merged.get("loading_method", "rest"),
     }
     return DatabaseConfig(**config_dict)
-
-
-def _date_to_epoch_ns(date_str: str) -> str | None:
-    from datetime import datetime, timezone
-
-    date_str = date_str.strip()
-    for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S"):
-        try:
-            dt = datetime.strptime(date_str, fmt).replace(tzinfo=timezone.utc)
-            epoch_s = int(dt.timestamp())
-            return str(epoch_s * 1_000_000_000)
-        except ValueError:
-            continue
-    return None

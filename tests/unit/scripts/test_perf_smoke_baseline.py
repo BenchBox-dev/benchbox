@@ -15,7 +15,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 ROOT = Path(__file__).resolve().parents[3]
 BASELINE = ROOT / "_project" / "baselines" / "perf_smoke_duckdb_tpch_001.json"
 SOURCES = ROOT / "_project" / "baselines" / "perf_smoke_duckdb_tpch_001.sources.json"
-WORKFLOWS = (ROOT / ".github" / "workflows" / "nightly-v2.yml", ROOT / ".github" / "workflows" / "perf-smoke.yml")
+WORKFLOWS = (ROOT / ".github" / "workflows" / "nightly-v2.yml",)
 
 
 def _load():

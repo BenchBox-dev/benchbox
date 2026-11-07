@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "benchbox"
-version = "0.5.0rc4"
+version = "0.5.0"
 description = "Embedded benchmark datasets and queries for database evaluation. Implements TPC-H, TPC-DS, TPC-DI and other industry-standard benchmarks."
 readme = "README.md"
 authors = [{ name = "Joe Harris", email = "joe@benchbox.dev" }]
@@ -297,7 +297,7 @@ benchbox-mcp = "benchbox.mcp.cli:main"
 "Bug Tracker" = "https://github.com/BenchBox-dev/benchbox/issues"
 "Documentation" = "https://benchbox.dev/docs/"
 "Repository" = "https://github.com/BenchBox-dev/benchbox.git"
-"Changelog" = "https://github.com/BenchBox-dev/benchbox/blob/release/CHANGELOG.md"
+"Changelog" = "https://github.com/BenchBox-dev/benchbox/blob/develop/CHANGELOG.md"
 
 [tool.ty]
 

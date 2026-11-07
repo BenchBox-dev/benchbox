@@ -59,6 +59,22 @@ class TestInfluxDBAdapterInitialization:
         assert adapter.ssl is False
         assert adapter.platform_name == "InfluxDB (Core)"
 
+    def test_core_mode_defaults_to_port_8181(self):
+        try:
+            adapter = InfluxDBAdapter(token="test-token", mode="core")
+        except ImportError:
+            pytest.skip("InfluxDB client not installed")
+
+        assert adapter.port == 8181
+
+    def test_explicit_port_overrides_mode_default(self):
+        try:
+            adapter = InfluxDBAdapter(token="test-token", mode="core", port=8086)
+        except ImportError:
+            pytest.skip("InfluxDB client not installed")
+
+        assert adapter.port == 8086
+
     def test_initialization_defaults(self):
         try:
             adapter = InfluxDBAdapter(token="test-token")
@@ -66,7 +82,7 @@ class TestInfluxDBAdapterInitialization:
             pytest.skip("InfluxDB client not installed")
 
         assert adapter.host == "localhost"
-        assert adapter.port == 8086
+        assert adapter.port == 443
         assert adapter.database == "benchbox"
         assert adapter.mode == "cloud"
         assert adapter.ssl is True
@@ -166,7 +182,7 @@ class TestInfluxDBAdapterFromConfig:
         try:
             adapter = InfluxDBAdapter.from_config(config)
             assert adapter.host == "localhost"
-            assert adapter.port == 8086
+            assert adapter.port == 443
             assert adapter.database == "benchbox"
             assert adapter.mode == "cloud"
         except ImportError:
@@ -480,10 +496,10 @@ class TestInfluxDBPlatformOptionParsing:
         assert parsed["ssl"] is False
         assert parsed["port"] == 8181
 
-    def test_ssl_and_port_defaults_are_typed(self):
+    def test_ssl_default_is_typed_and_port_is_left_to_the_mode(self):
         import benchbox.platforms
         from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
 
         parsed = PlatformHookRegistry.parse_options("influxdb", [])
         assert parsed["ssl"] is True
-        assert parsed["port"] == 8086
+        assert "port" not in parsed

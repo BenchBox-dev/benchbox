@@ -247,6 +247,25 @@ class TestDuckLakeSqliteCatalogLive:
         assert parquet_files, f"Expected DuckLake Parquet data files under {databases_dir}"
 
 
+class TestDuckLakeTpchRefreshLive:
+    def setup_method(self) -> None:
+        _skip_unless_extensions("ducklake")
+
+    def test_rf1_rf2_values_path_with_expected_counts(self, tmp_path: Path) -> None:
+        from benchbox.core.contracts.platform_capabilities import resolve_refresh_ingester
+        from tests.integration._tpch_refresh_utils import _check_rf1_rf2_with_expected_counts, _load_sf001_base_read_csv
+
+        adapter = DuckLakeAdapter(metadata_path=str(tmp_path / "catalog.ducklake"), data_path=str(tmp_path / "data"))
+        assert DuckLakeAdapter.supports_refresh_functions is True
+        assert resolve_refresh_ingester(adapter) is None
+
+        connection = adapter.create_connection()
+        try:
+            _check_rf1_rf2_with_expected_counts(connection, tmp_path, _load_sf001_base_read_csv)
+        finally:
+            connection.close()
+
+
 class TestDuckLakeWritePrimitivesLive:
     def setup_method(self) -> None:
         _skip_unless_extensions("ducklake")
