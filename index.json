@@ -9883,6 +9883,13 @@
       "status": "done",
       "title": "Deploy the branch-delivery batch skill with compatible tracker and BenchBox bindings"
     },
+    "batch-start-and-member-check-tightening-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Refuse one-member batches, freeze companion files into scopes, enforce scope at member check, and drop the member-check review"
+    },
     "batch-tooling-review-truncation-and-worktree-takeover-20261107": {
       "claim": null,
       "needs": [],
