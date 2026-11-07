@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 from benchbox.core.deployment import deployment_class, select_adapter_deployment
+from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW, FETCH_MODE_ROWS
 from benchbox.platforms.base import DriverIsolationCapability, PlatformAdapter
 from benchbox.utils.dependencies import check_platform_dependencies, get_dependency_error_message
 
@@ -31,6 +32,14 @@ class ClickHouseAdapter(
     KNOWN_INCOMPATIBLE_QUERIES = {
         "tpcds": [14, 30, 81],
     }
+
+    @property
+    def default_fetch_mode(self) -> str:
+        config = self.platform_config
+        if config.get("_is_cloud_subclass", False):
+            return FETCH_MODE_ROWS
+        mode = resolve_clickhouse_deployment_mode(config, allow_cloud=True)
+        return FETCH_MODE_ARROW if mode == "local" else FETCH_MODE_ROWS
 
     def __init__(self, **config):
         super().__init__(**config)
