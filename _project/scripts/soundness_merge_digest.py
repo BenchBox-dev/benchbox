@@ -950,13 +950,29 @@ def server_arrival(repo: str, sha: str, number: int, pull: dict[str, Any]) -> st
     return min(times) if times else None
 
 
+def git_pull_commits(number: int, head: str, base: str, *, cwd: Path | None = None) -> list[dict[str, Any]]:
+    run(["git", "fetch", "--no-tags", "origin", f"refs/pull/{number}/head"], cwd=cwd)
+    if run(["git", "rev-parse", "FETCH_HEAD"], cwd=cwd).strip() != head:
+        raise ReadError(f"#{number} head moved while its commits were being read")
+    listing = run(
+        ["git", "log", "--reverse", "--topo-order", "--format=%H %cI %P", f"{base}..{head}"], cwd=cwd
+    ).splitlines()
+    commits: list[dict[str, Any]] = []
+    for line in listing:
+        sha, committed_at, *parents = line.split()
+        commits.append(
+            {"sha": sha, "commit": {"committer": {"date": committed_at}}, "parents": [{"sha": p} for p in parents]}
+        )
+    return commits
+
+
 def collect_commits(
     repo: str, number: int, pull: dict[str, Any], base: str, *, cwd: Path | None = None
 ) -> tuple[PullCommit, ...]:
+    head = pull["head"]["sha"]
     commits = gh_pages(f"repos/{repo}/pulls/{number}/commits")
     if len(commits) >= MAX_PULL_COMMITS:
-        raise ReadError(f"#{number} has {len(commits)} commits, the most the API lists")
-    head = pull["head"]["sha"]
+        commits = git_pull_commits(number, head, base, cwd=cwd)
     if not commits or len(commits) != pull["commits"] or commits[-1]["sha"] != head:
         raise ReadError(f"#{number} commit list does not match the pull request: {len(commits)} of {pull['commits']}")
     if any(len(c["parents"]) > 1 for c in commits):
