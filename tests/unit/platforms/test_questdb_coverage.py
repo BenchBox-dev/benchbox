@@ -596,7 +596,10 @@ class TestPopulateTransactionalStagingTables:
 class TestLoadTableViaRestApi:
     @pytest.fixture(autouse=True)
     def _no_import_schema(self):
-        with patch.object(QuestDBAdapter, "_import_schema", return_value=None):
+        with (
+            patch.object(QuestDBAdapter, "_import_schema", return_value=None),
+            patch.object(QuestDBAdapter, "_unpatterned_timestamp_columns", return_value=[]),
+        ):
             yield
 
     def test_rest_api_rows_imported_from_text_response(self, questdb_stubs, tmp_path):
@@ -892,7 +895,10 @@ class TestLoadTableViaIlp:
 class TestPrepareLocalLoadFileForQuestDB:
     @pytest.fixture(autouse=True)
     def _no_import_schema(self):
-        with patch.object(QuestDBAdapter, "_import_schema", return_value=None):
+        with (
+            patch.object(QuestDBAdapter, "_import_schema", return_value=None),
+            patch.object(QuestDBAdapter, "_unpatterned_timestamp_columns", return_value=[]),
+        ):
             yield
 
     def test_csv_file_no_transform_yields_original_path(self, questdb_stubs, tmp_path):
@@ -1577,7 +1583,10 @@ class TestLoadParquetViaChunkedCsv:
 
     @pytest.fixture(autouse=True)
     def _no_import_schema(self):
-        with patch.object(QuestDBAdapter, "_import_schema", return_value=None):
+        with (
+            patch.object(QuestDBAdapter, "_import_schema", return_value=None),
+            patch.object(QuestDBAdapter, "_unpatterned_timestamp_columns", return_value=[]),
+        ):
             yield
 
     @staticmethod
