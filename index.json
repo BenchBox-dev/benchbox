@@ -34681,7 +34681,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "blocked",
       "title": "Make core SQLGlot delivery event-driven and verify App readiness"
     },
     "sqlglot-dialect-translation-code-review-implementation": {

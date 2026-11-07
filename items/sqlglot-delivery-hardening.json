@@ -2,6 +2,7 @@
   "acceptance": [
     "Both member behaviors are merged through one ordinary core PR with bound final evidence and existing authority gates unchanged."
   ],
+  "context": "Core batch registered with v2 capability/store schema4. Integration worktree /Users/joe/Developer/BenchBox.wt-sqlglot-delivery-hardening at start b65307b8; member worktrees --arm and --readiness contain uncommitted implementation, intentionally not committed/landed without required verification. --arm: workflow_run completion job uses trusted develop, existing live arming/ownership gates, secret isolation; condition smoke passed, Python formatted. --readiness: checkout-free trusted Node JWT probe validates full App permissions and exactly one installed repo using temporary read-only token/revocation; missing-config actual command smoke and Ruff passed. Required focused tests were refused by make heavy-run on three attempts, most recently memory pressure2 (allowed1), available3.43GiB, memorystatus44. No bypasses or unrelated process termination. Owner chose to free host memory. Next action: retry ordinary heavy-run focused suite in --arm, commit and batch-member-check/land/prepare; merge resulting integration into --readiness, reconcile workflow/test overlap, add readiness dependency to event arm job and update ledger for isolated readiness; verify/commit/check/land/prepare; final combined gates/PR/evidence/merge. Do not recreate batch or lose uncommitted work.",
   "description": "Feature batch: sqlglot-delivery-arm-waits-for-daily-run-20261107 and sqlglot-delivery-dry-runs-miss-write-prerequisites-20261107. One core PR, protected merge; no fork source validation or Theseus changes. Owner approved isolated read-only authenticated readiness probing. Fork hardening runs separately in the fork; translation provenance follows this batch.",
   "sessions": [
     {
@@ -10,6 +11,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "5a284890274147499143ac5938966b60",
+      "session_id": "2f41579dd2194a049659596cdd9a4f3d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:22695c429e51864ea2dba01f",
+      "at": "2026-11-07T21:52:52Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f759bbe39c214e509c662d08153e5271",
       "session_id": "2f41579dd2194a049659596cdd9a4f3d"
     }
   ]
