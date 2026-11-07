@@ -469,6 +469,51 @@ def test_throughput_failed_refresh_check_withholds_throughput(monkeypatch: pytes
     assert result.errors == [f"Refresh stream failed: {result.refresh_stream.error}"]
 
 
+def test_throughput_failed_stream_still_checks_committed_refresh_functions(monkeypatch: pytest.MonkeyPatch) -> None:
+    from benchbox.core.tpch.throughput_test import TPCHRefreshStreamResult
+
+    checked = []
+    test = TPCHThroughputTest(
+        benchmark=object(),
+        connection_factory=lambda: None,
+        num_streams=2,
+        refresh_enabled=True,
+        refresh_connection_factory=lambda: SimpleNamespace(close=lambda: None),
+    )
+    stream = TPCHRefreshStreamResult(first_set=3)
+    stream.status = "FAILED"
+    stream.error = "refresh set 4 RF1 failed: boom"
+    committed = [
+        {"function": "RF1", "status": "SUCCESS", "check_status": "NOT_RUN", "rows_inserted": 3},
+        {"function": "RF2", "status": "SUCCESS", "check_status": "NOT_RUN", "orders_deleted": 1},
+    ]
+    rejected = [{"function": "RF1", "status": "FAILED", "check_status": "NOT_RUN", "error": "boom"}]
+    stream.pairs.append({"update_set": 3, "status": "SUCCESS", "error": None, "functions": committed})
+    stream.pairs.append({"update_set": 4, "status": "FAILED", "error": "boom", "functions": rejected})
+    result = SimpleNamespace(refresh_stream=stream, errors=[])
+    monkeypatch.setattr(
+        throughput_test,
+        "check_rf1_applied",
+        lambda _c, update_set, rows: checked.append(("RF1", update_set.set_id, rows)),
+    )
+    monkeypatch.setattr(
+        throughput_test,
+        "check_rf2_applied",
+        lambda _c, update_set, rows: checked.append(("RF2", update_set.set_id, rows)),
+    )
+
+    test._check_refresh_postconditions({3: SimpleNamespace(set_id=3), 4: SimpleNamespace(set_id=4)}, result)
+
+    assert checked == [("RF1", 3, 3), ("RF2", 3, 1)]
+    assert [function["check_status"] for function in committed] == ["PASSED", "PASSED"]
+    assert rejected[0]["check_status"] == "NOT_RUN"
+    assert stream.error == "refresh set 4 RF1 failed: boom"
+    assert result.errors == [
+        "Refresh stream: update sets [3] changed the database before the stream failed; "
+        "the database needs a reload before they are applied again"
+    ]
+
+
 def test_refresh_stream_stops_before_next_update_set_after_cancellation(monkeypatch: pytest.MonkeyPatch) -> None:
     import threading
     from types import SimpleNamespace

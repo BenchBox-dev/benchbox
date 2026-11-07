@@ -217,10 +217,10 @@ def apply_rf2(
         for order_keys in _key_chunks(update_set.delete_path, chunk_size):
             key_list = ", ".join(str(key) for key in order_keys)
             lineitems_deleted += _reported_row_count(
-                connection.execute(f"DELETE FROM {LINEITEM.name} WHERE L_ORDERKEY IN ({key_list})")
+                connection.execute(f"DELETE FROM {LINEITEM.name} WHERE L_ORDERKEY IN ({key_list})"), update_set
             )
             orders_deleted += _reported_row_count(
-                connection.execute(f"DELETE FROM {ORDERS.name} WHERE O_ORDERKEY IN ({key_list})")
+                connection.execute(f"DELETE FROM {ORDERS.name} WHERE O_ORDERKEY IN ({key_list})"), update_set
             )
 
         _commit(connection)
@@ -237,7 +237,7 @@ def _reload_message(update_set: TPCHRefreshUpdateSet, function: str, detail: str
     )
 
 
-def _reported_row_count(cursor: Any) -> int:
+def _reported_row_count(cursor: Any, update_set: TPCHRefreshUpdateSet) -> int:
     rowcount = getattr(cursor, "rowcount", None)
     if isinstance(rowcount, int) and not isinstance(rowcount, bool) and rowcount >= 0:
         return rowcount
@@ -245,7 +245,7 @@ def _reported_row_count(cursor: Any) -> int:
     row = fetchone() if callable(fetchone) else None
     if row and isinstance(row[0], int) and not isinstance(row[0], bool) and row[0] >= 0:
         return row[0]
-    raise RuntimeError("the driver did not report a deleted row count")
+    raise RuntimeError(f"refresh set {update_set.set_id} RF2: the driver did not report a deleted row count")
 
 
 def _require_chunk_size(chunk_size: int) -> None:

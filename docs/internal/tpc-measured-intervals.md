@@ -124,7 +124,7 @@ Coverage: 142 clock call sites (`mono_time()`, `elapsed_seconds()`, `time.time()
 | K7 | Row-count validation and metadata propagation run inside the per-query timer; `run.timing_method` has no producer. | `result-schema-2-4-producer-20261022` |
 | K8 | Power-test query generation used to run inside the per-query timer and now precedes it; earlier runs are not comparable. | `power-test-times-query-generation-20261031` (delivered here); follow-up `perf-smoke-rebaseline-after-power-query-generation-20261103` |
 
-Cost, not a deviation: `perf-tpch-rf1-bulk-load-20261031` (batched `INSERT ... VALUES`). Decisions that move a boundary: `tpch-refresh-precheck-timing-decision-20261103` (H2, H7, H9), `fetch-timing-contract-decision-20261103` (per-query sites), `tpcds-maintenance-data-source-decision-20261103`, `tpcds-maintenance-dsdgen-refresh-data-20261103` (D6).
+Cost, not a deviation: `perf-tpch-rf1-bulk-load-20261031` (batched `INSERT ... VALUES`). Decisions that move a boundary: `tpch-refresh-checks-timing-per-decision-20261103` (H2, H7, H9), `fetch-timing-contract-decision-20261103` (per-query sites), `tpcds-maintenance-data-source-decision-20261103`, `tpcds-maintenance-dsdgen-refresh-data-20261103` (D6).
 
 ## Findings with no tracker owner
 

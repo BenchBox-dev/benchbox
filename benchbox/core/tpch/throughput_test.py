@@ -273,39 +273,55 @@ class TPCHThroughputTest:
         self, update_sets: dict[int, TPCHRefreshUpdateSet], result: TPCHThroughputTestResult
     ) -> None:
         refresh_stream = result.refresh_stream
-        if refresh_stream is None or refresh_stream.status != "COMPLETED":
+        if refresh_stream is None or refresh_stream.status not in {"COMPLETED", "FAILED"}:
             return
+        committed = [
+            (pair, function_result)
+            for pair in refresh_stream.pairs
+            for function_result in pair["functions"]
+            if function_result["status"] == "SUCCESS"
+        ]
+        if not committed:
+            return
+        stream_failed_before = refresh_stream.status == "FAILED"
 
         def check(connection: Any) -> None:
-            for pair in refresh_stream.pairs:
+            for pair, function_result in committed:
                 update_set_id = pair["update_set"]
                 update_set = update_sets[update_set_id]
-                for function_result in pair["functions"]:
-                    function_result["check_status"] = "FAILED"
-                    try:
-                        if function_result["function"] == "RF1":
-                            check_rf1_applied(connection, update_set, function_result["rows_inserted"])
-                        else:
-                            check_rf2_applied(connection, update_set, function_result["orders_deleted"])
-                    except Exception as exc:
-                        function_result["duration_ms"] = 0
-                        function_result["status"] = "FAILED"
-                        function_result["error"] = str(exc)
-                        pair["status"] = "FAILED"
-                        pair["error"] = str(exc)
+                function_result["check_status"] = "FAILED"
+                try:
+                    if function_result["function"] == "RF1":
+                        check_rf1_applied(connection, update_set, function_result["rows_inserted"])
+                    else:
+                        check_rf2_applied(connection, update_set, function_result["orders_deleted"])
+                except Exception as exc:
+                    function_result["duration_ms"] = 0
+                    function_result["status"] = "FAILED"
+                    function_result["error"] = str(exc)
+                    pair["status"] = "FAILED"
+                    pair["error"] = str(exc)
+                    if not stream_failed_before:
                         refresh_stream.error = (
                             f"refresh set {update_set_id} {function_result['function']} failed: {exc}"
                         )
-                        refresh_stream.status = "FAILED"
-                        return
-                    function_result["check_status"] = "PASSED"
+                    refresh_stream.status = "FAILED"
+                    return
+                function_result["check_status"] = "PASSED"
 
         try:
             self._with_refresh_session(check)
         except Exception as exc:
             refresh_stream.status = "FAILED"
-            refresh_stream.error = f"refresh postcondition check failed: {exc}"
-        if refresh_stream.status == "FAILED":
+            if not stream_failed_before:
+                refresh_stream.error = f"refresh postcondition check failed: {exc}"
+        if stream_failed_before:
+            applied_sets = sorted({pair["update_set"] for pair, _ in committed})
+            result.errors.append(
+                f"Refresh stream: update sets {applied_sets} changed the database before the stream failed; "
+                "the database needs a reload before they are applied again"
+            )
+        elif refresh_stream.status == "FAILED":
             result.errors.append(f"Refresh stream failed: {refresh_stream.error}")
 
     def _execute_refresh_stream(
