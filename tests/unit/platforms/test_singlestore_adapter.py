@@ -588,7 +588,7 @@ class TestSingleStoreDataLoading:
     def test_parquet_text_round_trips_under_mysql_escape_rules(self, tmp_path):
         pa = pytest.importorskip("pyarrow")
         pq = pytest.importorskip("pyarrow.parquet")
-        from benchbox.platforms.singlestore import _parquet_as_load_file
+        from benchbox.platforms.singlestore import _parquet_load_chunks
 
         names = [
             None,
@@ -623,8 +623,9 @@ class TestSingleStoreDataLoading:
                     i += 1
             return "".join(out)
 
-        with _parquet_as_load_file(parquet_path) as load_path:
-            raw = load_path.read_bytes().decode("utf-8")
+        chunks = [load_path.read_bytes().decode("utf-8") for load_path in _parquet_load_chunks(parquet_path)]
+        assert len(chunks) == 1
+        raw = chunks[0]
 
         assert "\r" not in raw
         lines = raw.split("\n")
