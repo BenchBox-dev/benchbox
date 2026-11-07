@@ -31592,6 +31592,13 @@
       "status": "done",
       "title": "Add SingleStore Platform Adapter"
     },
+    "singlestore-ci-and-tpcds-maintenance-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "SingleStore: live tests are not run in CI, and TPC-DS maintenance is reported skipped because its refresh SQL is unvalidated"
+    },
     "singlestore-decimal-text-loads-as-zero-20261107": {
       "claim": null,
       "needs": [],
