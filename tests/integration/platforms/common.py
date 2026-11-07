@@ -1249,7 +1249,7 @@ __all__ = [
 @dataclass
 class InfluxDBStubState:
     host: str = "localhost"
-    port: int = 8086
+    port: int = 8181
     token: str = "test-token"
     database: str = "benchbox"
     org: str | None = None
@@ -1302,7 +1302,7 @@ def install_influxdb_stub(
     monkeypatch,
     *,
     host: str = "localhost",
-    port: int = 8086,
+    port: int = 8181,
     token: str = "test-token",
     database: str = "benchbox",
     mode: str = "core",

@@ -754,7 +754,7 @@ snowflake|staging_root|Cloud storage path for staging data|{}
 snowflake|iceberg_external_volume|Snowflake EXTERNAL VOLUME name for Iceberg tables|{}
 influxdb|deployment_mode|Deprecated alias of the platform selector: 'core' for self-hosted OSS, 'cloud' for the managed service|{'choices': ('core', 'cloud'), 'default': 'cloud', 'aliases': ('mode',)}
 influxdb|host|InfluxDB server hostname|{'default': 'localhost'}
-influxdb|port|InfluxDB server port|{'parser': 'int', 'default': 8086}
+influxdb|port|InfluxDB server port (default: 8181 for core mode, 443 for cloud mode; InfluxDB 2 uses 8086)|{'parser': 'int'}
 influxdb|token|InfluxDB authentication token (or set INFLUXDB_TOKEN env var)|{}
 influxdb|org|InfluxDB organization name|{}
 influxdb|database|InfluxDB database (bucket) name|{'default': 'benchbox'}
