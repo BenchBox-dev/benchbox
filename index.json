@@ -18891,7 +18891,9 @@
     },
     "firebolt-core-native-load-unverified-20261107": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "singlestore-ci-and-tpcds-maintenance-20261107"
+      ],
       "priority": "high",
       "status": "open",
       "title": "Firebolt Core native file loading (#3949) has never been verified against a real Firebolt Core server"
