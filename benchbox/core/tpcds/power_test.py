@@ -278,6 +278,7 @@ class TPCDSPowerTest:
             label = f"Position_{position + 1}_Query_{query_display_id}"
             query_start = mono_time()
             conversion_clock = ConversionClock().start()
+            query_result["start_monotonic"] = query_start
             try:
                 if hasattr(connection, "set_query_context"):
                     connection.set_query_context(query_display_id, stream_id=self.config.stream_id)
@@ -306,6 +307,7 @@ class TPCDSPowerTest:
                 self.captured_items.append((label, query_text))
 
             execution_time = max(0.0, elapsed_seconds(query_start) - conversion_clock.finish())
+            query_result["end_monotonic"] = query_start + execution_time
             query_result.update(
                 {
                     "execution_time_seconds": execution_time,
@@ -319,6 +321,8 @@ class TPCDSPowerTest:
 
         except Exception as e:
             execution_time = elapsed_seconds(query_start) if query_start is not None else 0.0
+            if query_start is not None:
+                query_result["end_monotonic"] = query_start + execution_time
             query_result.update(
                 {
                     "execution_time_seconds": execution_time,

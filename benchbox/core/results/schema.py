@@ -355,6 +355,10 @@ def _build_query_results_section(
             streams_set.add(int(stream_id))
             if qr.test_type == "throughput":
                 throughput_streams_set.add(int(stream_id))
+    phases = getattr(result, "execution_phases", None)
+    first_round = getattr(phases, "throughput_test", None)
+    if getattr(phases, "throughput_test_2", None) is not None and first_round is not None:
+        throughput_streams_set = {sid for sid in throughput_streams_set if sid <= first_round.num_streams}
     if throughput_streams_set:
         streams_set = throughput_streams_set
 

@@ -121,7 +121,7 @@ TPC-DS 4.0.0 clauses 7.4.2, 7.4.6 to 7.4.9 and 7.6.3. A run that executes the `p
 QphDS@Size = floor(SF x Q / (T_PT x T_TT x T_DM x T_LD)^(1/4)), where:
 
 - SF is the scale factor and Q = 99 x S.
-- T_PT = T_Power x S (clause 7.6.3). T_Power is the sum of the per-query elapsed times QD of the power stream, not `TPCDSPowerTest.total_time` (F2: that includes stream construction, preflight generation and connection open and close). Serial execution makes the sum the interval minus the gaps between queries; when any query has no recorded positive duration the metric is withheld.
+- T_PT = T_Power x S (clause 7.6.3). T_Power is the Power Test elapsed interval of clause 7.4.5.1, from the earliest recorded query start to the latest recorded query end of the power stream (monotonic clock), not `TPCDSPowerTest.total_time` (F2: that includes stream construction, preflight generation and connection open and close). When a query lacks a recorded start or end the metric is withheld.
 - T_TT = TT1 + TT2, the elapsed times of Throughput Test 1 and 2.
 - T_DM = DM1 + DM2, the elapsed times of Data Maintenance Test 1 and 2.
 - T_LD = 0.01 x S x T_load, with T_load the sum of the table creation, data loading, statistics gathering, post-load maintenance and merge settle durations captured in the same run.

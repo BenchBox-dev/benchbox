@@ -434,3 +434,82 @@ def test_statement_count_is_derived_from_the_stream_generator_constant() -> None
 
     assert 99 + len(MULTI_PART_QUERY_IDS) == STATEMENTS
     assert _evaluate(_phases()).qphds_at_size == EXPECTED_QPHDS
+
+
+def _statement_ids() -> list[str]:
+    from benchbox.core.tpcds.streams import MULTI_PART_QUERY_IDS
+
+    ids: list[str] = []
+    for number in range(1, 100):
+        ids.extend([f"{number}a", f"{number}b"] if number in MULTI_PART_QUERY_IDS else [str(number)])
+    return ids
+
+
+def _spec_order_payload() -> dict:
+    from benchbox.core.results.schema import build_result_payload as build
+
+    builder = ResultBuilder(
+        benchmark=BenchmarkInfoInput(
+            name="TPC-DS", scale_factor=1.0, test_type="combined", benchmark_id="tpcds", compliance_class="official"
+        ),
+        platform=PlatformInfoInput(name="DuckDB", execution_mode="sql"),
+    )
+    from benchbox.core.results.query_normalizer import normalize_query_result
+
+    for stream_id in range(1, 2 * STREAMS + 1):
+        for query_id in _statement_ids():
+            builder.add_query_result(
+                normalize_query_result(
+                    {
+                        "query_id": query_id,
+                        "status": "SUCCESS",
+                        "execution_time_seconds": 1.0,
+                        "iteration": 1,
+                        "stream_id": stream_id,
+                        "run_type": "measurement",
+                        "test_type": "throughput",
+                    }
+                )
+            )
+    builder.set_execution_phases(_phases())
+    return build(builder.build())
+
+
+def _stream_results(payload: dict, phase: str) -> list[dict]:
+    return payload["phases"][phase]["stream_results"]
+
+
+class TestSpecOrderBundleValidation:
+    def test_run_streams_counts_only_the_first_throughput_test(self) -> None:
+        assert _spec_order_payload()["run"]["streams"] == STREAMS
+
+    def test_full_spec_order_result_has_no_stream_defects(self) -> None:
+        from benchbox.validation.bundle import throughput_stream_defects
+
+        assert throughput_stream_defects(_spec_order_payload()) == []
+
+    def test_missing_second_test_stream_is_a_defect(self) -> None:
+        from benchbox.validation.bundle import throughput_stream_defects
+
+        payload = _spec_order_payload()
+        _stream_results(payload, "throughput_test_2").pop()
+
+        defects = throughput_stream_defects(payload)
+
+        assert any("throughput_test_2 ran 3 streams" in item for item in defects)
+
+    def test_second_test_stream_without_queries_is_a_defect(self) -> None:
+        from benchbox.validation.bundle import throughput_stream_defects
+
+        payload = _spec_order_payload()
+        payload["queries"] = [q for q in payload["queries"] if q.get("stream") != 2 * STREAMS]
+
+        assert any(f"stream {2 * STREAMS} covers" in item for item in throughput_stream_defects(payload))
+
+    def test_second_round_phases_must_be_recorded_together(self) -> None:
+        from benchbox.validation.bundle import throughput_stream_defects
+
+        payload = _spec_order_payload()
+        del payload["phases"]["maintenance_test_2"]
+
+        assert any("recorded together" in item for item in throughput_stream_defects(payload))

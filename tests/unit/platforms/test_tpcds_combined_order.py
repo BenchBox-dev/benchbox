@@ -21,7 +21,10 @@ ORDER = ["load", "power", "throughput 1", "maintenance 1", "throughput 2", "main
 
 class _RecordingAdapter(_LifecycleAdapter):
     supports_refresh_functions = True
-    power_query_results: list[dict[str, Any]] = [{"execution_time_seconds": 1.0}] * 100
+    power_query_results: list[dict[str, Any]] = [
+        {"start_monotonic": 10.0, "end_monotonic": 11.0},
+        {"start_monotonic": 12.0, "end_monotonic": 110.0},
+    ]
 
     def __init__(self, order: list[str], **config: Any) -> None:
         super().__init__(**config)
@@ -177,7 +180,7 @@ def test_outstanding_first_round_streams_stop_every_later_phase(
     assert order == ["load", "power", "throughput 1"]
 
 
-def test_power_time_is_the_sum_of_query_times_not_the_test_wall_time(recorded_run: tuple[Any, list[str], Any]) -> None:
+def test_power_time_is_the_first_start_to_last_end_interval(recorded_run: tuple[Any, list[str], Any]) -> None:
     result, _order, _adapter = recorded_run
 
     assert result.phases.power_test.duration_ms == 100_000
