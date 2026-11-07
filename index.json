@@ -4824,7 +4824,8 @@
     },
     "plan-companion-publication-hygiene": {
       "accepted_members": {
-        "explorer-pipeline-has-plans-true-for-errors-only-20261107": "2ed78a7427b8924c80e2b508a37795d27d0e8406"
+        "explorer-pipeline-has-plans-true-for-errors-only-20261107": "2ed78a7427b8924c80e2b508a37795d27d0e8406",
+        "polars-plan-companion-leaks-local-paths-20261107": "6208fef4e17a4a383a7d5012e662ec1a83d9b9f8"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -4841,10 +4842,25 @@
           ],
           "integration_head": "83168a9802ac3425890848de57ca3319a4449b84",
           "integration_seq": 1
+        },
+        "polars-plan-companion-leaks-local-paths-20261107": {
+          "accepted_head": "6208fef4e17a4a383a7d5012e662ec1a83d9b9f8",
+          "changed_files": [
+            "benchbox/core/dataframe/profiling.py",
+            "benchbox/platforms/base/result_capture.py",
+            "benchbox/platforms/dataframe/benchmark_mixin.py",
+            "benchbox/platforms/dataframe/expression_family.py",
+            "changelog.d/feat-plan-companion-publication-hygiene--polars-plan-leaks.json",
+            "tests/unit/core/dataframe/test_plan_path_redaction.py",
+            "tests/unit/core/results/test_plan_companion_key_shape.py",
+            "tests/unit/platforms/databricks/test_databricks_df_plan_capture.py"
+          ],
+          "integration_head": "c288a73116da65ad788b3ab6bfb221ebbdaea310",
+          "integration_seq": 2
         }
       },
       "integration_branch": "feat/plan-companion-publication-hygiene",
-      "integration_head": "83168a9802ac3425890848de57ca3319a4449b84",
+      "integration_head": "c288a73116da65ad788b3ab6bfb221ebbdaea310",
       "integration_log": [
         {
           "at": "2026-11-07T22:11:18Z",
@@ -4860,6 +4876,15 @@
           "op_id": "c0983c1187d84ceeb6729ce909001ae0",
           "previous_head": "4fe6b3aac7b884bd170cdd3ef61697af5bffbeec",
           "seq": 1
+        },
+        {
+          "at": "2026-11-07T23:12:17Z",
+          "head": "c288a73116da65ad788b3ab6bfb221ebbdaea310",
+          "kind": "prepare",
+          "member": "polars-plan-companion-leaks-local-paths-20261107",
+          "op_id": "72b9af3d688f418e81f4fb811f1f514e",
+          "previous_head": "83168a9802ac3425890848de57ca3319a4449b84",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-plan-companion-publication-hygiene",
@@ -27435,15 +27460,10 @@
       "title": "Polars maintenance and write-primitive operations call collect() directly and ignore the requested execution engine"
     },
     "polars-plan-companion-leaks-local-paths-20261107": {
-      "claim": {
-        "expires_at": "2026-11-08T23:12:12Z",
-        "generation": "3f74b0a5b52f40c1b7b762ca8b14b882",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Stop Polars plans companion from embedding absolute local file paths and an empty test-type key"
     },
     "polars-platform-adapter": {
