@@ -4,7 +4,7 @@
     "The fixtures supply the Git facts the theseus_cli binding needs; the tests do not stub out the binding check",
     "A CI or scheduled job runs this file and reports failures"
   ],
-  "context": "Found while landing PR #3957 (batch identity and primary-clone guards); out of scope there.",
+  "context": "Found while landing PR #3957 (batch identity and primary-clone guards); out of scope there.\n\nDelivered by #3999 (merged df71aafb49): .github/workflows/batch-loop-e2e.yml runs tests/integration/worktree/test_batch_loop_e2e.py -m slow -n 0 on batch-tooling pull requests, nightly and on dispatch. A failing test fails the run. test_batch_loop_e2e_workflow.py checks that every TRACKED_COPY entry matches a trigger path, and the dev-loop ledger has a row for the workflow. The fixture fix itself landed independently on develop in #3970; all 6 e2e tests pass. Delivered as an ordinary PR after both batch attempts were aborted.",
   "description": "Problem (observed 2026-11-06 on unmodified develop): 4 of the 6 tests in tests/integration/worktree/test_batch_loop_e2e.py fail with 'review binding could not be recomputed from Git'. The failures began when #3942 moved review binding into scripts/theseus_cli.py; the tests' fixture repositories do not provide what the new binding reads. The file is marked slow and runs in no CI job, so the regression went unnoticed and the batch landing loop currently has no working end-to-end coverage for those four paths. The two passing tests include test_receipt_survives_context_edit_and_resets_on_acceptance_edit.\n\nOutcome: all six tests pass on develop, and the file runs in a CI job, or another scheduled lane, that fails visibly when they break.",
   "sessions": [
     {
@@ -90,6 +90,14 @@
       "generation": "24e5f38520de4a10b64e0bd4f58ead88",
       "op": "take",
       "op_id": "830d0d842c01426189f9b4f7091b72d3",
+      "session_id": "4e1f5de86962468394697835ee28c6b3"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae",
+      "at": "2026-11-07T16:37:51Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "772b472d97ba48758459f659d5b67ee8",
       "session_id": "4e1f5de86962468394697835ee28c6b3"
     }
   ]
