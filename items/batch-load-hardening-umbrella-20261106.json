@@ -1,0 +1,13 @@
+{
+  "description": "Umbrella for feature batch load-hardening (integration branch feat/load-hardening). Members in order: uat-mocker-compose-gaps-20261106, questdb-rest-and-databend-partial-load-loud-20261106. Not a batch member; carries batch notes. Closed after batch-finish.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T00:52:44Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a1fef3ffc0024e1c9bd07c4ba2d6df17",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}
