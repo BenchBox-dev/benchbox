@@ -5,7 +5,7 @@
     "fetch_mode reaches every adapter's config (test).",
     "Adapters whose parity fails, or was not run, stay on rows."
   ],
-  "context": "Draft saved before being reverted from the member 2 worktree at /Users/joe/Developer/benchmark_runs/arrow-cloud-draft.patch (git diff of the uncommitted member 2 worktree against 86bf7e5d19; also holds the DataFusion, GizmoSQL, chDB and InfluxDB edits that stayed in the batch). Cloud hunks: motherduck.py, databricks/adapter.py, athena.py, bigquery.py, snowflake.py, ClickHouseCloudClient.execute_arrow in clickhouse/client.py, pyproject.toml storage extra and uv.lock. Apply with git apply and drop the non-cloud hunks. Leader fix 0b726bd230 on feat/arrow-result-fetch-2 registers fetch_mode for the cloud platforms; the batch narrows that list to local adapters, so this item must re-add the cloud platform names to FETCH_MODE_PLATFORMS.",
+  "context": "Draft saved before being reverted from the member 2 worktree at /Users/joe/Developer/benchmark_runs/arrow-cloud-draft.patch (git diff of the uncommitted member 2 worktree against 86bf7e5d19; also holds the DataFusion, GizmoSQL, chDB and InfluxDB edits that stayed in the batch). Cloud hunks: motherduck.py, databricks/adapter.py, athena.py, bigquery.py, snowflake.py, ClickHouseCloudClient.execute_arrow in clickhouse/client.py, pyproject.toml storage extra and uv.lock. Apply with git apply and drop the non-cloud hunks. Leader fix 0b726bd230 on feat/arrow-result-fetch-2 registers fetch_mode for the cloud platforms; the batch narrows that list to local adapters, so this item must re-add the cloud platform names to FETCH_MODE_PLATFORMS.\n\n2026-11-07 owner decision (Joe, answering a choice dialog): live-cloud parity runs for these adapters: \"Not now; ship the CLI part only\". Stays waiting for approval.",
   "description": "Re-homed from perf-arrow-fetch-native-drivers-20261030. That item is delivered for the locally verifiable engines in batch arrow-result-fetch-2. The owner declined live-cloud spend on 2026-11-06 (\"Not now\"), so the cloud adapters' Arrow paths cannot get the digest-parity run the fetch-mode contract requires before Arrow becomes a default.\n\nDraft code for these adapters exists uncommitted in the arrow-result-fetch-2 member 2 worktree. Check whether it was kept or discarded. It covers: MotherDuck; Databricks; Athena; ClickHouse Cloud query_arrow; BigQuery via the Storage read API, with the storage extra; and Snowflake.\n\nOpen issue found there: fetch_mode option forwarding did not reach the Databricks and BigQuery configs in a dry run.\n\nContract (owner, 2026-11-06): full receipt inside the timer, a fetch_mode field, and comparison within one mode only.\n\nGuardrails: no live-cloud run without owner approval quoted in context; an adapter stays on rows by default until its parity run passes; work in a linked worktree; no explanatory comments; changelog fragment.",
   "sessions": [
     {
@@ -22,6 +22,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "abbffde19c284447940d4c7a332deb95",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T14:13:53Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e312257f9b91480e9ccd6cc918d6cdb0",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
