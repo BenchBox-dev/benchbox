@@ -19122,7 +19122,7 @@
     "flaky-heavy-choke-points-and-ducklake-interrupted-20261106": {
       "claim": null,
       "needs": [],
-      "priority": "medium",
+      "priority": "medium-high",
       "status": "open",
       "title": "Fix or quarantine flaky CI tests: heavy-choke-points on Python 3.14 and DuckLake 'Query interrupted'"
     },
