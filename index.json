@@ -27330,10 +27330,15 @@
       "title": "Detect uncommitted agent edits in the primary clone, not only commits and pr-open"
     },
     "primary-clone-dirty-from-concurrent-session-20261020": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T17:44:44Z",
+        "generation": "28173e23d5994917bd066a555c19057f",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Find who writes to the primary clone and stop them now that the dirty guard blocks commits"
     },
     "process-spend-versus-product-spend-decision": {
