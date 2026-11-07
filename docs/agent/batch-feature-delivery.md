@@ -306,8 +306,9 @@ Theseus's reasons verbatim; status prints the answer and refuses nothing.
 Refusals include a landing that carries a Theseus lock change (land that on its
 own pull request) and a change too large for any reviewer's capacity (split the
 batch). Advisories from a reviewable answer print as warnings. Before
-registration only an existing branch can be measured; once members exist,
-`make batch-status` reports the combined answer.
+registration only an existing branch can be measured; after members land,
+`make batch-status` reports the answer for the integration head, which covers
+landed members only.
 
 ## Rollback and recovery
 
