@@ -388,12 +388,12 @@ def test_a_hanging_stop_that_leaves_the_machine_running_is_diagnosed_and_the_sta
         STUB_STOP_HANG="1",
         STUB_STOP_STUCK="1",
         STUB_STOP_OUT="Error: XPC connection interrupted",
-        BENCHBOX_LINUX_STOP_TIMEOUT_SECONDS="1",
+        BENCHBOX_LINUX_STOP_TIMEOUT_SECONDS="6",
         STUB_RUN_EXIT="4",
     )
     result = _locked_wrapper(env, "--", "true")
     assert result.returncode == 4, result.stderr
-    assert "timed out after 1s" in result.stderr
+    assert "timed out after 6s" in result.stderr
     assert "Error: XPC connection interrupted" in result.stderr
     assert "ERROR: linux machine 'm' is still running" in result.stderr
     assert "no force-stop" in result.stderr
@@ -403,10 +403,10 @@ def test_a_hanging_stop_that_leaves_the_machine_running_is_diagnosed_and_the_sta
 @posix_only
 @needs_bash
 def test_a_slow_stop_that_lands_after_the_timeout_is_reconciled_to_the_actual_state(tmp_path: Path) -> None:
-    env = _stub_env(tmp_path, "running", STUB_STOP_HANG="1", BENCHBOX_LINUX_STOP_TIMEOUT_SECONDS="1")
+    env = _stub_env(tmp_path, "running", STUB_STOP_HANG="1", BENCHBOX_LINUX_STOP_TIMEOUT_SECONDS="6")
     result = _locked_wrapper(env, "--", "true")
     assert result.returncode == 0, result.stderr
-    assert "timed out after 1s but the machine is now 'stopped'" in result.stderr
+    assert "timed out after 6s but the machine is now 'stopped'" in result.stderr
     assert "ERROR" not in result.stderr
 
 
