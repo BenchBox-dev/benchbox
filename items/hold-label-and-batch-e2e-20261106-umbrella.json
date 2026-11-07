@@ -1,5 +1,5 @@
 {
-  "context": "Members run as separate top-level omp sessions with their own TODO_DB_ACTOR; they make no tracker writes.\n\n2026-11-06 08:30 EST state: batch registered (start/integration head 20a0045113; integration worktree /Users/joe/Developer/BenchBox.wt-feat-hold-label-and-batch-e2e). Members committed, not landed: pr-hold at 3b6544c586 (worktree ...--pr-hold), batch-loop e2e at 638543e42c (worktree ...--e2e; 6/6 e2e pass). Both batch-member-check runs refused only at the member review: review gateway on 127.0.0.1:4000 is down. Host is mid 'Migrating to the review names' (docs/internal/oracle-gateway-host.md): steps 1-3 done 08:07; step 4 (oracle_gateway_host.sh gateway) refuses with 'no broker login for: muse-code'. Owner action: `~/.cache/benchbox/omp/18.13.3/darwin-arm64/omp auth-broker login muse-code`, then the leader reruns gateway + check, reruns both batch-member-check runs, and lands. Note for the e2e member: the CI lane is a dedicated .github/workflows/batch-loop-e2e.yml (not ci.yml).",
+  "context": "Members run as separate top-level omp sessions with their own TODO_DB_ACTOR; they make no tracker writes.\n\n2026-11-06 08:30 EST state: batch registered (start/integration head 20a0045113; integration worktree /Users/joe/Developer/BenchBox.wt-feat-hold-label-and-batch-e2e). Members committed, not landed: pr-hold at 3b6544c586 (worktree ...--pr-hold), batch-loop e2e at 638543e42c (worktree ...--e2e; 6/6 e2e pass). Both batch-member-check runs refused only at the member review: review gateway on 127.0.0.1:4000 is down. Host is mid 'Migrating to the review names' (docs/internal/oracle-gateway-host.md): steps 1-3 done 08:07; step 4 (oracle_gateway_host.sh gateway) refuses with 'no broker login for: muse-code'. Owner action: `~/.cache/benchbox/omp/18.13.3/darwin-arm64/omp auth-broker login muse-code`, then the leader reruns gateway + check, reruns both batch-member-check runs, and lands. Note for the e2e member: the CI lane is a dedicated .github/workflows/batch-loop-e2e.yml (not ci.yml).\n\nBatch hold-label-and-batch-e2e-20261106 aborted: the final-PR local review required docs/internal/dev-loop-property-ledger.md edits (missing batch-loop-e2e.yml row; stale pr-hold test citations), outside the frozen scopes. Owner chose re-registration. New batch hold-label-and-batch-e2e-v2-20261106 registered at start head c1a2dc186b with the ledger in both scopes; integration worktree /Users/joe/Developer/BenchBox.wt-feat-hold-label-and-batch-e2e-v2. #3970 independently fixed the e2e fixture on develop, so the e2e member now carries only the CI lane plus the ledger row and a wider path filter. Members re-dispatched as separate omp sessions.",
   "description": "Umbrella for registered batch hold-label-and-batch-e2e-20261106 (never a member). Members: pr-hold-stale-label-suite-unclearable-20261106, batch-loop-e2e-review-binding-failures-20261106. Independent members, no implementation edges. Integration branch feat/hold-label-and-batch-e2e-20261106.",
   "sessions": [
     {
@@ -16,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "eb95fda0e0bd427f8f38671d638e1934",
+      "session_id": "4e1f5de86962468394697835ee28c6b3"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae",
+      "at": "2026-11-07T00:32:37Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3c8863244c444443837860760ee7419b",
       "session_id": "4e1f5de86962468394697835ee28c6b3"
     }
   ]
