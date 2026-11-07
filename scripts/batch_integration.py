@@ -54,6 +54,7 @@ DEFAULT_PREFLIGHT_COMMAND = ["make", "pr-preflight"]
 REVIEW_INTERPRETER = "python3"
 REVIEW_WRAPPER = "scripts/oracle_local_review.py"
 REVIEW_SUPPORT = ("scripts/theseus_cli.py",)
+COMPANION_SCOPE = ("changelog.d/*", "docs/internal/dev-loop-property-ledger.md")
 FINAL_SUITE = "member-reruns"
 LEADER_MEMBER_OPS = frozenset({"take", "release", "renew", "recover"})
 POLICY_PATH = ".github/oracle-reviewers.yml"
@@ -204,6 +205,16 @@ def scope_digest(scope: dict[str, list[str]]) -> str:
 
 def _matches_scope(path: str, patterns: list[str]) -> bool:
     return any(fnmatch.fnmatch(path, pattern) for pattern in patterns)
+
+
+def _with_companions(patterns: list[str]) -> list[str]:
+    return [*patterns, *(pattern for pattern in COMPANION_SCOPE if pattern not in patterns)]
+
+
+def _refuse_outside_scope(changed: list[str], patterns: list[str]) -> None:
+    outside = [path for path in changed if not _matches_scope(path, patterns)]
+    if outside:
+        raise BatchError(f"member changes paths outside its frozen scope: {', '.join(outside[:5])}")
 
 
 def _primary_checkout(repo: Path) -> Path:
@@ -479,7 +490,11 @@ def start_batch(
     dependencies: dict[str, list[str]] | None = None,
 ) -> dict:
     _validate_id(batch_id, "batch")
-    if not members or len(set(members)) != len(members):
+    if len(members) < 2:
+        raise BatchError(
+            "a batch needs at least two members; one member is serial work, so use a standalone branch and PR"
+        )
+    if len(set(members)) != len(members):
         raise BatchError("members must be a non-empty list without duplicates")
     for member in members:
         _validate_id(member, "member")
@@ -506,6 +521,7 @@ def start_batch(
     generation = secrets.token_hex(16)
     _config_set(path, "role", ROLE_INTEGRATION)
     _config_set(path, "id", batch_id)
+    scope = {member: _with_companions(patterns) for member, patterns in scope.items()}
     scope_hash = scope_digest(scope)
     ledger = {
         "schema": LEDGER_SCHEMA,
@@ -716,6 +732,7 @@ def check_member(
     changed = _changed_files(repo, integration_head, member_head)
     if not changed:
         raise BatchError("member has no changes over the integration head")
+    _refuse_outside_scope(changed, patterns)
     unnamed = non_python_paths(changed)
     if unnamed and not tests:
         raise BatchError(f"non-Python changes need named tests (TESTS=...): {', '.join(unnamed[:5])}")
@@ -733,12 +750,9 @@ def check_member(
     v_proc = _run(command, repo)
     if v_proc.returncode != 0:
         raise BatchError(f"member verification failed: {(v_proc.stderr or v_proc.stdout).strip()[-400:]}")
+    trusted = _trusted_develop(repo)
     if _rev(repo, "HEAD") != member_head or not _is_clean(repo):
         raise BatchError("member worktree changed while verification ran; run batch-member-check again")
-    trusted = _trusted_develop(repo)
-    result = _review_member_patch(repo, integration_head, member_head, trusted)
-    if _rev(repo, "HEAD") != member_head or not _is_clean(repo):
-        raise BatchError("member worktree changed while checks ran; run batch-member-check again")
     record = {
         "schema": CHECK_SCHEMA,
         "batch_id": batch_id,
@@ -747,7 +761,6 @@ def check_member(
         "integration_head": integration_head,
         "preflight": preflight,
         "trusted_sha": trusted,
-        "review_outcome": result["outcome"],
         "verification": {"suite": suite, "command": command},
         "tests": tests,
         "checked_at": _now(),
@@ -1067,9 +1080,7 @@ def _review_and_scope(
     changed = _changed_files(repo, base, member_head)
     if not changed:
         raise BatchError("member has no changes over the integration head")
-    outside = [path for path in changed if not _matches_scope(path, ledger["scope"][member])]
-    if outside:
-        raise BatchError(f"member changes paths outside its frozen scope: {', '.join(outside[:5])}")
+    _refuse_outside_scope(changed, ledger["scope"][member])
     return review, changed
 
 
