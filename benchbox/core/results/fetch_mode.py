@@ -43,16 +43,10 @@ def summarize_fetch_modes(modes: Iterable[Any]) -> str | None:
 
 FETCH_MODE_PLATFORMS = (
     "duckdb",
-    "motherduck",
     "datafusion",
     "gizmosql",
     "clickhouse",
     "clickhouse-local",
-    "clickhouse-cloud",
-    "databricks",
-    "athena",
-    "bigquery",
-    "snowflake",
     "spark",
     "lakesail",
     "velox",
