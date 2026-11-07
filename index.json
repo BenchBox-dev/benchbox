@@ -4824,6 +4824,7 @@
     },
     "plan-companion-publication-hygiene": {
       "accepted_members": {
+        "core-docs-plan-fingerprint-variation-fields-20261107": "f56d5a5d5183be2b13115801921ae43edcc1c21c",
         "explorer-pipeline-has-plans-true-for-errors-only-20261107": "2ed78a7427b8924c80e2b508a37795d27d0e8406",
         "polars-plan-companion-leaks-local-paths-20261107": "6208fef4e17a4a383a7d5012e662ec1a83d9b9f8"
       },
@@ -4832,6 +4833,15 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "core-docs-plan-fingerprint-variation-fields-20261107": {
+          "accepted_head": "f56d5a5d5183be2b13115801921ae43edcc1c21c",
+          "changed_files": [
+            "changelog.d/feat-plan-companion-publication-hygiene--core-docs-plan-fingerprint.json",
+            "docs/internal/dataframe-plan-capture.md"
+          ],
+          "integration_head": "6c532c4956a339b00bc8f7ab954d7b44a93e018e",
+          "integration_seq": 3
+        },
         "explorer-pipeline-has-plans-true-for-errors-only-20261107": {
           "accepted_head": "2ed78a7427b8924c80e2b508a37795d27d0e8406",
           "changed_files": [
@@ -4860,7 +4870,7 @@
         }
       },
       "integration_branch": "feat/plan-companion-publication-hygiene",
-      "integration_head": "c288a73116da65ad788b3ab6bfb221ebbdaea310",
+      "integration_head": "6c532c4956a339b00bc8f7ab954d7b44a93e018e",
       "integration_log": [
         {
           "at": "2026-11-07T22:11:18Z",
@@ -4885,6 +4895,15 @@
           "op_id": "72b9af3d688f418e81f4fb811f1f514e",
           "previous_head": "83168a9802ac3425890848de57ca3319a4449b84",
           "seq": 2
+        },
+        {
+          "at": "2026-11-07T23:19:44Z",
+          "head": "6c532c4956a339b00bc8f7ab954d7b44a93e018e",
+          "kind": "prepare",
+          "member": "core-docs-plan-fingerprint-variation-fields-20261107",
+          "op_id": "83496047757642878f65f366614d1fe2",
+          "previous_head": "c288a73116da65ad788b3ab6bfb221ebbdaea310",
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-plan-companion-publication-hygiene",
@@ -14465,15 +14484,10 @@
       "title": "Warn on core PRs that change the documented contract the site checks"
     },
     "core-docs-plan-fingerprint-variation-fields-20261107": {
-      "claim": {
-        "expires_at": "2026-11-08T23:19:41Z",
-        "generation": "5522df60509b4a42ac31ce42ba334a6d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "open",
       "title": "Document fingerprint_varied and fingerprint_variants in the core plans-companion reference"
     },
     "core-exec-compute-resource-unification": {

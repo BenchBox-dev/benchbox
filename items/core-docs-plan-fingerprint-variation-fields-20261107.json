@@ -14,6 +14,52 @@
     "benchbox/core/results/schema.py",
     "docs"
   ],
+  "prepared": {
+    "accepted_head": "f56d5a5d5183be2b13115801921ae43edcc1c21c",
+    "batch_id": "plan-companion-publication-hygiene",
+    "changed_files": [
+      "changelog.d/feat-plan-companion-publication-hygiene--core-docs-plan-fingerprint.json",
+      "docs/internal/dataframe-plan-capture.md"
+    ],
+    "integration_head": "6c532c4956a339b00bc8f7ab954d7b44a93e018e",
+    "integration_seq": 3,
+    "member_id": "core-docs-plan-fingerprint-variation-fields-20261107",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "8b1d5663bb9efdafda9170c9958fa51c722772c922d41446c1faaacc82429953",
+    "source_base": "c288a73116da65ad788b3ab6bfb221ebbdaea310",
+    "source_revision": "f56d5a5d5183be2b13115801921ae43edcc1c21c",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-plan-companion-publication-hygiene--core-docs-plan-fingerprint-variation-fields-20261107",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/unit/docs/test_publish_policy.py"
+      ],
+      "review": {
+        "base_sha": "c288a73116da65ad788b3ab6bfb221ebbdaea310",
+        "head_sha": "f56d5a5d5183be2b13115801921ae43edcc1c21c",
+        "head_tree": "35b1d8794b6c98a5458b54af3e0b5f81a8a132ec",
+        "outcome": "clear",
+        "patch_digest": "c6caed0968256c5cd84e02ed6ef8e55c",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "4fe6b3aac7b884bd170cdd3ef61697af5bffbeec"
+      },
+      "revision": "f56d5a5d5183be2b13115801921ae43edcc1c21c",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
@@ -38,6 +84,15 @@
       "generation": "5522df60509b4a42ac31ce42ba334a6d",
       "op": "take",
       "op_id": "8aa5fe12f242439c92aa401a30ae59a2",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-07T23:19:44Z",
+      "client": "omp-coding-agent",
+      "generation": "5522df60509b4a42ac31ce42ba334a6d",
+      "op": "prepare",
+      "op_id": "83496047757642878f65f366614d1fe2",
       "session_id": "dc59872de7f0484eafa9032416c81607"
     }
   ]
