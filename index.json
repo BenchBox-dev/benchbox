@@ -34400,10 +34400,15 @@
       "title": "Unblock PRs and release checks: record a reviewed freshness waiver for upstream SQLGlot v30.27.0"
     },
     "sqlglot-guard-tests-scan-ignored-venvs-20261102": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T16:26:33Z",
+        "generation": "5d82d443072c45d8a2d1d8728e919d87",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Two sqlglot guard tests fail when a git-ignored _project/scripts/.venv exists"
     },
     "sqlglot-mysql-retirement-needs-execution-evidence": {
