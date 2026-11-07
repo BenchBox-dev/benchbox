@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "QuestDB ILP loads now send every DATE/TIMESTAMP column as an epoch timestamp using the table's column types, so lineitem no longer loads zero rows; a date value that cannot be parsed now fails the load instead of silently taking the server time"
+    }
+  ]
+}

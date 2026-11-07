@@ -1,0 +1,1 @@
+{"schema": 1, "internal": "The SQLGlot overlay guard scans only tracked files, so an untracked virtualenv under _project/scripts no longer fails it"}

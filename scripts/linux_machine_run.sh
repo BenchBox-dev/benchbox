@@ -25,31 +25,14 @@ prior=$(machine_status "$machine" || true)
 
 repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 
-foreign_pid() {
+machine_py() {
   if [ -n "${BENCHBOX_PYTHON:-}" ]; then
-    PYTHONPATH="$repo${PYTHONPATH:+:$PYTHONPATH}" "$BENCHBOX_PYTHON" -m benchbox.utils.linux_machine busy "$machine" --own-pid "$$"
+    PYTHONPATH="$repo${PYTHONPATH:+:$PYTHONPATH}" "$BENCHBOX_PYTHON" -m benchbox.utils.linux_machine "$@"
   elif command -v uv >/dev/null 2>&1; then
-    uv run --project "$repo" --no-sync -q -- python -m benchbox.utils.linux_machine busy "$machine" --own-pid "$$"
+    uv run --project "$repo" --no-sync -q -- python -m benchbox.utils.linux_machine "$@"
   else
-    PYTHONPATH="$repo${PYTHONPATH:+:$PYTHONPATH}" python3 -m benchbox.utils.linux_machine busy "$machine" --own-pid "$$"
+    PYTHONPATH="$repo${PYTHONPATH:+:$PYTHONPATH}" python3 -m benchbox.utils.linux_machine "$@"
   fi
-}
-
-stop_machine() {
-  limit=${BENCHBOX_LINUX_STOP_TIMEOUT_SECONDS:-60}
-  container machine stop "$machine" >&2 &
-  stop_pid=$!
-  waited=0
-  while kill -0 "$stop_pid" 2>/dev/null; do
-    if [ "$waited" -ge "$limit" ]; then
-      kill "$stop_pid" 2>/dev/null
-      echo "WARNING: stopping machine '$machine' timed out after ${limit}s" >&2
-      break
-    fi
-    sleep 1
-    waited=$((waited + 1))
-  done
-  wait "$stop_pid" 2>/dev/null || echo "WARNING: could not stop machine '$machine'" >&2
 }
 
 finish_machine() {
@@ -58,17 +41,14 @@ finish_machine() {
   if [ "$keep" = "1" ] && [ "$prior" != "stopped" ]; then
     return 0
   fi
-  other=$(foreign_pid 2>/dev/null)
-  if [ "$?" -eq 0 ] && [ -n "$other" ]; then
-    echo "==> linux machine '$machine' left running: in use by pid $other" >&2
-    return 0
-  fi
   if [ "$keep" = "1" ]; then
     echo "==> linux machine '$machine' was stopped before this run; stopping it again" >&2
-  else
-    echo "==> stopping linux machine '$machine'" >&2
   fi
-  stop_machine
+  machine_py cleanup "$machine" --own-pid "$$" >&2
+  cleanup_status=$?
+  if [ "$cleanup_status" -ne 0 ]; then
+    echo "WARNING: the linux machine cleanup helper failed (exit $cleanup_status); '$machine' is left running for the sentinel to reclaim" >&2
+  fi
 }
 
 trap 'exit 130' INT

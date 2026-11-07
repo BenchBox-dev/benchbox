@@ -209,24 +209,19 @@ class TestLiveChdbQueryPlanCapture:
 @pytest.mark.skipif(not os.environ.get("SPARK_MASTER"), reason="live Spark not available (SPARK_MASTER unset)")
 class TestLiveSparkQueryPlanCapture:
     @pytest.fixture
-    def adapter(self):
+    def adapter(self, tmp_path):
         from benchbox.platforms.spark import SparkAdapter
 
         return SparkAdapter(
             master=os.environ["SPARK_MASTER"],
+            database="plan_capture_live",
+            warehouse_dir=str(tmp_path / "warehouse"),
             capture_plans=True,
         )
 
     @pytest.fixture
-    def connection(self, adapter, tmp_path):
-        from pyspark.sql import SparkSession
-
-        conn = (
-            SparkSession.builder.master(os.environ["SPARK_MASTER"])
-            .config("spark.sql.warehouse.dir", str(tmp_path / "warehouse"))
-            .config("spark.ui.enabled", "false")
-            .getOrCreate()
-        )
+    def connection(self, adapter):
+        conn = adapter.create_connection()
         try:
             yield conn
         finally:

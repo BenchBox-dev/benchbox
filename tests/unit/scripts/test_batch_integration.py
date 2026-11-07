@@ -347,6 +347,51 @@ def test_land_refuses_a_member_write_in_the_same_second_as_the_worktree_creation
         world.land("zeta")
 
 
+def test_land_ignores_tracker_writes_present_when_the_member_worktree_was_created(world: World) -> None:
+    world.start()
+    world.tracker.item_sessions["zeta"] = [_session("update", "leader-metadata", "2999-01-01T00:00:00Z")]
+    member = world.member("zeta")
+    world.commit(member, {"src/a.py": "member\n"})
+    world.check(member, ["tests/test_zeta.py"])
+    world.tracker.item_sessions["zeta"].append(_session("update", "member-note", "2999-01-01T00:00:01Z"))
+
+    with _raises("member-note") as raised:
+        world.land("zeta")
+    assert "leader-metadata" not in str(raised.value)
+
+
+def test_a_leader_write_in_the_landing_second_does_not_block_resuming_the_landing(world: World) -> None:
+    world.start()
+    world.tracker.item_sessions["zeta"] = [_session("create", "created", "2000-01-01T00:00:00Z")]
+    world.deliver("zeta", {"src/a.py": "member\n"})
+    assert world.land("zeta")["status"] == "merged"
+    landed_at = bi.load_ledger(world.integration, BATCH)["landings"]["zeta"]["landed_at"]
+    world.tracker.item_sessions["zeta"].append(_session("invalidate", "leader-invalidate", landed_at))
+
+    assert world.land("zeta")["status"] == "already-merged"
+
+
+def test_land_undoes_the_merge_when_a_member_write_arrives_during_it(
+    world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    world.start()
+    world.tracker.item_sessions["zeta"] = [_session("create", "created", "2000-01-01T00:00:00Z")]
+    world.deliver("zeta", {"src/a.py": "member\n"})
+    before = world.head()
+    original = bi._git_merge
+
+    def write_during_merge(*args, **kwargs):
+        world.tracker.item_sessions["zeta"].append(_session("update", "late-note", "2999-01-01T00:00:00Z"))
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(bi, "_git_merge", write_during_merge)
+    with _raises("late-note"):
+        world.land("zeta")
+
+    assert world.head() == before
+    assert "zeta" not in bi.load_ledger(world.integration, BATCH)["landings"]
+
+
 def test_land_checks_a_member_without_a_creation_time_from_the_batch_start(world: World) -> None:
     world.start()
     member = world.deliver("zeta", {"src/a.py": "member\n"})

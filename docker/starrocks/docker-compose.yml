@@ -1,6 +1,6 @@
 services:
   starrocks:
-    image: starrocks/allin1-ubuntu:3.5.16
+    image: starrocks/allin1-ubuntu:3.5.16@sha256:00ca71aa2bcb6675016284ca34aa62e391b1fdf27c8b971c2bfe244b68e47338
     mem_limit: ${STARROCKS_MEMORY_LIMIT:-8g}
     ports:
       - "${STARROCKS_HOST_PORT:-19030}:9030"

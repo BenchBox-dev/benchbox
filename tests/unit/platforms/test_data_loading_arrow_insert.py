@@ -210,6 +210,8 @@ def test_generic_handlers_route_through_arrow_insert(monkeypatch, tmp_path, hand
         fake.DeltaTable.return_value.to_pyarrow_table.return_value = table
         monkeypatch.setitem(__import__("sys").modules, "deltalake", fake)
     elif patch_target == "iceberg":
+        (path / "metadata").mkdir()
+        (path / "metadata" / "v1.metadata.json").write_text("{}")
         fake_sql = MagicMock()
         catalog = fake_sql.SqlCatalog.return_value
         catalog.load_table.return_value.scan.return_value.to_arrow.return_value = table
@@ -305,3 +307,149 @@ def test_data_loader_routes_ducklake_and_iceberg_dirs_to_factory(tmp_path, marke
 
     assert loader._load_single_file("t", table_dir) == 7
     assert loader._load_sharded_table("t", [table_dir]) == 7
+
+
+_ICEBERG_SCHEMA = {
+    "columns": [
+        {"name": "id", "type": "INTEGER"},
+        {"name": "name", "type": "VARCHAR(20)"},
+    ]
+}
+
+
+def _write_real_iceberg_table(root: Path, table_name: str, rows: int) -> Path:
+    pytest.importorskip("pyiceberg.catalog.sql")
+    from benchbox.utils.format_converters.base import ConversionOptions
+    from benchbox.utils.format_converters.iceberg_converter import IcebergConverter
+
+    source = root / f"{table_name}.tbl"
+    source.write_text("".join(f"{i}|name-{i}|\n" for i in range(rows)))
+    output_dir = root / "iceberg"
+    output_dir.mkdir(exist_ok=True)
+    IcebergConverter().convert([source], table_name, _ICEBERG_SCHEMA, ConversionOptions(output_dir=output_dir))
+    return output_dir / table_name
+
+
+def test_iceberg_handler_registers_real_converter_output(tmp_path):
+    table_dir = _write_real_iceberg_table(tmp_path, "widgets", 25)
+    conn = duckdb.connect()
+    conn.execute("CREATE TABLE widgets (id INTEGER, name VARCHAR)")
+
+    loaded = IcebergFileHandler().load_table("widgets", table_dir, conn, MagicMock(), MagicMock())
+
+    assert loaded == 25
+    assert conn.execute("SELECT COUNT(*), MIN(id), MAX(id) FROM widgets").fetchone() == (25, 0, 24)
+
+
+class _Adapter:
+    dry_run_mode = False
+    platform_name = "DuckDB"
+    table_mode = "native"
+    platform_config: dict = {}
+    requested_table_format = None
+    verbose_enabled = False
+    logger = MagicMock()
+
+    def log_very_verbose(self, *args, **kwargs):
+        pass
+
+
+def _loader(connection, handler_factory=None):
+    return data_loading.DataLoader(_Adapter(), MagicMock(), connection, Path("."), handler_factory=handler_factory)
+
+
+def test_loader_raises_when_iceberg_handler_fails(tmp_path):
+    table_dir = _write_real_iceberg_table(tmp_path, "widgets", 5)
+    conn = duckdb.connect()
+
+    with pytest.raises(data_loading.DataLoadingError, match="widgets"):
+        _loader(conn)._load_single_file("widgets", table_dir)
+
+
+def test_loader_loads_real_iceberg_directory(tmp_path):
+    table_dir = _write_real_iceberg_table(tmp_path, "widgets", 7)
+    conn = duckdb.connect()
+    conn.execute("CREATE TABLE widgets (id INTEGER, name VARCHAR)")
+
+    assert _loader(conn)._load_single_file("widgets", table_dir) == 7
+    assert _loader(conn)._load_sharded_table("widgets", [table_dir]) == 7
+
+
+class _ZeroRowHandler(data_loading.FileFormatHandler):
+    def get_delimiter(self) -> str:
+        return "|"
+
+    def load_table(self, table_name, file_path, connection, benchmark, logger) -> int:
+        return 0
+
+
+def test_loader_raises_when_handler_loads_zero_rows_from_non_empty_source(tmp_path):
+    source = tmp_path / "widgets.tbl"
+    source.write_text("1|a|\n2|b|\n")
+    loader = _loader(MagicMock(), handler_factory=lambda *args: _ZeroRowHandler())
+
+    with pytest.raises(data_loading.DataLoadingError, match="loaded 0 rows but the source has 1"):
+        loader._load_single_file("widgets", source)
+    with pytest.raises(data_loading.DataLoadingError, match="loaded 0 rows but the source has 1"):
+        loader._load_sharded_table("widgets", [source])
+
+
+def test_loader_allows_zero_rows_from_empty_source(tmp_path):
+    source = tmp_path / "widgets.tbl"
+    source.write_text("")
+    loader = _loader(MagicMock(), handler_factory=lambda *args: _ZeroRowHandler())
+
+    assert loader._load_single_file("widgets", source) == 0
+
+
+def test_loader_allows_zero_rows_from_header_only_csv(tmp_path):
+    source = tmp_path / "widgets.csv"
+    source.write_text("id,name\n")
+    data_source = data_loading.DataSource(
+        source_type="legacy_mapping", tables={"widgets": source}, table_metadata={"widgets": {"csv_has_header": True}}
+    )
+    loader = _loader(MagicMock(), handler_factory=lambda *args: _ZeroRowHandler())
+
+    assert loader._load_single_file("widgets", source, data_source) == 0
+    assert loader._load_sharded_table("widgets", [source], data_source) == 0
+
+
+def test_loader_raises_when_header_csv_has_rows_but_none_load(tmp_path):
+    source = tmp_path / "widgets.csv"
+    source.write_text("id,name\n1,a\n")
+    data_source = data_loading.DataSource(
+        source_type="legacy_mapping", tables={"widgets": source}, table_metadata={"widgets": {"csv_has_header": True}}
+    )
+    loader = _loader(MagicMock(), handler_factory=lambda *args: _ZeroRowHandler())
+
+    with pytest.raises(data_loading.DataLoadingError, match="loaded 0 rows but the source has 1"):
+        loader._load_single_file("widgets", source, data_source)
+
+
+def test_loader_skips_row_count_check_in_dry_run(tmp_path):
+    class _PlaceholderHandler(_ZeroRowHandler):
+        def load_table(self, table_name, file_path, connection, benchmark, logger) -> int:
+            return 1000
+
+    source = tmp_path / "widgets.tbl"
+    source.write_text("1|a|\n2|b|\n")
+    loader = _loader(MagicMock(), handler_factory=lambda *args: _PlaceholderHandler())
+
+    with pytest.raises(data_loading.DataLoadingError):
+        loader._load_single_file("widgets", tmp_path / "missing.tbl")
+    loader.adapter.dry_run_mode = True
+    assert loader._load_single_file("widgets", source) == 1000
+    assert loader._load_sharded_table("widgets", [source]) == 1000
+
+
+def test_loader_raises_on_decompression_or_file_errors(tmp_path):
+    class _MissingToolHandler(_ZeroRowHandler):
+        def load_table(self, table_name, file_path, connection, benchmark, logger) -> int:
+            raise FileNotFoundError("zstd")
+
+    source = tmp_path / "widgets.tbl"
+    source.write_text("1|a|\n")
+    loader = _loader(MagicMock(), handler_factory=lambda *args: _MissingToolHandler())
+
+    with pytest.raises(data_loading.DataLoadingError, match="widgets"):
+        loader._load_single_file("widgets", source)

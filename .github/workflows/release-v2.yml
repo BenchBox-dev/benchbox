@@ -13,13 +13,22 @@ on:
         description: 'Annotated release tag to publish (for example v0.5.0rc1 for TestPyPI, v0.5.0 for PyPI)'
         required: true
         type: string
+      probe:
+        description: 'Run the job graph as a publish-free probe (reuse or fallback evidence) instead of a release; only with tag v0.0.0rc0 from a branch'
+        required: false
+        type: choice
+        default: none
+        options:
+          - none
+          - reuse
+          - fallback
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-v2-${{ inputs.tag || github.ref_name }}
-  cancel-in-progress: false
+  group: ${{ (github.event_name == 'workflow_dispatch' && inputs.probe != 'none') && format('release-v2-probe-{0}-{1}', github.ref_name, inputs.probe) || format('release-v2-{0}', inputs.tag || github.ref_name) }}
+  cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' && inputs.probe != 'none' }}
 
 jobs:
   admit:
@@ -30,8 +39,9 @@ jobs:
       contents: read
       actions: read
     outputs:
-      head_sha: ${{ steps.admit.outputs.head_sha }}
+      head_sha: ${{ steps.admit.outputs.head_sha || steps.probe-admit.outputs.head_sha }}
       target: ${{ steps.route.outputs.target }}
+      branch: ${{ steps.admit.outputs.branch || steps.probe-admit.outputs.branch }}
     steps:
       - name: Validate tag shape
         env:
@@ -55,12 +65,29 @@ jobs:
             echo "target=test-pypi" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - if: ${{ github.event_name == 'push' || inputs.probe == 'none' }}
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
           ref: ${{ inputs.tag || github.ref_name }}
           fetch-depth: 0
 
+      - if: ${{ github.event_name == 'workflow_dispatch' && inputs.probe != 'none' }}
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+
+      - name: Classify the run and refuse a probe aimed at a real tag
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PROBE_MODE: ${{ inputs.probe }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release_probe.py guard --event "$EVENT_NAME" --probe "$PROBE_MODE" --tag "$RELEASE_TAG" --ref-type "$REF_TYPE"
+
       - name: Require an annotated tag
+        if: ${{ github.event_name == 'push' || inputs.probe == 'none' }}
         env:
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
@@ -80,6 +107,7 @@ jobs:
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
 
       - name: Verify the pre-tag state
+        if: ${{ github.event_name == 'push' || inputs.probe == 'none' }}
         env:
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
@@ -88,6 +116,7 @@ jobs:
           make release-check VERSION="$version" RELEASE_PRE_TAG=1
 
       - name: Check ruleset drift without the readiness override
+        if: ${{ github.event_name == 'push' || inputs.probe == 'none' }}
         env:
           RULESET_DRIFT_TOKEN: ${{ secrets.RULESET_DRIFT_TOKEN }}
         run: |
@@ -97,12 +126,32 @@ jobs:
           uv run -- python scripts/ruleset_drift_check.py --token "$RULESET_DRIFT_TOKEN" --require-bypass-actor-visibility
 
       - name: Refuse open release-blocking issues
+        if: ${{ github.event_name == 'push' || inputs.probe == 'none' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: uv run -- python scripts/release_blocker_check.py
 
+      - name: Require a fresh green release canary on an ancestor of the tagged commit
+        if: ${{ github.event_name == 'push' || inputs.probe == 'none' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release_canary_freshness.py check \
+            --head-sha "$(git rev-parse HEAD)" \
+            --github-repository "$GITHUB_REPOSITORY"
+
+      - name: Require a fresh green release canary for the probe's synthetic target
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.probe != 'none' }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release_probe.py canary \
+            --head-sha "$(git rev-parse HEAD)" \
+            --github-repository "$GITHUB_REPOSITORY"
+
       - name: Admit the trunk-tested artifacts
         id: admit
+        if: ${{ github.event_name == 'push' || inputs.probe == 'none' }}
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
@@ -112,7 +161,25 @@ jobs:
             --source . --tag "$RELEASE_TAG" --output "$RUNNER_TEMP/admitted"
           head_sha="$(git rev-parse HEAD)"
           echo "head_sha=$head_sha" >> "$GITHUB_OUTPUT"
+          branch="$(uv run -- python scripts/release_artifact_consumer.py line --source . --tag "$RELEASE_TAG")"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
           cp -R "$RUNNER_TEMP/admitted" admitted
+
+      - name: Build the probe candidate and admitted distributions and admit them
+        id: probe-admit
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.probe != 'none' }}
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          head_sha="$(git rev-parse HEAD)"
+          uv run --locked --no-dev -- python scripts/release_probe.py prepare \
+            --work "$RUNNER_TEMP/probe" --tag "$RELEASE_TAG" --head-sha "$head_sha"
+          echo "head_sha=$head_sha" >> "$GITHUB_OUTPUT"
+          echo "branch=develop" >> "$GITHUB_OUTPUT"
+          cp -R "$RUNNER_TEMP/probe/admitted" admitted
+          mkdir probe-candidate
+          cp "$RUNNER_TEMP"/probe/candidate/*.whl "$RUNNER_TEMP"/probe/candidate/*.tar.gz probe-candidate/
 
       - name: Upload the admitted directory
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
@@ -122,21 +189,30 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
+      - name: Upload the probe candidate distributions
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.probe != 'none' }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: probe-candidate-${{ inputs.tag || github.ref_name }}
+          path: probe-candidate/
+          retention-days: 1
+          if-no-files-found: error
+
   uat-reuse:
     name: UAT evidence reuse
     needs: admit
-    if: ${{ needs.admit.outputs.target == 'pypi' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
       contents: read
       actions: read
     outputs:
-      reuse: ${{ steps.decide.outputs.reuse }}
-      rc_tag: ${{ steps.decide.outputs.rc_tag }}
-      rc_sha: ${{ steps.decide.outputs.rc_sha }}
-      rc_run_id: ${{ steps.decide.outputs.rc_run_id }}
-      rc_dist_digest: ${{ steps.decide.outputs.rc_dist_digest }}
+      reuse: ${{ steps.decide.outputs.reuse || steps.probe-decide.outputs.reuse }}
+      source_kind: ${{ steps.decide.outputs.source_kind || steps.probe-decide.outputs.source_kind }}
+      source_tag: ${{ steps.decide.outputs.source_tag || steps.probe-decide.outputs.source_tag }}
+      source_sha: ${{ steps.decide.outputs.source_sha || steps.probe-decide.outputs.source_sha }}
+      source_run_id: ${{ steps.decide.outputs.source_run_id || steps.probe-decide.outputs.source_run_id }}
+      source_dist_digest: ${{ steps.decide.outputs.source_dist_digest || steps.probe-decide.outputs.source_dist_digest }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
@@ -148,6 +224,13 @@ jobs:
         with:
           name: admitted-${{ inputs.tag || github.ref_name }}
           path: admitted
+
+      - name: Download the probe candidate distributions
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.probe != 'none' }}
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: probe-candidate-${{ inputs.tag || github.ref_name }}
+          path: candidate
 
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
@@ -166,21 +249,53 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
 
-      - name: Decide whether the release candidate's UAT evidence can be reused
+      - name: Decide whether earlier UAT evidence can be reused
         id: decide
+        if: ${{ github.event_name == 'push' || inputs.probe == 'none' }}
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
           HEAD_SHA: ${{ needs.admit.outputs.head_sha }}
         run: |
+          set -uo pipefail
+          status=0
+          uv sync --locked --no-dev --no-install-project || status=$?
+          if [ "$status" -eq 0 ]; then
+            uv run --no-sync -- python scripts/release_reuse_uat_evidence.py decide \
+              --tag "$RELEASE_TAG" \
+              --head-sha "$HEAD_SHA" \
+              --github-repository "$GITHUB_REPOSITORY" \
+              --final-dist "$RUNNER_TEMP/final-dist" \
+              --work "$RUNNER_TEMP/reuse" \
+              --github-output "$GITHUB_OUTPUT" || status=$?
+          fi
+          if [ "$status" -ne 0 ]; then
+            reason="The reuse decision could not run (exit status $status); the full UAT stages run instead."
+            echo "::warning::$reason"
+            echo "reuse=false" >> "$GITHUB_OUTPUT"
+            printf '### Release UAT evidence reuse\n\nDecision: **run the full UAT stages**\n\n%s\n' "$reason" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Decide from the probe's synthetic trunk evidence
+        id: probe-decide
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.probe != 'none' }}
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          HEAD_SHA: ${{ needs.admit.outputs.head_sha }}
+          PROBE_VARIANT: ${{ inputs.probe }}
+        run: |
           set -euo pipefail
-          uv run --locked --no-dev --no-install-project -- python scripts/release_reuse_uat_evidence.py decide \
+          uv sync --locked --no-dev --no-install-project
+          uv run --no-sync -- python scripts/release_probe.py decide \
+            --variant "$PROBE_VARIANT" \
             --tag "$RELEASE_TAG" \
             --head-sha "$HEAD_SHA" \
             --github-repository "$GITHUB_REPOSITORY" \
+            --candidate-dist candidate \
             --final-dist "$RUNNER_TEMP/final-dist" \
             --work "$RUNNER_TEMP/reuse" \
-            --github-output "$GITHUB_OUTPUT"
+            --github-output "$GITHUB_OUTPUT" \
+            --source-run "$GITHUB_RUN_ID"
 
   install-matrix:
     name: install ${{ matrix.python-version }} ${{ matrix.os }}
@@ -189,9 +304,7 @@ jobs:
     timeout-minutes: 20
     strategy:
       fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ['3.11', '3.12', '3.13', '3.14']
+      matrix: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.probe != 'none' && '{"os":["ubuntu-latest"],"python-version":["3.12"]}' || '{"os":["ubuntu-latest","macos-latest","windows-latest"],"python-version":["3.11","3.12","3.13","3.14"]}') }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
@@ -231,7 +344,7 @@ jobs:
   uat-stage1:
     name: UAT stage 1 ${{ matrix.shard }}
     needs: [admit, uat-reuse]
-    if: ${{ !cancelled() && needs.admit.result == 'success' && needs.uat-reuse.outputs.reuse != 'true' }}
+    if: ${{ !cancelled() && needs.admit.result == 'success' && needs.uat-reuse.outputs.reuse != 'true' && (github.event_name == 'push' || inputs.probe == 'none') }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     strategy:
@@ -316,7 +429,7 @@ jobs:
   uat-stage2:
     name: UAT stage 2 ${{ matrix.shard }}
     needs: [admit, uat-reuse]
-    if: ${{ !cancelled() && needs.admit.result == 'success' && needs.uat-reuse.outputs.reuse != 'true' }}
+    if: ${{ !cancelled() && needs.admit.result == 'success' && needs.uat-reuse.outputs.reuse != 'true' && (github.event_name == 'push' || inputs.probe == 'none') }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     strategy:
@@ -389,7 +502,7 @@ jobs:
   uat-stage3:
     name: UAT stage 3 ${{ matrix.shard }}
     needs: [admit, uat-reuse]
-    if: ${{ !cancelled() && needs.admit.result == 'success' && needs.uat-reuse.outputs.reuse != 'true' }}
+    if: ${{ !cancelled() && needs.admit.result == 'success' && needs.uat-reuse.outputs.reuse != 'true' && (github.event_name == 'push' || inputs.probe == 'none') }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     strategy:
@@ -460,9 +573,152 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
 
+  probe-uat-stub:
+    name: probe UAT stub evidence
+    needs: [admit, uat-reuse]
+    if: ${{ !cancelled() && needs.admit.result == 'success' && needs.uat-reuse.outputs.reuse != 'true' && github.event_name == 'workflow_dispatch' && inputs.probe != 'none' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ needs.admit.outputs.head_sha }}
+
+      - name: Download the admitted directory
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: admitted-${{ inputs.tag || github.ref_name }}
+          path: admitted
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Stage the admitted distributions and record their digest
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+          HEAD_SHA: ${{ needs.admit.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          python3 -m pip install --require-hashes --only-binary :all: --no-deps -r scripts/release_requirements.txt
+          python3 scripts/release_admitted_dist.py --admitted admitted --tag "$RELEASE_TAG" --sha "$HEAD_SHA" --stage "$RUNNER_TEMP/dist"
+          (cd "$RUNNER_TEMP/dist" && sha256sum -- *.whl *.tar.gz) > "$RUNNER_TEMP/dist-digest.txt"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Write stub shard evidence that the combined release gate accepts
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+          HEAD_SHA: ${{ needs.admit.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          uv sync --locked --no-dev --no-install-project
+          uv run --no-sync -- python -m scripts.release_probe_uat \
+            --output "$RUNNER_TEMP/evidence" \
+            --name "$RELEASE_TAG" \
+            --head-sha "$HEAD_SHA" \
+            --dist-digest-file "$RUNNER_TEMP/dist-digest.txt"
+
+      - name: Upload the stage 1 stub evidence
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: release-uat-${{ inputs.tag || github.ref_name }}-stage1-probe
+          path: ${{ runner.temp }}/evidence/release-uat-${{ inputs.tag || github.ref_name }}-stage1-probe
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Upload the stage 2 stub evidence
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: release-uat-${{ inputs.tag || github.ref_name }}-stage2-probe
+          path: ${{ runner.temp }}/evidence/release-uat-${{ inputs.tag || github.ref_name }}-stage2-probe
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Upload the stage 3 stub evidence
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: release-uat-${{ inputs.tag || github.ref_name }}-stage3-probe
+          path: ${{ runner.temp }}/evidence/release-uat-${{ inputs.tag || github.ref_name }}-stage3-probe
+          retention-days: 1
+          if-no-files-found: error
+
+  probe-reused-evidence:
+    name: probe reused UAT evidence
+    needs: [admit, uat-reuse]
+    if: ${{ !cancelled() && needs.admit.result == 'success' && needs.uat-reuse.outputs.reuse == 'true' && github.event_name == 'workflow_dispatch' && inputs.probe != 'none' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ needs.admit.outputs.head_sha }}
+
+      - name: Download the probe candidate distributions
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: probe-candidate-${{ inputs.tag || github.ref_name }}
+          path: candidate
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Record the candidate distribution digest
+        run: |
+          set -euo pipefail
+          (cd candidate && sha256sum -- *.whl *.tar.gz) > "$RUNNER_TEMP/dist-digest.txt"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Write stub evidence for the reused trunk run
+        env:
+          SOURCE_TAG: ${{ needs.uat-reuse.outputs.source_tag }}
+          SOURCE_SHA: ${{ needs.uat-reuse.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          uv sync --locked --no-dev --no-install-project
+          uv run --no-sync -- python -m scripts.release_probe_uat \
+            --output "$RUNNER_TEMP/evidence" \
+            --name "$SOURCE_TAG" \
+            --head-sha "$SOURCE_SHA" \
+            --dist-digest-file "$RUNNER_TEMP/dist-digest.txt"
+
+      - name: Upload the reused stage 1 stub evidence
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: release-uat-${{ needs.uat-reuse.outputs.source_tag }}-stage1-probe
+          path: ${{ runner.temp }}/evidence/release-uat-${{ needs.uat-reuse.outputs.source_tag }}-stage1-probe
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Upload the reused stage 2 stub evidence
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: release-uat-${{ needs.uat-reuse.outputs.source_tag }}-stage2-probe
+          path: ${{ runner.temp }}/evidence/release-uat-${{ needs.uat-reuse.outputs.source_tag }}-stage2-probe
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Upload the reused stage 3 stub evidence
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: release-uat-${{ needs.uat-reuse.outputs.source_tag }}-stage3-probe
+          path: ${{ runner.temp }}/evidence/release-uat-${{ needs.uat-reuse.outputs.source_tag }}-stage3-probe
+          retention-days: 1
+          if-no-files-found: error
+
   release-uat:
     name: release UAT gate
-    needs: [admit, uat-reuse, uat-stage1, uat-stage2, uat-stage3]
+    needs: [admit, uat-reuse, uat-stage1, uat-stage2, uat-stage3, probe-uat-stub, probe-reused-evidence]
     if: ${{ !cancelled() && needs.admit.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -487,6 +743,14 @@ jobs:
           pattern: release-uat-${{ inputs.tag || github.ref_name }}-stage*
           path: ${{ runner.temp }}/uat-evidence
 
+      - name: Require executed cells in every stage's shard evidence
+        if: ${{ needs.uat-reuse.outputs.reuse != 'true' }}
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release_uat_evidence_check.py --root "$RUNNER_TEMP/uat-evidence" --tag "$RELEASE_TAG"
+
       - name: Check the combined release gate over every shard
         if: ${{ needs.uat-reuse.outputs.reuse != 'true' }}
         env:
@@ -507,43 +771,54 @@ jobs:
             OUTPUT="$RUNNER_TEMP/uat-gate-summary.json" \
             DIST_DIGEST="$(sha256sum "$RELEASE_DIST_DIGEST_FILE" | cut -d' ' -f1)"
 
-      - name: Download the release candidate's shard evidence
+      - name: Download the reused run's shard evidence
         if: ${{ needs.uat-reuse.outputs.reuse == 'true' }}
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
-          pattern: release-uat-${{ needs.uat-reuse.outputs.rc_tag }}-stage*
+          pattern: release-uat-${{ needs.uat-reuse.outputs.source_tag }}-stage*
           path: ${{ runner.temp }}/uat-evidence
-          run-id: ${{ needs.uat-reuse.outputs.rc_run_id }}
+          run-id: ${{ needs.uat-reuse.outputs.source_run_id }}
           github-token: ${{ github.token }}
 
-      - name: Re-verify the release candidate's evidence with the combined release gate
+      - name: Require executed cells in the reused run's shard evidence
+        if: ${{ needs.uat-reuse.outputs.reuse == 'true' }}
+        env:
+          SOURCE_TAG: ${{ needs.uat-reuse.outputs.source_tag }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release_uat_evidence_check.py --root "$RUNNER_TEMP/uat-evidence" --tag "$SOURCE_TAG"
+
+      - name: Re-verify the reused run's evidence with the combined release gate
         if: ${{ needs.uat-reuse.outputs.reuse == 'true' }}
         env:
           UV_NO_SYNC: '1'
-          RC_TAG: ${{ needs.uat-reuse.outputs.rc_tag }}
-          RC_SHA: ${{ needs.uat-reuse.outputs.rc_sha }}
-          RC_RUN_ID: ${{ needs.uat-reuse.outputs.rc_run_id }}
-          RC_DIST_DIGEST: ${{ needs.uat-reuse.outputs.rc_dist_digest }}
+          SOURCE_KIND: ${{ needs.uat-reuse.outputs.source_kind }}
+          SOURCE_TAG: ${{ needs.uat-reuse.outputs.source_tag }}
+          SOURCE_SHA: ${{ needs.uat-reuse.outputs.source_sha }}
+          SOURCE_RUN_ID: ${{ needs.uat-reuse.outputs.source_run_id }}
+          SOURCE_DIST_DIGEST: ${{ needs.uat-reuse.outputs.source_dist_digest }}
         run: |
           set -euo pipefail
           shopt -s nullglob
           .venv/bin/python -c "import benchbox, pathlib; path = pathlib.Path(benchbox.__file__).resolve(); assert 'site-packages' in path.parts, path"
           evidence="$RUNNER_TEMP/uat-evidence"
-          stage1=("$evidence"/release-uat-"$RC_TAG"-stage1-*/run)
-          stage2=("$evidence"/release-uat-"$RC_TAG"-stage2-*/run)
-          stage3=("$evidence"/release-uat-"$RC_TAG"-stage3-*/run)
+          stage1=("$evidence"/release-uat-"$SOURCE_TAG"-stage1-*/run)
+          stage2=("$evidence"/release-uat-"$SOURCE_TAG"-stage2-*/run)
+          stage3=("$evidence"/release-uat-"$SOURCE_TAG"-stage3-*/run)
           make uat-gate-check \
             STAGE1="${stage1[*]}" \
             STAGE2="${stage2[*]}" \
             STAGE3="${stage3[*]}" \
             OUTPUT="$RUNNER_TEMP/uat-gate-summary.json" \
-            DIST_DIGEST="$RC_DIST_DIGEST"
+            DIST_DIGEST="$SOURCE_DIST_DIGEST"
           python3 scripts/release_reuse_uat_evidence.py verify-gate \
             --summary "$RUNNER_TEMP/uat-gate-summary.json" \
-            --rc-tag "$RC_TAG" \
-            --rc-run-id "$RC_RUN_ID" \
-            --rc-sha "$RC_SHA" \
-            --rc-digest "$RC_DIST_DIGEST" \
+            --evidence "$evidence" \
+            --source-kind "$SOURCE_KIND" \
+            --source-tag "$SOURCE_TAG" \
+            --source-run-id "$SOURCE_RUN_ID" \
+            --source-sha "$SOURCE_SHA" \
+            --source-digest "$SOURCE_DIST_DIGEST" \
             --receipt "$RUNNER_TEMP/uat-reuse-receipt.json"
 
       - name: Restore the checkout package
@@ -560,9 +835,9 @@ jobs:
         env:
           REUSE: ${{ needs.uat-reuse.outputs.reuse }}
           REUSE_RESULT: ${{ needs.uat-reuse.result }}
-          STAGE1_RESULT: ${{ needs.uat-stage1.result }}
-          STAGE2_RESULT: ${{ needs.uat-stage2.result }}
-          STAGE3_RESULT: ${{ needs.uat-stage3.result }}
+          STAGE1_RESULT: ${{ (github.event_name == 'workflow_dispatch' && inputs.probe != 'none') && needs.probe-uat-stub.result || needs.uat-stage1.result }}
+          STAGE2_RESULT: ${{ (github.event_name == 'workflow_dispatch' && inputs.probe != 'none') && needs.probe-uat-stub.result || needs.uat-stage2.result }}
+          STAGE3_RESULT: ${{ (github.event_name == 'workflow_dispatch' && inputs.probe != 'none') && needs.probe-uat-stub.result || needs.uat-stage3.result }}
         run: |
           set -euo pipefail
           status=0
@@ -598,7 +873,7 @@ jobs:
   publish:
     name: publish to ${{ needs.admit.outputs.target }}
     needs: [admit, install-matrix, release-uat]
-    if: ${{ !cancelled() && needs.admit.result == 'success' && needs.install-matrix.result == 'success' && needs.release-uat.result == 'success' }}
+    if: ${{ !cancelled() && needs.admit.result == 'success' && needs.install-matrix.result == 'success' && needs.release-uat.result == 'success' && (github.event_name == 'push' || inputs.probe == 'none') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment:
@@ -671,10 +946,60 @@ jobs:
           attestations: true
           verbose: true
 
+  publish-probe:
+    name: publish dry run
+    needs: [admit, install-matrix, release-uat]
+    if: ${{ !cancelled() && needs.admit.result == 'success' && needs.install-matrix.result == 'success' && needs.release-uat.result == 'success' && github.event_name == 'workflow_dispatch' && inputs.probe != 'none' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ needs.admit.outputs.head_sha }}
+
+      - name: Download the admitted directory
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: admitted-${{ inputs.tag || github.ref_name }}
+          path: admitted
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install the staging gate dependencies
+        run: |
+          python3 -m pip install --require-hashes --only-binary :all: --no-deps -r scripts/release_requirements.txt
+
+      - name: Stage only the verified distributions
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+          HEAD_SHA: ${{ needs.admit.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release_admitted_dist.py --admitted admitted --tag "$RELEASE_TAG" --sha "$HEAD_SHA" --stage staged
+          ls -l staged
+
+      - name: Verify the admitted SHA256SUMS
+        run: |
+          set -euo pipefail
+          (cd admitted && sha256sum -c SHA256SUMS)
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Check the staged distributions the way the publisher would
+        run: |
+          set -euo pipefail
+          uvx --from twine==6.1.0 twine check staged/*
+
   github-release:
     name: github release
     needs: [admit, publish]
-    if: ${{ !cancelled() && needs.admit.outputs.target == 'pypi' && needs.admit.result == 'success' && needs.publish.result == 'success' }}
+    if: ${{ !cancelled() && needs.admit.outputs.target == 'pypi' && needs.admit.result == 'success' && needs.publish.result == 'success' && (github.event_name == 'push' || inputs.probe == 'none') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -694,6 +1019,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
           HEAD_SHA: ${{ needs.admit.outputs.head_sha }}
+          RELEASE_BRANCH: ${{ needs.admit.outputs.branch }}
         shell: bash
         run: |
           set -euo pipefail
@@ -701,9 +1027,59 @@ jobs:
           python3 scripts/release_admitted_dist.py --admitted admitted --tag "$RELEASE_TAG" --sha "$HEAD_SHA" --stage staged
           version="${RELEASE_TAG#v}"
           python3 scripts/generate_changelog_entry.py --version "$version" --print-section > release-notes.md
+          latest_flag=
+          case "$RELEASE_BRANCH" in
+            develop) ;;
+            release/*) latest_flag=--latest=false ;;
+            *) echo "::error::Admission reported no release line ('$RELEASE_BRANCH')."; exit 1 ;;
+          esac
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" staged/* --clobber
-            gh release edit "$RELEASE_TAG" --title "BenchBox $version" --notes-file release-notes.md
+            gh release edit "$RELEASE_TAG" --title "BenchBox $version" --notes-file release-notes.md $latest_flag
           else
-            gh release create "$RELEASE_TAG" staged/* --title "BenchBox $version" --notes-file release-notes.md
+            gh release create "$RELEASE_TAG" staged/* --title "BenchBox $version" --notes-file release-notes.md $latest_flag
           fi
+
+  release-outcome:
+    name: release outcome
+    needs: [admit, install-matrix, release-uat, publish, publish-probe, github-release]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Fail unless every release job ran and succeeded
+        env:
+          TARGET: ${{ needs.admit.outputs.target }}
+          ADMIT_RESULT: ${{ needs.admit.result }}
+          INSTALL_MATRIX_RESULT: ${{ needs.install-matrix.result }}
+          RELEASE_UAT_RESULT: ${{ needs.release-uat.result }}
+          PUBLISH_RESULT: ${{ (github.event_name == 'workflow_dispatch' && inputs.probe != 'none') && needs.publish-probe.result || needs.publish.result }}
+          GITHUB_RELEASE_RESULT: ${{ needs.github-release.result }}
+        run: |
+          set -uo pipefail
+          status=0
+          require_success() {
+            if [ "$2" != "success" ]; then
+              echo "::error::$1 finished as '${2:-unknown}', not 'success'; the release did not complete."
+              status=1
+            fi
+          }
+          require_success admit "$ADMIT_RESULT"
+          require_success install-matrix "$INSTALL_MATRIX_RESULT"
+          require_success release-uat "$RELEASE_UAT_RESULT"
+          require_success publish "$PUBLISH_RESULT"
+          case "$TARGET" in
+            pypi) require_success github-release "$GITHUB_RELEASE_RESULT" ;;
+            test-pypi)
+              if [ "$GITHUB_RELEASE_RESULT" != "skipped" ]; then
+                echo "::error::github-release finished as '${GITHUB_RELEASE_RESULT:-unknown}' for a test-pypi release; it must be skipped."
+                status=1
+              fi
+              ;;
+            *)
+              echo "::error::The admitted release target is '${TARGET:-empty}', neither 'pypi' nor 'test-pypi'."
+              status=1
+              ;;
+          esac
+          exit "$status"

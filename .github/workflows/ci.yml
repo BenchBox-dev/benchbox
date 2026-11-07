@@ -121,6 +121,11 @@ jobs:
           IS_DRAFT: ${{ github.event.pull_request.draft }}
         run: |
           set -euo pipefail
+          maintenance='^release/[0-9]+\.[0-9]+\.x$'
+          if [[ "$BASE_REF" =~ $maintenance ]]; then
+            echo "Base branch '$BASE_REF' is a maintenance line; the normal CI lanes apply."
+            exit 0
+          fi
           case "$BASE_REF" in
             develop|published-results)
               echo "Base branch '$BASE_REF' is an integration branch; the normal CI lanes apply."
@@ -129,7 +134,7 @@ jobs:
               if [ "$IS_DRAFT" = "true" ]; then
                 echo "Draft PR stacked on '$BASE_REF'; it cannot be armed until it is retargeted at develop."
               else
-                echo "::error::Ready PR base branch is '$BASE_REF', not develop or published-results."
+                echo "::error::Ready PR base branch is '$BASE_REF', not develop, published-results or a release/X.Y.x maintenance line."
                 echo "Only a draft PR may target a parent branch. After the parent merges, retarget this PR at develop and rebase it onto the squash commit."
                 exit 1
               fi
@@ -1529,6 +1534,7 @@ jobs:
             exit 1
           fi
           wheel=$(find "$PWD/dist" -maxdepth 1 -name '*.whl' -print -quit)
+          uv run -- python -m scripts.smoke_sqlglot_runtime_install "$wheel"
           tmpdir=$(mktemp -d)
           cd "$tmpdir"
           uv run --isolated --no-project --with "$wheel" -- python -c "import importlib.util; import benchbox; assert importlib.util.find_spec('pandas') is None, 'core install must not pull pandas'; print('Package installation successful (minimal import surface)')"

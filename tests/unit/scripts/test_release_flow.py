@@ -10,6 +10,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.unit.scripts.test_release_releasable import TrunkHistory
+
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -337,6 +339,50 @@ def test_dependency_bounds_check_blocks_on_cap_reached(tree: Path) -> None:
 
 def test_check_rejects_an_invalid_version(tree: Path) -> None:
     assert release_flow.run_checks(tree, "not-a-version", ok_runner)
+
+
+@pytest.fixture
+def trunk_tree(tree: Path) -> Path:
+    for name in ("release_releasable.py", "release_artifact_consumer.py"):
+        shutil.copy(SCRIPTS / name, tree / "scripts" / name)
+    return tree
+
+
+def test_check_passes_for_a_commit_with_a_successful_trunk_run_and_dist(trunk_tree: Path) -> None:
+    history = TrunkHistory()
+    history.push("a" * 40)
+    problems = release_flow.run_checks(
+        trunk_tree, VERSION, ok_runner, releasable_commit="a" * 40, releasable_api=history.api
+    )
+    assert problems == []
+
+
+def test_check_fails_for_a_commit_whose_trunk_run_failed_and_names_the_newest_releasable_commit(
+    trunk_tree: Path,
+) -> None:
+    history = TrunkHistory()
+    history.push("a" * 40)
+    history.push("b" * 40, conclusion="failure")
+    problems = release_flow.run_checks(
+        trunk_tree, VERSION, ok_runner, releasable_commit="b" * 40, releasable_api=history.api
+    )
+    assert len(problems) == 1
+    assert "b" * 40 in problems[0] and f"newest releasable commit on develop: {'a' * 40}" in problems[0]
+
+
+def test_check_without_a_releasable_commit_never_calls_the_api(tree: Path) -> None:
+    def api(path: str) -> dict:
+        raise AssertionError(path)
+
+    assert release_flow.run_checks(tree, VERSION, ok_runner, releasable_api=api) == []
+
+
+def test_a_github_failure_while_verifying_the_commit_fails_the_check(trunk_tree: Path) -> None:
+    def api(path: str) -> dict:
+        raise subprocess.CalledProcessError(1, ["gh", "api"])
+
+    problems = release_flow.run_checks(trunk_tree, VERSION, ok_runner, releasable_commit="a" * 40, releasable_api=api)
+    assert len(problems) == 1 and "cannot verify" in problems[0]
 
 
 def test_cli_check_reports_all_problems_and_exits_nonzero(tree: Path) -> None:
@@ -814,3 +860,19 @@ def test_selection_reports_release_identity_separately_from_enforcement_changes(
 
 
 FRAGMENT_TEXT = "Prep compiles fragment entries into the dated section of the changelog."
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
+@pytest.mark.parametrize(
+    ("version", "expected"),
+    [("0.5.1", "refs/tags/v0.5.0"), ("0.6.1", "refs/tags/v0.6.0"), ("0.7.0", "refs/tags/v0.6.1"), ("0.4.0", None)],
+)
+def test_the_lock_baseline_is_the_newest_older_final_tag_even_when_newer_minors_exist(
+    tmp_path: Path, version: str, expected: str | None
+) -> None:
+    git(tmp_path, "init", "-q", "-b", "develop")
+    git(tmp_path, "commit", "-q", "--allow-empty", "-m", "Fixture")
+    for tag in ("v0.5.0", "v0.5.0rc1", "v0.6.0", "v0.6.1"):
+        git(tmp_path, "tag", "-a", tag, "-m", tag)
+
+    assert release_flow.latest_release_tag(tmp_path, before_version=version) == expected

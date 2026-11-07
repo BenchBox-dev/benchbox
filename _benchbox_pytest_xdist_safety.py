@@ -242,7 +242,8 @@ def _is_session_controller(config) -> bool:
 def _hold_heavy_session(config, gate: str) -> None:
     host_lock = session_isolation.host_lock
     owner_key = host_lock.OWNER_ENV
-    previous_owner = os.environ.get(owner_key)
+    trace_keys = (host_lock.RUN_ID_ENV, host_lock.ROOT_RUN_ID_ENV, host_lock.RUNS_FILE_ENV)
+    previous = {key: os.environ.get(key) for key in (owner_key, *trace_keys)}
     try:
         handle = host_lock.acquire(host_lock.lock_path(), phase="pytest-session", gate=gate, admit=True, guard=True)
     except host_lock.LockUnavailable as exc:
@@ -253,14 +254,16 @@ def _hold_heavy_session(config, gate: str) -> None:
         pytest.exit(
             f"[benchbox] REFUSED: host is not ready for heavy tests\n{exc.report}", returncode=host_lock.EXIT_ADMISSION
         )
+    os.environ.update(host_lock.trace_environment(handle))
     if not handle.inherited:
         os.environ[owner_key] = host_lock.process_identity()
 
     def release() -> None:
-        if previous_owner is None:
-            os.environ.pop(owner_key, None)
-        else:
-            os.environ[owner_key] = previous_owner
+        for key, value in previous.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
         handle.release()
 
     config.add_cleanup(release)

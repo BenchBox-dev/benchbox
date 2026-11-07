@@ -230,8 +230,8 @@ Owner decisions of 2026-10-27:
   `duration_exempt` marker are removed.
 - The browser check is ported to the site repository and the Explorer-token lint is retired.
 - GizmoSQL stays in the release rehearsal candidate.
-- Deleting the `release` branch and its ruleset is an owner-run step after the first publication on the new release
-  path; this ADR's approval to delete `release` and `publication` branches does not authorize an agent to do it.
+- The `release` branch and its ruleset were deleted by the owner on 2026-11-07, after the first publication on the new
+  release path; this ADR's approval to delete `release` and `publication` branches did not authorize an agent to do it.
 
 ### Amendment 2026-11-05: continuous trunk UAT and guardrail changes
 
@@ -239,28 +239,34 @@ The 0.5.0 retrospective found that the blocking full-matrix release UAT was adde
 coverage and never calibrated on hosted runners, and that process machinery (the oracle and
 the release workflow) shipped without live execution. The owner decided:
 
-1. **Continuous UAT on trunk.** `.github/workflows/trunk-uat.yml` runs the UAT matrix on
-   `develop` nightly at 02:00 UTC and skips the run when nothing relevant changed since the
-   last green run. A release checks that evidence instead of running UAT; a full release
-   UAT run is only the fallback when no qualifying evidence exists. This supersedes the
-   owner decision of 2026-10-28 that UAT and gate coverage are not reduced, and the
-   artifact-bound release UAT that `release-v2.yml` gained in #2490 (see
-   `docs/internal/release-artifacts.md`).
-2. **Release-window freeze.** A freeze of `develop` around a release was decided here and
-   retired on 2026-11-06 (decision 8). No release-window freeze guardrail exists; G7 is
-   the one-time freeze for the migration to the new release path and is unrelated.
-3. **G12 Calibrate before block** is added to the guardrails.
-4. **Agent gate-tuning rubric.** An agent that tunes a UAT or CI gate follows the rubric
+1. **Continuous UAT on trunk.** `.github/workflows/trunk-uat.yml` runs the UAT matrix
+   against the trunk dist of the newest releasable `develop` commit nightly at 02:00 UTC
+   and on demand. A scheduled run is skipped when nothing the release UAT depends on
+   changed since the last run that executed shards, and is deferred while a `release-v2`
+   run is in progress. A release checks that evidence instead of running UAT; a full
+   release UAT run is only the fallback when no qualifying evidence exists. This
+   supersedes the owner decision of 2026-10-28 that UAT and gate coverage are not reduced,
+   and the artifact-bound release UAT that `release-v2.yml` gained in #2490 (see
+   `docs/internal/release-artifacts.md` and `docs/internal/trunk-uat.md`).
+2. **G12 Calibrate before block** is added to the guardrails.
+3. **Agent gate-tuning rubric.** An agent that tunes a UAT or CI gate follows the rubric
    below. Its conditions are testable, and a change that fails any of them is not
-   made by an agent.
-5. **Theseus and the oracle are consumed as a pinned dependency.** A version bump goes
-   through a canary procedure and a posting check that fails closed (a missing or
-   malformed review result blocks and is never read as a pass). Rollback is reverting the
-   pin.
-6. **Release-v2 probe mode and fail-closed detectors are required.** The release workflow
-   has a probe mode that exercises its gates without publishing, and each detector
-   (missing artifact, missing evidence, stale evidence) fails closed.
-7. **Envelope-only fixes need no special evidence path.** Continuous trunk UAT supersedes
+   made by an agent. `docs/internal/uat-rubric.md` describes the implementation.
+4. **Theseus and the oracle are consumed as a pinned dependency.** One commit SHA, the
+   lock's `workflow_sha`, names every Theseus reference, and
+   `tests/unit/workflows/test_theseus_pin_consistency.py` fails when a workflow reference
+   disagrees with it. A bump branch cannot exercise the new pin, because the `oracle`
+   environment deploys only from `develop`. A bump is therefore verified after it merges
+   on `develop`, and rollback is a revert of the pin commit; no separate oracle policy
+   applies to bump branches (`docs/internal/theseus-pin-bump.md`). A detector that fails
+   closed when `review-verdict` or `review-gate` post no result for a head is not yet
+   available; until it exists, the post-merge check reads the posted statuses.
+5. **Release-v2 probe mode and fail-closed detectors are required.** `release-v2.yml`
+   has a probe mode that runs its real job graph and conditions without a tag and without
+   publishing (`docs/internal/release-guide.md`, "Release probe"). Release and trunk UAT
+   evidence is checked for emptiness: a shard that staged no run or attempted zero cells,
+   and a trunk UAT run in which no cell executed, fail the run.
+6. **Envelope-only fixes need no special evidence path.** Continuous trunk UAT supersedes
    the idea of binding UAT evidence to a wheel digest.
 
 #### Agent gate-tuning rubric
@@ -269,30 +275,37 @@ The gate envelope is the set of platform x benchmark x scale cells a gate blocks
 
 1. Container images used by the gate are pinned by digest before any other tuning.
 2. A failure that matches an infrastructure signature (a cause outside BenchBox code and
-   configuration, such as runner loss or an image-pull error) gets exactly one automatic
-   retry. The retry is recorded in the run summary, and a second failure is a real failure.
-3. The envelope moves only when more than 20% of the gate's last 10 runs failed on
+   configuration: a cell timeout, a memory kill, a download error, or SingleStore error
+   1712, as classified by `tests/uat/failure_signature.py`) gets exactly one automatic
+   retry. The retry is recorded in the cell row and the run summary, and a second failure
+   is a real failure. A product failure is never retried.
+3. The envelope moves only when more than 20% of a cell's last 10 runs failed on
    infrastructure signatures (3 or more of 10).
 4. A move never removes the last gated scale of a platform x benchmark: another scale of
    the same platform x benchmark stays gated.
 5. The change cites the failing runs as evidence, and a tracker item is filed for the
    underlying cause before the change merges.
-6. Exclusions, with no exception: no timeout change, no memory-limit change, no validation
-   change, and no pruning of the last gated scale. These need an owner decision.
+6. Exclusions, with no exception: no timeout change, no memory-limit change, no validator
+   or floor change, and no pruning of the last gated scale. These need an owner decision.
 
 ### Amendment 2026-11-06: every push is tested, and patch lines are supported
 
 Owner decisions after the dev-loop v2 retrospective:
 
-8. **Every `develop` push gets its own completed trunk run**, and the release-window freeze
-   of decision 2 is retired. Pushes are not frozen around a release; a release instead
-   requires evidence on the tagged commit.
-9. **Patch releases on an older line are a requirement.** On-demand `release/X.Y.x`
+7. **Every `develop` push gets its own completed trunk run.** A later push neither cancels
+   nor replaces an earlier run, and a release requires a green run on the tagged commit.
+   Merging continues while a run is in progress.
+8. **Patch releases on an older line are a requirement.** On-demand `release/X.Y.x`
    branches are cut from a release tag and gated by the same `release-v2` checks as
    `develop`. This amends D1: the release lines are `develop` and those branches. The
-   maintenance procedure is in `docs/internal/release-guide.md`.
-10. **A release also requires a fresh green release canary** (at most 48 hours old) on an
-    ancestor commit of the release commit.
+   owner applied the `release-branches` and `release-branch-lifecycle` rulesets on
+   2026-11-07, and the maintenance procedure is in `docs/internal/release-guide.md`.
+   Three capabilities are not yet available for these lines: a `trunk.yml` run on pushes
+   to `release/**`, review-gate support for a base other than `develop`, and a release
+   canary that tests a release line. A maintenance release needs them first.
+9. **A release also requires a fresh green release canary** (at most 48 hours old) on an
+   ancestor commit of the release commit. `release-v2.yml` enforces it in `admit` for
+   every tag, on both the evidence-reuse and the full-UAT paths.
 
 ## Standing Administrative Approvals
 
