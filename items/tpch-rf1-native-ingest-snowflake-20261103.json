@@ -7,7 +7,7 @@
     "Cost and cleanup: the PR or context records the warehouse size, runtime and the removal of staged files and test tables.",
     "docs/internal/tpc-measured-intervals.md (or the context of tpc-measured-intervals-reference-20261103 if the page is not yet on the base) records Snowflake's RF1 path."
   ],
-  "context": "Origin: 2026-11-03 analysis of TPC-H RF1 timing and its adversarial reviews; the findings are restated in this item and in tpc-measured-intervals-reference-20261103. Spec clauses cited here were read from the published PDFs at the links on 2026-11-03; re-read them rather than trusting this text.\nBlocked on owner approval of live-cloud spend (set after creation).",
+  "context": "Origin: 2026-11-03 analysis of TPC-H RF1 timing and its adversarial reviews; the findings are restated in this item and in tpc-measured-intervals-reference-20261103. Spec clauses cited here were read from the published PDFs at the links on 2026-11-03; re-read them rather than trusting this text.\nBlocked on owner approval of live-cloud spend (set after creation).\n\n2026-11-06 owner: live-cloud spend for this item was asked about and declined for now (\"Not now\"). Ask again before any live run.",
   "description": "Extend the RF1 ingest capability from perf-tpch-rf1-bulk-load-20261031 to Snowflake (benchbox/platforms/snowflake.py, supports_refresh_functions = True).\n\nDECISION GATE (owner): approve live Snowflake spend for this task and name the account or credentials source. Until the approval is quoted in context, run no Snowflake command and ship no Snowflake code. This item is set blocked on that gate; unblock it when the quote is recorded.\n\nDesign (defaults adopted; the owner may override in context): before the timer, PUT the update-set files with AUTO_COMPRESS=FALSE (relocation only, so the question whether compression counts as 'data formatting' under TPC-H 3.0.1 5.3.7.10 does not arise); inside the timer, COPY INTO with ON_ERROR=ABORT_STATEMENT, then BEGIN/COMMIT. Do not call adapter.load_data: Snowflake's loader truncates the target table and uses ON_ERROR='CONTINUE'.\n\nGuardrails for all code work: work only in a linked worktree (make worktree-create); never edit the primary clone. No explanatory comments or docstrings in source (make comment-policy-check). Durations use benchbox.utils.clock.mono_time()/elapsed_seconds(). Add a changelog.d/ fragment. Cited line numbers are orientation only: re-read the named symbols, docs and spec clauses before editing and treat a mismatch as a reason to stop and update this item. No live-cloud runs without owner approval; heavy runs only through make heavy-run or a lock-taking entry point. Green focused tests are not release certification. If a live run cannot be completed, Snowflake stays on the VALUES fallback and is listed as such in docs/internal/tpc-measured-intervals.md.",
   "links": [
     "https://www.tpc.org/tpc_documents_current_versions/pdf/tpc-h_v3.0.1.pdf",
@@ -29,6 +29,14 @@
       "op": "update",
       "op_id": "efbcdca9a44843aab33d1b6bfbeb50f1",
       "session_id": "ada67604a2174486ada6b7b9a8c4f586"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T01:06:47Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d43516b3b63a41d981d5e62b52fac489",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
 }
