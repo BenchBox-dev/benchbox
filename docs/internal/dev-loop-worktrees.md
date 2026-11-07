@@ -113,12 +113,14 @@ The first gives up your claim; the second takes over a worktree whose owner is l
 ## Batch delivery choice
 
 Use the ordinary serial flow for standalone, unrelated, cross-repository,
-review-separated, or approval-separated work. An explicitly assigned cohesive
-batch defaults to feature delivery mode only after the installed, compatible
-registered-batch capability and its prerequisites have been verified against the
-active todo-db MCP server. Prerequisite runtime, catalog pin, and workflow rollout
-changes remain serial: changes enabling the loop cannot certify themselves.
-An unavailable capability is an owned blocker and keeps work in serial mode.
+review-separated, or approval-separated work. Related items go on one feature
+branch and one PR per feature. Feature delivery mode is opt-in: use it only when
+the owner names the batch, it has two or more members, and the installed,
+compatible registered-batch capability and its prerequisites have been verified
+against the active todo-db MCP server. Prerequisite runtime, catalog pin, and
+workflow rollout changes remain serial: changes enabling the loop cannot certify
+themselves. An unavailable capability is an owned blocker and keeps work in
+serial mode.
 See [Batch delivery modes](../agent/batch-feature-delivery.md) for the
 authoritative capability checks and delivery protocol.
 

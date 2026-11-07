@@ -108,18 +108,16 @@ Serial mode covers standalone, cross-repository, review-separated,
 approval-separated, or otherwise unrelated work: follow the ordinary claim,
 implementation, verification, review, merge, and deployment boundaries.
 
-An explicitly assigned cohesive batch uses feature delivery mode by default
-once prerequisites are deployed and verified. It requires the tractable 1.0.0 or later MCP server to
-advertise the registered-batch v2 capability; a source PR, catalog pin, or local
-mirror is not an installation. A leader owns one integration branch and
-worktree, lands members, is the only tracker writer, and opens one final PR;
-members stop at a landing report (`docs/agent/batch-feature-delivery.md`). The
-integration branch is never a PR base. It never skips CI or bypasses
-hosted/native review, merge, deployment, or authority controls.
-
-Feature delivery cannot certify or unlock the changes that make it possible.
-If the v2 capability is absent, retain serial mode, record the owned blocker,
-and state the next operator step.
+Given several ready items, plan the whole set before starting any: settle the
+owner decisions that change grouping, then put related items on one feature
+branch and one PR per feature (`docs/agent/batch-feature-delivery.md`).
+Feature delivery mode (a registered batch: leader, member sessions, one final
+PR) is opt-in: only when the owner names it, with two or more members, and the
+tractable 1.0.0 or later MCP server advertises the registered-batch v2
+capability; a source PR, catalog pin, or mirror is not an installation. The
+leader is the only tracker writer; members stop at a landing report. It never
+skips CI or bypasses hosted/native review, merge, deployment, or authority
+controls, and cannot certify or unlock the changes that make it possible.
 
 ## BenchBox invariants
 
