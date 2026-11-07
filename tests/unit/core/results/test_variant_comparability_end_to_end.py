@@ -16,6 +16,14 @@ from tests.unit.mcp.public_api import get_tool
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
+
+@pytest.fixture(autouse=True)
+def _native_execution_class(monkeypatch):
+    native = {"execution_class": "native", "execution_class_source": "observed"}
+    for module in ("benchbox.core.results.environment", "benchbox.core.system", "benchbox.utils.system_info"):
+        monkeypatch.setattr(f"{module}.detect_execution_class", lambda: dict(native))
+
+
 LEGACY_CLICKHOUSE_DEPLOYMENT = {
     "collection_status": "partial",
     "connection_mode": "server",
