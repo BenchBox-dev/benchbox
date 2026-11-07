@@ -292,6 +292,14 @@ class DatabendAdapter(PlatformAdapter):
 
         return elapsed_seconds(start_time)
 
+    def _discard_partial_table(self, connection: Any, table_name_quoted: str) -> str:
+        try:
+            connection.exec(f"TRUNCATE TABLE {table_name_quoted}")
+        except Exception as truncate_error:
+            self.logger.error(f"Could not truncate partially loaded table {table_name_quoted}: {truncate_error}")
+            return "table left partially loaded, truncate failed"
+        return "table truncated"
+
     def load_data(
         self, benchmark, connection: Any, data_dir: Path
     ) -> tuple[dict[str, int], float, dict[str, Any] | None]:
@@ -335,7 +343,8 @@ class DatabendAdapter(PlatformAdapter):
                 except Exception as e:
                     self.logger.error(f"Failed to load {table_name}: {str(e)[:300]}")
                     table_stats[table_name.lower()] = 0
-                    failed_tables[table_name.lower()] = str(e)
+                    outcome = self._discard_partial_table(connection, self._quote_identifier(table_name.lower()))
+                    failed_tables[table_name.lower()] = f"{outcome}: {e}"
 
             if failed_tables:
                 details = "; ".join(f"{name}: {msg[:200]}" for name, msg in failed_tables.items())
