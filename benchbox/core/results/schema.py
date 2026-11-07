@@ -276,6 +276,7 @@ def build_result_payload(result: BenchmarkResults, *, sanitize_platform_secrets:
                 "iterations",
                 "streams",
                 "query_subset",
+                "maintenance_method",
                 "timing_method",
                 "net_estimate_status",
                 "platform_timing",
@@ -479,6 +480,9 @@ def _build_run_section(
     run["streams"] = len(streams_set) if streams_set else 1
     if result.query_subset:
         run["query_subset"] = result.query_subset
+    maintenance_phase = getattr(getattr(result, "execution_phases", None), "maintenance_test", None)
+    if maintenance_phase is not None and maintenance_phase.maintenance_method is not None:
+        run["maintenance_method"] = maintenance_phase.maintenance_method
     timing_method = getattr(result, "timing_method", None)
     if timing_method is not None:
         run["timing_method"] = timing_method
@@ -1145,12 +1149,17 @@ def _maintenance_phase_payload(maintenance: Any) -> dict[str, Any]:
                 "rows_affected": operation.rows_affected,
                 "status": operation.status,
                 **({"error": operation.error_message} if operation.error_message else {}),
+                **({"refresh_set": operation.refresh_set} if operation.refresh_set is not None else {}),
+                **({"staged_rows": operation.staged_rows} if operation.staged_rows is not None else {}),
+                **({"rows_by_table": operation.rows_by_table} if operation.rows_by_table is not None else {}),
             }
             for operation in maintenance.maintenance_operations
         ],
     }
     if maintenance.seed is not None:
         payload["seed"] = maintenance.seed
+    if maintenance.maintenance_method is not None:
+        payload["maintenance_method"] = maintenance.maintenance_method
     return payload
 
 
