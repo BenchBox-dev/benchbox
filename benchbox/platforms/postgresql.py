@@ -288,6 +288,14 @@ class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
     def get_target_dialect(self) -> str:
         return POSTGRES_DIALECT
 
+    def enforced_primary_key_tables(self, connection: Any, tables: Sequence[str]) -> list[str]:
+        rows = connection.execute(
+            "SELECT DISTINCT c.relname FROM pg_constraint k JOIN pg_class c ON c.oid = k.conrelid "
+            "WHERE k.contype = 'p' AND pg_table_is_visible(c.oid)"
+        ).fetchall()
+        wanted = {table.lower() for table in tables}
+        return sorted(name.lower() for (name,) in rows if name.lower() in wanted)
+
     @staticmethod
     def add_cli_arguments(parser) -> None:
         if not hasattr(parser, "add_argument"):
@@ -670,13 +678,16 @@ class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
         table_name: str,
         columns: Sequence[tuple[str, str]],
         path: Path,
+        null_marker: str | None = None,
     ) -> int:
-        dialect = CsvDialect(delimiter="|", has_header=False, null_marker=None, normalize_booleans=False, quote=None)
+        dialect = CsvDialect(
+            delimiter="|", has_header=False, null_marker=null_marker, normalize_booleans=False, quote=None
+        )
         column_names = ", ".join(name for name, _ in columns)
         copy_sql = _postgres_copy_sql(f"{table_name} ({column_names})", dialect, force_csv=True)
         raw_connection = getattr(connection, "connection", connection)
         with raw_connection.cursor() as cursor:
-            with prepare_local_load_file(path, dialect=dialect, strip_trailing_delim=True) as load_path:
+            with prepare_local_load_file(path, dialect=dialect, strip_trailing_delim=null_marker is None) as load_path:
                 with cursor.copy(copy_sql) as copy:
                     with open(load_path, encoding="utf-8") as source:
                         while chunk := source.read(65536):

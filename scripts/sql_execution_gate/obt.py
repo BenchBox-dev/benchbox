@@ -30,5 +30,8 @@ def build_obt_dataset(name: str, source: Dataset, scale: float, scratch: Path) -
     finally:
         connection.close()
     return Dataset(
-        name, re.sub(r",\n\s*PRIMARY KEY \([^)]*\)", "", get_obt_table().get_create_table_sql()), {OBT_TABLE_NAME: flat}
+        name,
+        re.sub(r",\n\s*PRIMARY KEY \([^)]*\)", "", get_obt_table().get_create_table_sql()),
+        {OBT_TABLE_NAME: flat},
+        index_keys=False,
     )

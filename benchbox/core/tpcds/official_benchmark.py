@@ -203,7 +203,6 @@ class TPCDSOfficialBenchmark:
                     result.success = False
                 else:
                     try:
-                        from benchbox.core.tpcds.maintenance_operations import resolve_maintenance_seed
                         from benchbox.core.tpcds.maintenance_test import (
                             TPCDSMaintenanceTest,
                             TPCDSMaintenanceTestConfig,
@@ -221,7 +220,7 @@ class TPCDSOfficialBenchmark:
                             TPCDSMaintenanceTestConfig(
                                 scale_factor=config.scale_factor,
                                 verbose=config.verbose,
-                                seed=resolve_maintenance_seed(config.seed),
+                                seed=config.seed,
                             )
                         )
                         result.maintenance_test_result = maintenance_result

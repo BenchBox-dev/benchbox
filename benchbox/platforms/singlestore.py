@@ -110,6 +110,9 @@ _OUT_OF_RANGE_DECIMAL = "1e30"
 class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapter):
     plan_capture_phase_eligible = True
     supports_refresh_functions = True
+    tpcds_maintenance_unsupported_reason = (
+        "the dsdgen refresh statements have not been validated against SingleStore's MySQL-wire SQL"
+    )
     supports_native_refresh_ingest = True
     default_service_port = _DEFAULT_PORT
 
@@ -302,6 +305,7 @@ class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, Platform
         table_name: str,
         columns: Sequence[tuple[str, str]],
         path: Path,
+        null_marker: str | None = None,
     ) -> int:
         if not self._validate_identifier(table_name):
             raise ValueError(f"Invalid table identifier: {table_name!r}")
@@ -310,15 +314,20 @@ class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, Platform
         for name, data_type in columns:
             if data_type.upper().startswith("DECIMAL"):
                 targets.append(f"@{name}")
+                null_test = f"@{name} IS NULL OR " if null_marker is not None else ""
                 guards.append(
-                    f"`{name}` = IF(@{name} REGEXP {_DECIMAL_TEXT_PATTERN}, @{name}, {_OUT_OF_RANGE_DECIMAL})"
+                    f"`{name}` = IF({null_test}@{name} REGEXP {_DECIMAL_TEXT_PATTERN}, @{name}, {_OUT_OF_RANGE_DECIMAL})"
                 )
             else:
                 targets.append(f"`{name}`")
         escaped_path = str(path).replace("\\", "\\\\").replace("'", "\\'")
+        null_clause = ""
+        if null_marker is not None:
+            escaped_null = null_marker.replace("\\", "\\\\").replace("'", "\\'")
+            null_clause = f" NULL DEFINED BY '{escaped_null}'"
         sql = (
             f"LOAD DATA LOCAL INFILE '{escaped_path}' INTO TABLE `{table_name}` "
-            f"FIELDS TERMINATED BY '|' LINES TERMINATED BY '\\n' ({', '.join(targets)})"
+            f"FIELDS TERMINATED BY '|' LINES TERMINATED BY '\\n'{null_clause} ({', '.join(targets)})"
         )
         if guards:
             sql += f" SET {', '.join(guards)}"

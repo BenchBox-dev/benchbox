@@ -2809,6 +2809,7 @@ class TestTPCHAndTPCDSExecutionHelpers:
     @patch("benchbox.platforms.base.execution.quiet_console")
     def test_execute_tpcds_maintenance_test_converts_output_dir_and_operation_errors(self, mock_console, tmp_path):
         adapter = MockPlatformAdapterWithDialect()
+        adapter.supports_refresh_functions = True
         benchmark = Mock()
         connection = Mock()
         connection.cursor.return_value = Mock(name="maintenance_cursor")
@@ -2816,8 +2817,8 @@ class TestTPCHAndTPCDSExecutionHelpers:
 
         maintenance_result = {
             "success": False,
+            "maintenance_method": "dsdgen_refresh_sets",
             "insert_operations": 1,
-            "update_operations": 0,
             "delete_operations": 1,
             "total_operations": 2,
             "successful_operations": 1,
@@ -2826,6 +2827,7 @@ class TestTPCHAndTPCDSExecutionHelpers:
             "errors": ["delete failed"],
             "operations": [
                 SimpleNamespace(
+                    function="LF_CS",
                     operation_type="INSERT",
                     table_name="catalog_sales",
                     duration=1.5,
@@ -2834,6 +2836,7 @@ class TestTPCHAndTPCDSExecutionHelpers:
                     error=None,
                 ),
                 SimpleNamespace(
+                    function="DF_SS",
                     operation_type="DELETE",
                     table_name="store_sales",
                     duration=3.5,
@@ -2849,6 +2852,7 @@ class TestTPCHAndTPCDSExecutionHelpers:
         class FakeTPCDSMaintenanceTest:
             def __init__(self, **kwargs):
                 captured["init"] = kwargs
+                self.output_dir = kwargs["output_dir"]
 
             def run(self, config):
                 captured["config"] = config
@@ -2864,7 +2868,7 @@ class TestTPCHAndTPCDSExecutionHelpers:
         assert connection.cursor.call_count == 1
         assert results == [
             {
-                "query_id": "insert_catalog_sales",
+                "query_id": "LF_CS",
                 "execution_time_seconds": 1.5,
                 "status": "SUCCESS",
                 "rows_returned": 10,
@@ -2873,7 +2877,7 @@ class TestTPCHAndTPCDSExecutionHelpers:
                 "table_name": "catalog_sales",
             },
             {
-                "query_id": "delete_store_sales",
+                "query_id": "DF_SS",
                 "execution_time_seconds": 3.5,
                 "status": "FAILED",
                 "rows_returned": 0,
@@ -3292,6 +3296,7 @@ class TestExceptionPathsForThroughputAndMaintenance:
     @patch("benchbox.platforms.base.adapter.quiet_console")
     def test_execute_tpcds_maintenance_test_returns_error_on_exception(self, _mock_console):
         adapter = MockPlatformAdapterWithDialect()
+        adapter.supports_refresh_functions = True
 
         class BrokenTPCDSMaintenanceTest:
             def __init__(self, **kwargs):

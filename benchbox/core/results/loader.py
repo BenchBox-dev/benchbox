@@ -766,11 +766,15 @@ def _reconstruct_execution_phases(
                     rows_affected=operation.get("rows_affected", 0),
                     status=operation.get("status", "UNKNOWN"),
                     error_message=operation.get("error"),
+                    refresh_set=operation.get("refresh_set"),
+                    staged_rows=operation.get("staged_rows"),
+                    rows_by_table=operation.get("rows_by_table"),
                 )
                 for operation in maintenance_data.get("operations", [])
             ],
             query_executions=[],
             seed=maintenance_data.get("seed"),
+            maintenance_method=maintenance_data.get("maintenance_method"),
             success=maintenance_data.get("status") == "COMPLETED",
         )
 
