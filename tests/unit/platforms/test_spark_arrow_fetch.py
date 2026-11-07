@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import signal
 import sys
 from types import SimpleNamespace
 from typing import Any
@@ -314,6 +315,7 @@ def local_spark():
             pytest.skip("requires a compatible Java runtime")
         from pyspark.sql import SparkSession
 
+        previous_sigint = signal.getsignal(signal.SIGINT)
         spark = (
             SparkSession.builder.master("local[1]")
             .appName("BenchBox-spark-arrow-fetch")
@@ -326,6 +328,7 @@ def local_spark():
             yield spark
         finally:
             spark.stop()
+            signal.signal(signal.SIGINT, previous_sigint)
 
 
 PARITY_QUERIES = {
