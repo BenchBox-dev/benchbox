@@ -1106,7 +1106,11 @@ def _check_evidence_acceptance(
         if row.get("suite") != verification.get("suite") or row.get("command") != verification.get("command"):
             failures.append(f"current acceptance for member {member} is not its own receipt verification")
             continue
-        failures.extend(_check_dropped_paths(repo, member, row, verification.get("command"), head, base))
+        failures.extend(
+            _check_dropped_paths(
+                repo, member, row, verification.get("command"), head, base, _revision(receipt.get("source_base"))
+            )
+        )
     return failures
 
 
@@ -1125,7 +1129,7 @@ def _present_in_tree(repo: Path, revision: str, path: str) -> bool | None:
 
 
 def _check_dropped_paths(
-    repo: Path, member: str, row: dict, recorded: object, head: str, base: str | None = None
+    repo: Path, member: str, row: dict, recorded: object, head: str, base: str | None, source_base: str | None
 ) -> list[str]:
     dropped = row.get("dropped_paths", [])
     ran = row.get("ran_command", recorded)
@@ -1143,9 +1147,20 @@ def _check_dropped_paths(
         return [f"current acceptance for member {member} dropped every test path; refusing a run without tests"]
     if not base:
         return [f"current acceptance for member {member} dropped paths but the PR base revision is unavailable"]
+    if not source_base:
+        return [f"current acceptance for member {member} dropped paths but its receipt has no source base"]
     failures: list[str] = []
     for path in dropped:
         file_part = path.split("::", 1)[0]
+        existed = _present_in_tree(repo, source_base, file_part)
+        if existed is None:
+            failures.append(
+                f"current acceptance for member {member} dropped {path}, which could not be checked at its source base"
+            )
+        elif not existed:
+            failures.append(
+                f"current acceptance for member {member} dropped {path}, which did not exist at its source base"
+            )
         for label, revision in (("PR head", head), ("PR base", base)):
             present = _present_in_tree(repo, revision, file_part)
             if present is None:

@@ -1682,9 +1682,14 @@ def test_batch_evidence_refuses_acceptance_that_is_not_the_members_own_pass_at_t
 RECEIPT_COMMAND = ["pytest", "-q", "tests/gone.py", "tests/here.py::test_one", "a"]
 
 
-def _dropped_batch(tmp_path: Path) -> tuple[fx.BatchFixture, dict]:
-    batch = _batch(tmp_path, {"a": ["a/**", "tests/here.py"], "b": ["b/**"]})
-    batch.fix({"tests/here.py": "kept\n"})
+def _dropped_batch(tmp_path: Path, existed: bool = True) -> tuple[fx.BatchFixture, dict]:
+    repo = _repo(tmp_path / "r")
+    if existed:
+        fx.write_commit(repo, {"tests/gone.py": "old\n"}, "add test")
+    batch = fx.BatchFixture(repo, {"a": ["a/**", "tests/here.py", "tests/gone.py"], "b": ["b/**"]})
+    batch.land("a", {"a/x.txt": "a"})
+    batch.land("b", {"b/y.txt": "b"})
+    batch.fix({"tests/here.py": "kept\n", **({"tests/gone.py": None} if existed else {})})
     batch.receipts["a"]["verification"]["command"] = list(RECEIPT_COMMAND)
     evidence = batch.evidence()
     row = evidence["current_acceptance"]["a"]
@@ -1693,12 +1698,25 @@ def _dropped_batch(tmp_path: Path) -> tuple[fx.BatchFixture, dict]:
     return batch, evidence
 
 
+def _dropped_verdict(batch: fx.BatchFixture, evidence: dict) -> list[str]:
+    head = fx.head_of(batch.repo)
+    return landing.check_batch_evidence(batch.repo, evidence, head, batch.tracker(), head)
+
+
 def test_batch_evidence_accepts_a_dropped_path_absent_at_the_head_with_the_matching_ran_command(
     tmp_path: Path,
 ) -> None:
     batch, evidence = _dropped_batch(tmp_path)
 
-    assert _verdict(batch, evidence=evidence) == []
+    assert _dropped_verdict(batch, evidence) == []
+
+
+def test_batch_evidence_refuses_a_path_the_batch_added_and_later_deleted(tmp_path: Path) -> None:
+    batch, evidence = _dropped_batch(tmp_path, existed=False)
+
+    failures = _dropped_verdict(batch, evidence)
+
+    assert any("did not exist at its source base" in failure for failure in failures)
 
 
 def test_batch_evidence_refuses_a_dropped_path_that_still_exists_at_the_head(tmp_path: Path) -> None:
@@ -1707,7 +1725,7 @@ def test_batch_evidence_refuses_a_dropped_path_that_still_exists_at_the_head(tmp
     row["dropped_paths"] = ["tests/here.py::test_one"]
     row["ran_command"] = ["pytest", "-q", "tests/gone.py", "a"]
 
-    failures = _verdict(batch, evidence=evidence)
+    failures = _dropped_verdict(batch, evidence)
 
     assert any("exists at the PR head" in failure for failure in failures)
 
@@ -1716,7 +1734,8 @@ def test_dropped_path_check_refuses_when_git_cannot_read_the_head(tmp_path: Path
     repo = _repo(tmp_path / "r")
     row = {"ran_command": ["pytest", "-q", "tests/here.py::test_one", "a"], "dropped_paths": ["tests/gone.py"]}
 
-    failures = landing._check_dropped_paths(repo, "a", row, list(RECEIPT_COMMAND), "f" * 40, fx.head_of(repo))
+    head = fx.head_of(repo)
+    failures = landing._check_dropped_paths(repo, "a", row, list(RECEIPT_COMMAND), "f" * 40, head, head)
 
     assert any("could not be checked at the PR head" in failure for failure in failures)
 
@@ -1727,7 +1746,7 @@ def test_batch_evidence_refuses_a_row_that_dropped_every_test_path(tmp_path: Pat
     row["dropped_paths"] = ["tests/gone.py", "tests/here.py::test_one"]
     row["ran_command"] = ["pytest", "-q", "a"]
 
-    failures = _verdict(batch, evidence=evidence)
+    failures = _dropped_verdict(batch, evidence)
 
     assert any("dropped every test path" in failure for failure in failures)
 
@@ -1737,7 +1756,7 @@ def test_dropped_path_check_refuses_a_path_present_at_the_pr_base(tmp_path: Path
     head = fx.head_of(batch.repo)
     row = {"ran_command": ["pytest", "-q", "tests/gone.py", "a"], "dropped_paths": ["tests/here.py::test_one"]}
 
-    failures = landing._check_dropped_paths(batch.repo, "a", row, list(RECEIPT_COMMAND), batch.start, head)
+    failures = landing._check_dropped_paths(batch.repo, "a", row, list(RECEIPT_COMMAND), batch.start, head, batch.start)
 
     assert any("exists at the PR base" in failure for failure in failures)
     assert not any("exists at the PR head" in failure for failure in failures)
@@ -1747,9 +1766,20 @@ def test_dropped_path_check_fails_closed_without_a_pr_base(tmp_path: Path) -> No
     batch, evidence = _dropped_batch(tmp_path)
     row = evidence["current_acceptance"]["a"]
 
-    failures = landing._check_dropped_paths(batch.repo, "a", row, list(RECEIPT_COMMAND), fx.head_of(batch.repo), None)
+    head = fx.head_of(batch.repo)
+    failures = landing._check_dropped_paths(batch.repo, "a", row, list(RECEIPT_COMMAND), head, None, batch.start)
 
     assert any("PR base revision is unavailable" in failure for failure in failures)
+
+
+def test_dropped_path_check_fails_closed_without_a_source_base(tmp_path: Path) -> None:
+    batch, evidence = _dropped_batch(tmp_path)
+    row = evidence["current_acceptance"]["a"]
+    head = fx.head_of(batch.repo)
+
+    failures = landing._check_dropped_paths(batch.repo, "a", row, list(RECEIPT_COMMAND), head, head, None)
+
+    assert any("has no source base" in failure for failure in failures)
 
 
 @pytest.mark.parametrize(
@@ -1766,7 +1796,7 @@ def test_batch_evidence_refuses_a_ran_command_that_differs_beyond_the_dropped_pa
     batch, evidence = _dropped_batch(tmp_path)
     evidence["current_acceptance"]["a"]["ran_command"] = ran
 
-    failures = _verdict(batch, evidence=evidence)
+    failures = _dropped_verdict(batch, evidence)
 
     assert any("beyond dropped paths" in failure for failure in failures)
 

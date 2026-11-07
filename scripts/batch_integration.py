@@ -725,36 +725,60 @@ def _is_test_path_arg(arg: str) -> bool:
     return arg.startswith("tests/")
 
 
-def _absent_from_develop(repo: Path, path: str) -> bool:
+def _tree_has(repo: Path, revision: str, path: str) -> bool | None:
     listed = subprocess.run(
-        ["git", "ls-tree", "--name-only", DEVELOP_REF, "--", path],
+        ["git", "ls-tree", "--name-only", revision, "--", path],
         cwd=repo,
         check=False,
         capture_output=True,
         encoding="utf-8",
         timeout=60,
     )
-    return listed.returncode == 0 and not listed.stdout.strip()
+    if listed.returncode != 0:
+        return None
+    return bool(listed.stdout.strip())
 
 
-def _without_deleted_test_paths(command: list[str], repo: Path) -> tuple[list[str], list[str]]:
+def _deleted_by_develop(repo: Path, path: str, source_base: str | None) -> bool:
+    if not source_base or (repo / path).exists():
+        return False
+    return _tree_has(repo, source_base, path) is True and _tree_has(repo, DEVELOP_REF, path) is False
+
+
+def _without_deleted_test_paths(command: list[str], repo: Path, source_base: str | None) -> tuple[list[str], list[str]]:
     if "pytest" not in command:
         return list(command), []
     dropped = [
         arg
         for arg in command
-        if _is_test_path_arg(arg)
-        and not (repo / arg.split("::", 1)[0]).exists()
-        and _absent_from_develop(repo, arg.split("::", 1)[0])
+        if _is_test_path_arg(arg) and _deleted_by_develop(repo, arg.split("::", 1)[0], source_base)
     ]
     return [arg for arg in command if arg not in dropped], dropped
 
 
-def _rerun(repo: Path, ledger: dict, member: str, command: list[str], suite: str, reason: str) -> dict:
+def _member_source_base(ledger: dict, member: str, receipts: dict) -> str | None:
+    receipt = receipts.get(member)
+    if isinstance(receipt, dict) and isinstance(receipt.get("source_base"), str):
+        return receipt["source_base"]
+    landing = ledger.get("landings", {}).get(member)
+    if isinstance(landing, dict) and isinstance(landing.get("source_base"), str):
+        return landing["source_base"]
+    return None
+
+
+def _rerun(
+    repo: Path,
+    ledger: dict,
+    member: str,
+    command: list[str],
+    suite: str,
+    reason: str,
+    source_base: str | None = None,
+) -> dict:
     head = _rev(repo, "HEAD")
     clean_before = _is_clean(repo)
     recorded = _validate_verification_command(command)
-    ran_command, dropped_paths = _without_deleted_test_paths(recorded, repo)
+    ran_command, dropped_paths = _without_deleted_test_paths(recorded, repo, source_base)
     if dropped_paths and not any(_is_test_path_arg(arg) for arg in ran_command):
         proc = None
     else:
@@ -1050,7 +1074,8 @@ def _overlap_reruns(
         if not shared:
             continue
         suite, command = _landing_verification(ledger, other, receipts)
-        entry = _rerun(repo, ledger, other, command, suite, f"overlap:{member}")
+        source_base = _member_source_base(ledger, other, receipts)
+        entry = _rerun(repo, ledger, other, command, suite, f"overlap:{member}", source_base)
         reruns.append({"member": other, "paths": shared, "status": entry["status"]})
         if entry["status"] != "passed":
             failures.append(other)
@@ -1405,7 +1430,8 @@ def _fix_acceptance(
     failures: list[str] = []
     for member in touched:
         suite, command = _landing_verification(ledger, member, receipts)
-        if _rerun(repo, ledger, member, command, suite, f"fix:{head}")["status"] != "passed":
+        source_base = _member_source_base(ledger, member, receipts)
+        if _rerun(repo, ledger, member, command, suite, f"fix:{head}", source_base)["status"] != "passed":
             failures.append(member)
     return touched, failures
 
@@ -2058,7 +2084,15 @@ def build_evidence(repo: Path) -> dict:
     for member in members:
         verification = receipts[member]["verification"]
         command = _validate_verification_command(verification.get("command"))
-        rerun_entry = _rerun(repo, ledger, member, command, str(verification.get("suite", "")), "final-evidence")
+        rerun_entry = _rerun(
+            repo,
+            ledger,
+            member,
+            command,
+            str(verification.get("suite", "")),
+            "final-evidence",
+            _member_source_base(ledger, member, receipts),
+        )
         save_ledger(repo, ledger)
         if rerun_entry["status"] != "passed":
             raise BatchError(f"rerun of {member!r} failed at the final head: {rerun_entry.get('output', '')}")
