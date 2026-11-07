@@ -97,10 +97,8 @@ CLI_DESCRIPTION = (
     "Runtime data source, in order of preference: the `gh` CLI (`gh api ...`) when\n"
     "on PATH; otherwise a raw GitHub REST call via `urllib` authenticated with\n"
     '$GITHUB_TOKEN / $GH_TOKEN; otherwise this prints a "SKIPPED: no GitHub API\n'
-    'access" notice and exits 0 (mirrors the `|| true` graceful-degradation\n'
-    "pattern the existing `dev-loop-metrics` Make target uses for `gh run list`,\n"
-    "Makefile ~line 1520). This script performs read-only GitHub API calls; it\n"
-    "never mutates PRs, branches, or workflow state.\n"
+    'access" notice and exits 0 without reporting metrics. This script performs\n'
+    "read-only GitHub API calls; it never mutates PRs, branches, or workflow state.\n"
     "\n"
     "Usage:\n"
     "    uv run -- python _project/scripts/dev_loop_pr_metrics.py\n"

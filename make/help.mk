@@ -108,7 +108,7 @@ help:
 	@echo "  make pr-status       List your open PRs vs develop with CI + auto-merge state"
 	@echo "  make pr-review-followups-list        List un-actioned bot/agent review comments on merged PRs"
 	@echo "  make pr-review-followups             Action each comment, reply with marker, submit PR"
-	@echo "  make dev-loop-metrics  Summarize recent develop post-merge metrics (DEV_LOOP_METRICS_DAYS=$(DEV_LOOP_METRICS_DAYS))"
+	@echo "  make dev-loop-metrics  Summarize merged-PR CI metrics (DEV_LOOP_METRICS_DAYS=$(DEV_LOOP_METRICS_DAYS))"
 	@echo "  make ci-usage-report   CI queue time, time-to-green, runner minutes and post-merge signal for a window (CI_USAGE_SINCE=YYYY-MM-DD CI_USAGE_UNTIL=YYYY-MM-DD)"
 	@echo "Disposable worktree lifecycle:"
 	@echo "  make worktree-create BRANCH=name WORKTREE_PATH=path [BASE=ref]  Create from BASE (default origin/develop); verify local/remote branch collisions"

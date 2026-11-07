@@ -117,10 +117,18 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 
 ### `.github/workflows/`
 
+The repository maintainer is accountable for every workflow listed here.
+Release execution belongs to the release manager; corpus operations belong
+to the corpus maintainer; review-App credentials and OMP pin evidence belong
+to the repository owner. Nightly failures go first to the failing-area owner,
+with maintainer and release-manager escalation as described in
+`nightly-t3.md`. These are operational roles, not CODEOWNERS assignments.
+
 | File | Classification | Property or reason |
 | --- | --- | --- |
 | `batch-loop-e2e.yml` | tooling | Runs the disposable-repository batch landing loop end to end on pull requests that touch the loop's scripts or fixture inputs, nightly and on demand; read-only permissions, no credentials, and `tests/unit/workflows/test_batch_loop_e2e_workflow.py` keeps the trigger paths covering every file the fixture copies |
 | `ci-text-edit-refresh.yml` | product-safety | When a full CI run completes on a pull request head, re-runs the failed jobs of the newest `CI (text edit)` run on that head so a title or body edit does not hold runners while it waits |
+| `ci.yml` | product-safety | Pull-request path selection, fast and medium tests, correctness and required-case evidence, lint and required five-unit aggregation |
 | `comment-policy-nightly.yml` | tooling | Nightly and on-demand whole-tree comment-policy scan of develop; the backstop for files a pull request leaves unchanged |
 | `corpus-drift-check.yml` | product-safety | Corpus drift detection |
 | `corpus-event-bridge.yml` | product-safety | Corpus event integrity |
