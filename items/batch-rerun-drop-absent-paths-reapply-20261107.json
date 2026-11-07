@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Overlap reruns, fix reruns and final evidence record ran_command and the dropped paths.",
+    "A rerun whose recorded test paths are all gone fails closed without running pytest.",
+    "A member-owned deleted path still fails evidence (existing test passes).",
+    "develop stays green after merge."
+  ],
+  "description": "PR #4020 (fix/batch-rerun-deleted-test-paths, from another session) and PR #4027 both fixed batch evidence for receipt test paths deleted by develop. #4020 drops any pytest path absent from the checkout. #4027 drops a path only when a recorded develop merge deleted it and no member owns it. Merged together they turned develop red: two #4027 tests failed, because #4020's broader dropping lets a member-owned deleted path pass. The owner chose to revert #4020 (revert PR #4038).\n\nWorth keeping from #4020: rerun entries and final evidence rows keep `command` as recorded and add `ran_command` and the dropped paths; overlap and fix reruns (not only final evidence) also drop such paths; and the rerun fails closed without running pytest when every recorded test path is gone.\n\nChange. Re-add those behaviours within #4027's rule (only paths deleted by a recorded develop merge and not member-owned). Batch tooling ships serially.\n\nGuardrails: work in a linked worktree; no explanatory comments; keep test_evidence_still_fails_for_a_test_path_a_member_owns and the pr_landing dropped-path checks passing.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/pull/4020",
+    "https://github.com/BenchBox-dev/BenchBox/pull/4027",
+    "https://github.com/BenchBox-dev/BenchBox/pull/4038"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T21:51:58Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "bbaf8fea7e0543b49f800cba12655b4c",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}
