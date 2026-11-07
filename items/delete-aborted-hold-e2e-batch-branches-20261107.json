@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Before deletion, a listing of each branch's tip and gh pr list --head <branch> --state open shows no open PR for any of them.",
+    "After deletion, git ls-remote origin 'refs/heads/feat/hold-label-and-batch-e2e*' and git branch --list 'feat/hold-label-and-batch-e2e*' 'arm-3999' return nothing.",
+    "Decision gate: if any branch has commits reachable neither from origin/develop nor from merged PR #3999's head, list them and keep that branch until the owner confirms."
+  ],
+  "description": "Problem. Batches hold-label-and-batch-e2e-20261106 and hold-label-and-batch-e2e-v2-20261106 were aborted. Their content shipped in #3999 or was superseded by #4007, but their local and origin branches remain.\n\nChange. Delete the local branches feat/hold-label-and-batch-e2e-20261106*, feat/hold-label-and-batch-e2e-v2-20261106* and arm-3999, and the same names on origin where present. The owner approved this on 2026-11-07.\n\nGuardrails: list the branches and their tips before deleting; never delete a branch that has an open PR or that another worktree has checked out; never delete develop, release or published-results; use git push origin --delete <name> per branch, never a pattern push.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3999",
+    "https://github.com/BenchBox-dev/benchbox/pull/4007"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae",
+      "at": "2026-11-07T21:51:05Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "04b14e1df3bc4f0a9d14df3affdbc595",
+      "session_id": "4e1f5de86962468394697835ee28c6b3"
+    }
+  ]
+}
