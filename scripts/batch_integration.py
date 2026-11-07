@@ -725,6 +725,9 @@ def _is_test_path_arg(arg: str) -> bool:
     return arg.startswith("tests/")
 
 
+TEST_RUN_ANCHORS = ("-q", "pytest")
+
+
 def _tree_has(repo: Path, revision: str, path: str) -> bool | None:
     listed = subprocess.run(
         ["git", "ls-tree", "--name-only", revision, "--", path],
@@ -739,31 +742,44 @@ def _tree_has(repo: Path, revision: str, path: str) -> bool | None:
     return bool(listed.stdout.strip())
 
 
-def _deleted_by_develop(repo: Path, path: str, source_base: str | None) -> bool:
-    if not source_base or (repo / path).exists():
-        return False
-    return _tree_has(repo, source_base, path) is True and _tree_has(repo, DEVELOP_REF, path) is False
+def _in_history(repo: Path, revision: str, path: str) -> bool | None:
+    logged = subprocess.run(
+        ["git", "log", "-1", "--format=%H", revision, "--", path],
+        cwd=repo,
+        check=False,
+        capture_output=True,
+        encoding="utf-8",
+        timeout=60,
+    )
+    if logged.returncode != 0:
+        return None
+    return bool(logged.stdout.strip())
 
 
-def _without_deleted_test_paths(command: list[str], repo: Path, source_base: str | None) -> tuple[list[str], list[str]]:
-    if "pytest" not in command:
+def _deleted_by_develop(repo: Path, path: str) -> bool:
+    return (
+        not (repo / path).exists()
+        and _in_history(repo, DEVELOP_REF, path) is True
+        and _tree_has(repo, DEVELOP_REF, path) is False
+    )
+
+
+def _trailing_test_run_start(command: list[str]) -> int | None:
+    start = len(command)
+    while start > 0 and _is_test_path_arg(command[start - 1]):
+        start -= 1
+    if start == len(command) or start == 0 or command[start - 1] not in TEST_RUN_ANCHORS:
+        return None
+    return start
+
+
+def _without_deleted_test_paths(command: list[str], repo: Path) -> tuple[list[str], list[str]]:
+    start = _trailing_test_run_start(command) if "pytest" in command else None
+    if start is None:
         return list(command), []
-    dropped = [
-        arg
-        for arg in command
-        if _is_test_path_arg(arg) and _deleted_by_develop(repo, arg.split("::", 1)[0], source_base)
-    ]
-    return [arg for arg in command if arg not in dropped], dropped
-
-
-def _member_source_base(ledger: dict, member: str, receipts: dict) -> str | None:
-    receipt = receipts.get(member)
-    if isinstance(receipt, dict) and isinstance(receipt.get("source_base"), str):
-        return receipt["source_base"]
-    landing = ledger.get("landings", {}).get(member)
-    if isinstance(landing, dict) and isinstance(landing.get("source_base"), str):
-        return landing["source_base"]
-    return None
+    dropped = [arg for arg in command[start:] if _deleted_by_develop(repo, arg.split("::", 1)[0])]
+    kept = [arg for arg in command[start:] if arg not in dropped]
+    return [*command[:start], *kept], dropped
 
 
 def _rerun(
@@ -773,12 +789,11 @@ def _rerun(
     command: list[str],
     suite: str,
     reason: str,
-    source_base: str | None = None,
 ) -> dict:
     head = _rev(repo, "HEAD")
     clean_before = _is_clean(repo)
     recorded = _validate_verification_command(command)
-    ran_command, dropped_paths = _without_deleted_test_paths(recorded, repo, source_base)
+    ran_command, dropped_paths = _without_deleted_test_paths(recorded, repo)
     if dropped_paths and not any(_is_test_path_arg(arg) for arg in ran_command):
         proc = None
     else:
@@ -1074,8 +1089,7 @@ def _overlap_reruns(
         if not shared:
             continue
         suite, command = _landing_verification(ledger, other, receipts)
-        source_base = _member_source_base(ledger, other, receipts)
-        entry = _rerun(repo, ledger, other, command, suite, f"overlap:{member}", source_base)
+        entry = _rerun(repo, ledger, other, command, suite, f"overlap:{member}")
         reruns.append({"member": other, "paths": shared, "status": entry["status"]})
         if entry["status"] != "passed":
             failures.append(other)
@@ -1430,8 +1444,7 @@ def _fix_acceptance(
     failures: list[str] = []
     for member in touched:
         suite, command = _landing_verification(ledger, member, receipts)
-        source_base = _member_source_base(ledger, member, receipts)
-        if _rerun(repo, ledger, member, command, suite, f"fix:{head}", source_base)["status"] != "passed":
+        if _rerun(repo, ledger, member, command, suite, f"fix:{head}")["status"] != "passed":
             failures.append(member)
     return touched, failures
 
@@ -2084,15 +2097,7 @@ def build_evidence(repo: Path) -> dict:
     for member in members:
         verification = receipts[member]["verification"]
         command = _validate_verification_command(verification.get("command"))
-        rerun_entry = _rerun(
-            repo,
-            ledger,
-            member,
-            command,
-            str(verification.get("suite", "")),
-            "final-evidence",
-            _member_source_base(ledger, member, receipts),
-        )
+        rerun_entry = _rerun(repo, ledger, member, command, str(verification.get("suite", "")), "final-evidence")
         save_ledger(repo, ledger)
         if rerun_entry["status"] != "passed":
             raise BatchError(f"rerun of {member!r} failed at the final head: {rerun_entry.get('output', '')}")

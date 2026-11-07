@@ -1106,12 +1106,11 @@ def _check_evidence_acceptance(
         if row.get("suite") != verification.get("suite") or row.get("command") != verification.get("command"):
             failures.append(f"current acceptance for member {member} is not its own receipt verification")
             continue
-        failures.extend(
-            _check_dropped_paths(
-                repo, member, row, verification.get("command"), head, base, _revision(receipt.get("source_base"))
-            )
-        )
+        failures.extend(_check_dropped_paths(repo, member, row, verification.get("command"), head, base))
     return failures
+
+
+TEST_RUN_ANCHORS = ("-q", "pytest")
 
 
 def _present_in_tree(repo: Path, revision: str, path: str) -> bool | None:
@@ -1128,8 +1127,31 @@ def _present_in_tree(repo: Path, revision: str, path: str) -> bool | None:
     return bool(listed.stdout.strip())
 
 
+def _in_history(repo: Path, revision: str, path: str) -> bool | None:
+    logged = subprocess.run(
+        ["git", "log", "-1", "--format=%H", revision, "--", path],
+        cwd=repo,
+        check=False,
+        capture_output=True,
+        encoding="utf-8",
+        timeout=60,
+    )
+    if logged.returncode != 0:
+        return None
+    return bool(logged.stdout.strip())
+
+
+def _trailing_test_run_start(command: list) -> int | None:
+    start = len(command)
+    while start > 0 and isinstance(command[start - 1], str) and command[start - 1].startswith("tests/"):
+        start -= 1
+    if start == len(command) or start == 0 or command[start - 1] not in TEST_RUN_ANCHORS:
+        return None
+    return start
+
+
 def _check_dropped_paths(
-    repo: Path, member: str, row: dict, recorded: object, head: str, base: str | None, source_base: str | None
+    repo: Path, member: str, row: dict, recorded: object, head: str, base: str | None
 ) -> list[str]:
     dropped = row.get("dropped_paths", [])
     ran = row.get("ran_command", recorded)
@@ -1139,27 +1161,29 @@ def _check_dropped_paths(
         if ran != recorded:
             return [f"current acceptance for member {member} ran a command other than its receipt verification"]
         return []
-    if not all(isinstance(path, str) and path.startswith("tests/") and path in recorded for path in dropped) or ran != [
-        arg for arg in recorded if arg not in dropped
-    ]:
+    start = _trailing_test_run_start(recorded)
+    if (
+        start is None
+        or "pytest" not in recorded
+        or not all(isinstance(path, str) and path in recorded[start:] for path in dropped)
+        or ran != [*recorded[:start], *(arg for arg in recorded[start:] if arg not in dropped)]
+    ):
         return [f"current acceptance for member {member} ran a command differing from its receipt beyond dropped paths"]
-    if not any(isinstance(arg, str) and arg.startswith("tests/") for arg in ran):
+    if not any(isinstance(arg, str) and arg.startswith("tests/") for arg in ran[start:]):
         return [f"current acceptance for member {member} dropped every test path; refusing a run without tests"]
     if not base:
         return [f"current acceptance for member {member} dropped paths but the PR base revision is unavailable"]
-    if not source_base:
-        return [f"current acceptance for member {member} dropped paths but its receipt has no source base"]
     failures: list[str] = []
     for path in dropped:
         file_part = path.split("::", 1)[0]
-        existed = _present_in_tree(repo, source_base, file_part)
-        if existed is None:
+        owned = _in_history(repo, base, file_part)
+        if owned is None:
             failures.append(
-                f"current acceptance for member {member} dropped {path}, which could not be checked at its source base"
+                f"current acceptance for member {member} dropped {path}, which could not be checked in develop history"
             )
-        elif not existed:
+        elif not owned:
             failures.append(
-                f"current acceptance for member {member} dropped {path}, which did not exist at its source base"
+                f"current acceptance for member {member} dropped {path}, which never existed in develop history"
             )
         for label, revision in (("PR head", head), ("PR base", base)):
             present = _present_in_tree(repo, revision, file_part)
