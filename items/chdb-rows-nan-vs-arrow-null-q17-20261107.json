@@ -4,6 +4,11 @@
     "The 22-query rows-against-Arrow parity on chDB matches 22 of 22, on the locked version if it can load, otherwise the version used is recorded.",
     "chDB's fetch_mode default follows the parity result."
   ],
+  "batch": {
+    "batch_id": "result-validity",
+    "implementation_dependencies": [],
+    "member_id": "chdb-rows-nan-vs-arrow-null-q17-20261107"
+  },
   "description": "Found in the Arrow fetch work (#4012) on chDB 3.7.2. Rows-against-Arrow digest parity over the 22 TPC-H SF0.01 queries matched 21 of 22. Q17 returns NaN on the rows path and NULL on the Arrow path. Arrow therefore stays opt-in for ClickHouse local mode. The locked chDB 4.1.6 wheel does not load on this macOS, so the parity run used 3.7.2 (see chdb-4x-engine-load-verification-20261006).\n\nOne of the two paths misrepresents an empty-aggregate result. That affects result digests and validation for chDB in rows mode, which is the current default.\n\nChange. Determine the SQL-correct value for Q17's output on that data (NULL for AVG over an empty set) and where NaN is introduced: the chDB driver, BenchBox's row conversion, or a settings difference. Fix the wrong path, re-run the 22-query parity, and switch chDB's default to Arrow if all 22 match.\n\nGuardrails: work in a linked worktree (make worktree-create); never edit the primary clone; heavy work only through make heavy-run; container checks under mocker one stack at a time (limits in tests/uat docs and the uat-mocker-compose-gaps-20261106 context); no live cloud without owner approval; no explanatory comments; changelog fragment if user-facing.",
   "sessions": [
     {
@@ -20,6 +25,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "60526adfd1234d79a536791aa7ed3da0",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T14:17:04Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1353e90b35c04b2c808066f3e607276d",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
