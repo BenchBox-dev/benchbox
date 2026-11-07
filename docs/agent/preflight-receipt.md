@@ -14,7 +14,10 @@ can read what ran.
    lines, in `~/.cache/benchbox/preflight/<tree>.json` (`BENCHBOX_PREFLIGHT_RECEIPT_DIR` overrides the
    directory). A failed run still writes a receipt, and it blocks `pr-open`.
 3. `make pr-open` verifies the receipt for the tree of `HEAD` before the review or the push. It refuses when the
-   receipt is missing, for another tree, or shows a failed step. Any new content commit, and any
+   receipt is missing, for another tree, shows a failed step, lacks a step its recorded selection required
+   (`ruff-check`/`ruff-format` for changed Python, `pytest` for mapped tests, `linux-pytest` when selected), or was
+   selected against a merge base that is not an ancestor-or-equal of the PR's merge base (`BASE=HEAD` never
+   passes). Any new content commit, and any
    `pr-refresh` merge that changes the tree, needs a fresh `make pr-preflight`.
 4. `make pr-open` renders a short "Preflight receipt" section into the PR body between
    `<!-- preflight-receipt: v1 begin tree=… -->` and `<!-- preflight-receipt: v1 end -->`, replacing the section
@@ -28,8 +31,10 @@ can read what ran.
 {"schema": 1, "entries": [{"step": "linux-pytest", "test": "<pytest node id>", "reason": "...", "tracker": "<tracker id>"}]}
 ```
 
-- Every failed test in the step must have an entry with that step name, and the pytest summary count must equal
-  the listed failures; an unlisted failure, a crash or output that hides a failure fails the step.
+- Only the `linux-pytest` step can be allowlisted, and only when pytest exited 1. Every failed test in the step
+  must have an entry, and the pytest summary count must equal the listed failures; an unlisted failure, a crash,
+  an interrupted or killed run, or output that hides a failure fails the step.
+- The file is a soundness path (`.github/soundness-paths.txt`), so an edit gets the full review and gate.
 - The allowlist is read from the committed tree (`git show HEAD:`) at both preflight and `pr-open`, so an
   entry is a visible diff in the PR that relies on it and is reviewed like code. Removing an entry invalidates
   receipts that relied on it.

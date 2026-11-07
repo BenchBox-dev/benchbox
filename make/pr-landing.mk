@@ -33,9 +33,12 @@ pr-preflight:
 	git show HEAD:.github/preflight-known-failures.json > "$$ALLOW" 2>/dev/null || rm -f "$$ALLOW"; \
 	python3 scripts/preflight_receipt.py begin --stage "$$STAGE" --base-ref "$$PREFLIGHT_BASE"; \
 	RECORD="python3 scripts/preflight_receipt.py step --stage $$STAGE --allowlist $$ALLOW"; \
+	NOTE="python3 scripts/preflight_receipt.py note --stage $$STAGE"; \
 	$$RECORD --name changelog-check -- $(MAKE) -s changelog-check; \
 	uv run -- python _project/scripts/preflight_targets.py python --base-ref "$$PREFLIGHT_BASE" > "$$PY_LIST"; \
 	uv run -- python _project/scripts/preflight_targets.py tests --base-ref "$$PREFLIGHT_BASE" > "$$TEST_LIST"; \
+	$$NOTE python_files="$$(grep -c . "$$PY_LIST" || true)"; \
+	$$NOTE test_files="$$(grep -c . "$$TEST_LIST" || true)"; \
 	if [ -s "$$PY_LIST" ]; then \
 		echo "==> ruff (changed Python files)"; \
 		$$RECORD --name ruff-check -- uv run -- ruff check --force-exclude $$(cat "$$PY_LIST"); \
@@ -53,6 +56,7 @@ pr-preflight:
 	if [ "$$STATUS" -eq 5 ]; then echo "Mapped tests are all deselected by the default markers."; STATUS=0; fi; \
 	if [ "$$STATUS" -eq 0 ]; then \
 		uv run -- python _project/scripts/preflight_targets.py linux --base-ref "$$PREFLIGHT_BASE" > "$$LINUX_LIST"; \
+		$$NOTE linux_files="$$(grep -c . "$$LINUX_LIST" || true)"; \
 		if [ -s "$$LINUX_LIST" ]; then \
 			echo "==> Linux run (change touches platform-branching code or platform skips)"; \
 			$$RECORD --name linux-pytest -- bash scripts/linux_preflight_pytest.sh "$$LINUX_LIST" || STATUS=$$?; \
@@ -225,7 +229,7 @@ pr-open:
 	ALLOW_FILE=$$(mktemp); \
 	trap 'rm -f "$$RECEIPT_FILE" "$$ALLOW_FILE"' EXIT; \
 	git show HEAD:.github/preflight-known-failures.json > "$$ALLOW_FILE" 2>/dev/null || rm -f "$$ALLOW_FILE"; \
-	python3 scripts/preflight_receipt.py verify --tree "$$(git rev-parse HEAD^{tree})" --allowlist "$$ALLOW_FILE" --summary-out "$$RECEIPT_FILE" || { echo "Refusing to open PR: no passing preflight receipt matches the tree being pushed. Nothing was pushed." >&2; exit 1; }; \
+	python3 scripts/preflight_receipt.py verify --tree "$$(git rev-parse HEAD^{tree})" --allowlist "$$ALLOW_FILE" --summary-out "$$RECEIPT_FILE" --base-ref "$$STACK_BASE" || { echo "Refusing to open PR: no passing preflight receipt matches the tree being pushed. Nothing was pushed." >&2; exit 1; }; \
 	TRUNK_MODE=$$(uv run -- python scripts/trunk_revert.py gate --branch "$$CURRENT" --repo "$$REPOSITORY"); \
 	DRAFT_FLAG=; \
 	if [ "$$TRUNK_MODE" = "draft" ] || [ -n "$$PR_OPEN_PARENT" ]; then DRAFT_FLAG=--draft; fi; \

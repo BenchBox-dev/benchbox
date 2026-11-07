@@ -513,3 +513,74 @@ def test_pr_open_refuses_an_allowlisted_failure_when_the_committed_allowlist_lac
     assert proc.returncode != 0
     assert "shows a failed step (linux-pytest)" in proc.stderr
     assert "feat/receipt" not in _origin_branches(open_world)
+
+
+@pytest.mark.parametrize("code", [2, 3, 4, 137])
+def test_a_non_failure_exit_code_is_never_accepted_as_a_known_failure(repo, tmp_path: Path, code: int) -> None:
+    root, env = repo
+    allow = _write_allowlist(tmp_path)
+    _, codes = _steps(root, env, tmp_path, [("linux-pytest", LINUX_FAILURE, code)], allow)
+    assert codes[0].returncode == code
+
+
+def test_only_the_linux_step_can_be_allowlisted(tmp_path: Path) -> None:
+    entry = {**ALLOWLIST["entries"][0], "step": "pytest"}
+    with pytest.raises(preflight_receipt.ReceiptError, match="cannot be allowlisted"):
+        preflight_receipt.load_allowlist(_write_allowlist(tmp_path, {"schema": 1, "entries": [entry]}))
+
+
+def _note(root: Path, env: dict[str, str], stage: Path, **counts: int) -> None:
+    for key, value in counts.items():
+        assert _script(root, env, "note", "--stage", str(stage), f"{key}={value}").returncode == 0
+
+
+def test_a_receipt_missing_a_step_its_selection_required_is_refused(repo, tmp_path: Path) -> None:
+    root, env = repo
+    stage, _ = _steps(root, env, tmp_path, [("changelog-check", "ok", 0), ("ruff-check", "ok", 0)], None)
+    _note(root, env, stage, python_files=1, test_files=2, linux_files=1)
+    assert _finalize(root, env, stage, 0, None).returncode == 0
+    done = _verify(root, env, None)
+    assert done.returncode == 1
+    assert "lacks required step(s) ruff-format, pytest, linux-pytest" in done.stderr
+
+
+def test_a_receipt_with_every_required_step_is_accepted(repo, tmp_path: Path) -> None:
+    root, env = repo
+    steps = [(name, "ok", 0) for name in ("changelog-check", "ruff-check", "ruff-format", "pytest", "linux-pytest")]
+    stage, _ = _steps(root, env, tmp_path, steps, None)
+    _note(root, env, stage, python_files=1, test_files=2, linux_files=1)
+    assert _finalize(root, env, stage, 0, None).returncode == 0
+    assert _verify(root, env, None, "--base-ref", "origin/develop").returncode == 0
+
+
+def test_a_receipt_without_a_selection_is_refused(repo, tmp_path: Path) -> None:
+    root, env = repo
+    stage, _ = _steps(root, env, tmp_path, [("changelog-check", "ok", 0)], None)
+    assert _finalize(root, env, stage, 0, None).returncode == 0
+    receipt_file = next((tmp_path / "receipts").glob("*.json"))
+    receipt = json.loads(receipt_file.read_text(encoding="utf-8"))
+    del receipt["selection"]
+    receipt_file.write_text(json.dumps(receipt), encoding="utf-8")
+    done = _verify(root, env, None)
+    assert done.returncode == 1 and "records no step selection" in done.stderr
+
+
+def test_a_receipt_selected_against_head_does_not_cover_the_branch(repo, tmp_path: Path) -> None:
+    root, env = repo
+    stage = tmp_path / "stage"
+    assert _script(root, env, "begin", "--stage", str(stage), "--base-ref", "HEAD").returncode == 0
+    command = [sys.executable, "-c", "print('ok')"]
+    _script(root, env, "step", "--stage", str(stage), "--name", "changelog-check", "--", *command)
+    assert _finalize(root, env, stage, 0, None).returncode == 0
+    assert _verify(root, env, None).returncode == 0
+    done = _verify(root, env, None, "--base-ref", "origin/develop")
+    assert done.returncode == 1
+    assert "does not cover the changes" in done.stderr
+
+
+def test_a_receipt_selected_against_an_older_base_still_covers_the_branch(repo, tmp_path: Path) -> None:
+    root, env = repo
+    stage, _ = _steps(root, env, tmp_path, [("changelog-check", "ok", 0)], None)
+    assert _finalize(root, env, stage, 0, None).returncode == 0
+    _git(root, env, "update-ref", "refs/remotes/origin/develop", "HEAD")
+    assert _verify(root, env, None, "--base-ref", "origin/develop").returncode == 0

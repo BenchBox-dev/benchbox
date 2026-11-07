@@ -254,12 +254,18 @@ tree, or one that changes the tree while it runs, writes no receipt.
 `make pr-open` refuses, before it runs the review or pushes anything, when there is no receipt for the tree of
 `HEAD`, when the receipt records a failed step, or when the tree changed since the run (any new commit that
 changes content; a rebase, merge or reworded commit that leaves the tree identical keeps the receipt valid).
+The receipt must also cover the branch: it records the merge base it selected against and which steps the
+selection required (`ruff-check` and `ruff-format` when Python files changed, `pytest` when tests mapped, `linux-pytest`
+when the Linux run was selected), and `make pr-open` refuses a receipt that lacks a required step or was
+selected against a base that does not cover the PR's changes (for example `make pr-preflight BASE=HEAD`).
 It then adds a short "Preflight receipt" section to the PR body, replacing the one from the previous push.
 The section is a claim from the author's machine: the hosted review gate never reads it and CI remains the
 proof.
 
 A Linux-leg failure that is environment-only is accepted only when it is listed in
-`.github/preflight-known-failures.json`. Each entry names the step, the exact pytest node id, the reason and the
+`.github/preflight-known-failures.json` (a soundness path, so an edit gets the full review). Only the
+`linux-pytest` step can be allowlisted, and only for a pytest exit code of 1 (failed tests; an interrupted,
+crashed or killed run never qualifies). Each entry names the step, the exact pytest node id, the reason and the
 tracking item; the file is read from the committed tree being preflighted and pushed, so adding or removing an entry is a
 diff that reviews like any code change. Every failed test in the step must be listed, and the receipt and PR body name
 each accepted failure. An unlisted failure, or output that does not account for every failure, fails the step.

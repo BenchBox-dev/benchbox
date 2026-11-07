@@ -21,6 +21,9 @@ COMMAND_DISPLAY_LIMIT = 110
 RECEIPT_DIR_ENV = "BENCHBOX_PREFLIGHT_RECEIPT_DIR"
 ENTRY_KEYS = frozenset({"step", "test", "reason", "tracker"})
 ACCEPTED_OUTCOMES = frozenset({"passed", "unverified", "known-failure"})
+ALLOWLISTED_STEPS = frozenset({"linux-pytest"})
+PYTEST_FAILED_EXIT = 1
+SELECTION_KEYS = ("python_files", "test_files", "linux_files")
 TREE_PATTERN = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
 SUMMARY_LINE = re.compile(r"^\W*(?P<body>.*?\d+ \w+.*?) in (?P<secs>[0-9.]+)s\b")
 COUNT = re.compile(r"(\d+) (passed|failed|skipped|deselected|errors?|xfailed|xpassed|warnings?)")
@@ -72,6 +75,11 @@ def load_allowlist(path: Path | None) -> dict[tuple[str, str], dict[str, str]]:
             raise ReceiptError(f"known-failure allowlist {path}: every entry needs exactly {sorted(ENTRY_KEYS)}")
         if not all(isinstance(entry[key], str) and entry[key].strip() for key in ENTRY_KEYS):
             raise ReceiptError(f"known-failure allowlist {path}: entry fields must be non-empty strings")
+        if entry["step"] not in ALLOWLISTED_STEPS:
+            raise ReceiptError(
+                f"known-failure allowlist {path}: step {entry['step']!r} cannot be allowlisted; "
+                f"only {sorted(ALLOWLISTED_STEPS)} can"
+            )
         key = (entry["step"], entry["test"])
         if key in table:
             raise ReceiptError(f"known-failure allowlist {path}: duplicate entry for {key[0]} {key[1]}")
@@ -124,7 +132,7 @@ def classify(
                 return "unverified", []
         return "passed", []
     ids = failed_ids(lines)
-    if not ids or counts.get("failed", 0) + counts.get("errors", 0) != len(ids):
+    if exit_code != PYTEST_FAILED_EXIT or not ids or counts.get("failed", 0) + counts.get("errors", 0) != len(ids):
         return "failed", []
     matched = [allowlist.get((name, test)) for test in ids]
     if any(entry is None for entry in matched):
@@ -198,14 +206,16 @@ def run_begin(args: argparse.Namespace) -> int:
     try:
         state = _tree_state()
         base_sha = _git("rev-parse", "--verify", f"{args.base_ref}^{{commit}}")
+        merge_base = _git("merge-base", base_sha, "HEAD")
     except ReceiptError as exc:
         state = {"error": str(exc)}
-        base_sha = ""
+        base_sha = merge_base = ""
     record = {
         "kind": "begin",
         "state": state,
         "base_ref": args.base_ref,
         "base_sha": base_sha,
+        "merge_base": merge_base,
         "started_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "platform": sys.platform,
     }
@@ -213,12 +223,26 @@ def run_begin(args: argparse.Namespace) -> int:
     return 0
 
 
-def _read_stage(path: Path) -> tuple[dict[str, object], list[dict[str, object]]]:
+def run_note(args: argparse.Namespace) -> int:
+    key, _, value = args.count.partition("=")
+    if key not in SELECTION_KEYS or not value.isdigit():
+        print(f"preflight-receipt: note must be one of {SELECTION_KEYS} set to a count", file=sys.stderr)
+        return 2
+    with open(args.stage, "a", encoding="utf-8") as handle:
+        handle.write(json.dumps({"kind": "note", "key": key, "count": int(value)}, sort_keys=True) + "\n")
+    return 0
+
+
+def _read_stage(path: Path) -> tuple[dict[str, object], list[dict[str, object]], dict[str, int]]:
     records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
     begins = [record for record in records if record.get("kind") == "begin"]
     if len(begins) != 1:
         raise ReceiptError("the preflight run did not record its starting tree")
-    return begins[0], [record for record in records if record.get("kind") == "step"]
+    selection = dict.fromkeys(SELECTION_KEYS, 0)
+    for record in records:
+        if record.get("kind") == "note":
+            selection[str(record["key"])] = int(record["count"])
+    return begins[0], [record for record in records if record.get("kind") == "step"], selection
 
 
 def overall(steps: Sequence[dict[str, object]]) -> str:
@@ -227,7 +251,7 @@ def overall(steps: Sequence[dict[str, object]]) -> str:
 
 def write_receipt(args: argparse.Namespace) -> int:
     try:
-        begin, steps = _read_stage(Path(args.stage))
+        begin, steps, selection = _read_stage(Path(args.stage))
         start = begin["state"]
         assert isinstance(start, dict)
         if "error" in start:
@@ -244,6 +268,8 @@ def write_receipt(args: argparse.Namespace) -> int:
             "head": start["head"],
             "base_ref": begin["base_ref"],
             "base_sha": begin["base_sha"],
+            "merge_base": begin["merge_base"],
+            "selection": selection,
             "platform": begin["platform"],
             "started_at": begin["started_at"],
             "recorded_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -346,7 +372,42 @@ def verify_receipt(directory: Path, tree: str, allowlist: dict[tuple[str, str], 
         raise ReceiptError(
             f"the preflight receipt for tree {tree} shows a failed step ({named}); fix it and rerun `make pr-preflight`"
         )
+    selection = receipt.get("selection")
+    if not isinstance(selection, dict) or not all(isinstance(selection.get(key), int) for key in SELECTION_KEYS):
+        raise ReceiptError(f"preflight receipt {path} records no step selection; rerun `make pr-preflight`")
+    required: list[str] = []
+    if selection["python_files"] > 0:
+        required += ["ruff-check", "ruff-format"]
+    if selection["test_files"] > 0:
+        required.append("pytest")
+    if selection["linux_files"] > 0:
+        required.append("linux-pytest")
+    recorded = {step.get("name") for step in steps}
+    missing = [name for name in required if name not in recorded]
+    if missing:
+        raise ReceiptError(
+            f"the preflight receipt for tree {tree} lacks required step(s) {', '.join(missing)}; "
+            "rerun `make pr-preflight`"
+        )
     return receipt
+
+
+def check_coverage(receipt: dict[str, object], base_ref: str) -> None:
+    recorded = str(receipt.get("merge_base") or "")
+    current = _git("merge-base", base_ref, "HEAD")
+    covered = (
+        bool(recorded)
+        and subprocess.run(
+            ["git", "merge-base", "--is-ancestor", recorded, current], capture_output=True, check=False
+        ).returncode
+        == 0
+    )
+    if not covered:
+        raise ReceiptError(
+            f"the preflight receipt was selected against merge base {recorded or 'unknown'}, which does not cover "
+            f"the changes since {current} (the merge base with {base_ref}); rerun `make pr-preflight` without BASE "
+            "or with a base that is an ancestor of the branch point"
+        )
 
 
 def _still_allowed(step: dict[str, object], allowlist: dict[tuple[str, str], dict[str, str]]) -> bool:
@@ -365,6 +426,8 @@ def run_verify(args: argparse.Namespace) -> int:
         receipt = verify_receipt(
             receipt_dir(args.receipt_dir), tree, load_allowlist(Path(args.allowlist) if args.allowlist else None)
         )
+        if args.base_ref:
+            check_coverage(receipt, args.base_ref)
         if args.summary_out:
             Path(args.summary_out).write_text(render(receipt), encoding="utf-8")
     except ReceiptError as exc:
@@ -385,6 +448,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     step.add_argument("--ok-codes", default="0")
     step.add_argument("--allowlist", default="")
     step.add_argument("command", nargs=argparse.REMAINDER)
+    note = sub.add_parser("note")
+    note.add_argument("--stage", required=True)
+    note.add_argument("count")
     finalize = sub.add_parser("finalize")
     finalize.add_argument("--stage", required=True)
     finalize.add_argument("--exit-status", type=int, required=True)
@@ -395,11 +461,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     verify.add_argument("--allowlist", default="")
     verify.add_argument("--receipt-dir", default="")
     verify.add_argument("--summary-out", default="")
+    verify.add_argument("--base-ref", default="")
     args = parser.parse_args(argv)
     if args.action == "begin":
         return run_begin(args)
     if args.action == "step":
         return run_step(args)
+    if args.action == "note":
+        return run_note(args)
     if args.action == "finalize":
         return write_receipt(args)
     return run_verify(args)
