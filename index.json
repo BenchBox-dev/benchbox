@@ -2143,7 +2143,7 @@
         }
       },
       "integration_branch": "feat/ci-and-preflight-reliability",
-      "integration_head": "918641488b100feb7ddac4101d8cb338f1955288",
+      "integration_head": "1d0059053a6026648da5e2e72b21f1054b9c9ff8",
       "integration_log": [
         {
           "at": "2026-11-07T14:24:40Z",
@@ -2267,6 +2267,21 @@
           "op_id": "09f22a71c9af466bbba4f27a388910c5",
           "previous_head": "1c440f896d113512466f27bad3b9d8d394a8d3a9",
           "seq": 6
+        },
+        {
+          "at": "2026-11-07T18:16:31Z",
+          "changed_files": [
+            "scripts/sql_execution_gate/engines.py",
+            "tests/unit/scripts/test_sql_execution_gate.py"
+          ],
+          "head": "1d0059053a6026648da5e2e72b21f1054b9c9ff8",
+          "kind": "fix",
+          "op_id": "44c074142ca147a19476242cc6fa4b67",
+          "previous_head": "918641488b100feb7ddac4101d8cb338f1955288",
+          "requires_acceptance": [
+            "sql-execution-evidence-gate-config-hygiene-20261107"
+          ],
+          "seq": 7
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-ci-and-preflight-reliability",
