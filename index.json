@@ -31571,6 +31571,13 @@
       "status": "done",
       "title": "Add SingleStore Platform Adapter"
     },
+    "singlestore-decimal-text-loads-as-zero-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "SingleStore silently loads non-numeric DECIMAL text as 0.00 even in strict mode; check every SingleStore load path"
+    },
     "singlestore-non-tpc-csv-null-marker": {
       "claim": null,
       "needs": [],

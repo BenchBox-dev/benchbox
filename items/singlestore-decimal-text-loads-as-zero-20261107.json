@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Each SingleStore load path is listed, with the malformed-decimal result before the fix.",
+    "Each path aborts on a malformed decimal after the fix, shown by a live test under the live_singlestore marker.",
+    "Valid data loads unchanged (row counts and decimal sums on TPC-H SF0.01)."
+  ],
+  "description": "Found while implementing SingleStore native RF1 ingest (#3979) on SingleStore 10.9.0 (dev image under mocker). With LOAD DATA, a non-numeric value in a DECIMAL column is stored as 0.00 even in strict mode. INT, DATE and CHAR-length errors are rejected. #3979 guards only the RF1 path, loading DECIMAL columns through @var with SET col = IF(@col REGEXP ..., @col, 1e30) so the server aborts. The bulk data load path (SingleStoreAdapter load_data / LOAD DATA for benchmark tables) and any other LOAD DATA use have not been checked. A malformed decimal in a data file would load as 0.00 and change query answers silently.\n\nChange. Find every SingleStore LOAD DATA path. Prove the behaviour on each with a malformed-decimal file, and apply the same abort guard (or an equivalent the server honours) where needed.\n\nGuardrails: work in a linked worktree (make worktree-create); never edit the primary clone; heavy work only through make heavy-run; container checks under mocker one stack at a time (limits in tests/uat docs and the uat-mocker-compose-gaps-20261106 context); no live cloud without owner approval; no explanatory comments; changelog fragment if user-facing.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T13:48:30Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ef262a7bcc3943db9a1675288c04a2ac",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}
