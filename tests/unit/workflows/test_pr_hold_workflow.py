@@ -43,9 +43,16 @@ def test_hold_job_reports_under_the_required_context_name() -> None:
 
 def test_hold_job_checks_the_label_that_arming_refuses() -> None:
     step = _load()["jobs"]["hold"]["steps"][0]
-    labels = re.findall(r"labels\.\*\.name, '([^']+)'", step["env"]["HELD"])
-    assert labels == [_hold_label()]
+    assert step["env"]["HOLD_LABEL"] == _hold_label()
     assert "exit 1" in step["run"]
+
+
+def test_hold_job_reads_live_labels_not_the_event_payload() -> None:
+    job = _load()["jobs"]["hold"]
+    step = job["steps"][0]
+    assert "github.event.pull_request.labels" not in WORKFLOW.read_text(encoding="utf-8")
+    assert "gh api" in step["run"]
+    assert _load()["permissions"] == {"pull-requests": "read"}
 
 
 def test_runbook_requires_the_hold_context() -> None:
@@ -54,18 +61,62 @@ def test_runbook_requires_the_hold_context() -> None:
     assert "- hold" in block.splitlines()
 
 
-@pytest.mark.skipif(sys.platform == "win32", reason="the hold step is a POSIX shell script that runs on ubuntu")
-@pytest.mark.parametrize(("held", "expected_code"), [("true", 1), ("false", 0)])
-def test_hold_step_fails_only_while_the_label_is_present(held: str, expected_code: int, tmp_path: Path) -> None:
+def _hold_step(tmp_path: Path, gh_body: str, labels: str) -> subprocess.CompletedProcess[str]:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir(parents=True)
+    gh = bin_dir / "gh"
+    gh.write_text("#!/bin/sh\n" + gh_body, encoding="utf-8")
+    gh.chmod(0o755)
     script = tmp_path / "hold.sh"
     script.write_text("#!/bin/sh\n" + _load()["jobs"]["hold"]["steps"][0]["run"], encoding="utf-8")
     script.chmod(0o755)
-    result = subprocess.run(
+    return subprocess.run(
         [str(script)],
-        env={**os.environ, "HELD": held},
+        env={
+            **os.environ,
+            "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+            "REPO": "owner/repo",
+            "PR": "7",
+            "HOLD_LABEL": _hold_label(),
+            "LIVE_LABELS": labels,
+        },
         capture_output=True,
         text=True,
         check=False,
     )
+
+
+_GH_LISTS_LIVE_LABELS = 'printf "%s" "$LIVE_LABELS"\n'
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the hold step is a POSIX shell script that runs on ubuntu")
+@pytest.mark.parametrize(
+    ("held", "expected_code"),
+    [("true", 1), ("false", 0)],
+)
+def test_hold_step_fails_only_while_the_label_is_present(held: str, expected_code: int, tmp_path: Path) -> None:
+    labels = f"bug\n{_hold_label()}\nenhancement\n" if held == "true" else "bug\nenhancement\n"
+    result = _hold_step(tmp_path, _GH_LISTS_LIVE_LABELS, labels)
     assert result.returncode == expected_code
     assert ("::error::" in result.stdout) is (held == "true")
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the hold step is a POSIX shell script that runs on ubuntu")
+def test_hold_step_ignores_labels_that_merely_contain_the_hold_label(tmp_path: Path) -> None:
+    result = _hold_step(tmp_path, _GH_LISTS_LIVE_LABELS, f"{_hold_label()}-not\nx-{_hold_label()}\n")
+    assert result.returncode == 0
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the hold step is a POSIX shell script that runs on ubuntu")
+def test_hold_step_passes_after_the_label_is_removed_even_when_rerun_for_a_labeled_event(tmp_path: Path) -> None:
+    held = _hold_step(tmp_path / "while-held", _GH_LISTS_LIVE_LABELS, _hold_label() + "\n")
+    released = _hold_step(tmp_path / "after-release", _GH_LISTS_LIVE_LABELS, "")
+    assert held.returncode == 1
+    assert released.returncode == 0
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the hold step is a POSIX shell script that runs on ubuntu")
+def test_hold_step_fails_closed_when_the_label_lookup_fails(tmp_path: Path) -> None:
+    result = _hold_step(tmp_path, "echo boom >&2\nexit 1\n", "")
+    assert result.returncode != 0
+    assert "No durable hold label." not in result.stdout
