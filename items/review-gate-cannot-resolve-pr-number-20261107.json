@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "The triggering event types and the failing code path are identified, with run ids.",
+    "On a new PR, `gate / gate` either passes or is skipped neutrally for these events, and never fails while review is pending.",
+    "A stale failure no longer leaves a PR BLOCKED once a later run succeeds."
+  ],
+  "description": "From 2026-11-04 to 2026-11-07, the `gate / gate` check (review-gate bridge) failed on #3949, #3952, #3960, #3979, #3991, #3992, #3994, #3995 and #4007. The log says 'cannot resolve a pull request number'; on some PRs it fails within 14-17 s with 'review: waiting' before the verdict posts. It is not a required check, so arming and merging go ahead, but it leaves a red check on the PR. On #4007 a stale failed run (42342923424) kept the PR BLOCKED until its failed jobs were rerun. Agents and reviewers cannot tell a real gate failure from this noise.\n\nChange. Find why the bridge cannot resolve the PR number for these events (event type, fork or merge-queue refs, timing before the PR exists). Make it resolve the number or skip neutrally, and make a later success supersede the stale failure. Related: oracle-gate-bridge-noop-runs-hold-runner-slots-20261101 and the Theseus adoption items.\n\nGuardrails: work in a linked worktree (make worktree-create); never edit the primary clone; heavy work only through make heavy-run; container checks under mocker one stack at a time (limits in tests/uat docs and the uat-mocker-compose-gaps-20261106 context); no live cloud without owner approval; no explanatory comments; changelog fragment if user-facing.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T13:48:21Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "2bf94837916c4fbab2a2ca0f12d774a7",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    }
+  ]
+}

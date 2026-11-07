@@ -30370,6 +30370,13 @@
       "status": "done",
       "title": "Archive BenchBox review captures and attempt artifacts before they expire"
     },
+    "review-gate-cannot-resolve-pr-number-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "`gate / gate` fails with 'cannot resolve a pull request number' on most PRs and lingers red after merge"
+    },
     "review-gateway-muse-login-lost-20261106": {
       "claim": null,
       "needs": [],
