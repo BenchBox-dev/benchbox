@@ -34817,6 +34817,13 @@
       "status": "done",
       "title": "TPC-H measured power iterations run stream 1..k permutations and skip row-count validation"
     },
+    "tpch-power-validation-after-rf1-q13-20261106": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "TPC-H power run fails Q13 row-count validation after RF1 changes the data (expected 33, got 34)"
+    },
     "tpch-qphh-missing-refresh-functions": {
       "claim": null,
       "needs": [],
