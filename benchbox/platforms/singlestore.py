@@ -110,6 +110,9 @@ _OUT_OF_RANGE_DECIMAL = "1e30"
 class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapter):
     plan_capture_phase_eligible = True
     supports_refresh_functions = True
+    tpcds_maintenance_unsupported_reason = (
+        "the dsdgen refresh statements have not been validated against SingleStore's MySQL-wire SQL"
+    )
     supports_native_refresh_ingest = True
     default_service_port = _DEFAULT_PORT
 
@@ -126,21 +129,6 @@ class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, Platform
 
     def get_target_dialect(self) -> str:
         return SINGLESTORE_DIALECT
-
-    def enforced_primary_key_tables(self, connection: Any, tables: Sequence[str]) -> list[str]:
-        enforced = []
-        raw_connection = getattr(connection, "connection", connection)
-        for table in tables:
-            if not self._validate_identifier(table):
-                raise ValueError(f"Invalid table identifier: {table!r}")
-            cursor = raw_connection.cursor()
-            try:
-                cursor.execute(f"SHOW KEYS FROM `{table}`")
-                if any(row[2] == "PRIMARY" for row in cursor.fetchall()):
-                    enforced.append(table)
-            finally:
-                cursor.close()
-        return sorted(enforced)
 
     @staticmethod
     def add_cli_arguments(parser) -> None:
@@ -339,7 +327,7 @@ class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, Platform
             null_clause = f" NULL DEFINED BY '{escaped_null}'"
         sql = (
             f"LOAD DATA LOCAL INFILE '{escaped_path}' INTO TABLE `{table_name}` "
-            f"FIELDS TERMINATED BY '|'{null_clause} LINES TERMINATED BY '\\n' ({', '.join(targets)})"
+            f"FIELDS TERMINATED BY '|' LINES TERMINATED BY '\\n'{null_clause} ({', '.join(targets)})"
         )
         if guards:
             sql += f" SET {', '.join(guards)}"

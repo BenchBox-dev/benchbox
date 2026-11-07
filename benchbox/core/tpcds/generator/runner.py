@@ -5,6 +5,7 @@ import os
 import platform
 import shutil
 import subprocess
+import tempfile
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -92,7 +93,11 @@ class DsdgenRunnerMixin:
         update_args = [tpcds_option("update"), str(set_id)]
         if rng_seed is not None:
             update_args += [tpcds_option("rngseed"), str(int(rng_seed))]
-        self._run_file_based_dsdgen(output_dir, update_args)
+        with tempfile.TemporaryDirectory(prefix="dsdgen-") as scratch:
+            scratch_dir = Path(scratch)
+            self._run_file_based_dsdgen(scratch_dir, update_args)
+            for produced in scratch_dir.glob("*.dat"):
+                shutil.move(str(produced), str(output_dir / produced.name))
 
     def _run_single_threaded_dsdgen(self, output_dir: Path) -> None:
         if self.should_use_compression():

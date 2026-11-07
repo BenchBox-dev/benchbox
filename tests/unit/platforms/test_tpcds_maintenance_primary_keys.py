@@ -10,7 +10,6 @@ from benchbox.core.tpcds import maintenance_test as maintenance_test_module
 from benchbox.core.tpcds.maintenance_functions import MAINTENANCE_FUNCTIONS
 from benchbox.core.tpcds.maintenance_test import TPCDSMaintenanceTest, TPCDSMaintenanceTestConfig
 from benchbox.platforms.postgresql import PostgreSQLAdapter
-from benchbox.platforms.singlestore import SingleStoreAdapter
 from benchbox.platforms.snowflake import SnowflakeAdapter
 from benchbox.platforms.sqlite import SQLiteAdapter
 
@@ -124,20 +123,15 @@ def test_postgresql_filters_primary_key_constraints_to_the_maintenance_tables():
     assert "contype = 'p'" in connection.execute.call_args.args[0]
 
 
-def test_singlestore_asks_for_the_primary_key_of_each_table():
-    cursor = Mock()
-    cursor.fetchall.side_effect = [[("store_sales", 0, "PRIMARY")], [("web_sales", 1, "idx_date")]]
-    raw = Mock()
-    raw.cursor.return_value = cursor
-    wrapper = Mock(connection=raw)
+def test_singlestore_reports_tpcds_maintenance_as_unsupported_while_keeping_tpch_refresh():
+    from benchbox.core.tpcds.maintenance_test import maintenance_unsupported_reason
+    from benchbox.platforms.singlestore import SingleStoreAdapter
 
-    enforced = SingleStoreAdapter.__new__(SingleStoreAdapter).enforced_primary_key_tables(
-        wrapper, ["store_sales", "web_sales"]
-    )
+    adapter = SingleStoreAdapter.__new__(SingleStoreAdapter)
 
-    assert enforced == ["store_sales"]
-    assert [call.args[0] for call in cursor.execute.call_args_list] == [
-        "SHOW KEYS FROM `store_sales`",
-        "SHOW KEYS FROM `web_sales`",
-    ]
-    assert cursor.close.call_count == 2
+    reason = maintenance_unsupported_reason(adapter)
+
+    assert reason is not None
+    assert "not supported by platform" in reason
+    assert "not been validated" in reason
+    assert SingleStoreAdapter.supports_refresh_functions is True

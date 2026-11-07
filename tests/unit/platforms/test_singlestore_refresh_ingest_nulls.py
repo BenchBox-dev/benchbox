@@ -26,7 +26,7 @@ def _ingest(null_marker: str | None) -> str:
 def test_null_marker_maps_empty_fields_to_null_and_keeps_null_decimals():
     sql = _ingest("")
 
-    assert "FIELDS TERMINATED BY '|' NULL DEFINED BY '' LINES TERMINATED BY" in sql
+    assert "FIELDS TERMINATED BY '|' LINES TERMINATED BY '\\n' NULL DEFINED BY '' (" in sql
     assert "`ss_net_paid` = IF(@ss_net_paid IS NULL OR @ss_net_paid REGEXP" in sql
 
 

@@ -73,9 +73,12 @@ class MaintenanceKeyConflictError(RuntimeError):
 
 
 def maintenance_unsupported_reason(adapter: Any) -> Optional[str]:
+    platform_name = getattr(adapter, "platform_name", type(adapter).__name__)
+    platform_reason = getattr(adapter, "tpcds_maintenance_unsupported_reason", None)
+    if isinstance(platform_reason, str) and platform_reason:
+        return f"TPC-DS maintenance functions are not supported by platform '{platform_name}': {platform_reason}"
     if getattr(adapter, "supports_refresh_functions", False) is True:
         return None
-    platform_name = getattr(adapter, "platform_name", type(adapter).__name__)
     return f"TPC-DS maintenance functions are not supported by platform '{platform_name}'"
 
 
