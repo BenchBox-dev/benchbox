@@ -15,7 +15,11 @@ _DATABASE_START = "# Files"
 _DATABASE_END = "# Finished Make data base"
 _RECIPE_MARKER = re.compile(r"^#  (?:recipe|commands) to execute \(from .*\):$")
 _NO_RULE_FOR_COLON = re.compile(r"No rule to make target [`']:'")
-_TARGET_VARIABLE = re.compile(r"^# (?P<name>[A-Za-z_][A-Za-z0-9_]*) (?::=|=|\?=|\+=) ?(?P<value>.*)$")
+_NOT_A_TARGET = "# Not a target:"
+_LEADING_VARIABLE = re.compile(
+    r"^[^#\s:][^:]*: (?P<name>[A-Za-z_][A-Za-z0-9_]*) (?::=|::=|\?=|\+=|=)(?: (?P<value>.*))?$"
+)
+_TRAILING_VARIABLE = re.compile(r"^# (?P<name>[A-Za-z_][A-Za-z0-9_]*) (?::=|=|\?=|\+=) ?(?P<value>.*)$")
 
 _FENCED_BLOCK = re.compile(r"```[^\n]*\n(.*?)```", re.DOTALL)
 _INLINE_CODE = re.compile(r"`([^`\n]+)`")
@@ -32,8 +36,12 @@ class MakeRule:
     variables: dict[str, str]
 
     @property
+    def name(self) -> str:
+        return self.header.split(":", 1)[0]
+
+    @property
     def prerequisites(self) -> list[str]:
-        return self.header.split(":", 1)[1].split()
+        return self.header.split(":", 1)[1].lstrip(":").split()
 
 
 @lru_cache(maxsize=4)
@@ -59,37 +67,42 @@ def _paragraphs(root: Path) -> list[str]:
     return [paragraph.strip("\n") for paragraph in re.split(r"\n{2,}", _database(root)) if paragraph.strip()]
 
 
-def targets(root: Path) -> list[str]:
-    names = set()
-    for paragraph in _paragraphs(root):
-        name = paragraph.split(":", 1)[0]
-        if name.startswith(("#", ".")):
+def _entry(lines: list[str]) -> MakeRule | None:
+    variables: dict[str, str] = {}
+    for position, line in enumerate(lines):
+        if line == _NOT_A_TARGET:
+            return None
+        if line.startswith("#"):
             continue
-        if not name[:1].isalnum() or name == "$@":
+        if assignment := _LEADING_VARIABLE.match(line):
+            variables[assignment["name"]] = assignment["value"] or ""
             continue
-        names.add(name)
-    return sorted(names)
+        if ":" not in line:
+            return None
+        recipe: list[str] = []
+        in_recipe = False
+        for body in lines[position + 1 :]:
+            if _RECIPE_MARKER.match(body):
+                in_recipe = True
+            elif in_recipe and body.startswith("\t") and body.strip():
+                recipe.append(body)
+            elif assignment := _TRAILING_VARIABLE.match(body):
+                variables[assignment["name"]] = assignment["value"]
+        return MakeRule(header=line, recipe=tuple(recipe), variables=variables)
+    return None
 
 
 def rules(root: Path) -> dict[str, MakeRule]:
     found: dict[str, MakeRule] = {}
     for paragraph in _paragraphs(root):
-        lines = paragraph.splitlines()
-        header = lines[0]
-        if header.startswith("#") or ":" not in header:
-            continue
-        recipe: list[str] = []
-        variables: dict[str, str] = {}
-        in_recipe = False
-        for line in lines[1:]:
-            if _RECIPE_MARKER.match(line):
-                in_recipe = True
-            elif in_recipe and line.startswith("\t") and line.strip():
-                recipe.append(line)
-            elif assignment := _TARGET_VARIABLE.match(line):
-                variables[assignment["name"]] = assignment["value"]
-        found[header.split(":", 1)[0]] = MakeRule(header=header, recipe=tuple(recipe), variables=variables)
+        rule = _entry(paragraph.splitlines())
+        if rule is not None:
+            found[rule.name] = rule
     return found
+
+
+def targets(root: Path) -> list[str]:
+    return sorted(name for name in rules(root) if name[:1].isalnum() and name != "$@")
 
 
 def named_targets(markdown: str) -> set[str]:
@@ -112,7 +125,8 @@ def named_targets(markdown: str) -> set[str]:
 
 def documentation(root: Path) -> list[Path]:
     paths = [root / "AGENTS.md", root / "CONTRIBUTING.md"]
-    paths += sorted(path for path in (root / "docs").rglob("*.md") if "adr" not in path.parts)
+    decision_records = root / "docs" / "internal" / "adr"
+    paths += sorted(path for path in (root / "docs").rglob("*.md") if not path.is_relative_to(decision_records))
     paths += sorted((root / ".claude" / "skills").rglob("*.md"))
     return [path for path in paths if path.is_file()]
 

@@ -45,15 +45,22 @@ def test_every_make_target_named_in_documentation_exists() -> None:
     assert make_targets.missing_documented_targets(REPO_ROOT) == {}
 
 
-def test_the_check_names_a_missing_target_and_the_document_that_names_it(
+def test_the_check_names_a_missing_target_and_skips_only_decision_records(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    _copy_make_files(tmp_path)
-    (tmp_path / "docs").mkdir()
-    (tmp_path / "docs" / "guide.md").write_text("Run `make help`, then `make retired-target`.\n", encoding="utf-8")
+    root = tmp_path / "adr" / "checkout"
+    root.mkdir(parents=True)
+    _copy_make_files(root)
+    (root / "docs" / "internal" / "adr").mkdir(parents=True)
+    (root / "docs" / "guide.md").write_text("Run `make help`, then `make retired-target`.\n", encoding="utf-8")
+    (root / "docs" / "internal" / "adr" / "adr-old.md").write_text(
+        "We once ran `make historical-target`.\n", encoding="utf-8"
+    )
 
-    assert make_targets.main(["--root", str(tmp_path)]) == 1
-    assert "make retired-target: no such target, named in docs/guide.md" in capsys.readouterr().err
+    assert make_targets.main(["--root", str(root)]) == 1
+    errors = capsys.readouterr().err
+    assert "make retired-target: no such target, named in docs/guide.md" in errors
+    assert "historical-target" not in errors
 
 
 @pytest.mark.parametrize("damage", ["missing include", "duplicate recipe"])
@@ -67,6 +74,39 @@ def test_reading_the_rules_fails_when_make_reports_a_problem(tmp_path: Path, dam
 
     with pytest.raises(RuntimeError, match="make could not read the rules"):
         make_targets.targets(tmp_path)
+
+
+_MAKE_3_ENTRY = (
+    "timed:\n"
+    "#  Phony target (prerequisite of .PHONY).\n"
+    "# makefile (from `Makefile', line 2)\n"
+    "# SHELL := /bin/sh\n"
+    "#  commands to execute (from `Makefile', line 6):\n"
+    "\t@echo ran\n"
+)
+_MAKE_4_ENTRY = (
+    "# makefile (from 'Makefile', line 2)\n"
+    "timed: SHELL := /bin/sh\n"
+    "timed:\n"
+    "#  Phony target (prerequisite of .PHONY).\n"
+    "#  recipe to execute (from 'Makefile', line 6):\n"
+    "\t@echo ran\n"
+)
+_NOT_A_TARGET = "# Not a target:\nMakefile:\n#  Implicit rule search has not been done.\n"
+
+
+@pytest.mark.parametrize("entry", [_MAKE_3_ENTRY, _MAKE_4_ENTRY], ids=["make-3", "make-4"])
+def test_rules_read_a_target_and_its_variables_in_either_make_layout(
+    monkeypatch: pytest.MonkeyPatch, entry: str
+) -> None:
+    monkeypatch.setattr(make_targets, "_database", lambda root: f"# Files\n\n{entry}\n{_NOT_A_TARGET}\n")
+
+    found = make_targets.rules(REPO_ROOT)
+
+    assert set(found) == {"timed"}
+    assert found["timed"].variables["SHELL"] == "/bin/sh"
+    assert found["timed"].recipe == ("\t@echo ran",)
+    assert make_targets.targets(REPO_ROOT) == ["timed"]
 
 
 def test_the_make_target_count_stays_within_the_ceiling() -> None:
