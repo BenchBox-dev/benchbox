@@ -234,6 +234,42 @@ def test_adapters_without_a_parity_run_keep_rows_by_default() -> None:
     assert VeloxAdapter.default_fetch_mode == FETCH_MODE_ROWS
 
 
+def test_binary_converter_follows_the_classic_collect_type() -> None:
+    from pyspark.sql.types import BinaryType, StructField, StructType
+
+    schema = StructType([StructField("b", BinaryType())])
+
+    with patch("benchbox.platforms.base.spark_execution_mixin.spark_dataframe_supports_arrow", return_value=False):
+        assert spark_arrow_converters(schema)[0](b"ab") == bytearray(b"ab")
+    with patch("benchbox.platforms.base.spark_execution_mixin.spark_dataframe_supports_arrow", return_value=True):
+        assert spark_arrow_converters(schema) == {}
+
+
+def test_to_pandas_refuses_integers_that_float_conversion_would_round() -> None:
+    import pandas as pd
+
+    frame = _ToPandasFrame()
+    frame.schema = _schema("long")
+    frame.toPandas = lambda: pd.DataFrame({"x": [float(2**60), float("nan")]})
+    host = _Host(FETCH_MODE_ARROW)
+
+    with pytest.raises(ValueError, match="fetch_mode platform option to rows"):
+        _run(host, _session(frame))
+
+
+def test_to_pandas_keeps_small_integers_that_have_nulls_exact() -> None:
+    import pandas as pd
+
+    frame = _ToPandasFrame()
+    frame.schema = _schema("long")
+    frame.toPandas = lambda: pd.DataFrame({"x": [7.0, float("nan")]})
+    host = _Host(FETCH_MODE_ARROW)
+
+    _run(host, _session(frame))
+
+    assert list(host.built["materialized_rows"]) == [(7,), (None,)]
+
+
 def test_converters_cover_nested_timestamps_maps_and_structs() -> None:
     from pyspark.sql.types import (
         ArrayType,
@@ -296,7 +332,8 @@ PARITY_QUERIES = {
     "scalars": (
         "select cast(1 as tinyint) a, cast(null as int) b, cast(3 as bigint) c, cast(1.5 as float) d, "
         "cast(2.25 as double) e, cast('12.345' as decimal(10,3)) f, 'x' g, true h, date'2024-02-29' i, "
-        "timestamp'2024-02-29 12:34:56.789' j, timestamp_ntz'2024-02-29 12:34:56.789' k"
+        "timestamp'2024-02-29 12:34:56.789' j, timestamp_ntz'2024-02-29 12:34:56.789' k, "
+        "cast('ab' as binary) l, interval '1 02:03:04' day to second m"
     ),
     "nulls": "select * from values (1, cast(null as string)), (cast(null as int), 'a'), (3, 'b') t(x, y)",
     "nested": (

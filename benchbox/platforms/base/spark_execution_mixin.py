@@ -85,6 +85,13 @@ def spark_pandas_to_arrow(result_df: Any) -> Any:
     for column, field in zip(table.columns, result_df.schema.fields, strict=True):
         type_name = field.dataType.typeName()
         exact = exact_types.get(type_name)
+        if exact is not None and pa.types.is_integer(exact) and pa.types.is_floating(column.type):
+            largest = pc.max(pc.abs(column)).as_py()
+            if largest is not None and largest >= 2**53:
+                raise ValueError(
+                    f"Column {field.name!r} holds integers beyond 2**53 that toPandas returned as float64; "
+                    "set the fetch_mode platform option to rows"
+                )
         if exact is not None and column.type != exact:
             column = column.cast(exact)
         if type_name == "timestamp":
