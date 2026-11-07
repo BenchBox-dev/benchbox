@@ -26578,10 +26578,15 @@
       "title": "Let make pr-arm land a PR that is already mergeable instead of refusing"
     },
     "pr-arm-rerun-contradictory-guidance-20261027": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T16:39:04Z",
+        "generation": "649293a463204d08af702ff60345ddb2",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Make pr-arm and pr-rerun agree on what to do while a head's full CI run is still in progress"
     },
     "pr-arm-stale-hold-suite-needs-new-head-20261106": {
