@@ -26598,6 +26598,13 @@
       "status": "dropped",
       "title": "Verify the complete PR process against incident replays and live operating targets"
     },
+    "pr-rerun-cannot-clear-duration-would-block-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "make pr-rerun cannot clear a slow-runner would-block duration verdict"
+    },
     "pr-rerun-live-verification": {
       "claim": null,
       "needs": [],
