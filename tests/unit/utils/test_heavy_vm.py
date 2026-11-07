@@ -632,7 +632,7 @@ def test_the_real_stop_process_is_group_killed_with_its_output_kept_and_no_leake
     stub = bin_dir / "container"
     stub.write_text(
         "#!/usr/bin/env bash\n"
-        'echo "Error: apiserver not responding"\n'
+        'echo "Error: apiserver not responding" >&2\n'
         f"sleep 300 & echo $! > {tmp_path}/worker.pid\n"
         "trap '' TERM\n"
         "wait\n",

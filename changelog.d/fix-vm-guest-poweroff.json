@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Stopping the Linux VM now asks the guest to power off before falling back to `container machine stop`, so the systemd guest shuts down cleanly instead of being force-killed; `BENCHBOX_LINUX_POWEROFF_WAIT_SECONDS` (default 20) sets how long it waits"
+    }
+  ]
+}

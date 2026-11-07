@@ -240,12 +240,40 @@ def lock_lost(environ: Mapping[str, str] | None = None) -> bool:
     return not host_lock.lock_is_held(path) or host_lock.holder_owner(path) != env.get(host_lock.OWNER_ENV)
 
 
+GUEST_POWEROFF_WAIT_ENV = "BENCHBOX_LINUX_POWEROFF_WAIT_SECONDS"
+GUEST_POWEROFF_WAIT_SECONDS = 20
+STOP_SCRIPT = """
+running() {
+  container machine list --format json | tr '}' '\\n' | grep -F "\\"id\\":\\"$1\\"" | grep -q '"status":"running"'
+}
+if running "$1"; then
+  container machine run -n "$1" -- systemctl poweroff --no-block
+  waited=0
+  while running "$1" && [ "$waited" -lt "$2" ]; do
+    sleep 1
+    waited=$((waited + 1))
+  done
+  running "$1" || exit 0
+fi
+exec container machine stop "$1"
+"""
+
+
+def guest_poweroff_wait_seconds(environ: Mapping[str, str] | None = None) -> int:
+    raw = (os.environ if environ is None else environ).get(GUEST_POWEROFF_WAIT_ENV, "")
+    return int(raw) if raw.strip().isdigit() else GUEST_POWEROFF_WAIT_SECONDS
+
+
+def stop_command(machine: str, environ: Mapping[str, str] | None = None) -> list[str]:
+    return ["sh", "-c", STOP_SCRIPT, "machine-stop", machine, str(guest_poweroff_wait_seconds(environ))]
+
+
 class MachineStop:
     def __init__(self, machine: str) -> None:
         self._sink: IO[bytes] | None = tempfile.TemporaryFile()
         try:
             self._proc = subprocess.Popen(
-                ["container", "machine", "stop", machine],
+                stop_command(machine),
                 stdin=subprocess.DEVNULL,
                 stdout=self._sink,
                 stderr=subprocess.STDOUT,
