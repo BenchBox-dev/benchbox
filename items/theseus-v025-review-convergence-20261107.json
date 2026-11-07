@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Each proposal has executable scenarios: the cap and step-back keep every open finding; delta-first follow-ups still count unchanged hunks for coverage; pre-existing advisory applies only when the diff agrees; Critical/High never become advisory; the intent block cannot inject instructions; the guidance file is read from the base only and refused when oversized.",
+    "The eval corpus seeds each session incident with an expected finding: the substitute capacity bypass, the test weakenings on #3962, and the stdlib patching on #3962. The CI subset is deterministic.",
+    "Released as v0.2.5 through Theseus's own review gate, after independent review, with assets verified.",
+    "Re-measured 4 weeks after the BenchBox re-lock with the same method. Targets: one-round pass ≥75%, PRs needing 5+ rounds ≤2%, already-seen late findings ≤25%, incomplete ≤5%."
+  ],
+  "description": "Reviews here are strict but slow to converge. Baseline on 280 merged BenchBox PRs (2026-10-28 to 11-07):\n- 59.3% pass in one round;\n- 10.0% need 5 or more rounds;\n- 51% of late findings are on code already reviewed;\n- 15.6% of attempts end absent-incomplete.\nThe plan is in local://review-practice-integration-plan.md (proposals P1, P2, P3, P5, P6). Owner decisions 2026-11-07:\n- D1: `protocol.max_finding_rounds: 4`.\n- D2: at the cap, one full-scope step-back re-review that keeps finding ids and never drops an open defect. Later rounds stage a since-last-review delta first. Findings name the bug class.\n- D3: a consumer `review_guidance` file, trusted, read from the base only, and bounded. Move the BenchBox-specific prose out of the OSS templates (standard.md).\n- D4: `origin: pre-existing` is honoured only when the model says so AND the trusted diff adds no line there. Medium/Low pre-existing findings are advisory; Critical/High always block.\n- D5: every other severity still blocks.\n- D8: PR title, body and tracker intent go into the brief as fenced, untrusted data.\n- D9: an incident → eval corpus with `tools/review_eval.py`. Template, model or guidance changes must not lower the score. A deterministic subset runs in CI; a live run weekly.\n- D12: one release.\nSecond-family panel deferred (D6).",
+  "links": [
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-11-02T02-04-38-450Z_01a19a00-60b2-70a6-b56d-6f666415a725/local/review-practice-integration-plan.md",
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-11-02T02-04-38-450Z_01a19a00-60b2-70a6-b56d-6f666415a725/local/paste-1.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-07T03:34:25Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9c3ff3e3a51b4835a9e30bb2e922b6f3",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    }
+  ]
+}

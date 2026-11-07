@@ -33505,6 +33505,16 @@
       "status": "open",
       "title": "Theseus v0.2.4: brief on stdin, mode from rendered size, capacity recalibration and legacy-name removal"
     },
+    "theseus-v025-review-convergence-20261107": {
+      "claim": null,
+      "needs": [
+        "theseus-v021-stdin-rendered-mode-20261105",
+        "theseus-body-only-finding-cannot-be-adjudicated-20261106"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Theseus v0.2.5: round cap with step-back, repo review guidance, pre-existing findings, PR intent and reviewer evals"
+    },
     "throughput-adapter-session-capability-contract": {
       "claim": null,
       "needs": [
