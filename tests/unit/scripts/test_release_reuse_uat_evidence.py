@@ -301,6 +301,7 @@ GUARDED_FILES = (
     "docker/file.txt",
     ".github/actions/release-uat-env/file.txt",
     "Makefile",
+    "make/uat.mk",
     "scripts/uat-bring-up/uat_bring_up.py",
 )
 WORKFLOW_FILE = ".github/workflows/release-v2.yml"
