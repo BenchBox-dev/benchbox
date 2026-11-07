@@ -371,7 +371,9 @@ def test_augmented_query_without_a_result_proves_nothing(tiny_with_augmented, tm
 
 def test_render_lists_proven_and_not_proven_sections(tiny, tmp_path):
     report = _evaluate(tiny, tmp_path, _side("candidate", VACUOUS_BOTH))
-    text = gate.render(report, {"duckdb": "1", "sqlite": "3"}, {}, {"candidate": _side("candidate", VACUOUS_BOTH)})
+    text = gate.render(
+        report, {"duckdb": "1", "sqlite": "3"}, {}, {"candidate": _side("candidate", VACUOUS_BOTH)}, {}, 15.0
+    )
     assert "NOT PROVEN, vacuous comparisons: 2" in text
     assert "tiny sqlite: 1 not proven" in text
     assert "NO ALLOWLIST ENTRY" in text
@@ -604,6 +606,34 @@ def test_sqlite_engine_indexes_the_leading_key_so_an_or_join_stays_cheap(tmp_pat
     assert engine.execute(sql) == [(expected,)]
     engine.close()
     assert ticks[0] < 1000
+
+
+def test_run_engines_times_each_executed_query_and_not_cache_hits(tiny, tmp_path):
+    side = _side("candidate", {"a": (SQLITE_RATIO_EXACT, DUCKDB_RATIO), "b": (SQLITE_RATIO_EXACT, DUCKDB_RATIO)})
+    results, _, _ = gate.run_engines([DuckdbEngine, SqliteEngine], tiny, {"candidate": side}, 30.0, tmp_path)
+    assert results[("sqlite", "tiny", "a", "candidate")].seconds > 0
+    assert results[("sqlite", "tiny", "b", "candidate")].seconds == 0.0
+    assert results[("sqlite", "tiny", "b", "candidate")].rows == results[("sqlite", "tiny", "a", "candidate")].rows
+
+
+def test_slowest_ranks_candidate_executions_per_engine_and_render_prints_them():
+    results = {
+        ("sqlite", "tpcds", "16", "candidate"): gate.Outcome(rows=[], seconds=12.5),
+        ("sqlite", "tpcds", "1", "candidate"): gate.Outcome(rows=[], seconds=0.2),
+        ("sqlite", "tpcds", "13", "candidate"): gate.Outcome(error="timeout: exceeded 15s", seconds=15.0),
+        ("sqlite", "tpcds", "16", "baseline"): gate.Outcome(rows=[], seconds=99.0),
+    }
+    table = gate.slowest(results, limit=2)
+    assert table == {
+        "sqlite": [
+            {"benchmark": "tpcds", "query": "13", "seconds": 15.0, "timed_out": True},
+            {"benchmark": "tpcds", "query": "16", "seconds": 12.5, "timed_out": False},
+        ]
+    }
+    text = gate.render(gate.Report(), {"sqlite": "3"}, {}, {}, table, 15.0)
+    assert "per-query budget 15s" in text
+    assert "  sqlite tpcds q13 15.00s TIMED OUT" in text
+    assert "  sqlite tpcds q16 12.50s" in text
 
 
 @pytest.mark.parametrize("base", [None, gate.Outcome(error="timeout"), gate.Outcome()])
