@@ -13583,6 +13583,13 @@
       "status": "done",
       "title": "Warn on core PRs that change the documented contract the site checks"
     },
+    "core-docs-plan-fingerprint-variation-fields-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Document fingerprint_varied and fingerprint_variants in the core plans-companion reference"
+    },
     "core-exec-compute-resource-unification": {
       "claim": null,
       "needs": [
