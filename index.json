@@ -1,5 +1,65 @@
 {
   "batches": {
+    "arming-reliability": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/arming-reliability",
+      "integration_head": "c1a2dc186b4f9a76e1a5b8da2aa380cb2893eb67",
+      "integration_log": [
+        {
+          "at": "2026-11-07T01:02:04Z",
+          "head": "c1a2dc186b4f9a76e1a5b8da2aa380cb2893eb67",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-arming-reliability",
+      "lifecycle": "active",
+      "members": [
+        "pr-arm-stale-hold-suite-needs-new-head-20261106",
+        "sql-execution-evidence-sqlite-q16-timeouts-20261106"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "owner_epoch": 0,
+      "owner_generation": "2184f239091f98ea24bb91fad4513da0",
+      "project_id": "benchbox",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "pr-arm-stale-hold-suite-needs-new-head-20261106": [
+          ".github/workflows/pr-hold.yml",
+          "tests/unit/workflows/test_pr_hold_workflow.py",
+          "docs/agent/merge-authority.md",
+          "docs/internal/repo-admin-settings.md",
+          "docs/internal/dev-loop-property-ledger.md",
+          "docs/internal/pr-triage.md",
+          "changelog.d/feat-arming-reliability--pr-arm-stale-hold-suite-needs-new-head-20261106.json",
+          "quality/docs-ownership.json",
+          "quality/comment-policy.json",
+          "tests/fixtures/fast_tier_baseline/*",
+          "tests/fixtures/medium_shard_durations.json"
+        ],
+        "sql-execution-evidence-sqlite-q16-timeouts-20261106": [
+          "scripts/sql_execution_gate/*",
+          "tests/unit/scripts/test_sql_execution_gate.py",
+          "docs/internal/sql-execution-evidence-gate.md",
+          "docs/internal/dev-loop-property-ledger.md",
+          "changelog.d/feat-arming-reliability--sql-execution-evidence-sqlite-q16-timeouts-20261106.json",
+          "quality/docs-ownership.json",
+          "quality/comment-policy.json",
+          "quality/windows-antipatterns-baseline.json",
+          "tests/fixtures/fast_tier_baseline/*",
+          "tests/fixtures/medium_shard_durations.json"
+        ]
+      },
+      "scope_hash": "91065dd87aa2a8c51c981e4df99a1171d8f29fc9a21a179039a29f1b07661029",
+      "start_head": "c1a2dc186b4f9a76e1a5b8da2aa380cb2893eb67",
+      "terminal_outcome": "deliver"
+    },
     "arrow-dataframe-roundtrips": {
       "accepted_members": {
         "perf-dataframe-maintenance-arrow-20261031": "ee35e987c1539b59c1e0d622b53f9aadf7055288",
