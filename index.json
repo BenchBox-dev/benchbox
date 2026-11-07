@@ -8339,10 +8339,15 @@
       "title": "Batch arrow-dataframe-roundtrips: umbrella notes"
     },
     "batch-arrow-result-fetch-umbrella-20261107": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T09:37:05Z",
+        "generation": "6fc0d1a875224d8385ee87624f809eee",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Batch arrow-result-fetch: umbrella notes (not a member)"
     },
     "batch-distinct-tracker-identities-20261104": {
