@@ -23426,12 +23426,17 @@
       "title": "Per-engine SQL dialect translation for the 113 queries on non-DuckDB engines"
     },
     "perf-arrow-aware-result-capture-20261030": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T02:54:40Z",
+        "generation": "7cbe7b2f4daf4a949653d644c93a40b2",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [
         "fetch-timing-contract-decision-20261103"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Let execution paths receive results as Arrow and build rows lazily for digest and validation, per the recorded fetch-timing contract"
     },
     "perf-arrow-fetch-native-drivers-20261030": {
