@@ -211,14 +211,7 @@ def _sanitize_applied_companion(payload: dict[str, Any]) -> dict[str, Any]:
     return sanitized
 
 
-def _public_companion_bytes(
-    bundle_path: Path,
-    suffix: str,
-    anonymizer: AnonymizationManager,
-) -> bytes | None:
-    if suffix not in COMPANION_SUFFIXES:
-        raise ValueError(f"unsupported explorer companion suffix: {suffix}")
-
+def _load_companion_payload(bundle_path: Path, suffix: str) -> dict[str, Any] | None:
     source = _companion_path(bundle_path, suffix)
     if not source.exists():
         return None
@@ -230,12 +223,45 @@ def _public_companion_bytes(
             logger.warning("Skipping oversized applied companion %s", source)
             return None
         payload = json.loads(source.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError, TypeError, ValueError) as exc:
+    except (OSError, UnicodeError, json.JSONDecodeError, TypeError, ValueError, RecursionError) as exc:
         logger.warning("Skipping malformed companion %s - %s: %s", source, type(exc).__name__, exc)
         return None
 
     if not isinstance(payload, dict):
         logger.warning("Skipping non-object companion %s", source)
+        return None
+    return payload
+
+
+def _plan_entry_is_captured(entry: Any) -> bool:
+    if not isinstance(entry, dict):
+        return False
+    plan = entry.get("plan")
+    if isinstance(plan, str):
+        return bool(plan.strip())
+    return isinstance(plan, dict) and bool(plan)
+
+
+def _companion_has_captured_plans(bundle_path: Path) -> bool:
+    payload = _load_companion_payload(bundle_path, ".plans.json")
+    if payload is None:
+        return False
+    queries = payload.get("queries")
+    if not isinstance(queries, dict):
+        return False
+    return any(_plan_entry_is_captured(entry) for entry in queries.values())
+
+
+def _public_companion_bytes(
+    bundle_path: Path,
+    suffix: str,
+    anonymizer: AnonymizationManager,
+) -> bytes | None:
+    if suffix not in COMPANION_SUFFIXES:
+        raise ValueError(f"unsupported explorer companion suffix: {suffix}")
+
+    payload = _load_companion_payload(bundle_path, suffix)
+    if payload is None:
         return None
 
     if suffix == ".tuning.json":
@@ -1762,7 +1788,7 @@ class BundleTransformer:
         environment = _detail_environment(bundle, bundle_data, bundle_path)
 
         stem = bundle_path.stem
-        has_plans = bundle_path.with_name(f"{stem}.plans.json").exists()
+        has_plans = _companion_has_captured_plans(bundle_path)
         has_tuning = _has_requested_tuning(bundle) or bundle_path.with_name(f"{stem}.tuning.json").exists()
         override = _override_display(bundle_path)
 

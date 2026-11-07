@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed DataFrame plan capture writing absolute local file paths (home directory, username, output root) into the .plans.json companion; plan text now shows <redacted> in place of each local path.",
+      "details": [
+        "Affected existing results: any .plans.json produced by --capture-plans on DataFrame platforms (notably polars-df, also datafusion-df and the Spark-family DataFrame platforms) before this release can contain local Parquet paths in plan.plan_text, plan.plan_data.logical_plan/optimized_plan and raw_explain_output.",
+        "Regenerate those results with --capture-plans (or strip the paths) before publishing; the result JSON itself is unchanged. Plan structure is unchanged by redaction, and Polars text plans carry no fingerprint; DataFrame DAG fingerprints are computed from table, filter and operator content and were unchanged on the tested plans."
+      ],
+      "platforms": [
+        "polars"
+      ],
+      "benchmarks": [
+        "tpch"
+      ]
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed DataFrame query rows missing a test type, so plan companion keys for DataFrame platforms were written as Q1#0: instead of Q1#0:power like SQL platforms.",
+      "details": [
+        "Affected existing results: DataFrame .plans.json companions keyed Q#<stream>: keep loading and rendering unchanged; the explorer and loader accept both key shapes. Regenerate a result to get Q#<stream>:power keys; no republishing is required for key shape alone."
+      ],
+      "platforms": [
+        "polars"
+      ],
+      "benchmarks": [
+        "tpch"
+      ]
+    }
+  ]
+}
