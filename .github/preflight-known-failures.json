@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "step": "linux-pytest",
+      "test": "tests/unit/test_standardized_test_commands.py::TestMakefileCommands::test_makefile_test_unlock_expands_user_lock_dir_without_uv",
+      "reason": "Environment-only failure on the Linux VM leg of pr-preflight; the cause is tracked under the tracker item.",
+      "tracker": "pr-preflight-linux-vm-env-failures-20261102"
+    }
+  ]
+}

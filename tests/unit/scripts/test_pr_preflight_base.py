@@ -78,7 +78,7 @@ def _run_preflight(
     (work / "scripts").mkdir(parents=True)
     shutil.copy(ROOT / "Makefile", work / "Makefile")
     shutil.copytree(ROOT / "make", work / "make")
-    for helper in ("check_primary_clone_clean.sh", "make_timing_shell.sh"):
+    for helper in ("check_primary_clone_clean.sh", "make_timing_shell.sh", "preflight_receipt.py"):
         shutil.copy(ROOT / "scripts" / helper, work / "scripts" / helper)
     (work / "_project" / "decisions").mkdir(parents=True)
     bin_dir = tmp_path / "bin"
@@ -105,6 +105,7 @@ def _run_preflight(
         for key, value in os.environ.items()
         if key not in ("BASE", "BENCHBOX_TEST_SESSION_OWNER") and not key.startswith("GIT_")
     }
+    env["BENCHBOX_PREFLIGHT_RECEIPT_DIR"] = str(tmp_path / "receipts")
     env.update(extra_env or {})
     env["PATH"] = f"{bin_dir}{os.pathsep}{env['PATH']}"
     done = subprocess.run(args, cwd=work, env=env, encoding="utf-8", capture_output=True, check=False)
