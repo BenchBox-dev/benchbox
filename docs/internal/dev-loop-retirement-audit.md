@@ -103,8 +103,8 @@ The later capability-preserving consolidation decision supersedes the original
 | --- | --- | --- |
 | Public Make targets, same database method | 211 | 190 |
 | Retained workflow files | 46 | 42 |
-| T1 CI job p95, including job setup | 1,458 s | Unavailable: the 30-day legacy collection timed out after 3,600 s without a snapshot. Its fast-job selector also names Python 3.12, while current CI uses Python 3.14. |
-| T2 CI job p95, collector through last shard | 1,761 s | Unavailable: no cohort result from the timed-out legacy collection. |
+| T1 CI job p95, including job setup | 1,458 s | 669 s; n=2, cleanup-only cohort, not a trailing-30-day measurement |
+| T2 CI job p95, collector through last shard | 1,761 s | 980 s; n=2, the same cleanup-only cohort |
 | Merges per day | 401 merged PRs / 30 days | Unavailable: no current merged-PR cohort result is asserted. |
 | PR CI run-level retry rate | No comparable all-attempt denominator captured | Unavailable from the legacy report; requires the all-attempt usage report. First-pass green rate is not retry rate. |
 | Red-Trunk incidents | Historical report says zero, using queue failures and incident labels | Not measured by the legacy collector. Count failed `develop` push attempts until recovery using current Trunk history, not incident-label absence. |
@@ -112,6 +112,27 @@ The later capability-preserving consolidation decision supersedes the original
 The timed-out collector source is Git blob
 `bea8ba830091645bf956133498d70aad059011cf`, available at the audit source revision.
 No missing measurement above is a zero or a threshold pass.
+
+The bounded timing cohort consists only of successful first-attempt full CI runs
+on the final merged heads of the two cleanup changes:
+
+- [Makefile consolidation run 42393941936](https://github.com/BenchBox-dev/benchbox/actions/runs/42393941936),
+  head `5f358660623fdfb9acacb147f9c0c917277d27a0`.
+- [Documentation cleanup run 42398430449](https://github.com/BenchBox-dev/benchbox/actions/runs/42398430449),
+  head `8f0e4706427625dbbdcf39d2717e95890d0ed7ca`.
+
+The authenticated Actions API supplied attempt-1 job timestamps. T1 selects the
+single successful `test (ubuntu-latest, 3.14)` job, including setup. T2 measures
+from `medium-collect` start through the last of all four shard completions.
+The existing `_pct` and `_partitioned_medium_seconds` helpers at
+`ec29389e7e8f6492c39cce84f799e5273d47287e` compute the two distributions.
+This deliberately narrow cohort cannot certify a change against the 30-day
+baseline. Its observed p95s exceed the nominal seven- and fifteen-minute goals.
+
+The full 30-day timing cohort remains unavailable: the legacy collector timed out
+after 3,600 seconds without a snapshot, and its fast-job selector still names
+Python 3.12. Neither the timeout nor the bounded observation is a substitute for
+the separate 30-day comparison.
 
 The specified record-based Make database filter and the maintained
 `scripts.check_make_targets.targets` parser both returned 211 and 190. To
