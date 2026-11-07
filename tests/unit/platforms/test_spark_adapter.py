@@ -500,7 +500,7 @@ class TestSparkAdapterExecution:
         mock_df.count.return_value = 2
         mock_spark_session.sql.return_value = mock_df
 
-        adapter = SparkAdapter()
+        adapter = SparkAdapter(fetch_mode="rows")
 
         result = adapter.execute_query(mock_spark_session, "SELECT * FROM test", "q1")
 
