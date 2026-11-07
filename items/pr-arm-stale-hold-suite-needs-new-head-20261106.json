@@ -4,7 +4,7 @@
     "A held PR still cannot arm or merge while the label is present (the hold check still fails then).",
     "docs/agent/merge-authority.md describes the hold-release sequence that works."
   ],
-  "context": "Batch arming-reliability aborted by leader (Main approved): develop merge #4002 deleted tests/unit/workflows/test_sqlglot_fork_refresh_workflow.py, which this member's immutable prepared receipt names in its pytest command, so batch-evidence failed at every head containing #4002 and the fix is outside member scopes. PR #4007 continues as an ordinary PR.",
+  "context": "Batch arming-reliability aborted by leader (Main approved): develop merge #4002 deleted tests/unit/workflows/test_sqlglot_fork_refresh_workflow.py, which this member's immutable prepared receipt names in its pytest command, so batch-evidence failed at every head containing #4002 and the fix is outside member scopes. PR #4007 continues as an ordinary PR.\n\nBefore removing stale markers from the integration worktree /Users/joe/Developer/BenchBox.wt-arming-reliability (batch aborted in tracker), `git config --worktree --list | grep benchbox.batch` printed: benchbox.batch.role=integration ; benchbox.batch.id=arming-reliability. Both keys then unset so pr-arm treats PR #4007 as an ordinary PR.",
   "description": "Problem. On #3960, #3950 and #3949 (2026-11-06), removing the no-auto-merge label left the earlier failed pr-hold suite behind a newer success. make pr-arm refuses a required check with a failed suite behind a newer success (docs/agent/merge-authority.md 'Stale failed check suites'). make pr-rerun re-runs the failed hold run, but that replays the original labelled event payload, so it fails again. A body edit and a close/reopen did not clear it. #3960 and #3950 had to merge develop to get a new head, which cost a full CI and oracle cycle each. #3949 cleared it by re-running the run started by the unlabeled event.\n\nChange. Make lifting a hold not require a new head. Options: pr-hold reads the PR's current labels from the API instead of the event payload; pr-arm treats a hold suite superseded by a success from the unlabeled event as superseded; or make pr-rerun target the latest hold run. Pick one and update merge-authority.md.\n\nGuardrails: work in a linked worktree (make worktree-create); never edit the primary clone; no explanatory comments (make comment-policy-check); changelog.d fragment if user-facing; re-read cited symbols before editing; never bypass a required check or relax a ruleset (owner-only).",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/pull/3960",
@@ -59,6 +59,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "ad5777e04f6a4b3db760f6c5d2b068e6",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T06:34:18Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b39a67d584bd422c91940db29ace4da8",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
