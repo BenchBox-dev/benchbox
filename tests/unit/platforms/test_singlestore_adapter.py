@@ -398,7 +398,7 @@ class TestSingleStoreDataLoading:
         mock_connection = Mock()
         mock_cursor = Mock()
         mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [(0,), (1000,)]
+        mock_cursor.fetchone.side_effect = [(0,), None, (1000,)]
 
         dialect = CsvDialect(delimiter=",", has_header=False, null_marker=None, normalize_booleans=False, quote=None)
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, encoding="utf-8") as f:
@@ -413,7 +413,7 @@ class TestSingleStoreDataLoading:
             Path(tmp_path).unlink(missing_ok=True)
 
         assert row_count == 1000
-        load_call = mock_cursor.execute.call_args_list[1]
+        load_call = mock_cursor.execute.call_args_list[2]
         assert "LOAD DATA LOCAL INFILE" in load_call.args[0]
         assert "`customer`" in load_call.args[0]
 
@@ -423,7 +423,7 @@ class TestSingleStoreDataLoading:
         mock_connection = Mock()
         mock_cursor = Mock()
         mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [(0,), (5,)]
+        mock_cursor.fetchone.side_effect = [(0,), None, (5,)]
 
         dialect = CsvDialect(delimiter="|", has_header=False, null_marker="", normalize_booleans=False, quote=None)
         with tempfile.NamedTemporaryFile(mode="w", suffix=".tbl", delete=False, encoding="utf-8") as f:
@@ -438,7 +438,7 @@ class TestSingleStoreDataLoading:
             Path(tmp_path).unlink(missing_ok=True)
 
         assert row_count == 5
-        load_call = mock_cursor.execute.call_args_list[1]
+        load_call = mock_cursor.execute.call_args_list[2]
         assert "LOAD DATA LOCAL INFILE" in load_call.args[0]
 
     def test_load_data_infile_delta_count_on_retry(self):
@@ -447,7 +447,7 @@ class TestSingleStoreDataLoading:
         mock_connection = Mock()
         mock_cursor = Mock()
         mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [(500,), (700,)]
+        mock_cursor.fetchone.side_effect = [(500,), None, (700,)]
 
         dialect = CsvDialect(delimiter=",", has_header=False, null_marker=None, normalize_booleans=False, quote=None)
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, encoding="utf-8") as f:
@@ -566,7 +566,7 @@ class TestSingleStoreDataLoading:
         mock_connection = Mock()
         mock_cursor = Mock()
         mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [(0,), (2,)]
+        mock_cursor.fetchone.side_effect = [(0,), None, (2,)]
         captured: dict[str, str] = {}
 
         def capture(sql):
@@ -879,7 +879,7 @@ class TestSingleStoreConfigureBenchmark:
         mock_connection = Mock()
         mock_cursor = Mock()
         mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [(0,), (2,)]
+        mock_cursor.fetchone.side_effect = [(0,), None, (2,)]
 
         tpcdi_data = "1|SK001|Active|LastName|True|1|2010-01-01|9999-12-31\n2|SK002|Inactive|OtherName|False|2|2010-01-01|9999-12-31\n"
 
@@ -919,7 +919,7 @@ class TestSingleStoreConfigureBenchmark:
         mock_connection = Mock()
         mock_cursor = Mock()
         mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [(0,), (1,)]
+        mock_cursor.fetchone.side_effect = [(0,), None, (1,)]
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, encoding="utf-8") as f:
             f.write("time,host,value\n2026-01-01,h1,42\n")
@@ -939,7 +939,7 @@ class TestSingleStoreConfigureBenchmark:
             Path(tmp_path).unlink(missing_ok=True)
 
         assert len(mock_cursor.execute.call_args_list) >= 2, "LOAD DATA was not called"
-        load_sql = mock_cursor.execute.call_args_list[1].args[0]
+        load_sql = mock_cursor.execute.call_args_list[2].args[0]
         assert "IGNORE 1 LINES" in load_sql
 
     def test_load_data_infile_omits_ignore_lines_by_default(self):
@@ -947,7 +947,7 @@ class TestSingleStoreConfigureBenchmark:
         mock_connection = Mock()
         mock_cursor = Mock()
         mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [(0,), (1,)]
+        mock_cursor.fetchone.side_effect = [(0,), None, (1,)]
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, encoding="utf-8") as f:
             f.write("1,foo,bar\n")
@@ -967,7 +967,7 @@ class TestSingleStoreConfigureBenchmark:
             Path(tmp_path).unlink(missing_ok=True)
 
         assert len(mock_cursor.execute.call_args_list) >= 2, "LOAD DATA was not called"
-        load_sql = mock_cursor.execute.call_args_list[1].args[0]
+        load_sql = mock_cursor.execute.call_args_list[2].args[0]
         assert "IGNORE 1 LINES" not in load_sql
 
     def test_load_data_infile_tbl_emits_null_defined_by_empty(self):
@@ -975,7 +975,7 @@ class TestSingleStoreConfigureBenchmark:
         mock_connection = Mock()
         mock_cursor = Mock()
         mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [(0,), (1,)]
+        mock_cursor.fetchone.side_effect = [(0,), None, (1,)]
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".tbl", delete=False, encoding="utf-8") as f:
             f.write("1|foo|\n")
@@ -995,7 +995,7 @@ class TestSingleStoreConfigureBenchmark:
             Path(tmp_path).unlink(missing_ok=True)
 
         assert len(mock_cursor.execute.call_args_list) >= 2, "LOAD DATA was not called"
-        load_sql = mock_cursor.execute.call_args_list[1].args[0]
+        load_sql = mock_cursor.execute.call_args_list[2].args[0]
         assert "NULL DEFINED BY ''" in load_sql
 
     def test_load_data_infile_csv_omits_null_defined_by_empty(self):
@@ -1003,7 +1003,7 @@ class TestSingleStoreConfigureBenchmark:
         mock_connection = Mock()
         mock_cursor = Mock()
         mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [(0,), (1,)]
+        mock_cursor.fetchone.side_effect = [(0,), None, (1,)]
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, encoding="utf-8") as f:
             f.write("1,,bar\n")
@@ -1023,7 +1023,7 @@ class TestSingleStoreConfigureBenchmark:
             Path(tmp_path).unlink(missing_ok=True)
 
         assert len(mock_cursor.execute.call_args_list) >= 2, "LOAD DATA was not called"
-        load_sql = mock_cursor.execute.call_args_list[1].args[0]
+        load_sql = mock_cursor.execute.call_args_list[2].args[0]
         assert "NULL DEFINED BY" not in load_sql
 
     def test_load_data_infile_always_uses_optionally_enclosed(self):
@@ -1031,7 +1031,7 @@ class TestSingleStoreConfigureBenchmark:
         mock_connection = Mock()
         mock_cursor = Mock()
         mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [(0,), (1,)]
+        mock_cursor.fetchone.side_effect = [(0,), None, (1,)]
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, encoding="utf-8") as f:
             f.write("1,foo\n")
@@ -1051,7 +1051,7 @@ class TestSingleStoreConfigureBenchmark:
             Path(tmp_path).unlink(missing_ok=True)
 
         assert len(mock_cursor.execute.call_args_list) >= 2, "LOAD DATA was not called"
-        load_sql = mock_cursor.execute.call_args_list[1].args[0]
+        load_sql = mock_cursor.execute.call_args_list[2].args[0]
         assert "OPTIONALLY ENCLOSED BY '\"'" in load_sql
 
     def test_load_data_infile_strips_trailing_delim_for_tbl(self):
@@ -1059,7 +1059,7 @@ class TestSingleStoreConfigureBenchmark:
         mock_connection = Mock()
         mock_cursor = Mock()
         mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [(0,), (2,)]
+        mock_cursor.fetchone.side_effect = [(0,), None, (2,)]
 
         captured_temp_content: list[str] = []
 
@@ -1102,7 +1102,7 @@ class TestSingleStoreConfigureBenchmark:
         mock_connection = Mock()
         mock_cursor = Mock()
         mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [(0,), (2,)]
+        mock_cursor.fetchone.side_effect = [(0,), None, (2,)]
 
         captured_temp_content: list[str] = []
 
