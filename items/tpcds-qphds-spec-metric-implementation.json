@@ -5,7 +5,7 @@
     "QphDS@Size uses the spec formula and is exported as official only when every input is valid",
     "Every documentation page in this repository that describes QphDS (found with grep -rln QphDS docs) states the spec formula and the official-export rule, and make docs-validate passes."
   ],
-  "context": "2026-11-03: spec-order maintenance runs require maintenance that follows TPC-DS 4.0.0 clauses 5.2.3 to 5.3 (dsdgen refresh sets, timed staged load). Added a need on tpcds-maintenance-dsdgen-refresh-data-20261103. If the owner records option B in tpcds-maintenance-data-source-decision-20261103, this item must be dropped or re-scoped as part of closing that decision. Origin: root-cause analysis of RF1 timing and its adversarial review.",
+  "context": "2026-11-03: spec-order maintenance runs require maintenance that follows TPC-DS 4.0.0 clauses 5.2.3 to 5.3 (dsdgen refresh sets, timed staged load). Added a need on tpcds-maintenance-dsdgen-refresh-data-20261103. If the owner records option B in tpcds-maintenance-data-source-decision-20261103, this item must be dropped or re-scoped as part of closing that decision. Origin: root-cause analysis of RF1 timing and its adversarial review.\n\nDelivered by BenchBox-dev/BenchBox#4016 (merged 2026-11-07). QphDS@Size = floor(SF*Q/(T_PT*T_TT*T_DM*T_LD)^(1/4)) with T_PT = T_Power x S, exported only when every input is valid.",
   "description": "Scope moved here from tpcds-qphds-nonspec-formula by owner decision on 2026-10-04: suppress the non-spec QphDS first, and implement the spec later. QphDS@Size = SF x Q / (T_PT x T_TT x T_DM x T_LD)^(1/4), with Q = 99 x S, T_TT = TT1 + TT2, T_DM = DM1 + DM2, and T_LD = 0.01 x S x T_load. Needs a second throughput test (streams S+1..2S), data maintenance between the throughput tests, and captured load time.",
   "links": [
     "benchbox/core/tpcds/official_benchmark.py",
@@ -51,6 +51,14 @@
       "generation": "ce73afaa972d4f37bd03ac0fb718930e",
       "op": "take",
       "op_id": "871729a32a0f4b83bd20ef2219e89e23",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T11:05:29Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "17852b6395544b6db010fa9bc68ba819",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
