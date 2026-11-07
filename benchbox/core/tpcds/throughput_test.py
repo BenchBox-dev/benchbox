@@ -10,6 +10,7 @@ from benchbox.core.plan_capture_phase import (
     propagate_query_execution_metadata,
 )
 from benchbox.core.result_receipt import cursor_result_count
+from benchbox.core.results.fetch_mode import ConversionClock
 from benchbox.core.results.metrics import TPC_QUERIES_PER_STREAM
 from benchbox.core.throughput.result import (
     THROUGHPUT_FIRST_STREAM_ID,
@@ -23,7 +24,6 @@ from benchbox.core.validation.query_validation import (
     reset_stream_seed_override_warnings,
     set_reference_seed_context,
 )
-from benchbox.platforms.base.arrow_result import ConversionClock
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 

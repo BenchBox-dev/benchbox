@@ -9,11 +9,10 @@ pa = pytest.importorskip("pyarrow")
 
 from benchbox.core.hooks.platform_hooks import PlatformHookRegistry, PlatformOptionError
 from benchbox.core.result_receipt import cursor_result_count
-from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW, FETCH_MODE_ROWS
+from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW, FETCH_MODE_ROWS, ConversionClock
 from benchbox.platforms.base import sql_execution
 from benchbox.platforms.base.arrow_result import (
     ArrowRows,
-    ConversionClock,
     FetchedResult,
     fetch_result,
     receive_arrow,

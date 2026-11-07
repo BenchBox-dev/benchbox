@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import os
 from collections.abc import Iterable
+from contextvars import ContextVar, Token
 from typing import Any
+
+from benchbox.utils.clock import elapsed_seconds
 
 FETCH_MODE_ROWS = "rows"
 FETCH_MODE_ARROW = "arrow"
@@ -65,3 +68,31 @@ def register_fetch_mode_specs() -> None:
     for platform in FETCH_MODE_PLATFORMS:
         if "fetch_mode" not in PlatformHookRegistry.list_option_specs(platform):
             PlatformHookRegistry.register_option_specs(platform, spec)
+
+
+_ACTIVE_CONVERSION_CLOCK: ContextVar[ConversionClock | None] = ContextVar("conversion_clock", default=None)
+
+
+class ConversionClock:
+    def __init__(self) -> None:
+        self.seconds = 0.0
+        self._token: Token[ConversionClock | None] | None = None
+
+    def start(self) -> ConversionClock:
+        self._token = _ACTIVE_CONVERSION_CLOCK.set(self)
+        return self
+
+    def stop(self) -> None:
+        if self._token is not None:
+            _ACTIVE_CONVERSION_CLOCK.reset(self._token)
+            self._token = None
+
+    def finish(self) -> float:
+        self.stop()
+        return self.seconds
+
+    @staticmethod
+    def record_since(started: float) -> None:
+        clock = _ACTIVE_CONVERSION_CLOCK.get()
+        if clock is not None:
+            clock.seconds += elapsed_seconds(started)
