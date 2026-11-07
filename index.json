@@ -25059,7 +25059,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "blocked",
       "title": "Validate the Athena plan parser against a real Athena EXPLAIN"
     },
     "query-plan-capture-bigquery-contract-and-normalization": {
