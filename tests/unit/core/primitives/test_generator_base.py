@@ -100,6 +100,14 @@ class TestWriteStagingFile:
         path = gen._write_staging_file("orders_stage.tbl", "orders.tbl*")
         assert path.read_bytes() == b"1|a\n2|b\n"
 
+    def test_reads_zstd_source(self, tmp_path: Path):
+        import zstandard
+
+        gen = _make_gen(tmp_path)
+        (tmp_path / "orders.tbl.zst").write_bytes(zstandard.ZstdCompressor().compress(b"1|a|\n2|b|\n"))
+        path = gen._write_staging_file("orders_stage.tbl", "orders.tbl*")
+        assert path.read_bytes() == b"1|a\n2|b\n"
+
     def test_empty_source(self, tmp_path: Path):
         gen = _make_gen(tmp_path)
         (tmp_path / "orders.tbl").write_bytes(b"")

@@ -170,8 +170,8 @@ class PrimitivesDataGeneratorBase(CompressionMixin, CloudStorageGeneratorMixin, 
         if compression == "zstd":
             import zstandard as zstd
 
-            with open(file_path, "rb") as raw, zstd.ZstdDecompressor().stream_reader(raw) as stream:
-                yield stream
+            with open(file_path, "rb") as raw, zstd.ZstdDecompressor().stream_reader(raw) as reader:
+                yield io.BufferedReader(reader)
         elif compression == "gzip":
             with gzip.open(file_path, "rb") as stream:
                 yield stream
