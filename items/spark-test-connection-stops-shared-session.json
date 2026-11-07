@@ -15,6 +15,63 @@
     "benchbox/platforms/spark.py",
     "tests/unit/platforms/test_spark_adapter.py"
   ],
+  "prepared": {
+    "accepted_head": "d2d1b806002fa70f3e9b7e1caaddb35c238ac98e",
+    "batch_id": "spark-family-fixes",
+    "changed_files": [
+      "benchbox/platforms/spark.py",
+      "changelog.d/feat-spark-family-fixes--spark-test-connection-stops-shared-session.json",
+      "tests/unit/platforms/test_spark_adapter.py"
+    ],
+    "integration_head": "b2c5a1ecbedec4ef670f1ce5611585d1513dd87a",
+    "integration_seq": 2,
+    "member_id": "spark-test-connection-stops-shared-session",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "9663f36abcb1d427dcce1681fcac5259b3da53f0e13bfaa0d0940446fbaa216b",
+    "source_base": "7724626cb613f3a8a075c1b5b28a33beb0fa0af1",
+    "source_revision": "d2d1b806002fa70f3e9b7e1caaddb35c238ac98e",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-spark-family-fixes--spark-test-connection-stops-shared-session",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/platforms/test_spark_ledger_capture_live.py",
+        "tests/integration/test_plan_capture_synthetic_parsers_live.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/uat/test_connection_registry_drift.py",
+        "tests/unit/core/tuning/test_ledger_execute_verbs.py",
+        "tests/unit/core/tuning/test_spark_session_config_apply.py",
+        "tests/unit/platforms/test_platform_driver_runtime_contract.py",
+        "tests/unit/platforms/test_spark_adapter.py",
+        "tests/unit/platforms/test_spark_coverage.py",
+        "tests/unit/platforms/test_spark_plan_capture.py",
+        "tests/unit/platforms/test_spark_tpchavoc_transformer.py"
+      ],
+      "review": {
+        "base_sha": "7724626cb613f3a8a075c1b5b28a33beb0fa0af1",
+        "head_sha": "d2d1b806002fa70f3e9b7e1caaddb35c238ac98e",
+        "head_tree": "c833a1ef88ca09d3e65f6e837961a388d5c63a10",
+        "outcome": "clear",
+        "patch_digest": "44dd200cc8acffce2edc50c016eddfbe",
+        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "c1a2dc186b4f9a76e1a5b8da2aa380cb2893eb67"
+      },
+      "revision": "d2d1b806002fa70f3e9b7e1caaddb35c238ac98e",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
@@ -39,6 +96,15 @@
       "generation": "23586663205748e4a2045f54ac383053",
       "op": "take",
       "op_id": "4da803fd4fec4043a9e8e51459785596",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-07T01:20:55Z",
+      "client": "omp-coding-agent",
+      "generation": "23586663205748e4a2045f54ac383053",
+      "op": "prepare",
+      "op_id": "f42b7e7dfcac416c9797fdd73dc3df7e",
       "session_id": "dc59872de7f0484eafa9032416c81607"
     }
   ]

@@ -3188,7 +3188,8 @@
     },
     "spark-family-fixes": {
       "accepted_members": {
-        "platform-options-forwarding-gaps-20261014": "00436ddc83fdb25c32c1b1abc670b31cde929768"
+        "platform-options-forwarding-gaps-20261014": "00436ddc83fdb25c32c1b1abc670b31cde929768",
+        "spark-test-connection-stops-shared-session": "d2d1b806002fa70f3e9b7e1caaddb35c238ac98e"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -3212,10 +3213,20 @@
           ],
           "integration_head": "7724626cb613f3a8a075c1b5b28a33beb0fa0af1",
           "integration_seq": 1
+        },
+        "spark-test-connection-stops-shared-session": {
+          "accepted_head": "d2d1b806002fa70f3e9b7e1caaddb35c238ac98e",
+          "changed_files": [
+            "benchbox/platforms/spark.py",
+            "changelog.d/feat-spark-family-fixes--spark-test-connection-stops-shared-session.json",
+            "tests/unit/platforms/test_spark_adapter.py"
+          ],
+          "integration_head": "b2c5a1ecbedec4ef670f1ce5611585d1513dd87a",
+          "integration_seq": 2
         }
       },
       "integration_branch": "feat/spark-family-fixes",
-      "integration_head": "7724626cb613f3a8a075c1b5b28a33beb0fa0af1",
+      "integration_head": "b2c5a1ecbedec4ef670f1ce5611585d1513dd87a",
       "integration_log": [
         {
           "at": "2026-11-07T00:56:51Z",
@@ -3231,6 +3242,15 @@
           "op_id": "75ca7e6b302d4a3d9f59f2df42b5be31",
           "previous_head": "c1a2dc186b4f9a76e1a5b8da2aa380cb2893eb67",
           "seq": 1
+        },
+        {
+          "at": "2026-11-07T01:20:55Z",
+          "head": "b2c5a1ecbedec4ef670f1ce5611585d1513dd87a",
+          "kind": "prepare",
+          "member": "spark-test-connection-stops-shared-session",
+          "op_id": "f42b7e7dfcac416c9797fdd73dc3df7e",
+          "previous_head": "7724626cb613f3a8a075c1b5b28a33beb0fa0af1",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-spark-family-fixes",
@@ -30820,15 +30840,10 @@
       "title": "Spark SQL: 14 failed and 3 timed-out release UAT cells"
     },
     "spark-test-connection-stops-shared-session": {
-      "claim": {
-        "expires_at": "2026-11-08T01:20:51Z",
-        "generation": "23586663205748e4a2045f54ac383053",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "open",
       "title": "Stop SparkAdapter.test_connection from stopping a live shared Spark session"
     },
     "spark-trunc-day-returns-null-20261026": {
