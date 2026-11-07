@@ -10045,7 +10045,8 @@
         "batch-mode-opt-in-policy-docs-20261107",
         "ledger-coverage-test-mapped-in-preflight-20261107",
         "batch-start-and-member-check-tightening-20261107",
-        "delete-aborted-hold-e2e-batch-branches-20261107"
+        "delete-aborted-hold-e2e-batch-branches-20261107",
+        "ledger-doc-selection-and-contributing-batch-wording-20261107"
       ],
       "priority": "high",
       "status": "open",
