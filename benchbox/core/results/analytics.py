@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from benchbox.core.results.comparison_modes import IncomparableModesError, bundle_mode_differences
+from benchbox.core.results.comparison_modes import IncomparableModesError, bundle_mode_differences, modes_comparable
 from benchbox.core.results.execution_variant import (
     IncomparableVariantsError,
     bundle_variant_differences,
@@ -145,7 +145,7 @@ def _load_regression_runs(
             if not _matches_filters(run_platform, run_benchmark, platform, benchmark):
                 continue
 
-            if runs and not variants_comparable(runs[0]["data"], data):
+            if runs and not (variants_comparable(runs[0]["data"], data) and modes_comparable(runs[0]["data"], data)):
                 other_variants.append(file_path.name)
                 continue
 

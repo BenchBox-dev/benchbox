@@ -71,6 +71,15 @@ def test_connection_without_a_probe_is_not_refused(monkeypatch):
     generated.assert_called_once()
 
 
+def test_connection_without_an_adapter_is_not_closed_by_the_probe(monkeypatch):
+    monkeypatch.setattr(maintenance_test_module, "generate_refresh_sets", Mock(side_effect=RuntimeError("reached")))
+    connection = Mock(spec=["close"])
+
+    _harness(connection).run(TPCDSMaintenanceTestConfig(scale_factor=0.01))
+
+    connection.close.assert_not_called()
+
+
 def test_snowflake_declares_no_probe_because_its_keys_are_informational():
     assert resolve_primary_key_probe(SnowflakeAdapter.__new__(SnowflakeAdapter)) is None
 
@@ -117,7 +126,7 @@ def test_postgresql_filters_primary_key_constraints_to_the_maintenance_tables():
 
 def test_singlestore_asks_for_the_primary_key_of_each_table():
     cursor = Mock()
-    cursor.fetchall.side_effect = [[("store_sales", 0, "PRIMARY")], []]
+    cursor.fetchall.side_effect = [[("store_sales", 0, "PRIMARY")], [("web_sales", 1, "idx_date")]]
     raw = Mock()
     raw.cursor.return_value = cursor
     wrapper = Mock(connection=raw)
@@ -128,7 +137,7 @@ def test_singlestore_asks_for_the_primary_key_of_each_table():
 
     assert enforced == ["store_sales"]
     assert [call.args[0] for call in cursor.execute.call_args_list] == [
-        "SHOW KEYS FROM `store_sales` WHERE Key_name = 'PRIMARY'",
-        "SHOW KEYS FROM `web_sales` WHERE Key_name = 'PRIMARY'",
+        "SHOW KEYS FROM `store_sales`",
+        "SHOW KEYS FROM `web_sales`",
     ]
     assert cursor.close.call_count == 2

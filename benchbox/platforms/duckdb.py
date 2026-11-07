@@ -1185,7 +1185,8 @@ class DuckDBAdapter(PlatformAdapter):
     def enforced_primary_key_tables(self, connection: Any, tables: Sequence[str]) -> list[str]:
         wanted = {table.lower() for table in tables}
         rows = connection.execute(
-            "SELECT DISTINCT table_name FROM duckdb_constraints() WHERE constraint_type = 'PRIMARY KEY'"
+            "SELECT DISTINCT table_name FROM duckdb_constraints() WHERE constraint_type = 'PRIMARY KEY' "
+            "AND database_name = current_database() AND schema_name = current_schema()"
         ).fetchall()
         return sorted(name.lower() for (name,) in rows if name.lower() in wanted)
 

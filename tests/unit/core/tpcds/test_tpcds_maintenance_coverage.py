@@ -227,7 +227,7 @@ def test_run_result_has_documented_keys_and_counts(refresh_run):
     assert result["integrity_valid"] is None
     assert result["end_time"] >= result["start_time"]
     assert [op.function for op in result["operations"]] == [function.name for function in MAINTENANCE_FUNCTIONS]
-    assert all(connection.closed for connection in refresh_run.connections)
+    assert all(connection.closed for connection in refresh_run.connections[1:])
     assert len(refresh_run.connections) == 12
 
 
@@ -312,7 +312,7 @@ def test_run_reports_generation_failure(refresh_run, monkeypatch):
     assert result["errors"] == ["Maintenance Test execution failed: dsdgen exploded"]
     assert result["end_time"]
     assert len(refresh_run.connections) == 1
-    assert refresh_run.connections[0].closed is True
+    assert refresh_run.connections[0].closed is False
 
 
 def test_function_fails_when_connection_has_no_commit(monkeypatch):

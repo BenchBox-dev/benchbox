@@ -247,3 +247,26 @@ def test_run_exception_becomes_error_row_and_leaves_no_result(_console):
             "test_type": "maintenance",
         }
     ]
+
+
+@patch("benchbox.platforms.base.execution.quiet_console")
+def test_refusal_without_any_operation_reaches_the_result_as_a_failed_row(_console, tmp_path):
+    adapter = _RefreshAdapter()
+    _FakeMaintenanceTest.result = _run_dict([], success=False)
+    _FakeMaintenanceTest.result["errors"] = ["TPC-DS maintenance refused: primary keys are enforced on store_sales"]
+
+    with patch("benchbox.core.tpcds.maintenance_test.TPCDSMaintenanceTest", _FakeMaintenanceTest):
+        rows = adapter._execute_tpcds_maintenance_test(
+            Mock(), Mock(), {"scale_factor": 0.01, "output_dir": str(tmp_path / "maintenance")}
+        )
+
+    assert rows == [
+        {
+            "query_id": "maintenance_test_error",
+            "execution_time_seconds": 0.0,
+            "status": "FAILED",
+            "rows_returned": 0,
+            "error": "TPC-DS maintenance refused: primary keys are enforced on store_sales",
+            "test_type": "maintenance",
+        }
+    ]

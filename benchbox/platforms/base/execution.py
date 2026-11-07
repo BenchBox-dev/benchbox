@@ -577,6 +577,18 @@ class TestDriversMixin:
                     platform_result["error"] = operation.error or "Unknown error"
                 query_results.append(platform_result)
 
+            if not maintenance_test_result["success"] and not any(row["status"] == "FAILED" for row in query_results):
+                query_results.append(
+                    {
+                        "query_id": "maintenance_test_error",
+                        "execution_time_seconds": 0.0,
+                        "status": "FAILED",
+                        "rows_returned": 0,
+                        "error": "; ".join(maintenance_test_result["errors"]) or "Maintenance Test failed",
+                        "test_type": "maintenance",
+                    }
+                )
+
             return query_results
 
         except Exception as e:

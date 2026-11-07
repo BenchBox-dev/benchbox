@@ -144,7 +144,7 @@ class TPCDSMaintenanceTest:
                     Path(temporary),
                     config.seed,
                 )
-                self._run_refresh_runs(config, result, refresh_sets)
+                self._run_refresh_runs(result, refresh_sets)
         except Exception as exc:
             result["success"] = False
             result["errors"].append(f"Maintenance Test execution failed: {exc}")
@@ -160,14 +160,16 @@ class TPCDSMaintenanceTest:
 
     def _refuse_enforced_primary_keys(self) -> None:
         connection = self.connection_factory()
+        adapter = getattr(connection, "platform_adapter", None)
         try:
-            probe = resolve_primary_key_probe(getattr(connection, "platform_adapter", None))
+            probe = resolve_primary_key_probe(adapter)
             if probe is None:
                 return
             targets = sorted({table for function in MAINTENANCE_FUNCTIONS for table in function.target_tables})
             enforced = probe.enforced_primary_key_tables(connection, targets)
         finally:
-            connection.close()
+            if adapter is not None:
+                connection.close()
         if enforced:
             raise MaintenanceKeyConflictError(
                 f"TPC-DS maintenance refused: primary keys are enforced on {', '.join(enforced)}. "
@@ -186,7 +188,6 @@ class TPCDSMaintenanceTest:
 
     def _run_refresh_runs(
         self,
-        config: TPCDSMaintenanceTestConfig,
         result: dict[str, Any],
         refresh_sets: dict[int, RefreshSet],
     ) -> None:
@@ -245,6 +246,7 @@ class TPCDSMaintenanceTest:
         staging = [SOURCE_TABLES_BY_NAME[name] for name in function.staging_tables]
         connection = None
         staging_created = False
+        in_transaction = False
         try:
             if self.verbose:
                 self.logger.info(f"Executing {function.name} on refresh set {refresh_set.set_id}")
@@ -256,6 +258,7 @@ class TPCDSMaintenanceTest:
                 staging_created = True
                 create_staging_tables(connection, staging)
                 self._begin(connection)
+                in_transaction = True
                 try:
                     for table in staging:
                         load_refresh_file(
@@ -279,6 +282,8 @@ class TPCDSMaintenanceTest:
             operation.success = True
         except Exception as exc:
             operation.error = str(exc)
+            if connection is not None and not in_transaction:
+                self._rollback(connection)
             if self.verbose:
                 self.logger.error(f"{function.name} failed: {exc}")
         finally:

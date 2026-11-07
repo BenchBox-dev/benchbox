@@ -135,8 +135,8 @@ class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, Platform
                 raise ValueError(f"Invalid table identifier: {table!r}")
             cursor = raw_connection.cursor()
             try:
-                cursor.execute(f"SHOW KEYS FROM `{table}` WHERE Key_name = 'PRIMARY'")
-                if cursor.fetchall():
+                cursor.execute(f"SHOW KEYS FROM `{table}`")
+                if any(row[2] == "PRIMARY" for row in cursor.fetchall()):
                     enforced.append(table)
             finally:
                 cursor.close()
