@@ -33585,15 +33585,10 @@
       "title": "The soundness merge digest accepts an external-review comment from any author"
     },
     "soundness-merge-digest-stuck-on-250-commit-pr-20261106": {
-      "claim": {
-        "expires_at": "2026-11-08T18:20:50Z",
-        "generation": "561588e349dd44ff8e4daf9f0776e35d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Soundness merge digest has failed every day since Nov 4 because PR #3902 exceeds the 250-commit API listing"
     },
     "soundness-oracle-branch-name-quote-20261022": {
