@@ -5271,7 +5271,8 @@
         "chdb-4x-engine-load-verification-20261006": "b041fa6faf086c57a524ef8b3f3f6fffd7bca004",
         "chdb-rows-nan-vs-arrow-null-q17-20261107": "b8e3fc9fc25d0b108f042e1f408401d9a7af6d05",
         "qphds-full-sequence-unrun-20261107": "30dbad453e104d0c6f286d29ef824af929040efd",
-        "tpch-parity-test-skips-without-cached-extension-20261107": "e0f3677671a09f3f2022bb3e994e3c82e07bcb06"
+        "tpch-parity-test-skips-without-cached-extension-20261107": "e0f3677671a09f3f2022bb3e994e3c82e07bcb06",
+        "tpch-power-validation-after-rf1-q13-20261106": "e33f138eca01054bce2c54e7c7773dfb9a0b9a80"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -5316,10 +5317,28 @@
           ],
           "integration_head": "5d8537b76faab7303991219605fbc10f73bf1ed3",
           "integration_seq": 2
+        },
+        "tpch-power-validation-after-rf1-q13-20261106": {
+          "accepted_head": "e33f138eca01054bce2c54e7c7773dfb9a0b9a80",
+          "changed_files": [
+            "benchbox/core/results/loader.py",
+            "benchbox/core/results/models.py",
+            "benchbox/core/results/schema.py",
+            "benchbox/core/tpch/platform_power.py",
+            "benchbox/core/tpch/power_test.py",
+            "benchbox/core/tpch/throughput_test.py",
+            "benchbox/core/validation/query_validation.py",
+            "benchbox/platforms/base/result_capture.py",
+            "changelog.d/feat-result-validity--tpch-power-validation-after-rf1-q13-20261106.json",
+            "tests/integration/test_tpch_power_test.py",
+            "tests/unit/core/tpch/test_power_validation_after_refresh.py"
+          ],
+          "integration_head": "fc502449410e1e0fb8e04021c6aec35df4d03d02",
+          "integration_seq": 6
         }
       },
       "integration_branch": "feat/result-validity",
-      "integration_head": "5f873be6858b5bfdec339870624abdc9bfd1d882",
+      "integration_head": "fc502449410e1e0fb8e04021c6aec35df4d03d02",
       "integration_log": [
         {
           "at": "2026-11-07T14:16:47Z",
@@ -5377,6 +5396,15 @@
           "op_id": "fdd43bead1fc4c419e74c94c20449381",
           "previous_head": "ff71f3d0a06f6b17281403d5e229ecc6d1d53a48",
           "seq": 5
+        },
+        {
+          "at": "2026-11-07T17:17:40Z",
+          "head": "fc502449410e1e0fb8e04021c6aec35df4d03d02",
+          "kind": "prepare",
+          "member": "tpch-power-validation-after-rf1-q13-20261106",
+          "op_id": "ba206ce7452c424aa818c2955bf82734",
+          "previous_head": "5f873be6858b5bfdec339870624abdc9bfd1d882",
+          "seq": 6
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-result-validity",
@@ -37250,15 +37278,10 @@
       "title": "TPC-H measured power iterations run stream 1..k permutations and skip row-count validation"
     },
     "tpch-power-validation-after-rf1-q13-20261106": {
-      "claim": {
-        "expires_at": "2026-11-08T17:17:36Z",
-        "generation": "a590f9854021472da127a0514a599a06",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "TPC-H power run fails Q13 row-count validation after RF1 changes the data (expected 33, got 34)"
     },
     "tpch-qphh-missing-refresh-functions": {
