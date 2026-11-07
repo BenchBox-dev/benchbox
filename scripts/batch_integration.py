@@ -2194,32 +2194,6 @@ def _excluded_paths(repo: Path, final_head: str, tracker: dict) -> set[str]:
     return excluded
 
 
-def _is_verification_target(arg: str) -> bool:
-    path = arg.split("::", 1)[0]
-    return not arg.startswith("-") and ("/" in path or path.endswith(".py"))
-
-
-def _drop_develop_deleted_targets(
-    repo: Path, head: str, member: str, command: list[str], excluded: set[str]
-) -> tuple[list[str], list[str]]:
-    prefix = next(len(item) for item in ALLOWED_VERIFICATION_PREFIXES if tuple(command[: len(item)]) == item)
-    kept = list(command[:prefix])
-    removed: set[str] = set()
-    for arg in command[prefix:]:
-        path = arg.split("::", 1)[0]
-        in_tree = _git_ok(repo, "cat-file", "-e", f"{head}:{path}")
-        if _is_verification_target(arg) and path in excluded and not in_tree:
-            removed.add(path)
-        else:
-            kept.append(arg)
-    if removed and not any(_is_verification_target(arg) for arg in kept[prefix:]):
-        raise BatchError(
-            f"every verification path in member {member!r}'s receipt was removed by a recorded develop merge "
-            f"({', '.join(sorted(removed))}); re-prepare the member with current verification"
-        )
-    return kept, sorted(removed)
-
-
 def build_evidence(repo: Path) -> dict:
     batch_id = require_role(repo, ROLE_INTEGRATION)
     ledger = _require_ledger(repo, batch_id)
@@ -2250,16 +2224,10 @@ def build_evidence(repo: Path) -> dict:
 
     excluded = _excluded_paths(repo, final_head, tracker)
     current: dict[str, dict] = {}
-    dropped: dict[str, list[str]] = {}
     for member in members:
         verification = receipts[member]["verification"]
         command = _validate_verification_command(verification.get("command"))
-        rerun_command, removed = _drop_develop_deleted_targets(repo, final_head, member, command, excluded)
-        if removed:
-            dropped[member] = removed
-        rerun_entry = _rerun(repo, ledger, member, rerun_command, str(verification.get("suite", "")), "final-evidence")
-        if removed:
-            rerun_entry["dropped_paths"] = removed
+        rerun_entry = _rerun(repo, ledger, member, command, str(verification.get("suite", "")), "final-evidence")
         save_ledger(repo, ledger)
         if rerun_entry["status"] != "passed":
             raise BatchError(f"rerun of {member!r} failed at the final head: {rerun_entry.get('output', '')}")
@@ -2297,7 +2265,6 @@ def build_evidence(repo: Path) -> dict:
         "tracker_rev": tracker["_rev"],
         "tracker": tracker_view,
         "current_acceptance": current,
-        "dropped_receipt_paths": dropped,
         "changed_files": changed,
         "member_reviews": reviews,
         "generated_at": _now(),
