@@ -19776,10 +19776,15 @@
       "title": "Fix the flaky BigQuery credential-defaults tests that fail in full-suite CI but pass in isolation"
     },
     "flaky-heavy-choke-points-and-ducklake-interrupted-20261106": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T16:45:18Z",
+        "generation": "d6e0c65036cd42d5a9e0ad6f2ef17924",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Fix or quarantine flaky CI tests: heavy-choke-points on Python 3.14 and DuckLake 'Query interrupted'"
     },
     "flaky-parallel-unit-tests-generator-config-20261025": {
