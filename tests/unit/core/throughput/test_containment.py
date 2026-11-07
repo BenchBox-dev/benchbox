@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -168,6 +169,23 @@ class TestAwaitQuiescence:
 
         assert await_quiescence(result, timeout=0.1) is False
         assert check_phase_boundary(result).proceed is False
+
+    def test_unobservable_work_waits_out_the_timeout_instead_of_spinning(self) -> None:
+        result = _make_result()
+        result.outstanding_stream_ids = [3]
+        result.cleanup_state = "outstanding"
+
+        started = time.monotonic()
+        assert await_quiescence(result, timeout=0.2) is False
+        assert time.monotonic() - started >= 0.19
+
+    def test_unobservable_work_with_no_timeout_returns_at_once(self) -> None:
+        result = _make_result()
+        result.outstanding_stream_ids = [3]
+
+        started = time.monotonic()
+        assert await_quiescence(result, timeout=0) is False
+        assert time.monotonic() - started < 0.1
 
 
 class TestPhaseBoundaryGate:
