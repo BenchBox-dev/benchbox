@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from collections.abc import Iterable
 from typing import Any
 
@@ -17,8 +18,16 @@ def parse_fetch_mode(value: Any) -> str:
     raise ValueError(f"fetch_mode must be one of {list(FETCH_MODES)}, got {value!r}")
 
 
+FETCH_MODE_ENV = "BENCHBOX_FETCH_MODE"
+
+
+def env_fetch_mode() -> str | None:
+    return os.environ.get(FETCH_MODE_ENV) or None
+
+
 def resolve_fetch_mode(requested: Any, default: str) -> str:
-    if requested is None or requested == "":
+    requested = requested if requested not in (None, "") else env_fetch_mode()
+    if requested is None:
         return default
     return parse_fetch_mode(requested)
 

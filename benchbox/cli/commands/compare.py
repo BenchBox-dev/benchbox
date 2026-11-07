@@ -944,7 +944,9 @@ def _build_platform_runner():
         )
         mode_differences = results_mode_differences([*executed, result])
         if mode_differences:
-            raise ValueError(str(IncomparableModesError(mode_differences)))
+            raise ValueError(
+                f"{IncomparableModesError(mode_differences)} Set BENCHBOX_FETCH_MODE=rows or arrow to measure every platform the same way."
+            )
         executed.append(result)
         return result
 

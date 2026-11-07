@@ -37,11 +37,7 @@ def _adapter(mode: str | None = None) -> DuckDBAdapter:
 def tpch_connection():
     connection = duckdb.connect()
     try:
-        try:
-            connection.execute("LOAD tpch")
-        except duckdb.Error:
-            connection.execute("INSTALL tpch")
-            connection.execute("LOAD tpch")
+        connection.execute("LOAD tpch")
         connection.execute("CALL dbgen(sf=0.01)")
     except duckdb.Error as exc:
         pytest.skip(f"DuckDB tpch extension unavailable: {exc}")
@@ -120,3 +116,35 @@ class TestDigestParity:
             connection, "SELECT * FROM missing_table", "q", validate_row_count=False
         )
         assert result["status"] == "FAILED"
+
+
+class TestEnvironmentSwitch:
+    def test_environment_selects_the_mode_when_config_is_silent(self, monkeypatch):
+        monkeypatch.setenv("BENCHBOX_FETCH_MODE", "rows")
+        assert _adapter().fetch_mode == FETCH_MODE_ROWS
+
+    def test_config_wins_over_the_environment(self, monkeypatch):
+        monkeypatch.setenv("BENCHBOX_FETCH_MODE", "rows")
+        assert _adapter(FETCH_MODE_ARROW).fetch_mode == FETCH_MODE_ARROW
+
+    def test_rankings_honour_the_environment(self, monkeypatch, tmp_path):
+        from datetime import datetime, timezone
+
+        from click.testing import CliRunner
+
+        from benchbox.cli.commands.report import report
+        from benchbox.core.results.database import ResultDatabase
+        from tests.unit.core.results.test_fetch_mode import _stored
+
+        db = ResultDatabase(tmp_path / "r.db")
+        now = datetime.now(timezone.utc)
+        db.store_result(_stored("a", "DuckDB", "arrow", 100.0, now))
+        db.store_result(_stored("b", "Snowflake", "rows", 200.0, now))
+        args = ["rankings", "-b", "TPC-H", "-s", "1", "--db-path", str(tmp_path / "r.db")]
+        refused = CliRunner().invoke(report, args)
+        assert refused.exit_code != 0
+        assert "BENCHBOX_FETCH_MODE" in refused.output
+        chosen = CliRunner().invoke(report, args, env={"BENCHBOX_FETCH_MODE": "arrow"})
+        assert chosen.exit_code == 0
+        assert "DuckDB" in chosen.output
+        assert "Snowflake" not in chosen.output
