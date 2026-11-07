@@ -34238,6 +34238,13 @@
       "status": "open",
       "title": "Verify core SQLGlot delivery App readiness before publishing"
     },
+    "sqlglot-delivery-hardening": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Make core SQLGlot delivery event-driven and verify App readiness"
+    },
     "sqlglot-dialect-translation-code-review-implementation": {
       "claim": null,
       "needs": [],
