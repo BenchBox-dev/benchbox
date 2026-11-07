@@ -1031,7 +1031,8 @@
     },
     "arrow-result-fetch-2": {
       "accepted_members": {
-        "perf-arrow-aware-result-capture-20261030": "d41dbc6830f107e2815ffb6ff4f02efd86d7248d"
+        "perf-arrow-aware-result-capture-20261030": "d41dbc6830f107e2815ffb6ff4f02efd86d7248d",
+        "perf-spark-arrow-collect-20261030": "17b2d495178cac7ce520b08695915a113a04e4ce"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -1078,10 +1079,25 @@
           ],
           "integration_head": "86bf7e5d191d451e5849d5ce636b23d48e14224d",
           "integration_seq": 2
+        },
+        "perf-spark-arrow-collect-20261030": {
+          "accepted_head": "17b2d495178cac7ce520b08695915a113a04e4ce",
+          "changed_files": [
+            "benchbox/platforms/base/spark_execution_mixin.py",
+            "benchbox/platforms/spark.py",
+            "changelog.d/feat-arrow-result-fetch-2--perf-spark-arrow-collect-20261030.json",
+            "docs/internal/spark-arrow-collect.md",
+            "quality/docs-ownership.json",
+            "tests/unit/platforms/test_spark_adapter.py",
+            "tests/unit/platforms/test_spark_arrow_fetch.py",
+            "tests/unit/platforms/test_spark_coverage.py"
+          ],
+          "integration_head": "338739387c12f5eae670ed3a80550fffbd6fb31d",
+          "integration_seq": 5
         }
       },
       "integration_branch": "feat/arrow-result-fetch-2",
-      "integration_head": "9752e2c3e5d3710fe685bfce1a4813eacb7a878f",
+      "integration_head": "338739387c12f5eae670ed3a80550fffbd6fb31d",
       "integration_log": [
         {
           "at": "2026-11-07T01:19:32Z",
@@ -1136,6 +1152,15 @@
             "perf-arrow-aware-result-capture-20261030"
           ],
           "seq": 4
+        },
+        {
+          "at": "2026-11-07T04:52:23Z",
+          "head": "338739387c12f5eae670ed3a80550fffbd6fb31d",
+          "kind": "prepare",
+          "member": "perf-spark-arrow-collect-20261030",
+          "op_id": "8916cb2ff04745f2a77739d9517d3f72",
+          "previous_head": "9752e2c3e5d3710fe685bfce1a4813eacb7a878f",
+          "seq": 5
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-arrow-result-fetch-2",
@@ -23841,17 +23866,12 @@
       "title": "Rebuild the perf-smoke baseline after power-test query generation leaves the timer"
     },
     "perf-spark-arrow-collect-20261030": {
-      "claim": {
-        "expires_at": "2026-11-08T04:51:43Z",
-        "generation": "d3e807af04244dfda85755dd44a8fa8b",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
-      },
+      "claim": null,
       "needs": [
         "perf-arrow-aware-result-capture-20261030"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Use Arrow collect for Spark-family adapters"
     },
     "perf-starrocks-parquet-load-20261030": {

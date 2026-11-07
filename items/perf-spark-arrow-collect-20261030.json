@@ -13,6 +13,77 @@
   },
   "context": "2026-11-03: the fetch-timing contract is decided in fetch-timing-contract-decision-20261103 and implemented by perf-arrow-aware-result-capture-20261030. Under the recommended option, full Arrow receipt (including draining streaming readers) stays inside the query timer and fetch_mode is recorded; Arrow-to-rows conversion for digests stays outside it. Re-read the recorded decision before starting; if the owner chose differently, update this item's acceptance. Origin: root-cause analysis of RF1 timing and its adversarial review.\n\nGuardrails (added 2026-11-03): no live-cloud runs (Databricks, Athena, BigQuery, Snowflake, ClickHouse Cloud, MotherDuck) without owner approval quoted in context; an adapter without a passing digest-parity run keeps rows as its default fetch; heavy runs only through make heavy-run or a lock-taking entry point; no explanatory comments in source (make comment-policy-check); changelog.d fragment required; re-read cited symbols before editing, since line numbers drift.",
   "description": "base/spark_execution_mixin.py:372 uses collect(), building Python Row objects. DataFrame.toArrow exists only in pyspark 4.0+; pyproject allows pyspark>=3.5.0 and databricks-connect 16.1.7 (locked for Python <3.12) is Spark 3.5-based. Use toArrow when available, else toPandas with spark.sql.execution.arrow.pyspark.enabled, else collect(). Covers spark, pyspark, lakesail, velox, EMR/Glue/Dataproc/Fabric/Synapse Spark. snowpark_connect.py:285 is a Snowpark DataFrame (not PySpark): Snowpark 1.48 has DataFrame.to_arrow, but check whether it hits the same pandas<3 gate as the Snowflake connector.",
+  "prepared": {
+    "accepted_head": "17b2d495178cac7ce520b08695915a113a04e4ce",
+    "batch_id": "arrow-result-fetch-2",
+    "changed_files": [
+      "benchbox/platforms/base/spark_execution_mixin.py",
+      "benchbox/platforms/spark.py",
+      "changelog.d/feat-arrow-result-fetch-2--perf-spark-arrow-collect-20261030.json",
+      "docs/internal/spark-arrow-collect.md",
+      "quality/docs-ownership.json",
+      "tests/unit/platforms/test_spark_adapter.py",
+      "tests/unit/platforms/test_spark_arrow_fetch.py",
+      "tests/unit/platforms/test_spark_coverage.py"
+    ],
+    "integration_head": "338739387c12f5eae670ed3a80550fffbd6fb31d",
+    "integration_seq": 5,
+    "member_id": "perf-spark-arrow-collect-20261030",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "6ca8826e80970a2db9019f93f7bcf531498de229c9306caac5ffe3d02656cf49",
+    "source_base": "9752e2c3e5d3710fe685bfce1a4813eacb7a878f",
+    "source_revision": "17b2d495178cac7ce520b08695915a113a04e4ce",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-arrow-result-fetch-2--perf-spark-arrow-collect-20261030",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/platforms/test_local_platforms_smoke.py",
+        "tests/integration/platforms/test_spark_ledger_capture_live.py",
+        "tests/integration/test_plan_capture_synthetic_parsers_live.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/uat/test_connection_registry_drift.py",
+        "tests/unit/cli/test_platform_options_reach_adapters.py",
+        "tests/unit/core/tuning/test_ledger_execute_verbs.py",
+        "tests/unit/core/tuning/test_spark_session_config_apply.py",
+        "tests/unit/platforms/base/test_spark_execution_mixin.py",
+        "tests/unit/platforms/test_lakesail_adapter.py",
+        "tests/unit/platforms/test_lakesail_coverage.py",
+        "tests/unit/platforms/test_platform_driver_runtime_contract.py",
+        "tests/unit/platforms/test_require_loaded_tables.py",
+        "tests/unit/platforms/test_spark_adapter.py",
+        "tests/unit/platforms/test_spark_arrow_fetch.py",
+        "tests/unit/platforms/test_spark_coverage.py",
+        "tests/unit/platforms/test_spark_csv_dialect_resolver.py",
+        "tests/unit/platforms/test_spark_plan_capture.py",
+        "tests/unit/platforms/test_spark_tpchavoc_transformer.py",
+        "tests/unit/platforms/test_velox_adapter.py"
+      ],
+      "review": {
+        "base_sha": "9752e2c3e5d3710fe685bfce1a4813eacb7a878f",
+        "head_sha": "17b2d495178cac7ce520b08695915a113a04e4ce",
+        "head_tree": "75524eafcf43fa1e99cc9595680dc1f19683907f",
+        "outcome": "clear",
+        "patch_digest": "1c83bbd645fecf620a27ffb44c4255dc",
+        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "006703692cf0ab94d9709a45a6b62e6e991fe854"
+      },
+      "revision": "17b2d495178cac7ce520b08695915a113a04e4ce",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:claude-code:root@vm:2d53e6a98f44f4f4a8a4dedd",
@@ -77,6 +148,15 @@
       "generation": "d3e807af04244dfda85755dd44a8fa8b",
       "op": "take",
       "op_id": "5fa0f8fd2831468989983694c95f51e1",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T04:52:24Z",
+      "client": "omp-coding-agent",
+      "generation": "d3e807af04244dfda85755dd44a8fa8b",
+      "op": "prepare",
+      "op_id": "8916cb2ff04745f2a77739d9517d3f72",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
