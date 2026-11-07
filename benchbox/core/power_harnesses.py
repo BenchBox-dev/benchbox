@@ -19,6 +19,7 @@ class CombinedHarnessCapability:
     power_method: str
     throughput_method: str
     maintenance_method: str
+    spec_sequence: tuple[str, ...] = ()
 
 
 POWER_HARNESS_CAPABILITIES: tuple[PhaseHarnessCapability, ...] = (
@@ -46,6 +47,7 @@ COMBINED_HARNESS_CAPABILITIES: tuple[CombinedHarnessCapability, ...] = (
         "_execute_tpcds_power_test",
         "_execute_tpcds_throughput_test",
         "_execute_tpcds_maintenance_test",
+        spec_sequence=("power", "throughput", "maintenance", "throughput", "maintenance"),
     ),
 )
 

@@ -2036,11 +2036,11 @@ def _coerce_stream_id(raw_id: Any) -> int | None:
     return None
 
 
-def _completed_throughput_block(data: dict[str, Any]) -> dict[str, Any] | None:
+def _completed_throughput_block(data: dict[str, Any], name: str = "throughput_test") -> dict[str, Any] | None:
     phases = data.get("phases")
     if not isinstance(phases, dict):
         return None
-    block = phases.get("throughput_test")
+    block = phases.get(name)
     if not isinstance(block, dict):
         return None
     if str(block.get("status") or "").upper() != "COMPLETED":
@@ -2048,9 +2048,11 @@ def _completed_throughput_block(data: dict[str, Any]) -> dict[str, Any] | None:
     return block
 
 
-def _validated_throughput_stream_ids(streams: Any, vr: ValidationResult) -> list[int] | None:
+def _validated_throughput_stream_ids(
+    streams: Any, vr: ValidationResult, first_stream_id: int = 1, phase_name: str = "throughput_test"
+) -> list[int] | None:
     if not isinstance(streams, list) or not streams:
-        vr.error("phases.throughput_test.status='COMPLETED' requires a non-empty stream_results list")
+        vr.error(f"phases.{phase_name}.status='COMPLETED' requires a non-empty stream_results list")
         return None
     stream_ids: list[int] = []
     for entry in streams:
@@ -2063,8 +2065,9 @@ def _validated_throughput_stream_ids(streams: Any, vr: ValidationResult) -> list
             vr.error(f"throughput stream {stream_id} did not succeed")
             return None
         stream_ids.append(stream_id)
-    if sorted(stream_ids) != list(range(1, len(stream_ids) + 1)):
-        vr.error(f"throughput stream_ids must be contiguous 1..{len(stream_ids)}, got {sorted(stream_ids)}")
+    expected = list(range(first_stream_id, first_stream_id + len(stream_ids)))
+    if sorted(stream_ids) != expected:
+        vr.error(f"throughput stream_ids must be contiguous {expected[0]}..{expected[-1]}, got {sorted(stream_ids)}")
         return None
     return stream_ids
 
@@ -2144,13 +2147,61 @@ def _validate_throughput_stream_coverage(
         )
 
 
+def _validate_second_round_phases(data: dict[str, Any], vr: ValidationResult) -> None:
+    phases = data.get("phases")
+    if not isinstance(phases, dict):
+        return
+    second_throughput = phases.get("throughput_test_2")
+    second_maintenance = phases.get("maintenance_test_2")
+    if second_throughput is None and second_maintenance is None:
+        return
+    if not isinstance(second_throughput, dict) or not isinstance(second_maintenance, dict):
+        vr.error("phases.throughput_test_2 and phases.maintenance_test_2 must be recorded together")
+        return
+    first_throughput = phases.get("throughput_test")
+    first_streams = (first_throughput or {}).get("stream_results") if isinstance(first_throughput, dict) else None
+    second_streams = second_throughput.get("stream_results")
+    if (
+        isinstance(first_streams, list)
+        and isinstance(second_streams, list)
+        and len(first_streams) != len(second_streams)
+    ):
+        vr.error(f"throughput_test_2 ran {len(second_streams)} streams but throughput_test ran {len(first_streams)}")
+    first_maintenance = phases.get("maintenance_test")
+    if not isinstance(first_maintenance, dict):
+        vr.error("phases.maintenance_test_2 requires phases.maintenance_test")
+        return
+
+    def refresh_sets(block: dict[str, Any]) -> set[int]:
+        return {
+            op["refresh_set"]
+            for op in block.get("operations") or []
+            if isinstance(op, dict) and isinstance(op.get("refresh_set"), int)
+        }
+
+    first_sets, second_sets = refresh_sets(first_maintenance), refresh_sets(second_maintenance)
+    if first_sets and second_sets and min(second_sets) <= max(first_sets):
+        vr.error("maintenance_test_2 must use refresh sets that follow maintenance_test")
+
+
 def _validate_throughput_stream_completeness(data: dict[str, Any], vr: ValidationResult) -> None:
+    _validate_second_round_phases(data, vr)
     block = _completed_throughput_block(data)
-    if block is None:
+    second = _completed_throughput_block(data, "throughput_test_2")
+    if block is None and second is None:
         return
-    stream_ids = _validated_throughput_stream_ids(block.get("stream_results"), vr)
-    if stream_ids is None:
-        return
+    stream_ids: list[int] = []
+    rounds: list[tuple[str, list[int]]] = []
+    first_id = 1
+    for name, candidate in (("throughput_test", block), ("throughput_test_2", second)):
+        if candidate is None:
+            continue
+        ids = _validated_throughput_stream_ids(candidate.get("stream_results"), vr, first_id, name)
+        if ids is None:
+            return
+        rounds.append((name, ids))
+        stream_ids.extend(ids)
+        first_id += len(ids)
     benchmark = data.get("benchmark")
     benchmark_id = benchmark.get("id") if isinstance(benchmark, dict) else None
     normalized_benchmark = benchmark_id.strip().casefold() if isinstance(benchmark_id, str) else None
@@ -2159,7 +2210,14 @@ def _validate_throughput_stream_completeness(data: dict[str, Any], vr: Validatio
     observed_by_stream = _grouped_throughput_observations(_throughput_measurement_queries(data.get("queries")), vr)
     if observed_by_stream is None:
         return
-    _validate_throughput_stream_coverage(stream_ids, observed_by_stream, normalized_benchmark, vr)
+    for _name, ids in rounds:
+        _validate_throughput_stream_coverage(
+            ids, {key: value for key, value in observed_by_stream.items() if key in set(ids)}, normalized_benchmark, vr
+        )
+    known = set(stream_ids)
+    for stream_key in sorted(observed_by_stream):
+        if stream_key not in known:
+            vr.error(f"throughput query references unknown stream_id {stream_key}")
 
 
 def throughput_stream_defects(data: dict[str, Any]) -> list[str]:

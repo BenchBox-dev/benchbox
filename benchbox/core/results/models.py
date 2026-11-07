@@ -138,6 +138,7 @@ class SetupPhase:
     statistics_gathering: StatisticsGatheringPhase | None = None
     post_load_maintenance: PostLoadMaintenancePhase | None = None
     merge_settle: MergeSettlePhase | None = None
+    database_reused: bool = False
 
 
 @dataclass(init=False)
@@ -358,6 +359,8 @@ class ExecutionPhases:
     throughput_test: ThroughputTestPhase | None = None
     maintenance_test: MaintenanceTestPhase | None = None
     migration: MigrationPhase | None = None
+    throughput_test_2: ThroughputTestPhase | None = None
+    maintenance_test_2: MaintenanceTestPhase | None = None
 
 
 @dataclass
@@ -416,6 +419,8 @@ class BenchmarkResults:
     qph_at_size: float | None = None
     refresh_included: bool | None = None
     qphh_unavailable: list[str] | None = None
+    qphds_unavailable: list[str] | None = None
+    qphds_terms: dict[str, float] | None = None
     geometric_mean_execution_time: float | None = None
     validation_status: str = "PASSED"
     validation_details: dict[str, Any] | None = None

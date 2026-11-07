@@ -17,6 +17,7 @@ from benchbox.core.throughput.result import (
     ThroughputResult,
     ThroughputStreamResult,
     throughput_stream_ids,
+    throughput_stream_numbering,
 )
 from benchbox.core.throughput.runner import StreamRunner
 from benchbox.core.validation.query_validation import (
@@ -31,6 +32,7 @@ from benchbox.utils.clock import elapsed_seconds, mono_time
 class TPCDSThroughputTestConfig:
     scale_factor: float = 1.0
     num_streams: int = 4
+    first_stream_id: int = THROUGHPUT_FIRST_STREAM_ID
     base_seed: int = 42
     stream_timeout: int = 7200
     max_workers: Optional[int] = None
@@ -148,6 +150,7 @@ class TPCDSThroughputTest:
             query_throughput=0.0,
             success=True,
             errors=[],
+            stream_numbering=throughput_stream_numbering(config.first_stream_id),
         )
 
         try:
@@ -205,7 +208,7 @@ class TPCDSThroughputTest:
         try:
             available_query_ids = list(range(1, 100))
 
-            for stream_id in throughput_stream_ids(config.num_streams):
+            for stream_id in throughput_stream_ids(config.num_streams, config.first_stream_id):
                 for position, query_id in enumerate(available_query_ids):
                     stream_seed = config.base_seed + stream_id * 1000 + position
                     try:
@@ -229,7 +232,7 @@ class TPCDSThroughputTest:
 
         try:
             all_streams = generate_dsqgen_streams(
-                num_streams=config.num_streams + THROUGHPUT_FIRST_STREAM_ID,
+                num_streams=config.num_streams + config.first_stream_id,
                 scale_factor=config.scale_factor,
                 seed=config.base_seed,
             )
@@ -239,7 +242,7 @@ class TPCDSThroughputTest:
         stream_queries: dict[int, list[tuple[Any, str]]] = {}
         failures: list[str] = []
 
-        for stream_id in throughput_stream_ids(config.num_streams):
+        for stream_id in throughput_stream_ids(config.num_streams, config.first_stream_id):
             query_subset = _apply_query_subset(all_streams.get(stream_id, []), config.query_subset)
             if config.queries_per_stream is not None:
                 query_subset = query_subset[: min(config.queries_per_stream, len(query_subset))]
@@ -305,7 +308,7 @@ class TPCDSThroughputTest:
         query_range = (min(available_query_ids), max(available_query_ids)) if available_query_ids else (1, 99)
         stream_manager = create_standard_streams(
             query_manager=query_manager,
-            num_streams=config.num_streams + THROUGHPUT_FIRST_STREAM_ID,
+            num_streams=config.num_streams + config.first_stream_id,
             query_range=query_range,
             base_seed=config.base_seed,
         )

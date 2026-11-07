@@ -243,6 +243,8 @@ def reconstruct_benchmark_results(
         qph_at_size=tpc["qph_at_size"],
         refresh_included=tpc["refresh_included"],
         qphh_unavailable=tpc["qphh_unavailable"],
+        qphds_unavailable=tpc["qphds_unavailable"],
+        qphds_terms=tpc["qphds_terms"],
         geometric_mean_execution_time=tpc["geometric_mean_execution_time"],
         test_execution_type=benchmark_section.get("mode", "standard"),
         validation_status=summary_section.get("validation", "NOT_RUN"),
@@ -351,6 +353,8 @@ def _extract_tpc_metrics(summary_section: dict[str, Any]) -> dict[str, Any]:
         "qph_at_size": tpc.get("qphh_at_size") or tpc.get("qphds_at_size"),
         "refresh_included": tpc.get("refresh_included"),
         "qphh_unavailable": tpc.get("qphh_unavailable"),
+        "qphds_unavailable": tpc.get("qphds_unavailable"),
+        "qphds_terms": tpc.get("qphds_terms"),
         "geometric_mean_execution_time": geometric_mean_ms / 1000.0 if geometric_mean_ms else None,
     }
 
@@ -654,7 +658,9 @@ def iter_query_results(results: Any) -> list[dict[str, Any]]:
     return list(getattr(results, "query_results", None) or [])
 
 
-_RECONSTRUCTED_PHASES = frozenset({"power_test", "throughput_test", "migration"})
+_RECONSTRUCTED_PHASES = frozenset(
+    {"power_test", "throughput_test", "throughput_test_2", "maintenance_test", "maintenance_test_2", "migration"}
+)
 
 
 def _recorded_phase_status(phases_section: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -667,6 +673,72 @@ def _recorded_phase_status(phases_section: dict[str, Any]) -> dict[str, dict[str
             continue
         recorded[name] = dict(entry)
     return recorded
+
+
+def _reconstruct_throughput_phase(data: dict[str, Any]) -> ThroughputTestPhase:
+    streams = [
+        ThroughputStream(
+            stream_id=stream.get("stream_id", 0),
+            start_time="",
+            end_time="",
+            duration_ms=0,
+            query_executions=[],
+            success=stream.get("success", False),
+            error_message=stream.get("error"),
+        )
+        for stream in data.get("stream_results", [])
+    ]
+    outstanding_work = data.get("outstanding_work")
+    stream_numbering = data.get("stream_numbering")
+    refresh_stream = data.get("refresh_stream")
+    return ThroughputTestPhase(
+        start_time="",
+        end_time="",
+        duration_ms=data.get("duration_ms", 0),
+        num_streams=data.get("num_streams", len(streams)),
+        streams=streams,
+        total_queries_executed=0,
+        throughput_at_size=None,
+        success=data.get("status") == "COMPLETED",
+        errors=list(data.get("errors", [])),
+        outstanding_work=(
+            {
+                "stream_ids": list(outstanding_work.get("stream_ids", [])),
+                "cleanup_state": outstanding_work.get("cleanup_state", "complete"),
+            }
+            if isinstance(outstanding_work, dict)
+            else None
+        ),
+        stream_numbering=dict(stream_numbering) if isinstance(stream_numbering, dict) else None,
+        refresh_stream=dict(refresh_stream) if isinstance(refresh_stream, dict) else None,
+    )
+
+
+def _reconstruct_maintenance_phase(data: dict[str, Any]) -> MaintenanceTestPhase:
+    return MaintenanceTestPhase(
+        start_time="",
+        end_time="",
+        duration_ms=data.get("duration_ms", 0),
+        maintenance_operations=[
+            MaintenanceOperation(
+                operation=operation.get("operation", ""),
+                operation_type=operation.get("operation_type", ""),
+                table=operation.get("table", ""),
+                execution_time_ms=operation.get("duration_ms", 0),
+                rows_affected=operation.get("rows_affected", 0),
+                status=operation.get("status", "UNKNOWN"),
+                error_message=operation.get("error"),
+                refresh_set=operation.get("refresh_set"),
+                staged_rows=operation.get("staged_rows"),
+                rows_by_table=operation.get("rows_by_table"),
+            )
+            for operation in data.get("operations", [])
+        ],
+        query_executions=[],
+        seed=data.get("seed"),
+        maintenance_method=data.get("maintenance_method"),
+        success=data.get("status") == "COMPLETED",
+    )
 
 
 def _reconstruct_execution_phases(
@@ -713,72 +785,31 @@ def _reconstruct_execution_phases(
     throughput = None
     throughput_data = phases_section.get("throughput_test")
     if throughput_data and throughput_data.get("status") != "NOT_RUN":
-        streams = [
-            ThroughputStream(
-                stream_id=stream.get("stream_id", 0),
-                start_time="",
-                end_time="",
-                duration_ms=0,
-                query_executions=[],
-                success=stream.get("success", False),
-                error_message=stream.get("error"),
-            )
-            for stream in throughput_data.get("stream_results", [])
-        ]
-        outstanding_work = throughput_data.get("outstanding_work")
-        stream_numbering = throughput_data.get("stream_numbering")
-        refresh_stream = throughput_data.get("refresh_stream")
-        throughput = ThroughputTestPhase(
-            start_time="",
-            end_time="",
-            duration_ms=throughput_data.get("duration_ms", 0),
-            num_streams=throughput_data.get("num_streams", len(streams)),
-            streams=streams,
-            total_queries_executed=0,
-            throughput_at_size=None,
-            success=throughput_data.get("status") == "COMPLETED",
-            errors=list(throughput_data.get("errors", [])),
-            outstanding_work=(
-                {
-                    "stream_ids": list(outstanding_work.get("stream_ids", [])),
-                    "cleanup_state": outstanding_work.get("cleanup_state", "complete"),
-                }
-                if isinstance(outstanding_work, dict)
-                else None
-            ),
-            stream_numbering=dict(stream_numbering) if isinstance(stream_numbering, dict) else None,
-            refresh_stream=dict(refresh_stream) if isinstance(refresh_stream, dict) else None,
-        )
+        throughput = _reconstruct_throughput_phase(throughput_data)
+
+    throughput_2 = None
+    throughput_2_data = phases_section.get("throughput_test_2")
+    if throughput_2_data and throughput_2_data.get("status") != "NOT_RUN":
+        throughput_2 = _reconstruct_throughput_phase(throughput_2_data)
 
     maintenance = None
     maintenance_data = phases_section.get("maintenance_test")
     if maintenance_data and maintenance_data.get("status") != "NOT_RUN":
-        maintenance = MaintenanceTestPhase(
-            start_time="",
-            end_time="",
-            duration_ms=maintenance_data.get("duration_ms", 0),
-            maintenance_operations=[
-                MaintenanceOperation(
-                    operation=operation.get("operation", ""),
-                    operation_type=operation.get("operation_type", ""),
-                    table=operation.get("table", ""),
-                    execution_time_ms=operation.get("duration_ms", 0),
-                    rows_affected=operation.get("rows_affected", 0),
-                    status=operation.get("status", "UNKNOWN"),
-                    error_message=operation.get("error"),
-                    refresh_set=operation.get("refresh_set"),
-                    staged_rows=operation.get("staged_rows"),
-                    rows_by_table=operation.get("rows_by_table"),
-                )
-                for operation in maintenance_data.get("operations", [])
-            ],
-            query_executions=[],
-            seed=maintenance_data.get("seed"),
-            maintenance_method=maintenance_data.get("maintenance_method"),
-            success=maintenance_data.get("status") == "COMPLETED",
-        )
+        maintenance = _reconstruct_maintenance_phase(maintenance_data)
 
-    if power is None and migration is None and throughput is None and maintenance is None:
+    maintenance_2 = None
+    maintenance_2_data = phases_section.get("maintenance_test_2")
+    if maintenance_2_data and maintenance_2_data.get("status") != "NOT_RUN":
+        maintenance_2 = _reconstruct_maintenance_phase(maintenance_2_data)
+
+    if (
+        power is None
+        and migration is None
+        and throughput is None
+        and maintenance is None
+        and throughput_2 is None
+        and maintenance_2 is None
+    ):
         return None
 
     return ExecutionPhases(
@@ -787,6 +818,8 @@ def _reconstruct_execution_phases(
         migration=migration,
         throughput_test=throughput,
         maintenance_test=maintenance,
+        throughput_test_2=throughput_2,
+        maintenance_test_2=maintenance_2,
     )
 
 

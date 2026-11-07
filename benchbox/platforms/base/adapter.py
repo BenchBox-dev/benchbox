@@ -184,6 +184,8 @@ class PlatformAdapter(
 
         self._last_throughput_test_result = None
         self._last_maintenance_test_result: dict[str, Any] | None = None
+        self._second_throughput_test_result = None
+        self._second_maintenance_test_result: dict[str, Any] | None = None
         self._last_power_workload_timing: tuple[str, str, int] | None = None
         self._last_per_table_timings: dict[str, Any] | None = None
         self._sorted_ingestion_applied_tables: list[str] = []
@@ -204,6 +206,8 @@ class PlatformAdapter(
         self._last_power_test_result = None
         self._last_throughput_test_result = None
         self._last_maintenance_test_result = None
+        self._second_throughput_test_result = None
+        self._second_maintenance_test_result = None
         self._last_power_workload_timing = None
         self._last_per_table_timings: dict[str, Any] | None = None
         self._sorted_ingestion_applied_tables = []
@@ -668,6 +672,7 @@ class PlatformAdapter(
                 statistics_gathering=statistics_phase,
                 post_load_maintenance=self.build_post_load_maintenance_phase(),
                 merge_settle=self.build_merge_settle_phase(),
+                database_reused=bool(self.database_was_reused),
             )
 
             execution_phases, total_exec_time, power_test_phase, throughput_test_phase = self._build_execution_phases(

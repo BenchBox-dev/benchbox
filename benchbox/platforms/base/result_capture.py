@@ -1517,6 +1517,7 @@ class ResultCaptureMixin:
         power_refresh_first_set = None
         power_query_count = None
         power_success = None
+        power_timing = None
         if getattr(self, "_last_power_test_result", None) is not None:
             last_power_result = self._last_power_test_result
             power_at_size_value = getattr(last_power_result, "power_at_size", 0.0) or 0.0
@@ -1526,14 +1527,33 @@ class ResultCaptureMixin:
                 power_refresh_first_set = getattr(getattr(last_power_result, "config", None), "refresh_first_set", None)
             power_query_count = getattr(last_power_result, "queries_executed", None)
             power_success = getattr(last_power_result, "success", None)
+            if execution_type == "combined":
+                rows = [row for row in getattr(last_power_result, "query_results", None) or [] if isinstance(row, dict)]
+                starts = [row.get("start_monotonic") for row in rows]
+                ends = [row.get("end_monotonic") for row in rows]
+                valid = (
+                    bool(rows)
+                    and all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in (*starts, *ends))
+                    and max(ends) > min(starts)
+                )
+                if valid or normalize_benchmark_id(str(run_config.get("benchmark_name") or "")) == "tpcds":
+                    power_timing = (
+                        self._format_timestamp(getattr(last_power_result, "start_time", None)),
+                        self._format_timestamp(getattr(last_power_result, "end_time", None)),
+                        int((max(ends) - min(starts)) * 1000) if valid else 0,
+                    )
             self._last_power_test_result = None
 
         power_test_phase = None
         if execution_type not in {"throughput"}:
-            start_time, end_time, duration_ms = power_workload_timing or (
-                _datetime.now().isoformat(),
-                _datetime.now().isoformat(),
-                int(total_exec_time * 1000),
+            start_time, end_time, duration_ms = (
+                power_workload_timing
+                or power_timing
+                or (
+                    _datetime.now().isoformat(),
+                    _datetime.now().isoformat(),
+                    int(total_exec_time * 1000),
+                )
             )
             power_test_phase = PowerTestPhase(
                 start_time=start_time,
@@ -1558,11 +1578,23 @@ class ResultCaptureMixin:
             maintenance_test_phase = self._create_maintenance_phase(self._last_maintenance_test_result)
             self._last_maintenance_test_result = None
 
+        throughput_test_phase_2 = None
+        if getattr(self, "_second_throughput_test_result", None) is not None:
+            throughput_test_phase_2 = self._create_throughput_phase(self._second_throughput_test_result)
+        self._second_throughput_test_result = None
+
+        maintenance_test_phase_2 = None
+        if getattr(self, "_second_maintenance_test_result", None) is not None:
+            maintenance_test_phase_2 = self._create_maintenance_phase(self._second_maintenance_test_result)
+        self._second_maintenance_test_result = None
+
         execution_phases = ExecutionPhases(
             setup=setup_phase,
             power_test=power_test_phase,
             throughput_test=throughput_test_phase,
             maintenance_test=maintenance_test_phase,
+            throughput_test_2=throughput_test_phase_2,
+            maintenance_test_2=maintenance_test_phase_2,
         )
         return execution_phases, total_exec_time, power_test_phase, throughput_test_phase
 
