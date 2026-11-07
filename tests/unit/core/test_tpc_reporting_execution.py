@@ -33,6 +33,7 @@ from benchbox.core.tpch.maintenance_test import (
     TPCHMaintenanceOperation,
     TPCHMaintenanceTest,
 )
+from benchbox.core.tpch.refresh import TPCHRF2Deletes
 from benchbox.core.tpch.reporting import TPCHReportGenerator
 from benchbox.core.tpch.throughput_test import (
     TPCHThroughputStreamResult,
@@ -663,11 +664,10 @@ def test_tpch_maintenance_execution(monkeypatch: pytest.MonkeyPatch):
     update_set = SimpleNamespace(set_id=1)
     module = "benchbox.core.tpch.maintenance_test"
     monkeypatch.setattr(f"{module}.generate_refresh_update_sets", lambda *_args: {1: update_set})
-    monkeypatch.setattr(f"{module}.check_rf1_preconditions", lambda *_args: None)
-    monkeypatch.setattr(f"{module}.check_rf2_preconditions", lambda *_args: 3)
+    monkeypatch.setattr(f"{module}.check_rf1_applied", lambda *_args: None)
     monkeypatch.setattr(f"{module}.check_rf2_applied", lambda *_args: None)
     monkeypatch.setattr(f"{module}.apply_rf1", lambda *_args: 10)
-    monkeypatch.setattr(f"{module}.apply_rf2", lambda *_args: 5)
+    monkeypatch.setattr(f"{module}.apply_rf2", lambda *_args: TPCHRF2Deletes(orders=2, lineitems=3))
     rf1 = maint._execute_rf1(pair_id=0, update_set=update_set)
     assert rf1.success is True
     rf2 = maint._execute_rf2(pair_id=0, update_set=update_set)
@@ -676,10 +676,10 @@ def test_tpch_maintenance_execution(monkeypatch: pytest.MonkeyPatch):
     def reject_rf2(*_args):
         raise ValueError("missing order")
 
-    monkeypatch.setattr(f"{module}.check_rf2_preconditions", reject_rf2)
+    monkeypatch.setattr(f"{module}.check_rf2_applied", reject_rf2)
     rf2_fail = maint._execute_rf2(pair_id=1, update_set=update_set)
     assert rf2_fail.success is False
-    assert rf2_fail.duration == 0
+    assert rf2_fail.error == "missing order"
 
     monkeypatch.setattr("benchbox.core.tpch.maintenance_test.time.sleep", lambda _s: None)
     monkeypatch.setattr(maint, "_execute_rf1", lambda _pid, _set: TPCHMaintenanceOperation("RF1", 0, 1, 1, 1, True))

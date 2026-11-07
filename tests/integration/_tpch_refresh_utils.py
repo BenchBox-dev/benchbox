@@ -9,9 +9,8 @@ from benchbox.core.tpch.refresh import (
     TPCHRefreshUpdateSet,
     apply_rf1,
     apply_rf2,
-    check_rf1_preconditions,
+    check_rf1_applied,
     check_rf2_applied,
-    check_rf2_preconditions,
 )
 from benchbox.core.tpch.schema import LINEITEM, ORDERS
 
@@ -119,18 +118,18 @@ def _check_rf1_rf2_with_expected_counts(
     update_lineitems = _file_row_count(update_set.lineitem_path)
     key_list = ", ".join(str(key) for key in delete_keys)
 
-    check_rf1_preconditions(connection, update_set)
     inserted = apply_rf1(connection, update_set)
+    check_rf1_applied(connection, update_set, inserted)
     assert inserted == update_orders + update_lineitems
     assert _table_count(connection, ORDERS.name) == base_counts[ORDERS.name] + update_orders
     assert _table_count(connection, LINEITEM.name) == base_counts[LINEITEM.name] + update_lineitems
     assert _table_count(connection, ORDERS.name, f"O_ORDERKEY = {delete_keys[0]}") == 1
 
     doomed_lineitems = _table_count(connection, LINEITEM.name, f"L_ORDERKEY IN ({key_list})")
-    deleted_lineitems = check_rf2_preconditions(connection, update_set)
-    removed = apply_rf2(connection, update_set, deleted_lineitems)
-    check_rf2_applied(connection, update_set)
-    assert removed == len(delete_keys) + doomed_lineitems
+    deletes = apply_rf2(connection, update_set)
+    check_rf2_applied(connection, update_set, deletes.orders)
+    assert deletes.orders == len(delete_keys)
+    assert deletes.lineitems == doomed_lineitems
     assert _table_count(connection, ORDERS.name) == base_counts[ORDERS.name] + update_orders - len(delete_keys)
     assert _table_count(connection, ORDERS.name, f"O_ORDERKEY = {delete_keys[0]}") == 0
     assert _table_count(connection, LINEITEM.name, f"L_ORDERKEY = {delete_keys[0]}") == 0

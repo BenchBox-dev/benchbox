@@ -59,8 +59,7 @@ class _Events:
         for module in modules:
             monkeypatch.setattr(module, "mono_time", lambda: events.append("timer_mark") or 1.0)
             monkeypatch.setattr(module, "elapsed_seconds", lambda _start: events.append("timer_stop") or 0.5)
-            if hasattr(module, "check_rf1_preconditions"):
-                monkeypatch.setattr(module, "check_rf1_preconditions", lambda *_args: None)
+            monkeypatch.setattr(module, "check_rf1_applied", lambda *_args: events.append("check"))
 
 
 class _NativeAdapter:
@@ -141,6 +140,9 @@ def test_rf1_reads_parses_and_transacts_between_timer_start_and_stop(
     assert log.count("read") == 2
     assert all(start < index < stop for index, event in enumerate(log) if event in {"read", "parse"})
     assert ("parse" in log) is native
+    assert log.count("check") == (0 if site == "throughput" else 1)
+    if site != "throughput":
+        assert log.index("check") > stop
 
 
 def test_resolver_requires_per_class_declaration() -> None:
