@@ -7,7 +7,7 @@
       "text": "ClickHouse local mode (chDB) no longer turns NULL into NaN in query results, and now receives results as Arrow by default; set the fetch_mode platform option to rows to switch back.",
       "details": [
         "The rows path converted the Arrow result through pandas, so a NULL float (TPC-H Q17 at scale factor 0.01, an empty aggregate) became NaN and its result digest differed from the Arrow path; NULLs in integer columns also became floats. Rows are now built directly from the Arrow table.",
-        "Rows and Arrow produced identical result digests for all 22 TPC-H queries at scale factor 0.01 on chDB 3.7.2; ClickHouse server and cloud stay on rows."
+        "Rows and Arrow produced identical result digests for all 22 TPC-H queries at scale factor 0.01 on chDB 4.1.6 (Linux aarch64) and 3.7.2 (macOS arm64); ClickHouse server and cloud stay on rows."
       ],
       "platforms": ["clickhouse"]
     }
