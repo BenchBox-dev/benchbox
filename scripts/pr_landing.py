@@ -1103,6 +1103,35 @@ def _check_evidence_acceptance(repo: Path, evidence: dict, head: str, tracker: d
             failures.append(f"current acceptance for member {member} ran outside the integration worktree")
         if row.get("suite") != verification.get("suite") or row.get("command") != verification.get("command"):
             failures.append(f"current acceptance for member {member} is not its own receipt verification")
+            continue
+        failures.extend(_check_dropped_paths(repo, member, row, verification.get("command"), head))
+    return failures
+
+
+def _check_dropped_paths(repo: Path, member: str, row: dict, recorded: object, head: str) -> list[str]:
+    dropped = row.get("dropped_paths", [])
+    ran = row.get("ran_command", recorded)
+    if not isinstance(recorded, list) or not isinstance(dropped, list) or not isinstance(ran, list):
+        return [f"current acceptance for member {member} has malformed ran_command or dropped_paths"]
+    if not dropped:
+        if ran != recorded:
+            return [f"current acceptance for member {member} ran a command other than its receipt verification"]
+        return []
+    failures: list[str] = []
+    if not all(isinstance(path, str) and path.startswith("tests/") and path in recorded for path in dropped) or ran != [
+        arg for arg in recorded if arg not in dropped
+    ]:
+        return [f"current acceptance for member {member} ran a command differing from its receipt beyond dropped paths"]
+    for path in dropped:
+        present = subprocess.run(
+            ["git", "cat-file", "-e", f"{head}:{path.split('::', 1)[0]}"],
+            cwd=repo,
+            check=False,
+            capture_output=True,
+            timeout=60,
+        )
+        if present.returncode == 0:
+            failures.append(f"current acceptance for member {member} dropped {path}, which exists at the PR head")
     return failures
 
 

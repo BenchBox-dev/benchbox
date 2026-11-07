@@ -1679,6 +1679,80 @@ def test_batch_evidence_refuses_acceptance_that_is_not_the_members_own_pass_at_t
     assert any(expected in failure for failure in failures)
 
 
+RECEIPT_COMMAND = ["pytest", "-q", "tests/gone.py", "tests/here.py::test_one", "a"]
+
+
+def _dropped_batch(tmp_path: Path) -> tuple[fx.BatchFixture, dict]:
+    batch = _batch(tmp_path, {"a": ["a/**", "tests/here.py"], "b": ["b/**"]})
+    batch.fix({"tests/here.py": "kept\n"})
+    batch.receipts["a"]["verification"]["command"] = list(RECEIPT_COMMAND)
+    evidence = batch.evidence()
+    row = evidence["current_acceptance"]["a"]
+    row["ran_command"] = ["pytest", "-q", "tests/here.py::test_one", "a"]
+    row["dropped_paths"] = ["tests/gone.py"]
+    return batch, evidence
+
+
+def test_batch_evidence_accepts_a_dropped_path_absent_at_the_head_with_the_matching_ran_command(
+    tmp_path: Path,
+) -> None:
+    batch, evidence = _dropped_batch(tmp_path)
+
+    assert _verdict(batch, evidence=evidence) == []
+
+
+def test_batch_evidence_refuses_a_dropped_path_that_still_exists_at_the_head(tmp_path: Path) -> None:
+    batch, evidence = _dropped_batch(tmp_path)
+    row = evidence["current_acceptance"]["a"]
+    row["dropped_paths"] = ["tests/here.py::test_one"]
+    row["ran_command"] = ["pytest", "-q", "tests/gone.py", "a"]
+
+    failures = _verdict(batch, evidence=evidence)
+
+    assert any("exists at the PR head" in failure for failure in failures)
+
+
+@pytest.mark.parametrize(
+    "ran",
+    [
+        ["pytest", "-q", "tests/here.py::test_one"],
+        ["pytest", "-q", "tests/gone.py", "tests/here.py::test_one", "a"],
+        ["pytest", "-q", "tests/here.py::test_one", "a", "extra"],
+    ],
+)
+def test_batch_evidence_refuses_a_ran_command_that_differs_beyond_the_dropped_paths(
+    tmp_path: Path, ran: list[str]
+) -> None:
+    batch, evidence = _dropped_batch(tmp_path)
+    evidence["current_acceptance"]["a"]["ran_command"] = ran
+
+    failures = _verdict(batch, evidence=evidence)
+
+    assert any("beyond dropped paths" in failure for failure in failures)
+
+
+def test_batch_evidence_refuses_a_ran_command_without_dropped_paths_that_differs_from_the_receipt(
+    tmp_path: Path,
+) -> None:
+    batch, evidence = _dropped_batch(tmp_path)
+    evidence["current_acceptance"]["a"]["dropped_paths"] = []
+
+    failures = _verdict(batch, evidence=evidence)
+
+    assert any("other than its receipt verification" in failure for failure in failures)
+
+
+def test_batch_evidence_refuses_a_recorded_command_changed_from_the_receipt_even_with_dropped_paths(
+    tmp_path: Path,
+) -> None:
+    batch, evidence = _dropped_batch(tmp_path)
+    evidence["current_acceptance"]["a"]["command"] = ["pytest", "-q", "tests/here.py::test_one", "a"]
+
+    failures = _verdict(batch, evidence=evidence)
+
+    assert any("not its own receipt verification" in failure for failure in failures)
+
+
 @pytest.mark.parametrize("binding", ["tracker_head", "final_pr_head", "evidence_head"])
 def test_batch_evidence_refuses_a_final_head_the_tracker_does_not_bind(tmp_path: Path, binding: str) -> None:
     batch = _batch(tmp_path)

@@ -721,24 +721,47 @@ def _read_check(member_worktree: Path, member_head: str, integration_head: str) 
     return record if isinstance(record, dict) and record.get("schema") == CHECK_SCHEMA else None
 
 
+def _is_test_path_arg(arg: str) -> bool:
+    return arg.startswith("tests/")
+
+
+def _without_deleted_test_paths(command: list[str], repo: Path) -> tuple[list[str], list[str]]:
+    if "pytest" not in command:
+        return list(command), []
+    dropped = [arg for arg in command if _is_test_path_arg(arg) and not (repo / arg.split("::", 1)[0]).exists()]
+    return [arg for arg in command if arg not in dropped], dropped
+
+
 def _rerun(repo: Path, ledger: dict, member: str, command: list[str], suite: str, reason: str) -> dict:
     head = _rev(repo, "HEAD")
     clean_before = _is_clean(repo)
-    proc = _run(_validate_verification_command(command), repo)
+    recorded = _validate_verification_command(command)
+    ran_command, dropped_paths = _without_deleted_test_paths(recorded, repo)
+    if dropped_paths and not any(_is_test_path_arg(arg) for arg in ran_command):
+        proc = None
+    else:
+        proc = _run(ran_command, repo)
     head_after = _rev(repo, "HEAD")
     clean_after = _is_clean(repo)
-    passed = proc.returncode == 0 and clean_before and clean_after and head_after == head
+    passed = proc is not None and proc.returncode == 0 and clean_before and clean_after and head_after == head
     entry = {
         "status": "passed" if passed else "failed",
         "revision": head,
         "clean": clean_before and clean_after,
         "suite": suite,
         "command": list(command),
+        "ran_command": ran_command,
+        "dropped_paths": dropped_paths,
         "worktree": str(repo.resolve()),
         "reason": reason,
         "at": _now(),
     }
-    if proc.returncode != 0:
+    if proc is None:
+        entry["output"] = (
+            f"every recorded test path is absent from the tree ({', '.join(dropped_paths)}); "
+            "refusing to run pytest without them"
+        )
+    elif proc.returncode != 0:
         entry["output"] = (proc.stderr or proc.stdout).strip()[-400:]
     elif not passed:
         entry["output"] = (
@@ -2029,6 +2052,8 @@ def build_evidence(repo: Path) -> dict:
             "clean": True,
             "suite": receipts[member]["verification"]["suite"],
             "command": receipts[member]["verification"]["command"],
+            "ran_command": rerun_entry["ran_command"],
+            "dropped_paths": rerun_entry["dropped_paths"],
             "worktree": str(repo.resolve()),
         }
 

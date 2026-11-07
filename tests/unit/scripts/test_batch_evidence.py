@@ -60,6 +60,8 @@ def test_evidence_reruns_required_members_at_the_final_head_and_writes_the_contr
             "clean": True,
             "suite": world.tracker.receipts[member]["verification"]["suite"],
             "command": world.tracker.receipts[member]["verification"]["command"],
+            "ran_command": world.tracker.receipts[member]["verification"]["command"],
+            "dropped_paths": [],
             "worktree": str(integration),
         }
     executed = [call for call in world.calls if "pytest" in call[0]]

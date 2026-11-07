@@ -814,6 +814,41 @@ def test_an_overlap_reruns_the_earlier_members_recorded_verification_and_records
     assert entry["reason"] == "overlap:alpha"
 
 
+PYTEST = ["uv", "run", "--", "python", "-m", "pytest", "-n", "0", "-q"]
+
+
+def test_a_rerun_drops_a_deleted_test_path_runs_the_rest_and_records_both_commands(world: World) -> None:
+    integration = world.start()
+    world.commit(integration, {"tests/test_keep.py": "kept\n"}, "add test")
+    recorded = [*PYTEST, "tests/test_keep.py::test_one", "tests/test_gone.py"]
+    world.calls.clear()
+    entry = bi._rerun(integration, {}, "zeta", recorded, "member-tests", "overlap:alpha")
+    assert entry["status"] == "passed"
+    assert entry["command"] == recorded
+    assert entry["ran_command"] == [*PYTEST, "tests/test_keep.py::test_one"]
+    assert entry["dropped_paths"] == ["tests/test_gone.py"]
+    assert [call[0] for call in world.calls if "pytest" in call[0]] == [entry["ran_command"]]
+
+
+def test_a_rerun_whose_test_paths_are_all_deleted_fails_closed_without_running_pytest(world: World) -> None:
+    integration = world.start()
+    recorded = [*PYTEST, "tests/test_gone.py", "tests/test_also_gone.py"]
+    world.calls.clear()
+    entry = bi._rerun(integration, {}, "zeta", recorded, "member-tests", "final-evidence")
+    assert entry["status"] == "failed"
+    assert entry["dropped_paths"] == ["tests/test_gone.py", "tests/test_also_gone.py"]
+    assert "absent from the tree" in entry["output"]
+    assert not [call for call in world.calls if "pytest" in call[0]]
+
+
+def test_a_rerun_never_drops_a_missing_argument_that_is_not_a_test_path(world: World) -> None:
+    integration = world.start()
+    world.commit(integration, {"tests/test_keep.py": "kept\n"}, "add test")
+    recorded = [*PYTEST, "--rootdir", "missing_dir", "tests/test_keep.py"]
+    entry = bi._rerun(integration, {}, "zeta", recorded, "member-tests", "fix:x")
+    assert entry["ran_command"] == recorded and entry["dropped_paths"] == []
+
+
 def test_no_overlap_triggers_no_rerun(world: World) -> None:
     world.start()
     world.deliver("zeta", {"src/a.py": "zeta change\n"})
