@@ -11,7 +11,7 @@
     ],
     "member_id": "spark-local-default-jvm-exceeds-heavy-run-budget-20261106"
   },
-  "context": "Found while landing the Spark create_connection fix. Local only, no cloud. Verification rubric: measurement before/after, smoke run recorded in the PR body, focused tests, comment-policy, CI green.",
+  "context": "Found while landing the Spark create_connection fix. Local only, no cloud. Verification rubric: measurement before/after, smoke run recorded in the PR body, focused tests, comment-policy, CI green.\n\nDelivered in PR #3993 (merge commit 4bec907c8).",
   "description": "A TPC-H SF0.01 power run on local Spark with default settings was killed by the heavy-run memory watchdog: the JVM used 8.56 GiB against the 8 GiB budget. The run only passed with --platform-option driver_memory=3g. Users and agents hit a kill with no hint about the option.",
   "links": [
     "benchbox/platforms/spark.py",
@@ -116,6 +116,14 @@
       "generation": "c109b149f7e94960988c04162e7847b6",
       "op": "prepare",
       "op_id": "b48e10b32174441b97e19b96708fe4d3",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-07T02:57:16Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f70817509c324a2b9c7e0d77550fbd8c",
       "session_id": "dc59872de7f0484eafa9032416c81607"
     }
   ]
