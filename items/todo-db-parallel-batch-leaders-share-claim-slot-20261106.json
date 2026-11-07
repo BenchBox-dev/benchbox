@@ -3,7 +3,7 @@
     "Two batch leaders in one host session can take and prepare members of different batches concurrently without E_CLAIM-style refusals, or the docs state the supported setup and batch-start warns when another batch with the same owner is active.",
     "Batch records distinguish which leader session owns which batch."
   ],
-  "context": "2026-11-06, a second todo-db gap seen in the same work: after a batch completes, context_append on its done member items is refused with `E_STATE: batch '<id>' is no longer active`. Post-merge evidence (live verification of the merged members) therefore cannot be attached to the items it verifies; it was put on live-verify-perf-batches-evidence-20261106 instead. The contract says context and context_append edits keep receipts, so they should be allowed on terminal members of a completed batch, or the refusal should be documented.",
+  "context": "2026-11-06, a second todo-db gap seen in the same work: after a batch completes, context_append on its done member items is refused with `E_STATE: batch '<id>' is no longer active`. Post-merge evidence (live verification of the merged members) therefore cannot be attached to the items it verifies; it was put on live-verify-perf-batches-evidence-20261106 instead. The contract says context and context_append edits keep receipts, so they should be allowed on terminal members of a completed batch, or the refusal should be documented.\n\n2026-11-06, a third gap: the tracker accepted a `prepare` with a truncated test command and an empty review block (arrow-result-fetch-2, member perf-arrow-aware-result-capture-20261030). The leader had to clear it by editing the item's links, which deletes the receipt. prepare should reject a receipt without a review outcome or with a malformed command. Also, finish/prepare payloads carry a ~22 KB mapped-test list that leaders paste by hand; the tooling should submit it directly.",
   "description": "Problem. On 2026-11-04 and 2026-11-06, four batch leaders (tpch-refresh-path, native-bulk-load-sql, arrow-dataframe-roundtrips, native-bulk-load-remainder) ran in parallel through one todo-db MCP server. All four batches record the same owner, mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571, and the tracker allows one live claim per worker. A leader's take/prepare was refused while a sibling held its claim, which stalled one leader. Owner generations differ per batch, so the batches stayed safe, but the shared worker identity makes parallel batch work serialize at landing time and makes audit records indistinguishable between leaders.\n\nChange. Decide and implement one of: a per-session worker identity for each MCP connection, a per-batch claim slot for the batch owner, or documenting that parallel leaders need separate MCP servers (batch-feature-delivery.md). This affects the todo-db runtime, which is maintained in its own repository; land runtime changes there and only the pin and docs here.\n\nGuardrails: work in a linked worktree (make worktree-create); never edit the primary clone; no explanatory comments (make comment-policy-check); changelog.d fragment if user-facing; re-read cited symbols before editing; never bypass a required check or relax a ruleset (owner-only).",
   "links": [
     "docs/agent/batch-feature-delivery.md"
@@ -23,6 +23,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "d0aca78e9da64a93bda456bc9a37c81e",
+      "session_id": "93f224f8d42644b1bc3043d4294412f9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571",
+      "at": "2026-11-07T03:37:16Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7cf042f67d034ed89e813ed77b860ed9",
       "session_id": "93f224f8d42644b1bc3043d4294412f9"
     }
   ]
