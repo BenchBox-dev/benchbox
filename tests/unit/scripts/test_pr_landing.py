@@ -1601,7 +1601,7 @@ def _batch(tmp_path: Path, scope: dict[str, list[str]] | None = None) -> fx.Batc
 def _verdict(batch: fx.BatchFixture, *, tracker: dict | None = None, evidence: dict | None = None) -> list[str]:
     fresh = tracker if tracker is not None else batch.tracker()
     built = evidence if evidence is not None else batch.evidence()
-    return landing.check_batch_evidence(batch.repo, built, fx.head_of(batch.repo), fresh)
+    return landing.check_batch_evidence(batch.repo, built, fx.head_of(batch.repo), fresh, batch.start)
 
 
 def test_batch_evidence_passes_for_members_prepared_at_successive_heads(tmp_path: Path) -> None:
@@ -1716,9 +1716,40 @@ def test_dropped_path_check_refuses_when_git_cannot_read_the_head(tmp_path: Path
     repo = _repo(tmp_path / "r")
     row = {"ran_command": ["pytest", "-q", "tests/here.py::test_one", "a"], "dropped_paths": ["tests/gone.py"]}
 
-    failures = landing._check_dropped_paths(repo, "a", row, list(RECEIPT_COMMAND), "f" * 40)
+    failures = landing._check_dropped_paths(repo, "a", row, list(RECEIPT_COMMAND), "f" * 40, fx.head_of(repo))
 
     assert any("could not be checked at the PR head" in failure for failure in failures)
+
+
+def test_batch_evidence_refuses_a_row_that_dropped_every_test_path(tmp_path: Path) -> None:
+    batch, evidence = _dropped_batch(tmp_path)
+    row = evidence["current_acceptance"]["a"]
+    row["dropped_paths"] = ["tests/gone.py", "tests/here.py::test_one"]
+    row["ran_command"] = ["pytest", "-q", "a"]
+
+    failures = _verdict(batch, evidence=evidence)
+
+    assert any("dropped every test path" in failure for failure in failures)
+
+
+def test_dropped_path_check_refuses_a_path_present_at_the_pr_base(tmp_path: Path) -> None:
+    batch, _ = _dropped_batch(tmp_path)
+    head = fx.head_of(batch.repo)
+    row = {"ran_command": ["pytest", "-q", "tests/gone.py", "a"], "dropped_paths": ["tests/here.py::test_one"]}
+
+    failures = landing._check_dropped_paths(batch.repo, "a", row, list(RECEIPT_COMMAND), batch.start, head)
+
+    assert any("exists at the PR base" in failure for failure in failures)
+    assert not any("exists at the PR head" in failure for failure in failures)
+
+
+def test_dropped_path_check_fails_closed_without_a_pr_base(tmp_path: Path) -> None:
+    batch, evidence = _dropped_batch(tmp_path)
+    row = evidence["current_acceptance"]["a"]
+
+    failures = landing._check_dropped_paths(batch.repo, "a", row, list(RECEIPT_COMMAND), fx.head_of(batch.repo), None)
+
+    assert any("PR base revision is unavailable" in failure for failure in failures)
 
 
 @pytest.mark.parametrize(

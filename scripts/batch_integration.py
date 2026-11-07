@@ -725,10 +725,28 @@ def _is_test_path_arg(arg: str) -> bool:
     return arg.startswith("tests/")
 
 
+def _absent_from_develop(repo: Path, path: str) -> bool:
+    listed = subprocess.run(
+        ["git", "ls-tree", "--name-only", DEVELOP_REF, "--", path],
+        cwd=repo,
+        check=False,
+        capture_output=True,
+        encoding="utf-8",
+        timeout=60,
+    )
+    return listed.returncode == 0 and not listed.stdout.strip()
+
+
 def _without_deleted_test_paths(command: list[str], repo: Path) -> tuple[list[str], list[str]]:
     if "pytest" not in command:
         return list(command), []
-    dropped = [arg for arg in command if _is_test_path_arg(arg) and not (repo / arg.split("::", 1)[0]).exists()]
+    dropped = [
+        arg
+        for arg in command
+        if _is_test_path_arg(arg)
+        and not (repo / arg.split("::", 1)[0]).exists()
+        and _absent_from_develop(repo, arg.split("::", 1)[0])
+    ]
     return [arg for arg in command if arg not in dropped], dropped
 
 

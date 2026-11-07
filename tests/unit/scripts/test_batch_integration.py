@@ -1059,6 +1059,28 @@ def test_advance_refuses_when_there_is_nothing_new_or_a_member_is_unprepared(wor
         bi.advance_head(integration, "fix")
 
 
+def test_a_rerun_does_not_drop_a_test_the_batch_itself_deleted_while_develop_still_has_it(world: World) -> None:
+    integration = world.start()
+    git(integration, "rm", "-q", "tests/test_alpha.py")
+    git(integration, "commit", "-qm", "delete own test")
+    recorded = [*PYTEST, "tests/test_alpha.py", "tests/test_zeta.py"]
+    entry = bi._rerun(integration, {}, "zeta", recorded, "member-tests", "fix:x")
+    assert entry["dropped_paths"] == [] and entry["ran_command"] == recorded
+
+
+def test_a_rerun_drops_a_test_that_develop_deleted_and_the_tree_no_longer_has(world: World) -> None:
+    integration = world.start()
+    git(world.seed, "rm", "-q", "tests/test_alpha.py")
+    git(world.seed, "commit", "-qm", "develop deletes the test")
+    git(world.seed, "push", "-q", "origin", "develop")
+    git(integration, "fetch", "-q", "origin")
+    git(integration, "merge", "-q", "--no-edit", bi.DEVELOP_REF)
+    recorded = [*PYTEST, "tests/test_alpha.py", "tests/test_zeta.py"]
+    entry = bi._rerun(integration, {}, "zeta", recorded, "member-tests", "fix:x")
+    assert entry["dropped_paths"] == ["tests/test_alpha.py"]
+    assert entry["ran_command"] == [*PYTEST, "tests/test_zeta.py"]
+
+
 def test_a_develop_merge_is_recorded_without_any_member_rerun(world: World) -> None:
     integration = _landed_pair(world)
     (world.seed / "other").mkdir()

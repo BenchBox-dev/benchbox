@@ -296,7 +296,7 @@ def batch_mode_failures(
         failures.append(f"batch {batch_id} is not bound to PR #{evidence.pr_number} in the tracker")
     if fresh.get("integration_branch") != evidence.branch:
         failures.append("tracker integration branch does not match the current checkout")
-    failures.extend(check_batch_evidence(repo, batch, head, fresh))
+    failures.extend(check_batch_evidence(repo, batch, head, fresh, identity.base))
     return failures
 
 
@@ -1073,7 +1073,9 @@ def _check_evidence_receipts(repo: Path, members: list[str], receipts: dict, hea
     return failures
 
 
-def _check_evidence_acceptance(repo: Path, evidence: dict, head: str, tracker: dict, receipts: dict) -> list[str]:
+def _check_evidence_acceptance(
+    repo: Path, evidence: dict, head: str, tracker: dict, receipts: dict, base: str | None = None
+) -> list[str]:
     failures: list[str] = []
     acceptance = evidence.get("current_acceptance")
     if not isinstance(acceptance, dict):
@@ -1104,11 +1106,27 @@ def _check_evidence_acceptance(repo: Path, evidence: dict, head: str, tracker: d
         if row.get("suite") != verification.get("suite") or row.get("command") != verification.get("command"):
             failures.append(f"current acceptance for member {member} is not its own receipt verification")
             continue
-        failures.extend(_check_dropped_paths(repo, member, row, verification.get("command"), head))
+        failures.extend(_check_dropped_paths(repo, member, row, verification.get("command"), head, base))
     return failures
 
 
-def _check_dropped_paths(repo: Path, member: str, row: dict, recorded: object, head: str) -> list[str]:
+def _present_in_tree(repo: Path, revision: str, path: str) -> bool | None:
+    listed = subprocess.run(
+        ["git", "ls-tree", "--name-only", revision, "--", path],
+        cwd=repo,
+        check=False,
+        capture_output=True,
+        encoding="utf-8",
+        timeout=60,
+    )
+    if listed.returncode != 0:
+        return None
+    return bool(listed.stdout.strip())
+
+
+def _check_dropped_paths(
+    repo: Path, member: str, row: dict, recorded: object, head: str, base: str | None = None
+) -> list[str]:
     dropped = row.get("dropped_paths", [])
     ran = row.get("ran_command", recorded)
     if not isinstance(recorded, list) or not isinstance(dropped, list) or not isinstance(ran, list):
@@ -1117,26 +1135,25 @@ def _check_dropped_paths(repo: Path, member: str, row: dict, recorded: object, h
         if ran != recorded:
             return [f"current acceptance for member {member} ran a command other than its receipt verification"]
         return []
-    failures: list[str] = []
     if not all(isinstance(path, str) and path.startswith("tests/") and path in recorded for path in dropped) or ran != [
         arg for arg in recorded if arg not in dropped
     ]:
         return [f"current acceptance for member {member} ran a command differing from its receipt beyond dropped paths"]
+    if not any(isinstance(arg, str) and arg.startswith("tests/") for arg in ran):
+        return [f"current acceptance for member {member} dropped every test path; refusing a run without tests"]
+    if not base:
+        return [f"current acceptance for member {member} dropped paths but the PR base revision is unavailable"]
+    failures: list[str] = []
     for path in dropped:
-        listed = subprocess.run(
-            ["git", "ls-tree", "--name-only", head, "--", path.split("::", 1)[0]],
-            cwd=repo,
-            check=False,
-            capture_output=True,
-            encoding="utf-8",
-            timeout=60,
-        )
-        if listed.returncode != 0:
-            failures.append(
-                f"current acceptance for member {member} dropped {path}, which could not be checked at the PR head"
-            )
-        elif listed.stdout.strip():
-            failures.append(f"current acceptance for member {member} dropped {path}, which exists at the PR head")
+        file_part = path.split("::", 1)[0]
+        for label, revision in (("PR head", head), ("PR base", base)):
+            present = _present_in_tree(repo, revision, file_part)
+            if present is None:
+                failures.append(
+                    f"current acceptance for member {member} dropped {path}, which could not be checked at the {label}"
+                )
+            elif present:
+                failures.append(f"current acceptance for member {member} dropped {path}, which exists at the {label}")
     return failures
 
 
@@ -1304,7 +1321,7 @@ def _review_binding_failures(repo: Path, member: str, review: dict, receipt: dic
     return []
 
 
-def check_batch_evidence(repo: Path, evidence: dict, head: str, tracker: dict) -> list[str]:
+def check_batch_evidence(repo: Path, evidence: dict, head: str, tracker: dict, base: str | None = None) -> list[str]:
     if not isinstance(evidence, dict):
         return ["batch evidence must be an object"]
     if not isinstance(tracker, dict):
@@ -1314,7 +1331,7 @@ def check_batch_evidence(repo: Path, evidence: dict, head: str, tracker: dict) -
     failures = [] if members else ["tracker batch has no members"]
     failures.extend(_check_evidence_binding(repo, evidence, head, tracker))
     failures.extend(_check_evidence_receipts(repo, members, receipts, head))
-    failures.extend(_check_evidence_acceptance(repo, evidence, head, tracker, receipts))
+    failures.extend(_check_evidence_acceptance(repo, evidence, head, tracker, receipts, base))
     failures.extend(_check_evidence_changed_files(repo, evidence, head, tracker, receipts))
     failures.extend(_check_evidence_reviews(repo, evidence, members, receipts))
     return failures
