@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "The skip reason states the current, true cause; or, if the bundled DuckDB runs the catalog's MERGE INTO statements correctly, the skip is removed and those operations run and validate",
+    "The decision is checked against the DuckDB version the project actually pins or resolves, with the version named in the PR",
+    "Tests covering the execution filter pass"
+  ],
+  "context": "Found while re-measuring the SCD2 scale table for benchbox-site draft drafts/platform-deep-dives/drafts/apply-changes-into-vs-standard-sql.md (site PR #115), which now says the skip is a catalog decision rather than an engine limit.",
+  "description": "DUCKDB_WRITE_PRIMITIVES_MERGE_SKIP_REASON in benchbox/sql_compat/rules/execution_filter/duckdb_write_primitives.py says 'DuckDB 1.3.2 rejects the catalog's MERGE INTO statements; keep them explicit skips until the bundled driver supports MERGE.' On DuckDB 1.5.5, the version uv resolved on 2026-11-02 at core 6f5692490e, a plain MERGE INTO succeeds. The skip still applies to every MERGE INTO operation, so the reason now gives a false cause for a catalog decision.",
+  "links": [
+    "benchbox/sql_compat/rules/execution_filter/duckdb_write_primitives.py",
+    "https://github.com/BenchBox-dev/benchbox-site/pull/115"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:leader:joe@joe-mac-mini.local:c8084b77ee218fce5eb4cdfa",
+      "at": "2026-11-07T22:08:10Z",
+      "client": "leader",
+      "op": "create",
+      "op_id": "11efb172a8de45bab45656d35ae08f5f",
+      "session_id": "795ec450a8414923a7950b67d6eba45e"
+    }
+  ]
+}

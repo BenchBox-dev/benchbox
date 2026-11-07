@@ -18235,6 +18235,13 @@
       "status": "done",
       "title": "Fix DuckDB sort/cluster index DDL identifier binding so indexes corroborate (false 'mismatch' on every run)"
     },
+    "duckdb-merge-skip-reason-stale-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Update the DuckDB write-primitives MERGE skip reason, which cites DuckDB 1.3.2"
+    },
     "duckdb-merge-token-gate-hardening": {
       "claim": null,
       "needs": [
