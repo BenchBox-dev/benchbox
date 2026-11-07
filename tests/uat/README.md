@@ -5,7 +5,7 @@ https://benchbox.dev/docs/operations/uat-framework.html; the design contract is
 `_project/specs/uat-framework.md`.
 
 Gate tuning (infrastructure retry, pinned images, history reports) is described in
-`docs/internal/uat-rubric.md`.
+the "UAT gate-tuning rubric" section of `docs/internal/release-guide.md`.
 
 ## Layout
 

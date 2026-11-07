@@ -247,18 +247,18 @@ the release workflow) shipped without live execution. The owner decided:
    release UAT run is only the fallback when no qualifying evidence exists. This
    supersedes the owner decision of 2026-10-28 that UAT and gate coverage are not reduced,
    and the artifact-bound release UAT that `release-v2.yml` gained in #2490 (see
-   `docs/internal/release-artifacts.md` and `docs/internal/trunk-uat.md`).
+   `docs/internal/release-artifacts.md` and the "Trunk UAT workflow reference" section of `docs/internal/release-guide.md`).
 2. **G12 Calibrate before block** is added to the guardrails.
 3. **Agent gate-tuning rubric.** An agent that tunes a UAT or CI gate follows the rubric
    below. Its conditions are testable, and a change that fails any of them is not
-   made by an agent. `docs/internal/uat-rubric.md` describes the implementation.
+   made by an agent. The "UAT gate-tuning rubric" section of `docs/internal/release-guide.md` describes the implementation.
 4. **Theseus and the oracle are consumed as a pinned dependency.** One commit SHA, the
    lock's `workflow_sha`, names every Theseus reference, and
    `tests/unit/workflows/test_theseus_pin_consistency.py` fails when a workflow reference
    disagrees with it. A bump branch cannot exercise the new pin, because the `oracle`
    environment deploys only from `develop`. A bump is therefore verified after it merges
    on `develop`, and rollback is a revert of the pin commit; no separate oracle policy
-   applies to bump branches (`docs/internal/theseus-pin-bump.md`). A detector that fails
+   applies to bump branches (the "Theseus pin bump and rollback" section of `docs/internal/oracle-review-v2.md`). A detector that fails
    closed when `review-verdict` or `review-gate` post no result for a head is not yet
    available; until it exists, the post-merge check reads the posted statuses.
 5. **Release-v2 probe mode and fail-closed detectors are required.** `release-v2.yml`
