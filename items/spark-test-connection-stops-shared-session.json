@@ -4,6 +4,11 @@
     "Fix so test_connection only stops a session it created itself.",
     "A regression test covers test_connection with a live session."
   ],
+  "batch": {
+    "batch_id": "spark-family-fixes",
+    "implementation_dependencies": [],
+    "member_id": "spark-test-connection-stops-shared-session"
+  },
   "context": "Noticed while fixing create_connection after drop-database; not touched there. Local only.",
   "description": "SparkAdapter.test_connection() calls spark.stop() on a session from getOrCreate(). When a session is already live in the process, getOrCreate() returns that same session, so the check would stop it, the same class of defect fixed for create_connection/close_connection in the Spark dagScheduler fix.",
   "links": [
@@ -17,6 +22,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "6a933e0dfa0d4821b9c5b2c7d470a329",
+      "session_id": "dc59872de7f0484eafa9032416c81607"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:2c0b84c07c641a86d4f4eb54",
+      "at": "2026-11-07T00:56:59Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d376d6b9ebea4bd29949a54d0cd0f447",
       "session_id": "dc59872de7f0484eafa9032416c81607"
     }
   ]
