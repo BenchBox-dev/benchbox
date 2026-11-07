@@ -175,6 +175,7 @@ def test_language_server_argv_stems_are_never_candidates() -> None:
 
 
 def test_mcp_servers_are_never_candidates_but_a_repo_named_mcp_is_not_a_marker() -> None:
+    assert not hs.is_candidate(proc(9, cwd="/w", cmdline=("python3.12", "/tools/tractable-mcp")))
     assert not hs.is_candidate(proc(10, cwd="/w", cmdline=("python3.12", "/tools/todo-db-mcp")))
     assert not hs.is_candidate(proc(11, cwd="/w", cmdline=("python3.12", "/tools/mcp-server/run.py")))
     assert not hs.is_candidate(proc(12, cwd="/w", cmdline=("python3.12", "-m", "benchbox.mcp.server")))

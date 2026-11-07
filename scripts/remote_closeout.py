@@ -27,7 +27,7 @@ BASE_BRANCH = "develop"
 STORE_SCHEMA = "remote_closeout_v1"
 STORE_ENV = "BENCHBOX_REVIEWS_DIR"
 ENV_PREFIX = "REMOTE_CLOSEOUT_"
-TRACKER_CONFIG = pr_landing.REPO_ROOT / ".todo-db" / "config.json"
+TRACKER_CONFIG = pr_landing.REPO_ROOT / ".tractable" / "config.json"
 FETCH = ["git", "-c", "gc.auto=0", "-c", "maintenance.auto=false", "fetch", "--no-tags", "origin"]
 VIEW_FIELDS = "number,state,isDraft,labels,reviewDecision,headRefOid,headRefName,baseRefName,id,isCrossRepository"
 OBSERVED_FIELDS = ("labels", "draft", "threads")

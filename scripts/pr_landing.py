@@ -85,7 +85,7 @@ BATCH_EVIDENCE_SCHEMA = "benchbox_batch_evidence_v2"
 MEMBER_REVIEW_SCHEMA = "benchbox_member_review_v1"
 DEVELOP_TRACKING_REF = "refs/remotes/origin/develop"
 MEMBER_REVIEW_OUTCOMES = frozenset({"clear", "not-reviewed", "override"})
-TRACKER_SHOW_COMMAND = ("uv", "run", "--project", "_project/scripts", "--locked", "--", "todo-db", "batch", "show")
+TRACKER_SHOW_COMMAND = ("uv", "run", "--project", "_project/scripts", "--locked", "--", "tractable", "batch", "show")
 TRACKER_WINDOW_BUDGET = 6000
 MAX_TRACKER_WINDOWS = 4096
 FOLLOWUP_SCHEMA = "pr_followup_v2"
@@ -206,7 +206,7 @@ def batch_runtime_capability_available(repo: Path) -> bool:
     runtime = evidence.get("runtime") if isinstance(evidence, dict) else None
     if not isinstance(runtime, dict):
         return False
-    capability = runtime.get("todo_db_batch")
+    capability = runtime.get("tractable_batch")
     handshake = runtime.get("mcp_handshake")
     if not isinstance(capability, dict) or not isinstance(handshake, dict):
         return False
@@ -260,7 +260,7 @@ def batch_mode_failures(
         return failures
     if not batch_runtime_capability_available(repo):
         failures.append(
-            "batch delivery requires the active todo-db runtime to advertise capability todo_db_batch version 2, "
+            "batch delivery requires the active tractable runtime to advertise capability tractable_batch version 2, "
             f"receipt schema {PREPARED_RECEIPT_SCHEMA} and store schema {BATCH_STORE_SCHEMA_VERSION}"
         )
     batch = evidence.batch_evidence
@@ -1127,7 +1127,7 @@ def _check_evidence_changed_files(repo: Path, evidence: dict, head: str, tracker
     return failures
 
 
-TRACKER_CONFIG = REPO_ROOT / ".todo-db" / "config.json"
+TRACKER_CONFIG = REPO_ROOT / ".tractable" / "config.json"
 
 
 def _same_repository(value: object, repo: str) -> bool:
@@ -1667,7 +1667,7 @@ def _validate_followup_batch(state: FollowupState) -> list[str]:
         or len(state.batch_id) > MAX_TODO_ID_LEN
         or not TODO_ID_RE.fullmatch(state.batch_id or "")
     ):
-        failures.append("followup batch_id must be a canonical todo-db ID")
+        failures.append("followup batch_id must be a canonical tracker ID")
     if not isinstance(state.owner_generation, str) or not re.fullmatch(r"[0-9a-f]{32}", state.owner_generation):
         failures.append("followup owner_generation must be a 32-hex value")
     failures.extend(_valid_text(state.integrator, "integrator", required=True))

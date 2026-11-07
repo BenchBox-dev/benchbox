@@ -210,13 +210,13 @@ def test_policy_cannot_widen_external_scopes() -> None:
 
 def test_ratchet_allows_same_path_wheel_version_bump_without_expanding_exclusions() -> None:
     base_entry = {
-        "path": "_project/scripts/vendor/todo_db-0.8.1-py3-none-any.whl",
-        "owner": "todo-db",
+        "path": "_project/scripts/vendor/tractable-0.8.1-py3-none-any.whl",
+        "owner": "tractable",
         "provenance": "_project/scripts/pyproject.toml",
     }
     bumped_entry = {
-        "path": "_project/scripts/vendor/todo_db-0.9.1-py3-none-any.whl",
-        "owner": "todo-db",
+        "path": "_project/scripts/vendor/tractable-0.9.1-py3-none-any.whl",
+        "owner": "tractable",
         "provenance": "_project/scripts/pyproject.toml",
     }
     check_ratchet(policy(external=[bumped_entry]), policy(external=[base_entry]))
@@ -224,21 +224,21 @@ def test_ratchet_allows_same_path_wheel_version_bump_without_expanding_exclusion
         check_ratchet(policy(external=[base_entry, bumped_entry]), policy(external=[base_entry]))
     other_entry = {
         "path": "_project/scripts/vendor/other_pkg-1.0.0-py3-none-any.whl",
-        "owner": "todo-db",
+        "owner": "tractable",
         "provenance": "_project/scripts/pyproject.toml",
     }
     with pytest.raises(ValueError, match="cannot add or expand external exclusions"):
         check_ratchet(policy(external=[other_entry]), policy(external=[base_entry]))
     diff_dir_entry = {
-        "path": "_project/vendor/todo_db-0.9.1-py3-none-any.whl",
-        "owner": "todo-db",
+        "path": "_project/vendor/tractable-0.9.1-py3-none-any.whl",
+        "owner": "tractable",
         "provenance": "_project/scripts/pyproject.toml",
     }
     with pytest.raises(ValueError, match="cannot add or expand external exclusions"):
         check_ratchet(policy(external=[diff_dir_entry]), policy(external=[base_entry]))
     diff_prov_entry = {
-        "path": "_project/scripts/vendor/todo_db-0.9.1-py3-none-any.whl",
-        "owner": "todo-db",
+        "path": "_project/scripts/vendor/tractable-0.9.1-py3-none-any.whl",
+        "owner": "tractable",
         "provenance": "_project/scripts/other_pyproject.toml",
     }
     with pytest.raises(ValueError, match="cannot add or expand external exclusions"):
@@ -3562,20 +3562,20 @@ def dependency_artifact_inputs(tmp_path: Path, monkeypatch):
 
     import check_comment_cleanup_scope as scope
 
-    wheel_path = "_project/scripts/vendor/todo_db-0.8.1-py3-none-any.whl"
+    wheel_path = "_project/scripts/vendor/tractable-0.8.1-py3-none-any.whl"
     project_path = "_project/scripts/pyproject.toml"
     lock_path = "_project/scripts/uv.lock"
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as archive:
-        archive.writestr("todo_db-0.8.1.dist-info/METADATA", "Name: todo-db\nVersion: 0.8.1\n")
-        archive.writestr("todo_db/__init__.py", "value = 1\n")
+        archive.writestr("tractable-0.8.1.dist-info/METADATA", "Name: tractable\nVersion: 0.8.1\n")
+        archive.writestr("tractable/__init__.py", "value = 1\n")
     wheel = buffer.getvalue()
-    project = b'[project]\ndependencies = ["todo-db[mcp]"]\n[tool.uv.sources]\ntodo-db = {path = "vendor/todo_db-0.8.1-py3-none-any.whl"}\n'
+    project = b'[project]\ndependencies = ["tractable[mcp]"]\n[tool.uv.sources]\ntractable = {path = "vendor/tractable-0.8.1-py3-none-any.whl"}\n'
     digest = hashlib.sha256(wheel).hexdigest()
     lock = (
-        '[[package]]\nname = "todo-db"\nversion = "0.8.1"\n'
-        'source = {path = "vendor/todo_db-0.8.1-py3-none-any.whl"}\n'
-        'wheels = [{filename = "todo_db-0.8.1-py3-none-any.whl", hash = "sha256:' + digest + '"}]\n'
+        '[[package]]\nname = "tractable"\nversion = "0.8.1"\n'
+        'source = {path = "vendor/tractable-0.8.1-py3-none-any.whl"}\n'
+        'wheels = [{filename = "tractable-0.8.1-py3-none-any.whl", hash = "sha256:' + digest + '"}]\n'
     ).encode()
     frozen = {wheel_path: wheel, project_path: project, lock_path: lock}
     index = deepcopy(frozen)
@@ -3587,7 +3587,7 @@ def dependency_artifact_inputs(tmp_path: Path, monkeypatch):
     monkeypatch.setattr(scope, "git", lambda root, *args: index[args[-1].removeprefix(":")])
     records = [{"path": wheel_path, "owner": "comment-cleanup-project-tooling", "rule": "tooling", "state": "blocked"}]
     rules = [{"id": "tooling", "selectors": [{"prefix": "_project/scripts/"}]}]
-    external = [{"path": wheel_path, "owner": "todo-db", "provenance": project_path}]
+    external = [{"path": wheel_path, "owner": "tractable", "provenance": project_path}]
     return scope, wheel_path, project_path, lock_path, frozen, index, records, rules, external
 
 
@@ -3597,7 +3597,7 @@ def test_verify_upstream_release_validates_real_github_asset(monkeypatch: pytest
 
     from check_comment_cleanup_scope import _verify_upstream_release
 
-    checksums = b"3a878a3ac2e7c3b458ed3e71d53d036456ba017eb9ec1adfa030d823cf2c2ffd  todo_db-0.10.1-py3-none-any.whl\n"
+    checksums = b"3a878a3ac2e7c3b458ed3e71d53d036456ba017eb9ec1adfa030d823cf2c2ffd  tractable-0.10.1-py3-none-any.whl\n"
 
     class DummyResponse:
         def __init__(self, data: bytes):
@@ -3612,16 +3612,16 @@ def test_verify_upstream_release_validates_real_github_asset(monkeypatch: pytest
     monkeypatch.setattr(urllib.request, "urlopen", lambda req, timeout=15: DummyResponse(checksums))
 
     _verify_upstream_release(
-        "https://github.com/joeharris76/todo-db",
+        "https://github.com/joeharris76/tractable",
         "0.10.1",
-        "todo_db-0.10.1-py3-none-any.whl",
+        "tractable-0.10.1-py3-none-any.whl",
         "3a878a3ac2e7c3b458ed3e71d53d036456ba017eb9ec1adfa030d823cf2c2ffd",
     )
     with pytest.raises(ValueError, match="wheel hash mismatch"):
         _verify_upstream_release(
-            "https://github.com/joeharris76/todo-db",
+            "https://github.com/joeharris76/tractable",
             "0.10.1",
-            "todo_db-0.10.1-py3-none-any.whl",
+            "tractable-0.10.1-py3-none-any.whl",
             "0" * 64,
         )
 
@@ -3639,20 +3639,20 @@ def test_pep440_version_ordering() -> None:
 def test_declares_evaluates_pep508_specifiers_fail_closed() -> None:
     from check_comment_cleanup_scope import _declares
 
-    assert _declares("todo-db[mcp]", "todo-db", "0.10.1")
-    assert _declares("todo-db>=0.9.0", "todo-db", "0.10.1")
-    assert not _declares("todo-db>=0.11.0", "todo-db", "0.10.1")
-    assert _declares("todo-db===0.10.1", "todo-db", "0.10.1")
-    assert not _declares("todo-db===0.8.1", "todo-db", "0.10.1")
-    assert not _declares("todo-db???invalid", "todo-db", "0.10.1")
-    assert _declares("todo-db~=2", "todo-db", "2.5")
-    assert not _declares("todo-db~=2", "todo-db", "3.0")
-    assert _declares("todo-db~=2.2", "todo-db", "2.5")
-    assert not _declares("todo-db~=2.2", "todo-db", "3.0")
-    assert _declares("todo-db~=2.2.0", "todo-db", "2.2.5")
-    assert not _declares("todo-db~=2.2.0", "todo-db", "2.3.0")
-    assert _declares("todo-db==0.10.*", "todo-db", "0.10.1")
-    assert not _declares("todo-db==0.9.*", "todo-db", "0.10.1")
+    assert _declares("tractable[mcp]", "tractable", "0.10.1")
+    assert _declares("tractable>=0.9.0", "tractable", "0.10.1")
+    assert not _declares("tractable>=0.11.0", "tractable", "0.10.1")
+    assert _declares("tractable===0.10.1", "tractable", "0.10.1")
+    assert not _declares("tractable===0.8.1", "tractable", "0.10.1")
+    assert not _declares("tractable???invalid", "tractable", "0.10.1")
+    assert _declares("tractable~=2", "tractable", "2.5")
+    assert not _declares("tractable~=2", "tractable", "3.0")
+    assert _declares("tractable~=2.2", "tractable", "2.5")
+    assert not _declares("tractable~=2.2", "tractable", "3.0")
+    assert _declares("tractable~=2.2.0", "tractable", "2.2.5")
+    assert not _declares("tractable~=2.2.0", "tractable", "2.3.0")
+    assert _declares("tractable==0.10.*", "tractable", "0.10.1")
+    assert not _declares("tractable==0.9.*", "tractable", "0.10.1")
 
 
 def test_trusted_locked_dependency_overrides_only_generic_prefix(tmp_path: Path, dependency_artifact_inputs) -> None:
@@ -3691,7 +3691,7 @@ def test_dependency_replacements_fail_closed(
     if changed == "artifact":
         raw += b"replacement"
     elif changed == "dependency":
-        raw = raw.replace(b'"todo-db[mcp]"', b'"other-package"')
+        raw = raw.replace(b'"tractable[mcp]"', b'"other-package"')
     else:
         raw = raw.replace(hashlib.sha256(frozen[path]).hexdigest().encode(), b"0" * 64)
     if staged:
@@ -3729,7 +3729,7 @@ def test_dependency_removed_only_by_a_verified_policy_wheel_bump(
     base_policy_bytes = json.dumps({"version": 1, "external": external, "exceptions": []}).encode()
     frozen["quality/comment-policy.json"] = base_policy_bytes
     frozen["_project/analysis/batch-rollout-evidence.json"] = json.dumps(
-        {"source": {"repository": "https://github.com/joeharris76/todo-db"}}
+        {"source": {"repository": "https://github.com/joeharris76/tractable"}}
     ).encode()
 
     bump_version = "0.9.0" if case != "downgrade" else "0.8.0"
@@ -3749,8 +3749,8 @@ def test_dependency_removed_only_by_a_verified_policy_wheel_bump(
     meta_version = bump_version if case != "replacement-invalid-metadata" else "0.8.1"
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as arc:
-        arc.writestr(f"todo_db-{bump_version}.dist-info/METADATA", f"Name: todo-db\nVersion: {meta_version}\n")
-        arc.writestr("todo_db/__init__.py", "value = 2\n")
+        arc.writestr(f"tractable-{bump_version}.dist-info/METADATA", f"Name: tractable\nVersion: {meta_version}\n")
+        arc.writestr("tractable/__init__.py", "value = 2\n")
     new_wheel = buf.getvalue()
 
     if case != "replacement-missing":
@@ -3758,16 +3758,16 @@ def test_dependency_removed_only_by_a_verified_policy_wheel_bump(
 
     bound_version = bump_version if case != "replacement-unbound" else "0.8.1"
     new_project = (
-        f'[project]\ndependencies = ["todo-db[mcp]"]\n'
-        f'[tool.uv.sources]\ntodo-db = {{path = "vendor/todo_db-{bound_version}-py3-none-any.whl"}}\n'
+        f'[project]\ndependencies = ["tractable[mcp]"]\n'
+        f'[tool.uv.sources]\ntractable = {{path = "vendor/tractable-{bound_version}-py3-none-any.whl"}}\n'
     ).encode()
     (tmp_path / project_path).write_bytes(new_project)
 
     digest = "sha256:" + (hashlib.sha256(new_wheel).hexdigest() if case != "replacement-mismatched-lock" else "0" * 64)
     new_lock = (
-        f'[[package]]\nname = "todo-db"\nversion = "{bump_version}"\n'
-        f'source = {{path = "vendor/todo_db-{bump_version}-py3-none-any.whl"}}\n'
-        f'wheels = [{{filename = "todo_db-{bump_version}-py3-none-any.whl", hash = "{digest}"}}]\n'
+        f'[[package]]\nname = "tractable"\nversion = "{bump_version}"\n'
+        f'source = {{path = "vendor/tractable-{bump_version}-py3-none-any.whl"}}\n'
+        f'wheels = [{{filename = "tractable-{bump_version}-py3-none-any.whl", hash = "{digest}"}}]\n'
     ).encode()
     (tmp_path / lock_path).write_bytes(new_lock)
 

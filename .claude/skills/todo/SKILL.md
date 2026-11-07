@@ -1,22 +1,23 @@
 ---
 name: todo
 description: Use when the user asks to "ideate on an idea", "refine an idea", "brainstorm", "write a spec", "create a specification", "create a TODO", "show TODO items", "manage TODOs", "prioritize TODOs", "top N most important todos", "rank the backlog", "what should we work on", "what should I work on", "implement a TODO", "implement a batch of TODOs", "complete a TODO", "finish an item", "release my claim", "why did finish fail", "cleanup TODOs", "review TODO quality", "claim a TODO", "what's ready" / "ready queue", "block"/"unblock a TODO", "create TODOs from a spec", "create a batch handoff", or "close out a reviewed batch". Covers the lifecycle from idea to specification, implementation, and completion.
-version: 3.1.0
+version: 4.0.0
 tools: Bash, Read, Edit, Write, Task
 ---
 
 # Todo — Idea to Done
 
-The tracker is driven through **MCP tool calls** on the `todo-db` server, not
+The tracker is driven through **MCP tool calls** on the `tractable` server, not
 shell commands. Task state is JSON (`index.json` plus one `items/<id>.json`
 per item) published on a dedicated Git state branch, one commit per operation.
-The `todo-db` CLI keeps bootstrap, validation, migration, and recovery for
+The `tractable` CLI keeps bootstrap, validation, migration, and recovery for
 humans and CI (listed at the end of this page). Never hand-edit state-branch
 files; every change goes through a tool so publication stays atomic.
 
-This is the only tracker skill. There is no separate `todo-db` skill: `todo-db`
-is the *product* this skill drives — the MCP server named `todo-db` and the CLI
-of the same name. Do not author a second skill for it, in this catalog or in
+This is the only tracker skill. There is no separate `tractable` skill:
+`tractable` is the product this skill drives — the MCP server named
+`tractable` and the CLI of the same name. This skill requires tractable 1.0.0
+or later. Do not author a second skill for it, in this catalog or in
 the product repository.
 
 ## Critical rules
@@ -25,21 +26,19 @@ the product repository.
   the project's repository as `owner/repo` (for example
   `BenchBox-dev/BenchBox`). It returns the live protocol and, on clients that
   supply no explicit actor, pins your worker identity.
-- **Confirm the bound store before the first write.** From todo-db 0.11.0 the
+- **Confirm the bound store before the first write.** The
   instructions start with a "Bound store" section naming the state remote and
   branch, and a server bound to another project's tracker answers
   `expect_store` with a `gate`-kind `E_STATE`. On that refusal, stop and write
-  nothing; tell the operator to restart `todo-db-mcp` with the project's
+  nothing; tell the operator to restart `tractable-mcp` with the project's
   `--config` or from the project directory. The match is a case-insensitive
   substring of the remote only, so pass the full `owner/repo`, not a short
-  word. Older servers ignore `expect_store` and show no "Bound store"
-  section: on those, check that `list_items` shows this project's work before
-  writing.
+  word.
 - **Drive through MCP tools, never the shell.** Do not invoke tracker verbs
-  through the `todo-db` floor CLI, hand-edit state, or invent a second store.
+  through the `tractable` floor CLI, hand-edit state, or invent a second store.
   Use `Bash` strictly for repo test suites, linters, and builds.
-- **Fail-closed preflight.** If the `todo-db` MCP tools are absent from your
-  tool registry, stop and tell the operator to register `todo-db-mcp`
+- **Fail-closed preflight.** If the `tractable` MCP tools are absent from your
+  tool registry, stop and tell the operator to register `tractable-mcp`
   (`references/bootstrap.md`). Do not reconstruct the backlog from files or
   chat history — the state branch is the only source.
 - **One server instance is one worker identity.** Run separate servers with
@@ -57,12 +56,12 @@ the product repository.
   why that session is dead. It is refused when the task has no live claim (use
   `take`), when you already hold it (use `take` to re-adopt), when the holder
   changed under you (re-read, then decide), or when you hold another live claim
-  (`E_MULTIPLE_CLAIMS`). Requires todo-db 0.8.1 or later. On an active
+  (`E_MULTIPLE_CLAIMS`). On an active
   registered batch only the batch owner may take over a member
   (`E_BATCH_OWNER`); a dead leader is handled by `recover_batch_owner`, not by
   taking over a member.
 - **Prepared work is not completion.** The prepared lifecycle is fail-closed
-  and capability-versioned. Require the installed runtime's `todo_db_batch`
+  and capability-versioned. Require the installed runtime's `tractable_batch`
   version 2 capability, required tools and supported store/receipt schemas,
   not a package-version string or static rollout record. Repository policy
   selects prepared versus serial mode; unsupported runtimes stay serial.
@@ -97,9 +96,9 @@ the product repository.
   a landing request; they make no tracker writes and open no PR. The leader claims
   a member only to prepare or finish it. The refusal holds only for a distinct
   identity: a member must not use the leader's server instance or actor
-  (`--actor`/`TODO_DB_ACTOR`). Procedure: `references/batch.md`.
+  (`--actor`/`TRACTABLE_ACTOR`). Procedure: `references/batch.md`.
 - **Guarded checkout relocation.** Require
-  `todo_db_batch.features.integration_worktree_relocation=true` before using
+  `tractable_batch.features.integration_worktree_relocation=true` before using
   the optional expected-path/expected-head/new-path tuple in owner recovery.
   Preserve receipts/history, obtain the expected generation privately and save
   the new generation before the call. Neither recovery nor abort works without
@@ -124,12 +123,12 @@ the product repository.
 | 5 | `finish` | Close the task with the `generation` from `take`. Every member of an active registered batch must already have a valid prepared receipt and bound final-tree evidence; ordinary tasks use the serial finish path. |
 | — | `register_batch` / `bind_batch_pr` / `abort_batch` | Register the immutable batch contract (with `develop_ref` if develop merges will be recorded, and `confirm_schema3_cutover` on the first registration), bind exactly one final PR identity (`pr_repository`, `number`, `node_id`, `head`; revisable only to the current integration head with `expected_previous_head`), or owner-abort after claims are released. Reject duplicates, foreign owners, foreign live claims, late membership, and incompatible capability/schema versions. |
 | — | `prepare` | Owner-only. Persist verified member work and hand back the claim without marking the member done. Requires the registered batch, explicit same-batch edge, exact clean source checkout, a recorded head as base, accepted and new integration heads, and frozen scope. |
-| — | `show_batch` | Read one batch: heads, owner and `owner_epoch`, final PR, member status, receipts, `acceptance_required`, log; large sections page like `show_item`. Never serves the owner generation, so the leader keeps it in its ledger. Scripts and CI read the same data with `todo-db batch show <batch_id>`. |
+| — | `show_batch` | Read one batch: heads, owner and `owner_epoch`, final PR, member status, receipts, `acceptance_required`, log; large sections page like `show_item`. Never serves the owner generation, so the leader keeps it in its ledger. Scripts and CI read the same data with `tractable batch show <batch_id>`. |
 | — | `advance_batch_head` | Owner-only. Record a leader fix or integration-base merge as a new integration head (`owner_generation`, `expected_head`, `head`, `reason` `fix`\|`develop-merge`, `changed_files`). A `develop-merge` must be a real two-parent merge whose merged parent is under the batch's registered `develop_ref`; there is no per-call ref. Refused once any member is `done`. |
 | — | `recover_batch_owner` | Take over a dead leader's batch with the recorded owner and generation, a `new_owner_generation` you generate (32 hex) and record in your ledger **before** the call, and a reason. The server stores it and never returns it. Needs no member claim, keeps receipts. |
 | — | `release` | Hand the claim back without finishing (needs the `generation`). |
-| — | `takeover` | Take over a live claim whose session cannot resume: name the inspected holder and why it is dead. Requires todo-db 0.8.1. |
-| — | `drop` | Abandon a task as dropped. Requires `reason`: the owner's decision and any successor, at most 2000 characters, stored with the status change in one commit. Requires todo-db 0.12.0 or later. Unclaimed tasks drop freely; a live claim needs its `generation`. |
+| — | `takeover` | Take over a live claim whose session cannot resume: name the inspected holder and why it is dead. |
+| — | `drop` | Abandon a task as dropped. Requires `reason`: the owner's decision and any successor, at most 2000 characters, stored with the status change in one commit. Unclaimed tasks drop freely; a live claim needs its `generation`. |
 
 ## Reading the response envelope
 
@@ -185,14 +184,13 @@ ladder: an ordinary task closes with `take` + `finish`.
 `update_item` amends title/priority/description/needs/sections/`not_before`/`batch`,
 or moves status between `open` and `blocked`. Text and list fields are
 replaced whole; an empty value clears one. To add a progress note without
-resending the context, pass `context_append` (todo-db 0.11.0 or later): the
+resending the context, pass `context_append`: the
 server adds it to the end of the current context when the write lands, so a
 concurrent note is not lost. Closing goes through `finish`; dropping a task is
 a human decision reported to the user. Once the owner has decided, call `drop`
-with their decision and any successor item as `reason` (todo-db 0.12.0 or
-later requires it, up to 2000 characters, newlines allowed); the server stores
-it as `drop_reason` in the same commit, so do not write a separate
-`context_append` note first.
+with their decision and any successor item as `reason` (required, up to 2000
+characters, newlines allowed); the server stores it as `drop_reason` in the
+same commit, so do not write a separate `context_append` note first.
 
 On a prepared member, `update_item` keeps the receipt only for a `context`
 edit (including `context_append`); any other field change (`description`,
@@ -201,7 +199,7 @@ a mix with `context`) invalidates it and its dependents, and the member is
 prepared again afterwards (re-prepare). Batch metadata already on a registered
 member cannot be changed (abort to reassign); attaching it to a member that has
 none is allowed. Once any member is `done` every
-invalidating edit on the batch is refused (todo-db 0.14.0 or later).
+invalidating edit on the batch is refused.
 
 Use `not_before` rather than `blocked` when a task is waiting for a known time,
 such as the end of a measurement window. It takes a future RFC 3339 time with
@@ -210,8 +208,7 @@ returns on its own; rows and `show_item` show `waiting_until` meanwhile, and
 `take` and `finish` refuse it with `E_NOTHING_READY` — a hold set while you
 hold the claim still blocks `finish`, so `release` instead. The hold also
 applies while the task is `blocked`. `not_before=""` clears the hold. Use
-`blocked` for work stalled on something with no known end. Clients older than
-todo-db 0.8.0 keep the field but do not enforce the hold.
+`blocked` for work stalled on something with no known end.
 
 `list_items(ready_only=true)` returns only claimable tasks: `open`, unclaimed,
 not held by a future `not_before`, dependencies all `done`, except that an explicitly registered same-batch
@@ -230,9 +227,9 @@ the evidence it binds, invalidates affected prepared evidence transitively.
 | Inspect one item | `show_item` |
 | List or search items | `list_items` with `status`/`priority`/`text` |
 | Create or amend work | `create_item`, `update_item` |
-| Claim, extend, close, hand back, drop | `take`, `renew`, `finish`, `release`, `drop` (`drop` needs `reason`, 0.12.0+) |
-| Take over a dead session's live claim | `takeover` (0.8.1+) |
-| Read a batch, record a head change, recover a dead leader | `show_batch`, `advance_batch_head`, `recover_batch_owner` (`todo_db_batch` version 2 capability) |
+| Claim, extend, close, hand back, drop | `take`, `renew`, `finish`, `release`, `drop` (`drop` needs `reason`) |
+| Take over a dead session's live claim | `takeover` |
+| Read a batch, record a head change, recover a dead leader | `show_batch`, `advance_batch_head`, `recover_batch_owner` (`tractable_batch` version 2 capability) |
 
 ## Process guides
 
@@ -257,10 +254,10 @@ For multi-step workflows, follow the dedicated reference guide. None is a tool.
 These are not tools. When you hit a condition that needs one, stop and give the
 human the exact command:
 
-- `todo-db bootstrap --state-remote <url> [--write-config]` — create the state branch.
-- `todo-db validate` — check the accepted tip and report counts.
-- `todo-db migrate --from-export <file> --backup-dir <dir> [--dry-run]` — migrate a legacy v2 export onto a freshly bootstrapped branch. Dry-run first; a real run requires `--backup-dir`.
-- `todo-db recover --op-id <id>` / `--restore-rev <sha>` / `--limit N` — reconcile, restore, or show history.
-- `todo-db list` / `todo-db show <id>` / `todo-db batch show <batch_id>` — read-only inspection for humans and CI (`batch show` needs 0.14.0 or later).
+- `tractable bootstrap --state-remote <url> [--write-config]` — create the state branch.
+- `tractable validate` — check the accepted tip and report counts.
+- `tractable migrate --from-export <file> --backup-dir <dir> [--dry-run]` — migrate a legacy v2 export onto a freshly bootstrapped branch. Dry-run first; a real run requires `--backup-dir`.
+- `tractable recover --op-id <id>` / `--restore-rev <sha>` / `--limit N` — reconcile, restore, or show history.
+- `tractable list` / `tractable show <id>` / `tractable batch show <batch_id>` — read-only inspection for humans and CI.
 
 Details: `references/recovery.md` and `references/bootstrap.md`.
