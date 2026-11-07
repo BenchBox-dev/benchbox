@@ -166,6 +166,34 @@ class TestTPCDSThroughputStreamNumbering:
         assert sorted(executed) == ["SELECT 1", "SELECT 2"]
         assert result.stream_numbering == _NUMBERING
 
+    def test_second_throughput_test_runs_streams_s_plus_one_to_two_s(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        requested: list[int] = []
+
+        def fake_generate(**kwargs: Any) -> dict[int, list[StreamQuery]]:
+            requested.append(kwargs["num_streams"])
+            return {
+                stream: [StreamQuery(stream_id=stream, position=0, query_id=stream + 1, sql=f"SELECT {stream}")]
+                for stream in range(kwargs["num_streams"])
+            }
+
+        monkeypatch.setattr("benchbox.core.tpcds.streams.generate_dsqgen_streams", fake_generate)
+        executed: list[str] = []
+
+        class _RecordingConnection(_Connection):
+            def execute(self, sql: str) -> Any:
+                executed.append(sql)
+                return super().execute(sql)
+
+        test = TPCDSThroughputTest(
+            benchmark=_TPCDSBenchmark(), connection_factory=_RecordingConnection, scale_factor=1.0, num_streams=2
+        )
+        result = test.run(TPCDSThroughputTestConfig(scale_factor=1.0, num_streams=2, first_stream_id=3, base_seed=7))
+
+        assert requested == [5]
+        assert sorted(stream.stream_id for stream in result.stream_results) == [3, 4]
+        assert sorted(executed) == ["SELECT 3", "SELECT 4"]
+        assert result.stream_numbering == {**_NUMBERING, "first_stream_id": 3}
+
     def test_stream_ordering_matches_dsqgen_stream_files_and_excludes_the_power_stream(self) -> None:
         dsqgen = generate_dsqgen_streams(num_streams=3, scale_factor=1.0, seed=7)
         test = TPCDSThroughputTest(

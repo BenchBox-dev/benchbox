@@ -12,6 +12,7 @@ from benchbox.utils.clock import elapsed_seconds, mono_time
 from .containment import record_outstanding_result
 from .executor import DaemonStreamExecutor
 from .result import (
+    THROUGHPUT_FIRST_STREAM_ID,
     ThroughputResult,
     ThroughputStreamResult,
     throughput_result_succeeded,
@@ -102,10 +103,12 @@ class StreamRunner:
             )
 
         cooperative_cancel = bool(getattr(config, "cancel_on_timeout", False))
+        first_stream_id = getattr(config, "first_stream_id", THROUGHPUT_FIRST_STREAM_ID)
+        if not isinstance(first_stream_id, int):
+            first_stream_id = THROUGHPUT_FIRST_STREAM_ID
+        stream_ids = throughput_stream_ids(config.num_streams, first_stream_id)
         cancel_events: dict[int, threading.Event] = (
-            {stream_id: threading.Event() for stream_id in throughput_stream_ids(config.num_streams)}
-            if cooperative_cancel
-            else {}
+            {stream_id: threading.Event() for stream_id in stream_ids} if cooperative_cancel else {}
         )
         if cooperative_cancel and auxiliary_fn is not None:
             cancel_events[0] = threading.Event()
@@ -168,7 +171,7 @@ class StreamRunner:
 
         executor = DaemonStreamExecutor(max_workers=max_workers + (1 if auxiliary_fn else 0))
         try:
-            for stream_id in throughput_stream_ids(config.num_streams):
+            for stream_id in stream_ids:
                 future = executor.submit(stream_fn, stream_id, config.base_seed + stream_id, config)
                 future_to_stream_id[future] = stream_id
                 pending.add(future)

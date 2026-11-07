@@ -7,14 +7,14 @@ THROUGHPUT_FIRST_STREAM_ID = 1
 THROUGHPUT_STREAM_NUMBERING_BASIS = "tpc_spec_throughput_streams_1_to_s"
 
 
-def throughput_stream_ids(num_streams: int) -> range:
-    return range(THROUGHPUT_FIRST_STREAM_ID, THROUGHPUT_FIRST_STREAM_ID + max(num_streams, 0))
+def throughput_stream_ids(num_streams: int, first_stream_id: int = THROUGHPUT_FIRST_STREAM_ID) -> range:
+    return range(first_stream_id, first_stream_id + max(num_streams, 0))
 
 
-def throughput_stream_numbering() -> dict[str, Any]:
+def throughput_stream_numbering(first_stream_id: int = THROUGHPUT_FIRST_STREAM_ID) -> dict[str, Any]:
     return {
         "basis": THROUGHPUT_STREAM_NUMBERING_BASIS,
-        "first_stream_id": THROUGHPUT_FIRST_STREAM_ID,
+        "first_stream_id": first_stream_id,
     }
 
 

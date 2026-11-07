@@ -1113,6 +1113,9 @@ def _build_phases_block(result: BenchmarkResults) -> dict[str, Any]:
     if result.execution_phases and result.execution_phases.throughput_test:
         phases["throughput_test"] = _throughput_phase_payload(result.execution_phases.throughput_test)
 
+    if getattr(result.execution_phases, "throughput_test_2", None):
+        phases["throughput_test_2"] = _throughput_phase_payload(result.execution_phases.throughput_test_2)
+
     phases.update(_maintenance_and_migration_payloads(result.execution_phases))
 
     if isinstance(result.execution_metadata, Mapping):
@@ -1134,6 +1137,8 @@ def _maintenance_and_migration_payloads(execution_phases: Any) -> dict[str, Any]
         return payloads
     if execution_phases.maintenance_test:
         payloads["maintenance_test"] = _maintenance_phase_payload(execution_phases.maintenance_test)
+    if getattr(execution_phases, "maintenance_test_2", None):
+        payloads["maintenance_test_2"] = _maintenance_phase_payload(execution_phases.maintenance_test_2)
     if execution_phases.migration:
         m = execution_phases.migration
         payloads["migration"] = {
@@ -1697,6 +1702,14 @@ def _build_tpc_metrics(result: BenchmarkResults) -> dict[str, Any] | None:
             metrics["refresh_included"] = result.refresh_included
         if getattr(result, "qphh_unavailable", None):
             metrics["qphh_unavailable"] = list(result.qphh_unavailable)
+
+    if getattr(result, "benchmark_id", None) == "tpcds":
+        if getattr(result, "qph_at_size", None) is not None:
+            metrics["qphds_at_size"] = result.qph_at_size
+        if getattr(result, "qphds_terms", None):
+            metrics["qphds_terms"] = dict(result.qphds_terms)
+        if getattr(result, "qphds_unavailable", None):
+            metrics["qphds_unavailable"] = list(result.qphds_unavailable)
 
     return metrics if metrics else None
 

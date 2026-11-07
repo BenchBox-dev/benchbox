@@ -31,6 +31,8 @@ Every site in `tpch`, `tpcds`, `tpcdi` and `throughput` that starts or stops a m
 | TPC-DS 7.4.7.1, 7.4.7.2 | QD(s,i,t) runs from submission of the query's first character to the last output character with success, for power and throughput. |
 | TPC-DS 7.4.7.3 to 7.4.7.5 | Throughput Test 1 runs from before the first query character of the first stream to after the last output character of the last stream. |
 | TPC-DS 7.4.9.1 | DI(i,s) starts at the earliest of first submission of the function, first submission of the request to run it, or first read of its refresh data from outside the Database Location; it ends at the last output character plus success. |
+| TPC-DS 7.4.2 | The tests run as database load, power, throughput 1, data maintenance 1, throughput 2, data maintenance 2. |
+| TPC-DS 7.6.3 | QphDS@SF = floor(SF x Q / (T_PT x T_TT x T_DM x T_LD)^(1/4)) with Q = 99 x S, T_PT = T_Power x S, T_TT = TT1 + TT2, T_DM = DM1 + DM2, T_LD = 0.01 x S x T_load, all in decimal hours. |
 | TPC-DI 1.1.0 1.2.2.1.1, 7.2.1.1.2 | Data generation and copying into the Staging Area are not timed. |
 | TPC-DI 1.2.2.1.2 | Creating the warehouse database and tables is not timed. |
 | TPC-DI 7.2.3.6 | The initialization phase is not timed. |
@@ -112,6 +114,23 @@ Clock readers that define no specification interval, listed so the grep count re
 
 Coverage: 127 clock call sites (`mono_time()`, `elapsed_seconds()`, `time.time()`, excluding imports and helper definitions) in 44 file-and-symbol pairs. 105 sites in 34 symbols are covered by the 26 rows with a counted call site (H1 to H11, D1 to D6, D8 to D11, I1 to I3, I5, I6; I4 is a `datetime.now()` pair with no counted call site, and D7 reads no clock; `TPCHThroughputTest._execute_stream` splits across H4 and H5). The other 22 sites in 10 symbols are in the table above.
 
+## QphDS@Size
+
+TPC-DS 4.0.0 clauses 7.4.2, 7.4.6 to 7.4.9 and 7.6.3. A run that executes the `power`, `throughput` and `maintenance` phases of TPC-DS together runs them in the specified order: database load, Power Test, Throughput Test 1, Data Maintenance Test 1, Throughput Test 2, Data Maintenance Test 2. With S query streams, Throughput Test 1 runs streams 1 to S and Throughput Test 2 runs streams S+1 to 2S. Each Data Maintenance Test runs S/2 refresh runs: Test 1 uses refresh sets 1 to S/2 and Test 2 uses the next S/2 sets (the first set follows `tpcds_refresh_first_set`).
+
+QphDS@Size = floor(SF x Q / (T_PT x T_TT x T_DM x T_LD)^(1/4)), where:
+
+- SF is the scale factor and Q = 99 x S.
+- T_PT = T_Power x S, with T_Power the elapsed time of the Power Test (clause 7.6.3 defines T_PT this way).
+- T_TT = TT1 + TT2, the elapsed times of Throughput Test 1 and 2.
+- T_DM = DM1 + DM2, the elapsed times of Data Maintenance Test 1 and 2.
+- T_LD = 0.01 x S x T_load, with T_load the elapsed time of the database load phase captured in the same run.
+- Every term is in decimal hours.
+
+Official-export rule: `qphds_at_size` is exported in `summary.tpc_metrics` only when every input is valid: official compliance class (scale factor 1 or more, no query subset, no failed query), S an even number of at least 4, a Power Test that ran all 99 queries, two successful Throughput Tests with the stream numbers above and no outstanding stream work, two successful Data Maintenance Tests with S/2 refresh runs each and consecutive refresh sets, and a database load of this run (not a reused database) with a captured, positive duration. When any input is missing or invalid the export carries `qphds_unavailable`, the list of reasons, and no `qphds_at_size`. The exported `qphds_terms` hold Q and the four terms in hours.
+
+`benchbox metrics qphh` does not compute QphDS@Size, because it needs the load time and both throughput and maintenance tests of a single run.
+
 ## Known deviations
 
 | ID | Deviation | Status |
@@ -125,6 +144,7 @@ Coverage: 127 clock call sites (`mono_time()`, `elapsed_seconds()`, `time.time()
 | K7 | Row-count validation and metadata propagation run inside the per-query timer; `run.timing_method` has no producer. | `result-schema-2-4-producer-20261022` |
 | K8 | Power-test query generation used to run inside the per-query timer and now precedes it; earlier runs are not comparable. | `power-test-times-query-generation-20261031` (delivered here); follow-up `perf-smoke-rebaseline-after-power-query-generation-20261103` |
 | K9 | Kit refresh keys overlap base keys. In the TPC-DS 4.0.0 `dsdgen` (and in `gregrahn/tpcds-kit` `tools/scaling.c`), `getUpdateBase(nTable)` reads `arRowcount[nTable - S_BRAND].kNextInsertValue` while `setUpdateScaling` writes `arRowcount[nTable].kNextInsertValue`. `s_purchase`, `s_catalog_order` and `s_web_order` ids therefore start at 1 in every refresh set (SF0.01 catalog orders 1 to 8 in sets 1, 2 and 3, against a base maximum of 1600). BenchBox keeps the kit's keys unchanged, so maintenance cannot run against enforced primary keys: it refuses on DuckDB, PostgreSQL and SQLite when a maintenance target table carries a primary key, naming the tables and the `--tuning notuning` way out; Snowflake declares primary keys as informational constraints that it does not enforce, so it runs; SingleStore reports the phase as skipped because the refresh statements are not validated against its SQL. DF returns deletes match in-range sales on order or ticket number plus item, so returns of out-of-range orders that share a number survive. | Owner decision 2026-11-06 on `tpcds-maintenance-dsdgen-refresh-data-20261103`; owner action: report the kit bug to the TPC |
+| K10 | Throughput Test 2 starts at the first query character of its first stream, not at Data Maintenance Test 1's end time (7.4.7.7), and each Data Maintenance Test is the span from the earliest function start to the latest function end (F5 applies). The gaps between tests belong to no elapsed time that enters QphDS@Size. | No tracker item |
 
 Cost, not a deviation: `perf-tpch-rf1-bulk-load-20261031` (batched `INSERT ... VALUES`). Decisions that move a boundary: `tpch-refresh-checks-timing-per-decision-20261103` (H2, H7, H9), `fetch-timing-contract-decision-20261103` (per-query sites), `tpcds-maintenance-data-source-decision-20261103`, `tpcds-maintenance-dsdgen-refresh-data-20261103` (D6).
 

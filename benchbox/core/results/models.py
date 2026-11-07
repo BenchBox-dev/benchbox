@@ -358,6 +358,8 @@ class ExecutionPhases:
     throughput_test: ThroughputTestPhase | None = None
     maintenance_test: MaintenanceTestPhase | None = None
     migration: MigrationPhase | None = None
+    throughput_test_2: ThroughputTestPhase | None = None
+    maintenance_test_2: MaintenanceTestPhase | None = None
 
 
 @dataclass
@@ -416,6 +418,8 @@ class BenchmarkResults:
     qph_at_size: float | None = None
     refresh_included: bool | None = None
     qphh_unavailable: list[str] | None = None
+    qphds_unavailable: list[str] | None = None
+    qphds_terms: dict[str, float] | None = None
     geometric_mean_execution_time: float | None = None
     validation_status: str = "PASSED"
     validation_details: dict[str, Any] | None = None

@@ -243,6 +243,8 @@ def reconstruct_benchmark_results(
         qph_at_size=tpc["qph_at_size"],
         refresh_included=tpc["refresh_included"],
         qphh_unavailable=tpc["qphh_unavailable"],
+        qphds_unavailable=tpc["qphds_unavailable"],
+        qphds_terms=tpc["qphds_terms"],
         geometric_mean_execution_time=tpc["geometric_mean_execution_time"],
         test_execution_type=benchmark_section.get("mode", "standard"),
         validation_status=summary_section.get("validation", "NOT_RUN"),
@@ -351,6 +353,8 @@ def _extract_tpc_metrics(summary_section: dict[str, Any]) -> dict[str, Any]:
         "qph_at_size": tpc.get("qphh_at_size") or tpc.get("qphds_at_size"),
         "refresh_included": tpc.get("refresh_included"),
         "qphh_unavailable": tpc.get("qphh_unavailable"),
+        "qphds_unavailable": tpc.get("qphds_unavailable"),
+        "qphds_terms": tpc.get("qphds_terms"),
         "geometric_mean_execution_time": geometric_mean_ms / 1000.0 if geometric_mean_ms else None,
     }
 

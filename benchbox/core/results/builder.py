@@ -33,6 +33,7 @@ from benchbox.core.results.platform_info import (
     format_platform_display_name,
 )
 from benchbox.core.results.platform_options import sanitize_platform_options
+from benchbox.core.results.qphds import evaluate_qphds
 from benchbox.core.results.query_execution import query_execution_to_legacy_dict
 from benchbox.core.results.query_normalizer import (
     QueryResultInput,
@@ -392,6 +393,7 @@ class ResultBuilder:
         else:
             tpc_metrics = self._calculate_tpc_metrics()
         self._add_qphh_metrics(tpc_metrics, len(failed_queries), compliance_class)
+        self._add_qphds_metrics(tpc_metrics, len(failed_queries), compliance_class)
 
         execution_phases = self._build_execution_phases(
             exec_times_all,
@@ -440,9 +442,11 @@ class ResultBuilder:
             query_subset=self._run_config.query_subset if self._run_config else None,
             power_at_size=tpc_metrics.get("power_at_size"),
             throughput_at_size=tpc_metrics.get("throughput_at_size"),
-            qph_at_size=tpc_metrics.get("qphh_at_size"),
+            qph_at_size=tpc_metrics.get("qphh_at_size", tpc_metrics.get("qphds_at_size")),
             refresh_included=tpc_metrics.get("refresh_included"),
             qphh_unavailable=tpc_metrics.get("qphh_unavailable"),
+            qphds_unavailable=tpc_metrics.get("qphds_unavailable"),
+            qphds_terms=tpc_metrics.get("qphds_terms"),
             geometric_mean_execution_time=geometric_mean or None,
             validation_status=validation_status,
             validation_details=self._validation_details,
@@ -527,6 +531,25 @@ class ResultBuilder:
                 metrics["throughput_at_size"] = throughput_phase.throughput_at_size
 
         return metrics
+
+    def _add_qphds_metrics(
+        self, metrics: dict[str, Any], failed_query_count: int, compliance_class: str | None
+    ) -> None:
+        if normalize_benchmark_id(self._benchmark.name) != "tpcds" or self._benchmark.test_type != "combined":
+            return
+
+        evaluation = evaluate_qphds(
+            self._execution_phases_override,
+            scale_factor=self._benchmark.scale_factor,
+            compliance_class=compliance_class,
+            failed_query_count=failed_query_count,
+            query_subset=self._run_config.query_subset if self._run_config else None,
+        )
+        if evaluation.qphds_at_size is not None:
+            metrics["qphds_at_size"] = evaluation.qphds_at_size
+            metrics["qphds_terms"] = evaluation.terms
+        else:
+            metrics["qphds_unavailable"] = evaluation.unavailable
 
     def _add_qphh_metrics(self, metrics: dict[str, Any], failed_query_count: int, compliance_class: str | None) -> None:
         if normalize_benchmark_id(self._benchmark.name) != "tpch":
