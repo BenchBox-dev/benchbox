@@ -144,6 +144,37 @@ scope. CI runs the
 SQL-compat package, the TPC-H, TPC-DS, TPC-Havoc and TPC-DS OBT query code, the
 local engine adapters or the gate itself change.
 
+## Per-query budget
+
+The budget is 15 s per query (`--timeout`) and it is not raised. Every engine
+prints `slowest executions per engine` (the 15 slowest candidate-side queries
+with their wall time, `TIMED OUT` when the budget interrupted them), and
+`--report` writes the same list under `slowest`. A query that shows more than
+a third of the budget (5 s) on a hosted run gets an index or a plan fix, never a
+longer timeout or an exclusion.
+
+The budget is derived from hosted timings, not local ones. The runner is
+`ubuntu-latest` (image ubuntu-26.04) with SQLite 3.46.1; the local development
+host runs SQLite 3.53 and plans differently, so a local pass says nothing about
+the hosted plan. Ten consecutive hosted runs of one head before the SQLite key
+indexes and ten after (rerunning the `sql-execution-evidence` job only):
+
+| Measure | Before: leading-key index only | After: join and correlation keys indexed |
+|---|---|---|
+| Runs that passed | 2 of 10 | 10 of 10 |
+| TPC-DS q16 on SQLite | timed out at 15 s in 8 runs, 9.9 and 14.0 s in the others | under 0.25 s in every run |
+| TPC-DS q16 augmented seeds (`q16.1001`, `q16.default`) | 5.6 to 14.2 s | under 0.25 s |
+| TPC-Havoc `10_v5` on SQLite | timed out in 2 runs, 7.8 to 14.1 s in the others | under 0.25 s |
+| TPC-Havoc `9_v1` on SQLite | 6.0 to 9.7 s | under 1.7 s |
+| Slowest SQLite query in a run | 15.0 s (timeout) in 8 runs, 9.9 s and 14.0 s in the others | 2.2 to 4.4 s (`tpchavoc 9_v4`) |
+| SQLite engine time | 63 to 115 s | 16 to 34 s |
+
+After the change the slowest SQLite query in any of the ten runs took 4.4 s,
+about a third of the budget, so the 15 s budget keeps a margin of 3.4 times over
+the worst hosted time. The only entries that still reach 15 s on a hosted run are
+PostgreSQL TPC-H Q20 and Havoc `8_v10` and `9_v1`, which are the recorded
+`optional` PostgreSQL timeout entries in `expected_differences.json`.
+
 ## Adoption evidence
 
 The gate output (candidate and baseline wheel versions, per-engine cell counts,
@@ -260,6 +291,23 @@ The gate is built to catch the regressions that the text corpus accepted:
   (about 1 K ticks) with the same `(22923.028,)` result.
   `test_sqlite_engine_indexes_the_leading_key_so_an_or_join_stays_cheap`
   asserts the result and a progress-handler operation budget, not a duration.
+- SQLite TPC-DS Q16 timing out at the 15 s budget on the hosted runner, and TPC-Havoc
+  `10_v5` once. The hosted runner has SQLite 3.46.1. For the correlated
+  `EXISTS (SELECT * FROM catalog_sales AS cs2 WHERE cs1.cs_order_number =
+  cs2.cs_order_number ...)` subqueries, 3.46.1 plans `SCAN cs2` once per outer
+  row (about 27 s on a loaded development host), where 3.53 and 3.54 build an
+  automatic partial covering index on `cs_order_number` and finish in under
+  0.5 s. The outcome therefore depended on the SQLite version and on runner
+  load. `SqliteEngine.open` now indexes the leading column of each table and
+  every column that ends in `key`, `_sk`, `_order_number` or `_ticket_number`;
+  the OBT datasets keep only the leading-column index. With the indexes 3.46.1
+  plans `SEARCH cs2 USING INDEX catalog_sales_cs_order_number_ix` and runs Q16 in
+  0.013 s, and all 347 default queries finish in at most 1.6 s on 3.46.1
+  (measured with the SQLite 3.46.1 shell on the same SF0.01 data).
+  `test_sqlite_engine_indexes_the_correlation_key_so_an_exists_subquery_is_never_a_scan`
+  asserts the index in the query plan, which does not depend on the SQLite
+  version or on timing, and `test_index_columns_picks_the_leading_column_and_the_join_keys`
+  asserts which columns are indexed.
 
 ## TPC-DS OBT equivalence
 
