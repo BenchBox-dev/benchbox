@@ -31070,10 +31070,15 @@
       "title": "Archive BenchBox review captures and attempt artifacts before they expire"
     },
     "review-gate-cannot-resolve-pr-number-20261107": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-08T16:26:48Z",
+        "generation": "3b24427ca6f9424f94d6cbaaa6cf066f",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8b868951fc54003923be2571"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "`gate / gate` job fails whenever a review is pending, because the Theseus gate job treats exit 3 (waiting) as an error"
     },
     "review-gateway-muse-login-lost-20261106": {
