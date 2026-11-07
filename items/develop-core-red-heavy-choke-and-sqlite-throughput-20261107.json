@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "The introducing commit(s) and the root cause of both failures are identified with run ids.",
+    "Fixed in one PR, or reverted, without weakening the tests. `core` is green on a fresh PR.",
+    "If the cause is runner-environment drift (e.g. a Python 3.14 image change), it is pinned or handled, and the drift is recorded."
+  ],
+  "description": "Since about 2026-11-07 14:00Z, the required `core` check has failed on nearly every PR (#4021, #4022, #4023, #4025 and other open branches), failing the same way after 3 reruns:\n- test (ubuntu-latest, 3.14): tests/unit/test_heavy_choke_points.py machine-stop and slow-stop tests fail;\n- medium-test shard 1: TestTPCHThroughputOnSQLite setup hits 60 s timeouts (also seen on red trunk run on #4016).\nTrunk (3.12 fast) is green on a97efb2. Nothing can arm while core is red.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-07T15:54:37Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "2e1c4478d5d34af79aea34f21c1d7145",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    }
+  ]
+}

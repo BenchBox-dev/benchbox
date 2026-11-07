@@ -15420,6 +15420,13 @@
       "status": "dropped",
       "title": "Dev-loop simplification — Step 6: queue implementation gate (re-homed to hosted tracker; gated on Step 5 + WS9 baseline)"
     },
+    "develop-core-red-heavy-choke-and-sqlite-throughput-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "critical",
+      "status": "open",
+      "title": "Required `core` fails on every PR: heavy_choke_points stop tests and TPC-H throughput-on-SQLite setup timeouts"
+    },
     "develop-integration-failures-20261014": {
       "claim": null,
       "needs": [],
