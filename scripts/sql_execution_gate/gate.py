@@ -453,7 +453,7 @@ def slowest(results: dict, limit: int = SLOWEST_SHOWN) -> dict[str, list[dict]]:
                     "benchmark": benchmark,
                     "query": query,
                     "seconds": round(outcome.seconds, 3),
-                    "timed_out": bool(outcome.error and outcome.error.startswith("timeout")),
+                    "timed_out": bool(outcome.error and "timeout" in outcome.error.lower()),
                 }
             )
     return {

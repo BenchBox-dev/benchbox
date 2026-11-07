@@ -672,6 +672,19 @@ def test_slowest_ranks_candidate_executions_per_engine_and_render_prints_them():
     assert "  sqlite tpcds q16 12.50s" in text
 
 
+def test_slowest_marks_a_postgres_statement_timeout_as_timed_out():
+    results = {
+        ("postgres", "tpch", "20", "candidate"): gate.Outcome(
+            error="QueryCanceled: canceling statement due to statement timeout", seconds=15.0
+        ),
+        ("postgres", "tpch", "1", "candidate"): gate.Outcome(error="SyntaxError: boom", seconds=0.1),
+    }
+    assert [(row["query"], row["timed_out"]) for row in gate.slowest(results)["postgres"]] == [
+        ("20", True),
+        ("1", False),
+    ]
+
+
 @pytest.mark.parametrize("base", [None, gate.Outcome(error="timeout"), gate.Outcome()])
 def test_obt_base_equivalence_fails_closed_without_base_rows(base):
     candidate = gate.Outcome(rows=[(1,)])
