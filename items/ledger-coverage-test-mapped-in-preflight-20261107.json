@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "For each governed path class above, uv run -- python _project/scripts/preflight_targets.py tests (the CLI pr-preflight uses) selects tests/unit/test_ledger_coverage.py. Each class is covered by a parametrized unit test, including a deleted workflow test file and a renamed script.",
+    "An unrelated path (for example benchbox/core/foo.py) does not select it; a unit test asserts this.",
+    "uv run -- pytest -q tests/unit/scripts/test_preflight_targets.py tests/unit/test_ledger_coverage.py passes. make comment-policy-check and the changelog check pass.",
+    "Decision gate: if preflight_targets has no hook for deleted-path selection and adding one changes behaviour for other guard tests, keep the change limited to the ledger test and record the wider gap as a deferral, not a silent widening."
+  ],
+  "context": "Source: adversarial process review, 2026-11-07 (accepted finding B1 / tooling defect 4). The critic verified SOURCE_GUARD_TESTS has no ledger entry and that test-file paths skip guard tests.",
+  "description": "Problem. tests/unit/test_ledger_coverage.py requires every workflow, script, workflow, script or release test, and pre-commit hook to have a row in docs/internal/dev-loop-property-ledger.md. It is marked medium, so the fast tier skips it, and _project/scripts/preflight_targets.py has no entry that selects it. A PR adding .github/workflows/batch-loop-e2e.yml passed member checks, the fast tier and pr-preflight, then failed only at the final local review (#3999's predecessor). The gap is mode-independent: serial pr-preflight misses it too.\n\nChange. In _project/scripts/preflight_targets.py, select tests/unit/test_ledger_coverage.py whenever a changed path matches what the ledger governs. Derive the set from the test's own globs: .github/workflows/*.yml, scripts/*.py, _project/scripts/**, tests/unit/workflows/**, tests/unit/scripts/**, tests/unit/release/**, tests/unit/test_auto_merge_*, tests/unit/test_release_*, .pre-commit-config.yaml and docs/internal/dev-loop-property-ledger.md. Include deleted and renamed test files: the test-file branch currently skips guard tests. Add unit tests in tests/unit/scripts/test_preflight_targets.py. One changelog.d fragment (internal).\n\nGuardrails: work only in a linked worktree (make worktree-create, or the batch targets for members); never edit the primary clone; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or oracle gate; re-read each cited file on current origin/develop before editing, because line numbers drift. Do not change test_ledger_coverage.py's marker or assertions, and do not touch scripts/batch_integration.py.",
+  "links": [
+    "_project/scripts/preflight_targets.py",
+    "tests/unit/test_ledger_coverage.py",
+    "docs/internal/dev-loop-property-ledger.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c017cf2bc2e20c6271c711ae",
+      "at": "2026-11-07T21:50:59Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a30ca13301704db0b8c1259b6b28781e",
+      "session_id": "4e1f5de86962468394697835ee28c6b3"
+    }
+  ]
+}

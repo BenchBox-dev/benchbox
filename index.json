@@ -22344,6 +22344,13 @@
       "status": "done",
       "title": "Launch results explorer: acceptance testing, seed corpus verification, and go-live"
     },
+    "ledger-coverage-test-mapped-in-preflight-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Select the dev-loop ledger coverage test when a governed path changes"
+    },
     "ledger-tables-alter-targets-and-truncation-bound-20260801": {
       "claim": null,
       "needs": [],
