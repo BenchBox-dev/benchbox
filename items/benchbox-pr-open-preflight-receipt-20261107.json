@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "pr-open refuses when the receipt is missing, stale (tree mismatch) or shows a failed step. Known environment-only failures are listed explicitly, not hidden.",
+    "The PR body shows the receipt summary; the hosted gate does not read it.",
+    "Docs and the agent guide are updated.",
+    "First-CI failure rate is re-measured 4 weeks after merge; target ≤10%."
+  ],
+  "description": "Owner decision D7 (2026-11-07), plan P4 in local://review-practice-integration-plan.md. Today 47 of 286 first CI runs failed and 35% of PRs had a failed CI run. `make pr-preflight` writes a receipt (commands, exit codes, test counts, tree hash). `make pr-open` refuses without a receipt matching the exact tree being pushed, and renders it into the PR body. The receipt is a claim, never an input to the gate.",
+  "links": [
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-11-02T02-04-38-450Z_01a19a00-60b2-70a6-b56d-6f666415a725/local/review-practice-integration-plan.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c6b30cbda7b3a0dd54b1c99f",
+      "at": "2026-11-07T03:34:22Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "df376b0b81034c8c8ffad9cdae45b6c4",
+      "session_id": "8d9ba932107b4322b2417b8af61c160c"
+    }
+  ]
+}
