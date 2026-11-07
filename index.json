@@ -9737,6 +9737,13 @@
       "status": "done",
       "title": "Pinned chDB 4.1.6 does not load on macOS 27; ClickHouse local e2e tests are skipped there"
     },
+    "chdb-rows-nan-vs-arrow-null-q17-20261107": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "chDB TPC-H Q17 returns NaN through the rows path but NULL through Arrow; find which is correct"
+    },
     "chdb-ssb-tests-share-instance-state-20261023": {
       "claim": null,
       "needs": [],
